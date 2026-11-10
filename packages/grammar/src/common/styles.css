@@ -1167,12 +1167,12 @@
         box-shadow: var(--surface-shadow);
     }
 
-    :is(.starci-core-surface, .starci-core-pane[data-grammar-pane-surface="true"], .starci-core-drawer, .starci-core-dialog-container, .starci-core-popover) :is(.starci-core-surface, .starci-core-section-list, .starci-core-data-table[data-grammar-table-surface="card"], .starci-core-empty-notice) {
+    :is(.starci-core-surface, .starci-core-pane[data-grammar-pane-surface="true"], .starci-core-drawer, .starci-core-dialog-container, .starci-core-popover, .starci-core-message-bubble-body) :is(.starci-core-surface, .starci-core-section-list, .starci-core-data-table[data-grammar-table-surface="card"], .starci-core-empty-notice) {
         box-shadow: none;
     }
 
     /* SURFACE-ELEVATION: a surface on a white surface is bordered, with no shadow. A framed notice stands bordered in a white pane, drawer, dialog or popover. */
-    :is(.starci-core-surface, .starci-core-pane[data-grammar-pane-surface="true"], .starci-core-drawer, .starci-core-dialog-container, .starci-core-popover) :is(.starci-core-surface, .starci-core-data-table[data-grammar-table-surface="card"], .starci-core-section-list),
+    :is(.starci-core-surface, .starci-core-pane[data-grammar-pane-surface="true"], .starci-core-drawer, .starci-core-dialog-container, .starci-core-popover, .starci-core-message-bubble-body) :is(.starci-core-surface, .starci-core-data-table[data-grammar-table-surface="card"], .starci-core-section-list),
     :is(.starci-core-pane[data-grammar-pane-surface="true"], .starci-core-drawer, .starci-core-dialog-container, .starci-core-popover) .starci-core-empty-notice:not([data-grammar-error-layout]) {
         border: 1px solid var(--separator);
     }
@@ -3655,7 +3655,7 @@
         pointer-events: none;
     }
 
-    .starci-core-page[data-grammar-page-layout="workspace"] .starci-core-pane-grid-tracks[data-grammar-head-row="row"]:not(.starci-core-pane *):has(.starci-core-pane-stack > header.starci-core-pane-section:first-child:not(.starci-core-pane-stack > :not(:first-child) *), .starci-core-pane-stack > .starci-core-pane-section:first-child:not(.starci-core-pane-stack > :not(:first-child) *) > .starci-core-pane-header) .starci-core-pane-stack:not(:has(> header.starci-core-pane-section:first-child)):not(:has(> .starci-core-pane-section:first-child > .starci-core-pane-header)):not(:has(.starci-core-pane-grid)):not(.starci-core-pane-stack > :not(:first-child) *) {
+    .starci-core-page[data-grammar-page-layout="workspace"] .starci-core-pane-grid-tracks[data-grammar-head-row="row"]:not(.starci-core-pane *):has(.starci-core-pane-stack > header.starci-core-pane-section:first-child:not(.starci-core-pane-stack > :not(:first-child) *), .starci-core-pane-stack > .starci-core-pane-section:first-child:not(.starci-core-pane-stack > :not(:first-child) *) > .starci-core-pane-header) .starci-core-pane-stack:not(:has(> header.starci-core-pane-section:first-child)):not(:has(> .starci-core-pane-section:first-child > .starci-core-pane-header)):not(:has(.starci-core-pane-grid)):not(.starci-core-pane-stack > :not(:first-child) *):not(.starci-core-pane-footer > .starci-core-pane-stack) {
         padding-block-start: var(--grammar-pane-head-size);
         background: linear-gradient(var(--surface) 0 0) top / 100% var(--grammar-pane-head-size) no-repeat;
     }
@@ -3723,6 +3723,15 @@
     }
 
     /*
+     * 0.37.31 (the empty band above a chat composer): the footer slot's stack is never a head-row spacer (it is not a pane's stack; the shared head row
+     * padded it by the head size, a 68px white strip between the thread and the suggestions), and its hairline is the first band's rule, so a
+     * `PaneSection rule="start"` in the footer never draws a second line under it.
+     */
+    .starci-core-pane-footer > .starci-core-pane-stack > .starci-core-pane-section:first-child[data-grammar-pane-section-rule="start"] {
+        border-block-start: 0;
+    }
+
+    /*
      * 0.37.5 THE GRID OWNS THE HEIGHT CHAIN. A pane that holds a nested PaneGrid (a tab pane of panes) is not a scroller: it clips, its stack is bounded by the pane
      * (flex 1 1 0, min-height 0, never `0 auto` which let the stack grow to the content), and the nested grid fills it, so every scroll band of every nested pane is bounded
      * and only the thread, a list or a pane body scrolls (the page, the band, the heads and the composers never move).
@@ -3774,6 +3783,12 @@
 
     .starci-core-pane-section[data-grammar-pane-section-gap="row"] { gap: var(--grammar-row-gap); }
     .starci-core-pane-section[data-grammar-pane-section-gap="section"] { gap: var(--grammar-section-gap); }
+
+    /*
+     * 0.37.31 (DNA-COMMON-CHAT-SURFACES): a chat thread is the page tone, so it meets the bands around it edge to edge: the head line above and the composer's
+     * rule below touch the thread, never a white strip of the stack's row gap (the head and composer bands keep their own padding).
+     */
+    .starci-core-pane-stack:has(> .starci-core-pane-section[data-grammar-pane-section-thread="true"]) { gap: 0; }
 
     /* rule="start": a hairline across the block-start edge of the band (R4-27, a pinned decision bar). */
     .starci-core-pane-section[data-grammar-pane-section-rule="start"] { border-block-start: 1px solid var(--separator); }
@@ -6074,8 +6089,12 @@
      * THE BUBBLE SHAPE (Messenger grouping, owner 2026-11-09). A lone bubble is fully rounded (18). Where two bubbles of one sender touch the
      * corner is squared (4): the first of a run squares its bottom corner on the sender's side, a middle one both, the last its top. The sender's
      * side is the start for an incoming bubble and the end for an outgoing one; logical corners, so RTL mirrors. The avatar sits beside the last
-     * bubble of the run, bottom-aligned; the earlier bubbles keep an avatar-width spacer. An incoming bubble (and a MessageCard) is lifted like
-     * a card: a 1px separator border and the card shadow.
+     * bubble of the run, bottom-aligned; the earlier bubbles keep an avatar-width spacer.
+     *
+     * THE CHAT SURFACES (0.37.31, law DNA-COMMON-CHAT-SURFACES, owner-approved drawing chat-surfaces): every thread is on the page tone (`--background`, a
+     * `PaneSection scroll role="log"` paints it whatever `tone` says); a message of someone else (an incoming bubble, a MessageCard) is the FLAT surface:
+     * `--surface` with no border and no shadow; the reader's own message is `--accent` with `--accent-foreground`. Outside a thread, on a white surface
+     * (a drawer, a white pane, a card), a flat white bubble would vanish, so there it wears the 1px separator edge (SURFACE-ELEVATION), still no shadow.
      */
     .starci-core-message-bubble {
         --grammar-bubble-radius: 1.125rem;
@@ -6090,9 +6109,14 @@
 
     .starci-core-message-bubble[data-grammar-bubble-side="incoming"] .starci-core-message-bubble-body,
     .starci-core-message-bubble[data-grammar-bubble-content="card"] .starci-core-message-bubble-body {
-        border: 1px solid var(--separator);
+        border: 0;
         background: var(--surface);
-        box-shadow: var(--surface-shadow);
+        color: var(--surface-foreground);
+        box-shadow: none;
+    }
+
+    :is(.starci-core-surface, .starci-core-pane[data-grammar-pane-surface="true"], .starci-core-drawer, .starci-core-dialog-container, .starci-core-popover) .starci-core-message-bubble:is([data-grammar-bubble-side="incoming"], [data-grammar-bubble-content="card"]):not([data-grammar-scroll-region-tone="background"] *) .starci-core-message-bubble-body {
+        border: 1px solid var(--separator);
     }
 
     .starci-core-message-bubble[data-grammar-bubble-side="incoming"]:is([data-grammar-bubble-group="first"], [data-grammar-bubble-group="middle"]) .starci-core-message-bubble-body { border-end-start-radius: var(--grammar-bubble-tail); }
@@ -6471,6 +6495,15 @@
     [data-grammar-list-layout="keyValue"] .starci-core-list-row-name {
         color: var(--muted);
         font-weight: var(--grammar-weight-regular);
+    }
+
+    /*
+     * CARD SUGGESTIONS (0.37.31, law DNA-COMMON-CARD-SUGGESTIONS): `kind="list" layout="suggestions"`, the replies a message card offers. A row is its plain text
+     * (14, regular, wrapping at the reading edge, never truncated) and the trailing chevron; the whole row is the one button (`onPress` sends that text).
+     */
+    [data-grammar-list-layout="suggestions"] .starci-core-list-row-name {
+        font-weight: var(--grammar-weight-regular);
+        white-space: normal;
     }
 
     /* From 28rem a row is a grid (above): a key-value row is two columns, the key at most 40%, the value taking the rest. */

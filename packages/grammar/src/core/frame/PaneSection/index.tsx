@@ -13,7 +13,9 @@ export type PaneSectionProps = {
     /** Its own vertical scroll owner (OVERFLOW-4/5) with the inset inside the scroller. Implies grow. */
     readonly scroll?: {
         readonly label: string
+        /** `log`: a chat thread. A thread is always drawn on the page tone (`--background`, law DNA-COMMON-CHAT-SURFACES), so `tone` is ignored with `log`. */
         readonly role?: "log" | "region"
+        /** The ground of a `region` band; a `log` band is always `background`. */
         readonly tone?: "surface" | "background"
         readonly scrollRef?: Ref<HTMLDivElement>
         /**
@@ -68,6 +70,8 @@ export const PaneSection = ({ children: content, grow = false, scroll, align = "
         "aria-busy": isLoading ? true : undefined,
         "data-grammar-loading-region": isLoading ? "true" : undefined,
     }
+    // A chat thread is always on the page tone (0.37.31, the owner's chat surfaces law): incoming bubbles are the flat white surface on it.
+    const tone = scroll?.role === "log" ? "background" : scroll?.tone
     const contract = gap === "row" ? "PADDING-4 GAP-3" : gap === "section" ? "PADDING-4 GAP-4" : "PADDING-4 GAP-2"
     if (scroll === undefined) {
         return createElement(as, { ...shared, className: "starci-core-pane-section", "data-contract": contract }, children)
@@ -82,7 +86,7 @@ export const PaneSection = ({ children: content, grow = false, scroll, align = "
             {...(scroll.align === undefined || scroll.align === "start" ? {} : { "data-grammar-pane-section-scroll-align": scroll.align })}
             isScrollable
             {...(scroll.role === undefined ? {} : { role: scroll.role })}
-            {...(scroll.tone === undefined ? {} : { tone: scroll.tone })}
+            {...(tone === undefined ? {} : { tone })}
             {...(scroll.scrollRef === undefined ? {} : { ref: scroll.scrollRef })}
         >
             {createElement(as, { className: "starci-core-pane-section-content", "data-contract": contract }, children)}

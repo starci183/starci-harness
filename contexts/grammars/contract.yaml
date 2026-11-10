@@ -323,7 +323,7 @@ roles:
     sizes: leading slot sm/md/lg match the control ladder
     states: [hover, focus-visible, selected, disabled, loading (same rows at rest), empty]
     grammarMayChange: [row state paint, seam paint]
-    dna: [DNA-COMMON-LIST-SEAMS, DNA-COMMON-SEAM-FULL-BLEED, DNA-COMMON-ROW-DESCRIPTION-ONE-LINE, DNA-COMMON-OPTION-DESCRIPTION-WRAPS, DNA-COMMON-TABLE-ROW-LINK, DNA-COMMON-TABLE-FOLD, DNA-COMMON-ROW-ACTION-END, DNA-COMMON-DISCLOSURE-CHEVRON-START, DNA-COMMON-FIGURES-PANE-ROW, DNA-COMMON-DESCRIPTION-DRAWER-COLUMNS, DNA-COMMON-STEPPER-BAR, DNA-COMMON-STEPPER-BAR-NO-CONNECTOR, DNA-COMMON-DISCLOSURE-CHEVRON-TITLE-NEXT, DNA-COMMON-TABLE-NO-CLIP, DNA-COMMON-ROW-TEXT-FIRST, DNA-COMMON-STEPPER-MARKER-FILLS, DNA-COMMON-STEPPER-MARKER-UPCOMING, DNA-COMMON-LIST-ROW-DIFF, DNA-COMMON-ROW-CONTROL-CENTRE]
+    dna: [DNA-COMMON-LIST-SEAMS, DNA-COMMON-SEAM-FULL-BLEED, DNA-COMMON-ROW-DESCRIPTION-ONE-LINE, DNA-COMMON-OPTION-DESCRIPTION-WRAPS, DNA-COMMON-TABLE-ROW-LINK, DNA-COMMON-TABLE-FOLD, DNA-COMMON-ROW-ACTION-END, DNA-COMMON-DISCLOSURE-CHEVRON-START, DNA-COMMON-FIGURES-PANE-ROW, DNA-COMMON-DESCRIPTION-DRAWER-COLUMNS, DNA-COMMON-STEPPER-BAR, DNA-COMMON-STEPPER-BAR-NO-CONNECTOR, DNA-COMMON-DISCLOSURE-CHEVRON-TITLE-NEXT, DNA-COMMON-TABLE-NO-CLIP, DNA-COMMON-ROW-TEXT-FIRST, DNA-COMMON-STEPPER-MARKER-FILLS, DNA-COMMON-STEPPER-MARKER-UPCOMING, DNA-COMMON-LIST-ROW-DIFF, DNA-COMMON-ROW-CONTROL-CENTRE, DNA-COMMON-CARD-SUGGESTIONS]
 
   - id: alert
     ui: ui/components/toast-alert.md
@@ -395,8 +395,8 @@ roles:
     sizes: { fills: "its host's block and inline size" }
     states: [drawer-open, head-loading]
     grammarMayChange: ["nothing: the grid, the dividers, the surface ground, the pane inset and the drawer are Common's"]
-    dna: [DNA-COMMON-PANE-HEADER-TOUCH-HEIGHT, DNA-COMMON-PANE-DRAWER-SPACING, DNA-COMMON-PANE-DRAWER-SECTION-GAP, DNA-COMMON-PANE-SCROLL-ALIGN, DNA-COMMON-PANE-SCROLL-ALIGN-END, DNA-COMMON-PANE-SECTION-RULE]
-    lint: [starci-grammar/pane-grid-children, starci-grammar/pane-children, starci-grammar/no-pane-section-padding, starci-grammar/pane-grid-page, starci-fe/no-hand-built-panes]
+    dna: [DNA-COMMON-PANE-HEADER-TOUCH-HEIGHT, DNA-COMMON-PANE-DRAWER-SPACING, DNA-COMMON-PANE-DRAWER-SECTION-GAP, DNA-COMMON-PANE-SCROLL-ALIGN, DNA-COMMON-PANE-SCROLL-ALIGN-END, DNA-COMMON-PANE-SECTION-RULE, DNA-COMMON-CHAT-SURFACES, DNA-COMMON-CHAT-INCOMING-FLAT, DNA-COMMON-CHAT-OUTGOING-ACCENT, DNA-COMMON-PANE-FOOTER-NO-BAND]
+    lint: [starci-grammar/pane-grid-children, starci-grammar/message-surfaces, starci-grammar/pane-children, starci-grammar/no-pane-section-padding, starci-grammar/pane-grid-page, starci-fe/no-hand-built-panes]
 
   - id: data-views
     ui: ui/components/data-views.md
@@ -1139,6 +1139,11 @@ mustKeep:
       law: "A diff row (ListRowData.diff, 0.37.28, owner drawing 'So sánh phiên bản') has a monospace gutter mark at its start, + added, − removed, ~ changed, in its tone's ink, read with its label (diffLabel) before the title, never colour alone; its ground is the tone's soft pair (added success, removed danger, changed warning); a removed title is struck through; a changed row's 'from → to' is the 12 muted line; the row padding holds (ROW-EDGE-PADDING)."
       measure: { kind: style, select: '[data-component="ListRow"][data-grammar-diff="added"]', metric: background-color, op: "=", value: { token: --success-soft } }
       owner: ui/components/list-table.md
+    - id: DNA-COMMON-CARD-SUGGESTIONS
+      role: list
+      law: "The replies a message card offers are ONE bordered list (SurfaceCard kind list, layout suggestions; surface in surface, SURFACE-ELEVATION): a row per reply, its plain text at 14 regular weight wrapping at the reading edge, never truncated, the whole row the one button that sends it, a trailing chevron; the suggestion pills by a composer stay Button sm (owner-approved drawing chat-surfaces, 0.37.31)."
+      measure: { kind: style, select: '[data-grammar-list-layout="suggestions"] .starci-core-list-row-name', checks: [{ metric: font-weight, op: "=", value: 400 }] }
+      owner: ui/components/message-bubble.md
     - id: DNA-COMMON-ROW-ACTION-END
       role: list
       law: "A row with actionPlacement end keeps its commands on the line of its copy, at the end of the row, at any width (G7-7)."
@@ -1287,6 +1292,32 @@ mustKeep:
       law: "The figure ends before the action of its row begins: one line, value then command."
       measure: { kind: relation, select: '[data-grammar-tile-figure-value]', metric: right, op: "<=", tolerance: 1, ref: { within: '.starci-core-tile-foot', select: '.starci-core-tile-actions', metric: left } }
       owner: contract roles.card
+    - id: DNA-COMMON-CHAT-SURFACES
+      role: pane-grid
+      law: "Every chat thread (a PaneSection scroll role log: team chat, an agent's chat, an inbox thread, the assistant) is the page tone --background, never the white surface, whatever tone the app passes; it meets the head line above and the composer's line below edge to edge (owner 'nền chat luôn là background', drawing chat-surfaces, 0.37.31)."
+      measure: { kind: style, select: '[data-grammar-pane-section-thread="true"]', checks: [{ metric: background-color, op: "=", value: { token: --background } }] }
+      owner: ui/components/message-bubble.md
+    - id: DNA-COMMON-CHAT-INCOMING-FLAT
+      role: pane-grid
+      law: "In a thread, a message of someone else (MessageBubble incoming, MessageCard) is the flat surface: --surface with its foreground, no border, no shadow; outside a thread on a white surface (a drawer, a white pane, a card) it wears the 1px separator edge, still no shadow (SURFACE-ELEVATION). An app never restyles it (lint message-surfaces)."
+      measure:
+        kind: style
+        select: '[data-grammar-pane-section-thread="true"] .starci-core-message-bubble:is([data-grammar-bubble-side="incoming"], [data-grammar-bubble-content="card"]) > .starci-core-message-bubble-stack > .starci-core-message-bubble-body'
+        checks: [{ metric: background-color, op: "=", value: { token: --surface } }, { metric: border-width, op: "=", value: 0px }, { metric: box-shadow, op: "=", value: none }]
+      owner: ui/components/message-bubble.md
+    - id: DNA-COMMON-CHAT-OUTGOING-ACCENT
+      role: pane-grid
+      law: "The reader's own message (MessageBubble outgoing, tone brand) is --accent with --accent-foreground; a link, a mention, code and a muted line in it inherit the foreground (a link keeps its underline). Theme tokens only, no colour of its own."
+      measure:
+        kind: style
+        select: '.starci-core-message-bubble[data-grammar-bubble-side="outgoing"][data-grammar-bubble-tone="brand"] .starci-core-message-bubble-body'
+        checks: [{ metric: background-color, op: "=", value: { token: --accent } }, { metric: color, op: "=", value: { token: --accent-foreground } }]
+      owner: ui/components/message-bubble.md
+    - id: DNA-COMMON-PANE-FOOTER-NO-BAND
+      role: pane-grid
+      law: "A pane footer (a chat composer) starts at its own hairline: its stack is never a head-row spacer (no empty band between the thread and the suggestions) and a PaneSection rule start in it draws no second line under the footer's (0.37.31)."
+      measure: { kind: style, select: '.starci-core-pane-footer > .starci-core-pane-stack', checks: [{ metric: padding-block-start, op: "=", value: 0px }] }
+      owner: contract roles.pane-grid
     - id: DNA-COMMON-PANE-SECTION-RULE
       role: pane-grid
       law: "A pane section with rule start draws a 1px separator on its block-start edge and none elsewhere (R4-27)."

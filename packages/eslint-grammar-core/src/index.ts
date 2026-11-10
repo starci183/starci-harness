@@ -17,6 +17,7 @@ import { rules as layoutTwoAxisRules } from "./layout-two-axis.ts"
 import { rules as linkLookRules } from "./link-look.ts"
 import { rules as mascotRules } from "./mascot.ts"
 import { rules as menuEntriesRules } from "./menu-entries.ts"
+import { rules as messageSurfacesRules } from "./message-surfaces.ts"
 import { rules as noRawScrollRules } from "./no-raw-scroll.ts"
 import { rules as outlineIconsRules } from "./outline-icons.ts"
 import { rules as pageRules } from "./page.ts"
@@ -71,6 +72,7 @@ const CONTRIBUTIONS: readonly { readonly law: string; readonly rules: Readonly<R
   { law: "link-look", rules: linkLookRules },
   { law: "mascot", rules: mascotRules },
   { law: "menu-entries", rules: menuEntriesRules },
+  { law: "message-surfaces", rules: messageSurfacesRules },
   { law: "no-raw-scroll", rules: noRawScrollRules },
   { law: "outline-icons", rules: outlineIconsRules },
   { law: "page", rules: pageRules },

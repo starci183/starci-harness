@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.37.31 - 2026-11-11
+
+- Changed: released with the Grammar family at 0.37.31; inherits `message-surfaces` from `@starci/eslint-grammar-core`, no rule of this package changed.
+
 ## 0.37.30 - 2026-11-10
 
 - Changed: released with the Grammar family at 0.37.30; no rule of this package changed.

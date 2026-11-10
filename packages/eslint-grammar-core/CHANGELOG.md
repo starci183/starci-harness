@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.37.31 - 2026-11-11
+
+- Added: `starci-grammar/message-surfaces` (`FE_MESSAGE_SURFACES`, law `MESSAGE-SURFACES`, Grammar `DNA-COMMON-CHAT-SURFACES`): no `className`/`class`/`style`/`UNSAFE_className`/`UNSAFE_style` on a Grammar `MessageBubble` or `MessageCard`; no static class string (attribute, template, `cn`/`clsx`/`cx`/`classNames`/`twMerge`/`twJoin` argument) or style key reaching a Grammar message part (`starci-core-message-bubble…`, `starci-core-message-card…`); no `tone: "surface"` beside `role: "log"` in a `PaneSection` `scroll` literal. Docs `docs/message-surfaces.md`.
+
 ## 0.37.30 - 2026-11-10
 
 - Changed: released with the Grammar family at 0.37.30; no rule of this package changed.

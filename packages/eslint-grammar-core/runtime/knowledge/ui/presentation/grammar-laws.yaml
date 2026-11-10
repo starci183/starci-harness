@@ -77,6 +77,21 @@ rules:
         assert: |-
           It is a workspace page, `Page chrome="panes"`: a grid of panes split by dividers, side panes white surfaces at full
           height, never cards. The main pane may hold a pink well that follows case-1.
+  - id: MESSAGE-SURFACES
+    title: Every chat draws Grammar's three faces and an app never restyles them
+    governs: A chat thread, the messages in it and the replies a message card offers.
+    cases:
+      - id: case-1
+        when: A chat thread with messages is drawn (team chat, an agent's chat, an inbox thread, the assistant)
+        assert: |-
+          The thread is a `PaneSection scroll role="log"` on the page tone `--background`; a message of someone else
+          (`MessageBubble` incoming, `MessageCard`) is the flat `--surface` with no border and no shadow; the reader's own
+          message is `--accent` with `--accent-foreground`. No class or style reaches a bubble, a card or the thread ground.
+      - id: case-2
+        when: A message card offers replies to send
+        assert: |-
+          They are one bordered list, `SurfaceCard kind="list" layout="suggestions"`, a plain-text row per reply whose whole
+          row sends it, with a trailing chevron; the suggestion pills by the composer stay `Button size="sm"`.
   - id: SUGGESTION-BUTTONS
     title: Suggestions and quick replies are a Cluster of neutral sm Buttons
     governs: Anything that suggests something to say or ask.

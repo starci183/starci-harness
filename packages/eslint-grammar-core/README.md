@@ -23,6 +23,7 @@ chip labels that start uppercase, a Button that leads somewhere ending with `end
 its behavioral knowledge source and the governing ownership test. The R318 surface composition
 rules (nested control variants, panel-list alignment, layout-only CSS) stay in the universal canon.
 `suggestion-buttons` (suggestions and quick replies are a Cluster of neutral sm Buttons, never a Link row, ChoiceChips or Chip that sends; `docs/suggestion-buttons.md`).
+`message-surfaces` (0.37.31: every chat draws Grammar's faces, the thread `--background`, others' messages flat `--surface`, your own `--accent`; no class or style on `MessageBubble`/`MessageCard`, no class string reaching a message part, no `tone: "surface"` on a `role: "log"` thread; `docs/message-surfaces.md`).
 The proximity and composition laws of 2026-11-09 each have a doc: `gap-proximity` (a layout element stands at least one gap step closer than its layout parent), `field-label` (a control is labelled by its own `label` prop), `surface-in-surface` (a hand-made divided row list in a surface is `Section kind="list"`) `single-child-card` (a table, list or chart alone is the surface, not a card's only content) and `page-breadcrumbs` (a console `Page` header states `breadcrumbs`, or `"root"`).
 
 ## Migrating from @starci/eslint-canon-fe 8.x

@@ -219,8 +219,11 @@ export type ListData = {
     /**
      * `rows` (default): title with a supporting line. `keyValue` (0.37.5): each row is a key (`title`, muted, 14) and its `value` (normal text, 14, at the end), so the hierarchy reads
      * key then value instead of title then subtitle.
+     * `suggestions` (0.37.31, law DNA-COMMON-CARD-SUGGESTIONS): the replies a message card offers, one row per suggestion. Each row is its plain text (14,
+     * regular weight, wrapping, never truncated) with a trailing chevron; give every row `onPress` (it sends that text) and nothing else. Inside a card
+     * (a `MessageCard` body) the list is the bordered surface in a surface. The suggestion pills by a composer stay `Button size="sm"`.
      */
-    readonly layout?: "rows" | "keyValue"
+    readonly layout?: "rows" | "keyValue" | "suggestions"
     readonly items: readonly ListRowData[]
     /** What the card shows when it has no rows. Required: every list answers for its empty state. */
     readonly empty: ReactNode

@@ -29,7 +29,7 @@ export const ListRows = ({ data, isLoading, ariaLabel }: {
             className={collectionClassName}
             data-grammar-collection={isVerdict ? "verdict" : "list"}
             data-grammar-list="true"
-            {...(data.layout === "keyValue" ? { "data-grammar-list-layout": "keyValue" } : {})}
+            {...(data.layout === "keyValue" || data.layout === "suggestions" ? { "data-grammar-list-layout": data.layout } : {})}
             data-loading={String(isLoading)}
             role="list"
         >

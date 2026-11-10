@@ -262,6 +262,11 @@ export const why: Record<string, WhyEntry> = {
     en: "A Link is the title of a row in `<file>` that already opens (onPress, onAction, href, chevron, or a DataTable with onRowAction or row hrefs).",
     fix: "The row is the one pressable: write the title as plain text (`<Text isStrong>`) and keep the destination on the row.",
   },
+  "message-surfaces": {
+    code: "FE_MESSAGE_SURFACES",
+    en: "`<file>` restyles a chat face: a class or style on MessageBubble or MessageCard, a class string reaching into a Grammar message part, or a chat thread asked for the surface tone.",
+    fix: "Remove the override: the thread is `--background`, others' messages the flat `--surface`, your own `--accent` (DNA-COMMON-CHAT-SURFACES); a card's replies are `SurfaceCard kind=\"list\" layout=\"suggestions\"`.",
+  },
   "suggestion-buttons": {
     code: "FE_SUGGESTION_BUTTONS",
     en: "A Link row, a ChoiceChips or a Chip in `<file>` runs an action or sends its own label as a suggestion.",
