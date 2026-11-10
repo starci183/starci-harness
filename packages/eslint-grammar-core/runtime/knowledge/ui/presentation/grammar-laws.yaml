@@ -183,8 +183,8 @@ rules:
         when: A Section head carries an action
         assert: |-
           The head is ONE row: the label (14, 500) and an optional count chip (12) at the start, at most ONE thing at the end, a navigation
-          Link variant="head" (the label then an arrow that slides about 3px on hover) or an info IconButton. A Button is refused (navigation is a
-          Link) and so are two commands. There is no description under the label: it is a caption (12, muted) below the card or list.
+          Link variant="head" (the label then an arrow that slides about 3px on hover), an info IconButton, or (0.37.25) a neutral small text Button
+          (intent neutral, size sm, no icon: "Gắn thêm provider"). A primary or commit Button, another size or an icon Button is refused, and so are two commands. There is no description under the label: it is a caption (12, muted) below the card or list.
   - id: TAB-COUNT-CHIP
     title: A tab count is a 12px chip, grey unless it is work waiting for the owner
     governs: The count on a Grammar tab, page layers 1 and 2 and filter tabs.

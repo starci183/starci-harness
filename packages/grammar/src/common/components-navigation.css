@@ -1103,6 +1103,24 @@
         line-height: var(--grammar-leading-xs);
     }
 
+    /* ROW-EDGE-PADDING (0.37.25): a body row's cells keep p-3 to the separators above and below them; the last row of a card table, on the card's edge, keeps p-4 below. */
+    .starci-core-data-table[data-grammar-table-surface] .starci-core-data-table-body .starci-core-data-table-cell {
+        padding-block: var(--grammar-row-gap);
+    }
+
+    [data-grammar-surface-content]:not([data-grammar-surface-footed]) .starci-core-data-table-body .starci-core-data-table-row:last-child .starci-core-data-table-cell {
+        padding-block-end: var(--grammar-card-padding-block);
+    }
+
+    /* The first and last column of a card table touch the card's left and right edges: p-4 there (were 12), header and body alike. */
+    [data-grammar-surface-content] .starci-core-data-table[data-grammar-table-surface] tr > :is(.starci-core-data-table-column, .starci-core-data-table-cell):first-child {
+        padding-inline-start: var(--grammar-card-padding-inline);
+    }
+
+    [data-grammar-surface-content] .starci-core-data-table[data-grammar-table-surface] tr > :is(.starci-core-data-table-column, .starci-core-data-table-cell):last-child {
+        padding-inline-end: var(--grammar-card-padding-inline);
+    }
+
     .starci-core-data-table .starci-core-data-table-cell {
         font-size: var(--grammar-text-md);
         font-weight: var(--grammar-weight-regular);

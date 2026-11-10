@@ -130,7 +130,7 @@ roles:
     sizes: none
     states: [neutral, pending, PresentationState]
     grammarMayChange: [surface paint, edge (border/shadow by depth), radius via surfaceRadius, the label's paint, the ink ground and its inks]
-    dna: [DNA-COMMON-LIST-ON-WHITE-BORDERED, DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE, DNA-COMMON-CARD-LABEL-ABOVE, DNA-COMMON-CARD-LABEL-HEADING, DNA-COMMON-ONE-HIGHLIGHT, DNA-COMMON-DIVIDER-FULL-BLEED, DNA-COMMON-SOFT-GROUND, DNA-COMMON-TREATMENT-TEXT-CONTRAST, DNA-CORE-EDGE-TOP, DNA-CORE-CARD-LABEL-OUTSIDE, DNA-OFFSET-POP-STICKER, DNA-OFFSET-POP-CARD-LABEL-OUTSIDE, DNA-COMMON-TILE-BYLINE, DNA-COMMON-TILE-FIGURE-START, DNA-COMMON-TILE-FIGURE-BEFORE-ACTION]
+    dna: [DNA-COMMON-LIST-ON-WHITE-BORDERED, DNA-COMMON-ROW-EDGE-PADDING, DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE, DNA-COMMON-CARD-LABEL-ABOVE, DNA-COMMON-CARD-LABEL-HEADING, DNA-COMMON-ONE-HIGHLIGHT, DNA-COMMON-DIVIDER-FULL-BLEED, DNA-COMMON-SOFT-GROUND, DNA-COMMON-TREATMENT-TEXT-CONTRAST, DNA-CORE-EDGE-TOP, DNA-CORE-CARD-LABEL-OUTSIDE, DNA-OFFSET-POP-STICKER, DNA-OFFSET-POP-CARD-LABEL-OUTSIDE, DNA-COMMON-TILE-BYLINE, DNA-COMMON-TILE-FIGURE-START, DNA-COMMON-TILE-FIGURE-BEFORE-ACTION]
     lint: [starci-grammar/no-raised-surface-in-surface]
 
   - id: button
@@ -1461,6 +1461,14 @@ mustKeep:
         kind: style
         select: '.starci-core-pane[data-grammar-pane-surface="true"] .starci-core-section-list'
         checks: [{ metric: border-width, op: "=", value: 1px }, { metric: border-color, op: "=", value: { token: --separator } }, { metric: box-shadow, op: "=", value: none }]
+      owner: ui/components/card.md
+    - id: DNA-COMMON-ROW-EDGE-PADDING
+      role: card
+      law: "A side of a row that touches the card's edge is p-4 (--grammar-card-padding-block, 16): the first row's top (no header zone above it) and the last row's bottom (no footer zone below it), a single-row card both. A side that touches a separator (between rows, under a zone divider) is p-3 (--grammar-row-gap, 12). Controls included: a row grows around a tall control; no row slot has a fixed block-size (ROW-EDGE-PADDING, owner 2026-11-10)."
+      measure:
+        kind: style
+        select: '[data-grammar-surface-content]:not([data-grammar-surface-headed]) .starci-core-owned-collection > .starci-core-static-row:first-child'
+        checks: [{ metric: padding-block-start, op: "=", value: { token: --grammar-card-padding-block } }, { metric: padding-block-end, op: "=", value: { token: --grammar-row-gap } }]
       owner: ui/components/card.md
     - id: DNA-CORE-EDGE-TOP
       role: card

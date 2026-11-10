@@ -330,6 +330,8 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
                 className={getSurfaceContentClassName(measure, false)}
                 data-contract={flush ? "GAP-0 PADDING-0" : "PADDING-4"}
                 data-grammar-surface-zoned={isZoned ? "true" : undefined}
+                data-grammar-surface-headed={headers.length > 0 ? "true" : undefined}
+                data-grammar-surface-footed={footers.length > 0 ? "true" : undefined}
                 data-grammar-surface-content="true"
                 isScrollable={false}
             >

@@ -6,7 +6,7 @@ export type SectionHeadingLevel = 2 | 3 | 4 | 5 | 6
 
 /**
  * The head every `Section` draws (0.36.0): ONE row. At the start the label (14, weight 500) and an optional count chip (12); at the end at most ONE
- * thing: a navigation `Link variant="head"` (label then an arrow that slides on hover) or an info `IconButton`. There is no description under the
+ * thing: a navigation `Link variant="head"` (label then an arrow that slides on hover), an info `IconButton`, or a neutral small text `Button` (0.37.25). There is no description under the
  * label: `description` is drawn as a caption below the section's body.
  */
 export type SectionHeadProps = {
@@ -32,8 +32,9 @@ export type SectionHeadProps = {
     /** Where and when the section's facts come from (a source time, "Inventoried at 10:00"). Muted, at the end of the head row, before `action`. */
     readonly meta?: string
     /**
-     * The head's one end-of-row thing: a navigation `Link variant="head"` ("Open the board" then the arrow), or an info `IconButton`. A `Button` here is an
-     * error (navigation is a Link) and so is more than one element (lint `section-head-action`). It hugs its label at the end of the head row.
+     * The head's one end-of-row thing: a navigation `Link variant="head"` ("Open the board" then the arrow), an info `IconButton`, or a text
+     * `<Button intent="neutral" size="sm">` ("Gắn thêm provider", 0.37.25; no icon, never the commit). Any other Button and more than one element are errors (lint
+     * `section-head-action`). It hugs its label at the end of the head row, on the label's line.
      */
     readonly action?: ReactNode
     /** Outline rank of the title. Default `2`; pick the rank that follows the heading above it. */

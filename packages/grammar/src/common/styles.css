@@ -1201,7 +1201,25 @@
     }
 
     /*
-     * Proximity: zones are divided by seams (one line, gap 0), and each zone spaces its own parts by the inline step at most,
+     * ROW-EDGE-PADDING (0.37.25, owner 2026-11-10): the padding of a row follows what its side touches. A side on the card's edge (the left and right, the FIRST row's top when no header
+     * zone stands above it, the LAST row's bottom when no footer zone stands below it) is p-4 (`--grammar-card-padding-block`, 16); a side on a separator (between rows, or under a zone's divider) is p-3
+     * (`--grammar-row-gap`). Controls included: a row GROWS around a tall control (min-block-size, never a fixed block-size in a row slot). A single-row card has p-4 above and below.
+     */
+    [data-grammar-surface-content]:not([data-grammar-surface-headed]) .starci-core-owned-collection > .starci-core-static-row:first-child,
+    .starci-core-section-list > .starci-core-owned-collection > .starci-core-static-row:first-child,
+    [data-grammar-surface-content]:not([data-grammar-surface-headed]) .starci-core-select-rows > .starci-core-select-item:first-child > :is(.starci-core-select-row, .starci-core-select-control),
+    .starci-core-surface[data-grammar-surface-kind="details"] [data-grammar-surface-content]:not([data-grammar-surface-headed]) .starci-core-description-pair:first-child {
+        padding-block-start: var(--grammar-card-padding-block);
+    }
+
+    [data-grammar-surface-content]:not([data-grammar-surface-footed]) .starci-core-owned-collection > .starci-core-static-row:last-child,
+    .starci-core-section-list > .starci-core-owned-collection > .starci-core-static-row:last-child,
+    [data-grammar-surface-content]:not([data-grammar-surface-footed]) .starci-core-select-rows > .starci-core-select-item:last-child > :is(.starci-core-select-row, .starci-core-select-control),
+    .starci-core-surface[data-grammar-surface-kind="details"] [data-grammar-surface-content]:not([data-grammar-surface-footed]) .starci-core-description-pair:last-child {
+        padding-block-end: var(--grammar-card-padding-block);
+    }
+
+    /* Proximity: zones are divided by seams (one line, gap 0), and each zone spaces its own parts by the inline step at most,
      * so a zone's parts are always closer than the zones are; nothing changed in 0.27.
      *
      * Zones: typed bands above and below a card's body. The card is flush; the shell draws the ONE divider between neighbouring zones and
@@ -1253,7 +1271,17 @@
         align-items: center;
         justify-content: space-between;
         gap: var(--grammar-inline-gap);
-        padding-block: var(--grammar-inline-gap);
+        /* ROW-EDGE-PADDING (0.37.25): a switch zone is a row like any other, p-3 to its divider (was the 8px inline step, the pill nearly touched the line). */
+        padding-block: var(--grammar-row-gap);
+    }
+
+    /* ROW-EDGE-PADDING (0.37.25): a header zone that is the card's first row keeps p-4 to the card's top edge; a footer zone that is the last keeps p-4 to the bottom edge. A tab strip stands on its own line and figures carry no padding. */
+    [data-grammar-surface-content] > .starci-core-surface-zone:first-child:not([data-grammar-zone="figures"], [data-grammar-zone-line="tabs"]) {
+        padding-block-start: var(--grammar-card-padding-block);
+    }
+
+    [data-grammar-surface-content] > .starci-core-surface-main ~ .starci-core-surface-zone:last-child:not([data-grammar-zone="figures"]) {
+        padding-block-end: var(--grammar-card-padding-block);
     }
 
     .starci-core-surface-zone-title {
@@ -2082,7 +2110,8 @@
         inline-size: auto;
         min-width: 0;
         align-items: flex-start;
-        padding: var(--grammar-row-gap) var(--grammar-inset);
+        /* ROW-EDGE-PADDING (0.37.25): p-4 to the card's left edge (was the 12px inset), p-3 to the separators. */
+        padding: var(--grammar-row-gap) var(--grammar-card-padding-inline);
         cursor: pointer;
     }
 
@@ -2095,9 +2124,12 @@
         flex: none;
         align-items: center;
         box-sizing: border-box;
-        /* The box is the row's title line (row padding + one line): content taller than the line centres on it instead of growing the row. */
-        block-size: calc(var(--grammar-leading-md) + 2 * var(--grammar-row-gap));
-        padding-inline-end: var(--grammar-inset);
+        /* ROW-CONTROL-CLEARANCE (0.37.25): the slot keeps the row's padding. Its box is at least the row's title line (row padding + one line); a control taller than the line GROWS the row
+           (the slot's padding-block keeps --grammar-row-gap above and below it, never touching the separator) and the control stays centred. */
+        min-block-size: calc(var(--grammar-leading-md) + 2 * var(--grammar-row-gap));
+        padding-block: var(--grammar-row-gap);
+        /* p-4 to the card's right edge (was the 12px inset). */
+        padding-inline-end: var(--grammar-card-padding-inline);
     }
 
     /* A primary Tabs pill in the control slot is the small switch: a tight pill (text stays 14, every tab is 14), so it reads as a row's setting, not a bar. */

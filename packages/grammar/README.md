@@ -234,7 +234,7 @@ with a skeleton and loads nothing. A source Mermaid refuses becomes an error ins
 ### Table frame, section head, scroll law, tab chips (0.36.0)
 
 - `DataTable` is HeroUI's native table: the grey frame is the card (radius 16, soft shadow, no border), the header row 12 muted on the grey, a white rounded body with hairline rows; `footer` takes a `Pagination` with its `summary`. `surface="frame"` is the same without its own radius or shadow (`SurfaceCard kind="table"` uses it); `surface="none"` stays plain.
-- A `Section` head is one row: label (14, 500) and a count chip at the start, at most one `Link variant="head"` (label then a sliding `→`) or one `IconButton` at the end. `description` is a caption below the body (12, muted). Lint: `section-head-action`.
+- A `Section` head is one row: label (14, 500) and a count chip at the start, at most one `Link variant="head"` (label then a sliding `→`), one `IconButton` or one neutral sm text `Button` at the end. `description` is a caption below the body (12, muted). Lint: `section-head-action`.
 - The page header band is sticky; in a workspace page each pane scrolls on its own with its head sticky and no visible scrollbar. `Pane content="cards" | "full"`: only the content of a cards pane is capped at 80rem; chat and FlowGraph panes are full.
 - Tab counts are 12px chips, grey; pink only with `isAttention`; page tabs hide a 0. Lint: `tab-count-chip`.
 

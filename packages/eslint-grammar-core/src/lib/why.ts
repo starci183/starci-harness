@@ -49,8 +49,8 @@ export const why: Record<string, WhyEntry> = {
   },
   "section-head-action": {
     code: "FE_SECTION_HEAD_ACTION",
-    en: "The `Section` head `action` in `<file>` holds a `Button` or more than one command.",
-    fix: "A section's head is one row: the label and an optional count chip at the start, at most ONE thing at the end. Navigation is a `Link variant=\"head\"` (the label then an arrow that slides on hover), an info is an `IconButton`. A command that does not navigate goes in the card or the page header.",
+    en: "The `Section` head `action` in `<file>` holds a Button that is not a neutral small text Button, or more than one command.",
+    fix: "A section's head is one row: the label and an optional count chip at the start, at most ONE thing at the end: a `Link variant=\"head\"` (the label then an arrow that slides on hover), an info `IconButton`, or a text `Button intent=\"neutral\" size=\"sm\"` (no icon, never the commit).",
   },
   "tab-count-chip": {
     code: "FE_TAB_COUNT_CHIP",

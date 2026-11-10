@@ -37,8 +37,8 @@ already under a heading uses `ariaLabel` and adds no visible heading; a strip th
 
 ## Section head (0.36.0)
 A `Section` head is ONE row: the label (14, 500) and an optional count chip (12) at the start; at the end at most ONE thing, a navigation `Link variant="head"` (the label then an arrow `→` that slides about 3px on hover, the hover underline,
-the inherited size; distinct from the inline `↗` Link) or an info `IconButton`. No description under the label: `description` is drawn as a caption (12, muted) below the card or list, with `caption`. Lint `starci-grammar/section-head-action`
-refuses a `Button` in the head action and more than one command.
+the inherited size; distinct from the inline `↗` Link), an info `IconButton` or (0.37.25) a text `Button intent="neutral" size="sm"` with no icon ("Gắn thêm provider" at the end of "Provider đã gắn  2"; never the commit). No description under the label: `description` is drawn as a caption (12, muted) below the card or list, with `caption`. Lint `starci-grammar/section-head-action`
+refuses any other `Button` (a commit, another size, an icon) in the head action and more than one command.
 
 ## Variants
 Rows are separated by lines (n-1 lines) or by gap, never both (`DNA-COMMON-LIST-SEAMS`). Rows align their boxes to the content edge of a panel or a pane
