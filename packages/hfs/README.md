@@ -73,8 +73,9 @@ out the test world and event machinery.
 the `db` service of its stack), its Passport identity and its S3 storage; a failed step removes the app it began instead of leaving a
 partial tree. `starci app db new|migrate|dump|post-cutover --db-url-env <NAME>` drives that database (default `DATABASE_URL`).
 
-The lite `app.starciwork` slot is optional when the app has no brand records. When present, it holds only `.gitignore`,
-optional `workspace.yaml` metadata and `brand/**` (R212): the existing brand record, drawing records, references and assets.
+The lite `app.starciwork` slot is optional when the app has no brand records and no concepts. When present, it holds only `.gitignore`,
+optional `workspace.yaml` metadata, `brand/**` (the existing brand record, drawing records, references and assets) and the concept
+records `concepts/index.yaml` and `concepts/<name>/index.yaml` (R212).
 Workspace metadata supplies the project id and repo roles for app-root detection and front-end role mapping. Lite readers
 read workspace metadata normally and skip the feature catalog, shell and feature records. The scaffold writes `.gitignore`
 and `workspace.yaml` and retains `brand/` only when present.
@@ -164,7 +165,7 @@ Its own checks (`scripts/hfs/check.mts`, `scripts/hfs/rules/`; the rendered-file
 | `HFS_SLOT_AMBIGUOUS` | error | two slots own the path equally (a manifest gap) |
 | `HFS_TRACKED_MUST_BE_IGNORED` | error | a tracked path in an `ignored` slot (build output, generated) |
 | `HFS_FORBIDDEN_PRESENT` | error | a tracked path in a forbidden / `external` slot |
-| `HFS_STARCIWORK_LITE_FORBIDDEN` | error | content outside the lite `app.starciwork` boundary: "lite .starciwork holds only workspace.yaml and brand/ (plus .gitignore)" (R212) |
+| `HFS_STARCIWORK_LITE_FORBIDDEN` | error | content outside the lite `app.starciwork` boundary: "lite .starciwork holds only workspace.yaml, brand/ and the concept records concepts/index.yaml and concepts/<name>/index.yaml (plus .gitignore)" (R212) |
 | `HFS_SLOT_REQUIRED_MISSING` | error | a file or directory a required slot, app or instance must contain |
 | `HFS_MIN_INSTANCES` | error | fewer instances of a slot than `minInstances` |
 | `HFS_CANON_PIN_DRIFT` | error | a dependency not at the exact version of `knowledge/hfs/canon-pins.yaml`, or `starci-harness` not at the version of the CLI that runs the check (`runtime/scripts/hfs/canon-pins.mts`) |

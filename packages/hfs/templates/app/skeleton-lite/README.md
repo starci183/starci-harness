@@ -51,5 +51,5 @@ Create a forward-only migration with `npm run db:new -- <kebab-name>` (it lands 
 ## Work
 
 Brand records live in `.starciwork/brand/`. `.starciwork/workspace.yaml` supplies the project id and repo roles so Work tools
-can locate the app root and map brand records to the front end. Lite permits this metadata without brand records; the tree
-is required only when brand records exist, and workspace metadata remains optional.
+can locate the app root and map brand records to the front end. The product's concepts live in `.starciwork/concepts/`. Lite permits this metadata without brand records; the tree
+is required only when brand records or concepts exist, and workspace metadata remains optional.

@@ -108,6 +108,6 @@ project-graph rules judge the side folders and not the packages.
 | [gallery.md](gallery.md) | the screenshot gallery every app carries: one folder per screen with its three shots and an `explain.md` that says why each region is drawn that way, links and flows between screens, the port, and the bugs the gate and the gallery flag (PROJECT-GALLERY-1 to 3) |
 | [cicd.md](cicd.md) | the delivery pipeline every app's `.github/` gets (proposed): triggers, checks, one attested image build, the automatic Swarm deploy with migrations, verification and rollback, records, gates |
 | [stacks.md](stacks.md) | how an app runs: the `.starcistacks/` shape against project values, the dev and vps environments, ingress, sealed custody, the operations with their safety rules, local-run rules |
-| [work.md](work.md) | the `.starciwork` record families, their state, who writes what, UAT flows and evidence |
+| [work.md](work.md) | the `.starciwork` record families and the product's concepts, their state, who writes what, UAT flows and evidence |
 | [lite.md](lite.md) | only what the lite edition does differently (backing services, patterns, infrastructure, deploy targets, CI, Work), each linked to its owner |
 | [full.md](full.md) | only what the full edition does differently, in the same sections, each linked to its owner |

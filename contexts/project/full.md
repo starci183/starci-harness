@@ -59,7 +59,7 @@ Each line names the owner of the fact; the slot or rule is the authority, not th
 
 ## Work
 
-- `.starciwork/` keeps the whole Work tree (Business/SRS, Architecture/SDS, `features/`). Owner: slot
+- `.starciwork/` keeps the whole Work tree (the concepts, Business/SRS, Architecture/SDS, `features/`). Owner: slot
   `app.starciwork`; R212.
 
 ## Read with

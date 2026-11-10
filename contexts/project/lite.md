@@ -89,8 +89,8 @@ the three realtime doors. How the edition is chosen is PROJECT-1 in [README.md](
 
 ## Work and custody
 
-- `.starciwork/` admits only `.gitignore`, an optional `workspace.yaml` and brand records. Owners: R212;
-  slot `app.starciwork`.
+- `.starciwork/` admits only `.gitignore`, an optional `workspace.yaml`, brand records and the product's concepts
+  ([work.md](work.md) PROJECT-WORK-7). Owners: R212; slot `app.starciwork`.
 - No secret material outside the sealed members. Owner: R220; custody itself is [stacks.md](stacks.md).
 
 ## Moving an app off Supabase

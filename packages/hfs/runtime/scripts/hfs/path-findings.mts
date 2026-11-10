@@ -132,9 +132,13 @@ export function liteStarciworkFinding(file: string, resolver: Resolver, { dir = 
   if (resolver.repo?.edition !== 'lite' || !resolver.slot('app.starciwork')) return null;
   const p = resolver.classifyPath(file).path;
   if (!p.startsWith('.starciwork/')) return null;
-  const admitted = allowsFile(resolver, dir ? `${p}/.probe` : p);
-  if (admitted?.slot === 'app.starciwork' && admitted.allowed) return null;
-  return { code: 'HFS_STARCIWORK_LITE_FORBIDDEN', level: 'error', path: p, slot: 'app.starciwork', message: `${p}: lite .starciwork holds only workspace.yaml and brand/ (plus .gitignore); remove this path or use the full edition` };
+  // A directory is admitted when the slot admits any file below it (`brand/**`) or the record it holds (`concepts/index.yaml`).
+  const admits = (probe: string): boolean => {
+    const admitted = allowsFile(resolver, probe);
+    return admitted?.slot === 'app.starciwork' && admitted.allowed;
+  };
+  if (dir ? admits(`${p}/.probe`) || admits(`${p}/index.yaml`) : admits(p)) return null;
+  return { code: 'HFS_STARCIWORK_LITE_FORBIDDEN', level: 'error', path: p, slot: 'app.starciwork', message: `${p}: lite .starciwork holds only workspace.yaml, brand/ and the concept records concepts/index.yaml and concepts/<name>/index.yaml (plus .gitignore); remove this path or use the full edition` };
 }
 
 /** Local lite Work leftovers, including metadata ignored by an old full-edition .gitignore. */

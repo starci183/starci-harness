@@ -32,6 +32,7 @@ type Pattern = readonly (string | RegExp)[];
 const PRODUCT_PATTERNS: readonly Pattern[] = Object.freeze([
   ['.gitignore'], ['.gitattributes'], ['workspace.yaml'], ['index.yaml'],
   ['brand', RECORD_FILE], ['brand', 'assets', REST],
+  ['concepts', 'index.yaml'], ['concepts', ANY, 'index.yaml'],
   ['shell', RECORD_FILE],
   ['_resources', /^(environments|identities|fixtures|runtimes)$/, ANY, REST],
   ['_resources', 'grammar-captures', REST],
@@ -48,6 +49,8 @@ const PRODUCT_PATTERNS: readonly Pattern[] = Object.freeze([
   ['features', ANY, 'impl', ANY, NEST, RECORD_FILE],
   ['features', ANY, 'uat', NEST, UAT_FILE],
 ].map((pattern) => Object.freeze(pattern)));
+// The concept records of a product (the catalog and one record per concept), the same in both editions.
+const CONCEPT_PATTERNS: readonly Pattern[] = PRODUCT_PATTERNS.filter((pattern) => pattern[0] === 'concepts');
 
 // Agent output that is refused even where a pattern above would admit it: draw rounds inside a ui record's
 // assets, stray report copies, evidence bundles, evidence/ captures and UAT runs anywhere, temp JSON.
@@ -86,9 +89,10 @@ export function isProductPath(rel: unknown): boolean {
   return PRODUCT_PATTERNS.some((p) => matchFile(p, parts));
 }
 
-/** The lite app boundary: its optional Work tree holds .gitignore, workspace.yaml and brand/** only. */
+/** The lite app boundary: its optional Work tree holds .gitignore, workspace.yaml, brand/** and the concept records only. */
 export function isLiteProductPath(rel: unknown, { dir = false }: { dir?: boolean } = {}): boolean {
   const parts = segs(rel);
+  if (parts[0] === 'concepts') return dir ? parts.length <= 2 : CONCEPT_PATTERNS.some((p) => matchFile(p, parts));
   return (!dir && parts.length === 1 && ['.gitignore', 'workspace.yaml'].includes(parts[0] as string))
     || (parts[0] === 'brand' && (parts.length > 1 || dir));
 }
