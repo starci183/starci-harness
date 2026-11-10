@@ -46,6 +46,9 @@ No control size. Node text never renders below 12px in `FlowGraph`'s default fit
 frame up to its natural width. A bubble's text keeps one screen size through the viewport zoom (12px, the same floor) and
 drops out when it no longer fits: the caption under zoom 0.42, the mark under 0.5. Ring four of a `BubbleMap` cannot
 meet the floor at full view, so it takes `fit="contain"`.
+A contained `FlowGraph` fit (every `steps` graph, any `fit="contain"`) never goes below zoom 0.6 (`CONTAIN_MIN_ZOOM`, 0.37.26): a wide graph in a narrow pane
+or a drawer is drawn at 0.6, its canvas grows to the graph up to the `height` cap (`lg` 512px when none), the first view shows the entry node, and the
+reader pans it by drag (even a static graph). The canvas is never shorter than the zoom controls column and its insets (CONTROLS-INSIDE).
 
 ## States
 Loading keeps the reserved box with a skeleton (`isLoading` while the source is unresolved; Mermaid itself loads

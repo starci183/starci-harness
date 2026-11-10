@@ -24,7 +24,7 @@ import {
 import { Link as RouterLink } from "react-aria-components"
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from "react"
 import { Skeleton } from "../../leaf/Skeleton/index.js"
-import { CONTROLS_INSET, FIT_OPTIONS, LANES_FIT_OPTIONS, LANES_MAX_ZOOM, MAX_ZOOM, Refit, labelFor, labelledEdges, readableZoomFor } from "./canvas.js"
+import { CONTAIN_MIN_ZOOM, CONTROLS_INSET, FIT_OPTIONS, LANES_FIT_OPTIONS, LANES_MAX_ZOOM, MAX_ZOOM, Refit, labelFor, labelledEdges, readableZoomFor } from "./canvas.js"
 import { COMMON_SPACING_PX } from "../../../common/spacing.js"
 import {
     FLOW_GRAPH_NODE_MAX_WIDTH,
@@ -115,10 +115,11 @@ export type FlowGraphProps = NoChildren & {
     /**
      * How the graph meets its canvas. `readable` (default) never fits below the zoom at which node text renders at 12px:
      * a graph that would shrink further grows the canvas height to the graph's aspect at the canvas width (the page
-     * scrolls; a graph still too wide pans sideways). `contain` always shrinks the whole graph into the canvas `height`.
+     * scrolls; a graph still too wide pans sideways). `contain` shrinks the whole graph into the canvas `height`, but never below zoom 0.6 (0.37.26,
+     * `CONTAIN_MIN_ZOOM`): a graph that needs less is drawn at 0.6 and pans (drag), even when `isInteractive` is false. A `steps` graph always fits this way.
      */
     readonly fit?: "readable" | "contain"
-    /** Pan and zoom. `false` draws a static picture. */
+    /** Pan and zoom. `false` draws a static picture (a graph held at the contained fit's readable floor still pans by drag). */
     readonly isInteractive?: boolean
     /** Zoom buttons. Defaults to on while the graph is interactive. */
     readonly showControls?: boolean
@@ -544,6 +545,9 @@ const FlowGraphInner = ({
     const [growth, setGrowth] = useState<{ readonly signature: string, readonly height: number } | null>(null)
     const grownHeight = growth !== null && growth.signature === signature ? growth.height : null
     const onGrow = useCallback((next: number) => setGrowth({ signature, height: next }), [signature])
+    // 0.37.26: a contained fit (every steps graph, any fit="contain") holds the readable floor; a graph held there pans, even when it is otherwise static.
+    const containFloor = layout === "steps" || fit === "contain" ? CONTAIN_MIN_ZOOM : null
+    const [floored, setFloored] = useState(false)
     // A grown canvas is taller than the screen may be: the wheel scrolls the page, the zoom buttons still zoom.
     const wheelZooms = isInteractive && grownHeight === null && layout !== "lanes" && layout !== "steps"
     const style: CSSProperties | undefined = customHeight === undefined && grownHeight === null && steps === null ? undefined : {
@@ -566,6 +570,7 @@ const FlowGraphInner = ({
             data-grammar-flow-layout={layout}
             data-grammar-flow-fit={fit}
             data-grammar-flow-grown={grownHeight === null ? undefined : "true"}
+            data-grammar-flow-floored={floored ? "true" : undefined}
             data-grammar-flow-run={isRun ? "true" : undefined}
             data-grammar-flow-background={background}
             data-grammar-flow-editable={isEditable ? "true" : undefined}
@@ -589,7 +594,7 @@ const FlowGraphInner = ({
                             fitView
                             fitViewOptions={fitOptions}
                             maxZoom={maxZoom}
-                            minZoom={0.1}
+                            minZoom={containFloor ?? 0.1}
                             nodeOrigin={[0.5, 0.5]}
                             nodeTypes={NODE_TYPES}
                             nodes={allNodes}
@@ -604,7 +609,7 @@ const FlowGraphInner = ({
                             nodesFocusable
                             onNodeClick={(_event, node) => { if (node.type === "flowGraph" || node.type === "flowGraphStep" || node.type === "flowGraphContainer") activate(node.id) }}
                             onPaneClick={() => { if (currentId !== null) select(null) }}
-                            panOnDrag={isInteractive}
+                            panOnDrag={isInteractive || floored}
                             panOnScroll={false}
                             preventScrolling={wheelZooms}
                             proOptions={{ hideAttribution: true }}
@@ -620,7 +625,7 @@ const FlowGraphInner = ({
                                     {isEditable ? <ControlButton aria-label={resetLabel} className="starci-core-flow-graph-reset" onClick={() => commitMoved({})} title={resetLabel} /> : null}
                                 </Controls>
                             ) : null}
-                            <Refit inset={controls ? CONTROLS_INSET : 0} heightCap={fit === "contain" ? heightCapPx(height) : null} stepsFit={layout === "steps" && flowDirection === "TB"} anchorStart={layout === "lanes" || (layout === "steps" && flowDirection === "LR")} fitOptions={fitOptions} maxZoom={maxZoom} onGrow={onGrow} readableZoom={readableZoom} signature={signature} />
+                            <Refit containFloor={containFloor} onFloor={setFloored} inset={controls ? CONTROLS_INSET : 0} heightCap={fit === "contain" ? heightCapPx(height) : null} stepsFit={layout === "steps" && flowDirection === "TB"} anchorStart={layout === "lanes" || (layout === "steps" && flowDirection === "LR")} fitOptions={fitOptions} maxZoom={maxZoom} onGrow={onGrow} readableZoom={readableZoom} signature={signature} />
                         </ReactFlow>
                     </div>
                     <ul className="starci-core-visually-hidden" data-grammar-flow-fallback="true">

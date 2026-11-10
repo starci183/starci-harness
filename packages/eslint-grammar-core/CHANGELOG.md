@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.37.26 - 2026-11-10
+
+- Changed: released with the Grammar family at 0.37.26; no rule of this package changed.
+
 ## 0.37.25 - 2026-11-10
 
 - Changed: `section-head-action` accepts one `Button intent="neutral" size="sm"` with no icon in a `Section` head `action` (message `button` now means any other Button; new message `icon` for an icon prop); a second command is still `many`. Tests for the neutral sm form, a commit Button, a md Button and an icon Button.

@@ -6,6 +6,8 @@ import { Matrix, State } from './fixtures.js';
 /**
  * 0.37.20: the initial fit contains every node (the controls' corner reserved) for a wide branching steps graph, and a graph inside a Drawer
  * measures its real container. The graph is the NIVO workflow map: a trigger, an intent step that branches four ways, one branch ending.
+ * 0.37.26: a contained fit never goes below zoom 0.6 (CONTAIN_MIN_ZOOM). At 390 and in a drawer the same graph is held at 0.6, the first view shows the entry node,
+ * and the reader pans it; the zoom controls column always stands inside the canvas.
  */
 const meta: Meta = {
   title: 'Flow graph fit (0.37.20)',
@@ -51,6 +53,29 @@ const assertContained = (graph: HTMLElement) => {
     if (controls !== null) expect(box.left < controls.right && box.right > controls.left && box.top < controls.bottom && box.bottom > controls.top).toBe(false);
   }
 };
+/** The viewport zoom of a graph (React Flow's transform scale). */
+const zoomOf = (graph: HTMLElement): number => {
+  const transform = getComputedStyle(graph.querySelector<HTMLElement>('.react-flow__viewport')!).transform;
+  return transform === 'none' ? 1 : new DOMMatrixReadOnly(transform).a;
+};
+/** Held at the readable floor: zoom >= 0.6, panning on, the entry node fully on screen, the controls (if any) inside the canvas. */
+const assertFloored = (graph: HTMLElement) => {
+  expect(zoomOf(graph)).toBeGreaterThanOrEqual(0.6 - 0.001);
+  expect(graph.getAttribute('data-grammar-flow-floored')).toBe('true');
+  const canvas = graph.querySelector<HTMLElement>('.react-flow')!.getBoundingClientRect();
+  const entry = graph.querySelector<HTMLElement>('[data-grammar-flow-node="new"]')!.getBoundingClientRect();
+  expect(entry.left).toBeGreaterThanOrEqual(canvas.left - 1);
+  expect(entry.right).toBeLessThanOrEqual(canvas.right + 1);
+  expect(entry.top).toBeGreaterThanOrEqual(canvas.top - 1);
+  assertControlsInside(graph);
+};
+const assertControlsInside = (graph: HTMLElement) => {
+  const canvas = graph.querySelector<HTMLElement>('.react-flow')!.getBoundingClientRect();
+  const controls = graph.querySelector<HTMLElement>('.starci-core-flow-graph-controls')?.getBoundingClientRect();
+  if (controls === undefined) return;
+  expect(controls.top).toBeGreaterThanOrEqual(canvas.top - 0.5);
+  expect(controls.bottom).toBeLessThanOrEqual(canvas.bottom + 0.5);
+};
 const graphOf = (root: HTMLElement): HTMLElement => {
   const graph = root.ownerDocument.querySelector<HTMLElement>('[data-component="FlowGraph"][data-grammar-flow-layout="steps"]');
   if (graph === null) throw new Error('The steps graph must render');
@@ -67,12 +92,17 @@ export const WideBranchingInPane: Story = {
     </Matrix>
   ),
   play: async ({ canvasElement }) => {
-    await waitFor(() => assertContained(graphOf(canvasElement)));
+    // A wide pane contains the whole graph (zoom about 0.65); a pane too narrow for zoom 0.6 holds the floor and pans (0.37.26).
+    await waitFor(() => {
+      const graph = graphOf(canvasElement);
+      if (graph.getAttribute('data-grammar-flow-floored') === 'true') assertFloored(graph);
+      else assertContained(graph);
+    });
   },
 };
 
 export const WideBranchingNarrow: Story = {
-  name: 'Wide branching graph at 390',
+  name: 'Wide branching graph at 390: held at zoom 0.6, entry node first, pans',
   render: () => (
     <Matrix maxWidth={358}>
       <State label="Controls shown, default fit" direction="column">
@@ -81,12 +111,12 @@ export const WideBranchingNarrow: Story = {
     </Matrix>
   ),
   play: async ({ canvasElement }) => {
-    await waitFor(() => assertContained(graphOf(canvasElement)));
+    await waitFor(() => assertFloored(graphOf(canvasElement)));
   },
 };
 
 export const InDrawer: Story = {
-  name: 'Same graph in a Drawer (fit contain)',
+  name: 'Same graph in a Drawer (fit contain): held at zoom 0.6, static but pans',
   parameters: { grammar: { minHeight: '48rem' } },
   render: () => (
     <G.Drawer defaultOpen placement="right" title="Bản 1" closeLabel="Close" trigger={<G.Button intent="alternative">Open</G.Button>}>
@@ -100,10 +130,30 @@ export const InDrawer: Story = {
       const graph = graphOf(canvasElement);
       const canvas = graph.querySelector<HTMLElement>('.react-flow')!.getBoundingClientRect();
       expect(canvas.height).toBeGreaterThan(300);
-      assertContained(graph);
-      // Not a speck: the widest node renders at a readable fraction of the canvas.
-      const widest = Math.max(...Array.from(graph.querySelectorAll<HTMLElement>('[data-grammar-flow-node]')).map((node) => node.getBoundingClientRect().width));
-      expect(widest).toBeGreaterThan(canvas.width * 0.12);
+      expect(canvas.height).toBeLessThanOrEqual(512 + 1);
+      assertFloored(graph);
+    });
+  },
+};
+
+const SHORT_NODES: ReadonlyArray<G.FlowGraphNode> = [
+  { id: 'new', kind: 'event', label: 'Có việc mới', tag: 'Kích hoạt' },
+  { id: 'answer', kind: 'action', label: 'Trả lời câu hỏi' },
+];
+export const ShortGraphControlsInside: Story = {
+  name: 'A short graph at 390: the canvas is at least as tall as the zoom controls column',
+  render: () => (
+    <Matrix maxWidth={358}>
+      <State label="Two steps, controls shown, editable (four buttons)" direction="column">
+        <G.FlowGraph label="Short map" layout="steps" showControls isEditable nodes={SHORT_NODES} edges={[{ id: 'e1', source: 'new', target: 'answer' }]} />
+      </State>
+    </Matrix>
+  ),
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      const graph = graphOf(canvasElement);
+      expect(graph.querySelector('.starci-core-flow-graph-controls')).not.toBeNull();
+      assertControlsInside(graph);
     });
   },
 };
