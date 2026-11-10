@@ -50,7 +50,7 @@ export { Stepper, stepStateFor, type StepperProps, type StepperSize, type Steppe
 export { TagGroup, type TagGroupItem, type TagGroupProps } from "../core/composite/TagGroup/index.js"
 export { Timeline, type TimelineItem, type TimelineProps } from "../core/composite/Timeline/index.js"
 export { Footer, type FooterLink, type FooterLinkGroup, type FooterProps } from "../core/composite/Footer/index.js"
-export { TopBar, type TopBarMenu, type TopBarProps } from "../core/composite/TopBar/index.js"
+export { TopBar, useTopBarOverflowEntries, type TopBarCustomButton, type TopBarMenu, type TopBarProps } from "../core/composite/TopBar/index.js"
 export { Avatar, avatarInitials, type AvatarKind, type AvatarProps, type AvatarShape, type AvatarSize } from "../core/leaf/Avatar/index.js"
 export { Image, type AssetSlotProps, type ImageAspect, type ImageLoadState, type ImageProps } from "../core/leaf/Image/index.js"
 export { Link, type LinkKind, type LinkProps, type LinkVariant } from "../core/leaf/Link/index.js"

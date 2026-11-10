@@ -107,3 +107,6 @@ Every mark Grammar draws itself is stroked, never filled: the search icon, the S
 
 ## Icon measures (0.37.5)
 A Button with a start icon or an end arrow uses HeroUI v3's measures: padding-inline 12 (sm) or 16 (md, lg) on both sides, gap 8, the icon 20px on a phone and 16px from 640px (16px on sm), a -2px inline margin on the icon. HeroUI has no 24px button icon. Enforcer: story `Controls/Button icon sizes`.
+
+## App bar custom buttons (TOPBAR-CUSTOM-BUTTONS, 0.37.15)
+`TopBar customButtons` (`{ id, glyph, label, badge?, onPress | href }`) are the app's own round outline icon buttons (a bell, a help) in the end cluster BEFORE the fixed cluster (language dropdown, light/dark switch, account avatar), whose order never changes. They are `IconButton intent="dismiss"` like the language button, `label` is the accessible name, `badge` draws the attention dot only when work is waiting. At phone width (under 48rem) only the first stays in the bar; the others are the entries `useTopBarOverflowEntries()` returns (glyph + label) for the account menu to append to its own entries. Never a hand-built button beside the bar's cluster. A `WorkspaceShell` takes the bar through its `header` slot, so the prop passes through with the `TopBar` the app composes. Story `Surfaces/Top bar custom buttons`.

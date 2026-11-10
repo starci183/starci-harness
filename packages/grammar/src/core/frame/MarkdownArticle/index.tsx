@@ -10,6 +10,11 @@ export type MarkdownArticleProps = {
 
 type FencedCodeBlockFrameProps = {
     readonly language?: string
+    /**
+     * Whether the header draws the language label (default `true`). `false` hides it for any block; independent of this, the label is hidden for a ONE-line `code` (a command to
+     * copy: the label says nothing there) (0.37.15). The `action` (Copy) stays either way.
+     */
+    readonly showLanguage?: boolean
     readonly action?: ReactNode
     /**
      * Accessible name of the scrolling code region (e.g. "Install command"). Defaults to
@@ -66,6 +71,9 @@ export const MarkdownArticle = (props: MarkdownArticleProps) => (
 export const FencedCodeBlock = (props: FencedCodeBlockProps) => {
     const isLoading = props.isLoading === true
     const ready = "children" in props ? props.children : <pre {...scrollFrameProps(props.label ?? props.language)}><code>{props.code}</code></pre>
+    // A one-line authored block (a command) needs no language label; a rendered `children` block cannot be measured here, so only `showLanguage` hides its label.
+    const isOneLine = "code" in props && props.code !== undefined && !props.code.trim().includes("\n")
+    const language = props.showLanguage === false || isOneLine ? undefined : props.language
     const body = isLoading ? <SkeletonPlaceholder shape="region">{ready}</SkeletonPlaceholder> : ready
     return (
         <div
@@ -75,9 +83,9 @@ export const FencedCodeBlock = (props: FencedCodeBlockProps) => {
             data-contract="OVERFLOW-4"
             {...(isLoading ? { "data-loading": "true", "aria-busy": true } : {})}
         >
-            {props.language === undefined && props.action === undefined ? null : (
+            {language === undefined && props.action === undefined ? null : (
                 <div className={fencedCodeHeaderClassName}>
-                    {props.language === undefined ? <span /> : <span>{props.language}</span>}
+                    {language === undefined ? <span /> : <span>{language}</span>}
                     {isLoading && props.action !== undefined ? <SkeletonPlaceholder shape="block">{props.action}</SkeletonPlaceholder> : props.action}
                 </div>
             )}

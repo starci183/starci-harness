@@ -521,6 +521,34 @@
         margin-inline-start: auto;
     }
 
+    /* The custom buttons (0.37.15): round icon buttons before the app's fixed cluster; the attention dot sits at the glyph's top end. At phone width only the first stays. */
+    .starci-core-top-bar-custom {
+        display: flex;
+        align-items: center;
+        gap: var(--grammar-inline-gap);
+    }
+
+    .starci-core-top-bar-custom-item {
+        position: relative;
+        display: inline-flex;
+    }
+
+    .starci-core-top-bar-custom-dot {
+        position: absolute;
+        inset-block-start: var(--grammar-identity-gap);
+        inset-inline-end: var(--grammar-identity-gap);
+        inline-size: var(--grammar-inline-gap);
+        block-size: var(--grammar-inline-gap);
+        border-radius: var(--starci-core-pill-radius);
+        background: var(--accent);
+        box-shadow: 0 0 0 var(--grammar-ring-width) var(--surface);
+        pointer-events: none;
+    }
+
+    @media (max-width: 47.99rem) {
+        .starci-core-top-bar-custom-item:nth-child(n + 2) { display: none; }
+    }
+
     .starci-core-top-bar-menu-trigger {
         min-inline-size: var(--starci-core-control-min-size);
         min-block-size: var(--starci-core-control-min-size);

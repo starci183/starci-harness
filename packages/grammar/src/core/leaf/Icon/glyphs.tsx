@@ -3,10 +3,10 @@ import type { IconSource, IconSourceProps } from "./index.js"
 
 /**
  * The closed glyph vocabulary Grammar draws itself, for the few marks every product needs and an app with no icon registry cannot
- * supply: `empty` (an empty tray: nothing here yet), `arrow-end` (go on: the mark that follows a label that leads somewhere), `chevron-end` (a pressable row opens something: the quiet mark at its end), `more` (an overflow menu), `send`, `panel-end` (show or hide the pane at the end of a layout), `pencil` (edit), `close` and `search` (the magnifier, for a search that opens on press).
+ * supply: `empty` (an empty tray: nothing here yet), `arrow-end` (go on: the mark that follows a label that leads somewhere), `chevron-end` (a pressable row opens something: the quiet mark at its end), `more` (an overflow menu), `send`, `panel-end` (show or hide the pane at the end of a layout), `pencil` (edit), `close`, `search` (the magnifier, for a search that opens on press) and `bell` (something is waiting).
  * Any other glyph stays app-owned (`Icon` with a `source`).
  */
-export const GLYPH_NAMES = ["more", "send", "panel-end", "pencil", "close", "search", "arrow-end", "chevron-end", "empty", "plus", "upload", "external", "chevron-down", "chevron-start", "minus", "info", "success", "warning", "danger"] as const
+export const GLYPH_NAMES = ["more", "send", "panel-end", "pencil", "close", "search", "arrow-end", "chevron-end", "empty", "plus", "upload", "external", "chevron-down", "chevron-start", "minus", "info", "success", "warning", "danger", "bell"] as const
 
 export type GlyphName = (typeof GLYPH_NAMES)[number]
 
@@ -115,9 +115,11 @@ const Minus = (props: IconSourceProps) => outline(props, <path d="M5 12h14" />)
 const InfoCircle = (props: IconSourceProps) => outline(props, <><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></>)
 const CheckCircle = (props: IconSourceProps) => outline(props, <><circle cx="12" cy="12" r="9" /><path d="M8.5 12.5l2.5 2.5 4.5-5" /></>)
 const Warning = (props: IconSourceProps) => outline(props, <path d="M12 9v4M12 16.5h.01M10.3 4.2L2.9 17.1A2 2 0 004.6 20h14.8a2 2 0 001.7-2.9L13.7 4.2a2 2 0 00-3.4 0z" />)
+/** A bell: something is waiting (notifications, the app bar custom button). */
+const Bell = (props: IconSourceProps) => outline(props, <path d="M6 9a6 6 0 0112 0c0 4.5 1.5 6 2 7H4c.5-1 2-2.5 2-7zM10 19.5a2 2 0 004 0" />)
 const DangerCircle = (props: IconSourceProps) => outline(props, <><circle cx="12" cy="12" r="9" /><path d="M12 8v5M12 16h.01" /></>)
 
-const SOURCES: Readonly<Record<GlyphName, IconSource>> = { more: More, send: Send, "panel-end": PanelEnd, pencil: Pencil, close: Close, search: Search, "arrow-end": ArrowEnd, "chevron-end": ChevronEnd, empty: Empty, plus: Plus, upload: Upload, external: ExternalGlyph, "chevron-down": ChevronDown, "chevron-start": ChevronStart, minus: Minus, info: InfoCircle, success: CheckCircle, warning: Warning, danger: DangerCircle }
+const SOURCES: Readonly<Record<GlyphName, IconSource>> = { more: More, send: Send, "panel-end": PanelEnd, pencil: Pencil, close: Close, search: Search, "arrow-end": ArrowEnd, "chevron-end": ChevronEnd, empty: Empty, plus: Plus, upload: Upload, external: ExternalGlyph, "chevron-down": ChevronDown, "chevron-start": ChevronStart, minus: Minus, info: InfoCircle, success: CheckCircle, warning: Warning, danger: DangerCircle, bell: Bell }
 
 /** The SVG source of a glyph of the vocabulary, for `Icon`. */
 export const glyphSource = (name: GlyphName): IconSource => SOURCES[name]

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.37.15 - 2026-11-10 - code block language label; app bar custom buttons
+
+- Added: `FencedCodeBlock showLanguage` (default `true`; `false` hides the header's language label) and the label is hidden by itself for a one-line `code` (a command to copy); the copy `action` stays. Story `FencedCodeLanguageLabel`.
+- Added: `TopBar customButtons` (`{ id, glyph, label, badge?, onPress | href }`): round outline `IconButton`s in the end cluster before the app's fixed cluster, an attention dot with `badge`; at phone width only the first stays and `useTopBarOverflowEntries()` gives the rest as account-menu entries. New glyph `bell`. Story `TopBarCustomButtons`. `brand` stays required; the WorkspaceShell layout is unchanged.
+
 ## 0.37.14 - 2026-11-10 - Grammar keeps four owner laws it broke
 
 - Fixed (internal navigation never shows ↗): `Link` draws the anchor icon `↗` only for `kind="external"` (an internal inline link keeps the accent colour and has none); a new `variant="plain"` is a destination with no colour, underline or icon. A `ListRow` with an `href` uses it: a navigation row, whole row pressable, title in the text colour, trailing chevron, real `<a href>` kept (LIST-ROW-NAVIGATION). Stories `InternalHrefHasNoArrow`, `LinkArrowOnlyWhenExternal`.

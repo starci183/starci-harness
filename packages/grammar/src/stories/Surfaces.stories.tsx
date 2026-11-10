@@ -901,3 +901,23 @@ export const NeedsApproval: Story = {
     </div>
   ),
 };
+
+/** 0.37.15: a one-line command has no language label (the copy button stays); `showLanguage={false}` hides it for any block; a multi-line block keeps it. */
+export const FencedCodeLanguageLabel: Story = {
+  render: () => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, inlineSize: 420 }}>
+      <G.FencedCodeBlock language="bash" code="npm install @starci/grammar" action={<G.Button size="sm" intent="neutral">Copy</G.Button>} />
+      <G.FencedCodeBlock language="bash" showLanguage={false} code={'cd app\nnpm run dev'} action={<G.Button size="sm" intent="neutral">Copy</G.Button>} />
+      <G.FencedCodeBlock language="bash" code={'cd app\nnpm run dev'} action={<G.Button size="sm" intent="neutral">Copy</G.Button>} />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      const blocks = Array.from(canvasElement.querySelectorAll<HTMLElement>('[data-component="FencedCodeBlock"]'));
+      expect(blocks.length).toBe(3);
+      const hasLabel = blocks.map((block) => block.querySelector('.starci-core-fenced-code-header > span')?.textContent === 'bash');
+      expect(hasLabel).toEqual([false, false, true]);
+      expect(blocks.every((block) => block.querySelector('button') !== null)).toBe(true);
+    });
+  },
+};
