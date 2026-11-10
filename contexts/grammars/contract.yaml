@@ -130,7 +130,7 @@ roles:
     sizes: none
     states: [neutral, pending, PresentationState]
     grammarMayChange: [surface paint, edge (border/shadow by depth), radius via surfaceRadius, the label's paint, the ink ground and its inks]
-    dna: [DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE, DNA-COMMON-CARD-LABEL-ABOVE, DNA-COMMON-CARD-LABEL-HEADING, DNA-COMMON-ONE-HIGHLIGHT, DNA-COMMON-DIVIDER-FULL-BLEED, DNA-COMMON-SOFT-GROUND, DNA-COMMON-TREATMENT-TEXT-CONTRAST, DNA-CORE-EDGE-TOP, DNA-CORE-CARD-LABEL-OUTSIDE, DNA-OFFSET-POP-STICKER, DNA-OFFSET-POP-CARD-LABEL-OUTSIDE, DNA-COMMON-TILE-BYLINE, DNA-COMMON-TILE-FIGURE-START, DNA-COMMON-TILE-FIGURE-BEFORE-ACTION]
+    dna: [DNA-COMMON-LIST-ON-WHITE-BORDERED, DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE, DNA-COMMON-CARD-LABEL-ABOVE, DNA-COMMON-CARD-LABEL-HEADING, DNA-COMMON-ONE-HIGHLIGHT, DNA-COMMON-DIVIDER-FULL-BLEED, DNA-COMMON-SOFT-GROUND, DNA-COMMON-TREATMENT-TEXT-CONTRAST, DNA-CORE-EDGE-TOP, DNA-CORE-CARD-LABEL-OUTSIDE, DNA-OFFSET-POP-STICKER, DNA-OFFSET-POP-CARD-LABEL-OUTSIDE, DNA-COMMON-TILE-BYLINE, DNA-COMMON-TILE-FIGURE-START, DNA-COMMON-TILE-FIGURE-BEFORE-ACTION]
     lint: [starci-grammar/no-raised-surface-in-surface]
 
   - id: button
@@ -1454,6 +1454,14 @@ mustKeep:
         select: '[data-component="PageHeader"]'
         checks: [{ metric: border-bottom-width, op: "=", value: 1px }, { metric: border-bottom-color, op: "=", value: { token: --separator } }]
       owner: ui/components/page-header.md
+    - id: DNA-COMMON-LIST-ON-WHITE-BORDERED
+      role: card
+      law: "A list (`Section kind=list`, `SurfaceCard kind=list`) on a white surface (a `Pane surface` aside, a drawer, a dialog, a popover) is a bordered rounded frame: a 1px separator border, the card radius and no shadow, rows divided full width inside it; it is never flat (SURFACE-ELEVATION, owner 2026-11-10, reverting the 0.37.14 flat aside list)."
+      measure:
+        kind: style
+        select: '.starci-core-pane[data-grammar-pane-surface="true"] .starci-core-section-list'
+        checks: [{ metric: border-width, op: "=", value: 1px }, { metric: border-color, op: "=", value: { token: --separator } }, { metric: box-shadow, op: "=", value: none }]
+      owner: ui/components/card.md
     - id: DNA-CORE-EDGE-TOP
       role: card
       law: A card on the page ground is the white surface at the card radius with a 1px separator border and the card shadow; a surface nested in a card keeps the border and drops the shadow.

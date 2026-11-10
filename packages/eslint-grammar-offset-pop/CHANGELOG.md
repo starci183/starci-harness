@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.37.24 - 2026-11-10
+
+- Changed: released with the Grammar family at 0.37.24 (the flat aside list reverted); no rule of this package changed.
+
 ## 0.37.23 - 2026-11-10
 
 - Changed: released with the Grammar family at 0.37.23 (Select trigger text centred); no rule of this package changed.

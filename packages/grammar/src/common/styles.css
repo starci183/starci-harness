@@ -1177,19 +1177,6 @@
         border: 1px solid var(--separator);
     }
 
-    /*
-     * 0.37.14 (FLAT-ASIDE-LIST, owner laws pink-page-surface-rule / nivo-surface-layering): inside a white pane (an aside) a list is sections and rows with full-width
-     * dividers, never a card. A `Section kind="list"` and a `SurfaceCard kind="list"` there lose the border, the radius, the shadow and the card ground, and their rows lose the
-     * card's inline padding so the text stands on the pane's own edge. Derived from the surface the Pane declares (`Pane surface`); no prop. Other cards stay bordered.
-     */
-    .starci-core-pane[data-grammar-pane-surface="true"] :is(.starci-core-section-list, .starci-core-surface[data-grammar-surface-kind="list"]) {
-        --starci-core-row-inset: var(--grammar-row-gap) 0;
-        border: 0;
-        border-radius: 0;
-        background: transparent;
-        box-shadow: none;
-    }
-
     .starci-core-surface-content {
         min-width: 0;
         padding-block: var(--grammar-card-padding-block);

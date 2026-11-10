@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.37.24 - 2026-11-10 - the flat aside list is reverted
+
+- Reverted (owner 2026-11-10, "ok trò"): the 0.37.14 FLAT-ASIDE-LIST. SURFACE-ELEVATION wins: a `Section kind="list"` or `SurfaceCard kind="list"` in a white `Pane surface` aside is a bordered rounded frame again (1px separator, the card radius, no shadow), its rows divided full width and keeping the card's inline padding. The flat-aside CSS block is removed; `contexts/ui/components/card.md` no longer says a list in a white pane is never a card.
+- Added: law `DNA-COMMON-LIST-ON-WHITE-BORDERED` (border 1px `--separator`, no shadow, on the aside list). Story `Surfaces/Surface elevation` `WellAndAside` now asserts the border, the radius, no shadow and the inset rows.
+
 ## 0.37.23 - 2026-11-10 - Select trigger text is centred (search-zone filters)
 
 - Fixed: the filter select of a `SurfaceCard` search zone (`filters: [{ prefix, options, ... }]`) rode its text at the top of the pill, so "Kích hoạt: Tất cả" sat lower than the search field's text line and looked misaligned. The vendor trigger stretched its prefix and value spans (`align-items: normal`); the Select trigger now centres them (`align-items: center`), so the prefix and the value stand on one baseline in the middle of the pill. The pill and the search field are both the compact 32px step (asserted). Applies to every Select.

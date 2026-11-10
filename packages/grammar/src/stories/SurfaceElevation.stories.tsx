@@ -3,8 +3,8 @@ import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 
 /**
- * SURFACE-ELEVATION is automatic (0.37.5): a list card on the pink well draws a shadow and no border; the same list in a white aside (`Pane surface`) is FLAT since 0.37.14
- * (FLAT-ASIDE-LIST): no card at all, rows with full-width dividers on the pane's own edge. The app never picks: a list is a `Section kind="list"` or a `SurfaceCard kind="list"` and the ground decides. (A `SurfaceCard` stands in a
+ * SURFACE-ELEVATION is automatic (0.37.5): a list card on the pink well draws a shadow and no border; the same list in a white aside (`Pane surface`) draws a 1px
+ * border, the card radius and no shadow (0.37.24 reverts the flat aside list of 0.37.14), its rows divided full width and keeping the card's inline padding. The app never picks: a list is a `Section kind="list"` or a `SurfaceCard kind="list"` and the ground decides. (A `SurfaceCard` stands in a
  * `Pane surface` too, bordered the same way: see `Surfaces/Pane footer and white-ground cards`.)
  */
 const meta: Meta = { title: 'Surfaces/Surface elevation' };
@@ -43,11 +43,15 @@ export const WellAndAside: Story = {
       expect(Number.parseFloat(onWell.borderTopWidth)).toBe(0);
       const onWhite = getComputedStyle(aside);
       expect(onWhite.boxShadow).toBe('none');
-      expect(Number.parseFloat(onWhite.borderTopWidth)).toBe(0);
-      expect(onWhite.borderTopLeftRadius).toBe('0px');
+      expect(Number.parseFloat(onWhite.borderTopWidth)).toBe(1);
+      expect(Number.parseFloat(onWhite.borderTopLeftRadius)).toBeGreaterThan(0);
       const rows = Array.from(aside.querySelectorAll<HTMLElement>('.starci-core-list-row'));
       expect(rows.length).toBe(2);
-      expect(rows[1]!.getBoundingClientRect().left).toBeCloseTo(aside.getBoundingClientRect().left, 0);
+      // The rows keep the card's inline padding: their text stands inside the frame, not on the pane's edge.
+      const title = rows[1]!.querySelector<HTMLElement>('.starci-core-list-row-name')!.getBoundingClientRect();
+      expect(title.left).toBeGreaterThan(aside.getBoundingClientRect().left + 8);
+      // A divider runs the frame's full width between the rows.
+      expect(rows[1]!.getBoundingClientRect().left).toBeCloseTo(aside.getBoundingClientRect().left + 1, 0);
     });
   },
 };

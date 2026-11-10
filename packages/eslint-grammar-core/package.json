@@ -1,6 +1,6 @@
 {
   "name": "@starci/eslint-grammar-core",
-  "version": "0.37.23",
+  "version": "0.37.24",
   "description": "ESLint rules for the core Grammar's component, token and composition contracts.",
   "keywords": [
     "eslint",
