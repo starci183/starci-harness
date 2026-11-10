@@ -38,6 +38,14 @@ export type MarkdownLabels = {
     readonly externalHint?: string
 }
 
+/** One fenced code block as the `renderCode` slot receives it. */
+export type MarkdownCode = {
+    /** The info string of the fence (`ts`, `bash`), or `null` when the fence names none. */
+    readonly language: string | null
+    /** The exact code, as the author typed it (what Copy writes to the clipboard). */
+    readonly value: string
+}
+
 export type MarkdownProps = NoChildren & {
     /** The markdown (CommonMark with GitHub tables, task lists, strikethrough, autolinks and footnotes). Raw HTML is never rendered. */
     readonly source: string
@@ -48,6 +56,13 @@ export type MarkdownProps = NoChildren & {
     readonly labels?: MarkdownLabels
     /** Decides whether a link leaves the site (opens in a new context and ends in the arrow). Default: an absolute http(s) URL. */
     readonly isExternal?: (href: string) => boolean
+    /**
+     * Draws the body of a fenced code block (syntax highlighting): the app supplies the highlighter, Grammar depends on none. The slot replaces ONLY the
+     * code body; the `FencedCodeBlock` frame, its language label and its Copy action stay Grammar's, and Copy always writes the original `value`.
+     * Return the already-highlighted markup in a `data-grammar-fenced-code-highlight="true"` wrapper (Grammar styles the frame and scrolls it inline),
+     * or `null` to keep the plain text (e.g. while the highlighter is still loading). A `mermaid` fence never goes through the slot.
+     */
+    readonly renderCode?: (code: MarkdownCode) => ReactNode
 }
 
 const DEFAULT_LABELS: Required<MarkdownLabels> = {
@@ -68,6 +83,25 @@ type Context = {
     readonly definitions: ReadonlyMap<string, Definition>
     /** The label of every Mermaid fence, by node: a body with one diagram keeps the plain name, several are numbered. */
     readonly diagramLabels: ReadonlyMap<CodeNode, string>
+    readonly renderCode: ((code: MarkdownCode) => ReactNode) | undefined
+}
+
+/** A fence: the plain block, or the frame around the app's highlighted body. */
+const FenceOf = (props: { readonly node: CodeNode; readonly context: Context }) => {
+    const { node, context } = props
+    const action = <CopyAction code={node.value} copyLabel={context.labels.copy} copiedLabel={context.labels.copied} copyErrorLabel={context.labels.copyError} />
+    const language = node.lang == null || node.lang === "" ? undefined : node.lang
+    const rendered = context.renderCode?.({ language: language ?? null, value: node.value }) ?? null
+    if (rendered === null || rendered === false) {
+        return <FencedCodeBlock code={node.value} {...(language === undefined ? {} : { language })} action={action} />
+    }
+    // The frame cannot measure a rendered body, so the one-line command (no language label) is decided here.
+    const isOneLine = !node.value.trim().includes("\n")
+    return (
+        <FencedCodeBlock {...(language === undefined ? {} : { language })} {...(isOneLine ? { showLanguage: false } : {})} action={action}>
+            {rendered}
+        </FencedCodeBlock>
+    )
 }
 
 const parse = (source: string): Root =>
@@ -199,13 +233,7 @@ const Block = (props: { readonly node: RootContent; readonly context: Context; r
             if (diagramLabel !== undefined) {
                 return <MermaidDiagram source={node.value} label={diagramLabel} height="md" errorTitle={context.labels.diagramError} />
             }
-            return (
-                <FencedCodeBlock
-                    code={node.value}
-                    {...(node.lang == null || node.lang === "" ? {} : { language: node.lang })}
-                    action={<CopyAction code={node.value} copyLabel={context.labels.copy} copiedLabel={context.labels.copied} copyErrorLabel={context.labels.copyError} />}
-                />
-            )
+            return <FenceOf node={node} context={context} />
         }
         case "table":
             return (
@@ -254,9 +282,10 @@ const Block = (props: { readonly node: RootContent; readonly context: Context; r
  *
  * The text is parsed to a syntax tree (mdast) and mapped node by node to elements: no HTML string is built or injected. Raw HTML is
  * shown as text (a comment is dropped); a link or image whose scheme is not http(s), mailto, tel or relative is shown as its words.
+ * `renderCode` (optional) draws the code body of a fence (syntax highlighting supplied by the app); the frame, language label and Copy stay here.
  * Contract: overflow OVERFLOW-4 (tables and code scroll inline inside their frames).
  */
-export const Markdown = ({ source, measure, ariaLabel, labels, isExternal = isExternalUrl }: MarkdownProps) => {
+export const Markdown = ({ source, measure, ariaLabel, labels, isExternal = isExternalUrl, renderCode }: MarkdownProps) => {
     const tree = useMemo(() => parse(source), [source])
     const { copy, copied, copyError, diagram, diagramError, table, taskDone, taskOpen, externalHint } = { ...DEFAULT_LABELS, ...stripUndefined(labels) }
     const context = useMemo<Context>(() => {
@@ -266,10 +295,11 @@ export const Markdown = ({ source, measure, ariaLabel, labels, isExternal = isEx
         return {
             labels: { copy, copied, copyError, diagram, diagramError, table, taskDone, taskOpen, externalHint },
             isExternal,
+            renderCode,
             definitions: new Map(definitions.map((definition) => [definition.identifier, definition])),
             diagramLabels: new Map(diagrams.map((node, index) => [node, diagrams.length > 1 ? `${diagram} ${index + 1}` : diagram])),
         }
-    }, [tree, isExternal, copy, copied, copyError, diagram, diagramError, table, taskDone, taskOpen, externalHint])
+    }, [tree, isExternal, renderCode, copy, copied, copyError, diagram, diagramError, table, taskDone, taskOpen, externalHint])
     return (
         <MarkdownArticle {...(measure === undefined ? {} : { measure })} {...(ariaLabel === undefined ? {} : { ariaLabel })}>
             <Blocks nodes={tree.children} context={context} />

@@ -221,3 +221,59 @@ export const Compact: Story = {
     });
   },
 };
+
+/** A fake highlighter: wraps every word in a token span inside the wrapper Grammar styles. */
+const fakeHighlight = ({ language, value }: { readonly language: string | null; readonly value: string }) => (
+  <div data-grammar-fenced-code-highlight="true" data-fake-lang={language ?? ''}>
+    <pre><code>{value.split(/(\s+)/).map((part, index) => (/^\s*$/.test(part) ? part : <span key={index} data-token="word">{part}</span>))}</code></pre>
+  </div>
+);
+
+const LONG_LINE = 'export const handler = async (request: Request) => { return new Response("a very long line that must scroll inside the frame and never wrap", { status: 200 }) }';
+
+export const HighlightedCodeSlot: Story = {
+  render: () => (
+    <div style={{ inlineSize: 360, maxInlineSize: '100%' }}>
+      <G.Markdown renderCode={fakeHighlight} source={'```ts\n' + LONG_LINE + '\n```\n\n```bash\nnpm install\n```\n\n```mermaid\nflowchart LR\n  A --> B\n```'} />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const view = canvasElement.ownerDocument.defaultView!;
+    const written: string[] = [];
+    Object.defineProperty(view.navigator, 'clipboard', { configurable: true, value: { writeText: async (text: string) => { written.push(text); } } });
+    const buttons = await within(canvasElement).findAllByRole('button', { name: 'Copy' });
+    expect(buttons).toHaveLength(2);
+    const blocks = Array.from(canvasElement.querySelectorAll('[data-component="FencedCodeBlock"]'));
+    expect(blocks).toHaveLength(2);
+    // The slot's node is the body; the frame and its language label stay Grammar's.
+    expect(blocks[0]!.querySelectorAll('[data-grammar-fenced-code-highlight="true"] [data-token="word"]').length).toBeGreaterThan(5);
+    expect(blocks[0]!.querySelector('[data-fake-lang="ts"]')).not.toBeNull();
+    expect(blocks[0]!.firstElementChild!.textContent).toContain('ts');
+    // A one-line command keeps no language label.
+    expect(blocks[1]!.querySelector('[data-fake-lang="bash"]')).not.toBeNull();
+    expect(blocks[1]!.firstElementChild!.textContent).not.toContain('bash');
+    // Highlighted content scrolls inline instead of wrapping.
+    const wrapper = blocks[0]!.querySelector<HTMLElement>('[data-grammar-fenced-code-highlight="true"]')!;
+    expect(view.getComputedStyle(wrapper).overflowX).toBe('auto');
+    expect(wrapper.scrollWidth).toBeGreaterThan(wrapper.clientWidth);
+    // Copy writes the original value, not the token markup.
+    await userEvent.click(buttons[0]!);
+    await waitFor(() => expect(written).toEqual([LONG_LINE]));
+    // Mermaid never goes through the slot.
+    await waitFor(() => expect(canvasElement.querySelector('[data-component="MermaidDiagram"]')).not.toBeNull());
+    expect(canvasElement.querySelectorAll('[data-fake-lang="mermaid"]')).toHaveLength(0);
+  },
+};
+
+export const CodeSlotFallback: Story = {
+  render: () => (
+    <div style={frame}>
+      <G.Markdown renderCode={() => null} source={'```ts\nconst a = 1\nconst b = 2\n```'} />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await waitFor(() => expect(canvasElement.querySelector('[data-component="FencedCodeBlock"] pre code')?.textContent).toBe('const a = 1\nconst b = 2'));
+    expect(canvasElement.querySelector('[data-grammar-fenced-code-highlight]')).toBeNull();
+    expect(canvasElement.querySelector('pre')?.getAttribute('tabindex')).toBe('0');
+  },
+};
