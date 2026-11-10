@@ -608,29 +608,29 @@ mustKeep:
     - id: DNA-COMMON-CONTROL-MD
       role: button
       law: An md button or icon button, and every bar control, is 40px tall at every breakpoint.
-      measure: { kind: box, select: ':is([data-component="Button"],[data-component="IconButton"]):is([data-size="md"],[data-size="control"]):not([data-width="fill"])', metric: height, op: "=", value: 40px }
+      measure: { kind: box, select: ':is([data-component="Button"],[data-component="IconButton"]):is([data-size="md"],[data-size="control"]):not([data-width="fill"],[data-width="wrap"])', metric: height, op: "=", value: 40px }
       owner: ui/scale.md scale.choose.step
     - id: DNA-COMMON-CONTROL-SM
       role: button
       law: An sm button or icon button is one equal increment below md, 32px.
-      measure: { kind: box, select: ':is([data-component="Button"],[data-component="IconButton"])[data-size="sm"]:not([data-width="fill"])', metric: height, op: "=", value: 32px }
+      measure: { kind: box, select: ':is([data-component="Button"],[data-component="IconButton"])[data-size="sm"]:not([data-width="fill"],[data-width="wrap"])', metric: height, op: "=", value: 32px }
       owner: ui/scale.md scale.choose.step; contract sizes.increments
     - id: DNA-COMMON-CONTROL-LG
       role: button
       law: An lg button or icon button is one equal increment above md, 48px.
-      measure: { kind: box, select: ':is([data-component="Button"],[data-component="IconButton"])[data-size="lg"]:not([data-width="fill"])', metric: height, op: "=", value: 48px }
+      measure: { kind: box, select: ':is([data-component="Button"],[data-component="IconButton"])[data-size="lg"]:not([data-width="fill"],[data-width="wrap"])', metric: height, op: "=", value: 48px }
       owner: ui/scale.md scale.choose.step; contract sizes.increments
     - id: DNA-COMMON-CONTROL-FILL
       role: button
-      law: A full-width button holds its step as a floor at every breakpoint, md 40px, sm 32px and lg 48px; only a wrapped label grows it.
+      law: A full-width or wrapping (`width="wrap"`) button holds its step as a floor at every breakpoint, md 40px, sm 32px and lg 48px; only a wrapped label grows it.
       measure:
         kind: box
         metric: height
         op: ">="
         cases:
-          - { select: '[data-component="Button"][data-width="fill"]:is([data-size="md"],[data-size="control"])', value: 40px }
-          - { select: '[data-component="Button"][data-width="fill"][data-size="sm"]', value: 32px }
-          - { select: '[data-component="Button"][data-width="fill"][data-size="lg"]', value: 48px }
+          - { select: '[data-component="Button"]:is([data-width="fill"],[data-width="wrap"]):is([data-size="md"],[data-size="control"])', value: 40px }
+          - { select: '[data-component="Button"]:is([data-width="fill"],[data-width="wrap"])[data-size="sm"]', value: 32px }
+          - { select: '[data-component="Button"]:is([data-width="fill"],[data-width="wrap"])[data-size="lg"]', value: 48px }
       owner: ui/scale.md scale.choose.step
     - id: DNA-COMMON-ICON-BUTTON-SQUARE
       role: button

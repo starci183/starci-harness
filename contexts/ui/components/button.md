@@ -19,7 +19,7 @@ Choice `button.choose.role`: which element carries the action. The first row tha
 | text-action | the command reads as part of a sentence or a list of links | `TextAction` | judgement |
 | icon | not the view's commit, the glyph is universally understood, and it sits in a toolbar, a row's actions or chrome | `IconButton` with an accessible `label` and its tooltip | candidate: every `IconButton` has a non-empty name and a tooltip |
 | file | the command hands the product a file (an attachment in a composer, an upload in a toolbar or a row), as one action among others | `FileButton` with an accessible `label`, the size of an `IconButton`; a drop area is `FileDropzone` (`text-field.choose.role:file`) | judgement |
-| suggest | the user is offered a few things to say or ask next (quick replies, suggested questions, empty-state shortcuts) | the ONLY pattern: a `Cluster gap="inline"` (with a `label`) of neutral `Button size="sm"`, which every Button size draws as a pill; never `ChoiceChips`, `TagGroup`, `Badge`, a `Chip` or a row of `Link`s ([chip](chip.md) `chip.choose.role:suggest`) | lint `starci-grammar/suggestion-buttons` |
+| suggest | the user is offered a few things to say or ask next (quick replies, suggested questions, empty-state shortcuts) | the ONLY pattern: a `Cluster gap="inline"` (with a `label`) of neutral `Button size="sm"` (with `width="wrap"` when a label may outgrow its container, `button.choose.width`), which every Button size draws as a pill; never `ChoiceChips`, `TagGroup`, `Badge`, a `Chip` or a row of `Link`s ([chip](chip.md) `chip.choose.role:suggest`) | lint `starci-grammar/suggestion-buttons` |
 | text | any other command or destination, and always the view's commit | `Button` with a visible text label | candidate: every accent-filled button has visible text |
 
 Choice `button.choose.intent`: which intent the spec's facts give (the facts are CTA-6). The first row that
@@ -40,12 +40,13 @@ equal consequence get no commit at all. "Secondary or ghost" is this table, neve
 renders the secondary step and a `neutral` repeated per item renders quiet, by the contract's
 [intent x placement map](../../grammars/contract.md#intent-x-placement---variant).
 
-Choice `button.choose.width`: content, fill or fill-narrow.
+Choice `button.choose.width`: content, fill, fill-narrow or wrap.
 
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |
 | fill | the button is a form submit, the action of an auth panel, or the only action of a phone action bar (a single-column band at a narrow width, a pinned action bar) | `width="fill"` | candidate: a fill button's row holds no other control |
 | fill-narrow | the button is a primary submit that hugs its label on a desktop form and fills the width on a phone (a booking card, a public form) | `width="fill-narrow"` (content width above 30rem, `fill` below) | judgement |
+| wrap | the label is not the app's own short copy and may be longer than its container: a suggestion pill or quick reply carrying an agent's or a customer's sentence | `width="wrap"`: content width capped at the container; a short label is exactly `content`, a longer one wraps inside the pill (same radius and inline padding, text at the reading edge) and grows the box from its step (`DNA-COMMON-CONTROL-FILL`). Never `fill` to stop a long pill spilling: `fill` stretches the short ones too | story `Navigation & Data/Message card fill (0.37.30)` `LongSuggestionsNarrow` |
 | content | every other place, and always a page or pane command: it hugs its label and sits at the end of its header row (R352 refuses `width="fill"` in `Page` `header.actions` and in `labelEnd`) | omit `width` | judgement |
 
 Choice `button.choose.glyph`: what a button's glyph says. The first row that applies wins.
@@ -76,7 +77,8 @@ context ([contract](../../grammars/contract.md#intent-x-placement---variant)).
 Every size takes the same pill radius (`--grammar-radius-pill`), `sm` included: a small Button is a pill like `md`, never a 12px rounded box. Suggestions, quick replies and empty-state shortcuts have one pattern, a `Cluster gap="inline"` (with a `label`) of neutral `Button size="sm"` (the single Button radius stays); the lint `suggestion-buttons` refuses the alternatives (a Link row, a `ChoiceChips` that sends, a `Chip` that sends).
 
 The step is `scale.choose.step` ([../scale.md](../scale.md#the-ramp)); size is never emphasis, and `width="fill"`
-changes width only: the step stays the box's floor and a wrapped label alone grows it (`DNA-COMMON-CONTROL-FILL`).
+changes width only: the step stays the box's floor and a wrapped label alone grows it (`DNA-COMMON-CONTROL-FILL`); `width="wrap"`
+holds the same floor.
 
 ## States
 Disabled, pending and skeleton per CTA-3: pending keeps the label and box and refuses a second press; never

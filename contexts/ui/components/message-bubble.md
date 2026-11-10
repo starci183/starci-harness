@@ -34,7 +34,7 @@ Choice `message-bubble.choose.content`: what the bubble body is. The first row t
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |
 | text | the message is words | `MessageBubble content="text"` (the default) | judgement |
-| card | an agent's rich message: a title with a chip, then a body or a key/value list, then actions | `MessageCard` (renders `MessageBubble content="card"`): title and `chip`, then `body` or a compact `details` list, then the actions row (the primary first, an `open` action with `endArrow` last), then a meta line (12 muted); capped at the bubble measure (`standard`, or `wide` 70%) with the avatar at the start, never full width | story `Navigation & Data/Chat parts/MessageCards`; `check:type` |
+| card | an agent's rich message: a title with a chip, then a body or a key/value list, then actions | `MessageCard` (renders `MessageBubble content="card"`): title and `chip`, then `body` or a compact `details` list, then the actions row (the primary first, an `open` action with `endArrow` last), then a meta line (12 muted); capped at the bubble measure (`standard`, or `wide` 70%) with the avatar at the start, never full width; its content column fills the card, so a nested bordered list (`SurfaceCard kind="list"`) or a composer in `body` spans the card's inner width while the head, actions and meta start at the reading edge | story `Navigation & Data/Chat parts/MessageCards`, `Navigation & Data/Message card fill (0.37.30)`; `check:type` |
 
 Chat surroundings (Grammar 0.31.0): an `EmptyNotice` inside a thread (a `PaneSection scroll role="log"` band, or a stack holding
 `MessageBubble`s) draws no card surface (no fill, border, radius or shadow; detected by context, no prop), and the head band of a

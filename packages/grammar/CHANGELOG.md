@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.37.30 - 2026-11-10 - a MessageCard's content fills the card; Button `width="wrap"` for long suggestion pills
+
+- Fixed (the /chat stop card): a `MessageCard`'s content column fills the card (`.starci-core-message-card` stretches its children; it was `align-items: flex-start`), so a nested bordered list (`SurfaceCard kind="list"`), a composer or a `DescriptionList` in the body spans the card's inner width. The head, the actions row and the meta line keep their items at the reading edge, so existing cards look the same.
+- Added: `Button width="wrap"` (`ButtonWidth` gains `"wrap"`): content width capped at the container. A short label is exactly `content`; a label longer than its container wraps inside the pill (same pill radius and inline padding, the text at the reading edge, `overflow-wrap: anywhere`) and the box grows from its size step (sm 32px floor), so a long suggestion never spills out of its row. `content` (the default) is unchanged. Law `DNA-COMMON-CONTROL-FILL` covers `wrap` (step as floor); the fixed-height laws exclude it.
+- Stories: `Navigation & Data/Message card fill` (`NestedListAndComposer`: a stop card with a bordered key/value list, suggestion pills and a composer filling the card; `LongSuggestionsNarrow`: short and long pills in an 18rem column).
+
 ## 0.37.29 - 2026-11-10 - readable floor 0.8; a row control centred with its checkbox and text; loading diff rows keep the gutter; top-aligned graph layers
 
 - Changed (owner "Nâng 0.8"): the readable floor of a contained FlowGraph fit is zoom 0.8 (`CONTAIN_MIN_ZOOM`, was 0.6): a 12px label stays about 10px. A wide graph on a desktop pane now pans too; the canvas still grows to its cap and the first view shows the entry node. Law `DNA-COMMON-FLOW-READABLE-FLOOR`.

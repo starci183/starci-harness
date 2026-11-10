@@ -5124,18 +5124,18 @@
         min-block-size: 2rem !important;
     }
 
-    .starci-core-button[data-size="md"]:not([data-width="fill"]),
-    .starci-core-button[data-size="control"]:not([data-width="fill"]) {
+    .starci-core-button[data-size="md"]:not([data-width="fill"], [data-width="wrap"]),
+    .starci-core-button[data-size="control"]:not([data-width="fill"], [data-width="wrap"]) {
         block-size: var(--starci-core-control-min-size) !important;
         min-block-size: var(--starci-core-control-min-size) !important;
     }
 
-    .starci-core-button[data-size="sm"]:not([data-width="fill"]) {
+    .starci-core-button[data-size="sm"]:not([data-width="fill"], [data-width="wrap"]) {
         block-size: 2rem !important;
         min-block-size: 2rem !important;
     }
 
-    .starci-core-button[data-size="lg"]:not([data-width="fill"]) {
+    .starci-core-button[data-size="lg"]:not([data-width="fill"], [data-width="wrap"]) {
         block-size: 3rem !important;
         min-block-size: 3rem !important;
     }
@@ -5145,19 +5145,19 @@
      * line, and only a label that wraps grows it. The vendor drops md to 36px from its md breakpoint (`md:h-9`), so a
      * fill Button left to the vendor was 36px on a desktop form; the floor is the step, the height follows the label.
      */
-    .starci-core-button[data-width="fill"]:is([data-size="md"], [data-size="control"]) {
+    .starci-core-button:is([data-width="fill"], [data-width="wrap"]):is([data-size="md"], [data-size="control"]) {
         block-size: auto !important;
         min-block-size: var(--starci-core-control-min-size) !important;
         padding-block: 0.5rem;
     }
 
-    .starci-core-button[data-width="fill"][data-size="sm"] {
+    .starci-core-button:is([data-width="fill"], [data-width="wrap"])[data-size="sm"] {
         block-size: auto !important;
         min-block-size: 2rem !important;
         padding-block: 0.25rem;
     }
 
-    .starci-core-button[data-width="fill"][data-size="lg"] {
+    .starci-core-button:is([data-width="fill"], [data-width="wrap"])[data-size="lg"] {
         block-size: auto !important;
         min-block-size: 3rem !important;
         padding-block: 0.5rem;
@@ -5728,6 +5728,20 @@
         white-space: normal !important;
     }
 
+    /*
+     * `width="wrap"` (0.37.30): content width, capped at its container. A short label hugs its pill exactly as `content` does; a
+     * label longer than the container wraps inside the pill (same radius, same inline padding, the text at the reading edge) and
+     * the box grows from its size step (the size rules above hold the floor), so a long suggestion never spills out of its row.
+     */
+    .starci-core-button[data-width="wrap"] {
+        max-width: 100% !important;
+        white-space: normal !important;
+        overflow-wrap: anywhere;
+        text-align: start;
+    }
+
+    .starci-core-tooltip-disabled-trigger:has(> [data-component="Button"][data-width="wrap"]) { min-inline-size: 0; }
+
     /* `width="fill-narrow"`: content width on a wide screen; below 30rem the full-width recipe above (stretch, wrap, step floor). */
     @media (max-width: 30rem) {
         .starci-core-button[data-width="fill-narrow"] {
@@ -5989,11 +6003,15 @@
         white-space: normal;
     }
 
-    .starci-core-message-card { display: flex; min-width: 0; flex-direction: column; align-items: flex-start; gap: var(--grammar-inline-gap); }
+    /*
+     * The card's content column fills the card (0.37.30): every part stretches to the card's inner width, so a nested bordered list,
+     * a composer or a DescriptionList in the body spans the card; the head, the actions row and the meta line still start at the
+     * reading edge (their own items hug their content).
+     */
+    .starci-core-message-card { display: flex; min-width: 0; flex-direction: column; align-items: stretch; gap: var(--grammar-inline-gap); }
     .starci-core-message-card-head { display: flex; min-width: 0; max-width: 100%; flex-wrap: wrap; align-items: center; gap: var(--grammar-inline-gap); }
     .starci-core-message-card-body { min-width: 0; max-width: 100%; }
     .starci-core-message-card-actions { display: flex; min-width: 0; max-width: 100%; flex-flow: row wrap; align-items: center; gap: var(--grammar-inline-gap); }
-    .starci-core-message-card > [data-component="DescriptionList"] { align-self: stretch; }
 
     .starci-core-message-bubble-head {
         display: flex;

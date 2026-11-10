@@ -17,7 +17,7 @@ import { glyphSource, type GlyphName } from "../Icon/glyphs.js"
 export type ButtonVariant = "primary" | "secondary" | "tertiary" | "outline" | "ghost" | "danger" | "danger-soft"
 export type ButtonSize = "sm" | "md" | "lg"
 export type ButtonType = "button" | "submit" | "reset"
-export type ButtonWidth = "content" | "fill" | "fill-narrow"
+export type ButtonWidth = "content" | "fill" | "fill-narrow" | "wrap"
 
 type ButtonBase = {
     /** The visible action label. It remains present while the action is pending. */
@@ -49,6 +49,10 @@ type ButtonBase = {
      * `fill-narrow`: content width on a wide screen and `fill` below 30rem (a phone), for a primary submit that is a short
      * button on a desktop form and a full-width thumb target on a phone. The box keeps the size step on one line and grows only
      * with a wrapped label, as `fill` does.
+     *
+     * `wrap`: content width, capped at the container. A short label is exactly `content`; a label longer than its container (a
+     * suggestion pill carrying an agent's sentence) wraps inside the pill, keeping its radius and inline padding, the text at the
+     * reading edge, and the box grows from its size step, so it never spills out of its row.
      */
     readonly width?: ButtonWidth
 }

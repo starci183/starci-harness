@@ -4,7 +4,7 @@ import * as G from '../common/index.js';
 
 /**
  * A Button with an icon takes HeroUI v3's measures (0.37.5): padding-inline px-3 on sm and px-4 on md and lg on both sides, an 8px gap, the icon 16px from 640px
- * (20px on a phone) with the vendor's -2px inline margin. `sm` carries no icon in the app (owner rule) and is shown here only for the measure.
+ * (20px on a phone) with the vendor's -2px inline margin. `sm` carries no icon in the app (`button-icon-primary-only`) and is shown here only for the measure.
  */
 const meta: Meta = { title: 'Controls/Button icon sizes' };
 export default meta;

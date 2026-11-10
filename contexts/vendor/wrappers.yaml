@@ -31,7 +31,7 @@ wrappers:
       overrides: [
         { kind: style, target: "Drawer.Dialog:padding", reason: "an overlay holds its content at the container inset on every side" },
         { kind: style, target: "Drawer.Body:padding", reason: "the body keeps the identity step as focus clearance instead of an off-scale 3px offset" } ] }
-  - { file: core/branch/DropdownMenu/index.tsx, wraps: [Description, Dropdown, Header, Kbd, Label, Separator], delegates: { Dropdown: [Trigger] } }
+  - { file: core/branch/DropdownMenu/index.tsx, wraps: [Description, Dropdown, Header, Kbd, Label, Separator, Switch], delegates: { Dropdown: [Trigger] } }
   - { file: core/branch/ListBox/index.tsx, wraps: [Description, Header, Label, ListBox, Separator],
       overrides: [
         { kind: style, target: "ListBox.Item:padding", reason: "an option is a box inside a surface: the nested step on every side, a 40px one-line row" },
@@ -42,6 +42,7 @@ wrappers:
         { kind: style, target: "Select.Trigger:block-size", rule: R320, reason: "a single-line field is as tall as an md control" } ] }
   - { file: core/frame/SurfaceCard/AccordionRows.tsx, wraps: [Accordion] }
   - { file: core/frame/SurfaceCard/FigureCells.tsx, wraps: [Link] }
+  - { file: core/frame/SurfaceCard/SelectRows.tsx, wraps: [Checkbox] }
   - { file: core/frame/SurfaceCard/index.tsx, wraps: [Card],
       overrides: [
         { kind: style, target: "Card.Root:shadow", reason: "a card is raised by its shadow on the page and wears a 1px separator border; a surface nested in a card keeps the border and drops the shadow" } ] }

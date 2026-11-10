@@ -2315,7 +2315,7 @@ rules:
       - {kind: eslint-grammar-core, id: mascot-asset-slot-required}
   - id: R340
     code: FE_RAISED_SURFACE_IN_SURFACE
-    law: A card never stands inside another card; a SurfaceCard that another SurfaceCard of the same file encloses is refused. A white Pane surface, Drawer, Dialog, AlertDialog or Popover HOSTS cards: on a white ground a card is the group and draws a 1px border with no shadow (SURFACE-ELEVATION). The Grammar throws the card-in-card refusal in development. Across files the whole-program rule closes it (R356).
+    law: 'A card never stands inside another card; a SurfaceCard that another SurfaceCard of the same file encloses is refused. A white Pane surface, Drawer, Dialog, AlertDialog or Popover HOSTS cards: on a white ground a card is the group and draws a 1px border with no shadow (SURFACE-ELEVATION). The Grammar throws the card-in-card refusal in development. Across files the whole-program rule closes it (R356).'
     failureCodes:
       - FE_RAISED_SURFACE_IN_SURFACE
     enforcers:
