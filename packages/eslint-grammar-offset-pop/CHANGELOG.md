@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.37.14 - 2026-11-10
+
+- Changed: released with the Grammar family at 0.37.14 (Link plain, flat aside lists, stacked panes, article headings); no rule of this package changed.
+
 ## 0.37.13 - 2026-11-10
 
 - Changed: released with the Grammar family at 0.37.13 (a select row's `control`); no rule of this package changed.

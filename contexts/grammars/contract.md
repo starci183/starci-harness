@@ -273,8 +273,8 @@ removes the title link.
 ### Link
 
 `Link` is a native destination carried by text or one image. An inline text link takes the size of the text around it
-(`size` defaults to `inherit`) and the exact primary colour; an external destination ends with the grammar's external
-glyph by default. Its text form takes string `children`; its media form
+(`size` defaults to `inherit`) and the exact primary colour; the external glyph `↗` ends an EXTERNAL destination (`kind="external"`) only (0.37.14): an internal text link has none and keeps the accent
+colour, and `variant="plain"` (a navigation row's title, a shell brand) has no colour, underline or glyph because the component around it is the affordance. Its text form takes string `children`; its media form
 takes `media` as the existing `ImageProps` data and a required accessible destination `label`, with no children.
 The compiler rejects mixing the forms. Image owns aspect, fit, dimensions, provenance, load state and fallback;
 In a media destination, `plate="none"` preserves a cut-out mark's transparent, unclipped shape. Navigation, disabled state, external-tab safety,

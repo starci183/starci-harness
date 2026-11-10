@@ -130,3 +130,6 @@ of the breakpoints (the grid's own width). Lint: `starci-grammar/pane-grid-child
 
 ## Pane head slot (0.37.5)
 `Pane head={{ title, description?, onClose?, closeLabel? }}` draws a sticky one-row head for an aside or detail pane: the title, a muted sublabel and a small close icon button at the end. It is the first band of the pane's stack (a `PaneSection align="center"` holding a `PaneHeader`), so the head-row mode (row / lone / none) and `--grammar-pane-head-size` apply, and it stays at the top while the body scrolls.
+
+## Stacked panes grow with their content (PANE-GRID-STACKED, 0.37.14)
+Below the stacking breakpoint (the grid's own width under 48rem) the grid, its tracks and its panes stop owning height and scroll: they grow with their content (rows auto), the page fill is a floor, and the page (or the shell's primary region) scrolls ONCE. The aside is the first block of the well as the app's `base` areas order it; nothing is clipped and the well never overlaps it. The grid marks itself `data-grammar-pane-stacked="grow"`; a grid that holds a chat thread (a scrolling `PaneSection`) or a pane footer keeps its bounded height and only those scroll inside their pane. Story `Surfaces/Pane grid stacked`.

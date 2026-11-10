@@ -1177,6 +1177,19 @@
         border: 1px solid var(--separator);
     }
 
+    /*
+     * 0.37.14 (FLAT-ASIDE-LIST, owner laws pink-page-surface-rule / nivo-surface-layering): inside a white pane (an aside) a list is sections and rows with full-width
+     * dividers, never a card. A `Section kind="list"` and a `SurfaceCard kind="list"` there lose the border, the radius, the shadow and the card ground, and their rows lose the
+     * card's inline padding so the text stands on the pane's own edge. Derived from the surface the Pane declares (`Pane surface`); no prop. Other cards stay bordered.
+     */
+    .starci-core-pane[data-grammar-pane-surface="true"] :is(.starci-core-section-list, .starci-core-surface[data-grammar-surface-kind="list"]) {
+        --starci-core-row-inset: var(--grammar-row-gap) 0;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+    }
+
     .starci-core-surface-content {
         min-width: 0;
         padding-block: var(--grammar-card-padding-block);
@@ -2630,9 +2643,18 @@
     }
 
     .starci-core-markdown-article h1 { font-size: var(--grammar-text-3xl); }
-    .starci-core-markdown-article h2 { font-size: var(--grammar-text-2xl); }
-    .starci-core-markdown-article h3 { font-size: var(--grammar-text-xl); }
-    .starci-core-markdown-article h4 { font-size: var(--grammar-text-lg); }
+    /*
+     * 0.37.14 (ARTICLE-HEADINGS-14, type law 14/12): h2 to h4 are 14 like every UI text, ranked by weight and tone (bold, semibold, semibold muted) and by the space above them
+     * (a section step, a row step, an inline step); the heading elements and their outline stay. h1 is the article's own title.
+     */
+    .starci-core-markdown-article :where(h2, h3, h4) {
+        font-size: var(--grammar-text-md);
+        line-height: var(--grammar-leading-md);
+    }
+
+    .starci-core-markdown-article h2 { font-weight: var(--grammar-weight-bold); }
+    .starci-core-markdown-article h3 { margin-block-start: var(--grammar-row-gap); }
+    .starci-core-markdown-article h4 { margin-block-start: var(--grammar-inline-gap); color: var(--muted); }
 
     .starci-core-markdown-article :where(p, ul, ol, blockquote, pre, table) {
         margin: 0;
@@ -3841,6 +3863,33 @@
 
     .starci-core-pane[data-grammar-pane-surface="true"] {
         background: var(--surface);
+    }
+
+    /*
+     * 0.37.14 (PANE-GRID-STACKED): below the stacking breakpoint (the grid's own width under 48rem; the grid writes `data-grammar-pane-stacked="grow"` on itself when none of its panes is a chat thread or has a footer) the panes of a grid
+     * stop owning their height and their scroll: the grid, its tracks and its panes grow with their content (rows auto, nothing clipped), the page fill becomes a floor instead
+     * of a height, and the page (or the shell's primary region) scrolls ONCE. The aside is the first block of the well, as the app's `base` areas order it. A grid that holds a
+     * chat thread (a scrolling PaneSection) or a pane footer keeps its bounded height: only those scroll inside their pane.
+     */
+    .starci-core-pane-grid[data-grammar-pane-stacked="grow"] {
+        height: auto;
+        overflow: visible;
+    }
+
+    .starci-core-pane-grid[data-grammar-pane-stacked="grow"] > .starci-core-pane-grid-tracks {
+        flex: none;
+        grid-template-rows: none;
+        grid-auto-rows: auto;
+    }
+
+    .starci-core-pane-grid[data-grammar-pane-stacked="grow"] .starci-core-pane {
+        overflow: visible !important;
+    }
+
+    .starci-core-page-fill:has(.starci-core-pane-grid[data-grammar-pane-stacked="grow"]) {
+        height: auto;
+        min-height: calc(100dvh - var(--starci-core-fill-top) - var(--starci-core-fill-bottom));
+        overflow: visible !important;
     }
 
     .starci-core-pane-scroll {

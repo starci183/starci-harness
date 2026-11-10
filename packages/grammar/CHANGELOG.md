@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.37.14 - 2026-11-10 - Grammar keeps four owner laws it broke
+
+- Fixed (internal navigation never shows ↗): `Link` draws the anchor icon `↗` only for `kind="external"` (an internal inline link keeps the accent colour and has none); a new `variant="plain"` is a destination with no colour, underline or icon. A `ListRow` with an `href` uses it: a navigation row, whole row pressable, title in the text colour, trailing chevron, real `<a href>` kept (LIST-ROW-NAVIGATION). Stories `InternalHrefHasNoArrow`, `LinkArrowOnlyWhenExternal`.
+- Fixed (flat aside list, FLAT-ASIDE-LIST): `Section kind="list"` and `SurfaceCard kind="list"` inside a `Pane surface` draw flat: no border, radius, shadow or card ground, rows on the pane's edge with full-width dividers. Derived from the surface the Pane declares (no prop). Story `SurfaceElevation/WellAndAside` now asserts it.
+- Fixed (stacked panes, PANE-GRID-STACKED): below 48rem of the grid's own width the grid, its tracks and its panes grow with their content (rows auto, panes stop clipping and scrolling, the page fill is a floor), so the page scrolls once and the aside is the first block of the well, never overlapped. The grid writes `data-grammar-pane-stacked="grow"` (a grid holding a chat thread or a pane footer keeps its bounded height). Story `Surfaces/Pane grid stacked`.
+- Fixed (article headings, ARTICLE-HEADINGS-14): `MarkdownArticle` h2 to h4 are 14 (bold, semibold, semibold muted) instead of 20/18/16. Story `Markdown headings`.
+
 ## 0.37.13 - 2026-11-10 - a select row takes a control at its end
 
 - Added: `SelectItemData.control?: ReactNode` (the name of `ListRowData.control`) on `SurfaceCard kind="select"` (owner: "the last cell is JSX, put in it what you like: check, switch, tab"). The slot sits at the row's end centred on the title line; the copy wraps before it. It is a sibling of the row's checkbox label, so presses, clicks and keys inside it never toggle the row (events are stopped at the slot) and it is outside the row's hit target and accessible name; a disabled row dims it and blocks it (`inert`). Content is Grammar components only (a primary `Tabs` pill "Tự động | Hỏi", a `Switch`, a `Badge`). Story `SelectWithControl`.

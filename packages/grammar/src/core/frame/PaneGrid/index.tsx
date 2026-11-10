@@ -9,6 +9,7 @@ import {
     useCallback,
     useContext,
     useEffect,
+    useLayoutEffect,
     useMemo,
     useRef,
     useState,
@@ -343,6 +344,36 @@ const useHeadRowMode = () => {
     return ref
 }
 
+/** The grid's own width under which its panes stack (the compact boundary, 48rem of 16px). */
+const STACKED_UNDER_PX = 768
+
+/**
+ * PANE-GRID-STACKED (0.37.14): CSS container queries pick the arrangement, but they cannot restyle the grid's own box, so the grid writes `data-grammar-pane-stacked="grow"`
+ * on itself while it is narrower than the stacking breakpoint and holds no chat thread or footer; the stylesheet then lets the grid, its tracks and its panes grow with their content (the page scrolls once).
+ */
+const useStackedMode = () => {
+    const ref = useRef<HTMLElement>(null)
+    useLayoutEffect(() => {
+        const grid = ref.current
+        if (grid === null) return undefined
+        const decide = () => {
+            // A grid with a chat thread (a scrolling band) or a pane footer keeps its bounded height: only those scroll inside their pane.
+            const hasBounded = grid.querySelector('.starci-core-pane[data-grammar-pane-footer="true"], .starci-core-pane-section[data-grammar-pane-section-scroll="true"], .starci-core-pane[data-grammar-pane-scroll="true"]') !== null
+            const isGrowing = grid.getBoundingClientRect().width < STACKED_UNDER_PX && !hasBounded
+            if (isGrowing) grid.setAttribute("data-grammar-pane-stacked", "grow")
+            else grid.removeAttribute("data-grammar-pane-stacked")
+        }
+        decide()
+        const mutations = new MutationObserver(decide)
+        mutations.observe(grid, { childList: true, subtree: true })
+        if (typeof ResizeObserver === "undefined") return () => mutations.disconnect()
+        const observer = new ResizeObserver(decide)
+        observer.observe(grid)
+        return () => { observer.disconnect(); mutations.disconnect() }
+    }, [])
+    return ref
+}
+
 /**
  * Generic bounded pane grid: named areas laid out flush, a divider between adjacent panes, each pane optionally on the
  * surface ground and optionally its own scroll owner.
@@ -364,6 +395,7 @@ export const PaneGrid = (props: PaneGridProps) => {
     if (stray !== undefined) throw new Error(`PANE_GRID_CHILD_NOT_PANE: ${childTypeName(stray)}`)
     const panes = flat.filter(isPane)
     const tracksRef = useHeadRowMode()
+    const gridRef = useStackedMode()
     const drawers = panes.filter((pane) => pane.props.collapse === "drawer")
     const hasBar = (pane: ReactElement<PaneProps>) => pane.props.trigger === undefined || pane.props.trigger === "bar"
     const [openHeads, setOpenHeads] = useState<ReadonlySet<string>>(() => new Set())
@@ -407,6 +439,7 @@ export const PaneGrid = (props: PaneGridProps) => {
     return (
         <section
             {...sectionProps}
+            ref={gridRef}
             aria-label={label}
             className={"starci-core-pane-grid"}
             data-component="PaneGrid"

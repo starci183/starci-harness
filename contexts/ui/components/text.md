@@ -48,3 +48,6 @@ heading. An app never builds it from a `Text` size and a weight.
 FONT-7..9. Lint: `starci-grammar/same-line-size`, `starci-grammar/table-cell-type`. R357 (`starci-grammar/text-inline-only`: a block inside `Text`), R358 (`starci-grammar/no-text-heading`: a strong `Text` that
 only titles the blocks after it). A heading is the group's own title, so the outline, the level and the spacing come from the
 component that owns them.
+
+## Article headings are 14 (ARTICLE-HEADINGS-14, 0.37.14)
+`MarkdownArticle` headings h2 to h4 follow the type law (14 for text, 12 for small names): all three are 14, ranked by weight and tone (h2 bold, h3 semibold, h4 semibold muted) and by the space above them; the heading elements and the outline stay. h1 is the article's own title.

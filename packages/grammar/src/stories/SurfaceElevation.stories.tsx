@@ -3,8 +3,8 @@ import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 
 /**
- * SURFACE-ELEVATION is automatic (0.37.5): a list card on the pink well draws a shadow and no border; the same list in a white aside (`Pane surface`) draws a 1px
- * border and no shadow. The app never picks: a list is a `Section kind="list"` or a `SurfaceCard kind="list"` and the ground decides. (A `SurfaceCard` stands in a
+ * SURFACE-ELEVATION is automatic (0.37.5): a list card on the pink well draws a shadow and no border; the same list in a white aside (`Pane surface`) is FLAT since 0.37.14
+ * (FLAT-ASIDE-LIST): no card at all, rows with full-width dividers on the pane's own edge. The app never picks: a list is a `Section kind="list"` or a `SurfaceCard kind="list"` and the ground decides. (A `SurfaceCard` stands in a
  * `Pane surface` too, bordered the same way: see `Surfaces/Pane footer and white-ground cards`.)
  */
 const meta: Meta = { title: 'Surfaces/Surface elevation' };
@@ -43,7 +43,11 @@ export const WellAndAside: Story = {
       expect(Number.parseFloat(onWell.borderTopWidth)).toBe(0);
       const onWhite = getComputedStyle(aside);
       expect(onWhite.boxShadow).toBe('none');
-      expect(Number.parseFloat(onWhite.borderTopWidth)).toBe(1);
+      expect(Number.parseFloat(onWhite.borderTopWidth)).toBe(0);
+      expect(onWhite.borderTopLeftRadius).toBe('0px');
+      const rows = Array.from(aside.querySelectorAll<HTMLElement>('.starci-core-list-row'));
+      expect(rows.length).toBe(2);
+      expect(rows[1]!.getBoundingClientRect().left).toBeCloseTo(aside.getBoundingClientRect().left, 0);
     });
   },
 };
