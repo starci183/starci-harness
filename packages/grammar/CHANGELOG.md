@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.37.28 - 2026-11-10 - version diff rows in a list
+
+- Added (owner drawing "So sánh phiên bản", GitHub-style): `ListRowData.diff` (`"added" | "removed" | "changed"`), `change?: { from, to }` and `diffLabel?`. A diff row draws a monospace gutter mark at its start (`+`, `−`, `~`) in its tone's ink, on the title's line; its ground is the tone's soft pair (success, danger, warning); a removed title is struck through; a changed row's "from → to" is the 12 muted line under the title. The glyph is `aria-hidden` and the label (`diffLabel`, default "Added", "Removed", "Changed") is read before the title, so the meaning is never colour alone. Works in `SurfaceCard kind="list"` and `Section kind="list"`; the row padding holds (p-4 edges, p-3 separators). Law `DNA-COMMON-LIST-ROW-DIFF`; contexts `list-table.md`.
+- Stories: `Surfaces/List row diff` (`VersionDiff`: Bản 3 so với Bản 2, all three kinds and a plain row in a SurfaceCard, the rights and tools in a Section).
+
 ## 0.37.27 - 2026-11-10 - FlowGraph steps style C: left to right, orthogonal edges, a start dot, the run path green
 
 - Changed (owner drawing C, "C trò yêu"): a `layout="steps"` graph reads LEFT → RIGHT by default (`direction="TB"` keeps the top-down map); a branching step fans its children down the page, in port order. Across, a condition's ports stack as rows under the body, each label at the start and its edge leaving the card's end edge at the row's middle.

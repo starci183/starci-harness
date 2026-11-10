@@ -21,6 +21,10 @@ import { EllipsisHorizontalIcon } from "@heroicons/react/24/outline"
 import type { NoChildren } from "../../tier.js"
 import type { BadgeData, ItemAction, ItemLeading, ListRowData } from "../../surfaceCardData.js"
 
+/** The gutter mark of a diff row (0.37.28): plus, the true minus sign, tilde; monospace, so the three stand in one column. */
+const DIFF_GLYPHS = { added: "+", removed: "−", changed: "~" } as const
+const DIFF_LABELS = { added: "Added", removed: "Removed", changed: "Changed" } as const
+
 export type ListRowProps = NoChildren & {
     readonly row: ListRowData
     /**
@@ -145,12 +149,13 @@ const ListRowInner = ({ row, isLoading = false }: ListRowProps) => {
                 data-tier="composite"
                 data-grammar-state={state}
                 data-grammar-treatment={treatment.tone}
-                data-grammar-leading={hasLeading || hasMark ? "true" : "false"}
+                data-grammar-leading={hasLeading || hasMark || row.diff !== undefined ? "true" : "false"}
                 data-grammar-actions={hasActions || chevronOnly ? "true" : "false"}
                 {...(row.actionPlacement === "end" ? { "data-grammar-action-placement": "end" } : {})}
                 {...(actionCount > 1 ? { "data-grammar-actions-multi": "true" } : {})}
                 {...(hasTrail ? { "data-grammar-trail": "true" } : {})}
                 {...(row.verdict === undefined ? {} : { "data-verdict": row.verdict })}
+                {...(row.diff === undefined ? {} : { "data-grammar-diff": row.diff })}
                 {...(row.onPress === undefined && row.href === undefined ? {} : { "data-grammar-row-pressable": "true" })}
                 {...(drag === undefined ? {} : {
                     draggable: true,
@@ -163,11 +168,15 @@ const ListRowInner = ({ row, isLoading = false }: ListRowProps) => {
                 data-contract="GAP-3 PADDING-4 BOUNDARY-3"
             >
                 {drag?.keyHint === undefined ? null : <span id={hintId} hidden>{drag.keyHint}</span>}
-                {row.leading !== undefined
-                    ? <span className="starci-core-list-row-leading"><Leading leading={row.leading} /></span>
-                    : hasMark ? <span className="starci-core-list-row-leading"><StateMark state={state} /></span> : null}
+                {row.diff === undefined && row.leading === undefined && !hasMark ? null : (
+                    <span className="starci-core-list-row-leading">
+                        {row.diff === undefined ? null : <span className="starci-core-list-row-diff" data-grammar-diff-mark={row.diff} aria-hidden="true">{DIFF_GLYPHS[row.diff]}</span>}
+                        {row.leading !== undefined ? <Leading leading={row.leading} /> : hasMark ? <StateMark state={state} /> : null}
+                    </span>
+                )}
                 <span className="starci-core-list-row-copy" data-contract="GAP-1">
                     <span className="starci-core-list-row-title">
+                        {row.diff === undefined ? null : <span className="starci-core-visually-hidden" data-grammar-diff-label="true">{`${row.diffLabel ?? DIFF_LABELS[row.diff]}: `}</span>}
                         <span className="starci-core-list-row-name">
                             {row.href !== undefined
                                 ? <Link variant="plain" href={row.href} {...(row.onFollow === undefined ? {} : { onFollow: row.onFollow })}>{row.title}</Link>
@@ -177,6 +186,7 @@ const ListRowInner = ({ row, isLoading = false }: ListRowProps) => {
                         </span>
                     </span>
                     {row.description === undefined ? null : <span className="starci-core-list-row-description" data-contract="TONE-2 FONT-2" {...(typeof row.description === "string" ? {} : { "data-grammar-description-rich": "true" })}>{row.description}</span>}
+                    {row.diff !== "changed" || row.change === undefined ? null : <span className="starci-core-list-row-change" data-grammar-diff-change="true">{`${row.change.from} → ${row.change.to}`}</span>}
                 </span>
                 {row.value == null ? null : <span className="starci-core-list-row-value" data-grammar-row-value="true">{row.value}</span>}
                 {hasTrail ? (

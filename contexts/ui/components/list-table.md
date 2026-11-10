@@ -40,6 +40,12 @@ A `Section` head is ONE row: the label (14, 500) and an optional count chip (12)
 the inherited size; distinct from the inline `↗` Link), an info `IconButton` or (0.37.25) a text `Button intent="neutral" size="sm"` with no icon ("Gắn thêm provider" at the end of "Provider đã gắn  2"; never the commit). No description under the label: `description` is drawn as a caption (12, muted) below the card or list, with `caption`. Lint `starci-grammar/section-head-action`
 refuses any other `Button` (a commit, another size, an icon) in the head action and more than one command.
 
+## Version diff rows (0.37.28)
+A row of a version diff sets `ListRowData.diff` (`"added"`, `"removed"`, `"changed"`): a monospace gutter mark at the row's start (`+`, `−`, `~`) in the tone's ink, the row's
+ground in the tone's soft pair (success, danger, warning; the danger pair here is the diff tone, not a call to action), a removed title struck through, and for a changed
+row `change: { from, to }` drawn as the 12 muted line "from → to". The glyph and its label (`diffLabel`, the app's word: "Thêm", "Bỏ", "Đổi") carry the meaning, never the
+colour alone. Plain rows stay in the same list. Works in `SurfaceCard kind="list"` and `Section kind="list"`; the row padding holds. Law `DNA-COMMON-LIST-ROW-DIFF`.
+
 ## Variants
 Rows are separated by lines (n-1 lines) or by gap, never both (`DNA-COMMON-LIST-SEAMS`). Rows align their boxes to the content edge of a panel or a pane
 (the row box and its selected fill start there; the title inside keeps the vendor item padding). Per-item commands are `neutral` (CTA-6). Unread rows take the contract's unread weight.

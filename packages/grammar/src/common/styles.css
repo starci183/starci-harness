@@ -2053,6 +2053,41 @@
         align-items: center;
     }
 
+    /*
+     * LIST-ROW-DIFF (0.37.28, owner drawing "So sánh phiên bản", GitHub-style): a diff row's ground is its tone's soft pair (added success, removed danger, changed
+     * warning), full width like the row; the gutter mark at its start (+, −, ~) is monospace in the pair's ink, one width, so the marks stand in a column. A removed
+     * row's title is struck through; a changed row's "from → to" is the 12 muted line. The meaning is the glyph and the hidden label, never the colour alone. The row
+     * keeps the row padding (ROW-EDGE-PADDING).
+     */
+    .starci-core-list-row[data-grammar-diff="added"] { --starci-row-diff-ground: var(--success-soft); --starci-row-diff-ink: var(--success-soft-foreground); }
+    .starci-core-list-row[data-grammar-diff="removed"] { --starci-row-diff-ground: var(--danger-soft); --starci-row-diff-ink: var(--danger-soft-foreground); }
+    .starci-core-list-row[data-grammar-diff="changed"] { --starci-row-diff-ground: var(--warning-soft); --starci-row-diff-ink: var(--warning-soft-foreground); }
+    .starci-core-list-row[data-grammar-diff] { background: var(--starci-row-diff-ground); }
+    /* The mark stands on the title's line, as a diff gutter does, not centred on a two-line row. */
+    .starci-core-list-row[data-grammar-diff] > .starci-core-list-row-leading { align-self: flex-start; }
+
+    .starci-core-list-row-diff {
+        display: inline-flex;
+        flex: none;
+        justify-content: center;
+        inline-size: 1ch;
+        color: var(--starci-row-diff-ink);
+        font-family: var(--font-mono);
+        font-size: var(--grammar-text-md);
+        font-weight: var(--grammar-weight-medium);
+        line-height: var(--grammar-leading-md);
+    }
+
+    .starci-core-list-row-leading:has(> .starci-core-list-row-diff + *) { gap: var(--grammar-row-gap); }
+    .starci-core-list-row[data-grammar-diff="removed"] .starci-core-list-row-name { text-decoration-line: line-through; text-decoration-color: var(--starci-row-diff-ink); }
+
+    .starci-core-list-row-change {
+        color: var(--muted);
+        font-size: var(--grammar-text-xs);
+        line-height: var(--grammar-leading-xs);
+        overflow-wrap: anywhere;
+    }
+
     .starci-core-list-row-copy {
         display: flex;
         min-width: 0;

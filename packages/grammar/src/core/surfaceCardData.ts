@@ -131,6 +131,16 @@ export type ListRowData = {
      * for a fact that is a problem (overdue). Drawn as a Skeleton of its width while the row loads.
      */
     readonly meta?: { readonly text: string; readonly tone?: "muted" | "danger" }
+    /**
+     * A row of a version diff (0.37.28, GitHub-style): a gutter mark at the row's start, `+` added, `−` removed, `~` changed (monospace, in the tone's ink), and the row's ground in
+     * the tone's soft pair (success, danger, warning). A removed row's title is struck through. The mark is never colour alone: the glyph carries the meaning and `diffLabel`
+     * is read before the title.
+     */
+    readonly diff?: "added" | "removed" | "changed"
+    /** A changed row's change, drawn as the 12 muted line "from → to" under the title (after `description`). Only with `diff: "changed"`. */
+    readonly change?: { readonly from: string; readonly to: string }
+    /** The word a screen reader reads for the gutter mark (the app's language: "Thêm", "Bỏ", "Đổi"). Default "Added", "Removed", "Changed". */
+    readonly diffLabel?: string
 } & ListRowDestination
 
 type FigureDestination = Pick<LinkProps, "href" | "onFollow" | "isDisabled"> | {

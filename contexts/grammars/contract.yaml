@@ -323,7 +323,7 @@ roles:
     sizes: leading slot sm/md/lg match the control ladder
     states: [hover, focus-visible, selected, disabled, loading (same rows at rest), empty]
     grammarMayChange: [row state paint, seam paint]
-    dna: [DNA-COMMON-LIST-SEAMS, DNA-COMMON-SEAM-FULL-BLEED, DNA-COMMON-ROW-DESCRIPTION-ONE-LINE, DNA-COMMON-OPTION-DESCRIPTION-WRAPS, DNA-COMMON-TABLE-ROW-LINK, DNA-COMMON-TABLE-FOLD, DNA-COMMON-ROW-ACTION-END, DNA-COMMON-DISCLOSURE-CHEVRON-START, DNA-COMMON-FIGURES-PANE-ROW, DNA-COMMON-DESCRIPTION-DRAWER-COLUMNS, DNA-COMMON-STEPPER-BAR, DNA-COMMON-STEPPER-BAR-NO-CONNECTOR, DNA-COMMON-DISCLOSURE-CHEVRON-TITLE-NEXT, DNA-COMMON-TABLE-NO-CLIP, DNA-COMMON-ROW-TEXT-FIRST, DNA-COMMON-STEPPER-MARKER-FILLS, DNA-COMMON-STEPPER-MARKER-UPCOMING]
+    dna: [DNA-COMMON-LIST-SEAMS, DNA-COMMON-SEAM-FULL-BLEED, DNA-COMMON-ROW-DESCRIPTION-ONE-LINE, DNA-COMMON-OPTION-DESCRIPTION-WRAPS, DNA-COMMON-TABLE-ROW-LINK, DNA-COMMON-TABLE-FOLD, DNA-COMMON-ROW-ACTION-END, DNA-COMMON-DISCLOSURE-CHEVRON-START, DNA-COMMON-FIGURES-PANE-ROW, DNA-COMMON-DESCRIPTION-DRAWER-COLUMNS, DNA-COMMON-STEPPER-BAR, DNA-COMMON-STEPPER-BAR-NO-CONNECTOR, DNA-COMMON-DISCLOSURE-CHEVRON-TITLE-NEXT, DNA-COMMON-TABLE-NO-CLIP, DNA-COMMON-ROW-TEXT-FIRST, DNA-COMMON-STEPPER-MARKER-FILLS, DNA-COMMON-STEPPER-MARKER-UPCOMING, DNA-COMMON-LIST-ROW-DIFF]
 
   - id: alert
     ui: ui/components/toast-alert.md
@@ -1129,6 +1129,11 @@ mustKeep:
       law: "An unselected radio draws a ring of its own (the muted foreground), so it stays visible when the app sets the field border and shadow to transparent (U2-G6)."
       measure: { kind: style, select: '.starci-core-radio:not([data-selected]) [data-grammar-choice-control="radio"]', metric: box-shadow, op: "!=", value: none }
       owner: contract roles.input
+    - id: DNA-COMMON-LIST-ROW-DIFF
+      role: list
+      law: "A diff row (ListRowData.diff, 0.37.28, owner drawing 'So sánh phiên bản') has a monospace gutter mark at its start, + added, − removed, ~ changed, in its tone's ink, read with its label (diffLabel) before the title, never colour alone; its ground is the tone's soft pair (added success, removed danger, changed warning); a removed title is struck through; a changed row's 'from → to' is the 12 muted line; the row padding holds (ROW-EDGE-PADDING)."
+      measure: { kind: style, select: '[data-component="ListRow"][data-grammar-diff="added"]', metric: background-color, op: "=", value: { token: --success-soft } }
+      owner: ui/components/list-table.md
     - id: DNA-COMMON-ROW-ACTION-END
       role: list
       law: "A row with actionPlacement end keeps its commands on the line of its copy, at the end of the row, at any width (G7-7)."
