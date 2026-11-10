@@ -19,8 +19,9 @@ const STEPS_CARD_WIDTH_MAX = 360
 const portWidth = (port: FlowGraphPort): number => Math.min(port.label.length, STEPS_PORT_CHARS) * 6.5 + 2 * 8 + 1
 
 /** The card width of a graph (0.36.2): the base width, or wider when a condition's ports need it (one width for every card, so the columns stay aligned). */
-export const stepsCardWidth = (ports: ReadonlyMap<string, ReadonlyArray<FlowGraphPort>>): number =>
-    Math.min(STEPS_CARD_WIDTH_MAX, Math.max(STEPS_CARD_WIDTH, ...[...ports.values()].map((row) => Math.ceil(row.reduce((sum, port) => sum + portWidth(port), 0) + 2))))
+export const stepsCardWidth = (ports: ReadonlyMap<string, ReadonlyArray<FlowGraphPort>>, direction: FlowGraphDirection = "TB"): number =>
+    // Across (LR, 0.37.27) the ports stack as rows under the body, so a port needs only its own label's width, which the base card holds.
+    direction === "LR" ? STEPS_CARD_WIDTH : Math.min(STEPS_CARD_WIDTH_MAX, Math.max(STEPS_CARD_WIDTH, ...[...ports.values()].map((row) => Math.ceil(row.reduce((sum, port) => sum + portWidth(port), 0) + 2))))
 
 /** The room between two columns: wide enough for the vertical runs of back edges beside a card. */
 export const STEPS_COLUMN_GAP = 80
@@ -39,6 +40,8 @@ const AGENT_LINE = 18
 const TITLE_CHARS = 16
 const DESCRIPTION_CHARS = 19
 const OUTPUTS_ROW = 33
+/** Across (LR, 0.37.27) each port is a row of its own under the body: its label at the start, its dot on the card's end edge. */
+export const STEPS_PORT_ROW_LR = 25
 const END_HEIGHT = 36
 /** Chips under a title (0.37.4): the most drawn before the "+N" pill; a chip row is 16 tall with a 4 gap above it. */
 export const STEPS_CHIPS_MAX = 3
@@ -107,11 +110,11 @@ export const portOfEdge = (edge: FlowGraphEdge, ports: ReadonlyArray<FlowGraphPo
 }
 
 /** The height a card draws at, estimated from its words and ports. */
-export const stepsNodeHeight = (node: FlowGraphNode, ports: number): number => {
+export const stepsNodeHeight = (node: FlowGraphNode, ports: number, direction: FlowGraphDirection = "TB"): number => {
     if (stepKindOf(node) === "end") return END_HEIGHT
     const title = wrappedLines(node.label, TITLE_CHARS) * TITLE_LINE
     const description = node.description === undefined || node.description === "" ? 0 : wrappedLines(node.description, DESCRIPTION_CHARS) * DESCRIPTION_LINE
-    return CARD_CHROME + Math.max(TILE, title + (node.agent === undefined ? 0 : AGENT_LINE) + description + chipsHeight(node.chips)) + (ports > 0 ? OUTPUTS_ROW : 0)
+    return CARD_CHROME + Math.max(TILE, title + (node.agent === undefined ? 0 : AGENT_LINE) + description + chipsHeight(node.chips)) + (ports === 0 ? 0 : direction === "LR" ? 1 + ports * STEPS_PORT_ROW_LR : OUTPUTS_ROW)
 }
 
 /** A back edge as the layout routes it: the channel it runs in under its source's layer, and its place among the back edges of its target side. */
@@ -169,6 +172,26 @@ export const roundedPath = (points: ReadonlyArray<FlowGraphPoint>, radius: numbe
         path += ` L ${before.x} ${before.y} Q ${point.x} ${point.y} ${after.x} ${after.y}`
     }
     return path
+}
+
+/** How far a forward edge runs out of its source before it turns (0.37.27): every edge out of one source turns at the same place, so siblings share one trunk. */
+export const STEPS_TRUNK = 24
+/** The corner radius of an orthogonal edge (0.37.27, owner drawing C). */
+export const STEPS_CORNER = 10
+
+/**
+ * A forward edge's points (0.37.27, ORTHOGONAL ONLY): out of the source along the flow to the trunk, across to the target's line, then along into the target.
+ * Never diagonal; a source and target on one line is a straight run. Screen coordinates, the handles at the middle of a side or a port.
+ */
+export const stepsForwardRoute = (source: FlowGraphPoint, target: FlowGraphPoint, direction: FlowGraphDirection, targetSpan = 0): ReadonlyArray<FlowGraphPoint> => {
+    const toLocal = (point: FlowGraphPoint) => direction === "TB" ? { a: point.x, l: point.y } : { a: point.y, l: point.x }
+    const toScreen = (a: number, l: number): FlowGraphPoint => direction === "TB" ? { x: a, y: l } : { x: l, y: a }
+    const s = toLocal(source)
+    const t = toLocal(target)
+    // A source that faces the target's entering side (within its span, a corner's room kept) runs straight into it: no small jog between two cards of different heights.
+    if (Math.abs(s.a - t.a) < 0.5 || Math.abs(s.a - t.a) <= targetSpan / 2 - STEPS_CORNER) return [toScreen(s.a, s.l), toScreen(s.a, t.l)]
+    const trunk = s.l + Math.max(0, Math.min(STEPS_TRUNK, (t.l - s.l) / 2))
+    return [toScreen(s.a, s.l), toScreen(s.a, trunk), toScreen(t.a, trunk), toScreen(t.a, t.l)]
 }
 
 /** The distance a back edge first runs out of its source's side before it turns. */
@@ -277,7 +300,7 @@ const coreLayout = (
     }
     const layerOf = (id: string) => layers.get(id) ?? 0
     const isCondition = new Map(nodes.map((node) => [node.id, stepKindOf(node) === "condition"]))
-    const heightOf = (node: FlowGraphNode) => boxes.get(node.id)?.height ?? stepsNodeHeight(node, (ports.get(node.id) ?? []).length)
+    const heightOf = (node: FlowGraphNode) => boxes.get(node.id)?.height ?? stepsNodeHeight(node, (ports.get(node.id) ?? []).length, direction)
     const widthOf = (node: FlowGraphNode) => boxes.get(node.id)?.width ?? cardWidth
 
     // The tree: a node hangs under the source of its first forward edge that runs down a layer or more.
@@ -443,7 +466,7 @@ const componentsOf = (nodes: ReadonlyArray<FlowGraphNode>, edges: ReadonlyArray<
 export const stepsLayout = (nodes: ReadonlyArray<FlowGraphNode>, edges: ReadonlyArray<FlowGraphEdge>, direction: FlowGraphDirection, shared?: { readonly cardWidth?: number, readonly islands?: StepsIslands, readonly width?: number }): StepsLayout => {
     const byId = new Map(nodes.map((node) => [node.id, node]))
     const ports = new Map(nodes.map((node) => [node.id, portsOf(node, edges)]))
-    const cardWidth = shared?.cardWidth ?? stepsCardWidth(ports)
+    const cardWidth = shared?.cardWidth ?? stepsCardWidth(ports, direction)
 
     // Loop cards: the children of each top-level container are laid out as a graph of their own, and the container stands as one box.
     const inside = new Set<string>()

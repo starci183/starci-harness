@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.37.27 - 2026-11-10 - FlowGraph steps style C: left to right, orthogonal edges, a start dot, the run path green
+
+- Changed (owner drawing C, "C trò yêu"): a `layout="steps"` graph reads LEFT → RIGHT by default (`direction="TB"` keeps the top-down map); a branching step fans its children down the page, in port order. Across, a condition's ports stack as rows under the body, each label at the start and its edge leaving the card's end edge at the row's middle.
+- Changed: forward edges are ORTHOGONAL ONLY (`stepsForwardRoute`): out of the source to a trunk 24px along, across, then into the target, a 10px rounded corner at every turn; siblings out of one source share the trunk; a source facing the target's entering side runs straight in (no small jog between cards of different heights). Never a diagonal or a curve.
+- Changed: every steps edge STARTS with a round dot (owner "bắt đầu có chấm tròn"): a white disc ringed in the edge's colour, r 4, drawn by the edge on its source's port or anchor, single straight edges and back edges included; the handles draw no dot of their own. The arrowhead is a small solid triangle in the edge's colour (owner "mũi tên giữ thế"). Edges stand above the cards (zIndex 1) so the dot is whole.
+- Changed: the ground of a steps graph is the dotted canvas by default (`background` default `dots` for steps), on the page and inside a Drawer; cards stay white with a 1px border.
+- Changed (STATE PRIORITY, run overlay): the path a run took is green: a taken edge, its dot and its arrowhead in the success tone, a card the run reached (done, running, waiting) a 2px success border, a failed card a danger border, a card it did not reach faded. A step's corner tag is opaque (the tint over the surface), so a green edge never shows through its word.
+- Kept: the 0.37.26 fit (zoom >= 0.6, the canvas grows up to the cap, the first view at the entry node, pan, controls inside) now holds for both directions; the entry node is the leftmost across.
+- Stories: `Flow graph style C` (`LeTanBranching`, `LeTanRun`, `LeTanInDrawer`: LR, dotted ground, every run axis-aligned, one start dot per edge, a four-way fan at one x, the green path); the 0.37.4/0.37.5 steps stories pin `direction="TB"` (they assert top-down geometry), `PortsArrowheadsAndTag` asserts the new marks, `AgentLine` measures layout size; the run overlay story asserts the green path. Contexts `diagram.md`.
+
 ## 0.37.26 - 2026-11-10 - a contained FlowGraph keeps a readable zoom; the controls stay inside
 
 - Fixed (FlowGraph fit): a contained fit (every `steps` graph, any `fit="contain"`) has a readable floor, zoom 0.6 (`CONTAIN_MIN_ZOOM`). The Lễ tân graph (one node branching four ways) fell to zoom 0.168 at 390 and 0.278 in the versions-diff drawer; it now holds 0.6, the canvas grows to the graph up to the `height` cap (`lg` 512px when none), the first view shows the entry node (centred when the graph's edges allow), and the reader pans by drag, even when `isInteractive` is false. The canvas `minZoom` of a contained graph is the floor, so the fit button never shrinks below it. The figure writes `data-grammar-flow-floored` while held.

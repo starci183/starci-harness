@@ -2710,7 +2710,8 @@
      * The steps layout (0.35.0, the owner-approved card map). The canvas is the well (`--background`, pink in Nivo) with no grid; a step is
      * a white card (`--surface`, the card border token `--border`, 14 at the default radius, 196 wide) with a 32 icon tile in its kind's
      * soft pair, the title at 14 medium and one muted line at 12. A condition card adds its output ports along the bottom, split by
-     * hairlines, each with the dot its edges leave from. Edges are smooth curves in the muted ink with an arrowhead; a back edge is dashed.
+     * hairlines (across, LR, the ports stack as rows). Edges are ORTHOGONAL in the muted ink (0.37.27, drawing C: 10px rounded corners, a shared trunk, a ringed start dot,
+     * a small solid arrowhead); a back edge is dashed. The ground is the dotted canvas by default.
      * Padding is 8 / 12: the owner's 10 is off the spacing scale (0 4 8 12 16 24 32), so the block padding takes the step below.
      */
     .starci-core-flow-graph[data-grammar-flow-layout="steps"] { background: var(--background); }
@@ -2787,7 +2788,8 @@
         box-sizing: border-box;
         padding: 1px var(--grammar-inline-gap);
         border-radius: var(--grammar-radius-pill);
-        background: var(--starci-flow-tint);
+        /* The soft tint laid over the surface (0.37.27): the pill is opaque, so the card's edge (green on a run's path) never shows through its word. */
+        background: linear-gradient(var(--starci-flow-tint), var(--starci-flow-tint)), var(--surface);
         box-shadow: 0 0 0 var(--grammar-ring-width) var(--surface);
         color: var(--starci-flow-ink);
         font-size: var(--grammar-text-xs);
@@ -2828,7 +2830,6 @@
 
     /* An error output (0.37.4, `tone: "danger"`): its word, its dot on the card edge and the edges that leave it are drawn in the danger tone. */
     .starci-core-flow-graph-step-port[data-tone="danger"] { color: var(--danger); }
-    .starci-core-flow-graph-step-port[data-tone="danger"] .starci-core-flow-graph-step-port-dot { background: var(--danger); }
     .starci-core-flow-graph .starci-core-flow-graph-edge-danger .react-flow__edge-path { stroke: var(--danger); }
 
     /* The chips under a title and in a loop card's header (0.37.4): 12px pills, accent = the pink soft pair (a dynamic parameter), neutral = the grey pair (a fixed one). */
@@ -2903,10 +2904,10 @@
         inset-inline-start: 50%;
         inline-size: var(--grammar-flow-port-dot);
         block-size: var(--grammar-flow-port-dot);
-        /* A SOLID round dot of 6px in the edge's colour (0.37.5): no ring, so it reads as the anchor the edge leaves from. */
+        /* The port's place only (0.37.27): the edge that leaves it draws the round dot itself (EDGE DOT), so a port with no edge shows none. */
         border: 0;
         border-radius: var(--grammar-radius-round);
-        background: var(--muted);
+        background: transparent;
         pointer-events: none;
         transform: translate(-50%, 50%);
     }
@@ -2918,11 +2919,15 @@
         min-inline-size: var(--grammar-flow-port-dot);
         min-block-size: var(--grammar-flow-port-dot);
         border-radius: var(--grammar-radius-round);
-        background: var(--muted);
-        opacity: 1;
+        background: transparent;
+        opacity: 0;
     }
 
-    .starci-core-flow-graph[data-grammar-flow-direction="LR"] .starci-core-flow-graph-step-port-dot { transform: translate(-50%, 50%); }
+    /* Across (LR, 0.37.27): the ports stack as rows under the body, each label at the start and its edge leaving the card's end edge at the row's middle. */
+    .starci-core-flow-graph[data-grammar-flow-direction="LR"] .starci-core-flow-graph-step-outputs { flex-direction: column; }
+    .starci-core-flow-graph[data-grammar-flow-direction="LR"] .starci-core-flow-graph-step-port { justify-content: flex-start; }
+    .starci-core-flow-graph[data-grammar-flow-direction="LR"] .starci-core-flow-graph-step-port + .starci-core-flow-graph-step-port { border-inline-start: 0; border-block-start: var(--grammar-hairline) solid var(--border); }
+    .starci-core-flow-graph[data-grammar-flow-direction="LR"] .starci-core-flow-graph-step-port-dot { inset-block-end: auto; inset-block-start: 50%; inset-inline-start: 100%; transform: translate(-50%, -50%); }
 
     /* The hidden handles: the middle of each side, where the edges meet the card. */
     .starci-core-flow-graph .starci-core-flow-graph-step-handle {
@@ -2970,11 +2975,14 @@
     .starci-core-flow-graph-step[data-dimmed="true"] { opacity: var(--grammar-opacity-dimmed); }
 
     /*
-     * STATE PRIORITY (0.37.0): the card border is always the neutral card border, whatever the run status. The run status is shown only by the
-     * outline status icon and its word on the top-start edge (done success, running accent, waiting warning, failed danger, skipped muted); there is
-     * no coloured ring. A skipped node is faded. A selected node has exactly one 2px primary outline. A taken edge is a solid strong-text line, an
-     * untaken one a dashed light-neutral line, a back edge stays dashed.
+     * STATE PRIORITY (0.37.0; the run path changed in 0.37.27, owner drawing C): the run status is the outline status icon and its word on the top-start edge (done
+     * success, running accent, waiting warning, failed danger, skipped muted). The PATH a run took is drawn green: a node the run reached (done, running, waiting) has a
+     * 2px success border, a failed one a danger border, and a taken edge, its dot and its arrowhead are success green; a node the run did not reach is faded, an untaken
+     * edge a dashed light-neutral line. A selected node has exactly one 2px primary outline (an outline, never the border). A back edge stays dashed.
      */
+    .starci-core-flow-graph[data-grammar-flow-run="true"] .starci-core-flow-graph-step:is([data-status="done"], [data-status="running"], [data-status="waiting"]) { border-color: var(--success); box-shadow: 0 0 0 var(--grammar-hairline) var(--success); }
+    .starci-core-flow-graph[data-grammar-flow-run="true"] .starci-core-flow-graph-step[data-status="failed"] { border-color: var(--danger); box-shadow: 0 0 0 var(--grammar-hairline) var(--danger); }
+    .starci-core-flow-graph[data-grammar-flow-run="true"] .starci-core-flow-graph-step:not([data-status]) { opacity: var(--grammar-opacity-faded); }
     .starci-core-flow-graph-step[data-status="done"] { --starci-flow-status: var(--success); --starci-flow-on-status: var(--success-foreground); }
     .starci-core-flow-graph-step[data-status="running"] { --starci-flow-status: var(--accent); --starci-flow-on-status: var(--accent-foreground); }
     .starci-core-flow-graph-step[data-status="waiting"] { --starci-flow-status: var(--warning); --starci-flow-on-status: var(--warning-foreground); }
@@ -3014,8 +3022,14 @@
 
     .starci-core-flow-graph-step-status .starci-core-icon { inline-size: var(--grammar-flow-status-glyph); block-size: var(--grammar-flow-status-glyph); }
 
-    .starci-core-flow-graph .starci-core-flow-graph-edge-taken .react-flow__edge-path { stroke: var(--foreground); stroke-width: 1.5; stroke-dasharray: none; }
+    .starci-core-flow-graph .starci-core-flow-graph-edge-taken .react-flow__edge-path { stroke: var(--success); stroke-width: 1.5; stroke-dasharray: none; }
     .starci-core-flow-graph .starci-core-flow-graph-edge-untaken .react-flow__edge-path { stroke: color-mix(in oklab, var(--muted) 55%, transparent); stroke-dasharray: 4 5; }
+
+    /* EDGE DOT (0.37.27, owner "bắt đầu có chấm tròn"): every steps edge starts with a round dot on its source's port, a white disc (the surface) ringed in the edge's own colour. */
+    .starci-core-flow-graph .starci-core-flow-graph-edge-dot { fill: var(--surface); stroke: var(--xy-edge-stroke); stroke-width: 1.5; }
+    .starci-core-flow-graph .starci-core-flow-graph-edge-taken .starci-core-flow-graph-edge-dot { stroke: var(--success); }
+    .starci-core-flow-graph .starci-core-flow-graph-edge-untaken .starci-core-flow-graph-edge-dot { stroke: color-mix(in oklab, var(--muted) 55%, transparent); }
+    .starci-core-flow-graph .starci-core-flow-graph-edge-danger .starci-core-flow-graph-edge-dot { stroke: var(--danger); }
     .starci-core-flow-graph .starci-core-flow-graph-edge-back .react-flow__edge-path { stroke-dasharray: 5 4; }
 
     /* A label on a line (a back edge, an edge with no port): a small pill above every line. */

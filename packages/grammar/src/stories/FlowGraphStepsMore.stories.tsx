@@ -47,7 +47,7 @@ export const Chips: Story = {
   render: () => (
     <Matrix maxWidth={720}>
       <State label="Accent (dynamic) and neutral (fixed) chips; five chips draw three and +2" direction="column">
-        <G.FlowGraph label="Chips" layout="steps" nodes={chipNodes} edges={chipEdges} />
+        <G.FlowGraph label="Chips" layout="steps" direction="TB" nodes={chipNodes} edges={chipEdges} />
       </State>
     </Matrix>
   ),
@@ -91,7 +91,7 @@ export const OutputsOnAction: Story = {
   render: () => (
     <Matrix maxWidth={1100}>
       <State label="An action with only an error port; an ask with three; a wait with a timeout port" direction="column">
-        <G.FlowGraph label="Outputs" layout="steps" nodes={portNodes} edges={portEdges} />
+        <G.FlowGraph label="Outputs" layout="steps" direction="TB" nodes={portNodes} edges={portEdges} />
       </State>
     </Matrix>
   ),
@@ -135,7 +135,7 @@ export const Container: Story = {
   render: () => (
     <Matrix maxWidth={720}>
       <State label="Top down" direction="column">
-        <G.FlowGraph label="Loop" layout="steps" nodes={loopNodes} edges={loopEdges} />
+        <G.FlowGraph label="Loop" layout="steps" direction="TB" nodes={loopNodes} edges={loopEdges} />
       </State>
       <State label="Left to right" direction="column">
         <G.FlowGraph label="Loop (ngang)" layout="steps" direction="LR" nodes={loopNodes} edges={loopEdges} />
@@ -183,7 +183,7 @@ export const Islands: Story = {
   render: () => (
     <Matrix maxWidth={720}>
       <State label="Three islands: two pairs and a lone node" direction="column">
-        <G.FlowGraph label="Islands" layout="steps" islands="stack" nodes={islandNodes} edges={islandEdges} />
+        <G.FlowGraph label="Islands" layout="steps" direction="TB" islands="stack" nodes={islandNodes} edges={islandEdges} />
       </State>
     </Matrix>
   ),
@@ -206,7 +206,7 @@ export const ControlsReserveCorner: Story = {
   render: () => (
     <Matrix maxWidth={300}>
       <State label="A lone node at the bottom-left, controls shown" direction="column">
-        <G.FlowGraph label="Controls corner" layout="steps" islands="stack" showControls nodes={islandNodes} edges={islandEdges} />
+        <G.FlowGraph label="Controls corner" layout="steps" direction="TB" islands="stack" showControls nodes={islandNodes} edges={islandEdges} />
       </State>
     </Matrix>
   ),
@@ -250,7 +250,7 @@ export const FanOutAndTwoTriggers: Story = {
   render: () => (
     <Matrix maxWidth={1000}>
       <State label="Two triggers, one workflow, a fan-out of three" direction="column">
-        <G.FlowGraph label="Fan-out" layout="steps" nodes={fanNodes} edges={fanEdges} />
+        <G.FlowGraph label="Fan-out" layout="steps" direction="TB" nodes={fanNodes} edges={fanEdges} />
       </State>
     </Matrix>
   ),
@@ -283,29 +283,32 @@ const markEdges: ReadonlyArray<G.FlowGraphEdge> = [
   { id: 'm3', source: 'check', target: 'remind', sourcePort: 'no' },
 ];
 
-/** 0.37.5: a port and an edge anchor are SOLID 6px dots in the edge colour, the arrowhead is a closed chevron with a rounded outline, the tag chip is 18px high. */
+/** 0.37.27 (drawing C): every edge STARTS with a round dot (r 4, a white disc ringed in the edge's colour) on its port or anchor, the arrowhead is a small solid triangle; the tag chip is 18px high. */
 export const PortsArrowheadsAndTag: Story = {
   render: () => (
     <Matrix maxWidth={720}>
-      <State label="Solid 6px port dots, closed rounded arrowheads, an 18px tag chip" direction="column">
-        <G.FlowGraph label="Marks" layout="steps" nodes={markNodes} edges={markEdges} />
+      <State label="A ringed start dot on every edge, small solid arrowheads, an 18px tag chip" direction="column">
+        <G.FlowGraph label="Marks" layout="steps" direction="TB" nodes={markNodes} edges={markEdges} />
       </State>
     </Matrix>
   ),
   play: async ({ canvasElement }) => {
     await waitFor(() => {
       const graph = graphOf(canvasElement);
-      const dot = graph.querySelector<HTMLElement>('.starci-core-flow-graph-step-port-dot')!;
-      expect(Math.round(dot.getBoundingClientRect().width)).toBe(6);
-      expect(getComputedStyle(dot).borderTopWidth).toBe('0px');
-      const anchor = graph.querySelector<HTMLElement>('.starci-core-flow-graph-step-anchor')!;
-      expect(Math.round(anchor.getBoundingClientRect().width)).toBe(6);
+      // One start dot per edge (graph units, so the fit's zoom does not change it): r 4, the surface fill, a ring in the edge's colour.
+      const dots = Array.from(graph.querySelectorAll<SVGCircleElement>('[data-grammar-flow-edge-dot]'));
+      expect(dots.length).toBe(markEdges.length);
+      for (const dot of dots) {
+        expect(Number(dot.getAttribute('r'))).toBe(4);
+        expect(getComputedStyle(dot).fill).not.toBe(getComputedStyle(dot).stroke);
+      }
+      // The handles draw no dot of their own any more.
+      expect(getComputedStyle(graph.querySelector<HTMLElement>('.starci-core-flow-graph-step-port-dot')!).backgroundColor).toBe('rgba(0, 0, 0, 0)');
       const tag = graph.querySelector<HTMLElement>('[data-grammar-flow-tag]')!;
-      expect(Math.round(tag.getBoundingClientRect().height)).toBe(18);
+      expect(tag.offsetHeight).toBe(18);
       expect(getComputedStyle(tag).fontSize).toBe('12px');
       const head = graph.querySelector('marker polyline.arrowclosed');
       expect(head).not.toBeNull();
-      expect(getComputedStyle(head as Element).strokeLinejoin).toBe('round');
     });
   },
 };
@@ -337,7 +340,7 @@ const wrapEdges: ReadonlyArray<G.FlowGraphEdge> = [
 export const IslandsWrap: Story = {
   render: () => (
     <div style={{ width: 1100 }}>
-      <G.FlowGraph label="Islands wrap" layout="steps" nodes={wrapNodes} edges={wrapEdges} />
+      <G.FlowGraph label="Islands wrap" layout="steps" direction="TB" nodes={wrapNodes} edges={wrapEdges} />
     </div>
   ),
   play: async ({ canvasElement }) => {
@@ -358,7 +361,7 @@ export const IslandsWrap: Story = {
 export const IslandsStackKept: Story = {
   render: () => (
     <div style={{ width: 1100 }}>
-      <G.FlowGraph label="Islands stack" layout="steps" islands="stack" nodes={wrapNodes} edges={wrapEdges} />
+      <G.FlowGraph label="Islands stack" layout="steps" direction="TB" islands="stack" nodes={wrapNodes} edges={wrapEdges} />
     </div>
   ),
   play: async ({ canvasElement }) => {

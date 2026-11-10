@@ -65,7 +65,9 @@ export const CONTAIN_MIN_ZOOM = 0.6
 /** The most tall a floored steps canvas grows when no `height` caps it (screen pixels, the `lg` step): the rest is reached by panning. */
 const FLOORED_HEIGHT_CAP = 512
 
-export const Refit = ({ signature, readableZoom, onGrow, fitOptions, maxZoom, anchorStart, stepsFit, inset = 0, heightCap = null, containFloor = null, onFloor }: {
+export const Refit = ({ signature, readableZoom, onGrow, fitOptions, maxZoom, anchorStart, stepsFit, inset = 0, heightCap = null, containFloor = null, onFloor, direction = "TB" }: {
+    /** The way a steps graph flows (0.37.27: LR by default): its entry node is the top one for TB, the leftmost for LR. */
+    readonly direction?: "TB" | "LR"
     /** The least zoom a contained fit takes ({@link CONTAIN_MIN_ZOOM}); null = none (the readable fit has its own floor, a BubbleMap none). */
     readonly containFloor?: number | null
     /** Told whether the fit is held at `containFloor` (the graph is bigger than its canvas there and pans). */
@@ -75,8 +77,8 @@ export const Refit = ({ signature, readableZoom, onGrow, fitOptions, maxZoom, an
     /** The strip at the start edge that the zoom controls cover: the fit leaves it empty, so no node is drawn under the controls. */
     readonly inset?: number
     /**
-     * A top-down `steps` graph (0.36.2): fit to the pane width with a margin and contain every node (0.37.20; before it, below 0.75 the view started at the trigger)
-     * and let the reader pan. The canvas height follows the graph at that scale, so no empty band stands above it.
+     * A `steps` graph (0.36.2; both directions since 0.37.27): fit to the pane width with a margin and contain every node (0.37.20), never below the readable
+     * floor (0.37.26), and let the reader pan. The canvas height follows the graph at that scale, so no empty band stands above it.
      */
     readonly stepsFit?: boolean
     readonly signature: string
@@ -122,18 +124,15 @@ export const Refit = ({ signature, readableZoom, onGrow, fitOptions, maxZoom, an
                 onGrow(wanted)
                 return
             }
-            // A canvas taller than the graph (the controls column's floor) centres it on the height.
-            const y = Math.max(STEPS_FIT_MARGIN, (height - bounds.height * zoom) / 2) - bounds.y * zoom
-            if (floored) {
-                // Held at the readable floor: the first view shows the entry node (the top one), centred in the room when the graph's edges allow, never leaving an empty band at a side.
-                const entry = getNodes().reduce((top, node) => node.position.y < top.position.y ? node : top)
-                const centred = start + room / 2 - entry.position.x * zoom
-                const x = Math.max(Math.min(centred, start - bounds.x * zoom), start + room - (bounds.x + bounds.width) * zoom)
-                void setViewport({ x, y: STEPS_FIT_MARGIN - bounds.y * zoom, zoom }, { duration: 0 })
-                return
-            }
-            // Every node inside the pane, centred in the room the controls leave; the canvas is as tall as the graph, so nothing stands in an empty band.
-            const x = start + (room - bounds.width * zoom) / 2 - bounds.x * zoom
+            // On each axis: a graph that fits the window is centred in it (the room the controls leave, the canvas height); one that does not (held at the floor, or
+            // taller than a capped canvas) starts at the entry node (the first along the flow: the top one for TB, the leftmost for LR), centred when the graph's
+            // edges allow, never leaving an empty band at a side.
+            const entry = getNodes().reduce((first, node) => (direction === "LR" ? node.position.x < first.position.x : node.position.y < first.position.y) ? node : first)
+            const axis = (entryAt: number, low: number, size: number, min: number, length: number): number => length * zoom <= size + 0.5
+                ? low + (size - length * zoom) / 2 - min * zoom
+                : Math.max(Math.min(low + size / 2 - entryAt * zoom, low - min * zoom), low + size - (min + length) * zoom)
+            const x = axis(entry.position.x, start, room, bounds.x, bounds.width)
+            const y = axis(entry.position.y, STEPS_FIT_MARGIN, height - 2 * STEPS_FIT_MARGIN, bounds.y, bounds.height)
             void setViewport({ x, y, zoom }, { duration: 0 })
             return
         }
@@ -171,7 +170,7 @@ export const Refit = ({ signature, readableZoom, onGrow, fitOptions, maxZoom, an
             }
         }
         void fitView({ ...insetOptions, minZoom: readableZoom })
-    }, [fitView, getNodes, getNodesBounds, setViewport, isReady, signature, readableZoom, width, height, onGrow, fitOptions, maxZoom, anchorStart, stepsFit, inset, heightCap, containFloor, onFloor, domNode])
+    }, [fitView, getNodes, getNodesBounds, setViewport, isReady, signature, readableZoom, width, height, onGrow, fitOptions, maxZoom, anchorStart, stepsFit, inset, heightCap, containFloor, onFloor, domNode, direction])
     return null
 }
 

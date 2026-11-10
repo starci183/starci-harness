@@ -12,13 +12,13 @@ import {
     QuestionMarkCircleIcon,
     XCircleIcon,
 } from "@heroicons/react/24/outline"
-import { BaseEdge, EdgeLabelRenderer, getBezierPath, Handle, Position, type EdgeProps, type Node, type NodeProps } from "@xyflow/react"
+import { BaseEdge, EdgeLabelRenderer, Handle, useInternalNode, Position, type EdgeProps, type Node, type NodeProps } from "@xyflow/react"
 import { Link as RouterLink } from "react-aria-components"
 import { isValidElement, memo, type ReactNode } from "react"
 import { Avatar } from "../../leaf/Avatar/index.js"
 import { Icon, type IconSource } from "../../leaf/Icon/index.js"
 import { useCustomTone } from "../../useCustomTone.js"
-import { chipsOf, roundedPath, stepsBackRoute, STEPS_PORT_CHARS, type StepsBackRoute } from "./steps.js"
+import { chipsOf, roundedPath, stepsBackRoute, stepsForwardRoute, STEPS_CORNER, STEPS_PORT_CHARS, type StepsBackRoute } from "./steps.js"
 import type { FlowGraphChip, FlowGraphDirection, FlowGraphLegendItem, FlowGraphNode, FlowGraphPort, FlowGraphRunStatus, FlowGraphStepKind, FlowGraphTone } from "./types.js"
 
 /**
@@ -63,13 +63,19 @@ export const DEFAULT_STATUS_LABELS: Readonly<Record<FlowGraphRunStatus, string>>
 }
 
 /**
- * The arrowhead of a steps edge (0.37.5): a CLOSED chevron about 8px across with a rounded stroke perimeter (stroke-linejoin round) filled in the edge's colour, so
- * the outline stays visible and crisp at any zoom (the marker is in user space, so the edge's own width does not scale it). A taken edge's head is the strong text tone;
- * an untaken one's is the light neutral of its line.
+ * The arrowhead of a steps edge (0.37.27, owner drawing C, "mũi tên giữ thế"): a SMALL SOLID TRIANGLE, about 8px long, filled in the edge's colour (the marker is in user
+ * space, so the edge's own width does not scale it). A run's taken edge and its head are the success green; an untaken one's is the light neutral of its line.
  */
-export const STEPS_ARROW_BOX = 22
-export const STEPS_ARROW_STROKE = 2
+export const STEPS_ARROW_BOX = 26
+export const STEPS_ARROW_STROKE = 1
+export const STEPS_TAKEN_TONE = "var(--success)"
 export const STEPS_UNTAKEN_TONE = "color-mix(in oklab, var(--muted) 55%, transparent)"
+/** The round dot every steps edge STARTS with (0.37.27, owner "bắt đầu có chấm tròn"): a white disc with an edge-coloured ring, radius 4, on its source's port. */
+export const STEPS_EDGE_DOT = 4
+
+const EdgeDot = ({ x, y }: { readonly x: number, readonly y: number }) => (
+    <circle className="starci-core-flow-graph-edge-dot" cx={x} cy={y} r={STEPS_EDGE_DOT} data-grammar-flow-edge-dot="true" />
+)
 
 export const STEP_BUILT_IN_TONES: readonly string[] = ["neutral", "accent", "success", "warning", "danger", "muted"]
 
@@ -231,12 +237,22 @@ FlowGraphContainerView.displayName = "FlowGraphContainerView"
 
 const STEP_LABEL = "starci-core-flow-graph-step-label"
 
-/** A forward edge: a smooth curve from its port (or the card's bottom) into the next card, with an arrowhead; a label without a port is a pill on it. */
-export const FlowGraphStepEdge = memo(({ sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, markerEnd, label }: EdgeProps) => {
-    const [path, labelX, labelY] = getBezierPath({ sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition })
+/**
+ * A forward edge (0.37.27, drawing C): ORTHOGONAL ONLY, out of its port (or the card's end edge) to the shared trunk, across, then into the next card, a 10px
+ * rounded corner at every turn, the round dot at its start and the small solid arrowhead at its end; a label without a port is a pill on its last run.
+ */
+export const FlowGraphStepEdge = memo(({ sourceX, sourceY, targetX, targetY, markerEnd, label, data, target }: EdgeProps) => {
+    const direction = (data?.["direction"] as FlowGraphDirection | undefined) ?? "LR"
+    const measured = useInternalNode(target)?.measured
+    const span = (direction === "LR" ? measured?.height : measured?.width) ?? 0
+    const points = stepsForwardRoute({ x: sourceX, y: sourceY }, { x: targetX, y: targetY }, direction, span)
+    const turn = points[points.length - 2] ?? { x: sourceX, y: sourceY }
+    const labelX = (turn.x + targetX) / 2
+    const labelY = (turn.y + targetY) / 2
     return (
         <>
-            <BaseEdge path={path} {...(markerEnd === undefined ? {} : { markerEnd })} />
+            <BaseEdge path={roundedPath(points, STEPS_CORNER)} {...(markerEnd === undefined ? {} : { markerEnd })} />
+            <EdgeDot x={sourceX} y={sourceY} />
             {typeof label === "string" && label !== "" ? (
                 <EdgeLabelRenderer>
                     <span className={STEP_LABEL} data-grammar-flow-edge-label="true" style={{ transform: `translate(-50%, -50%) translate(${String(labelX)}px, ${String(labelY)}px)` }}>{label}</span>
@@ -262,6 +278,7 @@ export const FlowGraphBackEdge = memo(({ sourceX, sourceY, targetX, targetY, mar
     return (
         <>
             <BaseEdge path={roundedPath(points, BACK_RADIUS)} {...(markerEnd === undefined ? {} : { markerEnd })} />
+            <EdgeDot x={sourceX} y={sourceY} />
             {typeof label === "string" && label !== "" ? (
                 <EdgeLabelRenderer>
                     <span className={STEP_LABEL} data-grammar-flow-edge-label="true" data-variant="back" style={{ transform: `${direction === "LR" ? `translate(${String(LR_LABEL_GAP)}px, -50%)` : "translate(-50%, -50%)"} translate(${String((from.x + to.x) / 2)}px, ${String((from.y + to.y) / 2)}px)` }}>{label}</span>

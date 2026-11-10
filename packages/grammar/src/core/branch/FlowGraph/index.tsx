@@ -43,7 +43,7 @@ import {
 import { useSurfaceHost } from "../../surfaceContext.js"
 import { isBackEdge, portOfEdge, stepKindOf, stepsLayout, type StepsLayout } from "./steps.js"
 export { FlowGraphLegend } from "./stepsView.js"
-import { DEFAULT_STATUS_LABELS, STEPS_ARROW_BOX, STEPS_ARROW_STROKE, STEPS_UNTAKEN_TONE, FlowGraphBackEdge, FlowGraphContainerView, FlowGraphLegend, FlowGraphStepEdge, FlowGraphStepView, STEP_KIND_TONES, stepAriaLabel, type ContainerNodeData, type StepNodeData } from "./stepsView.js"
+import { DEFAULT_STATUS_LABELS, STEPS_ARROW_BOX, STEPS_ARROW_STROKE, STEPS_TAKEN_TONE, STEPS_UNTAKEN_TONE, FlowGraphBackEdge, FlowGraphContainerView, FlowGraphLegend, FlowGraphStepEdge, FlowGraphStepView, STEP_KIND_TONES, stepAriaLabel, type ContainerNodeData, type StepNodeData } from "./stepsView.js"
 import type {
     FlowGraphDirection,
     FlowGraphEdge,
@@ -137,13 +137,13 @@ export type FlowGraphProps = NoChildren & {
      */
     readonly layout?: FlowGraphLayout
     /**
-     * The way edges run, `TB` (top to bottom) or `LR` (left to right). It places the target handle on the entering side and the
+     * The way edges run, `TB` (top to bottom) or `LR` (left to right); a `steps` graph defaults to `LR` (0.37.27). It places the target handle on the entering side and the
      * source handle on the leaving side so edges follow the layout. Leave it out for the radial layout (both handles on top).
      */
     readonly direction?: FlowGraphDirection
     /** Titles for the layers of a layered layout: a column header above each layer for `LR`, a lane header beside it for `TB`. */
     readonly headers?: ReadonlyArray<FlowGraphLayerHeader>
-    /** The canvas ground (0.37.5): `dots` draws a subtle dot grid (18px, the muted token) behind the graph, n8n-like. Default `none`. */
+    /** The canvas ground (0.37.5): `dots` draws a subtle dot grid (18px, the muted token) behind the graph, n8n-like. Default `dots` for `layout="steps"` (0.37.27), `none` otherwise. */
     readonly background?: "none" | "dots"
     /** Turns on dragging the blocks (0.37.5): the user rearranges them, edges re-route live, and a reset control joins the zoom group. */
     /**
@@ -312,7 +312,7 @@ const FlowGraphInner = ({
     layout: layoutProp,
     direction,
     headers,
-    background = "none",
+    background: backgroundProp,
     islands = "wrap",
     isEditable = false,
     positions: positionsProp,
@@ -331,7 +331,10 @@ const FlowGraphInner = ({
     }
 
     const layout: FlowGraphLayout = layoutProp ?? (direction === undefined ? "radial" : "layered")
-    const flowDirection: FlowGraphDirection | undefined = layout === "lanes" ? "LR" : direction ?? (layout === "layered" || layout === "steps" ? "TB" : undefined)
+    // 0.37.27 (drawing C): a steps graph stands on the dotted ground by default, on the page and inside a drawer alike.
+    const background = backgroundProp ?? (layout === "steps" ? "dots" : "none")
+    // 0.37.27 (owner, drawing C): a steps graph reads LEFT → RIGHT by default; `direction="TB"` keeps the top-down map.
+    const flowDirection: FlowGraphDirection | undefined = layout === "lanes" || layout === "steps" ? direction ?? "LR" : direction ?? (layout === "layered" ? "TB" : undefined)
     // The default kind tones (event accent, action success, condition warning, ask danger, wait neutral, end success) apply unless the app declares one; an entry left undefined never wipes a default.
     const kindTones = useMemo(() => ({ ...STEP_KIND_TONES, ...Object.fromEntries(Object.entries(kindTonesProp ?? {}).filter(([, tone]) => tone !== undefined)) }), [kindTonesProp])
     const statusLabels = useMemo(() => ({ ...DEFAULT_STATUS_LABELS, ...statusLabelsProp }), [statusLabelsProp])
@@ -348,7 +351,7 @@ const FlowGraphInner = ({
         observer.observe(figure)
         return () => observer.disconnect()
     }, [layout, islands])
-    const steps = useMemo<StepsLayout | null>(() => layout === "steps" ? stepsLayout(nodes, edges, flowDirection ?? "TB", { islands, ...(measured === undefined ? {} : { width: measured }) }) : null, [layout, nodes, edges, flowDirection, islands, measured])
+    const steps = useMemo<StepsLayout | null>(() => layout === "steps" ? stepsLayout(nodes, edges, flowDirection ?? "LR", { islands, ...(measured === undefined ? {} : { width: measured }) }) : null, [layout, nodes, edges, flowDirection, islands, measured])
     const isRun = useMemo(() => steps !== null && (nodes.some((node) => node.status !== undefined) || edges.some((edge) => edge.isTaken !== undefined)), [steps, nodes, edges])
     const nodeLabel = (node: FlowGraphNode) => steps === null ? labelFor(node) : stepAriaLabel(node, statusLabels)
     const dimmedIds = useMemo(() => new Set(nodes.filter((node) => node.isDimmed === true).map((node) => node.id)), [nodes])
@@ -477,8 +480,11 @@ const FlowGraphInner = ({
             type: isBack ? "flowGraphBack" : "flowGraphStep",
             sourceHandle: route !== undefined ? `back-out-${route.sourceSide}` : port === undefined ? "out" : `port:${port.id}`,
             targetHandle: route !== undefined ? `back-in-${route.targetSide}` : "in",
-            ...(route === undefined ? {} : { data: { route, direction: flowDirection ?? "TB" } }),
-            markerEnd: { type: MarkerType.ArrowClosed, markerUnits: "userSpaceOnUse", width: STEPS_ARROW_BOX, height: STEPS_ARROW_BOX, strokeWidth: STEPS_ARROW_STROKE, color: port?.tone === "danger" ? "var(--danger)" : isRun && edge.isTaken === true ? "var(--foreground)" : isRun ? STEPS_UNTAKEN_TONE : "var(--muted)" },
+            data: route === undefined ? { direction: flowDirection ?? "LR" } : { route, direction: flowDirection ?? "LR" },
+            // Drawing C (0.37.27): a small solid triangle in the edge's colour; a run's taken path is the success green.
+            markerEnd: { type: MarkerType.ArrowClosed, markerUnits: "userSpaceOnUse", width: STEPS_ARROW_BOX, height: STEPS_ARROW_BOX, strokeWidth: STEPS_ARROW_STROKE, color: port?.tone === "danger" ? "var(--danger)" : isRun && edge.isTaken === true ? STEPS_TAKEN_TONE : isRun ? STEPS_UNTAKEN_TONE : "var(--muted)" },
+            // Above the cards, so the round dot each edge starts with sits whole on its source's edge.
+            zIndex: 1,
             className: classes,
             ...label,
             focusable: false,
@@ -625,7 +631,7 @@ const FlowGraphInner = ({
                                     {isEditable ? <ControlButton aria-label={resetLabel} className="starci-core-flow-graph-reset" onClick={() => commitMoved({})} title={resetLabel} /> : null}
                                 </Controls>
                             ) : null}
-                            <Refit containFloor={containFloor} onFloor={setFloored} inset={controls ? CONTROLS_INSET : 0} heightCap={fit === "contain" ? heightCapPx(height) : null} stepsFit={layout === "steps" && flowDirection === "TB"} anchorStart={layout === "lanes" || (layout === "steps" && flowDirection === "LR")} fitOptions={fitOptions} maxZoom={maxZoom} onGrow={onGrow} readableZoom={readableZoom} signature={signature} />
+                            <Refit containFloor={containFloor} onFloor={setFloored} inset={controls ? CONTROLS_INSET : 0} heightCap={fit === "contain" ? heightCapPx(height) : null} stepsFit={layout === "steps"} direction={flowDirection ?? "TB"} anchorStart={layout === "lanes"} fitOptions={fitOptions} maxZoom={maxZoom} onGrow={onGrow} readableZoom={readableZoom} signature={signature} />
                         </ReactFlow>
                     </div>
                     <ul className="starci-core-visually-hidden" data-grammar-flow-fallback="true">

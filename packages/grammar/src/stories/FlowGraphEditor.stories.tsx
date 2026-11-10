@@ -41,7 +41,7 @@ export const Dots: Story = {
   render: () => (
     <Matrix maxWidth={720}>
       <State label="background=dots" direction="column">
-        <G.FlowGraph label="Dots" layout="steps" background="dots" nodes={nodes} edges={edges} />
+        <G.FlowGraph label="Dots" layout="steps" direction="TB" background="dots" nodes={nodes} edges={edges} />
       </State>
     </Matrix>
   ),
@@ -61,7 +61,7 @@ const Editable = () => {
   return (
     <Matrix maxWidth={720}>
       <State label="isEditable: drag a card; the reset control clears the arrangement" direction="column">
-        <G.FlowGraph label="Editable" layout="steps" background="dots" isEditable positions={positions} onPositionsChange={setPositions} nodes={nodes} edges={edges} />
+        <G.FlowGraph label="Editable" layout="steps" direction="TB" background="dots" isEditable positions={positions} onPositionsChange={setPositions} nodes={nodes} edges={edges} />
         <pre data-testid="positions">{JSON.stringify(positions)}</pre>
       </State>
     </Matrix>
@@ -104,7 +104,7 @@ export const AgentLine: Story = {
   render: () => (
     <Matrix maxWidth={720}>
       <State label="agent: { name } under the title" direction="column">
-        <G.FlowGraph label="Agent line" layout="steps" nodes={nodes} edges={edges} />
+        <G.FlowGraph label="Agent line" layout="steps" direction="TB" nodes={nodes} edges={edges} />
       </State>
     </Matrix>
   ),
@@ -115,7 +115,7 @@ export const AgentLine: Story = {
       expect(lines.map((line) => line.textContent)).toEqual(['Chatbot', 'Kho vận']);
       const avatar = lines[0]!.querySelector<HTMLElement>('.starci-core-avatar, [data-slot="avatar"]');
       expect(avatar).not.toBeNull();
-      expect(Math.round(avatar!.getBoundingClientRect().width)).toBe(16);
+      expect(avatar!.offsetWidth).toBe(16);
       expect(graph.querySelector('[data-grammar-flow-node="trigger"] [data-grammar-flow-agent]')).toBeNull();
     });
   },

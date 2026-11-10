@@ -59,8 +59,11 @@ source as code, so the reader keeps the text (STATE-8). An empty `FlowGraph` sho
 - **Grammar owns:** the frame, the reserved box, the theme handed to Mermaid, the node shapes, the bubble, its fills, ring and tip (a status never rests on colour alone), the `BubbleMap` rings and fans, the strong edges of the selected path, the edge label paint, the lanes
   look (one node width, body-size words with an optional subline, orthogonal rounded edges with a muted arrowhead that fork
   from one point, no line out of a terminal node, a canvas as tall as the graph that never magnifies it),
-  the steps look (the card, the kind tiles and their tones, the ports and port dots, the curves, the back-edge routing and its nesting, the end
-  pill, the run ring, badge and edge paint, the legend, a canvas as tall as the graph that never magnifies it),
+  the steps look (0.37.27, owner drawing C: left → right by default with a branching step fanning its children down the page; the card, white with a 1px
+  border on the dotted ground, the kind tiles and their tones, the ports (stacked as rows under the body across), ORTHOGONAL edges only with a 10px
+  rounded corner at every turn and siblings sharing one trunk, a round start dot on every edge (a white disc ringed in the edge's colour, r 4) and a
+  small solid triangle at its end, the back-edge routing and its nesting, the end pill, the run's green path, badge and edge paint, the legend, a
+  canvas as tall as the graph that never magnifies it),
   the error carrier, the screen-reader text of labelled edges, and loading Mermaid only when a diagram mounts.
 - **Knowledge decides:** which renderer; which shape a node takes; the height step.
 - **App author decides:** the source or the nodes and edges, the label, the error title copy; for `steps`, the node `icon`, `tag`, port and
@@ -73,9 +76,10 @@ STATE-8, OVERFLOW-4. Stack: [diagrams](../../stack/fe.yaml) (Mermaid is the Gram
 
 ## FlowGraph state priority
 
-A `steps` card shows several states at once, and each state has one channel so they never stack: the card border is always the neutral card border, whatever the run status; the run status is only the small outline status icon and its
-word on the card's top-start edge (success, running, danger, waiting, skipped), never a coloured ring; a skipped node is faded; a selected node has exactly one 2px primary outline and no other ring; the `wait` kind is dashed only in the
-design view, never while a run status is shown. An edge that was taken is a solid strong-text line, never the accent; an edge not taken is a dashed light-neutral line; a back edge stays dashed with its pill. Enforcer: held by review and the
-`FlowGraph (steps, run overlay)` story's play function.
+A `steps` card shows several states at once, and each state has one channel so they never stack: the run status is the small outline status icon and its
+word on the card's top-start edge (success, running, danger, waiting, skipped); the PATH a run took is green (0.37.27, owner drawing C): a card the run reached (done, running, waiting) has a 2px success border, a failed one a danger
+border, a card it did not reach is faded; a selected node has exactly one 2px primary outline (an outline, never the border); the `wait` kind is dashed only in the
+design view, never while a run status is shown. An edge that was taken is a solid success line with a success dot and arrowhead; an edge not taken is a dashed light-neutral line; a back edge stays dashed with its pill. Enforcer: held by review and the
+`FlowGraph (steps, run overlay)` and `Flow graph style C` stories' play functions.
 
 Islands (0.37.8): in `layout="steps"` the disconnected parts of a graph are islands; `islands="wrap"` (default) fills rows left to right by the canvas width with a 48px gap on both axes, `islands="stack"` is one column. Agent graphs keep the default.

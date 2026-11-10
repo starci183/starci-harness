@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.37.27 - 2026-11-10
+
+- Changed: released with the Grammar family at 0.37.27; no rule of this package changed.
+
 ## 0.37.26 - 2026-11-10
 
 - Changed: released with the Grammar family at 0.37.26; no rule of this package changed.
