@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.22.0 - 2026-11-10
+
+- Added: `cli-client-boundary` (R398 `BE_CLI_CLIENT_BOUNDARY`): a client cli (slots `be.app.client-cli`, `be.client-cli`) imports no domain, events, queues or projections module, nothing of the database capability or of a persistence folder, and no `typeorm`, `@nestjs/typeorm` or `pg`.
+- Changed: `cli-bootstrap`, `cli-command-shape` and `cli-owner` judge every cli app and cli feature root, the ops cli (`apps/cli`, `src/features/cli/`) and a client cli (`apps/<app>`, `src/features/client-cli/<app>/`) alike.
+- Changed: a unit role names its slots as a list (`ruleParams.be.unitRoles[].slots`, manifest 3.30.0), so a `.cli.ts` command of a client cli owes its `.cli.spec.ts` like an ops command; the client cli slots and that list are in `@starci/hfs` 6.7.2.
+
 ## 3.21.2 - 2026-11-09
 
 - Changed: peer `@starci/hfs ~6.7.0` (hfs 6.7.0: the per-screen gallery and its explain.md gates, R395); no lint rule of this package changed.

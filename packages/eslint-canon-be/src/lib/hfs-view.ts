@@ -8,6 +8,10 @@
 export interface HfsApp {
     readonly name: string
     readonly kind: string
+    /** The npm package a client cli is published as. */
+    readonly package?: string
+    /** The command a client cli installs. */
+    readonly bin?: string
 }
 
 /** One declared database connection (`hfs.json` sides.be.connections). */
@@ -65,7 +69,8 @@ export interface HfsSlot {
 export interface HfsUnitRole {
     readonly role: string
     readonly spec: string
-    readonly slot?: string
+    /** The slots the role is unit-tested in; absent, every slot. */
+    readonly slots?: readonly string[]
     readonly exempt?: readonly string[]
 }
 

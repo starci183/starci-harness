@@ -7,7 +7,7 @@
 # catalog READ this file through scripts/hfs/slots.mts; none of them hardcodes a path.
 # Shape: modules/schemas/hfs-slots.schema.yaml. The repository side is hfs.json: modules/schemas/hfs-repo.schema.yaml.
 schema: starci/hfs-slots@3
-version: 3.29.0
+version: 3.30.0
 
 versioning:
   # MAJOR.MINOR.PATCH of this manifest. A repository pins only the MAJOR in hfs.json ("hfs": 3).
@@ -121,10 +121,10 @@ sides:
 
 # The trigger kinds of the back end's features: what starts the work of a feature. A feature slot names its kind in `trigger`; no kind imports another
 # (BE_KIND_ISOLATION), every cross-kind call is an event on the bus, and only be/apps/* compose features.
-triggerKinds: [api, webhooks, realtime, saga, reactors, jobs, cli]
+triggerKinds: [api, webhooks, realtime, saga, reactors, jobs, cli, client-cli]
 
 appKinds:
-  be: [api, worker, cli]
+  be: [api, worker, cli, client-cli]
   fe: [next]
 
 # RT_SLOT_ID_SHAPE — the slot-id grammar and the suffix vocabulary law, stated once (scripts/checks/check-slot-id-shape.mjs
@@ -367,7 +367,7 @@ ruleParams:
     # its entry here and nowhere else.
     unitRoles:
       - {role: service, spec: service.spec}
-      - {role: cli, spec: cli.spec, slot: be.cli, exempt: [BE_TRANSPORT_SHAPE]}
+      - {role: cli, spec: cli.spec, slots: [be.cli, be.client-cli], exempt: [BE_TRANSPORT_SHAPE]}
     # R204 HFS_COVERAGE_SCOPE_DRIFT. THE roles that carry logic: a file `<name>.<role>.ts` of one of these roles
     # inside a slot whose `coverage` is required is measured at 100 per file on lines, branches, functions and statements (the three
     # generated consumers: jest thresholds, sonar.coverage.exclusions, codecov.yml). A role that is not listed here (module, module-definition,
@@ -403,6 +403,7 @@ ruleParams:
       reactors: [event-bus]
       jobs: [fenced-job, queue]
       cli: []
+      client-cli: []
     # starci app add <noun> <name>: the pattern topic (knowledge/patterns/be/<topic>.yaml) whose files tree is generated, the path variable of the
     # instance, what it registers in hfs.json, the options it needs (--<option>), the other nouns generated with it under the same name (a job is
 # the consumer of its queue, so `also: [queue]`) and the defaults of the other variables ("@name" = the name).
@@ -1286,8 +1287,9 @@ slots:
     editionWhy: "R212: lite may host Next without its own image; back-end images stay required in both editions."
     # One image per app: every declared app has its own Dockerfile (apps/<app>/Dockerfile), built from the APP ROOT (the folder with
     # the one package.json). It is app-owned (starci app scaffold writes it once from templates/<side>/image) and judged by the docker rules.
-    # A Dockerfile anywhere else is owned by no slot.
+    # A Dockerfile anywhere else is owned by no slot, and so is one of a client cli (exceptAppKinds): it ships as an npm package.
     path: "apps/<app>/Dockerfile"
+    exceptAppKinds: [client-cli]
     presence: required
     litePresence: {fe: optional}     # lite: a Next app may be built by its host (Netlify, Vercel); a be image stays required
     tracked: tracked
@@ -1487,7 +1489,8 @@ slots:
     since: 3.1.0
     profiles: [be]
     editionWhy: "R212: `starci app db migrate` owns lite migrations; a lite cli app is optional for declared operator commands."
-    # The ONE app of every one-off action (migrate, seed, sync, backup, any operator command): be/apps/cli, on nest-commander.
+    # The ONE ops cli, the app of every one-off action of the back end (migrate, seed, sync, backup, any operator command): be/apps/cli, on
+    # nest-commander. A command line a user installs is an app of kind client-cli (be.app.client-cli), never a second app of this kind.
     # main.ts boots with CommandFactory.run (BE_CLI_BOOTSTRAP); app.module.ts composes the platform and the cli feature root
     # (src/features/cli/cli.module.ts); cli.env.ts exports CliEnv and readCliEnv(env: EnvSource): CliEnv, and cli.options.ts carries the env-derived values,
     # the connections it migrates among them (the test world migrates through the same list). It is required as soon as the
@@ -1506,11 +1509,48 @@ slots:
     coverage: none
     budget: {app.module.ts: 250, main.ts: 80, "<app>.env.ts": 150, "<app>.options.ts": 200, "compose/<area>.ts": 120}
     rules: [BE_CLI_REQUIRED, BE_CLI_BOOTSTRAP, BE_CLI_OWNER, BE_SCHEMA_AUTHORITY, BE_APP_OPTIONS_COMPOSITION, BE_APP_COMPOSITION_BUDGET, BE_APP_ENV_REQUIRED]
+  - id: be.app.client-cli
+    since: 3.30.0
+    profiles: [be]
+    # A command line a user installs from npm and runs on their own machine (hfs.json { name, kind: client-cli, package, bin }), the
+    # client of a server app of the back end. main.ts boots with CommandFactory.run (BE_CLI_BOOTSTRAP); app.module.ts composes
+    # the platform and integration modules its commands need and its own feature root (src/features/client-cli/<app>/). It
+    # reaches no domain module, no persistence or database module, no other feature and no database library
+    # (BE_CLI_CLIENT_BOUNDARY), and it has no image: apps/<app>/package.json is the manifest it is published with (BE_CLI_CLIENT).
+    path: "apps/<app>/src/"
+    appKind: client-cli
+    presence: opt-in
+    tracked: tracked
+    tier: app
+    owner: true
+    requires: [main.ts, app.module.ts, "<app>.env.ts"]
+    allows: [main.ts, app.module.ts, "<app>.env.ts", "<app>.options.ts", "compose/<area>.ts"]
+    tests: none
+    coverage: none
+    budget: {app.module.ts: 250, main.ts: 80, "<app>.env.ts": 150, "<app>.options.ts": 200, "compose/<area>.ts": 120}
+    rules: [BE_CLI_CLIENT, BE_CLI_CLIENT_BOUNDARY, BE_CLI_BOOTSTRAP, BE_CLI_OWNER, BE_APP_OPTIONS_COMPOSITION, BE_APP_COMPOSITION_BUDGET, BE_APP_ENV_REQUIRED]
+  - id: be.app.client-cli.package
+    since: 3.30.0
+    parent: be.app.client-cli
+    profiles: [be]
+    # The npm package of a client cli, the one back-end app with a manifest of its own: package.json (name and bin as hfs.json
+    # declares them, files [dist], its runtime dependencies at the app root's pins) and tsconfig.build.json, which emits the
+    # import closure of src/main.ts into apps/<app>/dist/ (`npm run build:<app>`); README.md is the package's page.
+    path: "apps/<app>/{package.json,tsconfig.build.json,README.md}"
+    appKind: client-cli
+    presence: opt-in
+    tracked: tracked
+    tier: none
+    tests: none
+    coverage: none
+    why: "the npm package of a client cli, the one back-end app with a manifest of its own; its build emits apps/<app>/dist/"
+    rules: [BE_CLI_CLIENT]
 
   # ----- BE: features ------------------------------------------------------------------------------------
   # src/features/ is grouped by TRIGGER KIND: features/api/<feature>/ (a request: application/ and
   # transport/<protocol>/, composed by the api apps), features/cli/ (a one-off action: the cli feature root, compiled only into
-  # apps/cli). Every kind imports only downward into modules/*; no kind imports another.
+  # apps/cli), features/client-cli/<client>/ (the commands of one client cli, compiled only into apps/<client>). Every kind imports only
+  # downward into modules/*; no kind imports another.
   - id: be.feature
     since: 3.1.0
     profiles: [be]
@@ -1767,7 +1807,7 @@ slots:
     # from platform/database) or from a command-line @Option.
     path: "src/features/cli/"
     presence: optional
-    trigger: cli                  # the one cli feature root: a one-off action never imports a feature of another kind (BE_KIND_ISOLATION)
+    trigger: cli                  # the ops cli feature root: a one-off action never imports a feature of another kind (BE_KIND_ISOLATION)
     tracked: tracked
     tier: feature
     owner: true
@@ -1778,6 +1818,26 @@ slots:
     tests: unit-beside
     coverage: none
     rules: [BE_CLI_COMMAND_SHAPE, BE_CLI_OWNER, BE_CLI_REQUIRED, BE_MODULE_SHAPE, BE_SCHEMA_AUTHORITY]
+  - id: be.client-cli
+    since: 3.30.0
+    profiles: [be]
+    # The feature root of one client cli, compiled only into apps/<client>: the same layout as the ops root (a group @Command in
+    # <group>/<group>.cli.ts, its @SubCommand classes in <group>/subs/<name>.cli.ts, each with its unit spec beside it), under a
+    # root module named after the app (<client>.module.ts). Its folder is named after a declared app of kind client-cli
+    # (BE_CLI_CLIENT); it imports no feature of another kind, the ops root included (BE_KIND_ISOLATION), and nothing of the
+    # domain or the database (BE_CLI_CLIENT_BOUNDARY).
+    path: "src/features/client-cli/<client>/"
+    presence: optional
+    trigger: client-cli
+    tracked: tracked
+    tier: feature
+    owner: true
+    requires: [index.ts, "<client>.module.ts"]
+    composedBy: [client-cli]
+    allows: [index.ts, "<client>.module.ts", "<client>.module-definition.ts", "<client>.options.ts", "<group>/<group>.cli.ts", "<group>/<group>.cli.spec.ts", "<group>/<group>.module.ts", "<group>/<group>.module-definition.ts", "<group>/<group>.options.ts", "<group>/subs/<name>.cli.ts", "<group>/subs/<name>.cli.spec.ts"]
+    tests: unit-beside
+    coverage: none
+    rules: [BE_CLI_COMMAND_SHAPE, BE_CLI_OWNER, BE_CLI_CLIENT, BE_CLI_CLIENT_BOUNDARY, BE_MODULE_SHAPE]
 
   - id: be.assets
     profiles: [be]

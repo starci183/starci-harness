@@ -1,6 +1,6 @@
 import test from "node:test"
 import { at, typedTester } from "../fixtures/typed/tester.ts"
-import { cliBootstrap, cliCommandShape, cliOwner } from "./cli.ts"
+import { cliBootstrap, cliClientBoundary, cliCommandShape, cliOwner } from "./cli.ts"
 
 const declaration = {
     apps: [{ name: "api", kind: "api" }, { name: "cli", kind: "cli" }],
@@ -84,6 +84,58 @@ test("BE_CLI_OWNER: nest-commander only in the cli app and the cli feature root;
             { filename: DOMAIN, code: 'import yargs from "yargs"\nexport const y = yargs\n', errors: [{ messageId: "parser" }] },
             { filename: SUB, code: 'import minimist from "minimist"\nexport const m = minimist\n', errors: [{ messageId: "parser" }] },
             { filename: DOMAIN, code: 'import { Command } from "commander"\nexport const c = Command\n', errors: [{ messageId: "parser" }] },
+        ],
+    })
+})
+
+const CLIENT_DECLARATION = {
+    apps: [{ name: "api", kind: "api" }, { name: "cli", kind: "cli" }, { name: "relay-cli", kind: "client-cli", package: "@acme/relay", bin: "relay" }],
+    kinds: ["api", "cli", "client-cli"],
+    connections: [{ name: "primary", envPrefix: "PRIMARY_DB", owner: "api", isolation: "database" }],
+}
+const clientTester = typedTester({ declaration: CLIENT_DECLARATION })
+const CLIENT_MAIN = at("apps/relay-cli/src/main.ts")
+const CLIENT_COMPOSE = at("apps/relay-cli/src/compose/cli.ts")
+const CLIENT_GROUP = at("src/features/client-cli/relay-cli/run/run.cli.ts")
+const CLIENT_SUB = at("src/features/client-cli/relay-cli/run/subs/task.cli.ts")
+
+test("a client cli is a cli app: it boots with CommandFactory.run, owns nest-commander and keeps its commands in its own feature root", () => {
+    clientTester.run("cli-bootstrap", cliBootstrap, {
+        valid: [{ filename: CLIENT_MAIN, code: BOOT }],
+        invalid: [
+            { filename: CLIENT_MAIN, code: 'import { AppModule } from "./app.module"\nexport const app = AppModule\n', errors: [{ messageId: "missing" }] },
+            { filename: CLIENT_COMPOSE, code: 'import { ExpressAdapter } from "@nestjs/platform-express"\nexport const a = ExpressAdapter\n', errors: [{ messageId: "server" }] },
+        ],
+    })
+    clientTester.run("cli-owner", cliOwner, {
+        valid: [{ filename: CLIENT_MAIN, code: BOOT }, { filename: CLIENT_SUB, code: SUB_CODE }],
+        invalid: [{ filename: API_MAIN, code: BOOT, errors: [{ messageId: "commander" }] }],
+    })
+    clientTester.run("cli-command-shape", cliCommandShape, {
+        valid: [{ filename: CLIENT_GROUP, code: GROUP_CODE }, { filename: CLIENT_SUB, code: SUB_CODE }, { filename: SUB, code: SUB_CODE }],
+        invalid: [
+            { filename: CLIENT_GROUP, code: SUB_CODE, errors: [{ messageId: "misplaced" }] },
+            { filename: CLIENT_MAIN, code: GROUP_CODE, errors: [{ messageId: "outside" }] },
+        ],
+    })
+})
+
+test("BE_CLI_CLIENT_BOUNDARY: a client cli imports no server module, no database capability or persistence and no database library", () => {
+    clientTester.run("cli-client-boundary", cliClientBoundary, {
+        valid: [
+            // platform capabilities and an integration client are what a client cli composes
+            { filename: CLIENT_COMPOSE, code: 'import { ClockModule } from "@modules/platform/clock"\nimport { RelayClientModule } from "@modules/integrations/relay-client"\nexport const modules = [ClockModule, RelayClientModule]\n' },
+            { filename: CLIENT_SUB, code: 'import { RelayClient } from "../../../../../modules/integrations/relay-client"\nexport const client = RelayClient\n' },
+            // the ops cli and an api app are not judged by this rule
+            { filename: CLI_MODULE, code: 'import { DataSource } from "typeorm"\nimport { OrderService } from "@modules/domain/order"\nexport const parts = [DataSource, OrderService]\n' },
+            { filename: SUB, code: 'import { MigrationRunnerService } from "@modules/platform/database"\nexport const runner = MigrationRunnerService\n' },
+        ],
+        invalid: [
+            { filename: CLIENT_COMPOSE, code: 'import { OrderModule } from "@modules/domain/order"\nexport const modules = [OrderModule]\n', errors: [{ messageId: "server" }] },
+            { filename: CLIENT_SUB, code: 'import { OrderService } from "../../../../../modules/domain/order/order.service"\nexport const service = OrderService\n', errors: [{ messageId: "server" }] },
+            { filename: CLIENT_COMPOSE, code: 'import { DatabaseModule } from "@modules/platform/database"\nexport const modules = [DatabaseModule]\n', errors: [{ messageId: "server" }] },
+            { filename: CLIENT_SUB, code: 'import { DataSource } from "typeorm"\nexport const source = DataSource\n', errors: [{ messageId: "library" }] },
+            { filename: CLIENT_COMPOSE, code: 'import { TypeOrmModule } from "@nestjs/typeorm"\nimport type { Pool } from "pg"\nexport const parts: [unknown, Pool | null] = [TypeOrmModule, null]\n', errors: [{ messageId: "library" }, { messageId: "library" }] },
         ],
     })
 })

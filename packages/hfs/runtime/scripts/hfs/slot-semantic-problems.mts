@@ -29,6 +29,8 @@ function checkSideSlot(slot: Slot, profile: string, manifest: SlotManifest, bad:
   const tiers = manifest.tiers[profile] as SlotManifest['tiers'][string];
   if (slot.tier !== 'none' && slot.tier !== 'inherit' && !(slot.tier in tiers)) bad.push(`slot ${slot.id}: tier ${slot.tier} is not a ${profile} tier`);
   if (slot.appKind !== undefined && !(manifest.appKinds[profile] as string[]).includes(slot.appKind)) bad.push(`slot ${slot.id}: app kind ${slot.appKind} is not a ${profile} kind`);
+  const known = new Set(Object.values(manifest.appKinds).flat());
+  for (const kind of slot.exceptAppKinds ?? []) if (!known.has(kind)) bad.push(`slot ${slot.id}: exceptAppKinds names ${kind}, which is not an app kind`);
   bad.push(...triggerProblems(slot, manifest.triggerKinds));
 }
 
@@ -136,8 +138,8 @@ function checkProfileTierTargets(manifest: SlotManifest, profile: string, bad: s
 
 function checkProfileAppKinds(manifest: SlotManifest, profile: string, bad: string[]): void {
   for (const kind of manifest.appKinds[profile] as string[]) {
-    const owners = manifest.slots.filter((slot) => slot.profiles.includes(profile) && slot.appKind === kind);
-    if (owners.length !== 1) bad.push(`${profile} app kind ${kind} must have exactly one slot (found ${owners.length})`);
+    const owners = manifest.slots.filter((slot) => slot.profiles.includes(profile) && slot.appKind === kind && slot.parent === undefined);
+    if (owners.length !== 1) bad.push(`${profile} app kind ${kind} must have exactly one slot that names no parent (found ${owners.length})`);
   }
 }
 

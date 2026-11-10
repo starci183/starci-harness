@@ -4,7 +4,7 @@
 # factories, the architecture machine and templates read this file; none hardcodes a path. Field meanings and the
 # ruleParams keys are explained in hfs/README.md; the reason for a slot's shape is its pattern topic.
 schema: starci/hfs-slots@3
-version: 3.29.0
+version: 3.30.0
 presenceValues:
   - required
   - optional
@@ -35,11 +35,13 @@ triggerKinds:
   - reactors
   - jobs
   - cli
+  - client-cli
 appKinds:
   be:
     - api
     - worker
     - cli
+    - client-cli
   fe:
     - next
 naming:
@@ -588,7 +590,9 @@ ruleParams:
         spec: service.spec
       - role: cli
         spec: cli.spec
-        slot: be.cli
+        slots:
+          - be.cli
+          - be.client-cli
         exempt:
           - BE_TRANSPORT_SHAPE
     logicRoles:
@@ -671,6 +675,7 @@ ruleParams:
         - fenced-job
         - queue
       cli: []
+      client-cli: []
     addKinds:
       job:
         topic: jobs
@@ -1786,6 +1791,8 @@ slots:
       - fe
     editionWhy: lite may host Next without its own image; back-end images stay required in both editions.
     path: apps/<app>/Dockerfile
+    exceptAppKinds:
+      - client-cli
     presence: required
     litePresence:
       fe: optional
@@ -2057,6 +2064,55 @@ slots:
       - BE_APP_OPTIONS_COMPOSITION
       - BE_APP_COMPOSITION_BUDGET
       - BE_APP_ENV_REQUIRED
+  - id: be.app.client-cli
+    profiles:
+      - be
+    path: apps/<app>/src/
+    appKind: client-cli
+    presence: opt-in
+    tracked: tracked
+    tier: app
+    owner: true
+    requires:
+      - main.ts
+      - app.module.ts
+      - <app>.env.ts
+    allows:
+      - main.ts
+      - app.module.ts
+      - <app>.env.ts
+      - <app>.options.ts
+      - compose/<area>.ts
+    tests: none
+    coverage: none
+    budget:
+      app.module.ts: 250
+      main.ts: 80
+      <app>.env.ts: 150
+      <app>.options.ts: 200
+      compose/<area>.ts: 120
+    rules:
+      - BE_CLI_CLIENT
+      - BE_CLI_CLIENT_BOUNDARY
+      - BE_CLI_BOOTSTRAP
+      - BE_CLI_OWNER
+      - BE_APP_OPTIONS_COMPOSITION
+      - BE_APP_COMPOSITION_BUDGET
+      - BE_APP_ENV_REQUIRED
+  - id: be.app.client-cli.package
+    parent: be.app.client-cli
+    profiles:
+      - be
+    path: apps/<app>/{package.json,tsconfig.build.json,README.md}
+    appKind: client-cli
+    presence: opt-in
+    tracked: tracked
+    tier: none
+    tests: none
+    coverage: none
+    why: the npm package of a client cli, the one back-end app with a manifest of its own; its build emits apps/<app>/dist/
+    rules:
+      - BE_CLI_CLIENT
   - id: be.feature
     profiles:
       - be
@@ -2503,6 +2559,40 @@ slots:
       - BE_CLI_REQUIRED
       - BE_MODULE_SHAPE
       - BE_SCHEMA_AUTHORITY
+  - id: be.client-cli
+    profiles:
+      - be
+    path: src/features/client-cli/<client>/
+    presence: optional
+    trigger: client-cli
+    tracked: tracked
+    tier: feature
+    owner: true
+    requires:
+      - index.ts
+      - <client>.module.ts
+    composedBy:
+      - client-cli
+    allows:
+      - index.ts
+      - <client>.module.ts
+      - <client>.module-definition.ts
+      - <client>.options.ts
+      - <group>/<group>.cli.ts
+      - <group>/<group>.cli.spec.ts
+      - <group>/<group>.module.ts
+      - <group>/<group>.module-definition.ts
+      - <group>/<group>.options.ts
+      - <group>/subs/<name>.cli.ts
+      - <group>/subs/<name>.cli.spec.ts
+    tests: unit-beside
+    coverage: none
+    rules:
+      - BE_CLI_COMMAND_SHAPE
+      - BE_CLI_OWNER
+      - BE_CLI_CLIENT
+      - BE_CLI_CLIENT_BOUNDARY
+      - BE_MODULE_SHAPE
   - id: be.assets
     profiles:
       - be

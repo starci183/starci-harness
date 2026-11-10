@@ -11,7 +11,7 @@ Readers: an authoring op reads the topics of the slots it codes; the anatomy gen
 `slots`.
 
 Reading order for a back-end feature: [shared](../shared/README.md) → architecture → folder → the topic of its trigger
-kind (api, webhooks, realtime, jobs, cli) → domain, persistence → error, typing, naming → injection, config → test.
+kind (api, webhooks, realtime, jobs, cli, client-cli) → domain, persistence → error, typing, naming → injection, config → test.
 
 | Topic | Decides | Rule ids |
 | --- | --- | --- |
@@ -25,7 +25,7 @@ kind (api, webhooks, realtime, jobs, cli) → domain, persistence → error, typ
 | [jobs](jobs.md) | Fenced job row, guarded writes, run keys, processor and steps | BE-JOBS-1 … 5 |
 | [queues](queues.md) | Typed producers, relay identity, schedules | BE-QUEUES-1 … 4 |
 | [background](background.md) | Every background task has a composed runner | BE-BACKGROUND-1, 2 |
-| [cli](cli.md) | The one cli app, groups and sub-commands, thin commands, argv ownership | BE-CLI-1 … 4 |
+| [cli](cli.md) | The one ops cli app and the client clis, groups and sub-commands, thin commands, argv ownership, a client cli as an npm package | BE-CLI-1 … 5 |
 | [idempotency](idempotency.md) | Inbox claim first, one inbox table, client receipts | BE-IDEMPOTENCY-1 … 3 |
 | [domain](domain.md) | Capability ownership, direct call versus enqueued work | BE-DOMAIN-1, 2 |
 | [persistence](persistence.md) | Schema authority, entities and SQL, transactions, connections, the lite data boundary | BE-PERSISTENCE-1 … 11, 16, 17, 19 |

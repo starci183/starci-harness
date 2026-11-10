@@ -1,5 +1,5 @@
 ---
-slots: [be.app, be.app.api, be.app.worker, be.app.cli, be.platform]
+slots: [be.app, be.app.api, be.app.worker, be.app.cli, be.app.client-cli, be.platform]
 ---
 # Configuration and secrets
 

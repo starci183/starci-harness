@@ -39,6 +39,9 @@ function dbBlockProblems(block: Parsed): string[] {
   return bad;
 }
 
+/** The keys of one app entry: its folder name and kind, and for a client cli the npm package it is published as and the command it installs. */
+const APP_KEYS = ['name', 'kind', 'package', 'bin'];
+
 function appShapeProblems(apps: Parsed, at: Parsed, side: Parsed, names: Parsed): string[] {
   const bad: string[] = [];
   if (!Array.isArray(apps) || !apps.length) {
@@ -46,7 +49,9 @@ function appShapeProblems(apps: Parsed, at: Parsed, side: Parsed, names: Parsed)
     return bad;
   }
   apps.forEach((app, index) => {
-    if (!isPlainObject(app) || !NAME.test(String(app.name)) || !NAME.test(String(app.kind)) || Object.keys(app).some((key: Parsed) => key !== 'name' && key !== 'kind')) bad.push(`${at}.apps[${index}] must be {name, kind}`);
+    if (!isPlainObject(app) || !NAME.test(String(app.name)) || !NAME.test(String(app.kind)) || Object.keys(app).some((key: Parsed) => !APP_KEYS.includes(key))) bad.push(`${at}.apps[${index}] must be {name, kind} (a client cli adds package and bin)`);
+    else if (app.package !== undefined && !(typeof app.package === 'string' && app.package.length <= 214 && PACKAGE_NAME.test(app.package))) bad.push(`${at}.apps[${index}].package must be an npm package name`);
+    else if (app.bin !== undefined && !(typeof app.bin === 'string' && NAME.test(app.bin))) bad.push(`${at}.apps[${index}].bin must be a command name`);
     else if (names.has(app.name)) bad.push(`app ${app.name} is declared twice (${names.get(app.name)} and ${side})`);
     else names.set(app.name, side);
   });

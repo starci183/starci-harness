@@ -4,9 +4,11 @@
 // proves: BE_CLI_COMMAND_SHAPE@full
 // proves: BE_CLI_OWNER@lite
 // proves: BE_CLI_OWNER@full
+// proves: BE_CLI_CLIENT_BOUNDARY@lite
+// proves: BE_CLI_CLIENT_BOUNDARY@full
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cliBootstrap, cliCommandShape, cliOwner } from './cli.ts';
+import { cliBootstrap, cliClientBoundary, cliCommandShape, cliOwner } from './cli.ts';
 import { unitTestColocated } from './testing.ts';
 import { hfsFromDeclaration } from './lib/hfs.ts';
 import { appDeclaration } from '../fixtures/app.ts';
@@ -17,7 +19,7 @@ const GROUP = 'import { Command, CommandRunner } from "nest-commander"; @Command
 const SUB = 'import { SubCommand, CommandRunner } from "nest-commander"; @SubCommand({ name: "run" }) export class RunCli extends CommandRunner { async run(): Promise<void> {} }';
 
 for (const edition of ['lite', 'full']) {
-    const declaration = { ...appDeclaration('be', BE_DECLARATION), edition };
+    const declaration = { ...appDeclaration('be', { ...BE_DECLARATION, apps: [...(BE_DECLARATION.apps ?? []), { name: 'relay-cli', kind: 'client-cli', package: '@acme/relay', bin: 'relay' }] }), edition };
     const hfs = hfsFromDeclaration(declaration, TYPED_ROOT);
     const tester = ruleTester({ root: TYPED_ROOT, hfs });
 
@@ -69,6 +71,21 @@ for (const edition of ['lite', 'full']) {
                   { filename: at('apps/api/src/main.ts'), code: BOOT, errors: [{ messageId: 'commander' }] },
                   { filename: at('src/modules/domain/order/order.service.ts'), code: 'export const args = process.argv;', errors: [{ messageId: 'argv' }] },
                   { filename: at('src/features/cli/migrate/subs/run.cli.ts'), code: 'import minimist from "minimist"; export const parse = minimist;', errors: [{ messageId: 'parser' }] },
+              ],
+          });
+      })
+    });
+    test(`${edition} valid client CLI imports pass and a server module or a database library is invalid`, () => {
+      assert.doesNotThrow(() => {
+          tester.run('cli-client-boundary', cliClientBoundary, {
+              valid: [
+                  { filename: at('apps/relay-cli/src/compose/platform.ts'), code: 'import { ClockModule } from "@modules/platform/clock"; export const modules = [ClockModule];' },
+                  { filename: at('apps/cli/src/compose/platform.ts'), code: 'import { DatabaseModule } from "@modules/platform/database"; export const modules = [DatabaseModule];' },
+              ],
+              invalid: [
+                  { filename: at('apps/relay-cli/src/compose/platform.ts'), code: 'import { DatabaseModule } from "@modules/platform/database"; export const modules = [DatabaseModule];', errors: [{ messageId: 'server' }] },
+                  { filename: at('src/features/client-cli/relay-cli/run/subs/task.cli.ts'), code: 'import { OrderService } from "@modules/domain/order"; export const service = OrderService;', errors: [{ messageId: 'server' }] },
+                  { filename: at('src/features/client-cli/relay-cli/run/subs/task.cli.ts'), code: 'import { DataSource } from "typeorm"; export const source = DataSource;', errors: [{ messageId: 'library' }] },
               ],
           });
       })

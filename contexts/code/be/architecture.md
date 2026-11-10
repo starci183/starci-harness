@@ -1,5 +1,5 @@
 ---
-slots: [be.app, be.app.api, be.app.worker, be.app.cli, be.feature]
+slots: [be.app, be.app.api, be.app.worker, be.app.cli, be.app.client-cli, be.feature]
 ---
 # Architecture
 
@@ -112,7 +112,7 @@ Enforced by: `feature-not-composed`, `owner-cycle` (R31, R27); the boot proof of
 
 ## BE-ARCHITECTURE-6 Trigger kinds never import each other
 
-Features are grouped by what starts them (`api`, `webhooks`, `realtime`, `jobs`, `cli`; `reactors` and `saga` in full).
+Features are grouped by what starts them (`api`, `webhooks`, `realtime`, `jobs`, `cli`, `client-cli`; `reactors` and `saga` in full).
 A kind imports only `modules/*`; work that crosses kinds goes through durable state: a domain service enqueues a job
 in its transaction (BE-QUEUES-1) or publishes to the realtime hub (BE-REALTIME-2); in full an event (event-bus.md).
 

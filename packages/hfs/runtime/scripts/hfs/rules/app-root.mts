@@ -1,7 +1,7 @@
 // app-root.mts - the tree checks of `starci app check` that read the WHOLE app from its root (app-relative paths over every tracked
 // file of both sides): one list of the rule modules of the app root, so scripts/hfs/check.mts runs them as one step.
 //   HFS_DEP_VERSION_SKEW (R14, deps.mts), HFS_PEER_INTEGRATION_MISSING (R111, peer-integrations.mts), the monorepo shape
-//   (HFS_MONO_*, monorepo.mts), the one cli app (BE_CLI_REQUIRED, cli.mts), BE_INTEGRATION_SPEC_MISSING (R112,
+//   (HFS_MONO_*, monorepo.mts), the one ops cli app and the client clis (BE_CLI_REQUIRED, BE_CLI_CLIENT, cli.mts), BE_INTEGRATION_SPEC_MISSING (R112,
 //   integration-specs.mts), FE_GRAPHQL_CONTRACT (R113, fe-contract-documents.mts), HFS_CI_MISSING_CANON (R13, pipeline.mts),
 //   BE_TEST_TOPOLOGY (R47, test-topology.mts), HFS_PROOF_COMMAND_FILE_MISSING (R105, proof-commands.mts), the app front-end
 //   tree (FE_WIRE_GENERATED, FE_I18N_PLACEMENT, frontend-tree.mts), HFS_STACKS_SHAPE (R10, stacks.mts) and the root seed data
@@ -37,7 +37,7 @@ export function appRootFindings({ repoRoot, files, all, repo, resolver, pins, ph
     ...peerIntegrationFindings({ repoRoot, files: all }),
     ...monorepoFindings({ repoRoot, files: all, repo }),
     ...dockerFindings({ repoRoot, files: all, repo }),
-    ...cliFindings({ files: all, repo, resolver }),
+    ...cliFindings({ repoRoot, files: all, repo, resolver }),
     ...contractCompatFindings({ repoRoot, files: all }),
     ...eventClassContractFindings({ repoRoot, files: all, repo }),
     ...patternSpecFindings({ repoRoot, files: all, repo }),

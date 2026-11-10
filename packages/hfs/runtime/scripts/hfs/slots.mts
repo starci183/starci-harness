@@ -63,6 +63,10 @@ export interface ConnectionView {
 export interface AppRef {
   name: string;
   kind: string;
+  /** A client cli's npm package name (hfs.json `package`). */
+  package?: string;
+  /** The command a client cli installs (hfs.json `bin`). */
+  bin?: string;
 }
 
 /**
@@ -247,7 +251,7 @@ function sideDeclaration(manifest: SlotManifest, declaration: Parsed, name: stri
     edition,
     side: name,
     profile: name,
-    apps: Object.freeze(s.apps.map((a: Parsed) => Object.freeze({ name: a.name, kind: a.kind }))),
+    apps: Object.freeze(s.apps.map((a: Parsed) => Object.freeze({ name: a.name, kind: a.kind, ...(a.package === undefined ? {} : { package: a.package }), ...(a.bin === undefined ? {} : { bin: a.bin }) }))),
     optionalSlots: Object.freeze([...(s.optionalSlots ?? [])]),
     patterns: Object.freeze([...(s.patterns ?? [])]), kinds: Object.freeze([...(s.kinds ?? [])]),
     backing: Object.freeze([...(s.backing ?? [])]),
