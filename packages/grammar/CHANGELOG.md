@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.37.21 - 2026-11-10 - three narrow-width fixes from starci-next
+
+- Fixed: at 390 a `SurfaceCard` label that carried a count chip or a fact collapsed to height 0 (the narrow rule turned the fixed-height label row into a column and squeezed the label). The row now stacks only when it holds an end action (`labelEnd`), with `block-size: auto`; a label with a count or a fact stays one row at any width, the label truncates and the chip or fact follows it.
+- Fixed: `Progress` as a `ListRowData.control` collapsed to a dot. A progress in a row control is 7rem wide (`--grammar-row-progress-width`), shrinks to 3rem in a narrow row, never wider than the row.
+- Fixed (regression of 0.37.14): a `PaneGrid` holding a `Pane scroll` never entered the stacked grow mode, so below 48rem its rows were equal shares of the viewport and the aside showed a blank band under its content (650px on `projects/detail`). Only a chat thread (a scrolling `PaneSection`) or a pane footer keep the bounded height now; a `Pane scroll` stacked grows with its content and the page scrolls once, the panes one after another.
+- Stories `Narrow fixes (0.37.21)`: `LabelWithCountAt390`, `ProgressAsRowControl`, `StackedPanesNoGap`.
+
 ## 0.37.20 - 2026-11-10 - FlowGraph steps: the fit contains every node
 
 - Fixed: a top-down `steps` graph wider than its pane at the 0.75 floor started at the trigger and panned, so the first and last columns were clipped and the leftmost node sat under the zoom controls. The steps fit now always CONTAINS the graph: it fits the pane width less the controls' strip, never magnifies, and centres the graph in the room left. The zoom floor is the canvas `minZoom`, now 0.1 (was 0.2). Applies to `fit="readable"` (default) and `fit="contain"` alike.

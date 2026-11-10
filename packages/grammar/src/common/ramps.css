@@ -157,6 +157,8 @@
         --grammar-flow-status-size: 1.25rem;
         --grammar-flow-status-glyph: 1.25rem;
         --grammar-flow-swatch-size: 0.75rem;
+        /* The intrinsic width of a Progress in a list row control (0.37.21). */
+        --grammar-row-progress-width: 7rem;
         --starci-core-contained-max-height: calc(100dvh - 3rem);
         --starci-core-band-height: 0rem;
         --starci-core-band-offset: 5.5rem;

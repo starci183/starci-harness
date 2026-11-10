@@ -2276,6 +2276,8 @@
     .starci-core-list-row[data-grammar-skeleton="true"] .starci-core-list-row-leading[data-grammar-leading-size="sm"] .starci-core-list-row-skeleton-tile { inline-size: 2rem; block-size: 2rem; }
     .starci-core-list-row-skeleton-tile > .starci-core-skeleton { inline-size: 100%; block-size: 100%; aspect-ratio: auto; border-radius: var(--grammar-radius-md); }
     .starci-core-list-row-control { display: inline-flex; min-width: 0; align-items: center; }
+    /* A Progress in a row control (0.37.21): an intrinsic bar of 7rem that still shrinks in a narrow row, never a collapsed dot. */
+    .starci-core-list-row-control > [data-component="Progress"] { flex: 0 1 var(--grammar-row-progress-width); inline-size: var(--grammar-row-progress-width); min-inline-size: 3rem; max-inline-size: 100%; }
     .starci-core-list-row-skeleton-action { display: block; inline-size: 4.5rem; block-size: 2rem; }
     .starci-core-list-row-skeleton-action > .starci-core-skeleton { block-size: 100%; aspect-ratio: auto; }
 
@@ -2911,11 +2913,15 @@
     }
 
     @container starci-core-surface (max-width: 28rem) {
-        /* A narrow card stacks its label row, except when the end holds one status badge ("Live"): it stays beside the label. */
-        .starci-core-surface-label:not(:has(> .starci-core-surface-label-end > [data-component="Badge"]:only-child)) {
+        /* A narrow card stacks its label row only when it holds an end action (0.37.21), except when the end holds one status badge ("Live"): it stays beside the label. A label with a count chip or a fact stays one row at any width: the label truncates, the chip follows it (before, the fixed-height column squeezed the label to nothing). */
+        .starci-core-surface-label:has(> .starci-core-surface-label-end):not(:has(> .starci-core-surface-label-end > [data-component="Badge"]:only-child)) {
             align-items: flex-start;
             flex-direction: column;
+            block-size: auto;
+            min-block-size: var(--grammar-section-head-size);
         }
+
+        .starci-core-surface-label:has(> .starci-core-surface-label-end):not(:has(> .starci-core-surface-label-end > [data-component="Badge"]:only-child)) > :first-child { flex: none; max-inline-size: 100%; }
 
         .starci-core-static-row {
             gap: var(--starci-core-row-gap-compact);
@@ -3884,6 +3890,12 @@
 
     .starci-core-pane-grid[data-grammar-pane-stacked="grow"] .starci-core-pane {
         overflow: visible !important;
+    }
+
+    /* A `Pane scroll` stacked (0.37.21) is no scroll owner: its body grows with its content, so the rows of the stack are their content's height, never an equal share. */
+    .starci-core-pane-grid[data-grammar-pane-stacked="grow"] .starci-core-pane-scroll {
+        flex: none;
+        overflow: visible;
     }
 
     .starci-core-page-fill:has(.starci-core-pane-grid[data-grammar-pane-stacked="grow"]) {

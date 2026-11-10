@@ -357,8 +357,8 @@ const useStackedMode = () => {
         const grid = ref.current
         if (grid === null) return undefined
         const decide = () => {
-            // A grid with a chat thread (a scrolling band) or a pane footer keeps its bounded height: only those scroll inside their pane.
-            const hasBounded = grid.querySelector('.starci-core-pane[data-grammar-pane-footer="true"], .starci-core-pane-section[data-grammar-pane-section-scroll="true"], .starci-core-pane[data-grammar-pane-scroll="true"]') !== null
+            // A grid with a chat thread (a scrolling band) or a pane footer keeps its bounded height: only those scroll inside their pane. A `Pane scroll` is no such band (0.37.21): stacked, it grows too and the page scrolls once.
+            const hasBounded = grid.querySelector('.starci-core-pane[data-grammar-pane-footer="true"], .starci-core-pane-section[data-grammar-pane-section-scroll="true"]') !== null
             const isGrowing = grid.getBoundingClientRect().width < STACKED_UNDER_PX && !hasBounded
             if (isGrowing) grid.setAttribute("data-grammar-pane-stacked", "grow")
             else grid.removeAttribute("data-grammar-pane-stacked")
