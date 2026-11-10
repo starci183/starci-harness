@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.37.32 - 2026-11-11 - Markdown: course content drawn from a markdown string
+
+- Added: `Markdown` (frame tier, exported from Common and every family entry): `<Markdown source measure? ariaLabel? labels? isExternal? />` parses `source` (CommonMark + GFM: tables, task lists, strikethrough, autolinks, footnotes) to a syntax tree with `mdast-util-from-markdown` 2.1.0, `mdast-util-gfm` 3.1.0 and `micromark-extension-gfm` 3.0.0 (exact pins, new dependencies) and maps each node to Grammar parts inside `MarkdownArticle`: `h1`-`h4` as `h2`-`h4`, paragraphs as `Text`, inline code as `Code`, links as `Link` (inline variant; an external destination opens in a new context and ends in the anchor icon), lists with nested and read-only task items, blockquote, rule, GFM tables in `MarkdownTableFrame`, fences in `FencedCodeBlock` with a Copy action (neutral `Button size="sm"`, result announced politely), `mermaid` fences in `MermaidDiagram`, an image-only paragraph as a `MediaFrame` captioned with the alt. No HTML string is built or injected: raw HTML is shown as the text typed (comments dropped); a link or image whose scheme is not http(s), mailto, tel (links) or relative is shown as its words. `labels` carries every word the body speaks (English defaults); `isExternal` overrides the default external test (absolute or protocol-relative http(s)).
+- Stories: `Surfaces/Markdown` (EveryNode, Links, CodeWithCopy, VietnameseLesson, MermaidFence, NoRawHtml, Compact) with play checks.
+
 ## 0.37.31 - 2026-11-11 - the chat surfaces: pink thread, flat white messages, accent own; card replies as one bordered list; no band above the composer
 
 - Changed (owner-approved drawing `chat-surfaces`, law `DNA-COMMON-CHAT-SURFACES`, every chat: team chat, agent chat, inbox thread, assistant): a chat thread (`PaneSection scroll={{ role: "log" }}`) is always the page tone `--background`; `tone` is ignored with `role: "log"` (an app's `tone: "surface"` no longer paints it white). A thread meets the head line above and the composer's line below edge to edge (the pane stack that holds a thread has no row gap).

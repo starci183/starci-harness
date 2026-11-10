@@ -539,7 +539,7 @@ The package requires Node 22 or newer, as does the pinned DiceBear engine.
   overflowLabel={count => `${count} more members`} />
 ```
 
-**Surfaces (14).** EmptyNotice, FencedCodeBlock, HorizontalScrollRegion, MarkdownArticle,
+**Surfaces (14).** EmptyNotice, FencedCodeBlock, HorizontalScrollRegion, Markdown, MarkdownArticle,
 MarkdownTableFrame, MediaFrame, Rail, Section, StaticStateRow, SurfaceAccordionCard,
 SurfaceCard, SurfaceListCard, VerticalScrollRegion.
 
