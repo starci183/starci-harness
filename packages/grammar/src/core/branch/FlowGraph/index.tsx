@@ -279,6 +279,9 @@ const LABEL_RADIUS = COMMON_SPACING_PX[1]
 const NODE_TYPES: NodeTypes = { flowGraph: FlowGraphNodeView, flowGraphHeader: FlowGraphHeaderView, flowGraphStep: FlowGraphStepView, flowGraphContainer: FlowGraphContainerView }
 /** A steps graph is laid out with its own margin, so like lanes its fit keeps a small one and never magnifies. */
 const STEPS_MAX_ZOOM = 1
+/** The pixel height of a named or numeric canvas `height` (a CSS length string has none): the cap of a contained steps graph. */
+const heightCapPx = (height: FlowGraphHeight | number | string | undefined): number | null =>
+    height === "sm" ? 256 : height === "md" ? 384 : height === "lg" ? 512 : typeof height === "number" ? height : null
 const HEADER_OFFSET = 70
 const HEADER_SIDE_GAP = COMMON_SPACING_PX[6]
 /**
@@ -586,7 +589,7 @@ const FlowGraphInner = ({
                             fitView
                             fitViewOptions={fitOptions}
                             maxZoom={maxZoom}
-                            minZoom={0.2}
+                            minZoom={0.1}
                             nodeOrigin={[0.5, 0.5]}
                             nodeTypes={NODE_TYPES}
                             nodes={allNodes}
@@ -617,7 +620,7 @@ const FlowGraphInner = ({
                                     {isEditable ? <ControlButton aria-label={resetLabel} className="starci-core-flow-graph-reset" onClick={() => commitMoved({})} title={resetLabel} /> : null}
                                 </Controls>
                             ) : null}
-                            <Refit inset={controls ? CONTROLS_INSET : 0} stepsFit={layout === "steps" && flowDirection === "TB"} anchorStart={layout === "lanes" || (layout === "steps" && flowDirection === "LR")} fitOptions={fitOptions} maxZoom={maxZoom} onGrow={onGrow} readableZoom={readableZoom} signature={signature} />
+                            <Refit inset={controls ? CONTROLS_INSET : 0} heightCap={fit === "contain" ? heightCapPx(height) : null} stepsFit={layout === "steps" && flowDirection === "TB"} anchorStart={layout === "lanes" || (layout === "steps" && flowDirection === "LR")} fitOptions={fitOptions} maxZoom={maxZoom} onGrow={onGrow} readableZoom={readableZoom} signature={signature} />
                         </ReactFlow>
                     </div>
                     <ul className="starci-core-visually-hidden" data-grammar-flow-fallback="true">

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.37.20 - 2026-11-10 - FlowGraph steps: the fit contains every node
+
+- Fixed: a top-down `steps` graph wider than its pane at the 0.75 floor started at the trigger and panned, so the first and last columns were clipped and the leftmost node sat under the zoom controls. The steps fit now always CONTAINS the graph: it fits the pane width less the controls' strip, never magnifies, and centres the graph in the room left. The zoom floor is the canvas `minZoom`, now 0.1 (was 0.2). Applies to `fit="readable"` (default) and `fit="contain"` alike.
+- Fixed: the canvas height of a steps graph follows the graph at that scale (it grows or shrinks to it), so a graph in a Drawer or any narrow owner no longer stands in a tall empty box. Under `fit="contain"` a named (`sm` 16rem, `md` 24rem, `lg` 32rem) or numeric `height` is the most tall it grows (the graph shrinks to fit it). A four-wide branching graph in a 372px Drawer is contained but small by nature: give it more width, `direction="LR"`, or let the reader zoom.
+- Stories `Flow graph fit (0.37.20)`: `WideBranchingInPane`, `WideBranchingNarrow` (390), `InDrawer`, each asserting every node inside the canvas and clear of the controls.
+
 ## 0.37.19 - 2026-11-10 - DropdownMenu switch entry
 
 - Added: `DropdownMenuSwitch`, a third `DropdownMenuEntry`: `{ kind: "switch", id, label, description?, descriptionLines?, iconSource?, isSelected, isDisabled?, onChange(isSelected) }`. The row is a `menuitemcheckbox` (one-item multiple-selection group under the hood, `aria-checked` from `isSelected`) with a Switch drawn at its end as the row's own mark (inert, not announced twice); the whole row toggles it by press, Enter or Space, and the menu stays open (`shouldCloseOnSelect` false, so Enter, Space and press all keep it open). No check indicator. It is not reported by `DropdownMenu.onAction`.

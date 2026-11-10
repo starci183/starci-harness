@@ -276,7 +276,7 @@ const salesEdges: ReadonlyArray<G.FlowGraphEdge> = [
   { id: 'e1', source: 's10', target: 's11' }, { id: 'e2', source: 's9', target: 's12' },
 ];
 
-/** 0.36.2: a 12-step graph with a 5-way branch fits its pane (or starts at the trigger at 0.75 and pans); ports truncate; the kinds carry their own tones. */
+/** 0.36.2: a 12-step graph with a 5-way branch is contained in its pane (0.37.20: the whole graph, never panned at start); ports truncate; the kinds carry their own tones. */
 export const FlowStepsWideBranch: Story = {
   parameters: { layout: 'fullscreen', grammar: { bleed: true } },
   render: () => (
