@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.37.22 - 2026-11-10 - Footer links are plain
+
+- Fixed: the `Footer` directory links (`groups[].links`) drew in the accent red. They are `Link variant="plain"` now (the foreground colour, no icon), as the red budget says for a standalone navigation link; `aria-current` and the external hint are unchanged. Story `Footer` notes it; `contexts/ui/presentation.md` records it.
+
 ## 0.37.21 - 2026-11-10 - three narrow-width fixes from starci-next
 
 - Fixed: at 390 a `SurfaceCard` label that carried a count chip or a fact collapsed to height 0 (the narrow rule turned the fixed-height label row into a column and squeezed the label). The row now stacks only when it holds an end action (`labelEnd`), with `block-size: auto`; a label with a count or a fact stays one row at any width, the label truncates and the chip or fact follows it.

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.37.22 - 2026-11-10
+
+- Changed: released with the Grammar family at 0.37.22 (Footer links plain); no rule of this package changed.
+
 ## 0.37.21 - 2026-11-10
 
 - Changed: released with the Grammar family at 0.37.21 (three narrow-width fixes); no rule of this package changed.
