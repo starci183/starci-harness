@@ -31,29 +31,47 @@ export const SelectRows = ({ data, isLoading, ariaLabel }: {
             data-grammar-select-mode={data.selectionMode}
             role="group"
         >
-            {data.items.map((item) => (
-                <HeroCheckbox
-                    key={item.id}
-                    className="starci-core-choice starci-core-select-row"
-                    data-grammar-select-row="true"
-                    isDisabled={item.isDisabled === true || isLoading}
-                    isSelected={isChecked(item.id)}
-                    onChange={(next: boolean) => toggle(item.id, next)}
-                    value={item.id}
-                >
-                    <HeroCheckbox.Content className="starci-core-choice-content" data-grammar-choice-target="true">
-                        <HeroCheckbox.Control className="starci-core-choice-control" data-grammar-choice-control="checkbox">
-                            <HeroCheckbox.Indicator />
-                        </HeroCheckbox.Control>
-                        <span className="starci-core-select-copy">
-                            <FieldLabel>{isLoading ? <SkeletonPlaceholder>{item.title}</SkeletonPlaceholder> : item.title}</FieldLabel>
-                            {item.title !== "" && item.subtitle !== undefined ? (
-                                <FieldDescription>{isLoading ? <SkeletonPlaceholder>{item.subtitle}</SkeletonPlaceholder> : item.subtitle}</FieldDescription>
-                            ) : null}
-                        </span>
-                    </HeroCheckbox.Content>
-                </HeroCheckbox>
-            ))}
+            {data.items.map((item) => {
+                const isOff = item.isDisabled === true
+                return (
+                    <div key={item.id} className="starci-core-select-item" data-grammar-select-item="true" data-grammar-select-has-control={item.control === undefined || item.control === null ? undefined : "true"}>
+                        <HeroCheckbox
+                            className="starci-core-choice starci-core-select-row"
+                            data-grammar-select-row="true"
+                            isDisabled={item.isDisabled === true || isLoading}
+                            isSelected={isChecked(item.id)}
+                            onChange={(next: boolean) => toggle(item.id, next)}
+                            value={item.id}
+                        >
+                            <HeroCheckbox.Content className="starci-core-choice-content" data-grammar-choice-target="true">
+                                <HeroCheckbox.Control className="starci-core-choice-control" data-grammar-choice-control="checkbox">
+                                    <HeroCheckbox.Indicator />
+                                </HeroCheckbox.Control>
+                                <span className="starci-core-select-copy">
+                                    <FieldLabel>{isLoading ? <SkeletonPlaceholder>{item.title}</SkeletonPlaceholder> : item.title}</FieldLabel>
+                                    {item.title !== "" && item.subtitle !== undefined ? (
+                                        <FieldDescription>{isLoading ? <SkeletonPlaceholder>{item.subtitle}</SkeletonPlaceholder> : item.subtitle}</FieldDescription>
+                                    ) : null}
+                                </span>
+                            </HeroCheckbox.Content>
+                        </HeroCheckbox>
+                        {isLoading || item.control === undefined || item.control === null ? null : (
+                            // The control slot is a sibling of the checkbox label, so it is outside the row's hit target and its name; the handlers stop events reaching an ancestor that presses.
+                            <span
+                                className="starci-core-select-control"
+                                data-grammar-select-control="true"
+                                data-grammar-select-control-disabled={isOff ? "true" : undefined}
+                                inert={isOff ? true : undefined}
+                                onClick={(event) => event.stopPropagation()}
+                                onKeyDown={(event) => event.stopPropagation()}
+                                onPointerDown={(event) => event.stopPropagation()}
+                            >
+                                {item.control}
+                            </span>
+                        )}
+                    </div>
+                )
+            })}
         </div>
     )
 }

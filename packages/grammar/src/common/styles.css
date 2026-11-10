@@ -1958,8 +1958,8 @@
      * spans the full column under it. The frame becomes a flex row (tabs grow, the end hugs), the end stretches to the strip's height and
      * centres its command there, like a tab: a command at the sm control height stands on the line with no padding below it.
      */
-    .starci-core-tabs-frame[data-grammar-tabs-has-end="true"] { display: flex; align-items: flex-end; }
-    .starci-core-tabs-frame[data-grammar-tabs-has-end="true"] .starci-core-tabs { flex: 1 1 auto; width: auto; }
+    .starci-core-tabs-frame[data-grammar-tabs-has-control="true"] { display: flex; align-items: flex-end; }
+    .starci-core-tabs-frame[data-grammar-tabs-has-control="true"] .starci-core-tabs { flex: 1 1 auto; width: auto; }
     .starci-core-tabs-end {
         display: flex;
         flex: none;
@@ -2062,22 +2062,52 @@
         flex-direction: column;
     }
 
+    /* One item = the row's checkbox label (the hit target) and, when the row has a `control`, that slot as a SIBLING, so pressing it never reaches the label. */
+    .starci-core-select-item {
+        display: flex;
+        min-width: 0;
+        align-items: flex-start;
+    }
+
+    .starci-core-select-item + .starci-core-select-item {
+        border-block-start: var(--grammar-hairline) solid var(--separator);
+    }
+
+    .starci-core-select-item:hover:has(.starci-core-select-row:not([data-disabled="true"])) { background: var(--surface-secondary); }
+
     .starci-core-select-row {
         box-sizing: border-box;
         display: flex;
-        inline-size: 100%;
+        flex: 1 1 0;
+        inline-size: auto;
         min-width: 0;
         align-items: flex-start;
         padding: var(--grammar-row-gap) var(--grammar-inset);
         cursor: pointer;
     }
 
-    .starci-core-select-row + .starci-core-select-row {
-        border-block-start: var(--grammar-hairline) solid var(--separator);
+    .starci-core-select-item[data-grammar-select-has-control="true"] > .starci-core-select-row { padding-inline-end: var(--grammar-row-gap); }
+    .starci-core-select-row[data-disabled="true"] { cursor: not-allowed; }
+
+    /* The control slot (0.37.13): any Grammar content at the row's end, centred on the title line, never shrinking (the copy wraps first); dimmed and blocked on a disabled row. */
+    .starci-core-select-control {
+        display: inline-flex;
+        flex: none;
+        align-items: center;
+        box-sizing: border-box;
+        /* The box is the row's title line (row padding + one line): content taller than the line centres on it instead of growing the row. */
+        block-size: calc(var(--grammar-leading-md) + 2 * var(--grammar-row-gap));
+        padding-inline-end: var(--grammar-inset);
     }
 
-    .starci-core-select-row:hover:not([data-disabled="true"]) { background: var(--surface-secondary); }
-    .starci-core-select-row[data-disabled="true"] { cursor: not-allowed; }
+    /* A primary Tabs pill in the control slot is the small switch: a tight pill (text stays 14, every tab is 14), so it reads as a row's setting, not a bar. */
+    .starci-core-select-control .starci-core-tabs .tabs__tab {
+        min-block-size: 0;
+        padding-block: var(--grammar-identity-gap);
+        padding-inline: var(--grammar-row-gap) !important;
+    }
+
+    .starci-core-select-control[data-grammar-select-control-disabled="true"] { opacity: var(--disabled-opacity); pointer-events: none; }
 
     .starci-core-select-row .starci-core-choice-content {
         inline-size: 100%;

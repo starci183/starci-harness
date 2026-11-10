@@ -223,6 +223,12 @@ export type SelectItemData = {
     /** One muted 12 line directly under the title of the same row (the explanation of that choice); never a loose line elsewhere. */
     readonly subtitle?: string
     readonly isDisabled?: boolean
+    /**
+     * One control at the END of the row (0.37.13), as on a list row: a primary `Tabs` pill ("Tự động | Hỏi"), a `Switch`, a `Checkbox`, a `Badge`. It keeps its own state and
+     * label; the row seats it at the end centred on the title line, and the title and subtitle wrap before it. It is its own hit target: presses, clicks and keys inside it never
+     * toggle the row, and it is not part of the row's accessible name. A disabled row dims it and blocks it. Grammar components only, never raw elements with handlers.
+     */
+    readonly control?: ReactNode
 }
 
 /**

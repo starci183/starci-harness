@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.37.13 - 2026-11-10 - a select row takes a control at its end
+
+- Added: `SelectItemData.control?: ReactNode` (the name of `ListRowData.control`) on `SurfaceCard kind="select"` (owner: "the last cell is JSX, put in it what you like: check, switch, tab"). The slot sits at the row's end centred on the title line; the copy wraps before it. It is a sibling of the row's checkbox label, so presses, clicks and keys inside it never toggle the row (events are stopped at the slot) and it is outside the row's hit target and accessible name; a disabled row dims it and blocks it (`inert`). Content is Grammar components only (a primary `Tabs` pill "Tự động | Hỏi", a `Switch`, a `Badge`). Story `SelectWithControl`.
+
 ## 0.37.12 - 2026-11-09 - the body-card menu reserves room only beside the content
 
 - Fixed (0.37.10): the end padding a `SurfaceCard kind="body"` with a `menu` reserves for the ⋯ also narrowed its footer zones, so the full-width divider above a footer stopped about 50px short of the right edge. The room is now reserved only on the content the ⋯ sits beside (an unzoned card pads its content; a zoned card narrows only its padded main); `headers` and `footers` zones and their dividers stay full width. Story `BodyCardAgent` has a footer zone and asserts the zone spans the card.

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.37.13 - 2026-11-10
+
+- Changed: released with the Grammar family at 0.37.13 (a select row's `control`); no rule of this package changed.
+
 ## 0.37.12 - 2026-11-09
 
 - Changed: released with the Grammar family at 0.37.12 (the body-card menu reserves room only beside the content); no rule of this package changed.
