@@ -2742,6 +2742,20 @@
         margin-top: var(--grammar-identity-gap);
     }
 
+    /* A GitHub task item (read-only): the box takes the bullet's place; a nested list keeps its own markers. */
+    .starci-core-markdown-article li[data-grammar-markdown-task] {
+        list-style: none;
+    }
+
+    .starci-core-markdown-article li[data-grammar-markdown-task] > input[type="checkbox"] {
+        margin-inline: 0 var(--grammar-inline-gap);
+        vertical-align: middle;
+    }
+
+    .starci-core-markdown-article li > :where(ul, ol) {
+        margin-block-start: var(--grammar-identity-gap);
+    }
+
     .starci-core-markdown-article :not(pre) > code {
         display: inline;
         padding: 0 var(--grammar-identity-gap);

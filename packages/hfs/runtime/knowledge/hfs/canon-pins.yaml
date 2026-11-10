@@ -553,6 +553,21 @@ pins:
     group: ui
     side: fe
     why: 'runtime dependency of @starci/grammar for MermaidDiagram (fe-stack diagrams), imported lazily on the first diagram and themed from the grammar root; apps render diagrams through MermaidDiagram and never import mermaid.'
+  'mdast-util-from-markdown':
+    version: 2.1.0
+    group: ui
+    side: fe
+    why: 'runtime dependency of @starci/grammar for Markdown (fe-stack markdown): course content is parsed to a syntax tree and mapped to grammar parts, never injected as HTML; apps render markdown through Markdown and never import it.'
+  'mdast-util-gfm':
+    version: 3.1.0
+    group: ui
+    side: fe
+    why: 'runtime dependency of @starci/grammar for Markdown (fe-stack markdown): course content is parsed to a syntax tree and mapped to grammar parts, never injected as HTML; apps render markdown through Markdown and never import it.'
+  'micromark-extension-gfm':
+    version: 3.0.0
+    group: ui
+    side: fe
+    why: 'runtime dependency of @starci/grammar for Markdown (fe-stack markdown): course content is parsed to a syntax tree and mapped to grammar parts, never injected as HTML; apps render markdown through Markdown and never import it.'
   'react-dropzone':
     version: 15.0.0
     group: ui

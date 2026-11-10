@@ -79,7 +79,10 @@
     "@dicebear/core": "10.4.0",
     "@dicebear/styles": "10.4.0",
     "@heroicons/react": "2.2.0",
-    "mermaid": "11.16.0"
+    "mdast-util-from-markdown": "2.1.0",
+    "mdast-util-gfm": "3.1.0",
+    "mermaid": "11.16.0",
+    "micromark-extension-gfm": "3.0.0"
   },
   "peerDependencies": {
     "react": ">=18",
@@ -88,6 +91,7 @@
     "react-aria-components": "^1.21.1"
   },
   "devDependencies": {
+    "@types/mdast": "4.0.4",
     "@types/react": "^19.0.0",
     "react": "^19.0.0",
     "typescript": "^5.0.0",
