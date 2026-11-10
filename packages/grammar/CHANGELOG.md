@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.37.34 - 2026-11-11 - Markdown: highlighted code is the app's slot
+
+- Added: `Markdown renderCode?: (code: MarkdownCode) => ReactNode` and the exported type `MarkdownCode = { readonly language: string | null; readonly value: string }`. The slot draws only the code body of a fence (syntax highlighting supplied by the app); the `FencedCodeBlock` frame, its language label (hidden for a one-line command) and its Copy action stay Grammar's, and Copy always writes the original `value`. No slot, or a slot that returns `null`/`false` (a highlighter still loading), draws the plain `<pre><code>`. A `mermaid` fence never goes through the slot. Grammar adds no dependency and no CSS: the app returns its markup inside the existing `data-grammar-fenced-code-highlight="true"` wrapper, which scrolls inline (OVERFLOW-4).
+- Docs: `contexts/ui/components/text.md` "Highlighted code is the app's slot".
+- Stories: `Surfaces/Markdown` `HighlightedCodeSlot` (frame and label kept, one-line command unlabelled, inline scroll, Copy writes the raw value, mermaid bypasses the slot) and `CodeSlotFallback` (a `null` slot keeps the plain block).
+
 ## 0.37.33 - 2026-11-11 - the chat frame is background anywhere; FlowGraph reads at zoom 1
 
 - Added (owner-approved drawing `chat-frame-anywhere`, law `DNA-COMMON-CHAT-FRAME`): `Pane content="chat"` (`PaneContent` gains `"chat"`). On any page a chat is one frame: its head band, its thread and its composer `footer` are `--background` whatever it stands on (a white pane, the aside, a `Drawer`, a `Dialog`, a `Popover`); the rest of the page keeps its own rule (the room list, an aside's other panes and the page header band stay white). `surface` is ignored on a chat frame; a pane whose own stack holds a `PaneSection scroll role="log"` is drawn as a frame without the word, and an overlay that holds a thread is the frame as a whole (its own head included). The 1px lines between head, thread and footer stay. A chat frame is a new surface host `chat`: a card in it is bordered with no shadow, and a field in it (the composer) is the white PRIMARY field even inside a drawer (`useFieldVariant`). Inside a chat frame a message is always flat: the 0.37.31 1px edge for a bubble on white never applies there.
