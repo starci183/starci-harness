@@ -57,11 +57,11 @@ const STEPS_FIT_MARGIN = 16
 /** The strip the zoom controls cover at the canvas's start edge (the control column 2rem + the panel's margin): a fit keeps every node out of it (0.37.11). */
 export const CONTROLS_INSET = 56
 /**
- * THE READABLE FLOOR OF A CONTAINED FIT (0.37.26). A contained fit (every `steps` graph, any `fit="contain"`) never shrinks below this zoom: a 12px node label stays
- * about 7px or more and a 14px title about 8.5px, never the 0.17 speck a wide branching graph fell to at 390 or in a drawer. A graph that would need less is drawn at
+ * THE READABLE FLOOR OF A CONTAINED FIT (0.37.26). A contained fit (every `steps` graph, any `fit="contain"`) never shrinks below this zoom (0.6 in 0.37.26; 0.8 since
+ * 0.37.29, owner "Nâng 0.8"): a 12px node label stays about 10px or more and a 14px title about 11px, wide graphs on a desktop pane pan too, never the 0.17 speck a wide branching graph fell to at 390 or in a drawer. A graph that would need less is drawn at
  * this zoom and the reader pans it (drag; the canvas pans even when the graph is otherwise static); the first view shows the entry node.
  */
-export const CONTAIN_MIN_ZOOM = 0.6
+export const CONTAIN_MIN_ZOOM = 0.8
 /** The most tall a floored steps canvas grows when no `height` caps it (screen pixels, the `lg` step): the rest is reached by panning. */
 const FLOORED_HEIGHT_CAP = 512
 

@@ -82,3 +82,34 @@ export const VersionDiff: Story = {
     });
   },
 };
+
+/** 0.37.29: a loading diff row keeps the gutter column (the mark's box, no glyph) and the change line, so it is the loaded row's box. */
+export const LoadingSameBox: Story = {
+  name: 'Loading diff rows keep the gutter: the same box as loaded',
+  render: () => (
+    <div data-diff-loading style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24, width: 'min(100%, 960px)' }}>
+      <G.SurfaceCard kind="list" label="Loaded" items={steps} empty={<G.EmptyNotice message="-" />} />
+      <G.SurfaceCard kind="list" label="Loading" isLoading items={steps} empty={<G.EmptyNotice message="-" />} />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      const [loaded, loading] = Array.from(canvasElement.querySelectorAll<HTMLElement>('[data-diff-loading] [data-component="SurfaceCard"]')) as [HTMLElement, HTMLElement];
+      const rowsOf = (card: HTMLElement) => Array.from(card.querySelectorAll<HTMLElement>('[data-component="ListRow"]'));
+      const ready = rowsOf(loaded);
+      const busy = rowsOf(loading);
+      expect(busy.length).toBe(ready.length);
+      busy.forEach((row, index) => {
+        expect(row.getAttribute('data-grammar-skeleton')).toBe('true');
+        expect(Math.abs(row.getBoundingClientRect().height - ready[index]!.getBoundingClientRect().height)).toBeLessThanOrEqual(1);
+        const mark = row.querySelector('[data-grammar-diff-mark]');
+        const readyMark = ready[index]!.querySelector('[data-grammar-diff-mark]');
+        expect(mark === null).toBe(readyMark === null);
+        if (mark !== null && readyMark !== null) {
+          expect(getComputedStyle(mark).visibility).toBe('hidden');
+          expect(Math.abs((mark.getBoundingClientRect().left - loading.getBoundingClientRect().left) - (readyMark.getBoundingClientRect().left - loaded.getBoundingClientRect().left))).toBeLessThanOrEqual(0.5);
+        }
+      });
+    });
+  },
+};

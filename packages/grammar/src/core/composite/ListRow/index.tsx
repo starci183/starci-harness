@@ -107,21 +107,25 @@ const ListRowInner = ({ row, isLoading = false }: ListRowProps) => {
                 data-grammar-skeleton="true"
                 data-grammar-state="neutral"
                 data-grammar-treatment={treatmentFor("neutral").tone}
-                data-grammar-leading={hasLeading ? "true" : "false"}
+                data-grammar-leading={hasLeading || row.diff !== undefined ? "true" : "false"}
                 data-grammar-actions={hasActions || chevronOnly ? "true" : "false"}
                 {...(row.actionPlacement === "end" ? { "data-grammar-action-placement": "end" } : {})}
                 {...(actionCount > 1 ? { "data-grammar-actions-multi": "true" } : {})}
                 {...(hasTrail ? { "data-grammar-trail": "true" } : {})}
+                {...(row.diff === undefined ? {} : { "data-grammar-diff-skeleton": row.diff })}
                 data-contract="GAP-3 PADDING-4 BOUNDARY-3 STATE-8"
             >
-                {hasLeading ? (
+                {hasLeading || row.diff !== undefined ? (
                     <span className="starci-core-list-row-leading" data-grammar-leading-size={row.leading !== undefined && "size" in row.leading ? row.leading.size ?? "sm" : "sm"}>
-                        {row.leading?.icon === undefined ? <Skeleton shape="circle" size="md" /> : <span className="starci-core-list-row-skeleton-tile"><Skeleton shape="rect" /></span>}
+                        {/* A diff row loads with the same gutter column (0.37.29): the mark's box is kept, its glyph not shown, so the loading row is the loaded row's box. */}
+                        {row.diff === undefined ? null : <span className="starci-core-list-row-diff" data-grammar-diff-mark={row.diff} aria-hidden="true">{DIFF_GLYPHS[row.diff]}</span>}
+                        {!hasLeading ? null : row.leading?.icon === undefined ? <Skeleton shape="circle" size="md" /> : <span className="starci-core-list-row-skeleton-tile"><Skeleton shape="rect" /></span>}
                     </span>
                 ) : null}
                 <span className="starci-core-list-row-copy" data-contract="GAP-1">
                     <span className="starci-core-list-row-title"><span className="starci-core-list-row-name"><Skeleton shape="text" /></span></span>
                     {row.description === undefined ? null : <span className="starci-core-list-row-description"><Skeleton shape="text" /></span>}
+                    {row.diff !== "changed" || row.change === undefined ? null : <span className="starci-core-list-row-change"><Skeleton shape="text" /></span>}
                 </span>
                 {hasTrail ? (
                     <span className="starci-core-list-row-trail">

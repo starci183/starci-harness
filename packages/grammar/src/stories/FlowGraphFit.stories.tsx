@@ -6,7 +6,7 @@ import { Matrix, State } from './fixtures.js';
 /**
  * 0.37.20: the initial fit contains every node (the controls' corner reserved) for a wide branching steps graph, and a graph inside a Drawer
  * measures its real container. The graph is the NIVO workflow map: a trigger, an intent step that branches four ways, one branch ending.
- * 0.37.26: a contained fit never goes below zoom 0.6 (CONTAIN_MIN_ZOOM). At 390 and in a drawer the same graph is held at 0.6, the first view shows the entry node,
+ * 0.37.26: a contained fit never goes below the floor (CONTAIN_MIN_ZOOM: 0.6, 0.8 since 0.37.29). At 390 and in a drawer the same graph is held at the floor, the first view shows the entry node,
  * and the reader pans it; the zoom controls column always stands inside the canvas.
  */
 const meta: Meta = {
@@ -58,9 +58,9 @@ const zoomOf = (graph: HTMLElement): number => {
   const transform = getComputedStyle(graph.querySelector<HTMLElement>('.react-flow__viewport')!).transform;
   return transform === 'none' ? 1 : new DOMMatrixReadOnly(transform).a;
 };
-/** Held at the readable floor: zoom >= 0.6, panning on, the entry node fully on screen, the controls (if any) inside the canvas. */
+/** Held at the readable floor: zoom >= 0.8, panning on, the entry node fully on screen, the controls (if any) inside the canvas. */
 const assertFloored = (graph: HTMLElement) => {
-  expect(zoomOf(graph)).toBeGreaterThanOrEqual(0.6 - 0.001);
+  expect(zoomOf(graph)).toBeGreaterThanOrEqual(0.8 - 0.001);
   expect(graph.getAttribute('data-grammar-flow-floored')).toBe('true');
   const canvas = graph.querySelector<HTMLElement>('.react-flow')!.getBoundingClientRect();
   const entry = graph.querySelector<HTMLElement>('[data-grammar-flow-node="new"]')!.getBoundingClientRect();
@@ -92,7 +92,7 @@ export const WideBranchingInPane: Story = {
     </Matrix>
   ),
   play: async ({ canvasElement }) => {
-    // A wide pane contains the whole graph (zoom about 0.65); a pane too narrow for zoom 0.6 holds the floor and pans (0.37.26).
+    // A wide pane contains the whole graph (zoom about 0.65); a pane too narrow for the floor (zoom 0.8 since 0.37.29) holds it and pans.
     await waitFor(() => {
       const graph = graphOf(canvasElement);
       if (graph.getAttribute('data-grammar-flow-floored') === 'true') assertFloored(graph);
@@ -102,7 +102,7 @@ export const WideBranchingInPane: Story = {
 };
 
 export const WideBranchingNarrow: Story = {
-  name: 'Wide branching graph at 390: held at zoom 0.6, entry node first, pans',
+  name: 'Wide branching graph at 390: held at zoom 0.8, entry node first, pans',
   render: () => (
     <Matrix maxWidth={358}>
       <State label="Controls shown, default fit" direction="column">
@@ -116,7 +116,7 @@ export const WideBranchingNarrow: Story = {
 };
 
 export const InDrawer: Story = {
-  name: 'Same graph in a Drawer (fit contain): held at zoom 0.6, static but pans',
+  name: 'Same graph in a Drawer (fit contain): held at zoom 0.8, static but pans',
   parameters: { grammar: { minHeight: '48rem' } },
   render: () => (
     <G.Drawer defaultOpen placement="right" title="Bản 1" closeLabel="Close" trigger={<G.Button intent="alternative">Open</G.Button>}>

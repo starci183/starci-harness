@@ -41,7 +41,7 @@ import {
     type LanesLayout,
 } from "./layout.js"
 import { useSurfaceHost } from "../../surfaceContext.js"
-import { isBackEdge, portOfEdge, stepKindOf, stepsLayout, type StepsLayout } from "./steps.js"
+import { isBackEdge, portOfEdge, stepKindOf, stepsLayout, stepsNodeHeight, type StepsLayout } from "./steps.js"
 export { FlowGraphLegend } from "./stepsView.js"
 import { DEFAULT_STATUS_LABELS, STEPS_ARROW_BOX, STEPS_ARROW_STROKE, STEPS_TAKEN_TONE, STEPS_UNTAKEN_TONE, FlowGraphBackEdge, FlowGraphContainerView, FlowGraphLegend, FlowGraphStepEdge, FlowGraphStepView, STEP_KIND_TONES, stepAriaLabel, type ContainerNodeData, type StepNodeData } from "./stepsView.js"
 import type {
@@ -115,8 +115,8 @@ export type FlowGraphProps = NoChildren & {
     /**
      * How the graph meets its canvas. `readable` (default) never fits below the zoom at which node text renders at 12px:
      * a graph that would shrink further grows the canvas height to the graph's aspect at the canvas width (the page
-     * scrolls; a graph still too wide pans sideways). `contain` shrinks the whole graph into the canvas `height`, but never below zoom 0.6 (0.37.26,
-     * `CONTAIN_MIN_ZOOM`): a graph that needs less is drawn at 0.6 and pans (drag), even when `isInteractive` is false. A `steps` graph always fits this way.
+     * scrolls; a graph still too wide pans sideways). `contain` shrinks the whole graph into the canvas `height`, but never below zoom 0.8 (0.37.26 at 0.6, 0.8 since 0.37.29,
+     * `CONTAIN_MIN_ZOOM`): a graph that needs less is drawn at 0.8 and pans (drag), even when `isInteractive` is false. A `steps` graph always fits this way.
      */
     readonly fit?: "readable" | "contain"
     /** Pan and zoom. `false` draws a static picture (a graph held at the contained fit's readable floor still pans by drag). */
@@ -375,6 +375,25 @@ const FlowGraphInner = ({
         return layered?.positions ?? null
     }, [layout, nodes, edges, layered, lanes, steps])
     const rootId = flowGraphRoot(nodes)?.id
+    /**
+     * TOP-ALIGNED LAYERS (0.37.29). The layout places a step by its centre from an estimated height; a card that draws a few px taller or shorter than the estimate
+     * (a title that wraps differently) then stood off its layer's top line (the fan-out row drifted 1.5px). A top-down step is drawn from its TOP edge instead (origin
+     * [0.5, 0], the estimate converts the centre once), so a layer's cards share one top line whatever they measure. Positions in and out (`positions`, drags) stay centres.
+     */
+    const topOffsets = useMemo(() => {
+        const offsets = new Map<string, number>()
+        if (steps === null || (flowDirection ?? "TB") !== "TB") return offsets
+        // The layout centres a layer's cards on one line; the top line is that centre less half the layer's tallest estimate, the same for every card of the layer.
+        const estimate = (node: FlowGraphNode) => stepsNodeHeight(node, (steps.ports.get(node.id) ?? []).length, "TB")
+        const tallest = new Map<string, number>()
+        const keyOf = (node: FlowGraphNode) => `${String(steps.layers.get(node.id) ?? 0)}:${String(Math.round(steps.positions.get(node.id)?.y ?? 0))}`
+        const cards = nodes.filter((node) => !steps.boxes.has(node.id))
+        for (const node of cards) tallest.set(keyOf(node), Math.max(tallest.get(keyOf(node)) ?? 0, estimate(node)))
+        for (const node of cards) offsets.set(node.id, (tallest.get(keyOf(node)) ?? estimate(node)) / 2)
+        return offsets
+    }, [steps, nodes, flowDirection])
+    const toTop = useCallback((id: string, point: { readonly x: number, readonly y: number }) => ({ x: point.x, y: point.y - (topOffsets.get(id) ?? 0) }), [topOffsets])
+    const fromTop = useCallback((id: string, point: { readonly x: number, readonly y: number }) => ({ x: point.x, y: point.y + (topOffsets.get(id) ?? 0) }), [topOffsets])
     const flowNodes = useMemo<Array<Node<NodeData> | Node<StepNodeData> | Node<ContainerNodeData>>>(() => steps !== null ? [...nodes].sort((a, b) => Number(b.container !== undefined) - Number(a.container !== undefined)).map((graphNode): Node<StepNodeData> | Node<ContainerNodeData> => {
         const kind = stepKindOf(graphNode)
         const box = steps.boxes.get(graphNode.id)
@@ -397,7 +416,8 @@ const FlowGraphInner = ({
         return {
             id: graphNode.id,
             type: "flowGraphStep",
-            position: placed(graphNode.id, steps.positions.get(graphNode.id) ?? { x: 0, y: 0 }),
+            position: toTop(graphNode.id, placed(graphNode.id, steps.positions.get(graphNode.id) ?? { x: 0, y: 0 })),
+            ...(topOffsets.has(graphNode.id) ? { origin: [0.5, 0] as [number, number] } : {}),
             data: {
                 graphNode,
                 kind,
@@ -430,7 +450,7 @@ const FlowGraphInner = ({
         connectable: false,
         // A link node keeps one keyboard stop: the anchor inside it.
         ...(graphNode.href === undefined ? {} : { focusable: false }),
-    })), [nodes, positions, layout, rootId, currentId, flowDirection, steps, kindTones, statusLabels, placed, isEditable])
+    })), [nodes, positions, layout, rootId, currentId, flowDirection, steps, kindTones, statusLabels, placed, isEditable, toTop, topOffsets])
     const headerNodes = useMemo<Array<Node<HeaderData>>>(() => {
         if (headers === undefined || headers.length === 0 || flowDirection === undefined || layout === "steps") return []
         const points = nodes.map((node) => positions?.get(node.id) ?? node.position ?? { x: 0, y: 0 })
@@ -608,10 +628,10 @@ const FlowGraphInner = ({
                             nodesDraggable={isEditable}
                             onNodesChange={(changes) => {
                                 if (!isEditable) return
-                                const drag = changes.flatMap((change) => change.type === "position" && change.position !== undefined ? [[change.id, change.position] as const] : [])
+                                const drag = changes.flatMap((change) => change.type === "position" && change.position !== undefined ? [[change.id, fromTop(change.id, change.position)] as const] : [])
                                 if (drag.length > 0) setLive((current) => ({ ...current, ...Object.fromEntries(drag) }))
                             }}
-                            onNodeDragStop={(_event, node) => commitMoved({ ...moved, ...live, [node.id]: { x: node.position.x, y: node.position.y } })}
+                            onNodeDragStop={(_event, node) => commitMoved({ ...moved, ...live, [node.id]: fromTop(node.id, node.position) })}
                             nodesFocusable
                             onNodeClick={(_event, node) => { if (node.type === "flowGraph" || node.type === "flowGraphStep" || node.type === "flowGraphContainer") activate(node.id) }}
                             onPaneClick={() => { if (currentId !== null) select(null) }}

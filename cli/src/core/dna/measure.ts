@@ -368,6 +368,9 @@ export const installProbe = (judgePart: Judge): void => {
                 return round(rect.top)
             case "bottom":
                 return round(rect.bottom)
+            // The vertical centre of the box (Grammar 0.37.29, ROW-CONTROL-CENTRE: two parts of a row centred on each other).
+            case "center-y":
+                return round((rect.top + rect.bottom) / 2)
             case "left":
                 return round(rect.left)
             case "right":

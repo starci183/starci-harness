@@ -323,7 +323,7 @@ roles:
     sizes: leading slot sm/md/lg match the control ladder
     states: [hover, focus-visible, selected, disabled, loading (same rows at rest), empty]
     grammarMayChange: [row state paint, seam paint]
-    dna: [DNA-COMMON-LIST-SEAMS, DNA-COMMON-SEAM-FULL-BLEED, DNA-COMMON-ROW-DESCRIPTION-ONE-LINE, DNA-COMMON-OPTION-DESCRIPTION-WRAPS, DNA-COMMON-TABLE-ROW-LINK, DNA-COMMON-TABLE-FOLD, DNA-COMMON-ROW-ACTION-END, DNA-COMMON-DISCLOSURE-CHEVRON-START, DNA-COMMON-FIGURES-PANE-ROW, DNA-COMMON-DESCRIPTION-DRAWER-COLUMNS, DNA-COMMON-STEPPER-BAR, DNA-COMMON-STEPPER-BAR-NO-CONNECTOR, DNA-COMMON-DISCLOSURE-CHEVRON-TITLE-NEXT, DNA-COMMON-TABLE-NO-CLIP, DNA-COMMON-ROW-TEXT-FIRST, DNA-COMMON-STEPPER-MARKER-FILLS, DNA-COMMON-STEPPER-MARKER-UPCOMING, DNA-COMMON-LIST-ROW-DIFF]
+    dna: [DNA-COMMON-LIST-SEAMS, DNA-COMMON-SEAM-FULL-BLEED, DNA-COMMON-ROW-DESCRIPTION-ONE-LINE, DNA-COMMON-OPTION-DESCRIPTION-WRAPS, DNA-COMMON-TABLE-ROW-LINK, DNA-COMMON-TABLE-FOLD, DNA-COMMON-ROW-ACTION-END, DNA-COMMON-DISCLOSURE-CHEVRON-START, DNA-COMMON-FIGURES-PANE-ROW, DNA-COMMON-DESCRIPTION-DRAWER-COLUMNS, DNA-COMMON-STEPPER-BAR, DNA-COMMON-STEPPER-BAR-NO-CONNECTOR, DNA-COMMON-DISCLOSURE-CHEVRON-TITLE-NEXT, DNA-COMMON-TABLE-NO-CLIP, DNA-COMMON-ROW-TEXT-FIRST, DNA-COMMON-STEPPER-MARKER-FILLS, DNA-COMMON-STEPPER-MARKER-UPCOMING, DNA-COMMON-LIST-ROW-DIFF, DNA-COMMON-ROW-CONTROL-CENTRE]
 
   - id: alert
     ui: ui/components/toast-alert.md
@@ -542,7 +542,7 @@ roles:
     sizes: none
     states: [loading (skeleton at the reserved box), ready, error (title and the source as code, in the region), empty (FlowGraph, BubbleMap)]
     grammarMayChange: [frame, node and edge paint through tokens]
-    dna: [DNA-COMMON-DIAGRAM-LOADING-BOX, DNA-COMMON-DIAGRAM-NAMED, DNA-COMMON-DIAGRAM-ERROR-SOURCE, DNA-COMMON-FLOW-EDGE-LABEL-SPOKEN, DNA-COMMON-FLOW-LANE-LABEL-ABOVE-LINES, DNA-COMMON-FLOW-LANE-LABEL-OPAQUE, DNA-COMMON-BUBBLE-TEXT-INSIDE-START, DNA-COMMON-BUBBLE-TEXT-INSIDE-END]
+    dna: [DNA-COMMON-DIAGRAM-LOADING-BOX, DNA-COMMON-DIAGRAM-NAMED, DNA-COMMON-DIAGRAM-ERROR-SOURCE, DNA-COMMON-FLOW-EDGE-LABEL-SPOKEN, DNA-COMMON-FLOW-LANE-LABEL-ABOVE-LINES, DNA-COMMON-FLOW-LANE-LABEL-OPAQUE, DNA-COMMON-BUBBLE-TEXT-INSIDE-START, DNA-COMMON-BUBBLE-TEXT-INSIDE-END, DNA-COMMON-FLOW-READABLE-FLOOR]
 
 # The DNA: every constraint a grammar keeps, each one law with the measurement a DNA gate performs on a render.
 # Layer 1 of grammars/README.md#three-layers: a DNA entry is a constraint, never a judgement; a choice rule moves here
@@ -1129,6 +1129,11 @@ mustKeep:
       law: "An unselected radio draws a ring of its own (the muted foreground), so it stays visible when the app sets the field border and shadow to transparent (U2-G6)."
       measure: { kind: style, select: '.starci-core-radio:not([data-selected]) [data-grammar-choice-control="radio"]', metric: box-shadow, op: "!=", value: none }
       owner: contract roles.input
+    - id: DNA-COMMON-ROW-CONTROL-CENTRE
+      role: list
+      law: "In a select or list row with a control, the checkbox and its text block are one group, and the group and the control are vertically centred on each other (within 1px); the row padding (p-4 at the card's edges, p-3 at a separator) and the 40px touch target of a phone hold; a row without a control keeps its top alignment (owner 'căn center cho control và checkbox + text', 0.37.29)."
+      measure: { kind: relation, select: '.starci-core-select-item[data-grammar-select-has-control="true"] > .starci-core-select-control > *', metric: center-y, op: "=", tolerance: 1, ref: { within: '.starci-core-select-item', select: '.starci-core-choice-content', metric: center-y } }
+      owner: ui/components/card.md
     - id: DNA-COMMON-LIST-ROW-DIFF
       role: list
       law: "A diff row (ListRowData.diff, 0.37.28, owner drawing 'So sánh phiên bản') has a monospace gutter mark at its start, + added, − removed, ~ changed, in its tone's ink, read with its label (diffLabel) before the title, never colour alone; its ground is the tone's soft pair (added success, removed danger, changed warning); a removed title is struck through; a changed row's 'from → to' is the 12 muted line; the row padding holds (ROW-EDGE-PADDING)."
@@ -1413,6 +1418,11 @@ mustKeep:
       owner: ui/components/page-header.md
 
     # --- diagram
+    - id: DNA-COMMON-FLOW-READABLE-FLOOR
+      role: diagram
+      law: "A contained FlowGraph fit (every steps graph, any fit=\"contain\") never draws below zoom 0.8 (CONTAIN_MIN_ZOOM; 0.6 in 0.37.26, owner 'Nâng 0.8' in 0.37.29): a graph that needs less is held at 0.8, its canvas grows to the graph up to the height cap (lg 512px when none), the first view shows the entry node and the reader pans, wide graphs on a desktop pane included; the canvas is never shorter than the zoom controls column."
+      measure: { kind: style, select: '[data-component="FlowGraph"][data-grammar-flow-layout="steps"] .react-flow__viewport', metric: scale, op: ">=", value: 0.8 }
+      owner: ui/components/diagram.md
     - id: DNA-COMMON-DIAGRAM-LOADING-BOX
       role: diagram
       law: A diagram reserves its canvas height in every state, so the loading skeleton and the error take the ready drawing's least box.

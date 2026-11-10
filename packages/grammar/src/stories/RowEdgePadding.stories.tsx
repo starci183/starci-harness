@@ -136,3 +136,75 @@ export const SingleRowAndHeaded: Story = {
     });
   },
 };
+
+const QUYEN_MODES = [{ id: 'auto', label: 'Tự động' }, { id: 'ask', label: 'Hỏi' }] as const;
+
+const CentredRows = () => {
+  const [send, setSend] = useState('auto');
+  const [qr, setQr] = useState('ask');
+  const [on, setOn] = useState(true);
+  return (
+    <div data-row-centre style={{ display: 'flex', flexDirection: 'column', gap: 24, width: 'min(100%, 720px)' }}>
+      <G.SurfaceCard
+        kind="select"
+        label="Quyền"
+        selectionMode="multiple"
+        value={['send', 'qr']}
+        onChange={noop}
+        items={[
+          { id: 'send', title: 'Gửi tin cho khách qua Zalo', control: <G.Tabs appearance="primary" label="Gửi tin cho khách qua Zalo" selectedKey={send} onSelect={setSend} items={QUYEN_MODES} /> },
+          { id: 'qr', title: 'Tạo mã QR thanh toán', subtitle: 'Mã QR cho đơn của khách', control: <G.Tabs appearance="primary" label="Tạo mã QR thanh toán" selectedKey={qr} onSelect={setQr} items={QUYEN_MODES} /> },
+          { id: 'tell', title: 'Báo cho nhóm', subtitle: 'Nhắn vào khung trò chuyện của đội', control: <G.Switch label="Báo cho nhóm" size="md" isLabelHidden isSelected={on} onSelectedChange={setOn} /> },
+          { id: 'plain', title: 'Đọc tin nhắn của khách', subtitle: 'Không có điều khiển: giữ căn trên' },
+        ]}
+      />
+      <G.SurfaceCard
+        kind="list"
+        label="Hàng danh sách"
+        items={[
+          { id: 'l1', title: 'Gửi tin cho khách qua Zalo', description: 'Zalo OA', control: <G.Tabs appearance="primary" label="Chế độ" selectedKey={send} onSelect={setSend} items={QUYEN_MODES} /> },
+          { id: 'l2', title: 'Báo cho nhóm', control: <G.Switch label="Báo cho nhóm" size="md" isLabelHidden isSelected={on} onSelectedChange={setOn} /> },
+        ]}
+        empty={<G.EmptyNotice message="Trống" />}
+      />
+    </div>
+  );
+};
+
+const middle = (element: Element): number => { const box = element.getBoundingClientRect(); return (box.top + box.bottom) / 2; };
+
+/** ROW-CONTROL-CENTRE (0.37.29, owner "căn center cho control và checkbox + text"): the checkbox + text group and the control are centred on each other within 1px; the padding holds. */
+export const RowControlCentre: Story = {
+  name: 'A row control and its checkbox + text are centred on each other',
+  render: () => <CentredRows />,
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      const root = canvasElement.querySelector<HTMLElement>('[data-row-centre]')!;
+      const [select, list] = Array.from(root.querySelectorAll<HTMLElement>('[data-component="SurfaceCard"]')) as [HTMLElement, HTMLElement];
+      const items = Array.from(select.querySelectorAll<HTMLElement>('.starci-core-select-item'));
+      for (const item of items.slice(0, 3)) {
+        const group = item.querySelector('.starci-core-choice-content')!;
+        const control = item.querySelector('.starci-core-select-control > *')!;
+        expect(Math.abs(middle(group) - middle(control))).toBeLessThanOrEqual(1);
+        // The checkbox centres on the text block.
+        expect(Math.abs(middle(item.querySelector('[data-grammar-choice-control]')!) - middle(item.querySelector('.starci-core-select-copy')!))).toBeLessThanOrEqual(1);
+        // Never touching the separator: p-3 (p-4 on the card's edge) above and below the control.
+        const box = item.getBoundingClientRect();
+        const pill = control.getBoundingClientRect();
+        expect(pill.top - box.top).toBeGreaterThanOrEqual((item === items[0] ? INSET : GAP) - 0.5);
+        expect(box.bottom - pill.bottom).toBeGreaterThanOrEqual(GAP - 0.5);
+      }
+      // A row without a control keeps its top alignment: the text starts at the row padding.
+      const plain = items[3]!;
+      expect(Math.abs(plain.querySelector('.starci-core-select-copy')!.getBoundingClientRect().top - plain.getBoundingClientRect().top - GAP)).toBeLessThanOrEqual(1);
+      expect(pad(plain.querySelector('.starci-core-select-row')!, 'Bottom')).toBe(INSET);
+      // A list row centres its copy and its control (on a narrow card a tall control may wrap under the copy, the list row's own text-first rule; then there is no line to share).
+      for (const row of Array.from(list.querySelectorAll<HTMLElement>('.starci-core-list-row'))) {
+        const copy = row.querySelector('.starci-core-list-row-copy')!;
+        const control = row.querySelector('.starci-core-list-row-control > *')!;
+        if (control.getBoundingClientRect().top >= copy.getBoundingClientRect().bottom) continue;
+        expect(Math.abs(middle(copy) - middle(control))).toBeLessThanOrEqual(1);
+      }
+    });
+  },
+};

@@ -7,7 +7,7 @@ import { Matrix, State } from './fixtures.js';
  * 0.37.27 (owner drawing C, "C trò yêu"): a steps graph reads LEFT → RIGHT by default and a branching step fans its children out down the page. Edges are
  * ORTHOGONAL ONLY (straight along x or y, a 10px rounded corner at every turn, siblings leaving one shared trunk); every edge STARTS with a round dot (a white
  * disc ringed in the edge's colour) and ends with a small solid triangle in its colour. Cards are white with a 1px border on the dotted ground, on the page
- * and in a Drawer. A run's path is green (taken edges and the cards it reached); the cards it did not reach are faded. The 0.37.26 fit holds (zoom >= 0.6, pan).
+ * and in a Drawer. A run's path is green (taken edges and the cards it reached); the cards it did not reach are faded. The readable floor holds (zoom >= 0.8 since 0.37.29, pan).
  */
 const meta: Meta = { title: 'Flow graph style C (0.37.27)', parameters: { grammar: { bleed: false, minHeight: '40rem' } } };
 export default meta;
@@ -92,7 +92,7 @@ export const LeTanBranching: Story = {
       const [graph] = graphsOf(canvasElement);
       assertStyleC(graph!);
       const zoom = new DOMMatrixReadOnly(getComputedStyle(graph!.querySelector<HTMLElement>('.react-flow__viewport')!).transform).a;
-      expect(zoom).toBeGreaterThanOrEqual(0.6 - 0.001);
+      expect(zoom).toBeGreaterThanOrEqual(0.8 - 0.001);
     });
   },
 };
@@ -128,7 +128,7 @@ export const LeTanRun: Story = {
 };
 
 export const LeTanInDrawer: Story = {
-  name: 'The same in a Drawer (versions diff): dotted ground, held at zoom 0.6, pans',
+  name: 'The same in a Drawer (versions diff): dotted ground, held at zoom 0.8, pans',
   parameters: { grammar: { minHeight: '48rem' } },
   render: () => (
     <G.Drawer defaultOpen placement="right" title="Bản 1, bản đầu tiên" closeLabel="Đóng" trigger={<G.Button intent="alternative">Mở</G.Button>}>
@@ -144,7 +144,7 @@ export const LeTanInDrawer: Story = {
       expect(graph!.getAttribute('data-grammar-flow-framed')).toBe('false');
       expect(graph!.querySelector('.react-flow__background pattern circle, .starci-core-flow-graph-background circle')).not.toBeNull();
       const zoom = new DOMMatrixReadOnly(getComputedStyle(graph!.querySelector<HTMLElement>('.react-flow__viewport')!).transform).a;
-      expect(zoom).toBeGreaterThanOrEqual(0.6 - 0.001);
+      expect(zoom).toBeGreaterThanOrEqual(0.8 - 0.001);
     });
   },
 };

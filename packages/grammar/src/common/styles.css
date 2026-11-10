@@ -2064,7 +2064,9 @@
     .starci-core-list-row[data-grammar-diff="changed"] { --starci-row-diff-ground: var(--warning-soft); --starci-row-diff-ink: var(--warning-soft-foreground); }
     .starci-core-list-row[data-grammar-diff] { background: var(--starci-row-diff-ground); }
     /* The mark stands on the title's line, as a diff gutter does, not centred on a two-line row. */
-    .starci-core-list-row[data-grammar-diff] > .starci-core-list-row-leading { align-self: flex-start; }
+    .starci-core-list-row:is([data-grammar-diff], [data-grammar-diff-skeleton]) > .starci-core-list-row-leading { align-self: flex-start; }
+    /* The loading diff row keeps the gutter's box (same column, same row box) and shows no glyph. */
+    .starci-core-list-row[data-grammar-diff-skeleton] .starci-core-list-row-diff { visibility: hidden; }
 
     .starci-core-list-row-diff {
         display: inline-flex;
@@ -2180,6 +2182,16 @@
         inline-size: 100%;
         align-items: flex-start;
     }
+
+    /*
+     * ROW-CONTROL-CENTRE (0.37.29, owner "căn center cho control và checkbox + text"): in a row with a control, the checkbox and its text block are ONE group, and the group and the
+     * control are centred on each other. Both boxes stretch to the row (the item's height) and keep the row padding (p-4 at the card's edges, p-3 at a separator), so their centres
+     * meet; the checkbox centres on the text block, and the 40px touch target of a phone stays (the group's box is at least 40 and its content is centred in it). A row without a
+     * control keeps its top alignment.
+     */
+    .starci-core-select-item[data-grammar-select-has-control="true"] { align-items: stretch; }
+    .starci-core-select-item[data-grammar-select-has-control="true"] > .starci-core-select-row { flex-direction: column; justify-content: center; align-items: stretch; }
+    .starci-core-select-item[data-grammar-select-has-control="true"] > .starci-core-select-row .starci-core-choice-content { align-items: center; }
 
     .starci-core-select-copy {
         display: flex;

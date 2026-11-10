@@ -150,7 +150,8 @@ export const Container: Story = {
         if (container === null) throw new Error('The loop card must render');
         expect(container.textContent).toContain('Lặp theo từng sản phẩm');
         expect(container.querySelectorAll('[data-grammar-flow-chip]').length).toBe(2);
-        expect(Number.parseFloat(getComputedStyle(container).borderTopWidth)).toBeCloseTo(1.5, 1);
+        // The outline is declared 1.5px; Chromium snaps a border to whole device pixels, so a 1x screen draws 1px and a 2x screen 1.5px (0.37.29: the check follows the screen).
+        expect(Number.parseFloat(getComputedStyle(container).borderTopWidth)).toBeCloseTo(Math.max(1, Math.floor(1.5 * window.devicePixelRatio) / window.devicePixelRatio), 2);
         const box = container.getBoundingClientRect();
         for (const id of ['stock', 'reserve']) {
           const child = nodeBox(graph, id);

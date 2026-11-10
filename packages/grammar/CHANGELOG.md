@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.37.29 - 2026-11-10 - readable floor 0.8; a row control centred with its checkbox and text; loading diff rows keep the gutter; top-aligned graph layers
+
+- Changed (owner "Nâng 0.8"): the readable floor of a contained FlowGraph fit is zoom 0.8 (`CONTAIN_MIN_ZOOM`, was 0.6): a 12px label stays about 10px. A wide graph on a desktop pane now pans too; the canvas still grows to its cap and the first view shows the entry node. Law `DNA-COMMON-FLOW-READABLE-FLOOR`.
+- Fixed (owner "căn center cho control và checkbox + text", ROW-CONTROL-CENTRE): in a select row with a `control`, the checkbox and its text block are one group, and the group and the control are vertically centred on each other (they were ~10px apart: the checkbox and title sat at the row's top). The row padding and the 40px phone touch target hold; a row without a control keeps its top alignment; a list row already centred its copy and control. Law `DNA-COMMON-ROW-CONTROL-CENTRE` (measure `center-y`, a new DNA metric in the harness CLI).
+- Fixed: a loading diff row (`diff` with `isLoading`) keeps the gutter column (the mark's box, its glyph hidden) and a changed row's change line, so it is the loaded row's box.
+- Fixed (FlowGraph, top-down): a layer's cards share one top line. The layout centres a layer on one line from estimated heights; a card that drew taller than its estimate (a wrapped title) stood 1.5-2px off its neighbours. A top-down step is drawn from its top edge now (origin [0.5, 0], the layer's tallest estimate converts the centre once); `positions` and drags stay centres.
+- Test: the loop card's 1.5px outline check follows the screen (Chromium snaps a border to whole device pixels: 1px on a 1x screen, 1.5px on a 2x one); not a Grammar bug.
+- Stories: `Surfaces/Row edge padding` `RowControlCentre` (the Quyền rows, title-only and with a subtitle, a Switch, a plain row, list rows); `Surfaces/List row diff` `LoadingSameBox`; the fit and style C stories assert zoom >= 0.8.
+
 ## 0.37.28 - 2026-11-10 - version diff rows in a list
 
 - Added (owner drawing "So sánh phiên bản", GitHub-style): `ListRowData.diff` (`"added" | "removed" | "changed"`), `change?: { from, to }` and `diffLabel?`. A diff row draws a monospace gutter mark at its start (`+`, `−`, `~`) in its tone's ink, on the title's line; its ground is the tone's soft pair (success, danger, warning); a removed title is struck through; a changed row's "from → to" is the 12 muted line under the title. The glyph is `aria-hidden` and the label (`diffLabel`, default "Added", "Removed", "Changed") is read before the title, so the meaning is never colour alone. Works in `SurfaceCard kind="list"` and `Section kind="list"`; the row padding holds (p-4 edges, p-3 separators). Law `DNA-COMMON-LIST-ROW-DIFF`; contexts `list-table.md`.
