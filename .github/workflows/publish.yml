@@ -67,7 +67,7 @@ jobs:
           echo "go=$([ "$planned" = success ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
       - name: The plan of the ci run
         if: steps.gate.outputs.go == 'true'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: ci-plan
           path: ${{ runner.temp }}/ci-plan
@@ -89,13 +89,13 @@ jobs:
       # publish reads that this commit is on origin/main.
       # The bot token (when the owner has added it) is the checkout's credential, so that the cli-follow commit at the end can be
       # pushed to main (a push made with GITHUB_TOKEN starts no workflow run).
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         if: steps.plan.outputs.go == 'true'
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
           token: ${{ secrets.HARNESS_BOT_TOKEN || github.token }}
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         if: steps.plan.outputs.go == 'true'
         with:
           node-version: 24
@@ -114,7 +114,7 @@ jobs:
       # The tarballs the `package` jobs of the ci run packed after their tests: what is published is what was tested, never rebuilt.
       - name: The tested tarballs of the ci run
         if: steps.plan.outputs.go == 'true'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: tarball-*
           merge-multiple: true
