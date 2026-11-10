@@ -416,6 +416,8 @@
     /* Select has the same 2.5rem field height as Input. */
     .starci-core-select-trigger {
         min-block-size: var(--starci-core-field-min-height);
+        /* The prefix and the value sit on one line, centred in the box (0.37.23): the vendor trigger stretched its spans, so the text rode at the top of a compact pill. */
+        align-items: center;
     }
 
     /*

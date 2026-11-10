@@ -48,6 +48,42 @@ export const SearchZoneWithFilters: Story = {
   },
 };
 
+const assertAligned = (root: HTMLElement, filters: number) => {
+  const zone = root.querySelector<HTMLElement>('[data-grammar-zone="search"]');
+  if (zone === null) throw new Error('the search zone renders');
+  const field = zone.querySelector<HTMLElement>('.starci-core-search-field-group');
+  const triggers = Array.from(zone.querySelectorAll<HTMLElement>('.starci-core-select-trigger'));
+  if (field === null || triggers.length !== filters) throw new Error('the field and its filters render');
+  const middle = (box: DOMRect) => box.top + box.height / 2;
+  for (const trigger of triggers) {
+    // 0.37.23: the filter pill is the field's height, and its prefix and value stand on one line centred in the pill.
+    expect(Math.abs(trigger.getBoundingClientRect().height - field.getBoundingClientRect().height)).toBeLessThanOrEqual(0.5);
+    const prefix = trigger.querySelector<HTMLElement>('.starci-core-select-prefix')!.getBoundingClientRect();
+    const value = trigger.querySelector<HTMLElement>('.select__value')!.getBoundingClientRect();
+    expect(Math.abs(middle(prefix) - middle(trigger.getBoundingClientRect()))).toBeLessThanOrEqual(1);
+    expect(Math.abs(middle(prefix) - middle(value))).toBeLessThanOrEqual(1);
+  }
+};
+
+/** 0.37.23: one filter and two filters, wide and phone: the select pill matches the search field's height and its text is centred. */
+export const SearchFiltersAligned: Story = {
+  name: 'Search zone filters aligned (1 and 2 filters, 1440 and 390)',
+  render: () => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      <div data-story-aligned="one" style={{ width: 'min(100%, 900px)' }}><SearchFiltersCard filters={1} /></div>
+      <div data-story-aligned="two" style={{ width: 'min(100%, 900px)' }}><SearchFiltersCard filters={2} /></div>
+      <div data-story-aligned="phone" style={{ width: 358 }}><SearchFiltersCard filters={2} /></div>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      assertAligned(canvasElement.querySelector<HTMLElement>('[data-story-aligned="one"]')!, 1);
+      assertAligned(canvasElement.querySelector<HTMLElement>('[data-story-aligned="two"]')!, 2);
+      assertAligned(canvasElement.querySelector<HTMLElement>('[data-story-aligned="phone"]')!, 2);
+    }, { timeout: 5000 });
+  },
+};
+
 /** On a phone-width card the selects wrap below the search. */
 export const SearchZoneWithFiltersPhone: Story = {
   render: () => <div data-story-search="phone" style={{ width: 358 }}><SearchFiltersCard filters={2} /></div>,

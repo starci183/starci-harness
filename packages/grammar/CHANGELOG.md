@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.37.23 - 2026-11-10 - Select trigger text is centred (search-zone filters)
+
+- Fixed: the filter select of a `SurfaceCard` search zone (`filters: [{ prefix, options, ... }]`) rode its text at the top of the pill, so "Kích hoạt: Tất cả" sat lower than the search field's text line and looked misaligned. The vendor trigger stretched its prefix and value spans (`align-items: normal`); the Select trigger now centres them (`align-items: center`), so the prefix and the value stand on one baseline in the middle of the pill. The pill and the search field are both the compact 32px step (asserted). Applies to every Select.
+- Story `SearchFiltersAligned`: one filter and two filters, wide and phone, asserting equal height with the field and a centred prefix and value.
+
 ## 0.37.22 - 2026-11-10 - Footer links are plain
 
 - Fixed: the `Footer` directory links (`groups[].links`) drew in the accent red. They are `Link variant="plain"` now (the foreground colour, no icon), as the red budget says for a standalone navigation link; `aria-current` and the external hint are unchanged. Story `Footer` notes it; `contexts/ui/presentation.md` records it.
