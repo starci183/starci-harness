@@ -21,6 +21,7 @@ Choice `menu.choose.placement`: whether a command is visible or in a menu. The f
 ## Variants
 Entries are grouped in sections with separators between sections; a destructive entry carries the danger tone
 and still goes through its confirm (CTA-4). The indicator side is the contract's arrangement.
+A setting that is on or off and takes effect at once ("Hiện trợ lý NIVO" in the account menu) is a `{ kind: "switch", id, label, description?, isSelected, onChange }` entry (0.37.19): a `menuitemcheckbox` row with a Switch at its end; the whole row toggles it (press, Enter, Space) and the menu stays open. It is never a one-item multiple-selection section with a check, and never a `Switch` placed inside an item.
 
 ## Size
 Entries are list rows on the ramp; the trigger is an icon button at its row's step ([../scale.md](../scale.md)).

@@ -364,6 +364,39 @@ const AvatarMenuDemo = () => {
  * sections, draws the glyph in the leading position at 20px (size-5) and the selection check where HeroUI puts it; the app passes no
  * separator, no className and no size.
  */
+const SwitchMenuDemo = () => {
+  const [assistant, setAssistant] = useState(true);
+  return (
+    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+      <G.DropdownMenu
+        defaultOpen
+        placement="bottom end"
+        trigger={<G.AvatarButton name="Alex Morgan" />}
+        entries={[
+          {
+            kind: 'section',
+            id: 'account',
+            items: [
+              { id: 'profile', label: 'Profile', iconSource: UserGlyph },
+              { id: 'settings', label: 'Settings', iconSource: SettingsGlyph },
+            ],
+          },
+          { kind: 'switch', id: 'assistant', label: 'Show the assistant', description: 'The guide bubble on every page', isSelected: assistant, onChange: setAssistant },
+          { kind: 'section', id: 'session', items: [{ id: 'sign-out', label: 'Sign out', tone: 'danger', iconSource: SignOutGlyph }] },
+        ]}
+        onAction={noop}
+      />
+    </div>
+  );
+};
+
+/** A switch entry: the row is a menuitemcheckbox with a Switch at its end; pressing the row toggles it and the menu stays open. */
+export const DropdownMenuSwitch: Story = {
+  name: 'DropdownMenu (switch entry in the account menu)',
+  parameters: openParameters,
+  render: () => <SwitchMenuDemo />,
+};
+
 export const DropdownMenuAvatar: Story = {
   name: 'DropdownMenu (avatar menu: workspace, account, sign out)',
   parameters: openParameters,

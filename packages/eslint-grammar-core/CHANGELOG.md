@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.37.19 - 2026-11-10
+
+- Changed: released with the Grammar family at 0.37.19 (a DropdownMenu switch entry); no rule of this package changed.
+
 ## 0.37.18 - 2026-11-10
 
 - Changed: released with the Grammar family at 0.37.18 (an informative Toast and alert dialog are neutral); no rule of this package changed.

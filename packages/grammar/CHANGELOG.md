@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.37.19 - 2026-11-10 - DropdownMenu switch entry
+
+- Added: `DropdownMenuSwitch`, a third `DropdownMenuEntry`: `{ kind: "switch", id, label, description?, descriptionLines?, iconSource?, isSelected, isDisabled?, onChange(isSelected) }`. The row is a `menuitemcheckbox` (one-item multiple-selection group under the hood, `aria-checked` from `isSelected`) with a Switch drawn at its end as the row's own mark (inert, not announced twice); the whole row toggles it by press, Enter or Space, and the menu stays open (`shouldCloseOnSelect` false, so Enter, Space and press all keep it open). No check indicator. It is not reported by `DropdownMenu.onAction`.
+- Story `DropdownMenuSwitch` (account menu with "Show the assistant"); `contexts/ui/components/menu.md` records the entry.
+
 ## 0.37.18 - 2026-11-10 - an informative Toast and alert dialog are neutral
 
 - Changed: `Toast tone="informative"` (mark `--muted`) and the `AlertDialog` informative variant (icon tile `--default-soft` with `--default-soft-foreground`) are neutral like the Alert, no longer the accent pair. An app that writes `--informative`, `--informative-soft`, `--informative-soft-foreground` keeps its own. Offset Pop follows (toast and dialog mark `--muted`). A `Meter` informative fill stays the accent. The action Button inside an informative Alert stays the `commit`.

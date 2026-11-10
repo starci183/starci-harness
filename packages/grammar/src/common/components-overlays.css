@@ -434,6 +434,17 @@
         flex-direction: column;
     }
 
+    /* A switch entry: the Switch is the row's own mark at its end, never a second control (inert), and the row has no check. */
+    [data-grammar-menu-switch-mark] {
+        display: inline-flex;
+        flex: none;
+        margin-inline-start: auto;
+        align-self: center;
+        pointer-events: none;
+    }
+
+    [data-grammar-menu-switch] [data-slot="menu-item-indicator"] { display: none; }
+
     [data-grammar-menu-shortcut] {
         margin-inline-start: auto;
     }

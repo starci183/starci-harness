@@ -25,6 +25,7 @@ export {
     type DropdownMenuPlacement,
     type DropdownMenuProps,
     type DropdownMenuSection,
+    type DropdownMenuSwitch,
     type DropdownMenuSelection,
 } from "../core/branch/DropdownMenu/index.js"
 export { Popover, type PopoverPlacement, type PopoverProps } from "../core/frame/Popover/index.js"
