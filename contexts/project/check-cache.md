@@ -476,7 +476,9 @@ a message), and the quality gate is the one the server holds for the project.
   task fails or the project's gate is ERROR: `CI_PARITY_SONAR_GATE_FAILED`, naming each failed condition. Both are errors.
 - **Not run.** Whenever the scan does not run, the report carries one `sonar scan:` line saying why: the run selects families
   (only a run with no selector runs the scan), the branch profile turns sonar off, another family is red, the app has no
-  `sonar-project.properties` or no Sonar service in its declaration (these are report lines, never findings). No token
+  `sonar-project.properties` or no Sonar service in its declaration, or the declaration states the owner step that provisions the
+  analysis credential as open (`services.sonar.ownerAction.needed`, a fresh scaffold's; R296 judges its custody the same way) (these are
+  report lines, never findings). No token
   (no sealed secret or age key on this host), a server that does not answer, a token without the permission the derived
   project needs, or a verdict the server does not give in time is the warning `CI_PARITY_SONAR_SKIPPED` and its line; the run is never reported
   green for the scan, and CI judges it. A scan that runs prints its start, the project key it scanned, its duration and the gate status.
