@@ -25,8 +25,11 @@ import { ResendRequest } from "./dto/resend.request"
 import { ResetRequest } from "./dto/reset.request"
 import { SignupRequest } from "./dto/signup.request"
 import { TokenRequest } from "./dto/token.request"
+// {{authRestImports}}
 
+// {{authRestDtos}}
 @Controller("auth")
+// {{authRestClass}}
 /** The cookie doors of sign-in: email and password, the email doors (sign up, confirm, resend, forgot, reset), Google, refresh, session, sign-out and the public keys. */
 export class AuthController {
     constructor(
@@ -36,6 +39,7 @@ export class AuthController {
 
     /** Signs in with email and password; the refresh token is set as an httpOnly cookie. */
     @Post("login")
+    // {{authRestLogin}}
     @HttpCode(200)
     @Public({ reason: PublicReason.AuthHandshake })
     @RateLimit(RateTier.Strict)
@@ -49,6 +53,7 @@ export class AuthController {
 
     /** Rotates the refresh cookie and answers a new access token; a bad cookie is cleared. */
     @Post("refresh")
+    // {{authRestRefresh}}
     @HttpCode(200)
     @Public({ reason: PublicReason.AuthHandshake })
     @RateLimit(RateTier.Strict)
@@ -58,6 +63,7 @@ export class AuthController {
 
     /** Answers a fresh access token for the cookie session WITHOUT rotating the cookie, so parallel requests of one browser never race. */
     @Get("session")
+    // {{authRestSession}}
     @Public({ reason: PublicReason.AuthHandshake })
     @RateLimit(RateTier.Strict)
     session(@Req() req: Request, @Res({ passthrough: true }) res: Response): Promise<AccessGrant> {
@@ -66,6 +72,7 @@ export class AuthController {
 
     /** Ends the session of the refresh cookie and clears it. */
     @Post("logout")
+    // {{authRestLogout}}
     @HttpCode(204)
     @Public({ reason: PublicReason.AuthHandshake })
     @RateLimit(RateTier.Strict)
@@ -75,6 +82,7 @@ export class AuthController {
 
     /** Sends the browser to Google (authorization code with state and PKCE); `returnTo` is an absolute address on the web origin or a path. */
     @Get("google")
+    // {{authRestGoogle}}
     @Public({ reason: PublicReason.AuthHandshake })
     @RateLimit(RateTier.Strict)
     google(@Query() _query: GoogleStartRequest, @Req() req: Request, @Res() res: Response): Promise<void> {
@@ -83,6 +91,7 @@ export class AuthController {
 
     /** Google sends the browser back here; the session cookie is set and the browser lands on the web app (or its sign-in page on failure). */
     @Get("google/callback")
+    // {{authRestGoogleCallback}}
     @Redirect()
     @Public({ reason: PublicReason.AuthHandshake })
     @RateLimit(RateTier.Strict)
@@ -92,6 +101,7 @@ export class AuthController {
 
     /** Creates an unconfirmed account and mails the confirmation link; always answers 204. */
     @Post("signup")
+    // {{authRestSignup}}
     @HttpCode(204)
     @Public({ reason: PublicReason.AuthHandshake })
     @RateLimit(RateTier.Strict)
@@ -105,6 +115,7 @@ export class AuthController {
 
     /** Mails a new confirmation link; always answers 204. */
     @Post("resend")
+    // {{authRestResend}}
     @HttpCode(204)
     @Public({ reason: PublicReason.AuthHandshake })
     @RateLimit(RateTier.Strict)
@@ -114,6 +125,7 @@ export class AuthController {
 
     /** Spends a confirmation link; a spent, expired or unknown link is refused with IDENTITY_RESET_TOKEN_INVALID. */
     @Post("confirm")
+    // {{authRestConfirm}}
     @HttpCode(204)
     @Public({ reason: PublicReason.AuthHandshake })
     @RateLimit(RateTier.Strict)
@@ -123,6 +135,7 @@ export class AuthController {
 
     /** Mails a password reset link when the address has an account; always answers 204. */
     @Post("forgot")
+    // {{authRestForgot}}
     @HttpCode(204)
     @Public({ reason: PublicReason.AuthHandshake })
     @RateLimit(RateTier.Strict)
@@ -132,6 +145,7 @@ export class AuthController {
 
     /** Spends a reset link and sets the new password; every session of the person ends. */
     @Post("reset")
+    // {{authRestReset}}
     @HttpCode(204)
     @Public({ reason: PublicReason.AuthHandshake })
     @RateLimit(RateTier.Strict)
@@ -141,6 +155,7 @@ export class AuthController {
 
     /** The public keys access tokens verify against. */
     @Get("jwks")
+    // {{authRestJwks}}
     @Public({ reason: PublicReason.AuthHandshake })
     @RateLimit(RateTier.Strict)
     jwks(): Promise<JwksDocument> {

@@ -1,7 +1,7 @@
 // proves: HFS_SIDE_FOLDER_MISSING@lite
 // `starci app scaffold <name> --without <side[,side]> [--contract rest]` (PROJECT-1): a project declares any non-empty set of be, fe and packages, and the
 // scaffold writes only the declared sides, with the stack declaration's `sides` field and its plain-words line. The lite be+packages rest project passes its
-// own check on everything but what needs an installed tree and the REST operation shapes of the starter's doors (R396, an open gap of the starter).
+// own check on everything but what needs an installed tree; its sign-in and health doors carry their OpenAPI shape, so R396 holds.
 import { test } from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -23,8 +23,6 @@ const lockedOk = (root: string): LockResult => {
   fs.writeFileSync(path.join(root, 'package-lock.json'), '{}\n');
   return { ok: true };
 };
-/** The codes the rest starter raises beyond a default starter: its doors carry no REST operation shapes yet (R396, an open gap of the starter). */
-const REST_STARTER_OPEN = new Set(['BE_REST_OPERATION_ID', 'BE_REST_UNTYPED', 'BE_REST_ERROR_SHAPE', 'BE_REST_SECURITY']);
 
 /** A fresh starter of `edition` and `sides` in a temporary folder: its root, files and the codes of its own check. */
 function starter(t: TestContext, edition: string, sides?: readonly ProjectSide[], contract?: 'graphql' | 'rest'): { root: string; files: string[]; codes: string[] } {
@@ -96,9 +94,11 @@ test('lite --without fe --contract rest: a be+packages project whose api app is 
   assert.doesNotMatch(read(root, '.starcistacks/production/infra/swarm/Caddyfile'), /reverse_proxy web:/u);
   assert.doesNotMatch(read(root, 'README.md'), /`fe\//u);
   assert.equal(fs.existsSync(path.join(root, 'eslint.config.mjs')) && /eslint-canon-fe/u.test(read(root, 'eslint.config.mjs')), false, 'the packages lint config imports no fe canon');
-  // A scaffold in a temporary folder (no install, no host custody) raises the same environment findings as a default starter; nothing else but R396.
+  // A scaffold in a temporary folder (no install, no host custody) raises the same environment findings as a default starter, and nothing else.
   const baseline = new Set(starter(t, 'lite').codes);
-  assert.deepEqual(codes.filter((code) => !baseline.has(code) && !REST_STARTER_OPEN.has(code)), [], 'its own check raises nothing a default starter does not, but the REST shapes of the starter doors');
+  assert.deepEqual(codes.filter((code) => !baseline.has(code)), [], 'its own check raises nothing a default starter does not');
+  assert.deepEqual(codes.filter((code) => code.startsWith('BE_REST_')), [], 'R396 holds on the starter document');
+  assert.match(read(root, 'be/src/features/api/auth/transport/http/auth.controller.ts'), /@ApiOperation\(\{ operationId: "auth\.login", security: \[\] \}\)/u);
 });
 
 test('R399 at the check: a declared side whose folder tracks nothing is red', (t) => {

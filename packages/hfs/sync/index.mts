@@ -22,6 +22,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { braceVariants } from '../runtime/scripts/lib/glob.mjs';
 import { codecovPaths, coverageComponents, declaredPackageScopes, jestCoverage, packageComponents, packagesCoverage, sonarCoverageExclusions, type PackagesCoverage } from '../runtime/scripts/hfs/coverage-scope.mjs';
+import { restDoorVariables } from './rest-doors.mjs';
 import { APP_SCOPE, SIDES, declaredAppSides, litePresenceOf, loadSlotManifest, resolveAppDeclaration, sideDeclared, slotInEdition, type RepoView } from '../runtime/scripts/hfs/slots.mjs';
 import type { AppRepo } from '../runtime/scripts/hfs/slot-app-view.mjs';
 import type { Slot, SlotManifest } from '../runtime/scripts/hfs/manifest-shape.mjs';
@@ -609,6 +610,8 @@ export function variables(app: ResolvedApp, scope: string, presets: Presets | nu
     grammarLintImport: grammarLint?.package ? `import { ${grammarLint.factory} } from "${grammarLint.package}"` : '',
     grammarLintExport: grammarLint?.package ? `export default [...starciFeConfig({ hfs }), ...${grammarLint.factory}({ hfs })]` : 'export default starciFeConfig({ hfs })',
     ...stackWorkflowVariables(stack, app.project, deployableApps(app, source, stack), String(NODE_MAJOR)),
+    // The managed sign-in doors of a rest back end carry their OpenAPI shape (R396); a graphql back end renders them as before.
+    ...restDoorVariables(app.sides.be.apps),
   };
 }
 

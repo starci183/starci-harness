@@ -24,7 +24,7 @@ import { ScaffoldError } from './service.mjs';
 import { testWorldFiles } from './test-world.mjs';
 import { FE_APP_SCRIPTS, PACKAGE_MANAGER, ROOT_PACKAGES_WORKSPACE, WORKSPACES, feAppPackageName } from '../runtime/scripts/hfs/rules/monorepo.mjs';
 import { PROJECT_SIDES, type ProjectSide } from '../runtime/scripts/hfs/project-sides.mjs';
-import { openapiHeadPath, type ContractKind } from '../runtime/scripts/hfs/contract-kind.mjs';
+import { contractOf, type ContractKind } from '../runtime/scripts/hfs/contract-kind.mjs';
 import { filesForSides, stackSidesVars } from './sides.mjs';
 import { isLinkLike } from '../runtime/scripts/api/fs/is-link-like.mjs';
 import { unlinkOnly } from '../runtime/scripts/api/fs/lib.mjs';
@@ -61,6 +61,8 @@ interface CoreFeStackPackages {
 interface AppEntry {
   readonly name: string;
   readonly kind: string;
+  /** The contract an api app declares (contract-kind.mts); absent means graphql. */
+  readonly contract?: string;
 }
 /** A side of a resolved declaration. */
 interface SideDeclaration {
@@ -600,26 +602,15 @@ export function skeletonOf(scope: Scope, app: ResolvedApp, vars: SkeletonVars): 
   const files = app.edition === 'lite'
     ? [...skeletonDirectory(scope, 'skeleton', app, vars, (rel: string) => liteBaseFile(scope, rel)), ...skeletonDirectory(scope, 'skeleton-lite', app, vars, (rel: string) => liteOverlayFile(scope, rel))]
     : skeletonDirectory(scope, 'skeleton', app, vars, (rel: string) => scope !== 'be' || !DEFERRED_GENERATOR_FILES.has(rel));
+  // A rest back end (BE-TRANSPORT-4) overlays its swagger-described health doors, the head apps/<app>/src/openapi.ts and the committed
+  // contracts/<app>/openapi.json, the emitted document of the starter's controllers (R396).
+  if (scope === 'be' && app.sides.be.apps.some(entry => entry.kind === 'api' && contractOf(entry) === 'rest')) files.push(...skeletonDirectory(scope, 'skeleton-rest', app, vars));
   const unique = [...new Map(files.map(file => [file.path, file])).values()];
   // Every declared fe app has a skeleton: its own apps/<name>/ folder or the shared __app__ one.
   for (const entry of scope === 'fe' ? app.sides.fe.apps : []) {
     if (!unique.some(file => file.path.startsWith(`fe/apps/${entry.name}/`))) throw new ScaffoldError('HFS_SCAFFOLD_SKELETON_MISSING', `no skeleton templates for the fe app ${entry.name}`);
   }
   return unique;
-}
-
-/**
- * The REST contract files of each be api app that declares `contract: "rest"` (BE-TRANSPORT-4, R396): the document head apps/<app>/src/openapi.ts
- * (the `OPENAPI` export `starci app emit` merges with the scanned controllers) and the committed be/contracts/<app>/openapi.json, the emitted
- * document of the starter's controllers (templates/be/rest/openapi.json, with the project filled).
- */
-function restContractFiles(app: ResolvedApp): GeneratedFile[] {
-  const rest = app.sides.be.apps.filter(entry => entry.kind === 'api' && (entry as { contract?: string }).contract === 'rest');
-  const read = (file: string): string => fs.readFileSync(path.join(TEMPLATES_DIR, 'be', 'rest', file), 'utf8').replace(/\r\n/g, '\n');
-  return rest.flatMap(entry => [
-    { path: `be/${openapiHeadPath(entry.name)}`, content: fill(read('openapi.ts'), { project: app.project, app: entry.name, appPascal: pascal(entry.name) }, 'be/rest/openapi.ts') },
-    { path: `be/contracts/${entry.name}/openapi.json`, content: fill(read('openapi.json'), { project: app.project, app: entry.name, appPascal: pascal(entry.name) }, 'be/rest/openapi.json') },
-  ]);
 }
 
 /**
@@ -791,7 +782,7 @@ export function scaffoldApp({ name, into, presets, harness, edition = 'full', si
   const files: GeneratedFile[] = [
     { path: 'hfs.json', content: jsonText(declaration) },
     { path: 'package.json', content: packageJsonText(pkg) },
-    ...(sides.includes('be') ? [{ path: 'be/nest-cli.json', content: jsonText(nestCli(app)) }, ...restContractFiles(app)] : []),
+    ...(sides.includes('be') ? [{ path: 'be/nest-cli.json', content: jsonText(nestCli(app)) }] : []),
     ...(sides.includes('packages') ? starterPackageFiles(name) : []),
     ...app.sides.fe.apps.map(entry => ({ path: `fe/apps/${entry.name}/tsconfig.json`, content: jsonText(nextAppTsconfig()) })),
     ...app.sides.fe.apps.map(entry => ({
