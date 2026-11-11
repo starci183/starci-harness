@@ -41,7 +41,10 @@ subject, no `imports`, no `override*`, no `jest.mock`. The providers besides the
 dependencies: an injector's exported token (`{ provide: CLOCK, useValue: clock }`) or a domain service class
 (`{ provide: MembersService, useValue: mock<MembersService>() }`). Every required dependency is provided; a parameter
 decorated with Nest's `@Optional()` may be omitted to cover its absence. A TypeScript optional parameter alone does not
-make Nest injection optional. A `*.schema.ts` is parsed directly.
+make Nest injection optional. A `*.schema.ts` is parsed directly. A subject of plain exported functions (a policy or mapper
+module) is provided under a local token as the real functions of that one sibling file, `{ provide: SUBJECT, useValue: {
+fnA, fnB } }`, every member an export of `<name>.<role>.ts` under its own name; a function of another module is never a member
+(it is a collaborator: call it directly, or let its own spec prove it), and anything else a token gets is a kit double.
 
 Why: a hand-built subject drifts from its real constructor, and an extra provider hides a dependency the subject lost.
 

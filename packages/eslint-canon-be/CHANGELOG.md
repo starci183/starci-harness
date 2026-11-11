@@ -8,6 +8,7 @@
 - Fixed (R85): `injector-type-match` accepts a parameter typed exactly as a nullable injector's `T` (`VectorIndex | null`); it compared the injected type with the parameter's type stripped of null, so such an injector never matched. A parameter that drops the injector's null is still a mismatch, and `@Optional()`'s added undefined still matches. Spec: `src/injection.spec.ts`.
 - Fixed (R38): `throw-domain-error` takes the rejection handler of `.then(onFulfilled, onRejected)` as it takes a `.catch` handler: its parameter is a caught value, rethrown as it is (`isCaughtValue`). The fulfilment handler's value is still judged. Spec: `src/error-handling.spec.ts`.
 - Added (R47, BE-TEST-1): a unit spec over its line budget splits by facet, `<name>.<role>.<facet>.spec.ts` beside the main `<name>.<role>.spec.ts` and the same subject (`mainSpecOfSplit`, `lib/unit-spec.ts`); `unit-test-colocated` accepts it with both beside it and reports it `orphan` otherwise. Spec: `src/testing.spec.ts`.
+- Specs (R281, BE-TEST-2): `spec-infra-double-from-kit` keeps refusing a function of another module inside the subject object of a function-only policy or mapper (`{ pad, shout, doubled }` with `doubled` from another file); the form is now written in BE-TEST-2. Spec: `src/unit-spec.spec.ts`.
 - Fixed (R71): `no-secret-in-log` skips a credential-sounding name whose value is a number or a boolean (`usage.promptTokens`): a count is never the credential, which travels as text. Spec: `src/log-safety.spec.ts`.
 
 ## 3.23.0 - 2026-11-11
