@@ -176,7 +176,21 @@ export function trackedFiles(repoRoot: string): string[] {
   return out.split('\0').filter(Boolean).map(posixPath);
 }
 
-const fill = (text: string, bindings: Record<string, string>): string => String(text).replace(VAR, (whole: string, name: string) => bindings[name] ?? whole);
+/**
+ * Repository-relative files git neither tracks nor ignores (git ls-files --others --exclude-standard): what a check, which judges the
+ * index (trackedFiles), leaves unjudged until `git add` stages them. A directory that is not a Git work tree is a refusal.
+ */
+export function untrackedFiles(repoRoot: string): string[] {
+  let out: string;
+  try {
+    out = gitOutputOf(lsFiles(['-z', '--others', '--exclude-standard'], { dir: repoRoot, maxBuffer: 256 * 1024 * 1024 }), 'git ls-files');
+  } catch (error) {
+    refuse('HFS_REPO_UNREADABLE', `${repoRoot} is not a readable Git work tree (${String((error as { stderr?: unknown; message?: unknown } | null | undefined)?.stderr ?? (error as { message?: unknown } | null | undefined)?.message ?? error).trim().split('\n')[0]})`, { repoRoot });
+  }
+  return out.split('\0').filter(Boolean).map(posixPath);
+}
+
+const fill =(text: string, bindings: Record<string, string>): string => String(text).replace(VAR, (whole: string, name: string) => bindings[name] ?? whole);
 
 /** Instances (slot, root, bindings) present in the tracked tree, for every slot that names required files or a minimum. */
 function instancesOf(resolver: CheckResolver, files: string[]): SlotInstance[] {

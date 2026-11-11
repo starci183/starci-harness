@@ -9,7 +9,9 @@ rule; every other page links to it.
 2. `main` is what is released on git. It moves only by a release (the annotated `v*` tag through `release push`), and only by
    fast-forward to a commit that is on `dev`.
 3. `dev` is the working branch, forked from `main`, and always at or ahead of `main`: `main` is always an ancestor of `dev`, and
-   the two never diverge.
+   the two never diverge. `starci app scaffold` makes the app the first commit of `main` and checks out `dev` at it
+   (`settleScaffoldBranches`, `packages/hfs/scaffold/app.mts`); when git refuses the commit (no identity), it leaves every file staged on
+   unborn `main` and its output names the two steps left.
 4. Lane and feature branches fork from `dev` and merge back into `dev`. Nobody commits on `main` directly.
 5. Promoting `dev` to `main` passes the full `starci app check` gate. The branch profile of `dev`
    ([lint.md](lint.md) PROJECT-LINT-2) never applies to `main`: a push of `main` or of a release tag is judged as `main` whatever branch

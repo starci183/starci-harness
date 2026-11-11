@@ -54,7 +54,10 @@ almost no work: it reads the records and runs only what differs. The gate judges
 
 `starci app check` with no selector, `--side`, `--fix` or `--coverage-from` is a whole run: every family against the committed cache (diff-only), the CI-parity families
 ([CI parity](#ci-parity)), CI's coverage step, the Sonar scan against the app's server ([Sonar and Codecov](#sonar-and-codecov)), and the cache verdict, which is a hard error. It writes what it judged back
-into the cache. A branch profile ([lint.md](lint.md) PROJECT-LINT-2) changes no cache rule: a family it reports runs and writes
+into the cache. Every run judges the index (`trackedFiles`, `git ls-files`), the tree a commit carries and CI judges, so a local verdict
+is the one the commit gets: a file git neither tracks nor ignores is never read, and the overview counts those files under the header
+(`untracked: <n> files ... not judged`, `untrackedFiles` in `runtime/scripts/hfs/check.mts`) with the step that includes them, `git add`.
+A branch profile ([lint.md](lint.md) PROJECT-LINT-2) changes no cache rule: a family it reports runs and writes
 its records exactly as a blocking one, and a family it turns off runs nothing and writes nothing.
 
 `--fresh` is the escape hatch for a broken or suspect cache: the selected families (every family when none is selected)

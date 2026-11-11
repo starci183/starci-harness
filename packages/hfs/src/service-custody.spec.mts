@@ -194,3 +194,15 @@ test('exact tooling custody is declared without a runtime grant; same-named app 
   doc.services.sonar.credentials[0]!.project = 'org:project-b'; write();
   assert.equal(serviceBindings(doc, 'project-a').bindings.length, 0);
 });
+
+test('an unsealed service credential is the open owner step its service declares, and a finding once the declaration says none', (t) => {
+  const { root, doc, write } = fixture(t);
+  fs.rmSync(path.join(root, MEMBER));
+  fs.mkdirSync(path.join(root, '.github/workflows'), { recursive: true });
+  fs.writeFileSync(path.join(root, '.github/workflows/ci.yml'), 'env:\n  SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}\n');
+  const run = () => ciCustodyFindings({ repoRoot: root, repo: { kind: 'app', edition: 'lite' }, isRoot: true }).map((finding) => finding.code);
+  Object.assign(doc.services.sonar, { ownerAction: { needed: 'seal the analysis token', reason: 'a fresh app fabricates no credential' } }); write();
+  assert.deepEqual(run(), []);
+  Object.assign(doc.services.sonar, { ownerAction: 'none' }); write();
+  assert.deepEqual(run(), ['CI_SECRET_SEALED']);
+});

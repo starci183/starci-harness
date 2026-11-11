@@ -74,7 +74,7 @@ describe("ReadinessService", () => {
 
     it("preserves a synchronous database failure before a deadline can be scheduled", async () => {
         const { service, database, timer, cancel } = await build()
-        const cause = new HttpSecurityError({ code: HttpSecurityErrorCode.RequiredDependencyUnavailable })
+        const cause = new Error("connection refused")
         database.probe.mockImplementation(() => {
             throw cause
         })

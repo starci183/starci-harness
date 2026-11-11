@@ -1598,7 +1598,7 @@ rules:
     witness:
       - {"path":"packages/eslint/be/r78-user-copy-through-catalog.spec.mjs","edition":"lite","codes":["BE_USER_COPY_LITERAL"]}
       - {"path":"packages/eslint/be/r78-user-copy-through-catalog.spec.mjs","edition":"full","codes":["BE_USER_COPY_LITERAL"]}
-    law: "A literal exception message, notification text or response copy comes from the per-capability messages catalog through the typed `MessageCatalog` port, not from source."
+    law: "A literal exception message, notification text or response copy comes from the per-capability messages catalog through the typed `MessageCatalog` port, not from source; the operation and field documentation a REST door hands to an `@nestjs/swagger` export (`@ApiOperation`, `@ApiProperty`, `@ApiResponse`) is contract text for developers, judged with the emitted document (R396)."
     kinds: [lint, codemod]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["BE_USER_COPY_LITERAL"]
@@ -5068,7 +5068,7 @@ rules:
       - {path: packages/eslint/be/module-shape.spec.mjs, editions: [lite, full], codes: [BE_MODULE_DEFINITION_MISSING]}
   - id: R296
     code: "CI_SECRET_SEALED"
-    law: "A sealed CI credential copy names an explicit service credential bound to the selected product project, environment, member and key; required product Sonar analysis uses sonar.enc.yaml and an app runtime key never becomes a CI credential. Checks inspect names without decrypting or printing values."
+    law: "A sealed CI credential copy names an explicit service credential bound to the selected product project, environment, member and key, sealed unless its service declares the open owner step that provisions it (`ownerAction.needed`, which STACKS_OWNER_ACTION_REDUNDANT turns to none once it is sealed); required product Sonar analysis uses sonar.enc.yaml and an app runtime key never becomes a CI credential. Checks inspect names without decrypting or printing values."
     kinds: [check]
     gates: [settle, land, ci]
     failureCodes: ["CI_SECRET_SEALED"]

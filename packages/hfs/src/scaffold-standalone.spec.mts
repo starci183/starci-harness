@@ -9,9 +9,13 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { bundledPresets } from '../sync/index.mjs';
-import { scaffoldApp } from '../scaffold/app.mjs';
+import { spawnSync } from 'node:child_process';
+import { scaffoldApp, settleScaffoldBranches } from '../scaffold/app.mjs';
 import type { LockResult } from '../scaffold/app.mjs';
 import { init } from '../runtime/scripts/api/git/init.mjs';
+import { add } from '../runtime/scripts/api/git/add.mjs';
+import { commit } from '../runtime/scripts/api/git/commit.mjs';
+import { switchBranch } from '../runtime/scripts/api/git/switch.mjs';
 import { parseYaml } from '../runtime/engine/yaml.mjs';
 import { swarmHardeningIssues } from '../runtime/scripts/hfs/rules/stacks-swarm.mjs';
 import { normalizeDeploy } from '../runtime/scripts/hfs/stack-deploy-config.mjs';
@@ -213,6 +217,27 @@ test('an existing empty unborn main repository is scaffolded without a second gi
   const initGit = () => assert.fail('an existing repository must not be initialised again');
   scaffoldApp({ name: 'demo', harness: HARNESS, into, edition: 'full', presets: bundledPresets(), lock: lockedOk, initGit });
   assert.ok(fs.existsSync(path.join(root, 'hfs.json')));
+});
+
+test('the scaffold settles git on PROJECT-BRANCH-1: the app is the first commit of main and dev is checked out at it', (t) => {
+  const { root } = scaffoldApp({ name: 'demo', harness: HARNESS, into: tempRoot(t), edition: 'lite', presets: bundledPresets(), lock: lockedOk, initGit: init });
+  const identity = { ...process.env, GIT_AUTHOR_NAME: 'scaffold spec', GIT_AUTHOR_EMAIL: 'spec@example.invalid', GIT_COMMITTER_NAME: 'scaffold spec', GIT_COMMITTER_EMAIL: 'spec@example.invalid' };
+  const settled = settleScaffoldBranches(root, 'demo', { add, switchBranch, commit: (args, options) => commit(args, { ...options, env: identity }) });
+  assert.deepEqual(settled, { committed: true, branch: 'dev', detail: '' });
+  const git = (...args: string[]) => spawnSync('git', args, { cwd: root, encoding: 'utf8' }).stdout.trim();
+  assert.equal(git('symbolic-ref', '--short', 'HEAD'), 'dev');
+  assert.equal(git('rev-parse', 'main'), git('rev-parse', 'dev'), 'main and dev start at one commit');
+  assert.equal(git('status', '--porcelain'), '', 'every scaffolded file is in the commit');
+  assert.ok(git('ls-files').split('\n').includes('hfs.json'));
+});
+
+test('a commit git refuses leaves every file staged on unborn main and says why', (t) => {
+  const { root } = scaffoldApp({ name: 'demo', harness: HARNESS, into: tempRoot(t), edition: 'lite', presets: bundledPresets(), lock: lockedOk, initGit: init });
+  const refused = { status: 128, stdout: '', stderr: 'Author identity unknown\n*** Please tell me who you are.', pid: 0, output: [], signal: null };
+  const settled = settleScaffoldBranches(root, 'demo', { add, commit: () => refused, switchBranch: () => assert.fail('no switch without a commit') });
+  assert.deepEqual(settled, { committed: false, branch: 'main', detail: 'git commit: Author identity unknown' });
+  assert.equal(fs.readFileSync(path.join(root, '.git', 'HEAD'), 'utf8').trim(), 'ref: refs/heads/main');
+  assert.ok(spawnSync('git', ['diff', '--cached', '--name-only'], { cwd: root, encoding: 'utf8' }).stdout.split('\n').includes('hfs.json'), 'the files are staged');
 });
 
 test('the root devDependencies pin starci-harness at the version of the CLI that runs the scaffold', (t) => {

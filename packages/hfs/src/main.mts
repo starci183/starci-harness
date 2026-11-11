@@ -96,7 +96,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { isMain } from '../runtime/scripts/lib/is-main.mjs';
-import { explainPath, readWhy, trackedFiles, withCheckProofs } from '../runtime/scripts/hfs/check.mjs';
+import { explainPath, readWhy, trackedFiles, untrackedFiles, withCheckProofs } from '../runtime/scripts/hfs/check.mjs';
 import { withWhy } from '../runtime/scripts/hfs/check-results.mjs';
 import { LegacyStateHeld, adoptLegacyState, skillRoot } from '../runtime/engine/runtime-root.mjs';
 import type { StateAdoption } from '../runtime/engine/runtime-root.mjs';
@@ -116,7 +116,7 @@ import { ScaffoldError, newService, newSpec } from '../scaffold/service.mjs';
 import { EditionRefusal } from '../scaffold/edition-gate.mjs';
 import { addKind } from '../scaffold/add.mjs';
 import { removeModule } from '../scaffold/add-module.mjs';
-import { scaffoldApp, type LockResult } from '../scaffold/app.mjs';
+import { scaffoldApp, settleScaffoldBranches, type LockResult, type ScaffoldBranches } from '../scaffold/app.mjs';
 import { PROJECT_SIDES, isProjectSide, type ProjectSide } from '../runtime/scripts/hfs/project-sides.mjs';
 import { CONTRACT_KINDS, type ContractKind } from '../runtime/scripts/hfs/contract-kind.mjs';
 import { SideRefusal, addNounSides, requireSides } from '../runtime/scripts/hfs/side-gate.mjs';
@@ -139,7 +139,7 @@ import { LINT_REPORT, runSonarScan } from '../cache/sonar-scan-family.mjs';
 import { createProgress, elapsedText, silentProgress } from '../cache/progress.mjs';
 import { familyLine } from '../cache/report.mjs';
 import { writeRunLog } from '../cache/run-log.mjs';
-import { FAMILIES, type FamilyId, type FamilyReport } from '../cache/types.mjs';
+import { CACHE_DIR, FAMILIES, type FamilyId, type FamilyReport } from '../cache/types.mjs';
 import { SECRET_CODES as SECRET_CODE_LIST } from '../cache/hfs-family.mjs';
 import { linterReport, mergeReports, sonarReport, sourceRootsOf, writeReport } from '../report/sonar.mjs';
 import { stylelintFindings } from '../report/stylelint-findings.mjs';
@@ -186,6 +186,8 @@ const listFlag = (opts: Opts, flag: string): string[] | undefined => { const giv
 interface AppIo {
   cwd: string; harness?: { version?: string; role?: string; openTicket?: (ticket: unknown) => unknown } | undefined; edition?: string | undefined;
   stdout: (text: string) => unknown; stderr: (text: string) => unknown; presets?: Presets | undefined; prettier?: Prettier | undefined; lock?: ((root: string) => LockResult) | undefined;
+  /** The git settle of a new app (settleScaffoldBranches); a spec hands a double. */
+  settleBranches?: ((root: string, name: string) => ScaffoldBranches) | undefined;
   // stdin reaches ci (text or a function) and secret (a function or a stream): main passes the shape both take.
   run?: unknown; stackMain?: ((argv: string[], io: { cwd: string; out: unknown; err: unknown }) => unknown) | undefined; env: NodeJS.ProcessEnv; stdin?: (() => string) | undefined; prompt?: Prompt | undefined;
   hostIdentity?: AgeHost | null | undefined; sops?: SecretSops | null | undefined; tools?: ({ spawn?: GhSpawn | undefined } & SecretToolOverrides) | undefined; platform?: NodeJS.Platform | undefined; stackIo?: Record<string, unknown> | undefined; runLinter?: LinterRunner | undefined;
@@ -340,6 +342,8 @@ function contractDescription(contracts: Dynamic): string {
 
 function printCheckOverview(result: Dynamic, out: (text: string) => unknown): void {
   out(`starci app check ${result.repoRoot} (profile ${result.profile ?? 'unknown'}, manifest ${result.manifest}, ${result.tracked} tracked paths)
+`);
+  if (result.untracked > 0) out(`  untracked: ${result.untracked} file${result.untracked === 1 ? '' : 's'} git neither tracks nor ignores, not judged (the check reads the index, as a commit and CI do); \`git add -A\` (or \`git add <path>\`) includes them, \`git status\` names them
 `);
   for (const report of (result.families ?? []) as FamilyReport[]) out(`  ${familyLine(report)}
 `);
@@ -585,6 +589,9 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
   if (fix) await fixLint({ repoRoot, side, run: linterOf(io, io.runHeavyNode) });
   await checkEdition({ repoRoot, edition, normal: () => undefined });
   const tracked = io.checkApp === undefined ? trackedFiles(repoRoot) : [];
+  // The check judges the index, what a commit carries (and CI judges); a file git neither tracks nor ignores is counted and named as unjudged,
+  // never read: a verdict that read the work tree would differ from the one of the commit. The run's own cache output is no such file.
+  const unjudged = io.checkApp === undefined ? untrackedFiles(repoRoot).filter((file) => !file.startsWith(`${CACHE_DIR}/`)) : [];
   const session = io.checkApp === undefined ? openSession({ repoRoot, tracked, io, full, use, planned: tracked.length * Math.max(1, selected.size) }) : undefined;
   const raw: LinterRaw = { eslint: [], stylelint: [] };
   let eslint: CachedLinters['eslint'] | null = null;
@@ -750,7 +757,7 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
   const counting: Record<string, number> = {};
   for (const finding of linterFindings) if (finding.level === 'warning') counting[finding.rule] = (counting[finding.rule] ?? 0) + 1;
   const branchProfile = { branch: profile.branch, source: profile.source, profile: profile.profile, modes: profile.modes, notices: profileNotices(profile).filter((notice) => [...requested].some((family) => notice.startsWith(`${family}:`) || (family === 'sonar' && notice.startsWith('codecov:')))) };
-  const result = { ...checked, findings, families: reports, steps, predictions: lines, counting, branchProfile, cacheWarnings: [...(checked.cacheWarnings ?? []), ...(flushed?.warnings ?? [])], counts, ...(linted ? { eslint: { ...linted.engine, errors: toolErrors } } : {}), ok: verdict.pass && toolErrors.length === 0, gate: verdict };
+  const result = { ...checked, untracked: unjudged.length, findings, families: reports, steps, predictions: lines, counting, branchProfile, cacheWarnings: [...(checked.cacheWarnings ?? []), ...(flushed?.warnings ?? [])], counts, ...(linted ? { eslint: { ...linted.engine, errors: toolErrors } } : {}), ok: verdict.pass && toolErrors.length === 0, gate: verdict };
   return { result, seconds: (Date.now() - started) / 1000, raw };
 }
 
@@ -939,7 +946,7 @@ export function scaffoldSides(without: string | undefined): ProjectSide[] {
   return sides;
 }
 
-async function scaffoldMain(opts: Opts, { cwd, harness, edition = 'full', presets, lock, stdout: out }: AppIo): Promise<number> {
+async function scaffoldMain(opts: Opts, { cwd, harness, edition = 'full', presets, lock, settleBranches, stdout: out }: AppIo): Promise<number> {
   const [name, ...extra] = opts.positional;
   const registryVisibility = valueFlag(opts, 'registry-visibility');
   if (!name || extra.length) throw new UsageError(`starci app scaffold takes \`${((VERB_USAGE.scaffold as string[])[0] as string).slice('starci app scaffold '.length)}\``);
@@ -948,7 +955,12 @@ async function scaffoldMain(opts: Opts, { cwd, harness, edition = 'full', preset
   if (contract !== undefined && !(CONTRACT_KINDS as readonly string[]).includes(contract)) throw new UsageError(`starci app scaffold --contract takes ${CONTRACT_KINDS.join(' or ')} (got ${contract})`);
   if (contract === 'rest' && !sides.includes('be')) throw new UsageError('starci app scaffold --contract rest declares the contract of the be api app, but --without leaves out be');
   const { root: created, files } = scaffoldApp({ name, into: path.resolve(cwd), harness, edition, presets: presets ?? scaffoldPresets(), sides, ...(contract === undefined ? {} : { contract: contract as ContractKind }), ...(registryVisibility === undefined ? {} : { registryVisibility }), ...(lock ? { lock } : {}) });
-  out(`starci app scaffold: created ${created} (${files.length} files); next: npm ci (the lockfile, then the git hooks through npm run prepare; after npm ci --ignore-scripts run npm run prepare), then npm run lint, which is starci app check --gate lint\n`);
+  out(`starci app scaffold: created ${created} (${files.length} files)\n`);
+  const branches = (settleBranches ?? settleScaffoldBranches)(created, name);
+  out(branches.branch === 'dev'
+    ? 'git: the app is the first commit of main and dev is checked out at it; work on dev (and branches cut from it), main moves only by a release, and the first push sends both: git push -u origin main dev (contexts/project/branches.md PROJECT-BRANCH-1)\n'
+    : `git: ${branches.committed ? 'the app is the first commit of main, but dev is not checked out' : 'every file is staged on unborn main, not committed'} (${branches.detail}); ${branches.committed ? '' : 'commit it, then '}run git switch --create dev and work there (contexts/project/branches.md PROJECT-BRANCH-1)\n`);
+  out('next: npm ci (the lockfile, then the git hooks through npm run prepare; after npm ci --ignore-scripts run npm run prepare), then npx starci app check (npm run lint is its lint gate alone)\n');
   return 0;
 }
 

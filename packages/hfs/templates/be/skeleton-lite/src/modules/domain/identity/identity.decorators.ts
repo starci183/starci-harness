@@ -1,6 +1,12 @@
 import { SetMetadata, applyDecorators, createParamDecorator, type ExecutionContext } from "@nestjs/common"
 import { injector, type DoorDecorator, type TypedParameterDecorator } from "@modules/platform/composition"
-import type { AuthDoors, AuthPasswords, AuthSessions, SignInBudget, VerifyAccessToken } from "@modules/integrations/passport"
+import type {
+    AuthDoors,
+    AuthPasswords,
+    AuthSessions,
+    SignInBudget,
+    VerifyAccessToken,
+} from "@modules/integrations/passport"
 import { ServerToServer, requestOf } from "@modules/platform/http-security"
 import type { Principal } from "@modules/platform/cqrs"
 import type { CredentialAuthenticator, CredentialMetadata } from "./credential.contracts"

@@ -759,7 +759,7 @@ rules:
       - {kind: eslint-be, id: no-query-in-loop}
   - id: R78
     code: BE_USER_COPY_LITERAL
-    law: Exception messages, notification texts and response copy come from the capability's messages catalog through the `MessageCatalog` port.
+    law: Exception messages, notification texts and response copy come from the capability's messages catalog through the `MessageCatalog` port; the operation and field documentation a REST door hands to an `@nestjs/swagger` export is contract text, judged with the emitted document (R396).
     failureCodes:
       - BE_USER_COPY_LITERAL
     enforcers:
@@ -2014,7 +2014,7 @@ rules:
       - {kind: eslint-be, id: capability-module-shape}
   - id: R296
     code: CI_SECRET_SEALED
-    law: A sealed CI credential copy names an explicit service credential bound to the selected product project, environment, member and key; required product Sonar analysis uses sonar.enc.yaml and an app runtime key never becomes a CI credential.
+    law: A sealed CI credential copy names an explicit service credential bound to the selected product project, environment, member and key, sealed unless its service declares the open owner step that provisions it (`ownerAction.needed`); required product Sonar analysis uses sonar.enc.yaml and an app runtime key never becomes a CI credential.
     failureCodes:
       - CI_SECRET_SEALED
     enforcers:

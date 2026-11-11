@@ -11,7 +11,8 @@
 // (`npm install --package-lock-only`, no node_modules, no scripts), so `npm ci` installs the new app as it is. When npm cannot
 // resolve it the scaffold fails (HFS_SCAFFOLD_LOCK_FAILED), names the step and unlinks its own generated entries. Replaced or
 // occupied entries are retained with a cleanup message. The only existing root accepted is an empty unborn main Git repository; a
-// new path is made one first (git init, branch main).
+// new path is made one first (git init, branch main). Once written, the verb records the app as the first commit of main and checks
+// out dev at it (settleScaffoldBranches, PROJECT-BRANCH-1).
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -33,6 +34,9 @@ import { declaredSealedMembers, materializeDeclaredPlaceholders } from '../runti
 import { revParseQuery } from '../runtime/scripts/api/git/rev-parse-query.mjs';
 import { lsFiles } from '../runtime/scripts/api/git/ls-files.mjs';
 import { init as gitInit } from '../runtime/scripts/api/git/init.mjs';
+import { add } from '../runtime/scripts/api/git/add.mjs';
+import { commit } from '../runtime/scripts/api/git/commit.mjs';
+import { switchBranch } from '../runtime/scripts/api/git/switch.mjs';
 import { insidePath, samePath } from '../runtime/scripts/lib/path-key.mjs';
 import { byCodeUnit } from '../report/order.mjs';
 import { sonarGateName } from '../sync/sonar-key.mjs';
@@ -509,7 +513,9 @@ const LITE_DEFERRED_GENERATOR_FILES = new Set([
   ...DEFERRED_GENERATOR_FILES,
   'src/modules/platform/database/database.sql.ts',
   'src/modules/platform/database/migration-runner.service.ts',
+  'src/modules/platform/database/migration-runner.service.spec.ts',
   'src/modules/platform/database/seed-runner.service.ts',
+  'src/modules/platform/database/seed-runner.service.spec.ts',
   'src/modules/platform/primitives/sequence.policy.ts',
 ]);
 /**
@@ -761,6 +767,40 @@ function bornRepository(root: string, initGit: InitGit): fs.Stats {
   const made = initGit(root, { branch: 'main' });
   if (!made?.ok) throw new ScaffoldError('HFS_SCAFFOLD_GIT_INIT_FAILED', `git init could not create the repository of ${root} (${String(made?.stderr ?? '').trim() || 'no output'}); remove ${root}, check git, then run starci app scaffold again`);
   return fs.lstatSync(root);
+}
+
+/** What the scaffold leaves git on: the first commit of main with dev checked out at it, or every file staged on unborn main and why. */
+export interface ScaffoldBranches {
+  readonly committed: boolean;
+  readonly branch: 'dev' | 'main';
+  /** What git said when it refused the stage, the commit or the switch; empty when all three ran. */
+  readonly detail: string;
+}
+
+/** The git verbs the settle runs, each answering the spawn result; the defaults are the real ones. */
+export interface ScaffoldGit {
+  readonly add: typeof add;
+  readonly commit: typeof commit;
+  readonly switchBranch: typeof switchBranch;
+}
+
+const said = (run: { status: number | null; stderr?: unknown; stdout?: unknown; error?: Error | undefined }): string =>
+  String(run.error?.message ?? run.stderr ?? run.stdout ?? '').trim().split(/\r?\n/u)[0] || `exit ${run.status ?? 'none'}`;
+
+/**
+ * An app keeps `main` and `dev` and is worked on `dev` (contexts/project/branches.md PROJECT-BRANCH-1). The scaffold stages every file
+ * it wrote, records them as the first commit of `main` and checks out `dev` at it, so the first `starci app check` judges the whole app
+ * (it reads the index) and the first push sends both branches at one commit. A step git refuses (no user.name or user.email, a signing
+ * key it cannot reach) ends the settle there: the files stay staged on unborn `main` and the detail says what git answered.
+ */
+export function settleScaffoldBranches(root: string, name: string, git: ScaffoldGit = { add, commit, switchBranch }): ScaffoldBranches {
+  const staged = git.add(['-A'], { cwd: root });
+  if (staged.status !== 0) return { committed: false, branch: 'main', detail: `git add: ${said(staged)}` };
+  const recorded = git.commit(['--quiet', '--message', `chore: scaffold ${name} (starci app scaffold)`], { cwd: root });
+  if (recorded.status !== 0) return { committed: false, branch: 'main', detail: `git commit: ${said(recorded)}` };
+  const switched = git.switchBranch(['--quiet', '--create', 'dev'], { cwd: root });
+  if (switched.status !== 0) return { committed: true, branch: 'main', detail: `git switch: ${said(switched)}` };
+  return { committed: true, branch: 'dev', detail: '' };
 }
 
 export function scaffoldApp({ name, into, presets, harness, edition = 'full', sides = ['be', 'fe'], contract = 'graphql', registryVisibility = 'public', manifest = loadSlotManifest(), pins = canonPins({ harness }), lock = npmLock, initGit = gitInit, now = () => new Date() }: { name: string, into: string, presets: Presets | null | undefined, harness: { version?: string | undefined } | undefined, edition?: string, sides?: readonly ProjectSide[], contract?: ContractKind, registryVisibility?: string, manifest?: SlotManifest, pins?: Pins, lock?: (root: string) => LockResult, initGit?: InitGit, now?: () => Date }): { root: string, files: string[] } {
