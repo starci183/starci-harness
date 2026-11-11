@@ -16,8 +16,8 @@ Names only. Dev values are generated once by the owner-armed `starci app secret 
 | `AUTH_JWT_ISSUER`, `AUTH_JWT_AUDIENCE`, `AUTH_JWT_KEY_ID` | API access-token claims and key id (the key id is published in the JWKS) |
 | `AUTH_WEB_ORIGIN` | API origin of the web app: where the Google callback lands and the only origin a return address may name |
 | `AUTH_JWT_PRIVATE_KEY` | API Ed25519 (EdDSA) signing key (member `auth`) |
-| `STORAGE_ENDPOINT`, `STORAGE_REGION`, `STORAGE_BUCKET` | API storage address |
-| `STORAGE_ACCESS_KEY_ID`, `STORAGE_SECRET_ACCESS_KEY` | API storage credentials (member `storage`) |
+| `STORAGE_ENDPOINT`, `STORAGE_REGION`, `STORAGE_BUCKET` | API storage address: the dev `storage` service (MinIO) on its S3 port, and the bucket the api creates there |
+| `STORAGE_ACCESS_KEY_ID`, `STORAGE_SECRET_ACCESS_KEY` | API storage credentials and the `storage` service's root credentials (member `storage`, granted to the service through `STACK_GRANT_STORAGE`) |
 | `MAIL_HOST`, `MAIL_PORT`, `MAIL_SECURITY`, `MAIL_FROM`, `MAIL_FROM_NAME` | API outgoing mail server (the dev `mail` service, Mailpit, on its SMTP port: a plain channel on loopback only) and the sender of the confirmation and reset mails |
 | `MAIL_DEFAULT_LANGUAGE`, `MAIL_CONFIRM_TTL_SECONDS`, `MAIL_RESET_TTL_SECONDS` | API mail language (`vi` or `en`) and link lifetimes; optional |
 | `MAIL_USER`, `MAIL_PASSWORD` | API mail server login; optional, the password reads `MAIL_PASSWORD_FILE` |

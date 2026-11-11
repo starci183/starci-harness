@@ -23,8 +23,10 @@ the three realtime doors. How the edition is chosen is PROJECT-1 in [README.md](
   with USAGE for its roles, and the app role's search_path is `public, extensions`, so a migration may name
   `extensions.vector` or set its function's search_path to `''`; pgmq is the one exception, since its control file fixes
   its own schema `pgmq` (`create extension pgmq`, never `with schema extensions`). Identity is the app's own, the package `@starci/auth` composed in the Passport
-  integration, and storage the S3-compatible MinIO of the host, reached through the package `@starci/object-storage` composed in the object-storage integration. Owners: slots `app.db*` and `ruleParams.db.extensions` in
-  [hfs/slots.yaml](../hfs/slots.yaml); the `postgres` image pin in [stack/pins.yaml](../stack/pins.yaml).
+  integration, and storage an S3-compatible store, in development the dev stack's own `storage` service (the StarCi MinIO), reached through the
+  package `@starci/object-storage` composed in the object-storage integration, whose bucket the api's readiness creates when it is missing.
+  Owners: slots `app.db*` and `ruleParams.db.extensions` in [hfs/slots.yaml](../hfs/slots.yaml); the `postgres` and `minio` image pins in
+  [stack/pins.yaml](../stack/pins.yaml); the dev services and their ports in [stacks.md](stacks.md) PROJECT-STACKS-10.
 - Redis is the only declarable backing service (`sides.be.backing`), run durably; vectors use pgvector in the db service,
   so no Qdrant. Owners: `ruleParams.be.backing` in [hfs/slots.yaml](../hfs/slots.yaml);
   R276.

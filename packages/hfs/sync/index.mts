@@ -23,7 +23,8 @@ import { fileURLToPath } from 'node:url';
 import { braceVariants } from '../runtime/scripts/lib/glob.mjs';
 import { codecovPaths, coverageComponents, declaredPackageScopes, jestCoverage, packageComponents, packagesCoverage, sonarCoverageExclusions, type PackagesCoverage } from '../runtime/scripts/hfs/coverage-scope.mjs';
 import { restDoorVariables } from './rest-doors.mjs';
-import { declaredSidesEdits } from './declared-sides.mjs';
+import { declaredSidesEdits, type DeclarationEdit } from './declared-sides.mjs';
+import { devServicesUpgrade } from './dev-services.mjs';
 import { APP_SCOPE, SIDES, declaredAppSides, litePresenceOf, loadSlotManifest, resolveAppDeclaration, sideDeclared, slotInEdition, type ProjectSide, type RepoView } from '../runtime/scripts/hfs/slots.mjs';
 import type { AppRepo } from '../runtime/scripts/hfs/slot-app-view.mjs';
 import type { Slot, SlotManifest } from '../runtime/scripts/hfs/manifest-shape.mjs';
@@ -844,6 +845,23 @@ export function guardedWrites(root: string, targets: readonly RenderedTarget[], 
   return [...writes, ...retired.map((file): GuardedWrite => ({ path: file, group: RETIRED_GROUP, text: null }))];
 }
 
+/** The edits sync makes to an existing app's own declarations, one per file in order (a later edit of a file builds on the earlier), and the notices of what it left. */
+export function upgradeEdits(root: string): { edits: DeclarationEdit[]; notices: string[] } {
+  const edits = new Map<string, DeclarationEdit>();
+  for (const edit of declaredSidesEdits(root)) edits.set(edit.path, edit);
+  const read = (relative: string): string | null => {
+    const pending = edits.get(relative);
+    if (pending) return pending.content;
+    try { return fs.readFileSync(path.join(root, relative), 'utf8'); } catch { return null; }
+  };
+  const services = devServicesUpgrade(root, read);
+  for (const edit of services.edits) {
+    const earlier = edits.get(edit.path);
+    edits.set(edit.path, earlier ? { path: edit.path, reason: `${earlier.reason}; ${edit.reason}`, content: edit.content } : edit);
+  }
+  return { edits: [...edits.values()], notices: services.notices };
+}
+
 /** `starci app sync [--execute] [--cwd <dir>]` at the app root: the dry run reports drift, --execute writes; returns 0 clean, 1 drift, 2 usage. */
 function syncOptions(argv: readonly string[]): { write: boolean; cwdAt: number } | null {
   const write = argv.includes('--execute');
@@ -882,8 +900,10 @@ export async function runSync(argv: string[], { cwd = process.cwd(), out = (line
   const { write, cwdAt } = options;
   const root = cwdAt >= 0 ? path.resolve(cwd, argv[cwdAt + 1] as string) : cwd;
   try {
-    // An app that predates the declared sides gets them first (R399): hfs.json and the stack declaration, which the render then reads.
-    const declared = declaredSidesEdits(root);
+    // An app that predates the declared sides gets them first (R399): hfs.json and the stack declaration, which the render then reads. Then
+    // its dev environments get the starter's dev services and the compose ports of their base port (R389), on top of the sides edit.
+    const { edits: declared, notices: upgradeNotices } = upgradeEdits(root);
+    for (const notice of upgradeNotices) out(notice);
     if (write) for (const edit of declared) { fs.writeFileSync(path.join(root, edit.path), edit.content); out(`wrote ${edit.path} (${edit.reason})`); }
     else for (const edit of declared) out(`HFS_SYNC_DRIFT ${edit.path}: ${edit.reason}; run "npx --no-install starci app sync --execute"`);
     const notices: string[] = [];

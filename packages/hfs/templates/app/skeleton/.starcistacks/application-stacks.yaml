@@ -45,18 +45,29 @@ environments:
     # `starci app stack up --env dev --execute` reads this block (PROJECT-STACKS-6): the compose services in dependency order, each
     # awaited on its healthcheck, then readiness and the origins. The app images come from `starci app stack prepare --env dev --execute`.
     local:
-      # The project base port (R389, PROJECT-STACKS-10): app = base, core = base+1, landing = base+2, and the screenshot gallery serves on base+50 (R395).
+      # The project base port (R389, PROJECT-STACKS-10): app = base, core = base+1, landing = base+2, the screenshot gallery serves on base+50 (R395),
+      # and the compose services take base+80 to base+99: the object store's S3 API base+93 and its console base+94.
       basePort: 3000
       ports:
         core: 3001
         app: 3000
         landing: 3002
+        storage: 3093
+        storage-console: 3094
       services:
         - {name: postgres, wait: healthy}
+        - {name: storage, wait: healthy}
         - {name: core, wait: healthy, port: core}
         - {name: app, wait: healthy, port: app}
         - {name: landing, wait: healthy, port: landing}
+      # The dev object store's root credentials: created once, dev-only, by the owner-armed `starci app secret init --env dev --execute`.
+      grants:
+        - {name: storage, keys: [STORAGE_ACCESS_KEY_ID, STORAGE_SECRET_ACCESS_KEY]}
+      custody:
+        - {member: storage, key: STORAGE_ACCESS_KEY_ID, kind: hex, bytes: 12}
+        - {member: storage, key: STORAGE_SECRET_ACCESS_KEY, kind: hex}
       ready:
+        - {name: storage-live, url: "http://127.0.0.1:${port.storage}/minio/health/live"}
         - {name: core-live, url: "http://127.0.0.1:${port.core}/health/live"}
         - {name: core-ready, url: "http://127.0.0.1:${port.core}/health/ready"}
         - {name: app-live, url: "http://127.0.0.1:${port.app}/health/live"}
@@ -70,6 +81,7 @@ environments:
         - {name: app, url: "http://127.0.0.1:${port.app}"}
         - {name: landing, url: "http://127.0.0.1:${port.landing}"}
         - {name: core, url: "http://127.0.0.1:${port.core}"}
+        - {name: storage, url: "http://127.0.0.1:${port.storage-console}"}
   production:
     status: supported
     runtime: docker-swarm

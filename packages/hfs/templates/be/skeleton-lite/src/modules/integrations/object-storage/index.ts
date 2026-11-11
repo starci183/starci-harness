@@ -1,4 +1,5 @@
 export { OBJECT_STORAGE } from "@starci/object-storage"
 export { parseObjectStorageConfig } from "./object-storage.config"
+export { InjectObjectStorage, InjectObjectStorageBucket } from "./object-storage.decorators"
 export { ObjectStorageModule } from "./object-storage.module"
 export type { ObjectStorageOptions } from "./object-storage.options"

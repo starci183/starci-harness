@@ -2,7 +2,7 @@
 
 The dev environment is one command: `starci app stack up --env dev --execute`. It checks the machine, opens the dev custody, runs the setup
 commands, starts the dependencies in Docker Linux containers (the `db` service: the official postgres image plus pgvector, built from
-`.starcistacks/images/db/Dockerfile`; the `mail` service: Mailpit, the dev mail sink), gives the environment its own database role, migrates, applies the seed levels `.starcistacks/seeds/` then `.starcistacks/dev/seeds/`, starts the api and web
+`.starcistacks/images/db/Dockerfile`; the `mail` service: Mailpit, the dev mail sink; the `storage` service: MinIO, the dev object store), gives the environment its own database role, migrates, applies the seed levels `.starcistacks/seeds/` then `.starcistacks/dev/seeds/`, starts the api and web
 processes natively and waits for readiness. What it runs is the `local` block of `environments.dev` in `.starcistacks/application-stacks.yaml`
 (PROJECT-STACKS-6 in contexts/project/stacks.md); this runbook never carries a docker command, an agent never runs docker by hand.
 
@@ -14,7 +14,12 @@ nothing else: `up` runs `npm ci` and the codegen itself.
 creates every value `local.custody` declares, declares its key in the manifest and never replaces a value that is already sealed. A machine that
 lacks the age identity of an existing dev member is refused with the owner step to obtain it. The `db` service takes `POSTGRES_PASSWORD`, the
 migrations run as the environment's own owner role and the api connects as the `app_be` role with its own password, so no role is shared with
-another environment.
+another environment. The `storage` service takes the `storage` member's `STORAGE_ACCESS_KEY_ID` and `STORAGE_SECRET_ACCESS_KEY` as its root
+credentials, the keys the api signs with.
+
+**Ports.** Every host port derives from `local.basePort` (R389, PROJECT-STACKS-10): web on the base, the api on base + 1, the compose services
+from base + 80 (`db` base + 90, the `mail` SMTP and web UI base + 91 and base + 92, the `storage` S3 API and console base + 93 and base + 94), so
+two apps run side by side on one machine.
 
 | Command | Operation |
 | --- | --- |
@@ -26,7 +31,11 @@ another environment.
 | down | `starci app stack down --env dev --execute`: ends the processes and stops the compose project; volumes and sealed values stay. |
 | verification | `starci app stack verify --env dev`: the declared liveness and readiness probes after a real start, then `npm run lint` from the app root. |
 
-**Mail.** The confirmation and reset mails of the sign-in go to the `mail` service on its SMTP port (`MAIL_HOST`, `MAIL_PORT`, `MAIL_SECURITY: none`: a plain channel that only the loopback sink accepts) and nothing leaves the machine. Open the web UI at the `mail` origin `up` prints (`http://localhost:8025` by default), sign up in the web app and follow the link from the message there. A deployed environment names a real SMTP server and `MAIL_SECURITY: starttls` or `tls`.
+**Mail.** The confirmation and reset mails of the sign-in go to the `mail` service on its SMTP port (`MAIL_HOST`, `MAIL_PORT`, `MAIL_SECURITY: none`: a plain channel that only the loopback sink accepts) and nothing leaves the machine. Open the web UI at the `mail` origin `up` prints (base + 92), sign up in the web app and follow the link from the message there. A deployed environment names a real SMTP server and `MAIL_SECURITY: starttls` or `tls`.
+
+**Storage.** The api reaches the `storage` service on its S3 port (`STORAGE_ENDPOINT`) and creates its bucket (`STORAGE_BUCKET`) on its first
+readiness probe, so `/health/ready` answers only once the database and the bucket answer; the console is the `storage` origin `up` prints.
+The volume `storage-data` is rebuildable development data.
 
 The database volume `db-data` is rebuildable development data: `starci app db migrate` recreates its schema from `db/bootstrap.sql` and
 `db/migrations`. Key names of the environment are in `.starcistacks/dev/runtime/env/KEYS.md`.

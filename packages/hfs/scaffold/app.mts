@@ -27,6 +27,7 @@ import { FE_APP_SCRIPTS, PACKAGE_MANAGER, ROOT_PACKAGES_WORKSPACE, WORKSPACES, f
 import { PROJECT_SIDES, type ProjectSide } from '../runtime/scripts/hfs/project-sides.mjs';
 import { contractOf, type ContractKind } from '../runtime/scripts/hfs/contract-kind.mjs';
 import { filesForSides, stackSidesVars } from './sides.mjs';
+import { composePort } from '../runtime/scripts/hfs/stack-base-port.mjs';
 import { isLinkLike } from '../runtime/scripts/api/fs/is-link-like.mjs';
 import { unlinkOnly } from '../runtime/scripts/api/fs/lib.mjs';
 import { initializeAppIdentity } from '../runtime/scripts/hfs/secret-init.mjs';
@@ -472,8 +473,19 @@ function nextAppTsconfig() {
   };
 }
 
-/** The names a skeleton file may fill: {{project}}, {{app}}, {{appPascal}} (the side's app), {{sonarGate}}, {{registryVisibility}} (the image visibility written once into deploy.registry), {{basePort}} and {{apiPort}} (the project base port of the dev environment and the api port above it, PROJECT-STACKS-10), and {{stackSides}} and {{stackSidesNote}} (the stack's `sides` field and its plain-words line, stack-sides.mts). */
-const SKELETON_VARIABLES = Object.freeze(['project', 'app', 'appPascal', 'sonarGate', 'registryVisibility', 'basePort', 'apiPort', 'stackSides', 'stackSidesNote']);
+/** The names a skeleton file may fill: {{project}}, {{app}}, {{appPascal}} (the side's app), {{sonarGate}}, {{registryVisibility}} (the image visibility written once into deploy.registry), {{basePort}}, {{apiPort}} and the compose ports {{dbPort}}, {{mailPort}}, {{mailUiPort}}, {{storagePort}} and {{storageConsolePort}} (the project base port of the dev environment and the ports its role table derives, PROJECT-STACKS-10), and {{stackSides}} and {{stackSidesNote}} (the stack's `sides` field and its plain-words line, stack-sides.mts). */
+const SKELETON_VARIABLES = Object.freeze(['project', 'app', 'appPascal', 'sonarGate', 'registryVisibility', 'basePort', 'apiPort', 'dbPort', 'mailPort', 'mailUiPort', 'storagePort', 'storageConsolePort', 'stackSides', 'stackSidesNote']);
+
+/** The dev environment's ports of a base (stack-base-port.mts): the base, the api above it and every compose role of the table. */
+export const scaffoldPorts = (base: number): Record<'basePort' | 'apiPort' | 'dbPort' | 'mailPort' | 'mailUiPort' | 'storagePort' | 'storageConsolePort', string> => ({
+  basePort: String(base),
+  apiPort: String(base + 1),
+  dbPort: String(composePort(base, 'db')),
+  mailPort: String(composePort(base, 'mail')),
+  mailUiPort: String(composePort(base, 'mailui')),
+  storagePort: String(composePort(base, 'storage')),
+  storageConsolePort: String(composePort(base, 'storage-console')),
+});
 
 /** The base port a new app declares in local.basePort: 3000, 3100 ... 4900 without the reserved 3900 range, picked by the project name, so two new apps rarely start on the same range (the doctor reports an overlap). */
 export const scaffoldBasePort = (project: string): number => 3000 + 100 * ((slot: number) => (slot >= 9 ? slot + 1 : slot))([...project].reduce((hash, char) => (hash * 31 + (char.codePointAt(0) ?? 0)) >>> 0, 7) % 19);
@@ -820,7 +832,7 @@ export function scaffoldApp({ name, into, presets, harness, edition = 'full', si
   const app = resolveAppDeclaration(manifest, declaration);
   const pkg = packageManifest(name, pins, app.edition, app.sides.fe.grammar, coreFeStackPackages(), shape);
   const timestamp = now().toISOString().replace(/\D/g, '').slice(0, 14);
-  const vars = { basePort: String(scaffoldBasePort(name)), apiPort: String(scaffoldBasePort(name) + 1), sonarGate: String(sonarGateName(parseYaml(fs.readFileSync(SONAR_GATE_FILE, 'utf8')), app.edition)), timestamp, registryVisibility, ...stackSidesVars(sides) };
+  const vars = { ...scaffoldPorts(scaffoldBasePort(name)), sonarGate: String(sonarGateName(parseYaml(fs.readFileSync(SONAR_GATE_FILE, 'utf8')), app.edition)), timestamp, registryVisibility, ...stackSidesVars(sides) };
   const files: GeneratedFile[] = [
     { path: 'hfs.json', content: jsonText(declaration) },
     { path: 'package.json', content: packageJsonText(pkg) },
