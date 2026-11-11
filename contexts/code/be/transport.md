@@ -69,7 +69,9 @@ A `rest` api app commits `contracts/<app>/openapi.json`, written by `npm run con
 hand: Nest's own `@nestjs/swagger` builds it over the controllers of the app's module graph, read from source without
 booting the app, and the head `apps/<app>/src/openapi.ts`, which exports `OPENAPI` (`new DocumentBuilder().setTitle(..)
 .setVersion(..).addBearerAuth().build()`). `main.ts` serves the same head with `SwaggerModule.setup`, so the published
-Swagger equals the committed file; paths carry no global prefix (a server URL of the head names it). In that document:
+Swagger equals the committed file. A literal `setGlobalPrefix("<prefix>")` in `main.ts` prefixes every path; a prefix that is
+not one literal, and a graph importing `RouterModule`, are refused by the emit, never written as a document with the wrong
+paths (a controller carries its full path in `@Controller`). In that document:
 
 - every operation names an explicit, unique operationId `<area>.<action>` (`@ApiOperation({ operationId: "leads.list" })`);
 - every JSON request body and 2xx answer is a named DTO schema (`@ApiProperty` fields, `@ApiOkResponse({ type })`);

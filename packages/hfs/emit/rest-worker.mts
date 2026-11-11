@@ -4,7 +4,8 @@
 // booted: the controller classes of its module graph are read from source (static-graph.mts `composeHttp`) and loaded alone
 // (class-loader.mts), the document head is the `OPENAPI` export of `apps/<app>/src/openapi.ts` (title, version, servers, security schemes:
 // what a `DocumentBuilder().build()` answers), and Nest's own `SwaggerModule.createDocument` builds the document over those controllers, so
-// the file equals what the running app serves with the same head. Paths carry no global prefix (a server URL of the head names it).
+// the file equals what the running app serves with the same head. A literal `setGlobalPrefix("<prefix>")` of main.ts prefixes every path; a
+// prefix that is not one literal, and a graph importing RouterModule, are refused (exit 1) rather than emitted with the wrong paths.
 import fs from 'node:fs';
 import path from 'node:path';
 import type {} from 'reflect-metadata';
@@ -38,9 +39,18 @@ const { SwaggerModule } = source.require('@nestjs/swagger');
 // The one module the scan reads holds every controller of the graph; a controller is explored on its prototype, never constructed.
 const holder = class ContractModule {};
 const modules = Object.assign(new Map([['contract', { metatype: holder, imports: new Set(), controllers: new Map(controllers.map((controller) => [controller.name, { metatype: controller, instance: Object.create(controller.prototype) }])) }]]), { applicationId: 'contract' });
+// The global prefix main.ts sets is part of every served path: a literal one is applied, anything else cannot be known from source.
+const main = path.join(repoRoot, 'apps', app, 'src', 'main.ts');
+const mainText = fs.existsSync(main) ? fs.readFileSync(main, 'utf8') : '';
+const applicationConfig = new ApplicationConfig();
+if (/\bsetGlobalPrefix\s*\(/u.test(mainText)) {
+  const literal = /\bsetGlobalPrefix\s*\(\s*(['"])([^'"\n]*)\1\s*\)/u.exec(mainText);
+  if (!literal) fail(`apps/${app}/src/main.ts sets a global prefix that is not one string literal (or passes options): the REST emit cannot know the served paths; call setGlobalPrefix("<prefix>") with a literal and no options`);
+  applicationConfig.setGlobalPrefix(literal![2]);
+}
 const application = {
   container: { getModules: () => modules, isGlobalModule: () => false },
-  config: new ApplicationConfig(),
+  config: applicationConfig,
   getHttpAdapter: () => ({ getType: () => 'express' }),
 };
 process.stdout.write(restDocumentText(SwaggerModule.createDocument(application, config)));

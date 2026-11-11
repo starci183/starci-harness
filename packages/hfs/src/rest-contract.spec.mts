@@ -190,3 +190,25 @@ test('restContractFindings reads the committed snapshot and pin of each rest app
   for (const finding of rest) console.log(`fail fixture ${finding.code}: ${finding.message}`);
   assert.deepEqual(restContractFindings({ repoRoot: root, repo: { profile: 'be', apps: [{ name: 'api', kind: 'api' }] } as Json, files }), [], 'a graphql back end is not judged');
 });
+
+test('the REST emit never writes wrong paths: a literal global prefix is applied, any other prefix and RouterModule are refused, a dynamic module\'s controllers are read', t => {
+  const emitted = (root: string) => JSON.parse(fs.readFileSync(path.join(root, 'contracts/api/openapi.json'), 'utf8')) as Json;
+  const prefixed = restApp(t);
+  prefixed.put('apps/api/src/main.ts', `import { NestFactory } from '@nestjs/core'; import { AppModule } from './app.module'; const app = await NestFactory.create(AppModule); app.setGlobalPrefix('api');`);
+  emitContracts({ repoRoot: prefixed.root, declaration: REST });
+  assert.deepEqual(Object.keys(emitted(prefixed.root).paths), ['/api/leads']);
+  const computed = restApp(t);
+  computed.put('apps/api/src/main.ts', `const app: any = null; const prefix = process.env['PREFIX'] ?? 'api'; app.setGlobalPrefix(prefix);`);
+  assert.throws(() => emitContracts({ repoRoot: computed.root, declaration: REST }), (error: Error) => { console.log(`fail fixture emit (prefix): ${error.message.split('\n')[0]}`); return /not one string literal/.test(error.message); });
+  const routed = restApp(t);
+  routed.put('apps/api/src/app.module.ts', `import { Module } from '@nestjs/common'; import { RouterModule } from '@nestjs/core'; import { LeadsController } from './leads.controller';
+@Module({ controllers: [LeadsController] }) export class LeadsModule {}
+@Module({ imports: [LeadsModule, RouterModule.register([{ path: 'crm', module: LeadsModule }])] }) export class AppModule {}`);
+  assert.throws(() => emitContracts({ repoRoot: routed.root, declaration: REST }), (error: Error) => { console.log(`fail fixture emit (RouterModule): ${error.message.split('\n')[0]}`); return /RouterModule/.test(error.message); });
+  const dynamic = restApp(t);
+  dynamic.put('apps/api/src/app.module.ts', `import { Module } from '@nestjs/common'; import { LeadsController } from './leads.controller';
+@Module({}) export class LeadsModule { static register() { return { module: LeadsModule, controllers: [LeadsController] }; } }
+@Module({ imports: [LeadsModule.register()] }) export class AppModule {}`);
+  emitContracts({ repoRoot: dynamic.root, declaration: REST });
+  assert.deepEqual(Object.keys(emitted(dynamic.root).paths), ['/leads']);
+});

@@ -45,7 +45,7 @@ interface ArrValue { readonly t: 'arr'; readonly items: Array<Value | SpreadItem
 /** A choice the literals do not decide: every alternative stays. */
 interface AltValue { readonly t: 'alt'; readonly alts: Value[] }
 /** A dynamic module: the module class or external module, with the imports and providers its static method adds. */
-interface DynValue { readonly t: 'dyn'; readonly module: Value; readonly imports: Value[]; readonly providers: Value[]; readonly args: Value[]; readonly ext?: string }
+interface DynValue { readonly t: 'dyn'; readonly module: Value; readonly imports: Value[]; readonly providers: Value[]; readonly args: Value[]; readonly ext?: string; readonly controllers?: Value[] }
 /** A value computed on demand and memoised. */
 interface ThunkValue {
   readonly t: 'thunk';
@@ -128,6 +128,7 @@ export interface Composition {
 
 const NEST_COMMON = '@nestjs/common';
 const NEST_GRAPHQL = '@nestjs/graphql';
+const NEST_CORE = '@nestjs/core';
 
 /** GraphQL server options that change the printed schema and that this reader does not model: presence is an error. */
 const SCHEMA_OPTIONS_NOT_MODELED = ['buildSchemaOptions', 'typeDefs', 'schema', 'transformSchema', 'transformAutoSchemaFile'];
@@ -652,7 +653,7 @@ export function createGraphReader({ ts, host }: { ts: typeof TypeScript, host: G
     if (value.t === 'dyn') return { module: force(value.module), dyn: value, key: value };
     if (value.t === 'obj' && value.props.has('module')) {
       if (value.open && !(value.props.has('imports') && value.props.has('providers'))) throw new Error(`${origin}: a module object with an unknown spread may add imports or providers`);
-      const dyn: DynValue = { t: 'dyn', module: value.props.get('module')!, imports: value.props.has('imports') ? [value.props.get('imports')!] : [], providers: value.props.has('providers') ? [value.props.get('providers')!] : [], args: [] };
+      const dyn: DynValue = { t: 'dyn', module: value.props.get('module')!, imports: value.props.has('imports') ? [value.props.get('imports')!] : [], providers: value.props.has('providers') ? [value.props.get('providers')!] : [], args: [], ...(value.props.has('controllers') ? { controllers: [value.props.get('controllers')!] } : {}) };
       return { module: force(dyn.module), dyn, key: value };
     }
     throw new Error(`${origin}: an import cannot be decided (${(value.t === 'free' ? value.why : undefined) ?? value.t})`);
@@ -687,6 +688,7 @@ export function createGraphReader({ ts, host }: { ts: typeof TypeScript, host: G
         if (dyn) {
           children.push(...dyn.imports);
           node.providers.push(...dyn.providers);
+          node.controllers.push(...(dyn.controllers ?? []));
           if (isGraphqlServer(module)) node.server = dyn;
         }
         const name = module.t === 'class' ? `${module.name} (${module.file})` : `${'name' in module ? module.name : undefined}`;
@@ -801,12 +803,16 @@ export function createGraphReader({ ts, host }: { ts: typeof TypeScript, host: G
   }
 
   /**
-   * Composes an app root file for HTTP. Answers null when the file exports no `AppModule` class, else the `@Module({ controllers })` classes of
-   * every module instance of the graph (static module metadata; a dynamic module's own controllers are not modelled), unique, in order.
+   * Composes an app root file for HTTP. Answers null when the file exports no `AppModule` class, else the controller classes of every module
+   * instance of the graph (`@Module({ controllers })` and the `controllers` of a dynamic module the source returns), unique, in order. A graph
+   * that imports RouterModule (paths this reader does not model) is an error, never a document with the wrong paths; the controllers an
+   * installed package's dynamic module registers are not seen (its source is not read).
    */
   function composeHttp(appFile: string, exportName = 'AppModule'): HttpComposition | null {
     const nodes = rootNodes(appFile, exportName);
     if (nodes === null) return null;
+    const router = nodes.find((node) => node.module.t === 'ext' && node.module.spec === NEST_CORE && node.module.name === 'RouterModule');
+    if (router) throw new Error(`${appFile}: the graph imports RouterModule of @nestjs/core, whose module paths the REST emit does not model; give each controller its full path in @Controller("<path>") instead, so openapi.json equals the served routes`);
     const found: ClassValue[] = [];
     for (const node of nodes) {
       for (const list of node.controllers) {
