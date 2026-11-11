@@ -8,6 +8,7 @@ import { engineOwnedOk } from './engine-owned.mjs';
 import { baselineResetOk } from './rules/database-reset.mjs';
 import { kindShapeProblems, patternShapeProblems } from './declaration-slots.mjs';
 import { byCodeUnit } from '../lib/list.mjs';
+import { CONTRACT_KINDS, DEFAULT_CONTRACT } from './contract-kind.mjs';
 
 /** Shape problems of the optional hfs.json `db` block of a lite app: the environment variable naming its database, its image, forced RLS and its application role. */
 const isStringList = (value: Parsed) => Array.isArray(value) && value.every((entry: Parsed) => typeof entry === 'string' && entry.trim());
@@ -46,10 +47,13 @@ function appShapeProblems(apps: Parsed, at: Parsed, side: Parsed, names: Parsed)
     return bad;
   }
   apps.forEach((app, index) => {
-    if (!isPlainObject(app) || !NAME.test(String(app.name)) || !NAME.test(String(app.kind)) || Object.keys(app).some((key: Parsed) => key !== 'name' && key !== 'kind')) bad.push(`${at}.apps[${index}] must be {name, kind}`);
+    if (!isPlainObject(app) || !NAME.test(String(app.name)) || !NAME.test(String(app.kind)) || Object.keys(app).some((key: Parsed) => key !== 'name' && key !== 'kind' && key !== 'contract')) bad.push(`${at}.apps[${index}] must be {name, kind} (an api app of be may add contract)`);
+    else if (app.contract !== undefined && (side !== 'be' || app.kind !== 'api' || !CONTRACT_KINDS.includes(app.contract))) bad.push(`${at}.apps[${index}].contract is declared by an api app of be only, as ${CONTRACT_KINDS.join(' or ')} (absent: ${DEFAULT_CONTRACT})`);
     else if (names.has(app.name)) bad.push(`app ${app.name} is declared twice (${names.get(app.name)} and ${side})`);
     else names.set(app.name, side);
   });
+  const kinds = new Set(apps.filter((app: Parsed) => isPlainObject(app) && app.kind === 'api').map((app: Parsed) => app.contract ?? DEFAULT_CONTRACT));
+  if (side === 'be' && kinds.size > 1) bad.push(`${at}.apps declare api apps of both contracts (${[...kinds].sort().join(', ')}): the api apps of one back end serve one contract kind, since their features are shared`);
   return bad;
 }
 

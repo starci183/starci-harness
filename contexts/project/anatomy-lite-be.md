@@ -76,7 +76,8 @@ Refused (forbidden or external): `app.tool-config-local`, `app.ci-e2e`, `app.ci-
     - **be.app.cli** optional · [be/architecture](../code/be/architecture.md), [be/cli](../code/be/cli.md), [be/config](../code/be/config.md), [be/injection](../code/be/injection.md), [be/services](../code/be/services.md) · R147, R148, R150, R34, R245, R246, R289
 - `contracts/<app>/`
   - `schema.graphql` — **be.contract.graphql** opt-in · [be/services](../code/be/services.md), [be/transport](../code/be/transport.md) · R23
-  - `openapi.json` — **be.contract.openapi** opt-in · [be/services](../code/be/services.md), [be/transport](../code/be/transport.md) · R23
+  - `openapi.json` — **be.contract.openapi** opt-in · [be/services](../code/be/services.md), [be/transport](../code/be/transport.md) · R23, R396
+  - `openapi.pin.json` — **be.contract.openapi.pin** opt-in · [be/services](../code/be/services.md), [be/transport](../code/be/transport.md) · R177
   - `events.json` — **be.contract.events** opt-in · [be/services](../code/be/services.md), [be/transport](../code/be/transport.md) · R166
   - `events.pin.json` — **be.contract.events.pin** opt-in · [be/services](../code/be/services.md), [be/transport](../code/be/transport.md) · R177
   - `<contract>.tools.json` — **be.contract.mcp-tools** opt-in · [be/services](../code/be/services.md), [be/transport](../code/be/transport.md) · R302

@@ -4,7 +4,7 @@
 # factories, the architecture machine and templates read this file; none hardcodes a path. Field meanings and the
 # ruleParams keys are explained in hfs/README.md; the reason for a slot's shape is its pattern topic.
 schema: starci/hfs-slots@3
-version: 3.27.0
+version: 3.28.0
 presenceValues:
   - required
   - optional
@@ -1871,10 +1871,30 @@ slots:
     tests: none
     coverage: none
     why: emitted by `npm run contract:emit` (`starci app emit`, never written by hand) from the app's
-      typed operation table `apps/<app>/src/operations.ts` (canon BE-OPERATIONS-1); CI fails when
-      the emitted file differs
+      typed operation table `apps/<app>/src/operations.ts` (canon BE-OPERATIONS-1), or, for an app
+      whose contract is rest, from its controllers and the head `apps/<app>/src/openapi.ts`
+      (BE-TRANSPORT-4); CI fails when the emitted file differs
     rules:
       - HFS_CONTRACT_SNAPSHOT_DRIFT
+      - BE_REST_OPERATION_ID
+      - BE_REST_UNTYPED
+      - BE_REST_ERROR_SHAPE
+      - BE_REST_PAGINATION
+      - BE_REST_SECURITY
+  - id: be.contract.openapi.pin
+    profiles:
+      - be
+    path: contracts/<app>/openapi.pin.json
+    presence: opt-in
+    tracked: tracked
+    tier: none
+    tests: none
+    coverage: none
+    why: the previously published REST contract of a rest app, the same format as its openapi.json
+      (copied over when the contract is published, never edited); the current openapi.json may only
+      extend it additively unless its info.version raises the major (R177 BE_CONTRACT_BREAKING)
+    rules:
+      - BE_CONTRACT_BREAKING
   - id: be.contract.events
     profiles:
       - be
@@ -1939,6 +1959,7 @@ slots:
       - <app>.options.ts
       - compose/<area>.ts
       - operations.ts
+      - openapi.ts
     tests: none
     coverage: none
     budget:

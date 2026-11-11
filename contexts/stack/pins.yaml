@@ -20,7 +20,7 @@ pins:
   '@starci/mail': {version: 0.2.0, group: starci, side: be, install: registry, why: "outgoing mail of a back end: the Mailer port over SMTP with timeouts, required STARTTLS, attachments, a shared SMTP target policy, coded errors, typed render helpers; the only importer of nodemailer"}
   '@starci/grammar': {version: 0.37.2, range: '~0.37.2', group: starci, side: fe, install: registry, why: "the grammar package an app composes (grammars core and offset-pop)"}
   '@starci/next-i18n': {version: 0.1.0, group: starci, side: fe, install: registry, why: "the next-intl stack of a front end: defineI18n, the locale proxy, the navigation, the request config and the locale read of the [locale] layout; the app keeps its catalogs"}
-  '@starci/eslint-canon-be': {version: 3.21.1, range: '~3.21.1', group: starci, side: be, install: registry, why: "the back-end ESLint canon"}
+  '@starci/eslint-canon-be': {version: 3.21.2, range: '~3.21.2', group: starci, side: be, install: registry, why: "the back-end ESLint canon"}
   '@starci/eslint-canon-fe': {version: 9.16.11, range: '~9.16.11', group: starci, side: fe, install: registry, why: "the universal front-end ESLint canon"}
   '@starci/eslint-grammar-core': {version: 0.37.2, range: '~0.37.2', group: starci, side: fe, install: registry, why: "the core grammar's lint factory, holding the grammar API checks every grammar inherits; versioned with the grammar"}
   '@starci/eslint-grammar-offset-pop': {version: 0.37.2, range: '~0.37.2', group: starci, side: fe, install: registry, why: "the offset-pop grammar's lint factory; versioned with the grammar"}
@@ -30,7 +30,7 @@ pins:
   '@starci/jest-preset': {version: 2.9.0, group: starci, side: be, install: registry, why: "the back-end Jest preset; pairs exactly with @starci/test-world"}
   '@starci/test-world': {version: 1.4.0, group: starci, side: be, install: registry, why: "the back-end e2e world; pairs exactly with @starci/jest-preset"}
   '@starci/ai-router': {version: 0.6.0, group: starci, side: be, install: registry, why: "the AI pool router module of a back end; jest-preset compiles it as ESM"}
-  '@starci/hfs': {version: 6.6.2, group: starci, side: both, install: registry, why: "the app implementation starci-harness runs for starci app"}
+  '@starci/hfs': {version: 6.6.3, group: starci, side: both, install: registry, why: "the app implementation starci-harness runs for starci app"}
   '@langchain/core': {version: 1.3.1, group: framework, side: be, why: "the LangChain core of the one AI integration (contexts/code/be/ai.md)"}
   '@langchain/openai': {version: 1.8.0, group: framework, side: be, why: "ChatOpenAI and OpenAIEmbeddings of the one AI integration, pointed at the ai-router gateway"}
   typescript: {version: 5.9.3, group: tooling, side: both}
@@ -123,6 +123,7 @@ pins:
   '@apollo/server': {version: 5.5.1, group: framework, side: be, why: "the server behind @nestjs/apollo"}
   '@nestjs/websockets': {version: 11.2.5, group: framework, side: be, why: "the socket.io gateway; the @nestjs/core line"}
   '@nestjs/platform-socket.io': {version: 11.2.5, group: framework, side: be, why: "the socket.io platform; the @nestjs/core line"}
+  '@nestjs/swagger': {version: 11.4.8, group: framework, side: be, why: "the OpenAPI document of a rest app (BE-TRANSPORT-4), emitted by starci app emit and served as Swagger by main.ts; the 11 line, whose peers are @nestjs/common and @nestjs/core ^11.0.1 (12.x needs Nest 12)"}
   socket.io: {version: 4.8.3, group: framework, side: be, why: "the exact version @nestjs/platform-socket.io depends on, so one copy exists"}
   yaml: {version: 2.9.1, group: framework, side: be, why: "the YAML and front-matter parser of a back end's content importers (a content repository the app pulls); the version the harness packages already resolve, so one copy exists"}
   '@socket.io/postgres-adapter': {version: 0.5.0, group: framework, side: be, why: "the realtime adapter of replicas without Redis; platform/realtime only"}

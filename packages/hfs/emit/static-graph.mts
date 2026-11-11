@@ -106,12 +106,18 @@ interface ModuleNode {
   readonly module: Forced;
   readonly dynamic: DynValue | null;
   readonly providers: Value[];
+  readonly controllers: Value[];
   readonly imports: ModuleNode[];
   server: DynValue | null;
 }
 
 /** A class the composition names, by file and name. */
 export interface ClassRef { readonly file: string; readonly name: string }
+
+/** What a composed app serves over HTTP: the controller classes of every module of its graph, in discovery order. */
+export interface HttpComposition {
+  readonly controllers: ClassRef[];
+}
 
 /** What a composed app serves over GraphQL. */
 export interface Composition {
@@ -149,7 +155,7 @@ interface TsInternals {
   getSyntacticModifierFlags(node: TypeScript.Node): number;
 }
 
-export function createGraphReader({ ts, host }: { ts: typeof TypeScript, host: GraphHost }): { compose(appFile: string, exportName?: string): Composition | null } {
+export function createGraphReader({ ts, host }: { ts: typeof TypeScript, host: GraphHost }): { compose(appFile: string, exportName?: string): Composition | null; composeHttp(appFile: string, exportName?: string): HttpComposition | null } {
   const internals = ts as typeof TypeScript & TsInternals;
   const files = new Map<string, FileRecord>();
   const classes = new Map<string, ClassValue>();
@@ -669,7 +675,7 @@ export function createGraphReader({ ts, host }: { ts: typeof TypeScript, host: G
           nodes.push(seen.get(key)!);
           continue;
         }
-        const node: ModuleNode = { module, dynamic: dyn, providers: [], imports: [], server: null };
+        const node: ModuleNode = { module, dynamic: dyn, providers: [], controllers: [], imports: [], server: null };
         seen.set(key, node);
         order.push(node);
         nodes.push(node);
@@ -677,6 +683,7 @@ export function createGraphReader({ ts, host }: { ts: typeof TypeScript, host: G
         const statics = module.t === 'class' ? moduleMetadata(module) : null;
         if (statics?.props.has('imports')) children.push(statics.props.get('imports')!);
         if (statics?.props.has('providers')) node.providers.push(statics.props.get('providers')!);
+        if (statics?.props.has('controllers')) node.controllers.push(statics.props.get('controllers')!);
         if (dyn) {
           children.push(...dyn.imports);
           node.providers.push(...dyn.providers);
@@ -783,17 +790,42 @@ export function createGraphReader({ ts, host }: { ts: typeof TypeScript, host: G
     }
   }
 
-  /**
-   * Composes an app root file. Answers null when the file exports no `AppModule` class or its module graph holds no GraphQL server, else
-   * `{ resolvers: [{ file, name }], scalars: [{ file, name }], include: [{ file, name }] }`.
-   */
-  function compose(appFile: string, exportName = 'AppModule'): Composition | null {
+  /** The module instances of an app root file's graph, or null when the file exports no such class. */
+  function rootNodes(appFile: string, exportName: string): ModuleNode[] | null {
     const found = resolveExport(appFile, exportName);
     if (!found || !('kind' in found) || found.kind !== 'class') return null;
     const root = classRef(found);
     const register = staticMethod(root, 'register');
     const rootValue: Value = register ? { t: 'arr', items: [root, callFunction({ t: 'fn', node: register.method, env: newEnv(register.owner.file, { thisClass: root }) }, [free('the options of a deployment')])] } : root;
-    const nodes = walk(rootValue);
+    return walk(rootValue);
+  }
+
+  /**
+   * Composes an app root file for HTTP. Answers null when the file exports no `AppModule` class, else the `@Module({ controllers })` classes of
+   * every module instance of the graph (static module metadata; a dynamic module's own controllers are not modelled), unique, in order.
+   */
+  function composeHttp(appFile: string, exportName = 'AppModule'): HttpComposition | null {
+    const nodes = rootNodes(appFile, exportName);
+    if (nodes === null) return null;
+    const found: ClassValue[] = [];
+    for (const node of nodes) {
+      for (const list of node.controllers) {
+        for (const controller of entries(list)) {
+          if (controller.t === 'free') throw new Error(`${('name' in node.module ? node.module.name : undefined) ?? 'a module'}: a controller list cannot be decided (${controller.why})`);
+          if (controller.t === 'class' && !found.includes(controller)) found.push(controller);
+        }
+      }
+    }
+    return { controllers: found.map((cls) => ({ file: cls.file, name: cls.name })) };
+  }
+
+  /**
+   * Composes an app root file. Answers null when the file exports no `AppModule` class or its module graph holds no GraphQL server, else
+   * `{ resolvers: [{ file, name }], scalars: [{ file, name }], include: [{ file, name }] }`.
+   */
+  function compose(appFile: string, exportName = 'AppModule'): Composition | null {
+    const nodes = rootNodes(appFile, exportName);
+    if (nodes === null) return null;
     const servers = nodes.filter((node): node is ModuleNode & { server: DynValue } => node.server !== null);
     if (servers.length === 0) return null;
     if (servers.length > 1) throw new Error(`${appFile} composes ${servers.length} GraphQL servers; a contract snapshot describes exactly one`);
@@ -804,5 +836,5 @@ export function createGraphReader({ ts, host }: { ts: typeof TypeScript, host: G
     return { resolvers: pick('Resolver'), scalars: pick('Scalar'), include: include.map((cls) => ({ file: cls.file, name: cls.name })) };
   }
 
-  return { compose };
+  return { compose, composeHttp };
 }

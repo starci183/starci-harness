@@ -44,6 +44,7 @@ import { workflowContextsFindings } from './workflow-contexts.mjs';
 import { ciStandardAppFindings } from './ci-standard.mjs';
 import { feBuildArgsFindings } from './fe-build-args.mjs';
 import { appGalleryFindings } from './gallery.mjs';
+import { restContractFindings } from './rest-contract.mjs';
 import type { Parsed } from './rule-types.mjs';
 import type { CheckFinding } from '../check.mjs';
 import { memoKeyed } from '../rule-memo.mjs';
@@ -52,6 +53,7 @@ import { memoKeyed } from '../rule-memo.mjs';
 /** The failure codes the finders above emit, so `starci app check` ships their labels (check.mts adds them to CHECK_CODES). Append-only; the coordinator regenerates it at merge time. */
 export const A15_CODES = [
   // codes-begin
+  'BE_REST_OPERATION_ID', 'BE_REST_UNTYPED', 'BE_REST_ERROR_SHAPE', 'BE_REST_PAGINATION', 'BE_REST_SECURITY', 'BE_REST_APP_GRAPHQL',
   'HFS_APP_GALLERY_MISSING', 'HFS_APP_GALLERY_SCRIPT', 'HFS_APP_GALLERY_VITE_UNPINNED', 'HFS_APP_GALLERY_SHOTS_TRACKED',
   'FE_STACK_FAMILY_LINT_MISSING',
   'HFS_TEXT_CORRUPT',
@@ -67,6 +69,7 @@ export const A15_CODES = [
 
 export const FINDERS = [
   // finders-begin
+  restContractFindings,
   appGalleryFindings,
   feBuildArgsFindings,
   workflowContextsFindings,

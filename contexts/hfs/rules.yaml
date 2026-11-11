@@ -1370,11 +1370,12 @@ rules:
       - {kind: eslint-be, id: context-transaction}
   - id: R177
     code: BE_CONTRACT_BREAKING
-    law: An event contract evolves only additively against its pinned previous copy, and a breaking change is a new versioned event key.
+    law: A published contract evolves only additively against its pinned previous copy; a breaking event change is a new versioned event key, and a breaking REST change raises the major of the document's info.version.
     failureCodes:
       - BE_CONTRACT_BREAKING
     enforcers:
       - {kind: hfs, id: contract-compat}
+      - {kind: hfs, id: rest-contract-breaking}
   - id: R178
     code: BE_CONTEXT_PLATFORM_TABLES
     law: A `perConnection` platform capability registers its entities and migrations on every connection it serves.
@@ -1865,13 +1866,15 @@ rules:
       - {kind: hfs, id: secret-custody-only}
   - id: R278
     code: BE_REST_DOOR_EVIDENCE
-    law: GraphQL is the default door, and every REST route carries its own evidence from the closed set of door reasons the pattern lists.
+    law: An api app's declared contract (graphql when absent) is its default door; in a graphql back end every REST route carries its own evidence from the closed set of door reasons the pattern lists, and a rest back end holds no GraphQL door or GraphQL platform.
     failureCodes:
       - BE_REST_DOOR_EVIDENCE
       - BE_REST_ROUTE_UNDECLARED
+      - BE_REST_APP_GRAPHQL
     enforcers:
       - {kind: eslint-be, id: rest-door-needs-a-reason}
       - {kind: eslint-be, id: rest-route-declared}
+      - {kind: hfs, id: rest-app-graphql}
   - id: R279
     code: BE_THIRD_PARTY_OWNER
     law: A third-party SDK outside the library allowlists is imported only by its one `integrations/<provider>` capability; a workspace package of the app itself (a folder its root `workspaces` name) is first-party source, no SDK, and what it imports is judged over its own files. `socket.io-client` is a test library.
@@ -2735,3 +2738,14 @@ rules:
       - HFS_APP_GALLERY_SHOTS_TRACKED
     enforcers:
       - {kind: hfs, id: gallery}
+  - id: R396
+    code: BE_REST_OPERATION_ID
+    law: "A rest api app commits the OpenAPI 3 document of its controllers, and every operation in it has a unique explicit `<area>.<action>` operationId, named request and answer schemas, the one Error answer as `default`, a cursor page for a list, and a declared security or a stated public reason."
+    failureCodes:
+      - BE_REST_OPERATION_ID
+      - BE_REST_UNTYPED
+      - BE_REST_ERROR_SHAPE
+      - BE_REST_PAGINATION
+      - BE_REST_SECURITY
+    enforcers:
+      - {kind: hfs, id: rest-contract}

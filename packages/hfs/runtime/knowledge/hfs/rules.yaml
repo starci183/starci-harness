@@ -3116,14 +3116,16 @@ rules:
     editions: [lite, full]
     docs: [docs/microservices.md#r177]
     templateNa: "Published event-contract pins are service-owned release snapshots, not scaffolded files."
-    law: "An event contract evolves only additively: `be/contracts/<service>/events.json` against its pinned previous copy `events.pin.json` keeps every event, stream, version, payload field and type, adds only optional fields, and a breaking change is a new `<event>.v2` key."
+    law: "A published contract evolves only additively against its pinned previous copy. An event contract `be/contracts/<service>/events.json` against `events.pin.json` keeps every event, stream, version, payload field and type, adds only optional fields, and a breaking change is a new `<event>.v2` key. A REST contract `be/contracts/<app>/openapi.json` against `openapi.pin.json` keeps every operation, its operationId, parameters and answer fields with their types, and adds no required parameter or body field, unless its info.version raises the pin's major."
     kinds: [check]
     gates: [settle, land, ci]
     failureCodes: ["BE_CONTRACT_BREAKING"]
     enforcers:
       - {kind: hfs, id: contract-compat, at: scripts/hfs/rules/contract-compat.mjs}
+      - {kind: hfs, id: rest-contract-breaking, at: scripts/hfs/rules/rest-contract.mjs}
     proves:
       - {path: packages/hfs/src/hfs-contract-compat-coverage.spec.mjs, editions: [lite, full], codes: [BE_CONTRACT_BREAKING]}
+      - {path: packages/hfs/src/rest-contract.spec.mjs, editions: [lite, full], codes: [BE_CONTRACT_BREAKING]}
     exemplifiedBy:
       - {path: packages/hfs/src/hfs-contract-compat-coverage.spec.mjs, editions: [lite, full], codes: [BE_CONTRACT_BREAKING]}
     witness:
@@ -4708,13 +4710,14 @@ rules:
       - {path: packages/hfs/src/hfs-secret-custody.spec.mjs, editions: [full], codes: [HFS_SECRET_OUTSIDE_ENC]}
   - id: R278
     code: "BE_REST_DOOR_EVIDENCE"
-    law: "GraphQL is the default door in lite and full. Each REST route carries its own evidence: a probe, auth handshake, signed webhook, actual byte stream, an event stream (a text/event-stream route: an `@Sse` method of `@nestjs/common` inside the be.feature.realtime.sse slot; an `@Sse` anywhere else proves nothing), a public versioned operation served from the app's nonempty defineOperations table, or a credential-guarded route: the route or its controller carries @Credential({ kind: \"<literal>\" }) imported from the domain identity capability, which also declares the CredentialGuard class implementing CanActivate (resolved by TypeScript symbol, never by name); a local decorator of the same name, a @UseGuards of any other guard and a computed kind prove nothing. A class-level reference or an unused StreamableFile import proves no route, and a public REST route absent from the operation table is refused."
+    law: "An api app's declared contract (hfs.json `contract`, graphql when absent) is its default door. In a back end whose api apps declare rest, a controller needs no evidence and no GraphQL door or GraphQL platform exists (BE_REST_APP_GRAPHQL). In a graphql back end, in lite and full, each REST route carries its own evidence: a probe, auth handshake, signed webhook, actual byte stream, an event stream (a text/event-stream route: an `@Sse` method of `@nestjs/common` inside the be.feature.realtime.sse slot; an `@Sse` anywhere else proves nothing), a public versioned operation served from the app's nonempty defineOperations table, or a credential-guarded route: the route or its controller carries @Credential({ kind: \"<literal>\" }) imported from the domain identity capability, which also declares the CredentialGuard class implementing CanActivate (resolved by TypeScript symbol, never by name); a local decorator of the same name, a @UseGuards of any other guard and a computed kind prove nothing. A class-level reference or an unused StreamableFile import proves no route, and a public REST route absent from the operation table is refused."
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
-    failureCodes: ["BE_REST_DOOR_EVIDENCE", "BE_REST_ROUTE_UNDECLARED"]
+    failureCodes: ["BE_REST_DOOR_EVIDENCE", "BE_REST_ROUTE_UNDECLARED", "BE_REST_APP_GRAPHQL"]
     enforcers:
       - {kind: eslint-be, id: rest-door-needs-a-reason}
       - {kind: eslint-be, id: rest-route-declared}
+      - {kind: hfs, id: rest-app-graphql, at: scripts/hfs/rules/rest-contract.mjs}
     editions: [lite, full]
     docs: [docs/microservices.md#r278]
     exemplifiedBy:
@@ -6636,3 +6639,19 @@ rules:
       - {path: packages/hfs/src/app-gallery.spec.mjs, editions: [lite, full]}
     witness:
       - {path: packages/hfs/src/app-gallery.spec.mjs, editions: [lite, full]}
+  - id: R396
+    code: "BE_REST_OPERATION_ID"
+    law: "An api app that declares `contract: \"rest\"` commits the OpenAPI 3 document of its controllers (`be/contracts/<app>/openapi.json`, emitted by `starci app emit` with @nestjs/swagger over the head `apps/<app>/src/openapi.ts`), and in it every operation has a unique explicit operationId `<area>.<action>`, a named schema for every JSON request body and 2xx answer, a `default` answer with the one Error schema (code and message required), a page `{ items, nextCursor }` read with `cursor` and `limit` for a list GET (never a bare array), and a declared security scheme or an `x-public-reason` on a public operation."
+    kinds: [check]
+    gates: [settle, land, ci]
+    failureCodes: ["BE_REST_OPERATION_ID", "BE_REST_UNTYPED", "BE_REST_ERROR_SHAPE", "BE_REST_PAGINATION", "BE_REST_SECURITY"]
+    enforcers:
+      - {kind: hfs, id: rest-contract, at: runtime/scripts/hfs/rules/rest-contract.mjs}
+    editions: [lite, full]
+    templateNa: "A rest contract is emitted from each rest app's controllers, not scaffolded; the default contract is graphql."
+    docs:
+      - {path: contexts/code/be/transport.md#be-transport-4-a-rest-contract-is-a-committed-openapi-3-document-with-stable-typed-secured-operations, editions: [lite, full]}
+    proves:
+      - {path: packages/hfs/src/rest-contract.spec.mjs, editions: [lite, full]}
+    witness:
+      - {path: packages/hfs/src/rest-contract.spec.mjs, editions: [lite, full]}

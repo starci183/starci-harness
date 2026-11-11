@@ -2,7 +2,9 @@
  * `starci app emit`: writes `contracts/<service>/events.json` for every service that declares typed event classes under
  * `src/modules/events/<service>/` (events.mts: the async contract, R166), `contracts/<app>/schema.graphql` for every api app of hfs.json that serves GraphQL, and
  * `contracts/<app>/openapi.json` for every api app whose `apps/<app>/src/operations.ts` exports the typed operation table
- * `OPERATIONS` (operations.mts: OpenAPI 3.1 derived from zod schema modules, with closed refusal codes proved by the checker).
+ * `OPERATIONS` (operations.mts: OpenAPI 3.1 derived from zod schema modules, with closed refusal codes proved by the checker). An api app
+ * whose hfs.json entry declares `contract: "rest"` gets `contracts/<app>/openapi.json` alone: the OpenAPI 3 document of its controllers
+ * (rest-worker.mts, Nest's own @nestjs/swagger over the head `apps/<app>/src/openapi.ts`); no GraphQL schema or operation table is read for it.
  *
  * The GraphQL snapshot prints the lexicographically sorted schema with class-validator bounds on input fields as
  * `@inputBounds` directives. OpenAPI carries the equivalent JSON Schema property and item constraints. It needs no
@@ -27,17 +29,19 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { emitEvents, eventServices, eventsSnapshotPath } from './events.mjs';
 import { openapiPath } from './operations.mjs';
+import { contractOf } from '../runtime/scripts/hfs/contract-kind.mjs';
 import { readEnv } from '../runtime/scripts/lib/env.mjs';
 
 /** The parts of the parsed hfs.json this module reads. */
 export interface HfsDeclaration {
-  readonly apps?: ReadonlyArray<{ readonly name: string; readonly kind: string }>;
+  readonly apps?: ReadonlyArray<{ readonly name: string; readonly kind: string; readonly contract?: string }>;
 }
 
 /** The stderr prefix of a dependency the worker could not load and stood in for. */
 const STAND_IN = 'stand-in ';
 const WORKER = path.join(path.dirname(fileURLToPath(import.meta.url)), 'schema-worker.mjs');
 const OPERATIONS_WORKER = path.join(path.dirname(fileURLToPath(import.meta.url)), 'operations-worker.mjs');
+const REST_WORKER = path.join(path.dirname(fileURLToPath(import.meta.url)), 'rest-worker.mjs');
 
 /** The repository-relative path of an app's root module. */
 export const appModulePath = (app: string) => `apps/${app}/src/app.module.ts`;
@@ -64,8 +68,8 @@ export function aliasTarget(aliases: readonly PathAlias[], specifier: string): s
   return alias ? path.join(alias.targets[0]!, specifier.slice(alias.prefix.length)) : null;
 }
 
-/** The api apps of a declaration that can serve GraphQL: kind `api`. Pure. */
-const apiApps = (declaration: HfsDeclaration) => (declaration.apps ?? []).filter((app) => app.kind === 'api').map((app) => app.name);
+/** The api apps of a declaration: kind `api`, with the contract each serves (contract-kind.mts). Pure. */
+const apiApps = (declaration: HfsDeclaration) => (declaration.apps ?? []).filter((app) => app.kind === 'api').map((app) => ({ name: app.name, contract: contractOf(app) }));
 
 /** The text written to a snapshot file: the printed schema and one final newline. Pure. */
 export const snapshotText = (printed: string) => `${printed.replace(/\n+$/, '')}\n`;
@@ -93,7 +97,16 @@ function* emissionProgram({ repoRoot, declaration, outDir = repoRoot }: EmitInpu
   const written: string[] = [];
   const skipped: string[] = [];
   const standIns: Record<string, string[]> = {};
-  for (const app of apiApps(declaration)) {
+  for (const { name: app, contract } of apiApps(declaration)) {
+    if (contract === 'rest') {
+      const rest = yield { worker: REST_WORKER, repoRoot, app };
+      const target = path.join(outDir, openapiPath(app));
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      fs.writeFileSync(target, snapshotText(rest.text ?? ''));
+      written.push(openapiPath(app));
+      if (rest.lines.length) standIns[app] = rest.lines;
+      continue;
+    }
     const graphql = yield { worker: WORKER, repoRoot, app };
     const operations = yield { worker: OPERATIONS_WORKER, repoRoot, app };
     const emitted = { graphql: graphql.text, openapi: operations.text, standIns: [...graphql.lines, ...operations.lines] };

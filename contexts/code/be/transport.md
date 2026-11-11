@@ -3,10 +3,16 @@ slots: [be.transport, be.transport.message, be.contract]
 ---
 # Transport
 
-How a door into the application is written: GraphQL by default, REST only with evidence, a thin adapter that
-dispatches one message, no envelope. Who may call a door is api-auth.md; a cli command is an action runner (cli.md).
+How a door into the application is written: the door of the app's declared contract (GraphQL by default, REST when
+the app declares `rest`), any other REST route only with evidence, a thin adapter that dispatches one message, no envelope. Who may call a door is api-auth.md; a cli command is an action runner (cli.md).
 
-## BE-TRANSPORT-1 GraphQL is the default door; a REST route carries its evidence
+## BE-TRANSPORT-1 The app's declared contract is its default door; any other REST route carries its evidence
+
+An api app declares its contract in hfs.json, `sides.be.apps[].contract`: `graphql` (the default, also when absent) or
+`rest`. The api apps of one back end declare one kind, since their features are shared (`HFS_DECLARATION_INVALID`
+otherwise). A `rest` back end serves controllers (`transport/http/<action>.controller.ts`, DTOs `<Name>Request`,
+`<Name>Response`) with no door reason, holds no GraphQL door or GraphQL platform (`BE_REST_APP_GRAPHQL`) and commits its
+contract as BE-TRANSPORT-4 says. The rest of this section is the `graphql` back end.
 
 GraphQL is code-first and flat: `transport/graphql/<action>.resolver.ts` (one `@Resolver()` class per operation),
 `dto/<name>.input.ts` (`<Name>Input`), `dto/<name>.type.ts` (`<Name>Type`) and `<action>.mapper.ts` (`to<Action>Request`,
@@ -19,8 +25,8 @@ a browser transfers bytes to storage through an address the domain signs (`signe
 Why: one flat shape makes an operation, its input, output and mapper findable from the name; a REST route without a
 reason is a JSON read that belongs in the schema the client already uses.
 
-Enforced by: `door-lives-in-features`, `rest-door-needs-a-reason`, `rest-route-declared`, `no-buffered-upload` (R88,
-R278, R312).
+Enforced by: `door-lives-in-features`, `rest-door-needs-a-reason` (switched off by a `rest` back end), `rest-route-declared`,
+`rest-app-graphql`, `no-buffered-upload` (R88, R278, R312).
 
 ## BE-TRANSPORT-2 A door maps, dispatches one message and maps back
 
@@ -56,3 +62,27 @@ interceptor, success flag or message wrapper, and `GraphQLJSON` is never an inpu
 Why: an envelope duplicates GraphQL's error channel and puts user copy in the back end.
 
 Enforced by: `no-response-envelope`, `no-graphql-json` (R88).
+
+## BE-TRANSPORT-4 A rest contract is a committed OpenAPI 3 document with stable, typed, secured operations
+
+A `rest` api app commits `contracts/<app>/openapi.json`, written by `npm run contract:emit` (`starci app emit`) and never by
+hand: Nest's own `@nestjs/swagger` builds it over the controllers of the app's module graph, read from source without
+booting the app, and the head `apps/<app>/src/openapi.ts`, which exports `OPENAPI` (`new DocumentBuilder().setTitle(..)
+.setVersion(..).addBearerAuth().build()`). `main.ts` serves the same head with `SwaggerModule.setup`, so the published
+Swagger equals the committed file; paths carry no global prefix (a server URL of the head names it). In that document:
+
+- every operation names an explicit, unique operationId `<area>.<action>` (`@ApiOperation({ operationId: "leads.list" })`);
+- every JSON request body and 2xx answer is a named DTO schema (`@ApiProperty` fields, `@ApiOkResponse({ type })`);
+- every operation answers `default` with one error schema that requires `code` and `message` (`@ApiDefaultResponse`);
+- a list GET answers a page `{ items, nextCursor }` read with the query parameters `cursor` and `limit`, never a bare array;
+- the head declares a security scheme and every operation states its security; a public one (`security: []`) carries
+  `x-public-reason` (`@ApiExtension`).
+
+The committed file equals the emit (R23). Once published, the contract is pinned as `contracts/<app>/openapi.pin.json` and
+changes additively against it, or raises the major of `info.version` (R177). A front end reading a `rest` contract has no
+generated client yet: until it does, a front end composes only with a `graphql` back end.
+
+Why: the contract is the one interface other projects and clients read; a stable id, a named type, one error shape, one
+page shape and a stated security are what make it consumable without reading the code.
+
+Enforced by: `contract-snapshot-drift`, `rest-contract`, `rest-contract-breaking` (R23, R396, R177).

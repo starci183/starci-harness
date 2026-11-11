@@ -8,6 +8,8 @@
 export interface HfsApp {
     readonly name: string
     readonly kind: string
+    /** The contract an api app declares, `graphql` or `rest`; absent means graphql. */
+    readonly contract?: string
 }
 
 /** One declared database connection (`hfs.json` sides.be.connections). */

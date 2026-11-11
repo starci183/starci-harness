@@ -60,8 +60,8 @@ pins:
     source: packages/next-i18n/package.json
     why: 'the next-intl stack of every front end (fe-stack i18n): defineI18n over the locales of the app, the locale-negotiating proxy, the locale-aware navigation, the request config that loads the catalogs of the app and the locale read of the [locale] layout; the app keeps its message catalogs and writes none of the stack.'
   '@starci/eslint-canon-be':
-    version: 3.21.1
-    range: '~3.21.1'
+    version: 3.21.2
+    range: '~3.21.2'
     group: starci
     install: registry
     side: be
@@ -161,7 +161,7 @@ pins:
     source: packages/mail/package.json
     why: 'outgoing mail of a back end: a NestJS module and the Mailer port over SMTP (connect, greeting, socket and total timeouts, STARTTLS required by default, recipient, message and attachment checks, a shared SMTP target policy, coded errors, typed escaping render helpers returning { subject, text, html }), with @starci/mail/testing for its specs; the only importer of nodemailer (R90).'
   '@starci/hfs':
-    version: 6.6.2
+    version: 6.6.3
     group: starci
     install: registry
     side: both
@@ -624,6 +624,11 @@ pins:
     group: framework
     side: be
     why: 'the socket.io platform of @nestjs/websockets; the @nestjs/core pin line.'
+  '@nestjs/swagger':
+    version: 11.4.8
+    group: framework
+    side: be
+    why: 'the OpenAPI document of a rest app (BE-TRANSPORT-4): starci app emit builds contracts/<app>/openapi.json with it and main.ts serves the same document as Swagger; the 11 line, whose peers are @nestjs/common and @nestjs/core ^11.0.1 (12.x requires Nest 12).'
   socket.io:
     version: 4.8.3
     group: framework

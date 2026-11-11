@@ -6183,3 +6183,64 @@ HFS_PACKAGE_SLOT_UNPLACED:
   nextStep_vi: "Đặt file vào slot đã khai, hoặc khai slot mới cho nó trong slots.yaml."
   owner: op-retry
   kind: check-finding
+
+BE_REST_OPERATION_ID:
+  title: "A REST operation has no stable operationId"
+  title_vi: "Thao tác REST thiếu operationId ổn định"
+  meaning_vi: "Trong contracts/<app>/openapi.json của app khai contract rest, mỗi thao tác phải có operationId tường minh dạng <vùng>.<hành động> (ví dụ orders.list) và không trùng; id mặc định Controller_method đổi theo tên lớp nên không phải hợp đồng."
+  causes_vi:
+    - "Vi phạm R396: phương thức controller thiếu @ApiOperation({ operationId })."
+    - "Hai phương thức dùng cùng một operationId."
+  nextStep_vi: "Thêm @ApiOperation({ operationId: \"<vùng>.<hành động>\" }) cho phương thức, chạy npm run contract:emit và commit openapi.json."
+  owner: op-retry
+  kind: check-finding
+
+BE_REST_UNTYPED:
+  title: "A REST body or answer has no named schema"
+  title_vi: "Body hoặc kết quả REST không có schema có tên"
+  meaning_vi: "Mọi body JSON và mọi kết quả 2xx (trừ 204) của app rest phải là một schema có tên trong components.schemas (một lớp DTO có @ApiProperty), để client sinh kiểu từ hợp đồng."
+  causes_vi:
+    - "Vi phạm R396: phương thức thiếu @ApiOkResponse({ type }) hoặc DTO không khai @ApiProperty."
+  nextStep_vi: "Khai DTO có @ApiProperty và @ApiOkResponse({ type: <Dto> }) hoặc @ApiBody, chạy npm run contract:emit và commit."
+  owner: op-retry
+  kind: check-finding
+
+BE_REST_ERROR_SHAPE:
+  title: "A REST operation does not answer the one Error schema"
+  title_vi: "Thao tác REST không trả schema Error chung"
+  meaning_vi: "components.schemas.Error phải là object bắt buộc code và message, và mọi thao tác trả default bằng nó, để client đọc lỗi theo một hình duy nhất."
+  causes_vi:
+    - "Vi phạm R396: thiếu ErrorDto hoặc thiếu @ApiDefaultResponse({ type: ErrorDto })."
+  nextStep_vi: "Khai ErrorDto (code, message bắt buộc) và @ApiDefaultResponse({ type: ErrorDto }) trên controller, chạy npm run contract:emit và commit."
+  owner: op-retry
+  kind: check-finding
+
+BE_REST_PAGINATION:
+  title: "A REST list is not a cursor page"
+  title_vi: "Danh sách REST không phân trang theo con trỏ"
+  meaning_vi: "Một GET không trả mảng trần: danh sách là schema có items (mảng) và nextCursor, đọc bằng tham số query cursor và limit."
+  causes_vi:
+    - "Vi phạm R396: GET trả mảng trần, hoặc trang thiếu nextCursor, cursor hay limit."
+  nextStep_vi: "Trả DTO trang { items, nextCursor } và nhận @Query cursor, limit; chạy npm run contract:emit và commit."
+  owner: op-retry
+  kind: check-finding
+
+BE_REST_SECURITY:
+  title: "A REST operation states no security"
+  title_vi: "Thao tác REST không khai bảo mật"
+  meaning_vi: "Đầu tài liệu khai ít nhất một securityScheme và mọi thao tác nêu bảo mật của nó; thao tác công khai (security rỗng) phải có x-public-reason."
+  causes_vi:
+    - "Vi phạm R396: apps/<app>/src/openapi.ts không khai scheme, hoặc controller thiếu @ApiBearerAuth, hoặc route công khai thiếu lý do."
+  nextStep_vi: "Thêm addBearerAuth() vào đầu tài liệu và @ApiBearerAuth() cho controller; route công khai thêm @ApiExtension(\"x-public-reason\", \"<lý do>\")."
+  owner: op-retry
+  kind: check-finding
+
+BE_REST_APP_GRAPHQL:
+  title: "A rest back end holds a GraphQL door"
+  title_vi: "Back end rest còn cửa GraphQL"
+  meaning_vi: "Khi mọi app api của be khai contract rest, cửa vào là controller (transport/http) mô tả bởi openapi.json; không còn resolver GraphQL hay platform graphql."
+  causes_vi:
+    - "Vi phạm R278: còn file transport/graphql hoặc src/modules/platform/graphql trong back end rest."
+  nextStep_vi: "Chuyển thao tác sang controller REST và xoá phần GraphQL, hoặc khai lại contract graphql cho app api."
+  owner: op-retry
+  kind: check-finding

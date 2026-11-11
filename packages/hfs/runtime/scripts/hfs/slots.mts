@@ -63,6 +63,8 @@ export interface ConnectionView {
 export interface AppRef {
   name: string;
   kind: string;
+  /** The contract an api app declares (contract-kind.mts); absent means the default, graphql. */
+  contract?: string;
 }
 
 /**
@@ -247,7 +249,7 @@ function sideDeclaration(manifest: SlotManifest, declaration: Parsed, name: stri
     edition,
     side: name,
     profile: name,
-    apps: Object.freeze(s.apps.map((a: Parsed) => Object.freeze({ name: a.name, kind: a.kind }))),
+    apps: Object.freeze(s.apps.map((a: Parsed) => Object.freeze({ name: a.name, kind: a.kind, ...(a.contract === undefined ? {} : { contract: a.contract }) }))),
     optionalSlots: Object.freeze([...(s.optionalSlots ?? [])]),
     patterns: Object.freeze([...(s.patterns ?? [])]), kinds: Object.freeze([...(s.kinds ?? [])]),
     backing: Object.freeze([...(s.backing ?? [])]),

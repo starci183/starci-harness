@@ -7,96 +7,31 @@
 // Step 2 loads code through the repository's own TypeScript; a dependency of a resolver that cannot load here (configuration
 // read at import time, a native addon, an ES-only package; only requires written in the repository's own source) is replaced by a stand-in and reported on stderr, because the
 // schema depends on the resolver and type classes, never on what they call. A stand-in that is a GraphQL type fails the build.
-import { createRequire } from 'node:module';
-import fs from 'node:fs';
 import path from 'node:path';
-import type TypeScript from 'typescript';
 import type {} from 'reflect-metadata';
-import { aliasTarget, aliasesOf, appModulePath } from './contracts.mjs';
-import { compilerOptionsOf } from './compiler.mjs';
-import { createGraphReader } from './static-graph.mjs';
+import { appModulePath } from './contracts.mjs';
+import { appSource, installLoader, stand } from './class-loader.mjs';
 import { graphqlInputBounds, withInputBounds } from './graphql-input-bounds.mjs';
 
 // The parent (contracts.mts) always passes the repository root and the app.
 const [rootArgument, app] = process.argv.slice(2) as [string, string];
 const repoRoot = path.resolve(rootArgument);
-const require = createRequire(path.join(repoRoot, 'package.json'));
-const ts: typeof TypeScript = require('typescript');
-
-const config = ts.readConfigFile(path.join(repoRoot, 'tsconfig.json'), ts.sys.readFile).config ?? {};
-const aliases = aliasesOf(config.compilerOptions?.paths, repoRoot);
+const source = appSource(repoRoot);
+const { require } = source;
 
 // ---- step 1: the graph, from source ----
-const isFile = (candidate: string) => fs.existsSync(candidate) && fs.statSync(candidate).isFile();
-const host = {
-  read: (file: string) => (fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null),
-  resolve(from: string, specifier: string) {
-    const aliased = aliasTarget(aliases, specifier);
-    if (aliased === null && !specifier.startsWith('.')) return null;
-    const base = (aliased ?? path.resolve(path.dirname(from), specifier)).replace(/\.js$/, '');
-    const found = [base, `${base}.ts`, path.join(base, 'index.ts')].find(isFile);
-    if (!found) throw new Error(`${from}: cannot resolve ${specifier}`);
-    return found;
-  },
-};
 let composition;
 try {
-  composition = createGraphReader({ ts, host }).compose(path.join(repoRoot, appModulePath(app)));
+  composition = source.graph.compose(path.join(repoRoot, appModulePath(app)));
 } catch (error) {
   process.stderr.write(`${(error as Error).message}
 `);
   process.exit(1);
 }
 if (composition === null) process.exit(3);
-require('reflect-metadata');
 
 // ---- step 2: the classes, loaded ----
-const Module = require('node:module');
-const stand: () => void = new Proxy(function standIn() {}, {
-  get: (_, key) => (key === '__esModule' ? true : key === 'then' ? undefined : key === Symbol.toPrimitive ? () => '' : stand),
-  apply: () => stand,
-  construct: () => stand,
-});
-const resolveFilename = Module._resolveFilename;
-Module._resolveFilename = function resolve(request: string, ...rest: unknown[]) {
-  return resolveFilename.call(this, aliasTarget(aliases, request) ?? request, ...rest);
-};
-// The code is compiled the way `tsc` compiles it (a Program over the resolver files and what they import), not file by file:
-// `emitDecoratorMetadata` writes the type of a decorated property from the type checker (`facet: Facet` with a string-literal
-// union is `String`), which a per-file transpile cannot know and which decides GraphQL field types.
-const options = compilerOptionsOf(ts, repoRoot, (message: string) => process.stderr.write(`stand-in ${message}
-`));
-const roots = [...composition.resolvers, ...composition.scalars, ...composition.include].map(({ file }) => file);
-const program = ts.createProgram({ rootNames: [...new Set(roots)], options });
-const compile = (filename: string) => {
-  const sourceFile = program.getSourceFile(filename);
-  if (!sourceFile) return ts.transpileModule(fs.readFileSync(filename, 'utf8'), { fileName: filename, compilerOptions: options }).outputText;
-  let output = '';
-  program.emit(sourceFile, (name: string, text: string) => { if (name.endsWith('.js')) output = text; });
-  return output;
-};
-// reason: Module#_compile is Node's internal compile hook; the typings of Module do not declare it.
-require.extensions['.ts'] = (module: any, filename: string) => module._compile(compile(filename), filename);
-let depth = 0;
-const load = Module._load;
-Module._load = function tolerantLoad(request: string, parent: { filename?: unknown } | undefined, isMain: boolean) {
-  depth += 1;
-  try {
-    return load.call(this, request, parent, isMain);
-  } catch (error) {
-    const fromSource = typeof parent?.filename === 'string' && parent.filename.startsWith(repoRoot) && !parent.filename.includes(`${path.sep}node_modules${path.sep}`);
-    if (depth === 1 || !fromSource) throw error;
-    process.stderr.write(`stand-in ${request} (from ${parent?.filename ?? '?'}): ${String((error as Error | undefined)?.message ?? error).split('\n')[0]}\n`);
-    return stand;
-  } finally {
-    depth -= 1;
-  }
-};
-const classOf = ({ file, name }: { file: string, name: string }) => {
-  const exported = require(file)[name];
-  if (typeof exported !== 'function') throw new Error(`${file} does not export the class ${name}`);
-  return exported;
-};
+const classOf = installLoader(source, [...composition.resolvers, ...composition.scalars, ...composition.include].map(({ file }) => file)) as (ref: { file: string; name: string }) => any;
 
 // The packages of the repository under emission, resolved from it (never from hfs, which declares none of them).
 const FROM_REPOSITORY = { nestGraphql: '@nestjs/graphql', nestCore: '@nestjs/core', graphql: 'graphql', classValidator: 'class-validator' };

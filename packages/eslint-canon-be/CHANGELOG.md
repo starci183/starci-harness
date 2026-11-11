@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.21.2 - 2026-11-11
+
+- Changed (R278): `rest-door-needs-a-reason` reports nothing in a back end whose api apps declare `contract: "rest"` in hfs.json (the controller is that back end's default door); a graphql back end is judged as before. `HfsApp` carries the optional `contract`. Peer `@starci/hfs ~6.6.3`, the release whose view carries it.
+- Specs: `src/transport.spec.ts` (a rest back end serves a plain controller; the same controller in the default back end still reports).
+
 ## 3.21.1 - 2026-11-09
 
 - Changed: peer `@starci/hfs ~6.6.0`; no lint rule of this package changed.

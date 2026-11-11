@@ -266,6 +266,20 @@ test("rest-door-needs-a-reason: a controller shows a public reason, a byte strea
     }) })
 })
 
+test("rest-door-needs-a-reason: a back end whose api apps declare contract rest serves controllers with no evidence; one graphql api app keeps the rule", () => {
+    const head = `import { Controller, Get } from "@nestjs/common"
+`
+    const rest = typedTester({ declaration: { ...BE_DECLARATION, apps: [{ name: "api", kind: "api", contract: "rest" }, { name: "cli", kind: "cli" }] } })
+    assert.doesNotThrow(() => { rest.run("rest-door-needs-a-reason", restDoorNeedsAReason, {
+        valid: [{ filename: CONTROLLER, code: `${head}@Controller("orders") export class C { @Get() list() { return 1 } }` }],
+        invalid: [],
+    }) })
+    assert.doesNotThrow(() => { tester.run("rest-door-needs-a-reason", restDoorNeedsAReason, {
+        valid: [],
+        invalid: [{ filename: CONTROLLER, code: `${head}@Controller("orders") export class C { @Get() list() { return 1 } }`, errors: [{ messageId: "unjustified" }] }],
+    }) })
+})
+
 for (const edition of ["lite", "full"]) {
     test(`BE_REST_DOOR_EVIDENCE: ${edition} judges each REST method's evidence`, () => {
         const hfs = hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, TYPED_ROOT)
