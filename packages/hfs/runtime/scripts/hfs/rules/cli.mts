@@ -2,10 +2,13 @@
 //   BE_CLI_REQUIRED       a back end that declares a connection (it has migrations to run) or tracks a command (src/features/cli/)
 //                         declares exactly one app of kind cli, named cli (be/apps/cli), and tracks its image be/apps/cli/Dockerfile:
 //                         one image, run as `cli <group> <command>`. A cli app with another name, or a second one, is refused.
+//   BE_CLI_COMMAND_SHAPE  (R149, the part one file cannot see) two command classes of the cli feature root share a class name: nest-commander
+//                         matches a sub-command by its class name, so the second `RunCli` runs the first one's action
+//                         (contexts/code/be/cli.md BE-CLI-2).
 // Where a command is declared and that every command has its unit spec beside it are eslint-be's (cli-command-shape, and
 // unit-test-colocated over ruleParams.be.unitRoles).
 // Paths are app-relative; the cli app and the cli feature root are read from the slot manifest through the resolver.
-import { found } from './read.mjs';
+import { found, readText } from './read.mjs';
 import type { Parsed, Repo, Resolver } from './rule-types.mjs';
 
 const CLI_REQUIRED = 'BE_CLI_REQUIRED';
@@ -18,7 +21,18 @@ const CLI_FEATURE_SLOT = 'be.cli';
 const CLI_APP_SLOT = 'be.app.cli';
 
 /** The findings of R147 over the tracked paths `files` (app-relative) of the app `repo`; `resolver` is the app's. */
-export function cliFindings({ files, repo, resolver }: { files: string[]; repo: Repo; resolver: Resolver }) {
+/** The class names of the commands the cli feature root declares (`export class X` of a .cli.ts beside an `@Command` or `@SubCommand`), each with its files. */
+function commandClasses(repoRoot: string, commandFiles: readonly string[]): Map<string, string[]> {
+  const byName = new Map<string, string[]>();
+  for (const file of commandFiles.filter((each) => each.endsWith('.cli.ts') && !each.endsWith('.spec.ts'))) {
+    const text = readText(repoRoot, `be/${file}`) ?? '';
+    if (!/@(?:Sub)?Command\(/u.test(text)) continue;
+    for (const match of text.matchAll(/^export class (\w+)/gmu)) byName.set(match[1]!, [...(byName.get(match[1]!) ?? []), `be/${file}`]);
+  }
+  return byName;
+}
+
+export function cliFindings({ repoRoot, files, repo, resolver }: { repoRoot?: string; files: string[]; repo: Repo; resolver: Resolver }) {
   if (!repo?.sides) return [];
   const be = repo.sides.be;
   const beResolver = resolver.sides?.be ?? resolver;
@@ -38,5 +52,9 @@ export function cliFindings({ files, repo, resolver }: { files: string[]; repo: 
   if (needs && cliApps.length === 0) findings.push(found(CLI_REQUIRED, 'hfs.json', `the back end declares no cli app, but ${why}; declare { "name": "${CLI_APP}", "kind": "${CLI_KIND}" } in sides.be.apps and build be/apps/${CLI_APP} on nest-commander: every one-off action of the back end is one of its commands.`, { needs: why }));
   for (const app of cliApps.filter((entry: Parsed) => entry.name !== CLI_APP)) findings.push(found(CLI_REQUIRED, 'hfs.json', `the cli app is named ${app.name}; the back end has ONE cli app, be/apps/${CLI_APP}, so its image and its command line are the same in every app.`, { app: app.name }));
   if (cliApps.length > 0 && !tracked.has(`apps/${CLI_APP}/${IMAGE}`) && cliApps.some((app: Parsed) => app.name === CLI_APP)) findings.push(found(CLI_REQUIRED, `be/apps/${CLI_APP}/${IMAGE}`, `be/apps/${CLI_APP} has no image: track be/apps/${CLI_APP}/${IMAGE}, the one cli image every one-off action runs from (\`cli <group> <command>\`).`, { app: CLI_APP }));
+  if (repoRoot !== undefined) for (const [name, owners] of commandClasses(repoRoot, commandFiles)) {
+    if (owners.length < 2) continue;
+    for (const file of owners) findings.push(found('BE_CLI_COMMAND_SHAPE', file, `the command class ${name} is declared by ${owners.join(' and ')}: nest-commander matches a sub-command by its class name, so one of them runs the other's action; give each its own name, such as <Group>RunCli (BE-CLI-2, R149)`, { name }));
+  }
   return findings;
 }

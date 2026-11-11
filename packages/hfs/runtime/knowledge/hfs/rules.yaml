@@ -2604,13 +2604,14 @@ rules:
     witness:
       - {path: packages/eslint/be/cli-coverage.spec.mjs, edition: lite, codes: [BE_CLI_COMMAND_SHAPE]}
       - {path: packages/eslint/be/cli-coverage.spec.mjs, edition: full, codes: [BE_CLI_COMMAND_SHAPE]}
-    law: "A nest-commander command (`@Command` or `@SubCommand`, by the import that binds the decorator) is declared only in the cli feature root `src/features/cli/`: a group `@Command` in `<group>/<group>.cli.ts`, a `@SubCommand` extending `CommandRunner` in `<group>/subs/<name>.cli.ts`, one command per file, and every sub-command has its unit spec `<name>.cli.spec.ts` beside it (a command is an action runner, not a thin transport: R88 does not apply to it). `.cli.ts`, because `.command.ts` is the CQRS message."
+    law: "A nest-commander command (`@Command` or `@SubCommand`, by the import that binds the decorator) is declared only in the cli feature root `src/features/cli/`: a group `@Command` in `<group>/<group>.cli.ts`, a `@SubCommand` extending `CommandRunner` in `<group>/subs/<name>.cli.ts`, one command per file, and every sub-command has its unit spec `<name>.cli.spec.ts` beside it (a command is an action runner, not a thin transport: R88 does not apply to it). `.cli.ts`, because `.command.ts` is the CQRS message. No two command classes of the cli feature root share a class name (the starter and `starci app add cli` write `<Group>Cli` and `<Group>RunCli`): nest-commander matches a sub-command by its class name, so a second `RunCli` runs the first one's action."
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["BE_CLI_COMMAND_SHAPE"]
     enforcers:
       - {kind: eslint-be, id: cli-command-shape}
       - {kind: eslint-be, id: unit-test-colocated}
+      - {kind: hfs, id: cli-command-names, at: runtime/scripts/hfs/rules/cli.mjs}
   - id: R150
     code: "BE_CLI_OWNER"
     editions: [lite, full]

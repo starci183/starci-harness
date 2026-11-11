@@ -173,7 +173,7 @@ rules:
     cases:
       - id: case-1
         when: The migrate command
-        write: 'features/cli/migrate/subs/run.cli.ts (`@SubCommand({ name: "run" })`, `RunCli extends CommandRunner`) makes one call on `MigrationRunnerService` of `platform/database`, which migrates every connection in order and fails the process on the first error; run.cli.spec.ts beside it.'
+        write: 'features/cli/migrate/subs/run.cli.ts (`@SubCommand({ name: "run" })`, `MigrateRunCli extends CommandRunner`) makes one call on `MigrationRunnerService` of `platform/database`, which migrates every connection in order and fails the process on the first error; run.cli.spec.ts beside it.'
       - id: case-2
         when: A module runs `dataSource.runMigrations()` at boot of an api app
         write: 'Refused (BE_SCHEMA_AUTHORITY): only the cli and the test world run migrations.'

@@ -40,7 +40,7 @@ import { MigrationRunnerService } from "@modules/platform/database"
 
 @SubCommand({ name: "run", description: "Apply the pending db migrations" })
 /** \`cli migrate run\`: delegates schema authority to the managed db:push script (starci app db migrate). */
-export class RunCli extends CommandRunner {
+export class MigrateRunCli extends CommandRunner {
     constructor(private readonly migrations: MigrationRunnerService) {
         super()
     }

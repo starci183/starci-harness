@@ -32,7 +32,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: BE-ARCHITECTURE-1 Dependencies follow the tier matrix · BE-ARCHITECTURE-2 An app owns bootstrap and composition only · BE-ARCHITECTURE-3 One module shape; a capability is registered once, at the app root · BE-ARCHITECTURE-4 Application contracts know no transport · BE-ARCHITECTURE-5 Every feature is composed; owners form no cycle · BE-ARCHITECTURE-6 Trigger kinds never import each other
 - [code/be/background.md](../code/be/background.md) · 1 KB — Which process runs work no request triggers.
   - sections: BE-BACKGROUND-1 The owning api app runs its background work; a worker app only scales it apart · BE-BACKGROUND-2 Every background method has a runner
-- [code/be/cli.md](../code/be/cli.md) · 3 KB — Where a one-off action (migrate, seed, sync, cleanup, an operator command) lives: a command of the one cli app, laid out as groups and sub-commands, thin and unit-tested.
+- [code/be/cli.md](../code/be/cli.md) · 4 KB — Where a one-off action (migrate, seed, sync, cleanup, an operator command) lives: a command of the one cli app, laid out as groups and sub-commands, thin and unit-tested.
   - sections: BE-CLI-1 One cli app boots nest-commander and never serves · BE-CLI-2 Commands are groups and sub-commands under `features/cli` · BE-CLI-3 A command delegates once and is unit-tested · BE-CLI-4 Only the cli parses the command line
 - [code/be/comment.md](../code/be/comment.md) · 2 KB — The back-end specifics of comments.
   - sections: BE-COMMENT-1 On a decorated class the docblock sits after the decorators · BE-COMMENT-3 Members are documented, not only exports · BE-COMMENT-7 Back-end catalogs are the owner's messages files and the i18n fixtures slot
@@ -175,7 +175,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - ids: PROJECT-1, R399, app.agent-output, app.browser, app.browser-config, app.build-output, app.ci, app.ci-authorize-deploy-key, app.ci-cache-verify, app.ci-db, app.ci-deploy, app.ci-e2e, app.ci-images, app.ci-stack-deploy, app.ci-stack-key-restore, app.db, app.db.bootstrap, app.db.image, app.db.migrations, app.db.migrations.archive, app.declaration, app.dependabot, app.deploy, app.dockerignore and 146 more
 - [project/README.md](../project/README.md) · 13 KB — What a StarCi project is, how a piece of product work travels from a record to a settled commit, and where to read for each kind of task.
   - sections: PROJECT-1 A project is one app root that declares its sides and holds the Work of each · PROJECT-2 Work travels from a record to a settled commit · PROJECT-3 A product's agent modules are workspace packages · Where to read for a task · Files
-- [project/anatomy.md](../project/anatomy.md) · 84 KB — The canonical tree of an app, one per edition (`lite`, `full`) and place (the app root, `be/`, `fe/`).
+- [project/anatomy.md](../project/anatomy.md) · 85 KB — The canonical tree of an app, one per edition (`lite`, `full`) and place (the app root, `be/`, `fe/`).
   - sections: Why the tree is shaped this way · Regenerating and the drift check · Read with · Tree
 - [project/branches.md](../project/branches.md) · 3 KB — An app repository (never the harness repository itself) has two long-lived branches and one way between them.
   - sections: PROJECT-BRANCH-1 An app has exactly two long-lived branches, `main` and `dev`

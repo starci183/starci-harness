@@ -41,7 +41,7 @@ export function appRootFindings({ repoRoot, files, all, repo, resolver, pins, ph
     ...peerIntegrationFindings({ repoRoot, files: all }),
     ...monorepoFindings({ repoRoot, files: all, repo }),
     ...dockerFindings({ repoRoot, files: all, repo }),
-    ...(be ? cliFindings({ files: all, repo, resolver }) : []),
+    ...(be ? cliFindings({ repoRoot, files: all, repo, resolver }) : []),
     ...contractCompatFindings({ repoRoot, files: all }),
     ...eventClassContractFindings({ repoRoot, files: all, repo }),
     ...patternSpecFindings({ repoRoot, files: all, repo }),

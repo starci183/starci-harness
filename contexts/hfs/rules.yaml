@@ -1169,12 +1169,13 @@ rules:
       - {kind: eslint-be, id: cli-bootstrap}
   - id: R149
     code: BE_CLI_COMMAND_SHAPE
-    law: A nest-commander command is declared only under `src/features/cli/`, one per file in its group or `subs/` folder, each sub-command with its unit spec beside it.
+    law: A nest-commander command is declared only under `src/features/cli/`, one per file in its group or `subs/` folder, each sub-command with its unit spec beside it, and no two command classes of the app share a class name.
     failureCodes:
       - BE_CLI_COMMAND_SHAPE
     enforcers:
       - {kind: eslint-be, id: cli-command-shape}
       - {kind: eslint-be, id: unit-test-colocated}
+      - {kind: hfs, id: cli-command-names}
   - id: R150
     code: BE_CLI_OWNER
     law: "`nest-commander` is imported only by the cli app and cli feature root, and no back-end source parses command-line arguments itself."

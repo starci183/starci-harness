@@ -6,7 +6,7 @@ import { MigrationRunnerService } from "@modules/platform/database"
     description: "Apply the pending migrations of every connection",
 })
 /** `cli migrate run`: migrates every connection of the back end, in order, and logs what it applied. */
-export class RunCli extends CommandRunner {
+export class MigrateRunCli extends CommandRunner {
     constructor(private readonly migrations: MigrationRunnerService) {
         super()
     }
