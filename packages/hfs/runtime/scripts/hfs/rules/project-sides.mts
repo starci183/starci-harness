@@ -1,4 +1,4 @@
-// project-sides.mts - R399: the sides a project declares (hfs.json `sides`, contexts/project/README.md PROJECT-1) agree with its tree and its
+// project-sides.mts - R399 and R400 (HFS_PROJECT_NAME, projectNameFindings: hfs.json `project` agrees with its edition, PROJECT-4). R399: the sides a project declares (hfs.json `sides`, contexts/project/README.md PROJECT-1) agree with its tree and its
 // stack declaration (contexts/project/stacks.md PROJECT-STACKS-2), each way:
 //   HFS_SIDE_FOLDER_MISSING   a declared side (be, fe, packages) tracks no file under its folder;
 //   HFS_SIDE_UNDECLARED       a tracked folder be/, fe/ or packages/ belongs to a side hfs.json does not declare;
@@ -11,6 +11,7 @@ import { isPlainObject as plain } from '../../../engine/plain-object.mjs';
 import { findStackDeclaration } from '../../lib/stack-declaration.mjs';
 import { PROJECT_SIDES, sideDeclared, type ProjectSide } from '../project-sides.mjs';
 import { found } from './read.mjs';
+import { projectNameProblem } from '../project-name.mjs';
 import type { Finding, Parsed, Repo } from './rule-types.mjs';
 
 const STACK_FILE = '.starcistacks/application-stacks.yaml';
@@ -68,4 +69,11 @@ export function projectSidesFindings({ repoRoot, repo, isRoot, all = [] }: { rep
   if (repo?.kind !== 'app' || isRoot === false || repo.sides === undefined) return [];
   const stack = findStackDeclaration(repoRoot);
   return [...sideFolderFindings(repo, all), ...(stack.doc ? stackSideFindings(repo, stack.doc) : [])];
+}
+
+/** R400 at the app root: hfs.json `project` agrees with the declared edition (PROJECT-4): HFS_PROJECT_NAME. */
+export function projectNameFindings({ repo, isRoot }: { repo: Repo; isRoot: boolean }): Finding[] {
+  if (repo?.kind !== 'app' || isRoot === false || typeof repo.project !== 'string') return [];
+  const problem = projectNameProblem(repo.project, repo.edition);
+  return problem ? [found('HFS_PROJECT_NAME', 'hfs.json', `${problem}: a project's name is <base>[-lite][-data] (PROJECT-4)`)] : [];
 }

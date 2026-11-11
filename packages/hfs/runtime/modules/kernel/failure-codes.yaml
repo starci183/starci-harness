@@ -6291,3 +6291,13 @@ STACKS_COMPONENT_SIDE:
   nextStep_vi: "Xoá thành phần, image hoặc tiến trình đó khỏi application-stacks.yaml, hoặc khai báo phía chứa app trong hfs.json."
   owner: op-retry
   kind: check-finding
+HFS_PROJECT_NAME:
+  title: "The project name does not say its edition"
+  title_vi: "Tên dự án không nói đúng phiên bản của nó"
+  meaning_vi: "Tên dự án theo ngữ pháp <base>[-lite][-data]: dự án lite tên kết thúc bằng -lite, dự án full không bao giờ kết thúc bằng -lite, và -data chỉ dành cho kho dữ liệu riêng của một dự án, không bao giờ là tên một app."
+  causes_vi:
+    - "Vi phạm R400: trường project của hfs.json không khớp với edition khai báo (PROJECT-4)."
+    - "Dự án lite được đặt tên không có hậu tố -lite, hoặc dự án full mang hậu tố -lite."
+  nextStep_vi: "Đổi tên dự án (hfs.json project, tên package.json gốc, repository của stack) theo đúng hậu tố của phiên bản, ví dụ shop-lite cho lite và shop cho full."
+  owner: op-retry
+  kind: check-finding
