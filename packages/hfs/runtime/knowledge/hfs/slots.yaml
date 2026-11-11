@@ -930,8 +930,8 @@ slots:
   - id: app.sides
     since: 3.1.0
     profiles: [app]
-    # The two sides. Everything below be/ and fe/ is judged by the side's own slots (profiles be and fe) with the side folder as its root;
-    # this slot answers only for the side folders themselves.
+    # The app sides. Everything below be/ and fe/ is judged by the side's own slots (profiles be and fe) with the side folder as its root;
+    # this slot answers only for the side folders themselves, and requires the folder of each side hfs.json declares (PROJECT-1).
     path: "{be,fe}/"
     presence: required
     tracked: tracked

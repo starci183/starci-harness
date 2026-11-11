@@ -3,6 +3,7 @@
 // slots.mts builds the scopes (`root` and `sides`, each a resolver of one scope) and hands them to appResolver.
 import { APP_SCOPE, isSide, PROFILES } from './slot-manifest-shape.mjs';
 import type { Side } from './slot-manifest-shape.mjs';
+import { isProjectSide, sideDeclared, type ProjectSide } from './project-sides.mjs';
 import { cleanSlotPath } from './slot-path.mjs';
 import type { Slot } from './manifest-shape.mjs';
 import type { ClassifiedPath, OwnerUnit } from './slot-classify.mjs';
@@ -75,11 +76,15 @@ function importAllowedApp({ repo, root, sides }: AppView, fromPath: string, toPa
   return root.importAllowed(fromPath, toPath);
 }
 
-function requiredPathsApp({ root, sides }: AppView): RequiredPaths {
+/** The app sides the declaration declares (PROJECT-1): an undeclared side's folder is never required or judged. */
+const declaredProfiles = (repo: AppRepo): Side[] => PROFILES.filter((side) => sideDeclared(repo, side));
+
+function requiredPathsApp({ repo, root, sides }: AppView): RequiredPaths {
   const own = root.requiredPaths();
-  const paths = [...own.paths];
+  // A root slot never requires a path inside the folder of a side the project does not declare (app.sides names be/ and fe/ alike).
+  const paths = own.paths.filter((entry) => !isProjectSide(entry.path.split('/')[0]) || sideDeclared(repo, entry.path.split('/')[0] as ProjectSide));
   const minimums = [...own.minimums];
-  for (const side of PROFILES) {
+  for (const side of declaredProfiles(repo)) {
     const required = sides[side].requiredPaths();
     paths.push(...required.paths.map((entry) => ({ ...entry, path: under(side, entry.path), side })));
     minimums.push(...required.minimums.map((entry) => ({ ...entry, side })));
@@ -87,9 +92,9 @@ function requiredPathsApp({ root, sides }: AppView): RequiredPaths {
   return { paths, minimums };
 }
 
-function slotEnabledApp({ root, sides }: AppView, slot: Slot): boolean {
+function slotEnabledApp({ repo, root, sides }: AppView, slot: Slot): boolean {
   if (slot.profiles.includes(APP_SCOPE)) return root.slotEnabled(slot);
-  return PROFILES.some((side) => slot.profiles.includes(side) && sides[side].slotEnabled(slot));
+  return declaredProfiles(repo).some((side) => slot.profiles.includes(side) && sides[side].slotEnabled(slot));
 }
 
 /** The resolver of the app `repo`: `root` answers its root paths and `sides[side]` the paths below that side's folder. */

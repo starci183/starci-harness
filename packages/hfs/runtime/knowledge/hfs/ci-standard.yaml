@@ -115,7 +115,7 @@ items:
     check: ci-standard
   - id: lint-parallel
     title: lint each side in its own job
-    requires: "the lint job is a matrix over side [be, fe], plus packages in an app with root packages; each scope lints (with its own Sonar report when a token is set) in parallel and on its own, and the sonar job merges the reports"
+    requires: "the lint job is a matrix over the app sides the project declares (be, fe), plus packages in an app with root packages; each scope lints (with its own Sonar report when a token is set) in parallel and on its own, and the sonar job merges the reports"
     covers: [app-ci]
     check: ci-standard
   - id: cache-saved-always

@@ -36,6 +36,7 @@ import { appResolver, isAppRepo } from './slot-app-view.mjs';
 import type { AppRepo } from './slot-app-view.mjs';
 import { sideProblems } from './slot-side-problems.mjs';
 import { declarationShapeProblems } from './declaration-shape.mjs';
+import { declaredSidesOf, sideDeclared, type ProjectSide } from './project-sides.mjs';
 import { declarationEdition, editionRuleParams, effectiveSlot, slotInEdition } from './edition-slots.mjs';
 import { fail } from './slot-errors.mjs';
 import { loadRuleCatalog } from './rule-catalog.mjs';
@@ -97,6 +98,8 @@ export interface RepoView {
   grammar?: string;
   extraPackages?: readonly { name: string; reason: string }[];
   sides?: Record<Side, RepoView>;
+  /** The sides hfs.json declares (app view only, PROJECT-1); a side outside it resolves to an empty view under `sides` and is never checked. */
+  declaredSides?: readonly ProjectSide[];
   manifestVersion: string;
 }
 
@@ -182,6 +185,9 @@ const HFS_MANIFEST_FILE = 'knowledge/hfs/slots.yaml';
 export const RUNTIME_MANIFEST_FILE = 'knowledge/hfs/runtime-slots.yaml';
 export const HFS_DECLARATION_FILE = 'hfs.json';
 export const SIDES = Object.freeze([...PROFILES]);
+export { PROJECT_SIDES, declaredSidesOf, sideDeclared, type ProjectSide } from './project-sides.mjs';
+/** The app sides (be, fe) a resolved app view declares, in SIDES order: the sides whose folders a check judges. */
+export const declaredAppSides = (repo: object | null | undefined): Side[] => SIDES.filter((side) => sideDeclared(repo, side));
 
 /**
  * The rewriter of a side's finding messages: `(message) => message` with its paths made app-relative like the finding's own path.
@@ -288,12 +294,16 @@ export function resolveRepoDeclaration(manifest: SlotManifest, declaration: Pars
   if (declaration.kind === RUNTIME_KIND) return runtimeDeclaration(manifest, declaration, file, side);
   const { edition, known, valid } = declarationEdition(manifest, declaration);
   if (!valid) fail('HFS_EDITION_INVALID', `hfs.json edition is ${JSON.stringify(declaration.edition)}; the editions this manifest knows are ${known.join(', ')} (absent means full)`, { file, edition: declaration.edition });
-  const bad = [...PROFILES.flatMap((name) => sideProblems(manifest, name, declaration.sides[name], edition)), ...bareDbFunctionProblems(manifest, declaration.sides.be)];
+  const declaredSides = Object.freeze(declaredSidesOf(declaration.sides));
+  // A side the project does not declare resolves to an empty view (no app, no slot of its own is checked: check.mts gates it by declaredSides).
+  const sideOf = (name: Side): Parsed => declaration.sides[name] ?? { apps: [] };
+  const declaredProfiles = PROFILES.filter((name) => declaredSides.includes(name));
+  const bad = [...declaredProfiles.flatMap((name) => sideProblems(manifest, name, declaration.sides[name], edition)), ...bareDbFunctionProblems(manifest, declaration.sides.be)];
   if (bad.length) declarationInvalid(bad, file);
   if (side !== null && !isSide(side)) fail('HFS_DECLARATION_INVALID', `${side} is not a side of an app (be, fe)`, { file, side });
   // A provider declared on any connection enables the provider slots of every profile (a fe side declares none): each view carries the union.
-  const providers = Object.freeze([...new Set(PROFILES.flatMap((name) => (declaration.sides[name].connections ?? []).map((c: Parsed) => c.provider).filter((p: Parsed) => p !== undefined)))]);
-  const sides = Object.fromEntries(PROFILES.map((name) => [name, sideDeclaration(manifest, declaration, name, edition, providers)])) as Record<Side, RepoView>;
+  const providers = Object.freeze([...new Set(PROFILES.flatMap((name) => (sideOf(name).connections ?? []).map((c: Parsed) => c.provider).filter((p: Parsed) => p !== undefined)))]);
+  const sides = Object.fromEntries(PROFILES.map((name) => [name, sideDeclaration(manifest, { ...declaration, sides: { ...declaration.sides, [name]: sideOf(name) } }, name, edition, providers)])) as Record<Side, RepoView>;
   if (side !== null) return sides[side] as RepoView;
   return Object.freeze({
     hfs: declaration.hfs,
@@ -311,6 +321,7 @@ export function resolveRepoDeclaration(manifest: SlotManifest, declaration: Pars
     providers,
     reads: Object.freeze([]),
     sides: Object.freeze(sides),
+    declaredSides,
     manifestVersion: manifest.version,
   });
 }

@@ -4,6 +4,7 @@ import { refusal } from '../stack/errors.mjs';
 import { byCodeUnit } from '../report/order.mjs';
 import { ENTITY_LIST } from '../db/entity-list.mjs';
 import { isBranchPattern, readBranchProfiles, type BranchProfiles } from '../runtime/scripts/lib/stack-declaration.mjs';
+import { sideDeclared } from '../runtime/scripts/hfs/project-sides.mjs';
 
 // reason: the stack declaration and its quality services are YAML parsed from disk; each field is read where the CI text needs it
 type Declaration = any;
@@ -162,6 +163,8 @@ function frontendBuild(source: CiSource | undefined, app: { sides: { fe: { apps:
   const frontend = images.filter(image => app?.sides.fe.apps.some(entry => entry.name === image.app));
   const gates = declaration.release?.gates ?? [];
   const singleEnv = imageBuildEnv(frontend[0], gates);
+  // A project without fe (PROJECT-1) builds no front end.
+  if (app !== undefined && !sideDeclared(app, 'fe')) return { env: '', steps: '' };
   if (frontend.length <= 1) return { env: singleEnv, steps: ['      - name: build fe', '        run: npm run build:fe', singleEnv].filter(Boolean).join('\n') };
   const steps = frontend.map(image => [
     '      - name: build fe ' + image.app,
@@ -279,10 +282,13 @@ export function ciWorkflowCommands(source: CiSource | undefined, lcovReport = 'b
   const build = frontendBuild(source, app, modulesFirst);
   const side = '${{ matrix.side }}';
   // The lint matrix: one job per side, and one for the root packages of an app that has them (their scope runs whatever became of the sides').
-  const scopes = ['be', 'fe', ...(rootPackages ? ['packages'] : [])];
+  const scopes = [...(['be', 'fe'] as const).filter(each => sideDeclared(app, each)), ...(rootPackages ? ['packages'] : [])];
   const declaration = buildDeclaration(source);
   const settings = ciJobSettings(declaration, source, scopes);
-  const lintInputs = exampleCommand(source, modulesFirst + (packages ? 'npm run codegen --silent && npx --no-install turbo run build --filter=./fe/packages/*' : 'npm run codegen --silent'));
+  // The lint reads generated fe wire types and built fe packages; a project without fe generates none (its root packages, when any, are built first).
+  const lintInputs = exampleCommand(source, sideDeclared(app, 'fe')
+    ? modulesFirst + (packages ? 'npm run codegen --silent && npx --no-install turbo run build --filter=./fe/packages/*' : 'npm run codegen --silent')
+    : (rootPackages ? BUILD_MODULES : 'true'));
   // A refused branches block renders no profile (readBranchProfiles keeps only the sound entries; the app check names the problems).
   const profiles = readBranchProfiles(declaration);
   return {

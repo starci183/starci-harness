@@ -6655,3 +6655,19 @@ rules:
       - {path: packages/hfs/src/rest-contract.spec.mjs, editions: [lite, full]}
     witness:
       - {path: packages/hfs/src/rest-contract.spec.mjs, editions: [lite, full]}
+  - id: R399
+    code: "HFS_SIDE_UNDECLARED"
+    law: "A project declares its sides in hfs.json `sides`, any non-empty subset of `be`, `fe` and `packages` (`\"packages\": {}`, the root workspace packages/*), and its tree and stack declaration agree with them each way: a declared side tracks at least one file under its folder (HFS_SIDE_FOLDER_MISSING); a tracked be/, fe/ or packages/ belongs to a declared side (HFS_SIDE_UNDECLARED); `.starcistacks/application-stacks.yaml` states `sides: {be, fe, packages}` as booleans (STACKS_SIDES_UNDECLARED, a warning) equal to hfs.json (STACKS_SIDES_DRIFT); and no stack component runs an app of a side the project lacks: a deploy image of an app no declared side declares, front-end buildArgs without fe, a local process run from an undeclared side's folder (STACKS_COMPONENT_SIDE)."
+    kinds: [check]
+    gates: [settle, land, ci]
+    failureCodes: ["HFS_SIDE_UNDECLARED", "HFS_SIDE_FOLDER_MISSING", "STACKS_SIDES_UNDECLARED", "STACKS_SIDES_DRIFT", "STACKS_COMPONENT_SIDE"]
+    enforcers:
+      - {kind: hfs, id: project-sides, at: runtime/scripts/hfs/rules/project-sides.mjs}
+    editions: [lite, full]
+    templateNa: "The scaffold writes the declared sides and the matching stack field; the rule guards the agreement afterwards."
+    docs:
+      - {path: contexts/project/README.md#project-1-a-project-is-one-app-root-that-declares-its-sides-and-holds-the-work-of-each, editions: [lite, full]}
+    proves:
+      - {path: packages/hfs/src/project-sides.spec.mjs, editions: [lite, full]}
+    witness:
+      - {path: packages/hfs/src/project-sides.spec.mjs, editions: [lite, full]}

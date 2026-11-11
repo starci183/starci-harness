@@ -10,7 +10,9 @@ import which, and which rules judge it. It is data a machine reads; the reasons 
 | [rules.yaml](rules.yaml) | the rule catalog: id, finding code, the law in one sentence, failure codes, enforcers | gates and lint (by code), an agent resolving a cited `R<n>` |
 
 An app declares itself in `hfs.json` (kind app, its `edition` fixed at scaffold, its sides, apps, patterns,
-backing services and its grammar). An api app of be may add `contract`, `graphql` (the default) or `rest`
+backing services and its grammar). `sides` holds any non-empty subset of `be`, `fe` and `packages` (`"packages": {}`,
+the root workspace packages); only a declared side's slots and checks apply ([project/README.md](../project/README.md)
+PROJECT-1, R399; owner `@starci/hfs runtime/scripts/hfs/project-sides.mts`). An api app of be may add `contract`, `graphql` (the default) or `rest`
 ([code/be/transport.md](../code/be/transport.md) BE-TRANSPORT-1, owner `@starci/hfs runtime/scripts/hfs/contract-kind.mts`). No product content lives here; product records belong in the app's `.starciwork`.
 
 ## One word, one meaning: "slot"

@@ -15,7 +15,7 @@ runs is in [lite.md](lite.md) and [full.md](full.md).
 ## PROJECT-STACKS-1 One root per app
 
 `.starcistacks/` lives only at the app root, the repository that owns `.starciwork`, and covers every side the app
-has (be and fe). A side repository or a side folder carries none (`HFS_STACKS_IN_SIDE`), so a front end that ships
+declares ([README.md](README.md) PROJECT-1). A side repository or a side folder carries none (`HFS_STACKS_IN_SIDE`), so a front end that ships
 from its own repository finds its stack, and its CI credentials, in the app root's custody.
 
 Why: one root keeps one manifest, one custody and one runbook per environment; two roots drift, and nobody can say
@@ -26,6 +26,11 @@ which one deployed.
 `application-stacks.yaml` (schema `starci/application-stacks@1`) is the declaration everything else is checked
 against:
 
+- `sides`: the project's sides as booleans, `{be, fe, packages}`, equal to the sides `hfs.json` declares, with a
+  plain-words comment line above it that the scaffold writes (a project without a front end says so). No component,
+  deploy image or local process runs an app of a side the project lacks: no web component without fe, no api
+  component without be (R399: `STACKS_SIDES_DRIFT`, `STACKS_COMPONENT_SIDE`; a manifest without the field is warned
+  `STACKS_SIDES_UNDECLARED`; owner: `@starci/hfs` `runtime/scripts/hfs/rules/project-sides.mts`).
 - `components`: every process and dependency the app needs, each with its role and purpose, so a reader can tell a
   durable store from a rebuildable cache without opening a compose file.
 - `environments`: per environment, its runtime (`docker-compose` or `docker-swarm`), the infra files it reads, the

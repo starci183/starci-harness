@@ -2749,3 +2749,14 @@ rules:
       - BE_REST_SECURITY
     enforcers:
       - {kind: hfs, id: rest-contract}
+  - id: R399
+    code: HFS_SIDE_UNDECLARED
+    law: "A project's sides are the ones hfs.json declares (a non-empty subset of be, fe, packages): each declared side tracks files under its folder, no tracked be/, fe/ or packages/ belongs to an undeclared side, and the stack declaration states the same sides with no component of a missing side."
+    failureCodes:
+      - HFS_SIDE_UNDECLARED
+      - HFS_SIDE_FOLDER_MISSING
+      - STACKS_SIDES_UNDECLARED
+      - STACKS_SIDES_DRIFT
+      - STACKS_COMPONENT_SIDE
+    enforcers:
+      - {kind: hfs, id: project-sides}

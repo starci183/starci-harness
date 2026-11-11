@@ -70,7 +70,7 @@ import { skillRoot } from '../../engine/runtime-root.mjs';
 import { ARCHITECTURE_RULE_IDS, checkArchitecture } from './architecture/index.mjs';
 import { canonPins } from './canon-pins.mjs';
 import { readCatalogOnce } from './catalog-once.mjs';
-import { APP_SCOPE, HFS_DECLARATION_FILE, appRelativeMessages, HfsSlotsError, SIDES, createSlotResolver, loadSlotManifest, readRepoDeclaration, resolveRepoDeclaration, type OwnerUnit, type RepoView, type RequiredPaths, type Resolver, type RuleParams, type Slot, type SlotManifest } from './slots.mjs';
+import { APP_SCOPE, HFS_DECLARATION_FILE, appRelativeMessages, HfsSlotsError, createSlotResolver, declaredAppSides, loadSlotManifest, readRepoDeclaration, resolveRepoDeclaration, type OwnerUnit, type RepoView, type RequiredPaths, type Resolver, type RuleParams, type Slot, type SlotManifest } from './slots.mjs';
 import type { CanonPins } from './canon-pins.mjs';
 import type { Side } from './slot-manifest-shape.mjs';
 import { judgedFindings, summarize, withWhy, type Finding, type Summary, type Why } from './check-results.mjs';
@@ -356,7 +356,7 @@ export function checkRepo({ repoRoot, root = skillRoot, harness, declaration, fi
   if (repo.profile === APP_SCOPE) {
     const own = tracked.filter((file) => resolver.sideOf!(file) === null);
     findings.push(...keep(scopeFindings({ repoRoot, root, harness, repo, resolver, files: own, all: tracked, scoped, manifest, phase }), repoRoot));
-    for (const side of SIDES) {
+    for (const side of declaredAppSides(repo)) {
       const prefix = `${side}/`;
       const sideRoot = path.join(repoRoot, side);
       const sideFiles = tracked.filter((file) => file.startsWith(prefix)).map((file) => file.slice(prefix.length));
@@ -377,7 +377,7 @@ export function checkRepo({ repoRoot, root = skillRoot, harness, declaration, fi
   const judged = judgedFindings(findings, repo.edition ?? 'full', root) as CheckFinding[];
   const finished = withWhy(judged, { ...why, ...readWhy(root, [...new Set(judged.map((f) => f.code).filter((code) => !why[code]))]) }) as CheckFinding[];
   const counts = summarize(finished);
-  const apps = repo.profile === APP_SCOPE ? SIDES.flatMap((side) => repo.sides![side].apps.map((app) => ({ ...app, side }))) : repo.apps;
+  const apps = repo.profile === APP_SCOPE ? declaredAppSides(repo).flatMap((side) => repo.sides![side].apps.map((app) => ({ ...app, side }))) : repo.apps;
   return { ok: counts.error === 0, repoRoot, manifest: manifest.version, profile: repo.profile, apps, tracked: tracked.length, findings: finished, counts };
 }
 
@@ -430,7 +430,7 @@ export function checkRepository({ repoRoot, root = skillRoot, harness, fast = fa
   if (slotResult.profile === null) return { ...slotResult, machine: { status: 'skipped', reason: 'hfs.json is not valid' } };
   const repo = readRepoDeclaration(manifest, repoRoot);
   const scopes = repo.profile === APP_SCOPE
-    ? SIDES.map((side) => ({ side, repoRoot: path.join(repoRoot, side), prefix: `${side}/` }))
+    ? declaredAppSides(repo).map((side) => ({ side, repoRoot: path.join(repoRoot, side), prefix: `${side}/` }))
     : [{ side: null, repoRoot, prefix: '' }];
   const runs: MachineRunInfo[] = [];
   const found: CheckFinding[] = [];

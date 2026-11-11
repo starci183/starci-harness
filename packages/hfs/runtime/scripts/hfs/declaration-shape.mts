@@ -9,6 +9,7 @@ import { baselineResetOk } from './rules/database-reset.mjs';
 import { kindShapeProblems, patternShapeProblems } from './declaration-slots.mjs';
 import { byCodeUnit } from '../lib/list.mjs';
 import { CONTRACT_KINDS, DEFAULT_CONTRACT } from './contract-kind.mjs';
+import { PROJECT_SIDES, isProjectSide } from './project-sides.mjs';
 
 /** Shape problems of the optional hfs.json `db` block of a lite app: the environment variable naming its database, its image, forced RLS and its application role. */
 const isStringList = (value: Parsed) => Array.isArray(value) && value.every((entry: Parsed) => typeof entry === 'string' && entry.trim());
@@ -148,10 +149,35 @@ function productDeclarationProblems(declaration: Parsed, profiles: Parsed): stri
   if (declaration.browser !== undefined && declaration.browser !== true) bad.push('browser is `true` when the app has a browser journey (slot app.browser), and is left out otherwise');
   if (declaration.rulePacks !== undefined && (!Array.isArray(declaration.rulePacks) || declaration.rulePacks.length === 0 || declaration.rulePacks.some((name: Parsed) => typeof name !== 'string' || !RULE_PACK_NAME.test(name)) || new Set(declaration.rulePacks).size !== declaration.rulePacks.length)) bad.push('rulePacks is a non-empty list of the installed rule pack packages the app adds its laws with, each once (PROJECT-LINT-3)');
   if (declaration.modules !== undefined && declaration.modules !== 'data') bad.push('modules is `"data"` when the app keeps its modules as data (seeds, no rendered registry package), and is left out otherwise');
-  if (declaration.kind !== APP_KIND) bad.push(`kind must be ${APP_KIND} (a product is one app repository with a be and an fe side) or ${RUNTIME_KIND} (the StarCi runtime repository)`);
-  if (!isPlainObject(declaration.sides) || Object.keys(declaration.sides).sort(byCodeUnit).join() !== profiles.join()) { bad.push('sides must declare exactly be and fe'); return bad; }
+  if (declaration.kind !== APP_KIND) bad.push(`kind must be ${APP_KIND} (a product is one app repository of the sides it declares) or ${RUNTIME_KIND} (the StarCi runtime repository)`);
+  const sides = sidesProblems(declaration.sides);
+  if (sides.length) { bad.push(...sides); return bad; }
   const names = new Map();
-  for (const side of profiles) bad.push(...declarationSideProblems(side, declaration.sides[side], names));
+  for (const side of profiles) if (Object.hasOwn(declaration.sides, side)) bad.push(...declarationSideProblems(side, declaration.sides[side], names));
+  bad.push(...crossSideReadProblems(declaration.sides));
+  return bad;
+}
+
+/** PROJECT-1: `sides` declares a non-empty subset of be, fe and packages; `packages` is the empty object `{}` (the root workspace packages/*). */
+function sidesProblems(sides: Parsed): string[] {
+  if (!isPlainObject(sides)) return [`sides must be an object declaring some of ${PROJECT_SIDES.join(', ')}`];
+  const keys = Object.keys(sides).sort(byCodeUnit);
+  const bad = keys.filter((key) => !isProjectSide(key)).map((key) => `sides.${key} is not a side (a project declares some of ${PROJECT_SIDES.join(', ')})`);
+  if (!keys.length) bad.push(`sides is empty: a project declares at least one of ${PROJECT_SIDES.join(', ')}`);
+  if (Object.hasOwn(sides, 'packages') && !(isPlainObject(sides.packages) && Object.keys(sides.packages).length === 0)) bad.push('sides.packages is the empty object {} (it declares the root workspace packages/*)');
+  return bad;
+}
+
+/** A side reads only a declared side: a `reads` path below be/ or fe/ names a side hfs.json declares. */
+function crossSideReadProblems(sides: Parsed): string[] {
+  const bad: string[] = [];
+  for (const side of ['be', 'fe']) {
+    const reads = Array.isArray(sides[side]?.reads) ? sides[side].reads : [];
+    for (const read of reads) {
+      const head = typeof read === 'string' ? read.split('/')[0] : '';
+      if (head !== side && isProjectSide(head) && !Object.hasOwn(sides, head)) bad.push(`sides.${side}.reads names ${read}, but the project does not declare the ${head} side`);
+    }
+  }
   return bad;
 }
 

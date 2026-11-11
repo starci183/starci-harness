@@ -1,6 +1,6 @@
 # The HFS slot manifest: what may exist in an app repository and where. An app is one repository: the app root
 # (slots of profile app) holds the one package.json, lockfile, hfs.json, CI, hooks and .starciwork; be/ and fe/ are its
-# two sides (profile be or fe, paths relative to the side). Every tracked path matches exactly one slot. Checks, lint
+# app sides (profile be or fe, paths relative to the side), each present when hfs.json declares it (PROJECT-1, R399). Every tracked path matches exactly one slot. Checks, lint
 # factories, the architecture machine and templates read this file; none hardcodes a path. Field meanings and the
 # ruleParams keys are explained in hfs/README.md; the reason for a slot's shape is its pattern topic.
 schema: starci/hfs-slots@3

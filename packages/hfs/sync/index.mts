@@ -22,7 +22,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { braceVariants } from '../runtime/scripts/lib/glob.mjs';
 import { codecovPaths, coverageComponents, declaredPackageScopes, jestCoverage, packageComponents, packagesCoverage, sonarCoverageExclusions, type PackagesCoverage } from '../runtime/scripts/hfs/coverage-scope.mjs';
-import { APP_SCOPE, SIDES, litePresenceOf, loadSlotManifest, resolveAppDeclaration, slotInEdition, type RepoView } from '../runtime/scripts/hfs/slots.mjs';
+import { APP_SCOPE, SIDES, declaredAppSides, litePresenceOf, loadSlotManifest, resolveAppDeclaration, sideDeclared, slotInEdition, type RepoView } from '../runtime/scripts/hfs/slots.mjs';
 import type { AppRepo } from '../runtime/scripts/hfs/slot-app-view.mjs';
 import type { Slot, SlotManifest } from '../runtime/scripts/hfs/manifest-shape.mjs';
 import { managedGroupOf } from '../runtime/scripts/hfs/edition-slots.mjs';
@@ -516,17 +516,19 @@ function registryTargets(app: ResolvedApp, source: AppSourceFacts | undefined): 
  */
 function packagesLintTargets(app: ResolvedApp, source: AppSourceFacts | undefined): RenderedTarget[] {
   if (!(source?.modules?.length || source?.otherPackages?.length)) return [];
-  const grammar = grammarLintFor(app.sides.fe.grammar);
-  const family = grammar.package ? { name: grammar.package, factory: grammar.factory.replace(/Config$/, 'PackagesConfig') } : null;
+  // The canon of a side lints the packages' subpaths only when the project declares that side (PROJECT-1): its canon is installed with it.
+  const withFe = sideDeclared(app, 'fe');
+  const grammar = withFe ? grammarLintFor(app.sides.fe.grammar) : null;
+  const family = grammar?.package ? { name: grammar.package, factory: grammar.factory.replace(/Config$/, 'PackagesConfig') } : null;
   const content = [
     'import { loadPackagesHfs as loadBePackages, starciBePackagesConfig } from "@starci/eslint-canon-be"',
-    'import { loadPackagesHfs as loadFePackages, starciFePackagesConfig } from "@starci/eslint-canon-fe"',
+    ...(withFe ? ['import { loadPackagesHfs as loadFePackages, starciFePackagesConfig } from "@starci/eslint-canon-fe"'] : []),
     ...(family ? [canonImport({ names: [family.factory], from: family.name })] : []),
     '',
     'const be = loadBePackages(import.meta.url)',
-    'const fe = loadFePackages(import.meta.url)',
+    ...(withFe ? ['const fe = loadFePackages(import.meta.url)'] : []),
     '',
-    canonList({ head: 'export default ', items: ['...(await starciBePackagesConfig({ hfs: be }))', '...starciFePackagesConfig({ hfs: fe })', ...(family ? [`...${family.factory}({ hfs: fe })`] : [])] }),
+    canonList({ head: 'export default ', items: ['...(await starciBePackagesConfig({ hfs: be }))', ...(withFe ? ['...starciFePackagesConfig({ hfs: fe })'] : []), ...(family ? [`...${family.factory}({ hfs: fe })`] : [])] }),
     '',
   ].join(LINE);
   return [{ path: PACKAGES_LINT_FILE, scope: APP_SCOPE, mode: 'file', content, hash: hashOf(content) }];
@@ -537,6 +539,8 @@ export function variables(app: ResolvedApp, scope: string, presets: Presets | nu
   const fe = app.sides.fe;
   const packages = opensPackages(fe);
   const lite = app.edition === 'lite';
+  const withBe = sideDeclared(app, 'be');
+  const withFe = sideDeclared(app, 'fe');
   const providers = (app.sides.be.connections ?? []).map(connection => connection.provider);
   const quality = source.quality ?? qualityServices({});
   // The root packages (the agent SDK, the module packages and the rest) are built before anything imports them (typecheck, lint, the fe build and the be
@@ -565,12 +569,17 @@ export function variables(app: ResolvedApp, scope: string, presets: Presets | nu
     pgmqSha256: PGMQ.sha256,
     // A lite app's declared Redis (sides.be.backing, R212) runs in development as one container of its pinned image.
     backingScripts: lite && (app.sides.be.backing ?? []).includes('redis') ? redisDevText(app.project) : '',
-    // turbo builds every fe app workspace; ^build (turbo.json) builds the packages each app imports first, and caches both.
-    buildFe: `${modulesFirst}npm run codegen --silent && turbo run build --filter=./fe/apps/*`,
-    // The be side with its tsc; every fe workspace with its own typecheck script through turbo (the packages are built first: ^build).
-    typecheck: `${modulesFirst}npm run codegen --silent && tsc -p be/tsconfig.json && turbo run typecheck`,
+    // turbo builds every fe app workspace; ^build (turbo.json) builds the packages each app imports first, and caches both. A project without fe
+    // (PROJECT-1) has no fe build and no wire codegen of its own, and its typecheck and lint generate nothing first.
+    buildScripts: [
+      ...(withFe ? [`"build:fe": ${JSON.stringify(`${modulesFirst}npm run codegen --silent && turbo run build --filter=./fe/apps/*`)},`] : []),
+      '"codegen": "node scripts/codegen.mjs",',
+      ...(withFe ? ['"codegen:graphql": "node scripts/codegen.mjs --graphql",'] : []),
+    ].join('\n    '),
+    // The be side with its tsc; every workspace with its own typecheck script through turbo (the packages are built first: ^build).
+    typecheck: `${modulesFirst}${[...(withFe ? ['npm run codegen --silent'] : []), ...(withBe ? ['tsc -p be/tsconfig.json'] : []), 'turbo run typecheck'].join(' && ')}`,
     // The typed lint reads the types the fe packages declare (their dist), so the packages are built first.
-    lintPrefix: `${modulesFirst}${packages ? 'npm run codegen --silent && turbo run build --filter=./fe/packages/* && ' : 'npm run codegen --silent && '}`,
+    lintPrefix: `${modulesFirst}${packages ? 'npm run codegen --silent && turbo run build --filter=./fe/packages/* && ' : withFe ? 'npm run codegen --silent && ' : ''}`,
     // The unit run, the back-end build and every CI job that imports a root package find it built (build:modules precedes them); its specs run in the unit run and its shards.
     modulesFirst,
     nodeMajor: String(NODE_MAJOR),
@@ -582,7 +591,7 @@ export function variables(app: ResolvedApp, scope: string, presets: Presets | nu
     sonarHostLine: sonarHostLine(quality.sonar),
     sonarExclusions: sonarScope(presets).exclusions.join(','),
     sonarTestInclusions: sonarScope(presets).tests.join(','),
-    sonarSources: ['be/apps', 'be/src', 'fe/apps', ...(packages ? ['fe/packages'] : []), ...moduleDirs.map(dir => `${dir}/src`)].join(','),
+    sonarSources: [...(withBe ? ['be/apps', 'be/src'] : []), ...(withFe ? ['fe/apps'] : []), ...(packages ? ['fe/packages'] : []), ...moduleDirs.map(dir => `${dir}/src`)].join(','),
     lcovReport: LCOV_REPORT,
     cpdExclusions: SONAR_CPD_EXCLUSIONS.join(','),
     ...ciWorkflowCommands(source, LCOV_REPORT, source.qualityDeclared === false ? undefined : source.quality, { app, packages, rootPackages: moduleDirs.length > 0 }),
@@ -640,7 +649,8 @@ function renderOnce(hfs: unknown, presets: Presets | null | undefined, { sonarKe
 } = {}): RenderedTarget[] {
   const app = validateHfs(hfs, manifest);
   const hasTemplate = (name: string): boolean => { try { return readTemplate(name) !== undefined; } catch { return false; } };
-  return SCOPES.flatMap(scope => {
+  // The root and each side the app declares (PROJECT-1): an undeclared side has no managed file.
+  return [APP_SCOPE, ...declaredAppSides(app)].flatMap(scope => {
     const vars = variables(app, scope, presets, sonarKey, manifest, source);
     const repo = scope === APP_SCOPE ? app : app.sides[scope as 'be' | 'fe'];
     const declaredTargets = targetsOf(scope, { edition: app.edition as string, manifest, hasTemplate, enabled: slot => declaredSlotEnabled(slot, repo) });

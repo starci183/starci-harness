@@ -12,6 +12,17 @@ additionalProperties: false
 required: [schema, components, environments, k8s]
 properties:
   schema: {type: string, minLength: 1}
+  sides:
+    description: >-
+      The sides of the project (contexts/project/README.md PROJECT-1), each true or false; they equal the sides hfs.json declares, and no
+      component runs an app of a side the project lacks (R399, STACKS_SIDES_DRIFT, STACKS_COMPONENT_SIDE).
+    type: object
+    additionalProperties: false
+    required: [be, fe, packages]
+    properties:
+      be: {type: boolean}
+      fe: {type: boolean}
+      packages: {type: boolean}
   sources:
     type: array
     minItems: 1

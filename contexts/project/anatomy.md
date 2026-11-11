@@ -8,8 +8,9 @@ says why the tree has this shape.
 
 ## Why the tree is shaped this way
 
-- **One repository, one app root.** Everything both sides share sits at the root: the one manifest and lockfile,
-  `hfs.json`, CI, hooks, the stacks and the Work (`.starciwork`) of every side. A side holds its own code and its own
+- **One repository, one app root.** Everything the declared sides share sits at the root: the one manifest and lockfile,
+  `hfs.json`, CI, hooks, the stacks and the Work (`.starciwork`) of every side; a side the project does not declare
+  ([README.md](README.md) PROJECT-1) has no folder and no slot of its own is required. A side holds its own code and its own
   tool configuration only; a root file inside a side is refused (`repo.side-root-forbidden`, Work in a side is
   `HFS_WORK_IN_FE` of R01). One root means one place to declare, install, gate and record a feature that spans both sides.
 - **Owners before files.** A back end is apps that compose, features that receive a trigger, and modules (domain,

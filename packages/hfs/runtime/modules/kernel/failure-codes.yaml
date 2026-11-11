@@ -6244,3 +6244,50 @@ BE_REST_APP_GRAPHQL:
   nextStep_vi: "Chuyển thao tác sang controller REST và xoá phần GraphQL, hoặc khai lại contract graphql cho app api."
   owner: op-retry
   kind: check-finding
+HFS_SIDE_FOLDER_MISSING:
+  title: "A declared side tracks no file under its folder"
+  title_vi: "Phía đã khai báo không có tệp nào trong thư mục của nó"
+  meaning_vi: "hfs.json khai báo một phía (be, fe hoặc packages) dưới sides, nhưng không có tệp nào được git theo dõi trong thư mục be/, fe/ hoặc packages/ tương ứng."
+  causes_vi:
+    - "Vi phạm R399: phía khai báo và cây thư mục phải khớp nhau (PROJECT-1)."
+    - "Thư mục của phía chưa được commit, hoặc phía đã bị xoá mà hfs.json vẫn khai báo."
+  nextStep_vi: "Commit cây của phía đó, hoặc xoá khoá sides.<phía> khỏi hfs.json nếu dự án không có phía này."
+  owner: op-retry
+  kind: check-finding
+HFS_SIDE_UNDECLARED:
+  title: "A tracked side folder is not declared in hfs.json"
+  title_vi: "Thư mục của một phía được theo dõi nhưng hfs.json không khai báo phía đó"
+  meaning_vi: "Kho có tệp được git theo dõi trong be/, fe/ hoặc packages/, nhưng hfs.json không khai báo phía đó dưới sides; các kiểm tra của phía chỉ chạy khi nó được khai báo."
+  causes_vi:
+    - "Vi phạm R399: mọi phía của dự án được khai báo tường minh trong hfs.json (PROJECT-1)."
+    - "Ứng dụng có thư mục packages/ từ trước khi phía packages được khai báo: thêm \"packages\": {} vào sides."
+  nextStep_vi: "Khai báo phía trong hfs.json (\"packages\": {} cho packages/, hoặc be/fe với apps của nó), hoặc xoá thư mục nếu dự án không có phía này."
+  owner: op-retry
+  kind: check-finding
+STACKS_SIDES_UNDECLARED:
+  title: "The stack declaration states no sides"
+  title_vi: "Khai báo stack chưa nêu các phía của dự án"
+  meaning_vi: "Tệp .starcistacks/application-stacks.yaml không có trường sides (be, fe, packages: true hoặc false), nên người đọc stack không biết dự án có những phía nào."
+  causes_vi:
+    - "Khai báo stack có trước trường sides (R399, PROJECT-STACKS-2); starci app scaffold luôn viết trường này."
+  nextStep_vi: "Thêm dòng sides: {be: ..., fe: ..., packages: ...} khớp với sides của hfs.json vào đầu application-stacks.yaml."
+  owner: op-retry
+  kind: check-finding
+STACKS_SIDES_DRIFT:
+  title: "The stack declaration's sides differ from hfs.json"
+  title_vi: "Các phía trong khai báo stack lệch với hfs.json"
+  meaning_vi: "Trường sides của .starcistacks/application-stacks.yaml phải bằng đúng các phía hfs.json khai báo."
+  causes_vi:
+    - "Vi phạm R399: một phía được thêm hoặc bỏ trong hfs.json mà khai báo stack không đổi theo, hoặc ngược lại."
+  nextStep_vi: "Sửa sides trong application-stacks.yaml cho khớp với hfs.json (hfs.json là nơi khai báo gốc)."
+  owner: op-retry
+  kind: check-finding
+STACKS_COMPONENT_SIDE:
+  title: "A stack component runs an app of a side the project lacks"
+  title_vi: "Một thành phần stack chạy app của phía mà dự án không có"
+  meaning_vi: "Khai báo stack có image deploy của app mà không phía nào khai báo, cấu hình build front-end (buildArgs) khi không có fe, hoặc tiến trình local chạy từ thư mục của phía chưa khai báo."
+  causes_vi:
+    - "Vi phạm R399: không có thành phần web/front-end khi thiếu fe, không có thành phần api khi thiếu be (PROJECT-1)."
+  nextStep_vi: "Xoá thành phần, image hoặc tiến trình đó khỏi application-stacks.yaml, hoặc khai báo phía chứa app trong hfs.json."
+  owner: op-retry
+  kind: check-finding
