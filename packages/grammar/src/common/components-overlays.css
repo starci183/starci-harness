@@ -607,9 +607,11 @@
     .starci-core-alert .starci-core-alert-description { font-weight: var(--grammar-weight-regular); }
 
     /* HeroUI sizes the content h-full; in a wrapped row that height is circular and pushes the action out of the
-       surface, so the content takes its own height. */
+       surface, so the content takes its own height. Where the banner's own height is definite (a Stack in a height-bound
+       Page well) h-full resolves to the whole box, the first line fills it and the stacked action lands below the box (0.37.36). */
     .starci-core-alert-content {
         min-width: min(100%, 12rem);
+        block-size: auto;
         flex: 1;
     }
 

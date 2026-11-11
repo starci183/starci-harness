@@ -158,6 +158,7 @@ const ListRowInner = ({ row, isLoading = false }: ListRowProps) => {
                 {...(row.actionPlacement === "end" ? { "data-grammar-action-placement": "end" } : {})}
                 {...(actionCount > 1 ? { "data-grammar-actions-multi": "true" } : {})}
                 {...(hasTrail ? { "data-grammar-trail": "true" } : {})}
+                {...(row.value == null ? {} : { "data-grammar-value": "true" })}
                 {...(row.verdict === undefined ? {} : { "data-verdict": row.verdict })}
                 {...(row.diff === undefined ? {} : { "data-grammar-diff": row.diff })}
                 {...(row.onPress === undefined && row.href === undefined ? {} : { "data-grammar-row-pressable": "true" })}

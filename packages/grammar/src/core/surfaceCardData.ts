@@ -112,7 +112,8 @@ export type ListRowData = {
     readonly detail?: ReactNode
     /**
      * The value of a key-value row (0.37.5, list `layout="keyValue"`): `title` is the key (muted, at the start) and `value` is the content (normal text, at the end; it wraps under the key
-     * on a narrow container). Ignored by a list that is not `keyValue`.
+     * on a narrow container). In a `rows` list it is the row's fact between the copy and the end group: `value`, `badges` and an end `action` (`actionPlacement: "end"`) are
+     * one supported combination, one line, centred against the copy (the value is a grid track of its own, 0.37.36).
      */
     readonly value?: ReactNode
     /**

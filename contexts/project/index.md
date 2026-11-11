@@ -233,7 +233,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/identity-mark.md](../ui/components/identity-mark.md) · 3 KB — Contract: Avatar and IconTile.
   - sections: Job · Choose · Variants · Size · States · Owner split · Initials fit the circle · Rules
-- [ui/components/list-table.md](../ui/components/list-table.md) · 9 KB — Contract: List and Table.
+- [ui/components/list-table.md](../ui/components/list-table.md) · 10 KB — Contract: List and Table.
   - sections: Job · Choose · Section head (0.36.0) · Version diff rows (0.37.28) · Variants · Size · States · Owner split · Row description · Rules · Key-value rows (0.37.5)
 - [ui/components/mascot.md](../ui/components/mascot.md) · 3 KB — Contract: Mascot.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules

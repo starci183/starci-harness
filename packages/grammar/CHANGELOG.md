@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.37.36 - 2026-11-11 - List row: value, badges and end action on one line; Alert stacked action stays inside the banner
+
+- Fixed (`DNA-COMMON-ROW-ACTION-END`): a `rows` list row with a `value` gets a grid track of its own between the copy and the end group (the row carries `data-grammar-value="true"`), so value, `badges` and an end `action` stand on one line, centred against the copy, with the row padding to the edge. The row templates counted no value track, so the command was auto-placed onto a second line. A key-value list keeps its two-column rule.
+- Fixed: `Alert`'s content takes its own height (`block-size: auto`). In a banner whose height is definite (a Stack in a height-bound Page well) HeroUI's h-full filled the whole box with the first line and the stacked action (under 30rem) landed below the banner.
+- Docs: `ListRowData.value` comment (`surfaceCardData.ts`), `contexts/ui/components/list-table.md` (key-value rows).
+- Stories: `Row value and Alert stack (0.37.36)` `ValueBadgeAndEndAction`, `ValueBadgeAndEndActionAt390`, `AlertStackedActionAt390`, `AlertActionAt1440`.
+
 ## 0.37.35 - 2026-11-11 - FlowGraph: one selected border, 176 cards, branch lanes; suggestions chevron at 390
 
 - Changed (owner-approved drawing `graph-selected`, law `DNA-COMMON-FLOW-SELECTED`): a selected `steps` card has ONE border, 2px, in its status colour (done `--success`, failed `--danger`, waiting `--warning`, running `--accent`, skipped and not reached `--muted`; a graph with no run status the `--foreground`) and a soft tint of that colour (8% over `--surface`) as its ground. The accent selection outline is gone and the run path's 1px box-shadow ring is gone: never a second ring (a selected done step drew a green border plus a red ring). An unselected card keeps one 1px border, in a run its status colour (waiting is now amber, not the path green). Keyboard focus shows only on `:focus-visible`: a 2px dashed outline in the card's status colour, 3px off the card (no `--focus` ring on a card); a mouse click adds nothing. New card properties `--starci-flow-border-width`, `--starci-flow-edge`, `--starci-flow-select` (internal).

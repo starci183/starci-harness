@@ -2416,6 +2416,33 @@
         }
     }
 
+    /*
+     * A row with a `value` (0.37.36): the value is a grid track of its own, between the copy and the end group, so value | badges | command are one line, centred
+     * against the copy, at every width the row is a grid (the end placement at all widths, any row from 28rem). Before, the templates counted no value track, so the
+     * command was auto-placed onto a second line. The tracks come from the row's own flags: leading, copy, value, trail (meta, badges), commands. A key-value list
+     * keeps its two-column rule (its value is the row's second column).
+     */
+    [data-grammar-list]:not([data-grammar-list-layout="keyValue"]) > .starci-core-list-row[data-grammar-row][data-grammar-value="true"] {
+        --starci-row-track-leading: ;
+        --starci-row-track-trail: ;
+        --starci-row-track-actions: ;
+    }
+
+    [data-grammar-list]:not([data-grammar-list-layout="keyValue"]) > .starci-core-list-row[data-grammar-row][data-grammar-value="true"][data-grammar-leading="true"] { --starci-row-track-leading: auto; }
+    [data-grammar-list]:not([data-grammar-list-layout="keyValue"]) > .starci-core-list-row[data-grammar-row][data-grammar-value="true"][data-grammar-trail="true"] { --starci-row-track-trail: auto; }
+    [data-grammar-list]:not([data-grammar-list-layout="keyValue"]) > .starci-core-list-row[data-grammar-row][data-grammar-value="true"][data-grammar-actions="true"] { --starci-row-track-actions: auto; }
+
+    [data-grammar-list]:not([data-grammar-list-layout="keyValue"]) > .starci-core-list-row[data-grammar-row][data-grammar-value="true"][data-grammar-action-placement="end"] {
+        display: grid;
+        grid-template-columns: var(--starci-row-track-leading) minmax(0, 1fr) auto var(--starci-row-track-trail) var(--starci-row-track-actions);
+    }
+
+    @container starci-core-surface (min-width: 28.001rem) {
+        [data-grammar-list]:not([data-grammar-list-layout="keyValue"]) > .starci-core-list-row[data-grammar-row][data-grammar-value="true"] {
+            grid-template-columns: var(--starci-row-track-leading) minmax(0, 1fr) auto var(--starci-row-track-trail) var(--starci-row-track-actions);
+        }
+    }
+
     .starci-core-accordion-row {
         width: 100% !important;
         min-width: 0;
