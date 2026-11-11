@@ -54,6 +54,8 @@ export interface Slot {
   budget?: Record<string, number>;
   managedBy?: string;
   liteManagedBy?: string;
+  /** The sides (be, fe, packages) a project declares for sync to render the slot's managed files; absent: every project. */
+  managedWhenSides?: string[];
   rules?: string[];
   goesTo?: string;
   why?: string;
@@ -277,7 +279,7 @@ export const MANIFEST_KINDS = [APP_KIND, RUNTIME_KIND];
 export const manifestKind = (m: Parsed): string => (isPlainObject(m) && m.kind !== undefined ? m.kind : APP_KIND);
 const strList = (v: Parsed) => stringList(v);
 
-const APP_SLOT_KEYS = ['id', 'profiles', 'path', 'presence', 'tracked', 'tier', 'tests', 'owner', 'appKind', 'minInstances', 'requiredWhen', 'requiredInstances', 'requires', 'pattern', 'trigger', 'allows', 'forbids', 'layers', 'kinds', 'roles', 'composedBy', 'budget', 'managedBy', 'liteManagedBy', 'rules', 'goesTo', 'why', 'since', 'perConnection', 'parent', 'editions', 'editionWhy', 'litePresence', 'lite', 'provider', 'coverage', 'entries', 'outcomeHome', 'templateNa', 'exemplifiedBy', 'role', 'importedBy', 'rewrittenBy', 'logic', 'managedOnly'];
+const APP_SLOT_KEYS = ['id', 'profiles', 'path', 'presence', 'tracked', 'tier', 'tests', 'owner', 'appKind', 'minInstances', 'requiredWhen', 'requiredInstances', 'requires', 'pattern', 'trigger', 'allows', 'forbids', 'layers', 'kinds', 'roles', 'composedBy', 'budget', 'managedBy', 'liteManagedBy', 'rules', 'goesTo', 'why', 'since', 'perConnection', 'parent', 'editions', 'editionWhy', 'litePresence', 'lite', 'provider', 'coverage', 'entries', 'outcomeHome', 'templateNa', 'exemplifiedBy', 'role', 'importedBy', 'rewrittenBy', 'logic', 'managedOnly', 'managedWhenSides'];
 /** The roles a file slot may play that a rule reads (`role`): the entity registry of persistence.md BE-PERSISTENCE-3 (architecture/entity-registry.mts). */
 const SLOT_ROLES = ['entity-registry'];
 /** The fields a slot's `lite` overlay may hold: the same keys it would carry in the slot body, resolved under edition lite. */
@@ -374,6 +376,7 @@ function slotListProblems(slot: Parsed, at: string): string[] {
   if (slot.budget !== undefined && !budgetValid(slot.budget)) bad.push(`${at}: budget must map names to positive integers`);
   if (slot.managedOnly !== undefined && (slot.managedOnly !== true || slot.managedBy === undefined)) bad.push(`${at}: managedOnly is true and needs managedBy: the slot only lists files sync renders, and the slot owning the path judges them`);
   for (const key of ['managedBy', 'liteManagedBy']) if (slot[key] !== undefined && !NAME.test(String(slot[key]))) bad.push(`${at}: ${key} must be a template id`);
+  if (slot.managedWhenSides !== undefined && !(Array.isArray(slot.managedWhenSides) && slot.managedWhenSides.length > 0 && slot.managedWhenSides.every((side: Parsed) => ['be', 'fe', 'packages'].includes(side)))) bad.push(`${at}: managedWhenSides must be a non-empty list of be, fe, packages`);
   return bad;
 }
 

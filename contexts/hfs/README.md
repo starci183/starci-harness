@@ -40,6 +40,7 @@ PROJECT-1, R399; owner `@starci/hfs runtime/scripts/hfs/project-sides.mts`). An 
 | `budget` | size budgets of the slot (lines per file, files, exports, hooks); the one owner of those numbers |
 | `trigger`, `pattern`, `appKind`, `composedBy`, `provider` | the feature kind, the declared pattern that enables it, the app kind it describes, the app kinds that compose it, the connection provider that enables it |
 | `managedBy`, `liteManagedBy` | the template directory the app sync renders it from; a difference is drift |
+| `managedWhenSides` | the sides a project must declare for sync to render the slot's managed files (PROJECT-1); absent: every project |
 | `managedOnly` | true: the slot only lists files sync renders (it needs `managedBy`); the slot that owns the path judges the file, so a rendered service keeps the rules and the tier of its folder |
 | `editions`, `lite`, `editionWhy` | the editions it exists in, the fields it carries under lite, and why lite differs |
 | `rules` | finding codes of [rules.yaml](rules.yaml) that judge the slot |

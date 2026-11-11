@@ -1275,6 +1275,8 @@ slots:
     lite:
       path: scripts/codegen.mjs
     liteManagedBy: codegen-lite
+    managedWhenSides:
+      - fe
     rules:
       - HFS_SCRIPT_ONE_OFF
       - BE_SPEC_PLACEMENT

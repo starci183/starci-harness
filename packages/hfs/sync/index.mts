@@ -24,7 +24,7 @@ import { braceVariants } from '../runtime/scripts/lib/glob.mjs';
 import { codecovPaths, coverageComponents, declaredPackageScopes, jestCoverage, packageComponents, packagesCoverage, sonarCoverageExclusions, type PackagesCoverage } from '../runtime/scripts/hfs/coverage-scope.mjs';
 import { restDoorVariables } from './rest-doors.mjs';
 import { declaredSidesEdits } from './declared-sides.mjs';
-import { APP_SCOPE, SIDES, declaredAppSides, litePresenceOf, loadSlotManifest, resolveAppDeclaration, sideDeclared, slotInEdition, type RepoView } from '../runtime/scripts/hfs/slots.mjs';
+import { APP_SCOPE, SIDES, declaredAppSides, litePresenceOf, loadSlotManifest, resolveAppDeclaration, sideDeclared, slotInEdition, type ProjectSide, type RepoView } from '../runtime/scripts/hfs/slots.mjs';
 import type { AppRepo } from '../runtime/scripts/hfs/slot-app-view.mjs';
 import type { Slot, SlotManifest } from '../runtime/scripts/hfs/manifest-shape.mjs';
 import { managedGroupOf } from '../runtime/scripts/hfs/edition-slots.mjs';
@@ -134,8 +134,10 @@ function managedTemplate(scope: string, group: string, file: string, hasTemplate
   return directories.map(dir => `${dir}/${group}/${file}`).find(name => hasTemplate(name));
 }
 
-function slotTargets(slot: ManifestSlot, scope: string, edition: string, manifest: SlotManifest, hasTemplate: (name: string) => boolean, enabled: (slot: ManifestSlot) => boolean): Target[] {
+function slotTargets(slot: ManifestSlot, scope: string, edition: string, manifest: SlotManifest, hasTemplate: (name: string) => boolean, enabled: (slot: ManifestSlot) => boolean, declares: (side: string) => boolean): Target[] {
   if (!slot.profiles.includes(scope) || !slotInEdition(manifest, slot, edition)) return [];
+  // A slot whose managed files serve a side renders them only for a project that declares it (managedWhenSides, PROJECT-1).
+  if ((slot.managedWhenSides ?? []).some(side => !declares(side))) return [];
   // An opt-in slot is rendered only for a repository that enables it (app.browser-config with `browser: true`).
   if (slot.presence === 'opt-in' && !enabled(slot)) return [];
   if (edition === 'lite' && litePresenceOf(slot, scope) === 'forbidden') return [];
@@ -165,10 +167,10 @@ function unlistedTargets(scope: string, edition: string): Target[] {
  * its scope or under common. `enabled(slot)` decides an opt-in slot (renderTargets passes the declaration's); without it every slot
  * counts, which is what an inventory of the templates needs.
  */
-export function targetsOf(scope: string, { edition = 'full', manifest = loadSlotManifest() as SlotManifest, hasTemplate = (name: string): boolean => fs.existsSync(path.join(TEMPLATES_DIR, name)), enabled = (_slot: ManifestSlot): boolean => true }: {
-  edition?: string; manifest?: SlotManifest; hasTemplate?: (name: string) => boolean; enabled?: (slot: ManifestSlot) => boolean;
+export function targetsOf(scope: string, { edition = 'full', manifest = loadSlotManifest() as SlotManifest, hasTemplate = (name: string): boolean => fs.existsSync(path.join(TEMPLATES_DIR, name)), enabled = (_slot: ManifestSlot): boolean => true, declares = (_side: string): boolean => true }: {
+  edition?: string; manifest?: SlotManifest; hasTemplate?: (name: string) => boolean; enabled?: (slot: ManifestSlot) => boolean; declares?: (side: string) => boolean;
 } = {}): Target[] {
-  const listed = manifest.slots.flatMap(slot => slotTargets(slot, scope, edition, manifest, hasTemplate, enabled));
+  const listed = manifest.slots.flatMap(slot => slotTargets(slot, scope, edition, manifest, hasTemplate, enabled, declares));
   return [...listed, ...unlistedTargets(scope, edition)];
 }
 
@@ -572,12 +574,13 @@ export function variables(app: ResolvedApp, scope: string, presets: Presets | nu
     // A lite app's declared Redis (sides.be.backing, R212) runs in development as one container of its pinned image.
     backingScripts: lite && (app.sides.be.backing ?? []).includes('redis') ? redisDevText(app.project) : '',
     // turbo builds every fe app workspace; ^build (turbo.json) builds the packages each app imports first, and caches both. A project without fe
-    // (PROJECT-1) has no fe build and no wire codegen of its own, and its typecheck and lint generate nothing first.
-    buildScripts: [
-      ...(withFe ? [`"build:fe": ${JSON.stringify(`${modulesFirst}npm run codegen --silent && turbo run build --filter=./fe/apps/*`)},`] : []),
+    // (PROJECT-1) has no fe build and no wire codegen (scripts/codegen.mjs is rendered with fe only: managedWhenSides), and its typecheck and lint
+    // generate nothing first.
+    buildScripts: withFe ? [
+      `"build:fe": ${JSON.stringify(`${modulesFirst}npm run codegen --silent && turbo run build --filter=./fe/apps/*`)},`,
       '"codegen": "node scripts/codegen.mjs",',
-      ...(withFe ? ['"codegen:graphql": "node scripts/codegen.mjs --graphql",'] : []),
-    ].join('\n    '),
+      '"codegen:graphql": "node scripts/codegen.mjs --graphql",',
+    ].join('\n    ') : '',
     // The be side with its tsc; every workspace with its own typecheck script through turbo (the packages are built first: ^build).
     typecheck: `${modulesFirst}${[...(withFe ? ['npm run codegen --silent'] : []), ...(withBe ? ['tsc -p be/tsconfig.json'] : []), 'turbo run typecheck'].join(' && ')}`,
     // The typed lint reads the types the fe packages declare (their dist), so the packages are built first.
@@ -657,7 +660,7 @@ function renderOnce(hfs: unknown, presets: Presets | null | undefined, { sonarKe
   return [APP_SCOPE, ...declaredAppSides(app)].flatMap(scope => {
     const vars = variables(app, scope, presets, sonarKey, manifest, source);
     const repo = scope === APP_SCOPE ? app : app.sides[scope as 'be' | 'fe'];
-    const declaredTargets = targetsOf(scope, { edition: app.edition as string, manifest, hasTemplate, enabled: slot => declaredSlotEnabled(slot, repo) });
+    const declaredTargets = targetsOf(scope, { edition: app.edition as string, manifest, hasTemplate, enabled: slot => declaredSlotEnabled(slot, repo), declares: side => sideDeclared(app, side as ProjectSide) });
     if (scope === APP_SCOPE && source?.badges) declaredTargets.push({ path: 'README.md', mode: 'block', markdown: true, template: 'app/readme-badges/README.md' });
     const targets = declaredTargets
       .filter(target => !(app.edition === 'lite' && source?.workPresent === false && target.path === '.starciwork/.gitignore'))

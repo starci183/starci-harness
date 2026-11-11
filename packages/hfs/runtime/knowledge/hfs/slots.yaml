@@ -868,6 +868,7 @@ slots:
     lite:
       path: scripts/codegen.mjs
     liteManagedBy: codegen-lite
+    managedWhenSides: [fe]     # the codegen generates the front end's wire types: rendered only for a project that declares fe (PROJECT-1)
     rules: [HFS_SCRIPT_ONE_OFF, BE_SPEC_PLACEMENT, HFS_REPO_LOCAL_CHECK]     # one-off codemods and fix-* scripts are agent output, not tooling
   - id: app.scripts.delivery
     since: 3.1.0
