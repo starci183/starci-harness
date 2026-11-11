@@ -11,7 +11,9 @@ A StarCi project is one **app root**: the git repository that owns `.starciwork/
 three sides, each optional and declared under `sides` of `hfs.json`: the back end (`be`, its apps under `be/`), the
 front end (`fe`, its apps under `fe/`) and the root workspace packages (`packages`, declared `"packages": {}`, the
 npm workspace `packages/*`). Any non-empty set of them is a project: a back end without a front end, a front end
-without a back end, a package library alone. A side's checks run only when it is declared, and a rule that joins two
+without a back end, a package library alone. A side's checks run only when it is declared, a verb that works on one side (`app emit`, `app db`, `app world`,
+`app add` of a back-end or front-end noun, `app stack build-args`, `app check --side`) refuses a project without it
+(`SIDE_NOT_DECLARED`, `runtime/scripts/hfs/side-gate.mts`), and a rule that joins two
 sides (the fe wire generated from the be contract, `sides.fe.reads` of `be/contracts/`, the fe workspaces of the
 root manifest) applies only when both are; a declared side whose folder tracks nothing, a tracked `be/`, `fe/` or
 `packages/` of an undeclared side, and a `reads` of an undeclared side are refused (R399, HFS_DECLARATION_INVALID;

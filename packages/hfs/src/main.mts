@@ -119,6 +119,7 @@ import { removeModule } from '../scaffold/add-module.mjs';
 import { scaffoldApp, type LockResult } from '../scaffold/app.mjs';
 import { PROJECT_SIDES, isProjectSide, type ProjectSide } from '../runtime/scripts/hfs/project-sides.mjs';
 import { CONTRACT_KINDS, type ContractKind } from '../runtime/scripts/hfs/contract-kind.mjs';
+import { SideRefusal, addNounSides, requireSides } from '../runtime/scripts/hfs/side-gate.mjs';
 import { newImages } from '../scaffold/image.mjs';
 import { ESLINT_HEAP_ENV, PACKAGES, cachedLinters, eslintRepository, runLinter as nativeLinter, type CachedLinters } from '../lint/run.mjs';
 import { devBranchFinding } from '../runtime/scripts/hfs/dev-branch.mjs';
@@ -497,6 +498,7 @@ function databaseMain(argv: string[], io: VerbIo): Promise<number> | number {
   const [verb, ...rest] = argv;
   const dispatch = DATABASE_VERBS.get(verb);
   if (!dispatch) throw new UsageError('starci app db takes new, baseline, restamp, migrate, post-cutover, dump or drift');
+  requireSides(io.cwd ?? process.cwd(), ['be'], `starci app db ${String(verb)}`);
   return dispatch(rest, io);
 }
 
@@ -824,6 +826,7 @@ async function checkMain(opts: Opts, io: AppIo): Promise<number> {
   const coverageFrom = valueFlag(opts, 'coverage-from');
   const shard = valueFlag(opts, 'shard');
   const side = valueFlag(opts, 'side');
+  if (side !== undefined && isProjectSide(side)) requireSides(repoRoot, [side], `starci app check --side ${side}`);
   const sonarOut = valueFlag(opts, 'out');
   const fix = booleanFlag(opts, 'fix') === true;
   const fresh = booleanFlag(opts, 'fresh') === true;
@@ -859,6 +862,7 @@ async function checkMain(opts: Opts, io: AppIo): Promise<number> {
 
 async function emitMain(opts: Opts, { cwd: repoRoot, stdout: out, runHeavyNode }: AppIo): Promise<number> {
   if (opts.positional.length) throw new UsageError('starci app emit takes no path');
+  requireSides(repoRoot, ['be'], 'starci app emit');
   const be = readRepoDeclaration(loadSlotManifest(), repoRoot).sides?.be;
   if (!be) throw new Error('starci app emit runs at the app root (the folder of hfs.json)');
   const { written, skipped, standIns } = await emitContractsAsync({ repoRoot: path.join(repoRoot, 'be'), declaration: be, execute: runHeavyNode });
@@ -894,6 +898,7 @@ function addFileNoun(noun: string, opts: Opts, repoRoot: string, out: (text: str
 
 function addMain(opts: Opts, { cwd: repoRoot, stdout: out }: AppIo): number {
   const [noun, name, ...extra] = opts.positional;
+  if (noun !== undefined) requireSides(repoRoot, addNounSides(noun, { fe: booleanFlag(opts, 'fe') === true, kind: valueFlag(opts, 'kind') }), `starci app add ${noun}`);
   if (noun !== undefined && ADD_FILE_NOUNS.includes(noun)) return addFileNoun(noun, opts, repoRoot, out);
   if (opts.inject !== undefined) throw new UsageError(`starci app add ${noun ?? '<noun>'} takes no --inject; only add service does`);
   if (!noun || !name || extra.length) throw new UsageError('starci app add takes `<noun> <name>` and the options of the noun');
@@ -966,6 +971,8 @@ function declaredEdition(cwd: string): string | undefined {
 
 /** `starci app stack`: the deploy actions (prepare, render, deploy, converge, verify, rollback, prune, backup, jobs, ...) are the Swarm tooling of stack/cli.mjs. */
 async function stackAppMain(argv: string[], { cwd, stdout: out, stderr: err, env, sops, hostIdentity, stackIo, harness }: AppIo): Promise<number> {
+  // build-args hands the front end's public build configuration to an fe image.
+  if (argv[0] === 'build-args') requireSides(cwd, ['fe'], 'starci app stack build-args');
   return deployStackMain(argv, { ...stackIo, cwd, stdout: out, stderr: err, env, hostIdentity, harness, ...(sops ? { sops } : {}) });
 }
 
@@ -975,6 +982,7 @@ const WORLD_ACTIONS = ['up', 'down', 'status'];
 /** `starci app world <up|down|status>`: the local test world. */
 async function worldAppMain(argv: string[], { cwd, edition, stackMain, stdout: out, stderr: err }: AppIo): Promise<number> {
   if (!WORLD_ACTIONS.includes(argv[0] as string)) throw new UsageError(`starci app world takes ${WORLD_ACTIONS.join(', ')}`);
+  requireSides(cwd, ['be'], `starci app world ${argv[0] as string}`);
   if ((edition ?? declaredEdition(cwd)) === 'lite') throw new Error('starci app world up|down|status manage the local test world of the full edition; a lite app starts its local database with npm run db:start');
   const run = stackMain ?? await installedStackMain(cwd);
   return run(argv, { cwd, out, err }) as Promise<number>;
@@ -998,7 +1006,7 @@ function adoptionNotice({ from, to, kept }: StateAdoption): string {
 /** What `main` prints for a thrown error: the usage only after a usage error; a refusal or a tool failure prints its code and message alone. */
 function errorMessage(error: unknown): string {
   if (error instanceof EditionRefusal || error instanceof UpgradeError || error instanceof HfsSlotsError || error instanceof SyncError) return `${(error as Error).message}\n`;
-  if (error instanceof ScaffoldError || error instanceof LegacyStateHeld) return `${(error as { code: string }).code}: ${(error as Error).message}\n`;
+  if (error instanceof ScaffoldError || error instanceof LegacyStateHeld || error instanceof SideRefusal) return `${(error as { code: string }).code}: ${(error as Error).message}\n`;
   if (error instanceof UsageError) return `starci app: ${error.message}\n${USAGE}`;
   return `starci app: ${(error as Error).message}\n`;
 }
