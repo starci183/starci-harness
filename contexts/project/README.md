@@ -17,7 +17,14 @@ root manifest) applies only when both are; a declared side whose folder tracks n
 `packages/` of an undeclared side, and a `reads` of an undeclared side are refused (R399, HFS_DECLARATION_INVALID;
 owner: `@starci/hfs` `runtime/scripts/hfs/project-sides.mts`); `starci app sync --execute` writes the declarations an existing app
 lacks (`"packages": {}` for a tracked `packages/`, the stack's `sides` field; `sync/declared-sides.mts`). `starci app scaffold <name> --without <side>` writes
-only the declared sides. The sides are laid out in one of two ways:
+only the declared sides, for every set that holds be; a set without be (fe alone, packages alone, fe and packages) is
+lawful but has no starter yet and is refused `HFS_SCAFFOLD_SIDES`, since its stack declaration, test world and
+contract source would be the back end's. Open gaps of a project without be: a front end without a back end reads its
+contract as a pinned copy of another repository's committed contract file, kept in the app and refreshed by a
+verb, never typed by hand (not built: no slot, verb or check holds it yet); a packages-only project is an app whose
+root workspace packages are its whole product (no rule forbids it), unlike the `@starci` packages of the harness
+repository, which `starci pkg` edits and CI publishes ([authority/packages.md](../authority/packages.md)). The sides
+are laid out in one of two ways:
 
 - **One repository.** `be/`, `fe/` and `packages/` are folders of the app root, and every root file (manifest,
   lockfile, CI, hooks, `.starciwork`, `.starcistacks`) lives once at the root ([anatomy.md](anatomy.md) owns the

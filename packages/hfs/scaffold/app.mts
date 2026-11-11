@@ -771,6 +771,8 @@ export function scaffoldApp({ name, into, presets, harness, edition = 'full', si
   if (!['public', 'private'].includes(registryVisibility)) throw new ScaffoldError('HFS_SCAFFOLD_REGISTRY_VISIBILITY', `--registry-visibility accepts public or private (got ${registryVisibility})`);
   if (!sides.length || sides.some(side => !PROJECT_SIDES.includes(side))) throw new ScaffoldError('HFS_SCAFFOLD_SIDES', `a project declares a non-empty set of ${PROJECT_SIDES.join(', ')} (got ${sides.join(', ') || 'none'})`);
   if (contract === 'rest' && !sides.includes('be')) throw new ScaffoldError('HFS_SCAFFOLD_SIDES', 'contract rest is the contract of the be api app, and the project declares no be side');
+  // A project without be is lawful (PROJECT-1) but has no starter yet: its stack declaration, test world and contract source are be-shaped.
+  if (!sides.includes('be')) throw new ScaffoldError('HFS_SCAFFOLD_SIDES', `a project of ${sides.join(' and ')} without be is lawful in hfs.json but has no starter yet (its stack declaration, test world and contract source assume a back end)`);
   if (!pins[HARNESS_PACKAGE]) throw new ScaffoldError('HFS_SCAFFOLD_PIN_MISSING', `${HARNESS_PACKAGE} has no pin: an app pins the CLI that scaffolds it, so run the scaffold through it (starci app scaffold)`);
   const original = existing ?? bornRepository(root, initGit);
   const shape: StarterShape = { sides, contract };
@@ -796,7 +798,7 @@ export function scaffoldApp({ name, into, presets, harness, edition = 'full', si
       { path: `fe/packages/${name}-${pkg}/tsconfig.json`, content: jsonText(fePackageTsconfig()) },
       { path: `fe/packages/${name}-${pkg}/tsconfig.build.json`, content: jsonText(fePackageBuildTsconfig()) },
     ])),
-    ...filesForSides((['app', 'be', 'fe'] as const).filter(scope => scope === 'app' || sides.includes(scope)).flatMap(scope => skeletonOf(scope, app, vars)), { project: name, edition: app.edition, sides, contract, feApps: (app.edition === 'lite' ? LITE_STARTER_SIDES : STARTER_SIDES).fe.apps.map(entry => entry.name) }),
+    ...filesForSides((['app', 'be', 'fe'] as const).filter(scope => scope === 'app' || sides.includes(scope)).flatMap(scope => skeletonOf(scope, app, vars)), { project: name, edition: app.edition, sides, contract, feApps: (app.edition === 'lite' ? LITE_STARTER_SIDES : STARTER_SIDES).fe.apps.map(entry => entry.name), api: (app.edition === 'lite' ? LITE_STARTER_SIDES : STARTER_SIDES).be.apps.find(entry => entry.kind === 'api')?.name ?? 'api' }),
     // A full app has a test world (integration, e2e and contract are rows of its release gate); lite has none (R212).
     ...(app.edition === 'lite' ? [] : testWorldFiles(app)),
   ];

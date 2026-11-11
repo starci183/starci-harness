@@ -44,7 +44,7 @@ export function stackForSides(text: string, { sides, contract, feApps, hosts = [
         removeKey(at('deploy', 'images', app));
       }
       const local = mapping(mapping(spec).local);
-      for (const list of ['processes', 'ready', 'verify', 'origins']) if (Array.isArray(local[list])) edit.removeItems(at('local', list), (item) => isFe(item?.name));
+      for (const list of ['services', 'processes', 'ready', 'verify', 'origins']) if (Array.isArray(local[list])) edit.removeItems(at('local', list), (item) => isFe(item?.name));
       const api = Array.isArray(local.processes) ? (local.processes as YamlDocument[]).find((item) => item?.name === 'api') : undefined;
       for (const key of ['HTTP_SECURITY_ALLOWED_ORIGINS', 'AUTH_WEB_ORIGIN']) {
         if (typeof mapping(api?.env)[key] === 'string' && String(api.env[key]).includes('${port.')) edit.set([...at('local', 'processes'), { item: 'name', is: 'api' }, 'env', key] as YamlStep[], '"http://localhost:${port.api}"');
@@ -77,9 +77,9 @@ function withoutFeSites(text: string, feApps: readonly string[], hosts: string[]
 }
 
 /** The README of a project that lacks an app side: what it holds, citing only the declared sides' paths and the scripts it has. */
-function sidesReadme({ project, edition, sides, contract }: { project: string; edition: string; sides: readonly ProjectSide[]; contract: ContractKind }): string {
+function sidesReadme({ project, edition, sides, contract, api }: { project: string; edition: string; sides: readonly ProjectSide[]; contract: ContractKind; api: string }): string {
   const held = [
-    ...(sides.includes('be') ? [`- \`be/\`: the Nest back end, its api app in \`be/apps/api\`, serving ${contract === 'rest' ? 'REST controllers described by the committed OpenAPI document `be/contracts/api/openapi.json` (`npm run contract:emit` writes it)' : 'GraphQL, its schema committed in `be/contracts/` (`npm run contract:emit` writes it)'}.`] : []),
+    ...(sides.includes('be') ? [`- \`be/\`: the Nest back end, its api app in \`be/apps/${api}\`, serving ${contract === 'rest' ? `REST controllers described by the committed OpenAPI document \`be/contracts/${api}/openapi.json\` (\`npm run contract:emit\` writes it)` : 'GraphQL, whose schema `npm run contract:emit` commits once the app serves an operation'}.`] : []),
     ...(sides.includes('fe') ? ['- `fe/`: the Next front end, its apps under `fe/apps`.'] : []),
     ...(sides.includes('packages') ? [`- \`packages/\`: the root workspace packages, \`packages/${project}-shared\` first, built with \`npm run build:modules\`.`] : []),
     ...(edition === 'lite' ? ['- `db/`: the SQL migrations, the schema authority of the database.'] : []),
@@ -133,7 +133,7 @@ interface SidesFile { readonly path: string; readonly content: string }
  * services, locked images and stack entries of the starter's fe apps (`feApps`) removed and the README written for the declared sides; a rest
  * api named so in the stack declaration.
  */
-export function filesForSides<T extends SidesFile>(files: readonly T[], { project, edition, sides, contract, feApps }: { project: string; edition: string; sides: readonly ProjectSide[]; contract: ContractKind; feApps: readonly string[] }): T[] {
+export function filesForSides<T extends SidesFile>(files: readonly T[], { project, edition, sides, contract, feApps, api = 'api' }: { project: string; edition: string; sides: readonly ProjectSide[]; contract: ContractKind; feApps: readonly string[]; api?: string }): T[] {
   if (sides.includes('fe') && sides.includes('be') && contract === 'graphql') return [...files];
   const hosts: string[] = [];
   const withFe = sides.includes('fe');
@@ -143,7 +143,9 @@ export function filesForSides<T extends SidesFile>(files: readonly T[], { projec
     if (withFe) return file;
     if (/^\.starcistacks\/[^/]+\/infra\/swarm\/stack\.yaml$/u.test(file.path)) return { ...file, content: withoutFeKeys(file.content, file.path, 'services', feApps) };
     if (/^\.starcistacks\/[^/]+\/infra\/swarm\/releases\/images\.lock\.yaml$/u.test(file.path)) return { ...file, content: withoutFeKeys(file.content, file.path, 'images', feApps) };
-    if (file.path === 'README.md') return { ...file, content: sidesReadme({ project, edition, sides, contract }) };
+    if (file.path === 'README.md') return { ...file, content: sidesReadme({ project, edition, sides, contract, api }) };
+    // The codegen generates the front end's wire types: without fe the operational scripts folder starts empty (slot app.scripts).
+    if (file.path === 'scripts/codegen.mjs') return { ...file, path: 'scripts/.gitkeep', content: '' };
     return file;
   });
 }
