@@ -13,7 +13,9 @@
  *       2. a `subject`/`title`/`body`/`text`/`message` property of an object handed to an outbound port - a call on a
  *          receiver whose type is declared by an `integrations` owner or by `platform/event-bus` or `platform/queue` (the receiver's type
  *          decides, not a method name such as `send`);
- *       3. a `message`/`description`/`title` property of an object literal built in a transport slot.
+ *       3. a `message`/`description`/`title` property of an object literal built in a transport slot, except one the object literal
+ *          hands to an `@nestjs/swagger` export (`@ApiOperation`, `@ApiProperty`, `@ApiResponse`, ...): that is the operation and field
+ *          documentation of the REST contract, read by the developers of its clients, and R396 judges the emitted document, not this rule.
  *
  * A short, code-shaped literal (`UPPER_SNAKE`, or a single bare word with no space or punctuation - `"PLAN_NOT_FOUND"`,
  * `"pending"`) is a key or an enum value, not copy, and is left alone; so is a template literal, which this reads one
@@ -61,6 +63,19 @@ const isCustomError = (program: ts.Program, checker: ts.TypeChecker, type: ts.Ty
 const isOutboundPort = (context: Context, hfs: HfsView, node: Node) =>
     typeOrigins(context, node).some((origin) => origin.module === null && (hfs.tierOf(origin.file) === "integrations" || (hfs.tierOf(origin.file) === "platform" && ["event-bus", "queue"].includes(ownerNameOf(hfs, origin.file) ?? ""))))
 
+/** The package whose decorators describe a REST contract: their text is API documentation for developers, not user copy. */
+const SWAGGER = "@nestjs/swagger"
+
+/**
+ * Whether a property sits in the object-literal argument of a call of an `@nestjs/swagger` export (`@ApiOperation({ description })`,
+ * `@ApiProperty({ description })`, `ApiResponse({ description })` inside `applyDecorators`), through nested object and array literals.
+ */
+const inSwaggerCall = (property: TSESTree.Property, swagger: ReadonlySet<string>): boolean => {
+    let node: TSESTree.Node | undefined = property.parent
+    while (node?.type === "ObjectExpression" || node?.type === "ArrayExpression" || node?.type === "Property") node = node.parent
+    return node?.type === "CallExpression" && node.callee.type === "Identifier" && swagger.has(node.callee.name)
+}
+
 /** User-facing text is looked up in the catalog by key, never written where it is used. */
 export const userCopyThroughCatalog: RuleModule = {
     meta: {
@@ -82,7 +97,13 @@ export const userCopyThroughCatalog: RuleModule = {
         const { program, checker, toTs } = typed(context)
         const isOutboundCall = (node: Node | null | undefined) =>
             node?.type === "CallExpression" && node.callee.type === "MemberExpression" && !node.callee.computed && isOutboundPort(context, hfs, node.callee.object)
+        // The local names this file binds to `@nestjs/swagger` (ApiOperation, ApiProperty, ApiResponse, ...): a call of one documents the contract.
+        const swagger = new Set<string>()
         return {
+            ImportDeclaration(node) {
+                if (node.source.value !== SWAGGER) return
+                for (const specifier of node.specifiers) if (specifier.type === "ImportSpecifier") swagger.add(specifier.local.name)
+            },
             NewExpression(node) {
                 const first = node.arguments[0]
                 if (!first) return
@@ -113,6 +134,7 @@ export const userCopyThroughCatalog: RuleModule = {
                 const text = staticText(node.value)
                 if (text === null || !looksLikeCopy(text)) return
                 if (isOutboundCall(node.parent?.parent)) return // already judged as notification copy
+                if (inSwaggerCall(node, swagger)) return // contract text for developers, judged with the document (R396)
                 context.report({ node: node.value, messageId: "response", data: { property: key } })
             },
         }

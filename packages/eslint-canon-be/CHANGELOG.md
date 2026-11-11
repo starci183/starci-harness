@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.23.1 - 2026-11-12
+
+- Fixed (R78): `user-copy-through-catalog` no longer reports the `summary`, `description` or `title` of an object literal handed to an `@nestjs/swagger` export (`@ApiOperation`, `@ApiProperty`, `@ApiResponse`, directly or inside `applyDecorators`, through nested object and array literals): that text documents a REST contract for its clients' developers and R396 judges the emitted document. A same-named local helper and another package's decorator (`@Field({ description })`) are still response copy.
+- Specs: `src/user-copy.spec.ts` (swagger operation, property and response documentation valid; a local `ApiOperation` and a GraphQL `@Field` description still report).
+
 ## 3.23.0 - 2026-11-11
 
 - Changed (R278): `rest-door-needs-a-reason` reports nothing in a back end whose api apps declare `contract: "rest"` in hfs.json (the controller is that back end's default door); a graphql back end is judged as before. `HfsApp` carries the optional `contract`. Peer `@starci/hfs ~6.8.0`, the release whose view carries it.
