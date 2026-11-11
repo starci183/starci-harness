@@ -393,12 +393,16 @@ rules:
       manual:
         - Confirm each refusal code is one the operation's owner can actually answer.
     relatedExamples: [operations]
+# An entry with `contract` belongs to the api apps of that contract (hfs.json `sides.be.apps[].contract`, BE-TRANSPORT-1): `starci app add api`
+# writes it in an app of that contract, its `optional` notwithstanding, and never in an app of the other; `templates` names the body an
+# entry takes in an app of the named contract instead of `template`.
 files:
   - path: src/features/api/<feature>/index.ts
     slot: be.feature
     role: The public surface of the feature; only apps import it.
     rules: [BE_PUBLIC_SURFACE]
     template: api/feature.index.ts.tpl
+    templates: {rest: api/feature.index.rest.ts.tpl}
   - path: src/features/api/<feature>/<feature>.options.ts
     slot: be.feature
     template: api/feature.options.ts.tpl
@@ -428,40 +432,82 @@ files:
     role: The GraphQL door of one operation; dispatches one message.
     rules: [BE_TRANSPORT_SHAPE, BE_DEFAULT_DENY]
     template: api/graphql.resolver.ts.tpl
+    contract: graphql
   - path: src/features/api/<feature>/transport/graphql/dto/<action>.input.ts
     slot: be.transport.graphql
     role: The bounded input of the operation.
     rules: [BE_INPUT_BOUNDED]
     template: api/graphql.input.ts.tpl
+    contract: graphql
   - path: src/features/api/<feature>/transport/graphql/dto/<action>.type.ts
     slot: be.transport.graphql
     role: The typed output of the operation.
     template: api/graphql.type.ts.tpl
+    contract: graphql
   - path: src/features/api/<feature>/transport/graphql/<action>.mapper.ts
     slot: be.transport.graphql
     role: Maps the input to the request and the result to the type.
     template: api/graphql.mapper.ts.tpl
+    contract: graphql
   - path: src/features/api/<feature>/transport/graphql/<feature>-graphql.options.ts
     slot: be.transport.graphql
     template: api/graphql.options.ts.tpl
     role: The options of the module (the configurable module base needs a type); empty until the module takes some.
+    contract: graphql
   - path: src/features/api/<feature>/transport/graphql/<feature>-graphql.module-definition.ts
     slot: be.transport.graphql
     template: api/graphql.module-definition.ts.tpl
     role: The configurable-module base of the module, registered as register.
+    contract: graphql
   - path: src/features/api/<feature>/transport/graphql/<feature>-graphql.module.ts
     slot: be.transport.graphql
     role: One module for the whole GraphQL transport of the feature.
     template: api/graphql.module.ts.tpl
+    contract: graphql
   - path: src/features/api/<feature>/transport/http/<action>.controller.ts
     slot: be.transport.http
-    role: A REST door, only where GraphQL cannot serve (health, byte streams, the operation route).
+    role: The REST door of one operation (BE-TRANSPORT-4); in a graphql app, only where GraphQL cannot serve (health, byte streams, the operation route).
     optional: true
     rules: [BE_TRANSPORT_SHAPE, BE_DEFAULT_DENY]
+    template: api/http.controller.ts.tpl
+    contract: rest
+  - path: src/features/api/<feature>/transport/http/dto/<action>.request.ts
+    slot: be.transport.http
+    role: The bounded, swagger-described body of the operation.
+    optional: true
+    rules: [BE_INPUT_BOUNDED]
+    template: api/http.request.ts.tpl
+    contract: rest
+  - path: src/features/api/<feature>/transport/http/dto/<action>.response.ts
+    slot: be.transport.http
+    role: The named answer of the operation and the one error body every operation answers as default.
+    optional: true
+    template: api/http.response.ts.tpl
+    contract: rest
+  - path: src/features/api/<feature>/transport/http/<action>.mapper.ts
+    slot: be.transport.http
+    role: Maps the body to the request and the result to the answer.
+    optional: true
+    template: api/http.mapper.ts.tpl
+    contract: rest
+  - path: src/features/api/<feature>/transport/http/<feature>-http.options.ts
+    slot: be.transport.http
+    role: The options of the module (the configurable module base needs a type); empty until the module takes some.
+    optional: true
+    template: api/http.options.ts.tpl
+    contract: rest
+  - path: src/features/api/<feature>/transport/http/<feature>-http.module-definition.ts
+    slot: be.transport.http
+    role: The configurable-module base of the module, registered as register.
+    optional: true
+    template: api/http.module-definition.ts.tpl
+    contract: rest
   - path: src/features/api/<feature>/transport/http/<feature>-http.module.ts
     slot: be.transport.http
     role: One module for the whole HTTP transport of the feature.
     optional: true
+    template: api/http.module.ts.tpl
+    contract: rest
   - path: src/features/api/<feature>/messages/<feature>.messages.ts
     slot: be.feature.messages
     role: The keyed vi and en text of the feature.
@@ -470,6 +516,12 @@ files:
     slot: be.contract.graphql
     role: The emitted GraphQL snapshot of the app; a stale file fails the full check.
     optional: true
+    contract: graphql
+  - path: contracts/<app>/openapi.json
+    slot: be.contract.openapi
+    role: The OpenAPI document `npm run contract:emit` writes for a rest app; a stale file fails the full check (R23), and R396 judges its operations.
+    optional: true
+    contract: rest
   - path: src/tests/e2e/<area>/<action>.e2e-spec.ts
     slot: be.tests.e2e
     role: The operation on the booted app, refusal and unauthenticated call included.

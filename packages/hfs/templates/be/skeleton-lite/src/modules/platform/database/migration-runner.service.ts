@@ -1,21 +1,37 @@
 import { spawn } from "node:child_process"
 import { Injectable } from "@nestjs/common"
+import { DatabaseError, DatabaseErrorCode } from "./errors/database.error"
+import { InjectMigrationCommand } from "./primary.decorators"
 
-const runDbPush = (): Promise<void> =>
-    new Promise((resolve, reject) => {
-        const command = process.platform === "win32" ? "npm.cmd" : "npm"
-        const child = spawn(command, ["run", "db:push"], { stdio: "inherit" })
-        child.once("error", reject)
-        child.once("exit", (code) =>
-            code === 0 ? resolve() : reject(new Error(`db:push exited ${code ?? "without a status"}`)),
-        )
-    })
+/** The process a migration run starts: an executable and its arguments, never a shell line. */
+export interface MigrationCommand {
+    /** The executable the run starts, looked up on PATH. */
+    readonly command: string
+    /** The arguments handed to the executable, each one argument (no shell splitting). */
+    readonly args: ReadonlyArray<string>
+}
+
+/** The managed wrapper that owns the db/migrations schema authority (`npm run db:push`). */
+export const DB_PUSH_COMMAND: MigrationCommand = {
+    command: process.platform === "win32" ? "npm.cmd" : "npm",
+    args: ["run", "db:push"],
+}
+
+/** The refusal of a migration run: the wrapper's exit status, or `none` when it ended without one or could not start. */
+const failed = (status: number | null): DatabaseError =>
+    new DatabaseError({ code: DatabaseErrorCode.MigrationFailed, params: { status: status ?? "none" } })
 
 @Injectable()
 /** The lite migration runner delegates the db/migrations schema authority to the managed db:push wrapper. */
 export class MigrationRunnerService {
-    /** Runs the managed wrapper and propagates a CLI or migration failure. */
-    async run(): Promise<void> {
-        await runDbPush()
+    constructor(@InjectMigrationCommand() private readonly migration: MigrationCommand) {}
+
+    /** Runs the managed wrapper and propagates a CLI or migration failure as DATABASE_MIGRATION_FAILED. */
+    run(): Promise<void> {
+        return new Promise((resolve, reject) => {
+            const child = spawn(this.migration.command, [...this.migration.args], { stdio: "inherit" })
+            child.once("error", () => reject(failed(null)))
+            child.once("exit", (code) => (code === 0 ? resolve() : reject(failed(code))))
+        })
     }
 }

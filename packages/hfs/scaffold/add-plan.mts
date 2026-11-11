@@ -10,6 +10,7 @@ import { LITE_TEMPLATED_TOPICS, selectLiteQueueEntries } from './add-queue-lite.
 import { ensureLiteCli } from './add-cli-lite.mjs';
 import { isMigrationName, migrationStamp } from '../runtime/scripts/hfs/rules/database-migrations.mjs';
 import { patternFilePath } from './pattern-file-slots.mjs';
+import { contractOf, type ContractKind } from '../runtime/scripts/hfs/contract-kind.mjs';
 
 const KEBAB = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 const VARIABLE = /<([A-Za-z][A-Za-z0-9]*)>/g;
@@ -24,7 +25,24 @@ export interface TreeEntry {
   readonly shared?: boolean;
   readonly owner?: string;
   readonly root?: string;
+  /** The api contract the entry belongs to: written in an app of that contract, its `optional` notwithstanding, never in an app of the other. */
+  readonly contract?: ContractKind;
+  /** The body the entry takes in an app of a named contract, in place of `template`. */
+  readonly templates?: Readonly<Partial<Record<ContractKind, string>>>;
 }
+
+/** The entries of a tree an app of `contract` gets: the shared ones and its contract's own, each with its contract's body. */
+export const entriesForContract = (entries: readonly TreeEntry[], contract: ContractKind): TreeEntry[] => entries
+  .filter((entry) => entry.contract === undefined || entry.contract === contract)
+  .map((entry) => ({
+    ...entry,
+    ...(entry.contract === contract ? { optional: false } : {}),
+    ...(entry.templates?.[contract] === undefined ? {} : { template: entry.templates[contract] }),
+  }));
+
+/** The contract of the app's api apps (one kind per back end, R278); a back end with no api app serves the default. */
+const apiContractOf = (repo: AddContext['repo']): ContractKind =>
+  contractOf((repo.sides?.be?.apps ?? []).find((app: { kind: string }) => app.kind === 'api'));
 
 /** The ruleParams entry of one add noun. */
 export interface AddKindSpec {
@@ -85,11 +103,14 @@ export function readAddContext(input: AddInput): AddContext {
 }
 
 /** Lite's built-in migrate and seed groups come from its one CLI bootstrap, without a second instance tree. */
-export function addBuiltinLiteCli({ noun, name, repo, repoRoot, manifest }: Pick<AddContext, 'noun' | 'name' | 'repo' | 'repoRoot' | 'manifest'>): { created: string[], registered: { patterns: string[], kinds: string[] } } | null {
+export function addBuiltinLiteCli({ noun, name, repo, repoRoot, manifest }: Pick<AddContext, 'noun' | 'name' | 'repo' | 'repoRoot' | 'manifest'>): { created: string[], registered: { patterns: string[], kinds: string[] }, notes: string[] } | null {
   if (noun !== 'cli' || repo.edition !== 'lite' || !['migrate', 'seed'].includes(name)) return null;
   if (repo.sides.be.apps.some((app: { kind: string }) => app.kind === 'cli')) throw new ScaffoldError('HFS_ADD_EXISTS', `the lite cli already carries its built-in ${name} group`);
-  return { created: ensureLiteCli({ root: repoRoot, manifest, repo }), registered: { patterns: [], kinds: ['cli'] } };
+  return { created: ensureLiteCli({ root: repoRoot, manifest, repo }), registered: { patterns: [], kinds: ['cli'] }, notes: [LITE_CLI_INSTALL] };
 }
+
+/** The step a new lite cli app leaves the owner: its runtime dependency is in package.json, not yet installed. */
+export const LITE_CLI_INSTALL = 'npm install (the cli app adds nest-commander to package.json), then starci app check';
 
 const readTopic = (topic: string) => ({ id: topic, doc: parseYaml(fs.readFileSync(path.join(TOPICS_DIR, `${topic}.yaml`), 'utf8')) });
 
@@ -176,8 +197,10 @@ export const fillKnownForms = (text: string, forms: Readonly<Record<string, stri
 
 function treesOf({ topics, repo, noun, spec }: { topics: ReadonlySet<string>, repo: AddContext['repo'], noun: string, spec: AddKindSpec }): Map<string, TreeEntry[]> {
   const liteApi = noun === 'api' && repo.edition === 'lite';
+  const contract = apiContractOf(repo);
   return new Map([...topics].map((topic): [string, TreeEntry[]] => {
-    const entries = repo.edition === 'lite' ? selectLiteQueueEntries(topic, selectLiteWebhookEntries(readTree(topic, repo.edition))) : readTree(topic);
+    const read = repo.edition === 'lite' ? selectLiteQueueEntries(topic, selectLiteWebhookEntries(readTree(topic, repo.edition))) : readTree(topic);
+    const entries = entriesForContract(read, contract);
     return [topic, liteApi && topic === spec.topic ? selectLiteApiEntries(entries) : entries];
   }));
 }

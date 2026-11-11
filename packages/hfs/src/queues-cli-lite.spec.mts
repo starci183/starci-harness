@@ -69,7 +69,9 @@ test('add cli renders the queues group into an app that has its jobs platform, w
     assert.ok(created.includes(file), file);
   }
   assert.match(read(root, 'be/src/features/cli/seed/seed.module.ts'), /export class SeedModule extends ConfigurableModuleClass \{\}/);
-  assert.match(read(root, 'be/src/modules/platform/database/index.ts'), /export \{ PRIMARY_CONNECTION \} from "\.\/primary\.connection"/);
+  // The cli's wiring proof doubles the declared data source token, so no connection name leaves platform/database (R84).
+  assert.doesNotMatch(read(root, 'be/src/modules/platform/database/index.ts'), /PRIMARY_CONNECTION/);
+  assert.match(read(root, 'be/src/tests/fixtures/builders/cli.builder.ts'), /token: PRIMARY_DATA_SOURCE/);
   assertRendered(root);
 });
 
