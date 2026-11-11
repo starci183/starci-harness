@@ -228,7 +228,7 @@
         "parameters": [],
         "responses": {
           "302": {
-            "description": "The browser is sent on."
+            "description": ""
           },
           "default": {
             "content": {
@@ -255,7 +255,7 @@
         "parameters": [],
         "responses": {
           "302": {
-            "description": "The browser is sent on."
+            "description": ""
           },
           "default": {
             "content": {

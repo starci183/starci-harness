@@ -1,5 +1,8 @@
 {
-  "extends": "@starci/tsconfig/package-esm.json",
+  "extends": "@starci/tsconfig/package-cjs.json",
+  "compilerOptions": {
+    "types": ["node", "jest"]
+  },
   "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist", "src/**/*.spec.ts"]
+  "exclude": ["node_modules", "dist"]
 }
