@@ -13,7 +13,7 @@ import ts from "typescript"
 import { walk } from "./lib/ast.ts"
 import { hfsOf } from "./lib/hfs.ts"
 import { decoratorArguments, decoratorCallee, importOf, isImportedFrom, moduleReferences } from "./lib/import-source.ts"
-import { isTransportSlot, KIND_DOOR_SLOTS } from "./lib/transport-slots.ts"
+import { isTransportSlot, KIND_DOOR_SLOTS, servesRest } from "./lib/transport-slots.ts"
 import { isPackageType, typeOrigins, typed } from "./lib/types.ts"
 import { operationRouteEvidence, restExceptionEvidence } from "./operations.ts"
 import type { TSESTree } from "@typescript-eslint/utils"
@@ -425,8 +425,7 @@ export const restDoorNeedsAReason: RuleModule = {
     create(context) {
         const hfs = hfsOf(context)
         // A back end whose api apps declare contract rest serves controllers by default: the evidence is GraphQL's door rule (BE-TRANSPORT-1).
-        const apis = hfs.apps.filter((app) => app.kind === "api")
-        if (apis.length > 0 && apis.every((app) => app.contract === "rest")) return {}
+        if (servesRest(hfs.apps)) return {}
         const declared = operationRouteEvidence(context)
         return {
             ClassDeclaration(node) {

@@ -434,14 +434,17 @@ const check = (context: Context, decorator: TSESTree.Decorator, call: TSESTree.C
     const tsAnnotation = toTs(annotation)
     // every type annotation maps to a TypeScript type node; the guard only tells the compiler so
     if (!tsAnnotation || !ts.isTypeNode(tsAnnotation)) return
-    const declared = checker.getNonNullableType(checker.getTypeFromTypeNode(tsAnnotation))
-    const declaredName = checker.typeToString(declared)
+    // The parameter is the injected type exactly, or that type made optional (`@Optional() x?: T` adds undefined): an injector of `T | null`
+    // matches a parameter of `T | null`, and a parameter of `T` alone still refuses a `T | null` injector, whose null it would not handle.
+    const annotated = checker.getTypeFromTypeNode(tsAnnotation)
+    const declared = checker.getNonNullableType(annotated)
+    const declaredName = checker.typeToString(annotated)
     if (injected.flags & (ts.TypeFlags.Any | ts.TypeFlags.Unknown)) {
         context.report({ node: decorator, messageId: "unresolved", data: { injector, declared: declaredName } })
         return
     }
-    if (injected === declared) return
-    if (checker.isTypeAssignableTo(injected, declared) && checker.isTypeAssignableTo(declared, injected)) return
+    const same = (type: ts.Type): boolean => injected === type || (checker.isTypeAssignableTo(injected, type) && checker.isTypeAssignableTo(type, injected))
+    if (same(annotated) || same(declared)) return
     context.report({ node: annotation, messageId: "mismatch", data: { injector, injected: injectedName, declared: declaredName } })
 }
 

@@ -26,6 +26,8 @@ test("no-secret-in-log: the Logger port takes no Secret or Pii value and no cred
             { filename: SRC, code: withPrelude("logger.error(OrderLogEvent.CheckoutFailed, cause, { orderId })") },
             // a name that measures a credential is not the credential
             { filename: SRC, code: withPrelude("logger.info(OrderLogEvent.CheckoutRetried, { tokenCount: 3, tokenType: 'bearer', secretName: 'payos' })") },
+            // a number or a flag is never the credential its name mentions: model token counts are metering
+            { filename: SRC, code: withPrelude("declare const usage: { promptTokens: number; cachedTokens: number | null }\nlogger.info(OrderLogEvent.CheckoutRetried, { prompt: usage.promptTokens, cached: usage.cachedTokens ?? null })") },
             // masked forms and the length of a secret are shown, never the value
             { filename: SRC, code: withPrelude("logger.info(OrderLogEvent.CheckoutRetried, { token: mask(token), key: hash(apiKey) })") },
             { filename: SRC, code: withPrelude("logger.info(OrderLogEvent.CheckoutRetried, { configured: Boolean(vault) })") },
@@ -47,6 +49,8 @@ test("no-secret-in-log: the Logger port takes no Secret or Pii value and no cred
             { filename: SRC, code: withPrelude("logger.info(OrderLogEvent.CheckoutRetried, { password })"), errors: [{ messageId: "secret" }] },
             { filename: SRC, code: withPrelude("logger.info(OrderLogEvent.CheckoutRetried, { auth: request.headers.authorization })"), errors: [{ messageId: "secret" }] },
             { filename: SRC, code: withPrelude("logger.info(OrderLogEvent.CheckoutRetried, { accessToken })"), errors: [{ messageId: "secret" }] },
+            // a text value under a counting-sounding name is still text: only the type exempts it
+            { filename: SRC, code: withPrelude("declare const usage: { promptTokens: string }\nlogger.info(OrderLogEvent.CheckoutRetried, { prompt: usage.promptTokens })"), errors: [{ messageId: "secret" }] },
             { filename: SRC, code: withPrelude("logger.info(OrderLogEvent.CheckoutRetried, { to: email })"), errors: [{ messageId: "pii" }] },
             { filename: SRC, code: withPrelude("logger.info(OrderLogEvent.CheckoutRetried, { name: buyer.fullName })"), errors: [{ messageId: "pii" }] },
             // specs are not exempt

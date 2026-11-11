@@ -10,7 +10,8 @@
  *   2. a value whose NAME says it is a credential (`password`, `secret`, `apiKey`, `accessToken`, `authorization`,
  *      `cookie`, `otp`) or a personal identifier (`email`, `phone`, `fullName`, `idCard`, `birthDate`). This is the
  *      second half the convention keeps for values that never carried a brand; a name that says it MEASURES a
- *      credential (`tokenCount`, `tokenType`, `secretName`) is not the credential, so those endings are exempt.
+ *      credential (`tokenCount`, `tokenType`, `secretName`) is not the credential, so those endings are exempt, and neither is a
+ *      value whose type is a number or a boolean (`usage.promptTokens`), since a credential travels as text.
  *
  * A log line outlives the request, is copied to a vendor, and is read by people who never had the credential or the
  * consent. Log an id, a count, or a masked form instead.
@@ -208,6 +209,8 @@ export const noSecretInLog: RuleModule = {
           for (const { name, node: at } of namesIn(argument)) {
             const words = wordsOf(name)
             if (reported.has(name)) continue
+            // A number or a flag is never the credential its name mentions: `promptTokens` counts model tokens (a credential travels as text).
+            if (isSecretName(words) && isCountOrFlag(context, at)) continue
             if (isSecretName(words)) {
               reported.add(name)
               context.report({ node: at, messageId: "secret", data: { name } })
@@ -228,6 +231,14 @@ const STRINGY = ts.TypeFlags.String | ts.TypeFlags.StringLiteral | ts.TypeFlags.
 const isText = (context: Context, node: Node): boolean => {
   const parts = presentParts(typeOf(context, node))
   return parts.length > 0 && parts.every((part) => (part.flags & STRINGY) && !(part.flags & ts.TypeFlags.EnumLiteral))
+}
+
+const COUNT_OR_FLAG = ts.TypeFlags.NumberLike | ts.TypeFlags.BigIntLike | ts.TypeFlags.BooleanLike
+
+/** Whether a node's type is a number or a boolean (with `null`/`undefined` removed): a measure of something, never a credential's text. */
+const isCountOrFlag = (context: Context, node: Node): boolean => {
+  const parts = presentParts(typeOf(context, node))
+  return parts.length > 0 && parts.every((part) => Boolean(part.flags & COUNT_OR_FLAG))
 }
 
 /** The last name a value expression ends in (`token`, `request.headers.authorization`), or null. */

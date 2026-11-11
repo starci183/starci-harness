@@ -25,7 +25,8 @@ a browser transfers bytes to storage through an address the domain signs (`signe
 Why: one flat shape makes an operation, its input, output and mapper findable from the name; a REST route without a
 reason is a JSON read that belongs in the schema the client already uses.
 
-Enforced by: `door-lives-in-features`, `rest-door-needs-a-reason` (switched off by a `rest` back end), `rest-route-declared`,
+Enforced by: `door-lives-in-features`, `rest-door-needs-a-reason` and `rest-route-declared` (both switched off by a `rest` back end,
+whose controllers R396 judges in the emitted document),
 `rest-app-graphql`, `no-buffered-upload` (R88, R278, R312).
 
 ## BE-TRANSPORT-2 A door maps, dispatches one message and maps back

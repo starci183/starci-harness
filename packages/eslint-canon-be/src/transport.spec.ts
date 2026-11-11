@@ -13,6 +13,7 @@ import test from "node:test"
 import { appDeclaration } from "../fixtures/app.ts"
 import { BE_DECLARATION, TYPED_ROOT, at, ruleTester, typedTester } from "../fixtures/typed/tester.ts"
 import { hfsFromDeclaration } from "./lib/hfs.ts"
+import { restRouteDeclared } from "./operations.ts"
 import {
     doorLivesInFeatures,
     noCapabilityImportsFeatures,
@@ -277,6 +278,15 @@ test("rest-door-needs-a-reason: a back end whose api apps declare contract rest 
     assert.doesNotThrow(() => { tester.run("rest-door-needs-a-reason", restDoorNeedsAReason, {
         valid: [],
         invalid: [{ filename: CONTROLLER, code: `${head}@Controller("orders") export class C { @Get() list() { return 1 } }`, errors: [{ messageId: "unjustified" }] }],
+    }) })
+    // The same holds for the operation-table rule: a rest back end's controllers are its declared contract, judged by R396 in the document.
+    assert.doesNotThrow(() => { rest.run("rest-route-declared", restRouteDeclared, {
+        valid: [{ filename: CONTROLLER, code: `${head}@Controller("orders") export class C { @Get() list() { return 1 } }` }],
+        invalid: [],
+    }) })
+    assert.doesNotThrow(() => { tester.run("rest-route-declared", restRouteDeclared, {
+        valid: [],
+        invalid: [{ filename: CONTROLLER, code: `${head}@Controller("orders") export class C { @Get() list() { return 1 } }`, errors: [{ messageId: "undeclared" }] }],
     }) })
 })
 
