@@ -78,7 +78,25 @@ paths (a controller carries its full path in `@Controller`). In that document:
 - every operation answers `default` with one error schema that requires `code` and `message` (`@ApiDefaultResponse`);
 - a list GET answers a page `{ items, nextCursor }` read with the query parameters `cursor` and `limit`, never a bare array;
 - the head declares a security scheme and every operation states its security; a public one (`security: []`) carries
-  `x-public-reason` (`@ApiExtension`).
+  `x-public-reason` (`@ApiExtension`);
+- an operation and a field may carry their documentation (`summary`, `description` of `@ApiOperation`, `@ApiProperty`,
+  `@ApiResponse`): it is contract text for the developers of the clients, judged with the document here and never as user copy
+  (BE-MESSAGES-1, R78).
+
+How a caller authenticates is stated by the scheme, and the starter's guards fix it: a signed-in user's door takes the bearer
+access token, and a `@Credential({ kind })` door is authenticated by `CredentialGuard` from the `Authorization` header alone
+(`credential.guard.ts`: no other header, query parameter or cookie is read), and the credential it accepts carries exactly one
+workspace (`CredentialPrincipal.workspaceId`): a client acting for two workspaces holds two credentials. The head names the
+scheme the doors declare (`addBearerAuth()` is `bearer`; a credential door names its own with `@ApiBearerAuth("<scheme>")`).
+
+`starci app add api <feature>` in a `rest` app writes this door (`templates/be/patterns/api/http.*.tpl`, the `contract: rest`
+entries of the api pattern): `transport/http/<action>.controller.ts` (`@ApiOperation({ operationId: "<feature>.<action>" })`,
+`@ApiBearerAuth()`, `@ApiOkResponse`, `@ApiDefaultResponse({ type: ErrorResponse })`), `dto/<action>.request.ts` and
+`dto/<action>.response.ts` (`@ApiProperty` fields with JSDoc), the mapper and the HTTP module, composed in the api group;
+`npm run contract:emit` then adds the operation to the committed document.
+
+A rest app with many operations splits them into features by the noun they act on and its domain into one module per bounded
+context, so each owner's public surface stays within its index budget (BE-IMPORTS-1); the doors never import a wider owner.
 
 The committed file equals the emit (R23). Once published, the contract is pinned as `contracts/<app>/openapi.pin.json` and
 changes additively against it, or raises the major of `info.version` (R177). A front end reading a `rest` contract has no
