@@ -47,9 +47,9 @@ environments:
     runtime: docker-compose
     composeFiles: [infra/compose/compose.yaml]
     components:
-      db: {port: 54322}
-      api: {port: 3001}
-      web: {port: 3000}
+      db: {port: {{dbPort}}}
+      api: {port: {{apiPort}}}
+      web: {port: {{basePort}}}
     runbook: README.md
     # Dev custody is generated once, dev-only, by the owner-armed `starci app secret init --env dev --execute`, which also declares each key here.
     secrets: []
