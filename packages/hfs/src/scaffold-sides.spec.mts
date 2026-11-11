@@ -15,7 +15,7 @@ import { ScaffoldError } from '../scaffold/service.mjs';
 import { init } from '../runtime/scripts/api/git/init.mjs';
 import { checkRepo } from '../runtime/scripts/hfs/check.mjs';
 import { parseYaml } from '../runtime/engine/yaml.mjs';
-import { main, scaffoldSides } from './main.mjs';
+import { scaffoldSides } from './main.mjs';
 import type { ProjectSide } from '../runtime/scripts/hfs/project-sides.mjs';
 
 const HARNESS = { version: '1.1.0-alpha.3' };
@@ -28,8 +28,7 @@ const lockedOk = (root: string): LockResult => {
 function starter(t: TestContext, edition: string, sides?: readonly ProjectSide[], contract?: 'graphql' | 'rest'): { root: string; files: string[]; codes: string[] } {
   const into = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-scaffold-sides-'));
   t.after(() => fs.rmSync(into, { recursive: true, force: true }));
-  // PROJECT-4: a lite project is named <base>-lite.
-  const { root, files } = scaffoldApp({ name: edition === 'lite' ? 'demo-lite' : 'demo', harness: HARNESS, into, edition, presets: bundledPresets(), lock: lockedOk, initGit: init, ...(sides ? { sides } : {}), ...(contract ? { contract } : {}) });
+  const { root, files } = scaffoldApp({ name: 'demo', harness: HARNESS, into, edition, presets: bundledPresets(), lock: lockedOk, initGit: init, ...(sides ? { sides } : {}), ...(contract ? { contract } : {}) });
   const codes = checkRepo({ repoRoot: root, harness: HARNESS, files }).findings.filter((finding) => finding.level === 'error').map((finding) => finding.code);
   return { root, files, codes };
 }
@@ -74,9 +73,9 @@ test('lite --without fe --contract rest: a be+packages project whose api app is 
   assert.deepEqual(hfs.sides.be!.apps, [{ name: 'api', kind: 'api', contract: 'rest' }]);
   assert.deepEqual(hfs.sides.be!.optionalSlots, ['be.contract.openapi']);
   assert.deepEqual(files.filter((file) => file.startsWith('fe/')), [], 'no fe file is written');
-  assert.ok(files.includes('packages/demo-lite-shared/package.json') && files.includes('packages/demo-lite-shared/src/index.ts') && files.includes('packages/demo-lite-shared/tsconfig.json'));
+  assert.ok(files.includes('packages/demo-shared/package.json') && files.includes('packages/demo-shared/src/index.ts') && files.includes('packages/demo-shared/tsconfig.json'));
   assert.ok(files.includes('be/apps/api/src/openapi.ts') && files.includes('be/contracts/api/openapi.json'), 'a rest app carries its document head and its committed document');
-  assert.equal(JSON.parse(read(root, 'be/contracts/api/openapi.json')).info.title, 'demo-lite');
+  assert.equal(JSON.parse(read(root, 'be/contracts/api/openapi.json')).info.title, 'demo');
   const pkg = json(root, 'package.json') as unknown as { workspaces: string[]; dependencies: Record<string, string>; devDependencies: Record<string, string>; scripts: Record<string, string> };
   assert.deepEqual(pkg.workspaces, ['packages/*']);
   for (const name of ['@nestjs/graphql', '@nestjs/apollo', '@apollo/server', 'graphql']) assert.equal(pkg.dependencies[name], undefined, name);
@@ -98,7 +97,7 @@ test('lite --without fe --contract rest: a be+packages project whose api app is 
   // A scaffold in a temporary folder (no install, no host custody) raises the same environment findings as a default starter, and nothing else.
   const baseline = new Set(starter(t, 'lite').codes);
   assert.deepEqual(codes.filter((code) => !baseline.has(code)), [], 'its own check raises nothing a default starter does not');
-  assert.deepEqual(codes.filter((code) => code.startsWith('BE_REST_') || code === 'HFS_PROJECT_NAME'), [], 'R396 holds on the starter document, and the name says lite');
+  assert.deepEqual(codes.filter((code) => code.startsWith('BE_REST_')), [], 'R396 holds on the starter document');
   assert.match(read(root, 'be/src/features/api/auth/transport/http/auth.controller.ts'), /@ApiOperation\(\{ operationId: "auth\.login", security: \[\] \}\)/u);
 });
 
@@ -107,19 +106,4 @@ test('R399 at the check: a declared side whose folder tracks nothing is red', (t
   const without = files.filter((file) => !file.startsWith('packages/'));
   const codes = checkRepo({ repoRoot: root, harness: HARNESS, files: without }).findings.map((finding) => finding.code);
   assert.ok(codes.includes('HFS_SIDE_FOLDER_MISSING'));
-});
-
-test('PROJECT-4 at the scaffold: a lite name ends in -lite, a full name (no --edition is full) never does', async (t) => {
-  const into = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-scaffold-name-'));
-  t.after(() => fs.rmSync(into, { recursive: true, force: true }));
-  const refused = async (argv: string[], words: RegExp) => {
-    let err = '';
-    const code = await main(['scaffold', ...argv, '--cwd', into], { harness: HARNESS, stderr: (text: string) => { err += text; }, stdout: () => {} });
-    assert.equal(code, 2, argv.join(' '));
-    assert.match(err, words);
-    assert.deepEqual(fs.readdirSync(into), [], 'nothing is written');
-  };
-  await refused(['shop', '--edition', 'lite'], /the project shop is of the lite edition, so its name ends in -lite \(shop-lite\)/u);
-  await refused(['shop-lite'], /the project shop-lite is of the full edition, so its name does not end in -lite \(shop\)/u);
-  await refused(['shop-lite-data', '--edition', 'lite'], /ends in -data/u);
 });

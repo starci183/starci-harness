@@ -6671,19 +6671,3 @@ rules:
       - {path: packages/hfs/src/project-sides.spec.mjs, editions: [lite, full]}
     witness:
       - {path: packages/hfs/src/project-sides.spec.mjs, editions: [lite, full]}
-  - id: R400
-    code: "HFS_PROJECT_NAME"
-    law: "A project's name is `<base>[-lite][-data]`, read from hfs.json `project` beside the `edition` it must agree with: an app of the lite edition is named `<base>-lite`, an app of the full edition never ends in `-lite`, and `-data` is kept for a project's separate data repository (`<project name>-data`), so no app name ends in it. `starci app scaffold` refuses a name that breaks it (usage error), before writing anything."
-    kinds: [check]
-    gates: [settle, land, ci]
-    failureCodes: ["HFS_PROJECT_NAME"]
-    enforcers:
-      - {kind: hfs, id: project-name, at: runtime/scripts/hfs/rules/project-sides.mjs}
-    editions: [lite, full]
-    templateNa: "The scaffold refuses a name that breaks the law; the rule guards the declaration afterwards."
-    docs:
-      - {path: contexts/project/README.md#project-4-a-project-name-says-its-edition-and-its-repository-kind, editions: [lite, full]}
-    proves:
-      - {path: packages/hfs/src/project-sides.spec.mjs, editions: [lite, full]}
-    witness:
-      - {path: packages/hfs/src/project-sides.spec.mjs, editions: [lite, full]}

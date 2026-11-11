@@ -119,7 +119,6 @@ import { removeModule } from '../scaffold/add-module.mjs';
 import { scaffoldApp, type LockResult } from '../scaffold/app.mjs';
 import { PROJECT_SIDES, isProjectSide, type ProjectSide } from '../runtime/scripts/hfs/project-sides.mjs';
 import { CONTRACT_KINDS, type ContractKind } from '../runtime/scripts/hfs/contract-kind.mjs';
-import { projectNameProblem } from '../runtime/scripts/hfs/project-name.mjs';
 import { newImages } from '../scaffold/image.mjs';
 import { ESLINT_HEAP_ENV, PACKAGES, cachedLinters, eslintRepository, runLinter as nativeLinter, type CachedLinters } from '../lint/run.mjs';
 import { devBranchFinding } from '../runtime/scripts/hfs/dev-branch.mjs';
@@ -939,9 +938,6 @@ async function scaffoldMain(opts: Opts, { cwd, harness, edition = 'full', preset
   const [name, ...extra] = opts.positional;
   const registryVisibility = valueFlag(opts, 'registry-visibility');
   if (!name || extra.length) throw new UsageError(`starci app scaffold takes \`${((VERB_USAGE.scaffold as string[])[0] as string).slice('starci app scaffold '.length)}\``);
-  // PROJECT-4: the name says the edition (no --edition scaffolds full): <base>-lite for lite, never -lite for full, never -data for an app.
-  const misnamed = projectNameProblem(name, edition);
-  if (misnamed) throw new UsageError(`starci app scaffold: ${misnamed}; a project's name is <base>[-lite][-data] (PROJECT-4)`);
   const sides = scaffoldSides(valueFlag(opts, 'without'));
   const contract = valueFlag(opts, 'contract');
   if (contract !== undefined && !(CONTRACT_KINDS as readonly string[]).includes(contract)) throw new UsageError(`starci app scaffold --contract takes ${CONTRACT_KINDS.join(' or ')} (got ${contract})`);

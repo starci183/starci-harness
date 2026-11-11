@@ -36,7 +36,7 @@ record change that follows it are two tasks.
 |---|---|---|
 | sides | `sides`, a non-empty subset of `be`, `fe`, `packages` | which folders the project has and which checks run (above) |
 | contract | `sides.be.apps[].contract`, `graphql` (when absent) or `rest` | the api app's default door ([code/be/transport.md](../code/be/transport.md) BE-TRANSPORT-1) |
-| edition | `edition`, `lite` or `full` (full when absent), fixed at scaffold and said by the project name (PROJECT-4) | which slots and rules apply and which app verbs the CLI shows; [lite.md](lite.md), [full.md](full.md) |
+| edition | `edition`, `lite` or `full` (full when absent), fixed at scaffold | which slots and rules apply and which app verbs the CLI shows; [lite.md](lite.md), [full.md](full.md) |
 | grammar | `sides.fe.grammar` | which grammar package and grammar lint the front end composes ([grammars](../grammars/README.md)) |
 | module data | `modules`, `"data"` or absent | `"data"`: the agent modules are data (`.starcistacks/seeds/data/modules`); sync renders no registry package and the module verbs refuse `HFS_MODULES_ARE_DATA` |
 | policy profile | `policy` | which canon stacks and gates run ([lint.md](lint.md); profiles and defaults are [policy/quality.yaml](../../policy/quality.yaml)) |
@@ -94,20 +94,6 @@ it declares for itself in the `starci` key of its manifest: `outcome`, its one r
 under its `src/` (`readPackageContract` of the package view). Its errors derive from `DomainError` of `@starci/common` (BE-ERROR-1), which
 needs no declaration; a manifest that still declares `errorBase` stops the lint. The
 project-graph rules judge the side folders and not the packages.
-
-## PROJECT-4 A project name says its edition and its repository kind
-
-A project's name (hfs.json `project`, from which the root `package.json` name and the stack's repository are written) follows one
-grammar, `<base>[-lite][-data]`, and every suffix a project name gains is added to this grammar, never coined beside it:
-
-- `-lite`: the project is of the lite edition. A lite app is named `<base>-lite`; a full app never ends in `-lite`.
-- `-data`: the project's separate private data repository, named `<project name>-data` (the data of a lite app `<base>-lite` lives
-  in `<base>-lite-data`). No app name ends in `-data`.
-
-A name is never chance: a reader learns the edition and the kind of a repository from its name before opening it. `starci app
-scaffold <name>` refuses a name that breaks the grammar for the edition it scaffolds (full when `--edition` is absent), and
-`starci app check` refuses an hfs.json whose `project` disagrees with its `edition` (R400, `HFS_PROJECT_NAME`; owner:
-`@starci/hfs` `runtime/scripts/hfs/project-name.mts`).
 
 ## Where to read for a task
 

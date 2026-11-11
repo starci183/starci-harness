@@ -5,12 +5,10 @@
 // proves: STACKS_SIDES_DRIFT@lite
 // proves: STACKS_SIDES_UNDECLARED@lite
 // proves: STACKS_COMPONENT_SIDE@lite
-// proves: HFS_PROJECT_NAME@lite
-// proves: HFS_PROJECT_NAME@full
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { HfsSlotsError, declaredAppSides, loadSlotManifest, resolveRepoDeclaration } from '../runtime/scripts/hfs/slots.mjs';
-import { projectNameFindings, sideFolderFindings, stackSideFindings } from '../runtime/scripts/hfs/rules/project-sides.mjs';
+import { sideFolderFindings, stackSideFindings } from '../runtime/scripts/hfs/rules/project-sides.mjs';
 import { declarationShapeProblems } from '../runtime/scripts/hfs/declaration-shape.mjs';
 
 // reason: hfs.json declarations and stack documents are JSON trees the assertions build and judge.
@@ -65,17 +63,4 @@ test('R399 the stack: its sides equal hfs.json, and no component runs a side the
   assert.match(web[0]!.message, /local\.processes web runs the fe side/);
   const both = declare({ be: BE, fe: FE });
   assert.deepEqual(stackSideFindings(both, { sides: { be: true, fe: true, packages: false }, environments: env({ api: { app: 'api' }, web: { app: 'web', buildArgs: { values: {} } } }) }), [], 'an app of both sides keeps its web component');
-});
-
-test('R400 the name says the edition: <base>-lite for lite, never -lite for full, never -data for an app', () => {
-  const named = (project: string, edition?: string) => projectNameFindings({ repo: { kind: 'app', project, ...(edition ? { edition } : {}) }, isRoot: true });
-  assert.deepEqual(named('nivo-lite', 'lite'), [], 'a lite app named <base>-lite');
-  assert.deepEqual(named('nivo'), [], 'a full app (no edition) without the suffix');
-  assert.deepEqual(named('nivo', 'full'), []);
-  const lite = named('nivo', 'lite');
-  assert.deepEqual(lite.map((finding) => [finding.code, finding.path]), [['HFS_PROJECT_NAME', 'hfs.json']]);
-  assert.match(lite[0]!.message, /is of the lite edition, so its name ends in -lite \(nivo-lite\)/u);
-  assert.match(named('nivo-lite')[0]!.message, /is of the full edition, so its name does not end in -lite \(nivo\)/u);
-  assert.match(named('nivo-lite-data', 'lite')[0]!.message, /ends in -data, which names a project's separate data repository/u);
-  assert.deepEqual(projectNameFindings({ repo: { kind: 'app', project: 'nivo', edition: 'lite' }, isRoot: false }), [], 'judged once, at the app root');
 });

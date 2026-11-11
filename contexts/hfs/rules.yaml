@@ -2760,10 +2760,3 @@ rules:
       - STACKS_COMPONENT_SIDE
     enforcers:
       - {kind: hfs, id: project-sides}
-  - id: R400
-    code: HFS_PROJECT_NAME
-    law: "A project's name is `<base>[-lite][-data]`: an app of the lite edition ends in `-lite`, an app of the full edition never does, and `-data` names only a project's separate data repository."
-    failureCodes:
-      - HFS_PROJECT_NAME
-    enforcers:
-      - {kind: hfs, id: project-name}
