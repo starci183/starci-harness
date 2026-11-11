@@ -142,7 +142,9 @@ Enforced by: `cors-allowlist`, `security-headers`, `trust-proxy` (R261).
 ## BE-AUTH-8 Liveness and readiness are different signals
 
 `GET /health/live` answers while the process serves; `GET /health/ready` probes the required dependencies with a
-bounded timeout and answers unavailable when one fails. Both are `@Public({ reason: PublicReason.Health })` and
+bounded timeout and answers unavailable when one fails. The required dependencies are the primary database and, in lite,
+every integration that adds its probe to the `REQUIRED_PROBES` list of `platform/http-security` at boot (the object store
+heads its bucket, creating it in a fresh store). Both are `@Public({ reason: PublicReason.Health })` and
 dispatch a query; the image HEALTHCHECK calls the live route.
 
 Why: a live process may be unable to serve; separate signals let the runtime tell a restart from withholding traffic.

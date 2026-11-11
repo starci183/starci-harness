@@ -4,10 +4,12 @@ import { WEBHOOK_SIGNATURE } from "./http-security.decorators"
 import { ConfigurableModuleClass, MODULE_OPTIONS_TOKEN, OPTIONS_TYPE } from "./http-security.module-definition"
 import { ReadinessService } from "./readiness.service"
 import { RequestValidationService } from "./request-validation.service"
+import { REQUIRED_PROBES } from "./required-probes.decorators"
+import { RequiredProbesService } from "./required-probes.service"
 import { WebhookSignatureService } from "./webhook-signature.service"
 
 @Module({})
-/** The http-security capability: the options its guards (registered by each api app) read. */
+/** The http-security capability: the options its guards (registered by each api app) read, and the readiness of the app's dependencies. */
 export class HttpSecurityModule extends ConfigurableModuleClass {
     /** Registers the capability once per app. */
     static register(options: typeof OPTIONS_TYPE): DynamicModule {
@@ -19,9 +21,17 @@ export class HttpSecurityModule extends ConfigurableModuleClass {
                 { provide: APP_PIPE, useClass: RequestValidationService },
                 WebhookSignatureService,
                 ReadinessService,
+                RequiredProbesService,
+                { provide: REQUIRED_PROBES, useExisting: RequiredProbesService },
                 { provide: WEBHOOK_SIGNATURE, useExisting: WebhookSignatureService },
             ],
-            exports: [MODULE_OPTIONS_TOKEN, WebhookSignatureService, WEBHOOK_SIGNATURE, ReadinessService],
+            exports: [
+                MODULE_OPTIONS_TOKEN,
+                WebhookSignatureService,
+                WEBHOOK_SIGNATURE,
+                ReadinessService,
+                REQUIRED_PROBES,
+            ],
         }
     }
 }

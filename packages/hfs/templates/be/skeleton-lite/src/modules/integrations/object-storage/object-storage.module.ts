@@ -6,6 +6,7 @@ import { Module, type DynamicModule } from "@nestjs/common"
 import { CLOCK, type Clock } from "@modules/platform/clock"
 import { OBJECT_STORAGE_BUCKET } from "./object-storage.decorators"
 import { ConfigurableModuleClass, OPTIONS_TYPE } from "./object-storage.module-definition"
+import { ObjectStorageProbeService } from "./object-storage-probe.service"
 
 @Module({})
 /** Composes `@starci/object-storage` with the app's typed settings and clock, and provides the bucket of the app's objects. */
@@ -21,7 +22,11 @@ export class ObjectStorageModule extends ConfigurableModuleClass {
         return {
             ...base,
             imports: [...(base.imports ?? []), storage],
-            providers: [...(base.providers ?? []), { provide: OBJECT_STORAGE_BUCKET, useValue: bucket }],
+            providers: [
+                ...(base.providers ?? []),
+                { provide: OBJECT_STORAGE_BUCKET, useValue: bucket },
+                ObjectStorageProbeService,
+            ],
             exports: [...(base.exports ?? []), storage, OBJECT_STORAGE_BUCKET],
             global: isGlobal === true,
         }

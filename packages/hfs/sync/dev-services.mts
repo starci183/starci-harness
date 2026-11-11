@@ -191,8 +191,8 @@ export function devServicesUpgrade(root: string, read: (relative: string) => str
     for (const insert of inserts.sort((a, b) => b.at - a.at)) lines.splice(insert.at, 0, ...insert.lines);
     const composePath = path.posix.join('.starcistacks', environment, composeFile.split(path.sep).join('/'));
     out.edits.push({ path: composePath, reason: `the dev environment ${environment} gains the storage service, the object store the starter runs (PROJECT-STACKS-10)`, content: composeWithStorage(compose, keys) });
-    reasons.push(`${environment} storage ${api}, storage-console ${console}`);
+    reasons.push(`${environment} gains the storage service on storage ${api}, storage-console ${console}`);
   }
-  if (reasons.length > 0) out.edits.unshift({ path: STACK_FILE, reason: `the dev ports follow the role table of the base port and the storage service is declared (R389): ${reasons.join('; ')}`, content: lines.join(newline) });
+  if (reasons.length > 0) out.edits.unshift({ path: STACK_FILE, reason: `the dev ports follow the role table of the base port (R389): ${reasons.join('; ')}`, content: lines.join(newline) });
   return out;
 }

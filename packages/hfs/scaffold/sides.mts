@@ -45,6 +45,8 @@ export function stackForSides(text: string, { sides, contract, feApps, hosts = [
       }
       const local = mapping(mapping(spec).local);
       for (const list of ['services', 'processes', 'ready', 'verify', 'origins']) if (Array.isArray(local[list])) edit.removeItems(at('local', list), (item) => isFe(item?.name));
+      // The codegen setup step runs the front end's codegen script, which exists only with fe (slot app.scripts managedWhenSides).
+      if (Array.isArray(local.setup)) edit.removeItems(at('local', 'setup'), (item) => item?.name === 'codegen');
       const api = Array.isArray(local.processes) ? (local.processes as YamlDocument[]).find((item) => item?.name === 'api') : undefined;
       for (const key of ['HTTP_SECURITY_ALLOWED_ORIGINS', 'AUTH_WEB_ORIGIN']) {
         if (typeof mapping(api?.env)[key] === 'string' && String(api.env[key]).includes('${port.')) edit.set([...at('local', 'processes'), { item: 'name', is: 'api' }, 'env', key] as YamlStep[], '"http://localhost:${port.api}"');

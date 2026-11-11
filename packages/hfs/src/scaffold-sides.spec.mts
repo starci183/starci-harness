@@ -89,6 +89,7 @@ test('lite --without fe --contract rest: a be+packages project whose api app is 
   assert.equal(stack.components.web, undefined);
   assert.equal(stack.environments.production.deploy.images.web, undefined);
   assert.deepEqual(stack.environments.dev.local.processes.map((process: { name: string }) => process.name), ['api']);
+  assert.deepEqual(stack.environments.dev.local.setup.map((step: { name: string }) => step.name), ['install'], 'no codegen step: its script exists only with fe');
   assert.match(stack.components.api.purpose, /REST API/u);
   assert.equal(parseYaml(read(root, '.starcistacks/production/infra/swarm/stack.yaml')).services.web, undefined);
   assert.doesNotMatch(read(root, '.starcistacks/production/infra/swarm/Caddyfile'), /reverse_proxy web:/u);
