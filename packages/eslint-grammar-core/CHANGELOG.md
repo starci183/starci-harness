@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.37.37 - 2026-11-11
+
+- Changed: peer `@starci/hfs ~6.8.0`; no lint rule changed.
+
 ## 0.37.2 - 2026-11-09
 
 - Changed: released with the Grammar family at 0.37.2 (the shared head row reaches nested grids); no rule of this package changed.

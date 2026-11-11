@@ -1,12 +1,12 @@
 # Changelog
 
-## 6.6.3 - 2026-11-11
+## 6.8.0 - 2026-11-11
 
 - Added: an api app of be may declare its contract in hfs.json, `sides.be.apps[].contract`: `graphql` (the default, also when absent; every existing app resolves and is judged exactly as before) or `rest` (`runtime/scripts/hfs/contract-kind.mts`). The declaration refuses `contract` on another side or app kind, an unknown kind, and api apps of both kinds in one back end (`HFS_DECLARATION_INVALID`).
 - Added: `starci app emit` writes `contracts/<app>/openapi.json` for a rest app: the OpenAPI 3 document Nest's own `@nestjs/swagger` builds over the controllers of the app's module graph (read from source by `emit/static-graph.mts` `composeHttp`, loaded without booting the app) and the head `apps/<app>/src/openapi.ts` (`emit/rest-worker.mts`); keys are sorted so the file is a function of the code. A literal `setGlobalPrefix("<prefix>")` of `main.ts` prefixes the paths and the `controllers` of a dynamic module the source returns are read; a prefix that is not one literal and a graph importing `RouterModule` are refused (exit 1), never emitted with wrong paths. The class loader of the GraphQL worker is shared (`emit/class-loader.mts`). R23 (`HFS_CONTRACT_SNAPSHOT_DRIFT`) judges a rest app's openapi.json as it judges a schema (fresh, stale, not committed, left behind) and requires no schema.graphql of it.
 - Added (R396): the committed document of a rest app holds `BE_REST_OPERATION_ID` (an explicit unique `<area>.<action>`), `BE_REST_UNTYPED` (named body and 2xx schemas), `BE_REST_ERROR_SHAPE` (one default error schema requiring code and message), `BE_REST_PAGINATION` (a list GET is a `{ items, nextCursor }` page read with `cursor` and `limit`) and `BE_REST_SECURITY` (a declared scheme; a public operation carries `x-public-reason`) (`runtime/scripts/hfs/rules/rest-contract.mts`).
 - Changed (R278): a back end whose api apps declare rest refuses a GraphQL door or the GraphQL platform (`BE_REST_APP_GRAPHQL`). Changed (R177): `BE_CONTRACT_BREAKING` also judges a rest app's openapi.json against its pin `contracts/<app>/openapi.pin.json` (slot `be.contract.openapi.pin`): no removed or renamed operation, no new required parameter or body field, no removed or retyped parameter or answer field, unless info.version raises the major.
-- Changed: manifest 3.28.0 (slot `be.contract.openapi.pin`; `be.app.api` allows `openapi.ts`); canon pin `@nestjs/swagger` 11.4.8 (the Nest 11 line; a devDependency here for the emit specs).
+- Changed: manifest 3.33.0 (slot `be.contract.openapi.pin`; `be.app.api` allows `openapi.ts`); canon pin `@nestjs/swagger` 11.4.8 (the Nest 11 line; a devDependency here for the emit specs).
 - Specs: `src/rest-contract.spec.mts` (declaration, emit and drift over a fixture app, every R396 law and R177 change on its own fixture, the R278 refusal).
 
 ## 6.6.2 - 2026-11-09

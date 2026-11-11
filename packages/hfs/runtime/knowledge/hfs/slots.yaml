@@ -7,7 +7,7 @@
 # catalog READ this file through scripts/hfs/slots.mts; none of them hardcodes a path.
 # Shape: modules/schemas/hfs-slots.schema.yaml. The repository side is hfs.json: modules/schemas/hfs-repo.schema.yaml.
 schema: starci/hfs-slots@3
-version: 3.28.0
+version: 3.33.0
 
 versioning:
   # MAJOR.MINOR.PATCH of this manifest. A repository pins only the MAJOR in hfs.json ("hfs": 3).
@@ -1379,7 +1379,7 @@ slots:
     why: emitted by `npm run contract:emit` (`starci app emit`, never written by hand) from the app's typed operation table `apps/<app>/src/operations.ts` (canon BE-OPERATIONS-1), or, for an app whose contract is rest, from its controllers and the head `apps/<app>/src/openapi.ts` (BE-TRANSPORT-4); CI fails when the emitted file differs
     rules: [HFS_CONTRACT_SNAPSHOT_DRIFT, BE_REST_OPERATION_ID, BE_REST_UNTYPED, BE_REST_ERROR_SHAPE, BE_REST_PAGINATION, BE_REST_SECURITY]
   - id: be.contract.openapi.pin
-    since: 3.28.0
+    since: 3.33.0
     profiles: [be]
     path: "contracts/<app>/openapi.pin.json"
     presence: opt-in

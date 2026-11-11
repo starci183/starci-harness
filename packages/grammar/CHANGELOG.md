@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.37.37 - 2026-11-11
+
+- Changed: the family moves with `@starci/eslint-grammar-core`, which peers `@starci/hfs ~6.8.0`; no component changed.
+
 ## 0.37.2 - 2026-11-09 - the shared head row reaches nested grids
 
 - Fixed: the shared head row of a workspace page (0.37.0) only reached the panes of the page's own grid, so an app that nests grids (a tab pane holding a grid of a main and an aside, whose main holds a list and a thread) got no continuous

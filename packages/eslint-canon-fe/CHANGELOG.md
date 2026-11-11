@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.16.15 - 2026-11-11
+
+- Changed: peer `@starci/hfs ~6.8.0`; no lint rule of this package changed.
+
 ## 9.16.11 - 2026-11-09
 
 - Changed: peer `@starci/hfs ~6.6.0` (hfs 6.6.0: R395 and the managed app gallery slots); no lint rule changed.
