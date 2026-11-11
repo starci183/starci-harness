@@ -1534,7 +1534,7 @@ rules:
       - {kind: hfs, id: lite-secret-custody}
   - id: R235
     code: SCAN_SMELL
-    law: Code carries none of the Sonar way smells a lint rule can decide, each on at error in both canons, outside the files specs name (the specs run the test-scoped rules of the profile), and no raw U+2028, U+2029, U+0085 or bidirectional control character in any file, which the scanner counts as a line break and the language does not (the scan aborts with "Line n is out of range"); the finding names the escape to write.
+    law: Code carries none of the Sonar way smells a lint rule can decide, each on at error in both canons (a leftover `TODO` marker comment among them, written as the upper-case word or as `todo:` and `todo(`; the noun in prose or a name is no marker), outside the files specs name (the specs run the test-scoped rules of the profile), and no raw U+2028, U+2029, U+0085 or bidirectional control character in any file, which the scanner counts as a line break and the language does not (the scan aborts with "Line n is out of range"); the finding names the escape to write.
     failureCodes:
       - SCAN_SMELL
     enforcers:
@@ -1567,6 +1567,8 @@ rules:
       - {kind: eslint-fe, id: no-children-prop}
       - {kind: eslint-fe, id: use-state-destructured}
       - {kind: eslint-fe, id: prefer-tag-over-role}
+      - {kind: eslint-be, id: todo-tag}
+      - {kind: eslint-fe, id: todo-tag}
   - id: R243
     code: FE_SERVER_ACTION_FORBIDDEN
     law: "The front end serves no API: no `\"use server\"` directive, and no route handler but the health route."

@@ -296,3 +296,27 @@ test("text:S6389: a bidirectional control character is refused anywhere with its
 test("S3863: a merged import longer than the print width is laid out one specifier a line", () => {
   assert.doesNotThrow(() => tester.run("no-duplicate-import", rule("no-duplicate-import"), { valid: [], invalid: [{ code: "import { SpecifierNumber1Long, SpecifierNumber2Long, SpecifierNumber3Long, SpecifierNumber4Long, SpecifierNumber5Long, SpecifierNumber6Long } from \"@modules/platform/logging\"\nimport type { SpecifierNumber7Long, SpecifierNumber8Long, SpecifierNumber9Long, SpecifierNumber10Long, SpecifierNumber11Long, SpecifierNumber12Long } from \"@modules/platform/logging\"\nexport const a = 1\n", output: "import {\n    SpecifierNumber1Long,\n    SpecifierNumber2Long,\n    SpecifierNumber3Long,\n    SpecifierNumber4Long,\n    SpecifierNumber5Long,\n    SpecifierNumber6Long,\n    type SpecifierNumber7Long,\n    type SpecifierNumber8Long,\n    type SpecifierNumber9Long,\n    type SpecifierNumber10Long,\n    type SpecifierNumber11Long,\n    type SpecifierNumber12Long,\n} from \"@modules/platform/logging\"\nexport const a = 1\n", errors: [{ messageId: "duplicate" }] }] }))
 })
+
+test("S1135: a leftover TODO marker is refused in any comment; the word as a noun of prose or a name is not a marker", () => {
+  assert.doesNotThrow(() => tester.run("todo-tag", rule("todo-tag"), {
+    valid: [
+      "/** The kinds of line a todo can be, each a key of the `guide.todo` catalog. */\nexport type GuideTodoKey = 'open' | 'done'",
+      "// the todo list of the guide\nexport const a = 1",
+      "// Todo lines are drawn by the guide\nexport const a = 1",
+      "/** A todo (an open line of the guide) is kept in `guide.todo`. */\nexport const a = 1",
+      "// TODO_KEY and todoCount name the catalog\nexport const a = 1",
+      "// TODO PROJ-12 tracked in the issue board\nexport const a = 1",
+      "// eslint-disable-next-line no-console\nexport const a = 1",
+      { filename: "src/a.spec.ts", code: "// TODO: later\nexport const a = 1" },
+      "export const todo = 'TODO'",
+    ],
+    invalid: [
+      { code: "// TODO\nexport const a = 1", errors: [{ messageId: "todo", line: 1, column: 4 }] },
+      { code: "// TODO: handle the empty list\nexport const a = 1", errors: [{ messageId: "todo" }] },
+      { code: "// TODO(cuong) handle the empty list\nexport const a = 1", errors: [{ messageId: "todo" }] },
+      { code: "// todo: handle the empty list\nexport const a = 1", errors: [{ messageId: "todo" }] },
+      { code: "/**\n * Draws the list.\n * TODO handle the empty list\n */\nexport const a = 1", errors: [{ messageId: "todo", line: 3, column: 4 }] },
+      { code: "const a = 1 /* fix this. TODO: later */", errors: [{ messageId: "todo" }] },
+    ],
+  }))
+})

@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.21.3 - 2026-11-11
+
+- Fixed (R235): `starci-be/todo-tag` (S1135) replaces `sonarjs/todo-tag` in the Sonar way block, the one rule both canons publish from the shared runtime copy (`scripts/lib/sonar-syntax-rules.mjs`): it refuses a leftover marker (`TODO`, `TODO:`, `TODO(name)`, `todo:`) and not the noun in prose or a name such as `guide.todo`.
+
 ## 3.21.2 - 2026-11-09
 
 - Changed: peer `@starci/hfs ~6.7.0` (hfs 6.7.0: the per-screen gallery and its explain.md gates, R395); no lint rule of this package changed.

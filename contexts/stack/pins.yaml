@@ -20,8 +20,8 @@ pins:
   '@starci/mail': {version: 0.2.0, group: starci, side: be, install: registry, why: "outgoing mail of a back end: the Mailer port over SMTP with timeouts, required STARTTLS, attachments, a shared SMTP target policy, coded errors, typed render helpers; the only importer of nodemailer"}
   '@starci/grammar': {version: 0.37.2, range: '~0.37.2', group: starci, side: fe, install: registry, why: "the grammar package an app composes (grammars core and offset-pop)"}
   '@starci/next-i18n': {version: 0.1.0, group: starci, side: fe, install: registry, why: "the next-intl stack of a front end: defineI18n, the locale proxy, the navigation, the request config and the locale read of the [locale] layout; the app keeps its catalogs"}
-  '@starci/eslint-canon-be': {version: 3.21.2, range: '~3.21.2', group: starci, side: be, install: registry, why: "the back-end ESLint canon"}
-  '@starci/eslint-canon-fe': {version: 9.16.13, range: '~9.16.13', group: starci, side: fe, install: registry, why: "the universal front-end ESLint canon"}
+  '@starci/eslint-canon-be': {version: 3.21.3, range: '~3.21.3', group: starci, side: be, install: registry, why: "the back-end ESLint canon"}
+  '@starci/eslint-canon-fe': {version: 9.16.14, range: '~9.16.14', group: starci, side: fe, install: registry, why: "the universal front-end ESLint canon"}
   '@starci/eslint-grammar-core': {version: 0.37.2, range: '~0.37.2', group: starci, side: fe, install: registry, why: "the core grammar's lint factory, holding the grammar API checks every grammar inherits; versioned with the grammar"}
   '@starci/eslint-grammar-offset-pop': {version: 0.37.2, range: '~0.37.2', group: starci, side: fe, install: registry, why: "the offset-pop grammar's lint factory; versioned with the grammar"}
   '@starci/stylelint-canon': {version: 2.8.0, group: starci, side: fe, install: registry, why: "the front-end stylelint canon"}
