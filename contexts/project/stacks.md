@@ -219,7 +219,9 @@ acceptance gate. They are run by the owner or a `deliver` worker; deploying need
 --env <env>`, driven by the environment's `local` block of `application-stacks.yaml` (R372: ports, compose services, the environment's own database
 role, dev-only custody to generate, setup and seed commands, native processes, readiness and verification probes). `prepare`, `up` and `down` are dry
 runs until `--execute`; `doctor`, `status`, `logs` and `verify` are read-only. **`up` is the one command**: it checks the host table, opens the dev
-custody, runs the setup (install, codegen), starts the compose services under the heavy-command governor (a lite app's dev compose runs its database and Mailpit, the `mail` sink the sign-in mails reach on loopback, its web UI an origin) and waits for their health, gives the
+custody, runs the setup (install, codegen), starts the compose services under the heavy-command governor (a lite app's dev compose runs its database, Mailpit, the `mail` sink the sign-in mails reach on loopback, its web UI an origin, and
+MinIO, the `storage` object store whose root credentials are the dev `storage` member's keys and whose console is an origin; a full app's runs
+`storage` too) and waits for their health, gives the
 environment its own database role and the app role its own password, migrates with a receipt, applies the seed levels with their receipts (PROJECT-STACKS-12), runs the declared seed commands once, starts the native
 processes, waits for readiness and prints the origins. An agent never runs Docker by hand ([harness/rules.md](../harness/rules.md) hard rule 8);
 the runbook of a docker-compose environment names `starci app stack up --env <env>` and carries no docker command (R373). `down` ends the processes
@@ -362,24 +364,35 @@ Rules learned from running apps on developer hosts; each holds in every app.
   and an agent runs no Docker or package manager by hand (hard rule 8), so the doctor prints the commands and `up` refuses a machine that fails
   the table before any effect. On a fresh clone `up --execute` then needs nothing but the identity: the owner obtains the age identity of the
   environment into the harness secret.env, or, when the app has no dev values yet, arms `secret init --env dev --execute` once.
-- **One base port per app.** The host ports of every app's dev environment derive from one project base port,
-  `environments.<env>.local.basePort`, so two apps on one machine never collide (R389). The app owns `basePort` to `basePort + 99`;
-  the native processes (a process with a `port`) take their ports from the role table, and the role of a process is its name:
+- **One base port per app: every dev host port, native or compose, derives from it.** The host ports of every app's dev environment derive
+  from one project base port, `environments.<env>.local.basePort`, so two apps run side by side on one machine (R389). The app owns `basePort`
+  to `basePort + 99`: the native processes (a process with a `port`; its role is its name) below base + 80, the compose services (a port of
+  `local.ports` no native process holds; its role is the port's name) from base + 80, by the role table:
 
-  | role | process names | port |
+  | role | process or port names | port |
   |---|---|---|
   | primary front end (the first process of the role) | `web`, `app`, `console`, `fe`, `frontend` | base |
   | api (the first) | `api`, `core`, `be`, `backend` | base + 1 |
   | AI gateway (the first; the api port + 1 of the ai-router convention) | `gateway`, `ai-gateway`, `ai-router` | base + 2 |
-  | every other native process (mcp, landing, a further next app, a worker with a port) | any other name, and a second process of a role above | base + 3 to base + 99; base + 2 to base + 99 when no gateway runs |
+  | every other native process (mcp, landing, a further next app, a worker with a port) | any other name, and a second process of a role above | base + 3 to base + 79; base + 2 to base + 79 when no gateway runs |
+  | database (compose) | the port `local.database` names | base + 90 |
+  | mail sink SMTP, mail sink web UI (compose) | `mail`, `mailui` | base + 91, base + 92 |
+  | object store S3 API, object store console (compose) | `storage`, `storage-console` | base + 93, base + 94 |
+  | every other compose service (a cache, a vector store, an identity server, an ingress) | any other port name | a free port of base + 80 to base + 99 |
 
-  A role no process plays leaves its slot empty, and base and base + 1 stay reserved for the front end and the api either way; base + 2 is
-  reserved for the gateway only while a gateway runs, so an app without one (front end, api, landing) puts its landing at base + 2.
-  The range 3900 to 3999 is reserved for the shared UI-lane `next dev` preview, which runs outside any app's stack: no app's `basePort` range may overlap it.
+  A role no process or service plays leaves its slot empty, and base and base + 1 stay reserved for the front end and the api either way; base + 2
+  is reserved for the gateway only while a gateway runs, so an app without one (front end, api, landing) puts its landing at base + 2.
+  The range 3900 to 3999 is reserved for the shared UI-lane `next dev` preview, which runs outside any app's stack: no app's `basePort` range may overlap it,
+  and port 9000 belongs to the host's shared analysis server, which no app's dev environment takes.
   The screenshot gallery ([gallery.md](gallery.md) PROJECT-GALLERY-1) is a native process on base + 50, started by `stack up` next to the others.
-  Compose service ports (the database, Redis, the object store) are exempt: they are published by containers, not derived. A departure is
-  `STACKS_BASE_PORT_ROLE` (an error); an app with native processes on ports and no `basePort` gets `STACKS_BASE_PORT_UNDECLARED`, a warning
-  that asks it to declare one. `starci app stack doctor --env <env>` prints the `base port` row (the role table) and a `port range` row that fails
+  A compose file of an environment with a base publishes every host port from `local.ports`, `127.0.0.1:${STACK_PORT_<NAME>}:<container port>`,
+  never a literal port, which the base cannot move. A native process off the table is `STACKS_BASE_PORT_ROLE`, a compose port of a role off
+  its slot `STACKS_COMPOSE_PORT_ROLE`, a literal host port in a compose file `STACKS_COMPOSE_PORT_LITERAL` (errors); the slot of another compose
+  service is not judged yet. An app with native processes on ports and no `basePort` gets `STACKS_BASE_PORT_UNDECLARED`, a warning
+  that asks it to declare one. `starci app sync --execute` brings an existing app to the table: it moves the database, `mail` and `mailui` ports
+  of each environment with a base to their slots (a slot another port holds stays, named) and gives an environment that runs no object store
+  the `storage` service with its ports, its grant of the `storage` member's keys, its readiness probe and its console origin, pointing the api's
+  `STORAGE_ENDPOINT` at it (`sync/dev-services.mts` of `@starci/hfs`). `starci app stack doctor --env <env>` prints the `base port` row (the role table) and a `port range` row that fails
   when another app registered on this machine (the machine registry's projects, the same environment name) declares an overlapping
   `basePort` to `basePort + 99`, or the reserved range (a `port range reserved` row). The scaffold gives a new app a base of its own. The authority is `scripts/hfs/stack-base-port.mjs` of `@starci/hfs`.
 - **A green check judges the running stack too.** `starci app check --env local` (the default, the fix-loop run; `--env prod` never asks, since CI has no dev stack) reads

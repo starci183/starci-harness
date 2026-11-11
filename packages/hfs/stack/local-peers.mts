@@ -54,8 +54,8 @@ export function basePortRows(local: LocalConfig, peers: readonly PeerBase[]): Pr
   if (base === null) return [{ id: 'base port', ok: true, detail: 'not declared: declare environments.<env>.local.basePort so the ports follow the role table (R389)', fix: null }];
   const problems = basePortProblems(local);
   const rows: Prerequisite[] = [problems.length === 0
-    ? { id: 'base port', ok: true, detail: `${base} (${base}..${base + BASE_PORT_SPAN - 1}): the native process ports follow the role table`, fix: null }
-    : { id: 'base port', ok: false, detail: problems.map((problem) => `${problem.at} ${problem.message}`).join('; '), fix: 'set the ports of environments.<env>.local.ports to the role table of PROJECT-STACKS-10 (front end base, api base+1, AI gateway base+2, the rest above)' }];
+    ? { id: 'base port', ok: true, detail: `${base} (${base}..${base + BASE_PORT_SPAN - 1}): the native process and compose ports follow the role table`, fix: null }
+    : { id: 'base port', ok: false, detail: problems.map((problem) => `${problem.at} ${problem.message}`).join('; '), fix: 'set the ports of environments.<env>.local.ports to the role table of PROJECT-STACKS-10 (front end base, api base+1, AI gateway base+2, further processes up to base+79, the compose services from base+80), or run starci app sync --execute' }];
   const clashes = peers.filter((peer) => rangesOverlap(base, peer.basePort));
   if (overlapsReserved(base)) rows.push({ id: 'port range reserved', ok: false, detail: `${base}..${base + BASE_PORT_SPAN - 1} overlaps ${RESERVED_PORTS.from}..${RESERVED_PORTS.to}, reserved for the shared UI-lane next dev preview`, fix: `change local.basePort so the range stays clear of ${RESERVED_PORTS.from}..${RESERVED_PORTS.to}` });
   rows.push(clashes.length === 0

@@ -148,7 +148,7 @@ test('doctor refuses an old Node, a held port (naming the holder), low disk and 
 test('doctor reports the base port: the role table of the native ports and an overlapping range of another app on the machine (R389)', async (t) => {
   const root = app(t);
   const manifest = path.join(root, '.starcistacks', 'application-stacks.yaml');
-  fs.writeFileSync(manifest, fs.readFileSync(manifest, 'utf8').replace('    local:\n', '    local:\n      basePort: 3000\n'));
+  fs.writeFileSync(manifest, fs.readFileSync(manifest, 'utf8').replace('    local:\n', '    local:\n      basePort: 3000\n').replace('db: 54322', 'db: 3090'));
   const clear = host(root);
   assert.equal(await run(root, ['doctor', '--env', 'dev'], clear, { peers: () => [{ project: 'nivo', repoRoot: 'D:/apps/nivo', basePort: 3100 }] }), 0);
   assert.match(clear.out.join(''), /ok {4}base port: 3000 \(3000\.\.3099\)/u);

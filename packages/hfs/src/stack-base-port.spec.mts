@@ -7,7 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { withMachine } from '../runtime/engine/db/machine.mjs';
 import { stacksLocalFindings } from '../runtime/scripts/hfs/rules/stacks-local.mjs';
-import { basePortProblems, BASE_PORT_SPAN, overlapsReserved, rangesOverlap, roleOf } from '../runtime/scripts/hfs/stack-base-port.mjs';
+import { basePortProblems, BASE_PORT_SPAN, COMPOSE_BAND, COMPOSE_ROLES, composePort, composePorts, literalPublishes, overlapsReserved, rangesOverlap, roleOf } from '../runtime/scripts/hfs/stack-base-port.mjs';
 import { normalizeLocal } from '../runtime/scripts/hfs/stack-local-config.mjs';
 import type { LocalConfig } from '../stack/local-config.mjs';
 import { basePortRows, machinePeers } from '../stack/local-peers.mjs';
@@ -15,7 +15,7 @@ import type { PeerBase } from '../stack/local-peers.mjs';
 import { scaffoldBasePort } from '../scaffold/app.mjs';
 
 /** A local block whose native processes are `processes` (name -> port) and whose compose-only ports are `containers`. */
-function block(processes: Record<string, number>, { basePort, containers = { db: 54322 } }: { basePort?: number; containers?: Record<string, number> } = {}) {
+function block(processes: Record<string, number>, { basePort, containers = { cache: 56379 } }: { basePort?: number; containers?: Record<string, number> } = {}) {
   const raw = {
     ...(basePort === undefined ? {} : { basePort }),
     ports: { ...containers, ...processes },
@@ -55,15 +55,17 @@ test('the gateway slot is base+2 only when a gateway exists: with one, a further
   const text = basePortProblems(clash.config!).map((item) => `${item.at} ${item.message}`);
   assert.equal(text.length, 2, text.join('\n'));
   assert.match(text[0] ?? '', /processes\.gateway is the AI gateway: basePort \+ 2 = 3102, not 3103/u);
-  assert.match(text[1] ?? '', /processes\.mcp is a further native process: its port must be from 3103 to 3199/u);
+  assert.match(text[1] ?? '', /processes\.mcp is a further native process: its port must be from 3103 to 3179/u);
 });
 
-test('base and base+1 stay reserved for the front end and the api even when neither runs; the span is base..base+99', () => {
-  assert.match(problems({ mcp: 3101 }, 3100).join('|'), /processes\.mcp is a further native process: its port must be from 3102 to 3199/u);
+test('base and base+1 stay reserved for the front end and the api even when neither runs; native processes stay below the compose band', () => {
+  assert.match(problems({ mcp: 3101 }, 3100).join('|'), /processes\.mcp is a further native process: its port must be from 3102 to 3179/u);
   assert.deepEqual(problems({ mcp: 3102 }, 3100), []);
-  assert.deepEqual(problems({ web: 3100, worker: 3199 }, 3100), []);
+  assert.deepEqual(problems({ web: 3100, worker: 3179 }, 3100), []);
+  assert.match(problems({ web: 3100, worker: 3180 }, 3100).join('|'), /processes\.worker is a further native process: its port must be from 3102 to 3179 \(basePort \+ 2 to basePort \+ 79\), not 3180/u);
   assert.match(problems({ web: 3100, worker: 3200 }, 3100).join('|'), /processes\.worker .* not 3200/u);
   assert.equal(BASE_PORT_SPAN, 100);
+  assert.equal(COMPOSE_BAND, 80);
 });
 
 test('a front end, api or gateway off its slot is a violation that names the port it must have', () => {
@@ -79,10 +81,50 @@ test('only the first process of a role takes its slot: a second front end is a f
   assert.match(problems({ web: 3100, console: 3101 }, 3100).join('|'), /processes\.console is a further native process: its port must be from 3102/u);
 });
 
-test('compose service ports and processes without a port are exempt, and an app with no base is not judged', () => {
+test('compose ports with a role sit on their slot: db base+90, mail base+91, mailui base+92, storage base+93, storage-console base+94', () => {
+  const onSlots = block({ web: 3100, api: 3101 }, { basePort: 3100, containers: { db: 3190, mail: 3191, mailui: 3192, storage: 3193, 'storage-console': 3194 } });
+  assert.deepEqual(onSlots.problems, []);
+  assert.deepEqual(basePortProblems(onSlots.config!), []);
+  assert.deepEqual(composePorts(onSlots.config!).map((entry) => [entry.name, entry.role]), [['db', 'db'], ['mail', 'mail'], ['mailui', 'mailui'], ['storage', 'storage'], ['storage-console', 'storage-console']]);
+  const fixed = block({ web: 3100 }, { basePort: 3100, containers: { db: 54322, mail: 1025, mailui: 8025, storage: 59000, 'storage-console': 59001 } });
+  const text = basePortProblems(fixed.config!);
+  assert.deepEqual(text.map((problem) => problem.code), Array(5).fill('STACKS_COMPOSE_PORT_ROLE'));
+  assert.deepEqual(text.map((problem) => `${problem.at} ${problem.message}`), [
+    'ports.db is the db compose port: basePort + 90 = 3190, not 54322',
+    'ports.mail is the mail compose port: basePort + 91 = 3191, not 1025',
+    'ports.mailui is the mailui compose port: basePort + 92 = 3192, not 8025',
+    'ports.storage is the storage compose port: basePort + 93 = 3193, not 59000',
+    'ports.storage-console is the storage-console compose port: basePort + 94 = 3194, not 59001',
+  ]);
+  assert.deepEqual(Object.fromEntries(Object.keys(COMPOSE_ROLES).map((role) => [role, composePort(3000, role as keyof typeof COMPOSE_ROLES)])), { db: 3090, mail: 3091, mailui: 3092, storage: 3093, 'storage-console': 3094 });
+});
+
+test('the database role is the port local.database names, whatever its name; a port a native process holds plays no compose role', () => {
+  const named = normalizeLocal({ basePort: 3100, ports: { pg: 54332, web: 3100 }, services: [{ name: 'db', wait: 'healthy' }], database: { service: 'db', port: 'pg', urlEnv: 'PRIMARY_DB_URL', password: { member: 'db', key: 'OWNER' }, adminPassword: { member: 'db', key: 'ADMIN' } }, processes: [{ name: 'web', argv: ['node', 'w.js'], port: 'web' }] }, { project: 'demo', env: 'dev' });
+  assert.deepEqual(named.problems, []);
+  assert.deepEqual(basePortProblems(named.config!).map((problem) => problem.at), ['ports.pg']);
+  const native = normalizeLocal({ basePort: 3100, ports: { storage: 3110 }, services: [{ name: 'db', wait: 'healthy' }], processes: [{ name: 'storage', argv: ['node', 's.js'], port: 'storage' }] }, { project: 'demo', env: 'dev' });
+  assert.deepEqual(basePortProblems(native.config!), [], 'a native process named storage is a further native process');
+});
+
+test('a compose file publishes its host ports from local.ports: a literal host port is found, a variable or a container-only port is not', () => {
+  assert.deepEqual(literalPublishes({
+    db: { ports: ['127.0.0.1:${STACK_PORT_DB}:5432'] },
+    ingress: { ports: ['127.0.0.1:3080:3080', '8443'] },
+    legacy: { ports: ['3001:3001', { target: 9000, published: 9000 }, '[::1]:7000:7000/tcp'] },
+  }), [
+    { service: 'ingress', entry: '127.0.0.1:3080:3080' },
+    { service: 'legacy', entry: '3001:3001' },
+    { service: 'legacy', entry: 'published: 9000' },
+    { service: 'legacy', entry: '[::1]:7000:7000/tcp' },
+  ]);
+});
+
+test('other compose ports and processes without a port are exempt, and an app with no base is not judged', () => {
   assert.deepEqual(problems({ web: 3100, api: 3101 }, 3100), []);
-  const withContainers = block({ web: 3100 }, { basePort: 3100, containers: { db: 54322, redis: 56379, minio: 59000 } });
+  const withContainers = block({ web: 3100 }, { basePort: 3100, containers: { redis: 56379, minio: 59000 } });
   assert.deepEqual(basePortProblems(withContainers.config!), []);
+  assert.deepEqual(basePortProblems(block({ web: 3100 }, { containers: { db: 54322, mail: 1025 } }).config!), []);
   assert.deepEqual(basePortProblems(block({ web: 9999 }).config!), []);
   const portless = normalizeLocal({ basePort: 3100, ports: { web: 3100 }, services: [{ name: 'db', wait: 'started' }], processes: [{ name: 'web', argv: ['node', 'w.js'] }, { name: 'worker', argv: ['node', 'x.js'] }] }, { project: 'demo', env: 'dev' });
   assert.deepEqual(basePortProblems(portless.config!), []);
@@ -109,13 +151,30 @@ function app(t: { after: (fn: () => void) => void }, local: string, project = 'd
   return root;
 }
 const findings = (root: string) => stacksLocalFindings({ repoRoot: root, repo: { kind: 'app', edition: 'lite' } as never, isRoot: true });
-const processesBlock = (ports: string, processes: string[], base = ''): string => `${base}      ports: {db: 54322, ${ports}}\n      services: [{name: db, wait: healthy}]\n      processes:\n${processes.map((name) => `        - {name: ${name}, argv: [node, ${name}.js], port: ${name}}\n`).join('')}`;
+const processesBlock = (ports: string, processes: string[], base = ''): string => `${base}      ports: {cache: 56379, ${ports}}\n      services: [{name: db, wait: healthy}]\n      processes:\n${processes.map((name) => `        - {name: ${name}, argv: [node, ${name}.js], port: ${name}}\n`).join('')}`;
 
 test('R389 a layout that follows the role table raises nothing; one off it is STACKS_BASE_PORT_ROLE, an error naming the port', (t) => {
   assert.deepEqual(findings(app(t, processesBlock('web: 3100, api: 3101, gateway: 3102, mcp: 3103, landing: 3104', ['web', 'api', 'gateway', 'mcp', 'landing'], '      basePort: 3100\n'))), []);
   const off = findings(app(t, processesBlock('web: 3100, api: 3102', ['web', 'api'], '      basePort: 3100\n')));
   assert.deepEqual(off.map((finding) => [finding.code, finding.level]), [['STACKS_BASE_PORT_ROLE', 'error']]);
   assert.match(off[0]?.message ?? '', /environments\.dev\.local\.processes\.api: is the api: basePort \+ 1 = 3101, not 3102 \(basePort 3100/u);
+});
+
+test('R389 pass and fail fixtures of the compose ports: on their slots and published from local.ports raises nothing; off a slot is STACKS_COMPOSE_PORT_ROLE, a literal publish STACKS_COMPOSE_PORT_LITERAL', (t) => {
+  const compose = (root: string, text: string): void => fs.writeFileSync(path.join(root, '.starcistacks', 'dev', 'infra', 'compose', 'compose.yaml'), text);
+  const lawful = app(t, '      basePort: 3100\n      ports: {web: 3100, mail: 3191, mailui: 3192, storage: 3193, storage-console: 3194}\n      services: [{name: db, wait: healthy}]\n      processes:\n        - {name: web, argv: [node, web.js], port: web}\n');
+  compose(lawful, 'services:\n  db:\n    image: postgres\n  storage:\n    image: minio\n    ports:\n      - "127.0.0.1:${STACK_PORT_STORAGE}:9000"\n');
+  assert.deepEqual(findings(lawful), []);
+  const fixed = app(t, '      basePort: 3100\n      ports: {web: 3100, mail: 1025, mailui: 8025}\n      services: [{name: db, wait: healthy}]\n      processes:\n        - {name: web, argv: [node, web.js], port: web}\n');
+  compose(fixed, 'services:\n  db:\n    image: postgres\n  edge:\n    image: caddy\n    ports:\n      - "127.0.0.1:3080:3080"\n');
+  const found = findings(fixed);
+  assert.deepEqual(found.map((finding) => [finding.code, finding.level]), [['STACKS_COMPOSE_PORT_ROLE', 'error'], ['STACKS_COMPOSE_PORT_ROLE', 'error'], ['STACKS_COMPOSE_PORT_LITERAL', 'error']]);
+  assert.match(found[0]?.message ?? '', /environments\.dev\.local\.ports\.mail: is the mail compose port: basePort \+ 91 = 3191, not 1025 \(basePort 3100/u);
+  assert.match(found[2]?.message ?? '', /services\.edge\.ports publishes "127\.0\.0\.1:3080:3080", a literal host port the base port cannot move/u);
+  assert.equal(found[2]?.path, '.starcistacks/dev/infra/compose/compose.yaml');
+  const unbased = app(t, '      ports: {mail: 1025}\n      services: [{name: db, wait: healthy}]\n');
+  compose(unbased, 'services:\n  db:\n    image: postgres\n    ports:\n      - "127.0.0.1:5432:5432"\n');
+  assert.deepEqual(findings(unbased), [], 'no base declared: nothing to derive from');
 });
 
 test('R389 an app with native processes on ports and no basePort gets STACKS_BASE_PORT_UNDECLARED as a warning, never an error', (t) => {
@@ -131,10 +190,10 @@ test('R389 a malformed basePort is the local-block finding STACKS_LOCAL_CONFIG_I
   assert.deepEqual(bad.map((finding) => finding.code), ['STACKS_LOCAL_CONFIG_INVALID']);
 });
 
-const BASE_APP = (base: number | null): string => `${base === null ? '' : `      basePort: ${base}\n`}      ports: {db: 54322, web: ${base ?? 3000}}\n      services: [{name: db, wait: healthy}]\n      processes:\n        - {name: web, argv: [node, web.js], port: web}\n`;
+const BASE_APP = (base: number | null): string => `${base === null ? '' : `      basePort: ${base}\n`}      ports: {cache: 56379, web: ${base ?? 3000}}\n      services: [{name: db, wait: healthy}]\n      processes:\n        - {name: web, argv: [node, web.js], port: web}\n`;
 
 function localOf(root: string, basePort: number | null, ports: Record<string, number> = { web: basePort ?? 3000 }): LocalConfig {
-  const { config } = normalizeLocal({ ...(basePort === null ? {} : { basePort }), ports: { db: 54322, ...ports }, services: [{ name: 'db', wait: 'healthy' }], processes: Object.keys(ports).map((name) => ({ name, argv: ['node', 'x.js'], port: name })) }, { project: 'demo', env: 'dev' });
+  const { config } = normalizeLocal({ ...(basePort === null ? {} : { basePort }), ports: { cache: 56379, ...ports }, services: [{ name: 'db', wait: 'healthy' }], processes: Object.keys(ports).map((name) => ({ name, argv: ['node', 'x.js'], port: name })) }, { project: 'demo', env: 'dev' });
   return { ...config!, env: 'dev', appProject: 'demo', repoRoot: root, envDir: root, composeFiles: [], secretsDir: root };
 }
 

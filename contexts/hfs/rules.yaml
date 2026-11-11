@@ -2688,9 +2688,11 @@ rules:
       - {kind: hfs, id: script-one-off, status: planned}
   - id: R389
     code: STACKS_BASE_PORT_ROLE
-    law: "The native process ports of a dev environment derive from its project base port: with `local.basePort` declared, the primary front end listens on base, the api on base+1, the AI gateway on base+2 and every further native process from base+3 (from base+2 when no gateway runs) up to base+99; compose service ports are exempt. An environment with native processes on ports and no `basePort` is reported as a warning, not an error."
+    law: "The host ports of a dev environment derive from its project base port: with `local.basePort` declared, the primary front end listens on base, the api on base+1, the AI gateway on base+2 and every further native process from base+3 (from base+2 when no gateway runs) up to base+79; the compose services take base+80 to base+99, the database on base+90, the mail sink's SMTP on base+91 and web UI on base+92, the object store's S3 API on base+93 and console on base+94; and every compose file publishes its host ports from `local.ports`, never a literal port. An environment with native processes on ports and no `basePort` is reported as a warning, not an error."
     failureCodes:
       - STACKS_BASE_PORT_ROLE
+      - STACKS_COMPOSE_PORT_ROLE
+      - STACKS_COMPOSE_PORT_LITERAL
       - STACKS_BASE_PORT_UNDECLARED
     enforcers:
       - {kind: hfs, id: stacks-local}
