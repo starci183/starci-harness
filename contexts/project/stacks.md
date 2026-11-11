@@ -37,6 +37,8 @@ against:
   components it runs, its runbook and its secrets. A component absent from an environment's map does not run there.
 - `secrets`: per environment, each member's `name`, `where` (environment-relative), `recipientPolicy` and
   `keyCustody`; names only, never a value.
+- `data`: the project's data repository, `{repository: <project>-data, private: true}`, when it keeps business data in git
+  (PROJECT-STACKS-13; R400 `STACKS_DATA_REPOSITORY`).
 - `ci` and `services`: the names CI reads and the delivery services it calls (PROJECT-STACKS-7, PROJECT-STACKS-8).
 - `branches`: the branch profile of each branch that lowers a polish gate, `dev` only ([lint.md](lint.md) PROJECT-LINT-2).
 - remote application APIs the app consumes, each with its owner (PROJECT-STACKS-9).
@@ -422,7 +424,8 @@ The data an app seeds lives in two levels of `.starcistacks/`, tracked, one stru
 
 - `.starcistacks/seeds/`, the shared level, applied in every environment and first: plans, the first-party catalogue, module definitions.
 - `.starcistacks/<env>/seeds/`, applied in that environment only, after the shared level: synthetic accounts, sample workspaces and demo
-  data in the dev environment, a production's initial data in its own. `<env>` is an environment name `application-stacks.yaml` declares,
+  data in the dev environment, a production's initial configuration in its own; the business's own records never, they live in the data
+  repository (PROJECT-STACKS-13). `<env>` is an environment name `application-stacks.yaml` declares,
   exactly as declared; `seeds` and `cache` are no environment names.
 
 Each level is a manifest, `seeds.yaml` (schema `starci/seeds@1`), and the folders `sql/`, `data/` and `files/`. The manifest lists every file
@@ -478,8 +481,51 @@ Enforced by: R375 (`seeds-shape`: `HFS_SEEDS_SHAPE`, `HFS_SEED_MANIFEST`, `HFS_S
 migrations, the archive and the bootstrap); the scaffold and the codemod by `hfs-seeds-shape.spec.mts` and `seeds-layout-codemod.spec.mts`,
 the seed step by `stack-seeds.spec.mts` and `stack-local.spec.mts`.
 
+## PROJECT-STACKS-13 Business data lives only in the project's sealed data repository
+
+A project's real business data (its customers, contracts, invoices, balances: the records the business runs on, as opposed to code,
+seeds and secrets) is kept in git only in one repository of its own, the **data repository**, named exactly `<project>-data` for the
+project `hfs.json` names, and private. It holds:
+
+- `manifest.json` at its root, plaintext and holding no data: `format: "<project>-data@<major>"`, the snapshot's time and source, and
+  per data file its `path`, `entity`, `schema` id, `items` count and the `sha256` of its canonical plaintext;
+- `data/<entity>.json`, the records of one entity in a versioned interchange format (`schema: "<project>-data/<entity>@<major>"`,
+  `items` sorted and unique by natural key, no database or workspace id), each file sealed whole with sops and age: keys and structure
+  readable, every value `ENC[...]`, the sops block with its recipients and mac;
+- `schema/`, the JSON Schema of each entity, and the description of the format;
+- `.sops.yaml`, naming the recipients every data file is sealed to: the owner's identity (PROJECT-STACKS-5) and any identity that must
+  restore;
+- the repository's own tools to export, verify, seal, back up and restore, and nothing else: no binary (a document's file stays where the
+  business keeps it; the snapshot holds its index), no application code, no plaintext, no private key.
+
+**Backup is a push.** A backup exports the records to a directory outside every repository, verifies the export, seals it, commits the
+sealed files with the manifest, and pushes the data repository: the push is the backup. An unchanged entity file stays byte-identical,
+so a backup with no change commits nothing. **Restore** verifies the sealed snapshot with the identity (every file against its schema and
+the manifest's counts and sha256), decrypts it to a directory outside every repository, and hands that directory to the application's own
+import, which is idempotent by natural key. This snapshot is not the database backup of PROJECT-STACKS-6, which an environment keeps for
+its stores; seed levels (PROJECT-STACKS-12) hold reference, configuration and synthetic data, never these records.
+
+**Code and data stay apart.** A code project tracks no document of the format, in plaintext or sealed, and never depends on the data
+repository's content: no package dependency or workspace, submodule or path into it. A project that has one declares it in
+`application-stacks.yaml`: `data: {repository: <project>-data, private: true}`. `.starcistacks/<env>/secrets/` keeps holding the
+project's secrets (PROJECT-STACKS-5); the data repository holds records, never a credential.
+
+A repository is a data repository when its root carries no `hfs.json` and its root `manifest.json` names the format: the manifest the
+restore reads is the declaration, so no second file states the same fact, and a code project (`hfs.json`) is never one, whatever it tracks.
+The harness proves the sealing and the manifest's shape and counts; the sha256 and the schemas need the identity, so they are the data
+repository's own verify, and its pre-commit hook runs `starci app check --staged` beside its own.
+
+Why: the records outlive any one code base and are read by people the code never meets; in the code repository every clone, agent
+worktree, CI cache and fork would carry them, while a separate private repository sealed to named identities keeps one custody, a history of
+every snapshot, and a backup that is one push to a remote outside the host's failure domain.
+
+Enforced by: R400 (`data-repository`, owner `@starci/hfs` `runtime/scripts/hfs/rules/data-repository.mts`): in the hfs check of a code
+project `HFS_DATA_IN_CODE`, `HFS_DATA_DEPENDENCY`, `STACKS_DATA_REPOSITORY`; in the commit hook's data guard (`sync/hygiene.mts`)
+`HFS_DATA_IN_CODE` in any repository but a data repository, and in a data repository `HFS_DATA_UNSEALED` and `HFS_DATA_MANIFEST_DRIFT`.
+That the remote is private and that the data repository's hook calls the guard are held by review.
+
 ## Read with
 
 [lite.md](lite.md), [full.md](full.md); slots `app.starcistacks` and `app.plaintext-env` in
 [hfs/slots.yaml](../hfs/slots.yaml); R06, R10, R250 to R253, R266 to R268, R271, R275 to R277, R294, R296 to R299,
-R301, R372 to R375 in [hfs/rules.yaml](../hfs/rules.yaml).
+R301, R372 to R375, R400 in [hfs/rules.yaml](../hfs/rules.yaml).

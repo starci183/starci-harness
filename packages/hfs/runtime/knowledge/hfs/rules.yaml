@@ -6672,3 +6672,19 @@ rules:
       - {path: packages/hfs/src/project-sides.spec.mjs, editions: [lite, full]}
     witness:
       - {path: packages/hfs/src/project-sides.spec.mjs, editions: [lite, full]}
+  - id: R400
+    code: "HFS_DATA_IN_CODE"
+    law: "A project's business data lives in git only in its private data repository, named exactly `<project>-data`, whose root manifest.json names the data format (`format: \"<project>-data@<major>\"`, a `files` list) and which carries no hfs.json. In a code project the hfs check refuses a tracked document of the format, a data manifest or a record file (`schema: \"<project>-data/<entity>@<major>\"` with `items`) plaintext or sealed (HFS_DATA_IN_CODE), a package.json dependency or workspace, a submodule or a tsconfig/jsconfig path naming the data repository (HFS_DATA_DEPENDENCY), and an application-stacks.yaml `data` block that names another repository or is not private (STACKS_DATA_REPOSITORY). The commit hook's data guard refuses a staged document of the format in any repository but a data repository, and in a data repository a file under data/ that is no sops envelope (HFS_DATA_UNSEALED) or a manifest that does not list exactly the files of data/ with their item counts, a hex sha256 and a schema id of the format (HFS_DATA_MANIFEST_DRIFT)."
+    kinds: [check]
+    gates: [settle, land, ci]
+    failureCodes: ["HFS_DATA_IN_CODE", "HFS_DATA_DEPENDENCY", "STACKS_DATA_REPOSITORY", "HFS_DATA_UNSEALED", "HFS_DATA_MANIFEST_DRIFT"]
+    enforcers:
+      - {kind: hfs, id: data-repository, at: runtime/scripts/hfs/rules/data-repository.mjs}
+    editions: [lite, full]
+    templateNa: "A new app tracks no data and declares no data repository; the rule guards the boundary once data exists."
+    docs:
+      - {path: contexts/project/stacks.md#project-stacks-13-business-data-lives-only-in-the-projects-sealed-data-repository, editions: [lite, full]}
+    proves:
+      - {path: packages/hfs/src/data-repository.spec.mjs, editions: [lite, full]}
+    witness:
+      - {path: packages/hfs/src/data-repository.spec.mjs, editions: [lite, full]}

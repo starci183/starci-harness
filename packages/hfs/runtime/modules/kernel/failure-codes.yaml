@@ -6291,3 +6291,48 @@ STACKS_COMPONENT_SIDE:
   nextStep_vi: "Xoá thành phần, image hoặc tiến trình đó khỏi application-stacks.yaml, hoặc khai báo phía chứa app trong hfs.json."
   owner: op-retry
   kind: check-finding
+HFS_DATA_IN_CODE:
+  title: "A code project tracks a document of the data format"
+  title_vi: "Dự án mã nguồn đang chứa tệp dữ liệu nghiệp vụ"
+  meaning_vi: "Kho mã nguồn theo dõi một manifest dữ liệu (format \"<tên>-data@<major>\") hoặc một tệp bản ghi (schema \"<tên>-data/<thực thể>@<major>\" cùng danh sách items, dạng rõ hoặc đã niêm phong). Dữ liệu nghiệp vụ thật chỉ nằm trong kho riêng tư <tên dự án>-data, niêm phong bằng sops."
+  causes_vi:
+    - "Vi phạm R400: một bản xuất dữ liệu được commit vào kho mã nguồn (làm fixture, seed hoặc bản sao lưu) (PROJECT-STACKS-13)."
+  nextStep_vi: "Chuyển tệp sang kho <tên dự án>-data qua công cụ backup của kho đó (xuất, niêm phong, commit, push), rồi xoá nó khỏi dự án mã nguồn; fixture của test dùng dữ liệu tổng hợp."
+  owner: op-retry
+  kind: check-finding
+HFS_DATA_DEPENDENCY:
+  title: "A code project depends on its data repository"
+  title_vi: "Dự án mã nguồn phụ thuộc vào kho dữ liệu của nó"
+  meaning_vi: "package.json (dependencies, workspaces), .gitmodules hoặc tsconfig/jsconfig của dự án nêu tên kho <tên dự án>-data; mã nguồn không được phụ thuộc vào nội dung kho dữ liệu."
+  causes_vi:
+    - "Vi phạm R400: kho dữ liệu được thêm làm package, submodule, workspace hoặc đường dẫn import (PROJECT-STACKS-13)."
+  nextStep_vi: "Xoá tham chiếu đó; dữ liệu vào ứng dụng qua lệnh import của chính ứng dụng, đọc một bản snapshot đã khôi phục ra thư mục ngoài kho."
+  owner: op-retry
+  kind: check-finding
+STACKS_DATA_REPOSITORY:
+  title: "The stack declaration names the data repository wrongly"
+  title_vi: "Khai báo stack nêu sai kho dữ liệu"
+  meaning_vi: "Khối data của .starcistacks/application-stacks.yaml phải nêu đúng repository: <tên dự án>-data (tên project trong hfs.json cộng -data) và private: true."
+  causes_vi:
+    - "Vi phạm R400: tên kho dữ liệu khác <tên dự án>-data, hoặc kho không được khai là riêng tư (PROJECT-STACKS-13)."
+  nextStep_vi: "Sửa khối data thành {repository: <tên dự án>-data, private: true}."
+  owner: op-retry
+  kind: check-finding
+HFS_DATA_UNSEALED:
+  title: "A file under data/ of a data repository is not sealed"
+  title_vi: "Tệp trong data/ của kho dữ liệu chưa được niêm phong"
+  meaning_vi: "Mọi tệp trong data/ của kho dữ liệu là một phong bì sops (khối sops có mac, mọi giá trị là ENC[...]); tệp này là tệp nhị phân, không phải JSON, thiếu khối sops hoặc còn giá trị rõ."
+  causes_vi:
+    - "Vi phạm R400: bản xuất chưa niêm phong được stage, hoặc một tệp nhị phân (PDF, ảnh) được đặt vào data/ (PROJECT-STACKS-13)."
+  nextStep_vi: "Bỏ stage tệp, niêm phong bằng công cụ backup của kho (sops với recipients trong .sops.yaml) rồi commit lại; tệp nhị phân không thuộc kho dữ liệu."
+  owner: op-retry
+  kind: check-finding
+HFS_DATA_MANIFEST_DRIFT:
+  title: "The data manifest and data/ disagree"
+  title_vi: "manifest.json của kho dữ liệu lệch với thư mục data/"
+  meaning_vi: "manifest.json phải liệt kê đúng các tệp trong data/, mỗi mục có số items bằng số bản ghi của tệp đã niêm phong, sha256 dạng hex 64 ký tự và schema thuộc format của kho."
+  causes_vi:
+    - "Vi phạm R400: một tệp được thêm hoặc xoá mà manifest không đổi theo, hoặc manifest được sửa tay (PROJECT-STACKS-13)."
+  nextStep_vi: "Chạy lại công cụ backup của kho để ghi manifest và tệp niêm phong cùng lúc, rồi chạy verify của kho (cần identity) để khớp sha256."
+  owner: op-retry
+  kind: check-finding

@@ -30,8 +30,8 @@
 //                                            Sonar Generic Issue Import document (engine ids starci-hfs, eslint, stylelint). --fix runs ESLint and stylelint with --fix before the
 //                                            check and is refused unless --gate lint is selected.
 //                                            --staged: the pre-commit guard alone (sync/hygiene.mts: staged .starciwork and .starcistacks paths, the secrets
-//                                            guard and the bypass guard over every staged file read from the index, a new back-end logic file staged
-//                                            without its unit spec); it takes no other flag.
+//                                            guard, the bypass guard and the data guard (R400) over every staged file read from the index, a new back-end
+//                                            logic file staged without its unit spec); it takes no other flag.
 //                                            Every run is under the branch profile of the branch it judges (runtime/scripts/hfs/branch-profile.mts, `branches` of
 //                                            .starcistacks/application-stacks.yaml; contexts/project/lint.md PROJECT-LINT-2): a gate the profile reports runs and records,
 //                                            its findings marked `report` and outside the verdict; an off gate does not run; each prints one notice. Where lint

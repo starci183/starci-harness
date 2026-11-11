@@ -2761,3 +2761,14 @@ rules:
       - STACKS_COMPONENT_SIDE
     enforcers:
       - {kind: hfs, id: project-sides}
+  - id: R400
+    code: HFS_DATA_IN_CODE
+    law: "A project's business data lives in git only in its private data repository `<project>-data`, every file under its data/ sealed with sops and listed by its manifest; a code project tracks no document of the data format and never depends on the data repository."
+    failureCodes:
+      - HFS_DATA_IN_CODE
+      - HFS_DATA_DEPENDENCY
+      - STACKS_DATA_REPOSITORY
+      - HFS_DATA_UNSEALED
+      - HFS_DATA_MANIFEST_DRIFT
+    enforcers:
+      - {kind: hfs, id: data-repository}
