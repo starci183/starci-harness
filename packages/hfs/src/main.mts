@@ -165,7 +165,9 @@ import type { GhSpawn } from '../ci/github.mjs';
 import type { Prompt } from '../runtime/scripts/hfs/secret-prompt.mjs';
 import type { AgeHost, SecretToolOverrides } from '../runtime/scripts/hfs/secret-init.mjs';
 import type { SecretSops } from '../runtime/scripts/hfs/secret-sops.mjs';
-import type { Prettier } from '../sync/format.mjs';
+import { formatFiles, loadPrettier, type Prettier } from '../sync/format.mjs';
+import { lsFiles } from '../runtime/scripts/api/git/ls-files.mjs';
+import { createHash } from 'node:crypto';
 import type { LinterRunner } from '../lint/run.mjs';
 import type { Presets } from '../sync/index.mjs';
 
@@ -903,13 +905,37 @@ function addFileNoun(noun: string, opts: Opts, repoRoot: string, out: (text: str
   return 0;
 }
 
-function addMain(opts: Opts, { cwd: repoRoot, stdout: out }: AppIo): number {
+/** The files of the work tree git shows as changed or new, each with its content digest: what an add touched is the difference of two. */
+function workTreeState(repoRoot: string): Map<string, string> {
+  const listed = lsFiles(['-z', '--modified', '--others', '--exclude-standard'], { dir: repoRoot, maxBuffer: 256 * 1024 * 1024 });
+  const state = new Map<string, string>();
+  if (listed.status !== 0) return state;
+  for (const file of String(listed.stdout).split('\0').filter(Boolean)) {
+    try { state.set(file, createHash('sha256').update(fs.readFileSync(path.join(repoRoot, file))).digest('hex')); } catch { state.set(file, 'absent'); }
+  }
+  return state;
+}
+
+/**
+ * Writes the files an add touched (created, and existing ones it rewrote such as a compose group) as the app's own prettier prints them, so the
+ * generated code passes HFS_FORMAT whatever the lengths of the names it filled in. An app with no prettier installed yet keeps them as written.
+ */
+async function formatTouched(repoRoot: string, before: Map<string, string>, prettier: Prettier | undefined): Promise<void> {
+  let formatter = prettier;
+  try { formatter ??= loadPrettier(repoRoot); } catch { return; }
+  const touched = [...workTreeState(repoRoot)].filter(([file, digest]) => before.get(file) !== digest).map(([file]) => file);
+  await formatFiles({ repoRoot, files: touched, prettier: formatter });
+}
+
+async function addMain(opts: Opts, { cwd: repoRoot, stdout: out, prettier }: AppIo): Promise<number> {
   const [noun, name, ...extra] = opts.positional;
   if (noun !== undefined) requireSides(repoRoot, addNounSides(noun, { fe: booleanFlag(opts, 'fe') === true, kind: valueFlag(opts, 'kind') }), `starci app add ${noun}`);
   if (noun !== undefined && ADD_FILE_NOUNS.includes(noun)) return addFileNoun(noun, opts, repoRoot, out);
   if (opts.inject !== undefined) throw new UsageError(`starci app add ${noun ?? '<noun>'} takes no --inject; only add service does`);
   if (!noun || !name || extra.length) throw new UsageError('starci app add takes `<noun> <name>` and the options of the noun');
+  const before = workTreeState(repoRoot);
   const { created, registered, updated, notes } = addKind({ repoRoot, noun, name, options: { event: opts.event, from: opts.from, service: opts.service, connection: opts.connection, owner: opts.owner, failed: opts.failed, done: opts.done, fe: booleanFlag(opts, 'fe'), shapes: valueFlag(opts, 'shapes'), read: valueFlag(opts, 'read'), app: valueFlag(opts, 'app'), kind: valueFlag(opts, 'kind'), form: booleanFlag(opts, 'form'), blocks: valueFlag(opts, 'blocks'), tabs: valueFlag(opts, 'tabs'), isolation: valueFlag(opts, 'isolation'), envPrefix: valueFlag(opts, 'env-prefix') } });
+  await formatTouched(repoRoot, before, prettier);
   for (const file of created) out(`created ${file}\n`);
   for (const file of updated ?? []) out(`updated ${file}\n`);
   for (const note of notes ?? []) out(`owner step: ${note}\n`);

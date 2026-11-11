@@ -11,11 +11,14 @@ export interface MigrationCommand {
     readonly args: ReadonlyArray<string>
 }
 
-/** The managed wrapper that owns the db/migrations schema authority (`npm run db:push`). */
-export const DB_PUSH_COMMAND: MigrationCommand = {
-    command: process.platform === "win32" ? "npm.cmd" : "npm",
+/** The managed wrapper that owns the db/migrations schema authority (`npm run db:push`), as npm is named on `platform`. */
+export const dbPushCommand = (platform: NodeJS.Platform): MigrationCommand => ({
+    command: platform === "win32" ? "npm.cmd" : "npm",
     args: ["run", "db:push"],
-}
+})
+
+/** The managed wrapper on this host's platform: the process a migration run starts. */
+export const DB_PUSH_COMMAND: MigrationCommand = dbPushCommand(process.platform)
 
 /** The refusal of a migration run: the wrapper's exit status, or `none` when it ended without one or could not start. */
 const failed = (status: number | null): DatabaseError =>

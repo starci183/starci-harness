@@ -459,12 +459,14 @@ function wire({ beRoot, wire: target, forms, noun, name }: { beRoot: string, wir
   const symbol = fill(target.symbol);
   let text = fs.readFileSync(file, 'utf8');
   if (new RegExp(String.raw`\b${symbol}\b`).test(text)) return;
-  const array = /@Module\(\{ imports: \[([^\]]*)\] \}\)/.exec(text);
+  // One line as generated, or as the app's Prettier lays a long list out (one member a line, trailing commas): the add re-formats what it writes.
+  const array = /@Module\(\{\s*imports: \[([^\]]*)\],?\s*\}\)/.exec(text);
   const lines = text.split('\n');
   const lastImport = lines.map((line) => line.startsWith('import ')).lastIndexOf(true);
   if (!array || lastImport < 0) throw new ScaffoldError('HFS_ADD_WIRE_FAILED', `${target.file} has no \`@Module({ imports: [...] })\` to register ${symbol} in`);
   lines.splice(lastImport + 1, 0, `import { ${symbol} } from "${fill(target.import)}"`);
-  text = lines.join('\n').replace(array[0], `@Module({ imports: [${[array[1]!.trim(), `${symbol}.register({})`].filter(Boolean).join(', ')}] })`);
+  const listed = array[1]!.replace(/\s+/g, ' ').trim().replace(/,$/, '');
+  text = lines.join('\n').replace(array[0], `@Module({ imports: [${[listed, `${symbol}.register({})`].filter(Boolean).join(', ')}] })`);
   fs.writeFileSync(file, text);
 }
 

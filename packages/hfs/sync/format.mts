@@ -69,6 +69,31 @@ export async function checkBatch({ repoRoot, files, prettier }: { repoRoot: stri
   return findings;
 }
 
+/**
+ * Writes `files` (repository-relative) as the repository's own prettier prints them, with the same ignore file and config the check reads,
+ * and answers the ones it changed: a generator's output then passes the HFS_FORMAT check it ships with, whatever the lengths of the names it
+ * filled in. A file prettier ignores, cannot parse or does not know is left as it is.
+ */
+export async function formatFiles({ repoRoot, files, prettier }: { repoRoot: string; files: readonly string[]; prettier: Prettier }): Promise<string[]> {
+  const ignorePath = path.join(repoRoot, IGNORE_FILE);
+  const ignoreFile = fs.existsSync(ignorePath) ? ignorePath : undefined;
+  const changed: string[] = [];
+  for (const file of formattable(files)) {
+    const absolute = path.join(repoRoot, file);
+    let text: string;
+    try { text = fs.readFileSync(absolute, 'utf8'); } catch { continue; }
+    const info = await prettier.getFileInfo(absolute, { ignorePath: ignoreFile, resolveConfig: true });
+    if (info.ignored || !info.inferredParser) continue;
+    const options = (await prettier.resolveConfig(absolute, { editorconfig: true, useCache: true })) ?? {};
+    let formatted: string;
+    try { formatted = await prettier.format(text, { ...options, filepath: absolute }); } catch { continue; }
+    if (formatted === text) continue;
+    fs.writeFileSync(absolute, formatted);
+    changed.push(file);
+  }
+  return changed;
+}
+
 /** Cuts `files` into batches of `size`. */
 export function batches<T>(files: readonly T[], size = FORMAT_BATCH): T[][] {
   const out: T[][] = [];

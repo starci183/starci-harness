@@ -75,6 +75,17 @@ test('add cli renders the queues group into an app that has its jobs platform, w
   assertRendered(root);
 });
 
+test('add cli <group> registers the group in a cli feature root Prettier laid out one member a line', (t) => {
+  const root = liteApp(t);
+  addCli(root);
+  const file = path.join(root, ...CLI_MODULE.split('/'));
+  fs.writeFileSync(file, read(root, CLI_MODULE).replace('@Module({ imports: [MigrateModule.register({}), SeedModule.register({})] })',
+    '@Module({\n    imports: [\n        MigrateModule.register({}),\n        SeedModule.register({}),\n    ],\n})'));
+  addKind({ repoRoot: root, noun: 'cli', name: 'reports', options: { service: 'IdsService=@modules/platform/ids' }, now: () => SCAFFOLDED + 90_000 });
+  assert.match(read(root, CLI_MODULE), /@Module\(\{ imports: \[MigrateModule\.register\(\{\}\), SeedModule\.register\(\{\}\), ReportsModule\.register\(\{\}\)\] \}\)/);
+  assert.match(read(root, CLI_MODULE), /^import \{ ReportsModule \} from "\.\/reports\/reports\.module"$/m);
+});
+
 test('an app missing either half renders nothing, and a cli tree the renderer cannot read is refused', (t) => {
   const root = liteApp(t);
   assert.deepEqual(ensureLiteQueuesCli(root), []);

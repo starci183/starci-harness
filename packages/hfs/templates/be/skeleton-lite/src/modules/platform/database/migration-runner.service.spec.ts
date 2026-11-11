@@ -1,7 +1,7 @@
 import { Test } from "@nestjs/testing"
 import { mock } from "@starci/jest-preset"
 import { DatabaseErrorCode } from "./errors/database.error"
-import { DB_PUSH_COMMAND, type MigrationCommand, MigrationRunnerService } from "./migration-runner.service"
+import { dbPushCommand, type MigrationCommand, MigrationRunnerService } from "./migration-runner.service"
 import { MIGRATION_COMMAND } from "./primary.decorators"
 
 /** Real node processes the runner starts exactly as it starts the managed wrapper. */
@@ -16,36 +16,36 @@ const settled = (run: Promise<void>): Promise<unknown> =>
         (error: unknown) => error,
     )
 
-const runnerWith = async (command: MigrationCommand): Promise<MigrationRunnerService> => {
-    const moduleRef = await Test.createTestingModule({
-        providers: [MigrationRunnerService, { provide: MIGRATION_COMMAND, useValue: command }],
-    }).compile()
-    return moduleRef.get(MigrationRunnerService)
-}
-
 describe("MigrationRunnerService", () => {
-    it("names the managed db:push wrapper as the process of a migration run", () => {
-        expect(DB_PUSH_COMMAND.args).toEqual(["run", "db:push"])
+    it("names the managed db:push wrapper, as npm is named on each platform", () => {
+        expect(dbPushCommand("linux")).toEqual({ command: "npm", args: ["run", "db:push"] })
+        expect(dbPushCommand("win32")).toEqual({ command: "npm.cmd", args: ["run", "db:push"] })
     })
 
     it("resolves when the process exits with status 0", async () => {
-        const runner = await runnerWith(SUCCEEDS)
+        const moduleRef = await Test.createTestingModule({
+            providers: [MigrationRunnerService, { provide: MIGRATION_COMMAND, useValue: SUCCEEDS }],
+        }).compile()
 
-        await expect(settled(runner.run())).resolves.toBeNull()
+        await expect(settled(moduleRef.get(MigrationRunnerService).run())).resolves.toBeNull()
     })
 
     it("refuses with DATABASE_MIGRATION_FAILED and the status when the process fails", async () => {
-        const runner = await runnerWith(FAILS)
+        const moduleRef = await Test.createTestingModule({
+            providers: [MigrationRunnerService, { provide: MIGRATION_COMMAND, useValue: FAILS }],
+        }).compile()
 
-        await expect(settled(runner.run())).resolves.toEqual(
+        await expect(settled(moduleRef.get(MigrationRunnerService).run())).resolves.toEqual(
             expect.objectContaining({ code: DatabaseErrorCode.MigrationFailed, params: { status: 3 } }),
         )
     })
 
     it("refuses with DATABASE_MIGRATION_FAILED when the process cannot start", async () => {
-        const runner = await runnerWith(MISSING)
+        const moduleRef = await Test.createTestingModule({
+            providers: [MigrationRunnerService, { provide: MIGRATION_COMMAND, useValue: MISSING }],
+        }).compile()
 
-        await expect(settled(runner.run())).resolves.toEqual(
+        await expect(settled(moduleRef.get(MigrationRunnerService).run())).resolves.toEqual(
             expect.objectContaining({ code: DatabaseErrorCode.MigrationFailed, params: { status: "none" } }),
         )
     })
