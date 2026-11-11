@@ -89,6 +89,8 @@ test("R47: only a service is unit-tested, its spec sits beside it, and there are
       { filename: at("src/modules/domain/order/covered.service.ts"), code: "export class CoveredService {}" },
       // the real spec beside its real service
       { filename: at("src/modules/domain/order/covered.service.spec.ts"), code: "export {}" },
+      // a spec over its line budget splits by facet: <name>.<role>.<facet>.spec.ts beside the main spec and the subject (BE-TEST-1)
+      { filename: at("src/modules/domain/order/covered.service.refunds.spec.ts"), code: "export {}" },
       // a cli command of the cli feature root is a unit-tested role (ruleParams.be.unitRoles): its spec sits beside it, and the spec beside its command
       { filename: at("src/features/cli/migrate/subs/run.cli.ts"), code: "export class RunCli {}" },
       { filename: at("src/features/cli/migrate/subs/run.cli.spec.ts"), code: "export {}" },
@@ -116,6 +118,8 @@ test("R47: only a service is unit-tested, its spec sits beside it, and there are
       // a service with no spec beside it
       { filename: at("src/modules/domain/order/order.service.ts"), code: "export class OrderService {}", errors: [{ messageId: "missing" }] },
       { filename: at("src/modules/platform/cache/cache.service.ts"), code: "export class CacheService {}", errors: [{ messageId: "missing" }] },
+      // a split with no main spec, or no subject, beside it tests nothing
+      { filename: at("src/modules/domain/order/uncovered.service.refunds.spec.ts"), code: "export {}", errors: [{ messageId: "orphan" }] },
       // a unit spec of anything else is a finding, whatever it is named after
       { filename: at("src/features/api/checkout/application/start-checkout.handler.spec.ts"), code: "export {}", errors: [{ messageId: "notService" }] },
       { filename: at("src/features/api/checkout/transport/graphql/order.resolver.spec.ts"), code: "export {}", errors: [{ messageId: "notService" }] },

@@ -26,7 +26,7 @@ import { statSync } from "node:fs"
 import { basename, dirname, join } from "node:path"
 import { hfsOf, inTestWorld } from "./lib/hfs.ts"
 import { isPackageType, typeOrigins } from "./lib/types.ts"
-import { doorOfSpec, isUnitSpecFile, unitRoleOfSpec, unitRoleOfSubject } from "./lib/unit-spec.ts"
+import { doorOfSpec, isUnitSpecFile, mainSpecOfSplit, unitRoleOfSpec, unitRoleOfSubject } from "./lib/unit-spec.ts"
 import type { Context, Node, Recommended, RuleModule, Rules } from "./lib/rule.ts"
 import type { HfsView } from "./lib/hfs.ts"
 import type { TSESTree } from "@typescript-eslint/utils"
@@ -159,8 +159,10 @@ export const unitTestColocated: RuleModule = {
       if (door !== null) return exists(join(dirname(filename), door)) ? {} : { Program(node) { context.report({ node, messageId: "orphan", data: { name } }) } }
       const role = unitRoleOfSpec(hfs, filename)
       if (!role) return { Program(node) { context.report({ node, messageId: "notService", data: { name } }) } }
-      const subject = `${name.slice(0, -`.${role.spec}.ts`.length)}.${role.role}.ts`
-      if (exists(join(dirname(filename), subject))) return {}
+      // A size split `<name>.<role>.<facet>.spec.ts` stands beside its main spec `<name>.<role>.spec.ts` and the subject they test.
+      const main = role.split === true ? mainSpecOfSplit(name) : name
+      const subject = main === null ? null : `${main.slice(0, -`.${role.spec}.ts`.length)}.${role.role}.ts`
+      if (subject !== null && main !== null && exists(join(dirname(filename), subject)) && (role.split !== true || exists(join(dirname(filename), main)))) return {}
       return { Program(node) { context.report({ node, messageId: "orphan", data: { name } }) } }
     }
     // a unit-tested subject outside the test tree (ruleParams.be.unitRoles): its spec sits beside it

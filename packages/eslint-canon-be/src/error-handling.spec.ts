@@ -117,6 +117,8 @@ test("a thrown value's type derives from DomainError", () => {
             // a rethrow of the caught value
             { filename: SERVICE, code: "declare function a(): void\ntry { a() } catch (error) { throw error }" },
             { filename: SERVICE, code: "declare const p: Promise<void>\np.catch((error) => { throw error })" },
+            // the rejection handler of .then(onFulfilled, onRejected) rethrows what it caught, as a .catch handler does
+            { filename: SERVICE, code: "declare const p: Promise<void>\np.then(() => undefined, (cause: unknown) => { throw cause })" },
             // a union of domain errors
             { filename: SERVICE, code: `${THROW_HEAD}class Other extends DomainError<PlanErrorCode> {}\nfunction f(x: boolean) { throw x ? new PlanError({ code: PlanErrorCode.X }) : new Other({ code: PlanErrorCode.X }) }` },
             // the closed list of framework control-flow signals, which BullMQ reads with instanceof and so cannot be domain errors
@@ -160,6 +162,8 @@ test("a thrown value's type derives from DomainError", () => {
             { filename: SERVICE, code: 'import { UnrecoverableError } from "bullmq"\nasync function f() { return Promise.reject(new UnrecoverableError("x")) }', errors: [{ messageId: "rejectNotDomainError" }] },
             { filename: SERVICE, code: "function rejectionOf(reason: unknown): Promise<never> { return Promise.reject(reason) }", errors: [{ messageId: "rejectNotDomainError" }] },
             { filename: SERVICE, code: "const rejectionOf = (reason: unknown): Promise<never> => Promise.reject(reason)", errors: [{ messageId: "rejectNotDomainError" }] },
+            // the fulfilment handler of .then caught nothing: what it throws is judged
+            { filename: SERVICE, code: "declare const p: Promise<unknown>\np.then((value: unknown) => { throw value }, () => undefined)", errors: [{ messageId: "notDomainError" }] },
             // a thrown local value not caught here
             { filename: SERVICE, code: "declare const e: unknown\nfunction f() { throw e }", errors: [{ messageId: "notDomainError" }] },
             // a spec is not exempt

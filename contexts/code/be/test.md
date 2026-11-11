@@ -13,7 +13,10 @@ projects, doubles and coverage mechanics are the `@starci/jest-preset` README. T
 A unit spec is `<name>.<role>.spec.ts` beside its subject: required beside every `*.service.ts`, every `*.cli.ts` and a
 webhook or realtime door; optional beside any other logic-role file (`policy`, `mapper`, `client`, `guard`, `schema`,
 `processor`, `step`, ...) and beside a logic file its slot declares (`logic`: `passport.tokens.spec.ts` beside
-`passport.tokens.ts`). A spec of a handler, resolver, controller, module or app file, or of any other file, is a finding. Integration
+`passport.tokens.ts`). A spec that outgrows its line budget (`ruleParams.common.fileLines`) splits by facet into
+`<name>.<role>.<facet>.spec.ts` beside the main `<name>.<role>.spec.ts` and the same subject (`orders.service.refunds.spec.ts`
+beside `orders.service.spec.ts` and `orders.service.ts`); a split with no main spec or no subject is an orphan. A spec of a handler,
+resolver, controller, module or app file, or of any other file, is a finding. Integration
 specs are `src/tests/integration/<area>/*.integration-spec.ts` on real infrastructure through `useTestWorld`; contract
 specs `src/tests/contract/<provider>/*.contract-spec.ts`; full adds `src/tests/e2e/<area>/*.e2e-spec.ts`. Test
 infrastructure lives only in `src/tests/world/`, shared data in `src/tests/fixtures/`. Integration and contract run

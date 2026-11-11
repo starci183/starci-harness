@@ -20,6 +20,17 @@ export interface SpecRole {
     readonly slot?: string
     readonly exempt?: readonly string[]
     readonly optional?: boolean
+    /** The spec is a size split, `<name>.<role>.<facet>.spec.ts`, of the main spec `<name>.<role>.spec.ts` (BE-TEST-1). */
+    readonly split?: boolean
+}
+
+/**
+ * The main spec a size split stands beside: `orders.service.refunds.spec.ts` -> `orders.service.spec.ts` (one kebab facet before
+ * `.spec.ts`), or null for a name with no facet segment. A split carries further cases of the same subject when one spec outgrows its line budget.
+ */
+export const mainSpecOfSplit = (name: string): string | null => {
+    const match = /^(.+\.[a-z][a-z0-9-]*)\.[a-z][a-z0-9-]*\.spec\.([cm]?ts)$/.exec(name)
+    return match ? `${match[1]}.spec.${match[2]}` : null
 }
 
 /** The slots whose `*.spec.ts` files are not unit specs: the other test kinds and world infrastructure. */
@@ -91,7 +102,14 @@ const declaredLogicRole = (hfs: HfsView, filename: string): SpecRole | null => {
 export const unitRoleOfSpec = (hfs: HfsView, filename: string): SpecRole | null => {
     if (!isUnitSpecFile(hfs, filename)) return null
     const name = baseOf(filename)
-    return [...unitRoles(hfs), ...optionalRoles(hfs)].find((role: SpecRole) => name.endsWith(`.${role.spec}.ts`) && inRoleSlot(hfs, role, filename)) ?? declaredLogicRole(hfs, filename)
+    const roles = [...unitRoles(hfs), ...optionalRoles(hfs)]
+    const direct = roles.find((role: SpecRole) => name.endsWith(`.${role.spec}.ts`) && inRoleSlot(hfs, role, filename)) ?? declaredLogicRole(hfs, filename)
+    if (direct) return direct
+    const main = mainSpecOfSplit(name)
+    // The split stands where its main spec stands, so the main spec's path answers the slot question.
+    const mainPath = main === null ? "" : `${String(filename).replace(/\\/g, "/").slice(0, -name.length)}${main}`
+    const split = main === null ? undefined : roles.find((role: SpecRole) => main.endsWith(`.${role.spec}.ts`) && inRoleSlot(hfs, role, mainPath))
+    return split === undefined ? null : { ...split, split: true }
 }
 
 /** Whether a file is the spec of a value role (`ruleParams.be.valueRoles`: a zod schema): its subject is a declared value, so the spec parses it and builds no testing module. */

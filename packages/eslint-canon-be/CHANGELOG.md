@@ -6,6 +6,8 @@
 - Specs: `src/user-copy.spec.ts` (swagger operation, property and response documentation valid; a local `ApiOperation` and a GraphQL `@Field` description still report).
 - Fixed (R88, BE-TRANSPORT-1): `rest-route-declared` reports nothing in a back end whose api apps declare `contract: "rest"`, like `rest-door-needs-a-reason` (one predicate, `servesRest` in `lib/transport-slots.ts`): the controllers are that back end's declared contract, judged by R396. Spec: `src/transport.spec.ts`.
 - Fixed (R85): `injector-type-match` accepts a parameter typed exactly as a nullable injector's `T` (`VectorIndex | null`); it compared the injected type with the parameter's type stripped of null, so such an injector never matched. A parameter that drops the injector's null is still a mismatch, and `@Optional()`'s added undefined still matches. Spec: `src/injection.spec.ts`.
+- Fixed (R38): `throw-domain-error` takes the rejection handler of `.then(onFulfilled, onRejected)` as it takes a `.catch` handler: its parameter is a caught value, rethrown as it is (`isCaughtValue`). The fulfilment handler's value is still judged. Spec: `src/error-handling.spec.ts`.
+- Added (R47, BE-TEST-1): a unit spec over its line budget splits by facet, `<name>.<role>.<facet>.spec.ts` beside the main `<name>.<role>.spec.ts` and the same subject (`mainSpecOfSplit`, `lib/unit-spec.ts`); `unit-test-colocated` accepts it with both beside it and reports it `orphan` otherwise. Spec: `src/testing.spec.ts`.
 - Fixed (R71): `no-secret-in-log` skips a credential-sounding name whose value is a number or a boolean (`usage.promptTokens`): a count is never the credential, which travels as text. Spec: `src/log-safety.spec.ts`.
 
 ## 3.23.0 - 2026-11-11
