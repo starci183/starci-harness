@@ -175,7 +175,8 @@ function enableLiteCliDatabase(root: string): void {
         "            ],",
       ].join("\n"),
     );
-  } else if (!text.includes("                MigrationRunnerService,")) {
+  } else if (!/exports: \[[^\]]*\bMigrationRunnerService\b/.test(text)) {
+    // The exports block alone decides: the providers list above already names the runners.
     const anchor = "                ...managers.map((manager) => manager.provide),";
     if (!text.includes(anchor)) throw new ScaffoldError("HFS_ADD_CLI_DATABASE", `${relative} has an unknown exports shape`);
     text = text.replace(anchor, `${anchor}\n                MigrationRunnerService,\n                SeedRunnerService,`);

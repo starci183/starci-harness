@@ -72,6 +72,10 @@ test('add cli renders the queues group into an app that has its jobs platform, w
   // The cli's wiring proof doubles the declared data source token, so no connection name leaves platform/database (R84).
   assert.doesNotMatch(read(root, 'be/src/modules/platform/database/index.ts'), /PRIMARY_CONNECTION/);
   assert.match(read(root, 'be/src/tests/fixtures/builders/cli.builder.ts'), /token: PRIMARY_DATA_SOURCE/);
+  // The runners are provided with their two injected values and exported to the cli groups that run them.
+  const database = read(root, 'be/src/modules/platform/database/database.module.ts');
+  assert.match(database, /\{ provide: MIGRATION_COMMAND, useValue: DB_PUSH_COMMAND \},\n {16}\{ provide: SEED_ROOT, useValue: SEED_ROOT_DEFAULT \},/);
+  assert.match(database, /exports: \[[^\]]*\.\.\.managers\.map\(\(manager\) => manager\.provide\),\n {16}MigrationRunnerService,\n {16}SeedRunnerService,/);
   assertRendered(root);
 });
 
