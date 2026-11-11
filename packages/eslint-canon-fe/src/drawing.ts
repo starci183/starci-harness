@@ -21,7 +21,7 @@
 
 import type { TSESLint, TSESTree } from "@typescript-eslint/utils"
 import { defineRule, type Node, type Rules, type Recommended } from "./lib/rule.ts"
-import { classifyImport, roleOfFile } from "./lib/scope.ts"
+import { classifyImport, inSlot, roleOfFile, tierOfFile } from "./lib/scope.ts"
 
 import { rootPageChildren } from "./lib/root-page.ts"
 import { inSplitTier, pureHalf } from "./lib/drawing-scope.ts"
@@ -380,11 +380,84 @@ export const noDataStatusShape = defineRule({
   },
 })
 
+// -- DRAWING-4 ----------------------------------------------------------------------------------
+
+/** The words of a READ status: what a `DataSlot` flag already names (`isLoading`, `isError`, `isForbidden`, `isEmpty`). */
+const READ_STATUS = new Set(["loading", "failed", "error", "errored", "empty", "forbidden"])
+
+/** The view-type properties that carry a status: `state`, `status`, `shape`. */
+const VIEW_STATUS_KEY = new Set(["state", "status", "shape"])
+
+/** The string literals of a union (or one literal), or undefined when a member is not a string literal. */
+const stringMembers = (type: TSESTree.TypeNode): readonly string[] | undefined => {
+  const members = type.type === "TSUnionType" ? type.types : [type]
+  const values: string[] = []
+  for (const member of members) {
+    const value = member.type === "TSLiteralType" && "value" in member.literal ? member.literal.value : undefined
+    if (typeof value !== "string") return undefined
+    values.push(value)
+  }
+  return values
+}
+
+/**
+ * A view type's `state` / `status` / `shape` property is never a read status written as a string union.
+ *
+ * TRIGGER: the union lists `loading`, or at least two distinct read-status words. `loading` is the first-load status of a read
+ * and no domain status of the back end is named so (an order is `pending`, `paid`, `failed`, a user `active`, `retired`), so a
+ * union that holds it is a read status; the other words are ambiguous alone (`failed` is a payment outcome, `empty` a cart)
+ * and are refused only as a pair. The alias a property references in the same file is followed.
+ */
+export const noViewDataStatus = defineRule({
+  meta: {
+    type: "problem",
+    docs: { description: "A view type in `modules/types` or a hook never carries a read status (`loading`, `failed`, `error`, `empty`, `forbidden`) as a string union on `state`, `status` or `shape`." },
+    schema: [],
+    messages: {
+      status:
+        "`{{key}}` lists the read status \"{{values}}\" as a string union. A region's data status is a `DataSlot<T>` (`isLoading`, `isError`, `isForbidden`, `isEmpty` or `items`, built by `slotOfSwr` / `mapSlot` / `slotOfReads`) drawn through `SlotView`, never a string union a block branches on (FE-ERROR-1).",
+    },
+  },
+  create(context) {
+    if (!inSlot(context, "fe.modules.types") && tierOfFile(context) !== "hooks") return {}
+    const aliases = new Map<string, TSESTree.TypeNode>()
+    const resolve = (type: TSESTree.TypeNode): TSESTree.TypeNode => {
+      let current = type
+      for (let depth = 0; depth < 4 && current.type === "TSTypeReference"; depth += 1) {
+        const target = current.typeName.type === "Identifier" ? aliases.get(current.typeName.name) : undefined
+        if (target === undefined) break
+        current = target
+      }
+      return current
+    }
+    return {
+      Program(node) {
+        for (const statement of node.body) {
+          const declaration = statement.type === "ExportNamedDeclaration" && statement.declaration ? statement.declaration : statement
+          if (declaration.type === "TSTypeAliasDeclaration") aliases.set(declaration.id.name, declaration.typeAnnotation)
+        }
+      },
+      TSPropertySignature(node) {
+        const key = keyOf(node)
+        const type = node.typeAnnotation?.typeAnnotation
+        if (typeof key !== "string" || !VIEW_STATUS_KEY.has(key) || type === undefined) return
+        const values = stringMembers(resolve(type))
+        if (values === undefined) return
+        const found = [...new Set(values.filter((value) => READ_STATUS.has(value)))]
+        if (found.includes("loading") || found.length >= 2) {
+          context.report({ node, messageId: "status", data: { key, values: found.join('", "') } })
+        }
+      },
+    }
+  },
+})
+
 /** The rules this law contributes to the plugin. */
 export const rules: Rules = {
   "base-props-atom": basePropsAtom,
   "base-import-pair": baseImportPair,
   "no-data-status-shape": noDataStatusShape,
+  "no-view-data-status": noViewDataStatus,
 }
 
 /** Every FE canon rule is an error; existing debt is fixed before adoption. */

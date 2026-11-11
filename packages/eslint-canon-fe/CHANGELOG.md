@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.16.13 - 2026-11-11
+
+- Added (R92, FE-ERROR-1): `starci-fe/no-view-data-status` refuses a read status written as a string union on a view type. In `modules/types/**` and the hooks (slots `fe.modules.types` and the hooks tier), a property named `state`, `status` or `shape` whose type is a string-literal union (inline, or an alias of the same file) that lists `loading`, or at least two distinct words of `failed`, `error`, `errored`, `empty`, `forbidden`, is reported: a region's status is a `DataSlot<T>` drawn through `SlotView`. A domain status (`"pending" | "paid" | "failed"`, `"active" | "retired"`) names no `loading` and one ambiguous word, so it passes. `no-data-status-shape` is unchanged: it still judges `XShape` / `XState` of a pure half.
+
 ## 9.16.12 - 2026-11-09
 
 - Changed: peer `@starci/hfs ~6.7.0` (hfs 6.7.0: the per-screen gallery and its explain.md gates, R395); no lint rule of this package changed.

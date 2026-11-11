@@ -921,7 +921,7 @@ rules:
       - {kind: eslint-fe, id: frontend-source-layout}
   - id: R92
     code: FE_COMPONENT_API
-    law: A component exposes the canon surface of typed props and slots, a presentational twin for every connected block, status through the Grammar state renderer and no styling doors, and a pure component reaches no hook, router, locale or API.
+    law: A component exposes the canon surface of typed props and slots, a presentational twin for every connected block, status through the Grammar state renderer (a `DataSlot` drawn by `SlotView`, never a string union of a shape or a view type) and no styling doors, and a pure component reaches no hook, router, locale or API.
     failureCodes:
       - FE_COMPONENT_API
       - FE_COMPONENT_WORLD_OWNERSHIP
@@ -941,6 +941,7 @@ rules:
       - {kind: eslint-fe, id: base-props-atom}
       - {kind: eslint-fe, id: base-import-pair}
       - {kind: eslint-fe, id: no-data-status-shape}
+      - {kind: eslint-fe, id: no-view-data-status}
       - {kind: eslint-grammar-core, id: slot-status-through-slotview}
       - {kind: eslint-fe, id: presentational-purity}
       - {kind: eslint-fe, id: connected-block-has-presentational-twin}

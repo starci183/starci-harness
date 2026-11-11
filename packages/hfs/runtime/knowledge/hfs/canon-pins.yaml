@@ -68,8 +68,8 @@ pins:
     source: packages/eslint-canon-be/package.json
     why: 'the back-end ESLint canon: `loadHfs(import.meta.url)` of be/eslint.config.mjs finds the app-root hfs.json (kind app) and gives every linted file the view of the be side, and the project graph is built per side; its bundled runtime copies (slots, canon-pins, failure codes, the architecture machine) put .starcistacks and .sops.yaml at the app root; `starciBeConfig({ hfs: loadHfs(import.meta.url) })` is the typed factory and the BE-CONVENTION laws are its rules.'
   '@starci/eslint-canon-fe':
-    version: 9.16.12
-    range: '~9.16.12'
+    version: 9.16.13
+    range: '~9.16.13'
     group: starci
     install: registry
     side: fe
