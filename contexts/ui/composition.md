@@ -145,7 +145,9 @@ indicator geometry, underline). A destination in body copy is identifiable at re
 ### ACCENT-4 An accent fill states a real measurement
 A progress fill presents a verified value from authority and nothing else; an unresolved value is a skeleton; a
 decorative or ranking bar carries no progress semantics; the fill states the measurement and a separate owner
-states any outcome.
+states any outcome. A measurement on a view whose one accent mass is its commit, a usage quota beside an upload,
+takes `tone="foreground"` on `Meter` or `Progress`: the fill is the text colour on the default track and spends no accent
+(ACCENT-6).
 
 ### ACCENT-5 Status hues and notices report authority
 Success, warning and danger appear only where authority reports that state, never as a category, a peer marker

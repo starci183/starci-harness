@@ -14,6 +14,13 @@ import type { NoChildren } from "../../tier.js"
  */
 export type MeterSegments = 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12
 
+/**
+ * How a meter's reading is judged: a PresentationState, or `foreground`, a measure painted in HeroUI's `--foreground` text
+ * colour on the default track. `neutral` keeps the accent fill (a measurement fill, ACCENT-4); `foreground` is the reading that
+ * spends no accent, for a screen whose one accent mass is its commit (ACCENT-6, the red budget), such as a usage quota beside it.
+ */
+export type MeterTone = PresentationState | "foreground"
+
 export type MeterProps = NoChildren & {
     /** What the gauge measures. Visible by default and wired as the meter's accessible name. */
     readonly label: string
@@ -22,8 +29,8 @@ export type MeterProps = NoChildren & {
     readonly maxValue?: number
     /** App-resolved reading, e.g. "3.2 of 5 GB". Defaults to the platform percentage. */
     readonly valueLabel?: string
-    /** How the reading should be judged. It colours the fill; it never replaces the label. */
-    readonly tone?: PresentationState
+    /** How the reading should be judged. It colours the fill; it never replaces the label. `foreground` spends no accent. */
+    readonly tone?: MeterTone
     /** Hide the drawn label and reading but keep the accessible name. */
     readonly isLabelHidden?: boolean
     /**
@@ -49,6 +56,16 @@ export type MeterSize = "sm" | "md"
 
 const MIN_SEGMENTS = 2
 const MAX_SEGMENTS = 12
+
+/**
+ * The vendor colour of a tone. A neutral or pending reading is a measurement fill and takes the accent (ACCENT-4);
+ * `foreground` takes HeroUI's `default` colour, its nearest variant, and the Common rule paints it `--foreground` exactly.
+ */
+const meterColorFor = (tone: MeterTone) => {
+    if (tone === "foreground") return "default"
+    const status = vendorStatusFor(tone)
+    return status === "default" ? "accent" : status
+}
 
 /** A whole segment count in 2..12, whatever an untyped caller passed. */
 const clampSegments = (segments: number) => Math.min(MAX_SEGMENTS, Math.max(MIN_SEGMENTS, Math.round(Number.isFinite(segments) ? segments : MIN_SEGMENTS)))
@@ -104,7 +121,7 @@ const MeterInner = ({
             </div>
         )
     }
-    const status = vendorStatusFor(tone)
+    const color = meterColorFor(tone)
     const count = segments === undefined ? undefined : clampSegments(segments)
     const min = count === undefined ? minValue : wholeNumber(minValue, 0)
     const max = count === undefined ? maxValue : Math.max(min + 1, wholeNumber(maxValue, 100))
@@ -123,7 +140,7 @@ const MeterInner = ({
             {...(count === undefined ? {} : { "data-grammar-meter-segments": count })}
             {...(valueLabel === undefined ? {} : { valueLabel })}
             {...(isLabelHidden ? { "aria-label": label } : {})}
-            color={status === "default" ? "accent" : status}
+            color={color}
             size={size}
             className="starci-core-meter"
             render={renderMeterRoot}

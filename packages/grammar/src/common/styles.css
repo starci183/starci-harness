@@ -5411,6 +5411,9 @@
     .starci-core-progress[data-grammar-progress-tone="success"] { --progress-bar-fill: var(--success); --starci-progress-fill: var(--success); }
     .starci-core-progress[data-grammar-progress-tone="warning"] { --progress-bar-fill: var(--warning); --starci-progress-fill: var(--warning); }
     .starci-core-progress[data-grammar-progress-tone="danger"] { --progress-bar-fill: var(--danger); --starci-progress-fill: var(--danger); }
+    /* foreground: a bar that spends no accent. The vendor's `default` variant writes the same variable on the same element and
+       consumers import this sheet on either side of `@heroui/styles`, so layer rank cannot decide: the fill is `!important`. */
+    .starci-core-progress[data-grammar-progress-tone="foreground"] { --progress-bar-fill: var(--foreground) !important; --starci-progress-fill: var(--foreground); }
     .starci-core-progress[data-grammar-tone-custom="true"] { --progress-bar-fill: var(--grammar-tone); --starci-progress-fill: var(--grammar-tone); }
 
     @media (prefers-reduced-motion: reduce) {

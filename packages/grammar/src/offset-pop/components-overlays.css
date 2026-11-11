@@ -37,6 +37,11 @@
         --offset-pop-tone-color: var(--accent);
     }
 
+    /* A Meter's foreground tone is the ink: a measure that spends no pink. */
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Meter"][data-grammar-tone="foreground"] {
+        --offset-pop-tone-color: var(--foreground);
+    }
+
     /* ---------------------------------------------------------------- backdrop: blush tint */
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-overlay-backdrop] {
         background: color-mix(in srgb, var(--accent-soft) 72%, transparent);

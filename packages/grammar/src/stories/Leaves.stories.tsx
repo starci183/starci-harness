@@ -706,6 +706,7 @@ export const Meter: Story = {
         <G.Meter label="Quota" value={72} tone="cautionary" />
         <G.Meter label="Errors" value={95} tone="negative" />
         <G.Meter label="Sync" value={50} tone="pending" />
+        <G.Meter label="Documents" value={40} tone="foreground" valueLabel="20 of 50 MB" />
       </State>
       <State label="Hidden label" direction="column">
         <G.Meter label="Battery" value={64} isLabelHidden />

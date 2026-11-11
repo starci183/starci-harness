@@ -46,7 +46,7 @@ export {
 } from "../core/composite/Toast/index.js"
 export { Alert, type AlertAction, type AlertAppearance, type AlertProps, type AlertUrgency } from "../core/composite/Alert/index.js"
 export { KBD_NAMED_KEYS, Kbd, type KbdNamedKey, type KbdProps } from "../core/leaf/Kbd/index.js"
-export { Meter, type MeterProps, type MeterSegments, type MeterSize } from "../core/leaf/Meter/index.js"
+export { Meter, type MeterProps, type MeterSegments, type MeterSize, type MeterTone } from "../core/leaf/Meter/index.js"
 export { ProgressCircle, type ProgressCircleProps, type ProgressCircleSize } from "../core/leaf/ProgressCircle/index.js"
 export { Skeleton, type SkeletonProps, type SkeletonRatio, type SkeletonShape, type SkeletonSize } from "../core/leaf/Skeleton/index.js"
 export { Spinner, type SpinnerProps, type SpinnerSize, type SpinnerTone } from "../core/leaf/Spinner/index.js"

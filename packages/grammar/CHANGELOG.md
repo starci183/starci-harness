@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.37.38 - 2026-11-12 - Meter and Progress: a foreground fill that spends no accent
+
+- Added: `Meter tone="foreground"` (new exported type `MeterTone = PresentationState | "foreground"`) and `Progress tone="foreground"`: the fill is HeroUI's `--foreground` text colour on the default track, plain, segmented and step bars alike, so a usage quota stands beside a view's one commit without a second accent mass (ACCENT-6, the red budget). The vendor colour is HeroUI's `default` variant and the Common rule writes `--meter-fill` / `--progress-bar-fill` as `--foreground` (`!important`: consumers import the sheet on either side of `@heroui/styles`). Offset Pop paints it with the ink. Dark mode follows the token.
+- Unchanged: `tone="neutral"` (and `pending`) keep the accent fill, a measurement fill by ACCENT-4; no existing tone's colour moved. Role `meter` / `progressbar` and the `aria-value*` are unchanged.
+- Docs: `contexts/ui/composition.md` ACCENT-4, `contexts/ui/components/toast-alert.md`.
+- Proof: `prove-theme` probes `meter foreground fill` and `progress foreground fill` (`--foreground`) in both families, both modes and every scenario.
+- Stories: `Meter foreground fill (0.37.38)` `Light`, `Dark` (40, 92, 100 %, a segmented count, a Progress bar, neutral beside it); `Leaves` `Meter` tones.
+- Version: 0.37.37 is taken by the open branch `pkg/claude-annex-companion` (its renumber); this release is 0.37.38, cut on 0.37.36.
+
 ## 0.37.36 - 2026-11-11 - List row: value, badges and end action on one line; Alert stacked action stays inside the banner
 
 - Fixed (`DNA-COMMON-ROW-ACTION-END`): a `rows` list row with a `value` gets a grid track of its own between the copy and the end group (the row carries `data-grammar-value="true"`), so value, `badges` and an end `action` stand on one line, centred against the copy, with the row padding to the edge. The row templates counted no value track, so the command was auto-placed onto a second line. A key-value list keeps its two-column rule.

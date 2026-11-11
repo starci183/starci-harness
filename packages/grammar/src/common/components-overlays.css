@@ -57,6 +57,19 @@
         --starci-core-overlay-soft-foreground: var(--accent-soft-foreground);
     }
 
+    /*
+     * A Meter's foreground tone is a measure that spends no accent: the fill is HeroUI's text colour on the default track,
+     * for a screen whose one accent mass is its commit (ACCENT-6). The vendor's colour variant writes `--meter-fill` on the
+     * same element and consumers import this sheet on either side of `@heroui/styles`, so layer rank cannot decide: the
+     * fill variable is `!important`. The segments read `--starci-core-overlay-tone`.
+     */
+    .starci-core-meter[data-grammar-tone="foreground"] {
+        --meter-fill: var(--foreground) !important;
+        --starci-core-overlay-tone: var(--foreground);
+        --starci-core-overlay-soft: var(--default-soft);
+        --starci-core-overlay-soft-foreground: var(--default-soft-foreground);
+    }
+
     /* ---------------------------------------------------------------- modal backdrop */
     .starci-core-overlay-backdrop {
         position: fixed;
