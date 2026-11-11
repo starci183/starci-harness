@@ -71,10 +71,15 @@
     }
 
     /* ---------------------------------------------------------------- modal backdrop */
+    /*
+     * Stacking: every modal-level overlay (Dialog, AlertDialog, Drawer, a PaneGrid pane's drawer, and the vendor's popovers) sits on
+     * HeroUI's one level `--z-index-overlay`, so the overlay opened last paints on top: an alert dialog opened inside a drawer covers
+     * it, a select opened inside a dialog stays above the dialog. The toaster is `--z-index-toast`, above them all.
+     */
     .starci-core-overlay-backdrop {
         position: fixed;
         inset: 0;
-        z-index: 50;
+        z-index: var(--z-index-overlay);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -465,7 +470,7 @@
     /* ---------------------------------------------------------------- toaster + toast */
     .starci-core-toaster {
         position: fixed;
-        z-index: 60;
+        z-index: var(--z-index-toast);
         display: flex;
         width: min(24rem, calc(100vw - 2 * var(--grammar-page-inset)));
         flex-direction: column;

@@ -221,7 +221,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose
 - [ui/components/diagram.md](../ui/components/diagram.md) · 14 KB — Contract: Diagram.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules · FlowGraph state priority
-- [ui/components/dialog-drawer.md](../ui/components/dialog-drawer.md) · 3 KB — Contract: Dialog and Drawer.
+- [ui/components/dialog-drawer.md](../ui/components/dialog-drawer.md) · 4 KB — Contract: Dialog and Drawer.
   - sections: Job · Choose · Variants · Scrolling · Size · States · Owner split · Rules
 - [ui/components/empty-state.md](../ui/components/empty-state.md) · 4 KB — Contract: EmptyState.
   - sections: Job · Choose · Variants · Size · States · Owner split · Frame · Rules
