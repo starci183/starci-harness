@@ -92,6 +92,13 @@ function locate(lines: readonly string[], path: readonly YamlStep[], file: strin
 
 const describe = (step: YamlStep) => (typeof step === 'string' ? step : `[${step.item}=${step.is}]`);
 
+/** The value of the parsed `document` at `path` (an item step picks the sequence item whose `item` key is `is`). */
+function valueAt(document: YamlDocument, path: readonly YamlStep[]): YamlDocument {
+  return path.reduce((node: YamlDocument, step) => (typeof step === 'string'
+    ? node?.[step]
+    : (Array.isArray(node) ? node.find((entry: YamlDocument) => String(entry?.[step.item]) === step.is) : undefined)), document);
+}
+
 /** The lines of `block` (written at indent 0) moved to `indent`. */
 const indented = (block: string, indent: number) => block.replace(/\n$/, '').split('\n').map((line) => (line ? ' '.repeat(indent) + line : line));
 
@@ -150,6 +157,42 @@ export class YamlBlockEdit {
     if (!flow) throw new ScaffoldError('HFS_ADD_STACK_SHAPE', `${this.file} writes ${path.map(describe).join('.')} as no one-line flow sequence; add the declaration by hand`);
     const items = flow[2]!.trim();
     this.lines[at.line] = `${flow[1]}${items ? `${items}, ` : ''}${value}]${flow[3]}`;
+    return this;
+  }
+
+  /** Removes the mapping entry at `path` (its key line and its body) from the text and the document. */
+  remove(path: readonly YamlStep[]): this {
+    const at = locate(this.lines, path, this.file);
+    this.lines.splice(at.line, at.body.to - at.line);
+    const parent = valueAt(this.expected, path.slice(0, -1));
+    delete parent[path[path.length - 1] as string];
+    return this;
+  }
+
+  /** Removes every item of the block sequence at `path` whose parsed value `drop` selects, from the text and the document. */
+  removeItems(path: readonly YamlStep[], drop: (item: YamlDocument) => boolean): this {
+    const at = locate(this.lines, path, this.file);
+    const { body } = at;
+    const starts: number[] = [];
+    for (let index = body.from; index < body.to; index += 1) if (significant(this.lines[index]!) && isItem(this.lines[index]!) && indentOf(this.lines[index]!) === body.childIndent) starts.push(index);
+    const list = valueAt(this.expected, path) as YamlDocument[];
+    if (!Array.isArray(list) || list.length !== starts.length) throw new ScaffoldError('HFS_ADD_STACK_SHAPE', `${this.file} writes ${path.map(describe).join('.')} as no block sequence; edit it by hand`);
+    for (let position = starts.length - 1; position >= 0; position -= 1) {
+      if (!drop(list[position])) continue;
+      this.lines.splice(starts[position]!, (starts[position + 1] ?? body.to) - starts[position]!);
+      list.splice(position, 1);
+    }
+    return this;
+  }
+
+  /** Replaces the one-line value of the mapping entry at `path` with `value` (a YAML scalar or flow collection); a trailing comment goes. */
+  set(path: readonly YamlStep[], value: string): this {
+    const at = locate(this.lines, path, this.file);
+    const line = this.lines[at.line]!;
+    const key = /^(\s*(?:- )?[^:#]+:)\s*\S/.exec(line);
+    if (!key || at.body.to > at.body.from) throw new ScaffoldError('HFS_ADD_STACK_SHAPE', `${this.file} writes ${path.map(describe).join('.')} over several lines; edit it by hand`);
+    this.lines[at.line] = `${key[1]} ${value}`;
+    valueAt(this.expected, path.slice(0, -1))[path[path.length - 1] as string] = parseYaml(`v: ${value}`).v;
     return this;
   }
 

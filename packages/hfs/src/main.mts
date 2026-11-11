@@ -40,8 +40,9 @@
 //                                            --ratchet is the pre-commit lint ratchet over the staged files against HEAD. Both take no other flag.
 //                                            Exit 1 with any error finding that is not report-only (gate-verdict.mts). The root checks run once and
 //                                            the side checks and the machine once per side, the side folder as their root; every path is app-relative.
-//   starci app scaffold <name> [--cwd <dir>]  a new app <dir>/<name>/ (<dir> is the global --cwd): the root (hfs.json, package.json, managed files, .starciwork) and the
-//                                            be/ and fe/ skeletons (scaffold/app.mts). Accepts an empty unborn main Git root.
+//   starci app scaffold <name> [--cwd <dir>] [--without <side[,side]>] [--contract graphql|rest]  a new app <dir>/<name>/ (<dir> is the global --cwd): the root
+//                                            (hfs.json, package.json, managed files, .starciwork) and the skeletons of the sides it declares, be and fe unless
+//                                            --without leaves one out (PROJECT-1; scaffold/app.mts); --contract rest makes the be api app a rest app. Accepts an empty unborn main Git root.
 //   starci app slot <path> [--cwd <dir>] [--json]   which slot owns the path, its tier, allowed imports, required tests.
 //   starci app emit [--cwd <dir>]      write be/contracts/<app>/schema.graphql of every api app that serves GraphQL (emit/contracts.mts):
 //                                            printSchema(lexicographicSortSchema) of the resolvers the app root composes; no env, no database, no network.
@@ -116,6 +117,8 @@ import { EditionRefusal } from '../scaffold/edition-gate.mjs';
 import { addKind } from '../scaffold/add.mjs';
 import { removeModule } from '../scaffold/add-module.mjs';
 import { scaffoldApp, type LockResult } from '../scaffold/app.mjs';
+import { PROJECT_SIDES, isProjectSide, type ProjectSide } from '../runtime/scripts/hfs/project-sides.mjs';
+import { CONTRACT_KINDS, type ContractKind } from '../runtime/scripts/hfs/contract-kind.mjs';
 import { newImages } from '../scaffold/image.mjs';
 import { ESLINT_HEAP_ENV, PACKAGES, cachedLinters, eslintRepository, runLinter as nativeLinter, type CachedLinters } from '../lint/run.mjs';
 import { devBranchFinding } from '../runtime/scripts/hfs/dev-branch.mjs';
@@ -220,7 +223,7 @@ const GATE_FLAGS = ['--gate'] as const;
 /** Both quality selectors dispatch to the existing combined Sonar/Codecov baseline family. */
 const CHECK_GATES = [...FAMILIES, 'codecov'] as const;
 const PARSED: Record<string, ParsedVerb> = {
-  scaffold: { run: scaffoldMain, value: ['--registry-visibility'], edition: true, forms: [{ operands: '<name>' }] },
+  scaffold: { run: scaffoldMain, value: ['--registry-visibility', '--without', '--contract'], edition: true, forms: [{ operands: '<name>' }] },
   add: {
     run: addMain, ...ADD_FLAGS, list: ['--inject'],
     forms: [
@@ -244,7 +247,7 @@ const PARSED_FLAGS = new Set([...Object.values(PARSED).flatMap(flagsOf), '--edit
 /** The placeholder of a value flag in the usage; any other prints as <name>. */
 const PLACEHOLDERS: Record<string, string> = {
   '--gate': `<${CHECK_GATES.join('|')}>`,
-  '--registry-visibility': 'public|private', '--side': 'be|fe|packages', '--env': CHECK_ENVS.join('|'), '--edition': 'full|lite', '--base': '<ref>', '--coverage-from': '<lcov>', '--shard': '<i>/<n>', '--inject': '<binding>',
+  '--registry-visibility': 'public|private', '--without': '<be|fe|packages>[,...]', '--contract': 'graphql|rest', '--side': 'be|fe|packages', '--env': CHECK_ENVS.join('|'), '--edition': 'full|lite', '--base': '<ref>', '--coverage-from': '<lcov>', '--shard': '<i>/<n>', '--inject': '<binding>',
   '--event': '<event>', '--from': '<service>', '--service': '<Class>=<module>', '--owner': '<service>', '--failed': '<event>', '--done': '<event>',
   '--shapes': '<a,b,c>', '--blocks': '<a,b>', '--tabs': '<a,b>', '--kind': 'modal|drawer', '--isolation': 'database|schema', '--env-prefix': '<PREFIX>', '--image': '<service>=<ref>', '--sha': '<sha>',
   '--previous': '<release>', '--release': '<release>', '--out': '<path>', '--since': '<ISO>', '--timeout': '<seconds>', '--retry': '<seconds>',
@@ -916,11 +919,30 @@ function removeMain(opts: Opts, { cwd: repoRoot, stdout: out }: AppIo): number {
   return 0;
 }
 
+/**
+ * The sides `starci app scaffold --without <side[,side]>` leaves the new project (PROJECT-1): every side but the named ones, in canonical
+ * order. An unknown side, a side named twice and a list that leaves no side are usage errors. Without the flag: be and fe.
+ */
+export function scaffoldSides(without: string | undefined): ProjectSide[] {
+  if (without === undefined) return ['be', 'fe'];
+  const named = without.split(',').map((side) => side.trim());
+  const unknown = named.filter((side) => !isProjectSide(side));
+  if (unknown.length || named.some((side) => side === '')) throw new UsageError(`starci app scaffold --without takes a comma list of ${PROJECT_SIDES.join(', ')} (got ${without})`);
+  if (new Set(named).size !== named.length) throw new UsageError(`starci app scaffold --without names a side twice (${without})`);
+  const sides = PROJECT_SIDES.filter((side) => !named.includes(side));
+  if (!sides.length) throw new UsageError(`starci app scaffold --without ${without} leaves no side: a project declares at least one of ${PROJECT_SIDES.join(', ')}`);
+  return sides;
+}
+
 async function scaffoldMain(opts: Opts, { cwd, harness, edition = 'full', presets, lock, stdout: out }: AppIo): Promise<number> {
   const [name, ...extra] = opts.positional;
   const registryVisibility = valueFlag(opts, 'registry-visibility');
   if (!name || extra.length) throw new UsageError(`starci app scaffold takes \`${((VERB_USAGE.scaffold as string[])[0] as string).slice('starci app scaffold '.length)}\``);
-  const { root: created, files } = scaffoldApp({ name, into: path.resolve(cwd), harness, edition, presets: presets ?? scaffoldPresets(), ...(registryVisibility === undefined ? {} : { registryVisibility }), ...(lock ? { lock } : {}) });
+  const sides = scaffoldSides(valueFlag(opts, 'without'));
+  const contract = valueFlag(opts, 'contract');
+  if (contract !== undefined && !(CONTRACT_KINDS as readonly string[]).includes(contract)) throw new UsageError(`starci app scaffold --contract takes ${CONTRACT_KINDS.join(' or ')} (got ${contract})`);
+  if (contract === 'rest' && !sides.includes('be')) throw new UsageError('starci app scaffold --contract rest declares the contract of the be api app, but --without leaves out be');
+  const { root: created, files } = scaffoldApp({ name, into: path.resolve(cwd), harness, edition, presets: presets ?? scaffoldPresets(), sides, ...(contract === undefined ? {} : { contract: contract as ContractKind }), ...(registryVisibility === undefined ? {} : { registryVisibility }), ...(lock ? { lock } : {}) });
   out(`starci app scaffold: created ${created} (${files.length} files); next: npm ci (the lockfile, then the git hooks through npm run prepare; after npm ci --ignore-scripts run npm run prepare), then npm run lint, which is starci app check --gate lint\n`);
   return 0;
 }
