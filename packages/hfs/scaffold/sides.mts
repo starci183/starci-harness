@@ -2,7 +2,8 @@
 // line above it, and, for a project without a front end, the starter's fe components, images, local processes, probes, origins, Swarm services,
 // locked images and ingress sites taken out of the edition's templates (each YAML edit is comment-preserving and refused unless the text parses
 // to the edited document, yaml-block-edit.mts), with a README that cites only the declared sides.
-import { PROJECT_SIDES, type ProjectSide } from '../runtime/scripts/hfs/project-sides.mjs';
+import type { ProjectSide } from '../runtime/scripts/hfs/project-sides.mjs';
+export { stackSidesVars } from '../sync/declared-sides.mjs';
 import type { ContractKind } from '../runtime/scripts/hfs/contract-kind.mjs';
 import { YamlBlockEdit, type YamlDocument, type YamlStep } from './yaml-block-edit.mjs';
 
@@ -10,18 +11,6 @@ import { YamlBlockEdit, type YamlDocument, type YamlStep } from './yaml-block-ed
 export const STACK_DECLARATION_FILE = '.starcistacks/application-stacks.yaml';
 
 const SIDE_WORDS: Readonly<Record<ProjectSide, string>> = Object.freeze({ be: 'back end (be)', fe: 'front end (fe)', packages: 'root workspace packages (packages)' });
-
-/**
- * The skeleton variables of the stack's `sides` field: {{stackSides}}, the flow mapping of every side to whether it is declared, and
- * {{stackSidesNote}}, the comment above it naming in plain words the app sides the project lacks.
- */
-export function stackSidesVars(sides: readonly ProjectSide[]): { stackSides: string; stackSidesNote: string } {
-  const missing = (['be', 'fe'] as const).filter((side) => !sides.includes(side));
-  const note = missing.length
-    ? `This project has no ${missing.map((side) => SIDE_WORDS[side]).join(' and no ')}: sides are declared in hfs.json.`
-    : `This project has a ${SIDE_WORDS.be} and a ${SIDE_WORDS.fe}${sides.includes('packages') ? ` and ${SIDE_WORDS.packages}` : ''}: sides are declared in hfs.json.`;
-  return { stackSides: `{${PROJECT_SIDES.map((side) => `${side}: ${String(sides.includes(side))}`).join(', ')}}`, stackSidesNote: note };
-}
 
 const mapping = (value: unknown): Record<string, YamlDocument> => (value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, YamlDocument> : {});
 

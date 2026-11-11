@@ -23,6 +23,7 @@ import { fileURLToPath } from 'node:url';
 import { braceVariants } from '../runtime/scripts/lib/glob.mjs';
 import { codecovPaths, coverageComponents, declaredPackageScopes, jestCoverage, packageComponents, packagesCoverage, sonarCoverageExclusions, type PackagesCoverage } from '../runtime/scripts/hfs/coverage-scope.mjs';
 import { restDoorVariables } from './rest-doors.mjs';
+import { declaredSidesEdits } from './declared-sides.mjs';
 import { APP_SCOPE, SIDES, declaredAppSides, litePresenceOf, loadSlotManifest, resolveAppDeclaration, sideDeclared, slotInEdition, type RepoView } from '../runtime/scripts/hfs/slots.mjs';
 import type { AppRepo } from '../runtime/scripts/hfs/slot-app-view.mjs';
 import type { Slot, SlotManifest } from '../runtime/scripts/hfs/manifest-shape.mjs';
@@ -878,6 +879,10 @@ export async function runSync(argv: string[], { cwd = process.cwd(), out = (line
   const { write, cwdAt } = options;
   const root = cwdAt >= 0 ? path.resolve(cwd, argv[cwdAt + 1] as string) : cwd;
   try {
+    // An app that predates the declared sides gets them first (R399): hfs.json and the stack declaration, which the render then reads.
+    const declared = declaredSidesEdits(root);
+    if (write) for (const edit of declared) { fs.writeFileSync(path.join(root, edit.path), edit.content); out(`wrote ${edit.path} (${edit.reason})`); }
+    else for (const edit of declared) out(`HFS_SYNC_DRIFT ${edit.path}: ${edit.reason}; run "npx --no-install starci app sync --execute"`);
     const notices: string[] = [];
     const { hfs, targets } = await renderRepo(root, { presets, parseYaml, notices });
     const retired = retiredFiles(root, hfs);
@@ -896,7 +901,7 @@ export async function runSync(argv: string[], { cwd = process.cwd(), out = (line
       out(`starci app sync: ${written.length} written, ${free.length - written.length} already in sync${holds.size ? `, ${holds.size} held` : ''}`);
       return held.length ? 1 : 0;
     }
-    return reportSyncCheck(root, targets, out, retired);
+    return Math.max(reportSyncCheck(root, targets, out, retired), declared.length ? 1 : 0);
   } catch (error) {
     if (!(error instanceof SyncError)) throw error;
     out(error.message);

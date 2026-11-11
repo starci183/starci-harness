@@ -15,7 +15,8 @@ without a back end, a package library alone. A side's checks run only when it is
 sides (the fe wire generated from the be contract, `sides.fe.reads` of `be/contracts/`, the fe workspaces of the
 root manifest) applies only when both are; a declared side whose folder tracks nothing, a tracked `be/`, `fe/` or
 `packages/` of an undeclared side, and a `reads` of an undeclared side are refused (R399, HFS_DECLARATION_INVALID;
-owner: `@starci/hfs` `runtime/scripts/hfs/project-sides.mts`). `starci app scaffold <name> --without <side>` writes
+owner: `@starci/hfs` `runtime/scripts/hfs/project-sides.mts`); `starci app sync --execute` writes the declarations an existing app
+lacks (`"packages": {}` for a tracked `packages/`, the stack's `sides` field; `sync/declared-sides.mts`). `starci app scaffold <name> --without <side>` writes
 only the declared sides. The sides are laid out in one of two ways:
 
 - **One repository.** `be/`, `fe/` and `packages/` are folders of the app root, and every root file (manifest,

@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { bundledPresets } from '../sync/index.mjs';
+import { bundledPresets, runSync } from '../sync/index.mjs';
 import { scaffoldApp } from '../scaffold/app.mjs';
 import type { LockResult } from '../scaffold/app.mjs';
 import { ScaffoldError } from '../scaffold/service.mjs';
@@ -106,4 +106,27 @@ test('R399 at the check: a declared side whose folder tracks nothing is red', (t
   const without = files.filter((file) => !file.startsWith('packages/'));
   const codes = checkRepo({ repoRoot: root, harness: HARNESS, files: without }).findings.map((finding) => finding.code);
   assert.ok(codes.includes('HFS_SIDE_FOLDER_MISSING'));
+});
+
+test('upgrade, per existing app: an app without the declared sides is red, `starci app sync --execute` declares them, and it is green', async (t) => {
+  const { root, files } = starter(t, 'lite');
+  // An app that predates the declared sides: root packages under packages/, no sides field in its stack declaration.
+  const stackFile = path.join(root, '.starcistacks', 'application-stacks.yaml');
+  fs.writeFileSync(stackFile, fs.readFileSync(stackFile, 'utf8').replace(/^# This project has[^\n]*\nsides: [^\n]*\n/mu, ''));
+  fs.mkdirSync(path.join(root, 'packages', 'sdk', 'src'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'packages', 'sdk', 'package.json'), '{\n  "name": "@demo/sdk",\n  "private": true\n}\n');
+  fs.writeFileSync(path.join(root, 'packages', 'sdk', 'src', 'index.ts'), 'export const SDK = 1\n');
+  const tracked = [...files, 'packages/sdk/package.json', 'packages/sdk/src/index.ts'];
+  const sideCodes = () => checkRepo({ repoRoot: root, harness: HARNESS, files: tracked }).findings.map((finding) => finding.code).filter((code) => /^(?:HFS_SIDE_|STACKS_SIDES_)/u.test(code));
+  assert.deepEqual(sideCodes().sort(), ['HFS_SIDE_UNDECLARED', 'STACKS_SIDES_UNDECLARED']);
+  const lines: string[] = [];
+  await runSync(['--execute'], { cwd: root, out: (line: string) => lines.push(line), presets: bundledPresets() });
+  assert.ok(lines.some((line) => line.startsWith('wrote hfs.json (packages/ holds root workspace packages')), lines.join('\n'));
+  assert.ok(lines.some((line) => line.startsWith('wrote .starcistacks/application-stacks.yaml (the stack declaration states no sides')));
+  assert.deepEqual(Object.keys(json(root, 'hfs.json').sides ?? {}), ['be', 'fe', 'packages']);
+  assert.match(fs.readFileSync(stackFile, 'utf8'), /^schema: starci\/application-stacks@1\n# This project has a back end \(be\) and a front end \(fe\) and root workspace packages \(packages\): sides are declared in hfs\.json\.\nsides: \{be: true, fe: true, packages: true\}$/mu);
+  assert.deepEqual(sideCodes(), [], 'green once sync declared the sides');
+  const again: string[] = [];
+  await runSync([], { cwd: root, out: (line: string) => again.push(line), presets: bundledPresets() });
+  assert.equal(again.filter((line) => /hfs\.json|application-stacks/u.test(line) && line.startsWith('HFS_SYNC_DRIFT')).length, 0, 'the dry run finds the declarations in place');
 });
