@@ -45,12 +45,14 @@ test('the lite starter imports the package in its object-storage folder alone an
   assert.deepEqual([...importers], ['src/modules/integrations/object-storage']);
 });
 
-test('the glue is a module with its definition, the typed options, the config parser and the injectors, with no hand-written S3 client', () => {
+test('the glue is a module with its definition, the typed options, the config parser, the injectors and the readiness probe, with no hand-written S3 client', () => {
   const names = fs.readdirSync(GLUE).filter((name) => fs.statSync(path.join(GLUE, name)).isFile()).sort();
-  assert.deepEqual(names, ['index.ts', 'object-storage.config.ts', 'object-storage.decorators.ts', 'object-storage.module-definition.ts', 'object-storage.module.ts', 'object-storage.options.ts']);
+  assert.deepEqual(names, ['index.ts', 'object-storage-probe.service.spec.ts', 'object-storage-probe.service.ts', 'object-storage.config.ts', 'object-storage.decorators.ts', 'object-storage.module-definition.ts', 'object-storage.module.ts', 'object-storage.options.ts']);
   const module = fs.readFileSync(path.join(GLUE, 'object-storage.module.ts'), 'utf8');
   assert.match(module, /StorageModule\.registerAsync\(/);
   assert.match(module, /extends ConfigurableModuleClass/);
+  assert.match(module, /ObjectStorageProbeService/, 'the module provides the probe that adds the bucket to readiness');
+  assert.match(fs.readFileSync(path.join(GLUE, 'object-storage-probe.service.ts'), 'utf8'), /this\.required\.add\(this\)[^]*ensureBucket\(this\.bucket\)/u);
 });
 
 test('the starter composes the module once, in the integration modules of the API root, and binds no storage token by hand', () => {
