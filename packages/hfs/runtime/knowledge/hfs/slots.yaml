@@ -7,7 +7,7 @@
 # catalog READ this file through scripts/hfs/slots.mts; none of them hardcodes a path.
 # Shape: modules/schemas/hfs-slots.schema.yaml. The repository side is hfs.json: modules/schemas/hfs-repo.schema.yaml.
 schema: starci/hfs-slots@3
-version: 3.33.0
+version: 3.34.0
 
 versioning:
   # MAJOR.MINOR.PATCH of this manifest. A repository pins only the MAJOR in hfs.json ("hfs": 3).
@@ -2179,8 +2179,8 @@ slots:
     exemplifiedBy:
       - packages/hfs/templates/be/skeleton-lite/src/modules/integrations/object-storage/
     # The glue of @starci/object-storage, the owner of the S3 client (@aws-sdk/client-s3 and @aws-sdk/s3-request-presigner) over
-    # S3-compatible storage (MinIO in lite): this folder keeps the bucket, parses the settings and registers the module; no app
-    # file imports an S3 SDK or minio, and no other module imports the package.
+    # S3-compatible storage (MinIO in lite): this folder keeps the bucket, parses the settings, registers the module and adds the bucket's
+    # readiness probe (object-storage-probe.service.ts, BE-AUTH-8); no app file imports an S3 SDK or minio, and no other module imports the package.
     path: "src/modules/integrations/object-storage/"
     presence: optional
     litePresence: required
@@ -2188,7 +2188,7 @@ slots:
     tier: integrations
     owner: true
     requires: [index.ts, object-storage.config.ts, object-storage.options.ts, object-storage.decorators.ts, object-storage.module-definition.ts, object-storage.module.ts]
-    allows: [index.ts, object-storage.config.ts, object-storage.options.ts, object-storage.decorators.ts, object-storage.module-definition.ts, object-storage.module.ts, errors/]
+    allows: [index.ts, object-storage.config.ts, object-storage.options.ts, object-storage.decorators.ts, object-storage.module-definition.ts, object-storage.module.ts, object-storage-probe.service.ts, errors/]
     tests: unit-beside
     rules: [BE_TIER_DIRECTION, BE_ERROR_HOME, BE_SECRET_DEFAULT, BE_INFRA_OWNER, BE_STORAGE_OWNER]
     coverage: required
