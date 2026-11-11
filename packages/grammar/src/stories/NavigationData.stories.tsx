@@ -538,7 +538,7 @@ export const FlowGraphFlowchart: Story = {
 /**
  * The steps layout (0.35.0, the owner-approved card map), on the accounting flow "Đối soát tiền về": white step cards on the well, an icon
  * tile per kind, condition cards with named output ports (the branch words live on the ports), curved edges, two dashed back edges with
- * pill labels, an end pill and the kind legend. Pressing a card selects it (accent outline) and fires `onNodePress`.
+ * pill labels, an end pill and the kind legend. Pressing a card selects it (one 2px foreground border and its tint, 0.37.35) and fires `onNodePress`.
  */
 export const FlowGraphSteps: Story = {
   name: 'FlowGraph (steps)',
@@ -589,8 +589,8 @@ export const FlowGraphSteps: Story = {
 
 /**
  * The run overlay and its STATE PRIORITY (0.37.0, the path green since 0.37.27, owner drawing C): the run status is the outline icon and its word on the card
- * edge; the path the run took is green (a reached card's border, a taken edge, its dot and arrowhead); a skipped card is faded; a selected card has exactly one
- * 2px primary outline; a wait card is dashed only in the design view; an untaken edge is a dashed light-neutral line, a back edge stays dashed.
+ * edge; the path the run took is green (a taken edge, its dot and arrowhead); every card's one border is its status colour; a skipped card is faded; a selected card
+ * has that one border at 2px with its tint, never a second ring (0.37.35); a wait card is dashed only in the design view; an untaken edge is a dashed light-neutral line, a back edge stays dashed.
  */
 export const FlowGraphStepsRun: Story = {
   name: 'FlowGraph (steps, run overlay)',

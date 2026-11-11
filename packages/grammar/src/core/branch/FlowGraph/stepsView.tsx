@@ -18,7 +18,7 @@ import { isValidElement, memo, type ReactNode } from "react"
 import { Avatar } from "../../leaf/Avatar/index.js"
 import { Icon, type IconSource } from "../../leaf/Icon/index.js"
 import { useCustomTone } from "../../useCustomTone.js"
-import { chipsOf, roundedPath, stepsBackRoute, stepsForwardRoute, STEPS_CORNER, STEPS_PORT_CHARS, type StepsBackRoute } from "./steps.js"
+import { chipsOf, roundedPath, stepsBackRoute, stepsForwardRoute, STEPS_CORNER, STEPS_PORT_CHARS, STEPS_TITLE_CHARS, STEPS_TITLE_LINES, type StepsBackRoute } from "./steps.js"
 import type { FlowGraphChip, FlowGraphDirection, FlowGraphLegendItem, FlowGraphNode, FlowGraphPort, FlowGraphRunStatus, FlowGraphStepKind, FlowGraphTone } from "./types.js"
 
 /**
@@ -73,8 +73,9 @@ export const STEPS_UNTAKEN_TONE = "color-mix(in oklab, var(--muted) 55%, transpa
 /** The round dot every steps edge STARTS with (0.37.27, owner "bắt đầu có chấm tròn"): a white disc with an edge-coloured ring, radius 4, on its source's port. */
 export const STEPS_EDGE_DOT = 4
 
-const EdgeDot = ({ x, y }: { readonly x: number, readonly y: number }) => (
-    <circle className="starci-core-flow-graph-edge-dot" cx={x} cy={y} r={STEPS_EDGE_DOT} data-grammar-flow-edge-dot="true" />
+/** `lane` (0.37.35): the distance out of its port at which a branch turns into its own lane, stamped as `data-grammar-flow-lane`. */
+const EdgeDot = ({ x, y, lane }: { readonly x: number, readonly y: number, readonly lane?: number | undefined }) => (
+    <circle className="starci-core-flow-graph-edge-dot" cx={x} cy={y} r={STEPS_EDGE_DOT} data-grammar-flow-edge-dot="true" {...(lane === undefined ? {} : { "data-grammar-flow-lane": String(lane) })} />
 )
 
 export const STEP_BUILT_IN_TONES: readonly string[] = ["neutral", "accent", "success", "warning", "danger", "muted"]
@@ -159,14 +160,14 @@ export const FlowGraphStepView = memo(({ data }: NodeProps<Node<StepNodeData>>) 
         <span className="starci-core-flow-graph-step-body">
             <span className="starci-core-flow-graph-step-tile" aria-hidden="true"><StepGlyph icon={graphNode.icon} kind={kind} /></span>
             <span className="starci-core-flow-graph-step-copy">
-                <span className="starci-core-flow-graph-step-title">{graphNode.label}</span>
+                <span className="starci-core-flow-graph-step-title" {...(graphNode.label.length > STEPS_TITLE_CHARS * STEPS_TITLE_LINES ? { title: graphNode.label } : {})}>{graphNode.label}</span>
                 {graphNode.agent === undefined ? null : (
                     <span className="starci-core-flow-graph-step-agent" data-grammar-flow-agent="true">
                         <Avatar name={graphNode.agent.name} {...(graphNode.agent.avatar === undefined ? {} : { src: graphNode.agent.avatar })} size="sm" isDecorative />
                         <span className="starci-core-flow-graph-step-agent-name">{graphNode.agent.name}</span>
                     </span>
                 )}
-                {graphNode.description === undefined || graphNode.description === "" ? null : <span className="starci-core-flow-graph-step-line">{graphNode.description}</span>}
+                {graphNode.description === undefined || graphNode.description === "" ? null : <span className="starci-core-flow-graph-step-line" title={graphNode.description}>{graphNode.description}</span>}
                 <StepChips chips={graphNode.chips} />
             </span>
         </span>
@@ -240,19 +241,22 @@ const STEP_LABEL = "starci-core-flow-graph-step-label"
 /**
  * A forward edge (0.37.27, drawing C): ORTHOGONAL ONLY, out of its port (or the card's end edge) to the shared trunk, across, then into the next card, a 10px
  * rounded corner at every turn, the round dot at its start and the small solid arrowhead at its end; a label without a port is a pill on its last run.
+ * A branch out of a port (0.37.35) turns at its own lane (`data.lane`, DNA-COMMON-FLOW-BRANCH-LANES), so no two branches share a vertical run.
  */
 export const FlowGraphStepEdge = memo(({ sourceX, sourceY, targetX, targetY, markerEnd, label, data, target }: EdgeProps) => {
     const direction = (data?.["direction"] as FlowGraphDirection | undefined) ?? "LR"
     const measured = useInternalNode(target)?.measured
     const span = (direction === "LR" ? measured?.height : measured?.width) ?? 0
-    const points = stepsForwardRoute({ x: sourceX, y: sourceY }, { x: targetX, y: targetY }, direction, span)
+    const laneData = data?.["lane"]
+    const lane = typeof laneData === "number" ? laneData : undefined
+    const points = stepsForwardRoute({ x: sourceX, y: sourceY }, { x: targetX, y: targetY }, direction, span, lane)
     const turn = points[points.length - 2] ?? { x: sourceX, y: sourceY }
     const labelX = (turn.x + targetX) / 2
     const labelY = (turn.y + targetY) / 2
     return (
         <>
             <BaseEdge path={roundedPath(points, STEPS_CORNER)} {...(markerEnd === undefined ? {} : { markerEnd })} />
-            <EdgeDot x={sourceX} y={sourceY} />
+            <EdgeDot x={sourceX} y={sourceY} lane={lane} />
             {typeof label === "string" && label !== "" ? (
                 <EdgeLabelRenderer>
                     <span className={STEP_LABEL} data-grammar-flow-edge-label="true" style={{ transform: `translate(-50%, -50%) translate(${String(labelX)}px, ${String(labelY)}px)` }}>{label}</span>

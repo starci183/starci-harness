@@ -91,7 +91,8 @@ export type FlowGraphProps = NoChildren & {
     readonly edges: ReadonlyArray<FlowGraphEdge>
     /**
      * The selected node. Pass it (with `onSelect`) to control selection; leave it out and the graph keeps its own. The node stamps
-     * `data-grammar-selected` and the screen-reader list reports it. HeroUI has no graph node, so a pill draws no selected outline.
+     * `data-grammar-selected` and the screen-reader list reports it. HeroUI has no graph node, so a pill draws no selected outline. A `steps` card selected
+     * (0.37.35, DNA-COMMON-FLOW-SELECTED) has ONE 2px border in its status colour (the foreground without a run) and a soft tint of it; never a second ring.
      */
     readonly selectedId?: string | null
     /** Fires with the node id on click, Enter or Space, and with `null` when the empty canvas is clicked or Escape is pressed. */
@@ -571,7 +572,9 @@ const FlowGraphInner = ({
             type: isBack ? "flowGraphBack" : "flowGraphStep",
             sourceHandle: route !== undefined ? `back-out-${route.sourceSide}` : port === undefined ? "out" : `port:${port.id}`,
             targetHandle: route !== undefined ? `back-in-${route.targetSide}` : "in",
-            data: route === undefined ? { direction: flowDirection ?? "LR" } : { route, direction: flowDirection ?? "LR" },
+            data: route === undefined
+                ? { direction: flowDirection ?? "LR", ...(steps.trunks.has(edge.id) ? { lane: steps.trunks.get(edge.id) } : {}) }
+                : { route, direction: flowDirection ?? "LR" },
             // Drawing C (0.37.27): a small solid triangle in the edge's colour; a run's taken path is the success green.
             markerEnd: { type: MarkerType.ArrowClosed, markerUnits: "userSpaceOnUse", width: STEPS_ARROW_BOX, height: STEPS_ARROW_BOX, strokeWidth: STEPS_ARROW_STROKE, color: port?.tone === "danger" ? "var(--danger)" : isRun && edge.isTaken === true ? STEPS_TAKEN_TONE : isRun ? STEPS_UNTAKEN_TONE : "var(--muted)" },
             // Above the cards (0.37.33: the nodes stand at 1), so the round dot each edge starts with is drawn whole, centred ON its source card's edge.

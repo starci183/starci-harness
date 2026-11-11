@@ -9,8 +9,8 @@ import type { FlowGraphChip, FlowGraphDirection, FlowGraphEdge, FlowGraphNode, F
  * through the gap below its source's layer (see {@link stepsBackRoute}).
  */
 
-/** The card width (`--grammar-flow-card-width`, 12.5rem since 0.37.33, owner drawing graph-state: a step card is 200 x 64), in graph units. */
-export const STEPS_CARD_WIDTH = 200
+/** The card width (`--grammar-flow-card-width`, 11rem since 0.37.35, owner drawing graph-selected: a step card is 176 x 64, DNA-COMMON-FLOW-CARD-SIZE), in graph units. */
+export const STEPS_CARD_WIDTH = 176
 /** The least height of a step card (`--grammar-flow-card-height`, 4rem, 0.37.33): its body is never shorter; ports add their rows under it. */
 export const STEPS_CARD_HEIGHT = 64
 /** A port label shows this many characters; a longer one is cut with an ellipsis and read in full from its tooltip. */
@@ -25,8 +25,13 @@ export const stepsCardWidth = (ports: ReadonlyMap<string, ReadonlyArray<FlowGrap
     // Across (LR, 0.37.27) the ports stack as rows under the body, so a port needs only its own label's width, which the base card holds.
     direction === "LR" ? STEPS_CARD_WIDTH : Math.min(STEPS_CARD_WIDTH_MAX, Math.max(STEPS_CARD_WIDTH, ...[...ports.values()].map((row) => Math.ceil(row.reduce((sum, port) => sum + portWidth(port), 0) + 2))))
 
-/** The room between two columns: wide enough for the vertical runs of back edges beside a card. */
+/** The room between two columns (`TB`): wide enough for the vertical runs of back edges beside a card. */
 export const STEPS_COLUMN_GAP = 80
+/**
+ * The room between two cards side by side across the flow of an `LR` graph (0.37.35): 40, the layer gap. The cards of a column are packed by their OWN heights
+ * (a short card takes less room than the tallest card of the graph), so a condition's branches stand close to its ports and no edge runs past them.
+ */
+export const STEPS_CROSS_GAP_LR = 40
 /**
  * The room between two layers. `TB`: a curve and the channels of back edges after a layer. `LR` (0.37.33, owner drawing graph-state): 40, enough for the start
  * dot, a 10px bend and the arrowhead; a layer gap is wider only where a labelled edge needs it (a label pill on a forward edge with no port, the channels of
@@ -47,12 +52,15 @@ const TITLE_LINE = 18
 const DESCRIPTION_LINE = 16
 /** The agent line under a title (0.37.5): a 16px avatar and the name, with a 2px step above it. */
 const AGENT_LINE = 18
-const TITLE_CHARS = 16
-const DESCRIPTION_CHARS = 19
+/** A title wraps at about 14 characters in the 176 card's copy column (110px at 14px medium) and shows at most 2 lines (0.37.35); the line about 17 at 12px. */
+export const STEPS_TITLE_CHARS = 14
+export const STEPS_TITLE_LINES = 2
 const OUTPUTS_ROW = 33
 /** Across (LR, 0.37.27) each port is a row of its own under the body: its label at the start, its dot on the card's end edge. */
 export const STEPS_PORT_ROW_LR = 25
 const END_HEIGHT = 36
+/** An estimate of the end pill's width: its 20 mark, the 8 gap, its 4 / 12 insets, the border and its words at about 7.5 per character (14px medium). */
+const endPillWidth = (node: FlowGraphNode): number => Math.ceil(4 + 20 + 8 + 12 + 2 + node.label.length * 7.5)
 /** Chips under a title (0.37.4): the most drawn before the "+N" pill; a chip row is 16 tall with a 4 gap above it. */
 export const STEPS_CHIPS_MAX = 3
 const CHIP_ROW = 16
@@ -122,8 +130,9 @@ export const portOfEdge = (edge: FlowGraphEdge, ports: ReadonlyArray<FlowGraphPo
 /** The height a card draws at, estimated from its words and ports. */
 export const stepsNodeHeight = (node: FlowGraphNode, ports: number, direction: FlowGraphDirection = "TB"): number => {
     if (stepKindOf(node) === "end") return END_HEIGHT
-    const title = wrappedLines(node.label, TITLE_CHARS) * TITLE_LINE
-    const description = node.description === undefined || node.description === "" ? 0 : wrappedLines(node.description, DESCRIPTION_CHARS) * DESCRIPTION_LINE
+    const title = Math.min(STEPS_TITLE_LINES, wrappedLines(node.label, STEPS_TITLE_CHARS)) * TITLE_LINE
+    // 0.37.35: the line is one line, cut with an ellipsis.
+    const description = node.description === undefined || node.description === "" ? 0 : DESCRIPTION_LINE
     // 0.37.33: the body is never shorter than the 64 card (less its two border lines); the ports add their rows under it.
     const body = Math.max(STEPS_CARD_HEIGHT - 2, CARD_CHROME - 2 + Math.max(TILE, title + (node.agent === undefined ? 0 : AGENT_LINE) + description + chipsHeight(node.chips)))
     return 2 + body + (ports === 0 ? 0 : direction === "LR" ? 1 + ports * STEPS_PORT_ROW_LR : OUTPUTS_ROW)
@@ -148,6 +157,8 @@ export type StepsLayout = {
     readonly layers: ReadonlyMap<string, number>
     readonly ports: ReadonlyMap<string, ReadonlyArray<FlowGraphPort>>
     readonly back: ReadonlyMap<string, StepsBackRoute>
+    /** How far out of its port a branch edge turns into its own lane (DNA-COMMON-FLOW-BRANCH-LANES), by edge id; an edge not here uses {@link STEPS_TRUNK}. */
+    readonly trunks: ReadonlyMap<string, number>
     /** The width every card draws at, in graph units (the base width, or wider for a condition's ports). */
     readonly cardWidth: number
     /** The size of the whole graph at zoom 1, margin included. */
@@ -195,16 +206,28 @@ export const STEPS_CORNER = 10
  * A forward edge's points (0.37.27, ORTHOGONAL ONLY): out of the source along the flow to the trunk, across to the target's line, then along into the target.
  * Never diagonal; a source and target on one line is a straight run. Screen coordinates, the handles at the middle of a side or a port.
  */
-export const stepsForwardRoute = (source: FlowGraphPoint, target: FlowGraphPoint, direction: FlowGraphDirection, targetSpan = 0): ReadonlyArray<FlowGraphPoint> => {
+export const stepsForwardRoute = (source: FlowGraphPoint, target: FlowGraphPoint, direction: FlowGraphDirection, targetSpan = 0, lane?: number): ReadonlyArray<FlowGraphPoint> => {
     const toLocal = (point: FlowGraphPoint) => direction === "TB" ? { a: point.x, l: point.y } : { a: point.y, l: point.x }
     const toScreen = (a: number, l: number): FlowGraphPoint => direction === "TB" ? { x: a, y: l } : { x: l, y: a }
     const s = toLocal(source)
     const t = toLocal(target)
     // A source that faces the target's entering side (within its span, a corner's room kept) runs straight into it: no small jog between two cards of different heights.
     if (Math.abs(s.a - t.a) < 0.5 || Math.abs(s.a - t.a) <= targetSpan / 2 - STEPS_CORNER) return [toScreen(s.a, s.l), toScreen(s.a, t.l)]
-    const trunk = s.l + Math.max(0, Math.min(STEPS_TRUNK, (t.l - s.l) / 2))
+    // A branch in its own lane (DNA-COMMON-FLOW-BRANCH-LANES) turns at its lane, keeping a corner and the arrowhead's run before the target; others share the trunk.
+    const trunk = s.l + Math.max(0, lane === undefined ? Math.min(STEPS_TRUNK, (t.l - s.l) / 2) : Math.min(lane, t.l - s.l - STEPS_CORNER - STEPS_ARROW_ROOM))
     return [toScreen(s.a, s.l), toScreen(s.a, trunk), toScreen(t.a, trunk), toScreen(t.a, t.l)]
 }
+
+/** The straight run an edge keeps before its arrowhead after its last turn (the arrowhead is about 8 long). */
+export const STEPS_ARROW_ROOM = 8
+/**
+ * BRANCH LANES (0.37.35, law DNA-COMMON-FLOW-BRANCH-LANES). The edges that leave a card's PORTS (a condition's branches) each run their own vertical lane: the
+ * branch turns once out of its port into its lane, runs only between its port and its target's line, and turns once into its target. Lanes nest so no two branches
+ * share a lane or cross: the branches that climb take the nearest lanes, the upper port first; those that descend take the next ones, the lower port first. Edges out of one point (a
+ * plain card's end) still share one trunk. The first lane stands {@link STEPS_LANE_FIRST} out of the card, each next one {@link STEPS_LANE_STEP} further.
+ */
+export const STEPS_LANE_FIRST = 16
+export const STEPS_LANE_STEP = 10
 
 /** The distance a back edge first runs out of its source's side before it turns. */
 export const STEPS_BACK_LEAVE = 12
@@ -280,6 +303,7 @@ type Core = {
     readonly positions: Map<string, FlowGraphPoint>
     readonly layers: Map<string, number>
     readonly back: Map<string, StepsBackRoute>
+    readonly trunks: Map<string, number>
     readonly origin: FlowGraphPoint
     readonly contentWidth: number
     readonly contentHeight: number
@@ -313,7 +337,8 @@ const coreLayout = (
     const layerOf = (id: string) => layers.get(id) ?? 0
     const isCondition = new Map(nodes.map((node) => [node.id, stepKindOf(node) === "condition"]))
     const heightOf = (node: FlowGraphNode) => boxes.get(node.id)?.height ?? stepsNodeHeight(node, (ports.get(node.id) ?? []).length, direction)
-    const widthOf = (node: FlowGraphNode) => boxes.get(node.id)?.width ?? cardWidth
+    // Across (LR, 0.37.35) the end pill takes its own width along the flow, so the gap before it is the layer gap, not the rest of a card's width.
+    const widthOf = (node: FlowGraphNode) => boxes.get(node.id)?.width ?? (direction === "LR" && stepKindOf(node) === "end" ? endPillWidth(node) : cardWidth)
 
     // The tree: a node hangs under the source of its first forward edge that runs down a layer or more.
     const parent = new Map<string, string>()
@@ -340,25 +365,32 @@ const coreLayout = (
         if (box === undefined || byId.get(id) === undefined) return 1
         return Math.max(1, Math.ceil(((direction === "TB" ? box.width : box.height) + STEPS_COLUMN_GAP) / crossStep))
     }
+    // LR (0.37.35): a leaf takes its OWN height and the cross gap, not the tallest card's row (DNA-COMMON-FLOW-BRANCH-LANES); TB keeps one column per card.
+    const crossGap = direction === "TB" ? STEPS_COLUMN_GAP : STEPS_CROSS_GAP_LR
+    const sizeOf = (id: string): number => {
+        const node = byId.get(id)
+        if (direction === "TB" || node === undefined) return spanOf(id) * crossStep - STEPS_COLUMN_GAP
+        return heightOf(node)
+    }
 
-    // Tidy columns: a leaf takes the next column(s), a parent sits centred over its first and last child.
+    // Tidy columns: a leaf takes the next room along the cross axis (in graph units), a parent sits centred over its first and last child.
     const across = new Map<string, number>()
-    let nextColumn = 0
+    let cursor = 0
     const place = (id: string, seen: Set<string>): number => {
-        if (seen.has(id)) return across.get(id) ?? nextColumn
+        if (seen.has(id)) return across.get(id) ?? cursor
         seen.add(id)
         const own = kids(id).filter((child) => !seen.has(child))
         if (own.length === 0) {
-            const width = spanOf(id)
-            const column = nextColumn + (width - 1) / 2
-            nextColumn += width
-            across.set(id, column)
-            return column
+            const size = sizeOf(id)
+            const centre = cursor + size / 2
+            cursor += size + crossGap
+            across.set(id, centre)
+            return centre
         }
         const placed = own.map((child) => place(child, seen))
-        const column = ((placed[0] ?? 0) + (placed[placed.length - 1] ?? 0)) / 2
-        across.set(id, column)
-        return column
+        const centre = ((placed[0] ?? 0) + (placed[placed.length - 1] ?? 0)) / 2
+        across.set(id, centre)
+        return centre
     }
     const seen = new Set<string>()
     for (const node of nodes) if (!parent.has(node.id)) place(node.id, seen)
@@ -371,12 +403,13 @@ const coreLayout = (
         if (from.length < 2) continue
         if (!from.every((id) => !sources.has(id) && forward.every((edge) => edge.source !== id || edge.target === target))) continue
         const centre = across.get(target) ?? 0
-        from.forEach((id, index) => across.set(id, centre + (index - (from.length - 1) / 2)))
+        const unit = Math.max(...from.map(sizeOf)) + crossGap
+        from.forEach((id, index) => across.set(id, centre + (index - (from.length - 1) / 2) * unit))
     }
     let low = Infinity
     let high = -Infinity
     for (const node of nodes) {
-        const half = (spanOf(node.id) - 1) / 2
+        const half = sizeOf(node.id) / 2
         low = Math.min(low, (across.get(node.id) ?? 0) - half)
         high = Math.max(high, (across.get(node.id) ?? 0) + half)
     }
@@ -385,7 +418,6 @@ const coreLayout = (
         high = 0
     }
     for (const node of nodes) across.set(node.id, (across.get(node.id) ?? 0) - low)
-    const columns = high - low
 
     // The extent of every layer along the flow: TB rows as tall as their tallest card, LR columns as wide as their widest.
     const layerCount = Math.max(0, ...layers.values()) + 1
@@ -394,7 +426,10 @@ const coreLayout = (
         const size = direction === "TB" ? heightOf(node) : widthOf(node)
         extent[layerOf(node.id)] = Math.max(extent[layerOf(node.id)] ?? 0, size)
     }
-    const gaps = direction === "LR" ? lrLayerGaps(layerCount, usable, layerOf, ports) : new Array<number>(layerCount).fill(STEPS_LAYER_GAP.TB)
+    const lanes = branchLanes(nodes, forward, ports, across, heightOf, widthOf, direction, layerOf)
+    const gaps = (direction === "LR" ? lrLayerGaps(layerCount, usable, layerOf, ports) : new Array<number>(layerCount).fill(STEPS_LAYER_GAP.TB))
+        // A layer whose branches need more lanes than its gap holds widens to fit them (each lane, then a corner and the arrowhead's run).
+        .map((gap, layer) => Math.max(gap, (lanes.depth.get(layer) ?? 0) === 0 ? 0 : STEPS_LANE_FIRST + ((lanes.depth.get(layer) ?? 1) - 1) * STEPS_LANE_STEP + STEPS_CORNER + STEPS_ARROW_ROOM))
     const layerStart: number[] = []
     let along = 0
     extent.forEach((size, layer) => {
@@ -406,8 +441,9 @@ const coreLayout = (
     const positions = new Map<string, FlowGraphPoint>()
     for (const node of nodes) {
         const layer = layerOf(node.id)
-        const l = (layerStart[layer] ?? 0) + (extent[layer] ?? 0) / 2
-        const a = (across.get(node.id) ?? 0) * crossStep
+        // LR: every node starts at its layer's start (a pill narrower than the layer stands right after the gap); TB: centred on the layer's line.
+        const l = direction === "LR" ? (layerStart[layer] ?? 0) + widthOf(node) / 2 : (layerStart[layer] ?? 0) + (extent[layer] ?? 0) / 2
+        const a = across.get(node.id) ?? 0
         positions.set(node.id, direction === "TB" ? { x: a, y: l } : { x: l, y: a })
     }
 
@@ -444,15 +480,72 @@ const coreLayout = (
     }
     // The layer gap holds three channels under a layer; a fourth back edge out of one layer runs over the next layer's curves.
 
-    const acrossSize = columns * crossStep + (direction === "TB" ? cardWidth : crossStep - STEPS_COLUMN_GAP)
+    const acrossSize = high - low
+    const trunks = new Map<string, number>()
+    for (const [id, slot] of lanes.slots) trunks.set(id, STEPS_LANE_FIRST + slot * STEPS_LANE_STEP)
     return {
         positions,
         layers,
         back,
-        origin: direction === "TB" ? { x: -cardWidth / 2, y: 0 } : { x: 0, y: -(crossStep - STEPS_COLUMN_GAP) / 2 },
+        trunks,
+        origin: { x: 0, y: 0 },
         contentWidth: direction === "TB" ? acrossSize : alongSize,
         contentHeight: direction === "TB" ? alongSize : acrossSize,
     }
+}
+
+/**
+ * The lanes of the branch edges (0.37.35, DNA-COMMON-FLOW-BRANCH-LANES): for every card with ports, each edge that leaves a port and must turn (its target is
+ * not straight ahead) takes a lane slot; the climbing branches are numbered from the upper port, the descending ones from the lower port, so the lanes nest and
+ * never share or cross a segment. `depth` is the most lanes a layer's gap must hold.
+ */
+const branchLanes = (
+    nodes: ReadonlyArray<FlowGraphNode>,
+    forward: ReadonlyArray<FlowGraphEdge>,
+    ports: ReadonlyMap<string, ReadonlyArray<FlowGraphPort>>,
+    across: ReadonlyMap<string, number>,
+    heightOf: (node: FlowGraphNode) => number,
+    widthOf: (node: FlowGraphNode) => number,
+    direction: FlowGraphDirection,
+    layerOf: (id: string) => number,
+): { readonly slots: Map<string, number>, readonly depth: Map<number, number> } => {
+    const slots = new Map<string, number>()
+    const depth = new Map<number, number>()
+    const byId = new Map(nodes.map((node) => [node.id, node]))
+    for (const node of nodes) {
+        const own = ports.get(node.id) ?? []
+        if (own.length === 0) continue
+        const centre = across.get(node.id) ?? 0
+        // Where each port's edge leaves, across the flow: LR the rows under the body, TB the cells along the bottom.
+        const portAt = (index: number): number => {
+            if (direction === "LR") {
+                const height = heightOf(node)
+                return centre + height / 2 - 1 - (own.length - index - 0.5) * STEPS_PORT_ROW_LR
+            }
+            const width = widthOf(node)
+            return centre - width / 2 + ((index + 0.5) * width) / own.length
+        }
+        const climb: Array<{ readonly id: string, readonly port: number }> = []
+        const descend: Array<{ readonly id: string, readonly port: number }> = []
+        for (const edge of forward) {
+            if (edge.source !== node.id) continue
+            const port = portOfEdge(edge, own)
+            const target = byId.get(edge.target)
+            if (port === undefined || target === undefined) continue
+            const index = own.indexOf(port)
+            const from = portAt(index)
+            const to = across.get(edge.target) ?? 0
+            const span = direction === "LR" ? heightOf(target) : widthOf(target)
+            if (Math.abs(from - to) < 0.5 || Math.abs(from - to) <= span / 2 - STEPS_CORNER) continue
+            ;(to < from ? climb : descend).push({ id: edge.id, port: index })
+        }
+        // Every branch its own lane, even when a climbing and a descending one would never meet: two runs on one x read as one line through the card's ports.
+        climb.sort((a, b) => a.port - b.port).forEach((entry, slot) => slots.set(entry.id, slot))
+        descend.sort((a, b) => b.port - a.port).forEach((entry, slot) => slots.set(entry.id, climb.length + slot))
+        const need = climb.length + descend.length
+        if (need > 0) depth.set(layerOf(node.id), Math.max(depth.get(layerOf(node.id)) ?? 0, need))
+    }
+    return { slots, depth }
 }
 
 /**
@@ -559,6 +652,7 @@ export const stepsLayout = (nodes: ReadonlyArray<FlowGraphNode>, edges: Readonly
     const positions = new Map<string, FlowGraphPoint>()
     const layers = new Map<string, number>()
     const back = new Map<string, StepsBackRoute>()
+    const trunks = new Map<string, number>()
     let cursorX = 0
     let cursorY = 0
     let rowHeight = 0
@@ -574,6 +668,7 @@ export const stepsLayout = (nodes: ReadonlyArray<FlowGraphNode>, edges: Readonly
         for (const [id, point] of core.positions) positions.set(id, { x: point.x + dx, y: point.y + dy })
         for (const [id, layer] of core.layers) layers.set(id, layer)
         for (const [id, route] of core.back) back.set(id, { ...route, channel: route.channel + (direction === "TB" ? dy : dx) })
+        for (const [id, trunk] of core.trunks) trunks.set(id, trunk)
         cursorX += core.contentWidth + STEPS_ISLAND_GAP
         contentWidth = Math.max(contentWidth, cursorX - STEPS_ISLAND_GAP)
         rowHeight = Math.max(rowHeight, core.contentHeight)
@@ -592,12 +687,14 @@ export const stepsLayout = (nodes: ReadonlyArray<FlowGraphNode>, edges: Readonly
         for (const [childId, layer] of sub.layout.layers) layers.set(childId, layer)
         for (const [edgeId, route] of sub.layout.back) back.set(edgeId, { ...route, channel: route.channel + (direction === "TB" ? dy : dx) })
         for (const [childId, box] of sub.layout.boxes) allBoxes.set(childId, box)
+        for (const [edgeId, trunk] of sub.layout.trunks) trunks.set(edgeId, trunk)
     }
     return {
         positions,
         layers,
         ports,
         back,
+        trunks,
         cardWidth,
         width: contentWidth + 2 * STEPS_MARGIN,
         height: contentHeight + 2 * STEPS_MARGIN,

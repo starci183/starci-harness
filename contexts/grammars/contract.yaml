@@ -543,7 +543,7 @@ roles:
     sizes: none
     states: [loading (skeleton at the reserved box), ready, error (title and the source as code, in the region), empty (FlowGraph, BubbleMap)]
     grammarMayChange: [frame, node and edge paint through tokens]
-    dna: [DNA-COMMON-DIAGRAM-LOADING-BOX, DNA-COMMON-DIAGRAM-NAMED, DNA-COMMON-DIAGRAM-ERROR-SOURCE, DNA-COMMON-FLOW-EDGE-LABEL-SPOKEN, DNA-COMMON-FLOW-LANE-LABEL-ABOVE-LINES, DNA-COMMON-FLOW-LANE-LABEL-OPAQUE, DNA-COMMON-BUBBLE-TEXT-INSIDE-START, DNA-COMMON-BUBBLE-TEXT-INSIDE-END, DNA-COMMON-FLOW-READABLE-FLOOR, DNA-COMMON-FLOW-OPEN-ZOOM, DNA-COMMON-FLOW-CARD-SIZE, DNA-COMMON-FLOW-EDGE-DOT-ON-EDGE]
+    dna: [DNA-COMMON-DIAGRAM-LOADING-BOX, DNA-COMMON-DIAGRAM-NAMED, DNA-COMMON-DIAGRAM-ERROR-SOURCE, DNA-COMMON-FLOW-EDGE-LABEL-SPOKEN, DNA-COMMON-FLOW-LANE-LABEL-ABOVE-LINES, DNA-COMMON-FLOW-LANE-LABEL-OPAQUE, DNA-COMMON-BUBBLE-TEXT-INSIDE-START, DNA-COMMON-BUBBLE-TEXT-INSIDE-END, DNA-COMMON-FLOW-READABLE-FLOOR, DNA-COMMON-FLOW-OPEN-ZOOM, DNA-COMMON-FLOW-CARD-SIZE, DNA-COMMON-FLOW-EDGE-DOT-ON-EDGE, DNA-COMMON-FLOW-SELECTED, DNA-COMMON-FLOW-BRANCH-LANES]
 
 # The DNA: every constraint a grammar keeps, each one law with the measurement a DNA gate performs on a render.
 # Layer 1 of grammars/README.md#three-layers: a DNA entry is a constraint, never a judgement; a choice rule moves here
@@ -1142,7 +1142,7 @@ mustKeep:
       owner: ui/components/list-table.md
     - id: DNA-COMMON-CARD-SUGGESTIONS
       role: list
-      law: "The replies a message card offers are ONE bordered list (SurfaceCard kind list, layout suggestions; surface in surface, SURFACE-ELEVATION): a row per reply, its plain text at 14 regular weight wrapping at the reading edge, never truncated, the whole row the one button that sends it, a trailing chevron; the suggestion pills by a composer stay Button sm (owner-approved drawing chat-surfaces, 0.37.31)."
+      law: "The replies a message card offers are ONE bordered list (SurfaceCard kind list, layout suggestions; surface in surface, SURFACE-ELEVATION): a row per reply, its plain text at 14 regular weight wrapping at the reading edge, never truncated, the whole row the one button that sends it, a trailing chevron that stays at the end of the row at every width (a 390 phone included), vertically centred on the text, the text wrapping beside it; the suggestion pills by a composer stay Button sm (owner-approved drawing chat-surfaces, 0.37.31; the chevron at every width 0.37.35)."
       measure: { kind: style, select: '[data-grammar-list-layout="suggestions"] .starci-core-list-row-name', checks: [{ metric: font-weight, op: "=", value: 400 }] }
       owner: ui/components/message-bubble.md
     - id: DNA-COMMON-ROW-ACTION-END
@@ -1470,16 +1470,29 @@ mustKeep:
       owner: ui/components/diagram.md
     - id: DNA-COMMON-FLOW-OPEN-ZOOM
       role: diagram
-      law: "A steps graph opens readable: it is fitted when the fit is zoom 0.95 or more (never past 1; a linear 5-step graph fits the 1160px workflow map well of a 1440 page), otherwise it opens at zoom 1 at its entry node and pans; a canvas 480px wide or less opens at 0.8 the same way. The least zoom stays 0.8 (DNA-COMMON-FLOW-READABLE-FLOOR). The zoom controls take room at the start edge only where the graph would stand beside them. height=\"fill\" makes the frame the rest of the page height, at least 360px (owner-approved drawing graph-state, 0.37.33)."
+      law: "A steps graph opens readable: it is fitted when the fit is zoom 0.95 or more (never past 1; a linear 5-step graph and its end pill fit the 1160px workflow map well of a 1440 page, inside a 12px margin), otherwise it opens at zoom 1 at its entry node and pans; a canvas 480px wide or less opens at 0.8 the same way. The least zoom stays 0.8 (DNA-COMMON-FLOW-READABLE-FLOOR). The zoom controls take room at the start edge only where the graph would stand beside them. height=\"fill\" makes the frame the rest of the page height, at least 360px (owner-approved drawing graph-state, 0.37.33)."
       measure: { kind: style, select: '[data-component="FlowGraph"][data-grammar-flow-layout="steps"] .react-flow__viewport', metric: scale, op: ">=", value: 0.8 }
       owner: ui/components/diagram.md
     - id: DNA-COMMON-FLOW-CARD-SIZE
       role: diagram
-      law: "A steps card is 200 x 64 at zoom 1 (ports add rows under the body), its title 14 and its line 12; across (LR) cards stand 40 apart, wider only where an edge out of the layer needs room for a label or back-edge channels (0.37.33)."
+      law: "A steps card is 176 x 64 at zoom 1 (owner-approved drawing graph-selected, 0.37.35; ports add rows under the body), its title 14 wrapping to at most two lines (the card grows by the second line only) and its one line 12, cut with an ellipsis; across (LR) cards stand 40 apart along the flow and 40 apart across it, each taking its own height, wider only where an edge out of the layer needs room for a label, branch lanes or back-edge channels; the end pill stands 40 after its source."
       measure:
         kind: style
         select: '[data-component="FlowGraph"][data-grammar-flow-layout="steps"] .starci-core-flow-graph-step:not([data-kind="end"])'
-        checks: [{ metric: width, op: "=", value: 200px }]
+        checks: [{ metric: width, op: "=", value: 176px }]
+      owner: ui/components/diagram.md
+    - id: DNA-COMMON-FLOW-SELECTED
+      role: diagram
+      law: "A selected steps card has ONE border, 2px, in its status colour (done success, failed danger, waiting warning, running accent, skipped and not reached muted; a graph with no run status the foreground) and a soft tint of that colour as its ground, never a second ring: no outline and no box-shadow; an unselected card keeps one 1px border (in a run, its status colour). Keyboard focus shows only on focus-visible, a dashed 2px outline in the card's status colour 3px off the card (owner-approved drawing graph-selected, 0.37.35)."
+      measure:
+        kind: style
+        select: '[data-component="FlowGraph"][data-grammar-flow-layout="steps"] .starci-core-flow-graph-step[data-grammar-selected="true"]:not([data-kind="end"])'
+        checks: [{ metric: border-width, op: "=", value: 2px }, { metric: box-shadow, op: "=", value: none }, { metric: outline-style, op: "=", value: none }]
+      owner: ui/components/diagram.md
+    - id: DNA-COMMON-FLOW-BRANCH-LANES
+      role: diagram
+      law: "Each edge that leaves a port of a steps card (a condition's branch) runs its own lane: it turns once out of its port into the lane and once into its target, no segment runs past the higher or lower of its port and its target, and no two branches share a lane (the climbing ones nearest the card, upper port first, then the descending ones, lower port first); the cards of a column take their own heights, so the branches stand beside the ports (0.37.35)."
+      measure: { kind: attr, select: '[data-component="FlowGraph"][data-grammar-flow-layout="steps"] [data-grammar-flow-lane]', metric: data-grammar-flow-lane, op: set }
       owner: ui/components/diagram.md
     - id: DNA-COMMON-FLOW-EDGE-DOT-ON-EDGE
       role: diagram

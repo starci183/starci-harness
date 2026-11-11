@@ -2724,12 +2724,16 @@
     .starci-core-flow-graph-step {
         --starci-flow-tint: var(--default-soft);
         --starci-flow-ink: var(--default-soft-foreground);
+        /* The card's one border (0.37.35, DNA-COMMON-FLOW-SELECTED): its width and colour; a selected card only thickens it and tints its ground. */
+        --starci-flow-border-width: var(--grammar-hairline);
+        --starci-flow-edge: var(--border);
+        --starci-flow-select: var(--foreground);
         position: relative;
         display: flex;
         flex-direction: column;
         box-sizing: border-box;
         inline-size: var(--grammar-flow-card-width);
-        border: var(--grammar-hairline) solid var(--border);
+        border: var(--starci-flow-border-width) solid var(--starci-flow-edge);
         border-radius: var(--grammar-flow-card-radius);
         background: var(--surface);
         color: var(--foreground);
@@ -2752,8 +2756,8 @@
         display: flex;
         flex: 1 0 auto;
         box-sizing: border-box;
-        /* 0.37.33 (owner drawing graph-state): a step card is 200 x 64 at zoom 1, title 14 and its line 12; the body never draws shorter (ports add rows under it). */
-        min-block-size: calc(var(--grammar-flow-card-height) - 2 * var(--grammar-hairline));
+        /* 0.37.35 (owner drawing graph-selected): a step card is 176 x 64 at zoom 1, title 14 and its line 12; the body never draws shorter (ports add rows under it), whatever its border width. */
+        min-block-size: calc(var(--grammar-flow-card-height) - 2 * var(--starci-flow-border-width));
         align-items: center;
         gap: var(--grammar-inline-gap);
         min-inline-size: 0;
@@ -2782,8 +2786,27 @@
         min-inline-size: 0;
     }
 
-    .starci-core-flow-graph-step-title { font-weight: var(--grammar-weight-medium); overflow-wrap: anywhere; }
-    .starci-core-flow-graph-step-line { color: var(--muted); font-size: var(--grammar-text-xs); line-height: var(--grammar-leading-xs); overflow-wrap: anywhere; }
+    /* A long title wraps to at most two lines inside the card (0.37.35), then ends in an ellipsis; the card grows only for the second line. */
+    .starci-core-flow-graph-step-title {
+        display: -webkit-box;
+        overflow: hidden;
+        font-weight: var(--grammar-weight-medium);
+        overflow-wrap: anywhere;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
+    }
+
+    .starci-core-flow-graph-step[data-kind="end"] .starci-core-flow-graph-step-title { display: inline; overflow: visible; }
+    /* The card's ONE muted line (12): it never wraps (0.37.35, the 176 card keeps 64 tall); a longer line ends in an ellipsis and reads in full from its tooltip and the card's name. */
+    .starci-core-flow-graph-step-line {
+        overflow: hidden;
+        color: var(--muted);
+        font-size: var(--grammar-text-xs);
+        line-height: var(--grammar-leading-xs);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
 
     /* The corner tag sits on the top edge at the end, in the kind's soft pair, so it never takes room from the title. */
     .starci-core-flow-graph-step-tag {
@@ -2988,20 +3011,38 @@
         color: var(--starci-flow-ink);
     }
 
-    /* Selection: the accent outline; keyboard focus: the focus ring. */
-    .starci-core-flow-graph-step[data-grammar-selected="true"] { outline: var(--grammar-ring-width) solid var(--accent); outline-offset: var(--grammar-ring-width); }
-    .starci-core-flow-graph .react-flow__node:focus-visible > .starci-core-flow-graph-step { outline: var(--grammar-ring-width) solid var(--focus); outline-offset: var(--grammar-ring-width); }
-    .starci-core-flow-graph-step:has(.starci-core-flow-graph-link:focus-visible) { outline: var(--grammar-ring-width) solid var(--focus); outline-offset: var(--grammar-ring-width); }
+    /*
+     * SELECTED (0.37.35, owner drawing graph-selected, law DNA-COMMON-FLOW-SELECTED): a selected step has ONE border, 2px, in its status colour (a run: done
+     * success, running accent, waiting warning, failed danger, skipped and not reached muted; a map without run status: the foreground) and a soft tint of that
+     * colour as its ground. Never a second ring: no outline and no box-shadow on a selected card. An unselected card keeps its 1px border.
+     * KEYBOARD FOCUS: only `:focus-visible` (a mouse click shows nothing more), an outline 2px DASHED in the card's status colour (the colour its selected border
+     * takes), 3px off the card, so a keyboard user sees where focus is, and a focused selected card still shows one colour, never a second (accent or focus) ring.
+     */
+    .starci-core-flow-graph-step[data-grammar-selected="true"] {
+        --starci-flow-border-width: var(--grammar-ring-width);
+        --starci-flow-edge: var(--starci-flow-select);
+        background: color-mix(in oklab, var(--starci-flow-select) 8%, var(--surface));
+        box-shadow: none;
+        outline: none;
+    }
+
+    .starci-core-flow-graph .react-flow__node:focus-visible > .starci-core-flow-graph-step,
+    .starci-core-flow-graph-step:has(.starci-core-flow-graph-link:focus-visible) {
+        outline: var(--grammar-ring-width) dashed var(--starci-flow-select);
+        outline-offset: calc(var(--grammar-ring-width) + 1px);
+    }
+
+    .starci-core-flow-graph .react-flow__node:focus-visible { outline: none; }
     .starci-core-flow-graph-step[data-dimmed="true"] { opacity: var(--grammar-opacity-dimmed); }
 
     /*
      * STATE PRIORITY (0.37.0; the run path changed in 0.37.27, owner drawing C): the run status is the outline status icon and its word on the top-start edge (done
      * success, running accent, waiting warning, failed danger, skipped muted). The PATH a run took is drawn green: a node the run reached (done, running, waiting) has a
      * 2px success border, a failed one a danger border, and a taken edge, its dot and its arrowhead are success green; a node the run did not reach is faded, an untaken
-     * edge a dashed light-neutral line. A selected node has exactly one 2px primary outline (an outline, never the border). A back edge stays dashed.
+     * edge a dashed light-neutral line. 0.37.35 (DNA-COMMON-FLOW-SELECTED): in a run every card's ONE border is its status colour (done success, running accent,
+     * waiting warning, failed danger; skipped and not reached muted), 1px, 2px with a soft tint when selected; no box-shadow ring. A back edge stays dashed.
      */
-    .starci-core-flow-graph[data-grammar-flow-run="true"] .starci-core-flow-graph-step:is([data-status="done"], [data-status="running"], [data-status="waiting"]) { border-color: var(--success); box-shadow: 0 0 0 var(--grammar-hairline) var(--success); }
-    .starci-core-flow-graph[data-grammar-flow-run="true"] .starci-core-flow-graph-step[data-status="failed"] { border-color: var(--danger); box-shadow: 0 0 0 var(--grammar-hairline) var(--danger); }
+    .starci-core-flow-graph[data-grammar-flow-run="true"] .starci-core-flow-graph-step { --starci-flow-select: var(--starci-flow-status, var(--muted)); --starci-flow-edge: var(--starci-flow-select); }
     .starci-core-flow-graph[data-grammar-flow-run="true"] .starci-core-flow-graph-step:not([data-status]) { opacity: var(--grammar-opacity-faded); }
     .starci-core-flow-graph-step[data-status="done"] { --starci-flow-status: var(--success); --starci-flow-on-status: var(--success-foreground); }
     .starci-core-flow-graph-step[data-status="running"] { --starci-flow-status: var(--accent); --starci-flow-on-status: var(--accent-foreground); }

@@ -3,9 +3,9 @@ import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 
 /**
- * FLOW GRAPH READABILITY (0.37.33, owner drawing graph-state). A step card is 200 x 64 with its title at 14 and its line at 12 at zoom 1; cards stand 40 apart
+ * FLOW GRAPH READABILITY (0.37.33, owner drawing graph-state; 176 wide since 0.37.35). A step card is 176 x 64 with its title at 14 and its line at 12 at zoom 1; cards stand 40 apart
  * (wider only where a labelled edge needs it). The round dot an edge starts with is centred ON the source card's edge, half on the card and half out, drawn above
- * it, and the edge leaves from it. On open the graph is fitted when it reads (zoom >= 0.95; a linear 5-step graph fits the 1160px workflow map well), otherwise
+ * it, and the edge leaves from it. On open the graph is fitted when it reads (zoom >= 0.95; a linear 5-step graph and its end pill fit the 1160px workflow map well), otherwise
  * it opens at zoom 1 at its entry and pans (0.8 on a phone); the least zoom stays 0.8. `height="fill"` gives the frame the rest of the page height (>= 360px).
  */
 const meta: Meta = { title: 'Flow graph readability (0.37.33)', parameters: { layout: 'fullscreen' } };
@@ -19,12 +19,14 @@ const salesNodes: ReadonlyArray<G.FlowGraphNode> = [
   { id: 'order', kind: 'action', label: 'Tạo đơn', description: 'ghi đơn và xác nhận' },
   { id: 'qr', kind: 'action', label: 'Gửi QR thanh toán', description: 'gửi QR và mã đơn' },
   { id: 'notify', kind: 'ask', label: 'Báo đội đơn mới', description: 'nhắn đơn mới lên /chat' },
+  { id: 'won', kind: 'end', label: 'Chốt đơn' },
 ];
 const salesEdges: ReadonlyArray<G.FlowGraphEdge> = [
   { id: 's1', source: 'new', target: 'consult' },
   { id: 's2', source: 'consult', target: 'order' },
   { id: 's3', source: 'order', target: 'qr' },
   { id: 's4', source: 'qr', target: 'notify' },
+  { id: 's5', source: 'notify', target: 'won' },
 ];
 
 /** The receptionist (Lễ tân) graph: an intent that fans out to four branches. */
@@ -80,12 +82,19 @@ const assertDotsOnEdges = (graph: HTMLElement, edges: ReadonlyArray<G.FlowGraphE
   }
 };
 
-/** A plain card is 200 x 64 at zoom 1 with a 14px title and a 12px line. */
+/** A plain card is 176 x 64 at zoom 1 (0.37.35) with a 14px title and a 12px line. */
 const assertCards = (graph: HTMLElement, ids: ReadonlyArray<string>) => {
   for (const id of ids) {
     const card = graph.querySelector<HTMLElement>(`.starci-core-flow-graph-step[data-grammar-flow-node="${id}"]`)!;
-    expect(card.offsetWidth).toBe(200);
-    if (card.querySelector('[data-grammar-flow-outputs]') === null) expect(card.offsetHeight).toBe(64);
+    expect(card.offsetWidth).toBe(176);
+    // 64 tall; a title that wraps (at most two lines, 0.37.35) grows the card by its second line only.
+    const title = card.querySelector<HTMLElement>('.starci-core-flow-graph-step-title')!;
+    const titleLines = Math.round(title.offsetHeight / Number.parseFloat(getComputedStyle(title).lineHeight));
+    expect(titleLines).toBeLessThanOrEqual(2);
+    if (card.querySelector('[data-grammar-flow-outputs]') === null) {
+      if (titleLines === 1) expect(card.offsetHeight).toBe(64);
+      else expect(card.offsetHeight).toBeLessThanOrEqual(64 + 18);
+    }
     expect(getComputedStyle(card.querySelector('.starci-core-flow-graph-step-title')!).fontSize).toBe('14px');
     const line = card.querySelector('.starci-core-flow-graph-step-line');
     if (line !== null) expect(getComputedStyle(line).fontSize).toBe('12px');
@@ -100,14 +109,14 @@ const assertFills = (graph: HTMLElement) => {
   expect(Math.abs(graph.getBoundingClientRect().bottom - well.bottom)).toBeLessThanOrEqual(2);
 };
 
-/** A linear 5-step graph fits the 1160px well whole, at zoom >= 0.95; the gap between two cards is 40 at zoom 1. */
+/** A linear 5-step graph and its end pill fit the 1160px well whole, at zoom >= 0.95 (0.37.35: 176 cards); the gap between two cards is 40 at zoom 1. */
 export const LinearFiveFits: Story = {
   render: () => <Well nodes={salesNodes} edges={salesEdges} />,
   play: async ({ canvasElement }) => {
     const graph = canvasElement.querySelector<HTMLElement>('[data-component="FlowGraph"]')!;
-    await waitFor(() => expect(graph.querySelectorAll('.starci-core-flow-graph-step').length).toBe(5));
+    await waitFor(() => expect(graph.querySelectorAll('.starci-core-flow-graph-step').length).toBe(6));
     await waitFor(() => assertFills(graph));
-    assertCards(graph, salesNodes.map((node) => node.id));
+    assertCards(graph, salesNodes.filter((node) => node.kind !== 'end').map((node) => node.id));
     const canvas = graph.querySelector<HTMLElement>('.starci-core-flow-graph-canvas')!.getBoundingClientRect();
     await waitFor(() => {
       const zoom = zoomOf(graph);
@@ -117,7 +126,7 @@ export const LinearFiveFits: Story = {
       if (canvas.width >= 1150) {
         expect(zoom).toBeGreaterThanOrEqual(0.95);
         expect(zoom).toBeLessThanOrEqual(1);
-        const last = graph.querySelector<HTMLElement>('[data-grammar-flow-node="notify"]')!.getBoundingClientRect();
+        const last = graph.querySelector<HTMLElement>('[data-grammar-flow-node="won"]')!.getBoundingClientRect();
         expect(first.left).toBeGreaterThanOrEqual(canvas.left);
         expect(last.right).toBeLessThanOrEqual(canvas.right);
       } else {
@@ -127,6 +136,7 @@ export const LinearFiveFits: Story = {
       }
     });
     assertDotsOnEdges(graph, salesEdges);
+    graph.setAttribute('data-story-zoom', String(zoomOf(graph)));
   },
 };
 

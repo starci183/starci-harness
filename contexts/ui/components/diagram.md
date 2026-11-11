@@ -15,7 +15,7 @@ Choice `diagram.choose.renderer`: which component draws the structure. The first
 | --- | --- | --- | --- |
 | authored | the structure is Mermaid text the content carries (an article's `mermaid` code fence, a lesson body) | `MermaidDiagram` with the fence's text as `source` and a `label` naming what it shows | `DNA-COMMON-DIAGRAM-NAMED` |
 | data | the app holds the nodes and edges as data, or the reader selects, follows links or zooms | `FlowGraph` with `nodes`, `edges`, and `direction` for a flow | judgement |
-| workflow | the app draws the work of an agent or a business flow: an event that starts it, steps, conditions that fork it, asks and waits for the owner, the end | `FlowGraph layout="steps"` (0.35.0, the owner-approved card map): top-down by default (`direction="LR"` runs across) on the well with no grid; a white card per step (200 x 64 since 0.37.33, 14 corners, the card border) with a 32 icon tile in its `kind`'s soft pair (`event`, `action`, `condition`, `ask`, `wait` dashed, `end` a "Xong" pill with a check), the title 14 medium, one muted 12 line, an optional corner `tag` (an 18px chip, 12px text); a condition carries its named `outputs` along its bottom and each edge leaves its port (`sourcePort`), so branch words live on the ports, never on the lines; smooth curved 1.5px edges with a closed rounded chevron arrowhead (0.37.5, about 8px, filled in the edge colour, crisp at any zoom) and solid 6px round port and anchor dots in the edge colour, meeting the middle of a card's top or bottom edge; a `variant: "back"` edge is dashed, routed round the cards, with a pill `label`; `legend` adds a row of kinds; the run overlay is node `status` and edge `isTaken`, composed by the state-priority law below. 0.37.4: node `chips` (up to 3 pills under the title, then "+N"; accent = a dynamic parameter, neutral = a fixed one); `outputs` on any kind, a port `tone: "danger"` for the error output ("Lỗi"); `container` (`label`, `chips`, `childIds`) for a loop card that holds its children; a disconnected graph stacks its islands, one node may fan out to several targets and several entry nodes may feed one step. 0.37.5: `background="dots"` (xyflow's dot Background, 18px, muted); `isEditable` + `positions` + `onPositionsChange` (drag the blocks, edges re-route live, an outline "Sắp xếp lại" reset in the zoom group); node `agent` (`{ name, avatar? }`: a 16px avatar and the name under the title, for a block of another agent) | judgement |
+| workflow | the app draws the work of an agent or a business flow: an event that starts it, steps, conditions that fork it, asks and waits for the owner, the end | `FlowGraph layout="steps"` (0.35.0, the owner-approved card map): top-down by default (`direction="LR"` runs across) on the well with no grid; a white card per step (176 x 64 since 0.37.35, 14 corners, the card border) with a 32 icon tile in its `kind`'s soft pair (`event`, `action`, `condition`, `ask`, `wait` dashed, `end` a "Xong" pill with a check), the title 14 medium, one muted 12 line, an optional corner `tag` (an 18px chip, 12px text); a condition carries its named `outputs` along its bottom and each edge leaves its port (`sourcePort`), so branch words live on the ports, never on the lines; smooth curved 1.5px edges with a closed rounded chevron arrowhead (0.37.5, about 8px, filled in the edge colour, crisp at any zoom) and solid 6px round port and anchor dots in the edge colour, meeting the middle of a card's top or bottom edge; a `variant: "back"` edge is dashed, routed round the cards, with a pill `label`; `legend` adds a row of kinds; the run overlay is node `status` and edge `isTaken`, composed by the state-priority law below. 0.37.4: node `chips` (up to 3 pills under the title, then "+N"; accent = a dynamic parameter, neutral = a fixed one); `outputs` on any kind, a port `tone: "danger"` for the error output ("Lỗi"); `container` (`label`, `chips`, `childIds`) for a loop card that holds its children; a disconnected graph stacks its islands, one node may fan out to several targets and several entry nodes may feed one step. 0.37.5: `background="dots"` (xyflow's dot Background, 18px, muted); `isEditable` + `positions` + `onPositionsChange` (drag the blocks, edges re-route live, an outline "Sắp xếp lại" reset in the zoom group); node `agent` (`{ name, avatar? }`: a 16px avatar and the name under the title, for a block of another agent) | judgement |
 | workflow (lanes, kept) | an existing caller of the left-to-right branch map | `FlowGraph layout="lanes"`; new work takes `steps`: a column per stage and one row per branch, the node `kind` (`trigger`, `condition`, `execute`, `output`) sets the tone, a branch label on its own edge as an opaque chip above every line (its column widens to hold the words), column headers only over a column that holds a node | judgement; `DNA-COMMON-FLOW-LANE-LABEL-ABOVE-LINES`, `DNA-COMMON-FLOW-LANE-LABEL-OPAQUE` |
 | list | the structure is a sequence of steps with no branches | not a diagram: `Stepper` or `Timeline` | judgement |
 
@@ -50,24 +50,41 @@ A contained `FlowGraph` fit (every `steps` graph, any `fit="contain"`) never goe
 is drawn at 0.8, its canvas grows to the graph up to the `height` cap (`lg` 512px when none), the first view shows the entry node, and the
 reader pans it by drag (even a static graph). The canvas is never shorter than the zoom controls column and its insets (CONTROLS-INSIDE). Law `DNA-COMMON-FLOW-READABLE-FLOOR`. A top-down card is drawn from its top edge, so a layer's cards share one top line whatever they measure (0.37.29).
 
-**A steps graph reads at zoom 1** (0.37.33, owner drawing `graph-state`, laws `DNA-COMMON-FLOW-OPEN-ZOOM`, `DNA-COMMON-FLOW-CARD-SIZE`,
-`DNA-COMMON-FLOW-EDGE-DOT-ON-EDGE`):
+**A steps graph reads at zoom 1** (owner drawings `graph-state` and `graph-selected`, laws `DNA-COMMON-FLOW-OPEN-ZOOM`, `DNA-COMMON-FLOW-CARD-SIZE`,
+`DNA-COMMON-FLOW-EDGE-DOT-ON-EDGE`, `DNA-COMMON-FLOW-SELECTED`, `DNA-COMMON-FLOW-BRANCH-LANES`):
 
-- a step card is 200 x 64 at zoom 1 (title 14, its line 12; ports add rows under the body); across (`LR`) cards stand 40 apart, enough for the
-  start dot, a 10px bend and the arrowhead, wider only where an edge out of the layer needs it (a label pill on a forward edge with no port, the
-  channels of back edges and the pill beside them); orthogonal routing, the 10px bends and the shared trunk stay;
+- a step card is 176 x 64 at zoom 1 (title 14, its one line 12; ports add rows under the body). A long title wraps to at most two lines inside
+  the card (then an ellipsis and a tooltip) and the card grows by the second line only; the line never wraps (an ellipsis, its tooltip and the
+  card's accessible name keep the words). Across (`LR`) cards stand 40 apart along the flow, enough for the start dot, a 10px bend and the
+  arrowhead, wider only where an edge out of the layer needs it (a label pill on a forward edge with no port, branch lanes, the channels of back
+  edges and the pill beside them); the end pill stands 40 after its source. Across the flow the cards of a column stand 40 apart, each taking its
+  own height (never the tallest card's), so a condition's branches stand beside its ports. Orthogonal routing and the 10px bends stay;
+- **branch lanes**: an edge out of a port (a condition's branch) runs its own lane: it turns once out of its port into the lane (16px out of the
+  card, each next lane 10 further) and once into its target, no segment runs above the higher or below the lower of its port and its target,
+  and no two branches share a lane, so their vertical runs never read as one line through the ports (the climbing branches take the nearest
+  lanes, upper port first, then the descending ones, lower port first: the lanes nest and never cross). A branch whose target stands straight
+  ahead of its port runs straight. Edges out of one point (a plain card's end) still share one trunk;
+- **selected**: a selected card has ONE border, 2px, in its status colour (a run: done success, failed danger, waiting warning, running accent,
+  skipped and not reached muted; a graph with no run status, the workflow map: the foreground) and a soft tint of that colour (8% over the
+  surface) as its ground. There is never a second ring: no outline, no box-shadow. An unselected card keeps one 1px border, in a run its status
+  colour (the run path's green edges stay). **Keyboard focus** shows only on `:focus-visible` (a mouse click adds nothing): a 2px DASHED outline in
+  the card's status colour, 3px off the card. The choice: focus must stay visible for a keyboard user (WCAG 2.4.7), and a dashed line of the
+  same colour, apart from the card, reads as focus, not as a second state; on a selected card it is still one colour;
 - the round dot an edge starts with is centred ON the source card's edge (a port's, or the card's end edge), half on the card and half out, drawn
   above the card, and the edge leaves from it; the arrowhead's tip meets the target card's edge;
-- on open the graph is fitted when it reads, at zoom 0.95 or more (never magnified past 1; a linear 5-step graph fits the 1160px workflow map
-  well of a 1440 page at about 0.97); otherwise it opens at zoom 1 at its entry node and the reader pans; a canvas 480px wide or less opens
+- on open the graph is fitted when it reads, at zoom 0.95 or more (never magnified past 1; a linear 5-step graph and its end pill fit the 1160px
+  workflow map well of a 1440 page at about 0.96, inside a 12px margin; six cards in a line need about 0.90 there, so they open at zoom 1 and
+  pan); otherwise it opens at zoom 1 at its entry node and the reader pans; a canvas 480px wide or less opens
   at 0.8 the same way. The least zoom stays 0.8. The zoom controls column takes room at the start edge only where the graph would stand
   beside it; a graph centred in a tall frame passes under it and takes the whole width;
 - `height="fill"`: the frame takes the rest of the page height under the graph's top (what its scroll owner shows, less what follows the graph
   there: a legend, a caption), at least 360px, instead of hugging the graph. The map of one workflow on its own page takes `fill`; a graph
   among other blocks (versions, templates, a drawer) keeps hugging.
 
-Stories `Flow graph readability (0.37.33)` (`LinearFiveFits`, `BranchedOpensAtOne`) check the dot centre on the card edge, the 200 x 64
-card and its 14/12 text, the 40 gap, the opening zoom and the filled frame.
+Stories `Flow graph readability (0.37.33)` (`LinearFiveFits` with its end pill, `BranchedOpensAtOne`) check the dot centre on the card edge,
+the 176 x 64 card and its 14/12 text, the 40 gap, the opening zoom and the filled frame; `Flow graph selected (0.37.35)` (`RunSelectedDone`,
+`RunSelectedFailed`, `RunSelectedWaiting`, `MapSelectedForeground`, `KeyboardFocusSameColour`, `BranchLanesNoOvershoot`) check the one border, the
+focus outline and the branch lanes of the receptionist map.
 
 ## States
 Loading keeps the reserved box with a skeleton (`isLoading` while the source is unresolved; Mermaid itself loads

@@ -6568,6 +6568,22 @@
         white-space: normal;
     }
 
+    /*
+     * At every width (0.37.35, DNA-COMMON-CARD-SUGGESTIONS): a suggestion row is a grid of the text and the chevron, so the chevron stays at the end of the row,
+     * centred on the text's lines, and the text wraps beside it. The collapsed flex row (under 28rem) let the chevron wrap under a long text at 390.
+     */
+    [data-grammar-list-layout="suggestions"] > .starci-core-list-row {
+        display: grid;
+        flex-wrap: nowrap;
+        align-items: center;
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    [data-grammar-list-layout="suggestions"] > .starci-core-list-row[data-grammar-leading="true"] { grid-template-columns: auto minmax(0, 1fr) auto; }
+    [data-grammar-list-layout="suggestions"] > .starci-core-list-row[data-grammar-actions="false"] { grid-template-columns: minmax(0, 1fr); }
+    [data-grammar-list-layout="suggestions"] > .starci-core-list-row > .starci-core-list-row-copy { flex: initial; }
+    [data-grammar-list-layout="suggestions"] > .starci-core-list-row > .starci-core-list-row-actions { flex-wrap: nowrap; }
+
     /* From 28rem a row is a grid (above): a key-value row is two columns, the key at most 40%, the value taking the rest. */
     @container starci-core-surface (min-width: 28.001rem) {
         [data-grammar-list-layout="keyValue"] > .starci-core-list-row[data-grammar-actions] {

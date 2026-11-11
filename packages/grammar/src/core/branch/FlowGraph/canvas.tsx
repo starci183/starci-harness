@@ -52,8 +52,8 @@ export const ZoomMirror = ({ onZoom }: { readonly onZoom: (zoom: number) => void
  * scale and started at the trigger, which clipped the first and last columns. This is the floor of the zoom itself, the canvas `minZoom`.
  */
 export const STEPS_MIN_ZOOM = 0.1
-/** The margin a steps graph keeps inside its pane, in screen pixels. */
-const STEPS_FIT_MARGIN = 16
+/** The margin a steps graph keeps inside its pane, in screen pixels (12 since 0.37.35: a linear 5-step map and its end pill fit the 1160 well at >= 0.95). */
+const STEPS_FIT_MARGIN = 12
 /** The strip the zoom controls cover at the canvas's start edge (the control column 2rem + the panel's margin): a fit keeps every node out of it (0.37.11). */
 export const CONTROLS_INSET = 56
 /**
@@ -65,9 +65,9 @@ export const CONTAIN_MIN_ZOOM = 0.8
 /** The most tall a floored steps canvas grows when no `height` caps it (screen pixels, the `lg` step): the rest is reached by panning. */
 const FLOORED_HEIGHT_CAP = 512
 /**
- * THE OPENING ZOOM OF A STEPS GRAPH (0.37.33, owner drawing graph-state, law DNA-COMMON-FLOW-OPEN-ZOOM). A step card reads at zoom 1 (200 x 64, title 14, line 12).
- * On open the graph is fitted when it fits at {@link STEPS_OPEN_FIT_MIN} or more (never magnified past 1; a linear 5-step graph in the 1160px workflow map well
- * fits at about 0.97); otherwise it opens at zoom 1 anchored at its entry node and the reader pans. At a narrow canvas (<= {@link STEPS_NARROW_WIDTH}) it opens at
+ * THE OPENING ZOOM OF A STEPS GRAPH (0.37.33, owner drawing graph-state, law DNA-COMMON-FLOW-OPEN-ZOOM). A step card reads at zoom 1 (176 x 64 since 0.37.35, title 14, line 12).
+ * On open the graph is fitted when it fits at {@link STEPS_OPEN_FIT_MIN} or more (never magnified past 1; a linear 5-step graph and its end pill in the 1160px workflow map well
+ * fits at about 0.96); otherwise it opens at zoom 1 anchored at its entry node and the reader pans. At a narrow canvas (<= {@link STEPS_NARROW_WIDTH}) it opens at
  * {@link CONTAIN_MIN_ZOOM} (0.8) the same way. The least zoom (the zoom-out button, a pinch) stays {@link CONTAIN_MIN_ZOOM}.
  */
 export const STEPS_OPEN_ZOOM = 1
