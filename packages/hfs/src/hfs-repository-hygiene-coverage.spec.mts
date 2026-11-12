@@ -45,6 +45,50 @@ for (const edition of ['lite', 'full']) {
     ]);
   });
 
+  test(`${edition} a check under any name that says so is refused outside scripts/checks, and an undeclared file of scripts/checks is refused`, (t) => {
+    const context = repository(t, edition, {
+      'hfs.json': JSON.stringify({ checks: [{ id: 'tool-names', run: 'scripts/checks/tool-names.mjs', why: 'no retired tool id' }] }),
+      'scripts/tool-names-check.mjs': 'export {};\n',
+      'scripts/flow_check.cjs': 'module.exports = {};\n',
+      'scripts/ids.check.mjs': 'export {};\n',
+      'scripts/checks-all.sh': 'exit 0\n',
+      'tools/seed-checker.ts': 'export {};\n',
+      'scripts/integration/schema-check.mjs': 'export {};\n',
+      'scripts/checks/orphan.mjs': 'export {};\n',
+      'scripts/checks/tool-names.mjs': 'export {};\n',
+      'package.json': JSON.stringify({ scripts: { 'tool-names:check': 'node scripts/checks/tool-names.mjs', 'ids:check': 'node ./scripts/ids.check.mjs --all', 'orphan': 'node scripts/checks/orphan.mjs' } }),
+    });
+    assert.deepEqual(repoLocalCheckFindings(context).map((finding) => [finding.code, finding.path]), [
+      ['HFS_REPO_LOCAL_CHECK', 'scripts/tool-names-check.mjs'],
+      ['HFS_REPO_LOCAL_CHECK', 'scripts/flow_check.cjs'],
+      ['HFS_REPO_LOCAL_CHECK', 'scripts/ids.check.mjs'],
+      ['HFS_REPO_LOCAL_CHECK', 'scripts/checks-all.sh'],
+      ['HFS_REPO_LOCAL_CHECK', 'tools/seed-checker.ts'],
+      ['HFS_REPO_LOCAL_CHECK', 'scripts/integration/schema-check.mjs'],
+      ['HFS_REPO_LOCAL_CHECK', 'scripts/checks/orphan.mjs'],
+      ['HFS_REPO_LOCAL_CHECK', 'package.json'],
+      ['HFS_REPO_LOCAL_CHECK', 'package.json'],
+    ]);
+    const messages = repoLocalCheckFindings(context).map((finding) => String(finding.message));
+    assert.match(messages[0] ?? '', /a project check is a file of scripts\/checks\/ that hfs\.json checks declares/u);
+    assert.match(messages[6] ?? '', /scripts\/checks\/orphan\.mjs sits in slot app\.checks but hfs\.json checks does not declare it/u);
+    assert.match(messages[7] ?? '', /script ids:check runs a repository-local check/u);
+    assert.match(messages[8] ?? '', /script orphan runs a repository-local check/u);
+  });
+
+  test(`${edition} a declared project check, the script that runs it and names that only start with check are lawful`, (t) => {
+    const context = repository(t, edition, {
+      'hfs.json': JSON.stringify({ checks: [{ id: 'tool-names', run: 'scripts/checks/tool-names.mjs', why: 'no retired tool id' }] }),
+      'scripts/checks/tool-names.mjs': 'export {};\n',
+      'scripts/checkout.mjs': 'export {};\n',
+      'scripts/checkpoint-sync.mjs': 'export {};\n',
+      'tools/check-box.md': '# notes\n',
+      'fe/src/check-box.tsx': 'export {};\n',
+      'package.json': JSON.stringify({ scripts: { 'tool-names:check': 'node scripts/checks/tool-names.mjs', checkout: 'node scripts/checkout.mjs' } }),
+    });
+    assert.deepEqual(repoLocalCheckFindings(context), []);
+  });
+
   test(`${edition} valid operational scripts delegate checks to the runtime`, (t) => {
     const context = repository(t, edition, {
       'scripts/rotate-logs.mjs': 'export {};\n',

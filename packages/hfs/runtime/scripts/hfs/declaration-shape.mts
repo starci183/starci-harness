@@ -137,15 +137,28 @@ function observeBlockProblems(observe: Parsed): string[] {
   return bad;
 }
 
-const DECLARATION_KEYS = new Set(['hfs', 'kind', 'project', 'edition', 'db', 'sides', 'browser', 'modules', 'lexicon', 'observe', 'rulePacks']);
+const DECLARATION_KEYS = new Set(['hfs', 'kind', 'project', 'edition', 'db', 'sides', 'browser', 'modules', 'lexicon', 'observe', 'rulePacks', 'checks']);
 /** A rule pack hfs.json names (PROJECT-LINT-3): an npm package name, each once. */
 const RULE_PACK_NAME = /^(?:@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*$/u;
+/** A project check's id (kebab-case) and its file: a `.mjs` file of slot app.checks, `scripts/checks/<name>.mjs` (PROJECT-LINT-3, R402). */
+const CHECK_ID = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/u;
+const CHECK_RUN = /^scripts\/checks\/[a-z0-9][a-z0-9._-]*\.mjs$/u;
+
+/** A project check is {id, run, why}: a unique kebab-case id, a unique file of scripts/checks/, and the reason the project keeps it. */
+function checksBlockProblems(checks: Parsed): string[] {
+  if (checks === undefined) return [];
+  const shape = 'checks is a non-empty list of {id, run, why}: a unique kebab-case id, run a unique scripts/checks/<name>.mjs file (slot app.checks) and why the project keeps the check, nothing else (PROJECT-LINT-3)';
+  if (!Array.isArray(checks) || checks.length === 0) return [shape];
+  const bad = checks.some((check: Parsed) => !isPlainObject(check) || Object.keys(check).some((key) => !['id', 'run', 'why'].includes(key)) || !CHECK_ID.test(String(check.id)) || !CHECK_RUN.test(String(check.run)) || typeof check.why !== 'string' || check.why.trim() === '');
+  const unique = new Set(checks.map((check: Parsed) => check?.id)).size === checks.length && new Set(checks.map((check: Parsed) => check?.run)).size === checks.length;
+  return bad || !unique ? [shape] : [];
+}
 const RUNTIME_DECLARATION_KEYS = new Set(['hfs', 'kind', 'project']);
 
 function productDeclarationProblems(declaration: Parsed, profiles: Parsed): string[] {
   const bad: string[] = [];
   for (const key of Object.keys(declaration)) if (!DECLARATION_KEYS.has(key)) bad.push(`unknown key ${key}`);
-  bad.push(...dbBlockProblems(declaration.db), ...lexiconBlockProblems(declaration.lexicon), ...observeBlockProblems(declaration.observe));
+  bad.push(...dbBlockProblems(declaration.db), ...lexiconBlockProblems(declaration.lexicon), ...observeBlockProblems(declaration.observe), ...checksBlockProblems(declaration.checks));
   if (declaration.browser !== undefined && declaration.browser !== true) bad.push('browser is `true` when the app has a browser journey (slot app.browser), and is left out otherwise');
   if (declaration.rulePacks !== undefined && (!Array.isArray(declaration.rulePacks) || declaration.rulePacks.length === 0 || declaration.rulePacks.some((name: Parsed) => typeof name !== 'string' || !RULE_PACK_NAME.test(name)) || new Set(declaration.rulePacks).size !== declaration.rulePacks.length)) bad.push('rulePacks is a non-empty list of the installed rule pack packages the app adds its laws with, each once (PROJECT-LINT-3)');
   if (declaration.modules !== undefined && declaration.modules !== 'data') bad.push('modules is `"data"` when the app keeps its modules as data (seeds, no rendered registry package), and is left out otherwise');

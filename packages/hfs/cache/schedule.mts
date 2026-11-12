@@ -10,7 +10,7 @@ import type { HeavyAdmission, HeavyNodeRequest, HeavyNodeResult, HeavyNodeRun } 
 import type { ParityRun } from './parity-family.mjs';
 
 /** A step of the run: a family, or a part of the run that reads the results of others. */
-export type StepId = 'test' | 'types' | 'lint' | 'wiring' | 'hfs' | 'format' | 'db' | 'audit' | 'coverage' | 'sonar' | 'ratchet' | 'build' | 'sonar-scan';
+export type StepId = 'test' | 'types' | 'lint' | 'wiring' | 'hfs' | 'format' | 'db' | 'checks' | 'audit' | 'coverage' | 'sonar' | 'ratchet' | 'build' | 'sonar-scan';
 
 /** One step: what must have ended before it starts, and its place in the sequence. */
 export interface StepSpec {
@@ -26,6 +26,7 @@ export interface StepSpec {
  * The steps of `app check` with what each needs and its priority, declared once. They run in this order, one at a time, a step starting only after every step it needs has ended:
  *   - coverage (CI's coverage step) and sonar (the baselines) read the coverage the test family merged: after test.
  *   - ratchet reads the lint records of this run: after lint.
+ *   - checks runs the project checks hfs.json declares (cache/project-checks.mts) whenever the structure family runs; it reads no other step.
  *   - build runs CI's typecheck script (build:modules, then codegen, then tsc), `build:be` and each `build fe`: codegen and build:modules rewrite the
  *     generated code and the root packages' dist that the tsc programs, the typed lint, the unit specs and the boot proof read, so build starts after them.
  *   - sonar-scan uploads the findings and the lint report of every step but the ratchet and runs only when they are green: after all of them.
@@ -38,12 +39,13 @@ export const CHECK_GRAPH: readonly StepSpec[] = [
   { id: 'hfs', after: [], priority: 70, cache: '.starcistacks/cache/check/hfs, check/secrets' },
   { id: 'format', after: [], priority: 40, cache: '.starcistacks/cache/check/format' },
   { id: 'db', after: [], priority: 35, cache: '.starcistacks/cache/check/db' },
+  { id: 'checks', after: [], priority: 33, cache: 'none (never cached: a project check reads what it reads)' },
   { id: 'audit', after: [], priority: 30, cache: 'none (never cached)' },
   { id: 'coverage', after: ['test'], priority: 25, cache: 'none (reads the merged lcov)' },
   { id: 'sonar', after: ['test'], priority: 20, cache: '.starcistacks/cache/sonar-baseline, codecov-baseline' },
   { id: 'ratchet', after: ['lint'], priority: 15, cache: 'none (reads the lint records)' },
   { id: 'build', after: ['types', 'lint', 'test', 'wiring'], priority: 45, cache: 'tool cache build-cache' },
-  { id: 'sonar-scan', after: ['test', 'types', 'lint', 'wiring', 'hfs', 'format', 'db', 'audit', 'coverage', 'sonar', 'build'], priority: 10, cache: 'tool cache sonar-scan' },
+  { id: 'sonar-scan', after: ['test', 'types', 'lint', 'wiring', 'hfs', 'format', 'db', 'checks', 'audit', 'coverage', 'sonar', 'build'], priority: 10, cache: 'tool cache sonar-scan' },
 ];
 
 /** The time a run reads: real, or a spec's. */

@@ -7,7 +7,7 @@
 # catalog READ this file through scripts/hfs/slots.mts; none of them hardcodes a path.
 # Shape: modules/schemas/hfs-slots.schema.yaml. The repository side is hfs.json: modules/schemas/hfs-repo.schema.yaml.
 schema: starci/hfs-slots@3
-version: 3.34.0
+version: 3.35.0
 
 versioning:
   # MAJOR.MINOR.PATCH of this manifest. A repository pins only the MAJOR in hfs.json ("hfs": 3).
@@ -903,6 +903,22 @@ slots:
     rules: [HFS_PLAINTEXT_SECRET, HFS_SCRIPT_ONE_OFF, BE_SPEC_PLACEMENT, HFS_REPO_LOCAL_CHECK]
     exemplifiedBy:
       - {path: packages/hfs/src/hfs-slot-ownership.spec.mjs, editions: [lite, full]}
+  - id: app.checks
+    since: 3.35.0
+    profiles: [app]
+    editionWhy: "Lite and full share the slot: a project law no generic check can know (a vocabulary a migration retired, an invariant of the app's own data) needs a home in both editions."
+    # The project checks (PROJECT-LINT-3, R402): each file is one check hfs.json `checks` declares by {id, run, why}, run by `starci app check`
+    # as its own step from the app root (exit 0 green, anything else HFS_PROJECT_CHECK_FAILED with its output). A file here that no declaration
+    # names, and a check-named file anywhere else in scripts/ or tools/, is HFS_REPO_LOCAL_CHECK (R103). A check that re-implements a canon or
+    # harness check has no place here either: it is proposed to the harness.
+    path: "scripts/checks/*.mjs"
+    presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+    rules: [HFS_PLAINTEXT_SECRET, HFS_SCRIPT_ONE_OFF, BE_SPEC_PLACEMENT, HFS_REPO_LOCAL_CHECK, HFS_PROJECT_CHECK_FAILED]
+    exemplifiedBy:
+      - {path: packages/hfs/src/project-checks.spec.mjs, editions: [lite, full]}
   - id: app.packages
     since: 3.17.0
     profiles: [app]
