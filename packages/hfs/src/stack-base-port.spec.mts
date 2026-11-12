@@ -1,5 +1,6 @@
 // R389 (rules/stacks-local.mts, scripts/hfs/stack-base-port.mts): the project base port of a dev environment, the role table its native process
-// ports follow, the warning of an app that declares none, and the overlap row of `starci app stack doctor` against the other apps of the machine.
+// ports follow, the warning of an app that declares none, and the overlap against the other apps of the machine: the row of `starci app stack doctor`,
+// the report-only finding of `starci app check --env local` and the refusal of `starci app stack up`.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -15,6 +16,15 @@ import { basePortRows, harnessHomeOf, machinePeers, machineRegistries, nextFreeB
 import type { MachinePeers, PeerBase } from '../stack/local-peers.mjs';
 import { scaffoldBase, scaffoldBasePort } from '../scaffold/app.mjs';
 import { ScaffoldError } from '../scaffold/service.mjs';
+import { liveStateFindings } from '../stack/local-live-checks.mjs';
+import { loadLocalConfig } from '../stack/local-config.mjs';
+import { upLocal } from '../stack/local-up.mjs';
+import { stackContext } from '../stack/context.mjs';
+import type { StackContext } from '../stack/context.mjs';
+import { parse as parseYaml } from 'yaml';
+
+/** The failure-code catalog, read from the runtime. */
+const failureCatalog = (): Record<string, { kind?: string } | undefined> => parseYaml(fs.readFileSync(new URL('../runtime/modules/kernel/failure-codes.yaml', import.meta.url), 'utf8')) as Record<string, { kind?: string } | undefined>;
 
 /** A local block whose native processes are `processes` (name -> port) and whose compose-only ports are `containers`. */
 function block(processes: Record<string, number>, { basePort, containers = { cache: 56379 } }: { basePort?: number; containers?: Record<string, number> } = {}) {
@@ -322,4 +332,49 @@ test('the scaffold starts a new app on a base of its own in 3000..4900, in steps
   for (let i = 0; i < 200; i += 1) assert.ok(!overlapsReserved(scaffoldBasePort(`app-${i}`)), `app-${i}`);
   assert.ok(bases.size > 1, 'the base follows the project name');
   assert.equal(scaffoldBasePort('alpha'), scaffoldBasePort('alpha'));
+});
+
+/** A temp machine store (STARCI_LOCAL_ROOT) that registers `roots`: the registry the overlap judgements read, never the host's. */
+function registryOf(t: { after: (fn: () => void) => void }, roots: readonly string[]): NodeJS.ProcessEnv {
+  const registry = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-base-port-registry-'));
+  t.after(() => fs.rmSync(registry, { recursive: true, force: true }));
+  const env = { ...process.env, STARCI_LOCAL_ROOT: registry } as NodeJS.ProcessEnv;
+  withMachine((m) => roots.forEach((root, index) => m.registerLedger({ ledgerId: `ledger-${index}`, name: path.basename(root), repoRoot: root, file: path.join(registry, `ledger-${index}.sqlite`) })), { file: path.join(registry, 'machine.sqlite'), env });
+  return env;
+}
+
+test('app check --env local reports an overlap with another registered project as STACK_BASE_PORT_OVERLAP, a warning naming it and the next free base; a free range is one line', async (t) => {
+  const other = app(t, BASE_APP(3000), 'nivo');
+  const clashing = app(t, BASE_APP(3000));
+  const env = registryOf(t, [other, clashing]);
+  const ctx = stackContext({ cwd: clashing, env });
+  const judged = await liveStateFindings({ ctx, repoRoot: clashing });
+  assert.deepEqual(judged.findings.map((finding) => [finding.code, finding.level, finding.path]), [['STACK_BASE_PORT_OVERLAP', 'warning', '.starcistacks/application-stacks.yaml']]);
+  assert.match(judged.findings[0]?.message ?? '', /^environments\.dev\.local\.basePort: 3000\.\.3099 overlaps nivo 3000\.\.3099 \(.+\); compared nivo .*each project owns its own hundred: change local\.basePort to 3100, the next free base, .*starci app stack up --env dev refuses to start on it \(STACK_LOCAL_BASE_PORT_TAKEN\)$/u);
+  assert.match(judged.lines.join('\n'), /^ {2}machine dev: base-port-overlap 1 project\(s\) \(3000\.\.3099 overlaps nivo/mu);
+  const apart = app(t, BASE_APP(3100));
+  const clear = await liveStateFindings({ ctx: stackContext({ cwd: apart, env: registryOf(t, [other, apart]) }), repoRoot: apart });
+  assert.deepEqual(clear.findings, []);
+  assert.match(clear.lines.join('\n'), /machine dev: base-port-overlap none \(3100\.\.3199 overlaps no other project; compared nivo 3000\.\.3099/u);
+  const unbased = app(t, BASE_APP(null));
+  assert.deepEqual(await liveStateFindings({ ctx: stackContext({ cwd: unbased, env: registryOf(t, [other, unbased]) }), repoRoot: unbased }), { findings: [], lines: [] }, 'no base declared: R389 asks for one, nothing to compare');
+  assert.equal(failureCatalog().STACK_BASE_PORT_OVERLAP?.kind, 'check-finding');
+});
+
+test('stack up refuses STACK_LOCAL_BASE_PORT_TAKEN before anything starts, dry run and --execute alike, naming the other project and the next free base', async (t) => {
+  const other = app(t, BASE_APP(3000), 'nivo');
+  const clashing = app(t, BASE_APP(3000));
+  const env = registryOf(t, [other, clashing]);
+  const local = { ...loadLocalConfig({ repoRoot: clashing, env: 'dev' }) };
+  const started: string[] = [];
+  const ctx = { ...stackContext({ cwd: clashing, env }), spawn: (command: string) => { started.push(command); return { status: 0, stdout: '', stderr: '' }; } } as unknown as StackContext;
+  for (const execute of [false, true]) {
+    await assert.rejects(upLocal(ctx, local, { execute }), (error: { code?: string; message?: string }) => {
+      assert.equal(error.code, 'STACK_LOCAL_BASE_PORT_TAKEN');
+      assert.match(error.message ?? '', /^STACK_LOCAL_BASE_PORT_TAKEN: dev: 3000\.\.3099 overlaps nivo 3000\.\.3099 \(.+\); compared nivo .*; nothing was started: each project owns its own hundred: change local\.basePort to 3100, the next free base, and the ports that derive from it/u);
+      return true;
+    });
+  }
+  assert.deepEqual(started, [], 'refused before the host preflight runs a single command');
+  assert.equal(failureCatalog().STACK_LOCAL_BASE_PORT_TAKEN?.kind, 'verb-refusal');
 });

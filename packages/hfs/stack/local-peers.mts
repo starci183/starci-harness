@@ -1,5 +1,5 @@
-// local-peers.mts - the other projects this machine knows and the ports each one holds, for the overlap row of `starci app stack doctor` and
-// the base `starci app scaffold` gives a new app (PROJECT-STACKS-10). Each project owns its own hundred, base..base+99, and no two overlap.
+// local-peers.mts - the other projects this machine knows and the ports each one holds, for the overlap row of `starci app stack doctor`, the refusal
+// of `starci app stack up`, the report-only finding of `starci app check --env local` and the base `starci app scaffold` gives a new app (PROJECT-STACKS-10). Each project owns its own hundred, base..base+99, and no two overlap.
 //
 // Where the projects are read from: the `ledgers` table (one row per registered project, retired ones left out) of every machine registry
 // this process can see: the state base's machine.sqlite (machineFileFor) and, unless STARCI_LOCAL_ROOT or the test registry pins one store,
@@ -131,6 +131,32 @@ export const describePeer = (peer: PeerBase): string => peer.basePort !== null
   ? `${peer.project} ${peer.basePort}..${peer.basePort + BASE_PORT_SPAN - 1} (${peer.repoRoot})`
   : `${peer.project} no basePort, ports ${(peer.ports ?? []).join(', ') || 'none'} (${peer.repoRoot})`;
 
+/**
+ * The range of `base` against the machine's other projects, the one judgement the doctor row, `app check --env local` and `stack up` share: the
+ * peers it overlaps, the next free base when it does, what was compared and read, and the remedy.
+ */
+export interface BaseOverlap { base: number; clashes: PeerBase[]; free: number | null; compared: string; read: string; fix: string | null }
+
+/** The overlap of `base` with `found`. */
+export function baseOverlap(base: number, found: MachinePeers): BaseOverlap {
+  const clashes = overlapsOf(base, found.peers);
+  const free = clashes.length === 0 ? null : nextFreeBase(base, found.peers);
+  return {
+    base, clashes, free,
+    compared: found.peers.length === 0 ? 'no other project' : found.peers.map(describePeer).join('; '),
+    read: `${found.registries.length === 0 ? 'no machine registry found' : `registries ${found.registries.join(', ')}`}${found.unread.length ? `; not read: ${found.unread.map((entry) => `${entry.repoRoot} (${entry.why})`).join('; ')}` : ''}`,
+    fix: clashes.length === 0 ? null : `each project owns its own hundred: change local.basePort${free === null ? '' : ` to ${free}, the next free base,`} and the ports that derive from it`,
+  };
+}
+
+/** The overlap in one line: `<base>..<base+99> overlaps <peer>; ...` (or `overlaps no other project`), then what was compared and read. */
+export const overlapLine = (overlap: BaseOverlap): string =>
+  `${overlap.base}..${overlap.base + BASE_PORT_SPAN - 1} overlaps ${overlap.clashes.length === 0 ? 'no other project' : overlap.clashes.map(describePeer).join('; ')}; compared ${overlap.compared}; ${overlap.read}`;
+
+/** The other projects of the machine for `local`: the seam a spec gives (`peers`), else the machine registries. */
+export const peersOf = (ctx: Pick<StackContext, 'env'>, local: Pick<LocalConfig, 'repoRoot' | 'appProject' | 'env'>, peers?: () => PeerBase[]): MachinePeers =>
+  peers ? { peers: peers(), unread: [], registries: [] } : machinePeers(ctx, local);
+
 /** The doctor rows of the base port: the role table, then the overlap with every other project of the machine, naming each one compared. */
 export function basePortRows(local: LocalConfig, found: MachinePeers): Prerequisite[] {
   const base = local.basePort;
@@ -140,12 +166,7 @@ export function basePortRows(local: LocalConfig, found: MachinePeers): Prerequis
     ? { id: 'base port', ok: true, detail: `${base} (${base}..${base + BASE_PORT_SPAN - 1}): the native process and compose ports follow the role table`, fix: null }
     : { id: 'base port', ok: false, detail: problems.map((problem) => `${problem.at} ${problem.message}`).join('; '), fix: 'set the ports of environments.<env>.local.ports to the role table of PROJECT-STACKS-10 (front end base, api base+1, AI gateway base+2, further processes up to base+79, the compose services from base+80), or run starci app sync --execute' }];
   if (overlapsReserved(base)) rows.push({ id: 'port range reserved', ok: false, detail: `${base}..${base + BASE_PORT_SPAN - 1} overlaps ${RESERVED_PORTS.from}..${RESERVED_PORTS.to}, reserved for the shared UI-lane next dev preview`, fix: `change local.basePort so the range stays clear of ${RESERVED_PORTS.from}..${RESERVED_PORTS.to}` });
-  const clashes = overlapsOf(base, found.peers);
-  const compared = found.peers.length === 0 ? 'no other project' : found.peers.map(describePeer).join('; ');
-  const read = `${found.registries.length === 0 ? 'no machine registry found' : `registries ${found.registries.join(', ')}`}${found.unread.length ? `; not read: ${found.unread.map((entry) => `${entry.repoRoot} (${entry.why})`).join('; ')}` : ''}`;
-  const free = clashes.length === 0 ? null : nextFreeBase(base, found.peers);
-  rows.push(clashes.length === 0
-    ? { id: 'port range', ok: true, detail: `${base}..${base + BASE_PORT_SPAN - 1} overlaps no other project; compared ${compared}; ${read}`, fix: null }
-    : { id: 'port range', ok: false, detail: `${base}..${base + BASE_PORT_SPAN - 1} overlaps ${clashes.map(describePeer).join('; ')}; compared ${compared}; ${read}`, fix: `each project owns its own hundred: change local.basePort${free === null ? '' : ` to ${free}, the next free base,`} and the ports that derive from it` });
+  const overlap = baseOverlap(base, found);
+  rows.push({ id: 'port range', ok: overlap.clashes.length === 0, detail: overlapLine(overlap), fix: overlap.fix });
   return rows;
 }

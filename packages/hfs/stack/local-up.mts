@@ -1,5 +1,5 @@
 // local-up.mts - `starci app stack up --env <dev env> [--execute]`: the one command that brings the whole dev environment up (PROJECT-STACKS-6).
-// Order: host prerequisites, dev custody, setup (install, codegen), compose services and their health, the environment's own database role,
+// Order: the base port range against the machine's other projects (an overlap refuses before anything starts), host prerequisites, dev custody, setup (install, codegen), compose services and their health, the environment's own database role,
 // migrations with a receipt, the seed levels with their receipts, the seed commands, native app processes, readiness, origins. Idempotent: what runs is kept, what changed is converged.
 // A dry run prints the plan. It never generates a replacement secret, never removes a volume and touches only its own compose project.
 import crypto from 'node:crypto';
@@ -17,6 +17,7 @@ import { hostRefusal, preflight, runSetup } from './local-prepare.mjs';
 import { DEFAULT_TIMEOUT_SECONDS, makeDataDirectories, commandDigest, compose, composeValues, databaseUrl, isAlive, probe, runCommand, runEnvironment, serviceReady, startProcess, stateOf, waitFor } from './local-run.mjs';
 import type { LocalDeps } from './local-run.mjs';
 import { launch } from './local-host.mjs';
+import { baseOverlap, overlapLine, peersOf } from './local-peers.mjs';
 import { readRecord, writeRecord } from './local-state.mjs';
 import { SEED_RECEIPTS, seedStep } from './seeds.mjs';
 import { ensureRuntimeLayers, layerPlan } from './runtime-layers.mjs';
@@ -155,8 +156,24 @@ function plan(local: LocalConfig, missing: string[]): string[] {
   ];
 }
 
+/** The refusal of `stack up` on a dev environment whose hundred another project of the machine owns (PROJECT-STACKS-10). */
+export const BASE_PORT_TAKEN = 'STACK_LOCAL_BASE_PORT_TAKEN';
+
+/**
+ * Refuses, dry run and --execute alike, before anything starts, an environment whose base port range overlaps another registered project's: both
+ * stacks would bind the same ports and the second up fails half way, or worse, serves the other project's process on a probe. Names the other
+ * project and the next free base. An environment that declares no base is not judged here (R389 asks it for one).
+ */
+function refuseTakenRange(ctx: StackContext, local: LocalConfig, deps: LocalDeps): void {
+  if (local.basePort === null) return;
+  const overlap = baseOverlap(local.basePort, peersOf(ctx, local, deps.peers));
+  if (overlap.clashes.length === 0) return;
+  throw refusal(BASE_PORT_TAKEN, `${local.env}: ${overlapLine(overlap)}; nothing was started: ${overlap.fix as string} (starci app stack doctor --env ${local.env} shows the same row)`);
+}
+
 /** `up` for a dev environment. */
 export async function upLocal(ctx: StackContext, local: LocalConfig, { execute = false, timeoutSeconds = DEFAULT_TIMEOUT_SECONDS }: { execute?: boolean; timeoutSeconds?: number } = {}, deps: LocalDeps = {}): Promise<ActionResult> {
+  refuseTakenRange(ctx, local, deps);
   const host = await preflight(ctx, local, deps);
   if (!host.ok) return hostRefusal(host.lines);
   const missing = missingKeys(local);

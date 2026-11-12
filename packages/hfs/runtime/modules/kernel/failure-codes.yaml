@@ -5772,6 +5772,26 @@ HFS_SCAFFOLD_BASE_PORT_TAKEN:
   owner: supervisor
   kind: verb-refusal
 
+STACK_LOCAL_BASE_PORT_TAKEN:
+  title: "stack up refused: the environment's base port range overlaps another project of the machine"
+  title_vi: "stack up bị từ chối: dải cổng gốc của môi trường trùng một dự án khác trên máy"
+  meaning_vi: "starci app stack up --env <env> (chạy thử lẫn --execute) không khởi động gì khi dải local.basePort..basePort+99 trùng dải trăm cổng (hoặc các cổng đã khai báo) của một dự án đã đăng ký trên máy: hai stack sẽ giành cùng cổng, lần up thứ hai hỏng giữa chừng hoặc probe trả lời bằng tiến trình của dự án kia. Thông báo nêu dự án trùng, mọi dự án đã so sánh và cổng gốc trống kế tiếp."
+  causes_vi:
+    - "Vi phạm R389: hai dự án trên cùng máy khai cùng một trăm cổng."
+  nextStep_vi: "Đổi environments.<env>.local.basePort sang cổng gốc trống mà thông báo đề xuất (và các cổng suy ra từ nó, starci app sync --execute dời cổng compose), rồi chạy lại stack up."
+  owner: supervisor
+  kind: verb-refusal
+
+STACK_BASE_PORT_OVERLAP:
+  title: "The dev environment's base port range overlaps another project of the machine"
+  title_vi: "Dải cổng gốc của môi trường dev trùng một dự án khác trên máy"
+  meaning_vi: "starci app check --env local so dải local.basePort..basePort+99 của mỗi môi trường dev với các dự án đã đăng ký trên máy (cùng cách stack doctor đọc) và cảnh báo khi trùng, nêu dự án trùng và cổng gốc trống kế tiếp. Chỉ báo, không chặn: cây mã có thể đúng luật và dự án nào dời cũng được, CI không có sổ đăng ký máy (--env prod không hỏi), còn stack up là nơi chặn."
+  causes_vi:
+    - "Hai dự án trên cùng máy khai cùng một trăm cổng (R389)."
+  nextStep_vi: "Đổi environments.<env>.local.basePort của một trong hai dự án sang cổng gốc trống được đề xuất, rồi chạy lại starci app check."
+  owner: supervisor
+  kind: check-finding
+
 STACKS_COMPOSE_PORT_LITERAL:
   title: "A compose file of a dev environment with a base port publishes a literal host port"
   title_vi: "File compose của môi trường dev có cổng gốc lại publish một cổng host cố định"
