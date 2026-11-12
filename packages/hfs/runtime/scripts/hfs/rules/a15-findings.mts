@@ -55,6 +55,7 @@ import { memoKeyed } from '../rule-memo.mjs';
 /** The failure codes the finders above emit, so `starci app check` ships their labels (check.mts adds them to CHECK_CODES). Append-only; the coordinator regenerates it at merge time. */
 export const A15_CODES = [
   // codes-begin
+  'BE_DI_RING',
   'HFS_DATA_IN_CODE', 'HFS_DATA_DEPENDENCY', 'STACKS_DATA_REPOSITORY',
   'HFS_SIDE_FOLDER_MISSING', 'HFS_SIDE_UNDECLARED', 'STACKS_SIDES_UNDECLARED', 'STACKS_SIDES_DRIFT', 'STACKS_COMPONENT_SIDE',
   'BE_REST_OPERATION_ID', 'BE_REST_UNTYPED', 'BE_REST_ERROR_SHAPE', 'BE_REST_PAGINATION', 'BE_REST_SECURITY', 'BE_REST_APP_GRAPHQL',

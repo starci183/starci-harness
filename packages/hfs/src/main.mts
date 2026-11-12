@@ -553,7 +553,7 @@ function familyOf(finding: { code?: string | null; engine?: string }): FamilyId 
   if (finding.engine === 'eslint' || finding.engine === 'stylelint') return 'lint';
   if (code === 'HFS_FORMAT') return 'format';
   if (/^(DB_|LITE_DB_)/.test(code)) return 'db';
-  if (code === 'BE_APP_BOOT_PROOF_MISSING' || code === 'BOOT_PROOF_TIMEOUT') return 'wiring';
+  if (code === 'BE_APP_BOOT_PROOF_MISSING' || code === 'BOOT_PROOF_TIMEOUT' || code === 'BE_DI_RING') return 'wiring';
   return SECRET_CODE_LIST.has(code) ? 'secrets' : 'hfs';
 }
 

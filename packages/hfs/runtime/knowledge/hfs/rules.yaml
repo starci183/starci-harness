@@ -4591,7 +4591,7 @@ rules:
       - {path: packages/hfs/src/hfs-release-provenance.spec.mjs, edition: full}
   - id: R272
     code: "BE_APP_BOOT_PROOF_MISSING"
-    law: "Every lite back-end app proves its real Nest AppModule composition by compiling the dependency graph with explicit fixture options and infrastructure doubles; unresolved providers, circular dependencies and a missing or failed proof are refused. The proof worker runs within its own budget from its spawn and is retried once when it runs out; a second timeout reaches no verdict and is reported as BOOT_PROOF_TIMEOUT, a warning, never as a failed proof. The app check wiring verb uses the same proof, and the fast job of the lite app CI runs it (`starci app check --gate wiring`), so a provider a domain module needs and the app root does not compose never passes tsc and the unit suite to fail at boot. Full retains its existing e2e boot proof."
+    law: "Every lite back-end app proves its real Nest AppModule composition by compiling the dependency graph with explicit fixture options and infrastructure doubles; unresolved providers and a missing or failed proof are refused, and a provider ring is named before the compile starts (R401, BE_DI_RING). The proof worker runs within its own budget from its spawn and is retried once when it runs out; a second timeout reaches no verdict and is reported as BOOT_PROOF_TIMEOUT, a warning, never as a failed proof. The app check wiring verb uses the same proof, and the fast job of the lite app CI runs it (`starci app check --gate wiring`), so a provider a domain module needs and the app root does not compose never passes tsc and the unit suite to fail at boot. Full retains its existing e2e boot proof."
     kinds: [check]
     gates: ["settle","land","ci"]
     failureCodes: ["BE_APP_BOOT_PROOF_MISSING", "BOOT_PROOF_TIMEOUT"]
@@ -6691,3 +6691,19 @@ rules:
       - {path: packages/hfs/src/data-repository.spec.mjs, editions: [lite, full]}
     witness:
       - {path: packages/hfs/src/data-repository.spec.mjs, editions: [lite, full]}
+  - id: R401
+    code: "BE_DI_RING"
+    law: "No Nest provider of a lite back-end app reaches itself through its construction edges: a constructor parameter (`@Inject` included), an `@Inject` property, a `useFactory` `inject` entry and the target of a `useExisting` alias, an `@Optional` one counting when it resolves and a `forwardRef` one never (Nest defers it; R85 refuses forwardRef). The boot proof (R272) registers the real AppModule with Nest's own scanner before it compiles, resolves each edge with Nest's lookup, and refuses every elementary ring of two or more providers as BE_DI_RING, naming each provider with its module and source file and the edge that reaches the next; it then skips the compile, on which Nest refuses a ring of two and waits forever on a longer one. It runs wherever the boot proof runs: `starci app check` (the wiring step) and `starci app check --gate wiring` in the fast job of the lite app CI. Full proves boot through its e2e world, whose boot hangs on a ring."
+    kinds: [check]
+    gates: [settle, land, ci]
+    failureCodes: ["BE_DI_RING"]
+    enforcers:
+      - {kind: hfs, id: di-ring, at: runtime/scripts/hfs/di-ring.mjs}
+    editions: [lite]
+    editionWhy: "R401 runs in the lite boot proof (R272), which registers the AppModule with fixture options; full has no fixture options and proves boot through its e2e world, whose boot hangs on a ring."
+    docs:
+      - {path: contexts/code/be/injection.md#be-injection-5-no-provider-ring-a-port-sits-on-its-own-provider, editions: [lite]}
+    proves:
+      - {path: packages/hfs/src/hfs-di-ring.spec.mjs, editions: [lite]}
+    witness:
+      - {path: packages/hfs/src/hfs-di-ring.spec.mjs, editions: [lite]}
