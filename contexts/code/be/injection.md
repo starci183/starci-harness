@@ -4,7 +4,8 @@ slots: [be.app, be.app.api, be.feature, be.feature.application]
 # Dependency injection
 
 How a dependency reaches a class: infrastructure through a zero-argument `Inject<Thing>()` injector over a
-`unique symbol` token, a domain service by its class. Module registration is BE-ARCHITECTURE-3.
+`unique symbol` token, a domain service by its class, and no provider reaching itself. Module registration is
+BE-ARCHITECTURE-3.
 
 ## BE-INJECTION-1 Infrastructure arrives through an injector; a domain service by class
 
@@ -63,8 +64,29 @@ Enforced by: `injector-shape` (R85); the names are review only.
 
 ## BE-INJECTION-4 No locator, forward reference or property injection
 
-No `ModuleRef` in product code, no `forwardRef` (a cycle is a finding, not a trick), no `@Inject()` on a field.
+No `ModuleRef` in product code, no `forwardRef` (a provider ring is broken as BE-INJECTION-5 says, never deferred), no
+`@Inject()` on a field.
 
 Why: a locator or a forward reference hides the dependency graph the lint checks.
 
 Enforced by: `no-module-ref`, `no-forward-ref` (R85).
+
+## BE-INJECTION-5 No provider ring: a port sits on its own provider
+
+A provider ring is a set of providers that reach themselves through what Nest awaits before it constructs each one: a
+constructor parameter, an `@Inject` property, an entry of a `useFactory` `inject` list and the target of a
+`useExisting` binding. `A -> B -> C -> A` is the common shape: a consumer injects a port token, the module binds the
+token with `{ provide: TOKEN, useExisting: B }`, and `B` (directly or through `C`) injects the consumer. An `@Optional`
+dependency closes a ring as soon as something provides it.
+
+Break the ring by putting the port on its own provider: bind the token to a provider whose implementation does not
+inject the token's consumer (a decider, an adapter or a registry that holds only what the port answers), and let the
+service that needs both the consumer and the port's logic inject that provider by class. Never break it with
+`forwardRef` (BE-INJECTION-4) or by moving one side to a lazy lookup.
+
+Why: Nest 11 builds each provider after the ones it awaits. It names a ring of two (`CircularDependencyException`), but on
+a ring of three or more every member waits for another and the app hangs at boot with no error and no log line.
+
+Enforced by: R401 (`BE_DI_RING`): the boot proof (`starci app check`, its `--gate wiring`, BE-TEST-12) registers the real
+AppModule with Nest's scanner before it compiles, and names each ring with the module and file of every provider in it.
+Lite only; full's e2e boot (BE-TEST-12) hangs on a ring.

@@ -2775,3 +2775,11 @@ rules:
       - HFS_DATA_MANIFEST_DRIFT
     enforcers:
       - {kind: hfs, id: data-repository}
+  - id: R401
+    code: BE_DI_RING
+    law: No Nest provider of a lite back-end app reaches itself through its constructor, property, factory or `useExisting` injections (a `forwardRef` edge aside, which R85 refuses); the boot proof scans the real AppModule before it compiles and names every ring of two or more providers, since Nest refuses a ring of two and hangs at boot on a longer one.
+    editions: [lite]
+    failureCodes:
+      - BE_DI_RING
+    enforcers:
+      - {kind: hfs, id: di-ring}
