@@ -3,7 +3,7 @@
  *
  * Each rule is the syntax-tree form of one Sonar rule, shared with the front-end canon (scripts/lib/sonar-syntax-rules.mjs,
  * bundled under `runtime/`): `no-await-in-loop` (S9382), `prefer-code-point` (S7758), `prefer-string-raw` (S7780),
- * `no-nested-conditional` (S3358), `no-void-operator` (S3735), `no-unused-import` (S1128) and `prefer-export-from` (S7763), `no-duplicate-import` (S3863, fixable) and `no-bidirectional-character` (text:S6389); the rest of
+ * `no-nested-conditional` (S3358), `no-void-operator` (S3735), `no-unused-import` (S1128) and `prefer-export-from` (S7763), `no-duplicate-import` (S3863, fixable) `todo-tag` (S1135) and `no-bidirectional-character` (text:S6389); the rest of
  * Sonar way is the factory's Sonar way block (scripts/lib/sonar-way.mjs).
  * The three Sonar rules that need the type checker, S1874 (a deprecated API), S6551 (an object turned into text) and S7503 (an `async`
  * function that never awaits and returns no promise), are the typescript-eslint rules `no-deprecated`, `no-base-to-string` and
@@ -12,7 +12,7 @@
 import { SONAR_SYNTAX_RULES } from "../runtime/scripts/lib/sonar-syntax-rules.mjs"
 import type { Recommended, RuleModule, Rules } from "./lib/rule.ts"
 
-const NAMES = ["no-await-in-loop", "prefer-code-point", "prefer-string-raw", "no-nested-conditional", "no-void-operator", "no-unused-import", "prefer-export-from", "max-params", "no-line-separator-literal", "no-bidirectional-character", "no-duplicate-import"]
+const NAMES = ["no-await-in-loop", "prefer-code-point", "prefer-string-raw", "no-nested-conditional", "no-void-operator", "no-unused-import", "prefer-export-from", "max-params", "no-line-separator-literal", "no-bidirectional-character", "no-duplicate-import", "todo-tag"]
 
 /** The rules this law contributes to the plugin. */
 export const rules: Rules = Object.fromEntries(NAMES.flatMap((name): Array<[string, RuleModule]> => {

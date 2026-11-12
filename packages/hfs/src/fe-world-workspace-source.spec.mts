@@ -47,3 +47,34 @@ for (const edition of ['lite', 'full']) {
     assert.deepEqual([findings(report, OWNER).length, findings(report, OWNERSHIP).length], [0, 0]);
   });
 }
+
+// A package variable aliasing another binding (`export const usePackageThing = impl`) is followed to its initializer, whose file no checker of the context holds
+// either: the initializer is another unit's code, outside the app's world, and is neither analysed nor a crash (`No type checker holds <file>`).
+const ALIASED = {
+  '../packages/blocks-core/src/index.ts': "export { usePackageThing } from './aliased';\n",
+  '../packages/blocks-core/src/aliased.ts': "const implementation = (text: string): string => text.trim();\nexport const usePackageThing = implementation;\n",
+};
+
+for (const edition of ['lite', 'full']) {
+  test(`${edition}: a component calling a workspace package's aliased variable through a path alias is analysed without error`, (t) => {
+    const declaration = { ...appDeclaration('fe', { apps: DEFAULT_APPS.fe }), edition };
+    const root = archFixture(t, { profile: 'fe', files: {
+      '../hfs.json': JSON.stringify(declaration),
+      'apps/web/tsconfig.json': JSON.stringify({
+        extends: '../../tsconfig.json',
+        compilerOptions: { baseUrl: '.', paths: { '@fixture/blocks-core': ['../../../packages/blocks-core/src/index.ts'] } },
+        include: ['src/**/*'],
+      }),
+      'apps/web/src/modules/config/index.ts': 'export const config = 1;\n',
+      '../packages/blocks-core/package.json': PACKAGE['../packages/blocks-core/package.json'],
+      ...ALIASED,
+      [`${LEAF}/index.tsx`]: [
+        'import { usePackageThing } from "@fixture/blocks-core";',
+        'export const Label = (props: { readonly text: string }) => <span>{usePackageThing(props.text)}</span>;',
+        '',
+      ].join('\n'),
+    } });
+    const report = runArch(root);
+    assert.deepEqual([findings(report, OWNER).length, findings(report, OWNERSHIP).length], [0, 0]);
+  });
+}

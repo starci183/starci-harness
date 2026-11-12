@@ -277,8 +277,11 @@ class WorldAnalysis {
     return [...new Set(functions.filter(fn => fn.body))];
   }
 
+  /** True for a file no checker of the context holds: the source of a workspace package reached through a tsconfig path alias is another unit's code, outside this app's world. */
+  outsideGraph(sourceFile: SourceFile): boolean { return !this.sourceSet.has(path.resolve(sourceFile.fileName)); }
+
   symbolIsWorld(raw: TsSymbol | null | undefined, sourceFile: SourceFile, propertyName: string | null = null): boolean {
-    if (!raw) return false;
+    if (!raw || this.outsideGraph(sourceFile)) return false;
     const info = this.importInfo(sourceFile);
     if (this.intrinsicUiHookSymbol(raw, info.checker)) return false;
     if (info.symbols.has(raw)) return true;
@@ -293,6 +296,7 @@ class WorldAnalysis {
   }
 
   namespaceIsWorld(raw: TsSymbol | undefined, sourceFile: SourceFile, propertyName: string | null): boolean {
+    if (this.outsideGraph(sourceFile)) return false;
     const info = this.importInfo(sourceFile);
     const declaration = raw ? info.namespaces.get(raw) : undefined;
     return Boolean(declaration && (declaration.worldEdge || knownWorldImport(declaration.specifier, propertyName ?? '')));

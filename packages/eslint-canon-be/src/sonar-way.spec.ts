@@ -37,7 +37,7 @@ test("the factory's third block is Sonar way over the scanned source, every rule
         "unicorn/no-thenable", "unicorn/no-useless-promise-resolve-reject", "prefer-promise-reject-errors", "@typescript-eslint/prefer-nullish-coalescing", "unicorn/prefer-native-coercion-functions", "unicorn/prefer-includes", "unicorn/prefer-set-has"]) {
         assert.ok(name in blockRules, `${name} is mapped`)
     }
-    for (const owned of ["sonarjs/no-nested-conditional", "sonarjs/unused-import", "sonarjs/void-use", "sonarjs/deprecation", "sonarjs/no-unused-vars", "max-params"]) {
+    for (const owned of ["sonarjs/no-nested-conditional", "sonarjs/unused-import", "sonarjs/void-use", "sonarjs/todo-tag", "sonarjs/deprecation", "sonarjs/no-unused-vars", "max-params"]) {
         assert.ok(!(owned in blockRules), `${owned} stays with its owner`)
     }
     for (const name of ["sonarjs/different-types-comparison", "sonarjs/function-return-type", "sonarjs/argument-type", "@typescript-eslint/prefer-optional-chain"]) {
@@ -57,7 +57,7 @@ test("every mapped row names a Sonar id and every sonarjs rule Sonar way switche
     const recommendedRules = sonarjs.configs.recommended.rules
     assert.ok(recommendedRules, "sonarjs publishes its recommended rules")
     const on = Object.entries(recommendedRules).filter(([, setting]) => levelOf(setting) === "error").map(([name]) => name)
-    assert.equal(on.filter((name) => !(name in rules)).length, 5, "only the five rules another owner enforces at error are not run under their sonarjs name")
+    assert.equal(on.filter((name) => !(name in rules)).length, 6, "only the six rules another owner enforces at error are not run under their sonarjs name")
     for (const row of SONAR_WAY_EXTRA.filter((entry) => entry.rule.startsWith("unicorn/"))) assert.ok(unicorn.rules?.[row.rule.slice("unicorn/".length)], `${row.rule} exists in the pinned unicorn`)
 })
 

@@ -1,6 +1,7 @@
 :root {
     --pink: #fbeff1;
     --red: #e11d48;
+    --green: #3b6d11;
     --muted: #71717a;
     --line: #ece4e6;
     font-family: Inter, system-ui, sans-serif;
@@ -54,6 +55,10 @@ aside h1 {
     padding: 0 7px;
     color: #444;
 }
+.chip.red {
+    background: #fde2e7;
+    color: var(--red);
+}
 main {
     overflow: auto;
     padding: 24px 32px;
@@ -77,6 +82,12 @@ main {
     font: inherit;
     background: #fff;
 }
+.bar h2 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 500;
+    flex: 1;
+}
 .seg button {
     border: 0;
     background: none;
@@ -92,54 +103,155 @@ main {
     font-weight: 500;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
-.page {
-    margin-bottom: 28px;
+.back {
+    border: 0;
+    background: #fff;
+    border-radius: 999px;
+    padding: 6px 12px;
+    font: inherit;
+    cursor: pointer;
 }
-.page h2 {
-    font-size: 14px;
-    font-weight: 500;
-    margin: 0 0 8px;
+.summary {
+    background: #fff;
+    border-radius: 12px;
+    padding: 10px 14px;
+    margin-bottom: 12px;
+    border-left: 4px solid var(--red);
+    color: var(--muted);
 }
-.pair {
+.summary.ok {
+    border-color: var(--green);
+}
+.cards {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
     gap: 16px;
 }
-.shot {
+.card {
+    border: 0;
+    padding: 0;
+    text-align: left;
+    font: inherit;
     background: #fff;
     border-radius: 16px;
-    box-shadow:
-        0 1px 3px rgba(0, 0, 0, 0.06),
-        0 6px 18px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
     overflow: hidden;
-    cursor: zoom-in;
+    cursor: pointer;
 }
-.shot img {
+.card img {
     display: block;
     width: 100%;
-    max-height: 520px;
+    height: 150px;
     object-fit: cover;
     object-position: top;
+}
+.card .cap b {
+    display: block;
+    color: #1f1f1f;
+    word-break: break-all;
 }
 .cap {
     font-size: 12px;
     color: var(--muted);
     padding: 8px 12px;
 }
-.cap b {
+.ok,
+.only {
+    color: var(--green);
+    font-size: 12px;
+}
+.only {
+    color: var(--muted);
+    white-space: nowrap;
+}
+.badge {
+    display: inline-block;
+    background: var(--red);
+    color: #fff;
+    font-size: 12px;
     font-weight: 500;
-    color: #1f1f1f;
-}
-.after {
-    color: #3b6d11;
-}
-.before {
-    color: #a32d2d;
+    border-radius: 999px;
+    padding: 1px 8px;
+    margin: 2px 6px 2px 0;
 }
 .empty {
     color: var(--muted);
     text-align: center;
     margin-top: 80px;
+}
+.split {
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(320px, 2fr);
+    gap: 20px;
+    align-items: start;
+}
+.shots {
+    display: grid;
+    gap: 12px;
+}
+.shots figure {
+    margin: 0;
+    background: #fff;
+    border-radius: 16px;
+    overflow: hidden;
+    cursor: zoom-in;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+.shots img {
+    display: block;
+    width: 100%;
+}
+.shots figcaption {
+    font-size: 12px;
+    color: var(--muted);
+    padding: 6px 12px;
+}
+.explain {
+    background: #fff;
+    border-radius: 16px;
+    padding: 16px;
+    position: sticky;
+    top: 60px;
+    max-height: calc(100vh - 90px);
+    overflow: auto;
+}
+.explain h2 {
+    margin: 0 0 4px;
+    font-size: 16px;
+}
+.meta {
+    color: var(--muted);
+    font-size: 12px;
+    margin: 0 0 12px;
+}
+.region {
+    border-top: 1px solid var(--line);
+    padding: 10px 0;
+}
+.region.bad {
+    background: #fff5f6;
+    margin: 0 -8px;
+    padding: 10px 8px;
+    border-left: 3px solid var(--red);
+}
+.region h3 {
+    margin: 0 0 4px;
+    font-size: 14px;
+}
+.region p {
+    margin: 4px 0;
+}
+.k {
+    font-weight: 600;
+    color: var(--red);
+    margin-right: 4px;
+}
+code {
+    background: #f1efe8;
+    border-radius: 4px;
+    padding: 0 4px;
+    font-size: 12px;
+    word-break: break-all;
 }
 .lb {
     position: fixed;
@@ -155,4 +267,81 @@ main {
 .lb img {
     max-width: min(1600px, 100%);
     border-radius: 12px;
+}
+@media (max-width: 900px) {
+    .shell {
+        grid-template-columns: 1fr;
+        height: auto;
+    }
+    .split {
+        grid-template-columns: 1fr;
+    }
+    .explain {
+        position: static;
+        max-height: none;
+    }
+}
+.tabs {
+    display: flex;
+    gap: 4px;
+    margin: 0 0 12px 4px;
+}
+.shotbox {
+    position: relative;
+}
+.hotspot {
+    position: absolute;
+    border: 2px solid var(--red);
+    background: rgba(225, 29, 72, 0.12);
+    border-radius: 6px;
+    cursor: pointer;
+}
+.flow {
+    margin-bottom: 24px;
+}
+.flow h2 {
+    font-size: 14px;
+    font-weight: 500;
+    margin: 0 0 8px;
+}
+.flowrow {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+    overflow: auto;
+}
+.flownode {
+    border: 0;
+    padding: 0;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    cursor: pointer;
+    width: 180px;
+    flex: none;
+    overflow: hidden;
+    font: inherit;
+    text-align: left;
+}
+.flownode img {
+    display: block;
+    width: 100%;
+    height: 110px;
+    object-fit: cover;
+    object-position: top;
+}
+.flownode span {
+    display: block;
+    padding: 6px 10px;
+    font-size: 12px;
+    color: var(--muted);
+    word-break: break-all;
+}
+.flownode.missing {
+    opacity: 0.5;
+}
+.arrow {
+    color: var(--muted);
+    font-size: 18px;
 }

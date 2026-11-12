@@ -3,6 +3,17 @@
 ## 9.16.15 - 2026-11-11
 
 - Changed: peer `@starci/hfs ~6.8.0`; no lint rule of this package changed.
+## 9.16.14 - 2026-11-11
+
+- Fixed (R235): `starci-fe/todo-tag` (S1135) replaces `sonarjs/todo-tag` in the Sonar way block. The sonarjs port reads a lower-case `todo` after a dot as the start of a sentence, so a comment naming the catalog key `guide.todo` was refused as a leftover marker. The canon rule refuses a marker only: the upper-case word `TODO` standing alone (`TODO`, `TODO:`, `TODO(name)`), or the word in any case written into a tag (`todo:`, `todo(`), with no letter, digit, underscore or dot on its left; a marker followed by an issue key (`TODO PROJ-12`) passes. The noun in prose (`a todo can be`, `the todo list`) and a name (`guide.todo`, `GuideTodoKey`, `todoCount`) are no marker. `fixme-tag` (S1134) is unchanged.
+
+## 9.16.13 - 2026-11-11
+
+- Added (R92, FE-ERROR-1): `starci-fe/no-view-data-status` refuses a read status written as a string union on a view type. In `modules/types/**` and the hooks (slots `fe.modules.types` and the hooks tier), a property named `state`, `status` or `shape` whose type is a string-literal union (inline, or an alias of the same file) that lists `loading`, or at least two distinct words of `failed`, `error`, `errored`, `empty`, `forbidden`, is reported: a region's status is a `DataSlot<T>` drawn through `SlotView`. A domain status (`"pending" | "paid" | "failed"`, `"active" | "retired"`) names no `loading` and one ambiguous word, so it passes. `no-data-status-shape` is unchanged: it still judges `XShape` / `XState` of a pure half.
+
+## 9.16.12 - 2026-11-09
+
+- Changed: peer `@starci/hfs ~6.7.0` (hfs 6.7.0: the per-screen gallery and its explain.md gates, R395); no lint rule of this package changed.
 
 ## 9.16.11 - 2026-11-09
 

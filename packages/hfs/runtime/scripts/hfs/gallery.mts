@@ -1,4 +1,4 @@
-// gallery.mts - the screenshot gallery every app carries (R395, contexts/project/gallery.md PROJECT-GALLERY-1): the parameters the rule, the sync
+// gallery.mts - the screenshot gallery every app carries (R395, contexts/project/gallery.md PROJECT-GALLERY-1 and PROJECT-GALLERY-2): the parameters the rule, the sync
 // templates and the dev stack read from `ruleParams.gallery` of the slot manifest, and the one place the gallery port is derived from the project
 // base port (`environments.<env>.local.basePort`, stack-base-port.mts): base + `portOffset`. Pure functions; nothing here touches the disk.
 import { isPlainObject as plain } from '../../engine/plain-object.mjs';
@@ -14,8 +14,8 @@ export interface GalleryParams {
   portOffset: number;
   /** The exact Vite version the managed package.json pins. */
   vite: string;
-  /** The folder of the screenshots, app-root relative. */
-  shots: string;
+  /** The folder of the pages (shots and explain.md per page), app-root relative. */
+  pages: string;
   /** The gitignore pattern, relative to the gallery folder, that keeps the PNGs out of git. */
   ignoredShots: string;
 }
@@ -47,47 +47,87 @@ export function declaredBasePort(doc: unknown): number | null {
   return null;
 }
 
-/** The words the managed gallery shows. `title` and `readme` carry `{project}` and `{port}` placeholders the renderer fills. */
+/** The words the managed gallery shows. `title` and `readme` carry `{project}` and `{port}` placeholders the renderer fills; the other words carry `{n}`-style placeholders main.js fills. */
 export interface GalleryLabels {
   title: string;
   search: string;
-  all: string;
   empty: string;
-  before: string;
-  after: string;
+  noPages: string;
+  onlyBugs: string;
+  summary: string;
+  explained: string;
+  noRegions: string;
+  unclearRegions: string;
+  problemMissing: string;
+  problemUnclear: string;
+  noImages: string;
+  meta: string;
+  screensTab: string;
+  flowsTab: string;
+  noFlows: string;
+  linksHeading: string;
+  openScreen: string;
   readme: readonly string[];
 }
 
-/** The UI language of the gallery by locale; `en` is the fallback of every locale this table does not hold. */
+/** The UI language of the gallery by locale; `en` is the fallback of every locale this table does not hold. The explain.md field names (`Vì sao`, `Luật`, `Grammar`) are the owner's and stay as written in both. */
 export const GALLERY_LABELS: Readonly<Record<string, GalleryLabels>> = Object.freeze({
   en: {
     title: '{project} gallery',
-    search: 'Search pages',
-    all: 'All',
-    empty: 'No screenshots yet. Put PNGs in gallery/shots/<area>/<page>__<width>__<before|after>.png',
-    before: 'before',
-    after: 'after the fix',
+    search: 'Search screens',
+    empty: 'No screens yet. Put the shots and explain.md in gallery/pages/<area>/<screen>/',
+    noPages: 'No screens.',
+    onlyBugs: 'only screens with bugs',
+    summary: '{shown} screens · {regions} regions explained · {badRegions} regions missing Why/Grammar or unclear · {hidden} screens hidden (no explain.md)',
+    explained: 'explained',
+    noRegions: 'BUG: no region yet',
+    unclearRegions: 'BUG: {n} unclear regions',
+    problemMissing: 'missing {field}',
+    problemUnclear: '{field} is unclear or wrong',
+    noImages: 'No shots in this mode.',
+    meta: 'route: {route} · area: {area}',
+    screensTab: 'Screens',
+    flowsTab: 'Flow map',
+    noFlows: 'No flow yet. Name flows in gallery/flows.json and mark hotspots in a screen links.json.',
+    linksHeading: 'Links between screens',
+    openScreen: 'Open {to}',
     readme: [
-      'Screenshots of every page, grouped by area, before and after each UI fix round (PROJECT-GALLERY-1).',
+      'One folder per screen: its shots at each width and the explanation of every region (PROJECT-GALLERY-1, PROJECT-GALLERY-2).',
       '',
-      '- Put shots in `shots/<area>/<page>__<width>__<before|after>.png` (the width is 1440 or 390), one pair per page and width.',
-      "- `npm install && npm run dev` serves it on http://localhost:{port} (the app's base port + 50); `starci app stack up --env dev` starts it with the app. New files appear on reload.",
-      '- The PNGs are git-ignored; the gallery app is source, managed by `starci app sync`.',
+      '- `pages/<area>/<screen>/` is one screen (one agent, one state). It holds only the shots `<width>.png` (1440, 1920 and 390), the explanation file explain.md and the optional links.json, nothing else. A state or an agent variant is its own folder; before and after comparisons belong in fix reports.',
+      '- explain.md has a front matter (`title`, `route`, `area`) and one `## <region name>` per region, each with the lines `Vì sao:`, `Luật:` (a memory file name or a contexts anchor) and `Grammar:`. A region that cannot be explained with a law and a Grammar reference is a bug: fix it before reporting; CHƯA RÕ or SAI is a warning locally and an error in `starci app check --env prod`.',
+      '- links.json lists hotspots of the screen, `{ "to": "<area>/<screen>", "x", "y", "w", "h" }` (fractions of the shot); flows.json names ordered screen ids, `{ "<flow name>": ["<area>/<screen>"] }`. The Flow map view draws them.',
+      '- `npm install && npm run dev` serves it on http://localhost:{port} (the app base port + 50); `starci app stack up --env dev` starts it with the app. New files appear on reload. The gallery shows only the screens that have an explain.md; `starci app check` fails on the others.',
+      '- The PNGs are git-ignored; explain.md, links.json, flows.json and the gallery app are source, the app managed by `starci app sync`.',
     ],
   },
   vi: {
-    title: 'Th\u01b0 vi\u1ec7n \u1ea3nh {project}',
-    search: 'T\u00ecm trang',
-    all: 'T\u1ea5t c\u1ea3',
-    empty: 'Ch\u01b0a c\u00f3 \u1ea3nh ch\u1ee5p. \u0110\u1eb7t PNG v\u00e0o gallery/shots/<area>/<page>__<width>__<before|after>.png',
-    before: 'tr\u01b0\u1edbc',
-    after: 'sau khi s\u1eeda',
+    title: 'Thư viện ảnh {project}',
+    search: 'Tìm màn hình',
+    empty: 'Chưa có màn hình nào. Đặt ảnh và explain.md vào gallery/pages/<area>/<screen>/',
+    noPages: 'Không có màn hình.',
+    onlyBugs: 'chỉ màn hình lỗi',
+    summary: '{shown} màn hình · {regions} vùng đã ghi · {badRegions} vùng thiếu Vì sao/Grammar hoặc chưa rõ · {hidden} màn hình bị ẩn (thiếu explain.md)',
+    explained: 'đã giải thích',
+    noRegions: 'LỖI: chưa có vùng nào',
+    unclearRegions: 'LỖI: {n} vùng chưa rõ',
+    problemMissing: 'thiếu {field}',
+    problemUnclear: '{field} chưa rõ hoặc sai',
+    noImages: 'Không có ảnh ở chế độ này.',
+    meta: 'route: {route} · khu: {area}',
+    screensTab: 'Màn hình',
+    flowsTab: 'Bản đồ luồng',
+    noFlows: 'Chưa có luồng. Đặt tên luồng trong gallery/flows.json và đánh dấu vùng bấm trong links.json của màn hình.',
+    linksHeading: 'Liên kết giữa các màn hình',
+    openScreen: 'Mở {to}',
     readme: [
-      '\u1ea2nh ch\u1ee5p m\u1ecdi trang, nh\u00f3m theo khu v\u1ef1c, tr\u01b0\u1edbc v\u00e0 sau m\u1ed7i v\u00f2ng s\u1eeda giao di\u1ec7n (PROJECT-GALLERY-1).',
+      'Mỗi màn hình một thư mục: ảnh ở từng độ rộng và lời giải thích của mọi vùng (PROJECT-GALLERY-1, PROJECT-GALLERY-2).',
       '',
-      '- \u0110\u1eb7t \u1ea3nh v\u00e0o `shots/<area>/<page>__<width>__<before|after>.png` (\u0111\u1ed9 r\u1ed9ng l\u00e0 1440 ho\u1eb7c 390), m\u1ed7i trang v\u00e0 m\u1ed7i \u0111\u1ed9 r\u1ed9ng m\u1ed9t c\u1eb7p.',
-      '- `npm install && npm run dev` ch\u1ea1y th\u01b0 vi\u1ec7n t\u1ea1i http://localhost:{port} (c\u1ed5ng g\u1ed1c c\u1ee7a app + 50); `starci app stack up --env dev` kh\u1edfi \u0111\u1ed9ng c\u00f9ng app. T\u1ec7p m\u1edbi hi\u1ec7n sau khi t\u1ea3i l\u1ea1i.',
-      '- C\u00e1c t\u1ec7p PNG b\u1ecb git b\u1ecf qua; \u1ee9ng d\u1ee5ng th\u01b0 vi\u1ec7n l\u00e0 m\u00e3 ngu\u1ed3n, do `starci app sync` qu\u1ea3n l\u00fd.',
+      '- `pages/<area>/<screen>/` là một màn hình (một agent, một trạng thái). Thư mục chỉ chứa các ảnh `<width>.png` (1440, 1920 và 390), tệp giải thích explain.md và links.json tùy chọn, không gì khác. Bản trạng thái hoặc bản của agent khác là thư mục riêng; so sánh trước/sau nằm trong báo cáo sửa.',
+      '- explain.md có front matter (`title`, `route`, `area`) và mỗi vùng một mục `## <tên vùng>` với các dòng `Vì sao:`, `Luật:` (tên tệp memory hoặc anchor contexts) và `Grammar:`. Vùng không giải thích được bằng một luật và một tham chiếu Grammar là lỗi: sửa trước khi báo cáo; CHƯA RÕ hoặc SAI là cảnh báo khi chạy local và là lỗi ở `starci app check --env prod`.',
+      '- links.json liệt kê các vùng bấm của màn hình, `{ "to": "<area>/<screen>", "x", "y", "w", "h" }` (tỉ lệ của ảnh); flows.json đặt tên các luồng gồm mã màn hình có thứ tự, `{ "<tên luồng>": ["<area>/<screen>"] }`. Chế độ Bản đồ luồng vẽ chúng.',
+      '- `npm install && npm run dev` chạy thư viện tại http://localhost:{port} (cổng gốc của app + 50); `starci app stack up --env dev` khởi động cùng app. Tệp mới hiện sau khi tải lại. Thư viện chỉ hiện màn hình có explain.md; `starci app check` fail ở các màn hình còn lại.',
+      '- Các tệp PNG bị git bỏ qua; explain.md, links.json, flows.json và ứng dụng thư viện là mã nguồn, ứng dụng do `starci app sync` quản lý.',
     ],
   },
 });

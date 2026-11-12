@@ -3203,7 +3203,7 @@ HFS_APPS_REQUIRED:
 HFS_APP_GALLERY_MISSING:
   title: "An app carries the screenshot gallery"
   title_vi: "Ứng dụng thiếu thư viện ảnh chụp màn hình"
-  meaning_vi: "Kho ứng dụng không có thư mục gallery/ (hoặc thiếu một tệp được sync quản lý của nó): ứng dụng Vite nhỏ hiển thị gallery/shots/<khu>/<trang>__<rộng>__<before|after>.png."
+  meaning_vi: "Kho ứng dụng không có thư mục gallery/ (hoặc thiếu một tệp được sync quản lý của nó): ứng dụng Vite nhỏ hiển thị gallery/pages/<khu>/<màn hình>/ (ảnh và explain.md của từng màn hình)."
   causes_vi:
     - "Vi phạm R395: mọi kho nguồn ứng dụng đều phải có gallery để lưu ảnh trước và sau mỗi vòng sửa giao diện (PROJECT-GALLERY-1)."
     - "Ứng dụng có trước quy tắc này và chưa chạy starci app sync, hoặc chưa khai báo local.basePort nên sync không biết cổng của gallery."
@@ -3236,10 +3236,76 @@ HFS_APP_GALLERY_VITE_UNPINNED:
 HFS_APP_GALLERY_SHOTS_TRACKED:
   title: "The gallery screenshots are git-ignored"
   title_vi: "Ảnh chụp của gallery chưa được git bỏ qua"
-  meaning_vi: "gallery/shots/**/*.png không nằm trong .gitignore, hoặc đã có ảnh PNG bị git theo dõi: ảnh chụp là bằng chứng cục bộ, không phải mã nguồn."
+  meaning_vi: "gallery/pages/**/*.png không nằm trong .gitignore, hoặc đã có ảnh PNG bị git theo dõi: ảnh chụp là bằng chứng cục bộ, không phải mã nguồn."
   causes_vi:
-    - "Vi phạm R395: khối .gitignore do sync quản lý thiếu dòng gallery/shots/**/*.png, hoặc ảnh đã được git add."
-  nextStep_vi: "Chạy starci app sync --execute để khối .gitignore có dòng gallery/shots/**/*.png, rồi git rm --cached các ảnh đã bị theo dõi."
+    - "Vi phạm R395: khối .gitignore do sync quản lý thiếu dòng gallery/pages/**/*.png, hoặc ảnh đã được git add."
+  nextStep_vi: "Chạy starci app sync --execute để khối .gitignore có dòng gallery/pages/**/*.png, rồi git rm --cached các ảnh đã bị theo dõi."
+  owner: op-retry
+  kind: check-finding
+
+HFS_APP_GALLERY_EXPLAIN_MISSING:
+  title: "A gallery page with shots has an explain.md"
+  title_vi: "Trang trong gallery có ảnh nhưng thiếu explain.md"
+  meaning_vi: "Thư mục gallery/pages/<khu>/<trang>/ có ảnh PNG nhưng không có explain.md: không ai biết vì sao mỗi vùng của trang được vẽ như vậy, theo luật nào, bằng thành phần Grammar nào."
+  causes_vi:
+    - "Vi phạm R395 (PROJECT-GALLERY-2): mỗi trang trong gallery phải đi kèm explain.md giải thích từng vùng nhìn thấy."
+    - "Người sửa giao diện chụp ảnh nhưng chưa viết hoặc chưa cập nhật lời giải thích."
+  nextStep_vi: "Viết gallery/pages/<khu>/<trang>/explain.md: front matter (title, route, area) và mỗi vùng một mục `## <tên vùng>` với ba dòng `Vì sao:`, `Luật:`, `Grammar:`; vùng không giải thích được là lỗi giao diện, sửa trang trước."
+  owner: op-retry
+  kind: check-finding
+
+HFS_APP_GALLERY_REGION_INCOMPLETE:
+  title: "Every region of a gallery page says why and names its Grammar"
+  title_vi: "Vùng trong explain.md thiếu Vì sao hoặc Grammar"
+  meaning_vi: "explain.md của một trang gallery không có mục `## <tên vùng>` nào, hoặc có vùng thiếu dòng `Vì sao:` hoặc dòng `Grammar:` (hoặc để trống)."
+  causes_vi:
+    - "Vi phạm R395 (PROJECT-GALLERY-2): mỗi vùng phải nêu luật của chủ sản phẩm quyết định nó và thành phần Grammar (component, prop, đường dẫn hoặc story) tạo ra nó."
+    - "Vùng được vẽ mà không giải thích được: đó là lỗi giao diện, không phải lỗi tài liệu."
+  nextStep_vi: "Điền `Vì sao:` (luật nào) và `Grammar:` (component + prop, kèm đường dẫn nguồn hoặc story) cho từng vùng được liệt kê; nếu không điền được thì sửa trang cho đến khi giải thích được."
+  owner: op-retry
+  kind: check-finding
+
+HFS_APP_GALLERY_REGION_UNCLEAR:
+  title: "No region of a gallery page is marked CHƯA RÕ or SAI"
+  title_vi: "Vùng trong explain.md còn ghi CHƯA RÕ hoặc SAI"
+  meaning_vi: "Một dòng Vì sao, Luật hoặc Grammar của explain.md bắt đầu bằng CHƯA RÕ hoặc SAI: tác giả tự nhận vùng đó chưa giải thích được hoặc đang sai, tức là một lỗi giao diện chưa sửa."
+  causes_vi:
+    - "Vi phạm R395 (PROJECT-GALLERY-2): một vùng chưa giải thích được bằng luật và tham chiếu Grammar là lỗi, phải sửa trước khi báo cáo."
+    - "`--env local` chỉ liệt kê (đang lặp lại khi sửa), `--env prod` (hook push, CI, phát hành) chặn."
+  nextStep_vi: "Sửa trang cho đến khi vùng đó giải thích được, rồi viết lại dòng với luật và tham chiếu Grammar thật."
+  owner: op-retry
+  kind: check-finding
+  localOnly: true
+
+HFS_APP_GALLERY_FRONT_MATTER:
+  title: "A gallery explain.md declares its title, route and area"
+  title_vi: "explain.md của gallery thiếu title, route hoặc area"
+  meaning_vi: "Front matter của explain.md thiếu title, route hoặc area, hoặc area khác với thư mục khu chứa trang. Đây là cảnh báo: gallery vẫn hiển thị trang bằng tên thư mục."
+  causes_vi:
+    - "Quy ước PROJECT-GALLERY-2: front matter cho gallery biết tên, đường dẫn route và khu của trang."
+  nextStep_vi: "Thêm title, route và area (đúng tên thư mục khu) vào front matter của explain.md."
+  owner: op-retry
+  kind: check-finding
+
+HFS_APP_GALLERY_SCREEN_FILE:
+  title: "A gallery screen folder holds only the allowed files"
+  title_vi: "Thư mục màn hình trong gallery có tệp không được phép"
+  meaning_vi: "Một thư mục gallery/pages/<khu>/<màn hình>/ có tệp hoặc thư mục ngoài 1440.png, 1920.png, 390.png, explain.md và links.json (kể cả thư mục before/), hoặc có tệp nằm ngoài thư mục màn hình, ví dụ 1440-open.png hay sales-1440.png."
+  causes_vi:
+    - "Vi phạm R395 (PROJECT-GALLERY-2): mỗi thư mục là một màn hình (một agent, một trạng thái); bản trạng thái hoặc bản của agent khác là thư mục riêng, không phải tên tệp khác."
+    - "Ảnh còn theo bố cục cũ gallery/shots hoặc đặt tên theo <trang>__<rộng>__<before|after>."
+  nextStep_vi: "Chuyển mỗi biến thể sang thư mục màn hình riêng (ví dụ pages/<khu>/<màn hình>-open/1440.png) và đổi tên ảnh thành đúng 1440.png, 1920.png hoặc 390.png."
+  owner: op-retry
+  kind: check-finding
+
+HFS_APP_GALLERY_LINKS:
+  title: "Gallery links and flows name existing screens"
+  title_vi: "links.json hoặc flows.json của gallery trỏ tới màn hình không tồn tại"
+  meaning_vi: "links.json của một màn hình (hoặc gallery/flows.json) không phải JSON đúng dạng, hoặc có `to` (hay mã màn hình trong luồng) không là một thư mục gallery/pages/<khu>/<màn hình>/."
+  causes_vi:
+    - "Vi phạm R395 (PROJECT-GALLERY-2): mỗi liên kết và mỗi bước của luồng phải trỏ tới một màn hình có thật."
+    - "Màn hình đích bị đổi tên hoặc xóa mà links.json hay flows.json chưa cập nhật."
+  nextStep_vi: "Sửa `to` thành <khu>/<màn hình> của một thư mục có thật, hoặc tạo màn hình đích, hoặc bỏ liên kết."
   owner: op-retry
   kind: check-finding
 

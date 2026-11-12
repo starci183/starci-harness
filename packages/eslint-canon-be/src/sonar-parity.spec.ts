@@ -181,7 +181,7 @@ test("scanner line breaks: a raw U+2028, U+2029 or U+0085 anywhere in a file is 
 })
 
 test("the back end publishes the import and character rules and none of the React ones", () => {
-  for (const name of ["no-duplicate-import", "no-bidirectional-character"]) assert.ok(name in rules, `${name} is published`)
+  for (const name of ["no-duplicate-import", "no-bidirectional-character", "todo-tag"]) assert.ok(name in rules, `${name} is published`)
   for (const name of ["no-useless-fragment", "no-nested-component", "no-children-prop", "use-state-destructured", "prefer-tag-over-role"]) assert.ok(!(name in rules), `${name} is a front-end rule`)
 })
 
@@ -238,4 +238,11 @@ test("text:S6389: a bidirectional control character is refused anywhere with its
 
 test("S3863: a merged import longer than the print width is laid out one specifier a line", () => {
   assert.doesNotThrow(() => { tester.run("no-duplicate-import", rule("no-duplicate-import"), { valid: [], invalid: [{ code: "import { SpecifierNumber1Long, SpecifierNumber2Long, SpecifierNumber3Long, SpecifierNumber4Long, SpecifierNumber5Long, SpecifierNumber6Long } from \"@modules/platform/logging\"\nimport type { SpecifierNumber7Long, SpecifierNumber8Long, SpecifierNumber9Long, SpecifierNumber10Long, SpecifierNumber11Long, SpecifierNumber12Long } from \"@modules/platform/logging\"\nexport const a = 1\n", output: "import {\n    SpecifierNumber1Long,\n    SpecifierNumber2Long,\n    SpecifierNumber3Long,\n    SpecifierNumber4Long,\n    SpecifierNumber5Long,\n    SpecifierNumber6Long,\n    type SpecifierNumber7Long,\n    type SpecifierNumber8Long,\n    type SpecifierNumber9Long,\n    type SpecifierNumber10Long,\n    type SpecifierNumber11Long,\n    type SpecifierNumber12Long,\n} from \"@modules/platform/logging\"\nexport const a = 1\n", errors: [{ messageId: "duplicate" }] }] }) })
+})
+
+test("S1135: a leftover TODO marker is refused; the word as a noun of prose or a name is not a marker", () => {
+  assert.doesNotThrow(() => { tester.run("todo-tag", rule("todo-tag"), {
+    valid: ["/** The kinds of line a todo can be, each a key of the `guide.todo` catalog. */\nexport const a = 1", "// TODO PROJ-12 tracked\nexport const a = 1"],
+    invalid: [{ code: "// TODO: later\nexport const a = 1", errors: [{ messageId: "todo" }] }, { code: "// todo(cuong) later\nexport const a = 1", errors: [{ messageId: "todo" }] }],
+  }) })
 })

@@ -515,6 +515,32 @@ const noBidirectionalCharacter = {
   }),
 };
 
+/**
+ * S1135: a leftover `TODO` marker comment. A marker is the upper-case word `TODO` standing alone, or the word in any case written straight into a
+ * tag (`todo:`, `todo(owner)`), with no letter, digit, underscore or dot touching it on the left; a marker followed by an issue key (`TODO PROJ-12`)
+ * is a tracked task and passes. The plain word as a noun of prose or a name (`a todo can be`, `the todo list`, `guide.todo`, `GuideTodoKey`) is no
+ * marker: the sonarjs port of S1135 reads a `todo` after the dot of a member path as the start of a sentence and reports it.
+ */
+const TODO_MARKER = /(?<![\p{L}\p{N}_.])(?:TODO(?![\p{L}\p{N}_])|[Tt][Oo][Dd][Oo](?=[:(]))/u;
+const TODO_ISSUE_KEY = /\b[A-Z][A-Z0-9]+-\d+\b/u;
+const todoTag = {
+  meta: { type: 'suggestion', schema: [], messages: { todo: 'S1135: Complete the task associated to this "TODO" comment.' } },
+  create: (context) => ({
+    'Program:exit': () => {
+      for (const comment of context.sourceCode.getAllComments()) {
+        if (comment.value.trim().startsWith('eslint-disable')) continue;
+        comment.value.split(/\r\n?|\n/).forEach((line, lineIdx) => {
+          const found = TODO_MARKER.exec(line);
+          if (!found || TODO_ISSUE_KEY.test(line.slice(found.index + 4))) return;
+          const row = comment.loc.start.line + lineIdx;
+          const column = (lineIdx === 0 ? comment.loc.start.column + 2 : 0) + found.index;
+          context.report({ messageId: 'todo', loc: { start: { line: row, column }, end: { line: row, column: column + 4 } } });
+        });
+      }
+    },
+  }),
+};
+
 /** The files the example scans leave out: a unit spec and an end-to-end spec (the regex, and the flat-config globs of the same set). */
 const OUTSIDE_THE_SCAN = /\.(?:e2e-)?spec\.[cm]?[jt]sx?$/;
 export const OUTSIDE_THE_SCAN_FILES = Object.freeze(['**/*.spec.{js,mjs,cjs,ts,mts,cts,jsx,tsx}', '**/*.e2e-spec.{js,mjs,cjs,ts,mts,cts,jsx,tsx}']);
@@ -536,6 +562,7 @@ export const SONAR_SYNTAX_RULES = Object.freeze({
   'max-params': scanned(maxParams),
   'no-line-separator-literal': noLineSeparatorLiteral,
   'no-bidirectional-character': noBidirectionalCharacter,
+  'todo-tag': scanned(todoTag),
   'no-duplicate-import': scanned(noDuplicateImport),
   'no-useless-fragment': scanned(noUselessFragment),
   'no-nested-component': scanned(noNestedComponent),

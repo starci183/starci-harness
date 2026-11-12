@@ -186,14 +186,14 @@ crossApp: apps never import each other; shared code is a packages/<pkg> slot.
 # merges common under the profile: a side restates a common key only to override it).
 ruleParams:
   # R395: the screenshot gallery every app carries (contexts/project/gallery.md PROJECT-GALLERY-1): its folder, the dev script, the port offset above
-  # local.basePort, the pinned Vite the managed package.json names, the folder of the shots and the pattern that keeps them out of git.
+  # local.basePort, the pinned Vite the managed package.json names, the folder of the pages (the shots and explain.md of each) and the pattern that keeps the shots out of git.
   gallery:
     dir: gallery
     devScript: dev
     portOffset: 50
     vite: 6.3.5
-    shots: gallery/shots
-    ignoredShots: "shots/**/*.png"
+    pages: gallery/pages
+    ignoredShots: "pages/**/*.png"
   db:
     # R259: btree_gist supplies UUID equality for the booking interval exclusion constraint.
     # R259: the extensions the db image carries: the official postgres image's contrib set and pgvector
@@ -806,7 +806,7 @@ slots:
   - id: app.gallery
     since: 3.27.0
     profiles: [app]
-    path: "gallery/{package.json,index.html,README.md,src/main.js,src/style.css}"
+    path: "gallery/{package.json,index.html,README.md,vite.config.js,src/main.js,src/explain.js,src/style.css}"
     presence: optional
     tracked: tracked
     tier: none
@@ -825,12 +825,30 @@ slots:
   - id: app.gallery-shots
     since: 3.27.0
     profiles: [app]
-    path: "gallery/shots/**/*.png"
+    path: "gallery/pages/**/*.png"
     presence: optional
     tracked: ignored
     tier: none
     tests: none
     rules: [HFS_APP_GALLERY_SHOTS_TRACKED]
+  - id: app.gallery-explain
+    since: 3.28.0
+    profiles: [app]
+    path: "gallery/pages/**/{explain.md,links.json}"
+    presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+    rules: [HFS_APP_GALLERY_EXPLAIN_MISSING, HFS_APP_GALLERY_REGION_INCOMPLETE, HFS_APP_GALLERY_REGION_UNCLEAR, HFS_APP_GALLERY_FRONT_MATTER, HFS_APP_GALLERY_SCREEN_FILE, HFS_APP_GALLERY_LINKS]
+  - id: app.gallery-flows
+    since: 3.28.0
+    profiles: [app]
+    path: gallery/flows.json
+    presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+    rules: [HFS_APP_GALLERY_LINKS]
   - id: app.github-meta
     since: 3.1.0
     profiles: [app]
