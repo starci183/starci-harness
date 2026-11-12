@@ -1,7 +1,7 @@
 /**
  * The one spacing scale of every visual family: 0 4 8 12 16 24 32 (px at a 16px rem). There is no other spacing value.
- * A container holds its content one row step in (12); 16 is the card's own inset alone (`--grammar-inset-card`), so a
- * card's body clears its radius. It is never a gap: separation beyond an inset is the parent's gap.
+ * A container holds its content one row step in (12); 16 is written once, as the card's own inset (`--grammar-inset-card`), so a
+ * card's body clears its radius; a Button with a glyph reads that token for the vendor's inline padding. It is never a gap: separation beyond an inset is the parent's gap.
  */
 export const COMMON_SPACING_SCALE = Object.freeze({
     0: "0",

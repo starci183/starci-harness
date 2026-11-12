@@ -66,14 +66,15 @@
         /* The one head row of a workspace grid (0.37.1): a touch-size control between two block-start insets, the same height in every pane. */
         --grammar-pane-head-size: calc(var(--grammar-touch-size) + 2 * var(--grammar-pane-inset-block-start));
         /*
-         * Control inline padding by size step (sm 8, md 12, lg 24); the side a leading or trailing glyph sits on takes
-         * one step less (sm 4, md 8, lg 12). Block padding is never chosen: the control height derives it.
+         * Control inline padding by size step (sm 8, md 12, lg 24). A Button with a glyph takes the vendor's measure on both
+         * sides instead: 12 on sm, 16 on md and lg, the 16 read from the one token that carries that step. Block padding is
+         * never chosen: the control height derives it.
          */
         --grammar-control-padding-inline-sm: 0.5rem;
         --grammar-control-padding-inline-md: 0.75rem;
         --grammar-control-padding-inline-lg: 1.5rem;
         --grammar-button-icon-padding-sm: 0.75rem;
-        --grammar-button-icon-padding: 1rem;
+        --grammar-button-icon-padding: var(--grammar-inset-card);
         /* The Mascot scale: square boxes sm 96px, md 160px, lg 240px; the hero fills its host's height up to the cap. */
         --grammar-mascot-sm: 6rem;
         --grammar-mascot-md: 10rem;

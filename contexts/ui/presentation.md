@@ -25,8 +25,9 @@ the app knows whether they belong together, and the grammar resolves the name to
 ### The scale
 
 One closed scale, and no value outside it: **0 · 4 · 8 · 12 · 16 · 24 · 32** (px at 16px to the rem; owner:
-`@starci/grammar src/common/spacing.ts`, the root tokens of `src/common/styles.css`). The 16 is the card's inset and
-nothing else (`--grammar-inset-card`): it is never a gap, so no `GapRole` names it, and separation beyond the inset
+`@starci/grammar src/common/spacing.ts`, the root tokens of `src/common/styles.css`). The 16 is written once, as the card's inset
+(`--grammar-inset-card`); beside the card only a Button with a glyph reads it, as the vendor's inline padding
+(`--grammar-button-icon-padding`). It is never a gap, so no `GapRole` names it, and separation beyond the inset
 belongs to the parent's gap, never to a larger inset. A measured 6 (a meter gap), 3 (a body offset), 20 or a fluid
 `clamp()` is a second, private scale and is refused. A 1px or 2px line is a stroke, not a step.
 
@@ -167,7 +168,7 @@ the spacing of that row: a role prop or nothing, never a gap, margin, padding or
 | `EmptyNotice`, `FileDropzone` | line to action row | 24 on every side | none | `title`, `action` |
 | `MessageBubble` | avatar to bubble inline; one sender identity, a sender change row, a day divider section (G5) | 12 inline, 8 block | none | the thread's order |
 | `Meter` | label to value inline; header to bar identity | 0 | none | `value` |
-| `Button` sm / md / lg | glyph to label inline | 8 / 12 / 24, glyph side 4 / 8 / 12 (h 32 / 40 / 48) | none | `size` at most |
+| `Button` sm / md / lg | glyph to label inline | 8 / 12 / 24; with a glyph 12 / 16 / 16 on both sides, the vendor's measure ([button](components/button.md#icon-measures-0375)) (h 32 / 40 / 48) | none | `size` at most |
 | Field (every control) | label to control inline (8); control to help, error or counter identity (4); field to field section (24), set by the `Form` or field stack, never by a field; `Fieldset` legend to fields 8, fields to actions 24 | 12 (h 40) | none | `label`, `description` ([field](components/field.md)) |
 | `Chip`, `Tag` | inline in a set; inline when it wraps | vendor 8, derived block | none | the set |
 | `Badge` | dot to text identity | vendor 8, block 0 | none | `children` |

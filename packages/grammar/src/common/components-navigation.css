@@ -1311,7 +1311,8 @@
         min-inline-size: 0;
         flex-direction: column;
         gap: 0.25rem;
-        padding: 0.75rem 1rem;
+        /* A row a card divides by lines: the row step to its separators, the card's inset to the card's left and right edges (ROW-EDGE-PADDING). */
+        padding: var(--grammar-row-gap) var(--grammar-card-padding-inline);
         border-block-end: 1px solid var(--separator);
     }
 
@@ -1342,7 +1343,7 @@
     .starci-core-data-table-list-group {
         display: flex;
         justify-content: space-between;
-        padding: 0.5rem 1rem;
+        padding: 0.5rem var(--grammar-card-padding-inline);
         background: var(--surface-secondary);
         color: var(--muted);
         font-size: var(--grammar-text-xs);

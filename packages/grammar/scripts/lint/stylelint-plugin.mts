@@ -4,8 +4,9 @@
  *
  *   starci-grammar/no-literal    a component rule holds no hardcoded colour, radius, type size, shadow geometry, motion
  *                                 or opacity, and no `var()` fallback that is a literal. It reads a token or a ramp.
- *   starci-grammar/spacing-scale a padding, margin, gap or inset is on the scale 0 4 8 12 16 24 32 (src/common/spacing.ts),
- *                                 never fluid.
+ *   starci-grammar/spacing-scale a padding, margin, gap or inset is on the scale 0 4 8 12 24 32 (src/common/spacing.ts), never
+ *                                 fluid; 16 is written once, as the value of `--grammar-inset-card`, the judgement
+ *                                 `@starci/stylelint-canon` `starci/spacing-scale` makes of these same sheets.
  *
  * A custom property declaration is a token definition: it may hold a literal (the ramps in `src/common/ramps.css`, a
  * family's `theme.css`), and only its `var()` fallbacks are judged. Colour keywords belong to `forced-colors` alone.
@@ -15,7 +16,7 @@ import type { Plugin, PostcssResult } from "stylelint"
 import type { AtRule, ChildNode, Container, Declaration, Document, Root } from "postcss"
 import valueParser from "postcss-value-parser"
 import type { Node as ValueNode } from "postcss-value-parser"
-import { COMMON_SPACING_SCALE } from "../../src/common/spacing.ts"
+import { COMMON_SPACING_SCALE, COMMON_SPACING_TOKENS } from "../../src/common/spacing.ts"
 
 const { createPlugin, utils } = stylelint
 
@@ -78,7 +79,7 @@ const inForcedColors = (node: ChildNode): boolean => {
 const messages = (ruleName: string) => utils.ruleMessages(ruleName, {
     literal: (property: string, what: string, hint: string) => `\`${property}\` holds ${what}. ${hint}`,
     fallback: (token: string, fallback: string) => `\`var(${token}, ${fallback})\` falls back to a literal. Define \`${token}\` once on the root (a ramp in src/common/ramps.css) and read it bare.`,
-    off: (property: string, length: string) => `\`${property}: ${length}\` is not a step of the spacing scale (0 4 8 12 16 24 32). Name the step by its role through a --grammar-* token.`,
+    off: (property: string, length: string) => `\`${property}: ${length}\` is not a step of the spacing scale (0 4 8 12 24 32; 16 only as the value of --grammar-inset-card). Name the step by its role through a --grammar-* token.`,
     fluid: (property: string, what: string) => `\`${property}\` is fluid (\`${what}\`). A spacing value steps by breakpoint; it never follows the viewport.`,
 })
 
@@ -180,14 +181,18 @@ const noLiteral = createPlugin(literalRuleName, Object.assign(noLiteralBase, { r
 
 const spacingRuleName = "starci-grammar/spacing-scale"
 const spacingMessages = messages(spacingRuleName)
-const SCALE_REM: readonly number[] = Object.values(COMMON_SPACING_SCALE).map((value) => (value === "0" ? 0 : Number.parseFloat(value)))
+const CARD_INSET_PROPERTY = COMMON_SPACING_TOKENS.insetCard
+const CARD_INSET_REM = Number.parseFloat(COMMON_SPACING_SCALE[4])
+/** The steps a length may take anywhere; the card inset step (16) only as the value of its own token. */
+const SCALE_REM: readonly number[] = Object.values(COMMON_SPACING_SCALE).map((value) => (value === "0" ? 0 : Number.parseFloat(value))).filter((step) => step !== CARD_INSET_REM)
 const STROKES_PX: readonly number[] = [1, 2]
 const SPACING_PROPERTY = /^(?:padding|margin|scroll-padding|scroll-margin)(?:-[a-z-]+)?$|^(?:gap|row-gap|column-gap)$/
 const SPACING_TOKEN = /^--[\w-]*(?:gap|inset|padding|gutter)[\w-]*$/
 const VIEWPORT = new Set(["vw", "vh", "vi", "vb", "vmin", "vmax", "svw", "svh", "lvw", "lvh", "dvw", "dvh"])
 
-const onScale = (amount: number, unit: string): boolean => {
+const onScale = (amount: number, unit: string, prop: string): boolean => {
     const size = Math.abs(amount)
+    if (prop === CARD_INSET_PROPERTY && amount === (unit === "px" ? CARD_INSET_REM * 16 : CARD_INSET_REM)) return true
     if (unit === "px") return STROKES_PX.includes(size) || SCALE_REM.some((step) => Math.abs(step * 16 - size) < 0.001)
     return SCALE_REM.some((step) => Math.abs(step - size) < 0.0005)
 }
@@ -208,7 +213,7 @@ const spacingScaleBase = (primary: unknown) => (root: Root, result: PostcssResul
             const unit = parsed.unit.toLowerCase()
             const amount = Number.parseFloat(parsed.number)
             if (VIEWPORT.has(unit)) utils.report({ result, ruleName: spacingRuleName, message: spacingMessages.fluid(decl.prop, node.value), node: decl, word: node.value })
-            else if ((unit === "px" || unit === "rem") && !onScale(amount, unit)) utils.report({ result, ruleName: spacingRuleName, message: spacingMessages.off(decl.prop, node.value), node: decl, word: node.value })
+            else if ((unit === "px" || unit === "rem") && !onScale(amount, unit, prop)) utils.report({ result, ruleName: spacingRuleName, message: spacingMessages.off(decl.prop, node.value), node: decl, word: node.value })
         })
     })
 }

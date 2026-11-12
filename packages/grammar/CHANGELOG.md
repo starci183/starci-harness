@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.38.1 - 2026-11-12
+
+- Fixed: three spacing values stood off the scale (0 4 8 12 24 32, 16 only as `--grammar-inset-card`) and failed `starci/spacing-scale` over the Grammar stylesheets (`@starci/stylelint-canon` `src/spacing-scale.spec.ts`). Each now reads the token of its role, and no drawn size moves: a row of a `DataTable` drawn as a list under 768 (`.starci-core-data-table-list-row`, since 0.37.3) takes `var(--grammar-row-gap) var(--grammar-card-padding-inline)` (was `0.75rem 1rem`; 12 to its separators, 16 to the card's edges, ROW-EDGE-PADDING), its group band (`.starci-core-data-table-list-group`) `0.5rem var(--grammar-card-padding-inline)` (was `0.5rem 1rem`), and `--grammar-button-icon-padding` reads `var(--grammar-inset-card)` (was `1rem`, since 0.37.5): a Button with a glyph keeps HeroUI's 16 on md and lg, read from the one token that carries the step.
+- Changed (the package's own lint, not shipped): `starci-grammar/spacing-scale` (`scripts/lint/stylelint-plugin.mts`) judges 16 as the canon does, a step only as the value of `--grammar-inset-card`, so `npm test` here refuses what `@starci/stylelint-canon`'s spec refuses; it admitted 16 anywhere, which is how the three values passed this package's gates.
+- Docs: `contexts/ui/presentation.md` "The scale" and the Button row of its padding table state the glyph Button's measure (12 / 16 / 16 on both sides); the comment of `src/common/spacing.ts` and of the control padding tokens say the same.
+- Contract: `DNA-COMMON-LIST-ON-WHITE-BORDERED` and `DNA-COMMON-ROW-EDGE-PADDING` stand under `mustKeep.common` of `contexts/grammars/contract.yaml`, where their ids and their CSS (`src/common/styles.css`) place them; under `mustKeep.core` the DNA loader refused the whole contract (`DNA_CONTRACT_INVALID`). No id changed.
+
 ## 0.38.0 - 2026-11-12
 
 - Changed: the content of 0.37.3-0.37.38 on the hfs 6.8 line, released as a minor: since 0.37.2, the version npm serves, the family adds and changes lint rules of `@starci/eslint-grammar-core` (`message-surfaces`, `no-card-lead-description`, `no-nested-label`, `rows-in-card`, `section-head-action`, `single-child-card`, `surface-depth`, `tabs`), which is a minor's change (`RELEASE_GRAMMAR_MINOR_REQUIRED`, contexts/grammars/contributing.md "Patch or minor"); the canon pins' range moves to `~0.38.0`. `@starci/eslint-grammar-core` peers `@starci/hfs ~6.8.0` (0.37.38 peers `~6.7.0`, so no hfs 6.8 app could install it). No component, law or lint rule changed against 0.37.38.
