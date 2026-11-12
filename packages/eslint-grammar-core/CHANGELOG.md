@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.38.3 - 2026-11-13
+
+- Changed: version stamp only, cut with `@starci/hfs` 6.10.0; requires `@starci/hfs` `~6.10.0` and `@starci/eslint-canon-fe` `~9.18.0`. No rule changes.
+
 ## 0.38.2 - 2026-11-13
 
 - Changed: version stamp only, cut with `@starci/hfs` 6.9.0 (the project extension folder, PROJECT-LINT-3): requires `@starci/hfs` `~6.9.0`; no rule changes.
