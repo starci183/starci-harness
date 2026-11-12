@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.25.0 - 2026-11-13
+
+- Changed (R263, `webhook-inbox-key`): the claim of a delivery intake may be the method of a receipt port the app declares in hfs.json `sides.be.receiptPorts` (`{ class, method, repeat, reason }`), besides `claim` and `claimRow` of the platform Inbox. A declared call is held to the same contract: the first await inside the receipt transaction, the transaction's own manager as its first argument, an argument that comes from the delivery (never a literal, never the raw payload), no call inside its arguments (a `const` before it binds what they need), and the declared repeat answer (`false` or `undefined`) returned on in the next statement. The handoff half accepts exactly the declared method inside the receipt transaction; any other method of that class, a lookalike class and an undeclared port stay `handoff` and `key` findings. Spec `src/webhook-handoff-inbox.spec.ts`.
+
 ## 3.24.0 - 2026-11-13
 
 - Changed (PROJECT-LINT-3, R381): `starciBeConfig` and `starciBePackagesConfig` load the lint rules of the project's extension (`ext/manifest.json`, `ext/lint/`) through `extEslintConfigs` of `@starci/hfs` 6.9.0: one block per rule, over the files its `appliesTo` names inside the config (the be side's own folder, `packages/` for the root packages), under the plugin `project-ext`. A refused extension throws `HFS_EXT_INVALID`. Rule packs (hfs.json `rulePacks`) are gone. Requires `@starci/hfs` `~6.9.0`. Spec `src/project-ext.spec.ts`.

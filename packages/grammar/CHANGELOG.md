@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.38.3 - 2026-11-13
+
+- Changed: version stamp only, cut with `@starci/hfs` 6.10.0: the family releases together; no component, token or stylesheet changes.
+
 ## 0.38.2 - 2026-11-13
 
 - Changed: version stamp only, cut with `@starci/hfs` 6.9.0 (the project extension folder, PROJECT-LINT-3): the family releases together; no component, token or stylesheet changes.

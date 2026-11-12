@@ -109,6 +109,8 @@ export interface HfsRuleParams {
     readonly sqlPassThrough?: readonly { readonly file: string; readonly reason: string }[]
     /** The root-package files that render DDL text only to return it, app-root-relative with a reason (hfs.json `sides.be.ddlRenderers`). */
     readonly ddlRenderers?: readonly { readonly path: string; readonly reason: string }[]
+    /** The receipt ports the app declares (hfs.json `sides.be.receiptPorts`): a class of the app, its method that records a delivery once, and the answer it gives a repeat (R263). */
+    readonly receiptPorts?: readonly { readonly class: string; readonly method: string; readonly repeat: "false" | "undefined"; readonly reason: string }[]
 }
 
 /** The frozen view of one side of an app. */

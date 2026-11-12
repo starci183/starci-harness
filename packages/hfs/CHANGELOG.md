@@ -1,5 +1,9 @@
 # Changelog
 
+## 6.10.0 - 2026-11-13
+
+- Added (R263): hfs.json `sides.be.receiptPorts`, a list of `{ class, method, repeat, reason }` (`repeat` is `"false"` or `"undefined"`, each class and method once, be side only; any other shape is `HFS_DECLARATION_INVALID`, `receiptPortsOk` of `runtime/scripts/hfs/rule-params-shape.mts`), handed to the back-end canon as `ruleParams.receiptPorts`. `@starci/eslint-canon-be` 3.25.0 reads it in `webhook-inbox-key`. Spec `src/hfs-database-access.spec.mts`.
+
 ## 6.9.0 - 2026-11-13
 
 - Added (PROJECT-LINT-3, R381): the project extension folder. A project adds its own laws in `ext/` at the app root (slot `app.ext`, manifest 3.38.0), one subfolder per tool, all declared in `ext/manifest.json` (`starci/project-ext@1`, with `api`, the extension API version it targets): `ext/hfs/` holds machine rules (`(context) => findings`, run by `starci app check` over the tracked files the rule's `appliesTo` names), `ext/lint/` ESLint rules the canon factories load over those paths, `ext/checks/` the project checks (R402, below). `starci app check` loads and runs them on every run. A declared file that is not there, a rule file no rule declares, a rule that throws, any key that would turn off, override or lower a rule, and a code the harness reports refuse the extension (`HFS_EXT_INVALID`), which then lends nothing while the check is red; a manifest of another API version is refused `HFS_EXT_API_MISMATCH`, naming the project to update. `runtime/scripts/lib/project-ext.mts`; spec `src/project-ext.spec.mts`.

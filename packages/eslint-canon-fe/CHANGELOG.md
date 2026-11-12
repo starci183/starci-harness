@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.18.0 - 2026-11-13
+
+- Changed: cut with `@starci/hfs` 6.10.0; requires `@starci/hfs` `~6.10.0`. No rule changes.
+
 ## 9.17.0 - 2026-11-13
 
 - Changed (PROJECT-LINT-3, R381): `starciFeConfig` loads the lint rules of the project's extension (`ext/manifest.json`, `ext/lint/`) through `extEslintConfigs` of `@starci/hfs` 6.9.0, over the files each rule's `appliesTo` names inside the fe side, under the plugin `project-ext`. A refused extension throws `HFS_EXT_INVALID`. Rule packs (hfs.json `rulePacks`) are gone. Requires `@starci/hfs` `~6.9.0`. Spec `src/project-ext.spec.ts`.

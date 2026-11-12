@@ -41,7 +41,7 @@ import { declarationEdition, editionRuleParams, effectiveSlot, slotInEdition } f
 import { fail } from './slot-errors.mjs';
 import { loadRuleCatalog } from './rule-catalog.mjs';
 import type { RuleCatalog } from './rule-catalog.mjs';
-import type { DbFunction, Parsed, RuleParams, Slot, SlotManifest, SlotTracking, SqlPassThrough, DdlRenderer } from './manifest-shape.mjs';
+import type { DbFunction, Parsed, RuleParams, Slot, SlotManifest, SlotTracking, SqlPassThrough, DdlRenderer, ReceiptPort } from './manifest-shape.mjs';
 import type { ClassifiedPath, OwnerUnit, Scope } from './slot-classify.mjs';
 
 export type { Bindings } from './slot-match.mjs';
@@ -99,6 +99,8 @@ export interface RepoView {
   engineOwned?: EngineOwned;
   /** The DDL renderers of the be side (hfs.json sides.be.ddlRenderers). */
   ddlRenderers?: readonly DdlRenderer[];
+  /** The receipt ports of the be side (hfs.json sides.be.receiptPorts). */
+  receiptPorts?: readonly ReceiptPort[];
   grammar?: string;
   extraPackages?: readonly { name: string; reason: string }[];
   sides?: Record<Side, RepoView>;
@@ -269,6 +271,7 @@ function sideDeclaration(manifest: SlotManifest, declaration: Parsed, name: stri
     dbFunctions: Object.freeze((s.dbFunctions ?? []).map((entry: Parsed) => Object.freeze({ ...entry }))),
     sqlPassThrough: Object.freeze((s.sqlPassThrough ?? []).map((entry: Parsed) => Object.freeze({ ...entry }))),
     ddlRenderers: Object.freeze((s.ddlRenderers ?? []).map((entry: Parsed) => Object.freeze({ ...entry }))),
+    receiptPorts: Object.freeze((s.receiptPorts ?? []).map((entry: Parsed) => Object.freeze({ ...entry }))),
     ...(s.engineOwned === undefined ? {} : { engineOwned: Object.freeze({ ...s.engineOwned, tables: Object.freeze([...s.engineOwned.tables]) }) }),
     ...(s.grammar === undefined ? {} : { grammar: s.grammar }),
     ...(s.extraPackages === undefined ? {} : { extraPackages: Object.freeze(s.extraPackages.map((entry: Parsed) => Object.freeze({ ...entry }))) }),
@@ -419,16 +422,18 @@ export function createSlotResolver(manifest: SlotManifest, repo: RepoView): Reso
 }
 
 /** The rule parameters with the app's declared database functions and SQL pass-through files appended to `dbFunctions` and `sqlPassThrough` (be only), the result frozen. */
-const withDeclaredLists = (params: RuleParams, repo: { dbFunctions?: readonly DbFunction[]; sqlPassThrough?: readonly SqlPassThrough[]; ddlRenderers?: readonly DdlRenderer[] }): RuleParams => {
+const withDeclaredLists = (params: RuleParams, repo: { dbFunctions?: readonly DbFunction[]; sqlPassThrough?: readonly SqlPassThrough[]; ddlRenderers?: readonly DdlRenderer[]; receiptPorts?: readonly ReceiptPort[] }): RuleParams => {
   const functions = repo.dbFunctions ?? [];
   const passThrough = repo.sqlPassThrough ?? [];
   const renderers = repo.ddlRenderers ?? [];
-  if ((params.dbFunctions === undefined && !functions.length) && (params.sqlPassThrough === undefined && !passThrough.length) && (params.ddlRenderers === undefined && !renderers.length)) return params;
+  const ports = repo.receiptPorts ?? [];
+  if ((params.dbFunctions === undefined && !functions.length) && (params.sqlPassThrough === undefined && !passThrough.length) && (params.ddlRenderers === undefined && !renderers.length) && !ports.length) return params;
   return Object.freeze({
     ...params,
     ...(params.dbFunctions === undefined && !functions.length ? {} : { dbFunctions: [...(params.dbFunctions ?? []), ...functions] }),
     ...(params.sqlPassThrough === undefined && !passThrough.length ? {} : { sqlPassThrough: [...(params.sqlPassThrough ?? []), ...passThrough] }),
     ...(params.ddlRenderers === undefined && !renderers.length ? {} : { ddlRenderers: [...(params.ddlRenderers ?? []), ...renderers] }),
+    ...(ports.length ? { receiptPorts: [...ports] } : {}),
   });
 };
 
