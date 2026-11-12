@@ -3,6 +3,7 @@
 ## 6.8.5 - 2026-11-12
 
 - Changed: the hfs 6.8 line (`@starci/hfs` 6.8.5) merged with `pkg/canon-fe-status-view-types`, `pkg/claude-work-concepts` and `pkg/claude-grammar-meter-foreground-fill`, so one installable set carries all of them: the gallery explain folders (R395, 6.7.0), concepts as Work of both editions (PROJECT-WORK-7, 6.7.1) and the surface-nesting fix of the Grammar 0.37.3-0.37.38 line join the 6.8 line (REST contract, sides, data repository, dev storage, derived ports, R401 `BE_DI_RING`). Manifest 3.36.0 (3.35.0 is taken by `pkg/claude-suite-and-checks`): the slots of 3.28.0 and 3.29.0 on the merged branches join those of 3.34.0. The canon pins name eslint-canon-be 3.23.2, eslint-canon-fe 9.16.16 and the Grammar family 0.38.0.
+- Fixed (R395, R19): the gallery's label table (`galleryTexts`, `runtime/scripts/hfs/gallery.mts`) is printed as the canon Prettier config prints it: an entry longer than the print width puts its value on the next line, so a lite starter's `gallery/src/main.js` in Vietnamese passes `prettier --check` (`src/sync-prettier.spec.mts`).
 - Changed (CONTRIBUTING.md CONTRIB-20): `src/canon-pins.spec.mts` holds every canon's `@starci/hfs` peer range admitting this folder's hfs version, so an hfs minor cannot leave a canon, the Grammar lint included, on the older line.
 
 ## 6.8.3 - 2026-11-12

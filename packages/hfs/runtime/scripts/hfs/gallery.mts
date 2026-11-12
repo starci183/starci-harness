@@ -3,6 +3,7 @@
 // base port (`environments.<env>.local.basePort`, stack-base-port.mts): base + `portOffset`. Pure functions; nothing here touches the disk.
 import { isPlainObject as plain } from '../../engine/plain-object.mjs';
 import { loadSlotManifest } from './slots.mjs';
+import { CANON_INDENT, CANON_PRINT_WIDTH } from '../../../sync/canon-layout.mjs';
 
 /** The `ruleParams.gallery` block of the slot manifest. */
 export interface GalleryParams {
@@ -138,9 +139,14 @@ export function galleryLocale(declared: string | null | undefined): string {
   return Object.hasOwn(GALLERY_LABELS, primary) ? primary : 'en';
 }
 
+/** One label entry as Prettier prints it: `key: "value",` on one line while it fits the canon print width, else the value alone on the next line. */
+const labelLine = (key: string, value: string): string => {
+  const line = `${CANON_INDENT}${key}: ${JSON.stringify(value)},`;
+  return line.length <= CANON_PRINT_WIDTH ? `${line}\n` : `${CANON_INDENT}${key}:\n${CANON_INDENT}${CANON_INDENT}${JSON.stringify(value)},\n`;
+};
+
 /** The label table as the object literal the canon Prettier config prints: unquoted keys, double-quoted strings, 4 spaces, a trailing comma (a managed file is rendered format-clean). */
-const labelsLiteral = (words: Record<string, string>): string =>
-  `{\n${Object.entries(words).map(([key, value]) => `    ${key}: ${JSON.stringify(value)},\n`).join('')}}`;
+const labelsLiteral = (words: Record<string, string>): string => `{\n${Object.entries(words).map(([key, value]) => labelLine(key, value)).join('')}}`;
 
 /** The managed gallery's template variables for a default locale: the document language, the JSON label table main.js reads, the title and the README body. */
 export function galleryTexts(declared: string | null | undefined, project: string, port: number | string): Record<string, string> {
