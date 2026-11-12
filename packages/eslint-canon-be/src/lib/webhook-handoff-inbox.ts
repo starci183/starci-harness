@@ -1,9 +1,16 @@
-/** R263 extends inbox dedupe to scalar delivery ids and signed raw-body intakes. */
+/**
+ * R263 extends inbox dedupe to scalar delivery ids and signed raw-body intakes. The claim is the platform Inbox's `claim` or `claimRow`, or the
+ * method of a receipt port the app declares in hfs.json `sides.be.receiptPorts` (`{ class, method, repeat, reason }`): a class of the app whose
+ * method takes the transaction's manager first and answers a repeat exactly as the Inbox does (`false`, or `undefined`). A declared call is held
+ * to the same contract: inside the receipt transaction, on that transaction's manager, with an argument that comes from the delivery, before any
+ * other work, and followed at once by the return on a repeat.
+ */
 import ts from "typescript"
 import type { TSESLint, TSESTree } from "@typescript-eslint/utils"
 import { memberKeyValue, nameOrValue, walk } from "./ast.ts"
 import { hfsOf } from "./hfs.ts"
 import { baseName, inboxClaimOf, ownerNameOf, refusesRepeat } from "./ports.ts"
+import { typeOrigins } from "./types.ts"
 import { resolveVariable } from "./transactions.ts"
 import { isPackageType, typed } from "./types.ts"
 import { webhookIntakeProcessesDelivery } from "./webhook-handoff-intake.ts"
@@ -134,6 +141,48 @@ const usesKey = (context: Context, argument: Node | undefined, key: DeliveryKey)
         && key.properties.some((name) => name === memberKeyValue(argument))
 }
 
+/**
+ * The repeat answer of a declared receipt port's call (`claim` for `false`, `claimRow` for `undefined`), or null: a plain member call, without a
+ * spread, of a declared method on a receiver whose type is the declared class, declared in the app's own source (a slot owns its file; a class
+ * of a package, or a lookalike under another name, is none).
+ */
+const receiptPortClaimOf = (context: Context, hfs: HfsView, call: Node | null | undefined): "claim" | "claimRow" | null => {
+    const ports = hfs.ruleParams.receiptPorts ?? []
+    if (ports.length === 0 || call?.type !== "CallExpression" || call.optional) return null
+    const callee = call.callee
+    if (callee.type !== "MemberExpression" || callee.computed || callee.optional || callee.property.type !== "Identifier") return null
+    if (call.arguments.length < 2 || call.arguments.some((argument) => argument.type === "SpreadElement")) return null
+    const method = callee.property.name
+    const origins = typeOrigins(context, callee.object).filter((origin) => origin.module === null && hfs.slotOf(origin.file) !== null && hfs.slotOf(origin.file) !== undefined)
+    const port = ports.find((entry) => entry.method === method && origins.some((origin) => origin.name === entry.class))
+    return port === undefined ? null : port.repeat === "false" ? "claim" : "claimRow"
+}
+
+/** An argument of a declared receipt call comes from the delivery: it reads a parameter of the intake, directly or through `const` bindings; a literal reads nothing. */
+const fromDelivery = (context: Context, method: TSESTree.MethodDefinition, expression: Node | null | undefined, seen = new Set<Node>()): boolean => {
+    if (!expression || seen.has(expression)) return false
+    seen.add(expression)
+    let sourced = false
+    walk(expression, (node) => {
+        if (node.type !== "Identifier") return
+        const variable = resolveVariable(context.sourceCode, node)
+        for (const definition of variable?.defs ?? []) {
+            if (definition.type === "Parameter" && definition.node === method.value) sourced = true
+            if (definition.type === "Variable" && definition.parent.kind === "const" && fromDelivery(context, method, definition.node.init, seen)) sourced = true
+        }
+    }, { intoFunctions: false })
+    return sourced
+}
+
+/** The arguments of a declared receipt call hold no call, construction or assignment: what they need is bound by a `const` before the claim. */
+const plainArguments = (call: TSESTree.CallExpression): boolean => {
+    let plain = true
+    for (const argument of call.arguments) walk(argument, (node) => {
+        if (["CallExpression", "NewExpression", "AssignmentExpression", "UpdateExpression", "AwaitExpression"].includes(node.type)) plain = false
+    }, { intoFunctions: false })
+    return plain
+}
+
 /** Find the first completed await, without treating a nested helper as work performed here. */
 const firstAwait = (body: Node | null | undefined): TSESTree.AwaitExpression | null => {
     let result: TSESTree.AwaitExpression | null = null
@@ -152,11 +201,11 @@ const preservesKey = (context: Context, key: DeliveryKey, call: TSESTree.CallExp
         && reference.identifier.range[0] < call.range[1])
 }
 
-/** Scalar/DTO claims are the first statement; a raw intake may first bind its decoded key. */
-const claimsBeforeWork = (context: Context, body: TSESTree.BlockStatement, statement: Node | undefined, key: DeliveryKey, call: TSESTree.CallExpression): boolean => {
+/** Scalar/DTO claims are the first statement; a raw intake may first bind its decoded key, and a declared receipt call the `const` bindings its arguments read. */
+const claimsBeforeWork = (context: Context, body: TSESTree.BlockStatement, statement: Node | undefined, key: DeliveryKey, call: TSESTree.CallExpression, declared = false): boolean => {
     const index = body.body.findIndex((entry) => entry === statement)
     if (index === 0) return true
-    if (index < 0 || !key.raw) return false
+    if (index < 0 || (!key.raw && !declared)) return false
     const dependencies = new Set<TSESLint.Scope.Variable | null>()
     const read = (expression: Node | null | undefined): void => {
         if (!expression) return
@@ -168,7 +217,7 @@ const claimsBeforeWork = (context: Context, body: TSESTree.BlockStatement, state
             for (const definition of variable.defs) if (definition.type === "Variable") read(definition.node.init)
         }, { intoFunctions: false })
     }
-    read(call.arguments[1])
+    for (const argument of declared ? call.arguments.slice(1) : [call.arguments[1]]) read(argument)
     return body.body.slice(0, index).every((entry) => entry.type === "VariableDeclaration" && entry.kind === "const"
         && entry.declarations.every((declaration) => declaration.id.type === "Identifier" && dependencies.has(resolveVariable(context.sourceCode, declaration.id))))
 }
@@ -233,7 +282,7 @@ export const webhookInboxKey: RuleModule = {
         docs: { description: "Delivery methods with first *Id parameters or DTO properties, or raw-body signature contracts, claim the real Inbox (claim, or claimRow on its EntityInbox) with a stable delivery key before work and return on duplicates. Receipt transactions publish events and leave processing to a reactor/job." },
         schema: [],
         messages: {
-            key: "[BE_WEBHOOK_INBOX_KEY] This delivery intake must first await the real platform/inbox claim(source, deliveryId), or claimRow(source, deliveryId, tx, receipt) on its EntityInbox, using its first *Id parameter or DTO property, or a decoded id for a signed raw-body intake, and return immediately on a repeat (claim answers false, claimRow undefined). A transaction claim uses that callback's own manager; raw payloads and fixed literals are not delivery keys.",
+            key: "[BE_WEBHOOK_INBOX_KEY] This delivery intake must first await the real platform/inbox claim(source, deliveryId), or claimRow(source, deliveryId, tx, receipt) on its EntityInbox, using its first *Id parameter or DTO property, or a decoded id for a signed raw-body intake, and return immediately on a repeat (claim answers false, claimRow undefined). A transaction claim uses that callback's own manager; raw payloads and fixed literals are not delivery keys. A receipt port the app declares in hfs.json sides.be.receiptPorts is held to the same contract: awaited first inside the receipt transaction, on that transaction's manager as its first argument, with an argument that comes from the delivery and no call inside its arguments, and its declared repeat answer (false or undefined) returned on at once.",
             handoff: "[BE_WEBHOOK_INBOX_KEY] A receipt transaction records the inbox delivery and publishes the typed event. Remove the process callback and domain/command processing from this transaction; a reactor or job processes the delivery after commit.",
         },
     },
@@ -265,7 +314,17 @@ export const webhookInboxKey: RuleModule = {
                     && claimsBeforeWork(context, body, statement, key, call)
                     && !priorWork(statement, call)
                     && rejectsDuplicate(context, awaited, body, claimMethod)
-                if (!claims) context.report({ node: method.key, messageId: "key" })
+                // A declared receipt port: the same contract, on the transaction's own manager (its first argument), keyed by the delivery.
+                const portMethod = claimMethod === null ? receiptPortClaimOf(context, hfs, call) : null
+                const receives = awaited !== null && call?.type === "CallExpression" && portMethod !== null
+                    && manager !== null && sameBinding(context, call.arguments[0], manager)
+                    && plainArguments(call)
+                    && call.arguments.slice(1).some((argument) => argument.type !== "Literal" && fromDelivery(context, method, argument))
+                    && !(key.raw && call.arguments.slice(1).some((argument) => sameBinding(context, argument, key.parameter)))
+                    && claimsBeforeWork(context, body, statement, key, call, true)
+                    && !priorWork(statement, call)
+                    && rejectsDuplicate(context, awaited, body, portMethod)
+                if (!claims && !receives) context.report({ node: method.key, messageId: "key" })
             },
         }
     },

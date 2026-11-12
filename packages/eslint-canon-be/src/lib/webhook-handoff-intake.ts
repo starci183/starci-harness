@@ -67,6 +67,20 @@ const isReceiptPort = (checker: ts.TypeChecker, hfs: HfsView, type: ts.Type): bo
     return dependencies.every((origins) => origins.length > 0 && origins.every(isPort)) && dependencies.some((origins) => origins.some(isInbox))
 }
 
+/**
+ * A call of a receipt port the app declares (hfs.json `sides.be.receiptPorts`): the declared method on a receiver whose type is the declared class
+ * of the app's own source. Inside the receipt transaction it is the delivery's record itself, as a call on the platform Inbox is; any other
+ * method of that class is judged like any other domain call.
+ */
+const isDeclaredReceiptCall = (checker: ts.TypeChecker, hfs: HfsView, call: ts.CallExpression): boolean => {
+    const ports = hfs.ruleParams.receiptPorts ?? []
+    const callee = call.expression
+    if (ports.length === 0 || !ts.isPropertyAccessExpression(callee)) return false
+    const method = callee.name.text
+    return hasOrigin(checker, callee.expression, (origin) => origin.module === null && hfs.slotOf(origin.file) !== null && hfs.slotOf(origin.file) !== undefined
+        && ports.some((port) => port.class === origin.name && port.method === method))
+}
+
 /** The transaction port's package establishes when the callback runs before commit. */
 const isTransactionCall = (checker: ts.TypeChecker, call: ts.CallExpression, receiver: ts.Node): boolean => memberName(call.expression) === "transaction"
     && hasOrigin(checker, receiver, (origin) => origin.module === "typeorm" && ["EntityManager", "DataSource"].includes(origin.name))
@@ -119,7 +133,7 @@ const processesDelivery = (checker: ts.TypeChecker, hfs: HfsView, body: ts.Node)
         nodes.add(node)
         if (isProcessCallback(checker, node)) found = true
         if (ts.isCallExpression(node)) {
-            if (inTransaction && isBusinessCall(checker, hfs, node.expression)) found = true
+            if (inTransaction && isBusinessCall(checker, hfs, node.expression) && !isDeclaredReceiptCall(checker, hfs, node)) found = true
             const callee = node.expression
             if ((ts.isPropertyAccessExpression(callee) || ts.isElementAccessExpression(callee)) && isTransactionCall(checker, node, callee.expression)) {
                 for (const argument of node.arguments) {

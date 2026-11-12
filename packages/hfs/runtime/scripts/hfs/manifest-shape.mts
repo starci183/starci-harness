@@ -106,6 +106,14 @@ export interface DbFunction {
   reason: string;
 }
 
+/** A receipt port an app declares (hfs.json sides.be.receiptPorts): the method that records a delivery once and the answer it gives a repeat (R263). */
+export interface ReceiptPort {
+  class: string;
+  method: string;
+  repeat: 'false' | 'undefined';
+  reason: string;
+}
+
 /** A file of a root package that renders DDL text only to return it (ruleParams.be.ddlRenderers, hfs.json sides.be.ddlRenderers). */
 export interface DdlRenderer {
   path: string;
@@ -130,6 +138,7 @@ export interface RuleParams {
   dbFunctions?: DbFunction[];
   sqlPassThrough?: SqlPassThrough[];
   ddlRenderers?: DdlRenderer[];
+  receiptPorts?: ReceiptPort[];
 }
 
 /** ruleParams.be: the back end's own parameters, which the validators of this folder require. */

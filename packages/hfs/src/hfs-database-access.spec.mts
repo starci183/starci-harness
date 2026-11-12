@@ -357,3 +357,14 @@ test('the be side takes sides.be.ddlRenderers as unique root-package paths with 
   for (const bad of [[{ ...renderer, path: 'src/render.ts' }], [{ ...renderer, path: 'packages/a/../b/render.ts' }], [{ ...renderer, path: 'packages/*/src/render.ts' }], [{ ...renderer, reason: ' ' }],
     [renderer, renderer], [{ path: renderer.path }], [{ ...renderer, extra: 1 }], 'packages/a/render.ts']) assert.equal(problems(bad).length, 1, JSON.stringify(bad));
 });
+
+test('the be side takes sides.be.receiptPorts as {class, method, repeat, reason}, each class and method once, and no other side does (R263)', () => {
+  const problems = (receiptPorts: unknown, side: 'be' | 'fe' = 'be') => declarationShapeProblems({ hfs: 3, kind: 'app', project: 'demo', edition: 'lite',
+    sides: { be: { apps: [{ name: 'api', kind: 'api' }], ...(side === 'be' ? { receiptPorts } : {}) }, fe: { apps: [{ name: 'web', kind: 'next' }], grammar: 'core', ...(side === 'fe' ? { receiptPorts } : {}) } } }, ['be', 'fe'])
+    .filter((problem: string) => problem.includes('receiptPorts'));
+  const port = { class: 'ReceiptPort', method: 'receive', repeat: 'undefined', reason: 'writes the delivery once under its unique key; undefined on a repeat' };
+  assert.deepEqual(problems([port, { ...port, method: 'accept', repeat: 'false' }]), []);
+  for (const bad of [[], 'ReceiptPort.receive', [{ ...port, repeat: 'null' }], [{ ...port, repeat: false }], [{ ...port, class: 'receiptPort' }], [{ ...port, method: 'Receive' }], [{ ...port, reason: 'short' }],
+    [{ class: 'ReceiptPort', method: 'receive', repeat: 'undefined' }], [{ ...port, off: true }], [port, port]]) assert.equal(problems(bad).length, 1, JSON.stringify(bad));
+  assert.equal(problems([port], 'fe').length, 1, 'a front end receives no delivery');
+});
