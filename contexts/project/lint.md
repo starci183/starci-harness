@@ -156,10 +156,11 @@ the stricter mode. The branch name alone decides, so a hook and CI agree; an ups
 A project's own laws (the shape of one of its packages, a schema its specs follow, a naming rule of its modules, a generated file that must be
 fresh) belong to the project, never to the generic harness: the harness only runs them. They live in one place, the folder `ext/` at the app
 root (slot `app.ext`), with one subfolder per tool, and they are recorded as decisions in the project's `.starciwork/concepts`. There is no
-extension point inside a package: a rule reaches a package by naming its paths.
+extension point inside a package: a rule reaches a package by naming its paths. Outside `ext/` a repository keeps no check, lint rule or
+lint plugin of its own (R103).
 
 - **The manifest declares everything.** `ext/manifest.json` (`starci/project-ext@1`, `packages/hfs/runtime/scripts/lib/project-ext.mts`) holds
-  `api`, the extension API version the folder targets, `rules` and `packages`. Every rule carries an `id` (`APP-SHAPE-1`), a finding `code`, a
+  `api`, the extension API version the folder targets, `rules`, `checks` and `packages`. Every rule carries an `id` (`APP-SHAPE-1`), a finding `code`, a
   `severity` (`error` or `warning`), its `doc` (a file below `ext/` or an https link), `appliesTo` (app-relative globs that start at a named
   folder: the paths the rule judges) and exactly one engine:
   - `hfs`: a file of `ext/hfs/` whose default export is `(context) => findings`. `starci app check` runs it over the tracked files `appliesTo`
@@ -167,12 +168,19 @@ extension point inside a package: a rule reaches a package by naming its paths.
   - `lint`: `{ tool: "eslint", file }`, a file of `ext/lint/` whose default export is an ESLint rule. The canon factories (`starciBeConfig`,
     `starciFeConfig`, `starciBePackagesConfig`) load it over the files `appliesTo` names inside their own scope, under the plugin `project-ext`,
     so the law that tool configs call only the canon factories and define no local rule still holds.
-  - `check`: `{ command: ["node", "<script>", ...] }`, a command check such as a generator's `--check` (its script by convention in
-    `ext/checks/`). `starci app check` runs it from the app root, without a shell, when a tracked file matches `appliesTo`; an exit other than 0
-    is the finding, with the last lines of its output.
-- **Always run.** `starci app check` loads the manifest and runs every hfs rule and command check on every run, so the pre-push hook and CI do;
-  a finding of a refused extension or of a command check is reported whatever paths the run is scoped to.
-- **What is declared must be there.** A declared rule file or script that is not found, a rule file of `ext/hfs/` or `ext/lint/` that no rule
+- **Project checks.** A check that reads the whole app as a program, where a rule over files is the wrong shape (an id no file may still
+  write, a generated list that must match its source, a generator's `--check`), is a file `ext/checks/<name>.mjs` that the manifest's `checks`
+  declares as `{ "id": "<kebab-id>", "run": "ext/checks/<name>.mjs", "why": "<what it guards>" }`. `starci app check` runs every declared
+  check as its own step, `checks`, wherever the hfs gate runs (CI's included): with this Node, from the app root, one after another; exit 0 is
+  green, any other exit is `HFS_PROJECT_CHECK_FAILED` (R402) naming the check, its exit and the last lines it printed, an hfs finding that
+  blocks like hfs. Its verdict is never cached, since a check reads what it reads. A file of `ext/checks/` no declaration names, a
+  check-named file in `scripts/` or `tools/` and a package script that runs one are `HFS_REPO_LOCAL_CHECK` (R103); a package script that
+  runs a declared check is the developer's shortcut to it. `starci app sync` names a loose check-named script and the declaration to add,
+  and never moves it: a check may resolve paths from its own folder, and its `why` is the project's to write. A check that re-implements a
+  canon or harness check is proposed to the harness instead.
+- **Always run.** `starci app check` loads the manifest and runs every hfs rule and project check on every run that selects the hfs gate, so the
+  pre-push hook and CI do; a finding of a refused extension is reported whatever paths the run is scoped to.
+- **What is declared must be there.** A declared rule file or check file that is not found, a rule file of `ext/hfs/` or `ext/lint/` that no rule
   declares, an `ext/` folder without its manifest, a rule that throws and a finding without a path are red (`HFS_EXT_INVALID`, R381, a hard
   finding of the hfs family).
 - **An extension only adds.** A rule or a manifest with any other key (an `off`, an `overrides`, a `disable`), a severity other than `error` or
@@ -182,7 +190,7 @@ extension point inside a package: a rule reaches a package by naming its paths.
 - **The API is versioned.** `api` names the extension API the folder was written for (`PROJECT_EXT_API`, 1; the `@starci/hfs` README
   "Extension API" lists what it covers). A breaking change raises the number, and `starci app check` refuses a manifest of another number with
   `HFS_EXT_API_MISMATCH`, naming the project that needs the update; until then none of its rules runs and the check is red.
-- **Findings go through the same policy.** An hfs rule and a command check are hfs findings: they block on every branch, like hfs. A lint rule is
+- **Findings go through the same policy.** An hfs rule and a project check are hfs findings: they block on every branch, like hfs. A lint rule is
   a lint finding: it follows the lint gate, so a branch profile that reports lint reports it and the lint ratchet (PROJECT-LINT-2) still holds
   it on the files a commit touches. A new rule rolls out with the ratchet: new code is clean from day one, existing findings burn down.
 - **A package's slots are declared by the project.** `packages` maps a root package folder (`packages/<name>`) to `{ closed, slots }`
@@ -196,7 +204,7 @@ extension point inside a package: a rule reaches a package by naming its paths.
   A package no declaration names keeps the harness's default scope (its `workbench/`, `public/` and `client/` subtrees unmeasured).
 
 Known gap: extension API 1 loads ESLint rules only; a Stylelint rule of a project has no engine yet (`lint.tool` other than `eslint` is
-refused), so a CSS law of one project is held by a command check until the stylelint canon loads `ext/lint/`. Known gap: the canons do not yet
+refused), so a CSS law of one project is held by a project check until the stylelint canon loads `ext/lint/`. Known gap: the canons do not yet
 read a slot's `lint`; the front-end subpaths of a root package are still the fixed ones of the packages lint config.
 
 ## Read with

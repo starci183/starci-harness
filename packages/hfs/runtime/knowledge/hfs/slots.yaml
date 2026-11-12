@@ -961,7 +961,8 @@ slots:
     since: 3.38.0
     profiles: [app]
     editionWhy: Lite and full share the slot; a project of either edition adds its own laws in the same folder.
-    # R381: the project's extension folder, one subfolder per tool; ext/manifest.json declares every rule and check it holds and the app check runs them.
+    # R381: the project's extension folder, one subfolder per tool (hfs/, lint/, checks/); ext/manifest.json declares every rule and check it holds and the
+    # app check runs them. A file of ext/checks/ that no declaration names is HFS_REPO_LOCAL_CHECK (R103); a declared check that fails is R402.
     path: "ext/"
     presence: optional
     tracked: tracked
@@ -969,7 +970,10 @@ slots:
     tests: none
     requires: [manifest.json]
     allows: [manifest.json, README.md, "hfs/**", "lint/**", "checks/**", "docs/**"]
-    rules: [HFS_EXT_INVALID]
+    rules: [HFS_EXT_INVALID, HFS_PLAINTEXT_SECRET, HFS_REPO_LOCAL_CHECK, HFS_PROJECT_CHECK_FAILED]
+    exemplifiedBy:
+      - {path: packages/hfs/src/project-ext.spec.mjs, editions: [lite, full]}
+      - {path: packages/hfs/src/project-checks.spec.mjs, editions: [lite, full]}
   - id: app.starciwork
     since: 3.1.0
     profiles: [app]

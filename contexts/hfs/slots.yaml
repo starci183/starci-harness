@@ -1413,6 +1413,9 @@ slots:
       - docs/**
     rules:
       - HFS_EXT_INVALID
+      - HFS_PLAINTEXT_SECRET
+      - HFS_REPO_LOCAL_CHECK
+      - HFS_PROJECT_CHECK_FAILED
   - id: app.starciwork
     profiles:
       - app

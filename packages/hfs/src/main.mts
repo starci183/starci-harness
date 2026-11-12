@@ -138,6 +138,7 @@ import { CHECK_ENVS, checkEnvOf, judgedForEnv, localOnlyCodes, localReported, lo
 import { DEFAULT_FAMILIES, mergeAppPass, runDbStep, runFormatStep, runStructureStep, runWiringStep, type AppPassParts, type AppRunInput } from '../cache/run.mjs';
 import { CHECK_GRAPH, createLanes, formatStepRows, runGraph, stepRow, type StepBody, type StepId } from '../cache/schedule.mjs';
 import { runParityFamilies, type ParityRun } from '../cache/parity-family.mjs';
+import { PROJECT_CHECK_FAILED, runProjectChecks } from '../cache/project-checks.mjs';
 import { LINT_REPORT, runSonarScan } from '../cache/sonar-scan-family.mjs';
 import { createProgress, elapsedText, silentProgress } from '../cache/progress.mjs';
 import { familyLine } from '../cache/report.mjs';
@@ -620,6 +621,12 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
     if (selected.has('format')) bodies.set('format', (step) => runFormatStep(appInput(session, step.execute), parts));
     if (selected.has('db')) bodies.set('db', (step) => runDbStep(appInput(session, step.execute), parts));
     if (selected.has('wiring')) bodies.set('wiring', (step) => runWiringStep(appInput(session, step.execute), parts));
+    // The project checks ext/manifest.json declares (R402) belong to the hfs gate, as the extension's hfs rules do: they run wherever it runs, as their own step.
+    if (selected.has('hfs')) bodies.set('checks', async (step) => {
+      const checked = await runProjectChecks({ repoRoot, run: step.parity, env: io.env });
+      found.set('checks', withWhy(checked.findings, readWhy(skillRoot, checked.findings.length > 0 ? [PROJECT_CHECK_FAILED] : [])));
+      said.set('checks', checked.lines);
+    });
   }
   let proved: Dynamic;
   /** The app pass merged with the coverage proof on top, once its steps have ended. */
@@ -715,7 +722,7 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
   if (ending !== undefined) throw ending.error;
   const linted = eslint as CachedLinters['eslint'] | null;
   const extra: Dynamic[] = CHECK_GRAPH.flatMap((spec) => found.get(spec.id) ?? []);
-  const lines: string[] = ['sonar', 'sonar-scan', 'ratchet'].flatMap((id) => said.get(id as StepId) ?? []);
+  const lines: string[] = ['checks', 'sonar', 'sonar-scan', 'ratchet'].flatMap((id) => said.get(id as StepId) ?? []);
   // An app keeps main and dev (PROJECT-BRANCH-1): a whole run warns when it has no dev branch.
   const noDev = whole && session !== undefined ? devBranchFinding(repoRoot) : null;
   if (noDev !== null) extra.push(...withWhy([noDev] as Dynamic[], readWhy(skillRoot, [noDev.code])));

@@ -1036,7 +1036,7 @@ rules:
       - {kind: eslint-be, id: spec-placement}
   - id: R103
     code: HFS_REPO_LOCAL_CHECK
-    law: A repository keeps no check, lint rule or lint plugin of its own; every check lives in the harness runtime and the canon packages.
+    law: "A repository keeps no check, lint rule or lint plugin of its own outside its extension folder (PROJECT-LINT-3): no `eslint-local-rules*` or local eslint plugin; no check-named runnable file in `scripts/` or `tools/` (or one folder below), a check-named file being one whose name holds the word check, checks or checker split on `-`, `_` and `.` (`check-schema.mjs`, `tool-names-check.mjs`, `flow_check.cjs`, `ids.check.mjs`, never `checkout.mjs`); no file of `ext/checks/` that ext/manifest.json `checks` does not declare; and no package script that runs such a file (one that runs a declared check stays). A generic check lives in the harness runtime and the canons."
     failureCodes:
       - HFS_REPO_LOCAL_CHECK
     enforcers:
@@ -2611,7 +2611,7 @@ rules:
       - {kind: eslint-grammar-core, id: no-grouped-choice-controls}
   - id: R381
     code: HFS_EXT_INVALID
-    law: "A project adds its own laws only in its ext/ folder at the app root, declared in `ext/manifest.json` (`starci/project-ext@1`, with the extension API version it targets): every rule carries an id, a finding code, a severity, its doc, the app-relative globs it applies to and exactly one engine (a machine rule of ext/hfs/ the app check runs, an ESLint rule of ext/lint/ the canon factories load, or a command check the app check runs without a shell); the app check loads and runs them on every run; an extension only adds, so a rule or manifest with any other key, a code the harness reports, an id or code declared twice, a declared file that is not there, a rule file no rule declares, a rule that throws, a finding without a path or a manifest of another API version refuses the extension, which then lends nothing while the check is red; its findings go through the harness's policy (a machine rule and a command check block like hfs, an ESLint rule follows the lint gate, its branch profile and the ratchet)."
+    law: "A project adds its own laws only in its ext/ folder at the app root, declared in `ext/manifest.json` (`starci/project-ext@1`, with the extension API version it targets): every rule carries an id, a finding code, a severity, its doc, the app-relative globs it applies to and exactly one engine (a machine rule of ext/hfs/ the app check runs, or an ESLint rule of ext/lint/ the canon factories load), and every project check of ext/checks/ is declared there too (R402); the app check loads and runs them on every run; an extension only adds, so a rule or manifest with any other key, a code the harness reports, an id or code declared twice, a declared file that is not there, a rule file no rule declares, a rule that throws, a finding without a path or a manifest of another API version refuses the extension, which then lends nothing while the check is red; its findings go through the harness's policy (a machine rule and a project check block like hfs, an ESLint rule follows the lint gate, its branch profile and the ratchet)."
     failureCodes:
       - HFS_EXT_INVALID
       - HFS_EXT_API_MISMATCH
@@ -2693,13 +2693,15 @@ rules:
       - {kind: hfs, id: script-one-off, status: planned}
   - id: R389
     code: STACKS_BASE_PORT_ROLE
-    law: "The host ports of a dev environment derive from its project base port: with `local.basePort` declared, the primary front end listens on base, the api on base+1, the AI gateway on base+2 and every further native process from base+3 (from base+2 when no gateway runs) up to base+79; the compose services take base+80 to base+99, the database on base+90, the mail sink's SMTP on base+91 and web UI on base+92, the object store's S3 API on base+93 and console on base+94; and every compose file publishes its host ports from `local.ports`, never a literal port. An environment with native processes on ports and no `basePort` is reported as a warning, not an error. Each project owns its own hundred: the doctor fails, and the scaffold refuses a named base (taking the next free hundred otherwise), when another registered project's hundred or declared ports overlap it."
+    law: "The host ports of a dev environment derive from its project base port: with `local.basePort` declared, the primary front end listens on base, the api on base+1, the AI gateway on base+2 and every further native process from base+3 (from base+2 when no gateway runs) up to base+79; the compose services take base+80 to base+99, the database on base+90, the mail sink's SMTP on base+91 and web UI on base+92, the object store's S3 API on base+93 and console on base+94; and every compose file publishes its host ports from `local.ports`, never a literal port. An environment with native processes on ports and no `basePort` is reported as a warning, not an error. Each project owns its own hundred: the doctor fails, the scaffold refuses a named base (taking the next free hundred otherwise) and stack up refuses to start, when another registered project's hundred or declared ports overlap it; the local app check reports it as a warning."
     failureCodes:
       - STACKS_BASE_PORT_ROLE
       - STACKS_COMPOSE_PORT_ROLE
       - STACKS_COMPOSE_PORT_LITERAL
       - STACKS_BASE_PORT_UNDECLARED
       - HFS_SCAFFOLD_BASE_PORT_TAKEN
+      - STACK_LOCAL_BASE_PORT_TAKEN
+      - STACK_BASE_PORT_OVERLAP
     enforcers:
       - {kind: hfs, id: stacks-local}
   - id: R390
@@ -2808,3 +2810,10 @@ rules:
       - BE_DI_RING
     enforcers:
       - {kind: hfs, id: di-ring}
+  - id: R402
+    code: HFS_PROJECT_CHECK_FAILED
+    law: "Every project check the project's ext/manifest.json `checks` declares passes. A declaration is {id, run, why}: a unique kebab-case id, run a unique `ext/checks/<name>.mjs` file, and why the project keeps it (its shape, and a declared file that is not there, are HFS_EXT_INVALID, R381). `starci app check` runs every declared check wherever the hfs gate runs (a whole run, `--gate hfs`, CI), as its own `checks` step after the structure pass: with the Node that runs the check, from the app root, one after another through the heavy governor; exit 0 is green and says so in one line, any other exit, or a missing file, is HFS_PROJECT_CHECK_FAILED naming the check, its file, its exit, what it guards and the last 20 lines it printed. An hfs finding: it blocks like hfs under the branch profile. A check reads what it reads, so its verdict is never cached."
+    failureCodes:
+      - HFS_PROJECT_CHECK_FAILED
+    enforcers:
+      - {kind: hfs, id: project-checks}

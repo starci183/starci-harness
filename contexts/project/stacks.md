@@ -403,7 +403,11 @@ Rules learned from running apps on developer hosts; each holds in every app.
   every checkout it could not read, and fails, with the next free base, when this app's hundred overlaps another project's, or the reserved
   range (a `port range reserved` row). `starci app scaffold` checks the same projects: without `--base-port` it takes the name's base, or the
   next free hundred of 3000 to 4900 when another project holds it, and says which; `--base-port <n>` that overlaps another project is
-  refused `HFS_SCAFFOLD_BASE_PORT_TAKEN` with the next free base. The authority is `scripts/hfs/stack-base-port.mjs` (the table) and
+  refused `HFS_SCAFFOLD_BASE_PORT_TAKEN` with the next free base. `starci app stack up --env <env>` (dry run and `--execute`) refuses an
+  overlap before it starts anything, `STACK_LOCAL_BASE_PORT_TAKEN`, naming the other project and the next free base. `starci app check
+  --env local` reports it as `STACK_BASE_PORT_OVERLAP`, a warning, report-only: the overlap is a relation of two checkouts of one machine
+  that either may resolve, CI has no machine registry to compare (`--env prod` never asks), and `stack up`, the command that would collide,
+  is where it blocks. The authority is `scripts/hfs/stack-base-port.mjs` (the table) and
   `stack/local-peers.mjs` (the projects) of `@starci/hfs`.
 - **A green check judges the running stack too.** `starci app check --env local` (the default, the fix-loop run; `--env prod` never asks, since CI has no dev stack) reads
   the live dev environment after the tree checks, for each docker-compose environment that declares a `local.database`, with two read-only checks that are never cached

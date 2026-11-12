@@ -1,19 +1,20 @@
 // project-ext.mts - a project's extension folder (PROJECT-LINT-3, R381): `ext/` at the app root, the one place a project adds its own laws to the
 // harness's gates. One subfolder per tool, and one manifest that declares everything the folder holds:
-//   ext/manifest.json   { schema: 'starci/project-ext@1', api: <the extension API it targets>, rules: [<rule>, ...], packages?: {<folder>: <slots>} }
+//   ext/manifest.json   { schema: 'starci/project-ext@1', api: <the extension API it targets>, rules?: [<rule>, ...], checks?: [<check>, ...],
+//                         packages?: {<folder>: <slots>} }
 //   ext/hfs/            machine rules of the hfs family: an ES module whose default export is `(context) => findings`
 //   ext/lint/           ESLint rules the canon factories (eslint-canon-be, eslint-canon-fe, the packages config) load: a module whose default
 //                       export is an ESLint rule (`{ meta, create }`)
-//   ext/checks/         the scripts of command checks (`node ext/checks/<generator>.mjs --check`): exit 0 is clean, any other exit a finding
+//   ext/checks/         project checks (R402): a `.mjs` program the `checks` step of `starci app check` runs from the app root; exit 0 is green
 // Every rule carries an id (`APP-SHAPE-1`), a finding code (`APP_SHAPE_INCOMPLETE`), a severity (error or warning), its doc (a file below ext/ or
 // an https link), `appliesTo` (app-relative globs: the paths it judges; a rule reaches a package by naming its paths) and exactly one engine:
 //   hfs    '<file>'                                  a file of ext/hfs/; `starci app check` runs it over the tracked files `appliesTo` matches
 //   lint   { tool: 'eslint', file: '<file>' }        a file of ext/lint/; loaded for the files `appliesTo` matches in the config that owns them
-//   check  { command: ['node', '<script>', ...] }    run without a shell from the app root when a tracked file matches `appliesTo`
+// Every check is { id, run, why }: a kebab-case id, `run` a file `ext/checks/<name>.mjs`, and what it guards (cache/project-checks.mts runs it).
 // An extension only adds: a rule or manifest with any other key (an `off`, `overrides` or `disable`), a code the harness already reports, an id or a
 // code declared twice, a declared file that is not there and a manifest of another API version refuse the whole extension (HFS_EXT_INVALID,
 // HFS_EXT_API_MISMATCH), which then lends nothing while the check is red. Findings go through the same policy as the harness's own: an hfs rule and
-// a command check are hfs findings (blocking on every branch), a lint rule a lint finding (report under a branch profile, held by the ratchet).
+// a project check are hfs findings (blocking on every branch), a lint rule a lint finding (report under a branch profile, held by the ratchet).
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -25,7 +26,7 @@ export const PROJECT_EXT_DIR = 'ext';
 export const PROJECT_EXT_MANIFEST = `${PROJECT_EXT_DIR}/manifest.json`;
 export const PROJECT_EXT_SCHEMA = 'starci/project-ext@1';
 /**
- * The extension API this runtime serves: the shape of the manifest, of a rule's context and findings, and of a command check. A breaking change
+ * The extension API this runtime serves: the shape of the manifest, of a rule's context and findings, and of a project check's declaration. A breaking change
  * raises it, and a manifest that targets another number is refused until the project's ext/ is updated (HFS_EXT_API_MISMATCH).
  */
 export const PROJECT_EXT_API = 1;
@@ -53,13 +54,17 @@ export interface ExtRule {
   readonly appliesTo: readonly string[];
   readonly hfs?: (context: ExtContext) => readonly ExtFinding[];
   readonly lint?: { readonly name: string; readonly rule: EslintRuleModule };
-  readonly check?: { readonly command: readonly string[] };
 }
-/** A project's extension: every sound rule, the package declarations as written, and each problem. An extension with any problem lends no rule. */
-export interface ProjectExt { present: boolean; rules: ExtRule[]; packages: Record<string, unknown>; problems: { code: string; message: string }[] }
+/** One project check the manifest declares: its id, the file of ext/checks/ it runs and what it guards. */
+export interface ExtCheck { readonly id: string; readonly run: string; readonly why: string }
+/** A project's extension: every sound rule, the declared project checks, the package declarations as written, and each problem. An extension with any problem lends no rule. */
+export interface ProjectExt { present: boolean; rules: ExtRule[]; checks: ExtCheck[]; packages: Record<string, unknown>; problems: { code: string; message: string }[] }
 
-const MANIFEST_KEYS = new Set(['schema', 'api', 'rules', 'packages']);
-const RULE_KEYS = new Set(['id', 'code', 'severity', 'doc', 'appliesTo', 'hfs', 'lint', 'check']);
+const MANIFEST_KEYS = new Set(['schema', 'api', 'rules', 'checks', 'packages']);
+const RULE_KEYS = new Set(['id', 'code', 'severity', 'doc', 'appliesTo', 'hfs', 'lint']);
+/** A project check's id (kebab-case) and its file: a `.mjs` file of ext/checks/ (R402). */
+const CHECK_ID = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/u;
+const CHECK_RUN = /^ext\/checks\/[a-z0-9][a-z0-9._-]*\.mjs$/u;
 const ID = /^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+$/u;
 const CODE = /^[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+$/u;
 const MODULE_FILE = /^[a-z][a-z0-9-]*(?:\/[a-z][a-z0-9-]*)*\.(?:mjs|js)$/u;
@@ -140,15 +145,15 @@ function judgeRule(appRoot: string, entry: unknown, at: number): { rule?: ExtRul
   const globs = Array.isArray(entry['appliesTo']) ? (entry['appliesTo'] as unknown[]) : [];
   if (globs.length === 0) problems.push(`${label}: appliesTo must list the app-relative globs the rule judges`);
   for (const glob of globs) { const bad = globProblem(glob); if (bad !== null) problems.push(`${label}: appliesTo ${bad}`); }
-  const engines = (['hfs', 'lint', 'check'] as const).filter((key) => entry[key] !== undefined);
-  if (engines.length !== 1) problems.push(`${label}: a rule has exactly one engine: hfs (a machine rule of ${PROJECT_EXT_DIR}/${PROJECT_EXT_FOLDERS.hfs}/), lint (a rule of ${PROJECT_EXT_DIR}/${PROJECT_EXT_FOLDERS.lint}/) or check (a command)`);
+  const engines = (['hfs', 'lint'] as const).filter((key) => entry[key] !== undefined);
+  if (engines.length !== 1) problems.push(`${label}: a rule has exactly one engine: hfs (a machine rule of ${PROJECT_EXT_DIR}/${PROJECT_EXT_FOLDERS.hfs}/) or lint (a rule of ${PROJECT_EXT_DIR}/${PROJECT_EXT_FOLDERS.lint}/); a program that checks the app is a check of the manifest's checks list`);
   const moduleOf = (folder: string, file: unknown, what: string): unknown => {
     if (typeof file !== 'string' || !MODULE_FILE.test(file)) { problems.push(`${label}: ${what} must name a .mjs or .js file of ${PROJECT_EXT_DIR}/${folder}/ in kebab-case (${String(file)})`); return undefined; }
     const relative = `${PROJECT_EXT_DIR}/${folder}/${file}`;
     if (!fs.existsSync(path.join(appRoot, relative))) { problems.push(`${label}: ${relative} is declared and is not there`); return undefined; }
     try { return loadDefault(appRoot, relative); } catch (error) { problems.push(`${label}: ${relative} cannot be loaded (${firstLine(error)})`); return undefined; }
   };
-  let hfs: ExtRule['hfs'], lint: ExtRule['lint'], check: ExtRule['check'];
+  let hfs: ExtRule['hfs'], lint: ExtRule['lint'];
   if (entry['hfs'] !== undefined) {
     const loaded = moduleOf(PROJECT_EXT_FOLDERS.hfs, entry['hfs'], 'hfs');
     if (typeof loaded === 'function') hfs = loaded as NonNullable<ExtRule['hfs']>;
@@ -165,19 +170,25 @@ function judgeRule(appRoot: string, entry: unknown, at: number): { rule?: ExtRul
       else if (loaded !== undefined) problems.push(`${label}: ${PROJECT_EXT_DIR}/${PROJECT_EXT_FOLDERS.lint}/${String(declared['file'])} must export by default an ESLint rule with create()`);
     }
   }
-  if (entry['check'] !== undefined) {
-    const declared = entry['check'];
-    const command = plain(declared) && Array.isArray(declared['command']) ? (declared['command'] as unknown[]) : [];
-    if (!plain(declared) || Object.keys(declared).join() !== 'command') problems.push(`${label}: check is { command }`);
-    else if (command.length < 2 || command.some((part) => typeof part !== 'string' || part === '') || command[0] !== 'node') problems.push(`${label}: check.command is an argument list that starts with node and names a script (["node", "${PROJECT_EXT_DIR}/${PROJECT_EXT_FOLDERS.check}/<name>.mjs", "--check"]); it runs without a shell`);
-    else {
-      const script = command[1] as string;
-      if (globProblem(script) !== null || !fs.existsSync(path.join(appRoot, script))) problems.push(`${label}: the script ${script} is declared and is not there (an app-relative path)`);
-      else check = { command: command as string[] };
-    }
-  }
   if (problems.length > 0) return { problems };
-  return { rule: { id: id as string, code: code as string, severity: severity as ExtSeverity, doc: doc as string, appliesTo: globs as string[], ...(hfs === undefined ? {} : { hfs }), ...(lint === undefined ? {} : { lint }), ...(check === undefined ? {} : { check }) }, problems: [] };
+  return { rule: { id: id as string, code: code as string, severity: severity as ExtSeverity, doc: doc as string, appliesTo: globs as string[], ...(hfs === undefined ? {} : { hfs }), ...(lint === undefined ? {} : { lint }) }, problems: [] };
+}
+
+/** The problems of the manifest's `checks` list, and the checks when it is sound: each { id, run, why }, ids and files unique, every file there. */
+function judgeChecks(appRoot: string, declared: unknown): { checks: ExtCheck[]; problems: string[] } {
+  if (declared === undefined) return { checks: [], problems: [] };
+  const shape = 'checks is a list of { id, run, why }: a unique kebab-case id, run a unique ext/checks/<name>.mjs file and what the check guards, nothing else';
+  if (!Array.isArray(declared) || declared.length === 0) return { checks: [], problems: [shape] };
+  const problems: string[] = [];
+  const checks: ExtCheck[] = [];
+  for (const [at, entry] of declared.entries()) {
+    if (!plain(entry) || Object.keys(entry).some((key) => !['id', 'run', 'why'].includes(key)) || typeof entry['id'] !== 'string' || !CHECK_ID.test(entry['id']) || typeof entry['run'] !== 'string' || !CHECK_RUN.test(entry['run']) || text(entry['why']) === null) { problems.push(`check ${String(at)}: ${shape}`); continue; }
+    if (checks.some((other) => other.id === entry['id'])) problems.push(`check ${entry['id']}: the id is declared twice`);
+    if (checks.some((other) => other.run === entry['run'])) problems.push(`check ${entry['id']}: ${entry['run']} is the file of another check too`);
+    if (!fs.existsSync(path.join(appRoot, entry['run']))) problems.push(`check ${entry['id']}: ${entry['run']} is declared and is not there`);
+    checks.push({ id: entry['id'], run: entry['run'], why: text(entry['why']) as string });
+  }
+  return problems.length > 0 ? { checks: [], problems } : { checks, problems };
 }
 
 /** Every file of ext/<folder>/ as a path relative to that folder (forward slashes), none when the folder is absent. */
@@ -192,7 +203,7 @@ function filesBelow(root: string, folder = ''): string[] {
  * without an ext/ folder has no extension (`present` false) and no problem.
  */
 export function loadProjectExt(appRoot: string, reserved: ReadonlySet<string> = reservedCodes()): ProjectExt {
-  const result: ProjectExt = { present: hasProjectExt(appRoot), rules: [], packages: {}, problems: [] };
+  const result: ProjectExt = { present: hasProjectExt(appRoot), rules: [], checks: [], packages: {}, problems: [] };
   if (!result.present) return result;
   const fail = (message: string, code = PROJECT_EXT_INVALID): ProjectExt => { result.problems.push({ code, message }); return result; };
   let manifest: unknown;
@@ -209,9 +220,10 @@ export function loadProjectExt(appRoot: string, reserved: ReadonlySet<string> = 
   const entries = Array.isArray(manifest['rules']) ? manifest['rules'] : [];
   if (manifest['rules'] !== undefined && !Array.isArray(manifest['rules'])) return fail('rules is a list');
   if (manifest['packages'] !== undefined && !plain(manifest['packages'])) return fail('packages maps a root package folder (packages/<name>) to its slots');
-  if (entries.length === 0 && manifest['packages'] === undefined) return fail('declares no rule and no package');
+  if (entries.length === 0 && manifest['checks'] === undefined && manifest['packages'] === undefined) return fail('declares no rule, no check and no package');
   const judged = entries.map((entry, at) => judgeRule(appRoot, entry, at));
-  const problems = judged.flatMap((one) => one.problems);
+  const judgedChecks = judgeChecks(appRoot, manifest['checks']);
+  const problems = [...judged.flatMap((one) => one.problems), ...judgedChecks.problems];
   const sound = judged.flatMap((one) => (one.rule === undefined ? [] : [one.rule]));
   for (const [at, rule] of sound.entries()) {
     if (sound.findIndex((other) => other.id === rule.id) < at) problems.push(`${rule.id}: the id is declared twice`);
@@ -226,6 +238,7 @@ export function loadProjectExt(appRoot: string, reserved: ReadonlySet<string> = 
   }
   if (problems.length > 0) { for (const message of problems) fail(message); return result; }
   result.rules = sound;
+  result.checks = judgedChecks.checks;
   result.packages = plain(manifest['packages']) ? manifest['packages'] : {};
   return result;
 }
@@ -267,17 +280,14 @@ export function extEslintConfigs(start: string, scope: ExtScope): { files: strin
   });
 }
 
-/** One finding of the extension, as the app check reports it. `always` marks one that no path scope filters out (a refused extension, a failed command). */
+/** One finding of the extension, as the app check reports it. `always` marks one that no path scope filters out (a refused extension). */
 export interface ExtCheckFinding { code: string; level: ExtSeverity; path: string; message: string; line?: number; column?: number; always?: boolean }
-/** What a command check's run answers: its exit status (null when it could not start or was stopped) and its output. */
-export interface CommandResult { status: number | null; output: string }
-
 /**
  * The findings of the app's extension over `files` (the tracked app-relative files): one HFS_EXT_INVALID or HFS_EXT_API_MISMATCH per problem of a
- * refused extension; else the findings of every hfs rule over the files its `appliesTo` matches, and one finding per command check that `run`
- * answers with another exit than 0 (a check runs when a tracked file matches its `appliesTo`).
+ * refused extension; else the findings of every hfs rule over the files its `appliesTo` matches. The project checks run as their own step
+ * (cache/project-checks.mts).
  */
-export function projectExtFindings({ repoRoot, files, reserved, read, run }: { repoRoot: string; files: readonly string[]; reserved: ReadonlySet<string>; read: (file: string) => string | null; run: (command: readonly string[]) => CommandResult }): ExtCheckFinding[] {
+export function projectExtFindings({ repoRoot, files, reserved, read }: { repoRoot: string; files: readonly string[]; reserved: ReadonlySet<string>; read: (file: string) => string | null }): ExtCheckFinding[] {
   const ext = loadProjectExt(repoRoot, reserved);
   const invalid = (message: string, code = PROJECT_EXT_INVALID): ExtCheckFinding => ({ code, level: 'error', path: PROJECT_EXT_MANIFEST, message: `${PROJECT_EXT_MANIFEST} ${message} (R381, PROJECT-LINT-3)`, always: true });
   if (ext.problems.length > 0) return ext.problems.map((problem) => invalid(problem.message, problem.code));
@@ -293,12 +303,6 @@ export function projectExtFindings({ repoRoot, files, reserved, read, run }: { r
         if (!plain(finding) || text(finding.path) === null || text(finding.message) === null) { out.push(invalid(`${rule.id} returned a finding without a path and a message`)); continue; }
         out.push({ code: rule.code, level: rule.severity, path: String(finding.path), message: `${String(finding.message)} (${rule.id}, ${rule.doc})`, ...(typeof finding.line === 'number' ? { line: finding.line } : {}), ...(typeof finding.column === 'number' ? { column: finding.column } : {}) });
       }
-    }
-    if (rule.check !== undefined && reached.length > 0) {
-      const result = run(rule.check.command);
-      if (result.status === 0) continue;
-      const tail = result.output.split(/\r?\n/u).map((line) => line.trimEnd()).filter((line) => line !== '').slice(-5).join(' | ');
-      out.push({ code: rule.code, level: rule.severity, path: PROJECT_EXT_MANIFEST, message: `${rule.check.command.join(' ')} ${result.status === null ? 'did not finish' : `exited ${String(result.status)}`}${tail === '' ? '' : `: ${tail}`} (${rule.id}, ${rule.doc})`, always: true });
     }
   }
   return out;

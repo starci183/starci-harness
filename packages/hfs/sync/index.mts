@@ -36,7 +36,7 @@ import { DEFAULT_PORT, NODE_IMAGE, dockerfilePath } from '../runtime/scripts/hfs
 import { isFile } from '../runtime/scripts/lib/fs-kind.mjs';
 import { readDeclaredSonarKey } from './sonar-key.mjs';
 import { RETIRED_GROUP, guardWrites, heldLines, isGuardedSource, type GuardedWrite } from './compile-guard.mjs';
-import { HARNESS_CHECK_COPIES, harnessCheckScriptEdits } from './harness-checks.mjs';
+import { HARNESS_CHECK_COPIES, harnessCheckScriptEdits, looseCheckNotices } from './harness-checks.mjs';
 import { readDeclaredStack, stackWorkflowVariables } from './stack-images.mjs';
 import type { ImageApp } from './stack-images.mjs';
 import { DB_DOCKERFILE, DB_IMAGE_APP, RETIRED_DB_DOCKERFILE } from '../db/image.mjs';
@@ -870,7 +870,8 @@ export function upgradeEdits(root: string): { edits: DeclarationEdit[]; notices:
     const earlier = edits.get(edit.path);
     edits.set(edit.path, earlier ? { path: edit.path, reason: `${earlier.reason}; ${edit.reason}`, content: edit.content } : edit);
   }
-  return { edits: [...edits.values()], notices: services.notices };
+  // A check the app keeps outside ext/checks/ is named with the declaration to add, never moved (harness-checks.mts looseCheckNotices).
+  return { edits: [...edits.values()], notices: [...services.notices, ...looseCheckNotices(root)] };
 }
 
 /** `starci app sync [--execute] [--cwd <dir>]` at the app root: the dry run reports drift, --execute writes; returns 0 clean, 1 drift, 2 usage. */

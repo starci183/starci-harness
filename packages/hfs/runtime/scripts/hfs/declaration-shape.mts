@@ -147,7 +147,7 @@ const RUNTIME_DECLARATION_KEYS = new Set(['hfs', 'kind', 'project']);
 
 function productDeclarationProblems(declaration: Parsed, profiles: Parsed): string[] {
   const bad: string[] = [];
-  for (const key of Object.keys(declaration)) if (!DECLARATION_KEYS.has(key)) bad.push(key === 'rulePacks' ? 'unknown key rulePacks: a project adds its own laws in its ext/ folder (ext/manifest.json, PROJECT-LINT-3), never through hfs.json' : `unknown key ${key}`);
+  for (const key of Object.keys(declaration)) if (!DECLARATION_KEYS.has(key)) bad.push(key === 'rulePacks' || key === 'checks' ? `unknown key ${key}: a project adds its own laws and checks in its ext/ folder (ext/manifest.json, PROJECT-LINT-3), never through hfs.json` : `unknown key ${key}`);
   bad.push(...dbBlockProblems(declaration.db), ...lexiconBlockProblems(declaration.lexicon), ...observeBlockProblems(declaration.observe));
   if (declaration.browser !== undefined && declaration.browser !== true) bad.push('browser is `true` when the app has a browser journey (slot app.browser), and is left out otherwise');
   if (declaration.modules !== undefined && declaration.modules !== 'data') bad.push('modules is `"data"` when the app keeps its modules as data (seeds, no rendered registry package), and is left out otherwise');
