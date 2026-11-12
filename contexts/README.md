@@ -13,7 +13,9 @@ harness). [README.md](../README.md) is the overview and says how it works.
 Read the files of your task's row, in order, before planning or editing. A task that spans rows reads each row. Every
 row starts with [harness/rules.md](harness/rules.md), the rules no task may bend, then
 [authority/README.md](authority/README.md), what your role may edit, commit, merge, push and publish and which tier of
-checks it runs, under either runner.
+checks it runs, under either runner. Then, in the repository the task changes, its `.starciwork/concepts`: the catalog
+`concepts/index.yaml` and every concept the task touches, once per repository the task edits
+([harness/rules.md](harness/rules.md) rule 10).
 
 | task | read |
 |---|---|
@@ -202,7 +204,7 @@ specific to contexts:
    a decision of the owner by its id, a decision log or a date: the rule says what holds now, and its history lives in git and the
    CHANGELOGs (`contexts anatomy` refuses it, ANATOMY_RULING_HISTORY).
 2. **Product-agnostic, English only.** No product names, locales as examples, or product records; those belong to the
-   product's `.starciwork`.
+   product's `.starciwork`. The law for every source of the harness is [harness/rules.md](harness/rules.md) rule 9.
 3. **Shortest wording that keeps the reasoning.** State the rule, then why. No generated census copies, no prose
    that restates a lint rule (link its id).
 4. **Markdown for reasoning, YAML for data.** YAML only when a machine reads it, with a `schema`. Every folder has a
@@ -213,4 +215,8 @@ specific to contexts:
    answers, the answer is written into its owner and the question is deleted. A Grammar name that knowledge stops using
    is listed, kind `grammar`, in `@starci/hfs` `runtime/modules/kernel/removed-vocabulary.yaml`.
 6. **Open gaps are listed.** Grammars and knowledge are under test; an open gap is listed where its concept lives, never
-   papered over.
+   papered over. A gate that cannot enforce something an app relies on is such a gap: the rule that owns the gate says, in a
+   sentence opening with "Known gap", what the gate reads and what it leaves unread, so `starci contexts search "known gap"`
+   lists them all. An app that relies on the unread part covers it with a spec or check of its own, in its repository, and
+   names that cover in the concept that needs it. Why: a green gate is read as proof of everything near it, and the part
+   it never read breaks in production with every check green.

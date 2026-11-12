@@ -11,6 +11,9 @@ checkout's path and the project root on explicitly.
 
 - Look a rule up before you act, in English and in several phrasings, and after every context compaction:
   [contexts/harness/rules.md](contexts/harness/rules.md) rule 7, as [contexts/README.md](contexts/README.md) "Looking a rule up" says.
+- Before changing anything in a repository, read that repository's `.starciwork/concepts` (`concepts/index.yaml`, then
+  the concepts the task touches); they hold the owner's decisions there, and a task across repositories reads each one's:
+  [contexts/harness/rules.md](contexts/harness/rules.md) rule 10. The harness itself holds no app's business: rule 9.
 - What your role may edit, commit, merge and push: [contexts/authority/README.md](contexts/authority/README.md); a branch:
   [contexts/authority/branch.md](contexts/authority/branch.md); a package edit and its local build:
   [contexts/authority/packages.md](contexts/authority/packages.md); removing a worktree: [contexts/authority/README.md](contexts/authority/README.md) "Worktrees".

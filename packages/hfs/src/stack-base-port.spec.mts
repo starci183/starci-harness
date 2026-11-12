@@ -20,7 +20,7 @@ import { liveStateFindings } from '../stack/local-live-checks.mjs';
 import { loadLocalConfig } from '../stack/local-config.mjs';
 import { upLocal } from '../stack/local-up.mjs';
 import { stackContext } from '../stack/context.mjs';
-import type { StackContext } from '../stack/context.mjs';
+import type { StackIo } from '../stack/context.mjs';
 import { parse as parseYaml } from 'yaml';
 
 /** The failure-code catalog, read from the runtime. */
@@ -367,7 +367,7 @@ test('stack up refuses STACK_LOCAL_BASE_PORT_TAKEN before anything starts, dry r
   const env = registryOf(t, [other, clashing]);
   const local = { ...loadLocalConfig({ repoRoot: clashing, env: 'dev' }) };
   const started: string[] = [];
-  const ctx = { ...stackContext({ cwd: clashing, env }), spawn: (command: string) => { started.push(command); return { status: 0, stdout: '', stderr: '' }; } } as unknown as StackContext;
+  const ctx = stackContext({ cwd: clashing, env, spawn: ((command: string) => { started.push(command); return { status: 0, stdout: '', stderr: '' }; }) as unknown as StackIo['spawn'] });
   for (const execute of [false, true]) {
     await assert.rejects(upLocal(ctx, local, { execute }), (error: { code?: string; message?: string }) => {
       assert.equal(error.code, 'STACK_LOCAL_BASE_PORT_TAKEN');

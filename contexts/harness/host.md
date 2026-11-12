@@ -12,6 +12,15 @@ What a shell on the harness host does differently from the textbook, and the one
   shell. Run `node.exe` with the tool's script instead; the CLI does this for npm and refuses a `.cmd` with that hint
   (`cli/src/shared/exec.ts`).
 
+- **A long-lived dev process is started outside the desktop app.** A process started from an agent's shell inside a
+  desktop agent app (a dev stack, a dev server, a watcher, a tunnel) is a child of that app and dies when the app
+  updates or restarts, mid-session and without a message. Start anything that must outlive the session through a launcher
+  of the operating system, such as a scheduled task that runs once and at once (`schtasks /Create /SC ONCE ... /F`, then
+  `schtasks /Run /TN <name>`, on Windows; `systemd-run --user` or `nohup setsid` elsewhere), with its output sent to a
+  log file, and read its state from the stack's own status verb and that log, never from the shell that started it.
+  A short command, a check or a build stays in the agent's shell. Why: a stack that vanishes with the app looks like a
+  crash of the stack, and the session that follows debugs a failure that never happened. Held by review.
+
 ## Files and folders
 
 - **`robocopy /MIR` follows junctions.** It can delete through a directory junction (a worktree's `node_modules`). Always
