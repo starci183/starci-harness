@@ -74,3 +74,30 @@ export function looseCheckNotices(root: string): string[] {
     return `notice: ${file} is a project check outside its home (R103, PROJECT-LINT-3); sync does not move it, since a check may resolve paths from its own folder and its why is the project's: move it to ${target} (an .mjs file), fix the paths it resolves from its folder, add {"id": "${id}", "run": "${target}", "why": "<what it guards>"} to ext/manifest.json checks${repoint}; starci app check then runs it as its own checks step (R402)`;
   });
 }
+
+/** The two key names the lite starter shipped with an environment in them, and the name each takes (R248, ENV_KEY_ENVIRONMENT_NAMED). */
+const RENAMED_KEYS: Readonly<Record<string, string>> = { DEV_DB_OWNER_PASSWORD: 'DB_OWNER_PASSWORD', DEV_DB_APP_PASSWORD: 'DB_APP_PASSWORD' };
+
+/** Every text file below `.starcistacks/` that is no sealed member and no cache, app-relative with forward slashes. */
+function stackTextFiles(root: string, folder = '.starcistacks'): string[] {
+  let entries: fs.Dirent[];
+  try { entries = fs.readdirSync(path.join(root, folder), { withFileTypes: true }); } catch { return []; }
+  return entries.flatMap((entry) => {
+    const file = `${folder}/${entry.name}`;
+    if (entry.isDirectory()) return entry.name === 'secrets' || entry.name === 'cache' ? [] : stackTextFiles(root, file);
+    return /\.(?:ya?ml|md|json)$/u.test(entry.name) ? [file] : [];
+  });
+}
+
+/**
+ * One notice per key the app still names after an environment (the two the starter shipped): the files that name it, the name it takes, and that
+ * the owner seals the value under the new name. Sync never renames a key: the sealed member holds the value under the old name, a sealed file is
+ * the owner's alone to rewrite, and a reference renamed before the value is sealed again would stop `starci app stack up`.
+ */
+export function environmentKeyNotices(root: string): string[] {
+  const files = stackTextFiles(root).map((file): [string, string] => { try { return [file, fs.readFileSync(path.join(root, file), 'utf8')]; } catch { return [file, '']; } });
+  return Object.entries(RENAMED_KEYS).flatMap(([old, renamed]) => {
+    const named = files.filter(([, text]) => new RegExp(`\\b${old}\\b`, 'u').test(text)).map(([file]) => file);
+    return named.length === 0 ? [] : [`notice: the key ${old} is named after an environment (R248, ENV_KEY_ENVIRONMENT_NAMED, a warning for this minor); a key carries no environment, its folder does: rename it to ${renamed} in ${named.join(', ')}, then seal the value under the new name with \`starci app secret init --env <env> --execute\` (or \`rotate\`) in every environment that holds it; sync renames nothing, since the sealed member is the owner's to rewrite`];
+  });
+}

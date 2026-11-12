@@ -151,3 +151,16 @@ test('hfs.json holds no extension key: rulePacks is refused with the place the l
   const found = declarationShapeProblems({ hfs: 3, kind: 'app', project: 'acme', rulePacks: ['@acme/hfs-rules'], sides: { be: { apps: [] }, fe: { apps: [] } } }, ['be', 'fe']);
   assert.ok(found.some((problem) => /unknown key rulePacks: a project adds its own laws and checks in its ext\/ folder/u.test(problem)), JSON.stringify(found));
 });
+
+test('a finding under an extension rule\'s own code is reported like any other: its why is the rule\'s id and doc, and a code nobody declares is still refused', async (t) => {
+  const { readWhy } = await import('../runtime/scripts/hfs/check.mjs');
+  const { withWhy } = await import('../runtime/scripts/hfs/check-results.mjs');
+  assert.throws(() => readWhy(undefined, ['ACME_NOBODY_DECLARED']), /has no entry for ACME_NOBODY_DECLARED/u);
+  const root = app(t);
+  const found = projectExtCheckFindings({ repoRoot: root, files: tracked, repo: repoOf('lite'), isRoot: true });
+  const why = readWhy(undefined, [...new Set(found.map((finding) => finding.code))]);
+  const told = withWhy(found, why);
+  assert.deepEqual(told.map((finding) => [finding.code, finding.title]), [['ACME_SHAPE_INCOMPLETE', 'ACME-SHAPE-1: a law of this project\'s extension (ext/manifest.json)']]);
+  assert.match(String(told[0]?.nextStepVi), /ext\/docs\/ACME-SHAPE-1\.md/u);
+  assert.throws(() => readWhy(undefined, ['ACME_NOBODY_DECLARED']), /has no entry for ACME_NOBODY_DECLARED/u);
+});

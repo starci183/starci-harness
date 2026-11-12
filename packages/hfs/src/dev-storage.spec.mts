@@ -92,7 +92,7 @@ environments:
         service: db
         port: db
         urlEnv: PRIMARY_DB_URL
-        password: {member: db, key: DEV_DB_OWNER_PASSWORD}
+        password: {member: db, key: DB_OWNER_PASSWORD}
         adminPassword: {member: db, key: POSTGRES_PASSWORD}
       grants:
         - {name: db, keys: [POSTGRES_PASSWORD]}

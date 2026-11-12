@@ -77,16 +77,16 @@ environments:
         port: db
         urlEnv: PRIMARY_DB_URL
         appRole: app_be
-        password: {member: db, key: DEV_DB_OWNER_PASSWORD}
+        password: {member: db, key: DB_OWNER_PASSWORD}
         adminPassword: {member: db, key: POSTGRES_PASSWORD}
-        appPassword: {member: db, key: DEV_DB_APP_PASSWORD}
+        appPassword: {member: db, key: DB_APP_PASSWORD}
       grants:
         - {name: db, keys: [POSTGRES_PASSWORD]}
         - {name: storage, keys: [STORAGE_ACCESS_KEY_ID, STORAGE_SECRET_ACCESS_KEY]}
       custody:
         - {member: db, key: POSTGRES_PASSWORD, kind: password}
-        - {member: db, key: DEV_DB_OWNER_PASSWORD, kind: password}
-        - {member: db, key: DEV_DB_APP_PASSWORD, kind: password}
+        - {member: db, key: DB_OWNER_PASSWORD, kind: password}
+        - {member: db, key: DB_APP_PASSWORD, kind: password}
         - {member: auth, key: AUTH_JWT_PRIVATE_KEY, kind: ed25519-pem}
         - {member: google, key: GOOGLE_CLIENT_SECRET, kind: hex}
         - {member: storage, key: STORAGE_ACCESS_KEY_ID, kind: hex, bytes: 12}

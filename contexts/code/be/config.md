@@ -66,8 +66,12 @@ Enforced by: `no-secret-default` (R44), R248.
 
 A secret is a sealed member of the app's stack, in the custody of PROJECT-STACKS-5
 ([project/stacks.md](../../project/stacks.md)), and reaches the process at runtime only through `<KEY>_FILE`, which
-`EnvSource` reads (BE-CONFIG-1). Key lists name slugs, never values.
+`EnvSource` reads (BE-CONFIG-1). Key lists name slugs, never values. A key name carries no environment: the environment of
+a key is its folder (`.starcistacks/<env>/secrets/`), so one name (`DB_OWNER_PASSWORD`) serves dev, production and every other
+environment, and each seals its own value. A sealed or declared key that starts with an environment name (`DEV_`, `PROD_`,
+`PRODUCTION_`, `STAGING_`, `LOCAL_`, `TEST_`) is refused, naming the bare key (`ENV_KEY_ENVIRONMENT_NAMED`, R248).
 
-Why: one sealed location makes custody auditable and keeps plaintext out of history and agent context.
+Why: one sealed location makes custody auditable and keeps plaintext out of history and agent context; a name that carries
+its environment makes two environments declare two keys for one role, and the code that reads one cannot run in the other.
 
-Enforced by: R06, R277, R253 (hfs).
+Enforced by: R06, R277, R253, R248 (hfs).

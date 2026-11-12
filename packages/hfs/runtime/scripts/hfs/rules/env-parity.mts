@@ -13,9 +13,10 @@
 //       `.starcistacks/<env>/runtime/env/KEYS.md`, and the `environment:`/`env:` entries, `runtimeSecrets`, `secrets`
 //       and `vars[].name` of every `.starcistacks` yaml. A `<KEY>_FILE` name declares `<KEY>`.
 // Findings: ENV_REQUIRED_UNSET a required read sits in neither S nor D; ENV_SEALED_UNREAD a sealed key sits in
-// neither R nor a declared consumer (a service credential, or seed data that references its member); ENV_DUPLICATE one app key in two members of one environment (the transport members, the operator's `deploy.remote.sealed` member and
+// neither R nor a declared consumer (a service credential, seed data that references its member, or the dev stack's own database passwords); ENV_DUPLICATE one app key in two members of one environment (the transport members, the operator's `deploy.remote.sealed` member and
 // `vps-ci`, never reach an app container and may both hold the SSH_GROUP keys, nothing else); ENV_PUBLIC_SEALED a NEXT_PUBLIC_* key in
-// custody; ENV_EXAMPLE_DRIFT a `*.env.example` key nothing reads. The rule judges the app root (`isRoot`): the whole
+// custody; ENV_EXAMPLE_DRIFT a `*.env.example` key nothing reads; ENV_KEY_ENVIRONMENT_NAMED a sealed or declared key whose name starts with an
+// environment token (DEV_, PROD_, PRODUCTION_, STAGING_, LOCAL_, TEST_): the environment is the folder, never the name. The rule judges the app root (`isRoot`): the whole
 // tree `all` is its input, both editions.
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -35,6 +36,20 @@ export const ENV_SEALED_UNREAD = 'ENV_SEALED_UNREAD';
 export const ENV_DUPLICATE = 'ENV_DUPLICATE';
 export const ENV_PUBLIC_SEALED = 'ENV_PUBLIC_SEALED';
 export const ENV_EXAMPLE_DRIFT = 'ENV_EXAMPLE_DRIFT';
+export const ENV_KEY_ENVIRONMENT_NAMED = 'ENV_KEY_ENVIRONMENT_NAMED';
+/**
+ * The environment names a key never starts with: the environment of a key is its folder (`.starcistacks/<env>/secrets/`), so one name serves
+ * every environment and each seals its own value. Matched as an exact leading token (`DEV_X`, never `DEVICE_X`).
+ */
+export const ENVIRONMENT_TOKENS = Object.freeze(['DEV', 'PROD', 'PRODUCTION', 'STAGING', 'LOCAL', 'TEST']);
+/** The two names the lite starter shipped: a warning for one minor, so an app renames them before they turn red. */
+export const ENVIRONMENT_NAMED_GRACE: ReadonlySet<string> = new Set(['DEV_DB_OWNER_PASSWORD', 'DEV_DB_APP_PASSWORD']);
+
+/** The key without its leading environment token, or null when it has none. */
+export function bareKeyName(key: string): string | null {
+  const token = ENVIRONMENT_TOKENS.find((name) => key.startsWith(`${name}_`) && key.length > name.length + 1);
+  return token === undefined ? null : key.slice(token.length + 1);
+}
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ENV_SOURCE = /(?:\.env|\.config)\.ts$/u;
@@ -300,6 +315,52 @@ function declareKeysFromText(file: string, text: string, add: Parsed) {
   try { declaredFromYaml(parseYaml(text), add); } catch { /* a malformed stacks yaml is the shape rule's finding, not this one's */ }
 }
 
+/** Every `key` of a `{ member, key }` reference anywhere in a parsed stack document: the sealed keys the stack names (a database password, a custody entry, a grant). */
+function memberKeyReferences(node: unknown, add: (name: string) => void): void {
+  if (Array.isArray(node)) { for (const item of node) memberKeyReferences(item, add); return; }
+  if (node === null || typeof node !== 'object') return;
+  const entry = node as Record<string, unknown>;
+  if (typeof entry['member'] === 'string' && typeof entry['key'] === 'string') add(entry['key']);
+  for (const value of Object.values(entry)) memberKeyReferences(value, add);
+}
+
+/**
+ * The file that names each key (the first one, in path order): the KEYS.md rosters and the `.starcistacks` yaml as `declaredKeys` reads them, and
+ * every `{ member, key }` reference of a stack yaml. It serves the name check alone: a key a custody entry names is named, never consumed.
+ */
+function declaredKeyFiles(repoRoot: string, all: string[]): Map<string, string> {
+  const files = new Map<string, string>();
+  for (const file of [...all].sort()) {
+    if (!KEYS_ROSTER.test(file) && !STACK_YAML.test(file)) continue;
+    const text = readText(repoRoot, file);
+    if (text === null) continue;
+    const add = (name: string): void => { if (KEY_NAME.test(name) && !files.has(name)) files.set(name, file); };
+    declareKeysFromText(file, text, add);
+    if (STACK_YAML.test(file)) { try { memberKeyReferences(parseYaml(text), add); } catch { /* a malformed stacks yaml is the shape rule's finding */ } }
+  }
+  return files;
+}
+
+/**
+ * ENV_KEY_ENVIRONMENT_NAMED: a sealed key (in each member that holds it) and a declared key (in the file that declares it) whose name starts
+ * with an environment token. The two names the starter shipped are a warning for one minor; every other one is an error.
+ */
+function addEnvironmentNamedFindings(sealed: Parsed, declaredIn: Map<string, string>, findings: Finding[]) {
+  const places = new Map<string, Set<string>>();
+  const note = (key: string, file: string) => { places.set(key, (places.get(key) ?? new Set<string>()).add(file)); };
+  for (const [key, members] of sealed) for (const member of members) note(key, member);
+  for (const [key, file] of declaredIn) note(key, file);
+  for (const [key, files] of places) {
+    const bare = bareKeyName(key);
+    if (bare === null) continue;
+    const grace = ENVIRONMENT_NAMED_GRACE.has(key);
+    for (const file of files) {
+      const finding = found(ENV_KEY_ENVIRONMENT_NAMED, file, `${file} names the key ${key} after an environment; a key carries no environment, its folder does (.starcistacks/<env>/secrets/): name it ${bare} in every environment and seal each environment's own value${grace ? ' (a warning for this minor: `starci app sync` prints the places to rename, and the owner seals the value under the new name with `starci app secret init` or `rotate`)' : ''}`);
+      findings.push(grace ? { ...finding, level: 'warning' } : finding);
+    }
+  }
+}
+
 /** The keys declared as public config or passed by the stack: KEYS.md rosters plus `.starcistacks` yaml; `<KEY>_FILE` declares `<KEY>`. */
 function declaredKeys(repoRoot: string, all: string[]) {
   const declared = new Set();
@@ -350,6 +411,20 @@ function seedReadMembers(repoRoot: string, all: string[]): Set<string> {
     for (const member of secretReferences(doc)) for (const env of level[1] === undefined ? environments : [level[1]]) members.add(seedMemberFile(env, member));
   }
   return members;
+}
+
+/**
+ * The sealed keys the dev stack's own database declaration reads from `member` of `environment`: `local.database.password` and
+ * `local.database.adminPassword` of application-stacks.yaml, each `{ member, key }`, which `starci app stack up` opens to create the owner role and
+ * to write the database URL. A `local.custody` entry is no reader: it says how a key is held, so listing a key there never consumes it.
+ */
+function localDatabaseKeys(stacks: StacksDocument, environment: string, member: string): string[] {
+  const database = (stacks.environments?.[environment] as { local?: { database?: Record<string, unknown> } } | undefined)?.local?.database;
+  if (database === null || typeof database !== 'object') return [];
+  return [database['password'], database['adminPassword']].flatMap((reference) => {
+    const named = reference as { member?: unknown; key?: unknown } | null | undefined;
+    return named !== null && typeof named === 'object' && named.member === member && typeof named.key === 'string' ? [named.key] : [];
+  });
 }
 
 /** The transport members per environment: the `deploy.remote.sealed` member(s) of application-stacks.yaml and `vps-ci`. */
@@ -410,10 +485,13 @@ export function envParityFindings({ repoRoot, all = [], isRoot }: { repoRoot: st
   try { stacks = parseYaml(readText(repoRoot, '.starcistacks/application-stacks.yaml') ?? '') ?? {}; } catch { /* the shape owner reports invalid YAML */ }
   const repository = repositoryName(repoRoot, { env: identityQueryEnvironment(process.env, serviceCredentialNames(stacks)) });
   const seedMembers = seedReadMembers(repoRoot, all);
-  const serviceConsumer = (file: string, key: string): boolean => seedMembers.has(file) || declaredServiceKeys(stacks, repository, file.split('/')[1] as string,
-    memberOfName(file.split('/').pop() as string)).includes(key);
+  const serviceConsumer = (file: string, key: string): boolean => {
+    const environment = file.split('/')[1] as string, member = memberOfName(file.split('/').pop() as string);
+    return seedMembers.has(file) || declaredServiceKeys(stacks, repository, environment, member).includes(key) || localDatabaseKeys(stacks, environment, member).includes(key);
+  };
   addRequiredFindings(reads, sealed, declared, findings);
   addSealedFindings(sealed, reads, declared, transportMembers(repoRoot), findings, serviceConsumer);
   addExampleFindings(repoRoot, all, reads, findings);
+  addEnvironmentNamedFindings(sealed, declaredKeyFiles(repoRoot, all), findings);
   return findings;
 }

@@ -36,6 +36,7 @@ import type { Presets, RenderedTarget, SlotManifest } from './index.mjs';
 import { parseYaml as bundledParseYaml } from '../runtime/engine/yaml.mjs';
 import { readDeclaredSonarGate, sonarGateName } from './sonar-key.mjs';
 import { TS_STRICT_FILE, tsStrictFindings } from './ts-strict.mjs';
+import { declaredLintFiles } from '../runtime/scripts/lib/project-ext.mjs';
 
 // reason: the stack declaration is YAML parsed from disk
 type ParseYaml = (text: string) => any;
@@ -112,12 +113,18 @@ function sonarGateFindings(repoRoot: string, parseYaml: ParseYaml | undefined, e
   return [{ code: 'HFS_SONAR_CONFIG', level: 'error', path: declared.file, message: `${declared.file} services.sonar.qualityGate is ${declared.qualityGate ?? 'absent'}; every product names the one gate ${gate} of knowledge/sonar-gate.yaml and states no threshold of its own` }];
 }
 
+/**
+ * R16: a file that defines an ESLint rule or a stylelint plugin by its content. The one lawful home of a project's own lint rule is its extension
+ * folder: a file of ext/lint/ that ext/manifest.json declares is loaded by the canon factories (PROJECT-LINT-3, R381) and is not judged here; the
+ * same file undeclared, or a rule anywhere else, is a local rule.
+ */
 function ruleFileFindings(repoRoot: string, tracked: readonly string[]): ManagedFinding[] {
   const findings: ManagedFinding[] = [];
-  for (const file of tracked.filter(candidate => RULE_FILE.test(candidate))) {
+  const declared = declaredLintFiles(repoRoot);
+  for (const file of tracked.filter(candidate => RULE_FILE.test(candidate) && !declared.has(candidate))) {
     const text = readText(repoRoot, file);
     if (text === null) continue;
-    if (RULE_META.test(text) && RULE_CREATE.test(text)) findings.push(local(file, `${file} defines an ESLint rule; a repository defines no rule, the canon plugin is the only source`));
+    if (RULE_META.test(text) && RULE_CREATE.test(text)) findings.push(local(file, `${file} defines an ESLint rule; a repository defines no rule outside its extension folder: the canon plugin is the generic source, and a project's own rule is a file of ext/lint/ that ext/manifest.json declares (PROJECT-LINT-3)`));
     else if (STYLELINT_CREATE_PLUGIN.test(text) && STYLELINT_IMPORT.test(text)) findings.push(local(file, `${file} defines a stylelint plugin; a repository defines no rule, @starci/stylelint-canon is the only source`));
   }
   return findings;

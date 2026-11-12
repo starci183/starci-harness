@@ -61,3 +61,27 @@ for (const edition of ['lite', 'full']) {
     assert.deepEqual(await managedFindings({ repoRoot: root, tracked, presets: PRESETS }), []);
   });
 }
+
+for (const edition of ['lite', 'full']) {
+  test(`${edition}: a lint rule the project's extension manifest declares is the project's law; the same file undeclared, or anywhere else, is a local rule`, async (context) => {
+    const { root, tracked } = synced(context, edition);
+    const rule = 'export default { meta: { type: "problem", schema: [] }, create: (context) => ({}) };\n';
+    const write = (relative: string, text: string): void => {
+      fs.mkdirSync(path.dirname(path.join(root, relative)), { recursive: true });
+      fs.writeFileSync(path.join(root, relative), text);
+      if (!tracked.includes(relative)) tracked.push(relative);
+    };
+    const manifest = (files: string[]): string => JSON.stringify({ schema: 'starci/project-ext@1', api: 1, rules: files.map((file, at) => ({ id: `ACME-LINT-${String(at + 1)}`, code: `ACME_LINT_${String(at + 1)}`, severity: 'error', doc: 'https://example.invalid/acme', appliesTo: ['be/src/**/*.ts'], lint: { tool: 'eslint', file } })) });
+    write('ext/lint/no-thing.mjs', rule);
+    write('ext/manifest.json', manifest(['no-thing.mjs']));
+    assert.deepEqual(await managedFindings({ repoRoot: root, tracked, presets: PRESETS }), [], 'a declared rule of ext/lint/ is loaded by the canon factories, so it is no local rule');
+    write('ext/lint/stray.mjs', rule);
+    write('scripts/rules/no-thing.mjs', rule);
+    assert.deepEqual((await managedFindings({ repoRoot: root, tracked, presets: PRESETS })).map((finding) => [finding.code, finding.path]).sort(), [
+      ['HFS_TOOL_CONFIG_LOCAL', 'ext/lint/stray.mjs'],
+      ['HFS_TOOL_CONFIG_LOCAL', 'scripts/rules/no-thing.mjs'],
+    ]);
+    write('ext/manifest.json', '{ not json');
+    assert.ok((await managedFindings({ repoRoot: root, tracked, presets: PRESETS })).some((finding) => finding.path === 'ext/lint/no-thing.mjs'), 'an unreadable manifest declares nothing');
+  });
+}

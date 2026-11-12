@@ -2857,7 +2857,7 @@ rules:
     code: "HFS_SERVICE_PLACEMENT"
     editions: [lite, full]
     docs: [docs/microservices.md#r163]
-    law: "A back-end service lives only at `be/apps/<service>/`: a folder with a `Dockerfile` of its own, or with a `package.json` other than the app root's and those of the workspace packages (`fe/apps/<app>`, `fe/packages/<pkg>`, a root `packages/<name>`), outside `be/apps/<service>/` (and outside a front end's `fe/apps/<app>/Dockerfile`) is a second service root and a finding; a service is a Nest app of the one repository that shares the `be/src` libraries and the one package.json, and its image is built from its own Dockerfile."
+    law: "A back-end service lives only at `be/apps/<service>/`: a folder with a `Dockerfile` of its own, or with a `package.json` other than the app root's and those of the workspace packages (`fe/apps/<app>`, `fe/packages/<pkg>`, a root `packages/<name>`), outside `be/apps/<service>/` (and outside a front end's `fe/apps/<app>/Dockerfile`) is a second service root and a finding; a service is a Nest app of the one repository that shares the `be/src` libraries and the one package.json, and its image is built from its own Dockerfile. The package.json of a client cli (`be/apps/<name>/package.json` of an app declared with kind `client-cli`, R397) is none either."
     kinds: [check]
     gates: [land, ci]
     failureCodes: ["HFS_SERVICE_PLACEMENT"]
@@ -4111,7 +4111,7 @@ rules:
     law: "The environment keys a back end reads through its typed `EnvSource` (`<app>.env.ts` and the capability `*.config.ts` parse helpers, resolved by a static TypeScript walk that substitutes the literal arguments of a reader's call sites into a template key such as `${prefix}_WEBHOOK_SECRET`), the key names sealed in `.starcistacks/<env>/secrets/*.enc` and the keys the stack declares or passes (`KEYS.md`, `environment:`/`env:` entries, `runtimeSecrets`, `vars[].name`) are one set, compared by name only in both editions: a required read is sealed or declared (ENV_REQUIRED_UNSET), a sealed key is read or has a declared consumer (ENV_SEALED_UNREAD), one key lives in one member (ENV_DUPLICATE), no `NEXT_PUBLIC_*` key is sealed (ENV_PUBLIC_SEALED) and every `*.env.example` key is read (ENV_EXAMPLE_DRIFT)."
     kinds: [check]
     gates: [settle, land, ci]
-    failureCodes: ["ENV_REQUIRED_UNSET", "ENV_SEALED_UNREAD", "ENV_DUPLICATE", "ENV_PUBLIC_SEALED", "ENV_EXAMPLE_DRIFT"]
+    failureCodes: ["ENV_REQUIRED_UNSET", "ENV_SEALED_UNREAD", "ENV_DUPLICATE", "ENV_PUBLIC_SEALED", "ENV_EXAMPLE_DRIFT", "ENV_KEY_ENVIRONMENT_NAMED"]
     enforcers:
       - {kind: hfs, id: env-parity, at: scripts/hfs/rules/env-parity.mjs}
     proves:

@@ -84,6 +84,15 @@ export function reservedCodes(): ReadonlySet<string> {
   return harnessCodes;
 }
 
+/** What the report says about a finding of an extension rule, in the shape of a failure-code catalog entry. */
+export interface ExtWhy { title: string; title_vi: string; meaning_vi: string; nextStep_vi: string }
+const declaredWhy = new Map<string, ExtWhy>();
+/**
+ * The catalog entry of a code a loaded extension declares: the rule's id and its doc, since the harness's failure-code catalog holds only the
+ * harness's own codes (an extension never takes one of them). Undefined for a code no loaded extension declares.
+ */
+export const extensionWhy = (code: string): ExtWhy | undefined => declaredWhy.get(code);
+
 /** The app root above `start` (a side folder or the root itself): the nearest folder whose hfs.json declares kind app; null when there is none. */
 export function appRootOf(start: string): string | null {
   for (let dir = path.resolve(start); ; dir = path.dirname(dir)) {
@@ -105,6 +114,22 @@ function projectName(appRoot: string): string {
 
 /** True when the app at `appRoot` has an ext/ folder (with or without its manifest). */
 export const hasProjectExt = (appRoot: string): boolean => { try { return fs.statSync(path.join(appRoot, PROJECT_EXT_DIR)).isDirectory(); } catch { return false; } };
+
+/**
+ * The app-relative files of ext/lint/ that the manifest's rules declare, read from the manifest's text alone (no module is loaded): the lint rules
+ * the canon factories load, which are therefore the project's law and no local rule (R16). An absent or unreadable manifest declares none.
+ */
+export function declaredLintFiles(appRoot: string): Set<string> {
+  const declared = new Set<string>();
+  try {
+    const manifest = JSON.parse(fs.readFileSync(path.join(appRoot, PROJECT_EXT_MANIFEST), 'utf8')) as { rules?: unknown };
+    for (const rule of Array.isArray(manifest.rules) ? manifest.rules : []) {
+      const file = plain(rule) && plain(rule['lint']) ? rule['lint']['file'] : undefined;
+      if (typeof file === 'string' && MODULE_FILE.test(file)) declared.add(`${PROJECT_EXT_DIR}/${PROJECT_EXT_FOLDERS.lint}/${file}`);
+    }
+  } catch { /* no manifest, or one R381 refuses: nothing is declared */ }
+  return declared;
+}
 
 /** The problem of one `appliesTo` glob, or null: an app-relative glob that starts at a named top-level folder or file, so a rule's reach is declared. */
 function globProblem(glob: unknown): string | null {
@@ -238,6 +263,12 @@ export function loadProjectExt(appRoot: string, reserved: ReadonlySet<string> = 
   }
   if (problems.length > 0) { for (const message of problems) fail(message); return result; }
   result.rules = sound;
+  for (const rule of sound) declaredWhy.set(rule.code, {
+    title: `${rule.id}: a law of this project's extension (${PROJECT_EXT_MANIFEST})`,
+    title_vi: `${rule.id}: luật riêng của dự án (${PROJECT_EXT_MANIFEST})`,
+    meaning_vi: `Dự án khai luật ${rule.id} trong ${PROJECT_EXT_MANIFEST} cho các đường dẫn ${rule.appliesTo.join(', ')}; harness chỉ chạy luật này, nội dung của nó là của dự án.`,
+    nextStep_vi: `Đọc tài liệu của luật (${rule.doc}), sửa chỗ vi phạm rồi chạy lại starci app check.`,
+  });
   result.checks = judgedChecks.checks;
   result.packages = plain(manifest['packages']) ? manifest['packages'] : {};
   return result;

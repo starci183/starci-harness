@@ -63,6 +63,7 @@
 // codes; `fast` limits both to the owners changed since the merge-base. Every finding carries its code and the Vietnamese why text of modules/kernel/failure-codes.yaml. Only `error`
 // findings fail the check.
 import fs from 'node:fs';
+import { extensionWhy } from '../lib/project-ext.mjs';
 import path from 'node:path';
 import { appWiring, BOOT_PROOF_CODE, BOOT_PROOF_TIMEOUT, DI_RING_CODE } from './app-wiring.mjs';
 import { coverageFrom as coverageFromReport } from './coverage-from.mjs';
@@ -158,7 +159,8 @@ export function readWhy(root: string = skillRoot, codes: readonly string[] = CHE
   const catalog = readCatalogOnce(path.join(root, FAILURE_CODES_FILE));
   const why: Record<string, Why> = {};
   for (const code of codes) {
-    const entry = catalog?.[code];
+    // A code of the project's extension (R381) is no catalog code: its entry is the rule's own id and doc, known once the extension is loaded.
+    const entry = catalog?.[code] ?? extensionWhy(code);
     if (!entry) refuse('HFS_MANIFEST_INVALID', `${FAILURE_CODES_FILE} has no entry for ${code}`, { code });
     why[code] = { title: entry.title, titleVi: entry.title_vi, whyVi: entry.meaning_vi, nextStepVi: entry.nextStep_vi };
   }

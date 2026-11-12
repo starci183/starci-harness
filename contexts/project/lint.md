@@ -167,7 +167,8 @@ lint plugin of its own (R103).
     matches; `context` is `{ api, repoRoot, files, read }` and a finding `{ path, message, line?, column? }`.
   - `lint`: `{ tool: "eslint", file }`, a file of `ext/lint/` whose default export is an ESLint rule. The canon factories (`starciBeConfig`,
     `starciFeConfig`, `starciBePackagesConfig`) load it over the files `appliesTo` names inside their own scope, under the plugin `project-ext`,
-    so the law that tool configs call only the canon factories and define no local rule still holds.
+    so the law that tool configs call only the canon factories and define no local rule still holds: a declared file of `ext/lint/` is the
+    one rule file a repository may hold (`HFS_TOOL_CONFIG_LOCAL`, R16, judges the same file undeclared, and a rule file anywhere else).
 - **Project checks.** A check that reads the whole app as a program, where a rule over files is the wrong shape (an id no file may still
   write, a generated list that must match its source, a generator's `--check`), is a file `ext/checks/<name>.mjs` that the manifest's `checks`
   declares as `{ "id": "<kebab-id>", "run": "ext/checks/<name>.mjs", "why": "<what it guards>" }`. `starci app check` runs every declared
@@ -190,6 +191,8 @@ lint plugin of its own (R103).
 - **The API is versioned.** `api` names the extension API the folder was written for (`PROJECT_EXT_API`, 1; the `@starci/hfs` README
   "Extension API" lists what it covers). A breaking change raises the number, and `starci app check` refuses a manifest of another number with
   `HFS_EXT_API_MISMATCH`, naming the project that needs the update; until then none of its rules runs and the check is red.
+- **A finding is reported under the rule's own code.** The report names the rule's `id` and its `doc` where a harness finding names its
+  catalog entry; the harness's failure-code catalog holds no project code.
 - **Findings go through the same policy.** An hfs rule and a project check are hfs findings: they block on every branch, like hfs. A lint rule is
   a lint finding: it follows the lint gate, so a branch profile that reports lint reports it and the lint ratchet (PROJECT-LINT-2) still holds
   it on the files a commit touches. A new rule rolls out with the ratchet: new code is clean from day one, existing findings burn down.

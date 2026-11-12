@@ -2,6 +2,7 @@
 // consume, the keys sealed under .starcistacks/<env>/secrets/*.enc and the keys the stack declares are one set, and a
 // stored value parses as its reader's type. Fixtures reproduce the nivo D2 shapes (D2-01/06/07/08 parity, D2-03 value
 // shape); sealed members are dotenv sops envelopes whose key names stay cleartext.
+// proves: ENV_KEY_ENVIRONMENT_NAMED@lite ENV_KEY_ENVIRONMENT_NAMED@full
 // proves: ENV_REQUIRED_UNSET@lite ENV_REQUIRED_UNSET@full ENV_SEALED_UNREAD@lite ENV_SEALED_UNREAD@full
 // proves: ENV_DUPLICATE@lite ENV_DUPLICATE@full ENV_PUBLIC_SEALED@lite ENV_PUBLIC_SEALED@full
 // proves: ENV_EXAMPLE_DRIFT@lite ENV_EXAMPLE_DRIFT@full ENV_VALUE_SHAPE@lite ENV_VALUE_SHAPE@full
@@ -22,6 +23,7 @@ import {
   ENV_PUBLIC_SEALED,
   ENV_REQUIRED_UNSET,
   ENV_SEALED_UNREAD,
+  ENV_KEY_ENVIRONMENT_NAMED,
   collectEnvReads,
   envParityFindings,
 } from '../runtime/scripts/hfs/rules/env-parity.mjs';
@@ -56,7 +58,7 @@ const tree = (t: TestContext, files: Record<string, string>) => {
 const parityOf = (root: string, files: Record<string, string>) => envParityFindings({ repoRoot: root, all: Object.keys(files), isRoot: true });
 const shapeOf = (root: string, files: Record<string, string>) => envValueShapeFindings({ repoRoot: root, all: Object.keys(files), isRoot: true });
 const codes = <T extends { code: string }>(findings: T[], code: string) => findings.filter((finding) => finding.code === code);
-const ENV_CODES = new Set([ENV_REQUIRED_UNSET, ENV_SEALED_UNREAD, ENV_DUPLICATE, ENV_PUBLIC_SEALED, ENV_EXAMPLE_DRIFT, ENV_VALUE_SHAPE]);
+const ENV_CODES = new Set([ENV_REQUIRED_UNSET, ENV_SEALED_UNREAD, ENV_KEY_ENVIRONMENT_NAMED, ENV_DUPLICATE, ENV_PUBLIC_SEALED, ENV_EXAMPLE_DRIFT, ENV_VALUE_SHAPE]);
 
 const envFindingsOf = (root: string, files: Record<string, string>, edition: string) => checkRepo({
   repoRoot: root,
@@ -111,6 +113,7 @@ for (const edition of ['lite', 'full']) {
       ...NIVO_MEMBERS,
       '.starcistacks/dev/secrets/duplicate.enc': sealedDotenv(['ENGINE_SHARED_SECRET']),
       '.starcistacks/dev/secrets/web.enc': sealedDotenv(['NEXT_PUBLIC_API_URL']),
+      '.starcistacks/dev/secrets/named.enc': sealedDotenv(['DEV_MAIL_TOKEN']),
       'deploy/app.env.example': 'OPENCLAW_MANAGE_AGENTS=1\nQUEUE_RELAY_INTERVAL=200ms\n',
     };
     const findings = envFindingsOf(tree(t, files), files, edition);
@@ -443,4 +446,72 @@ test('a seeds-<name> member that seed data references is read: an environment le
   };
   const findings = parityOf(tree(t, files), files);
   assert.deepEqual(codes(findings, ENV_SEALED_UNREAD).map((finding) => finding.path), ['.starcistacks/dev/secrets/seeds-test-owner.enc.yaml'], 'production\'s account member is read there only');
+});
+
+for (const edition of ['lite', 'full']) {
+  test(`a sealed key the dev stack's own database declaration reads is consumed; the same key listed only in custody is still ENV_SEALED_UNREAD (${edition})`, (t) => {
+    const member = '.starcistacks/dev/secrets/db.enc';
+    const stacks = (local: string): string => `schema: starci/application-stacks@1\nenvironments:\n  dev:\n    local:\n${local}`;
+    const database = '      database:\n        password: { member: db, key: DB_OWNER_PASSWORD }\n        adminPassword: { member: db, key: DB_ADMIN_PASSWORD }\n';
+    const sealedUnread = (files: Record<string, string>): string[] => {
+      const root = tree(t, files);
+      const messages = edition === 'lite'
+        ? codes(parityOf(root, files), ENV_SEALED_UNREAD).map((finding) => finding.message)
+        : codes(envFindingsOf(root, { ...files, 'hfs.json': JSON.stringify(declaration(edition)) }, edition), ENV_SEALED_UNREAD).map((finding) => String(finding.message));
+      return messages.map((message) => message.match(/seals (\w+)/)![1]!).sort(byCodeUnit);
+    };
+    const sealed = { [member]: sealedDotenv(['DB_OWNER_PASSWORD', 'DB_ADMIN_PASSWORD', 'DB_NOBODY_READS']) };
+    assert.deepEqual(sealedUnread({ ...sealed, '.starcistacks/application-stacks.yaml': stacks(database) }), ['DB_NOBODY_READS'], 'stack up reads the two database passwords; a third key of the member is still unread');
+    assert.deepEqual(sealedUnread({ ...sealed, '.starcistacks/application-stacks.yaml': stacks('      custody:\n        - { member: db, key: DB_OWNER_PASSWORD }\n        - { member: db, key: DB_ADMIN_PASSWORD }\n') }),
+      ['DB_ADMIN_PASSWORD', 'DB_NOBODY_READS', 'DB_OWNER_PASSWORD'], 'custody says how a key is held, never who reads it');
+    assert.deepEqual(sealedUnread({ ...sealed, '.starcistacks/application-stacks.yaml': stacks(database.replaceAll('member: db', 'member: other')) }),
+      ['DB_ADMIN_PASSWORD', 'DB_NOBODY_READS', 'DB_OWNER_PASSWORD'], 'the declaration names another member: this member\'s keys are unread');
+    assert.deepEqual(sealedUnread({ ...sealed, '.starcistacks/application-stacks.yaml': stacks(database).replace('  dev:', '  staging:') }),
+      ['DB_ADMIN_PASSWORD', 'DB_NOBODY_READS', 'DB_OWNER_PASSWORD'], 'another environment\'s declaration reads another environment\'s member');
+  });
+}
+
+for (const edition of ['lite', 'full']) {
+  test(`a key carries no environment in its name: a sealed or declared key with a leading environment token is ENV_KEY_ENVIRONMENT_NAMED, naming the bare key (${edition})`, (t) => {
+    const files = {
+      '.starcistacks/dev/secrets/db.enc': sealedDotenv(['DB_OWNER_PASSWORD', 'DEV_MAIL_TOKEN', 'DEV_DB_OWNER_PASSWORD', 'DEVICE_TOKEN']),
+      '.starcistacks/production/secrets/db.enc': sealedDotenv(['PROD_API_TOKEN', 'PRODUCTION_SIGNING_KEY', 'STAGING_X', 'LOCAL_Y', 'TEST_Z']),
+      '.starcistacks/application-stacks.yaml': 'schema: starci/application-stacks@1\nenvironments:\n  dev:\n    local:\n      database:\n        password: { member: db, key: DEV_DB_OWNER_PASSWORD }\n        adminPassword: { member: db, key: DB_OWNER_PASSWORD }\n        appPassword: { member: db, key: DEV_DB_APP_PASSWORD }\n',
+    };
+    const root = tree(t, files);
+    const named = edition === 'lite'
+      ? parityOf(root, files).filter((finding) => finding.code === ENV_KEY_ENVIRONMENT_NAMED).map((finding) => [finding.path, finding.level, finding.message])
+      : envFindingsOf(root, { ...files, 'hfs.json': JSON.stringify(declaration(edition)) }, edition).filter((finding) => finding.code === ENV_KEY_ENVIRONMENT_NAMED).map((finding) => [String(finding.path), finding.level, String(finding.message)]);
+    const told = named.map(([file, level, message]) => `${String(level)} ${String(file)} ${/names the key (\w+)/u.exec(String(message))?.[1] ?? '?'} -> ${/name it (\w+)/u.exec(String(message))?.[1] ?? '?'}`).sort(byCodeUnit);
+    assert.deepEqual(told, [
+      'error .starcistacks/dev/secrets/db.enc DEV_MAIL_TOKEN -> MAIL_TOKEN',
+      'error .starcistacks/production/secrets/db.enc LOCAL_Y -> Y',
+      'error .starcistacks/production/secrets/db.enc PRODUCTION_SIGNING_KEY -> SIGNING_KEY',
+      'error .starcistacks/production/secrets/db.enc PROD_API_TOKEN -> API_TOKEN',
+      'error .starcistacks/production/secrets/db.enc STAGING_X -> X',
+      'error .starcistacks/production/secrets/db.enc TEST_Z -> Z',
+      'warning .starcistacks/application-stacks.yaml DEV_DB_APP_PASSWORD -> DB_APP_PASSWORD',
+      'warning .starcistacks/application-stacks.yaml DEV_DB_OWNER_PASSWORD -> DB_OWNER_PASSWORD',
+      'warning .starcistacks/dev/secrets/db.enc DEV_DB_OWNER_PASSWORD -> DB_OWNER_PASSWORD',
+    ], 'an exact leading token is refused; DEVICE_TOKEN and DB_OWNER_PASSWORD are no environment names; the two names the starter shipped are a warning for one minor');
+    assert.match(String(named.find(([, level]) => level === 'warning')?.[2]), /starci app sync/u, 'the warning names where the rename notice comes from');
+  });
+}
+
+test('starci app sync names each file that still holds a starter key named after an environment, the name it takes and who seals the value; it renames nothing', async (t) => {
+  const { environmentKeyNotices } = await import('../sync/harness-checks.mjs');
+  const stacks = 'environments:\n  dev:\n    local:\n      database:\n        password: { member: db, key: DEV_DB_OWNER_PASSWORD }\n';
+  const files = {
+    '.starcistacks/application-stacks.yaml': stacks,
+    '.starcistacks/dev/runtime/env/KEYS.md': '| `DEV_DB_OWNER_PASSWORD` | the owner role |\n| `DEV_DB_APP_PASSWORD` | the app role |\n',
+    '.starcistacks/dev/secrets/db.enc': sealedDotenv(['DEV_DB_OWNER_PASSWORD']),
+  };
+  const root = tree(t, files);
+  const notices = environmentKeyNotices(root);
+  assert.equal(notices.length, 2);
+  assert.match(notices[0] ?? '', /^notice: the key DEV_DB_OWNER_PASSWORD is named after an environment .* rename it to DB_OWNER_PASSWORD in \.starcistacks\/application-stacks\.yaml, \.starcistacks\/dev\/runtime\/env\/KEYS\.md, then seal the value under the new name with `starci app secret init --env <env> --execute`/u);
+  assert.match(notices[1] ?? '', /DEV_DB_APP_PASSWORD .* rename it to DB_APP_PASSWORD in \.starcistacks\/dev\/runtime\/env\/KEYS\.md,/u);
+  assert.ok(!notices.join('\n').includes('secrets/db.enc'), 'a sealed member is never read or named for a rewrite');
+  assert.equal(fs.readFileSync(path.join(root, '.starcistacks/application-stacks.yaml'), 'utf8'), stacks, 'nothing renamed');
+  assert.deepEqual(environmentKeyNotices(tree(t, { '.starcistacks/application-stacks.yaml': stacks.replace('DEV_DB_OWNER_PASSWORD', 'DB_OWNER_PASSWORD') })), []);
 });

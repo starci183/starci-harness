@@ -2048,6 +2048,17 @@ ENV_EXAMPLE_DRIFT:
   owner: op-retry
   kind: check-finding
 
+ENV_KEY_ENVIRONMENT_NAMED:
+  title: "A key name carries an environment"
+  title_vi: "Tên khoá mang tên môi trường"
+  meaning_vi: "Một khoá được niêm phong hoặc khai báo có tên bắt đầu bằng tên môi trường (DEV_, PROD_, PRODUCTION_, STAGING_, LOCAL_, TEST_). Môi trường của một khoá là thư mục của nó (`.starcistacks/<env>/secrets/`): một tên dùng cho mọi môi trường, mỗi môi trường niêm phong giá trị riêng."
+  causes_vi:
+    - "Vi phạm luật R248: khoá đặt tên theo môi trường nên dev và production phải khai hai tên cho cùng một vai trò."
+    - "Hai tên starter cũ DEV_DB_OWNER_PASSWORD và DEV_DB_APP_PASSWORD: cảnh báo trong minor này, lỗi từ minor sau."
+  nextStep_vi: "Đổi tên khoá thành tên không có tiền tố môi trường ở mọi chỗ khai báo (starci app sync in ra danh sách), rồi chủ dự án niêm phong giá trị dưới tên mới bằng starci app secret init hoặc rotate."
+  owner: op-retry
+  kind: check-finding
+
 ENV_PUBLIC_SEALED:
   title: "A NEXT_PUBLIC_* key is in sealed custody"
   title_vi: "Khoá NEXT_PUBLIC_* nằm trong khu vực niêm phong"

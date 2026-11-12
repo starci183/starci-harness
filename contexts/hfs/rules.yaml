@@ -1272,7 +1272,7 @@ rules:
       - {kind: eslint-be, id: projection-shape}
   - id: R163
     code: HFS_SERVICE_PLACEMENT
-    law: A back-end service lives only at `be/apps/<service>/`, sharing the `be/src` libraries and the one package.json; any other service root is refused, and a workspace package's manifest (`fe/apps/<app>`, `fe/packages/<pkg>`, a root `packages/<name>`) is none.
+    law: A back-end service lives only at `be/apps/<service>/`, sharing the `be/src` libraries and the one package.json; any other service root is refused, and a workspace package's manifest (`fe/apps/<app>`, `fe/packages/<pkg>`, a root `packages/<name>`) is none. The package.json of a client cli (`be/apps/<name>/package.json` of an app declared with kind `client-cli`, R397) is none either.
     failureCodes:
       - HFS_SERVICE_PLACEMENT
     enforcers:
@@ -1605,13 +1605,14 @@ rules:
       - {kind: eslint-be, id: app-file-budget}
   - id: R248
     code: ENV_REQUIRED_UNSET
-    law: The environment keys a back end reads, the sealed keys and the keys the stack declares are one set by name.
+    law: The environment keys a back end reads, the sealed keys and the keys the stack declares are one set by name, and no key name carries an environment (a leading DEV_, PROD_, PRODUCTION_, STAGING_, LOCAL_ or TEST_), since the environment of a key is its folder.
     failureCodes:
       - ENV_REQUIRED_UNSET
       - ENV_SEALED_UNREAD
       - ENV_DUPLICATE
       - ENV_PUBLIC_SEALED
       - ENV_EXAMPLE_DRIFT
+      - ENV_KEY_ENVIRONMENT_NAMED
     enforcers:
       - {kind: hfs, id: env-parity}
   - id: R249

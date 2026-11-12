@@ -9,8 +9,8 @@ Names only. Dev values are generated once by the owner-armed `starci app secret 
 | `PORT`, `HTTP_SECURITY_ALLOWED_ORIGINS`, `PRIMARY_DB_SCHEMA` | API listener, origin allowlist, primary schema (manifest `local.processes.api.env`) |
 | `PRIMARY_DB_URL` | API least-privilege connection as `app_be` with this environment's own password; composed by the stack verb, read through `PRIMARY_DB_URL_FILE` |
 | `POSTGRES_PASSWORD` | The db service's superuser password (member `db`) |
-| `DEV_DB_OWNER_PASSWORD` | The environment's own owner role, which runs the migrations (member `db`) |
-| `DEV_DB_APP_PASSWORD` | The password of the `app_be` role in this environment's database (member `db`) |
+| `DB_OWNER_PASSWORD` | The environment's own owner role, which runs the migrations (member `db`) |
+| `DB_APP_PASSWORD` | The password of the `app_be` role in this environment's database (member `db`) |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CALLBACK_URL` | API Google OAuth client and callback (local placeholders in the manifest) |
 | `GOOGLE_CLIENT_SECRET` | API Google OAuth client secret (member `google`) |
 | `AUTH_JWT_ISSUER`, `AUTH_JWT_AUDIENCE`, `AUTH_JWT_KEY_ID` | API access-token claims and key id (the key id is published in the JWKS) |

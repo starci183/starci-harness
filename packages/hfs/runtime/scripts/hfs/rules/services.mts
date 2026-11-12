@@ -36,6 +36,8 @@ const ASYNC_SPEC_MISSING = 'BE_ASYNC_SPEC_MISSING';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SERVICE_KINDS = new Set(['api', 'worker']);
+/** The app kind whose `be/apps/<name>/package.json` is its published package (R397). */
+const CLIENT_CLI_KIND = 'client-cli';
 const BE_SERVICE_FILE = /^be\/apps\/([^/]+)\/(.+)$/;
 const DOCKERFILE = /(?:^|\/)Dockerfile(?:\.[^/]+)?$/;
 /** The manifest of a workspace package: a front-end app or package, or a root workspace package (slot app.packages, packages/<name>/). */
@@ -56,14 +58,19 @@ const typescriptFor = (repoRoot: string) => loadTypescript(repoRoot, HERE);
 
 // ------------------------------------------------------------------------------------------------ R163 placement
 
-/** Findings of R163: a service root outside `be/apps/<service>/`. */
-function servicePlacementFindings({ files }: { files: string[] }) {
+/**
+ * Findings of R163: a service root outside `be/apps/<service>/`. The manifest of a client cli (`be/apps/<name>/package.json` of an app hfs.json
+ * declares with kind `client-cli`) is the package R397 requires that app to publish, so it is no second service root; the same file of any
+ * other be app, of an undeclared folder, or nested deeper stays one.
+ */
+function servicePlacementFindings({ files, repo }: { files: string[]; repo: Repo }) {
   const findings = [];
+  const clientCliManifests = new Set((repo.sides?.be?.apps ?? []).filter((app: Parsed) => app.kind === CLIENT_CLI_KIND && typeof app.name === 'string').map((app: Parsed) => `be/apps/${String(app.name)}/package.json`));
   const gallery = `${galleryParams().dir}/package.json`; // the screenshot gallery is a standalone Vite app, not a service (R395)
   for (const file of files) {
     if (file.startsWith('.starciwork/') || file.startsWith('.starcistacks/') || file.includes('node_modules/')) continue;
     const dockerfile = DOCKERFILE.test(file) && !BE_SERVICE_FILE.test(file) && !/^fe\/apps\/[^/]+\/Dockerfile(?:\.[^/]+)?$/.test(file) && file !== 'Dockerfile';
-    const manifest = path.posix.basename(file) === 'package.json' && file !== 'package.json' && file !== gallery && !WORKSPACE_PACKAGE_JSON.test(file);
+    const manifest = path.posix.basename(file) === 'package.json' && file !== 'package.json' && file !== gallery && !WORKSPACE_PACKAGE_JSON.test(file) && !clientCliManifests.has(file);
     const rootDockerfile = file === 'Dockerfile';
     if (!dockerfile && !manifest && !rootDockerfile) continue;
     const what = manifest ? 'a package.json of its own' : 'a Dockerfile';
@@ -248,7 +255,7 @@ function asyncSpecFindings({ repoRoot, files }: { repoRoot: string; files: strin
 /** Every finding of the microservice policy over the app at `repoRoot`; `files` are its tracked app-relative paths. */
 export function serviceFindings({ repoRoot, files, repo }: { repoRoot: string; files: string[]; repo: Repo }) {
   return [
-    ...servicePlacementFindings({ files }),
+    ...servicePlacementFindings({ files, repo }),
     ...imagePinFindings({ repoRoot, repo }),
     ...serviceStackFindings({ repoRoot, repo }),
     ...eventContractFindings({ repoRoot, files }),

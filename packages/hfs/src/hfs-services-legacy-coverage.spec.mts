@@ -59,6 +59,15 @@ for (const edition of ['lite', 'full']) {
     }, 'HFS_SERVICE_PLACEMENT'), []);
   });
 
+  test(`${edition} HFS_SERVICE_PLACEMENT accepts the package.json of a declared client cli (R397) and of no other be app`, () => {
+    const files = ['package.json', 'be/apps/relay-cli/package.json', 'be/apps/core/package.json', 'be/apps/ghost/package.json', 'be/apps/relay-cli/nested/package.json'];
+    const repo = { edition, sides: { be: { apps: [{ name: 'core', kind: 'api' }, { name: 'relay-cli', kind: 'client-cli', package: '@acme/relay', bin: 'relay' }] } } };
+    const placed = serviceFindings({ repoRoot: os.tmpdir(), files, repo }).filter((finding) => finding.code === 'HFS_SERVICE_PLACEMENT').map((finding) => finding.path);
+    assert.deepEqual(placed, ['be/apps/core/package.json', 'be/apps/ghost/package.json', 'be/apps/relay-cli/nested/package.json'], 'an api app, an undeclared folder and a nested manifest stay service roots');
+    const undeclared = { edition, sides: { be: { apps: [{ name: 'core', kind: 'api' }] } } };
+    assert.ok(serviceFindings({ repoRoot: os.tmpdir(), files, repo: undeclared }).some((finding) => finding.code === 'HFS_SERVICE_PLACEMENT' && finding.path === 'be/apps/relay-cli/package.json'), 'without the declaration the same file is a service root');
+  });
+
   test(`${edition} HFS_IMAGE_UNPINNED rejects a moving service image`, (t) => {
     assert.deepEqual(findings(t, edition, {
       [STACK_FILE]: stack({ image: 'demo/core:latest' }),
