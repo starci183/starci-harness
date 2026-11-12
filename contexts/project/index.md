@@ -5,7 +5,7 @@
 Every file of `contexts/` with its size, the first sentence it opens with, its sections and the ids it names. A Kernel
 reads this index instead of the whole tree, then opens only the files its tasks need and names them in each contract.
 
-- [README.md](../README.md) · 19 KB — Read this file first, in this repository or in any app the harness drives.
+- [README.md](../README.md) · 20 KB — Read this file first, in this repository or in any app the harness drives.
   - sections: Load order · Two layers of context · Harness · Authority · The boundary model: four owners, one app · Three layers decide an interface · Map · Reading order by task · Feedback hardens · House rules for editing contexts
 - [authority/README.md](../authority/README.md) · 9 KB — Who may edit, commit, merge to main, push and publish, and which checks each role runs.
   - sections: Three tiers of checks · Roles · Worktrees · Not enforced yet
@@ -64,7 +64,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: BE-MESSAGES-1 One keyed bundle per owner, read through MessageCatalog · BE-MESSAGES-2 The locale is the receiver's, resolved once
 - [code/be/naming.md](../code/be/naming.md) · 4 KB — What a back-end file, class, constant, method and type is called, so the reader and the slot check know where a unit belongs from its name.
   - sections: BE-NAMING-1 Files are kebab-case with a role suffix from the closed list · BE-NAMING-2 Classes are the subject plus the role · BE-NAMING-5 Tokens, injectors and connection names have one form · BE-NAMING-6 Methods say what they promise · BE-NAMING-7 Type names carry their layer · BE-NAMING-8 GraphQL fields are camelCase operation names
-- [code/be/persistence.md](../code/be/persistence.md) · 22 KB — Who owns a table, how its schema changes, how the database is reached and how transactions are drawn.
+- [code/be/persistence.md](../code/be/persistence.md) · 23 KB — Who owns a table, how its schema changes, how the database is reached and how transactions are drawn.
   - sections: BE-PERSISTENCE-1 Migrations are the only schema authority · BE-PERSISTENCE-2 The cli applies migrations; serving apps never do · BE-PERSISTENCE-3 Entities belong to the capability that owns the table · BE-PERSISTENCE-4 Lite holds no SQL text: entities or `callDbFunction`; full SQL is a `sql`-tagged constant · BE-PERSISTENCE-5 Work that must follow a write is written in the same transaction · BE-PERSISTENCE-6 No transaction spans an external call · BE-PERSISTENCE-7 The database is reached through the named shared EntityManager · BE-PERSISTENCE-8 One database is one connection and one injector · BE-PERSISTENCE-9 A capability touches only its own tables, and every list is bounded · BE-PERSISTENCE-10 The domain service opens the transaction and hands the manager down · BE-PERSISTENCE-11 Full: a connection is a bounded context, coupled to others only by events · BE-PERSISTENCE-16 An UPDATE or DELETE with RETURNING is wrapped in a SELECT · BE-PERSISTENCE-17 Lite: product data is reached through the back end only · BE-PERSISTENCE-19 Lite: policies, definers and configuration keep the boundary
 - [code/be/projections.md](../code/be/projections.md) · 3 KB — Decides where a read that needs another context's data comes from: never a cross-context join, but a read model on the reading context's connection, recomputed from source events.
   - sections: BE-PROJECTIONS-1 Only the projection writes its table · BE-PROJECTIONS-2 A projection speaks recompute and get, and hides its entity · BE-PROJECTIONS-3 A projection publishes nothing and is kept current by a reactor or a job · BE-PROJECTIONS-4 A declared projection is proven on the test world
@@ -158,11 +158,11 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [grammars/offset-pop.md](../grammars/offset-pop.md) · 7 KB — `offset-pop` is the playful, mobile-first grammar for consumer and learning apps: a cream canvas, objects drawn like stickers (an ink outline and a hard offset shadow), one pink ...
   - sections: Material and why · How offset-pop fills the contract · Departures · What an app must not add · Lint
 - [harness/axes.md](../harness/axes.md) · 1 KB
-- [harness/host.md](../harness/host.md) · 1 KB — What a shell on the harness host does differently from the textbook, and the one way to work with it.
+- [harness/host.md](../harness/host.md) · 2 KB — What a shell on the harness host does differently from the textbook, and the one way to work with it.
   - sections: Spawning a process · Files and folders
 - [harness/questions.md](../harness/questions.md) · 9 KB
 - [harness/roles.md](../harness/roles.md) · 7 KB — The owner talks to each project's `[Supervisor] <project>`, which runs in the project's main checkout; each running orca workflow of the project has a `[Kernel] <workflow>` under ...
-- [harness/rules.md](../harness/rules.md) · 4 KB — These hold for every role and every task.
+- [harness/rules.md](../harness/rules.md) · 7 KB — These hold for every role and every task.
 - [harness/state.md](../harness/state.md) · 5 KB
   - sections: Where state lives · How a project is found
 - [hfs/README.md](../hfs/README.md) · 16 KB — HFS is the one source and storage standard of a StarCi app: what may exist in the repository, where, which tier may import which, and which rules judge it.
@@ -189,8 +189,8 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: PROJECT-GALLERY-1 Every app carries a gallery, and every UI fix round saves shots to it · PROJECT-GALLERY-2 Every screen is explained, region by region; a region that cannot be explained is a bug · PROJECT-GALLERY-3 Screens link into flows
 - [project/lint.md](../project/lint.md) · 22 KB — Which machine judges which kind of fact in a project, where it runs, and which standard facts no machine judges yet.
   - sections: Where a check runs · Packages and gates · Facts no machine checks yet · PROJECT-LINT-1 A fact a machine can decide moves to the machine · PROJECT-LINT-2 A branch profile lowers only the polish gates · PROJECT-LINT-3 A project extends the law through its ext folder · Read with
-- [project/lite.md](../project/lite.md) · 11 KB — Only the differences of a lite app from the shared project model (README.md); everything not named here is the same in both editions, including the code structure, the front-end ...
-  - sections: Shape of production · Backing services · Patterns · Infrastructure the project runs · Deploy targets · What CI runs · Work and custody · Moving an app off Supabase · Read with
+- [project/lite.md](../project/lite.md) · 14 KB — Only the differences of a lite app from the shared project model (README.md); everything not named here is the same in both editions, including the code structure, the front-end ...
+  - sections: Shape of production · Backing services · Patterns · Infrastructure the project runs · Deploy targets · What CI runs · Work and custody · Moving an app off Supabase · Resetting the chain to one baseline · Read with
 - [project/stacks.md](../project/stacks.md) · 55 KB — `.starcistacks/` at the app root is the one place an app says how it runs: which environments exist, what each one starts, how traffic enters, where its secrets are sealed, what ...
   - sections: PROJECT-STACKS-1 One root per app · PROJECT-STACKS-2 The manifest declares everything the app runs and reads · PROJECT-STACKS-3 Two kinds of environment, each with its runbook · PROJECT-STACKS-4 One declared ingress publishes, and only in the open it must · PROJECT-STACKS-5 Secrets are sealed, granted least and never regenerated · PROJECT-STACKS-6 Every runbook declares the same operations · PROJECT-STACKS-7 CI holds names; every value stays with its consumer · PROJECT-STACKS-8 Quality services are declared and required · PROJECT-STACKS-9 A remote application API is consumed, not administered · PROJECT-STACKS-10 Local runs · PROJECT-STACKS-11 A customised service is an image the app builds, the same in every environment · PROJECT-STACKS-12 Seed data lives in the seed levels of the stack · PROJECT-STACKS-13 Business data lives only in the project's sealed data repository · Read with
 - [project/work.md](../project/work.md) · 17 KB — `.starciwork/` at the app root holds the product's Work: the concepts the owner ruled, what the product must do, how it is designed, what was built and how it is accepted.
