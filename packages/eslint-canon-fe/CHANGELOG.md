@@ -1,8 +1,13 @@
 # Changelog
 
+## 9.16.16 - 2026-11-12
+
+- Changed: the hfs 6.8 line (`@starci/hfs` 6.8.5) merged with `pkg/canon-fe-status-view-types`, `pkg/claude-work-concepts` and `pkg/claude-grammar-meter-foreground-fill`, so one installable set carries all of them: 9.16.12-9.16.14 (`no-view-data-status`, the `todo-tag` fix of R235) join the 6.8 line; peer `@starci/hfs ~6.8.0`.
+
 ## 9.16.15 - 2026-11-11
 
 - Changed: peer `@starci/hfs ~6.8.0`; no lint rule of this package changed.
+
 ## 9.16.14 - 2026-11-11
 
 - Fixed (R235): `starci-fe/todo-tag` (S1135) replaces `sonarjs/todo-tag` in the Sonar way block. The sonarjs port reads a lower-case `todo` after a dot as the start of a sentence, so a comment naming the catalog key `guide.todo` was refused as a leftover marker. The canon rule refuses a marker only: the upper-case word `TODO` standing alone (`TODO`, `TODO:`, `TODO(name)`), or the word in any case written into a tag (`todo:`, `todo(`), with no letter, digit, underscore or dot on its left; a marker followed by an issue key (`TODO PROJ-12`) passes. The noun in prose (`a todo can be`, `the todo list`) and a name (`guide.todo`, `GuideTodoKey`, `todoCount`) are no marker. `fixme-tag` (S1134) is unchanged.

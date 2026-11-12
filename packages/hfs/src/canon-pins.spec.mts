@@ -45,12 +45,16 @@ test('every @starci pin names its folder in starci-harness at the version there'
   }
 });
 
-test('the canon packages carry no copy of the pins: they read them from the installed @starci/hfs, their same-minor peer', () => {
+test('the canon packages carry no copy of the pins: they read them from the installed @starci/hfs, their same-minor peer, which admits this hfs', () => {
+  const hfs = JSON.parse(fs.readFileSync(path.join(REPOSITORY, 'packages', 'hfs', 'package.json'), 'utf8')).version; // reason: parsed package.json
   for (const pkg of COPIES) {
     assert.equal(fs.existsSync(path.join(REPOSITORY, 'packages', pkg, COPY)), false, `packages/${pkg}/${COPY}`);
     const manifest = JSON.parse(fs.readFileSync(path.join(REPOSITORY, 'packages', pkg, 'package.json'), 'utf8')); // reason: parsed package.json
     if (pkg === 'eslint-grammar-offset-pop') continue;
-    assert.match(manifest.peerDependencies?.['@starci/hfs'] ?? '', /^~\d+\.\d+\.\d+$/u, `${pkg} peers @starci/hfs by a same-minor range`);
+    const range = manifest.peerDependencies?.['@starci/hfs'] ?? '';
+    assert.match(range, /^~\d+\.\d+\.\d+$/u, `${pkg} peers @starci/hfs by a same-minor range`);
+    // CONTRIBUTING.md CONTRIB-20: every hfs minor cuts every canon that peers it, the Grammar lint included, in the commit that raises hfs.
+    assert.ok(meetsPin(range, hfs), `${pkg} peers @starci/hfs ${range}, which excludes this hfs ${hfs}: raise the peer range and cut ${pkg} with the hfs minor`);
   }
 });
 

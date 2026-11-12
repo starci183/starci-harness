@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.37.39 - 2026-11-12
+
+- Changed: the content of 0.37.38 (and 0.37.3-0.37.36 before it) on the hfs 6.8 line: `@starci/eslint-grammar-core` peers `@starci/hfs ~6.8.0` (0.37.38 peers `~6.7.0`, so no hfs 6.8 app could install it). No component, law or lint rule changed against 0.37.38. Every hfs minor cuts the family as a patch (contexts/grammars/contributing.md "Patch or minor").
+
 ## 0.37.38 - 2026-11-12 - Meter and Progress: a foreground fill that spends no accent
 
 - Added: `Meter tone="foreground"` (new exported type `MeterTone = PresentationState | "foreground"`) and `Progress tone="foreground"`: the fill is HeroUI's `--foreground` text colour on the default track, plain, segmented and step bars alike, so a usage quota stands beside a view's one commit without a second accent mass (ACCENT-6, the red budget). The vendor colour is HeroUI's `default` variant and the Common rule writes `--meter-fill` / `--progress-bar-fill` as `--foreground` (`!important`: consumers import the sheet on either side of `@heroui/styles`). Offset Pop paints it with the ink. Dark mode follows the token.
@@ -246,6 +250,7 @@
 - Added: `Section fill` (a cell of a stretched grid): the section fills the height its host gives it and its body takes what the head and caption leave, so `SurfaceCard height="fill"` and `DataTable fill` fill it. A Section without it keeps its own height.
 - Added: `DataTable fill`: the white body grows to the frame's foot and the footer sticks to the bottom. Story `EqualHeightRow`.
 - Changed: the section head is a FIXED height row (`--grammar-section-head-size`, 2rem; was a touch-size minimum), so the 20px label row and the 32px info `IconButton` both fit and no head differs in height.
+
 ## 0.37.37 - 2026-11-11
 
 - Changed: the family moves with `@starci/eslint-grammar-core`, which peers `@starci/hfs ~6.8.0`; no component changed.

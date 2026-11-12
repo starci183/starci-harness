@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.23.2 - 2026-11-12
+
+- Changed: the hfs 6.8 line (`@starci/hfs` 6.8.5) merged with `pkg/canon-fe-status-view-types`, `pkg/claude-work-concepts` and `pkg/claude-grammar-meter-foreground-fill`, so one installable set carries all of them: the 3.21.2 and 3.21.3 changes (the `todo-tag` fix of R235) join the 3.23 line; peer `@starci/hfs ~6.8.0`.
+
 ## 3.23.1 - 2026-11-12
 
 - Fixed (R78): `user-copy-through-catalog` no longer reports the `summary`, `description` or `title` of an object literal handed to an `@nestjs/swagger` export (`@ApiOperation`, `@ApiProperty`, `@ApiResponse`, directly or inside `applyDecorators`, through nested object and array literals): that text documents a REST contract for its clients' developers and R396 judges the emitted document. A same-named local helper and another package's decorator (`@Field({ description })`) are still response copy.
@@ -15,6 +19,7 @@
 
 - Changed (R278): `rest-door-needs-a-reason` reports nothing in a back end whose api apps declare `contract: "rest"` in hfs.json (the controller is that back end's default door); a graphql back end is judged as before. `HfsApp` carries the optional `contract`. Peer `@starci/hfs ~6.8.0`, the release whose view carries it.
 - Specs: `src/transport.spec.ts` (a rest back end serves a plain controller; the same controller in the default back end still reports).
+
 ## 3.21.3 - 2026-11-11
 
 - Fixed (R235): `starci-be/todo-tag` (S1135) replaces `sonarjs/todo-tag` in the Sonar way block, the one rule both canons publish from the shared runtime copy (`scripts/lib/sonar-syntax-rules.mjs`): it refuses a leftover marker (`TODO`, `TODO:`, `TODO(name)`, `todo:`) and not the noun in prose or a name such as `guide.todo`.

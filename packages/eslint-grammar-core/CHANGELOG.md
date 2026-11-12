@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.37.39 - 2026-11-12
+
+- Changed: the content of 0.37.38 (and 0.37.3-0.37.36 before it) on the hfs 6.8 line: `@starci/eslint-grammar-core` peers `@starci/hfs ~6.8.0` (0.37.38 peers `~6.7.0`, so no hfs 6.8 app could install it). No component, law or lint rule changed against 0.37.38. Every hfs minor cuts the family as a patch (contexts/grammars/contributing.md "Patch or minor").
+
 ## 0.37.38 - 2026-11-12
 
 - Changed: released with the Grammar family at 0.37.38; no rule of this package changed.
@@ -144,6 +148,7 @@
 ## 0.37.3 - 2026-11-09
 
 - Changed: released with the Grammar family at 0.37.3 (the head row only when every pane has a head; a pane that holds a grid is not capped); no rule of this package changed.
+
 ## 0.37.37 - 2026-11-11
 
 - Changed: peer `@starci/hfs ~6.8.0`; no lint rule changed.
