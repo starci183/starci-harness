@@ -17,7 +17,10 @@ export type { MessageReaction, MessageReactionLabels } from "./Reactions.js"
  */
 export type MessageBubbleGroupPosition = "single" | "first" | "middle" | "last"
 
-/** `incoming`: someone else wrote it (start side, the surface and its foreground). `outgoing`: the reader's own message (end side, the brand fill `--accent` with `--accent-foreground`). */
+/**
+ * `incoming`: someone else wrote it (start side, the FLAT surface: `--surface` with its foreground, no border, no shadow, on the thread's `--background`).
+ * `outgoing`: the reader's own message (end side, the brand fill `--accent` with `--accent-foreground`). Law DNA-COMMON-CHAT-SURFACES; the app never restyles a face (lint `message-surfaces`).
+ */
 export type MessageBubbleSide = "incoming" | "outgoing"
 
 /**
@@ -217,7 +220,8 @@ const ResolvedMessageBubble = (props: MessageBubbleMessage) => {
 /**
  * One message of a conversation. The app owns the thread (order, grouping, day dividers with `Divider label`, scroll with
  * `VerticalScrollRegion`); this owns the anatomy of a single message: avatar column, author line, the bubble face and its
- * actions. Faces follow SURFACE-2 (incoming, the surface pair) and the brand fill (outgoing, the accent pair; inline content inherits its foreground); the corner on
+ * actions. Faces follow DNA-COMMON-CHAT-SURFACES: incoming is the flat surface pair (no border, no shadow) on the thread's `--background`, outgoing the brand
+ * fill (the accent pair; inline content inherits its foreground); the corner on
  * the author's side tightens to point at the avatar (RADIUS-6). With `isLoading` it draws inert geometry instead, one bubble or a
  * whole loading thread; with `error` the failure.
  */
@@ -241,7 +245,8 @@ const MessageBubbleInner = (props: MessageBubbleProps) => {
 /**
  * One message of a conversation. The app owns the thread (order, grouping, day dividers with `Divider label`, scroll with
  * `VerticalScrollRegion`); this owns the anatomy of a single message: avatar column, author line, the bubble face and its
- * actions. Faces follow SURFACE-2 (incoming, the surface pair) and the brand fill (outgoing, the accent pair; inline content inherits its foreground); the corner on
+ * actions. Faces follow DNA-COMMON-CHAT-SURFACES: incoming is the flat surface pair (no border, no shadow) on the thread's `--background`, outgoing the brand
+ * fill (the accent pair; inline content inherits its foreground); the corner on
  * the author's side tightens to point at the avatar (RADIUS-6). With `isLoading` it draws inert geometry instead, one bubble or a
  * whole loading thread; with `error` the failure.
  */

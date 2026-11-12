@@ -111,6 +111,12 @@ export type ListRowData = {
     /** The one named field for custom drawing under the row's copy: a pre-rendered node, never a function. */
     readonly detail?: ReactNode
     /**
+     * The value of a key-value row (0.37.5, list `layout="keyValue"`): `title` is the key (muted, at the start) and `value` is the content (normal text, at the end; it wraps under the key
+     * on a narrow container). In a `rows` list it is the row's fact between the copy and the end group: `value`, `badges` and an end `action` (`actionPlacement: "end"`) are
+     * one supported combination, one line, centred against the copy (the value is a grid track of its own, 0.37.36).
+     */
+    readonly value?: ReactNode
+    /**
      * The whole row opens something: pressing anywhere on it (the title is the one focusable button, its hit area is the row)
      * runs this. Sibling commands and the menu stay separate targets above it. Exclusive with `href`.
      */
@@ -126,6 +132,16 @@ export type ListRowData = {
      * for a fact that is a problem (overdue). Drawn as a Skeleton of its width while the row loads.
      */
     readonly meta?: { readonly text: string; readonly tone?: "muted" | "danger" }
+    /**
+     * A row of a version diff (0.37.28, GitHub-style): a gutter mark at the row's start, `+` added, `−` removed, `~` changed (monospace, in the tone's ink), and the row's ground in
+     * the tone's soft pair (success, danger, warning). A removed row's title is struck through. The mark is never colour alone: the glyph carries the meaning and `diffLabel`
+     * is read before the title.
+     */
+    readonly diff?: "added" | "removed" | "changed"
+    /** A changed row's change, drawn as the 12 muted line "from → to" under the title (after `description`). Only with `diff: "changed"`. */
+    readonly change?: { readonly from: string; readonly to: string }
+    /** The word a screen reader reads for the gutter mark (the app's language: "Thêm", "Bỏ", "Đổi"). Default "Added", "Removed", "Changed". */
+    readonly diffLabel?: string
 } & ListRowDestination
 
 type FigureDestination = Pick<LinkProps, "href" | "onFollow" | "isDisabled"> | {
@@ -179,8 +195,10 @@ export type AccordionRowData = {
 export type CardHead = {
     readonly label?: string
     readonly ariaLabel?: string
-    /** One muted small line under the label, the title's own words (what the card holds, for whom). It stands 4 under the label. */
-    readonly description?: string
+    /*
+     * A card head has NO description or subtitle (owner, 0.37.5): the head is the label, its count chip, one fact and one end action. A line that explains the
+     * card's data (a legend, a source, a period) goes in `note`; a line that explains a row is that row's own subtitle.
+     */
     /**
      * How many items the card holds: a 12px count chip right after the label (0.36.0), grey. It stands on the left and coexists with `labelEnd` on the
      * right (the law: label and count chip at the start, one head Link at the end).
@@ -199,10 +217,53 @@ export type CardHead = {
 /** A collection a card holds: a list of rows or an accordion. */
 export type ListData = {
     readonly kind: "list"
+    /**
+     * `rows` (default): title with a supporting line. `keyValue` (0.37.5): each row is a key (`title`, muted, 14) and its `value` (normal text, 14, at the end), so the hierarchy reads
+     * key then value instead of title then subtitle.
+     * `suggestions` (0.37.31, law DNA-COMMON-CARD-SUGGESTIONS): the replies a message card offers, one row per suggestion. Each row is its plain text (14,
+     * regular weight, wrapping, never truncated) with a trailing chevron; give every row `onPress` (it sends that text) and nothing else. Inside a card
+     * (a `MessageCard` body) the list is the bordered surface in a surface. The suggestion pills by a composer stay `Button size="sm"`.
+     */
+    readonly layout?: "rows" | "keyValue" | "suggestions"
     readonly items: readonly ListRowData[]
     /** What the card shows when it has no rows. Required: every list answers for its empty state. */
     readonly empty: ReactNode
 }
+
+/** One row of a `select` card: a title with an optional subtitle under it. */
+export type SelectItemData = {
+    readonly id: string
+    readonly title: string
+    /** One muted 12 line directly under the title of the same row (the explanation of that choice); never a loose line elsewhere. */
+    readonly subtitle?: string
+    readonly isDisabled?: boolean
+    /**
+     * One control at the END of the row (0.37.13), as on a list row: a primary `Tabs` pill ("Tự động | Hỏi"), a `Switch`, a `Checkbox`, a `Badge`. It keeps its own state and
+     * label; the row seats it at the end centred on the title line, and the title and subtitle wrap before it. It is its own hit target: presses, clicks and keys inside it never
+     * toggle the row, and it is not part of the row's accessible name. A disabled row dims it and blocks it. Grammar components only, never raw elements with handlers.
+     */
+    readonly control?: ReactNode
+}
+
+/**
+ * A choice list (0.37.5): every row a checkbox with its title and subtitle, the whole row the hit target, 1px dividers across the full card width.
+ * `single` keeps one row checked (checking one unchecks the others) with the same checkbox look; `multiple` toggles each row.
+ */
+export type SelectData =
+    | {
+          readonly kind: "select"
+          readonly selectionMode: "single"
+          readonly items: readonly SelectItemData[]
+          readonly value: string | null
+          readonly onChange: (value: string) => void
+      }
+    | {
+          readonly kind: "select"
+          readonly selectionMode: "multiple"
+          readonly items: readonly SelectItemData[]
+          readonly value: readonly string[]
+          readonly onChange: (value: readonly string[]) => void
+      }
 
 export type AccordionData = {
     readonly kind: "accordion"
@@ -317,6 +378,13 @@ export type TableColumnData = {
     readonly numeric?: boolean
     /** Narrow-width mode: a `low` column leaves the header below the card's collapse width and joins the row as a muted line under the first column. Default `high`. */
     readonly priority?: "high" | "low"
+    /** The column's width (0.37.3): `"fill"` the rest (with `minWidth`, `truncate`), `"fit"` its content on one line, or px. Default: the first text column fills, numeric ones fit. */
+    readonly width?: "fill" | "fit" | number
+    readonly minWidth?: number
+    /** One line with an ellipsis and the full text in a tooltip. */
+    readonly truncate?: boolean
+    /** The column leaves the table under this width: `"tablet"` (768) or `"desktop"` (1280). */
+    readonly hideBelow?: "tablet" | "desktop"
 }
 
 /** One row of a `table` card: its cells by column id. */
@@ -345,6 +413,11 @@ export type TableData = {
     readonly empty: ReactNode
     /** The whole row is pressable (opens a drawer): called with the row's `id` on a click, Enter or Space on the focused row. Commands inside a row stay their own. */
     readonly onRowAction?: (id: string) => void
+    /** Columns the user can drag, remembered in localStorage under `id` (0.37.3). */
+    readonly resizable?: boolean
+    readonly id?: string
+    /** Under 768: `list` (a row per item: the first column its title, the rest one muted line; the default from three columns) or `table`. */
+    readonly phone?: "list" | "table"
 } & (
     | { readonly rows: readonly TableRowData[]; readonly groups?: undefined }
     | { readonly groups: readonly TableGroupData[]; readonly rows?: undefined }
@@ -398,6 +471,7 @@ export type TileData = {
     /** Short factual lines, separate from the name and the operational badges: one muted line each (a string is one line). */
     readonly facts?: string | readonly string[]
 } & TileIdentity & TileBadges & TileFigure & (
-    | { readonly wholeAction: WholeCardAction; readonly action?: undefined; readonly menu?: undefined }
+    /** 0.37.8: a whole-card action may carry the `menu` (the card's ⋯): the trigger stands above the whole-card link and never follows it; `action` stays exclusive. */
+    | { readonly wholeAction: WholeCardAction; readonly action?: undefined; readonly menu?: ItemMenu }
     | { readonly action?: ItemAction; readonly menu?: ItemMenu; readonly wholeAction?: undefined }
 )

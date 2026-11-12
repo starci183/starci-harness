@@ -9,6 +9,7 @@ import {
     useCallback,
     useContext,
     useEffect,
+    useLayoutEffect,
     useMemo,
     useRef,
     useState,
@@ -17,6 +18,8 @@ import {
     type ReactElement,
     type ReactNode,
 } from "react"
+import { PaneSection } from "../PaneSection/index.js"
+import { PaneHeader } from "../../composite/PaneHeader/index.js"
 import { VerticalScrollRegionPart } from "../VerticalScrollRegion/index.js"
 import { SurfaceNesting } from "../../surfaceContext.js"
 import { useOverlayContainer } from "../../overlayScope.js"
@@ -41,13 +44,19 @@ type Models = Readonly<Record<PaneBreakpoint, PaneGridModel>>
 
 const PaneModelsContext = createContext<Models | undefined>(undefined)
 
-/** What a pane holds: a well of capped `cards`, or `full` bleed (a chat, a graph canvas, an editor). */
-export type PaneContent = "cards" | "full"
+/**
+ * What a pane holds: a well of capped `cards`, `full` bleed (a graph canvas, an editor), or a `chat` frame (0.37.33, law DNA-COMMON-CHAT-FRAME): the head, the
+ * thread and the composer footer of one chat, full-bleed and painted `--background` as one frame wherever it stands.
+ */
+export type PaneContent = "cards" | "full" | "chat"
 
 type PaneBaseProps = {
     /** The name of this pane in the grid's `areas`. */
     readonly area: string
-    /** `true`: the pane stands on the grammar surface ground (flat: no border, radius or shadow). Default: transparent on the host canvas. */
+    /**
+     * `true`: the pane stands on the grammar surface ground (flat: no border, radius or shadow). Default: transparent on the host canvas. A chat frame
+     * (`content="chat"`, or any pane whose own stack holds a `PaneSection scroll role="log"`) takes no tone: it is `--background` (lint `message-surfaces`).
+     */
     readonly surface?: boolean
     /**
      * `content` (default): the pane publishes the Grammar pane inset to its PaneSections. `flush`: zero inset, for a
@@ -59,10 +68,34 @@ type PaneBaseProps = {
      * while the pane itself spans its grid track. `full`: a chat, a graph canvas or an editor, full-bleed, never capped. Default: `cards` for a pane on the
      * canvas, `full` for a pane on the surface (a side pane); a pane that holds a chat thread (`PaneSection scroll role="log"`) or a `FlowGraph` is `full`
      * unless this prop says `cards`.
+     * `chat` (0.37.33, DNA-COMMON-CHAT-FRAME): the pane IS one chat (its head, the thread, the composer `footer`): full-bleed, and the whole frame (head band,
+     * thread, footer) is `--background` on any page, in an aside or in a drawer, whatever `surface` says; the composer field stays white, the 1px lines between
+     * the zones stay, and a message in it is flat (no border, no shadow). A pane whose own stack holds a thread is drawn as a chat frame without the word.
      */
     readonly content?: PaneContent
     /** PaneSection elements, or one PaneGrid. */
     readonly children?: ReactNode
+    /**
+     * A band fixed at the bottom of the pane (0.37.5): a chat composer, a form's action bar. Give it a `PaneSection as="footer"` (or several PaneSections). The pane body above it
+     * is the pane's own scroll region (no visible scrollbar) and only the body scrolls; the footer never leaves the pane's bottom edge. The footer shares the pane's inset.
+     */
+    readonly footer?: ReactNode
+    /**
+     * A sticky one-row head for an aside or detail pane (0.37.5): the title, a muted sublabel under it and, when `onClose` is given, a small close icon button at the end. It is the
+     * first band of the pane's stack (a `PaneSection align="center"` holding a `PaneHeader`), so the shared head-row mode and the head height token apply; it stays at the top while the body scrolls.
+     */
+    readonly head?: PaneHeadSlot
+}
+
+/** What the `head` slot of a Pane draws. */
+export type PaneHeadSlot = {
+    readonly title: string
+    /** The muted sublabel under the title. */
+    readonly description?: string
+    /** Draws the close icon button at the end of the head. */
+    readonly onClose?: () => void
+    /** The close button's accessible name; required with `onClose`. */
+    readonly closeLabel?: string
 }
 
 type PaneScrollProps =
@@ -155,7 +188,10 @@ const usePaneRegistry = (area: string, inset: PaneInset, checks: boolean): PaneC
  * a divider) to its PaneSections, so dividers and scrollbars stay full-bleed. A pane takes no app class.
  */
 export const Pane = (props: PaneProps) => {
-    const { area, surface = false, inset = "content", label, scroll = false, content: contentKind, children } = props
+    const { area, surface: surfaceProp = false, inset = "content", label, scroll = false, content: contentKind, children, footer, head } = props
+    // A chat frame takes no tone (0.37.33): it is the page tone whatever `surface` says, and keeps the surface nesting (a card in it is bordered, never lifted).
+    const isChat = contentKind === "chat"
+    const surface = surfaceProp && !isChat
     const models = useContext(PaneModelsContext)
     const pane = usePaneRegistry(area, inset, true)
     const shown = "flex"
@@ -174,7 +210,16 @@ export const Pane = (props: PaneProps) => {
         }
     }
     const style: CustomProperties = { gridArea: area, ...vars }
-    const stack = <div className="starci-core-pane-stack" data-grammar-pane-stack="true">{children}</div>
+    const headBand = head === undefined ? null : (
+        <PaneSection align="center">
+            <PaneHeader
+                title={head.title}
+                {...(head.description === undefined ? {} : { description: head.description })}
+                {...(head.onClose === undefined ? {} : { close: { label: head.closeLabel ?? "", onPress: head.onClose } })}
+            />
+        </PaneSection>
+    )
+    const stack = <div className="starci-core-pane-stack" data-grammar-pane-stack="true">{headBand}{children}</div>
     const body = scroll
         ? (
             <VerticalScrollRegionPart
@@ -187,7 +232,15 @@ export const Pane = (props: PaneProps) => {
             </VerticalScrollRegionPart>
         )
         : stack
-    const surfaced = surface ? <SurfaceNesting host="pane">{body}</SurfaceNesting> : body
+    const footed = footer === undefined ? body : (
+        <>
+            {scroll ? body : <div className="starci-core-pane-body" data-grammar-pane-body="true">{body}</div>}
+            <div className="starci-core-pane-footer" data-grammar-pane-footer-slot="true">
+                <div className="starci-core-pane-stack">{footer}</div>
+            </div>
+        </>
+    )
+    const surfaced = isChat ? <SurfaceNesting host="chat">{footed}</SurfaceNesting> : surface ? <SurfaceNesting host="pane">{footed}</SurfaceNesting> : footed
     const content = <PaneContext.Provider value={pane}>{surfaced}</PaneContext.Provider>
     const shared = {
         className: "starci-core-pane",
@@ -196,6 +249,8 @@ export const Pane = (props: PaneProps) => {
         "data-grammar-pane-area": area,
         "data-grammar-pane-surface": surface ? "true" : undefined,
         "data-grammar-pane-scroll": scroll ? "true" : undefined,
+        "data-grammar-pane-head": head === undefined ? undefined : "true",
+        "data-grammar-pane-footer": footer === undefined ? undefined : "true",
         "data-grammar-pane-inset": inset,
         "data-grammar-pane-content": contentKind ?? (surface ? "full" : "cards"),
         "data-grammar-pane-content-explicit": contentKind === undefined ? undefined : "true",
@@ -271,6 +326,66 @@ const gridVars = (models: Models, hasTrigger: (breakpoint: PaneBreakpoint) => bo
     return vars
 }
 
+/** Whether a pane's stack opens with a head: a first band that is a `header`, or one whose first element is a `PaneHeader`. */
+const paneHasHead = (pane: Element): boolean => {
+    const first = pane.querySelector(".starci-core-pane-stack")?.firstElementChild
+    if (first === null || first === undefined) return false
+    return first.tagName === "HEADER" || first.firstElementChild?.classList.contains("starci-core-pane-header") === true
+}
+
+/**
+ * The shared head row (0.37.3) is decided per outermost grid: `row` when EVERY leaf pane (a pane that holds no PaneGrid) has a head, `lone` when only some do,
+ * `none` when none does. CSS cannot ask "does every pane have a head" (no nested `:has`), so the grid writes the answer on its tracks and keeps it current.
+ */
+const useHeadRowMode = () => {
+    const ref = useRef<HTMLDivElement>(null)
+    useEffect(() => {
+        const tracks = ref.current
+        if (tracks === null || tracks.closest(".starci-core-pane") !== null) return undefined
+        const decide = () => {
+            const leaves = Array.from(tracks.querySelectorAll(".starci-core-pane")).filter((pane) => pane.querySelector(".starci-core-pane-grid") === null)
+            const heads = leaves.filter(paneHasHead).length
+            const mode = heads === 0 ? "none" : heads === leaves.length ? "row" : "lone"
+            if (tracks.getAttribute("data-grammar-head-row") !== mode) tracks.setAttribute("data-grammar-head-row", mode)
+        }
+        decide()
+        const observer = new MutationObserver(decide)
+        observer.observe(tracks, { childList: true, subtree: true })
+        return () => observer.disconnect()
+    }, [])
+    return ref
+}
+
+/** The grid's own width under which its panes stack (the compact boundary, 48rem of 16px). */
+const STACKED_UNDER_PX = 768
+
+/**
+ * PANE-GRID-STACKED (0.37.14): CSS container queries pick the arrangement, but they cannot restyle the grid's own box, so the grid writes `data-grammar-pane-stacked="grow"`
+ * on itself while it is narrower than the stacking breakpoint and holds no chat thread or footer; the stylesheet then lets the grid, its tracks and its panes grow with their content (the page scrolls once).
+ */
+const useStackedMode = () => {
+    const ref = useRef<HTMLElement>(null)
+    useLayoutEffect(() => {
+        const grid = ref.current
+        if (grid === null) return undefined
+        const decide = () => {
+            // A grid with a chat thread (a scrolling band) or a pane footer keeps its bounded height: only those scroll inside their pane. A `Pane scroll` is no such band (0.37.21): stacked, it grows too and the page scrolls once.
+            const hasBounded = grid.querySelector('.starci-core-pane[data-grammar-pane-footer="true"], .starci-core-pane-section[data-grammar-pane-section-scroll="true"]') !== null
+            const isGrowing = grid.getBoundingClientRect().width < STACKED_UNDER_PX && !hasBounded
+            if (isGrowing) grid.setAttribute("data-grammar-pane-stacked", "grow")
+            else grid.removeAttribute("data-grammar-pane-stacked")
+        }
+        decide()
+        const mutations = new MutationObserver(decide)
+        mutations.observe(grid, { childList: true, subtree: true })
+        if (typeof ResizeObserver === "undefined") return () => mutations.disconnect()
+        const observer = new ResizeObserver(decide)
+        observer.observe(grid)
+        return () => { observer.disconnect(); mutations.disconnect() }
+    }, [])
+    return ref
+}
+
 /**
  * Generic bounded pane grid: named areas laid out flush, a divider between adjacent panes, each pane optionally on the
  * surface ground and optionally its own scroll owner.
@@ -291,6 +406,8 @@ export const PaneGrid = (props: PaneGridProps) => {
     const stray = flat.find((child) => !isPane(child))
     if (stray !== undefined) throw new Error(`PANE_GRID_CHILD_NOT_PANE: ${childTypeName(stray)}`)
     const panes = flat.filter(isPane)
+    const tracksRef = useHeadRowMode()
+    const gridRef = useStackedMode()
     const drawers = panes.filter((pane) => pane.props.collapse === "drawer")
     const hasBar = (pane: ReactElement<PaneProps>) => pane.props.trigger === undefined || pane.props.trigger === "bar"
     const [openHeads, setOpenHeads] = useState<ReadonlySet<string>>(() => new Set())
@@ -334,6 +451,7 @@ export const PaneGrid = (props: PaneGridProps) => {
     return (
         <section
             {...sectionProps}
+            ref={gridRef}
             aria-label={label}
             className={"starci-core-pane-grid"}
             data-component="PaneGrid"
@@ -354,7 +472,7 @@ export const PaneGrid = (props: PaneGridProps) => {
             )}
             <PaneModelsContext.Provider value={models}>
                 <PaneOpenerContext.Provider value={opener}>
-                    <div className="starci-core-pane-grid-tracks" data-contract="GAP-0" style={style}>
+                    <div ref={tracksRef} className="starci-core-pane-grid-tracks" data-contract="GAP-0" style={style}>
                         {panes}
                     </div>
                 </PaneOpenerContext.Provider>

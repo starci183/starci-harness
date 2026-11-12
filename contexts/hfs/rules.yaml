@@ -2322,7 +2322,7 @@ rules:
       - {kind: eslint-grammar-core, id: mascot-asset-slot-required}
   - id: R340
     code: FE_RAISED_SURFACE_IN_SURFACE
-    law: A surface never stands inside another surface, dialogs and drawers included; a SurfaceCard that a SurfaceCard, a Pane surface, or a Dialog, Drawer, AlertDialog or Popover of the same file encloses is refused. The Grammar has one depth, raised, and draws no nested edge, and throws the same refusal in development. An overlay's trigger is not its content. Across files the whole-program rule closes it (R356).
+    law: 'A card never stands inside another card; a SurfaceCard that another SurfaceCard of the same file encloses is refused. A white Pane surface, Drawer, Dialog, AlertDialog or Popover HOSTS cards: on a white ground a card is the group and draws a 1px border with no shadow (SURFACE-ELEVATION). The Grammar throws the card-in-card refusal in development. Across files the whole-program rule closes it (R356).'
     failureCodes:
       - FE_RAISED_SURFACE_IN_SURFACE
     enforcers:
@@ -2450,7 +2450,7 @@ rules:
 
   - id: R356
     code: FE_SURFACE_NESTING
-    law: "Across files, a card is not drawn inside a card, a Pane surface or an overlay, a DataTable not inside a card, a PaneGrid stands only in Page chrome=\"panes\" or a Pane, a Section or Heading never holds just one card, and a labelled card is not repeated in the peer-card layout Grid kind=\"cards\"."
+    law: "Across files, a card is not drawn inside a card (a white Pane surface or overlay hosts cards), a DataTable not inside a card, a PaneGrid stands only in Page chrome=\"panes\" or a Pane, a Section or Heading never holds just one card, and a labelled card is not repeated in the peer-card layout Grid kind=\"cards\"."
     failureCodes:
       - FE_SURFACE_NESTING
     enforcers:

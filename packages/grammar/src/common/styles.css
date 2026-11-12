@@ -22,6 +22,7 @@
         --grammar-inline-gap: 0.5rem;
         --grammar-row-gap: 0.75rem;
         --grammar-section-gap: 1.5rem;
+        --grammar-section-head-size: 2rem;
         --grammar-region-gap: 2rem;
         /*
          * THE PROXIMITY LAW (owner, 2026-11-09): inside any container, its children stand at least ONE step closer than
@@ -71,9 +72,8 @@
         --grammar-control-padding-inline-sm: 0.5rem;
         --grammar-control-padding-inline-md: 0.75rem;
         --grammar-control-padding-inline-lg: 1.5rem;
-        --grammar-control-padding-glyph-sm: 0.25rem;
-        --grammar-control-padding-glyph-md: 0.5rem;
-        --grammar-control-padding-glyph-lg: 0.75rem;
+        --grammar-button-icon-padding-sm: 0.75rem;
+        --grammar-button-icon-padding: 1rem;
         /* The Mascot scale: square boxes sm 96px, md 160px, lg 240px; the hero fills its host's height up to the cap. */
         --grammar-mascot-sm: 6rem;
         --grammar-mascot-md: 10rem;
@@ -259,21 +259,35 @@
         padding: 0;
     }
 
+    /* `fill` (0.37.3): a section that is a cell of a stretched grid fills it, and its body (everything between the head and the caption) takes what is left. */
+    .starci-core-section[data-grammar-section-fill="true"] {
+        block-size: 100%;
+        min-block-size: 0;
+    }
+
+    .starci-core-section[data-grammar-section-fill="true"] > :not(.starci-core-section-header, .starci-core-section-caption) {
+        flex: 1 1 auto;
+        min-block-size: 0;
+    }
+
     /* The head row: the copy and the page command are companions of one unit (GAP-2); the command hugs its label. */
     .starci-core-section-header {
         display: flex;
         min-width: 0;
-        flex-wrap: wrap;
+        /* ONE nowrap row of a fixed height (0.37.3): the label truncates before the chip or the link ever drops to a new line. */
+        flex-wrap: nowrap;
         align-items: center;
         justify-content: space-between;
+        /* A fixed height (0.37.3): the 20px label row and the 32px info button both fit, so no head is taller or shorter than another. */
+        block-size: var(--grammar-section-head-size);
         gap: var(--grammar-inline-gap);
     }
 
-    /* The copy keeps a readable basis, so a narrow header wraps its action below instead of crushing the copy. */
+    /* The copy gives way first: the label truncates, the action and the chip keep their size. */
     .starci-core-section-header-copy {
         display: flex;
         min-width: 0;
-        flex: 1 1 min(100%, 12rem);
+        flex: 1 1 0%;
         flex-direction: column;
         gap: var(--grammar-identity-gap);
     }
@@ -841,6 +855,21 @@
         white-space: nowrap;
     }
 
+    /*
+     * LABEL / SUBLABEL HIERARCHY (0.37.7, LABEL-SUBLABEL-HIERARCHY). A Label (section head, 14 / 500) stands one ROW step (12) above its content: the Section's own gap and the card's
+     * label gap are both --grammar-row-gap. A Sublabel (12 / 500 muted) names a group nested in a labelled section and stands one INLINE step (8) above its card; sibling groups
+     * ALSO stand 8 apart (owner: they must read as belonging to their Label); the larger step (24) is only BETWEEN top-level Label sections. A section or card with a sublabel has no Label of its own (the types refuse both).
+     */
+    .starci-core-section[data-grammar-section-sublabel="true"],
+    .starci-core-surface-card[data-grammar-surface-sublabel="true"] {
+        --starci-core-surface-card-gap: var(--grammar-inline-gap);
+        gap: var(--grammar-inline-gap);
+    }
+
+    :is(.starci-core-section[data-grammar-section-sublabel="true"], .starci-core-surface-card[data-grammar-surface-sublabel="true"]) + :is(.starci-core-section[data-grammar-section-sublabel="true"], .starci-core-surface-card[data-grammar-surface-sublabel="true"]) {
+        margin-block-start: calc(var(--grammar-inline-gap) - var(--grammar-row-gap));
+    }
+
     /* Sublabel: the group label above a card inside a section - small (12), weight 500, muted. */
     .starci-core-sublabel {
         min-width: 0;
@@ -982,25 +1011,32 @@
         min-width: 0;
         width: 100%;
         flex-direction: column;
-        gap: var(--starci-core-surface-card-gap, var(--grammar-inline-gap));
+        gap: var(--starci-core-surface-card-gap, var(--grammar-row-gap));
     }
 
     .starci-core-grid[data-grammar-grid-kind="cards"] > .starci-core-surface-card {
-        --starci-core-surface-card-gap: var(--grammar-identity-gap);
+        --starci-core-surface-card-gap: var(--grammar-row-gap);
+        block-size: 100%;
     }
 
     .starci-core-surface-label {
         display: flex;
         min-width: 0;
         flex-direction: row;
-        align-items: baseline;
-        justify-content: space-between;
+        flex-wrap: nowrap;
+        align-items: center;
+        /* The chip and the fact sit right after the label (0.37.3); only the end action takes the far end (margin-inline-start: auto). */
+        justify-content: flex-start;
+        block-size: var(--grammar-section-head-size);
         gap: var(--grammar-inline-gap);
     }
 
     .starci-core-surface-label > :first-child {
         min-width: 0;
         margin: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     /* A label row carrying both a fact and an end action: label and fact read together, the action holds the end. */
@@ -1131,12 +1167,12 @@
         box-shadow: var(--surface-shadow);
     }
 
-    :is(.starci-core-surface, .starci-core-pane[data-grammar-pane-surface="true"], .starci-core-drawer, .starci-core-dialog-container, .starci-core-popover) :is(.starci-core-surface, .starci-core-section-list, .starci-core-data-table[data-grammar-table-surface="card"], .starci-core-empty-notice) {
+    :is(.starci-core-surface, .starci-core-pane[data-grammar-pane-surface="true"], .starci-core-pane[data-grammar-pane-content="chat"], .starci-core-drawer, .starci-core-dialog-container, .starci-core-popover, .starci-core-message-bubble-body) :is(.starci-core-surface, .starci-core-section-list, .starci-core-data-table[data-grammar-table-surface="card"], .starci-core-empty-notice) {
         box-shadow: none;
     }
 
     /* SURFACE-ELEVATION: a surface on a white surface is bordered, with no shadow. A framed notice stands bordered in a white pane, drawer, dialog or popover. */
-    :is(.starci-core-surface, .starci-core-pane[data-grammar-pane-surface="true"], .starci-core-drawer, .starci-core-dialog-container, .starci-core-popover) :is(.starci-core-surface, .starci-core-section-list),
+    :is(.starci-core-surface, .starci-core-pane[data-grammar-pane-surface="true"], .starci-core-pane[data-grammar-pane-content="chat"], .starci-core-drawer, .starci-core-dialog-container, .starci-core-popover, .starci-core-message-bubble-body) :is(.starci-core-surface, .starci-core-data-table[data-grammar-table-surface="card"], .starci-core-section-list),
     :is(.starci-core-pane[data-grammar-pane-surface="true"], .starci-core-drawer, .starci-core-dialog-container, .starci-core-popover) .starci-core-empty-notice:not([data-grammar-error-layout]) {
         border: 1px solid var(--separator);
     }
@@ -1165,7 +1201,25 @@
     }
 
     /*
-     * Proximity: zones are divided by seams (one line, gap 0), and each zone spaces its own parts by the inline step at most,
+     * ROW-EDGE-PADDING (0.37.25, owner 2026-11-10): the padding of a row follows what its side touches. A side on the card's edge (the left and right, the FIRST row's top when no header
+     * zone stands above it, the LAST row's bottom when no footer zone stands below it) is p-4 (`--grammar-card-padding-block`, 16); a side on a separator (between rows, or under a zone's divider) is p-3
+     * (`--grammar-row-gap`). Controls included: a row GROWS around a tall control (min-block-size, never a fixed block-size in a row slot). A single-row card has p-4 above and below.
+     */
+    [data-grammar-surface-content]:not([data-grammar-surface-headed]) .starci-core-owned-collection > .starci-core-static-row:first-child,
+    .starci-core-section-list > .starci-core-owned-collection > .starci-core-static-row:first-child,
+    [data-grammar-surface-content]:not([data-grammar-surface-headed]) .starci-core-select-rows > .starci-core-select-item:first-child > :is(.starci-core-select-row, .starci-core-select-control),
+    .starci-core-surface[data-grammar-surface-kind="details"] [data-grammar-surface-content]:not([data-grammar-surface-headed]) .starci-core-description-pair:first-child {
+        padding-block-start: var(--grammar-card-padding-block);
+    }
+
+    [data-grammar-surface-content]:not([data-grammar-surface-footed]) .starci-core-owned-collection > .starci-core-static-row:last-child,
+    .starci-core-section-list > .starci-core-owned-collection > .starci-core-static-row:last-child,
+    [data-grammar-surface-content]:not([data-grammar-surface-footed]) .starci-core-select-rows > .starci-core-select-item:last-child > :is(.starci-core-select-row, .starci-core-select-control),
+    .starci-core-surface[data-grammar-surface-kind="details"] [data-grammar-surface-content]:not([data-grammar-surface-footed]) .starci-core-description-pair:last-child {
+        padding-block-end: var(--grammar-card-padding-block);
+    }
+
+    /* Proximity: zones are divided by seams (one line, gap 0), and each zone spaces its own parts by the inline step at most,
      * so a zone's parts are always closer than the zones are; nothing changed in 0.27.
      *
      * Zones: typed bands above and below a card's body. The card is flush; the shell draws the ONE divider between neighbouring zones and
@@ -1198,8 +1252,17 @@
         padding-inline: var(--grammar-card-padding-inline);
     }
 
+    /*
+     * THE ZONE SEAM (0.37.5): the line between header zones, and between the zones and the body, must read on the white card AND on the grey table frame. --separator is a
+     * 92%-lightness step: on the grey frame (95%) it measured 233,227,227 on 243,238,238, nearly invisible. The seam is the foreground at 14% over whatever ground it
+     * stands on, so it keeps the same contrast on both.
+     */
+    .starci-core-surface {
+        --starci-core-zone-seam: color-mix(in oklab, var(--foreground) 14%, transparent);
+    }
+
     .starci-core-surface-zone:has(~ .starci-core-surface-main) {
-        border-block-end: 1px solid var(--separator);
+        border-block-end: 1px solid var(--starci-core-zone-seam);
     }
 
     /* A switch zone is the card's first header row, inside the surface: an optional title at the leading edge, the primary tabs at the trailing edge, the zone's one line under it. */
@@ -1208,7 +1271,17 @@
         align-items: center;
         justify-content: space-between;
         gap: var(--grammar-inline-gap);
-        padding-block: var(--grammar-inline-gap);
+        /* ROW-EDGE-PADDING (0.37.25): a switch zone is a row like any other, p-3 to its divider (was the 8px inline step, the pill nearly touched the line). */
+        padding-block: var(--grammar-row-gap);
+    }
+
+    /* ROW-EDGE-PADDING (0.37.25): a header zone that is the card's first row keeps p-4 to the card's top edge; a footer zone that is the last keeps p-4 to the bottom edge. A tab strip stands on its own line and figures carry no padding. */
+    [data-grammar-surface-content] > .starci-core-surface-zone:first-child:not([data-grammar-zone="figures"], [data-grammar-zone-line="tabs"]) {
+        padding-block-start: var(--grammar-card-padding-block);
+    }
+
+    [data-grammar-surface-content] > .starci-core-surface-main ~ .starci-core-surface-zone:last-child:not([data-grammar-zone="figures"]) {
+        padding-block-end: var(--grammar-card-padding-block);
     }
 
     .starci-core-surface-zone-title {
@@ -1223,7 +1296,7 @@
     }
 
     .starci-core-surface-main ~ .starci-core-surface-zone {
-        border-block-start: 1px solid var(--separator);
+        border-block-start: 1px solid var(--starci-core-zone-seam);
     }
 
     .starci-core-surface-zone[data-grammar-zone="figures"] {
@@ -1235,18 +1308,7 @@
         justify-content: center;
     }
 
-    /* A table card (0.36.0) IS HeroUI's grey frame: no edge, the grey ground, its footer zone in the grey with no seam, the summary at the start and the pages at the end. */
-    .starci-core-surface[data-grammar-surface-kind="table"] {
-        border: 0;
-        background: var(--surface-secondary);
-    }
-
-    .starci-core-surface[data-grammar-surface-kind="table"] .starci-core-surface-main ~ .starci-core-surface-zone {
-        border-block-start: 0;
-        padding-inline: var(--grammar-inset-nested);
-        padding-block: var(--grammar-row-gap) var(--grammar-inline-gap);
-    }
-
+    /* A table card (0.37.8) is a list card: the same flush face (shadow on the well, a border on a white surface, set above), white, its zones divided by the zone seam, the summary at the start and the pages at the end. */
     .starci-core-surface[data-grammar-surface-kind="table"] .starci-core-surface-zone[data-grammar-zone="paging"] {
         display: block;
     }
@@ -1316,21 +1378,6 @@
     .starci-core-surface-zone-select .starci-core-select-trigger,
     .starci-core-surface-zone-select .select__value {
         white-space: nowrap;
-    }
-
-    /* A card title's description: one muted small line under the label, 4 under it. */
-    .starci-core-surface-label[data-grammar-label-described="true"] {
-        flex-wrap: wrap;
-        row-gap: var(--grammar-identity-gap);
-    }
-
-    .starci-core-surface-description {
-        flex: 1 0 100%;
-        min-width: 0;
-        margin: 0;
-        color: var(--muted);
-        font-size: var(--grammar-text-sm);
-        line-height: var(--grammar-leading-sm);
     }
 
     /*
@@ -1939,8 +1986,8 @@
      * spans the full column under it. The frame becomes a flex row (tabs grow, the end hugs), the end stretches to the strip's height and
      * centres its command there, like a tab: a command at the sm control height stands on the line with no padding below it.
      */
-    .starci-core-tabs-frame[data-grammar-tabs-has-end="true"] { display: flex; align-items: flex-end; }
-    .starci-core-tabs-frame[data-grammar-tabs-has-end="true"] .starci-core-tabs { flex: 1 1 auto; width: auto; }
+    .starci-core-tabs-frame[data-grammar-tabs-has-control="true"] { display: flex; align-items: flex-end; }
+    .starci-core-tabs-frame[data-grammar-tabs-has-control="true"] .starci-core-tabs { flex: 1 1 auto; width: auto; }
     .starci-core-tabs-end {
         display: flex;
         flex: none;
@@ -2006,6 +2053,43 @@
         align-items: center;
     }
 
+    /*
+     * LIST-ROW-DIFF (0.37.28, owner drawing "So sánh phiên bản", GitHub-style): a diff row's ground is its tone's soft pair (added success, removed danger, changed
+     * warning), full width like the row; the gutter mark at its start (+, −, ~) is monospace in the pair's ink, one width, so the marks stand in a column. A removed
+     * row's title is struck through; a changed row's "from → to" is the 12 muted line. The meaning is the glyph and the hidden label, never the colour alone. The row
+     * keeps the row padding (ROW-EDGE-PADDING).
+     */
+    .starci-core-list-row[data-grammar-diff="added"] { --starci-row-diff-ground: var(--success-soft); --starci-row-diff-ink: var(--success-soft-foreground); }
+    .starci-core-list-row[data-grammar-diff="removed"] { --starci-row-diff-ground: var(--danger-soft); --starci-row-diff-ink: var(--danger-soft-foreground); }
+    .starci-core-list-row[data-grammar-diff="changed"] { --starci-row-diff-ground: var(--warning-soft); --starci-row-diff-ink: var(--warning-soft-foreground); }
+    .starci-core-list-row[data-grammar-diff] { background: var(--starci-row-diff-ground); }
+    /* The mark stands on the title's line, as a diff gutter does, not centred on a two-line row. */
+    .starci-core-list-row:is([data-grammar-diff], [data-grammar-diff-skeleton]) > .starci-core-list-row-leading { align-self: flex-start; }
+    /* The loading diff row keeps the gutter's box (same column, same row box) and shows no glyph. */
+    .starci-core-list-row[data-grammar-diff-skeleton] .starci-core-list-row-diff { visibility: hidden; }
+
+    .starci-core-list-row-diff {
+        display: inline-flex;
+        flex: none;
+        justify-content: center;
+        inline-size: 1ch;
+        color: var(--starci-row-diff-ink);
+        font-family: var(--font-mono);
+        font-size: var(--grammar-text-md);
+        font-weight: var(--grammar-weight-medium);
+        line-height: var(--grammar-leading-md);
+    }
+
+    .starci-core-list-row-leading:has(> .starci-core-list-row-diff + *) { gap: var(--grammar-row-gap); }
+    .starci-core-list-row[data-grammar-diff="removed"] .starci-core-list-row-name { text-decoration-line: line-through; text-decoration-color: var(--starci-row-diff-ink); }
+
+    .starci-core-list-row-change {
+        color: var(--muted);
+        font-size: var(--grammar-text-xs);
+        line-height: var(--grammar-leading-xs);
+        overflow-wrap: anywhere;
+    }
+
     .starci-core-list-row-copy {
         display: flex;
         min-width: 0;
@@ -2032,6 +2116,104 @@
         overflow-wrap: anywhere;
     }
 
+    /*
+     * SELECT CARD (0.37.5): `SurfaceCard kind="select"`, a choice list. Every row is a HeroUI Checkbox (the vendor label is the whole row, so the whole row is the hit
+     * target) with a title (14, 500) and, under it, a subtitle (12, muted). The rows touch the card's edges; a 1px divider spans the FULL width between rows (no inset).
+     * The card face (shadow on the well, 1px border on a white surface) is the flush face of every collection kind.
+     */
+    .starci-core-select-rows {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+    }
+
+    /* One item = the row's checkbox label (the hit target) and, when the row has a `control`, that slot as a SIBLING, so pressing it never reaches the label. */
+    .starci-core-select-item {
+        display: flex;
+        min-width: 0;
+        align-items: flex-start;
+    }
+
+    .starci-core-select-item + .starci-core-select-item {
+        border-block-start: var(--grammar-hairline) solid var(--separator);
+    }
+
+    .starci-core-select-item:hover:has(.starci-core-select-row:not([data-disabled="true"])) { background: var(--surface-secondary); }
+
+    .starci-core-select-row {
+        box-sizing: border-box;
+        display: flex;
+        flex: 1 1 0;
+        inline-size: auto;
+        min-width: 0;
+        align-items: flex-start;
+        /* ROW-EDGE-PADDING (0.37.25): p-4 to the card's left edge (was the 12px inset), p-3 to the separators. */
+        padding: var(--grammar-row-gap) var(--grammar-card-padding-inline);
+        cursor: pointer;
+    }
+
+    .starci-core-select-item[data-grammar-select-has-control="true"] > .starci-core-select-row { padding-inline-end: var(--grammar-row-gap); }
+    .starci-core-select-row[data-disabled="true"] { cursor: not-allowed; }
+
+    /* The control slot (0.37.13): any Grammar content at the row's end, centred on the title line, never shrinking (the copy wraps first); dimmed and blocked on a disabled row. */
+    .starci-core-select-control {
+        display: inline-flex;
+        flex: none;
+        align-items: center;
+        box-sizing: border-box;
+        /* ROW-CONTROL-CLEARANCE (0.37.25): the slot keeps the row's padding. Its box is at least the row's title line (row padding + one line); a control taller than the line GROWS the row
+           (the slot's padding-block keeps --grammar-row-gap above and below it, never touching the separator) and the control stays centred. */
+        min-block-size: calc(var(--grammar-leading-md) + 2 * var(--grammar-row-gap));
+        padding-block: var(--grammar-row-gap);
+        /* p-4 to the card's right edge (was the 12px inset). */
+        padding-inline-end: var(--grammar-card-padding-inline);
+    }
+
+    /* A primary Tabs pill in the control slot is the small switch: a tight pill (text stays 14, every tab is 14), so it reads as a row's setting, not a bar. */
+    .starci-core-select-control .starci-core-tabs .tabs__tab {
+        min-block-size: 0;
+        padding-block: var(--grammar-identity-gap);
+        padding-inline: var(--grammar-row-gap) !important;
+    }
+
+    .starci-core-select-control[data-grammar-select-control-disabled="true"] { opacity: var(--disabled-opacity); pointer-events: none; }
+
+    .starci-core-select-row .starci-core-choice-content {
+        inline-size: 100%;
+        align-items: flex-start;
+    }
+
+    /*
+     * ROW-CONTROL-CENTRE (0.37.29, owner "căn center cho control và checkbox + text"): in a row with a control, the checkbox and its text block are ONE group, and the group and the
+     * control are centred on each other. Both boxes stretch to the row (the item's height) and keep the row padding (p-4 at the card's edges, p-3 at a separator), so their centres
+     * meet; the checkbox centres on the text block, and the 40px touch target of a phone stays (the group's box is at least 40 and its content is centred in it). A row without a
+     * control keeps its top alignment.
+     */
+    .starci-core-select-item[data-grammar-select-has-control="true"] { align-items: stretch; }
+    .starci-core-select-item[data-grammar-select-has-control="true"] > .starci-core-select-row { flex-direction: column; justify-content: center; align-items: stretch; }
+    .starci-core-select-item[data-grammar-select-has-control="true"] > .starci-core-select-row .starci-core-choice-content { align-items: center; }
+
+    .starci-core-select-copy {
+        display: flex;
+        min-width: 0;
+        flex: 1;
+        flex-direction: column;
+        gap: var(--grammar-identity-gap);
+    }
+
+    .starci-core-select-copy [data-grammar-field-label] {
+        font-size: var(--grammar-text-md);
+        font-weight: var(--grammar-weight-medium);
+        line-height: var(--grammar-leading-md);
+    }
+
+    .starci-core-select-copy [data-grammar-field-description] {
+        color: var(--muted);
+        font-weight: var(--grammar-weight-regular);
+        font-size: var(--grammar-text-xs);
+        line-height: var(--grammar-leading-xs);
+    }
+
     /* A pressable row: the title is the one focusable button and its hit area is the whole row; commands and the menu sit above it. */
     .starci-core-list-row[data-grammar-row-pressable="true"] { position: relative; }
     .starci-core-list-row[data-grammar-row-pressable="true"]:hover { background: var(--surface-secondary); }
@@ -2048,6 +2230,18 @@
     }
 
     .starci-core-list-row-press::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+    }
+
+    /* 0.37.6 (LIST-ROW-NAVIGATION): a row with an `href` is as pressable as one with `onPress`: its title Link stretches over the whole row, the chevron ends it. */
+    .starci-core-list-row[data-grammar-row-pressable="true"] .starci-core-list-row-name > .starci-core-link {
+        position: static;
+    }
+
+    .starci-core-list-row[data-grammar-row-pressable="true"] .starci-core-list-row-name > .starci-core-link::after {
         content: "";
         position: absolute;
         inset: 0;
@@ -2148,6 +2342,8 @@
     .starci-core-list-row[data-grammar-skeleton="true"] .starci-core-list-row-leading[data-grammar-leading-size="sm"] .starci-core-list-row-skeleton-tile { inline-size: 2rem; block-size: 2rem; }
     .starci-core-list-row-skeleton-tile > .starci-core-skeleton { inline-size: 100%; block-size: 100%; aspect-ratio: auto; border-radius: var(--grammar-radius-md); }
     .starci-core-list-row-control { display: inline-flex; min-width: 0; align-items: center; }
+    /* A Progress in a row control (0.37.21): an intrinsic bar of 7rem that still shrinks in a narrow row, never a collapsed dot. */
+    .starci-core-list-row-control > [data-component="Progress"] { flex: 0 1 var(--grammar-row-progress-width); inline-size: var(--grammar-row-progress-width); min-inline-size: 3rem; max-inline-size: 100%; }
     .starci-core-list-row-skeleton-action { display: block; inline-size: 4.5rem; block-size: 2rem; }
     .starci-core-list-row-skeleton-action > .starci-core-skeleton { block-size: 100%; aspect-ratio: auto; }
 
@@ -2217,6 +2413,33 @@
 
         .starci-core-list-row[data-grammar-leading="true"] > .starci-core-list-row-detail {
             grid-column: 2 / -1;
+        }
+    }
+
+    /*
+     * A row with a `value` (0.37.36): the value is a grid track of its own, between the copy and the end group, so value | badges | command are one line, centred
+     * against the copy, at every width the row is a grid (the end placement at all widths, any row from 28rem). Before, the templates counted no value track, so the
+     * command was auto-placed onto a second line. The tracks come from the row's own flags: leading, copy, value, trail (meta, badges), commands. A key-value list
+     * keeps its two-column rule (its value is the row's second column).
+     */
+    [data-grammar-list]:not([data-grammar-list-layout="keyValue"]) > .starci-core-list-row[data-grammar-row][data-grammar-value="true"] {
+        --starci-row-track-leading: ;
+        --starci-row-track-trail: ;
+        --starci-row-track-actions: ;
+    }
+
+    [data-grammar-list]:not([data-grammar-list-layout="keyValue"]) > .starci-core-list-row[data-grammar-row][data-grammar-value="true"][data-grammar-leading="true"] { --starci-row-track-leading: auto; }
+    [data-grammar-list]:not([data-grammar-list-layout="keyValue"]) > .starci-core-list-row[data-grammar-row][data-grammar-value="true"][data-grammar-trail="true"] { --starci-row-track-trail: auto; }
+    [data-grammar-list]:not([data-grammar-list-layout="keyValue"]) > .starci-core-list-row[data-grammar-row][data-grammar-value="true"][data-grammar-actions="true"] { --starci-row-track-actions: auto; }
+
+    [data-grammar-list]:not([data-grammar-list-layout="keyValue"]) > .starci-core-list-row[data-grammar-row][data-grammar-value="true"][data-grammar-action-placement="end"] {
+        display: grid;
+        grid-template-columns: var(--starci-row-track-leading) minmax(0, 1fr) auto var(--starci-row-track-trail) var(--starci-row-track-actions);
+    }
+
+    @container starci-core-surface (min-width: 28.001rem) {
+        [data-grammar-list]:not([data-grammar-list-layout="keyValue"]) > .starci-core-list-row[data-grammar-row][data-grammar-value="true"] {
+            grid-template-columns: var(--starci-row-track-leading) minmax(0, 1fr) auto var(--starci-row-track-trail) var(--starci-row-track-actions);
         }
     }
 
@@ -2420,7 +2643,13 @@
 
     /* The action stands at the start of the foot; the overflow menu is pushed to its end. */
     .starci-core-tile-foot > .starci-core-tile-actions { flex: 1 1 auto; }
-    .starci-core-tile-menu { display: inline-flex; margin-inline-start: auto; }
+    /* 0.37.8: with a whole-card action the menu trigger stands above the stretched link (z-index 1) as its own tab stop and press target. */
+    /* 0.37.10: the ⋯ of a body card stands at its top end, above the whole-card link (z-index 1) as its own target. */
+    .starci-core-body-menu { position: absolute; z-index: 2; inset-block-start: var(--grammar-inline-gap); inset-inline-end: var(--grammar-inline-gap); display: inline-flex; }
+    /* The room for the ⋯ is reserved ONLY on the content the menu sits beside (0.37.12): an unzoned card pads its content; a zoned card keeps its header and footer zones, and their dividers, full width and narrows only its padded main. */
+    .starci-core-surface:has(> .starci-core-body-menu) > [data-grammar-surface-content="true"]:not([data-grammar-surface-zoned="true"]) { padding-inline-end: calc(var(--grammar-touch-size) + var(--grammar-inline-gap)); }
+    .starci-core-surface:has(> .starci-core-body-menu) > [data-grammar-surface-content="true"][data-grammar-surface-zoned="true"] > [data-grammar-surface-main="padded"] { margin-inline-end: calc(var(--grammar-touch-size) + var(--grammar-inline-gap)); }
+    .starci-core-tile-menu { position: relative; z-index: 2; display: inline-flex; margin-inline-start: auto; }
 
     .starci-core-accordion-heading {
         margin: 0 !important;
@@ -2509,9 +2738,18 @@
     }
 
     .starci-core-markdown-article h1 { font-size: var(--grammar-text-3xl); }
-    .starci-core-markdown-article h2 { font-size: var(--grammar-text-2xl); }
-    .starci-core-markdown-article h3 { font-size: var(--grammar-text-xl); }
-    .starci-core-markdown-article h4 { font-size: var(--grammar-text-lg); }
+    /*
+     * 0.37.14 (ARTICLE-HEADINGS-14, type law 14/12): h2 to h4 are 14 like every UI text, ranked by weight and tone (bold, semibold, semibold muted) and by the space above them
+     * (a section step, a row step, an inline step); the heading elements and their outline stay. h1 is the article's own title.
+     */
+    .starci-core-markdown-article :where(h2, h3, h4) {
+        font-size: var(--grammar-text-md);
+        line-height: var(--grammar-leading-md);
+    }
+
+    .starci-core-markdown-article h2 { font-weight: var(--grammar-weight-bold); }
+    .starci-core-markdown-article h3 { margin-block-start: var(--grammar-row-gap); }
+    .starci-core-markdown-article h4 { margin-block-start: var(--grammar-inline-gap); color: var(--muted); }
 
     .starci-core-markdown-article :where(p, ul, ol, blockquote, pre, table) {
         margin: 0;
@@ -2529,6 +2767,20 @@
 
     .starci-core-markdown-article li + li {
         margin-top: var(--grammar-identity-gap);
+    }
+
+    /* A GitHub task item (read-only): the box takes the bullet's place; a nested list keeps its own markers. */
+    .starci-core-markdown-article li[data-grammar-markdown-task] {
+        list-style: none;
+    }
+
+    .starci-core-markdown-article li[data-grammar-markdown-task] > input[type="checkbox"] {
+        margin-inline: 0 var(--grammar-inline-gap);
+        vertical-align: middle;
+    }
+
+    .starci-core-markdown-article li > :where(ul, ol) {
+        margin-block-start: var(--grammar-identity-gap);
     }
 
     .starci-core-markdown-article :not(pre) > code {
@@ -2768,11 +3020,15 @@
     }
 
     @container starci-core-surface (max-width: 28rem) {
-        /* A narrow card stacks its label row, except when the end holds one status badge ("Live"): it stays beside the label. */
-        .starci-core-surface-label:not(:has(> .starci-core-surface-label-end > [data-component="Badge"]:only-child)) {
+        /* A narrow card stacks its label row only when it holds an end action (0.37.21), except when the end holds one status badge ("Live"): it stays beside the label. A label with a count chip or a fact stays one row at any width: the label truncates, the chip follows it (before, the fixed-height column squeezed the label to nothing). */
+        .starci-core-surface-label:has(> .starci-core-surface-label-end):not(:has(> .starci-core-surface-label-end > [data-component="Badge"]:only-child)) {
             align-items: flex-start;
             flex-direction: column;
+            block-size: auto;
+            min-block-size: var(--grammar-section-head-size);
         }
+
+        .starci-core-surface-label:has(> .starci-core-surface-label-end):not(:has(> .starci-core-surface-label-end > [data-component="Badge"]:only-child)) > :first-child { flex: none; max-inline-size: 100%; }
 
         .starci-core-static-row {
             gap: var(--starci-core-row-gap-compact);
@@ -3348,10 +3604,16 @@
      * report layout's own token, --grammar-content-max (80rem), centred in the well. The well's ground still fills the whole pane,
      * and the side (surface) panes and the header band are not capped.
      */
-    .starci-core-page[data-grammar-page-layout="workspace"] .starci-core-pane[data-grammar-pane-content="cards"] .starci-core-pane-stack {
+    .starci-core-page[data-grammar-page-layout="workspace"] .starci-core-pane[data-grammar-pane-content="cards"] > .starci-core-pane-stack {
         inline-size: 100%;
         max-inline-size: var(--grammar-content-max);
         margin-inline: auto;
+    }
+
+    /* 0.37.3: a pane that holds a PaneGrid (a tab pane of nested panes) is never capped: the grid and its panes span the full width. */
+    .starci-core-page[data-grammar-page-layout="workspace"] .starci-core-pane:has(> .starci-core-pane-stack > .starci-core-pane-grid) > .starci-core-pane-stack {
+        max-inline-size: none;
+        margin-inline: 0;
     }
 
     /*
@@ -3389,21 +3651,21 @@
         overflow: clip;
     }
 
-    .starci-core-page[data-grammar-page-chrome="panes"] .starci-core-pane:not([data-grammar-pane-scroll="true"]):not(:has(> .starci-core-pane-stack > .starci-core-pane-section[data-grammar-pane-section-scroll="true"])) {
+    .starci-core-page[data-grammar-page-chrome="panes"] .starci-core-pane:not([data-grammar-pane-scroll="true"]):not(:has(> .starci-core-pane-stack > .starci-core-pane-section[data-grammar-pane-section-scroll="true"])):not(:has(> .starci-core-pane-stack > .starci-core-pane-grid)):not([data-grammar-pane-footer="true"]) {
         overflow-y: auto;
         overscroll-behavior: contain;
         scrollbar-width: none;
     }
 
-    .starci-core-page[data-grammar-page-chrome="panes"] .starci-core-pane:not([data-grammar-pane-scroll="true"]):not(:has(> .starci-core-pane-stack > .starci-core-pane-section[data-grammar-pane-section-scroll="true"]))::-webkit-scrollbar {
+    .starci-core-page[data-grammar-page-chrome="panes"] .starci-core-pane:not([data-grammar-pane-scroll="true"]):not(:has(> .starci-core-pane-stack > .starci-core-pane-section[data-grammar-pane-section-scroll="true"])):not(:has(> .starci-core-pane-stack > .starci-core-pane-grid)):not([data-grammar-pane-footer="true"])::-webkit-scrollbar {
         display: none;
     }
 
-    .starci-core-page[data-grammar-page-chrome="panes"] .starci-core-pane:not([data-grammar-pane-scroll="true"]):not(:has(> .starci-core-pane-stack > .starci-core-pane-section[data-grammar-pane-section-scroll="true"])) > .starci-core-pane-stack {
+    .starci-core-page[data-grammar-page-chrome="panes"] .starci-core-pane:not([data-grammar-pane-scroll="true"]):not(:has(> .starci-core-pane-stack > .starci-core-pane-section[data-grammar-pane-section-scroll="true"])):not(:has(> .starci-core-pane-stack > .starci-core-pane-grid)):not([data-grammar-pane-footer="true"]) > .starci-core-pane-stack {
         flex: 1 0 auto;
     }
 
-    .starci-core-page[data-grammar-page-chrome="panes"] .starci-core-pane:not([data-grammar-pane-scroll="true"]):not(:has(> .starci-core-pane-stack > .starci-core-pane-section[data-grammar-pane-section-scroll="true"])) .starci-core-pane-stack > .starci-core-pane-section:is(header, :has(> .starci-core-pane-header)):first-child {
+    .starci-core-page[data-grammar-page-chrome="panes"] .starci-core-pane:not([data-grammar-pane-scroll="true"]):not(:has(> .starci-core-pane-stack > .starci-core-pane-section[data-grammar-pane-section-scroll="true"])):not(:has(> .starci-core-pane-stack > .starci-core-pane-grid)) .starci-core-pane-stack > .starci-core-pane-section:is(header, :has(> .starci-core-pane-header)):first-child {
         position: sticky;
         z-index: 2;
         top: 0;
@@ -3419,11 +3681,11 @@
      * divider at the foot of the row across every pane, crossing the vertical pane dividers. A pane that holds panes of its own is not a head or a spacer; a pane with no head keeps the
      * row: its stack starts below it, white above the line, so the line and the content still align.
      */
-    .starci-core-page[data-grammar-page-layout="workspace"] .starci-core-pane-grid-tracks:not(.starci-core-pane *):has(.starci-core-pane-stack > header.starci-core-pane-section:first-child:not(.starci-core-pane-stack > :not(:first-child) *), .starci-core-pane-stack > .starci-core-pane-section:first-child:not(.starci-core-pane-stack > :not(:first-child) *) > .starci-core-pane-header) {
+    .starci-core-page[data-grammar-page-layout="workspace"] .starci-core-pane-grid-tracks[data-grammar-head-row="row"]:not(.starci-core-pane *):has(.starci-core-pane-stack > header.starci-core-pane-section:first-child:not(.starci-core-pane-stack > :not(:first-child) *), .starci-core-pane-stack > .starci-core-pane-section:first-child:not(.starci-core-pane-stack > :not(:first-child) *) > .starci-core-pane-header) {
         position: relative;
     }
 
-    .starci-core-page[data-grammar-page-layout="workspace"] .starci-core-pane-grid-tracks:not(.starci-core-pane *):has(.starci-core-pane-stack > header.starci-core-pane-section:first-child:not(.starci-core-pane-stack > :not(:first-child) *), .starci-core-pane-stack > .starci-core-pane-section:first-child:not(.starci-core-pane-stack > :not(:first-child) *) > .starci-core-pane-header)::after {
+    .starci-core-page[data-grammar-page-layout="workspace"] .starci-core-pane-grid-tracks[data-grammar-head-row="row"]:not(.starci-core-pane *):has(.starci-core-pane-stack > header.starci-core-pane-section:first-child:not(.starci-core-pane-stack > :not(:first-child) *), .starci-core-pane-stack > .starci-core-pane-section:first-child:not(.starci-core-pane-stack > :not(:first-child) *) > .starci-core-pane-header)::after {
         content: "";
         position: absolute;
         z-index: 3;
@@ -3434,12 +3696,12 @@
         pointer-events: none;
     }
 
-    .starci-core-page[data-grammar-page-layout="workspace"] .starci-core-pane-grid-tracks:not(.starci-core-pane *):has(.starci-core-pane-stack > header.starci-core-pane-section:first-child:not(.starci-core-pane-stack > :not(:first-child) *), .starci-core-pane-stack > .starci-core-pane-section:first-child:not(.starci-core-pane-stack > :not(:first-child) *) > .starci-core-pane-header) .starci-core-pane-stack:not(:has(> header.starci-core-pane-section:first-child)):not(:has(> .starci-core-pane-section:first-child > .starci-core-pane-header)):not(:has(.starci-core-pane-grid)):not(.starci-core-pane-stack > :not(:first-child) *) {
+    .starci-core-page[data-grammar-page-layout="workspace"] .starci-core-pane-grid-tracks[data-grammar-head-row="row"]:not(.starci-core-pane *):has(.starci-core-pane-stack > header.starci-core-pane-section:first-child:not(.starci-core-pane-stack > :not(:first-child) *), .starci-core-pane-stack > .starci-core-pane-section:first-child:not(.starci-core-pane-stack > :not(:first-child) *) > .starci-core-pane-header) .starci-core-pane-stack:not(:has(> header.starci-core-pane-section:first-child)):not(:has(> .starci-core-pane-section:first-child > .starci-core-pane-header)):not(:has(.starci-core-pane-grid)):not(.starci-core-pane-stack > :not(:first-child) *):not(.starci-core-pane-footer > .starci-core-pane-stack) {
         padding-block-start: var(--grammar-pane-head-size);
         background: linear-gradient(var(--surface) 0 0) top / 100% var(--grammar-pane-head-size) no-repeat;
     }
 
-    .starci-core-page[data-grammar-page-layout="workspace"] .starci-core-pane-grid-tracks:not(.starci-core-pane *):has(.starci-core-pane-stack > header.starci-core-pane-section:first-child:not(.starci-core-pane-stack > :not(:first-child) *), .starci-core-pane-stack > .starci-core-pane-section:first-child:not(.starci-core-pane-stack > :not(:first-child) *) > .starci-core-pane-header) .starci-core-pane-stack > .starci-core-pane-section:is(header, :has(> .starci-core-pane-header)):first-child:not(:has(> .starci-core-tabs-frame)):not(.starci-core-pane-stack > :not(:first-child) *) {
+    .starci-core-page[data-grammar-page-layout="workspace"] .starci-core-pane-grid-tracks[data-grammar-head-row="row"]:not(.starci-core-pane *):has(.starci-core-pane-stack > header.starci-core-pane-section:first-child:not(.starci-core-pane-stack > :not(:first-child) *), .starci-core-pane-stack > .starci-core-pane-section:first-child:not(.starci-core-pane-stack > :not(:first-child) *) > .starci-core-pane-header) .starci-core-pane-stack > .starci-core-pane-section:is(header, :has(> .starci-core-pane-header)):first-child:not(:has(> .starci-core-tabs-frame)):not(.starci-core-pane-stack > :not(:first-child) *) {
         box-sizing: border-box;
         flex: none;
         justify-content: center;
@@ -3447,6 +3709,139 @@
         padding-block: 0;
         border-block-end: 0;
         background: var(--surface);
+    }
+
+
+    /*
+     * LONE HEADS (0.37.3; the outermost PaneGrid sets `data-grammar-head-row` = "row" when every leaf pane has a head, "lone" when only some do, "none" when none does): when only SOME panes of the grid have a head there is no shared row, no spacer and no continuous divider. Each head stands alone, at the
+     * shared height token, with its own bottom border; a pane without a head starts its content at the top.
+     */
+    .starci-core-page[data-grammar-page-layout="workspace"] .starci-core-pane-grid-tracks[data-grammar-head-row="lone"]:not(.starci-core-pane *) .starci-core-pane-stack > .starci-core-pane-section:is(header, :has(> .starci-core-pane-header)):first-child:not(:has(> .starci-core-tabs-frame)):not(.starci-core-pane-stack > :not(:first-child) *) {
+        box-sizing: border-box;
+        flex: none;
+        justify-content: center;
+        block-size: var(--grammar-pane-head-size);
+        padding-block: 0;
+        border-block-end: 1px solid var(--separator);
+        background: var(--surface);
+    }
+
+    /*
+     * THE PANE FOOTER (0.37.5): a pane with a `footer` is a column of a body and a band. The pane clips; the body (the scroll region, no scrollbar) takes the room and is
+     * the only part that scrolls; the footer holds the pane's bottom edge, over a hairline.
+     */
+    .starci-core-pane[data-grammar-pane-footer="true"] {
+        overflow: hidden;
+    }
+
+    .starci-core-pane-body {
+        display: flex;
+        min-height: 0;
+        flex: 1 1 0%;
+        flex-direction: column;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        scrollbar-width: none;
+    }
+
+    .starci-core-pane-body::-webkit-scrollbar {
+        display: none;
+    }
+
+    .starci-core-pane-body > .starci-core-pane-stack {
+        flex: 1 0 auto;
+    }
+
+    .starci-core-pane[data-grammar-pane-footer="true"] > .starci-core-pane-scroll {
+        min-height: 0;
+        flex: 1 1 0%;
+    }
+
+    .starci-core-pane-footer {
+        flex: none;
+        border-block-start: 1px solid var(--separator);
+        background: var(--surface);
+    }
+
+    /*
+     * 0.37.31 (the empty band above a chat composer): the footer slot's stack is never a head-row spacer (it is not a pane's stack; the shared head row
+     * padded it by the head size, a 68px white strip between the thread and the suggestions), and its hairline is the first band's rule, so a
+     * `PaneSection rule="start"` in the footer never draws a second line under it.
+     */
+    .starci-core-pane-footer > .starci-core-pane-stack > .starci-core-pane-section:first-child[data-grammar-pane-section-rule="start"] {
+        border-block-start: 0;
+    }
+
+    /*
+     * THE CHAT FRAME (0.37.33, law DNA-COMMON-CHAT-FRAME, owner-approved drawing chat-frame-anywhere). On ANY page a chat is one frame: its head, its thread and its
+     * composer footer are the page tone `--background`, whatever surface it stands on (a white pane, the aside, a drawer, a dialog, a popover); the rest of the page
+     * keeps its own rule (the room list stays white, an aside's other panes stay white). A chat frame is a Pane with `content="chat"` or any pane whose own stack
+     * holds a thread (`PaneSection scroll role="log"`); the role decides, the app chooses no tone (`surface` is ignored here, lint message-surfaces). The 1px lines
+     * between head, thread and footer stay; the composer field keeps its own white field ground. The head bands are painted with `!important` because the shared
+     * head row and the sticky head paint white with selectors built for every pane. Inside the frame a message is flat: no border, no shadow (the 0.37.31 edge
+     * for a bubble on white never applies in a chat frame). An overlay (Drawer, Dialog, Popover) that holds a thread is the chat frame as a whole: its own head too.
+     */
+    .starci-core-pane:is([data-grammar-pane-content="chat"], :has(> .starci-core-pane-stack > [data-grammar-pane-section-thread="true"]), :has(> :is(.starci-core-pane-body, .starci-core-pane-scroll) > .starci-core-pane-stack > [data-grammar-pane-section-thread="true"])) {
+        background: var(--background);
+    }
+
+    /*
+     * THE THREAD IS THE ONLY SCROLLER OF A CHAT FRAME (0.37.33, DNA-COMMON-CHAT-FRAME-SCROLL). Between the fixed head and the fixed composer footer only the thread
+     * scrolls: the pane body (the column above a footer) is bounded and never scrolls, its stack is bounded by it (never `1 0 auto`, which let the stack grow with
+     * the messages and made the body the scroller), the head band keeps its height and the thread takes the rest. So a `scroll.scrollRef` on the thread is the
+     * element that scrolls, and a thread with `align: "end"` opens at its newest message.
+     */
+    .starci-core-pane:is([data-grammar-pane-content="chat"], :has(> .starci-core-pane-stack > [data-grammar-pane-section-thread="true"]), :has(> :is(.starci-core-pane-body, .starci-core-pane-scroll) > .starci-core-pane-stack > [data-grammar-pane-section-thread="true"])) > :is(.starci-core-pane-body, .starci-core-pane-scroll) {
+        overflow: hidden;
+    }
+
+    .starci-core-pane:is([data-grammar-pane-content="chat"], :has(> .starci-core-pane-stack > [data-grammar-pane-section-thread="true"]), :has(> :is(.starci-core-pane-body, .starci-core-pane-scroll) > .starci-core-pane-stack > [data-grammar-pane-section-thread="true"])) > :is(.starci-core-pane-body, .starci-core-pane-scroll) > .starci-core-pane-stack,
+    .starci-core-pane:is([data-grammar-pane-content="chat"], :has(> .starci-core-pane-stack > [data-grammar-pane-section-thread="true"]), :has(> :is(.starci-core-pane-body, .starci-core-pane-scroll) > .starci-core-pane-stack > [data-grammar-pane-section-thread="true"])) > .starci-core-pane-stack {
+        flex: 1 1 0%;
+        min-height: 0;
+    }
+
+    .starci-core-pane:is([data-grammar-pane-content="chat"], :has(> .starci-core-pane-stack > [data-grammar-pane-section-thread="true"]), :has(> :is(.starci-core-pane-body, .starci-core-pane-scroll) > .starci-core-pane-stack > [data-grammar-pane-section-thread="true"])) .starci-core-pane-stack > .starci-core-pane-section:not([data-grammar-pane-section-thread="true"]) {
+        flex-shrink: 0;
+    }
+
+    .starci-core-pane:is([data-grammar-pane-content="chat"], :has(> .starci-core-pane-stack > [data-grammar-pane-section-thread="true"]), :has(> :is(.starci-core-pane-body, .starci-core-pane-scroll) > .starci-core-pane-stack > [data-grammar-pane-section-thread="true"])) .starci-core-pane-stack,
+    .starci-core-pane:is([data-grammar-pane-content="chat"], :has(> .starci-core-pane-stack > [data-grammar-pane-section-thread="true"]), :has(> :is(.starci-core-pane-body, .starci-core-pane-scroll) > .starci-core-pane-stack > [data-grammar-pane-section-thread="true"])) .starci-core-pane-stack > .starci-core-pane-section:first-child,
+    .starci-core-pane:is([data-grammar-pane-content="chat"], :has(> .starci-core-pane-stack > [data-grammar-pane-section-thread="true"]), :has(> :is(.starci-core-pane-body, .starci-core-pane-scroll) > .starci-core-pane-stack > [data-grammar-pane-section-thread="true"])) > .starci-core-pane-footer {
+        background: var(--background) !important;
+    }
+
+    :is(.starci-core-drawer, .starci-core-dialog, .starci-core-popover-dialog):has([data-grammar-pane-section-thread="true"]) {
+        background: var(--background);
+    }
+
+    :is(.starci-core-pane:is([data-grammar-pane-content="chat"], :has(> .starci-core-pane-stack > [data-grammar-pane-section-thread="true"]), :has(> :is(.starci-core-pane-body, .starci-core-pane-scroll) > .starci-core-pane-stack > [data-grammar-pane-section-thread="true"])), :is(.starci-core-drawer, .starci-core-dialog, .starci-core-popover-dialog):has([data-grammar-pane-section-thread="true"])) .starci-core-message-bubble:is([data-grammar-bubble-side="incoming"], [data-grammar-bubble-content="card"]) .starci-core-message-bubble-body {
+        border: 0 !important;
+        box-shadow: none !important;
+    }
+
+    /*
+     * 0.37.5 THE GRID OWNS THE HEIGHT CHAIN. A pane that holds a nested PaneGrid (a tab pane of panes) is not a scroller: it clips, its stack is bounded by the pane
+     * (flex 1 1 0, min-height 0, never `0 auto` which let the stack grow to the content), and the nested grid fills it, so every scroll band of every nested pane is bounded
+     * and only the thread, a list or a pane body scrolls (the page, the band, the heads and the composers never move).
+     */
+    .starci-core-pane:has(> .starci-core-pane-stack > .starci-core-pane-grid) {
+        overflow: hidden;
+    }
+
+    .starci-core-pane:has(> .starci-core-pane-stack > .starci-core-pane-grid) > .starci-core-pane-stack {
+        min-height: 0;
+        flex: 1 1 0%;
+    }
+
+    /* In a fixed workspace shell the page is exactly the room under the app bar: the page's fill minimum (sm / md / lg) is a floor for a flow page, never a reason for the shell to scroll. */
+    .starci-core-workspace-shell[data-grammar-workspace-viewport="fixed"] .starci-core-page-fill[data-grammar-fill-min] {
+        min-height: 0;
+    }
+
+    .starci-core-pane-stack > .starci-core-pane-grid {
+        min-height: 0;
+        flex: 1 1 0%;
     }
 
     .starci-core-pane-stack {
@@ -3477,6 +3872,12 @@
 
     .starci-core-pane-section[data-grammar-pane-section-gap="row"] { gap: var(--grammar-row-gap); }
     .starci-core-pane-section[data-grammar-pane-section-gap="section"] { gap: var(--grammar-section-gap); }
+
+    /*
+     * 0.37.31 (DNA-COMMON-CHAT-SURFACES): a chat thread is the page tone, so it meets the bands around it edge to edge: the head line above and the composer's
+     * rule below touch the thread, never a white strip of the stack's row gap (the head and composer bands keep their own padding).
+     */
+    .starci-core-pane-stack:has(> .starci-core-pane-section[data-grammar-pane-section-thread="true"]) { gap: 0; }
 
     /* rule="start": a hairline across the block-start edge of the band (R4-27, a pinned decision bar). */
     .starci-core-pane-section[data-grammar-pane-section-rule="start"] { border-block-start: 1px solid var(--separator); }
@@ -3638,6 +4039,39 @@
 
     .starci-core-pane[data-grammar-pane-surface="true"] {
         background: var(--surface);
+    }
+
+    /*
+     * 0.37.14 (PANE-GRID-STACKED): below the stacking breakpoint (the grid's own width under 48rem; the grid writes `data-grammar-pane-stacked="grow"` on itself when none of its panes is a chat thread or has a footer) the panes of a grid
+     * stop owning their height and their scroll: the grid, its tracks and its panes grow with their content (rows auto, nothing clipped), the page fill becomes a floor instead
+     * of a height, and the page (or the shell's primary region) scrolls ONCE. The aside is the first block of the well, as the app's `base` areas order it. A grid that holds a
+     * chat thread (a scrolling PaneSection) or a pane footer keeps its bounded height: only those scroll inside their pane.
+     */
+    .starci-core-pane-grid[data-grammar-pane-stacked="grow"] {
+        height: auto;
+        overflow: visible;
+    }
+
+    .starci-core-pane-grid[data-grammar-pane-stacked="grow"] > .starci-core-pane-grid-tracks {
+        flex: none;
+        grid-template-rows: none;
+        grid-auto-rows: auto;
+    }
+
+    .starci-core-pane-grid[data-grammar-pane-stacked="grow"] .starci-core-pane {
+        overflow: visible !important;
+    }
+
+    /* A `Pane scroll` stacked (0.37.21) is no scroll owner: its body grows with its content, so the rows of the stack are their content's height, never an equal share. */
+    .starci-core-pane-grid[data-grammar-pane-stacked="grow"] .starci-core-pane-scroll {
+        flex: none;
+        overflow: visible;
+    }
+
+    .starci-core-page-fill:has(.starci-core-pane-grid[data-grammar-pane-stacked="grow"]) {
+        height: auto;
+        min-height: calc(100dvh - var(--starci-core-fill-top) - var(--starci-core-fill-bottom));
+        overflow: visible !important;
     }
 
     .starci-core-pane-scroll {
@@ -3888,7 +4322,7 @@
         min-width: 0;
         flex-direction: column !important;
         /* The proximity default of the card root (see above): inline, identity in a cards Grid. */
-        gap: var(--starci-core-surface-card-gap, var(--grammar-inline-gap)) !important;
+        gap: var(--starci-core-surface-card-gap, var(--grammar-row-gap)) !important;
         padding: 0 !important;
     }
 
@@ -3902,6 +4336,11 @@
     .starci-core-surface-card.starci-core-form-surface {
         width: min(100%, var(--starci-core-form-measure)) !important;
         margin-inline: auto;
+    }
+
+    /* measure="narrow" (0.37.5): an order card in a chat bubble is capped at 30rem and stays at the start edge (never centred like a form). */
+    .starci-core-surface-card.starci-core-surface-card--narrow {
+        width: min(100%, var(--starci-core-narrow-measure)) !important;
     }
 
     .starci-core-surface-card.starci-core-form-surface--compact {
@@ -4537,14 +4976,19 @@
     /* A heading over a grid of cards sits 12 above it, further than the cards are from each other: every Section's own
        gap since 0.27, so no override is left here. */
     .starci-core-grid[data-grammar-grid-kind="cards"] {
-        /* Tiles are siblings: 8 between them, closer than the 12 the heading above holds. */
-        --starci-core-grid-gap: var(--grammar-inline-gap);
+        /* Cards are siblings of one row: the card gap (12 on a phone, 24 from 48rem) between them, and every card stretches to the height of the tallest (0.37.3). */
+        --starci-core-grid-gap: var(--grammar-card-gap);
         --starci-core-grid-min: 16rem;
         display: grid;
+        align-items: stretch;
         min-width: 0;
         gap: var(--starci-core-grid-gap);
         grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--starci-core-grid-min)), 1fr));
     }
+
+    .starci-core-grid[data-grammar-grid-kind="cards"][data-grammar-grid-gap="inline"] { --starci-core-grid-gap: var(--grammar-inline-gap); }
+    .starci-core-grid[data-grammar-grid-kind="cards"][data-grammar-grid-align="start"] { align-items: start; }
+    .starci-core-grid[data-grammar-grid-kind="cards"][data-grammar-grid-align="start"] > .starci-core-surface-card { block-size: auto; }
 
     /* A column cap: each track is at least the share of `n` columns, so a row never holds more than `n` cards. */
     .starci-core-grid[data-grammar-grid-columns="2"] { --starci-core-grid-share: 2; }
@@ -4580,6 +5024,14 @@
     }
 
     .starci-core-grid-regions > * { min-inline-size: 0; }
+
+    /* The slots of a pair or a featured row stretch to the row's height (0.37.3), and what they hold fills the slot, so equal cards stand at one height. */
+    .starci-core-grid-regions > [data-grammar-grid-slot] {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .starci-core-grid-regions > [data-grammar-grid-slot] > * { flex: 1 1 auto; min-block-size: 0; }
 
     /* Independent working regions answer the wide workspace viewport, as its page chrome does. */
     @media (min-width: 80rem) {
@@ -4722,6 +5174,24 @@
         height: 1.25rem;
     }
 
+    /* The icon of a Button takes HeroUI's scale (0.37.5): 20px on a phone, 16px from 640px, 16px on sm. Here, in the common layer, so it outranks the usage box above. */
+    .starci-core-button:is([data-grammar-button-start="glyph"], [data-grammar-button-end="glyph"]) .starci-core-icon {
+        width: 1.25rem;
+        height: 1.25rem;
+    }
+
+    @media (min-width: 40rem) {
+        .starci-core-button:is([data-grammar-button-start="glyph"], [data-grammar-button-end="glyph"]) .starci-core-icon {
+            width: 1rem;
+            height: 1rem;
+        }
+    }
+
+    .starci-core-button[data-size="sm"]:is([data-grammar-button-start="glyph"], [data-grammar-button-end="glyph"]) .starci-core-icon {
+        width: 1rem;
+        height: 1rem;
+    }
+
     .starci-core-icon[data-usage="chip"] {
         width: 1rem;
         height: 1rem;
@@ -4758,18 +5228,18 @@
         min-block-size: 2rem !important;
     }
 
-    .starci-core-button[data-size="md"]:not([data-width="fill"]),
-    .starci-core-button[data-size="control"]:not([data-width="fill"]) {
+    .starci-core-button[data-size="md"]:not([data-width="fill"], [data-width="wrap"]),
+    .starci-core-button[data-size="control"]:not([data-width="fill"], [data-width="wrap"]) {
         block-size: var(--starci-core-control-min-size) !important;
         min-block-size: var(--starci-core-control-min-size) !important;
     }
 
-    .starci-core-button[data-size="sm"]:not([data-width="fill"]) {
+    .starci-core-button[data-size="sm"]:not([data-width="fill"], [data-width="wrap"]) {
         block-size: 2rem !important;
         min-block-size: 2rem !important;
     }
 
-    .starci-core-button[data-size="lg"]:not([data-width="fill"]) {
+    .starci-core-button[data-size="lg"]:not([data-width="fill"], [data-width="wrap"]) {
         block-size: 3rem !important;
         min-block-size: 3rem !important;
     }
@@ -4779,19 +5249,19 @@
      * line, and only a label that wraps grows it. The vendor drops md to 36px from its md breakpoint (`md:h-9`), so a
      * fill Button left to the vendor was 36px on a desktop form; the floor is the step, the height follows the label.
      */
-    .starci-core-button[data-width="fill"]:is([data-size="md"], [data-size="control"]) {
+    .starci-core-button:is([data-width="fill"], [data-width="wrap"]):is([data-size="md"], [data-size="control"]) {
         block-size: auto !important;
         min-block-size: var(--starci-core-control-min-size) !important;
         padding-block: 0.5rem;
     }
 
-    .starci-core-button[data-width="fill"][data-size="sm"] {
+    .starci-core-button:is([data-width="fill"], [data-width="wrap"])[data-size="sm"] {
         block-size: auto !important;
         min-block-size: 2rem !important;
         padding-block: 0.25rem;
     }
 
-    .starci-core-button[data-width="fill"][data-size="lg"] {
+    .starci-core-button:is([data-width="fill"], [data-width="wrap"])[data-size="lg"] {
         block-size: auto !important;
         min-block-size: 3rem !important;
         padding-block: 0.5rem;
@@ -4941,6 +5411,9 @@
     .starci-core-progress[data-grammar-progress-tone="success"] { --progress-bar-fill: var(--success); --starci-progress-fill: var(--success); }
     .starci-core-progress[data-grammar-progress-tone="warning"] { --progress-bar-fill: var(--warning); --starci-progress-fill: var(--warning); }
     .starci-core-progress[data-grammar-progress-tone="danger"] { --progress-bar-fill: var(--danger); --starci-progress-fill: var(--danger); }
+    /* foreground: a bar that spends no accent. The vendor's `default` variant writes the same variable on the same element and
+       consumers import this sheet on either side of `@heroui/styles`, so layer rank cannot decide: the fill is `!important`. */
+    .starci-core-progress[data-grammar-progress-tone="foreground"] { --progress-bar-fill: var(--foreground) !important; --starci-progress-fill: var(--foreground); }
     .starci-core-progress[data-grammar-tone-custom="true"] { --progress-bar-fill: var(--grammar-tone); --starci-progress-fill: var(--grammar-tone); }
 
     @media (prefers-reduced-motion: reduce) {
@@ -5362,6 +5835,20 @@
         white-space: normal !important;
     }
 
+    /*
+     * `width="wrap"` (0.37.30): content width, capped at its container. A short label hugs its pill exactly as `content` does; a
+     * label longer than the container wraps inside the pill (same radius, same inline padding, the text at the reading edge) and
+     * the box grows from its size step (the size rules above hold the floor), so a long suggestion never spills out of its row.
+     */
+    .starci-core-button[data-width="wrap"] {
+        max-width: 100% !important;
+        white-space: normal !important;
+        overflow-wrap: anywhere;
+        text-align: start;
+    }
+
+    .starci-core-tooltip-disabled-trigger:has(> [data-component="Button"][data-width="wrap"]) { min-inline-size: 0; }
+
     /* `width="fill-narrow"`: content width on a wide screen; below 30rem the full-width recipe above (stretch, wrap, step floor). */
     @media (max-width: 30rem) {
         .starci-core-button[data-width="fill-narrow"] {
@@ -5623,11 +6110,15 @@
         white-space: normal;
     }
 
-    .starci-core-message-card { display: flex; min-width: 0; flex-direction: column; align-items: flex-start; gap: var(--grammar-inline-gap); }
+    /*
+     * The card's content column fills the card (0.37.30): every part stretches to the card's inner width, so a nested bordered list,
+     * a composer or a DescriptionList in the body spans the card; the head, the actions row and the meta line still start at the
+     * reading edge (their own items hug their content).
+     */
+    .starci-core-message-card { display: flex; min-width: 0; flex-direction: column; align-items: stretch; gap: var(--grammar-inline-gap); }
     .starci-core-message-card-head { display: flex; min-width: 0; max-width: 100%; flex-wrap: wrap; align-items: center; gap: var(--grammar-inline-gap); }
     .starci-core-message-card-body { min-width: 0; max-width: 100%; }
     .starci-core-message-card-actions { display: flex; min-width: 0; max-width: 100%; flex-flow: row wrap; align-items: center; gap: var(--grammar-inline-gap); }
-    .starci-core-message-card > [data-component="DescriptionList"] { align-self: stretch; }
 
     .starci-core-message-bubble-head {
         display: flex;
@@ -5690,8 +6181,12 @@
      * THE BUBBLE SHAPE (Messenger grouping, owner 2026-11-09). A lone bubble is fully rounded (18). Where two bubbles of one sender touch the
      * corner is squared (4): the first of a run squares its bottom corner on the sender's side, a middle one both, the last its top. The sender's
      * side is the start for an incoming bubble and the end for an outgoing one; logical corners, so RTL mirrors. The avatar sits beside the last
-     * bubble of the run, bottom-aligned; the earlier bubbles keep an avatar-width spacer. An incoming bubble (and a MessageCard) is lifted like
-     * a card: a 1px separator border and the card shadow.
+     * bubble of the run, bottom-aligned; the earlier bubbles keep an avatar-width spacer.
+     *
+     * THE CHAT SURFACES (0.37.31, law DNA-COMMON-CHAT-SURFACES, owner-approved drawing chat-surfaces): every thread is on the page tone (`--background`, a
+     * `PaneSection scroll role="log"` paints it whatever `tone` says); a message of someone else (an incoming bubble, a MessageCard) is the FLAT surface:
+     * `--surface` with no border and no shadow; the reader's own message is `--accent` with `--accent-foreground`. Outside a thread, on a white surface
+     * (a drawer, a white pane, a card), a flat white bubble would vanish, so there it wears the 1px separator edge (SURFACE-ELEVATION), still no shadow.
      */
     .starci-core-message-bubble {
         --grammar-bubble-radius: 1.125rem;
@@ -5706,9 +6201,14 @@
 
     .starci-core-message-bubble[data-grammar-bubble-side="incoming"] .starci-core-message-bubble-body,
     .starci-core-message-bubble[data-grammar-bubble-content="card"] .starci-core-message-bubble-body {
-        border: 1px solid var(--separator);
+        border: 0;
         background: var(--surface);
-        box-shadow: var(--surface-shadow);
+        color: var(--surface-foreground);
+        box-shadow: none;
+    }
+
+    :is(.starci-core-surface, .starci-core-pane[data-grammar-pane-surface="true"], .starci-core-drawer, .starci-core-dialog-container, .starci-core-popover) .starci-core-message-bubble:is([data-grammar-bubble-side="incoming"], [data-grammar-bubble-content="card"]):not([data-grammar-scroll-region-tone="background"] *) .starci-core-message-bubble-body {
+        border: 1px solid var(--separator);
     }
 
     .starci-core-message-bubble[data-grammar-bubble-side="incoming"]:is([data-grammar-bubble-group="first"], [data-grammar-bubble-group="middle"]) .starci-core-message-bubble-body { border-end-start-radius: var(--grammar-bubble-tail); }
@@ -6056,5 +6556,108 @@
         margin: 0;
         padding: 0;
         list-style: none;
+    }
+}
+
+
+@layer starci-grammar-common {
+    /* KEY-VALUE ROWS (0.37.5): `SurfaceCard kind="list" layout="keyValue"`. The key (title) is muted, the value is normal text at the end; a narrow card wraps the value under the key. */
+    .starci-core-list-row-value {
+        min-width: 0;
+        flex: 1 1 auto;
+        color: var(--foreground);
+        font-size: var(--grammar-text-md);
+        font-weight: var(--grammar-weight-regular);
+        line-height: var(--grammar-leading-md);
+        overflow-wrap: anywhere;
+        text-align: end;
+    }
+
+    [data-grammar-list-layout="keyValue"] > .starci-core-list-row {
+        flex-wrap: wrap;
+        align-items: baseline;
+        column-gap: var(--grammar-row-gap);
+    }
+
+    [data-grammar-list-layout="keyValue"] > .starci-core-list-row > .starci-core-list-row-copy {
+        flex: 0 1 auto;
+        max-inline-size: 50%;
+    }
+
+    [data-grammar-list-layout="keyValue"] .starci-core-list-row-name {
+        color: var(--muted);
+        font-weight: var(--grammar-weight-regular);
+    }
+
+    /*
+     * CARD SUGGESTIONS (0.37.31, law DNA-COMMON-CARD-SUGGESTIONS): `kind="list" layout="suggestions"`, the replies a message card offers. A row is its plain text
+     * (14, regular, wrapping at the reading edge, never truncated) and the trailing chevron; the whole row is the one button (`onPress` sends that text).
+     */
+    [data-grammar-list-layout="suggestions"] .starci-core-list-row-name {
+        font-weight: var(--grammar-weight-regular);
+        white-space: normal;
+    }
+
+    /*
+     * At every width (0.37.35, DNA-COMMON-CARD-SUGGESTIONS): a suggestion row is a grid of the text and the chevron, so the chevron stays at the end of the row,
+     * centred on the text's lines, and the text wraps beside it. The collapsed flex row (under 28rem) let the chevron wrap under a long text at 390.
+     */
+    [data-grammar-list-layout="suggestions"] > .starci-core-list-row {
+        display: grid;
+        flex-wrap: nowrap;
+        align-items: center;
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    [data-grammar-list-layout="suggestions"] > .starci-core-list-row[data-grammar-leading="true"] { grid-template-columns: auto minmax(0, 1fr) auto; }
+    [data-grammar-list-layout="suggestions"] > .starci-core-list-row[data-grammar-actions="false"] { grid-template-columns: minmax(0, 1fr); }
+    [data-grammar-list-layout="suggestions"] > .starci-core-list-row > .starci-core-list-row-copy { flex: initial; }
+    [data-grammar-list-layout="suggestions"] > .starci-core-list-row > .starci-core-list-row-actions { flex-wrap: nowrap; }
+
+    /* From 28rem a row is a grid (above): a key-value row is two columns, the key at most 40%, the value taking the rest. */
+    @container starci-core-surface (min-width: 28.001rem) {
+        [data-grammar-list-layout="keyValue"] > .starci-core-list-row[data-grammar-actions] {
+            display: grid;
+            align-items: baseline;
+            grid-template-columns: minmax(8rem, 40%) minmax(0, 1fr);
+        }
+
+        [data-grammar-list-layout="keyValue"] > .starci-core-list-row[data-grammar-actions][data-grammar-leading="true"] {
+            grid-template-columns: auto minmax(8rem, 40%) minmax(0, 1fr);
+        }
+
+        [data-grammar-list-layout="keyValue"] > .starci-core-list-row > .starci-core-list-row-copy {
+            max-inline-size: none;
+        }
+    }
+
+    @container starci-core-surface (max-width: 22rem) {
+        [data-grammar-list-layout="keyValue"] > .starci-core-list-row > .starci-core-list-row-copy {
+            max-inline-size: 100%;
+        }
+
+        [data-grammar-list-layout="keyValue"] > .starci-core-list-row > .starci-core-list-row-value {
+            flex-basis: 100%;
+            text-align: start;
+        }
+    }
+
+    /* THE PANE HEAD SLOT (0.37.5): `Pane head` is the first band of the stack; it stays at the top of the pane (or of its scroll region) while the body scrolls, white, at the head height. */
+    .starci-core-pane[data-grammar-pane-head="true"] .starci-core-pane-stack > .starci-core-pane-section:first-child {
+        position: sticky;
+        z-index: 2;
+        inset-block-start: 0;
+        box-sizing: border-box;
+        justify-content: center;
+        block-size: var(--grammar-pane-head-size);
+        padding-block: 0;
+        border-block-end: 1px solid var(--separator);
+        background: var(--surface);
+    }
+
+    /* The head sits inside the pane's scroll region, so the scroll shadow would fade it: a pane with a head draws no edge fade. */
+    .starci-core-pane[data-grammar-pane-head="true"] :is(.starci-core-pane-scroll, .scroll-shadow) {
+        mask-image: none;
+        -webkit-mask-image: none;
     }
 }

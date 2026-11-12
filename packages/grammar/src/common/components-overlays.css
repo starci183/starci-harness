@@ -18,8 +18,15 @@
         --starci-core-overlay-soft-foreground: var(--default-soft-foreground);
     }
 
-    :is(.starci-core-alert, .starci-core-toast, .starci-core-meter, .starci-core-alert-dialog)[data-grammar-tone="informative"] {
-        /* informative is an intent that is the accent unless the app writes the optional --informative tokens. */
+    /* informative is NEUTRAL on a toast and an alert dialog, as on an Alert: the default soft pair, the mark in --muted; an app that writes the optional --informative tokens keeps its own. */
+    :is(.starci-core-toast, .starci-core-alert-dialog)[data-grammar-tone="informative"] {
+        --starci-core-overlay-tone: var(--informative, var(--muted));
+        --starci-core-overlay-soft: var(--informative-soft, var(--default-soft));
+        --starci-core-overlay-soft-foreground: var(--informative-soft-foreground, var(--default-soft-foreground));
+    }
+
+    /* A Meter's informative fill is a measure, not a notice: it stays the accent unless the app writes --informative. */
+    .starci-core-meter[data-grammar-tone="informative"] {
         --starci-core-overlay-tone: var(--informative, var(--accent));
         --starci-core-overlay-soft: var(--informative-soft, var(--accent-soft));
         --starci-core-overlay-soft-foreground: var(--informative-soft-foreground, var(--accent-soft-foreground));
@@ -50,11 +57,29 @@
         --starci-core-overlay-soft-foreground: var(--accent-soft-foreground);
     }
 
+    /*
+     * A Meter's foreground tone is a measure that spends no accent: the fill is HeroUI's text colour on the default track,
+     * for a screen whose one accent mass is its commit (ACCENT-6). The vendor's colour variant writes `--meter-fill` on the
+     * same element and consumers import this sheet on either side of `@heroui/styles`, so layer rank cannot decide: the
+     * fill variable is `!important`. The segments read `--starci-core-overlay-tone`.
+     */
+    .starci-core-meter[data-grammar-tone="foreground"] {
+        --meter-fill: var(--foreground) !important;
+        --starci-core-overlay-tone: var(--foreground);
+        --starci-core-overlay-soft: var(--default-soft);
+        --starci-core-overlay-soft-foreground: var(--default-soft-foreground);
+    }
+
     /* ---------------------------------------------------------------- modal backdrop */
+    /*
+     * Stacking: every modal-level overlay (Dialog, AlertDialog, Drawer, a PaneGrid pane's drawer, and the vendor's popovers) sits on
+     * HeroUI's one level `--z-index-overlay`, so the overlay opened last paints on top: an alert dialog opened inside a drawer covers
+     * it, a select opened inside a dialog stays above the dialog. The toaster is `--z-index-toast`, above them all.
+     */
     .starci-core-overlay-backdrop {
         position: fixed;
         inset: 0;
-        z-index: 50;
+        z-index: var(--z-index-overlay);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -249,6 +274,18 @@
         width: min(100%, 32rem);
     }
 
+    /* 0.37.8: on a phone (< 768) a side drawer is FULL width: no strip of the page stays visible beside it (the vendor sheet keeps a margin and a max width). */
+    @media (max-width: 47.99rem) {
+        .starci-core-drawer-content[data-placement="right"],
+        .starci-core-drawer-content[data-placement="left"],
+        .starci-core-drawer-content[data-grammar-drawer-width="wide"]:is([data-placement="right"], [data-placement="left"]) {
+            inset-inline: 0;
+            width: 100%;
+            max-width: none;
+            margin: 0;
+        }
+    }
+
     /* The vendor content is `inset: 0`; each placement releases the opposite edge so the sized panel sits on its own side. */
     .starci-core-drawer-content[data-placement="right"] {
         inset-inline-start: auto;
@@ -415,6 +452,17 @@
         flex-direction: column;
     }
 
+    /* A switch entry: the Switch is the row's own mark at its end, never a second control (inert), and the row has no check. */
+    [data-grammar-menu-switch-mark] {
+        display: inline-flex;
+        flex: none;
+        margin-inline-start: auto;
+        align-self: center;
+        pointer-events: none;
+    }
+
+    [data-grammar-menu-switch] [data-slot="menu-item-indicator"] { display: none; }
+
     [data-grammar-menu-shortcut] {
         margin-inline-start: auto;
     }
@@ -422,7 +470,7 @@
     /* ---------------------------------------------------------------- toaster + toast */
     .starci-core-toaster {
         position: fixed;
-        z-index: 60;
+        z-index: var(--z-index-toast);
         display: flex;
         width: min(24rem, calc(100vw - 2 * var(--grammar-page-inset)));
         flex-direction: column;
@@ -532,8 +580,8 @@
     /*
      * One look, the tone's soft pair: the row is `--<tone>-soft` at full strength and its glyph,
      * title and description are `--<tone>-soft-foreground`; no shadow, no border, the HeroUI row's radius and anatomy. The
-     * tone maps informative -> accent, affirmative -> success, cautionary -> warning, negative -> danger, and neutral,
-     * pending and unavailable -> default. The row wraps at a narrow width so the action stays inside it.
+     * tone maps informative, neutral, pending and unavailable -> default (informative is neutral, never the accent pair),
+     * affirmative -> success, cautionary -> warning, negative -> danger. The row wraps at a narrow width so the action stays inside it.
      */
     .starci-core-alert {
         --starci-core-alert-soft: var(--default-soft);
@@ -546,8 +594,8 @@
         color: var(--starci-core-alert-ink);
     }
 
-    /* An informative notice is the accent pair unless the app writes --informative-soft and --informative-soft-foreground; accent stays its own tone for "new" and "selected". */
-    .starci-core-alert[data-grammar-tone="informative"] { --starci-core-alert-soft: var(--informative-soft, var(--accent-soft)); --starci-core-alert-ink: var(--informative-soft-foreground, var(--accent-soft-foreground)); }
+    /* An informative notice is NEUTRAL: HeroUI's default soft pair, glyph and text in the foreground. The accent pair reads as an error and spends the red budget; accent stays its own tone for "new" and "selected". */
+    .starci-core-alert[data-grammar-tone="informative"] { --starci-core-alert-soft: var(--informative-soft, var(--default-soft)); --starci-core-alert-ink: var(--informative-soft-foreground, var(--default-soft-foreground)); }
     /* A tone the app declared: its soft pair, read through the component variables customToneProps sets. */
     .starci-core-alert[data-grammar-tone-custom="true"] { --starci-core-alert-soft: var(--grammar-tone-soft); --starci-core-alert-ink: var(--grammar-tone-soft-foreground); }
     /* accent: the brand soft pair, for a welcome or "new" band (G10b-2). */
@@ -555,6 +603,7 @@
     .starci-core-alert[data-grammar-tone="affirmative"] { --starci-core-alert-soft: var(--success-soft); --starci-core-alert-ink: var(--success-soft-foreground); }
     .starci-core-alert[data-grammar-tone="cautionary"] { --starci-core-alert-soft: var(--warning-soft); --starci-core-alert-ink: var(--warning-soft-foreground); }
     .starci-core-alert[data-grammar-tone="negative"] { --starci-core-alert-soft: var(--danger-soft); --starci-core-alert-ink: var(--danger-soft-foreground); }
+    .starci-core-alert[data-grammar-tone="informative"] .starci-core-alert-indicator { color: var(--muted); }
 
     .starci-core-alert .starci-core-alert-indicator,
     .starci-core-alert .starci-core-alert-title,
@@ -576,9 +625,11 @@
     .starci-core-alert .starci-core-alert-description { font-weight: var(--grammar-weight-regular); }
 
     /* HeroUI sizes the content h-full; in a wrapped row that height is circular and pushes the action out of the
-       surface, so the content takes its own height. */
+       surface, so the content takes its own height. Where the banner's own height is definite (a Stack in a height-bound
+       Page well) h-full resolves to the whole box, the first line fills it and the stacked action lands below the box (0.37.36). */
     .starci-core-alert-content {
         min-width: min(100%, 12rem);
+        block-size: auto;
         flex: 1;
     }
 

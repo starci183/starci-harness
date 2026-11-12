@@ -184,10 +184,10 @@ concerns:
     why: the grammar's flow graph component wraps it; apps never import it.
   - id: markdown
     tier: opt
-    packages: [react-markdown, remark-gfm, remark-directive]
+    packages: [react-markdown, remark-gfm, remark-directive, mdast-util-from-markdown, mdast-util-gfm, micromark-extension-gfm]
     home: [fe.components]
     forbids: [marked, markdown-it, showdown]
-    why: markdown renders to grammar elements, never as injected HTML.
+    why: markdown renders to grammar elements, never as injected HTML; the grammar's Markdown parses to a syntax tree and maps it to its parts, apps never import the parser.
   - id: code
     tier: opt
     packages: [react-shiki, '@monaco-editor/react']

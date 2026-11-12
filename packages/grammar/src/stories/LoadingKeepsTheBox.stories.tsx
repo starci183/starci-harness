@@ -40,7 +40,7 @@ export const LoadingKeepsTheBox: Story = {
             <Twin name="TimeField"><G.TimeField label="At" defaultValue={parseTime("09:30")} /></Twin>
             <Twin name="DatePicker"><G.DatePicker label="Due" defaultValue={parseDate("2026-11-10")} /></Twin>
             <Twin name="Checkbox"><G.Checkbox label="Send a copy" /></Twin>
-            <Twin name="Switch"><G.Switch label="Reminders" /></Twin>
+            <Twin name="Switch"><G.Switch description="Mô tả ngắn." label="Reminders" /></Twin>
             <Twin name="Slider"><G.Slider label="Volume" defaultValue={40} /></Twin>
             <Twin name="Rating"><G.Rating label="Rating" defaultValue={3} valueLabel={(value, max) => `${value} of ${max}`} /></Twin>
             <Twin name="RadioGroup"><G.RadioGroup label="Delivery" options={choice} defaultValue="email" /></Twin>

@@ -22,11 +22,14 @@ export const Alert: Story = {
   render: () => (
     <Matrix maxWidth={560}>
       <State label="Tones" direction="column">
-        <G.Alert title="Heads up" description="Informative is the default tone." />
+        <G.Alert title="Heads up" description="Informative is the default tone: neutral grey, never the accent pair." />
+        <G.Alert tone="accent" title="New" description="Accent is the brand band for a welcome or something new." />
         <G.Alert tone="affirmative" title="Saved" description="Your changes are live." />
         <G.Alert tone="cautionary" title="Almost full" description="You have used 90% of your storage." />
         <G.Alert tone="negative" title="Payment failed" description="Update the card on file to keep access." />
         <G.Alert tone="neutral" title="Neutral notice" />
+        <G.Alert tone="pending" title="Syncing" description="This can take a minute." />
+        <G.Alert tone="unavailable" title="Unavailable" description="This is not offered on your plan." />
       </State>
       <State label="Pending" direction="column">
         <G.Alert tone="pending" title="Syncing" description="This can take a minute." />
@@ -361,6 +364,39 @@ const AvatarMenuDemo = () => {
  * sections, draws the glyph in the leading position at 20px (size-5) and the selection check where HeroUI puts it; the app passes no
  * separator, no className and no size.
  */
+const SwitchMenuDemo = () => {
+  const [assistant, setAssistant] = useState(true);
+  return (
+    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+      <G.DropdownMenu
+        defaultOpen
+        placement="bottom end"
+        trigger={<G.AvatarButton name="Alex Morgan" />}
+        entries={[
+          {
+            kind: 'section',
+            id: 'account',
+            items: [
+              { id: 'profile', label: 'Profile', iconSource: UserGlyph },
+              { id: 'settings', label: 'Settings', iconSource: SettingsGlyph },
+            ],
+          },
+          { kind: 'switch', id: 'assistant', label: 'Show the assistant', description: 'The guide bubble on every page', isSelected: assistant, onChange: setAssistant },
+          { kind: 'section', id: 'session', items: [{ id: 'sign-out', label: 'Sign out', tone: 'danger', iconSource: SignOutGlyph }] },
+        ]}
+        onAction={noop}
+      />
+    </div>
+  );
+};
+
+/** A switch entry: the row is a menuitemcheckbox with a Switch at its end; pressing the row toggles it and the menu stays open. */
+export const DropdownMenuSwitch: Story = {
+  name: 'DropdownMenu (switch entry in the account menu)',
+  parameters: openParameters,
+  render: () => <SwitchMenuDemo />,
+};
+
 export const DropdownMenuAvatar: Story = {
   name: 'DropdownMenu (avatar menu: workspace, account, sign out)',
   parameters: openParameters,
@@ -454,7 +490,7 @@ const record = (id: string, options: G.ToastOptions): G.ToastRecord => ({ ...opt
 export const Toast: Story = {
   render: () => (
     <Matrix maxWidth={420}>
-      <State label="Tones" direction="column">
+      <State label="Tones (informative is neutral, like an Alert)" direction="column">
         <G.Toast toast={record('t1', { title: 'Saved', tone: 'affirmative', timeout: 0 })} dismissLabel="Dismiss" onDismiss={noop} />
         <G.Toast toast={record('t2', { title: 'Link copied', description: 'Paste it anywhere.', tone: 'informative', timeout: 0 })} dismissLabel="Dismiss" onDismiss={noop} />
         <G.Toast toast={record('t3', { title: 'Storage almost full', tone: 'cautionary', timeout: 0 })} dismissLabel="Dismiss" onDismiss={noop} />
@@ -462,6 +498,7 @@ export const Toast: Story = {
       </State>
       <State label="Pending and with action" direction="column">
         <G.Toast toast={record('t5', { title: 'Uploading 3 files', tone: 'pending', timeout: 0 })} dismissLabel="Dismiss" onDismiss={noop} />
+        <G.Toast toast={record('t7', { title: 'Not on your plan', tone: 'unavailable', timeout: 0 })} dismissLabel="Dismiss" onDismiss={noop} />
         <G.Toast toast={record('t6', { title: 'Lesson archived', tone: 'neutral', timeout: 0, action: { label: 'Undo', onAction: noop } })} dismissLabel="Dismiss" onDismiss={noop} />
       </State>
     </Matrix>

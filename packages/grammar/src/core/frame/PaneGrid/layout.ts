@@ -6,9 +6,10 @@
 
 /**
  * A track size by role. `fill`, `fill-2` and `fill-3` share the free space in proportion 1, 2 and 3 (1fr, 2fr, 3fr);
- * `compact`, `standard` and `wide` are the grammar's Rail widths; `auto` is the content's size.
+ * `compact`, `standard` and `wide` are the grammar's Rail widths; `auto` is the content's size. 0.37.5: `standard` (the aside) is clamp(320px, 26%, 420px) of the grid and
+ * `list` (a list pane beside a thread) is clamp(280px, 24%, 360px); the main pane is `fill`.
  */
-export type PaneTrack = "auto" | "fill" | "fill-2" | "fill-3" | "compact" | "standard" | "wide"
+export type PaneTrack = "auto" | "fill" | "fill-2" | "fill-3" | "compact" | "standard" | "wide" | "list"
 
 const trackCss: Readonly<Record<PaneTrack, string>> = {
     auto: "auto",
@@ -16,13 +17,14 @@ const trackCss: Readonly<Record<PaneTrack, string>> = {
     "fill-2": "minmax(0, 2fr)",
     "fill-3": "minmax(0, 3fr)",
     compact: "minmax(var(--starci-core-rail-compact-min), var(--starci-core-rail-compact))",
-    standard: "minmax(var(--starci-core-rail-standard-min), var(--starci-core-rail-standard))",
+    standard: "var(--starci-core-pane-aside-track)",
+    list: "var(--starci-core-pane-list-track)",
     wide: "minmax(var(--starci-core-rail-wide-min), var(--starci-core-rail-wide))",
 }
 
 export const trackToCss = (track: PaneTrack): string => trackCss[track]
 
-const tracks: ReadonlySet<string> = new Set<PaneTrack>(["auto", "fill", "fill-2", "fill-3", "compact", "standard", "wide"])
+const tracks: ReadonlySet<string> = new Set<PaneTrack>(["auto", "fill", "fill-2", "fill-3", "compact", "standard", "wide", "list"])
 export const isPaneTrack = (value: string): value is PaneTrack => tracks.has(value)
 
 const emptyCell = "."

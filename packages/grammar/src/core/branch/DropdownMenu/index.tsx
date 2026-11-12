@@ -1,7 +1,7 @@
 "use client"
 
 import { LoadingScope } from "../../regionScope.js"
-import { Description as HeroDescription, Dropdown as HeroDropdown, Header as HeroHeader, Kbd as HeroKbd, Label as HeroLabel, Separator as HeroSeparator } from "@heroui/react"
+import { Description as HeroDescription, Dropdown as HeroDropdown, Header as HeroHeader, Kbd as HeroKbd, Label as HeroLabel, Separator as HeroSeparator, Switch as HeroSwitch } from "@heroui/react"
 import type { ReactNode } from "react"
 import { useCollectionItemPresentation, type ItemDescriptionLines } from "../../collectionItem.js"
 import { overlayOpenProps, useOverlayContainer, type OverlayOpenState } from "../../overlayScope.js"
@@ -58,7 +58,26 @@ export type DropdownMenuSection = {
     readonly selection?: DropdownMenuSelection
 }
 
-export type DropdownMenuEntry = DropdownMenuItem | DropdownMenuSection
+/**
+ * An on/off setting inside the menu (0.37.19): the row is a `menuitemcheckbox` with a Switch at its end ("Show the assistant", with a
+ * description line). Pressing the row, Enter or Space toggles it and the menu STAYS OPEN. The Switch is the row's own mark, not a second
+ * control: it is not focusable and not announced twice; the row carries the state (`aria-checked`). The app owns `isSelected`.
+ */
+export type DropdownMenuSwitch = {
+    readonly kind: "switch"
+    readonly id: string
+    readonly label: string
+    readonly description?: string
+    /** Visible description lines (default one); longer content is clamped with an ellipsis. */
+    readonly descriptionLines?: ItemDescriptionLines
+    /** App-owned leading glyph, as on an item. */
+    readonly iconSource?: IconSource
+    readonly isSelected: boolean
+    readonly isDisabled?: boolean
+    readonly onChange: (isSelected: boolean) => void
+}
+
+export type DropdownMenuEntry = DropdownMenuItem | DropdownMenuSection | DropdownMenuSwitch
 
 export type DropdownMenuPlacement = "bottom start" | "bottom end" | "top start" | "top end"
 
@@ -75,11 +94,12 @@ export type DropdownMenuProps = NoChildren & OverlayOpenState & {
 }
 
 const isSection = (entry: DropdownMenuEntry): entry is DropdownMenuSection => entry.kind === "section"
+const isSwitch = (entry: DropdownMenuEntry): entry is DropdownMenuSwitch => entry.kind === "switch"
 
 const collectItems = (entries: readonly DropdownMenuEntry[], into = new Map<string, DropdownMenuItem>()) => {
     for (const entry of entries) {
         if (isSection(entry)) collectItems(entry.items, into)
-        else {
+        else if (!isSwitch(entry)) {
             into.set(entry.id, entry)
             if (entry.submenu !== undefined) collectItems(entry.submenu, into)
         }
@@ -178,7 +198,50 @@ export const DropdownMenu = ({
         )
     }
 
+    /** A switch entry is a one-item multiple-selection group (React Aria's `menuitemcheckbox`, menu stays open) whose mark is a Switch, not a check. */
+    const renderSwitch = (entry: DropdownMenuSwitch): ReactNode => (
+        <HeroDropdown.Section
+            key={entry.id}
+            id={`${entry.id}-group`}
+            aria-label={entry.label}
+            selectionMode="multiple"
+            selectedKeys={new Set(entry.isSelected ? [entry.id] : [])}
+            onSelectionChange={(keys: "all" | Set<string | number>) => entry.onChange(keys === "all" || keys.has(entry.id))}
+            data-grammar-menu-section="true"
+            data-grammar-menu-switch-group="true"
+            data-contract="STATE-1"
+        >
+            <HeroDropdown.Item
+                id={entry.id}
+                aria-label={entry.label}
+                textValue={entry.label}
+                shouldCloseOnSelect={false}
+                isDisabled={entry.isDisabled ?? false}
+                data-grammar-menu-item="true"
+                data-grammar-menu-switch="true"
+                data-contract="FOCUS-1 STATE-1"
+                data-grammar-tone="neutral"
+            >
+                {entry.iconSource === undefined ? null : entry.description === undefined ? <Icon source={entry.iconSource} usage="leading" /> : <div data-grammar-menu-icon-slot="true"><Icon source={entry.iconSource} usage="leading" /></div>}
+                {entry.description === undefined ? <HeroLabel>{entry.label}</HeroLabel> : (
+                    <div data-grammar-menu-copy="true">
+                        <HeroLabel>{entry.label}</HeroLabel>
+                        <HeroDescription data-grammar-item-description="true" data-grammar-description-lines={entry.descriptionLines ?? presentation.descriptionLines}>{entry.description}</HeroDescription>
+                    </div>
+                )}
+                <span aria-hidden="true" inert data-grammar-menu-switch-mark="true">
+                    <HeroSwitch size="lg" isSelected={entry.isSelected} isReadOnly aria-label={entry.label} className="starci-core-choice starci-core-switch" data-grammar-switch-labelled="false">
+                        <HeroSwitch.Control className="starci-core-choice-control" data-grammar-choice-control="switch" data-grammar-switch-track="true">
+                            <HeroSwitch.Thumb data-grammar-switch-thumb="true" />
+                        </HeroSwitch.Control>
+                    </HeroSwitch>
+                </span>
+            </HeroDropdown.Item>
+        </HeroDropdown.Section>
+    )
+
     const renderEntry = (entry: DropdownMenuEntry): ReactNode => {
+        if (isSwitch(entry)) return renderSwitch(entry)
         if (!isSection(entry)) return renderItem(entry)
         const selection = entry.selection
         return (

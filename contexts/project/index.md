@@ -147,10 +147,10 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Three layers · The model: one contract, composed implementations · Files · Who owns what · Theming · Reading order for an author · Where feedback lands · Grammar lint
 - [grammars/common.md](../grammars/common.md) · 10 KB — Common is the layer every grammar is drawn over.
   - sections: Anatomy: wrap HeroUI once, never redraw it · Spacing: one scale, roles for gaps and levels for insets · Size and intent · One root · Idioms · Playbook shapes
-- [grammars/contract.md](../grammars/contract.md) · 41 KB — Every grammar implements one contract, so a new grammar can be added without touching the others and two apps on the same grammar come out the same.
+- [grammars/contract.md](../grammars/contract.md) · 42 KB — Every grammar implements one contract, so a new grammar can be added without touching the others and two apps on the same grammar come out the same.
   - sections: What a grammar provides · The shared scale · Intent x placement -> variant · Roles
-- [grammars/contract.yaml](../grammars/contract.yaml) · 112 KB — What every grammar implements.
-  - ids: DNA-<SCOPE>-<NAME>,, DNA-COMMON-ACCENT-CORNER, DNA-COMMON-AGENT-NAMED, DNA-COMMON-ALERT-TONE-PAIR-ACCENT, DNA-COMMON-ALERT-TONE-PAIR-DANGER, DNA-COMMON-ALERT-TONE-PAIR-DEFAULT, DNA-COMMON-ALERT-TONE-PAIR-INFORMATIVE, DNA-COMMON-ALERT-TONE-PAIR-SUCCESS, DNA-COMMON-ALERT-TONE-PAIR-WARNING, DNA-COMMON-ALERTDIALOG-DISMISS-FIRST, DNA-COMMON-AVATAR-GROUP-ONE-SIZE, DNA-COMMON-AVATAR-INITIALS, DNA-COMMON-AVATAR-RAMP, DNA-COMMON-BADGE-BELOW-RAMP, DNA-COMMON-BADGE-DOT-CHIP-PARITY, DNA-COMMON-BADGE-DOT-GAP, DNA-COMMON-BADGE-TONE-INFO, DNA-COMMON-BAR-CHART-ONE-SCALE, DNA-COMMON-BAR-ONE-HEIGHT, DNA-COMMON-BOARD-ONE-WIDTH, DNA-COMMON-BUBBLE-TEXT-INSIDE-END, DNA-COMMON-BUBBLE-TEXT-INSIDE-START, DNA-COMMON-BUTTONGROUP-INNER-CORNERS, DNA-COMMON-BUTTONGROUP-JOINED and 171 more
+- [grammars/contract.yaml](../grammars/contract.yaml) · 127 KB — What every grammar implements.
+  - ids: DNA-<SCOPE>-<NAME>,, DNA-COMMON-ACCENT-CORNER, DNA-COMMON-AGENT-NAMED, DNA-COMMON-ALERT-TONE-PAIR-ACCENT, DNA-COMMON-ALERT-TONE-PAIR-DANGER, DNA-COMMON-ALERT-TONE-PAIR-DEFAULT, DNA-COMMON-ALERT-TONE-PAIR-INFORMATIVE, DNA-COMMON-ALERT-TONE-PAIR-SUCCESS, DNA-COMMON-ALERT-TONE-PAIR-WARNING, DNA-COMMON-ALERTDIALOG-DISMISS-FIRST, DNA-COMMON-ALERTDIALOG-TONE-INFORMATIVE, DNA-COMMON-AVATAR-GROUP-ONE-SIZE, DNA-COMMON-AVATAR-INITIALS, DNA-COMMON-AVATAR-RAMP, DNA-COMMON-BADGE-BELOW-RAMP, DNA-COMMON-BADGE-DOT-CHIP-PARITY, DNA-COMMON-BADGE-DOT-GAP, DNA-COMMON-BADGE-TONE-INFO, DNA-COMMON-BAR-CHART-ONE-SCALE, DNA-COMMON-BAR-ONE-HEIGHT, DNA-COMMON-BOARD-ONE-WIDTH, DNA-COMMON-BUBBLE-TEXT-INSIDE-END, DNA-COMMON-BUBBLE-TEXT-INSIDE-START, DNA-COMMON-BUTTONGROUP-INNER-CORNERS and 190 more
 - [grammars/contributing.md](../grammars/contributing.md) · 14 KB — How a component enters `@starci/grammar`, or a prop enters a component.
   - sections: The laws · The question to ask first · One job · Naming · Which tier · Props · Composition · Paint · Accessibility · Server safety · Skeleton parity · What ships with it · Patch or minor · Render proof · The look, reviewed by a person
 - [grammars/core.md](../grammars/core.md) · 6 KB — `core` is the product and workspace grammar: a quiet neutral page, white surfaces, one violet accent.
@@ -206,44 +206,45 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: The Choose format · Choosing a role
 - [ui/components/action-group.md](../ui/components/action-group.md) · 4 KB — Contract: ButtonGroup.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
-- [ui/components/button.md](../ui/components/button.md) · 9 KB — Contract: Button.
-  - sections: Job · Choose · Variants · Size · States · Owner split · Icon and size · Rules
+- [ui/components/button.md](../ui/components/button.md) · 12 KB — Contract: Button.
+  - sections: Job · Choose · Variants · Size · States · Owner split · Icon and size · Rules · Icons inside Grammar are outline (0.37.4) · Icon measures (0.37.5) · App bar custom buttons (TOPBAR-CUSTOM-BUTTONS, 0.37.15)
 - [ui/components/calendar-day.md](../ui/components/calendar-day.md) · 1 KB — Name one date's region without selecting a date.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
-- [ui/components/card.md](../ui/components/card.md) · 11 KB — Contract: Card.
-  - sections: Job · Choose · One content per card, elevation from context (0.36.0) · Icons are outline (0.36.0, ICONS-OUTLINE) · Variants · Size · States · Owner split · Rules
+- [ui/components/card.md](../ui/components/card.md) · 20 KB — Contract: Card.
+  - sections: Job · Choose · One content per card, elevation from context (0.36.0) · Icons are outline (0.36.0, ICONS-OUTLINE) · Variants · Size · States · Owner split · Rules · Measure (0.37.5) · Owner laws of 0.37.5 (read before drawing a card)
+  - ids: CARD-NO-DESCRIPTION, CARDS-FOR-COLLECTIONS, CHOICE-LIST-SELECT, CHOICE-ROW-CONTROL, FLAT-FIELDS-ON-WELL, HEADER-ZONES-DIVIDERS, LABEL-SUBLABEL-HIERARCHY, LIST-ROW-NAVIGATION, ROW-CONTROL-CENTRE, ROW-EDGE-PADDING, ROW-TITLES-NOUNS, WHITE-LIST-BORDERED-CARD, full-width
 - [ui/components/chip.md](../ui/components/chip.md) · 5 KB — Contract: Chip.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/color-swatch.md](../ui/components/color-swatch.md) · 1 KB — Contract: ColorSwatch.
   - sections: Job · Choose · Anatomy and states · Owner split
 - [ui/components/data-views.md](../ui/components/data-views.md) · 3 KB — Contract: data-views.
   - sections: Job · Choose
-- [ui/components/diagram.md](../ui/components/diagram.md) · 7 KB — Contract: Diagram.
+- [ui/components/diagram.md](../ui/components/diagram.md) · 14 KB — Contract: Diagram.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules · FlowGraph state priority
-- [ui/components/dialog-drawer.md](../ui/components/dialog-drawer.md) · 3 KB — Contract: Dialog and Drawer.
+- [ui/components/dialog-drawer.md](../ui/components/dialog-drawer.md) · 4 KB — Contract: Dialog and Drawer.
   - sections: Job · Choose · Variants · Scrolling · Size · States · Owner split · Rules
 - [ui/components/empty-state.md](../ui/components/empty-state.md) · 4 KB — Contract: EmptyState.
   - sections: Job · Choose · Variants · Size · States · Owner split · Frame · Rules
 - [ui/components/entry-frame.md](../ui/components/entry-frame.md) · 3 KB — Hold one bounded entry task beside its contextual identity.
   - sections: Job · Choose · Anatomy · Capability questions · Variants · Size · States · Owner split · Rules
-- [ui/components/field.md](../ui/components/field.md) · 4 KB — Contract: Input.
-  - sections: Job · Choose · The rhythm · Variants · Size · States · Owner split · Rules
+- [ui/components/field.md](../ui/components/field.md) · 5 KB — Contract: Input.
+  - sections: Job · Choose · The rhythm · Variants · Size · States · Owner split · Rules · A labelled Switch needs its description (SWITCH-LABEL-DESCRIPTION)
 - [ui/components/freestyle.md](../ui/components/freestyle.md) · 2 KB — Contract: Freestyle.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/identity-mark.md](../ui/components/identity-mark.md) · 3 KB — Contract: Avatar and IconTile.
   - sections: Job · Choose · Variants · Size · States · Owner split · Initials fit the circle · Rules
-- [ui/components/list-table.md](../ui/components/list-table.md) · 7 KB — Contract: List and Table.
-  - sections: Job · Choose · Section head (0.36.0) · Variants · Size · States · Owner split · Row description · Rules
+- [ui/components/list-table.md](../ui/components/list-table.md) · 10 KB — Contract: List and Table.
+  - sections: Job · Choose · Section head (0.36.0) · Version diff rows (0.37.28) · Variants · Size · States · Owner split · Row description · Rules · Key-value rows (0.37.5)
 - [ui/components/mascot.md](../ui/components/mascot.md) · 3 KB — Contract: Mascot.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/menu.md](../ui/components/menu.md) · 2 KB — Contract: Menu.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
-- [ui/components/message-bubble.md](../ui/components/message-bubble.md) · 5 KB — Contract: MessageBubble.
-  - sections: Job · Choose · Variants · Size · States · Owner split · Rules
+- [ui/components/message-bubble.md](../ui/components/message-bubble.md) · 10 KB — Contract: MessageBubble.
+  - sections: Job · The chat surfaces (0.37.31) · The chat frame (0.37.33) · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/page-header.md](../ui/components/page-header.md) · 8 KB — Contract: Page, Section.
   - sections: Job · Choose · Variants · Size · States · Owner split · Band left, well centred (MEASURE-8) · Rules
-- [ui/components/pane-grid.md](../ui/components/pane-grid.md) · 11 KB — Contract: PaneGrid.
-  - sections: Job · Choose · Variants · Size · States · Owner split · Pane content cap (MEASURE-9, the workspace form of MEASURE-8) · Scroll law (0.36.0) · The shared head row (layout B) · Drawer opener · Rules
+- [ui/components/pane-grid.md](../ui/components/pane-grid.md) · 14 KB — Contract: PaneGrid.
+  - sections: Job · Choose · Variants · Size · States · Owner split · Pane content cap (MEASURE-9, the workspace form of MEASURE-8) · Scroll law (0.36.0) · The grid owns scroll and height (0.37.5) · The shared head row (layout B) · Pane footer (0.37.5) · Drawer opener · Rules · Pane head slot (0.37.5) · Stacked panes grow with their content (PANE-GRID-STACKED, 0.37.14)
 - [ui/components/quote.md](../ui/components/quote.md) · 3 KB — Contract: Quote.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/segmented-control.md](../ui/components/segmented-control.md) · 2 KB — The Grammar has no segmented control: `SegmentedControl` is removed (the pill-in-a-track look is `Tabs appearance="primary"`, a switch of a mode or period of the same data, in a ...
@@ -254,11 +255,11 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · Variants · Size · States · Owner split · The second layer · Rules
 - [ui/components/text-field.md](../ui/components/text-field.md) · 4 KB — Contract: Input, CopyField.
   - sections: Job · Choose · Variants · Size · States · Owner split · Chat composer · Rules
-- [ui/components/text.md](../ui/components/text.md) · 3 KB — The type scale is ../presentation.md; the contract holds no role for `Text`, a leaf of that scale.
-  - sections: Job · Choose · Size · States · Owner split · Link and Sublabel · Rules
-- [ui/components/toast-alert.md](../ui/components/toast-alert.md) · 2 KB — Contract: Toast and Alert.
+- [ui/components/text.md](../ui/components/text.md) · 7 KB — The type scale is ../presentation.md; the contract holds no role for `Text`, a leaf of that scale.
+  - sections: Job · Choose · Size · States · Owner split · Link and Sublabel · Rules · Article headings are 14 (ARTICLE-HEADINGS-14, 0.37.14) · Course content is a markdown string (`Markdown`) · A one-line command has no language label (CODE-BLOCK-LANGUAGE, 0.37.15)
+- [ui/components/toast-alert.md](../ui/components/toast-alert.md) · 3 KB — Contract: Toast and Alert.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
-- [ui/composition.md](../ui/composition.md) · 31 KB — Composition is decided while the page is still a description: which regions exist, which content outranks which, which action carries the decision, which conditions exist and who ...
+- [ui/composition.md](../ui/composition.md) · 32 KB — Composition is decided while the page is still a description: which regions exist, which content outranks which, which action carries the decision, which conditions exist and who ...
   - sections: 1. Hierarchy · 2. Action and CTA · 3. Accent · 4. State and feedback · 5. Collection · 6. Layout · 7. Responsive · 8. Taste · 9. Coverage
   - ids: ACCENT-2, ACCENT-3, ACCENT-4, ACCENT-5, ACCENT-6, ACTION-1, COLLECTION-1, COLLECTION-2, COLLECTION-3, COLLECTION-4, COVERAGE-1, CTA-1, CTA-2, CTA-3, CTA-4, CTA-5, CTA-6, DISCIPLINE-1, DISCIPLINE-2, DISCIPLINE-3, FE-APP-SHELL-1..6, FEEDBACK-1, FEEDBACK-2, FEEDBACK-3 and 24 more
 - [ui/loading.md](../ui/loading.md) · 9 KB — A region is in exactly one of four states, and the Grammar owns how each looks.
@@ -272,7 +273,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [ui/proof/thresholds.yaml](../ui/proof/thresholds.yaml) · 5 KB — Every numeric threshold of contexts/ui, as data.
 - [ui/scale.md](../ui/scale.md) · 7 KB — One size model for every interactive component, so that a row of mixed controls reads as one object and two apps built on the same grammar size the same thing the same way.
   - sections: Why one ramp · The ramp · Drawn height and target size are two facts · How each component sits on the ramp · What travels with a step · Density
-- [ui/situations.md](../ui/situations.md) · 16 KB — An author says what the thing is; the grammar decides how it looks.
+- [ui/situations.md](../ui/situations.md) · 17 KB — An author says what the thing is; the grammar decides how it looks.
   - sections: The situations · Loading · Where the other decision tables live
 - [vendor/README.md](../vendor/README.md) · 3 KB — The grammar is built on HeroUI (`@heroui/react` with `@heroui/styles`; the version is pinned in stack/pins.yaml).
   - sections: The vendor reference is generated, not kept here · Pin

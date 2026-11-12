@@ -273,8 +273,8 @@ removes the title link.
 ### Link
 
 `Link` is a native destination carried by text or one image. An inline text link takes the size of the text around it
-(`size` defaults to `inherit`) and the exact primary colour; an external destination ends with the grammar's external
-glyph by default. Its text form takes string `children`; its media form
+(`size` defaults to `inherit`) and the exact primary colour; the external glyph `↗` ends an EXTERNAL destination (`kind="external"`) only (0.37.14): an internal text link has none and keeps the accent
+colour, and `variant="plain"` (a navigation row's title, a shell brand) has no colour, underline or glyph because the component around it is the affordance. Its text form takes string `children`; its media form
 takes `media` as the existing `ImageProps` data and a required accessible destination `label`, with no children.
 The compiler rejects mixing the forms. Image owns aspect, fit, dimensions, provenance, load state and fallback;
 In a media destination, `plate="none"` preserves a cut-out mark's transparent, unclipped shape. Navigation, disabled state, external-tab safety,
@@ -354,9 +354,14 @@ props. Its `kind="receipt"` has `sent`, `delivered` and `seen` facts, with typed
 marks; readers retain accessible names and localized overflow copy. Its announcement is polite and atomic.
 
 A message bubble is one message of a conversation; every conversation is `MessageBubble`s in a thread the app keeps, and no screen draws its own
-bubble. The reader's own message (`side="outgoing"`) is the brand fill (`--accent`) with its foreground (`--accent-foreground`),
-the other party's is the surface with its foreground, and inline content (a link, a mention, code, a muted line) inherits the
-bubble's foreground so it reads on either face. The corner on the author's side tightens to point at the avatar.
+bubble. Every chat draws the same three faces (`DNA-COMMON-CHAT-SURFACES`, 0.37.31): the thread is the page tone (`--background`),
+the reader's own message (`side="outgoing"`) is the brand fill (`--accent`) with its foreground (`--accent-foreground`), and the
+other party's (incoming, and every `MessageCard`) is the flat surface with its foreground, no border and no shadow (on a white
+surface outside any chat frame it wears the 1px separator edge). A chat is one frame on any page (`DNA-COMMON-CHAT-FRAME`, 0.37.33):
+`Pane content="chat"` paints its head, thread and composer footer `--background` wherever it stands, with no app tone, and its thread
+is the only scroller (`DNA-COMMON-CHAT-FRAME-SCROLL`). Inline content (a link, a mention, code, a muted line) inherits the
+bubble's foreground so it reads on either face. The replies a card offers are `SurfaceCard kind="list" layout="suggestions"`. The
+corner on the author's side tightens to point at the avatar. An app never restyles a face (lint `message-surfaces`).
 
 ### EmptyState
 

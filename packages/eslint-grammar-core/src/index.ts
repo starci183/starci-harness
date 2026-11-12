@@ -17,6 +17,7 @@ import { rules as layoutTwoAxisRules } from "./layout-two-axis.ts"
 import { rules as linkLookRules } from "./link-look.ts"
 import { rules as mascotRules } from "./mascot.ts"
 import { rules as menuEntriesRules } from "./menu-entries.ts"
+import { rules as messageSurfacesRules } from "./message-surfaces.ts"
 import { rules as noRawScrollRules } from "./no-raw-scroll.ts"
 import { rules as outlineIconsRules } from "./outline-icons.ts"
 import { rules as pageRules } from "./page.ts"
@@ -24,6 +25,9 @@ import { rules as pageBreadcrumbsRules } from "./page-breadcrumbs.ts"
 import { rules as pageHeaderRules } from "./page-header.ts"
 import { rules as paneRules } from "./pane.ts"
 import { rules as rowTitleLinkRules } from "./row-title-link.ts"
+import { rules as rowsInCardRules } from "./rows-in-card.ts"
+import { rules as noCardLeadDescriptionRules } from "./no-card-lead-description.ts"
+import { rules as noNestedLabelRules } from "./no-nested-label.ts"
 import { rules as sectionHeadActionRules } from "./section-head-action.ts"
 import { rules as sameLineSizeRules } from "./same-line-size.ts"
 import { rules as statusColorsRules } from "./status-colors.ts"
@@ -68,6 +72,7 @@ const CONTRIBUTIONS: readonly { readonly law: string; readonly rules: Readonly<R
   { law: "link-look", rules: linkLookRules },
   { law: "mascot", rules: mascotRules },
   { law: "menu-entries", rules: menuEntriesRules },
+  { law: "message-surfaces", rules: messageSurfacesRules },
   { law: "no-raw-scroll", rules: noRawScrollRules },
   { law: "outline-icons", rules: outlineIconsRules },
   { law: "page", rules: pageRules },
@@ -76,6 +81,9 @@ const CONTRIBUTIONS: readonly { readonly law: string; readonly rules: Readonly<R
   { law: "pane", rules: paneRules },
   { law: "row-title-link", rules: rowTitleLinkRules },
   { law: "same-line-size", rules: sameLineSizeRules },
+  { law: "rows-in-card", rules: rowsInCardRules },
+  { law: "no-card-lead-description", rules: noCardLeadDescriptionRules },
+  { law: "no-nested-label", rules: noNestedLabelRules },
   { law: "section-head-action", rules: sectionHeadActionRules },
   { law: "single-child-card", rules: singleChildCardRules },
   { law: "status-colors", rules: statusColorsRules },

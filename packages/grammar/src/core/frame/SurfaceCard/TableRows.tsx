@@ -6,9 +6,9 @@ import type { TableData, TableRowData } from "../../surfaceCardData.js"
 type Row = DataTableRow & Pick<TableRowData, "cells">
 
 /**
- * The table a `kind="table"` card holds: Grammar's own `DataTable` as the `frame` (0.36.0): the card IS HeroUI's grey frame (CSS on the
- * card's `data-grammar-surface-kind="table"`, no border), the heading row on the grey, the rows on a white rounded body, and a `paging`
- * footer zone below it in the grey. One implementation: the card passes data, the table draws it.
+ * The table a `kind="table"` card holds: Grammar's own `DataTable` as the `frame` (0.37.8): the card is a list card (white, the edge of its ground, header
+ * zones and a `paging` footer zone divided by the zone seam), the column labels (12, muted) on the white and 1px full-width row dividers. One implementation: the card
+ * passes data, the table draws it.
  */
 export const TableRows = ({ data, isLoading, ariaLabel }: {
     readonly data: TableData
@@ -21,6 +21,10 @@ export const TableRows = ({ data, isLoading, ariaLabel }: {
         ...(column.align === undefined ? {} : { align: column.align }),
         ...(column.numeric === true ? { isNumeric: true } : {}),
         ...(column.priority === undefined ? {} : { priority: column.priority }),
+        ...(column.width === undefined ? {} : { width: column.width }),
+        ...(column.minWidth === undefined ? {} : { minWidth: column.minWidth }),
+        ...(column.truncate === true ? { truncate: true } : {}),
+        ...(column.hideBelow === undefined ? {} : { hideBelow: column.hideBelow }),
     }))
     const shared = {
         label: ariaLabel ?? "",
@@ -30,6 +34,9 @@ export const TableRows = ({ data, isLoading, ariaLabel }: {
         emptyContent: data.empty,
         surface: "frame" as const,
         ...(data.onRowAction === undefined ? {} : { onRowAction: data.onRowAction }),
+        ...(data.resizable === true ? { resizable: true } : {}),
+        ...(data.id === undefined ? {} : { id: data.id }),
+        ...(data.phone === undefined ? {} : { phone: data.phone }),
     }
     return data.groups === undefined
         ? <DataTable<Row> {...shared} rows={data.rows} />

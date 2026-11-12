@@ -2,10 +2,10 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 import { expect, userEvent, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
-import { Matrix, State, noop } from './fixtures.js';
+import { noop } from './fixtures.js';
 
 /**
- * Three card additions: a search zone that holds trailing filter selects (`filters`), a card head `description` under the title, and a
+ * Two card additions: a search zone that holds trailing filter selects (`filters`), and a
  * pressable table row (`onRowAction`) that opens a drawer.
  */
 const meta: Meta = { title: 'Surfaces/Card search filters, description and pressable rows' };
@@ -27,7 +27,6 @@ const SearchFiltersCard = ({ filters }: { readonly filters: number }) => {
     <G.SurfaceCard
       kind="list"
       label="Invoices"
-      description="Everything billed to this workspace."
       items={[{ id: 'i1', title: 'INV-001', description: 'Paid' }, { id: 'i2', title: 'INV-002', description: 'Due' }]}
       empty={<G.EmptyNotice message="Nothing matches." />}
       headers={[{ kind: 'search', label: 'Search invoices', value: query, onChange: setQuery, placeholder: 'Search invoices', clearLabel: 'Clear search', filters: fields }]}
@@ -49,32 +48,45 @@ export const SearchZoneWithFilters: Story = {
   },
 };
 
-/** On a phone-width card the selects wrap below the search. */
-export const SearchZoneWithFiltersPhone: Story = {
-  render: () => <div data-story-search="phone" style={{ width: 358 }}><SearchFiltersCard filters={2} /></div>,
+const assertAligned = (root: HTMLElement, filters: number) => {
+  const zone = root.querySelector<HTMLElement>('[data-grammar-zone="search"]');
+  if (zone === null) throw new Error('the search zone renders');
+  const field = zone.querySelector<HTMLElement>('.starci-core-search-field-group');
+  const triggers = Array.from(zone.querySelectorAll<HTMLElement>('.starci-core-select-trigger'));
+  if (field === null || triggers.length !== filters) throw new Error('the field and its filters render');
+  const middle = (box: DOMRect) => box.top + box.height / 2;
+  for (const trigger of triggers) {
+    // 0.37.23: the filter pill is the field's height, and its prefix and value stand on one line centred in the pill.
+    expect(Math.abs(trigger.getBoundingClientRect().height - field.getBoundingClientRect().height)).toBeLessThanOrEqual(0.5);
+    const prefix = trigger.querySelector<HTMLElement>('.starci-core-select-prefix')!.getBoundingClientRect();
+    const value = trigger.querySelector<HTMLElement>('.select__value')!.getBoundingClientRect();
+    expect(Math.abs(middle(prefix) - middle(trigger.getBoundingClientRect()))).toBeLessThanOrEqual(1);
+    expect(Math.abs(middle(prefix) - middle(value))).toBeLessThanOrEqual(1);
+  }
 };
 
-/** The head description: one muted small line under the label, with and without a fact. */
-export const CardHeadDescription: Story = {
+/** 0.37.23: one filter and two filters, wide and phone: the select pill matches the search field's height and its text is centred. */
+export const SearchFiltersAligned: Story = {
+  name: 'Search zone filters aligned (1 and 2 filters, 1440 and 390)',
   render: () => (
-    <Matrix maxWidth={560}>
-      <State label="Label and description" direction="column">
-        <G.SurfaceCard label="Team" description="People who can edit this workspace." kind="list" items={[{ id: 'a', title: 'Alex Morgan' }]} empty={<G.EmptyNotice message="Nobody." />} />
-      </State>
-      <State label="With a fact and an end action" direction="column">
-        <G.SurfaceCard label="Team" fact="12" labelEnd={<G.Button intent="commit" size="sm">Invite</G.Button>} description="People who can edit this workspace." kind="list" items={[{ id: 'a', title: 'Alex Morgan' }]} empty={<G.EmptyNotice message="Nobody." />} />
-      </State>
-    </Matrix>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      <div data-story-aligned="one" style={{ width: 'min(100%, 900px)' }}><SearchFiltersCard filters={1} /></div>
+      <div data-story-aligned="two" style={{ width: 'min(100%, 900px)' }}><SearchFiltersCard filters={2} /></div>
+      <div data-story-aligned="phone" style={{ width: 358 }}><SearchFiltersCard filters={2} /></div>
+    </div>
   ),
   play: async ({ canvasElement }) => {
     await waitFor(() => {
-      const description = canvasElement.querySelector<HTMLElement>('[data-grammar-surface-description="true"]');
-      if (description === null) throw new Error('the description renders');
-      const heading = canvasElement.querySelector<HTMLElement>('h3');
-      if (heading === null) throw new Error('the heading renders');
-      expect(description.getBoundingClientRect().top).toBeGreaterThan(heading.getBoundingClientRect().bottom - 1);
+      assertAligned(canvasElement.querySelector<HTMLElement>('[data-story-aligned="one"]')!, 1);
+      assertAligned(canvasElement.querySelector<HTMLElement>('[data-story-aligned="two"]')!, 2);
+      assertAligned(canvasElement.querySelector<HTMLElement>('[data-story-aligned="phone"]')!, 2);
     }, { timeout: 5000 });
   },
+};
+
+/** On a phone-width card the selects wrap below the search. */
+export const SearchZoneWithFiltersPhone: Story = {
+  render: () => <div data-story-search="phone" style={{ width: 358 }}><SearchFiltersCard filters={2} /></div>,
 };
 
 const COLUMNS: readonly G.TableColumnData[] = [{ id: 'name', label: 'Invoice' }, { id: 'amount', label: 'Amount', numeric: true }, { id: 'act', label: 'Actions' }];

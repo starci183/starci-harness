@@ -16,7 +16,15 @@ import type { NoChildren } from "../../tier.js"
 
 export type SwitchSize = "md" | "lg" | "control"
 
-export type SwitchProps = NoChildren & FieldControlProps & {
+/**
+ * A Switch with a visible label MUST carry its description (owner, 0.37.5): the row is label + description at the start and the control at the end.
+ * Only a bare control (`isLabelHidden`, an icon-only or theme switch) may go without.
+ */
+export type SwitchDescription =
+    | { readonly isLabelHidden?: false; readonly description: string }
+    | { readonly isLabelHidden: true; readonly description?: string }
+
+export type SwitchProps = NoChildren & Omit<FieldControlProps, "description" | "isLabelHidden"> & SwitchDescription & {
     readonly value?: string
     readonly isSelected?: boolean
     readonly defaultSelected?: boolean
@@ -50,6 +58,10 @@ export type SwitchProps = NoChildren & FieldControlProps & {
 /**
  * An immediate on/off setting (`role="switch"`). Use Checkbox for a choice that only takes effect
  * on submit. The label is part of the hit area; Space toggles.
+ *
+ * ONE layout (0.37.5, owner): with a label the Switch is a single row, the label (14, weight 500) and the description (12, muted) at the start filling the row, the
+ * control at the end edge centred vertically, the whole row the hit target. There is no placement prop: the control cannot be put before the text. `isLabelHidden`
+ * keeps the bare control for an icon-only switch (a theme toggle).
  */
 const SwitchInner = ({ isLoading = false, ...props }: SwitchProps) => isLoading
     ? <FieldSkeletonScope component="Switch"><SwitchControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
@@ -61,6 +73,7 @@ const SwitchControl = ({ value, isSelected, defaultSelected, onSelectedChange, s
         data-component="Switch"
         data-contract="A11Y-1 STATE-1"
         data-grammar-switch-size={size}
+        data-grammar-switch-labelled={field.isLabelHidden === true ? "false" : "true"}
         data-grammar-switch-icons={thumbIcon === undefined ? "none" : selectedThumbIcon === undefined ? "single" : "swap"}
         className="starci-core-choice starci-core-switch"
         size={size === "control" ? "lg" : size}
@@ -70,23 +83,23 @@ const SwitchControl = ({ value, isSelected, defaultSelected, onSelectedChange, s
         {...(isSelected === undefined ? defaultSelected === undefined ? {} : { defaultSelected } : { isSelected })}
         {...(onSelectedChange === undefined ? {} : { onChange: onSelectedChange })}
     >
-        <HeroSwitch.Content className="starci-core-choice-content" data-grammar-choice-target="true">
-            <HeroSwitch.Control className="starci-core-choice-control" data-grammar-choice-control="switch" data-grammar-switch-track="true">
-                <HeroSwitch.Thumb data-grammar-switch-thumb="true">
-                    {thumbIcon === undefined ? null : (
-                        <HeroSwitch.Icon>
-                            <span aria-hidden="true" className="starci-core-switch-icon" data-grammar-switch-icon="off"><Icon source={thumbIcon} usage={size === "md" ? "chip" : "leading"} /></span>
-                            {selectedThumbIcon === undefined ? null : (
-                                <span aria-hidden="true" className="starci-core-switch-icon" data-grammar-switch-icon="on"><Icon source={selectedThumbIcon} usage={size === "md" ? "chip" : "leading"} /></span>
-                            )}
-                        </HeroSwitch.Icon>
-                    )}
-                </HeroSwitch.Thumb>
-            </HeroSwitch.Control>
+        <HeroSwitch.Content className="starci-core-switch-text" data-grammar-choice-target="true">
             <FieldLabel isHidden={field.isLabelHidden === true}>{field.label}</FieldLabel>
+            <FieldDescription>{field.description}</FieldDescription>
+            <FieldErrorText>{field.errorMessage}</FieldErrorText>
         </HeroSwitch.Content>
-        <FieldDescription>{field.description}</FieldDescription>
-        <FieldErrorText>{field.errorMessage}</FieldErrorText>
+        <HeroSwitch.Control className="starci-core-choice-control" data-grammar-choice-control="switch" data-grammar-switch-track="true">
+            <HeroSwitch.Thumb data-grammar-switch-thumb="true">
+                {thumbIcon === undefined ? null : (
+                    <HeroSwitch.Icon>
+                        <span aria-hidden="true" className="starci-core-switch-icon" data-grammar-switch-icon="off"><Icon source={thumbIcon} usage={size === "md" ? "chip" : "leading"} /></span>
+                        {selectedThumbIcon === undefined ? null : (
+                            <span aria-hidden="true" className="starci-core-switch-icon" data-grammar-switch-icon="on"><Icon source={selectedThumbIcon} usage={size === "md" ? "chip" : "leading"} /></span>
+                        )}
+                    </HeroSwitch.Icon>
+                )}
+            </HeroSwitch.Thumb>
+        </HeroSwitch.Control>
     </HeroSwitch>
 )
 

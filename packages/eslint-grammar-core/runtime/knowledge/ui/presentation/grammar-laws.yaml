@@ -77,6 +77,27 @@ rules:
         assert: |-
           It is a workspace page, `Page chrome="panes"`: a grid of panes split by dividers, side panes white surfaces at full
           height, never cards. The main pane may hold a pink well that follows case-1.
+  - id: MESSAGE-SURFACES
+    title: Every chat draws Grammar's three faces and an app never restyles them
+    governs: A chat thread, the messages in it and the replies a message card offers.
+    cases:
+      - id: case-1
+        when: A chat thread with messages is drawn (team chat, an agent's chat, an inbox thread, the assistant)
+        assert: |-
+          The thread is a `PaneSection scroll role="log"` on the page tone `--background`; a message of someone else
+          (`MessageBubble` incoming, `MessageCard`) is the flat `--surface` with no border and no shadow; the reader's own
+          message is `--accent` with `--accent-foreground`. No class or style reaches a bubble, a card or the thread ground.
+      - id: case-2
+        when: A message card offers replies to send
+        assert: |-
+          They are one bordered list, `SurfaceCard kind="list" layout="suggestions"`, a plain-text row per reply whose whole
+          row sends it, with a trailing chevron; the suggestion pills by the composer stay `Button size="sm"`.
+      - id: case-3
+        when: A chat is drawn on any page (the chat page, an inbox thread between a list and an aside, an agent's chat tab, an aside or a drawer)
+        assert: |-
+          The chat is one frame, `Pane content="chat"` (head, thread, composer `footer`), painted `--background` as a whole
+          whatever it stands on; it states no `surface`. The rest of the page keeps its own rule (a room list stays white).
+          The composer field stays white, the 1px lines between the zones stay, and every message in the frame is flat.
   - id: SUGGESTION-BUTTONS
     title: Suggestions and quick replies are a Cluster of neutral sm Buttons
     governs: Anything that suggests something to say or ask.
@@ -148,6 +169,33 @@ rules:
         assert: |-
           It is HeroUI v3's link: the primary colour, the underline on hover only, the anchor icon at the end. Its type size and leading are
           inherited (14 in a body, 12 in meta or caption text). A size prop, a size class and an underline or decoration class are refused.
+  - id: ROWS-IN-CARD
+    title: Rows of data are always a card
+    governs: A list of rows or key-value rows on the well or on a white surface.
+    cases:
+      - id: case-1
+        when: A DescriptionList or DisclosureList is drawn
+        assert: |-
+          It stands in a Section or a SurfaceCard, so it is a card: a shadow and no border on the pink well, a 1px border and no shadow on a white
+          surface (aside, pane, drawer); Grammar draws that edge itself. A row primitive with no card around it is refused. ListBox is a navigation list and is not read.
+  - id: CARD-NO-DESCRIPTION
+    title: A card has no description
+    governs: The head of a SurfaceCard and the line above it.
+    cases:
+      - id: case-1
+        when: A card is drawn with a label
+        assert: |-
+          The head is the label, a count chip, one fact and one end action; SurfaceCard has no description or subtitle prop. A muted Text written directly above a
+          SurfaceCard as its description is refused: the line is a row subtitle (select or list) or, when it explains the card's data, the card note.
+  - id: LABEL-SUBLABEL-HIERARCHY
+    title: One Label per section; nested groups use a Sublabel
+    governs: The Label of a Section or SurfaceCard and the Sublabel of the groups inside it.
+    cases:
+      - id: case-1
+        when: A labelled section holds groups of cards
+        assert: |-
+          The section has exactly one Label (14 / 500, 12px above its content). Each group inside it is a Section or SurfaceCard with `sublabel` (12 / 500 muted, 8px above its card),
+          never a second `title` / `label`; groups stand 24px apart. A Section or SurfaceCard with `sublabel` and a Label together is refused by the types.
   - id: SECTION-HEAD-ACTION
     title: A section head is one row with at most one thing at its end
     governs: The head of a Grammar Section.
@@ -156,8 +204,8 @@ rules:
         when: A Section head carries an action
         assert: |-
           The head is ONE row: the label (14, 500) and an optional count chip (12) at the start, at most ONE thing at the end, a navigation
-          Link variant="head" (the label then an arrow that slides about 3px on hover) or an info IconButton. A Button is refused (navigation is a
-          Link) and so are two commands. There is no description under the label: it is a caption (12, muted) below the card or list.
+          Link variant="head" (the label then an arrow that slides about 3px on hover), an info IconButton, or (0.37.25) a neutral small text Button
+          (intent neutral, size sm, no icon: "Gắn thêm provider"). A primary or commit Button, another size or an icon Button is refused, and so are two commands. There is no description under the label: it is a caption (12, muted) below the card or list.
   - id: TAB-COUNT-CHIP
     title: A tab count is a 12px chip, grey unless it is work waiting for the owner
     governs: The count on a Grammar tab, page layers 1 and 2 and filter tabs.
@@ -196,15 +244,15 @@ rules:
           label, a search field, a button start icon, a link arrow, meta) is a plain outline icon at text size with no tile. A status (done, running, failed, waiting,
           skipped) is a tone-coloured outline icon with no tile: outline check-circle in success, x-circle in danger, a spinning arrow for running.
   - id: SINGLE-CHILD-CARD
-    title: A table, list or chart standing alone is the surface
-    governs: A SurfaceCard whose only content is a table, a list or a chart.
+    title: A lone DataTable or chart is the surface; a list card is always valid
+    governs: A SurfaceCard whose only content is a DataTable or a chart (a list or key-value card is valid, 0.37.8).
     cases:
       - id: case-1
-        when: A card has no zones (headers, footers, head actions) and holds one DataTable, list (ListBox, ItemList, DisclosureList, Timeline, Section kind="list") or chart (BarChart, ProportionBar, BubbleMap, FlowGraph, MermaidDiagram), or is kind="table" or kind="list"
+        when: A card has no zones (headers, footers, head actions) and holds one DataTable or chart (BarChart, ProportionBar, BubbleMap, FlowGraph, MermaidDiagram)
         assert: |-
-          The Grammar draws a standalone DataTable and every Section kind="list" as ONE frame (border, card radius), so the
-          card is a second frame. The title sits above as a Section head and one caption sits below (Section caption, muted sm).
-          A card groups two or more different parts (figures + list + actions), or carries zones (tabs, search, head actions).
+          A standalone DataTable and chart is ONE frame (border, card radius), so the card is a second frame. The title sits above as a Section head and one caption
+          sits below (Section caption, muted sm). A card of list or key-value rows (SurfaceCard kind="list", "table", "select", ListBox, DisclosureList, Section kind="list",
+          DescriptionList) is valid alone or not (0.37.8). A card groups two or more different parts (figures + list + actions), or carries zones (tabs, search, head actions).
   - id: NO-RAW-SCROLL
     title: NIVO never shows scrollbars
     governs: Scroll areas an app draws.

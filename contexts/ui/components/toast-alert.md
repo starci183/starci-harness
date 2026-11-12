@@ -22,11 +22,11 @@ Choice `toast-alert.choose.owner`: who reports the outcome. The first row that a
 
 An `Alert` has one look in every grammar: its tone's soft pair on the row (`x-soft` ground; glyph, title and description
 `x-soft-foreground`), flat, with no shadow or border (`DNA-COMMON-ALERT-TONE-PAIR-*`). Its meaning picks the tone: informative
-the accent pair (or the app's `--informative-soft` pair when its theme writes one), affirmative success, cautionary warning, negative danger, and
-neutral, pending and unavailable the default pair. It takes no appearance choice; the deprecated `appearance` prop does nothing.
+the NEUTRAL default pair (never the accent pair: pink/red reads as an error; an app may write its own `--informative-soft` pair), affirmative success, cautionary warning, negative danger, and
+neutral, pending and unavailable the default pair. A `Toast` and the `AlertDialog` follow the same meaning (0.37.18): informative is neutral there too (the toast's mark `--muted`, the dialog's icon tile the default soft pair; `DNA-COMMON-TOAST-TONE-INFORMATIVE`, `DNA-COMMON-ALERTDIALOG-TONE-INFORMATIVE`); an app that writes `--informative` tokens keeps its own. A `Meter` is a measure, not a notice: a neutral or pending reading keeps the accent (ACCENT-4), and `tone="foreground"` fills it with `--foreground` on the default track, the measure that spends no accent (ACCENT-6; `Progress` takes the same tone). It takes no appearance choice; the deprecated `appearance` prop does nothing.
 
 ## Variants
-Tone reports a real outcome (ACCENT-5); informative spends accent. The action's variant per tone is the
+Tone reports a real outcome (ACCENT-5); informative is neutral and spends none (red budget: [composition.md](../composition.md) ACCENT-6). The action's variant per tone is the
 contract's. A toast holds at most one action.
 
 ## Size

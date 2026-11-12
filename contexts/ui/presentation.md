@@ -104,7 +104,7 @@ Gap (row and column chosen apart):
   sections a region step (32) apart; a `PaneSection` defaults to `gap="inline"` (8) because bands stand 12 apart (a band alone
   in its pane may take `row` or `section`); a `SurfaceCard` label stands 8 above its surface (4 in a cards `Grid`); `Grid`
   kinds `cards`, `week` and `week-summary` 8, `sections`, `pair`, `featured` 24, `main-rail` 32; a `Board` column's cards 8; the
-  `Footer` 32 (main and legal), 24 (brand and directory), 12 (groups), 8 (links). The author's `Stack`/`Cluster` `gap` follows
+  `Footer` 32 (main and legal), 24 (brand and directory), 12 (groups), 8 (links; the links are `Link variant="plain"`, foreground colour, never the accent: red budget). The author's `Stack`/`Cluster` `gap` follows
   the same ladder. Three exemptions: the region step is the ceiling (nothing above 32 exists to be compared); a box with its
   own edge (a card surface, a board column's ground, an overlay) groups by that edge, so the comparison starts again inside it;
   and a field stack (`Stack gap="section"` of controls, 24) directly in a `Form` or `Fieldset` is the Field rule's rhythm

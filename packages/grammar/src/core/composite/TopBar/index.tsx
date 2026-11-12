@@ -1,8 +1,11 @@
 "use client"
 
 import { Button as HeroButton } from "@heroui/react"
-import type { ComponentPropsWithoutRef, ReactNode } from "react"
+import { createContext, useContext, useSyncExternalStore, type ComponentPropsWithoutRef, type ReactNode } from "react"
 import { SurfaceNesting } from "../../surfaceContext.js"
+import { IconButton } from "../../leaf/IconButton/index.js"
+import { glyphSource, type GlyphName } from "../../leaf/Icon/glyphs.js"
+import type { DropdownMenuItem } from "../../branch/DropdownMenu/index.js"
 import { ButtonPlacementProvider } from "../../buttonIntent.js"
 import type { NoChildren } from "../../tier.js"
 
@@ -19,6 +22,62 @@ export type TopBarMenu = {
 }
 
 /**
+ * An app-owned command in the bar's end cluster (0.37.15), before the app's fixed cluster (language, theme, account): a round outline icon button of the same kind as the
+ * language button. `label` is its accessible name; `badge` draws the attention dot when work is waiting. Exactly one of `onPress` (a command) or `href` (a destination).
+ * At phone width only the FIRST stays in the bar; the rest are offered by `useTopBarOverflowEntries()` for the account menu.
+ */
+export type TopBarCustomButton = {
+    readonly id: string
+    readonly glyph: GlyphName
+    readonly label: string
+    readonly badge?: boolean
+} & (
+    | { readonly onPress: () => void; readonly href?: never }
+    | { readonly href: string; readonly onPress?: never }
+)
+
+const PHONE_MAX_PX = 767.68
+const PHONE_QUERY = `(max-width: ${PHONE_MAX_PX}px)`
+const subscribePhone = (notify: () => void) => {
+    if (typeof window === "undefined") return () => undefined
+    const query = window.matchMedia(PHONE_QUERY)
+    query.addEventListener("change", notify)
+    return () => query.removeEventListener("change", notify)
+}
+const isPhone = () => typeof window !== "undefined" && window.matchMedia(PHONE_QUERY).matches
+
+const TopBarOverflowContext = createContext<readonly TopBarCustomButton[]>([])
+
+/**
+ * The entries (glyph + label) of the custom buttons that left the bar at phone width (0.37.15: all but the first), for the account menu to append to its own entries. Empty above
+ * 48rem and outside a `TopBar`. The app's account `DropdownMenu` spreads it: `entries={[...accountEntries, ...useTopBarOverflowEntries()]}`.
+ */
+export const useTopBarOverflowEntries = (): readonly DropdownMenuItem[] => {
+    const buttons = useContext(TopBarOverflowContext)
+    const phone = useSyncExternalStore(subscribePhone, isPhone, () => false)
+    if (!phone) return []
+    return buttons.slice(1).map((button): DropdownMenuItem => ({
+        id: `top-bar-custom-${button.id}`,
+        label: button.label,
+        iconSource: glyphSource(button.glyph),
+        ...(button.href === undefined ? { onAction: button.onPress } : { href: button.href }),
+    }))
+}
+
+const CustomButtons = ({ buttons }: { readonly buttons: readonly TopBarCustomButton[] }) => (
+    <div className="starci-core-top-bar-custom" data-grammar-top-bar-custom="true">
+        {buttons.map((button) => (
+            <span key={button.id} className="starci-core-top-bar-custom-item" data-grammar-top-bar-custom-item={button.id} data-grammar-attention={button.badge === true ? "true" : undefined}>
+                {button.href === undefined
+                    ? <IconButton intent="dismiss" source={glyphSource(button.glyph)} label={button.label} onPress={button.onPress} />
+                    : <IconButton intent="dismiss" source={glyphSource(button.glyph)} label={button.label} href={button.href} />}
+                {button.badge === true ? <span aria-hidden="true" className="starci-core-top-bar-custom-dot" data-grammar-top-bar-dot="true" /> : null}
+            </span>
+        ))}
+    </div>
+)
+
+/**
  * The bar's second and last layer: the page tabs of an app section, under the row. A layer is a named region, so its
  * content and its label travel together; a bar with no second layer carries neither.
  */
@@ -32,6 +91,8 @@ export type TopBarProps = NoChildren & Omit<ComponentPropsWithoutRef<"header">, 
     readonly navigation?: ReactNode
     /** Trailing actions: search, notifications, account. They stay visible at every width. */
     readonly actions?: ReactNode
+    /** App-owned round icon buttons (a bell, a help) in the end cluster BEFORE `actions` (0.37.15); at phone width only the first stays, the rest go to `useTopBarOverflowEntries()`. */
+    readonly customButtons?: readonly TopBarCustomButton[]
     /** The mobile menu trigger. */
     readonly menu?: TopBarMenu
     readonly position?: "static" | "sticky"
@@ -48,8 +109,9 @@ export type TopBarProps = NoChildren & Omit<ComponentPropsWithoutRef<"header">, 
  * `header` slot, the shell yields (its wrapper becomes a plain `div`) so the banner is never nested.
  * Contract: menu trigger A11Y-2 STATE-7 (named glyph button, app-owned aria-expanded).
  */
-export const TopBar = ({ brand, navigation, actions, menu, subnavigation, subnavigationLabel, position = "sticky", density = "default", ...headerProps }: TopBarProps) => (
+export const TopBar = ({ brand, navigation, actions, customButtons, menu, subnavigation, subnavigationLabel, position = "sticky", density = "default", ...headerProps }: TopBarProps) => (
     <ButtonPlacementProvider placement="chrome" navbar>
+    <TopBarOverflowContext.Provider value={customButtons ?? []}>
     <SurfaceNesting>
     <header
         {...headerProps}
@@ -80,7 +142,12 @@ export const TopBar = ({ brand, navigation, actions, menu, subnavigation, subnav
         )}
         <div className="starci-core-top-bar-brand" data-grammar-top-bar-brand="true">{brand}</div>
         {navigation === undefined ? null : <div className="starci-core-top-bar-navigation" data-grammar-top-bar-navigation="true">{navigation}</div>}
-        {actions === undefined ? null : <div className="starci-core-top-bar-actions" data-grammar-top-bar-actions="true">{actions}</div>}
+        {actions === undefined && (customButtons === undefined || customButtons.length === 0) ? null : (
+            <div className="starci-core-top-bar-actions" data-grammar-top-bar-actions="true">
+                {customButtons === undefined || customButtons.length === 0 ? null : <CustomButtons buttons={customButtons} />}
+                {actions}
+            </div>
+        )}
         </div>
         {subnavigation === undefined ? null : (
             <div
@@ -94,5 +161,6 @@ export const TopBar = ({ brand, navigation, actions, menu, subnavigation, subnav
         )}
     </header>
     </SurfaceNesting>
+    </TopBarOverflowContext.Provider>
     </ButtonPlacementProvider>
 )

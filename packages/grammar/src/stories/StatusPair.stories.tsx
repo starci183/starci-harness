@@ -23,7 +23,7 @@ const stripItems: ReadonlyArray<G.Figure> = [
 
 const openParameters = { grammar: { minHeight: '30rem' } };
 
-const dialogTone = (tone: 'negative' | 'affirmative' | 'cautionary' | 'informative'): Story => ({
+const dialogTone = (tone: 'negative' | 'affirmative' | 'cautionary' | 'informative' | 'neutral'): Story => ({
   parameters: openParameters,
   render: () => (
     <G.AlertDialog
@@ -43,6 +43,7 @@ export const AlertDialogNegative: Story = dialogTone('negative');
 export const AlertDialogAffirmative: Story = dialogTone('affirmative');
 export const AlertDialogCautionary: Story = dialogTone('cautionary');
 export const AlertDialogInformative: Story = dialogTone('informative');
+export const AlertDialogNeutral: Story = dialogTone('neutral');
 
 /** The note under a list card: a small muted line under the card, the full width of the list, in light and dark. */
 export const SurfaceCardFooter: Story = {

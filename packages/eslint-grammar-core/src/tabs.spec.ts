@@ -26,11 +26,18 @@ test("tabs-switch-zone: the pill is the switch header zone, never JSX", () => {
       { filename: BLOCK, code: `export const A = () => <Tabs label="Status" kind="filter" ${ITEMS} selectedKey="a" />` },
       { filename: BLOCK, code: `export const A = ({ appearance }) => <Tabs label="x" appearance={appearance} ${ITEMS} />` },
       { filename: SCRIPT, code: `export const A = () => <Tabs appearance="primary" label="x" ${ITEMS} />` },
+      { filename: BLOCK, code: `export const A = () => <SurfaceCard kind="select" label="Agent" selectionMode="multiple" items={[{ id: "send", title: "Send", control: <Tabs appearance="primary" label="Send" ${ITEMS} selectedKey="a" /> }]} value={v} onChange={set} />` },
+      { filename: BLOCK, code: `export const A = () => <SurfaceCard kind="select" label="Agent" selectionMode="multiple" items={[{ id: "send", title: "Send", "control": on ? <Tabs appearance={"primary"} label="Send" ${ITEMS} /> : null }]} value={v} onChange={set} />` },
+      { filename: BLOCK, code: `export const A = () => <SurfaceCard kind="list" label="Rows" items={rows} empty={empty} renderRow={(row) => <ListRow title="x" control={<Tabs appearance="primary" label="x" ${ITEMS} />} />} />` },
     ],
     invalid: [
       { filename: BLOCK, code: `export const A = () => <Page header={{ title: "x", tabs }}><Tabs appearance="primary" label="Views" ${ITEMS} selectedKey="a" /></Page>`, errors: [{ messageId: "pill" }] },
       { filename: BLOCK, code: `export const A = () => <Drawer><Tabs appearance="primary" label="Mode" ${ITEMS} /></Drawer>`, errors: [{ messageId: "pill" }] },
       { filename: BLOCK, code: `export const A = () => <Pane label="p"><Grammar.Tabs appearance={"primary"} label="Mode" ${ITEMS} /></Pane>`, errors: [{ messageId: "pill" }] },
+      { filename: BLOCK, code: `export const A = () => <SurfaceCard kind="select" label="Agent" selectionMode="multiple" items={[{ id: "send", title: "Send", subtitle: <Tabs appearance="primary" label="Send" ${ITEMS} /> }]} value={v} onChange={set} />`, errors: [{ messageId: "pill" }] },
+      { filename: BLOCK, code: `export const A = () => <Card title={<Tabs appearance="primary" label="x" ${ITEMS} />} />`, errors: [{ messageId: "pill" }] },
+      { filename: BLOCK, code: `export const A = () => <Row control={<Stack><Tabs appearance="primary" label="x" ${ITEMS} /></Stack>} />`, errors: [{ messageId: "pill" }] },
+      { filename: BLOCK, code: `export const A = () => <Row control={cond ? undefined : <Other />} label={<Tabs appearance="primary" label="x" ${ITEMS} />} />`, errors: [{ messageId: "pill" }] },
     ],
   })
 })

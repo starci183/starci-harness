@@ -130,7 +130,7 @@ roles:
     sizes: none
     states: [neutral, pending, PresentationState]
     grammarMayChange: [surface paint, edge (border/shadow by depth), radius via surfaceRadius, the label's paint, the ink ground and its inks]
-    dna: [DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE, DNA-COMMON-CARD-LABEL-ABOVE, DNA-COMMON-CARD-LABEL-HEADING, DNA-COMMON-ONE-HIGHLIGHT, DNA-COMMON-DIVIDER-FULL-BLEED, DNA-COMMON-SOFT-GROUND, DNA-COMMON-TREATMENT-TEXT-CONTRAST, DNA-CORE-EDGE-TOP, DNA-CORE-CARD-LABEL-OUTSIDE, DNA-OFFSET-POP-STICKER, DNA-OFFSET-POP-CARD-LABEL-OUTSIDE, DNA-COMMON-TILE-BYLINE, DNA-COMMON-TILE-FIGURE-START, DNA-COMMON-TILE-FIGURE-BEFORE-ACTION]
+    dna: [DNA-COMMON-LIST-ON-WHITE-BORDERED, DNA-COMMON-ROW-EDGE-PADDING, DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE, DNA-COMMON-CARD-LABEL-ABOVE, DNA-COMMON-CARD-LABEL-HEADING, DNA-COMMON-ONE-HIGHLIGHT, DNA-COMMON-DIVIDER-FULL-BLEED, DNA-COMMON-SOFT-GROUND, DNA-COMMON-TREATMENT-TEXT-CONTRAST, DNA-CORE-EDGE-TOP, DNA-CORE-CARD-LABEL-OUTSIDE, DNA-OFFSET-POP-STICKER, DNA-OFFSET-POP-CARD-LABEL-OUTSIDE, DNA-COMMON-TILE-BYLINE, DNA-COMMON-TILE-FIGURE-START, DNA-COMMON-TILE-FIGURE-BEFORE-ACTION]
     lint: [starci-grammar/no-raised-surface-in-surface]
 
   - id: button
@@ -295,7 +295,7 @@ roles:
     sizes: dialogSize is a max inline size, not a control size
     states: [open, closed, confirm-pending]
     grammarMayChange: [surface paint and edge, backdrop paint, shadow direction]
-    dna: [DNA-COMMON-OVERLAY-IN-ROOT, DNA-COMMON-DIALOG-NAMED, DNA-COMMON-DIALOG-ESCAPE, DNA-COMMON-DIALOG-FOCUS-TRAP, DNA-COMMON-ALERTDIALOG-DISMISS-FIRST]
+    dna: [DNA-COMMON-OVERLAY-IN-ROOT, DNA-COMMON-DIALOG-NAMED, DNA-COMMON-DIALOG-ESCAPE, DNA-COMMON-DIALOG-FOCUS-TRAP, DNA-COMMON-ALERTDIALOG-TONE-INFORMATIVE, DNA-COMMON-ALERTDIALOG-DISMISS-FIRST]
 
   - id: menu
     ui: ui/components/menu.md
@@ -323,7 +323,7 @@ roles:
     sizes: leading slot sm/md/lg match the control ladder
     states: [hover, focus-visible, selected, disabled, loading (same rows at rest), empty]
     grammarMayChange: [row state paint, seam paint]
-    dna: [DNA-COMMON-LIST-SEAMS, DNA-COMMON-SEAM-FULL-BLEED, DNA-COMMON-ROW-DESCRIPTION-ONE-LINE, DNA-COMMON-OPTION-DESCRIPTION-WRAPS, DNA-COMMON-TABLE-ROW-LINK, DNA-COMMON-TABLE-FOLD, DNA-COMMON-ROW-ACTION-END, DNA-COMMON-DISCLOSURE-CHEVRON-START, DNA-COMMON-FIGURES-PANE-ROW, DNA-COMMON-DESCRIPTION-DRAWER-COLUMNS, DNA-COMMON-STEPPER-BAR, DNA-COMMON-STEPPER-BAR-NO-CONNECTOR, DNA-COMMON-DISCLOSURE-CHEVRON-TITLE-NEXT, DNA-COMMON-TABLE-NO-CLIP, DNA-COMMON-ROW-TEXT-FIRST, DNA-COMMON-STEPPER-MARKER-FILLS, DNA-COMMON-STEPPER-MARKER-UPCOMING]
+    dna: [DNA-COMMON-LIST-SEAMS, DNA-COMMON-SEAM-FULL-BLEED, DNA-COMMON-ROW-DESCRIPTION-ONE-LINE, DNA-COMMON-OPTION-DESCRIPTION-WRAPS, DNA-COMMON-TABLE-ROW-LINK, DNA-COMMON-TABLE-FOLD, DNA-COMMON-ROW-ACTION-END, DNA-COMMON-DISCLOSURE-CHEVRON-START, DNA-COMMON-FIGURES-PANE-ROW, DNA-COMMON-DESCRIPTION-DRAWER-COLUMNS, DNA-COMMON-STEPPER-BAR, DNA-COMMON-STEPPER-BAR-NO-CONNECTOR, DNA-COMMON-DISCLOSURE-CHEVRON-TITLE-NEXT, DNA-COMMON-TABLE-NO-CLIP, DNA-COMMON-ROW-TEXT-FIRST, DNA-COMMON-STEPPER-MARKER-FILLS, DNA-COMMON-STEPPER-MARKER-UPCOMING, DNA-COMMON-LIST-ROW-DIFF, DNA-COMMON-ROW-CONTROL-CENTRE, DNA-COMMON-CARD-SUGGESTIONS]
 
   - id: alert
     ui: ui/components/toast-alert.md
@@ -336,7 +336,7 @@ roles:
     sizes: none
     states: [persistent (action or negative), timed, paused on hover or focus]
     grammarMayChange: [tone paint, toast spacing]
-    dna: [DNA-COMMON-ONE-TOASTER, DNA-COMMON-TOASTER-LIVE, DNA-COMMON-ALERT-TONE-PAIR-INFORMATIVE, DNA-COMMON-ALERT-TONE-PAIR-SUCCESS, DNA-COMMON-ALERT-TONE-PAIR-WARNING, DNA-COMMON-ALERT-TONE-PAIR-DANGER, DNA-COMMON-ALERT-TONE-PAIR-DEFAULT, DNA-COMMON-ALERT-TONE-PAIR-ACCENT]
+    dna: [DNA-COMMON-ONE-TOASTER, DNA-COMMON-TOASTER-LIVE, DNA-COMMON-ALERT-TONE-PAIR-INFORMATIVE, DNA-COMMON-TOAST-TONE-INFORMATIVE, DNA-COMMON-ALERT-TONE-PAIR-SUCCESS, DNA-COMMON-ALERT-TONE-PAIR-WARNING, DNA-COMMON-ALERT-TONE-PAIR-DANGER, DNA-COMMON-ALERT-TONE-PAIR-DEFAULT, DNA-COMMON-ALERT-TONE-PAIR-ACCENT]
 
   - id: empty-state
     ui: ui/components/empty-state.md
@@ -388,6 +388,7 @@ roles:
       scroll: [true, false]
       collapse: [drawer]
       inset: { values: [content, flush], chosenBy: app from pane-grid.choose.page }
+      content: { values: [cards, full, chat], chosenBy: "app from what the pane holds: a well of cards, a full-bleed canvas, or one chat (head, thread, composer footer: chat, DNA-COMMON-CHAT-FRAME)" }
       section: { values: [grow, scroll, align, bleed, gap, as], chosenBy: app from pane-grid.choose.band }
       headingLevel: { values: [1, 2], chosenBy: app from the fact that the pane holds the page's subject }
       track: [auto, fill, fill-2, fill-3, compact, standard, wide]
@@ -395,8 +396,8 @@ roles:
     sizes: { fills: "its host's block and inline size" }
     states: [drawer-open, head-loading]
     grammarMayChange: ["nothing: the grid, the dividers, the surface ground, the pane inset and the drawer are Common's"]
-    dna: [DNA-COMMON-PANE-HEADER-TOUCH-HEIGHT, DNA-COMMON-PANE-DRAWER-SPACING, DNA-COMMON-PANE-DRAWER-SECTION-GAP, DNA-COMMON-PANE-SCROLL-ALIGN, DNA-COMMON-PANE-SCROLL-ALIGN-END, DNA-COMMON-PANE-SECTION-RULE]
-    lint: [starci-grammar/pane-grid-children, starci-grammar/pane-children, starci-grammar/no-pane-section-padding, starci-grammar/pane-grid-page, starci-fe/no-hand-built-panes]
+    dna: [DNA-COMMON-PANE-HEADER-TOUCH-HEIGHT, DNA-COMMON-PANE-DRAWER-SPACING, DNA-COMMON-PANE-DRAWER-SECTION-GAP, DNA-COMMON-PANE-SCROLL-ALIGN, DNA-COMMON-PANE-SCROLL-ALIGN-END, DNA-COMMON-PANE-SECTION-RULE, DNA-COMMON-CHAT-SURFACES, DNA-COMMON-CHAT-INCOMING-FLAT, DNA-COMMON-CHAT-OUTGOING-ACCENT, DNA-COMMON-PANE-FOOTER-NO-BAND, DNA-COMMON-CHAT-FRAME, DNA-COMMON-CHAT-FRAME-SCROLL]
+    lint: [starci-grammar/pane-grid-children, starci-grammar/message-surfaces, starci-grammar/pane-children, starci-grammar/no-pane-section-padding, starci-grammar/pane-grid-page, starci-fe/no-hand-built-panes]
 
   - id: data-views
     ui: ui/components/data-views.md
@@ -534,7 +535,7 @@ roles:
     vendorParity: [skeleton, alert]
     slots: ["MermaidDiagram: source, label, errorTitle", "FlowGraph: label, nodes (label, description, tone, kind, size, shape, isDimmed, count, href, position), edges (source, target, label), headers", "BubbleMap: label, nodes (label, description, tone, form, mark, caption, diameter, fill, ring, isDimmed, href), edges (source, target), expandedIds, fanLimit"]
     variants:
-      height: { values: [sm, md, lg], chosenBy: app from the drawing }
+      height: { values: [sm, md, lg, fill], chosenBy: "app from the drawing; fill (FlowGraph steps) = the rest of the page height, the map of one workflow on its own page" }
       nodeShape: { values: [stadium, rect, round, diamond, circle], chosenBy: app from the node's meaning }
       layout: { values: [radial, layered, manual, lanes], chosenBy: app, meaning: "FlowGraph only; a value-sized map of bubbles is BubbleMap" }
       nodeForm: { values: [label, bubble], chosenBy: app from the node's meaning }
@@ -542,7 +543,7 @@ roles:
     sizes: none
     states: [loading (skeleton at the reserved box), ready, error (title and the source as code, in the region), empty (FlowGraph, BubbleMap)]
     grammarMayChange: [frame, node and edge paint through tokens]
-    dna: [DNA-COMMON-DIAGRAM-LOADING-BOX, DNA-COMMON-DIAGRAM-NAMED, DNA-COMMON-DIAGRAM-ERROR-SOURCE, DNA-COMMON-FLOW-EDGE-LABEL-SPOKEN, DNA-COMMON-FLOW-LANE-LABEL-ABOVE-LINES, DNA-COMMON-FLOW-LANE-LABEL-OPAQUE, DNA-COMMON-BUBBLE-TEXT-INSIDE-START, DNA-COMMON-BUBBLE-TEXT-INSIDE-END]
+    dna: [DNA-COMMON-DIAGRAM-LOADING-BOX, DNA-COMMON-DIAGRAM-NAMED, DNA-COMMON-DIAGRAM-ERROR-SOURCE, DNA-COMMON-FLOW-EDGE-LABEL-SPOKEN, DNA-COMMON-FLOW-LANE-LABEL-ABOVE-LINES, DNA-COMMON-FLOW-LANE-LABEL-OPAQUE, DNA-COMMON-BUBBLE-TEXT-INSIDE-START, DNA-COMMON-BUBBLE-TEXT-INSIDE-END, DNA-COMMON-FLOW-READABLE-FLOOR, DNA-COMMON-FLOW-OPEN-ZOOM, DNA-COMMON-FLOW-CARD-SIZE, DNA-COMMON-FLOW-EDGE-DOT-ON-EDGE, DNA-COMMON-FLOW-SELECTED, DNA-COMMON-FLOW-BRANCH-LANES]
 
 # The DNA: every constraint a grammar keeps, each one law with the measurement a DNA gate performs on a render.
 # Layer 1 of grammars/README.md#three-layers: a DNA entry is a constraint, never a judgement; a choice rule moves here
@@ -608,29 +609,29 @@ mustKeep:
     - id: DNA-COMMON-CONTROL-MD
       role: button
       law: An md button or icon button, and every bar control, is 40px tall at every breakpoint.
-      measure: { kind: box, select: ':is([data-component="Button"],[data-component="IconButton"]):is([data-size="md"],[data-size="control"]):not([data-width="fill"])', metric: height, op: "=", value: 40px }
+      measure: { kind: box, select: ':is([data-component="Button"],[data-component="IconButton"]):is([data-size="md"],[data-size="control"]):not([data-width="fill"],[data-width="wrap"])', metric: height, op: "=", value: 40px }
       owner: ui/scale.md scale.choose.step
     - id: DNA-COMMON-CONTROL-SM
       role: button
       law: An sm button or icon button is one equal increment below md, 32px.
-      measure: { kind: box, select: ':is([data-component="Button"],[data-component="IconButton"])[data-size="sm"]:not([data-width="fill"])', metric: height, op: "=", value: 32px }
+      measure: { kind: box, select: ':is([data-component="Button"],[data-component="IconButton"])[data-size="sm"]:not([data-width="fill"],[data-width="wrap"])', metric: height, op: "=", value: 32px }
       owner: ui/scale.md scale.choose.step; contract sizes.increments
     - id: DNA-COMMON-CONTROL-LG
       role: button
       law: An lg button or icon button is one equal increment above md, 48px.
-      measure: { kind: box, select: ':is([data-component="Button"],[data-component="IconButton"])[data-size="lg"]:not([data-width="fill"])', metric: height, op: "=", value: 48px }
+      measure: { kind: box, select: ':is([data-component="Button"],[data-component="IconButton"])[data-size="lg"]:not([data-width="fill"],[data-width="wrap"])', metric: height, op: "=", value: 48px }
       owner: ui/scale.md scale.choose.step; contract sizes.increments
     - id: DNA-COMMON-CONTROL-FILL
       role: button
-      law: A full-width button holds its step as a floor at every breakpoint, md 40px, sm 32px and lg 48px; only a wrapped label grows it.
+      law: A full-width or wrapping (`width="wrap"`) button holds its step as a floor at every breakpoint, md 40px, sm 32px and lg 48px; only a wrapped label grows it.
       measure:
         kind: box
         metric: height
         op: ">="
         cases:
-          - { select: '[data-component="Button"][data-width="fill"]:is([data-size="md"],[data-size="control"])', value: 40px }
-          - { select: '[data-component="Button"][data-width="fill"][data-size="sm"]', value: 32px }
-          - { select: '[data-component="Button"][data-width="fill"][data-size="lg"]', value: 48px }
+          - { select: '[data-component="Button"]:is([data-width="fill"],[data-width="wrap"]):is([data-size="md"],[data-size="control"])', value: 40px }
+          - { select: '[data-component="Button"]:is([data-width="fill"],[data-width="wrap"])[data-size="sm"]', value: 32px }
+          - { select: '[data-component="Button"]:is([data-width="fill"],[data-width="wrap"])[data-size="lg"]', value: 48px }
       owner: ui/scale.md scale.choose.step
     - id: DNA-COMMON-ICON-BUTTON-SQUARE
       role: button
@@ -1040,11 +1041,11 @@ mustKeep:
     # --- alerts, empty states, avatars
     - id: DNA-COMMON-ALERT-TONE-PAIR-INFORMATIVE
       role: alert
-      law: "An informative Alert is the accent soft pair, flat, unless the app writes --informative-soft and --informative-soft-foreground (the Grammar story theme writes none): the row is --accent-soft, the text and glyph --accent-soft-foreground, no shadow and no border."
+      law: "An informative Alert is NEUTRAL, flat, unless the app writes --informative-soft and --informative-soft-foreground (the Grammar story theme writes none): the row is --default-soft, the text --default-soft-foreground, the glyph muted, no shadow and no border. It never wears the accent pair (it reads as an error and spends the red budget)."
       measure:
         kind: style
         select: '[data-component="Alert"][data-grammar-tone="informative"]:not([data-loading="true"])'
-        checks: [{ metric: background-color, op: "=", value: { token: --accent-soft } }, { metric: color, op: "=", value: { token: --accent-soft-foreground } }, { metric: border-width, op: "=", value: 0px }, { metric: box-shadow, op: "=", value: none }]
+        checks: [{ metric: background-color, op: "=", value: { token: --default-soft } }, { metric: color, op: "=", value: { token: --default-soft-foreground } }, { metric: border-width, op: "=", value: 0px }, { metric: box-shadow, op: "=", value: none }]
       owner: contract roles.alert
     - id: DNA-COMMON-BADGE-TONE-INFO
       role: chip
@@ -1083,6 +1084,16 @@ mustKeep:
         select: '[data-component="Alert"][data-grammar-tone="neutral"]:not([data-loading="true"])'
         checks: [{ metric: background-color, op: "=", value: { token: --default-soft } }, { metric: color, op: "=", value: { token: --default-soft-foreground } }, { metric: border-width, op: "=", value: 0px }, { metric: box-shadow, op: "=", value: none }]
       owner: contract roles.alert
+    - id: DNA-COMMON-TOAST-TONE-INFORMATIVE
+      role: alert
+      law: "An informative Toast is neutral, as an informative Alert is: its mark is --muted (unless the app writes --informative), never the accent."
+      measure: { kind: style, select: '[data-component="Toast"][data-grammar-tone="informative"] .starci-core-toast-indicator:not([data-grammar-toast-indicator])', metric: color, op: "=", value: { token: --muted } }
+      owner: contract roles.alert
+    - id: DNA-COMMON-ALERTDIALOG-TONE-INFORMATIVE
+      role: dialog
+      law: "An informative alert dialog is neutral: its icon tile is --default-soft with --default-soft-foreground (unless the app writes --informative-soft), never the accent pair."
+      measure: { kind: style, select: '.starci-core-alert-dialog[data-grammar-tone="informative"] .starci-core-alert-dialog-icon', checks: [{ metric: background-color, op: "=", value: { token: --default-soft } }, { metric: color, op: "=", value: { token: --default-soft-foreground } }] }
+      owner: contract roles.dialog
     - id: DNA-COMMON-EMPTY-ONE-ACTION
       role: empty-state
       law: An empty notice holds at most one action.
@@ -1119,6 +1130,21 @@ mustKeep:
       law: "An unselected radio draws a ring of its own (the muted foreground), so it stays visible when the app sets the field border and shadow to transparent (U2-G6)."
       measure: { kind: style, select: '.starci-core-radio:not([data-selected]) [data-grammar-choice-control="radio"]', metric: box-shadow, op: "!=", value: none }
       owner: contract roles.input
+    - id: DNA-COMMON-ROW-CONTROL-CENTRE
+      role: list
+      law: "In a select or list row with a control, the checkbox and its text block are one group, and the group and the control are vertically centred on each other (within 1px); the row padding (p-4 at the card's edges, p-3 at a separator) and the 40px touch target of a phone hold; a row without a control keeps its top alignment (owner 'căn center cho control và checkbox + text', 0.37.29)."
+      measure: { kind: relation, select: '.starci-core-select-item[data-grammar-select-has-control="true"] > .starci-core-select-control > *', metric: center-y, op: "=", tolerance: 1, ref: { within: '.starci-core-select-item', select: '.starci-core-choice-content', metric: center-y } }
+      owner: ui/components/card.md
+    - id: DNA-COMMON-LIST-ROW-DIFF
+      role: list
+      law: "A diff row (ListRowData.diff, 0.37.28, owner drawing 'So sánh phiên bản') has a monospace gutter mark at its start, + added, − removed, ~ changed, in its tone's ink, read with its label (diffLabel) before the title, never colour alone; its ground is the tone's soft pair (added success, removed danger, changed warning); a removed title is struck through; a changed row's 'from → to' is the 12 muted line; the row padding holds (ROW-EDGE-PADDING)."
+      measure: { kind: style, select: '[data-component="ListRow"][data-grammar-diff="added"]', metric: background-color, op: "=", value: { token: --success-soft } }
+      owner: ui/components/list-table.md
+    - id: DNA-COMMON-CARD-SUGGESTIONS
+      role: list
+      law: "The replies a message card offers are ONE bordered list (SurfaceCard kind list, layout suggestions; surface in surface, SURFACE-ELEVATION): a row per reply, its plain text at 14 regular weight wrapping at the reading edge, never truncated, the whole row the one button that sends it, a trailing chevron that stays at the end of the row at every width (a 390 phone included), vertically centred on the text, the text wrapping beside it; the suggestion pills by a composer stay Button sm (owner-approved drawing chat-surfaces, 0.37.31; the chevron at every width 0.37.35)."
+      measure: { kind: style, select: '[data-grammar-list-layout="suggestions"] .starci-core-list-row-name', checks: [{ metric: font-weight, op: "=", value: 400 }] }
+      owner: ui/components/message-bubble.md
     - id: DNA-COMMON-ROW-ACTION-END
       role: list
       law: "A row with actionPlacement end keeps its commands on the line of its copy, at the end of the row, at any width (G7-7)."
@@ -1267,6 +1293,45 @@ mustKeep:
       law: "The figure ends before the action of its row begins: one line, value then command."
       measure: { kind: relation, select: '[data-grammar-tile-figure-value]', metric: right, op: "<=", tolerance: 1, ref: { within: '.starci-core-tile-foot', select: '.starci-core-tile-actions', metric: left } }
       owner: contract roles.card
+    - id: DNA-COMMON-CHAT-SURFACES
+      role: pane-grid
+      law: "Every chat thread (a PaneSection scroll role log: team chat, an agent's chat, an inbox thread, the assistant) is the page tone --background, never the white surface, whatever tone the app passes; it meets the head line above and the composer's line below edge to edge (owner 'nền chat luôn là background', drawing chat-surfaces, 0.37.31)."
+      measure: { kind: style, select: '[data-grammar-pane-section-thread="true"]', checks: [{ metric: background-color, op: "=", value: { token: --background } }] }
+      owner: ui/components/message-bubble.md
+    - id: DNA-COMMON-CHAT-INCOMING-FLAT
+      role: pane-grid
+      law: "In a thread and anywhere in a chat frame, a message of someone else (MessageBubble incoming, MessageCard) is the flat surface: --surface with its foreground, no border, no shadow (a message is never a card); outside any chat frame on a white surface (a drawer of pinned messages, a white pane, a card) it wears the 1px separator edge, still no shadow (SURFACE-ELEVATION). An app never restyles it (lint message-surfaces)."
+      measure:
+        kind: style
+        select: '[data-grammar-pane-section-thread="true"] .starci-core-message-bubble:is([data-grammar-bubble-side="incoming"], [data-grammar-bubble-content="card"]) > .starci-core-message-bubble-stack > .starci-core-message-bubble-body'
+        checks: [{ metric: background-color, op: "=", value: { token: --surface } }, { metric: border-width, op: "=", value: 0px }, { metric: box-shadow, op: "=", value: none }]
+      owner: ui/components/message-bubble.md
+    - id: DNA-COMMON-CHAT-OUTGOING-ACCENT
+      role: pane-grid
+      law: "The reader's own message (MessageBubble outgoing, tone brand) is --accent with --accent-foreground; a link, a mention, code and a muted line in it inherit the foreground (a link keeps its underline). Theme tokens only, no colour of its own."
+      measure:
+        kind: style
+        select: '.starci-core-message-bubble[data-grammar-bubble-side="outgoing"][data-grammar-bubble-tone="brand"] .starci-core-message-bubble-body'
+        checks: [{ metric: background-color, op: "=", value: { token: --accent } }, { metric: color, op: "=", value: { token: --accent-foreground } }]
+      owner: ui/components/message-bubble.md
+    - id: DNA-COMMON-CHAT-FRAME
+      role: pane-grid
+      law: "On any page a chat is one frame: its head, its thread and its composer footer are --background whatever surface it stands on (a white pane, the aside, a Drawer, a Dialog, a Popover); the rest of the page keeps its own rule (a room list, an aside's other panes and the page header band stay white). The frame is Pane content=\"chat\" (a pane whose own stack holds a PaneSection scroll role log is drawn as one; an overlay that holds a thread is the frame as a whole); the app chooses no tone and states no surface on it (lint message-surfaces). The 1px lines between the zones stay; the composer field is the white primary field (owner-approved drawing chat-frame-anywhere, 0.37.33)."
+      measure:
+        kind: style
+        select: '.starci-core-pane[data-grammar-pane-content="chat"], .starci-core-pane[data-grammar-pane-content="chat"] > .starci-core-pane-footer'
+        checks: [{ metric: background-color, op: "=", value: { token: --background } }]
+      owner: ui/components/message-bubble.md
+    - id: DNA-COMMON-CHAT-FRAME-SCROLL
+      role: pane-grid
+      law: "In a chat frame the thread is the only scroller between the fixed head and the fixed composer footer: the pane body above a footer is bounded and never scrolls, so a thread's scroll.scrollRef is the element that scrolls; a log thread opens at its newest message and follows new ones while the reader is at the foot (0.37.33)."
+      measure: { kind: style, select: '.starci-core-pane[data-grammar-pane-content="chat"] > .starci-core-pane-body', checks: [{ metric: overflow-y, op: "=", value: hidden }] }
+      owner: ui/components/message-bubble.md
+    - id: DNA-COMMON-PANE-FOOTER-NO-BAND
+      role: pane-grid
+      law: "A pane footer (a chat composer) starts at its own hairline: its stack is never a head-row spacer (no empty band between the thread and the suggestions) and a PaneSection rule start in it draws no second line under the footer's (0.37.31)."
+      measure: { kind: style, select: '.starci-core-pane-footer > .starci-core-pane-stack', checks: [{ metric: padding-block-start, op: "=", value: 0px }] }
+      owner: contract roles.pane-grid
     - id: DNA-COMMON-PANE-SECTION-RULE
       role: pane-grid
       law: "A pane section with rule start draws a 1px separator on its block-start edge and none elsewhere (R4-27)."
@@ -1398,6 +1463,42 @@ mustKeep:
       owner: ui/components/page-header.md
 
     # --- diagram
+    - id: DNA-COMMON-FLOW-READABLE-FLOOR
+      role: diagram
+      law: "A contained FlowGraph fit (every steps graph, any fit=\"contain\") never draws below zoom 0.8 (CONTAIN_MIN_ZOOM; 0.6 in 0.37.26, owner 'Nâng 0.8' in 0.37.29): a graph that needs less is held at 0.8, its canvas grows to the graph up to the height cap (lg 512px when none), the first view shows the entry node and the reader pans, wide graphs on a desktop pane included; the canvas is never shorter than the zoom controls column."
+      measure: { kind: style, select: '[data-component="FlowGraph"][data-grammar-flow-layout="steps"] .react-flow__viewport', metric: scale, op: ">=", value: 0.8 }
+      owner: ui/components/diagram.md
+    - id: DNA-COMMON-FLOW-OPEN-ZOOM
+      role: diagram
+      law: "A steps graph opens readable: it is fitted when the fit is zoom 0.95 or more (never past 1; a linear 5-step graph and its end pill fit the 1160px workflow map well of a 1440 page, inside a 12px margin), otherwise it opens at zoom 1 at its entry node and pans; a canvas 480px wide or less opens at 0.8 the same way. The least zoom stays 0.8 (DNA-COMMON-FLOW-READABLE-FLOOR). The zoom controls take room at the start edge only where the graph would stand beside them. height=\"fill\" makes the frame the rest of the page height, at least 360px (owner-approved drawing graph-state, 0.37.33)."
+      measure: { kind: style, select: '[data-component="FlowGraph"][data-grammar-flow-layout="steps"] .react-flow__viewport', metric: scale, op: ">=", value: 0.8 }
+      owner: ui/components/diagram.md
+    - id: DNA-COMMON-FLOW-CARD-SIZE
+      role: diagram
+      law: "A steps card is 176 x 64 at zoom 1 (owner-approved drawing graph-selected, 0.37.35; ports add rows under the body), its title 14 wrapping to at most two lines (the card grows by the second line only) and its one line 12, cut with an ellipsis; across (LR) cards stand 40 apart along the flow and 40 apart across it, each taking its own height, wider only where an edge out of the layer needs room for a label, branch lanes or back-edge channels; the end pill stands 40 after its source."
+      measure:
+        kind: style
+        select: '[data-component="FlowGraph"][data-grammar-flow-layout="steps"] .starci-core-flow-graph-step:not([data-kind="end"])'
+        checks: [{ metric: width, op: "=", value: 176px }]
+      owner: ui/components/diagram.md
+    - id: DNA-COMMON-FLOW-SELECTED
+      role: diagram
+      law: "A selected steps card has ONE border, 2px, in its status colour (done success, failed danger, waiting warning, running accent, skipped and not reached muted; a graph with no run status the foreground) and a soft tint of that colour as its ground, never a second ring: no outline and no box-shadow; an unselected card keeps one 1px border (in a run, its status colour). Keyboard focus shows only on focus-visible, a dashed 2px outline in the card's status colour 3px off the card (owner-approved drawing graph-selected, 0.37.35)."
+      measure:
+        kind: style
+        select: '[data-component="FlowGraph"][data-grammar-flow-layout="steps"] .starci-core-flow-graph-step[data-grammar-selected="true"]:not([data-kind="end"])'
+        checks: [{ metric: border-width, op: "=", value: 2px }, { metric: box-shadow, op: "=", value: none }, { metric: outline-style, op: "=", value: none }]
+      owner: ui/components/diagram.md
+    - id: DNA-COMMON-FLOW-BRANCH-LANES
+      role: diagram
+      law: "Each edge that leaves a port of a steps card (a condition's branch) runs its own lane: it turns once out of its port into the lane and once into its target, no segment runs past the higher or lower of its port and its target, and no two branches share a lane (the climbing ones nearest the card, upper port first, then the descending ones, lower port first); the cards of a column take their own heights, so the branches stand beside the ports (0.37.35)."
+      measure: { kind: attr, select: '[data-component="FlowGraph"][data-grammar-flow-layout="steps"] [data-grammar-flow-lane]', metric: data-grammar-flow-lane, op: set }
+      owner: ui/components/diagram.md
+    - id: DNA-COMMON-FLOW-EDGE-DOT-ON-EDGE
+      role: diagram
+      law: "The round dot a steps edge starts with is centred ON the source card's edge (its port, or the card's end edge), half on the card and half out, drawn above the card, and the edge leaves from it: every handle of a step card is a point exactly on the card's edge (0.37.33)."
+      measure: { kind: style, select: '[data-component="FlowGraph"] :is(.starci-core-flow-graph-step-handle, .starci-core-flow-graph-step-port-dot)', checks: [{ metric: width, op: "=", value: 0px }, { metric: height, op: "=", value: 0px }] }
+      owner: ui/components/diagram.md
     - id: DNA-COMMON-DIAGRAM-LOADING-BOX
       role: diagram
       law: A diagram reserves its canvas height in every state, so the loading skeleton and the error take the ready drawing's least box.
@@ -1444,6 +1545,22 @@ mustKeep:
         select: '[data-component="PageHeader"]'
         checks: [{ metric: border-bottom-width, op: "=", value: 1px }, { metric: border-bottom-color, op: "=", value: { token: --separator } }]
       owner: ui/components/page-header.md
+    - id: DNA-COMMON-LIST-ON-WHITE-BORDERED
+      role: card
+      law: "A list (`Section kind=list`, `SurfaceCard kind=list`) on a white surface (a `Pane surface` aside, a drawer, a dialog, a popover) is a bordered rounded frame: a 1px separator border, the card radius and no shadow, rows divided full width inside it; it is never flat (SURFACE-ELEVATION, owner 2026-11-10, reverting the 0.37.14 flat aside list)."
+      measure:
+        kind: style
+        select: '.starci-core-pane[data-grammar-pane-surface="true"] .starci-core-section-list'
+        checks: [{ metric: border-width, op: "=", value: 1px }, { metric: border-color, op: "=", value: { token: --separator } }, { metric: box-shadow, op: "=", value: none }]
+      owner: ui/components/card.md
+    - id: DNA-COMMON-ROW-EDGE-PADDING
+      role: card
+      law: "A side of a row that touches the card's edge is p-4 (--grammar-card-padding-block, 16): the first row's top (no header zone above it) and the last row's bottom (no footer zone below it), a single-row card both. A side that touches a separator (between rows, under a zone divider) is p-3 (--grammar-row-gap, 12). Controls included: a row grows around a tall control; no row slot has a fixed block-size (ROW-EDGE-PADDING, owner 2026-11-10)."
+      measure:
+        kind: style
+        select: '[data-grammar-surface-content]:not([data-grammar-surface-headed]) .starci-core-owned-collection > .starci-core-static-row:first-child'
+        checks: [{ metric: padding-block-start, op: "=", value: { token: --grammar-card-padding-block } }, { metric: padding-block-end, op: "=", value: { token: --grammar-row-gap } }]
+      owner: ui/components/card.md
     - id: DNA-CORE-EDGE-TOP
       role: card
       law: A card on the page ground is the white surface at the card radius with a 1px separator border and the card shadow; a surface nested in a card keeps the border and drops the shadow.

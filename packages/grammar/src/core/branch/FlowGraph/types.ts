@@ -32,11 +32,36 @@ export type FlowGraphStepKind = "event" | "action" | "condition" | "ask" | "wait
 export type FlowGraphNodeKind = FlowGraphLanesKind | FlowGraphStepKind
 /** Where a run is at a node (the run overlay of a `steps` graph): a status ring and badge on the card; a `skipped` node is faded. */
 export type FlowGraphRunStatus = "done" | "running" | "failed" | "waiting" | "skipped"
-/** A named output of a condition card, e.g. "Có" / "Không". An edge leaves from it by `sourcePort` (its `id`). */
+/**
+ * A named output of a card, e.g. "Có" / "Không" on a condition, or "Lỗi" on an action (0.37.4: any kind may declare `outputs`). An edge leaves from it by
+ * `sourcePort` (its `id`). `tone: "danger"` is an error output: its label, its dot on the card edge and the edges that leave it are drawn in the danger tone.
+ */
 export type FlowGraphPort = {
     readonly id: string
     readonly label: string
+    readonly tone?: "danger"
 }
+/** A small 12px pill under a step's title (0.37.4): `accent` is the pink soft pair (a dynamic parameter, "= order.id"), `neutral` the grey one (a fixed value). */
+export type FlowGraphChip = {
+    readonly label: string
+    readonly tone?: "accent" | "neutral"
+}
+/**
+ * A loop card (0.37.4, `steps` only): the node is drawn as a box with a 1.5px primary outline and a header line (its `label` and `chips`), and the nodes named
+ * in `childIds` are laid out inside it, as a graph of their own. An edge to or from the container's id meets the box's edge; an edge between two children is drawn inside.
+ */
+export type FlowGraphContainer = {
+    readonly label: string
+    readonly chips?: ReadonlyArray<FlowGraphChip>
+    readonly childIds: ReadonlyArray<string>
+}
+/** The agent a block belongs to (0.37.5): drawn as a 16px avatar and the name (12px, muted) under the title. */
+export type FlowGraphAgent = {
+    readonly name: string
+    readonly avatar?: string
+}
+/** The position of a node's centre, in graph units (0.37.5: the app's saved arrangement). */
+export type FlowGraphPositions = Readonly<Record<string, { readonly x: number, readonly y: number }>>
 /** `forward` (default) runs down the flow; `back` (alias `return`) returns to an earlier or sibling step: dashed, with an optional pill label. */
 export type FlowGraphEdgeVariant = "forward" | "back" | "return"
 /** One entry of the kind legend under a `steps` graph. */
@@ -62,10 +87,17 @@ export type FlowGraphNode = {
     /** `steps` only: a small pill at the top-right corner of the card, e.g. "Kích hoạt", "Cần chủ", "Chờ". */
     readonly tag?: string
     /**
-     * `steps` only, a `condition` node: its named output ports, left to right along the bottom of the card. Left out, the ports are the
-     * labels of the node's labelled outgoing edges, in edge order.
+     * `steps` only: the node's named output ports, left to right along the bottom of the card. On a `condition` left out, the ports are the
+     * labels of the node's labelled outgoing edges, in edge order; on every other kind (0.37.4) the card has ports only when `outputs` is given
+     * (an `action` with a "Lỗi" `tone: "danger"` port), and an edge with no `sourcePort` still leaves from the bottom middle.
      */
     readonly outputs?: ReadonlyArray<FlowGraphPort>
+    /** `steps` only (0.37.4): small pills under the title, up to 3, the rest as one "+N" pill. */
+    readonly chips?: ReadonlyArray<FlowGraphChip>
+    /** `steps` only (0.37.4): makes the node a loop card that holds `childIds` (see {@link FlowGraphContainer}). */
+    readonly container?: FlowGraphContainer
+    /** `steps` only (0.37.5): the agent that owns this block, for a block of another agent: a small avatar (the sprout when no `avatar`) and the name under the title. */
+    readonly agent?: FlowGraphAgent
     /** `steps` only: the run overlay, where the run is at this node. */
     readonly status?: FlowGraphRunStatus
     readonly size?: FlowGraphNodeSize

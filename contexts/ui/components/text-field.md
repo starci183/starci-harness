@@ -29,7 +29,7 @@ Choice `text-field.choose.columns`: how the fields of one form are laid out. The
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |
 | narrow | the form's owner is narrow (drawer, rail, dialog) or every field is long | one column: `Grid kind="form" columns={1}` or the fields stacked in the `Form` | judgement |
-| pairs | short fields that read as pairs (name and plan, retries and URL) in a wide owner | `Grid kind="form"` (two columns once its own width holds them); its rows align on the control line | DNA-COMMON-FIELD-ROW-CONTROL-LINE |
+| pairs | short fields that read as pairs (name and plan, retries and URL) in a wide owner | `Grid kind="form"` (two columns once its own container is 31rem wide; the 30rem `measure="form"` stays one column); its rows align on the control line | DNA-COMMON-FIELD-ROW-CONTROL-LINE |
 
 ## Variants
 None for the app: the treatment follows the layer, canvas or inside a surface, resolved by the grammar
