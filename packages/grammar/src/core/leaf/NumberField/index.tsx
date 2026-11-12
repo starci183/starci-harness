@@ -14,6 +14,7 @@ import {
     type FieldControlProps,
     type FieldSizeProps,
 } from "../Field/index.js"
+import { inlineGlyph } from "../Icon/inline.js"
 import type { NoChildren } from "../../tier.js"
 
 export type NumberFieldProps = NoChildren & FieldControlProps & FieldSizeProps & {
@@ -89,13 +90,13 @@ const NumberFieldControl = ({
         >
             <FieldLabel isHidden={field.isLabelHidden} isRequired={field.isRequired}>{field.label}</FieldLabel>
             <HeroNumberField.Group className="starci-core-number-field-group" data-grammar-field-control="true">
-                {hideSteppers ? null : <HeroNumberField.DecrementButton className="starci-core-number-field-step" />}
+                {hideSteppers ? null : <HeroNumberField.DecrementButton className="starci-core-number-field-step">{inlineGlyph("minus", { "data-slot": "number-field-decrement-button-icon" } as never)}</HeroNumberField.DecrementButton>}
                 <HeroNumberField.Input
                     {...(id === undefined ? {} : { id })}
                     {...(placeholder === undefined ? {} : { placeholder })}
                     className="starci-core-number-field-input"
                 />
-                {hideSteppers ? null : <HeroNumberField.IncrementButton className="starci-core-number-field-step" />}
+                {hideSteppers ? null : <HeroNumberField.IncrementButton className="starci-core-number-field-step">{inlineGlyph("plus", { "data-slot": "number-field-increment-button-icon" } as never)}</HeroNumberField.IncrementButton>}
             </HeroNumberField.Group>
             <FieldDescription>{field.description}</FieldDescription>
             <FieldErrorText>{field.errorMessage}</FieldErrorText>

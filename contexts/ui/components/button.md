@@ -19,7 +19,7 @@ Choice `button.choose.role`: which element carries the action. The first row tha
 | text-action | the command reads as part of a sentence or a list of links | `TextAction` | judgement |
 | icon | not the view's commit, the glyph is universally understood, and it sits in a toolbar, a row's actions or chrome | `IconButton` with an accessible `label` and its tooltip | candidate: every `IconButton` has a non-empty name and a tooltip |
 | file | the command hands the product a file (an attachment in a composer, an upload in a toolbar or a row), as one action among others | `FileButton` with an accessible `label`, the size of an `IconButton`; a drop area is `FileDropzone` (`text-field.choose.role:file`) | judgement |
-| suggest | the user is offered a few things to say or ask next (quick replies, suggested questions, empty-state shortcuts) | the ONLY pattern: a `Cluster gap="inline"` (with a `label`) of neutral `Button size="sm"`, which every Button size draws as a pill; never `ChoiceChips`, `TagGroup`, `Badge`, a `Chip` or a row of `Link`s ([chip](chip.md) `chip.choose.role:suggest`) | lint `starci-grammar/suggestion-buttons` |
+| suggest | the user is offered a few things to say or ask next (quick replies, suggested questions, empty-state shortcuts) | the ONLY pattern: a `Cluster gap="inline"` (with a `label`) of neutral `Button size="sm"` (with `width="wrap"` when a label may outgrow its container, `button.choose.width`), which every Button size draws as a pill; never `ChoiceChips`, `TagGroup`, `Badge`, a `Chip` or a row of `Link`s ([chip](chip.md) `chip.choose.role:suggest`) | lint `starci-grammar/suggestion-buttons` |
 | text | any other command or destination, and always the view's commit | `Button` with a visible text label | candidate: every accent-filled button has visible text |
 
 Choice `button.choose.intent`: which intent the spec's facts give (the facts are CTA-6). The first row that
@@ -35,17 +35,18 @@ applies wins; the label word never decides ("Cancel offer" is destructive, a "Ca
 | commit | the next step of the view's one decision (consequence neutral or negative; a reversible decline is negative, not destructive), and no other button of this view holds it | `commit` | `DNA-COMMON-ONE-ACCENT-FILL` |
 | neutral | anything else: a command outside the decision, any per-item command, a second next step, an equal-consequence peer | `neutral` | lint `no-commit-in-collection-item`, `single-commit-per-render` |
 
-The view (a page, or the open modal) has one commit (CTA-1): a second candidate falls to `neutral`, and peers of
+The view (a page, or the open modal) has one commit (CTA-1; the red budget, [composition.md](../composition.md) ACCENT-6: one accent CTA per view, every other call to action neutral, `alternative` or a `Link variant="plain"`, and an informative `Alert` is neutral; lint `single-commit-per-render` refuses a second `commit`, so a form never holds two): a second candidate falls to `neutral`, and peers of
 equal consequence get no commit at all. "Secondary or ghost" is this table, never a look: an `alternative`
 renders the secondary step and a `neutral` repeated per item renders quiet, by the contract's
 [intent x placement map](../../grammars/contract.md#intent-x-placement---variant).
 
-Choice `button.choose.width`: content, fill or fill-narrow.
+Choice `button.choose.width`: content, fill, fill-narrow or wrap.
 
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |
 | fill | the button is a form submit, the action of an auth panel, or the only action of a phone action bar (a single-column band at a narrow width, a pinned action bar) | `width="fill"` | candidate: a fill button's row holds no other control |
 | fill-narrow | the button is a primary submit that hugs its label on a desktop form and fills the width on a phone (a booking card, a public form) | `width="fill-narrow"` (content width above 30rem, `fill` below) | judgement |
+| wrap | the label is not the app's own short copy and may be longer than its container: a suggestion pill or quick reply carrying an agent's or a customer's sentence | `width="wrap"`: content width capped at the container; a short label is exactly `content`, a longer one wraps inside the pill (same radius and inline padding, text at the reading edge) and grows the box from its step (`DNA-COMMON-CONTROL-FILL`). Never `fill` to stop a long pill spilling: `fill` stretches the short ones too. Replies a `MessageCard` offers are not pills: they are `SurfaceCard kind="list" layout="suggestions"` ([message-bubble](message-bubble.md) `message-bubble.choose.suggestions`) | story `Navigation & Data/Message card fill (0.37.30)` `LongSuggestionsNarrow` |
 | content | every other place, and always a page or pane command: it hugs its label and sits at the end of its header row (R352 refuses `width="fill"` in `Page` `header.actions` and in `labelEnd`) | omit `width` | judgement |
 
 Choice `button.choose.glyph`: what a button's glyph says. The first row that applies wins.
@@ -76,7 +77,8 @@ context ([contract](../../grammars/contract.md#intent-x-placement---variant)).
 Every size takes the same pill radius (`--grammar-radius-pill`), `sm` included: a small Button is a pill like `md`, never a 12px rounded box. Suggestions, quick replies and empty-state shortcuts have one pattern, a `Cluster gap="inline"` (with a `label`) of neutral `Button size="sm"` (the single Button radius stays); the lint `suggestion-buttons` refuses the alternatives (a Link row, a `ChoiceChips` that sends, a `Chip` that sends).
 
 The step is `scale.choose.step` ([../scale.md](../scale.md#the-ramp)); size is never emphasis, and `width="fill"`
-changes width only: the step stays the box's floor and a wrapped label alone grows it (`DNA-COMMON-CONTROL-FILL`).
+changes width only: the step stays the box's floor and a wrapped label alone grows it (`DNA-COMMON-CONTROL-FILL`); `width="wrap"`
+holds the same floor.
 
 ## States
 Disabled, pending and skeleton per CTA-3: pending keeps the label and box and refuses a second press; never
@@ -101,3 +103,12 @@ CTA-6..5, ACTION-1..3, ACCENT-6. Lint: `starci-grammar/button-arrow`, `starci-gr
 `starci-fe/button-intent-required`,
 `single-commit-per-render`, `no-commit-in-collection-item`, `destructive-confirm-in-dialog`, `control-height`.
 Proof: TASTE-5, TASTE-11, UX-4, UX-10, A11Y-2.
+
+## Icons inside Grammar are outline (0.37.4)
+Every mark Grammar draws itself is stroked, never filled: the search icon, the Select chevron, the number steppers, the scroll arrows, the Alert status marks and the FlowGraph zoom controls use the closed glyph vocabulary (`glyphSource`, `inlineGlyph` for a vendor slot). The vendors' filled defaults are replaced; the three-dot `more` glyph stays dots.
+
+## Icon measures (0.37.5)
+A Button with a start icon or an end arrow uses HeroUI v3's measures: padding-inline 12 (sm) or 16 (md, lg) on both sides, gap 8, the icon 20px on a phone and 16px from 640px (16px on sm), a -2px inline margin on the icon. HeroUI has no 24px button icon. Enforcer: story `Controls/Button icon sizes`.
+
+## App bar custom buttons (TOPBAR-CUSTOM-BUTTONS, 0.37.15)
+`TopBar customButtons` (`{ id, glyph, label, badge?, onPress | href }`) are the app's own round outline icon buttons (a bell, a help) in the end cluster BEFORE the fixed cluster (language dropdown, light/dark switch, account avatar), whose order never changes. They are `IconButton intent="dismiss"` like the language button, `label` is the accessible name, `badge` draws the attention dot only when work is waiting. At phone width (under 48rem) only the first stays in the bar; the others are the entries `useTopBarOverflowEntries()` returns (glyph + label) for the account menu to append to its own entries. Never a hand-built button beside the bar's cluster. A `WorkspaceShell` takes the bar through its `header` slot, so the prop passes through with the `TopBar` the app composes. Story `Surfaces/Top bar custom buttons`.

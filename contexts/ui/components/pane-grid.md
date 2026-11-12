@@ -58,7 +58,7 @@ a padded wrapper is never the outermost element of a band.
 - **Areas:** `areas` rows of names (`["a b c", "d d d"]`, `.` is empty); an object keyed by `base`, `medium` (from 48rem)
   and `wide` (from 70rem) rearranges at each breakpoint, mobile first. A pane missing at a breakpoint is hidden there, or
   becomes a drawer when it has `collapse="drawer"`. A single `areas` collapses its drawer panes below 48rem.
-- **Tracks:** `auto`, `fill` (1fr), `fill-2` (2fr), `fill-3` (3fr), and the Rail widths `compact`, `standard`, `wide`.
+- **Tracks:** `auto`, `fill` (1fr), `fill-2` (2fr), `fill-3` (3fr), and the Rail widths `compact`, `standard`, `wide`. 0.37.5: `standard` (the aside) is clamp(320px, 26%, 420px) of the grid, flush to the end edge; `list` (a list pane beside a thread) is clamp(280px, 24%, 360px); the main pane is `fill`.
   No arbitrary lengths.
 - **Pane:** `surface`, `scroll` (its own vertical scroll owner; needs a `label`), `collapse="drawer"`, and `inset`:
   `content` (the default: the pane publishes its inset to its sections) or `flush` (no inset, for a pane that holds a
@@ -95,18 +95,28 @@ the same inset, and the drawer header's inline padding is the pane inset, so the
 In a workspace page (`Page layout="workspace"`) the grid and its side panes ALWAYS span the full width: the aside is flush to the end edge. Only the CONTENT of a main pane that holds cards (a pink well with cards,
 `Pane content="cards"`, the default for a pane on the canvas) is capped at `--grammar-content-max` (80rem) and centred INSIDE that pane; the pane and its pink ground fill the whole track. A pane that holds a chat thread
 (`PaneSection scroll role="log"`), a `FlowGraph` canvas or an editor is `content="full"`: never capped, full-bleed (a surface pane is full by default; a chat or FlowGraph pane is full unless it says `content="cards"`).
+A pane that IS one chat (head, thread, composer footer) is `content="chat"`: full-bleed, and the whole frame is `--background` wherever it stands, with no `surface` (the chat frame, [message-bubble.md](message-bubble.md) "The chat frame").
 A list or table in the white aside is a bordered list or frame with no shadow, never a floating card; the Section head rules apply there.
 
 ## Scroll law (0.36.0)
 The sidebar and the page header band (breadcrumbs, title, tabs, sub-tabs) never scroll away: the band and the trail are sticky. Layout A (report): the pink well scrolls as one block under the band. Layout B (workspace): the page
-does not scroll; each pane scrolls on its own with no visible scrollbar and its head (title, tabs, search) sticky; a chat pane keeps its head and composer fixed and scrolls only the thread (`PaneSection scroll`).
+does not scroll; each pane scrolls on its own with no visible scrollbar and its head (title, tabs, search) sticky; a chat pane keeps its head and composer fixed and scrolls only the thread (`PaneSection scroll`): in a chat frame the thread is the only scroller, the pane body above the footer never scrolls (`DNA-COMMON-CHAT-FRAME-SCROLL`).
+
+## The grid owns scroll and height (0.37.5)
+In layout B the page never scrolls: the shell is one viewport (dvh) under the app bar, the page band is fixed, and the PaneGrid owns the height chain at every level. A pane that holds a nested PaneGrid clips (it is not a scroller) and its stack is bounded by the pane
+(`flex: 1 1 0`, `min-height: 0`), so every scroll band below it is bounded: only a thread (`PaneSection scroll`), a list or a pane body scrolls, with no visible scrollbar; the head stays sticky and the composer (a footer band) stays at the bottom of its pane. A page writes no scroll CSS. In a
+fixed shell the page's fill minimum (`minHeight`) is a floor for a flow page only, never a reason for the shell to scroll. Enforcer: story `Compositions/App shell workspace` `ChatTab` (long thread, aside list; the page does not scroll, the band, head and composer rects do not move when the thread scrolls).
 
 ## The shared head row (layout B)
 
-When at least one pane of a workspace grid has a head, the panes share ONE head row (a page with no head has no row and no divider; the row reaches nested grids, a head being the first band of a pane stack that is not under another band): every pane head (a `PaneSection as="header"` or one holding a `PaneHeader`, first in its pane) is the same height, white and has no per-pane background or divider of its own; the grid draws ONE
-continuous divider under the row across all panes, crossing the vertical pane dividers. A pane head is always the surface colour, on a canvas pane and on a surface pane alike, never the canvas colour. A pane with no head keeps the row: its content
-starts below the line and the row above it is white, so the line and the content align. A head that ends in a tab strip is a sub-head, not the row. A nested `PaneGrid` keeps its own heads. Enforcer: the `Compositions/App shell workspace`
+The shared row exists ONLY when EVERY pane at the grid level (nested grids included, a head being the first band of a pane stack that is not under another band) has a head: then all heads (a `PaneSection as="header"` or one holding a `PaneHeader`,
+first in its pane) are the same height (`--grammar-pane-head-size`), white, with no divider of their own, and the grid draws ONE continuous divider under the row across all panes. When only SOME panes have heads (0.37.3, owner: a stretched empty row has no use)
+there is NO spacer and NO continuous divider: each head stands alone at the shared height with its own bottom border, and a headless pane starts its content at the top. A page with no head has neither. A pane head is always the surface colour. A head that ends in a tab
+strip is a sub-head, not the row. A side pane whose first content is a title uses `PaneHeader`, never a Section title. A pane that holds a nested `PaneGrid` is never capped: the grid and its panes span the full width (MEASURE-8). Enforcer: the `Compositions/App shell workspace`
 story's play function.
+
+## Pane footer (0.37.5)
+`Pane footer={<PaneSection as="footer">...</PaneSection>}` fixes a band (a chat composer, an action bar) at the pane's bottom edge over a hairline. The pane clips; its body (the scroll region, no visible scrollbar) is the only part that scrolls and the footer shares the pane inset. A page never writes scroll CSS for it. Enforcer: story `Surfaces/Pane footer and white-ground cards` (`PaneFooter`, `NestedRowsHeightChain`).
 
 ## Drawer opener
 `PaneHeader drawerOpener` draws the opener of a `collapse="drawer"` pane inside the pane head. `PaneDrawerOpener` (`pane`, `icon`, `label`) is the same button for
@@ -118,3 +128,9 @@ GAP-3 between sections, OVERFLOW-4 and OVERFLOW-5 for a scroll pane or section, 
 of the breakpoints (the grid's own width). Lint: `starci-grammar/pane-grid-children` (R345),
 `starci-grammar/pane-children` (R346), `starci-grammar/no-pane-section-padding` (R347),
 `starci-grammar/pane-grid-page` (R348), `starci-fe/no-hand-built-panes` (R349), `starci-fe/no-list-panel-padding`.
+
+## Pane head slot (0.37.5)
+`Pane head={{ title, description?, onClose?, closeLabel? }}` draws a sticky one-row head for an aside or detail pane: the title, a muted sublabel and a small close icon button at the end. It is the first band of the pane's stack (a `PaneSection align="center"` holding a `PaneHeader`), so the head-row mode (row / lone / none) and `--grammar-pane-head-size` apply, and it stays at the top while the body scrolls.
+
+## Stacked panes grow with their content (PANE-GRID-STACKED, 0.37.14)
+Below the stacking breakpoint (the grid's own width under 48rem) the grid, its tracks and its panes stop owning height and scroll: they grow with their content (rows auto), the page fill is a floor, and the page (or the shell's primary region) scrolls ONCE. The aside is the first block of the well as the app's `base` areas order it; nothing is clipped and the well never overlaps it. The grid marks itself `data-grammar-pane-stacked="grow"`; a grid that holds a chat thread (a scrolling `PaneSection`) or a pane footer keeps its bounded height and only those scroll inside their pane. Story `Surfaces/Pane grid stacked`.

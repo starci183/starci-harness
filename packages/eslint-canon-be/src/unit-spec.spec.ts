@@ -287,6 +287,8 @@ test("spec-infra-double-from-kit: a function subject beside constants, enums, re
             // a constant is not a callable subject function
             { filename, code: 'import { LIMIT } from "./mixed-subject.mapper"\nconst provider = { provide: SUBJECT, useValue: LIMIT }', errors: [{ messageId: "unknown" }] },
             { filename, code: subject("{ pad, shout, total: sum, LIMIT: 5 }"), errors: [{ messageId: "wrong" }] },
+            // a function of another module is a collaborator, never a member of the subject (BE-TEST-2): call it directly in the spec
+            { filename, code: `import { doubled } from "./function-subject.mapper"\n${subject("{ pad, shout, doubled }")}`, errors: [{ messageId: "wrong" }] },
         ],
     }) })
 })

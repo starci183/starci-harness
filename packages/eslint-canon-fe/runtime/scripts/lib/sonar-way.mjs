@@ -19,6 +19,7 @@ const SONAR_WAY_OWNED = Object.freeze({
   'sonarjs/no-nested-conditional': 'S3358, the canon syntax rule no-nested-conditional',
   'sonarjs/unused-import': 'S1128, the canon syntax rule no-unused-import',
   'sonarjs/void-use': 'S3735, the canon syntax rule no-void-operator',
+  'sonarjs/todo-tag': 'S1135, the canon syntax rule todo-tag (the marker word, not the noun)',
   'sonarjs/deprecation': 'S1874, the borrowed @typescript-eslint/no-deprecated',
   'sonarjs/no-unused-vars': 'S1481, the TypeScript compiler (noUnusedLocals and noUnusedParameters in @starci/tsconfig)',
 });

@@ -493,8 +493,8 @@ const forms = (): ReadonlyArray<Pair> => [
     },
     ...(["md", "lg", "control"] as const).map((size) => ({
         id: `switch-${size}`,
-        ready: <G.Switch label="Dark mode" size={size} />,
-        loading: <G.Switch label="Dark mode" size={size} isLoading />,
+        ready: <G.Switch description="Mô tả ngắn." label="Dark mode" size={size} />,
+        loading: <G.Switch description="Mô tả ngắn." label="Dark mode" size={size} isLoading />,
     })),
     {
         id: "checkbox",

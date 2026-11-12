@@ -759,7 +759,7 @@ rules:
       - {kind: eslint-be, id: no-query-in-loop}
   - id: R78
     code: BE_USER_COPY_LITERAL
-    law: Exception messages, notification texts and response copy come from the capability's messages catalog through the `MessageCatalog` port.
+    law: Exception messages, notification texts and response copy come from the capability's messages catalog through the `MessageCatalog` port; the operation and field documentation a REST door hands to an `@nestjs/swagger` export is contract text, judged with the emitted document (R396).
     failureCodes:
       - BE_USER_COPY_LITERAL
     enforcers:
@@ -921,7 +921,7 @@ rules:
       - {kind: eslint-fe, id: frontend-source-layout}
   - id: R92
     code: FE_COMPONENT_API
-    law: A component exposes the canon surface of typed props and slots, a presentational twin for every connected block, status through the Grammar state renderer and no styling doors, and a pure component reaches no hook, router, locale or API.
+    law: A component exposes the canon surface of typed props and slots, a presentational twin for every connected block, status through the Grammar state renderer (a `DataSlot` drawn by `SlotView`, never a string union of a shape or a view type) and no styling doors, and a pure component reaches no hook, router, locale or API.
     failureCodes:
       - FE_COMPONENT_API
       - FE_COMPONENT_WORLD_OWNERSHIP
@@ -941,6 +941,7 @@ rules:
       - {kind: eslint-fe, id: base-props-atom}
       - {kind: eslint-fe, id: base-import-pair}
       - {kind: eslint-fe, id: no-data-status-shape}
+      - {kind: eslint-fe, id: no-view-data-status}
       - {kind: eslint-grammar-core, id: slot-status-through-slotview}
       - {kind: eslint-fe, id: presentational-purity}
       - {kind: eslint-fe, id: connected-block-has-presentational-twin}
@@ -1169,12 +1170,13 @@ rules:
       - {kind: eslint-be, id: cli-bootstrap}
   - id: R149
     code: BE_CLI_COMMAND_SHAPE
-    law: A nest-commander command is declared only in the feature root of its cli app (`src/features/cli/` of the ops cli, `src/features/client-cli/<app>/` of a client cli), one per file in its group or `subs/` folder, each sub-command with its unit spec beside it.
+    law: A nest-commander command is declared only in the feature root of its cli app (`src/features/cli/` of the ops cli, `src/features/client-cli/<app>/` of a client cli), one per file in its group or `subs/` folder, each sub-command with its unit spec beside it, and no two command classes of one feature root share a class name.
     failureCodes:
       - BE_CLI_COMMAND_SHAPE
     enforcers:
       - {kind: eslint-be, id: cli-command-shape}
       - {kind: eslint-be, id: unit-test-colocated}
+      - {kind: hfs, id: cli-command-names}
   - id: R150
     code: BE_CLI_OWNER
     law: "`nest-commander` is imported only by the cli apps and their feature roots, and no back-end source parses command-line arguments itself."
@@ -1370,11 +1372,12 @@ rules:
       - {kind: eslint-be, id: context-transaction}
   - id: R177
     code: BE_CONTRACT_BREAKING
-    law: An event contract evolves only additively against its pinned previous copy, and a breaking change is a new versioned event key.
+    law: A published contract evolves only additively against its pinned previous copy; a breaking event change is a new versioned event key, and a breaking REST change raises the major of the document's info.version.
     failureCodes:
       - BE_CONTRACT_BREAKING
     enforcers:
       - {kind: hfs, id: contract-compat}
+      - {kind: hfs, id: rest-contract-breaking}
   - id: R178
     code: BE_CONTEXT_PLATFORM_TABLES
     law: A `perConnection` platform capability registers its entities and migrations on every connection it serves.
@@ -1533,7 +1536,7 @@ rules:
       - {kind: hfs, id: lite-secret-custody}
   - id: R235
     code: SCAN_SMELL
-    law: Code carries none of the Sonar way smells a lint rule can decide, each on at error in both canons, outside the files specs name (the specs run the test-scoped rules of the profile), and no raw U+2028, U+2029, U+0085 or bidirectional control character in any file, which the scanner counts as a line break and the language does not (the scan aborts with "Line n is out of range"); the finding names the escape to write.
+    law: Code carries none of the Sonar way smells a lint rule can decide, each on at error in both canons (a leftover `TODO` marker comment among them, written as the upper-case word or as `todo:` and `todo(`; the noun in prose or a name is no marker), outside the files specs name (the specs run the test-scoped rules of the profile), and no raw U+2028, U+2029, U+0085 or bidirectional control character in any file, which the scanner counts as a line break and the language does not (the scan aborts with "Line n is out of range"); the finding names the escape to write.
     failureCodes:
       - SCAN_SMELL
     enforcers:
@@ -1566,6 +1569,8 @@ rules:
       - {kind: eslint-fe, id: no-children-prop}
       - {kind: eslint-fe, id: use-state-destructured}
       - {kind: eslint-fe, id: prefer-tag-over-role}
+      - {kind: eslint-be, id: todo-tag}
+      - {kind: eslint-fe, id: todo-tag}
   - id: R243
     code: FE_SERVER_ACTION_FORBIDDEN
     law: "The front end serves no API: no `\"use server\"` directive, and no route handler but the health route."
@@ -1865,13 +1870,15 @@ rules:
       - {kind: hfs, id: secret-custody-only}
   - id: R278
     code: BE_REST_DOOR_EVIDENCE
-    law: GraphQL is the default door, and every REST route carries its own evidence from the closed set of door reasons the pattern lists.
+    law: An api app's declared contract (graphql when absent) is its default door; in a graphql back end every REST route carries its own evidence from the closed set of door reasons the pattern lists, and a rest back end holds no GraphQL door or GraphQL platform.
     failureCodes:
       - BE_REST_DOOR_EVIDENCE
       - BE_REST_ROUTE_UNDECLARED
+      - BE_REST_APP_GRAPHQL
     enforcers:
       - {kind: eslint-be, id: rest-door-needs-a-reason}
       - {kind: eslint-be, id: rest-route-declared}
+      - {kind: hfs, id: rest-app-graphql}
   - id: R279
     code: BE_THIRD_PARTY_OWNER
     law: A third-party SDK outside the library allowlists is imported only by its one `integrations/<provider>` capability; a workspace package of the app itself (a folder its root `workspaces` name) is first-party source, no SDK, and what it imports is judged over its own files. `socket.io-client` is a test library.
@@ -2010,7 +2017,7 @@ rules:
       - {kind: eslint-be, id: capability-module-shape}
   - id: R296
     code: CI_SECRET_SEALED
-    law: A sealed CI credential copy names an explicit service credential bound to the selected product project, environment, member and key; required product Sonar analysis uses sonar.enc.yaml and an app runtime key never becomes a CI credential.
+    law: A sealed CI credential copy names an explicit service credential bound to the selected product project, environment, member and key, sealed unless its service declares the open owner step that provisions it (`ownerAction.needed`); required product Sonar analysis uses sonar.enc.yaml and an app runtime key never becomes a CI credential.
     failureCodes:
       - CI_SECRET_SEALED
     enforcers:
@@ -2315,7 +2322,7 @@ rules:
       - {kind: eslint-grammar-core, id: mascot-asset-slot-required}
   - id: R340
     code: FE_RAISED_SURFACE_IN_SURFACE
-    law: A surface never stands inside another surface, dialogs and drawers included; a SurfaceCard that a SurfaceCard, a Pane surface, or a Dialog, Drawer, AlertDialog or Popover of the same file encloses is refused. The Grammar has one depth, raised, and draws no nested edge, and throws the same refusal in development. An overlay's trigger is not its content. Across files the whole-program rule closes it (R356).
+    law: 'A card never stands inside another card; a SurfaceCard that another SurfaceCard of the same file encloses is refused. A white Pane surface, Drawer, Dialog, AlertDialog or Popover HOSTS cards: on a white ground a card is the group and draws a 1px border with no shadow (SURFACE-ELEVATION). The Grammar throws the card-in-card refusal in development. Across files the whole-program rule closes it (R356).'
     failureCodes:
       - FE_RAISED_SURFACE_IN_SURFACE
     enforcers:
@@ -2443,7 +2450,7 @@ rules:
 
   - id: R356
     code: FE_SURFACE_NESTING
-    law: "Across files, a card is not drawn inside a card, a Pane surface or an overlay, a DataTable not inside a card, a PaneGrid stands only in Page chrome=\"panes\" or a Pane, a Section or Heading never holds just one card, and a labelled card is not repeated in the peer-card layout Grid kind=\"cards\"."
+    law: "Across files, a card is not drawn inside a card (a white Pane surface or overlay hosts cards), a DataTable not inside a card, a PaneGrid stands only in Page chrome=\"panes\" or a Pane, a Section or Heading never holds just one card, and a labelled card is not repeated in the peer-card layout Grid kind=\"cards\"."
     failureCodes:
       - FE_SURFACE_NESTING
     enforcers:
@@ -2684,10 +2691,13 @@ rules:
       - {kind: hfs, id: script-one-off, status: planned}
   - id: R389
     code: STACKS_BASE_PORT_ROLE
-    law: "The native process ports of a dev environment derive from its project base port: with `local.basePort` declared, the primary front end listens on base, the api on base+1, the AI gateway on base+2 and every further native process from base+3 (from base+2 when no gateway runs) up to base+99; compose service ports are exempt. An environment with native processes on ports and no `basePort` is reported as a warning, not an error."
+    law: "The host ports of a dev environment derive from its project base port: with `local.basePort` declared, the primary front end listens on base, the api on base+1, the AI gateway on base+2 and every further native process from base+3 (from base+2 when no gateway runs) up to base+79; the compose services take base+80 to base+99, the database on base+90, the mail sink's SMTP on base+91 and web UI on base+92, the object store's S3 API on base+93 and console on base+94; and every compose file publishes its host ports from `local.ports`, never a literal port. An environment with native processes on ports and no `basePort` is reported as a warning, not an error. Each project owns its own hundred: the doctor fails, and the scaffold refuses a named base (taking the next free hundred otherwise), when another registered project's hundred or declared ports overlap it."
     failureCodes:
       - STACKS_BASE_PORT_ROLE
+      - STACKS_COMPOSE_PORT_ROLE
+      - STACKS_COMPOSE_PORT_LITERAL
       - STACKS_BASE_PORT_UNDECLARED
+      - HFS_SCAFFOLD_BASE_PORT_TAKEN
     enforcers:
       - {kind: hfs, id: stacks-local}
   - id: R390
@@ -2741,6 +2751,17 @@ rules:
       - HFS_APP_GALLERY_LINKS
     enforcers:
       - {kind: hfs, id: gallery}
+  - id: R396
+    code: BE_REST_OPERATION_ID
+    law: "A rest api app commits the OpenAPI 3 document of its controllers, and every operation in it has a unique explicit `<area>.<action>` operationId, named request and answer schemas, the one Error answer as `default`, a cursor page for a list, and a declared security or a stated public reason."
+    failureCodes:
+      - BE_REST_OPERATION_ID
+      - BE_REST_UNTYPED
+      - BE_REST_ERROR_SHAPE
+      - BE_REST_PAGINATION
+      - BE_REST_SECURITY
+    enforcers:
+      - {kind: hfs, id: rest-contract}
   - id: R397
     code: BE_CLI_CLIENT
     law: "A client cli is an app of kind `client-cli` that declares its npm `package` and its `bin` in `hfs.json` (no other app does, and no two share either), keeps its commands in its own feature root `be/src/features/client-cli/<app>/`, and tracks `be/apps/<app>/package.json` (that name, that bin on `dist/apps/<app>/src/main.js`, not private, `files` holding `dist`, a version, every dependency at the app root's pin) and `be/apps/<app>/tsconfig.build.json` (it emits the import closure of `src/main.ts` into `dist/`)."
@@ -2755,3 +2776,33 @@ rules:
       - BE_CLI_CLIENT_BOUNDARY
     enforcers:
       - {kind: eslint-be, id: cli-client-boundary}
+  - id: R399
+    code: HFS_SIDE_UNDECLARED
+    law: "A project's sides are the ones hfs.json declares (a non-empty subset of be, fe, packages): each declared side tracks files under its folder, no tracked be/, fe/ or packages/ belongs to an undeclared side, and the stack declaration states the same sides with no component of a missing side."
+    failureCodes:
+      - HFS_SIDE_UNDECLARED
+      - HFS_SIDE_FOLDER_MISSING
+      - STACKS_SIDES_UNDECLARED
+      - STACKS_SIDES_DRIFT
+      - STACKS_COMPONENT_SIDE
+    enforcers:
+      - {kind: hfs, id: project-sides}
+  - id: R400
+    code: HFS_DATA_IN_CODE
+    law: "A project's business data lives in git only in its private data repository `<project>-data`, every file under its data/ sealed with sops and listed by its manifest; a code project tracks no document of the data format and never depends on the data repository."
+    failureCodes:
+      - HFS_DATA_IN_CODE
+      - HFS_DATA_DEPENDENCY
+      - STACKS_DATA_REPOSITORY
+      - HFS_DATA_UNSEALED
+      - HFS_DATA_MANIFEST_DRIFT
+    enforcers:
+      - {kind: hfs, id: data-repository}
+  - id: R401
+    code: BE_DI_RING
+    law: No Nest provider of a lite back-end app reaches itself through its constructor, property, factory or `useExisting` injections (a `forwardRef` edge aside, which R85 refuses); the boot proof scans the real AppModule before it compiles and names every ring of two or more providers, since Nest refuses a ring of two and hangs at boot on a longer one.
+    editions: [lite]
+    failureCodes:
+      - BE_DI_RING
+    enforcers:
+      - {kind: hfs, id: di-ring}

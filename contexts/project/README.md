@@ -5,14 +5,33 @@ for each kind of task. It is product-agnostic: a product's own requirements, bra
 records, never this folder. It links each fact to its owner and restates none: how the harness finds a project and where its
 state lives is [contexts/harness/state.md](../harness/state.md) ("How a project is found", "Where state lives").
 
-## PROJECT-1 A project is one app root that holds the Work of every side
+## PROJECT-1 A project is one app root that declares its sides and holds the Work of each
 
-A StarCi project is one **app root**: the git repository that owns `.starciwork/` and `hfs.json`. Its code has two
-sides, the back end (`be`) and the front end (`fe`), laid out in one of two ways:
+A StarCi project is one **app root**: the git repository that owns `.starciwork/` and `hfs.json`. Its code has up to
+three sides, each optional and declared under `sides` of `hfs.json`: the back end (`be`, its apps under `be/`), the
+front end (`fe`, its apps under `fe/`) and the root workspace packages (`packages`, declared `"packages": {}`, the
+npm workspace `packages/*`). Any non-empty set of them is a project: a back end without a front end, a front end
+without a back end, a package library alone. A side's checks run only when it is declared, a verb that works on one side (`app emit`, `app db`, `app world`,
+`app add` of a back-end or front-end noun, `app stack build-args`, `app check --side`) refuses a project without it
+(`SIDE_NOT_DECLARED`, `runtime/scripts/hfs/side-gate.mts`), and a rule that joins two
+sides (the fe wire generated from the be contract, `sides.fe.reads` of `be/contracts/`, the fe workspaces of the
+root manifest) applies only when both are; a declared side whose folder tracks nothing, a tracked `be/`, `fe/` or
+`packages/` of an undeclared side, and a `reads` of an undeclared side are refused (R399, HFS_DECLARATION_INVALID;
+owner: `@starci/hfs` `runtime/scripts/hfs/project-sides.mts`); `starci app sync --execute` writes the declarations an existing app
+lacks (`"packages": {}` for a tracked `packages/`, the stack's `sides` field; `sync/declared-sides.mts`). `starci app scaffold <name> --without <side>` writes
+only the declared sides, for every set that holds be; a set without be (fe alone, packages alone, fe and packages) is
+lawful but has no starter yet and is refused `HFS_SCAFFOLD_SIDES`, since its stack declaration, test world and
+contract source would be the back end's. Open gaps of a project without be: a front end without a back end reads its
+contract as a pinned copy of another repository's committed contract file, kept in the app and refreshed by a
+verb, never typed by hand (not built: no slot, verb or check holds it yet); a packages-only project is an app whose
+root workspace packages are its whole product (no rule forbids it), unlike the `@starci` packages of the harness
+repository, which `starci pkg` edits and CI publishes ([authority/packages.md](../authority/packages.md)). The sides
+are laid out in one of two ways:
 
-- **One repository.** `be/` and `fe/` are folders of the app root, and every root file (manifest, lockfile, CI,
-  hooks, `.starciwork`, `.starcistacks`) lives once at the root ([anatomy.md](anatomy.md) owns the tree; the paths
-  are slots of [hfs/slots.yaml](../hfs/slots.yaml)).
+- **One repository.** `be/`, `fe/` and `packages/` are folders of the app root, and every root file (manifest,
+  lockfile, CI, hooks, `.starciwork`, `.starcistacks`) lives once at the root ([anatomy.md](anatomy.md) owns the
+  tree; the paths are slots of [hfs/slots.yaml](../hfs/slots.yaml)); the stack declaration states the same sides
+  ([stacks.md](stacks.md) PROJECT-STACKS-2).
 - **One repository per side.** The app root is the repository whose `.starciwork/workspace.yaml` lists the others
   by `{role, name}`; each side repository carries its own `hfs.json` and canon but no `.starciwork`.
 
@@ -25,6 +44,8 @@ record change that follows it are two tasks.
 
 | choice | where | effect |
 |---|---|---|
+| sides | `sides`, a non-empty subset of `be`, `fe`, `packages` | which folders the project has and which checks run (above) |
+| contract | `sides.be.apps[].contract`, `graphql` (when absent) or `rest` | the api app's default door ([code/be/transport.md](../code/be/transport.md) BE-TRANSPORT-1) |
 | edition | `edition`, `lite` or `full` (full when absent), fixed at scaffold | which slots and rules apply and which app verbs the CLI shows; [lite.md](lite.md), [full.md](full.md) |
 | grammar | `sides.fe.grammar` | which grammar package and grammar lint the front end composes ([grammars](../grammars/README.md)) |
 | module data | `modules`, `"data"` or absent | `"data"`: the agent modules are data (`.starcistacks/seeds/data/modules`); sync renders no registry package and the module verbs refuse `HFS_MODULES_ARE_DATA` |

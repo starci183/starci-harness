@@ -3,8 +3,10 @@
 //                                      normalise (scripts/hfs/stack-local-config.mts), and its compose services exist in the compose files;
 //        STACKS_DEV_UNDECLARED         a lite app declares at least one docker-compose environment (the dev kind of PROJECT-STACKS-3).
 //   R389 STACKS_BASE_PORT_ROLE        the native process ports of an environment that declares `local.basePort` follow the role table of
-//                                      scripts/hfs/stack-base-port.mts (front end base, api base+1, AI gateway base+2, the rest above, all within
-//                                      base..base+99; compose service ports exempt);
+//                                      scripts/hfs/stack-base-port.mts (front end base, api base+1, AI gateway base+2, the rest up to base+79);
+//        STACKS_COMPOSE_PORT_ROLE      its compose ports that play a role of the table do too (database base+90, mail SMTP base+91, mail UI base+92,
+//                                      object storage API base+93, its console base+94);
+//        STACKS_COMPOSE_PORT_LITERAL   its compose files publish every host port from `local.ports` (`${STACK_PORT_<NAME>}`), never a literal port;
 //        STACKS_BASE_PORT_UNDECLARED   a warning: an environment with native processes on ports declares no `local.basePort` yet.
 //   R373 STACKS_RUNBOOK_DOCKER_COMMAND the runbook of a docker-compose environment names `starci app stack up --env <env>` and carries no
 //                                      `docker build|run|compose|create|start|stop|pull|push` or `docker stack deploy` command (rules.md rule 8).
@@ -12,7 +14,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { isPlainObject as plain } from '../../../engine/plain-object.mjs';
 import { findStackDeclaration, readDeclaration, STACK_ROOT } from '../../lib/stack-declaration.mjs';
-import { basePortProblems, nativeProcesses } from '../stack-base-port.mjs';
+import { basePortProblems, literalPublishes, nativeProcesses } from '../stack-base-port.mjs';
 import { normalizeLocal } from '../stack-local-config.mjs';
 import { found, readJson } from './read.mjs';
 import type { Parsed, Repo } from './rule-types.mjs';
@@ -22,22 +24,26 @@ const ENV_NAME = /^[a-z0-9][a-z0-9-]*$/u;
 const DOCKER_COMMAND = /^\s*(?:[$>]\s*)?(?:\w+=\S+\s+)*docker(?:-compose)?\s+(?:build|buildx|run|compose|create|start|stop|rm|pull|push|stack\s+deploy|stack\s+rm|service)\b/u;
 const mapping = (value: Parsed) => (plain(value) ? value : {});
 
-function composeServices(envDir: string, spec: Parsed): Set<string> {
-  const names = new Set<string>();
+/** The services of each compose file of the environment, keyed by the file's environment-relative path. */
+function composeFiles(envDir: string, spec: Parsed): Map<string, Record<string, unknown>> {
+  const files = new Map<string, Record<string, unknown>>();
   for (const relative of Array.isArray(spec.composeFiles) ? spec.composeFiles : []) {
     if (typeof relative !== 'string' || path.isAbsolute(relative) || relative.split(/[\\/]/u).includes('..')) continue;
-    for (const name of Object.keys(mapping(readDeclaration(path.join(envDir, relative)).doc?.services))) names.add(name);
+    files.set(relative, mapping(readDeclaration(path.join(envDir, relative)).doc?.services));
   }
-  return names;
+  return files;
 }
 
-/** R389: the role table of the base port, or the warning that an app with native processes on ports declares no base yet. */
-function basePortFindings(config: Parameters<typeof basePortProblems>[0], at: string) {
+/** R389: the role table of the base port and the compose files that publish from it, or the warning that an app with native processes on ports declares no base yet. */
+function basePortFindings(config: Parameters<typeof basePortProblems>[0], at: string, environment: string, files: ReadonlyMap<string, Record<string, unknown>>) {
   if (config.basePort === null) {
     if (nativeProcesses(config).length === 0) return [];
-    return [found('STACKS_BASE_PORT_UNDECLARED', DECLARATION, `${at}.basePort is not declared: declare the project base port so the native process ports follow the role table (front end base, api base+1, AI gateway base+2, the rest above) and two apps on one machine never collide (PROJECT-STACKS-10)`, { level: 'warning' })];
+    return [found('STACKS_BASE_PORT_UNDECLARED', DECLARATION, `${at}.basePort is not declared: declare the project base port so the host ports follow the role table (front end base, api base+1, AI gateway base+2, the compose services from base+80) and two apps on one machine never collide (PROJECT-STACKS-10)`, { level: 'warning' })];
   }
-  return basePortProblems(config).map((problem) => found('STACKS_BASE_PORT_ROLE', DECLARATION, `${at}.${problem.at}: ${problem.message} (basePort ${config.basePort}, PROJECT-STACKS-10)`));
+  const table = basePortProblems(config).map((problem) => found(problem.code, DECLARATION, `${at}.${problem.at}: ${problem.message} (basePort ${config.basePort}, PROJECT-STACKS-10)`));
+  const literal = [...files].flatMap(([relative, services]) => literalPublishes(services).map((publish) => found('STACKS_COMPOSE_PORT_LITERAL', `${STACK_ROOT}/${environment}/${relative}`,
+    `services.${publish.service}.ports publishes "${publish.entry}", a literal host port the base port cannot move: declare the port in ${at}.ports by the role table and publish "127.0.0.1:\${STACK_PORT_<NAME>}:<container port>" (basePort ${config.basePort}, PROJECT-STACKS-10)`)));
+  return [...table, ...literal];
 }
 
 function localFindings({ repoRoot, project, environment, spec }: { repoRoot: string; project: string; environment: string; spec: Parsed }) {
@@ -46,9 +52,10 @@ function localFindings({ repoRoot, project, environment, spec }: { repoRoot: str
   const { config, problems } = normalizeLocal(spec.local, { project, env: environment });
   const findings = problems.map((problem) => found('STACKS_LOCAL_CONFIG_INVALID', DECLARATION, `${at}.${problem.at}: ${problem.message}`));
   if (config) {
-    const services = composeServices(path.join(repoRoot, STACK_ROOT, environment), spec);
+    const files = composeFiles(path.join(repoRoot, STACK_ROOT, environment), spec);
+    const services = new Set([...files.values()].flatMap((mapped) => Object.keys(mapped)));
     for (const service of config.services) if (!services.has(service.name)) findings.push(found('STACKS_LOCAL_CONFIG_INVALID', DECLARATION, `${at}.services: ${service.name} is not a service of the compose files of ${environment}`));
-    findings.push(...basePortFindings(config, at));
+    findings.push(...basePortFindings(config, at, environment, files));
   }
   return findings;
 }

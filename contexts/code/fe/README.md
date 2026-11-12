@@ -68,7 +68,7 @@ Why: a region that draws its own loading, error or empty branch is one more vari
 skeleton that is not the ready tree jumps when the data lands.
 
 Enforced by: R92 (`slot-status-through-slotview`, `no-placeholder-prop`, `no-resting-branch-at-call-site`,
-`no-resting-twin-component`, `no-data-status-shape`). No DNA law measures that the loading tree equals the ready tree yet; the
+`no-resting-twin-component`, `no-data-status-shape`, `no-view-data-status`: a `state`, `status` or `shape` of a view type in `modules/types` or a hook is never a string union that lists `loading`, or two read-status words). No DNA law measures that the loading tree equals the ready tree yet; the
 `SkeletonParity` stories of the Grammar draw both, and their committed pictures show a jump.
 
 ## Topics

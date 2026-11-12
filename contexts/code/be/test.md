@@ -13,7 +13,10 @@ projects, doubles and coverage mechanics are the `@starci/jest-preset` README. T
 A unit spec is `<name>.<role>.spec.ts` beside its subject: required beside every `*.service.ts`, every `*.cli.ts` and a
 webhook or realtime door; optional beside any other logic-role file (`policy`, `mapper`, `client`, `guard`, `schema`,
 `processor`, `step`, ...) and beside a logic file its slot declares (`logic`: `passport.tokens.spec.ts` beside
-`passport.tokens.ts`). A spec of a handler, resolver, controller, module or app file, or of any other file, is a finding. Integration
+`passport.tokens.ts`). A spec that outgrows its line budget (`ruleParams.common.fileLines`) splits by facet into
+`<name>.<role>.<facet>.spec.ts` beside the main `<name>.<role>.spec.ts` and the same subject (`orders.service.refunds.spec.ts`
+beside `orders.service.spec.ts` and `orders.service.ts`); a split with no main spec or no subject is an orphan. A spec of a handler,
+resolver, controller, module or app file, or of any other file, is a finding. Integration
 specs are `src/tests/integration/<area>/*.integration-spec.ts` on real infrastructure through `useTestWorld`; contract
 specs `src/tests/contract/<provider>/*.contract-spec.ts`; full adds `src/tests/e2e/<area>/*.e2e-spec.ts`. Test
 infrastructure lives only in `src/tests/world/`, shared data in `src/tests/fixtures/`. Integration and contract run
@@ -38,7 +41,10 @@ subject, no `imports`, no `override*`, no `jest.mock`. The providers besides the
 dependencies: an injector's exported token (`{ provide: CLOCK, useValue: clock }`) or a domain service class
 (`{ provide: MembersService, useValue: mock<MembersService>() }`). Every required dependency is provided; a parameter
 decorated with Nest's `@Optional()` may be omitted to cover its absence. A TypeScript optional parameter alone does not
-make Nest injection optional. A `*.schema.ts` is parsed directly.
+make Nest injection optional. A `*.schema.ts` is parsed directly. A subject of plain exported functions (a policy or mapper
+module) is provided under a local token as the real functions of that one sibling file, `{ provide: SUBJECT, useValue: {
+fnA, fnB } }`, every member an export of `<name>.<role>.ts` under its own name; a function of another module is never a member
+(it is a collaborator: call it directly, or let its own spec prove it), and anything else a token gets is a kit double.
 
 Why: a hand-built subject drifts from its real constructor, and an extra provider hides a dependency the subject lost.
 
@@ -117,7 +123,8 @@ Enforced by: `no-call-only-spec`, `spec-behavior-assertion`, `spec-exact-values`
 Integration specs boot capability modules through `useTestWorld({ modules })` on the local stack (lite: the db
 CLI database and the declared Redis), fake only external providers at the network edge, override no provider, guard or
 token, and assert persisted state. Lite proves composition by compiling the real AppModule graph (`starci app check
---gate wiring`) and each declared pattern in integration specs; full boots the real apps for e2e
+--gate wiring`), after the same proof has scanned it for provider rings (BE-INJECTION-5), and each declared pattern in
+integration specs; full boots the real apps for e2e
 (`useTestWorld({ apps })`). Configuration is substituted by passing options, never by patching `process.env`. A
 provider whose contract requires TLS (an OIDC issuer and its JWKS) is faked over HTTPS (`defineHttpFake({ https: true })`,
 `@starci/test-world` README "Fakes"), and the app trusts the run's fake CA (`w.fake.<name>.ca`) through its HTTP client's
@@ -127,7 +134,7 @@ off (SHARED-LOOSENING-1, marker `tls-unverified`), so the issuer check a spec pr
 Why: a hand-assembled module can pass while the real app cannot start, and transaction, lock and fence claims need the
 real store.
 
-Enforced by: `tests-no-override`, `e2e-uses-production-transport`, `e2e-asserts-persisted-state` (R47, R48), R272, R284.
+Enforced by: `tests-no-override`, `e2e-uses-production-transport`, `e2e-asserts-persisted-state` (R47, R48), R272, R401, R284.
 
 ## BE-TEST-13 Coverage is 100 per measured file, from one derivation
 

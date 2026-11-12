@@ -61,3 +61,6 @@ help's 4. The rhythm holds in every state, loading included (STATE-8).
 ## Rules
 FIELD-1..4, G6, FONT-7, STATE-8. Lint: `starci-grammar/field-label`, `starci-grammar/gap-proximity`,
 `starci-fe/no-spacing-utility`. Proof: A11Y-1, TASTE-4.
+
+## A labelled Switch needs its description (SWITCH-LABEL-DESCRIPTION)
+A `Switch` with a visible label MUST carry `description` (the type is a union on `isLabelHidden`: a bare control, `isLabelHidden`, is the only switch without one). The row is label (14, weight 500) and description (12, muted) at the start filling the row, the control at the end edge centred vertically, the whole row the hit target; there is no placement prop, so the control cannot come before the text. Setting explanations are the description of the switch, never a loose line under it.

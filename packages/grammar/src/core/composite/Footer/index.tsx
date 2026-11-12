@@ -33,7 +33,7 @@ export type FooterProps = NoChildren & {
 /**
  * The page footer (`<footer>`, the contentinfo landmark at page level): brand, grouped link
  * directories that reflow from columns to one column at narrow widths, free content and a legal
- * row. Links are Common `Link`s, so the current page keeps `aria-current="page"`.
+ * row. Links are Common `Link`s of `variant="plain"` (0.37.22, the red budget: a standalone navigation link is the foreground colour, never the accent), so the current page keeps `aria-current="page"`.
  * Contract: directory HIERARCHY-3 (reflow keeps source order), link list A11Y-4 CTA-2 (named list of destinations).
  */
 export const Footer = ({ label, brand, groups = [], legal, externalHint }: FooterProps) => {
@@ -59,6 +59,7 @@ export const Footer = ({ label, brand, groups = [], legal, externalHint }: Foote
                                                 <li key={link.id}>
                                                     <Link
                                                         href={link.href}
+                                                        variant="plain"
                                                         isCurrent={link.isCurrent === true}
                                                         kind={link.kind ?? "internal"}
                                                         visited="uniform"

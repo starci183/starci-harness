@@ -115,6 +115,7 @@
     { "q": "seeds.yaml manifest entries sql data files once upsert after, shared seed level then the environment seed level", "expect": ["PROJECT-STACKS-12"] },
     { "q": "what must every push of an app carry so CI only re-checks the diff, and what refuses a push without warm check cache records", "expect": ["contexts/project/check-cache.md#the-operating-procedure"] },
     { "q": "does the release gate run the checks in full or trust the committed cache, and what locks a release when the nightly cache verify is red", "expect": ["contexts/project/check-cache.md#the-nightly-verify"] },
+    { "q": "may a view type or a hook carry a loading, failed or empty status as a string union state", "expect": ["contexts/code/fe/README.md#data-status-of-a-region", "R92"], "miss": { "on": "2026-11-11", "what": "a view type in modules/types and a hook typed the read status of a region as a string union (loading, failed, empty, ready) and the block branched on view.state; no-data-status-shape judged only XShape and XState names inside a pure half", "cause": ["no-enforcer", "not-looked-up"], "fix": ["contexts/code/fe/README.md#data-status-of-a-region", "R92"] } },
     { "q": "what happens when a background job or saga step fails for good, is it a dead letter, and how does it run again after a fix", "expect": ["BE-RESILIENCE-2"] }
   ]
 }

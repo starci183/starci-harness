@@ -41,6 +41,20 @@ test("exception, notification and response copy come from the messages catalog",
             { filename: CONTROLLER, code: withPrelude("const found = { code: 'OK' }") },
             // outside a transport slot a `message` property is data, not a response
             { filename: SERVICE, code: withPrelude("const row = { message: 'Plan updated successfully' }") },
+            // the REST contract's documentation for developers: operation and field text handed to an @nestjs/swagger export (R396 judges the document)
+            { filename: CONTROLLER, code: withPrelude([
+                'import { ApiOperation, ApiProperty, ApiResponse as Answer } from "@nestjs/swagger"',
+                "declare const applyDecorators: (...decorators: unknown[]) => MethodDecorator",
+                "class OrderResponse {",
+                "    @ApiProperty({ description: 'The id of the order, as the books write it.' }) readonly id!: string",
+                "}",
+                "class OrderController {",
+                "    @ApiOperation({ operationId: 'orders.get', summary: 'Get one order.', description: 'Reads one order of the workspace, with its lines.' })",
+                "    @Answer({ status: 200, type: OrderResponse, content: { 'application/json': { examples: { one: { summary: 'One line.', description: 'An order with one line.' } } } } })",
+                "    get(): void {}",
+                "}",
+                "const Listed = (): MethodDecorator => applyDecorators(Answer({ status: 200, description: 'A page of orders, newest first.' }))",
+            ].join("\n")) },
         ],
         invalid: [
             { filename: SERVICE, code: withPrelude("throw new PlanNotFoundError('Plan not found for this account')"), errors: [{ messageId: "exception" }] },
@@ -53,6 +67,9 @@ test("exception, notification and response copy come from the messages catalog",
             // transport slots: http and graphql
             { filename: CONTROLLER, code: withPrelude("const found = { message: 'Plan updated successfully' }"), errors: [{ messageId: "response" }] },
             { filename: RESOLVER, code: withPrelude("const found = { description: 'The plan of this account' }"), errors: [{ messageId: "response" }] },
+            // only an @nestjs/swagger export documents the contract: a same-named local helper, or another package's decorator, is response copy
+            { filename: CONTROLLER, code: withPrelude("const ApiOperation = (options: object): object => options\nApiOperation({ description: 'The plan of this account' })"), errors: [{ messageId: "response" }] },
+            { filename: RESOLVER, code: withPrelude('import { Field } from "@nestjs/graphql"\nclass PlanType {\n    @Field({ description: \'The plan of this account\' }) plan!: string\n}'), errors: [{ messageId: "response" }] },
             // specs get the same law
             { filename: SPEC, code: withPrelude("throw new PlanNotFoundError('Plan not found')"), errors: [{ messageId: "exception" }] },
         ],

@@ -14,6 +14,7 @@ import {
   baseImportPair,
   basePropsAtom,
   noDataStatusShape,
+  noViewDataStatus,
   rules,
 } from "./drawing.ts"
 
@@ -288,6 +289,40 @@ test("a shape is never a status, written as an interface, an inline object or a 
           errors: [{ messageId: "flag" }],
         },
         { filename: OVERLAY, code: "export const SendOverlayBase = (props: { shape: \"form\" | \"closed\"; props: {} }) => <div />", errors: [{ messageId: "status" }] },
+      ],
+    })
+  })
+})
+
+test("a view type or a hook never carries a read status as a string union", () => {
+  const VIEW = at("apps/web/src/modules/types/brain-policies.ts")
+  const HOOK = at("apps/web/src/hooks/invite/useInviteView.ts")
+  assert.doesNotThrow(() => {
+    tester.run("no-view-data-status", noViewDataStatus, {
+      valid: [
+        // a domain status from the back end names no read status
+        { filename: VIEW, code: "export interface Order { readonly status: \"pending\" | \"paid\" | \"failed\" }" },
+        { filename: VIEW, code: "export interface Agent { readonly state: \"active\" | \"retired\" | \"empty\" }" },
+        { filename: VIEW, code: "export type Payment = { readonly status: \"failed\" }" },
+        // the recipe: a DataSlot, whose flags are booleans
+        { filename: VIEW, code: "export interface PoliciesView { readonly slot: DataSlot<Policy> }" },
+        // other keys and non-literal types are not read here
+        { filename: VIEW, code: "export interface Row { readonly label: \"loading\" | \"ready\"; readonly state: string }" },
+        { filename: HOOK, code: "export interface InviteView { readonly state: InviteVisitor }" },
+        // outside `modules/types` and the hooks: a service type, a block
+        { filename: at("apps/web/src/modules/api/graphql/brain.ts"), code: "export interface Result { readonly state: \"loading\" | \"ready\" }" },
+        { filename: BLOCK_INDEX, code: "export interface Props { readonly state: \"loading\" | \"ready\" }" },
+      ],
+      invalid: [
+        { filename: VIEW, code: "export interface PoliciesView { readonly state: \"loading\" | \"failed\" | \"empty\" | \"not_derived\" | \"ready\" }", errors: [{ messageId: "status" }] },
+        { filename: VIEW, code: "export type Row = { status: \"loading\" | \"ready\" }", errors: [{ messageId: "status" }] },
+        { filename: VIEW, code: "export interface View { readonly shape: \"error\" | \"empty\" | \"ready\" }", errors: [{ messageId: "status" }] },
+        {
+          filename: HOOK,
+          code: "export type InviteVisitor = \"loading\" | \"unavailable\" | \"signedOut\" | \"mismatch\" | \"ready\"\nexport interface InviteView { readonly state: InviteVisitor }",
+          errors: [{ messageId: "status" }],
+        },
+        { filename: HOOK, code: "export const useThing = (): { readonly state: \"loading\" | \"ready\" } => ({ state: \"ready\" })", errors: [{ messageId: "status" }] },
       ],
     })
   })

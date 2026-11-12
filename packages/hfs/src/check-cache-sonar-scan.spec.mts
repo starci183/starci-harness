@@ -120,6 +120,16 @@ test('an app with no sonar-project.properties or no Sonar service is an info lin
   assert.deepEqual(state.log, [], 'no server is asked');
 });
 
+test('an analysis credential whose owner step the declaration states as open is an info line naming it, never a warning', async (t) => {
+  const state: Server = { log: [] };
+  const declaration = DECLARATION.replace('    ci:\n', '    ownerAction:\n      needed: seal the analysis token\n      reason: a fresh app fabricates no credential\n    ci:\n');
+  const seen: Scanned[] = [];
+  const open = await scan(t, app(t, { declaration }), state, scanner('.', seen)).result;
+  assert.deepEqual(open.findings, []);
+  assert.match(open.lines.join('\n'), /not run, the owner step that provisions the analysis credential is open \(services\.sonar\.ownerAction: seal the analysis token\)/u);
+  assert.deepEqual([state.log, seen], [[], []], 'no server is asked and no scanner runs');
+});
+
 test('a token that cannot be opened, or a server that does not answer, is a warning and the scanner never runs', async (t) => {
   const root = app(t);
   const seen: Scanned[] = [];

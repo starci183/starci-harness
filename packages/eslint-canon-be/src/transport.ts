@@ -13,7 +13,7 @@ import ts from "typescript"
 import { walk } from "./lib/ast.ts"
 import { hfsOf } from "./lib/hfs.ts"
 import { decoratorArguments, decoratorCallee, importOf, isImportedFrom, moduleReferences } from "./lib/import-source.ts"
-import { isTransportSlot, KIND_DOOR_SLOTS } from "./lib/transport-slots.ts"
+import { isTransportSlot, KIND_DOOR_SLOTS, servesRest } from "./lib/transport-slots.ts"
 import { isPackageType, typeOrigins, typed } from "./lib/types.ts"
 import { operationRouteEvidence, restExceptionEvidence } from "./operations.ts"
 import type { TSESTree } from "@typescript-eslint/utils"
@@ -416,14 +416,16 @@ export const noCapabilityImportsFeatures: RuleModule = {
 export const restDoorNeedsAReason: RuleModule = {
     meta: {
         type: "problem",
-        docs: { description: "Every REST route shows its own public reason (Health, AuthHandshake, SignedWebhook), byte transfer, redirect or declared operation table." },
+        docs: { description: "In a back end whose contract is graphql, every REST route shows its own public reason (Health, AuthHandshake, SignedWebhook), byte transfer, redirect or declared operation table." },
         schema: [],
         messages: {
             unjustified: "[BE_REST_DOOR_EVIDENCE] This REST route shows none of the reasons a door may not be GraphQL: a route-level probe, auth handshake or signed webhook (`@Public({ reason: PublicReason.X })`), a byte transfer, an OAuth redirect, an event stream (`@Sse` in the sse slot of a realtime channel) or a declared public v1 operation table. A plain JSON read belongs in the GraphQL schema, where the client already is.",
         },
     },
     create(context) {
-        hfsOf(context)
+        const hfs = hfsOf(context)
+        // A back end whose api apps declare contract rest serves controllers by default: the evidence is GraphQL's door rule (BE-TRANSPORT-1).
+        if (servesRest(hfs.apps)) return {}
         const declared = operationRouteEvidence(context)
         return {
             ClassDeclaration(node) {

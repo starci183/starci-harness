@@ -8,8 +8,8 @@ the whole file and reads a section when it needs it: `starci contexts anchor <an
 `starci contexts search "<question>" --scope project` ranks them.
 
 - Stacks: how an app runs · `contexts/project/stacks.md#stacks-how-an-app-runs` · 1 KB — `.starcistacks/` at the app root is the one place an app says how it runs: which environments exist, what each one starts, how traffic enters, where its secrets are sealed, what ...
-  - PROJECT-STACKS-1 One root per app · `PROJECT-STACKS-1` · 1 KB — `.starcistacks/` lives only at the app root, the repository that owns `.starciwork`, and covers every side the app has (be and fe).
-  - PROJECT-STACKS-2 The manifest declares everything the app runs and reads · `PROJECT-STACKS-2` · 1 KB — `application-stacks.yaml` (schema `starci/application-stacks@1`) is the declaration everything else is checked against:
+  - PROJECT-STACKS-1 One root per app · `PROJECT-STACKS-1` · 1 KB — `.starcistacks/` lives only at the app root, the repository that owns `.starciwork`, and covers every side the app declares (README.md PROJECT-1).
+  - PROJECT-STACKS-2 The manifest declares everything the app runs and reads · `PROJECT-STACKS-2` · 2 KB — `application-stacks.yaml` (schema `starci/application-stacks@1`) is the declaration everything else is checked against:
   - PROJECT-STACKS-3 Two kinds of environment, each with its runbook · `PROJECT-STACKS-3` · 2 KB — Two kinds, named by the project:
   - PROJECT-STACKS-4 One declared ingress publishes, and only in the open it must · `PROJECT-STACKS-4` · 2 KB — One declared ingress component per environment is the only thing that publishes a port (R266, R275); every other service sits on internal networks.
   - PROJECT-STACKS-5 Secrets are sealed, granted least and never regenerated · `PROJECT-STACKS-5` · 12 KB
@@ -17,7 +17,8 @@ the whole file and reads a section when it needs it: `starci contexts anchor <an
   - PROJECT-STACKS-7 CI holds names; every value stays with its consumer · `PROJECT-STACKS-7` · 2 KB — One key belongs to one class, and the manifest's `ci` block declares names and public values only:
   - PROJECT-STACKS-8 Quality services are declared and required · `PROJECT-STACKS-8` · 3 KB — The manifest's `services` block names the delivery, quality and platform services the code and CI use (a static analysis server, coverage upload, the dependency bot, the ...
   - PROJECT-STACKS-9 A remote application API is consumed, not administered · `PROJECT-STACKS-9` · 1 KB — An application the app calls that runs elsewhere (on a cluster or another host) is an application API to its caller, whatever runs it.
-  - PROJECT-STACKS-10 Local runs · `PROJECT-STACKS-10` · 7 KB — Rules learned from running apps on developer hosts; each holds in every app.
+  - PROJECT-STACKS-10 Local runs · `PROJECT-STACKS-10` · 9 KB — Rules learned from running apps on developer hosts; each holds in every app.
   - PROJECT-STACKS-11 A customised service is an image the app builds, the same in every environment · `PROJECT-STACKS-11` · 2 KB — A service the app customises (wrapper scripts, plugins, configuration code) is built from an image folder `.starcistacks/images/<name>/` whose Dockerfile starts every `FROM` at a ...
   - PROJECT-STACKS-12 Seed data lives in the seed levels of the stack · `PROJECT-STACKS-12` · 6 KB — The data an app seeds lives in two levels of `.starcistacks/`, tracked, one structure at each level:
+  - PROJECT-STACKS-13 Business data lives only in the project's sealed data repository · `PROJECT-STACKS-13` · 4 KB — A project's real business data (its customers, contracts, invoices, balances: the records the business runs on, as opposed to code, seeds and secrets) is kept in git only in one ...
   - Read with · `contexts/project/stacks.md#read-with` · 1 KB — lite.md, full.md; slots `app.starcistacks` and `app.plaintext-env` in hfs/slots.yaml; R06, R10, R250 to R253, R266 to R268, R271, R275 to R277, R294, R296 to R299, R301, R372 to ...

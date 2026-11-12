@@ -1,8 +1,8 @@
 # Development stack
 
 The dev environment is one command: `starci app stack up --env dev --execute`. It checks the machine, opens the dev custody, starts the
-compose services of `infra/compose/stack.yaml` in Docker Linux containers (the pinned local PostgreSQL first, then the core API and the product
-and landing front ends), waits for each healthcheck and for readiness, and prints the origins. What it runs is the `local` block of
+compose services of `infra/compose/stack.yaml` in Docker Linux containers (the pinned local PostgreSQL and the `storage` object store, MinIO,
+first, then the core API and the product and landing front ends), waits for each healthcheck and for readiness, and prints the origins. What it runs is the `local` block of
 `environments.dev` in `.starcistacks/application-stacks.yaml` (PROJECT-STACKS-6 in contexts/project/stacks.md); this runbook never carries a
 docker command, an agent never runs docker by hand. Trust authentication is confined to this local, unpublished database.
 
@@ -11,7 +11,11 @@ from `.nvmrc`, npm, git, Docker with Compose v2 running Linux containers, WSL2 o
 
 **Custody.** The API reads its database connection from the owner-controlled file `/run/starci-secrets/{{project}}/dev/primary-db-url`, which
 the compose model mounts into the API; materialize its real sealed member there before `up`. The scaffold creates no fake secret or
-successful proof.
+successful proof. The `storage` service's root credentials are the dev-only `storage` member the owner creates once with
+`starci app secret init --env dev --execute`.
+
+**Ports.** Every host port derives from `local.basePort` (R389, PROJECT-STACKS-10): the product front end on the base, the core API on base + 1,
+the landing on base + 2, the compose services from base + 80 (the `storage` S3 API and console on base + 93 and base + 94).
 
 | Command | Operation |
 | --- | --- |

@@ -57,28 +57,17 @@
         gap: var(--grammar-inline-gap) !important;
     }
 
-    .starci-core-button[data-size="sm"][data-grammar-button-start="glyph"] {
-        padding-inline-start: var(--grammar-control-padding-glyph-sm);
+    /*
+     * A Button with a glyph (a primary's start icon, an arrow that leads somewhere) takes HeroUI v3's own measures on BOTH sides (0.37.5): px-3 on sm, px-4 on md and lg,
+     * the icon 20px on a phone and 16px from 640px (sm: 16px on every width), the vendor's own -2px inline margin on the icon (`-mx-0.5`, kept), and the 8px gap above. Before,
+     * the glyph side was one step less (8 on md), so the icon sat about 8px tighter than HeroUI draws it.
+     */
+    .starci-core-button[data-size="sm"]:is([data-grammar-button-start="glyph"], [data-grammar-button-end="glyph"]) {
+        padding-inline: var(--grammar-button-icon-padding-sm);
     }
 
-    .starci-core-button[data-size="sm"][data-grammar-button-end="glyph"] {
-        padding-inline-end: var(--grammar-control-padding-glyph-sm);
-    }
-
-    .starci-core-button:is([data-size="md"], [data-size="control"])[data-grammar-button-start="glyph"] {
-        padding-inline-start: var(--grammar-control-padding-glyph-md);
-    }
-
-    .starci-core-button:is([data-size="md"], [data-size="control"])[data-grammar-button-end="glyph"] {
-        padding-inline-end: var(--grammar-control-padding-glyph-md);
-    }
-
-    .starci-core-button[data-size="lg"][data-grammar-button-start="glyph"] {
-        padding-inline-start: var(--grammar-control-padding-glyph-lg);
-    }
-
-    .starci-core-button[data-size="lg"][data-grammar-button-end="glyph"] {
-        padding-inline-end: var(--grammar-control-padding-glyph-lg);
+    .starci-core-button:is([data-size="md"], [data-size="control"], [data-size="lg"]):is([data-grammar-button-start="glyph"], [data-grammar-button-end="glyph"]) {
+        padding-inline: var(--grammar-button-icon-padding);
     }
 
     /* Alert and toast: a box inside a surface, the container inset on every side, glyph and copy an inline pair. */

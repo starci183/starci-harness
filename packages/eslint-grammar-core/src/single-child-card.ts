@@ -1,31 +1,23 @@
 import type { Rule } from "eslint"
 import type { TSESTree } from "@typescript-eslint/types"
 import { isProductSource } from "@starci/eslint-canon-fe/lib/scope.mjs"
-import { attributeOf, elementNameOf, grammarName, hasSpread, renderedChildren, stringProp } from "./lib/grammar-jsx.ts"
+import { attributeOf, elementNameOf, grammarName, hasSpread, renderedChildren } from "./lib/grammar-jsx.ts"
 import { defineFamilyRules, defineRule } from "./lib/rule-contract.ts"
 import type { Context } from "./lib/types.ts"
 /**
- * The lone surface law (owner, 2026-11-09, SINGLE-CHILD-CARD): a card groups two or more different parts (figures + list +
- * actions) or carries zones (tabs, search, head actions). A table, a list or a chart standing alone IS the surface: the
- * title sits above it as a `Section` head and one line sits under it as `Section caption` (muted, sm). The Grammar draws a
- * standalone `DataTable` (`surface="card"`) and every `Section kind="list"` as its own card (border, card radius, card shadow), so a
- * `SurfaceCard` around either is a second card around the first.
+ * The lone surface law (owner, 2026-11-09, SINGLE-CHILD-CARD; aligned 0.37.8): a card groups two or more different parts or carries zones. A card holding a LIST or
+ * key-value rows (`SurfaceCard kind="list"`, `kind="table"`, `kind="select"`, a `ListBox`, `DisclosureList`, `Section kind="list"`, a `DescriptionList`) is valid, alone or
+ * not: one list card with its head and count chip, or a bordered key-value card on a white aside, is the law. What is wrong is a card wrapping ONE non-list leaf that
+ * is a surface on its own: a `DataTable` (standalone it draws its own card) or a chart. The title sits above it as a `Section` head.
  *
- * WHAT IT READS. A Grammar `SurfaceCard` (imported from `@starci/grammar`) with no zones: no `headers` or `footers` prop (an
- * empty array literal counts as none) and no `labelEnd` (head actions). Its body is read through fragments, `cond && <x/>`,
- * `cond ? <x/> : <y/>` and `.map`, ignoring blank text. It is refused when that body is ONE element and that element is:
- *   - a table: `DataTable`;
- *   - a list: `ListBox`, `ItemList`, `DisclosureList`, `Timeline`, or `Section kind="list"`;
- *   - a chart: `BarChart`, `ProportionBar`, `BubbleMap`, `FlowGraph`, `MermaidDiagram`.
- * It is also refused when the card is the data-driven form of the same thing: `SurfaceCard kind="table"` or `kind="list"`.
+ * WHAT IT READS. A Grammar `SurfaceCard` (imported from `@starci/grammar`) with no zones: no `headers` or `footers` prop (an empty array literal counts as none) and no
+ * `labelEnd` (head actions). Its body is read through fragments, `cond && <x/>`, `cond ? <x/> : <y/>` and `.map`, ignoring blank text. It is refused when that body is ONE
+ * element and that element is a `DataTable` or a chart: `BarChart`, `ProportionBar`, `BubbleMap`, `FlowGraph`, `MermaidDiagram`.
  *
- * DECIDED. `Meter`, `Progress` and `ProgressCircle` are single values, not charts. `DescriptionList` (term/value facts of one
- * record) and `Accordion` are not read as lists here: a record's facts are the `kind="details"` card. `SurfaceCard
- * kind="figures"`, `details`, `accordion` and `tile` are not judged. `SurfaceCard` rules for kinds, depth and nesting stay with
- * `surface-card-kind`, `no-raised-surface-in-surface` and `surface-depth`; none is read again here.
+ * DECIDED. Lists and key-value rows are never refused here. `Meter`, `Progress` and `ProgressCircle` are single values, not charts. `SurfaceCard kind="figures"`, `details`,
+ * `accordion`, `list`, `table`, `select` and `tile` are not judged. Kinds, depth and nesting stay with `surface-card-kind`, `no-raised-surface-in-surface` and `surface-depth`.
  *
- * WHAT IT LEAVES ALONE. A card with two or more body children, a card with zones or `labelEnd`, a card with a JSX spread (a
- * prop may arrive that the source does not show), a non-Grammar `SurfaceCard`, and non-product source.
+ * WHAT IT LEAVES ALONE. A card with two or more body children, a card with zones or `labelEnd`, a card with a JSX spread, a non-Grammar `SurfaceCard`, and non-product source.
  *
  * WHERE IT APPLIES. Product source (`isProductSource`).
  */
@@ -33,10 +25,6 @@ import type { Context } from "./lib/types.ts"
 /** The table, list and chart components that are a surface on their own, with the word the message names them by. */
 const LONE: ReadonlyMap<string, string> = new Map([
   ["DataTable", "table"],
-  ["ListBox", "list"],
-  ["ItemList", "list"],
-  ["DisclosureList", "list"],
-  ["Timeline", "list"],
   ["BarChart", "chart"],
   ["ProportionBar", "chart"],
   ["BubbleMap", "chart"],
@@ -67,19 +55,18 @@ const loneChild = (context: Context, card: TSESTree.JSXElement): string | null =
   if (child?.type !== "JSXElement") return null
   const name = elementNameOf(child)
   if (name === null || grammarName(context, child.openingElement) === null) return null
-  if (name === "Section") return stringProp(child.openingElement, "kind") === "list" ? "Section kind=\"list\"" : null
   return LONE.has(name) ? name : null
 }
 
-/** A table, list or chart standing alone is the surface, never wrapped in a card. */
+/** A table component or a chart standing alone is the surface, never wrapped in a card; list cards are valid. */
 export const singleChildCard: Rule.RuleModule = defineRule({
   meta: {
     type: "problem",
-    docs: { description: "SINGLE-CHILD-CARD: a SurfaceCard with no zones whose only content is a table, list or chart is a second frame; the title is a Section head." },
+    docs: { description: "SINGLE-CHILD-CARD: a SurfaceCard with no zones whose only content is a DataTable or a chart is a second frame; a card holding list or key-value rows is valid." },
     schema: [],
     messages: {
       lone:
-        "A {{child}} standing alone is the surface: drop the SurfaceCard, put its title in a `Section` head (`title`) and one line under it in `Section caption`. A card groups two or more different parts, or carries zones (tabs, search, head actions).",
+        "A {{child}} standing alone is the surface: drop the SurfaceCard, put its title in a `Section` head (`title`) and one line under it in `Section caption`. A card groups two or more different parts, or carries zones (tabs, search, head actions); a card of list or key-value rows is always valid.",
     },
   },
   create(context) {
@@ -88,10 +75,9 @@ export const singleChildCard: Rule.RuleModule = defineRule({
       JSXElement(element) {
         const opening = element.openingElement
         if (grammarName(context, opening) !== "SurfaceCard" || hasSpread(opening) || hasZones(opening)) return
-        const kind = stringProp(opening, "kind")
-        const child = kind === "table" || kind === "list" ? kind : loneChild(context, element)
+        const child = loneChild(context, element)
         if (child === null) return
-        context.report({ node: opening, messageId: "lone", data: { child: kind === child ? child : `\`${child}\`` } })
+        context.report({ node: opening, messageId: "lone", data: { child: `\`${child}\`` } })
       },
     }
   },

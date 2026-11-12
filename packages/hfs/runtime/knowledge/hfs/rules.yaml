@@ -1598,7 +1598,7 @@ rules:
     witness:
       - {"path":"packages/eslint/be/r78-user-copy-through-catalog.spec.mjs","edition":"lite","codes":["BE_USER_COPY_LITERAL"]}
       - {"path":"packages/eslint/be/r78-user-copy-through-catalog.spec.mjs","edition":"full","codes":["BE_USER_COPY_LITERAL"]}
-    law: "A literal exception message, notification text or response copy comes from the per-capability messages catalog through the typed `MessageCatalog` port, not from source."
+    law: "A literal exception message, notification text or response copy comes from the per-capability messages catalog through the typed `MessageCatalog` port, not from source; the operation and field documentation a REST door hands to an `@nestjs/swagger` export (`@ApiOperation`, `@ApiProperty`, `@ApiResponse`) is contract text for developers, judged with the emitted document (R396)."
     kinds: [lint, codemod]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["BE_USER_COPY_LITERAL"]
@@ -2604,13 +2604,14 @@ rules:
     witness:
       - {path: packages/eslint/be/cli-coverage.spec.mjs, edition: lite, codes: [BE_CLI_COMMAND_SHAPE]}
       - {path: packages/eslint/be/cli-coverage.spec.mjs, edition: full, codes: [BE_CLI_COMMAND_SHAPE]}
-    law: "A nest-commander command (`@Command` or `@SubCommand`, by the import that binds the decorator) is declared only in the feature root of its cli app (`src/features/cli/` of the ops cli, `src/features/client-cli/<app>/` of a client cli): a group `@Command` in `<group>/<group>.cli.ts`, a `@SubCommand` extending `CommandRunner` in `<group>/subs/<name>.cli.ts`, one command per file, and every sub-command has its unit spec `<name>.cli.spec.ts` beside it (a command is an action runner, not a thin transport: R88 does not apply to it). `.cli.ts`, because `.command.ts` is the CQRS message."
+    law: "A nest-commander command (`@Command` or `@SubCommand`, by the import that binds the decorator) is declared only in the feature root of its cli app (`src/features/cli/` of the ops cli, `src/features/client-cli/<app>/` of a client cli): a group `@Command` in `<group>/<group>.cli.ts`, a `@SubCommand` extending `CommandRunner` in `<group>/subs/<name>.cli.ts`, one command per file, and every sub-command has its unit spec `<name>.cli.spec.ts` beside it (a command is an action runner, not a thin transport: R88 does not apply to it). `.cli.ts`, because `.command.ts` is the CQRS message. No two command classes of one cli feature root share a class name (the starter and `starci app add cli` write `<Group>Cli` and `<Group>RunCli`): nest-commander matches a sub-command by its class name, so a second `RunCli` runs the first one's action."
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["BE_CLI_COMMAND_SHAPE"]
     enforcers:
       - {kind: eslint-be, id: cli-command-shape}
       - {kind: eslint-be, id: unit-test-colocated}
+      - {kind: hfs, id: cli-command-names, at: runtime/scripts/hfs/rules/cli.mjs}
   - id: R150
     code: "BE_CLI_OWNER"
     editions: [lite, full]
@@ -3116,14 +3117,16 @@ rules:
     editions: [lite, full]
     docs: [docs/microservices.md#r177]
     templateNa: "Published event-contract pins are service-owned release snapshots, not scaffolded files."
-    law: "An event contract evolves only additively: `be/contracts/<service>/events.json` against its pinned previous copy `events.pin.json` keeps every event, stream, version, payload field and type, adds only optional fields, and a breaking change is a new `<event>.v2` key."
+    law: "A published contract evolves only additively against its pinned previous copy. An event contract `be/contracts/<service>/events.json` against `events.pin.json` keeps every event, stream, version, payload field and type, adds only optional fields, and a breaking change is a new `<event>.v2` key. A REST contract `be/contracts/<app>/openapi.json` against `openapi.pin.json` keeps every operation, its operationId, parameters and answer fields with their types, and adds no required parameter or body field, unless its info.version raises the pin's major."
     kinds: [check]
     gates: [settle, land, ci]
     failureCodes: ["BE_CONTRACT_BREAKING"]
     enforcers:
       - {kind: hfs, id: contract-compat, at: scripts/hfs/rules/contract-compat.mjs}
+      - {kind: hfs, id: rest-contract-breaking, at: scripts/hfs/rules/rest-contract.mjs}
     proves:
       - {path: packages/hfs/src/hfs-contract-compat-coverage.spec.mjs, editions: [lite, full], codes: [BE_CONTRACT_BREAKING]}
+      - {path: packages/hfs/src/rest-contract.spec.mjs, editions: [lite, full], codes: [BE_CONTRACT_BREAKING]}
     exemplifiedBy:
       - {path: packages/hfs/src/hfs-contract-compat-coverage.spec.mjs, editions: [lite, full], codes: [BE_CONTRACT_BREAKING]}
     witness:
@@ -4588,7 +4591,7 @@ rules:
       - {path: packages/hfs/src/hfs-release-provenance.spec.mjs, edition: full}
   - id: R272
     code: "BE_APP_BOOT_PROOF_MISSING"
-    law: "Every lite back-end app proves its real Nest AppModule composition by compiling the dependency graph with explicit fixture options and infrastructure doubles; unresolved providers, circular dependencies and a missing or failed proof are refused. The proof worker runs within its own budget from its spawn and is retried once when it runs out; a second timeout reaches no verdict and is reported as BOOT_PROOF_TIMEOUT, a warning, never as a failed proof. The app check wiring verb uses the same proof, and the fast job of the lite app CI runs it (`starci app check --gate wiring`), so a provider a domain module needs and the app root does not compose never passes tsc and the unit suite to fail at boot. Full retains its existing e2e boot proof."
+    law: "Every lite back-end app proves its real Nest AppModule composition by compiling the dependency graph with explicit fixture options and infrastructure doubles; unresolved providers and a missing or failed proof are refused, and a provider ring is named before the compile starts (R401, BE_DI_RING). The proof worker runs within its own budget from its spawn and is retried once when it runs out; a second timeout reaches no verdict and is reported as BOOT_PROOF_TIMEOUT, a warning, never as a failed proof. The app check wiring verb uses the same proof, and the fast job of the lite app CI runs it (`starci app check --gate wiring`), so a provider a domain module needs and the app root does not compose never passes tsc and the unit suite to fail at boot. Full retains its existing e2e boot proof."
     kinds: [check]
     gates: ["settle","land","ci"]
     failureCodes: ["BE_APP_BOOT_PROOF_MISSING", "BOOT_PROOF_TIMEOUT"]
@@ -4708,13 +4711,14 @@ rules:
       - {path: packages/hfs/src/hfs-secret-custody.spec.mjs, editions: [full], codes: [HFS_SECRET_OUTSIDE_ENC]}
   - id: R278
     code: "BE_REST_DOOR_EVIDENCE"
-    law: "GraphQL is the default door in lite and full. Each REST route carries its own evidence: a probe, auth handshake, signed webhook, actual byte stream, an event stream (a text/event-stream route: an `@Sse` method of `@nestjs/common` inside the be.feature.realtime.sse slot; an `@Sse` anywhere else proves nothing), a public versioned operation served from the app's nonempty defineOperations table, or a credential-guarded route: the route or its controller carries @Credential({ kind: \"<literal>\" }) imported from the domain identity capability, which also declares the CredentialGuard class implementing CanActivate (resolved by TypeScript symbol, never by name); a local decorator of the same name, a @UseGuards of any other guard and a computed kind prove nothing. A class-level reference or an unused StreamableFile import proves no route, and a public REST route absent from the operation table is refused."
+    law: "An api app's declared contract (hfs.json `contract`, graphql when absent) is its default door. In a back end whose api apps declare rest, a controller needs no evidence and no GraphQL door or GraphQL platform exists (BE_REST_APP_GRAPHQL). In a graphql back end, in lite and full, each REST route carries its own evidence: a probe, auth handshake, signed webhook, actual byte stream, an event stream (a text/event-stream route: an `@Sse` method of `@nestjs/common` inside the be.feature.realtime.sse slot; an `@Sse` anywhere else proves nothing), a public versioned operation served from the app's nonempty defineOperations table, or a credential-guarded route: the route or its controller carries @Credential({ kind: \"<literal>\" }) imported from the domain identity capability, which also declares the CredentialGuard class implementing CanActivate (resolved by TypeScript symbol, never by name); a local decorator of the same name, a @UseGuards of any other guard and a computed kind prove nothing. A class-level reference or an unused StreamableFile import proves no route, and a public REST route absent from the operation table is refused."
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
-    failureCodes: ["BE_REST_DOOR_EVIDENCE", "BE_REST_ROUTE_UNDECLARED"]
+    failureCodes: ["BE_REST_DOOR_EVIDENCE", "BE_REST_ROUTE_UNDECLARED", "BE_REST_APP_GRAPHQL"]
     enforcers:
       - {kind: eslint-be, id: rest-door-needs-a-reason}
       - {kind: eslint-be, id: rest-route-declared}
+      - {kind: hfs, id: rest-app-graphql, at: scripts/hfs/rules/rest-contract.mjs}
     editions: [lite, full]
     docs: [docs/microservices.md#r278]
     exemplifiedBy:
@@ -5064,7 +5068,7 @@ rules:
       - {path: packages/eslint/be/module-shape.spec.mjs, editions: [lite, full], codes: [BE_MODULE_DEFINITION_MISSING]}
   - id: R296
     code: "CI_SECRET_SEALED"
-    law: "A sealed CI credential copy names an explicit service credential bound to the selected product project, environment, member and key; required product Sonar analysis uses sonar.enc.yaml and an app runtime key never becomes a CI credential. Checks inspect names without decrypting or printing values."
+    law: "A sealed CI credential copy names an explicit service credential bound to the selected product project, environment, member and key, sealed unless its service declares the open owner step that provisions it (`ownerAction.needed`, which STACKS_OWNER_ACTION_REDUNDANT turns to none once it is sealed); required product Sonar analysis uses sonar.enc.yaml and an app runtime key never becomes a CI credential. Checks inspect names without decrypting or printing values."
     kinds: [check]
     gates: [settle, land, ci]
     failureCodes: ["CI_SECRET_SEALED"]
@@ -6574,10 +6578,10 @@ rules:
       - {path: packages/hfs/src/pre-push-branches.spec.mjs, editions: [lite, full]}
   - id: R389
     code: "STACKS_BASE_PORT_ROLE"
-    law: "The native process ports of a dev environment derive from its project base port, so two apps on one machine never collide: with `local.basePort` declared in .starcistacks/application-stacks.yaml, the primary front end (the first process named web, app, console, fe or frontend) listens on base, the api (api, core, be, backend) on base+1, the AI gateway (gateway, ai-gateway, ai-router) on base+2, and every further native process on base+3 up to base+99 (base+2 up to base+99 when no gateway runs); compose service ports are exempt. An environment with native processes on ports and no `basePort` reports STACKS_BASE_PORT_UNDECLARED as a warning, never an error; `starci app stack doctor --env <env>` also reports a row when another app registered on the machine declares an overlapping base..base+99."
+    law: "The host ports of a dev environment derive from its project base port, so two apps on one machine run side by side: with `local.basePort` declared in .starcistacks/application-stacks.yaml, the primary front end (the first process named web, app, console, fe or frontend) listens on base, the api (api, core, be, backend) on base+1, the AI gateway (gateway, ai-gateway, ai-router) on base+2, and every further native process on base+3 up to base+79 (base+2 up to base+79 when no gateway runs) (STACKS_BASE_PORT_ROLE); the compose services take base+80 up to base+99, and a compose port that plays a role of the table sits on its slot: the port `local.database` names on base+90, `mail` (the mail sink's SMTP) on base+91, `mailui` on base+92, `storage` (the object store's S3 API) on base+93 and `storage-console` on base+94 (STACKS_COMPOSE_PORT_ROLE); every compose file of the environment publishes its host ports from `local.ports` as `${STACK_PORT_<NAME>}`, never a literal port (STACKS_COMPOSE_PORT_LITERAL). An environment with native processes on ports and no `basePort` reports STACKS_BASE_PORT_UNDECLARED as a warning, never an error; Each project owns its own hundred: `starci app stack doctor --env <env>` fails its port range row, naming every registered project it compared (the ledgers of the state base's and the harness home's machine registries, each project's checkouts and worktrees; a project with no base holds its declared ports) and the next free base, when another project's hundred or ports overlap base..base+99; `starci app scaffold` takes the next free hundred when the name's base is held and refuses an overlapping `--base-port` (HFS_SCAFFOLD_BASE_PORT_TAKEN). `starci app sync --execute` moves an existing app's database and mail ports onto their slots and adds the storage service."
     kinds: [check]
     gates: [settle, land, ci]
-    failureCodes: ["STACKS_BASE_PORT_ROLE", "STACKS_BASE_PORT_UNDECLARED"]
+    failureCodes: ["STACKS_BASE_PORT_ROLE", "STACKS_COMPOSE_PORT_ROLE", "STACKS_COMPOSE_PORT_LITERAL", "STACKS_BASE_PORT_UNDECLARED", "HFS_SCAFFOLD_BASE_PORT_TAKEN"]
     enforcers:
       - {kind: hfs, id: stacks-local, at: runtime/scripts/hfs/rules/stacks-local.mjs}
     editions: [lite, full]
@@ -6585,10 +6589,13 @@ rules:
       - {path: contexts/project/stacks.md#project-stacks-10-local-runs, editions: [lite, full]}
     proves:
       - {path: packages/hfs/src/stack-base-port.spec.mjs, editions: [lite, full]}
+      - {path: packages/hfs/src/dev-storage.spec.mjs, editions: [lite, full]}
     exemplifiedBy:
       - {path: packages/hfs/templates/app/skeleton-lite/.starcistacks, edition: lite}
+      - {path: packages/hfs/templates/app/skeleton/.starcistacks, edition: full}
     witness:
       - {path: packages/hfs/src/stack-base-port.spec.mjs, editions: [lite, full]}
+      - {path: packages/hfs/src/dev-storage.spec.mjs, editions: [lite, full]}
   - id: R393
     code: "STACK_PENDING_MIGRATIONS"
     law: "`starci app check --env local` compares the migration files of the repository with the history the running dev database recorded (supabase_migrations.schema_migrations) and fails on every file the database has not applied, naming the files and `starci app stack up --env <env> --execute`; a stack that is not running is not judged, and `--env prod` does not ask."
@@ -6636,6 +6643,22 @@ rules:
       - {path: packages/hfs/src/app-gallery.spec.mjs, editions: [lite, full]}
     witness:
       - {path: packages/hfs/src/app-gallery.spec.mjs, editions: [lite, full]}
+  - id: R396
+    code: "BE_REST_OPERATION_ID"
+    law: "An api app that declares `contract: \"rest\"` commits the OpenAPI 3 document of its controllers (`be/contracts/<app>/openapi.json`, emitted by `starci app emit` with @nestjs/swagger over the head `apps/<app>/src/openapi.ts`), and in it every operation has a unique explicit operationId `<area>.<action>`, a named schema for every JSON request body and 2xx answer, a `default` answer with the one Error schema (code and message required), a page `{ items, nextCursor }` read with `cursor` and `limit` for a list GET (never a bare array), and a declared security scheme or an `x-public-reason` on a public operation."
+    kinds: [check]
+    gates: [settle, land, ci]
+    failureCodes: ["BE_REST_OPERATION_ID", "BE_REST_UNTYPED", "BE_REST_ERROR_SHAPE", "BE_REST_PAGINATION", "BE_REST_SECURITY"]
+    enforcers:
+      - {kind: hfs, id: rest-contract, at: runtime/scripts/hfs/rules/rest-contract.mjs}
+    editions: [lite, full]
+    templateNa: "A rest contract is emitted from each rest app's controllers, not scaffolded; the default contract is graphql."
+    docs:
+      - {path: contexts/code/be/transport.md#be-transport-4-a-rest-contract-is-a-committed-openapi-3-document-with-stable-typed-secured-operations, editions: [lite, full]}
+    proves:
+      - {path: packages/hfs/src/rest-contract.spec.mjs, editions: [lite, full]}
+    witness:
+      - {path: packages/hfs/src/rest-contract.spec.mjs, editions: [lite, full]}
   - id: R397
     code: "BE_CLI_CLIENT"
     law: "A client cli is an app of kind `client-cli`: a command line a user installs from npm and runs on their own machine. `hfs.json` declares its npm `package` and its `bin` (no other app kind does, and no two client clis share either); its commands live in its own feature root `be/src/features/client-cli/<app>/` (every folder there is a declared client cli); and `be/apps/<app>/` tracks `package.json` (that name, that bin on `dist/apps/<app>/src/main.js`, not private, `files` holding `dist`, a semver version, every dependency one the app root pins at the same version) and `tsconfig.build.json` (outDir `./dist`, rootDir `../..`, files `[src/main.ts]`, include `[]`: the import closure of its main, built by `npm run build:<app>`). It has no image and no start script."
@@ -6668,3 +6691,51 @@ rules:
     witness:
       - {path: packages/eslint/be/cli-coverage.spec.mjs, edition: lite, codes: [BE_CLI_CLIENT_BOUNDARY]}
       - {path: packages/eslint/be/cli-coverage.spec.mjs, edition: full, codes: [BE_CLI_CLIENT_BOUNDARY]}
+  - id: R399
+    code: "HFS_SIDE_UNDECLARED"
+    law: "A project declares its sides in hfs.json `sides`, any non-empty subset of `be`, `fe` and `packages` (`\"packages\": {}`, the root workspace packages/*), and its tree and stack declaration agree with them each way: a declared side tracks at least one file under its folder (HFS_SIDE_FOLDER_MISSING); a tracked be/, fe/ or packages/ belongs to a declared side (HFS_SIDE_UNDECLARED); `.starcistacks/application-stacks.yaml` states `sides: {be, fe, packages}` as booleans (STACKS_SIDES_UNDECLARED, a warning) equal to hfs.json (STACKS_SIDES_DRIFT); and no stack component runs an app of a side the project lacks: a deploy image of an app no declared side declares, front-end buildArgs without fe, a local process run from an undeclared side's folder (STACKS_COMPONENT_SIDE). `starci app sync --execute` writes what an existing app lacks: `\"packages\": {}` in hfs.json when packages/ holds a package, and the stack's `sides` field read from hfs.json."
+    kinds: [check]
+    gates: [settle, land, ci]
+    failureCodes: ["HFS_SIDE_UNDECLARED", "HFS_SIDE_FOLDER_MISSING", "STACKS_SIDES_UNDECLARED", "STACKS_SIDES_DRIFT", "STACKS_COMPONENT_SIDE"]
+    enforcers:
+      - {kind: hfs, id: project-sides, at: runtime/scripts/hfs/rules/project-sides.mjs}
+    editions: [lite, full]
+    templateNa: "The scaffold writes the declared sides and the matching stack field; the rule guards the agreement afterwards."
+    docs:
+      - {path: contexts/project/README.md#project-1-a-project-is-one-app-root-that-declares-its-sides-and-holds-the-work-of-each, editions: [lite, full]}
+    proves:
+      - {path: packages/hfs/src/project-sides.spec.mjs, editions: [lite, full]}
+    witness:
+      - {path: packages/hfs/src/project-sides.spec.mjs, editions: [lite, full]}
+  - id: R400
+    code: "HFS_DATA_IN_CODE"
+    law: "A project's business data lives in git only in its private data repository, named exactly `<project>-data`, whose root manifest.json names the data format (`format: \"<project>-data@<major>\"`, a `files` list) and which carries no hfs.json. In a code project the hfs check refuses a tracked document of the format, a data manifest or a record file (`schema: \"<project>-data/<entity>@<major>\"` with `items`) plaintext or sealed (HFS_DATA_IN_CODE), a package.json dependency or workspace, a submodule or a tsconfig/jsconfig path naming the data repository (HFS_DATA_DEPENDENCY), and an application-stacks.yaml `data` block that names another repository or is not private (STACKS_DATA_REPOSITORY). The commit hook's data guard refuses a staged document of the format in any repository but a data repository, and in a data repository a file under data/ that is no sops envelope (HFS_DATA_UNSEALED) or a manifest that does not list exactly the files of data/ with their item counts, a hex sha256 and a schema id of the format (HFS_DATA_MANIFEST_DRIFT)."
+    kinds: [check]
+    gates: [settle, land, ci]
+    failureCodes: ["HFS_DATA_IN_CODE", "HFS_DATA_DEPENDENCY", "STACKS_DATA_REPOSITORY", "HFS_DATA_UNSEALED", "HFS_DATA_MANIFEST_DRIFT"]
+    enforcers:
+      - {kind: hfs, id: data-repository, at: runtime/scripts/hfs/rules/data-repository.mjs}
+    editions: [lite, full]
+    templateNa: "A new app tracks no data and declares no data repository; the rule guards the boundary once data exists."
+    docs:
+      - {path: contexts/project/stacks.md#project-stacks-13-business-data-lives-only-in-the-projects-sealed-data-repository, editions: [lite, full]}
+    proves:
+      - {path: packages/hfs/src/data-repository.spec.mjs, editions: [lite, full]}
+    witness:
+      - {path: packages/hfs/src/data-repository.spec.mjs, editions: [lite, full]}
+  - id: R401
+    code: "BE_DI_RING"
+    law: "No Nest provider of a lite back-end app reaches itself through its construction edges: a constructor parameter (`@Inject` included), an `@Inject` property, a `useFactory` `inject` entry and the target of a `useExisting` alias, an `@Optional` one counting when it resolves and a `forwardRef` one never (Nest defers it; R85 refuses forwardRef). The boot proof (R272) registers the real AppModule with Nest's own scanner before it compiles, resolves each edge with Nest's lookup, and refuses every elementary ring of two or more providers as BE_DI_RING, naming each provider with its module and source file and the edge that reaches the next; it then skips the compile, on which Nest refuses a ring of two and waits forever on a longer one. It runs wherever the boot proof runs: `starci app check` (the wiring step) and `starci app check --gate wiring` in the fast job of the lite app CI. Full proves boot through its e2e world, whose boot hangs on a ring."
+    kinds: [check]
+    gates: [settle, land, ci]
+    failureCodes: ["BE_DI_RING"]
+    enforcers:
+      - {kind: hfs, id: di-ring, at: runtime/scripts/hfs/di-ring.mjs}
+    editions: [lite]
+    editionWhy: "R401 runs in the lite boot proof (R272), which registers the AppModule with fixture options; full has no fixture options and proves boot through its e2e world, whose boot hangs on a ring."
+    docs:
+      - {path: contexts/code/be/injection.md#be-injection-5-no-provider-ring-a-port-sits-on-its-own-provider, editions: [lite]}
+    proves:
+      - {path: packages/hfs/src/hfs-di-ring.spec.mjs, editions: [lite]}
+    witness:
+      - {path: packages/hfs/src/hfs-di-ring.spec.mjs, editions: [lite]}

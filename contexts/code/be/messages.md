@@ -12,7 +12,10 @@ Text a person reads never sits in source: each owner has `messages/<owner>.messa
 `<OWNER>_MESSAGES: MessageBundle`, one map per supported locale with the same keys, `errors.<CODE>` for each of its
 error codes, and `{{name}}` placeholders. The app composes every bundle into `I18nModule.register({ bundles })`; a class
 reads text with `@InjectMessageCatalog() private readonly messages: MessageCatalog` and
-`this.messages.get(key, params, locale)`, never by importing a bundle. A code-shaped literal is a code, not copy.
+`this.messages.get(key, params, locale)`, never by importing a bundle. A code-shaped literal is a code, not copy, and the
+operation and field documentation of a REST contract (the `summary` and `description` a door hands to `@ApiOperation`,
+`@ApiProperty` or `@ApiResponse`) is contract text for the developers of its clients, written in the contract's language
+beside the code it describes and judged with the emitted document (BE-TRANSPORT-4), not person-facing copy.
 
 Why: a literal cannot be translated or found by the key a test asserts on, and drifts the moment one call site is
 edited.

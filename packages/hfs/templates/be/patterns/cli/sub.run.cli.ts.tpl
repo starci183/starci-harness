@@ -3,7 +3,7 @@ import { @@service@@ } from "@@serviceModule@@"
 
 @SubCommand({ name: "run", description: "Run @@group@@" })
 /** `cli @@group@@ run`: delegates the run to the injected runner service; no decision here. */
-export class RunCli extends CommandRunner {
+export class @@Group@@RunCli extends CommandRunner {
     constructor(private readonly @@serviceCamel@@: @@service@@) {
         super()
     }

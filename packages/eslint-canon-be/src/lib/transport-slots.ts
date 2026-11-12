@@ -17,3 +17,12 @@ export const KIND_DOOR_SLOTS: readonly string[] = Object.freeze(["be.feature.web
  * @returns {boolean} Whether files of that slot are transport files.
  */
 export const isTransportSlot = (slot: unknown): boolean => typeof slot === "string" && (slot.startsWith("be.transport.") || KIND_DOOR_SLOTS.includes(slot))
+
+/**
+ * True for a back end whose api apps all declare `contract: "rest"` (hfs.json, BE-TRANSPORT-1): its controllers are its default doors, so the
+ * rules that ask a REST route for GraphQL's evidence (a door reason, a declared operation table) do not judge it.
+ */
+export const servesRest = (apps: ReadonlyArray<{ readonly kind: string; readonly contract?: string }>): boolean => {
+    const apis = apps.filter((app) => app.kind === "api")
+    return apis.length > 0 && apis.every((app) => app.contract === "rest")
+}

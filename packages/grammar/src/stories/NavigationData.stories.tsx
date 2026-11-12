@@ -538,7 +538,7 @@ export const FlowGraphFlowchart: Story = {
 /**
  * The steps layout (0.35.0, the owner-approved card map), on the accounting flow "Đối soát tiền về": white step cards on the well, an icon
  * tile per kind, condition cards with named output ports (the branch words live on the ports), curved edges, two dashed back edges with
- * pill labels, an end pill and the kind legend. Pressing a card selects it (accent outline) and fires `onNodePress`.
+ * pill labels, an end pill and the kind legend. Pressing a card selects it (one 2px foreground border and its tint, 0.37.35) and fires `onNodePress`.
  */
 export const FlowGraphSteps: Story = {
   name: 'FlowGraph (steps)',
@@ -547,11 +547,12 @@ export const FlowGraphSteps: Story = {
     const [pressed, setPressed] = useState<string>('');
     return (
       <Matrix maxWidth={1200}>
-        <State label="Top down (default), in a card" direction="column">
+        <State label="Top down, in a card" direction="column">
           <G.SurfaceCard label="Đối soát tiền về" headingLevel={2} note={<G.FlowGraphLegend items={reconcileLegend} />}>
             <G.FlowGraph
               label="Đối soát tiền về"
               layout="steps"
+              direction="TB"
               nodes={reconcileNodes}
               edges={reconcileEdges}
               selectedId={selectedId}
@@ -587,9 +588,9 @@ export const FlowGraphSteps: Story = {
 };
 
 /**
- * The run overlay and its STATE PRIORITY (0.37.0): the card border is always the neutral card border; the run status is the outline icon and its word
- * on the card edge, with no coloured ring; a skipped card is faded; a selected card has exactly one 2px primary outline; a wait card is dashed only in
- * the design view; a taken edge is a solid strong-text line, an untaken one a dashed light-neutral line, a back edge stays dashed.
+ * The run overlay and its STATE PRIORITY (0.37.0, the path green since 0.37.27, owner drawing C): the run status is the outline icon and its word on the card
+ * edge; the path the run took is green (a taken edge, its dot and arrowhead); every card's one border is its status colour; a skipped card is faded; a selected card
+ * has that one border at 2px with its tint, never a second ring (0.37.35); a wait card is dashed only in the design view; an untaken edge is a dashed light-neutral line, a back edge stays dashed.
  */
 export const FlowGraphStepsRun: Story = {
   name: 'FlowGraph (steps, run overlay)',
@@ -620,7 +621,16 @@ export const FlowGraphStepsRun: Story = {
       expect(graph.querySelector('.starci-core-flow-graph-step-status-word')?.textContent).not.toBe('');
       const done = graph.querySelector<HTMLElement>('.starci-core-flow-graph-step[data-status="done"]')!;
       const plain = graph.querySelector<HTMLElement>('.starci-core-flow-graph-step[data-status="skipped"]')!;
-      expect(getComputedStyle(done).borderTopColor).toBe(getComputedStyle(plain).borderTopColor);
+      // The path is green: a reached card's border is the success tone, a skipped one keeps the neutral border; a taken edge is the success tone.
+      expect(getComputedStyle(done).borderTopColor).not.toBe(getComputedStyle(plain).borderTopColor);
+      const takenPath = graph.querySelector<SVGPathElement>('.starci-core-flow-graph-edge-taken .react-flow__edge-path')!;
+      const probe = document.createElement('span');
+      probe.style.color = 'var(--success)';
+      graph.append(probe);
+      const success = getComputedStyle(probe).color;
+      probe.remove();
+      expect(getComputedStyle(takenPath).stroke).toBe(success);
+      expect(getComputedStyle(done).borderTopColor).toBe(success);
       const wait = graph.querySelector<HTMLElement>('.starci-core-flow-graph-step[data-kind="wait"][data-status="waiting"]')!;
       expect(getComputedStyle(wait).borderTopStyle).toBe('solid');
       expect(graph.querySelectorAll('.starci-core-flow-graph-edge-taken').length).toBe(4);

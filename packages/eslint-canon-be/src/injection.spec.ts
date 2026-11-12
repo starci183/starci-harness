@@ -40,6 +40,8 @@ const NESTED = at("src/modules/platform/clock/sub/probe.decorators.ts")
 const COMMON = `import { Inject, forwardRef } from "@nestjs/common"\n`
 const CLOCK = `import { InjectClock } from "@modules/platform/clock"\nimport type { Clock } from "@modules/platform/clock"\n`
 const LOGGER = `import type { Logger } from "@modules/platform/logging"\n`
+/** An injector of a nullable port, declared in place. */
+const NULLABLE = `import type { TypedParameterDecorator } from "@modules/platform/composition"\nimport type { Clock } from "@modules/platform/clock"\ndeclare const InjectMaybeClock: () => TypedParameterDecorator<Clock | null>\n`
 const SHAPE_HEAD = `import { injector } from "@modules/platform/composition"
 import type { TypedParameterDecorator } from "@modules/platform/composition"
 import type { Clock } from "@modules/platform/clock"
@@ -224,6 +226,8 @@ test("injector-type-match: T of the injector is the parameter's type", () => {
                 { filename: SERVICE, code: `${CLOCK}export class S { constructor(@InjectClock() private readonly clock: Clock) {} }` },
                 // an optional dependency keeps its T
                 { filename: SERVICE, code: `${CLOCK}export class S { constructor(@InjectClock() private readonly clock: Clock | null) {} }` },
+                // an injector of a nullable port (a capability that may be absent) matches a parameter of the same nullable type
+                { filename: SERVICE, code: `${NULLABLE}export class S { constructor(@InjectMaybeClock() private readonly clock: Clock | null) {} }` },
                 { filename: SERVICE, code: `import { InjectFoo, FooClient } from "@modules/integrations/foo"\nexport class S { constructor(@InjectFoo() foo: FooClient) {} }` },
                 // a decorator that is not an injector is not compared
                 { filename: SERVICE, code: `${CLOCK}const Marker = (): ParameterDecorator => () => undefined\nexport class S { constructor(@Marker() private readonly clock: Clock) {} }` },
@@ -238,6 +242,8 @@ test("injector-type-match: T of the injector is the parameter's type", () => {
                 { filename: SERVICE, code: `import { InjectClock as IC } from "@modules/platform/clock"\n${LOGGER}export class S { constructor(@IC() logger: Logger) {} }`, errors: [{ messageId: "mismatch" }] },
                 { filename: SERVICE, code: `import { InjectFoo } from "@modules/integrations/foo"\nimport type { Clock } from "@modules/platform/clock"\nexport class S { constructor(@InjectFoo() private readonly clock: Clock) {} }`, errors: [{ messageId: "mismatch" }] },
                 { filename: SERVICE, code: `import { InjectClock } from "@modules/platform/clock"\nexport class S { constructor(@InjectClock() private readonly clock) {} }`, errors: [{ messageId: "unannotated" }] },
+                // a parameter that drops the null a nullable injector yields would not handle it
+                { filename: SERVICE, code: `${NULLABLE}export class S { constructor(@InjectMaybeClock() private readonly clock: Clock) {} }`, errors: [{ messageId: "mismatch" }] },
             ],
         })
     })

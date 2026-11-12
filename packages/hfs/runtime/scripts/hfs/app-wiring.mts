@@ -7,6 +7,9 @@
 // BOOT_PROOF_TIMEOUT (a warning: the host was too loaded to judge), never as the proof failing (BE_APP_BOOT_PROOF_MISSING).
 // The worker reports what the boot loaded (its CommonJS module cache: the root folder of each installed package, every other file, absolute), which the check
 // cache keys the proof on (cache/wiring-family.mts); a worker that reports no list leaves the run's `loaded` null.
+// R401: before it compiles, the worker scans the same registered root for provider rings (di-ring.mts). A ring is reported as BE_DI_RING,
+// one finding per elementary ring naming each provider, its module and its file, and the compile is not started: Nest would wait on a
+// ring of three or more forever.
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
@@ -15,8 +18,11 @@ import { fileURLToPath } from 'node:url';
 import { invocationDir } from '../lib/roots.mjs';
 import { isMain } from '../lib/is-main.mjs';
 import { readJson } from './rules/read.mjs';
+import { RING_LIMIT, ringChain, scanProviderRings, sourceIndex, type ProviderRing, type RingStep } from './di-ring.mjs';
 
 export const BOOT_PROOF_CODE = 'BE_APP_BOOT_PROOF_MISSING';
+export const DI_RING_CODE = 'BE_DI_RING';
+const RING_REASON = 'provider ring';
 export const BOOT_PROOF_TIMEOUT = 'BOOT_PROOF_TIMEOUT';
 export const BOOT_PROOF_TIMEOUT_ENV = 'STARCI_BOOT_PROOF_TIMEOUT_MS';
 const WORKER = fileURLToPath(import.meta.url);
@@ -53,6 +59,31 @@ export type WiringFinding = { code: string; level: 'error' | 'warning'; path: st
 
 const refusal = (file: string, reason: string): WiringFinding => ({ code: BOOT_PROOF_CODE, level: 'error', path: file,
   message: `${file}: lite boot proof failed (${reason}); compile the real AppModule with explicit fixture options and infrastructure doubles using starci app check --gate wiring`, reason });
+
+// A ring's text crosses the worker boundary, so each field is held to the shape the worker writes: names of classes, symbols and
+// modules, a relative source path and an edge of the fixed vocabulary of di-ring.mts. Anything else is dropped, never forwarded.
+const SAFE_NAME = /^[\w$.:#@()"'/ -]{1,160}$/u;
+const SAFE_FILE = /^[\w@.$-]+(?:\/[\w@.$-]+)*$/u;
+const SAFE_VIA = /^(?:(?:@Inject )?constructor\[\d+\]|@Inject property [\w$]+|useExisting|useFactory inject\[\d+\])$/u;
+const isRingStep = (step: unknown): step is RingStep => {
+  const { token, module, file, via } = (step ?? {}) as Record<string, unknown>;
+  return typeof token === 'string' && SAFE_NAME.test(token) && typeof module === 'string' && SAFE_NAME.test(module)
+    && (file === null || (typeof file === 'string' && SAFE_FILE.test(file) && !file.split('/').includes('..'))) && typeof via === 'string' && SAFE_VIA.test(via);
+};
+/** The worker's rings when every one is well formed (at least two steps, each safe), else null. */
+function safeRings(raw: unknown): ProviderRing[] | null {
+  if (!Array.isArray(raw) || raw.length === 0 || raw.length > RING_LIMIT) return null;
+  const valid = raw.every((ring) => Array.isArray((ring as { steps?: unknown } | null)?.steps) && (ring as ProviderRing).steps.length >= 2 && (ring as ProviderRing).steps.every(isRingStep));
+  return valid ? raw as ProviderRing[] : null;
+}
+
+/** One BE_DI_RING finding: the ring as a chain, each provider with its module, file and the edge that reaches the next, and how to break it. */
+const ringFinding = (moduleFile: string, app: string, prefix: string, ring: ProviderRing): WiringFinding => {
+  const steps = ring.steps.map((step, at) => `${step.token} [${step.module}${step.file ? `, ${prefix}${step.file}` : ''}] injects ${ring.steps[(at + 1) % ring.steps.length]!.token} by ${step.via}`);
+  const first = ring.steps[0]?.file;
+  return { code: DI_RING_CODE, level: 'error', path: first ? `${prefix}${first}` : moduleFile, reason: RING_REASON,
+    message: `${moduleFile}: the ${app} app holds a provider ring ${ringChain(ring)} (${steps.join('; ')}); Nest refuses a ring of two and waits forever on a longer one, so the app hangs at boot. Put the port on its own provider, one whose implementation does not inject the port's consumer (BE-INJECTION-5)` };
+};
 
 const timedOut = (file: string, budget: number): WiringFinding => ({ code: BOOT_PROOF_TIMEOUT, level: 'warning', path: file, reason: 'proof worker timed out',
   message: `${file}: the lite boot proof reached no verdict: its worker ran out of its ${Math.round(budget / 1000)} s budget twice (the host is loaded); this is no failure of the proof, rerun starci app check --gate wiring when the host is quieter` });
@@ -97,31 +128,40 @@ async function compileGraph(builder: any, Nest: any, request: unknown): Promise<
   await Promise.all(resolutions.map(resolve => resolve()));
 }
 
-/** Compile a real root, with overrides of existing tokens only; never auto-mock an unresolved dependency. */
-interface CompileInput {
-  // reason: AppModule, Test and Nest are dynamically required from the app's own installed packages.
-  AppModule: any; options?: unknown; overrides?: { token: unknown; value: unknown }[]; request?: unknown; Test: any; Nest: any; timeout?: number
-}
-
-async function compileAppModule({ AppModule, options, overrides = [], request = {}, Test, Nest, timeout = DEFAULT_TIMEOUT }: CompileInput): Promise<void> {
+/** The real composition root: the AppModule class, or the dynamic module its `register(options)` returns for the AppModule itself. */
+// reason: AppModule is dynamically required from the app's own source.
+async function compositionRoot(AppModule: any, options: unknown): Promise<unknown> {
   if (typeof AppModule !== 'function') throw new Error('the actual AppModule is missing');
   if (typeof AppModule.register === 'function' && options === undefined) throw new Error('dynamic AppModule needs fixture options');
   const root = typeof AppModule.register === 'function' ? await AppModule.register(options) : AppModule;
   if (root?.module && root.module !== AppModule) throw new Error('registration must return the actual AppModule');
+  return root;
+}
+
+/** Compile a real root, with overrides of existing tokens only; never auto-mock an unresolved dependency. */
+interface CompileInput {
+  // reason: Test and Nest are dynamically required from the app's own installed packages.
+  root: unknown; overrides?: { token: unknown; value: unknown }[]; request?: unknown; Test: any; Nest: any; timeout?: number
+}
+
+async function compileAppModule({ root, overrides = [], request = {}, Test, Nest, timeout = DEFAULT_TIMEOUT }: CompileInput): Promise<void> {
   const builder = Test.createTestingModule({ imports: [root] });
   for (const override of overrides) {
     if (!override || !Object.hasOwn(override, 'token') || !Object.hasOwn(override, 'value')) throw new Error('an infrastructure double needs a token and value');
     builder.overrideProvider(override.token).useValue(override.value);
   }
+  // compile proves DI. Neither init nor close runs: both invoke application lifecycle hooks.
+  // The isolated worker exits naturally once every infrastructure resource has a double.
+  await withinDeadline(compileGraph(builder, Nest, request), timeout);
+}
+
+/** `work`, refused as WiringTimeout when it has not settled after `timeout` ms. */
+async function withinDeadline<T>(work: Promise<T>, timeout: number): Promise<T> {
   let deadline: NodeJS.Timeout | undefined;
   const expired = new Promise<never>((_, reject) => { deadline = setTimeout(() => {
     const error = new Error('compilation deadline'); error.name = 'WiringTimeout'; reject(error);
   }, timeout); });
-  try {
-    // compile proves DI. Neither init nor close runs: both invoke application lifecycle hooks.
-    // The isolated worker exits naturally once every infrastructure resource has a double.
-    await Promise.race([compileGraph(builder, Nest, request), expired]);
-  } finally { clearTimeout(deadline); }
+  try { return await Promise.race([work, expired]); } finally { clearTimeout(deadline); }
 }
 
 /** The strict in-memory TS loader uses this app's installed compiler and Nest, including inherited aliases. */
@@ -170,7 +210,8 @@ interface ResolverInternals { _resolveFilename(request: string, parent: { filena
 
 interface WorkerInput { repoRoot: string; app: string; fixture: string | null; timeout: number }
 
-async function wiringWorker({ repoRoot, app, fixture, timeout }: WorkerInput): Promise<void> {
+/** The worker's proof: the provider rings of the root (the compile is not started when there is one), or none once the root compiled. */
+async function wiringWorker({ repoRoot, app, fixture, timeout }: WorkerInput): Promise<ProviderRing[]> {
   // Disable network entry points before loading application source. A forgotten resource double is a refusal.
   const systemRequire = createRequire(import.meta.url);
   const patched: [string, string[]][] = [['node:net', ['connect', 'createConnection']], ['node:tls', ['connect']],
@@ -188,8 +229,13 @@ async function wiringWorker({ repoRoot, app, fixture, timeout }: WorkerInput): P
   const { AppModule } = require(entry);
   const proof = fixtureFile ? await require(fixtureFile).buildWiringProof(AppModule) : {};
   if (!proof || typeof proof !== 'object') throw new Error('invalid wiring fixture');
-  await compileAppModule({ AppModule, options: proof.options, overrides: proof.overrides, request: proof.request,
+  const root = await compositionRoot(AppModule, proof.options);
+  // The scan reads the real graph: the fixture's doubles replace providers only for the compile, never in what boots in production.
+  const rings = await withinDeadline(scanProviderRings(root, require, sourceIndex(require.cache, repoRoot)), timeout);
+  if (rings.length > 0) return rings;
+  await compileAppModule({ root, overrides: proof.overrides, request: proof.request,
     Test: require('@nestjs/testing').Test, Nest: require('@nestjs/core'), timeout });
+  return [];
 }
 
 function wiringApps(repo: WiringRepo, files: string[] | undefined, prefix: string): string[] {
@@ -217,13 +263,13 @@ export function loadedModules(paths: Iterable<string>): string[] {
   return [...out].sort();
 }
 
-/** One app's proof: its finding (null when it booted) and what its worker loaded (null when the worker reported nothing). */
-interface AppProof { finding: WiringFinding | null; loaded: string[] | null }
+/** One app's proof: its findings (none when it booted) and what its worker loaded (null when the worker reported nothing). */
+interface AppProof { findings: WiringFinding[]; loaded: string[] | null }
 
 function* appWiringFinding({ repoRoot, beRoot, prefix, app, files, fixtures, timeout }: FindingInput): Generator<WorkerCommand, AppProof, WorkerResult> {
   const file = `${prefix}${modulePath(app)}`;
   if (!/^[a-z][a-z0-9-]*$/.test(app) || !fs.existsSync(path.join(repoRoot, file)) || (files && !files.includes(file))) {
-    return { finding: refusal(file, 'app module is missing'), loaded: [] };
+    return { findings: [refusal(file, 'app module is missing')], loaded: [] };
   }
   const fixture = fixtures[app] ?? wiringFixturePath(app);
   const fixtureExists = fs.existsSync(path.join(beRoot, fixture)) && (!files || files.includes(`${prefix}${fixture}`));
@@ -232,12 +278,14 @@ function* appWiringFinding({ repoRoot, beRoot, prefix, app, files, fixtures, tim
   const options = { cwd: beRoot, encoding: 'utf8' as const, env: {}, windowsHide: true, timeout: budget, maxBuffer: 1024 * 1024 };
   let result = yield { args, options };
   if (isTimeout(result)) result = yield { args, options };
-  if (isTimeout(result)) return { finding: timedOut(file, budget), loaded: null };
-  let proof: { ok?: boolean; reason?: string; loaded?: unknown } | undefined;
+  if (isTimeout(result)) return { findings: [timedOut(file, budget)], loaded: null };
+  let proof: { ok?: boolean; reason?: string; rings?: unknown; loaded?: unknown } | undefined;
   try { proof = JSON.parse(result?.stdout ?? ''); } catch { /* Output from app source cannot serve as a proof. */ }
   const loaded = Array.isArray(proof?.loaded) && proof.loaded.every((entry) => typeof entry === 'string') ? proof.loaded as string[] : null;
-  if (result?.status !== 0 || proof?.ok !== true) return { finding: refusal(file, SAFE_REASONS.has(proof?.reason as string) ? (proof?.reason as string) : WORKER_FAILURE), loaded };
-  return { finding: null, loaded };
+  const rings = result?.status === 0 && proof?.reason === RING_REASON ? safeRings(proof.rings) : null;
+  if (rings) return { findings: rings.map((ring) => ringFinding(file, app, prefix, ring)), loaded };
+  if (result?.status !== 0 || proof?.ok !== true) return { findings: [refusal(file, SAFE_REASONS.has(proof?.reason as string) ? (proof?.reason as string) : WORKER_FAILURE)], loaded };
+  return { findings: [], loaded };
 }
 
 /** Synchronous check seam for the dispatcher and content finder. Paths in findings are relative to repoRoot. */
@@ -253,7 +301,7 @@ function* wiringProgram({ repoRoot, repo = readJson(repoRoot, 'hfs.json'), files
   let loaded: Set<string> | null = new Set();
   for (const app of apps) {
     const proof = yield* appWiringFinding({ repoRoot, beRoot, prefix, app, files, fixtures, timeout });
-    if (proof.finding) findings.push(proof.finding);
+    findings.push(...proof.findings);
     loaded = loaded === null || proof.loaded === null ? null : new Set([...loaded, ...proof.loaded]);
   }
   return { ok: findings.length === 0, status: 'checked', apps, findings, loaded: loaded === null ? null : [...loaded].sort() };
@@ -308,7 +356,10 @@ export function appWiringMain(argv: string[], { cwd = invocationDir(), stdout = 
 if (isMain(import.meta.url)) {
   if (process.argv[2] === '--worker') {
     const loaded = (): string[] => loadedModules(Object.keys(createRequire(import.meta.url).cache));
-    try { await wiringWorker(JSON.parse(process.argv[3] as string)); process.stdout.write(JSON.stringify({ ok: true, loaded: loaded() })); }
+    try {
+      const rings = await wiringWorker(JSON.parse(process.argv[3] as string));
+      process.stdout.write(JSON.stringify(rings.length > 0 ? { ok: false, reason: RING_REASON, rings, loaded: loaded() } : { ok: true, loaded: loaded() }));
+    }
     catch (error) { process.stdout.write(JSON.stringify({ ok: false, reason: failureReason(error), loaded: loaded() })); }
   } else process.exitCode = appWiringMain(process.argv.slice(2));
 }

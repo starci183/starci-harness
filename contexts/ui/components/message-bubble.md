@@ -5,19 +5,62 @@ Contract: [MessageBubble](../../grammars/contract.md#messagebubble).
 ## Job
 Show one message of a conversation. Every conversation is `MessageBubble` messages in a thread the app keeps; no screen draws its own bubble.
 
+## The chat surfaces (0.37.31)
+
+Every chat (team chat, an agent's chat, an inbox customer thread, the assistant) draws the same three faces, owner-approved drawing
+`chat-surfaces` (`DNA-COMMON-CHAT-SURFACES`, `DNA-COMMON-CHAT-INCOMING-FLAT`, `DNA-COMMON-CHAT-OUTGOING-ACCENT`):
+
+- **the thread** is the page tone `--background`, never white: a `PaneSection scroll={{ role: "log" }}` paints it whatever `tone` the app
+  passes, and meets the head line above and the composer's line below edge to edge;
+- **a message of someone else** (`MessageBubble` incoming, every `MessageCard`) is the flat `--surface` with its foreground: no border, no
+  shadow, in every content kind (text, card); a message is never a card. Outside any chat frame, on a white surface (a drawer of pinned
+  messages, a white pane, a card), the same face wears the 1px `--separator` edge so it does not vanish (SURFACE-ELEVATION), still no shadow;
+  inside a chat frame it never does;
+- **the reader's own message** is `--accent` with `--accent-foreground`; inline links, mentions, code and muted lines inherit it.
+
+Theme tokens only: the dark theme resolves from the same tokens. An app never restyles a face: no `className` or `style` on
+`MessageBubble`/`MessageCard`, no class string reaching `starci-core-message-*`, no `tone: "surface"` on a `role: "log"` thread (lint
+`starci-grammar/message-surfaces`, `FE_MESSAGE_SURFACES`). A pane footer that holds the composer starts at its own hairline: no empty
+band above the suggestion row (`DNA-COMMON-PANE-FOOTER-NO-BAND`). Story `Navigation & Data/Chat surfaces (0.37.31)`.
+
+## The chat frame (0.37.33)
+
+On ANY page that renders a chat, the chat is one frame, owner-approved drawing `chat-frame-anywhere` (`DNA-COMMON-CHAT-FRAME`): its head,
+its thread and its composer footer are `--background` as one, whatever surface it stands on (a white pane, the aside, a `Drawer`, a
+`Dialog`, a `Popover`). The rest of the page keeps its own rule: the room list stays white, an aside's other panes stay white, the page
+header band stays white. The 1px lines between head, thread and footer stay; the composer field keeps its white field ground.
+
+- **The role decides, the app chooses no tone.** The frame is `Pane content="chat"` holding the head band, the `PaneSection scroll
+  role="log"` thread and the composer as the pane `footer`; any pane whose own stack holds a thread is drawn as a frame without the word,
+  and an overlay that holds a thread is the frame as a whole (its own head included). A chat frame states no `surface`: lint
+  `starci-grammar/message-surfaces` refuses `surface` on `content="chat"` and on a pane whose own children hold a `log` thread.
+- **Only the thread scrolls** (`DNA-COMMON-CHAT-FRAME-SCROLL`): between the fixed head and the fixed composer the thread is the one
+  scroller (the pane body above a footer is bounded and never scrolls), so `scroll.scrollRef` is the element that scrolls; a `log` band
+  opens at its newest message and follows new ones while the reader is at the foot.
+
+Story `Navigation & Data/Chat frame (0.37.33)`: the chat page, an inbox thread between a list and an aside, an agent's chat tab under its
+white head, the assistant in a drawer.
+
 ## Choose
 
 Choice `message-bubble.choose.side`: whose message it is. The first row that applies wins.
 
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |
-| mine | the reader wrote it | `side="outgoing"`: the brand fill (`--accent`) with its foreground (`--accent-foreground`), at the end side | judgement |
-| theirs | anyone else wrote it: a person, an agent, the system | `side="incoming"` (the default): the surface and its foreground, at the start side | judgement |
+| mine | the reader wrote it | `side="outgoing"`: the brand fill (`--accent`) with its foreground (`--accent-foreground`), at the end side | `DNA-COMMON-CHAT-OUTGOING-ACCENT` |
+| theirs | anyone else wrote it: a person, an agent, the system | `side="incoming"` (the default): the flat surface and its foreground (no border, no shadow) on the thread's `--background`, at the start side | `DNA-COMMON-CHAT-INCOMING-FLAT` |
 | agent for the reader | an agent speaks on the reader's behalf and the reader may approve it (an AI's reply) | `side="outgoing" tone="soft"`: the brand tint (`--accent-soft`) with its foreground (`--accent-soft-foreground`), at the end side; `tone` never changes an incoming bubble, and no new token exists for it | judgement |
 
 Choice `message-bubble.choose.inline`: what a message may hold. Plain words, a link, a mention (`Text isStrong`), code and a muted line
 all inherit the bubble's foreground, so they read on either face; a link keeps its underline. Anything that is not the message's own
 words (an attachment, an approval card, a reaction row) goes in `footer`, outside the bubble face.
+
+Choice `message-bubble.choose.suggestions`: how a message offers replies the reader can send in one press. The first row that applies wins.
+
+| Row | When | Choose | Measure |
+| --- | --- | --- | --- |
+| in a card | a `MessageCard` (an agent's stop card, a question) offers replies to its own question | ONE bordered list in the card `body`: `SurfaceCard kind="list" layout="suggestions" ariaLabel empty={null} items` with one row per reply, `{ id, title: text, onPress: send(text) }` and nothing else: the plain text (14, regular, wrapping, never truncated), the whole row the one button, a trailing chevron that stays at the end of the row at every width (390 included), vertically centred, the text wrapping beside it; nested in the white card it is the bordered surface in a surface, never a grey box and never a row of pills | `DNA-COMMON-CARD-SUGGESTIONS`; stories `Chat surfaces (0.37.31)` `ChatPane`, `Flow graph selected (0.37.35)` `SuggestionsChevron390` |
+| by the composer | the thread offers things to ask next, above the composer | a `Cluster gap="inline"` of neutral `Button size="sm"` pills ([button](button.md) `button.choose.role:suggest`) | lint `suggestion-buttons` |
 
 Choice `message-status.choose.fact`: which authority-owned message fact the footer reports.
 
@@ -34,7 +77,7 @@ Choice `message-bubble.choose.content`: what the bubble body is. The first row t
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |
 | text | the message is words | `MessageBubble content="text"` (the default) | judgement |
-| card | an agent's rich message: a title with a chip, then a body or a key/value list, then actions | `MessageCard` (renders `MessageBubble content="card"`): title and `chip`, then `body` or a compact `details` list, then the actions row (the primary first, an `open` action with `endArrow` last), then a meta line (12 muted); capped at the bubble measure (`standard`, or `wide` 70%) with the avatar at the start, never full width | story `Navigation & Data/Chat parts/MessageCards`; `check:type` |
+| card | an agent's rich message: a title with a chip, then a body or a key/value list, then actions | `MessageCard` (renders `MessageBubble content="card"`): title and `chip`, then `body` or a compact `details` list, then the actions row (the primary first, an `open` action with `endArrow` last), then a meta line (12 muted); capped at the bubble measure (`standard`, or `wide` 70%) with the avatar at the start, never full width; its content column fills the card, so a nested bordered list (`SurfaceCard kind="list"`) or a composer in `body` spans the card's inner width while the head, actions and meta start at the reading edge | story `Navigation & Data/Chat parts/MessageCards`, `Navigation & Data/Message card fill (0.37.30)`; `check:type` |
 
 Chat surroundings (Grammar 0.31.0): an `EmptyNotice` inside a thread (a `PaneSection scroll role="log"` band, or a stack holding
 `MessageBubble`s) draws no card surface (no fill, border, radius or shadow; detected by context, no prop), and the head band of a
@@ -44,8 +87,8 @@ equal to its block-start inset. Stories `EmptyNoticeInThread`, `ChatPaneHeadLine
 Grouping and reactions (Grammar 0.32.0). `groupPosition` (`single` default, `first`, `middle`, `last`; the app computes it from the sender
 and the time gap) shapes the bubble like Messenger: a lone bubble is rounded 18, only the corners where two bubbles of one sender touch are 4
 (first: bottom on the sender's side; middle: both; last: top), logical corners so RTL mirrors; the avatar sits beside the last bubble and the
-earlier ones keep a spacer; the author line shows on single and first. An incoming bubble and a `MessageCard` are lifted (1px `separator` border
-plus the card shadow); an outgoing bubble keeps the brand fill. Reactions are presentation only: `reactions` (`{ emoji, count, mine }`), `onReact`,
+earlier ones keep a spacer; the author line shows on single and first. An incoming bubble and a `MessageCard` are the flat surface on the
+thread (0.37.31; they were lifted with a border and the card shadow before); an outgoing bubble keeps the brand fill. Reactions are presentation only: `reactions` (`{ emoji, count, mine }`), `onReact`,
 `onReply`, `onShare`. The hover or long-press toolbar is a labelled `toolbar` with arrow keys (six emoji, reply, share); the pill on the bottom
 corner shows up to three emoji and the total and adds the viewer's top reaction on press; each tap bursts floating emoji (none under reduced
 motion). The composer band (a `PaneSection as="footer"` or `rule="start"`) keeps the row gap between its divider and its rows. Stories
@@ -62,7 +105,7 @@ It takes no step; the words use the body step (14) and the author line and meta 
 (`isLoading`, STATE-8); a whole loading thread is the thread's own bubbles with `isLoading`. Actions show on hover and focus as the grammar's floating toolbar beside the bubble: icon commands named by tooltips that never overlap its text.
 
 ## Owner split
-- **Grammar owns:** the faces, the corner that points at the avatar, the inline colours on each face, the actions toolbar, the skeleton.
+- **Grammar owns:** the thread ground, the faces (flat surface, accent), the corner that points at the avatar, the inline colours on each face, the actions toolbar, the skeleton, the card's suggestion list.
 - **Knowledge decides:** which side a message takes.
 - **App author decides:** the thread (order, grouping, day dividers, scroll), the words, the author and the time.
 

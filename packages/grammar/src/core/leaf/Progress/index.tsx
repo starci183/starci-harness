@@ -6,10 +6,16 @@ import { useCustomTone } from "../../useCustomTone.js"
 import { ProgressBar, skeletonVariants } from "@heroui/react"
 import type { NoChildren } from "../../tier.js"
 
-/** The colour of the fill: the meaning of what is measured. `accent` is the default. */
-/** HeroUI's palette tones, and any tone the app declared in `GrammarToneRegistry`. */
-export type ProgressTone = "accent" | "success" | "warning" | "danger" | CustomTone
-const BUILT_IN_TONES: readonly string[] = ["accent", "success", "warning", "danger"]
+/**
+ * The colour of the fill: the meaning of what is measured. `accent` is the default; `foreground` is HeroUI's text colour,
+ * a bar that spends no accent beside a screen's one commit (ACCENT-6). HeroUI's palette tones, and any tone the app declared
+ * in `GrammarToneRegistry`.
+ */
+export type ProgressTone = "accent" | "foreground" | "success" | "warning" | "danger" | CustomTone
+const BUILT_IN_TONES: readonly string[] = ["accent", "foreground", "success", "warning", "danger"]
+
+/** `foreground` takes HeroUI's `default` colour, its nearest variant; the Common rule paints it `--foreground` exactly. */
+const vendorColorOf = (tone: ProgressTone) => (tone === "foreground" ? { color: "default" as const } : {})
 
 export type ProgressProps = NoChildren & {
     /** What the bar measures. Required because the visible bar has no drawn label. */
@@ -28,7 +34,7 @@ export type ProgressProps = NoChildren & {
      * `aria-valuetext`, and without it a screen reader reads the percentage.
      */
     readonly valueText?: string
-    /** The fill colour, from what the bar measures (a paused job `warning`, a failed one `danger`). Defaults to `accent`. */
+    /** The fill colour, from what the bar measures (a paused job `warning`, a failed one `danger`, a quota `foreground`). Defaults to `accent`. */
     readonly tone?: ProgressTone
 }
 
@@ -59,6 +65,7 @@ const ProgressInner = ({ label, value = 0, isLoading = false, steps, valueText, 
                 data-loading="false"
                 data-grammar-progress-mode="steps"
                 data-grammar-progress-tone={tone}
+                {...vendorColorOf(tone)}
                 ref={custom.ref as never}
                 {...custom.attrs}
                 data-contract="MEASURE-2"
@@ -98,6 +105,7 @@ const ProgressInner = ({ label, value = 0, isLoading = false, steps, valueText, 
             maxValue={100}
             {...(valueText === undefined ? {} : { valueLabel: valueText })}
             data-grammar-progress-tone={tone}
+            {...vendorColorOf(tone)}
             ref={custom.ref as never}
             {...custom.attrs}
             size="sm"

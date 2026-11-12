@@ -6,7 +6,7 @@
 //   sonar-lint-per-side    a lint with --out names --side
 //   required-providers      no continue-on-error; Codecov fail_ci_if_error true; no availability probe, no secret-gated Codecov or Sonar step
 //   test-sharding          the test job is a shard matrix; each shard runs --shard=i/N with STARCI_COVERAGE_SHARD and no threshold or pass-empty flag; the coverage job merges, then proves
-//   lint-parallel          the lint job is a matrix over side [be, fe], or [be, fe, packages] in an app with root packages
+//   lint-parallel          the lint job is a matrix over the app sides the project declares (be, fe; PROJECT-1), plus packages in an app with root packages
 //   packages-built-first   in an app with root packages, a step that reads their types (rootPackages.readers) follows, or is, a step that builds them (rootPackages.builders)
 //   cache-saved-always     no cache keyed by the commit sha; actions/cache/save runs under if: always()
 //   timeouts               every job declares timeout-minutes
@@ -21,6 +21,7 @@ import { appWorkflowFindings } from './app-workflow-findings.mjs';
 import { isPlainObject as record } from '../../../engine/plain-object.mjs';
 import { byCodeUnit } from '../../lib/list.mjs';
 import type { Parsed } from './rule-types.mjs';
+import { sideDeclared } from '../project-sides.mjs';
 
 export const CI_STANDARD = 'CI_STANDARD';
 const STANDARD_FILE = new URL('../../../knowledge/hfs/ci-standard.yaml', import.meta.url);
@@ -115,10 +116,11 @@ function testSharding(doc: Parsed, say: Parsed) {
   return out;
 }
 
-function lintParallel(doc: Parsed, say: Parsed) {
+function lintParallel(doc: Parsed, say: Parsed, appSides: readonly string[]) {
   const sides = record(doc.jobs?.lint) ? doc.jobs.lint.strategy?.matrix?.side : null;
   const joined = Array.isArray(sides) ? sides.map(String).sort(byCodeUnit).join() : '';
-  return joined === 'be,fe' || joined === 'be,fe,packages' ? [] : [say('lint-parallel', 'the lint job must be a matrix over side [be, fe], with packages when the app has root packages')];
+  const expected = [...appSides].sort(byCodeUnit).join();
+  return joined === expected || joined === `${expected},packages` || joined === 'packages' && expected === '' ? [] : [say('lint-parallel', `the lint job must be a matrix over side [${appSides.join(', ')}] (the app sides hfs.json declares), with packages when the app has root packages`)];
 }
 
 /** True when the lint matrix names the root packages' scope: sync renders it exactly for an app with root packages. */
@@ -254,7 +256,7 @@ function shaPinned(doc: Parsed, say: Parsed) {
 }
 
 /** The R301 findings of one workflow document: scope `app-ci` (with the app's edition) or `runtime`. Pure over the document and the standard. */
-export function ciStandardFindings({ doc, file, scope, edition = 'full', standard = ciStandard(), rootPackages }: { doc: Parsed; file: string; scope: Parsed; edition?: string; standard?: Parsed; rootPackages?: boolean }) {
+export function ciStandardFindings({ doc, file, scope, edition = 'full', standard = ciStandard(), rootPackages, appSides = ['be', 'fe'] }: { doc: Parsed; file: string; scope: Parsed; edition?: string; standard?: Parsed; rootPackages?: boolean; appSides?: readonly string[] }) {
   if (!record(doc)) return [];
   const items = checkedItems(standard, scope);
   const say = (item: Parsed, why: string) => found(CI_STANDARD, file, `${CI_STANDARD} ${file}: [${item}] ${why} (knowledge/hfs/ci-standard.yaml)`, { item });
@@ -266,7 +268,7 @@ export function ciStandardFindings({ doc, file, scope, edition = 'full', standar
     'sonar-lint-per-side': () => sonarLintPerSide(doc, say),
     'required-providers': () => requiredProviders(doc, say),
     'test-sharding': () => testSharding(doc, say),
-    'lint-parallel': () => lintParallel(doc, say),
+    'lint-parallel': () => lintParallel(doc, say, appSides),
     'packages-built-first': () => packagesBuiltFirst(doc, standard, rootPackages === true || lintsPackages(doc), say),
     'cache-saved-always': () => cacheSavedAlways(doc, say),
     timeouts: () => timeouts(doc, say),
@@ -291,5 +293,5 @@ export function ciStandardAppFindings(ctx: Parsed) {
   const edition = ctx.repo?.edition === 'lite' ? 'lite' : 'full';
   const rootPackages = declaresBuildModules(ctx.repoRoot);
   return appWorkflowFindings({ ...ctx, inScope: (file: string) => file === APP_CI && (ctx.inScope ?? (() => true))(file) },
-    ({ path: file, text }: { path: string; text: string }) => ciStandardFindings({ doc: parseWorkflow(text), file, scope: 'app-ci', edition, rootPackages }), { dedupe: true });
+    ({ path: file, text }: { path: string; text: string }) => ciStandardFindings({ doc: parseWorkflow(text), file, scope: 'app-ci', edition, rootPackages, appSides: (['be', 'fe'] as const).filter((side) => sideDeclared(ctx.repo, side)) }), { dedupe: true });
 }

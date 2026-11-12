@@ -8,6 +8,8 @@
 export interface HfsApp {
     readonly name: string
     readonly kind: string
+    /** The contract an api app declares, `graphql` or `rest`; absent means graphql. */
+    readonly contract?: string
     /** The npm package a client cli is published as. */
     readonly package?: string
     /** The command a client cli installs. */

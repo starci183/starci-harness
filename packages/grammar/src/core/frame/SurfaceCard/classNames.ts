@@ -5,7 +5,7 @@ import {
     formSurfaceClassName,
 } from "../../classNames.js"
 
-export type SurfaceCardMeasure = "content" | "form" | "formCompact"
+export type SurfaceCardMeasure = "content" | "narrow" | "form" | "formCompact"
 export type SurfaceCardHeight = "auto" | "fill"
 
 /**
@@ -17,6 +17,8 @@ export type SurfaceCardHeight = "auto" | "fill"
  * same property.
  */
 
+/** `measure="narrow"` (0.37.5): the card is capped at 30rem (an order card in a chat bubble). */
+export const surfaceNarrowClassName = cn("starci-core-surface-card--narrow") ?? "starci-core-surface-card--narrow"
 /** Identifies the outer labelled surface-card anatomy. */
 export const surfaceCardClassName = cn("starci-core-surface-card") ?? "starci-core-surface-card"
 /**
@@ -29,6 +31,7 @@ export const getSurfaceCardClassName = (measure: SurfaceCardMeasure) => cn(
     surfaceCardClassName,
     measure === "form" || measure === "formCompact" ? formSurfaceClassName : undefined,
     measure === "formCompact" ? formCompactSurfaceClassName : undefined,
+    measure === "narrow" ? surfaceNarrowClassName : undefined,
 )
 /** Identifies the external label row of a surface card. */
 export const surfaceLabelClassName = cn("starci-core-surface-label") ?? "starci-core-surface-label"

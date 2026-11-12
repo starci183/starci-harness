@@ -15,7 +15,7 @@ runs is in [lite.md](lite.md) and [full.md](full.md).
 ## PROJECT-STACKS-1 One root per app
 
 `.starcistacks/` lives only at the app root, the repository that owns `.starciwork`, and covers every side the app
-has (be and fe). A side repository or a side folder carries none (`HFS_STACKS_IN_SIDE`), so a front end that ships
+declares ([README.md](README.md) PROJECT-1). A side repository or a side folder carries none (`HFS_STACKS_IN_SIDE`), so a front end that ships
 from its own repository finds its stack, and its CI credentials, in the app root's custody.
 
 Why: one root keeps one manifest, one custody and one runbook per environment; two roots drift, and nobody can say
@@ -26,12 +26,19 @@ which one deployed.
 `application-stacks.yaml` (schema `starci/application-stacks@1`) is the declaration everything else is checked
 against:
 
+- `sides`: the project's sides as booleans, `{be, fe, packages}`, equal to the sides `hfs.json` declares, with a
+  plain-words comment line above it that the scaffold writes (a project without a front end says so). No component,
+  deploy image or local process runs an app of a side the project lacks: no web component without fe, no api
+  component without be (R399: `STACKS_SIDES_DRIFT`, `STACKS_COMPONENT_SIDE`; a manifest without the field is warned
+  `STACKS_SIDES_UNDECLARED`; owner: `@starci/hfs` `runtime/scripts/hfs/rules/project-sides.mts`).
 - `components`: every process and dependency the app needs, each with its role and purpose, so a reader can tell a
   durable store from a rebuildable cache without opening a compose file.
 - `environments`: per environment, its runtime (`docker-compose` or `docker-swarm`), the infra files it reads, the
   components it runs, its runbook and its secrets. A component absent from an environment's map does not run there.
 - `secrets`: per environment, each member's `name`, `where` (environment-relative), `recipientPolicy` and
   `keyCustody`; names only, never a value.
+- `data`: the project's data repository, `{repository: <project>-data, private: true}`, when it keeps business data in git
+  (PROJECT-STACKS-13; R400 `STACKS_DATA_REPOSITORY`).
 - `ci` and `services`: the names CI reads and the delivery services it calls (PROJECT-STACKS-7, PROJECT-STACKS-8).
 - `branches`: the branch profile of each branch that lowers a polish gate, `dev` only ([lint.md](lint.md) PROJECT-LINT-2).
 - remote application APIs the app consumes, each with its owner (PROJECT-STACKS-9).
@@ -212,7 +219,9 @@ acceptance gate. They are run by the owner or a `deliver` worker; deploying need
 --env <env>`, driven by the environment's `local` block of `application-stacks.yaml` (R372: ports, compose services, the environment's own database
 role, dev-only custody to generate, setup and seed commands, native processes, readiness and verification probes). `prepare`, `up` and `down` are dry
 runs until `--execute`; `doctor`, `status`, `logs` and `verify` are read-only. **`up` is the one command**: it checks the host table, opens the dev
-custody, runs the setup (install, codegen), starts the compose services under the heavy-command governor (a lite app's dev compose runs its database and Mailpit, the `mail` sink the sign-in mails reach on loopback, its web UI an origin) and waits for their health, gives the
+custody, runs the setup (install, codegen), starts the compose services under the heavy-command governor (a lite app's dev compose runs its database, Mailpit, the `mail` sink the sign-in mails reach on loopback, its web UI an origin, and
+MinIO, the `storage` object store whose root credentials are the dev `storage` member's keys and whose console is an origin; a full app's runs
+`storage` too) and waits for their health, gives the
 environment its own database role and the app role its own password, migrates with a receipt, applies the seed levels with their receipts (PROJECT-STACKS-12), runs the declared seed commands once, starts the native
 processes, waits for readiness and prints the origins. An agent never runs Docker by hand ([harness/rules.md](../harness/rules.md) hard rule 8);
 the runbook of a docker-compose environment names `starci app stack up --env <env>` and carries no docker command (R373). `down` ends the processes
@@ -355,26 +364,47 @@ Rules learned from running apps on developer hosts; each holds in every app.
   and an agent runs no Docker or package manager by hand (hard rule 8), so the doctor prints the commands and `up` refuses a machine that fails
   the table before any effect. On a fresh clone `up --execute` then needs nothing but the identity: the owner obtains the age identity of the
   environment into the harness secret.env, or, when the app has no dev values yet, arms `secret init --env dev --execute` once.
-- **One base port per app.** The host ports of every app's dev environment derive from one project base port,
-  `environments.<env>.local.basePort`, so two apps on one machine never collide (R389). The app owns `basePort` to `basePort + 99`;
-  the native processes (a process with a `port`) take their ports from the role table, and the role of a process is its name:
+- **One base port per app: every dev host port, native or compose, derives from it.** The host ports of every app's dev environment derive
+  from one project base port, `environments.<env>.local.basePort`, so two apps run side by side on one machine (R389). The app owns `basePort`
+  to `basePort + 99`: the native processes (a process with a `port`; its role is its name) below base + 80, the compose services (a port of
+  `local.ports` no native process holds; its role is the port's name) from base + 80, by the role table:
 
-  | role | process names | port |
+  | role | process or port names | port |
   |---|---|---|
   | primary front end (the first process of the role) | `web`, `app`, `console`, `fe`, `frontend` | base |
   | api (the first) | `api`, `core`, `be`, `backend` | base + 1 |
   | AI gateway (the first; the api port + 1 of the ai-router convention) | `gateway`, `ai-gateway`, `ai-router` | base + 2 |
-  | every other native process (mcp, landing, a further next app, a worker with a port) | any other name, and a second process of a role above | base + 3 to base + 99; base + 2 to base + 99 when no gateway runs |
+  | every other native process (mcp, landing, a further next app, a worker with a port) | any other name, and a second process of a role above | base + 3 to base + 79; base + 2 to base + 79 when no gateway runs |
+  | database (compose) | the port `local.database` names | base + 90 |
+  | mail sink SMTP, mail sink web UI (compose) | `mail`, `mailui` | base + 91, base + 92 |
+  | object store S3 API, object store console (compose) | `storage`, `storage-console` | base + 93, base + 94 |
+  | every other compose service (a cache, a vector store, an identity server, an ingress) | any other port name | a free port of base + 80 to base + 99 |
 
-  A role no process plays leaves its slot empty, and base and base + 1 stay reserved for the front end and the api either way; base + 2 is
-  reserved for the gateway only while a gateway runs, so an app without one (front end, api, landing) puts its landing at base + 2.
-  The range 3900 to 3999 is reserved for the shared UI-lane `next dev` preview, which runs outside any app's stack: no app's `basePort` range may overlap it.
+  A role no process or service plays leaves its slot empty, and base and base + 1 stay reserved for the front end and the api either way; base + 2
+  is reserved for the gateway only while a gateway runs, so an app without one (front end, api, landing) puts its landing at base + 2.
+  The range 3900 to 3999 is reserved for the shared UI-lane `next dev` preview, which runs outside any app's stack: no app's `basePort` range may overlap it,
+  and port 9000 belongs to the host's shared analysis server, which no app's dev environment takes.
   The screenshot gallery ([gallery.md](gallery.md) PROJECT-GALLERY-1) is a native process on base + 50, started by `stack up` next to the others.
-  Compose service ports (the database, Redis, the object store) are exempt: they are published by containers, not derived. A departure is
-  `STACKS_BASE_PORT_ROLE` (an error); an app with native processes on ports and no `basePort` gets `STACKS_BASE_PORT_UNDECLARED`, a warning
-  that asks it to declare one. `starci app stack doctor --env <env>` prints the `base port` row (the role table) and a `port range` row that fails
-  when another app registered on this machine (the machine registry's projects, the same environment name) declares an overlapping
-  `basePort` to `basePort + 99`, or the reserved range (a `port range reserved` row). The scaffold gives a new app a base of its own. The authority is `scripts/hfs/stack-base-port.mjs` of `@starci/hfs`.
+  A compose file of an environment with a base publishes every host port from `local.ports`, `127.0.0.1:${STACK_PORT_<NAME>}:<container port>`,
+  never a literal port, which the base cannot move. A native process off the table is `STACKS_BASE_PORT_ROLE`, a compose port of a role off
+  its slot `STACKS_COMPOSE_PORT_ROLE`, a literal host port in a compose file `STACKS_COMPOSE_PORT_LITERAL` (errors); the slot of another compose
+  service is not judged yet. An app with native processes on ports and no `basePort` gets `STACKS_BASE_PORT_UNDECLARED`, a warning
+  that asks it to declare one. `starci app sync --execute` brings an existing app to the table: it moves the database, `mail` and `mailui` ports
+  of each environment with a base to their slots (a slot another port holds stays, named) and gives an environment that runs no object store
+  the `storage` service with its ports, its grant of the `storage` member's keys, its readiness probe and its console origin, pointing the api's
+  `STORAGE_ENDPOINT` at it (`sync/dev-services.mts` of `@starci/hfs`). 
+  **Each project owns its own hundred.** No two projects of one machine share a port of `base` to `base + 99`: one project takes 3000,
+  the next 3100, a third 3200, and so on (the numbers are examples; the hundred is the project's, whatever it is). The projects of the
+  machine are the registered ones: the `ledgers` of every machine registry the CLI sees (its state base's `machine.sqlite` and, unless
+  `STARCI_LOCAL_ROOT` pins one store, the harness home's `.runtime/machine.sqlite`, since an app's installed CLI keeps a state base of its
+  own), each read from its registered checkout and every worktree of it (lanes included) for the environment of the same name; a project
+  that declares no `basePort` holds the ports its `local.ports` declares. `starci app stack doctor --env <env>` prints the `base port` row
+  (the role table) and a `port range` row that names every project it compared with its base (or its ports), the registries it read and
+  every checkout it could not read, and fails, with the next free base, when this app's hundred overlaps another project's, or the reserved
+  range (a `port range reserved` row). `starci app scaffold` checks the same projects: without `--base-port` it takes the name's base, or the
+  next free hundred of 3000 to 4900 when another project holds it, and says which; `--base-port <n>` that overlaps another project is
+  refused `HFS_SCAFFOLD_BASE_PORT_TAKEN` with the next free base. The authority is `scripts/hfs/stack-base-port.mjs` (the table) and
+  `stack/local-peers.mjs` (the projects) of `@starci/hfs`.
 - **A green check judges the running stack too.** `starci app check --env local` (the default, the fix-loop run; `--env prod` never asks, since CI has no dev stack) reads
   the live dev environment after the tree checks, for each docker-compose environment that declares a `local.database`, with two read-only checks that are never cached
   and say nothing when the stack is not up (one line says why):
@@ -417,7 +447,8 @@ The data an app seeds lives in two levels of `.starcistacks/`, tracked, one stru
 
 - `.starcistacks/seeds/`, the shared level, applied in every environment and first: plans, the first-party catalogue, module definitions.
 - `.starcistacks/<env>/seeds/`, applied in that environment only, after the shared level: synthetic accounts, sample workspaces and demo
-  data in the dev environment, a production's initial data in its own. `<env>` is an environment name `application-stacks.yaml` declares,
+  data in the dev environment, a production's initial configuration in its own; the business's own records never, they live in the data
+  repository (PROJECT-STACKS-13). `<env>` is an environment name `application-stacks.yaml` declares,
   exactly as declared; `seeds` and `cache` are no environment names.
 
 Each level is a manifest, `seeds.yaml` (schema `starci/seeds@1`), and the folders `sql/`, `data/` and `files/`. The manifest lists every file
@@ -473,8 +504,51 @@ Enforced by: R375 (`seeds-shape`: `HFS_SEEDS_SHAPE`, `HFS_SEED_MANIFEST`, `HFS_S
 migrations, the archive and the bootstrap); the scaffold and the codemod by `hfs-seeds-shape.spec.mts` and `seeds-layout-codemod.spec.mts`,
 the seed step by `stack-seeds.spec.mts` and `stack-local.spec.mts`.
 
+## PROJECT-STACKS-13 Business data lives only in the project's sealed data repository
+
+A project's real business data (its customers, contracts, invoices, balances: the records the business runs on, as opposed to code,
+seeds and secrets) is kept in git only in one repository of its own, the **data repository**, named exactly `<project>-data` for the
+project `hfs.json` names, and private. It holds:
+
+- `manifest.json` at its root, plaintext and holding no data: `format: "<project>-data@<major>"`, the snapshot's time and source, and
+  per data file its `path`, `entity`, `schema` id, `items` count and the `sha256` of its canonical plaintext;
+- `data/<entity>.json`, the records of one entity in a versioned interchange format (`schema: "<project>-data/<entity>@<major>"`,
+  `items` sorted and unique by natural key, no database or workspace id), each file sealed whole with sops and age: keys and structure
+  readable, every value `ENC[...]`, the sops block with its recipients and mac;
+- `schema/`, the JSON Schema of each entity, and the description of the format;
+- `.sops.yaml`, naming the recipients every data file is sealed to: the owner's identity (PROJECT-STACKS-5) and any identity that must
+  restore;
+- the repository's own tools to export, verify, seal, back up and restore, and nothing else: no binary (a document's file stays where the
+  business keeps it; the snapshot holds its index), no application code, no plaintext, no private key.
+
+**Backup is a push.** A backup exports the records to a directory outside every repository, verifies the export, seals it, commits the
+sealed files with the manifest, and pushes the data repository: the push is the backup. An unchanged entity file stays byte-identical,
+so a backup with no change commits nothing. **Restore** verifies the sealed snapshot with the identity (every file against its schema and
+the manifest's counts and sha256), decrypts it to a directory outside every repository, and hands that directory to the application's own
+import, which is idempotent by natural key. This snapshot is not the database backup of PROJECT-STACKS-6, which an environment keeps for
+its stores; seed levels (PROJECT-STACKS-12) hold reference, configuration and synthetic data, never these records.
+
+**Code and data stay apart.** A code project tracks no document of the format, in plaintext or sealed, and never depends on the data
+repository's content: no package dependency or workspace, submodule or path into it. A project that has one declares it in
+`application-stacks.yaml`: `data: {repository: <project>-data, private: true}`. `.starcistacks/<env>/secrets/` keeps holding the
+project's secrets (PROJECT-STACKS-5); the data repository holds records, never a credential.
+
+A repository is a data repository when its root carries no `hfs.json` and its root `manifest.json` names the format: the manifest the
+restore reads is the declaration, so no second file states the same fact, and a code project (`hfs.json`) is never one, whatever it tracks.
+The harness proves the sealing and the manifest's shape and counts; the sha256 and the schemas need the identity, so they are the data
+repository's own verify, and its pre-commit hook runs `starci app check --staged` beside its own.
+
+Why: the records outlive any one code base and are read by people the code never meets; in the code repository every clone, agent
+worktree, CI cache and fork would carry them, while a separate private repository sealed to named identities keeps one custody, a history of
+every snapshot, and a backup that is one push to a remote outside the host's failure domain.
+
+Enforced by: R400 (`data-repository`, owner `@starci/hfs` `runtime/scripts/hfs/rules/data-repository.mts`): in the hfs check of a code
+project `HFS_DATA_IN_CODE`, `HFS_DATA_DEPENDENCY`, `STACKS_DATA_REPOSITORY`; in the commit hook's data guard (`sync/hygiene.mts`)
+`HFS_DATA_IN_CODE` in any repository but a data repository, and in a data repository `HFS_DATA_UNSEALED` and `HFS_DATA_MANIFEST_DRIFT`.
+That the remote is private and that the data repository's hook calls the guard are held by review.
+
 ## Read with
 
 [lite.md](lite.md), [full.md](full.md); slots `app.starcistacks` and `app.plaintext-env` in
 [hfs/slots.yaml](../hfs/slots.yaml); R06, R10, R250 to R253, R266 to R268, R271, R275 to R277, R294, R296 to R299,
-R301, R372 to R375 in [hfs/rules.yaml](../hfs/rules.yaml).
+R301, R372 to R375, R400 in [hfs/rules.yaml](../hfs/rules.yaml).

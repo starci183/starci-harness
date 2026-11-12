@@ -91,6 +91,38 @@ export const NarrowOwner: Story = {
   },
 };
 
+/** The two-column breakpoint is a 31rem container: a form inside a reading measure in a card (511px) holds two columns. */
+export const CardReadingMeasure: Story = {
+  name: 'Card reading measure, 511px (2 columns)',
+  render: () => (
+    <div style={{ maxWidth: 511 }}>
+      <SettingsGrid />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      const row = canvasElement.querySelector('[data-grammar-form-grid-row]');
+      if (row === null || getComputedStyle(row).gridTemplateColumns.split(' ').length !== 2) throw new Error('511px holds two columns');
+    });
+  },
+};
+
+/** The form measure (30rem = 480px) stays one column. */
+export const FormMeasure: Story = {
+  name: 'Form measure, 480px (1 column)',
+  render: () => (
+    <div style={{ maxWidth: 480 }}>
+      <SettingsGrid />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      const row = canvasElement.querySelector('[data-grammar-form-grid-row]');
+      if (row === null || getComputedStyle(row).gridTemplateColumns.split(' ').length !== 1) throw new Error('480px is one column');
+    });
+  },
+};
+
 /** The same row with every field loading: the skeletons keep the control line. */
 export const Skeleton: Story = {
   render: () => (

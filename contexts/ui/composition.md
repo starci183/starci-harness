@@ -145,13 +145,15 @@ indicator geometry, underline). A destination in body copy is identifiable at re
 ### ACCENT-4 An accent fill states a real measurement
 A progress fill presents a verified value from authority and nothing else; an unresolved value is a skeleton; a
 decorative or ranking bar carries no progress semantics; the fill states the measurement and a separate owner
-states any outcome.
+states any outcome. A measurement on a view whose one accent mass is its commit, a usage quota beside an upload,
+takes `tone="foreground"` on `Meter` or `Progress`: the fill is the text colour on the default track and spends no accent
+(ACCENT-6).
 
 ### ACCENT-5 Status hues and notices report authority
 Success, warning and danger appear only where authority reports that state, never as a category, a peer marker
 or decoration. A figure that reports a state keeps the default tone with a toned `Badge` beside it. Status is
 never a text colour choice. A notice is the grammar `Alert`, never a hand-built row and never an `IconTile` posing
-as its indicator: it has one look, its tone's soft pair. An informative notice spends accent and counts in the budget. The Alert's action variant per
+as its indicator: it has one look, its tone's soft pair. An informative notice is neutral (the default soft pair, 0.37.17) and spends no accent; the `accent` tone is the brand "new" band and counts in the budget. The Alert's action variant per
 tone is contract data. See [components/toast-alert.md](components/toast-alert.md).
 
 ### ACCENT-6 Budget and the one strong mass
@@ -161,7 +163,7 @@ treatments is the same in every state and at every width. The commit is the one 
 no second full-strength painted slab (accent, or an inverted ink band) shares a working page's first screen with
 it, and figures, headers and summaries stay on neutral surfaces. A full-strength slab carries no copy and no
 control (SURFACE-6), so it is never a KPI band; it is used only as the page's signature moment (DISCIPLINE-3), on
-an overview or an entry page. Proof: TASTE-5.
+an overview or an entry page. Red budget (owner, 2026-11-10): the primary red is the one main CTA of a view plus links inside sentences. A standalone secondary or navigation link (back, cancel, legal footer) is `Link variant="plain"` (foreground); an informative `Alert` is neutral. Proof: TASTE-5.
 
 ## 4. State and feedback
 
@@ -241,13 +243,11 @@ stands inside another surface; a card of one lone table, list or chart is no car
 
 ### COLLECTION-4 A single-child card is no card
 A card (`SurfaceCard`) groups two or more heterogeneous parts (figures, a list, actions), or it carries zones (`headers`/`footers`: tabs,
-search, filters, paging) or head actions (`labelEnd`). A table, a list or a chart standing alone IS the surface: its title sits above it as
-a section head (`Section title`) and one caption sits below it (`Section caption`, muted 14). A lone `DataTable`, list, chart or
-`Section kind="list"` is never wrapped in a card, and `SurfaceCard kind="table"|"list"` carries zones. A standalone `DataTable` (`surface="card"`,
-the default) sits in its own card (white, the card radius, a 1px separator border and the card shadow) and keeps HeroUI's native look inside it
-(the grey wrapper with the header row, the rows on a white rounded body; 0.32.0 reverts the 0.29 flat frame); inside a `SurfaceCard` the table goes full-bleed with no frame of its own (`surface="none"`, as
+search, filters, paging) or head actions (`labelEnd`). A card of list or key-value rows (`SurfaceCard kind="list"|"table"|"select"`, a `ListBox`, `DisclosureList`, `Section kind="list"`, a `DescriptionList`) is valid alone or not (0.37.8: one list card with its head and count chip, or a bordered key-value card on a white aside, is the law). A standalone `DataTable` or chart IS the surface: its title sits above it as
+a section head (`Section title`) and one caption sits below it (`Section caption`, muted 14), and it is never wrapped in a bare card. A standalone `DataTable` (`surface="card"`,
+the default) sits in its own card (white, the card radius, the shadow on the pink well and a 1px border on a white surface) and looks like a list card inside it (0.37.8: no grey frame, gutters or header strip; the column labels 12 muted on the white and 1px full-width row dividers); inside a `SurfaceCard` the table goes full-bleed with no frame of its own (`surface="none"`, as
 `kind="table"` does). Every `Section kind="list"` draws the same card edge (a shadow only on the page ground) wherever it stands (BOUNDARY-7). Measure: lint
-`single-child-card` in `@starci/eslint-grammar-core` (error). See [components/card.md](components/card.md) and
+`single-child-card` (a lone `DataTable` or chart only) in `@starci/eslint-grammar-core` (error). See [components/card.md](components/card.md) and
 [components/list-table.md](components/list-table.md).
 
 ### COLLECTION-3 A group identity shows its members
@@ -267,7 +267,7 @@ Choice `grid.choose.content`: which track owner carries the content.
 | sections | independent named working regions retain separate tasks and heading owners | `Grid kind="sections"` of those regions | one column, two equal tracks in a wide workspace viewport |
 | pair | two equal portions form one reading or comparison unit | `Grid kind="pair"` with required `leading` and `trailing` slots | one column, two equal tracks when their container supports both measures |
 | featured | one central focus has two symmetric secondary support groups | `Grid kind="featured"` with required `leading`, `featured` and `trailing` slots | one reading column or three symmetric tracks, preserving source order |
-| cards | peers are recognised and opened as a collection | `Grid kind="cards"` of tiles | `card.choose.role:tile` |
+| cards | peers are recognised and opened as a collection | `Grid kind="cards"` of tiles (0.37.3: the card gap, 12 phone / 24 from 48rem, `gap="inline"` for tiles; `align="stretch"` by default so a row stands at one height; a cell that is a `Section fill` lets its `SurfaceCard height="fill"` or `DataTable fill` fill it; `pair` and `featured` slots stretch too) | `card.choose.role:tile` |
 | form | neighbouring fields share aligned control rows | `Grid kind="form"` | `text-field.choose.columns` |
 | main-rail | one task has subordinate support beside it | `Grid kind="main-rail"` | one primary and one rail |
 

@@ -23,8 +23,10 @@ the three realtime doors. How the edition is chosen is PROJECT-1 in [README.md](
   with USAGE for its roles, and the app role's search_path is `public, extensions`, so a migration may name
   `extensions.vector` or set its function's search_path to `''`; pgmq is the one exception, since its control file fixes
   its own schema `pgmq` (`create extension pgmq`, never `with schema extensions`). Identity is the app's own, the package `@starci/auth` composed in the Passport
-  integration, and storage the S3-compatible MinIO of the host, reached through the package `@starci/object-storage` composed in the object-storage integration. Owners: slots `app.db*` and `ruleParams.db.extensions` in
-  [hfs/slots.yaml](../hfs/slots.yaml); the `postgres` image pin in [stack/pins.yaml](../stack/pins.yaml).
+  integration, and storage an S3-compatible store, in development the dev stack's own `storage` service (the StarCi MinIO), reached through the
+  package `@starci/object-storage` composed in the object-storage integration, whose bucket the api's readiness creates when it is missing.
+  Owners: slots `app.db*` and `ruleParams.db.extensions` in [hfs/slots.yaml](../hfs/slots.yaml); the `postgres` and `minio` image pins in
+  [stack/pins.yaml](../stack/pins.yaml); the dev services and their ports in [stacks.md](stacks.md) PROJECT-STACKS-10.
 - Redis is the only declarable backing service (`sides.be.backing`), run durably; vectors use pgvector in the db service,
   so no Qdrant. Owners: `ruleParams.be.backing` in [hfs/slots.yaml](../hfs/slots.yaml);
   R276.
@@ -79,8 +81,9 @@ the three realtime doors. How the edition is chosen is PROJECT-1 in [README.md](
 
 - No e2e world, no browser journeys and no e2e workflow. Owners: slots `app.ci-e2e`, `app.browser`,
   `app.browser-config`, `be.tests.e2e` (all forbidden under lite).
-- Boot is proved by compiling the real AppModule graph with doubles, and each async pattern by its lite proof lane.
-  Owners: R272, R284; [code/be/test.md](../code/be/test.md) BE-TEST-12.
+- Boot is proved by compiling the real AppModule graph with doubles, once a scan of the same graph found no provider ring,
+  and each async pattern by its lite proof lane. Owners: R272, R401, R284; [code/be/test.md](../code/be/test.md) BE-TEST-12,
+  [code/be/injection.md](../code/be/injection.md) BE-INJECTION-5.
 - Integration specs run against the local db service without containers or toxiproxy; contract specs are
   optional. Owners: slots `be.tests.integration`, `be.tests.contract`.
 - CI lints the db migrations; no database type is generated. Owner: slot `app.ci`.

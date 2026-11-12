@@ -64,13 +64,13 @@
 // findings fail the check.
 import fs from 'node:fs';
 import path from 'node:path';
-import { appWiring, BOOT_PROOF_CODE, BOOT_PROOF_TIMEOUT } from './app-wiring.mjs';
+import { appWiring, BOOT_PROOF_CODE, BOOT_PROOF_TIMEOUT, DI_RING_CODE } from './app-wiring.mjs';
 import { coverageFrom as coverageFromReport } from './coverage-from.mjs';
 import { skillRoot } from '../../engine/runtime-root.mjs';
 import { ARCHITECTURE_RULE_IDS, checkArchitecture } from './architecture/index.mjs';
 import { canonPins } from './canon-pins.mjs';
 import { readCatalogOnce } from './catalog-once.mjs';
-import { APP_SCOPE, HFS_DECLARATION_FILE, appRelativeMessages, HfsSlotsError, SIDES, createSlotResolver, loadSlotManifest, readRepoDeclaration, resolveRepoDeclaration, type OwnerUnit, type RepoView, type RequiredPaths, type Resolver, type RuleParams, type Slot, type SlotManifest } from './slots.mjs';
+import { APP_SCOPE, HFS_DECLARATION_FILE, appRelativeMessages, HfsSlotsError, createSlotResolver, declaredAppSides, loadSlotManifest, readRepoDeclaration, resolveRepoDeclaration, type OwnerUnit, type RepoView, type RequiredPaths, type Resolver, type RuleParams, type Slot, type SlotManifest } from './slots.mjs';
 import type { CanonPins } from './canon-pins.mjs';
 import type { Side } from './slot-manifest-shape.mjs';
 import { judgedFindings, summarize, withWhy, type Finding, type Summary, type Why } from './check-results.mjs';
@@ -116,7 +116,7 @@ export const CHECK_CODES = Object.freeze([
   'HFS_SLOT_REQUIRED_MISSING', 'HFS_MIN_INSTANCES', 'HFS_CANON_PIN_DRIFT', 'HFS_SIZE_SOFT_BACKLOG', 'BE_SOURCE_FORM',
   'HFS_MANAGED_FILE_DRIFT', 'HFS_TOOL_CONFIG_LOCAL', 'HFS_RULE_OFF_WITHOUT_REPLACEMENT', 'HFS_TS_STRICT',
   'HFS_PLAINTEXT_SECRET', 'HFS_STACKS_SHAPE', 'HFS_BRANCH_PROFILE_INVALID', 'LINT_RATCHET_RAISED', 'LINT_NEW_CODE_FINDING', 'COVERAGE_NEW_CODE_BELOW', 'HFS_DEV_BRANCH_MISSING', 'STACK_PENDING_MIGRATIONS', 'STACK_DEAD_LETTER_REPEAT', 'HFS_SEEDS_SHAPE', 'HFS_SEED_MANIFEST', 'HFS_SEED_DDL', 'HFS_SEED_DATA_SCHEMA', 'HFS_SEED_TEST_DATA', 'HFS_SEED_SECRET_REF', 'HFS_CI_MISSING_CANON', 'HFS_DEP_VERSION_SKEW', 'HFS_CONTRACT_SNAPSHOT_DRIFT', 'HFS_MCP_TOOLS_SNAPSHOT',
-  'BE_TEST_TOPOLOGY', 'BE_SPEC_PLACEMENT', 'HFS_REPO_LOCAL_CHECK', 'HFS_LINT_SUPPRESSION_FILE', 'HFS_BYPASS_MARKER', 'HFS_PROOF_COMMAND_FILE_MISSING', 'HFS_PEER_INTEGRATION_MISSING', 'BE_INTEGRATION_SPEC_MISSING', 'FE_GRAPHQL_CONTRACT', 'FE_NO_TESTS', 'HFS_MONO_WORKSPACES', 'HFS_MONO_FE_WORKSPACE', 'HFS_MONO_NEST_PROJECTS', 'HFS_MONO_WORKSPACE_DEP', 'BE_CLI_REQUIRED', 'FE_WIRE_GENERATED', 'FE_I18N_PLACEMENT', 'FE_I18N_CATALOG', 'HFS_SERVICE_PLACEMENT', 'HFS_IMAGE_UNPINNED', 'HFS_SERVICE_STACK_DECLARATION', 'HFS_EVENT_CONTRACT', 'BE_ASYNC_SPEC_MISSING', 'BE_SAGA_STEP_COMPENSATION', 'BE_SAGA_STATE_VERSIONED', 'BE_SAGA_EVENT_CONTRACT', 'BE_SAGA_CONSUMER_DEDUPE', 'BE_EVENT_CLASS_CONTRACT', 'BE_PATTERN_SPEC_MISSING', 'BE_CONTRACT_BREAKING', 'BE_KIND_DECLARATION', 'BE_KIND_EMPTY', 'HFS_DOCKER_BUILD_CONTEXT', 'HFS_DOCKER_STAGES', 'HFS_DOCKER_ENTRY', 'HFS_DOCKER_BASE_PIN', 'HFS_DOCKER_SECRETS', 'BE_SAGA_E2E_MISSING',
+  'BE_TEST_TOPOLOGY', 'BE_SPEC_PLACEMENT', 'HFS_REPO_LOCAL_CHECK', 'HFS_LINT_SUPPRESSION_FILE', 'HFS_BYPASS_MARKER', 'HFS_PROOF_COMMAND_FILE_MISSING', 'HFS_PEER_INTEGRATION_MISSING', 'BE_INTEGRATION_SPEC_MISSING', 'FE_GRAPHQL_CONTRACT', 'FE_NO_TESTS', 'HFS_MONO_WORKSPACES', 'HFS_MONO_FE_WORKSPACE', 'HFS_MONO_NEST_PROJECTS', 'HFS_MONO_WORKSPACE_DEP', 'BE_CLI_REQUIRED', 'BE_CLI_COMMAND_SHAPE', 'FE_WIRE_GENERATED', 'FE_I18N_PLACEMENT', 'FE_I18N_CATALOG', 'HFS_SERVICE_PLACEMENT', 'HFS_IMAGE_UNPINNED', 'HFS_SERVICE_STACK_DECLARATION', 'HFS_EVENT_CONTRACT', 'BE_ASYNC_SPEC_MISSING', 'BE_SAGA_STEP_COMPENSATION', 'BE_SAGA_STATE_VERSIONED', 'BE_SAGA_EVENT_CONTRACT', 'BE_SAGA_CONSUMER_DEDUPE', 'BE_EVENT_CLASS_CONTRACT', 'BE_PATTERN_SPEC_MISSING', 'BE_CONTRACT_BREAKING', 'BE_KIND_DECLARATION', 'BE_KIND_EMPTY', 'HFS_DOCKER_BUILD_CONTEXT', 'HFS_DOCKER_STAGES', 'HFS_DOCKER_ENTRY', 'HFS_DOCKER_BASE_PIN', 'HFS_DOCKER_SECRETS', 'BE_SAGA_E2E_MISSING',
   'FE_STACK_FORBIDDEN', 'HFS_EDITION_FORBIDDEN_PRESENT', 'HFS_BACKING_UNDECLARED', 'HFS_BACKING_UNUSED', 'HFS_LITE_SECRET_CUSTODY', 'HFS_STARCIWORK_LITE_FORBIDDEN',
   'DB_MIGRATION_SHAPE', 'DB_RLS_REQUIRED', 'DB_DYNAMIC_DDL', 'DB_POLICY_SHAPE', 'DB_DEFINER_SAFE', 'DB_STORAGE_POLICY', 'LITE_DB_MIGRATION',
   'HFS_DOCKER_HEALTHCHECK_FAKE', 'DB_APP_ROLE', 'DB_FORCE_RLS_DEFAULT',
@@ -176,7 +176,21 @@ export function trackedFiles(repoRoot: string): string[] {
   return out.split('\0').filter(Boolean).map(posixPath);
 }
 
-const fill = (text: string, bindings: Record<string, string>): string => String(text).replace(VAR, (whole: string, name: string) => bindings[name] ?? whole);
+/**
+ * Repository-relative files git neither tracks nor ignores (git ls-files --others --exclude-standard): what a check, which judges the
+ * index (trackedFiles), leaves unjudged until `git add` stages them. A directory that is not a Git work tree is a refusal.
+ */
+export function untrackedFiles(repoRoot: string): string[] {
+  let out: string;
+  try {
+    out = gitOutputOf(lsFiles(['-z', '--others', '--exclude-standard'], { dir: repoRoot, maxBuffer: 256 * 1024 * 1024 }), 'git ls-files');
+  } catch (error) {
+    refuse('HFS_REPO_UNREADABLE', `${repoRoot} is not a readable Git work tree (${String((error as { stderr?: unknown; message?: unknown } | null | undefined)?.stderr ?? (error as { message?: unknown } | null | undefined)?.message ?? error).trim().split('\n')[0]})`, { repoRoot });
+  }
+  return out.split('\0').filter(Boolean).map(posixPath);
+}
+
+const fill =(text: string, bindings: Record<string, string>): string => String(text).replace(VAR, (whole: string, name: string) => bindings[name] ?? whole);
 
 /** Instances (slot, root, bindings) present in the tracked tree, for every slot that names required files or a minimum. */
 function instancesOf(resolver: CheckResolver, files: string[]): SlotInstance[] {
@@ -356,7 +370,7 @@ export function checkRepo({ repoRoot, root = skillRoot, harness, declaration, fi
   if (repo.profile === APP_SCOPE) {
     const own = tracked.filter((file) => resolver.sideOf!(file) === null);
     findings.push(...keep(scopeFindings({ repoRoot, root, harness, repo, resolver, files: own, all: tracked, scoped, manifest, phase }), repoRoot));
-    for (const side of SIDES) {
+    for (const side of declaredAppSides(repo)) {
       const prefix = `${side}/`;
       const sideRoot = path.join(repoRoot, side);
       const sideFiles = tracked.filter((file) => file.startsWith(prefix)).map((file) => file.slice(prefix.length));
@@ -377,7 +391,7 @@ export function checkRepo({ repoRoot, root = skillRoot, harness, declaration, fi
   const judged = judgedFindings(findings, repo.edition ?? 'full', root) as CheckFinding[];
   const finished = withWhy(judged, { ...why, ...readWhy(root, [...new Set(judged.map((f) => f.code).filter((code) => !why[code]))]) }) as CheckFinding[];
   const counts = summarize(finished);
-  const apps = repo.profile === APP_SCOPE ? SIDES.flatMap((side) => repo.sides![side].apps.map((app) => ({ ...app, side }))) : repo.apps;
+  const apps = repo.profile === APP_SCOPE ? declaredAppSides(repo).flatMap((side) => repo.sides![side].apps.map((app) => ({ ...app, side }))) : repo.apps;
   return { ok: counts.error === 0, repoRoot, manifest: manifest.version, profile: repo.profile, apps, tracked: tracked.length, findings: finished, counts };
 }
 
@@ -430,7 +444,7 @@ export function checkRepository({ repoRoot, root = skillRoot, harness, fast = fa
   if (slotResult.profile === null) return { ...slotResult, machine: { status: 'skipped', reason: 'hfs.json is not valid' } };
   const repo = readRepoDeclaration(manifest, repoRoot);
   const scopes = repo.profile === APP_SCOPE
-    ? SIDES.map((side) => ({ side, repoRoot: path.join(repoRoot, side), prefix: `${side}/` }))
+    ? declaredAppSides(repo).map((side) => ({ side, repoRoot: path.join(repoRoot, side), prefix: `${side}/` }))
     : [{ side: null, repoRoot, prefix: '' }];
   const runs: MachineRunInfo[] = [];
   const found: CheckFinding[] = [];
@@ -473,7 +487,7 @@ export function withCheckProofs(result: RepositoryResult, { repoRoot, root = ski
   const proofFindings = Object.values(reports).flatMap((report) => report.findings);
   const why = readWhy(root, [...new Set(proofFindings.map((finding) => finding.code))]);
   // The explicit whole-tree wiring proof supersedes the ordinary finder's scoped result.
-  const previous = result.findings.filter((finding) => !wiring || (finding.code !== BOOT_PROOF_CODE && finding.code !== BOOT_PROOF_TIMEOUT));
+  const previous = result.findings.filter((finding) => !wiring || ![BOOT_PROOF_CODE, BOOT_PROOF_TIMEOUT, DI_RING_CODE].includes(finding.code));
   const findings = [...previous, ...withWhy(judgedFindings(proofFindings, repo.edition ?? 'full', root), why)] as CheckFinding[];
   const counts = summarize(findings);
   return { ...result, ...reports, findings, counts, ok: counts.error === 0 };

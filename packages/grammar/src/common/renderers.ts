@@ -33,7 +33,7 @@ export type { PageHeaderBreadcrumbs, PageHeaderTabs } from "../core/frame/PageHe
 export type { PageMinHeight } from "../core/frame/Page/index.js"
 export { Sidebar, type SidebarGroup, type SidebarItem, type SidebarProps } from "../core/composite/Sidebar/index.js"
 export { WorkspaceShell, type WorkspaceShellHeaderLandmark, type WorkspaceShellNavigationDrawer, type WorkspaceShellProps } from "../core/frame/WorkspaceShell/index.js"
-export { PaneGrid, Pane, type PaneContent, type PaneGridProps, type PaneInset, type PaneProps, type PaneTrack } from "../core/frame/PaneGrid/index.js"
+export { PaneGrid, Pane, type PaneContent, type PaneHeadSlot, type PaneGridProps, type PaneInset, type PaneProps, type PaneTrack } from "../core/frame/PaneGrid/index.js"
 export { PaneSection, type PaneSectionProps } from "../core/frame/PaneSection/index.js"
 export { Stack, type StackAlign, type StackMeasure, type StackProps } from "../core/frame/Stack/index.js"
 export { Cluster, type ClusterAlign, type ClusterGap, type ClusterJustify, type ClusterProps } from "../core/frame/Cluster/index.js"
@@ -64,10 +64,11 @@ export type { ErrorData } from "../core/loadingState.js"
 export { SurfaceCard, type SurfaceCardProps } from "../core/frame/SurfaceCard/index.js"
 export type {
     AccordionData, AccordionRowData, AvatarData, BadgeData, CardHead, Collection, Figure, FilterFields, FooterZone, HeaderZone, ImageData, ItemAction, ItemLeading, ItemMenu,
-    ListData, ListRowData, RowDrag, SearchFields, SearchZoneFields, SelectZoneField, TableColumnData, TableData, TableGroupData, TableRowData, TileData, TileMark, TilePoster, WholeCardAction,
+    ListData, ListRowData, RowDrag, SearchFields, SearchZoneFields, SelectData, SelectItemData, SelectZoneField, TableColumnData, TableData, TableGroupData, TableRowData, TileData, TileMark, TilePoster, WholeCardAction,
 } from "../core/surfaceCardData.js"
 export type { AccentCorner, SurfaceCardMotif, SurfaceCardTreatment } from "../core/frame/SurfaceCard/classNames.js"
 export { FencedCodeBlock, MarkdownArticle, MarkdownTableFrame, type FencedCodeBlockProps, type MarkdownArticleProps, type MarkdownTableFrameProps } from "../core/frame/MarkdownArticle/index.js"
+export { Markdown, type MarkdownCode, type MarkdownLabels, type MarkdownProps } from "../core/frame/Markdown/index.js"
 export { Tabs, type PrimaryTabItem, type PrimaryTabItems, type PrimaryTabsProps, type SecondaryTabsProps, type TabItem, type TabsProps } from "../core/branch/Tabs/index.js"
 export { Tooltip, type TooltipPlacement, type TooltipProps } from "../core/branch/Tooltip/index.js"
 export { formCompactSurfaceClassName, formFieldClassName, formPageClassName, formScreenReaderLabelClassName, formScrollViewportClassName, formSurfaceClassName, horizontalScrollRegionClassName } from "../core/classNames.js"

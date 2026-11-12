@@ -69,8 +69,25 @@ test('add cli renders the queues group into an app that has its jobs platform, w
     assert.ok(created.includes(file), file);
   }
   assert.match(read(root, 'be/src/features/cli/seed/seed.module.ts'), /export class SeedModule extends ConfigurableModuleClass \{\}/);
-  assert.match(read(root, 'be/src/modules/platform/database/index.ts'), /export \{ PRIMARY_CONNECTION \} from "\.\/primary\.connection"/);
+  // The cli's wiring proof doubles the declared data source token, so no connection name leaves platform/database (R84).
+  assert.doesNotMatch(read(root, 'be/src/modules/platform/database/index.ts'), /PRIMARY_CONNECTION/);
+  assert.match(read(root, 'be/src/tests/fixtures/builders/cli.builder.ts'), /token: PRIMARY_DATA_SOURCE/);
+  // The runners are provided with their two injected values and exported to the cli groups that run them.
+  const database = read(root, 'be/src/modules/platform/database/database.module.ts');
+  assert.match(database, /\{ provide: MIGRATION_COMMAND, useValue: DB_PUSH_COMMAND \},\n {16}\{ provide: SEED_ROOT, useValue: SEED_ROOT_DEFAULT \},/);
+  assert.match(database, /exports: \[[^\]]*\.\.\.managers\.map\(\(manager\) => manager\.provide\),\n {16}MigrationRunnerService,\n {16}SeedRunnerService,/);
   assertRendered(root);
+});
+
+test('add cli <group> registers the group in a cli feature root Prettier laid out one member a line', (t) => {
+  const root = liteApp(t);
+  addCli(root);
+  const file = path.join(root, ...CLI_MODULE.split('/'));
+  fs.writeFileSync(file, read(root, CLI_MODULE).replace('@Module({ imports: [MigrateModule.register({}), SeedModule.register({})] })',
+    '@Module({\n    imports: [\n        MigrateModule.register({}),\n        SeedModule.register({}),\n    ],\n})'));
+  addKind({ repoRoot: root, noun: 'cli', name: 'reports', options: { service: 'IdsService=@modules/platform/ids' }, now: () => SCAFFOLDED + 90_000 });
+  assert.match(read(root, CLI_MODULE), /@Module\(\{ imports: \[MigrateModule\.register\(\{\}\), SeedModule\.register\(\{\}\), ReportsModule\.register\(\{\}\)\] \}\)/);
+  assert.match(read(root, CLI_MODULE), /^import \{ ReportsModule \} from "\.\/reports\/reports\.module"$/m);
 });
 
 test('an app missing either half renders nothing, and a cli tree the renderer cannot read is refused', (t) => {

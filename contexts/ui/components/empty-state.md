@@ -43,7 +43,7 @@ the layout does not jump (TASTE-10).
 - **App author decides:** the copy, the action and its handler, the artwork's file and its asset slot.
 
 ## Frame
-`frame="frameless"` draws the notice as words on the page ground or the pane: no border, background or shadow. The default `card` is one surface card on the page ground.
+`frame="frameless"` (the default since 0.37.4) draws the notice as words on the ground of the pane or well: no border, background or shadow. `frame="card"` is opt-in: one surface card, for a notice that is itself the content of a page. Inside a card it is always words only.
 
 ## Rules
 CTA-1, FEEDBACK-2, STATE-8, DISCIPLINE-3, BRAND-2. The artwork's `assetSlot` is a required field of

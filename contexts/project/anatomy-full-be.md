@@ -73,9 +73,12 @@ Refused (forbidden or external): `app.tool-config-local`, `app.tool-cache`, `app
     - **be.app.api** required · [be/api](../code/be/api.md), [be/architecture](../code/be/architecture.md), [be/config](../code/be/config.md), [be/injection](../code/be/injection.md), [be/services](../code/be/services.md) · R32, R245, R246, R41, R39, R31, R174, R289
     - **be.app.worker** opt-in · [be/architecture](../code/be/architecture.md), [be/background](../code/be/background.md), [be/config](../code/be/config.md), [be/injection](../code/be/injection.md), [be/services](../code/be/services.md) · R32, R245, R246, R46, R174, R289
     - **be.app.cli** opt-in · [be/architecture](../code/be/architecture.md), [be/cli](../code/be/cli.md), [be/config](../code/be/config.md), [be/injection](../code/be/injection.md), [be/services](../code/be/services.md) · R147, R148, R150, R34, R245, R246, R289
+    - **be.app.client-cli** opt-in · [be/architecture](../code/be/architecture.md), [be/cli](../code/be/cli.md), [be/config](../code/be/config.md), [be/injection](../code/be/injection.md), [be/services](../code/be/services.md) · R397, R398, R148, R150, R245, R246, R289
+  - `{package.json,tsconfig.build.json,README.md}` — **be.app.client-cli.package** opt-in · [be/architecture](../code/be/architecture.md), [be/cli](../code/be/cli.md), [be/config](../code/be/config.md), [be/injection](../code/be/injection.md), [be/services](../code/be/services.md) · R397
 - `contracts/<app>/`
   - `schema.graphql` — **be.contract.graphql** opt-in · [be/services](../code/be/services.md), [be/transport](../code/be/transport.md) · R23
-  - `openapi.json` — **be.contract.openapi** opt-in · [be/services](../code/be/services.md), [be/transport](../code/be/transport.md) · R23
+  - `openapi.json` — **be.contract.openapi** opt-in · [be/services](../code/be/services.md), [be/transport](../code/be/transport.md) · R23, R396
+  - `openapi.pin.json` — **be.contract.openapi.pin** opt-in · [be/services](../code/be/services.md), [be/transport](../code/be/transport.md) · R177
   - `events.json` — **be.contract.events** opt-in · [be/services](../code/be/services.md), [be/transport](../code/be/transport.md) · R166
   - `events.pin.json` — **be.contract.events.pin** opt-in · [be/services](../code/be/services.md), [be/transport](../code/be/transport.md) · R177
   - `<contract>.tools.json` — **be.contract.mcp-tools** opt-in · [be/services](../code/be/services.md), [be/transport](../code/be/transport.md) · R302
@@ -102,6 +105,7 @@ Refused (forbidden or external): `app.tool-config-local`, `app.tool-cache`, `app
         - `websocket/` — **be.feature.realtime.websocket** opt-in · [be/realtime](../code/be/realtime.md) · R184, R185, R186, R41
         - `sse/` — **be.feature.realtime.sse** opt-in · [be/realtime](../code/be/realtime.md) · R184, R185, R186, R41, R278
     - `cli/` — **be.cli** optional · [be/cli](../code/be/cli.md), [be/test](../code/be/test.md) · R149, R150, R147, R45, R34
+    - `client-cli/<client>/` — **be.client-cli** optional · [be/cli](../code/be/cli.md), [be/test](../code/be/test.md) · R149, R150, R397, R398, R45
     - `reactors/<reactor>/` — **be.feature.reactors** opt-in · [be/event-bus](../code/be/event-bus.md), [be/idempotency](../code/be/idempotency.md), [be/reactors](../code/be/reactors.md) · R156, R28, R31
     - `jobs/<job>/` — **be.feature.jobs** opt-in · [be/background](../code/be/background.md), [be/jobs](../code/be/jobs.md), [be/queues](../code/be/queues.md) · R156, R28, R31
       - `transport/queue/` — **be.feature.jobs.queue** opt-in · [be/jobs](../code/be/jobs.md) · R46

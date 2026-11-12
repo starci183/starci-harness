@@ -1,10 +1,34 @@
 # Changelog
 
-## 3.22.0 - 2026-11-10
+## 3.23.3 - 2026-11-12
 
 - Added: `cli-client-boundary` (R398 `BE_CLI_CLIENT_BOUNDARY`): a client cli (slots `be.app.client-cli`, `be.client-cli`) imports no domain, events, queues or projections module, nothing of the database capability or of a persistence folder, and no `typeorm`, `@nestjs/typeorm` or `pg`.
 - Changed: `cli-bootstrap`, `cli-command-shape` and `cli-owner` judge every cli app and cli feature root, the ops cli (`apps/cli`, `src/features/cli/`) and a client cli (`apps/<app>`, `src/features/client-cli/<app>/`) alike.
-- Changed: a unit role names its slots as a list (`ruleParams.be.unitRoles[].slots`, manifest 3.30.0), so a `.cli.ts` command of a client cli owes its `.cli.spec.ts` like an ops command; the client cli slots and that list are in `@starci/hfs` 6.7.2.
+- Changed: a unit role names its slots as a list (`ruleParams.be.unitRoles[].slots`, manifest 3.37.0), so a `.cli.ts` command of a client cli owes its `.cli.spec.ts` like an ops command; the client cli slots and that list are in `@starci/hfs` 6.8.6.
+
+## 3.23.2 - 2026-11-12
+
+- Changed: the hfs 6.8 line (`@starci/hfs` 6.8.5) merged with `pkg/canon-fe-status-view-types`, `pkg/claude-work-concepts` and `pkg/claude-grammar-meter-foreground-fill`, so one installable set carries all of them: the 3.21.2 and 3.21.3 changes (the `todo-tag` fix of R235) join the 3.23 line; peer `@starci/hfs ~6.8.0`.
+
+## 3.23.1 - 2026-11-12
+
+- Fixed (R78): `user-copy-through-catalog` no longer reports the `summary`, `description` or `title` of an object literal handed to an `@nestjs/swagger` export (`@ApiOperation`, `@ApiProperty`, `@ApiResponse`, directly or inside `applyDecorators`, through nested object and array literals): that text documents a REST contract for its clients' developers and R396 judges the emitted document. A same-named local helper and another package's decorator (`@Field({ description })`) are still response copy.
+- Specs: `src/user-copy.spec.ts` (swagger operation, property and response documentation valid; a local `ApiOperation` and a GraphQL `@Field` description still report).
+- Fixed (R88, BE-TRANSPORT-1): `rest-route-declared` reports nothing in a back end whose api apps declare `contract: "rest"`, like `rest-door-needs-a-reason` (one predicate, `servesRest` in `lib/transport-slots.ts`): the controllers are that back end's declared contract, judged by R396. Spec: `src/transport.spec.ts`.
+- Fixed (R85): `injector-type-match` accepts a parameter typed exactly as a nullable injector's `T` (`VectorIndex | null`); it compared the injected type with the parameter's type stripped of null, so such an injector never matched. A parameter that drops the injector's null is still a mismatch, and `@Optional()`'s added undefined still matches. Spec: `src/injection.spec.ts`.
+- Fixed (R38): `throw-domain-error` takes the rejection handler of `.then(onFulfilled, onRejected)` as it takes a `.catch` handler: its parameter is a caught value, rethrown as it is (`isCaughtValue`). The fulfilment handler's value is still judged. Spec: `src/error-handling.spec.ts`.
+- Added (R47, BE-TEST-1): a unit spec over its line budget splits by facet, `<name>.<role>.<facet>.spec.ts` beside the main `<name>.<role>.spec.ts` and the same subject (`mainSpecOfSplit`, `lib/unit-spec.ts`); `unit-test-colocated` accepts it with both beside it and reports it `orphan` otherwise. Spec: `src/testing.spec.ts`.
+- Specs (R281, BE-TEST-2): `spec-infra-double-from-kit` keeps refusing a function of another module inside the subject object of a function-only policy or mapper (`{ pad, shout, doubled }` with `doubled` from another file); the form is now written in BE-TEST-2. Spec: `src/unit-spec.spec.ts`.
+- Fixed (R71): `no-secret-in-log` skips a credential-sounding name whose value is a number or a boolean (`usage.promptTokens`): a count is never the credential, which travels as text. Spec: `src/log-safety.spec.ts`.
+
+## 3.23.0 - 2026-11-11
+
+- Changed (R278): `rest-door-needs-a-reason` reports nothing in a back end whose api apps declare `contract: "rest"` in hfs.json (the controller is that back end's default door); a graphql back end is judged as before. `HfsApp` carries the optional `contract`. Peer `@starci/hfs ~6.8.0`, the release whose view carries it.
+- Specs: `src/transport.spec.ts` (a rest back end serves a plain controller; the same controller in the default back end still reports).
+
+## 3.21.3 - 2026-11-11
+
+- Fixed (R235): `starci-be/todo-tag` (S1135) replaces `sonarjs/todo-tag` in the Sonar way block, the one rule both canons publish from the shared runtime copy (`scripts/lib/sonar-syntax-rules.mjs`): it refuses a leftover marker (`TODO`, `TODO:`, `TODO(name)`, `todo:`) and not the noun in prose or a name such as `guide.todo`.
 
 ## 3.21.2 - 2026-11-09
 

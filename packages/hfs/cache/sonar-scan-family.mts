@@ -150,7 +150,8 @@ function keepVerdict(repoRoot: string, env: NodeJS.ProcessEnv, verdict: Verdict)
 
 /**
  * The Sonar scan of the app: every outcome is a line of the run (`lines`); a scan that runs prints its start, its duration, the project key it used and the gate
- * status. Not run (an info line) when the app has no `sonar-project.properties` or declares no Sonar; skipped with a warning when the
+ * status. Not run (an info line) when the app has no `sonar-project.properties`, declares no Sonar, or declares the owner step that provisions its
+ * analysis credential as open (`services.sonar.ownerAction.needed`); skipped with a warning when the
  * token, the server or the permission it needs is missing; otherwise the scanner runs against the local target, the server's quality gate of that analysis is
  * read, and a scanner failure or a red gate is an error. A green verdict is reused while the scanned content is the same.
  */
@@ -163,7 +164,10 @@ export async function runSonarScan(input: SonarScanInput): Promise<SonarScanResu
   let services: ReturnType<typeof loadReleaseConfig>['services'];
   try { services = loadReleaseConfig(repoRoot).services; } catch { return note('not run, the app declares no readable stack declaration'); }
   if (!services?.sonar) return note('not run, the app declares no Sonar service');
-  const ctx = contextOf({ ...io, cwd: repoRoot, env });
+  // The analysis credential is an owner step the declaration states as open (a fresh scaffold's): the line says so, as R296 does for its custody.
+  const ownerStep: unknown = services.declaration?.services?.sonar?.ownerAction?.needed;
+  if (typeof ownerStep === 'string' && ownerStep.trim() !== '') return note(`not run, the owner step that provisions the analysis credential is open (services.sonar.ownerAction: ${ownerStep.trim()})`);
+  const ctx =contextOf({ ...io, cwd: repoRoot, env });
   let gate: ReturnType<typeof sonarGate>;
   try { gate = sonarGate(services, ctx, true); } catch (error) { return { findings: [skipped(String((error as Error).message))], lines: ['  sonar scan: skipped, no token or host (warning)'] }; }
   const token = gate.env['SONAR_TOKEN'];

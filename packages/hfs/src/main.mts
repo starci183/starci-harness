@@ -30,8 +30,8 @@
 //                                            Sonar Generic Issue Import document (engine ids starci-hfs, eslint, stylelint). --fix runs ESLint and stylelint with --fix before the
 //                                            check and is refused unless --gate lint is selected.
 //                                            --staged: the pre-commit guard alone (sync/hygiene.mts: staged .starciwork and .starcistacks paths, the secrets
-//                                            guard and the bypass guard over every staged file read from the index, a new back-end logic file staged
-//                                            without its unit spec); it takes no other flag.
+//                                            guard, the bypass guard and the data guard (R400) over every staged file read from the index, a new back-end
+//                                            logic file staged without its unit spec); it takes no other flag.
 //                                            Every run is under the branch profile of the branch it judges (runtime/scripts/hfs/branch-profile.mts, `branches` of
 //                                            .starcistacks/application-stacks.yaml; contexts/project/lint.md PROJECT-LINT-2): a gate the profile reports runs and records,
 //                                            its findings marked `report` and outside the verdict; an off gate does not run; each prints one notice. Where lint
@@ -40,8 +40,11 @@
 //                                            --ratchet is the pre-commit lint ratchet over the staged files against HEAD. Both take no other flag.
 //                                            Exit 1 with any error finding that is not report-only (gate-verdict.mts). The root checks run once and
 //                                            the side checks and the machine once per side, the side folder as their root; every path is app-relative.
-//   starci app scaffold <name> [--cwd <dir>]  a new app <dir>/<name>/ (<dir> is the global --cwd): the root (hfs.json, package.json, managed files, .starciwork) and the
-//                                            be/ and fe/ skeletons (scaffold/app.mts). Accepts an empty unborn main Git root.
+//   starci app scaffold <name> [--cwd <dir>] [--without <side[,side]>] [--contract graphql|rest] [--base-port <n>]  a new app <dir>/<name>/ (<dir> is the global --cwd): the root
+//                                            (hfs.json, package.json, managed files, .starciwork) and the skeletons of the sides it declares, be and fe unless
+//                                            --without leaves one out (PROJECT-1; scaffold/app.mts); --contract rest makes the be api app a rest app. Accepts an empty unborn main Git root.
+//                                            The dev base port overlaps no project the machine's registries know (PROJECT-STACKS-10, scaffoldBase): --base-port
+//                                            names one and is refused HFS_SCAFFOLD_BASE_PORT_TAKEN with the next free base; without it the name's base, or the next free hundred.
 //   starci app slot <path> [--cwd <dir>] [--json]   which slot owns the path, its tier, allowed imports, required tests.
 //   starci app emit [--cwd <dir>]      write be/contracts/<app>/schema.graphql of every api app that serves GraphQL (emit/contracts.mts):
 //                                            printSchema(lexicographicSortSchema) of the resolvers the app root composes; no env, no database, no network.
@@ -95,7 +98,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { isMain } from '../runtime/scripts/lib/is-main.mjs';
-import { explainPath, readWhy, trackedFiles, withCheckProofs } from '../runtime/scripts/hfs/check.mjs';
+import { explainPath, readWhy, trackedFiles, untrackedFiles, withCheckProofs } from '../runtime/scripts/hfs/check.mjs';
 import { withWhy } from '../runtime/scripts/hfs/check-results.mjs';
 import { LegacyStateHeld, adoptLegacyState, skillRoot } from '../runtime/engine/runtime-root.mjs';
 import type { StateAdoption } from '../runtime/engine/runtime-root.mjs';
@@ -115,7 +118,11 @@ import { ScaffoldError, newService, newSpec } from '../scaffold/service.mjs';
 import { EditionRefusal } from '../scaffold/edition-gate.mjs';
 import { addKind } from '../scaffold/add.mjs';
 import { removeModule } from '../scaffold/add-module.mjs';
-import { scaffoldApp, type LockResult } from '../scaffold/app.mjs';
+import { scaffoldApp, scaffoldBase, settleScaffoldBranches, type LockResult, type ScaffoldBranches } from '../scaffold/app.mjs';
+import { machinePeers, type MachinePeers } from '../stack/local-peers.mjs';
+import { PROJECT_SIDES, isProjectSide, type ProjectSide } from '../runtime/scripts/hfs/project-sides.mjs';
+import { CONTRACT_KINDS, type ContractKind } from '../runtime/scripts/hfs/contract-kind.mjs';
+import { SideRefusal, addNounSides, requireSides } from '../runtime/scripts/hfs/side-gate.mjs';
 import { newImages } from '../scaffold/image.mjs';
 import { ESLINT_HEAP_ENV, PACKAGES, cachedLinters, eslintRepository, runLinter as nativeLinter, type CachedLinters } from '../lint/run.mjs';
 import { devBranchFinding } from '../runtime/scripts/hfs/dev-branch.mjs';
@@ -135,7 +142,7 @@ import { LINT_REPORT, runSonarScan } from '../cache/sonar-scan-family.mjs';
 import { createProgress, elapsedText, silentProgress } from '../cache/progress.mjs';
 import { familyLine } from '../cache/report.mjs';
 import { writeRunLog } from '../cache/run-log.mjs';
-import { FAMILIES, type FamilyId, type FamilyReport } from '../cache/types.mjs';
+import { CACHE_DIR, FAMILIES, type FamilyId, type FamilyReport } from '../cache/types.mjs';
 import { SECRET_CODES as SECRET_CODE_LIST } from '../cache/hfs-family.mjs';
 import { linterReport, mergeReports, sonarReport, sourceRootsOf, writeReport } from '../report/sonar.mjs';
 import { stylelintFindings } from '../report/stylelint-findings.mjs';
@@ -161,7 +168,9 @@ import type { GhSpawn } from '../ci/github.mjs';
 import type { Prompt } from '../runtime/scripts/hfs/secret-prompt.mjs';
 import type { AgeHost, SecretToolOverrides } from '../runtime/scripts/hfs/secret-init.mjs';
 import type { SecretSops } from '../runtime/scripts/hfs/secret-sops.mjs';
-import type { Prettier } from '../sync/format.mjs';
+import { formatFiles, loadPrettier, type Prettier } from '../sync/format.mjs';
+import { lsFiles } from '../runtime/scripts/api/git/ls-files.mjs';
+import { createHash } from 'node:crypto';
 import type { LinterRunner } from '../lint/run.mjs';
 import type { Presets } from '../sync/index.mjs';
 
@@ -182,6 +191,10 @@ const listFlag = (opts: Opts, flag: string): string[] | undefined => { const giv
 interface AppIo {
   cwd: string; harness?: { version?: string; role?: string; openTicket?: (ticket: unknown) => unknown } | undefined; edition?: string | undefined;
   stdout: (text: string) => unknown; stderr: (text: string) => unknown; presets?: Presets | undefined; prettier?: Prettier | undefined; lock?: ((root: string) => LockResult) | undefined;
+  /** The git settle of a new app (settleScaffoldBranches); a spec hands a double. */
+  settleBranches?: ((root: string, name: string) => ScaffoldBranches) | undefined;
+  /** The other projects of the machine the scaffold's base is checked against (machinePeers); a spec hands a fixed list. */
+  peers?: (() => MachinePeers) | undefined;
   // stdin reaches ci (text or a function) and secret (a function or a stream): main passes the shape both take.
   run?: unknown; stackMain?: ((argv: string[], io: { cwd: string; out: unknown; err: unknown }) => unknown) | undefined; env: NodeJS.ProcessEnv; stdin?: (() => string) | undefined; prompt?: Prompt | undefined;
   hostIdentity?: AgeHost | null | undefined; sops?: SecretSops | null | undefined; tools?: ({ spawn?: GhSpawn | undefined } & SecretToolOverrides) | undefined; platform?: NodeJS.Platform | undefined; stackIo?: Record<string, unknown> | undefined; runLinter?: LinterRunner | undefined;
@@ -220,7 +233,7 @@ const GATE_FLAGS = ['--gate'] as const;
 /** Both quality selectors dispatch to the existing combined Sonar/Codecov baseline family. */
 const CHECK_GATES = [...FAMILIES, 'codecov'] as const;
 const PARSED: Record<string, ParsedVerb> = {
-  scaffold: { run: scaffoldMain, value: ['--registry-visibility'], edition: true, forms: [{ operands: '<name>' }] },
+  scaffold: { run: scaffoldMain, value: ['--registry-visibility', '--without', '--contract', '--base-port'], edition: true, forms: [{ operands: '<name>' }] },
   add: {
     run: addMain, ...ADD_FLAGS, list: ['--inject'],
     forms: [
@@ -244,7 +257,7 @@ const PARSED_FLAGS = new Set([...Object.values(PARSED).flatMap(flagsOf), '--edit
 /** The placeholder of a value flag in the usage; any other prints as <name>. */
 const PLACEHOLDERS: Record<string, string> = {
   '--gate': `<${CHECK_GATES.join('|')}>`,
-  '--registry-visibility': 'public|private', '--side': 'be|fe|packages', '--env': CHECK_ENVS.join('|'), '--edition': 'full|lite', '--base': '<ref>', '--coverage-from': '<lcov>', '--shard': '<i>/<n>', '--inject': '<binding>',
+  '--registry-visibility': 'public|private', '--without': '<be|fe|packages>[,...]', '--contract': 'graphql|rest', '--base-port': '<port>', '--side': 'be|fe|packages', '--env': CHECK_ENVS.join('|'), '--edition': 'full|lite', '--base': '<ref>', '--coverage-from': '<lcov>', '--shard': '<i>/<n>', '--inject': '<binding>',
   '--event': '<event>', '--from': '<service>', '--service': '<Class>=<module>', '--owner': '<service>', '--failed': '<event>', '--done': '<event>',
   '--shapes': '<a,b,c>', '--blocks': '<a,b>', '--tabs': '<a,b>', '--kind': 'modal|drawer', '--isolation': 'database|schema', '--env-prefix': '<PREFIX>', '--image': '<service>=<ref>', '--sha': '<sha>',
   '--previous': '<release>', '--release': '<release>', '--out': '<path>', '--since': '<ISO>', '--timeout': '<seconds>', '--retry': '<seconds>',
@@ -336,6 +349,8 @@ function contractDescription(contracts: Dynamic): string {
 
 function printCheckOverview(result: Dynamic, out: (text: string) => unknown): void {
   out(`starci app check ${result.repoRoot} (profile ${result.profile ?? 'unknown'}, manifest ${result.manifest}, ${result.tracked} tracked paths)
+`);
+  if (result.untracked > 0) out(`  untracked: ${result.untracked} file${result.untracked === 1 ? '' : 's'} git neither tracks nor ignores, not judged (the check reads the index, as a commit and CI do); \`git add -A\` (or \`git add <path>\`) includes them, \`git status\` names them
 `);
   for (const report of (result.families ?? []) as FamilyReport[]) out(`  ${familyLine(report)}
 `);
@@ -494,6 +509,7 @@ function databaseMain(argv: string[], io: VerbIo): Promise<number> | number {
   const [verb, ...rest] = argv;
   const dispatch = DATABASE_VERBS.get(verb);
   if (!dispatch) throw new UsageError('starci app db takes new, baseline, restamp, migrate, post-cutover, dump or drift');
+  requireSides(io.cwd ?? process.cwd(), ['be'], `starci app db ${String(verb)}`);
   return dispatch(rest, io);
 }
 
@@ -537,7 +553,7 @@ function familyOf(finding: { code?: string | null; engine?: string }): FamilyId 
   if (finding.engine === 'eslint' || finding.engine === 'stylelint') return 'lint';
   if (code === 'HFS_FORMAT') return 'format';
   if (/^(DB_|LITE_DB_)/.test(code)) return 'db';
-  if (code === 'BE_APP_BOOT_PROOF_MISSING' || code === 'BOOT_PROOF_TIMEOUT') return 'wiring';
+  if (code === 'BE_APP_BOOT_PROOF_MISSING' || code === 'BOOT_PROOF_TIMEOUT' || code === 'BE_DI_RING') return 'wiring';
   return SECRET_CODE_LIST.has(code) ? 'secrets' : 'hfs';
 }
 
@@ -580,6 +596,9 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
   if (fix) await fixLint({ repoRoot, side, run: linterOf(io, io.runHeavyNode) });
   await checkEdition({ repoRoot, edition, normal: () => undefined });
   const tracked = io.checkApp === undefined ? trackedFiles(repoRoot) : [];
+  // The check judges the index, what a commit carries (and CI judges); a file git neither tracks nor ignores is counted and named as unjudged,
+  // never read: a verdict that read the work tree would differ from the one of the commit. The run's own cache output is no such file.
+  const unjudged = io.checkApp === undefined ? untrackedFiles(repoRoot).filter((file) => !file.startsWith(`${CACHE_DIR}/`)) : [];
   const session = io.checkApp === undefined ? openSession({ repoRoot, tracked, io, full, use, planned: tracked.length * Math.max(1, selected.size) }) : undefined;
   const raw: LinterRaw = { eslint: [], stylelint: [] };
   let eslint: CachedLinters['eslint'] | null = null;
@@ -745,7 +764,7 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
   const counting: Record<string, number> = {};
   for (const finding of linterFindings) if (finding.level === 'warning') counting[finding.rule] = (counting[finding.rule] ?? 0) + 1;
   const branchProfile = { branch: profile.branch, source: profile.source, profile: profile.profile, modes: profile.modes, notices: profileNotices(profile).filter((notice) => [...requested].some((family) => notice.startsWith(`${family}:`) || (family === 'sonar' && notice.startsWith('codecov:')))) };
-  const result = { ...checked, findings, families: reports, steps, predictions: lines, counting, branchProfile, cacheWarnings: [...(checked.cacheWarnings ?? []), ...(flushed?.warnings ?? [])], counts, ...(linted ? { eslint: { ...linted.engine, errors: toolErrors } } : {}), ok: verdict.pass && toolErrors.length === 0, gate: verdict };
+  const result = { ...checked, untracked: unjudged.length, findings, families: reports, steps, predictions: lines, counting, branchProfile, cacheWarnings: [...(checked.cacheWarnings ?? []), ...(flushed?.warnings ?? [])], counts, ...(linted ? { eslint: { ...linted.engine, errors: toolErrors } } : {}), ok: verdict.pass && toolErrors.length === 0, gate: verdict };
   return { result, seconds: (Date.now() - started) / 1000, raw };
 }
 
@@ -821,6 +840,7 @@ async function checkMain(opts: Opts, io: AppIo): Promise<number> {
   const coverageFrom = valueFlag(opts, 'coverage-from');
   const shard = valueFlag(opts, 'shard');
   const side = valueFlag(opts, 'side');
+  if (side !== undefined && isProjectSide(side)) requireSides(repoRoot, [side], `starci app check --side ${side}`);
   const sonarOut = valueFlag(opts, 'out');
   const fix = booleanFlag(opts, 'fix') === true;
   const fresh = booleanFlag(opts, 'fresh') === true;
@@ -856,6 +876,7 @@ async function checkMain(opts: Opts, io: AppIo): Promise<number> {
 
 async function emitMain(opts: Opts, { cwd: repoRoot, stdout: out, runHeavyNode }: AppIo): Promise<number> {
   if (opts.positional.length) throw new UsageError('starci app emit takes no path');
+  requireSides(repoRoot, ['be'], 'starci app emit');
   const be = readRepoDeclaration(loadSlotManifest(), repoRoot).sides?.be;
   if (!be) throw new Error('starci app emit runs at the app root (the folder of hfs.json)');
   const { written, skipped, standIns } = await emitContractsAsync({ repoRoot: path.join(repoRoot, 'be'), declaration: be, execute: runHeavyNode });
@@ -889,12 +910,37 @@ function addFileNoun(noun: string, opts: Opts, repoRoot: string, out: (text: str
   return 0;
 }
 
-function addMain(opts: Opts, { cwd: repoRoot, stdout: out }: AppIo): number {
+/** The files of the work tree git shows as changed or new, each with its content digest: what an add touched is the difference of two. */
+function workTreeState(repoRoot: string): Map<string, string> {
+  const listed = lsFiles(['-z', '--modified', '--others', '--exclude-standard'], { dir: repoRoot, maxBuffer: 256 * 1024 * 1024 });
+  const state = new Map<string, string>();
+  if (listed.status !== 0) return state;
+  for (const file of String(listed.stdout).split('\0').filter(Boolean)) {
+    try { state.set(file, createHash('sha256').update(fs.readFileSync(path.join(repoRoot, file))).digest('hex')); } catch { state.set(file, 'absent'); }
+  }
+  return state;
+}
+
+/**
+ * Writes the files an add touched (created, and existing ones it rewrote such as a compose group) as the app's own prettier prints them, so the
+ * generated code passes HFS_FORMAT whatever the lengths of the names it filled in. An app with no prettier installed yet keeps them as written.
+ */
+async function formatTouched(repoRoot: string, before: Map<string, string>, prettier: Prettier | undefined): Promise<void> {
+  let formatter = prettier;
+  try { formatter ??= loadPrettier(repoRoot); } catch { return; }
+  const touched = [...workTreeState(repoRoot)].filter(([file, digest]) => before.get(file) !== digest).map(([file]) => file);
+  await formatFiles({ repoRoot, files: touched, prettier: formatter });
+}
+
+async function addMain(opts: Opts, { cwd: repoRoot, stdout: out, prettier }: AppIo): Promise<number> {
   const [noun, name, ...extra] = opts.positional;
+  if (noun !== undefined) requireSides(repoRoot, addNounSides(noun, { fe: booleanFlag(opts, 'fe') === true, kind: valueFlag(opts, 'kind') }), `starci app add ${noun}`);
   if (noun !== undefined && ADD_FILE_NOUNS.includes(noun)) return addFileNoun(noun, opts, repoRoot, out);
   if (opts.inject !== undefined) throw new UsageError(`starci app add ${noun ?? '<noun>'} takes no --inject; only add service does`);
   if (!noun || !name || extra.length) throw new UsageError('starci app add takes `<noun> <name>` and the options of the noun');
+  const before = workTreeState(repoRoot);
   const { created, registered, updated, notes } = addKind({ repoRoot, noun, name, options: { event: opts.event, from: opts.from, service: opts.service, connection: opts.connection, owner: opts.owner, failed: opts.failed, done: opts.done, fe: booleanFlag(opts, 'fe'), shapes: valueFlag(opts, 'shapes'), read: valueFlag(opts, 'read'), app: valueFlag(opts, 'app'), kind: valueFlag(opts, 'kind'), form: booleanFlag(opts, 'form'), blocks: valueFlag(opts, 'blocks'), tabs: valueFlag(opts, 'tabs'), isolation: valueFlag(opts, 'isolation'), envPrefix: valueFlag(opts, 'env-prefix') } });
+  await formatTouched(repoRoot, before, prettier);
   for (const file of created) out(`created ${file}\n`);
   for (const file of updated ?? []) out(`updated ${file}\n`);
   for (const note of notes ?? []) out(`owner step: ${note}\n`);
@@ -916,12 +962,41 @@ function removeMain(opts: Opts, { cwd: repoRoot, stdout: out }: AppIo): number {
   return 0;
 }
 
-async function scaffoldMain(opts: Opts, { cwd, harness, edition = 'full', presets, lock, stdout: out }: AppIo): Promise<number> {
+/**
+ * The sides `starci app scaffold --without <side[,side]>` leaves the new project (PROJECT-1): every side but the named ones, in canonical
+ * order. An unknown side, a side named twice and a list that leaves no side are usage errors. Without the flag: be and fe.
+ */
+export function scaffoldSides(without: string | undefined): ProjectSide[] {
+  if (without === undefined) return ['be', 'fe'];
+  const named = without.split(',').map((side) => side.trim());
+  const unknown = named.filter((side) => !isProjectSide(side));
+  if (unknown.length || named.some((side) => side === '')) throw new UsageError(`starci app scaffold --without takes a comma list of ${PROJECT_SIDES.join(', ')} (got ${without})`);
+  if (new Set(named).size !== named.length) throw new UsageError(`starci app scaffold --without names a side twice (${without})`);
+  const sides = PROJECT_SIDES.filter((side) => !named.includes(side));
+  if (!sides.length) throw new UsageError(`starci app scaffold --without ${without} leaves no side: a project declares at least one of ${PROJECT_SIDES.join(', ')}`);
+  return sides;
+}
+
+async function scaffoldMain(opts: Opts, { cwd, harness, edition = 'full', presets, lock, settleBranches, stdout: out, env, peers }: AppIo): Promise<number> {
   const [name, ...extra] = opts.positional;
   const registryVisibility = valueFlag(opts, 'registry-visibility');
   if (!name || extra.length) throw new UsageError(`starci app scaffold takes \`${((VERB_USAGE.scaffold as string[])[0] as string).slice('starci app scaffold '.length)}\``);
-  const { root: created, files } = scaffoldApp({ name, into: path.resolve(cwd), harness, edition, presets: presets ?? scaffoldPresets(), ...(registryVisibility === undefined ? {} : { registryVisibility }), ...(lock ? { lock } : {}) });
-  out(`starci app scaffold: created ${created} (${files.length} files); next: npm ci (the lockfile, then the git hooks through npm run prepare; after npm ci --ignore-scripts run npm run prepare), then npm run lint, which is starci app check --gate lint\n`);
+  const sides = scaffoldSides(valueFlag(opts, 'without'));
+  const contract = valueFlag(opts, 'contract');
+  if (contract !== undefined && !(CONTRACT_KINDS as readonly string[]).includes(contract)) throw new UsageError(`starci app scaffold --contract takes ${CONTRACT_KINDS.join(' or ')} (got ${contract})`);
+  if (contract === 'rest' && !sides.includes('be')) throw new UsageError('starci app scaffold --contract rest declares the contract of the be api app, but --without leaves out be');
+  // Each project owns its own hundred (PROJECT-STACKS-10): the base is checked against every project the machine's registries know.
+  const root = path.resolve(cwd, name);
+  const found = peers ? peers() : machinePeers({ env }, { repoRoot: root, appProject: name, env: 'dev' });
+  const base = scaffoldBase({ name, root, explicit: valueFlag(opts, 'base-port'), found });
+  const { root: created, files } = scaffoldApp({ name, into: path.resolve(cwd), harness, edition, presets: presets ?? scaffoldPresets(), sides, basePort: base.port, ...(contract === undefined ? {} : { contract: contract as ContractKind }), ...(registryVisibility === undefined ? {} : { registryVisibility }), ...(lock ? { lock } : {}) });
+  out(`starci app scaffold: created ${created} (${files.length} files)\n`);
+  out(`${base.line}\n`);
+  const branches = (settleBranches ?? settleScaffoldBranches)(created, name);
+  out(branches.branch === 'dev'
+    ? 'git: the app is the first commit of main and dev is checked out at it; work on dev (and branches cut from it), main moves only by a release, and the first push sends both: git push -u origin main dev (contexts/project/branches.md PROJECT-BRANCH-1)\n'
+    : `git: ${branches.committed ? 'the app is the first commit of main, but dev is not checked out' : 'every file is staged on unborn main, not committed'} (${branches.detail}); ${branches.committed ? '' : 'commit it, then '}run git switch --create dev and work there (contexts/project/branches.md PROJECT-BRANCH-1)\n`);
+  out('next: npm ci (the lockfile, then the git hooks through npm run prepare; after npm ci --ignore-scripts run npm run prepare), then npx starci app check (npm run lint is its lint gate alone)\n');
   return 0;
 }
 
@@ -944,6 +1019,8 @@ function declaredEdition(cwd: string): string | undefined {
 
 /** `starci app stack`: the deploy actions (prepare, render, deploy, converge, verify, rollback, prune, backup, jobs, ...) are the Swarm tooling of stack/cli.mjs. */
 async function stackAppMain(argv: string[], { cwd, stdout: out, stderr: err, env, sops, hostIdentity, stackIo, harness }: AppIo): Promise<number> {
+  // build-args hands the front end's public build configuration to an fe image.
+  if (argv[0] === 'build-args') requireSides(cwd, ['fe'], 'starci app stack build-args');
   return deployStackMain(argv, { ...stackIo, cwd, stdout: out, stderr: err, env, hostIdentity, harness, ...(sops ? { sops } : {}) });
 }
 
@@ -953,6 +1030,7 @@ const WORLD_ACTIONS = ['up', 'down', 'status'];
 /** `starci app world <up|down|status>`: the local test world. */
 async function worldAppMain(argv: string[], { cwd, edition, stackMain, stdout: out, stderr: err }: AppIo): Promise<number> {
   if (!WORLD_ACTIONS.includes(argv[0] as string)) throw new UsageError(`starci app world takes ${WORLD_ACTIONS.join(', ')}`);
+  requireSides(cwd, ['be'], `starci app world ${argv[0] as string}`);
   if ((edition ?? declaredEdition(cwd)) === 'lite') throw new Error('starci app world up|down|status manage the local test world of the full edition; a lite app starts its local database with npm run db:start');
   const run = stackMain ?? await installedStackMain(cwd);
   return run(argv, { cwd, out, err }) as Promise<number>;
@@ -976,7 +1054,7 @@ function adoptionNotice({ from, to, kept }: StateAdoption): string {
 /** What `main` prints for a thrown error: the usage only after a usage error; a refusal or a tool failure prints its code and message alone. */
 function errorMessage(error: unknown): string {
   if (error instanceof EditionRefusal || error instanceof UpgradeError || error instanceof HfsSlotsError || error instanceof SyncError) return `${(error as Error).message}\n`;
-  if (error instanceof ScaffoldError || error instanceof LegacyStateHeld) return `${(error as { code: string }).code}: ${(error as Error).message}\n`;
+  if (error instanceof ScaffoldError || error instanceof LegacyStateHeld || error instanceof SideRefusal) return `${(error as { code: string }).code}: ${(error as Error).message}\n`;
   if (error instanceof UsageError) return `starci app: ${error.message}\n${USAGE}`;
   return `starci app: ${(error as Error).message}\n`;
 }

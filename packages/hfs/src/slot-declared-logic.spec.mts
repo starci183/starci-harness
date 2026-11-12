@@ -76,7 +76,7 @@ test('logic is refused off a coverage-required unit-beside directory slot, outsi
   }
 });
 
-const STORAGE_FILES = ['index.ts', 'object-storage.config.ts', 'object-storage.decorators.ts', 'object-storage.module-definition.ts', 'object-storage.module.ts', 'object-storage.options.ts'];
+const STORAGE_FILES = ['index.ts', 'object-storage-probe.service.spec.ts', 'object-storage-probe.service.ts', 'object-storage.config.ts', 'object-storage.decorators.ts', 'object-storage.module-definition.ts', 'object-storage.module.ts', 'object-storage.options.ts'];
 const OLD_STORAGE_FILES = ['index.ts', 'storage.client.ts', 'storage.config.ts', 'storage.decorators.ts', 'storage.options.ts'];
 
 /** A clean lite app whose object-storage folder holds exactly `names` (with the skeleton's own content where it has the file). */

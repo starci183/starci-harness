@@ -3,7 +3,7 @@ import path from "node:path";
 import { resolveAppDeclaration } from "../runtime/scripts/hfs/slots.mjs";
 import type { SlotManifest } from "../runtime/scripts/hfs/manifest-shape.mjs";
 import { bundledPins } from "../runtime/scripts/hfs/canon-pins.mjs";
-import { appScripts, appSource, imageFiles, TEMPLATES_DIR, type AppSourceFacts, type ResolvedApp } from "../sync/index.mjs";
+import { appScripts, appSource, bundledPresets, imageFiles, renderTargets, settleSource, TEMPLATES_DIR, writeTargets, type AppSourceFacts, type RenderedTarget, type ResolvedApp } from "../sync/index.mjs";
 import { ScaffoldError } from "./service.mjs";
 import { jsonText, packageJsonText } from "./app.mjs";
 import { registerLiteExports } from "./lite-exports.mjs";
@@ -40,7 +40,7 @@ import { MigrationRunnerService } from "@modules/platform/database"
 
 @SubCommand({ name: "run", description: "Apply the pending db migrations" })
 /** \`cli migrate run\`: delegates schema authority to the managed db:push script (starci app db migrate). */
-export class RunCli extends CommandRunner {
+export class MigrateRunCli extends CommandRunner {
     constructor(private readonly migrations: MigrationRunnerService) {
         super()
     }
@@ -69,7 +69,11 @@ export class RunSeedsCli extends CommandRunner {
     }
 
     /** \`--env <name>\`: the stack environment whose seed runs after the shared one. */
-    @Option({ flags: "--env <name>", description: "The stack environment whose seed runs", defaultValue: DEFAULT_SEED_ENV })
+    @Option({
+        flags: "--env <name>",
+        description: "The stack environment whose seed runs",
+        defaultValue: DEFAULT_SEED_ENV,
+    })
     parseEnv(value: string): string {
         return value
     }
@@ -132,24 +136,31 @@ function enableLiteCliDatabase(root: string): void {
     throw new ScaffoldError("HFS_ADD_CLI_DATABASE", `add cli needs the scaffolded ${relative}`);
   }
   let text = fs.readFileSync(file, "utf8").replace(/\r\n/g, "\n");
-  if (!text.includes('import { MigrationRunnerService } from "./migration-runner.service"')) {
+  if (!text.includes('import { DB_PUSH_COMMAND, MigrationRunnerService } from "./migration-runner.service"')) {
     const anchor = 'import { ConfigurableModuleClass, OPTIONS_TYPE } from "./database.module-definition"';
     if (!text.includes(anchor)) throw new ScaffoldError("HFS_ADD_CLI_DATABASE", `${relative} has an unknown import shape`);
-    text = text.replace(anchor, `${anchor}\nimport { MigrationRunnerService } from "./migration-runner.service"`);
+    text = text.replace(anchor, `${anchor}\nimport { DB_PUSH_COMMAND, MigrationRunnerService } from "./migration-runner.service"`);
   }
-  if (!text.includes('import { SeedRunnerService } from "./seed-runner.service"')) {
-    // The import of the entity-manager token, with or without the probe token beside it.
-    const anchor = /^import \{[^}]*\bPRIMARY_ENTITY_MANAGER\b[^}]*\} from "\.\/primary\.decorators"$/m.exec(text)?.[0];
+  if (!text.includes('import { SEED_ROOT_DEFAULT, SeedRunnerService } from "./seed-runner.service"')) {
+    // The import of the entity-manager token, with or without the probe token beside it: it gains the runners' two tokens.
+    const anchor = /^import \{([^}]*\bPRIMARY_ENTITY_MANAGER\b[^}]*)\} from "\.\/primary\.decorators"$/m.exec(text);
     if (!anchor) throw new ScaffoldError("HFS_ADD_CLI_DATABASE", `${relative} has an unknown import shape`);
-    text = text.replace(anchor, `${anchor}\nimport { SeedRunnerService } from "./seed-runner.service"`);
+    const names = [...new Set([...anchor[1]!.split(",").map((name) => name.trim()).filter(Boolean), "MIGRATION_COMMAND", "SEED_ROOT"])].sort(byCodeUnit);
+    text = text.replace(anchor[0], `import { ${names.join(", ")} } from "./primary.decorators"\nimport { SEED_ROOT_DEFAULT, SeedRunnerService } from "./seed-runner.service"`);
   }
-  const probeProviders = "providers: [...(base.providers ?? []), ...managers, ...probes]";
-  if (text.includes(probeProviders)) {
-    text = text.replace(probeProviders, "providers: [...(base.providers ?? []), ...managers, ...probes, MigrationRunnerService, SeedRunnerService]");
-  }
-  const providers = "providers: [...(base.providers ?? []), ...managers]";
-  if (text.includes(providers)) {
-    text = text.replace(providers, "providers: [...(base.providers ?? []), ...managers, MigrationRunnerService, SeedRunnerService]");
+  // The runners and the two values they are injected with: the managed migration wrapper and the app root the seed levels are read under.
+  const runners = (indent: string) => [
+    `{ provide: MIGRATION_COMMAND, useValue: DB_PUSH_COMMAND },`,
+    `{ provide: SEED_ROOT, useValue: SEED_ROOT_DEFAULT },`,
+    "MigrationRunnerService,",
+    "SeedRunnerService,",
+  ].map((line) => `${indent}${line}`);
+  for (const spread of ["...managers, ...probes", "...managers"]) {
+    const providers = `            providers: [...(base.providers ?? []), ${spread}],`;
+    if (!text.includes(providers)) continue;
+    const members = ["...(base.providers ?? []),", ...spread.split(", ").map((member) => `${member},`)].map((line) => `                ${line}`);
+    text = text.replace(providers, ["            providers: [", ...members, ...runners("                "), "            ],"].join("\n"));
+    break;
   }
   const bareExports = "exports: [DATABASE_OPTIONS, ...managers.map((manager) => manager.provide)],";
   if (text.includes(bareExports)) {
@@ -164,13 +175,63 @@ function enableLiteCliDatabase(root: string): void {
         "            ],",
       ].join("\n"),
     );
-  } else if (!text.includes("                MigrationRunnerService,")) {
+  } else if (!/exports: \[[^\]]*\bMigrationRunnerService\b/.test(text)) {
+    // The exports block alone decides: the providers list above already names the runners.
     const anchor = "                ...managers.map((manager) => manager.provide),";
     if (!text.includes(anchor)) throw new ScaffoldError("HFS_ADD_CLI_DATABASE", `${relative} has an unknown exports shape`);
     text = text.replace(anchor, `${anchor}\n                MigrationRunnerService,\n                SeedRunnerService,`);
   }
   fs.writeFileSync(file, text);
+  enableRunnerTokens(root);
+  enableMigrationFailure(root);
   registerLiteExports({ root, generator: "cli" });
+}
+
+/** The injection tokens of the runners' process and seed root, declared beside the capability's other tokens (R85). */
+const RUNNER_TOKENS = `
+/** Token of the process a migration run starts; the database module provides the managed db:push wrapper. */
+export const MIGRATION_COMMAND: unique symbol = Symbol("platform.database.migration-command")
+
+/** Injects the process a migration run starts. Parameter type: MigrationCommand. */
+export const InjectMigrationCommand = (): TypedParameterDecorator<MigrationCommand> =>
+    injector<MigrationCommand>(MIGRATION_COMMAND)
+
+/** Token of the folder seed paths are relative to; the database module provides the app root the run starts from. */
+export const SEED_ROOT: unique symbol = Symbol("platform.database.seed-root")
+
+/** Injects the folder seed paths are relative to. Parameter type: string. */
+export const InjectSeedRoot = (): TypedParameterDecorator<string> => injector<string>(SEED_ROOT)
+`;
+
+function enableRunnerTokens(root: string): void {
+  const relative = "be/src/modules/platform/database/primary.decorators.ts";
+  const file = path.join(root, ...relative.split("/"));
+  if (!fs.existsSync(file)) throw new ScaffoldError("HFS_ADD_CLI_DATABASE", `add cli needs the scaffolded ${relative}`);
+  let text = fs.readFileSync(file, "utf8").replace(/\r\n/g, "\n");
+  if (text.includes("MIGRATION_COMMAND")) return;
+  const anchor = 'import type { DatabaseProbeService } from "./database-probe.service"';
+  if (!text.includes(anchor)) throw new ScaffoldError("HFS_ADD_CLI_DATABASE", `${relative} has an unknown import shape`);
+  text = text.replace(anchor, `${anchor}\nimport type { MigrationCommand } from "./migration-runner.service"`);
+  fs.writeFileSync(file, `${text.trimEnd()}\n${RUNNER_TOKENS}`);
+}
+
+/** DATABASE_MIGRATION_FAILED: the refusal of a migration run, added to the database error family the runner throws. */
+function enableMigrationFailure(root: string): void {
+  const relative = "be/src/modules/platform/database/errors/database.error.ts";
+  const file = path.join(root, ...relative.split("/"));
+  if (!fs.existsSync(file)) throw new ScaffoldError("HFS_ADD_CLI_DATABASE", `add cli needs the scaffolded ${relative}`);
+  const text = fs.readFileSync(file, "utf8").replace(/\r\n/g, "\n");
+  if (text.includes('"DATABASE_MIGRATION_FAILED"')) return;
+  const codes = /^export enum DatabaseErrorCode \{\n[\s\S]*?\n\}$/m.exec(text)?.[0];
+  const kinds = /^export const DATABASE_ERROR_KINDS: Record<DatabaseErrorCode, ErrorKind> = \{\n[\s\S]*?\n\}$/m.exec(text)?.[0];
+  if (!codes || !kinds) throw new ScaffoldError("HFS_ADD_CLI_DATABASE", `${relative} has an unknown error-family shape`);
+  const code = [
+    "    /** The managed migration wrapper (`npm run db:push`) did not finish with status 0 (`status` param, `none` without one), or could not start. */",
+    '    MigrationFailed = "DATABASE_MIGRATION_FAILED",',
+  ].join("\n");
+  fs.writeFileSync(file, text
+    .replace(codes, `${codes.slice(0, -2)}\n${code}\n}`)
+    .replace(kinds, `${kinds.slice(0, -2)}\n    [DatabaseErrorCode.MigrationFailed]: "internal",\n}`));
 }
 
 /**
@@ -269,6 +330,11 @@ export function ensureLiteCli({ root, manifest, repo }: { root: string, manifest
       "be/src/modules/platform/database/migration-runner.service.ts",
       read("be/skeleton-lite/src/modules/platform/database/migration-runner.service.ts"),
     ],
+    // BE-TEST-13: each runner service owes its unit spec beside it.
+    [
+      "be/src/modules/platform/database/migration-runner.service.spec.ts",
+      read("be/skeleton-lite/src/modules/platform/database/migration-runner.service.spec.ts"),
+    ],
     ["be/src/features/cli/migrate/subs/run.cli.ts", MIGRATE_RUN],
     // R212: each cli command of a lite back end owes its unit spec, as in full (ruleParams.be.unitRoles).
     [
@@ -291,6 +357,10 @@ export function ensureLiteCli({ root, manifest, repo }: { root: string, manifest
       "be/src/modules/platform/database/seed-runner.service.ts",
       read("be/skeleton-lite/src/modules/platform/database/seed-runner.service.ts"),
     ],
+    [
+      "be/src/modules/platform/database/seed-runner.service.spec.ts",
+      read("be/skeleton-lite/src/modules/platform/database/seed-runner.service.spec.ts"),
+    ],
     ["be/src/features/cli/seed/subs/run.cli.ts", SEED_RUN],
     [
       "be/src/features/cli/seed/seed.cli.spec.ts",
@@ -298,6 +368,7 @@ export function ensureLiteCli({ root, manifest, repo }: { root: string, manifest
     ],
     ["be/src/features/cli/seed/subs/run.cli.spec.ts", SEED_RUN_SPEC],
   ];
+  const managedBefore = renderManaged(root, structuredClone(declaration), manifest);
   declaration.sides.be.apps.push({ name: "cli", kind: "cli" });
   declaration.sides.be.kinds = [
     ...new Set([...(declaration.sides.be.kinds ?? []), "cli"]),
@@ -350,5 +421,16 @@ export function ensureLiteCli({ root, manifest, repo }: { root: string, manifest
   fs.writeFileSync(nestFile, jsonText(nest));
   fs.writeFileSync(declarationFile, jsonText(declaration));
   fs.writeFileSync(packageFile, packageJsonText(packageManifest));
-  return [...files.map(([relative]) => relative), ...ensureLiteQueuesCli(root)];
+  const rerendered = writeTargets(root, managedChanges(managedBefore, renderManaged(root, declaration, manifest)));
+  return [...files.map(([relative]) => relative), ...rerendered, ...ensureLiteQueuesCli(root)];
 }
+
+/** The managed targets of the app at `root` under a declaration, over the source on disk now. */
+const renderManaged = (root: string, declaration: unknown, manifest: SlotManifest): RenderedTarget[] => {
+  const source = appSource(root);
+  return renderTargets(declaration, bundledPresets(), { manifest, source: settleSource(source, renderTargets(declaration, bundledPresets(), { manifest, source })) });
+};
+
+/** The targets whose render the cli app changed (the images workflow gains its image, the CI shards its files): the add leaves them in sync. */
+const managedChanges = (before: readonly RenderedTarget[], after: readonly RenderedTarget[]): RenderedTarget[] =>
+  after.filter((target) => before.find((each) => each.path === target.path)?.hash !== target.hash);

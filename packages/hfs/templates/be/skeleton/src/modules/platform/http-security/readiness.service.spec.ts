@@ -74,15 +74,12 @@ describe("ReadinessService", () => {
 
     it("preserves a synchronous database failure before a deadline can be scheduled", async () => {
         const { service, database, timer, cancel } = await build()
-        const cause = new HttpSecurityError({ code: HttpSecurityErrorCode.RequiredDependencyUnavailable })
+        const failure = new HttpSecurityError({ code: HttpSecurityErrorCode.RequiredDependencyUnavailable })
         database.probe.mockImplementation(() => {
-            throw cause
+            throw failure
         })
 
-        await expect(service.probeRequired()).rejects.toMatchObject({
-            code: HttpSecurityErrorCode.RequiredDependencyUnavailable,
-            cause,
-        })
+        await expect(service.probeRequired()).rejects.toBe(failure)
         expect(timer.schedule).not.toHaveBeenCalled()
         expect(cancel).not.toHaveBeenCalled()
     })

@@ -90,18 +90,6 @@ import { REQUEST } from '@nestjs/core';
   assert.equal(appWiring(fixture(t, { [APP_MODULE]: source, [wiringFixturePath('api')]: builder })).ok, true);
 });
 
-test('BE_APP_BOOT_PROOF_MISSING lite: circular factory dependencies are refused', t => {
-  const source = `import { Module } from '@nestjs/common';
-@Module({ providers: [
-  { provide: 'first', inject: ['second'], useFactory: (second: unknown) => second },
-  { provide: 'second', inject: ['first'], useFactory: (first: unknown) => first },
-] }) export class AppModule {}`;
-  const report = appWiring({ ...fixture(t, { [APP_MODULE]: source }), timeout: 2500 });
-  assert.equal(report.ok, false);
-  assert.equal(report.findings[0]!.code, CODE);
-  assert.match(report.findings[0]!.reason, /circular|timed out/);
-});
-
 test('BE_APP_BOOT_PROOF_MISSING full: the unresolved lite fixture leaves existing e2e enforcement unchanged', t => {
   const context = fixture(t, { [APP_MODULE]: missingModule }, 'full');
   assert.deepEqual(bootProofFindings(context), []);

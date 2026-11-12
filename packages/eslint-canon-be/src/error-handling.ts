@@ -18,7 +18,7 @@
  *     `HttpException` family, a thrown string or object), and a domain owner that throws a platform error outward. A rejection is
  *     a throw: `Promise.reject(value)` and the `reject(value)` of a `new Promise((resolve, reject) => ...)` executor are judged
  *     the same way, so the one form that also satisfies Sonar S7746 (`throw` in an async function) and S6671 (an Error rejects)
- *     is `throw new <C>Error(...)`.
+ *     is `throw new <C>Error(...)`. A value caught by a `catch` clause or by the rejection handler of `.catch(onRejected)` or `.then(onFulfilled, onRejected)` is rethrown as it is.
  *
  * The error base of every file is `DomainError` as `@starci/common` declares it: both rules ask the type checker where the class is declared,
  * so a family of an app (which imports it through the re-export of `platform/errors`), of a root workspace package and of a `@starci` package
@@ -287,14 +287,13 @@ const isCaughtValue = (context: Context, identifier: TSESTree.Identifier): boole
             if (definition.type !== "Parameter") return false
             const fn = definition.node
             const call = fn.parent
+            // The rejection handler of a promise: the one argument of `.catch(onRejected)`, or the second of `.then(onFulfilled, onRejected)`.
+            const handler = (method: string): boolean => call?.type === "CallExpression" && call.callee.type === "MemberExpression" && !call.callee.computed
+                && call.callee.property.type === "Identifier" && call.callee.property.name === method
+                && call.arguments[method === "catch" ? 0 : 1] === fn
             return (
                 (fn.type === "ArrowFunctionExpression" || fn.type === "FunctionExpression") &&
-                call?.type === "CallExpression" &&
-                call.arguments[0] === fn &&
-                call.callee.type === "MemberExpression" &&
-                !call.callee.computed &&
-                call.callee.property.type === "Identifier" &&
-                call.callee.property.name === "catch" &&
+                (handler("catch") || handler("then")) &&
                 fn.params[0] === definition.name
             )
         })

@@ -3,16 +3,20 @@
 import { withRegionInert } from "../../regionScope.js"
 import { Link as HeroLink } from "@heroui/react"
 import type { CSSProperties } from "react"
+import { Icon } from "../Icon/index.js"
+import { glyphSource } from "../Icon/glyphs.js"
 import { Image, type ImageProps } from "../Image/index.js"
 import type { NoChildren } from "../../tier.js"
 
 export type LinkKind = "internal" | "external"
 /**
- * `inline` (default): the anchor icon `↗` at the end of a text label, inside prose and meta. `head`: the section-head navigation (0.36.0): the label
- * ends in an arrow `→` that slides about 3px toward the end on hover, with the hover underline and the inherited size. A `Section` head's `action`
+ * `inline` (default): a text link in prose and meta, the accent colour, underlined on hover. It ends in the anchor icon `↗` ONLY when it is `kind="external"` (0.37.14): an internal
+ * destination never draws it. `plain` (0.37.14): a destination named by its label where the surrounding component owns the affordance (a navigation list row, the brand in a shell,
+ * a nav entry): the text colour, no underline, no icon; a row draws its own chevron. `head`: the section-head navigation (0.36.0): the label
+ * ends in the outline arrow-right icon (16px, currentColor; never the typed glyph) that slides about 3px toward the end on hover, with the hover underline and the inherited size. A `Section` head's `action`
  * takes this variant for its one navigation command (lint `section-head-action`).
  */
-export type LinkVariant = "inline" | "head"
+export type LinkVariant = "inline" | "head" | "plain"
 /*
  * A Link has no size (owner, 2026-11-09): it is HeroUI v3's own link (the underline on hover only, the primary colour, the anchor icon
  * `Link.Icon` at the end of its label) and its type size and
@@ -35,7 +39,7 @@ type MediaLinkContent = NoChildren & {
 
 export type LinkProps = (TextLinkContent | MediaLinkContent) & {
     readonly href: string
-    /** `inline` (default) ends in the anchor icon `↗`; `head` is the section-head link that ends in a sliding arrow `→`. Text links only. */
+    /** `inline` (default) is a prose link, with the anchor icon `↗` only when `kind="external"`; `head` is the section-head link that ends in a sliding arrow `→`; `plain` is a destination with no colour, underline or icon (a navigation row's title, a brand). Text links only. */
     readonly variant?: LinkVariant
     /** `external` leaves the app in a new browsing context with `noopener noreferrer`. */
     readonly kind?: LinkKind
@@ -102,8 +106,8 @@ const LinkInner = ({
             {...(onFollow === undefined ? {} : { onPress: () => onFollow() })}
         >
             {media === undefined ? children : <Image {...media} />}
-            {media === undefined && variant === "head" ? <span aria-hidden="true" className="starci-core-link-arrow" data-grammar-link-arrow="true">{"→"}</span> : null}
-            {media === undefined && variant === "inline" ? <HeroLink.Icon aria-hidden="true" data-grammar-link-icon="true" /> : null}
+            {media === undefined && variant === "head" ? <span aria-hidden="true" className="starci-core-link-arrow" data-grammar-link-arrow="true"><Icon source={glyphSource("arrow-end")} usage="leading" /></span> : null}
+            {media === undefined && variant === "inline" && external ? <HeroLink.Icon aria-hidden="true" data-grammar-link-icon="true" /> : null}
             {external && externalHint !== undefined ? <span className="starci-core-nav-visually-hidden">{` ${externalHint}`}</span> : null}
         </HeroLink>
     )

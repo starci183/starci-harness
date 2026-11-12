@@ -32,9 +32,9 @@ export const sopsFormatFor = (file: string): 'dotenv' | 'json' | 'yaml' | 'binar
   return 'binary';
 };
 
-/** Every leaf outside the `sops` block is an ENC[...] value (or null); the block itself carries a mac. */
+/** Every leaf outside the `sops` block is an ENC[...] value, null or the empty string (sops leaves both as they are: neither holds a value); the block itself carries a mac. */
 const allEncrypted = (node: unknown): boolean => {
-  if (node === null) return true;
+  if (node === null || node === '') return true;
   if (Array.isArray(node)) return node.every(allEncrypted);
   if (typeof node === 'object') return Object.values(node as object).every(allEncrypted);
   return typeof node === 'string' && SOPS_VALUE.test(node);

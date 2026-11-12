@@ -333,6 +333,7 @@ export const TopBarMenuOpen: Story = {
   render: () => <TopBarDemo initialOpen />,
 };
 
+/** 0.37.22: the directory links are plain (the foreground colour), never the accent red; the red budget leaves the accent to the one main CTA and links in prose. */
 export const Footer: Story = {
   render: () => (
     <G.Footer

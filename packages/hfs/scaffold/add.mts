@@ -39,7 +39,8 @@ import type { FullInboxPlan } from './add-inbox-full.mjs';
 import { EditionRefusal } from './edition-gate.mjs';
 import { loadSlotManifest, readRepoDeclaration } from '../runtime/scripts/hfs/slots.mjs';
 import { planFullQueue, planLiteQueue } from './add-queue-lite.mjs';
-import { addBuiltinLiteCli, fillKnownForms, formsOf, planKind, readAddContext } from './add-plan.mjs';
+import { addBuiltinLiteCli, fillKnownForms, formsOf, LITE_CLI_INSTALL, planKind, readAddContext } from './add-plan.mjs';
+import { contractOf, type ContractKind } from '../runtime/scripts/hfs/contract-kind.mjs';
 import type { AddKindSpec } from './add-plan.mjs';
 export { liteApiTemplates } from './add-plan.mjs';
 import { jsonText, packageJsonText, peerDependencies } from './app.mjs';
@@ -75,7 +76,7 @@ export interface AddResult {
 /** The declared app, as far as the composition wiring reads it. */
 interface RepoLike {
   readonly edition?: string;
-  readonly sides: { readonly be: { readonly apps: ReadonlyArray<{ readonly name: string; readonly kind: string }> } };
+  readonly sides: { readonly be: { readonly apps: ReadonlyArray<{ readonly name: string; readonly kind: string; readonly contract?: unknown }> } };
 }
 
 /** A member of a compose group: its import line and its entry. */
@@ -175,10 +176,19 @@ function writeKind({ repoRoot, noun, name, now, manifest, repo, spec: declared, 
   const queueBacking = [...(liteQueue ? liteQueue.apply() : []), ...(fullQueue ? fullQueue.apply() : [])];
   const queuesCli = liteQueue && noun === 'job' ? ensureLiteQueuesCli(repoRoot) : [];
   const platformCreated = noun === 'api' || noun === 'webhook' ? wireFeature({ repoRoot, repo, noun, name, inbox: fullInbox?.compose === true }) : [];
-  const graphqlDoor = noun === 'api' ? ensureGraphqlPeers(repoRoot) : [];
-  const registered = register({ declarationFile, spec: { patterns, trigger: spec.trigger, optionalSlots: noun === 'api' ? [GRAPHQL_CONTRACT_SLOT] : [] } });
-  return { created: [...bootstrapCreated, ...planned.map((file) => path.relative(repoRoot, file.absolute).replaceAll('\\', '/')), ...fullInboxCreated, ...platformCreated, ...inboxCreated, ...queueBacking, ...queuesCli, ...graphqlDoor], registered };
+  const rest = apiContract(repo) === 'rest';
+  // A graphql door needs the GraphQL server's runtime peers; a rest door is served by the swagger-described controllers the starter already carries.
+  const graphqlDoor = noun === 'api' && !rest ? ensureGraphqlPeers(repoRoot) : [];
+  const registered = register({ declarationFile, spec: { patterns, trigger: spec.trigger, optionalSlots: noun === 'api' ? [rest ? REST_CONTRACT_SLOT : GRAPHQL_CONTRACT_SLOT] : [] } });
+  const notes = [...(bootstrapCreated.length ? [LITE_CLI_INSTALL] : []), ...(noun === 'api' && rest ? [REST_EMIT] : [])];
+  return { created: [...bootstrapCreated, ...planned.map((file) => path.relative(repoRoot, file.absolute).replaceAll('\\', '/')), ...fullInboxCreated, ...platformCreated, ...inboxCreated, ...queueBacking, ...queuesCli, ...graphqlDoor], registered, ...(notes.length ? { notes } : {}) };
 }
+
+/** The step a new rest door leaves the owner: the committed OpenAPI document gains its operation only from the emit (R23, R396). */
+const REST_EMIT = 'npm run contract:emit (contracts/<app>/openapi.json gains the new operation; R23 and R396 judge it), then starci app check';
+
+/** The contract the app's api apps serve (one kind per back end, R278). */
+const apiContract = (repo: RepoLike): ContractKind => contractOf(repo.sides.be.apps.find((entry) => entry.kind === 'api'));
 
 /**
  * `starci app add inbox` (no operand): the delivery inbox of a full app - platform/inbox and platform/idempotency, their catalogs in
@@ -200,6 +210,8 @@ function addInbox(repoRoot: string): string[] {
 
 /** The slot of the emitted GraphQL snapshot (contracts/<app>/schema.graphql), which an app serving a GraphQL api feature opts into. */
 const GRAPHQL_CONTRACT_SLOT = 'be.contract.graphql';
+/** The slot of the emitted OpenAPI document (contracts/<app>/openapi.json) of a rest app. */
+const REST_CONTRACT_SLOT = 'be.contract.openapi';
 
 /**
  * Declares, in the app root package.json, the runtime peers its GraphQL api needs (R111, knowledge/hfs/peer-integrations.yaml) at
@@ -286,10 +298,13 @@ function ensureGraphqlPlatform(repoRoot: string): string[] {
   return written;
 }
 
-/** The typed area members of one transport, including lite transactional handoff capabilities. */
-function transportComposition(noun: string, name: string, edition: string | undefined, inbox: boolean): ComposeEntry[] {
+/** The typed area members of one transport, including lite transactional handoff capabilities; a rest app's api door is its HTTP module. */
+function transportComposition(noun: string, name: string, edition: string | undefined, inbox: boolean, rest: boolean): ComposeEntry[] {
   const entries: ComposeEntry[] = [];
-  if (noun === 'api') {
+  if (noun === 'api' && rest) {
+    const symbol = `${pascalOf(name)}HttpModule`;
+    entries.push({ importLine: `import { ${symbol} } from "@features/api/${name}"`, entry: `${symbol}.register({})` });
+  } else if (noun === 'api') {
     entries.push({ importLine: 'import { GraphqlModule } from "@modules/platform/graphql"', entry: 'GraphqlModule.register({ isGlobal: true })' });
     const symbol = `${pascalOf(name)}GraphqlModule`;
     entries.push({ importLine: `import { ${symbol} } from "@features/api/${name}"`, entry: symbol });
@@ -336,8 +351,9 @@ function wireFeature({ repoRoot, repo, noun, name, inbox = false }: { repoRoot: 
     removeSkeletonRegistration(lines, migration);
   }
   const entries = groups.get(area)!; // set above
-  if (noun === 'api') created.push(...ensureGraphqlPlatform(repoRoot));
-  entries.push(...transportComposition(noun, name, repo.edition, inbox));
+  const rest = apiContract(repo) === 'rest';
+  if (noun === 'api' && !rest) created.push(...ensureGraphqlPlatform(repoRoot));
+  entries.push(...transportComposition(noun, name, repo.edition, inbox, rest));
   for (const [group, members] of groups) {
     const symbol = `${group}Modules`;
     const argument = group === 'domain' && repo.edition === 'lite' ? 'verifyAccessToken' : '';
@@ -443,12 +459,14 @@ function wire({ beRoot, wire: target, forms, noun, name }: { beRoot: string, wir
   const symbol = fill(target.symbol);
   let text = fs.readFileSync(file, 'utf8');
   if (new RegExp(String.raw`\b${symbol}\b`).test(text)) return;
-  const array = /@Module\(\{ imports: \[([^\]]*)\] \}\)/.exec(text);
+  // One line as generated, or as the app's Prettier lays a long list out (one member a line, trailing commas): the add re-formats what it writes.
+  const array = /@Module\(\{\s*imports: \[([^\]]*)\],?\s*\}\)/.exec(text);
   const lines = text.split('\n');
   const lastImport = lines.map((line) => line.startsWith('import ')).lastIndexOf(true);
   if (!array || lastImport < 0) throw new ScaffoldError('HFS_ADD_WIRE_FAILED', `${target.file} has no \`@Module({ imports: [...] })\` to register ${symbol} in`);
   lines.splice(lastImport + 1, 0, `import { ${symbol} } from "${fill(target.import)}"`);
-  text = lines.join('\n').replace(array[0], `@Module({ imports: [${[array[1]!.trim(), `${symbol}.register({})`].filter(Boolean).join(', ')}] })`);
+  const listed = array[1]!.replace(/\s+/g, ' ').trim().replace(/,$/, '');
+  text = lines.join('\n').replace(array[0], `@Module({ imports: [${[listed, `${symbol}.register({})`].filter(Boolean).join(', ')}] })`);
   fs.writeFileSync(file, text);
 }
 

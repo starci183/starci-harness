@@ -30,13 +30,15 @@ root module imports each group as `<Group>Module.register({})`, and per group th
 `@Command` listing its `subCommands`, whose own `run` shows help), `<group>/<group>.module.ts` with its definition and
 options, and `<group>/subs/<name>.cli.ts` (a `@SubCommand` extending `CommandRunner`), one command per file, each with its
 `.cli.spec.ts` beside it. A command reads its flags through its own `@Option`. A cli app composes its own root and no
-other.
+other. No two command classes of one root share a class name: the starter and `starci app add cli` name a group
+`<Group>Cli` and its `run` sub-command `<Group>RunCli`.
 
 Why: the command line `<bin> <group> <command>` maps to one file path, so a command and its spec are found from the name,
-and a root per app keeps the commands of one audience out of the build of the other.
+and a root per app keeps the commands of one audience out of the build of the other; nest-commander matches a sub-command
+by its class name, so two `RunCli` classes make `cli b run` run the action of `cli a run`.
 
-Enforced by: `cli-command-shape`, `unit-test-colocated` (R149), `module-definition-required` (R295), R45 (an app composes
-only the root its kind composes).
+Enforced by: `cli-command-shape`, `unit-test-colocated`, the hfs check `cli-command-names` (R149), `module-definition-required` (R295),
+R45 (an app composes only the root its kind composes).
 
 ## BE-CLI-3 A command delegates once and is unit-tested
 
@@ -50,7 +52,7 @@ Why: an operator action runs against production data, often once, on a path noth
 ```ts
 @SubCommand({ name: "run", description: "Apply the pending migrations" })
 /** `cli migrate run`: delegates to the one migration runner. */
-export class RunCli extends CommandRunner {
+export class MigrateRunCli extends CommandRunner {
     constructor(private readonly migrations: MigrationRunnerService) {
         super()
     }

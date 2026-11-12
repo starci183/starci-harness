@@ -1,5 +1,153 @@
 # Changelog
 
+## 0.38.0 - 2026-11-12
+
+- Changed: the content of 0.37.3-0.37.38 on the hfs 6.8 line, released as a minor: since 0.37.2, the version npm serves, the family adds and changes lint rules of `@starci/eslint-grammar-core` (`message-surfaces`, `no-card-lead-description`, `no-nested-label`, `rows-in-card`, `section-head-action`, `single-child-card`, `surface-depth`, `tabs`), which is a minor's change (`RELEASE_GRAMMAR_MINOR_REQUIRED`, contexts/grammars/contributing.md "Patch or minor"); the canon pins' range moves to `~0.38.0`. `@starci/eslint-grammar-core` peers `@starci/hfs ~6.8.0` (0.37.38 peers `~6.7.0`, so no hfs 6.8 app could install it). No component, law or lint rule changed against 0.37.38.
+
+## 0.37.38 - 2026-11-12
+
+- Changed: released with the Grammar family at 0.37.38; no rule of this package changed.
+
+## 0.37.36 - 2026-11-11
+
+- Changed: released with the Grammar family at 0.37.36 (peer `@starci/eslint-grammar-core` 0.37.36); no rule of this package changed.
+
+## 0.37.35 - 2026-11-11
+
+- Changed: released with the Grammar family at 0.37.35 (peer `@starci/eslint-grammar-core` 0.37.35); no rule of this package changed.
+
+## 0.37.34 - 2026-11-11
+
+- Changed: released with the Grammar family at 0.37.34 (peer `@starci/eslint-grammar-core` 0.37.34); no rule of this package changed.
+
+## 0.37.33 - 2026-11-11
+
+- Changed: released with the Grammar family at 0.37.33 (peer `@starci/eslint-grammar-core` 0.37.33); no rule of this package changed.
+
+## 0.37.32 - 2026-11-11
+
+- Changed: released with the Grammar family at 0.37.32; no rule of this package changed.
+
+## 0.37.31 - 2026-11-11
+
+- Changed: released with the Grammar family at 0.37.31; inherits `message-surfaces` from `@starci/eslint-grammar-core`, no rule of this package changed.
+
+## 0.37.30 - 2026-11-10
+
+- Changed: released with the Grammar family at 0.37.30; no rule of this package changed.
+
+## 0.37.29 - 2026-11-10
+
+- Changed: released with the Grammar family at 0.37.29; no rule of this package changed.
+
+## 0.37.28 - 2026-11-10
+
+- Changed: released with the Grammar family at 0.37.28; no rule of this package changed.
+
+## 0.37.27 - 2026-11-10
+
+- Changed: released with the Grammar family at 0.37.27; no rule of this package changed.
+
+## 0.37.26 - 2026-11-10
+
+- Changed: released with the Grammar family at 0.37.26; no rule of this package changed.
+
+## 0.37.25 - 2026-11-10
+
+- Changed: released with the Grammar family at 0.37.25; no rule of this package changed.
+
+## 0.37.24 - 2026-11-10
+
+- Changed: released with the Grammar family at 0.37.24 (the flat aside list reverted); no rule of this package changed.
+
+## 0.37.23 - 2026-11-10
+
+- Changed: released with the Grammar family at 0.37.23 (Select trigger text centred); no rule of this package changed.
+
+## 0.37.22 - 2026-11-10
+
+- Changed: released with the Grammar family at 0.37.22 (Footer links plain); no rule of this package changed.
+
+## 0.37.21 - 2026-11-10
+
+- Changed: released with the Grammar family at 0.37.21 (three narrow-width fixes); no rule of this package changed.
+
+## 0.37.20 - 2026-11-10
+
+- Changed: released with the Grammar family at 0.37.20 (the FlowGraph steps fit); no rule of this package changed.
+
+## 0.37.19 - 2026-11-10
+
+- Changed: released with the Grammar family at 0.37.19 (a DropdownMenu switch entry); no rule of this package changed.
+
+## 0.37.18 - 2026-11-10
+
+- Changed: released with the Grammar family at 0.37.18 (an informative Toast and alert dialog are neutral); no rule of this package changed.
+
+## 0.37.17 - 2026-11-10
+
+- Changed: released with the Grammar family at 0.37.17 (an informative Alert is neutral); no rule of this package changed.
+
+## 0.37.16 - 2026-11-10
+
+- Changed: released with the Grammar family at 0.37.16 (the core `tabs-switch-zone` allows a primary Tabs as a row `control`); no rule of this package changed.
+
+## 0.37.15 - 2026-11-10
+
+- Changed: released with the Grammar family at 0.37.15 (code block language label, app bar custom buttons); no rule of this package changed.
+
+## 0.37.14 - 2026-11-10
+
+- Changed: released with the Grammar family at 0.37.14 (Link plain, flat aside lists, stacked panes, article headings); no rule of this package changed.
+
+## 0.37.13 - 2026-11-10
+
+- Changed: released with the Grammar family at 0.37.13 (a select row's `control`); no rule of this package changed.
+
+## 0.37.12 - 2026-11-09
+
+- Changed: released with the Grammar family at 0.37.12 (the body-card menu reserves room only beside the content); no rule of this package changed.
+
+## 0.37.11 - 2026-11-09
+
+- Changed: released with the Grammar family at 0.37.11 (the FlowGraph controls reserve their corner); no rule of this package changed.
+
+## 0.37.10 - 2026-11-09
+
+- Changed: released with the Grammar family at 0.37.10 (a body card takes a menu); no rule of this package changed.
+
+## 0.37.9 - 2026-11-09
+
+- Changed: released with the Grammar family at 0.37.9 (short table columns never wrap); no rule of this package changed.
+
+## 0.37.8 - 2026-11-09
+
+- Changed: released with the Grammar family at 0.37.8 (the table looks like a list card; wholeAction cards take a menu; FlowGraph islands wrap); no rule of this package changed. Core peers 0.37.8.
+
+## 0.37.7 - 2026-11-09
+
+- Changed: released with the Grammar family at 0.37.7; the peer `@starci/hfs` is ~6.7.0 and offset-pop peers core 0.37.7.
+
+## 0.37.6 - 2026-11-09
+
+- Changed: released with the Grammar family at 0.37.6 (a row with an href is pressable whole); no rule of this package changed.
+
+## 0.37.5 - 2026-11-09
+
+- Changed: released with the Grammar family at 0.37.5 (SurfaceCard kind="select"; outline glyph sizing); no rule of this package changed. A `no-loose-card-caption` rule was weighed and not added: a syntactic rule cannot tell a card from an app block that renders one, nor an explanation from a legend.
+
+## 0.37.4 - 2026-11-09
+
+- Changed: released with the Grammar family at 0.37.4 (FlowGraph chips, ports and containers; outline icons; EmptyNotice frameless by default); no rule of this package changed.
+
+## 0.37.3 - 2026-11-09
+
+- Changed: released with the Grammar family at 0.37.3 (the head row only when every pane has a head; a pane that holds a grid is not capped); no rule of this package changed.
+
+## 0.37.37 - 2026-11-11
+
+- Changed: requires `@starci/eslint-grammar-core` 0.37.37 (the family version); no lint rule changed.
+
 ## 0.37.2 - 2026-11-09
 
 - Changed: released with the Grammar family at 0.37.2 (the shared head row reaches nested grids); no rule of this package changed.

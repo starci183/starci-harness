@@ -18,13 +18,17 @@ test("the law publishes one rule and it is an error", () => {
   assert.deepEqual(recommended, { "starci-grammar/no-raised-surface-in-surface": "error" })
 })
 
-test("R340: a card never stands inside another card, a Pane surface or an overlay", () => {
+test("R340: a card never stands inside another card; a white surface hosts cards", () => {
   slotTester().run("no-raised-surface-in-surface", noRaisedSurfaceInSurface, {
     valid: [
       // a card at the top
       { filename: BLOCK, code: IMPORTS + "export const A = () => <SurfaceCard label=\"Runs\" kind=\"list\" items={[]} empty={null} />" },
       // two cards side by side are not nested
       { filename: BLOCK, code: IMPORTS + "export const A = () => <div><SurfaceCard label=\"Run\" /><SurfaceCard label=\"Steps\" /></div>" },
+      // a white Pane surface, a dialog, a drawer, an alert dialog and a popover host cards (0.37.5)
+      { filename: BLOCK, code: IMPORTS + "export const A = () => <Pane area=\"main\" surface><SurfaceCard label=\"Run\" /></Pane>" },
+      { filename: BLOCK, code: IMPORTS + "export const A = () => <Dialog title=\"x\"><SurfaceCard label=\"Run\" /></Dialog>" },
+      { filename: BLOCK, code: IMPORTS + "export const A = () => <Drawer title=\"x\"><SurfaceCard label=\"Run\" /></Drawer>" },
       // a Pane without a surface is a canvas
       { filename: BLOCK, code: IMPORTS + "export const A = () => <Pane area=\"main\"><SurfaceCard label=\"Run\" /></Pane>" },
       // a card in an overlay's trigger is not its content
@@ -38,13 +42,6 @@ test("R340: a card never stands inside another card, a Pane surface or an overla
       { filename: BLOCK, code: IMPORTS + "export const A = () => <SurfaceCard label=\"Run\"><SurfaceCard label=\"Steps\" /></SurfaceCard>", errors: [nested] },
       // deeper inside
       { filename: BLOCK, code: IMPORTS + "export const A = () => <SurfaceCard label=\"Run\"><div><SurfaceCard label=\"Steps\" /></div></SurfaceCard>", errors: [nested] },
-      // a card in a Pane that stands on the surface ground
-      { filename: BLOCK, code: IMPORTS + "export const A = () => <Pane area=\"main\" surface><SurfaceCard label=\"Run\" /></Pane>", errors: [nested] },
-      // a card in a dialog, a drawer, an alert dialog and a popover
-      { filename: BLOCK, code: IMPORTS + "export const A = () => <Dialog title=\"x\"><SurfaceCard label=\"Run\" /></Dialog>", errors: [nested] },
-      { filename: BLOCK, code: IMPORTS + "export const A = () => <Drawer title=\"x\"><SurfaceCard label=\"Run\" /></Drawer>", errors: [nested] },
-      { filename: BLOCK, code: IMPORTS + "export const A = () => <AlertDialog title=\"x\"><SurfaceCard label=\"Run\" /></AlertDialog>", errors: [nested] },
-      { filename: BLOCK, code: IMPORTS + "export const A = () => <Popover trigger={<b />}><SurfaceCard label=\"Run\" /></Popover>", errors: [nested] },
     ],
   })
 })

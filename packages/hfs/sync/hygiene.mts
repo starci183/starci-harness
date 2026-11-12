@@ -5,7 +5,9 @@
 // being, an .enc that is no sops envelope, a line that matches a secret pattern), so no plaintext secret reaches the history whatever
 // .gitignore says (`git add -f`, a path tracked before a rule tightened). There is no override. It also
 // refuses every bypass marker the index holds (R303: an inline disable, a type-check escape, a skipped test, a failure swallowed in a hook or
-// workflow; scripts/lib/bypass-markers.mts), so a bypass fails at the commit and not only at the release. At an HFS app root (hfs.json) it also
+// workflow; scripts/lib/bypass-markers.mts), so a bypass fails at the commit and not only at the release. Its data guard (R400,
+// scripts/hfs/rules/data-repository.mts) refuses a document of the data format in any repository but a data repository, and in a data
+// repository an unsealed file under data/ or a manifest that does not list data/ exactly. At an HFS app root (hfs.json) it also
 // refuses a back-end logic file the index adds without its unit spec beside it (BE_UNIT_SPEC_NOT_STAGED,
 // scripts/hfs/rules/staged-specs.mts over the coverage scope; a constants-only file has nothing to test), naming the file. The pre-commit hook judges the staged files;
 // scripts/gates/hfs-sync.mjs judges every tracked file.
@@ -19,6 +21,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { secretFileFindings } from '../runtime/scripts/hfs/rules/secrets.mjs';
 import { stagedSpecFindings } from '../runtime/scripts/hfs/rules/staged-specs.mjs';
+import { DATA_FOLDER, DATA_MANIFEST, dataInCodeFindings, dataRepositoryDeclared, dataRepositoryFindings } from '../runtime/scripts/hfs/rules/data-repository.mjs';
 import { HFS_BYPASS_MARKER, bypassMessage } from '../runtime/scripts/hfs/rules/bypass-markers.mjs';
 import { bypassesIn } from '../runtime/scripts/lib/bypass-markers.mjs';
 import { loadSlotManifest } from '../runtime/scripts/hfs/slots.mjs';
@@ -95,11 +98,14 @@ function missingSpecFindings(cwd: string, { added = addedFiles(cwd), indexed, ma
 
 const MAX_STAGED_BYTES = 1024 * 1024;
 
-/** The text of `file` as the index holds it (what the commit would record), or null when it is absent, binary or over 1 MB. */
-function stagedText(cwd: string, file: string): string | null {
+/** A record file of a data repository (R400) is read up to this size: a sealed record file outgrows the secret guard's 1 MB. */
+const MAX_DATA_BYTES = 64 * 1024 * 1024;
+
+/** The text of `file` as the index holds it (what the commit would record), or null when it is absent, binary or over `max` bytes (1 MB). */
+function stagedText(cwd: string, file: string, max = MAX_STAGED_BYTES): string | null {
   try {
-    const blob = git(cwd, ['show', `:${file}`], { encoding: 'buffer', maxBuffer: MAX_STAGED_BYTES * 2 });
-    return blob.length > MAX_STAGED_BYTES || blob.includes(0) ? null : blob.toString('utf8');
+    const blob = git(cwd, ['show', `:${file}`], { encoding: 'buffer', maxBuffer: max * 2 });
+    return blob.length > max || blob.includes(0) ? null : blob.toString('utf8');
   } catch {
     return null;
   }
@@ -121,12 +127,29 @@ function bypassGuardFindings(cwd: string, files: readonly string[]): HygieneFind
   });
 }
 
-/** Findings for `files`: the guarded trees, then the secret guard and the bypass guard over every file. */
+/**
+ * The data guard (R400, scripts/hfs/rules/data-repository.mts) over `files` as the index holds them. In a data repository (a root
+ * manifest.json naming the data format, no hfs.json) a commit that touches data/ or the manifest has the whole indexed data/ judged:
+ * every file sealed, the manifest listing exactly those files with their counts. In any other repository a staged document of the
+ * data format (a data manifest, a record file plaintext or sealed) is refused: business data never lives in a code repository.
+ */
+function dataGuardFindings(cwd: string, files: readonly string[]): HygieneFinding[] {
+  const read = (file: string): string | null => stagedText(cwd, file, MAX_DATA_BYTES);
+  const manifestText = read(DATA_MANIFEST);
+  const asHygiene = (finding: { code: string; path?: unknown; message: string }): HygieneFinding => ({ file: String(finding.path), code: finding.code, message: finding.message });
+  if (dataRepositoryDeclared(manifestText, stagedText(cwd, 'hfs.json')) !== null) {
+    if (!files.some((file) => file === DATA_MANIFEST || file.startsWith(DATA_FOLDER))) return [];
+    return dataRepositoryFindings({ manifestText, files: trackedFiles(cwd), read }).map(asHygiene);
+  }
+  return files.filter((file) => file.endsWith('.json')).flatMap((file) => dataInCodeFindings(file, read(file)).map(asHygiene));
+}
+
+/** Findings for `files`: the guarded trees, then the secret guard, the bypass guard and the data guard over every file. */
 export function judge(cwd: string, files: readonly string[]): { checked: number; findings: HygieneFinding[] } {
   const guarded = files.filter(GUARDED);
   const findings = hygieneFindings(guarded, ignoredAmong(cwd, guarded.filter(file => file.startsWith(WORK))));
   const refused = new Set(findings.filter(finding => finding.code === 'HFS_PLAINTEXT_SECRET').map(finding => finding.file));
-  return { checked: files.length, findings: [...findings, ...secretGuardFindings(cwd, files, refused), ...bypassGuardFindings(cwd, files)] };
+  return { checked: files.length, findings: [...findings, ...secretGuardFindings(cwd, files, refused), ...bypassGuardFindings(cwd, files), ...dataGuardFindings(cwd, files)] };
 }
 
 // The scripts/housekeeping/ledger-hygiene.mjs of the checkout under judgment: the root git names for `cwd`, which carries

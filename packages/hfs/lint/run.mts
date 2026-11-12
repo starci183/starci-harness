@@ -14,7 +14,7 @@ import { createRequire } from 'node:module';
 import { makeTempDir } from '../runtime/scripts/api/fs/make-temp-dir.mjs';
 import { completedNode, isHostHeld, isNodeExecutionRefusal, runHeavyNode, type HeavyNodeResult, type HeavyNodeRun } from '../runtime/scripts/api/node/run-node.mjs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { SIDES, appRelativeMessages, loadSlotManifest, readRepoDeclaration } from '../runtime/scripts/hfs/slots.mjs';
+import { appRelativeMessages, declaredAppSides, loadSlotManifest, readRepoDeclaration } from '../runtime/scripts/hfs/slots.mjs';
 import { STYLE_GLOB } from '../sync/index.mjs';
 import { byCodeUnit } from '../report/order.mjs';
 import { braceVariants, globExpression } from '../runtime/scripts/lib/glob.mjs';
@@ -340,7 +340,8 @@ async function launchEslint({ app, repoRoot, opts, changed, existing, run = runL
   app: RepoDeclaration; repoRoot: string; opts: { side?: string | undefined; fix?: boolean }; changed: unknown; existing: readonly string[]; run?: LinterRunner | undefined; scopes?: Readonly<Record<string, readonly string[]>>; handOutGraph?: boolean; stream?: LintStream | undefined; part?: string | undefined;
 }): Promise<EslintLaunch[]> {
   const launches: EslintLaunch[] = [];
-  const scopesToLint = app ? [...SIDES, ...(hasPackagesLint(repoRoot) ? [PACKAGES] : [])].filter((candidate: string) => opts.side === undefined || opts.side === candidate) : [];
+  // The app sides hfs.json declares (PROJECT-1); an undeclared side has no folder to lint.
+  const scopesToLint = app ? [...declaredAppSides(app), ...(hasPackagesLint(repoRoot) ? [PACKAGES] : [])].filter((candidate: string) => opts.side === undefined || opts.side === candidate) : [];
   for (const side of scopesToLint) {
     const packages = side === PACKAGES;
     const sources = (packages ? existing.filter((file) => file.startsWith(`${PACKAGES}/`)) : onSide(existing, side)).filter((file) => /\.(?:[cm]?[jt]sx?)$/.test(file));
@@ -563,7 +564,7 @@ export async function cachedLinters({ repoRoot, app, side: only, run, session, p
     ? eslintRepository({ repoRoot, app, opts: { side: PACKAGES }, run }).then((linted) => ({ linted }), (error: unknown) => ({ error: scopeFailure(error, PACKAGES) }))
     : null;
   // Both are awaited together, so a hold of the host one of them meets never leaves the other's promise unobserved.
-  const [answers, packaged] = await Promise.all([Promise.all(SIDES.filter((candidate: string) => only === undefined || only === candidate).map(lintOne)), packagesRun]);
+  const [answers, packaged] = await Promise.all([Promise.all(declaredAppSides(app).filter((candidate: string) => only === undefined || only === candidate).map(lintOne)), packagesRun]);
   for (const answer of answers) {
     const { side, outcome } = answer;
     if (outcome === undefined) { eslint.errors.push(answer.error ?? `eslint did not complete in ${side}/`); eslint.engine.sides[side] = { files: 0 }; continue; }

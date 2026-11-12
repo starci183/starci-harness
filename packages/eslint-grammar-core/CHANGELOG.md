@@ -1,5 +1,158 @@
 # Changelog
 
+## 0.38.0 - 2026-11-12
+
+- Changed: the content of 0.37.3-0.37.38 on the hfs 6.8 line, released as a minor: since 0.37.2, the version npm serves, the family adds and changes lint rules of `@starci/eslint-grammar-core` (`message-surfaces`, `no-card-lead-description`, `no-nested-label`, `rows-in-card`, `section-head-action`, `single-child-card`, `surface-depth`, `tabs`), which is a minor's change (`RELEASE_GRAMMAR_MINOR_REQUIRED`, contexts/grammars/contributing.md "Patch or minor"); the canon pins' range moves to `~0.38.0`. `@starci/eslint-grammar-core` peers `@starci/hfs ~6.8.0` (0.37.38 peers `~6.7.0`, so no hfs 6.8 app could install it). No component, law or lint rule changed against 0.37.38.
+
+## 0.37.38 - 2026-11-12
+
+- Changed: released with the Grammar family at 0.37.38; no rule of this package changed.
+
+## 0.37.36 - 2026-11-11
+
+- Changed: released with the Grammar family at 0.37.36; no rule of this package changed.
+
+## 0.37.35 - 2026-11-11
+
+- Changed: released with the Grammar family at 0.37.35; no rule of this package changed.
+
+## 0.37.34 - 2026-11-11
+
+- Changed: released with the Grammar family at 0.37.34; no rule of this package changed.
+
+## 0.37.33 - 2026-11-11
+
+- Changed: `starci-grammar/message-surfaces` (`FE_MESSAGE_SURFACES`) also refuses a surface tone on a chat frame (Grammar 0.37.33, `DNA-COMMON-CHAT-FRAME`): `surface` on a `Pane` with `content="chat"`, or on a `Pane` whose own JSX children (fragments opened) hold a `PaneSection` with `scroll.role: "log"`. Knowledge `MESSAGE-SURFACES` case-3; docs and spec updated.
+
+## 0.37.32 - 2026-11-11
+
+- Changed: released with the Grammar family at 0.37.32; no rule of this package changed.
+
+## 0.37.31 - 2026-11-11
+
+- Added: `starci-grammar/message-surfaces` (`FE_MESSAGE_SURFACES`, law `MESSAGE-SURFACES`, Grammar `DNA-COMMON-CHAT-SURFACES`): no `className`/`class`/`style`/`UNSAFE_className`/`UNSAFE_style` on a Grammar `MessageBubble` or `MessageCard`; no static class string (attribute, template, `cn`/`clsx`/`cx`/`classNames`/`twMerge`/`twJoin` argument) or style key reaching a Grammar message part (`starci-core-message-bubble…`, `starci-core-message-card…`); no `tone: "surface"` beside `role: "log"` in a `PaneSection` `scroll` literal. Docs `docs/message-surfaces.md`.
+
+## 0.37.30 - 2026-11-10
+
+- Changed: released with the Grammar family at 0.37.30; no rule of this package changed.
+
+## 0.37.29 - 2026-11-10
+
+- Changed: released with the Grammar family at 0.37.29; no rule of this package changed.
+
+## 0.37.28 - 2026-11-10
+
+- Changed: released with the Grammar family at 0.37.28; no rule of this package changed.
+
+## 0.37.27 - 2026-11-10
+
+- Changed: released with the Grammar family at 0.37.27; no rule of this package changed.
+
+## 0.37.26 - 2026-11-10
+
+- Changed: released with the Grammar family at 0.37.26; no rule of this package changed.
+
+## 0.37.25 - 2026-11-10
+
+- Changed: `section-head-action` accepts one `Button intent="neutral" size="sm"` with no icon in a `Section` head `action` (message `button` now means any other Button; new message `icon` for an icon prop); a second command is still `many`. Tests for the neutral sm form, a commit Button, a md Button and an icon Button.
+
+## 0.37.24 - 2026-11-10
+
+- Changed: released with the Grammar family at 0.37.24 (the flat aside list reverted); no rule of this package changed.
+
+## 0.37.23 - 2026-11-10
+
+- Changed: released with the Grammar family at 0.37.23 (Select trigger text centred); no rule of this package changed.
+
+## 0.37.22 - 2026-11-10
+
+- Changed: released with the Grammar family at 0.37.22 (Footer links plain); no rule of this package changed.
+
+## 0.37.21 - 2026-11-10
+
+- Changed: released with the Grammar family at 0.37.21 (three narrow-width fixes); no rule of this package changed.
+
+## 0.37.20 - 2026-11-10
+
+- Changed: released with the Grammar family at 0.37.20 (the FlowGraph steps fit); no rule of this package changed.
+
+## 0.37.19 - 2026-11-10
+
+- Changed: released with the Grammar family at 0.37.19 (a DropdownMenu switch entry); no rule of this package changed.
+
+## 0.37.18 - 2026-11-10
+
+- Changed: released with the Grammar family at 0.37.18 (an informative Toast and alert dialog are neutral); no rule of this package changed.
+
+## 0.37.17 - 2026-11-10
+
+- Changed: released with the Grammar family at 0.37.17 (an informative Alert is neutral); no rule of this package changed.
+
+## 0.37.16 - 2026-11-10
+
+- Changed: `tabs-switch-zone` allows a primary `Tabs` pill when it is the value of a row `control` (an object property named `control` in a select item or list row literal, or a JSX attribute `control={...}`, through a fragment, conditional or `&&`); a pill anywhere else outside the card's `switch` header zone is still an error. Tests for both.
+
+## 0.37.15 - 2026-11-10
+
+- Changed: released with the Grammar family at 0.37.15 (code block language label, app bar custom buttons); no rule of this package changed.
+
+## 0.37.14 - 2026-11-10
+
+- Changed: released with the Grammar family at 0.37.14 (Link plain, flat aside lists, stacked panes, article headings); no rule of this package changed.
+
+## 0.37.13 - 2026-11-10
+
+- Changed: released with the Grammar family at 0.37.13 (a select row's `control`); no rule of this package changed.
+
+## 0.37.12 - 2026-11-09
+
+- Changed: released with the Grammar family at 0.37.12 (the body-card menu reserves room only beside the content); no rule of this package changed.
+
+## 0.37.11 - 2026-11-09
+
+- Changed: released with the Grammar family at 0.37.11 (the FlowGraph controls reserve their corner); no rule of this package changed.
+
+## 0.37.10 - 2026-11-09
+
+- Changed: released with the Grammar family at 0.37.10 (a body card takes a menu); no rule of this package changed.
+
+## 0.37.9 - 2026-11-09
+
+- Changed: released with the Grammar family at 0.37.9 (short table columns never wrap); no rule of this package changed.
+
+## 0.37.8 - 2026-11-09
+
+- Changed (owner laws): `single-child-card` no longer refuses a card of list or key-value rows (`kind="list"`, `kind="table"`, `kind="select"`, `ListBox`, `DisclosureList`, `Timeline`, `Section kind="list"`, `DescriptionList`), alone or not; it refuses only a card with no zones around ONE `DataTable` or chart. Specs updated (list cards valid).
+- Changed: the `no-raised-surface-in-surface` messages (`why.ts`) now say what the rule has judged since 0.37.5: only a card inside a card is refused; a Pane surface, Dialog, Drawer or Popover hosts cards (the spec has the Dialog case valid). An installed copy older than 0.37.5 still refuses a card in a Dialog: the lane must install 0.37.5 or later.
+
+## 0.37.7 - 2026-11-09
+- Changed: the peer `@starci/hfs` is ~6.7.0 and offset-pop peers core 0.37.7.
+
+
+- Added: rule `starci-grammar/no-nested-label` (LABEL-SUBLABEL-HIERARCHY): a `Section` or `SurfaceCard` with its own Label inside a labelled `Section` or `SurfaceCard` of the same file is an error; the group takes `sublabel`.
+
+## 0.37.6 - 2026-11-09
+
+- Changed: released with the Grammar family at 0.37.6 (a row with an href is pressable whole); no rule of this package changed.
+
+## 0.37.5 - 2026-11-09
+
+- Changed: released with the Grammar family at 0.37.5 (SurfaceCard kind="select"; outline glyph sizing); no rule of this package changed. A `no-loose-card-caption` rule was weighed and not added: a syntactic rule cannot tell a card from an app block that renders one, nor an explanation from a legend.
+- Added: rule `rows-in-card` (ROWS-IN-CARD, error): a Grammar `DescriptionList` or `DisclosureList` that no `SurfaceCard`, `Section`, `DataTable` or `Accordion` of the same file encloses is refused (a primitive passed as a JSX attribute value is judged where the receiver draws it). `ListBox` is not read (a navigation list or menu cannot be told from rows of data by syntax).
+- Added: `starci-grammar/no-card-lead-description` (CARD-NO-DESCRIPTION): a muted Grammar `Text` written directly above a `SurfaceCard` in the same children list is an error; the line is a row subtitle or the card `note`.
+
+## 0.37.4 - 2026-11-09
+
+- Changed: released with the Grammar family at 0.37.4 (FlowGraph chips, ports and containers; outline icons; EmptyNotice frameless by default); no rule of this package changed.
+
+## 0.37.3 - 2026-11-09
+
+- Changed: released with the Grammar family at 0.37.3 (the head row only when every pane has a head; a pane that holds a grid is not capped); no rule of this package changed.
+
+## 0.37.37 - 2026-11-11
+
+- Changed: peer `@starci/hfs ~6.8.0`; no lint rule changed.
+
 ## 0.37.2 - 2026-11-09
 
 - Changed: released with the Grammar family at 0.37.2 (the shared head row reaches nested grids); no rule of this package changed.

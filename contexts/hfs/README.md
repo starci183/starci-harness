@@ -10,8 +10,11 @@ import which, and which rules judge it. It is data a machine reads; the reasons 
 | [rules.yaml](rules.yaml) | the rule catalog: id, finding code, the law in one sentence, failure codes, enforcers | gates and lint (by code), an agent resolving a cited `R<n>` |
 
 An app declares itself in `hfs.json` (kind app, its `edition` fixed at scaffold, its sides, apps, patterns,
-backing services and its grammar). An app entry is `{ name, kind }`; a client cli (kind `client-cli`) adds the npm
-`package` it is published as and the `bin` it installs (BE-CLI-5). No product content lives here; product records belong in the app's `.starciwork`.
+backing services and its grammar). `sides` holds any non-empty subset of `be`, `fe` and `packages` (`"packages": {}`,
+the root workspace packages); only a declared side's slots and checks apply ([project/README.md](../project/README.md)
+PROJECT-1, R399; owner `@starci/hfs runtime/scripts/hfs/project-sides.mts`). An api app of be may add `contract`, `graphql` (the default) or `rest`
+([code/be/transport.md](../code/be/transport.md) BE-TRANSPORT-1, owner `@starci/hfs runtime/scripts/hfs/contract-kind.mts`); a client cli (kind `client-cli`) adds the npm
+`package` it is published as and the `bin` it installs ([code/be/cli.md](../code/be/cli.md) BE-CLI-5). No product content lives here; product records belong in the app's `.starciwork`.
 
 ## One word, one meaning: "slot"
 
@@ -38,6 +41,7 @@ backing services and its grammar). An app entry is `{ name, kind }`; a client cl
 | `budget` | size budgets of the slot (lines per file, files, exports, hooks); the one owner of those numbers |
 | `trigger`, `pattern`, `appKind`, `exceptAppKinds`, `composedBy`, `provider` | the feature kind, the declared pattern that enables it, the app kind it describes, the app kinds whose `<app>` folders it neither owns nor requires (`repo.app-image`: a client cli has no image), the app kinds that compose it, the connection provider that enables it |
 | `managedBy`, `liteManagedBy` | the template directory the app sync renders it from; a difference is drift |
+| `managedWhenSides` | the sides a project must declare for sync to render the slot's managed files (PROJECT-1); absent: every project |
 | `managedOnly` | true: the slot only lists files sync renders (it needs `managedBy`); the slot that owns the path judges the file, so a rendered service keeps the rules and the tier of its folder |
 | `editions`, `lite`, `editionWhy` | the editions it exists in, the fields it carries under lite, and why lite differs |
 | `rules` | finding codes of [rules.yaml](rules.yaml) that judge the slot |
@@ -127,7 +131,7 @@ note says what the rule protects and what to do when it fires. A rule that guard
 | R294 | deploy config is coherent | Fix the environment's deploy block until the stack verbs normalise it against the real tree. |
 | R372 | dev environment is runnable | Declare `environments.dev` as docker-compose with a `local` block the dev verbs normalise; a lite app has one. |
 | R373 | dev runbook names the verb | Replace docker commands in the runbook with `starci app stack up --env <env> --execute` and its siblings. |
-| R389 | dev ports derive from a base port | Declare `local.basePort`; give the front end base, the api base+1, the AI gateway base+2 and the other native processes the ports above (PROJECT-STACKS-10). |
+| R389 | dev ports derive from a base port | Declare `local.basePort`; give the front end base, the api base+1, the AI gateway base+2, the other native processes up to base+79 and the compose services base+80 to base+99 (database base+90, mail base+91 and +92, storage base+93 and +94), published from `local.ports`; `starci app sync --execute` moves an existing app's (PROJECT-STACKS-10). |
 | R395 | every app carries a screenshot gallery | Run `starci app sync --execute` for `gallery/` (a Vite app on `local.basePort` + 50, pinned, its shots git-ignored); save each UI round's shots in `gallery/pages/<area>/<screen>/` (only `1440.png`, `1920.png`, `390.png`, `explain.md`, `links.json`) and write that screen's `explain.md` (a `Vì sao`, `Luật` and `Grammar` line per region; `CHƯA RÕ` or `SAI` is a warning in `--env local`, an error in `--env prod`) (PROJECT-GALLERY-1, PROJECT-GALLERY-2, PROJECT-GALLERY-3). |
 | R296 | service custody and CI execution copies | Bind each sealed tooling copy to its exact product service, project, environment, member and key; keep runtime keys out of CI. |
 | R297 | app secrets are not CI secrets | Remove from CI secrets or vars any key granted to the app container. |

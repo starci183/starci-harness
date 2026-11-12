@@ -44,6 +44,8 @@ interface GrammarModule {
     readonly Link: Part
     readonly Heading: Part
     readonly StatusDot: Part
+    readonly Meter: Part
+    readonly Progress: Part
 }
 
 interface Row {
@@ -72,6 +74,8 @@ const PROBES: readonly Probe[] = [
     { name: "heading", selector: '[data-component="Heading"]', property: "color", token: "--foreground" },
     { name: "status dot ring", selector: ".starci-core-status-dot-mark", property: "border-top-color", token: "--success" },
     { name: "field fill", selector: "[data-slot='input']", property: "background-color", token: "--field-background" },
+    { name: "meter foreground fill", selector: '[data-component="Meter"][data-grammar-tone="foreground"] [data-slot="meter-fill"]', property: "background-color", token: "--foreground" },
+    { name: "progress foreground fill", selector: '[data-component="Progress"][data-grammar-progress-tone="foreground"] [data-slot="progress-bar-fill"]', property: "background-color", token: "--foreground" },
     // OVERFLOW-6: no scroller under the family root shows a bar, in every theme, so the proof holds the hidden bar, not a colour.
     { name: "scrollbar hidden", selector: ".grammar-common-root", property: "scrollbar-width", token: "--scrollbar", fixed: "none" },
 ]
@@ -119,6 +123,8 @@ const markup = async (family: Family): Promise<string> => {
                 createElement(G.Link, { href: "/docs" }, "Read more"),
                 createElement(G.Heading, { level: 3 }, "A heading"),
                 createElement(G.StatusDot, { tone: "success", "aria-label": "Running" }),
+                createElement(G.Meter, { label: "Documents", value: 92, tone: "foreground" }),
+                createElement(G.Progress, { label: "Upload", value: 40, tone: "foreground" }),
             ),
         ),
     )

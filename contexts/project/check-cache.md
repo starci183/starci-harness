@@ -54,7 +54,10 @@ almost no work: it reads the records and runs only what differs. The gate judges
 
 `starci app check` with no selector, `--side`, `--fix` or `--coverage-from` is a whole run: every family against the committed cache (diff-only), the CI-parity families
 ([CI parity](#ci-parity)), CI's coverage step, the Sonar scan against the app's server ([Sonar and Codecov](#sonar-and-codecov)), and the cache verdict, which is a hard error. It writes what it judged back
-into the cache. A branch profile ([lint.md](lint.md) PROJECT-LINT-2) changes no cache rule: a family it reports runs and writes
+into the cache. Every run judges the index (`trackedFiles`, `git ls-files`), the tree a commit carries and CI judges, so a local verdict
+is the one the commit gets: a file git neither tracks nor ignores is never read, and the overview counts those files under the header
+(`untracked: <n> files ... not judged`, `untrackedFiles` in `runtime/scripts/hfs/check.mts`) with the step that includes them, `git add`.
+A branch profile ([lint.md](lint.md) PROJECT-LINT-2) changes no cache rule: a family it reports runs and writes
 its records exactly as a blocking one, and a family it turns off runs nothing and writes nothing.
 
 `--fresh` is the escape hatch for a broken or suspect cache: the selected families (every family when none is selected)
@@ -473,7 +476,9 @@ a message), and the quality gate is the one the server holds for the project.
   task fails or the project's gate is ERROR: `CI_PARITY_SONAR_GATE_FAILED`, naming each failed condition. Both are errors.
 - **Not run.** Whenever the scan does not run, the report carries one `sonar scan:` line saying why: the run selects families
   (only a run with no selector runs the scan), the branch profile turns sonar off, another family is red, the app has no
-  `sonar-project.properties` or no Sonar service in its declaration (these are report lines, never findings). No token
+  `sonar-project.properties` or no Sonar service in its declaration, or the declaration states the owner step that provisions the
+  analysis credential as open (`services.sonar.ownerAction.needed`, a fresh scaffold's; R296 judges its custody the same way) (these are
+  report lines, never findings). No token
   (no sealed secret or age key on this host), a server that does not answer, a token without the permission the derived
   project needs, or a verdict the server does not give in time is the warning `CI_PARITY_SONAR_SKIPPED` and its line; the run is never reported
   green for the scan, and CI judges it. A scan that runs prints its start, the project key it scanned, its duration and the gate status.

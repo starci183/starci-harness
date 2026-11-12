@@ -14,6 +14,12 @@ const atCi = (section: Parsed) => `${DECLARATION}#ci.${section}`;
 /** The variables the managed workflows themselves read; an app declares none of them. STARCI_DEPLOY_PAUSED is the brake of the automatic deploy, set per GitHub environment by the owner. */
 const MANAGED_VARIABLES = ['STARCI_DEPLOY_PAUSED'];
 
+/** Whether a service declares the owner step that provisions its credential as still open (`ownerAction: {needed: <text>}`). */
+const ownerStepOpen = (doc: Parsed, service: string): boolean => {
+  const action = doc?.services?.[service]?.ownerAction;
+  return typeof action === 'object' && action !== null && typeof action.needed === 'string' && action.needed.trim() !== '';
+};
+
 /** A sealed CI copy has exact service/project custody; every other sealed CI key remains refused. */
 function sealedFindings(ci: Parsed, sealed: Parsed, bindings: ServiceBinding[]) {
   const names = new Set([...ci.secrets, ...ci.dependabotSecrets].filter(named).map((entry) => entry.name));
@@ -92,7 +98,9 @@ export function ciCustodyFindings({ repoRoot, repo, isRoot }: { repoRoot: string
   const selected = serviceBindings(doc, repositoryName(repoRoot, { env: identityQueryEnvironment(process.env, serviceCredentialNames(doc)) }));
   const sealed = sealedKeyNames(repoRoot, { fs });
   const references = workflowReferences(repoRoot, { fs });
-  const missing = selected.bindings.filter((binding) => !sealed.some((entry) => boundSealedKey(binding, entry)))
+  // An unsealed credential is the open owner step its service declares (`ownerAction.needed`, a fresh scaffold's Sonar token); once it is
+  // sealed the declaration must say `ownerAction: none` (STACKS_OWNER_ACTION_REDUNDANT), so custody and declaration never disagree.
+  const missing = selected.bindings.filter((binding) => !sealed.some((entry) => boundSealedKey(binding, entry)) && !ownerStepOpen(doc, binding.service))
     .map((binding) => found('CI_SECRET_SEALED', binding.path, 'the selected service credential member/key is not sealed in this product custody'));
   return [...selected.problems.map((problem) => found('CI_SECRET_SEALED', `${DECLARATION}#${problem.at}`, problem.message)), ...missing,
     ...sealedFindings(ci, sealed, selected.bindings), ...runtimeFindings(doc, ci, sealed), ...driftFindings(doc, ci, references)];

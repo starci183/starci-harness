@@ -22,7 +22,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { braceVariants } from '../runtime/scripts/lib/glob.mjs';
 import { codecovPaths, coverageComponents, declaredPackageScopes, jestCoverage, packageComponents, packagesCoverage, sonarCoverageExclusions, type PackagesCoverage } from '../runtime/scripts/hfs/coverage-scope.mjs';
-import { APP_SCOPE, SIDES, litePresenceOf, loadSlotManifest, resolveAppDeclaration, slotInEdition, type RepoView } from '../runtime/scripts/hfs/slots.mjs';
+import { restDoorVariables } from './rest-doors.mjs';
+import { declaredSidesEdits, type DeclarationEdit } from './declared-sides.mjs';
+import { devServicesUpgrade } from './dev-services.mjs';
+import { APP_SCOPE, SIDES, declaredAppSides, litePresenceOf, loadSlotManifest, resolveAppDeclaration, sideDeclared, slotInEdition, type ProjectSide, type RepoView } from '../runtime/scripts/hfs/slots.mjs';
 import type { AppRepo } from '../runtime/scripts/hfs/slot-app-view.mjs';
 import type { Slot, SlotManifest } from '../runtime/scripts/hfs/manifest-shape.mjs';
 import { managedGroupOf } from '../runtime/scripts/hfs/edition-slots.mjs';
@@ -33,6 +36,7 @@ import { DEFAULT_PORT, NODE_IMAGE, dockerfilePath } from '../runtime/scripts/hfs
 import { isFile } from '../runtime/scripts/lib/fs-kind.mjs';
 import { readDeclaredSonarKey } from './sonar-key.mjs';
 import { RETIRED_GROUP, guardWrites, heldLines, isGuardedSource, type GuardedWrite } from './compile-guard.mjs';
+import { HARNESS_CHECK_COPIES, harnessCheckScriptEdits } from './harness-checks.mjs';
 import { readDeclaredStack, stackWorkflowVariables } from './stack-images.mjs';
 import type { ImageApp } from './stack-images.mjs';
 import { DB_DOCKERFILE, DB_IMAGE_APP, RETIRED_DB_DOCKERFILE } from '../db/image.mjs';
@@ -132,8 +136,10 @@ function managedTemplate(scope: string, group: string, file: string, hasTemplate
   return directories.map(dir => `${dir}/${group}/${file}`).find(name => hasTemplate(name));
 }
 
-function slotTargets(slot: ManifestSlot, scope: string, edition: string, manifest: SlotManifest, hasTemplate: (name: string) => boolean, enabled: (slot: ManifestSlot) => boolean): Target[] {
+function slotTargets(slot: ManifestSlot, scope: string, edition: string, manifest: SlotManifest, hasTemplate: (name: string) => boolean, enabled: (slot: ManifestSlot) => boolean, declares: (side: string) => boolean): Target[] {
   if (!slot.profiles.includes(scope) || !slotInEdition(manifest, slot, edition)) return [];
+  // A slot whose managed files serve a side renders them only for a project that declares it (managedWhenSides, PROJECT-1).
+  if ((slot.managedWhenSides ?? []).some(side => !declares(side))) return [];
   // An opt-in slot is rendered only for a repository that enables it (app.browser-config with `browser: true`).
   if (slot.presence === 'opt-in' && !enabled(slot)) return [];
   if (edition === 'lite' && litePresenceOf(slot, scope) === 'forbidden') return [];
@@ -163,10 +169,10 @@ function unlistedTargets(scope: string, edition: string): Target[] {
  * its scope or under common. `enabled(slot)` decides an opt-in slot (renderTargets passes the declaration's); without it every slot
  * counts, which is what an inventory of the templates needs.
  */
-export function targetsOf(scope: string, { edition = 'full', manifest = loadSlotManifest() as SlotManifest, hasTemplate = (name: string): boolean => fs.existsSync(path.join(TEMPLATES_DIR, name)), enabled = (_slot: ManifestSlot): boolean => true }: {
-  edition?: string; manifest?: SlotManifest; hasTemplate?: (name: string) => boolean; enabled?: (slot: ManifestSlot) => boolean;
+export function targetsOf(scope: string, { edition = 'full', manifest = loadSlotManifest() as SlotManifest, hasTemplate = (name: string): boolean => fs.existsSync(path.join(TEMPLATES_DIR, name)), enabled = (_slot: ManifestSlot): boolean => true, declares = (_side: string): boolean => true }: {
+  edition?: string; manifest?: SlotManifest; hasTemplate?: (name: string) => boolean; enabled?: (slot: ManifestSlot) => boolean; declares?: (side: string) => boolean;
 } = {}): Target[] {
-  const listed = manifest.slots.flatMap(slot => slotTargets(slot, scope, edition, manifest, hasTemplate, enabled));
+  const listed = manifest.slots.flatMap(slot => slotTargets(slot, scope, edition, manifest, hasTemplate, enabled, declares));
   return [...listed, ...unlistedTargets(scope, edition)];
 }
 
@@ -521,17 +527,19 @@ function registryTargets(app: ResolvedApp, source: AppSourceFacts | undefined): 
  */
 function packagesLintTargets(app: ResolvedApp, source: AppSourceFacts | undefined): RenderedTarget[] {
   if (!(source?.modules?.length || source?.otherPackages?.length)) return [];
-  const grammar = grammarLintFor(app.sides.fe.grammar);
-  const family = grammar.package ? { name: grammar.package, factory: grammar.factory.replace(/Config$/, 'PackagesConfig') } : null;
+  // The canon of a side lints the packages' subpaths only when the project declares that side (PROJECT-1): its canon is installed with it.
+  const withFe = sideDeclared(app, 'fe');
+  const grammar = withFe ? grammarLintFor(app.sides.fe.grammar) : null;
+  const family = grammar?.package ? { name: grammar.package, factory: grammar.factory.replace(/Config$/, 'PackagesConfig') } : null;
   const content = [
     'import { loadPackagesHfs as loadBePackages, starciBePackagesConfig } from "@starci/eslint-canon-be"',
-    'import { loadPackagesHfs as loadFePackages, starciFePackagesConfig } from "@starci/eslint-canon-fe"',
+    ...(withFe ? ['import { loadPackagesHfs as loadFePackages, starciFePackagesConfig } from "@starci/eslint-canon-fe"'] : []),
     ...(family ? [canonImport({ names: [family.factory], from: family.name })] : []),
     '',
     'const be = loadBePackages(import.meta.url)',
-    'const fe = loadFePackages(import.meta.url)',
+    ...(withFe ? ['const fe = loadFePackages(import.meta.url)'] : []),
     '',
-    canonList({ head: 'export default ', items: ['...(await starciBePackagesConfig({ hfs: be }))', '...starciFePackagesConfig({ hfs: fe })', ...(family ? [`...${family.factory}({ hfs: fe })`] : [])] }),
+    canonList({ head: 'export default ', items: ['...(await starciBePackagesConfig({ hfs: be }))', ...(withFe ? ['...starciFePackagesConfig({ hfs: fe })'] : []), ...(family ? [`...${family.factory}({ hfs: fe })`] : [])] }),
     '',
   ].join(LINE);
   return [{ path: PACKAGES_LINT_FILE, scope: APP_SCOPE, mode: 'file', content, hash: hashOf(content) }];
@@ -542,6 +550,8 @@ export function variables(app: ResolvedApp, scope: string, presets: Presets | nu
   const fe = app.sides.fe;
   const packages = opensPackages(fe);
   const lite = app.edition === 'lite';
+  const withBe = sideDeclared(app, 'be');
+  const withFe = sideDeclared(app, 'fe');
   const providers = (app.sides.be.connections ?? []).map(connection => connection.provider);
   const quality = source.quality ?? qualityServices({});
   // The root packages (the agent SDK, the module packages and the rest) are built before anything imports them (typecheck, lint, the fe build and the be
@@ -570,12 +580,18 @@ export function variables(app: ResolvedApp, scope: string, presets: Presets | nu
     pgmqSha256: PGMQ.sha256,
     // A lite app's declared Redis (sides.be.backing, R212) runs in development as one container of its pinned image.
     backingScripts: lite && (app.sides.be.backing ?? []).includes('redis') ? redisDevText(app.project) : '',
-    // turbo builds every fe app workspace; ^build (turbo.json) builds the packages each app imports first, and caches both.
-    buildFe: `${modulesFirst}npm run codegen --silent && turbo run build --filter=./fe/apps/*`,
-    // The be side with its tsc; every fe workspace with its own typecheck script through turbo (the packages are built first: ^build).
-    typecheck: `${modulesFirst}npm run codegen --silent && tsc -p be/tsconfig.json && turbo run typecheck`,
+    // turbo builds every fe app workspace; ^build (turbo.json) builds the packages each app imports first, and caches both. A project without fe
+    // (PROJECT-1) has no fe build and no wire codegen (scripts/codegen.mjs is rendered with fe only: managedWhenSides), and its typecheck and lint
+    // generate nothing first.
+    buildScripts: withFe ? [
+      `"build:fe": ${JSON.stringify(`${modulesFirst}npm run codegen --silent && turbo run build --filter=./fe/apps/*`)},`,
+      '"codegen": "node scripts/codegen.mjs",',
+      '"codegen:graphql": "node scripts/codegen.mjs --graphql",',
+    ].join('\n    ') : '',
+    // The be side with its tsc; every workspace with its own typecheck script through turbo (the packages are built first: ^build).
+    typecheck: `${modulesFirst}${[...(withFe ? ['npm run codegen --silent'] : []), ...(withBe ? ['tsc -p be/tsconfig.json'] : []), 'turbo run typecheck'].join(' && ')}`,
     // The typed lint reads the types the fe packages declare (their dist), so the packages are built first.
-    lintPrefix: `${modulesFirst}${packages ? 'npm run codegen --silent && turbo run build --filter=./fe/packages/* && ' : 'npm run codegen --silent && '}`,
+    lintPrefix: `${modulesFirst}${packages ? 'npm run codegen --silent && turbo run build --filter=./fe/packages/* && ' : withFe ? 'npm run codegen --silent && ' : ''}`,
     // The unit run, the back-end build and every CI job that imports a root package find it built (build:modules precedes them); its specs run in the unit run and its shards.
     modulesFirst,
     nodeMajor: String(NODE_MAJOR),
@@ -587,7 +603,7 @@ export function variables(app: ResolvedApp, scope: string, presets: Presets | nu
     sonarHostLine: sonarHostLine(quality.sonar),
     sonarExclusions: sonarScope(presets).exclusions.join(','),
     sonarTestInclusions: sonarScope(presets).tests.join(','),
-    sonarSources: ['be/apps', 'be/src', 'fe/apps', ...(packages ? ['fe/packages'] : []), ...moduleDirs.map(dir => `${dir}/src`)].join(','),
+    sonarSources: [...(withBe ? ['be/apps', 'be/src'] : []), ...(withFe ? ['fe/apps'] : []), ...(packages ? ['fe/packages'] : []), ...moduleDirs.map(dir => `${dir}/src`)].join(','),
     lcovReport: LCOV_REPORT,
     cpdExclusions: SONAR_CPD_EXCLUSIONS.join(','),
     ...ciWorkflowCommands(source, LCOV_REPORT, source.qualityDeclared === false ? undefined : source.quality, { app, packages, rootPackages: moduleDirs.length > 0 }),
@@ -605,6 +621,8 @@ export function variables(app: ResolvedApp, scope: string, presets: Presets | nu
     grammarLintImport: grammarLint?.package ? `import { ${grammarLint.factory} } from "${grammarLint.package}"` : '',
     grammarLintExport: grammarLint?.package ? `export default [...starciFeConfig({ hfs }), ...${grammarLint.factory}({ hfs })]` : 'export default starciFeConfig({ hfs })',
     ...stackWorkflowVariables(stack, app.project, deployableApps(app, source, stack), String(NODE_MAJOR)),
+    // The managed sign-in doors of a rest back end carry their OpenAPI shape (R396); a graphql back end renders them as before.
+    ...restDoorVariables(app.sides.be.apps),
   };
 }
 
@@ -645,10 +663,11 @@ function renderOnce(hfs: unknown, presets: Presets | null | undefined, { sonarKe
 } = {}): RenderedTarget[] {
   const app = validateHfs(hfs, manifest);
   const hasTemplate = (name: string): boolean => { try { return readTemplate(name) !== undefined; } catch { return false; } };
-  return SCOPES.flatMap(scope => {
+  // The root and each side the app declares (PROJECT-1): an undeclared side has no managed file.
+  return [APP_SCOPE, ...declaredAppSides(app)].flatMap(scope => {
     const vars = variables(app, scope, presets, sonarKey, manifest, source);
     const repo = scope === APP_SCOPE ? app : app.sides[scope as 'be' | 'fe'];
-    const declaredTargets = targetsOf(scope, { edition: app.edition as string, manifest, hasTemplate, enabled: slot => declaredSlotEnabled(slot, repo) });
+    const declaredTargets = targetsOf(scope, { edition: app.edition as string, manifest, hasTemplate, enabled: slot => declaredSlotEnabled(slot, repo), declares: side => sideDeclared(app, side as ProjectSide) });
     if (scope === APP_SCOPE && source?.badges) declaredTargets.push({ path: 'README.md', mode: 'block', markdown: true, template: 'app/readme-badges/README.md' });
     const targets = declaredTargets
       .filter(target => !(app.edition === 'lite' && source?.workPresent === false && target.path === '.starciwork/.gitignore'))
@@ -801,7 +820,12 @@ const LITE_RETIRED_FILES: Readonly<Record<string, string>> = Object.freeze({
   'be/src/modules/domain/identity/persistence/entities/auth-user.entity.ts': 'the sign-in reaches accounts through the account doors (be/src/modules/domain/identity/persistence/account-doors.port.ts); the application role holds no grant on schema auth',
   'be/src/modules/domain/identity/persistence/entities/auth-identity.entity.ts': 'the sign-in reaches accounts through the account doors (be/src/modules/domain/identity/persistence/account-doors.port.ts); the application role holds no grant on schema auth',
   '.github/workflows/db-deploy.yml': 'the stack deploy migrates the database (a verified backup, the expand migrations before the services, the contract migrations after the accept)',
+  ...HARNESS_CHECK_COPIES,
 });
+/** The edition hfs.json declares, as `read` gives it (null when unreadable). */
+const readEdition = (read: (relative: string) => string | null): unknown => {
+  try { return (JSON.parse(read('hfs.json') ?? 'null') as { edition?: unknown } | null)?.edition ?? null; } catch { return null; }
+};
 /** Why a retired file goes: a retired file's own reason, else the folder's. */
 const retiredReason = (file: string): string => LITE_RETIRED_FILES[file] ?? 'the lite edition generates no database types';
 
@@ -830,6 +854,23 @@ export function guardedWrites(root: string, targets: readonly RenderedTarget[], 
     return { path: target.path, group: target.group ?? target.path, text: writtenContent(target, fs.existsSync(file) ? lf(fs.readFileSync(file, 'utf8')) : '') };
   });
   return [...writes, ...retired.map((file): GuardedWrite => ({ path: file, group: RETIRED_GROUP, text: null }))];
+}
+
+/** The edits sync makes to an existing app's own declarations, one per file in order (a later edit of a file builds on the earlier), and the notices of what it left. */
+export function upgradeEdits(root: string): { edits: DeclarationEdit[]; notices: string[] } {
+  const edits = new Map<string, DeclarationEdit>();
+  for (const edit of declaredSidesEdits(root)) edits.set(edit.path, edit);
+  const read = (relative: string): string | null => {
+    const pending = edits.get(relative);
+    if (pending) return pending.content;
+    try { return fs.readFileSync(path.join(root, relative), 'utf8'); } catch { return null; }
+  };
+  const services = devServicesUpgrade(root, read);
+  for (const edit of [...services.edits, ...(readEdition(read) === 'lite' ? harnessCheckScriptEdits(read) : [])]) {
+    const earlier = edits.get(edit.path);
+    edits.set(edit.path, earlier ? { path: edit.path, reason: `${earlier.reason}; ${edit.reason}`, content: edit.content } : edit);
+  }
+  return { edits: [...edits.values()], notices: services.notices };
 }
 
 /** `starci app sync [--execute] [--cwd <dir>]` at the app root: the dry run reports drift, --execute writes; returns 0 clean, 1 drift, 2 usage. */
@@ -870,6 +911,12 @@ export async function runSync(argv: string[], { cwd = process.cwd(), out = (line
   const { write, cwdAt } = options;
   const root = cwdAt >= 0 ? path.resolve(cwd, argv[cwdAt + 1] as string) : cwd;
   try {
+    // An app that predates the declared sides gets them first (R399): hfs.json and the stack declaration, which the render then reads. Then
+    // its dev environments get the starter's dev services and the compose ports of their base port (R389), on top of the sides edit.
+    const { edits: declared, notices: upgradeNotices } = upgradeEdits(root);
+    for (const notice of upgradeNotices) out(notice);
+    if (write) for (const edit of declared) { fs.writeFileSync(path.join(root, edit.path), edit.content); out(`wrote ${edit.path} (${edit.reason})`); }
+    else for (const edit of declared) out(`HFS_SYNC_DRIFT ${edit.path}: ${edit.reason}; run "npx --no-install starci app sync --execute"`);
     const notices: string[] = [];
     const { hfs, targets } = await renderRepo(root, { presets, parseYaml, notices });
     const retired = retiredFiles(root, hfs);
@@ -888,7 +935,7 @@ export async function runSync(argv: string[], { cwd = process.cwd(), out = (line
       out(`starci app sync: ${written.length} written, ${free.length - written.length} already in sync${holds.size ? `, ${holds.size} held` : ''}`);
       return held.length ? 1 : 0;
     }
-    return reportSyncCheck(root, targets, out, retired);
+    return Math.max(reportSyncCheck(root, targets, out, retired), declared.length ? 1 : 0);
   } catch (error) {
     if (!(error instanceof SyncError)) throw error;
     out(error.message);

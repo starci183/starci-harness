@@ -14,7 +14,7 @@ import ts from "typescript"
 import { keyName, walk } from "./lib/ast.ts"
 import { hfsOf } from "./lib/hfs.ts"
 import { decoratorArguments, decoratorCallee, isImportedFrom } from "./lib/import-source.ts"
-import { isTransportSlot } from "./lib/transport-slots.ts"
+import { isTransportSlot, servesRest } from "./lib/transport-slots.ts"
 import { isTsNode, typed } from "./lib/types.ts"
 import type { TSESLint, TSESTree } from "@typescript-eslint/utils"
 import type { Typed } from "./lib/types.ts"
@@ -515,7 +515,8 @@ export const restRouteDeclared: RuleModule = {
     },
     create(context) {
         const hfs = hfsOf(context)
-        if (!isTransportSlot(hfs.slotOf(context.filename))) return {}
+        // A rest back end's controllers are its declared contract (BE-TRANSPORT-1, -4): R396 judges them in the emitted document, not a table.
+        if (!isTransportSlot(hfs.slotOf(context.filename)) || servesRest(hfs.apps)) return {}
         const declared = operationRouteEvidence(context)
         return {
             MethodDefinition(node) {

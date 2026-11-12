@@ -6,11 +6,14 @@ import type { FieldVariant } from "./leaf/Field/index.js"
 /**
  * What stands around the current content.
  *
- * - `card`, `pane` and `overlay` are painted surfaces. A `SurfaceCard` inside any of them is refused: a surface never
- *   stands inside another surface (a card in a card, in `Pane surface`, in a `Dialog`, `Drawer` or `Popover`).
+ * - `card` is a painted surface a `SurfaceCard` never stands inside (a card in a card is refused).
+ * - `pane` (a `Pane surface`) and `overlay` (a `Dialog`, `Drawer` or `Popover`) are WHITE grounds: a `SurfaceCard` stands on them as a group, drawn bordered
+ *   (1px, no shadow) by the SURFACE-ELEVATION rule (0.37.5; 0.37.4 threw here, against the owner's law).
  * - `chrome` is a bar or a rail that only decides the field layer; it paints no surface a card could collide with.
+ * - `chat` (0.37.33) is a chat frame (`Pane content="chat"`) on the page tone `--background`: a card in it is bordered (no shadow), and a field in it (the
+ *   composer) is the PRIMARY white field, whatever overlay or pane stands around the frame.
  */
-export type SurfaceHost = "card" | "pane" | "overlay" | "chrome"
+export type SurfaceHost = "card" | "pane" | "overlay" | "chrome" | "chat"
 
 const SurfaceHostContext = createContext<SurfaceHost | null>(null)
 
@@ -25,14 +28,16 @@ export const useSurfaceNesting = (): boolean => useContext(SurfaceHostContext) !
 /** The surface that stands around the current content, or `null` on the page. */
 export const useSurfaceHost = (): SurfaceHost | null => useContext(SurfaceHostContext)
 
-const REFUSED_HOSTS: ReadonlySet<SurfaceHost> = new Set(["card", "pane", "overlay"])
+const REFUSED_HOSTS: ReadonlySet<SurfaceHost> = new Set(["card"])
 
-/** The refusal a card raises when it would stand inside another surface (development only, like the pane refusals). */
+/** The refusal a card raises when it would stand inside another card (development only). A white pane, drawer, dialog or popover hosts cards. */
 export const assertNoSurfaceInSurface = (host: SurfaceHost | null): void => {
     if (host === null || !REFUSED_HOSTS.has(host) || process.env.NODE_ENV === "production") return
-    const where = host === "card" ? "another SurfaceCard" : host === "pane" ? "a Pane surface" : "a Dialog, Drawer or Popover"
-    throw new Error(`SurfaceCard stands inside ${where}: a surface never stands inside a surface. Put the content in the surface's own body, or give it a kind (bands, list, figures).`)
+    throw new Error("SurfaceCard stands inside another SurfaceCard: a card never stands inside a card. Put the content in the card's own body, or give it a kind (bands, list, figures).")
 }
 
-/** The field layer the surface decides: secondary inside a Grammar surface, primary on the page. */
-export const useFieldVariant = (): FieldVariant => (useSurfaceNesting() ? "secondary" : "primary")
+/** The field layer the surface decides: secondary inside a Grammar surface, primary on the page and in a chat frame (the composer field stays white). */
+export const useFieldVariant = (): FieldVariant => {
+    const host = useSurfaceHost()
+    return host !== null && host !== "chat" ? "secondary" : "primary"
+}

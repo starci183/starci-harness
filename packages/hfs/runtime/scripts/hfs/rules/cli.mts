@@ -2,6 +2,9 @@
 //   BE_CLI_REQUIRED       a back end that declares a connection (it has migrations to run) or tracks an ops command (src/features/cli/)
 //                         declares exactly one app of kind cli, named cli (be/apps/cli), and tracks its image be/apps/cli/Dockerfile:
 //                         one image, run as `cli <group> <command>`. An app of kind cli with another name, or a second one, is refused.
+//   BE_CLI_COMMAND_SHAPE  (R149, the part one file cannot see) two command classes of one cli feature root share a class name: nest-commander
+//                         matches a sub-command by its class name, so the second `RunCli` runs the first one's action
+//                         (contexts/code/be/cli.md BE-CLI-2). The ops root and each client cli's root are judged apart: each is its own app.
 //   BE_CLI_CLIENT         an app of kind client-cli is a command line a user installs from npm and runs on their own machine: hfs.json
 //                         declares its `package` and `bin` (no other app kind does, and no two client clis share either), its commands
 //                         live in its own feature root be/src/features/client-cli/<app>/ (every folder there is a declared client cli),
@@ -11,7 +14,7 @@
 // Where a command is declared and that every command has its unit spec beside it are eslint-be's (cli-command-shape, and
 // unit-test-colocated over ruleParams.be.unitRoles); what a client cli may import is eslint-be's cli-client-boundary (R398).
 // Paths are app-relative; the cli apps and the cli feature roots are read from the slot manifest through the resolver.
-import { found, readJson } from './read.mjs';
+import { found, readJson, readText } from './read.mjs';
 import type { Parsed, Repo, Resolver } from './rule-types.mjs';
 
 const CLI_REQUIRED = 'BE_CLI_REQUIRED';
@@ -38,8 +41,30 @@ const isRecord = (value: unknown): value is Record<string, unknown> => typeof va
 /** A path of package.json `files` or `bin` without its leading `./` and trailing `/`. */
 const plain = (value: unknown): string => String(value).replace(/^\.\//, '').replace(/\/+$/, '');
 
-/** R147 over the declared apps: the one ops cli, required by a connection or a tracked ops command, with its image. */
-function opsFindings({ be, onBe, tracked, beResolver }: { be: Parsed; onBe: string[]; tracked: Set<string>; beResolver: Resolver }) {
+/** The class names of the commands one cli feature root declares (`export class X` of a .cli.ts beside an `@Command` or `@SubCommand`), each with its files. */
+function commandClasses(repoRoot: string, commandFiles: readonly string[]): Map<string, string[]> {
+  const byName = new Map<string, string[]>();
+  for (const file of commandFiles.filter((each) => each.endsWith('.cli.ts') && !each.endsWith('.spec.ts'))) {
+    const text = readText(repoRoot, `be/${file}`) ?? '';
+    if (!/@(?:Sub)?Command\(/u.test(text)) continue;
+    for (const match of text.matchAll(/^export class (\w+)/gmu)) byName.set(match[1]!, [...(byName.get(match[1]!) ?? []), `be/${file}`]);
+  }
+  return byName;
+}
+
+/** R149 over one cli feature root: no two of its command classes share a class name. */
+function commandNameFindings(repoRoot: string | undefined, commandFiles: readonly string[]) {
+  const findings = [];
+  if (repoRoot === undefined) return [];
+  for (const [name, owners] of commandClasses(repoRoot, commandFiles)) {
+    if (owners.length < 2) continue;
+    for (const file of owners) findings.push(found('BE_CLI_COMMAND_SHAPE', file, `the command class ${name} is declared by ${owners.join(' and ')}: nest-commander matches a sub-command by its class name, so one of them runs the other's action; give each its own name, such as <Group>RunCli (BE-CLI-2, R149)`, { name }));
+  }
+  return findings;
+}
+
+/** R147 over the declared apps: the one ops cli, required by a connection or a tracked ops command, with its image; R149 over its feature root. */
+function opsFindings({ be, onBe, tracked, beResolver, repoRoot }: { be: Parsed; onBe: string[]; tracked: Set<string>; beResolver: Resolver; repoRoot: string | undefined }) {
   const commandFiles = onBe.filter((file: string) => beResolver.classifyPath(file).slot === CLI_FEATURE_SLOT);
   const findings = [];
   const cliApps = be.apps.filter((app: Parsed) => app.kind === CLI_KIND);
@@ -54,6 +79,7 @@ function opsFindings({ be, onBe, tracked, beResolver }: { be: Parsed; onBe: stri
   if (needs && cliApps.length === 0) findings.push(found(CLI_REQUIRED, 'hfs.json', `the back end declares no ops cli app, but ${why}; declare { "name": "${CLI_APP}", "kind": "${CLI_KIND}" } in sides.be.apps and build be/apps/${CLI_APP} on nest-commander: every one-off action of the back end is one of its commands.`, { needs: why }));
   for (const app of cliApps.filter((entry: Parsed) => entry.name !== CLI_APP)) findings.push(found(CLI_REQUIRED, 'hfs.json', `the app ${app.name} is of kind ${CLI_KIND}; the back end has ONE ops cli app, be/apps/${CLI_APP}, so its image and its command line are the same in every app. A command line a user installs is an app of kind ${CLIENT_KIND}.`, { app: app.name }));
   if (cliApps.length > 0 && !tracked.has(`apps/${CLI_APP}/${IMAGE}`) && cliApps.some((app: Parsed) => app.name === CLI_APP)) findings.push(found(CLI_REQUIRED, `be/apps/${CLI_APP}/${IMAGE}`, `be/apps/${CLI_APP} has no image: track be/apps/${CLI_APP}/${IMAGE}, the one cli image every one-off action runs from (\`cli <group> <command>\`).`, { app: CLI_APP }));
+  findings.push(...commandNameFindings(repoRoot, commandFiles));
   return findings;
 }
 
@@ -76,14 +102,16 @@ function clientDeclarationFindings(be: Parsed) {
   return findings;
 }
 
-/** R397 over the feature roots: every client cli has its own, and every folder of be/src/features/client-cli/ is a declared client cli. */
-function clientRootFindings({ clients, onBe, beResolver }: { clients: Parsed[]; onBe: string[]; beResolver: Resolver }) {
+/** R397 over the feature roots: every client cli has its own, and every folder of be/src/features/client-cli/ is a declared client cli; R149 over each root. */
+function clientRootFindings({ clients, onBe, beResolver, repoRoot }: { clients: Parsed[]; onBe: string[]; beResolver: Resolver; repoRoot: string | undefined }) {
   const findings = [];
-  const roots = new Set<string>();
+  const filesOf = new Map<string, string[]>();
   for (const file of onBe) {
     const place = beResolver.classifyPath(file);
-    if (place.slot === CLIENT_FEATURE_SLOT && place.bindings?.client !== undefined) roots.add(place.bindings.client);
+    if (place.slot === CLIENT_FEATURE_SLOT && place.bindings?.client !== undefined) filesOf.set(place.bindings.client, [...(filesOf.get(place.bindings.client) ?? []), file]);
   }
+  const roots = new Set(filesOf.keys());
+  for (const commandFiles of filesOf.values()) findings.push(...commandNameFindings(repoRoot, commandFiles));
   const declared = new Set(clients.map((app: Parsed) => app.name));
   for (const app of clients) {
     if (!roots.has(app.name)) findings.push(found(CLI_CLIENT, `be/src/features/${CLIENT_KIND}/${app.name}/`, `the client cli ${app.name} has no feature root: its commands live in be/src/features/${CLIENT_KIND}/${app.name}/ (index.ts exporting its module, <group>/<group>.cli.ts, <group>/subs/<name>.cli.ts), never in the ops root be/src/features/cli/.`, { app: app.name }));
@@ -146,7 +174,7 @@ function clientPackageFindings({ clients, tracked, repoRoot }: { clients: Parsed
   return findings;
 }
 
-/** The findings of R147 and R397 over the tracked paths `files` (app-relative) of the app `repo` at `repoRoot`; `resolver` is the app's. */
+/** The findings of R147, R149 and R397 over the tracked paths `files` (app-relative) of the app `repo` at `repoRoot`; `resolver` is the app's. */
 export function cliFindings({ repoRoot, files, repo, resolver }: { repoRoot?: string; files: string[]; repo: Repo; resolver: Resolver }) {
   if (!repo?.sides) return [];
   const be = repo.sides.be;
@@ -155,9 +183,9 @@ export function cliFindings({ repoRoot, files, repo, resolver }: { repoRoot?: st
   const tracked = new Set(onBe);
   const clients = be.apps.filter((app: Parsed) => app.kind === CLIENT_KIND);
   return [
-    ...opsFindings({ be, onBe, tracked, beResolver }),
+    ...opsFindings({ be, onBe, tracked, beResolver, repoRoot }),
     ...clientDeclarationFindings(be),
-    ...clientRootFindings({ clients, onBe, beResolver }),
+    ...clientRootFindings({ clients, onBe, beResolver, repoRoot }),
     ...clientPackageFindings({ clients, tracked, repoRoot }),
   ];
 }

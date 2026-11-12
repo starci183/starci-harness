@@ -6,14 +6,12 @@ import { defineFamilyRules, defineRule } from "./lib/rule-contract.ts"
 import type { Context, Node } from "./lib/types.ts"
 /**
  * The surface nesting law (HFS R340 `FE_RAISED_SURFACE_IN_SURFACE`): a surface never stands inside another surface. A
- * `SurfaceCard` inside another `SurfaceCard`, inside a `Pane surface`, or inside a `Dialog`, `Drawer`, `AlertDialog` or
- * `Popover` is refused; the Grammar has one depth, raised, and draws no nested edge: a surface never
- * sits in a surface, dialogs and drawers included. The Grammar throws the same refusal in development; this is its
+ * `SurfaceCard` inside another `SurfaceCard` is refused (0.37.5, owner: a card inside a card is the only nesting refused; a white `Pane surface`, `Drawer`,
+ * `Dialog` or `Popover` hosts cards, drawn bordered with no shadow). The Grammar throws the same refusal in development; this is its
  * same-file half, and R356 closes it across files.
  *
  * WHAT IT READS. A `SurfaceCard` element (or `<ns>.SurfaceCard`) imported from `@starci/grammar` that a `SurfaceCard`,
- * `Dialog`, `Drawer`, `AlertDialog`, `Popover` or `Pane` with a `surface` prop of the same file encloses. An overlay's
- * `trigger` is not its content, so a card written in a trigger is not enclosed by it. A surface nobody encloses in this file
+ * `SurfaceCard` of the same file encloses. A surface nobody encloses in this file
  * (its parent may nest it) is judged where the parent is written.
  *
  * WHERE IT APPLIES. Product source (`isProductSource`).
@@ -21,7 +19,7 @@ import type { Context, Node } from "./lib/types.ts"
 
 const GRAMMAR_SOURCE = /^@starci\/grammar(?:\/(?:common|core|offset-pop))?$/
 /** Surfaces and overlays whose content is a surface. */
-const HOSTS = new Set(["SurfaceCard", "Dialog", "Drawer", "AlertDialog", "Popover", "Pane"])
+const HOSTS = new Set(["SurfaceCard"])
 
 /** The element name of a JSX name: `SurfaceCard`, or `G.SurfaceCard` as `SurfaceCard`. */
 const nameOf = (name: TSESTree.JSXTagNameExpression): string | null => {
@@ -65,7 +63,7 @@ const enclosingHost = (context: Context, opening: TSESTree.JSXOpeningElement): s
 export const noRaisedSurfaceInSurface: Rule.RuleModule = defineRule({
   meta: {
     type: "problem",
-    docs: { description: "R340: a SurfaceCard never stands inside another SurfaceCard, a Pane surface, or a Dialog, Drawer, AlertDialog or Popover." },
+    docs: { description: "R340: a SurfaceCard never stands inside another SurfaceCard." },
     schema: [],
     messages: {
       nested:

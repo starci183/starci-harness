@@ -7,13 +7,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { parseYaml } from '../runtime/engine/yaml.mjs';
 import { normalizeLocal } from '../runtime/scripts/hfs/stack-local-config.mjs';
+import { scaffoldPorts } from '../scaffold/app.mjs';
 
 const REPOSITORY = path.resolve(import.meta.dirname, '..', '..', '..');
 const STACKS = path.join(import.meta.dirname, '..', 'templates', 'app', 'skeleton-lite', '.starcistacks');
 const read = (...parts: string[]): string => fs.readFileSync(path.join(STACKS, ...parts), 'utf8');
 const pins = parseYaml(fs.readFileSync(path.join(REPOSITORY, 'contexts', 'stack', 'pins.yaml'), 'utf8')).images;
 // The template carries the project and base port placeholders; the parsers see a project name and a base port.
-const render = (text: string): string => text.replaceAll('{{project}}', 'demo').replaceAll('{{basePort}}', '3000').replaceAll('{{apiPort}}', '3001');
+const render = (text: string): string => Object.entries(scaffoldPorts(3000)).reduce((out, [name, port]) => out.replaceAll(`{{${name}}}`, port), text.replaceAll('{{project}}', 'demo')).replaceAll('{{stackSidesNote}}', 'This project has a back end (be) and a front end (fe).').replaceAll('{{stackSides}}', '{be: true, fe: true, packages: false}');
 const compose = parseYaml(render(read('dev', 'infra', 'compose', 'compose.yaml')));
 const stacks = parseYaml(render(read('application-stacks.yaml')));
 const local = normalizeLocal(stacks.environments.dev.local, { project: 'demo', env: 'dev' });
@@ -35,9 +36,9 @@ test('the local block starts the mail service, waits for it, declares its two po
   assert.deepEqual(local.problems, []);
   const block = local.config;
   assert.ok(block);
-  assert.deepEqual(block.services.map((service) => [service.name, service.wait]), [['db', 'healthy'], ['mail', 'healthy']]);
-  assert.equal(block.ports.mail, 1025);
-  assert.equal(block.ports.mailui, 8025);
+  assert.deepEqual(block.services.map((service) => [service.name, service.wait]), [['db', 'healthy'], ['mail', 'healthy'], ['storage', 'healthy']]);
+  assert.equal(block.ports.mail, 3091, 'the SMTP port is basePort + 91');
+  assert.equal(block.ports.mailui, 3092, 'the web UI is basePort + 92');
   assert.deepEqual(block.origins.find((origin) => origin.name === 'mail'), { name: 'mail', url: 'http://localhost:${port.mailui}' });
 });
 
@@ -59,5 +60,5 @@ test('the dev runbook names the sink and where to read the mails', () => {
   const runbook = read('dev', 'README.md');
   assert.match(runbook, /Mailpit/u);
   assert.match(runbook, /\*\*Mail\.\*\*/u);
-  assert.match(runbook, /localhost:8025/u);
+  assert.match(runbook, /base \+ 92/u);
 });

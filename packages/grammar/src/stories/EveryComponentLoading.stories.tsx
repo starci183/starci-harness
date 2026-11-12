@@ -49,7 +49,7 @@ const Page = ({ isLoading }: { readonly isLoading?: boolean }) => (
         </G.Grid>
         <G.Cluster gap="row">
             <G.Checkbox label="Send a copy" />
-            <G.Switch label="Reminders" />
+            <G.Switch description="Mô tả ngắn." label="Reminders" />
             <G.Slider label="Volume" defaultValue={40} />
             <G.Rating label="Rating" defaultValue={3} valueLabel={(value, max) => `${value} of ${max}`} />
         </G.Cluster>

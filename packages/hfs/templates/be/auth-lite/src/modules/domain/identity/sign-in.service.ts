@@ -15,7 +15,7 @@ import type { Principal } from "@modules/platform/cqrs"
 import { IdentityError, IdentityErrorCode } from "./errors/identity.error"
 import { InjectAuthDoors, InjectAuthSessions } from "./identity.decorators"
 
-/** The wire codes of the package that belong to the passport family (the token, key and Google legs). */
+/** The wire codes of the package that belong to the passport family (the token, key, Google and sign-in provider legs). */
 const PASSPORT_CODES: ReadonlyArray<PassportErrorCode> = [
     PassportErrorCode.AccessTokenInvalid,
     PassportErrorCode.KeyInvalid,
@@ -23,6 +23,10 @@ const PASSPORT_CODES: ReadonlyArray<PassportErrorCode> = [
     PassportErrorCode.GoogleStateInvalid,
     PassportErrorCode.GoogleRejected,
     PassportErrorCode.GoogleUnavailable,
+    PassportErrorCode.ProviderStateInvalid,
+    PassportErrorCode.ProviderRejected,
+    PassportErrorCode.ProviderUnavailable,
+    PassportErrorCode.ProvidersInvalid,
 ]
 
 /** The wire codes of the package that belong to the identity family (the session and the sign-in refusals). */

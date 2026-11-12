@@ -1,6 +1,9 @@
 "use client"
 
 import { Card } from "@heroui/react"
+import { EllipsisHorizontalIcon } from "@heroicons/react/24/outline"
+import { DropdownMenu } from "../../branch/DropdownMenu/index.js"
+import { IconButton } from "../../leaf/IconButton/index.js"
 import { useId, type ReactNode } from "react"
 import { SurfaceNesting, assertNoSurfaceInSurface, useSurfaceHost } from "../../surfaceContext.js"
 import { ButtonPlacementProvider } from "../../buttonIntent.js"
@@ -12,18 +15,22 @@ import type {
     Figure,
     FooterZone,
     HeaderZone,
+    ItemMenu,
     ListData,
+    SelectData,
     TableData,
     TileData,
     WholeCardAction,
 } from "../../surfaceCardData.js"
 import { VerticalScrollRegionPart } from "../VerticalScrollRegion/index.js"
 import { DEFAULT_SURFACE_HEADING_LEVEL, Label, type SurfaceHeadingLevel } from "../../leaf/Label/index.js"
+import { Sublabel } from "../../leaf/Sublabel/index.js"
 import { ErrorView, type ErrorData } from "../../loadingState.js"
 import { LoadingScope, useIsLoading } from "../../regionScope.js"
 import { AccordionRows } from "./AccordionRows.js"
 import { FigureCells, figureItems } from "./FigureCells.js"
 import { ListRows } from "./ListRows.js"
+import { SelectRows } from "./SelectRows.js"
 import { DescriptionList, type DescriptionListItem } from "../../composite/DescriptionList/index.js"
 import { TableRows } from "./TableRows.js"
 import { SurfaceCardTile } from "./SurfaceCardTile.js"
@@ -52,9 +59,12 @@ export type {
 } from "../../surfaceCardData.js"
 
 /** Every card names itself: a visible `label`, or an `ariaLabel` when the surrounding owner already shows the name. */
-type Labelled = { readonly label: string; readonly ariaLabel?: string }
-type SelfNamed = { readonly label?: undefined; readonly ariaLabel: string }
-type OptionallyNamed = { readonly label?: string; readonly ariaLabel?: string }
+type Labelled = { readonly label: string; readonly ariaLabel?: string; readonly sublabel?: undefined }
+type SelfNamed = { readonly label?: undefined; readonly ariaLabel: string; readonly sublabel?: undefined }
+/** A group inside a labelled section (0.37.7): named by a Sublabel 8px above the card, never by a second Label; `sublabel` and `label` are never given together. */
+type Sublabelled = { readonly sublabel: string; readonly label?: undefined; readonly ariaLabel?: string }
+type Named = Labelled | SelfNamed | Sublabelled
+type OptionallyNamed = { readonly label?: string; readonly ariaLabel?: string; readonly sublabel?: undefined } | Sublabelled
 
 type Head = Omit<CardHead, "label" | "ariaLabel">
 
@@ -118,6 +128,11 @@ type Shell = {
     readonly state?: PresentationState
     /** Let a peer grid stretch the complete card (a card that fills the height its host gives it). */
     readonly height?: "fill"
+    /**
+     * Grammar-owned width contract (0.37.5: every kind takes it). `content` (default): the card fills its host. `narrow`: capped at 30rem, left-aligned (an order card in a
+     * chat bubble; `standard` content is 40rem, too wide for a bubble). `form` / `formCompact` are the centred form measures of a `body` card.
+     */
+    readonly measure?: SurfaceCardMeasure
 }
 
 type BodyCard = Shell & OptionallyNamed & Head & (PlainSurfaceCard | SoftSurfaceCard | InkSurfaceCard) & {
@@ -125,30 +140,32 @@ type BodyCard = Shell & OptionallyNamed & Head & (PlainSurfaceCard | SoftSurface
     readonly children: ReactNode
     /** The whole card is one destination or command; the card then holds no control of its own. */
     readonly wholeAction?: WholeCardAction
-    /** Grammar-owned width contract for ordinary content or compact form cards. */
-    readonly measure?: SurfaceCardMeasure
+    /** 0.37.10: the card's ⋯ actions, with or without a `wholeAction`: the trigger stands at the top end above the whole-card link and never follows it; it is its own tab stop. */
+    readonly menu?: ItemMenu
     /** One logical corner of the painted face drawn at the Common accent radius. */
     readonly accentCorner?: AccentCorner
 }
 
-type FiguresCard = Shell & (Labelled | SelfNamed) & Head & {
+type FiguresCard = Shell & Named & Head & {
     readonly kind: "figures"
     /** Two to five key figures as touching cells. */
     readonly items: readonly Figure[]
 }
 
-type ListCard = Shell & (Labelled | SelfNamed) & Head & ListData
+type ListCard = Shell & Named & Head & ListData
 /**
  * Facts as term/value rows that touch the card's edge, each row inset by the card padding and divided by a full-width seam (the
  * order of a purchase, a record's summary). The pairs are a real `<dl>` (DescriptionList); a strip of key figures is `figures`.
  */
-type DetailsCard = Shell & (Labelled | SelfNamed) & Head & {
+type DetailsCard = Shell & Named & Head & {
     readonly kind: "details"
     readonly items: readonly DescriptionListItem[]
 }
-type AccordionCard = Shell & (Labelled | SelfNamed) & Head & AccordionData
+type AccordionCard = Shell & Named & Head & AccordionData
+/** A choice list: checkbox rows with a title and a subtitle, full-width dividers (0.37.5). */
+type SelectCard = Shell & Named & Head & SelectData
 /** A table Grammar owns: columns, rows or day groups under heading rows, one column header, every line to the card's edges. */
-type TableCard = Shell & (Labelled | SelfNamed) & Head & TableData
+type TableCard = Shell & Named & Head & TableData
 
 /**
  * A tile: a peer you recognise and open (a provider, a connector). It has no `label`, `fact` or `labelEnd`: its name
@@ -162,7 +179,7 @@ type TileCard = Shell & TileData & {
     readonly labelEnd?: undefined
 }
 
-export type SurfaceCardProps = BodyCard | FiguresCard | ListCard | DetailsCard | AccordionCard | TableCard | TileCard
+export type SurfaceCardProps = BodyCard | FiguresCard | ListCard | DetailsCard | AccordionCard | TableCard | SelectCard | TileCard
 
 /**
  * The orbit motif: three thin concentric rings with five small nodes, one static SVG. It is drawn in the
@@ -201,8 +218,8 @@ const PLACEHOLDER_DISCLOSURES: readonly AccordionRowData[] = [1, 2, 3].map((n) =
  * Where the name sits follows the kind: a card that heads a section has a `label`, drawn
  * outside the material as an unpainted row above it; a tile has its `name` and mark or media drawn inside.
  *
- * A card never stands inside another surface (a card, `Pane surface`, a `Dialog`, `Drawer` or `Popover`); development
- * throws, and R356 refuses it across files.
+ * A card never stands inside another card (development throws). On a white ground (`Pane surface`, `Drawer`, `Dialog`, `Popover`) a card IS the
+ * group and draws itself bordered with no shadow (SURFACE-ELEVATION); on the pink well it has the shadow and no border.
  */
 export const SurfaceCard = (props: SurfaceCardProps) => {
     const host = useSurfaceHost()
@@ -219,9 +236,10 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
     const body = props.kind === undefined || props.kind === "body" ? props : undefined
     const labelled = isTile ? undefined : props.label
     const name = isTile ? props.name : props.label
-    const accessibleName = isTile ? props.name : props.ariaLabel ?? props.label
+    const sublabel = isTile ? undefined : props.sublabel
+    const accessibleName = isTile ? props.name : props.ariaLabel ?? props.label ?? sublabel
     const headingLevel = props.headingLevel ?? DEFAULT_SURFACE_HEADING_LEVEL
-    const measure: SurfaceCardMeasure = body?.measure ?? "content"
+    const measure: SurfaceCardMeasure = props.measure ?? "content"
     const treatment: SurfaceCardTreatment = body?.treatment ?? "surface"
     const emphasis = body !== undefined && (body.treatment === undefined || body.treatment === "surface") ? body.emphasis : undefined
     const motif: SurfaceCardMotif = body?.treatment === "ink" ? body.motif ?? "none" : "none"
@@ -263,6 +281,8 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
                 return <FigureCells items={figureItems(props.items, isLoading)} isLoading={isLoading} isDisabled={disabled} />
             case "list":
                 return <ListRows data={props} isLoading={isLoading} ariaLabel={accessibleName} />
+            case "select":
+                return <SelectRows data={props} isLoading={isLoading} ariaLabel={accessibleName} />
             case "details":
                 return <DescriptionList items={props.items} isLoading={isLoading} />
             case "accordion":
@@ -310,6 +330,8 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
                 className={getSurfaceContentClassName(measure, false)}
                 data-contract={flush ? "GAP-0 PADDING-0" : "PADDING-4"}
                 data-grammar-surface-zoned={isZoned ? "true" : undefined}
+                data-grammar-surface-headed={headers.length > 0 ? "true" : undefined}
+                data-grammar-surface-footed={footers.length > 0 ? "true" : undefined}
                 data-grammar-surface-content="true"
                 isScrollable={false}
             >
@@ -328,6 +350,19 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
                 ) : failure === undefined ? face : <ErrorView error={failure} />}
             </VerticalScrollRegionPart>
             {action}
+            {body?.menu === undefined ? null : (
+                <span className="starci-core-body-menu" data-grammar-body-menu="true">
+                    {isLoading || disabled ? (
+                        <IconButton label={body.menu.label} source={EllipsisHorizontalIcon} size="sm" intent="neutral" isLoading={isLoading} isDisabled={disabled} />
+                    ) : (
+                        <DropdownMenu
+                            placement="bottom end"
+                            entries={body.menu.entries}
+                            trigger={<IconButton label={body.menu.label} source={EllipsisHorizontalIcon} size="sm" intent="neutral" />}
+                        />
+                    )}
+                </span>
+            )}
         </Card.Content>
     )
     const highlightedSurface = props.isHighlight === true && state !== "pending" ? (
@@ -346,6 +381,7 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
             data-grammar-surface-height={height}
             data-grammar-interaction={wholeAction === undefined ? "static" : "whole-action"}
             data-grammar-surface-labelled={hasNamedHeading ? "true" : "false"}
+            data-grammar-surface-sublabel={sublabel === undefined ? undefined : "true"}
             data-grammar-surface-card="true"
             data-grammar-nesting="surface"
             data-grammar-surface-treatment={treatment}
@@ -355,13 +391,13 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
             render={(cardProps) => <section {...cardProps} />}
             variant="transparent"
         >
+            {sublabel === undefined ? null : <Sublabel>{sublabel}</Sublabel>}
             {labelled === undefined || isTile ? null : (
-                <Card.Header className={surfaceLabelClassName} data-contract="GAP-2" data-grammar-surface-label="true" data-grammar-label-end={props.labelEnd === undefined ? "false" : "true"} data-grammar-label-described={props.description === undefined ? undefined : "true"}>
+                <Card.Header className={surfaceLabelClassName} data-contract="GAP-2" data-grammar-surface-label="true" data-grammar-label-end={props.labelEnd === undefined ? "false" : "true"}>
                     <Label as={`h${headingLevel}`} id={headingId}>{labelled}</Label>
                     {props.count === undefined || isLoading ? null : <span className="starci-core-section-count" data-grammar-section-count={props.count} {...(props.isAttention === true ? { "data-grammar-attention": "true" } : {})} data-contract="TONE-2">{props.count}</span>}
                     {props.fact === undefined ? null : <span className={surfaceFactClassName} data-contract="TONE-2 FONT-2">{props.fact}</span>}
                     {props.labelEnd === undefined ? null : <span className="starci-core-surface-label-end"><ButtonPlacementProvider placement="chrome">{props.labelEnd}</ButtonPlacementProvider></span>}
-                    {props.description === undefined ? null : <p className="starci-core-surface-description" data-grammar-surface-description="true">{props.description}</p>}
                 </Card.Header>
             )}
             {highlightedSurface}

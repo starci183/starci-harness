@@ -19,7 +19,7 @@ test("the law publishes one rule and it is an error", () => {
   assert.deepEqual(recommended, { "starci-grammar/single-child-card": "error" })
 })
 
-test("SINGLE-CHILD-CARD: a card around one table, list or chart is refused", () => {
+test("SINGLE-CHILD-CARD: a card around one DataTable or chart is refused; list cards are valid", () => {
   slotTester().run("single-child-card", singleChildCard, {
     valid: [
       // the table is the surface; the Section head carries the title
@@ -46,13 +46,18 @@ test("SINGLE-CHILD-CARD: a card around one table, list or chart is refused", () 
       { filename: BLOCK, code: "import { SurfaceCard } from \"@starci/grammar/core\"\nimport { DataTable } from \"./mine\"\nexport const A = () => <SurfaceCard label=\"R\"><DataTable /></SurfaceCard>" },
       // a script is not product source
       { filename: SCRIPT, code: code("<SurfaceCard label=\"Runs\"><DataTable columns={c} rows={r} /></SurfaceCard>") },
+      // 0.37.8: a card of list or key-value rows is valid, alone or not
+      { filename: BLOCK, code: code("<SurfaceCard label=\"Runs\"><ListBox items={i} /></SurfaceCard>") },
+      { filename: BLOCK, code: code("<SurfaceCard label=\"Steps\"><DisclosureList label=\"Steps\" items={i} /></SurfaceCard>") },
+      { filename: BLOCK, code: code("<SurfaceCard label=\"Log\"><Timeline items={i} /></SurfaceCard>") },
+      { filename: BLOCK, code: code("<SurfaceCard label=\"Runs\"><Section kind=\"list\" items={rows} /></SurfaceCard>") },
+      { filename: BLOCK, code: code("<SurfaceCard label=\"Runs\" kind=\"table\" columns={c} rows={r} />") },
+      { filename: BLOCK, code: code("<SurfaceCard label=\"Runs\" kind=\"list\" items={i} empty={null} />") },
+      { filename: BLOCK, code: code("<SurfaceCard label=\"Chi tiết\" kind=\"list\" layout=\"keyValue\" items={i} empty={null} />") },
+      { filename: BLOCK, code: code("<SurfaceCard label=\"Chi tiết\"><DescriptionList items={i} /></SurfaceCard>") },
     ],
     invalid: [
       { filename: BLOCK, code: code("<SurfaceCard label=\"Runs\"><DataTable columns={c} rows={r} /></SurfaceCard>"), errors: [lone] },
-      { filename: BLOCK, code: code("<SurfaceCard label=\"Runs\"><ListBox items={i} /></SurfaceCard>"), errors: [lone] },
-      { filename: BLOCK, code: code("<SurfaceCard label=\"Steps\"><DisclosureList label=\"Steps\" items={i} /></SurfaceCard>"), errors: [lone] },
-      { filename: BLOCK, code: code("<SurfaceCard label=\"Log\"><Timeline items={i} /></SurfaceCard>"), errors: [lone] },
-      { filename: BLOCK, code: code("<SurfaceCard label=\"Runs\"><Section kind=\"list\" items={rows} /></SurfaceCard>"), errors: [lone] },
       { filename: BLOCK, code: code("<SurfaceCard label=\"Usage\"><BarChart data={d} /></SurfaceCard>"), errors: [lone] },
       { filename: BLOCK, code: code("<SurfaceCard label=\"Share\"><ProportionBar items={d} /></SurfaceCard>"), errors: [lone] },
       { filename: BLOCK, code: code("<SurfaceCard label=\"Map\"><BubbleMap data={d} /></SurfaceCard>"), errors: [lone] },
@@ -64,8 +69,6 @@ test("SINGLE-CHILD-CARD: a card around one table, list or chart is refused", () 
       { filename: BLOCK, code: code("<SurfaceCard label=\"Runs\">{ready && <DataTable columns={c} rows={r} />}</SurfaceCard>"), errors: [lone] },
       { filename: BLOCK, code: code("<SurfaceCard label=\"Runs\" headers={[]} footers={[]}><DataTable columns={c} rows={r} /></SurfaceCard>"), errors: [lone] },
       // the data-driven form of the same lone table and list
-      { filename: BLOCK, code: code("<SurfaceCard label=\"Runs\" kind=\"table\" columns={c} rows={r} />"), errors: [lone] },
-      { filename: BLOCK, code: code("<SurfaceCard label=\"Runs\" kind=\"list\" items={i} empty={null} />"), errors: [lone] },
     ],
   })
 })

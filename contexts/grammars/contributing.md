@@ -144,6 +144,11 @@ it. A minor moves the range, and with it the whole family. Which one a change is
   id removed or renamed, a `deprecated` or `forbidden` entry of [contract.yaml](contract.yaml) changed, and a Grammar fact
   `eslint-canon-fe` needs. A minor raises the canon pins' range in `@starci/hfs` (`knowledge/hfs/canon-pins.yaml` and
   [stack/pins.yaml](../stack/pins.yaml)), which releases hfs, the canons and the CLI with it.
+- **An hfs minor:** `eslint-grammar-core` peers `@starci/hfs` by a same-minor range, so every hfs minor cuts the family as a patch
+  whose peer range names the new hfs line, in the commit that raises hfs ([CONTRIBUTING.md](../../CONTRIBUTING.md) CONTRIB-20). A
+  Grammar change cut on a branch of an older hfs minor serves that line only; the newer line takes its own patch with the change merged
+  (`deps publish-local` warns `PUBLISH_LOCAL_PEER_LINE` on the first and refuses `PUBLISH_LOCAL_PEER_ORPHAN` on an hfs no Grammar
+  release installs beside).
 
 The release judges it: `starci release push` and CI's publish plan refuse a patch bump of `@starci/grammar` whose diff since the version
 npm serves holds a minor's change (`RELEASE_GRAMMAR_MINOR_REQUIRED`, `cli/src/core/release/grammar-bump.ts`). The judge reads source

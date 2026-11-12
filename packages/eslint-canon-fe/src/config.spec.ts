@@ -396,6 +396,7 @@ test("the Sonar way block lints the source outside the specs with the pinned son
     assert.equal(firstOf(sonarRules[name]), "error", `${name} is not left to the server`)
   }
   assert.deepEqual(sonarRules["unicorn/consistent-function-scoping"], ["error"], "arrow functions are judged too")
+  assert.ok(!("sonarjs/todo-tag" in sonarRules) && rulesOf(source)["starci-fe/todo-tag"] === "error", "S1135 is the canon rule todo-tag, which reads the marker and not the noun")
   assert.ok(!("no-duplicate-imports" in sonarRules), "S3863 is the canon rule no-duplicate-import, which spares no separate type import")
   assert.equal(rulesOf(source)["starci-fe/no-duplicate-import"], "error")
   assert.equal(rulesOf(source)["starci-fe/max-params"], "error")

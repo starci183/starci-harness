@@ -398,7 +398,8 @@
         margin-block-start: var(--grammar-identity-gap);
     }
 
-    @container (min-width: 32rem) {
+    /* Two columns from a 31rem container (496px): the form measure is 30rem, so a plain `Stack measure="form"` stays one column, while a form in a reading measure inside a card (511px) holds two. */
+    @container (min-width: 31rem) {
         .starci-core-form-grid[data-grammar-form-grid-columns="2"] > .starci-core-form-grid-row {
             grid-template-columns: repeat(2, minmax(0, 1fr));
         }
@@ -415,6 +416,8 @@
     /* Select has the same 2.5rem field height as Input. */
     .starci-core-select-trigger {
         min-block-size: var(--starci-core-field-min-height);
+        /* The prefix and the value sit on one line, centred in the box (0.37.23): the vendor trigger stretched its spans, so the text rode at the top of a compact pill. */
+        align-items: center;
     }
 
     /*
@@ -494,6 +497,50 @@
 
     .starci-core-choice-control {
         flex-shrink: 0;
+    }
+
+    /*
+     * THE SWITCH ROW (0.37.5): with a label the switch is ONE row. The text (label 14 / weight 500, description 12 muted) fills the start, the control sits at the end
+     * edge centred vertically, and the whole row is the hit target (the root is the vendor label). A switch with a hidden label is the bare control.
+     */
+    [data-component="Switch"][data-grammar-switch-labelled="true"] {
+        display: flex;
+        flex-direction: row;
+        inline-size: 100%;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--grammar-row-gap);
+    }
+
+    [data-component="Switch"][data-grammar-switch-labelled="false"] {
+        display: inline-flex;
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .starci-core-switch-text {
+        display: flex;
+        min-width: 0;
+        flex: 1 1 0%;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--grammar-identity-gap);
+    }
+
+    [data-component="Switch"] .starci-core-switch-text > [data-grammar-field-label] {
+        font-size: var(--grammar-text-md);
+        font-weight: var(--grammar-weight-medium);
+        line-height: var(--grammar-leading-md);
+    }
+
+    [data-component="Switch"] .starci-core-switch-text > [data-grammar-field-description] {
+        color: var(--muted);
+        font-size: var(--grammar-text-xs);
+        line-height: var(--grammar-leading-xs);
+    }
+
+    [data-component="Switch"][data-grammar-switch-labelled="true"] > .starci-core-choice-control {
+        margin-inline-start: auto;
     }
 
     /*
