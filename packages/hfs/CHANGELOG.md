@@ -1,5 +1,10 @@
 # Changelog
 
+## 6.9.1 - 2026-11-13
+
+- Fixed (release gate, cache verify lock): a `cache-verify.yml` the default branch does not hold yet answers `gh run list` with HTTP 404 "workflow cache-verify.yml not found on the default branch"; that is the "no verify yet" case (the lock is open, the gate trusts the cache main's CI verified), no longer `HFS_CHECK_CACHE_VERIFY_LOCKED` as unreadable, so an app's first release can bring the workflow to main. Any other gh failure stays unread. `release/cache-verify-lock.mts`; spec `src/release-cache-verify-lock.spec.mts`.
+- Fixed (spec): `stack-base-port.spec` builds its stack context with the spawn seam, so the lazy sops getter never runs on a runner without sops.
+
 ## 6.9.0 - 2026-11-13
 
 - Added (PROJECT-LINT-3, R381): the project extension folder. A project adds its own laws in `ext/` at the app root (slot `app.ext`, manifest 3.38.0), one subfolder per tool, all declared in `ext/manifest.json` (`starci/project-ext@1`, with `api`, the extension API version it targets): `ext/hfs/` holds machine rules (`(context) => findings`, run by `starci app check` over the tracked files the rule's `appliesTo` names), `ext/lint/` ESLint rules the canon factories load over those paths, `ext/checks/` the project checks (R402, below). `starci app check` loads and runs them on every run. A declared file that is not there, a rule file no rule declares, a rule that throws, any key that would turn off, override or lower a rule, and a code the harness reports refuse the extension (`HFS_EXT_INVALID`), which then lends nothing while the check is red; a manifest of another API version is refused `HFS_EXT_API_MISMATCH`, naming the project to update. `runtime/scripts/lib/project-ext.mts`; spec `src/project-ext.spec.mts`.
