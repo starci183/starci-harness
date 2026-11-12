@@ -13,10 +13,12 @@ import { listPackages } from "../../shared/workspace.js"
 import type { WorkspacePackage } from "../../shared/workspace.js"
 import { affectedBy } from "../release/affected.js"
 import { isHarnessCheckout } from "../release/push-gate.js"
-import { ensureRegistry, LOCAL_TAG, PORT, registryFlags, registryState, registryUrl, registryVersions, writePublishNpmrc } from "./local-registry.js"
+import { ensureRegistry, LOCAL_TAG, PORT, registryFlags, registryPeerLine, registryState, registryUrl, registryVersions, writePublishNpmrc } from "./local-registry.js"
 import { npmCopy } from "./npm-copy.js"
 import type { NpmCopy } from "./npm-copy.js"
 import { buildPackage, parseManifest, tail } from "./packages.js"
+import { judgePeerLine } from "./peer-line.js"
+import type { ListedLine, PeerLineVerdict } from "./peer-line.js"
 import { packStamped, sourceDigest } from "./pack-stamped.js"
 
 /** What npm serves of a version this checkout publishes: nothing, or a copy of the same source. */
@@ -42,6 +44,8 @@ interface PublishLocalData {
     readonly registryState: "up" | "down"
     readonly rows: readonly Row[]
     readonly published: readonly string[]
+    /** The peer line of the publish (`judgePeerLine`): refused lines stop `--execute`; empty while the registry is down. */
+    readonly peerLine: PeerLineVerdict
 }
 
 const CLI_DIR = "cli"
@@ -129,6 +133,20 @@ const publishDue = async (context: VerbContext, port: number, given: { readonly 
     )
 }
 
+/**
+ * The peer line of the due rows against what the local registry lists of every workspace package (CONTRIB-20; contexts/authority/packages.md "The local registry"): a published version
+ * no sibling release can install beside is refused, a published range that excludes the newest line the registry lists is warned.
+ */
+const peerLineOf = async (all: readonly WorkspacePackage[], rows: readonly Row[], port: number): Promise<PeerLineVerdict> => {
+    const shipped = all.filter(shippable)
+    const names = new Set(shipped.map((pkg) => pkg.name))
+    const peerers = Object.fromEntries(shipped.filter((pkg) => Object.keys(pkg.peers).some((name) => names.has(name))).map((pkg) => [pkg.name, pkg.peers]))
+    const due = rows.map((row) => ({ package: row.package, version: row.version, peers: all.find((pkg) => pkg.name === row.package)?.peers ?? {} }))
+    const wanted = [...new Set([...Object.keys(peerers), ...due.flatMap((row) => Object.keys(row.peers))])].filter((name) => names.has(name))
+    const listings = new Map<string, ListedLine>(await Promise.all(wanted.map(async (name) => [name, await registryPeerLine(name, port)] as const)))
+    return judgePeerLine(due, peerers, (name) => listings.get(name))
+}
+
 /** The packages to publish: those named by `--package` (a folder or name), else every shippable package this checkout changed since the base of its branch; PUBLISH_LOCAL_NOTHING when none. */
 const chosenPackages = async (root: string, all: readonly WorkspacePackage[], named: readonly string[]): Promise<WorkspacePackage[]> => {
     const candidates = all.filter(shippable)
@@ -156,7 +174,7 @@ export const depsPublishLocalVerb = defineVerb({
     editions: ["lite", "full"],
     effect: "host",
     roles: WRITERS,
-    schema: "starci/deps-publish-local@3",
+    schema: "starci/deps-publish-local@4",
     flags: {
         execute: { kind: "boolean", summary: "start or reuse the registry container, build and publish (default: print the plan only)" },
         package: { kind: "list", summary: "this package (its folder or name), repeatable, instead of the packages changed since the base of the branch; its build prerequisites are built, not published" },
@@ -175,12 +193,15 @@ export const depsPublishLocalVerb = defineVerb({
         const rows = await inOrder(chosen, (pkg) => planOne(root, pkg, asked))
         const order = await globalOrder(root)
         const due = rows.toSorted((left, right) => order.indexOf(left.dir) - order.indexOf(right.dir))
+        const peerLine: PeerLineVerdict = live || flags.execute ? await peerLineOf(all, due, port) : { refused: [], warned: [] }
+        if (flags.execute && peerLine.refused.length > 0) throw new Refusal("PUBLISH_LOCAL_PEER_ORPHAN", `an app could not install this publish beside its siblings (CONTRIB-20; contexts/authority/packages.md "The local registry"):\n${peerLine.refused.map((line) => `- ${line}`).join("\n")}`)
         const published: string[] = []
         if (flags.execute) await publishDue(context, port, { root, all, order, rows: due, published })
-        const data: PublishLocalData = { mode: flags.execute ? "publish" : "plan", registry: registryUrl(port), registryState: flags.execute ? "up" : state, rows: due.map((row) => ({ package: row.package, version: row.version, dir: row.dir, npm: row.npm, replaces: row.replaces })), published }
+        const data: PublishLocalData = { mode: flags.execute ? "publish" : "plan", registry: registryUrl(port), registryState: flags.execute ? "up" : state, rows: due.map((row) => ({ package: row.package, version: row.version, dir: row.dir, npm: row.npm, replaces: row.replaces })), published, peerLine }
         const table = formatTable([["PACKAGE", "VERSION", "NPM", "LOCAL REGISTRY"], ...due.map((row) => [row.package, row.version, row.npm, row.replaces === undefined ? "unknown (down)" : row.replaces ? "replaces its copy" : "new"])])
         const summary = flags.execute ? `published ${String(published.length)} package(s) to ${registryUrl(port)}` : `${String(due.length)} to publish to ${registryUrl(port)} (registry ${state}; plan only, add --execute)`
         const names = due.map((row) => row.package.replace(/^@starci\//, "")).join(" ")
-        return { data, message: [table, summary, `install them in an app: starci deps install-local ${names} --execute (before a commit: starci deps install-local --restore)`].join("\n") }
+        const peerLines = [...peerLine.refused.map((line) => `refused PUBLISH_LOCAL_PEER_ORPHAN: ${line}`), ...peerLine.warned.map((line) => `warning PUBLISH_LOCAL_PEER_LINE: ${line}`)]
+        return { data, message: [table, ...peerLines, summary, `install them in an app: starci deps install-local ${names} --execute (before a commit: starci deps install-local --restore)`].join("\n") }
     },
 })

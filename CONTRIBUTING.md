@@ -237,7 +237,12 @@ range in `@starci/hfs` and releases the whole family ([contexts/grammars/contrib
 minor"). A raised version npm does not serve is published whatever its content, even with an empty diff, because the stack pins name it and an immutable registry needs it; `unchanged` never appears in the plan. A stack pin of a package at a version npm does not serve and this run does not publish refuses `RELEASE_PIN_UNPUBLISHED`. A package the plan publishes, or one a stack pin names at the version its folder holds, whose
 `peerDependencies` range excludes the version a sibling is pinned at (or published at) refuses `RELEASE_PEER_RANGE_EXCLUDES_PIN` (`cli/src/core/release/peer-range.ts`): an
 app installs the pinned set, and an excluded peer fails `npm ci` with ERESOLVE. The canons peer `@starci/hfs` by a same-minor range and read its runtime at run time, so an hfs patch does not release them and
-an hfs minor moves their peer range in the commit that raises the pin. A change to a package therefore raises the version in its `package.json` and adds its entry to its CHANGELOG
+an hfs minor moves their peer range in the commit that raises the pin. The canons that peer hfs are `eslint-canon-be`, `eslint-canon-fe` and the Grammar
+lint `eslint-grammar-core` (`eslint-grammar-offset-pop` peers it exactly), so every hfs minor cuts each of them, the Grammar family as a
+patch, in that commit: the range stays same-minor and is never widened, since a canon reads the hfs runtime it was tested against.
+A canon or Grammar release cut on an older hfs minor while a newer one is open serves that older line only, and the newer line
+takes its own cut. `packages/hfs/src/canon-pins.spec.mts` holds each canon's peer admitting the hfs folder's version, and
+`deps publish-local` holds the same line on the local registry ([contexts/authority/packages.md](contexts/authority/packages.md) "The local registry"). A change to a package therefore raises the version in its `package.json` and adds its entry to its CHANGELOG
 (the CLI's is [CHANGELOG.md](CHANGELOG.md)) in the commit that makes it; a package and the sibling version it requires
 move in one commit. The CLI is the one exception, held for the second phase: `cli/package-lock.json` installs its
 siblings from npm, so its commit requires each at a version npm serves, and it requires every `@starci` package

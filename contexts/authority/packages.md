@@ -36,6 +36,12 @@ The flow, in order:
    version: a version npm does not serve is published, one npm serves is published only when npm's copy carries the same `starciSource`
    digest, and any other is refused `PUBLISH_LOCAL_VERSION_TAKEN` (raise the version with its CHANGELOG entry, as every package edit
    does). A rebuild of the same version replaces the registry's copy (an unpublish, then the publish).
+   The publish also judges its peer line against what the registry lists (`core/deps/peer-line.ts`): a published version that a
+   sibling peers (`@starci/hfs`, peered by both canons and the Grammar lint) with no release of that sibling admitting it, listed or
+   published in the same run, is refused `PUBLISH_LOCAL_PEER_ORPHAN`, and so is a sibling published with it whose range excludes it;
+   an app on that version would fail `npm ci` with ERESOLVE. A published range that excludes the newest release the registry lists
+   of the package it peers (a Grammar patch cut on an older hfs minor) is warned `PUBLISH_LOCAL_PEER_LINE`. Every hfs minor cuts
+   both canons and the Grammar family with it ([CONTRIBUTING.md](../../CONTRIBUTING.md) CONTRIB-20).
 2. In the app, `starci deps install-local <package>... --execute` installs the version each named package was last published under, like npm:
    every requirement of it in the app's manifests is raised to that version (an `overrides` entry for a package only another
    package requires, hfs through `starci-harness`; the CLI is named `starci-harness`), the package's lock entries are dropped so npm

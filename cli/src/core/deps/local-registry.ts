@@ -67,6 +67,24 @@ export const registryVersions = async (name: string, port: number, cwd: string):
     return typeof parsed.data === "string" ? [parsed.data] : parsed.data
 }
 
+const packumentSchema = z.object({ versions: z.record(z.string(), z.object({ peerDependencies: z.record(z.string(), z.string()).optional() })) })
+
+/**
+ * Each version the local registry lists of `name` with the peer ranges it was published with (its packument, read over HTTP);
+ * undefined when the registry lists none or cannot be read.
+ */
+export const registryPeerLine = async (name: string, port: number): Promise<Readonly<Record<string, Readonly<Record<string, string>>>> | undefined> => {
+    try {
+        const answer = await fetch(`${registryUrl(port)}${name.replace("/", "%2f")}`, { signal: AbortSignal.timeout(15_000), headers: { accept: "application/json" } })
+        if (!answer.ok) return undefined
+        const parsed = packumentSchema.safeParse(await answer.json())
+        if (!parsed.success) return undefined
+        return Object.fromEntries(Object.entries(parsed.data.versions).map(([version, manifest]) => [version, manifest.peerDependencies ?? {}]))
+    } catch {
+        return undefined
+    }
+}
+
 /** The version a package was last published to the local registry under (its `local` dist-tag, set by every `deps publish-local`); undefined when it holds none. */
 export const latestLocal = async (name: string, port: number, cwd: string): Promise<string | undefined> => {
     const view = await captureNpm(["view", name, "dist-tags.local", "--json", ...registryFlags(port)], cwd)
