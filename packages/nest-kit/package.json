@@ -63,7 +63,7 @@
     "rxjs": "7.8.2",
     "typescript": "5.9.3",
     "typescript-eslint": "8.72.0",
-    "@nestjs/testing": "11.2.5"
+    "@nestjs/testing": "12.3.3"
   },
   "publishConfig": {
     "access": "public",
