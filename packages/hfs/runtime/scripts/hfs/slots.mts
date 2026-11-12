@@ -85,8 +85,6 @@ export interface RepoView {
   profile: string;
   apps: readonly AppRef[];
   optionalSlots: readonly string[];
-  /** How the app keeps its agent modules (app view only): `packages` (module packages and the rendered registry) unless hfs.json declares `modules: "data"`. */
-  modules?: 'packages' | 'data';
   patterns?: readonly string[];
   kinds?: readonly string[];
   backing?: readonly string[];
@@ -323,7 +321,6 @@ export function resolveRepoDeclaration(manifest: SlotManifest, declaration: Pars
     // tsconfig.json that type-checks it, both switched on by `browser: true`.
     apps: Object.freeze([]),
     optionalSlots: Object.freeze(declaration.browser === true ? ['app.browser', 'app.browser-config'] : []),
-    modules: declaration.modules === 'data' ? 'data' : 'packages',
     connections: Object.freeze([]),
     providers,
     reads: Object.freeze([]),

@@ -10,12 +10,11 @@ export class SideRefusal extends Error {
   readonly code = 'SIDE_NOT_DECLARED';
 }
 
-/** The sides each `starci app add` noun writes into: a back-end pattern, a front-end unit, a module package. */
+/** The sides each `starci app add` noun writes into: a back-end pattern or a front-end unit. */
 const ADD_NOUN_SIDES: Readonly<Record<string, readonly ProjectSide[]>> = Object.freeze({
   api: ['be'], webhook: ['be'], realtime: ['be'], saga: ['be'], job: ['be'], reactor: ['be'], queue: ['be'], projection: ['be'], cli: ['be'],
   table: ['be'], connection: ['be'], service: ['be'], spec: ['be'], inbox: ['be'],
   block: ['fe'], frame: ['fe'], composite: ['fe'], branch: ['fe'], leaf: ['fe'], page: ['fe'], overlay: ['fe'], layout: ['fe'],
-  module: ['packages'],
 });
 
 /** The sides `starci app add <noun>` needs: its noun's, plus fe for a table with `--fe`, and for an app the side of its kind (`next` is fe). */

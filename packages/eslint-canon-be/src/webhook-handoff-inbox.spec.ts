@@ -144,8 +144,12 @@ class ReceiptPort {
     async receive(tx: EntityManager, accountId: string, rows: readonly object[]): Promise<{ id: string } | undefined> { return tx && accountId && rows ? { id: accountId } : undefined }
     async accept(tx: EntityManager, accountId: string): Promise<boolean> { return Boolean(tx) && accountId !== "" }
     async write(tx: EntityManager, accountId: string): Promise<{ id: string } | undefined> { return tx ? { id: accountId } : undefined }
+    async receiveAll(tx: EntityManager, delivery: object): Promise<readonly { id: string }[]> { return tx && delivery ? [] : [] }
 }
-class Lookalike2 { async receive(tx: EntityManager, accountId: string, rows: readonly object[]): Promise<{ id: string } | undefined> { return tx && accountId && rows ? undefined : undefined } }`
+class Lookalike2 {
+    async receive(tx: EntityManager, accountId: string, rows: readonly object[]): Promise<{ id: string } | undefined> { return tx && accountId && rows ? undefined : undefined }
+    async receiveAll(tx: EntityManager, delivery: object): Promise<readonly { id: string }[]> { return tx && delivery ? [] : [] }
+}`
 const portService = (body: string, { parameter = "delivery: { deliveryId: string; accountId: string }", port = "ReceiptPort" } = {}) => `${DOOR_IMPORT}${head}
 export class DeliveryService {
     constructor(private readonly port: ${port}, private readonly database: EntityManager, private readonly events: EventBus) {}
@@ -199,6 +203,83 @@ for (const edition of ["lite", "full"]) {
         ruleTester({ root: TYPED_ROOT, hfs: undeclared }).run("webhook-inbox-key", rules["webhook-inbox-key"], {
             valid: [],
             invalid: [{ filename: SERVICE, code: portService(transaction(received)), errors: both }],
+        })
+    })
+}
+
+// The multi-event form (`many: true`): the declared method takes the transaction's manager and the delivery carrying N events, and answers the
+// list of the new events only (a repeat answers the empty list). The door's effects only iterate that list: `for (const event of fresh)`.
+const MANY = "delivery: { deliveryId: string; accountId: string; events: readonly { id: string }[] }"
+const fresh = "const fresh = await this.port.receiveAll(tx, delivery)"
+const each = "for (const event of fresh) { await this.events.publish({ eventId: event.id }, tx) }"
+const many = (body: string, options: { port?: string } = {}) => portService(transaction(body), { parameter: MANY, ...options })
+
+for (const edition of ["lite", "full"]) {
+    test(`webhook-inbox-key accepts a declared many receipt port whose effects only iterate the new events it answers, in ${edition}`, () => {
+        const declared = { ...BE_DECLARATION, patterns: ["webhooks"], receiptPorts: [
+            { class: "ReceiptPort", method: "receiveAll", many: true, reason: "writes each event of the delivery once under its unique key and answers the new ones" },
+        ] }
+        const hfs = hfsFromDeclaration({ ...appDeclaration("be", declared), edition }, TYPED_ROOT)
+        const error = [{ messageId: "key" }]
+        const both = [{ messageId: "handoff" }, { messageId: "key" }]
+        ruleTester({ root: TYPED_ROOT, hfs }).run("webhook-inbox-key", rules["webhook-inbox-key"], {
+            valid: [
+                { filename: SERVICE, code: many(`${fresh}; ${each}`) },
+                { filename: SERVICE, code: many(`${fresh}; for (const event of fresh) await tx.save({ id: event.id }); ${each}`) },
+                { filename: SERVICE, code: many(`const events = delivery.events; const fresh = await this.port.receiveAll(tx, events); ${each}`) },
+                { filename: SERVICE, code: many(`${fresh}; for (const event of fresh) { const row = { id: event.id, delivery: event }; await tx.save(row) }`) },
+                { filename: SERVICE, code: many(fresh) },
+            ],
+            invalid: [
+                // an effect before the declared call
+                { filename: SERVICE, code: many(`await tx.save({ early: true }); ${fresh}; ${each}`), errors: error },
+                // an effect on the raw delivery or its events: directly, through a binding made before the claim, from a nested function, or through arguments
+                { filename: SERVICE, code: many(`${fresh}; for (const event of fresh) { await tx.save({ id: event.id, from: delivery.deliveryId }) }`), errors: error },
+                { filename: SERVICE, code: many(`const events = delivery.events; const fresh = await this.port.receiveAll(tx, events); for (const event of fresh) { await tx.save({ id: event.id, all: events }) }`), errors: error },
+                { filename: SERVICE, code: many(`${fresh}; for (const event of fresh) { const key = () => delivery.deliveryId; await tx.save({ id: event.id, key: key() }) }`), errors: error },
+                { filename: SERVICE, code: many(`${fresh}; for (const event of fresh) { await tx.save({ id: event.id, raw: arguments[0] }) }`), errors: error },
+                // iterating anything else than the returned list itself
+                { filename: SERVICE, code: many(`${fresh}; for (const event of delivery.events) { await tx.save({ id: event.id }) }`), errors: error },
+                { filename: SERVICE, code: many(`${fresh}; for (const event of fresh.slice(1)) { await tx.save({ id: event.id }) }`), errors: error },
+                { filename: SERVICE, code: many(`${fresh}; for (const event of [...fresh, ...delivery.events]) { await tx.save({ id: event.id }) }`), errors: error },
+                { filename: SERVICE, code: many(`${fresh}; fresh.forEach((event) => { void tx.save({ id: event.id }) })`), errors: error },
+                { filename: SERVICE, code: many(`${fresh}; for await (const event of fresh) { await tx.save({ id: event.id }) }`), errors: error },
+                { filename: SERVICE, code: many(`${fresh}; for (let event of fresh) { await tx.save({ id: event.id }) }`), errors: error },
+                { filename: SERVICE, code: many(`${fresh}; for (const event of fresh) { await tx.save({ id: event.id, count: fresh.length }) }`), errors: error },
+                // an effect outside the iteration, after it or instead of it, and a repeat test of the single form
+                { filename: SERVICE, code: many(`${fresh}; await tx.save({ count: fresh.length })`), errors: error },
+                { filename: SERVICE, code: many(`${fresh}; ${each}; await tx.save({ done: true })`), errors: error },
+                { filename: SERVICE, code: many(`${fresh}; if (fresh.length === 0) return; ${each}`), errors: error },
+                { filename: SERVICE, code: many("const receipt = await this.port.receiveAll(tx, delivery); if (receipt === undefined) return; await tx.save({ id: delivery.deliveryId })"), errors: error },
+                // the answer bound otherwise than to one const name
+                { filename: SERVICE, code: many(`let fresh = await this.port.receiveAll(tx, delivery); ${each}`), errors: error },
+                { filename: SERVICE, code: many("const [first] = await this.port.receiveAll(tx, delivery); await tx.save({ id: first?.id })"), errors: error },
+                { filename: SERVICE, code: many("await this.port.receiveAll(tx, delivery); for (const event of delivery.events) { await tx.save({ id: event.id }) }"), errors: error },
+                // outside the transaction, on another manager, with nothing of the delivery, or with a call inside the arguments
+                { filename: SERVICE, code: portService("const fresh = await this.port.receiveAll(this.database, delivery); for (const event of fresh) { await this.events.publish({ eventId: event.id }) }", { parameter: MANY }), errors: error },
+                { filename: SERVICE, code: many(`const fresh = await this.port.receiveAll(this.database, delivery); ${each}`), errors: error },
+                { filename: SERVICE, code: many(`const fresh = await this.port.receiveAll(tx, []); ${each}`), errors: error },
+                { filename: SERVICE, code: many(`const fresh = await this.port.receiveAll(tx, rowsOf(delivery.deliveryId)); ${each}`), errors: error },
+                // processing inside the iteration is still processing (the handoff half)
+                { filename: SERVICE, code: many(`${fresh}; for (const event of fresh) { await this.port.write(tx, event.id) }`), errors: [{ messageId: "handoff" }] },
+                // another method of the declared class, and a lookalike class with the declared method name
+                { filename: SERVICE, code: many("const fresh = await this.port.write(tx, delivery.accountId); if (fresh === undefined) return"), errors: both },
+                { filename: SERVICE, code: many(`${fresh}; ${each}`, { port: "Lookalike2" }), errors: both },
+            ],
+        })
+        // the same door without the declaration: the port is no claim, and its call is processing
+        const undeclared = hfsFromDeclaration({ ...appDeclaration("be", { ...BE_DECLARATION, patterns: ["webhooks"] }), edition }, TYPED_ROOT)
+        ruleTester({ root: TYPED_ROOT, hfs: undeclared }).run("webhook-inbox-key", rules["webhook-inbox-key"], {
+            valid: [],
+            invalid: [{ filename: SERVICE, code: many(`${fresh}; ${each}`), errors: both }],
+        })
+        // the method declared in the single form: its answer is tested for the repeat, never iterated
+        const single = hfsFromDeclaration({ ...appDeclaration("be", { ...BE_DECLARATION, patterns: ["webhooks"], receiptPorts: [
+            { class: "ReceiptPort", method: "receiveAll", repeat: "undefined", reason: "writes the delivery once under its unique key; undefined on a repeat" },
+        ] }), edition }, TYPED_ROOT)
+        ruleTester({ root: TYPED_ROOT, hfs: single }).run("webhook-inbox-key", rules["webhook-inbox-key"], {
+            valid: [],
+            invalid: [{ filename: SERVICE, code: many(`${fresh}; ${each}`), errors: error }],
         })
     })
 }

@@ -1,6 +1,6 @@
 // The app verbs that work on one side refuse a project that does not declare it (PROJECT-1, runtime/scripts/hfs/side-gate.mts): SIDE_NOT_DECLARED,
 // exit 2, before any folder is read or written. One case per family: the back-end verbs (emit, db, world, add of a back-end noun), the
-// front-end verbs (add of a front-end unit, stack build-args, a table with --fe), the module packages and `check --side`.
+// front-end verbs (add of a front-end unit, stack build-args, a table with --fe) and `check --side`.
 import { test } from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -38,7 +38,6 @@ test('the back-end verbs refuse a project without be', async (t) => {
   await refused(root, ['world', 'up'], 'be');
   await refused(root, ['add', 'api', 'orders'], 'be');
   await refused(root, ['add', 'cli', 'report'], 'be');
-  await refused(root, ['add', 'module', 'loyalty'], 'packages');
   await refused(root, ['check', '--side', 'be'], 'be');
 });
 

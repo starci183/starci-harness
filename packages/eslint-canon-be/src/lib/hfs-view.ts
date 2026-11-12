@@ -88,6 +88,10 @@ export interface HfsSpecDouble {
     readonly forms: readonly string[]
 }
 
+/** A declared receipt port (`ruleParams.receiptPorts`): the single form answers a repeat `false` or `undefined`; the many form answers the new events. */
+export type HfsReceiptPort = { readonly class: string; readonly method: string; readonly reason: string }
+    & ({ readonly repeat: "false" | "undefined"; readonly many?: undefined } | { readonly many: true; readonly repeat?: undefined })
+
 /** The rule parameters of the be profile (`ruleParams.common` merged with `ruleParams.be`), by the keys the rules read. */
 export interface HfsRuleParams {
     readonly functionLines?: number
@@ -109,8 +113,11 @@ export interface HfsRuleParams {
     readonly sqlPassThrough?: readonly { readonly file: string; readonly reason: string }[]
     /** The root-package files that render DDL text only to return it, app-root-relative with a reason (hfs.json `sides.be.ddlRenderers`). */
     readonly ddlRenderers?: readonly { readonly path: string; readonly reason: string }[]
-    /** The receipt ports the app declares (hfs.json `sides.be.receiptPorts`): a class of the app, its method that records a delivery once, and the answer it gives a repeat (R263). */
-    readonly receiptPorts?: readonly { readonly class: string; readonly method: string; readonly repeat: "false" | "undefined"; readonly reason: string }[]
+    /**
+     * The receipt ports the app declares (hfs.json `sides.be.receiptPorts`): a class of the app, its method that records a delivery once, and the
+     * answer it gives a repeat; or `many: true` for a delivery of several events, whose method answers the list of the new ones (R263).
+     */
+    readonly receiptPorts?: readonly HfsReceiptPort[]
 }
 
 /** The frozen view of one side of an app. */
@@ -140,6 +147,21 @@ export interface HfsView {
     slot(id: string): HfsSlot | undefined
     /** The vocabulary the root package of a file declares in the `starci` key of its manifest (the view of the root packages only), or null outside a package. */
     readonly packageContract?: (file: string) => HfsPackageContract | null
+    /** What each canon lints of the root packages the project declares slots for (the view of the root packages only). */
+    readonly packageLint?: HfsPackageLint
+}
+
+/** One lint scope of a declared package: the files of one slot (an app-relative glob), less the globs an earlier slot of the other canon holds. */
+export interface HfsPackageLintScope {
+    readonly files: string
+    readonly ignores: readonly string[]
+}
+
+/** The first-slot-wins partition of the declared packages: every `lint: fe` slot, the front-end scopes, and the back-end slots a later front-end slot reaches. */
+export interface HfsPackageLint {
+    readonly frontEnd: readonly string[]
+    readonly fe: readonly HfsPackageLintScope[]
+    readonly be: readonly HfsPackageLintScope[]
 }
 
 /** A type a root package declares: its name and the app-root relative file that declares it. */

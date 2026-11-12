@@ -199,16 +199,19 @@ lint plugin of its own (R103).
 - **A package's slots are declared by the project.** `packages` maps a root package folder (`packages/<name>`) to `{ closed, slots }`
   (`packages/hfs/runtime/scripts/hfs/package-slots.mts`): folder slots with placeholders (`src/parts/<id>/`), the files each instance `requires`
   and `allows`, glob and file slots, and `closed` (default true: every file below `src/` belongs to a slot). A slot names the canon that judges
-  its files with `lint` (`be`, the default, or `fe`). hfs holds the package to them as it holds the be and fe sides to theirs
+  its files with `lint` (`be`, the default, or `fe`): the managed root `eslint.config.mjs` hands a `lint: "fe"` slot to the front-end canon and
+  the Grammar lint and leaves it out of the back-end canon. The first slot that holds a file decides, as it decides the file's place, so a
+  React-free contract inside a front-end folder is a back-end slot declared before it. Every `.tsx` file of a package is the front end's whatever
+  its slot; every other file of no `lint: "fe"` slot, and every file of a package the project does not declare, is the back end's. The harness
+  knows no folder name of a package. hfs holds the package to them as it holds the be and fe sides to theirs
   (`HFS_PACKAGE_SLOT_MISSING`, `HFS_PACKAGE_SLOT_DISALLOWED`, `HFS_PACKAGE_SLOT_UNPLACED`, `HFS_PACKAGE_SLOTS_INVALID`, R382). A package's own
   `slots.yaml` is read for one more minor, for a package the manifest does not declare, with the warning `HFS_PACKAGE_SLOTS_MOVED`.
 - **Package coverage follows the slots.** Every file of a package is measured at 100 per file in the back end's unit run (BE-TEST-13), but
   its barrels and type files and each slot that opts out with `coverage: { none: "<reason>" }`; an opt-out without its reason is refused.
-  A package no declaration names keeps the harness's default scope (its `workbench/`, `public/` and `client/` subtrees unmeasured).
+  A package no declaration names is measured whole but its barrels and type files.
 
 Known gap: extension API 1 loads ESLint rules only; a Stylelint rule of a project has no engine yet (`lint.tool` other than `eslint` is
-refused), so a CSS law of one project is held by a project check until the stylelint canon loads `ext/lint/`. Known gap: the canons do not yet
-read a slot's `lint`; the front-end subpaths of a root package are still the fixed ones of the packages lint config.
+refused), so a CSS law of one project is held by a project check until the stylelint canon loads `ext/lint/`.
 
 ## Read with
 

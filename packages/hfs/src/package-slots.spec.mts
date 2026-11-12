@@ -10,7 +10,7 @@ import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { PACKAGE_SLOTS_INVALID, PACKAGE_SLOTS_MOVED, PACKAGE_SLOT_DISALLOWED, PACKAGE_SLOT_MISSING, PACKAGE_SLOT_UNPLACED, frontEndGlobs, judgePackageSlots, packageSlotProblems, readPackageSlots, unmeasuredGlobs } from '../runtime/scripts/hfs/package-slots.mjs';
+import { PACKAGE_SLOTS_INVALID, PACKAGE_SLOTS_MOVED, PACKAGE_SLOT_DISALLOWED, PACKAGE_SLOT_MISSING, PACKAGE_SLOT_UNPLACED, frontEndGlobs, judgePackageSlots, packageLintScopes, packageSlotProblems, readPackageSlots, unmeasuredGlobs } from '../runtime/scripts/hfs/package-slots.mjs';
 import { packageSlotFindings } from '../runtime/scripts/hfs/rules/app-extension-findings.mjs';
 import { declaredPackageScopes, packageMeasuredBy, packagesCoverage } from '../runtime/scripts/hfs/coverage-scope.mjs';
 import { mkdtemp } from './helpers/tmpdir.mjs';
@@ -65,7 +65,7 @@ test(`${PACKAGE_SLOTS_INVALID}: an unreadable manifest, and a coverage opt-out w
   }
 });
 
-test('coverage follows the slots: a package with a manifest measures everything but its barrels, type files and opted-out slots; one without keeps the default', () => {
+test('coverage follows the slots: a package with a manifest measures everything but its barrels, type files and opted-out slots; one without is measured whole but its barrels and type files', () => {
   const manifest = readPackageSlots(MANIFEST);
   assert.deepEqual(unmeasuredGlobs(manifest), ['src/**/index.ts', 'src/**/*.types.ts', 'src/**/*-types.ts', 'src/workbench/**']);
   const read = (file: string): string | null => (file === 'packages/ui-kit/slots.yaml' ? MANIFEST : null);
@@ -74,10 +74,11 @@ test('coverage follows the slots: a package with a manifest measures everything 
   assert.equal(measured('packages/ui-kit/src/blocks/card/schema.ts'), true);
   assert.equal(measured('packages/ui-kit/src/workbench/view.ts'), false, 'the opted-out slot');
   assert.equal(measured('packages/ui-kit/src/index.ts'), false, 'a barrel');
-  assert.equal(measured('packages/ui-kit/src/client/api.ts'), true, 'a manifest replaces the default exclusions: client/ is measured unless a slot opts out');
-  assert.equal(measured('packages/sdk/src/client/api.ts'), false, 'a package without a manifest keeps the default scope');
+  assert.equal(measured('packages/ui-kit/src/client/api.ts'), true, 'a folder is unmeasured only when a slot opts it out');
+  assert.equal(measured('packages/sdk/src/workbench/view.ts'), true, 'a package without a manifest has no unmeasured folder: no folder name is known');
+  assert.equal(measured('packages/sdk/src/index.ts'), false, 'its barrels stay unmeasured');
   const broken = packagesCoverage(['packages/ui-kit'], declaredPackageScopes(() => 'schema: nope\n'));
-  assert.equal(packageMeasuredBy(broken)('packages/ui-kit/src/client/api.ts'), false, 'an unreadable manifest sets no scope (its finding is R382)');
+  assert.equal(packageMeasuredBy(broken)('packages/ui-kit/src/client/api.ts'), true, 'an unreadable manifest opts nothing out (its finding is R382)');
 });
 
 function app(t: TestContext): { root: string; files: string[] } {
@@ -150,4 +151,30 @@ test(`${PACKAGE_SLOTS_INVALID}: a declaration the manifest cannot hold is red at
   assert.deepEqual(codes({ 'packages/ui': { slots: [{ id: 'all', path: 'src/**' }] }, 'packages/gone': { slots: [{ id: 'all', path: 'src/**' }] } }), [[PACKAGE_SLOTS_INVALID, 'ext/manifest.json']]);
   const { root, files } = projectApp(t, { 'packages/ui': { slots: [{ id: 'all', path: 'src/**' }] } }, ['packages/ui/slots.yaml']);
   assert.deepEqual(packageSlotFindings({ repoRoot: root, files, repo: { kind: 'app', profile: 'app', edition: 'lite' }, isRoot: true }).map((finding) => [finding.code, finding.path, finding.level]), [[PACKAGE_SLOTS_INVALID, 'packages/ui/slots.yaml', 'error']]);
+});
+
+test('the canon of a file is its first slot: a front-end slot less the back-end slots before it, a back-end slot a later front-end slot reaches less the front-end slots before it', () => {
+  const manifest = judgePackageSlots({ slots: [
+    { id: 'early', path: 'src/early/**', lint: 'fe' },
+    { id: 'contract', path: 'src/views/contract/**' },
+    { id: 'views', path: 'src/views/**', lint: 'fe' },
+    { id: 'part', path: 'src/parts/<id>/' },
+    { id: 'face', path: 'src/face.ts', lint: 'fe' },
+    { id: 'rest', path: 'src/**' },
+  ] });
+  assert.deepEqual(manifest.problems, []);
+  assert.deepEqual(packageLintScopes('packages/ui', manifest), {
+    frontEnd: ['packages/ui/src/early/**', 'packages/ui/src/views/**', 'packages/ui/src/face.ts'],
+    fe: [
+      { files: 'packages/ui/src/early/**', ignores: [] },
+      { files: 'packages/ui/src/views/**', ignores: ['packages/ui/src/views/contract/**'] },
+      { files: 'packages/ui/src/face.ts', ignores: ['packages/ui/src/views/contract/**', 'packages/ui/src/parts/*/**'] },
+    ],
+    be: [
+      { files: 'packages/ui/src/views/contract/**', ignores: ['packages/ui/src/early/**'] },
+      { files: 'packages/ui/src/parts/*/**', ignores: ['packages/ui/src/early/**', 'packages/ui/src/views/**'] },
+    ],
+  });
+  // A package with no front-end slot hands nothing to the front end and carves nothing out.
+  assert.deepEqual(packageLintScopes('packages/ui', judgePackageSlots({ slots: [{ id: 'rest', path: 'src/**' }] })), { frontEnd: [], fe: [], be: [] });
 });

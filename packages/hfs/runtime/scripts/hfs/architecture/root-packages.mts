@@ -1,4 +1,4 @@
-// root-packages.mts - the workspace packages of an app ROOT (packages/<name>: the agent SDK, a block library, a module package, the managed packages/modules).
+// root-packages.mts - the workspace packages of an app ROOT (packages/<name>, slot app.packages).
 // They lie outside both side folders and belong to no side; both sides import them by package name, through their package entry points
 // (the `exports` of the manifest), so the import graph reads them as first-party packages and the back-end canon never reads them as
 // a third-party library. The app root's one package.json lists them in `workspaces`; the patterns that start with a side folder
@@ -24,8 +24,8 @@ export interface RootPackage {
   app: false;
 }
 
-/** The slots whose directories at the app root are first-party packages of the app (agent SDK, module packages, the managed registry). */
-export const ROOT_PACKAGE_SLOTS: ReadonlySet<string> = new Set(['app.packages', 'app.module-registry']);
+/** The slots whose directories at the app root are first-party packages of the app. */
+export const ROOT_PACKAGE_SLOTS: ReadonlySet<string> = new Set(['app.packages']);
 
 const SIDE_PREFIX = /^(?:be|fe)\//;
 

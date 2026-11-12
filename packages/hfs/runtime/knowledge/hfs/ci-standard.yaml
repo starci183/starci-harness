@@ -46,7 +46,7 @@ heap:
   minMiB: 6144
   steps: ['npm run typecheck', 'app check --gate wiring', 'npm run lint', 'app check --gate lint', 'app coverage verify', 'npm run db:lint']
 
-# The steps of the managed CI that read the declared types of the app's root workspace packages (packages/*: the agent SDK, the module packages and the rest) or
+# The steps of the managed CI that read the declared types of the app's root workspace packages (packages/*) or
 # compile app code that imports them, matched on their `run` text (or the action they use), and the commands that build those packages first: the managed
 # `build:modules` script, and the managed scripts that run it before anything else (typecheck, lint, test, build:be, build:fe). In an app with root packages a
 # reading step finds them built by an earlier step of its job, or by its own command. A package left unbuilt resolves to nothing: the boot proof cannot compile

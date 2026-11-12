@@ -358,7 +358,7 @@ test('the be side takes sides.be.ddlRenderers as unique root-package paths with 
     [renderer, renderer], [{ path: renderer.path }], [{ ...renderer, extra: 1 }], 'packages/a/render.ts']) assert.equal(problems(bad).length, 1, JSON.stringify(bad));
 });
 
-test('the be side takes sides.be.receiptPorts as {class, method, repeat, reason}, each class and method once, and no other side does (R263)', () => {
+test('the be side takes sides.be.receiptPorts as {class, method, repeat, reason} or {class, method, many: true, reason}, each class and method once, and no other side does (R263)', () => {
   const problems = (receiptPorts: unknown, side: 'be' | 'fe' = 'be') => declarationShapeProblems({ hfs: 3, kind: 'app', project: 'demo', edition: 'lite',
     sides: { be: { apps: [{ name: 'api', kind: 'api' }], ...(side === 'be' ? { receiptPorts } : {}) }, fe: { apps: [{ name: 'web', kind: 'next' }], grammar: 'core', ...(side === 'fe' ? { receiptPorts } : {}) } } }, ['be', 'fe'])
     .filter((problem: string) => problem.includes('receiptPorts'));
@@ -367,4 +367,9 @@ test('the be side takes sides.be.receiptPorts as {class, method, repeat, reason}
   for (const bad of [[], 'ReceiptPort.receive', [{ ...port, repeat: 'null' }], [{ ...port, repeat: false }], [{ ...port, class: 'receiptPort' }], [{ ...port, method: 'Receive' }], [{ ...port, reason: 'short' }],
     [{ class: 'ReceiptPort', method: 'receive', repeat: 'undefined' }], [{ ...port, off: true }], [port, port]]) assert.equal(problems(bad).length, 1, JSON.stringify(bad));
   assert.equal(problems([port], 'fe').length, 1, 'a front end receives no delivery');
+  // the multi-event form: many true answers the list of new events, so a repeat is the empty list and no repeat answer is given
+  const many = { class: 'FeedReceiptPort', method: 'receiveAll', many: true, reason: 'writes each event of the delivery once under its unique key; answers the new ones' };
+  assert.deepEqual(problems([port, many]), []);
+  for (const bad of [[{ ...many, repeat: 'undefined' }], [{ ...many, repeat: 'false' }], [{ ...many, many: false }], [{ ...many, many: 'true' }], [{ ...many, many: 1 }],
+    [{ ...port, many: true }], [{ ...port, many: false }], [{ class: many.class, method: many.method, many: true }], [many, { ...port, class: many.class, method: many.method }]]) assert.equal(problems(bad).length, 1, JSON.stringify(bad));
 });

@@ -47,11 +47,9 @@ These hold for every role and every task. A rule with a gate names it; the other
    whether a second, unrelated app would use it unchanged; when it would, write it with neutral names (`an app`, `item`,
    `gateway`); when it would not, it goes to the app, and the harness gains at most the generic hook the app plugs into.
    A rule one app asked for stays when it is generic, with its examples neutral. Why: a business word in a shared rule
-   makes every other app inherit one app's decisions, and an agent reads an example as the law. `starci check business`
-   refuses a tracked source that holds an identifier of [policy/business-terms.yaml](../../policy/business-terms.yaml)
-   `deny` (the product, app and provider names the owner listed) as a whole token, outside the exact `{path, term}`
-   pairs of its `allow`; it decides by membership in that list and never by meaning, so a business word nobody listed
-   is held by review.
+   makes every other app inherit one app's decisions, and an agent reads an example as the law. It is
+   held by review: no check lists an app's words, because such a list would itself be an app's knowledge inside the
+   harness.
 10. **Read the repository's concepts before its code.** Before any change in a repository, read that repository's
    `.starciwork/concepts`: `concepts/README.md` first, then the concept of every folder the task touches, and only then
    the code ([contexts/project/work.md](../project/work.md) PROJECT-WORK-7). They hold the persistent shared context of

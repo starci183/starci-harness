@@ -84,7 +84,7 @@ for (const edition of ['full', 'lite']) {
     const source = {
       files: ['apps/api/src/api.module.ts', 'src/modules/platform/clock/clock.service.ts'],
       read: () => '',
-      otherPackages: ['plugin-registry', 'sdk', 'ui-kit'],
+      rootPackages: ['plugin-registry', 'sdk', 'ui-kit'],
     };
     // reason: the spec feeds renderTargets no Sonar presets and only the source facts the Codecov scope reads (files, read, the root packages).
     const target = renderTargets(hfs, {} as unknown as Presets, { source: source as unknown as AppSourceFacts }).find(item => item.path === 'codecov.yml');

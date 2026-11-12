@@ -16,7 +16,7 @@ import { braceVariants, globExpression } from '../lib/glob.mjs';
 import { declaredLogicOf, logicRolesOf, type Slot, type SlotManifest } from './manifest-shape.mjs';
 import { byCodeUnit } from '../lib/list.mjs';
 import { trimTrailingSlashes } from './trailing-slashes.mjs';
-import { PACKAGE_SLOTS_FILE, judgePackageSlots, readPackageSlots, unmeasuredGlobs } from './package-slots.mjs';
+import { PACKAGE_ALWAYS_UNMEASURED, PACKAGE_SLOTS_FILE, judgePackageSlots, readPackageSlots, unmeasuredGlobs, type PackageSlots } from './package-slots.mjs';
 import { PROJECT_EXT_MANIFEST } from '../lib/project-ext.mjs';
 
 /** The slot and manifest shapes the coverage derivation reads (manifest-shape.mts). */
@@ -279,24 +279,17 @@ export const isMeasured = (manifest: ScopeManifest, file: string): boolean => me
  */
 export const PACKAGE_TYPE_MODULE = /[.-]types\.ts$/;
 
-/**
- * The parts of a root workspace package (`packages/<name>` at the app root, PROJECT-3) that are never measured: its workbench, its public face and its
- * client (front ends, judged by the front-end canon and the Grammar lint; a lite app measures no front end), its barrels and its type modules
- * (PACKAGE_TYPE_MODULE). Everything else below its `src/` is its logic.
- */
-const PACKAGE_UNMEASURED = Object.freeze(['src/workbench/**', 'src/public/**', 'src/client/**', 'src/**/index.ts', 'src/**/*.types.ts', 'src/**/*-types.ts']);
-
 /** The measured scope of the app's root packages, every path app-relative: the folders that hold specs, the files measured and the ones never measured. */
 export interface PackagesCoverage { folders: string[]; files: string[]; excludes: string[] }
 
 /**
- * THE derivation of what the root packages measure (BE-TEST-13): every TypeScript file below a package's `src/` but its front-end subtrees and barrels, at
- * 100 per file in the back end's unit run. The rendered be/jest.config.js, Sonar's coverage exclusions and sources, Codecov's paths and R273 read it.
+ * THE derivation of what the root packages measure (BE-TEST-13): every TypeScript file below a package's `src/` but its barrels and type modules
+ * (PACKAGE_ALWAYS_UNMEASURED) and the slots the project opts out with a reason (ext/manifest.json packages), at 100 per file in the back end's unit run. The rendered be/jest.config.js, Sonar's coverage exclusions and sources, Codecov's paths and R273 read it.
  */
 export function packagesCoverage(folders: readonly string[], declared: (folder: string) => readonly string[] | null = () => null): PackagesCoverage {
   const sorted = [...new Set(folders)].sort(byCodeUnit);
   // A package whose slots the project declares (ext/manifest.json packages, PROJECT-LINT-3) is measured by them: everything but its barrels, type files and opted-out slots.
-  return { folders: sorted, files: sorted.map((folder) => `${folder}/src/**/*.ts`), excludes: sorted.flatMap((folder) => (declared(folder) ?? PACKAGE_UNMEASURED).map((glob) => `${folder}/${glob}`)) };
+  return { folders: sorted, files: sorted.map((folder) => `${folder}/src/**/*.ts`), excludes: sorted.flatMap((folder) => (declared(folder) ?? PACKAGE_ALWAYS_UNMEASURED).map((glob) => `${folder}/${glob}`)) };
 }
 
 /** The id of the Codecov component of one root package (`packages/ui-kit` is `package-ui-kit`): no service app or `platform` is ever named so. */
@@ -306,10 +299,10 @@ export const packageComponentId = (folder: string): string => `package-${folder.
 export const packageComponents = (folders: readonly string[]): CoverageComponent[] => [...new Set(folders)].sort(byCodeUnit).map((folder): CoverageComponent => ({ id: packageComponentId(folder), name: packageComponentId(folder), paths: [`${folder}/src/**`] }));
 
 /**
- * The unmeasured globs of each package the project declares sound slots for, read through `read` (app-relative text or null); null for the rest. The
- * declaration is the project's extension manifest (`packages["<folder>"]`), else the package's own slots.yaml while that read path lasts.
+ * The slots of each package the project declares soundly, read through `read` (app-relative text or null); null for the rest. The declaration is the
+ * project's extension manifest (`packages["<folder>"]`), else the package's own slots.yaml while that read path lasts.
  */
-export function declaredPackageScopes(read: (file: string) => string | null): (folder: string) => readonly string[] | null {
+export function declaredPackageSlots(read: (file: string) => string | null): (folder: string) => PackageSlots | null {
   let packages: Record<string, unknown> | null | undefined;
   const declared = (): Record<string, unknown> | null => {
     if (packages === undefined) {
@@ -323,23 +316,29 @@ export function declaredPackageScopes(read: (file: string) => string | null): (f
   };
   return (folder) => {
     const inManifest = declared();
-    if (inManifest !== null && Object.hasOwn(inManifest, folder)) {
-      const manifest = judgePackageSlots(inManifest[folder]);
-      return manifest.problems.length > 0 ? null : unmeasuredGlobs(manifest);
+    let manifest: PackageSlots;
+    if (inManifest !== null && Object.hasOwn(inManifest, folder)) manifest = judgePackageSlots(inManifest[folder]);
+    else {
+      const text = read(`${folder}/${PACKAGE_SLOTS_FILE}`);
+      if (text === null) return null;
+      manifest = readPackageSlots(text);
     }
-    const text = read(`${folder}/${PACKAGE_SLOTS_FILE}`);
-    if (text === null) return null;
-    const manifest = readPackageSlots(text);
-    return manifest.problems.length > 0 ? null : unmeasuredGlobs(manifest);
+    return manifest.problems.length > 0 ? null : manifest;
   };
 }
 
-/** The registry of the module packages (slot app.module-registry): managed, it lists the modules and carries no logic of its own. */
-const PACKAGE_REGISTRY = 'modules';
+/** The unmeasured globs of each package the project declares sound slots for (declaredPackageSlots); null for the rest. */
+export function declaredPackageScopes(read: (file: string) => string | null): (folder: string) => readonly string[] | null {
+  const slots = declaredPackageSlots(read);
+  return (folder) => {
+    const manifest = slots(folder);
+    return manifest === null ? null : unmeasuredGlobs(manifest);
+  };
+}
 
-/** The app-relative folders of the root packages a tracked file list holds: each `packages/<name>/` with a `package.json` and a `src/`, the registry aside. */
+/** The app-relative folders of the root packages a tracked file list holds: each `packages/<name>/` with a `package.json` and a `src/`. */
 export function rootPackageFoldersOf(files: readonly string[]): string[] {
-  const names = new Set(files.map((file) => /^packages\/([^/]+)\/package\.json$/.exec(file)?.[1]).filter((name): name is string => name !== undefined && name !== PACKAGE_REGISTRY));
+  const names = new Set(files.map((file) => /^packages\/([^/]+)\/package\.json$/.exec(file)?.[1]).filter((name): name is string => name !== undefined));
   return [...names].filter((name) => files.some((file) => file.startsWith(`packages/${name}/src/`))).map((name) => `packages/${name}`).sort(byCodeUnit);
 }
 

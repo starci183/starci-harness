@@ -114,6 +114,8 @@ test('hfs.json lexicon and observe: shape accepts optional declarations in both 
     for (const lexicon of [null, [], 'old', { removed: 'old' }, { removed: [''] }, { removed: [' '] }, { removed: [12] }, { removed: ['old', 'old'] }, { removed: [], allowed: ['old'] }]) assert.ok(declarationShapeProblems(declaration(edition, { lexicon }), ['be', 'fe']).some((item) => item.startsWith('lexicon')));
     for (const observe of [null, [], 'sentry', { reporter: false }, { reporter: '' }, { reporter: ' ' }, { reporter: {} }, { enabled: false }]) assert.ok(declarationShapeProblems(declaration(edition, { observe }), ['be', 'fe']).some((item) => item.startsWith('observe')));
     assert.ok(declarationShapeProblems(declaration(edition, { arbitrary: true }), ['be', 'fe']).includes('unknown key arbitrary'));
+    // hfs.json declares no `modules` key: an app's root packages are its own, whatever they hold.
+    assert.ok(declarationShapeProblems(declaration(edition, { modules: 'data' }), ['be', 'fe']).includes('unknown key modules'));
   }
   assert.ok(declarationShapeProblems({ hfs: 3, kind: 'runtime', project: 'demo', lexicon: { removed: [] } }, ['be', 'fe']).some((item) => item.startsWith('unknown key lexicon')));
 });

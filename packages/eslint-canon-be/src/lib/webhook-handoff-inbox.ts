@@ -3,7 +3,10 @@
  * method of a receipt port the app declares in hfs.json `sides.be.receiptPorts` (`{ class, method, repeat, reason }`): a class of the app whose
  * method takes the transaction's manager first and answers a repeat exactly as the Inbox does (`false`, or `undefined`). A declared call is held
  * to the same contract: inside the receipt transaction, on that transaction's manager, with an argument that comes from the delivery, before any
- * other work, and followed at once by the return on a repeat.
+ * other work, and followed at once by the return on a repeat. A port declared `many: true` (`{ class, method, many, reason }`) records a delivery
+ * of several events and answers the list of the new ones (a repeat answers the empty list): its answer is bound to one `const`, and every later
+ * statement of the receipt transaction is a `for (const <name> of <that const>)` whose body reads nothing of the intake but the transaction's
+ * manager and the loop's own bindings.
  */
 import ts from "typescript"
 import type { TSESLint, TSESTree } from "@typescript-eslint/utils"
@@ -142,11 +145,11 @@ const usesKey = (context: Context, argument: Node | undefined, key: DeliveryKey)
 }
 
 /**
- * The repeat answer of a declared receipt port's call (`claim` for `false`, `claimRow` for `undefined`), or null: a plain member call, without a
- * spread, of a declared method on a receiver whose type is the declared class, declared in the app's own source (a slot owns its file; a class
- * of a package, or a lookalike under another name, is none).
+ * The repeat answer of a declared receipt port's call (`claim` for `false`, `claimRow` for `undefined`, `many` for the list of new events), or null:
+ * a plain member call, without a spread, of a declared method on a receiver whose type is the declared class, declared in the app's own source (a
+ * slot owns its file; a class of a package, or a lookalike under another name, is none).
  */
-const receiptPortClaimOf = (context: Context, hfs: HfsView, call: Node | null | undefined): "claim" | "claimRow" | null => {
+const receiptPortClaimOf = (context: Context, hfs: HfsView, call: Node | null | undefined): "claim" | "claimRow" | "many" | null => {
     const ports = hfs.ruleParams.receiptPorts ?? []
     if (ports.length === 0 || call?.type !== "CallExpression" || call.optional) return null
     const callee = call.callee
@@ -155,7 +158,50 @@ const receiptPortClaimOf = (context: Context, hfs: HfsView, call: Node | null | 
     const method = callee.property.name
     const origins = typeOrigins(context, callee.object).filter((origin) => origin.module === null && hfs.slotOf(origin.file) !== null && hfs.slotOf(origin.file) !== undefined)
     const port = ports.find((entry) => entry.method === method && origins.some((origin) => origin.name === entry.class))
-    return port === undefined ? null : port.repeat === "false" ? "claim" : "claimRow"
+    if (port === undefined) return null
+    if (port.many === true) return "many"
+    return port.repeat === "false" ? "claim" : "claimRow"
+}
+
+/** A node lies inside another: its range is within the other's. */
+const within = (inner: { range: [number, number] }, outer: { range: [number, number] }): boolean => inner.range[0] >= outer.range[0] && inner.range[1] <= outer.range[1]
+
+/**
+ * A loop body reads nothing of the intake but the receipt transaction's manager: every identifier it reads (in nested functions too, `arguments`
+ * included) binds outside the intake method, inside the loop itself, or to the manager. A non-computed property name reads nothing.
+ */
+const readsOnlyLoop = (context: Context, method: TSESTree.MethodDefinition, loop: TSESTree.ForOfStatement, manager: TSESTree.Identifier): boolean => {
+    const own = resolveVariable(context.sourceCode, manager)
+    let only = true
+    walk(loop.body, (node) => {
+        if (node.type !== "Identifier") return
+        const parent: Node | undefined = node.parent
+        if (parent?.type === "MemberExpression" && parent.property === node && !parent.computed) return
+        if (parent?.type === "Property" && parent.key === node && !parent.computed && !parent.shorthand) return
+        const variable = resolveVariable(context.sourceCode, node)
+        if (variable && variable !== own && within(variable.scope.block, method.value) && !within(variable.scope.block, loop)) only = false
+    })
+    return only
+}
+
+/**
+ * The effects after a declared `many` call only iterate the new events it answers: the answer is bound by a `const` of one name, and every
+ * later statement of the receipt transaction is a plain `for (const <name> of <that const>)` (no `for await`, no other iterable, nothing between
+ * or after) whose body reads nothing of the intake but the manager and its own bindings; the raw delivery, the bindings made before the claim and
+ * the answer list itself stay out of reach.
+ */
+const iteratesOnlyNew = (context: Context, method: TSESTree.MethodDefinition, awaited: TSESTree.AwaitExpression, body: TSESTree.BlockStatement, manager: TSESTree.Identifier): boolean => {
+    const parent = awaited.parent
+    if (parent.type !== "VariableDeclarator" || parent.id.type !== "Identifier" || parent.init !== awaited) return false
+    const declaration = parent.parent
+    const index = body.body.indexOf(declaration)
+    if (index === -1 || declaration.kind !== "const" || declaration.declarations.length !== 1) return false
+    const answer = parent.id
+    return body.body.slice(index + 1).every((entry) => entry.type === "ForOfStatement" && !entry.await
+        && entry.left.type === "VariableDeclaration" && entry.left.kind === "const" && entry.left.declarations.length === 1
+        && entry.left.declarations[0]?.id.type === "Identifier"
+        && entry.right.type === "Identifier" && sameBinding(context, entry.right, answer)
+        && readsOnlyLoop(context, method, entry, manager))
 }
 
 /** An argument of a declared receipt call comes from the delivery: it reads a parameter of the intake, directly or through `const` bindings; a literal reads nothing. */
@@ -282,7 +328,7 @@ export const webhookInboxKey: RuleModule = {
         docs: { description: "Delivery methods with first *Id parameters or DTO properties, or raw-body signature contracts, claim the real Inbox (claim, or claimRow on its EntityInbox) with a stable delivery key before work and return on duplicates. Receipt transactions publish events and leave processing to a reactor/job." },
         schema: [],
         messages: {
-            key: "[BE_WEBHOOK_INBOX_KEY] This delivery intake must first await the real platform/inbox claim(source, deliveryId), or claimRow(source, deliveryId, tx, receipt) on its EntityInbox, using its first *Id parameter or DTO property, or a decoded id for a signed raw-body intake, and return immediately on a repeat (claim answers false, claimRow undefined). A transaction claim uses that callback's own manager; raw payloads and fixed literals are not delivery keys. A receipt port the app declares in hfs.json sides.be.receiptPorts is held to the same contract: awaited first inside the receipt transaction, on that transaction's manager as its first argument, with an argument that comes from the delivery and no call inside its arguments, and its declared repeat answer (false or undefined) returned on at once.",
+            key: "[BE_WEBHOOK_INBOX_KEY] This delivery intake must first await the real platform/inbox claim(source, deliveryId), or claimRow(source, deliveryId, tx, receipt) on its EntityInbox, using its first *Id parameter or DTO property, or a decoded id for a signed raw-body intake, and return immediately on a repeat (claim answers false, claimRow undefined). A transaction claim uses that callback's own manager; raw payloads and fixed literals are not delivery keys. A receipt port the app declares in hfs.json sides.be.receiptPorts is held to the same contract: awaited first inside the receipt transaction, on that transaction's manager as its first argument, with an argument that comes from the delivery and no call inside its arguments, and its declared repeat answer (false or undefined) returned on at once; a port declared many: true answers the list of the new events, bound to one const, and every later statement of the transaction is a for (const event of <that const>) whose body reads nothing of the delivery.",
             handoff: "[BE_WEBHOOK_INBOX_KEY] A receipt transaction records the inbox delivery and publishes the typed event. Remove the process callback and domain/command processing from this transaction; a reactor or job processes the delivery after commit.",
         },
     },
@@ -323,7 +369,7 @@ export const webhookInboxKey: RuleModule = {
                     && !(key.raw && call.arguments.slice(1).some((argument) => sameBinding(context, argument, key.parameter)))
                     && claimsBeforeWork(context, body, statement, key, call, true)
                     && !priorWork(statement, call)
-                    && rejectsDuplicate(context, awaited, body, portMethod)
+                    && (portMethod === "many" ? iteratesOnlyNew(context, method, awaited, body, manager) : rejectsDuplicate(context, awaited, body, portMethod))
                 if (!claims && !receives) context.report({ node: method.key, messageId: "key" })
             },
         }

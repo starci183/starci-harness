@@ -79,8 +79,7 @@ and the quality gate's verdict, never the scanner's exit, is the job's result (P
 `app check` is green only with zero error findings; typecheck, build,
 tests, coverage and the Sonar gate are binary.
 
-**Root packages are built before they are read.** An app's root workspace packages (`packages/*`: the agent SDK, the module
-packages and the rest) are imported by their package name, which resolves into their `dist`. Every job that reads their
+**Root packages are built before they are read.** An app's root workspace packages (`packages/*`) are imported by their package name, which resolves into their `dist`. Every job that reads their
 types or compiles code importing them builds them first with the app's managed `build:modules` script (`npm run
 build:modules`): the `fast` job before its boot proof, every side of the `lint` matrix in its "build the lint inputs"
 step, a multi-front-end build, the `sonar` job before its scan, the nightly `cache-verify` and the full edition's `e2e`

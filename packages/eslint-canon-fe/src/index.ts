@@ -306,7 +306,7 @@ const withExtRules = (hfs: unknown, side: "fe"): Linter.Config[] => {
 }
 
 /**
- * The flat config of the front-end subpaths of an app's root workspace packages (`packages/<pkg>/src/workbench/**` and `src/public/**`), for the
+ * The flat config of the front-end files of an app's root workspace packages (every `.tsx` file and the slots the project declares `lint: "fe"`), for the
  * managed root `eslint.config.mjs`: `starciFePackagesConfig({ hfs: loadPackagesHfs(import.meta.url) })`, composed with the Grammar family's
  * `...PackagesConfig`. The very rules of `starciFeConfig` over the package view, but the project-graph rules, which judge the import graph of a
  * side folder that a package is not part of.
@@ -319,7 +319,7 @@ export const starciFePackagesConfig = ({ hfs }: { readonly hfs?: unknown } = {})
   const graph = new Set(Object.keys(projectGraphRecommended))
   const source = { ...Object.fromEntries(Object.entries(recommended).filter(([name]) => !graph.has(name))), ...reactHooksRules(reactHooks) }
   // The pack rules of the root packages come once, with starciBePackagesConfig of the same root config (one plugin per pack).
-  return scopeToPackages(buildFeConfig({ hfs, plugin, reactHooks, tsPlugin: loadTsPlugin(), sonar: loadSonarPlugins(), source }))
+  return scopeToPackages(buildFeConfig({ hfs, plugin, reactHooks, tsPlugin: loadTsPlugin(), sonar: loadSonarPlugins(), source }), hfs)
 }
 
 /**

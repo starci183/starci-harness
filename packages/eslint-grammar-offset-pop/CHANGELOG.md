@@ -1,8 +1,9 @@
 # Changelog
 
-## 0.38.3 - 2026-11-13
+## 0.39.0 - 2026-11-13
 
-- Changed: version stamp only, cut with `@starci/hfs` 6.10.0; requires `@starci/eslint-grammar-core` 0.38.3. No rule changes.
+- Changed: `offsetPopGrammarPackagesConfig` follows `coreGrammarPackagesConfig`: every `.tsx` file of a root package and the slots the project declares `lint: "fe"`, no fixed folder. Spec `src/inheritance.spec.ts`.
+- Changed: cut with `@starci/hfs` 6.10.0; requires `@starci/eslint-grammar-core` 0.39.0.
 
 ## 0.38.2 - 2026-11-13
 

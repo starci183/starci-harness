@@ -86,11 +86,6 @@ slots:
       - "notes/"
     presence: forbidden
     enforce: target
-    exceptions:
-      - path: docs/knowledge-analysis/
-        until: "2026-12-31"
-        owner: the legacy runtime's retirement
-        why: the retirement map relies on the legacy runtime's analysis notes until the M-items land in contexts/ and the legacy runtime is deleted
     holds: knowledge outside contexts/; knowledge an agent loads lives only in contexts/
     rule: CONTRIB-4; contexts/README.md load order
   - id: never.package-js
@@ -273,7 +268,6 @@ slots:
     presence: required
     requires:
       - policy/README.md
-      - policy/business-terms.yaml
       - policy/canon.yaml
       - policy/loosening.yaml
       - policy/quality.yaml

@@ -8,7 +8,7 @@
  *
  *   - `schema-place` (R304) holds the territory. `zod` is imported only from a `<name>.schema.ts` file (or its spec) that sits
  *     in a `domain`, `platform` or `integrations` owner, or from any file of a root workspace package (tier `package`, slots
- *     `app.packages` and `app.module-registry`), whose node, block and vocabulary contracts are zod schemas; never in a feature
+ *     `app.packages`), whose node, block and vocabulary contracts are zod schemas; never in a feature
  *     (a transport door answers to `class-validator`), never in a `dto/` folder, and a schema file does not also carry
  *     `class-validator` or a GraphQL type.
  *   - `schema-bounded` (R305) holds the cost. Every string, array, set, map and record a schema builds has an upper bound

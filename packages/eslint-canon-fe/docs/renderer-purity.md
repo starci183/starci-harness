@@ -1,6 +1,6 @@
 # Renderer purity (RENDERER-PURITY-1, R384)
 
-A client renderer of a root workspace package (`packages/<pkg>/src/client/**/*.tsx`) holds presentation only: it maps rows to components, chooses what to show and formats. The unit run measures `.ts` only (BE-TEST-13) and the front end has no tests (SHARED-TEST-1), so logic written inside a renderer has no spec and no coverage bar. The logic lives in a measured `.ts` module (`rules/`, a hook beside the renderer) that the renderer calls.
+A renderer of a root workspace package (every `.tsx` file of its source, `packages/<pkg>/src/**/*.tsx`) holds presentation only: it maps rows to components, chooses what to show and formats. The unit run measures `.ts` only (BE-TEST-13) and the front end has no tests (SHARED-TEST-1), so logic written inside a renderer has no spec and no coverage bar. The logic lives in a measured `.ts` module (a hook or a rules module beside the renderer) that the renderer calls.
 
 | Rule | Finding code | Fix |
 |---|---|---|

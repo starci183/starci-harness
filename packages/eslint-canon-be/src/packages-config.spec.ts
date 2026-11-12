@@ -24,14 +24,31 @@ const COMMON_TYPES = "export declare abstract class DomainError<C extends string
 
 const DECLARATION = appDeclaration("be", { apps: [{ name: "core", kind: "api" }] })
 
+/** A project extension manifest that declares the slots of `packages/sdk`: views drawn by the front end, their React-free contract declared before them. */
+const EXT = {
+    schema: "starci/project-ext@1",
+    api: 1,
+    packages: {
+        "packages/sdk": {
+            closed: false,
+            slots: [
+                { id: "contract", path: "src/views/contract/**" },
+                { id: "views", path: "src/views/**", lint: "fe", coverage: { none: "front-end views, proven by the front end's own gates" } },
+                { id: "face", path: "src/face/**", lint: "fe", coverage: { none: "front-end pages, proven by the front end's own gates" } },
+            ],
+        },
+    },
+}
+
 /** An app root (hfs.json, the one package.json) with a root package `@fixture/sdk`, its `files` written, and the package view of it. */
-const appWith = (files: Readonly<Record<string, string>>, starci?: unknown) => {
+const appWith = (files: Readonly<Record<string, string>>, starci?: unknown, ext?: unknown) => {
     const root = mkdtempSync(join(tmpdir(), "starci-be-packages-"))
     const write = (relative: string, text: string) => {
         mkdirSync(dirname(join(root, relative)), { recursive: true })
         writeFileSync(join(root, relative), text)
     }
     write("hfs.json", JSON.stringify(DECLARATION))
+    if (ext !== undefined) write("ext/manifest.json", JSON.stringify(ext))
     write("package.json", JSON.stringify({ name: "fixture", private: true, workspaces: ["packages/*"], dependencies: { "@fixture/sdk": "*", stripe: "1.0.0" } }))
     write("packages/sdk/package.json", JSON.stringify({ name: "@fixture/sdk", version: "0.1.0", private: true, ...(starci === undefined ? {} : { starci }) }))
     write("packages/sdk/tsconfig.json", TSCONFIG)
@@ -49,28 +66,37 @@ const lint = async (root: string, hfs: ReturnType<typeof packagesHfsFromDeclarat
     return linter.verify(text, await starciBePackagesConfig({ hfs }), { filename: join(root, file) })
 }
 
-test("the config narrows the files to the package source, leaving the front-end subpaths and the build output out", async () => {
+test("the config narrows the files to the package source and knows no folder of a package: an undeclared package is back end whole", async () => {
     const app = appWith({})
     try {
         const config = await starciBePackagesConfig({ hfs: app.hfs })
         assert.deepEqual(config[0], { ignores: [...PACKAGE_IGNORED] })
         const scoped = config.slice(1).filter((block) => block.files !== undefined)
-        assert.ok(scoped.length >= 4, "the rule block and the Sonar way block, each over the source and over the workbench contract")
-        for (const block of scoped) {
-            const files = (block.files ?? []).map(String)
-            assert.ok(files.every((glob) => glob.startsWith("packages/*/src/")), String(files))
-        }
+        assert.ok(scoped.length >= 2, "the rule block and the Sonar way block over the source")
         const ruleBlocks = scoped.filter((block) => block.rules !== undefined && "starci-be/explicit-export-surface" in block.rules)
-        assert.deepEqual(ruleBlocks.map((block) => block.files), [[...PACKAGE_SOURCE_FILES], ["packages/*/src/workbench/contract/**/*.{ts,mts,cts,js,mjs,cjs}"]])
+        assert.deepEqual(ruleBlocks.map((block) => block.files), [[...PACKAGE_SOURCE_FILES]])
         // every .tsx file of a package source is the front-end canon's (FE-PACKAGES-2), never the back-end canon's
         assert.ok(PACKAGE_SOURCE_FILES.every((glob) => !glob.includes("tsx")))
-        assert.ok((ruleBlocks[0]?.ignores ?? []).includes("packages/*/src/workbench/**"))
-        assert.ok((ruleBlocks[0]?.ignores ?? []).includes("packages/*/src/public/**"))
-        assert.equal(ruleBlocks[1]?.ignores, undefined)
+        assert.deepEqual((ruleBlocks[0]?.ignores ?? []).filter((glob) => glob.startsWith("packages/")), [], "no front-end folder is assumed")
         const rules = ruleBlocks[0]?.rules ?? {}
         for (const on of ["starci-be/explicit-export-surface", "starci-be/third-party-import-owner", "starci-be/infra-import-owner", "starci-be/throw-domain-error"]) assert.equal(rules[on], "error", on)
         for (const off of ["starci-be/duplicate-code", "starci-be/dead-exports", "starci-be/tier-direction"]) assert.equal(off in rules, false, `${off} judges the import graph of a side folder`)
         assert.ok(Object.keys(recommended).filter((name) => name in rules).length > 100, "the rest of the canon is on")
+    } finally { app.cleanup() }
+})
+
+test("the slots the project declares `lint: fe` are left to the front-end canon, and a back-end slot declared before one stays back end", async () => {
+    const app = appWith({}, undefined, EXT)
+    try {
+        assert.deepEqual(app.hfs.packageLint, {
+            frontEnd: ["packages/sdk/src/views/**", "packages/sdk/src/face/**"],
+            fe: [{ files: "packages/sdk/src/views/**", ignores: ["packages/sdk/src/views/contract/**"] }, { files: "packages/sdk/src/face/**", ignores: ["packages/sdk/src/views/contract/**"] }],
+            be: [{ files: "packages/sdk/src/views/contract/**", ignores: [] }],
+        })
+        const config = await starciBePackagesConfig({ hfs: app.hfs })
+        const ruleBlocks = config.filter((block) => block.rules !== undefined && "starci-be/explicit-export-surface" in block.rules)
+        assert.deepEqual(ruleBlocks.map((block) => block.files), [[...PACKAGE_SOURCE_FILES], [["packages/sdk/src/views/contract/**", "**/*.{ts,mts,cts,js,mjs,cjs}"]]])
+        assert.deepEqual((ruleBlocks[0]?.ignores ?? []).filter((glob) => glob.startsWith("packages/")), ["packages/sdk/src/views/**", "packages/sdk/src/face/**"])
     } finally { app.cleanup() }
 })
 
@@ -92,24 +118,32 @@ test("the code of a package is linted by the be rules: the explicit surface (R36
     } finally { app.cleanup() }
 })
 
-test("a clean package file passes, and the workbench contract is back end while the workbench and public subpaths are not", async () => {
+test("a clean package file passes; a declared front-end slot is not the back end's, its contract declared before it is, and an undeclared folder is", async () => {
     const clean = "/** The next value. */\nexport const total = (value: number): number => value + 1\n"
     const contract = "/** What a view needs. */\nexport interface Contract {\n    /** The identifier of the view. */\n    readonly id: string\n}\n"
-    const app = appWith({
+    const files = {
         "src/node/total.ts": clean,
-        "src/workbench/contract/contract.ts": contract,
-        "src/workbench/view.ts": "export const View = 1\n",
-        "src/public/page.ts": "export const Public = 1\n",
-    })
+        "src/views/contract/contract.ts": contract,
+        "src/views/view.ts": "export const View = 1\n",
+        "src/face/page.ts": "export const Face = 1\n",
+    }
+    const render = (messages: readonly TSESLint.Linter.LintMessage[]) => messages.map((message) => `${message.ruleId}: ${message.message}`)
+    const app = appWith(files, undefined, EXT)
     try {
-        const render = (messages: readonly TSESLint.Linter.LintMessage[]) => messages.map((message) => `${message.ruleId}: ${message.message}`)
         assert.deepEqual(render(await lint(app.root, app.hfs, "packages/sdk/src/node/total.ts", clean)), [])
-        assert.deepEqual(render(await lint(app.root, app.hfs, "packages/sdk/src/workbench/contract/contract.ts", contract)), [])
-        for (const front of ["src/workbench/view.ts", "src/public/page.ts"]) {
+        assert.deepEqual(render(await lint(app.root, app.hfs, "packages/sdk/src/views/contract/contract.ts", contract)), [])
+        for (const front of ["src/views/view.ts", "src/face/page.ts"]) {
             const messages = await lint(app.root, app.hfs, `packages/sdk/${front}`, "export const View = 1\n")
             assert.match(render(messages).join("\n"), /No matching configuration/, `${front} is for the front-end canon`)
         }
     } finally { app.cleanup() }
+    // The same tree, undeclared: no folder name hands a file to the front end, so the back-end rules judge the view.
+    const undeclared = appWith(files)
+    try {
+        const messages = render(await lint(undeclared.root, undeclared.hfs, "packages/sdk/src/views/view.ts", "export const view = (value: number) => value + 1\n"))
+        assert.doesNotMatch(messages.join("\n"), /No matching configuration/)
+        assert.ok(messages.some((message) => message.startsWith("starci-be/")), messages.join("\n"))
+    } finally { undeclared.cleanup() }
 })
 
 test("a package view is the be profile over the paths of the app root: the tier package, no owner of the module laws", () => {
@@ -119,7 +153,7 @@ test("a package view is the be profile over the paths of the app root: the tier 
         assert.equal(app.hfs.slotOf(join(app.root, "packages/sdk/src/index.ts")), "app.packages")
         assert.equal(app.hfs.tierOf("packages/sdk/src/index.ts"), "package")
         assert.equal(app.hfs.ownerOf("packages/sdk/src/node/total.ts"), null, "a package's public surface is the exports of its manifest, not one index.ts at an owner root")
-        assert.equal(app.hfs.slotOf("packages/modules/src/index.ts"), "app.module-registry")
+        assert.equal(app.hfs.slotOf("packages/modules/src/index.ts"), "app.packages")
         assert.equal(app.hfs.tierOf("be/src/main.ts"), null)
         assert.ok(app.hfs.ruleParams?.infraOwners, "the infrastructure owners of the be side judge what a package imports")
     } finally { app.cleanup() }

@@ -1,5 +1,5 @@
 /**
- * RENDERER-PURITY-1: a client renderer of a root workspace package (`packages/<pkg>/src/client/**\/*.tsx`) holds presentation only: mapping rows to
+ * RENDERER-PURITY-1: a renderer of a root workspace package (every `.tsx` file of its source, `packages/<pkg>/src/**\/*.tsx`) holds presentation only: mapping rows to
  * components, choosing what to show, formatting. The business logic it would otherwise hold lives in a measured `.ts` module the renderer calls,
  * where the unit run holds it at 100 per file (BE-TEST-13); the renderer itself is outside coverage (SHARED-TEST-1).
  *
@@ -15,10 +15,10 @@
 import { TSESLint, type TSESTree } from "@typescript-eslint/utils"
 import { defineRule, type Node, type Recommended, type Rules } from "./lib/rule.ts"
 
-const RENDERER = /(?:^|\/)packages\/[^/]+\/src\/client\/.+\.tsx$/u
+const RENDERER = /(?:^|\/)packages\/[^/]+\/src\/.+\.tsx$/u
 const FRONT_END_PACKAGE = /(?:^|\/)fe\/packages\//u
 
-/** True for a client renderer of a root workspace package; a front-end package (`fe/packages/*`) is judged by the front-end canon alone. */
+/** True for a renderer of a root workspace package, a `.tsx` file of its source whatever its folder; a front-end package (`fe/packages/*`) is judged by the front-end canon alone. */
 export const isRootPackageRenderer = (filename: string): boolean => {
   const path = filename.replaceAll("\\", "/")
   return RENDERER.test(path) && !FRONT_END_PACKAGE.test(path)
@@ -146,7 +146,7 @@ const chainLength = (node: TSESTree.CallExpression): TSESTree.CallExpression[] =
 const rendererPurity = defineRule<Id>({
   meta: {
     type: "problem",
-    docs: { description: "RENDERER-PURITY-1: a client renderer of a root package holds presentation only; data computation, aggregation, date math, domain rules and mutations live in measured .ts." },
+    docs: { description: "RENDERER-PURITY-1: a renderer (.tsx) of a root package holds presentation only; data computation, aggregation, date math, domain rules and mutations live in measured .ts." },
     schema: [],
     messages: Object.fromEntries(Object.entries(MESSAGES).map(([id, message]) => [id, `FE_RENDERER_LOGIC: ${message}; move it into a measured .ts module the renderer calls (BE-TEST-13, FE-PACKAGES-2) and let the renderer map, choose and format.`])) as Record<Id, string>,
   },

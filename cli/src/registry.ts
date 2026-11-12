@@ -16,7 +16,6 @@ import { releasePushVerb } from "./core/release/push.js"
 import { versionVerb } from "./core/version.js"
 import { appInfoVerb } from "./lite/app/info.js"
 import { appAddVerb } from "./core/app/add.js"
-import { appRemoveVerb } from "./core/app/remove.js"
 import { appCheckVerb } from "./core/app/check.js"
 import { appCiVerb } from "./core/app/ci.js"
 import { appCodemodVerb } from "./core/app/codemod.js"
@@ -39,7 +38,6 @@ import { seatStartVerb } from "./core/seat/start.js"
 import { seatStopVerb } from "./core/seat/stop.js"
 import { checkLooseningVerb } from "./core/check/loosening.js"
 import { checkSecretsVerb } from "./core/check/secrets.js"
-import { checkBusinessVerb } from "./core/check/business.js"
 import { checkShapeVerb } from "./core/check/shape.js"
 import { checkPinsVerb } from "./core/check/pins.js"
 import { checkHeavySitesVerb } from "./core/check/heavy-sites.js"
@@ -140,7 +138,6 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     taskCancelVerb,
     appInfoVerb,
     appAddVerb,
-    appRemoveVerb,
     appCheckVerb,
     appCiVerb,
     appCodemodVerb,
@@ -163,7 +160,6 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     seatStopVerb,
     checkLooseningVerb,
     checkSecretsVerb,
-    checkBusinessVerb,
     checkShapeVerb,
     checkPinsVerb,
     checkHeavySitesVerb,

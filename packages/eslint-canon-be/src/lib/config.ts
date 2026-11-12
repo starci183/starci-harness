@@ -119,33 +119,35 @@ export const buildBeConfig = async ({ hfs, plugin, recommended }: {
     ]
 }
 
-/** The back-end subpaths of a root workspace package: everything under `src/` but the front-end subpaths `workbench/` and `public/`; the workbench contract (`workbench/contract/`) is React-free and stays back end. */
+/** The back-end files of a root workspace package: every script file under `src/` no slot of the project hands to the front-end canon (`lint: fe`, ext/manifest.json packages). */
 export const PACKAGE_SOURCE_FILES = Object.freeze(["packages/*/src/**/*.{ts,mts,cts,js,mjs,cjs}"])
 const PACKAGE_SPEC_FILES = Object.freeze(["packages/*/src/**/*.{spec,e2e-spec}.{ts,mts,cts,js,mjs,cjs}"])
-const PACKAGE_CONTRACT_SPEC_FILES = Object.freeze(["packages/*/src/workbench/contract/**/*.{spec,e2e-spec}.{ts,mts,cts,js,mjs,cjs}"])
-const PACKAGE_FRONT_END = Object.freeze(["packages/*/src/workbench/**", "packages/*/src/public/**"])
-const PACKAGE_CONTRACT_FILES = Object.freeze(["packages/*/src/workbench/contract/**/*.{ts,mts,cts,js,mjs,cjs}"])
+const SCRIPT = "**/*.{ts,mts,cts,js,mjs,cjs}"
+const SCRIPT_SPEC = "**/*.{spec,e2e-spec}.{ts,mts,cts,js,mjs,cjs}"
 /** What a package folder never lints: build output, coverage output and installed packages. */
 export const PACKAGE_IGNORED = Object.freeze(["**/dist/**", "**/coverage/**", "**/node_modules/**"])
 
 /**
- * The flat config of the back-end subpaths of the root workspace packages of an app: the config of a back end, with the files narrowed to
- * `packages/<pkg>/src/**` (the front-end subpaths `workbench/` and `public/` left to the front-end canon, the workbench contract kept). It is
- * the very rule set of the be side, over the package view of the app root (`loadPackagesHfs`), so a module package obeys the laws of the side
- * its subpath belongs to and the infrastructure owners judge what the package imports.
+ * The flat config of the back-end files of the root workspace packages of an app: the config of a back end, with the files narrowed to
+ * `packages/<pkg>/src/**`. Which files are the front end's is the project's declaration, never a folder name this canon knows: a slot of
+ * `ext/manifest.json` `packages` with `lint: "fe"` is left to the front-end canon, and the first slot that holds a file decides
+ * (`hfs.packageLint`, PROJECT-LINT-3), so a back-end slot declared before a front-end slot it lies in stays back end. A package the project
+ * does not declare is back end whole. It is the very rule set of the be side, over the package view of the app root (`loadPackagesHfs`).
  *
  * @param {object} input - The attachment options of `buildBeConfig`.
- * @returns {Promise<Array<object>>} The flat config: one ignore block and the rule and Sonar way blocks over the package subpaths.
+ * @returns {Promise<Array<object>>} The flat config: one ignore block and the rule and Sonar way blocks over the package files.
  */
 export const buildBePackagesConfig = async (input: Parameters<typeof buildBeConfig>[0]): Promise<TSESLint.FlatConfig.ConfigArray> => {
     const [, ...blocks] = await buildBeConfig(input)
+    const lint = input.hfs?.packageLint ?? { frontEnd: [], fe: [], be: [] }
     return [
         { ignores: [...PACKAGE_IGNORED] },
         ...blocks.flatMap((block) => {
             const tests = block.name === TEST_SCOPE_BLOCK
             return [
-                { ...block, files: [...(tests ? PACKAGE_SPEC_FILES : PACKAGE_SOURCE_FILES)], ignores: [...(block.ignores ?? []), ...PACKAGE_FRONT_END] },
-                { ...block, files: [...(tests ? PACKAGE_CONTRACT_SPEC_FILES : PACKAGE_CONTRACT_FILES)] },
+                { ...block, files: [...(tests ? PACKAGE_SPEC_FILES : PACKAGE_SOURCE_FILES)], ignores: [...(block.ignores ?? []), ...lint.frontEnd] },
+                // A back-end slot declared before a front-end slot that reaches it: its files, less the front-end slots declared before it.
+                ...lint.be.map((scope) => ({ ...block, files: [[scope.files, tests ? SCRIPT_SPEC : SCRIPT]], ignores: [...(block.ignores ?? []), ...scope.ignores] })),
             ]
         }),
     ]

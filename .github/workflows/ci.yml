@@ -123,9 +123,6 @@ jobs:
           - gate: harness shape (contexts/hfs/harness.yaml)
             scope: repo
             run: check shape
-          - gate: no business identifier in the tree (policy/business-terms.yaml)
-            scope: repo
-            run: check business
           - gate: CLI pins (the CLI's @starci requirements and lockfile at contexts/stack/pins.yaml)
             scope: harness
             run: check pins

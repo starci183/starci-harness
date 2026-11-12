@@ -10,6 +10,9 @@ import type { AllowsResult } from './allows.mjs';
 import type { OpenedHfs, ClassifiedPath, RepoView, RuleParams } from './slots.mjs';
 import type { Parsed } from './manifest-shape.mjs';
 import { ROOT_PACKAGE_SLOTS } from './architecture/root-packages.mjs';
+import { declaredPackageSlots } from './coverage-scope.mjs';
+import { packageLintScopes, type PackageLint } from './package-slots.mjs';
+import { byCodeUnit } from '../lib/list.mjs';
 
 /** The frozen view of one side of an app that the lint factories hand their rules (`settings.starci.hfs`). */
 export interface HfsView {
@@ -31,6 +34,8 @@ export interface HfsView {
   slot: OpenedHfs['slot'];
   /** The vocabulary a root workspace package declares for itself (`starci` of its manifest); only the view of the root packages has it. */
   packageContract?: (file: string) => PackageContract | null;
+  /** What each canon lints of the root packages the project declares slots for (ext/manifest.json packages, PROJECT-LINT-3); only the view of the root packages has it. */
+  packageLint?: PackageLint;
 }
 
 /** A type a root package declares: its name and the file of the package that declares it, relative to the app root. */
@@ -145,7 +150,7 @@ export const readPackageContract = (repoRoot: string, packageDir: string): Packa
 };
 
 /**
- * The view of the root workspace packages of an app (`packages/<pkg>/src/**`, slots app.packages and app.module-registry), as the lint of one
+ * The view of the root workspace packages of an app (`packages/<pkg>/src/**`, slot app.packages), as the lint of one
  * side sees them: the rule parameters, the apps and the Grammar of `side` (a package is judged by the laws of the side whose subpath a file
  * sits in), and the paths of the APP ROOT (`repoRoot` is the app root, not a side folder). The slots answer for the root paths; a file of a
  * package is of the tier `package` and has no owner: the owner laws (one `index.ts` per owner root) are the module folders', a package's public
@@ -156,6 +161,24 @@ export const readPackageContract = (repoRoot: string, packageDir: string): Packa
  * @param {string} side - `be` or `fe`: the side whose laws the file is judged by.
  * @returns {object} The frozen view: the profile of the side over the paths of the app root.
  */
+/** The lint scopes of every root package of the app at `repoRoot` the project declares sound slots for, in folder order; a package it does not declare adds none. */
+function declaredPackageLint(repoRoot: string): PackageLint {
+  const read = (file: string): string | null => { try { return fs.readFileSync(path.join(repoRoot, file), 'utf8'); } catch { return null; } };
+  let names: string[] = [];
+  try { names = fs.readdirSync(path.join(repoRoot, 'packages'), { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort(byCodeUnit); } catch { /* an app without root packages declares none */ }
+  const slots = declaredPackageSlots(read);
+  const lint: PackageLint = { frontEnd: [], fe: [], be: [] };
+  for (const name of names) {
+    const manifest = slots(`packages/${name}`);
+    if (manifest === null) continue;
+    const scopes = packageLintScopes(`packages/${name}`, manifest);
+    lint.frontEnd.push(...scopes.frontEnd);
+    lint.fe.push(...scopes.fe);
+    lint.be.push(...scopes.be);
+  }
+  return lint;
+}
+
 function packagesView(opened: OpenedHfs, repoRoot: string, side: 'be' | 'fe'): HfsView {
   const scope = opened.sides?.[side];
   const sideRepo = opened.repo.sides?.[side];
@@ -201,6 +224,7 @@ function packagesView(opened: OpenedHfs, repoRoot: string, side: 'be' | 'fe'): H
     allows: (file: string) => allowsFile(opened, rel(file)),
     slot: (id: string) => opened.slot(id),
     packageContract,
+    packageLint: declaredPackageLint(repoRoot),
   });
 }
 

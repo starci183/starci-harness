@@ -8,7 +8,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { LockResult } from '../scaffold/app.mjs';
 import { scaffoldApp } from '../scaffold/app.mjs';
-import { addModule } from '../scaffold/add-module.mjs';
 import { appSource, bundledPresets, renderTargets } from '../sync/index.mjs';
 import { ciWorkflowCommands, verifyShards } from '../sync/ci-commands.mjs';
 import { parseWorkflow } from '../runtime/scripts/hfs/runtime-rules/workflow-source.mjs';
@@ -74,12 +73,11 @@ for (const edition of ['lite', 'full'] as const) {
 
 test('an app with root packages verifies the packages side as a shard of its own, after building them', (t) => {
   const root = newApp(t, 'lite');
-  fs.mkdirSync(path.join(root, 'packages', 'sdk', 'src'), { recursive: true });
-  fs.writeFileSync(path.join(root, 'packages', 'sdk', 'package.json'), '{"name":"@demo/sdk","version":"0.0.0","private":true}\n');
-  fs.writeFileSync(path.join(root, 'packages', 'sdk', 'src', 'index.ts'), 'export {}\n');
+  fs.mkdirSync(path.join(root, 'packages', 'ui-kit', 'src'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'packages', 'ui-kit', 'package.json'), '{"name":"@demo/ui-kit","version":"0.0.0","private":true}\n');
+  fs.writeFileSync(path.join(root, 'packages', 'ui-kit', 'src', 'index.ts'), 'export {}\n');
   const manifest = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')) as { workspaces: string[] };
   fs.writeFileSync(path.join(root, 'package.json'), `${JSON.stringify({ ...manifest, workspaces: [...manifest.workspaces, 'packages/*'] }, null, 2)}\n`);
-  addModule({ root, name: 'loyalty' });
   const doc = parseWorkflow(renderOf(root).text) as unknown as { jobs: Record<string, Job> };
   const verify = doc.jobs.verify as Job;
   assert.deepEqual(verify.strategy?.matrix?.args, shardsOf(['be', 'fe', 'packages']));

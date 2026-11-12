@@ -106,13 +106,11 @@ export interface DbFunction {
   reason: string;
 }
 
-/** A receipt port an app declares (hfs.json sides.be.receiptPorts): the method that records a delivery once and the answer it gives a repeat (R263). */
-export interface ReceiptPort {
-  class: string;
-  method: string;
-  repeat: 'false' | 'undefined';
-  reason: string;
-}
+/**
+ * A receipt port an app declares (hfs.json sides.be.receiptPorts): the method that records a delivery once and the answer it gives a repeat, or
+ * `many: true` for a delivery of several events, whose method answers the list of the new events only (R263).
+ */
+export type ReceiptPort = { class: string; method: string; reason: string } & ({ repeat: 'false' | 'undefined'; many?: never } | { many: true; repeat?: never });
 
 /** A file of a root package that renders DDL text only to return it (ruleParams.be.ddlRenderers, hfs.json sides.be.ddlRenderers). */
 export interface DdlRenderer {

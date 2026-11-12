@@ -2,9 +2,11 @@
 
 ## 1.1.0-alpha.118 - 2026-11-13
 
-- Added: `starci check business`. It refuses a file of the harness tree that holds, as a whole token, an app, product or provider identifier `policy/business-terms.yaml` denies, outside the exact `{path, term}` pairs of its `allow`; an `allow` entry nothing uses is red too. A token is bounded by a character that is no letter or digit, by the edge of the text or by a camelCase boundary, in any letter case, and a file's path is judged with its text. It decides by membership in the list and never by meaning (`cli/src/core/check/business-scan.ts`); CI runs it as a `repo` gate. Proved against a scratch repository.
+- Changed (rule 9): the harness holds no app's business, and it lists no app's words either: the rule is held by review, with no check and no term list in `policy/`.
+- Removed: `docs/knowledge-analysis/`, the legacy runtime's analysis notes, which named apps; the shape exception that kept the folder (`contexts/hfs/harness.yaml` `never.knowledge-outside-contexts`) goes with it.
 - Changed: comments and one test fixture of the CLI name no app; `ops/liveness.yaml` and `ops/host/sonar/compose.yaml` say "a reference app" and "the legacy runtime".
 - Removed: `.github/workflows/images.yml`, which only published the runtime layer images that are gone.
+- Removed (breaking for an app that used it): the verb `starci app remove` (`core/app/remove.ts`, schema `starci/app-remove@1`), which only forwarded `remove module <name>` to @starci/hfs; `starci app add module <name>` is gone with it, since @starci/hfs 6.10.0 holds no module scaffold. An app that keeps module packages owns them itself.
 
 ## 1.1.0-alpha.117 - 2026-11-12
 

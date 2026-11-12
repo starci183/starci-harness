@@ -1,4 +1,4 @@
-// ci-commands.spec.mts - the managed CI builds the app's root workspace packages (packages/*: the agent SDK, the module packages and the rest) before
+// ci-commands.spec.mts - the managed CI builds the app's root workspace packages (packages/*, each folder holding a package.json and a src/) before
 // every step that reads their types or compiles code importing them: the fast job's boot proof, every side of the lint matrix, a multi-front-end build,
 // the Sonar scan, the nightly cache verify and the e2e run (knowledge/hfs/ci-standard.yaml packages-built-first). An app without root packages renders as before.
 import { test } from 'node:test';
@@ -8,7 +8,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { LockResult } from '../scaffold/app.mjs';
 import { scaffoldApp } from '../scaffold/app.mjs';
-import { addModule } from '../scaffold/add-module.mjs';
 import { appSource, bundledPresets, renderTargets } from '../sync/index.mjs';
 import { BUILD_MODULES, ciWorkflowCommands, packagesBuildStep } from '../sync/ci-commands.mjs';
 import { ciStandardFindings } from '../runtime/scripts/hfs/rules/ci-standard.mjs';
@@ -21,16 +20,15 @@ const lockedOk = (root: string): LockResult => {
   return { ok: true };
 };
 
-/** A fresh lite app, with a built-on agent SDK and one module package when `packages` is true. */
+/** A fresh lite app, with one root workspace package (packages/ui-kit) when `packages` is true. */
 function app(t: TestContext, packages: boolean): string {
   const { root } = scaffoldApp({ name: 'demo', into: mkdtemp(t, 'starci-ci-commands-'), harness: { version: '1.1.0-alpha.3' }, edition: 'lite', presets: bundledPresets(), lock: lockedOk, initGit: init });
   if (!packages) return root;
-  fs.mkdirSync(path.join(root, 'packages', 'sdk', 'src'), { recursive: true });
-  fs.writeFileSync(path.join(root, 'packages', 'sdk', 'package.json'), '{"name":"@demo/sdk","version":"0.0.0","private":true}\n');
-  fs.writeFileSync(path.join(root, 'packages', 'sdk', 'src', 'index.ts'), 'export {}\n');
+  fs.mkdirSync(path.join(root, 'packages', 'ui-kit', 'src'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'packages', 'ui-kit', 'package.json'), '{"name":"@demo/ui-kit","version":"0.0.0","private":true}\n');
+  fs.writeFileSync(path.join(root, 'packages', 'ui-kit', 'src', 'index.ts'), 'export {}\n');
   const manifest = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')) as { workspaces: string[] };
   fs.writeFileSync(path.join(root, 'package.json'), `${JSON.stringify({ ...manifest, workspaces: [...manifest.workspaces, 'packages/*'] }, null, 2)}\n`);
-  addModule({ root, name: 'loyalty' });
   return root;
 }
 
