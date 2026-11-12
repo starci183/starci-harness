@@ -122,6 +122,43 @@ moved to BullMQ), read its report, and repeat with `--execute`. The verb writes 
 rehearsal minus what it drops; nobody writes a migration after it by hand. Production then takes `starci app db migrate` on
 its empty database and the seed. The verb's flags and outputs are the hfs README's `db baseline --squash`.
 
+## Resetting the chain to one baseline
+
+An app whose environments hold no data worth keeping replaces its whole migration chain, archive included, by one
+baseline (BE-PERSISTENCE-19 of [code/be/persistence.md](../code/be/persistence.md)). The owner confirms first that no
+environment holds data to keep; then, in one branch:
+
+1. **Declare it.** hfs.json `db.baselineReset: { baseline, ruling, date, reason }`: the baseline's path
+   (`db/migrations/<ts14>_<name>.sql`), the id the app records the reset under, the day and why. The baseline file's
+   header carries `-- starci:baseline-reset <ruling>`, and exactly one file carries it.
+2. **Build the baseline by concatenating the active chain in stamp order**, each file's text whole and unchanged, then
+   delete the older files and the archive. Never build it from a schema dump: a dump keeps tables and loses what the
+   chain did besides, such as queues, scheduled jobs, grants, row-level-security policies and reference rows.
+3. **Prove it on two scratch databases**: the old chain applied to one, the baseline to the other, both after
+   `db/bootstrap.sql`, then compared object by object: tables and columns, partitions, indexes, constraints, functions,
+   triggers, grants, row-level-security policies, queues, scheduled jobs and the reference rows. Any difference is a
+   defect of the baseline, fixed in the baseline. The comparison is the app's own script: no harness verb runs it.
+4. **Run the gates**: `starci app db drift`, the entity list against the new chain, then `starci app check --gate db`.
+5. **A drop whose readers still exist is not in the baseline.** A destructive migration whose target code still reads
+   stays outside `db/migrations`, as a pending file the app keeps and names in its concepts, and enters the chain with a
+   stamp after the baseline once the last reader is gone (a `*_contract_*` migration, BE-PERSISTENCE-19).
+6. **Every migration written after the cut is stamped after the baseline**, a branch cut before the reset included: it
+   is restamped (`starci app db restamp`) when it rebases onto the baseline.
+7. **Empty the databases that ran the old chain** before the next deploy: a database whose recorded history the new
+   chain does not explain is refused (`STACK_DEPLOY_DB_FOREIGN_CHAIN`, [cicd.md](cicd.md)), and an empty one takes the
+   first start.
+
+Why: a chain that only ever ran on throwaway data costs every later replay and review its whole length, and one
+baseline that equals it is cheaper only when the equality is proved rather than assumed. R213 and R257 accept the
+removal of the older chain while the declared baseline is not yet on the base branch
+(`packages/hfs/runtime/scripts/hfs/rules/database-reset.mts`); steps 2, 3 and 5 are held by review.
+
+Known gap: `starci app db baseline --squash` does not serve this reset: it refuses a chain whose sources are untracked
+or differ from the committed history, and it archives the old chain where the reset deletes it, so the baseline is
+built by hand as step 2 says. Known gap: no slot names the pending file of step 5 and no check reads it. Known gap:
+there is no verb that resets a local stack: the data volumes of a dev stack that ran the old chain are removed by hand
+before `starci app stack up` builds it again.
+
 ## Read with
 
 [README.md](README.md), [stacks.md](stacks.md), [full.md](full.md).

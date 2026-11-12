@@ -66,6 +66,13 @@ generated migrations. They need no `*.entity.ts` per partition or view: TypeScri
 CHECKs and indexes with the entity manifest the engine generates (`manifest`, relative to the app root). Any other capability that
 maps one of these objects with an `@Entity` (R35), or writes or reads one in SQL (R86), is refused.
 
+Known gap: `starci app db drift` reads the tables an entity maps and the declared engine-owned family alone. A partitioned
+table an app builds outside that family is compared as its parent only: its partitions, and the indexes and CHECKs each
+partition carries, are not compared with anything, and neither are objects no entity maps (functions, triggers, grants,
+policies, queues, scheduled jobs, reference rows). An app that relies on one of them holds it with a spec of its own that
+applies the chain to a scratch database and asserts the object, and names that spec in the concept that needs it
+([contexts/README.md](../../README.md) house rule 6).
+
 Why: one owner per table gives every schema change one reviewer and keeps platform free of domain types; the one
 registry that names every list is the only place that knowledge meets.
 
@@ -267,7 +274,8 @@ on the base unchanged is immutable, so its destructive or dynamic DDL is a known
 migration chain keeps one baseline and is never edited. The one exception is a one-time reset an app declares in hfs.json
 `db.baselineReset` (`{ baseline, ruling, date, reason }`): the declared baseline file (header `-- starci:baseline-reset <ruling>`) replaces the whole
 older chain and the archive while it is not yet on the base branch; exactly one file carries the marker, no older file stays, and once it
-is on the base the declaration is spent.
+is on the base the declaration is spent. The procedure, with its proof, is "Resetting the chain to one baseline" of
+[project/lite.md](../../project/lite.md).
 
 Why: a view, definer or configuration change can expose rows while the base table looks protected.
 
