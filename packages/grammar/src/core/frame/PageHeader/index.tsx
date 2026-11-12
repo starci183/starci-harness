@@ -47,7 +47,7 @@ export type PageHeaderProps = PageHeaderTabRows & {
     readonly breadcrumbs?: PageHeaderBreadcrumbs | "root"
     /** The one supporting line under the heading (FONT-2, muted). */
     readonly description?: ReactNode
-    /** A short summary line of facts about the page's subject (FONT-1, muted), e.g. "SePay · Vietcombank · ****6789". */
+    /** A short summary line of facts about the page's subject (FONT-1, muted), e.g. "Acme Pay · Globex Bank · ****6789". */
     readonly meta?: ReactNode
     /** Status chips beside the heading (`Badge`, `StatusDot`): settled facts about the page's subject. */
     readonly status?: ReactNode

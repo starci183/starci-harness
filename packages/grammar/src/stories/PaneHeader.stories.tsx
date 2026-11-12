@@ -66,7 +66,7 @@ export const HeadDrawerOpener: Story = {
             <G.PaneGrid label="Conversation" areas={["main rail"]} columns={["fill", "standard"]}>
                 <G.Pane area="main" label="Conversation">
                     <G.PaneSection align="center">
-                        <G.PaneHeader title="Thu Trang" description="Zalo, 2 min ago" actions={actions} drawerOpener={{ pane: "rail", icon: EllipsisGlyph, label: "Customer info" }} />
+                        <G.PaneHeader title="Alex Chen" description="Chat, 2 min ago" actions={actions} drawerOpener={{ pane: "rail", icon: EllipsisGlyph, label: "Customer info" }} />
                     </G.PaneSection>
                     <G.PaneSection><G.Text>Messages</G.Text></G.PaneSection>
                 </G.Pane>

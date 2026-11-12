@@ -14,12 +14,12 @@ type Story = StoryObj;
 
 /** The sales workflow of the drawing: five steps in a line. */
 const salesNodes: ReadonlyArray<G.FlowGraphNode> = [
-  { id: 'new', kind: 'event', label: 'Có việc mới', description: 'Tin, tiền về, hẹn giờ', tag: 'Kích hoạt' },
-  { id: 'consult', kind: 'action', label: 'Tư vấn khách', description: 'món, địa chỉ, giờ giao' },
-  { id: 'order', kind: 'action', label: 'Tạo đơn', description: 'ghi đơn và xác nhận' },
-  { id: 'qr', kind: 'action', label: 'Gửi QR thanh toán', description: 'gửi QR và mã đơn' },
-  { id: 'notify', kind: 'ask', label: 'Báo đội đơn mới', description: 'nhắn đơn mới lên /chat' },
-  { id: 'won', kind: 'end', label: 'Chốt đơn' },
+  { id: 'new', kind: 'event', label: 'New event', description: 'Message, payment, timer', tag: 'Trigger' },
+  { id: 'consult', kind: 'action', label: 'Advise customer', description: 'items, address, time' },
+  { id: 'order', kind: 'action', label: 'Create order', description: 'record and confirm' },
+  { id: 'qr', kind: 'action', label: 'Send payment link', description: 'send link and order id' },
+  { id: 'notify', kind: 'ask', label: 'Notify team of order', description: 'post the order to the team' },
+  { id: 'won', kind: 'end', label: 'Close order' },
 ];
 const salesEdges: ReadonlyArray<G.FlowGraphEdge> = [
   { id: 's1', source: 'new', target: 'consult' },
@@ -29,23 +29,23 @@ const salesEdges: ReadonlyArray<G.FlowGraphEdge> = [
   { id: 's5', source: 'notify', target: 'won' },
 ];
 
-/** The receptionist (Lễ tân) graph: an intent that fans out to four branches. */
+/** The receptionist graph: an intent that fans out to four branches. */
 const receptionNodes: ReadonlyArray<G.FlowGraphNode> = [
-  { id: 'new', kind: 'event', label: 'Có tin mới', description: 'Tin khách qua Zalo', tag: 'Kích hoạt' },
+  { id: 'new', kind: 'event', label: 'New message', description: 'Customer message by Chat', tag: 'Trigger' },
   {
-    id: 'intent', kind: 'condition', label: 'Hiểu ý khách', description: 'chọn hướng cho tin khách',
-    outputs: [{ id: 'buy', label: 'Muốn mua' }, { id: 'paid', label: 'Báo đã chuyển' }, { id: 'ask', label: 'Hỏi thông tin' }, { id: 'complain', label: 'Khiếu nại' }],
+    id: 'intent', kind: 'condition', label: 'Classify request', description: 'route the customer message',
+    outputs: [{ id: 'buy', label: 'Wants to buy' }, { id: 'paid', label: 'Payment sent' }, { id: 'ask', label: 'Asks a question' }, { id: 'complain', label: 'Complaint' }],
   },
-  { id: 'sales', kind: 'action', label: 'Tư vấn', description: 'giao Sales' },
-  { id: 'accounting', kind: 'action', label: 'Đối soát', description: 'giao Kế toán' },
-  { id: 'answer', kind: 'action', label: 'Trả lời', description: 'từ thông tin của tiệm' },
-  { id: 'receive', kind: 'action', label: 'Khiếu nại', description: 'xin lỗi khách, báo đội' },
-  { id: 'handoff', kind: 'end', label: 'Chuyển chủ tiệm' },
+  { id: 'sales', kind: 'action', label: 'Advise', description: 'assign Sales' },
+  { id: 'billing', kind: 'action', label: 'Reconcile', description: 'assign Billing' },
+  { id: 'answer', kind: 'action', label: 'Reply', description: 'from the shop info' },
+  { id: 'receive', kind: 'action', label: 'Complaint', description: 'apologise, tell the team' },
+  { id: 'handoff', kind: 'end', label: 'Hand to owner' },
 ];
 const receptionEdges: ReadonlyArray<G.FlowGraphEdge> = [
   { id: 'r1', source: 'new', target: 'intent' },
   { id: 'r2', source: 'intent', target: 'sales', sourcePort: 'buy' },
-  { id: 'r3', source: 'intent', target: 'accounting', sourcePort: 'paid' },
+  { id: 'r3', source: 'intent', target: 'billing', sourcePort: 'paid' },
   { id: 'r4', source: 'intent', target: 'answer', sourcePort: 'ask' },
   { id: 'r5', source: 'intent', target: 'receive', sourcePort: 'complain' },
   { id: 'r6', source: 'receive', target: 'handoff' },
@@ -55,8 +55,8 @@ const receptionEdges: ReadonlyArray<G.FlowGraphEdge> = [
 const Well = ({ nodes, edges }: { readonly nodes: ReadonlyArray<G.FlowGraphNode>, readonly edges: ReadonlyArray<G.FlowGraphEdge> }) => (
   <div data-story-well="true" style={{ boxSizing: 'border-box', width: 'min(1160px, 100%)', height: 800, overflowY: 'auto', background: 'var(--background)' }}>
     <G.Stack gap="row">
-      <G.Heading level={2}>Sơ đồ</G.Heading>
-      <G.FlowGraph label="Sơ đồ quy trình" layout="steps" height="fill" nodes={nodes} edges={edges} isEditable />
+      <G.Heading level={2}>Diagram</G.Heading>
+      <G.FlowGraph label="Flow diagram" layout="steps" height="fill" nodes={nodes} edges={edges} isEditable />
     </G.Stack>
   </div>
 );
@@ -147,7 +147,7 @@ export const BranchedOpensAtOne: Story = {
     const graph = canvasElement.querySelector<HTMLElement>('[data-component="FlowGraph"]')!;
     await waitFor(() => expect(graph.querySelectorAll('.starci-core-flow-graph-step').length).toBe(7));
     await waitFor(() => assertFills(graph));
-    assertCards(graph, ['new', 'sales', 'accounting', 'answer', 'receive']);
+    assertCards(graph, ['new', 'sales', 'billing', 'answer', 'receive']);
     const canvas = graph.querySelector<HTMLElement>('.starci-core-flow-graph-canvas')!.getBoundingClientRect();
     await waitFor(() => {
       const zoom = zoomOf(graph);

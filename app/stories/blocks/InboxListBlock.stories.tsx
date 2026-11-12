@@ -9,10 +9,10 @@ const meta = {
     args: {
         props: {
             decisions: ready([
-                { key: "starci-next/d-69", id: "d-6979996fe691", title: "Kernel không áp được graph v15", kind: DECISION_KIND.harness, raisedAt: "2026-10-27T00:41:00Z" },
-                { key: "nivo-lite/d-c1", id: "d-c1106437", title: "Publish core cohort 0.12.15 + hfs 4.7.48", kind: DECISION_KIND.owner, raisedAt: "2026-10-26T22:41:00Z" },
+                { key: "demo-app/d-69", id: "d-6979996fe691", title: "Kernel could not apply graph v15", kind: DECISION_KIND.harness, raisedAt: "2026-10-27T00:41:00Z" },
+                { key: "demo-lib/d-c1", id: "d-c1106437", title: "Publish lib 1.2.0 + hfs 4.7.48", kind: DECISION_KIND.owner, raisedAt: "2026-10-26T22:41:00Z" },
             ]),
-            selectedKey: "starci-next/d-69",
+            selectedKey: "demo-app/d-69",
             locale: LOCALE,
             labels: { card: INBOX.listCard, list: INBOX.list, slot: slotLabels(INBOX.empty) },
         },

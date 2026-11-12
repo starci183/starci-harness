@@ -245,7 +245,7 @@ export const why: Record<string, WhyEntry> = {
   "no-raw-scroll": {
     code: "FE_NO_RAW_SCROLL",
     en: "An element in `<file>` makes its own scroll area with an `overflow-auto`, `overflow-y-auto` or `overflow-scroll` class.",
-    fix: "NIVO never shows scrollbars. Use the Grammar scroller (`VerticalScrollRegion`, `HorizontalScrollRegion`) or `PaneSection scroll`: they fade the edge where content continues, hide the bar and keep wheel and keyboard scrolling.",
+    fix: "Grammar never shows scrollbars. Use the Grammar scroller (`VerticalScrollRegion`, `HorizontalScrollRegion`) or `PaneSection scroll`: they fade the edge where content continues, hide the bar and keep wheel and keyboard scrolling.",
   },
   "table-cell-type": {
     code: "FE_TABLE_CELL_TYPE",

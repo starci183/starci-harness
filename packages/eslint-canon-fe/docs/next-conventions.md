@@ -98,17 +98,17 @@ import { useTranslations } from "next-intl"
 
 Every `page.tsx` exports `metadata` or `generateMetadata` (catalogue R54, sub-check `FE_PAGE_METADATA_MISSING`).
 
-**Invalid** (`src/app/[locale]/courses/page.tsx`)
+**Invalid** (`src/app/[locale]/projects/page.tsx`)
 
 ```tsx
-export default function Page() { return <CoursesPage /> }
+export default function Page() { return <ProjectsPage /> }
 ```
 
-**Valid** (`src/app/[locale]/courses/page.tsx`)
+**Valid** (`src/app/[locale]/projects/page.tsx`)
 
 ```tsx
-export async function generateMetadata() { return { title: t("courses.title") } }
-export default function Page() { return <CoursesPage /> }
+export async function generateMetadata() { return { title: t("projects.title") } }
+export default function Page() { return <ProjectsPage /> }
 ```
 
 **Finding code:** `FE_PAGE_METADATA_MISSING`
@@ -168,13 +168,13 @@ An internal link is `Link` from `modules/routes`; an external `_blank` link carr
 **Invalid** (`src/components/blocks/Feed/component.tsx`)
 
 ```tsx
-<a href="/courses">{t("courses")}</a>
+<a href="/projects">{t("projects")}</a>
 ```
 
 **Valid** (`src/components/blocks/Feed/component.tsx`)
 
 ```tsx
-<Link href={routes.courses()}>{t("courses")}</Link>
+<Link href={routes.projects()}>{t("projects")}</Link>
 ```
 
 **Finding code:** `FE_I18N_NAVIGATION`

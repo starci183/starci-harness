@@ -65,7 +65,7 @@ test("tabs-depth: page tabs and one region set, never a third layer", () => {
       // the live case: a third layer "Tin nhan / Da ghim" in the panel of a region set inside a Page with header.tabs
       {
         filename: BLOCK,
-        code: `export const A = () => <Page header={{ title: "Agent", tabs }}><Tabs label="Workbench" items={[{ id: "today", label: "Hôm nay" }, { id: "inbox", label: "Hộp thư" }]} selectedKey={view} onSelect={setView} />{view === "inbox" && <Tabs label="Inbox" items={[{ id: "messages", label: "Tin nhắn" }, { id: "pinned", label: "Đã ghim" }]} selectedKey={inbox} onSelect={setInbox} />}</Page>`,
+        code: `export const A = () => <Page header={{ title: "Agent", tabs }}><Tabs label="Workbench" items={[{ id: "today", label: "Today" }, { id: "inbox", label: "Inbox" }]} selectedKey={view} onSelect={setView} />{view === "inbox" && <Tabs label="Inbox" items={[{ id: "messages", label: "Messages" }, { id: "pinned", label: "Pinned" }]} selectedKey={inbox} onSelect={setInbox} />}</Page>`,
         errors: [{ messageId: "depth" }],
       },
       // a third layer without page tabs: three sets, each in the panel of the one before

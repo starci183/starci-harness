@@ -39,7 +39,7 @@ const kinds = canonRuleTester({
 
 const UNIT = at("src/features/api/checkout/application/add-to-cart.handler.spec.ts")
 const SRC = at("src/features/api/checkout/application/add-to-cart.handler.ts")
-const E2E = at("src/tests/e2e/checkout/course-enroll.e2e-spec.ts")
+const E2E = at("src/tests/e2e/checkout/project-enroll.e2e-spec.ts")
 const LIVE = at("src/tests/contract/anthropic/answer.contract-spec.ts")
 
 test("every rule this law declares is exported under its published name", () => {
@@ -99,7 +99,7 @@ test("R47: only a service is unit-tested, its spec sits beside it, and there are
       { filename: at("src/features/api/checkout/transport/http/session.guard.ts"), code: "export class SessionGuard {}" },
       { filename: at("src/features/api/checkout/transport/graphql/order.mapper.ts"), code: "export const toType = () => 1" },
       { filename: at("src/modules/domain/order/policies/refund.policy.ts"), code: "export class RefundPolicy {}" },
-      { filename: at("src/modules/integrations/payos/payos.client.ts"), code: "export class PayosClient {}" },
+      { filename: at("src/modules/integrations/beta-pay/beta-pay.client.ts"), code: "export class BetaPayClient {}" },
       // a logic role of the measured modules (coverage required) may carry its own spec beside it: the file owes 100 per file, a spec of its own is optional
       { filename: at("src/modules/domain/order/order.pause.policy.spec.ts"), code: "export {}" },
       { filename: at("src/modules/domain/order/http.client.spec.ts"), code: "export {}" },
@@ -241,7 +241,7 @@ test("TESTING-1 / E2E-1: an e2e filename is the business sentence, not an API-sh
       // the law's own anchor example
       { filename: at("src/tests/e2e/rewards/rewards-queries.e2e-spec.ts"), code: "it('x', () => {})", errors: [{ messageId: "apiShaped" }] },
       { filename: at("src/tests/e2e/plans/installment-plan-queries.e2e-spec.ts"), code: "it('x', () => {})", errors: [{ messageId: "apiShaped" }] },
-      { filename: at("src/tests/e2e/courses/course-resolvers.e2e-spec.ts"), code: "it('x', () => {})", errors: [{ messageId: "apiShaped" }] },
+      { filename: at("src/tests/e2e/projects/project-resolvers.e2e-spec.ts"), code: "it('x', () => {})", errors: [{ messageId: "apiShaped" }] },
     ],
   }) })
 })

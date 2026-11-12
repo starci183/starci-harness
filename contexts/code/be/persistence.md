@@ -29,7 +29,7 @@ Migrations run only through `cli migrate run` (in lite it delegates to the manag
 migration runner of `platform/database`), before api processes start. Api apps never migrate or seed; seeding is a
 `cli seed ...` command.
 
-DDL text is written in migrations. The one exception is a DDL renderer an app declares in hfs.json `sides.be.ddlRenderers` (`{ path, reason }`, a file of a root package such as `packages/agent-sdk/src/entity/render*.ts`): it builds and returns DDL text, the cli (`cli entities plan --write`) writes it as a new migration file, and nothing executes it at run time. In that file a database client import and a `.query/.execute/.raw/.unsafe` call are refused, and a file outside the cli and the root packages that imports a symbol the renderer declares, directly or through a package barrel, is refused.
+DDL text is written in migrations. The one exception is a DDL renderer an app declares in hfs.json `sides.be.ddlRenderers` (`{ path, reason }`, a file of a root package such as `packages/sdk/src/entity/render*.ts`): it builds and returns DDL text, the cli (`cli entities plan --write`) writes it as a new migration file, and nothing executes it at run time. In that file a database client import and a `.query/.execute/.raw/.unsafe` call are refused, and a file outside the cli and the root packages that imports a symbol the renderer declares, directly or through a package barrel, is refused.
 
 Why: two processes racing to migrate corrupt a schema, and a migration inside a serving module cannot be retried alone.
 
@@ -70,7 +70,7 @@ Known gap: `starci app db drift` reads the tables an entity maps and the declare
 table an app builds outside that family is compared as its parent only: its partitions, and the indexes and CHECKs each
 partition carries, are not compared with anything, and neither are objects no entity maps (functions, triggers, grants,
 policies, queues, scheduled jobs, reference rows). An app that relies on one of them holds it with a spec of its own that
-applies the chain to a scratch database and asserts the object, and names that spec in the concept that needs it
+applies the chain to a scratch database and asserts the object
 ([contexts/README.md](../../README.md) house rule 6).
 
 Why: one owner per table gives every schema change one reviewer and keeps platform free of domain types; the one

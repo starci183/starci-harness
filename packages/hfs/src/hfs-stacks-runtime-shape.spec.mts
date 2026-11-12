@@ -189,7 +189,7 @@ for (const edition of ['lite', 'full']) {
     const fixture = swarmFixture(t, edition);
     fixture.put('.starcistacks/seeds/seeds.yaml', 'schema: starci/seeds@1\nentries: []\n');
     fixture.put('.starcistacks/cache/fingerprint.jsonl', '');
-    fixture.put('.starcistacks/images/openclaw/Dockerfile', 'FROM scratch\n');
+    fixture.put('.starcistacks/images/worker/Dockerfile', 'FROM scratch\n');
     const undeclared = () => checkApplicationStacks({ repoRoot: fixture.root, environment: 'production', deploymentModelFile: fixture.modelFile, repo: { edition } }).errors
       .filter(item => /is not an environment the declaration admits/u.test(item.message));
     assert.deepEqual(undeclared(), []);

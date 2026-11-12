@@ -24,7 +24,7 @@ test("SECTION-HEAD-ACTION: one Link, one IconButton or one neutral sm Button; no
       { filename: BLOCK, code: code("<Section title=\"Runs\" count={3} action={<Link variant=\"head\" href=\"/runs\">All runs</Link>}>x</Section>") },
       { filename: BLOCK, code: code("<Section title=\"Runs\" action={<IconButton label=\"About\" glyph=\"more\" />}>x</Section>") },
       { filename: BLOCK, code: code("<Section title=\"Runs\">x</Section>") },
-      { filename: BLOCK, code: code("<Section title=\"Provider\" count={2} action={<Button intent=\"neutral\" size=\"sm\" onPress={add}>Gắn thêm provider</Button>}>x</Section>") },
+      { filename: BLOCK, code: code("<Section title=\"Provider\" count={2} action={<Button intent=\"neutral\" size=\"sm\" onPress={add}>Add provider</Button>}>x</Section>") },
       { filename: SCRIPT, code: code("<Section title=\"Runs\" action={<Button>Add</Button>}>x</Section>") },
       { filename: BLOCK, code: "export const A = () => <Section title=\"Runs\" action={<Button>Add</Button>}>x</Section>" },
     ],

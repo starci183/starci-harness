@@ -16,69 +16,69 @@ export default meta;
 type Story = StoryObj;
 
 const replies: readonly G.ListRowData[] = [
-  { id: 'paid', title: 'Đơn DH-0004 đã nhận đủ 1.000đ, khoản dư 2k để lại coi như tiền tip hoặc hoàn sau', onPress: noop },
-  { id: 'check', title: 'Chưa thấy tiền vào cho đơn DH-0004, nhắc khách kiểm tra lại nội dung chuyển khoản', onPress: noop },
-  { id: 'fix', title: 'Sửa lỗi công cụ gửi tin rồi cho em chạy lại bước trả lời', onPress: noop },
+  { id: 'paid', title: 'Order ORD-0004 was paid in full, keep the extra $2 as a tip or refund it later', onPress: noop },
+  { id: 'check', title: 'No payment yet for order ORD-0004, ask the customer to check the transfer details', onPress: noop },
+  { id: 'fix', title: 'Fix the send-message tool, then let me rerun the reply step', onPress: noop },
 ];
 
 const stopBody = (
   <G.Stack gap="row">
-    <G.Text>Đơn DH-0004 đã nhận được tiền chưa?</G.Text>
-    <G.SurfaceCard kind="list" layout="suggestions" ariaLabel="Gợi ý trả lời" empty={null} items={replies} />
+    <G.Text>Has order ORD-0004 been paid yet?</G.Text>
+    <G.SurfaceCard kind="list" layout="suggestions" ariaLabel="Suggested replies" empty={null} items={replies} />
     <G.Cluster gap="inline" align="end" wrap={false}>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <G.Textarea label="Trả lời" isLabelHidden placeholder="Trả lời cho AI..." />
+        <G.Textarea label="Reply" isLabelHidden placeholder="Reply to the AI..." />
       </div>
-      <G.Button intent="commit" startGlyph="send" onPress={noop}>Gửi</G.Button>
+      <G.Button intent="commit" startGlyph="send" onPress={noop}>Send</G.Button>
     </G.Cluster>
   </G.Stack>
 );
 
 const Thread = () => (
   <>
-    <G.MessageBubble author="Linh" meta="09:12" avatar={<G.Avatar name="Linh" size="sm" />} body="Shop ơi, em chuyển khoản rồi nha." />
+    <G.MessageBubble author="Maria" meta="09:12" avatar={<G.Avatar name="Maria" size="sm" />} body="Hi, I have sent the payment." />
     <G.MessageCard
       measure="wide"
       author="Chatbot"
       avatar={<G.Avatar name="Chatbot" size="sm" />}
-      title="Quy trình đang dừng"
-      chip={<G.Badge tone="accent">Cần bạn quyết</G.Badge>}
+      title="Workflow paused"
+      chip={<G.Badge tone="accent">Needs your decision</G.Badge>}
       body={stopBody}
       actions={[
-        { id: 'retry', label: 'Thử lại', onPress: noop },
-        { id: 'take', label: 'Tiếp quản', onPress: noop },
-        { id: 'skip', label: 'Bỏ qua', onPress: noop },
+        { id: 'retry', label: 'Retry', onPress: noop },
+        { id: 'take', label: 'Take over', onPress: noop },
+        { id: 'skip', label: 'Skip', onPress: noop },
       ]}
-      meta="Chatbot · Trả lời câu hỏi · 14:24"
+      meta="Chatbot · Answer a question · 14:24"
     />
-    <G.MessageBubble side="outgoing" meta="14:30" body="Ok để anh xem" />
+    <G.MessageBubble side="outgoing" meta="14:30" body="Ok, let me check" />
   </>
 );
 
 const Composer = () => (
   <G.PaneSection as="footer" rule="start" gap="row">
-    <G.Cluster gap="inline" label="Gợi ý">
-      <G.Button intent="neutral" size="sm" onPress={noop}>Hôm nay bạn đã làm những việc gì?</G.Button>
-      <G.Button intent="neutral" size="sm" onPress={noop}>Có việc nào đang chờ tôi duyệt?</G.Button>
+    <G.Cluster gap="inline" label="Suggestions">
+      <G.Button intent="neutral" size="sm" onPress={noop}>What did you do today?</G.Button>
+      <G.Button intent="neutral" size="sm" onPress={noop}>Is anything waiting for my approval?</G.Button>
     </G.Cluster>
-    <G.Textarea label="Tin nhắn" isLabelHidden placeholder="Nhập tin nhắn..." onSubmitShortcut={noop} />
+    <G.Textarea label="Message" isLabelHidden placeholder="Type a message..." onSubmitShortcut={noop} />
   </G.PaneSection>
 );
 
 const ChatPage = () => (
   <div style={{ height: 760 }}>
-    <G.Page chrome="panes" header={{ breadcrumbs: { label: 'Đường dẫn', items: [{ id: 'home', label: 'Tổng quan', href: '#' }, { id: 'chat', label: 'Trò chuyện' }] } }}>
-      <G.PaneGrid label="Trò chuyện" areas={{ base: ['room'], medium: ['list room'] }} columns={{ base: ['fill'], medium: ['compact', 'fill'] }}>
-        <G.Pane area="list" surface label="Phòng">
-          <G.PaneSection align="center"><G.PaneHeader title="Trò chuyện" /></G.PaneSection>
+    <G.Page chrome="panes" header={{ breadcrumbs: { label: 'Path', items: [{ id: 'home', label: 'Overview', href: '#' }, { id: 'chat', label: 'Chat' }] } }}>
+      <G.PaneGrid label="Chat" areas={{ base: ['room'], medium: ['list room'] }} columns={{ base: ['fill'], medium: ['compact', 'fill'] }}>
+        <G.Pane area="list" surface label="Rooms">
+          <G.PaneSection align="center"><G.PaneHeader title="Chat" /></G.PaneSection>
           <G.PaneSection><G.Text tone="muted">Chatbot</G.Text></G.PaneSection>
         </G.Pane>
-        <G.Pane area="room" surface content="full" label="Phòng Chatbot" footer={<Composer />}>
+        <G.Pane area="room" surface content="full" label="Chatbot room" footer={<Composer />}>
           <G.PaneSection align="center">
             <G.PaneHeader title="Chatbot" description="Agent" mark={<G.Avatar name="Chatbot" size="sm" />} />
           </G.PaneSection>
           {/* tone="surface" on purpose: a thread is the page tone whatever the app asks. */}
-          <G.PaneSection scroll={{ label: 'Hội thoại', role: 'log', tone: 'surface', align: 'end' }}>
+          <G.PaneSection scroll={{ label: 'Conversation', role: 'log', tone: 'surface', align: 'end' }}>
             <Thread />
           </G.PaneSection>
         </G.Pane>
@@ -147,10 +147,10 @@ export const ChatPane: Story = {
 /** Outside a thread, on a white surface (a drawer of pinned messages), the flat white bubble and card wear the 1px separator edge, still no shadow. */
 export const BubblesOnWhite: Story = {
   render: () => (
-    <G.Drawer title="Tin đã ghim" closeLabel="Đóng" isOpen onOpenChange={noop}>
+    <G.Drawer title="Pinned messages" closeLabel="Close" isOpen onOpenChange={noop}>
       <G.Stack gap="row">
-        <G.MessageBubble author="Linh" meta="09:12" body="Shop ơi, em chuyển khoản rồi nha." />
-        <G.MessageBubble side="outgoing" meta="09:14" body="Ok để anh xem." />
+        <G.MessageBubble author="Maria" meta="09:12" body="Hi, I have sent the payment." />
+        <G.MessageBubble side="outgoing" meta="09:14" body="Ok, let me check." />
       </G.Stack>
     </G.Drawer>
   ),

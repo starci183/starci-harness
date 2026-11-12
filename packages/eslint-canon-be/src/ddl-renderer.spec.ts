@@ -8,19 +8,19 @@ import { appDeclaration } from "../fixtures/app.ts"
 import { noRuntimeSchema } from "./schema-authority.ts"
 import { BE_DECLARATION } from "../fixtures/typed/tester.ts"
 
-const DECLARED = { ...BE_DECLARATION, ddlRenderers: [{ path: "packages/agent-sdk/src/entity/render*.ts", reason: "renders the DDL text that `cli entities plan --write` writes as new migration files" }] }
+const DECLARED = { ...BE_DECLARATION, ddlRenderers: [{ path: "packages/sdk/src/entity/render*.ts", reason: "renders the DDL text that `cli entities plan --write` writes as new migration files" }] }
 const packages = ruleTester({ root: TYPED_ROOT, hfs: packagesHfsFromDeclaration(appDeclaration("be", DECLARED), TYPED_ROOT) })
 const side = ruleTester({ root: TYPED_ROOT, hfs: fixtureHfs(DECLARED) })
 const undeclared = ruleTester({ root: TYPED_ROOT, hfs: packagesHfsFromDeclaration(appDeclaration("be", BE_DECLARATION), TYPED_ROOT) })
 
-const RENDERER = at("packages/agent-sdk/src/entity/render.ts")
-const RENDERER_SPLIT = at("packages/agent-sdk/src/entity/render-index.ts")
-const OTHER_PACKAGE_FILE = at("packages/agent-sdk/src/entity/plan.ts")
+const RENDERER = at("packages/sdk/src/entity/render.ts")
+const RENDERER_SPLIT = at("packages/sdk/src/entity/render-index.ts")
+const OTHER_PACKAGE_FILE = at("packages/sdk/src/entity/plan.ts")
 const SERVICE = at("src/modules/domain/order/order.service.ts")
 const CLI = at("src/features/cli/entities/plan.cli.ts")
 const DDL = "export const render = (name: string): string => `CREATE TABLE ${name} (id uuid)`\nexport const drop = (): string => \"DROP INDEX plan_x\"\n"
-const RENDERER_PATH = "../../../../packages/agent-sdk/src/entity/render-fixture"
-const BARREL_PATH = "../../../../packages/agent-sdk/src"
+const RENDERER_PATH = "../../../../packages/sdk/src/entity/render-fixture"
+const BARREL_PATH = "../../../../packages/sdk/src"
 
 test("a declared renderer may hold DDL text it only builds and returns", () => {
     packages.run("no-runtime-schema", noRuntimeSchema, {

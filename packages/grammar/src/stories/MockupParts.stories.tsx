@@ -120,8 +120,8 @@ export const AlternativeButtonInk: Story = {
 }
 
 const facts: ReadonlyArray<G.DescriptionListItem> = [
-    { id: "a", term: "Owner", description: "Ms Trang" },
-    { id: "b", term: "Channel", description: "Zalo" },
+    { id: "a", term: "Owner", description: "Ms Garcia" },
+    { id: "b", term: "Channel", description: "Chat" },
     { id: "c", term: "Next step", description: "Send the quote today" },
 ]
 
@@ -177,8 +177,8 @@ export const AlertAccentTone: Story = {
     render: () => (
         <Matrix maxWidth={460}>
             <State label="accent, with a dismiss / loading" direction="column">
-                <G.Alert tone="accent" title="Welcome to NIVO" description="Ask a question to begin." dismissLabel="Dismiss" />
-                <G.Alert tone="accent" title="Welcome to NIVO" description="Ask a question to begin." isLoading />
+                <G.Alert tone="accent" title="Welcome to Acme" description="Ask a question to begin." dismissLabel="Dismiss" />
+                <G.Alert tone="accent" title="Welcome to Acme" description="Ask a question to begin." isLoading />
             </State>
         </Matrix>
     ),
@@ -317,7 +317,7 @@ export const LinkMediaKeepsBox: Story = {
         <Matrix maxWidth={600}>
             <State label="logo 113 x 40 in a wide bar" direction="column">
                 <div style={{ display: "flex", width: "100%", alignItems: "center", blockSize: "4rem" }}>
-                    <G.Link href="#home" label="Home" media={{ src: placeholderImage("NIVO OS", 340), alt: "", width: 113, height: 40 }} />
+                    <G.Link href="#home" label="Home" media={{ src: placeholderImage("ACME OS", 340), alt: "", width: 113, height: 40 }} />
                 </div>
             </State>
         </Matrix>
@@ -380,7 +380,7 @@ export const TitleScale: Story = {
         <Matrix maxWidth={520}>
             <State label="Heading standard / title / display, and a page header with titleScale title" direction="column">
                 <G.Heading level={2}>Workspace of yours</G.Heading>
-                <G.Heading level={2} scale="title">Welcome to NIVO</G.Heading>
+                <G.Heading level={2} scale="title">Welcome to Acme</G.Heading>
                 <G.Heading level={2} scale="display">Display</G.Heading>
                 <G.Page header={{ title: "Your workspaces", titleScale: "title", description: "Pick one to continue." }}><G.Text>Body</G.Text></G.Page>
             </State>
@@ -429,8 +429,8 @@ export const TileByline: Story = {
     render: () => (
         <Matrix maxWidth={360}>
             <State label="ready / loading" direction="column">
-                <G.SurfaceCard kind="tile" name="Quote sender" byline="By Hoa Xinh Studio, version 1.2" mark={{ icon: PlusGlyph }} description="Writes a quote from the customer's request and sends it." facts={["Needs: Zalo OA", "Rule: Send quote"]} figure="490.000 d" action={{ label: "Add", press: noop }} />
-                <G.SurfaceCard kind="tile" isLoading name="Quote sender" byline="By Hoa Xinh Studio, version 1.2" mark={{ icon: PlusGlyph }} description="Writes a quote from the customer's request and sends it." facts={["Needs: Zalo OA", "Rule: Send quote"]} figure="490.000 d" action={{ label: "Add", press: noop }} />
+                <G.SurfaceCard kind="tile" name="Quote sender" byline="By Acme, version 1.2" mark={{ icon: PlusGlyph }} description="Writes a quote from the customer's request and sends it." facts={["Needs: Chat channel", "Rule: Send quote"]} figure="$49.00" action={{ label: "Add", press: noop }} />
+                <G.SurfaceCard kind="tile" isLoading name="Quote sender" byline="By Acme, version 1.2" mark={{ icon: PlusGlyph }} description="Writes a quote from the customer's request and sends it." facts={["Needs: Chat channel", "Rule: Send quote"]} figure="$49.00" action={{ label: "Add", press: noop }} />
             </State>
         </Matrix>
     ),
@@ -457,7 +457,7 @@ export const PaneFooterRule: Story = {
 }
 
 const nameNodes: ReadonlyArray<G.BubbleMapNode> = [
-    { id: "root", label: "NIVO", form: "bubble", mark: "NIVO", diameter: 96, isRoot: true },
+    { id: "root", label: "Acme", form: "bubble", mark: "Acme", diameter: 96, isRoot: true },
     { id: "legal", label: "Legal", form: "bubble", caption: "Legal", detail: "3 files", diameter: 64 },
     { id: "premises", label: "Premises", form: "bubble", caption: "Premises", detail: "12 files", diameter: 80 },
     { id: "prices", label: "Price list and menu", form: "bubble", caption: "Price list and menu", detail: "8 files", diameter: 104 },

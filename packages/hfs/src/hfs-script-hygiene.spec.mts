@@ -27,7 +27,7 @@ for (const edition of ['lite', 'full']) {
   test(`HFS_SCRIPT_PLAINTEXT_LOAD: ${edition} refuses shell, PowerShell and source-code readers`, (t) => {
     const context = fixture(t, {
       'scripts/source.sh': 'source secrets.env\n',
-      'deploy/dot.sh': '. "$HOME/.nivo-lite/secrets.env"\n',
+      'deploy/dot.sh': '. "$HOME/.demo/secrets.env"\n',
       'scripts/cat.sh': 'cat ./secrets.env | parse\n',
       'scripts/input.sh': 'while read -r entry; do consume "$entry"; done < secrets.env\n',
       'scripts/load.ps1': 'Get-Content -LiteralPath .\\secrets.env\n',
@@ -115,5 +115,19 @@ for (const edition of ['lite', 'full']) {
     assert.deepEqual(scriptHygieneFindings({ ...context, inScope: (file: string) => file.startsWith('fe/') }).map((item) => item.path), ['fe/scripts/task.sh']);
     assert.deepEqual(scriptHygieneFindings({ ...context, isRoot: false }), []);
     assert.deepEqual(scriptHygieneFindings({ ...context, repo: { kind: 'runtime', edition } }), []);
+  });
+}
+
+for (const edition of ['lite', 'full']) {
+  test(`HFS_SCRIPT_PLAINTEXT_LOAD: ${edition} treats the app's own home folder, .<project>/, as a secret folder, and no other dot folder`, (t) => {
+    const context = fixture(t, {
+      'hfs.json': { hfs: 3, kind: 'app', project: 'demo', edition, sides: { be: { apps: [{ name: 'api', kind: 'api' }] } } },
+      'scripts/token.sh': 'cat "$HOME/.demo/token"\n',
+      'scripts/other.sh': 'cat "$HOME/.other/token"\n',
+      'scripts/prefix.sh': 'cat "$HOME/.demonstration/token"\n',
+    }, edition);
+    assert.deepEqual(scriptHygieneFindings(context).map((item) => [item.code, item.path]), [['HFS_SCRIPT_PLAINTEXT_LOAD', 'scripts/token.sh']]);
+    const unnamed = fixture(t, { 'scripts/token.sh': 'cat "$HOME/.demo/token"\n' }, edition);
+    assert.deepEqual(scriptHygieneFindings(unnamed), [], 'an app that names no project has no home folder to guard');
   });
 }

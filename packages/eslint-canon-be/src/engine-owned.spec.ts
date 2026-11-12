@@ -92,6 +92,6 @@ test("R35 refuses another capability's entity over an engine-owned table, partit
 })
 
 test("R35 accepts an ordinary entity beside the engine-owned declaration", (t: TestContext) => {
-    const fixture = liteRepo(t, "invoices", "billing")
+    const fixture = liteRepo(t, "records", "billing")
     fixture.tester.run("schema-owner", ruleNamed(rules, "schema-owner"), { valid: [source(fixture, THING)], invalid: [] })
 })

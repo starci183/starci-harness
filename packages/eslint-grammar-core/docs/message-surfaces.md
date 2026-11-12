@@ -31,7 +31,7 @@ A spread, a computed class and a tone held in a variable are not read; a thread 
 **Valid**
 
 ```tsx
-<Pane area="room" content="chat" label="Phòng" footer={composer}>{head}{thread}</Pane>
+<Pane area="room" content="chat" label="Room" footer={composer}>{head}{thread}</Pane>
 <PaneSection scroll={{ label: "Thread", role: "log", align: "end" }}>{thread}</PaneSection>
-<MessageCard title="Quy trình đang dừng" body={<SurfaceCard kind="list" layout="suggestions" ariaLabel="Gợi ý" empty={null} items={replies} />} />
+<MessageCard title="Workflow paused" body={<SurfaceCard kind="list" layout="suggestions" ariaLabel="Suggestions" empty={null} items={replies} />} />
 ```

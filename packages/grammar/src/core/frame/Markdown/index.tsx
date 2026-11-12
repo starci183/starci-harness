@@ -275,7 +275,7 @@ const Block = (props: { readonly node: RootContent; readonly context: Context; r
 }
 
 /**
- * A course body: a markdown string drawn with the grammar's own parts inside the reading frame (`MarkdownArticle`).
+ * A document body: a markdown string drawn with the grammar's own parts inside the reading frame (`MarkdownArticle`).
  * Headings are `h2` to `h4` (an `h1` is demoted to `h2`), a paragraph is `Text`, inline code is `Code`, a link is `Link` (an external
  * one opens in its own context and ends in the arrow), a table sits in `MarkdownTableFrame`, a fence is a `FencedCodeBlock` with a Copy
  * action, a `mermaid` fence is a `MermaidDiagram`, an image is a `MediaFrame` captioned with its alt.

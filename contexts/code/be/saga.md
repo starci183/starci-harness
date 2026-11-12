@@ -64,14 +64,14 @@ with its compensation (BE-SAGA-1).
 
 Why: BE-SAGA-2 parks a run on any failure that is not transient, which is right for a step the outcome depends on and wrong for a
 notice: on 2026-11-09 a `notify-order` step that posted an owner notice failed on a migration the dev database had not applied, parked
-the whole sales run and left a customer on Zalo with no reply for the 30 minutes before the resume sweep. Declaring what only informs
+the whole sales run and left a customer with no reply for the 30 minutes before the resume sweep. Declaring what only informs
 keeps the customer path independent of the side paths.
 
 Enforced by: R390 BE_SAGA_SIDE_STEP_BLOCKING (candidate: planned, no checker yet; held by review until the step declaration carries a
 `blocking` field the checker can read, as `rules/saga.mts` reads `event` today).
 
 ## BE-SAGA-6 A customer who got no reply gets an honest line
-When a run triggered by a customer message (a chat channel such as Zalo, a web chat, an email reply) parks or dead-letters before the
+When a run triggered by a customer message (a chat channel, a web chat, an email reply) parks or dead-letters before the
 customer received a reply, the runner sends the customer one holding line through the channel the message came from, in the locale of
 the run (the customer's, else the workspace's): it says the message arrived and a person or the system will answer, and promises nothing
 it cannot keep. The line is claimed in the inbox under `<runId>:holding-line` (BE-IDEMPOTENCY-1) in the transaction that records the park,

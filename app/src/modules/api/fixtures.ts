@@ -26,20 +26,20 @@ const swe: Member = { agent: "devin", model: "swe-2-max", effort: null }
 export const fixtureOverview: Overview = {
     projects: [
         {
-            key: "starci-next",
-            name: "starci-next",
+            key: "demo-app",
+            name: "demo-app",
             supervisor: { member: opus, liveness: "alive", terminal: "term_51c0e2" },
             openOwnerDecisions: 1,
         },
         {
-            key: "nivo-lite",
-            name: "nivo-lite",
+            key: "demo-lib",
+            name: "demo-lib",
             supervisor: { member: sol, liveness: "stalled", terminal: "term_7d19aa" },
             openOwnerDecisions: 1,
         },
         {
-            key: "starci-next-fe",
-            name: "starci-next-fe",
+            key: "demo-app-fe",
+            name: "demo-app-fe",
             supervisor: { member: opus, liveness: "alive", terminal: "term_0b44f1" },
             openOwnerDecisions: 0,
         },
@@ -52,7 +52,7 @@ export const fixtureOverview: Overview = {
             reopensAt: null,
             windows: [
                 { label: "5h", usedPercent: 2, resetsAt: at("15:00") },
-                { label: "tuần", usedPercent: 50, resetsAt: "2026-10-30T15:00:00+07:00" },
+                { label: "week", usedPercent: 50, resetsAt: "2026-10-30T15:00:00+07:00" },
             ],
             running: [
                 { model: "opus", count: 3 },
@@ -65,7 +65,7 @@ export const fixtureOverview: Overview = {
             circuit: "closed",
             failureKind: null,
             reopensAt: null,
-            windows: [{ label: "tuần", usedPercent: 82, resetsAt: "2026-11-02T06:44:00+07:00" }],
+            windows: [{ label: "week", usedPercent: 82, resetsAt: "2026-11-02T06:44:00+07:00" }],
             running: [
                 { model: "sol", count: 5 },
                 { model: "luna", count: 2 },
@@ -77,7 +77,7 @@ export const fixtureOverview: Overview = {
             circuit: "closed",
             failureKind: null,
             reopensAt: null,
-            windows: [{ label: "ACU tháng", usedPercent: 31, resetsAt: "2026-11-01T00:00:00+07:00" }],
+            windows: [{ label: "ACU month", usedPercent: 31, resetsAt: "2026-11-01T00:00:00+07:00" }],
             running: [{ model: "swe-2-max", count: 0 }],
             cap: 4,
         },
@@ -86,16 +86,16 @@ export const fixtureOverview: Overview = {
             circuit: "open",
             failureKind: "quota-exhausted",
             reopensAt: "2026-11-21T00:00:00+07:00",
-            windows: [{ label: "tháng", usedPercent: 100, resetsAt: "2026-11-21T00:00:00+07:00" }],
+            windows: [{ label: "month", usedPercent: 100, resetsAt: "2026-11-21T00:00:00+07:00" }],
             running: [{ model: "auto", count: 0 }],
             cap: 10,
         },
     ],
     workflows: [
         {
-            project: "starci-next",
-            id: "next-subscription-sepay",
-            goalSummary: "Premium tháng/năm · SePay + PayOS · BE → FE",
+            project: "demo-app",
+            id: "add-search",
+            goalSummary: "Search across items; BE then FE",
             status: "running",
             reason: null,
             done: 5,
@@ -106,9 +106,9 @@ export const fixtureOverview: Overview = {
             awaitingOwner: false,
         },
         {
-            project: "starci-next",
+            project: "demo-app",
             id: "w1-be",
-            goalSummary: "Học phần tương tác với AI",
+            goalSummary: "Pagination for item lists",
             status: "blocked",
             reason: "fixture-canon",
             done: 7,
@@ -119,8 +119,8 @@ export const fixtureOverview: Overview = {
             awaitingOwner: false,
         },
         {
-            project: "nivo-lite",
-            id: "nivo-standard-fix-orca",
+            project: "demo-lib",
+            id: "publish-lib-release",
             goalSummary: "Grammar core cohort",
             status: "blocked",
             reason: "publish core cohort",
@@ -132,9 +132,9 @@ export const fixtureOverview: Overview = {
             awaitingOwner: true,
         },
         {
-            project: "starci-next",
-            id: "next-uat-sign-in",
-            goalSummary: "UAT đăng nhập",
+            project: "demo-app",
+            id: "uat-sign-in",
+            goalSummary: "UAT sign-in",
             status: "defined",
             reason: null,
             done: 0,
@@ -148,18 +148,18 @@ export const fixtureOverview: Overview = {
     events: [
         {
             at: at("12:43"),
-            project: "starci-next",
-            text: "Kernel next-subscription-sepay launch → claude/claude-opus-5-5 (score 0.50, balance)",
+            project: "demo-app",
+            text: "Kernel add-search launch → claude/claude-opus-5-5 (score 0.50, balance)",
             attention: false,
         },
-        { at: at("12:41"), project: "starci-next", text: "Op t-55ca2c6b docs → green · 4 checks T0", attention: false },
+        { at: at("12:41"), project: "demo-app", text: "Op t-55ca2c6b docs → green · 4 checks T0", attention: false },
         {
             at: at("12:38"),
-            project: "starci-next",
-            text: "d-6979996fe691 ruled by owner → goal v27 (BE + FE một workflow)",
+            project: "demo-app",
+            text: "d-6979996fe691 ruled by owner → goal v27 (BE + FE in one workflow)",
             attention: false,
         },
-        { at: at("12:34"), project: "nivo-lite", text: "d-c11 escalation owner: publish core cohort 0.12.15", attention: true },
+        { at: at("12:34"), project: "demo-lib", text: "d-c11 escalation owner: publish lib release 1.2.0", attention: true },
     ],
     host: { version: "0.1.0", watch: true, tick: 51, lastTickAt: at("12:44") },
 }
@@ -179,72 +179,72 @@ const node = (
     member: null,
     startedAt: null,
     dependsOn: [],
-    record: "impl.commerce.subscription",
+    record: "impl.search.api",
     side: "be",
     why: null,
     ...extra,
 })
 
-const feRecord = "impl.commerce.starci-next-fe.subscription"
+const feRecord = "impl.search.demo-app-fe.ui"
 
-const subscriptionNodes: readonly GraphNode[] = [
-    node("D1", "spec subscription", "docs", "done", { task: "t-55ca2c6b", member: sonnet, side: null }),
-    node("D2", "spec FE mua gói", "docs", "done", { task: "t-5e01aa90", member: luna, side: "fe", record: feRecord }),
+const searchNodes: readonly GraphNode[] = [
+    node("D1", "spec search", "docs", "done", { task: "t-55ca2c6b", member: sonnet, side: null }),
+    node("D2", "spec search box UI", "docs", "done", { task: "t-5e01aa90", member: luna, side: "fe", record: feRecord }),
     node("G0", "baseline gates", "code", "done", { task: "t-0c9b7710", member: sol, side: null }),
-    node("B1", "B1 entity + migration", "code", "done", { task: "t-b1f20c33", member: sonnet, dependsOn: ["D1", "G0"] }),
-    node("B2", "B2 bảng giá tháng/năm", "code", "running", {
+    node("B1", "B1 index entity + migration", "code", "done", { task: "t-b1f20c33", member: sonnet, dependsOn: ["D1", "G0"] }),
+    node("B2", "B2 Add search index", "code", "running", {
         task: "t-b2c41e07",
         member: sonnet,
         startedAt: at("12:38"),
         dependsOn: ["B1"],
     }),
-    node("B3", "B3 adapter SePay", "code", "running", {
+    node("B3", "B3 Search API", "code", "running", {
         task: "t-b3d9e1a4",
         member: opus,
         startedAt: at("12:35"),
         dependsOn: ["B1"],
     }),
-    node("B4", "B4 adapter PayOS", "code", "running", {
+    node("B4", "B4 ranking adapter", "code", "running", {
         task: "t-b4a71c58",
         member: luna,
         startedAt: at("12:40"),
         dependsOn: ["B1"],
     }),
-    node("B5", "B5 entitlement guard", "code", "running", {
+    node("B5", "B5 access guard", "code", "running", {
         task: "t-b5e8f902",
         member: swe,
         startedAt: at("12:41"),
         dependsOn: ["B1"],
     }),
-    node("B6", "B6 cron gia hạn", "code", "blocked", {
+    node("B6", "B6 reindex cron", "code", "blocked", {
         task: "t-b6f3a017",
         dependsOn: ["B1"],
         why: "route retry 1/2",
     }),
-    node("T2", "T2–T6 test BE ×5", "test", "waiting", { dependsOn: ["B2", "B3", "B4", "B5", "B6"], why: "chờ B2–B6" }),
-    node("F1", "F1 chọn gói", "code", "waiting", {
+    node("T2", "T2–T6 test BE ×5", "test", "waiting", { dependsOn: ["B2", "B3", "B4", "B5", "B6"], why: "waits for B2–B6" }),
+    node("F1", "F1 Search box UI", "code", "waiting", {
         dependsOn: ["B2", "D2"],
         side: "fe",
         record: feRecord,
-        why: "chờ B2 + ui vẽ xong",
+        why: "waits for B2 + UI design",
     }),
-    node("F2", "F2 thanh toán QR", "code", "waiting", {
+    node("F2", "F2 Results list", "code", "waiting", {
         dependsOn: ["B3", "B4"],
         side: "fe",
         record: feRecord,
-        why: "chờ B3, B4",
+        why: "waits for B3, B4",
     }),
-    node("F3", "F3 badge Premium", "code", "waiting", { dependsOn: ["B5"], side: "fe", record: feRecord, why: "chờ B5" }),
-    node("E1", "E1 e2e thanh toán", "verify", "waiting", { dependsOn: ["T2"], why: "chờ T*" }),
-    node("L1", "L1 SePay live check", "verify", "waiting", { dependsOn: ["B3"], why: "integration" }),
+    node("F3", "F3 Filter badge", "code", "waiting", { dependsOn: ["B5"], side: "fe", record: feRecord, why: "waits for B5" }),
+    node("E1", "E1 e2e search", "verify", "waiting", { dependsOn: ["T2"], why: "waits for T*" }),
+    node("L1", "L1 Index live check", "verify", "waiting", { dependsOn: ["B3"], why: "integration" }),
     node("A1", "A1–A3 audit FE", "audit", "waiting", {
         dependsOn: ["F1", "F2", "F3"],
         side: "fe",
         record: feRecord,
-        why: "chờ F1–F3",
+        why: "waits for F1–F3",
     }),
-    node("R1", "R1 review BE", "review", "waiting", { dependsOn: ["E1", "L1"], why: "reviewer khác tác giả" }),
-    node("U1", "U1 UAT mua gói", "uat", "waiting", {
+    node("R1", "R1 review BE", "review", "waiting", { dependsOn: ["E1", "L1"], why: "reviewer differs from author" }),
+    node("U1", "U1 UAT search", "uat", "waiting", {
         dependsOn: ["A1", "R1"],
         side: "fe",
         record: feRecord,
@@ -253,19 +253,19 @@ const subscriptionNodes: readonly GraphNode[] = [
     node("X1", "D1 deliver", "deliver", "waiting", { dependsOn: ["U1"], side: null, why: "handoff → Supervisor" }),
 ]
 
-const subscriptionSeats: readonly Seat[] = [
+const searchSeats: readonly Seat[] = [
     {
-        id: "seat-sup-starci-next",
+        id: "seat-sup-demo-app",
         role: "supervisor",
-        title: "[Supervisor] starci-next",
+        title: "[Supervisor] demo-app",
         member: opus,
         liveness: "alive",
         task: null,
     },
     {
-        id: "seat-kernel-sub",
+        id: "seat-kernel-search",
         role: "kernel",
-        title: "[Kernel] next-subscription-sepay",
+        title: "[Kernel] add-search",
         member: opus,
         liveness: "alive",
         task: null,
@@ -276,32 +276,32 @@ const subscriptionSeats: readonly Seat[] = [
     { id: "seat-op-b5", role: "worker", title: "[Op] code (t-b5e8f902)", member: swe, liveness: "stalled", task: "t-b5e8f902" },
 ]
 
-const subscriptionWorkflow: WorkflowDetail = {
-    project: "starci-next",
-    id: "next-subscription-sepay",
+const searchWorkflow: WorkflowDetail = {
+    project: "demo-app",
+    id: "add-search",
     goal: {
         version: 27,
-        text: "Gói Premium tháng và năm, thanh toán qua SePay và PayOS; BE và FE trong một workflow, mỗi code FE chờ code BE cùng tính năng.",
+        text: "Search across items; BE and FE in one workflow, each FE code step waits for the BE code step of the same feature.",
     },
     graphVersion: 15,
     status: "running",
     reason: null,
-    nodes: subscriptionNodes,
+    nodes: searchNodes,
     flow: [
-        "impl.commerce.subscription [impl-be]: code carried · test missing→T2 · e2e · review",
-        "impl.commerce.starci-next-fe.subscription [impl-fe]: code held until impl-be code · audit · uat",
+        "impl.search.api [impl-be]: code carried · test missing→T2 · e2e · review",
+        "impl.search.demo-app-fe.ui [impl-fe]: code held until impl-be code · audit · uat",
     ],
     flowProblems: [],
-    seats: subscriptionSeats,
+    seats: searchSeats,
     parallel: { live: 7, cap: 10, queued: 0 },
 }
 
 /** The detail of any workflow; ids other than the mockup's answer from its row with the same graph shape. */
 export const fixtureWorkflow = (project: string, workflow: string): WorkflowDetail => {
-    if (project === subscriptionWorkflow.project && workflow === subscriptionWorkflow.id) return subscriptionWorkflow
+    if (project === searchWorkflow.project && workflow === searchWorkflow.id) return searchWorkflow
     const row = fixtureOverview.workflows.find(candidate => candidate.project === project && candidate.id === workflow)
     return {
-        ...subscriptionWorkflow,
+        ...searchWorkflow,
         project,
         id: workflow,
         goal: { version: 1, text: row?.goalSummary ?? workflow },
@@ -314,42 +314,42 @@ export const fixtureWorkflow = (project: string, workflow: string): WorkflowDeta
 }
 
 const b2Task: TaskDetail = {
-    project: "starci-next",
-    workflow: "next-subscription-sepay",
+    project: "demo-app",
+    workflow: "add-search",
     id: "t-b2c41e07",
     key: "B2",
     label: "code",
-    title: "B2 bảng giá tháng/năm",
+    title: "B2 Add search index",
     state: "running",
     contract: {
         summary:
-            "Thêm gói Premium tháng 229.000đ và năm 2.290.000đ (bằng 10 tháng). Seed bảng `plan`, query `plans` trả giá và chu kỳ.",
-        allowPaths: ["src/modules/subscription/plan/**", "src/migrations/*-plan.ts"],
+            "Add a search index over items with a 250 ms debounce window. Seed the `search_index` table, query `search` returns ranked hits and totals.",
+        allowPaths: ["src/modules/search/index/**", "src/migrations/*-search-index.ts"],
         dependsOn: ["B1"],
-        record: "impl.commerce.subscription",
+        record: "impl.search.api",
         step: "code",
     },
     checks: [
-        { name: "paths-only", tier: "T0", state: "pending", detail: "chờ submit" },
-        { name: "typecheck · lint · build", tier: "T0", state: "pending", detail: "chờ submit" },
-        { name: "loosening · secrets", tier: "T0", state: "pending", detail: "chờ submit" },
+        { name: "paths-only", tier: "T0", state: "pending", detail: "waits for submit" },
+        { name: "typecheck · lint · build", tier: "T0", state: "pending", detail: "waits for submit" },
+        { name: "loosening · secrets", tier: "T0", state: "pending", detail: "waits for submit" },
     ],
     route: {
         tier: "medium",
         steps: [
-            { step: "hard-filter", detail: "5 member (cursor bị loại: hết quota)" },
+            { step: "hard-filter", detail: "5 members (cursor dropped: quota exhausted)" },
             { step: "quota", detail: "claude 50%, codex 82%, devin 31%" },
-            { step: "lineage", detail: "không ai bị demote" },
+            { step: "lineage", detail: "nobody demoted" },
             { step: "score", detail: "sonnet 8.67 · luna 1.73 · swe-2-max 1.20" },
-            { step: "balance", detail: "giữ sonnet" },
+            { step: "balance", detail: "keep sonnet" },
         ],
         chosen: sonnet,
         by: "score",
     },
     attempts: [{ n: 1, member: sonnet, outcome: "running", at: at("12:38") }],
     terminalTail: [
-        "● Reading src/modules/subscription/entity/plan.entity.ts",
-        "● Writing src/modules/subscription/plan/plan.seed.ts",
+        "● Reading src/modules/search/entity/index.entity.ts",
+        "● Writing src/modules/search/index/index.seed.ts",
         "● Running npm run typecheck … ok",
     ],
     terminal: "term_8a1f3c90",
@@ -358,7 +358,7 @@ const b2Task: TaskDetail = {
 /** The detail of any task; ids other than the mockup's answer from the matching graph node. */
 export const fixtureTask = (project: string, task: string): TaskDetail => {
     if (project === b2Task.project && task === b2Task.id) return b2Task
-    const found = subscriptionNodes.find(candidate => candidate.task === task)
+    const found = searchNodes.find(candidate => candidate.task === task)
     if (found === undefined) return { ...b2Task, project, id: task }
     const done = found.state === "done"
     return {
@@ -379,43 +379,43 @@ export const fixtureTask = (project: string, task: string): TaskDetail => {
 
 export const fixtureInbox: readonly Decision[] = [
     {
-        project: "starci-next",
+        project: "demo-app",
         id: "d-6979996fe691",
         kind: "harness",
-        workflow: "next-subscription-sepay",
-        title: "Kernel không áp được graph v15",
+        workflow: "add-search",
+        title: "Kernel could not apply graph v15",
         body:
-            "**Vấn đề.** Flow check từ chối FLOW_INCOMPLETE: record FE `impl.commerce.starci-next-fe.subscription` thiếu code, audit, uat trong workflow này.\n\n" +
-            "**Hiện trạng.** Graph v14 còn nguyên, 3 task xong, 2 đang chạy. Không có code sản phẩm nào bị đổi.",
+            "**Problem.** Flow check rejected FLOW_INCOMPLETE: FE record `impl.search.demo-app-fe.ui` lacks code, audit, uat in this workflow.\n\n" +
+            "**State.** Graph v14 is intact, 3 tasks done, 2 running. No product code changed.",
         options: [
             {
                 id: "1",
-                title: "BE + FE một workflow, FE chờ code BE",
-                detail: "Kernel thêm lane FE, mỗi code FE phụ thuộc code BE cùng tính năng; song song tối đa 10.",
+                title: "BE + FE in one workflow, FE waits for BE code",
+                detail: "Kernel adds an FE lane, each FE code step depends on the BE code step of the same feature; up to 10 in parallel.",
             },
-            { id: "2", title: "Gửi Debug sửa harness", detail: "Kernel chỉ chạy các task v14 cho tới khi fix vào." },
+            { id: "2", title: "Send Debug to fix the harness", detail: "Kernel runs only the v14 tasks until the fix lands." },
             { id: "3", title: "Pause workflow", detail: "" },
         ],
         raisedAt: at("12:32"),
-        askedBy: "[Supervisor] starci-next",
-        command: "starci supervisor submit \"D:/.claude/.runtime/projects/starci-next/owner-commands/d-6979996fe691.json\" --cwd \"D:/Repositories/starci-next\"",
+        askedBy: "[Supervisor] demo-app",
+        command: "starci supervisor submit \"/path/to/harness/projects/demo-app/owner-commands/d-6979996fe691.json\" --cwd \"/path/to/demo-app\"",
     },
     {
-        project: "nivo-lite",
+        project: "demo-lib",
         id: "d-c1106437",
         kind: "owner",
-        workflow: "nivo-standard-fix-orca",
-        title: "Publish core cohort 0.12.15 + hfs 4.7.48",
+        workflow: "publish-lib-release",
+        title: "Publish lib 1.2.0 + hfs 4.7.48",
         body:
-            "**Vấn đề.** Workflow cần publish `@starci/grammar` 0.12.15 (core cohort) và hfs 4.7.48 lên npm; publish là quyết định của chủ dự án.\n\n" +
-            "**Hiện trạng.** 8/10 task xong, build và gate xanh trên nhánh cohort; chưa có gì được publish.",
+            "**Problem.** The workflow needs `demo-lib` 1.2.0 and hfs 4.7.48 published to npm; publishing is the project owner's decision.\n\n" +
+            "**State.** 8/10 tasks done, build and gates green on the release branch; nothing is published yet.",
         options: [
-            { id: "publish", title: "Publish cả hai", detail: "Supervisor chạy publish rồi Kernel tiếp hai task consume." },
-            { id: "hold", title: "Giữ lại", detail: "Workflow dừng ở trạng thái blocked cho tới ruling mới." },
+            { id: "publish", title: "Publish both", detail: "Supervisor runs the publish, then Kernel continues the two consume tasks." },
+            { id: "hold", title: "Hold", detail: "The workflow stays blocked until a new ruling." },
         ],
         raisedAt: "2026-10-27T10:44:00+07:00",
-        askedBy: "[Supervisor] nivo-lite",
-        command: "starci supervisor submit \"D:/.claude/.runtime/projects/nivo-lite/owner-commands/d-c1106437.json\" --cwd \"D:/Repositories/nivo-lite\"",
+        askedBy: "[Supervisor] demo-lib",
+        command: "starci supervisor submit \"/path/to/harness/projects/demo-lib/owner-commands/d-c1106437.json\" --cwd \"/path/to/demo-lib\"",
     },
 ]
 
@@ -449,10 +449,10 @@ export const fixtureConfig: readonly ConfigEntry[] = [
 export const fixtureAction = (what: string): ActionResult => ({
     ok: true,
     code: null,
-    message: `Dữ liệu mẫu: ${what} được ghi nhận, không có gì thay đổi.`,
+    message: `Sample data: ${what} was accepted, nothing changed.`,
 })
 
 export const fixtureOwnerRequests: readonly OwnerRequestRow[] = [
-    { id: "r-0214a7c3b9e1", project: "starci-next", text: "Start workflow uat-sign-in sau khi auth-sign-in xong.", at: at("12:38"), status: "open", cmdId: null },
-    { id: "r-09c1e5d27f40", project: "nivo-lite", text: "Kernels về Claude.", at: at("09:10"), status: "closed", cmdId: "c-4f1a82d0" },
+    { id: "r-0214a7c3b9e1", project: "demo-app", text: "Start workflow uat-sign-in after auth-sign-in is done.", at: at("12:38"), status: "open", cmdId: null },
+    { id: "r-09c1e5d27f40", project: "demo-lib", text: "Kernels back to Claude.", at: at("09:10"), status: "closed", cmdId: "c-4f1a82d0" },
 ]

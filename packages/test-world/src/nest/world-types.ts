@@ -12,7 +12,7 @@ import type { TestApi, TestCaller, TestHttp } from "./api"
 import type { KeycloakEvent, KeycloakSession } from "./keycloak"
 import type { WorldMail } from "./mail"
 
-/** A Nest provider token: its class, or the string or symbol it is bound to (`{ provide: SEPAY, useClass: SepayClient }`). */
+/** A Nest provider token: its class, or the string or symbol it is bound to (`{ provide: GATEWAY, useClass: GatewayClient }`). */
 export type ProviderToken<TProvider> = Type<TProvider> | string | symbol
 
 /** How `waitFor` polls. */

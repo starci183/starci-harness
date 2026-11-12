@@ -292,7 +292,7 @@ export const noApiShapedE2eFilename: RuleModule = {
     schema: [],
     messages: {
       apiShaped:
-        "`{{segment}}` names an API shape - a resolver group, an endpoint, a module - not a business promise. TESTING-1 / E2E-1: one e2e file is one business flow and the filename IS that flow; `rewards-queries.e2e-spec.ts` is exactly the shape this refuses. Name the file for the sentence it proves (`course-purchase.e2e-spec.ts`), not the API surface it happens to hit.",
+        "`{{segment}}` names an API shape - a resolver group, an endpoint, a module - not a business promise. TESTING-1 / E2E-1: one e2e file is one business flow and the filename IS that flow; `rewards-queries.e2e-spec.ts` is exactly the shape this refuses. Name the file for the sentence it proves (`project-purchase.e2e-spec.ts`), not the API surface it happens to hit.",
     },
   },
   create(context) {

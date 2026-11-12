@@ -4,12 +4,12 @@ import { AWAITING_DECISION, OVERVIEW, WORKFLOW_STATUS } from "../../src/modules/
 import { loading, noop, ready, slotLabels } from "../support"
 
 const row = (workflow: string, status: keyof typeof WORKFLOW_STATUS, done: number, total: number, awaiting = false): WorkflowRowView => ({
-    id: `starci-next/${workflow}`,
-    href: `/w/starci-next/${workflow}`,
+    id: `demo-app/${workflow}`,
+    href: `/w/demo-app/${workflow}`,
     workflow,
-    goalSummary: "Premium tháng/năm · SePay + PayOS",
-    project: "starci-next",
-    status: status === "blocked" ? { ...WORKFLOW_STATUS[status], label: `${WORKFLOW_STATUS[status].label} · Kernel sửa fixture-canon` } : WORKFLOW_STATUS[status],
+    goalSummary: "Search across items; BE then FE",
+    project: "demo-app",
+    status: status === "blocked" ? { ...WORKFLOW_STATUS[status], label: `${WORKFLOW_STATUS[status].label} · Kernel fixes fixture-canon` } : WORKFLOW_STATUS[status],
     awaiting: awaiting ? AWAITING_DECISION : null,
     progressLabel: OVERVIEW.progressLabel(workflow),
     progress: Math.round((done / total) * 100),
@@ -24,7 +24,7 @@ const meta = {
     component: WorkflowsTableBlockBase,
     args: {
         props: {
-            rows: ready([row("next-subscription-sepay", "running", 5, 22), row("w1-be", "blocked", 7, 8, true), row("next-uat-sign-in", "defined", 0, 1)]),
+            rows: ready([row("add-search", "running", 5, 22), row("w1-be", "blocked", 7, 8, true), row("uat-sign-in", "defined", 0, 1)]),
             labels: {
                 title: OVERVIEW.workflowsTitle,
                 fact: OVERVIEW.workflowsFact,

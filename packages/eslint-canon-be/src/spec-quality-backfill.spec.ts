@@ -26,7 +26,7 @@ const tester = canonRuleTester({
 })
 const typed = typedTester()
 const UNIT = at("src/modules/domain/order/order.service.spec.ts")
-const FLOW = at("src/tests/e2e/checkout/course-purchase.e2e-spec.ts")
+const FLOW = at("src/tests/e2e/checkout/project-purchase.e2e-spec.ts")
 const MODEL = at("src/tests/fixtures/model.ts")
 
 for (const edition of ["lite", "full"]) {

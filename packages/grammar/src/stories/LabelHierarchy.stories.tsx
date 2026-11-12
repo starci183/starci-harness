@@ -11,20 +11,20 @@ export default meta;
 type Story = StoryObj;
 
 const AUTO = [
-  { id: 'reply', title: 'Trả lời tin nhắn', subtitle: 'Agent trả lời khách ngay.' },
-  { id: 'tag', title: 'Gắn nhãn khách' },
+  { id: 'reply', title: 'Reply to messages', subtitle: 'The assistant replies to customers right away.' },
+  { id: 'tag', title: 'Tag customers' },
 ];
 const ASK = [
-  { id: 'refund', title: 'Hoàn tiền', subtitle: 'Chờ bạn duyệt rồi mới làm.' },
-  { id: 'price', title: 'Đổi giá' },
+  { id: 'refund', title: 'Refund', subtitle: 'Waits for your approval first.' },
+  { id: 'price', title: 'Change price' },
 ];
 
 export const AgentUnderstands: Story = {
   render: () => (
     <div style={{ width: 460 }}>
-      <G.Section title="Agent hiểu gì về việc của bạn">
-        <G.SurfaceCard kind="select" sublabel="Được tự làm" selectionMode="multiple" items={AUTO} value={['reply']} onChange={() => undefined} />
-        <G.SurfaceCard kind="select" sublabel="Phải hỏi bạn" selectionMode="multiple" items={ASK} value={[]} onChange={() => undefined} />
+      <G.Section title="What the assistant knows about your work">
+        <G.SurfaceCard kind="select" sublabel="Allowed to do alone" selectionMode="multiple" items={AUTO} value={['reply']} onChange={() => undefined} />
+        <G.SurfaceCard kind="select" sublabel="Must ask you" selectionMode="multiple" items={ASK} value={[]} onChange={() => undefined} />
       </G.Section>
     </div>
   ),
@@ -58,9 +58,9 @@ export const AgentUnderstands: Story = {
 export const SectionSublabel: Story = {
   render: () => (
     <div style={{ width: 460 }}>
-      <G.Section title="Quyền của agent">
-        <G.Section sublabel="Đọc" kind="list" items={[{ id: 'a', title: 'Đơn hàng' }]} empty={<G.EmptyNotice message="Trống" />} />
-        <G.Section sublabel="Ghi" kind="list" items={[{ id: 'b', title: 'Ghi chú' }]} empty={<G.EmptyNotice message="Trống" />} />
+      <G.Section title="Assistant permissions">
+        <G.Section sublabel="Read" kind="list" items={[{ id: 'a', title: 'Orders' }]} empty={<G.EmptyNotice message="Empty" />} />
+        <G.Section sublabel="Write" kind="list" items={[{ id: 'b', title: 'Notes' }]} empty={<G.EmptyNotice message="Empty" />} />
       </G.Section>
     </div>
   ),

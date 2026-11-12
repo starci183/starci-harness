@@ -14,8 +14,8 @@ This file owns the record families, the concepts, their lifecycle vocabulary and
 | `index.yaml` | `work/catalog@1` | the feature catalog: one `{id, directory, description}` per feature |
 | `features/<f>/index.yaml` | `work/feature@1` | the feature's scope: purpose, what is decided, what this release delivers, what is excluded, open questions |
 | `features/<f>/<family>/<name>/index.yaml` | per family, below | one record; `<name>` may nest by segment (`contract/purchase/<name>`) when a group needs it |
-| `concepts/index.yaml` | `work/concept-catalog@1` | the concept catalog: one `{id, directory, description}` per concept, in reading order (PROJECT-WORK-7) |
-| `concepts/<name>/index.yaml` | `work/concept@1` | one concept: a ruling of the owner about what the product is, with how much of it the code holds (PROJECT-WORK-7) |
+| `concepts/README.md` | Markdown, no schema | the concept catalog: one table row per concept, with the folders it is read for (PROJECT-WORK-7) |
+| `concepts/<topic>.md` | Markdown, no schema | one concept: a topic of the product's persistent shared context (PROJECT-WORK-7) |
 | `brand/index.yaml`, `brand/assets/**` | `work/brand@1` | the product's brand direction over its grammar's token names |
 | `shell/index.yaml` | `work/layout-tree@1` | the app shell every screen sits in |
 | `_resources/{environments,identities,fixtures}/<name>/resource.yaml` | `work/resource@1` | what UAT and runs resolve: an environment's origins and allowed effects, an identity's provider and sealed custody (never a secret value), a fixture's seed |
@@ -109,42 +109,42 @@ The harness writes a uat record at settle ([cli/src/harness/settle.ts](../../cli
 own, and both append the run to `evidence.yaml`. Every other record's state change is a `docs` task's edit inside an
 allowPaths scope (`.starciwork/features/<f>`), held by review.
 
-## PROJECT-WORK-7 A product's concepts are read before designing and never bent silently
+## PROJECT-WORK-7 A product's concepts hold its persistent shared context and are read before its code
 
-A concept is a ruling of the owner about what the product is: where a kind of thing lives, what a part never does, how
-two parts divide one job. It holds across features, so no feature owns it: `concepts/index.yaml` lists every concept as
-`{id, directory, description}` in reading order, and `concepts/<name>/index.yaml` holds one. Both editions keep them. A
-`decision` record is a question of one feature with its options; a concept is the standing law every feature is checked
-against.
+A concept is one topic of what stays true across the whole source of a product: the words it defines, the shapes of its data, how
+its things are named, the business rules it keeps, and the folders that hold them. It holds across features, so no feature owns it.
+Both editions keep them, as Markdown with no schema, in `.starciwork/concepts/`:
 
-| field | holds |
+- `README.md` is the catalog: a table `| Concept | Read when you touch (folders) | One line |`, one row per concept.
+- `<topic>.md` is one concept, at most about sixty lines, under fixed headings in this order:
+
+| heading | holds |
 |---|---|
-| `schema`, `id`, `title` | `work/concept@1`, `concept.<name>`, the ruling named in a few words |
-| `rule` | the ruling in one or two sentences, present tense, readable alone |
-| `why` | the reason the owner gave or the damage the ruling prevents |
-| `forbids` | what the ruling excludes, one line each |
-| `example` | one small case that shows the ruling applied |
-| `livesIn` | the code that holds it, as `{path, holds}`; empty until code exists |
-| `decided` | `{by, at, words, source}`: who ruled, the day, the owner's own words, verbatim and in his language, where they were recorded, and the record the ruling was taken from |
-| `status` | `built` (the code named in `livesIn` does what `rule` says), `partial`, `not-built` or `not-verified`; `built` and `notBuilt` list which part is which |
-| `refs` | the ids of the concepts and records it reads |
-| `extensions` | what the ruling needs beyond these fields: a name map, a table of approved shapes, a list of cases |
+| `# <name>` | the topic's name and a summary of one or two lines |
+| `## Terms` | each term and its one meaning, with *not to confuse with* where a nearby word misleads |
+| `## Data` | the shapes, keys and life cycle of the things the topic defines, by name (when it has any) |
+| `## Naming` | the patterns names follow, each with examples (when it has any) |
+| `## Rules` | numbered: what must hold, and *why* |
+| `## Example` | a few lines: an input and its result |
+| `## Don't / Instead` | what is not done, and what is done in its place |
+| `## Where` | the FOLDERS that hold the topic, never files |
+| `Related:` | links to the concepts it reads |
 
-- **Read first.** Before a requirement, a design, a contract, a plan or code of the product is written, its author reads
-  the catalog and every concept the work touches; a Kernel names them in the contract's `context.extend`.
-- **Written when the owner rules.** A ruling of the owner on the product is written into the concept it changes, or a new
-  one with its catalog line, in the change that first acts on it (PROJECT-WORK-5 names the writer). The record states
-  what holds now; `decided` keeps the day and the words, and the earlier text lives in git.
-- **A contradiction is raised.** A request, a design, a note or code that contradicts a concept is put to the owner with
-  the concept's id and both statements, and the contradicting part waits for the answer. Nobody applies it silently, and
-  nobody edits a concept to fit the code: only the owner's word changes a concept.
-- **Status never runs ahead of the code.** `built` is set by whoever read or proved the code `livesIn` names; a part
-  nobody checked is `not-verified`, and a ruling the code does not yet follow is `not-built` with the gap in `notBuilt`.
+- **Read first.** Before a requirement, a design, a contract, a plan or code of the product is written or changed, its author reads
+  `concepts/README.md`, then the concept of every folder the work touches, and only then the code; a Kernel names them in the
+  contract's `context.extend`.
+- **Only what persists.** A concept holds no history, decision log, progress, status or file path: those go stale with every commit
+  and bury what stays true. History lives in git, a question that awaits the owner in the feature's `decision` record.
+- **Edited to the current truth.** When that shared context changes (a term gains a meaning, a shape a key, a rule a new must), the
+  concept is edited to say what holds now, in the change that makes it so; nothing is appended beside the old sentence.
+- **A contradiction is raised.** A request, a design, a note or code that contradicts a concept is put to the owner with the
+  concept's name and both statements, and the contradicting part waits for the answer; nobody applies it silently.
 
-Why: a ruling kept only in a chat or a session note is lost at the next session, and work designed without it rebuilds
-what the owner already refused; a concept marked as built before the code follows it is read as a shipped fact. The
-paths are admitted by slot `app.starciwork` (R212 holds the lite boundary); the content of a concept and the reading
-before design are held by review.
+Why: an agent that opens the code first rebuilds the product's words and rules from whatever files it happened to read, and two
+agents rebuild them differently; a short page per topic, read first, gives every reader the same frame, and it stays short only
+while it holds nothing that changes with each commit. The paths are admitted by slot `app.starciwork` (R212 holds the lite
+boundary). No gate reads a concept: its content and the reading before code are held by review. A `work/concept@1` record
+(`concepts/index.yaml`, `concepts/<name>/index.yaml`) an app still keeps stays admitted; the app rewrites it as Markdown itself.
 
 ## Lanes
 

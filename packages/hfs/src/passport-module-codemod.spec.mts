@@ -1,7 +1,7 @@
 // The lite passport glue is the capability module every package-backed integration is (`PassportModule` over `passport.module-definition.ts`, the
 // app's logger handed to @starci/auth), and `starci app codemod passport-module` moves an app from the registration function it replaced
 // (`passport.registration.ts`, `passportModule(options, { isGlobal })`): all or nothing, a dry run writes nothing, a second run finds nothing to do,
-// and a glue or caller outside the rendered shape is left for a person. An app that composes the package in the module shape already (Nivo) is
+// and a glue or caller outside the rendered shape is left for a person. An app that composes the package in the module shape already is
 // what the slot asks for.
 import test from 'node:test';
 import type { TestContext } from 'node:test';
@@ -54,14 +54,14 @@ test('passport-module is one of the codemods', () => {
   assert.ok(CODEMODS.includes('passport-module'));
 });
 
-test('the slot asks for the module shape the template renders, so an app that composes the package as a module (Nivo) is placed', () => {
+test('the slot asks for the module shape the template renders, so an app that composes the package as a module is placed', () => {
   const slot = loadSlotManifest().slots.find((entry) => entry.id === 'be.integrations.passport');
   assert.ok(slot);
   const template = fs.readdirSync(TEMPLATE_GLUE);
-  const nivo = ['errors/', 'index.ts', 'messages/', 'passport.config.ts', 'passport.decorators.ts', 'passport.kit.spec.ts', 'passport.kit.ts', 'passport.module-definition.ts', 'passport.module.ts', 'passport.options.ts'];
+  const moduleShaped = ['errors/', 'index.ts', 'messages/', 'passport.config.ts', 'passport.decorators.ts', 'passport.kit.spec.ts', 'passport.kit.ts', 'passport.module-definition.ts', 'passport.module.ts', 'passport.options.ts'];
   for (const required of slot.requires ?? []) {
     assert.ok(template.includes(required), `the template renders ${required}`);
-    assert.ok(nivo.includes(required), `a module-shaped glue holds ${required}`);
+    assert.ok(moduleShaped.includes(required), `a module-shaped glue holds ${required}`);
   }
   assert.ok(!(slot.requires ?? []).includes('passport.registration.ts'));
   assert.match(fs.readFileSync(path.join(TEMPLATE_GLUE, 'passport.module.ts'), 'utf8'), /inject: \[[^\]]*\bLOGGER\b[^\]]*\]/u, 'the package reports through the app logger');

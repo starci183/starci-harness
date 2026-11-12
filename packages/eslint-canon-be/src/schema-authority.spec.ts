@@ -108,10 +108,10 @@ const o: DataSourceOptions = { type: "postgres", synchronize: true }`, errors: [
 const ENTITY = 'import { OrderEntity } from "@modules/domain/order/persistence/entities/order.entity"\nimport type { OrderSummary } from "@modules/domain/order/order.contracts"\n'
 const RESOLVER = at("src/features/api/checkout/transport/graphql/get-order.resolver.ts")
 const RESPONSE = at("src/features/api/checkout/transport/http/dto/get-order.response.ts")
-const CONTRACTS = at("src/modules/domain/invoice/invoice.contracts.ts")
+const CONTRACTS = at("src/modules/domain/record/record.contracts.ts")
 const HANDLER = at("src/features/api/checkout/application/place.handler.ts")
 const COMMAND = at("src/features/api/checkout/application/place.command.ts")
-const ENTITY_FILE = at("src/modules/domain/invoice/persistence/entities/invoice.entity.ts")
+const ENTITY_FILE = at("src/modules/domain/record/persistence/entities/record.entity.ts")
 
 test("an ORM entity never appears in a boundary type", () => {
     tester.run("no-entity-in-contract", noEntityInContract, {

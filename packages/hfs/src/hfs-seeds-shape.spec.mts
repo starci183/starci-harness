@@ -241,7 +241,7 @@ for (const edition of ['lite', 'full'] as const) {
   });
 
   test(`${edition}: app.starcistacks places a customised service's image folder .starcistacks/images/<name>/; a file beside the folders is still outside the shape`, (t) => {
-    const files = { ...VALID, '.starcistacks/images/openclaw/Dockerfile': 'FROM scratch\n', '.starcistacks/images/openclaw/nivo-bridge/index.js': 'export {}\n', '.starcistacks/images/Dockerfile': 'FROM scratch\n' };
+    const files = { ...VALID, '.starcistacks/images/worker/Dockerfile': 'FROM scratch\n', '.starcistacks/images/worker/bridge/index.js': 'export {}\n', '.starcistacks/images/Dockerfile': 'FROM scratch\n' };
     const root = tree(t, files);
     const declaration = { hfs: 3, kind: 'app', project: 'fixture', edition, sides: { be: { apps: [{ name: 'core', kind: 'api' }] }, fe: { apps: [{ name: 'web', kind: 'next' }] } } };
     const report = checkRepo({ repoRoot: root, declaration, files: Object.keys(files), tree: false });
@@ -265,7 +265,7 @@ for (const edition of ['lite', 'full'] as const) {
 const sealedMember = (keys: string[]): string => `${keys.map((key) => `${key}: ENC[AES256_GCM,data:eA==,iv:aXY=,tag:dGc=,type:str]`).join('\n')}\nsops:\n  age:\n    - recipient: age1fake\n`;
 const ACCOUNT_SCHEMA = JSON.stringify({
   type: 'object', required: ['email', 'password'],
-  properties: { email: { type: 'string' }, password: { type: 'object', required: ['value'], properties: { value: { type: 'string' } } }, zaloOa: { type: 'object' } },
+  properties: { email: { type: 'string' }, password: { type: 'object', required: ['value'], properties: { value: { type: 'string' } } }, chatChannel: { type: 'object' } },
 });
 /** Production's one test account: its login and its connector credentials are references to sealed members of production. */
 const ACCOUNT: Record<string, string> = {
@@ -274,9 +274,9 @@ const ACCOUNT: Record<string, string> = {
     '{id: logo, kind: files, path: files/brand, target: media, mode: once}',
     '{id: demo-account, kind: test-account, path: data/demo-account.json, target: [npm, run, -w, be, cli, --, accounts, seed], schema: be/schemas/account.schema.json, mode: upsert, reason: "the one account the owner signs in with to test the connectors on production"}',
   ]),
-  '.starcistacks/production/seeds/data/demo-account.json': JSON.stringify({ email: 'owner-test@example.test', password: { secret: 'seeds-test-owner' }, zaloOa: { secret: 'seeds-test-zalo' } }),
+  '.starcistacks/production/seeds/data/demo-account.json': JSON.stringify({ email: 'owner-test@example.test', password: { secret: 'seeds-test-owner' }, chatChannel: { secret: 'seeds-test-chat' } }),
   '.starcistacks/production/secrets/seeds-test-owner.enc.yaml': sealedMember(['value']),
-  '.starcistacks/production/secrets/seeds-test-zalo.enc.yaml': sealedMember(['APP_ID', 'SECRET']),
+  '.starcistacks/production/secrets/seeds-test-chat.enc.yaml': sealedMember(['APP_ID', 'SECRET']),
 };
 
 test('a production level declares one test account: its test identity and its sealed references are no finding', (t) => {
@@ -286,7 +286,7 @@ test('a production level declares one test account: its test identity and its se
 test('HFS_SEED_SECRET_REF: a reference to no seeds-<name> member, or to a member the environment does not seal; the shared level needs every environment', (t) => {
   const list = judge(t, {
     ...VALID, ...ACCOUNT,
-    '.starcistacks/production/seeds/data/demo-account.json': JSON.stringify({ email: 'a@example.test', password: { secret: 'owner-password' }, zaloOa: { secret: 'seeds-test-gone' } }),
+    '.starcistacks/production/seeds/data/demo-account.json': JSON.stringify({ email: 'a@example.test', password: { secret: 'owner-password' }, chatChannel: { secret: 'seeds-test-gone' } }),
     '.starcistacks/seeds/data/modules/sales.json': JSON.stringify({ id: 'sales', key: { secret: 'seeds-catalogue' } }),
     '.starcistacks/dev/secrets/seeds-catalogue.enc.yaml': sealedMember(['TOKEN']),
   });

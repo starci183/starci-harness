@@ -240,7 +240,7 @@ test('add block with three shapes and one slot writes the pair, the shape invent
 test('a second block reuses the one copy of the status owners, and a block without shapes takes no shape', (t) => {
   const { root, app } = stubbedApp(t);
   addKind({ repoRoot: root, noun: 'block', name: 'handoff-block', options: { shapes: SHAPES } });
-  const second = addKind({ repoRoot: root, noun: 'block', name: 'lead-list', options: { read: 'handoff' } });
+  const second = addKind({ repoRoot: root, noun: 'block', name: 'item-list', options: { read: 'handoff' } });
   assert.ok(!second.created.some((relative) => relative.includes('/hooks/slot/') || relative.includes('/SlotView/')));
   const pure = fs.readFileSync(path.join(app, 'src', 'components', 'blocks', 'LeadList', 'component.tsx'), 'utf8');
   assert.doesNotMatch(pure, /readonly shape|switch/);
@@ -255,13 +255,13 @@ test('the scaffold refuses a single shape, a shape that is no camelCase word, sh
   assert.throws(() => addKind({ repoRoot: root, noun: 'leaf', name: 'a-leaf', options: { shapes: 'a,b' } }), /no shapes/);
   addKind({ repoRoot: root, noun: 'leaf', name: 'a-leaf' });
   assert.throws(() => addKind({ repoRoot: root, noun: 'leaf', name: 'a-leaf' }), /never overwrites/);
-  addKind({ repoRoot: root, noun: 'block', name: 'lead-list', options: { read: 'handoff' } });
-  assert.throws(() => addKind({ repoRoot: root, noun: 'block', name: 'lead-list', options: { read: 'handoff' } }), /never overwrites/);
-  assert.throws(() => addKind({ repoRoot: root, noun: 'page', name: 'leads', options: { blocks: 'lead-list' } }), /takes input/);
-  assert.throws(() => addKind({ repoRoot: root, noun: 'page', name: 'leads', options: { blocks: 'nothing-block' } }), /no block/);
-  assert.throws(() => addKind({ repoRoot: root, noun: 'page', name: 'leads/[id]' }), /kebab-case segments/);
-  assert.throws(() => addKind({ repoRoot: root, noun: 'page', name: 'leads', options: { tabs: 'open' } }), /two or more/);
-  assert.throws(() => addKind({ repoRoot: root, noun: 'page', name: 'leads', options: { tabs: 'open,open' } }), /distinct/);
+  addKind({ repoRoot: root, noun: 'block', name: 'item-list', options: { read: 'handoff' } });
+  assert.throws(() => addKind({ repoRoot: root, noun: 'block', name: 'item-list', options: { read: 'handoff' } }), /never overwrites/);
+  assert.throws(() => addKind({ repoRoot: root, noun: 'page', name: 'items', options: { blocks: 'item-list' } }), /takes input/);
+  assert.throws(() => addKind({ repoRoot: root, noun: 'page', name: 'items', options: { blocks: 'nothing-block' } }), /no block/);
+  assert.throws(() => addKind({ repoRoot: root, noun: 'page', name: 'items/[id]' }), /kebab-case segments/);
+  assert.throws(() => addKind({ repoRoot: root, noun: 'page', name: 'items', options: { tabs: 'open' } }), /two or more/);
+  assert.throws(() => addKind({ repoRoot: root, noun: 'page', name: 'items', options: { tabs: 'open,open' } }), /distinct/);
   assert.throws(() => addKind({ repoRoot: root, noun: 'overlay', name: 'invite', options: { kind: 'popover' } }), /only two/);
 });
 

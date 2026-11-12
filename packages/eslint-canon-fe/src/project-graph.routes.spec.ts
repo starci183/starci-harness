@@ -52,12 +52,12 @@ const repo = (t: TestContext, files: Files, extra: Omit<NonNullable<Parameters<t
 const API = "apps/web/src/modules/api"
 const CLIENT = "import { ApolloClient } from '@apollo/client';\nexport const authClient = new ApolloClient({ uri: '/graphql', fetch: (input: string) => fetch(input) });\n"
 const OUTCOME = "export type GraphQLResponse<T> = { success: boolean; message: string; error?: string; data?: T };\n"
-const QUERY = "import { authClient } from '../clients';\nexport const queryCourse = (id: string) => authClient.query({ query: id });\n"
+const QUERY = "import { authClient } from '../clients';\nexport const queryProject = (id: string) => authClient.query({ query: id });\n"
 const GOOD_TRANSPORT = {
     [`${API}/graphql/clients/index.ts`]: CLIENT,
-    [`${API}/graphql/queries/query-course.ts`]: QUERY,
+    [`${API}/graphql/queries/query-project.ts`]: QUERY,
     [`${API}/rest/uploads/presign.ts`]: "import axios from 'axios';\nexport const presign = (name: string) => axios.post('/uploads', { name });\n",
-    "apps/web/src/hooks/course/useCourse.ts": "import { queryCourse } from '../../modules/api/graphql/queries/query-course';\nexport const useCourse = (id: string) => queryCourse(id);\n",
+    "apps/web/src/hooks/project/useProject.ts": "import { queryProject } from '../../modules/api/graphql/queries/query-project';\nexport const useProject = (id: string) => queryProject(id);\n",
 }
 const WEB_APP = { name: "web", kind: "next" }
 const TWO_APPS = [WEB_APP, { name: "admin", kind: "next" }]
@@ -73,38 +73,38 @@ const PACKAGE = {
     [`${PKG}/src/graphql/clients/index.ts`]: CLIENT,
     [`${PKG}/src/graphql/types.ts`]: OUTCOME,
 }
-const appOperation = (app: string): Files => ({ [`apps/${app}/src/modules/api/graphql/queries/query-course.ts`]: "import { authClient } from '@shop/api';\nexport const queryCourse = (id: string) => authClient.query({ query: id });\n" })
-const NOTHING = (app: string): Files => ({ [`apps/${app}/src/hooks/course/useNothing.ts`]: "export const useNothing = () => 1;\n" })
+const appOperation = (app: string): Files => ({ [`apps/${app}/src/modules/api/graphql/queries/query-project.ts`]: "import { authClient } from '@shop/api';\nexport const queryProject = (id: string) => authClient.query({ query: id });\n" })
+const NOTHING = (app: string): Files => ({ [`apps/${app}/src/hooks/project/useNothing.ts`]: "export const useNothing = () => 1;\n" })
 const packaged = (files: Files, apps: { name: string; kind: string }[] = TWO_APPS) => ({ apps, declaration: { optionalSlots: ["fe.package.api"] }, files })
 
 test("transport-owner: one client folder owns the global fetch, axios stays in modules/api/rest, every operation imports the client", (t) => {
     const files = {
         ...GOOD_TRANSPORT,
         [`${API}/graphql/types.ts`]: OUTCOME,
-        "apps/web/src/hooks/course/useCalled.ts": "export const useCalled = () => fetch('/x');\n",
-        "apps/web/src/hooks/course/useMember.ts": "export const useMember = () => globalThis.fetch('/x');\n",
-        "apps/web/src/hooks/course/useAliased.ts": "const send = fetch;\nexport const useAliased = () => send('/x');\n",
-        "apps/web/src/hooks/course/useSwr.ts": "declare function useSwr(key: string, fetcher: typeof fetch): unknown;\nexport const useSwrCourse = () => useSwr('/x', fetch);\n",
-        "apps/web/src/hooks/course/useLocal.ts": "const fetch = (id: string) => id;\nexport const useLocal = () => fetch('1');\n",
-        "apps/web/src/hooks/course/useType.ts": "export type Sender = typeof fetch;\nexport type Sent = ReturnType<typeof globalThis.fetch>;\n",
-        "apps/web/src/hooks/course/useProperty.ts": "export const useProperty = (repo: { fetch: () => void }) => repo.fetch();\n",
-        "apps/web/src/hooks/course/useAxios.ts": "import axios from 'axios';\nexport const useAxios = () => axios;\n",
-        "apps/web/src/hooks/course/useKy.ts": "export const useKy = () => import('ky');\n",
+        "apps/web/src/hooks/project/useCalled.ts": "export const useCalled = () => fetch('/x');\n",
+        "apps/web/src/hooks/project/useMember.ts": "export const useMember = () => globalThis.fetch('/x');\n",
+        "apps/web/src/hooks/project/useAliased.ts": "const send = fetch;\nexport const useAliased = () => send('/x');\n",
+        "apps/web/src/hooks/project/useSwr.ts": "declare function useSwr(key: string, fetcher: typeof fetch): unknown;\nexport const useSwrProject = () => useSwr('/x', fetch);\n",
+        "apps/web/src/hooks/project/useLocal.ts": "const fetch = (id: string) => id;\nexport const useLocal = () => fetch('1');\n",
+        "apps/web/src/hooks/project/useType.ts": "export type Sender = typeof fetch;\nexport type Sent = ReturnType<typeof globalThis.fetch>;\n",
+        "apps/web/src/hooks/project/useProperty.ts": "export const useProperty = (repo: { fetch: () => void }) => repo.fetch();\n",
+        "apps/web/src/hooks/project/useAxios.ts": "import axios from 'axios';\nexport const useAxios = () => axios;\n",
+        "apps/web/src/hooks/project/useKy.ts": "export const useKy = () => import('ky');\n",
         [`${API}/rest/uploads/got.ts`]: "declare function require(name: string): unknown;\nexport const viaGot = () => require('got');\n",
     }
     const { tester, ok, bad } = repo(t, files)
     tester.run("transport-owner", ruleOf("transport-owner"), {
         valid: [
             // the client folder is the one place that references fetch; operations import it; hooks never touch it; axios is the rest owner's
-            ok(`${API}/graphql/clients/index.ts`), ok(`${API}/graphql/queries/query-course.ts`), ok(`${API}/rest/uploads/presign.ts`),
-            ok("apps/web/src/hooks/course/useCourse.ts"), ok(`${API}/graphql/types.ts`),
+            ok(`${API}/graphql/clients/index.ts`), ok(`${API}/graphql/queries/query-project.ts`), ok(`${API}/rest/uploads/presign.ts`),
+            ok("apps/web/src/hooks/project/useProject.ts"), ok(`${API}/graphql/types.ts`),
             // a local function named fetch, a type query and a property named fetch are not the global transport
-            ok("apps/web/src/hooks/course/useLocal.ts"), ok("apps/web/src/hooks/course/useType.ts"), ok("apps/web/src/hooks/course/useProperty.ts"),
+            ok("apps/web/src/hooks/project/useLocal.ts"), ok("apps/web/src/hooks/project/useType.ts"), ok("apps/web/src/hooks/project/useProperty.ts"),
         ],
         invalid: [
-            bad("apps/web/src/hooks/course/useCalled.ts"), bad("apps/web/src/hooks/course/useMember.ts"),
-            bad("apps/web/src/hooks/course/useAliased.ts"), bad("apps/web/src/hooks/course/useSwr.ts"),
-            bad("apps/web/src/hooks/course/useAxios.ts", saying(/axios/)), bad("apps/web/src/hooks/course/useKy.ts", saying(/ky/)),
+            bad("apps/web/src/hooks/project/useCalled.ts"), bad("apps/web/src/hooks/project/useMember.ts"),
+            bad("apps/web/src/hooks/project/useAliased.ts"), bad("apps/web/src/hooks/project/useSwr.ts"),
+            bad("apps/web/src/hooks/project/useAxios.ts", saying(/axios/)), bad("apps/web/src/hooks/project/useKy.ts", saying(/ky/)),
             bad(`${API}/rest/uploads/got.ts`, saying(/got/)),
         ],
     })
@@ -114,14 +114,14 @@ test("transport-owner: an operation that does not import the client, and an Apol
     const files = {
         ...GOOD_TRANSPORT,
         [`${API}/graphql/mutations/mutation-lonely.ts`]: "export const mutationLonely = () => 1;\n",
-        "apps/web/src/hooks/course/useOwnClient.ts": "import { ApolloClient } from '@apollo/client';\nexport const useOwnClient = () => new ApolloClient({ uri: '/graphql' });\n",
+        "apps/web/src/hooks/project/useOwnClient.ts": "import { ApolloClient } from '@apollo/client';\nexport const useOwnClient = () => new ApolloClient({ uri: '/graphql' });\n",
     }
     const { tester, ok, bad } = repo(t, files)
     tester.run("transport-owner", ruleOf("transport-owner"), {
-        valid: [ok(`${API}/graphql/queries/query-course.ts`), ok("apps/web/src/hooks/course/useCourse.ts")],
+        valid: [ok(`${API}/graphql/queries/query-project.ts`), ok("apps/web/src/hooks/project/useProject.ts")],
         invalid: [
             bad(`${API}/graphql/mutations/mutation-lonely.ts`, saying(/does not import the transport client/)),
-            bad("apps/web/src/hooks/course/useOwnClient.ts", saying(/constructs an ApolloClient outside/)),
+            bad("apps/web/src/hooks/project/useOwnClient.ts", saying(/constructs an ApolloClient outside/)),
         ],
     })
 })
@@ -129,16 +129,16 @@ test("transport-owner: an operation that does not import the client, and an Apol
 test("transport-owner: one client folder and one GraphQLResponse union in the api package, operations in the apps", (t) => {
     const files = {
         ...PACKAGE, ...appOperation("web"), ...appOperation("admin"),
-        "apps/admin/src/hooks/course/useCalled.ts": "export const useCalled = () => fetch('/x');\n",
+        "apps/admin/src/hooks/project/useCalled.ts": "export const useCalled = () => fetch('/x');\n",
     }
     const { tester, ok, bad } = repo(t, files, packaged(files))
     tester.run("transport-owner", ruleOf("transport-owner"), {
         valid: [
             ok(`${PKG}/src/graphql/clients/index.ts`), ok(`${PKG}/src/graphql/types.ts`), ok(`${PKG}/src/index.ts`),
-            ok("apps/web/src/modules/api/graphql/queries/query-course.ts"), ok("apps/admin/src/modules/api/graphql/queries/query-course.ts"),
+            ok("apps/web/src/modules/api/graphql/queries/query-project.ts"), ok("apps/admin/src/modules/api/graphql/queries/query-project.ts"),
         ],
         // a fetch outside the package client folder is the finding, the client itself is not
-        invalid: [bad("apps/admin/src/hooks/course/useCalled.ts")],
+        invalid: [bad("apps/admin/src/hooks/project/useCalled.ts")],
     })
 })
 
@@ -146,7 +146,7 @@ test("transport-owner: two apps that each keep their own client folder", (t) => 
     const files = { "apps/web/src/modules/api/graphql/clients/index.ts": CLIENT, "apps/admin/src/modules/api/graphql/clients/index.ts": CLIENT, ...NOTHING("web") }
     const { tester, ok, bad } = repo(t, files, packaged(files))
     tester.run("transport-owner", ruleOf("transport-owner"), {
-        valid: [ok("apps/web/src/hooks/course/useNothing.ts")],
+        valid: [ok("apps/web/src/hooks/project/useNothing.ts")],
         invalid: [
             bad("apps/web/src/modules/api/graphql/clients/index.ts", saying(/2 transport clients/)),
             bad("apps/admin/src/modules/api/graphql/clients/index.ts", saying(/2 transport clients/)),
@@ -165,10 +165,10 @@ test("transport-owner: a package client folder next to an app client folder", (t
 
 test("transport-owner: two apps that keep one app client folder with no package: the shared client belongs to the package", (t) => {
     // admin calls the back end too (an operation file of its own modules/api), so the one app client folder is shared by two callers
-    const files = { "apps/web/src/modules/api/graphql/clients/index.ts": CLIENT, "apps/admin/src/modules/api/graphql/queries/query-course.ts": "export const queryCourse = () => 1;\n", ...NOTHING("admin") }
+    const files = { "apps/web/src/modules/api/graphql/clients/index.ts": CLIENT, "apps/admin/src/modules/api/graphql/queries/query-project.ts": "export const queryProject = () => 1;\n", ...NOTHING("admin") }
     const { tester, ok, bad } = repo(t, files, packaged(files))
     tester.run("transport-owner", ruleOf("transport-owner"), {
-        valid: [ok("apps/admin/src/hooks/course/useNothing.ts")],
+        valid: [ok("apps/admin/src/hooks/project/useNothing.ts")],
         invalid: [bad("apps/web/src/modules/api/graphql/clients/index.ts", saying(/repository of 2 apps/))],
     })
 })
@@ -192,11 +192,11 @@ test("transport-owner: an app GraphQLResponse union in a two-app repository", (t
 })
 
 test("transport-owner: a module that fetches in a repository with no client; a repository with no fetch has nothing to own", (t) => {
-    const files = { "apps/web/src/hooks/course/useCalled.ts": "export const useCalled = () => fetch('/x');\n", ...NOTHING("web") }
+    const files = { "apps/web/src/hooks/project/useCalled.ts": "export const useCalled = () => fetch('/x');\n", ...NOTHING("web") }
     const { tester, ok, bad } = repo(t, files, packaged(files))
     tester.run("transport-owner", ruleOf("transport-owner"), {
-        valid: [ok("apps/web/src/hooks/course/useNothing.ts")],
-        invalid: [bad("apps/web/src/hooks/course/useCalled.ts", saying(/no transport client/))],
+        valid: [ok("apps/web/src/hooks/project/useNothing.ts")],
+        invalid: [bad("apps/web/src/hooks/project/useCalled.ts", saying(/no transport client/))],
     })
 })
 
@@ -206,21 +206,21 @@ const lifecycle = {
     schema: "starci/next-data-lifecycle@1",
     swr: { package: "swr", major: 2 },
     hooks: [
-        { id: "course-query", path: "src/features/course/use-course.ts", export: "useCourse", kind: "query", resultBinding: "query", identities: [
-            { id: "course", binding: "params.courseId", gatesRequest: true, resource: true },
+        { id: "project-query", path: "src/features/project/use-project.ts", export: "useProject", kind: "query", resultBinding: "query", identities: [
+            { id: "project", binding: "params.projectId", gatesRequest: true, resource: true },
             { id: "viewer", binding: "viewer", gatesRequest: false, resource: false },
         ] },
-        { id: "course-mutation", path: "src/features/course/use-course.ts", export: "useCourse", kind: "mutation", resultBinding: "add", identities: [
-            { id: "course", binding: "params.courseId", gatesRequest: true, resource: true },
+        { id: "project-mutation", path: "src/features/project/use-project.ts", export: "useProject", kind: "mutation", resultBinding: "add", identities: [
+            { id: "project", binding: "params.projectId", gatesRequest: true, resource: true },
         ] },
-        { id: "disabled-fixed-query", path: "src/features/course/use-disabled.ts", export: "useDisabled", kind: "query", identities: [] },
-        { id: "lesson-query", path: "src/features/course/use-lesson.ts", export: "useLesson", kind: "query", resultBinding: "query", identities: [
-            { id: "lesson", binding: "params.lessonId", gatesRequest: true, resource: true },
+        { id: "disabled-fixed-query", path: "src/features/project/use-disabled.ts", export: "useDisabled", kind: "query", identities: [] },
+        { id: "item-query", path: "src/features/project/use-item.ts", export: "useItem", kind: "query", resultBinding: "query", identities: [
+            { id: "item", binding: "params.itemId", gatesRequest: true, resource: true },
             { id: "viewer", binding: "viewer", gatesRequest: false, resource: false },
         ] },
     ],
 }
-const swrHeader = "import {cache,mutateCache} from '../../shared/cache';\nconst QUERY_COURSE='QUERY_COURSE', MUTATE_COURSE='MUTATE_COURSE';\nconst useViewerKey=():string|undefined=>'viewer';"
+const swrHeader = "import {cache,mutateCache} from '../../shared/cache';\nconst QUERY_PROJECT='QUERY_PROJECT', MUTATE_PROJECT='MUTATE_PROJECT';\nconst useViewerKey=():string|undefined=>'viewer';"
 const SWR = {
     // the app root's one package.json and its one install
     "../package.json": `${JSON.stringify({
@@ -242,12 +242,12 @@ const SWR = {
     "../node_modules/swr/immutable.js": "export {default} from \"./index.js\";\n",
     "../node_modules/swr/mutation.js": "export default function useSWRMutation(){}\n",
     "src/shared/cache.ts": "export {default as cache} from \"swr\"; export {default as mutateCache} from \"swr/mutation\";\n",
-    "src/features/course/use-disabled.ts": "import {cache} from '../../shared/cache'; export const useDisabled=()=>cache(null,async()=>null);\n",
+    "src/features/project/use-disabled.ts": "import {cache} from '../../shared/cache'; export const useDisabled=()=>cache(null,async()=>null);\n",
     // the former false positives: a transparent alias of an identity and of the params object are the same identity
-    "src/features/course/use-lesson.ts": `${swrHeader}
-export const useLesson=(params:{lessonId?:string})=>{
+    "src/features/project/use-item.ts": `${swrHeader}
+export const useItem=(params:{itemId?:string})=>{
   const viewer=useViewerKey(); const viewerAlias=viewer; const p=params;
-  const query=cache(()=>p.lessonId===undefined?null:['QUERY_LESSON',p.lessonId,viewerAlias],async()=>null);
+  const query=cache(()=>p.itemId===undefined?null:['QUERY_ITEM',p.itemId,viewerAlias],async()=>null);
   return {query};
 };
 `,
@@ -256,21 +256,21 @@ export const useLesson=(params:{lessonId?:string})=>{
 test("swr-data-lifecycle: a key without its viewer identity and a mutation without its resource identity are findings", (t) => {
     const files = {
         ...SWR,
-        "src/features/course/use-course.ts": `${swrHeader}
-export const useCourse=(params:{courseId?:string})=>{
+        "src/features/project/use-project.ts": `${swrHeader}
+export const useProject=(params:{projectId?:string})=>{
   const viewer=useViewerKey();
-  const query=cache(params.courseId===undefined?null:[QUERY_COURSE,params.courseId],async()=>null);
-  const {trigger:add}=mutateCache({operation:MUTATE_COURSE},async()=>null);
+  const query=cache(params.projectId===undefined?null:[QUERY_PROJECT,params.projectId],async()=>null);
+  const {trigger:add}=mutateCache({operation:MUTATE_PROJECT},async()=>null);
   return {query,add,viewer};
 };
 `,
     }
     const { tester, ok, bad } = repo(t, files)
     tester.run("swr-data-lifecycle", ruleOf("swr-data-lifecycle"), {
-        valid: [ok("src/features/course/use-disabled.ts"), ok("src/features/course/use-lesson.ts"), ok("src/shared/cache.ts")],
-        invalid: [bad("src/features/course/use-course.ts",
-            { ...saying(/^\[FE_SWR_KEY_IDENTITY\] course-query key must include declared identity viewer/), line: 6 },
-            { ...saying(/^\[FE_SWR_KEY_IDENTITY\] course-mutation must produce an explicit null key/), line: 7 },
+        valid: [ok("src/features/project/use-disabled.ts"), ok("src/features/project/use-item.ts"), ok("src/shared/cache.ts")],
+        invalid: [bad("src/features/project/use-project.ts",
+            { ...saying(/^\[FE_SWR_KEY_IDENTITY\] project-query key must include declared identity viewer/), line: 6 },
+            { ...saying(/^\[FE_SWR_KEY_IDENTITY\] project-mutation must produce an explicit null key/), line: 7 },
             { ...saying(/^\[FE_SWR_MUTATION_RESOURCE_IDENTITY\]/), line: 7 })],
     })
 })
@@ -278,38 +278,38 @@ export const useCourse=(params:{courseId?:string})=>{
 test("swr-data-lifecycle: a disabled fixed query that passes an explicit false key is a finding", (t) => {
     const files = {
         ...SWR,
-        "src/features/course/use-course.ts": `${swrHeader}
-export const useCourse=(params:{courseId?:string})=>{
+        "src/features/project/use-project.ts": `${swrHeader}
+export const useProject=(params:{projectId?:string})=>{
   const viewer=useViewerKey();
-  const query=cache(params.courseId===undefined?null:[QUERY_COURSE,params.courseId,viewer??'guest'],async()=>null);
-  const {trigger:add}=mutateCache(params.courseId===undefined?null:{operation:MUTATE_COURSE,courseId:params.courseId},async()=>null);
+  const query=cache(params.projectId===undefined?null:[QUERY_PROJECT,params.projectId,viewer??'guest'],async()=>null);
+  const {trigger:add}=mutateCache(params.projectId===undefined?null:{operation:MUTATE_PROJECT,projectId:params.projectId},async()=>null);
   return {query,add};
 };
 `,
-        "src/features/course/use-disabled.ts": "import {cache} from '../../shared/cache'; export const useDisabled=()=>cache(false,async()=>null);\n",
+        "src/features/project/use-disabled.ts": "import {cache} from '../../shared/cache'; export const useDisabled=()=>cache(false,async()=>null);\n",
     }
     const { tester, ok, bad } = repo(t, files)
     tester.run("swr-data-lifecycle", ruleOf("swr-data-lifecycle"), {
         // the aliased SWR 2 array and object keys carry every declared identity
-        valid: [ok("src/features/course/use-course.ts"), ok("src/features/course/use-lesson.ts")],
-        invalid: [bad("src/features/course/use-disabled.ts", saying(/explicit null/))],
+        valid: [ok("src/features/project/use-project.ts"), ok("src/features/project/use-item.ts")],
+        invalid: [bad("src/features/project/use-disabled.ts", saying(/explicit null/))],
     })
 })
 
 test("swr-data-lifecycle: a lossy or discarded identity in a key is a finding", (t) => {
-    const course = (key: string) => `${swrHeader}
-export const useCourse=(params:{courseId?:string})=>{
+    const project = (key: string) => `${swrHeader}
+export const useProject=(params:{projectId?:string})=>{
   const viewer=useViewerKey();
   const query=cache(${key},async()=>null);
-  const {trigger:add}=mutateCache(params.courseId===undefined?null:{operation:MUTATE_COURSE,courseId:params.courseId},async()=>null);
+  const {trigger:add}=mutateCache(params.projectId===undefined?null:{operation:MUTATE_PROJECT,projectId:params.projectId},async()=>null);
   return {query,add};
 };
 `
-    const files = { ...SWR, "src/features/course/use-course.ts": course("()=>params.courseId===undefined?null:[QUERY_COURSE,params.courseId,(viewer,'same')]") }
+    const files = { ...SWR, "src/features/project/use-project.ts": project("()=>params.projectId===undefined?null:[QUERY_PROJECT,params.projectId,(viewer,'same')]") }
     const { tester, ok, bad } = repo(t, files)
     tester.run("swr-data-lifecycle", ruleOf("swr-data-lifecycle"), {
-        valid: [ok("src/features/course/use-lesson.ts"), ok("src/features/course/use-disabled.ts")],
-        invalid: [bad("src/features/course/use-course.ts")],
+        valid: [ok("src/features/project/use-item.ts"), ok("src/features/project/use-disabled.ts")],
+        invalid: [bad("src/features/project/use-project.ts")],
     })
 })
 
@@ -467,12 +467,12 @@ test("client-reaches-server: no module reachable from a use client module import
 
 // ------------------------------------------------------------------------------------------------ hooks-are-hooks
 
-const HOOKS = "apps/web/src/hooks/course"
+const HOOKS = "apps/web/src/hooks/project"
 const HOOK_FILES = {
-    [`${HOOKS}/index.ts`]: "export { useCourse } from './useCourse';\n",
-    [`${HOOKS}/useCourse.ts`]: "import { courseKey } from './course.shared';\nexport const useCourse = (id: string) => courseKey(id);\n",
-    [`${HOOKS}/useLesson.ts`]: "import { courseKey } from './course.shared';\nexport const useLesson = (id: string) => courseKey(id);\n",
-    [`${HOOKS}/course.shared.ts`]: "export const courseKey = (id: string) => `course:${id}`;\n",
+    [`${HOOKS}/index.ts`]: "export { useProject } from './useProject';\n",
+    [`${HOOKS}/useProject.ts`]: "import { projectKey } from './project.shared';\nexport const useProject = (id: string) => projectKey(id);\n",
+    [`${HOOKS}/useItem.ts`]: "import { projectKey } from './project.shared';\nexport const useItem = (id: string) => projectKey(id);\n",
+    [`${HOOKS}/project.shared.ts`]: "export const projectKey = (id: string) => `project:${id}`;\n",
 }
 
 test("hooks-are-hooks: one shared file named for its domain, and no helper declared in two files of a domain", (t) => {
@@ -491,12 +491,12 @@ test("hooks-are-hooks: one shared file named for its domain, and no helper decla
     const { tester, ok, bad } = repo(t, files)
     tester.run("hooks-are-hooks", ruleOf("hooks-are-hooks"), {
         valid: [
-            ok(`${HOOKS}/index.ts`), ok(`${HOOKS}/useCourse.ts`), ok(`${HOOKS}/useLesson.ts`), ok(`${HOOKS}/course.shared.ts`), ok(`${HOOKS}/useA.ts`),
+            ok(`${HOOKS}/index.ts`), ok(`${HOOKS}/useProject.ts`), ok(`${HOOKS}/useItem.ts`), ok(`${HOOKS}/project.shared.ts`), ok(`${HOOKS}/useA.ts`),
             ok("apps/web/src/hooks/cart/useCart.ts"), ok("apps/web/src/hooks/cart/cart.shared.ts"),
         ],
         invalid: [
             bad(`${HOOKS}/cart.shared.ts`), bad("apps/web/src/hooks/cart/more.shared.ts"),
-            bad(`${HOOKS}/useB.ts`, saying(/also in apps\/web\/src\/hooks\/course\/useA\.ts/)),
+            bad(`${HOOKS}/useB.ts`, saying(/also in apps\/web\/src\/hooks\/project\/useA\.ts/)),
         ],
     })
 })

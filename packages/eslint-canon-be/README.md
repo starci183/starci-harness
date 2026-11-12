@@ -91,7 +91,7 @@ For an existing service with another name, declare the exact verification method
 `<provider>-http.module.ts`:
 
 ```ts
-export const webhookVerifiers = [BillingService.prototype.receiveCassoWebhook] as const
+export const webhookVerifiers = [BillingService.prototype.receiveGammaPayWebhook] as const
 ```
 
 The declaration names TypeScript method symbols, never strings. Its first unconditional call must finish proof before

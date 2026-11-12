@@ -101,7 +101,7 @@ const isEntityManagerInjector = (context: Context, hfs: HfsView, node: Node): bo
 /** Whether a call reaches a value declared by `pkg` under one of `names`, however it was imported. */
 const callsPackage = (context: Context, node: Node, names: ReadonlySet<string>, pkg: string): boolean => typeOrigins(context, node).some((origin) => origin.module === pkg && names.has(origin.name))
 
-/** The constant a declared connection name is exported as: `expert-academy` gives `EXPERT_ACADEMY_CONNECTION`. */
+/** The constant a declared connection name is exported as: `reporting` gives `REPORTING_CONNECTION`. */
 const constantOf = (name: string): string => `${name.toUpperCase().replace(/-/g, "_")}_CONNECTION`
 
 /** The string an env key argument spells, or null when it is not a plain string. */

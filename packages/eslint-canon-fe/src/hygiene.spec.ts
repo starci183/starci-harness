@@ -15,7 +15,7 @@ const syntaxTester = slotTester()
 const typed = typedTester()
 
 const FILE = at("apps/web/src/components/blocks/Feed/index.tsx")
-const HOOK = at("apps/web/src/hooks/lesson/useLesson.ts")
+const HOOK = at("apps/web/src/hooks/item/useItem.ts")
 const MODULE = at("apps/web/src/modules/api/client.ts")
 const PLAIN_FILE = at("apps/web/src/components/blocks/Feed/index.tsx")
 

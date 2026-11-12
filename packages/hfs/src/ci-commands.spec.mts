@@ -25,9 +25,9 @@ const lockedOk = (root: string): LockResult => {
 function app(t: TestContext, packages: boolean): string {
   const { root } = scaffoldApp({ name: 'demo', into: mkdtemp(t, 'starci-ci-commands-'), harness: { version: '1.1.0-alpha.3' }, edition: 'lite', presets: bundledPresets(), lock: lockedOk, initGit: init });
   if (!packages) return root;
-  fs.mkdirSync(path.join(root, 'packages', 'agent-sdk', 'src'), { recursive: true });
-  fs.writeFileSync(path.join(root, 'packages', 'agent-sdk', 'package.json'), '{"name":"@demo/agent-sdk","version":"0.0.0","private":true}\n');
-  fs.writeFileSync(path.join(root, 'packages', 'agent-sdk', 'src', 'index.ts'), 'export {}\n');
+  fs.mkdirSync(path.join(root, 'packages', 'sdk', 'src'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'packages', 'sdk', 'package.json'), '{"name":"@demo/sdk","version":"0.0.0","private":true}\n');
+  fs.writeFileSync(path.join(root, 'packages', 'sdk', 'src', 'index.ts'), 'export {}\n');
   const manifest = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')) as { workspaces: string[] };
   fs.writeFileSync(path.join(root, 'package.json'), `${JSON.stringify({ ...manifest, workspaces: [...manifest.workspaces, 'packages/*'] }, null, 2)}\n`);
   addModule({ root, name: 'loyalty' });

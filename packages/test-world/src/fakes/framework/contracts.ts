@@ -6,7 +6,7 @@
  * `world.fake.<name>.<method>()`.
  *
  * Every fake records the requests it received and can be told to fail: `failNext` (status, timeout, badSignature,
- * truncated stream). Payment fakes also `replayWebhook` and `delayWebhook` towards the app under test, signing with the
+ * truncated stream). A fake that calls the app back delivers its webhooks through the framework (`deliverWebhook`), signing with the
  * real scheme of the provider.
  */
 
@@ -43,9 +43,9 @@ export interface RecordedRequest {
     readonly status: number
 }
 
-/** What a payment fake sends to the app under test and how the app answered. */
+/** What a fake sends to the app under test as a webhook and how the app answered. */
 export interface WebhookDelivery {
-    /** Which gateway transaction/intent the delivery is about. */
+    /** Which provider transaction or event the delivery is about. */
     readonly reference: string
     /** The URL called. */
     readonly url: string
@@ -87,7 +87,7 @@ export interface FakeInstance {
     readonly port: number
     /** PEM of the CA an HTTPS fake's certificate chains to (the run's ephemeral fake CA); absent for a plain-HTTP or SMTP fake. */
     readonly ca?: string
-    /** Values the app options need (`apiKey`, `webhookSecret`, `tmnCode`, ...). */
+    /** Values the app options need (`apiKey`, `webhookSecret`, `clientId`, ...). */
     readonly values: Readonly<Record<string, string>>
     /** Further named endpoints (`tokenUrl`, ...). */
     readonly endpoints: Readonly<Record<string, string>>

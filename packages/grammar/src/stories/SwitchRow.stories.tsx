@@ -13,9 +13,9 @@ type Story = StoryObj;
 export const LabelledRow: Story = {
   render: () => (
     <div style={{ width: 420 }}>
-      <G.Switch label="Tự động trả lời" description="Agent trả lời khách ngay, bạn xem lại sau." defaultSelected />
-      <G.Switch description="Mô tả ngắn." label="Chỉ nhãn" />
-      <G.Switch label="Giao diện tối" isLabelHidden />
+      <G.Switch label="Auto reply" description="The assistant replies to customers right away, you review later." defaultSelected />
+      <G.Switch description="Short description." label="Label only" />
+      <G.Switch label="Dark theme" isLabelHidden />
     </div>
   ),
   play: async ({ canvasElement }) => {

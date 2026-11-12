@@ -41,7 +41,7 @@ const fixture = (t: TestContext, edition: "full" | "lite", family = "core"): Pro
     // the auth route group and its layout, an auth page mounted in it, a callback mounted outside it
     [`${ROUTES}/(auth)/layout.tsx`]: 'import { AuthLayout } from "@/features/layouts/AuthLayout"; const Layout = ({ children }) => <AuthLayout>{children}</AuthLayout>; export default Layout',
     [`${ROUTES}/(auth)/login/page.tsx`]: 'import { LoginPage } from "@/features/pages/LoginPage"; const Route = () => <LoginPage />; export default Route',
-    [`${ROUTES}/(console)/zalo/callback/page.tsx`]: 'import { ZaloCallbackPage } from "@/features/pages/ZaloCallbackPage"; const Route = () => <ZaloCallbackPage />; export default Route',
+    [`${ROUTES}/(console)/oauth/callback/page.tsx`]: 'import { OAuthCallbackPage } from "@/features/pages/OAuthCallbackPage"; const Route = () => <OAuthCallbackPage />; export default Route',
     // an auth group with no layout of its own frames nothing; an owner mounted inside and outside the group is no auth page
     [`${ROUTES}/(public)/(auth)/signup/page.tsx`]: 'import { SignupPage } from "@/features/pages/SignupPage"; const Route = () => <SignupPage />; export default Route',
     [`${ROUTES}/(auth)/reset/page.tsx`]: 'import { ResetPage } from "@/features/pages/ResetPage"; const Route = () => <ResetPage />; export default Route',
@@ -59,7 +59,7 @@ const fixture = (t: TestContext, edition: "full" | "lite", family = "core"): Pro
     // a layout owner that draws its tabbed Page in place, the header held in a const
     [`${LAYOUTS}/BillingLayout/index.tsx`]: `${GRAMMAR} const header = { title: "Billing", tabs: { label: "Billing", items: [] } }; export const BillingLayout = ({ children }) => <Page header={header}>{children}</Page>`,
     [`${ROUTES}/(console)/billing/layout.tsx`]: 'import { BillingLayout } from "@/features/layouts/BillingLayout"; const Layout = ({ children }) => <BillingLayout>{children}</BillingLayout>; export default Layout',
-    [`${ROUTES}/(console)/billing/invoices/page.tsx`]: 'import { InvoicesPage } from "@/features/pages/InvoicesPage"; const Route = () => <InvoicesPage />; export default Route',
+    [`${ROUTES}/(console)/billing/reports/page.tsx`]: 'import { ReportsPage } from "@/features/pages/ReportsPage"; const Route = () => <ReportsPage />; export default Route',
     // a layout whose Page carries no tabs heads no segment: the pages under it draw their own Page
     [`${LAYOUTS}/AdminLayout/index.tsx`]: `${GRAMMAR} export const AdminLayout = ({ children }) => <Page measure="full">{children}</Page>`,
     [`${ROUTES}/admin/layout.tsx`]: 'import { AdminLayout } from "@/features/layouts/AdminLayout"; const Layout = ({ children }) => <AdminLayout>{children}</AdminLayout>; export default Layout',
@@ -125,7 +125,7 @@ for (const edition of ["full", "lite"] as const) {
     const app = fixture(t, edition)
     assert.deepEqual(ids(verify(app, "LoginPage", owner("<AgentCard />", "AgentCard"))), [])
     // a callback outside the group, a group with no layout, a page also mounted elsewhere, and a page no route mounts
-    for (const page of ["ZaloCallbackPage", "SignupPage", "ResetPage", "OrphanPage"]) {
+    for (const page of ["OAuthCallbackPage", "SignupPage", "ResetPage", "OrphanPage"]) {
       assert.deepEqual(ids(verify(app, page, owner("<AgentCard />", "AgentCard"))), ["missing"], page)
     }
   })
@@ -133,7 +133,7 @@ for (const edition of ["full", "lite"] as const) {
   test(`${edition} a segment layout that draws the Page with header.tabs is the one Page of the routes under it`, (t) => {
     const app = fixture(t, edition)
     // the tab pages draw body content only: no Page needed, through a block frame or a Page drawn in the layout itself
-    for (const page of ["SetupPage", "SettingsPage", "InvoicesPage"]) {
+    for (const page of ["SetupPage", "SettingsPage", "ReportsPage"]) {
       assert.deepEqual(ids(verify(app, page, owner("<div><AgentCard /><AgentCard /></div>", "AgentCard"))), [], page)
     }
     // a tab page that adds its own Page, directly or through a root block, draws a second one
@@ -141,7 +141,7 @@ for (const edition of ["full", "lite"] as const) {
     assert.deepEqual(ids(twice), ["twice"])
     assert.match(twice[0]?.message ?? "", /\(console\)\/agents\/\[installation\]\/layout\.tsx/)
     assert.deepEqual(ids(verify(app, "SetupPage", `${GRAMMAR} ${owner("<Page chrome=\"bleed\" header={{ breadcrumbs }}><AgentCard /></Page>", "AgentCard")}`)), ["twice"])
-    assert.deepEqual(ids(verify(app, "InvoicesPage", owner("<DecisionsBoard />", "DecisionsBoard"))), ["twice"])
+    assert.deepEqual(ids(verify(app, "ReportsPage", owner("<DecisionsBoard />", "DecisionsBoard"))), ["twice"])
   })
 
   test(`${edition} an untabbed layout Page frames no segment, and a page mounted inside and outside one is judged both ways`, (t) => {

@@ -51,12 +51,12 @@ test("FE-CLIENT-1: the directive sits only at an interaction boundary", () => {
       { filename: at("apps/web/src/components/providers/Theme/index.tsx"), code: DIRECTIVE },
       { filename: at("apps/web/src/redux/ReduxProvider.tsx"), code: DIRECTIVE },
       { filename: at("apps/web/src/redux/hooks.ts"), code: DIRECTIVE },
-      { filename: at("apps/web/src/redux/slices/course.ts"), code: DIRECTIVE },
+      { filename: at("apps/web/src/redux/slices/project.ts"), code: DIRECTIVE },
       { filename: at("apps/web/src/modules/toast/toast.tsx"), code: DIRECTIVE },
       { filename: at("apps/web/src/modules/toast/hooks.ts"), code: DIRECTIVE },
       { filename: at("apps/web/src/hooks/swr/SwrSideEffects.tsx"), code: DIRECTIVE },
       { filename: at("apps/web/src/hooks/socketio/SocketIoSideEffects.tsx"), code: DIRECTIVE },
-      { filename: at("apps/web/src/hooks/swr/api/graphql/queries/useQueryCourseSwr.ts"), code: DIRECTIVE },
+      { filename: at("apps/web/src/hooks/swr/api/graphql/queries/useQueryProjectSwr.ts"), code: DIRECTIVE },
       { filename: at("apps/web/src/hooks/rhf/useContactForm.ts"), code: DIRECTIVE },
       { filename: at("apps/web/src/hooks/socketio/sockets.ts"), code: DIRECTIVE },
       { filename: at("apps/web/src/hooks/zustand/cart/store.ts"), code: DIRECTIVE },
@@ -93,7 +93,7 @@ test("FE-CLIENT-1: the directive sits only at an interaction boundary", () => {
       { filename: at("apps/web/src/modules/api/graphql/clients/index.ts"), code: "'use client'\nexport const x = 1", errors: [{ messageId: "elsewhere" }] },
       // a module that is not client state: the auth client, an operation of the API layer
       { filename: at("apps/web/src/modules/auth/index.ts"), code: DIRECTIVE, errors: [{ messageId: "elsewhere" }] },
-      { filename: at("apps/web/src/modules/api/graphql/queries/query-course.ts"), code: DIRECTIVE, errors: [{ messageId: "elsewhere" }] },
+      { filename: at("apps/web/src/modules/api/graphql/queries/query-project.ts"), code: DIRECTIVE, errors: [{ messageId: "elsewhere" }] },
     ],
   })
 
@@ -106,9 +106,9 @@ test("FE-CLIENT-2: a client component imports nothing that exists only on the se
   slots.run("client-no-server-import", clientNoServerImport, {
     valid: [
       { filename: CLIENT, code: '"use client"\nimport { useState } from "react"' },
-      { filename: CLIENT, code: '"use client"\nimport useSWR from "swr"\nimport { useQueryCoursesSwr } from "@/hooks/swr"' },
+      { filename: CLIENT, code: '"use client"\nimport useSWR from "swr"\nimport { useQueryProjectsSwr } from "@/hooks/swr"' },
       // an operation of modules/api runs in the browser through its SWR hook
-      { filename: CLIENT, code: '"use client"\nimport { queryCourses } from "@/modules/api/graphql/queries/query-courses"' },
+      { filename: CLIENT, code: '"use client"\nimport { queryProjects } from "@/modules/api/graphql/queries/query-projects"' },
       { filename: CLIENT, code: '"use client"\nimport type { Headers } from "next/headers"' },
       // a server component may import all of it
       { filename: at("apps/web/src/features/pages/Home/index.tsx"), code: 'import { headers } from "next/headers"\nimport { getTranslations } from "next-intl/server"' },
@@ -139,8 +139,8 @@ test("FE-CLIENT-2c: the front end holds no Server Action", () => {
     valid: [
       { filename: at("apps/web/src/modules/api/graphql/mutations/mutation-enroll.ts"), code: "export const mutationEnroll = () => 1" },
       // a string that merely reads like the directive is not one
-      { filename: at("apps/web/src/hooks/course/useCourse.ts"), code: "const s = \"use server\"\nexport const useCourse = () => s" },
-      { filename: at("apps/web/src/hooks/course/useCourse.ts"), code: "export const useCourse = () => { const s = 1; \"use server\"; return s }" },
+      { filename: at("apps/web/src/hooks/project/useProject.ts"), code: "const s = \"use server\"\nexport const useProject = () => s" },
+      { filename: at("apps/web/src/hooks/project/useProject.ts"), code: "export const useProject = () => { const s = 1; \"use server\"; return s }" },
       { filename: at("apps/web/src/components/blocks/Feed/index.tsx"), code: DIRECTIVE },
     ],
     invalid: [
@@ -197,7 +197,7 @@ test("FE-CLIENT-4: raw HTML only on a script", () => {
 
 const typed = typedTester()
 const MODULE = at("apps/web/src/modules/kernel/read-things.ts")
-const HOOK = at("apps/web/src/hooks/lesson/useLesson.ts")
+const HOOK = at("apps/web/src/hooks/item/useItem.ts")
 const FEATURE = at("apps/web/src/features/pages/home/index.tsx")
 const MARKED = 'import "server-only"\n'
 
@@ -230,7 +230,7 @@ test("FE-CLIENT-2b: a module that uses the server marks itself server-only", () 
       { filename: FEATURE, code: 'import { getTranslations } from "next-intl/server"\nexport default async function Home() { await getTranslations(); return null }' },
       { filename: at("apps/web/src/components/blocks/Sections/index.tsx"), code: 'import { readMarked } from "../../../modules/marked/read-marked"\nexport const Sections = async () => { await readMarked(); return null }' },
       // an operation of the API layer runs in the browser: it imports no server API and needs no marker
-      { filename: at("apps/web/src/modules/api/graphql/queries/query-course.ts"), code: 'import { createAuthClient } from "../clients"\nexport const queryCourse = () => createAuthClient()' },
+      { filename: at("apps/web/src/modules/api/graphql/queries/query-project.ts"), code: 'import { createAuthClient } from "../clients"\nexport const queryProject = () => createAuthClient()' },
       // a client file is client-no-server-import's business
       { filename: HOOK, code: '"use client"\nimport { headers } from "next/headers"\nexport const useX = () => headers' },
       // files no slot owns are not judged
@@ -252,7 +252,7 @@ test("FE-CLIENT-2b: a module that uses the server marks itself server-only", () 
       { filename: MODULE, code: 'export { readMarked } from "../marked/read-marked"', errors: [{ messageId: "mark" }] },
       { filename: MODULE, code: 'export * from "../marked/read-marked"', errors: [{ messageId: "mark" }] },
       // a file of the API layer that reaches a server API is a server module like any other
-      { filename: at("apps/web/src/modules/api/graphql/queries/query-course.ts"), code: 'import { headers } from "next/headers"\nexport const queryCourse = () => headers()', errors: [{ messageId: "mark" }] },
+      { filename: at("apps/web/src/modules/api/graphql/queries/query-project.ts"), code: 'import { headers } from "next/headers"\nexport const queryProject = () => headers()', errors: [{ messageId: "mark" }] },
       // one report per server import
       { filename: MODULE, code: 'import { headers } from "next/headers"\nimport fs from "node:fs"\nexport const r = [headers, fs]', errors: [{ messageId: "mark" }, { messageId: "mark" }] },
     ],

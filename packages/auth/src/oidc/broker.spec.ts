@@ -15,7 +15,7 @@ const thrown = (kind: string): ((error: unknown) => boolean) => (error: unknown)
 const setup = async (): Promise<{ issuer: FakeOidcIssuer; broker: OidcBroker; clock: FakeClock }> => {
     const clock = new FakeClock()
     const issuer = await FakeOidcIssuer.create({ clock, clientSecret: "s3cret", identityProviders: ["google", "github"] })
-    issuer.seedUser({ id: "user-9", username: "mai", email: "mai@example.test", password: "correct horse", roles: ["learner"] })
+    issuer.seedUser({ id: "user-9", username: "mai", email: "mai@example.test", password: "correct horse", roles: ["member"] })
     return { issuer, clock, broker: createOidc(issuer.options({ callbackUri: CALLBACK })).broker }
 }
 
@@ -25,7 +25,7 @@ describe("OidcBroker sessions", () => {
         const first = await broker.passwordGrant("mai@example.test", "correct horse")
         assert.deepEqual(Object.keys(first).sort(), ["email", "refreshExpiresAt", "refreshToken", "roles", "subject"])
         assert.equal(first.subject, "user-9")
-        assert.deepEqual(first.roles, ["learner"])
+        assert.deepEqual(first.roles, ["member"])
         assert.equal(first.email, "mai@example.test")
         assert.equal(first.refreshExpiresAt.getTime(), clock.now().getTime() + 1_800_000)
         const second = await broker.refresh(first.refreshToken)
@@ -50,7 +50,7 @@ describe("OidcBroker sessions", () => {
 })
 
 describe("OidcBroker social sign-in", () => {
-    const begin = async (broker: OidcBroker, issuer: FakeOidcIssuer, claims: FakeTokenClaims = { sub: "social-1", email: "g@example.test", roles: ["learner"] }) => {
+    const begin = async (broker: OidcBroker, issuer: FakeOidcIssuer, claims: FakeTokenClaims = { sub: "social-1", email: "g@example.test", roles: ["member"] }) => {
         const verifier = randomReference()
         const nonce = randomReference()
         const state = randomReference()
@@ -69,7 +69,7 @@ describe("OidcBroker social sign-in", () => {
         const session = await broker.exchangeSocialCode({ code: flow.code, codeVerifier: flow.verifier, nonce: flow.nonce })
         assert.equal(session.subject, "social-1")
         assert.equal(session.email, "g@example.test")
-        assert.deepEqual(session.roles, ["learner"])
+        assert.deepEqual(session.roles, ["member"])
         assert.ok(session.refreshToken.length > 0)
         assert.equal(session.refreshExpiresAt.getTime(), clock.now().getTime() + 1_800_000)
     })

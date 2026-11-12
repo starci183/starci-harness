@@ -76,7 +76,7 @@ export interface WebhookRequest {
     readonly body: string
     /** The headers (signature included); `content-type` defaults to JSON. */
     readonly headers?: Readonly<Record<string, string>>
-    /** Which gateway transaction the delivery is about. */
+    /** Which provider transaction or event the delivery is about. */
     readonly reference?: string
     /** Give-up deadline (default 10s). */
     readonly timeoutMs?: number

@@ -13,11 +13,11 @@ const meta = {
             logoSrc: "starci-logo.png",
             version: NAV.version("0.1.0"),
             projects: [
-                { key: "starci-next", name: "starci-next", supervisor: supervisorStatus("alive"), isAlive: true },
-                { key: "nivo-lite", name: "nivo-lite", supervisor: supervisorStatus("stalled"), isAlive: false },
+                { key: "demo-app", name: "demo-app", supervisor: supervisorStatus("alive"), isAlive: true },
+                { key: "demo-lib", name: "demo-lib", supervisor: supervisorStatus("stalled"), isAlive: false },
             ],
             openDecisions: 2,
-            status: ready("Dữ liệu mẫu · Tick 51 lúc 12:44"),
+            status: ready("Sample data · Tick 51 at 12:44"),
             labels: {
                 landmark: NAV.landmark,
                 product: NAV.product,

@@ -9,7 +9,7 @@ const meta = {
     args: {
         body: null,
         props: {
-            counts: ready("3 dự án · 3 workflow đang hoạt động · 7 Op đang chạy"),
+            counts: ready("3 projects · 3 active workflows · 7 Ops running"),
             labels: {
                 title: OVERVIEW.title,
                 newWorkflow: OVERVIEW.newWorkflow,

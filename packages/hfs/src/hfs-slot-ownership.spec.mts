@@ -43,7 +43,7 @@ test.after(() => fs.rmSync(REPO_ROOT, { recursive: true, force: true }));
 const appFindings = (edition: string, files: string[], manifest = APP_MANIFEST, declaration: AppDeclaration = APP) => checkRepo({ repoRoot: REPO_ROOT, root: RUNTIME, manifest, declaration: { ...structuredClone(declaration), edition }, files, tree: false }).findings;
 const withCode = (findings: { code: string; path?: unknown }[], code: string) => findings.filter((finding) => finding.code === code).map((finding) => finding.path);
 
-const WEBHOOK = 'be/src/features/webhooks/sepay/transport/http/sepay.webhook.ts';
+const WEBHOOK = 'be/src/features/webhooks/gateway/transport/http/gateway.webhook.ts';
 const WITH_WEBHOOKS = { ...APP, sides: { ...APP.sides, be: { ...APP.sides.be, patterns: ['webhooks'] } } };
 
 for (const edition of ['lite', 'full']) {

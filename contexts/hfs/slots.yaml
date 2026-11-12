@@ -1434,6 +1434,8 @@ slots:
       - workspace.yaml
       - index.yaml
       - brand/**
+      - concepts/README.md
+      - concepts/<topic>.md
       - concepts/index.yaml
       - concepts/<name>/index.yaml
       - shell/index.yaml
@@ -1460,6 +1462,8 @@ slots:
       allows:
         - workspace.yaml
         - brand/**
+        - concepts/README.md
+        - concepts/<topic>.md
         - concepts/index.yaml
         - concepts/<name>/index.yaml
     rules:

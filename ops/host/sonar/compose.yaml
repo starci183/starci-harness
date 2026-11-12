@@ -1,6 +1,6 @@
 # The shared SonarQube of this host: Sonar Community Build, its PostgreSQL and the one-shot admin-password bootstrap.
 # Owned by ops/host.yaml (services sonar-postgres, sonar, sonar-bootstrap); `starci host up` runs it, never by hand with
-# `down -v`. It moved here from the retired legacy runtime (.claude/ext/sonar/ of starci-academy-backend) with the SAME Compose
+# `down -v`. It moved here from the retired legacy runtime (its ext/sonar/ folder) with the SAME Compose
 # project (`starci`), container names, service names and named volumes, so the running group and its data are
 # adopted, not recreated: `host up` starts only what is down, with `--no-recreate`, and leaves a running container untouched.
 #

@@ -36,20 +36,20 @@ const HEAD = `import { DocumentBuilder } from '@nestjs/swagger';
 export const OPENAPI = new DocumentBuilder().setTitle('crm').setVersion('1.0.0').addBearerAuth().build();`;
 const DTOS = `import { ApiProperty } from '@nestjs/swagger';
 export class ErrorDto { @ApiProperty() code!: string; @ApiProperty() message!: string; }
-export class LeadDto { @ApiProperty() id!: string; @ApiProperty() name!: string; }
-export class LeadPageDto { @ApiProperty({ type: [LeadDto] }) items!: LeadDto[]; @ApiProperty({ nullable: true, type: String }) nextCursor!: string | null; }
-export class CreateLeadDto { @ApiProperty() name!: string; }`;
+export class ItemDto { @ApiProperty() id!: string; @ApiProperty() name!: string; }
+export class ItemPageDto { @ApiProperty({ type: [ItemDto] }) items!: ItemDto[]; @ApiProperty({ nullable: true, type: String }) nextCursor!: string | null; }
+export class CreateItemDto { @ApiProperty() name!: string; }`;
 const CONTROLLER = `import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiDefaultResponse, ApiOkResponse, ApiOperation, ApiQuery } from '@nestjs/swagger';
-import { CreateLeadDto, ErrorDto, LeadDto, LeadPageDto } from './leads.dto';
-@ApiBearerAuth() @ApiDefaultResponse({ type: ErrorDto }) @Controller('leads')
-export class LeadsController {
-  @ApiOperation({ operationId: 'leads.list' }) @ApiQuery({ name: 'cursor', required: false }) @ApiQuery({ name: 'limit', required: false }) @ApiOkResponse({ type: LeadPageDto })
-  @Get() list(@Query('cursor') cursor?: string, @Query('limit') limit?: string): LeadPageDto { return { items: [], nextCursor: cursor ?? limit ?? null }; }
-  @ApiOperation({ operationId: 'leads.create' }) @ApiOkResponse({ type: LeadDto })
-  @Post() create(@Body() body: CreateLeadDto): LeadDto { return { id: '1', name: body.name }; }
+import { CreateItemDto, ErrorDto, ItemDto, ItemPageDto } from './items.dto';
+@ApiBearerAuth() @ApiDefaultResponse({ type: ErrorDto }) @Controller('items')
+export class ItemsController {
+  @ApiOperation({ operationId: 'items.list' }) @ApiQuery({ name: 'cursor', required: false }) @ApiQuery({ name: 'limit', required: false }) @ApiOkResponse({ type: ItemPageDto })
+  @Get() list(@Query('cursor') cursor?: string, @Query('limit') limit?: string): ItemPageDto { return { items: [], nextCursor: cursor ?? limit ?? null }; }
+  @ApiOperation({ operationId: 'items.create' }) @ApiOkResponse({ type: ItemDto })
+  @Post() create(@Body() body: CreateItemDto): ItemDto { return { id: '1', name: body.name }; }
 }`;
-const MODULE = `import { Module } from '@nestjs/common'; import { LeadsController } from './leads.controller'; @Module({ controllers: [LeadsController] }) export class AppModule {}`;
+const MODULE = `import { Module } from '@nestjs/common'; import { ItemsController } from './items.controller'; @Module({ controllers: [ItemsController] }) export class AppModule {}`;
 const REST = { apps: [{ name: 'api', kind: 'api', contract: 'rest' }] };
 
 function restApp(t: TestContext) {
@@ -58,8 +58,8 @@ function restApp(t: TestContext) {
     'tsconfig.json': JSON.stringify({ compilerOptions: { strict: true, target: 'ES2022', module: 'commonjs', experimentalDecorators: true, emitDecoratorMetadata: true } }),
     'apps/api/src/app.module.ts': MODULE,
     'apps/api/src/openapi.ts': HEAD,
-    'apps/api/src/leads.controller.ts': CONTROLLER,
-    'apps/api/src/leads.dto.ts': DTOS,
+    'apps/api/src/items.controller.ts': CONTROLLER,
+    'apps/api/src/items.dto.ts': DTOS,
   });
 }
 
@@ -82,14 +82,14 @@ test('starci app emit writes the OpenAPI document of a rest app from its control
   assert.deepEqual(emitted.written, ['contracts/api/openapi.json']);
   const doc: Json = JSON.parse(fs.readFileSync(path.join(root, 'contracts/api/openapi.json'), 'utf8'));
   assert.equal(doc.info.version, '1.0.0');
-  assert.equal(doc.paths['/leads'].get.operationId, 'leads.list');
+  assert.equal(doc.paths['/items'].get.operationId, 'items.list');
   assert.deepEqual(restContractProblems(doc), [], 'the emitted document of the fixture app keeps every R396 law');
   const repo = { profile: 'be', apps: REST.apps } as Json;
   const files = ['contracts/api/openapi.json'];
   const fresh = contractEmitFindings({ repoRoot: root, files, repo, emit: emitContracts });
   assert.deepEqual(fresh.findings, []);
   assert.deepEqual(fresh.apps.map((entry: Json) => [entry.artifact, entry.status]), [['schema.graphql', 'none'], ['openapi.json', 'fresh']]);
-  put('apps/api/src/leads.controller.ts', CONTROLLER.replace("'leads.create'", "'leads.add'"));
+  put('apps/api/src/items.controller.ts', CONTROLLER.replace("'items.create'", "'items.add'"));
   const stale = contractEmitFindings({ repoRoot: root, files, repo, emit: emitContracts });
   assert.deepEqual(stale.findings.map((finding: Json) => [finding.code, finding.drift]), [['HFS_CONTRACT_SNAPSHOT_DRIFT', 'stale']]);
   console.log(`fail fixture R23: ${stale.findings[0]?.message}`);
@@ -101,22 +101,22 @@ const OK: Json = {
     securitySchemes: { bearer: { type: 'http', scheme: 'bearer' } },
     schemas: {
       Error: { type: 'object', required: ['code', 'message'], properties: { code: { type: 'string' }, message: { type: 'string' } } },
-      Lead: { type: 'object', required: ['id'], properties: { id: { type: 'string' }, name: { type: 'string' } } },
-      LeadPage: { type: 'object', properties: { items: { type: 'array', items: { $ref: '#/components/schemas/Lead' } }, nextCursor: { type: 'string', nullable: true } } },
-      CreateLead: { type: 'object', required: ['name'], properties: { name: { type: 'string' } } },
+      Item: { type: 'object', required: ['id'], properties: { id: { type: 'string' }, name: { type: 'string' } } },
+      ItemPage: { type: 'object', properties: { items: { type: 'array', items: { $ref: '#/components/schemas/Item' } }, nextCursor: { type: 'string', nullable: true } } },
+      CreateItem: { type: 'object', required: ['name'], properties: { name: { type: 'string' } } },
     },
   },
   paths: {
-    '/leads': {
+    '/items': {
       get: {
-        operationId: 'leads.list', security: [{ bearer: [] }],
+        operationId: 'items.list', security: [{ bearer: [] }],
         parameters: [{ in: 'query', name: 'cursor', required: false, schema: { type: 'string' } }, { in: 'query', name: 'limit', required: false, schema: { type: 'number' } }],
-        responses: { 200: { content: { 'application/json': { schema: { $ref: '#/components/schemas/LeadPage' } } } }, default: { content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } } },
+        responses: { 200: { content: { 'application/json': { schema: { $ref: '#/components/schemas/ItemPage' } } } }, default: { content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } } },
       },
       post: {
-        operationId: 'leads.create', security: [{ bearer: [] }],
-        requestBody: { content: { 'application/json': { schema: { $ref: '#/components/schemas/CreateLead' } } } },
-        responses: { 201: { content: { 'application/json': { schema: { $ref: '#/components/schemas/Lead' } } } }, default: { content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } } },
+        operationId: 'items.create', security: [{ bearer: [] }],
+        requestBody: { content: { 'application/json': { schema: { $ref: '#/components/schemas/CreateItem' } } } },
+        responses: { 201: { content: { 'application/json': { schema: { $ref: '#/components/schemas/Item' } } } }, default: { content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } } },
       },
     },
     '/health': { get: { operationId: 'health.live', security: [], 'x-public-reason': 'probe', responses: { 204: {}, default: { content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } } } } },
@@ -127,18 +127,18 @@ const clone = (): Json => structuredClone(OK);
 test('R396: a stable, typed, secured, paged document passes; each law fails on its own fixture', () => {
   assert.deepEqual(restContractProblems(OK), []);
   const cases: Array<[string, (doc: Json) => void]> = [
-    ['BE_REST_OPERATION_ID', (doc) => { doc.paths['/leads'].get.operationId = 'LeadsController_list'; }],
-    ['BE_REST_OPERATION_ID', (doc) => { doc.paths['/leads'].post.operationId = 'leads.list'; }],
-    ['BE_REST_UNTYPED', (doc) => { doc.paths['/leads'].post.requestBody.content['application/json'].schema = { type: 'object' }; }],
-    ['BE_REST_UNTYPED', (doc) => { doc.paths['/leads'].post.responses[201] = { description: '' }; }],
+    ['BE_REST_OPERATION_ID', (doc) => { doc.paths['/items'].get.operationId = 'ItemsController_list'; }],
+    ['BE_REST_OPERATION_ID', (doc) => { doc.paths['/items'].post.operationId = 'items.list'; }],
+    ['BE_REST_UNTYPED', (doc) => { doc.paths['/items'].post.requestBody.content['application/json'].schema = { type: 'object' }; }],
+    ['BE_REST_UNTYPED', (doc) => { doc.paths['/items'].post.responses[201] = { description: '' }; }],
     ['BE_REST_ERROR_SHAPE', (doc) => { doc.components.schemas.Error.required = ['code']; }],
-    ['BE_REST_ERROR_SHAPE', (doc) => { doc.paths['/leads'].post.responses.default.content['application/json'].schema = { $ref: '#/components/schemas/Lead' }; }],
-    ['BE_REST_ERROR_SHAPE', (doc) => { delete doc.paths['/leads'].post.responses.default; }],
-    ['BE_REST_PAGINATION', (doc) => { doc.paths['/leads'].get.responses[200].content['application/json'].schema = { type: 'array', items: { $ref: '#/components/schemas/Lead' } }; }],
-    ['BE_REST_PAGINATION', (doc) => { doc.paths['/leads'].get.parameters = []; }],
+    ['BE_REST_ERROR_SHAPE', (doc) => { doc.paths['/items'].post.responses.default.content['application/json'].schema = { $ref: '#/components/schemas/Item' }; }],
+    ['BE_REST_ERROR_SHAPE', (doc) => { delete doc.paths['/items'].post.responses.default; }],
+    ['BE_REST_PAGINATION', (doc) => { doc.paths['/items'].get.responses[200].content['application/json'].schema = { type: 'array', items: { $ref: '#/components/schemas/Item' } }; }],
+    ['BE_REST_PAGINATION', (doc) => { doc.paths['/items'].get.parameters = []; }],
     ['BE_REST_SECURITY', (doc) => { delete doc.components.securitySchemes; }],
     ['BE_REST_SECURITY', (doc) => { delete doc.paths['/health'].get['x-public-reason']; }],
-    ['BE_REST_SECURITY', (doc) => { delete doc.paths['/leads'].get.security; delete doc.security; }],
+    ['BE_REST_SECURITY', (doc) => { delete doc.paths['/items'].get.security; delete doc.security; }],
   ];
   for (const [code, mutate] of cases) {
     const doc = clone();
@@ -152,21 +152,21 @@ test('R396: a stable, typed, secured, paged document passes; each law fails on i
 test('R177: a REST contract changes additively against its pin, or raises the major of info.version', () => {
   assert.deepEqual(restBreakingChanges(OK, OK), []);
   const added = clone();
-  added.paths['/leads/{id}'] = { get: { operationId: 'leads.read', responses: {} } };
-  added.components.schemas.Lead.properties.email = { type: 'string' };
+  added.paths['/items/{id}'] = { get: { operationId: 'items.read', responses: {} } };
+  added.components.schemas.Item.properties.email = { type: 'string' };
   assert.deepEqual(restBreakingChanges(OK, added), [], 'a new operation and a new answer field are additive');
   const broken = clone();
   delete broken.paths['/health'];
-  broken.paths['/leads'].get.operationId = 'leads.all';
-  broken.paths['/leads'].get.parameters.push({ in: 'query', name: 'owner', required: true, schema: { type: 'string' } });
-  broken.components.schemas.CreateLead.required = ['name', 'phone'];
-  delete broken.components.schemas.Lead.properties.name;
+  broken.paths['/items'].get.operationId = 'items.all';
+  broken.paths['/items'].get.parameters.push({ in: 'query', name: 'owner', required: true, schema: { type: 'string' } });
+  broken.components.schemas.CreateItem.required = ['name', 'phone'];
+  delete broken.components.schemas.Item.properties.name;
   const changes = restBreakingChanges(OK, broken);
   assert.deepEqual(changes, [
-    'GET /leads is renamed from leads.list to leads.all',
-    'GET /leads adds the required parameter query:owner',
-    'POST /leads requires the new body field phone',
-    'POST /leads 201 drops the field name',
+    'GET /items is renamed from items.list to items.all',
+    'GET /items adds the required parameter query:owner',
+    'POST /items requires the new body field phone',
+    'POST /items 201 drops the field name',
     'GET /health (health.live) is removed',
   ]);
   for (const change of changes) console.log(`fail fixture BE_CONTRACT_BREAKING: ${change}`);
@@ -180,10 +180,10 @@ test('restContractFindings reads the committed snapshot and pin of each rest app
   const pinned = clone();
   pinned.paths['/gone'] = { get: { operationId: 'gone.read', responses: {} } };
   put('contracts/api/openapi.pin.json', JSON.stringify(pinned));
-  const files = ['contracts/api/openapi.json', 'contracts/api/openapi.pin.json', 'src/features/api/leads/transport/graphql/leads.resolver.ts', 'src/modules/platform/graphql/graphql.module.ts'];
+  const files = ['contracts/api/openapi.json', 'contracts/api/openapi.pin.json', 'src/features/api/items/transport/graphql/items.resolver.ts', 'src/modules/platform/graphql/graphql.module.ts'];
   const rest = restContractFindings({ repoRoot: root, repo: { profile: 'be', apps: REST.apps } as Json, files });
   assert.deepEqual(rest.map((finding: Json) => [finding.code, finding.path]), [
-    ['BE_REST_APP_GRAPHQL', 'src/features/api/leads/transport/graphql/leads.resolver.ts'],
+    ['BE_REST_APP_GRAPHQL', 'src/features/api/items/transport/graphql/items.resolver.ts'],
     ['BE_REST_APP_GRAPHQL', 'src/modules/platform/graphql/graphql.module.ts'],
     ['BE_CONTRACT_BREAKING', 'contracts/api/openapi.json'],
   ]);
@@ -196,19 +196,19 @@ test('the REST emit never writes wrong paths: a literal global prefix is applied
   const prefixed = restApp(t);
   prefixed.put('apps/api/src/main.ts', `import { NestFactory } from '@nestjs/core'; import { AppModule } from './app.module'; const app = await NestFactory.create(AppModule); app.setGlobalPrefix('api');`);
   emitContracts({ repoRoot: prefixed.root, declaration: REST });
-  assert.deepEqual(Object.keys(emitted(prefixed.root).paths), ['/api/leads']);
+  assert.deepEqual(Object.keys(emitted(prefixed.root).paths), ['/api/items']);
   const computed = restApp(t);
   computed.put('apps/api/src/main.ts', `const app: any = null; const prefix = process.env['PREFIX'] ?? 'api'; app.setGlobalPrefix(prefix);`);
   assert.throws(() => emitContracts({ repoRoot: computed.root, declaration: REST }), (error: Error) => { console.log(`fail fixture emit (prefix): ${error.message.split('\n')[0]}`); return /not one string literal/.test(error.message); });
   const routed = restApp(t);
-  routed.put('apps/api/src/app.module.ts', `import { Module } from '@nestjs/common'; import { RouterModule } from '@nestjs/core'; import { LeadsController } from './leads.controller';
-@Module({ controllers: [LeadsController] }) export class LeadsModule {}
-@Module({ imports: [LeadsModule, RouterModule.register([{ path: 'crm', module: LeadsModule }])] }) export class AppModule {}`);
+  routed.put('apps/api/src/app.module.ts', `import { Module } from '@nestjs/common'; import { RouterModule } from '@nestjs/core'; import { ItemsController } from './items.controller';
+@Module({ controllers: [ItemsController] }) export class ItemsModule {}
+@Module({ imports: [ItemsModule, RouterModule.register([{ path: 'crm', module: ItemsModule }])] }) export class AppModule {}`);
   assert.throws(() => emitContracts({ repoRoot: routed.root, declaration: REST }), (error: Error) => { console.log(`fail fixture emit (RouterModule): ${error.message.split('\n')[0]}`); return /RouterModule/.test(error.message); });
   const dynamic = restApp(t);
-  dynamic.put('apps/api/src/app.module.ts', `import { Module } from '@nestjs/common'; import { LeadsController } from './leads.controller';
-@Module({}) export class LeadsModule { static register() { return { module: LeadsModule, controllers: [LeadsController] }; } }
-@Module({ imports: [LeadsModule.register()] }) export class AppModule {}`);
+  dynamic.put('apps/api/src/app.module.ts', `import { Module } from '@nestjs/common'; import { ItemsController } from './items.controller';
+@Module({}) export class ItemsModule { static register() { return { module: ItemsModule, controllers: [ItemsController] }; } }
+@Module({ imports: [ItemsModule.register()] }) export class AppModule {}`);
   emitContracts({ repoRoot: dynamic.root, declaration: REST });
-  assert.deepEqual(Object.keys(emitted(dynamic.root).paths), ['/leads']);
+  assert.deepEqual(Object.keys(emitted(dynamic.root).paths), ['/items']);
 });

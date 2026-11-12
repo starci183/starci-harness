@@ -99,8 +99,8 @@ test('lite dead exports count a capability <c>Entities once PRIMARY_ENTITIES nam
     'apps/core/src/main.ts': "import { AppModule } from './app.module';\nvoid AppModule;\n",
     'src/modules/platform/database/entities.ts': "import { billingEntities } from '../../domain/billing';\nexport const PRIMARY_ENTITIES = [...billingEntities];\n",
     'src/modules/domain/billing/index.ts': "export { billingEntities } from './persistence/entities/index';\n",
-    'src/modules/domain/billing/persistence/entities/index.ts': "import { InvoiceEntity } from './invoice.entity';\nexport const billingEntities = [InvoiceEntity];\n",
-    'src/modules/domain/billing/persistence/entities/invoice.entity.ts': 'export class InvoiceEntity { id = "" }\n',
+    'src/modules/domain/billing/persistence/entities/index.ts': "import { RecordEntity } from './record.entity';\nexport const billingEntities = [RecordEntity];\n",
+    'src/modules/domain/billing/persistence/entities/record.entity.ts': 'export class RecordEntity { id = "" }\n',
   };
   const fixture = projectFixture({ profile: 'be', edition: 'lite', files });
   t.after(fixture.cleanup);

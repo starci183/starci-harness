@@ -52,11 +52,11 @@ test('the base port parses: absent is null, a whole port with room for base+99 i
   }
 });
 
-test('the role table accepts the nivo layout: web base, api base+1, gateway base+2, mcp and landing above', () => {
+test('the role table accepts the first layout: web base, api base+1, gateway base+2, mcp and landing above', () => {
   assert.deepEqual(problems({ web: 3100, api: 3101, gateway: 3102, mcp: 3103, landing: 3104 }, 3100), []);
 });
 
-test('the role table accepts the starci-next layout: no gateway, so landing may sit at base+2', () => {
+test('the role table accepts the second layout: no gateway, so landing may sit at base+2', () => {
   assert.deepEqual(problems({ app: 3000, core: 3001, landing: 3002 }, 3000), []);
 });
 
@@ -212,13 +212,13 @@ function localOf(root: string, basePort: number | null, ports: Record<string, nu
 const found = (peers: PeerBase[], unread: MachinePeers['unread'] = []): MachinePeers => ({ peers, unread, registries: ['D:/state/machine.sqlite'] });
 
 test('doctor rows: the role table and the range are ok rows naming every project compared; a table violation and an overlap are fail rows', () => {
-  const peers: PeerBase[] = [{ project: 'nivo', repoRoot: 'D:/apps/nivo', basePort: 3100 }, { project: 'other', repoRoot: 'D:/apps/other', basePort: 4000 }];
+  const peers: PeerBase[] = [{ project: 'neighbour', repoRoot: 'D:/apps/neighbour', basePort: 3100 }, { project: 'other', repoRoot: 'D:/apps/other', basePort: 4000 }];
   const clear = basePortRows(localOf('x', 3300), found(peers));
   assert.deepEqual(clear.map((row) => [row.id, row.ok]), [['base port', true], ['port range', true]]);
-  assert.equal(clear[1]?.detail, '3300..3399 overlaps no other project; compared nivo 3100..3199 (D:/apps/nivo); other 4000..4099 (D:/apps/other); registries D:/state/machine.sqlite');
+  assert.equal(clear[1]?.detail, '3300..3399 overlaps no other project; compared neighbour 3100..3199 (D:/apps/neighbour); other 4000..4099 (D:/apps/other); registries D:/state/machine.sqlite');
   const clash = basePortRows(localOf('x', 3050), found(peers));
   assert.deepEqual(clash.map((row) => [row.id, row.ok]), [['base port', true], ['port range', false]]);
-  assert.match(clash[1]?.detail ?? '', /^3050\.\.3149 overlaps nivo 3100\.\.3199 \(D:\/apps\/nivo\); compared /u);
+  assert.match(clash[1]?.detail ?? '', /^3050\.\.3149 overlaps neighbour 3100\.\.3199 \(D:\/apps\/neighbour\); compared /u);
   assert.match(clash[1]?.fix ?? '', /each project owns its own hundred: change local\.basePort to 3200, the next free base/u);
   assert.equal(basePortRows(localOf('x', 3100), found(peers))[1]?.ok, false, 'equal bases overlap');
   assert.equal(basePortRows(localOf('x', 3200), found(peers))[1]?.ok, true, 'bases a span apart do not');
@@ -252,25 +252,25 @@ test('machinePeers reads every registered project from the fake machine store, w
   const own = app(t, BASE_APP(3000));
   const lane = app(t, BASE_APP(3000));
   // A project whose registered checkout declares no base, while a lane worktree of it does: the lane's base is the project's.
-  const nivo = app(t, BASE_APP(null), 'nivo');
-  git(nivo, 'init', '-q', '-b', 'main');
-  git(nivo, '-c', 'user.email=spec@example.invalid', '-c', 'user.name=spec', 'add', '-A');
-  git(nivo, '-c', 'user.email=spec@example.invalid', '-c', 'user.name=spec', 'commit', '-qm', 'base');
-  const nivoLane = `${nivo}-lane`;
-  t.after(() => fs.rmSync(nivoLane, { recursive: true, force: true }));
-  git(nivo, 'worktree', 'add', '-q', '-b', 'lane', nivoLane);
-  fs.writeFileSync(path.join(nivoLane, '.starcistacks', 'application-stacks.yaml'), `schema: starci/application-stacks@1\nenvironments:\n${COMPOSE_ENV(BASE_APP(3100))}`);
+  const neighbour = app(t, BASE_APP(null), 'neighbour');
+  git(neighbour, 'init', '-q', '-b', 'main');
+  git(neighbour, '-c', 'user.email=spec@example.invalid', '-c', 'user.name=spec', 'add', '-A');
+  git(neighbour, '-c', 'user.email=spec@example.invalid', '-c', 'user.name=spec', 'commit', '-qm', 'base');
+  const neighbourLane = `${neighbour}-lane`;
+  t.after(() => fs.rmSync(neighbourLane, { recursive: true, force: true }));
+  git(neighbour, 'worktree', 'add', '-q', '-b', 'lane', neighbourLane);
+  fs.writeFileSync(path.join(neighbourLane, '.starcistacks', 'application-stacks.yaml'), `schema: starci/application-stacks@1\nenvironments:\n${COMPOSE_ENV(BASE_APP(3100))}`);
   const legacy = app(t, BASE_APP(null), 'legacy');
   const retired = app(t, BASE_APP(3500), 'gone');
   const missing = path.join(registry, 'no-such-checkout');
-  const registered = [own, lane, nivo, legacy, retired, missing];
+  const registered = [own, lane, neighbour, legacy, retired, missing];
   withMachine((m) => {
     registered.forEach((root, index) => m.registerLedger({ ledgerId: `ledger-${index}`, name: path.basename(root), repoRoot: root, file: path.join(registry, `ledger-${index}.sqlite`) }));
     m.setLedgerState('ledger-4', 'retired', { reason: 'spec' });
   }, { file, env });
   assert.deepEqual(machineRegistries(env, own), [path.resolve(file)], 'STARCI_LOCAL_ROOT pins one store: the harness home is not read');
   const result = machinePeers({ env }, { repoRoot: own, appProject: 'demo', env: 'dev' });
-  assert.deepEqual(Object.fromEntries(result.peers.map((peer) => [peer.project, [peer.basePort, peer.ports]])), { nivo: [3100, []], legacy: [null, [56379, 3000]] });
+  assert.deepEqual(Object.fromEntries(result.peers.map((peer) => [peer.project, [peer.basePort, peer.ports]])), { neighbour: [3100, []], legacy: [null, [56379, 3000]] });
   assert.deepEqual(result.unread.map((entry) => [entry.repoRoot, entry.why]), [[path.resolve(missing), 'the checkout no longer exists']]);
   assert.deepEqual(result.registries, [path.resolve(file)]);
   const staging = machinePeers({ env }, { repoRoot: own, appProject: 'demo', env: 'staging' });
@@ -299,15 +299,15 @@ test('the scaffold base: the name base when free, else the next free hundred sai
   const preferred = scaffoldBasePort(name);
   const free = scaffoldBase({ name, root: 'D:/apps/alpha', found: found([]) });
   assert.deepEqual(free, { port: preferred, line: `base port: ${preferred} (the name's base, free; compared no other project)` });
-  const holder: PeerBase = { project: 'nivo', repoRoot: 'D:/apps/nivo', basePort: preferred };
+  const holder: PeerBase = { project: 'neighbour', repoRoot: 'D:/apps/neighbour', basePort: preferred };
   const moved = scaffoldBase({ name, root: 'D:/apps/alpha', found: found([holder]) });
   assert.notEqual(moved.port, preferred);
   assert.equal(overlapsOf(moved.port, [holder]).length, 0);
-  assert.match(moved.line, new RegExp(`^base port: ${moved.port} \\(the name's base ${preferred} overlaps nivo ${preferred}\\.\\.${preferred + 99} \\(D:/apps/nivo\\): the next free hundred; compared nivo`, 'u'));
+  assert.match(moved.line, new RegExp(`^base port: ${moved.port} \\(the name's base ${preferred} overlaps neighbour ${preferred}\\.\\.${preferred + 99} \\(D:/apps/neighbour\\): the next free hundred; compared neighbour`, 'u'));
   assert.throws(() => scaffoldBase({ name, root: 'D:/apps/alpha', explicit: String(preferred + 50), found: found([holder]) }), (error: unknown) => {
     assert.ok(error instanceof ScaffoldError);
     assert.equal(error.code, 'HFS_SCAFFOLD_BASE_PORT_TAKEN');
-    assert.match(error.message, new RegExp(`^--base-port ${preferred + 50} \\(${preferred + 50}\\.\\.${preferred + 149}\\) overlaps nivo .*each project owns its own hundred \\(PROJECT-STACKS-10\\); the next free base is \\d+: run starci app scaffold alpha --base-port \\d+`, 'u'));
+    assert.match(error.message, new RegExp(`^--base-port ${preferred + 50} \\(${preferred + 50}\\.\\.${preferred + 149}\\) overlaps neighbour .*each project owns its own hundred \\(PROJECT-STACKS-10\\); the next free base is \\d+: run starci app scaffold alpha --base-port \\d+`, 'u'));
     return true;
   });
   const elsewhere = preferred === 4800 ? 4700 : 4800;
@@ -327,7 +327,7 @@ test('the preview range 3900..3999 is reserved: a base whose range overlaps it f
 });
 
 test('the scaffold starts a new app on a base of its own in 3000..4900, in steps of the span', () => {
-  const bases = new Set(['alpha', 'beta', 'gamma', 'delta', 'nivo', 'starci-next', 'shop'].map(scaffoldBasePort));
+  const bases = new Set(['alpha', 'beta', 'gamma', 'delta', 'demo', 'example-app', 'shop'].map(scaffoldBasePort));
   for (const base of bases) assert.ok(base >= 3000 && base <= 4900 && base % 100 === 0 && !overlapsReserved(base), String(base));
   for (let i = 0; i < 200; i += 1) assert.ok(!overlapsReserved(scaffoldBasePort(`app-${i}`)), `app-${i}`);
   assert.ok(bases.size > 1, 'the base follows the project name');
@@ -344,25 +344,25 @@ function registryOf(t: { after: (fn: () => void) => void }, roots: readonly stri
 }
 
 test('app check --env local reports an overlap with another registered project as STACK_BASE_PORT_OVERLAP, a warning naming it and the next free base; a free range is one line', async (t) => {
-  const other = app(t, BASE_APP(3000), 'nivo');
+  const other = app(t, BASE_APP(3000), 'neighbour');
   const clashing = app(t, BASE_APP(3000));
   const env = registryOf(t, [other, clashing]);
   const ctx = stackContext({ cwd: clashing, env });
   const judged = await liveStateFindings({ ctx, repoRoot: clashing });
   assert.deepEqual(judged.findings.map((finding) => [finding.code, finding.level, finding.path]), [['STACK_BASE_PORT_OVERLAP', 'warning', '.starcistacks/application-stacks.yaml']]);
-  assert.match(judged.findings[0]?.message ?? '', /^environments\.dev\.local\.basePort: 3000\.\.3099 overlaps nivo 3000\.\.3099 \(.+\); compared nivo .*each project owns its own hundred: change local\.basePort to 3100, the next free base, .*starci app stack up --env dev refuses to start on it \(STACK_LOCAL_BASE_PORT_TAKEN\)$/u);
-  assert.match(judged.lines.join('\n'), /^ {2}machine dev: base-port-overlap 1 project\(s\) \(3000\.\.3099 overlaps nivo/mu);
+  assert.match(judged.findings[0]?.message ?? '', /^environments\.dev\.local\.basePort: 3000\.\.3099 overlaps neighbour 3000\.\.3099 \(.+\); compared neighbour .*each project owns its own hundred: change local\.basePort to 3100, the next free base, .*starci app stack up --env dev refuses to start on it \(STACK_LOCAL_BASE_PORT_TAKEN\)$/u);
+  assert.match(judged.lines.join('\n'), /^ {2}machine dev: base-port-overlap 1 project\(s\) \(3000\.\.3099 overlaps neighbour/mu);
   const apart = app(t, BASE_APP(3100));
   const clear = await liveStateFindings({ ctx: stackContext({ cwd: apart, env: registryOf(t, [other, apart]) }), repoRoot: apart });
   assert.deepEqual(clear.findings, []);
-  assert.match(clear.lines.join('\n'), /machine dev: base-port-overlap none \(3100\.\.3199 overlaps no other project; compared nivo 3000\.\.3099/u);
+  assert.match(clear.lines.join('\n'), /machine dev: base-port-overlap none \(3100\.\.3199 overlaps no other project; compared neighbour 3000\.\.3099/u);
   const unbased = app(t, BASE_APP(null));
   assert.deepEqual(await liveStateFindings({ ctx: stackContext({ cwd: unbased, env: registryOf(t, [other, unbased]) }), repoRoot: unbased }), { findings: [], lines: [] }, 'no base declared: R389 asks for one, nothing to compare');
   assert.equal(failureCatalog().STACK_BASE_PORT_OVERLAP?.kind, 'check-finding');
 });
 
 test('stack up refuses STACK_LOCAL_BASE_PORT_TAKEN before anything starts, dry run and --execute alike, naming the other project and the next free base', async (t) => {
-  const other = app(t, BASE_APP(3000), 'nivo');
+  const other = app(t, BASE_APP(3000), 'neighbour');
   const clashing = app(t, BASE_APP(3000));
   const env = registryOf(t, [other, clashing]);
   const local = { ...loadLocalConfig({ repoRoot: clashing, env: 'dev' }) };
@@ -371,7 +371,7 @@ test('stack up refuses STACK_LOCAL_BASE_PORT_TAKEN before anything starts, dry r
   for (const execute of [false, true]) {
     await assert.rejects(upLocal(ctx, local, { execute }), (error: { code?: string; message?: string }) => {
       assert.equal(error.code, 'STACK_LOCAL_BASE_PORT_TAKEN');
-      assert.match(error.message ?? '', /^STACK_LOCAL_BASE_PORT_TAKEN: dev: 3000\.\.3099 overlaps nivo 3000\.\.3099 \(.+\); compared nivo .*; nothing was started: each project owns its own hundred: change local\.basePort to 3100, the next free base, and the ports that derive from it/u);
+      assert.match(error.message ?? '', /^STACK_LOCAL_BASE_PORT_TAKEN: dev: 3000\.\.3099 overlaps neighbour 3000\.\.3099 \(.+\); compared neighbour .*; nothing was started: each project owns its own hundred: change local\.basePort to 3100, the next free base, and the ports that derive from it/u);
       return true;
     });
   }

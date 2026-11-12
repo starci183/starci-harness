@@ -61,7 +61,7 @@ for (const edition of ["lite", "full"] as const) {
     })
 
     test(`${edition}: a TypeScript file of an opt-in slot nobody declared is HFS_SLOT_NOT_ENABLED, once the pattern is declared it is not`, (t) => {
-        const webhook = "src/features/webhooks/sepay/transport/http/sepay.webhook.ts"
+        const webhook = "src/features/webhooks/acme-pay/transport/http/acme-pay.webhook.ts"
         const rejected = projectFixture({ edition, files: { [webhook]: EXPORT } })
         t.after(rejected.cleanup)
         rejected.tester.run("slot-undeclared", ruleNamed(rules, "slot-undeclared"), {

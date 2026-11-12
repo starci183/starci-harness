@@ -10,15 +10,15 @@ const run: RunCluster = {
     serverContainer: "k3d-starci-abcdef12-server-0",
     registry: "localhost:5001",
     registryInCluster: "k3d-starci-registry:5000",
-    namespacePrefix: "nivo-a1b2c3-",
+    namespacePrefix: "app-a1b2c3-",
     images: {},
 }
 
 const podsJson = JSON.stringify({
     items: [
-        { metadata: { name: "api-1", namespace: "nivo-a1b2c3-t" }, status: { phase: "Running", containerStatuses: [{ name: "app", ready: true }] } },
-        { metadata: { name: "db-1", namespace: "nivo-a1b2c3-t" }, status: { phase: "Pending", containerStatuses: [{ name: "pg", ready: false, state: { waiting: { reason: "ImagePullBackOff" } } }] } },
-        { metadata: { name: "new-1", namespace: "nivo-a1b2c3-t" }, status: { phase: "Pending" } },
+        { metadata: { name: "api-1", namespace: "app-a1b2c3-t" }, status: { phase: "Running", containerStatuses: [{ name: "app", ready: true }] } },
+        { metadata: { name: "db-1", namespace: "app-a1b2c3-t" }, status: { phase: "Pending", containerStatuses: [{ name: "pg", ready: false, state: { waiting: { reason: "ImagePullBackOff" } } }] } },
+        { metadata: { name: "new-1", namespace: "app-a1b2c3-t" }, status: { phase: "Pending" } },
     ],
 })
 
@@ -42,10 +42,10 @@ describe("cluster client", () => {
     it("runs kubectl inside the server container and prefixes logical names", async () => {
         const { exec, calls } = scriptedExec(() => undefined)
         const client = createClusterClient(run, { exec })
-        assert.equal(await client.createNamespace("t"), "nivo-a1b2c3-t")
+        assert.equal(await client.createNamespace("t"), "app-a1b2c3-t")
         assert.equal(calls[0]?.line, "docker exec -i k3d-starci-abcdef12-server-0 kubectl apply -f -")
-        assert.match(calls[0]?.input ?? "", /name: nivo-a1b2c3-t\n {2}labels:\n {4}starci.test-world\/namespace: nivo-a1b2c3/)
-        assert.equal(await client.createNamespace("nivo-a1b2c3-x"), "nivo-a1b2c3-x")
+        assert.match(calls[0]?.input ?? "", /name: app-a1b2c3-t\n {2}labels:\n {4}starci.test-world\/namespace: app-a1b2c3/)
+        assert.equal(await client.createNamespace("app-a1b2c3-x"), "app-a1b2c3-x")
     })
     it("refuses invalid namespace names and manifests reaching outside the prefix", async () => {
         const { exec, calls } = scriptedExec((line) => (line.includes("get pods") ? { stdout: '{"items":[]}' } : undefined))
@@ -56,14 +56,14 @@ describe("cluster client", () => {
         await assert.rejects(() => client.apply("kind: Pod\nmetadata:\n  namespace: kube-system", "t"), /outside the repository prefix/)
         assert.equal(calls.length, 0)
         await client.pods("other")
-        assert.match(calls[0]?.line ?? "", /get pods -n nivo-a1b2c3-other -o json/)
+        assert.match(calls[0]?.line ?? "", /get pods -n app-a1b2c3-other -o json/)
     })
     it("lists only labelled namespaces that carry the prefix", async () => {
-        const { exec } = scriptedExec((line) => (line.includes("get namespaces") ? { stdout: "namespace/nivo-a1b2c3-a\nnamespace/kube-system\n" } : undefined))
-        assert.deepEqual(await createClusterClient(run, { exec }).namespaces(), ["nivo-a1b2c3-a"])
+        const { exec } = scriptedExec((line) => (line.includes("get namespaces") ? { stdout: "namespace/app-a1b2c3-a\nnamespace/kube-system\n" } : undefined))
+        assert.deepEqual(await createClusterClient(run, { exec }).namespaces(), ["app-a1b2c3-a"])
     })
     it("lists pods of every repository namespace without --all-namespaces", async () => {
-        const { exec, calls } = scriptedExec((line) => (line.includes("get namespaces") ? { stdout: "namespace/nivo-a1b2c3-t\n" } : line.includes("get pods") ? { stdout: podsJson } : undefined))
+        const { exec, calls } = scriptedExec((line) => (line.includes("get namespaces") ? { stdout: "namespace/app-a1b2c3-t\n" } : line.includes("get pods") ? { stdout: podsJson } : undefined))
         assert.equal((await createClusterClient(run, { exec }).pods()).length, 3)
         assert.ok(!calls.some((call) => call.line.includes("--all-namespaces")))
     })
@@ -82,10 +82,10 @@ describe("cluster client", () => {
         const { exec, calls } = scriptedExec((line) => {
             if (!line.includes("get namespaces")) return undefined
             listed += 1
-            return { stdout: listed < 3 ? "namespace/nivo-a1b2c3-t\n" : "" }
+            return { stdout: listed < 3 ? "namespace/app-a1b2c3-t\n" : "" }
         })
         await createClusterClient(run, { exec, clock: fakeClock() }).deleteNamespace("t")
-        assert.match(calls[0]?.line ?? "", /delete namespace nivo-a1b2c3-t --wait=false/)
+        assert.match(calls[0]?.line ?? "", /delete namespace app-a1b2c3-t --wait=false/)
         assert.equal(listed, 3)
     })
 })

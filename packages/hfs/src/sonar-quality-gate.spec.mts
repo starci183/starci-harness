@@ -85,7 +85,7 @@ function flaky(answer: (url: string, n: number) => unknown, failures: Record<str
 }
 
 test('a transient network error or HTTP 5xx while polling is retried with backoff and the gate still decides', async (t) => {
-  // call 1: the task poll fails with a network error (NIVO's "fetch failed"); call 3: project_status answers 503 once.
+  // call 1: the task poll fails with a network error (a reference app's "fetch failed"); call 3: project_status answers 503 once.
   const { ctx, calls } = flaky((url) => url.includes('/api/ce/task') ? { task: { status: 'SUCCESS', analysisId: 'AN-1' } } : { projectStatus: { status: 'OK' } },
     { 1: 'network', 3: 503 });
   const verdict = await sonarQualityGate(ctx, { cwd: scanned(t), host: 'https://q.example.invalid', token: 'tok' });

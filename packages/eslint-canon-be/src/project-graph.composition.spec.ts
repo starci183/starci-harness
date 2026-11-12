@@ -112,16 +112,16 @@ test("error-code-unique: a code is capability-prefixed, a string literal and dec
             ...errorFile("purchase", 'export enum PurchaseErrorCode {\n  OfferNotFound = "PURCHASE_OFFER_NOT_FOUND",\n  AlreadyOwned = "PURCHASE_ALREADY_OWNED",\n}\n'),
             ...errorFile("learning-path", 'export enum LearningPathErrorCode {\n  Missing = "LEARNING_PATH_MISSING",\n}\nexport enum Unrelated {\n  X = "anything",\n}\n'),
             ...errorFile("order", 'export enum OrderErrorCode {\n  Wrong = "PURCHASE_NOT_FOUND",\n  Suffix = "ORDER_NOT_FOUND_ERROR",\n  Lower = "order_lower",\n  Bare = "ORDER",\n  Computed = `ORDER_${1}`,\n  Numeric = 4,\n}\n'),
-            ...errorFile("invoice", 'export enum InvoiceErrorCode {\n  A = "INVOICE_A",\n  B = "INVOICE_A",\n}\n'),
-            ...errorFile("invoice-plan", 'export enum InvoicePlanErrorCode {\n  A = "INVOICE_PLAN_A",\n  Clash = "INVOICE_A",\n}\n'),
+            ...errorFile("record", 'export enum RecordErrorCode {\n  A = "RECORD_A",\n  B = "RECORD_A",\n}\n'),
+            ...errorFile("record-plan", 'export enum RecordPlanErrorCode {\n  A = "RECORD_PLAN_A",\n  Clash = "RECORD_A",\n}\n'),
         },
     })
     f.tester.run("error-code-unique", ruleNamed(rules, "error-code-unique"), {
         valid: ok(f, ["src/modules/domain/purchase/errors/purchase.error.ts", "src/modules/domain/learning-path/errors/learning-path.error.ts"]),
         invalid: [...bad(f, [
             ["src/modules/domain/order/errors/order.error.ts", [2, /PURCHASE_NOT_FOUND" must match ORDER_/], [3, /_ERROR/], [4, /order_lower/], [5, /"ORDER"/], [6, /Computed must be a string literal/], [7, /Numeric must be a string literal/]],
-            ["src/modules/domain/invoice/errors/invoice.error.ts", [2, /already declared in/], [3, /already declared in/]],
-            ["src/modules/domain/invoice-plan/errors/invoice-plan.error.ts", [3, /must match INVOICE_PLAN_/]],
+            ["src/modules/domain/record/errors/record.error.ts", [2, /already declared in/], [3, /already declared in/]],
+            ["src/modules/domain/record-plan/errors/record-plan.error.ts", [3, /must match RECORD_PLAN_/]],
         ])],
     })
 })
@@ -288,51 +288,51 @@ const SCHEMA_GOOD = {
     ...connection("primary", "PRIMARY", "PRIMARY"),
     ...connection("agentos", "AGENTOS", "AGENTOS"),
     [`${BILLING}/index.ts`]: "export { billingEntities, billingMigrations } from './persistence/connection';\n",
-    [`${BILLING}/persistence/connection.ts`]: "import { InvoiceEntity } from './entities/invoice.entity';\nimport { CreateInvoices1789800000000 } from './migrations/1789800000000-create-invoices';\nexport const billingEntities = [InvoiceEntity];\nexport const billingMigrations = [CreateInvoices1789800000000];\n",
+    [`${BILLING}/persistence/connection.ts`]: "import { RecordEntity } from './entities/record.entity';\nimport { CreateRecords1789800000000 } from './migrations/1789800000000-create-records';\nexport const billingEntities = [RecordEntity];\nexport const billingMigrations = [CreateRecords1789800000000];\n",
     [CORE_APP]: REGISTER(PRIMARY_ENTRY),
     "apps/core/src/main.ts": "void 0;\n",
-    [`${BILLING}/persistence/entities/invoice.entity.ts`]: ENTITY("InvoiceEntity", "invoices"),
-    [`${BILLING}/persistence/migrations/1789800000000-create-invoices.ts`]: MIGRATION("CreateInvoices1789800000000"),
+    [`${BILLING}/persistence/entities/record.entity.ts`]: ENTITY("RecordEntity", "records"),
+    [`${BILLING}/persistence/migrations/1789800000000-create-records.ts`]: MIGRATION("CreateRecords1789800000000"),
 }
 const schemaRepo = (t: TestContext, files: Readonly<Record<string, string>>) => repo(t, {
     declaration: { connections: [{ name: "primary", envPrefix: "PRIMARY", owner: "core", isolation: "database" }, { name: "agentos", envPrefix: "AGENTOS", owner: "core", isolation: "database" }] },
     apps: [{ name: "core", kind: "api" }, { name: "cli", kind: "cli" }],
     files: { ...SCHEMA_GOOD, "apps/cli/src/main.ts": "void 0;\n", ...files },
 })
-const OWNER_FILES = [`${BILLING}/index.ts`, `${BILLING}/persistence/connection.ts`, `${BILLING}/persistence/entities/invoice.entity.ts`, `${BILLING}/persistence/migrations/1789800000000-create-invoices.ts`]
+const OWNER_FILES = [`${BILLING}/index.ts`, `${BILLING}/persistence/connection.ts`, `${BILLING}/persistence/entities/record.entity.ts`, `${BILLING}/persistence/migrations/1789800000000-create-records.ts`]
 
 test("schema-owner: entities and migrations sit in the persistence folders of the owner, migrations are named by the rule", (t) => {
     const f = schemaRepo(t, {
         "src/features/api/a/index.ts": "export const a = 1;\n",
         "src/features/api/a/application/order.entity.ts": ENTITY("OrderEntity", "orders"),
         "src/features/api/a/migrations/1789800000001-orders.ts": MIGRATION("Orders1789800000001"),
-        "src/modules/integrations/payos/index.ts": "export const p = 1;\n",
-        "src/modules/integrations/payos/persistence/entities/token.entity.ts": ENTITY("TokenEntity", "tokens"),
+        "src/modules/integrations/beta-pay/index.ts": "export const p = 1;\n",
+        "src/modules/integrations/beta-pay/persistence/entities/token.entity.ts": ENTITY("TokenEntity", "tokens"),
         [`${BILLING}/persistence/migrations/1789800000002-swap.ts`]: ENTITY("SwapEntity", "swaps"),
         [`${BILLING}/persistence/entities/late.entity.ts`]: MIGRATION("Late1789800000003"),
         [`${BILLING}/persistence/migrations/1789800000004-add-column.ts`]: MIGRATION("AddColumn"),
         [`${BILLING}/persistence/migrations/1789800000005-add-index.ts`]: MIGRATION("AddIndex1789800000005", "AddIndex"),
         [`${BILLING}/persistence/migrations/20260930-late.ts`]: MIGRATION("Late20260930"),
-        [`${BILLING}/persistence/migrations/1789800000000-create-invoices.spec.ts`]: "export {};\n",
+        [`${BILLING}/persistence/migrations/1789800000000-create-records.spec.ts`]: "export {};\n",
     })
     f.tester.run("schema-owner", ruleNamed(rules, "schema-owner"), {
         valid: ok(f, [...OWNER_FILES, CORE_APP]),
         invalid: [...bad(f, [
             ["src/features/api/a/application/order.entity.ts", [3, /Entity OrderEntity is declared outside persistence\/entities\//]],
             ["src/features/api/a/migrations/1789800000001-orders.ts", [1, /migrations\/ folder outside the persistence/], [2, /Migration Orders1789800000001 is declared outside/]],
-            ["src/modules/integrations/payos/persistence/entities/token.entity.ts", [1, /entities\/ folder outside the persistence/], [3, /Entity TokenEntity is declared outside/]],
+            ["src/modules/integrations/beta-pay/persistence/entities/token.entity.ts", [1, /entities\/ folder outside the persistence/], [3, /Entity TokenEntity is declared outside/]],
             [`${BILLING}/persistence/migrations/1789800000002-swap.ts`, [3, /Entity SwapEntity is declared outside persistence\/entities\//]],
             [`${BILLING}/persistence/entities/late.entity.ts`, [2, /Migration Late1789800000003 is declared outside persistence\/migrations\//]],
             [`${BILLING}/persistence/migrations/1789800000004-add-column.ts`, [2, /must be named AddColumn1789800000004/]],
             [`${BILLING}/persistence/migrations/1789800000005-add-index.ts`, [3, /must declare `name = "AddIndex1789800000005"`/]],
             [`${BILLING}/persistence/migrations/20260930-late.ts`, [1, /is not named <epochMs13>/]],
-            [`${BILLING}/persistence/migrations/1789800000000-create-invoices.spec.ts`, [1, /is a unit spec of a migration/]],
+            [`${BILLING}/persistence/migrations/1789800000000-create-records.spec.ts`, [1, /is a unit spec of a migration/]],
         ])],
     })
 })
 
 test("schema-owner: a connection the declaration does not name is refused", (t) => {
-    const f = schemaRepo(t, { [CORE_APP]: REGISTER('{ name: "ledger", entities: billingEntities, migrations: billingMigrations }') })
+    const f = schemaRepo(t, { [CORE_APP]: REGISTER('{ name: "journal", entities: billingEntities, migrations: billingMigrations }') })
     f.tester.run("schema-owner", ruleNamed(rules, "schema-owner"), {
         valid: ok(f, [...OWNER_FILES]),
         invalid: [...bad(f, [[CORE_APP, [7, /which hfs\.json does not declare/]]])],
@@ -342,7 +342,7 @@ test("schema-owner: a connection the declaration does not name is refused", (t) 
 test("schema-owner: arrays nobody registers are refused", (t) => {
     const f = schemaRepo(t, { [CORE_APP]: REGISTER("{ name: PRIMARY_CONNECTION }") })
     f.tester.run("schema-owner", ruleNamed(rules, "schema-owner"), {
-        valid: ok(f, [`${BILLING}/persistence/entities/invoice.entity.ts`]),
+        valid: ok(f, [`${BILLING}/persistence/entities/record.entity.ts`]),
         invalid: [...bad(f, [[`${BILLING}/persistence/connection.ts`, [1, /no app registers them/]]])],
     })
 })
@@ -350,7 +350,7 @@ test("schema-owner: arrays nobody registers are refused", (t) => {
 test("schema-owner: the arrays of one capability on two connections are refused", (t) => {
     const f = schemaRepo(t, { [CORE_APP]: REGISTER(`${PRIMARY_ENTRY}, { name: AGENTOS_CONNECTION, entities: billingEntities }`) })
     f.tester.run("schema-owner", ruleNamed(rules, "schema-owner"), {
-        valid: ok(f, [`${BILLING}/persistence/entities/invoice.entity.ts`]),
+        valid: ok(f, [`${BILLING}/persistence/entities/record.entity.ts`]),
         invalid: [...bad(f, [[CORE_APP, [7, /exactly one connection/]]])],
     })
 })
@@ -360,19 +360,19 @@ test("schema-owner: the same connection in two apps, through a spread options pr
         "apps/core/src/core.options.ts": 'export interface Options { database: { name: string } }\nexport const options: Options = { database: { name: "primary" } };\n',
         [CORE_APP]: REGISTER("{ ...options.database, entities: billingEntities, migrations: billingMigrations }", "import { options } from './core.options';"),
         "apps/cli/src/main.ts": REGISTER(PRIMARY_ENTRY),
-        [`${BILLING}/invoice.writer.ts`]: "import { InjectPrimaryEntityManager } from '../../platform/database/primary.decorators';\nexport const write = () => InjectPrimaryEntityManager();\n",
-        [`${BILLING}/invoice.reader.ts`]: "import { InjectAgentosEntityManager } from '../../platform/database/agentos.decorators';\nexport const read = () => InjectAgentosEntityManager();\n",
+        [`${BILLING}/record.writer.ts`]: "import { InjectPrimaryEntityManager } from '../../platform/database/primary.decorators';\nexport const write = () => InjectPrimaryEntityManager();\n",
+        [`${BILLING}/record.reader.ts`]: "import { InjectAgentosEntityManager } from '../../platform/database/agentos.decorators';\nexport const read = () => InjectAgentosEntityManager();\n",
     })
     f.tester.run("schema-owner", ruleNamed(rules, "schema-owner"), {
-        valid: ok(f, [CORE_APP, "apps/cli/src/main.ts", `${BILLING}/invoice.writer.ts`]),
-        invalid: [...bad(f, [[`${BILLING}/invoice.reader.ts`, [2, /injects the entity manager of connection agentos, but the billing capability/]]])],
+        valid: ok(f, [CORE_APP, "apps/cli/src/main.ts", `${BILLING}/record.writer.ts`]),
+        invalid: [...bad(f, [[`${BILLING}/record.reader.ts`, [2, /injects the entity manager of connection agentos, but the billing capability/]]])],
     })
 })
 
 test("schema-owner: a connection reached through a config call that names another connection is refused", (t) => {
     const f = schemaRepo(t, { [CORE_APP]: REGISTER(`${PRIMARY_ENTRY}, { ...parse(), entities: billingEntities, migrations: [...billingMigrations] }`, "const parse = () => ({ name: AGENTOS_CONNECTION });") })
     f.tester.run("schema-owner", ruleNamed(rules, "schema-owner"), {
-        valid: ok(f, [`${BILLING}/persistence/entities/invoice.entity.ts`]),
+        valid: ok(f, [`${BILLING}/persistence/entities/record.entity.ts`]),
         invalid: [...bad(f, [[CORE_APP, [7, /exactly one connection/]]])],
     })
 })
@@ -380,13 +380,13 @@ test("schema-owner: a connection reached through a config call that names anothe
 test("schema-owner: the owner index exports <c>Entities and <c>Migrations and nothing else of persistence", (t) => {
     const missing = schemaRepo(t, { [`${BILLING}/index.ts`]: "export { billingEntities } from './persistence/connection';\n" })
     missing.tester.run("schema-owner", ruleNamed(rules, "schema-owner"), {
-        valid: ok(missing, [`${BILLING}/persistence/entities/invoice.entity.ts`]),
+        valid: ok(missing, [`${BILLING}/persistence/entities/record.entity.ts`]),
         invalid: [...bad(missing, [[`${BILLING}/index.ts`, [1, /must export billingMigrations/]]])],
     })
-    const extra = schemaRepo(t, { [`${BILLING}/index.ts`]: "export { billingEntities, billingMigrations } from './persistence/connection';\nexport { InvoiceEntity } from './persistence/entities/invoice.entity';\n" })
+    const extra = schemaRepo(t, { [`${BILLING}/index.ts`]: "export { billingEntities, billingMigrations } from './persistence/connection';\nexport { RecordEntity } from './persistence/entities/record.entity';\n" })
     extra.tester.run("schema-owner", ruleNamed(rules, "schema-owner"), {
-        valid: ok(extra, [`${BILLING}/persistence/entities/invoice.entity.ts`]),
-        invalid: [...bad(extra, [[`${BILLING}/index.ts`, [2, /InvoiceEntity is exported from persistence/]]])],
+        valid: ok(extra, [`${BILLING}/persistence/entities/record.entity.ts`]),
+        invalid: [...bad(extra, [[`${BILLING}/index.ts`, [2, /RecordEntity is exported from persistence/]]])],
     })
 })
 
@@ -401,8 +401,8 @@ const REPRESENTATIVES = {
     "src/modules/platform/config/index.ts": "export { ConfigModule } from './config.module';\n",
     "src/modules/platform/config/config.module.ts": MODULE("ConfigModule"),
     "src/modules/domain/billing/index.ts": "export { BillingModule } from './billing.module';\n",
-    "src/modules/domain/billing/billing.module.ts": MODULE("BillingModule", "import { InvoiceModule } from './invoice.module';InvoiceModule"),
-    "src/modules/domain/billing/invoice.module.ts": MODULE("InvoiceModule"),
+    "src/modules/domain/billing/billing.module.ts": MODULE("BillingModule", "import { RecordModule } from './record.module';RecordModule"),
+    "src/modules/domain/billing/record.module.ts": MODULE("RecordModule"),
 }
 const FEATURE_A = {
     "src/features/api/a/index.ts": "export { AGraphqlModule } from './transport/graphql/a-graphql.module';\nexport { AHttpModule } from './transport/http/a-http.module';\n",
@@ -419,7 +419,7 @@ export class AppModule {}
 `
 const ROOT_GOOD = ["ConfigModule.register({ isGlobal: true })", "BillingModule.register({ isGlobal: true })", "AGraphqlModule", "AHttpModule"]
 const COMPOSE = "import { ConfigModule } from '../../modules/platform/config';\nimport { BillingModule } from '../../modules/domain/billing';\nexport const modules = [ConfigModule.register({ isGlobal: true }), BillingModule.register({ isGlobal: true })];\nexport const own = { imports: [BillingModule], isGlobal: true };\n"
-const CLEAN_TREE = ["src/modules/platform/config/config.module.ts", "src/modules/domain/billing/billing.module.ts", "src/modules/domain/billing/invoice.module.ts", "src/features/api/a/a.module.ts", "src/features/api/a/transport/graphql/a-graphql.module.ts", "src/features/api/a/transport/http/a-http.module.ts", "apps/core/src/app.module.ts"]
+const CLEAN_TREE = ["src/modules/platform/config/config.module.ts", "src/modules/domain/billing/billing.module.ts", "src/modules/domain/billing/record.module.ts", "src/features/api/a/a.module.ts", "src/features/api/a/transport/graphql/a-graphql.module.ts", "src/features/api/a/transport/http/a-http.module.ts", "apps/core/src/app.module.ts"]
 const rootRepo = (t: TestContext, files: Readonly<Record<string, string>>, apps?: readonly { readonly name: string; readonly kind: string }[]) => repo(t, { ...(apps === undefined ? {} : { apps }), files: { ...REPRESENTATIVES, ...FEATURE_A, "apps/core/src/app.module.ts": ROOT_APP(ROOT_GOOD), ...files } })
 const onceRepo = (t: TestContext, files: Readonly<Record<string, string>>) => rootRepo(t, files)
 
@@ -478,32 +478,32 @@ test("register-once: a capability module at the app root without the literal isG
 
 test("register-once: a module importing another capability's registered module is refused at the importer", (t) => {
     const f = onceRepo(t, {
-        "src/modules/domain/invoices/index.ts": "export { InvoicesModule } from './invoices.module';\n",
-        "src/modules/domain/invoices/invoices.module.ts": "import { Module } from '@nestjs/common';\nimport { ConfigModule } from '../../platform/config';\nimport { BillingModule } from '../billing';\n@Module({ imports: [ConfigModule, BillingModule.register({})] })\nexport class InvoicesModule {}\n",
+        "src/modules/domain/records/index.ts": "export { RecordsModule } from './records.module';\n",
+        "src/modules/domain/records/records.module.ts": "import { Module } from '@nestjs/common';\nimport { ConfigModule } from '../../platform/config';\nimport { BillingModule } from '../billing';\n@Module({ imports: [ConfigModule, BillingModule.register({})] })\nexport class RecordsModule {}\n",
     })
     f.tester.run("register-once", ruleNamed(rules, "register-once"), {
         valid: ok(f, CLEAN_TREE),
-        invalid: [...bad(f, [["src/modules/domain/invoices/invoices.module.ts", [4, /ConfigModule is registered in the root of app core, so no other module imports it/], [4, /BillingModule is registered in the root of app core, so no other module imports it/]]])],
+        invalid: [...bad(f, [["src/modules/domain/records/records.module.ts", [4, /ConfigModule is registered in the root of app core, so no other module imports it/], [4, /BillingModule is registered in the root of app core, so no other module imports it/]]])],
     })
 })
 
 test("register-once: a sub-module imported by two modules, or also listed in an app root, is refused", (t) => {
     const two = onceRepo(t, {
         "src/modules/domain/shipping/index.ts": "export { ShippingModule } from './shipping.module';\n",
-        "src/modules/domain/shipping/shipping.module.ts": "import { Module } from '@nestjs/common';\nimport { InvoiceModule } from '../billing/invoice.module';\n@Module({ imports: [InvoiceModule] })\nexport class ShippingModule {}\n",
+        "src/modules/domain/shipping/shipping.module.ts": "import { Module } from '@nestjs/common';\nimport { RecordModule } from '../billing/record.module';\n@Module({ imports: [RecordModule] })\nexport class ShippingModule {}\n",
     })
     two.tester.run("register-once", ruleNamed(rules, "register-once"), {
         valid: ok(two, CLEAN_TREE),
-        invalid: [...bad(two, [["src/modules/domain/shipping/shipping.module.ts", [3, /InvoiceModule is imported by 2 modules/]]])],
+        invalid: [...bad(two, [["src/modules/domain/shipping/shipping.module.ts", [3, /RecordModule is imported by 2 modules/]]])],
     })
     const listed = onceRepo(t, {
-        "apps/core/src/app.module.ts": ROOT_APP([...ROOT_GOOD, "InvoiceModule"]).replace("import { BillingModule }", "import { InvoiceModule } from '../../../src/modules/domain/billing/invoice.module';\nimport { BillingModule }"),
+        "apps/core/src/app.module.ts": ROOT_APP([...ROOT_GOOD, "RecordModule"]).replace("import { BillingModule }", "import { RecordModule } from '../../../src/modules/domain/billing/record.module';\nimport { BillingModule }"),
     })
     listed.tester.run("register-once", ruleNamed(rules, "register-once"), {
         valid: ok(listed, ["src/modules/platform/config/config.module.ts", "src/features/api/a/a.module.ts"]),
         invalid: [...bad(listed, [
-            ["apps/core/src/app.module.ts", [6, /InvoiceModule is listed in imports as a bare class/]],
-            ["src/modules/domain/billing/billing.module.ts", [3, /InvoiceModule is registered in the root of app core/]],
+            ["apps/core/src/app.module.ts", [6, /RecordModule is listed in imports as a bare class/]],
+            ["src/modules/domain/billing/billing.module.ts", [3, /RecordModule is registered in the root of app core/]],
         ])],
     })
 })

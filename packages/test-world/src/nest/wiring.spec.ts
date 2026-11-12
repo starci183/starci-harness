@@ -44,7 +44,7 @@ const context = (overrides: Partial<RunContext["infra"]> = {}): RunContext => ({
     fakes: {
         controlUrl: "http://127.0.0.1:1/control",
         entries: {
-            sepay: { url: "http://127.0.0.1:4000", host: "127.0.0.1", port: 4000, values: { apiKey: "k" }, endpoints: { webhook: "http://127.0.0.1:4000/w" } },
+            gateway: { url: "http://127.0.0.1:4000", host: "127.0.0.1", port: 4000, values: { apiKey: "k" }, endpoints: { webhook: "http://127.0.0.1:4000/w" } },
             idp: { url: "https://127.0.0.1:4002", host: "127.0.0.1", port: 4002, values: {}, endpoints: {}, ca: "-----BEGIN CERTIFICATE-----\nrun-ca\n-----END CERTIFICATE-----\n" },
         },
     },
@@ -125,9 +125,9 @@ test("apps get their reserved port and the host the caller names", () => {
     const inContainer = buildWiring(context(), { appPorts: { api: 4001 }, host: "host.docker.internal" })
     assert.equal(inContainer.apps["api"]?.url, "http://host.docker.internal:4001")
     assert.equal(inContainer.db["primary"]?.host, "host.docker.internal")
-    assert.equal(inContainer.fake["sepay"]?.url, "http://host.docker.internal:4000")
-    assert.equal(inContainer.fake["sepay"]?.endpoints["webhook"], "http://host.docker.internal:4000/w")
-    assert.equal(inContainer.fake["sepay"]?.ca, undefined)
+    assert.equal(inContainer.fake["gateway"]?.url, "http://host.docker.internal:4000")
+    assert.equal(inContainer.fake["gateway"]?.endpoints["webhook"], "http://host.docker.internal:4000/w")
+    assert.equal(inContainer.fake["gateway"]?.ca, undefined)
 })
 
 test("an https fake keeps its scheme on every host and hands the app the run CA to trust", () => {

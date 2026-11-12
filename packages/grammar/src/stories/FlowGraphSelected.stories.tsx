@@ -16,23 +16,23 @@ const meta: Meta = { title: 'Flow graph selected (0.37.35)', parameters: { layou
 export default meta;
 type Story = StoryObj;
 
-/** The receptionist (Lễ tân) graph as the workflow map draws it: the trigger, the intent with four ports, two hand-offs with chips, the answer, the complaint and its end. */
+/** The receptionist graph as the workflow map draws it: the trigger, the intent with four ports, two hand-offs with chips, the answer, the complaint and its end. */
 const handoffChips = (agent: string, workflow: string): ReadonlyArray<G.FlowGraphChip> => [
-  { label: `Agent nhận việc: ${agent}`, tone: 'accent' },
-  { label: `Quy trình: ${workflow}` },
-  { label: 'Phiên bản: latest' },
+  { label: `Agent: ${agent}`, tone: 'accent' },
+  { label: `Flow: ${workflow}` },
+  { label: 'Version: latest' },
 ];
 const receptionNodes: ReadonlyArray<G.FlowGraphNode> = [
-  { id: 'new', kind: 'event', label: 'Có việc mới', description: 'Tin, tiền về, hẹn giờ', tag: 'Kích hoạt' },
+  { id: 'new', kind: 'event', label: 'New event', description: 'Message, payment, timer', tag: 'Trigger' },
   {
-    id: 'understand', kind: 'condition', label: 'Hiểu ý khách', description: 'chọn hướng cho tin khách',
-    outputs: [{ id: 'buy', label: 'Muốn mua' }, { id: 'paid', label: 'Báo đã chuyển' }, { id: 'question', label: 'Hỏi thông tin' }, { id: 'complaint', label: 'Khiếu nại' }],
+    id: 'understand', kind: 'condition', label: 'Classify request', description: 'route the customer message',
+    outputs: [{ id: 'buy', label: 'Wants to buy' }, { id: 'paid', label: 'Payment sent' }, { id: 'question', label: 'Asks a question' }, { id: 'complaint', label: 'Complaint' }],
   },
-  { id: 'to-consult', kind: 'event', label: 'Chuyển sang quy trình', description: 'Sales', chips: handoffChips('sales', 'consult') },
-  { id: 'to-reconcile', kind: 'event', label: 'Chuyển sang quy trình', description: 'Kế toán', chips: handoffChips('accounting', 'reconcile') },
-  { id: 'answer', kind: 'action', label: 'Trả lời câu hỏi', description: 'từ thông tin của tiệm' },
-  { id: 'complaint', kind: 'action', label: 'Nhận khiếu nại', description: 'xin lỗi khách, tóm tắt cho chủ' },
-  { id: 'to-owner', kind: 'end', label: 'Chuyển chủ tiệm' },
+  { id: 'to-consult', kind: 'event', label: 'Hand off to flow', description: 'Sales', chips: handoffChips('sales', 'consult') },
+  { id: 'to-reconcile', kind: 'event', label: 'Hand off to flow', description: 'Billing', chips: handoffChips('billing', 'reconcile') },
+  { id: 'answer', kind: 'action', label: 'Answer the question', description: 'from the shop info' },
+  { id: 'complaint', kind: 'action', label: 'Take complaint', description: 'apologise, summarise for owner' },
+  { id: 'to-owner', kind: 'end', label: 'Hand to owner' },
 ];
 const receptionEdges: ReadonlyArray<G.FlowGraphEdge> = [
   { id: 'e1', source: 'new', target: 'understand' },
@@ -53,7 +53,7 @@ const runEdges: ReadonlyArray<G.FlowGraphEdge> = receptionEdges.map((edge) => ({
 const Well = ({ children }: { readonly children: React.ReactNode }) => (
   <div data-story-well="true" style={{ boxSizing: 'border-box', width: 'min(1160px, 100%)', height: 800, overflowY: 'auto', background: 'var(--background)' }}>
     <G.Stack gap="row">
-      <G.Heading level={2}>Sơ đồ</G.Heading>
+      <G.Heading level={2}>Diagram</G.Heading>
       {children}
     </G.Stack>
   </div>
@@ -61,7 +61,7 @@ const Well = ({ children }: { readonly children: React.ReactNode }) => (
 
 const Graph = ({ nodes, edges, initial }: { readonly nodes: ReadonlyArray<G.FlowGraphNode>, readonly edges: ReadonlyArray<G.FlowGraphEdge>, readonly initial: string | null }) => {
   const [selected, setSelected] = useState<string | null>(initial);
-  return <G.FlowGraph label="Sơ đồ quy trình" layout="steps" height="fill" nodes={nodes} edges={edges} selectedId={selected} onSelect={setSelected} />;
+  return <G.FlowGraph label="Flow diagram" layout="steps" height="fill" nodes={nodes} edges={edges} selectedId={selected} onSelect={setSelected} />;
 };
 
 /** A token's colour as the browser computes it. */
@@ -165,7 +165,7 @@ const pathPoints = (path: SVGPathElement): ReadonlyArray<{ readonly x: number, r
 };
 
 /**
- * The Lễ tân map: each branch leaves its port, turns once into its own lane and once into its target; no segment runs above the higher or below the lower of its
+ * The receptionist map: each branch leaves its port, turns once into its own lane and once into its target; no segment runs above the higher or below the lower of its
  * port and its target, no two branches share a lane, and the graph fits the 1160 well whole.
  */
 export const BranchLanesNoOvershoot: Story = {
@@ -216,12 +216,12 @@ export const SuggestionsChevron390: Story = {
       <G.SurfaceCard
         kind="list"
         layout="suggestions"
-        ariaLabel="Gợi ý trả lời"
+        ariaLabel="Reply suggestions"
         empty={null}
         items={[
-          { id: 'paid', title: 'Đơn DH-0004 đã nhận đủ 1.000đ, khoản dư 2k để lại coi như tiền tip hoặc hoàn sau', onPress: noop },
-          { id: 'short', title: 'Gửi lại QR', onPress: noop },
-          { id: 'fix', title: 'Sửa lỗi công cụ gửi tin rồi cho em chạy lại bước trả lời', onPress: noop },
+          { id: 'paid', title: 'Order OR-0004 was paid in full at $1,000, the extra $2 stays as a tip or is refunded later', onPress: noop },
+          { id: 'short', title: 'Resend the link', onPress: noop },
+          { id: 'fix', title: 'Fix the messaging tool error, then let me rerun the reply step', onPress: noop },
         ]}
       />
     </div>

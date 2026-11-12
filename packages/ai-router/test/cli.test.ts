@@ -38,7 +38,7 @@ providers:
         capabilities: [embeddings]
 defaults: { model: fast }
 profiles:
-  lesson: { model: m1, allowFallback: false }
+  chat: { model: m1, allowFallback: false }
 `
 
 let dir = ""
@@ -131,7 +131,7 @@ async function run(argv: string[], extra: Partial<CliIo> = {}): Promise<{ code: 
 describe("ai-router keys on the durable store", () => {
     test("create, list, get, update, rotate, usage and revoke", async () => {
         const config = ["--config", join(dir, "pool.yaml")]
-        const created = await run(["keys", "create", "--label", "cli", "--profiles", "lesson", "--models", "fast", "--no-fallback", "--rpm", "60", "--tokens-per-day", "1000", "--cost-per-day", "1.5", "--cost-per-month", "20", "--owner", "ops", ...config])
+        const created = await run(["keys", "create", "--label", "cli", "--profiles", "chat", "--models", "fast", "--no-fallback", "--rpm", "60", "--tokens-per-day", "1000", "--cost-per-day", "1.5", "--cost-per-month", "20", "--owner", "ops", ...config])
         assert.equal(created.code, 0, created.err)
         const issued = JSON.parse(created.out) as IssuedKey
         assert.match(issued.secret, /^sk-starci-cli-/)
@@ -189,11 +189,11 @@ describe("ai-router serve and keys --url", () => {
         while (!out.includes("listening")) await new Promise((resolve) => setTimeout(resolve, 5))
         const url = (JSON.parse(out) as { listening: string }).listening
         const remote = ["--url", url, "--admin-token-env", "TEST_ADMIN_TOKEN"]
-        const created = await run(["keys", "create", "--label", "remote", "--profiles", "lesson", ...remote])
+        const created = await run(["keys", "create", "--label", "remote", "--profiles", "chat", ...remote])
         assert.equal(created.code, 0, created.err)
         const issued = JSON.parse(created.out) as IssuedKey
         process.env.TEST_UPSTREAM_KEY = "sk-env-upstream"
-        assert.equal((await http(url, "/v1/chat/completions", { key: issued.secret, body: chatBody("lesson") })).status, 200)
+        assert.equal((await http(url, "/v1/chat/completions", { key: issued.secret, body: chatBody("chat") })).status, 200)
         assert.ok(["sk-env-upstream", "sk-from-file"].includes(fake.calls.at(-1)?.key ?? ""))
         delete process.env.TEST_UPSTREAM_KEY
         for (const command of [["list"], ["get", issued.key.id], ["update", issued.key.id, "--rpm", "5"], ["usage", issued.key.id, "--from", "2020-01-01"], ["rotate", issued.key.id], ["revoke", issued.key.id]]) {

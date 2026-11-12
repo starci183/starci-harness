@@ -63,7 +63,7 @@ Work splits by its shape, never by convenience:
 | --- | --- | --- |
 | a fixed-shape task: classify, extract, draft, parse a rule, summarise to a schema, embed | a LangChain chain of `integrations/ai`, called by the domain service that owns the data (BE-AI-4) | the gateway, with `STARCI_AI_KEY` |
 | an answer grounded in the app's knowledge | the same chain with a retriever the caller scopes (BE-AI-5) | the gateway, with `STARCI_AI_KEY` |
-| an open, multi-step conversation that decides which tools to call | the agent runtime (openclaw), outside the app (BE-AI-6) | the single MCP gateway for every tool, the ai-router gateway with the same `STARCI_AI_KEY` for every model call |
+| an open, multi-step conversation that decides which tools to call | an agent runtime outside the app (BE-AI-6) | the single MCP gateway for every tool, the ai-router gateway with the same `STARCI_AI_KEY` for every model call |
 
 A task whose steps code can list is a chain, even when it calls the model twice; a task whose next step depends on
 what a tool returned is the runtime's. Code never runs an agent loop, and the runtime never writes business data

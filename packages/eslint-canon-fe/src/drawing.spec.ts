@@ -60,7 +60,7 @@ test("a pure half takes shape, atom props and on actions", () => {
       },
       // a `component.tsx` that no split tier owns is not a pure half: a shared-package leaf and a folder named like a tier
       {
-        filename: at("packages/nivo-ui/src/leaves/Badge/component.tsx"),
+        filename: at("packages/app-ui/src/leaves/Badge/component.tsx"),
         code: "export type BadgeBaseProps = { readonly shape: \"a\"; readonly props: { readonly icon: ReactNode }; readonly on: {} }",
       },
       {
@@ -230,7 +230,7 @@ test("a shape union never lists a data status or open/closed", () => {
       { filename: OVERLAY, code: "export type SendOverlayShape = \"form\" | \"confirm\"" },
       { filename: BLOCK_INDEX, code: "export type HandoffBlockShape = \"pending\" | \"ready\"" },
       // a `component.tsx` outside every split tier names no drawn shapes
-      { filename: at("packages/nivo-ui/src/leaves/Badge/component.tsx"), code: "export type BadgeShape = \"pending\" | \"ready\"" },
+      { filename: at("packages/app-ui/src/leaves/Badge/component.tsx"), code: "export type BadgeShape = \"pending\" | \"ready\"" },
       { filename: at("apps/web/src/modules/components/blocks/Card/component.tsx"), code: "export type CardShape = \"pending\"" },
     ],
     invalid: [

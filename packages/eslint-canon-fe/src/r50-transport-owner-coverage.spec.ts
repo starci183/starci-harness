@@ -30,11 +30,11 @@ const localeRule = (name: string): Rule => {
 const CLIENT = at("apps/web/src/modules/api/graphql/clients/links/http.ts")
 const CHAIN = at("apps/web/src/modules/api/graphql/clients/create-apollo-client.ts")
 const LOCALE = at("apps/web/src/modules/api/graphql/clients/links/locale.ts")
-const HOOK = at("apps/web/src/hooks/course/useCourse.ts")
+const HOOK = at("apps/web/src/hooks/project/useProject.ts")
 const COMPONENT = at("apps/web/src/components/blocks/Feed/index.tsx")
 const GRAPH_CLIENT = "apps/web/src/modules/api/graphql/clients/index.ts"
-const GRAPH_HOOK = "apps/web/src/hooks/course/useCourse.ts"
-const GRAPH_BAD = "apps/web/src/hooks/course/useUnowned.ts"
+const GRAPH_HOOK = "apps/web/src/hooks/project/useProject.ts"
+const GRAPH_BAD = "apps/web/src/hooks/project/useUnowned.ts"
 
 for (const edition of ["lite", "full"] as const) {
   test(`R50 ${edition} accepts owned transport shapes and rejects unowned requests, state or locale`, () => {
@@ -69,7 +69,7 @@ for (const edition of ["lite", "full"] as const) {
     const tester = typedTester({ declaration: edition === "lite" ? LITE_FE_DECLARATION : undefined, lite: edition === "lite" })
     tester.run("no-data-fetch-in-effect", noDataFetchInEffect, {
       valid: [{ filename: COMPONENT, code: 'import { useEffect } from "react"; declare const title: string; useEffect(() => { document.title = title }, [title])' }],
-      invalid: [{ filename: COMPONENT, code: 'import { useEffect } from "react"; useEffect(() => { fetch("/courses").then(() => undefined) }, [])', errors: [{ messageId: "fetch" }] }],
+      invalid: [{ filename: COMPONENT, code: 'import { useEffect } from "react"; useEffect(() => { fetch("/projects").then(() => undefined) }, [])', errors: [{ messageId: "fetch" }] }],
     })
   })
 
@@ -77,8 +77,8 @@ for (const edition of ["lite", "full"] as const) {
     const files = {
       [GRAPH_CLIENT]: 'import { ApolloClient } from "@apollo/client"; export const authClient = new ApolloClient({ uri: "/graphql", fetch: (input: string) => fetch(input) });',
       "apps/web/src/modules/api/graphql/types.ts": "export type GraphQLResponse<T> = { success: boolean; message: string; error?: string; data?: T };",
-      [GRAPH_HOOK]: 'import { authClient } from "../../modules/api/graphql/clients"; export const useCourse = () => authClient;',
-      [GRAPH_BAD]: 'export const useUnowned = () => fetch("/courses");',
+      [GRAPH_HOOK]: 'import { authClient } from "../../modules/api/graphql/clients"; export const useProject = () => authClient;',
+      [GRAPH_BAD]: 'export const useUnowned = () => fetch("/projects");',
     }
     const fixture = projectFixture({ profile: "fe", edition, files })
     t.after(() => fixture.cleanup())

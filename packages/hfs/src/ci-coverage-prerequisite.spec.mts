@@ -1,5 +1,5 @@
 // The coverage job of the managed CI proves the merged report with the coverage judgement alone (`starci app coverage verify`): the fast and
-// lint jobs already ran every other rule, and the whole app check made the job run past its timeout (NIVO v0.3.0, 18m43s of 20).
+// lint jobs already ran every other rule, and the whole app check made the job run past its timeout (a reference app, 18m43s of 20).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { renderTargets } from '../sync/index.mjs';

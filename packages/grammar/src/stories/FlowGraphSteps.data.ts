@@ -2,20 +2,20 @@ import { BanknotesIcon, DocumentTextIcon, MagnifyingGlassIcon, MegaphoneIcon, Pe
 import type * as G from '../common/index.js';
 
 /**
- * The accounting flow "Đối soát tiền về" (money in, matched to an order) drawn as a `steps` graph: an event starts it, two conditions
- * fork it through named ports, a wait and an ask need the owner, and two dashed back edges return to "Ghi nhận đã trả".
+ * The payment flow "Payment received" (money in, matched to an order) drawn as a `steps` graph: an event starts it, two conditions
+ * fork it through named ports, a wait and an ask need the owner, and two dashed back edges return to "Mark as paid".
  */
 export const reconcileNodes: ReadonlyArray<G.FlowGraphNode> = [
-  { id: 'money-in', kind: 'event', label: 'Tiền về', description: 'Giao dịch ngân hàng mới', tag: 'Kích hoạt', icon: BanknotesIcon },
-  { id: 'find-order', kind: 'action', label: 'Tìm mã đơn', description: 'Đọc nội dung chuyển khoản', icon: MagnifyingGlassIcon },
-  { id: 'has-order', kind: 'condition', label: 'Có mã đơn?', description: 'Mã đơn trong nội dung', outputs: [{ id: 'yes', label: 'Có' }, { id: 'no', label: 'Không' }] },
-  { id: 'amount-ok', kind: 'condition', label: 'Đủ số tiền?', description: 'So với giá trị đơn', outputs: [{ id: 'match', label: 'Khớp' }, { id: 'off', label: 'Lệch' }] },
-  { id: 'note-unmatched', kind: 'action', label: 'Ghi chú chưa khớp', description: 'Lưu vào sổ đối soát', icon: PencilSquareIcon },
-  { id: 'wait-owner', kind: 'wait', label: 'Chờ chủ khớp tay', description: 'Chủ chọn đơn khớp', tag: 'Chờ' },
-  { id: 'ask-owner', kind: 'ask', label: 'Hỏi chủ', description: 'Báo số tiền lệch', tag: 'Cần chủ', icon: UserCircleIcon },
-  { id: 'mark-paid', kind: 'action', label: 'Ghi nhận đã trả', description: 'Đánh dấu đơn đã thanh toán', icon: DocumentTextIcon },
-  { id: 'tell-sales', kind: 'event', label: 'Báo Sales', description: 'Gửi thông báo cho nhóm', icon: MegaphoneIcon },
-  { id: 'done', kind: 'end', label: 'Xong' },
+  { id: 'money-in', kind: 'event', label: 'Payment received', description: 'New incoming payment', tag: 'Trigger', icon: BanknotesIcon },
+  { id: 'find-order', kind: 'action', label: 'Find order ID', description: 'Read the payment note', icon: MagnifyingGlassIcon },
+  { id: 'has-order', kind: 'condition', label: 'Has order ID?', description: 'Order ID in the note', outputs: [{ id: 'yes', label: 'Yes' }, { id: 'no', label: 'No' }] },
+  { id: 'amount-ok', kind: 'condition', label: 'Enough amount?', description: 'Compare to order total', outputs: [{ id: 'match', label: 'Match' }, { id: 'off', label: 'Off' }] },
+  { id: 'note-unmatched', kind: 'action', label: 'Note unmatched', description: 'Save to the match log', icon: PencilSquareIcon },
+  { id: 'wait-owner', kind: 'wait', label: 'Wait for manual match', description: 'Owner picks the order', tag: 'Wait' },
+  { id: 'ask-owner', kind: 'ask', label: 'Ask the owner', description: 'Report the amount gap', tag: 'Needs owner', icon: UserCircleIcon },
+  { id: 'mark-paid', kind: 'action', label: 'Mark as paid', description: 'Flag the order as paid', icon: DocumentTextIcon },
+  { id: 'tell-sales', kind: 'event', label: 'Notify team', description: 'Send by Email or Webhook', icon: MegaphoneIcon },
+  { id: 'done', kind: 'end', label: 'Done' },
 ];
 
 export const reconcileEdges: ReadonlyArray<G.FlowGraphEdge> = [
@@ -28,27 +28,27 @@ export const reconcileEdges: ReadonlyArray<G.FlowGraphEdge> = [
   { id: 'e-amount-off', source: 'amount-ok', target: 'ask-owner', sourcePort: 'off' },
   { id: 'e-paid-sales', source: 'mark-paid', target: 'tell-sales' },
   { id: 'e-sales-done', source: 'tell-sales', target: 'done' },
-  { id: 'b-ask-paid', source: 'ask-owner', target: 'mark-paid', variant: 'back', label: 'chủ duyệt' },
-  { id: 'b-wait-paid', source: 'wait-owner', target: 'mark-paid', variant: 'back', label: 'chủ khớp' },
+  { id: 'b-ask-paid', source: 'ask-owner', target: 'mark-paid', variant: 'back', label: 'owner approves' },
+  { id: 'b-wait-paid', source: 'wait-owner', target: 'mark-paid', variant: 'back', label: 'owner matches' },
 ];
 
 export const reconcileLegend: ReadonlyArray<G.FlowGraphLegendItem> = [
-  { kind: 'event', label: 'Sự kiện' },
-  { kind: 'action', label: 'Việc làm' },
-  { kind: 'condition', label: 'Điều kiện' },
-  { kind: 'ask', label: 'Cần chủ' },
-  { kind: 'wait', label: 'Chờ' },
+  { kind: 'event', label: 'Event' },
+  { kind: 'action', label: 'Action' },
+  { kind: 'condition', label: 'Condition' },
+  { kind: 'ask', label: 'Needs owner' },
+  { kind: 'wait', label: 'Wait' },
 ];
 
 export const reconcileStatusLabels: Partial<Record<G.FlowGraphRunStatus, string>> = {
-  done: 'Xong',
-  running: 'Đang chạy',
-  failed: 'Lỗi',
-  waiting: 'Chờ bạn',
-  skipped: 'Bỏ qua',
+  done: 'Done',
+  running: 'Running',
+  failed: 'Failed',
+  waiting: 'Waiting for you',
+  skipped: 'Skipped',
 };
 
-/** A run of the flow: the money matched an order of the right amount; the run is at "Báo Sales". */
+/** A run of the flow: the money matched an order of the right amount; the run is at "Notify team". */
 const matchedStatus: Readonly<Record<string, G.FlowGraphRunStatus>> = {
   'money-in': 'done',
   'find-order': 'done',

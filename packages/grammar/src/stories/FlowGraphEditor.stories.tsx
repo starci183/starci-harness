@@ -6,7 +6,7 @@ import { Matrix, State } from './fixtures.js';
 
 /**
  * The FlowGraph editor additions of 0.37.5 (`steps`): a dot-grid ground (`background="dots"`, xyflow's own Background), blocks the user drags
- * (`isEditable`, `positions`, `onPositionsChange`, and a "Sắp xếp lại" reset in the zoom group), and an agent line (`FlowGraphNode.agent`) under the
+ * (`isEditable`, `positions`, `onPositionsChange`, and a "Reset layout" reset in the zoom group), and an agent line (`FlowGraphNode.agent`) under the
  * title of a block that belongs to another agent.
  */
 const meta: Meta = {
@@ -24,9 +24,9 @@ const graphOf = (canvasElement: HTMLElement): HTMLElement => {
 };
 
 const nodes: ReadonlyArray<G.FlowGraphNode> = [
-  { id: 'trigger', kind: 'event', label: 'Có đơn mới', tag: 'Kích hoạt' },
-  { id: 'reply', kind: 'action', label: 'Soạn tin trả lời', description: 'Cho khách vừa đặt', agent: { name: 'Chatbot' } },
-  { id: 'pack', kind: 'action', label: 'Đóng gói đơn', agent: { name: 'Kho vận' } },
+  { id: 'trigger', kind: 'event', label: 'New order', tag: 'Trigger' },
+  { id: 'reply', kind: 'action', label: 'Draft a reply', description: 'For the new buyer', agent: { name: 'Chatbot' } },
+  { id: 'pack', kind: 'action', label: 'Pack the order', agent: { name: 'Logistics' } },
   { id: 'done', kind: 'end', label: 'Xong' },
 ];
 const edges: ReadonlyArray<G.FlowGraphEdge> = [
@@ -68,7 +68,7 @@ const Editable = () => {
   );
 };
 
-/** A dragged card moves, `onPositionsChange` fires with the moved ids, and "Sắp xếp lại" returns to the auto layout (`{}`). */
+/** A dragged card moves, `onPositionsChange` fires with the moved ids, and "Reset layout" returns to the auto layout (`{}`). */
 export const DraggableAndPositions: Story = {
   render: () => <Editable />,
   play: async ({ canvasElement }) => {
@@ -93,7 +93,7 @@ export const DraggableAndPositions: Story = {
     });
     const reset = graph.querySelector<HTMLElement>('.starci-core-flow-graph-reset');
     if (reset === null) throw new Error('The reset control renders while the graph is editable');
-    expect(reset.getAttribute('aria-label')).toBe('Sắp xếp lại');
+    expect(reset.getAttribute('aria-label')).toBe('Reset layout');
     await userEvent.click(reset);
     await waitFor(() => expect(pre.textContent).toBe('{}'));
   },
@@ -112,7 +112,7 @@ export const AgentLine: Story = {
     await waitFor(() => {
       const graph = graphOf(canvasElement);
       const lines = [...graph.querySelectorAll<HTMLElement>('[data-grammar-flow-agent="true"]')];
-      expect(lines.map((line) => line.textContent)).toEqual(['Chatbot', 'Kho vận']);
+      expect(lines.map((line) => line.textContent)).toEqual(['Chatbot', 'Logistics']);
       const avatar = lines[0]!.querySelector<HTMLElement>('.starci-core-avatar, [data-slot="avatar"]');
       expect(avatar).not.toBeNull();
       expect(avatar!.offsetWidth).toBe(16);

@@ -155,7 +155,7 @@ the stricter mode. The branch name alone decides, so a hook and CI agree; an ups
 
 A project's own laws (the shape of one of its packages, a schema its specs follow, a naming rule of its modules, a generated file that must be
 fresh) belong to the project, never to the generic harness: the harness only runs them. They live in one place, the folder `ext/` at the app
-root (slot `app.ext`), with one subfolder per tool, and they are recorded as decisions in the project's `.starciwork/concepts`. There is no
+root (slot `app.ext`), with one subfolder per tool, and the words and business rules they hold are written in the project's `.starciwork/concepts`. There is no
 extension point inside a package: a rule reaches a package by naming its paths. Outside `ext/` a repository keeps no check, lint rule or
 lint plugin of its own (R103).
 

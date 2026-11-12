@@ -30,7 +30,7 @@ const SPEC = at("src/modules/domain/order/order.service.spec.ts")
 const HANDLER_SPEC = at("src/features/api/checkout/application/start-checkout.handler.spec.ts")
 const SERVICE = at("src/modules/domain/order/order.service.ts")
 const FIXTURE = at("src/tests/fixtures/orders.ts")
-const E2E = at("src/tests/e2e/checkout/course-enroll.e2e-spec.ts")
+const E2E = at("src/tests/e2e/checkout/project-enroll.e2e-spec.ts")
 
 const NEST = 'import { Test } from "@nestjs/testing"\nimport { OrderService } from "./order.service"\n'
 
@@ -152,7 +152,7 @@ test("no-return-only-generic: a helper of a spec or a fixture is not a cast with
             // a JSON round trip typed by the receiver
             { filename: SPEC, code: "interface Row { id: number }\nexport const row: Row = JSON.parse(JSON.stringify({ id: 1 }))", errors: [{ messageId: "json" }] },
             // an object of one class returned as another
-            { filename: FIXTURE, code: "class Order { id = 0 }\nclass Invoice { total = 0 }\nexport const invoice = (): Invoice => Object.assign(new Order(), { total: 1 })", errors: [{ messageId: "assign" }] },
+            { filename: FIXTURE, code: "class Order { id = 0 }\nclass RecordEntry { total = 0 }\nexport const record = (): RecordEntry => Object.assign(new Order(), { total: 1 })", errors: [{ messageId: "assign" }] },
         ],
     }) })
 })
@@ -332,7 +332,7 @@ test("a value-role spec parses a real boundary schema without a testing module; 
             // zod imported, but a function with logic beside the schema
             { filename: at("src/modules/domain/order/zod-logic.schema.spec.ts"), code: parse("zod-logic"), errors: [noModule] },
             // a pure zod file in a slot that is not an owner tier of R304 (a projection)
-            { filename: at("src/modules/projections/userxp/xp-row.schema.spec.ts"), code: parse("xp-row"), errors: [noModule] },
+            { filename: at("src/modules/projections/user-score/score-row.schema.spec.ts"), code: parse("score-row"), errors: [noModule] },
             // no sibling file at all
             { filename: at("src/modules/domain/order/missing.schema.spec.ts"), code: parse("missing"), errors: [noModule] },
         ],

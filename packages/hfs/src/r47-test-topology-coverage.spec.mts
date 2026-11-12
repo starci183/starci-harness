@@ -30,13 +30,13 @@ function contractFindings(root: string) {
   return checkContractFixtureGuard({ config, context, graph }).violations;
 }
 
-const payload = 'src/tests/world/fakes/sepay/payloads/payment.json';
-const contract = 'src/tests/contract/sepay/payment.contract-spec.ts';
+const payload = 'src/tests/world/fakes/gateway/payloads/payment.json';
+const contract = 'src/tests/contract/gateway/payment.contract-spec.ts';
 const guard = `import { shapeOf } from '../../world/payload-shape.policy';
 import { renderPayload } from '../../world/fakes/payload.service';
 declare const real: unknown;
 it('matches the provider fixture', () => {
-  expect(shapeOf(real)).toEqual(shapeOf(renderPayload('sepay', 'payment')));
+  expect(shapeOf(real)).toEqual(shapeOf(renderPayload('gateway', 'payment')));
 });
 `;
 
@@ -56,7 +56,7 @@ for (const edition of ['lite', 'full']) {
       'src/modules/domain/cart/cart.service.spec.ts': 'export {};',
       'src/tests/integration/cart/cart.integration-spec.ts': 'export {};',
       'src/tests/e2e/cart/cart.e2e-spec.ts': 'export {};',
-      'src/tests/contract/sepay/payment.contract-spec.ts': 'export {};',
+      'src/tests/contract/gateway/payment.contract-spec.ts': 'export {};',
     });
     assert.deepEqual(checkHfs({ root, kinds: ['backend'] }).violations.filter(hit => hit.ruleId === 'BE_TEST_TOPOLOGY'), []);
   });

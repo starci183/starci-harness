@@ -50,7 +50,7 @@ test("FE-GRAMMAR-1: page structure and text are grammar components, not raw tags
       { filename: FEATURE, code: "import { Heading, Text } from \"@starci/grammar\"\nexport const A = () => <Heading level={1}><Text>x</Text></Heading>" },
       // a named non-card section is a grammar component too
       { filename: FEATURE, code: "import { NavLandmark, Section } from \"@starci/grammar\"\nexport const A = () => <Section title=\"t\"><NavLandmark label=\"n\" layout=\"bar\">n</NavLandmark></Section>" },
-      { filename: BLOCK, code: "import { SurfaceCard } from \"@nivo/ui\"\nexport const A = () => <SurfaceCard>x</SurfaceCard>" },
+      { filename: BLOCK, code: "import { SurfaceCard } from \"@app/ui\"\nexport const A = () => <SurfaceCard>x</SurfaceCard>" },
       // a tag the grammar has no component for stays available: layout wrappers and line breaks
       { filename: FEATURE, code: raw("div") },
       { filename: FEATURE, code: "export const A = () => <div className={classNames.root}>x<br /></div>" },
@@ -65,8 +65,8 @@ test("FE-GRAMMAR-1: page structure and text are grammar components, not raw tags
       // a capitalised component that shares a tag's spelling is a component
       { filename: FEATURE, code: "export const A = () => <Section>x</Section>" },
       // the renderers themselves draw raw tags
-      { filename: at("packages/nivo-ui/src/leaves/Note/component.tsx"), code: raw("p") },
-      { filename: at("packages/nivo-ui/src/composites/Panel/index.tsx"), code: raw("section") },
+      { filename: at("packages/app-ui/src/leaves/Note/component.tsx"), code: raw("p") },
+      { filename: at("packages/app-ui/src/composites/Panel/index.tsx"), code: raw("section") },
       // a file no slot owns is not judged here
       { filename: at("scripts/render.tsx"), code: raw("p") },
     ],
@@ -95,10 +95,10 @@ test("FE-GRAMMAR-1: page structure and text are grammar components, not raw tags
       { filename: at("apps/web/src/components/leaves/Chip/component.tsx"), code: raw("span"), errors: [{ messageId: "raw" }] },
       { filename: at("apps/admin/src/features/layouts/shell/component.tsx"), code: raw("nav"), errors: [{ messageId: "raw" }] },
       { filename: at("apps/web/src/app/[locale]/page.tsx"), code: raw("section"), errors: [{ messageId: "raw" }] },
-      { filename: at("apps/web/src/hooks/lesson/useLesson.tsx"), code: raw("p"), errors: [{ messageId: "raw" }] },
+      { filename: at("apps/web/src/hooks/item/useItem.tsx"), code: raw("p"), errors: [{ messageId: "raw" }] },
       // a package that is not the ui package composes the grammar too
       { filename: at("packages/other/src/Widget.tsx"), code: raw("p"), errors: [{ messageId: "raw" }] },
-      { filename: at("packages/nivo-i18n/src/Provider.tsx"), code: raw("span"), errors: [{ messageId: "raw" }] },
+      { filename: at("packages/app-i18n/src/Provider.tsx"), code: raw("span"), errors: [{ messageId: "raw" }] },
     ],
   })
 })

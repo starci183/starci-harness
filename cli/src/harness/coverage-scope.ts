@@ -166,7 +166,7 @@ export const runsJest = (argv: readonly string[], cwd: string): boolean => {
 const WORLD_PROJECTS: ReadonlySet<string> = new Set(["integration", "e2e", "contract"])
 
 /**
- * A spec that boots a live provider sandbox (`useSandbox(...)`, or with its client type `useSandbox<LessonAi>(...)`,
+ * A spec that boots a live provider sandbox (`useSandbox(...)`, or with its client type `useSandbox<ChatAi>(...)`,
  * `@starci/test-world`): it needs keys the world does not declare, so it runs only when named.
  */
 const LIVE = /\buseSandbox\s*(?:<[^;()]*>\s*)?\(/

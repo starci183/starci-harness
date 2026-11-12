@@ -17,16 +17,16 @@ import { at, BE_DECLARATION, ruleTester, TYPED_ROOT } from "../fixtures/typed/te
 import { hfsFromDeclaration } from "./lib/hfs.ts"
 import { recommended, rules, schemaBounded, schemaFileValuesOnly, schemaPlace } from "./boundary-schema.ts"
 
-const SCHEMA = at("src/modules/integrations/sepay/sepay-transactions.schema.ts")
-const SCHEMA_SPEC = at("src/modules/integrations/sepay/sepay-transactions.schema.spec.ts")
+const SCHEMA = at("src/modules/integrations/acme-pay/acme-pay-transactions.schema.ts")
+const SCHEMA_SPEC = at("src/modules/integrations/acme-pay/acme-pay-transactions.schema.spec.ts")
 const PLATFORM_SCHEMA = at("src/modules/platform/queue/queue-payload.schema.ts")
 const DOMAIN_SCHEMA = at("src/modules/domain/order/order-payload.schema.ts")
-const READER = at("src/modules/integrations/sepay/sepay-transactions.mapper.ts")
+const READER = at("src/modules/integrations/acme-pay/acme-pay-transactions.mapper.ts")
 const FEATURE = at("src/features/api/plan/application/create-plan.handler.ts")
 const FEATURE_SCHEMA = at("src/features/api/plan/application/create-plan.schema.ts")
 const DOOR = at("src/features/api/plan/transport/graphql/create-plan.resolver.ts")
 const DTO = at("src/features/api/plan/transport/graphql/dto/create-plan.input.ts")
-const WEBHOOK_DTO = at("src/features/webhooks/sepay/transport/http/dto/sepay.request.ts")
+const WEBHOOK_DTO = at("src/features/webhooks/acme-pay/transport/http/dto/acme-pay.request.ts")
 const SERVICE = at("src/modules/domain/order/order.service.ts")
 const WORLD = at("src/tests/world/helper.ts")
 
@@ -140,7 +140,7 @@ for (const edition of ["lite", "full"]) {
                   { filename: DOMAIN_SCHEMA, code: `${Z}export const A = z.string().max(5)` },
                   { filename: SCHEMA, code: "import { z } from 'zod/v4'\nexport const A = z.string().max(5)" },
                   // the reader imports the schema, never zod
-                  { filename: READER, code: "import { SepayTransactions } from './sepay-transactions.schema'\nexport const read = (value: unknown) => SepayTransactions.safeParse(value)" },
+                  { filename: READER, code: "import { AcmePayTransactions } from './acme-pay-transactions.schema'\nexport const read = (value: unknown) => AcmePayTransactions.safeParse(value)" },
                   // class-validator in a door is the other layer and owes nothing here
                   { filename: DTO, code: "import { IsString, MaxLength } from 'class-validator'\nexport class CreatePlanInput { @IsString() @MaxLength(5) name!: string }" },
                   // a module that merely mentions zod in text is not importing it

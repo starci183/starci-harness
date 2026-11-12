@@ -2555,7 +2555,7 @@ rules:
       - {kind: hfs, id: stacks-local}
   - id: R374
     code: STACKS_CODE_BIND_MOUNT
-    law: A service the app customises runs from an image built out of `.starcistacks/images/<name>/` (a Dockerfile whose every FROM is digest-pinned, and whose final stage is the harness's image for that service, the fork or its runtime layer, when the harness owns one), the same image in every environment (the folder build, or a project-owned reference `<project>` or `<project>-<name>` as the managed images workflow publishes it); no stack or compose file bind-mounts code, plugins or scripts into a service container (data volumes, secrets, and read-only plain config data files stay allowed).
+    law: A service the app customises runs from an image built out of `.starcistacks/images/<name>/` (a Dockerfile whose every FROM is digest-pinned, and whose final stage is the harness's StarCi fork image for that service when the harness owns one), the same image in every environment (the folder build, or a project-owned reference `<project>` or `<project>-<name>` as the managed images workflow publishes it); no stack or compose file bind-mounts code, plugins or scripts into a service container (data volumes, secrets, and read-only plain config data files stay allowed).
     failureCodes:
       - STACKS_CODE_BIND_MOUNT
       - STACKS_IMAGE_BASE_UNPINNED

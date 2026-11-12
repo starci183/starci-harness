@@ -102,8 +102,6 @@ slots:
       - "packages/*/src/fixtures/**"
       # app code a package renders into a product repository
       - "packages/*/templates/**"
-      # the runtime-layer recipes `starci app stack up` builds: copies of the harness images/<layer>/ (container scripts, not package code)
-      - "packages/hfs/stack/images/**"
       # the vendored yaml bundle
       - "packages/*/runtime/engine/yaml.mjs"
       # generated modules
@@ -206,12 +204,7 @@ slots:
   - id: images.dockerfile
     path: "images/<image>/Dockerfile"
     presence: optional
-    holds: the canonical Dockerfile that builds a service image from its pinned fork source context, or a runtime layer from its pinned fork image
-    rule: images/README.md
-  - id: images.runtime-layer
-    path: "images/<image>/{entrypoint.sh,*.mjs}"
-    presence: optional
-    holds: the wrapper files a runtime layer adds on its fork image (the entrypoint, the settings init and the relay of the OpenClaw gateway)
+    holds: the canonical Dockerfile that builds a service image from its pinned fork source context
     rule: images/README.md
 
   # --- knowledge: only in contexts/
@@ -280,11 +273,12 @@ slots:
     presence: required
     requires:
       - policy/README.md
+      - policy/business-terms.yaml
       - policy/canon.yaml
       - policy/loosening.yaml
       - policy/quality.yaml
       - policy/security.yaml
-    holds: gate tiers, profiles, overlays, banned markers, the secret scan and the canon packages per stack
+    holds: gate tiers, profiles, overlays, banned markers, the secret scan, the canon packages per stack and the business identifiers the tree never holds
     rule: CONTRIB-9; CONTRIB-11
 
   # --- the one CLI: cli/
@@ -420,10 +414,9 @@ slots:
       - "packages/<name>/migrations/*.sql"
       - packages/grammar/scripts/theme-proof/app-theme.css
       - "packages/hfs/templates/"
-      - "packages/hfs/stack/images/"
       - "packages/<name>/**/*.{fixture,partial}"
     presence: optional
-    holds: data a package reads and never compiles (lint fixtures that keep their violations, app templates, the runtime-layer recipes `starci app stack up` builds, emit partials, SQL migrations a package ships for the app to render)
+    holds: data a package reads and never compiles (lint fixtures that keep their violations, app templates, emit partials, SQL migrations a package ships for the app to render)
     rule: CONTRIB-9 data is data
   - id: packages.rule-docs
     path: "packages/<name>/docs/*.md"

@@ -50,7 +50,7 @@ const isDomainVerifierType = (context: Context, hfs: HfsView, receiver: Node): b
 
 /**
  * A provider's adjacent HTTP module may export webhookVerifiers as an array of
- * domain methods, e.g. [BillingService.prototype.receiveCassoWebhook] as const.
+ * domain methods, e.g. [BillingService.prototype.receiveGammaPayWebhook] as const.
  * Compare symbols, so spelling an arbitrary receiver or alias as a verifier grants nothing.
  */
 const declaresMethod = (checker: ts.TypeChecker, statement: ts.Statement, method: ts.Symbol): boolean => {

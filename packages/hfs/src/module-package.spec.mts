@@ -22,8 +22,8 @@ const lockedOk = (root: string): LockResult => {
 /** A fresh app of the edition with a stub agent SDK workspace package, the one thing a module is built on. */
 function appWithSdk(t: TestContext, edition: string): string {
   const { root } = scaffoldApp({ name: 'demo', into: mkdtemp(t, `starci-module-${edition}-`), harness: { version: '1.1.0-alpha.3' }, edition, presets: bundledPresets(), lock: lockedOk, initGit: init });
-  fs.mkdirSync(path.join(root, 'packages', 'agent-sdk'), { recursive: true });
-  fs.writeFileSync(path.join(root, 'packages', 'agent-sdk', 'package.json'), '{"name":"@demo/agent-sdk","version":"0.0.0","private":true}\n');
+  fs.mkdirSync(path.join(root, 'packages', 'sdk'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'packages', 'sdk', 'package.json'), '{"name":"@demo/sdk","version":"0.0.0","private":true}\n');
   const manifest = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')) as { workspaces: string[] };
   fs.writeFileSync(path.join(root, 'package.json'), `${JSON.stringify({ ...manifest, workspaces: [...manifest.workspaces, 'packages/*'] }, null, 2)}
 `);
@@ -53,7 +53,7 @@ for (const edition of ['lite', 'full']) {
     assert.equal(manifest.name, '@demo/module-loyalty-points');
     assert.equal(manifest.scripts?.test, undefined);
     assert.equal(manifest.devDependencies?.jest, undefined);
-    assert.deepEqual(manifest.dependencies, { '@demo/agent-sdk': '*' });
+    assert.deepEqual(manifest.dependencies, { '@demo/sdk': '*' });
     assert.match(text(root, 'packages/module-loyalty-points/src/template/loyalty-points.template.ts'), /LOYALTY_POINTS_SERVER/);
     assert.match(text(root, 'packages/module-loyalty-points/src/workbench/components/LoyaltyPointsWorkbenchView.tsx'), /@starci\/grammar\/common/);
     assert.ok(json(root, 'package.json').workspaces?.includes('packages/*'));
@@ -110,7 +110,7 @@ test('add module refuses a missing agent SDK, a bad name, a second add and an un
   assert.throws(() => removeModule({ root, name: 'absent' }), { code: 'HFS_REMOVE_NOT_FOUND' });
   addModule({ root, name: 'loyalty' });
   assert.throws(() => addModule({ root, name: 'loyalty' }), { code: 'HFS_ADD_EXISTS' });
-  fs.rmSync(path.join(root, 'packages', 'agent-sdk'), { recursive: true });
+  fs.rmSync(path.join(root, 'packages', 'sdk'), { recursive: true });
   assert.throws(() => addModule({ root, name: 'booking' }), { code: 'HFS_ADD_MODULE_SDK_MISSING' });
   assert.ok(!fs.existsSync(path.join(root, 'packages/module-booking')));
 });
@@ -132,15 +132,15 @@ test('an app that declares modules: "data" has no rendered registry, its own pac
 
 test('the module noun of addKind registers the package, and the root packages enter the sonar, codecov and unit-run scope', (t) => {
   const root = appWithSdk(t, 'lite');
-  fs.mkdirSync(path.join(root, 'packages', 'agent-sdk', 'src'), { recursive: true });
-  fs.writeFileSync(path.join(root, 'packages', 'agent-sdk', 'src', 'index.ts'), 'export {}\n');
+  fs.mkdirSync(path.join(root, 'packages', 'sdk', 'src'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'packages', 'sdk', 'src', 'index.ts'), 'export {}\n');
   // an install folder the workspaces leave under packages/ is no package
   fs.mkdirSync(path.join(root, 'packages', 'node_modules', '.bin'), { recursive: true });
   const noun = addKind({ repoRoot: root, noun: 'module', name: 'loyalty' });
   assert.ok(noun.created.includes('packages/module-loyalty/package.json'));
   const targets = rendered(root);
   const body = (file: string): string => targets.find((target) => target.path === file)?.content ?? '';
-  for (const folder of ['packages/agent-sdk', 'packages/module-loyalty']) {
+  for (const folder of ['packages/sdk', 'packages/module-loyalty']) {
     assert.match(body('sonar-project.properties'), new RegExp(`${folder}/src[,\\n]`));
     for (const unmeasured of ['src/workbench/**', 'src/public/**', 'src/client/**', 'src/**/index.ts', 'src/**/*.types.ts', 'src/**/*-types.ts']) assert.ok(body('sonar-project.properties').includes(`${folder}/${unmeasured}`), `${folder}/${unmeasured}`);
     assert.ok(body('codecov.yml').includes(`"${folder}/src/**"`), folder);
@@ -149,15 +149,15 @@ test('the module noun of addKind registers the package, and the root packages en
   assert.equal(body('be/jest.config.js'), `module.exports = require("@starci/jest-preset").starciJestConfig({
     coverage: ${/coverage: (\{[\s\S]*?\n {4}\}),/u.exec(body('be/jest.config.js'))?.[1]},
     packages: {
-        folders: ["packages/agent-sdk", "packages/module-loyalty"],
-        files: ["packages/agent-sdk/src/**/*.ts", "packages/module-loyalty/src/**/*.ts"],
+        folders: ["packages/sdk", "packages/module-loyalty"],
+        files: ["packages/sdk/src/**/*.ts", "packages/module-loyalty/src/**/*.ts"],
         excludes: [
-            "packages/agent-sdk/src/workbench/**",
-            "packages/agent-sdk/src/public/**",
-            "packages/agent-sdk/src/client/**",
-            "packages/agent-sdk/src/**/index.ts",
-            "packages/agent-sdk/src/**/*.types.ts",
-            "packages/agent-sdk/src/**/*-types.ts",
+            "packages/sdk/src/workbench/**",
+            "packages/sdk/src/public/**",
+            "packages/sdk/src/client/**",
+            "packages/sdk/src/**/index.ts",
+            "packages/sdk/src/**/*.types.ts",
+            "packages/sdk/src/**/*-types.ts",
             "packages/module-loyalty/src/workbench/**",
             "packages/module-loyalty/src/public/**",
             "packages/module-loyalty/src/client/**",
@@ -186,10 +186,10 @@ test('an app whose only root package is the agent SDK builds it first and runs i
   const ci = rendered(root).find((target) => target.path === '.github/workflows/ci.yml')?.content ?? '';
   assert.match(ci, /^ {8}side: \[be, fe\]$/m);
   assert.match(ci, /const files = \['reports\/lint\.be\.sonar\.json', 'reports\/lint\.fe\.sonar\.json'\];/);
-  fs.mkdirSync(path.join(root, 'packages', 'agent-sdk', 'src'), { recursive: true });
-  fs.writeFileSync(path.join(root, 'packages', 'agent-sdk', 'src', 'index.ts'), 'export {}\n');
+  fs.mkdirSync(path.join(root, 'packages', 'sdk', 'src'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'packages', 'sdk', 'src', 'index.ts'), 'export {}\n');
   const targets = rendered(root);
-  assert.match(targets.find((target) => target.path === 'be/jest.config.js')?.content ?? '', /folders: \["packages\/agent-sdk"\]/);
+  assert.match(targets.find((target) => target.path === 'be/jest.config.js')?.content ?? '', /folders: \["packages\/sdk"\]/);
   const scripts = targets.find((target) => target.path === 'package.json')?.scripts as Record<string, string>;
   assert.equal(scripts['build:modules'], 'turbo run build --filter=./packages/*');
   assert.match(scripts['test'] ?? '', /^npm run build:modules --silent && /);

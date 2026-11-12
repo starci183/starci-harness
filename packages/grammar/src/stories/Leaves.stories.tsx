@@ -376,7 +376,7 @@ export const Progress: Story = {
     <Matrix maxWidth={420}>
       <State label="Determinate" direction="column">
         <G.Progress label="Upload" value={0} />
-        <G.Progress label="Course progress" value={45} />
+        <G.Progress label="Progress" value={45} />
         <G.Progress label="Complete" value={100} />
       </State>
       <State label="Tones and a spoken reading (aria-valuetext)" direction="column">
@@ -572,7 +572,7 @@ export const Avatar: Story = {
         <G.Avatar name="Alex Morgan" isLoading size="lg" />
       </State>
       <State label="Local DiceBear initials by default, and uploaded image">
-        <G.Avatar name={"Tr\u1ea7n Minh Khoa"} />
+        <G.Avatar name="Zoë Ångström" />
         <G.Avatar name="Sam Lee" src={placeholderImage('S', 200)} />
       </State>
       <State label="Seed controls the background; first and last name words control the letters">
@@ -584,7 +584,7 @@ export const Avatar: Story = {
         <G.Avatar name="Alex Morgan" seed="user-alex" src={placeholderImage('A', 40)} />
       </State>
       <State label="Agents: free names, same initials rule, bottom-right AI bot badge">
-        <G.Avatar name={"Th\u1ea3o V\u00e2n Mkt"} kind="agent" seed="agent-1" />
+        <G.Avatar name="Renée Dupré Mkt" kind="agent" seed="agent-1" />
         <G.Avatar name="Cat" kind="agent" seed="agent-2" size="sm" />
         <G.Avatar name="Blue Dog" kind="agent" src={placeholderImage('BD', 290)} size="lg" />
       </State>
@@ -702,7 +702,7 @@ export const Meter: Story = {
       </State>
       <State label="Tones" direction="column">
         <G.Meter label="Storage" value={32} tone="neutral" />
-        <G.Meter label="Goal" value={80} tone="affirmative" valueLabel="8 of 10 lessons" />
+        <G.Meter label="Goal" value={80} tone="affirmative" valueLabel="8 of 10 items" />
         <G.Meter label="Quota" value={72} tone="cautionary" />
         <G.Meter label="Errors" value={95} tone="negative" />
         <G.Meter label="Sync" value={50} tone="pending" />
@@ -729,9 +729,9 @@ export const ProgressCircle: Story = {
   render: () => (
     <Matrix>
       <State label="Determinate">
-        <G.ProgressCircle label="Lesson" value={25} size="sm" />
-        <G.ProgressCircle label="Lesson" value={60} size="md" />
-        <G.ProgressCircle label="Lesson" value={100} size="lg" />
+        <G.ProgressCircle label="Task" value={25} size="sm" />
+        <G.ProgressCircle label="Task" value={60} size="md" />
+        <G.ProgressCircle label="Task" value={100} size="lg" />
       </State>
       <State label="Indeterminate (pending)">
         <G.ProgressCircle label="Loading" isIndeterminate />

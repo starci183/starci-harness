@@ -296,7 +296,7 @@ full-height chat or editor? Then B, else A.
   panes are white surfaces at full height, never cards. The main pane may contain a pink well that follows A inside it.
 
 Examples. Report: Tổng quan, Bàn làm việc, Kết nối, Tri thức, the runs list. Workspace: /chat, Đầu vào, Lượt chạy with the
-workflows rail, the run detail, Thiết lập with the NIVO chat, the graph editor.
+workflows rail, the run detail, the settings page with a chat, the graph editor.
 
 ### LAYOUT-2 Every region's owner is a published composition
 Tracks, slots and bounds belong to a published composition (`WorkspaceShell`, `Page`, `Grid kind="main-rail"`, `PaneGrid`); the spec

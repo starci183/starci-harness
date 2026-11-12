@@ -15,7 +15,7 @@ test("a block's pure half renders data status only through SlotView", () => {
       { filename: BLOCK, code: "export const X = (props: P) => (props.state === \"sent\" ? <p /> : null)" },
       { filename: COMPOSITE, code: "export const SlotView = (props: P) => (props.slot.isLoading ? <p /> : null)" },
       // a shared-package drawing half is not a block's pure half
-      { filename: at("packages/nivo-ui/src/leaves/Badge/component.tsx"), code: "export const X = (props: P) => (props.props.isLoading ? <Spinner /> : <p />)" },
+      { filename: at("packages/app-ui/src/leaves/Badge/component.tsx"), code: "export const X = (props: P) => (props.props.isLoading ? <Spinner /> : <p />)" },
       { filename: BLOCK_INDEX, code: "const state = query.isLoading ? \"a\" : \"b\"" },
     ],
     invalid: [

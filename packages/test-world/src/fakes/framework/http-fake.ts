@@ -115,7 +115,7 @@ export interface HttpFakeSpec<TClient extends FakeClient, TOptions, TState> {
     /** Extra control actions by name. */
     readonly controlActions?: Readonly<Record<string, HttpFakeControlAction<TState, TOptions>>>
     /** Extends the base client (`failNext`, `requests`, `reset`) with the fake's own methods. */
-    /** The typed handle of the fake; it gets the declared options too (a payment fake reads `webhookApp` there). */
+    /** The typed handle of the fake; it gets the declared options too (a webhook-sending fake reads `webhookApp` there). */
     readonly client?: (bridge: FakeBridge, base: FakeClient, options: TOptions) => TClient
 }
 

@@ -188,7 +188,7 @@ const segment = (value: string): string => encodeURIComponent(value)
 
 const request = async <T>(method: "GET" | "POST", path: string, body?: unknown): Promise<T> => {
     const connection = current
-    if (connection === null) throw new ApiError(401, "NO_CONNECTION", "Chưa kết nối tới starci ui")
+    if (connection === null) throw new ApiError(401, "NO_CONNECTION", "Not connected to starci ui")
     const response = await fetch(apiUrl(path, connection), {
         method,
         headers: {

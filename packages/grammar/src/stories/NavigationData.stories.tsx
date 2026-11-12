@@ -43,7 +43,7 @@ export const Disclosure: Story = {
         <G.Disclosure title="Advanced options" body={"Retention, exports and audit settings."} />
       </State>
       <State label="Expanded" direction="column">
-        <G.Disclosure title="What is included?" defaultExpanded body={"Every lesson, offline access and certificates."} />
+        <G.Disclosure title="What is included?" defaultExpanded body={"Every document, offline access and certificates."} />
       </State>
       <State label="With a summary (closed, open, long)" direction="column">
         <G.Disclosure title="Filters" summary="3 active" body={"Status, owner and date."} />
@@ -155,7 +155,7 @@ export const PageBreadcrumbs: Story = {
   render: () => (
     <Matrix>
       <State label="Current crumb still loading (isLoading)">
-        <G.Page chrome="bleed" minHeight="none" header={{ breadcrumbs: { label: 'Breadcrumb (loading page)', items: [{ id: 'home', label: 'Home', href: '#home' }, { id: 'lessons', label: 'Lessons', href: '#lessons' }, { id: 'lesson', label: '', isLoading: true }] } }}>
+        <G.Page chrome="bleed" minHeight="none" header={{ breadcrumbs: { label: 'Breadcrumb (loading page)', items: [{ id: 'home', label: 'Home', href: '#home' }, { id: 'documents', label: 'Documents', href: '#documents' }, { id: 'document', label: '', isLoading: true }] } }}>
           <span />
         </G.Page>
       </State>
@@ -168,7 +168,7 @@ export const PageBreadcrumbs: Story = {
               label: 'Breadcrumb',
               items: [
                 { id: 'home', label: 'Home', href: '#home', leading: <G.Icon source={HomeGlyph} usage="leading" /> },
-                { id: 'courses', label: 'Courses', href: '#courses' },
+                { id: 'guides', label: 'Guides', href: '#guides' },
                 { id: 'grammar', label: 'Grammar basics' },
               ],
             },
@@ -200,19 +200,19 @@ export const Calendar: Story = {
   ),
 };
 
-type Lesson = { readonly id: string; readonly title: string; readonly level: string; readonly minutes: number };
-const lessons: ReadonlyArray<Lesson> = [
+type Doc = { readonly id: string; readonly title: string; readonly level: string; readonly minutes: number };
+const docs: ReadonlyArray<Doc> = [
   { id: 'l1', title: 'Articles', level: 'A1', minutes: 12 },
   { id: 'l2', title: 'Present simple', level: 'A1', minutes: 18 },
   { id: 'l3', title: 'Past continuous', level: 'A2', minutes: 22 },
   { id: 'l4', title: 'Conditionals', level: 'B1', minutes: 30 },
 ];
-const lessonColumns: ReadonlyArray<G.DataTableColumn> = [
-  { id: 'title', label: 'Lesson', isRowHeader: true, allowsSorting: true },
+const docColumns: ReadonlyArray<G.DataTableColumn> = [
+  { id: 'title', label: 'Document', isRowHeader: true, allowsSorting: true },
   { id: 'level', label: 'Level', allowsSorting: true },
   { id: 'minutes', label: 'Minutes', align: 'end', allowsSorting: true },
 ];
-const lessonCell = (row: Lesson, columnId: string) => (columnId === 'title' ? row.title : columnId === 'level' ? row.level : row.minutes);
+const docCell = (row: Doc, columnId: string) => (columnId === 'title' ? row.title : columnId === 'level' ? row.level : row.minutes);
 
 /** The one suggestion pattern: quick replies and suggested questions are a Cluster of neutral sm Buttons (each a pill). */
 export const SuggestionButtons: Story = {
@@ -228,32 +228,32 @@ export const SuggestionButtons: Story = {
 /** The single-child-card law: a lone table is the surface (one frame), titled by its Section head with one caption under it. */
 export const LoneTableInSection: Story = {
   render: () => (
-    <G.Section title="Lessons" caption="Minutes are the median of the last 30 days.">
-      <G.DataTable label="Lessons" columns={lessonColumns} rows={lessons} renderCell={lessonCell} emptyContent="No lessons yet." />
+    <G.Section title="Documents" caption="Minutes are the median of the last 30 days.">
+      <G.DataTable label="Documents" columns={docColumns} rows={docs} renderCell={docCell} emptyContent="No documents yet." />
     </G.Section>
   ),
 };
 
 const SortableTable = () => {
   const [sort, setSort] = useState<G.DataTableSort>({ columnId: 'title', direction: 'ascending' });
-  const sorted = [...lessons].sort((a, b) => {
-    const key = sort.columnId as keyof Lesson;
+  const sorted = [...docs].sort((a, b) => {
+    const key = sort.columnId as keyof Doc;
     const order = String(a[key]).localeCompare(String(b[key]), undefined, { numeric: true });
     return sort.direction === 'ascending' ? order : -order;
   });
   return (
     <G.DataTable
-      label="Lessons"
-      columns={lessonColumns}
+      label="Documents"
+      columns={docColumns}
       rows={sorted}
-      renderCell={lessonCell}
+      renderCell={docCell}
       sort={sort}
       onSortChange={setSort}
       selectionMode="multiple"
       defaultSelectedIds={['l2']}
-      selectAllLabel="Select all lessons"
+      selectAllLabel="Select all documents"
       selectRowLabel={(row) => `Select ${row.title}`}
-      emptyContent="No lessons match."
+      emptyContent="No documents match."
     />
   );
 };
@@ -283,18 +283,18 @@ const SeatTable = ({ maxWidth }: { readonly maxWidth?: number }) => {
   );
 };
 
-type TopicRow = { readonly id: string; readonly lesson: string; readonly topics: ReadonlyArray<string> };
+type TopicRow = { readonly id: string; readonly doc: string; readonly topics: ReadonlyArray<string> };
 const topicRows: ReadonlyArray<TopicRow> = [
-  { id: 't1', lesson: 'Present simple', topics: ['Grammar', 'Vocabulary', 'Listening', 'Speaking', 'Reading', 'Writing', 'Pronunciation'] },
-  { id: 't2', lesson: 'Past continuous', topics: ['Grammar', 'Listening'] },
+  { id: 't1', doc: 'Present simple', topics: ['Grammar', 'Vocabulary', 'Listening', 'Speaking', 'Reading', 'Writing', 'Pronunciation'] },
+  { id: 't2', doc: 'Past continuous', topics: ['Grammar', 'Listening'] },
 ];
 const topicColumns: ReadonlyArray<G.DataTableColumn<TopicRow>> = [
-  { id: 'lesson', label: 'Lesson', isRowHeader: true },
-  { id: 'topics', label: 'Topics', editor: (row) => <G.TagGroup label={`Topics of ${row.lesson}`} items={row.topics.map((topic) => ({ id: topic, label: topic }))} /> },
+  { id: 'doc', label: 'Document', isRowHeader: true },
+  { id: 'topics', label: 'Topics', editor: (row) => <G.TagGroup label={`Topics of ${row.doc}`} items={row.topics.map((topic) => ({ id: topic, label: topic }))} /> },
 ];
 const TopicTable = () => (
   <div style={{ maxWidth: 480 }}>
-    <G.DataTable label="Lesson topics" columns={topicColumns} rows={topicRows} renderCell={(row) => row.lesson} emptyContent="No lessons." />
+    <G.DataTable label="Document topics" columns={topicColumns} rows={topicRows} renderCell={(row) => row.doc} emptyContent="No documents." />
   </div>
 );
 
@@ -341,13 +341,13 @@ export const DataTable: Story = {
     <Matrix maxWidth={720}>
       <State label="Sortable with a selected row" direction="column"><SortableTable /></State>
       <State label="Loading (pending)" direction="column">
-        <G.DataTable label="Lessons loading" columns={lessonColumns} rows={[] as ReadonlyArray<Lesson>} renderCell={lessonCell} isLoading emptyContent="No lessons." />
+        <G.DataTable label="Documents loading" columns={docColumns} rows={[] as ReadonlyArray<Doc>} renderCell={docCell} isLoading emptyContent="No documents." />
       </State>
       <State label="Loading (3 skeleton rows, real headers)" direction="column">
-        <G.DataTable label="Lessons skeleton" columns={lessonColumns} rows={[] as ReadonlyArray<Lesson>} renderCell={lessonCell} isLoading emptyContent="No lessons." />
+        <G.DataTable label="Documents skeleton" columns={docColumns} rows={[] as ReadonlyArray<Doc>} renderCell={docCell} isLoading emptyContent="No documents." />
       </State>
       <State label="Empty" direction="column">
-        <G.DataTable label="No lessons" columns={lessonColumns} rows={[] as ReadonlyArray<Lesson>} renderCell={lessonCell} emptyContent="No lessons match these filters." />
+        <G.DataTable label="No documents" columns={docColumns} rows={[] as ReadonlyArray<Doc>} renderCell={docCell} emptyContent="No documents match these filters." />
       </State>
     </Matrix>
   ),
@@ -384,7 +384,7 @@ const listItems: ReadonlyArray<G.ListBoxItem> = [
 ];
 
 const brainNodes: ReadonlyArray<G.FlowGraphNode> = [
-  { id: 'brain', label: 'Second brain', size: 'lg', tone: 'accent', isRoot: true },
+  { id: 'brain', label: 'Knowledge base', size: 'lg', tone: 'accent', isRoot: true },
   { id: 'people', label: 'People', count: 12, tone: 'success' },
   { id: 'projects', label: 'Projects', count: 5, tone: 'neutral' },
   { id: 'ideas', label: 'Ideas', count: 31, tone: 'warning' },
@@ -407,16 +407,16 @@ export const FlowGraph: Story = {
   render: () => {
     const Demo = () => {
       const [selectedId, setSelectedId] = useState<string | null>('projects');
-      return <G.FlowGraph label="Second brain" nodes={brainNodes} edges={brainEdges} selectedId={selectedId} onSelect={setSelectedId} />;
+      return <G.FlowGraph label="Knowledge base" nodes={brainNodes} edges={brainEdges} selectedId={selectedId} onSelect={setSelectedId} />;
     };
     return (
       <Matrix maxWidth={720}>
         <State label="Radial, selectable" direction="column"><Demo /></State>
         <State label="Static, no controls" direction="column">
-          <G.FlowGraph label="Second brain (static)" nodes={brainNodes} edges={brainEdges} height="sm" isInteractive={false} />
+          <G.FlowGraph label="Knowledge base (static)" nodes={brainNodes} edges={brainEdges} height="sm" isInteractive={false} />
         </State>
         <State label="Loading" direction="column">
-          <G.FlowGraph label="Second brain (loading)" nodes={[]} edges={[]} isLoading />
+          <G.FlowGraph label="Knowledge base (loading)" nodes={[]} edges={[]} isLoading />
         </State>
         <State label="Empty" direction="column">
           <G.FlowGraph label="Empty map" nodes={[]} edges={[]} emptyLabel="Nothing connected yet." />
@@ -536,7 +536,7 @@ export const FlowGraphFlowchart: Story = {
 };
 
 /**
- * The steps layout (0.35.0, the owner-approved card map), on the accounting flow "Đối soát tiền về": white step cards on the well, an icon
+ * The steps layout (0.35.0, the owner-approved card map), on the payment flow "Payment received": white step cards on the well, an icon
  * tile per kind, condition cards with named output ports (the branch words live on the ports), curved edges, two dashed back edges with
  * pill labels, an end pill and the kind legend. Pressing a card selects it (one 2px foreground border and its tint, 0.37.35) and fires `onNodePress`.
  */
@@ -548,9 +548,9 @@ export const FlowGraphSteps: Story = {
     return (
       <Matrix maxWidth={1200}>
         <State label="Top down, in a card" direction="column">
-          <G.SurfaceCard label="Đối soát tiền về" headingLevel={2} note={<G.FlowGraphLegend items={reconcileLegend} />}>
+          <G.SurfaceCard label="Payment received" headingLevel={2} note={<G.FlowGraphLegend items={reconcileLegend} />}>
             <G.FlowGraph
-              label="Đối soát tiền về"
+              label="Payment received"
               layout="steps"
               direction="TB"
               nodes={reconcileNodes}
@@ -563,7 +563,7 @@ export const FlowGraphSteps: Story = {
           <span data-story-pressed={pressed} />
         </State>
         <State label="Left to right" direction="column">
-          <G.FlowGraph label="Đối soát tiền về (ngang)" layout="steps" direction="LR" nodes={reconcileNodes} edges={reconcileEdges} />
+          <G.FlowGraph label="Payment received (horizontal)" layout="steps" direction="LR" nodes={reconcileNodes} edges={reconcileEdges} />
         </State>
       </Matrix>
     );
@@ -574,9 +574,9 @@ export const FlowGraphSteps: Story = {
       if (graph === null) throw new Error('The steps graph must render');
       expect(graph.querySelectorAll('.starci-core-flow-graph-step').length).toBe(10);
       const ports = [...graph.querySelectorAll('[data-grammar-flow-port]')].map((port) => port.textContent);
-      expect(ports).toEqual(['Có', 'Không', 'Khớp', 'Lệch']);
+      expect(ports).toEqual(['Yes', 'No', 'Match', 'Off']);
       const labels = [...graph.querySelectorAll('[data-grammar-flow-edge-label]')].map((label) => label.textContent).sort();
-      expect(labels).toEqual(['chủ duyệt', 'chủ khớp']);
+      expect(labels).toEqual(['owner approves', 'owner matches']);
       expect(graph.querySelectorAll('.starci-core-flow-graph-edge-back').length).toBe(2);
       expect(canvasElement.querySelectorAll('[data-grammar-flow-legend] li').length).toBe(5);
     });
@@ -599,16 +599,16 @@ export const FlowGraphStepsRun: Story = {
     return (
     <Matrix maxWidth={1200}>
       <State label="Run: no order code, waiting for the owner (a selected done card and a wait card)" direction="column">
-        <G.FlowGraph label="Lần chạy: chờ bạn" layout="steps" nodes={reconcileRunWait.nodes} edges={reconcileRunWait.edges} statusLabels={reconcileStatusLabels} selectedId={selectedId} onSelect={setSelectedId} />
+        <G.FlowGraph label="Run: waiting for you" layout="steps" nodes={reconcileRunWait.nodes} edges={reconcileRunWait.edges} statusLabels={reconcileStatusLabels} selectedId={selectedId} onSelect={setSelectedId} />
       </State>
-      <State label="Run: matched, now at Báo Sales" direction="column">
-        <G.FlowGraph label="Lần chạy: khớp" layout="steps" nodes={reconcileRunMatched.nodes} edges={reconcileRunMatched.edges} statusLabels={reconcileStatusLabels} />
+      <State label="Run: matched, now at Notify team" direction="column">
+        <G.FlowGraph label="Run: matched" layout="steps" nodes={reconcileRunMatched.nodes} edges={reconcileRunMatched.edges} statusLabels={reconcileStatusLabels} />
       </State>
       <State label="Run: amount off, waiting for the owner" direction="column">
-        <G.FlowGraph label="Lần chạy: lệch" layout="steps" nodes={reconcileRunOff.nodes} edges={reconcileRunOff.edges} statusLabels={reconcileStatusLabels} />
+        <G.FlowGraph label="Run: amount off" layout="steps" nodes={reconcileRunOff.nodes} edges={reconcileRunOff.edges} statusLabels={reconcileStatusLabels} />
       </State>
       <State label="Run: failed reading the transfer" direction="column">
-        <G.FlowGraph label="Lần chạy: lỗi" layout="steps" nodes={reconcileRunFailed.nodes} edges={reconcileRunFailed.edges} statusLabels={reconcileStatusLabels} />
+        <G.FlowGraph label="Run: failed" layout="steps" nodes={reconcileRunFailed.nodes} edges={reconcileRunFailed.edges} statusLabels={reconcileStatusLabels} />
       </State>
     </Matrix>
     );
@@ -636,7 +636,7 @@ export const FlowGraphStepsRun: Story = {
       expect(graph.querySelectorAll('.starci-core-flow-graph-edge-taken').length).toBe(4);
       const skipped = graph.querySelector<HTMLElement>('.starci-core-flow-graph-step[data-status="skipped"]')!;
       expect(Number.parseFloat(getComputedStyle(skipped).opacity)).toBeLessThan(1);
-      expect([...canvasElement.querySelectorAll('[data-id="tell-sales"]')].map((node) => node.getAttribute('aria-label'))).toContain('Báo Sales, Gửi thông báo cho nhóm, Đang chạy');
+      expect([...canvasElement.querySelectorAll('[data-id="tell-sales"]')].map((node) => node.getAttribute('aria-label'))).toContain('Notify team, Send by Email or Webhook, Running');
     });
   },
 };
@@ -693,10 +693,10 @@ export const MermaidDiagram: Story = {
 
 type NavRow = { readonly id: string; readonly href: string; readonly title: string; readonly status: string };
 const navRows: ReadonlyArray<NavRow> = [
-  { id: 'r1', href: '/lessons/1', title: 'Present simple', status: 'Published' },
-  { id: 'r2', href: '/lessons/2', title: 'Past continuous', status: 'Draft' },
+  { id: 'r1', href: '/documents/1', title: 'Present simple', status: 'Published' },
+  { id: 'r2', href: '/documents/2', title: 'Past continuous', status: 'Draft' },
 ];
-const navColumns: ReadonlyArray<G.DataTableColumn<NavRow>> = [{ id: 'title', label: 'Lesson', isRowHeader: true }, { id: 'status', label: 'Status' }];
+const navColumns: ReadonlyArray<G.DataTableColumn<NavRow>> = [{ id: 'title', label: 'Document', isRowHeader: true }, { id: 'status', label: 'Status' }];
 
 /** Client-side navigation: under a root given `navigate`, Link, Button href and a DataTable row href go through the router. */
 // Eight waves, five tasks wide: a contained fit shrinks this below readable text in a 24rem canvas.
@@ -776,7 +776,7 @@ const orbitDossierMax = Math.max(...orbitCategories.flatMap((category) => catego
 const orbitCategoryMax = Math.max(...orbitCategories.map(orbitFilesOf));
 
 const orbitNodes: ReadonlyArray<G.BubbleMapNode> = [
-  { id: 'root', label: 'NIVO', description: `${orbitCategories.reduce((sum, category) => sum + category.dossiers.length, 0)} dossiers`, form: 'bubble', mark: 'NIVO', diameter: 96, isRoot: true },
+  { id: 'root', label: 'Acme', description: `${orbitCategories.reduce((sum, category) => sum + category.dossiers.length, 0)} dossiers`, form: 'bubble', mark: 'AC', diameter: 96, isRoot: true },
   ...orbitCategories.flatMap((category, index): ReadonlyArray<G.BubbleMapNode> => {
     const tally = (fill: G.BubbleMapFill, tone: G.FlowGraphTone): G.BubbleMapRingPart => ({ tone, value: category.dossiers.filter((dossier) => dossier.fill === fill && dossier.tone === tone).length });
     return [
@@ -879,10 +879,10 @@ export const ClientNavigation: Story = {
       <Matrix maxWidth={560}>
         <State label="Link and Button href">
           <G.Link href="/settings">Settings</G.Link>
-          <G.Button intent="neutral" href="/lessons/new">New lesson</G.Button>
+          <G.Button intent="neutral" href="/documents/new">New document</G.Button>
         </State>
         <State label="DataTable row href" direction="column">
-          <G.DataTable label="Lessons" columns={navColumns} rows={navRows} renderCell={(row, columnId) => (columnId === 'title' ? row.title : row.status)} emptyContent="No lessons." />
+          <G.DataTable label="Documents" columns={navColumns} rows={navRows} renderCell={(row, columnId) => (columnId === 'title' ? row.title : row.status)} emptyContent="No documents." />
         </State>
       </Matrix>
     </MemoryRouterRoot>
@@ -898,16 +898,16 @@ export const ClientNavigation: Story = {
     const location = window.location.href;
     await userEvent.click(pick('a[href="/settings"]'));
     await expectPath('/settings', 'A Link click');
-    await userEvent.click(pick('a[href="/lessons/new"]'));
-    await expectPath('/lessons/new', 'A Button href click');
+    await userEvent.click(pick('a[href="/documents/new"]'));
+    await expectPath('/documents/new', 'A Button href click');
     const rows = [...canvasElement.querySelectorAll<HTMLElement>('[data-grammar-table-row-link="true"]')];
     const cell = rows[1]?.querySelector<HTMLElement>('[role="gridcell"], [role="rowheader"]');
     if (cell === null || cell === undefined) throw new Error('A linked row must render its cells');
     await userEvent.click(cell);
-    await expectPath('/lessons/2', 'A DataTable row click');
+    await expectPath('/documents/2', 'A DataTable row click');
     rows[0]?.focus();
     await userEvent.keyboard('{Enter}');
-    await expectPath('/lessons/1', 'Enter on a DataTable row');
+    await expectPath('/documents/1', 'Enter on a DataTable row');
     if (window.location.href !== location) throw new Error('Navigation must stay in-app; the document location changed');
   },
 };
@@ -934,7 +934,7 @@ export const ListBoxWithDescriptions: Story = {
 };
 
 const wrappingItems: ReadonlyArray<G.ListBoxItem> = [
-  { id: 'a', label: 'Release notes', description: 'Everything that changed in this release, including the new grading rules, the renamed lesson types and the fixes to the import flow, written out in full.' },
+  { id: 'a', label: 'Release notes', description: 'Everything that changed in this release, including the new grading rules, the renamed document types and the fixes to the import flow, written out in full.' },
   { id: 'b', label: 'Migration guide', description: 'Short note.' },
 ];
 
@@ -1051,16 +1051,16 @@ export const DataTableRowStates: Story = {
     <Matrix maxWidth={720}>
       <State label="Present simple selected, Past continuous hovered, Conditionals keyboard-focused" direction="column">
         <G.DataTable
-          label="Lessons with row states"
-          columns={lessonColumns}
-          rows={lessons}
-          renderCell={lessonCell}
+          label="Documents with row states"
+          columns={docColumns}
+          rows={docs}
+          renderCell={docCell}
           selectionMode="multiple"
           defaultSelectedIds={['l2']}
-          selectAllLabel="Select all lessons"
+          selectAllLabel="Select all documents"
           selectRowLabel={(row) => `Select ${row.title}`}
           onRowAction={noop}
-          emptyContent="No lessons."
+          emptyContent="No documents."
         />
       </State>
     </Matrix>
@@ -1334,7 +1334,7 @@ export const Timeline: Story = {
 
 const tabItems: ReadonlyArray<G.TabItem> = [
   { id: 'overview', label: 'Overview' },
-  { id: 'lessons', label: 'Lessons', leading: <G.Icon source={BookGlyph} usage="leading" /> },
+  { id: 'documents', label: 'Documents', leading: <G.Icon source={BookGlyph} usage="leading" /> },
   { id: 'members', label: 'Members' },
 ];
 
@@ -1342,7 +1342,7 @@ const TabsDemo = ({ variant = 'primary' }: { readonly variant?: 'primary' | 'sec
   const [selected, setSelected] = useState('overview');
   return (
     <div>
-      <G.Tabs label={`Course sections (${variant})`} items={tabItems} selectedKey={selected} onSelect={setSelected} panelId={(key) => `story-tab-panel-${variant}-${key}`} labelVisibility="always" />
+      <G.Tabs label={`Guide sections (${variant})`} items={tabItems} selectedKey={selected} onSelect={setSelected} panelId={(key) => `story-tab-panel-${variant}-${key}`} labelVisibility="always" />
       {tabItems.map((item) => (
         <div key={item.id} role="tabpanel" id={`story-tab-panel-${variant}-${item.id}`} aria-label={item.label} hidden={item.id !== selected} style={{ paddingTop: '1rem' }}>
           <G.Text>{item.label} panel</G.Text>
@@ -1353,15 +1353,15 @@ const TabsDemo = ({ variant = 'primary' }: { readonly variant?: 'primary' | 'sec
 };
 
 const RenamingTabs = () => {
-  const [name, setName] = useState('Lessons');
-  const items: ReadonlyArray<G.TabItem> = [{ id: 'overview', label: 'Overview' }, { id: 'lessons', label: name }, { id: 'members', label: 'Members' }];
+  const [name, setName] = useState('Documents');
+  const items: ReadonlyArray<G.TabItem> = [{ id: 'overview', label: 'Overview' }, { id: 'documents', label: name }, { id: 'members', label: 'Members' }];
   return (
     <div>
-      <G.Tabs label="Renaming tabs" items={items} selectedKey="lessons" panelId="story-rename-panel" labelVisibility="always" />
+      <G.Tabs label="Renaming tabs" items={items} selectedKey="documents" panelId="story-rename-panel" labelVisibility="always" />
       <div role="tabpanel" id="story-rename-panel" aria-label="Renaming tabs" style={{ paddingTop: '1rem' }}>
         <G.Text>{name} panel</G.Text>
       </div>
-      <G.Button intent="alternative" onPress={() => setName((current) => (current === 'Lessons' ? 'All lessons and exercises' : 'Lessons'))}>Change the selected tab label</G.Button>
+      <G.Button intent="alternative" onPress={() => setName((current) => (current === 'Documents' ? 'All documents and exercises' : 'Documents'))}>Change the selected tab label</G.Button>
     </div>
   );
 };
@@ -1371,7 +1371,7 @@ const DisabledTabsDemo = ({ mode }: { readonly mode: 'one' | 'all' | 'links' }) 
   const panelId = `story-disabled-tabs-${mode}-panel`;
   const items = tabItems.map((item) => ({
     ...item,
-    isDisabled: mode === 'all' || item.id === 'lessons',
+    isDisabled: mode === 'all' || item.id === 'documents',
     ...(mode === 'links' ? { href: `#story-disabled-tabs-${mode}-${item.id}` } : {}),
   }));
   return (
@@ -1388,9 +1388,9 @@ export const TabsDisabled: Story = {
   name: 'Tabs (disabled items and links)',
   render: () => (
     <Matrix maxWidth={560}>
-      <State label="One unavailable tab: arrow keys skip Lessons" direction="column"><DisabledTabsDemo mode="one" /></State>
+      <State label="One unavailable tab: arrow keys skip Documents" direction="column"><DisabledTabsDemo mode="one" /></State>
       <State label="All tabs locked: the selected panel stays visible" direction="column"><DisabledTabsDemo mode="all" /></State>
-      <State label="Link tabs: Lessons cannot navigate" direction="column"><DisabledTabsDemo mode="links" /></State>
+      <State label="Link tabs: Documents cannot navigate" direction="column"><DisabledTabsDemo mode="links" /></State>
     </Matrix>
   ),
 };

@@ -7,9 +7,9 @@ export default meta;
 type Story = StoryObj;
 
 const PLANS = [
-  { id: 'pro', name: 'Pro', price: '990.000 ₫/month', features: ['Up to 2 people', '2,000 AI credits a month'] },
-  { id: 'max', name: 'Max', price: '2.490.000 ₫/month', features: ['Up to 5 people', '8,000 AI credits a month'], popular: true },
-  { id: 'ultra', name: 'Ultra', price: '4.990.000 ₫/month', features: ['Up to 15 people', '24,000 AI credits a month'] },
+  { id: 'starter', name: 'Starter', price: '$99/month', features: ['Up to 2 people', '2,000 AI credits a month'] },
+  { id: 'team', name: 'Team', price: '$249/month', features: ['Up to 5 people', '8,000 AI credits a month'], popular: true },
+  { id: 'business', name: 'Business', price: '$499/month', features: ['Up to 15 people', '24,000 AI credits a month'] },
 ] as const;
 
 /** A pricing grid: the leading value of each card at the figure size (FONT-5), the recommended plan with the accent ring and a badge, steps finished with a check. */

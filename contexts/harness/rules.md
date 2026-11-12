@@ -39,23 +39,26 @@ These hold for every role and every task. A rule with a gate names it; the other
    `packages/`, `skills/`, `app/`, `images/`, the templates and the root documents) names or encodes one app: no product
    or app name, no named third-party provider an app integrates, no business domain rule, and no rule, check, template,
    generator, fixture or example whose only reason is one app. The harness holds the mechanism every app shares; what one
-   app needs beyond it (its own code generation, its own rules, its provider integrations, its domain vocabulary) lives in
-   that app's repository and is recorded in its `.starciwork/concepts`
-   ([contexts/project/work.md](../project/work.md) PROJECT-WORK-7). To apply it: before adding anything here, ask
+   app needs beyond it lives in that app's repository: its own rules and checks in its `ext/` folder, which the harness
+   only runs, in every `starci app check`, the pre-push hook and CI ([contexts/project/lint.md](../project/lint.md)
+   PROJECT-LINT-3; R381, R382, R402), and its own words, data model, naming and business rules in its
+   `.starciwork/concepts` ([contexts/project/work.md](../project/work.md) PROJECT-WORK-7). There is no extension point
+   inside a package: a project rule reaches a package by naming its paths. To apply it: before adding anything here, ask
    whether a second, unrelated app would use it unchanged; when it would, write it with neutral names (`an app`, `item`,
    `gateway`); when it would not, it goes to the app, and the harness gains at most the generic hook the app plugs into.
-   A rule that holds for one app or one package of it lives in that app: a package's own rules sit in the package's own
-   hfs configuration (its `packages/<name>/slots.yaml`, and a rule pack hfs.json `rulePacks` names), and the harness only
-   runs them, in every `starci app check`, the pre-push hook and CI ([contexts/project/lint.md](../project/lint.md)
-   PROJECT-LINT-3; R381, R382). A rule one app asked for stays when it is generic, with its examples neutral. Why: a business word in a shared rule
-   makes every other app inherit one app's decisions, and an agent reads an example as the law. R206
-   (`RT_PRODUCT_NAME_IN_SOURCE`) refuses the closed list of product names `PRODUCT_NAMES` of
-   `packages/hfs/runtime/scripts/lib/example-refs.mts` in the hfs runtime; every other source is held by review.
-10. **Read the repository's concepts before changing it.** Before any change in a repository, read that repository's
-   `.starciwork/concepts`: `concepts/index.yaml` first, then every concept the task touches
-   ([contexts/project/work.md](../project/work.md) PROJECT-WORK-7). They hold the owner's decisions for that repository. A
-   task that spans repositories reads each repository's concepts before editing it, and a brief names the concepts its
-   reader opens. The rules of this tree are generic: they say how any app is built and never stand in for a concept or
-   overrule one. A harness rule and a concept that cannot both hold are a contradiction put to the owner with both
-   statements, and the concept stands until the owner answers. Why: a decision kept in a concept and not read is rebuilt
-   the way the owner already refused, and a generic rule applied over it undoes the decision silently. Held by review.
+   A rule one app asked for stays when it is generic, with its examples neutral. Why: a business word in a shared rule
+   makes every other app inherit one app's decisions, and an agent reads an example as the law. `starci check business`
+   refuses a tracked source that holds an identifier of [policy/business-terms.yaml](../../policy/business-terms.yaml)
+   `deny` (the product, app and provider names the owner listed) as a whole token, outside the exact `{path, term}`
+   pairs of its `allow`; it decides by membership in that list and never by meaning, so a business word nobody listed
+   is held by review.
+10. **Read the repository's concepts before its code.** Before any change in a repository, read that repository's
+   `.starciwork/concepts`: `concepts/README.md` first, then the concept of every folder the task touches, and only then
+   the code ([contexts/project/work.md](../project/work.md) PROJECT-WORK-7). They hold the persistent shared context of
+   that repository: its terms, data model, naming and business rules, and the folders that hold them. A task that spans
+   repositories reads each repository's concepts before editing it, and a brief names the concepts its reader opens.
+   When that context changes, the concept is edited to the current truth in the same change. The rules of this tree are
+   generic: they say how any app is built and never stand in for a concept or overrule one. A harness rule and a concept
+   that cannot both hold are a contradiction put to the owner with both statements, and the concept stands until the
+   owner answers. Why: an agent that reads the code first rebuilds the product's words and rules from the files it
+   happened to open, and a generic rule applied over a concept undoes it silently. Held by review.

@@ -140,7 +140,7 @@ environment holds data to keep; then, in one branch:
    defect of the baseline, fixed in the baseline. The comparison is the app's own script: no harness verb runs it.
 4. **Run the gates**: `starci app db drift`, the entity list against the new chain, then `starci app check --gate db`.
 5. **A drop whose readers still exist is not in the baseline.** A destructive migration whose target code still reads
-   stays outside `db/migrations`, as a pending file the app keeps and names in its concepts, and enters the chain with a
+   stays outside `db/migrations`, as a pending file the app keeps, and enters the chain with a
    stamp after the baseline once the last reader is gone (a `*_contract_*` migration, BE-PERSISTENCE-19).
 6. **Every migration written after the cut is stamped after the baseline**, a branch cut before the reset included: it
    is restamped (`starci app db restamp`) when it rebases onto the baseline.

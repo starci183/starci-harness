@@ -17,7 +17,7 @@ const Account = () => {
   return (
     <G.DropdownMenu
       placement="bottom end"
-      entries={[{ id: 'account', label: 'Tài khoản' }, ...overflow]}
+      entries={[{ id: 'account', label: 'Account' }, ...overflow]}
       trigger={<G.AvatarButton name="Alex Morgan" size="control" />}
     />
   );
@@ -26,10 +26,10 @@ const Account = () => {
 const Bar = () => (
   <G.TopBar
     position="static"
-    brand={<G.IdentityLockup title="Nivo" subtitle="Cửa hàng" />}
+    brand={<G.IdentityLockup title="Acme" subtitle="Store" />}
     customButtons={[
-      { id: 'bell', glyph: 'bell', label: 'Thông báo', badge: true, onPress: noop },
-      { id: 'help', glyph: 'info', label: 'Trợ giúp', href: '/help' },
+      { id: 'bell', glyph: 'bell', label: 'Notifications', badge: true, onPress: noop },
+      { id: 'help', glyph: 'info', label: 'Help', href: '/help' },
     ]}
     actions={<Account />}
   />
@@ -43,8 +43,8 @@ export const TopBarCustomButtons: Story = {
       expect(items.length).toBe(2);
       expect(items[0]!.querySelector('[data-grammar-top-bar-dot]')).not.toBeNull();
       expect(items[1]!.querySelector('[data-grammar-top-bar-dot]')).toBeNull();
-      expect(items[0]!.querySelector('button')!.getAttribute('aria-label')).toBe('Thông báo');
-      expect(items[1]!.querySelector('a')!.getAttribute('aria-label')).toBe('Trợ giúp');
+      expect(items[0]!.querySelector('button')!.getAttribute('aria-label')).toBe('Notifications');
+      expect(items[1]!.querySelector('a')!.getAttribute('aria-label')).toBe('Help');
       // The custom cluster stands before the app's fixed cluster (the account avatar).
       const custom = canvasElement.querySelector<HTMLElement>('[data-grammar-top-bar-custom]')!.getBoundingClientRect();
       const avatar = canvasElement.querySelector<HTMLElement>('.starci-core-avatar-button, [data-component="AvatarButton"]')!.getBoundingClientRect();

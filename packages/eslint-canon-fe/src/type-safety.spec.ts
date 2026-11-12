@@ -64,7 +64,7 @@ test("TYPE-SAFETY-2: an assertion is a claim the compiler cannot check", () => {
     invalid: [
       { filename: SOURCE, code: "const row = payload as ResumeRow", errors: [{ messageId: "assertion" }] },
       // a shared package is product source
-      { filename: at("packages/nivo-ui/src/leaves/Badge/index.tsx"), code: "const row = payload as ResumeRow", errors: [{ messageId: "assertion" }] },
+      { filename: at("packages/app-ui/src/leaves/Badge/index.tsx"), code: "const row = payload as ResumeRow", errors: [{ messageId: "assertion" }] },
       { filename: SOURCE, code: "const el = node as HTMLElement", errors: [{ messageId: "assertion" }] },
       { filename: SOURCE, code: "const key = id as never", errors: [{ messageId: "assertion" }] },
       { filename: SOURCE, code: "const row = <ResumeRow>payload", errors: [{ messageId: "assertion" }] },

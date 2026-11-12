@@ -72,7 +72,7 @@ for (const edition of ['lite', 'full'] as const) {
       invalid: [{ filename: domain, code: '// done \u2705\nexport const complete = true;', errors: [{ messageId: 'nonAscii' }] }],
     });
     tester.run('no-restated-name-jsdoc', noRestatedNameJsdoc, {
-      valid: ['/** Reads an authorized learner. */\nexport const readUser = () => null;'],
+      valid: ['/** Reads an authorized member. */\nexport const readUser = () => null;'],
       invalid: [{ code: '/** The read user function. */\nexport const readUser = () => null;', errors: [{ messageId: 'restated' }] }],
     });
     tester.run('no-bare-verb-export', noBareVerbExport, {

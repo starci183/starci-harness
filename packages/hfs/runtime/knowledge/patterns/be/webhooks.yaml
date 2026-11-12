@@ -100,7 +100,7 @@ rules:
       connections, as for the billing payment webhooks; it refuses an invalid delivery before intake.
       A domain verifier is a method on a service declared in a domain `<name>.service.ts` whose declared class name ends in
       `Verifier` or `verify`, or an exact domain service method declared by the adjacent `<provider>-http.module.ts` as
-      `export const webhookVerifiers = [BillingService.prototype.receiveCassoWebhook] as const`. The array names TypeScript
+      `export const webhookVerifiers = [BillingService.prototype.receiveGammaPayWebhook] as const`. The array names TypeScript
       method symbols, never strings; a local alias or a class from the platform, integrations or a package grants no domain proof.
       A separate verification call is followed by exactly one domain intake call. A domain method that verifies and then performs
       intake may be the first and only call; a separate domain verification call does not count as intake. The door injects only
@@ -127,7 +127,7 @@ rules:
         write: 'enable the raw body for the app (`NestFactory.create(..., { rawBody: true })` in the api app) and read `request.rawBody`; never hash a re-serialized `body`.'
       - id: case-2
         when: A payment provider uses a different secret for each billing connection
-        write: 'declare BillingService.prototype.receiveCassoWebhook in the adjacent HTTP module webhookVerifiers array; the first and only handler statement awaits that method, which resolves the connection secret, verifies the provider proof and delegates to the intake. The door never reads the connection or payment data itself.'
+        write: 'declare BillingService.prototype.receiveGammaPayWebhook in the adjacent HTTP module webhookVerifiers array; the first and only handler statement awaits that method, which resolves the connection secret, verifies the provider proof and delegates to the intake. The door never reads the connection or payment data itself.'
       - id: case-3
         when: 'A provider requires exactly {"success": true} instead of an empty acknowledgement'
         write: |-

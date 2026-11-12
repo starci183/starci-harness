@@ -12,8 +12,8 @@ export default meta;
 type Story = StoryObj;
 
 const ROWS = [
-  { id: 'a', title: 'Telegram', description: 'Nhận tin khách' },
-  { id: 'b', title: 'Zalo OA', description: 'Nhận tin khách' },
+  { id: 'a', title: 'Email', description: 'Receives customer messages' },
+  { id: 'b', title: 'Chat', description: 'Receives customer messages' },
 ];
 
 export const WellAndAside: Story = {
@@ -22,12 +22,12 @@ export const WellAndAside: Story = {
       <G.PaneGrid label="Elevation" areas={['well aside']} columns={['fill', 'standard']}>
         <G.Pane area="well" label="Well">
           <G.PaneSection>
-            <G.SurfaceCard kind="list" label="Trên nền hồng" items={ROWS} empty={<G.EmptyNotice message="Trống" />} />
+            <G.SurfaceCard kind="list" label="On pink" items={ROWS} empty={<G.EmptyNotice message="Empty" />} />
           </G.PaneSection>
         </G.Pane>
         <G.Pane area="aside" surface label="Aside">
           <G.PaneSection>
-            <G.Section kind="list" title="Trên nền trắng" items={ROWS} empty={<G.EmptyNotice message="Trống" />} />
+            <G.Section kind="list" title="On white" items={ROWS} empty={<G.EmptyNotice message="Empty" />} />
           </G.PaneSection>
         </G.Pane>
       </G.PaneGrid>

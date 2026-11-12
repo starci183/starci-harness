@@ -210,13 +210,13 @@ test("DATA-5: a relation carries no eager: true", () => {
   assert.doesNotThrow(() => {
       tester.run("no-eager-relation", noEagerRelation, {
           valid: [
-              { filename: ENTITY, code: "class C { @ManyToOne(() => CourseEntity, (c) => c.items) course: CourseEntity }" },
-              { filename: ENTITY, code: "class C { @ManyToOne(() => CourseEntity, (c) => c.items, { eager: false }) course: CourseEntity }" },
+              { filename: ENTITY, code: "class C { @ManyToOne(() => ProjectEntity, (c) => c.items) project: ProjectEntity }" },
+              { filename: ENTITY, code: "class C { @ManyToOne(() => ProjectEntity, (c) => c.items, { eager: false }) project: ProjectEntity }" },
               { filename: ENTITY, code: "class C { @Column({ eager: true }) name: string }" },
           ],
           invalid: [
-              { filename: ENTITY, code: "class C { @ManyToOne(() => CourseEntity, (c) => c.items, { eager: true }) course: CourseEntity }", errors: [{ messageId: "eager" }] },
-              { filename: ENTITY, code: "class C { @OneToMany(() => ItemEntity, (i) => i.course, { eager: true }) items: ItemEntity[] }", errors: [{ messageId: "eager" }] },
+              { filename: ENTITY, code: "class C { @ManyToOne(() => ProjectEntity, (c) => c.items, { eager: true }) project: ProjectEntity }", errors: [{ messageId: "eager" }] },
+              { filename: ENTITY, code: "class C { @OneToMany(() => ItemEntity, (i) => i.project, { eager: true }) items: ItemEntity[] }", errors: [{ messageId: "eager" }] },
           ],
       })
   })
@@ -224,8 +224,8 @@ test("DATA-5: a relation carries no eager: true", () => {
 
 test("R82: no transaction spans an external call", () => {
   assert.doesNotThrow(() => {
-      const head = `${TYPEORM}import { StripeClient } from "@modules/integrations/stripe/stripe.client"\nimport { PayOsGateway } from "@modules/integrations/payos/payos.gateway"\nimport { HttpClient } from "@modules/platform/http/http.client"\nimport { EventBus as MessagePublisher } from "@modules/platform/event-bus/event-bus.port"\nimport { HttpClient as LocalClient } from "@modules/domain/order/http.client"\n`
-      const S = `${head}class S {\n constructor(private readonly entityManager: EntityManager, private readonly stripe: StripeClient, private readonly payos: PayOsGateway, private readonly http: HttpClient, private readonly publisher: MessagePublisher, private readonly local: LocalClient, private readonly deps: { stripe: StripeClient }) {}\n`
+      const head = `${TYPEORM}import { StripeClient } from "@modules/integrations/stripe/stripe.client"\nimport { BetaPayGateway } from "@modules/integrations/beta-pay/beta-pay.gateway"\nimport { HttpClient } from "@modules/platform/http/http.client"\nimport { EventBus as MessagePublisher } from "@modules/platform/event-bus/event-bus.port"\nimport { HttpClient as LocalClient } from "@modules/domain/order/http.client"\n`
+      const S = `${head}class S {\n constructor(private readonly entityManager: EntityManager, private readonly stripe: StripeClient, private readonly betaPay: BetaPayGateway, private readonly http: HttpClient, private readonly publisher: MessagePublisher, private readonly local: LocalClient, private readonly deps: { stripe: StripeClient }) {}\n`
       const inside = (body: string) => `${S} async run() { ${body} }\n}`
       tester.run("no-external-call-in-transaction", noExternalCallInTransaction, {
           valid: [
@@ -245,13 +245,13 @@ test("R82: no transaction spans an external call", () => {
           invalid: [
               { filename: HANDLER, code: inside("await this.entityManager.transaction(async (tx) => { await tx.save(OrderEntity); await this.stripe.charge('1') })"), errors: [{ messageId: "external" }] },
               // an integration type that is not named like a client
-              { filename: HANDLER, code: inside("await this.entityManager.transaction(async (tx) => { await this.payos.create('1') })"), errors: [{ messageId: "external" }] },
+              { filename: HANDLER, code: inside("await this.entityManager.transaction(async (tx) => { await this.betaPay.create('1') })"), errors: [{ messageId: "external" }] },
               { filename: HANDLER, code: inside("await this.entityManager.transaction(async (tx) => { await this.http.get('x') })"), errors: [{ messageId: "external" }] },
               { filename: HANDLER, code: inside("await this.entityManager.transaction(async (tx) => { await fetch('x') })"), errors: [{ messageId: "external" }] },
               // a chain whose receiver is an integration object
               { filename: HANDLER, code: inside("await this.entityManager.transaction(async (tx) => { await this.deps.stripe.charge('1') })"), errors: [{ messageId: "external" }] },
               // a renamed receiver is still the integration
-              { filename: HANDLER, code: inside("const gateway = this.payos\n await this.entityManager.transaction(async (tx) => { await gateway.create('1') })"), errors: [{ messageId: "external" }] },
+              { filename: HANDLER, code: inside("const gateway = this.betaPay\n await this.entityManager.transaction(async (tx) => { await gateway.create('1') })"), errors: [{ messageId: "external" }] },
               { filename: HANDLER_SPEC, code: inside("await this.entityManager.transaction(async (tx) => { await this.stripe.charge('1') })"), errors: [{ messageId: "external" }] },
           ],
       })

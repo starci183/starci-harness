@@ -53,7 +53,7 @@ test("test-world-files: the test world holds its fixed files, fakes/, kit/ and r
         ...fake("keycloak"),
         ...fake("smtp"),
         // an external SaaS the stack does not declare stays legal; stateless GPU compute is faked when the config declares it with a reason
-        ...fake("sepay"),
+        ...fake("acme-pay"),
         ...fake("inference"),
         ...fake("postgres"),
         // a stacks entry faking a stateful service, or a service the stack does not declare, is refused on the declaration
@@ -74,7 +74,7 @@ test("test-world-files: the test world holds its fixed files, fakes/, kit/ and r
             "src/tests/world/world.policy.ts",
             "src/tests/world/world.error.ts",
             "src/tests/world/world.options.ts",
-            "src/tests/world/fakes/sepay/server.ts",
+            "src/tests/world/fakes/acme-pay/server.ts",
             "src/tests/world/fakes/inference/server.ts",
             "src/tests/world/fakes/postgres/server.ts",
         ]),
@@ -456,15 +456,15 @@ const entityFiles = (name: string, table: string, columns = "") => ({
 })
 const SQL_FILES = {
     ...databaseFiles,
-    ...entityFiles("purchase", "purchases", "  @Column({ name: 'learner_id', type: 'uuid' }) learnerId!: string;\n"),
+    ...entityFiles("purchase", "purchases", "  @Column({ name: 'member_id', type: 'uuid' }) memberId!: string;\n"),
     ...entityFiles("identity", "users", "  @Column({ name: 'email', type: 'varchar', unique: true }) email!: string;\n"),
     // bounded reads, own writes, reads of an owner it may import, a string and a comment that only look like SQL, a dynamic tail
     "src/modules/domain/purchase/persistence/purchase.sql.ts": `import { sql } from '../../../platform/database';
 /** one purchase */
 export const FIND_ONE = sql\`SELECT id FROM purchases WHERE id = $1\`;
-export const FIND_OPEN = sql\`SELECT id, learner_id FROM purchases WHERE learner_id = $1 AND status = 'FROM ghosts' LIMIT $2\`;
+export const FIND_OPEN = sql\`SELECT id, member_id FROM purchases WHERE member_id = $1 AND status = 'FROM ghosts' LIMIT $2\`;
 export const COUNT_ALL = sql\`SELECT count(*) FROM purchases\`;
-export const MARK = sql\`UPDATE purchases SET status = $2 FROM users u WHERE purchases.learner_id = u.id AND u.email = $1\`;
+export const MARK = sql\`UPDATE purchases SET status = $2 FROM users u WHERE purchases.member_id = u.id AND u.email = $1\`;
 export const BY_EMAIL = sql\`SELECT u.id FROM users u WHERE u.email = $1\`;
 export const LOCK = sql\`SELECT id FROM purchases WHERE id = $1 FOR UPDATE\`;
 export const dynamic = (column: string) => sql\`SELECT id FROM purchases WHERE id = $1 ORDER BY \${column} LIMIT 1\`;

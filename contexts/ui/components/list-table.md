@@ -66,7 +66,7 @@ resolved row anatomy; empty and failed states are the region's [empty-state](emp
 - **App author decides:** items, keys, copy, sort and filter facts.
 
 ## Row description
-`ListRowData.description` is a string (the muted description) or a node: inline text with 16px marks ("@chatbot · [logo] Telegram · [logo] Zalo"). A node is drawn at 12,
+`ListRowData.description` is a string (the muted description) or a node: inline text with 16px marks ("@chatbot · [logo] Email · [logo] Chat"). A node is drawn at 12,
 muted, on one line directly under the name at the identity gap (not a row step below).
 
 ## Rules

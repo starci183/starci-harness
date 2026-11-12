@@ -205,7 +205,7 @@ test('the Sonar row on the main project key and the annotated tag still run afte
     host: { public: 'https://quality.example.invalid' }, auth: 'token',
     projects: [{ repository: 'product', key: 'product:key' }],
     credentials: [{ id: 'analysis', project: 'product:key', key: 'SONAR_TOKEN', custody: { repository: 'product', path: '.starcistacks/dev/secrets/sonar.enc.yaml' } }],
-    ci: { token: 'SONAR_NIVO_TOKEN', secrets: [{ name: 'SONAR_NIVO_TOKEN', credential: 'analysis' }] } } };
+    ci: { token: 'SONAR_APP_TOKEN', secrets: [{ name: 'SONAR_APP_TOKEN', credential: 'analysis' }] } } };
   fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: 'product' }));
   fs.mkdirSync(path.join(root, '.starcistacks/dev/secrets'), { recursive: true });
   fs.writeFileSync(path.join(root, '.starcistacks/dev/secrets/sonar.enc.yaml'), 'SONAR_TOKEN: ENC[AES256_GCM,data:AA==,iv:AA==,tag:AA==,type:str]\nsops:\n  version: 3.13.2\n');

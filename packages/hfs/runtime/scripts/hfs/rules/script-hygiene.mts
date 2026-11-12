@@ -7,9 +7,13 @@ import type { Parsed, Repo, Resolver } from './rule-types.mjs';
 const PLAINTEXT_LOAD = 'HFS_SCRIPT_PLAINTEXT_LOAD';
 const XTRACE = 'HFS_SCRIPT_XTRACE';
 const SECRET_ENV_FILE = /(?:^|\/)(?:secrets?\.env|\.env)(?:\.[^/]*)?/iu;
-const SECRET_NIVO_FILE = /(?:^|\/)\.nivo-lite(?:\/|$)/iu;
 const SECRET_ENC_FILE = /\.enc(?:\.yaml)?$/iu;
-const isSecretFile = (file: string) => SECRET_ENV_FILE.test(file) || SECRET_NIVO_FILE.test(file) || SECRET_ENC_FILE.test(file);
+/**
+ * The app's own secret folder in a home directory, `.<project>/` (the project name of hfs.json): a file below it is a secret file and a
+ * reference to it a secret reference, whatever the file is called. Set per run by `scriptHygieneFindings`; none when the app names no project.
+ */
+let homeFolder: { file: RegExp; reference: RegExp } | null = null;
+const isSecretFile = (file: string) => SECRET_ENV_FILE.test(file) || (homeFolder?.file.test(file) ?? false) || SECRET_ENC_FILE.test(file);
 const EXCLUDED_TREE = /(?:^|\/)(?:node_modules|\.git|\.claude|\.secrets|secrets|tests?|__tests__|docs|coverage|dist|build)(?:\/|$)/u;
 const TEST_FILE = /(?:\.(?:spec|test)|-spec)\.[cm]?[jt]sx?$/u;
 const SOURCE = /\.(?:[cm]?[jt]sx?|sh|bash|zsh|ksh|ps1|psm1|bat|cmd|py|rb|pl)$/iu;
@@ -17,11 +21,19 @@ const WORKFLOW = /(?:^|\/)\.?(?:github\/)?workflows\/[^/]+\.ya?ml$/u;
 const DELIVERY = /(?:^|\/)(?:deploy|scripts|bin)\//u;
 const DOCKER = /(?:^|\/)(?:Dockerfile(?:\.[^/]*)?|(?:docker-)?compose(?:[.-][^/]*)?\.ya?ml)$/iu;
 const SECRET_REFERENCE_NAME = /(?:secrets?\.env|\.env)(?:\.[\w.-]+)?/;
-const SECRET_REFERENCE_NIVO = /\.nivo-lite(?:[/\\][\w./\\-]*)?/;
 const SECRET_REFERENCE_BEFORE = /(?:^|[\s/\\'"`(=])/;
 const SECRET_REFERENCE_AFTER = /(?=$|[\s/\\'"`),;])/;
-const SECRET_REFERENCE_SOURCE = `${SECRET_REFERENCE_BEFORE.source}(?:${SECRET_REFERENCE_NAME.source}|${SECRET_REFERENCE_NIVO.source})${SECRET_REFERENCE_AFTER.source}`;
+const SECRET_REFERENCE_SOURCE = `${SECRET_REFERENCE_BEFORE.source}${SECRET_REFERENCE_NAME.source}${SECRET_REFERENCE_AFTER.source}`;
 const SECRET_REFERENCE = new RegExp(SECRET_REFERENCE_SOURCE, 'iu');
+/** The matchers of the home secret folder of the project `project`, or null for a name that is no folder name. */
+const homeFolderOf = (project: unknown): { file: RegExp; reference: RegExp } | null => {
+  if (typeof project !== 'string' || !/^[A-Za-z0-9][\w.-]*$/u.test(project)) return null;
+  const name = project.replace(/[.]/gu, '\\.');
+  return {
+    file: new RegExp(String.raw`(?:^|\/)\.${name}(?:\/|$)`, 'iu'),
+    reference: new RegExp(`${SECRET_REFERENCE_BEFORE.source}${String.raw`\.${name}(?:[/\\][\w./\\-]*)?`}${SECRET_REFERENCE_AFTER.source}`, 'iu'),
+  };
+};
 const EXAMPLE_REFERENCE = /(?:secrets?\.env|\.env)\.(?:example|sample|template)(?=$|[^\w.-])/giu;
 const LOAD_SHELL_COMMAND = /(?:^|[\s;&|('"`])(?:source|cat|tac|less|more|head|tail|grep|egrep|fgrep|awk|gawk|sed|base64)\b/iu;
 const LOAD_WINDOWS_COMMAND = /(?:^|[\s;&|('"`])(?:Get-Content|gc|Import-DotEnv|env-cmd|load_dotenv|loadEnvFile)\b/iu;
@@ -43,7 +55,7 @@ function executableText(text: string) {
     .replace(/[\\`]\r?\n/gu, ' ');
 }
 
-const hasSecretReference = (text: string) => SECRET_REFERENCE.test(text.replace(EXAMPLE_REFERENCE, 'example-file'));
+const hasSecretReference = (text: string) => SECRET_REFERENCE.test(text.replace(EXAMPLE_REFERENCE, 'example-file')) || (homeFolder?.reference.test(text) ?? false);
 
 function callArguments(text: string, from: Parsed) {
   let depth = 1;
@@ -147,6 +159,7 @@ function sourceText(repoRoot: string, file: string) {
 export function scriptHygieneFindings({ repoRoot, files = [], all = files, repo, isRoot, inScope = () => true }: { repoRoot: string; files?: string[]; all?: string[]; repo: Repo; resolver?: Resolver; isRoot: boolean; inScope?: (file: string) => boolean }) {
   if (repo?.kind !== 'app' || !['lite', 'full'].some((value) => value === repo.edition) || isRoot === false) return [];
   const findings = [];
+  homeFolder = homeFolderOf(readJson(repoRoot, 'hfs.json')?.project);
   for (const file of new Set(all)) {
     if (!inScope(file) || !isSource(file)) continue;
     const raw = sourceText(repoRoot, file);

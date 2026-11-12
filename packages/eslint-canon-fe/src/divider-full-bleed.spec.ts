@@ -45,7 +45,7 @@ for (const edition of ["lite", "full"]) test(`BOUNDARY-1 ${edition}: valid bands
         'const Page=()=> <div className="px-4">{()=> <Divider />}</div>',
     ],
     invalid: [
-      // NIVO regression: one column inset surrounds the header, seam and list.
+      // Regression: one column inset surrounds the header, seam and list.
       {
         code:
           grammar +

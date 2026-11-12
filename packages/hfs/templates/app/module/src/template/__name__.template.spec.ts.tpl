@@ -1,4 +1,4 @@
-import { moduleListProblems } from "@{{project}}/agent-sdk/module"
+import { moduleListProblems } from "@{{project}}/sdk/module"
 import { {{upper}}_SERVER, {{upper}}_TEMPLATE } from "./{{name}}.template"
 
 describe("{{upper}}_SERVER", () => {

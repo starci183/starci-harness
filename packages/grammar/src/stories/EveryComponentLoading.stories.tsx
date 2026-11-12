@@ -17,11 +17,11 @@ type Story = StoryObj
 const options = [{ id: "a", label: "Starter" }, { id: "b", label: "Team" }, { id: "c", label: "Business" }]
 const choice = [{ value: "email", label: "Email" }, { value: "sms", label: "SMS" }]
 const people: ReadonlyArray<G.AvatarGroupItem> = [{ id: "1", name: "Alex Morgan" }, { id: "2", name: "Sam Rivera" }, { id: "3", name: "Jo Kim" }]
-const tags: ReadonlyArray<G.TagGroupItem> = [{ id: "t1", label: "Spa" }, { id: "t2", label: "Retail" }]
+const tags: ReadonlyArray<G.TagGroupItem> = [{ id: "t1", label: "Services" }, { id: "t2", label: "Retail" }]
 const steps: ReadonlyArray<G.StepperStep> = [{ id: "a", label: "Profile" }, { id: "b", label: "Channels" }, { id: "c", label: "Done" }]
 const rows: ReadonlyArray<G.ListRowData> = [
-    { id: "r1", title: "Hoa Sen Spa", description: "Zalo, 2 hours", leading: { avatar: { name: "Hoa Sen" } }, badges: [{ label: "New", tone: "accent" }], meta: { text: "Due today" }, action: { label: "Open", press: noop } },
-    { id: "r2", title: "Anh Tuan", description: "Website, 5 hours", leading: { avatar: { name: "Anh Tuan" } }, badges: [{ label: "Open", tone: "warning" }], action: { label: "Open", press: noop } },
+    { id: "r1", title: "Acme Studio", description: "Email, 2 hours", leading: { avatar: { name: "Acme" } }, badges: [{ label: "New", tone: "accent" }], meta: { text: "Due today" }, action: { label: "Open", press: noop } },
+    { id: "r2", title: "Alex Chen", description: "Website, 5 hours", leading: { avatar: { name: "Alex Chen" } }, badges: [{ label: "Open", tone: "warning" }], action: { label: "Open", press: noop } },
 ]
 
 const Page = ({ isLoading }: { readonly isLoading?: boolean }) => (
@@ -36,7 +36,7 @@ const Page = ({ isLoading }: { readonly isLoading?: boolean }) => (
         <G.Tabs label="Sections" items={[{ id: "a", label: "Overview" }, { id: "b", label: "Orders", count: 3 }]} selectedKey="a" onSelect={noop} panelId="every-panel" />
         <div id="every-panel" role="tabpanel"><G.Text tone="muted">The overview.</G.Text></div>
         <G.Grid kind="form" columns={1}>
-            <G.Input id="name" name="name" label="Name" defaultValue="Hoa Sen Spa" />
+            <G.Input id="name" name="name" label="Name" defaultValue="Acme Studio" />
             <G.Select label="Plan" options={options} defaultValue="b" />
             <G.ComboBox label="Owner" options={options} defaultValue="a" />
             <G.NumberField label="Seats" defaultValue={4} />
@@ -49,7 +49,7 @@ const Page = ({ isLoading }: { readonly isLoading?: boolean }) => (
         </G.Grid>
         <G.Cluster gap="row">
             <G.Checkbox label="Send a copy" />
-            <G.Switch description="Mô tả ngắn." label="Reminders" />
+            <G.Switch description="Short description." label="Reminders" />
             <G.Slider label="Volume" defaultValue={40} />
             <G.Rating label="Rating" defaultValue={3} valueLabel={(value, max) => `${value} of ${max}`} />
         </G.Cluster>
@@ -67,7 +67,7 @@ const Page = ({ isLoading }: { readonly isLoading?: boolean }) => (
         <G.Meter label="Storage" value={32} />
         <G.Progress label="Setup" value={40} />
         <G.Alert tone="cautionary" title="Almost full" description="You have used 90%." action={{ label: "Upgrade", onAction: noop }} />
-        <G.DescriptionList density="compact" items={[{ id: "from", term: "From", description: "Chi Lan" }, { id: "via", term: "Channel", description: "Zalo" }]} />
+        <G.DescriptionList density="compact" items={[{ id: "from", term: "From", description: "Maria Garcia" }, { id: "via", term: "Channel", description: "Email" }]} />
         <G.Stepper label="Progress" steps={steps} currentStepId="b" />
         <G.Pagination label="Pages" page={2} pageCount={5} onPageChange={noop} previousLabel="Previous" nextLabel="Next" pageLabel={(page) => `Page ${page}`} />
         <G.Section kind="list" title="Open work" items={rows} empty={null} />

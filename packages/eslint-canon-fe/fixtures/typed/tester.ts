@@ -1,7 +1,7 @@
 /**
  * The typed rule tester of the front-end canon: RuleTester over @typescript-eslint/parser with the project service on this
  * directory's tsconfig.json (JSX on), and `settings.starci.hfs` built from an in-memory hfs.json - the same inputs
- * starciFeConfig gives a repository. A case's `filename` is `at("apps/web/src/hooks/lesson/useLesson.ts")`: the file need not
+ * starciFeConfig gives a repository. A case's `filename` is `at("apps/web/src/hooks/item/useItem.ts")`: the file need not
  * exist; its slot comes from its path and its types from the library stubs in ./node_modules.
  * The RuleTester itself is the shared factory of ../../../eslint-canon-be/fixtures/typed/tester.ts - one implementation, one side's
  * dialect and cap per caller.

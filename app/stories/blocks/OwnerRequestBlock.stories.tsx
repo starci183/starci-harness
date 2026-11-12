@@ -9,15 +9,15 @@ const meta = {
     args: {
         props: {
             projects: ready([
-                { value: "starci-next", label: "starci-next" },
-                { value: "nivo-lite", label: "nivo-lite" },
+                { value: "demo-app", label: "demo-app" },
+                { value: "demo-lib", label: "demo-lib" },
             ]),
             requests: ready([
-                { id: "r-0214a7c3b9e1", project: "starci-next", text: "Start workflow uat-sign-in sau khi auth-sign-in xong.", status: { label: OWNER_REQUEST.open, tone: "warning" } },
-                { id: "r-09c1e5d27f40", project: "nivo-lite", text: "Kernels về Claude.", status: { label: OWNER_REQUEST.closedBy("c-4f1a82d0"), tone: "success" } },
+                { id: "r-0214a7c3b9e1", project: "demo-app", text: "Start workflow uat-sign-in after auth-sign-in is done.", status: { label: OWNER_REQUEST.open, tone: "warning" } },
+                { id: "r-09c1e5d27f40", project: "demo-lib", text: "Kernels back to Claude.", status: { label: OWNER_REQUEST.closedBy("c-4f1a82d0"), tone: "success" } },
             ]),
-            project: "starci-next",
-            text: "Start workflow uat-sign-in sau khi auth-sign-in xong.",
+            project: "demo-app",
+            text: "Start workflow uat-sign-in after auth-sign-in is done.",
             canSend: true,
             isPending: false,
             labels: {

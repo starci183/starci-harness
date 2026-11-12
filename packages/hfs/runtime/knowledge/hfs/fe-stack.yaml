@@ -4,7 +4,7 @@ purpose: >-
   ONE canonical library, its HFS home (slot ids of knowledge/hfs/slots.yaml), the pattern id that teaches it
   (knowledge/patterns/fe/*.yaml) and the alternatives a front end never depends on or imports. Versions live in
   knowledge/hfs/canon-pins.yaml only. `tier: core` packages are installed by every scaffold; `opt` packages are added when a feature
-  needs the concern. Source example: starci-lab/starci-academy (origin/main); it illustrates, this file decides.
+  needs the concern. This file decides.
 concerns:
   - id: framework
     tier: core

@@ -9,8 +9,8 @@ const meta = {
     args: {
         props: {
             attempts: ready([
-                { id: "2", title: "#2 · claude-sonnet-5-5", outcome: "Đang chạy", at: "2026-10-27T12:38:00Z", timeLabel: "27/10/26 12:38", state: "informative" },
-                { id: "1", title: "#1 · gpt-6-luna", outcome: "Bị trả lại", at: "2026-10-27T11:02:00Z", timeLabel: "27/10/26 11:02", state: "cautionary" },
+                { id: "2", title: "#2 · claude-sonnet-5-5", outcome: "Running", at: "2026-10-27T12:38:00Z", timeLabel: "27/10/26 12:38", state: "informative" },
+                { id: "1", title: "#1 · gpt-6-luna", outcome: "Sent back", at: "2026-10-27T11:02:00Z", timeLabel: "27/10/26 11:02", state: "cautionary" },
             ]),
             labels: { title: TASK.attempts(2), list: TASK.attemptsList, slot: slotLabels(TASK.noAttempts) },
         },

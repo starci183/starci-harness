@@ -98,7 +98,7 @@ test("there is no copy-module exemption: a resources folder is authoring, and th
   const content = (rel: string) => isContentFile(contextAt(at(rel), settings.starci.hfs))
   assert.equal(content("apps/web/src/modules/resources/copy.ts"), false)
   assert.equal(content("apps/web/src/modules/i18n/messages/vi.json"), true)
-  assert.equal(content("packages/nivo-i18n/messages/vi.json"), true)
+  assert.equal(content("packages/app-i18n/messages/vi.json"), true)
   // code of the i18n module is authoring: only its dictionaries are content
   assert.equal(content("apps/web/src/modules/i18n/request.ts"), false)
   assert.equal(content("apps/web/src/components/leaves/Text/fixtures/copy.ts"), false)
@@ -111,7 +111,7 @@ test("public documentation requires a final adjacent description, not tags, head
     valid: [
       "/** Returns the rows visible to the authenticated caller.\n * @returns Authorized rows.\n */\nexport const readRows = () => []",
       "/** Contains the authenticated caller's stable identifier. */\nexport type Viewer = { id: string }",
-      "/** Stable learner identity accepted by account operations. */\nexport interface Learner { id: string }",
+      "/** Stable member identity accepted by account operations. */\nexport interface Member { id: string }",
       "/** @file Rows module. */\n/** Returns caller-visible rows. */\nexport const readRows = () => []",
       "const text = '/** Not a source comment. */'\n/** Reads caller-visible rows. */\nexport const readRows = () => text",
     ],
@@ -121,7 +121,7 @@ test("public documentation requires a final adjacent description, not tags, head
       { code: "/** Returns caller-visible rows. */\nconst unrelated = 1\nexport const readRows = () => unrelated", errors: [{ messageId: "jsdoc" }] },
       { code: "const text = '/** Returns caller-visible rows. */'\nexport const readRows = () => text", errors: [{ messageId: "jsdoc" }] },
       { code: "const text = \u0060/** Returns caller-visible rows. */\u0060\nexport const readRows = () => text", errors: [{ messageId: "jsdoc" }] },
-      { code: "/** @returns Account identifier. */\nexport interface Learner { id: string }", errors: [{ messageId: "jsdoc" }] },
+      { code: "/** @returns Account identifier. */\nexport interface Member { id: string }", errors: [{ messageId: "jsdoc" }] },
     ],
   })
 

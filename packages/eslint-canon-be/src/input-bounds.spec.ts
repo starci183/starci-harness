@@ -121,7 +121,7 @@ const DOORS = [
     "",
 ].join("\n")
 const RESOLVER = at("src/features/api/identity/transport/graphql/sign-in.resolver.ts")
-const WEBHOOK = at("src/features/api/payment/transport/http/payos-webhook.controller.ts")
+const WEBHOOK = at("src/features/api/payment/transport/http/beta-pay-webhook.controller.ts")
 
 test("R42: a handshake or webhook door is on the strict rate-limit tier", () => {
     assert.doesNotThrow(() => {

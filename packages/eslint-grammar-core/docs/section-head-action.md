@@ -24,7 +24,7 @@ Every rule below is an error in `coreGrammarConfig`; none can be switched off or
 ```tsx
 <Section title="Runs" count={3} action={<Link variant="head" href="/runs">All runs</Link>}>...</Section>
 <Section title="Runs" action={<IconButton label="About runs" glyph="more" />}>...</Section>
-<Section title="Provider" count={2} action={<Button intent="neutral" size="sm" onPress={add}>Gắn thêm provider</Button>}>...</Section>
+<Section title="Provider" count={2} action={<Button intent="neutral" size="sm" onPress={add}>Add provider</Button>}>...</Section>
 ```
 
 Rule ownership: [FE-RULE-OWNERSHIP](../../../contexts/code/fe/README.md#the-placement-test-fe-rule-ownership).

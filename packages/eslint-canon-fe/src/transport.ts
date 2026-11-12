@@ -659,7 +659,7 @@ const isJsonRead = (node: Node | null | undefined): boolean => {
 /** A GraphQL operation written as text. */
 const GRAPHQL_TEXT = /^\s*(?:query|mutation|subscription|fragment)\b[^{]*\{/
 
-/** The leftmost identifier of a type name: `Course` in `Course`, `Gql` in `Gql.CourseQuery`. */
+/** The leftmost identifier of a type name: `Project` in `Project`, `Gql` in `Gql.ProjectQuery`. */
 const typeRoot = (name: TSESTree.EntityName): TSESTree.Identifier | TSESTree.ThisExpression => (name.type === "TSQualifiedName" ? typeRoot(name.left) : name)
 
 /** The value an identifier is initialised with when it is a `const` of this file's scope chain, else null. */
@@ -819,7 +819,7 @@ const aliasDeclaration = (tsNode: ts.Node): ts.TypeAliasDeclaration => {
  * Outcome (`{ kind: "ready" } | { kind: "not-found" }`, no `ok` arm) is a screen state, not a second result vocabulary. The check reads the resolved members through the checker, so
  * `Ok<T> | Failure` and an intersection are seen as what they are, and no name (`*Outcome`, `*Result`) decides anything.
  * A UI state union (`{ status: "idle" } | { status: "saving" }`, `{ type: ... }`, a `kind` of menu items) is not result
- * vocabulary and passes. An alias that only composes the one union (`type Read = Outcome<Course>`, `Extract<Outcome<T>, ...>`) is not
+ * vocabulary and passes. An alias that only composes the one union (`type Read = Outcome<Project>`, `Extract<Outcome<T>, ...>`) is not
  * a union type node and passes; `Outcome<T> | { ok: false; kind: "conflict" }` adds an arm to the one union and is refused.
  */
 export const oneOutcomeUnion = defineRule({

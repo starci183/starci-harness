@@ -11,9 +11,9 @@ const meta = {
         props: {
             task: "t-b2c41e07",
             header: ready({
-                workflow: "next-subscription-sepay",
-                workflowHref: "/w/starci-next/next-subscription-sepay",
-                title: TASK.title("code", "B2 bảng giá tháng/năm"),
+                workflow: "add-search",
+                workflowHref: "/w/demo-app/add-search",
+                title: TASK.title("code", "B2 Add search index"),
                 state: NODE_STATE.running,
                 elapsed: "11m",
             }),

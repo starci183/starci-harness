@@ -46,8 +46,8 @@ test("COMMENT-1: an export with a surface needs a doc; a data constant does not"
   assert.doesNotThrow(() => {
     tester.run("require-export-jsdoc", requireExportJsdoc, {
       valid: [
-        "/** Reads a learner. */\nexport const readUser = () => null",
-        "/** A learner. */\nexport interface User { id: string }",
+        "/** Reads a member. */\nexport const readUser = () => null",
+        "/** A member. */\nexport interface User { id: string }",
         "/** How the grade came out. */\nexport enum Verdict { Pass }",
         // a data constant is already fully described by its own name
         "export const MAX_ATTEMPTS = 3",
@@ -199,7 +199,7 @@ test("law 7: a doc block that only re-spells the declared name is COMMENT-3 wear
     tester.run("no-restated-name-jsdoc", noRestatedNameJsdoc, {
       valid: [
         // says what it is FOR, in words the name itself does not carry
-        "/** Reads a learner. */\nexport const readUser = () => null",
+        "/** Reads a member. */\nexport const readUser = () => null",
         // real consequence, not the member's own name re-spelled
         "/** x */\nexport enum Verdict {\n  /** Nothing settled, so nothing is granted. */\n  Pending,\n}",
         // no doc block at all is require-export-jsdoc's concern, not this rule's
@@ -227,7 +227,7 @@ test("public documentation requires a final adjacent description, not tags, head
       valid: [
         "/** Returns the rows visible to the authenticated caller.\n * @returns Authorized rows.\n */\nexport const readRows = () => []",
         "/** Contains the authenticated caller's stable identifier. */\nexport type Viewer = { id: string }",
-        "/** Stable learner identity accepted by account operations. */\nexport interface Learner { id: string }",
+        "/** Stable member identity accepted by account operations. */\nexport interface Member { id: string }",
         "/** @file Rows module. */\n/** Returns caller-visible rows. */\nexport const readRows = () => []",
         "const text = '/** Not a source comment. */'\n/** Reads caller-visible rows. */\nexport const readRows = () => text",
       ],
@@ -237,7 +237,7 @@ test("public documentation requires a final adjacent description, not tags, head
         { code: "/** Returns caller-visible rows. */\nconst unrelated = 1\nexport const readRows = () => unrelated", errors: [{ messageId: "jsdoc" }] },
         { code: "const text = '/** Returns caller-visible rows. */'\nexport const readRows = () => text", errors: [{ messageId: "jsdoc" }] },
         { code: "const text = \u0060/** Returns caller-visible rows. */\u0060\nexport const readRows = () => text", errors: [{ messageId: "jsdoc" }] },
-        { code: "/** @returns Account identifier. */\nexport interface Learner { id: string }", errors: [{ messageId: "jsdoc" }] },
+        { code: "/** @returns Account identifier. */\nexport interface Member { id: string }", errors: [{ messageId: "jsdoc" }] },
       ],
     })
   })
@@ -246,7 +246,7 @@ test("public documentation requires a final adjacent description, not tags, head
 test("decorated exports and members retain their canonical documentation placement", () => {
   assert.doesNotThrow(() => {
     tester.run("require-export-jsdoc", requireExportJsdoc, {
-      valid: ["declare const Service: (label?: string) => ClassDecorator\n@Service(\"export\")\n/** Resolves learner accounts for an authorized caller. */\nexport class AccountService {}"],
+      valid: ["declare const Service: (label?: string) => ClassDecorator\n@Service(\"export\")\n/** Resolves member accounts for an authorized caller. */\nexport class AccountService {}"],
       invalid: [{ code: "declare const Service: () => ClassDecorator\n@Service()\n/** @file Accounts module. */\nexport class AccountService {}", errors: [{ messageId: "jsdoc" }] }],
     })
     tester.run("require-public-member-jsdoc", requirePublicMemberJsdoc, {
@@ -276,7 +276,7 @@ test("enum member tags cannot substitute for a consequence description", () => {
 test("parameter tags cannot conceal an export description that only restates its name", () => {
   assert.doesNotThrow(() => {
     tester.run("no-restated-name-jsdoc", noRestatedNameJsdoc, {
-      valid: ["/** Reads an authorized learner.\n * @param id - Stable account id.\n */\nexport const readUser = (id: string) => id"],
+      valid: ["/** Reads an authorized member.\n * @param id - Stable account id.\n */\nexport const readUser = (id: string) => id"],
       invalid: [{ code: "/** The read user function.\n * @param id - Stable account id.\n */\nexport const readUser = (id: string) => id", errors: [{ messageId: "restated" }] }],
     })
   })

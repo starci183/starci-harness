@@ -37,7 +37,7 @@ const CONSUMER = at(`${T}/message/paid.consumer.ts`)
 const CLI = at(`${T}/cli/seed.cli.ts`)
 const DOMAIN = at("src/modules/domain/order/order.service.ts")
 const PLATFORM = at("src/modules/platform/graphql/graphql.module.ts")
-const INTEGRATION = at("src/modules/integrations/payos/payos.client.ts")
+const INTEGRATION = at("src/modules/integrations/beta-pay/beta-pay.client.ts")
 
 const BUS = `import { Command, CommandBus, Query, QueryBus } from "@nestjs/cqrs"
 import { EntityManager } from "typeorm"

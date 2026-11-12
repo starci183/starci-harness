@@ -161,7 +161,7 @@ default branch and on `workflow_dispatch` on any branch, for that branch's head 
 
 The release gate reads the verify runs that speak for the release (`packages/hfs/release/cache-verify-lock.mts`): those of the default branch and those of the release's own sha
 on any branch (`gh run list --commit <sha>`). The newest finished one decides. Green, or none yet, leaves the gate open; red or unreadable refuses it with
-`HFS_CHECK_CACHE_VERIFY_LOCKED`, naming the run. So a red verify of `main` (as of 2026-11-06 on nivo-lite) is cleared for the release of a sha by a green dispatch of
+`HFS_CHECK_CACHE_VERIFY_LOCKED`, naming the run. So a red verify of `main` is cleared for the release of a sha by a green dispatch of
 `cache-verify.yml` on the branch that holds that sha (`dev`, a candidate), while a newer red verify of `main` locks again, and a red verify of the sha itself locks it.
 A cancelled or skipped run is no verdict. A forged record stays an error finding. Times are printed, never stored.
 

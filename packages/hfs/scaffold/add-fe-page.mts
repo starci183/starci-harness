@@ -1,7 +1,7 @@
 // starci app add page <route> [--blocks a,b] [--tabs a,b] [--app <fe app>] - one route page of the locale segment, in the canon's shape.
 //
 //   starci app add page handoffs                       app/[locale]/handoffs/{page,loading,error}.tsx, HandoffsPage, HandoffsErrorPage
-//   starci app add page settings/billing --blocks invoice-list-block
+//   starci app add page settings/billing --blocks item-list-block
 //   starci app add page settings --tabs profile,billing   header.tabs: Profile at /settings, Billing at /settings/billing
 //
 // The route files only adapt (contexts/code/fe function.md FE-FUNCTION-5, architecture.md FE-ARCHITECTURE-1, boundaries.md

@@ -44,11 +44,11 @@ test('R374 an upstream service with a named volume, a data bind, a socket and a 
 });
 
 test('R374 a bind of code, a script, a plugin directory or a writable config file is STACKS_CODE_BIND_MOUNT', (t) => {
-  const bad = (volume: string): string[] => codes(app(t, { compose: `services:\n  openclaw:\n    image: upstream/openclaw\n    volumes:\n      - ${volume}\n` }));
+  const bad = (volume: string): string[] => codes(app(t, { compose: `services:\n  agent:\n    image: upstream/agent\n    volumes:\n      - ${volume}\n` }));
   assert.deepEqual(bad('./wrapper/start.sh:/start.sh:ro'), ['STACKS_CODE_BIND_MOUNT']);
   assert.deepEqual(bad('./plugins:/plugins:ro'), ['STACKS_CODE_BIND_MOUNT']);
   assert.deepEqual(bad('./config/app.json:/etc/app.json'), ['STACKS_CODE_BIND_MOUNT']);
-  const long = codes(app(t, { swarm: 'services:\n  openclaw:\n    image: upstream/openclaw\n    volumes:\n      - {type: bind, source: ./plugin.mjs, target: /plugin.mjs, read_only: true}\n' }));
+  const long = codes(app(t, { swarm: 'services:\n  agent:\n    image: upstream/agent\n    volumes:\n      - {type: bind, source: ./plugin.mjs, target: /plugin.mjs, read_only: true}\n' }));
   assert.deepEqual(long, ['STACKS_CODE_BIND_MOUNT']);
 });
 
@@ -56,17 +56,17 @@ test('R374 an image folder is FROM a digest-pinned base, and the harness fork wh
   const folder = (name: string, from: string) => ({ name, text: `FROM ${from}\nCOPY wrapper /wrapper\n` });
   assert.deepEqual(codes(app(t, { dockerfile: folder('tool', `node:22@${DIGEST}`) })), []);
   assert.deepEqual(codes(app(t, { dockerfile: folder('tool', 'node:22') })), ['STACKS_IMAGE_BASE_UNPINNED']);
-  assert.deepEqual(codes(app(t, { dockerfile: folder('openclaw', `ghcr.io/openclaw/openclaw:1@${DIGEST}`) })), ['STACKS_IMAGE_BASE_NOT_FORK']);
-  assert.deepEqual(codes(app(t, { dockerfile: folder('openclaw', `ghcr.io/starci183/openclaw-runtime:1.0.0@${DIGEST}`) })), []);
+  assert.deepEqual(codes(app(t, { dockerfile: folder('minio', `minio/minio:1@${DIGEST}`) })), ['STACKS_IMAGE_BASE_NOT_FORK']);
+  assert.deepEqual(codes(app(t, { dockerfile: folder('minio', `ghcr.io/starci183/minio:1.0.0@${DIGEST}`) })), []);
   const staged = { name: 'tool', text: `FROM node:22@${DIGEST} AS build\nRUN true\nFROM build\n` };
   assert.deepEqual(codes(app(t, { dockerfile: staged })), []);
 });
 
 test('R374 a service with an image folder runs the folder image in every environment', (t) => {
-  const dockerfile = { name: 'openclaw', text: `FROM ghcr.io/starci183/openclaw-runtime:1@${DIGEST}\n` };
-  const built = 'services:\n  openclaw:\n    build: {context: ../../images/openclaw}\n';
-  const owned = 'services:\n  openclaw:\n    image: demo/openclaw:1.0.0\n';
-  const upstream = 'services:\n  openclaw:\n    image: ghcr.io/openclaw/openclaw:latest\n';
+  const dockerfile = { name: 'agent', text: `FROM node:22@${DIGEST}\n` };
+  const built = 'services:\n  agent:\n    build: {context: ../../images/agent}\n';
+  const owned = 'services:\n  agent:\n    image: demo/agent:1.0.0\n';
+  const upstream = 'services:\n  agent:\n    image: ghcr.io/upstream/agent:latest\n';
   assert.deepEqual(codes(app(t, { dockerfile, compose: built, swarm: owned })), []);
   assert.deepEqual(codes(app(t, { dockerfile, compose: upstream, swarm: owned })), ['STACKS_IMAGE_ENV_DIVERGES']);
   assert.deepEqual(codes(app(t, { dockerfile, compose: built, swarm: upstream })), ['STACKS_IMAGE_ENV_DIVERGES']);
@@ -84,12 +84,10 @@ test('R374 a project image the deploy renders (registry/<owner>/<project>-<name>
 });
 
 test('R374 the fork list is the harness images/sources.json', () => {
-  const sources = JSON.parse(fs.readFileSync(new URL('../../../images/sources.json', import.meta.url), 'utf8')) as Record<string, { layerOf?: string; image?: string; base?: string; published: { reference: string } | null }>;
+  const sources = JSON.parse(fs.readFileSync(new URL('../../../images/sources.json', import.meta.url), 'utf8')) as Record<string, { published: { reference: string } | null }>;
   const repository = (reference: string): string => reference.replace(/@sha256:[0-9a-f]+$/u, '').replace(/:[^/:]+$/u, '');
-  // A service runs the harness layer built on its fork when the harness ships one, else the fork itself.
   const expected: Record<string, string> = {};
-  for (const [name, image] of Object.entries(sources)) if (image.layerOf === undefined && image.published !== null) expected[name] = repository(image.published.reference);
-  for (const image of Object.values(sources)) if (image.layerOf !== undefined) expected[image.layerOf] = image.image ?? '';
+  for (const [name, image] of Object.entries(sources)) if (image.published !== null) expected[name] = repository(image.published.reference);
   assert.deepEqual(forkImages(), expected);
 });
 
@@ -100,16 +98,3 @@ for (const edition of ['lite', 'full']) {
     assert.deepEqual(stacksServiceImageFindings({ repoRoot: root, repo: { kind: 'app', edition } as never, isRoot: true }), []);
   });
 }
-
-test('R374 the OpenClaw runtime layer is built on the recorded fork digest and ships the wrapper an app image extends', () => {
-  const sources = JSON.parse(fs.readFileSync(new URL('../../../images/sources.json', import.meta.url), 'utf8')) as Record<string, { base?: string; published: { reference: string } | null; pluginDirectory?: string }>;
-  const layer = sources['openclaw-runtime'];
-  assert.ok(layer?.base);
-  assert.equal(layer.base, sources['openclaw']?.published?.reference);
-  const folder = new URL('../../../images/openclaw-runtime/', import.meta.url);
-  const dockerfile = fs.readFileSync(new URL('Dockerfile', folder), 'utf8');
-  assert.ok(dockerfile.split(/\r?\n/u).includes(`FROM ${layer.base}`));
-  assert.ok(dockerfile.includes(layer.pluginDirectory ?? 'missing'));
-  for (const file of ['entrypoint.sh', 'openclaw-init.mjs', 'openclaw-relay.mjs']) assert.ok(fs.existsSync(new URL(file, folder)), file);
-  assert.doesNotMatch(dockerfile + fs.readFileSync(new URL('openclaw-init.mjs', folder), 'utf8'), /nivo/iu);
-});

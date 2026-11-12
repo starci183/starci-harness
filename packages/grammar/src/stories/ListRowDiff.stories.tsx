@@ -3,7 +3,7 @@ import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 
 /**
- * LIST-ROW-DIFF (0.37.28, owner drawing "So sánh phiên bản", GitHub-style): `ListRowData.diff` marks a row of a version diff. A gutter mark at the row's start (`+` added,
+ * LIST-ROW-DIFF (0.37.28, version comparison drawing, GitHub-style): `ListRowData.diff` marks a row of a version diff. A gutter mark at the row's start (`+` added,
  * `−` removed, `~` changed, monospace, in the tone's ink), the row's ground in the tone's soft pair, a removed title struck through, a changed row's "from → to" as the 12 muted
  * line. The meaning is the glyph and the label read before the title (`diffLabel`), never the colour alone. In `SurfaceCard kind="list"` and `Section kind="list"`; the row padding holds.
  */
@@ -12,16 +12,16 @@ export default meta;
 type Story = StoryObj;
 
 const steps: readonly G.ListRowData[] = [
-  { id: 'qr', title: 'Gửi QR thanh toán', description: 'gửi QR và mã đơn', diff: 'added', diffLabel: 'Thêm' },
-  { id: 'notify', title: 'Báo đội đơn mới', description: 'nhắn đơn mới vào chat', diff: 'added', diffLabel: 'Thêm' },
-  { id: 'address', title: 'Hỏi lại địa chỉ', description: 'bước cũ, đã gộp vào Tư vấn', diff: 'removed', diffLabel: 'Bỏ' },
-  { id: 'order', title: 'Tạo đơn', diff: 'changed', diffLabel: 'Đổi', change: { from: 'Hỏi', to: 'Tự động' } },
-  { id: 'consult', title: 'Tư vấn khách', description: 'món, địa chỉ, giờ giao' },
+  { id: 'qr', title: 'Send payment QR', description: 'sends the QR and the order code', diff: 'added', diffLabel: 'Added' },
+  { id: 'notify', title: 'Notify the team of a new order', description: 'posts the new order to chat', diff: 'added', diffLabel: 'Added' },
+  { id: 'address', title: 'Ask for the address again', description: 'old step, merged into Advice', diff: 'removed', diffLabel: 'Removed' },
+  { id: 'order', title: 'Create order', diff: 'changed', diffLabel: 'Changed', change: { from: 'Ask', to: 'Auto' } },
+  { id: 'consult', title: 'Advise customer', description: 'items, address, delivery time' },
 ];
 const rights: readonly G.ListRowData[] = [
-  { id: 'send', title: 'Gửi tin cho khách', diff: 'added', diffLabel: 'Thêm' },
-  { id: 'qr-tool', title: 'Tạo mã QR thanh toán', diff: 'added', diffLabel: 'Thêm' },
-  { id: 'write', title: 'Ghi dữ liệu khác của doanh nghiệp', diff: 'removed', diffLabel: 'Bỏ' },
+  { id: 'send', title: 'Send a message to the customer', diff: 'added', diffLabel: 'Added' },
+  { id: 'qr-tool', title: 'Create payment QR code', diff: 'added', diffLabel: 'Added' },
+  { id: 'write', title: 'Write other business data', diff: 'removed', diffLabel: 'Removed' },
 ];
 
 const pad = (element: Element, side: 'Top' | 'Bottom' | 'Left' | 'Right'): number => Number.parseFloat(getComputedStyle(element)[`padding${side}`]);
@@ -35,11 +35,11 @@ const colourOf = (root: Element, token: string): string => {
 };
 
 export const VersionDiff: Story = {
-  name: 'Bản 3 so với Bản 2: added, removed, changed and a plain row',
+  name: 'Version 3 vs version 2: added, removed, changed and a plain row',
   render: () => (
     <div data-diff-story style={{ display: 'flex', flexDirection: 'column', gap: 24, width: 'min(100%, 640px)' }}>
-      <G.SurfaceCard kind="list" label="Các bước khác nhau" items={steps} empty={<G.EmptyNotice message="Không có bước nào khác" />} />
-      <G.Section kind="list" title="Quyền và công cụ" count={3} items={rights} empty={<G.EmptyNotice message="Không đổi" />} />
+      <G.SurfaceCard kind="list" label="Steps that differ" items={steps} empty={<G.EmptyNotice message="No steps differ" />} />
+      <G.Section kind="list" title="Rights and tools" count={3} items={rights} empty={<G.EmptyNotice message="Unchanged" />} />
     </div>
   ),
   play: async ({ canvasElement }) => {
@@ -53,7 +53,7 @@ export const VersionDiff: Story = {
       expect(byId('address').querySelector('[data-grammar-diff-mark]')!.textContent).toBe('−');
       expect(byId('order').querySelector('[data-grammar-diff-mark]')!.textContent).toBe('~');
       expect(byId('qr').querySelector('[data-grammar-diff-mark]')!.getAttribute('aria-hidden')).toBe('true');
-      expect(byId('address').querySelector('[data-grammar-diff-label]')!.textContent).toBe('Bỏ: ');
+      expect(byId('address').querySelector('[data-grammar-diff-label]')!.textContent).toBe('Removed: ');
       expect(getComputedStyle(byId('qr').querySelector('[data-grammar-diff-mark]')!).fontFamily).toMatch(/mono|Consolas|Menlo|Courier/i);
       // The ground is the tone's soft pair; a plain row keeps the surface.
       expect(getComputedStyle(byId('qr')).backgroundColor).toBe(colourOf(root, '--success-soft'));
@@ -64,7 +64,7 @@ export const VersionDiff: Story = {
       // A removed title is struck through; a changed row reads "from → to" at 12, muted.
       expect(getComputedStyle(byId('address').querySelector('.starci-core-list-row-name')!).textDecorationLine).toBe('line-through');
       const change = byId('order').querySelector<HTMLElement>('[data-grammar-diff-change]')!;
-      expect(change.textContent).toBe('Hỏi → Tự động');
+      expect(change.textContent).toBe('Ask → Auto');
       expect(getComputedStyle(change).fontSize).toBe('12px');
       // The row padding holds: p-4 at the card's edges, p-3 at a separator.
       const card = rows.slice(0, steps.length);

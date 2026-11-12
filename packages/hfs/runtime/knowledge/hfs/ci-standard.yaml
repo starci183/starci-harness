@@ -25,11 +25,11 @@ jobs:
 deployJobPrefix: deploy-
 
 # The per-job settings the managed CI renders when .starcistacks/application-stacks.yaml ci.jobs leaves them out (ci.jobs.<job>.timeoutMinutes,
-# ci.jobs.test.shards). Sized from a real run (NIVO v0.2.3 on the 2-vCPU GitHub runner): the be lint with the Sonar import took 11.5 minutes and the
+# ci.jobs.test.shards). Sized from a real run (a reference app on the 2-vCPU GitHub runner): the be lint with the Sonar import took 11.5 minutes and the
 # fe lint more than 8 in one 20-minute job, and ~900 unit suites ran at ~4 s each (670 of 904 in 45 minutes). One lint job per side, and 6 shards of ~150 suites
 # (~10 minutes each plus the install) leave each job well inside its timeout. The coverage job installs, downloads the shards, merges them and runs
 # the coverage judgement alone (starci app coverage verify, seconds): ~5 minutes, so 15 leaves three times that. The whole app check does not fit
-# there: it takes 18m43s on NIVO v0.3.0, past a 20-minute bound (tag run 39592175266).
+# there: it takes 18m43s on a reference app, past a 20-minute bound (tag run 39592175266).
 defaults:
   shards: 6
   timeoutMinutes: {fast: 20, lint: 30, test: 25, coverage: 15, build: 30, sonar: 20, db-types: 30}

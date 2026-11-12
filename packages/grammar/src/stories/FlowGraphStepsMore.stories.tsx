@@ -27,13 +27,13 @@ const nodeBox = (graph: HTMLElement, id: string): DOMRect => {
 };
 
 const chipNodes: ReadonlyArray<G.FlowGraphNode> = [
-  { id: 'trigger', kind: 'event', label: 'Có đơn mới', chips: [{ label: '= order.id', tone: 'accent' }] },
+  { id: 'trigger', kind: 'event', label: 'New order', chips: [{ label: '= order.id', tone: 'accent' }] },
   {
     id: 'send',
     kind: 'action',
-    label: 'Gửi tin Zalo',
-    description: 'Cho khách vừa đặt',
-    chips: [{ label: '= order.phone', tone: 'accent' }, { label: 'mẫu: xác nhận', tone: 'neutral' }, { label: 'Zalo OA' }, { label: 'thử lại 3 lần' }, { label: 'im lặng' }],
+    label: 'Send Email',
+    description: 'For the new buyer',
+    chips: [{ label: '= order.phone', tone: 'accent' }, { label: 'template: confirm', tone: 'neutral' }, { label: 'Email' }, { label: 'retry 3 times' }, { label: 'silent' }],
   },
   { id: 'done', kind: 'end', label: 'Xong' },
 ];
@@ -56,7 +56,7 @@ export const Chips: Story = {
       const graph = graphOf(canvasElement);
       const send = graph.querySelector('[data-grammar-flow-node="send"]')!;
       const chips = [...send.querySelectorAll('[data-grammar-flow-chip]')];
-      expect(chips.map((chip) => chip.textContent)).toEqual(['= order.phone', 'mẫu: xác nhận', 'Zalo OA', '+2']);
+      expect(chips.map((chip) => chip.textContent)).toEqual(['= order.phone', 'template: confirm', 'Email', '+2']);
       expect(chips.map((chip) => chip.getAttribute('data-tone'))).toEqual(['accent', 'neutral', 'neutral', 'neutral']);
       expect(getComputedStyle(chips[0] as HTMLElement).backgroundColor).not.toBe(getComputedStyle(chips[1] as HTMLElement).backgroundColor);
       expect(getComputedStyle(chips[0] as HTMLElement).fontSize).toBe('12px');
@@ -65,12 +65,12 @@ export const Chips: Story = {
 };
 
 const portNodes: ReadonlyArray<G.FlowGraphNode> = [
-  { id: 'start', kind: 'event', label: 'Khách nhắn tin' },
-  { id: 'call', kind: 'action', label: 'Gọi API đơn hàng', outputs: [{ id: 'error', label: 'Lỗi', tone: 'danger' }] },
-  { id: 'ask', kind: 'ask', label: 'Hỏi chủ', outputs: [{ id: 'yes', label: 'Đồng ý' }, { id: 'no', label: 'Từ chối' }, { id: 'fail', label: 'Lỗi', tone: 'danger' }] },
-  { id: 'wait', kind: 'wait', label: 'Chờ 1 giờ', outputs: [{ id: 'timeout', label: 'Quá hạn', tone: 'danger' }] },
-  { id: 'reply', kind: 'action', label: 'Trả lời khách' },
-  { id: 'alert', kind: 'action', label: 'Báo chủ lỗi' },
+  { id: 'start', kind: 'event', label: 'Customer message' },
+  { id: 'call', kind: 'action', label: 'Call the orders API', outputs: [{ id: 'error', label: 'Error', tone: 'danger' }] },
+  { id: 'ask', kind: 'ask', label: 'Ask the owner', outputs: [{ id: 'yes', label: 'Approve' }, { id: 'no', label: 'Decline' }, { id: 'fail', label: 'Error', tone: 'danger' }] },
+  { id: 'wait', kind: 'wait', label: 'Wait 1 hour', outputs: [{ id: 'timeout', label: 'Timed out', tone: 'danger' }] },
+  { id: 'reply', kind: 'action', label: 'Reply to customer' },
+  { id: 'alert', kind: 'action', label: 'Alert the owner' },
   { id: 'ok', kind: 'end', label: 'Xong' },
 ];
 const portEdges: ReadonlyArray<G.FlowGraphEdge> = [
@@ -85,7 +85,7 @@ const portEdges: ReadonlyArray<G.FlowGraphEdge> = [
   { id: 'p9', source: 'reply', target: 'ok' },
 ];
 
-/** `outputs` works on action, ask and wait cards; a port with `tone: "danger"` ("Lỗi") sits on the card edge in danger and its edge is danger too; an edge with no port leaves from the bottom middle. */
+/** `outputs` works on action, ask and wait cards; a port with `tone: "danger"` ("Error") sits on the card edge in danger and its edge is danger too; an edge with no port leaves from the bottom middle. */
 export const OutputsOnAction: Story = {
   name: 'Outputs on action, ask and wait (a danger port)',
   render: () => (
@@ -99,28 +99,28 @@ export const OutputsOnAction: Story = {
     await waitFor(() => {
       const graph = graphOf(canvasElement);
       const ports = [...graph.querySelectorAll('[data-grammar-flow-port]')].map((port) => port.textContent);
-      expect(ports).toEqual(['Lỗi', 'Đồng ý', 'Từ chối', 'Lỗi', 'Quá hạn']);
+      expect(ports).toEqual(['Error', 'Approve', 'Decline', 'Error', 'Timed out']);
       const danger = graph.querySelectorAll('[data-grammar-flow-port][data-tone="danger"]');
       expect(danger.length).toBe(3);
       expect(getComputedStyle(danger[0] as HTMLElement).color).not.toBe(getComputedStyle(graph.querySelector('[data-grammar-flow-port="yes"]')!).color);
       expect(graph.querySelectorAll('.starci-core-flow-graph-edge-danger').length).toBe(3);
-      // The action keeps its plain edge: it leaves the bottom middle, so the "Gọi API" card reaches "Hỏi chủ" and "Báo chủ lỗi" both.
+      // The action keeps its plain edge: it leaves the bottom middle, so the "Call the orders API" card reaches "Ask the owner" and "Alert the owner" both.
       expect(graph.querySelectorAll('.react-flow__edge').length).toBe(portEdges.length);
     });
   },
 };
 
 const loopNodes: ReadonlyArray<G.FlowGraphNode> = [
-  { id: 'trigger', kind: 'event', label: 'Có đơn mới' },
+  { id: 'trigger', kind: 'event', label: 'New order' },
   {
     id: 'loop',
     kind: 'action',
-    label: 'Mỗi sản phẩm',
-    container: { label: 'Lặp theo từng sản phẩm', chips: [{ label: '= order.items', tone: 'accent' }, { label: 'tối đa 20' }], childIds: ['stock', 'reserve'] },
+    label: 'Each product',
+    container: { label: 'Loop over each product', chips: [{ label: '= order.items', tone: 'accent' }, { label: 'max 20' }], childIds: ['stock', 'reserve'] },
   },
-  { id: 'stock', kind: 'action', label: 'Kiểm tồn kho', chips: [{ label: '= item.sku', tone: 'accent' }] },
-  { id: 'reserve', kind: 'action', label: 'Giữ hàng' },
-  { id: 'confirm', kind: 'action', label: 'Xác nhận đơn' },
+  { id: 'stock', kind: 'action', label: 'Check stock', chips: [{ label: '= item.sku', tone: 'accent' }] },
+  { id: 'reserve', kind: 'action', label: 'Hold the goods' },
+  { id: 'confirm', kind: 'action', label: 'Confirm the order' },
   { id: 'done', kind: 'end', label: 'Xong' },
 ];
 const loopEdges: ReadonlyArray<G.FlowGraphEdge> = [
@@ -148,7 +148,7 @@ export const Container: Story = {
         const graph = graphOf(canvasElement, index);
         const container = graph.querySelector<HTMLElement>('[data-grammar-flow-container]');
         if (container === null) throw new Error('The loop card must render');
-        expect(container.textContent).toContain('Lặp theo từng sản phẩm');
+        expect(container.textContent).toContain('Loop over each product');
         expect(container.querySelectorAll('[data-grammar-flow-chip]').length).toBe(2);
         // The outline is declared 1.5px; Chromium snaps a border to whole device pixels, so a 1x screen draws 1px and a 2x screen 1.5px (0.37.29: the check follows the screen).
         expect(Number.parseFloat(getComputedStyle(container).borderTopWidth)).toBeCloseTo(Math.max(1, Math.floor(1.5 * window.devicePixelRatio) / window.devicePixelRatio), 2);
@@ -168,11 +168,11 @@ export const Container: Story = {
 };
 
 const islandNodes: ReadonlyArray<G.FlowGraphNode> = [
-  { id: 'a1', kind: 'event', label: 'Có đơn mới' },
-  { id: 'a2', kind: 'action', label: 'Gửi xác nhận' },
-  { id: 'b1', kind: 'event', label: 'Mỗi sáng 8:00' },
-  { id: 'b2', kind: 'action', label: 'Tóm tắt doanh thu' },
-  { id: 'c1', kind: 'event', label: 'Khách phản hồi' },
+  { id: 'a1', kind: 'event', label: 'New order' },
+  { id: 'a2', kind: 'action', label: 'Send confirmation' },
+  { id: 'b1', kind: 'event', label: 'Every day at 8:00' },
+  { id: 'b2', kind: 'action', label: 'Summarise revenue' },
+  { id: 'c1', kind: 'event', label: 'Customer replies' },
 ];
 const islandEdges: ReadonlyArray<G.FlowGraphEdge> = [
   { id: 'i1', source: 'a1', target: 'a2' },
@@ -227,21 +227,21 @@ export const ControlsReserveCorner: Story = {
 };
 
 const fanNodes: ReadonlyArray<G.FlowGraphNode> = [
-  { id: 'order', kind: 'event', label: 'Có đơn mới', tag: 'Kích hoạt' },
-  { id: 'hook', kind: 'event', label: 'Webhook Shopee', tag: 'Kích hoạt' },
-  { id: 'normalize', kind: 'action', label: 'Chuẩn hoá đơn' },
-  { id: 'zalo', kind: 'action', label: 'Nhắn Zalo cho khách' },
-  { id: 'sheet', kind: 'action', label: 'Ghi vào sổ đơn' },
-  { id: 'stock', kind: 'action', label: 'Trừ tồn kho' },
+  { id: 'order', kind: 'event', label: 'New order', tag: 'Trigger' },
+  { id: 'hook', kind: 'event', label: 'Webhook', tag: 'Trigger' },
+  { id: 'normalize', kind: 'action', label: 'Normalise the order' },
+  { id: 'chat', kind: 'action', label: 'Email the customer' },
+  { id: 'sheet', kind: 'action', label: 'Write to the order log' },
+  { id: 'stock', kind: 'action', label: 'Deduct stock' },
   { id: 'done', kind: 'end', label: 'Xong' },
 ];
 const fanEdges: ReadonlyArray<G.FlowGraphEdge> = [
   { id: 'f1', source: 'order', target: 'normalize' },
   { id: 'f2', source: 'hook', target: 'normalize' },
-  { id: 'f3', source: 'normalize', target: 'zalo' },
+  { id: 'f3', source: 'normalize', target: 'chat' },
   { id: 'f4', source: 'normalize', target: 'sheet' },
   { id: 'f5', source: 'normalize', target: 'stock' },
-  { id: 'f6', source: 'zalo', target: 'done' },
+  { id: 'f6', source: 'chat', target: 'done' },
   { id: 'f7', source: 'sheet', target: 'done' },
   { id: 'f8', source: 'stock', target: 'done' },
 ];
@@ -258,14 +258,14 @@ export const FanOutAndTwoTriggers: Story = {
   play: async ({ canvasElement }) => {
     await waitFor(() => {
       const graph = graphOf(canvasElement);
-      const [order, hook, normalize, zalo, sheet, stock] = ['order', 'hook', 'normalize', 'zalo', 'sheet', 'stock'].map((id) => nodeBox(graph, id));
+      const [order, hook, normalize, chat, sheet, stock] = ['order', 'hook', 'normalize', 'chat', 'sheet', 'stock'].map((id) => nodeBox(graph, id));
       const centre = (box: DOMRect) => (box.left + box.right) / 2;
       expect(Math.abs(order!.top - hook!.top)).toBeLessThanOrEqual(1);
       expect(hook!.left).toBeGreaterThan(order!.right);
       expect(Math.abs((centre(order!) + centre(hook!)) / 2 - centre(normalize!))).toBeLessThanOrEqual(2);
-      expect(Math.abs(zalo!.top - sheet!.top)).toBeLessThanOrEqual(1);
+      expect(Math.abs(chat!.top - sheet!.top)).toBeLessThanOrEqual(1);
       expect(Math.abs(sheet!.top - stock!.top)).toBeLessThanOrEqual(1);
-      expect(zalo!.left).toBeLessThan(sheet!.left);
+      expect(chat!.left).toBeLessThan(sheet!.left);
       expect(sheet!.left).toBeLessThan(stock!.left);
       expect(graph.querySelectorAll('.react-flow__edge').length).toBe(fanEdges.length);
     });
@@ -273,10 +273,10 @@ export const FanOutAndTwoTriggers: Story = {
 };
 
 const markNodes: ReadonlyArray<G.FlowGraphNode> = [
-  { id: 'start', kind: 'event', label: 'Có đơn mới', tag: 'Kích hoạt' },
-  { id: 'check', kind: 'condition', label: 'Đã thanh toán?', outputs: [{ id: 'yes', label: 'Có' }, { id: 'no', label: 'Không' }] },
-  { id: 'ship', kind: 'action', label: 'Giao hàng' },
-  { id: 'remind', kind: 'action', label: 'Nhắc thanh toán' },
+  { id: 'start', kind: 'event', label: 'New order', tag: 'Trigger' },
+  { id: 'check', kind: 'condition', label: 'Paid?', outputs: [{ id: 'yes', label: 'Yes' }, { id: 'no', label: 'No' }] },
+  { id: 'ship', kind: 'action', label: 'Ship the goods' },
+  { id: 'remind', kind: 'action', label: 'Payment reminder' },
 ];
 const markEdges: ReadonlyArray<G.FlowGraphEdge> = [
   { id: 'm1', source: 'start', target: 'check' },
@@ -317,14 +317,14 @@ export const PortsArrowheadsAndTag: Story = {
 /** Six unconnected workflows of 2-3 steps and one connected chain of five (the Sales agent): `islands="wrap"` (the default) fills rows by the canvas width instead of one tall column. */
 const wrapNodes: ReadonlyArray<G.FlowGraphNode> = [
   ...[1, 2, 3, 4, 5, 6].flatMap((n): ReadonlyArray<G.FlowGraphNode> => [
-    { id: `w${n}a`, kind: 'event', label: `Quy trình ${n}`, tag: 'Kích hoạt' },
-    { id: `w${n}b`, kind: 'action', label: `Việc ${n}` },
+    { id: `w${n}a`, kind: 'event', label: `Flow ${n}`, tag: 'Trigger' },
+    { id: `w${n}b`, kind: 'action', label: `Task ${n}` },
     ...(n % 2 === 0 ? [{ id: `w${n}c`, kind: 'end' as const, label: 'Xong' }] : []),
   ]),
-  { id: 'c1', kind: 'event', label: 'Chuỗi chính', tag: 'Kích hoạt' },
-  { id: 'c2', kind: 'action', label: 'Bước 2' },
-  { id: 'c3', kind: 'action', label: 'Bước 3' },
-  { id: 'c4', kind: 'action', label: 'Bước 4' },
+  { id: 'c1', kind: 'event', label: 'Main chain', tag: 'Trigger' },
+  { id: 'c2', kind: 'action', label: 'Step 2' },
+  { id: 'c3', kind: 'action', label: 'Step 3' },
+  { id: 'c4', kind: 'action', label: 'Step 4' },
   { id: 'c5', kind: 'end', label: 'Xong' },
 ];
 const wrapEdges: ReadonlyArray<G.FlowGraphEdge> = [

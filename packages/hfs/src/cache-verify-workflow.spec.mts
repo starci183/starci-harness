@@ -74,9 +74,9 @@ for (const edition of ['lite', 'full'] as const) {
 
 test('an app with root packages verifies the packages side as a shard of its own, after building them', (t) => {
   const root = newApp(t, 'lite');
-  fs.mkdirSync(path.join(root, 'packages', 'agent-sdk', 'src'), { recursive: true });
-  fs.writeFileSync(path.join(root, 'packages', 'agent-sdk', 'package.json'), '{"name":"@demo/agent-sdk","version":"0.0.0","private":true}\n');
-  fs.writeFileSync(path.join(root, 'packages', 'agent-sdk', 'src', 'index.ts'), 'export {}\n');
+  fs.mkdirSync(path.join(root, 'packages', 'sdk', 'src'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'packages', 'sdk', 'package.json'), '{"name":"@demo/sdk","version":"0.0.0","private":true}\n');
+  fs.writeFileSync(path.join(root, 'packages', 'sdk', 'src', 'index.ts'), 'export {}\n');
   const manifest = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')) as { workspaces: string[] };
   fs.writeFileSync(path.join(root, 'package.json'), `${JSON.stringify({ ...manifest, workspaces: [...manifest.workspaces, 'packages/*'] }, null, 2)}\n`);
   addModule({ root, name: 'loyalty' });

@@ -38,7 +38,7 @@ export const PaneTabsLine: Story = { render: () => <TabsPaneDemo /> }
 
 const thread = (
     <>
-        <G.MessageBubble author="Linh" meta="09:12" avatar={<G.Avatar name="Linh" size="sm" />} body="Can the order for table 4 move to 19:30?" />
+        <G.MessageBubble author="Maria" meta="09:12" avatar={<G.Avatar name="Maria" size="sm" />} body="Can the order for table 4 move to 19:30?" />
         <G.MessageBubble side="outgoing" meta="09:14" body="Yes, I moved it." />
     </>
 )
@@ -60,22 +60,22 @@ export const ChatPaneHeadLine: Story = {
 }
 
 const actions: ReadonlyArray<G.MessageCardAction> = [
-    { id: "open", kind: "open", label: "Mở đơn hàng", onPress: noop },
-    { id: "snooze", label: "Để sau", onPress: noop },
-    { id: "approve", kind: "primary", label: "Duyệt", onPress: noop },
+    { id: "open", kind: "open", label: "Open order", onPress: noop },
+    { id: "snooze", label: "Later", onPress: noop },
+    { id: "approve", kind: "primary", label: "Approve", onPress: noop },
 ]
 
-/** MessageCard: title and chip, then the body or key/value details, then the actions (primary first, the "Mở ..." arrow last), then the meta line. Capped at the bubble measure, avatar at the start. */
+/** MessageCard: title and chip, then the body or key/value details, then the actions (primary first, the "Open ..." arrow last), then the meta line. Capped at the bubble measure, avatar at the start. */
 export const MessageCards: Story = {
     render: () => (
         <div style={{ display: "grid", gap: "0.75rem", maxWidth: "64rem" }}>
-            <G.MessageBubble author="Linh" meta="09:12" avatar={<G.Avatar name="Linh" size="sm" />} body="Can you check the order for table 4?" />
+            <G.MessageBubble author="Maria" meta="09:12" avatar={<G.Avatar name="Maria" size="sm" />} body="Can you check the order for table 4?" />
             <G.MessageCard
                 author="Agent"
                 avatar={<G.Avatar name="Agent" size="sm" />}
-                title="Đơn hàng #1042 chờ duyệt"
-                chip={<G.Badge tone="warning">Chờ duyệt</G.Badge>}
-                body="Khách đặt bàn 4 lúc 19:30, bếp cần giờ mới trước khi món đầu tiên vào."
+                title="Order #1042 awaiting approval"
+                chip={<G.Badge tone="warning">Pending</G.Badge>}
+                body="The customer booked table 4 at 19:30; the kitchen needs the new time before the first dish."
                 actions={actions}
                 meta="Sales · 04:38"
             />
@@ -83,9 +83,9 @@ export const MessageCards: Story = {
                 measure="wide"
                 author="Agent"
                 avatar={<G.Avatar name="Agent" size="sm" />}
-                title="Đặt bàn 4"
-                chip={<G.Badge>Mới</G.Badge>}
-                details={[{ id: "time", term: "Giờ", description: "19:30" }, { id: "guests", term: "Khách", description: "4 người" }, { id: "owner", term: "Phụ trách", description: "Linh" }]}
+                title="Table 4 booking"
+                chip={<G.Badge>New</G.Badge>}
+                details={[{ id: "time", term: "Time", description: "19:30" }, { id: "guests", term: "Guests", description: "4 people" }, { id: "owner", term: "Owner", description: "Maria" }]}
                 actions={actions}
                 meta="Sales · 04:40"
             />
@@ -112,11 +112,11 @@ export const EmptyNoticeInThread: Story = {
 export const BubbleGrouping: Story = {
     render: () => (
         <div style={{ display: "grid", gap: "0.25rem", maxWidth: "40rem" }}>
-            <G.MessageBubble groupPosition="single" body="A lone bubble: fully rounded." avatar={<G.Avatar name="Linh" size="sm" />} />
+            <G.MessageBubble groupPosition="single" body="A lone bubble: fully rounded." avatar={<G.Avatar name="Maria" size="sm" />} />
             <div style={{ display: "grid", gap: "0.125rem", marginBlockStart: "0.75rem" }}>
-                <G.MessageBubble groupPosition="first" author="Linh" meta="09:12" body="First of a run." avatar={<G.Avatar name="Linh" size="sm" />} />
-                <G.MessageBubble groupPosition="middle" body="Middle: both start corners squared." avatar={<G.Avatar name="Linh" size="sm" />} />
-                <G.MessageBubble groupPosition="last" body="Last: the avatar sits beside it." avatar={<G.Avatar name="Linh" size="sm" />} />
+                <G.MessageBubble groupPosition="first" author="Maria" meta="09:12" body="First of a run." avatar={<G.Avatar name="Maria" size="sm" />} />
+                <G.MessageBubble groupPosition="middle" body="Middle: both start corners squared." avatar={<G.Avatar name="Maria" size="sm" />} />
+                <G.MessageBubble groupPosition="last" body="Last: the avatar sits beside it." avatar={<G.Avatar name="Maria" size="sm" />} />
             </div>
             <div style={{ display: "grid", gap: "0.125rem", marginBlockStart: "0.75rem" }}>
                 <G.MessageBubble side="outgoing" groupPosition="first" body="Outgoing first." />
@@ -136,9 +136,9 @@ const ReactionsDemo = () => {
     })
     return (
         <div style={{ display: "grid", gap: "2.5rem", maxWidth: "40rem", paddingBlock: "3rem" }}>
-            <G.MessageBubble author="Linh" avatar={<G.Avatar name="Linh" size="sm" />} body="Hover (or long-press) for the toolbar; press the pill to add one more." reactions={reactions} onReact={react} onReply={noop} onShare={noop} />
+            <G.MessageBubble author="Maria" avatar={<G.Avatar name="Maria" size="sm" />} body="Hover (or long-press) for the toolbar; press the pill to add one more." reactions={reactions} onReact={react} onReply={noop} onShare={noop} />
             <G.MessageBubble side="outgoing" body="Outgoing: the pill sits on the start corner." reactions={reactions} onReact={react} onReply={noop} />
-            <G.MessageCard author="Agent" avatar={<G.Avatar name="Agent" size="sm" />} title="Đơn hàng #1042" body="The same lifted card with the same pill." reactions={reactions} onReact={react} onShare={noop} />
+            <G.MessageCard author="Agent" avatar={<G.Avatar name="Agent" size="sm" />} title="Order #1042" body="The same lifted card with the same pill." reactions={reactions} onReact={react} onShare={noop} />
         </div>
     )
 }

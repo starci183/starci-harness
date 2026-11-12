@@ -1,4 +1,4 @@
-import type { WorkbenchDeclaration } from "@{{project}}/agent-sdk/workbench/contract"
+import type { WorkbenchDeclaration } from "@{{project}}/sdk/workbench/contract"
 
 /** The views of the {{pascal}} workbench in strip order (`?tab=`), each labelled from the module's namespace. */
 export const {{upper}}_VIEW_IDS: readonly ["overview"] = ["overview"]

@@ -13,7 +13,7 @@ export const MODULE_PREFIX = 'module-';
 /** The package that lists every module package. */
 export const REGISTRY_DIR = 'packages/modules';
 /** The product's agent SDK package folder every module builds on. */
-export const SDK_DIR = 'packages/agent-sdk';
+export const SDK_DIR = 'packages/sdk';
 
 /** A file of the registry package: its app-relative path and its content. */
 export interface RegistryFile {
@@ -48,7 +48,7 @@ const registryExports = (): Record<string, unknown> => ({
 export function registryFiles(project: string, names: readonly string[]): RegistryFile[] {
   if (names.length === 0) return [];
   const sorted = [...names].sort(byCodeUnit);
-  const sdk = `@${project}/agent-sdk`;
+  const sdk = `@${project}/sdk`;
   const module = (name: string): string => `@${project}/${MODULE_PREFIX}${name}`;
   const serverImports = sorted.map((name) => canonImport({ names: [`${upperOf(name)}_SERVER`], from: `${module(name)}/template` })).join('\n');
   const workbenchImports = sorted.map((name) => canonImport({ names: [`${upperOf(name)}_WORKBENCH`], from: `${module(name)}/manifest` })).join('\n');

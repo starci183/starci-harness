@@ -24,7 +24,7 @@ export interface InjectionSite {
 const INFRA_TYPES = new Set(["EntityManager", "DataSource", "QueryRunner"])
 
 /**
- * PascalCase of a connection name: `expert-academy` gives `ExpertAcademy`.
+ * PascalCase of a connection name: `reporting` gives `Reporting`.
  *
  * @param {string} name - A kebab-case connection name from `hfs.json`.
  * @returns {string} The PascalCase form.

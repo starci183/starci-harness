@@ -22,8 +22,8 @@ const MAIN = "apps/core/src/main.ts"
 const APP = "apps/core/src/app.module.ts"
 const BOOT = "import { NestFactory } from '@nestjs/core';\nexport const start = (module: unknown) => NestFactory.createApplicationContext(module);\n"
 const OWNER = "src/modules/domain/billing"
-const ENTITY = "import { Entity, PrimaryColumn } from 'typeorm';\n@Entity('invoices')\nexport class InvoiceEntity { @PrimaryColumn({ name: 'id', type: 'uuid' }) id!: string }\n"
-const MIGRATION = "import { MigrationInterface, QueryRunner } from 'typeorm';\nexport class CreateInvoices1789800000000 implements MigrationInterface {\n  name = 'CreateInvoices1789800000000';\n  async up(queryRunner: QueryRunner): Promise<void> { void queryRunner }\n  async down(queryRunner: QueryRunner): Promise<void> { void queryRunner }\n}\n"
+const ENTITY = "import { Entity, PrimaryColumn } from 'typeorm';\n@Entity('records')\nexport class RecordEntity { @PrimaryColumn({ name: 'id', type: 'uuid' }) id!: string }\n"
+const MIGRATION = "import { MigrationInterface, QueryRunner } from 'typeorm';\nexport class CreateRecords1789800000000 implements MigrationInterface {\n  name = 'CreateRecords1789800000000';\n  async up(queryRunner: QueryRunner): Promise<void> { void queryRunner }\n  async down(queryRunner: QueryRunner): Promise<void> { void queryRunner }\n}\n"
 const registration = (name: string) => [
     "import { Module } from '@nestjs/common';",
     "import { DatabaseModule } from '../../../src/modules/platform/database';",
@@ -36,9 +36,9 @@ const SCHEMA_FILES = {
     "src/modules/platform/database/index.ts": "export { DatabaseModule } from './database.module';\n",
     "src/modules/platform/database/database.module.ts": "import { Module } from '@nestjs/common';\n@Module({})\nexport class DatabaseModule { static register(options: { connections: { name: string }[] }) { return { module: DatabaseModule, ...options } } }\n",
     [`${OWNER}/index.ts`]: "export { billingEntities, billingMigrations } from './persistence/connection';\n",
-    [`${OWNER}/persistence/connection.ts`]: "import { InvoiceEntity } from './entities/invoice.entity';\nimport { CreateInvoices1789800000000 } from './migrations/1789800000000-create-invoices';\nexport const billingEntities = [InvoiceEntity];\nexport const billingMigrations = [CreateInvoices1789800000000];\n",
-    [`${OWNER}/persistence/entities/invoice.entity.ts`]: ENTITY,
-    [`${OWNER}/persistence/migrations/1789800000000-create-invoices.ts`]: MIGRATION,
+    [`${OWNER}/persistence/connection.ts`]: "import { RecordEntity } from './entities/record.entity';\nimport { CreateRecords1789800000000 } from './migrations/1789800000000-create-records';\nexport const billingEntities = [RecordEntity];\nexport const billingMigrations = [CreateRecords1789800000000];\n",
+    [`${OWNER}/persistence/entities/record.entity.ts`]: ENTITY,
+    [`${OWNER}/persistence/migrations/1789800000000-create-records.ts`]: MIGRATION,
     [APP]: registration("primary"),
     "apps/cli/src/main.ts": "void 0;\n",
     "apps/cli/src/app.module.ts": registration("primary"),
@@ -92,20 +92,20 @@ for (const edition of ["lite", "full"] as const) {
     })
 
     test(`R35 accepts owned schema and rejects misplaced entities and undeclared connections in ${edition}`, (t) => {
-        const misplaced = "src/features/api/checkout/application/invoice.entity.ts"
+        const misplaced = "src/features/api/checkout/application/record.entity.ts"
         // lite has no be migration: its owned shape is the entity list that PRIMARY_ENTITIES names (BE-PERSISTENCE-3)
         const correct = edition === "full" ? schemaRepo(t, edition, { [misplaced]: ENTITY }) : liteRepo(t, LITE_NAMED, { [misplaced]: ENTITY })
-        const unknown = schemaRepo(t, edition, { [APP]: registration("ledger"), "apps/cli/src/app.module.ts": registration("ledger") })
+        const unknown = schemaRepo(t, edition, { [APP]: registration("journal"), "apps/cli/src/app.module.ts": registration("journal") })
         correct.tester.run("schema-owner", ruleNamed(rules, "schema-owner"), {
             valid: edition === "full"
-                ? [source(correct, APP), source(correct, `${OWNER}/index.ts`), source(correct, `${OWNER}/persistence/connection.ts`), source(correct, `${OWNER}/persistence/entities/invoice.entity.ts`), source(correct, `${OWNER}/persistence/migrations/1789800000000-create-invoices.ts`)]
-                : [source(correct, LITE_LIST), source(correct, `${OWNER}/index.ts`), source(correct, `${OWNER}/persistence/entities/index.ts`), source(correct, `${OWNER}/persistence/entities/invoice.entity.ts`)],
+                ? [source(correct, APP), source(correct, `${OWNER}/index.ts`), source(correct, `${OWNER}/persistence/connection.ts`), source(correct, `${OWNER}/persistence/entities/record.entity.ts`), source(correct, `${OWNER}/persistence/migrations/1789800000000-create-records.ts`)]
+                : [source(correct, LITE_LIST), source(correct, `${OWNER}/index.ts`), source(correct, `${OWNER}/persistence/entities/index.ts`), source(correct, `${OWNER}/persistence/entities/record.entity.ts`)],
             invalid: [
-                invalid(correct, misplaced, 3, /BE_SCHEMA_OWNER.*Entity InvoiceEntity is declared outside/),
+                invalid(correct, misplaced, 3, /BE_SCHEMA_OWNER.*Entity RecordEntity is declared outside/),
             ],
         })
         unknown.tester.run("schema-owner", ruleNamed(rules, "schema-owner"), {
-            valid: [source(unknown, `${OWNER}/persistence/entities/invoice.entity.ts`)],
+            valid: [source(unknown, `${OWNER}/persistence/entities/record.entity.ts`)],
             invalid: [
                 invalid(unknown, "apps/cli/src/app.module.ts", 4, /BE_SCHEMA_OWNER.*which hfs\.json does not declare/),
             ],
@@ -118,8 +118,8 @@ const LITE_SCHEMA_FILES = {
     "src/modules/platform/database/index.ts": "export { DatabaseModule } from './database.module';\n",
     "src/modules/platform/database/database.module.ts": "import { Module } from '@nestjs/common';\n@Module({})\nexport class DatabaseModule { static register(options: { entities: readonly unknown[] }) { return { module: DatabaseModule, ...options } } }\n",
     [`${OWNER}/index.ts`]: "export { billingEntities } from './persistence/entities/index';\n",
-    [`${OWNER}/persistence/entities/index.ts`]: "import { InvoiceEntity } from './invoice.entity';\nexport const billingEntities = [InvoiceEntity];\n",
-    [`${OWNER}/persistence/entities/invoice.entity.ts`]: ENTITY,
+    [`${OWNER}/persistence/entities/index.ts`]: "import { RecordEntity } from './record.entity';\nexport const billingEntities = [RecordEntity];\n",
+    [`${OWNER}/persistence/entities/record.entity.ts`]: ENTITY,
     "apps/core/src/main.ts": "void 0;\n",
     "apps/cli/src/main.ts": "void 0;\n",
 }
@@ -136,7 +136,7 @@ test("R35 lite: a capability's entity list is persistence/entities/index.ts and 
     const named = liteRepo(t, LITE_NAMED)
     const missing = liteRepo(t, "export const PRIMARY_ENTITIES = [];\n")
     named.tester.run("schema-owner", ruleNamed(rules, "schema-owner"), {
-        valid: [source(named, LITE_LIST), source(named, `${OWNER}/index.ts`), source(named, `${OWNER}/persistence/entities/index.ts`), source(named, `${OWNER}/persistence/entities/invoice.entity.ts`)],
+        valid: [source(named, LITE_LIST), source(named, `${OWNER}/index.ts`), source(named, `${OWNER}/persistence/entities/index.ts`), source(named, `${OWNER}/persistence/entities/record.entity.ts`)],
         invalid: [],
     })
     missing.tester.run("schema-owner", ruleNamed(rules, "schema-owner"), {

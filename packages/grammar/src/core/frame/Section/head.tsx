@@ -33,7 +33,7 @@ export type SectionHeadProps = {
     readonly meta?: string
     /**
      * The head's one end-of-row thing: a navigation `Link variant="head"` ("Open the board" then the arrow), an info `IconButton`, or a text
-     * `<Button intent="neutral" size="sm">` ("Gắn thêm provider", 0.37.25; no icon, never the commit). Any other Button and more than one element are errors (lint
+     * `<Button intent="neutral" size="sm">` ("Add provider", 0.37.25; no icon, never the commit). Any other Button and more than one element are errors (lint
      * `section-head-action`). It hugs its label at the end of the head row, on the label's line.
      */
     readonly action?: ReactNode

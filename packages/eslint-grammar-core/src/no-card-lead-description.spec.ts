@@ -21,15 +21,15 @@ test("the law publishes one rule and it is an error", () => {
 test("CARD-NO-DESCRIPTION: a muted Text directly above a SurfaceCard is refused", () => {
   slotTester().run("no-card-lead-description", noCardLeadDescription, {
     valid: [
-      { filename: BLOCK, code: code("<Stack><Heading level={3}>Chung</Heading><SurfaceCard kind=\"select\" label=\"Chế độ\" /></Stack>") },
-      { filename: BLOCK, code: code("<Stack><SurfaceCard label=\"A\" /><Text tone=\"muted\">Chú thích</Text></Stack>") },
-      { filename: BLOCK, code: code("<Stack><Text>Một dòng</Text><SurfaceCard label=\"A\" /></Stack>") },
-      { filename: BLOCK, code: code("<Stack><Text tone=\"muted\">Một dòng</Text><Heading level={3}>Chung</Heading><SurfaceCard label=\"A\" /></Stack>") },
+      { filename: BLOCK, code: code("<Stack><Heading level={3}>General</Heading><SurfaceCard kind=\"select\" label=\"Mode\" /></Stack>") },
+      { filename: BLOCK, code: code("<Stack><SurfaceCard label=\"A\" /><Text tone=\"muted\">Caption</Text></Stack>") },
+      { filename: BLOCK, code: code("<Stack><Text>One line</Text><SurfaceCard label=\"A\" /></Stack>") },
+      { filename: BLOCK, code: code("<Stack><Text tone=\"muted\">One line</Text><Heading level={3}>General</Heading><SurfaceCard label=\"A\" /></Stack>") },
       { filename: SCRIPT, code: code("<Stack><Text tone=\"muted\">x</Text><SurfaceCard label=\"A\" /></Stack>") },
     ],
     invalid: [
-      { filename: BLOCK, code: code("<Stack><Heading level={3}>Chung</Heading><Text tone=\"muted\">Mô tả</Text><SurfaceCard label=\"A\" /></Stack>"), errors: [{ messageId: "lead" }] },
-      { filename: BLOCK, code: code("<><Text tone=\"muted\">Mô tả</Text><SurfaceCard kind=\"select\" /></>"), errors: [{ messageId: "lead" }] },
+      { filename: BLOCK, code: code("<Stack><Heading level={3}>General</Heading><Text tone=\"muted\">Description</Text><SurfaceCard label=\"A\" /></Stack>"), errors: [{ messageId: "lead" }] },
+      { filename: BLOCK, code: code("<><Text tone=\"muted\">Description</Text><SurfaceCard kind=\"select\" /></>"), errors: [{ messageId: "lead" }] },
     ],
   })
 })

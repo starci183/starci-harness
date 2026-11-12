@@ -46,12 +46,12 @@ test('without LOCALAPPDATA the base is XDG_STATE_HOME, else ~/.local/state', () 
 
 test('the state an installed copy kept inside itself moves out once, an entry the base holds is kept aside, and a second run does nothing', (t) => {
   const { root, env, base } = installed(t);
-  write(path.join(root, '.runtime', 'stack', 'nivo', 'dev', 'state.json'), '{}\n');
+  write(path.join(root, '.runtime', 'stack', 'demo', 'dev', 'state.json'), '{}\n');
   write(path.join(root, '.runtime', 'machine.sqlite'), 'legacy');
   write(path.join(base, 'machine.sqlite'), 'current');
   const adopted = adoptLegacyState(env, root, () => new Date('2026-11-04T01:02:03.000Z'));
   assert.deepEqual(adopted, { from: path.join(root, '.runtime'), to: base, moved: ['stack'], kept: ['machine.sqlite'] });
-  assert.equal(fs.readFileSync(path.join(base, 'stack', 'nivo', 'dev', 'state.json'), 'utf8'), '{}\n');
+  assert.equal(fs.readFileSync(path.join(base, 'stack', 'demo', 'dev', 'state.json'), 'utf8'), '{}\n');
   assert.equal(fs.readFileSync(path.join(base, 'machine.sqlite'), 'utf8'), 'current');
   assert.equal(fs.readFileSync(path.join(base, 'legacy-20261104010203', 'machine.sqlite'), 'utf8'), 'legacy');
   assert.equal(fs.existsSync(path.join(root, '.runtime')), false);
@@ -74,10 +74,10 @@ test('an interrupted adoption resumes from .runtime.adopting; a checkout or STAR
 
 test('an entry moves by rename where it can, and across volumes is copied with its mode and owner kept (a bind folder a container user owns)', (t) => {
   const { root, env, base } = installed(t);
-  const folder = path.join(root, '.runtime', 'stack', 'nivo', 'dev', 'data', 'openclaw-state');
-  write(path.join(folder, 'openclaw.json'), '{}\n');
-  fs.chmodSync(path.join(folder, 'openclaw.json'), 0o444);
-  const parked = path.join(root, '.runtime.adopting', 'stack', 'nivo', 'dev', 'data', 'openclaw-state');
+  const folder = path.join(root, '.runtime', 'stack', 'demo', 'dev', 'data', 'worker-state');
+  write(path.join(folder, 'worker.json'), '{}\n');
+  fs.chmodSync(path.join(folder, 'worker.json'), 0o444);
+  const parked = path.join(root, '.runtime.adopting', 'stack', 'demo', 'dev', 'data', 'worker-state');
   const mode = (file: string): number => fs.lstatSync(file).mode & 0o7777;
   const rename = fs.renameSync;
   const lstat = fs.lstatSync;
@@ -95,12 +95,12 @@ test('an entry moves by rename where it can, and across volumes is copied with i
     return stats !== undefined && String(file).startsWith(parked) ? Object.assign(stats, { uid: 1000, gid: 1000 }) : stats;
   });
   fs.lchownSync = (file, uid, gid) => { owners.push([path.relative(base, String(file)), uid, gid]); };
-  const sourceMode = mode(path.join(folder, 'openclaw.json'));
+  const sourceMode = mode(path.join(folder, 'worker.json'));
   assert.deepEqual(adoptLegacyState(env, root)?.moved, ['stack']);
-  const moved = path.join(base, 'stack', 'nivo', 'dev', 'data', 'openclaw-state');
-  assert.equal(mode(path.join(moved, 'openclaw.json')), sourceMode);
-  assert.deepEqual(owners.filter(([file]) => file.includes('openclaw-state')).map(([file, uid, gid]) => [file.split(path.sep).join('/'), uid, gid]),
-    [['stack/nivo/dev/data/openclaw-state', 1000, 1000], ['stack/nivo/dev/data/openclaw-state/openclaw.json', 1000, 1000]]);
+  const moved = path.join(base, 'stack', 'demo', 'dev', 'data', 'worker-state');
+  assert.equal(mode(path.join(moved, 'worker.json')), sourceMode);
+  assert.deepEqual(owners.filter(([file]) => file.includes('worker-state')).map(([file, uid, gid]) => [file.split(path.sep).join('/'), uid, gid]),
+    [['stack/demo/dev/data/worker-state', 1000, 1000], ['stack/demo/dev/data/worker-state/worker.json', 1000, 1000]]);
   assert.equal(fs.existsSync(path.join(root, '.runtime.adopting')), false);
   fs.renameSync = () => { throw Object.assign(new Error('denied'), { code: 'EACCES' }); };
   write(path.join(root, '.runtime.adopting', 'machine.sqlite'), 'parked');

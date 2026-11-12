@@ -42,7 +42,7 @@ const capability = (tier: string, name: string, table: string, extraIndex = "", 
     }
 }
 const IDENTITY_INDEX = "export class IdentityService { lookup(): string { return 'user'; } }\n"
-const BILLING_INDEX = "export class BillingService { charge(): string { return 'invoice'; } }\n"
+const BILLING_INDEX = "export class BillingService { charge(): string { return 'record'; } }\n"
 const CART_INDEX = "export class CartService { total(): number { return 1; } }\n"
 /** The imports an entry needs: the connection constant and the arrays of every capability it lists. */
 const IMPORTS = {
@@ -63,7 +63,7 @@ const BASE: Readonly<Record<string, string>> = {
     ...capability("domain", "identity", "users", IDENTITY_INDEX),
     ...capability("domain", "order", "orders"),
     ...capability("domain", "cart", "carts", CART_INDEX),
-    ...capability("domain", "billing", "invoices", BILLING_INDEX),
+    ...capability("domain", "billing", "records", BILLING_INDEX),
     "apps/identity/src/app.module.ts": registration([IDENTITY_ENTRY]),
     "apps/order/src/app.module.ts": registration([ORDER_ENTRY]),
     "apps/billing/src/app.module.ts": registration([BILLING_ENTRY]),
@@ -156,7 +156,7 @@ test("context-coupling: an entity relation never crosses a context", (t) => {
 test("context-coupling: a migration foreign key never references a table of another context", (t) => {
     const files = {
         [`${DOMAIN}/order/persistence/migrations/1790000000000-create-order.ts`]: migration("CreateOrder1790000000000", "CREATE TABLE orders (id uuid PRIMARY KEY, buyer_id uuid REFERENCES users (id), cart_id uuid REFERENCES carts (id))"),
-        [`${DOMAIN}/billing/persistence/migrations/1790000000000-create-billing.ts`]: migration("CreateBilling1790000000000", "CREATE TABLE invoices (id uuid PRIMARY KEY, order_id uuid)"),
+        [`${DOMAIN}/billing/persistence/migrations/1790000000000-create-billing.ts`]: migration("CreateBilling1790000000000", "CREATE TABLE records (id uuid PRIMARY KEY, order_id uuid)"),
         [`${DOMAIN}/cart/persistence/migrations/1790000000000-create-cart.ts`]: migration("CreateCart1790000000000", "CREATE TABLE carts (id uuid PRIMARY KEY, order_id uuid REFERENCES orders (id))"),
     }
     const f = repo(t, files)
@@ -193,7 +193,7 @@ const busFiles = capability("platform", "event-bus", "event_outbox", BUS_INDEX)
 const BUS_ORDER_ENTRY = "{ name: ORDER_CONNECTION, entities: [...orderEntities, ...cartEntities, ...eventBusEntities], migrations: [...orderMigrations, ...cartMigrations, ...eventBusMigrations] }"
 const BUS_BILLING_ENTRY = "{ name: BILLING_CONNECTION, entities: [...billingEntities, ...eventBusEntities], migrations: [...billingMigrations, ...eventBusMigrations] }"
 const withBus = (entry: readonly string[]) => registration(entry).replace("@Module(", "import { eventBusEntities, eventBusMigrations } from '../../../src/modules/platform/event-bus';\n@Module(")
-const PUBLISHER = `import { InjectOrderEntityManager } from '../../platform/database/order.decorators';\nimport { InjectBillingEntityManager } from '../../platform/database/billing.decorators';\nimport { EventBus } from '../../platform/event-bus';\n${MANAGER}export class Publisher {\n  constructor(\n    @InjectOrderEntityManager() private readonly entityManager: EntityManager,\n    @InjectBillingEntityManager() private readonly billingManager: EntityManager,\n    private readonly bus: EventBus,\n  ) {}\n  async publishOrder() { await this.entityManager.transaction(async (manager) => { this.bus.publish('order.placed', manager); }); }\n  async publishBilling() { await this.billingManager.transaction(async (manager) => { this.bus.publish('invoice.issued', manager); }); }\n}\n`
+const PUBLISHER = `import { InjectOrderEntityManager } from '../../platform/database/order.decorators';\nimport { InjectBillingEntityManager } from '../../platform/database/billing.decorators';\nimport { EventBus } from '../../platform/event-bus';\n${MANAGER}export class Publisher {\n  constructor(\n    @InjectOrderEntityManager() private readonly entityManager: EntityManager,\n    @InjectBillingEntityManager() private readonly billingManager: EntityManager,\n    private readonly bus: EventBus,\n  ) {}\n  async publishOrder() { await this.entityManager.transaction(async (manager) => { this.bus.publish('order.placed', manager); }); }\n  async publishBilling() { await this.billingManager.transaction(async (manager) => { this.bus.publish('record.issued', manager); }); }\n}\n`
 test("context-platform-tables: the event-bus tables exist on every connection that publishes through it", (t) => {
     const missing = {
         ...busFiles,
@@ -204,7 +204,7 @@ test("context-platform-tables: the event-bus tables exist on every connection th
     const f = repo(t, missing)
     f.tester.run("context-platform-tables", ruleNamed(rules, "context-platform-tables"), {
         valid: ok(f, missing, [`${PLATFORM}/event-bus/index.ts`]),
-        invalid: [...bad(f, missing, [[`${DOMAIN}/billing/publisher.service.ts`, ["this.bus.publish('invoice.issued', manager)", /passes the entity manager of connection billing to event-bus, but the tables of event-bus are not registered on billing \(registered: order\)/]]])],
+        invalid: [...bad(f, missing, [[`${DOMAIN}/billing/publisher.service.ts`, ["this.bus.publish('record.issued', manager)", /passes the entity manager of connection billing to event-bus, but the tables of event-bus are not registered on billing \(registered: order\)/]]])],
     })
     const complete = {
         ...busFiles,
@@ -243,7 +243,7 @@ test("sql-owner: a cross-context JOIN or read is refused, an own-table and a sam
         [`${DOMAIN}/order/persistence/order.sql.ts`]: SQL_FILE([
             ["OWN", "SELECT o.id FROM orders o WHERE o.id = $1"],
             ["SAME_CONTEXT", "SELECT o.id FROM orders o JOIN carts c ON c.id = o.id WHERE o.id = $1 LIMIT 1"],
-            ["CROSS_JOIN", "SELECT o.id FROM orders o JOIN invoices i ON i.id = o.id WHERE o.id = $1 LIMIT 1"],
+            ["CROSS_JOIN", "SELECT o.id FROM orders o JOIN records i ON i.id = o.id WHERE o.id = $1 LIMIT 1"],
             ["CROSS_READ", "SELECT u.id FROM users u WHERE u.id = $1"],
         ]),
     }
@@ -251,7 +251,7 @@ test("sql-owner: a cross-context JOIN or read is refused, an own-table and a sam
     f.tester.run("sql-owner", ruleNamed(rules, "sql-owner"), {
         valid: [],
         invalid: [...bad(f, files, [[`${DOMAIN}/order/persistence/order.sql.ts`,
-            ["CROSS_JOIN", /reads table invoices, owned by src\/modules\/domain\/billing \(context billing\); a context reads and writes only its own context's tables/],
+            ["CROSS_JOIN", /reads table records, owned by src\/modules\/domain\/billing \(context billing\); a context reads and writes only its own context's tables/],
             ["CROSS_READ", /reads table users, owned by src\/modules\/domain\/identity \(context identity\)/],
         ]])],
     })

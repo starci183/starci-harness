@@ -10,7 +10,7 @@ const meta = {
         props: {
             route: ready({
                 steps: [
-                    { id: "0-hard-filter", step: "hard-filter", detail: "5 member (cursor bị loại: hết quota)" },
+                    { id: "0-hard-filter", step: "hard-filter", detail: "5 members (cursor dropped: quota exhausted)" },
                     { id: "1-score", step: "score", detail: "sonnet 8.67 · luna 1.73" },
                 ],
                 model: "claude · claude-sonnet-5-5",

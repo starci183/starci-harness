@@ -12,10 +12,10 @@ const meta: Meta = { title: 'Surfaces/Zone seam, key-value rows and pane head', 
 export default meta;
 type Story = StoryObj;
 
-const COLUMNS = [{ id: 'name', label: 'Mã đơn' }, { id: 'total', label: 'Tổng', isNumeric: true }] as const;
+const COLUMNS = [{ id: 'name', label: 'Order ID' }, { id: 'total', label: 'Total', isNumeric: true }] as const;
 const zones = [
-  { kind: 'search', label: 'Tìm đơn', value: '', onChange: noop, placeholder: 'Tìm đơn' },
-  { kind: 'filter', label: 'Trạng thái', items: [{ id: 'all', label: 'Tất cả' }, { id: 'paid', label: 'Đã thanh toán' }], selectedKey: 'all', onSelect: noop, overflowLabel: 'Thêm', moreLabel: (count: number) => `${count} bộ lọc` },
+  { kind: 'search', label: 'Search orders', value: '', onChange: noop, placeholder: 'Search orders' },
+  { kind: 'filter', label: 'Status', items: [{ id: 'all', label: 'All' }, { id: 'paid', label: 'Paid' }], selectedKey: 'all', onSelect: noop, overflowLabel: 'More', moreLabel: (count: number) => `${count} filters` },
 ] as const;
 
 /** The channel distance between a colour composited over a ground and the ground, measured on a canvas (the seam is a translucent mix). */
@@ -35,8 +35,8 @@ const delta = (seam: string, ground: string) => {
 export const ZoneSeamContrast: Story = {
   render: () => (
     <div style={{ width: 'min(100%, 720px)', padding: 24, display: 'grid', gap: 24 }}>
-      <G.SurfaceCard kind="table" label="Thẻ bảng" columns={COLUMNS} rows={[{ id: 'r1', cells: { name: 'DH-1001', total: '120.000' } }]} empty={<G.EmptyNotice message="Trống" />} headers={[...zones]} />
-      <G.SurfaceCard kind="list" label="Trên thẻ trắng" items={[{ id: 'a', title: 'DH-1001' }]} empty={<G.EmptyNotice message="Trống" />} headers={[...zones]} />
+      <G.SurfaceCard kind="table" label="Table card" columns={COLUMNS} rows={[{ id: 'r1', cells: { name: 'OR-1001', total: '120,000' } }]} empty={<G.EmptyNotice message="Empty" />} headers={[...zones]} />
+      <G.SurfaceCard kind="list" label="On a white card" items={[{ id: 'a', title: 'OR-1001' }]} empty={<G.EmptyNotice message="Empty" />} headers={[...zones]} />
     </div>
   ),
   play: async ({ canvasElement }) => {
@@ -54,16 +54,16 @@ export const ZoneSeamContrast: Story = {
 };
 
 const FACTS = [
-  { id: 'a', title: 'Khách', value: 'Nguyễn Thị Hương' },
-  { id: 'b', title: 'Địa chỉ giao', value: '125/7 Nguyễn Thị Minh Khai, Phường Bến Thành, Quận 1, Thành phố Hồ Chí Minh' },
-  { id: 'c', title: 'Trạng thái', value: 'Đã thanh toán' },
+  { id: 'a', title: 'Customer', value: 'Maria Garcia' },
+  { id: 'b', title: 'Delivery address', value: '125/7 Lakeside Boulevard, Northgate District, Springfield Heights, Greater Metropolitan Area' },
+  { id: 'c', title: 'Status', value: 'Paid' },
 ];
 
 export const KeyValueRows: Story = {
   render: () => (
     <div style={{ padding: 24, display: 'grid', gap: 24, gridTemplateColumns: '30rem 16rem', alignItems: 'start' }}>
-      <G.SurfaceCard kind="list" layout="keyValue" label="Chi tiết đơn" items={FACTS} empty={<G.EmptyNotice message="Trống" />} />
-      <G.SurfaceCard kind="list" layout="keyValue" label="Hẹp" items={FACTS} empty={<G.EmptyNotice message="Trống" />} />
+      <G.SurfaceCard kind="list" layout="keyValue" label="Order details" items={FACTS} empty={<G.EmptyNotice message="Empty" />} />
+      <G.SurfaceCard kind="list" layout="keyValue" label="Narrow" items={FACTS} empty={<G.EmptyNotice message="Empty" />} />
     </div>
   ),
   play: async ({ canvasElement }) => {
@@ -87,8 +87,8 @@ const Head = () => {
     <div style={{ height: 360 }}>
       <G.PaneGrid label="Detail" areas={['main aside']} columns={['fill', 'standard']}>
         <G.Pane area="main" label="Main"><G.PaneSection><G.Text>{`closed ${closed}`}</G.Text></G.PaneSection></G.Pane>
-        <G.Pane area="aside" surface scroll label="Chi tiết" head={{ title: 'Chi tiết khách hàng', description: 'Nguyễn Thị Hương', onClose: () => setClosed((n) => n + 1), closeLabel: 'Đóng' }}>
-          <G.PaneSection>{Array.from({ length: 60 }, (_, index) => <G.Text key={index}>{`Dòng ${index + 1}`}</G.Text>)}</G.PaneSection>
+        <G.Pane area="aside" surface scroll label="Details" head={{ title: 'Customer details', description: 'Maria Garcia', onClose: () => setClosed((n) => n + 1), closeLabel: 'Close' }}>
+          <G.PaneSection>{Array.from({ length: 60 }, (_, index) => <G.Text key={index}>{`Line ${index + 1}`}</G.Text>)}</G.PaneSection>
         </G.Pane>
       </G.PaneGrid>
     </div>
@@ -108,7 +108,7 @@ export const PaneHeadSlot: Story = {
     const scroller = aside.querySelector<HTMLElement>('.starci-core-pane-scroll') ?? aside;
     scroller.scrollTop = 300;
     await waitFor(() => expect(Math.abs(head.getBoundingClientRect().top - before)).toBeLessThanOrEqual(1));
-    await userEvent.click(within(aside).getByRole('button', { name: 'Đóng' }));
+    await userEvent.click(within(aside).getByRole('button', { name: 'Close' }));
     expect(canvasElement.textContent).toContain('closed 1');
   },
 };

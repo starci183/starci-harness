@@ -54,8 +54,8 @@ rules:
     templateNa: "Slot ownership judges where a path sits in the tree, not what a file holds: the managed templates render files into the slots that own them, and no template exists for a path that no slot, two slots or a forbidden slot own."
     exemplifiedBy:
       - {path: examples/lite-app/be/src/features/webhooks/calendar/transport/http/calendar.webhook.ts, edition: lite}
-      - {path: examples/full-app/be/src/features/webhooks/sepay/transport/http/sepay.webhook.ts, edition: full}
-      - {path: examples/ecommerce-app/be/src/features/webhooks/sepay/transport/http/sepay.webhook.ts, edition: full}
+      - {path: examples/full-app/be/src/features/webhooks/gateway/transport/http/gateway.webhook.ts, edition: full}
+      - {path: examples/ecommerce-app/be/src/features/webhooks/gateway/transport/http/gateway.webhook.ts, edition: full}
     witness:
       - {path: packages/hfs/src/hfs-repository-tree-layout.spec.mjs, edition: lite, codes: [HFS_ROOT_ENTRY_FORBIDDEN, HFS_ROOT_MARKDOWN_FORBIDDEN, HFS_ROOT_SRC_FORBIDDEN_FE, HFS_SRC_LAYOUT_INVALID, HFS_MODULE_TIER_INVALID, HFS_WORK_IN_FE, HFS_STACKS_IN_SIDE]}
       - {path: packages/hfs/src/hfs-repository-tree-layout.spec.mjs, edition: full, codes: [HFS_ROOT_ENTRY_FORBIDDEN, HFS_ROOT_MARKDOWN_FORBIDDEN, HFS_ROOT_SRC_FORBIDDEN_FE, HFS_SRC_LAYOUT_INVALID, HFS_MODULE_TIER_INVALID, HFS_WORK_IN_FE, HFS_STACKS_IN_SIDE]}
@@ -4402,7 +4402,7 @@ rules:
       - {"path":"packages/hfs/templates/be/inbox/webhook-door.ts.tpl","editions":["lite","full"]}
       - {"path":"packages/hfs/templates/be/inbox/service.ts.tpl","editions":["lite","full"]}
       - {"path":"examples/lite-app/be/src/features/webhooks/calendar/transport/http/calendar.webhook.ts","edition":"lite"}
-      - {"path":"examples/full-app/be/src/features/webhooks/sepay/transport/http/sepay.webhook.ts","edition":"full"}
+      - {"path":"examples/full-app/be/src/features/webhooks/gateway/transport/http/gateway.webhook.ts","edition":"full"}
       - {"path":"packages/eslint/be/webhook-handoff-inbox.spec.mjs","editions":["lite","full"],"codes":["BE_WEBHOOK_INBOX_KEY"]}
     proves:
       - {"path":"packages/eslint/be/webhook-handoff-scope.spec.mjs","editions":["lite","full"],"codes":["BE_WEBHOOK_SCOPE"]}
@@ -5241,7 +5241,7 @@ rules:
     proves:
       - {path: packages/eslint/be/boundary-schema.spec.mjs, editions: [lite, full], codes: [BE_SCHEMA_PLACE]}
     exemplifiedBy:
-      - {path: examples/full-app/be/src/modules/integrations/sepay/sepay-transactions.schema.ts, edition: full}
+      - {path: examples/full-app/be/src/modules/integrations/gateway/gateway-transactions.schema.ts, edition: full}
       - {path: examples/lite-app/be/src/modules/domain/calendar-inbox/calendar-delivery.schema.ts, edition: lite}
       - {path: packages/eslint/be/boundary-schema.spec.mjs, editions: [lite, full], codes: [BE_SCHEMA_PLACE]}
     witness:
@@ -5261,7 +5261,7 @@ rules:
     proves:
       - {path: packages/eslint/be/boundary-schema.spec.mjs, editions: [lite, full], codes: [BE_SCHEMA_BOUNDED]}
     exemplifiedBy:
-      - {path: examples/full-app/be/src/modules/integrations/sepay/sepay-transactions.schema.ts, edition: full}
+      - {path: examples/full-app/be/src/modules/integrations/gateway/gateway-transactions.schema.ts, edition: full}
       - {path: examples/lite-app/be/src/modules/domain/calendar-inbox/calendar-delivery.schema.ts, edition: lite}
       - {path: packages/eslint/be/boundary-schema.spec.mjs, editions: [lite, full], codes: [BE_SCHEMA_BOUNDED]}
     witness:
@@ -6360,7 +6360,7 @@ rules:
       - {path: packages/hfs/src/stack-local.spec.mjs, editions: [lite, full]}
   - id: R374
     code: "STACKS_CODE_BIND_MOUNT"
-    law: "A service the app customises runs from an image built out of `.starcistacks/images/<name>/` (a Dockerfile whose every FROM is digest-pinned and whose final stage is the harness's image for that service, the fork or its runtime layer, when the harness owns one), the same image in every environment (the folder build, or a project-owned reference `<project>` or `<project>-<name>` as the managed images workflow publishes it); no stack or compose file bind-mounts code, plugins or scripts into a service container (data volumes, secrets, least grants and read-only plain config data files stay allowed)."
+    law: "A service the app customises runs from an image built out of `.starcistacks/images/<name>/` (a Dockerfile whose every FROM is digest-pinned and whose final stage is the harness's StarCi fork image for that service when the harness owns one), the same image in every environment (the folder build, or a project-owned reference `<project>` or `<project>-<name>` as the managed images workflow publishes it); no stack or compose file bind-mounts code, plugins or scripts into a service container (data volumes, secrets, least grants and read-only plain config data files stay allowed)."
     kinds: [check]
     gates: [settle, land, ci]
     failureCodes: ["STACKS_CODE_BIND_MOUNT", "STACKS_IMAGE_BASE_UNPINNED", "STACKS_IMAGE_BASE_NOT_FORK", "STACKS_IMAGE_ENV_DIVERGES"]

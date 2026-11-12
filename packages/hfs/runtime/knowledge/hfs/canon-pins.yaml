@@ -177,7 +177,7 @@ pins:
     version: 2.11.6
     group: tooling
     side: fe
-    why: 'every app is a monorepo (R143): turbo runs build, dev, lint and typecheck over the fe workspaces fe/apps/* and fe/packages/* from the app root turbo.json, as nivo-fe does; 2.11.6 is the newest 2.x on 2026-10-02.'
+    why: 'every app is a monorepo (R143): turbo runs build, dev, lint and typecheck over the fe workspaces fe/apps/* and fe/packages/* from the app root turbo.json; 2.11.6 is the newest 2.x on 2026-10-02.'
   prettier:
     version: 3.9.6
     group: tooling
@@ -402,7 +402,7 @@ pins:
     version: 4.1.6
     group: framework
     side: fe
-    why: 'the GraphQL client of every front end (fe-stack graphql): auth and no-auth clients with the link chain in modules/api/graphql; version read from the starci-academy package-lock on 2026-10-13.'
+    why: 'the GraphQL client of every front end (fe-stack graphql): auth and no-auth clients with the link chain in modules/api/graphql.'
   graphql-ws:
     version: 6.2.1
     group: framework
@@ -412,7 +412,7 @@ pins:
     version: 7.4.6
     group: tooling
     side: fe
-    why: 'generates the front-end wire types from be/contracts/<app>/schema.graphql into modules/api/graphql/__generated__ (fe-stack codegen); the latest registry version on 2026-10-13, academy has none.'
+    why: 'generates the front-end wire types from be/contracts/<app>/schema.graphql into modules/api/graphql/__generated__ (fe-stack codegen); the latest registry version on 2026-10-13.'
   '@graphql-codegen/client-preset':
     version: 6.2.3
     group: tooling
@@ -422,22 +422,22 @@ pins:
     version: 1.20.0
     group: framework
     side: fe
-    why: 'the REST client of the front end for uploads, presigned URLs and auth endpoints (fe-stack rest); version read from the starci-academy package-lock on 2026-10-13.'
+    why: 'the REST client of the front end for uploads, presigned URLs and auth endpoints (fe-stack rest).'
   'swr':
     version: 2.4.2
     group: framework
     side: fe
-    why: 'the data hooks and cache of every front end, hooks/swr (fe-stack data); version read from the starci-academy package-lock on 2026-10-13.'
+    why: 'the data hooks and cache of every front end, hooks/swr (fe-stack data).'
   'react-hook-form':
     version: 7.77.0
     group: framework
     side: fe
-    why: 'the form library, hooks/rhf (fe-stack forms); version read from the starci-academy package-lock on 2026-10-13.'
+    why: 'the form library, hooks/rhf (fe-stack forms).'
   '@hookform/resolvers':
     version: 5.4.0
     group: framework
     side: fe
-    why: 'the zod resolver of react-hook-form (fe-stack forms); version read from the starci-academy package-lock on 2026-10-13.'
+    why: 'the zod resolver of react-hook-form (fe-stack forms).'
   'zod':
     version: 4.6.7
     group: framework
@@ -447,27 +447,27 @@ pins:
     version: 2.11.2
     group: framework
     side: fe
-    why: 'app-wide shared state, redux/ (fe-stack state-global); version read from the starci-academy package-lock on 2026-10-13.'
+    why: 'app-wide shared state, redux/ (fe-stack state-global).'
   'react-redux':
     version: 9.2.0
     group: framework
     side: fe
-    why: 'the React binding of the app-wide store (fe-stack state-global); version read from the starci-academy package-lock on 2026-10-13.'
+    why: 'the React binding of the app-wide store (fe-stack state-global).'
   'zustand':
     version: 5.0.12
     group: framework
     side: fe
-    why: 'feature-local client state, hooks/zustand (fe-stack state-local); version read from the starci-academy package-lock on 2026-10-13.'
+    why: 'feature-local client state, hooks/zustand (fe-stack state-local).'
   'socket.io-client':
     version: 4.8.3
     group: framework
     side: both
-    why: 'the realtime client, hooks/socketio (fe-stack realtime), and the client the back-end realtime specs drive a gateway through (a test library of the third-party owner rule); version read from the starci-academy package-lock on 2026-10-13.'
+    why: 'the realtime client, hooks/socketio (fe-stack realtime), and the client the back-end realtime specs drive a gateway through (a test library of the third-party owner rule).'
   'eventemitter2':
     version: 6.4.9
     group: framework
     side: fe
-    why: 'the fan-out emitter behind the socket side-effect component (fe-stack realtime); version read from the starci-academy package-lock on 2026-10-13.'
+    why: 'the fan-out emitter behind the socket side-effect component (fe-stack realtime).'
   '@heroicons/react':
     version: 2.2.0
     group: ui
@@ -487,67 +487,67 @@ pins:
     version: 0.4.6
     group: ui
     side: fe
-    why: 'light and dark theme switching in components/providers (fe-stack theme); version read from the starci-academy package-lock on 2026-10-13.'
+    why: 'light and dark theme switching in components/providers (fe-stack theme).'
   'framer-motion':
     version: 12.42.2
     group: ui
     side: fe
-    why: 'motion (fe-stack motion); version read from the starci-academy package-lock on 2026-10-13.'
+    why: 'motion (fe-stack motion).'
   'dayjs':
     version: 1.11.21
     group: framework
     side: fe
-    why: 'date math and parsing, modules/dayjs (fe-stack dates); display goes through the next-intl formatter; version read from the starci-academy package-lock on 2026-10-13.'
+    why: 'date math and parsing, modules/dayjs (fe-stack dates); display goes through the next-intl formatter.'
   'decimal.js':
     version: 10.6.0
     group: framework
     side: fe
-    why: 'money and decimal arithmetic, modules/utils (fe-stack numbers); version read from the starci-academy package-lock on 2026-10-13.'
+    why: 'money and decimal arithmetic, modules/utils (fe-stack numbers).'
   'superjson':
     version: 2.2.6
     group: framework
     side: fe
-    why: 'serialization of stored values, modules/superjson and modules/storage (fe-stack storage); version read from the starci-academy package-lock on 2026-10-13.'
+    why: 'serialization of stored values, modules/superjson and modules/storage (fe-stack storage).'
   'lodash':
     version: 4.17.23
     group: framework
     side: fe
-    why: 'per-method utilities, modules/utils (fe-stack utils); version read from the starci-academy package-lock on 2026-10-13.'
+    why: 'per-method utilities, modules/utils (fe-stack utils).'
   'usehooks-ts':
     version: 3.1.1
     group: framework
     side: fe
-    why: 'reusable React hooks, hooks/reuseables (fe-stack utils); version read from the starci-academy package-lock on 2026-10-13.'
+    why: 'reusable React hooks, hooks/reuseables (fe-stack utils).'
   'recharts':
     version: 3.8.1
     group: ui
     side: fe
-    why: 'charts (fe-stack charts); version read from the starci-academy package-lock on 2026-10-13.'
+    why: 'charts (fe-stack charts).'
   'react-markdown':
     version: 10.1.0
     group: ui
     side: fe
-    why: 'markdown rendering (fe-stack markdown); version read from the starci-academy package-lock on 2026-10-13.'
+    why: 'markdown rendering (fe-stack markdown).'
   'remark-gfm':
     version: 4.0.1
     group: ui
     side: fe
-    why: 'GitHub-flavoured markdown for react-markdown (fe-stack markdown); version read from the starci-academy package-lock on 2026-10-13.'
+    why: 'GitHub-flavoured markdown for react-markdown (fe-stack markdown).'
   'remark-directive':
     version: 4.0.0
     group: ui
     side: fe
-    why: 'markdown directives for react-markdown (fe-stack markdown); version read from the starci-academy package-lock on 2026-10-13.'
+    why: 'markdown directives for react-markdown (fe-stack markdown).'
   'react-shiki':
     version: 0.9.2
     group: ui
     side: fe
-    why: 'code highlighting (fe-stack code); version read from the starci-academy package-lock on 2026-10-13.'
+    why: 'code highlighting (fe-stack code).'
   '@monaco-editor/react':
     version: 4.7.0
     group: ui
     side: fe
-    why: 'the code editor (fe-stack code); version read from the starci-academy package-lock on 2026-10-13.'
+    why: 'the code editor (fe-stack code).'
   'mermaid':
     version: 11.16.0
     group: ui
@@ -572,22 +572,22 @@ pins:
     version: 15.0.0
     group: ui
     side: fe
-    why: 'file drop zones of uploads (fe-stack upload); version read from the starci-academy package-lock on 2026-10-13.'
+    why: 'file drop zones of uploads (fe-stack upload).'
   'react-pdf':
     version: 10.4.1
     group: ui
     side: fe
-    why: 'PDF viewing (fe-stack pdf); version read from the starci-academy package-lock on 2026-10-13.'
+    why: 'PDF viewing (fe-stack pdf).'
   '@fingerprintjs/fingerprintjs':
     version: 5.2.0
     group: framework
     side: fe
-    why: 'the device id of the GraphQL fingerprint link (fe-stack device-id); version read from the starci-academy package-lock on 2026-10-13.'
+    why: 'the device id of the GraphQL fingerprint link (fe-stack device-id).'
   '@sentry/nextjs':
     version: 11.7.0
     group: framework
     side: fe
-    why: 'error reporting through sentry.*.config.ts and instrumentation.ts (fe-stack observability); the latest registry version on 2026-10-13, academy has none.'
+    why: 'error reporting through sentry.*.config.ts and instrumentation.ts (fe-stack observability); the latest registry version on 2026-10-13.'
   # --- back-end transports the front end calls, and the realtime gateway
   '@nestjs/graphql':
     version: 13.4.5
@@ -598,7 +598,7 @@ pins:
     version: 12.1.0
     group: framework
     side: be
-    why: 'an npm override of every app root (and of the examples that serve GraphQL), never a declared dependency: @nestjs/graphql 13.x pulls @graphql-tools/utils <=12.0.0, which npm audit --audit-level=high reports (GHSA-7mx3-vvmw-hjmv, prototype pollution in mergeDeep). 12.1.0 is a fixed release on the same major and the lowest one every declared range accepts (@graphql-tools/schema and /merge, used at runtime, require ^12.1.0; NIVO v0.2.1 6a1d8e80 overrides 12.0.4, below that range), so the advisory closes without the breaking @nestjs/graphql 14. DROP this pin and the override when @nestjs/graphql 14 is adopted.'
+    why: 'an npm override of every app root (and of the examples that serve GraphQL), never a declared dependency: @nestjs/graphql 13.x pulls @graphql-tools/utils <=12.0.0, which npm audit --audit-level=high reports (GHSA-7mx3-vvmw-hjmv, prototype pollution in mergeDeep). 12.1.0 is a fixed release on the same major and the lowest one every declared range accepts (@graphql-tools/schema and /merge, used at runtime, require ^12.1.0; a reference app overrode 12.0.4, below that range), so the advisory closes without the breaking @nestjs/graphql 14. DROP this pin and the override when @nestjs/graphql 14 is adopted.'
   'multer':
     version: 2.5.0
     group: framework
@@ -684,7 +684,7 @@ pins:
     version: 11.0.5
     group: framework
     side: be
-    why: 'PassportStrategy of integrations/passport; 11.0.5 is CommonJS on the Nest 11 line (12.0.0 is ESM-only and breaks Nest 11 jest under the CommonJS transform of @starci/jest-preset), as nivo-lite runs it.'
+    why: 'PassportStrategy of integrations/passport; 11.0.5 is CommonJS on the Nest 11 line (12.0.0 is ESM-only and breaks Nest 11 jest under the CommonJS transform of @starci/jest-preset).'
   '@nestjs/schedule':
     version: 6.1.3
     group: framework

@@ -12,8 +12,8 @@ type ReadSourceContext = Pick<Context<"inline", []>, "filename" | "settings"> & 
 const tester = slotTester()
 const COMPONENT = at("apps/web/src/components/leaves/Badge/index.tsx")
 const STYLES = at("apps/web/src/components/leaves/Badge/classNames.ts")
-const PACKAGE_LEAF = at("packages/nivo-ui/src/leaves/Badge/index.tsx")
-const PACKAGE_STYLES = at("packages/nivo-ui/src/leaves/Badge/classNames.ts")
+const PACKAGE_LEAF = at("packages/app-ui/src/leaves/Badge/index.tsx")
+const PACKAGE_STYLES = at("packages/app-ui/src/leaves/Badge/classNames.ts")
 const NOT_A_COMPONENT = at("apps/web/src/modules/components/Badge.tsx")
 
 test("exports every classNames rule", () => {

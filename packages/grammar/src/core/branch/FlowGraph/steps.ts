@@ -5,7 +5,7 @@ import type { FlowGraphChip, FlowGraphDirection, FlowGraphEdge, FlowGraphNode, F
  * The `steps` layout (0.35.0): the card map of a workflow. Every card is one width; the flow reads down (`TB`, the default) or across
  * (`LR`). A node sits in the layer after its deepest forward predecessor; the forward edges by first parent form a tree, and the tree is
  * laid out tidy: a leaf takes one column, a parent sits centred over its children, and the children of a condition stand in the order
- * of its ports, so the "Có" branch is left of the "Không" branch. A back edge never changes a layer; it is routed round the cards
+ * of its ports, so the "Yes" branch is left of the "No" branch. A back edge never changes a layer; it is routed round the cards
  * through the gap below its source's layer (see {@link stepsBackRoute}).
  */
 

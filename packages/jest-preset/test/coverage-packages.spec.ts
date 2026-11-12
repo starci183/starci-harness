@@ -135,9 +135,9 @@ test('the packages project compiles with the options of the back end tsconfig an
 });
 
 test('the root packages are a second unit project rooted at the app root, and a packages option that is not the rendered shape is refused', () => {
-  const units = preset.starciJestConfig({ coverage: scope, packages: { folders: ['packages/sdk', 'packages/module-shop'], files: ['packages/sdk/src/**/*.ts'], excludes: [] } }).projects.filter((project) => project.displayName === 'unit');
+  const units = preset.starciJestConfig({ coverage: scope, packages: { folders: ['packages/sdk', 'packages/module-a'], files: ['packages/sdk/src/**/*.ts'], excludes: [] } }).projects.filter((project) => project.displayName === 'unit');
   assert.equal(units.length, 2);
-  assert.deepEqual(units[1]?.roots, ['<rootDir>/packages/sdk/src', '<rootDir>/packages/module-shop/src']);
+  assert.deepEqual(units[1]?.roots, ['<rootDir>/packages/sdk/src', '<rootDir>/packages/module-a/src']);
   assert.equal((units[1] as { rootDir?: string }).rootDir, '..');
   assert.equal(preset.starciJestConfig({ coverage: scope }).projects.filter((project) => project.displayName === 'unit').length, 1);
   for (const packagesOption of ['packages/sdk', { folders: ['packages/sdk'] }, { folders: [''], files: [], excludes: [] }]) {

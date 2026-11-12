@@ -380,7 +380,7 @@ test("the codes are the catalogue's codes for R18, R22, R49-R52, R55, R56, R58, 
 
 test("every workspace package is linted, whatever its name", () => {
   const eslintFiles = globsOf(source)
-  for (const pkg of ["nivo-ui", "ui", "design-system"]) {
+  for (const pkg of ["app-ui", "ui", "design-system"]) {
     assert.ok(eslintFiles.some((glob) => glob.startsWith("packages/*/")), `packages/${pkg} is not reached by the source block`)
   }
 })

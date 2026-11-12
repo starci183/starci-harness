@@ -63,14 +63,14 @@ export const DEFAULT_STATUS_LABELS: Readonly<Record<FlowGraphRunStatus, string>>
 }
 
 /**
- * The arrowhead of a steps edge (0.37.27, owner drawing C, "mũi tên giữ thế"): a SMALL SOLID TRIANGLE, about 8px long, filled in the edge's colour (the marker is in user
+ * The arrowhead of a steps edge (0.37.27, owner drawing C, "the arrow holds its shape"): a SMALL SOLID TRIANGLE, about 8px long, filled in the edge's colour (the marker is in user
  * space, so the edge's own width does not scale it). A run's taken edge and its head are the success green; an untaken one's is the light neutral of its line.
  */
 export const STEPS_ARROW_BOX = 26
 export const STEPS_ARROW_STROKE = 1
 export const STEPS_TAKEN_TONE = "var(--success)"
 export const STEPS_UNTAKEN_TONE = "color-mix(in oklab, var(--muted) 55%, transparent)"
-/** The round dot every steps edge STARTS with (0.37.27, owner "bắt đầu có chấm tròn"): a white disc with an edge-coloured ring, radius 4, on its source's port. */
+/** The round dot every steps edge STARTS with (0.37.27, owner: "start with a round dot"): a white disc with an edge-coloured ring, radius 4, on its source's port. */
 export const STEPS_EDGE_DOT = 4
 
 /** `lane` (0.37.35): the distance out of its port at which a branch turns into its own lane, stamped as `data-grammar-flow-lane`. */
@@ -102,7 +102,7 @@ export type StepNodeData = {
     readonly hasEdgeOut?: boolean
     readonly isSelected: boolean
     readonly direction: FlowGraphDirection
-    /** The word beside the status icon on the card ("Xong", "Đang chạy"). */
+    /** The word beside the status icon on the card ("Done", "Running"). */
     readonly statusLabel?: string
     readonly [key: string]: unknown
 }

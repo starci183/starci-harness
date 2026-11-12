@@ -37,15 +37,15 @@ const tester = canonTester(new RuleTester({
 const CLIENT = at("apps/web/src/modules/api/graphql/clients/links/http.ts")
 const PKG_CLIENT = at("packages/shop-api/src/graphql/clients/links/http.ts")
 // Other files of the API layer: an operation, a REST call, and a file of the shared api package.
-const OPERATION = at("apps/web/src/modules/api/graphql/queries/query-course.ts")
+const OPERATION = at("apps/web/src/modules/api/graphql/queries/query-project.ts")
 const REST = at("apps/web/src/modules/api/rest/upload/presign.ts")
 const PKG_REST = at("packages/shop-api/src/rest/upload/presign.ts")
 const PKG_TRANSPORT = at("packages/shop-api/src/transport.ts")
 const STREAM = at("apps/web/src/modules/api/sse/clients/read-event-stream.ts")
 const GENERATED = at("apps/web/src/modules/api/graphql/__generated__/types.ts")
 // Outside the API layer.
-const HOOK = at("apps/web/src/hooks/course/useCourse.ts")
-const SWR_HOOK = at("apps/web/src/hooks/swr/api/graphql/queries/useQueryCourseSwr.ts")
+const HOOK = at("apps/web/src/hooks/project/useProject.ts")
+const SWR_HOOK = at("apps/web/src/hooks/swr/api/graphql/queries/useQueryProjectSwr.ts")
 const SOCKETS = at("apps/web/src/hooks/socketio/sockets.ts")
 
 test("every rule this law declares is a rule", () => {
@@ -78,7 +78,7 @@ test("FE-TRANSPORT-1: fetch is reached in the API layer and nowhere else; Apollo
       { filename: PKG_REST, code: "import axios from \"axios\"" },
       { filename: SOCKETS, code: "import { io } from \"socket.io-client\"" },
       { filename: HOOK, code: "const r = await client.get(url)" },
-      { filename: SWR_HOOK, code: "import { queryCourse } from \"@/modules/api\"\nexport const useQueryCourseSwr = () => queryCourse" },
+      { filename: SWR_HOOK, code: "import { queryProject } from \"@/modules/api\"\nexport const useQueryProjectSwr = () => queryProject" },
       // a property that merely has the name is not the global
       { filename: HOOK, code: "const r = await api.fetch(url)" },
       // a binding of the file's own is not the global
@@ -108,7 +108,7 @@ test("FE-TRANSPORT-1: fetch is reached in the API layer and nowhere else; Apollo
       { filename: HOOK, code: "const { fetch: f } = globalThis", errors: [{ messageId: "outside" }] },
       { filename: HOOK, code: "run(fetch)", errors: [{ messageId: "outside" }] },
       // another app of the repository, a package that is not the api package, the auth module and a route
-      { filename: at("apps/admin/src/hooks/course/useCourse.ts"), code: "const r = await fetch(url)", errors: [{ messageId: "outside" }] },
+      { filename: at("apps/admin/src/hooks/project/useProject.ts"), code: "const r = await fetch(url)", errors: [{ messageId: "outside" }] },
       { filename: at("packages/shop-i18n/src/messages.ts"), code: "const r = await fetch(url)", errors: [{ messageId: "outside" }] },
       { filename: at("apps/web/src/modules/auth/session.ts"), code: "const r = await fetch(url, { signal })", errors: [{ messageId: "outside" }] },
       { filename: at("apps/web/src/app/[locale]/page.tsx"), code: "const r = await fetch(url, { signal })", errors: [{ messageId: "outside" }] },
@@ -355,12 +355,12 @@ test("FE-STATUS-1: a failure (HTTP response or Outcome) is not one branch and no
 test("FE-WIRE-1: a response body is narrowed from unknown or typed by a generated type, and a GraphQL document lives in the API layer", () => {
   assert.doesNotThrow(() => slots.run("no-hand-typed-wire", noHandTypedWire, {
     valid: [
-      { filename: OPERATION, code: "import type { CourseQuery } from \"../__generated__/graphql\"\nconst x: CourseQuery = y" },
-      { filename: OPERATION, code: "const q = loadDocument(\"course.graphql\")" },
+      { filename: OPERATION, code: "import type { ProjectQuery } from \"../__generated__/graphql\"\nconst x: ProjectQuery = y" },
+      { filename: OPERATION, code: "const q = loadDocument(\"project.graphql\")" },
       // hand-declared shapes are not the rule's business: only a value read from a response and typed by hand is
-      { filename: GENERATED, code: "export interface CourseResponse { id: string }" },
-      { filename: HOOK, code: "export interface CourseResponse { id: string }" },
-      { filename: OPERATION, code: "export interface CourseResponse { id: string }" },
+      { filename: GENERATED, code: "export interface ProjectResponse { id: string }" },
+      { filename: HOOK, code: "export interface ProjectResponse { id: string }" },
+      { filename: OPERATION, code: "export interface ProjectResponse { id: string }" },
       { filename: CLIENT, code: "export type LoginPayload = { email: string }" },
       { filename: OPERATION, code: "const n = value as number" },
       { filename: OPERATION, code: "const label = \"select the query text\"" },
@@ -369,31 +369,31 @@ test("FE-WIRE-1: a response body is narrowed from unknown or typed by a generate
       { filename: OPERATION, code: "const body: unknown = await response.json()" },
       { filename: OPERATION, code: "const body = await res.json()\nconst safe = body as unknown" },
       // a type imported from the generated wire module is not hand-typed
-      { filename: OPERATION, code: "import type { CourseQuery } from \"../__generated__/graphql\"\nconst x = (await res.json()) as CourseQuery" },
-      { filename: OPERATION, code: "import type { CourseQuery } from \"../__generated__/graphql\"\nconst x: CourseQuery = await res.json()" },
-      { filename: OPERATION, code: "import type * as Wire from \"../__generated__/graphql\"\nconst x = (await res.json()) as Wire.CourseQuery" },
+      { filename: OPERATION, code: "import type { ProjectQuery } from \"../__generated__/graphql\"\nconst x = (await res.json()) as ProjectQuery" },
+      { filename: OPERATION, code: "import type { ProjectQuery } from \"../__generated__/graphql\"\nconst x: ProjectQuery = await res.json()" },
+      { filename: OPERATION, code: "import type * as Wire from \"../__generated__/graphql\"\nconst x = (await res.json()) as Wire.ProjectQuery" },
       { filename: OPERATION, code: "const x = (await res.json()) as const" },
       // one file per operation: its document is written in the operation file (and the refresh-token mutation of the clients folder)
-      { filename: OPERATION, code: "export const QUERY_COURSE = gql`query Course($request: CourseRequest!) { course(request: $request) { success message data { id } } }`" },
+      { filename: OPERATION, code: "export const QUERY_PROJECT = gql`query Project($request: ProjectRequest!) { project(request: $request) { success message data { id } } }`" },
       { filename: at("apps/web/src/modules/api/graphql/mutations/mutation-enroll.ts"), code: "const document = `mutation Enroll { enroll { success } }`" },
       { filename: at("apps/web/src/modules/api/graphql/clients/links/refresh-token/mutation.ts"), code: "export const REFRESH = gql`mutation Refresh { refresh { success } }`" },
-      { filename: at("packages/shop-api/src/graphql/queries/query-course.ts"), code: "export const QUERY_COURSE = \"query Course { course { id } }\"" },
+      { filename: at("packages/shop-api/src/graphql/queries/query-project.ts"), code: "export const QUERY_PROJECT = \"query Project { project { id } }\"" },
       // a cast of something that is not a response read is `no-type-assertion`'s business
-      { filename: OPERATION, code: "const x = y as GraphqlResult<Course>" },
-      { filename: OPERATION, code: "const body = JSON.parse(text)\nconst x = body as Course" },
+      { filename: OPERATION, code: "const x = y as GraphqlResult<Project>" },
+      { filename: OPERATION, code: "const body = JSON.parse(text)\nconst x = body as Project" },
     ],
     invalid: [
-      { filename: OPERATION, code: "const x = (await res.json()) as Course", errors: [{ messageId: "cast" }] },
-      { filename: OPERATION, code: "const x = <Course>await res.json()", errors: [{ messageId: "cast" }] },
+      { filename: OPERATION, code: "const x = (await res.json()) as Project", errors: [{ messageId: "cast" }] },
+      { filename: OPERATION, code: "const x = <Project>await res.json()", errors: [{ messageId: "cast" }] },
       { filename: OPERATION, code: "const x = (await response.json()) as Record<string, string>", errors: [{ messageId: "cast" }] },
-      { filename: OPERATION, code: "const x: Course = await res.json()", errors: [{ messageId: "cast" }] },
-      { filename: OPERATION, code: "const body = await res.json()\nconst x = body as Course", errors: [{ messageId: "cast" }] },
+      { filename: OPERATION, code: "const x: Project = await res.json()", errors: [{ messageId: "cast" }] },
+      { filename: OPERATION, code: "const body = await res.json()\nconst x = body as Project", errors: [{ messageId: "cast" }] },
       // a type of the same name imported from anywhere but the generated module is a hand-typed wire
-      { filename: OPERATION, code: "import type { Course } from \"./types\"\nconst x = (await res.json()) as Course", errors: [{ messageId: "cast" }] },
+      { filename: OPERATION, code: "import type { Project } from \"./types\"\nconst x = (await res.json()) as Project", errors: [{ messageId: "cast" }] },
       // a GraphQL document outside the API layer: in a hook, a component, the auth client
-      { filename: HOOK, code: "const q = gql`query Course { course { id } }`", errors: [{ messageId: "document" }] },
-      { filename: SWR_HOOK, code: "const q = `query Course { course { id } }`", errors: [{ messageId: "document" }] },
-      { filename: at("apps/web/src/components/blocks/course/CourseCard/index.tsx"), code: "const q = \"mutation Save { save { id } }\"", errors: [{ messageId: "document" }] },
+      { filename: HOOK, code: "const q = gql`query Project { project { id } }`", errors: [{ messageId: "document" }] },
+      { filename: SWR_HOOK, code: "const q = `query Project { project { id } }`", errors: [{ messageId: "document" }] },
+      { filename: at("apps/web/src/components/blocks/project/ProjectCard/index.tsx"), code: "const q = \"mutation Save { save { id } }\"", errors: [{ messageId: "document" }] },
       { filename: at("apps/web/src/modules/auth/index.ts"), code: "const q = graphql`mutation SignIn { signIn { token } }`", errors: [{ messageId: "document" }] },
     ],
   }))
@@ -441,8 +441,8 @@ test("FE-OUTCOME-1: a result union is declared once, in the outcome slot", () =>
       { filename: PKG_OUTCOME, code: UNION },
       { filename: API_OUTCOME, code: "export interface GraphQLResponse<TData = undefined> { success: boolean; message: string; error?: string; data?: TData }" },
       // composing the one vocabulary is not declaring another
-      { filename: HOOK, code: "import type { GraphQLResponse } from \"../../modules/api/graphql/types\"\nexport type CourseRead = GraphQLResponse<{ id: string }>" },
-      { filename: HOOK, code: "import type { GraphQLResponse } from \"../../modules/api/graphql/types\"\nexport type Course = NonNullable<GraphQLResponse<{ id: string }>[\"data\"]>" },
+      { filename: HOOK, code: "import type { GraphQLResponse } from \"../../modules/api/graphql/types\"\nexport type ProjectRead = GraphQLResponse<{ id: string }>" },
+      { filename: HOOK, code: "import type { GraphQLResponse } from \"../../modules/api/graphql/types\"\nexport type Project = NonNullable<GraphQLResponse<{ id: string }>[\"data\"]>" },
       // UI state unions are not result vocabulary: their discriminant is `status`, `state`, `type`
       { filename: HOOK, code: "export type Saving = { status: \"idle\" } | { status: \"saving\" } | { status: \"saved\"; at: number }" },
       { filename: HOOK, code: "export type Step = { state: \"open\" } | { state: \"done\" }" },
@@ -476,7 +476,7 @@ test("FE-OUTCOME-1: a result union is declared once, in the outcome slot", () =>
       // an intersection member is still an object type
       { filename: HOOK, code: "type Base = { at: number }\nexport type Stamped = (Base & { success: true }) | (Base & { success: false })", errors: [{ messageId: "second" }] },
       // in another app and in a package that is not the api package
-      { filename: at("apps/admin/src/hooks/course/useCourse.ts"), code: "export type Save = { ok: true } | { ok: false }", errors: [{ messageId: "second" }] },
+      { filename: at("apps/admin/src/hooks/project/useProject.ts"), code: "export type Save = { ok: true } | { ok: false }", errors: [{ messageId: "second" }] },
       { filename: at("packages/shop-ui/src/leaves/Menu/index.tsx"), code: "export type Save = { ok: true } | { ok: false }", errors: [{ messageId: "second" }] },
       // another file of the API layer is not the outcome file
       { filename: CLIENT, code: UNION, errors: [{ messageId: "second" }] },

@@ -15,9 +15,9 @@ const noop = () => undefined;
 const muted = (text: string) => <span style={{ display: 'block', color: 'var(--muted)', fontSize: 'var(--grammar-text-sm)' }}>{text}</span>;
 
 const ROWS = [
-  { id: 'fee', title: 'Phí giao hàng nội thành', description: <G.Text as="span" size="xs" tone="muted">Tài liệu · Quy định Tiệm hoa</G.Text>, value: <span>30.000 đ một đơn</span>, badges: [{ label: '1 đề nghị', tone: 'warning' }] as const, actionPlacement: 'end' as const, action: { label: 'Sửa', press: noop } },
-  { id: 'fast', title: 'Giao hỏa tốc sau 18:00', description: <G.Text as="span" size="xs" tone="muted">Chưa có nguồn</G.Text>, value: <span>Chưa đặt</span>, badges: [{ label: '1 đề nghị', tone: 'warning' }] as const, actionPlacement: 'end' as const, action: { label: 'Đặt', press: noop } },
-  { id: 'two', title: 'Đổi trả', description: <G.Text as="span" size="xs" tone="muted">Chính sách đổi trả</G.Text>, value: <span>Trong 7 ngày{muted('từ 01/11')}</span>, actionPlacement: 'end' as const, action: { label: 'Sửa', press: noop } },
+  { id: 'fee', title: 'City delivery fee', description: <G.Text as="span" size="xs" tone="muted">Document · Shop rules</G.Text>, value: <span>$3.00 per order</span>, badges: [{ label: '1 proposal', tone: 'warning' }] as const, actionPlacement: 'end' as const, action: { label: 'Edit', press: noop } },
+  { id: 'fast', title: 'Express delivery after 18:00', description: <G.Text as="span" size="xs" tone="muted">No source yet</G.Text>, value: <span>Not set</span>, badges: [{ label: '1 proposal', tone: 'warning' }] as const, actionPlacement: 'end' as const, action: { label: 'Set', press: noop } },
+  { id: 'two', title: 'Returns', description: <G.Text as="span" size="xs" tone="muted">Returns policy</G.Text>, value: <span>Within 7 days{muted('from 01/11')}</span>, actionPlacement: 'end' as const, action: { label: 'Edit', press: noop } },
 ];
 
 const rowsAreOneLine = (canvasElement: HTMLElement) => {
@@ -39,7 +39,7 @@ export const ValueBadgeAndEndAction: Story = {
   name: 'List row: value, badge and end action at 1440',
   render: () => (
     <div data-host style={{ inlineSize: 1440 }}>
-      <G.SurfaceCard kind="list" label="Giao hàng" items={ROWS} empty={<G.EmptyNotice message="Trống" />} />
+      <G.SurfaceCard kind="list" label="Delivery" items={ROWS} empty={<G.EmptyNotice message="Empty" />} />
     </div>
   ),
   play: async ({ canvasElement }) => { await waitFor(() => rowsAreOneLine(canvasElement)); },
@@ -49,7 +49,7 @@ export const ValueBadgeAndEndActionAt390: Story = {
   name: 'List row: value, badge and end action at 390',
   render: () => (
     <div data-host style={{ inlineSize: 390 }}>
-      <G.SurfaceCard kind="list" label="Giao hàng" items={ROWS} empty={<G.EmptyNotice message="Trống" />} />
+      <G.SurfaceCard kind="list" label="Delivery" items={ROWS} empty={<G.EmptyNotice message="Empty" />} />
     </div>
   ),
   play: async ({ canvasElement }) => {
@@ -66,8 +66,8 @@ export const ValueBadgeAndEndActionAt390: Story = {
 const StackedAlert = () => (
   <div style={{ display: 'grid', gridTemplateRows: '260px' }}>
   <G.Stack gap="section">
-    <G.Alert tone="neutral" title="Chưa suy ra chính sách" description="Tiệm đã hết credit. Nạp thêm rồi thử lại." action={{ label: 'Thử lại', onAction: noop }} />
-    <G.SurfaceCard kind="list" label="Giao hàng" items={ROWS.slice(0, 1)} empty={<G.EmptyNotice message="Trống" />} />
+    <G.Alert tone="neutral" title="Policy not inferred yet" description="The shop is out of credit. Top up and try again." action={{ label: 'Retry', onAction: noop }} />
+    <G.SurfaceCard kind="list" label="Delivery" items={ROWS.slice(0, 1)} empty={<G.EmptyNotice message="Empty" />} />
   </G.Stack>
   </div>
 );

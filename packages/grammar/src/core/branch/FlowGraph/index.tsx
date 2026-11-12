@@ -85,7 +85,7 @@ export type {
 } from "./types.js"
 
 export type FlowGraphProps = NoChildren & {
-    /** Names the graph for assistive technology, e.g. "Second brain". */
+    /** Names the graph for assistive technology, e.g. "Knowledge map". */
     readonly label: string
     readonly nodes: ReadonlyArray<FlowGraphNode>
     readonly edges: ReadonlyArray<FlowGraphEdge>
@@ -159,7 +159,7 @@ export type FlowGraphProps = NoChildren & {
     readonly positions?: FlowGraphPositions
     /** Fires on drag end with the full map of moved nodes, and with `{}` when the reset control returns to the auto layout. */
     readonly onPositionsChange?: (positions: FlowGraphPositions) => void
-    /** The accessible name of the reset control. Default "Sắp xếp lại". */
+    /** The accessible name of the reset control. Default "Reset layout". */
     readonly resetLabel?: string
     /** Shown instead of the canvas when there are no nodes. */
     readonly emptyLabel?: string
@@ -368,7 +368,7 @@ const FlowGraphInner = ({
     isEditable = false,
     positions: positionsProp,
     onPositionsChange,
-    resetLabel = "Sắp xếp lại",
+    resetLabel = "Reset layout",
     emptyLabel = "Nothing to show yet.",
     isLoading = false,
 }: FlowGraphProps) => {

@@ -20,9 +20,9 @@ const OLD_FIRST = 'db/migrations/20260101120000_first.sql';
 const OLD_SECOND = 'db/migrations/20260102120000_second.sql';
 const ARCHIVED = 'db/migrations/archive/20250101120000_ancient.sql';
 const BASELINE = 'db/migrations/20261106000000_baseline.sql';
-const BASELINE_SQL = '-- starci:baseline-reset nivo-reset-2026-11-05\ncreate table public.items (id uuid primary key);\nalter table public.items enable row level security;\n';
+const BASELINE_SQL = '-- starci:baseline-reset demo-reset-2026-11-05\ncreate table public.items (id uuid primary key);\nalter table public.items enable row level security;\n';
 const OLD_SQL = 'create table public.old (id uuid primary key);\n';
-const RESET = { baseline: BASELINE, ruling: 'nivo-reset-2026-11-05', date: '2026-11-05', reason: 'a clean database keeps no data worth migrating' };
+const RESET = { baseline: BASELINE, ruling: 'demo-reset-2026-11-05', date: '2026-11-05', reason: 'a clean database keeps no data worth migrating' };
 
 type Git = (args: string[]) => { ok: boolean; stdout: string };
 
@@ -77,7 +77,7 @@ test('without the declaration deleting migrations already on the base branch is 
 test('the reset is judged: a second baseline file, a missing marker or ruling, an older file kept, a stamp before the baseline and a missing baseline are refused', async () => {
   const second = 'db/migrations/20261107000000_other-baseline.sql';
   assert.ok((await codes({ [BASELINE]: BASELINE_SQL, [second]: BASELINE_SQL }, BASE_CHAIN)).includes(`DB_BASELINE_SHAPE ${second}`), 'a second baseline file');
-  assert.ok((await codes({ [BASELINE]: BASELINE_SQL.replace('nivo-reset-2026-11-05', 'another-ruling') }, BASE_CHAIN)).includes(`DB_BASELINE_SHAPE ${BASELINE}`), 'another ruling');
+  assert.ok((await codes({ [BASELINE]: BASELINE_SQL.replace('demo-reset-2026-11-05', 'another-ruling') }, BASE_CHAIN)).includes(`DB_BASELINE_SHAPE ${BASELINE}`), 'another ruling');
   assert.ok((await codes({ [BASELINE]: BASELINE_SQL.replace(/^-- starci:baseline-reset.*\n/, '') }, BASE_CHAIN)).includes(`DB_BASELINE_SHAPE ${BASELINE}`), 'no marker');
   assert.ok((await codes({ [BASELINE]: BASELINE_SQL, [OLD_SECOND]: OLD_SQL }, BASE_CHAIN)).includes(`DB_MIGRATION_SHAPE ${OLD_SECOND}`), 'an older file kept beside the baseline');
   const early = 'db/migrations/20260301000000_early.sql';

@@ -17,7 +17,7 @@ import {
 const tester = slotTester()
 const typed = typedTester()
 const COMPONENT = at("apps/web/src/components/branches/SurfaceCard/index.tsx")
-const PACKAGE_BRANCH = at("packages/nivo-ui/src/branches/SurfaceCard/index.tsx")
+const PACKAGE_BRANCH = at("packages/app-ui/src/branches/SurfaceCard/index.tsx")
 const NOT_A_COMPONENT = at("apps/web/src/modules/components/SurfaceCard.tsx")
 const FEED = at("apps/web/src/components/blocks/Feed/index.tsx")
 const FRAME = at("apps/web/src/components/frames/Card/index.tsx")
@@ -103,7 +103,7 @@ test("styling ownership rules keep internal CSS doors closed", () => {
   assert.doesNotThrow(() => tester.run("no-public-frame-css-props", noPublicFrameCssProps, {
     valid: [
       { filename: at("apps/web/src/components/leaves/Stack/index.tsx"), code: "type Props = { gap?: string }" },
-      { filename: at("packages/nivo-ui/src/leaves/Stack/index.tsx"), code: "type Props = { gap?: string }" },
+      { filename: at("packages/app-ui/src/leaves/Stack/index.tsx"), code: "type Props = { gap?: string }" },
       { filename: NOT_A_COMPONENT, code: "type Props = { gap?: string }" },
     ],
     invalid: [{ filename: PACKAGE_BRANCH, code: "type Props = { gap?: string }", errors: [{ messageId: "css" }] }, { filename: COMPONENT, code: "type Props = { gap?: string }", errors: [{ messageId: "css" }] }],
@@ -112,7 +112,7 @@ test("styling ownership rules keep internal CSS doors closed", () => {
     valid: [
       { filename: COMPONENT, code: "type Props = Pick<Base, 'tone'>" },
     ],
-    invalid: [{ filename: at("apps/web/src/hooks/lesson/useLesson.ts"), code: "type Props = Omit<Base, 'style'>", errors: [{ messageId: "utility" }] }, { filename: COMPONENT, code: "type Props = Omit<Base, 'className'>", errors: [{ messageId: "utility" }] }],
+    invalid: [{ filename: at("apps/web/src/hooks/item/useItem.ts"), code: "type Props = Omit<Base, 'style'>", errors: [{ messageId: "utility" }] }, { filename: COMPONENT, code: "type Props = Omit<Base, 'className'>", errors: [{ messageId: "utility" }] }],
   }))
 })
 

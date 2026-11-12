@@ -161,7 +161,7 @@ for (const edition of ["lite", "full"] as const) {
 
 /** The app's own root workspace packages (packages/<name>: the agent SDK, a block library, a module package) are first-party source, not third-party libraries. */
 const OWN_PACKAGES = {
-    "packages/agent-sdk/package.json": JSON.stringify({ name: "@fixture/agent-sdk", version: "0.1.0", private: true }),
+    "packages/sdk/package.json": JSON.stringify({ name: "@fixture/sdk", version: "0.1.0", private: true }),
     "packages/module-loyalty/package.json": JSON.stringify({ name: "@fixture/module-loyalty", version: "0.1.0", private: true }),
 }
 
@@ -174,16 +174,16 @@ for (const edition of ["lite", "full"] as const) {
                 ...OWN_PACKAGES,
                 "package.json": JSON.stringify({
                     name: "sdk-owner-fixture", private: true, workspaces: ["fe/apps/*", "packages/*"],
-                    dependencies: { ...DEPENDENCIES, "@fixture/agent-sdk": "*", "@fixture/module-loyalty": "0.1.0" },
+                    dependencies: { ...DEPENDENCIES, "@fixture/sdk": "*", "@fixture/module-loyalty": "0.1.0" },
                 }),
             },
         })
         try {
             assert.doesNotThrow(() => { fixture.tester.run("third-party-import-owner", thirdPartyImportOwner, {
                 valid: [
-                    { filename: fixture.at(DOMAIN), code: 'import { defineTemplate } from "@fixture/agent-sdk"; export { defineTemplate }' },
-                    { filename: fixture.at(DOMAIN), code: 'import { node } from "@fixture/agent-sdk/node"; import { loyalty } from "@fixture/module-loyalty/template"; export { node, loyalty }' },
-                    { filename: fixture.at("apps/core/src/main.ts"), code: 'import { sdk } from "@fixture/agent-sdk"; export { sdk }' },
+                    { filename: fixture.at(DOMAIN), code: 'import { defineTemplate } from "@fixture/sdk"; export { defineTemplate }' },
+                    { filename: fixture.at(DOMAIN), code: 'import { node } from "@fixture/sdk/node"; import { loyalty } from "@fixture/module-loyalty/template"; export { node, loyalty }' },
+                    { filename: fixture.at("apps/core/src/main.ts"), code: 'import { sdk } from "@fixture/sdk"; export { sdk }' },
                 ],
                 // what the package imports and what the app imports besides stay judged.
                 invalid: [
@@ -200,14 +200,14 @@ for (const edition of ["lite", "full"] as const) {
             rootFiles: {
                 ...OWN_PACKAGES,
                 "package.json": JSON.stringify({
-                    name: "sdk-owner-fixture", private: true, workspaces: ["packages/agent-sdk"],
-                    dependencies: { ...DEPENDENCIES, "@fixture/agent-sdk": "*", "@fixture/module-loyalty": "0.1.0" },
+                    name: "sdk-owner-fixture", private: true, workspaces: ["packages/sdk"],
+                    dependencies: { ...DEPENDENCIES, "@fixture/sdk": "*", "@fixture/module-loyalty": "0.1.0" },
                 }),
             },
         })
         try {
             assert.doesNotThrow(() => { fixture.tester.run("third-party-import-owner", thirdPartyImportOwner, {
-                valid: [{ filename: fixture.at(DOMAIN), code: 'import { sdk } from "@fixture/agent-sdk"; export { sdk }' }],
+                valid: [{ filename: fixture.at(DOMAIN), code: 'import { sdk } from "@fixture/sdk"; export { sdk }' }],
                 invalid: [{ filename: fixture.at(DOMAIN), code: 'import { loyalty } from "@fixture/module-loyalty"; export { loyalty }', errors: [{ messageId: "foreign" }] }],
             }) })
         } finally { fixture.cleanup() }

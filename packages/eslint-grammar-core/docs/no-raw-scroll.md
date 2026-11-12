@@ -2,7 +2,7 @@
 
 Law module: `no-raw-scroll.ts`. Finding code: `FE_NO_RAW_SCROLL`. Knowledge: `runtime/knowledge/ui/presentation/grammar-laws.yaml#NO-RAW-SCROLL`.
 
-NIVO never shows scrollbars (owner, 2026-11-09). Every scroll area is drawn by Grammar with HeroUI's ScrollShadow behaviour: a fading edge where content continues, the bar hidden, wheel, touch and keyboard scrolling kept. An app element that makes its own scroll area with an `overflow-y-auto` or `overflow-auto` class has no fading edge.
+Grammar never shows scrollbars (owner, 2026-11-09). Every scroll area is drawn by Grammar with HeroUI's ScrollShadow behaviour: a fading edge where content continues, the bar hidden, wheel, touch and keyboard scrolling kept. An app element that makes its own scroll area with an `overflow-y-auto` or `overflow-auto` class has no fading edge.
 
 Every rule below is an error in `coreGrammarConfig`; none can be switched off or suppressed inline.
 

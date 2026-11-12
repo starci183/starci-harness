@@ -11,12 +11,12 @@ export const ArticleHeadings: Story = {
   render: () => (
     <div style={{ inlineSize: 420 }}>
       <G.MarkdownArticle>
-        <h2>Bản chất của HTTP</h2>
-        <p>Một yêu cầu đi từ trình duyệt tới máy chủ và quay về.</p>
-        <h3>Phương thức</h3>
-        <p>GET đọc, POST ghi.</p>
-        <h4>Mã trạng thái</h4>
-        <p>200 là thành công.</p>
+        <h2>The résumé of HTTP</h2>
+        <p>A request travels from the browser to the server and back, naïve and façade-free.</p>
+        <h3>Methods</h3>
+        <p>GET reads, POST writes.</p>
+        <h4>Status codes</h4>
+        <p>200 means success.</p>
       </G.MarkdownArticle>
     </div>
   ),

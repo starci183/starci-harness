@@ -21,7 +21,7 @@ const TSCONFIG = JSON.stringify({
 
 const DECLARATION = { hfs: 3, kind: "app", project: "fixture", sides: { be: { apps: [{ name: "core", kind: "api" }] }, fe: { grammar: "core", apps: [{ name: "web", kind: "next" }] } } }
 
-/** An app root with a root package `@fixture/agent-sdk`, its `files` written, and the package view of it. */
+/** An app root with a root package `@fixture/sdk`, its `files` written, and the package view of it. */
 const appWith = (files: Readonly<Record<string, string>>, starci?: unknown) => {
   const root = mkdtempSync(join(tmpdir(), "starci-fe-packages-"))
   const write = (relative: string, text: string) => {
@@ -29,10 +29,10 @@ const appWith = (files: Readonly<Record<string, string>>, starci?: unknown) => {
     writeFileSync(join(root, relative), text)
   }
   write("package.json", JSON.stringify({ name: "fixture", private: true, workspaces: ["packages/*"] }))
-  write("packages/agent-sdk/package.json", JSON.stringify({ name: "@fixture/agent-sdk", version: "0.1.0", private: true, ...(starci === undefined ? {} : { starci }) }))
-  write("packages/agent-sdk/tsconfig.json", TSCONFIG)
-  write("packages/agent-sdk/src/index.ts", "export const sdk: number = 1\n")
-  for (const [relative, text] of Object.entries(files)) write(`packages/agent-sdk/${relative}`, text)
+  write("packages/sdk/package.json", JSON.stringify({ name: "@fixture/sdk", version: "0.1.0", private: true, ...(starci === undefined ? {} : { starci }) }))
+  write("packages/sdk/tsconfig.json", TSCONFIG)
+  write("packages/sdk/src/index.ts", "export const sdk: number = 1\n")
+  for (const [relative, text] of Object.entries(files)) write(`packages/sdk/${relative}`, text)
   return { root, hfs: packagesHfsFromDeclaration(DECLARATION, root), cleanup: () => rmSync(root, { recursive: true, force: true }) }
 }
 
@@ -62,7 +62,7 @@ test("a workbench file of a package is linted by the front-end rules: the explic
   const text = "export const total = (value: number) => value + 1\n"
   const app = appWith({ "src/workbench/total.ts": text })
   try {
-    const found = lint(app.root, app.hfs, "packages/agent-sdk/src/workbench/total.ts", text).map((message) => message.ruleId)
+    const found = lint(app.root, app.hfs, "packages/sdk/src/workbench/total.ts", text).map((message) => message.ruleId)
     assert.ok(found.includes("starci-fe/explicit-export-surface"), found.join(", "))
   } finally { app.cleanup() }
 })
@@ -72,10 +72,10 @@ test("the back-end subpaths of a package and its workbench contract are not the 
   const app = appWith({ "src/node/index.ts": text, "src/workbench/contract/index.ts": text, "src/public/page.ts": text })
   try {
     for (const back of ["src/node/index.ts", "src/workbench/contract/index.ts"]) {
-      const messages = lint(app.root, app.hfs, `packages/agent-sdk/${back}`, text)
+      const messages = lint(app.root, app.hfs, `packages/sdk/${back}`, text)
       assert.match(messages.map((message) => message.message).join("\n"), /No matching configuration/, `${back} is for the back-end canon`)
     }
-    const owned = lint(app.root, app.hfs, "packages/agent-sdk/src/public/page.ts", text)
+    const owned = lint(app.root, app.hfs, "packages/sdk/src/public/page.ts", text)
     assert.deepEqual(owned.map((message) => `${message.ruleId}: ${message.message}`), [], "a clean public file passes")
   } finally { app.cleanup() }
 })
@@ -85,10 +85,10 @@ test("a package view is the fe profile over the paths of the app root and carrie
   try {
     assert.equal(app.hfs.profile, "fe")
     assert.equal(app.hfs.grammar, "core")
-    assert.equal(app.hfs.tierOf("packages/agent-sdk/src/workbench/index.ts"), "package")
-    assert.equal(app.hfs.slotOf("packages/agent-sdk/src/workbench/index.ts"), "app.packages")
-    assert.equal(app.hfs.slotOf("packages/blocks-core/src/workbench/index.ts"), "app.packages", "a block library is a root package by any name")
-    assert.equal(app.hfs.tierOf("packages/blocks-core/src/public/page.ts"), "package")
+    assert.equal(app.hfs.tierOf("packages/sdk/src/workbench/index.ts"), "package")
+    assert.equal(app.hfs.slotOf("packages/sdk/src/workbench/index.ts"), "app.packages")
+    assert.equal(app.hfs.slotOf("packages/ui-kit/src/workbench/index.ts"), "app.packages", "a block library is a root package by any name")
+    assert.equal(app.hfs.tierOf("packages/ui-kit/src/public/page.ts"), "package")
     assert.equal(app.hfs.tierOf("fe/apps/web/src/app/page.tsx"), null)
   } finally { app.cleanup() }
 })
@@ -102,9 +102,9 @@ test("a package's workbench declares the one result union its manifest names (st
   try {
     const unions = (root: string, hfs: ReturnType<typeof packagesHfsFromDeclaration>, file: string, text: string) =>
       lint(root, hfs, file, text).filter((message) => message.ruleId === "starci-fe/one-outcome-union").map((message) => message.message.split("`")[1])
-    assert.deepEqual(unions(app.root, app.hfs, "packages/agent-sdk/src/workbench/outcome.ts", declared), ["StepResult"], "the declared name in the declared file passes, a second union there does not")
-    assert.deepEqual(unions(app.root, app.hfs, "packages/agent-sdk/src/workbench/view.ts", elsewhere), ["AgentResult"], "the declared name in another file is a second union")
-    assert.deepEqual(unions(bare.root, bare.hfs, "packages/agent-sdk/src/workbench/outcome.ts", elsewhere), ["AgentResult"], "without a declaration a package has no outcome home")
+    assert.deepEqual(unions(app.root, app.hfs, "packages/sdk/src/workbench/outcome.ts", declared), ["StepResult"], "the declared name in the declared file passes, a second union there does not")
+    assert.deepEqual(unions(app.root, app.hfs, "packages/sdk/src/workbench/view.ts", elsewhere), ["AgentResult"], "the declared name in another file is a second union")
+    assert.deepEqual(unions(bare.root, bare.hfs, "packages/sdk/src/workbench/outcome.ts", elsewhere), ["AgentResult"], "without a declaration a package has no outcome home")
   } finally {
     app.cleanup()
     bare.cleanup()
@@ -117,11 +117,11 @@ test("a .tsx file of a package outside workbench and public (src/client/) is lin
   const app = appWith({ "src/client/Badge.tsx": tsx, "src/client/helper.ts": view, "src/client/deep/inner/Card.tsx": tsx })
   try {
     for (const file of ["src/client/Badge.tsx", "src/client/deep/inner/Card.tsx"]) {
-      const messages = lint(app.root, app.hfs, `packages/agent-sdk/${file}`, tsx)
+      const messages = lint(app.root, app.hfs, `packages/sdk/${file}`, tsx)
       assert.doesNotMatch(messages.map((message) => message.message).join(", "), /No matching configuration/, `${file} is ignored`)
       assert.ok(messages.some((message) => message.ruleId?.startsWith("starci-fe/")), `${file}: ${messages.map((message) => message.ruleId).join(", ")}`)
     }
-    const plain = lint(app.root, app.hfs, "packages/agent-sdk/src/client/helper.ts", view)
+    const plain = lint(app.root, app.hfs, "packages/sdk/src/client/helper.ts", view)
     assert.match(plain.map((message) => message.message).join(", "), /No matching configuration/, "a .ts file there is the back-end canon's")
   } finally { app.cleanup() }
 })

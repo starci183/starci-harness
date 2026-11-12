@@ -211,7 +211,7 @@ label", in the graph's visually hidden edge list.
 `layout="steps"` is the card map of a workflow, top-down by default (`direction="LR"` runs across), on the well (`--background`) with no
 grid. Every node is a white card with a 32 icon tile in its `kind`'s soft pair: `event`, `action`, `condition`, `ask` (needs the owner),
 `wait` (dashed card) and `end` (a pill with a check); the `lanes` kinds map on (`trigger` event, `execute` action, `output` end). A node
-takes `icon` (an `IconSource` or a node; the kind's glyph otherwise), `tag` (a corner pill, "Kích hoạt"), and for a condition `outputs`
+takes `icon` (an `IconSource` or a node; the kind's glyph otherwise), `tag` (a corner pill, "Trigger"), and for a condition `outputs`
 (`[{ id, label }]`, left to right along its bottom; left out, they are the labels of its outgoing edges). An edge leaves its port by
 `sourcePort`; `variant: "back"` (or `"return"`) draws it dashed, routed round the cards, its `label` a pill on it. The run overlay is node
 `status` (`done`, `running`, `failed`, `waiting`, `skipped`) and edge `isTaken`. `onNodePress(id)` fires on press, `legend` adds a row of
@@ -442,12 +442,12 @@ title stays plain text, never a Link. `<SurfaceCard kind="table" onRowAction={(i
 
 `LogoStack` shows which connections an agent uses: `items` (`{ id, label, src?, iconSource? }`, a provider logo image or an app
 icon), `max` (default 3) round 20px logos with no plate, one identity gap (4) apart (not overlapped, so no mark is cut by the next),
-then a "+N" pill, an optional muted `caption` ("3 kết nối") and `label` naming the group. It is static by default. With `onPress`,
+then a "+N" pill, an optional muted `caption` ("3 connections") and `label` naming the group. It is static by default. With `onPress`,
 or `isTrigger` when it is the trigger of a `DropdownMenu` or `Popover`, the whole group is one `PlainPressable` (a focus ring, no
 button fill) named by `label`, and its logos are decorative. `isLoading` (or a loading region) draws the same box under a shimmer.
 
 ```tsx
-<DropdownMenu trigger={<LogoStack isTrigger label="Agent connections" items={connections} caption="3 kết nối" />} entries={entries} />
+<DropdownMenu trigger={<LogoStack isTrigger label="Agent connections" items={connections} caption="3 connections" />} entries={entries} />
 ```
 
 `PlainPressable` is exported from `@starci/grammar/common` (outside the registry): `children`, `aria-label` (needed when the content has
@@ -697,7 +697,7 @@ content at most 1280 wide, type stays 14 / 12. A report keeps its figures ribbon
 workspace shows the aside as a Drawer on a tablet and one pane at a time on a phone. A FlowGraph is not shown on a phone: the app passes
 the step list there instead.
 
-**No scrollbars (OVERFLOW-6).** NIVO never shows scrollbars. Every scroll area Grammar draws (pane and `PaneSection scroll`, Drawer and Dialog bodies,
+**No scrollbars (OVERFLOW-6).** Grammar never shows scrollbars. Every scroll area Grammar draws (pane and `PaneSection scroll`, Drawer and Dialog bodies,
 ListBox, the chat thread, the tab strip, DataTable and code overflow, popovers) hides the bar (`scrollbar-width: none`, `::-webkit-scrollbar` none) and
 fades its edge where content continues: HeroUI's ScrollShadow where Grammar renders the scroller, and the same fade, driven by the scroll position,
 on the CSS scrollers. Wheel, touch and keyboard scrolling are unchanged. An app element with an `overflow-y-auto` / `overflow-auto` class is
@@ -823,7 +823,7 @@ or 3rem, respectively, so icons, avatars and group grids keep labels in one colu
 </SurfaceCard>
 ```
 
-For a conversation or group identity, use `AvatarGroup layout="grid"` (COLLECTION-3, the Zalo
+For a conversation or group identity, use `AvatarGroup layout="grid"` (COLLECTION-3, the chat-app
 reference). It is one round Avatar-sized mark at `sm`, `md`, `lg` or `control`: two members split
 the circle, three show one above two, and four use a 2 by 2 grid. With five or more
 members, three avatars remain and the fourth cell shows the total member count, such as `5` or `30`.

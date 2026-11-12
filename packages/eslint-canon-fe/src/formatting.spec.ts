@@ -39,7 +39,7 @@ test("FORMAT-1: numbers, money and dates go through the next-intl formatter", ()
     invalid: [
       // a folder named i18n outside the module slot is not the i18n module
       { filename: at("apps/web/src/modules/config/i18n/request.ts"), code: "const f = new Intl.NumberFormat(locale)", errors: [{ messageId: "intl" }] },
-      { filename: at("apps/web/src/hooks/lesson/useLesson.ts"), code: "const s = amount.toLocaleString('en-US')", errors: [{ messageId: "method" }] },
+      { filename: at("apps/web/src/hooks/item/useItem.ts"), code: "const s = amount.toLocaleString('en-US')", errors: [{ messageId: "method" }] },
       { filename: BLOCK, code: "const s = new Date(at).toLocaleString()", errors: [{ messageId: "method" }] },
       { filename: BLOCK, code: "const s = new Date(at).toLocaleDateString('vi-VN')", errors: [{ messageId: "method" }] },
       { filename: BLOCK, code: "const s = new Date(at).toLocaleTimeString()", errors: [{ messageId: "method" }] },
@@ -53,7 +53,7 @@ test("FORMAT-1: numbers, money and dates go through the next-intl formatter", ()
       { filename: BLOCK, code: "const s = `${amount} VND`", errors: [{ messageId: "currency" }] },
       // dayjs outside its home formats on its own locale data
       { filename: BLOCK, code: "import dayjs from 'dayjs'", errors: [{ messageId: "library" }] },
-      { filename: at("apps/web/src/hooks/lesson/useLesson.ts"), code: "import relativeTime from 'dayjs/plugin/relativeTime'", errors: [{ messageId: "library" }] },
+      { filename: at("apps/web/src/hooks/item/useItem.ts"), code: "import relativeTime from 'dayjs/plugin/relativeTime'", errors: [{ messageId: "library" }] },
       // another module is not the dayjs home
       { filename: at("apps/web/src/modules/utils/date.ts"), code: "import dayjs from 'dayjs'", errors: [{ messageId: "library" }] },
     ],

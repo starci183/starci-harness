@@ -21,10 +21,10 @@ describe("the key lifecycle", () => {
     after(() => h.close())
 
     test("create shows the secret once and the store holds only its hash", async () => {
-        const issued = await h.admin.create({ label: "lesson_app", owner: "team-a", profiles: ["lesson"] })
-        assert.match(issued.secret, /^sk-starci-lesson_app-[0-9a-f]{48}$/)
+        const issued = await h.admin.create({ label: "chat_app", owner: "team-a", profiles: ["chat"] })
+        assert.match(issued.secret, /^sk-starci-chat_app-[0-9a-f]{48}$/)
         assert.match(issued.key.id, /^key_[0-9a-f]{16}$/)
-        assert.equal(issued.key.hint, `sk-starci-lesson_app-...${issued.secret.slice(-4)}`)
+        assert.equal(issued.key.hint, `sk-starci-chat_app-...${issued.secret.slice(-4)}`)
         assert.equal("hash" in issued.key, false)
         const stored = await h.store.get(issued.key.id)
         assert.ok(stored)
@@ -32,7 +32,7 @@ describe("the key lifecycle", () => {
         assert.ok(!JSON.stringify(await h.store.list()).includes(issued.secret))
         assert.ok(!JSON.stringify(await h.admin.list()).includes(issued.secret))
         assert.ok(!JSON.stringify(await h.admin.list()).includes(stored.hash))
-        assert.equal((await http(h.url, "/v1/chat/completions", { key: issued.secret, body: chatBody("lesson") })).status, 200)
+        assert.equal((await http(h.url, "/v1/chat/completions", { key: issued.secret, body: chatBody("chat") })).status, 200)
     })
 
     test("revoke turns the key into a 401 and is idempotent; a revoked key cannot rotate or change", async () => {
@@ -41,7 +41,7 @@ describe("the key lifecycle", () => {
         assert.equal(revoked.enabled, false)
         assert.equal(typeof revoked.revokedAt, "number")
         assert.deepEqual(await h.admin.revoke(issued.key.id), revoked)
-        const reply = await http(h.url, "/v1/chat/completions", { key: issued.secret, body: chatBody("lesson") })
+        const reply = await http(h.url, "/v1/chat/completions", { key: issued.secret, body: chatBody("chat") })
         assert.equal(reply.status, 401)
         assert.match(errorOf(reply).message, /revoked/)
         await assert.rejects(h.admin.rotate(issued.key.id), (error: unknown) => error instanceof KeyAdminError && error.code === "revoked")
@@ -49,19 +49,19 @@ describe("the key lifecycle", () => {
     })
 
     test("rotate keeps the id, bindings and usage and retires the old secret", async () => {
-        const issued = await h.admin.create({ label: "turn", profiles: ["lesson"] })
-        assert.equal((await http(h.url, "/v1/chat/completions", { key: issued.secret, body: chatBody("lesson") })).status, 200)
+        const issued = await h.admin.create({ label: "turn", profiles: ["chat"] })
+        assert.equal((await http(h.url, "/v1/chat/completions", { key: issued.secret, body: chatBody("chat") })).status, 200)
         const rotated = await h.admin.rotate(issued.key.id)
         assert.equal(rotated.key.id, issued.key.id)
         assert.notEqual(rotated.secret, issued.secret)
-        assert.deepEqual(rotated.key.profiles, ["lesson"])
-        assert.equal((await http(h.url, "/v1/chat/completions", { key: issued.secret, body: chatBody("lesson") })).status, 401)
-        assert.equal((await http(h.url, "/v1/chat/completions", { key: rotated.secret, body: chatBody("lesson") })).status, 200)
+        assert.deepEqual(rotated.key.profiles, ["chat"])
+        assert.equal((await http(h.url, "/v1/chat/completions", { key: issued.secret, body: chatBody("chat") })).status, 401)
+        assert.equal((await http(h.url, "/v1/chat/completions", { key: rotated.secret, body: chatBody("chat") })).status, 200)
         assert.equal((await h.admin.usage(issued.key.id)).totals.requests, 2)
     })
 
     test("a disabled key answers 401 until it is enabled again", async () => {
-        const issued = await h.admin.create({ label: "paused", profiles: ["lesson"], enabled: false })
+        const issued = await h.admin.create({ label: "paused", profiles: ["chat"], enabled: false })
         assert.match(errorOf(await http(h.url, "/v1/models", { key: issued.secret })).message, /disabled/)
         await h.admin.update(issued.key.id, { enabled: true, quota: { requestsPerMinute: 5 } })
         assert.equal((await http(h.url, "/v1/models", { key: issued.secret })).status, 200)
@@ -145,13 +145,13 @@ describe("quotas answer 429 with Retry-After", () => {
 describe("usage accounting", () => {
     test("records requests, tokens, cost, latency and outcomes per key and UTC day, and no prompt", async () => {
         const h = await harness()
-        const issued = await h.admin.create({ label: "acct", profiles: ["lesson"], models: ["m2"] })
+        const issued = await h.admin.create({ label: "acct", profiles: ["chat"], models: ["m2"] })
         const key = issued.secret
         h.clock.now = Date.UTC(2026, 9, 28, 9, 0, 0)
-        await http(h.url, "/v1/chat/completions", { key, body: chatBody("lesson") })
+        await http(h.url, "/v1/chat/completions", { key, body: chatBody("chat") })
         h.fake.on({ model: "m1" }, { stream: { chunks: ["a", "b"] } })
-        await http(h.url, "/v1/chat/completions", { key, body: chatBody("lesson", { stream: true }) })
-        await http(h.url, "/v1/chat/completions", { key, body: chatBody("quiz", { user: "end-user-42" }) })
+        await http(h.url, "/v1/chat/completions", { key, body: chatBody("chat", { stream: true }) })
+        await http(h.url, "/v1/chat/completions", { key, body: chatBody("summary", { user: "end-user-42" }) })
         h.fake.on({ model: "m2" }, { status: 500 })
         await http(h.url, "/v1/chat/completions", { key, body: chatBody("m2") })
         const usage = await h.admin.usage(issued.key.id, { from: "2026-10-28", to: "2026-10-28" })
@@ -212,11 +212,11 @@ describe("the admin API", () => {
     })
 
     test("create, list, get, update, revoke, rotate and usage", async () => {
-        const created = await http(h.url, "/admin/keys", { key: ADMIN_TOKEN, body: { label: "api", profiles: ["lesson"], quota: { requestsPerMinute: 10 } } })
+        const created = await http(h.url, "/admin/keys", { key: ADMIN_TOKEN, body: { label: "api", profiles: ["chat"], quota: { requestsPerMinute: 10 } } })
         assert.equal(created.status, 201)
         const secret = created.json.secret as string
         const id = (created.json.key as { id: string }).id
-        assert.equal((await http(h.url, "/v1/chat/completions", { key: secret, body: chatBody("lesson") })).status, 200)
+        assert.equal((await http(h.url, "/v1/chat/completions", { key: secret, body: chatBody("chat") })).status, 200)
         const listed = await http(h.url, "/admin/keys", { key: ADMIN_TOKEN })
         assert.ok((listed.json.data as { id: string }[]).some((key) => key.id === id))
         assert.ok(!listed.text.includes(secret))
@@ -301,11 +301,11 @@ describe("the SQLite key store on disk", () => {
         const dir = await mkdtemp(join(tmpdir(), "ai-router-keys-"))
         const path = join(dir, "keys.sqlite")
         const first = await openSqliteKeyStore(path)
-        const issued = await new KeyAdmin(first).create({ label: "durable", profiles: ["lesson"] })
+        const issued = await new KeyAdmin(first).create({ label: "durable", profiles: ["chat"] })
         await first.close?.()
         const store = await openSqliteKeyStore(path)
         const h = await harness({ keys: store })
-        assert.equal((await http(h.url, "/v1/chat/completions", { key: issued.secret, body: chatBody("lesson") })).status, 200)
+        assert.equal((await http(h.url, "/v1/chat/completions", { key: issued.secret, body: chatBody("chat") })).status, 200)
         assert.equal((await h.admin.usage(issued.key.id, { from: "2026-10-01", to: "2026-10-31" })).totals.succeeded, 1)
         await h.close()
         await store.close?.()

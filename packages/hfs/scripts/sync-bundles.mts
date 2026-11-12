@@ -136,36 +136,6 @@ export function syncBundles(options: {
   return { written, drift }
 }
 
-/** The harness runtime layers whose recipe hfs ships for `starci app stack up` (stack/runtime-layers.mts): the folder name under images/ of the harness repository. */
-export const layerRecipes = ["openclaw-runtime"] as const
-
-/** Syncs (or judges) the shipped copy stack/images/<layer>/ of each recipe against the owner, `images/<layer>/` of the harness repository. */
-export function syncLayerRecipes(options: { readonly imagesDir: string; readonly shippedDir: string; readonly check: boolean }): SyncResult {
-  const written: string[] = []
-  const drift: Drift[] = []
-  for (const layer of layerRecipes) {
-    const owner = join(options.imagesDir, layer)
-    const shipped = join(options.shippedDir, layer)
-    const names = walk(owner).map((file) => relative(owner, file).split(sep).join("/")).sort()
-    const extra = existsSync(shipped) ? walk(shipped).map((file) => relative(shipped, file).split(sep).join("/")).filter((name) => !names.includes(name)) : []
-    for (const name of extra) drift.push({ pkg: `stack/images/${layer}`, path: name, reason: "unlisted" })
-    for (const name of names) {
-      const bytes = readFileSync(join(owner, name))
-      const target = join(shipped, name)
-      const current = existsSync(target) ? readFileSync(target) : undefined
-      if (current !== undefined && current.equals(bytes)) continue
-      if (options.check) {
-        drift.push({ pkg: `stack/images/${layer}`, path: name, reason: current === undefined ? "missing" : "differs" })
-        continue
-      }
-      mkdirSync(dirname(target), { recursive: true })
-      writeFileSync(target, bytes)
-      written.push(`stack/images/${layer}/${name}`)
-    }
-  }
-  return { written, drift }
-}
-
 function main(argv: readonly string[]): number {
   const check = argv.includes("--check")
   const unknown = argv.filter((arg) => arg !== "--check")
@@ -178,11 +148,9 @@ function main(argv: readonly string[]): number {
     hfsRuntimeDir: join(hfsDir, "runtime"),
     check,
   })
-  const layers = syncLayerRecipes({ imagesDir: join(hfsDir, "..", "..", "images"), shippedDir: join(hfsDir, "stack", "images"), check })
-  for (const path of [...result.written, ...layers.written]) console.log(`wrote ${path}`)
+  for (const path of result.written) console.log(`wrote ${path}`)
   for (const item of result.drift) console.error(`drift (${item.reason}): ${item.pkg}/runtime/${item.path}`)
-  for (const item of layers.drift) console.error(`drift (${item.reason}): packages/hfs/${item.pkg}/${item.path}`)
-  if (result.drift.length > 0 || layers.drift.length > 0) {
+  if (result.drift.length > 0) {
     console.error(check ? "bundle copies drifted: run `npm run bundles` in packages/hfs" : "bundle manifests need attention")
     return 1
   }

@@ -154,14 +154,14 @@ const queueOutbox = recordingQueueOutbox()  // write(tx, queue, payload): the Qu
 queueOutbox.jobs; queueOutbox.jobsOf("mail"); queueOutbox.entries; queueOutbox.allInTransaction
 
 const inbox = fakeInbox()                // the delivery side, the twin of the recording outboxes
-await inbox.claim("sepay", "e-1")        // true the first time, false for the same pair until it is released
-await inbox.release("sepay", "e-1")      // gives the claim back: the next claim answers true
-inbox.seen("sepay", "e-2")               // a redelivery: the next claim of the pair answers false
+await inbox.claim("acme-pay", "e-1")     // true the first time, false for the same pair until it is released
+await inbox.release("acme-pay", "e-1")   // gives the claim back: the next claim answers true
+inbox.seen("acme-pay", "e-2")            // a redelivery: the next claim of the pair answers false
 inbox.claims; inbox.claimed; inbox.released; inbox.failNext("claim", new Error("db down")); inbox.clear()
 // claimRow: the EntityInbox claim that inserts the receipt row only for the winning claim and answers its id
-await inbox.claimRow("webhook.sepay", "e-3", tx, { entity: SepayInboxEntity, row: (deliveryId) => ({ deliveryId }) })  // "receipt-1"
+await inbox.claimRow("webhook.acme-pay", "e-3", tx, { entity: AcmePayInboxEntity, row: (deliveryId) => ({ deliveryId }) })  // "receipt-1"
 inbox.receipts                           // every inserted receipt: id, source, eventId, entity, row, tx, inTransaction
-inbox.receiptExists("webhook.sepay", "e-4") // the receipt row is already there: the winning claim inserts nothing, answers undefined
+inbox.receiptExists("webhook.acme-pay", "e-4") // the receipt row is already there: the winning claim inserts nothing, answers undefined
 
 const clientInbox = fakeInbox(clock)     // the driven clock stamps client claims for retention tests
 await clientInbox.runClient({ principalId: "p-1", operation: "checkout.place", idempotencyKey: "key-1", request: { quantity: 2 } }, tx, async () => ({ kind: "ok", value: { orderId: "o-1" } }))

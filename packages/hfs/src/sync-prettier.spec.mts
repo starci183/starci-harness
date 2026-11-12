@@ -34,8 +34,8 @@ const write = (root: string, file: string, text: string): void => {
 
 /** The root packages of the fixture: the agent SDK and module packages whose names make the registry's lists longer than a line. */
 const writePackages = (root: string, scope: string): void => {
-  write(root, 'packages/agent-sdk/package.json', JSON.stringify({ name: `@${scope}/agent-sdk`, private: true }));
-  write(root, 'packages/agent-sdk/src/index.ts', 'export const sdk = 1\n');
+  write(root, 'packages/sdk/package.json', JSON.stringify({ name: `@${scope}/sdk`, private: true }));
+  write(root, 'packages/sdk/src/index.ts', 'export const sdk = 1\n');
   for (const name of ['sales', 'chatbot', 'customer-loyalty-points', 'appointment-reminders', 'inventory-restock']) {
     write(root, `packages/module-${name}/package.json`, JSON.stringify({ name: `@${scope}/module-${name}`, private: true }));
     write(root, `packages/module-${name}/src/index.ts`, 'export const module = 1\n');

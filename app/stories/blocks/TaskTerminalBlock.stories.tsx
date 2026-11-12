@@ -8,7 +8,7 @@ const meta = {
     component: TaskTerminalBlockBase,
     args: {
         props: {
-            lines: ready(["Reading src/modules/subscription/plan/plan.entity.ts", "Running npm run typecheck … ok"]),
+            lines: ready(["Reading src/modules/search/index/index.entity.ts", "Running npm run typecheck … ok"]),
             fact: "claude · claude-sonnet-5-5 · effort medium · term_8a1f3c90",
             labels: { title: TASK.terminal, slot: slotLabels(TASK.noTerminal) },
         },

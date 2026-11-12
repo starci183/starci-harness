@@ -307,7 +307,7 @@ contract, generalised from `stack/urgent-floor.mts` (shared steps, renamed codes
 migrate), the contract-migration finding in the db rules (`app check --gate db`), `database.target` in the stacks schema.
 Tests: no pending migration means no backup; a red preview refuses before the stack deploy; a contract migration runs only
 after accept; first start chosen automatically on an empty database and refused on a non-empty one. Done: the
-nivo-lite stack deploys and migrates in a scratch swarm with the db service internal only.
+a lite stack deploys and migrates in a scratch swarm with the db service internal only.
 
 **WP3. CI evidence and urgent trailers (`cli/`).** Files: `cli/src/core/check/ci.ts` (`requireCiGreen` accepts
 `--ci-run <id>`: the run's required jobs for that sha, or the reused run), `cli/src/core/app/stack.ts`, `release push
@@ -330,7 +330,7 @@ Needs WP1 to WP3 published (the workflows call their flags).
 **WP5. Knowledge and the move of existing apps.** Files: this document made the rule (its sections become ids),
 [stacks.md](stacks.md) PROJECT-STACKS-6 and PROJECT-STACKS-7, [authority/ci.md](../authority/ci.md),
 [harness/rules.md](../harness/rules.md) rule 5. The
-migration path, nivo-lite first: bump hfs and the CLI, `app sync --execute` (the new workflows, `db-deploy.yml` and
+migration path of an app: bump hfs and the CLI, `app sync --execute` (the new workflows, `db-deploy.yml` and
 `images.yml`'s old form removed); seal the CI deploy key as `vps-ci` and install its `authorized_keys` line with the gate
 (an owner-run step); set the `production` environment's deployment refs to `v*`; the environment keeps `SOPS_AGE_KEY` and no other
 name, so `VPS_SSH_KEY`, `VPS_KNOWN_HOSTS`, `VPS_HOST` and `VPS_USER` are deleted from it (the sealed `vps-ci` is the only
@@ -353,7 +353,7 @@ Where the packages differ from the design above, or add to it, the code and the 
   `stack connect` masks the host, the account and the releases root in the log, and a missing member is refused (`STACK_CONNECT_MISSING`). `stack-key-restore.yml`
   opens the same member with the environment's `SOPS_AGE_KEY` and writes the identity through the gate's `identity-restore` operation.
 - **Pull requests** run the checks and build the images without pushing (`push: false`); an image with sealed build values is built on release tag runs only.
-- **Public repositories** (nivo-lite is public). GitHub-hosted runners only, never self-hosted. A sealed `.enc` is public ciphertext: the age keys and the CI
+- **Public repositories.** GitHub-hosted runners only, never self-hosted. A sealed `.enc` is public ciphertext: the age keys and the CI
   private key never enter the repository. The CI key is a key of its own on the manager (`restrict`, a forced command, a rotation path owned by the owner, who
   also seals it), the log prints no host, address or server path, no secret is baked into an image (build arguments are public values), `main` is protected and
   the `v*` tags are protected and never moved or deleted, and `pull_request_target` never runs a pull request's code.

@@ -373,7 +373,7 @@ export const ruleIdsIn = (text: string): Set<string> => {
     return ids
 }
 
-// A Work record id: lower-case dotted segments (impl.shop.web.cart, integration.commerce.sepay).
+// A Work record id: lower-case dotted segments (impl.shop.web.cart, integration.commerce.gateway).
 const WORK_ID = /^[a-z][a-z0-9-]*(?:\.[a-z0-9][a-z0-9-]*)+$/
 
 /**

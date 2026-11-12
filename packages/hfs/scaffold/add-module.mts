@@ -1,6 +1,6 @@
-// starci app add module <name> / starci app remove module <name> - a module package of the product's agent SDK and its registry.
+// starci app add module <name> / starci app remove module <name> - a module package of the product's SDK and its registry.
 //
-// A module is a workspace package `packages/module-<name>` (`@<project>/module-<name>`) built on the product's agent SDK (`packages/agent-sdk`): its
+// A module is a workspace package `packages/module-<name>` (`@<project>/module-<name>`) built on the product's SDK (`packages/sdk`): its
 // template and workbench declaration (React-free, for the back end), and its workbench (drawn with Grammar alone). `add` writes the package from
 // templates/app/module, registers it (root `workspaces`, the app dependencies on the registry and the module) and re-renders the managed registry
 // package `packages/modules` (module-registry.mts, the same render `starci app sync` checks); `remove` reverses every one of those steps.
@@ -52,7 +52,7 @@ function fill(text: string, values: Readonly<Record<string, string>>, file: stri
 
 /** The package files written from code: the manifests are never template files. */
 function manifests(project: string, name: string, versions: Readonly<Record<string, string>>): Array<{ relative: string; body: string }> {
-  const sdk = `@${project}/agent-sdk`;
+  const sdk = `@${project}/sdk`;
   const exports = {
     '.': { types: './dist/index.d.ts', default: './dist/index.js' },
     './template': { types: './dist/template/index.d.ts', default: './dist/template/index.js' },
@@ -184,7 +184,7 @@ function writeRegistry(tx: Transaction, root: string, project: string, names: re
 /** Adds the module package `name`, registers it and re-renders the registry. Refused when the app has no agent SDK package or the module exists. */
 export function addModule({ root, name }: { root: string; name: string }): ModuleResult {
   const { project, packageFile } = context(root, name);
-  if (!fs.existsSync(path.join(root, SDK_DIR, 'package.json'))) throw new ScaffoldError('HFS_ADD_MODULE_SDK_MISSING', `a module is built on the product's agent SDK, which must exist as ${SDK_DIR}/ (a workspace package named @${project}/agent-sdk)`);
+  if (!fs.existsSync(path.join(root, SDK_DIR, 'package.json'))) throw new ScaffoldError('HFS_ADD_MODULE_SDK_MISSING', `a module is built on the product's SDK, which must exist as ${SDK_DIR}/ (a workspace package named @${project}/sdk)`);
   const folder = `packages/${MODULE_PREFIX}${name}`;
   if (fs.existsSync(path.join(root, folder))) throw new ScaffoldError('HFS_ADD_EXISTS', `module ${name} already exists: ${folder}`);
   const values = { project, name, pascal: pascalOf(name), camel: camelOf(name), upper: upperOf(name) };

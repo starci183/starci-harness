@@ -13,15 +13,15 @@ export default meta;
 type Story = StoryObj;
 
 const MODES = [
-  { id: 'auto', title: 'Tự làm', subtitle: 'Agent trả lời và làm việc, bạn xem lại sau.' },
-  { id: 'ask', title: 'Hỏi trước', subtitle: 'Agent soạn sẵn, chờ bạn duyệt rồi mới gửi.' },
-  { id: 'off', title: 'Tạm dừng', isDisabled: true },
-  { id: 'plain', title: 'Chỉ có tiêu đề' },
+  { id: 'auto', title: 'Automatic', subtitle: 'The assistant replies and works, you review later.' },
+  { id: 'ask', title: 'Ask first', subtitle: 'The assistant drafts and waits for your approval before sending.' },
+  { id: 'off', title: 'Paused', isDisabled: true },
+  { id: 'plain', title: 'Title only' },
 ];
 
 const Single = () => {
   const [value, setValue] = useState<string | null>('auto');
-  return <G.SurfaceCard kind="select" label="Chế độ" selectionMode="single" items={MODES} value={value} onChange={setValue} />;
+  return <G.SurfaceCard kind="select" label="Mode" selectionMode="single" items={MODES} value={value} onChange={setValue} />;
 };
 
 const Multiple = () => {
@@ -29,12 +29,12 @@ const Multiple = () => {
   return (
     <G.SurfaceCard
       kind="select"
-      label="Quyền"
+      label="Permissions"
       selectionMode="multiple"
       items={[
-        { id: 'read', title: 'Đọc đơn hàng', subtitle: 'Xem danh sách và chi tiết đơn.' },
-        { id: 'write', title: 'Sửa đơn hàng', subtitle: 'Đổi trạng thái, ghi chú.' },
-        { id: 'refund', title: 'Hoàn tiền' },
+        { id: 'read', title: 'Read orders', subtitle: 'View the list and order details.' },
+        { id: 'write', title: 'Edit orders', subtitle: 'Change status, add notes.' },
+        { id: 'refund', title: 'Refund' },
       ]}
       value={value}
       onChange={setValue}
@@ -55,7 +55,7 @@ export const SelectCard: Story = {
     const single = canvasElement.querySelector<HTMLElement>('[data-grammar-select-mode="single"]')!;
     const boxes = () => Array.from(single.querySelectorAll<HTMLInputElement>('input[type="checkbox"]'));
     expect(boxes().map((box) => box.checked)).toEqual([true, false, false, false]);
-    await userEvent.click(canvas.getByText('Hỏi trước'));
+    await userEvent.click(canvas.getByText('Ask first'));
     await waitFor(() => expect(boxes().map((box) => box.checked)).toEqual([false, true, false, false]));
     expect(boxes()[2]!.disabled).toBe(true);
     const rows = Array.from(single.querySelectorAll<HTMLElement>('[data-grammar-select-item]'));
@@ -66,12 +66,12 @@ export const SelectCard: Story = {
     expect(getComputedStyle(rows[1]!).borderTopWidth).not.toBe('0px');
     expect(single.querySelectorAll('[data-grammar-field-description]').length).toBe(2);
     const multiple = canvasElement.querySelector<HTMLElement>('[data-grammar-select-mode="multiple"]')!;
-    await userEvent.click(within(multiple).getByText('Sửa đơn hàng'));
+    await userEvent.click(within(multiple).getByText('Edit orders'));
     await waitFor(() => expect(Array.from(multiple.querySelectorAll<HTMLInputElement>('input')).map((box) => box.checked)).toEqual([true, true, false]));
   },
 };
 
-const modeItems = (isOff: boolean) => [{ id: 'auto', label: 'Tự động', isDisabled: isOff }, { id: 'ask', label: 'Hỏi', isDisabled: isOff }] as const;
+const modeItems = (isOff: boolean) => [{ id: 'auto', label: 'Auto', isDisabled: isOff }, { id: 'ask', label: 'Ask', isDisabled: isOff }] as const;
 
 const EndCard = () => {
   const [value, setValue] = useState<readonly string[]>(['read', 'send', 'notify']);
@@ -81,15 +81,15 @@ const EndCard = () => {
   return (
     <G.SurfaceCard
       kind="select"
-      label="Quyền của agent"
+      label="Assistant permissions"
       selectionMode="multiple"
       items={[
-        { id: 'read', title: 'Đọc tin nhắn', subtitle: 'Xem hội thoại của khách để hiểu ngữ cảnh.' },
-        { id: 'send', title: 'Gửi tin cho khách', subtitle: 'Trả lời khách qua Zalo, thay mặt cửa hàng.', control: <G.Tabs appearance="primary" label="Gửi tin cho khách" selectedKey={sendMode} onSelect={setSendMode} items={modeItems(false)} /> },
-        { id: 'order', title: 'Cập nhật đơn hàng', subtitle: 'Đổi trạng thái và ghi chú đơn.', control: <G.Tabs appearance="primary" label="Cập nhật đơn hàng" selectedKey={orderMode} onSelect={setOrderMode} items={modeItems(!value.includes('order'))} /> },
-        { id: 'notify', title: 'Báo cho nhóm', control: <G.Switch label="Báo ngay" size="md" isLabelHidden isSelected={isOn} onSelectedChange={setIsOn} /> },
-        { id: 'plan', title: 'Gói', control: <G.Badge>Pro</G.Badge> },
-        { id: 'off', title: 'Tạm dừng', isDisabled: true, control: <G.Tabs appearance="primary" label="Tạm dừng" selectedKey="auto" onSelect={() => undefined} items={modeItems(false)} /> },
+        { id: 'read', title: 'Read messages', subtitle: 'View the customer's conversation for context.' },
+        { id: 'send', title: 'Message customers', subtitle: 'Reply to customers over Chat, on behalf of the shop.', control: <G.Tabs appearance="primary" label="Message customers" selectedKey={sendMode} onSelect={setSendMode} items={modeItems(false)} /> },
+        { id: 'order', title: 'Update orders', subtitle: 'Change status and add order notes.', control: <G.Tabs appearance="primary" label="Update orders" selectedKey={orderMode} onSelect={setOrderMode} items={modeItems(!value.includes('order'))} /> },
+        { id: 'notify', title: 'Notify team', control: <G.Switch label="Notify now" size="md" isLabelHidden isSelected={isOn} onSelectedChange={setIsOn} /> },
+        { id: 'plan', title: 'Plan', control: <G.Badge>Team</G.Badge> },
+        { id: 'off', title: 'Paused', isDisabled: true, control: <G.Tabs appearance="primary" label="Paused" selectedKey="auto" onSelect={() => undefined} items={modeItems(false)} /> },
       ]}
       value={value}
       onChange={setValue}
@@ -98,7 +98,7 @@ const EndCard = () => {
 };
 
 /**
- * A row can carry any Grammar content at its end as `control` (0.37.13): a primary Tabs pill ("Tự động | Hỏi"), a Switch, a chip. The slot sits at the row's end centred on the title
+ * A row can carry any Grammar content at its end as `control` (0.37.13): a primary Tabs pill ("Auto | Ask"), a Switch, a chip. The slot sits at the row's end centred on the title
  * line, wraps the copy before it, is its own hit target (presses and keys inside never toggle the row) and is dimmed and blocked on a disabled row.
  */
 export const SelectWithControl: Story = {
@@ -119,13 +119,13 @@ export const SelectWithControl: Story = {
     expect(items[0]!.querySelector('[data-grammar-select-control]')).toBeNull();
     expect(boxes().length).toBe(items.length);
     // Pressing a tab picks the option and never toggles the row.
-    await userEvent.click(tabsOf(items[1]!).find((tab) => tab.textContent === 'Hỏi')!);
-    await waitFor(() => expect(tabsOf(items[1]!).find((tab) => tab.textContent === 'Hỏi')!.getAttribute('aria-selected')).toBe('true'));
+    await userEvent.click(tabsOf(items[1]!).find((tab) => tab.textContent === 'Ask')!);
+    await waitFor(() => expect(tabsOf(items[1]!).find((tab) => tab.textContent === 'Ask')!.getAttribute('aria-selected')).toBe('true'));
     expect(rowChecks()).toEqual([true, true, false, true, false, false]);
     // Keyboard inside the slot moves the choice and never toggles the row.
-    tabsOf(items[1]!).find((tab) => tab.textContent === 'Hỏi')!.focus();
+    tabsOf(items[1]!).find((tab) => tab.textContent === 'Ask')!.focus();
     await userEvent.keyboard('{ArrowLeft}');
-    await waitFor(() => expect(tabsOf(items[1]!).find((tab) => tab.textContent === 'Tự động')!.getAttribute('aria-selected')).toBe('true'));
+    await waitFor(() => expect(tabsOf(items[1]!).find((tab) => tab.textContent === 'Auto')!.getAttribute('aria-selected')).toBe('true'));
     expect(rowChecks()).toEqual([true, true, false, true, false, false]);
     // The control stands on the row's end beside the copy, never under it.
     for (const root of Array.from(canvasElement.querySelectorAll<HTMLElement>('[data-grammar-select-mode="multiple"]'))) {
@@ -140,7 +140,7 @@ export const SelectWithControl: Story = {
     expect(off.hasAttribute('inert')).toBe(true);
     expect(getComputedStyle(off).pointerEvents).toBe('none');
     // Pressing the row's own text still toggles it.
-    await userEvent.click(within(items[2]!).getByText('Cập nhật đơn hàng'));
+    await userEvent.click(within(items[2]!).getByText('Update orders'));
     await waitFor(() => expect(rowChecks()[2]).toBe(true));
   },
 };

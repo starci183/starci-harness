@@ -12,7 +12,7 @@ const tester = typedTester()
 const UNIT = at("src/modules/domain/order/order.service.spec.ts")
 const INTEGRATION = at("src/tests/integration/order/place-order.integration-spec.ts")
 const E2E = at("src/tests/e2e/checkout/place-order.e2e-spec.ts")
-const CONTRACT = at("src/tests/contract/sepay/sepay.contract-spec.ts")
+const CONTRACT = at("src/tests/contract/acme-pay/acme-pay.contract-spec.ts")
 // the runners are the test globals: unresolved names, exactly as in a real spec
 const RUNNERS = ""
 const SANDBOX = "declare const sandbox: { describe(name: string, body: () => void): void }\n"
@@ -25,7 +25,7 @@ test("R48: no spec skips, focuses, marks todo or selects its runner; the test-wo
     assert.doesNotThrow(() => { tester.run("spec-no-skip", specNoSkip, {
         valid: [
             ...[UNIT, INTEGRATION, E2E, CONTRACT].map((filename) => ({ filename, code: `${RUNNERS}describe("x", () => { it("y", () => {}); it.each([1])("z", () => {}); it.concurrent("c", () => {}) })` })),
-            { filename: CONTRACT, code: `${SANDBOX}sandbox.describe("sepay sandbox contract", () => { it("works", () => {}) })` },
+            { filename: CONTRACT, code: `${SANDBOX}sandbox.describe("acme-pay sandbox contract", () => { it("works", () => {}) })` },
             // a local binding called it/test is not the runner
             { filename: UNIT, code: "const it = { skip: 1 }\nexport const a = it.skip" },
             // not a spec file

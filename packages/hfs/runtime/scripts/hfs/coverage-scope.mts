@@ -299,7 +299,7 @@ export function packagesCoverage(folders: readonly string[], declared: (folder: 
   return { folders: sorted, files: sorted.map((folder) => `${folder}/src/**/*.ts`), excludes: sorted.flatMap((folder) => (declared(folder) ?? PACKAGE_UNMEASURED).map((glob) => `${folder}/${glob}`)) };
 }
 
-/** The id of the Codecov component of one root package (`packages/blocks-core` is `package-blocks-core`): no service app or `platform` is ever named so. */
+/** The id of the Codecov component of one root package (`packages/ui-kit` is `package-ui-kit`): no service app or `platform` is ever named so. */
 export const packageComponentId = (folder: string): string => `package-${folder.slice(folder.lastIndexOf('/') + 1)}`;
 
 /** One Codecov component per root package, over everything below its `src/`: the 100 per file bar is read for each package apart, not only for the project and the patch. */

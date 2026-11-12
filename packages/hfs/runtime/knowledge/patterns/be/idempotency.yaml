@@ -56,7 +56,7 @@ rules:
     cases:
       - id: case-1
         when: A signed webhook controller
-        write: 'the webhook door (webhooks.yaml) verifies the signature and calls one domain recording intake; that method claims (PAYOS_SOURCE, eventId) first in its transaction, returns when the claim answers false, and saves the durable receipt with its outbox event. A reactor or job consumes the committed receipt and dispatches the processing command; the webhook door, HTTP module and called intake never dispatch on a command bus.'
+        write: 'the webhook door (webhooks.yaml) verifies the signature and calls one domain recording intake; that method claims (GATEWAY_SOURCE, eventId) first in its transaction, returns when the claim answers false, and saves the durable receipt with its outbox event. A reactor or job consumes the committed receipt and dispatches the processing command; the webhook door, HTTP module and called intake never dispatch on a command bus.'
       - id: case-2
         when: A consumer
         write: 'be/src/features/api/billing/transport/message/payment-captured.consumer.ts forwards delivery.eventId in one command; its domain service claims first inside its own transaction with the callback manager, then writes and publishes through that manager.'

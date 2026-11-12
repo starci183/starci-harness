@@ -82,7 +82,7 @@ Work record          .starciwork record: what must be true (fr, br, sds, contrac
 ## PROJECT-3 A product's agent modules are workspace packages
 
 A product that builds agent modules keeps them as workspace packages at the app root, under `packages/` (root `workspaces`
-lists `packages/*`): its agent SDK `packages/agent-sdk`, one package `packages/module-<name>` (`@<project>/module-<name>`) per
+lists `packages/*`): its SDK `packages/sdk`, one package `packages/module-<name>` (`@<project>/module-<name>`) per
 module, and the managed registry `packages/modules` (`@<project>/modules`) that lists them. A module package has the subpaths
 `./template` and `./manifest` (React-free, for the back end), `./workbench` (drawn with Grammar alone) and `./public` (its public
 face, for the front end) beside its `src/index.ts`; `starci app add module <name>` writes it and `starci app remove module <name>` reverses every step. The

@@ -119,7 +119,7 @@ export const AlertDialog: Story = {
       defaultOpen
       tone="negative"
       title="Delete this project?"
-      description="Its lessons and history are removed for everyone. This cannot be undone."
+      description="Its documents and history are removed for everyone. This cannot be undone."
       confirmLabel="Delete project"
       cancelLabel="Keep project"
       onConfirm={noop}
@@ -415,7 +415,7 @@ export const Popover: Story = {
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
           <G.Text size="sm">Search <G.Kbd keys={['command', 'K']} /></G.Text>
-          <G.Text size="sm">New lesson <G.Kbd keys={['command', 'N']} /></G.Text>
+          <G.Text size="sm">New document <G.Kbd keys={['command', 'N']} /></G.Text>
         </div>
       </G.Popover>
     </div>
@@ -499,7 +499,7 @@ export const Toast: Story = {
       <State label="Pending and with action" direction="column">
         <G.Toast toast={record('t5', { title: 'Uploading 3 files', tone: 'pending', timeout: 0 })} dismissLabel="Dismiss" onDismiss={noop} />
         <G.Toast toast={record('t7', { title: 'Not on your plan', tone: 'unavailable', timeout: 0 })} dismissLabel="Dismiss" onDismiss={noop} />
-        <G.Toast toast={record('t6', { title: 'Lesson archived', tone: 'neutral', timeout: 0, action: { label: 'Undo', onAction: noop } })} dismissLabel="Dismiss" onDismiss={noop} />
+        <G.Toast toast={record('t6', { title: 'Document archived', tone: 'neutral', timeout: 0, action: { label: 'Undo', onAction: noop } })} dismissLabel="Dismiss" onDismiss={noop} />
       </State>
     </Matrix>
   ),

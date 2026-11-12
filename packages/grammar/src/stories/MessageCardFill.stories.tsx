@@ -15,19 +15,19 @@ export default meta;
 type Story = StoryObj;
 
 const facts: readonly G.ListRowData[] = [
-  { id: 'workflow', title: 'Quy trình', value: 'Chốt đơn qua Zalo' },
-  { id: 'step', title: 'Bước', value: 'Gửi QR thanh toán' },
-  { id: 'reason', title: 'Lý do dừng', value: 'Khách hỏi giao hàng ngoài khu vực' },
+  { id: 'workflow', title: 'Workflow', value: 'Close the order by chat' },
+  { id: 'step', title: 'Step', value: 'Send the payment QR' },
+  { id: 'reason', title: 'Reason', value: 'Customer asked about delivery outside the area' },
 ];
 
 const suggestions = [
-  'Đồng ý',
-  'Hỏi lại địa chỉ',
-  'Báo khách phí giao ngoài khu vực là 30.000đ và hỏi khách có muốn tiếp tục đặt đơn này không, nếu có thì gửi lại QR thanh toán',
+  'Agree',
+  'Ask for the address again',
+  'Tell the customer the out-of-area delivery fee is $30 and ask whether they want to continue with this order, and if so send the payment QR again',
 ] as const;
 
 const Suggestions = () => (
-  <G.Cluster gap="inline" label="Gợi ý trả lời">
+  <G.Cluster gap="inline" label="Suggested replies">
     {suggestions.map((text) => (
       <G.Button key={text} intent="neutral" size="sm" width="wrap" onPress={noop}>
         {text}
@@ -39,17 +39,17 @@ const Suggestions = () => (
 const Composer = () => (
   <G.Cluster gap="inline" align="end" wrap={false}>
     <div style={{ flex: 1, minWidth: 0 }}>
-      <G.Textarea label="Trả lời" isLabelHidden placeholder="Trả lời cho NIVO..." />
+      <G.Textarea label="Reply" isLabelHidden placeholder="Reply to the assistant..." />
     </div>
     <G.Button intent="commit" startGlyph="send" onPress={noop}>
-      Gửi
+      Send
     </G.Button>
   </G.Cluster>
 );
 
 const stopBody = (
   <G.Stack gap="row">
-    <G.SurfaceCard kind="list" layout="keyValue" ariaLabel="Chi tiết" empty={null} items={facts} />
+    <G.SurfaceCard kind="list" layout="keyValue" ariaLabel="Details" empty={null} items={facts} />
     <Suggestions />
     <Composer />
   </G.Stack>
@@ -61,17 +61,17 @@ export const NestedListAndComposer: Story = {
     <div style={{ maxWidth: '64rem' }}>
       <G.MessageCard
         measure="wide"
-        author="NIVO"
-        avatar={<G.Avatar name="NIVO" size="sm" />}
-        title="Quy trình đang dừng"
-        chip={<G.Badge tone="warning">Cần bạn quyết</G.Badge>}
+        author="Assistant"
+        avatar={<G.Avatar name="Assistant" size="sm" />}
+        title="Workflow paused"
+        chip={<G.Badge tone="warning">Needs your decision</G.Badge>}
         body={stopBody}
         actions={[
-          { id: 'retry', label: 'Thử lại', onPress: noop },
-          { id: 'take', label: 'Tiếp quản', onPress: noop },
-          { id: 'skip', label: 'Bỏ qua', onPress: noop },
+          { id: 'retry', label: 'Retry', onPress: noop },
+          { id: 'take', label: 'Take over', onPress: noop },
+          { id: 'skip', label: 'Skip', onPress: noop },
         ]}
-        meta="Chốt đơn qua Zalo · Gửi QR · 09:12 · lần 2"
+        meta="Close the order by chat · Send QR · 09:12 · attempt 2"
       />
     </div>
   ),
@@ -80,7 +80,7 @@ export const NestedListAndComposer: Story = {
     const card = canvasElement.querySelector<HTMLElement>('[data-component="MessageCard"]')!;
     const list = card.querySelector<HTMLElement>('[data-component="SurfaceCard"]')!;
     const textarea = card.querySelector<HTMLElement>('textarea')!;
-    const send = [...card.querySelectorAll<HTMLElement>('[data-component="Button"]')].find((b) => b.textContent?.includes('Gửi'))!;
+    const send = [...card.querySelectorAll<HTMLElement>('[data-component="Button"]')].find((b) => b.textContent?.includes('Send'))!;
     const box = card.getBoundingClientRect();
     expect(Math.abs(list.getBoundingClientRect().width - box.width)).toBeLessThanOrEqual(1);
     expect(Math.abs(send.getBoundingClientRect().right - box.right)).toBeLessThanOrEqual(1);

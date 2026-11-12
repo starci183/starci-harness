@@ -1,6 +1,6 @@
 // proves: FE_WORLD_OWNER_RENDER_BOUNDARY@lite FE_WORLD_OWNER_RENDER_BOUNDARY@full
-// An fe app reaches a workspace package's SOURCE through a tsconfig path alias (`@fixture/blocks-core` ->
-// `packages/blocks-core/src/index.ts`, outside the fe root). The world analysis follows a call into that file, which no checker
+// An fe app reaches a workspace package's SOURCE through a tsconfig path alias (`@fixture/ui-kit` ->
+// `packages/ui-kit/src/index.ts`, outside the fe root). The world analysis follows a call into that file, which no checker
 // of the context holds (the context keeps only files under the fe root). The package is its own unit, judged by its own lint, so
 // the analysis treats the declaration as outside the app's world: it neither throws `No type checker holds ...` nor reports it.
 import test from 'node:test';
@@ -13,11 +13,11 @@ const OWNERSHIP = 'FE_COMPONENT_WORLD_OWNERSHIP';
 const LEAF = 'apps/web/src/components/leaves/Label';
 
 const PACKAGE = {
-  '../packages/blocks-core/package.json': JSON.stringify({ name: '@fixture/blocks-core', private: true }),
-  '../packages/blocks-core/src/index.ts': "export { messageLabel } from './agent-message/agent-message-item';\n",
-  '../packages/blocks-core/src/agent-message/format.ts': 'export const trimmed = (text: string): string => text.trim();\n',
+  '../packages/ui-kit/package.json': JSON.stringify({ name: '@fixture/ui-kit', private: true }),
+  '../packages/ui-kit/src/index.ts': "export { messageLabel } from './agent-message/agent-message-item';\n",
+  '../packages/ui-kit/src/agent-message/format.ts': 'export const trimmed = (text: string): string => text.trim();\n',
   // The package function calls another function of its own: walking it would need a checker for this file.
-  '../packages/blocks-core/src/agent-message/agent-message-item.ts':
+  '../packages/ui-kit/src/agent-message/agent-message-item.ts':
     "import { trimmed } from './format';\nexport function messageLabel(text: string): string {\n  return trimmed(text).toUpperCase();\n}\n",
 };
 
@@ -27,7 +27,7 @@ function judged(t: TestContext, edition: string, component: string) {
     '../hfs.json': JSON.stringify(declaration),
     'apps/web/tsconfig.json': JSON.stringify({
       extends: '../../tsconfig.json',
-      compilerOptions: { baseUrl: '.', paths: { '@fixture/blocks-core': ['../../../packages/blocks-core/src/index.ts'] } },
+      compilerOptions: { baseUrl: '.', paths: { '@fixture/ui-kit': ['../../../packages/ui-kit/src/index.ts'] } },
       include: ['src/**/*'],
     }),
     'apps/web/src/modules/config/index.ts': 'export const config = 1;\n',
@@ -40,7 +40,7 @@ function judged(t: TestContext, edition: string, component: string) {
 for (const edition of ['lite', 'full']) {
   test(`${edition}: a component calling a workspace package source through a path alias is analysed without error`, (t) => {
     const report = judged(t, edition, [
-      'import { messageLabel } from "@fixture/blocks-core";',
+      'import { messageLabel } from "@fixture/ui-kit";',
       'export const Label = (props: { readonly text: string }) => <span>{messageLabel(props.text)}</span>;',
       '',
     ].join('\n'));
@@ -51,8 +51,8 @@ for (const edition of ['lite', 'full']) {
 // A package variable aliasing another binding (`export const usePackageThing = impl`) is followed to its initializer, whose file no checker of the context holds
 // either: the initializer is another unit's code, outside the app's world, and is neither analysed nor a crash (`No type checker holds <file>`).
 const ALIASED = {
-  '../packages/blocks-core/src/index.ts': "export { usePackageThing } from './aliased';\n",
-  '../packages/blocks-core/src/aliased.ts': "const implementation = (text: string): string => text.trim();\nexport const usePackageThing = implementation;\n",
+  '../packages/ui-kit/src/index.ts': "export { usePackageThing } from './aliased';\n",
+  '../packages/ui-kit/src/aliased.ts': "const implementation = (text: string): string => text.trim();\nexport const usePackageThing = implementation;\n",
 };
 
 for (const edition of ['lite', 'full']) {
@@ -62,14 +62,14 @@ for (const edition of ['lite', 'full']) {
       '../hfs.json': JSON.stringify(declaration),
       'apps/web/tsconfig.json': JSON.stringify({
         extends: '../../tsconfig.json',
-        compilerOptions: { baseUrl: '.', paths: { '@fixture/blocks-core': ['../../../packages/blocks-core/src/index.ts'] } },
+        compilerOptions: { baseUrl: '.', paths: { '@fixture/ui-kit': ['../../../packages/ui-kit/src/index.ts'] } },
         include: ['src/**/*'],
       }),
       'apps/web/src/modules/config/index.ts': 'export const config = 1;\n',
-      '../packages/blocks-core/package.json': PACKAGE['../packages/blocks-core/package.json'],
+      '../packages/ui-kit/package.json': PACKAGE['../packages/ui-kit/package.json'],
       ...ALIASED,
       [`${LEAF}/index.tsx`]: [
-        'import { usePackageThing } from "@fixture/blocks-core";',
+        'import { usePackageThing } from "@fixture/ui-kit";',
         'export const Label = (props: { readonly text: string }) => <span>{usePackageThing(props.text)}</span>;',
         '',
       ].join('\n'),

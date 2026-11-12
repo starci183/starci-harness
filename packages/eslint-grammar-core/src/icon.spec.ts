@@ -26,9 +26,9 @@ const R = "apps/web/src/components"
 const ICON_LEAF = at(`${R}/leaves/Icon/index.tsx`)
 const ICON_LEAF_BRANDS = at(`${R}/leaves/Icon/brands.tsx`)
 const OTHER_LEAF = at(`${R}/leaves/SeeMoreLink/index.tsx`)
-const BLOCK = at(`${R}/blocks/dashboard/DailyQuest/component.tsx`)
+const BLOCK = at(`${R}/blocks/dashboard/SummaryCard/component.tsx`)
 const SCRIPT = at("scripts/build.ts")
-const PACKAGE_ICON_LEAF = at("packages/nivo-ui/src/leaves/Icon/index.tsx")
+const PACKAGE_ICON_LEAF = at("packages/app-ui/src/leaves/Icon/index.tsx")
 const NOT_A_LEAF = at("apps/web/src/modules/components/leaves/Icon/index.tsx")
 const ICON_BLOCK = at(`${R}/blocks/dashboard/Icon/index.tsx`)
 
@@ -158,7 +158,7 @@ for (const edition of ["lite", "full"]) {
         entry(brandLeaf, `/** @brand-mark */\nexport default () => ${svg}`),
         entry(OTHER_LEAF, 'export const Link = () => <Icon props={{ name: "next" }} />'),
         entry(at("scripts/preview.tsx"), `const Preview = () => ${svg}`),
-        ...(edition === "full" ? [entry(at("packages/nivo-ui/src/leaves/AgentMark/index.tsx"), declared)] : []),
+        ...(edition === "full" ? [entry(at("packages/app-ui/src/leaves/AgentMark/index.tsx"), declared)] : []),
       ],
       invalid: [
         refused(brandLeaf, `export const AgentMark = () => ${svg}`),
@@ -173,7 +173,7 @@ for (const edition of ["lite", "full"]) {
         refused(brandLeaf, `export const AgentMark = () => { /** @brand-mark */ return ${svg} }`),
         refused(brandLeaf, `${declared}\nexport const OtherIcon = () => ${svg}`),
         refused(brandLeaf, `/** @brand-mark */\nexport const AgentMark = () => { const OtherIcon = () => ${svg}; return <OtherIcon /> }`),
-        ...(edition === "full" ? [refused(at("packages/nivo-ui/src/composites/AgentMark/index.tsx"), declared)] : []),
+        ...(edition === "full" ? [refused(at("packages/app-ui/src/composites/AgentMark/index.tsx"), declared)] : []),
       ],
     })
   })

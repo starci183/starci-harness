@@ -76,7 +76,7 @@ describe("RefreshCookie domain by request host", () => {
     })
 
     it("sets the listed domain a tunnel host falls under, the longest that fits, without its port", () => {
-        assert.deepEqual(domains(from("nivo-local.starci.org")), ["starci.org"])
+        assert.deepEqual(domains(from("app-local.starci.org")), ["starci.org"])
         assert.deepEqual(domains(from("api.local.starci.org:443")), ["local.starci.org"])
         assert.deepEqual(domains(from(["EXAMPLE.test:8080"])), ["example.test"])
     })

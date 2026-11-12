@@ -275,7 +275,7 @@ export const { ConfigurableModuleClass } = defineCapabilityModule<PlanOptions>()
     })
 })
 
-const LEDGER = at("src/modules/domain/ledger/ledger.module.ts")
+const JOURNAL = at("src/modules/domain/journal/journal.module.ts")
 const HOURS = at("src/features/api/hours/hours.module.ts")
 const HOURS_HTTP = at("src/features/api/hours/transport/http/hours-http.module.ts")
 const FROM = (name: string) => `import { ConfigurableModuleClass } from "./${name}.module-definition"\n`
@@ -285,7 +285,7 @@ test("BE_MODULE_DEFINITION_MISSING in lite and full: a valid module has a siblin
         tester.run("module-definition-required", moduleDefinitionRequired, {
             valid: [
                 // a capability, a feature and a transport with their definition and options on disk
-                { filename: LEDGER, code: `${FROM("ledger")}@Module({}) export class LedgerModule extends ConfigurableModuleClass {}` },
+                { filename: JOURNAL, code: `${FROM("journal")}@Module({}) export class JournalModule extends ConfigurableModuleClass {}` },
                 { filename: HOURS, code: `${FROM("hours")}@Module({ providers: [] }) export class HoursModule extends ConfigurableModuleClass {}` },
                 { filename: HOURS_HTTP, code: `${FROM("hours-http")}@Module({ imports: [HoursModule.register({})], controllers: [] }) export class HoursHttpModule extends ConfigurableModuleClass {}` },
                 // a registered module and a package module in imports
@@ -296,7 +296,7 @@ test("BE_MODULE_DEFINITION_MISSING in lite and full: a valid module has a siblin
                 { filename: at("src/features/api/hours/hours.module.spec.ts"), code: "@Module({ imports: [CatalogModule] }) class Probe {}" },
                 { filename: at("src/tests/world/probe-job.module.ts"), code: "@Module({}) export class ProbeJobModule {}" },
                 // a file that is not a module file declares no module
-                { filename: at("src/modules/domain/ledger/ledger.service.ts"), code: "@Injectable() export class LedgerService {}" },
+                { filename: at("src/modules/domain/journal/journal.service.ts"), code: "@Injectable() export class JournalService {}" },
             ],
             invalid: [
                 // no sibling definition and no sibling options
@@ -304,8 +304,8 @@ test("BE_MODULE_DEFINITION_MISSING in lite and full: a valid module has a siblin
                 { filename: at("src/features/api/plan/transport/graphql/plan-graphql.module.ts"), code: `${FROM("plan-graphql")}@Module({}) export class PlanGraphqlModule extends ConfigurableModuleClass {}`, errors: [{ messageId: "missingDefinition" }, { messageId: "missingOptions" }] },
                 { filename: at("src/features/cli/migrate/migrate.module.ts"), code: `${FROM("migrate")}@Module({}) export class MigrateModule extends ConfigurableModuleClass {}`, errors: [{ messageId: "missingDefinition" }, { messageId: "missingOptions" }] },
                 // the class does not extend the ConfigurableModuleClass of its own definition
-                { filename: LEDGER, code: "@Module({}) export class LedgerModule {}", errors: [{ messageId: "extendsBase" }] },
-                { filename: LEDGER, code: "@Module({}) export class LedgerModule extends Other {}", errors: [{ messageId: "extendsBase" }] },
+                { filename: JOURNAL, code: "@Module({}) export class JournalModule {}", errors: [{ messageId: "extendsBase" }] },
+                { filename: JOURNAL, code: "@Module({}) export class JournalModule extends Other {}", errors: [{ messageId: "extendsBase" }] },
                 { filename: HOURS, code: 'import { ConfigurableModuleClass } from "./other.module-definition"\n@Module({}) export class HoursModule extends ConfigurableModuleClass {}', errors: [{ messageId: "extendsBase" }] },
                 { filename: HOURS, code: 'import { ConfigurableModuleClass } from "@nestjs/common"\n@Module({}) export class HoursModule extends ConfigurableModuleClass {}', errors: [{ messageId: "extendsBase" }] },
                 { filename: HOURS, code: 'import { OPTIONS_TYPE as ConfigurableModuleClass } from "./hours.module-definition"\n@Module({}) export class HoursModule extends ConfigurableModuleClass {}', errors: [{ messageId: "extendsBase" }] },

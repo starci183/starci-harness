@@ -17,8 +17,8 @@ const INSET = 16;
 const GAP = 12;
 const pad = (element: Element, side: 'Top' | 'Bottom'): number => Number.parseFloat(getComputedStyle(element)[`padding${side}`]);
 
-const OPTIONS: readonly G.ListOption[] = [{ id: 'a', label: 'Tất cả' }, { id: 'b', label: 'Đang chạy' }];
-const MODES = [{ id: 'auto', label: 'Tự động' }, { id: 'ask', label: 'Hỏi' }] as const;
+const OPTIONS: readonly G.ListOption[] = [{ id: 'a', label: 'All' }, { id: 'b', label: 'Running' }];
+const MODES = [{ id: 'auto', label: 'Auto' }, { id: 'ask', label: 'Ask' }] as const;
 
 /** The padding a row's own box carries on its first and last row, and between rows. */
 const assertRows = (rows: readonly Element[], first: number, last: number, between: number) => {
@@ -42,29 +42,29 @@ const Everything = () => {
         value={['a']}
         onChange={noop}
         items={[
-          { id: 'a', title: 'Gửi tin cho khách', control: <G.Tabs appearance="primary" label="Chế độ" selectedKey={mode} onSelect={setMode} items={MODES} /> },
-          { id: 'b', title: 'Báo cho nhóm', control: <G.Switch label="Báo ngay" size="md" isLabelHidden isSelected={on} onSelectedChange={setOn} /> },
-          { id: 'c', title: 'Trạng thái', control: <G.Select label="Trạng thái" isLabelHidden size="sm" options={OPTIONS} value={pick} onValueChange={setPick} /> },
-          { id: 'd', title: 'Nhãn', control: <G.Badge tone="success">Đang chạy</G.Badge> },
+          { id: 'a', title: 'Message customers', control: <G.Tabs appearance="primary" label="Mode" selectedKey={mode} onSelect={setMode} items={MODES} /> },
+          { id: 'b', title: 'Notify team', control: <G.Switch label="Notify now" size="md" isLabelHidden isSelected={on} onSelectedChange={setOn} /> },
+          { id: 'c', title: 'Status', control: <G.Select label="Status" isLabelHidden size="sm" options={OPTIONS} value={pick} onValueChange={setPick} /> },
+          { id: 'd', title: 'Label', control: <G.Badge tone="success">Running</G.Badge> },
         ]}
       />
       <G.SurfaceCard
         kind="list"
         label="List rows"
         items={[
-          { id: 'l1', title: 'Nền tảng', control: <G.Tabs appearance="primary" label="Chế độ" selectedKey={mode} onSelect={setMode} items={MODES} /> },
-          { id: 'l2', title: 'Bật', control: <G.Switch label="Bật" size="md" isLabelHidden isSelected={on} onSelectedChange={setOn} /> },
-          { id: 'l3', title: 'Lọc', control: <G.Select label="Lọc" isLabelHidden size="sm" options={OPTIONS} value={pick} onValueChange={setPick} /> },
-          { id: 'l4', title: 'Cài đặt', action: { label: 'Mở', press: noop } },
+          { id: 'l1', title: 'Platform', control: <G.Tabs appearance="primary" label="Mode" selectedKey={mode} onSelect={setMode} items={MODES} /> },
+          { id: 'l2', title: 'On', control: <G.Switch label="On" size="md" isLabelHidden isSelected={on} onSelectedChange={setOn} /> },
+          { id: 'l3', title: 'Filter', control: <G.Select label="Filter" isLabelHidden size="sm" options={OPTIONS} value={pick} onValueChange={setPick} /> },
+          { id: 'l4', title: 'Settings', action: { label: 'Open', press: noop } },
         ]}
-        empty={<G.EmptyNotice message="Trống" />}
+        empty={<G.EmptyNotice message="Empty" />}
       />
       <G.SurfaceCard
         kind="table"
         label="Table rows"
-        columns={[{ id: 'name', label: 'Tên' }, { id: 'act', label: 'Hành động' }]}
-        rows={[{ id: 't1', cells: { name: 'INV-001', act: <G.Button size="sm" onPress={noop}>Tải về</G.Button> } }, { id: 't2', cells: { name: 'INV-002', act: <G.Button size="md" onPress={noop}>Tải về</G.Button> } }]}
-        empty={<G.EmptyNotice message="Trống" />}
+        columns={[{ id: 'name', label: 'Name' }, { id: 'act', label: 'Action' }]}
+        rows={[{ id: 't1', cells: { name: 'INV-001', act: <G.Button size="sm" onPress={noop}>Download</G.Button> } }, { id: 't2', cells: { name: 'INV-002', act: <G.Button size="md" onPress={noop}>Download</G.Button> } }]}
+        empty={<G.EmptyNotice message="Empty" />}
       />
     </div>
   );
@@ -104,20 +104,20 @@ export const RowEdgePadding: Story = {
   },
 };
 
-const FIRST_SINGLE = [{ id: 's', title: 'Một hàng duy nhất' }];
+const FIRST_SINGLE = [{ id: 's', title: 'A single row' }];
 export const SingleRowAndHeaded: Story = {
   name: 'A single-row card is p-4 above and below; a header zone makes the first row p-3',
   render: () => (
     <div data-row-single style={{ display: 'flex', flexDirection: 'column', gap: 24, width: 'min(100%, 720px)' }}>
-      <G.SurfaceCard kind="list" label="Một hàng" items={FIRST_SINGLE} empty={<G.EmptyNotice message="Trống" />} />
+      <G.SurfaceCard kind="list" label="One row" items={FIRST_SINGLE} empty={<G.EmptyNotice message="Empty" />} />
       <G.SurfaceCard
         kind="list"
-        label="Có vùng đầu"
-        items={[{ id: 'a', title: 'Hàng A' }, { id: 'b', title: 'Hàng B' }]}
-        headers={[{ kind: 'search', label: 'Tìm', value: '', onChange: noop, placeholder: 'Tìm', clearLabel: 'Xoá' }]}
-        empty={<G.EmptyNotice message="Trống" />}
+        label="With a header zone"
+        items={[{ id: 'a', title: 'Row A' }, { id: 'b', title: 'Row B' }]}
+        headers={[{ kind: 'search', label: 'Search', value: '', onChange: noop, placeholder: 'Search', clearLabel: 'Clear' }]}
+        empty={<G.EmptyNotice message="Empty" />}
       />
-      <G.SurfaceCard kind="details" ariaLabel="Chi tiết" items={[{ id: 't', term: 'Giờ', description: '19:30' }, { id: 'k', term: 'Khách', description: '4 người' }]} />
+      <G.SurfaceCard kind="details" ariaLabel="Details" items={[{ id: 't', term: 'Time', description: '19:30' }, { id: 'k', term: 'Guests', description: '4 people' }]} />
     </div>
   ),
   play: async ({ canvasElement }) => {
@@ -137,7 +137,7 @@ export const SingleRowAndHeaded: Story = {
   },
 };
 
-const QUYEN_MODES = [{ id: 'auto', label: 'Tự động' }, { id: 'ask', label: 'Hỏi' }] as const;
+const PERMISSION_MODES = [{ id: 'auto', label: 'Auto' }, { id: 'ask', label: 'Ask' }] as const;
 
 const CentredRows = () => {
   const [send, setSend] = useState('auto');
@@ -147,25 +147,25 @@ const CentredRows = () => {
     <div data-row-centre style={{ display: 'flex', flexDirection: 'column', gap: 24, width: 'min(100%, 720px)' }}>
       <G.SurfaceCard
         kind="select"
-        label="Quyền"
+        label="Permissions"
         selectionMode="multiple"
         value={['send', 'qr']}
         onChange={noop}
         items={[
-          { id: 'send', title: 'Gửi tin cho khách qua Zalo', control: <G.Tabs appearance="primary" label="Gửi tin cho khách qua Zalo" selectedKey={send} onSelect={setSend} items={QUYEN_MODES} /> },
-          { id: 'qr', title: 'Tạo mã QR thanh toán', subtitle: 'Mã QR cho đơn của khách', control: <G.Tabs appearance="primary" label="Tạo mã QR thanh toán" selectedKey={qr} onSelect={setQr} items={QUYEN_MODES} /> },
-          { id: 'tell', title: 'Báo cho nhóm', subtitle: 'Nhắn vào khung trò chuyện của đội', control: <G.Switch label="Báo cho nhóm" size="md" isLabelHidden isSelected={on} onSelectedChange={setOn} /> },
-          { id: 'plain', title: 'Đọc tin nhắn của khách', subtitle: 'Không có điều khiển: giữ căn trên' },
+          { id: 'send', title: 'Message customers over Chat', control: <G.Tabs appearance="primary" label="Message customers over Chat" selectedKey={send} onSelect={setSend} items={PERMISSION_MODES} /> },
+          { id: 'qr', title: 'Create a payment QR code', subtitle: 'QR code for the customer's order', control: <G.Tabs appearance="primary" label="Create a payment QR code" selectedKey={qr} onSelect={setQr} items={PERMISSION_MODES} /> },
+          { id: 'tell', title: 'Notify team', subtitle: 'Posts in the team's chat', control: <G.Switch label="Notify team" size="md" isLabelHidden isSelected={on} onSelectedChange={setOn} /> },
+          { id: 'plain', title: 'Read the customer's messages', subtitle: 'No control: keep top alignment' },
         ]}
       />
       <G.SurfaceCard
         kind="list"
-        label="Hàng danh sách"
+        label="List rows"
         items={[
-          { id: 'l1', title: 'Gửi tin cho khách qua Zalo', description: 'Zalo OA', control: <G.Tabs appearance="primary" label="Chế độ" selectedKey={send} onSelect={setSend} items={QUYEN_MODES} /> },
-          { id: 'l2', title: 'Báo cho nhóm', control: <G.Switch label="Báo cho nhóm" size="md" isLabelHidden isSelected={on} onSelectedChange={setOn} /> },
+          { id: 'l1', title: 'Message customers over Chat', description: 'Chat', control: <G.Tabs appearance="primary" label="Mode" selectedKey={send} onSelect={setSend} items={PERMISSION_MODES} /> },
+          { id: 'l2', title: 'Notify team', control: <G.Switch label="Notify team" size="md" isLabelHidden isSelected={on} onSelectedChange={setOn} /> },
         ]}
-        empty={<G.EmptyNotice message="Trống" />}
+        empty={<G.EmptyNotice message="Empty" />}
       />
     </div>
   );
@@ -173,7 +173,7 @@ const CentredRows = () => {
 
 const middle = (element: Element): number => { const box = element.getBoundingClientRect(); return (box.top + box.bottom) / 2; };
 
-/** ROW-CONTROL-CENTRE (0.37.29, owner "căn center cho control và checkbox + text"): the checkbox + text group and the control are centred on each other within 1px; the padding holds. */
+/** ROW-CONTROL-CENTRE (0.37.29, owner "centre the control and the checkbox + text"): the checkbox + text group and the control are centred on each other within 1px; the padding holds. */
 export const RowControlCentre: Story = {
   name: 'A row control and its checkbox + text are centred on each other',
   render: () => <CentredRows />,

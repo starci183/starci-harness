@@ -147,14 +147,14 @@ for (const edition of ['lite', 'full']) {
   test(`${CODE}: ${edition} flags a shell script with CRLF line endings, once per file, and leaves LF scripts and node_modules alone`, () => {
     const crlf = String.fromCharCode(13, 10);
     const findings = stacksDeployFindings(app(edition, (m) => {
-      m.extra['infra/swarm/openclaw/entrypoint.sh'] = `set -eu${crlf}exec node app.js${crlf}`;
+      m.extra['infra/swarm/worker/entrypoint.sh'] = `set -eu${crlf}exec node app.js${crlf}`;
       m.extra['infra/swarm/ok.sh'] = `set -eu${String.fromCharCode(10)}`;
       m.extra['infra/swarm/node_modules/x/bad.sh'] = `set -eu${crlf}`;
       m.extra['infra/swarm/notes.txt'] = `text${crlf}`;
     }));
     assert.equal(findings.length, 1);
     assert.equal(findings[0]!.code, CODE);
-    assert.equal(findings[0]!.path, '.starcistacks/production/infra/swarm/openclaw/entrypoint.sh');
+    assert.equal(findings[0]!.path, '.starcistacks/production/infra/swarm/worker/entrypoint.sh');
     assert.match(findings[0]!.message, /CRLF line endings.*\*\.sh text eol=lf/u);
   });
 

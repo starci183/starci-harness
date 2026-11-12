@@ -1,4 +1,4 @@
-import type { ModuleServer, ModuleTemplate } from "@{{project}}/agent-sdk/module"
+import type { ModuleServer, ModuleTemplate } from "@{{project}}/sdk/module"
 
 /** The {{pascal}} module's template: its copy, agent, setup gates, authority actions and accepted commands. */
 export const {{upper}}_TEMPLATE: ModuleTemplate = {

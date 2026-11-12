@@ -241,30 +241,30 @@ test('HFS_COVERAGE_BELOW: an explicit coverage proof refuses an fe side instead 
 });
 
 test('HFS_COVERAGE_BELOW measures the logic of the root packages at the app root, named from the jest root in the lcov, and refuses one below 100%', (t) => {
-  const PACKAGE_LOGIC = 'packages/agent-sdk/src/registry.ts';
-  const files = [LOGIC, PACKAGE_LOGIC, 'packages/agent-sdk/package.json', 'packages/agent-sdk/src/index.ts', 'packages/agent-sdk/src/registry.spec.ts', 'packages/agent-sdk/src/workbench/view.ts', 'packages/agent-sdk/src/public/face.ts',
+  const PACKAGE_LOGIC = 'packages/sdk/src/registry.ts';
+  const files = [LOGIC, PACKAGE_LOGIC, 'packages/sdk/package.json', 'packages/sdk/src/index.ts', 'packages/sdk/src/registry.spec.ts', 'packages/sdk/src/workbench/view.ts', 'packages/sdk/src/public/face.ts',
     'packages/modules/package.json', 'packages/modules/src/index.ts', 'packages/notes/README.md'];
-  const covered = fixture(t, 'lite', `${record('src/modules/domain/orders/orders.service.ts')}${record('../packages/agent-sdk/src/registry.ts')}`, files);
+  const covered = fixture(t, 'lite', `${record('src/modules/domain/orders/orders.service.ts')}${record('../packages/sdk/src/registry.ts')}`, files);
   const report = coverageBelowReport(covered);
   assert.deepEqual(report.findings, []);
   assert.deepEqual(report.measured, [LOGIC, PACKAGE_LOGIC]);
-  for (const file of ['packages/agent-sdk/src/index.ts', 'packages/agent-sdk/src/workbench/view.ts', 'packages/agent-sdk/src/public/face.ts']) assert.ok(report.unmeasured.includes(file), file);
-  assert.ok(report.unmeasuredScopes.includes('packages/agent-sdk/src/workbench/**'));
+  for (const file of ['packages/sdk/src/index.ts', 'packages/sdk/src/workbench/view.ts', 'packages/sdk/src/public/face.ts']) assert.ok(report.unmeasured.includes(file), file);
+  assert.ok(report.unmeasuredScopes.includes('packages/sdk/src/workbench/**'));
   assert.ok(!report.unmeasured.some((file: string) => file.startsWith('packages/modules/')), 'the registry is no root package');
   const missing = coverageBelowReport(fixture(t, 'lite', record('src/modules/domain/orders/orders.service.ts'), files));
   assert.deepEqual(missing.findings.map((finding: Finding) => finding.path), [PACKAGE_LOGIC]);
   assert.match(missing.findings[0].message, /no lcov source record/);
-  const partial = coverageBelowReport(fixture(t, 'full', `${record('src/modules/domain/orders/orders.service.ts')}${record('../packages/agent-sdk/src/registry.ts', { branch: 0 })}`, files));
+  const partial = coverageBelowReport(fixture(t, 'full', `${record('src/modules/domain/orders/orders.service.ts')}${record('../packages/sdk/src/registry.ts', { branch: 0 })}`, files));
   assert.deepEqual(partial.findings.map((finding: Finding) => finding.path), [PACKAGE_LOGIC]);
 });
 
 test('HFS_COVERAGE_BELOW leaves a root package\'s type modules and client out of the unit run, and refuses a type module that holds runtime code', (t) => {
-  const PACKAGE_LOGIC = 'packages/agent-sdk/src/registry.ts';
-  const TYPES = ['packages/agent-sdk/src/node/node.types.ts', 'packages/blocks-core/src/blocks/schema-types.ts', 'packages/blocks-core/src/views/views.types.ts'];
-  const CLIENT = ['packages/blocks-core/src/client/core-blocks.ts', 'packages/blocks-core/src/client/composites/useBlockWords.ts'];
-  const RUNTIME_TYPES = 'packages/agent-sdk/src/template/format.types.ts';
-  const files = [LOGIC, PACKAGE_LOGIC, 'packages/agent-sdk/package.json', 'packages/blocks-core/package.json', 'packages/blocks-core/src/blocks/card-grid.block.ts', ...TYPES, ...CLIENT, RUNTIME_TYPES];
-  const lcov = `${record('src/modules/domain/orders/orders.service.ts')}${record('../packages/agent-sdk/src/registry.ts')}${record('../packages/blocks-core/src/blocks/card-grid.block.ts')}`;
+  const PACKAGE_LOGIC = 'packages/sdk/src/registry.ts';
+  const TYPES = ['packages/sdk/src/node/node.types.ts', 'packages/ui-kit/src/blocks/schema-types.ts', 'packages/ui-kit/src/views/views.types.ts'];
+  const CLIENT = ['packages/ui-kit/src/client/core-blocks.ts', 'packages/ui-kit/src/client/composites/useBlockWords.ts'];
+  const RUNTIME_TYPES = 'packages/sdk/src/template/format.types.ts';
+  const files = [LOGIC, PACKAGE_LOGIC, 'packages/sdk/package.json', 'packages/ui-kit/package.json', 'packages/ui-kit/src/blocks/card-grid.block.ts', ...TYPES, ...CLIENT, RUNTIME_TYPES];
+  const lcov = `${record('src/modules/domain/orders/orders.service.ts')}${record('../packages/sdk/src/registry.ts')}${record('../packages/ui-kit/src/blocks/card-grid.block.ts')}`;
   const context = fixture(t, 'lite', lcov, files);
   const typeOnly = [
     'import type { z } from "zod"',
@@ -279,9 +279,9 @@ test('HFS_COVERAGE_BELOW leaves a root package\'s type modules and client out of
   for (const file of TYPES) fs.writeFileSync(path.join(context.repoRoot, file), typeOnly);
   fs.writeFileSync(path.join(context.repoRoot, RUNTIME_TYPES), 'export interface Format { readonly width: number }\nexport const MAX_PARAMETERS = 20\n');
   const report = coverageBelowReport(context);
-  assert.deepEqual(report.measured, [LOGIC, 'packages/agent-sdk/src/registry.ts', 'packages/blocks-core/src/blocks/card-grid.block.ts']);
+  assert.deepEqual(report.measured, [LOGIC, 'packages/sdk/src/registry.ts', 'packages/ui-kit/src/blocks/card-grid.block.ts']);
   for (const file of [...TYPES, ...CLIENT, RUNTIME_TYPES]) assert.ok(report.unmeasured.includes(file), file);
-  for (const glob of ['packages/blocks-core/src/client/**', 'packages/blocks-core/src/**/*.types.ts', 'packages/blocks-core/src/**/*-types.ts']) assert.ok(report.unmeasuredScopes.includes(glob), glob);
+  for (const glob of ['packages/ui-kit/src/client/**', 'packages/ui-kit/src/**/*.types.ts', 'packages/ui-kit/src/**/*-types.ts']) assert.ok(report.unmeasuredScopes.includes(glob), glob);
   assert.deepEqual(report.findings.map((finding: Finding) => finding.path), [RUNTIME_TYPES], 'only the type module that runs code is refused');
   assert.match(report.findings[0].message, /holds runtime code \(`export const MAX_PARAMETERS = 20`\)/u);
   fs.writeFileSync(path.join(context.repoRoot, RUNTIME_TYPES), 'import { helper } from "./helper"\nexport type Format = ReturnType<typeof helper>\n');
