@@ -36,6 +36,7 @@ import { DEFAULT_PORT, NODE_IMAGE, dockerfilePath } from '../runtime/scripts/hfs
 import { isFile } from '../runtime/scripts/lib/fs-kind.mjs';
 import { readDeclaredSonarKey } from './sonar-key.mjs';
 import { RETIRED_GROUP, guardWrites, heldLines, isGuardedSource, type GuardedWrite } from './compile-guard.mjs';
+import { HARNESS_CHECK_COPIES, harnessCheckScriptEdits } from './harness-checks.mjs';
 import { readDeclaredStack, stackWorkflowVariables } from './stack-images.mjs';
 import type { ImageApp } from './stack-images.mjs';
 import { DB_DOCKERFILE, DB_IMAGE_APP, RETIRED_DB_DOCKERFILE } from '../db/image.mjs';
@@ -814,7 +815,12 @@ const LITE_RETIRED_FILES: Readonly<Record<string, string>> = Object.freeze({
   'be/src/modules/domain/identity/persistence/entities/auth-user.entity.ts': 'the sign-in reaches accounts through the account doors (be/src/modules/domain/identity/persistence/account-doors.port.ts); the application role holds no grant on schema auth',
   'be/src/modules/domain/identity/persistence/entities/auth-identity.entity.ts': 'the sign-in reaches accounts through the account doors (be/src/modules/domain/identity/persistence/account-doors.port.ts); the application role holds no grant on schema auth',
   '.github/workflows/db-deploy.yml': 'the stack deploy migrates the database (a verified backup, the expand migrations before the services, the contract migrations after the accept)',
+  ...HARNESS_CHECK_COPIES,
 });
+/** The edition hfs.json declares, as `read` gives it (null when unreadable). */
+const readEdition = (read: (relative: string) => string | null): unknown => {
+  try { return (JSON.parse(read('hfs.json') ?? 'null') as { edition?: unknown } | null)?.edition ?? null; } catch { return null; }
+};
 /** Why a retired file goes: a retired file's own reason, else the folder's. */
 const retiredReason = (file: string): string => LITE_RETIRED_FILES[file] ?? 'the lite edition generates no database types';
 
@@ -855,7 +861,7 @@ export function upgradeEdits(root: string): { edits: DeclarationEdit[]; notices:
     try { return fs.readFileSync(path.join(root, relative), 'utf8'); } catch { return null; }
   };
   const services = devServicesUpgrade(root, read);
-  for (const edit of services.edits) {
+  for (const edit of [...services.edits, ...(readEdition(read) === 'lite' ? harnessCheckScriptEdits(read) : [])]) {
     const earlier = edits.get(edit.path);
     edits.set(edit.path, earlier ? { path: edit.path, reason: `${earlier.reason}; ${edit.reason}`, content: edit.content } : edit);
   }
