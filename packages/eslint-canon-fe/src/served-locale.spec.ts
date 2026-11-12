@@ -33,7 +33,7 @@ const API = "apps/web/src/modules/api/graphql/clients"
 const CLIENT = at(`${API}/create-apollo-client.ts`)
 const LOCALE_LINK = at(`${API}/links/locale.ts`)
 const HTTP_LINK = at(`${API}/links/http.ts`)
-const HOOK = at("apps/web/src/hooks/swr/api/graphql/queries/useQueryCourseSwr.ts")
+const HOOK = at("apps/web/src/hooks/swr/api/graphql/queries/useQueryProjectSwr.ts")
 
 test("every rule this law declares is exported under its published name", () => {
   for (const [name, rule] of Object.entries(rules)) {
@@ -86,12 +86,12 @@ export default chain`,
     },
     {
       // The shared api package keeps its own links, and its link implementation is not a chain either.
-      filename: at("packages/nivo-api/src/links/http.ts"),
+      filename: at("packages/app-api/src/links/http.ts"),
       code: `export const createHttpLink = (params) => new HttpLink(params)`,
     },
     {
       // The same in the shared package's clients folder (slot fe.package.api.client).
-      filename: at("packages/nivo-api/src/graphql/clients/links/http.ts"),
+      filename: at("packages/app-api/src/graphql/clients/links/http.ts"),
       code: `export const createHttpLink = (params) => new HttpLink(params)`,
     },
   ],
@@ -139,13 +139,13 @@ export default headers`,
     },
     {
       // The shared api package has its own locale link, the one place there.
-      filename: at("packages/nivo-api/src/links/locale.ts"),
+      filename: at("packages/app-api/src/links/locale.ts"),
       code: `const headers = { "Accept-Language": locale }
 export default headers`,
     },
     {
       // The locale link of the shared package's clients folder, with case-insensitive spelling.
-      filename: at("packages/nivo-api/src/graphql/clients/links/locale.ts"),
+      filename: at("packages/app-api/src/graphql/clients/links/locale.ts"),
       code: `const headers = { "accept-language": locale }
 export default headers`,
     },

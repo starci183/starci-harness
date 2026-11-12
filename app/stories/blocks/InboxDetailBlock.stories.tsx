@@ -11,21 +11,21 @@ const meta = {
         props: {
             decision: ready({
                 kind: DECISION_KIND.harness,
-                raised: INBOX.raised("starci-next", "next-subscription-sepay", "[Supervisor] starci-next"),
-                title: "Kernel không áp được graph v15",
-                paragraphs: ["**Vấn đề.** Flow check từ chối FLOW_INCOMPLETE: record FE `impl.commerce.fe.subscription` thiếu code.", "**Hiện trạng.** Graph v14 còn nguyên."],
+                raised: INBOX.raised("demo-app", "add-search", "[Supervisor] demo-app"),
+                title: "Kernel could not apply graph v15",
+                paragraphs: ["**Problem.** Flow check rejected FLOW_INCOMPLETE: FE record `impl.search.fe.ui` lacks code.", "**State.** Graph v14 is intact."],
                 options: [
-                    { value: "1", label: "BE + FE một workflow, FE chờ code BE", description: "Kernel thêm lane FE." },
-                    { value: "2", label: "Gửi Debug sửa harness" },
+                    { value: "1", label: "BE + FE in one workflow, FE waits for BE code", description: "Kernel adds an FE lane." },
+                    { value: "2", label: "Send Debug to fix the harness" },
                 ],
-                command: "starci supervisor submit \"D:/.claude/.runtime/projects/starci-next/owner-commands/d-6979996fe691.json\" --cwd \"D:/Repositories/starci-next\"",
+                command: "starci supervisor submit \"/path/to/harness/projects/demo-app/owner-commands/d-6979996fe691.json\" --cwd \"/path/to/demo-app\"",
             }),
             option: "1",
             note: "",
             canSend: true,
             isPending: false,
             refusal: null,
-            ruled: { option: "BE + FE một workflow, FE chờ code BE", note: INBOX.noNote },
+            ruled: { option: "BE + FE in one workflow, FE waits for BE code", note: INBOX.noNote },
             labels: {
                 body: INBOX.body,
                 ruling: INBOX.ruling,

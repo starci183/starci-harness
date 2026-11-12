@@ -26,7 +26,7 @@ const isTestComposition = (hfs: HfsView, file: string) => {
     return tier === "e2e" || tier === "fixtures" || inTestWorld(hfs, file)
 }
 
-/** The word a method name starts with (`recomputeUserXp` gives `recompute`), or null when the name has no camelCase boundary. */
+/** The word a method name starts with (`recomputeUserScore` gives `recompute`), or null when the name has no camelCase boundary. */
 const verbOf = (name: string): string | null => {
     const match = /^[a-z]+/.exec(name)
     return match && (match[0].length === name.length || /[A-Z]/.test(name.charAt(match[0].length))) ? match[0] : null

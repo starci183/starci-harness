@@ -15,7 +15,7 @@ export const DateStates: Story = {
         <State label="Authoritative current date" direction="column"><CalendarDay value={parseDate("2026-11-02")} label="Today, Monday, 2 November 2026" isToday /></State>
         <State label="Calendar content keeps its own commands" direction="column">
             <G.Stack gap="identity">
-                <CalendarDay value={parseDate("2026-11-02")} label="Hôm nay, Thứ Hai, ngày 2 tháng 11 năm 2026" isToday />
+                <CalendarDay value={parseDate("2026-11-02")} label="Today, Monday, 2 November 2026" isToday />
                 <G.Text>Scheduled product update</G.Text>
                 <G.Button intent="neutral">Pick this post to move</G.Button>
             </G.Stack>

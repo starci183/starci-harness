@@ -1,5 +1,12 @@
 # Changelog
 
+## 9.18.0 - 2026-11-13
+
+- Changed (PROJECT-LINT-3, breaking for an app that relied on the fixed layout): `starciFePackagesConfig` and `scopeToPackages(config, hfs)` know no folder of a root package. The front end's files are every `.tsx` file of a package and the slots the project declares `lint: "fe"` in `ext/manifest.json` `packages` (the package view's `packageLint`), each less the back-end slots declared before it; the fixed `src/workbench/**` and `src/public/**` subpaths and the `src/workbench/contract/**` exception are gone. Upgrade, per existing app: declare each such folder as a `lint: "fe"` slot, and a React-free contract inside one as a slot before it. Spec `src/packages-config.spec.ts`.
+- Changed (RENDERER-PURITY-1, R384): `renderer-presentation-only` judges every `.tsx` file of a root package (`packages/<pkg>/src/**/*.tsx`), not only the ones under `src/client/`: the unit run measures `.ts` alone, so logic in any `.tsx` is unproven wherever the file sits. Upgrade, per existing app: logic in a package `.tsx` outside `src/client/` moves to a `.ts` module. Spec `src/renderer-purity.spec.ts`.
+- Changed: spec fixtures, rule comments, messages and the docs use a neutral sample domain; no rule id or behaviour changes.
+- Changed: cut with `@starci/hfs` 6.10.0; requires `@starci/hfs` `~6.10.0`. No rule changes.
+
 ## 9.17.0 - 2026-11-13
 
 - Changed (PROJECT-LINT-3, R381): `starciFeConfig` loads the lint rules of the project's extension (`ext/manifest.json`, `ext/lint/`) through `extEslintConfigs` of `@starci/hfs` 6.9.0, over the files each rule's `appliesTo` names inside the fe side, under the plugin `project-ext`. A refused extension throws `HFS_EXT_INVALID`. Rule packs (hfs.json `rulePacks`) are gone. Requires `@starci/hfs` `~6.9.0`. Spec `src/project-ext.spec.ts`.

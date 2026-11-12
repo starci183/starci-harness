@@ -1,5 +1,5 @@
 export type SublabelProps = {
-    /** The group label: one short line naming the card or group beneath it ("Được tự làm"). */
+    /** The group label: one short line naming the card or group beneath it ("Allowed to act alone"). */
     readonly children: string
     readonly id?: string
 }

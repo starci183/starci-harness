@@ -377,7 +377,7 @@ One owner per axis; two nested scrollers on one axis trap the reader.
 | OVERFLOW-3 | scrolls one axis | content always exceeds it (a scroll region, a rail body) |
 | OVERFLOW-4 | scrolls when needed | content sometimes exceeds it (wide tables, long code, chip rows with edge carets) |
 | OVERFLOW-5 | contained | panels, drawers and overlays stop scroll chaining; never the page's own scroller |
-| OVERFLOW-6 | no scrollbar | NIVO never shows scrollbars (owner, 2026-11-09): every scroll area (pane, `PaneSection scroll`, drawer and modal body, ListBox, chat thread, tab strip, DataTable overflow) hides the bar and fades its edge where content continues (HeroUI ScrollShadow); wheel, touch and keyboard still scroll; an app element with `overflow-y-auto` / `overflow-auto` is refused (lint `no-raw-scroll`) |
+| OVERFLOW-6 | no scrollbar | Grammar never shows scrollbars: every scroll area (pane, `PaneSection scroll`, drawer and modal body, ListBox, chat thread, tab strip, DataTable overflow) hides the bar and fades its edge where content continues (HeroUI ScrollShadow); wheel, touch and keyboard still scroll; an app element with `overflow-y-auto` / `overflow-auto` is refused (lint `no-raw-scroll`) |
 
 ### Text flow
 The default (start-aligned, wrapping) is right far more often than any rule here.

@@ -46,6 +46,14 @@ on the release tag; the tag run is the release run, and the pipeline keys every 
 branches with a branch profile for `ci.yml`, and dispatch); a pull request targets `main` alone, so it always runs the full gate. It runs with read-only permissions, no environment and no secret; a fork's or Dependabot's run
 gets none anyway. `pull_request_target`, `workflow_run` and path filters stay refused, and so does every schedule but the nightly `cache-verify.yml`.
 
+**No workflow runs a world layer (R12).** The integration, e2e and contract specs need the test world, so they run on a local
+machine only: by hand (`npm run test:integration`, `npm run test:e2e`, `npm run test:contract`) and, on a full app, as the
+world rows of the release gate, which runs on the machine that cuts the release
+([check-cache.md](check-cache.md#the-operating-procedure) "Real rows"). No job or step of any workflow runs them, under any
+trigger, a manual dispatch included, and `starci app check` runs none of them in either edition: its `test` family is the
+unit specs. An app tracks no `.github/workflows/e2e.yml`: slot `app.ci-e2e` is forbidden and `starci app sync --execute`
+removes the file. `HFS_E2E_IN_AUTOMATIC_GATE` refuses a hook, a coverage run or a workflow that runs one.
+
 **One sha is judged once.** The first job, `plan`, reads the event and the refs and decides: `full` (the release checks of a
 candidate or tag, Sonar included, still diff-only against the trusted cache), `diff` (with its trusted base, per check-cache.md "Trust"), `defer` (main push of a tagged sha) or `reuse` (a successful `ci.yml` run of
 the same sha on its candidate branch, found through the API, whose run id becomes the evidence). Its outputs drive every
@@ -79,12 +87,11 @@ and the quality gate's verdict, never the scanner's exit, is the job's result (P
 `app check` is green only with zero error findings; typecheck, build,
 tests, coverage and the Sonar gate are binary.
 
-**Root packages are built before they are read.** An app's root workspace packages (`packages/*`: the agent SDK, the module
-packages and the rest) are imported by their package name, which resolves into their `dist`. Every job that reads their
+**Root packages are built before they are read.** An app's root workspace packages (`packages/*`) are imported by their package name, which resolves into their `dist`. Every job that reads their
 types or compiles code importing them builds them first with the app's managed `build:modules` script (`npm run
 build:modules`): the `fast` job before its boot proof, every side of the `lint` matrix in its "build the lint inputs"
-step, a multi-front-end build, the `sonar` job before its scan, the nightly `cache-verify` and the full edition's `e2e`
-run; the managed `typecheck`, `lint`, `test`, `build:be` and `build:fe` scripts already run it first. A check that finds a
+step, a multi-front-end build, the `sonar` job before its scan and the nightly `cache-verify`;
+the managed `typecheck`, `lint`, `test`, `build:be` and `build:fe` scripts already run it first. A check that finds a
 package unbuilt reads each import as nothing: the boot proof cannot compile the modules (`BE_APP_BOOT_PROOF_MISSING`), the
 typed lint reads them as `any` (`no-unsafe-*`), and both disagree with the cache records made with the packages built
 (`HFS_CHECK_CACHE_FORGED`). R301 refuses a CI that checks before it builds (ci-standard.yaml `packages-built-first`); an
@@ -307,7 +314,7 @@ contract, generalised from `stack/urgent-floor.mts` (shared steps, renamed codes
 migrate), the contract-migration finding in the db rules (`app check --gate db`), `database.target` in the stacks schema.
 Tests: no pending migration means no backup; a red preview refuses before the stack deploy; a contract migration runs only
 after accept; first start chosen automatically on an empty database and refused on a non-empty one. Done: the
-nivo-lite stack deploys and migrates in a scratch swarm with the db service internal only.
+a lite stack deploys and migrates in a scratch swarm with the db service internal only.
 
 **WP3. CI evidence and urgent trailers (`cli/`).** Files: `cli/src/core/check/ci.ts` (`requireCiGreen` accepts
 `--ci-run <id>`: the run's required jobs for that sha, or the reused run), `cli/src/core/app/stack.ts`, `release push
@@ -330,7 +337,7 @@ Needs WP1 to WP3 published (the workflows call their flags).
 **WP5. Knowledge and the move of existing apps.** Files: this document made the rule (its sections become ids),
 [stacks.md](stacks.md) PROJECT-STACKS-6 and PROJECT-STACKS-7, [authority/ci.md](../authority/ci.md),
 [harness/rules.md](../harness/rules.md) rule 5. The
-migration path, nivo-lite first: bump hfs and the CLI, `app sync --execute` (the new workflows, `db-deploy.yml` and
+migration path of an app: bump hfs and the CLI, `app sync --execute` (the new workflows, `db-deploy.yml` and
 `images.yml`'s old form removed); seal the CI deploy key as `vps-ci` and install its `authorized_keys` line with the gate
 (an owner-run step); set the `production` environment's deployment refs to `v*`; the environment keeps `SOPS_AGE_KEY` and no other
 name, so `VPS_SSH_KEY`, `VPS_KNOWN_HOSTS`, `VPS_HOST` and `VPS_USER` are deleted from it (the sealed `vps-ci` is the only
@@ -353,7 +360,7 @@ Where the packages differ from the design above, or add to it, the code and the 
   `stack connect` masks the host, the account and the releases root in the log, and a missing member is refused (`STACK_CONNECT_MISSING`). `stack-key-restore.yml`
   opens the same member with the environment's `SOPS_AGE_KEY` and writes the identity through the gate's `identity-restore` operation.
 - **Pull requests** run the checks and build the images without pushing (`push: false`); an image with sealed build values is built on release tag runs only.
-- **Public repositories** (nivo-lite is public). GitHub-hosted runners only, never self-hosted. A sealed `.enc` is public ciphertext: the age keys and the CI
+- **Public repositories.** GitHub-hosted runners only, never self-hosted. A sealed `.enc` is public ciphertext: the age keys and the CI
   private key never enter the repository. The CI key is a key of its own on the manager (`restrict`, a forced command, a rotation path owned by the owner, who
   also seals it), the log prints no host, address or server path, no secret is baked into an image (build arguments are public values), `main` is protected and
   the `v*` tags are protected and never moved or deleted, and `pull_request_target` never runs a pull request's code.

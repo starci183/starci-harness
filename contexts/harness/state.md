@@ -22,7 +22,7 @@
   `HFS_STATE_LEGACY_HELD` while a running stack holds it (`starci app stack down` first).
   `cli/src/harness/ledger.ts` owns every one of these paths; [cli/README.md](../../cli/README.md) "The harness inside the
   CLI" lists their tables.
-- **Product Work** lives in the app repository's `.starciwork/` (the concepts the owner ruled, Business/SRS,
+- **Product Work** lives in the app repository's `.starciwork/` (the product's concepts, Business/SRS,
   Architecture/SDS, `features/`, `workspace.yaml`), committed with the app. The harness never writes its state there, never ignores it and never
   strips it from a candidate: a docs task names a scope inside it as its allowPaths (`.starciwork/features/<f>`), and only the whole
   tree as an `allowPaths` entry is refused, as `.` is.

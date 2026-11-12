@@ -20,8 +20,9 @@ Enforced by: R97 FE_NO_TESTS, R47 BE_TEST_TOPOLOGY. Open: the `fe` profile of
 
 An op that adds or changes a back-end source writes or updates its spec in the same task, even when the goal does not
 mention tests, and runs only the specs related to the files it changed, which hold every logic file it changed at the
-app's per-file coverage. The whole unit suite with the per-file coverage of every measured file, and the integration,
-e2e and contract suites, are CI's or a `verify` task's, never a coding op's. No test is skipped,
+app's per-file coverage. The whole unit suite with the per-file coverage of every measured file is CI's or a `verify`
+task's; the integration, e2e and contract suites run on a local machine only (R12), as a `verify` task or the release gate's
+world rows, in no CI workflow; none of them is a coding op's. No test is skipped,
 focused or weakened to pass (SHARED-LOOSENING-1).
 
 Why: a scoped run keeps a task fast and deterministic; CI judges the rest after the push and a red CI becomes its own

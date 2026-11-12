@@ -38,7 +38,7 @@ const RUNNING: StackStatus = {
     leases: [],
 }
 
-const LEASED: StackStatus = { ...RUNNING, leases: [{ namespace: "nivo_backend_a1b2c3", runId: "r1", pid: 42, since: "2026-01-01T00:00:00Z" }] }
+const LEASED: StackStatus = { ...RUNNING, leases: [{ namespace: "app_backend_a1b2c3", runId: "r1", pid: 42, since: "2026-01-01T00:00:00Z" }] }
 
 interface Calls {
     up: Array<{ services: ReadonlyArray<StackImageRequest>; k3d: (K3dRequest & { root: string }) | undefined }>
@@ -148,7 +148,7 @@ describe("main", () => {
     test("status prints the table and exits 0, or JSON with --json", async () => {
         const table = await run(["status"], LEASED)
         assert.equal(table.code, 0)
-        assert.match(table.out, /leases: 1\n {2}nivo_backend_a1b2c3 run r1 pid 42/)
+        assert.match(table.out, /leases: 1\n {2}app_backend_a1b2c3 run r1 pid 42/)
         const json = await run(["status", "--json"], LEASED)
         assert.equal(json.code, 0)
         assert.deepEqual(JSON.parse(json.out), LEASED)
@@ -160,7 +160,7 @@ describe("main", () => {
     test("down refuses with exit 2 naming the live leases, unless --force", async () => {
         const refused = await run(["down"], LEASED)
         assert.equal(refused.code, 2)
-        assert.match(refused.err, /nivo_backend_a1b2c3 \(run r1, pid 42\)/)
+        assert.match(refused.err, /app_backend_a1b2c3 \(run r1, pid 42\)/)
         assert.equal(refused.calls.down.length, 0)
         const forced = await run(["down", "--force"], LEASED)
         assert.equal(forced.code, 0)

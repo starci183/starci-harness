@@ -26,7 +26,7 @@ test("refuses an import that goes back a step", async () => {
 })
 
 test("refuses an import that is none of the four", async () => {
-  const warnings = await rule('@import "tailwindcss";\n@import "@nivo/ui/styles.css";')
+  const warnings = await rule('@import "tailwindcss";\n@import "@app/ui/styles.css";')
   assert.equal(warnings.length, 1)
   assert.match(textAt(warnings, 0), /not one of the standard imports/)
   assert.equal((await rule('@import "@starci/grammar/unknown.css";')).length, 1)

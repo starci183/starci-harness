@@ -18,7 +18,8 @@ Nothing in a spec reads or writes `process.env`, starts a container, imports `Da
 ## The declaration
 
 ```ts
-import { openaiCompatibleFake, sepayFake } from "@starci/test-world/fakes"
+import { openaiCompatibleFake } from "@starci/test-world/fakes"
+import { gatewayFake } from "./fakes/gateway"                 // a repo-specific fake (defineHttpFake) in be/src/tests/world/fakes/<provider>/
 import { defineTestWorld } from "@starci/test-world"
 import type { TestWorldApi } from "@starci/test-world"
 
@@ -36,7 +37,7 @@ const world: TestWorldApi = defineTestWorld({
     },
     k3d: { enable: true, images: { api: "Dockerfile" } },  // own images: built by content hash (src-<hash>), reused when the tag exists
     services: { billing: {} },                             // sibling services (our images from other repos), image pinned by the stack definition
-    fakes: { sepay: sepayFake(), llm: openaiCompatibleFake() },   // no smtp fake: the stack runs the mail sink real
+    fakes: { gateway: gatewayFake(), llm: openaiCompatibleFake() },   // no smtp fake: the stack runs the mail sink real
     apps: {
         todo: { module: TodoApp, operations: TODO_OPERATIONS, options: (w) => ({ port: w.apps.todo.port, database: { name: "primary", url: new Secret(w.db.primary.url) }, /* every URL comes from w */ }) },
         worker: { module: WorkerApp, listen: false, options: (w) => ({ /* ... */ }) },
@@ -133,7 +134,7 @@ await world.infra.mail.restore()
 
 ## Fakes
 
-`@starci/test-world/fakes`: `defineHttpFake` (recording, failure injection, control channel), `smtpFake` (for an app whose stack has no mail service), `openaiCompatibleFake` (streaming, embeddings), `vnpayFake`, `momoFake`, `payosFake`, `sepayFake` with the providers' real signature schemes and payload fixtures. Repo-specific fakes are built with `defineHttpFake` in `src/tests/world/fakes/`.
+`@starci/test-world/fakes`: `defineHttpFake` (recording, failure injection, control channel), `smtpFake` (for an app whose stack has no mail service), `openaiCompatibleFake` (streaming, embeddings). A repo-specific fake (a payment gateway, a messaging provider: its signature scheme and payloads) is built with `defineHttpFake` in the app's own `be/src/tests/world/fakes/<provider>/`.
 
 A provider whose contract requires TLS (an OIDC issuer: discovery and JWKS over `https`) declares `defineHttpFake({ https: true, routes })`. The fake then listens on `https://127.0.0.1:<port>` with a server certificate signed by the run's ephemeral fake CA (made in memory per run over `node:crypto`, ECDSA P-256, valid for `127.0.0.1`, `::1`, `localhost` and `host.docker.internal`; no file, no dependency), and publishes that CA's PEM as `w.fake.<name>.ca`. The app trusts it through its own HTTP client: the `FetchHttpClient` of the `@starci/hfs` skeleton's `platform/http` takes `HttpOptions.trustedCa`, a PEM it trusts beside Node's bundled roots (`HttpModule.register({ isGlobal: true, ...options.http })`), and `parseHttpConfig` reads it from `HTTP_TRUSTED_CA` of the app's environment, so the declaration passes the CA in the environment it builds the app's options from, beside the integration's own URL key:
 

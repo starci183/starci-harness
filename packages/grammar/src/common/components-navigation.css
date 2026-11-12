@@ -29,7 +29,7 @@
     }
 
     /*
-     * A text link is the exact primary brand colour, --accent, underlined (System.html draws links in the brand rose). The raw accent measures 3.2 to 4.3 as text on the page ground, the secondary and tertiary surfaces and the dark surfaces of the Nivo theme,
+     * A text link is the exact primary brand colour, --accent, underlined (System.html draws links in the brand rose). The raw accent measures 3.2 to 4.3 as text on the page ground, the secondary and tertiary surfaces and the dark surfaces of a rose-accent theme,
      * below 4.5, and a link keeps it all the same: no contrast law judges a link. A current link keeps its own look (below).
      */
     .starci-core-link[data-grammar-link-content="text"] { color: var(--accent); }
@@ -2710,7 +2710,7 @@
     }
 
     /*
-     * The steps layout (0.35.0, the owner-approved card map). The canvas is the well (`--background`, pink in Nivo) with no grid; a step is
+     * The steps layout (0.35.0, the owner-approved card map). The canvas is the well (`--background`, pink in a rose-accent theme) with no grid; a step is
      * a white card (`--surface`, the card border token `--border`, 14 at the default radius, 196 wide) with a 32 icon tile in its kind's
      * soft pair, the title at 14 medium and one muted line at 12. A condition card adds its output ports along the bottom, split by
      * hairlines (across, LR, the ports stack as rows). Edges are ORTHOGONAL in the muted ink (0.37.27, drawing C: 10px rounded corners, a shared trunk, a ringed start dot,
@@ -3087,7 +3087,7 @@
     .starci-core-flow-graph .starci-core-flow-graph-edge-taken .react-flow__edge-path { stroke: var(--success); stroke-width: 1.5; stroke-dasharray: none; }
     .starci-core-flow-graph .starci-core-flow-graph-edge-untaken .react-flow__edge-path { stroke: color-mix(in oklab, var(--muted) 55%, transparent); stroke-dasharray: 4 5; }
 
-    /* EDGE DOT (0.37.27, owner "bắt đầu có chấm tròn"): every steps edge starts with a round dot on its source's port, a white disc (the surface) ringed in the edge's own colour. */
+    /* EDGE DOT (0.37.27, owner: "start with a round dot"): every steps edge starts with a round dot on its source's port, a white disc (the surface) ringed in the edge's own colour. */
     .starci-core-flow-graph .starci-core-flow-graph-edge-dot { fill: var(--surface); stroke: var(--xy-edge-stroke); stroke-width: 1.5; }
     .starci-core-flow-graph .starci-core-flow-graph-edge-taken .starci-core-flow-graph-edge-dot { stroke: var(--success); }
     .starci-core-flow-graph .starci-core-flow-graph-edge-untaken .starci-core-flow-graph-edge-dot { stroke: color-mix(in oklab, var(--muted) 55%, transparent); }

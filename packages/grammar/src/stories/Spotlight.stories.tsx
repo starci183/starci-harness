@@ -49,14 +49,14 @@ export const AvatarButtonFloating: Story = {
   render: () => (
     <Matrix>
       <State label="Floating launcher, 56px, no status">
-        <G.AvatarButton name="Trợ lý NIVO" kind="agent" seed="nivo-assistant" size="floating" onPress={() => undefined} />
+        <G.AvatarButton name="Assistant" kind="agent" seed="assistant" size="floating" onPress={() => undefined} />
       </State>
       <State label="With status (success badge at the top end corner; its label describes the button)">
-        <G.AvatarButton name="Trợ lý NIVO" kind="agent" seed="nivo-assistant" size="floating" status={{ tone: "success", label: "Online" }} onPress={() => undefined} />
-        <G.AvatarButton name="Trợ lý NIVO" kind="agent" seed="nivo-assistant" size="floating" status={{ tone: "warning", label: "2 suggestions waiting" }} onPress={() => undefined} />
+        <G.AvatarButton name="Assistant" kind="agent" seed="assistant" size="floating" status={{ tone: "success", label: "Online" }} onPress={() => undefined} />
+        <G.AvatarButton name="Assistant" kind="agent" seed="assistant" size="floating" status={{ tone: "warning", label: "2 suggestions waiting" }} onPress={() => undefined} />
       </State>
       <State label="Spotlighted launcher">
-        <G.Spotlight isActive shape="circle"><G.AvatarButton name="Trợ lý NIVO" kind="agent" seed="nivo-assistant" size="floating" status={{ tone: "accent", label: "New" }} onPress={() => undefined} /></G.Spotlight>
+        <G.Spotlight isActive shape="circle"><G.AvatarButton name="Assistant" kind="agent" seed="assistant" size="floating" status={{ tone: "accent", label: "New" }} onPress={() => undefined} /></G.Spotlight>
       </State>
     </Matrix>
   ),

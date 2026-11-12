@@ -35,10 +35,10 @@ async function run(argv: string[], options: MainOptions = {}) {
 const MEMBER = `K1: ${ENC}\nK2: ${ENC}\nsops:\n  age:\n    - recipient: ${OWNER}\n      enc: |\n        -----BEGIN AGE ENCRYPTED FILE-----\n        YWdl\n        -----END AGE ENCRYPTED FILE-----\n  mac: ${ENC}\n  version: 3.13.2\n`;
 
 test('every secret action but init names its environment with --env; a positional environment fails as an operand error, never as the slug', async (t) => {
-  const { root, env } = app(t, { 'sepay.enc.yaml': MEMBER });
-  const unset = await run(['secret', 'unset', '--env', 'dev', 'sepay', 'K1'], { cwd: root, env });
+  const { root, env } = app(t, { 'gateway.enc.yaml': MEMBER });
+  const unset = await run(['secret', 'unset', '--env', 'dev', 'gateway', 'K1'], { cwd: root, env });
   assert.equal(unset.code, 0, unset.err);
-  assert.equal(unset.out, 'dry run: would unset K1 from dev/sepay (1 key remain); add --execute\n');
+  assert.equal(unset.out, 'dry run: would unset K1 from dev/gateway (1 key remain); add --execute\n');
   const listed = await run(['secret', 'list', '--env', 'dev'], { cwd: root, env });
   assert.equal(listed.code, 0, listed.err);
   assert.match(listed.out, /K1/u);
@@ -50,7 +50,7 @@ test('every secret action but init names its environment with --env; a positiona
     assert.equal(bare.code, 2, action);
     assert.match(bare.err, new RegExp(`usage: starci app secret ${action} --env <env>`, 'u'), action);
   }
-  for (const argv of [['secret', 'set', 'dev', 'sepay', 'K1'], ['secret', 'list', 'dev'], ['secret', 'unset', 'dev', 'sepay', 'K1'], ['secret', 'recipients', 'dev'], ['secret', 'audit', 'dev']]) {
+  for (const argv of [['secret', 'set', 'dev', 'gateway', 'K1'], ['secret', 'list', 'dev'], ['secret', 'unset', 'dev', 'gateway', 'K1'], ['secret', 'recipients', 'dev'], ['secret', 'audit', 'dev']]) {
     const old = await run(argv, { cwd: root, env });
     assert.equal(old.code, 2, argv.join(' '));
     assert.match(old.err, /usage: starci app secret/u, argv.join(' '));

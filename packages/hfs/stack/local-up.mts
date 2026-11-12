@@ -20,7 +20,6 @@ import { launch } from './local-host.mjs';
 import { baseOverlap, overlapLine, peersOf } from './local-peers.mjs';
 import { readRecord, writeRecord } from './local-state.mjs';
 import { SEED_RECEIPTS, seedStep } from './seeds.mjs';
-import { ensureRuntimeLayers, layerPlan } from './runtime-layers.mjs';
 
 const SAFE_PASSWORD = /^[A-Za-z0-9_-]{8,}$/u;
 
@@ -147,7 +146,6 @@ function plan(local: LocalConfig, missing: string[]): string[] {
   return [
     `plan custody: ${missing.length ? `missing ${missing.join(', ')}: ${missingStep(local, missing)}` : 'open the sealed dev values into host-local files'}`,
     ...local.setup.map((run) => `plan setup ${run.name}: ${run.argv.join(' ')}`),
-    ...layerPlan(local),
     `plan services: ${local.services.map((service) => `${service.name} (wait ${service.wait})`).join(', ')}`,
     ...(local.database ? [`plan database: own role ${local.database.role}, database ${local.database.name}, then starci app db migrate`, ...local.databases.map((database) => `plan database (connection ${database.connection}): own role ${database.role}, database ${database.name}`), `plan seed levels: .starcistacks/seeds, then .starcistacks/${local.env}/seeds, each entry once per content hash (receipts in ${SEED_RECEIPTS})`] : []),
     ...local.seed.map((run) => `plan seed ${run.name}: ${run.argv.join(' ')}`),
@@ -183,7 +181,6 @@ export async function upLocal(ctx: StackContext, local: LocalConfig, { execute =
   lines.push(`custody: ${custody.values.size} key file(s) in the host-local directory`);
   lines.push(...await runSetup(ctx, local, custody));
   makeDataDirectories(ctx, local);
-  lines.push(...await ensureRuntimeLayers(ctx, local));
   const values = composeValues(local, custody);
   const started = await compose(ctx, local, ['up', '-d', ...local.services.map((service) => service.name)], { values, heavy: true, label: 'compose up' });
   if (started.status !== 0) throw failure('STACK_LOCAL_COMPOSE', `docker compose up failed: ${(started.stderr.trim().split(/\r?\n/u)[0] ?? '').slice(0, 200)}`);

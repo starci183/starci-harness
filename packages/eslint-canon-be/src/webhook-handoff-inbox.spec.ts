@@ -136,3 +136,150 @@ for (const edition of ["lite", "full"]) {
         })
     })
 }
+
+// A declared receipt port (hfs.json sides.be.receiptPorts): a class of the app whose method takes the transaction's manager first and answers
+// the repeat exactly as the platform Inbox does. The rule holds its call to the same contract as claim and claimRow.
+const PORT = `
+class ReceiptPort {
+    async receive(tx: EntityManager, accountId: string, rows: readonly object[]): Promise<{ id: string } | undefined> { return tx && accountId && rows ? { id: accountId } : undefined }
+    async accept(tx: EntityManager, accountId: string): Promise<boolean> { return Boolean(tx) && accountId !== "" }
+    async write(tx: EntityManager, accountId: string): Promise<{ id: string } | undefined> { return tx ? { id: accountId } : undefined }
+    async receiveAll(tx: EntityManager, delivery: object): Promise<readonly { id: string }[]> { return tx && delivery ? [] : [] }
+}
+class Lookalike2 {
+    async receive(tx: EntityManager, accountId: string, rows: readonly object[]): Promise<{ id: string } | undefined> { return tx && accountId && rows ? undefined : undefined }
+    async receiveAll(tx: EntityManager, delivery: object): Promise<readonly { id: string }[]> { return tx && delivery ? [] : [] }
+}`
+const portService = (body: string, { parameter = "delivery: { deliveryId: string; accountId: string }", port = "ReceiptPort" } = {}) => `${DOOR_IMPORT}${head}
+export class DeliveryService {
+    constructor(private readonly port: ${port}, private readonly database: EntityManager, private readonly events: EventBus) {}
+    async receive(${parameter}): Promise<void> { ${body} }
+}
+function rowsOf(id: string): readonly object[] { return [{ id }] }${PORT}`
+const received = "const rows = rowsOf(delivery.deliveryId); const receipt = await this.port.receive(tx, delivery.accountId, rows); if (receipt === undefined) return; await this.events.publish({ eventId: receipt.id }, tx)"
+
+for (const edition of ["lite", "full"]) {
+    test(`webhook-inbox-key accepts a declared receipt port under the same contract, and nothing it does not declare, in ${edition}`, () => {
+        const declared = { ...BE_DECLARATION, patterns: ["webhooks"], receiptPorts: [
+            { class: "ReceiptPort", method: "receive", repeat: "undefined", reason: "writes the delivery once under its unique key and answers the row, undefined on a repeat" },
+            { class: "ReceiptPort", method: "accept", repeat: "false", reason: "claims the delivery and answers whether it is new" },
+        ] }
+        const hfs = hfsFromDeclaration({ ...appDeclaration("be", declared), edition }, TYPED_ROOT)
+        const error = [{ messageId: "key" }]
+        // a call the declaration does not name is no claim, and inside the receipt transaction it is processing too
+        const both = [{ messageId: "handoff" }, { messageId: "key" }]
+        ruleTester({ root: TYPED_ROOT, hfs }).run("webhook-inbox-key", rules["webhook-inbox-key"], {
+            valid: [
+                { filename: SERVICE, code: portService(transaction(received)) },
+                { filename: SERVICE, code: portService(transaction("const receipt = await this.port.receive(tx, delivery.accountId, [delivery]); if (!receipt) { return }; await tx.save({ id: receipt.id })")) },
+                { filename: SERVICE, code: portService(transaction("if (!(await this.port.accept(tx, delivery.deliveryId))) return; await tx.save({ id: delivery.deliveryId })")) },
+                { filename: SERVICE, code: portService(transaction("const fresh = await this.port.accept(tx, delivery.deliveryId); if (fresh === false) return; await tx.save({ id: delivery.deliveryId })")) },
+            ],
+            invalid: [
+                // an effect before the declared call
+                { filename: SERVICE, code: portService(transaction(`await tx.save({ early: true }); ${received}`)), errors: error },
+                { filename: SERVICE, code: portService(transaction(`const rows = rowsOf(delivery.deliveryId); await this.events.publish({ eventId: delivery.deliveryId }, tx); const receipt = await this.port.receive(tx, delivery.accountId, rows); if (receipt === undefined) return`)), errors: error },
+                // the repeat is not refused, is refused late, or is tested for the other port's answer
+                { filename: SERVICE, code: portService(transaction("const rows = rowsOf(delivery.deliveryId); const receipt = await this.port.receive(tx, delivery.accountId, rows); await this.events.publish({ eventId: String(receipt) }, tx)")), errors: error },
+                { filename: SERVICE, code: portService(transaction("const rows = rowsOf(delivery.deliveryId); const receipt = await this.port.receive(tx, delivery.accountId, rows); await tx.save({ late: true }); if (receipt === undefined) return")), errors: error },
+                { filename: SERVICE, code: portService(transaction("const rows = rowsOf(delivery.deliveryId); const receipt = await this.port.receive(tx, delivery.accountId, rows); if (receipt === false) return; await tx.save({ id: 1 })")), errors: error },
+                { filename: SERVICE, code: portService(transaction("const fresh = await this.port.accept(tx, delivery.deliveryId); if (fresh === undefined) return; await tx.save({ id: 1 })")), errors: error },
+                // outside the transaction, or with another manager than the transaction's own
+                { filename: SERVICE, code: portService("const receipt = await this.port.receive(this.database, delivery.accountId, [delivery]); if (receipt === undefined) return; await this.events.publish({ eventId: receipt.id })"), errors: error },
+                { filename: SERVICE, code: portService(transaction("const receipt = await this.port.receive(this.database, delivery.accountId, [delivery]); if (receipt === undefined) return; await tx.save({ id: receipt.id })")), errors: error },
+                // nothing of the delivery reaches the call: a fixed key claims nothing
+                { filename: SERVICE, code: portService(transaction('const receipt = await this.port.receive(tx, "fixed", []); if (receipt === undefined) return; await tx.save({ id: receipt.id })')), errors: error },
+                // a call inside the arguments is work done before the claim
+                { filename: SERVICE, code: portService(transaction("const receipt = await this.port.receive(tx, delivery.accountId, rowsOf(delivery.deliveryId)); if (receipt === undefined) return; await tx.save({ id: receipt.id })")), errors: error },
+                // after the receipt, another method of the same class is processing inside the receipt transaction (the handoff half)
+                { filename: SERVICE, code: portService(transaction(`${received}; await this.port.write(tx, delivery.accountId)`)), errors: [{ messageId: "handoff" }] },
+                // an undeclared method of the declared class, and a lookalike class with the declared method name
+                { filename: SERVICE, code: portService(transaction("const receipt = await this.port.write(tx, delivery.accountId); if (receipt === undefined) return; await tx.save({ id: receipt.id })")), errors: both },
+                { filename: SERVICE, code: portService(transaction(received), { port: "Lookalike2" }), errors: both },
+            ],
+        })
+        // the same door without the declaration: the port is no claim
+        const undeclared = hfsFromDeclaration({ ...appDeclaration("be", { ...BE_DECLARATION, patterns: ["webhooks"] }), edition }, TYPED_ROOT)
+        ruleTester({ root: TYPED_ROOT, hfs: undeclared }).run("webhook-inbox-key", rules["webhook-inbox-key"], {
+            valid: [],
+            invalid: [{ filename: SERVICE, code: portService(transaction(received)), errors: both }],
+        })
+    })
+}
+
+// The multi-event form (`many: true`): the declared method takes the transaction's manager and the delivery carrying N events, and answers the
+// list of the new events only (a repeat answers the empty list). The door's effects only iterate that list: `for (const event of fresh)`.
+const MANY = "delivery: { deliveryId: string; accountId: string; events: readonly { id: string }[] }"
+const fresh = "const fresh = await this.port.receiveAll(tx, delivery)"
+const each = "for (const event of fresh) { await this.events.publish({ eventId: event.id }, tx) }"
+const many = (body: string, options: { port?: string } = {}) => portService(transaction(body), { parameter: MANY, ...options })
+
+for (const edition of ["lite", "full"]) {
+    test(`webhook-inbox-key accepts a declared many receipt port whose effects only iterate the new events it answers, in ${edition}`, () => {
+        const declared = { ...BE_DECLARATION, patterns: ["webhooks"], receiptPorts: [
+            { class: "ReceiptPort", method: "receiveAll", many: true, reason: "writes each event of the delivery once under its unique key and answers the new ones" },
+        ] }
+        const hfs = hfsFromDeclaration({ ...appDeclaration("be", declared), edition }, TYPED_ROOT)
+        const error = [{ messageId: "key" }]
+        const both = [{ messageId: "handoff" }, { messageId: "key" }]
+        ruleTester({ root: TYPED_ROOT, hfs }).run("webhook-inbox-key", rules["webhook-inbox-key"], {
+            valid: [
+                { filename: SERVICE, code: many(`${fresh}; ${each}`) },
+                { filename: SERVICE, code: many(`${fresh}; for (const event of fresh) await tx.save({ id: event.id }); ${each}`) },
+                { filename: SERVICE, code: many(`const events = delivery.events; const fresh = await this.port.receiveAll(tx, events); ${each}`) },
+                { filename: SERVICE, code: many(`${fresh}; for (const event of fresh) { const row = { id: event.id, delivery: event }; await tx.save(row) }`) },
+                { filename: SERVICE, code: many(fresh) },
+            ],
+            invalid: [
+                // an effect before the declared call
+                { filename: SERVICE, code: many(`await tx.save({ early: true }); ${fresh}; ${each}`), errors: error },
+                // an effect on the raw delivery or its events: directly, through a binding made before the claim, from a nested function, or through arguments
+                { filename: SERVICE, code: many(`${fresh}; for (const event of fresh) { await tx.save({ id: event.id, from: delivery.deliveryId }) }`), errors: error },
+                { filename: SERVICE, code: many(`const events = delivery.events; const fresh = await this.port.receiveAll(tx, events); for (const event of fresh) { await tx.save({ id: event.id, all: events }) }`), errors: error },
+                { filename: SERVICE, code: many(`${fresh}; for (const event of fresh) { const key = () => delivery.deliveryId; await tx.save({ id: event.id, key: key() }) }`), errors: error },
+                { filename: SERVICE, code: many(`${fresh}; for (const event of fresh) { await tx.save({ id: event.id, raw: arguments[0] }) }`), errors: error },
+                // iterating anything else than the returned list itself
+                { filename: SERVICE, code: many(`${fresh}; for (const event of delivery.events) { await tx.save({ id: event.id }) }`), errors: error },
+                { filename: SERVICE, code: many(`${fresh}; for (const event of fresh.slice(1)) { await tx.save({ id: event.id }) }`), errors: error },
+                { filename: SERVICE, code: many(`${fresh}; for (const event of [...fresh, ...delivery.events]) { await tx.save({ id: event.id }) }`), errors: error },
+                { filename: SERVICE, code: many(`${fresh}; fresh.forEach((event) => { void tx.save({ id: event.id }) })`), errors: error },
+                { filename: SERVICE, code: many(`${fresh}; for await (const event of fresh) { await tx.save({ id: event.id }) }`), errors: error },
+                { filename: SERVICE, code: many(`${fresh}; for (let event of fresh) { await tx.save({ id: event.id }) }`), errors: error },
+                { filename: SERVICE, code: many(`${fresh}; for (const event of fresh) { await tx.save({ id: event.id, count: fresh.length }) }`), errors: error },
+                // an effect outside the iteration, after it or instead of it, and a repeat test of the single form
+                { filename: SERVICE, code: many(`${fresh}; await tx.save({ count: fresh.length })`), errors: error },
+                { filename: SERVICE, code: many(`${fresh}; ${each}; await tx.save({ done: true })`), errors: error },
+                { filename: SERVICE, code: many(`${fresh}; if (fresh.length === 0) return; ${each}`), errors: error },
+                { filename: SERVICE, code: many("const receipt = await this.port.receiveAll(tx, delivery); if (receipt === undefined) return; await tx.save({ id: delivery.deliveryId })"), errors: error },
+                // the answer bound otherwise than to one const name
+                { filename: SERVICE, code: many(`let fresh = await this.port.receiveAll(tx, delivery); ${each}`), errors: error },
+                { filename: SERVICE, code: many("const [first] = await this.port.receiveAll(tx, delivery); await tx.save({ id: first?.id })"), errors: error },
+                { filename: SERVICE, code: many("await this.port.receiveAll(tx, delivery); for (const event of delivery.events) { await tx.save({ id: event.id }) }"), errors: error },
+                // outside the transaction, on another manager, with nothing of the delivery, or with a call inside the arguments
+                { filename: SERVICE, code: portService("const fresh = await this.port.receiveAll(this.database, delivery); for (const event of fresh) { await this.events.publish({ eventId: event.id }) }", { parameter: MANY }), errors: error },
+                { filename: SERVICE, code: many(`const fresh = await this.port.receiveAll(this.database, delivery); ${each}`), errors: error },
+                { filename: SERVICE, code: many(`const fresh = await this.port.receiveAll(tx, []); ${each}`), errors: error },
+                { filename: SERVICE, code: many(`const fresh = await this.port.receiveAll(tx, rowsOf(delivery.deliveryId)); ${each}`), errors: error },
+                // processing inside the iteration is still processing (the handoff half)
+                { filename: SERVICE, code: many(`${fresh}; for (const event of fresh) { await this.port.write(tx, event.id) }`), errors: [{ messageId: "handoff" }] },
+                // another method of the declared class, and a lookalike class with the declared method name
+                { filename: SERVICE, code: many("const fresh = await this.port.write(tx, delivery.accountId); if (fresh === undefined) return"), errors: both },
+                { filename: SERVICE, code: many(`${fresh}; ${each}`, { port: "Lookalike2" }), errors: both },
+            ],
+        })
+        // the same door without the declaration: the port is no claim, and its call is processing
+        const undeclared = hfsFromDeclaration({ ...appDeclaration("be", { ...BE_DECLARATION, patterns: ["webhooks"] }), edition }, TYPED_ROOT)
+        ruleTester({ root: TYPED_ROOT, hfs: undeclared }).run("webhook-inbox-key", rules["webhook-inbox-key"], {
+            valid: [],
+            invalid: [{ filename: SERVICE, code: many(`${fresh}; ${each}`), errors: both }],
+        })
+        // the method declared in the single form: its answer is tested for the repeat, never iterated
+        const single = hfsFromDeclaration({ ...appDeclaration("be", { ...BE_DECLARATION, patterns: ["webhooks"], receiptPorts: [
+            { class: "ReceiptPort", method: "receiveAll", repeat: "undefined", reason: "writes the delivery once under its unique key; undefined on a repeat" },
+        ] }), edition }, TYPED_ROOT)
+        ruleTester({ root: TYPED_ROOT, hfs: single }).run("webhook-inbox-key", rules["webhook-inbox-key"], {
+            valid: [],
+            invalid: [{ filename: SERVICE, code: many(`${fresh}; ${each}`), errors: error }],
+        })
+    })
+}

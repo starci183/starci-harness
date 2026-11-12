@@ -43,7 +43,7 @@ test.after(() => fs.rmSync(REPO_ROOT, { recursive: true, force: true }));
 const appFindings = (edition: string, files: string[], manifest = APP_MANIFEST, declaration: AppDeclaration = APP) => checkRepo({ repoRoot: REPO_ROOT, root: RUNTIME, manifest, declaration: { ...structuredClone(declaration), edition }, files, tree: false }).findings;
 const withCode = (findings: { code: string; path?: unknown }[], code: string) => findings.filter((finding) => finding.code === code).map((finding) => finding.path);
 
-const WEBHOOK = 'be/src/features/webhooks/sepay/transport/http/sepay.webhook.ts';
+const WEBHOOK = 'be/src/features/webhooks/gateway/transport/http/gateway.webhook.ts';
 const WITH_WEBHOOKS = { ...APP, sides: { ...APP.sides, be: { ...APP.sides.be, patterns: ['webhooks'] } } };
 
 for (const edition of ['lite', 'full']) {
@@ -66,6 +66,10 @@ for (const edition of ['lite', 'full']) {
   test(`${edition}: app check refuses a tracked path of a forbidden slot and accepts an allowed one`, () => {
     assert.deepEqual(withCode(appFindings(edition, ['be/.sops.yaml']), 'HFS_FORBIDDEN_PRESENT'), ['be/.sops.yaml']);
     assert.deepEqual(withCode(appFindings(edition, ['.sops.yaml']), 'HFS_FORBIDDEN_PRESENT'), []);
+  });
+
+  test(`${edition}: app check refuses a tracked e2e workflow (slot app.ci-e2e is forbidden: no workflow runs a world layer) and accepts ci.yml`, () => {
+    assert.deepEqual(withCode(appFindings(edition, ['.github/workflows/e2e.yml', '.github/workflows/ci.yml']), 'HFS_FORBIDDEN_PRESENT'), ['.github/workflows/e2e.yml']);
   });
 
   test(`${edition}: app check accepts the delivery scripts of the app root and refuses an unowned file beside them`, () => {

@@ -3,7 +3,7 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 import * as G from '../common/index.js';
 
 /**
- * Markdown: a markdown string drawn as course content. The text is parsed to a syntax tree and mapped to the grammar's own parts
+ * Markdown: a markdown string drawn as document content. The text is parsed to a syntax tree and mapped to the grammar's own parts
  * inside the reading frame (MarkdownArticle); nothing is injected as HTML. One story per concern, each with a play.
  */
 const meta: Meta = { title: 'Surfaces/Markdown' };
@@ -22,7 +22,7 @@ const EVERY_NODE = `# Title one (demoted to h2)
 
 ##### Fifth level (kept at h4)
 
-A paragraph with **strong**, *emphasis*, ~~strikethrough~~, \`inline code\`, a [site link](/courses/http) and an [outside link](https://developer.mozilla.org/en-US/docs/Web/HTTP). A bare https://example.com autolink.
+A paragraph with **strong**, *emphasis*, ~~strikethrough~~, \`inline code\`, a [site link](/docs/http) and an [outside link](https://developer.mozilla.org/en-US/docs/Web/HTTP). A bare https://example.com autolink.
 A hard break follows
 on the next line.
 
@@ -94,13 +94,13 @@ export const EveryNode: Story = {
 export const Links: Story = {
   render: () => (
     <div style={frame}>
-      <G.Markdown source={'Read [the lesson](/courses/http/1) then [MDN](https://developer.mozilla.org) or [mail us](mailto:hi@example.com). An [empty target]() stays text.'} labels={{ externalHint: '(opens in a new tab)' }} />
+      <G.Markdown source={'Read [the guide](/docs/http/1) then [MDN](https://developer.mozilla.org) or [mail us](mailto:hi@example.com). An [empty target]() stays text.'} labels={{ externalHint: '(opens in a new tab)' }} />
     </div>
   ),
   play: async ({ canvasElement }) => {
     await waitFor(() => expect(canvasElement.querySelectorAll('a')).toHaveLength(3));
     const links = Array.from(canvasElement.querySelectorAll('a'));
-    const internal = links.find((a) => a.getAttribute('href') === '/courses/http/1')!;
+    const internal = links.find((a) => a.getAttribute('href') === '/docs/http/1')!;
     const external = links.find((a) => a.getAttribute('href') === 'https://developer.mozilla.org')!;
     expect(internal.querySelector('[data-grammar-link-icon]')).toBeNull();
     expect(internal.getAttribute('target')).toBeNull();
@@ -125,54 +125,54 @@ export const CodeWithCopy: Story = {
   },
 };
 
-export const VietnameseLesson: Story = {
+export const NonLatinScript: Story = {
   render: () => (
     <div style={frame}>
       <G.Markdown
-        labels={{ copy: 'Sao chép', copied: 'Đã sao chép', copyError: 'Không sao chép được. Hãy chọn đoạn mã và sao chép tay.', diagram: 'Sơ đồ', diagramError: 'Không vẽ được sơ đồ này.', table: 'Bảng', taskDone: 'Đã xong', taskOpen: 'Chưa xong', externalHint: '(mở trong tab mới)' }}
-        source={`# Bài 3: Mã trạng thái HTTP
+        labels={{ copy: 'Copy snippet', copied: 'Snippet copied', copyError: 'Could not copy. Select the code and copy it by hand.', diagram: 'Diagram', diagramError: 'Could not draw this diagram.', table: 'Table', taskDone: 'Done', taskOpen: 'Not done', externalHint: '(opens in a new tab)' }}
+        source={`# Part 3: HTTP status codes, a naïve résumé
 
-Máy chủ luôn trả lời một yêu cầu bằng một **mã trạng thái**. Đọc mã đầu tiên là biết kết quả thuộc nhóm nào. Xem thêm ở [MDN](https://developer.mozilla.org/vi/docs/Web/HTTP/Status) hoặc [bài 2](/khoa-hoc/http/bai-2).
+The server always answers a request with a **status code**. Reading the first digit tells you the group of the result. See more at [MDN](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status) or [part 2](/docs/http/part-2).
 
-## Các mã hay gặp
+## Codes you meet often
 
-| Mã  | Tên                   | Khi nào                          |
-| --- | --------------------- | -------------------------------- |
-| 200 | OK                    | Yêu cầu thành công               |
-| 201 | Created               | Đã tạo tài nguyên mới            |
-| 301 | Moved Permanently     | Địa chỉ đã chuyển vĩnh viễn      |
-| 404 | Not Found             | Không có tài nguyên ở địa chỉ này |
-| 500 | Internal Server Error | Máy chủ gặp lỗi của chính nó     |
+| Code | Name                  | When                                  |
+| ---- | --------------------- | ------------------------------------- |
+| 200  | OK                    | The request succeeded                 |
+| 201  | Created               | A new resource was created            |
+| 301  | Moved Permanently     | The address moved for good            |
+| 404  | Not Found             | No resource lives at this address     |
+| 500  | Internal Server Error | The server hit a fault of its own     |
 
-## Việc cần làm
+## Things to do
 
-- Mở tab Network của trình duyệt
-  - Tải lại trang
-  - Chọn một yêu cầu và đọc cột **Status**
-- Thử gọi một địa chỉ không tồn tại
-- [x] Đọc bảng mã
-- [ ] Làm bài tập 3
+- Open the Network tab of the browser
+  - Reload the page
+  - Pick a request and read the **Status** column
+- Call an address that does not exist
+- [x] Read the code table
+- [ ] Do exercise 3
 
-## Trả lời đúng mã
+## Answer with the right code
 
 \`\`\`ts
 export const handler = (request: Request): Response => {
   if (request.url.endsWith("/missing")) {
-    return new Response("Không tìm thấy", { status: 404 })
+    return new Response("Crème brûlée, façade, Ångström, Zoë: not found", { status: 404 })
   }
   return new Response("OK", { status: 200 })
 }
 \`\`\`
 
-## Luồng một yêu cầu
+## Flow of one request
 
 \`\`\`mermaid
 sequenceDiagram
-  Trình duyệt->>Máy chủ: GET /trang
-  Máy chủ-->>Trình duyệt: 200 OK
+  Naïve client->>Crème server: GET /page
+  Crème server-->>Naïve client: 200 OK
 \`\`\`
 
-> Nhớ: bắt đầu bằng 2 là thành công, 4 là lỗi của người gọi, 5 là lỗi của máy chủ.
+> Remember: starting with 2 is success, 4 is the caller's fault, 5 is the server's fault.
 `}
       />
     </div>
@@ -180,9 +180,9 @@ sequenceDiagram
   play: async ({ canvasElement }) => {
     await waitFor(() => {
       expect(canvasElement.querySelectorAll('tbody tr')).toHaveLength(5);
-      expect(within(canvasElement).getByRole('button', { name: 'Sao chép' })).toBeTruthy();
-      expect(within(canvasElement).getByRole('region', { name: 'Bảng' })).toBeTruthy();
-      expect(canvasElement.querySelector('[data-component="MermaidDiagram"]')?.getAttribute('aria-label')).toBe('Sơ đồ');
+      expect(within(canvasElement).getByRole('button', { name: 'Copy snippet' })).toBeTruthy();
+      expect(within(canvasElement).getByRole('region', { name: 'Table' })).toBeTruthy();
+      expect(canvasElement.querySelector('[data-component="MermaidDiagram"]')?.getAttribute('aria-label')).toBe('Diagram');
     });
     // Type scale law: body 14, no 13 or 16.
     const sizes = new Set(Array.from(canvasElement.querySelectorAll('h2, h3, p, li, td, th')).map((node) => getComputedStyle(node).fontSize));

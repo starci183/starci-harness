@@ -397,7 +397,7 @@ export const a = rows(text); export const b = rows(useTranslations("admin"));`,
   });
 }
 
-// The Office words of nivo-lite: a hook exposes its translators as members of a declared type, the views pass `words.t` on as a `text`
+// The Office words of a reference app: a hook exposes its translators as members of a declared type, the views pass `words.t` on as a `text`
 // prop through spreads, and the leaves call `text("key")` / `props.text("key")` / `view.text("key")`.
 const TRANSLATOR_HELPER = {
   'apps/web/src/modules/i18n/messages/en.json': JSON.stringify({

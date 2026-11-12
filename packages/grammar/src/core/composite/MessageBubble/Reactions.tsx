@@ -7,7 +7,7 @@ export const REACTION_EMOJI = ["❤️", "👍", "😆", "😮", "😢", "😡"]
 
 /**
  * One emoji on a message: `count` is everyone's total, `mine` is what the viewer sent (`true` is one, a number is how many
- * times; Zalo-style, the same person may tap many times and the count grows). Pure presentation: the app persists.
+ * times; as in many chat apps, the same person may tap many times and the count grows). Pure presentation: the app persists.
  */
 export type MessageReaction = {
     readonly emoji: string
@@ -15,24 +15,24 @@ export type MessageReaction = {
     readonly mine: boolean | number
 }
 
-/** The words of the reaction parts; the defaults are Vietnamese. */
+/** The words of the reaction parts; the defaults are English. */
 export type MessageReactionLabels = {
     /** The accessible name of the picker toolbar. */
     readonly toolbar: string
     readonly reply: string
     readonly share: string
-    /** The name of one emoji button (by emoji), e.g. `Thả ❤️`. */
+    /** The name of one emoji button (by emoji), e.g. `React with ❤️`. */
     readonly react: (emoji: string) => string
     /** The pill's accessible name from its summary ("❤️ 5") and how many the viewer sent. */
     readonly pill: (summary: string, mine: number) => string
 }
 
 export const DEFAULT_REACTION_LABELS: MessageReactionLabels = {
-    toolbar: "Thao tác với tin nhắn",
-    reply: "Trả lời",
-    share: "Chuyển tiếp",
-    react: (emoji) => `Thả ${emoji}`,
-    pill: (summary, mine) => (mine > 0 ? `${summary}, bạn đã thả ${mine}` : summary),
+    toolbar: "Message actions",
+    reply: "Reply",
+    share: "Forward",
+    react: (emoji) => `React with ${emoji}`,
+    pill: (summary, mine) => (mine > 0 ? `${summary}, you reacted ${mine}` : summary),
 }
 
 export const mineCount = (reaction: MessageReaction): number => (typeof reaction.mine === "number" ? reaction.mine : reaction.mine ? 1 : 0)

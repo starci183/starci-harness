@@ -11,8 +11,8 @@ export default meta;
 type Story = StoryObj;
 
 const OPTIONS = [
-  { id: 'all', label: 'Tất cả' },
-  { id: 'paid', label: 'Đã thanh toán' },
+  { id: 'all', label: 'All' },
+  { id: 'paid', label: 'Paid' },
 ];
 
 export const InCardHeaders: Story = {
@@ -20,21 +20,21 @@ export const InCardHeaders: Story = {
     <div style={{ width: 'min(100%, 720px)' }}>
       <G.SurfaceCard
         kind="list"
-        label="Đơn hàng"
+        label="Orders"
         headers={[
           {
             kind: 'custom',
             children: (
               <G.Cluster gap="row">
-                <G.Select label="Trạng thái" isLabelHidden options={OPTIONS} defaultValue="all" />
-                <G.SearchField label="Tìm đơn" isLabelHidden />
-                <G.NumberField label="Số lượng" isLabelHidden defaultValue={1} />
+                <G.Select label="Status" isLabelHidden options={OPTIONS} defaultValue="all" />
+                <G.SearchField label="Search orders" isLabelHidden />
+                <G.NumberField label="Quantity" isLabelHidden defaultValue={1} />
               </G.Cluster>
             ),
           },
         ]}
         items={[{ id: 'a', title: 'DH-1001' }]}
-        empty={<G.EmptyNotice message="Trống" />}
+        empty={<G.EmptyNotice message="Empty" />}
       />
     </div>
   ),

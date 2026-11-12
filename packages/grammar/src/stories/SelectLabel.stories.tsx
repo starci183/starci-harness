@@ -17,8 +17,8 @@ export const SelectHiddenLabel: Story = {
     render: () => (
         <Matrix maxWidth={320}>
             <State label="Visible label (the default)" direction="column"><G.Select label="Level" options={options} defaultValue="read" /></State>
-            <State label="isLabelHidden: the label names the control and is not drawn" direction="column"><G.Select label="Level for Telegram" isLabelHidden options={options} defaultValue="read" /></State>
-            <State label="isLabelHidden, loading (same box)" direction="column"><G.Select label="Level for Telegram" isLabelHidden options={options} defaultValue="read" isLoading /></State>
+            <State label="isLabelHidden: the label names the control and is not drawn" direction="column"><G.Select label="Level for Email" isLabelHidden options={options} defaultValue="read" /></State>
+            <State label="isLabelHidden, loading (same box)" direction="column"><G.Select label="Level for Email" isLabelHidden options={options} defaultValue="read" isLoading /></State>
         </Matrix>
     ),
 }

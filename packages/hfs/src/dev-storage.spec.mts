@@ -172,10 +172,10 @@ test('sync leaves an app it cannot upgrade as it is and says why: no base port, 
   const unbased = oldApp(t, OLD_STACKS.replace('      basePort: 3400\n', ''));
   assert.deepEqual(devServicesUpgrade(unbased).edits, []);
   assert.match(devServicesUpgrade(unbased).notices.join('\n'), /environments\.dev\.local declares no basePort: its compose ports are not derived/u);
-  const minio = oldApp(t, OLD_STACKS, OLD_COMPOSE.replace('volumes:', '  nivo-minio:\n    image: ghcr.io/starci183/minio:RELEASE.x@sha256:00\nvolumes:'));
+  const minio = oldApp(t, OLD_STACKS, OLD_COMPOSE.replace('volumes:', '  app-minio:\n    image: ghcr.io/starci183/minio:RELEASE.x@sha256:00\nvolumes:'));
   const upgrade = devServicesUpgrade(minio);
   assert.deepEqual(upgrade.edits.map((edit) => edit.path), ['.starcistacks/application-stacks.yaml'], 'the ports still move');
-  assert.match(upgrade.notices.join('\n'), /already runs an object store \(the compose service nivo-minio \(ghcr\.io\/starci183\/minio:RELEASE\.x\)\): no storage service is added/u);
+  assert.match(upgrade.notices.join('\n'), /already runs an object store \(the compose service app-minio \(ghcr\.io\/starci183\/minio:RELEASE\.x\)\): no storage service is added/u);
   const taken = oldApp(t, OLD_STACKS.replace('        web: 3400\n', '        web: 3400\n        relay: 3491\n'));
   assert.match(devServicesUpgrade(taken).notices.join('\n'), /ports\.mail stays 1025: its slot 3491 \(basePort \+ 91\) is the port of relay/u);
   const keyless = oldApp(t, OLD_STACKS.replaceAll(/ {8}- \{member: storage.*\n/gu, ''));

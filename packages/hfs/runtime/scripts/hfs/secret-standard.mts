@@ -79,7 +79,7 @@ interface PlannedTarget {
   file: string;
 }
 
-/** The provider a key belongs to: its first word (`SEPAY_IPN_SECRET_KEY` is `sepay`, `OPENROUTER_API_KEY` is `openrouter`). */
+/** The provider a key belongs to: its first word (`GATEWAY_IPN_SECRET_KEY` is `gateway`, `OPENROUTER_API_KEY` is `openrouter`). */
 export const providerOf = (key: string): string => (key.split("_")[0] as string).toLowerCase();
 
 const sameSet = (left: string[], right: string[]): boolean => left.length === right.length && left.every((item) => right.includes(item));

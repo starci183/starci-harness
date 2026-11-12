@@ -15,13 +15,13 @@ const cell = (id: string, title: string, description: string, state: keyof typeo
 const GRAPH: WorkflowGraphView = {
     stats: { live: "1", cap: "/ 10", queued: "0", waves: "2", done: "1", total: "/ 3" },
     waves: [
-        { id: "wave-0", label: WORKFLOW.wave(1, 1), cells: [cell("spec", "spec subscription", "docs · Hoàn tất", "done")] },
+        { id: "wave-0", label: WORKFLOW.wave(1, 1), cells: [cell("spec", "spec search", "docs · Done", "done")] },
         {
             id: "wave-1",
             label: WORKFLOW.wave(2, 2),
             cells: [
-                cell("b1", "B1 entity + migration", "code · Đang chạy", "running", "/t/starci-next/t-b1"),
-                cell("f1", "F1 chọn gói", "code · Chờ phụ thuộc", "waiting"),
+                cell("b1", "B1 index entity + migration", "code · Running", "running", "/t/demo-app/t-b1"),
+                cell("f1", "F1 Search box UI", "code · Waiting on dependencies", "waiting"),
             ],
         },
     ],

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.1 - 2026-11-13
+
+- Changed: the README's examples use neutral profile, label and owner names. No code changes.
+
 ## 0.6.0 - 2026-11-08
 
 - Added: `AiRouterError`, `KeyAdminError` and `MountedKeyError` extend `DomainError` of `@starci/common` (a runtime dependency), so an app and its canon recognise them as coded errors. `AiRouterError.code` is `AI_ROUTER_<CLASS>` (`AI_ROUTER_ERROR_CODES`, `AiRouterErrorCode`, exported); the two key errors keep their code values. Class names, fields and messages are unchanged.

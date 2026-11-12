@@ -77,7 +77,7 @@
    derived from a `Page`'s header tabs, `isSkeleton` on the frames), or by a lint rule?
 31. **Proof of the orchestration.** A CLI change is proved by running the built CLI (CONTRIB-1) and the orchestration has no
    bench. Prove it by real test results in Orca (which runs, recorded where), or keep the built-CLI run as the proof?
-32. **Deleting the legacy runtime.** The legacy tree at `D:/Repositories/starci-academy-backend/.claude` still exists. Delete
+32. **Deleting the legacy runtime.** The legacy runtime tree still exists. Delete
    it now (end and delete its scheduled tasks, repoint the product repositories and the `C:/Users/Hi/.starci/bin` shims
    that still name it, archive it as one git bundle with its untracked ledgers), or keep it read-only, and which of its
    unmerged branches are worth a look first?

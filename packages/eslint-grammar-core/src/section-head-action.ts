@@ -8,7 +8,7 @@ import type { Context } from "./lib/types.ts"
 /**
  * THE SECTION HEAD (owner, 2026-11-09, SECTION-HEAD-ACTION). A section's head is ONE row: the label (14, 500) and an optional count chip at the
  * start, and at the end at most ONE thing: a navigation `Link variant="head"` (the label then an arrow that slides on hover), an info `IconButton`,
- * or (0.37.25) a neutral small `Button` ("Gắn thêm provider"). The head never holds two commands.
+ * or (0.37.25) a neutral small `Button` ("Add provider"). The head never holds two commands.
  *
  * WHAT IT READS. A Grammar `Section` in product source whose `action` prop holds:
  *   - a Grammar `Button` that is not exactly `intent="neutral" size="sm"` (message `button`: a primary/commit or any other size is refused);

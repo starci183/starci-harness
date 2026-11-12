@@ -63,9 +63,9 @@ test("a source file name is index.ts, main.ts, a migration or <kebab-name>.<suff
         "src/tests/world/kit/free-ports.ts",
         "src/tests/world/kit/Bad_Name.ts",
         "src/tests/world/poll.ts",
-        "src/tests/world/fakes/sepay/server.ts",
-        "src/tests/world/fakes/sepay/sepay.server.ts",
-        "src/tests/world/fakes/sepay/payload.service.ts",
+        "src/tests/world/fakes/acme-pay/server.ts",
+        "src/tests/world/fakes/acme-pay/acme-pay.server.ts",
+        "src/tests/world/fakes/acme-pay/payload.service.ts",
         "src/tests/world/fakes/server.ts",
         "src/tests/fixtures/builders/order.builder.ts",
         "src/tests/fixtures/order.fixture.ts",
@@ -96,8 +96,8 @@ test("a source file name is index.ts, main.ts, a migration or <kebab-name>.<suff
             s.good("src/tests/world/kit/poll.ts"),
             s.good("src/tests/world/kit/free-ports.ts"),
             // the fake server of a provider: be.tests.world allows the literal fakes/<provider>/server.ts
-            s.good("src/tests/world/fakes/sepay/server.ts"),
-            s.good("src/tests/world/fakes/sepay/payload.service.ts"),
+            s.good("src/tests/world/fakes/acme-pay/server.ts"),
+            s.good("src/tests/world/fakes/acme-pay/payload.service.ts"),
             s.good("src/tests/fixtures/builders/order.builder.ts"),
             // a path no slot owns is slot-undeclared's, not this rule's
             s.good("src/stray/Not_Owned.ts"),
@@ -115,7 +115,7 @@ test("a source file name is index.ts, main.ts, a migration or <kebab-name>.<suff
             "src/tests/world/kit/Bad_Name.ts",
             "src/tests/world/poll.ts",
             // server is no role suffix, and server.ts is the provider folder's literal name only
-            "src/tests/world/fakes/sepay/sepay.server.ts",
+            "src/tests/world/fakes/acme-pay/acme-pay.server.ts",
             "src/tests/world/fakes/server.ts",
             "src/tests/fixtures/order.fixture.ts",
             "src/tests/fixtures/order.factory.ts",
@@ -128,8 +128,8 @@ test("a source file name is index.ts, main.ts, a migration or <kebab-name>.<suff
 
 test("a spec file lives in one of the four test layers and nowhere else", (t) => {
     const s = scene(t, [
-        "src/modules/domain/billing/invoice.service.ts",
-        "src/modules/domain/billing/invoice.service.spec.ts",
+        "src/modules/domain/billing/record.service.ts",
+        "src/modules/domain/billing/record.service.spec.ts",
         "src/tests/integration/orders/claim.integration-spec.ts",
         "src/tests/e2e/orders/flow.e2e-spec.ts",
         "src/tests/contract/stripe/payments.contract-spec.ts",
@@ -140,8 +140,8 @@ test("a spec file lives in one of the four test layers and nowhere else", (t) =>
     ])
     s.tester.run("spec-placement", ruleNamed(rules, "spec-placement"), {
         valid: [
-            s.good("src/modules/domain/billing/invoice.service.ts"),
-            s.good("src/modules/domain/billing/invoice.service.spec.ts"),
+            s.good("src/modules/domain/billing/record.service.ts"),
+            s.good("src/modules/domain/billing/record.service.spec.ts"),
             s.good("src/tests/integration/orders/claim.integration-spec.ts"),
             s.good("src/tests/e2e/orders/flow.e2e-spec.ts"),
             s.good("src/tests/contract/stripe/payments.contract-spec.ts"),
@@ -155,13 +155,13 @@ test("a spec file lives in one of the four test layers and nowhere else", (t) =>
 })
 
 test("a misplaced spec that is not TypeScript is not on the lint surface: it stays in starci app check", (t) => {
-    const f = projectFixture({ files: { "tools/x.spec.mjs": "export {}\n", "scripts/probe.test.cjs": "module.exports = {}\n", "src/modules/domain/billing/invoice.service.ts": EXPORT, "src/features/api/orders/place-order.spec.ts": EXPORT } })
+    const f = projectFixture({ files: { "tools/x.spec.mjs": "export {}\n", "scripts/probe.test.cjs": "module.exports = {}\n", "src/modules/domain/billing/record.service.ts": EXPORT, "src/features/api/orders/place-order.spec.ts": EXPORT } })
     t.after(f.cleanup)
     f.tester.run("spec-placement", ruleNamed(rules, "spec-placement"), {
         valid: [
             { filename: f.at("tools/x.spec.mjs"), code: "export {}\n" },
             { filename: f.at("scripts/probe.test.cjs"), code: "module.exports = {}\n" },
-            { filename: f.at("src/modules/domain/billing/invoice.service.ts"), code: EXPORT },
+            { filename: f.at("src/modules/domain/billing/record.service.ts"), code: EXPORT },
         ],
         invalid: [{ filename: f.at("src/features/api/orders/place-order.spec.ts"), code: EXPORT, errors: [{ messageId: "finding", line: 1 }] }],
     })

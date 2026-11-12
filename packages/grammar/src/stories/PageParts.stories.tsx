@@ -9,8 +9,8 @@ export default meta
 type Story = StoryObj
 
 const rows: ReadonlyArray<G.ListRowData> = [
-    { id: "a", title: "Hoa Sen Spa", description: "Zalo, 2 hours", onPress: noop },
-    { id: "b", title: "Anh Tuan", description: "Website, 5 hours", onPress: noop },
+    { id: "a", title: "Globex", description: "Chat, 2 hours", onPress: noop },
+    { id: "b", title: "Sam Lee", description: "Website, 5 hours", onPress: noop },
 ]
 const empty = <G.EmptyNotice message="Nothing here" />
 
@@ -34,8 +34,8 @@ export const PageParts: Story = {
 }
 
 const connectionRows: ReadonlyArray<G.ListRowData> = [
-    { id: "c1", title: "Zalo OA", description: "Mây Bakery OA", leading: { icon: UploadGlyph, size: "md" }, badges: [{ label: "Connected", tone: "success" }], control: <G.Select label="Agent for Zalo OA" isLabelHidden options={[{ id: "a", label: "Sales" }, { id: "b", label: "Chatbot" }]} defaultValue="a" /> },
-    { id: "c2", title: "Telegram", description: "@maybakery_bot", leading: { avatar: { name: "Telegram" }, size: "md" }, control: <G.Switch label="Telegram enabled" isLabelHidden defaultSelected /> },
+    { id: "c1", title: "Chat channel", description: "Acme support", leading: { icon: UploadGlyph, size: "md" }, badges: [{ label: "Connected", tone: "success" }], control: <G.Select label="Agent for the chat channel" isLabelHidden options={[{ id: "a", label: "Sales" }, { id: "b", label: "Chatbot" }]} defaultValue="a" /> },
+    { id: "c2", title: "Email", description: "support@acme.example", leading: { avatar: { name: "Email" }, size: "md" }, control: <G.Switch label="Email enabled" isLabelHidden defaultSelected /> },
 ]
 
 export const RowControlAndLeading: Story = {
@@ -45,22 +45,22 @@ export const RowControlAndLeading: Story = {
                 <G.SurfaceCard kind="list" label="Connections" items={connectionRows} empty={empty} />
             </State>
             <State label="Loading" direction="column"><G.SurfaceCard kind="list" label="Connections" items={connectionRows} empty={empty} isLoading /></State>
-            <State label="Select with a prefix" direction="column"><G.Select label="Position" prefix="Position:" options={[{ id: "a", label: "Spa technician" }]} defaultValue="a" /></State>
+            <State label="Select with a prefix" direction="column"><G.Select label="Position" prefix="Position:" options={[{ id: "a", label: "Technician" }]} defaultValue="a" /></State>
         </Matrix>
     ),
 }
 
 const radioOptions = [
-    { value: "cut", label: "Haircut", description: "30 minutes, 120,000" },
-    { value: "wash", label: "Herbal wash", description: "60 minutes, 250,000" },
-    { value: "dye", label: "Colour", description: "90 minutes, 450,000" },
+    { value: "cut", label: "Standard", description: "30 minutes, $12" },
+    { value: "wash", label: "Deep clean", description: "60 minutes, $25" },
+    { value: "dye", label: "Extended", description: "90 minutes, $45" },
 ]
 
 export const PublicPageParts: Story = {
     render: () => (
         <Matrix maxWidth={560}>
             <State label="PageIntro: the plain heading block (accent initials mark, fact lines, a sentence)" direction="column">
-                <G.PageIntro title="Minh Sang Salon" mark={<G.Avatar name="Minh Sang" size="lg" shape="rounded" tone="accent" />} lines={[{ id: "a", text: "42 Le Loi, District 1" }, { id: "h", text: "Open 9:00 to 20:00, closed on Monday" }]} description="Book in a minute: pick a service, a time, leave your phone number." />
+                <G.PageIntro title="Acme Studio" mark={<G.Avatar name="Acme Studio" size="lg" shape="rounded" tone="accent" />} lines={[{ id: "a", text: "42 Main Street" }, { id: "h", text: "Open 9:00 to 20:00, closed on Monday" }]} description="Book in a minute: pick a service, a time, leave your phone number." />
             </State>
             <State label="RadioGroup appearance=rows (the chosen row on the accent soft pair)" direction="column"><G.RadioGroup label="Service" appearance="rows" options={radioOptions} defaultValue="wash" /></State>
             <State label="A form field that spans both columns (span=full ends the row before it)" direction="column">
@@ -74,27 +74,27 @@ export const PublicPageParts: Story = {
             </State>
             <State label="Step rows: a mark at the start, the meta at the end" direction="column">
                 <G.SurfaceCard kind="accordion" label="Set up" items={[
-                    { id: "s1", title: "Connect Zalo", meta: "Done", leading: { state: "done", position: 1 }, body: "Connected.", isOpen: false },
+                    { id: "s1", title: "Connect a channel", meta: "Done", leading: { state: "done", position: 1 }, body: "Connected.", isOpen: false },
                     { id: "s2", title: "Add the webhook", meta: "In progress", leading: { state: "current", position: 2 }, body: "Paste the address.", isOpen: true },
                     { id: "s3", title: "Send a test", meta: "Needs attention", leading: { state: "problem", position: 3 }, body: "The test failed.", isOpen: false },
                     { id: "s4", title: "Go live", leading: { state: "todo", position: 4 }, body: "Later.", isOpen: false },
                 ]} onItemOpenChange={noop} />
             </State>
             <State label="Alert with a leading mark and the whole banner as the press target" direction="column">
-                <G.Alert tone="informative" leading={<G.Avatar name="Sales AI" size="sm" tone="accent" />} title="3 to approve" description="Quote for Hoa Sen Spa" action={{ label: "Open the approvals", onAction: noop, kind: "row" }} />
+                <G.Alert tone="informative" leading={<G.Avatar name="Sales AI" size="sm" tone="accent" />} title="3 to approve" description="Quote for Globex" action={{ label: "Open the approvals", onAction: noop, kind: "row" }} />
             </State>
-            <State label="Select appearance=pill with a prefix" direction="column"><G.Select label="Position" prefix="Position:" appearance="pill" options={[{ id: "a", label: "Spa technician" }]} defaultValue="a" /></State>
+            <State label="Select appearance=pill with a prefix" direction="column"><G.Select label="Position" prefix="Position:" appearance="pill" options={[{ id: "a", label: "Technician" }]} defaultValue="a" /></State>
         </Matrix>
     ),
 }
 
 const approvalRows: ReadonlyArray<G.ListRowData> = [
-    { id: "q1", title: "Quote for Hoa Sen Spa", description: "12,500,000", badges: [{ label: "Waiting", tone: "warning" }], meta: { text: "5 min" }, onPress: noop },
-    { id: "q2", title: "Order for Anh Quang", description: "26,000,000", badges: [{ label: "Over limit", tone: "danger" }], meta: { text: "1 hour" }, onPress: noop },
+    { id: "q1", title: "Quote for Globex", description: "12,500.00", badges: [{ label: "Waiting", tone: "warning" }], meta: { text: "5 min" }, onPress: noop },
+    { id: "q2", title: "Order for Sam Lee", description: "26,000.00", badges: [{ label: "Over limit", tone: "danger" }], meta: { text: "1 hour" }, onPress: noop },
 ]
 
 const setupItems: ReadonlyArray<G.DisclosureListItem> = [
-    { id: "d1", title: "Connect Zalo", summary: "Done", leading: { state: "done", position: 1 }, body: "Connected." },
+    { id: "d1", title: "Connect a channel", summary: "Done", leading: { state: "done", position: 1 }, body: "Connected." },
     { id: "d2", title: "Add the webhook", summary: "In progress", leading: { state: "current", position: 2 }, defaultExpanded: true, body: "Paste the address." },
     { id: "d3", title: "Send a test", summary: "Needs attention", leading: { state: "problem", position: 3 }, body: "The test failed." },
 ]
@@ -127,7 +127,7 @@ const infoTheme = { "--info-soft": "#dfe7fc", "--info-soft-foreground": "#203571
 
 const infoSample = (
     <>
-        <G.Alert tone="informative" title="Let NIVO answer for you" description="You approve first; nothing is sent without you." />
+        <G.Alert tone="informative" title="Let the assistant answer for you" description="You approve first; nothing is sent without you." />
         <G.Cluster gap="inline"><G.Badge tone="info">Info</G.Badge><G.Badge tone="accent">New</G.Badge><G.Badge isDot tone="info">Syncing</G.Badge></G.Cluster>
     </>
 )
@@ -136,7 +136,7 @@ export const InfoAndAccentTones: Story = {
     render: () => (
         <Matrix maxWidth={560}>
             <State label="A theme without an info soft pair: informative falls back to the accent pair" direction="column">{infoSample}</State>
-            <State label="A theme that defines --info-soft and --info-soft-foreground (Nivo: blue): informative and the info Badge use it; accent stays its own tone" direction="column">
+            <State label="A theme that defines --info-soft and --info-soft-foreground (an app theme: blue): informative and the info Badge use it; accent stays its own tone" direction="column">
                 <div style={{ ...infoTheme, display: "flex", flexDirection: "column", gap: "0.75rem" }}>{infoSample}</div>
             </State>
         </Matrix>
@@ -170,7 +170,7 @@ export const FormGridSpanEveryField: Story = {
 }
 
 const primaryRows: ReadonlyArray<G.ListRowData> = [
-    { id: "p1", title: "Connect Zalo", description: "Needed before the agent can answer", action: { label: "Continue", intent: "commit", isPrimary: true, press: noop } },
+    { id: "p1", title: "Connect a channel", description: "Needed before the agent can answer", action: { label: "Continue", intent: "commit", isPrimary: true, press: noop } },
     { id: "p2", title: "Add a knowledge source", description: "Optional", action: { label: "Add", intent: "commit", press: noop } },
     { id: "p3", title: "Invite a teammate", description: "Optional", action: { label: "Invite", press: noop } },
 ]
@@ -194,7 +194,7 @@ export const AlertActionNarrow: Story = {
     render: () => (
         <Matrix maxWidth={560}>
             <State label="Informative with an action and a dismiss (commit; stacks under the text on a phone)" direction="column">
-                <G.Alert title="Finish setting up" description="Connect Zalo so the agent can answer customers." action={{ label: "Continue setup", onAction: noop }} dismissLabel="Dismiss" />
+                <G.Alert title="Finish setting up" description="Connect a channel so the agent can answer customers." action={{ label: "Continue setup", onAction: noop }} dismissLabel="Dismiss" />
             </State>
         </Matrix>
     ),
@@ -208,7 +208,7 @@ export const AlertActionNarrowOtherTones: Story = {
                 <G.Alert tone="negative" title="Could not send" description="Check the connection and try again." action={{ label: "Try again", onAction: noop }} />
             </State>
             <State label="Loading (the same box)" direction="column">
-                <G.Alert title="Finish setting up" description="Connect Zalo so the agent can answer customers." action={{ label: "Continue setup", onAction: noop }} dismissLabel="Dismiss" isLoading />
+                <G.Alert title="Finish setting up" description="Connect a channel so the agent can answer customers." action={{ label: "Continue setup", onAction: noop }} dismissLabel="Dismiss" isLoading />
             </State>
         </Matrix>
     ),
@@ -216,15 +216,15 @@ export const AlertActionNarrowOtherTones: Story = {
 
 const drawerRows: ReadonlyArray<G.ListRowData> = [
     { id: "d1", title: "Next step", description: "Send the quote", meta: { text: "1 day" } },
-    { id: "d2", title: "Context", description: "Ms Trang, 0903 418 256" },
-    { id: "d3", title: "Channel", description: "Zalo" },
+    { id: "d2", title: "Context", description: "Ms Garcia, 555 0142" },
+    { id: "d3", title: "Channel", description: "Chat" },
 ]
 
 const DrawerPaneContent = () => (
     <>
         <G.PaneSection gap="section">
             <G.Heading level={3}>Customer</G.Heading>
-            <G.Text>Mộc An, a salon with two branches.</G.Text>
+            <G.Text>Acme, a company with two branches.</G.Text>
         </G.PaneSection>
         <G.PaneSection gap="section">
             <G.Section title="Details" kind="list" items={drawerRows} empty={empty} />

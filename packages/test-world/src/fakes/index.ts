@@ -42,9 +42,3 @@ export type {
     ScriptedReply,
     ScriptedToolCall,
 } from "./shared/openai-compatible"
-
-// --- payment fakes (agent B2 uncomments each line when its `index.ts` exists) ---
-export * from "./shared/vnpay"
-export * from "./shared/momo"
-export * from "./shared/payos"
-export * from "./shared/sepay"

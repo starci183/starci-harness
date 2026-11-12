@@ -706,24 +706,24 @@ test('recordingEventBus read side: scripted pending retries, dead letters, reque
 const { fakeInbox }: typeof import('../src/inbox.ts') = require('../dist/inbox.js');
 test('fakeInbox: the first claim of a pair wins, a repeat loses until the claim is released, a seen pair is a redelivery, one-shot failures reject once', async () => {
   const inbox = fakeInbox();
-  assert.equal(await inbox.claim('sepay', 'e-1'), true);
-  assert.equal(await inbox.claim('sepay', 'e-1'), false);
+  assert.equal(await inbox.claim('acme-pay', 'e-1'), true);
+  assert.equal(await inbox.claim('acme-pay', 'e-1'), false);
   assert.equal(await inbox.claim('mail', 'e-1'), true, 'the pair is (source, eventId), not the event id alone');
-  assert.deepEqual(inbox.claims, [{ source: 'sepay', eventId: 'e-1' }, { source: 'sepay', eventId: 'e-1' }, { source: 'mail', eventId: 'e-1' }]);
-  assert.deepEqual(inbox.claimed, [{ source: 'sepay', eventId: 'e-1' }, { source: 'mail', eventId: 'e-1' }]);
-  await inbox.release('sepay', 'e-1');
-  assert.deepEqual(inbox.released, [{ source: 'sepay', eventId: 'e-1' }]);
-  assert.equal(await inbox.claim('sepay', 'e-1'), true, 'a released claim is processed again');
-  inbox.seen('sepay', 'e-2');
-  assert.equal(await inbox.claim('sepay', 'e-2'), false);
+  assert.deepEqual(inbox.claims, [{ source: 'acme-pay', eventId: 'e-1' }, { source: 'acme-pay', eventId: 'e-1' }, { source: 'mail', eventId: 'e-1' }]);
+  assert.deepEqual(inbox.claimed, [{ source: 'acme-pay', eventId: 'e-1' }, { source: 'mail', eventId: 'e-1' }]);
+  await inbox.release('acme-pay', 'e-1');
+  assert.deepEqual(inbox.released, [{ source: 'acme-pay', eventId: 'e-1' }]);
+  assert.equal(await inbox.claim('acme-pay', 'e-1'), true, 'a released claim is processed again');
+  inbox.seen('acme-pay', 'e-2');
+  assert.equal(await inbox.claim('acme-pay', 'e-2'), false);
   inbox.failNext('claim', new Error('db down'));
-  await assert.rejects(() => inbox.claim('sepay', 'e-3'), /db down/);
-  assert.equal(await inbox.claim('sepay', 'e-3'), true, 'the failure is one-shot and the failed call claimed nothing');
+  await assert.rejects(() => inbox.claim('acme-pay', 'e-3'), /db down/);
+  assert.equal(await inbox.claim('acme-pay', 'e-3'), true, 'the failure is one-shot and the failed call claimed nothing');
   inbox.failNext('release', new Error('db down'));
-  await assert.rejects(() => inbox.release('sepay', 'e-3'), /db down/);
+  await assert.rejects(() => inbox.release('acme-pay', 'e-3'), /db down/);
   inbox.clear();
   assert.deepEqual([inbox.claims, inbox.claimed, inbox.released], [[], [], []]);
-  assert.equal(await inbox.claim('sepay', 'e-1'), true);
+  assert.equal(await inbox.claim('acme-pay', 'e-1'), true);
 });
 
 test('recordingQueueOutbox: records every job with its manager, by queue, and fails once when scripted', async () => {

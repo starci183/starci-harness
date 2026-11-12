@@ -434,7 +434,7 @@ function packageExported(ts: TypeScriptApi, workspace: WorkspaceRecord, specifie
   });
 }
 
-/** The root workspace package of the app (`packages/agent-sdk`) a specifier names, its name or a subpath of it; the longest name when several match. */
+/** The root workspace package of the app (`packages/sdk`) a specifier names, its name or a subpath of it; the longest name when several match. */
 export function rootPackageOf(config: Pick<ArchitectureConfig, 'rootPackages'>, specifier: string): RootPackage | null {
   let found: RootPackage | null = null;
   for (const item of config.rootPackages ?? []) if (sameOrUnder(specifier, item.name) && (found === null || item.name.length > found.name.length)) found = item;

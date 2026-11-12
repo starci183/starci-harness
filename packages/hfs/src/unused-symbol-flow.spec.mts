@@ -81,7 +81,7 @@ for (const edition of ['full', 'lite']) {
     assert.deepEqual(findings(t, edition, {
       'fe/src/actions.ts': [
         'export const createMoneyWizardActions = ({ tw }) => ({ save: () => tw("editSaved") });',
-        'export const createMoneyWizardActions2 = ({ tw, save }) => { save(); tw("payosLocal"); };',
+        'export const createMoneyWizardActions2 = ({ tw, save }) => { save(); tw("gatewayLocal"); };',
         'export const useMoneyWizardActions = input => {',
         '  const startTransition = action => action();',
         '  const { save } = createMoneyWizardActions({ ...input, startTransition });',
@@ -94,9 +94,9 @@ for (const edition of ['full', 'lite']) {
         'useMoneyWizardActions({ tw });',
       ].join('\n'),
     }, {
-      connectionWizard: { editSaved: 'Saved', payosLocal: 'Local', unused: 'Unused' },
-      unrelated: { editSaved: 'Wrong namespace', payosLocal: 'Wrong namespace' },
-    }), ['connectionWizard.unused', 'unrelated.editSaved', 'unrelated.payosLocal']);
+      connectionWizard: { editSaved: 'Saved', gatewayLocal: 'Local', unused: 'Unused' },
+      unrelated: { editSaved: 'Wrong namespace', gatewayLocal: 'Wrong namespace' },
+    }), ['connectionWizard.unused', 'unrelated.editSaved', 'unrelated.gatewayLocal']);
   });
 
   test(edition + ' follows renamed destructuring by symbol identity across spread forwarding', t => {
@@ -549,7 +549,7 @@ for (const edition of ['full', 'lite']) {
   test(`${edition} reads keys typed as a union of literals through the standard library's array callbacks`, t => {
     assert.deepEqual(findings(t, edition, {
       'fe/src/nav.ts': [
-        'type Label = "navHome" | "navLeads";',
+        'type Label = "navHome" | "navItems";',
         'interface Destination { readonly key: string; readonly label: Label }',
         'declare const DESTINATIONS: ReadonlyArray<Destination>;',
         'export const useNav = (admin: boolean) => {',
@@ -557,7 +557,7 @@ for (const edition of ['full', 'lite']) {
         '  return DESTINATIONS.filter(row => admin || row.key !== "admin").map(row => t(row.label));',
         '};',
       ].join('\n'),
-    }, { shell: { navHome: 'Home', navLeads: 'Leads', navTeam: 'Team' } }), ['shell.navTeam']);
+    }, { shell: { navHome: 'Home', navItems: 'Items', navTeam: 'Team' } }), ['shell.navTeam']);
   });
 
   test(`${edition} reads the strings of a typed table of constants through the readonly field that holds them`, t => {

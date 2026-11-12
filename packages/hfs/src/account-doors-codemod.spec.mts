@@ -120,12 +120,12 @@ test('7. sync retires the two auth entity files of the old sign-in glue', () => 
   assert.deepEqual(retiredFiles(app({}, { synced: true }), { edition: 'lite' }), []);
 });
 
-test('8. an app that has the six earlier doors, and Nivo\'s three-argument be_auth_set_password, gets only the two new doors', () => {
+test('8. an app that has the six earlier doors, and a reference app\'s three-argument be_auth_set_password, gets only the two new doors', () => {
   const six = DOORS.replace(/\n-- Stamps the confirmation[\s\S]*?\$\$;\n\n-- Sets a new password hash;[\s\S]*?\$\$;\n/u, '')
     .split('\n').filter((line) => !/be_auth_(?:confirm_user|set_password)/u.test(line)).join('\n');
   assert.ok(!six.includes('be_auth_confirm_user') && !six.includes('be_auth_set_password'));
-  const nivoOverload = 'CREATE FUNCTION public.be_auth_set_password(p_user uuid, p_hash text, p_now timestamp with time zone) RETURNS void\n    LANGUAGE sql VOLATILE SECURITY DEFINER SET search_path TO \'\' AS $$ select 1 $$;\n';
-  const root = app({ 'db/migrations/20260102120000_doors.sql': six, 'db/migrations/20260102130000_set-password.sql': nivoOverload }, { synced: true });
+  const appOverload = 'CREATE FUNCTION public.be_auth_set_password(p_user uuid, p_hash text, p_now timestamp with time zone) RETURNS void\n    LANGUAGE sql VOLATILE SECURITY DEFINER SET search_path TO \'\' AS $$ select 1 $$;\n';
+  const root = app({ 'db/migrations/20260102120000_doors.sql': six, 'db/migrations/20260102130000_set-password.sql': appOverload }, { synced: true });
   const [created] = migrateAccountDoors({ root, write: true, now: () => NOW }).changes;
   const text = fs.readFileSync(path.join(root, created!.file), 'utf8');
   assert.deepEqual([...text.matchAll(/CREATE FUNCTION public\.(\w+)\(/gu)].map((match) => match[1]), ['be_auth_confirm_user', 'be_auth_set_password']);

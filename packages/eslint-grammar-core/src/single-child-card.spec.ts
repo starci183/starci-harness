@@ -53,8 +53,8 @@ test("SINGLE-CHILD-CARD: a card around one DataTable or chart is refused; list c
       { filename: BLOCK, code: code("<SurfaceCard label=\"Runs\"><Section kind=\"list\" items={rows} /></SurfaceCard>") },
       { filename: BLOCK, code: code("<SurfaceCard label=\"Runs\" kind=\"table\" columns={c} rows={r} />") },
       { filename: BLOCK, code: code("<SurfaceCard label=\"Runs\" kind=\"list\" items={i} empty={null} />") },
-      { filename: BLOCK, code: code("<SurfaceCard label=\"Chi tiết\" kind=\"list\" layout=\"keyValue\" items={i} empty={null} />") },
-      { filename: BLOCK, code: code("<SurfaceCard label=\"Chi tiết\"><DescriptionList items={i} /></SurfaceCard>") },
+      { filename: BLOCK, code: code("<SurfaceCard label=\"Details\" kind=\"list\" layout=\"keyValue\" items={i} empty={null} />") },
+      { filename: BLOCK, code: code("<SurfaceCard label=\"Details\"><DescriptionList items={i} /></SurfaceCard>") },
     ],
     invalid: [
       { filename: BLOCK, code: code("<SurfaceCard label=\"Runs\"><DataTable columns={c} rows={r} /></SurfaceCard>"), errors: [lone] },

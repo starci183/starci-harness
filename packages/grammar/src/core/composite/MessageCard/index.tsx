@@ -9,7 +9,7 @@ import type { NoChildren } from "../../tier.js"
 
 /**
  * One action of a message card. `primary` (at most one) stands first as the commit Button; `neutral` (default) actions follow;
- * `open` leads somewhere ("Mở ..."): a neutral Button ending in Grammar's arrow, always last. Give `onPress` or `href`.
+ * `open` leads somewhere ("Open ..."): a neutral Button ending in Grammar's arrow, always last. Give `onPress` or `href`.
  */
 export type MessageCardAction = {
     readonly id: string

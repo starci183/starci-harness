@@ -80,8 +80,7 @@ test("Offset Pop lints the front-end subpaths of the root packages with its own 
   const scoped = offsetPopGrammarPackagesConfig({ hfs: view })
   assert.equal(scoped.length, whole.length)
   for (const block of scoped) {
-    assert.deepEqual(block.files, ["packages/*/src/workbench/**/*.{ts,tsx}", "packages/*/src/public/**/*.{ts,tsx}", "packages/*/src/**/*.tsx"])
-    assert.ok((block.ignores ?? []).includes("packages/*/src/workbench/contract/**"))
+    assert.deepEqual(block.files, ["packages/*/src/**/*.tsx"])
   }
   assert.throws(() => offsetPopGrammarPackagesConfig({ hfs: { ...view, grammar: "core" as const } }), /does not match the selected Grammar/)
 })

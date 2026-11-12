@@ -1,6 +1,6 @@
 // hfs-env-parity.spec.mts - R248 HFS_ENV_PARITY and R249 HFS_ENV_VALUE_SHAPE: the keys the typed EnvSource readers
 // consume, the keys sealed under .starcistacks/<env>/secrets/*.enc and the keys the stack declares are one set, and a
-// stored value parses as its reader's type. Fixtures reproduce the nivo D2 shapes (D2-01/06/07/08 parity, D2-03 value
+// stored value parses as its reader's type. Fixtures reproduce the shapes of a reference app (parity, value
 // shape); sealed members are dotenv sops envelopes whose key names stay cleartext.
 // proves: ENV_KEY_ENVIRONMENT_NAMED@lite ENV_KEY_ENVIRONMENT_NAMED@full
 // proves: ENV_REQUIRED_UNSET@lite ENV_REQUIRED_UNSET@full ENV_SEALED_UNREAD@lite ENV_SEALED_UNREAD@full
@@ -68,15 +68,15 @@ const envFindingsOf = (root: string, files: Record<string, string>, edition: str
   tree: false,
 }).findings.filter((finding) => ENV_CODES.has(finding.code));
 
-// The nivo-shaped app: PRIMARY_DB_URL required like D2-02, OPENCLAW_MANAGE_AGENTS a bool like D2-03,
-// OPENCLAW_TURN_TIMEOUT an optional duration (sealed under the wrong name OPENCLAW_TURN_TIMEOUT_MS like D2-06) and
-// ENGINE_SHARED_SECRET a required string (D2-01).
+// The reference-shaped app: PRIMARY_DB_URL required, WORKER_MANAGE_AGENTS a bool,
+// WORKER_TURN_TIMEOUT an optional duration (sealed under the wrong name WORKER_TURN_TIMEOUT_MS) and
+// ENGINE_SHARED_SECRET a required string.
 const APP_CONFIG = `import type { EnvSource } from "@modules/platform/config"
 
 export const parseAppConfig = (env: EnvSource) => ({
     url: env.secret("PRIMARY_DB_URL"),
-    manage: env.bool("OPENCLAW_MANAGE_AGENTS"),
-    timeout: env.duration("OPENCLAW_TURN_TIMEOUT", 300_000),
+    manage: env.bool("WORKER_MANAGE_AGENTS"),
+    timeout: env.duration("WORKER_TURN_TIMEOUT", 300_000),
     shared: env.string("ENGINE_SHARED_SECRET"),
 })
 `;
@@ -102,19 +102,19 @@ const BASE = {
   'be/src/modules/platform/config/app.config.ts': APP_CONFIG,
   'be/src/modules/platform/http-security/http-security.config.ts': WEBHOOK_CONFIG,
 };
-const NIVO_MEMBERS = {
-  '.starcistacks/dev/secrets/engine.enc': sealedDotenv(['ENGINE_SHARED_SECRET', 'OPENCLAW_TURN_TIMEOUT_MS', 'STALE_API_TOKEN', 'LEGACY_SMTP_PASSWORD']),
+const APP_MEMBERS = {
+  '.starcistacks/dev/secrets/engine.enc': sealedDotenv(['ENGINE_SHARED_SECRET', 'WORKER_TURN_TIMEOUT_MS', 'STALE_API_TOKEN', 'LEGACY_SMTP_PASSWORD']),
 };
 
 for (const edition of ['lite', 'full']) {
   test(`every env code rejects its violating fixture through checkRepo (${edition})`, (t) => {
     const files = {
       ...BASE,
-      ...NIVO_MEMBERS,
+      ...APP_MEMBERS,
       '.starcistacks/dev/secrets/duplicate.enc': sealedDotenv(['ENGINE_SHARED_SECRET']),
       '.starcistacks/dev/secrets/web.enc': sealedDotenv(['NEXT_PUBLIC_API_URL']),
       '.starcistacks/dev/secrets/named.enc': sealedDotenv(['DEV_MAIL_TOKEN']),
-      'deploy/app.env.example': 'OPENCLAW_MANAGE_AGENTS=1\nQUEUE_RELAY_INTERVAL=200ms\n',
+      'deploy/app.env.example': 'WORKER_MANAGE_AGENTS=1\nQUEUE_RELAY_INTERVAL=200ms\n',
     };
     const findings = envFindingsOf(tree(t, files), files, edition);
     for (const code of ENV_CODES) {
@@ -126,15 +126,15 @@ for (const edition of ['lite', 'full']) {
   test(`every env code accepts its passing fixture through checkRepo (${edition})`, (t) => {
     const files = {
       ...BASE,
-      '.starcistacks/dev/secrets/app.enc': sealedDotenv(['ENGINE_SHARED_SECRET', 'PRIMARY_DB_URL', 'OPENCLAW_MANAGE_AGENTS', 'CALENDAR_WEBHOOK_SECRET']),
+      '.starcistacks/dev/secrets/app.enc': sealedDotenv(['ENGINE_SHARED_SECRET', 'PRIMARY_DB_URL', 'WORKER_MANAGE_AGENTS', 'CALENDAR_WEBHOOK_SECRET']),
       '.starcistacks/dev/infra/compose/api.yaml': 'services:\n  api:\n    environment:\n      - API_PORT=3000\n      - CALENDAR_WEBHOOK_SECRET_FILE=/run/secrets/calendar\n',
-      'deploy/app.env.example': 'API_PORT=3000\nOPENCLAW_MANAGE_AGENTS=false\nOPENCLAW_TURN_TIMEOUT=30s\nPRIMARY_DB_URL=<database-location>\n',
+      'deploy/app.env.example': 'API_PORT=3000\nWORKER_MANAGE_AGENTS=false\nWORKER_TURN_TIMEOUT=30s\nPRIMARY_DB_URL=<database-location>\n',
     };
     assert.deepEqual(envFindingsOf(tree(t, files), files, edition), []);
   });
 
   test(`required keys sealed in dev and production are valid (${edition})`, (t) => {
-    const member = sealedDotenv(['ENGINE_SHARED_SECRET', 'PRIMARY_DB_URL', 'OPENCLAW_MANAGE_AGENTS', 'CALENDAR_WEBHOOK_SECRET']);
+    const member = sealedDotenv(['ENGINE_SHARED_SECRET', 'PRIMARY_DB_URL', 'WORKER_MANAGE_AGENTS', 'CALENDAR_WEBHOOK_SECRET']);
     const files = {
       ...BASE,
       '.starcistacks/dev/secrets/app.enc': member,
@@ -145,7 +145,7 @@ for (const edition of ['lite', 'full']) {
   });
 
   test(`each environment rejects a key sealed in two of its members (${edition})`, (t) => {
-    const member = sealedDotenv(['ENGINE_SHARED_SECRET', 'PRIMARY_DB_URL', 'OPENCLAW_MANAGE_AGENTS', 'CALENDAR_WEBHOOK_SECRET']);
+    const member = sealedDotenv(['ENGINE_SHARED_SECRET', 'PRIMARY_DB_URL', 'WORKER_MANAGE_AGENTS', 'CALENDAR_WEBHOOK_SECRET']);
     const files = {
       ...BASE,
       '.starcistacks/dev/secrets/app.enc': member,
@@ -164,16 +164,16 @@ for (const edition of ['lite', 'full']) {
 }
 
 test('env parity flags required reads neither sealed nor declared and sealed keys nobody reads (lite)', (t) => {
-  const files = { ...BASE, ...NIVO_MEMBERS };
+  const files = { ...BASE, ...APP_MEMBERS };
   const root = tree(t, files);
   const findings = parityOf(root, files);
   assert.deepEqual(
     codes(findings, ENV_REQUIRED_UNSET).map((f) => f.message.match(/required (\w+)/)![1]!).sort(byCodeUnit),
-    ['API_PORT', 'CALENDAR_WEBHOOK_SECRET', 'OPENCLAW_MANAGE_AGENTS', 'PRIMARY_DB_URL'],
+    ['API_PORT', 'CALENDAR_WEBHOOK_SECRET', 'PRIMARY_DB_URL', 'WORKER_MANAGE_AGENTS'],
   );
   assert.deepEqual(
     codes(findings, ENV_SEALED_UNREAD).map((f) => f.message.match(/seals (\w+)/)![1]!).sort(byCodeUnit),
-    ['LEGACY_SMTP_PASSWORD', 'OPENCLAW_TURN_TIMEOUT_MS', 'STALE_API_TOKEN'],
+    ['LEGACY_SMTP_PASSWORD', 'STALE_API_TOKEN', 'WORKER_TURN_TIMEOUT_MS'],
   );
   assert.deepEqual(codes(findings, ENV_DUPLICATE), []);
   assert.deepEqual(codes(findings, ENV_PUBLIC_SEALED), []);
@@ -183,7 +183,7 @@ test('env parity flags required reads neither sealed nor declared and sealed key
 test('env parity is clean in lite when every required read is sealed or declared (lite)', (t) => {
   const files = {
     ...BASE,
-    '.starcistacks/dev/secrets/app.enc': sealedDotenv(['ENGINE_SHARED_SECRET', 'PRIMARY_DB_URL', 'OPENCLAW_MANAGE_AGENTS', 'CALENDAR_WEBHOOK_SECRET']),
+    '.starcistacks/dev/secrets/app.enc': sealedDotenv(['ENGINE_SHARED_SECRET', 'PRIMARY_DB_URL', 'WORKER_MANAGE_AGENTS', 'CALENDAR_WEBHOOK_SECRET']),
     '.starcistacks/application-stacks.yaml': 'schema: starci/application-stacks@1\nenvironments:\n  dev:\n    services:\n      api:\n        environment:\n          API_PORT: "3000"\n',
   };
   const root = tree(t, files);
@@ -193,7 +193,7 @@ test('env parity is clean in lite when every required read is sealed or declared
 });
 
 test('env parity reports the same violations through checkRepo under both editions', (t) => {
-  const files = { ...BASE, ...NIVO_MEMBERS };
+  const files = { ...BASE, ...APP_MEMBERS };
   for (const edition of ['lite', 'full']) {
     const root = tree(t, files);
     const findings = checkRepo({ repoRoot: root, declaration: declaration(edition), manifest, files: Object.keys(files), tree: false }).findings;
@@ -205,7 +205,7 @@ test('env parity reports the same violations through checkRepo under both editio
 test('env parity is clean in full when the roster and the stack declare the required reads', (t) => {
   const files = {
     ...BASE,
-    '.starcistacks/dev/secrets/app.enc': sealedDotenv(['ENGINE_SHARED_SECRET', 'PRIMARY_DB_URL', 'OPENCLAW_MANAGE_AGENTS', 'CALENDAR_WEBHOOK_SECRET']),
+    '.starcistacks/dev/secrets/app.enc': sealedDotenv(['ENGINE_SHARED_SECRET', 'PRIMARY_DB_URL', 'WORKER_MANAGE_AGENTS', 'CALENDAR_WEBHOOK_SECRET']),
     '.starcistacks/dev/infra/compose/api.yaml': 'services:\n  api:\n    environment:\n      API_PORT: "3000"\n',
     '.starcistacks/dev/runtime/env/KEYS.md': '# Keys\n\n| Key | Meaning |\n| --- | --- |\n| `API_PORT` | port |\n| `PRIMARY_DB_URL` | database (secret) |\n',
   };
@@ -217,7 +217,7 @@ test('a key sealed in two members is ENV_DUPLICATE', (t) => {
   const files = {
     ...BASE,
     '.starcistacks/dev/secrets/engine.enc': sealedDotenv(['ENGINE_SHARED_SECRET']),
-    '.starcistacks/dev/secrets/app.enc': sealedDotenv(['ENGINE_SHARED_SECRET', 'PRIMARY_DB_URL', 'OPENCLAW_MANAGE_AGENTS', 'CALENDAR_WEBHOOK_SECRET']),
+    '.starcistacks/dev/secrets/app.enc': sealedDotenv(['ENGINE_SHARED_SECRET', 'PRIMARY_DB_URL', 'WORKER_MANAGE_AGENTS', 'CALENDAR_WEBHOOK_SECRET']),
     '.starcistacks/dev/runtime/env/KEYS.md': '| `API_PORT` | port |\n',
   };
   const root = tree(t, files);
@@ -231,7 +231,7 @@ test('a NEXT_PUBLIC_ key in custody is ENV_PUBLIC_SEALED', (t) => {
   const files = {
     ...BASE,
     '.starcistacks/dev/secrets/web.enc': sealedDotenv(['NEXT_PUBLIC_API_URL']),
-    '.starcistacks/dev/secrets/app.enc': sealedDotenv(['ENGINE_SHARED_SECRET', 'PRIMARY_DB_URL', 'OPENCLAW_MANAGE_AGENTS', 'CALENDAR_WEBHOOK_SECRET']),
+    '.starcistacks/dev/secrets/app.enc': sealedDotenv(['ENGINE_SHARED_SECRET', 'PRIMARY_DB_URL', 'WORKER_MANAGE_AGENTS', 'CALENDAR_WEBHOOK_SECRET']),
     '.starcistacks/dev/runtime/env/KEYS.md': '| `API_PORT` | port |\n',
   };
   const root = tree(t, files);
@@ -250,20 +250,20 @@ test('an env example key nothing reads is ENV_EXAMPLE_DRIFT', (t) => {
   assert.deepEqual(drift.map((f) => f.message.match(/names (\w+)/)![1]!).sort(byCodeUnit), ['QUEUE_RELAY_BATCH', 'QUEUE_RELAY_INTERVAL']);
 });
 
-test('an env example value that cannot parse is ENV_VALUE_SHAPE (the nivo D2-03 bool shape)', (t) => {
+test('an env example value that cannot parse is ENV_VALUE_SHAPE (a bool given as 1)', (t) => {
   const files = {
     ...BASE,
-    'deploy/app.env.example': 'API_PORT=3000\nOPENCLAW_MANAGE_AGENTS=1\nPRIMARY_DB_URL=<postgres-url>\n',
+    'deploy/app.env.example': 'API_PORT=3000\nWORKER_MANAGE_AGENTS=1\nPRIMARY_DB_URL=<postgres-url>\n',
   };
   const root = tree(t, files);
   const findings = shapeOf(root, files);
-  assert.deepEqual(codes(findings, ENV_VALUE_SHAPE).map((f) => f.message.match(/gives (\w+)/)![1]), ['OPENCLAW_MANAGE_AGENTS']);
+  assert.deepEqual(codes(findings, ENV_VALUE_SHAPE).map((f) => f.message.match(/gives (\w+)/)![1]), ['WORKER_MANAGE_AGENTS']);
 });
 
 test('an env example of concrete parseable values raises no ENV_VALUE_SHAPE', (t) => {
   const files = {
     ...BASE,
-    'deploy/app.env.example': 'API_PORT=3000\nOPENCLAW_MANAGE_AGENTS=true\nPRIMARY_DB_URL=postgres://app:example@db:5432/app\nOPENCLAW_TURN_TIMEOUT=30s\n',
+    'deploy/app.env.example': 'API_PORT=3000\nWORKER_MANAGE_AGENTS=true\nPRIMARY_DB_URL=postgres://app:example@db:5432/app\nWORKER_TURN_TIMEOUT=30s\n',
   };
   const root = tree(t, files);
   assert.deepEqual(codes(shapeOf(root, files), ENV_VALUE_SHAPE), []);
@@ -275,8 +275,8 @@ test('the static walk resolves template keys through the reader call sites', (t)
   const reads = collectEnvReads(root, Object.keys(files));
   assert.equal(reads!.get('CALENDAR_WEBHOOK_SECRET')?.required, true);
   assert.equal(reads!.get('CALENDAR_WEBHOOK_TOLERANCE')?.required, false);
-  assert.equal(reads!.get('OPENCLAW_TURN_TIMEOUT')?.required, false);
-  assert.equal(reads!.get('OPENCLAW_MANAGE_AGENTS')?.shape?.kind, 'bool');
+  assert.equal(reads!.get('WORKER_TURN_TIMEOUT')?.required, false);
+  assert.equal(reads!.get('WORKER_MANAGE_AGENTS')?.shape?.kind, 'bool');
   const files2 = { ...BASE, '.starcistacks/dev/secrets/hook.enc': sealedDotenv(['CALENDAR_WEBHOOK_SECRET']) };
   const root2 = tree(t, files2);
   assert.ok(codes(parityOf(root2, files2), ENV_REQUIRED_UNSET).every((f) => !/CALENDAR_WEBHOOK_SECRET/.test(f.message)));
@@ -290,28 +290,28 @@ function fakeSops(plain: Record<string, Record<string, string | undefined>> = {}
 }
 
 test('starci app secret verify names key and violated shape and never prints a value', async (t) => {
-  const { root, env } = app(t, { 'app.enc': sealedDotenv(['OPENCLAW_MANAGE_AGENTS', 'API_PORT', 'PRIMARY_DB_URL']) });
+  const { root, env } = app(t, { 'app.enc': sealedDotenv(['WORKER_MANAGE_AGENTS', 'API_PORT', 'PRIMARY_DB_URL']) });
   for (const [file, text] of Object.entries(BASE)) {
     const target = path.join(root, ...file.split('/'));
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.writeFileSync(target, text);
   }
-  const sops = fakeSops({ 'app.enc': { OPENCLAW_MANAGE_AGENTS: 'private-bad-bool-1', API_PORT: 'private-bad-port-x', PRIMARY_DB_URL: 'private-db-location' } });
+  const sops = fakeSops({ 'app.enc': { WORKER_MANAGE_AGENTS: 'private-bad-bool-1', API_PORT: 'private-bad-port-x', PRIMARY_DB_URL: 'private-db-location' } });
   const result = await run(['verify', '--env', 'dev'], { cwd: root, env, sops });
   assert.equal(result.code, 2);
-  assert.match(result.out, /ENV_VALUE_SHAPE dev\/app\.enc: OPENCLAW_MANAGE_AGENTS is not true or false/);
+  assert.match(result.out, /ENV_VALUE_SHAPE dev\/app\.enc: WORKER_MANAGE_AGENTS is not true or false/);
   assert.match(result.out, /ENV_VALUE_SHAPE dev\/app\.enc: API_PORT is not an integer/);
   privateAbsent(result, ['private-bad-bool-1', 'private-bad-port-x', 'private-db-location']);
 });
 
 test('starci app secret verify exits clean when every sealed value parses', async (t) => {
-  const { root, env } = app(t, { 'app.enc': sealedDotenv(['OPENCLAW_MANAGE_AGENTS', 'API_PORT', 'PRIMARY_DB_URL']) });
+  const { root, env } = app(t, { 'app.enc': sealedDotenv(['WORKER_MANAGE_AGENTS', 'API_PORT', 'PRIMARY_DB_URL']) });
   for (const [file, text] of Object.entries(BASE)) {
     const target = path.join(root, ...file.split('/'));
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.writeFileSync(target, text);
   }
-  const sops = fakeSops({ 'app.enc': { OPENCLAW_MANAGE_AGENTS: 'true', API_PORT: '3000', PRIMARY_DB_URL: 'private-db-location' } });
+  const sops = fakeSops({ 'app.enc': { WORKER_MANAGE_AGENTS: 'true', API_PORT: '3000', PRIMARY_DB_URL: 'private-db-location' } });
   const result = await run(['verify', '--env', 'dev'], { cwd: root, env, sops });
   assert.equal(result.code, 0);
   assert.match(result.out, /verified dev: 3 keys sealed/);
@@ -434,7 +434,7 @@ test('a seeds-<name> member that seed data references is read: an environment le
   const member = (keys: string[]) => `${keys.map((key) => `${key}: ENC[AES256_GCM,data:eA==,iv:aXY=,tag:dGc=,type:str]`).join('\n')}\nsops:\n  age:\n    - recipient: age1fake\n`;
   const files = {
     ...BASE,
-    '.starcistacks/dev/secrets/app.enc': sealedDotenv(['ENGINE_SHARED_SECRET', 'PRIMARY_DB_URL', 'OPENCLAW_MANAGE_AGENTS', 'CALENDAR_WEBHOOK_SECRET']),
+    '.starcistacks/dev/secrets/app.enc': sealedDotenv(['ENGINE_SHARED_SECRET', 'PRIMARY_DB_URL', 'WORKER_MANAGE_AGENTS', 'CALENDAR_WEBHOOK_SECRET']),
     '.starcistacks/application-stacks.yaml': 'schema: starci/application-stacks@1\nenvironments:\n  dev:\n    services:\n      api:\n        environment:\n          API_PORT: "3000"\n',
     '.starcistacks/production/seeds/data/owner.json': JSON.stringify({ password: { secret: 'seeds-test-owner' } }),
     '.starcistacks/seeds/data/catalogue.yaml': 'token:\n  secret: seeds-catalogue\n',

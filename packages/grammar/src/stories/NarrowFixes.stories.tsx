@@ -10,15 +10,15 @@ const meta: Meta = { title: 'Narrow fixes (0.37.21)', parameters: { grammar: { b
 export default meta;
 type Story = StoryObj;
 
-const ROWS = Array.from({ length: 3 }, (_, i) => ({ id: `r${i}`, title: `Nền tảng ${i + 1}`, description: '0/3 concept đã chứng minh', href: `#r${i}` }));
+const ROWS = Array.from({ length: 3 }, (_, i) => ({ id: `r${i}`, title: `Platform ${i + 1}`, description: '0/3 items proven', href: `#r${i}` }));
 
 export const LabelWithCountAt390: Story = {
   name: 'Label with count or fact at 390',
   render: () => (
     <div data-host style={{ inlineSize: 390, display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <G.SurfaceCard kind="list" label="Milestone" count={11} items={ROWS} empty={<G.EmptyNotice message="Trống" />} />
-      <G.SurfaceCard kind="list" label="Dự án của bạn" fact="2 đang chạy" items={ROWS} empty={<G.EmptyNotice message="Trống" />} />
-      <G.SurfaceCard kind="list" label="Một tên nhóm rất dài để thử cắt bớt chữ ở chiều rộng hẹp" count={3} items={ROWS} empty={<G.EmptyNotice message="Trống" />} />
+      <G.SurfaceCard kind="list" label="Milestone" count={11} items={ROWS} empty={<G.EmptyNotice message="Empty" />} />
+      <G.SurfaceCard kind="list" label="Your projects" fact="2 running" items={ROWS} empty={<G.EmptyNotice message="Empty" />} />
+      <G.SurfaceCard kind="list" label="A very long group name to test truncating text at a narrow width" count={3} items={ROWS} empty={<G.EmptyNotice message="Empty" />} />
     </div>
   ),
   play: async ({ canvasElement }) => {
@@ -44,8 +44,8 @@ export const ProgressAsRowControl: Story = {
       <G.SurfaceCard
         kind="list"
         label="Milestone"
-        items={ROWS.map((row, i) => ({ ...row, control: <G.Progress label={`Tiến độ ${row.title}`} value={(i + 1) * 30} /> }))}
-        empty={<G.EmptyNotice message="Trống" />}
+        items={ROWS.map((row, i) => ({ ...row, control: <G.Progress label={`Progress ${row.title}`} value={(i + 1) * 30} /> }))}
+        empty={<G.EmptyNotice message="Empty" />}
       />
     </div>
   ),
@@ -58,16 +58,16 @@ export const ProgressAsRowControl: Story = {
   },
 };
 
-const MANY = Array.from({ length: 11 }, (_, i) => ({ id: `m${i}`, title: `Milestone ${i + 1}`, description: '0/3 concept đã chứng minh', href: `#m${i}` }));
-const ASIDE_ROWS = Array.from({ length: 4 }, (_, i) => ({ id: `a${i}`, title: `Mục ${i + 1}`, description: 'Mô tả của mục nằm ở dòng thứ hai' }));
+const MANY = Array.from({ length: 11 }, (_, i) => ({ id: `m${i}`, title: `Milestone ${i + 1}`, description: '0/3 items proven', href: `#m${i}` }));
+const ASIDE_ROWS = Array.from({ length: 4 }, (_, i) => ({ id: `a${i}`, title: `Item ${i + 1}`, description: 'The item description sits on the second line' }));
 const StackedPage = () => (
-  <G.Page chrome="panes" layout="workspace" header={{ title: 'Shop bán sách' }}>
-    <G.PaneGrid label="Chi tiết" areas={{ base: ['aside', 'main'], wide: ['main aside'] }} columns={{ base: ['fill'], wide: ['fill', 'standard'] }}>
-      <G.Pane area="aside" surface label="Thông tin">
-        <G.PaneSection><G.Section kind="list" title="Kho mã" items={ASIDE_ROWS} empty={<G.EmptyNotice message="Trống" />} /></G.PaneSection>
+  <G.Page chrome="panes" layout="workspace" header={{ title: 'Book shop' }}>
+    <G.PaneGrid label="Details" areas={{ base: ['aside', 'main'], wide: ['main aside'] }} columns={{ base: ['fill'], wide: ['fill', 'standard'] }}>
+      <G.Pane area="aside" surface label="Info">
+        <G.PaneSection><G.Section kind="list" title="Codes" items={ASIDE_ROWS} empty={<G.EmptyNotice message="Empty" />} /></G.PaneSection>
       </G.Pane>
-      <G.Pane area="main" scroll label="Nội dung">
-        <G.PaneSection gap="section"><G.SurfaceCard kind="list" label="Milestone" count={11} items={MANY} empty={<G.EmptyNotice message="Trống" />} /></G.PaneSection>
+      <G.Pane area="main" scroll label="Content">
+        <G.PaneSection gap="section"><G.SurfaceCard kind="list" label="Milestone" count={11} items={MANY} empty={<G.EmptyNotice message="Empty" />} /></G.PaneSection>
       </G.Pane>
     </G.PaneGrid>
   </G.Page>

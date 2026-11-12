@@ -14,7 +14,7 @@ logging.md; its display text messages.md.
 enum `<Capability>ErrorCode`, one exhaustive `<CAPABILITY>_ERROR_KINDS: Record<Code, ErrorKind>` and one empty class
 `<Capability>Error extends DomainError<<Capability>ErrorCode>`. The index exports the table, which the app composes into
 `ErrorsModule.register({ kinds })`. No per-case class, no `exceptions/` folder, no status on an error. A root workspace package
-([PROJECT-3](../../project/README.md#project-3-a-products-agent-modules-are-workspace-packages)) cannot import `platform/errors`, so it
+([PROJECT-3](../../project/README.md#project-3-an-apps-shared-code-lives-in-root-workspace-packages)) cannot import `platform/errors`, so it
 imports `DomainError` from `@starci/common` and every error it throws derives from it, as does the error of every `@starci` package
 (`AuthError`, `MailError`, `TestWorldError`): the lint recognises a coded error by where the class is declared, never by its name. An app rendered
 with its own `DomainError` moves onto the package with `starci app codemod common-base`.

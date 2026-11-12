@@ -45,7 +45,7 @@ export const AppShellDemo = ({ initialCollapsed, initialDrawerOpen = false, init
 
   const workspaceItems: ReadonlyArray<G.DropdownMenuItem> = [
     { id: 'studio', label: 'Studio', mark: <G.Avatar name="Studio" isDecorative shape="square" size="sm" /> },
-    { id: 'academy', label: 'Academy', mark: <G.Avatar name="Academy" isDecorative shape="square" size="sm" /> },
+    { id: 'docs', label: 'Docs', mark: <G.Avatar name="Docs" isDecorative shape="square" size="sm" /> },
   ];
   const workspaceSection: G.DropdownMenuSection = { kind: 'section', id: 'workspaces', label: 'Workspaces', selection: { mode: 'single', selectedIds: [workspace], onChange: (ids) => { const id = ids[0]; if (id !== undefined) setWorkspace(id); } }, items: workspaceItems };
   const languageControl = <G.DropdownMenu trigger={<G.IconButton source={LanguageGlyph} label="Language" intent="dismiss" />} entries={[{ kind: 'section', id: 'language', selection: { mode: 'single', selectedIds: [language], onChange: (ids) => { const id = ids[0]; if (id !== undefined) setLanguage(id); } }, items: [{ id: 'vi', label: new Intl.DisplayNames(['vi'], { type: 'language' }).of('vi') ?? 'Vietnamese' }, { id: 'en', label: new Intl.DisplayNames(['en'], { type: 'language' }).of('en') ?? 'English' }] }]} />;
@@ -61,7 +61,7 @@ export const AppShellDemo = ({ initialCollapsed, initialDrawerOpen = false, init
     <G.WorkspaceShell
       viewport="fixed"
       header={<div className="app-shell-story-navbar">
-        <div className="app-shell-story-identity"><G.DropdownMenu trigger={<G.IdentityLockup title={workspace === 'studio' ? 'Studio' : 'Academy'} subtitle="Owner" size="control" />} entries={[workspaceSection]} /></div>
+        <div className="app-shell-story-identity"><G.DropdownMenu trigger={<G.IdentityLockup title={workspace === 'studio' ? 'Studio' : 'Docs'} subtitle="Owner" size="control" />} entries={[workspaceSection]} /></div>
         <div className="app-shell-story-search">
           <div className="app-shell-story-desktop-search"><G.Button intent="dismiss" endContent={<G.Kbd keys={['Ctrl', 'K']} />} onPress={() => setSearchOpen(true)}>Search</G.Button></div>
           <div className="app-shell-story-mobile-search"><G.IconButton label="Search (Ctrl K)" source={SearchGlyph} onPress={() => setSearchOpen(true)} /></div>

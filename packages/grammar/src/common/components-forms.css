@@ -545,7 +545,7 @@
 
     /*
      * The alternative button (HeroUI "secondary"): the vendor fills it with --default but writes its words in --accent-soft-foreground, which in
-     * a brand-coloured app (Nivo: rose) reads as pink words on grey. A fill and its words are one pair: --default with --default-foreground.
+     * a brand-coloured app (e.g. a rose accent) reads as pink words on grey. A fill and its words are one pair: --default with --default-foreground.
      */
     .starci-core-button.button--secondary { --button-fg: var(--default-foreground); }
 

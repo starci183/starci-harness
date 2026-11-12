@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.9.1 - 2026-11-13
+
+- Changed: the README's inbox example names a neutral provider. No code changes.
+
 ## 2.9.0 - 2026-11-08
 
 - Added: `@starci/common` joins the ESM-only dependencies compiled to CommonJS, so a spec that throws or catches a `DomainError` loads the shared error base. Spec: `test/preset.spec.ts`.

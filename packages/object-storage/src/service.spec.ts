@@ -15,7 +15,7 @@ describe("keys and buckets", () => {
     })
 
     it("admits S3 bucket names and refuses the rest", () => {
-        for (const bucket of ["media", "nivo-dev-media", "a1b", "my.bucket"]) assert.equal(isValidBucketName(bucket), true, bucket)
+        for (const bucket of ["media", "demo-dev-media", "a1b", "my.bucket"]) assert.equal(isValidBucketName(bucket), true, bucket)
         for (const bucket of ["ab", "Media", "-media", "media-", "my..bucket", "under_score", "x".repeat(64)]) assert.equal(isValidBucketName(bucket), false, bucket)
     })
 

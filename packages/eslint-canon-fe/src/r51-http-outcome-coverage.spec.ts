@@ -10,7 +10,7 @@ import { at, fixtureHfs, LITE_FE_DECLARATION, typedTester, canonTester } from ".
 
 const CLIENT = at("apps/web/src/modules/api/graphql/clients/links/http.ts")
 const OUTCOME = at("apps/web/src/modules/api/graphql/types.ts")
-const HOOK = at("apps/web/src/hooks/course/useCourse.ts")
+const HOOK = at("apps/web/src/hooks/project/useProject.ts")
 const RESULT = 'export type Result<T> = { success: true; data: T } | { success: false; error: string }'
 
 for (const edition of ["lite", "full"] as const) {

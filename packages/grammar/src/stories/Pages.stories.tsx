@@ -80,7 +80,7 @@ const SettingsFormPage = () => {
                   <G.Select name="language" label="Language" options={[{ id: 'en', label: 'English' }, { id: 'vi', label: 'Ti\u1ebfng Vi\u1ec7t' }, { id: 'fr', label: 'Français' }]} defaultValue="en" />
                   <G.RadioGroup name="theme" label="Appearance" orientation="horizontal" options={[{ value: 'system', label: 'System' }, { value: 'light', label: 'Light' }, { value: 'dark', label: 'Dark' }]} defaultValue="system" />
                   <G.RadioGroup name="digest" label="Email digest" orientation="horizontal" options={[{ value: 'daily', label: 'Daily' }, { value: 'weekly', label: 'Weekly' }, { value: 'never', label: 'Never' }]} defaultValue="weekly" />
-                  <G.Switch description="Mô tả ngắn." name="reminders" label="Study reminders" defaultSelected />
+                  <G.Switch description="Short description." name="reminders" label="Study reminders" defaultSelected />
                   <G.TimeField name="reminderTime" label="Reminder time" isDisabled />
                 </div>
               </G.SurfaceCard>
@@ -91,7 +91,7 @@ const SettingsFormPage = () => {
             </G.Form>
             <G.SurfaceCard label="Danger zone" headingLevel={2} state="negative">
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
-                <G.Text tone="muted">Delete the account and every lesson record.</G.Text>
+                <G.Text tone="muted">Delete the account and every document record.</G.Text>
                 <G.AlertDialog
                   tone="negative"
                   title="Delete your account?"

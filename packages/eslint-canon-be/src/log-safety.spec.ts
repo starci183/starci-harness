@@ -25,7 +25,7 @@ test("no-secret-in-log: the Logger port takes no Secret or Pii value and no cred
             { filename: SRC, code: withPrelude("logger.info(OrderLogEvent.CheckoutRetried, { orderId, attempt: 2 })") },
             { filename: SRC, code: withPrelude("logger.error(OrderLogEvent.CheckoutFailed, cause, { orderId })") },
             // a name that measures a credential is not the credential
-            { filename: SRC, code: withPrelude("logger.info(OrderLogEvent.CheckoutRetried, { tokenCount: 3, tokenType: 'bearer', secretName: 'payos' })") },
+            { filename: SRC, code: withPrelude("logger.info(OrderLogEvent.CheckoutRetried, { tokenCount: 3, tokenType: 'bearer', secretName: 'beta-pay' })") },
             // a number or a flag is never the credential its name mentions: model token counts are metering
             { filename: SRC, code: withPrelude("declare const usage: { promptTokens: number; cachedTokens: number | null }\nlogger.info(OrderLogEvent.CheckoutRetried, { prompt: usage.promptTokens, cached: usage.cachedTokens ?? null })") },
             // masked forms and the length of a secret are shown, never the value

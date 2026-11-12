@@ -20,7 +20,7 @@ resolver, controller, module or app file, or of any other file, is a finding. In
 specs are `src/tests/integration/<area>/*.integration-spec.ts` on real infrastructure through `useTestWorld`; contract
 specs `src/tests/contract/<provider>/*.contract-spec.ts`; full adds `src/tests/e2e/<area>/*.e2e-spec.ts`. Test
 infrastructure lives only in `src/tests/world/`, shared data in `src/tests/fixtures/`. Integration and contract run
-through `npm run test:integration` (after `typecheck:tests`), never in a hook or the default typecheck.
+through `npm run test:integration` (after `typecheck:tests`) on a local machine, never in a hook, the default typecheck or a CI workflow (R12).
 
 In lite the world is also the one place of raw SQL text (R334): plain CRUD on an application table goes through its entity on
 `world.db.<connection>`, a database function of the app through `callDbFunction`, and seeded rows come from builders
@@ -141,8 +141,8 @@ Enforced by: `tests-no-override`, `e2e-uses-production-transport`, `e2e-asserts-
 The unit project measures every logic-role file of the measured roots (`src/modules/{domain,integrations,platform}/*`,
 minus `errors/`, `messages/`, `persistence/`), and every file a measured slot declares in `logic`, at 100 lines, branches,
 functions and statements per file. A file that carries logic without a role suffix is declared by its slot, never by a new
-role name. The logic of a root package (every file below the `src/` of `packages/<name>` but its workbench, its public face, its client,
-its barrels and its type modules `<name>.types.ts` and `<name>-types.ts`, [project/README.md](../../project/README.md) PROJECT-3) is
+role name. The logic of a root package (every file below the `src/` of `packages/<name>` but its barrels, its type modules `<name>.types.ts` and `<name>-types.ts` and the slots the
+project opts out with a reason, [project/lint.md](../../project/lint.md) PROJECT-LINT-3, [project/README.md](../../project/README.md) PROJECT-3) is
 inside the scope at the same bar, its specs run by the same unit run; a type module declares types only, and one that holds runtime
 code is refused by R273.
 The scope is rendered once into the managed `jest.config.js`, `sonar-project.properties` and `codecov.yml`; no file carries a coverage

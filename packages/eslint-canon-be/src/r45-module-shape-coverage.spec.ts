@@ -19,7 +19,7 @@ import {
 
 const MODULE = at('src/modules/domain/plan/plan.module.ts');
 const APP = at('apps/api/src/app.module.ts');
-const LEDGER = at('src/modules/domain/ledger/ledger.module.ts');
+const JOURNAL = at('src/modules/domain/journal/journal.module.ts');
 
 for (const edition of ['lite', 'full']) {
   test(`${edition} accepts valid modules and rejects module-shape violations`, () => {
@@ -73,14 +73,14 @@ for (const edition of ['lite', 'full']) {
 
     tester.run('module-definition-required', moduleDefinitionRequired, {
       valid: [{
-        filename: LEDGER,
+        filename: JOURNAL,
         settings,
-        code: 'import { ConfigurableModuleClass } from "./ledger.module-definition"; @Module({}) export class LedgerModule extends ConfigurableModuleClass {}',
+        code: 'import { ConfigurableModuleClass } from "./journal.module-definition"; @Module({}) export class JournalModule extends ConfigurableModuleClass {}',
       }],
       invalid: [{
-        filename: LEDGER,
+        filename: JOURNAL,
         settings,
-        code: '@Module({}) export class LedgerModule {}',
+        code: '@Module({}) export class JournalModule {}',
         errors: [{ messageId: 'extendsBase' }],
       }],
     });

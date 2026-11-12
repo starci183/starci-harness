@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.39.0 - 2026-11-13
+
+- Changed (PROJECT-LINT-3): `coreGrammarPackagesConfig` knows no folder of a root package. It judges every `.tsx` file of a package and the slots the project declares `lint: "fe"` (`ext/manifest.json` `packages`, the package view's `packageLint`); the fixed `src/workbench/**` and `src/public/**` subpaths and the `src/workbench/contract/**` exception are gone. Upgrade, per existing app: a package whose plain `.ts` files were judged there declares the folder as a `lint: "fe"` slot. Spec `src/packages-config.spec.ts`.
+- Changed: `no-raw-scroll` says "Grammar never shows scrollbars" in its description, message, doc and law title; spec fixtures and docs use neutral English copy. No rule id or behaviour changes.
+- Changed: cut with `@starci/hfs` 6.10.0; requires `@starci/hfs` `~6.10.0` and `@starci/eslint-canon-fe` `~9.18.0`.
+
 ## 0.38.2 - 2026-11-13
 
 - Changed: version stamp only, cut with `@starci/hfs` 6.9.0 (the project extension folder, PROJECT-LINT-3): requires `@starci/hfs` `~6.9.0`; no rule changes.

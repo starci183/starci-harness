@@ -29,7 +29,7 @@ test("TAB-COUNT-CHIP: a tab label never ends in a middle dot and a number", () =
     ],
     invalid: [
       { filename: BLOCK, code: code("[{ id: \"all\", label: \"All · 5\" }]"), errors: [{ messageId: "label" }] },
-      { filename: BLOCK, code: code("[{ id: \"all\", label: \"Tất cả · 12\" }]"), errors: [{ messageId: "label" }] },
+      { filename: BLOCK, code: code("[{ id: \"all\", label: \"All · 12\" }]"), errors: [{ messageId: "label" }] },
       { filename: BLOCK, code: "import { Tabs } from \"@starci/grammar/core\"\nconst n = 3\nexport const A = () => <Tabs label=\"Views\" items={[{ id: \"all\", label: `All · ${n}` }]} />", errors: [{ messageId: "label" }] },
     ],
   })

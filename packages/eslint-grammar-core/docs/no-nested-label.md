@@ -13,17 +13,17 @@ A Grammar `Section` with `title`, or a `SurfaceCard` with `label`, whose JSX anc
 **Invalid**
 
 ```tsx
-<Section title="Agent hiểu gì về việc của bạn">
-  <SurfaceCard kind="select" label="Được tự làm" ... />
+<Section title="What the assistant knows">
+  <SurfaceCard kind="select" label="Allowed" ... />
 </Section>
 ```
 
 **Valid**
 
 ```tsx
-<Section title="Agent hiểu gì về việc của bạn">
-  <SurfaceCard kind="select" sublabel="Được tự làm" ... />
-  <SurfaceCard kind="select" sublabel="Phải hỏi bạn" ... />
+<Section title="What the assistant knows">
+  <SurfaceCard kind="select" sublabel="Allowed" ... />
+  <SurfaceCard kind="select" sublabel="Ask first" ... />
 </Section>
 ```
 

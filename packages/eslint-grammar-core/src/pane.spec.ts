@@ -90,7 +90,7 @@ test("R346: a Pane holds PaneSections or one PaneGrid", () => {
       { filename: SCRIPT, code: IMPORTS + "export const A = () => <Pane area=\"a\"><div /></Pane>" },
     ],
     invalid: [
-      // the nivo shape: the search bar hand-wrapped in a band
+      // the hand-built shape: the search bar hand-wrapped in a band
       { filename: BLOCK, code: IMPORTS + "export const A = () => <Pane area=\"list\"><div className=\"shrink-0 px-4 pt-3 pb-2\"><SearchField label=\"Search\" /></div></Pane>", errors: [{ messageId: "notSection", data: { what: "The raw `<div>`" } }] },
       { filename: BLOCK, code: IMPORTS + "export const A = () => <Pane area=\"list\"><SearchField label=\"Search\" /></Pane>", errors: [{ messageId: "notSection", data: { what: "The Grammar component `<SearchField>`" } }] },
       { filename: BLOCK, code: IMPORTS + "export const A = () => <Pane area=\"list\"><PaneSection /><Divider /></Pane>", errors: [{ messageId: "notSection" }] },
@@ -126,7 +126,7 @@ test("R347: a PaneSection's outermost elements carry no padding or margin utilit
       { filename: SCRIPT, code: IMPORTS + "export const A = () => <PaneSection><div className=\"px-4\" /></PaneSection>" },
     ],
     invalid: [
-      // the nivo shape: a hand-built band around the search field
+      // the hand-built shape: a hand-built band around the search field
       { filename: BLOCK, code: IMPORTS + "export const A = () => <PaneSection><div className=\"shrink-0 px-4 pt-3 pb-2\"><SearchField label=\"Search\" /></div></PaneSection>", errors: [{ messageId: "padding" }] },
       { filename: BLOCK, code: IMPORTS + "export const A = () => <PaneSection><div className={\"p-4\"} /></PaneSection>", errors: [{ messageId: "padding" }] },
       { filename: BLOCK, code: IMPORTS + "export const A = () => <PaneSection><div className={`flex ${\"mt-3\"}`} /></PaneSection>", errors: [{ messageId: "padding" }] },
@@ -176,7 +176,7 @@ test("R348: a PaneGrid stands in Page chrome=\"panes\" or in a Pane, and Page ch
       { filename: BLOCK, code: IMPORTS + "export const A = () => <SurfaceCard label=\"x\"><Freestyle reason=\"legacy canvas\"><PaneGrid areas={{ base: [\"a\"] }} /></Freestyle></SurfaceCard>" },
     ],
     invalid: [
-      // the nivo shape: a PaneGrid inside a SurfaceCard
+      // the hand-built shape: a PaneGrid inside a SurfaceCard
       { filename: BLOCK, code: IMPORTS + "export const A = () => <SurfaceCard composition=\"joined\" label=\"x\"><PaneGrid areas={{ base: [\"a\"] }}><Pane area=\"a\" /></PaneGrid></SurfaceCard>", errors: [{ messageId: "frame", data: { where: "a `SurfaceCard`" } }] },
       { filename: BLOCK, code: IMPORTS + "export const A = () => <Page chrome=\"bleed\"><PaneGrid areas={{ base: [\"a\"] }} /></Page>", errors: [{ messageId: "frame", data: { where: "a `Page chrome=\"bleed\"`" } }] },
       { filename: BLOCK, code: IMPORTS + "export const A = () => <Page header={{ title: \"x\" }}><PaneGrid areas={{ base: [\"a\"] }} /></Page>", errors: [{ messageId: "frame", data: { where: "a `Page` without `chrome=\"panes\"`" } }] },

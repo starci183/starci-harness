@@ -21,7 +21,7 @@ export const isSealedName = (name: string): boolean => SEALED_NAME.test(name);
 /** True for the file name of a legacy (dotenv `.enc`) member. */
 export const isLegacyName = (name: string): boolean => name.endsWith(LEGACY_SUFFIX);
 
-/** The member a sealed file name holds (`sepay.enc.yaml` and `sepay.enc` are both `sepay`). */
+/** The member a sealed file name holds (`gateway.enc.yaml` and `gateway.enc` are both `gateway`). */
 export const memberOfName = (name: string): string => name.replace(SEALED_NAME, '');
 
 /**

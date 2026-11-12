@@ -3,10 +3,10 @@ import { WorkflowPageBlockBase } from "../../src/components/blocks/WorkflowPageB
 import { COMMON, NAV, WORKFLOW, WORKFLOW_STATUS } from "../../src/modules/i18n"
 import { loading, noop, ready, slotLabels } from "../support"
 
-const GOAL = "Gói Premium tháng và năm, thanh toán qua SePay và PayOS; BE và FE trong một workflow."
+const GOAL = "Search across items; BE and FE in one workflow."
 
 const header = (status: keyof typeof WORKFLOW_STATUS) =>
-    ready({ title: "next-subscription-sepay", status: WORKFLOW_STATUS[status], versions: WORKFLOW.versions(27, 15, 4, 19), goal: GOAL, reason: null })
+    ready({ title: "add-search", status: WORKFLOW_STATUS[status], versions: WORKFLOW.versions(27, 15, 4, 19), goal: GOAL, reason: null })
 
 const meta = {
     title: "WorkflowPageBlock",
@@ -23,7 +23,7 @@ const meta = {
             isPending: false,
             result: null,
             labels: {
-                trail: { label: WORKFLOW.breadcrumbs, project: "starci-next", workflows: NAV.workflows },
+                trail: { label: WORKFLOW.breadcrumbs, project: "demo-app", workflows: NAV.workflows },
                 reason: WORKFLOW.reason,
                 changeGoal: WORKFLOW.changeGoal,
                 changeGoalHint: WORKFLOW.changeGoalHint(27),

@@ -43,7 +43,7 @@ test("BRAND-1: no raw colour, hex or px value outside brand.css", () => {
       { filename: BLOCK, code: "const c = \"w-[12px]\"" },
     ],
     invalid: [
-      { filename: at("packages/nivo-ui/src/leaves/Badge/index.tsx"), code: "const c = \"#ff0000\"", errors: [{ messageId: "color" }] },
+      { filename: at("packages/app-ui/src/leaves/Badge/index.tsx"), code: "const c = \"#ff0000\"", errors: [{ messageId: "color" }] },
       // a folder named fixtures inside a component owner is authoring, not content
       { filename: at("apps/web/src/components/blocks/Feed/fixtures/copy.ts"), code: "const c = \"#ff0000\"", errors: [{ messageId: "color" }] },
       { filename: BLOCK, code: "const c = \"#ff0000\"", errors: [{ messageId: "color" }] },

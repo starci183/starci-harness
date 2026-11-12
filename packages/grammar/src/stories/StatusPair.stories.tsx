@@ -15,9 +15,9 @@ export default meta;
 type Story = StoryObj;
 
 const stripItems: ReadonlyArray<G.Figure> = [
-  { id: 'lessons', icon: BookGlyph, term: 'Lessons', value: '12', unit: 'done', meta: 'This month' },
+  { id: 'docs', icon: BookGlyph, term: 'Docs', value: '12', unit: 'done', meta: 'This month' },
   { id: 'streak', icon: HomeGlyph, term: 'Streak', value: '9', unit: 'days', meta: 'Best 14' },
-  { id: 'score', term: 'Score', value: '86%', meta: 'Last quiz' },
+  { id: 'score', term: 'Score', value: '86%', meta: 'Last test' },
   { id: 'time', term: 'Time', value: '4.5', unit: 'h', meta: '7 days' },
 ];
 
@@ -163,7 +163,7 @@ export const MessageBubbles: Story = {
   ),
 };
 
-const providers = ['All', 'Accounting', 'Sales', 'Support', 'Marketing', 'Operations', 'Warehouse', 'Hiring', 'Legal', 'Kế toán'].map((label, index) => ({ value: label, label, count: index === 0 ? 124 : index * 3 }));
+const providers = ['All', 'Billing', 'Sales', 'Support', 'Marketing', 'Operations', 'Warehouse', 'Hiring', 'Legal', 'Finance'].map((label, index) => ({ value: label, label, count: index === 0 ? 124 : index * 3 }));
 
 /** The filter row at one width and another: one row, a "+n" button for what does not fit, the chosen hidden option swapped in. */
 export const FilterButtonGroup: Story = {

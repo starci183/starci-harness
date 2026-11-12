@@ -11,7 +11,7 @@ const provider = (id: string, name: string, usage: number, circuit: keyof typeof
     usage,
     usageText: `${usage}%`,
     quotaLabel: OVERVIEW.providerQuota(name),
-    windows: `5h ${usage}% · tuần ${Math.round(usage / 2)}%`,
+    windows: `5h ${usage}% · week ${Math.round(usage / 2)}%`,
     reset: null,
     running: OVERVIEW.running("opus 3, sonnet 4", 6),
 })

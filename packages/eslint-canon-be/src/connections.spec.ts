@@ -193,7 +193,7 @@ test("R88: an EntityManager is injected only in application handlers, domain ser
               { filename: at("src/modules/platform/realtime/realtime-retention.service.ts"), code: injected },
               // the shared rate limit windows are owned by platform/http-security, counted by its guard
               { filename: at("src/modules/platform/http-security/rate-limit.guard.ts"), code: injected },
-              { filename: at("src/modules/projections/user-xp/user-xp.projection.ts"), code: injected },
+              { filename: at("src/modules/projections/user-score/user-score.projection.ts"), code: injected },
               // no manager, no finding
               { filename: RESOLVER, code: "class R { constructor(private readonly commandBus: CommandBus) {} }" },
           ],
@@ -206,7 +206,7 @@ test("R88: an EntityManager is injected only in application handlers, domain ser
               { filename: at("src/features/api/checkout/application/place.command.ts"), code: injected, errors: [{ messageId: "slot" }] },
               { filename: OTHER, code: injected, errors: [{ messageId: "slot" }] },
               // a projection holds the manager in its `*.projection.ts` only
-              { filename: at("src/modules/projections/user-xp/user-xp.contracts.ts"), code: injected, errors: [{ messageId: "slot" }] },
+              { filename: at("src/modules/projections/user-score/user-score.contracts.ts"), code: injected, errors: [{ messageId: "slot" }] },
               // a platform capability that is not a persistence capability holds none
               { filename: at("src/modules/platform/clock/clock.service.ts"), code: injected, errors: [{ messageId: "slot" }] },
               // property injection of the manager is refused in the same places

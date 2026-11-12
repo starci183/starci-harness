@@ -13,7 +13,7 @@ import { formatPlan, MEMORY_REEXEC_ENV, measureScope, needsReexec, planMemory, t
 const opsDir = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "ops")
 const rules: HeavyRules = { ...loadHeavyRules(opsDir), testWorkers: "50%" }
 
-const NIVO: Scope = { coverageMb: 494, recordMb: 520, largestMb: 31 }
+const REFERENCE: Scope = { coverageMb: 494, recordMb: 520, largestMb: 31 }
 const GB = 1024
 
 /** The value, asserted present. */
@@ -32,12 +32,12 @@ void test("one reserve of 4 GB is the only headroom, and a test run needs a pare
 })
 
 void test("the plan holds the check's own heap from the cache records, and the lint chunk", () => {
-    const plan = must(planMemory(NIVO, rules))
+    const plan = must(planMemory(REFERENCE, rules))
     assert.equal(plan.parentMb, 3072, "1024 + 3 x 520 MB of records, streamed, rounded up")
     assert.equal(plan.lintChunk, 600)
     assert.equal(must(planMemory({ coverageMb: 0.5, recordMb: 1, largestMb: 0.2 }, rules)).parentMb, 2048, "the floor")
     assert.equal(must(planMemory({ coverageMb: 9000, recordMb: 9000, largestMb: 31 }, rules)).parentMb, 16384, "the ceiling")
-    assert.equal(planMemory(NIVO, { ...rules, plan: undefined }), null, "an ops file without a plan block plans nothing")
+    assert.equal(planMemory(REFERENCE, { ...rules, plan: undefined }), null, "an ops file without a plan block plans nothing")
 })
 
 void test("an app check test step takes the workers the RAM free at its start holds, whatever ran before it and with no lane cap", () => {
@@ -52,7 +52,7 @@ void test("an app check test step takes the workers the RAM free at its start ho
     assert.equal(hfsLimitsEnv(rules).STARCI_TSC_HEAP_MB, String(rules.caps.tsc.capMb), "the tsc heap cap reaches the app check, which sizes its tsc programs by it")
 })
 
-void test("nivo-like numbers (22 GB free, 28 cores) give the workers the caps divide the room into", () => {
+void test("reference numbers (22 GB free, 28 cores) give the workers the caps divide the room into", () => {
     const sizing = testRunSizing(rules, roomOf(22 * GB), 28)
     assert.equal(sizing.parentMb, rules.testRun.parentMb)
     assert.equal(sizing.workers, 10, "floor((22528 - 4096 - 2048) / 1536)")
@@ -108,14 +108,14 @@ void test("the preload gives each forked worker the worker heap in place of the 
 })
 
 void test("the check re-executes itself only when node's heap is under the plan, and never twice", () => {
-    const plan = must(planMemory(NIVO, rules))
+    const plan = must(planMemory(REFERENCE, rules))
     assert.equal(needsReexec(plan, {}, 4144), false, "4 GB holds the streamed parent of 3 GB")
     assert.equal(needsReexec({ ...plan, parentMb: 5632 }, {}, 4144), true)
     assert.equal(needsReexec({ ...plan, parentMb: 5632 }, { [MEMORY_REEXEC_ENV]: "1" }, 4144), false)
 })
 
 void test("--explain prints the test run the RAM free now would get", () => {
-    const lines = formatPlan(must(planMemory(NIVO, rules)), rules, 22 * GB, 28)
+    const lines = formatPlan(must(planMemory(REFERENCE, rules)), rules, 22 * GB, 28)
     assert.ok(lines.some((line) => line.includes("a test run on the 22528 MB free now") && line.includes("10 workers at 1536 MB")), lines.join("\n"))
 })
 

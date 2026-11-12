@@ -20,10 +20,10 @@ const PHONE = 358; // a 390px phone less its 16px page inset on each side
 type Member = { readonly id: string; readonly name: string; readonly role: string; readonly status: 'active' | 'invited' };
 const MEMBERS: readonly Member[] = [
   { id: 'm1', name: 'Alex Morgan', role: 'Owner', status: 'active' },
-  { id: 'm2', name: 'Chi Thu', role: 'Sales agent', status: 'active' },
-  { id: 'm3', name: 'Anh Bao', role: 'Booking agent', status: 'invited' },
-  { id: 'm4', name: 'Minh Chau', role: 'Content agent', status: 'active' },
-  { id: 'm5', name: 'Lan Phuong', role: 'Support agent', status: 'invited' },
+  { id: 'm2', name: 'Sam Lee', role: 'Sales agent', status: 'active' },
+  { id: 'm3', name: 'Maria Garcia', role: 'Booking agent', status: 'invited' },
+  { id: 'm4', name: 'Jordan Kim', role: 'Content agent', status: 'active' },
+  { id: 'm5', name: 'Taylor Fox', role: 'Support agent', status: 'invited' },
 ];
 
 const rowOf = (member: Member): G.ListRowData => ({ id: member.id, title: member.name, description: member.role });
@@ -177,7 +177,7 @@ export const ListWithFilterAndSearchZones: Story = {
       assertOneLine(frameIn(filter), 'host', filter);
       assertSeamAfter(filter);
     }, { timeout: 4000 });
-    fireEvent.change(within(canvasElement).getByRole('searchbox', { name: 'Search members' }), { target: { value: 'chi' } });
+    fireEvent.change(within(canvasElement).getByRole('searchbox', { name: 'Search members' }), { target: { value: 'taylor' } });
     await waitFor(() => expect(canvasElement.querySelectorAll('[data-grammar-list="true"] > li').length).toBe(1), { timeout: 4000 });
   },
 };
@@ -283,10 +283,10 @@ export const FiguresFullBleed: Story = {
             kind="figures"
             label="Revenue"
             items={[
-              { id: 'a', term: 'This month', value: '12.000.000', unit: 'd' },
-              { id: 'b', term: 'Last month', value: '9.450.000', unit: 'd' },
-              { id: 'c', term: 'Outstanding', value: '3.200.000', unit: 'd' },
-              { id: 'd', term: 'Refunded', value: '450.000', unit: 'd' },
+              { id: 'a', term: 'This month', value: '12,000,000', unit: '$' },
+              { id: 'b', term: 'Last month', value: '9,450,000', unit: '$' },
+              { id: 'c', term: 'Outstanding', value: '3,200,000', unit: '$' },
+              { id: 'd', term: 'Refunded', value: '450,000', unit: '$' },
             ]}
           />
         </div>
@@ -329,17 +329,17 @@ export const FiguresFullBleed: Story = {
 export const FiguresRibbonFive: Story = {
   render: () => {
     const items: readonly G.Figure[] = [
-      { id: 'a', term: 'Khách vào 7 ngày', value: 128, meta: 'so với tuần trước' },
-      { id: 'b', term: 'Cuộc trò chuyện', value: 342, meta: 'đang mở 12' },
-      { id: 'c', term: 'Đơn đã tạo', value: 57, meta: 'hôm nay 6' },
-      { id: 'd', term: 'Tỷ lệ chốt đơn', value: '18%', meta: 'mục tiêu 20%' },
-      { id: 'e', term: 'Doanh thu tạm tính', value: '12,4tr', meta: 'tháng này' },
+      { id: 'a', term: 'Visitors, 7 days', value: 128, meta: 'vs last week' },
+      { id: 'b', term: 'Conversations', value: 342, meta: 'open 12' },
+      { id: 'c', term: 'Orders created', value: 57, meta: 'today 6' },
+      { id: 'd', term: 'Close rate', value: '18%', meta: 'target 20%' },
+      { id: 'e', term: 'Estimated revenue', value: '12.4M', meta: 'this month' },
     ];
     return (
       <Matrix>
-        <State label="Phone 390: 2 + 2 + 1" direction="column"><div data-story-strip="phone" style={{ width: 390 }}><G.SurfaceCard kind="figures" label="Tổng quan" items={items} /></div></State>
-        <State label="Tablet 700: 3 + 2" direction="column"><div data-story-strip="tablet" style={{ width: 700 }}><G.SurfaceCard kind="figures" label="Tổng quan" items={items} /></div></State>
-        <State label="Desktop 1000: one row" direction="column"><div data-story-strip="desktop" style={{ width: 1000 }}><G.SurfaceCard kind="figures" label="Tổng quan" items={items} /></div></State>
+        <State label="Phone 390: 2 + 2 + 1" direction="column"><div data-story-strip="phone" style={{ width: 390 }}><G.SurfaceCard kind="figures" label="Overview" items={items} /></div></State>
+        <State label="Tablet 700: 3 + 2" direction="column"><div data-story-strip="tablet" style={{ width: 700 }}><G.SurfaceCard kind="figures" label="Overview" items={items} /></div></State>
+        <State label="Desktop 1000: one row" direction="column"><div data-story-strip="desktop" style={{ width: 1000 }}><G.SurfaceCard kind="figures" label="Overview" items={items} /></div></State>
       </Matrix>
     );
   },
@@ -626,17 +626,17 @@ const ledgerRow = (id: string, what: string, account: string, income: string, ex
 });
 
 const LEDGER_GROUPS: readonly G.TableGroupData[] = [
-  { id: 'd1', label: 'Thu 6 Nov', fact: '48.250.000', rows: [
-    ledgerRow('r1', 'Facial package, Chi Thu', 'Cash', '12.000.000', '', '48.250.000'),
-    ledgerRow('r2', 'Supplies', 'Cash', '', '1.850.000', '36.250.000'),
-    ledgerRow('r3', 'Deposit, Anh Bao', 'Bank', '3.200.000', '', '38.100.000'),
+  { id: 'd1', label: 'Thu 6 Nov', fact: '48,250,000', rows: [
+    ledgerRow('r1', 'Annual plan, Sam Lee', 'Cash', '12,000,000', '', '48,250,000'),
+    ledgerRow('r2', 'Supplies', 'Cash', '', '1,850,000', '36,250,000'),
+    ledgerRow('r3', 'Deposit, Maria Garcia', 'Bank', '3,200,000', '', '38,100,000'),
   ] },
-  { id: 'd2', label: 'Wed 5 Nov', fact: '35.050.000', rows: [
-    ledgerRow('r4', 'Rent', 'Bank', '', '15.000.000', '35.050.000'),
-    ledgerRow('r5', 'Massage, Minh Chau', 'Cash', '450.000', '', '50.050.000'),
+  { id: 'd2', label: 'Wed 5 Nov', fact: '35,050,000', rows: [
+    ledgerRow('r4', 'Rent', 'Bank', '', '15,000,000', '35,050,000'),
+    ledgerRow('r5', 'Support hours, Jordan Kim', 'Cash', '450,000', '', '50,050,000'),
   ] },
-  { id: 'd3', label: 'Tue 4 Nov', fact: '49.600.000', rows: [
-    ledgerRow('r6', 'Wages', 'Bank', '', '9.450.000', '49.600.000'),
+  { id: 'd3', label: 'Tue 4 Nov', fact: '49,600,000', rows: [
+    ledgerRow('r6', 'Wages', 'Bank', '', '9,450,000', '49,600,000'),
   ] },
 ];
 

@@ -64,10 +64,6 @@ export const REFERENCE_APP_MANIFEST = `${EXAMPLES_ROOT}/full-app/hfs.json`;
 /** The example app whose installed tree an fe-kit peer link points at by default. */
 export const REFERENCE_EXAMPLE_APP = 'full-app';
 
-/** The grammar css families a product repository may declare (`[data-grammar-family="<id>"]`), keyed by the
- *  canonical catalog id; the runtime's own product maps to the core sheet. */
-export const GRAMMAR_FAMILIES = Object.freeze({ core: 'core', nivo: 'nivo', 'offset-pop': 'offset-pop' });
-
 /** A css family key through the Grammar catalog's alias table (`starci` reads as `core`); an id the catalog does not declare is kept. */
 export function grammarCssFamilyKey(family: string): string;
 export function grammarCssFamilyKey(family: unknown): unknown;
@@ -75,13 +71,6 @@ export function grammarCssFamilyKey(family: unknown): unknown {
   if (typeof family !== 'string' || !family) return family;
   try { return resolveGrammarFamily(family).id; } catch { return family; }
 }
-
-/** A feature-folder segment that is only the product's own name - no useful leaf (display-names pathLabel). */
-export const PRODUCT_NAME_SEGMENT = /^(nivo|starci|mia)[-\w]*$/i;
-
-/** The closed list of product names this runtime shipped against - the names R206
- *  (check-example-coupling.mjs) refuses anywhere in runtime source outside this file. */
-export const PRODUCT_NAMES = Object.freeze(['mia-mia', 'miamia', 'nivo', 'starci-academy', 'full-app', 'shape-slot']);
 
 /** The catalog of stable pattern IDs pointing at actual executable example source. */
 export const EXAMPLE_CATALOG_FILE = `${EXAMPLES_ROOT}/index.yaml`;

@@ -14,11 +14,11 @@ import { connectedBlockHasPresentationalTwin, presentationalPurity, rules } from
 
 const tester = slotTester()
 
-const DRAWING = at("apps/web/src/components/blocks/dashboard/DailyQuest/component.tsx")
-const CONNECTED = at("apps/web/src/components/blocks/dashboard/DailyQuest/index.tsx")
-const HOOK = at("apps/web/src/hooks/swr/api/graphql/queries/useQueryMyDailyQuestSwr.ts")
-const NOT_A_BLOCK = at("apps/web/src/modules/components/blocks/DailyQuest/index.tsx")
-const NOT_A_DRAWING = at("apps/web/src/modules/components/blocks/DailyQuest/component.tsx")
+const DRAWING = at("apps/web/src/components/blocks/dashboard/SummaryCard/component.tsx")
+const CONNECTED = at("apps/web/src/components/blocks/dashboard/SummaryCard/index.tsx")
+const HOOK = at("apps/web/src/hooks/swr/api/graphql/queries/useQueryMySummaryCardSwr.ts")
+const NOT_A_BLOCK = at("apps/web/src/modules/components/blocks/SummaryCard/index.tsx")
+const NOT_A_DRAWING = at("apps/web/src/modules/components/blocks/SummaryCard/component.tsx")
 
 test("every rule this law declares is exported under its published name", () => {
   for (const [name, rule] of Object.entries(rules)) {
@@ -33,7 +33,7 @@ test("SPLIT-1: the drawing half receives everything and asks for nothing", () =>
       // deciding how a settled situation LOOKS is exactly this file's job
       { filename: DRAWING, code: "const isLoading = input.state === \"pending\"" },
       // the connected half is supposed to reach for the world
-      { filename: CONNECTED, code: "const quest = useQueryMyDailyQuestSwr()" },
+      { filename: CONNECTED, code: "const quest = useQueryMySummaryCardSwr()" },
       { filename: CONNECTED, code: "const t = useTranslations(\"quest\")" },
       { filename: CONNECTED, code: "import type { QuestView } from \"@/hooks/quest\"" },
       // the drawing half declares its atom types itself, or reads them from modules/types
@@ -44,12 +44,12 @@ test("SPLIT-1: the drawing half receives everything and asks for nothing", () =>
       { filename: DRAWING, code: "const rows = useMemo(() => build(input), [input])" },
       { filename: DRAWING, code: "const p = usePlatform()\nconst s = useFormStatus()" },
       // a `component.tsx` that no slot owns is not a drawing half
-      { filename: NOT_A_DRAWING, code: "const q = useQueryMyDailyQuestSwr()" },
+      { filename: NOT_A_DRAWING, code: "const q = useQueryMySummaryCardSwr()" },
       // the pure half is not the drawing role of another owner's entry
-      { filename: at("apps/web/src/components/blocks/dashboard/DailyQuest/classNames.ts"), code: "const t = useTranslations(\"quest\")" },
+      { filename: at("apps/web/src/components/blocks/dashboard/SummaryCard/classNames.ts"), code: "const t = useTranslations(\"quest\")" },
     ],
     invalid: [
-      { filename: DRAWING, code: "const q = useQueryMyDailyQuestSwr()", errors: [{ messageId: "reaches" }] },
+      { filename: DRAWING, code: "const q = useQueryMySummaryCardSwr()", errors: [{ messageId: "reaches" }] },
       // a hook-derived type ties the drawing half to the world as surely as the call
       { filename: DRAWING, code: "import type { useQuestView } from \"@/hooks/quest\"", errors: [{ messageId: "hookType" }] },
       { filename: DRAWING, code: "import type { QuestView } from \"@/hooks\"", errors: [{ messageId: "hookType" }] },
@@ -58,7 +58,7 @@ test("SPLIT-1: the drawing half receives everything and asks for nothing", () =>
       { filename: DRAWING, code: "const l = useLocale()", errors: [{ messageId: "reaches" }] },
       { filename: DRAWING, code: "const r = queryResolveRoute({ request })", errors: [{ messageId: "reaches" }] },
       // the data, form, state, socket and toast hooks of the front-end stack reach for the world too
-      { filename: DRAWING, code: "const m = useMutateClaimDailyQuestRewardSwr()", errors: [{ messageId: "reaches" }] },
+      { filename: DRAWING, code: "const m = useMutateClaimSummaryCardRewardSwr()", errors: [{ messageId: "reaches" }] },
       { filename: DRAWING, code: "const u = usePostUploadSwr()", errors: [{ messageId: "reaches" }] },
       { filename: DRAWING, code: "const form = useContactForm()", errors: [{ messageId: "reaches" }] },
       { filename: DRAWING, code: "const form = useFormContext()", errors: [{ messageId: "reaches" }] },
@@ -66,10 +66,10 @@ test("SPLIT-1: the drawing half receives everything and asks for nothing", () =>
       { filename: DRAWING, code: "const n = useCartStore((state) => state.count)", errors: [{ messageId: "reaches" }] },
       { filename: DRAWING, code: "const chat = useCommunityChatSocketIo()", errors: [{ messageId: "reaches" }] },
       { filename: DRAWING, code: "const enroll = useEnrollWithToast()", errors: [{ messageId: "reaches" }] },
-      { filename: DRAWING, code: "const { data } = useQuery(QUERY_COURSE)", errors: [{ messageId: "reaches" }] },
+      { filename: DRAWING, code: "const { data } = useQuery(QUERY_PROJECT)", errors: [{ messageId: "reaches" }] },
       // every owner that splits has a drawing half: a feature page and a shared-package leaf too
       { filename: at("apps/web/src/features/pages/Home/component.tsx"), code: "const l = useLocale()", errors: [{ messageId: "reaches" }] },
-      { filename: at("packages/nivo-ui/src/leaves/Badge/component.tsx"), code: "const l = useLocale()", errors: [{ messageId: "reaches" }] },
+      { filename: at("packages/app-ui/src/leaves/Badge/component.tsx"), code: "const l = useLocale()", errors: [{ messageId: "reaches" }] },
     ],
   }))
 })
@@ -81,19 +81,19 @@ test("SPLIT-5: a connected block renders only its exact pure twin", () => {
         filename: CONNECTED,
         code: `
           import { useTranslations } from "next-intl"
-          import { DailyQuestBase } from "./component"
-          export const DailyQuest = () => {
+          import { SummaryCardBase } from "./component"
+          export const SummaryCard = () => {
             const t = useTranslations("quest")
-            return <DailyQuestBase state="pending" props={{ label: t("label") }} />
+            return <SummaryCardBase state="pending" props={{ label: t("label") }} />
           }
         `,
       },
       {
         filename: CONNECTED,
-        code: "export const DailyQuest = ({ props }) => <QuestRows props={props} />",
+        code: "export const SummaryCard = ({ props }) => <QuestRows props={props} />",
       },
       // an `index.tsx` that no block owns is not a connected block, whatever its folder is called
-      { filename: NOT_A_BLOCK, code: "import { useTranslations } from \"next-intl\"; export const DailyQuest = () => <StatRow label={useTranslations(\"q\")(\"l\")} />" },
+      { filename: NOT_A_BLOCK, code: "import { useTranslations } from \"next-intl\"; export const SummaryCard = () => <StatRow label={useTranslations(\"q\")(\"l\")} />" },
       { filename: at("apps/web/src/features/pages/Home/index.tsx"), code: "export const Home = () => <StatRow label={useTranslations(\"q\")(\"l\")} />" },
     ],
     invalid: [
@@ -101,7 +101,7 @@ test("SPLIT-5: a connected block renders only its exact pure twin", () => {
         filename: CONNECTED,
         code: `
           import { useTranslations } from "next-intl"
-          export const DailyQuest = () => <StatRow props={{ label: useTranslations("quest")("label") }} />
+          export const SummaryCard = () => <StatRow props={{ label: useTranslations("quest")("label") }} />
         `,
         errors: [{ messageId: "missing" }],
       },
@@ -109,10 +109,10 @@ test("SPLIT-5: a connected block renders only its exact pure twin", () => {
         filename: CONNECTED,
         code: `
           import { useTranslations } from "next-intl"
-          import { DailyQuestBase } from "./component"
-          export const DailyQuest = () => {
+          import { SummaryCardBase } from "./component"
+          export const SummaryCard = () => {
             const t = useTranslations("quest")
-            return t("empty") ? <EmptyNotice /> : <DailyQuestBase state="ready" props={{ label: t("label") }} />
+            return t("empty") ? <EmptyNotice /> : <SummaryCardBase state="ready" props={{ label: t("label") }} />
           }
         `,
         errors: [{ messageId: "bypass" }],
@@ -121,8 +121,8 @@ test("SPLIT-5: a connected block renders only its exact pure twin", () => {
         filename: CONNECTED,
         code: `
           import { useTranslations } from "next-intl"
-          import { DailyQuestBase } from "./component"
-          export const DailyQuest = () => {
+          import { SummaryCardBase } from "./component"
+          export const SummaryCard = () => {
             const t = useTranslations("quest")
             return t("empty")
           }
@@ -133,12 +133,12 @@ test("SPLIT-5: a connected block renders only its exact pure twin", () => {
         filename: CONNECTED,
         code: `
           import { useTranslations } from "next-intl"
-          import { DailyQuestBase } from "./component"
-          export const DailyQuest = () => {
+          import { SummaryCardBase } from "./component"
+          export const SummaryCard = () => {
             useTranslations("quest")
-            return <DailyQuestBase state="pending" props={{ label: "" }} />
+            return <SummaryCardBase state="pending" props={{ label: "" }} />
           }
-          export const DailyQuestMobile = () => DailyQuestBase({ state: "pending", props: { label: "" } })
+          export const SummaryCardMobile = () => SummaryCardBase({ state: "pending", props: { label: "" } })
         `,
         errors: [{ messageId: "called" }],
       },

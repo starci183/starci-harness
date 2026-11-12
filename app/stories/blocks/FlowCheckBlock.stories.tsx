@@ -9,7 +9,7 @@ const meta = {
     args: {
         props: {
             check: ready({
-                flow: ["impl.commerce.subscription [impl-be]: code · test · e2e · review", "impl.commerce.fe.subscription [impl-fe]: code · audit · uat"],
+                flow: ["impl.search.api [impl-be]: code · test · e2e · review", "impl.search.fe.ui [impl-fe]: code · audit · uat"],
                 problems: [],
                 problemsTitle: WORKFLOW.flowProblems(0),
             }),

@@ -27,7 +27,7 @@ const COMPOSE = ".starcistacks/dev/infra/compose"
 
 describe("resolveImageString", () => {
     test("uses the default of ${VAR:-x} and ${VAR-x}", () => {
-        assert.equal(resolveImageString("${NIVO_CORE_IMAGE:-nivo/core-dev:local}"), "nivo/core-dev:local")
+        assert.equal(resolveImageString("${APP_CORE_IMAGE:-demo/core-dev:local}"), "demo/core-dev:local")
         assert.equal(resolveImageString("repo/${NAME-app}:${TAG:-1}"), "repo/app:1")
         assert.equal(resolveImageString("redis:7"), "redis:7")
     })
@@ -40,13 +40,13 @@ describe("readStackDefinition", () => {
     test("reads compose images, resolves defaults and skips build-only services", () => {
         const root = fixture({
             [`${COMPOSE}/postgres.yaml`]: "services:\n  postgres:\n    image: postgres:16-alpine\n",
-            [`${COMPOSE}/application.yml`]: "services:\n  core:\n    image: ${NIVO_CORE_IMAGE:-nivo/core-dev:local}\n  migrate:\n    build:\n      context: .\n",
+            [`${COMPOSE}/application.yml`]: "services:\n  core:\n    image: ${APP_CORE_IMAGE:-demo/core-dev:local}\n  migrate:\n    build:\n      context: .\n",
             [`${COMPOSE}/notes.txt`]: "not yaml",
         })
         const definition = readStackDefinition(root, ".starcistacks/dev")
         assert.deepEqual(Object.keys(definition.services).sort(), ["core", "postgres"])
         assert.equal(definition.services.postgres?.image, "postgres:16-alpine")
-        assert.equal(definition.services.core?.image, "nivo/core-dev:local")
+        assert.equal(definition.services.core?.image, "demo/core-dev:local")
         assert.equal(definition.services.postgres?.source, `${COMPOSE}/postgres.yaml`)
     })
     test("falls back to application-stacks components only for names no compose file gave", () => {
@@ -99,8 +99,8 @@ describe("resolveInfraImages", () => {
         assert.deepEqual(selectedInfraServices({ redis: {}, mail: {} }), ["redis", "mail"])
     })
     test("matches by compose service name when the image is a custom build", () => {
-        const images = resolveInfraImages({ keycloak: { realm: "r.json" } }, definitionOf({ keycloak: "nivo/keycloak-dev:local" }))
-        assert.deepEqual(images, [{ service: "keycloak", image: "nivo/keycloak-dev:local" }])
+        const images = resolveInfraImages({ keycloak: { realm: "r.json" } }, definitionOf({ keycloak: "demo/keycloak-dev:local" }))
+        assert.deepEqual(images, [{ service: "keycloak", image: "demo/keycloak-dev:local" }])
     })
     test("the declaration image overrides the definition", () => {
         const images = resolveInfraImages({ redis: { image: "valkey/valkey:8" } }, definitionOf({ redis: "redis:7" }))

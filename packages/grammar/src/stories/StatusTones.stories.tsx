@@ -3,7 +3,7 @@ import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 
 /**
- * The status tones side by side (0.37.5, owner: "success phải để màu success"). A success Badge and StatusDot read the HeroUI `success` tokens exactly
+ * The status tones side by side (0.37.5, owner: "success must use the success colour"). A success Badge and StatusDot read the HeroUI `success` tokens exactly
  * (`--success-soft` and `--success-soft-foreground` for the chip, `--success` for the dot): Core maps `success` to nothing else. A product that paints
  * them lime has overridden `--success` in its own brand sheet; the play compares the chip's ink and tint with the tokens.
  */

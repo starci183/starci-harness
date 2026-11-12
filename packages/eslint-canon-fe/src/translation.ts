@@ -259,7 +259,7 @@ export const noHardcodedCopy = defineRule({
         const template = templateText(node.value)
         const text = template ?? staticString(node.value)
         if (text === null) return
-        // a copy key needs prose; any other key needs a whole sentence: { ready: "Your course is ready" } in a hook is copy
+        // a copy key needs prose; any other key needs a whole sentence: { ready: "Your project is ready" } in a hook is copy
         if (!(COPY_KEYS.has(key) ? looksLikeProse(text) : looksLikeSentence(text))) return
         context.report({ node, messageId: "property", data: { key, text: template === null ? text : source.getText(node.value) } })
       },

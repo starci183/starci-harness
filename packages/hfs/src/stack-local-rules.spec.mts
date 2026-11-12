@@ -57,8 +57,8 @@ test('R373 a docker command in the dev runbook, or no one-command start, is STAC
 });
 
 test('a grant names the keys one service reads, and an empty one is refused', () => {
-  const ok = normalizeLocal({ ports: { db: 54322 }, services: [{ name: 'db', wait: 'started' }], grants: [{ name: 'agent', keys: ['OPENCLAW_BRIDGE_SECRET'] }] }, { project: 'demo', env: 'dev' });
-  assert.deepEqual(ok.config?.grants, [{ name: 'agent', keys: ['OPENCLAW_BRIDGE_SECRET'] }]);
+  const ok = normalizeLocal({ ports: { db: 54322 }, services: [{ name: 'db', wait: 'started' }], grants: [{ name: 'agent', keys: ['WORKER_BRIDGE_SECRET'] }] }, { project: 'demo', env: 'dev' });
+  assert.deepEqual(ok.config?.grants, [{ name: 'agent', keys: ['WORKER_BRIDGE_SECRET'] }]);
   const empty = normalizeLocal({ ports: { db: 54322 }, services: [{ name: 'db', wait: 'started' }], grants: [{ name: 'agent', keys: [] }] }, { project: 'demo', env: 'dev' });
   assert.match(empty.problems.map((item) => item.message).join('|'), /must list the keys the service reads/u);
 });

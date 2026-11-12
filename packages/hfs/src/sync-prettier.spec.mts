@@ -1,7 +1,7 @@
 // proves: HFS_FORMAT@sync
 // Every file `starci app sync` manages passes the app's `prettier --check` (R19 HFS_FORMAT, the pre-commit hook) with the canon config as it is
-// rendered, so formatting a managed file never makes HFS_SYNC_DRIFT: the root eslint.config.mjs of the root packages, the registry of the module
-// packages and the managed templates. The layout numbers of sync/canon-layout.mts are the canon config's own.
+// rendered, so formatting a managed file never makes HFS_SYNC_DRIFT: the root eslint.config.mjs of the root packages and the managed
+// templates. The layout numbers of sync/canon-layout.mts are the canon config's own.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -32,13 +32,11 @@ const write = (root: string, file: string, text: string): void => {
   fs.writeFileSync(path.join(root, file), text);
 };
 
-/** The root packages of the fixture: the agent SDK and module packages whose names make the registry's lists longer than a line. */
+/** The root packages of the fixture, enough of them with long names that the managed lists naming them are longer than a line. */
 const writePackages = (root: string, scope: string): void => {
-  write(root, 'packages/agent-sdk/package.json', JSON.stringify({ name: `@${scope}/agent-sdk`, private: true }));
-  write(root, 'packages/agent-sdk/src/index.ts', 'export const sdk = 1\n');
-  for (const name of ['sales', 'chatbot', 'customer-loyalty-points', 'appointment-reminders', 'inventory-restock']) {
-    write(root, `packages/module-${name}/package.json`, JSON.stringify({ name: `@${scope}/module-${name}`, private: true }));
-    write(root, `packages/module-${name}/src/index.ts`, 'export const module = 1\n');
+  for (const name of ['ui-kit', 'design-tokens', 'chart-widgets', 'notification-templates', 'report-builder-components']) {
+    write(root, `packages/${name}/package.json`, JSON.stringify({ name: `@${scope}/${name}`, private: true }));
+    write(root, `packages/${name}/src/index.ts`, 'export const value = 1\n');
   }
 };
 
@@ -65,7 +63,7 @@ test('the layout of canon-layout is the canon config: its print width, its code 
 });
 
 for (const grammar of ['core', 'offset-pop']) {
-  test(`a sync of an app with root packages (grammar ${grammar}) renders every managed file prettier-clean, the root eslint.config.mjs and the registry included`, async (t) => {
+  test(`a sync of an app with root packages (grammar ${grammar}) renders every managed file prettier-clean, the root eslint.config.mjs included`, async (t) => {
     const root = mkdtemp(t, 'starci-sync-prettier-');
     write(root, 'hfs.json', JSON.stringify({ hfs: 3, kind: 'app', project: 'fixture', sides: { be: { apps: [{ name: 'api', kind: 'api' }] }, fe: { grammar, apps: [{ name: 'web', kind: 'next' }] } } }));
     write(root, 'package.json', JSON.stringify({ name: 'fixture', private: true, workspaces: ['packages/*'] }));
@@ -73,7 +71,6 @@ for (const grammar of ['core', 'offset-pop']) {
     assert.deepEqual(await unformatted(root), []);
     const config = fs.readFileSync(path.join(root, 'eslint.config.mjs'), 'utf8');
     assert.ok(config.split('\n').every((line) => line.length <= CANON_PRINT_WIDTH), config);
-    assert.match(fs.readFileSync(path.join(root, 'packages/modules/src/template/index.ts'), 'utf8'), /= \[\n {4}APPOINTMENT_REMINDERS_SERVER,\n/u, 'a list longer than a line breaks one item a line');
   });
 }
 

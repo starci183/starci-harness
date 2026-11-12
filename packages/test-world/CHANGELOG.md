@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.0.0 - 2026-11-13
+
+- Removed (breaking): the fakes of four payment gateways (`sepayFake`, `momoFake`, `vnpayFake`, `payosFake`, their payload and signature helpers and `payment-kit`) leave `@starci/test-world/fakes`. A provider's fake belongs to the app that integrates the provider: it lives in the app's `be/src/tests/world/fakes/<provider>/`, built with `defineHttpFake`. The world, the fake framework and the generic fakes (the OpenAI-compatible, SMTP and OIDC issuer fakes) are unchanged; the world's own spec proves webhook routing with a small neutral fake.
+- Upgrade, per existing app: an app that imports one of the four fakes copies it into its own world fakes folder before taking 2.0.0; no app of the harness's own tree imports one.
+
 ## 1.4.0 - 2026-11-08
 
 - Added: `mail`, a stack service: `stacks: { mail: {} }` runs the stack definition's mailpit (the compose service `mail`, or any service on the `axllent/mailpit` image) as the real mail sink, with chaos enabled. It is one container per data slot, named from its image and the slot's namespace, started by the slot's attach and removed by its detach (a dead run's by the next attach's reclaim), because mailpit keeps its messages and chaos per server and a shared container would let one slot's refusal or reset reach another repository. SMTP is the toxiproxy-fronted endpoint; the HTTP API is published beside it and read directly, so an outage on SMTP does not blind the reader. `starci app world up` leaves it to the slot's attach. `mail` joins `INFRA_SERVICES`; it is stateful, so `stacks.mail: { fakedBy }` is `TEST_WORLD_CONFIG_INVALID`, as the hfs rule `BE_TEST_TOPOLOGY` never accepts a fake of a stack mail service.

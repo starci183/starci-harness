@@ -18,8 +18,8 @@ const emptyLine = <G.EmptyNotice message="Nothing here yet" description="Items a
 const card = (id: string, title: string, description: string): G.ListRowData => ({ id, title, description, action: { label: "Open", press: noop } })
 
 const columns: ReadonlyArray<G.BoardColumn> = [
-    { id: "new", title: "New", count: 2, items: [card("a", "Hoa Sen Spa", "Zalo - 2 hours - Minh"), card("b", "Anh Tuan", "Website - 5 hours")], empty: emptyLine },
-    { id: "qualified", title: "Qualified", count: 1, items: [card("c", "Tan Phat Company", "Next: send a quote by 06/11")], empty: emptyLine },
+    { id: "new", title: "New", count: 2, items: [card("a", "Acme Studio", "Email - 2 hours - Sam"), card("b", "Alex Chen", "Website - 5 hours")], empty: emptyLine },
+    { id: "qualified", title: "Qualified", count: 1, items: [card("c", "Globex Company", "Next: send a quote by 06/11")], empty: emptyLine },
     { id: "proposal", title: "Proposal", count: 0, items: [], empty: <G.EmptyNotice message="No proposals" /> },
     { id: "won", title: "Won", count: 1, items: [card("d", "Chi Hanh", "Order 12,500,000")], empty: emptyLine },
 ]
@@ -39,7 +39,7 @@ export const EmptyNoticeActionIntent: Story = {
     render: () => (
         <Matrix>
             <State label="commit (default): the region's one primary" direction="column"><G.EmptyNotice message="No documents yet" description="Add a document so the agent can read it." actionLabel="Add document" onAction={noop} /></State>
-            <State label="neutral: a rail on a page whose primary is in its header" direction="column"><G.EmptyNotice message="No documents from Google Drive yet" description="Turn on Drive and pick a folder for NIVO to read." actionLabel="Turn on Drive" actionIntent="neutral" onAction={noop} /></State>
+            <State label="neutral: a rail on a page whose primary is in its header" direction="column"><G.EmptyNotice message="No documents from Google Drive yet" description="Turn on Drive and pick a folder for the assistant to read." actionLabel="Turn on Drive" actionIntent="neutral" onAction={noop} /></State>
         </Matrix>
     ),
 }
@@ -55,7 +55,7 @@ const entries: ReadonlyArray<G.ScheduleItem> = [
     { id: "1", row: "9", column: "mon", title: "Chi My", meta: "Hair wash - Lan", tone: "accent", onPress: noop },
     { id: "2", row: "9", column: "wed", title: "Anh Phong", meta: "Massage - Hung", tone: "success", onPress: noop },
     { id: "3", row: "11", column: "tue", title: "Chi Vy", meta: "Skin care - Room 2", tone: "warning", onPress: noop },
-    { id: "4", row: "14", column: "thu", title: "Tan Phat Company", meta: "6 guests - Large room", tone: "danger", onPress: noop },
+    { id: "4", row: "14", column: "thu", title: "Globex Company", meta: "6 guests - Large room", tone: "danger", onPress: noop },
 ]
 
 export const ScheduleGridStates: Story = {
@@ -126,7 +126,7 @@ export const ChoiceChipsStates: Story = {
 /* ------------------------------------------------------------------ move, press and place */
 
 const stageOf = (stage: string): ReadonlyArray<string> => (stage === "new" ? ["a", "b"] : stage === "qualified" ? ["c"] : [])
-const names: Readonly<Record<string, string>> = { a: "Hoa Sen Spa", b: "Anh Tuan", c: "Tan Phat Company" }
+const names: Readonly<Record<string, string>> = { a: "Acme Studio", b: "Alex Chen", c: "Globex Company" }
 
 const MovableBoard = () => {
     const [stages, setStages] = useState<Readonly<Record<string, ReadonlyArray<string>>>>({ new: stageOf("new"), qualified: stageOf("qualified"), proposal: [] })
@@ -185,8 +185,8 @@ export const ScheduleDropAndCellPress: Story = {
 }
 
 const metaRows: ReadonlyArray<G.ListRowData> = [
-    { id: "m1", title: "Follow up with Hoa Sen Spa", description: "Chi Lan", meta: { text: "Overdue 1 day", tone: "danger" }, badges: [{ label: "Open", tone: "warning" }], onPress: noop },
-    { id: "m2", title: "Send the quote", description: "Anh Tuan", meta: { text: "Due today" }, badges: [{ label: "Open", tone: "warning" }], onPress: noop },
+    { id: "m1", title: "Follow up with Acme Studio", description: "Maria Garcia", meta: { text: "Overdue 1 day", tone: "danger" }, badges: [{ label: "Open", tone: "warning" }], onPress: noop },
+    { id: "m2", title: "Send the quote", description: "Alex Chen", meta: { text: "Due today" }, badges: [{ label: "Open", tone: "warning" }], onPress: noop },
     { id: "m3", title: "Customer replied", description: "Chi Hanh", meta: { text: "8 min" }, onPress: noop },
 ]
 
@@ -205,7 +205,7 @@ const personTile = (isLoading?: boolean) => (
         name="Chatbot"
         mark={{ avatar: { name: "Chatbot" } }}
         badges={[{ label: "Running", tone: "success" }]}
-        description="Customer care on Zalo OA and Telegram."
+        description="Customer care on Email and Chat."
         action={{ label: "Open", press: noop }}
         menu={{ label: "More actions", entries: [{ kind: "section", id: "s", items: [{ id: "x", label: "Duplicate" }] }] }}
         {...(isLoading === undefined ? {} : { isLoading })}

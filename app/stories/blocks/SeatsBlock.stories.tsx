@@ -9,8 +9,8 @@ const meta = {
     args: {
         props: {
             seats: ready([
-                { id: "sup", model: "claude-opus-5-5", title: "Supervisor · starci-next", member: "claude · claude-opus-5-5", liveness: SEAT_LIVENESS.alive, taskHref: null },
-                { id: "op", model: "gpt-6-luna", title: "Op · code (t-b4a71c58)", member: "codex · gpt-6-luna", liveness: SEAT_LIVENESS.stalled, taskHref: "/t/starci-next/t-b4a71c58" },
+                { id: "sup", model: "claude-opus-5-5", title: "Supervisor · demo-app", member: "claude · claude-opus-5-5", liveness: SEAT_LIVENESS.alive, taskHref: null },
+                { id: "op", model: "gpt-6-luna", title: "Op · code (t-b4a71c58)", member: "codex · gpt-6-luna", liveness: SEAT_LIVENESS.stalled, taskHref: "/t/demo-app/t-b4a71c58" },
             ]),
             labels: { title: WORKFLOW.seatsTitle, count: "2", empty: WORKFLOW.noSeats, openTask: WORKFLOW.openTask, slot: slotLabels(WORKFLOW.notFound) },
         },

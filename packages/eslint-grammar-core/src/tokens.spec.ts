@@ -36,7 +36,7 @@ test("TOKEN-3: a fractional step is off the ladder, wherever it is written", () 
     ],
     invalid: [
       // a shared package's layer folder is product source
-      { filename: at("packages/nivo-ui/src/leaves/Text/index.tsx"), code: "const E = () => <p className=\"gap-1.5\" />", errors: [{ messageId: "fractional" }] },
+      { filename: at("packages/app-ui/src/leaves/Text/index.tsx"), code: "const E = () => <p className=\"gap-1.5\" />", errors: [{ messageId: "fractional" }] },
       // markup
       { filename: LEAF, code: "const E = () => <p className=\"gap-1.5\" />", errors: [{ messageId: "fractional" }] },
       // the shape that hid from every earlier version: a module constant

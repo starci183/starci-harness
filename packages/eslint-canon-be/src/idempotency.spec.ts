@@ -104,7 +104,7 @@ test("delivery claims first with the actual EntityManager callback and cannot es
     tester.run("inbox-dedupe-required/transaction", inboxDedupeRequired, {
         valid: [
             {
-                name: "returned invoice transaction reads a duplicate and writes only after the bound claim", filename: SERVICE,
+                name: "returned record transaction reads a duplicate and writes only after the bound claim", filename: SERVICE,
                 code: transactionService("return this.em.transaction(async (tx) => { if (!(await this.inbox.claim('billing', m.eventId, tx))) return await tx.query('read duplicate'); return await tx.save({ amount: m.amount }) })"),
             },
             {

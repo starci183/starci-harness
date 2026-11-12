@@ -42,7 +42,7 @@ type AlertBase = {
     readonly description?: ReactNode
     /**
      * Render-neutral meaning of the banner. Default `informative`. `accent` is the brand: the accent soft pair, for a welcome or
-     * "new" band that announces no status (it reads and acts as `informative`). A tone the app declared in `GrammarToneRegistry` (Nivo's
+     * "new" band that announces no status (it reads and acts as `informative`). A tone the app declared in `GrammarToneRegistry` (an app's
      * `info`) paints its own soft pair and acts as a neutral notice.
      */
     readonly tone?: PresentationState | "accent" | CustomTone

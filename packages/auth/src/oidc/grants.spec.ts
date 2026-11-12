@@ -16,7 +16,7 @@ const setup = async (overrides: Partial<OidcOptions> = {}, issuerOptions: Parame
     const clock = new FakeClock()
     const issuer = await FakeOidcIssuer.create({ clock, clientSecret: "s3cret", ...issuerOptions })
     const oidc = createOidc(issuer.options({ callbackUri: CALLBACK, ...overrides }))
-    issuer.seedUser({ id: "user-9", username: "mai", email: "mai@example.test", password: "correct horse", roles: ["learner"] })
+    issuer.seedUser({ id: "user-9", username: "mai", email: "mai@example.test", password: "correct horse", roles: ["member"] })
     return { issuer, clock, tokens: oidc.tokenClient }
 }
 
@@ -26,7 +26,7 @@ describe("OidcTokenClient passwordGrant", () => {
         for (const identifier of ["mai", "MAI@example.test"]) {
             const grant = await tokens.passwordGrant(identifier, "correct horse")
             assert.equal(grant.subject, "user-9")
-            assert.deepEqual(grant.roles, ["learner"])
+            assert.deepEqual(grant.roles, ["member"])
             assert.equal(grant.email, "mai@example.test")
             assert.equal(grant.principal.id, "user-9")
             assert.equal(grant.principal.username, "mai")

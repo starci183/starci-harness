@@ -55,7 +55,7 @@ test("FE-NEXT-2: the locale segment is [locale]", () => {
   assert.doesNotThrow(() => tester.run("locale-segment-is-locale", localeSegmentIsLocale, {
     valid: [
       { filename: at("apps/web/src/app/[locale]/page.tsx"), code: "export default function P() {}" },
-      { filename: at("apps/web/src/app/[locale]/courses/[slug]/page.tsx"), code: "export default function P() {}" },
+      { filename: at("apps/web/src/app/[locale]/projects/[slug]/page.tsx"), code: "export default function P() {}" },
       { filename: at("apps/web/src/app/health/live/route.ts"), code: "export const GET = 1" },
       // a folder named [lang] that the route slot does not own is not a locale segment
       { filename: at("apps/web/src/components/app/[lang]/page.tsx"), code: "export default function P() {}" },
@@ -108,9 +108,9 @@ test("FE-NEXT-5: every page exports metadata", () => {
   assert.doesNotThrow(() => tester.run("page-exports-metadata", pageExportsMetadata, {
     valid: [
       { filename: at("apps/web/src/app/[locale]/page.tsx"), code: "export const metadata = { title: 'Home' }\nexport default function P() {}" },
-      { filename: at("apps/web/src/app/[locale]/courses/page.tsx"), code: "export async function generateMetadata() { return {} }\nexport default function P() {}" },
-      { filename: at("apps/web/src/app/[locale]/courses/page.tsx"), code: "export const generateMetadata = async () => ({})\nexport default function P() {}" },
-      { filename: at("apps/web/src/app/[locale]/courses/page.tsx"), code: "export { metadata } from '@/features/pages/Courses'\nexport default function P() {}" },
+      { filename: at("apps/web/src/app/[locale]/projects/page.tsx"), code: "export async function generateMetadata() { return {} }\nexport default function P() {}" },
+      { filename: at("apps/web/src/app/[locale]/projects/page.tsx"), code: "export const generateMetadata = async () => ({})\nexport default function P() {}" },
+      { filename: at("apps/web/src/app/[locale]/projects/page.tsx"), code: "export { metadata } from '@/features/pages/Projects'\nexport default function P() {}" },
       // only pages name themselves; a layout inherits and a component is not a route
       { filename: at("apps/web/src/app/[locale]/layout.tsx"), code: "export default function L() {}" },
       { filename: at("apps/web/src/features/pages/Home/index.tsx"), code: "export const Home = () => null" },
@@ -181,11 +181,11 @@ test("FE-NEXT-8: no hand-drawn anchor for an internal route", () => {
       { code: 'const A = () => <a href="tel:+84900000000">x</a>' },
       { code: 'const A = () => <a href="#main">skip</a>' },
       { code: "const A = () => <a href={url}>x</a>" },
-      { code: 'const A = () => <Link href="/courses">x</Link>' },
+      { code: 'const A = () => <Link href="/projects">x</Link>' },
     ],
     invalid: [
-      { code: 'const A = () => <a href="/courses">x</a>', errors: [{ messageId: "internal" }] },
-      { code: "const A = () => <a href={`/courses`}>x</a>", errors: [{ messageId: "internal" }] },
+      { code: 'const A = () => <a href="/projects">x</a>', errors: [{ messageId: "internal" }] },
+      { code: "const A = () => <a href={`/projects`}>x</a>", errors: [{ messageId: "internal" }] },
       { code: 'const A = () => <a href="https://example.com" target="_blank">x</a>', errors: [{ messageId: "rel" }] },
       { code: 'const A = () => <a href="/x" target="_blank">x</a>', errors: [{ messageId: "internal" }, { messageId: "rel" }] },
     ],
@@ -196,20 +196,20 @@ test("FE-NEXT-9: a route is built by modules/routes, not written at the call", (
   const NAV = at("apps/web/src/components/blocks/Nav/index.tsx")
   assert.doesNotThrow(() => tester.run("no-hardcoded-route", noHardcodedRoute, {
     valid: [
-      { filename: NAV, code: "const A = () => <Link href={routes.course(slug)}>x</Link>" },
+      { filename: NAV, code: "const A = () => <Link href={routes.project(slug)}>x</Link>" },
       { filename: NAV, code: "router.push(routes.home())" },
       { filename: NAV, code: 'const A = () => <Link href="https://example.com">x</Link>' },
       { filename: NAV, code: 'const A = () => <Link href="/">home</Link>' },
       { filename: NAV, code: 'const A = () => <a href="mailto:hi@example.com">x</a>' },
       { filename: NAV, code: 'const a = value.replace("/x", "")' },
       { filename: NAV, code: 'stack.push("/x")' },
-      { filename: at("apps/web/src/modules/routes/index.ts"), code: "export const course = (slug) => `/courses/${slug}`" },
-      { filename: at("apps/web/src/modules/routes/index.tsx"), code: 'const A = () => <Link href="/courses">x</Link>' },
-      { filename: at("apps/admin/src/modules/i18n/navigation.ts"), code: 'redirect("/courses")' },
+      { filename: at("apps/web/src/modules/routes/index.ts"), code: "export const project = (slug) => `/projects/${slug}`" },
+      { filename: at("apps/web/src/modules/routes/index.tsx"), code: 'const A = () => <Link href="/projects">x</Link>' },
+      { filename: at("apps/admin/src/modules/i18n/navigation.ts"), code: 'redirect("/projects")' },
     ],
     invalid: [
-      { filename: NAV, code: 'const A = () => <Link href="/courses">x</Link>', errors: [{ messageId: "route" }] },
-      { filename: NAV, code: "const A = () => <Link href={`/courses/${slug}`}>x</Link>", errors: [{ messageId: "route" }] },
+      { filename: NAV, code: 'const A = () => <Link href="/projects">x</Link>', errors: [{ messageId: "route" }] },
+      { filename: NAV, code: "const A = () => <Link href={`/projects/${slug}`}>x</Link>", errors: [{ messageId: "route" }] },
       { filename: NAV, code: 'const A = () => <a href="/tasks">x</a>', errors: [{ messageId: "route" }] },
       { filename: NAV, code: 'router.push("/my-app/workspaces/new")', errors: [{ messageId: "route" }] },
       { filename: NAV, code: "router.replace(`/orders/${id}`)", errors: [{ messageId: "route" }] },
@@ -268,7 +268,7 @@ test("FE-I18N-1: the next-intl stack is built by @starci/next-i18n, never by a p
         { filename: APP_REQUEST, code: 'import { getRequestConfig as request } from "next-intl/server"\nexport default request(async () => ({}))', errors: [{ messageId: "stack" }] },
         { filename: APP_REQUEST, code: 'import * as server from "next-intl/server"\nexport default server.getRequestConfig(async () => ({}))', errors: [{ messageId: "stack" }] },
         { filename: APP_REQUEST, code: 'import mw from "next-intl/middleware"\nexport const proxy = mw(routing)', errors: [{ messageId: "stack" }] },
-        { filename: at("apps/web/src/hooks/lesson/useLesson.ts"), code: NAVIGATION, errors: [{ messageId: "stack" }] },
+        { filename: at("apps/web/src/hooks/item/useItem.ts"), code: NAVIGATION, errors: [{ messageId: "stack" }] },
         { filename: at("packages/shop-ui/src/leaves/Menu/component.tsx"), code: NAVIGATION, errors: [{ messageId: "stack" }] },
         { filename: at("packages/shop-api/src/client.ts"), code: REQUEST, errors: [{ messageId: "stack" }] },
       ],

@@ -20,7 +20,8 @@ for (const edition of ['lite', 'full']) {
     };
     const feature = '.starciwork/features/orders/index.yaml';
     const allowed = ['.starciwork/.gitignore', '.starciwork/workspace.yaml', '.starciwork/brand/index.yaml',
-      '.starciwork/concepts/index.yaml', '.starciwork/concepts/where-things-live/index.yaml'];
+      '.starciwork/concepts/index.yaml', '.starciwork/concepts/where-things-live/index.yaml',
+      '.starciwork/concepts/README.md', '.starciwork/concepts/orders.md'];
     for (const file of [...allowed, feature]) {
       fs.mkdirSync(path.dirname(path.join(repoRoot, file)), { recursive: true });
       fs.writeFileSync(path.join(repoRoot, file), file.endsWith('.yaml') ? '{}\n' : '');

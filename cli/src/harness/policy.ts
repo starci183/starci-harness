@@ -14,7 +14,7 @@ export const RUNTIME_GATES = ["secrets", "loosening", "canon", "typecheck", "lin
 export type RuntimeGate = (typeof RUNTIME_GATES)[number]
 
 /** The gates CI runs on main after the push; the CLI only names them. */
-export const CI_GATES = ["unit", "e2e", "build", "sonar-new-code"] as const
+export const CI_GATES = ["unit", "build", "sonar-new-code"] as const
 
 /** The actions that can wait for a green CI; deploy.prod is held by `app stack deploy --env production --execute` (core/app/stack.ts). */
 export const CI_GATED_ACTIONS = ["release.cut", "release.publish", "deploy.prod"] as const

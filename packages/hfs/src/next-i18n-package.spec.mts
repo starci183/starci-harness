@@ -22,7 +22,7 @@ const lockedOk = (root: string): LockResult => {
 };
 
 const starter = (t: Parameters<typeof mkdtemp>[0], edition: 'lite' | 'full') =>
-  scaffoldApp({ name: 'demo', into: mkdtemp(t, 'starci-next-i18n-'), harness: { version: '1.1.0-alpha.3' }, edition, presets: bundledPresets(), lock: lockedOk, initGit: init }).root;
+  scaffoldApp({ name: 'demo', into: mkdtemp(t, 'hfs-next-i18n-'), harness: { version: '1.1.0-alpha.3' }, edition, presets: bundledPresets(), lock: lockedOk, initGit: init }).root;
 
 const read = (root: string, ...parts: string[]): string => fs.readFileSync(path.join(root, ...parts), 'utf8').replace(/^﻿/, '');
 

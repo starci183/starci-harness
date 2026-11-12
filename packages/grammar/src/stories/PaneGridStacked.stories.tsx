@@ -10,19 +10,19 @@ const meta: Meta = { title: 'Surfaces/Pane grid stacked' };
 export default meta;
 type Story = StoryObj;
 
-const ASIDE_ROWS = Array.from({ length: 5 }, (_, i) => ({ id: `a${i}`, title: `Mục ${i + 1}`, description: 'Mô tả của mục nằm ở dòng thứ hai' }));
-const WELL_ROWS = Array.from({ length: 6 }, (_, i) => ({ id: `w${i}`, title: `Milestone ${i + 1}`, description: '0/3 concept đã chứng minh', href: `#m${i}` }));
+const ASIDE_ROWS = Array.from({ length: 5 }, (_, i) => ({ id: `a${i}`, title: `Item ${i + 1}`, description: 'Description of the item sits on the second line' }));
+const WELL_ROWS = Array.from({ length: 6 }, (_, i) => ({ id: `w${i}`, title: `Milestone ${i + 1}`, description: '0/3 tasks done', href: `#m${i}` }));
 
 const Detail = () => (
-  <G.PaneGrid label="Chi tiết" areas={{ base: ['aside', 'main'], wide: ['main aside'] }} columns={{ base: ['fill'], wide: ['fill', 'standard'] }}>
-    <G.Pane area="aside" surface label="Thông tin">
+  <G.PaneGrid label="Details" areas={{ base: ['aside', 'main'], wide: ['main aside'] }} columns={{ base: ['fill'], wide: ['fill', 'standard'] }}>
+    <G.Pane area="aside" surface label="Info">
       <G.PaneSection>
-        <G.Section kind="list" title="Kho mã" items={ASIDE_ROWS} empty={<G.EmptyNotice message="Trống" />} />
+        <G.Section kind="list" title="Repository" items={ASIDE_ROWS} empty={<G.EmptyNotice message="Empty" />} />
       </G.PaneSection>
     </G.Pane>
-    <G.Pane area="main" label="Nội dung">
+    <G.Pane area="main" label="Content">
       <G.PaneSection>
-        <G.SurfaceCard kind="list" label="Milestone" items={WELL_ROWS} empty={<G.EmptyNotice message="Trống" />} />
+        <G.SurfaceCard kind="list" label="Milestone" items={WELL_ROWS} empty={<G.EmptyNotice message="Empty" />} />
       </G.PaneSection>
     </G.Pane>
   </G.PaneGrid>

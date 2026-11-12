@@ -14,7 +14,7 @@ const BUILDER = at("src/tests/fixtures/builders/order.builder.ts")
 const WORLD = at("src/tests/world/seed.ts")
 const FIXTURES = at("src/tests/fixtures/order-seed.ts")
 const IMPORT = "import { EntityManager, DataSource, QueryRunner } from 'typeorm'\n"
-const ENTITY = "import { Entity } from 'typeorm'\n@Entity()\nclass Order { id!: number; status!: string }\n@Entity()\nclass Invoice { id!: number }\nclass Plain { id!: number }\n"
+const ENTITY = "import { Entity } from 'typeorm'\n@Entity()\nclass Order { id!: number; status!: string }\n@Entity()\nclass RecordEntry { id!: number }\nclass Plain { id!: number }\n"
 const RUNNER = "import { QueryRunner, EntityManager } from 'typeorm'\ndeclare const runner: QueryRunner\ndeclare const em: EntityManager\ndeclare const sql: (s: TemplateStringsArray) => string\n"
 const tester = typedTester()
 
@@ -56,7 +56,7 @@ test("BE-TEST-16: a spec builds the same persistence entity as an object literal
     tester.run("spec-no-repeated-row-literal", specNoRepeatedRowLiteral, {
         valid: [
             // one literal of an entity is fine; two different entities are fine
-            { filename: E2E, code: `${ENTITY}const a: Order = { id: 1, status: "new" }\nconst b: Invoice = { id: 2 }\nexport { a, b }` },
+            { filename: E2E, code: `${ENTITY}const a: Order = { id: 1, status: "new" }\nconst b: RecordEntry = { id: 2 }\nexport { a, b }` },
             // a literal that derives from a builder result (spread) is an override, not a hand-built row
             { filename: E2E, code: `${ENTITY}declare const orderRow: () => Order\nconst a: Order = { ...orderRow(), status: "a" }\nconst b: Order = { ...orderRow(), status: "b" }\nexport { a, b }` },
             // repeated literals of a type that is not a persistence entity

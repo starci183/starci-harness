@@ -301,9 +301,8 @@ export const explicitHandlerReturnType: RuleModule = {
 // A rule was written here: two-or-more `is`/`has`-prefixed booleans sharing a type literal with a
 // field that is optional and not itself boolean. It was measured against the reference backend
 // before shipping, per this canon's own standard -- and both of its two real firings were wrong.
-// `GlobalSearchItem` (`isEnrolled` / `isFree` / `isPremium` beside an unrelated optional
-// `parentPath`) and `AdvertisementSeedItem` (`isHouseAd` / `isActive` beside an unrelated optional
-// `ctaText`) are both genuinely independent facts about one entity, not a product of states -- the
+// They were a search-result item and a seed item, each with independent `is*` flags beside an
+// unrelated optional field: both genuinely independent facts about one entity, not a product of states -- the
 // exact "transport type" and "independent booleans" exceptions `type-safety.md` already names. A
 // rule reporting a defect on 2 of its 2 real firings is not a rule with debt to burn down; it is
 // wrong, and shipping it at any level would teach a reader to distrust the machine rather than the

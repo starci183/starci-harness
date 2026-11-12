@@ -66,6 +66,30 @@ the committed receipt and does the work.
 Why: the receipt and the job commit together, so a crash neither loses nor doubles a delivery, and a slow effect stays
 out of the provider's request.
 
+An app whose receipt is a row of its own store, written once under a unique key, declares that method as a receipt port in hfs.json
+`sides.be.receiptPorts`: `{ "class": "<its class>", "method": "<its method>", "repeat": "false" | "undefined", "reason": "<what it writes and
+what makes a delivery a repeat>" }`. The method takes the transaction's manager as its first argument and answers a repeat exactly as the
+platform Inbox does: `false` (like `claim`) or `undefined` (like `claimRow`). The intake then calls it under the contract of the Inbox claim,
+which `webhook-inbox-key` holds call by call: it is the first await inside the receipt transaction, on that transaction's own manager; at
+least one of its other arguments comes from the delivery (a parameter of the intake, directly or through `const` bindings; a literal is no
+key); its arguments hold no call, so what they need is bound by a `const` before it; and the next statement returns on the declared repeat
+answer. Only the declared method is the record: another method of that class, or a class the declaration does not name, is processing inside
+the receipt transaction and no claim.
+
+A delivery that carries several keyed events declares its port with `"many": true` in place of `repeat`: `{ "class": "<its class>",
+"method": "<its method>", "many": true, "reason": "<what it writes and what makes an event a repeat>" }`; an entry gives `repeat` or `many`,
+never both. The method takes the transaction's manager first and the delivery that carries the events, writes each event once under its
+unique key, and answers the list of the new events only, so a repeated delivery answers the empty list. The call holds the same contract up
+to its answer (first await inside the receipt transaction, that transaction's manager, an argument from the delivery, no call inside its
+arguments); its answer is bound to one `const` name, and every later statement of the receipt transaction is
+`for (const event of <that name>) { ... }`: no `for await`, no other iterable (not the delivery's events, not a copy or slice of the answer),
+no statement between, after or instead of the loops, and no loop body reads the intake's parameters, the bindings made before the claim,
+the answer list itself or `arguments`; the loop reads its own bindings and the transaction's manager. The handoff half judges the loop body as
+the rest of the transaction: a domain or bus call there is processing.
+
+The rule proves the shape of the call, not what the declared method does: that it really writes once under a unique key, and in the many form
+answers only the events it wrote, is the app's own spec to hold, named in the concept that declares the port.
+
 Enforced by: `inbox-dedupe-required`, `webhook-inbox-key` (R80, R263), `outbox-write-tx` (R152).
 
 ## BE-WEBHOOK-4 Three behaviours are proven against a signing fake

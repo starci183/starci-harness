@@ -250,7 +250,7 @@ function workspaceDirectories(root: string, { packageRoot: appPackageRoot = root
 
 /**
  * The workspace packages of the app root that no side owns: the `workspaces` patterns of the app's one package.json that do not start
- * with a side folder (`packages/*`), and the directories the slots `app.packages` and `app.module-registry` place under `packages/`
+ * with a side folder (`packages/*`), and the directories the slot `app.packages` places under `packages/`
  * even when the manifest forgot to list them. A side imports them as first-party packages (through their entry points), never as
  * "outside the side". A side of the app is judged here; the app root itself already counts them among its workspaces.
  */

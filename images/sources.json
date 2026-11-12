@@ -16,38 +16,5 @@
       "run": "https://github.com/starci183/minio/actions/runs/41173705308",
       "workflow": ".github/workflows/image.yml"
     }
-  },
-  "openclaw": {
-    "repository": "https://github.com/starci183/openclaw",
-    "commit": "0a956010aced6bd65e80f45a2b360b14d79a55ed",
-    "sourceDockerfile": "Dockerfile",
-    "platforms": [
-      "linux/amd64"
-    ],
-    "buildArgs": {
-      "OPENCLAW_DOCKER_BUILD_VERSION": "2026.10.10-beta.5"
-    },
-    "published": {
-      "reference": "ghcr.io/starci183/openclaw:2026.10.10-beta.5-starci.1@sha256:0770c1da11ec4a46607ec16957ac3cff68d05db4a287f59f0e1d0e76de980ff8",
-      "run": "https://github.com/starci183/openclaw/actions/runs/41282226747",
-      "workflow": ".github/workflows/starci-image.yml"
-    }
-  },
-  "openclaw-runtime": {
-    "layerOf": "openclaw",
-    "image": "ghcr.io/starci183/openclaw-runtime",
-    "dockerfile": "images/openclaw-runtime/Dockerfile",
-    "context": "images/openclaw-runtime",
-    "base": "ghcr.io/starci183/openclaw:2026.10.10-beta.5-starci.1@sha256:0770c1da11ec4a46607ec16957ac3cff68d05db4a287f59f0e1d0e76de980ff8",
-    "platforms": [
-      "linux/amd64"
-    ],
-    "pluginDirectory": "/opt/starci/plugins",
-    "published": {
-      "reference": "ghcr.io/starci183/openclaw-runtime:2026.10.10-beta.5-starci.2@sha256:4257c488955dd17f403e18e5edd1d2253b4b6982ef0e3f235e3e3381b39953af",
-      "run": "https://github.com/starci183/starci-harness/actions/runs/41729046785",
-      "workflow": ".github/workflows/images.yml"
-    },
-    "workflow": ".github/workflows/images.yml"
   }
 }

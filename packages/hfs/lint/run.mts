@@ -183,27 +183,30 @@ const inside = (root: string, file: string): boolean => { const rel = path.relat
 /**
  * The lint scope a flat config declares: `ignored(file)` for its global ignores (a block holding only `ignores` and `name`), which prune
  * the walk, and `source(file)` for a file some block's `files` select while that block's own `ignores` do not (standard flat-config
- * semantics: the Sonar-way block of the canons narrows itself to the scanned files). Negated or non-string selectors cannot prove a
- * scope and are refused.
+ * semantics: the Sonar-way block of the canons narrows itself to the scanned files). A `files` entry that is a list of globs selects a file all of them match (the
+ * packages config narrows a declared slot to its script files so). Negated or non-string selectors cannot prove a scope and are refused.
  */
 export function canonScope(config: readonly Dynamic[]): { ignored: (file: string) => boolean; source: (file: string) => boolean } {
-  const blocks: { files: RegExp[]; ignores: RegExp[] }[] = [], ignored: RegExp[] = [];
+  // One `files` selector: a glob (any of its brace variants), or a list of globs the file must match all of (flat-config AND).
+  type Selector = RegExp[][];
+  const blocks: { files: Selector[]; ignores: RegExp[] }[] = [], ignored: RegExp[] = [];
+  const plain = (glob: unknown): glob is string => typeof glob === 'string' && !glob.startsWith('!');
+  const expressions = (glob: string): RegExp[] => (braceVariants(glob) as string[]).map(globExpression);
   for (const block of config) {
     if (!block || typeof block !== 'object') throw new Error('the installed canon returned an invalid config block');
-    for (const field of ['files', 'ignores']) {
-      if (block[field] === undefined) continue;
-      if (!Array.isArray(block[field]) || block[field].some((glob: unknown) => typeof glob !== 'string' || glob.startsWith('!'))) throw new Error(`unsupported canon ${field} selectors`);
-    }
-    const patterns = (globs: string[] | undefined): RegExp[] => (globs ?? []).flatMap((glob) => (braceVariants(glob) as string[]).map(globExpression));
+    if (block.ignores !== undefined && !(Array.isArray(block.ignores) && block.ignores.every(plain))) throw new Error('unsupported canon ignores selectors');
+    if (block.files !== undefined && !(Array.isArray(block.files) && block.files.every((glob: unknown) => plain(glob) || (Array.isArray(glob) && glob.length > 0 && glob.every(plain))))) throw new Error('unsupported canon files selectors');
+    const patterns = (globs: string[] | undefined): RegExp[] => (globs ?? []).flatMap(expressions);
     const global = block.ignores !== undefined && Object.keys(block).every((key) => ['ignores', 'name'].includes(key));
     if (global) ignored.push(...patterns(block.ignores));
-    else if (block.files !== undefined) blocks.push({ files: patterns(block.files), ignores: patterns(block.ignores) });
+    else if (block.files !== undefined) blocks.push({ files: (block.files as (string | string[])[]).map((glob) => (typeof glob === 'string' ? [glob] : glob).map(expressions)), ignores: patterns(block.ignores) });
   }
   if (!blocks.length) throw new Error('the installed canon has no source selectors');
   const matches = (list: readonly RegExp[], file: string): boolean => list.some((pattern) => pattern.test(file));
+  const selects = (selector: Selector, file: string): boolean => selector.every((glob) => matches(glob, file));
   return {
     ignored: (file) => matches(ignored, file),
-    source: (file) => blocks.some((block) => matches(block.files, file) && !matches(block.ignores, file)),
+    source: (file) => blocks.some((block) => block.files.some((selector) => selects(selector, file)) && !matches(block.ignores, file)),
   };
 }
 

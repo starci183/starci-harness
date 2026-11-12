@@ -16,7 +16,6 @@ import { releasePushVerb } from "./core/release/push.js"
 import { versionVerb } from "./core/version.js"
 import { appInfoVerb } from "./lite/app/info.js"
 import { appAddVerb } from "./core/app/add.js"
-import { appRemoveVerb } from "./core/app/remove.js"
 import { appCheckVerb } from "./core/app/check.js"
 import { appCiVerb } from "./core/app/ci.js"
 import { appCodemodVerb } from "./core/app/codemod.js"
@@ -139,7 +138,6 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     taskCancelVerb,
     appInfoVerb,
     appAddVerb,
-    appRemoveVerb,
     appCheckVerb,
     appCiVerb,
     appCodemodVerb,

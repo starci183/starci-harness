@@ -67,7 +67,7 @@ reviveMax: 3
 # priority; a node tool under `--max-old-space-size` of its heap cap, a uat container under `--memory` at it, so a command cannot take more than it
 # planned, and each jest worker is held to workerMb by `--workerIdleMemoryLimit` and a heap cap.
 # The jest parent keeps no coverage: each spec's coverage becomes its cache record as the run streams and is dropped, so the parent holds about
-# 0.4 MB a spec beyond its base (about 1.3 GB on a Nivo-sized back end), which testRun.parentMb caps; a worker holds about 1.5 GB
+# 0.4 MB a spec beyond its base (about 1.3 GB on a back end of some 3000 specs), which testRun.parentMb caps; a worker holds about 1.5 GB
 # (testRun.workerMb). A free 22 GB on a 28-core host gives such a run 10 workers; a free 7 GB gives 1.
 # A worker seat launches
 # only while free memory is at least seatFreeMb; otherwise its task stays queued and the hold is recorded (since when, on what
@@ -119,7 +119,7 @@ heavy:
   bootProofTimeoutSeconds: 300
   scannerCpuPercent: 50
   # The memory plan of `app check` (RAM-SIZING; cli/src/harness/memory-plan.ts): before its families run, the check measures
-  # the cache folder of the app (L the MB of every record) and sizes its own heap from it. Fitted on Nivo (a parent that died on 494 MB of
+  # the cache folder of the app (L the MB of every record) and sizes its own heap from it. Fitted on a reference app (a parent that died on 494 MB of
   # coverage records at the default heap). It is clamped to minMb..maxMb, and no earlier run changes it:
   #   parent      = baseMb + perRecordMb x L, the check's own process; it re-executes itself under that heap when node's limit is lower. The
   #                 records are held as their lines and parsed one at a time (streaming), so 3 MB a record MB.

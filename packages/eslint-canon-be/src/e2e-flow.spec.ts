@@ -21,7 +21,7 @@ import {
 
 const tester = typedTester()
 
-const FLOW = at("src/tests/e2e/checkout/course-purchase.e2e-spec.ts")
+const FLOW = at("src/tests/e2e/checkout/project-purchase.e2e-spec.ts")
 const UNIT = at("src/modules/domain/billing/charge.spec.ts")
 const WORLD = `import { useTestWorld } from "../../world/test-world.contracts"
 const world = useTestWorld()

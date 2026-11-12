@@ -21,8 +21,8 @@ const setup = async (overrides: Partial<OidcOptions> = {}) => {
 
 describe("adminBaseOf", () => {
     it("derives the realm admin base from the issuer, keeping a path prefix", () => {
-        assert.equal(adminBaseOf("https://sso.example.test/realms/academy"), "https://sso.example.test/admin/realms/academy")
-        assert.equal(adminBaseOf("https://sso.example.test/auth/realms/academy/"), "https://sso.example.test/auth/admin/realms/academy")
+        assert.equal(adminBaseOf("https://sso.example.test/realms/demo"), "https://sso.example.test/admin/realms/demo")
+        assert.equal(adminBaseOf("https://sso.example.test/auth/realms/demo/"), "https://sso.example.test/auth/admin/realms/demo")
     })
 
     it("refuses an issuer that is not shaped like a realm", () => {

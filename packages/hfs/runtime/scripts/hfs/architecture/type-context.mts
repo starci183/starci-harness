@@ -337,7 +337,7 @@ function appendEdge(from: string, sourceFile: SourceFile, project: TypeScriptPro
 }
 
 /**
- * An import of one of the app's root workspace packages (`@scope/agent-sdk`, `@scope/agent-sdk/workbench`). The package lies outside the side
+ * An import of one of the app's root workspace packages (`@scope/sdk`, `@scope/sdk/workbench`). The package lies outside the side
  * folder, yet it is first-party source both sides may import: through its package entry points (the `exports` of its manifest) and never past
  * them. An entry point is no import that leaves the side and adds no edge (the package is not part of this side's graph; the package's own
  * lint judges its files); a path into the package's source is refused. Returns true when the reference was settled here.

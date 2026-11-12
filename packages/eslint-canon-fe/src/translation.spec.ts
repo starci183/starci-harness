@@ -4,7 +4,7 @@
  *   node --test src/translation.spec.ts
  *
  * The cases that earn their place are the ones that separate a SENTENCE from a TOKEN in an object or
- * a generic prop (`"sm"` is a size, `"Search courses"` is copy), and the ones where a block is
+ * a generic prop (`"sm"` is a size, `"Search projects"` is copy), and the ones where a block is
  * not exempt and no pragma excuses a literal.
  */
 import assert from "node:assert/strict"
@@ -21,7 +21,7 @@ const tester = slotTester()
 
 const LEAF = at("apps/web/src/components/leaves/Input/index.tsx")
 const COMPOSITE = at("apps/web/src/components/composites/SearchBox/index.tsx")
-const BLOCK = at("apps/web/src/components/blocks/DailyQuest/index.tsx")
+const BLOCK = at("apps/web/src/components/blocks/SummaryCard/index.tsx")
 
 test("every rule this law declares is exported under its published name", () => {
   for (const [name, rule] of Object.entries(rules)) {
@@ -40,7 +40,7 @@ test("COPY-1: a tier that receives its words never resolves one", () => {
     ],
     invalid: [
       { filename: LEAF, code: "const t = useTranslations(\"input\")", errors: [{ messageId: "resolves" }] },
-      { filename: at("packages/nivo-ui/src/leaves/Input/index.tsx"), code: "const t = useTranslations(\"input\")", errors: [{ messageId: "resolves" }] },
+      { filename: at("packages/app-ui/src/leaves/Input/index.tsx"), code: "const t = useTranslations(\"input\")", errors: [{ messageId: "resolves" }] },
       { filename: COMPOSITE, code: "const l = useLocale()", errors: [{ messageId: "resolves" }] },
     ],
   }))
@@ -68,20 +68,20 @@ test("COPY-2: no literal copy at any tier, in any language, and no pragma", () =
       // a key that is not a copy key carries copy only when the value is a whole sentence: tokens, classes, ids, media types and formats are not
       { filename: BLOCK, code: "const o = { kind: \"not-found\", method: \"GET\", accept: \"application/json\" }" },
       { filename: BLOCK, code: "const o = { root: \"flex items-center gap-2\", size: \"sm\", mode: \"Dark\" }" },
-      { filename: BLOCK, code: "const o = { format: \"YYYY-MM-DD HH:mm\", pattern: \"dd/MM/yyyy\", url: \"/courses/list\" }" },
+      { filename: BLOCK, code: "const o = { format: \"YYYY-MM-DD HH:mm\", pattern: \"dd/MM/yyyy\", url: \"/projects/list\" }" },
       // templates that are not copy: class names, urls, keys, ids, units, format tokens
       { filename: BLOCK, code: "const E = () => <div className={`btn ${size} btn-${tone}`} />" },
-      { filename: BLOCK, code: "const E = () => <a href={`/courses/${id}/lessons`}>{t(\"open\")}</a>" },
+      { filename: BLOCK, code: "const E = () => <a href={`/projects/${id}/items`}>{t(\"open\")}</a>" },
       { filename: BLOCK, code: "const E = () => <span>{`${a}-${b}`}</span>" },
       { filename: BLOCK, code: "const E = () => <span>{`${x} / ${y}`}</span>" },
       { filename: BLOCK, code: "const E = () => <span style={{ width: `${pct}%` }} />" },
       { filename: BLOCK, code: "const E = () => <input placeholder={`${a}${b}`} />" },
-      { filename: BLOCK, code: "const key = `course:${id}:lesson`; const o = { id: `row-${n}`, path: `/a/${b}` }" },
+      { filename: BLOCK, code: "const key = `project:${id}:item`; const o = { id: `row-${n}`, path: `/a/${b}` }" },
       { filename: BLOCK, code: "const o = { title: `${a}-${b}`, label: `${n}px` }" },
       // a template resolved through t() is not a literal
       { filename: BLOCK, code: "const E = () => <p>{t(\"installed\", { count })}</p>" },
       // catalogue keys are lower-case dotted tokens
-      { filename: BLOCK, code: "const o = { title: t(\"course.title\") }" },
+      { filename: BLOCK, code: "const o = { title: t(\"project.title\") }" },
       // English comments are the rule
       { filename: BLOCK, code: "// the reason this exists\nconst x = 1" },
     ],
@@ -93,7 +93,7 @@ test("COPY-2: no literal copy at any tier, in any language, and no pragma", () =
       { filename: BLOCK, code: "const E = () => <p>Ti\u1ebfp t\u1ee5c h\u1ecdc</p>", errors: [{ messageId: "text" }] },
       {
         filename: LEAF,
-        code: "const E = () => <input placeholder=\"Search courses\" />",
+        code: "const E = () => <input placeholder=\"Search projects\" />",
         errors: [{ messageId: "attribute" }],
       },
       {
@@ -110,7 +110,7 @@ test("COPY-2: no literal copy at any tier, in any language, and no pragma", () =
       // `label` is a spoken attribute: any word in it is copy
       { filename: BLOCK, code: "const E = () => <Field label=\"sm\" />", errors: [{ messageId: "attribute" }] },
       // copy in an object
-      { filename: BLOCK, code: "const o = { title: \"Your courses\" }", errors: [{ messageId: "property" }] },
+      { filename: BLOCK, code: "const o = { title: \"Your projects\" }", errors: [{ messageId: "property" }] },
       { filename: at("apps/web/src/app/[locale]/page.tsx"), code: "export const metadata = { description: \"Learn to code\" }", errors: [{ messageId: "property" }] },
       // a template with substitutions whose static parts hold a word is copy: JSX child, spoken attribute, prose attribute
       { filename: BLOCK, code: "const E = () => <p>{`${count} installed`}</p>", errors: [{ messageId: "text" }] },
@@ -120,9 +120,9 @@ test("COPY-2: no literal copy at any tier, in any language, and no pragma", () =
       // a template as a copy-key value
       { filename: BLOCK, code: "const o = { title: `Welcome back, ${name}` }", errors: [{ messageId: "property" }] },
       // any key: a whole sentence is copy (a hook returning its own status text)
-      { filename: BLOCK, code: "const s = { ready: \"Your course is ready\" }", errors: [{ messageId: "property" }] },
-      { filename: at("apps/web/src/hooks/lesson/useLesson.ts"), code: "export const useLesson = () => ({ status: \"Loading your lesson\", error: \"Something went wrong.\" })", errors: [{ messageId: "property" }, { messageId: "property" }] },
-      { filename: at("apps/web/src/modules/notify/messages.ts"), code: "export const M = { saved: `Saved ${n} items`, kind: \"Search courses\" }", errors: [{ messageId: "property" }, { messageId: "property" }] },
+      { filename: BLOCK, code: "const s = { ready: \"Your project is ready\" }", errors: [{ messageId: "property" }] },
+      { filename: at("apps/web/src/hooks/item/useItem.ts"), code: "export const useItem = () => ({ status: \"Loading your item\", error: \"Something went wrong.\" })", errors: [{ messageId: "property" }, { messageId: "property" }] },
+      { filename: at("apps/web/src/modules/notify/messages.ts"), code: "export const M = { saved: `Saved ${n} items`, kind: \"Search projects\" }", errors: [{ messageId: "property" }, { messageId: "property" }] },
     ],
   }))
 })

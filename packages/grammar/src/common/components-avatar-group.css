@@ -44,7 +44,7 @@
         background-position: center;
     }
 
-    /* Zalo's three-member identity has one full-width member above the two remaining members. */
+    /* The chat-app three-member identity has one full-width member above the two remaining members. */
     .starci-core-avatar-group[data-grammar-avatar-cells="3"] .starci-core-avatar-group-member:first-child {
         grid-column: 1 / -1;
     }

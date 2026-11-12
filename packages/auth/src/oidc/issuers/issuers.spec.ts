@@ -24,21 +24,21 @@ const fake = async () => {
     return { clock, issuer, transport: { http: issuer.http, clock } }
 }
 
-/** The claims a workflow run of `starci183/starci-next` on main carries. */
+/** The claims a workflow run of `acme/example-app` on main carries. */
 const RUN = {
-    repository: "starci183/starci-next",
+    repository: "acme/example-app",
     repository_id: "123456789",
-    repository_owner: "starci183",
+    repository_owner: "acme",
     workflow: "CI",
-    workflow_ref: "starci183/starci-next/.github/workflows/ci.yml@refs/heads/main",
+    workflow_ref: "acme/example-app/.github/workflows/ci.yml@refs/heads/main",
     ref: "refs/heads/main",
     sha: "0123456789abcdef0123456789abcdef01234567",
     run_id: "987654321",
     run_attempt: "1",
-    actor: "starci183",
+    actor: "acme",
     event_name: "push",
 }
-const SUB = "repo:starci183/starci-next:ref:refs/heads/main"
+const SUB = "repo:acme/example-app:ref:refs/heads/main"
 
 describe("issuer presets: the contract", () => {
     it("a preset is data and one mapping; the verifier pins the algorithm, the issuer, the audience and the required claims before the mapping runs", async () => {
@@ -138,13 +138,13 @@ describe("issuer presets: Google ID tokens", () => {
 describe("issuer presets: GitHub Actions OIDC (the CI attestation of a workflow run)", () => {
     const build = async (overrides: Partial<GitHubActionsIssuerOptions> = {}) => {
         const context = await fake()
-        const verifier = createIssuerVerifier(githubActionsIssuer({ audience: "ci-attestation", repository: "starci183/starci-next", endpoints: context.issuer.endpoints(), ...overrides }), context.transport)
+        const verifier = createIssuerVerifier(githubActionsIssuer({ audience: "ci-attestation", repository: "acme/example-app", endpoints: context.issuer.endpoints(), ...overrides }), context.transport)
         const mint = (extra: Readonly<Record<string, unknown>> = {}, more: Parameters<FakeOidcIssuer["mintAccessToken"]>[1] = {}) => context.issuer.mintAccessToken({ sub: SUB, extra: { ...RUN, ...extra } }, more)
         return { ...context, verifier, mint }
     }
 
     it("pins GitHub's issuer, its key set and RS256, and needs an audience and an owner/name repository", () => {
-        const preset = githubActionsIssuer({ audience: "ci-attestation", repository: "starci183/starci-next" })
+        const preset = githubActionsIssuer({ audience: "ci-attestation", repository: "acme/example-app" })
         assert.deepEqual([preset.issuer, preset.keys, preset.algorithms, preset.audience], [GITHUB_ACTIONS_ISSUER, { kind: "jwks", uri: GITHUB_ACTIONS_JWKS_URI }, ["RS256"], ["ci-attestation"]])
         const configuration = (error: unknown) => error instanceof OidcError && error.code === OIDC_ERROR_CODES.ConfigurationInvalid
         assert.throws(() => githubActionsIssuer({ audience: [], repository: "a/b" }), configuration)
@@ -156,9 +156,9 @@ describe("issuer presets: GitHub Actions OIDC (the CI attestation of a workflow 
         const { verifier, mint } = await build({ repositoryId: "123456789", workflows: [".github/workflows/ci.yml"], refs: ["refs/heads/main"] })
         assert.deepEqual(valueOf(await verifier.verify(await mint())), {
             subject: SUB,
-            repository: "starci183/starci-next",
+            repository: "acme/example-app",
             repositoryId: "123456789",
-            repositoryOwner: "starci183",
+            repositoryOwner: "acme",
             workflow: "CI",
             workflowRef: RUN.workflow_ref,
             workflowPath: ".github/workflows/ci.yml",
@@ -166,7 +166,7 @@ describe("issuer presets: GitHub Actions OIDC (the CI attestation of a workflow 
             sha: RUN.sha,
             runId: "987654321",
             runAttempt: "1",
-            actor: "starci183",
+            actor: "acme",
             eventName: "push",
             environment: null,
         })
@@ -180,15 +180,15 @@ describe("issuer presets: GitHub Actions OIDC (the CI attestation of a workflow 
     it("refuses a run of another repository, even one whose sub names ours", async () => {
         const { verifier, mint, issuer } = await build()
         const pinned = await build({ repositoryId: "1" })
-        const other = await verifier.verify(await mint({ repository: "attacker/starci-next", workflow_ref: "attacker/starci-next/.github/workflows/ci.yml@refs/heads/main" }))
+        const other = await verifier.verify(await mint({ repository: "attacker/example-app", workflow_ref: "attacker/example-app/.github/workflows/ci.yml@refs/heads/main" }))
         assert.deepEqual([reasonOf(other), claimOf(other)], ["policy", "repository"])
         const forgedSub = await verifier.verify(await issuer.mintAccessToken({ sub: "repo:attacker/x:ref:refs/heads/main", extra: RUN }))
         assert.deepEqual([reasonOf(forgedSub), claimOf(forgedSub)], ["policy", "sub"])
         const renamed = await pinned.verifier.verify(await pinned.mint())
         assert.deepEqual([reasonOf(renamed), claimOf(renamed)], ["policy", "repository_id"])
-        const cased = await build({ repository: "StarCi183/Starci-Next" })
+        const cased = await build({ repository: "Acme/Example-App" })
         const caseOnly = valueOf(await cased.verifier.verify(await cased.mint()))
-        assert.equal(caseOnly.repository, "starci183/starci-next")
+        assert.equal(caseOnly.repository, "acme/example-app")
     })
 
     it("refuses an expired run token", async () => {

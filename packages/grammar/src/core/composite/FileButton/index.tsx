@@ -10,7 +10,7 @@ import type { NoChildren } from "../../tier.js"
 
 type FileButtonMark =
     | {
-        /** A visible word for the picker ("Tải ảnh lên"): the control is then a neutral `sm` Button with the word alone. The button-icon law: an icon stands only on a primary md or lg Button, never on sm, so this form draws none. */
+        /** A visible word for the picker ("Upload image"): the control is then a neutral `sm` Button with the word alone. The button-icon law: an icon stands only on a primary md or lg Button, never on sm, so this form draws none. */
         readonly text: string
         /** Ignored with `text` (0.36.2: optional): a text button carries no icon. */
         readonly source?: IconSource

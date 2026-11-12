@@ -193,23 +193,54 @@ export const buildPlainSourceConfig = ({ root, plugin, hooks, reactHooks, tsPlug
   ]
 }
 
-/** The front-end files of a root workspace package: its workbench (drawn with Grammar) and its public face, and every `.tsx` file of the package source wherever it sits (a `src/client/` renderer is drawn too: FE-PACKAGES-2); the React-free workbench contract stays back end. */
-export const PACKAGE_SOURCE_FILES = Object.freeze(["packages/*/src/workbench/**/*.{ts,tsx}", "packages/*/src/public/**/*.{ts,tsx}", "packages/*/src/**/*.tsx"])
-export const PACKAGE_SPEC_FILES = Object.freeze(["packages/*/src/workbench/**/*.{spec,e2e-spec}.{ts,tsx}", "packages/*/src/public/**/*.{spec,e2e-spec}.{ts,tsx}", "packages/*/src/**/*.{spec,e2e-spec}.tsx"])
-const PACKAGE_CONTRACT = Object.freeze(["packages/*/src/workbench/contract/**"])
+/** The front-end files of a root workspace package every app has: each `.tsx` file of the package source wherever it sits (FE-PACKAGES-2). The slots a project declares `lint: "fe"` join them (`scopeToPackages`). */
+export const PACKAGE_SOURCE_FILES = Object.freeze(["packages/*/src/**/*.tsx"])
+export const PACKAGE_SPEC_FILES = Object.freeze(["packages/*/src/**/*.{spec,e2e-spec}.tsx"])
+const SCRIPT = "**/*.{ts,tsx}"
+const SCRIPT_SPEC = "**/*.{spec,e2e-spec}.{ts,tsx}"
+
+/** One lint scope of a declared package, as the package view carries it: an app-relative glob and the globs an earlier back-end slot holds. */
+interface PackageLintScope { readonly files: string; readonly ignores: readonly string[] }
+
+/**
+ * The front-end scopes of the packages the project declares (`hfs.packageLint.fe` of the package view), read from a view of unknown shape:
+ * a view without them (a package the project does not declare, a view of a side) names none.
+ *
+ * @param hfs - The package view of the app root.
+ * @returns One scope per `lint: fe` slot.
+ */
+const frontEndScopes = (hfs: unknown): readonly PackageLintScope[] => {
+  if (typeof hfs !== "object" || hfs === null || !("packageLint" in hfs)) return []
+  const lint = hfs.packageLint
+  if (typeof lint !== "object" || lint === null || !("fe" in lint) || !Array.isArray(lint.fe)) return []
+  return lint.fe.filter((scope: unknown): scope is PackageLintScope =>
+    typeof scope === "object" && scope !== null && "files" in scope && typeof scope.files === "string" && "ignores" in scope && Array.isArray(scope.ignores) && scope.ignores.every((glob: unknown) => typeof glob === "string"))
+}
 /** What a package folder never lints: installed packages, build output, generated wire types. */
 export const PACKAGE_IGNORED = Object.freeze(["**/node_modules/**", "**/.next/**", "**/dist/**", "**/coverage/**", "**/__generated__/**"])
 
 /**
- * A front-end flat config (the canon's or a Grammar family's) narrowed to the front-end subpaths of the root workspace packages of an app:
- * the very rules of the fe side, over `packages/<pkg>/src/workbench/**` and `src/public/**` of the app root, the workbench contract left to the
- * back-end canon. The global ignore block becomes the package one. The config is read, never changed.
+ * A front-end flat config (the canon's or a Grammar family's) narrowed to the front-end files of the root workspace packages of an app: the
+ * very rules of the fe side over every `.tsx` file of a package and over the slots the project declares `lint: "fe"` (`ext/manifest.json`
+ * `packages`, PROJECT-LINT-3). No folder name of a package is known here: the first slot that holds a file decides, so a back-end slot
+ * declared before a front-end slot it lies in is left to the back-end canon. The global ignore block becomes the package one. The config is
+ * read, never changed.
  *
  * @param config - The flat config of a front end built over the package view.
- * @returns The same blocks with `files` narrowed to the package subpaths.
+ * @param hfs - The package view of the app root, whose `packageLint` names the declared front-end slots.
+ * @returns The same blocks with `files` narrowed to the package files.
  */
-export const scopeToPackages = (config: readonly Linter.Config[]): Linter.Config[] =>
-  config.map((block) => {
-    if (block.files === undefined) return { ...block, ignores: [...PACKAGE_IGNORED] }
-    return { ...block, files: [...(block.name === TEST_SCOPE_BLOCK ? PACKAGE_SPEC_FILES : PACKAGE_SOURCE_FILES)], ignores: [...(block.ignores ?? []), ...PACKAGE_CONTRACT] }
+export const scopeToPackages = (config: readonly Linter.Config[], hfs?: unknown): Linter.Config[] => {
+  const scopes = frontEndScopes(hfs)
+  const whole = scopes.filter((scope) => scope.ignores.length === 0)
+  const carved = scopes.filter((scope) => scope.ignores.length > 0)
+  return config.flatMap((block): Linter.Config[] => {
+    if (block.files === undefined) return [{ ...block, ignores: [...PACKAGE_IGNORED] }]
+    const tests = block.name === TEST_SCOPE_BLOCK
+    const script = tests ? SCRIPT_SPEC : SCRIPT
+    return [
+      { ...block, files: [...(tests ? PACKAGE_SPEC_FILES : PACKAGE_SOURCE_FILES), ...whole.map((scope) => [scope.files, script])] },
+      ...carved.map((scope) => ({ ...block, files: [[scope.files, script]], ignores: [...(block.ignores ?? []), ...scope.ignores] })),
+    ]
   })
+}

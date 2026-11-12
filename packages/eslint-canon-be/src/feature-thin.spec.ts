@@ -25,7 +25,7 @@ const PROCESSOR = at("src/features/jobs/expire-orders/transport/queue/expire-ord
 const STEP = at("src/features/jobs/expire-orders/steps/expire-overdue.step.ts")
 const COMPENSATION = at("src/features/saga/place-order/compensations/reserve-order.compensation.ts")
 const SAGA_STEP = at("src/features/saga/place-order/steps/reserve-order.saga-step.ts")
-const WEBHOOK = at("src/features/webhooks/sepay/transport/http/sepay.webhook.ts")
+const WEBHOOK = at("src/features/webhooks/acme-pay/transport/http/acme-pay.webhook.ts")
 const SUBSCRIPTION = at("src/features/realtime/order-status/transport/graphql/order-status.subscription.ts")
 const CLI = at("src/features/cli/migrate/subs/run.cli.ts")
 const COMMAND = at("src/features/api/checkout/application/place-order.command.ts")
@@ -280,7 +280,7 @@ test("feature-thin: a feature file of a thin role maps parameters and makes one 
               // an unconditional domain proof is free beside the one intake, including an explicit module declaration
               { filename: WEBHOOK, code: DOMAIN_WEBHOOK_DOOR("await this.verifier.verifyDelivery(body)\n        await this.payments.acceptNotification(body)") },
               { filename: WEBHOOK, code: DOMAIN_WEBHOOK_DOOR("this.verifier.assertDelivery(body)\n        await this.payments.acceptNotification(body)") },
-              { filename: WEBHOOK, code: DOMAIN_WEBHOOK_DOOR("await this.verifier.acceptCasso(body)") },
+              { filename: WEBHOOK, code: DOMAIN_WEBHOOK_DOOR("await this.verifier.acceptGammaPay(body)") },
               { filename: at("src/features/webhooks/payment/transport/http/payment.webhook.ts"), code: DOMAIN_WEBHOOK_DOOR("await this.payments.acceptVerifiedNotification(body)\n        await this.payments.acceptNotification(body)", { declaration: true }) },
               // a subscription: one hub call; the modules function sits in its arguments (parameter mapping)
               {

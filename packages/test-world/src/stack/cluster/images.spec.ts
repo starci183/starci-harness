@@ -45,22 +45,22 @@ describe("ensureImages", () => {
         await rm(home, { recursive: true, force: true })
     })
 
-    const makeRequest = () => ({ root, kebab: "nivo-a1b2c3", images: [{ name: "api", dockerfile: "Dockerfile" }], registryHost: "localhost:5001", registryInCluster: "k3d-starci-registry:5000" })
+    const makeRequest = () => ({ root, kebab: "app-a1b2c3", images: [{ name: "api", dockerfile: "Dockerfile" }], registryHost: "localhost:5001", registryInCluster: "k3d-starci-registry:5000" })
 
     it("skips the build when the content-hash tag is already in the registry", async () => {
         const registry = fakeRegistry()
         const { tag } = await computeImageHash({ root, dockerfile: "Dockerfile" })
-        registry.store.set("nivo-a1b2c3-api", new Set([tag]))
+        registry.store.set("app-a1b2c3-api", new Set([tag]))
         const { exec, calls } = scriptedExec(() => undefined)
         const ledger = createLedger(join(home, "images.json"), join(home, "images.lock"))
         const images = await ensureImages({ docker: new Docker(exec), registry, ledger, now: () => 1 }, makeRequest())
-        assert.deepEqual(images, { api: `k3d-starci-registry:5000/nivo-a1b2c3-api:${tag}` })
+        assert.deepEqual(images, { api: `k3d-starci-registry:5000/app-a1b2c3-api:${tag}` })
         assert.equal(calls.length, 0)
     })
 
     it("builds and pushes a missing tag, then keeps the newest 3 and deletes the rest", async () => {
         const registry = fakeRegistry()
-        const repository = "nivo-a1b2c3-api"
+        const repository = "app-a1b2c3-api"
         registry.store.set(repository, new Set(["src-old1", "src-old2", "src-old3", "src-old4", "latest"]))
         const ledger = createLedger(join(home, "images.json"), join(home, "images.lock"))
         await ledger.update((data) => {

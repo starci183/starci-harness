@@ -74,11 +74,11 @@ const domainDoor = (options: DoorOptions = {}) => door({
 
 /** Every payment provider has its own combined verifying intake; each resolves the class behind its local alias. */
 const PROVIDER_DOORS = [
-    ["casso", "acceptCasso"],
-    ["payos", "acceptPayos"],
-    ["sepay", "acceptSepay"],
-    ["sepay-feed", "acceptSepayFeed"],
-    ["vietcombank", "acceptVietcombank"],
+    ["acme-pay", "acceptAcmePay"],
+    ["acme-pay-feed", "acceptAcmePayFeed"],
+    ["bank-feed", "acceptBankFeed"],
+    ["beta-pay", "acceptBetaPay"],
+    ["gamma-pay", "acceptGammaPay"],
 ].map(([provider, method]) => ({
     filename: at(`src/features/webhooks/${provider}/transport/http/${provider}.webhook.ts`),
     code: domainDoor({
@@ -279,7 +279,7 @@ test("webhook-verify-first: the first statement is an unconditional, completed s
             // A thenable proof must be awaited, including a return type that is only sometimes a promise.
             { filename: DOOR, code: domainDoor({ body: "this.proof.verifyDelivery({ body, signature })\n        await this.payments.acceptNotification(body)" }), errors: [{ messageId: "first" }] },
             { filename: DOOR, code: domainDoor({ body: "this.proof.syncOrAsync({ body, signature })\n        await this.payments.acceptNotification(body)" }), errors: [{ messageId: "first" }] },
-            { filename: DOOR, code: domainDoor({ ctor: "private readonly proof: DeliveryProof", body: "this.proof.acceptCasso({ connectionId: 'primary', body, signature })" }), errors: [{ messageId: "first" }] },
+            { filename: DOOR, code: domainDoor({ ctor: "private readonly proof: DeliveryProof", body: "this.proof.acceptGammaPay({ connectionId: 'primary', body, signature })" }), errors: [{ messageId: "first" }] },
             { filename: DOOR, code: door({ imports: MODULE_IMPORT, ctor: "private readonly payments: PaymentService", body: "this.payments.acceptVerifiedNotification({ body, signature })" }), errors: [{ messageId: "first" }] },
             // a lookalike signature service of a domain owner proves nothing
             { filename: DOOR, code: LOOKALIKE, errors: [{ messageId: "first" }] },

@@ -201,14 +201,14 @@ for (const edition of ['lite', 'full']) {
 
   test(`app db baseline ${edition}: a frozen archive of snake_case names, an impossible time and shared stamps previews; a future active stamp is no breach`, () => {
     const root = fixture(edition, {
-      [`${archive}/20260929000000_nivo_prototype.sql`]: 'select 1;\n',
+      [`${archive}/20260929000000_demo_prototype.sql`]: 'select 1;\n',
       [`${archive}/20261013100000_first_shared.sql`]: 'select 1;\n',
       [`${archive}/20261013100000_second-shared.sql`]: 'select 1;\n',
       [`${archive}/20261014300000_account-sessions-shell-be.sql`]: 'select 1;\n',
       [`${migrations}/20261020000000_baseline.sql`]: '-- starci:baseline 20261013100000\nselect 1;\n',
       [`${migrations}/20991231000000_future-step.sql`]: 'select 1;\n',
     });
-    assert.deepEqual(dbSqlFiles(root, archive).map((entry) => entry.name), ['20260929000000_nivo_prototype.sql', '20261013100000_first_shared.sql', '20261013100000_second-shared.sql', '20261014300000_account-sessions-shell-be.sql']);
+    assert.deepEqual(dbSqlFiles(root, archive).map((entry) => entry.name), ['20260929000000_demo_prototype.sql', '20261013100000_first_shared.sql', '20261013100000_second-shared.sql', '20261014300000_account-sessions-shell-be.sql']);
     const preview = io(root);
     assert.equal(dbBaselineMain(['--stamp', '20991231000600'], preview.ports), 0, preview.err.join(''));
     assert.ok(preview.out.join('').startsWith(`preview baseline ${migrations}/20991231000600_baseline.sql; archive 2 migrations`));

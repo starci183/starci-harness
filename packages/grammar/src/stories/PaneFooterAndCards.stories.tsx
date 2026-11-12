@@ -12,20 +12,20 @@ export default meta;
 type Story = StoryObj;
 
 const ROWS = [
-  { id: 'a', title: 'Telegram', description: 'Nhận tin khách' },
-  { id: 'b', title: 'Zalo OA', description: 'Nhận tin khách' },
+  { id: 'a', title: 'Email', description: 'Receives customer messages' },
+  { id: 'b', title: 'Chat', description: 'Receives customer messages' },
 ];
-const card = (label: string) => <G.SurfaceCard kind="list" label={label} items={ROWS} empty={<G.EmptyNotice message="Trống" />} />;
+const card = (label: string) => <G.SurfaceCard kind="list" label={label} items={ROWS} empty={<G.EmptyNotice message="Empty" />} />;
 
 /** A `SurfaceCard` in a white aside and in an open drawer: 1px border, no shadow; on the pink well: shadow, no border. Development no longer throws. */
 export const CardOnWhiteGround: Story = {
   render: () => (
     <div style={{ height: 420 }}>
       <G.PaneGrid label="Grounds" areas={['well aside']} columns={['fill', 'standard']}>
-        <G.Pane area="well" label="Well"><G.PaneSection>{card('Trên nền hồng')}</G.PaneSection></G.Pane>
-        <G.Pane area="aside" surface label="Aside"><G.PaneSection>{card('Trên nền trắng')}</G.PaneSection></G.Pane>
+        <G.Pane area="well" label="Well"><G.PaneSection>{card('On pink')}</G.PaneSection></G.Pane>
+        <G.Pane area="aside" surface label="Aside"><G.PaneSection>{card('On white')}</G.PaneSection></G.Pane>
       </G.PaneGrid>
-      <G.Drawer title="Ngăn kéo" closeLabel="Đóng" isOpen onOpenChange={noop}>{card('Trong ngăn kéo')}</G.Drawer>
+      <G.Drawer title="Drawer" closeLabel="Close" isOpen onOpenChange={noop}>{card('In the drawer')}</G.Drawer>
     </div>
   ),
   play: async ({ canvasElement }) => {
@@ -45,7 +45,7 @@ export const CardOnWhiteGround: Story = {
   },
 };
 
-const COLUMNS: readonly G.TableColumnData[] = [{ id: 'name', label: 'Mã đơn' }, { id: 'total', label: 'Tổng', numeric: true }];
+const COLUMNS: readonly G.TableColumnData[] = [{ id: 'name', label: 'Order ID' }, { id: 'total', label: 'Total', numeric: true }];
 
 /** A table card with a search zone and a tabs zone over the white table body (0.37.8): a visible 1px seam under each zone. */
 export const TableHeaderSeams: Story = {
@@ -53,13 +53,13 @@ export const TableHeaderSeams: Story = {
     <div style={{ width: 'min(100%, 720px)', padding: 24 }}>
       <G.SurfaceCard
         kind="table"
-        label="Đơn hàng"
+        label="Orders"
         columns={COLUMNS}
-        rows={[{ id: 'r1', cells: { name: 'DH-1001', total: '120.000' } }]}
-        empty={<G.EmptyNotice message="Trống" />}
+        rows={[{ id: 'r1', cells: { name: 'OR-1001', total: '120,000' } }]}
+        empty={<G.EmptyNotice message="Empty" />}
         headers={[
-          { kind: 'search', label: 'Tìm đơn', value: '', onChange: noop, placeholder: 'Tìm đơn' },
-          { kind: 'filter', label: 'Trạng thái', items: [{ id: 'all', label: 'Tất cả' }, { id: 'paid', label: 'Đã thanh toán' }], selectedKey: 'all', onSelect: noop, overflowLabel: 'Thêm', moreLabel: (count: number) => `${count} bộ lọc` },
+          { kind: 'search', label: 'Search orders', value: '', onChange: noop, placeholder: 'Search orders' },
+          { kind: 'filter', label: 'Status', items: [{ id: 'all', label: 'All' }, { id: 'paid', label: 'Paid' }], selectedKey: 'all', onSelect: noop, overflowLabel: 'More', moreLabel: (count: number) => `${count} filters` },
         ]}
       />
     </div>
@@ -77,14 +77,14 @@ export const TableHeaderSeams: Story = {
   },
 };
 
-const longBody = Array.from({ length: 50 }, (_, index) => <G.Text key={index}>{`Dòng ${index + 1}`}</G.Text>);
+const longBody = Array.from({ length: 50 }, (_, index) => <G.Text key={index}>{`Line ${index + 1}`}</G.Text>);
 
 /** `Pane footer`: the body scrolls, the footer holds the pane's bottom edge. */
 export const PaneFooter: Story = {
   render: () => (
     <div style={{ height: 420 }}>
       <G.PaneGrid label="Footer" areas={['main']}>
-        <G.Pane area="main" surface label="Main" footer={<G.PaneSection as="footer"><G.Input id="composer" name="composer" label="Nhắn" kind="text" /></G.PaneSection>}>
+        <G.Pane area="main" surface label="Main" footer={<G.PaneSection as="footer"><G.Input id="composer" name="composer" label="Message" kind="text" /></G.PaneSection>}>
           <G.PaneSection gap="section">{longBody}</G.PaneSection>
         </G.Pane>
       </G.PaneGrid>
@@ -107,7 +107,7 @@ export const PaneFooter: Story = {
   },
 };
 
-const thread = Array.from({ length: 60 }, (_, index) => <G.MessageBubble key={index} side={index % 3 === 0 ? 'outgoing' : 'incoming'} body={`Tin nhắn ${index + 1}`} />);
+const thread = Array.from({ length: 60 }, (_, index) => <G.MessageBubble key={index} side={index % 3 === 0 ? 'outgoing' : 'incoming'} body={`Message ${index + 1}`} />);
 
 /** The height chain through nested grids with `rows`, `inset="flush"` and `content` variants: only the thread scrolls, the outer pane does not. */
 export const NestedRowsHeightChain: Story = {
@@ -120,7 +120,7 @@ export const NestedRowsHeightChain: Story = {
               <G.Pane area="room" surface content="full" inset="flush" label="Room">
                 <G.PaneSection align="center"><G.PaneHeader title="Chatbot" /></G.PaneSection>
                 <G.PaneSection scroll={{ label: 'Thread', role: 'log', align: 'end', tone: 'background' }}>{thread}</G.PaneSection>
-                <G.PaneSection as="footer" rule="start"><G.Input id="c2" name="c2" label="Nhắn" kind="text" /></G.PaneSection>
+                <G.PaneSection as="footer" rule="start"><G.Input id="c2" name="c2" label="Message" kind="text" /></G.PaneSection>
               </G.Pane>
             </G.PaneGrid>
           </G.Pane>
@@ -143,7 +143,7 @@ export const NestedRowsHeightChain: Story = {
 export const NarrowMeasure: Story = {
   render: () => (
     <div style={{ width: 900, padding: 24 }}>
-      <G.SurfaceCard kind="details" label="Đơn DH-1001" measure="narrow" items={[{ id: 't', term: 'Tổng', description: '120.000' }]} />
+      <G.SurfaceCard kind="details" label="Order OR-1001" measure="narrow" items={[{ id: 't', term: 'Total', description: '120,000' }]} />
     </div>
   ),
   play: async ({ canvasElement }) => {

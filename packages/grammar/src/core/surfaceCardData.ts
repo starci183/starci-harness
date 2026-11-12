@@ -89,7 +89,7 @@ export type ListRowData = {
     readonly id: string
     readonly title: string
     /**
-     * The line under the name. A string is the muted description (14). A node (inline text with 16px marks: "@chatbot · [logo] Telegram · [logo] Zalo")
+     * The line under the name. A string is the muted description (14). A node (inline text with 16px marks: "@chatbot · [logo] Email · [logo] Chat")
      * is drawn at 12, muted, directly under the name at the identity gap; keep it to one line of inline content.
      */
     readonly description?: ReactNode
@@ -140,7 +140,7 @@ export type ListRowData = {
     readonly diff?: "added" | "removed" | "changed"
     /** A changed row's change, drawn as the 12 muted line "from → to" under the title (after `description`). Only with `diff: "changed"`. */
     readonly change?: { readonly from: string; readonly to: string }
-    /** The word a screen reader reads for the gutter mark (the app's language: "Thêm", "Bỏ", "Đổi"). Default "Added", "Removed", "Changed". */
+    /** The word a screen reader reads for the gutter mark, in the app's language. Default "Added", "Removed", "Changed". */
     readonly diffLabel?: string
 } & ListRowDestination
 
@@ -238,7 +238,7 @@ export type SelectItemData = {
     readonly subtitle?: string
     readonly isDisabled?: boolean
     /**
-     * One control at the END of the row (0.37.13), as on a list row: a primary `Tabs` pill ("Tự động | Hỏi"), a `Switch`, a `Checkbox`, a `Badge`. It keeps its own state and
+     * One control at the END of the row (0.37.13), as on a list row: a primary `Tabs` pill ("Auto | Ask"), a `Switch`, a `Checkbox`, a `Badge`. It keeps its own state and
      * label; the row seats it at the end centred on the title line, and the title and subtitle wrap before it. It is its own hit target: presses, clicks and keys inside it never
      * toggle the row, and it is not part of the row's accessible name. A disabled row dims it and blocks it. Grammar components only, never raw elements with handlers.
      */

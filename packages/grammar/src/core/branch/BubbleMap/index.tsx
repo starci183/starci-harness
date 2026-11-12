@@ -25,7 +25,7 @@ export { bubbleDiameter, bubbleMapLayout } from "./layout.js"
 export type { BubbleMapEdge, BubbleMapFill, BubbleMapNode, BubbleMapNodeForm, BubbleMapRingPart } from "./types.js"
 
 export type BubbleMapProps = NoChildren & {
-    /** Names the map for assistive technology, e.g. "Second brain". */
+    /** Names the map for assistive technology, e.g. "Knowledge map". */
     readonly label: string
     readonly nodes: ReadonlyArray<BubbleMapNode>
     readonly edges: ReadonlyArray<BubbleMapEdge>

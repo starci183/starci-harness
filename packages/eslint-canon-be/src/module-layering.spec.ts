@@ -44,7 +44,7 @@ test("R30: another owner is imported through its public entry, never through a p
           // the owner's index.ts: alias plus owner
           { filename: IN_FEATURE, code: "import { X } from '@modules/domain/ai'" },
           { filename: IN_FEATURE, code: "import { X } from '@modules/platform/logging'" },
-          { filename: IN_FEATURE, code: "import { X } from '@modules/integrations/sepay'" },
+          { filename: IN_FEATURE, code: "import { X } from '@modules/integrations/acme-pay'" },
           { filename: IN_APP_ROOT, code: "import { PlanModule } from '@features/api/plan'" },
           { filename: IN_FEATURE, code: "import { X } from '@modules/domain/ai/index'" },
           { filename: IN_FEATURE, code: "import type { PlanSummary } from '@modules/domain/plan'" },
@@ -69,7 +69,7 @@ test("R30: another owner is imported through its public entry, never through a p
           { filename: IN_FEATURE, code: "import { X } from '@modules/platform/logging/logging.port'", errors: [{ messageId: "deep" }] },
           { filename: IN_FEATURE, code: "import { X } from '@modules/domain/plan/persistence/entities/plan.entity'", errors: [{ messageId: "deep" }] },
           { filename: IN_APP_ROOT, code: "import { X } from '@features/api/plan/application/create-plan.handler'", errors: [{ messageId: "deep" }] },
-          { filename: IN_FEATURE, code: "export { X } from '@modules/integrations/sepay/sepay.client'", errors: [{ messageId: "deep" }] },
+          { filename: IN_FEATURE, code: "export { X } from '@modules/integrations/acme-pay/acme-pay.client'", errors: [{ messageId: "deep" }] },
           // a same-owner import never goes through the owner's own index
           { filename: IN_PLAN, code: "import { X } from './index'", errors: [{ messageId: "ownIndex" }] },
           { filename: IN_PLAN_NESTED, code: "import { X } from '../index'", errors: [{ messageId: "ownIndex" }] },

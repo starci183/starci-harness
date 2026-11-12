@@ -1,5 +1,5 @@
 /**
- * Twin tests for RENDERER-PURITY-1: a client renderer of a root workspace package holds presentation only.
+ * Twin tests for RENDERER-PURITY-1: a renderer (a .tsx file) of a root workspace package holds presentation only.
  *
  *   node --test src/renderer-purity.spec.ts
  */
@@ -14,7 +14,7 @@ import { isRootPackageRenderer, recommended, rules } from "./renderer-purity.ts"
 
 const rule = rules["renderer-presentation-only"]
 const tester = canonTester(new RuleTester({ languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module", parserOptions: { ecmaFeatures: { jsx: true } } } }))
-const RENDERER = "packages/blocks-core/src/client/accounting/DueBlock.tsx"
+const RENDERER = "packages/widgets/src/client/panel/SummaryBlock.tsx"
 
 const valid = (code: string, filename = RENDERER) => ({ code, filename })
 const invalid = (code: string, messageId: string, filename = RENDERER) => ({ code, filename, errors: [{ messageId }] })
@@ -25,14 +25,15 @@ test("RENDERER-PURITY-1: the rule carries its finding code and is published at e
   assert.deepEqual(recommended, { "starci-fe/renderer-presentation-only": "error" })
 })
 
-test("RENDERER-PURITY-1: only a client renderer of a root package is judged", () => {
-  assert.equal(isRootPackageRenderer("C:\\app\\packages\\blocks-core\\src\\client\\x\\A.tsx"), true)
-  assert.equal(isRootPackageRenderer("/app/packages/blocks-core/src/client/A.tsx"), true)
-  assert.equal(isRootPackageRenderer("/app/packages/blocks-core/src/client/A.ts"), false, "a .ts is measured logic")
-  assert.equal(isRootPackageRenderer("/app/packages/blocks-core/src/rules/A.tsx"), false)
+test("RENDERER-PURITY-1: every .tsx file of a root package is judged, whatever its folder, and nothing else", () => {
+  assert.equal(isRootPackageRenderer("C:\\app\\packages\\ui-kit\\src\\client\\x\\A.tsx"), true)
+  assert.equal(isRootPackageRenderer("/app/packages/ui-kit/src/client/A.tsx"), true)
+  assert.equal(isRootPackageRenderer("/app/packages/ui-kit/src/client/A.ts"), false, "a .ts is measured logic")
+  assert.equal(isRootPackageRenderer("/app/packages/ui-kit/src/rules/A.tsx"), true, "no folder name decides")
+  assert.equal(isRootPackageRenderer("/app/packages/ui-kit/src/A.tsx"), true)
   assert.equal(isRootPackageRenderer("/app/fe/packages/ui/src/client/A.tsx"), false, "a front-end package keeps the front-end canon alone")
   const logic = body("  const sum = props.rows.reduce((a, r) => a + r.amount, 0)")
-  assert.doesNotThrow(() => tester.run("outside-scope", rule, { valid: [valid(logic, "packages/blocks-core/src/rules/sum.tsx"), valid(logic, "fe/apps/web/src/Sum.tsx"), valid("export const sum = (rows: Row[]): number => rows.reduce((a, r) => a + r.amount, 0)", "packages/blocks-core/src/client/sum.ts")], invalid: [] }))
+  assert.doesNotThrow(() => tester.run("outside-scope", rule, { valid: [valid(logic, "fe/packages/ui/src/Sum.tsx"), valid(logic, "fe/apps/web/src/Sum.tsx"), valid("export const sum = (rows: Row[]): number => rows.reduce((a, r) => a + r.amount, 0)", "packages/ui-kit/src/client/sum.ts")], invalid: [] }))
 })
 
 test("RENDERER-PURITY-1: presentation is allowed: mapping, choosing a view, formatting, a declared action", () => {

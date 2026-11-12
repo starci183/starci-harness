@@ -14,7 +14,7 @@ export const ADMIN_TOKEN = "admin-test-token"
 
 /**
  * The pool of the gateway specs: provider a serves m1 (alias fast, priced so one default call costs 1.2), m2 and the
- * embeddings model e1; profile lesson prefers m1 and falls back to m2, profile quiz pins m2; the defaults fall back to m2.
+ * embeddings model e1; profile chat prefers m1 and falls back to m2, profile summary pins m2; the defaults fall back to m2.
  */
 export function gatewayPool(fake: FakeProvider): PoolConfig {
     return {
@@ -27,7 +27,7 @@ export function gatewayPool(fake: FakeProvider): PoolConfig {
             },
         ],
         defaults: { fallbacks: ["m2"], maxAttempts: 2 },
-        profiles: { lesson: { model: "m1", fallbacks: ["m2"] }, quiz: { model: "m2", allowFallback: false } },
+        profiles: { chat: { model: "m1", fallbacks: ["m2"] }, summary: { model: "m2", allowFallback: false } },
         // One key serves every model, so its breaker stays closed through the failures a spec scripts.
         resilience: { backoff: { baseMs: 1, maxMs: 1 }, keyBreaker: { failureThreshold: 100 }, providerBreaker: { failureThreshold: 100 } },
         fetch: fake.fetch,

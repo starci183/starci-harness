@@ -151,8 +151,7 @@ person. Held by review until the tier checks land.
 
 ## CONTRIB-15 Removed vocabulary
 
-These legacy terms do not reappear in source, data or documents. The list is held by review; the legacy runtime's
-analysis notes under `docs/knowledge-analysis/` may quote them.
+These legacy terms do not reappear in source, data or documents. The list is held by review.
 
 | removed | instead |
 |---|---|

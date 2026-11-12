@@ -9,7 +9,7 @@ export type QuoteProps = NoChildren & {
     readonly text?: string
     /** A short word naming where the words come from, e.g. "Brain", "Chat", "Template". Drawn above the words. */
     readonly source?: string
-    /** Where and when the words were said, muted under them, e.g. "Zalo, 09:41". */
+    /** Where and when the words were said, muted under them, e.g. "Chat, 09:41". */
     readonly byline?: string
     /**
      * Draw the quote as inert geometry while it is unresolved (knowledge STATE-8): the tinted ground with two Skeleton text

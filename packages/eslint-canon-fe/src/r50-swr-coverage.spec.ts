@@ -15,31 +15,31 @@ const projectRule = (name: string): Rule => {
   return found
 }
 
-const VALID_QUERY = "src/features/course/use-valid-query.ts"
-const INVALID_QUERY = "src/features/course/use-invalid-query.ts"
-const VALID_MUTATION = "src/features/course/use-valid-mutation.ts"
-const INVALID_MUTATION = "src/features/course/use-invalid-mutation.ts"
-const COURSE_IDENTITY = { id: "course", binding: "params.courseId", gatesRequest: true, resource: true }
+const VALID_QUERY = "src/features/project/use-valid-query.ts"
+const INVALID_QUERY = "src/features/project/use-invalid-query.ts"
+const VALID_MUTATION = "src/features/project/use-valid-mutation.ts"
+const INVALID_MUTATION = "src/features/project/use-invalid-mutation.ts"
+const PROJECT_IDENTITY = { id: "project", binding: "params.projectId", gatesRequest: true, resource: true }
 const VIEWER_IDENTITY = { id: "viewer", binding: "viewer", gatesRequest: false, resource: false }
 const lifecycle = {
   schema: "starci/next-data-lifecycle@1",
   swr: { package: "swr", major: 2 },
   hooks: [
-    { id: "valid-query", path: VALID_QUERY, export: "useQueryCourse", kind: "query", identities: [COURSE_IDENTITY, VIEWER_IDENTITY] },
-    { id: "invalid-query", path: INVALID_QUERY, export: "useQueryCourse", kind: "query", identities: [COURSE_IDENTITY, VIEWER_IDENTITY] },
-    { id: "valid-mutation", path: VALID_MUTATION, export: "useMutateCourse", kind: "mutation", identities: [COURSE_IDENTITY] },
-    { id: "invalid-mutation", path: INVALID_MUTATION, export: "useMutateCourse", kind: "mutation", identities: [COURSE_IDENTITY] },
+    { id: "valid-query", path: VALID_QUERY, export: "useQueryProject", kind: "query", identities: [PROJECT_IDENTITY, VIEWER_IDENTITY] },
+    { id: "invalid-query", path: INVALID_QUERY, export: "useQueryProject", kind: "query", identities: [PROJECT_IDENTITY, VIEWER_IDENTITY] },
+    { id: "valid-mutation", path: VALID_MUTATION, export: "useMutateProject", kind: "mutation", identities: [PROJECT_IDENTITY] },
+    { id: "invalid-mutation", path: INVALID_MUTATION, export: "useMutateProject", kind: "mutation", identities: [PROJECT_IDENTITY] },
   ],
 }
 
 const querySource = (key: string): string => `import useSWR from "swr";
-export const useQueryCourse = (params: { courseId?: string }, viewer: string) => {
+export const useQueryProject = (params: { projectId?: string }, viewer: string) => {
   const query = useSWR(${key}, async () => null);
   return { query };
 };
 `
 const mutationSource = (key: string): string => `import useSWRMutation from "swr/mutation";
-export const useMutateCourse = (params: { courseId?: string }) => {
+export const useMutateProject = (params: { projectId?: string }) => {
   const { trigger: add } = useSWRMutation(${key}, async () => null);
   return { add };
 };
@@ -66,10 +66,10 @@ const files = {
   "../node_modules/swr/mutation.d.ts": "export default function useSWRMutation<T = unknown>(key: unknown, fetcher?: unknown): { data: T; trigger: (arg?: unknown) => Promise<T> };\n",
   "../node_modules/swr/index.js": "export default function useSWR() {}\n",
   "../node_modules/swr/mutation.js": "export default function useSWRMutation() {}\n",
-  [VALID_QUERY]: querySource('params.courseId === undefined ? null : ["QUERY_COURSE", params.courseId, viewer]'),
-  [INVALID_QUERY]: querySource('params.courseId === undefined ? null : ["QUERY_COURSE", params.courseId]'),
-  [VALID_MUTATION]: mutationSource('params.courseId === undefined ? null : { operation: "MUTATE_COURSE", courseId: params.courseId }'),
-  [INVALID_MUTATION]: mutationSource('params.courseId === undefined ? null : { operation: "MUTATE_COURSE" }'),
+  [VALID_QUERY]: querySource('params.projectId === undefined ? null : ["QUERY_PROJECT", params.projectId, viewer]'),
+  [INVALID_QUERY]: querySource('params.projectId === undefined ? null : ["QUERY_PROJECT", params.projectId]'),
+  [VALID_MUTATION]: mutationSource('params.projectId === undefined ? null : { operation: "MUTATE_PROJECT", projectId: params.projectId }'),
+  [INVALID_MUTATION]: mutationSource('params.projectId === undefined ? null : { operation: "MUTATE_PROJECT" }'),
 }
 
 for (const edition of ["lite", "full"] as const) {

@@ -156,7 +156,7 @@ test('STACK_DEPLOY_BACKUP_DECRYPT_UNAVAILABLE: without an age identity the backu
 // The first start (--first-start --db-service): no backup and no test decrypt; the deploy's first-start step (between edge and converge) waits for
 // the database container, proves it empty and migrates inside it; each failure is its own code and the deploy rolls back.
 const FIRST = { ...OPTIONS, firstStart: true, dbService: 'postgres' };
-const URL_ENV = { DATABASE_URL: 'postgresql://supabase_admin:s3cret@nivo-postgres:5432/postgres' };
+const URL_ENV = { DATABASE_URL: 'postgresql://supabase_admin:s3cret@app-postgres:5432/postgres' };
 const CONTAINER = 'f00dfeed0123456789';
 
 /** The collaborators of a first start: the deploy runs the first-start step it is handed and rolls back when it is red. */

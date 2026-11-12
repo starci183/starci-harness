@@ -51,15 +51,15 @@ test("set creates <member>.enc.yaml as sops YAML whose values keep every byte, a
   const pem = path.join(root, "..", "fake.pem");
   fs.writeFileSync(pem, PEM);
   const seals: Seal[] = [];
-  const result = await run(["set", "--env", "dev", "sepay", "SEPAY_MERCHANT_ID", "SEPAY_SIGNING_KEY", "--from-file", `SEPAY_SIGNING_KEY=${pem}`], {
+  const result = await run(["set", "--env", "dev", "gateway", "GATEWAY_MERCHANT_ID", "GATEWAY_SIGNING_KEY", "--from-file", `GATEWAY_SIGNING_KEY=${pem}`], {
     cwd: root, env, stdin: () => FAKE[0], sops: fakeSops(seals),
   });
   assert.equal(result.code, 0, result.err);
   assert.equal(seals.length, 1);
   assert.equal(seals[0]?.format, "yaml");
-  assert.equal(seals[0]?.file, "sepay.enc.yaml");
-  assert.deepEqual(seals[0]?.map, { SEPAY_MERCHANT_ID: FAKE[0], SEPAY_SIGNING_KEY: PEM }, "a multi-line value with CR and its trailing newline round-trips");
-  assert.ok(fs.existsSync(path.join(dir, "sepay.enc.yaml")));
+  assert.equal(seals[0]?.file, "gateway.enc.yaml");
+  assert.deepEqual(seals[0]?.map, { GATEWAY_MERCHANT_ID: FAKE[0], GATEWAY_SIGNING_KEY: PEM }, "a multi-line value with CR and its trailing newline round-trips");
+  assert.ok(fs.existsSync(path.join(dir, "gateway.enc.yaml")));
   privateAbsent(result, [FAKE[0], PEM]);
 });
 
@@ -67,23 +67,23 @@ test("--from-file names a key of this set once, and an empty file seals nothing"
   const { root, dir, env } = app(t);
   const empty = path.join(root, "..", "empty.txt");
   fs.writeFileSync(empty, "");
-  const other = await run(["set", "--env", "dev", "sepay", "K1", "--from-file", `K2=${empty}`], { cwd: root, env, stdin: () => "x", sops: fakeSops([]) });
+  const other = await run(["set", "--env", "dev", "gateway", "K1", "--from-file", `K2=${empty}`], { cwd: root, env, stdin: () => "x", sops: fakeSops([]) });
   assert.match(other.err, /--from-file names K2, which this set does not/u);
-  const blank = await run(["set", "--env", "dev", "sepay", "K1", "--from-file", `K1=${empty}`], { cwd: root, env, sops: fakeSops([]) });
+  const blank = await run(["set", "--env", "dev", "gateway", "K1", "--from-file", `K1=${empty}`], { cwd: root, env, sops: fakeSops([]) });
   assert.match(blank.err, /the file is empty; nothing was sealed/u);
-  assert.equal(fs.existsSync(path.join(dir, "sepay.enc.yaml")), false);
+  assert.equal(fs.existsSync(path.join(dir, "gateway.enc.yaml")), false);
 });
 
 test("a legacy dotenv member stays dotenv to its own recipients until migrate moves it", async (t) => {
   const { root, dir, env } = app(t);
-  fs.writeFileSync(path.join(dir, "sepay.enc"), sealedDotenv(["SEPAY_MERCHANT_ID"]));
+  fs.writeFileSync(path.join(dir, "gateway.enc"), sealedDotenv(["GATEWAY_MERCHANT_ID"]));
   const seals: Seal[] = [];
-  const result = await run(["set", "--env", "dev", "sepay", "SEPAY_IPN_SECRET_KEY"], { cwd: root, env, stdin: () => FAKE[1], sops: fakeSops(seals, { SEPAY_MERCHANT_ID: FAKE[0] }) });
+  const result = await run(["set", "--env", "dev", "gateway", "GATEWAY_IPN_SECRET_KEY"], { cwd: root, env, stdin: () => FAKE[1], sops: fakeSops(seals, { GATEWAY_MERCHANT_ID: FAKE[0] }) });
   assert.equal(result.code, 0, result.err);
   assert.equal(seals[0]?.format, "dotenv");
-  assert.equal(seals[0]?.file, "sepay.enc");
+  assert.equal(seals[0]?.file, "gateway.enc");
   assert.deepEqual(seals[0]?.recipients, [OWNER]);
-  assert.equal(memberFile(dir, "sepay"), path.join(dir, "sepay.enc"));
+  assert.equal(memberFile(dir, "gateway"), path.join(dir, "gateway.enc"));
 });
 
 test("recipients writes one rule per environment before the app-wide rule, public keys only, and refuses an emptied rule", async (t) => {
@@ -125,8 +125,8 @@ test("audit names legacy members, mixed providers, recipient drift and undeclare
   const { root, dir, env } = app(t);
   sopsConfig(root, [[APP_WIDE, OWNER]]);
   fs.writeFileSync(path.join(root, ".starcistacks", "application-stacks.yaml"),
-    "schema: starci/application-stacks@1\nenvironments:\n  dev:\n    secrets:\n      - {name: sepay-merchant-id, member: sepay, key: SEPAY_MERCHANT_ID, where: secrets/sepay, recipientPolicy: rule, keyCustody: harness}\n");
-  fs.writeFileSync(path.join(dir, "sepay.enc.yaml"), sealedYaml(["SEPAY_MERCHANT_ID", "SEPAY_IPN_SECRET_KEY"]));
+    "schema: starci/application-stacks@1\nenvironments:\n  dev:\n    secrets:\n      - {name: gateway-merchant-id, member: gateway, key: GATEWAY_MERCHANT_ID, where: secrets/gateway, recipientPolicy: rule, keyCustody: harness}\n");
+  fs.writeFileSync(path.join(dir, "gateway.enc.yaml"), sealedYaml(["GATEWAY_MERCHANT_ID", "GATEWAY_IPN_SECRET_KEY"]));
   fs.writeFileSync(path.join(dir, "ai.enc"), sealedDotenv(["OPENROUTER_API_KEY"]));
   fs.writeFileSync(path.join(dir, "ops.enc.yaml"), sealedYaml(["VPS_HOST", "SUPABASE_TOKEN"], [SERVER]));
   const result = await run(["audit", "--env", "dev"], { cwd: root, env });
@@ -135,8 +135,8 @@ test("audit names legacy members, mixed providers, recipient drift and undeclare
   assert.ok(codes.includes("LEGACY_MEMBER dev/ai.enc"), result.out);
   assert.ok(codes.includes("MIXED_PROVIDERS dev/ops.enc.yaml"), result.out);
   assert.ok(codes.includes("RECIPIENT_DRIFT dev/ops.enc.yaml"), result.out);
-  assert.ok(result.out.includes("UNDECLARED_KEY dev/sepay.enc.yaml: holds SEPAY_IPN_SECRET_KEY"), result.out);
-  assert.ok(!result.out.includes("SEPAY_MERCHANT_ID,"), "a declared key is not named undeclared");
+  assert.ok(result.out.includes("UNDECLARED_KEY dev/gateway.enc.yaml: holds GATEWAY_IPN_SECRET_KEY"), result.out);
+  assert.ok(!result.out.includes("GATEWAY_MERCHANT_ID,"), "a declared key is not named undeclared");
 });
 
 test("the sealed VPS member and a member whose entry lists its keys are groups, not mixed providers; an unlisted key still is", async (t) => {
@@ -173,26 +173,26 @@ test("migrate is a dry run naming keys only, then moves a legacy member to <slug
 
 test("split divides a member by provider into one <provider>.enc.yaml each and merges into an existing member only when asked", async (t) => {
   const { root, dir, env } = app(t);
-  fs.writeFileSync(path.join(dir, "sepay.enc.yaml"), sealedYaml(["SEPAY_MERCHANT_ID", "OPENROUTER_API_KEY"]));
+  fs.writeFileSync(path.join(dir, "gateway.enc.yaml"), sealedYaml(["GATEWAY_MERCHANT_ID", "OPENROUTER_API_KEY"]));
   const seals: Seal[] = [];
-  const sops = fakeSops(seals, { SEPAY_MERCHANT_ID: FAKE[0], OPENROUTER_API_KEY: FAKE[2] });
-  const done = await run(["split", "--env", "dev", "sepay", "--execute"], { cwd: root, env, sops });
+  const sops = fakeSops(seals, { GATEWAY_MERCHANT_ID: FAKE[0], OPENROUTER_API_KEY: FAKE[2] });
+  const done = await run(["split", "--env", "dev", "gateway", "--execute"], { cwd: root, env, sops });
   assert.equal(done.code, 0, done.err);
-  assert.deepEqual(envelopeOf(fs.readFileSync(path.join(dir, "sepay.enc.yaml"), "utf8")).keys, ["SEPAY_MERCHANT_ID"]);
+  assert.deepEqual(envelopeOf(fs.readFileSync(path.join(dir, "gateway.enc.yaml"), "utf8")).keys, ["GATEWAY_MERCHANT_ID"]);
   assert.deepEqual(envelopeOf(fs.readFileSync(path.join(dir, "openrouter.enc.yaml"), "utf8")).keys, ["OPENROUTER_API_KEY"]);
-  assert.equal(fs.existsSync(path.join(dir, "sepay-staged.enc.yaml")), false, "the staged member is moved over the old one");
+  assert.equal(fs.existsSync(path.join(dir, "gateway-staged.enc.yaml")), false, "the staged member is moved over the old one");
   privateAbsent(done, FAKE);
-  fs.writeFileSync(path.join(dir, "mixed.enc.yaml"), sealedYaml(["SEPAY_X", "OPENROUTER_Y"]));
+  fs.writeFileSync(path.join(dir, "mixed.enc.yaml"), sealedYaml(["GATEWAY_X", "OPENROUTER_Y"]));
   const refused = await run(["split", "--env", "dev", "mixed", "--execute"], { cwd: root, env, sops });
   assert.match(refused.err, /already exists; split merges into it only with --into-existing/u);
 });
 
 test("a member sealed twice (.enc.yaml and a legacy .enc) is refused rather than read from either", async (t) => {
   const { root, dir, env } = app(t);
-  fs.writeFileSync(path.join(dir, "sepay.enc.yaml"), sealedYaml(["K1"]));
-  fs.writeFileSync(path.join(dir, "sepay.enc"), sealedDotenv(["K1"]));
-  const result = await run(["get", "--env", "dev", "sepay", "K1", "--to-file"], { cwd: root, env, sops: fakeSops([]) });
-  assert.match(result.err, /sepay is sealed twice/u);
+  fs.writeFileSync(path.join(dir, "gateway.enc.yaml"), sealedYaml(["K1"]));
+  fs.writeFileSync(path.join(dir, "gateway.enc"), sealedDotenv(["K1"]));
+  const result = await run(["get", "--env", "dev", "gateway", "K1", "--to-file"], { cwd: root, env, sops: fakeSops([]) });
+  assert.match(result.err, /gateway is sealed twice/u);
 });
 
 test("set declares each key of a compose environment in its stack secrets: once, and names a swarm environment's keys to wire by hand", async (t) => {
@@ -200,18 +200,18 @@ test("set declares each key of a compose environment in its stack secrets: once,
   const stacks = path.join(root, ".starcistacks", "application-stacks.yaml");
   fs.writeFileSync(stacks, "schema: starci/application-stacks@1\n# kept comment\nenvironments:\n  dev:\n    runtime: docker-compose\n    # custody\n    secrets: []\n  production:\n    runtime: docker-swarm\n    secrets: []\n");
   fs.mkdirSync(path.join(root, ".starcistacks", "production", "secrets"), { recursive: true });
-  const first = await run(["set", "--env", "dev", "sepay", "SEPAY_MERCHANT_ID", "SEPAY_IPN_SECRET_KEY"], { cwd: root, env, stdin: () => `SEPAY_MERCHANT_ID=${FAKE[0]}\nSEPAY_IPN_SECRET_KEY=${FAKE[1]}\n`, sops: fakeSops([]) });
+  const first = await run(["set", "--env", "dev", "gateway", "GATEWAY_MERCHANT_ID", "GATEWAY_IPN_SECRET_KEY"], { cwd: root, env, stdin: () => `GATEWAY_MERCHANT_ID=${FAKE[0]}\nGATEWAY_IPN_SECRET_KEY=${FAKE[1]}\n`, sops: fakeSops([]) });
   assert.equal(first.code, 0, first.err);
-  assert.match(first.out, /declared SEPAY_MERCHANT_ID, SEPAY_IPN_SECRET_KEY in environments\.dev\.secrets/u);
-  const again = await run(["set", "--env", "dev", "sepay", "SEPAY_SIGNING_SECRET_KEY", "SEPAY_MERCHANT_ID"], { cwd: root, env, stdin: () => `SEPAY_SIGNING_SECRET_KEY=${FAKE[2]}\nSEPAY_MERCHANT_ID=${FAKE[0]}\n`, sops: fakeSops([], { SEPAY_IPN_SECRET_KEY: FAKE[1] }) });
+  assert.match(first.out, /declared GATEWAY_MERCHANT_ID, GATEWAY_IPN_SECRET_KEY in environments\.dev\.secrets/u);
+  const again = await run(["set", "--env", "dev", "gateway", "GATEWAY_SIGNING_SECRET_KEY", "GATEWAY_MERCHANT_ID"], { cwd: root, env, stdin: () => `GATEWAY_SIGNING_SECRET_KEY=${FAKE[2]}\nGATEWAY_MERCHANT_ID=${FAKE[0]}\n`, sops: fakeSops([], { GATEWAY_IPN_SECRET_KEY: FAKE[1] }) });
   assert.equal(again.code, 0, again.err);
   const text = fs.readFileSync(stacks, "utf8");
   assert.ok(text.includes("# kept comment") && text.includes("# custody"), "comments survive the edit");
   const declared = parseYaml(text).environments.dev.secrets;
   assert.deepEqual(declared.map((entry: Record<string, string>) => [entry.name, entry.member, entry.key, entry.where]), [
-    ["sepay-merchant-id", "sepay", "SEPAY_MERCHANT_ID", "secrets/sepay"],
-    ["sepay-ipn-secret-key", "sepay", "SEPAY_IPN_SECRET_KEY", "secrets/sepay"],
-    ["sepay-signing-secret-key", "sepay", "SEPAY_SIGNING_SECRET_KEY", "secrets/sepay"],
+    ["gateway-merchant-id", "gateway", "GATEWAY_MERCHANT_ID", "secrets/gateway"],
+    ["gateway-ipn-secret-key", "gateway", "GATEWAY_IPN_SECRET_KEY", "secrets/gateway"],
+    ["gateway-signing-secret-key", "gateway", "GATEWAY_SIGNING_SECRET_KEY", "secrets/gateway"],
   ]);
   const swarm = await run(["set", "--env", "production", "openrouter", "OPENROUTER_API_KEY"], { cwd: root, env, stdin: () => FAKE[2], sops: fakeSops([]) });
   assert.match(swarm.out, /declare OPENROUTER_API_KEY in environments\.production\.secrets .*by hand/u);
@@ -231,16 +231,16 @@ test("split --group sends keys to the owner's members, merges an identical key i
     "api.enc.yaml": { OTP_PEPPER: FAKE[0], WEBHOOK_SIGNING_SECRET: FAKE[1], PRIMARY_DB_URL: FAKE[2], N8N_API_KEY: "fake-n8n" },
     "n8n.enc.yaml": { N8N_API_KEY: "fake-n8n", N8N_HOST: "fake-host" },
   });
-  const args = ["split", "--env", "dev", "api", "--group", "OTP_PEPPER=nivo", "--group", "WEBHOOK_SIGNING_SECRET=nivo", "--group", "PRIMARY_DB_URL=postgres"];
+  const args = ["split", "--env", "dev", "api", "--group", "OTP_PEPPER=demo", "--group", "WEBHOOK_SIGNING_SECRET=demo", "--group", "PRIMARY_DB_URL=postgres"];
   const refused = await run([...args, "--execute"], { cwd: root, env, sops });
   assert.match(refused.err, /dev\/n8n\.enc\.yaml already exists; split merges into it only with --into-existing/u);
   const dry = await run([...args, "--into-existing"], { cwd: root, env, sops });
-  assert.equal(dry.out, "dry run: would split dev/api.enc.yaml into dev/nivo.enc.yaml (OTP_PEPPER, WEBHOOK_SIGNING_SECRET), dev/postgres.enc.yaml (PRIMARY_DB_URL), dev/n8n.enc.yaml (N8N_API_KEY) merged into the existing member; it already holds N8N_API_KEY, which must be identical; add --execute\n");
+  assert.equal(dry.out, "dry run: would split dev/api.enc.yaml into dev/demo.enc.yaml (OTP_PEPPER, WEBHOOK_SIGNING_SECRET), dev/postgres.enc.yaml (PRIMARY_DB_URL), dev/n8n.enc.yaml (N8N_API_KEY) merged into the existing member; it already holds N8N_API_KEY, which must be identical; add --execute\n");
   assert.equal(seals.length, 0, "a dry run seals nothing");
   const done = await run([...args, "--into-existing", "--execute"], { cwd: root, env, sops });
   assert.equal(done.code, 0, done.err);
   assert.deepEqual(seals.map((seal) => [seal.file, seal.map]), [
-    ["nivo.enc.yaml", { OTP_PEPPER: FAKE[0], WEBHOOK_SIGNING_SECRET: FAKE[1] }],
+    ["demo.enc.yaml", { OTP_PEPPER: FAKE[0], WEBHOOK_SIGNING_SECRET: FAKE[1] }],
     ["postgres.enc.yaml", { PRIMARY_DB_URL: FAKE[2] }],
     ["n8n.enc.yaml", { N8N_API_KEY: "fake-n8n", N8N_HOST: "fake-host" }],
   ], "each target is written once, the existing one with its own keys kept");
@@ -250,20 +250,20 @@ test("split --group sends keys to the owner's members, merges an identical key i
 
 test("a merge whose target holds a key with another value is refused naming the key, and nothing is written or removed", async (t) => {
   const { root, dir, env } = app(t);
-  fs.writeFileSync(path.join(dir, "stack.enc.yaml"), sealedYaml(["OPENCLAW_TOKEN", "OPENCLAW_URL"]));
-  fs.writeFileSync(path.join(dir, "openclaw.enc.yaml"), sealedYaml(["OPENCLAW_TOKEN"]));
+  fs.writeFileSync(path.join(dir, "stack.enc.yaml"), sealedYaml(["WORKER_TOKEN", "WORKER_URL"]));
+  fs.writeFileSync(path.join(dir, "worker.enc.yaml"), sealedYaml(["WORKER_TOKEN"]));
   const seals: Seal[] = [];
-  const sops = filesSops(seals, { "stack.enc.yaml": { OPENCLAW_TOKEN: FAKE[0], OPENCLAW_URL: FAKE[1] }, "openclaw.enc.yaml": { OPENCLAW_TOKEN: FAKE[2] } });
-  const result = await run(["migrate", "--env", "dev", "stack", "--to", "openclaw", "--into-existing", "--execute"], { cwd: root, env, sops });
+  const sops = filesSops(seals, { "stack.enc.yaml": { WORKER_TOKEN: FAKE[0], WORKER_URL: FAKE[1] }, "worker.enc.yaml": { WORKER_TOKEN: FAKE[2] } });
+  const result = await run(["migrate", "--env", "dev", "stack", "--to", "worker", "--into-existing", "--execute"], { cwd: root, env, sops });
   assert.equal(result.code, 2);
-  assert.match(result.err, /refused, nothing was written: dev\/openclaw\.enc\.yaml already holds OPENCLAW_TOKEN with another value/u);
+  assert.match(result.err, /refused, nothing was written: dev\/worker\.enc\.yaml already holds WORKER_TOKEN with another value/u);
   assert.equal(seals.length, 0);
   assert.ok(fs.existsSync(path.join(dir, "stack.enc.yaml")));
   privateAbsent(result, FAKE);
-  const same = filesSops(seals, { "stack.enc.yaml": { OPENCLAW_TOKEN: FAKE[0], OPENCLAW_URL: FAKE[1] }, "openclaw.enc.yaml": { OPENCLAW_TOKEN: FAKE[0] } });
-  const merged = await run(["migrate", "--env", "dev", "stack", "--to", "openclaw", "--into-existing", "--execute"], { cwd: root, env, sops: same });
+  const same = filesSops(seals, { "stack.enc.yaml": { WORKER_TOKEN: FAKE[0], WORKER_URL: FAKE[1] }, "worker.enc.yaml": { WORKER_TOKEN: FAKE[0] } });
+  const merged = await run(["migrate", "--env", "dev", "stack", "--to", "worker", "--into-existing", "--execute"], { cwd: root, env, sops: same });
   assert.equal(merged.code, 0, merged.err);
-  assert.deepEqual(seals.map((seal) => [seal.file, seal.map]), [["openclaw.enc.yaml", { OPENCLAW_TOKEN: FAKE[0], OPENCLAW_URL: FAKE[1] }]]);
+  assert.deepEqual(seals.map((seal) => [seal.file, seal.map]), [["worker.enc.yaml", { WORKER_TOKEN: FAKE[0], WORKER_URL: FAKE[1] }]]);
   assert.equal(fs.existsSync(path.join(dir, "stack.enc.yaml")), false);
 });
 
@@ -271,14 +271,14 @@ test("--group-file reads KEY: member, and a group naming a key the member does n
   const { root, dir, env } = app(t);
   fs.writeFileSync(path.join(dir, "api.enc.yaml"), sealedYaml(["OTP_PEPPER", "QUEUE_REDIS_PASSWORD"]));
   const groups = path.join(root, "..", "groups.yaml");
-  fs.writeFileSync(groups, "OTP_PEPPER: nivo\nQUEUE_REDIS_PASSWORD: redis\n");
+  fs.writeFileSync(groups, "OTP_PEPPER: demo\nQUEUE_REDIS_PASSWORD: redis\n");
   const dry = await run(["split", "--env", "dev", "api", "--group-file", groups], { cwd: root, env, sops: fakeSops([]) });
-  assert.equal(dry.out, "dry run: would split dev/api.enc.yaml into dev/nivo.enc.yaml (OTP_PEPPER), dev/redis.enc.yaml (QUEUE_REDIS_PASSWORD); add --execute\n");
-  const stray = await run(["split", "--env", "dev", "api", "--group", "OTHER_KEY=nivo"], { cwd: root, env, sops: fakeSops([]) });
+  assert.equal(dry.out, "dry run: would split dev/api.enc.yaml into dev/demo.enc.yaml (OTP_PEPPER), dev/redis.enc.yaml (QUEUE_REDIS_PASSWORD); add --execute\n");
+  const stray = await run(["split", "--env", "dev", "api", "--group", "OTHER_KEY=demo"], { cwd: root, env, sops: fakeSops([]) });
   assert.match(stray.err, /--group names OTHER_KEY, which dev\/api does not hold/u);
   const twice = await run(["split", "--env", "dev", "api", "--group-file", groups, "--group", "OTP_PEPPER=other"], { cwd: root, env, sops: fakeSops([]) });
   assert.match(twice.err, /--group names OTP_PEPPER twice/u);
-  const wrongVerb = await run(["migrate", "--env", "dev", "api", "--group", "OTP_PEPPER=nivo"], { cwd: root, env, sops: fakeSops([]) });
+  const wrongVerb = await run(["migrate", "--env", "dev", "api", "--group", "OTP_PEPPER=demo"], { cwd: root, env, sops: fakeSops([]) });
   assert.match(wrongVerb.err, /--group and --group-file are only valid for split/u);
 });
 

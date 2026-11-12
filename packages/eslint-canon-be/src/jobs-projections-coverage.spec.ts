@@ -24,9 +24,9 @@ const OWNER_PORT = at("src/modules/platform/jobs/jobs.claims.ts")
 const DOMAIN = at("src/modules/domain/order/placing.service.ts")
 const STEP = at("src/features/jobs/send/steps/mail.step.ts")
 const PROCESSOR = at("src/features/jobs/send/transport/queue/send.processor.ts")
-const PROJECTION = at("src/modules/projections/userxp/scratch.projection.ts")
+const PROJECTION = at("src/modules/projections/user-score/scratch.projection.ts")
 const PROJECTION_INDEX = at("src/modules/projections/scratch/index.ts")
-const API_HANDLER = at("src/features/api/checkout/application/show-xp.handler.ts")
+const API_HANDLER = at("src/features/api/checkout/application/show-score.handler.ts")
 const REACTOR = at("src/features/reactors/stock/stock.consumer.ts")
 
 const JOB_ENTITY = `import type { EntityManager } from "typeorm"
@@ -41,9 +41,9 @@ const JOB_SHAPE = `import type { ClaimedJob, JobStep } from "@modules/platform/j
 import { FencedProcessor } from "@modules/platform/jobs"
 `
 const PROJECTION_ENTITY = `import type { EntityManager } from "typeorm"
-import { UserXpProjectionEntity } from "@modules/projections/userxp/user-xp.projection-entity"
+import { UserScoreProjectionEntity } from "@modules/projections/user-score/user-score.projection-entity"
 `
-const PROJECTION_PORT = `import type { UserXpProjection } from "@modules/projections/userxp"
+const PROJECTION_PORT = `import type { UserScoreProjection } from "@modules/projections/user-score"
 `
 
 for (const edition of ["lite", "full"]) {
@@ -105,26 +105,26 @@ export interface JobClaims { complete(write: LooseWrite): Promise<void> }`, erro
 
         tester.run("projection-write-owner", projectionWriteOwner, {
             valid: [
-                { filename: PROJECTION, code: `${PROJECTION_ENTITY}export const recompute = (manager: EntityManager) => manager.update(UserXpProjectionEntity, { userId: "a" }, { total: 1 })` },
-                { filename: DOMAIN, code: `${PROJECTION_ENTITY}export const read = (manager: EntityManager) => manager.find(UserXpProjectionEntity, {})` },
+                { filename: PROJECTION, code: `${PROJECTION_ENTITY}export const recompute = (manager: EntityManager) => manager.update(UserScoreProjectionEntity, { userId: "a" }, { total: 1 })` },
+                { filename: DOMAIN, code: `${PROJECTION_ENTITY}export const read = (manager: EntityManager) => manager.find(UserScoreProjectionEntity, {})` },
             ],
             invalid: [
-                { filename: DOMAIN, code: `${PROJECTION_ENTITY}export const overwrite = (manager: EntityManager) => manager.update(UserXpProjectionEntity, { userId: "a" }, { total: 9 })`, errors: [{ messageId: "foreign" }] },
-                { filename: at("src/modules/projections/other/other.projection.ts"), code: `${PROJECTION_ENTITY}export const erase = (manager: EntityManager) => manager.delete(UserXpProjectionEntity, {})`, errors: [{ messageId: "foreign" }] },
+                { filename: DOMAIN, code: `${PROJECTION_ENTITY}export const overwrite = (manager: EntityManager) => manager.update(UserScoreProjectionEntity, { userId: "a" }, { total: 9 })`, errors: [{ messageId: "foreign" }] },
+                { filename: at("src/modules/projections/other/other.projection.ts"), code: `${PROJECTION_ENTITY}export const erase = (manager: EntityManager) => manager.delete(UserScoreProjectionEntity, {})`, errors: [{ messageId: "foreign" }] },
             ],
         })
 
         tester.run("projection-shape", projectionShape, {
             valid: [
-                { filename: PROJECTION, code: "export class UserXpProjection { async recompute(): Promise<void> {} async get(): Promise<number> { return 0 } }" },
-                { filename: PROJECTION_INDEX, code: 'export { UserXpProjection } from "./user-xp.projection"' },
-                { filename: API_HANDLER, code: `${PROJECTION_PORT}export const show = (projection: UserXpProjection) => projection.getUserXp("a")` },
-                { filename: REACTOR, code: `${PROJECTION_PORT}export const react = (projection: UserXpProjection) => projection.recomputeUserXp("a", 1)` },
+                { filename: PROJECTION, code: "export class UserScoreProjection { async recompute(): Promise<void> {} async get(): Promise<number> { return 0 } }" },
+                { filename: PROJECTION_INDEX, code: 'export { UserScoreProjection } from "./user-score.projection"' },
+                { filename: API_HANDLER, code: `${PROJECTION_PORT}export const show = (projection: UserScoreProjection) => projection.getUserScore("a")` },
+                { filename: REACTOR, code: `${PROJECTION_PORT}export const react = (projection: UserScoreProjection) => projection.recomputeUserScore("a", 1)` },
             ],
             invalid: [
-                { filename: PROJECTION, code: "export class UserXpProjection { async rebuildEverything(): Promise<void> {} }", errors: [{ messageId: "vocabulary" }] },
-                { filename: PROJECTION_INDEX, code: 'export { UserXpProjectionEntity } from "./user-xp.projection-entity"', errors: [{ messageId: "entityExported" }] },
-                { filename: API_HANDLER, code: `${PROJECTION_PORT}export const show = (projection: UserXpProjection) => projection.recomputeUserXp("a", 1)`, errors: [{ messageId: "apiRecompute" }] },
+                { filename: PROJECTION, code: "export class UserScoreProjection { async rebuildEverything(): Promise<void> {} }", errors: [{ messageId: "vocabulary" }] },
+                { filename: PROJECTION_INDEX, code: 'export { UserScoreProjectionEntity } from "./user-score.projection-entity"', errors: [{ messageId: "entityExported" }] },
+                { filename: API_HANDLER, code: `${PROJECTION_PORT}export const show = (projection: UserScoreProjection) => projection.recomputeUserScore("a", 1)`, errors: [{ messageId: "apiRecompute" }] },
             ],
         })
     })

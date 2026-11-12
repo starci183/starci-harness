@@ -9,8 +9,9 @@ import test from "node:test"
 import { Controller, Get, Inject, Injectable, Module, Post, Req, Scope } from "@nestjs/common"
 import type { DynamicModule } from "@nestjs/common"
 import type { AnyTestWorldConfig } from "../config/types"
+import type { FakeClient, WebhookDelivery } from "../fakes/framework/contracts"
 import { FakesHost } from "../fakes/framework/host"
-import { sepayFake } from "../fakes/shared/sepay"
+import { defineHttpFake } from "../fakes/framework/http-fake"
 import { SLOT_ENV, STATE_FILE_ENV, writeRunState, removeRunState } from "../jest/context"
 import type { RunContext } from "../jest/context"
 import { World } from "./world"
@@ -66,7 +67,7 @@ class WebhookDoorApp {
     static register(options: { readonly name: string }): DynamicModule {
         @Controller()
         class DoorController {
-            @Post("webhooks/sepay")
+            @Post("webhooks/gateway")
             receive(): { ok: true } {
                 webhookHits.push(options.name)
                 return { ok: true }
@@ -75,6 +76,21 @@ class WebhookDoorApp {
         return { module: WebhookDoorApp, controllers: [DoorController] }
     }
 }
+
+interface GatewayClient extends FakeClient {
+    send(reference: string): Promise<WebhookDelivery>
+}
+
+/** A webhook-sending fake with no provider protocol: `send` posts one delivery to `/webhooks/gateway` of its `webhookApp`, else the first listening app. */
+const gatewayFake = defineHttpFake<GatewayClient, { readonly webhookApp?: string }, undefined>({
+    controlActions: {
+        send: (body, context) => {
+            const { reference, deliverTo } = body as { readonly reference: string; readonly deliverTo: string }
+            return context.deliverWebhook({ reference, url: `${deliverTo.replace(/\/+$/, "")}/webhooks/gateway`, body: JSON.stringify({ reference }) })
+        },
+    },
+    client: (bridge, base, options) => ({ ...base, send: (reference) => bridge.call("send", { reference, deliverTo: bridge.webhookTarget(options?.webhookApp) }) }),
+})
 
 @Module({})
 class WorkerApp {
@@ -638,8 +654,8 @@ test("an app declared with rawBody is created with Nest's rawBody, so a signed w
     }
 })
 
-test("a payment fake declared with webhookApp delivers to that app, not to the first listening one", async () => {
-    const fakes = { sepay: sepayFake({ webhookApp: "billing" }), plainSepay: sepayFake() }
+test("a fake declared with webhookApp delivers to that app, not to the first listening one", async () => {
+    const fakes = { gateway: gatewayFake({ webhookApp: "billing" }), plainGateway: gatewayFake() }
     await publish(fakes)
     const config = {
         ...declaration([]),
@@ -653,9 +669,9 @@ test("a payment fake declared with webhookApp delivers to that app, not to the f
     await world.start()
     try {
         webhookHits.length = 0
-        const handles = world.fake as unknown as Record<string, { settle(params: { reference: string }): Promise<{ status: number } | null> }>
-        assert.equal((await handles["sepay"]?.settle({ reference: "SUB-1" }))?.status, 201)
-        assert.equal((await handles["plainSepay"]?.settle({ reference: "SUB-2" }))?.status, 201)
+        const handles = world.fake as unknown as Record<string, GatewayClient>
+        assert.equal((await handles["gateway"]?.send("SUB-1"))?.status, 201)
+        assert.equal((await handles["plainGateway"]?.send("SUB-2"))?.status, 201)
         assert.deepEqual(webhookHits, ["billing", "identity"])
     } finally {
         await world.stop()

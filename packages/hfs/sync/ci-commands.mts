@@ -195,7 +195,7 @@ function sonarMergeSteps(condition: string, scopes: readonly string[]): string[]
 const STANDARD = new URL('../runtime/knowledge/hfs/ci-standard.yaml', import.meta.url);
 
 /**
- * The command that builds the app's root workspace packages (the agent SDK, the module packages and every other `packages/*` workspace): the managed
+ * The command that builds the app's root workspace packages (every `packages/*` workspace): the managed
  * `build:modules` script, which sync renders exactly when the app has root packages (sync/index.mts appScripts) and which the managed typecheck, lint,
  * test and build scripts already run first. A CI step that runs a check directly (the boot proof, the app check's lint, the Sonar analysis) reads the
  * packages' declared types from their dist, so it runs this first; an app with no root package renders no such step and no prefix.

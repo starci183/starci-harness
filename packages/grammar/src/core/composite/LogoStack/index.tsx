@@ -22,7 +22,7 @@ export type LogoStackProps = NoChildren & {
     readonly items: ReadonlyArray<LogoStackItem>
     /** Round logos shown before the rest collapse into one "+N" pill. Default 3. */
     readonly max?: number
-    /** A muted xs line below the logos, e.g. "3 kết nối". */
+    /** A muted xs line below the logos, e.g. "3 connections". */
     readonly caption?: string
     /** Makes the whole group one plain pressable. Without it (and without `isTrigger`) the group is static. */
     readonly onPress?: () => void

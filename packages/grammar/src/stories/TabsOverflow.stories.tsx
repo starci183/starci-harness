@@ -42,7 +42,7 @@ export const DirectionalOverflow: Story = {
   ),
 };
 
-const prompts = ['Summarize this lesson', 'Explain with examples', 'Quiz me', 'Suggest a learning plan', 'Review my answer', 'What should I study next?'];
+const prompts = ['Summarize this document', 'Explain with examples', 'Test me', 'Suggest a plan', 'Review my answer', 'What should I read next?'];
 
 const ChipsRows = () => (
   <Matrix maxWidth={320}>
@@ -63,7 +63,7 @@ const ChipsRows = () => (
       </State>
     </div>
     <State label="Fits: no carets" direction="column">
-      <G.HorizontalScrollRegion aria-label="Short prompts" overflow="needed"><span>Quiz me</span></G.HorizontalScrollRegion>
+      <G.HorizontalScrollRegion aria-label="Short prompts" overflow="needed"><span>Test me</span></G.HorizontalScrollRegion>
     </State>
     <State label="Fades only: explicit opt-out" direction="column">
       <G.HorizontalScrollRegion aria-label="Prompts without carets" overflow="needed" carets={false}>

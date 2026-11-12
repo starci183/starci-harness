@@ -15,7 +15,9 @@
 // hfs enforces the slots as it enforces the be and fe slots: an instance lacking a required file, a file an instance does not allow and a file of no
 // slot are findings, and a declaration it cannot read is one too. Coverage follows the slots: every file of a package is measured at 100 per file in
 // the back end's unit run (BE-TEST-13), but its barrels and type files and the slots that opt out with `coverage: { none: <reason> }`, a reason
-// required. A package no declaration names keeps the harness's default scope (PACKAGE_UNMEASURED of coverage-scope.mts).
+// required. A package no declaration names is measured whole but its barrels and type files (PACKAGE_ALWAYS_UNMEASURED).
+// The canon that lints a file follows the slots too (packageLintScopes): the first slot that holds a file decides, as it decides the file's place;
+// a file of no slot, and every file of a package the project does not declare, is the back end's. The harness knows no folder name of a package.
 import { parseYaml } from '../../engine/yaml.mjs';
 import { globExpression } from '../lib/glob.mjs';
 
@@ -99,6 +101,30 @@ function slotExpression(slot: Pick<PackageSlot, 'path'>): RegExp {
 /** The globs (package-relative) a manifest leaves unmeasured: the barrels and type files, and every slot that opts out. */
 export function unmeasuredGlobs(manifest: PackageSlots): string[] {
   return [...PACKAGE_ALWAYS_UNMEASURED, ...manifest.slots.filter((slot) => slot.coverageNone !== null).map((slot) => (isFolderSlot(slot) ? `${slot.path.replace(PLACEHOLDER, '*')}**` : slot.path.replace(PLACEHOLDER, '*')))];
+}
+
+const globOf = (slot: Pick<PackageSlot, 'path'>): string => (isFolderSlot(slot) ? `${slot.path.replace(PLACEHOLDER, '*')}**` : slot.path.replace(PLACEHOLDER, '*'));
+
+/** One lint scope of a package: the files of one slot, less the files an earlier slot of the other canon already holds. Globs are app-relative. */
+export interface PackageLintScope { files: string; ignores: string[] }
+/**
+ * What each canon lints of the packages a project declares: `frontEnd` every `lint: fe` slot (the back-end canon leaves them), `fe` one scope per
+ * `lint: fe` slot less the back-end slots declared before it, `be` one scope per back-end slot a later front-end slot could reach, less the
+ * front-end slots declared before it. Together they are the first-slot-wins partition of the declared files.
+ */
+export interface PackageLint { frontEnd: string[]; fe: PackageLintScope[]; be: PackageLintScope[] }
+
+/** The lint scopes of one package (`folder`, app-relative) under its declaration. */
+export function packageLintScopes(folder: string, manifest: PackageSlots): PackageLint {
+  const at = (slot: PackageSlot): string => `${folder}/${globOf(slot)}`;
+  const fe: PackageLintScope[] = [];
+  const be: PackageLintScope[] = [];
+  manifest.slots.forEach((slot, index) => {
+    const earlier = manifest.slots.slice(0, index);
+    if (slot.lint === 'fe') fe.push({ files: at(slot), ignores: earlier.filter((other) => other.lint === 'be').map(at) });
+    else if (manifest.slots.slice(index + 1).some((later) => later.lint === 'fe')) be.push({ files: at(slot), ignores: earlier.filter((other) => other.lint === 'fe').map(at) });
+  });
+  return { frontEnd: fe.map((scope) => scope.files), fe, be };
 }
 
 /** The globs (package-relative) of the slots a declaration hands to the front-end canon (`lint: fe`). */

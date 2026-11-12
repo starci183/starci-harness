@@ -25,7 +25,7 @@ const AI_CONFIG = at("src/modules/integrations/ai/ai.config.ts")
 const AI_SPEC = at("src/modules/integrations/ai/ai.client.spec.ts")
 const DOMAIN = at("src/modules/domain/order/order.service.ts")
 const CONFIG = at("src/modules/platform/config/env-source.config.ts")
-const OTHER = at("src/modules/integrations/payos/payos.config.ts")
+const OTHER = at("src/modules/integrations/beta-pay/beta-pay.config.ts")
 const ENV = at("apps/api/src/api.env.ts")
 const WORLD = at("src/tests/world/use-test-world.ts")
 
@@ -71,7 +71,7 @@ test("ai-virtual-key-name: integrations/ai reads STARCI_AI_KEY and the gateway g
             { filename: CUSTODY, code: parse(`{ mounted: env.secret("STARCI_AI_KEY"), upstream: env.secret("OPENROUTER_API_KEY") }`) },
             { filename: CUSTODY, code: `export const gateway = { keysPath: "keys.sqlite", mountedKeys: [] }` },
             // a secret of another integration is not the virtual key
-            { filename: OTHER, code: parse(`{ key: env.secret("PAYOS_API_KEY") }`) },
+            { filename: OTHER, code: parse(`{ key: env.secret("BETA_PAY_API_KEY") }`) },
             { filename: DOMAIN, code: `export const config = { adminToken: "x" }` },
         ],
         invalid: [

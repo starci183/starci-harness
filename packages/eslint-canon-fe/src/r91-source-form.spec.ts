@@ -86,7 +86,7 @@ for (const edition of ["lite", "full"] as const) {
       invalid: [{ code: "export const Card = { Root: CardRoot, Header: CardHeader }", errors: [{ messageId: "namespace" }] }],
     })
     tester.run("monorepo-tier-belongs-to-its-side", monorepoTierBelongsToItsSide, {
-      valid: [{ filename: at("packages/nivo-ui/src/leaves/Text/index.tsx"), code: "export const Text = () => null" }],
+      valid: [{ filename: at("packages/app-ui/src/leaves/Text/index.tsx"), code: "export const Text = () => null" }],
       invalid: [{ filename: LEAF, code: "export const Text = () => null", errors: [{ messageId: "vocabularyInApp" }] }],
     })
     tester.run("prefer-arrow-export", preferArrowExport, {

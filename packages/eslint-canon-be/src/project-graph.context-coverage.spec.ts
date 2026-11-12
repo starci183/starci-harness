@@ -52,7 +52,7 @@ const capability = (tier: string, name: string, table: string, extraIndex = "", 
     }
 }
 const IDENTITY_INDEX = "export class IdentityService { lookup(): string { return 'user'; } }\n"
-const BILLING_INDEX = "export class BillingService { charge(): string { return 'invoice'; } }\n"
+const BILLING_INDEX = "export class BillingService { charge(): string { return 'record'; } }\n"
 const CART_INDEX = "export class CartService { total(): number { return 1; } }\n"
 /** The imports an entry needs: the connection constant and the arrays of every capability it lists. */
 const IMPORTS = {
@@ -73,7 +73,7 @@ const BASE = {
     ...capability("domain", "identity", "users", IDENTITY_INDEX),
     ...capability("domain", "order", "orders"),
     ...capability("domain", "cart", "carts", CART_INDEX),
-    ...capability("domain", "billing", "invoices", BILLING_INDEX),
+    ...capability("domain", "billing", "records", BILLING_INDEX),
     "apps/identity/src/app.module.ts": registration([IDENTITY_ENTRY]),
     "apps/order/src/app.module.ts": registration([ORDER_ENTRY]),
     "apps/billing/src/app.module.ts": registration([BILLING_ENTRY]),

@@ -12,8 +12,8 @@ for (const edition of ["lite", "full"] as const) {
         const fixture = projectFixture({
             edition,
             files: {
-                "src/modules/domain/billing/invoice.service.ts": SOURCE,
-                "src/modules/domain/billing/invoice.service.spec.ts": SOURCE,
+                "src/modules/domain/billing/record.service.ts": SOURCE,
+                "src/modules/domain/billing/record.service.spec.ts": SOURCE,
                 "tools/seed.spec.ts": SOURCE,
                 "scripts/rotate-logs.spec.ts": SOURCE,
             },
@@ -22,8 +22,8 @@ for (const edition of ["lite", "full"] as const) {
 
         fixture.tester.run("spec-placement", ruleNamed(rules, "spec-placement"), {
             valid: [
-                { filename: fixture.at("src/modules/domain/billing/invoice.service.ts"), code: SOURCE },
-                { filename: fixture.at("src/modules/domain/billing/invoice.service.spec.ts"), code: SOURCE },
+                { filename: fixture.at("src/modules/domain/billing/record.service.ts"), code: SOURCE },
+                { filename: fixture.at("src/modules/domain/billing/record.service.spec.ts"), code: SOURCE },
             ],
             invalid: [
                 {

@@ -5,7 +5,7 @@ import { Matrix, State } from './fixtures.js';
 
 /**
  * 0.37.20: the initial fit contains every node (the controls' corner reserved) for a wide branching steps graph, and a graph inside a Drawer
- * measures its real container. The graph is the NIVO workflow map: a trigger, an intent step that branches four ways, one branch ending.
+ * measures its real container. The graph is a workflow map: a trigger, an intent step that branches four ways, one branch ending.
  * 0.37.26: a contained fit never goes below the floor (CONTAIN_MIN_ZOOM: 0.6, 0.8 since 0.37.29). At 390 and in a drawer the same graph is held at the floor, the first view shows the entry node,
  * and the reader pans it; the zoom controls column always stands inside the canvas.
  */
@@ -18,21 +18,21 @@ export default meta;
 type Story = StoryObj;
 
 const nodes: ReadonlyArray<G.FlowGraphNode> = [
-  { id: 'new', kind: 'event', label: 'Có việc mới', description: 'Tin, tiền về, hẹn giờ', tag: 'Kích hoạt' },
+  { id: 'new', kind: 'event', label: 'New event', description: 'Message, payment, timer', tag: 'Trigger' },
   {
-    id: 'intent', kind: 'condition', label: 'Hiểu ý khách', description: 'chọn hướng cho tin khách',
-    outputs: [{ id: 'buy', label: 'Muốn mua' }, { id: 'paid', label: 'Báo đã chuyển' }, { id: 'ask', label: 'Hỏi thông tin' }, { id: 'complain', label: 'Khiếu nại' }],
+    id: 'intent', kind: 'condition', label: 'Classify request', description: 'route the customer message',
+    outputs: [{ id: 'buy', label: 'Wants to buy' }, { id: 'paid', label: 'Payment sent' }, { id: 'ask', label: 'Asks a question' }, { id: 'complain', label: 'Complaint' }],
   },
-  { id: 'sales', kind: 'action', label: 'Chuyển sang quy trình', description: 'Bán hàng', chips: [{ label: 'Agent nhận việc: sales' }, { label: 'Quy trình: consult' }, { label: 'Phiên bản: latest' }] },
-  { id: 'accounting', kind: 'action', label: 'Chuyển sang quy trình', description: 'Kế toán', chips: [{ label: 'Agent nhận việc: accounting' }, { label: 'Quy trình: reconcile' }, { label: 'Phiên bản: latest' }] },
-  { id: 'answer', kind: 'action', label: 'Trả lời câu hỏi', description: 'từ thông tin của tiệm' },
-  { id: 'receive', kind: 'action', label: 'Tiếp nhận khiếu nại', description: 'xin lỗi khách, báo đội' },
-  { id: 'handoff', kind: 'end', label: 'Chuyển chủ tiệm' },
+  { id: 'sales', kind: 'action', label: 'Hand off to flow', description: 'Sales', chips: [{ label: 'Agent: sales' }, { label: 'Flow: consult' }, { label: 'Version: latest' }] },
+  { id: 'billing', kind: 'action', label: 'Hand off to flow', description: 'Billing', chips: [{ label: 'Agent: billing' }, { label: 'Flow: reconcile' }, { label: 'Version: latest' }] },
+  { id: 'answer', kind: 'action', label: 'Answer the question', description: 'from the shop info' },
+  { id: 'receive', kind: 'action', label: 'Receive complaint', description: 'apologise, tell the team' },
+  { id: 'handoff', kind: 'end', label: 'Hand to owner' },
 ];
 const edges: ReadonlyArray<G.FlowGraphEdge> = [
   { id: 'e1', source: 'new', target: 'intent' },
   { id: 'e2', source: 'intent', target: 'sales', sourcePort: 'buy' },
-  { id: 'e3', source: 'intent', target: 'accounting', sourcePort: 'paid' },
+  { id: 'e3', source: 'intent', target: 'billing', sourcePort: 'paid' },
   { id: 'e4', source: 'intent', target: 'answer', sourcePort: 'ask' },
   { id: 'e5', source: 'intent', target: 'receive', sourcePort: 'complain' },
   { id: 'e6', source: 'receive', target: 'handoff' },
@@ -119,8 +119,8 @@ export const InDrawer: Story = {
   name: 'Same graph in a Drawer (fit contain): held at zoom 0.8, static but pans',
   parameters: { grammar: { minHeight: '48rem' } },
   render: () => (
-    <G.Drawer defaultOpen placement="right" title="Bản 1" closeLabel="Close" trigger={<G.Button intent="alternative">Open</G.Button>}>
-      <G.Section title="Sơ đồ" headingLevel={2}>
+    <G.Drawer defaultOpen placement="right" title="Version 1" closeLabel="Close" trigger={<G.Button intent="alternative">Open</G.Button>}>
+      <G.Section title="Diagram" headingLevel={2}>
         <G.FlowGraph label="Workflow map" layout="steps" isInteractive={false} fit="contain" height="lg" nodes={nodes} edges={edges} />
       </G.Section>
     </G.Drawer>
@@ -137,8 +137,8 @@ export const InDrawer: Story = {
 };
 
 const SHORT_NODES: ReadonlyArray<G.FlowGraphNode> = [
-  { id: 'new', kind: 'event', label: 'Có việc mới', tag: 'Kích hoạt' },
-  { id: 'answer', kind: 'action', label: 'Trả lời câu hỏi' },
+  { id: 'new', kind: 'event', label: 'New event', tag: 'Trigger' },
+  { id: 'answer', kind: 'action', label: 'Answer the question' },
 ];
 export const ShortGraphControlsInside: Story = {
   name: 'A short graph at 390: the canvas is at least as tall as the zoom controls column',

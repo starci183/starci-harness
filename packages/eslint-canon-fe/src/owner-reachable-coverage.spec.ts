@@ -50,7 +50,7 @@ for (const edition of ['lite', 'full'] as const) {
     const filename = at('apps/web/src/components/blocks/Nav/index.tsx');
     tester.run('no-hardcoded-route', noHardcodedRoute, {
       valid: [{ filename, code: 'router.push(routes.home());' }],
-      invalid: [{ filename, code: 'router.push("/courses");', errors: [{ messageId: 'route' }] }],
+      invalid: [{ filename, code: 'router.push("/projects");', errors: [{ messageId: 'route' }] }],
     });
   });
 }

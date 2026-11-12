@@ -31,7 +31,7 @@ for (const edition of ['lite', 'full']) {
     tester.run('i18n-stack-in-one-module', i18nStackInOneModule, {
       valid: [{ filename: at('apps/web/src/modules/i18n/routing.ts'), code: described }],
       invalid: [
-        { filename: at('apps/web/src/hooks/lesson/useLesson.ts'), code: routing, errors: [{ messageId: 'stack' }] },
+        { filename: at('apps/web/src/hooks/item/useItem.ts'), code: routing, errors: [{ messageId: 'stack' }] },
         { filename: at('apps/web/src/modules/i18n/routing.ts'), code: routing, errors: [{ messageId: 'stack' }] },
       ],
     });
@@ -41,7 +41,7 @@ for (const edition of ['lite', 'full']) {
     });
     tester.run('no-native-anchor', noNativeAnchor, {
       valid: [{ filename: block, code: 'const Nav = () => <Link href={routes.home()} />;' }],
-      invalid: [{ filename: block, code: 'const Nav = () => <a href="/courses" />;', errors: [{ messageId: 'internal' }] }],
+      invalid: [{ filename: block, code: 'const Nav = () => <a href="/projects" />;', errors: [{ messageId: 'internal' }] }],
     });
     tester.run('use-intl-formatter', useIntlFormatter, {
       valid: [{ filename: block, code: 'const Nav = () => <p>{format.number(total)}</p>;' }],

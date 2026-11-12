@@ -160,13 +160,13 @@ export const coreGrammarConfig: (input: {
 }
 
 /**
- * The Grammar family's rules for the front-end subpaths of an app's root workspace packages (`packages/<pkg>/src/workbench/**` and `src/public/**`):
- * the config of `coreGrammarConfig` over the package view (`loadPackagesHfs` of the universal canon), narrowed to those subpaths, so a module
+ * The Grammar family's rules for the front-end files of an app's root workspace packages (every `.tsx` file and the slots the project declares `lint: "fe"`, ext/manifest.json packages):
+ * the config of `coreGrammarConfig` over the package view (`loadPackagesHfs` of the universal canon), narrowed to those files, so a root
  * package draws with the Grammar's components alone under the very laws of the front end (FE-PACKAGES-2).
  * @param input - The package view of the app root and the family.
- * @returns A typed source block with every family rule at error over the package subpaths.
+ * @returns A typed source block with every family rule at error over the package files.
  */
-export const coreGrammarPackagesConfig: typeof coreGrammarConfig = (input) => scopeToPackages(coreGrammarConfig(input))
+export const coreGrammarPackagesConfig: typeof coreGrammarConfig = (input) => scopeToPackages(coreGrammarConfig(input), input.hfs)
 
 // The result cache of `starci app check --gate lint` (contexts/project/check-cache.md) reads the disk inputs the family rules declare.
 export { crossFileInputs } from "./lib/cross-file-inputs.ts"

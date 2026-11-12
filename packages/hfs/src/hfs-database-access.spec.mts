@@ -120,10 +120,10 @@ const forceCases: Case[] = [
 ];
 
 const scopeRoles = [{ role: 'app_engine', reason: 'the engine role entered per transaction' }];
-const scoped = { db: { scopeSettings: ['nivo.workspace_id'], scopeRoles } };
+const scoped = { db: { scopeSettings: ['app.workspace_id'], scopeRoles } };
 const engineRole = 'create role app_engine nologin noinherit nobypassrls;';
-const engineScope = "create function public.engine_workspace() returns uuid language sql stable as $$ select nullif(current_setting('nivo.workspace_id', true), '')::uuid $$;";
-const engineOther = "create function public.engine_workspace() returns uuid language sql stable as $$ select nullif(current_setting('nivo.other_id', true), '')::uuid $$;";
+const engineScope = "create function public.engine_workspace() returns uuid language sql stable as $$ select nullif(current_setting('app.workspace_id', true), '')::uuid $$;";
+const engineOther = "create function public.engine_workspace() returns uuid language sql stable as $$ select nullif(current_setting('app.other_id', true), '')::uuid $$;";
 const enginePolicy = (predicate: string, roles = 'app_engine') => `${engineRole} ${table.replace('tenant_id uuid)', 'tenant_id uuid, workspace_id uuid)')}
 create policy items_engine_select on public.items for select to ${roles} using (${predicate});`;
 
@@ -143,9 +143,9 @@ const policyCases: Case[] = [
   ['trusted application role may accept every row', `${table} create policy items_app_be_all on public.items for all to app_be using (id is not null) with check (id is not null);`, false],
   ['intentional public read', publicRead, false],
   ['declared scope setting through a SQL function', `${engineScope} ${enginePolicy('workspace_id = public.engine_workspace()')}`, false, scoped],
-  ['declared scope setting read directly', enginePolicy("workspace_id = nullif(current_setting('nivo.workspace_id', true), '')::uuid"), false, scoped],
+  ['declared scope setting read directly', enginePolicy("workspace_id = nullif(current_setting('app.workspace_id', true), '')::uuid"), false, scoped],
   ['declared scope setting is no principal when undeclared', `${engineScope} ${enginePolicy('workspace_id = public.engine_workspace()')}`, true, listed],
-  ['an undeclared setting is no principal', enginePolicy("workspace_id = nullif(current_setting('nivo.other_id', true), '')::uuid"), true, scoped],
+  ['an undeclared setting is no principal', enginePolicy("workspace_id = nullif(current_setting('app.other_id', true), '')::uuid"), true, scoped],
   ['declared scope function that reads an undeclared setting', `${engineOther} ${enginePolicy('workspace_id = public.engine_workspace()')}`, true, scoped],
   ['literal true for the engine role', enginePolicy('true'), true, scoped],
   ['declared scope or true bypasses the principal', `${engineScope} ${enginePolicy('workspace_id = public.engine_workspace() or true')}`, true, scoped],
@@ -161,7 +161,7 @@ const policyCases: Case[] = [
   ['declared scope compared with another owner column', `${engineScope} ${enginePolicy('tenant_id = public.engine_workspace()')}`, true, scoped],
   ['declared scope beside a non-null column test', `${engineScope} ${enginePolicy('id is not null and public.engine_workspace() is not null')}`, true, scoped],
   ['declared scope in a non-equality comparison', `${engineScope} ${enginePolicy('workspace_id <> public.engine_workspace()')}`, true, scoped],
-  ['declared scope column list names the owning column', `${engineScope} ${enginePolicy('tenant_id = public.engine_workspace()')}`, false, { db: { scopeSettings: ['nivo.workspace_id'], scopeRoles, scopeColumns: ['tenant_id'] } }],
+  ['declared scope column list names the owning column', `${engineScope} ${enginePolicy('tenant_id = public.engine_workspace()')}`, false, { db: { scopeSettings: ['app.workspace_id'], scopeRoles, scopeColumns: ['tenant_id'] } }],
   ['public read suffix cannot authorize writes', `${table} create policy items_public_read on public.items for insert to anon with check (true);`, true],
 ];
 
@@ -302,15 +302,15 @@ test('the declaration takes db.scopeSettings as dotted custom settings and refus
   const sides = { be: { apps: [{ name: 'api', kind: 'api' }] }, fe: { apps: [{ name: 'web', kind: 'next' }], grammar: 'core' } };
   const declared = (scopeSettings: unknown) => declarationShapeProblems({ hfs: 3, kind: 'app', project: 'demo', edition: 'lite', db: { scopeSettings }, sides }, ['be', 'fe']).filter((problem) => problem.startsWith('db.'));
   const withRoles = (scopeSettings: unknown) => declarationShapeProblems({ hfs: 3, kind: 'app', project: 'demo', edition: 'lite', db: { scopeSettings, scopeRoles }, sides }, ['be', 'fe']).filter((problem) => problem.startsWith('db.'));
-  assert.deepEqual(withRoles(['nivo.workspace_id']), []);
-  assert.equal(declared(['nivo.workspace_id']).length, 1, 'settings without scope roles');
+  assert.deepEqual(withRoles(['app.workspace_id']), []);
+  assert.equal(declared(['app.workspace_id']).length, 1, 'settings without scope roles');
   const roles = (list: unknown) => declarationShapeProblems({ hfs: 3, kind: 'app', project: 'demo', edition: 'lite', db: { scopeRoles: list }, sides }, ['be', 'fe']).filter((problem) => problem.startsWith('db.'));
   assert.deepEqual(roles(scopeRoles), []);
   for (const bad of [[], ['app_engine'], [{ role: 'app_engine' }], [{ role: 'App', reason: 'x' }], [{ role: 'a', reason: ' ' }], [{ role: 'a', reason: 'x', more: 1 }]]) assert.equal(roles(bad).length, 1, JSON.stringify(bad));
   const columns = (scopeColumns: unknown) => declarationShapeProblems({ hfs: 3, kind: 'app', project: 'demo', edition: 'lite', db: { scopeColumns }, sides }, ['be', 'fe']).filter((problem) => problem.startsWith('db.'));
   assert.deepEqual(columns(['workspace_id']), []);
   for (const bad of [[], ['Workspace'], 'workspace_id', ['a.b']]) assert.equal(columns(bad).length, 1, JSON.stringify(bad));
-  for (const bad of [['workspace_id'], ['request.jwt.claims'], ['Nivo.Workspace'], 'nivo.workspace_id', [''], [1]]) {
+  for (const bad of [['workspace_id'], ['request.jwt.claims'], ['App.Workspace'], 'app.workspace_id', [''], [1]]) {
     assert.equal(withRoles(bad).length, 1, JSON.stringify(bad));
   }
 });
@@ -349,11 +349,27 @@ test('the be side takes sides.be.engineOwned as one capability, its tables, the 
 });
 
 test('the be side takes sides.be.ddlRenderers as unique root-package paths with a reason, a * only in the file name', () => {
-  const renderer = { path: 'packages/agent-sdk/src/entity/render*.ts', reason: 'renders the DDL that a cli command writes as new migrations' };
+  const renderer = { path: 'packages/sdk/src/entity/render*.ts', reason: 'renders the DDL that a cli command writes as new migrations' };
   const problems = (ddlRenderers: unknown, side: 'be' | 'fe' = 'be') => declarationShapeProblems({ hfs: 3, kind: 'app', project: 'demo', edition: 'lite',
     sides: { be: { apps: [{ name: 'api', kind: 'api' }], ...(side === 'be' ? { ddlRenderers } : {}) }, fe: { apps: [{ name: 'web', kind: 'next' }], grammar: 'core', ...(side === 'fe' ? { ddlRenderers } : {}) } } }, ['be', 'fe']).filter((problem) => problem.includes('ddlRenderers'));
   assert.deepEqual(problems([renderer]), []);
   assert.equal(problems([renderer], 'fe').length, 1);
   for (const bad of [[{ ...renderer, path: 'src/render.ts' }], [{ ...renderer, path: 'packages/a/../b/render.ts' }], [{ ...renderer, path: 'packages/*/src/render.ts' }], [{ ...renderer, reason: ' ' }],
     [renderer, renderer], [{ path: renderer.path }], [{ ...renderer, extra: 1 }], 'packages/a/render.ts']) assert.equal(problems(bad).length, 1, JSON.stringify(bad));
+});
+
+test('the be side takes sides.be.receiptPorts as {class, method, repeat, reason} or {class, method, many: true, reason}, each class and method once, and no other side does (R263)', () => {
+  const problems = (receiptPorts: unknown, side: 'be' | 'fe' = 'be') => declarationShapeProblems({ hfs: 3, kind: 'app', project: 'demo', edition: 'lite',
+    sides: { be: { apps: [{ name: 'api', kind: 'api' }], ...(side === 'be' ? { receiptPorts } : {}) }, fe: { apps: [{ name: 'web', kind: 'next' }], grammar: 'core', ...(side === 'fe' ? { receiptPorts } : {}) } } }, ['be', 'fe'])
+    .filter((problem: string) => problem.includes('receiptPorts'));
+  const port = { class: 'ReceiptPort', method: 'receive', repeat: 'undefined', reason: 'writes the delivery once under its unique key; undefined on a repeat' };
+  assert.deepEqual(problems([port, { ...port, method: 'accept', repeat: 'false' }]), []);
+  for (const bad of [[], 'ReceiptPort.receive', [{ ...port, repeat: 'null' }], [{ ...port, repeat: false }], [{ ...port, class: 'receiptPort' }], [{ ...port, method: 'Receive' }], [{ ...port, reason: 'short' }],
+    [{ class: 'ReceiptPort', method: 'receive', repeat: 'undefined' }], [{ ...port, off: true }], [port, port]]) assert.equal(problems(bad).length, 1, JSON.stringify(bad));
+  assert.equal(problems([port], 'fe').length, 1, 'a front end receives no delivery');
+  // the multi-event form: many true answers the list of new events, so a repeat is the empty list and no repeat answer is given
+  const many = { class: 'FeedReceiptPort', method: 'receiveAll', many: true, reason: 'writes each event of the delivery once under its unique key; answers the new ones' };
+  assert.deepEqual(problems([port, many]), []);
+  for (const bad of [[{ ...many, repeat: 'undefined' }], [{ ...many, repeat: 'false' }], [{ ...many, many: false }], [{ ...many, many: 'true' }], [{ ...many, many: 1 }],
+    [{ ...port, many: true }], [{ ...port, many: false }], [{ class: many.class, method: many.method, many: true }], [many, { ...port, class: many.class, method: many.method }]]) assert.equal(problems(bad).length, 1, JSON.stringify(bad));
 });

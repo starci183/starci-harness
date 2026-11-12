@@ -121,8 +121,8 @@ export const InputFamily: Story = {
                     control: "SearchField",
                     states: {
                         Default: <G.SearchField label="Search" />,
-                        Filled: <G.SearchField label="Search" defaultValue="lessons" />,
-                        Disabled: <G.SearchField label="Search" defaultValue="lessons" isDisabled />,
+                        Filled: <G.SearchField label="Search" defaultValue="documents" />,
+                        Disabled: <G.SearchField label="Search" defaultValue="documents" isDisabled />,
                         Invalid: <G.SearchField label="Search" errorMessage="Type at least two letters." />,
                         Loading: <G.SearchField label="Search" isLoading />,
                     },
@@ -213,10 +213,10 @@ export const ChoiceFamily: Story = {
                 {
                     control: "Switch",
                     states: {
-                        Default: <G.Switch description="Mô tả ngắn." label="Dark mode" />,
-                        Checked: <G.Switch description="Mô tả ngắn." label="Dark mode" defaultSelected />,
-                        Disabled: <G.Switch description="Mô tả ngắn." label="Dark mode" isDisabled />,
-                        Loading: <G.Switch description="Mô tả ngắn." label="Dark mode" isLoading />,
+                        Default: <G.Switch description="Short description." label="Dark mode" />,
+                        Checked: <G.Switch description="Short description." label="Dark mode" defaultSelected />,
+                        Disabled: <G.Switch description="Short description." label="Dark mode" isDisabled />,
+                        Loading: <G.Switch description="Short description." label="Dark mode" isLoading />,
                     },
                 },
             ]}

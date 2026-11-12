@@ -15,9 +15,9 @@ export default meta;
 type Story = StoryObj;
 
 const lines = [
-  'Shop ơi còn hàng không?', 'Dạ còn ạ', 'Giao trong hôm nay được không shop?', 'Dạ được, trước 17h ạ', 'Phí ship bao nhiêu vậy?',
-  'Nội thành 20k ạ', 'Ok em lấy 2 cái nhé', 'Dạ em lên đơn cho chị', 'Chuyển khoản số nào shop?', 'Em gửi mã QR ngay ạ',
-  'Đã chuyển rồi nha', 'Dạ em nhận được rồi ạ', 'Cảm ơn shop', 'Dạ cảm ơn chị',
+  'Is this still in stock?', 'Yes, it is', 'Can it ship today?', 'Yes, before 5 pm', 'How much is shipping?',
+  'Local delivery is $2', 'Ok I will take 2', 'I will create the order for you', 'Where do I send payment?', 'I will send the QR code now',
+  'Payment sent', 'Received, thank you', 'Thanks a lot', 'You are welcome',
 ];
 
 /** A thread long enough to scroll in a 760px page: others' messages flat white, own messages accent. */
@@ -25,7 +25,7 @@ const Thread = ({ count = lines.length }: { readonly count?: number }) => (
   <>
     {lines.slice(0, count).map((text, index) => (
       index % 2 === 0
-        ? <G.MessageBubble key={text} author="Lan" meta={`09:${String(10 + index)}`} avatar={<G.Avatar name="Lan" size="sm" />} body={text} />
+        ? <G.MessageBubble key={text} author="Sam" meta={`09:${String(10 + index)}`} avatar={<G.Avatar name="Sam" size="sm" />} body={text} />
         : <G.MessageBubble key={text} side="outgoing" meta={`09:${String(10 + index)}`} body={text} />
     ))}
   </>
@@ -33,7 +33,7 @@ const Thread = ({ count = lines.length }: { readonly count?: number }) => (
 
 const Composer = ({ placeholder }: { readonly placeholder: string }) => (
   <G.PaneSection as="footer" rule="start" gap="row">
-    <G.Textarea label="Tin nhắn" isLabelHidden placeholder={placeholder} onSubmitShortcut={noop} />
+    <G.Textarea label="Message" isLabelHidden placeholder={placeholder} onSubmitShortcut={noop} />
   </G.PaneSection>
 );
 
@@ -87,21 +87,21 @@ const assertThreadScrolls = (frame: HTMLElement) => {
   if (body !== null) expect(body.scrollHeight).toBeLessThanOrEqual(body.clientHeight + 1);
 };
 
-const crumbs = (label: string): G.PageHeaderBreadcrumbs => ({ label: 'Đường dẫn', items: [{ id: 'home', label: 'Tổng quan', href: '#' }, { id: 'here', label }] });
+const crumbs = (label: string): G.PageHeaderBreadcrumbs => ({ label: 'Path', items: [{ id: 'home', label: 'Overview', href: '#' }, { id: 'here', label }] });
 
 /** 1. The chat page: the room list white, the room a chat frame (head, thread, composer) on --background; only the thread scrolls. */
 export const ChatPage: Story = {
   render: () => (
     <div style={{ height: 760 }}>
-      <G.Page chrome="panes" header={{ breadcrumbs: crumbs('Trò chuyện') }}>
-        <G.PaneGrid label="Trò chuyện" areas={{ base: ['room'], medium: ['list room'] }} columns={{ base: ['fill'], medium: ['compact', 'fill'] }}>
-          <G.Pane area="list" surface label="Phòng">
-            <G.PaneSection align="center"><G.PaneHeader title="Trò chuyện" /></G.PaneSection>
+      <G.Page chrome="panes" header={{ breadcrumbs: crumbs('Chat') }}>
+        <G.PaneGrid label="Chat" areas={{ base: ['room'], medium: ['list room'] }} columns={{ base: ['fill'], medium: ['compact', 'fill'] }}>
+          <G.Pane area="list" surface label="Rooms">
+            <G.PaneSection align="center"><G.PaneHeader title="Chat" /></G.PaneSection>
             <G.PaneSection><G.Text tone="muted">Chatbot</G.Text></G.PaneSection>
           </G.Pane>
-          <G.Pane area="room" content="chat" label="Phòng Chatbot" footer={<Composer placeholder="Nhập tin nhắn..." />}>
+          <G.Pane area="room" content="chat" label="Chatbot room" footer={<Composer placeholder="Type a message..." />}>
             <Head title="Chatbot" />
-            <G.PaneSection scroll={{ label: 'Hội thoại', role: 'log', align: 'end' }}><Thread /></G.PaneSection>
+            <G.PaneSection scroll={{ label: 'Conversation', role: 'log', align: 'end' }}><Thread /></G.PaneSection>
           </G.Pane>
         </G.PaneGrid>
       </G.Page>
@@ -122,18 +122,18 @@ export const ChatPage: Story = {
 export const InboxThread: Story = {
   render: () => (
     <div style={{ height: 760 }}>
-      <G.Page layout="workspace" chrome="panes" header={{ breadcrumbs: crumbs('Đầu vào'), title: 'Đầu vào' }}>
-        <G.PaneGrid label="Đầu vào" areas={{ base: ['main'], wide: ['list main aside'] }} columns={{ base: ['fill'], wide: ['compact', 'fill', 'compact'] }}>
-          <G.Pane area="list" surface label="Khách">
-            <G.PaneSection><G.Text tone="muted">Lan</G.Text></G.PaneSection>
+      <G.Page layout="workspace" chrome="panes" header={{ breadcrumbs: crumbs('Inbox'), title: 'Inbox' }}>
+        <G.PaneGrid label="Inbox" areas={{ base: ['main'], wide: ['list main aside'] }} columns={{ base: ['fill'], wide: ['compact', 'fill', 'compact'] }}>
+          <G.Pane area="list" surface label="Customers">
+            <G.PaneSection><G.Text tone="muted">Sam</G.Text></G.PaneSection>
           </G.Pane>
-          <G.Pane area="main" label="Hội thoại khách" footer={<Composer placeholder="Trả lời khách..." />}>
-            <Head title="Khách Zalo · Lan" />
-            <G.PaneSection scroll={{ label: 'Hội thoại', role: 'log', align: 'end' }}><Thread count={4} /></G.PaneSection>
+          <G.Pane area="main" label="Customer conversation" footer={<Composer placeholder="Reply to the customer..." />}>
+            <Head title="Chat customer · Sam" />
+            <G.PaneSection scroll={{ label: 'Conversation', role: 'log', align: 'end' }}><Thread count={4} /></G.PaneSection>
           </G.Pane>
-          <G.Pane area="aside" surface label="Khách">
-            <G.PaneSection align="center"><G.PaneHeader title="Khách" /></G.PaneSection>
-            <G.PaneSection><G.Text tone="muted">Zalo · 2 đơn</G.Text></G.PaneSection>
+          <G.Pane area="aside" surface label="Customers">
+            <G.PaneSection align="center"><G.PaneHeader title="Customers" /></G.PaneSection>
+            <G.PaneSection><G.Text tone="muted">Chat · 2 orders</G.Text></G.PaneSection>
           </G.Pane>
         </G.PaneGrid>
       </G.Page>
@@ -154,9 +154,9 @@ export const AgentChatTab: Story = {
   render: () => (
     <div style={{ height: 760 }}>
       <G.Page chrome="panes" header={{ breadcrumbs: crumbs('Sales'), title: 'Sales' }}>
-        <G.PaneGrid label="Trò chuyện với Sales" areas={['room']}>
-          <G.Pane area="room" content="chat" label="Sales" footer={<Composer placeholder="Nhắn Sales..." />}>
-            <G.PaneSection scroll={{ label: 'Hội thoại', role: 'log', align: 'end' }}><Thread /></G.PaneSection>
+        <G.PaneGrid label="Chat with Sales" areas={['room']}>
+          <G.Pane area="room" content="chat" label="Sales" footer={<Composer placeholder="Message Sales..." />}>
+            <G.PaneSection scroll={{ label: 'Conversation', role: 'log', align: 'end' }}><Thread /></G.PaneSection>
           </G.Pane>
         </G.PaneGrid>
       </G.Page>
@@ -175,13 +175,13 @@ export const AgentChatTab: Story = {
 /** 4. The assistant in a drawer: the drawer that holds the chat is the frame as a whole, its own head included; a message in it is flat. */
 export const AssistantDrawer: Story = {
   render: () => (
-    <G.Drawer title="Trợ lý NIVO" closeLabel="Đóng" isOpen onOpenChange={noop} placement="right" bodyInset="none">
+    <G.Drawer title="Assistant" closeLabel="Close" isOpen onOpenChange={noop} placement="right" bodyInset="none">
       <div style={{ height: '100%', minHeight: 0 }}>
-        <G.PaneGrid label="Trợ lý NIVO" areas={['chat']}>
-          <G.Pane area="chat" content="chat" label="Trợ lý NIVO" footer={<Composer placeholder="Hỏi trợ lý..." />}>
-            <G.PaneSection scroll={{ label: 'Hội thoại', role: 'log', align: 'end' }}>
-              <G.MessageBubble author="NIVO" avatar={<G.Avatar name="NIVO" size="sm" />} body="Em giúp gì được ạ?" />
-              <G.MessageBubble side="outgoing" body="Tóm tắt hôm nay" />
+        <G.PaneGrid label="Assistant" areas={['chat']}>
+          <G.Pane area="chat" content="chat" label="Assistant" footer={<Composer placeholder="Ask the assistant..." />}>
+            <G.PaneSection scroll={{ label: 'Conversation', role: 'log', align: 'end' }}>
+              <G.MessageBubble author="Assistant" avatar={<G.Avatar name="Assistant" size="sm" />} body="How can I help?" />
+              <G.MessageBubble side="outgoing" body="Summarize today" />
             </G.PaneSection>
           </G.Pane>
         </G.PaneGrid>

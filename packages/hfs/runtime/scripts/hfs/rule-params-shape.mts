@@ -74,6 +74,20 @@ const dbFunctionNameOk = (name: Parsed, bare: Parsed) => typeof name === 'string
 export const dbFunctionsOk = (list: Parsed, { bare = false }: { bare?: boolean } = {}) => list === undefined || (Array.isArray(list) && list.every((entry: Parsed) => isPlainObject(entry) && Object.keys(entry).sort().join() === 'name,reason' && dbFunctionNameOk(entry.name, bare) && typeof entry.reason === 'string' && entry.reason.trim().length > 0) && new Set(list.map((entry: Parsed) => entry.name)).size === list.length);
 
 /**
+ * True for an absent list or a list of receipt ports (R263), each `{class, method, repeat, reason}` or `{class, method, many: true, reason}`:
+ * `class` a class of the app, `method` its method that records a delivery once, `repeat` the answer it gives a repeated delivery (`false`, like
+ * the Inbox port's `claim`, or `undefined`, like its `claimRow`); `many: true` instead for a delivery that carries several events, whose method
+ * answers the list of the new events only (a repeat answers the empty list, so no `repeat` is given). Each class and method once, and the reason
+ * says what the method writes and what makes a delivery a repeat.
+ */
+export const receiptPortsOk = (list: Parsed) => list === undefined || (Array.isArray(list) && list.length > 0 && list.every((entry: Parsed) => isPlainObject(entry)
+  && (Object.keys(entry).sort().join() === 'class,method,reason,repeat' && (entry.repeat === 'false' || entry.repeat === 'undefined')
+    || Object.keys(entry).sort().join() === 'class,many,method,reason' && entry.many === true)
+  && typeof entry.class === 'string' && /^[A-Z][A-Za-z0-9]*$/.test(entry.class) && typeof entry.method === 'string' && /^[a-z][A-Za-z0-9]*$/.test(entry.method)
+  && typeof entry.reason === 'string' && entry.reason.trim().length >= 12)
+  && new Set(list.map((entry: Parsed) => `${String(entry.class)}.${String(entry.method)}`)).size === list.length);
+
+/**
  * True for an absent list or a list of {path, reason} DDL renderers (R34): `path` is a forward-slash path below `packages/` of the app root
  * (no leading slash, no `..`), whose last segment may carry `*`, unique, and the reason says what the renderer renders and where its text is written.
  */

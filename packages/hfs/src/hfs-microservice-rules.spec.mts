@@ -63,12 +63,12 @@ test('HFS_SERVICE_PLACEMENT: the Dockerfile of a be app, of a front-end app, the
 
 test('HFS_SERVICE_PLACEMENT: a root workspace package (packages/<name>/package.json) is no service root; a Dockerfile or a nested manifest under packages/ still is', () => {
   const findings = only(APP, (dir) => {
-    put(dir, 'packages/agent-sdk/package.json', '{}\n');
-    put(dir, 'packages/blocks-core/package.json', '{}\n');
-    put(dir, 'packages/blocks-core/Dockerfile', 'FROM node\n');
-    put(dir, 'packages/blocks-core/server/package.json', '{}\n');
+    put(dir, 'packages/sdk/package.json', '{}\n');
+    put(dir, 'packages/ui-kit/package.json', '{}\n');
+    put(dir, 'packages/ui-kit/Dockerfile', 'FROM node\n');
+    put(dir, 'packages/ui-kit/server/package.json', '{}\n');
   }, 'HFS_SERVICE_PLACEMENT');
-  assert.deepEqual(pathsOf(findings), ['packages/blocks-core/Dockerfile', 'packages/blocks-core/server/package.json']);
+  assert.deepEqual(pathsOf(findings), ['packages/ui-kit/Dockerfile', 'packages/ui-kit/server/package.json']);
 });
 
 // ------------------------------------------------------------------------------------------------ R164 HFS_IMAGE_UNPINNED

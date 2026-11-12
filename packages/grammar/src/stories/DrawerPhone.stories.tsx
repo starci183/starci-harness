@@ -10,8 +10,8 @@ type Story = StoryObj;
 export const FullWidthOnPhone: Story = {
   globals: { viewport: { value: 'mobile1', isRotated: false } },
   render: () => (
-    <G.Drawer title="Tham số" closeLabel="Đóng" placement="right" isOpen onOpenChange={() => undefined} trigger={<G.Button>Mở</G.Button>}>
-      <G.Text>Nội dung của ngăn kéo.</G.Text>
+    <G.Drawer title="Parameters" closeLabel="Close" placement="right" isOpen onOpenChange={() => undefined} trigger={<G.Button>Open</G.Button>}>
+      <G.Text>Drawer content.</G.Text>
     </G.Drawer>
   ),
   play: async () => {

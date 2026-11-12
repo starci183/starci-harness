@@ -30,7 +30,7 @@ const Twin = ({ name, children, width }: { readonly name: string; readonly child
 export const LoadingKeepsTheBox: Story = {
     render: () => (
         <Matrix>
-            <Twin name="Input"><G.Input id="in" name="in" label="Name" defaultValue="Hoa Sen Spa" /></Twin>
+            <Twin name="Input"><G.Input id="in" name="in" label="Name" defaultValue="Acme Studio" /></Twin>
             <Twin name="Select"><G.Select label="Plan" options={options} defaultValue="b" /></Twin>
             <Twin name="ComboBox"><G.ComboBox label="Owner" options={options} defaultValue="a" /></Twin>
             <Twin name="NumberField"><G.NumberField label="Seats" defaultValue={4} /></Twin>
@@ -40,7 +40,7 @@ export const LoadingKeepsTheBox: Story = {
             <Twin name="TimeField"><G.TimeField label="At" defaultValue={parseTime("09:30")} /></Twin>
             <Twin name="DatePicker"><G.DatePicker label="Due" defaultValue={parseDate("2026-11-10")} /></Twin>
             <Twin name="Checkbox"><G.Checkbox label="Send a copy" /></Twin>
-            <Twin name="Switch"><G.Switch description="Mô tả ngắn." label="Reminders" /></Twin>
+            <Twin name="Switch"><G.Switch description="Short description." label="Reminders" /></Twin>
             <Twin name="Slider"><G.Slider label="Volume" defaultValue={40} /></Twin>
             <Twin name="Rating"><G.Rating label="Rating" defaultValue={3} valueLabel={(value, max) => `${value} of ${max}`} /></Twin>
             <Twin name="RadioGroup"><G.RadioGroup label="Delivery" options={choice} defaultValue="email" /></Twin>
@@ -58,7 +58,7 @@ export const LoadingKeepsTheBox: Story = {
             <Twin name="Meter" width="16rem"><G.Meter label="Storage" value={32} /></Twin>
             <Twin name="Progress" width="16rem"><G.Progress label="Setup" value={40} /></Twin>
             <Twin name="Alert"><G.Alert tone="cautionary" title="Almost full" description="You have used 90%." /></Twin>
-            <Twin name="DescriptionList"><G.DescriptionList density="compact" items={[{ id: "from", term: "From", description: "Chi Lan" }, { id: "via", term: "Channel", description: "Zalo" }]} /></Twin>
+            <Twin name="DescriptionList"><G.DescriptionList density="compact" items={[{ id: "from", term: "From", description: "Maria Garcia" }, { id: "via", term: "Channel", description: "Email" }]} /></Twin>
             <Twin name="IdentityLockup"><G.IdentityLockup title="Hakuen" subtitle="Owner" /></Twin>
         </Matrix>
     ),

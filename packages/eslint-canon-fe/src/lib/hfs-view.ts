@@ -77,6 +77,21 @@ export interface HfsView {
   slot(id: string): HfsSlot | null
   /** The vocabulary the root package of a file declares in the `starci` key of its manifest (the view of the root packages only), or null outside a package. */
   readonly packageContract?: (file: string) => HfsPackageContract | null
+  /** What each canon lints of the root packages the project declares slots for (the view of the root packages only). */
+  readonly packageLint?: HfsPackageLint
+}
+
+/** One lint scope of a declared package: the files of one slot (an app-relative glob), less the globs an earlier slot of the other canon holds. */
+export interface HfsPackageLintScope {
+  readonly files: string
+  readonly ignores: readonly string[]
+}
+
+/** The first-slot-wins partition of the declared packages: every `lint: fe` slot, the front-end scopes, and the back-end slots a later front-end slot reaches. */
+export interface HfsPackageLint {
+  readonly frontEnd: readonly string[]
+  readonly fe: readonly HfsPackageLintScope[]
+  readonly be: readonly HfsPackageLintScope[]
 }
 
 /** A type a root package declares: its name and the app-root relative file that declares it. */

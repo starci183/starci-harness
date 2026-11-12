@@ -32,7 +32,7 @@ for (const edition of ['lite', 'full']) {
     });
     tester.run('vendor-primitive-has-named-owner', vendorPrimitiveHasNamedOwner, {
       valid: [{ filename: at('apps/web/src/components/leaves/Badge/index.tsx'), code: 'import { Card } from "@heroui/react";' }],
-      invalid: [{ filename: at('apps/web/src/components/blocks/CourseCard/index.tsx'), code: 'import { Card } from "@heroui/react";', errors: [{ messageId: 'owner' }] }],
+      invalid: [{ filename: at('apps/web/src/components/blocks/ProjectCard/index.tsx'), code: 'import { Card } from "@heroui/react";', errors: [{ messageId: 'owner' }] }],
     });
   });
 }

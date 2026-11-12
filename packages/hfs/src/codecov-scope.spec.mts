@@ -84,7 +84,7 @@ for (const edition of ['full', 'lite']) {
     const source = {
       files: ['apps/api/src/api.module.ts', 'src/modules/platform/clock/clock.service.ts'],
       read: () => '',
-      otherPackages: ['plugin-registry', 'agent-sdk', 'blocks-core'],
+      rootPackages: ['plugin-registry', 'sdk', 'ui-kit'],
     };
     // reason: the spec feeds renderTargets no Sonar presets and only the source facts the Codecov scope reads (files, read, the root packages).
     const target = renderTargets(hfs, {} as unknown as Presets, { source: source as unknown as AppSourceFacts }).find(item => item.path === 'codecov.yml');
@@ -92,7 +92,7 @@ for (const edition of ['full', 'lite']) {
     const config = parseYaml(target.content);
     const components: { component_id: string; name: string; paths: string[] }[] = config.component_management.individual_components;
     const packages = components.filter(component => component.component_id.startsWith('package-'));
-    assert.deepEqual(packages.map(component => component.component_id), ['package-agent-sdk', 'package-blocks-core', 'package-plugin-registry']);
+    assert.deepEqual(packages.map(component => component.component_id), ['package-plugin-registry', 'package-sdk', 'package-ui-kit']);
     for (const component of packages) assert.deepEqual(component.paths, [`packages/${component.component_id.slice('package-'.length)}/src/**`]);
     assert.deepEqual(components.filter(component => !component.component_id.startsWith('package-')).map(component => component.component_id), ['platform'], 'services and platform are untouched');
     assert.deepEqual(config.component_management.default_rules.statuses.map((rule: Rule) => rule.target), ['100%', '100%'], 'every component, packages included, is held at the target');

@@ -204,7 +204,7 @@ test("a secret is compared with timingSafeEqual, never an equality operator", ()
             { filename: SERVICE, code: "if (status === expected) {}" },
             // a fencing token is a counter, and an UPPER_SNAKE name is a constant naming a key
             { filename: SERVICE, code: "if (parent.fencingToken !== job.fencingToken) {}" },
-            { filename: SERVICE, code: "if (status.key === OPENCLAW_GATEWAY_PASSWORD) {}" },
+            { filename: SERVICE, code: "if (status.key === AGENT_GATEWAY_PASSWORD) {}" },
             // a content digest is an integrity fingerprint, not a secret
             { filename: SERVICE, code: "if (existing.contentDigest === input.contentDigest) {}" },
             // a Secret compared for presence, and a value that is not read out of a Secret

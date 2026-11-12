@@ -44,7 +44,7 @@ almost no work: it reads the records and runs only what differs. The gate judges
   `REUSED <row> (reused from app-check ...)`, and its L4 record entry holds `reused: true` and `reusedFrom` (the gate, the head, the `app-check` command, its log and the log's sha256). A row is reused
   only under its default command (`npm run <script>`, `npm audit`, `npx starci app db drift`); a row an app declares under the same name with another command runs. The drift row is also
   judged by `app check` only on a host with a database, so when the `app-check` log carries `CI_PARITY_DB_SKIPPED` it runs. A red `app-check` row stops the gate before any other row; `--full` changes only how that row runs.
-- **Real rows.** What `app check` does not judge stays a row: the world layers (`test-integration`, `test-e2e`, `test-contract`), every row an app declares of its own, and Sonar on the main project key
+- **Real rows.** What `app check` does not judge stays a row: the world layers (`test-integration`, `test-e2e`, `test-contract`; the gate is the one place beside a run by hand that runs them, on this machine, and no workflow does: R12), every row an app declares of its own, and Sonar on the main project key
   (`app check` scans the derived `<projectKey>-local`; [Sonar and Codecov](#sonar-and-codecov)), then the L4 record and the annotated tag.
 - **Governed rows.** A real row that runs a heavy command (an npm script, a test runner, the Sonar scanner) is admitted by the heavy-command governor, never started as a raw child: a slot of the host-wide
   semaphore, the heap cap of its kind in `NODE_OPTIONS`, and for a test row the workers and worker heap its room holds (`--maxWorkers`, `--workerIdleMemoryLimit`, [The memory plan](#the-memory-plan)).
@@ -161,7 +161,7 @@ default branch and on `workflow_dispatch` on any branch, for that branch's head 
 
 The release gate reads the verify runs that speak for the release (`packages/hfs/release/cache-verify-lock.mts`): those of the default branch and those of the release's own sha
 on any branch (`gh run list --commit <sha>`). The newest finished one decides. Green, or none yet, leaves the gate open; red or unreadable refuses it with
-`HFS_CHECK_CACHE_VERIFY_LOCKED`, naming the run. So a red verify of `main` (as of 2026-11-06 on nivo-lite) is cleared for the release of a sha by a green dispatch of
+`HFS_CHECK_CACHE_VERIFY_LOCKED`, naming the run. So a red verify of `main` is cleared for the release of a sha by a green dispatch of
 `cache-verify.yml` on the branch that holds that sha (`dev`, a candidate), while a newer red verify of `main` locks again, and a red verify of the sha itself locks it.
 A cancelled or skipped run is no verdict. A forged record stays an error finding. Times are printed, never stored.
 
@@ -318,7 +318,7 @@ untracked tool cache of slot `app.tool-cache`, or none.
 | ESLint, per side | per file, closure-scoped | the side key is unchanged, or the file is outside the dirty set | the dirty set (ESLint below) | `lint/<side>/` |
 | stylelint | per file | the path's hash is unchanged and no stylesheet was added or removed | changed stylesheets; every one when the stylesheet set changed | `lint/fe/` |
 | unit specs and coverage | per spec, closure-scoped, with reads | the spec's closure key and the reads its run recorded are unchanged | specs whose closure holds a changed file, or that loaded a changed package or app file (coverage below); every spec on a runner change (`lock:test`, `node`, the preset, the jest configuration, a tsconfig the transform reads) | `test-coverage/` |
-| integration, e2e and contract specs | always | never | every run that runs them: they reach services, data and time a key cannot hold | none |
+| integration, e2e and contract specs | always | never | every run that runs them (by hand or the release gate, on a local machine; `app check` and CI run none: R12): they reach services, data and time a key cannot hold | none |
 | `tsc` per workspace program (`--gate types`) | scoped, with reads | the program's key and the reads `tsc --listFiles` reported (the TypeScript lib files, the `@types` and every package whose declarations it loaded, the app files outside its folders) are unchanged | any change the program reads: that program | `check/types/`; its `.tsbuildinfo` in the tool cache |
 | CI build steps (typecheck, `build be`, each `build fe`) | per step | the step's command and environment, the Node major, every tracked file of the folders it builds (every tracked file for the typecheck) and of the app root but the lockfile, and the lockfile installs its manifests resolve are unchanged | any of them; a step killed or timed out stores nothing | `check/build/` (the verdict, green or red with its finding; never an artifact) |
 | database migration checks (`npm run db:lint`, `app db drift`) | per step | its command, the db rules' inputs and their baseline at the merge-base, the migration chain, the scratch database image, the entity list's import closure, the engine manifest, the installs the drift check loads (the closure's packages, `typeorm`, `typescript`, `pg`) and the hfs that judges are unchanged | any of them; a host without a database stores nothing | `check/build/` (the verdict) |

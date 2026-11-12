@@ -53,10 +53,10 @@ app's (both sides), `lib` and `runtime` carry no canon. A workspace root is neve
 | grammar lint (enforcer `eslint-grammar-core`) | fe | `fe`, `app` | through `lint`, inside the app's ESLint config | calls to the selected grammar's component API: names, props, variants, sizes, tokens |
 | `@starci/stylelint-canon` (enforcer `stylelint`) | fe CSS | `fe`, `app` | `canon` checks the wiring; stylelint itself runs in the app's scripts | grammar tokens only; brand values only in the brand file |
 | `@starci/prettier-config` | both | `be`, `fe`, `app` | `canon` checks the wiring; the format check runs in the app's scripts | layout of the source text |
-| `@starci/jest-preset` | be | `be`, `app` | `canon` checks the wiring; the specs run in CI (`unit`, `e2e`) | the unit test kit and its doubles |
+| `@starci/jest-preset` | be | `be`, `app` | `canon` checks the wiring; the unit specs run in CI (`unit`), the world layers on a local machine only (R12) | the unit test kit and its doubles |
 | app CLI `@starci/hfs` (enforcers `hfs`, `machine`) | the app root and both sides | apps | the app's scripts and CI (`starci app check`) | the tree against the slot manifest, `hfs.json`, generated contracts, catalogs, the import graph |
 | gate `sonar-new-code` (enforcer `sonar`) | each repository | `be`, `fe`, `app` | CI | coverage, duplication (message catalogs excluded from duplication only) and issues of new code |
-| gates `unit`, `e2e`, `build` | each repository | per profile | CI | the suites and the build; what a lite app cannot run is [lite.md](lite.md) "What CI runs" |
+| gates `unit`, `build` | each repository | per profile | CI | the unit suite and the build; the integration, e2e and contract specs run in no workflow (R12, [cicd.md](cicd.md) "Triggers and what runs") |
 
 ## Facts no machine checks yet
 
@@ -155,7 +155,7 @@ the stricter mode. The branch name alone decides, so a hook and CI agree; an ups
 
 A project's own laws (the shape of one of its packages, a schema its specs follow, a naming rule of its modules, a generated file that must be
 fresh) belong to the project, never to the generic harness: the harness only runs them. They live in one place, the folder `ext/` at the app
-root (slot `app.ext`), with one subfolder per tool, and they are recorded as decisions in the project's `.starciwork/concepts`. There is no
+root (slot `app.ext`), with one subfolder per tool, and the words and business rules they hold are written in the project's `.starciwork/concepts`. There is no
 extension point inside a package: a rule reaches a package by naming its paths. Outside `ext/` a repository keeps no check, lint rule or
 lint plugin of its own (R103).
 
@@ -199,16 +199,19 @@ lint plugin of its own (R103).
 - **A package's slots are declared by the project.** `packages` maps a root package folder (`packages/<name>`) to `{ closed, slots }`
   (`packages/hfs/runtime/scripts/hfs/package-slots.mts`): folder slots with placeholders (`src/parts/<id>/`), the files each instance `requires`
   and `allows`, glob and file slots, and `closed` (default true: every file below `src/` belongs to a slot). A slot names the canon that judges
-  its files with `lint` (`be`, the default, or `fe`). hfs holds the package to them as it holds the be and fe sides to theirs
+  its files with `lint` (`be`, the default, or `fe`): the managed root `eslint.config.mjs` hands a `lint: "fe"` slot to the front-end canon and
+  the Grammar lint and leaves it out of the back-end canon. The first slot that holds a file decides, as it decides the file's place, so a
+  React-free contract inside a front-end folder is a back-end slot declared before it. Every `.tsx` file of a package is the front end's whatever
+  its slot; every other file of no `lint: "fe"` slot, and every file of a package the project does not declare, is the back end's. The harness
+  knows no folder name of a package. hfs holds the package to them as it holds the be and fe sides to theirs
   (`HFS_PACKAGE_SLOT_MISSING`, `HFS_PACKAGE_SLOT_DISALLOWED`, `HFS_PACKAGE_SLOT_UNPLACED`, `HFS_PACKAGE_SLOTS_INVALID`, R382). A package's own
   `slots.yaml` is read for one more minor, for a package the manifest does not declare, with the warning `HFS_PACKAGE_SLOTS_MOVED`.
 - **Package coverage follows the slots.** Every file of a package is measured at 100 per file in the back end's unit run (BE-TEST-13), but
   its barrels and type files and each slot that opts out with `coverage: { none: "<reason>" }`; an opt-out without its reason is refused.
-  A package no declaration names keeps the harness's default scope (its `workbench/`, `public/` and `client/` subtrees unmeasured).
+  A package no declaration names is measured whole but its barrels and type files.
 
 Known gap: extension API 1 loads ESLint rules only; a Stylelint rule of a project has no engine yet (`lint.tool` other than `eslint` is
-refused), so a CSS law of one project is held by a project check until the stylelint canon loads `ext/lint/`. Known gap: the canons do not yet
-read a slot's `lint`; the front-end subpaths of a root package are still the fixed ones of the packages lint config.
+refused), so a CSS law of one project is held by a project check until the stylelint canon loads `ext/lint/`.
 
 ## Read with
 

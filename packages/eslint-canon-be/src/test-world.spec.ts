@@ -11,7 +11,7 @@ import assert from "node:assert/strict"
 const tester = typedTester()
 const E2E = at("src/tests/e2e/checkout/place-order.e2e-spec.ts")
 const INTEGRATION = at("src/tests/integration/order/place-order.integration-spec.ts")
-const CONTRACT = at("src/tests/contract/payos/checkout.contract-spec.ts")
+const CONTRACT = at("src/tests/contract/beta-pay/checkout.contract-spec.ts")
 const FIXTURE = at("src/tests/fixtures/order.builders.ts")
 const WORLD = at("src/tests/world/global-setup.ts")
 const USE_WORLD = at("src/tests/world/use-test-world.ts")
@@ -49,7 +49,7 @@ test("R47: nothing under src/tests overrides a provider", () => {
     const moduleRef = "declare const moduleRef: { overrideProvider(token: unknown): unknown; overrideGuard(guard: unknown): unknown }\n"
     assert.doesNotThrow(() => { tester.run("tests-no-override", testsNoOverride, {
         valid: [
-            { filename: USE_WORLD, code: "declare function startHttpFake(name: string): { url: string }\nexport const payos = startHttpFake('payos')" },
+            { filename: USE_WORLD, code: "declare function startHttpFake(name: string): { url: string }\nexport const betaPay = startHttpFake('beta-pay')" },
             // a colocated unit spec is not under src/tests
             { filename: at("src/modules/domain/order/order.service.spec.ts"), code: `${moduleRef}moduleRef.overrideProvider(1)\nexport const p = { provide: 1, useValue: 2 }` },
         ],

@@ -14,8 +14,8 @@ import { noPlaceholderProp, noRestingBranchAtCallSite, noRestingTwinComponent, r
 
 const tester = slotTester()
 
-const BLOCK = at("apps/web/src/components/blocks/DailyQuest/component.tsx")
-const TWIN = at("apps/web/src/components/blocks/DailyQuestSkeleton/index.tsx")
+const BLOCK = at("apps/web/src/components/blocks/SummaryCard/component.tsx")
+const TWIN = at("apps/web/src/components/blocks/SummaryCardSkeleton/index.tsx")
 const HOOK = at("apps/web/src/hooks/swr/useX.ts")
 
 test("every rule this law declares is exported under its published name", () => {
@@ -32,14 +32,14 @@ test("LOADING-1: no component exists to mirror another one's shape", () => {
       // outside the component tree there is no shape to mirror
       { filename: HOOK, code: "export const X = () => null" },
       // a folder named components inside a module is no component owner, whatever it is called
-      { filename: at("apps/web/src/modules/components/DailyQuestSkeleton/index.tsx"), code: "export const X = () => null" },
+      { filename: at("apps/web/src/modules/components/SummaryCardSkeleton/index.tsx"), code: "export const X = () => null" },
       // a package layer folder is not an owner of its own in the slot (the owner is the package): not judged by name
-      { filename: at("packages/nivo-ui/src/leaves/DailyQuestSkeleton/index.tsx"), code: "export const DailyQuestSkeleton = () => null" },
+      { filename: at("packages/app-ui/src/leaves/SummaryCardSkeleton/index.tsx"), code: "export const SummaryCardSkeleton = () => null" },
       // only the owner's entry is the twin; its styling file is not a second twin
-      { filename: at("apps/web/src/components/blocks/DailyQuestSkeleton/classNames.ts"), code: "export const x = 1" },
+      { filename: at("apps/web/src/components/blocks/SummaryCardSkeleton/classNames.ts"), code: "export const x = 1" },
     ],
     invalid: [
-      { filename: TWIN, code: "export const DailyQuestSkeleton = () => null", errors: [{ messageId: "twin" }] },
+      { filename: TWIN, code: "export const SummaryCardSkeleton = () => null", errors: [{ messageId: "twin" }] },
     ],
   })
 
@@ -64,7 +64,7 @@ test("LOADING-1: a ready-made resting shape is not handed in", () => {
       },
       {
         filename: BLOCK,
-        code: "import { DailyQuestSkeleton } from \"./DailyQuestSkeleton\"",
+        code: "import { SummaryCardSkeleton } from \"./SummaryCardSkeleton\"",
         errors: [{ messageId: "import" }],
       },
     ],

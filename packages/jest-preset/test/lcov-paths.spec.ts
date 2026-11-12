@@ -27,12 +27,12 @@ test('a root package seen from the back end is written with forward slashes and 
     const be = path.join(root, 'be');
     const out = path.join(be, 'coverage');
     mergeSpecCoverage({
-      records: [{ 'src/modules/domain/a/a.service.ts': coverage, '../packages/blocks-core/src/modules/sales/memory.ts': coverage }],
+      records: [{ 'src/modules/domain/a/a.service.ts': coverage, '../packages/ui-kit/src/x.ts': coverage }],
       outDir: out,
       projectRoot: be,
     });
     const sources = fs.readFileSync(path.join(out, 'lcov.info'), 'utf8').split(/\r?\n/u).filter((line) => line.startsWith('SF:')).map((line) => line.slice(3));
-    assert.deepEqual(sources.sort(), ['packages/blocks-core/src/modules/sales/memory.ts', 'src/modules/domain/a/a.service.ts']);
+    assert.deepEqual(sources.sort(), ['packages/ui-kit/src/x.ts', 'src/modules/domain/a/a.service.ts']);
     for (const source of sources) {
       assert.ok(!source.includes(BACKSLASH), `${source} has no backslash`);
       assert.notEqual(sonarSanitized(source), null, `${source} survives Sonar's sanitizing`);

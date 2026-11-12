@@ -282,9 +282,9 @@ const pageHeader = (withTabs: boolean, isLoading: boolean) => (
         header={{
             breadcrumbs: { label: "Breadcrumb", items: [{ id: "connections", label: "Connections", href: "#connections" }, { id: "main", label: "Main account" }] },
             title: "Main account",
-            mark: <G.Avatar name="Sepay" shape="rounded" isDecorative />,
+            mark: <G.Avatar name="Acme" shape="rounded" isDecorative />,
             status: <><G.Badge isDot tone="success">Connected</G.Badge><G.Badge tone="warning">Test mode</G.Badge></>,
-            meta: "Bank transfer · ****6789",
+            meta: "Wire transfer · ****6789",
             actions: <G.Button intent="neutral" onPress={noop}>Disconnect</G.Button>,
             ...(withTabs ? { tabs: { label: "Connection", selectedKey: "test", items: [{ id: "overview", label: "Overview" }, { id: "test", label: "Test" }] } } : {}),
         }}
@@ -314,8 +314,8 @@ const rows = (): ReadonlyArray<Pair> => [
     },
     {
         id: "section",
-        ready: <G.Section title="Grammar basics" description="Twelve short lessons." meta="Updated now" action={<G.Link variant="head" href="#">Share</G.Link>}><G.Text>Everything the course covers.</G.Text></G.Section>,
-        loading: <G.Section title="Grammar basics" description="Twelve short lessons." meta="Updated now" action={<G.Link variant="head" href="#">Share</G.Link>} isLoading><G.Text isLoading>Everything the course covers.</G.Text></G.Section>,
+        ready: <G.Section title="Grammar basics" description="Twelve short guides." meta="Updated now" action={<G.Link variant="head" href="#">Share</G.Link>}><G.Text>Everything the guide covers.</G.Text></G.Section>,
+        loading: <G.Section title="Grammar basics" description="Twelve short guides." meta="Updated now" action={<G.Link variant="head" href="#">Share</G.Link>} isLoading><G.Text isLoading>Everything the guide covers.</G.Text></G.Section>,
         width: "32rem",
     },
     {
@@ -363,18 +363,18 @@ export const RowsLoading: Story = onePhase("grammar-rows", "loading", rows)
 
 /* ------------------------------------------------------------------ collections */
 
-type Lesson = { readonly id: string; readonly title: string; readonly level: string; readonly minutes: number }
-const lessons: ReadonlyArray<Lesson> = [
+type Guide = { readonly id: string; readonly title: string; readonly level: string; readonly minutes: number }
+const guides: ReadonlyArray<Guide> = [
     { id: "l1", title: "Articles", level: "A1", minutes: 12 },
     { id: "l2", title: "Present simple", level: "A1", minutes: 18 },
     { id: "l3", title: "Past continuous", level: "A2", minutes: 22 },
 ]
-const lessonColumns: ReadonlyArray<G.DataTableColumn> = [
-    { id: "title", label: "Lesson", isRowHeader: true },
+const guideColumns: ReadonlyArray<G.DataTableColumn> = [
+    { id: "title", label: "Guide", isRowHeader: true },
     { id: "level", label: "Level" },
     { id: "minutes", label: "Minutes", align: "end" },
 ]
-const lessonCell = (row: Lesson, columnId: string) => (columnId === "title" ? row.title : columnId === "level" ? row.level : row.minutes)
+const guideCell = (row: Guide, columnId: string) => (columnId === "title" ? row.title : columnId === "level" ? row.level : row.minutes)
 const folders: ReadonlyArray<G.ListBoxItem> = [
     { id: "inbox", label: "Inbox", description: "12 unread" },
     { id: "drafts", label: "Drafts", description: "3 drafts" },
@@ -384,8 +384,8 @@ const folders: ReadonlyArray<G.ListBoxItem> = [
 const collections = (): ReadonlyArray<Pair> => [
     {
         id: "data-table",
-        ready: <G.DataTable label="Lessons" columns={lessonColumns} rows={lessons} renderCell={lessonCell} emptyContent="No lessons." />,
-        loading: <G.DataTable label="Lessons" columns={lessonColumns} rows={[] as ReadonlyArray<Lesson>} renderCell={lessonCell} isLoading emptyContent="No lessons." />,
+        ready: <G.DataTable label="Guides" columns={guideColumns} rows={guides} renderCell={guideCell} emptyContent="No guides." />,
+        loading: <G.DataTable label="Guides" columns={guideColumns} rows={[] as ReadonlyArray<Guide>} renderCell={guideCell} isLoading emptyContent="No guides." />,
         width: "32rem",
     },
     {
@@ -399,12 +399,12 @@ const collections = (): ReadonlyArray<Pair> => [
         ready: (
             <G.SurfaceCard
                 kind="list"
-                label="Saved lessons"
+                label="Saved guides"
                 empty={<G.EmptyNotice message="Nothing saved yet." />}
-                items={lessons.map((lesson) => ({ id: lesson.id, title: lesson.title, description: `${lesson.minutes} minutes`, action: { label: "Open", press: noop } }))}
+                items={guides.map((guide) => ({ id: guide.id, title: guide.title, description: `${guide.minutes} minutes`, action: { label: "Open", press: noop } }))}
             />
         ),
-        loading: <G.SurfaceCard kind="list" label="Saved lessons" isLoading items={[]} empty={<G.EmptyNotice message="Nothing saved yet." />} />,
+        loading: <G.SurfaceCard kind="list" label="Saved guides" isLoading items={[]} empty={<G.EmptyNotice message="Nothing saved yet." />} />,
         width: "28rem",
     },
     {
@@ -493,8 +493,8 @@ const forms = (): ReadonlyArray<Pair> => [
     },
     ...(["md", "lg", "control"] as const).map((size) => ({
         id: `switch-${size}`,
-        ready: <G.Switch description="Mô tả ngắn." label="Dark mode" size={size} />,
-        loading: <G.Switch description="Mô tả ngắn." label="Dark mode" size={size} isLoading />,
+        ready: <G.Switch description="Short description." label="Dark mode" size={size} />,
+        loading: <G.Switch description="Short description." label="Dark mode" size={size} isLoading />,
     })),
     {
         id: "checkbox",
@@ -525,7 +525,7 @@ const tags: ReadonlyArray<G.TagGroupItem> = [
     { id: "research", label: "Research" },
     { id: "ops", label: "Operations" },
 ]
-const logLines = ["$ starci check loosening", "0 findings", "done in 1.2s"]
+const logLines = ["$ lint check", "0 findings", "done in 1.2s"]
 
 const content = (): ReadonlyArray<Pair> => [
     {

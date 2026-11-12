@@ -95,7 +95,7 @@ on the render. A one-file lint alone is not enough when the usual caller is a wr
 An app must be able to theme it with HeroUI's tokens alone.
 
 - Read HeroUI tokens first, with no literal fallback and no private token in front.
-- Each Grammar has its own style: Core takes every colour from HeroUI's palette tokens (accent, default, success, warning, danger, their soft and foreground pairs, and HeroUI's ground and text tokens) and keeps no palette of its own; Offset Pop and the other Grammars may choose their own. A debt of one Grammar never drives a rule of Core. An app adds a tone (Nivo's `info`) with four tokens in its theme and one `GrammarToneRegistry` declaration; no Core rule reads an undeclared tone token (`npm run check:tones`, `DNA-COMMON-TONE-CUSTOM-COMPLETE`).
+- Each Grammar has its own style: Core takes every colour from HeroUI's palette tokens (accent, default, success, warning, danger, their soft and foreground pairs, and HeroUI's ground and text tokens) and keeps no palette of its own; Offset Pop and the other Grammars may choose their own. A debt of one Grammar never drives a rule of Core. An app adds a tone (an `info` tone, say) with four tokens in its theme and one `GrammarToneRegistry` declaration; no Core rule reads an undeclared tone token (`npm run check:tones`, `DNA-COMMON-TONE-CUSTOM-COMPLETE`).
 - Never write a colour, radius, font family, shadow or duration in a component rule or in TS. Size and weight come from the Common type ramp.
 - A tone on its tint uses `x-soft` with `x-soft-foreground`; a mark alone uses `x`.
 - Never add a token an app must set. A new token derives from HeroUI's with a default.

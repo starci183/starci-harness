@@ -51,8 +51,8 @@ shapes:
       Secondary explanation folds away; whether it folds into a disclosure is a
       DIRECTION_CHOICE_REQUIRED (seen once). Decision card sits in rail.
 
-  - id: learner-dashboard
-    title: Learner dashboard — many peer sections, one intended next step
+  - id: peer-sections-dashboard
+    title: Dashboard of peer sections — many peer sections, one intended next step
     referenceMayContribute: |
       Keep: which sections exist and their reading order, and which single section is the reader's
       next action. Never crosses over: grid geometry, card chrome, densities, or a section that would
@@ -253,7 +253,7 @@ shapes:
         implements: [FE-APP-SHELL-7]
         compose: |
           The panel has its title, a nested SearchField and a filter Tabs row, then one list sorted by
-          latest message. The approved reference categories are All, Groups, Customers and Unread
+          latest message. The approved reference categories are All, Groups, Contacts and Unread
           when those categories exist in the product; labels come from modules/i18n/messages/ui.yaml
           and modules/i18n/messages/app-shell.yaml. ListBox panel alignment keeps rows and section
           captions on the same content edge without padding wrappers. A row shows avatar, name,

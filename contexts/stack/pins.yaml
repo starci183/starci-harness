@@ -10,7 +10,7 @@
 schema: starci/stack-pins@1
 pins:
   '@starci/common': {version: 1.0.1, group: starci, side: both, install: registry, why: "the shared concepts of every app and package: the coded error base DomainError with its guard and ErrorKind, Outcome, ok, refused and unwrapOutcome, the object guards isRecord and isPlainRecord, eachInOrder; platform/errors and platform/primitives re-export them and every @starci package derives its error from DomainError"}
-  '@starci/heroicons': {version: 0.3.6, group: starci, side: fe, install: registry, why: "the extension glyph set: only the meanings @heroicons/react lacks, drawn in its style"}
+  '@starci/heroicons': {version: 0.4.0, group: starci, side: fe, install: registry, why: "the extension glyph set: only the meanings @heroicons/react lacks, drawn in its style"}
   '@starci/event-stream': {version: 0.2.0, group: starci, side: fe, install: registry, why: "the one server-sent-events client; apps create one instance in modules/api/sse/clients"}
   '@starci/next-data': {version: 0.1.0, group: starci, side: fe, install: registry, why: "the SWR middleware pollingRestart, the viewer and tenant key helpers and the viewer cache of a front end; each operation's hook stays in the app"}
   '@starci/visual-effects': {version: 0.1.0, group: starci, side: fe, install: registry, why: "the visual effects of a front end over the Grammar theme, confetti first, on an overlay canvas of their own and skipped for reduced motion"}
@@ -18,19 +18,19 @@ pins:
   '@starci/nest-kit': {version: 0.2.2, group: starci, side: be, install: registry, why: "the module definition of every back-end module: defineConfigurableModule and defineCapabilityModule, one typed call per <x>.module-definition.ts"}
   '@starci/auth': {version: 0.6.0, group: starci, side: both, install: registry, why: "the sign-in of both editions: the lite server module with its sign-in providers, the full OIDC client of the identity provider with its issuer presets, the front-end clients, contracts and test doubles with the fake issuer; the only importer of the identity libraries"}
   '@starci/mail': {version: 0.2.0, group: starci, side: be, install: registry, why: "outgoing mail of a back end: the Mailer port over SMTP with timeouts, required STARTTLS, attachments, a shared SMTP target policy, coded errors, typed render helpers; the only importer of nodemailer"}
-  '@starci/grammar': {version: 0.38.2, range: '~0.38.2', group: starci, side: fe, install: registry, why: "the grammar package an app composes (grammars core and offset-pop)"}
+  '@starci/grammar': {version: 0.39.0, range: '~0.39.0', group: starci, side: fe, install: registry, why: "the grammar package an app composes (grammars core and offset-pop)"}
   '@starci/next-i18n': {version: 0.1.0, group: starci, side: fe, install: registry, why: "the next-intl stack of a front end: defineI18n, the locale proxy, the navigation, the request config and the locale read of the [locale] layout; the app keeps its catalogs"}
-  '@starci/eslint-canon-be': {version: 3.24.0, range: '~3.24.0', group: starci, side: be, install: registry, why: "the back-end ESLint canon"}
-  '@starci/eslint-canon-fe': {version: 9.17.0, range: '~9.17.0', group: starci, side: fe, install: registry, why: "the universal front-end ESLint canon"}
-  '@starci/eslint-grammar-core': {version: 0.38.2, range: '~0.38.2', group: starci, side: fe, install: registry, why: "the core grammar's lint factory, holding the grammar API checks every grammar inherits; versioned with the grammar"}
-  '@starci/eslint-grammar-offset-pop': {version: 0.38.2, range: '~0.38.2', group: starci, side: fe, install: registry, why: "the offset-pop grammar's lint factory; versioned with the grammar"}
+  '@starci/eslint-canon-be': {version: 3.25.0, range: '~3.25.0', group: starci, side: be, install: registry, why: "the back-end ESLint canon"}
+  '@starci/eslint-canon-fe': {version: 9.18.0, range: '~9.18.0', group: starci, side: fe, install: registry, why: "the universal front-end ESLint canon"}
+  '@starci/eslint-grammar-core': {version: 0.39.0, range: '~0.39.0', group: starci, side: fe, install: registry, why: "the core grammar's lint factory, holding the grammar API checks every grammar inherits; versioned with the grammar"}
+  '@starci/eslint-grammar-offset-pop': {version: 0.39.0, range: '~0.39.0', group: starci, side: fe, install: registry, why: "the offset-pop grammar's lint factory; versioned with the grammar"}
   '@starci/stylelint-canon': {version: 2.8.0, group: starci, side: fe, install: registry, why: "the front-end stylelint canon"}
   '@starci/tsconfig': {version: 2.1.1, group: starci, side: both, install: registry}
   '@starci/prettier-config': {version: 1.1.0, group: starci, side: both, install: registry}
-  '@starci/jest-preset': {version: 2.9.0, group: starci, side: be, install: registry, why: "the back-end Jest preset; pairs exactly with @starci/test-world"}
-  '@starci/test-world': {version: 1.4.0, group: starci, side: be, install: registry, why: "the back-end e2e world; pairs exactly with @starci/jest-preset"}
-  '@starci/ai-router': {version: 0.6.0, group: starci, side: be, install: registry, why: "the AI pool router module of a back end; jest-preset compiles it as ESM"}
-  '@starci/hfs': {version: 6.9.1, group: starci, side: both, install: registry, why: "the app implementation starci-harness runs for starci app"}
+  '@starci/jest-preset': {version: 2.9.1, group: starci, side: be, install: registry, why: "the back-end Jest preset; pairs exactly with @starci/test-world"}
+  '@starci/test-world': {version: 2.0.0, group: starci, side: be, install: registry, why: "the back-end e2e world; pairs exactly with @starci/jest-preset"}
+  '@starci/ai-router': {version: 0.6.1, group: starci, side: be, install: registry, why: "the AI pool router module of a back end; jest-preset compiles it as ESM"}
+  '@starci/hfs': {version: 6.10.0, group: starci, side: both, install: registry, why: "the app implementation starci-harness runs for starci app"}
   '@langchain/core': {version: 1.3.1, group: framework, side: be, why: "the LangChain core of the one AI integration (contexts/code/be/ai.md)"}
   '@langchain/openai': {version: 1.8.0, group: framework, side: be, why: "ChatOpenAI and OpenAIEmbeddings of the one AI integration, pointed at the ai-router gateway"}
   typescript: {version: 5.9.3, group: tooling, side: both}

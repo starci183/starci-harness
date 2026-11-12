@@ -129,11 +129,11 @@ test("a feature file sits in the folder its role names", () => {
         "src/features/api/orders/transport/graphql/dto/create-order.request.ts": 'import { InputType } from "@nestjs/graphql"; @InputType() export class CreateOrderRequest { itemId!:string }\n',
         "src/features/api/orders/transport/graphql/create-order.resolver.ts": 'import { Args,Mutation } from "@nestjs/graphql"; import { CreateOrderRequest } from "./dto/create-order.request"; export class CreateOrderResolver { @Mutation(()=>String,{name:"createOrder"}) create(@Args("input") request:CreateOrderRequest){return request.itemId} }\n',
         "src/modules/platform/database/entities/order.entity.ts": 'import { Entity } from "typeorm"; @Entity() export class OrderEntity {}\n',
-        "src/features/api/billing/application/create-invoice.request.ts": "export class CreateInvoiceRequest {}\n",
-        "src/features/api/billing/transport/graphql/dto/invoice.entity.ts": 'import { Entity } from "typeorm"; @Entity() export class InvoiceEntity {}\n',
-        "src/features/api/billing/migrations/1790000000000-CreateInvoices.ts": "export class CreateInvoices { up(){} down(){} }\n",
-        "src/features/api/billing/transport/graphql/invoice-view.mapper.ts": 'import { ViewEntity } from "typeorm"; @ViewEntity() export class InvoiceViewMapper {}\n',
-        "src/features/api/billing/application/invoice-schema.handler.ts": 'import { EntitySchema } from "typeorm"; const make=()=>new EntitySchema({name:"invoice"}); export const schema=make();\n',
+        "src/features/api/billing/application/create-record.request.ts": "export class CreateRecordRequest {}\n",
+        "src/features/api/billing/transport/graphql/dto/record.entity.ts": 'import { Entity } from "typeorm"; @Entity() export class RecordEntity {}\n',
+        "src/features/api/billing/migrations/1790000000000-CreateRecords.ts": "export class CreateRecords { up(){} down(){} }\n",
+        "src/features/api/billing/transport/graphql/record-view.mapper.ts": 'import { ViewEntity } from "typeorm"; @ViewEntity() export class RecordViewMapper {}\n',
+        "src/features/api/billing/application/record-schema.handler.ts": 'import { EntitySchema } from "typeorm"; const make=()=>new EntitySchema({name:"record"}); export const schema=make();\n',
     }
     const f = projectFixture({ files })
     f.tester.run("feature-layout", ruleNamed(rules, "feature-layout"), {
@@ -147,11 +147,11 @@ test("a feature file sits in the folder its role names", () => {
             "src/modules/platform/database/entities/order.entity.ts",
         ])],
         invalid: [...bad(f, files, {
-            "src/features/api/billing/application/create-invoice.request.ts": [1, 1],
-            "src/features/api/billing/transport/graphql/dto/invoice.entity.ts": [1, 1],
-            "src/features/api/billing/migrations/1790000000000-CreateInvoices.ts": [1],
-            "src/features/api/billing/transport/graphql/invoice-view.mapper.ts": [1],
-            "src/features/api/billing/application/invoice-schema.handler.ts": [1, 1],
+            "src/features/api/billing/application/create-record.request.ts": [1, 1],
+            "src/features/api/billing/transport/graphql/dto/record.entity.ts": [1, 1],
+            "src/features/api/billing/migrations/1790000000000-CreateRecords.ts": [1],
+            "src/features/api/billing/transport/graphql/record-view.mapper.ts": [1],
+            "src/features/api/billing/application/record-schema.handler.ts": [1, 1],
         })],
     })
     f.cleanup()

@@ -76,7 +76,7 @@ export const PinnedActionBarSummary: Story = {
           <G.PinnedActionBar
             label="Unsaved changes"
             visibility="always"
-            summary="3 lessons changed"
+            summary="3 documents changed"
             dismiss={<G.Button intent="dismiss" onPress={noop}>Discard</G.Button>}
             commit={<G.Button intent="commit" onPress={noop}>Save changes</G.Button>}
           />
@@ -100,9 +100,9 @@ const PageHeaderDemo = ({ withTabs }: { readonly withTabs: boolean }) => {
           breadcrumbs: { label: 'Breadcrumb', items: [{ id: 'connections', label: 'Connections', href: '#connections' }, { id: 'main', label: 'Main account' }] },
           title: 'Main account',
           titleId: 'page-header-story-title',
-          mark: <G.Avatar name="Sepay" shape="rounded" isDecorative />,
+          mark: <G.Avatar name="Acme" shape="rounded" isDecorative />,
           status: <><G.Badge isDot tone="success">Connected</G.Badge><G.Badge tone="warning">Test mode · not posted</G.Badge></>,
-          meta: 'Bank transfer · ****6789',
+          meta: 'Wire transfer · ****6789',
           description: 'Payments arrive by webhook and are matched to invoices.',
           actions: <><G.Button intent="neutral" onPress={noop}>Switch to live</G.Button><G.Button intent="destructive" onPress={noop}>Disconnect</G.Button></>,
           ...(withTabs ? { tabs: { label: 'Connection', selectedKey: tab, onSelect: setTab, items: [{ id: 'overview', label: 'Overview' }, { id: 'setup', label: 'Setup' }, { id: 'test', label: 'Test' }, { id: 'agents', label: 'Agents' }] } } : {}),
@@ -370,9 +370,9 @@ const sidebarGroups: ReadonlyArray<G.SidebarGroup> = [
     label: 'Main',
     items: [
       { id: 'home', label: 'Home', source: HomeGlyph },
-      { id: 'lessons', label: 'Lessons', source: BookGlyph, badge: 12, badgeLabel: '12 unread lessons' },
+      { id: 'docs', label: 'Docs', source: BookGlyph, badge: 12, badgeLabel: '12 unread documents' },
       { id: 'progress', label: 'Progress', source: ChartGlyph },
-      { id: 'agent', label: 'Grading agent', source: UserGlyph, trailing: <G.StatusDot tone="success" echo aria-label="Running" /> },
+      { id: 'agent', label: 'Review agent', source: UserGlyph, trailing: <G.StatusDot tone="success" echo aria-label="Running" /> },
     ],
   },
   {
@@ -388,7 +388,7 @@ const sidebarGroups: ReadonlyArray<G.SidebarGroup> = [
 
 const SidebarDemo = ({ initialCollapsed }: { readonly initialCollapsed: boolean }) => {
   const [collapsed, setCollapsed] = useState(initialCollapsed);
-  const [selected, setSelected] = useState('lessons');
+  const [selected, setSelected] = useState('docs');
   return (
     <div style={{ height: 480, display: 'flex' }}>
       <G.Sidebar
@@ -418,7 +418,7 @@ export const Sidebar: Story = {
   play: async ({ canvasElement }) => {
     // The item's name is its label (aria-label), so a trailing StatusDot must reach it as the description.
     await waitFor(() => {
-      const item = canvasElement.querySelector<HTMLElement>('[data-key="agent"], [id$="agent"][role="option"], [aria-label="Grading agent"]');
+      const item = canvasElement.querySelector<HTMLElement>('[data-key="agent"], [id$="agent"][role="option"], [aria-label="Review agent"]');
       if (item === null) throw new Error('The agent item must render');
       const described = (item.getAttribute('aria-describedby') ?? '').split(' ').map((id) => canvasElement.ownerDocument.getElementById(id)).filter((node) => node !== null);
       if (!described.some((node) => node.querySelector('[aria-label="Running"]') !== null)) throw new Error('The trailing status must be the item\'s description');
@@ -443,7 +443,7 @@ const FixedShellDemo = ({ defaultOpen = false }: { readonly defaultOpen?: boolea
           }
         />
       }
-      navigation={<G.Sidebar label="Workspace" groups={sidebarGroups} selectedKey="lessons" />}
+      navigation={<G.Sidebar label="Workspace" groups={sidebarGroups} selectedKey="docs" />}
       navigationLabel="Workspace navigation"
       navigationTrack="fixed"
       navigationVisibility="wide"
@@ -453,12 +453,12 @@ const FixedShellDemo = ({ defaultOpen = false }: { readonly defaultOpen?: boolea
         closeLabel: 'Close navigation',
         source: MenuGlyph,
         defaultOpen,
-        content: <G.Sidebar label="Workspace" presentation="drawer" groups={sidebarGroups} selectedKey="lessons" />,
+        content: <G.Sidebar label="Workspace" presentation="drawer" groups={sidebarGroups} selectedKey="docs" />,
       }}
-      primaryLabel="Lessons"
+      primaryLabel="Docs"
       primary={
         <G.Page>
-          <G.Section title="Lessons" description="The navigation and this region scroll on their own.">
+          <G.Section title="Docs" description="The navigation and this region scroll on their own.">
             <Placeholder label="Primary" height={900} headingLevel={3} />
           </G.Section>
         </G.Page>
@@ -495,10 +495,10 @@ export const WorkspaceShell: Story = {
       navigationLabel="Workspace navigation"
       rail={<Placeholder label="Details" />}
       railLabel="Details"
-      primaryLabel="Lessons"
+      primaryLabel="Docs"
       primary={
         <G.Page>
-          <G.Section title="Lessons" description="Everything in this workspace.">
+          <G.Section title="Docs" description="Everything in this workspace.">
             <Placeholder label="Primary" height={240} headingLevel={3} />
           </G.Section>
         </G.Page>
@@ -734,8 +734,8 @@ const PaneInsetDemo = () => {
               defaultSelectedIds={['study-group']}
               items={[
                 { id: 'study-group', label: 'Study group', description: 'See you at 7' },
-                { id: 'linh', label: 'Linh', description: 'Thanks!' },
-                { id: 'minh', label: 'Minh', description: 'Sent the file' },
+                { id: 'sam', label: 'Sam', description: 'Thanks!' },
+                { id: 'maria', label: 'Maria', description: 'Sent the file' },
               ]}
             />
             </div>
@@ -743,7 +743,7 @@ const PaneInsetDemo = () => {
         </G.Pane>
         <G.Pane area="thread">
           <G.PaneSection scroll={{ label: 'Messages', role: 'log', tone: 'background' }}>
-            <G.MessageBubble author="Linh" meta="09:12" body={"Can the order for table 4 move to 19:30?"} />
+            <G.MessageBubble author="Sam" meta="09:12" body={"Can the order for table 4 move to 19:30?"} />
             <G.MessageBubble author="You" meta="09:14" side="outgoing" body={"Yes, I moved it."} />
           </G.PaneSection>
         </G.Pane>
@@ -926,9 +926,9 @@ export const MessageBubble: Story = {
   render: () => (
     <div style={{ display: 'grid', gap: '0.75rem', maxWidth: '40rem' }}>
       <G.MessageBubble
-        author="Linh"
+        author="Sam"
         meta="09:12"
-        avatar={<G.Avatar name="Linh" size="sm" />}
+        avatar={<G.Avatar name="Sam" size="sm" />}
         actions={
           <>
             <G.Tooltip content="Copy" trigger={<G.IconButton intent="neutral" source={BookGlyph} label="Copy" onPress={noop} />} />
@@ -956,10 +956,10 @@ export const MessageBubble: Story = {
 export const Quote: Story = {
   render: () => (
     <div style={{ display: 'grid', gap: '0.75rem', maxWidth: '28rem' }}>
-      <G.Quote source="Brain" byline="Chat, 09:41" text={"Table 4 moved to 19:30. The kitchen has the new time."} />
+      <G.Quote source="Notes" byline="Chat, 09:41" text={"Table 4 moved to 19:30. The kitchen has the new time."} />
       <G.Quote source="Template" text={'Thank you for booking.\nWe hold the table for 15 minutes.'} />
       <G.SurfaceCard ariaLabel="Reply source">
-        <G.Quote source="Chat" byline="Zalo, 09:12" text={"Can the order for table 4 move to 19:30?"} />
+        <G.Quote source="Chat" byline="Email, 09:12" text={"Can the order for table 4 move to 19:30?"} />
       </G.SurfaceCard>
       <G.Quote isLoading />
     </div>
@@ -1045,9 +1045,9 @@ const copyReply = (
 export const MessageBubbleInlineActions: Story = {
   render: () => (
     <div style={{ display: 'grid', gap: '0.75rem', maxWidth: '40rem' }}>
-      <G.MessageBubble author="Linh" meta="09:12" avatar={<G.Avatar name="Linh" size="sm" />} actionsPlacement="inline" actions={copyReply} body={'Can the order for table 4 move to 19:30?'} />
+      <G.MessageBubble author="Sam" meta="09:12" avatar={<G.Avatar name="Sam" size="sm" />} actionsPlacement="inline" actions={copyReply} body={'Can the order for table 4 move to 19:30?'} />
       <G.MessageBubble side="outgoing" meta="09:13" actionsPlacement="inline" actions={copyReply} body={'Yes, moved. The kitchen has the new time.'} />
-      <G.MessageBubble author="Linh" meta="09:14" actionsPlacement="floating" actions={copyReply} body={'The floating default, for comparison.'} />
+      <G.MessageBubble author="Sam" meta="09:14" actionsPlacement="floating" actions={copyReply} body={'The floating default, for comparison.'} />
     </div>
   ),
 };
@@ -1058,7 +1058,7 @@ export const MessageBubbleMeasure: Story = {
     <div style={{ display: 'grid', gap: '0.75rem', maxWidth: '64rem' }}>
       {(['standard', 'wide'] as const).map((measure) => (
         <Fragment key={measure}>
-          <G.MessageBubble measure={measure} author="Linh" meta={measure} avatar={<G.Avatar name="Linh" size="sm" />} actionsPlacement="inline" actions={copyReply} body={'The booking for table 4 moves to 19:30 and the kitchen needs the new time before the first order goes in, so please confirm with the floor lead and tell the guests the table is ready from 19:25.'} />
+          <G.MessageBubble measure={measure} author="Sam" meta={measure} avatar={<G.Avatar name="Sam" size="sm" />} actionsPlacement="inline" actions={copyReply} body={'The booking for table 4 moves to 19:30 and the kitchen needs the new time before the first order goes in, so please confirm with the floor lead and tell the guests the table is ready from 19:25.'} />
           <G.MessageBubble measure={measure} side="outgoing" meta={measure} body={'Confirmed with the floor lead, the guests are told. The kitchen has the 19:30 time and the first order goes in at 19:35 once everyone is seated at the table.'} />
         </Fragment>
       ))}

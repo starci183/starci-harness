@@ -85,13 +85,13 @@ const fakeTerminal = (): FakeTerminal => {
 test("promptHidden echoes one * per character, takes a paste in one chunk, erases on backspace and restores the mode", async () => {
   const input = fakeTerminal();
   const shown: string[] = [];
-  const typed = promptHidden("SEPAY_SIGNING_SECRET_KEY: ", { input: asTerminal(input), output: (s) => shown.push(s) });
+  const typed = promptHidden("GATEWAY_SIGNING_SECRET_KEY: ", { input: asTerminal(input), output: (s) => shown.push(s) });
   input.write(FAKE[0]);
   input.write("x\u007f");
   input.write("\r");
   assert.equal(await typed, FAKE[0]);
   const screen = shown.join("");
-  assert.ok(screen.startsWith("SEPAY_SIGNING_SECRET_KEY: "));
+  assert.ok(screen.startsWith("GATEWAY_SIGNING_SECRET_KEY: "));
   assert.ok(!screen.includes(FAKE[0]), "the typed value is never echoed");
   assert.equal(screen.split("*").length - 1, FAKE[0].length + 1, "one * per typed character");
   assert.deepEqual(input.modes, [true, false], "raw while reading, restored after");
@@ -112,14 +112,14 @@ test("set on a terminal prompts each key in turn, masked, and seals them all in 
   const { root, env } = app(t);
   const seals: Array<Record<string, string>> = [];
   const labels: string[] = [];
-  const result = await run(["set", "--env", "dev", "sepay", "K1", "K2", "K3"], {
+  const result = await run(["set", "--env", "dev", "gateway", "K1", "K2", "K3"], {
     cwd: root, env, stdin: { isTTY: true }, prompt: answers([...FAKE], labels), sops: fakeSops(seals),
   });
   assert.equal(result.code, 0, result.err);
   assert.deepEqual(labels, ["K1: ", "K2: ", "K3: "]);
   assert.equal(seals.length, 1, "one sops write");
   assert.deepEqual(seals[0], { K1: FAKE[0], K2: FAKE[1], K3: FAKE[2] });
-  assert.match(result.out, /^sealed dev\/sepay \(K1, K2, K3\)/u);
+  assert.match(result.out, /^sealed dev\/gateway \(K1, K2, K3\)/u);
   privateAbsent(result, FAKE);
   const listed = await run(["list", "--env", "dev"], { cwd: root, env });
   for (const key of ["K1", "K2", "K3"]) assert.match(listed.out, new RegExp(key, "u"));
@@ -128,13 +128,13 @@ test("set on a terminal prompts each key in turn, masked, and seals them all in 
 test("an empty typed value seals nothing", async (t) => {
   const { root, env, dir } = app(t);
   const seals: Array<Record<string, string>> = [];
-  const result = await run(["set", "--env", "dev", "sepay", "K1", "K2"], {
+  const result = await run(["set", "--env", "dev", "gateway", "K1", "K2"], {
     cwd: root, env, stdin: { isTTY: true }, prompt: answers([FAKE[0], ""], []), sops: fakeSops(seals),
   });
   assert.equal(result.code, 2);
   assert.match(result.err, /K2 is empty; nothing was sealed/u);
   assert.equal(seals.length, 0);
-  assert.equal(fs.existsSync(path.join(dir, "sepay.enc.yaml")), false);
+  assert.equal(fs.existsSync(path.join(dir, "gateway.enc.yaml")), false);
 });
 
 test("redirected stdin gives one key its whole text, or one KEY=value line per key, sealed in one write", async (t) => {
@@ -143,7 +143,7 @@ test("redirected stdin gives one key its whole text, or one KEY=value line per k
   const one = await run(["set", "--env", "dev", "solo", "K1"], { cwd: root, env, stdin: () => `${FAKE[0]}\nsecond line\n`, sops: fakeSops(seals) });
   assert.equal(one.code, 0, one.err);
   assert.deepEqual(seals[0], { K1: `${FAKE[0]}\nsecond line` }, "a multi-line value survives byte for byte in the YAML member");
-  const many = await run(["set", "--env", "dev", "sepay", "K1", "K2"], {
+  const many = await run(["set", "--env", "dev", "gateway", "K1", "K2"], {
     cwd: root, env, stdin: () => `# comment\r\nK2=${FAKE[1]}\r\nK1=${FAKE[0]}=tail\r\n`, sops: fakeSops(seals),
   });
   assert.equal(many.code, 0, many.err);
@@ -162,24 +162,24 @@ test("stdin lines must name every key once and no other", () => {
 
 test("set refuses a key named twice", async (t) => {
   const { root, env } = app(t);
-  const result = await run(["set", "--env", "dev", "sepay", "K1", "K1"], { cwd: root, env, stdin: () => "x", sops: fakeSops([]) });
+  const result = await run(["set", "--env", "dev", "gateway", "K1", "K1"], { cwd: root, env, stdin: () => "x", sops: fakeSops([]) });
   assert.equal(result.code, 2);
   assert.match(result.err, /set names K1 twice/u);
 });
 
 test("adding to an existing member with no identity anywhere refuses before any prompt, naming every place and the fix", async (t) => {
   const { root, dir, env } = app(t);
-  fs.writeFileSync(path.join(dir, "sepay.enc"), sealedDotenv(["SEPAY_IPN_SECRET_KEY"]));
+  fs.writeFileSync(path.join(dir, "gateway.enc"), sealedDotenv(["GATEWAY_IPN_SECRET_KEY"]));
   const calls: Array<{ args: string[]; ageKey: string | undefined }> = [];
   const labels: string[] = [];
   const host = { label: path.join(root, "..", "harness", "secret.env"), read: () => undefined };
-  const result = await run(["set", "--env", "dev", "sepay", "SEPAY_SIGNING_SECRET_KEY"], {
+  const result = await run(["set", "--env", "dev", "gateway", "GATEWAY_SIGNING_SECRET_KEY"], {
     cwd: root, env, stdin: { isTTY: true }, prompt: answers([FAKE[0]], labels), tools: selectedTools(calls), hostIdentity: host,
   });
   assert.equal(result.code, 2);
   assert.deepEqual(labels, [], "no value is asked for");
   assert.equal(calls.length, 0, "no sops process runs");
-  assert.match(result.err, /no age identity opens sepay\.enc, sealed to age1q+/u);
+  assert.match(result.err, /no age identity opens gateway\.enc, sealed to age1q+/u);
   assert.ok(result.err.includes(path.join(root, ".claude", "secret.env")), "names the app's secret.env");
   assert.ok(result.err.includes(host.label), "names the harness secret.env");
   assert.match(result.err, /Fix: add the line SOPS_AGE_KEY=/u);
@@ -187,12 +187,12 @@ test("adding to an existing member with no identity anywhere refuses before any 
 
 test("the harness secret.env's SOPS_AGE_KEY opens an existing member when the environment and the app hold none", async (t) => {
   const { root, dir, env } = app(t);
-  fs.writeFileSync(path.join(dir, "sepay.enc"), sealedDotenv(["TOKEN"]));
+  fs.writeFileSync(path.join(dir, "gateway.enc"), sealedDotenv(["TOKEN"]));
   const calls: Array<{ args: string[]; ageKey: string | undefined }> = [];
   const seals: Array<Record<string, string>> = [];
   const host = { label: "/harness/secret.env", read: () => HOST_KEY };
   const seam = defaultSops(env, root, process.platform, selectedTools(calls), host);
-  const result = await run(["set", "--env", "dev", "sepay", "K1", "K2"], {
+  const result = await run(["set", "--env", "dev", "gateway", "K1", "K2"], {
     cwd: root, env, stdin: { isTTY: true }, prompt: answers([FAKE[0], FAKE[1]], []),
     sops: { ...seam, seal: fakeSeal(seals) },
   });
@@ -200,9 +200,9 @@ test("the harness secret.env's SOPS_AGE_KEY opens an existing member when the en
   const decrypt = calls.find((call) => call.args[0] === "decrypt");
   assert.equal(decrypt?.ageKey, HOST_KEY, "the host identity reaches the sops child alone");
   assert.deepEqual(Object.keys(seals[0]!).sort(), ["K1", "K2", "TOKEN"], "the existing key is kept, both new ones added, one write");
-  assert.equal(result.out, "sealed dev/sepay (K1, K2)\n");
+  assert.equal(result.out, "sealed dev/gateway (K1, K2)\n");
   privateAbsent(result, [HOST_KEY, ...FAKE]);
-  const got = await run(["get", "--env", "dev", "sepay", "TOKEN", "--to-file"], { cwd: root, env, tools: selectedTools(calls), hostIdentity: host });
+  const got = await run(["get", "--env", "dev", "gateway", "TOKEN", "--to-file"], { cwd: root, env, tools: selectedTools(calls), hostIdentity: host });
   assert.equal(got.code, 0, got.err);
   privateAbsent(got, [HOST_KEY]);
 });
@@ -210,17 +210,17 @@ test("the harness secret.env's SOPS_AGE_KEY opens an existing member when the en
 test("an identity that is not the member's recipient is refused naming where it came from and the member's recipient", async (t) => {
   const { root, dir, env } = app(t);
   const other = `age1${"p".repeat(58)}`;
-  fs.writeFileSync(path.join(dir, "sepay.enc"), sealedDotenv(["SEPAY_MERCHANT_ID"], other));
+  fs.writeFileSync(path.join(dir, "gateway.enc"), sealedDotenv(["GATEWAY_MERCHANT_ID"], other));
   const host = { label: "/harness/secret.env", read: () => HOST_KEY };
-  const result = await run(["get", "--env", "dev", "sepay", "SEPAY_MERCHANT_ID", "--to-file"], { cwd: root, env, tools: selectedTools([]), hostIdentity: host });
+  const result = await run(["get", "--env", "dev", "gateway", "GATEWAY_MERCHANT_ID", "--to-file"], { cwd: root, env, tools: selectedTools([]), hostIdentity: host });
   assert.equal(result.code, 2);
-  assert.ok(result.err.includes(`the age identity of /harness/secret.env (SOPS_AGE_KEY) (recipient ${RECIPIENT}) does not open sepay.enc, sealed to ${other}`), result.err);
+  assert.ok(result.err.includes(`the age identity of /harness/secret.env (SOPS_AGE_KEY) (recipient ${RECIPIENT}) does not open gateway.enc, sealed to ${other}`), result.err);
   privateAbsent(result, [HOST_KEY]);
 });
 
 test("the app's own .claude/secret.env wins over the harness's, and a worktree reads its main checkout's", async (t) => {
   const { root, dir, env } = app(t);
-  fs.writeFileSync(path.join(dir, "sepay.enc"), sealedDotenv(["TOKEN"]));
+  fs.writeFileSync(path.join(dir, "gateway.enc"), sealedDotenv(["TOKEN"]));
   const main = path.join(path.dirname(root), "main");
   fs.mkdirSync(path.join(main, ".git", "worktrees", "app"), { recursive: true });
   fs.mkdirSync(path.join(main, ".claude"));
@@ -230,7 +230,7 @@ test("the app's own .claude/secret.env wins over the harness's, and a worktree r
   const tools = selectedTools(calls);
   delete tools.secretEnv;
   const host = { label: "/harness/secret.env", read: () => HOST_KEY };
-  const result = await run(["get", "--env", "dev", "sepay", "TOKEN", "--to-file"], { cwd: root, env, tools, hostIdentity: host });
+  const result = await run(["get", "--env", "dev", "gateway", "TOKEN", "--to-file"], { cwd: root, env, tools, hostIdentity: host });
   assert.equal(result.code, 0, result.err);
   assert.equal(calls.find((call) => call.args[0] === "decrypt")?.ageKey, MAIN_KEY);
   privateAbsent(result, [MAIN_KEY, HOST_KEY]);
@@ -239,11 +239,11 @@ test("the app's own .claude/secret.env wins over the harness's, and a worktree r
 test("the first set names the identity a later set needs, or the fix when this machine holds none", async (t) => {
   const { root, env } = app(t);
   const held = defaultSops(env, root, process.platform, selectedTools([]), { label: "/harness/secret.env", read: () => HOST_KEY });
-  const first = await run(["set", "--env", "dev", "sepay", "K1"], { cwd: root, env, stdin: () => FAKE[0], sops: { ...held, seal: fakeSeal([]) } });
+  const first = await run(["set", "--env", "dev", "gateway", "K1"], { cwd: root, env, stdin: () => FAKE[0], sops: { ...held, seal: fakeSeal([]) } });
   assert.equal(first.code, 0, first.err);
   assert.equal(
     first.out,
-    `sealed dev/sepay (K1); a new member: adding keys to it later needs the age identity of ${RECIPIENT}; this machine holds it in /harness/secret.env (SOPS_AGE_KEY)\n`,
+    `sealed dev/gateway (K1); a new member: adding keys to it later needs the age identity of ${RECIPIENT}; this machine holds it in /harness/secret.env (SOPS_AGE_KEY)\n`,
   );
   const none = defaultSops(env, root, process.platform, selectedTools([]), { label: "/harness/secret.env", read: () => undefined });
   const other = await run(["set", "--env", "dev", "ops", "K1"], { cwd: root, env, stdin: () => FAKE[0], sops: { ...none, seal: fakeSeal([]) } });
@@ -265,9 +265,9 @@ test("with no stdin port, a terminal stdin gets the masked prompt instead of a r
     import { secretMain } from ${JSON.stringify(secretModule)};
     Object.defineProperty(process.stdin, "isTTY", { value: true });
     const seals = [];
-    const code = await secretMain(["set", "--env", "dev", "sepay", "SEPAY_SIGNING_SECRET_KEY"], {
+    const code = await secretMain(["set", "--env", "dev", "gateway", "GATEWAY_SIGNING_SECRET_KEY"], {
       cwd: ${JSON.stringify(root)},
-      sops: { decrypt: () => ({}), seal: (request) => { seals.push(request.plaintext); return ${JSON.stringify(sealedDotenv(["SEPAY_SIGNING_SECRET_KEY"]))}; } },
+      sops: { decrypt: () => ({}), seal: (request) => { seals.push(request.plaintext); return ${JSON.stringify(sealedDotenv(["GATEWAY_SIGNING_SECRET_KEY"]))}; } },
     });
     fs.writeFileSync(${JSON.stringify(out)}, JSON.stringify({ code, seals }));
   `;
@@ -281,10 +281,10 @@ test("with no stdin port, a terminal stdin gets the masked prompt instead of a r
   assert.equal(code, 0, stderr);
   const result = JSON.parse(fs.readFileSync(out, "utf8"));
   assert.equal(result.code, 0, stderr);
-  assert.deepEqual(result.seals, [`SEPAY_SIGNING_SECRET_KEY: "${FAKE[0]}"\n`]);
-  assert.ok(stderr.startsWith("SEPAY_SIGNING_SECRET_KEY: "), stderr);
+  assert.deepEqual(result.seals, [`GATEWAY_SIGNING_SECRET_KEY: "${FAKE[0]}"\n`]);
+  assert.ok(stderr.startsWith("GATEWAY_SIGNING_SECRET_KEY: "), stderr);
   assert.ok(stderr.includes("*".repeat(FAKE[0].length)));
   assert.ok(!stderr.includes(FAKE[0]) && !stdout.includes(FAKE[0]), "the value is never echoed");
   assert.doesNotMatch(stderr, /redirected stdin/u);
-  assert.match(stdout, /^sealed dev\/sepay \(SEPAY_SIGNING_SECRET_KEY\)/u);
+  assert.match(stdout, /^sealed dev\/gateway \(GATEWAY_SIGNING_SECRET_KEY\)/u);
 });

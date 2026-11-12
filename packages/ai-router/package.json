@@ -1,6 +1,6 @@
 {
   "name": "@starci/ai-router",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "A router for OpenAI-compatible calls across many providers (Anthropic through a protocol adapter, OpenRouter, Qwen, DeepSeek, OpenAI, Gemini, Groq and any OpenAI-compatible endpoint), each with an array of keys, behind one virtual key: an OpenAI-compatible gateway with virtual keys, quotas and usage, a NestJS module (AiRouterModule, AiRouterService, AiRouterGatewayModule), and createRouter for plain Node, with health-aware selection, a persisted key blacklist for spent quotas and refused secrets, circuit breakers, rate-limit awareness, failover across providers and models by profile, pinned embeddings, config from env and redacted telemetry.",
   "keywords": [
     "ai",

@@ -48,7 +48,6 @@ record change that follows it are two tasks.
 | contract | `sides.be.apps[].contract`, `graphql` (when absent) or `rest` | the api app's default door ([code/be/transport.md](../code/be/transport.md) BE-TRANSPORT-1) |
 | edition | `edition`, `lite` or `full` (full when absent), fixed at scaffold | which slots and rules apply and which app verbs the CLI shows; [lite.md](lite.md), [full.md](full.md) |
 | grammar | `sides.fe.grammar` | which grammar package and grammar lint the front end composes ([grammars](../grammars/README.md)) |
-| module data | `modules`, `"data"` or absent | `"data"`: the agent modules are data (`.starcistacks/seeds/data/modules`); sync renders no registry package and the module verbs refuse `HFS_MODULES_ARE_DATA` |
 | policy profile | `policy` | which canon stacks and gates run ([lint.md](lint.md); profiles and defaults are [policy/quality.yaml](../../policy/quality.yaml)) |
 
 A profile left undeclared takes the default of its kind, so a side repository that is only `be` or only `fe`
@@ -79,26 +78,23 @@ Work record          .starciwork record: what must be true (fr, br, sds, contrac
 - **Settle and state.** Who writes a record's state and what counts as evidence is PROJECT-WORK-5 and PROJECT-WORK-6
   in [work.md](work.md).
 
-## PROJECT-3 A product's agent modules are workspace packages
+## PROJECT-3 An app's shared code lives in root workspace packages
 
-A product that builds agent modules keeps them as workspace packages at the app root, under `packages/` (root `workspaces`
-lists `packages/*`): its agent SDK `packages/agent-sdk`, one package `packages/module-<name>` (`@<project>/module-<name>`) per
-module, and the managed registry `packages/modules` (`@<project>/modules`) that lists them. A module package has the subpaths
-`./template` and `./manifest` (React-free, for the back end), `./workbench` (drawn with Grammar alone) and `./public` (its public
-face, for the front end) beside its `src/index.ts`; `starci app add module <name>` writes it and `starci app remove module <name>` reverses every step. The
-registry, the root and front-end dependencies on it and the `build:modules` script are rendered by
-`starci app sync`, so a hand edit is drift ([hfs/slots.yaml](../hfs/slots.yaml) slots `app.packages` and
-`app.module-registry`). An app that declares `"modules": "data"` keeps its modules as seeds instead: sync renders no registry, a
-`packages/modules` it still has is its own, and `add|remove module` refuse. A root package has no jest of its own: the managed `be/jest.config.js` names every root package but the registry
-(a folder of `packages/` with a `package.json` and a `src/`), so the back end's unit run (`npm test`, `app check --gate test`, the CI
-shards and their merged coverage proof) runs its specs and measures its logic, everything below its `src/` but its workbench, its public
-face, its client, its barrels and its type modules (`*.types.ts`, `*-types.ts`, types only), at 100 per file (BE-TEST-13), inside the Sonar and Codecov scope; the workbench, the public face and the client are front ends,
-judged by the front-end canon and the Grammar lint (FE-PACKAGES-2). The sides import a root package by its package name through the `exports` of its manifest and never
+An app keeps the code its sides share as workspace packages at the app root, under `packages/` (root `workspaces` lists
+`packages/*`): a root package is any folder `packages/<name>/` that holds a `package.json` and a `src/`, whatever its name, and
+it is the app's own code ([hfs/slots.yaml](../hfs/slots.yaml) slot `app.packages`; the harness writes none). Once one exists,
+`starci app sync` renders the managed `build:modules` script that builds every root package, so a hand edit of it is drift.
+A root package has no jest of its own: the managed `be/jest.config.js` names every root package, so the back end's unit run (`npm test`, `app check --gate test`, the CI
+shards and their merged coverage proof) runs its specs and measures its logic, everything below its `src/` but its barrels, its type modules (`*.types.ts`, `*-types.ts`, types only)
+and the slots the project opts out with a reason ([lint.md](lint.md) PROJECT-LINT-3), at 100 per file (BE-TEST-13), inside the Sonar and Codecov scope.
+The sides import a root package by its package name through the `exports` of its manifest and never
 past them (`ARCH_INTERNAL_IMPORT_OUTSIDE`); no side config reaches `packages/`, so `starci app sync` renders the app root's
 `eslint.config.mjs` (slot `app.packages-lint`) whenever a root package exists, and `starci app check --gate lint` runs it as a third
 scope, on its own: a side whose linter does not complete is a tool error of that side and the packages are still judged, `--side packages`
-limits the gate to them and the managed CI lints them in a job of the lint matrix beside `be` and `fe`. The scope applies the back-end canon over `packages/<pkg>/src/**` but the front-end subpaths, the front-end canon and the Grammar lint over
-`src/workbench/**` (outside `src/workbench/contract/`, which is React-free and stays back end) and `src/public/**`, each with the rules of
+limits the gate to them and the managed CI lints them in a job of the lint matrix beside `be` and `fe`. The scope applies the front-end canon and the Grammar lint to every `.tsx` file of a
+package and to the slots the project declares `lint: "fe"` for it (`ext/manifest.json` `packages`,
+[lint.md](lint.md) PROJECT-LINT-3), and the back-end canon to every other file of `packages/<pkg>/src/**`; the first slot that holds a file
+decides, and the harness knows no folder name of a package, each with the rules of
 its side over the package view of the app root. A package cannot import the app's owners, so the vocabulary those rules ask of a side
 it declares for itself in the `starci` key of its manifest: `outcome`, its one result union (FE-ERROR-2), `{ "name", "file" }` with the file
 under its `src/` (`readPackageContract` of the package view). Its errors derive from `DomainError` of `@starci/common` (BE-ERROR-1), which

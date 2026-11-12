@@ -21,7 +21,7 @@ test("the law publishes one rule and it is an error", () => {
 test("LABEL-SUBLABEL-HIERARCHY: groups inside a labelled section take a sublabel", () => {
   slotTester().run("no-nested-label", noNestedLabel, {
     valid: [
-      { filename: BLOCK, code: code("<Section title=\"Agent hiểu gì\"><SurfaceCard sublabel=\"Được tự làm\" kind=\"select\" /><SurfaceCard sublabel=\"Phải hỏi bạn\" kind=\"select\" /></Section>") },
+      { filename: BLOCK, code: code("<Section title=\"What the assistant knows\"><SurfaceCard sublabel=\"Allowed\" kind=\"select\" /><SurfaceCard sublabel=\"Ask first\" kind=\"select\" /></Section>") },
       { filename: BLOCK, code: code("<Stack><SurfaceCard label=\"A\" /><SurfaceCard label=\"B\" /></Stack>") },
       { filename: BLOCK, code: code("<Section title=\"A\" action={<SurfaceCard label=\"B\" />} />") },
       { filename: SCRIPT, code: code("<Section title=\"A\"><SurfaceCard label=\"B\" /></Section>") },

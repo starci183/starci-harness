@@ -9,10 +9,10 @@ const meta = {
     args: {
         props: {
             contract: ready({
-                summary: "Thêm gói Premium tháng và năm. Seed bảng `plan`, query `plans` trả giá và chu kỳ.",
-                allowPaths: ["src/modules/subscription/plan/**", "src/migrations/*-plan.ts"],
+                summary: "Add a search index over items. Seed the `search_index` table, query `search` returns ranked hits and totals.",
+                allowPaths: ["src/modules/search/index/**", "src/migrations/*-search-index.ts"],
                 dependsOn: ["B1"],
-                record: ["impl.commerce.subscription"],
+                record: ["impl.search.api"],
                 step: ["code"],
             }),
             labels: {

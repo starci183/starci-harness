@@ -18,7 +18,7 @@ const COMPOSE = "apps/core/src/compose/platform.ts"
 const APP_MODULE = "apps/core/src/app.module.ts"
 const WORLD = "src/tests/world/lite-world.service.ts"
 const DOMAIN_IMPORTER = `${OWNER}/billing.service.ts`
-const FEATURE_IMPORTER = "src/features/api/invoices/index.ts"
+const FEATURE_IMPORTER = "src/features/api/records/index.ts"
 const PLATFORM_IMPORTER = "src/modules/platform/audit/audit.service.ts"
 
 const BASE_FILES = {

@@ -82,12 +82,12 @@ describe("OidcClient authorization", () => {
 describe("OidcClient exchange", () => {
     it("trades a claimed code once for the verified identity and answers no provider token", async () => {
         const world = await setup()
-        const { code, nonce, verifier, issuer } = await flow(world, { sub: "user-7", email: "b@example.test", roles: ["learner", "admin"], sessionId: "sid-7" })
+        const { code, nonce, verifier, issuer } = await flow(world, { sub: "user-7", email: "b@example.test", roles: ["member", "admin"], sessionId: "sid-7" })
         const identity = await world.client.exchange({ code, nonce, verifier, issuer })
         assert.deepEqual(identity, {
             issuer: world.issuer.issuer,
             subject: "user-7",
-            roles: ["admin", "learner"],
+            roles: ["admin", "member"],
             email: "b@example.test",
             sessionId: "sid-7",
             expiresAt: new Date(world.clock.now().getTime() + 300_000),

@@ -83,9 +83,7 @@ Change a slot, a rule or a pattern's front matter, then regenerate in the same c
   - `{.gitkeep,*.mjs,*.cjs,*.ps1,*.sh}` — **app.scripts** optional · R385 (hfs `script-one-off`), R102 (hfs `spec-placement`; eslint-be `spec-placement`), R103 (hfs `repo-local-check`)
   - `{env-sync.mjs,with-secrets.mjs,set-secrets.ps1,build-*.mjs}` — **app.scripts.delivery** optional · R06 (hfs `plaintext-secret` `plaintext-secret-staged`), R385 (hfs `script-one-off`), R102 (hfs `spec-placement`; eslint-be `spec-placement`), R103 (hfs `repo-local-check`)
   - `integration/*.mjs` — **app.scripts.integration** optional · R06 (hfs `plaintext-secret` `plaintext-secret-staged`), R385 (hfs `script-one-off`), R102 (hfs `spec-placement`; eslint-be `spec-placement`), R103 (hfs `repo-local-check`)
-- `packages/`
-  - `<name>/` — **app.packages** optional · R25 (eslint-be `dead-exports`; eslint-fe `dead-exports`)
-  - `modules/` — **app.module-registry** optional · R05 (hfs `managed-file-drift`)
+- `packages/<name>/` — **app.packages** optional · R25 (eslint-be `dead-exports`; eslint-fe `dead-exports`)
 - `{be,fe}/` — **app.sides** required
 - `ext/` — **app.ext** optional · R381 (hfs `project-ext`), R06 (hfs `plaintext-secret` `plaintext-secret-staged`), R103 (hfs `repo-local-check`), R402 (hfs `project-checks`)
 - `.starciwork/` — **app.starciwork** optional · R07 (hfs `agent-data-tracked`), R09 (hfs `identity-custody`)
@@ -263,7 +261,6 @@ Refused (forbidden or external): `repo.side-root-forbidden`, `fe.tool-config-loc
 - `.github/`
   - `workflows/`
     - `ci.yml` — **app.ci** required · R12 (machine `e2e-in-automatic-gate`), R13 (machine `hooks-path-not-redirected`; hfs `ci-missing-canon`), R05 (hfs `managed-file-drift`)
-    - `e2e.yml` — **app.ci-e2e** optional · R12 (machine `e2e-in-automatic-gate`), R05 (hfs `managed-file-drift`)
     - `images.yml` — **app.ci-images** required · R05 (hfs `managed-file-drift`)
     - `db-deploy.yml` — **app.ci-db** optional · R05 (hfs `managed-file-drift`)
     - `stack-deploy.yml` — **app.ci-stack-deploy** optional · R05 (hfs `managed-file-drift`)
@@ -285,9 +282,7 @@ Refused (forbidden or external): `repo.side-root-forbidden`, `fe.tool-config-loc
 - `scripts/`
   - `{.gitkeep,*.mjs,*.cjs,*.ps1,*.sh}` — **app.scripts** optional · R385 (hfs `script-one-off`), R102 (hfs `spec-placement`; eslint-be `spec-placement`), R103 (hfs `repo-local-check`)
   - `integration/*.mjs` — **app.scripts.integration** optional · R06 (hfs `plaintext-secret` `plaintext-secret-staged`), R385 (hfs `script-one-off`), R102 (hfs `spec-placement`; eslint-be `spec-placement`), R103 (hfs `repo-local-check`)
-- `packages/`
-  - `<name>/` — **app.packages** optional · R25 (eslint-be `dead-exports`; eslint-fe `dead-exports`)
-  - `modules/` — **app.module-registry** optional · R05 (hfs `managed-file-drift`)
+- `packages/<name>/` — **app.packages** optional · R25 (eslint-be `dead-exports`; eslint-fe `dead-exports`)
 - `{be,fe}/` — **app.sides** required
 - `ext/` — **app.ext** optional · R381 (hfs `project-ext`), R06 (hfs `plaintext-secret` `plaintext-secret-staged`), R103 (hfs `repo-local-check`), R402 (hfs `project-checks`)
 - `.starciwork/` — **app.starciwork** required · R07 (hfs `agent-data-tracked`), R09 (hfs `identity-custody`)
@@ -296,7 +291,7 @@ Refused (forbidden or external): `repo.side-root-forbidden`, `fe.tool-config-loc
 - `.sops.yaml` — **app.sops** required
 
 Git-ignored: `app.gallery-shots`, `app.build-output`.
-Refused (forbidden or external): `app.tool-config-local`, `app.tool-cache`, `app.agent-output`, `app.worktrees`, `app.plaintext-env`.
+Refused (forbidden or external): `app.tool-config-local`, `app.ci-e2e`, `app.tool-cache`, `app.agent-output`, `app.worktrees`, `app.plaintext-env`.
 
 ### full · be/
 

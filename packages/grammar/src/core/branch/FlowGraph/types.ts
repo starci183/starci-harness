@@ -33,7 +33,7 @@ export type FlowGraphNodeKind = FlowGraphLanesKind | FlowGraphStepKind
 /** Where a run is at a node (the run overlay of a `steps` graph): a status ring and badge on the card; a `skipped` node is faded. */
 export type FlowGraphRunStatus = "done" | "running" | "failed" | "waiting" | "skipped"
 /**
- * A named output of a card, e.g. "Có" / "Không" on a condition, or "Lỗi" on an action (0.37.4: any kind may declare `outputs`). An edge leaves from it by
+ * A named output of a card, e.g. "Yes" / "No" on a condition, or "Error" on an action (0.37.4: any kind may declare `outputs`). An edge leaves from it by
  * `sourcePort` (its `id`). `tone: "danger"` is an error output: its label, its dot on the card edge and the edges that leave it are drawn in the danger tone.
  */
 export type FlowGraphPort = {
@@ -84,12 +84,12 @@ export type FlowGraphNode = {
     readonly kind?: FlowGraphNodeKind
     /** `steps` only: the glyph in the icon tile, an app icon component (`IconSource`) or a node. Leave it out for the kind's own glyph. */
     readonly icon?: IconSource | ReactNode
-    /** `steps` only: a small pill at the top-right corner of the card, e.g. "Kích hoạt", "Cần chủ", "Chờ". */
+    /** `steps` only: a small pill at the top-right corner of the card, e.g. "Trigger", "Needs owner", "Waiting". */
     readonly tag?: string
     /**
      * `steps` only: the node's named output ports, left to right along the bottom of the card. On a `condition` left out, the ports are the
      * labels of the node's labelled outgoing edges, in edge order; on every other kind (0.37.4) the card has ports only when `outputs` is given
-     * (an `action` with a "Lỗi" `tone: "danger"` port), and an edge with no `sourcePort` still leaves from the bottom middle.
+     * (an `action` with an "Error" `tone: "danger"` port), and an edge with no `sourcePort` still leaves from the bottom middle.
      */
     readonly outputs?: ReadonlyArray<FlowGraphPort>
     /** `steps` only (0.37.4): small pills under the title, up to 3, the rest as one "+N" pill. */

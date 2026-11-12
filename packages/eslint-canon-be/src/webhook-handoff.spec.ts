@@ -7,8 +7,8 @@ import { webhookForbiddenReferences, webhookIntakeDispatchesCommand } from "./li
 import type { RuleModule } from "./lib/rule.ts"
 
 const tester = typedTester({ declaration: { ...BE_DECLARATION, patterns: ["webhooks"] } })
-const DOOR = at("src/features/webhooks/sepay/transport/http/sepay.webhook.ts")
-const MODULE = at("src/features/webhooks/sepay/transport/http/sepay-http.module.ts")
+const DOOR = at("src/features/webhooks/acme-pay/transport/http/acme-pay.webhook.ts")
+const MODULE = at("src/features/webhooks/acme-pay/transport/http/acme-pay-http.module.ts")
 const SURFACE = "@modules/domain/payment/payment-dispatch.surface"
 
 /** Exercise the shared checks without repeating webhook route and acknowledgement assertions. */
@@ -58,7 +58,7 @@ test("webhook handoff preserves package/feature origin across every import spell
             { filename: DOOR, code: `import { PaymentCommandHandler } from "${SURFACE}"; export type Handler = PaymentCommandHandler`, errors: [{ messageId: "reference" }] },
             { filename: MODULE, code: `import * as Intake from "${SURFACE}"; export const providers = Intake`, errors: [{ messageId: "reference" }] },
             { filename: MODULE, code: `import Intake from "${SURFACE}"; export const providers = Intake`, errors: [{ messageId: "reference" }] },
-            { filename: DOOR, code: 'import { RecordSepayHandler } from "../../application/record-sepay.handler"; export const handler = RecordSepayHandler', errors: [{ messageId: "reference" }] },
+            { filename: DOOR, code: 'import { RecordAcmePayHandler } from "../../application/record-acme-pay.handler"; export const handler = RecordAcmePayHandler', errors: [{ messageId: "reference" }] },
             { filename: DOOR, code: 'import { ProviderDispatchBus } from "@modules/domain/payment/payment-dispatch.service"; export type Bus = ProviderDispatchBus', errors: [{ messageId: "reference" }] },
             { filename: MODULE, code: 'import type { ProviderQueryBus } from "@modules/domain/payment/payment-dispatch.service"; export type Bus = ProviderQueryBus', errors: [{ messageId: "reference" }] },
             { filename: MODULE, code: '/// <reference path="./provider-global.d.ts" />\nexport class ProviderHttpModule { constructor(private readonly bus: ProviderGlobalBus) {} }', errors: [{ messageId: "reference" }] },

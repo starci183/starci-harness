@@ -6,7 +6,7 @@ import { OWN_PASSWORD_SHELL, dbTarget, inContainer, ownContainerTarget, psqlTran
 import { stackContext } from '../stack/context.mjs';
 import type { Spawn, SpawnOptions } from '../stack/context.mjs';
 
-const URL = 'postgresql://supabase_admin:s3cret@nivo-postgres:5432/postgres';
+const URL = 'postgresql://supabase_admin:s3cret@app-postgres:5432/postgres';
 const CONTAINER = 'abcdef0123456789';
 
 interface Call { command: string; args: readonly string[]; options: SpawnOptions }

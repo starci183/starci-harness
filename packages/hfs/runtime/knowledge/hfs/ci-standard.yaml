@@ -25,11 +25,11 @@ jobs:
 deployJobPrefix: deploy-
 
 # The per-job settings the managed CI renders when .starcistacks/application-stacks.yaml ci.jobs leaves them out (ci.jobs.<job>.timeoutMinutes,
-# ci.jobs.test.shards). Sized from a real run (NIVO v0.2.3 on the 2-vCPU GitHub runner): the be lint with the Sonar import took 11.5 minutes and the
+# ci.jobs.test.shards). Sized from a real run (a reference app on the 2-vCPU GitHub runner): the be lint with the Sonar import took 11.5 minutes and the
 # fe lint more than 8 in one 20-minute job, and ~900 unit suites ran at ~4 s each (670 of 904 in 45 minutes). One lint job per side, and 6 shards of ~150 suites
 # (~10 minutes each plus the install) leave each job well inside its timeout. The coverage job installs, downloads the shards, merges them and runs
 # the coverage judgement alone (starci app coverage verify, seconds): ~5 minutes, so 15 leaves three times that. The whole app check does not fit
-# there: it takes 18m43s on NIVO v0.3.0, past a 20-minute bound (tag run 39592175266).
+# there: it takes 18m43s on a reference app, past a 20-minute bound (tag run 39592175266).
 defaults:
   shards: 6
   timeoutMinutes: {fast: 20, lint: 30, test: 25, coverage: 15, build: 30, sonar: 20, db-types: 30}
@@ -46,7 +46,7 @@ heap:
   minMiB: 6144
   steps: ['npm run typecheck', 'app check --gate wiring', 'npm run lint', 'app check --gate lint', 'app coverage verify', 'npm run db:lint']
 
-# The steps of the managed CI that read the declared types of the app's root workspace packages (packages/*: the agent SDK, the module packages and the rest) or
+# The steps of the managed CI that read the declared types of the app's root workspace packages (packages/*) or
 # compile app code that imports them, matched on their `run` text (or the action they use), and the commands that build those packages first: the managed
 # `build:modules` script, and the managed scripts that run it before anything else (typecheck, lint, test, build:be, build:fe). In an app with root packages a
 # reading step finds them built by an earlier step of its job, or by its own command. A package left unbuilt resolves to nothing: the boot proof cannot compile
@@ -92,7 +92,7 @@ items:
     requires: "in an app with root workspace packages (the lint matrix names packages, or the app's package.json declares build:modules), every step that matches rootPackages.readers follows a step of its job, or is a step, whose run holds one of rootPackages.builders: the fast job builds them before its boot proof, every side of the lint matrix before it lints, the sonar job before its scan; an app without root packages renders no such step"
     covers: [app-ci]
     check: ci-standard
-    by: [render packages/hfs/sync/ci-commands.mjs (also cache-verify.yml and e2e.yml)]
+    by: [render packages/hfs/sync/ci-commands.mjs (also cache-verify.yml)]
   - id: full-history-base-ref
     title: full history and the lint base STARCI_BASE_REF
     requires: "every actions/checkout of the managed CI fetches the full history (fetch-depth: 0), and the lint job writes STARCI_BASE_REF to GITHUB_ENV before it lints"

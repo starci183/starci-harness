@@ -3,7 +3,7 @@
 -- L03: an exposed table with no enable row level security in this migration.
 create table public.no_rls (id bigint primary key);
 
--- L04: the nivo-lite pattern - a loop hiding alter table statements from the parser.
+-- L04: a pattern seen in a reference app - a loop hiding alter table statements from the parser.
 do $$
 declare
   t record;

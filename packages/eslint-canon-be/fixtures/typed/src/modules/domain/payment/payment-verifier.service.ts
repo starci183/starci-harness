@@ -12,11 +12,11 @@ export class PaymentWebhookVerifier {
     syncOrAsync(_delivery: object): Promise<void> | void {}
 
     /** Each provider's combined intake proves and records its own notification inside billing. */
-    async acceptCasso(_delivery: object): Promise<void> {}
-    async acceptPayos(_delivery: object): Promise<void> {}
-    async acceptSepay(_delivery: object): Promise<void> {}
-    async acceptSepayFeed(_delivery: object): Promise<void> {}
-    async acceptVietcombank(_delivery: object): Promise<void> {}
+    async acceptAcmePay(_delivery: object): Promise<void> {}
+    async acceptAcmePayFeed(_delivery: object): Promise<void> {}
+    async acceptBankFeed(_delivery: object): Promise<void> {}
+    async acceptBetaPay(_delivery: object): Promise<void> {}
+    async acceptGammaPay(_delivery: object): Promise<void> {}
 }
 
 /** Fixture: the literal lowercase `verify` suffix also declares a domain verifier. */

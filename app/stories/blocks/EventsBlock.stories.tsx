@@ -9,8 +9,8 @@ const meta = {
     args: {
         props: {
             events: ready([
-                { id: "e1", text: "Op t-55ca2c6b docs → green · 4 checks T0", at: "2026-10-27T12:41:00Z", timeLabel: "12:41 · starci-next", isAttention: false },
-                { id: "e2", text: "d-c11 escalation owner: publish core cohort 0.12.15", at: "2026-10-27T12:34:00Z", timeLabel: "12:34 · nivo-lite", isAttention: true },
+                { id: "e1", text: "Op t-55ca2c6b docs → green · 4 checks T0", at: "2026-10-27T12:41:00Z", timeLabel: "12:41 · demo-app", isAttention: false },
+                { id: "e2", text: "d-c11 escalation owner: publish lib release 1.2.0", at: "2026-10-27T12:34:00Z", timeLabel: "12:34 · demo-lib", isAttention: true },
             ]),
             labels: { title: OVERVIEW.eventsTitle, slot: slotLabels(OVERVIEW.noEvents, OVERVIEW.noEventsHint) },
         },

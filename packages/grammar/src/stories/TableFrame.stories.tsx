@@ -15,51 +15,51 @@ export default meta;
 
 type Story = StoryObj;
 
-type Invoice = G.DataTableRow & { readonly name: string; readonly status: string; readonly date: string; readonly amount: string };
+type Item = G.DataTableRow & { readonly name: string; readonly status: string; readonly date: string; readonly amount: string };
 
-const invoices: ReadonlyArray<Invoice> = [
-  { id: 'a', name: 'Hoa Xinh Studio', status: 'Đã thanh toán', date: '02/11/2026', amount: '490.000 đ' },
-  { id: 'b', name: 'Tiệm bánh Mây', status: 'Chờ xử lý', date: '03/11/2026', amount: '1.250.000 đ' },
-  { id: 'c', name: 'Nhà sách Gió', status: 'Đã thanh toán', date: '04/11/2026', amount: '320.000 đ' },
-  { id: 'd', name: 'Cà phê Nắng', status: 'Quá hạn', date: '05/11/2026', amount: '2.100.000 đ' },
-  { id: 'e', name: 'Studio Lụa', status: 'Đã thanh toán', date: '06/11/2026', amount: '780.000 đ' },
-  { id: 'f', name: 'Vườn Sen', status: 'Chờ xử lý', date: '07/11/2026', amount: '150.000 đ' },
-  { id: 'g', name: 'Gốm Bát Tràng', status: 'Đã thanh toán', date: '08/11/2026', amount: '3.400.000 đ' },
-  { id: 'h', name: 'Trà Tâm', status: 'Đã thanh toán', date: '09/11/2026', amount: '210.000 đ' },
+const itemRows: ReadonlyArray<Item> = [
+  { id: 'a', name: 'Acme', status: 'Paid', date: '02/11/2026', amount: '$490.00' },
+  { id: 'b', name: 'Globex', status: 'Pending', date: '03/11/2026', amount: '$1,250.00' },
+  { id: 'c', name: 'Initech', status: 'Paid', date: '04/11/2026', amount: '$320.00' },
+  { id: 'd', name: 'Umbrella', status: 'Overdue', date: '05/11/2026', amount: '$2,100.00' },
+  { id: 'e', name: 'Hooli', status: 'Paid', date: '06/11/2026', amount: '$780.00' },
+  { id: 'f', name: 'Stark', status: 'Pending', date: '07/11/2026', amount: '$150.00' },
+  { id: 'g', name: 'Wayne Corp', status: 'Paid', date: '08/11/2026', amount: '$3,400.00' },
+  { id: 'h', name: 'Wonka', status: 'Paid', date: '09/11/2026', amount: '$210.00' },
 ];
 
-const columns: ReadonlyArray<G.DataTableColumn<Invoice>> = [
-  { id: 'name', label: 'Khách hàng', isRowHeader: true },
-  { id: 'status', label: 'Trạng thái' },
-  { id: 'date', label: 'Ngày' },
-  { id: 'amount', label: 'Số tiền', align: 'end', isNumeric: true },
+const columns: ReadonlyArray<G.DataTableColumn<Item>> = [
+  { id: 'name', label: 'Customer', isRowHeader: true },
+  { id: 'status', label: 'Status' },
+  { id: 'date', label: 'Date' },
+  { id: 'amount', label: 'Amount', align: 'end', isNumeric: true },
 ];
 
-const cell = (row: Invoice, columnId: string) => row[columnId as 'name' | 'status' | 'date' | 'amount'];
+const cell = (row: Item, columnId: string) => row[columnId as 'name' | 'status' | 'date' | 'amount'];
 
 const PAGE_SIZE = 4;
 
-const PagedInvoices = () => {
+const PagedItems = () => {
   const [page, setPage] = useState(1);
   const from = (page - 1) * PAGE_SIZE;
-  const rows = invoices.slice(from, from + PAGE_SIZE);
+  const rows = itemRows.slice(from, from + PAGE_SIZE);
   return (
     <G.DataTable
-      label="Hóa đơn"
+      label="Items"
       columns={columns}
       rows={rows}
       renderCell={cell}
-      emptyContent="Chưa có hóa đơn."
+      emptyContent="No items yet."
       footer={
         <G.Pagination
-          label="Các trang hóa đơn"
+          label="Item pages"
           page={page}
-          pageCount={Math.ceil(invoices.length / PAGE_SIZE)}
+          pageCount={Math.ceil(itemRows.length / PAGE_SIZE)}
           onPageChange={setPage}
-          previousLabel="Trước"
-          nextLabel="Sau"
-          pageLabel={(n) => `Trang ${n}`}
-          summary={`${from + 1}–${from + rows.length} trong ${invoices.length} kết quả`}
+          previousLabel="Previous"
+          nextLabel="Next"
+          pageLabel={(n) => `Page ${n}`}
+          summary={`${from + 1}–${from + rows.length} of ${itemRows.length} results`}
         />
       }
     />
@@ -69,7 +69,7 @@ const PagedInvoices = () => {
 export const TablePlain: Story = {
   render: () => (
     <div style={{ maxInlineSize: '64rem' }}>
-      <G.DataTable label="Hóa đơn" columns={columns} rows={invoices.slice(0, 4)} renderCell={cell} emptyContent="Chưa có hóa đơn." />
+      <G.DataTable label="Items" columns={columns} rows={itemRows.slice(0, 4)} renderCell={cell} emptyContent="No items yet." />
     </div>
   ),
 };
@@ -77,7 +77,7 @@ export const TablePlain: Story = {
 export const TablePaginated: Story = {
   render: () => (
     <div style={{ maxInlineSize: '64rem' }}>
-      <PagedInvoices />
+      <PagedItems />
     </div>
   ),
 };
@@ -86,12 +86,12 @@ export const SectionHeadCountLinkCaption: Story = {
   render: () => (
     <div style={{ maxInlineSize: '64rem' }}>
       <G.Section
-        title="Hóa đơn gần đây"
+        title="Recent items"
         count={8}
-        action={<G.Link variant="head" href="#invoices">Xem tất cả</G.Link>}
-        description="Cập nhật lúc 10:00, 9 tháng 11 năm 2026."
+        action={<G.Link variant="head" href="#itemRows">View all</G.Link>}
+        description="Updated at 10:00, November 9, 2026."
       >
-        <PagedInvoices />
+        <PagedItems />
       </G.Section>
     </div>
   ),
@@ -100,9 +100,9 @@ export const SectionHeadCountLinkCaption: Story = {
 export const SectionHeadInfoButton: Story = {
   render: () => (
     <div style={{ maxInlineSize: '64rem' }}>
-      <G.Section kind="list" title="Thành viên" count={2} action={<G.IconButton label="Giải thích" glyph="more" onPress={noop} />} caption="Mọi người trong nhóm." empty="Chưa có ai." items={[
-        { id: '1', title: 'Hoa', description: 'Chủ cửa hàng' },
-        { id: '2', title: 'Minh', description: 'Thu ngân' },
+      <G.Section kind="list" title="Members" count={2} action={<G.IconButton label="Explain" glyph="more" onPress={noop} />} caption="Everyone on the team." empty="Nobody yet." items={[
+        { id: '1', title: 'Alex', description: 'Shop owner' },
+        { id: '2', title: 'Sam', description: 'Cashier' },
       ]} />
     </div>
   ),
@@ -113,40 +113,40 @@ export const TableCard: Story = {
     <div style={{ maxInlineSize: '64rem' }}>
       <G.SurfaceCard
         kind="table"
-        label="Hóa đơn"
-        columns={[{ id: 'name', label: 'Khách hàng' }, { id: 'status', label: 'Trạng thái' }, { id: 'amount', label: 'Số tiền', align: 'end', numeric: true }]}
-        rows={invoices.slice(0, 4).map((row) => ({ id: row.id, cells: { name: row.name, status: row.status, amount: row.amount } }))}
-        empty="Chưa có hóa đơn."
-        footers={[{ kind: 'paging', page: 1, pageCount: 2, onPage: noop, labels: { nav: 'Các trang', previous: 'Trước', next: 'Sau', page: (n: number) => `Trang ${n}`, summary: '1–4 trong 8 kết quả' } }]}
+        label="Items"
+        columns={[{ id: 'name', label: 'Customer' }, { id: 'status', label: 'Status' }, { id: 'amount', label: 'Amount', align: 'end', numeric: true }]}
+        rows={itemRows.slice(0, 4).map((row) => ({ id: row.id, cells: { name: row.name, status: row.status, amount: row.amount } }))}
+        empty="No items yet."
+        footers={[{ kind: 'paging', page: 1, pageCount: 2, onPage: noop, labels: { nav: 'Pages', previous: 'Previous', next: 'Next', page: (n: number) => `Page ${n}`, summary: '1–4 of 8 results' } }]}
       />
     </div>
   ),
 };
 
 const people: ReadonlyArray<G.SectionRow> = [
-  { id: '1', title: 'Cần bạn duyệt', description: '3 đơn hàng đang chờ' },
-  { id: '2', title: 'Đang chạy', description: '5 luồng công việc' },
-  { id: '3', title: 'Đã xong', description: '12 luồng trong tuần' },
+  { id: '1', title: 'Needs your approval', description: '3 orders waiting' },
+  { id: '2', title: 'Running', description: '5 workflows' },
+  { id: '3', title: 'Done', description: '12 workflows this week' },
 ];
 
 const workflowRows: ReadonlyArray<G.SectionRow> = [
-  { id: 'w1', title: 'Gửi báo giá', description: 'Zalo OA' },
-  { id: 'w2', title: 'Nhắc lịch hẹn', description: 'Hằng ngày 08:00' },
-  { id: 'w3', title: 'Đối soát công nợ', description: 'Thứ sáu' },
+  { id: 'w1', title: 'Send a quote', description: 'Email' },
+  { id: 'w2', title: 'Appointment reminder', description: 'Daily 08:00' },
+  { id: 'w3', title: 'Balance check', description: 'Friday' },
 ];
 
 const listPane = (
-  <G.Pane area="list" label="Luồng công việc" surface>
+  <G.Pane area="list" label="Workflows" surface>
     <G.PaneSection>
-      <G.Section kind="list" title="Luồng công việc" count={3} action={<G.Link variant="head" href="#all">Xem tất cả</G.Link>} items={workflowRows} empty="Chưa có luồng nào." />
+      <G.Section kind="list" title="Workflows" count={3} action={<G.Link variant="head" href="#all">View all</G.Link>} items={workflowRows} empty="No workflows yet." />
     </G.PaneSection>
   </G.Pane>
 );
 
 const asidePane = (
-  <G.Pane area="aside" label="Cần bạn duyệt" surface>
+  <G.Pane area="aside" label="Needs your approval" surface>
     <G.PaneSection>
-      <G.Section kind="list" title="Cần bạn duyệt" count={3} caption="Cập nhật lúc 10:00." items={people} empty="Không có gì." />
+      <G.Section kind="list" title="Needs your approval" count={3} caption="Updated at 10:00." items={people} empty="Nothing here." />
     </G.PaneSection>
   </G.Pane>
 );
@@ -154,13 +154,13 @@ const asidePane = (
 export const WorkspaceCardsMain: Story = {
   parameters: { layout: 'fullscreen', grammar: { bleed: true } },
   render: () => (
-    <G.Page chrome="panes" layout="workspace" header={{ title: 'Tổng quan' }}>
-      <G.PaneGrid label="Tổng quan" areas={['list main aside']} columns={['standard', 'fill', 'standard']}>
+    <G.Page chrome="panes" layout="workspace" header={{ title: 'Overview' }}>
+      <G.PaneGrid label="Overview" areas={['list main aside']} columns={['standard', 'fill', 'standard']}>
         {listPane}
-        <G.Pane area="main" label="Tổng quan">
+        <G.Pane area="main" label="Overview">
           <G.PaneSection>
-            <G.Section title="Hóa đơn gần đây" count={4} action={<G.Link variant="head" href="#invoices">Xem tất cả</G.Link>} caption="Cập nhật lúc 10:00, 9 tháng 11.">
-              <G.DataTable label="Hóa đơn" columns={columns} rows={invoices.slice(0, 4)} renderCell={cell} emptyContent="Chưa có." />
+            <G.Section title="Recent items" count={4} action={<G.Link variant="head" href="#itemRows">View all</G.Link>} caption="Updated at 10:00, November 9.">
+              <G.DataTable label="Items" columns={columns} rows={itemRows.slice(0, 4)} renderCell={cell} emptyContent="None yet." />
             </G.Section>
           </G.PaneSection>
         </G.Pane>
@@ -173,13 +173,13 @@ export const WorkspaceCardsMain: Story = {
 export const WorkspaceChatMain: Story = {
   parameters: { layout: 'fullscreen', grammar: { bleed: true } },
   render: () => (
-    <G.Page chrome="panes" layout="workspace" header={{ title: 'Trợ lý bán hàng' }}>
-      <G.PaneGrid label="Trò chuyện" areas={['list chat aside']} columns={['standard', 'fill', 'standard']}>
+    <G.Page chrome="panes" layout="workspace" header={{ title: 'Sales assistant' }}>
+      <G.PaneGrid label="Chat" areas={['list chat aside']} columns={['standard', 'fill', 'standard']}>
         {listPane}
-        <G.Pane area="chat" label="Trò chuyện">
-          <G.PaneSection as="header"><G.PaneHeader title="Trợ lý bán hàng" description="Trả lời trong một phút" /></G.PaneSection>
-          <G.PaneSection scroll={{ label: 'Cuộc trò chuyện', role: 'log', tone: 'background', align: 'end' }}>
-            {Array.from({ length: 14 }, (_, index) => <G.MessageBubble key={index} side={index % 2 === 0 ? 'incoming' : 'outgoing'} author={index % 2 === 0 ? 'Trợ lý' : undefined} body={`Tin nhắn số ${index + 1}: khách đặt bàn 4 lúc 19:30.`} />)}
+        <G.Pane area="chat" label="Chat">
+          <G.PaneSection as="header"><G.PaneHeader title="Sales assistant" description="Replies within a minute" /></G.PaneSection>
+          <G.PaneSection scroll={{ label: 'Conversation', role: 'log', tone: 'background', align: 'end' }}>
+            {Array.from({ length: 14 }, (_, index) => <G.MessageBubble key={index} side={index % 2 === 0 ? 'incoming' : 'outgoing'} author={index % 2 === 0 ? 'Assistant' : undefined} body={`Message ${index + 1}: customer booked a table for 4 at 19:30.`} />)}
           </G.PaneSection>
         </G.Pane>
         {asidePane}
@@ -192,18 +192,18 @@ export const WorkspaceChatMain: Story = {
 export const CardsOneContent: Story = {
   parameters: { layout: 'fullscreen', grammar: { bleed: true } },
   render: () => (
-    <G.Page header={{ title: 'Một nội dung mỗi thẻ' }}>
-      <G.Section title="Đơn hàng #1042">
-        <G.Sublabel>Món đã đặt</G.Sublabel>
-        <G.SurfaceCard kind="list" ariaLabel="Món đã đặt" items={workflowRows} empty="Chưa có món." />
-        <G.Sublabel>Thông tin</G.Sublabel>
-        <G.SurfaceCard kind="details" ariaLabel="Thông tin" items={[{ id: 't', term: 'Giờ', description: '19:30' }, { id: 'k', term: 'Khách', description: '4 người' }]} note="Cập nhật lúc 10:00." />
-        <G.Sublabel>Luồng xử lý</G.Sublabel>
+    <G.Page header={{ title: 'One content per card' }}>
+      <G.Section title="Order #1042">
+        <G.Sublabel>Ordered items</G.Sublabel>
+        <G.SurfaceCard kind="list" ariaLabel="Ordered items" items={workflowRows} empty="No items yet." />
+        <G.Sublabel>Details</G.Sublabel>
+        <G.SurfaceCard kind="details" ariaLabel="Details" items={[{ id: 't', term: 'Time', description: '19:30' }, { id: 'k', term: 'Guests', description: '4 people' }]} note="Updated at 10:00." />
+        <G.Sublabel>Workflow</G.Sublabel>
         <G.SurfaceCard
-          ariaLabel="Luồng xử lý"
+          ariaLabel="Workflow"
           note={<G.FlowGraphLegend items={reconcileLegend} />}
         >
-          <G.FlowGraph label="Luồng" layout="steps" nodes={reconcileNodes} edges={reconcileEdges} />
+          <G.FlowGraph label="Flow" layout="steps" nodes={reconcileNodes} edges={reconcileEdges} />
         </G.SurfaceCard>
       </G.Section>
     </G.Page>
@@ -213,7 +213,7 @@ export const CardsOneContent: Story = {
 export const CardHeadCountAndLink: Story = {
   render: () => (
     <div style={{ maxInlineSize: '40rem' }}>
-      <G.SurfaceCard kind="list" label="Cần bạn duyệt" count={3} isAttention labelEnd={<G.Link variant="head" href="#all">Xem tất cả</G.Link>} items={workflowRows} empty="Không có gì." />
+      <G.SurfaceCard kind="list" label="Needs your approval" count={3} isAttention labelEnd={<G.Link variant="head" href="#all">View all</G.Link>} items={workflowRows} empty="Nothing here." />
     </div>
   ),
 };
@@ -223,7 +223,7 @@ const SwitchRow = ({ initial }: { readonly initial: boolean }) => {
   return (
     <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
       <G.Switch label="Dark mode" isLabelHidden size="control" isSelected={on} onSelectedChange={setOn} />
-      <G.Switch description="Mô tả ngắn." label="Theo sơ đồ" isSelected={on} onSelectedChange={setOn} />
+      <G.Switch description="A short description." label="Follow the diagram" isSelected={on} onSelectedChange={setOn} />
     </div>
   );
 };
@@ -242,31 +242,31 @@ export const SwitchNoBorder: Story = {
 export const FactBalancedAndNoticeLink: Story = {
   render: () => (
     <div style={{ display: 'grid', gap: '1.5rem', maxInlineSize: '64rem' }}>
-      <G.Section title="Workspace của tôi" fact="1" action={<G.Link variant="head" href="#w">Mở</G.Link>}>
-        <G.EmptyNotice message="Chưa có dự án" description="Tạo dự án đầu tiên." actionLabel="Về tổng quan" actionHref="#home" />
+      <G.Section title="My workspace" fact="1" action={<G.Link variant="head" href="#w">Open</G.Link>}>
+        <G.EmptyNotice message="No projects yet" description="Create the first project." actionLabel="Back to overview" actionHref="#home" />
       </G.Section>
       <G.Grid kind="cards" columns="balanced">
-        {['Free', 'Basic', 'Pro', 'Team', 'Max'].map((name) => <G.SurfaceCard key={name} kind="details" ariaLabel={name} items={[{ id: name, term: name, description: '199.000 đ' }]} />)}
+        {['Free', 'Basic', 'Pro', 'Team', 'Max'].map((name) => <G.SurfaceCard key={name} kind="details" ariaLabel={name} items={[{ id: name, term: name, description: '$199.00' }]} />)}
       </G.Grid>
     </div>
   ),
 };
 
 const salesNodes: ReadonlyArray<G.FlowGraphNode> = [
-  { id: 's1', kind: 'event', label: 'Khách nhắn tin', description: 'Zalo OA', tag: 'Kích hoạt' },
-  { id: 's2', kind: 'action', label: 'Đọc yêu cầu', description: 'Hiểu khách cần gì' },
-  { id: 's3', kind: 'condition', label: 'Khách cần gì?', description: 'Phân loại', outputs: [
-    { id: 'quote', label: 'Báo giá' }, { id: 'book', label: 'Đặt lịch' }, { id: 'pay', label: 'Khách báo, Tiền về' }, { id: 'ask', label: 'Hỏi thông tin sản phẩm' }, { id: 'other', label: 'Khác' },
+  { id: 's1', kind: 'event', label: 'Customer writes', description: 'Chat', tag: 'Trigger' },
+  { id: 's2', kind: 'action', label: 'Read the request', description: 'Understand the need' },
+  { id: 's3', kind: 'condition', label: 'What is needed?', description: 'Classify', outputs: [
+    { id: 'quote', label: 'Quote' }, { id: 'book', label: 'Booking' }, { id: 'pay', label: 'Customer reports a payment' }, { id: 'ask', label: 'Ask for item details' }, { id: 'other', label: 'Other' },
   ] },
-  { id: 's4', kind: 'action', label: 'Gửi báo giá', description: 'Từ bảng giá' },
-  { id: 's5', kind: 'action', label: 'Giữ chỗ', description: 'Trong lịch' },
-  { id: 's6', kind: 'action', label: 'Đối soát', description: 'Khớp đơn' },
-  { id: 's7', kind: 'ask', label: 'Hỏi chủ', description: 'Cần duyệt', tag: 'Cần chủ' },
-  { id: 's8', kind: 'wait', label: 'Chờ khách', description: 'Trả lời trong 1 ngày' },
-  { id: 's9', kind: 'action', label: 'Nhắc khách', description: 'Sau 24 giờ' },
-  { id: 's10', kind: 'event', label: 'Báo Sales', description: 'Gửi nhóm' },
-  { id: 's11', kind: 'end', label: 'Xong' },
-  { id: 's12', kind: 'end', label: 'Dừng' },
+  { id: 's4', kind: 'action', label: 'Send a quote', description: 'From the price list' },
+  { id: 's5', kind: 'action', label: 'Hold a slot', description: 'In the calendar' },
+  { id: 's6', kind: 'action', label: 'Match payment', description: 'Match the order' },
+  { id: 's7', kind: 'ask', label: 'Ask the owner', description: 'Needs approval', tag: 'Needs owner' },
+  { id: 's8', kind: 'wait', label: 'Wait for customer', description: 'Reply within 1 day' },
+  { id: 's9', kind: 'action', label: 'Remind customer', description: 'After 24 hours' },
+  { id: 's10', kind: 'event', label: 'Notify team', description: 'Send to the team' },
+  { id: 's11', kind: 'end', label: 'Done' },
+  { id: 's12', kind: 'end', label: 'Stop' },
 ];
 const salesEdges: ReadonlyArray<G.FlowGraphEdge> = [
   { id: 'a', source: 's1', target: 's2' }, { id: 'b', source: 's2', target: 's3' },
@@ -281,27 +281,27 @@ export const FlowStepsWideBranch: Story = {
   parameters: { layout: 'fullscreen', grammar: { bleed: true } },
   render: () => (
     <div style={{ padding: '1rem', maxInlineSize: '56rem' }}>
-      <G.FlowGraph label="Quy trình bán hàng" layout="steps" nodes={salesNodes} edges={salesEdges} />
+      <G.FlowGraph label="Sales process" layout="steps" nodes={salesNodes} edges={salesEdges} />
     </div>
   ),
 };
 
-/** 0.37.3 column sizing: Khách `fill` + `truncate` (one line, ellipsis, tooltip), Trạng thái and Số tiền `fit`, Ngày hidden under 768; `resizable` remembers the widths; under 768 it is a list. */
+/** 0.37.3 column sizing: Customer `fill` + `truncate` (one line, ellipsis, tooltip), Status and Amount `fit`, Date hidden under 768; `resizable` remembers the widths; under 768 it is a list. */
 export const TableColumnSizing: Story = {
   render: () => (
-    <G.DataTable<Invoice>
-      label="Khách đang xử lý"
+    <G.DataTable<Item>
+      label="Customers in progress"
       id="story-column-sizing"
       resizable
       columns={[
-        { id: 'name', label: 'Khách hàng', isRowHeader: true, width: 'fill', minWidth: 160, truncate: true },
-        { id: 'status', label: 'Trạng thái', width: 'fit' },
-        { id: 'date', label: 'Ngày', width: 'fit', hideBelow: 'tablet' },
-        { id: 'amount', label: 'Số tiền', width: 'fit', align: 'end', isNumeric: true },
+        { id: 'name', label: 'Customer', isRowHeader: true, width: 'fill', minWidth: 160, truncate: true },
+        { id: 'status', label: 'Status', width: 'fit' },
+        { id: 'date', label: 'Date', width: 'fit', hideBelow: 'tablet' },
+        { id: 'amount', label: 'Amount', width: 'fit', align: 'end', isNumeric: true },
       ]}
-      rows={invoices}
+      rows={itemRows}
       renderCell={cell}
-      emptyContent={<G.EmptyNotice message="Chưa có khách" />}
+      emptyContent={<G.EmptyNotice message="No customers yet" />}
     />
   ),
 };
@@ -315,14 +315,14 @@ export const EqualHeightRow: Story = {
   render: () => (
     <div style={{ maxInlineSize: '80rem' }}>
       <G.Grid kind="cards" columns={3}>
-        <G.Section fill title="Hóa đơn" count={8} action={<G.Link variant="head" href="#invoices">Xem tất cả</G.Link>}>
-          <G.DataTable<Invoice> fill label="Hóa đơn" columns={columns.slice(0, 2)} rows={invoices.slice(0, 3)} renderCell={cell} emptyContent="Chưa có hóa đơn." footer={<G.Text tone="muted">1–3 trong 8</G.Text>} />
+        <G.Section fill title="Items" count={8} action={<G.Link variant="head" href="#itemRows">View all</G.Link>}>
+          <G.DataTable<Item> fill label="Items" columns={columns.slice(0, 2)} rows={itemRows.slice(0, 3)} renderCell={cell} emptyContent="No items yet." footer={<G.Text tone="muted">1–3 of 8</G.Text>} />
         </G.Section>
-        <G.Section fill title="Tiết kiệm">
-          <G.SurfaceCard kind="list" height="fill" label="Tiết kiệm" items={[{ id: 'a', title: 'Giờ làm việc', description: '12 giờ tuần này' }]} empty={<G.EmptyNotice message="Chưa có" />} />
+        <G.Section fill title="Savings">
+          <G.SurfaceCard kind="list" height="fill" label="Savings" items={[{ id: 'a', title: 'Working hours', description: '12 hours this week' }]} empty={<G.EmptyNotice message="None yet" />} />
         </G.Section>
-        <G.Section fill title="Kênh">
-          <G.SurfaceCard kind="list" height="fill" label="Kênh" items={[{ id: 'a', title: 'Zalo OA' }, { id: 'b', title: 'Telegram' }, { id: 'c', title: 'Email' }, { id: 'd', title: 'Web' }]} empty={<G.EmptyNotice message="Chưa có" />} />
+        <G.Section fill title="Channels">
+          <G.SurfaceCard kind="list" height="fill" label="Channels" items={[{ id: 'a', title: 'Chat' }, { id: 'b', title: 'Webhook' }, { id: 'c', title: 'Email' }, { id: 'd', title: 'Web' }]} empty={<G.EmptyNotice message="None yet" />} />
         </G.Section>
       </G.Grid>
     </div>
@@ -334,8 +334,8 @@ export const EqualHeightRow: Story = {
 type Order = G.DataTableRow & { readonly code: string; readonly customer: string; readonly product: string; readonly total: string; readonly status: string; readonly date: string; readonly channel: string };
 
 const orders: ReadonlyArray<Order> = [
-  { id: 'o1', code: 'DH-1001', customer: 'Nguyễn Thị Hoa Xinh Studio', product: 'Bó hoa hướng dương cỡ lớn kèm thiệp viết tay', total: '1.250.000 đ', status: 'Đã thanh toán', date: '02/11/2026', channel: 'Zalo OA' },
-  { id: 'o2', code: 'DH-1002', customer: 'Tiệm bánh Mây', product: 'Bánh kem 20cm', total: '490.000 đ', status: 'Chờ xử lý', date: '03/11/2026', channel: 'Telegram' },
+  { id: 'o1', code: 'OR-1001', customer: 'Alex Chen Design Studio Partners', product: 'Large sunflower bouquet with a handwritten card', total: '$1,250.00', status: 'Paid', date: '02/11/2026', channel: 'Chat' },
+  { id: 'o2', code: 'OR-1002', customer: 'Globex', product: 'Cake 20cm', total: '$490.00', status: 'Pending', date: '03/11/2026', channel: 'Webhook' },
 ];
 
 const orderCell = (row: Order, columnId: string) => row[columnId as keyof Order];
@@ -362,29 +362,29 @@ const assertNoWrap = (root: HTMLElement) => {
 const NeverCollapse = ({ width }: { readonly width: number }) => (
   <div style={{ width, display: 'grid', gap: 24 }} data-grammar-never-collapse={width}>
     <G.DataTable<Order>
-      label="Khách đang xử lý"
+      label="Customers in progress"
       columns={[
-        { id: 'customer', label: 'Khách', isRowHeader: true, width: 'fill', minWidth: 160, truncate: true },
-        { id: 'status', label: 'Trạng thái', width: 'fit' },
-        { id: 'channel', label: 'Kênh', width: 'fit', hideBelow: 'tablet' },
+        { id: 'customer', label: 'Customer', isRowHeader: true, width: 'fill', minWidth: 160, truncate: true },
+        { id: 'status', label: 'Status', width: 'fit' },
+        { id: 'channel', label: 'Channel', width: 'fit', hideBelow: 'tablet' },
       ]}
       rows={orders}
       renderCell={orderCell}
-      emptyContent="Trống"
+      emptyContent="Empty"
     />
     <G.DataTable<Order>
-      label="Đơn hàng"
+      label="Orders"
       columns={[
-        { id: 'code', label: 'Mã đơn', isRowHeader: true, width: 'fit' },
-        { id: 'customer', label: 'Khách', width: 'fill', minWidth: 120, truncate: true },
-        { id: 'product', label: 'Sản phẩm', truncate: true, hideBelow: 'desktop' },
-        { id: 'total', label: 'Tổng', isNumeric: true },
-        { id: 'status', label: 'Trạng thái', width: 'fit' },
-        { id: 'date', label: 'Ngày', width: 'fit', hideBelow: 'tablet' },
+        { id: 'code', label: 'Order code', isRowHeader: true, width: 'fit' },
+        { id: 'customer', label: 'Customer', width: 'fill', minWidth: 120, truncate: true },
+        { id: 'product', label: 'Product', truncate: true, hideBelow: 'desktop' },
+        { id: 'total', label: 'Total', isNumeric: true },
+        { id: 'status', label: 'Status', width: 'fit' },
+        { id: 'date', label: 'Date', width: 'fit', hideBelow: 'tablet' },
       ]}
       rows={orders}
       renderCell={orderCell}
-      emptyContent="Trống"
+      emptyContent="Empty"
     />
   </div>
 );
@@ -412,21 +412,21 @@ export const ColumnsNeverCollapse: Story = {
 
 /**
  * 0.37.9 (owner law): short columns NEVER wrap. A 4-column table with no widths given: the first text column fills and truncates, the status, date and money columns are `fit`
- * (nowrap, as wide as their content), at a 1440 and a 1024 container ("Đã thanh toán" stays on one line).
+ * (nowrap, as wide as their content), at a 1440 and a 1024 container ("Paid" stays on one line).
  */
 const FourColumns = ({ width }: { readonly width: number }) => (
   <div style={{ width }} data-grammar-never-collapse={width}>
     <G.DataTable<Order>
-      label={`Hóa đơn ${width}`}
+      label={`Items ${width}`}
       columns={[
-        { id: 'customer', label: 'Khách', isRowHeader: true },
-        { id: 'status', label: 'Trạng thái' },
-        { id: 'date', label: 'Ngày' },
-        { id: 'total', label: 'Tổng', isNumeric: true },
+        { id: 'customer', label: 'Customer', isRowHeader: true },
+        { id: 'status', label: 'Status' },
+        { id: 'date', label: 'Date' },
+        { id: 'total', label: 'Total', isNumeric: true },
       ]}
-      rows={[...orders, { id: 'o3', code: 'DH-1003', customer: 'Công ty TNHH Một Thành Viên Hoa Tươi Đà Lạt Phương Nam Chi Nhánh Số Ba', product: '', total: '12.500.000 đ', status: 'Đã thanh toán', date: '04/11/2026', channel: '' }]}
+      rows={[...orders, { id: 'o3', code: 'OR-1003', customer: 'Initech Limited Liability Company Southern Branch Office Number Three', product: '', total: '$12,500.00', status: 'Paid', date: '04/11/2026', channel: '' }]}
       renderCell={orderCell}
-      emptyContent="Trống"
+      emptyContent="Empty"
     />
   </div>
 );
@@ -454,20 +454,20 @@ export const FourColumnsNeverWrap: Story = {
 };
 
 const zoneProps = [
-  { kind: 'search', label: 'Tìm hóa đơn', value: '', onChange: noop, placeholder: 'Tìm hóa đơn' },
-  { kind: 'filter', label: 'Trạng thái', items: [{ id: 'all', label: 'Tất cả' }, { id: 'paid', label: 'Đã thanh toán' }], selectedKey: 'all', onSelect: noop, overflowLabel: 'Thêm', moreLabel: (count: number) => `${count} bộ lọc` },
+  { kind: 'search', label: 'Search items', value: '', onChange: noop, placeholder: 'Search items' },
+  { kind: 'filter', label: 'Status', items: [{ id: 'all', label: 'All' }, { id: 'paid', label: 'Paid' }], selectedKey: 'all', onSelect: noop, overflowLabel: 'More', moreLabel: (count: number) => `${count} filters` },
 ] as const;
 
 const TableOnTheWell = () => (
   <div data-story-well="true" style={{ maxInlineSize: '48rem' }}>
     <G.SurfaceCard
       kind="table"
-      label="Hóa đơn"
+      label="Items"
       headers={[...zoneProps]}
-      columns={[{ id: 'name', label: 'Khách hàng' }, { id: 'status', label: 'Trạng thái' }, { id: 'amount', label: 'Số tiền', align: 'end', numeric: true }]}
-      rows={invoices.slice(0, 4).map((row) => ({ id: row.id, cells: { name: row.name, status: row.status, amount: row.amount } }))}
-      empty="Chưa có hóa đơn."
-      footers={[{ kind: 'paging', page: 1, pageCount: 2, onPage: noop, labels: { nav: 'Các trang', previous: 'Trước', next: 'Sau', page: (n: number) => `Trang ${n}`, summary: '1–4 trong 8 kết quả' } }]}
+      columns={[{ id: 'name', label: 'Customer' }, { id: 'status', label: 'Status' }, { id: 'amount', label: 'Amount', align: 'end', numeric: true }]}
+      rows={itemRows.slice(0, 4).map((row) => ({ id: row.id, cells: { name: row.name, status: row.status, amount: row.amount } }))}
+      empty="No items yet."
+      footers={[{ kind: 'paging', page: 1, pageCount: 2, onPage: noop, labels: { nav: 'Pages', previous: 'Previous', next: 'Next', page: (n: number) => `Page ${n}`, summary: '1–4 of 8 results' } }]}
     />
   </div>
 );
@@ -488,10 +488,10 @@ const probeOf = (host: HTMLElement, property: 'background-color' | 'color', toke
 export const TableLooksLikeAList: Story = {
   render: () => (
     <G.PaneGrid label="Table looks" areas={['main aside']} columns={['fill', 'standard']}>
-      <G.Pane area="main" label="Giếng"><G.PaneSection><TableOnTheWell /></G.PaneSection></G.Pane>
-      <G.Pane area="aside" surface label="Bảng trên nền trắng">
+      <G.Pane area="main" label="Well"><G.PaneSection><TableOnTheWell /></G.PaneSection></G.Pane>
+      <G.Pane area="aside" surface label="Table on white">
         <G.PaneSection>
-          <G.DataTable label="Hóa đơn" columns={columns} rows={invoices.slice(0, 3)} renderCell={cell} emptyContent="Chưa có hóa đơn." />
+          <G.DataTable label="Items" columns={columns} rows={itemRows.slice(0, 3)} renderCell={cell} emptyContent="No items yet." />
         </G.PaneSection>
       </G.Pane>
     </G.PaneGrid>

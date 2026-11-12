@@ -228,7 +228,7 @@ test("live time and countdowns use the Grammar clock while non-clock timers rema
       { filename: HOOK, code: "const tick = () => { setTimeout(() => { show(Date.now()); tick() }, 1000) }", errors: clock },
       { filename: HOOK, code: "function tick() { show(Date.now()); window.setTimeout(() => tick(), 1000) }", errors: clock },
       { filename: at("packages/other/src/time.ts"), code: "setInterval(() => show(Date.now()), 1000)", errors: clock },
-      { filename: at("packages/nivo-ui/src/leaves/RelativeTime/index.tsx"), code: "const timer = setInterval(() => show(Date.now()), 1000)", errors: clock },
+      { filename: at("packages/app-ui/src/leaves/RelativeTime/index.tsx"), code: "const timer = setInterval(() => show(Date.now()), 1000)", errors: clock },
     ],
   }))
 })

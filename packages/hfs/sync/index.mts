@@ -43,7 +43,6 @@ import { DB_DOCKERFILE, DB_IMAGE_APP, RETIRED_DB_DOCKERFILE } from '../db/image.
 import { byCodeUnit } from '../report/order.mjs';
 import { isRuntimeExampleApp } from '../runtime/scripts/lib/runtime-example.mjs';
 import { BUILD_MODULES, ciWorkflowCommands } from './ci-commands.mjs';
-import { MODULE_PREFIX, moduleNames, registryFiles } from '../scaffold/module-registry.mjs';
 import { canonImport, canonList } from './canon-layout.mjs';
 import { dependabotUpdates, hasDeclaredServices, readDeclaredQuality, readDeclaredBadges, sonarHostLine } from './quality-services.mjs';
 import { qualityServices } from '../runtime/scripts/hfs/ci-declaration.mjs';
@@ -104,7 +103,8 @@ type ParseYaml = (text: string) => any;
 export interface AppSourceFacts {
   runtimeExample: boolean; files: string[]; read: (file: string) => string; workPresent: boolean; hasImage: (file: string) => boolean;
   hasContracts: boolean; // the back end holds be/contracts/ (a back end that emits no contract has none)
-  modules?: readonly string[]; otherPackages?: readonly string[]; // the module packages (packages/module-<name>) and the other folders of packages/
+  /** The root workspace packages of the app: the names of the folders of packages/ that hold a package.json and a src/, sorted. */
+  rootPackages?: readonly string[];
   /** The unmeasured globs of each root package the project declares sound slots for (ext/manifest.json packages, PROJECT-LINT-3), by app-relative folder. */
   packageScopes?: Readonly<Record<string, readonly string[]>>;
   /** The default locale the app declares in its i18n routing source (the gallery's UI language, ruleParams.gallery); absent when none is declared. */
@@ -315,21 +315,21 @@ const SOURCE_SKIPPED = new Set(['node_modules', 'dist', 'coverage']);
  * their content. An app with no be folder has no source files.
  */
 /**
- * The packages of `packages/` that are neither a module package nor the registry: a folder that holds a `package.json` and a `src/` (an install folder
- * the workspaces leave there, `packages/node_modules`, is none).
+ * The root workspace packages of the app: every folder of `packages/` that holds a `package.json` and a `src/` (an install folder the workspaces
+ * leave there, `packages/node_modules`, is none).
  */
-function otherPackages(root: string): string[] {
+function rootPackagesOf(root: string): string[] {
   try {
     return fs.readdirSync(path.join(root, 'packages'), { withFileTypes: true })
-      .filter(entry => entry.isDirectory() && !entry.name.startsWith(MODULE_PREFIX) && entry.name !== 'modules'
+      .filter(entry => entry.isDirectory()
         && isFile(path.join(root, 'packages', entry.name, 'package.json'), { followLinks: false }) && fs.existsSync(path.join(root, 'packages', entry.name, 'src')))
       .map(entry => entry.name).sort(byCodeUnit);
   } catch { return []; }
 }
 
-/** The app-relative folders of the root packages whose logic the back end's unit run measures: every module package and every other package, never the registry. */
-export const rootPackageFolders = (source: Partial<Pick<AppSourceFacts, 'modules' | 'otherPackages'>> | undefined): string[] =>
-  [...(source?.modules ?? []).map(name => `packages/${MODULE_PREFIX}${name}`), ...(source?.otherPackages ?? []).map(name => `packages/${name}`)];
+/** The app-relative folders of the root packages, whose logic the back end's unit run measures. */
+export const rootPackageFolders = (source: Partial<Pick<AppSourceFacts, 'rootPackages'>> | undefined): string[] =>
+  (source?.rootPackages ?? []).map(name => `packages/${name}`);
 
 /** The i18n routing files an app declares its languages in: the product i18n package of a full app, then each web app's i18n module (FE-I18N-1). */
 function routingFiles(root: string): string[] {
@@ -363,8 +363,8 @@ export function appSource(root: string, { parseYaml, notices }: { parseYaml?: Pa
   };
   for (const dir of ['apps', 'src']) walk(dir);
   return { runtimeExample: isRuntimeExampleApp(root), files: files.sort(byCodeUnit), read: (file: string) => fs.readFileSync(path.join(root, 'be', file), 'utf8'),
-    modules: moduleNames(root), otherPackages: otherPackages(root),
-    packageScopes: Object.fromEntries([...moduleNames(root).map((name) => `packages/${MODULE_PREFIX}${name}`), ...otherPackages(root).map((name) => `packages/${name}`)].flatMap((folder) => {
+    rootPackages: rootPackagesOf(root),
+    packageScopes: Object.fromEntries(rootPackageFolders({ rootPackages: rootPackagesOf(root) }).flatMap((folder) => {
       const scope = declaredPackageScopes((file) => { try { return fs.readFileSync(path.join(root, file), 'utf8'); } catch { return null; } })(folder);
       return scope === null ? [] : [[folder, scope]];
     })),
@@ -404,7 +404,7 @@ export function jestCoverageSource(coverage: { roots: string[]; roles: string[];
  * `docker:build:<app>` builds the image of one app (the exact command its Dockerfile header states, tag `<project>/<app>:dev`) and
  * `docker:build` builds every image, one after the other, never pushing.
  */
-export function appScripts(app: ResolvedApp, source: Partial<Pick<AppSourceFacts, 'hasImage' | 'modules'>> | undefined): string {
+export function appScripts(app: ResolvedApp, source: Partial<Pick<AppSourceFacts, 'hasImage' | 'rootPackages'>> | undefined): string {
   const line = (name: string, command: string): string => `${JSON.stringify(name)}: ${JSON.stringify(command)},`;
   const be = app.sides.be.apps;
   const fe = app.sides.fe.apps;
@@ -510,23 +510,14 @@ export function jestPackagesSource(packages: PackagesCoverage): string {
 }
 
 /**
- * The managed files of the registry package for the module packages the app has (empty when it has none). An app that keeps its modules as data
- * (hfs.json `modules: "data"`) has no rendered registry: a module is a seed there, and packages/modules, if any, is the app's own.
- */
-function registryTargets(app: ResolvedApp, source: AppSourceFacts | undefined): RenderedTarget[] {
-  if (app.modules === 'data') return [];
-  return registryFiles(app.project, source?.modules ?? []).map((file): RenderedTarget => ({ path: file.path, scope: APP_SCOPE, mode: 'file', content: file.content, hash: hashOf(file.content) }));
-}
-
-/**
- * The root `eslint.config.mjs` of an app that has root workspace packages (packages/<name>: the agent SDK, a block library, a module package, the registry): no side config
- * reaches `packages/`, so this managed file lints their source by subpath. The back-end canon judges everything but the front-end subpaths
- * (`src/workbench/` outside its contract, `src/public/`), the front-end canon and the selected Grammar family those, each over the package view of
+ * The root `eslint.config.mjs` of an app that has root workspace packages (packages/<name>): no side config
+ * reaches `packages/`, so this managed file lints their source. The front-end canon and the selected Grammar family judge every `.tsx` file and the
+ * slots the project declares `lint: "fe"` (ext/manifest.json packages), the back-end canon every other file, each over the package view of
  * the app root. An app without a root package has no such file; the family factory for packages is the family's `<name>GrammarPackagesConfig`.
  * It is laid out as the canon Prettier config prints it (`canonList`, `canonImport`), so the app's format check passes it as rendered.
  */
 function packagesLintTargets(app: ResolvedApp, source: AppSourceFacts | undefined): RenderedTarget[] {
-  if (!(source?.modules?.length || source?.otherPackages?.length)) return [];
+  if (!source?.rootPackages?.length) return [];
   // The canon of a side lints the packages' subpaths only when the project declares that side (PROJECT-1): its canon is installed with it.
   const withFe = sideDeclared(app, 'fe');
   const grammar = withFe ? grammarLintFor(app.sides.fe.grammar) : null;
@@ -554,7 +545,7 @@ export function variables(app: ResolvedApp, scope: string, presets: Presets | nu
   const withFe = sideDeclared(app, 'fe');
   const providers = (app.sides.be.connections ?? []).map(connection => connection.provider);
   const quality = source.quality ?? qualityServices({});
-  // The root packages (the agent SDK, the module packages and the rest) are built before anything imports them (typecheck, lint, the fe build and the be
+  // The root packages are built before anything imports them (typecheck, lint, the fe build and the be
   // run), and their logic is measured by the back end's unit run like its own (packagesCoverage, BE-TEST-13).
   const rootPackages = packagesCoverage(rootPackageFolders(source), (folder) => source.packageScopes?.[folder] ?? null);
   const moduleDirs = rootPackages.folders;
@@ -673,7 +664,7 @@ function renderOnce(hfs: unknown, presets: Presets | null | undefined, { sonarKe
       .filter(target => !(app.edition === 'lite' && source?.workPresent === false && target.path === '.starciwork/.gitignore'))
       // The gallery serves on the base port + ruleParams.gallery.portOffset (R395): an app that declares no local.basePort has no port to render, and the rule asks for one.
       .filter(target => target.group !== 'gallery' || galleryPort(source?.stack?.basePort, galleryParams(manifest)) !== null);
-    return [...(scope === APP_SCOPE ? [...registryTargets(app, source), ...packagesLintTargets(app, source)] : []), ...targets.map((target): RenderedTarget => {
+    return [...(scope === APP_SCOPE ? packagesLintTargets(app, source) : []), ...targets.map((target): RenderedTarget => {
       const template = target.path === 'codecov.yml' && source?.quality?.codecov.enabled === false
         ? '{{header}}\n# Codecov is disabled in the manifest.\ncodecov:\n  require_ci_to_pass: false\n'
         : readTemplate(target.template);
@@ -814,7 +805,11 @@ export async function renderRepo(root: string, { presets, parseYaml, notices, ma
 
 /** The folders a lite app's sync retires: the generated Supabase row types nothing reads any more. */
 const LITE_RETIRED_DIRS = Object.freeze(['supabase/types']);
-/** The files a lite app's sync retires, each with the reason the dry run prints. */
+/** The files the sync of an app of either edition retires, each with the reason the dry run prints. */
+const RETIRED_FILES: Readonly<Record<string, string>> = Object.freeze({
+  '.github/workflows/e2e.yml': 'no workflow runs a world layer (R12): the e2e specs run on the local machine (npm run test:e2e, and the test:e2e row of the release gate)',
+});
+/** The files a lite app's sync retires beside those of every edition, each with the reason the dry run prints. */
 const LITE_RETIRED_FILES: Readonly<Record<string, string>> = Object.freeze({
   [RETIRED_DB_DOCKERFILE]: `the db image moved to ${DB_DOCKERFILE}`,
   'be/src/modules/domain/identity/persistence/entities/auth-user.entity.ts': 'the sign-in reaches accounts through the account doors (be/src/modules/domain/identity/persistence/account-doors.port.ts); the application role holds no grant on schema auth',
@@ -827,11 +822,10 @@ const readEdition = (read: (relative: string) => string | null): unknown => {
   try { return (JSON.parse(read('hfs.json') ?? 'null') as { edition?: unknown } | null)?.edition ?? null; } catch { return null; }
 };
 /** Why a retired file goes: a retired file's own reason, else the folder's. */
-const retiredReason = (file: string): string => LITE_RETIRED_FILES[file] ?? 'the lite edition generates no database types';
+const retiredReason = (file: string): string => RETIRED_FILES[file] ?? LITE_RETIRED_FILES[file] ?? 'the lite edition generates no database types';
 
-/** The app-relative files of the retired folders that still exist under `root` of a lite app; sync --execute deletes them, the dry run reports them. */
+/** The app-relative retired files, and files of the retired folders of a lite app, that still exist under `root`; sync --execute deletes them, the dry run reports them. */
 export function retiredFiles(root: string, hfs: { edition?: string } | null | undefined): string[] {
-  if (hfs?.edition !== 'lite') return [];
   const found: string[] = [];
   const walk = (rel: string): void => {
     const full = path.join(root, rel);
@@ -840,6 +834,8 @@ export function retiredFiles(root: string, hfs: { edition?: string } | null | un
     if (stat.isDirectory()) for (const name of fs.readdirSync(full).sort(byCodeUnit)) walk(`${rel}/${name}`);
     else found.push(rel);
   };
+  for (const file of Object.keys(RETIRED_FILES)) walk(file);
+  if (hfs?.edition !== 'lite') return found;
   for (const dir of LITE_RETIRED_DIRS) walk(dir);
   for (const file of Object.keys(LITE_RETIRED_FILES)) walk(file);
   return found;

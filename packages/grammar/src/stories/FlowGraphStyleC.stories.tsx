@@ -4,7 +4,7 @@ import * as G from '../common/index.js';
 import { Matrix, State } from './fixtures.js';
 
 /**
- * 0.37.27 (owner drawing C, "C trò yêu"): a steps graph reads LEFT → RIGHT by default and a branching step fans its children out down the page. Edges are
+ * 0.37.27 (owner drawing C): a steps graph reads LEFT → RIGHT by default and a branching step fans its children out down the page. Edges are
  * ORTHOGONAL ONLY (straight along x or y, a 10px rounded corner at every turn, siblings leaving one shared trunk); every edge STARTS with a round dot (a white
  * disc ringed in the edge's colour) and ends with a small solid triangle in its colour. Cards are white with a 1px border on the dotted ground, on the page
  * and in a Drawer. A run's path is green (taken edges and the cards it reached); the cards it did not reach are faded. The readable floor holds (zoom >= 0.8 since 0.37.29, pan).
@@ -14,27 +14,27 @@ export default meta;
 type Story = StoryObj;
 
 const nodes: ReadonlyArray<G.FlowGraphNode> = [
-  { id: 'new', kind: 'event', label: 'Có tin mới', description: 'Tin khách qua Zalo', tag: 'Kích hoạt' },
+  { id: 'new', kind: 'event', label: 'New message', description: 'Customer message by Chat', tag: 'Trigger' },
   {
-    id: 'intent', kind: 'condition', label: 'Hiểu ý khách', description: 'chọn hướng cho tin khách',
-    outputs: [{ id: 'buy', label: 'Muốn mua' }, { id: 'paid', label: 'Báo đã chuyển' }, { id: 'ask', label: 'Hỏi thông tin' }, { id: 'complain', label: 'Khiếu nại' }],
+    id: 'intent', kind: 'condition', label: 'Classify request', description: 'route the customer message',
+    outputs: [{ id: 'buy', label: 'Wants to buy' }, { id: 'paid', label: 'Payment sent' }, { id: 'ask', label: 'Asks a question' }, { id: 'complain', label: 'Complaint' }],
   },
-  { id: 'sales', kind: 'action', label: 'Tư vấn', description: 'giao Sales' },
-  { id: 'accounting', kind: 'action', label: 'Đối soát', description: 'giao Kế toán' },
-  { id: 'answer', kind: 'action', label: 'Trả lời', description: 'từ thông tin của tiệm' },
-  { id: 'receive', kind: 'action', label: 'Khiếu nại', description: 'xin lỗi khách, báo đội' },
-  { id: 'handoff', kind: 'end', label: 'Chuyển chủ tiệm' },
+  { id: 'sales', kind: 'action', label: 'Advise', description: 'assign Sales' },
+  { id: 'billing', kind: 'action', label: 'Reconcile', description: 'assign Billing' },
+  { id: 'answer', kind: 'action', label: 'Reply', description: 'from the shop info' },
+  { id: 'receive', kind: 'action', label: 'Complaint', description: 'apologise, tell the team' },
+  { id: 'handoff', kind: 'end', label: 'Hand to owner' },
 ];
 const edges: ReadonlyArray<G.FlowGraphEdge> = [
   { id: 'e1', source: 'new', target: 'intent' },
   { id: 'e2', source: 'intent', target: 'sales', sourcePort: 'buy' },
-  { id: 'e3', source: 'intent', target: 'accounting', sourcePort: 'paid' },
+  { id: 'e3', source: 'intent', target: 'billing', sourcePort: 'paid' },
   { id: 'e4', source: 'intent', target: 'answer', sourcePort: 'ask' },
   { id: 'e5', source: 'intent', target: 'receive', sourcePort: 'complain' },
   { id: 'e6', source: 'receive', target: 'handoff' },
 ];
 
-/** The run that took "Muốn mua": the trigger, the intent and Tư vấn reached, the rest not. */
+/** The run that took "Wants to buy": the trigger, the intent and Advise reached, the rest not. */
 const runNodes: ReadonlyArray<G.FlowGraphNode> = nodes.map((node) => (node.id === 'new' || node.id === 'intent' || node.id === 'sales' ? { ...node, status: 'done' as const } : node));
 const runEdges: ReadonlyArray<G.FlowGraphEdge> = edges.map((edge) => ({ ...edge, isTaken: edge.id === 'e1' || edge.id === 'e2' }));
 
@@ -73,17 +73,17 @@ const assertStyleC = (graph: HTMLElement) => {
     expect(getComputedStyle(dot).fill).not.toBe(getComputedStyle(dot).stroke);
   }
   // A branching step fans down: the four children of the intent stand at one x, one below the other.
-  const children = ['sales', 'accounting', 'answer', 'receive'].map((id) => graph.querySelector<HTMLElement>(`[data-grammar-flow-node="${id}"]`)!.getBoundingClientRect());
+  const children = ['sales', 'billing', 'answer', 'receive'].map((id) => graph.querySelector<HTMLElement>(`[data-grammar-flow-node="${id}"]`)!.getBoundingClientRect());
   for (const box of children) expect(Math.abs(box.left - children[0]!.left)).toBeLessThan(1);
   for (let index = 1; index < children.length; index += 1) expect(children[index]!.top).toBeGreaterThan(children[index - 1]!.bottom);
 };
 
 export const LeTanBranching: Story = {
-  name: 'Lễ tân: left → right, a four-way fan, orthogonal edges with a start dot',
+  name: 'Reception: left → right, a four-way fan, orthogonal edges with a start dot',
   render: () => (
     <Matrix maxWidth={1160}>
       <State label="Default steps graph (LR)" direction="column">
-        <G.FlowGraph label="Lễ tân" layout="steps" showControls nodes={nodes} edges={edges} />
+        <G.FlowGraph label="Reception" layout="steps" showControls nodes={nodes} edges={edges} />
       </State>
     </Matrix>
   ),
@@ -98,11 +98,11 @@ export const LeTanBranching: Story = {
 };
 
 export const LeTanRun: Story = {
-  name: 'Lễ tân run: the path taken is green, the rest faded',
+  name: 'Reception run: the path taken is green, the rest faded',
   render: () => (
     <Matrix maxWidth={1160}>
-      <State label="A run that took “Muốn mua”" direction="column">
-        <G.FlowGraph label="Lễ tân, lần chạy" layout="steps" nodes={runNodes} edges={runEdges} />
+      <State label="A run that took “Wants to buy”" direction="column">
+        <G.FlowGraph label="Reception, run" layout="steps" nodes={runNodes} edges={runEdges} />
       </State>
     </Matrix>
   ),
@@ -131,9 +131,9 @@ export const LeTanInDrawer: Story = {
   name: 'The same in a Drawer (versions diff): dotted ground, held at zoom 0.8, pans',
   parameters: { grammar: { minHeight: '48rem' } },
   render: () => (
-    <G.Drawer defaultOpen placement="right" title="Bản 1, bản đầu tiên" closeLabel="Đóng" trigger={<G.Button intent="alternative">Mở</G.Button>}>
-      <G.Section title="Sơ đồ" headingLevel={2}>
-        <G.FlowGraph label="Lễ tân, bản 1" layout="steps" isInteractive={false} fit="contain" height="lg" nodes={runNodes} edges={runEdges} />
+    <G.Drawer defaultOpen placement="right" title="Version 1, the first version" closeLabel="Close" trigger={<G.Button intent="alternative">Open</G.Button>}>
+      <G.Section title="Diagram" headingLevel={2}>
+        <G.FlowGraph label="Reception, version 1" layout="steps" isInteractive={false} fit="contain" height="lg" nodes={runNodes} edges={runEdges} />
       </G.Section>
     </G.Drawer>
   ),

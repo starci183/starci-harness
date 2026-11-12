@@ -1,5 +1,5 @@
 /**
- * Which destinations a course body may link to or load. Markdown is authored text, so a destination is data: only these schemes
+ * Which destinations a document body may link to or load. Markdown is authored text, so a destination is data: only these schemes
  * become a link or an image; anything else (`javascript:`, `data:`, `vbscript:`) is shown as its words, never as a target.
  */
 

@@ -48,7 +48,7 @@ const firstKey = (keys: Iterable<Key>): string | undefined => {
 /** The stroke letters Unicode does not decompose, with the base letter each folds to. */
 const STROKE_LETTERS: Readonly<Record<string, string>> = { đ: "d", ð: "d", ø: "o", ł: "l", ħ: "h" }
 
-/** Lower case without combining marks or strokes, so "ke toan" finds "Kế toán" and "naive" finds "naïve": no language is named. */
+/** Lower case without combining marks or strokes, so "cafe" finds "Café" and "naive" finds "naïve": no language is named. */
 const foldForSearch = (text: string): string =>
     text.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[đðøłħ]/g, (letter) => STROKE_LETTERS[letter] ?? letter)
 

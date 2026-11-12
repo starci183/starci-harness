@@ -10,16 +10,16 @@ Every rule below is an error in `starciFeConfig`; none can be switched off or su
 
 `fetch` (and `Request`, `EventSource`, `navigator.sendBeacon`) lives in the API layer (`modules/api`, or the shared api package). The global is found by scope resolution: `fetch(...)`, `globalThis.fetch`, `window.fetch`, `self.fetch`, `const f = fetch` and `const { fetch } = globalThis` all count, a local or imported `fetch` does not. The canonical transports are placed by module specifier (`import`, `export ... from`, `import()` and `require`): `@apollo/client` only in the API layer, `axios` only in its REST calls (`modules/api/rest/`), `socket.io-client` only in `hooks/socketio/` (`placed`). Another HTTP library (got, undici, ofetch, `@apollo/server`, ...) is refused everywhere (`library`); one the fe-stack catalog forbids by name (ky, graphql-request, urql, ...) is `fe-stack-import`'s finding.
 
-**Invalid** (`src/hooks/course/useCourse.ts`)
+**Invalid** (`src/hooks/project/useProject.ts`)
 
 ```ts
 const r = await fetch(url)
 ```
 
-**Valid** (`src/hooks/swr/api/graphql/queries/useQueryCourseSwr.ts`)
+**Valid** (`src/hooks/swr/api/graphql/queries/useQueryProjectSwr.ts`)
 
 ```ts
-const swr = useSWR([QUERY_COURSE_SWR_KEY, id], () => queryCourse({ request: { id } }))
+const swr = useSWR([QUERY_PROJECT_SWR_KEY, id], () => queryProject({ request: { id } }))
 ```
 
 **Finding code:** `FE_TRANSPORT_OWNER`
@@ -121,18 +121,18 @@ if (!res.ok) return toOutcome(res.status)
 
 A transport response body is narrowed from `unknown` or typed by a generated wire type (a type imported from a `__generated__/` module), never by a hand-written one: `(await response.json()) as unknown` is the sanctioned entry and does not fire; an assertion or annotation of a `.json()` read (directly, or through a `const` initialised with one) to any other type does. A GraphQL document (a `gql`/`graphql` tagged template or a string that reads as one) is written only in the API layer, one file per operation (`graphql/queries/query-<x>.ts`, `graphql/mutations/mutation-<x>.ts`), where codegen reads it; outside the layer it is refused. A hand-declared interface is not judged by its name; only a response read typed by hand is.
 
-**Invalid** (`src/modules/api/graphql/queries/query-course.ts`)
+**Invalid** (`src/modules/api/graphql/queries/query-project.ts`)
 
 ```ts
-const x = (await res.json()) as Course
+const x = (await res.json()) as Project
 ```
 
-**Valid** (`src/modules/api/graphql/queries/query-course.ts`)
+**Valid** (`src/modules/api/graphql/queries/query-project.ts`)
 
 ```ts
-import type { CourseQuery } from "../__generated__/graphql"
+import type { ProjectQuery } from "../__generated__/graphql"
 const raw = (await res.json()) as unknown
-const x: CourseQuery = parse(raw)
+const x: ProjectQuery = parse(raw)
 ```
 
 **Finding code:** `FE_WIRE_GENERATED`
@@ -145,13 +145,13 @@ const x: CourseQuery = parse(raw)
 
 A `switch` over an Outcome's `kind` has a case for every kind (catalogue R51, sub-check `FE_OUTCOME_KIND_UNHANDLED`).
 
-**Invalid** (`src/hooks/course/useCourse.ts`)
+**Invalid** (`src/hooks/project/useProject.ts`)
 
 ```tsx
 switch (outcome.kind) { case "ok": return outcome.data; default: return null }
 ```
 
-**Valid** (`src/hooks/course/useCourse.ts`)
+**Valid** (`src/hooks/project/useProject.ts`)
 
 ```tsx
 switch (outcome.kind) {
@@ -173,7 +173,7 @@ switch (outcome.kind) {
 
 A result union (`success` / `ok` / `kind` discriminant) is declared only in the outcome-home slot (`outcomeHome: true` in the slot manifest: `modules/api/graphql/types.ts`, or the api package's `src/graphql/types.ts`); elsewhere the code composes `GraphQLResponse<T>`. A root workspace package, which cannot import it, names its one union in its `package.json` (`"starci": { "outcome": { "name": "AgentResult", "file": "src/workbench/outcome.ts" } }`): that alias, in that file, is its outcome home, and every other result union of the package is refused.
 
-A union type alias is a result union when its resolved members are all object types that carry the same literal-typed discriminant in the result vocabulary: `success` or `ok` (each member pins it to one value, `true` and `false` both present) or `kind` (at least one literal of the Outcome vocabulary: `ok`, `refused`, `forbidden`, `invalid`, `not-found`, `unavailable`). The members are read through the type checker, so `Ok<T> | Failure` and intersections are seen as what they are; no name (`*Outcome`, `*Result`) decides anything. UI state unions (`status`, `state`, `type`, a `kind` of tree nodes or menu items) are not result vocabulary and pass; so does an alias that only composes the one union (`type Read = Outcome<Course>`, `Exclude<Outcome<T>, ...>`). `Outcome<T> | { ok: false; kind: "conflict" }` adds an arm to the one union and is refused.
+A union type alias is a result union when its resolved members are all object types that carry the same literal-typed discriminant in the result vocabulary: `success` or `ok` (each member pins it to one value, `true` and `false` both present) or `kind` (at least one literal of the Outcome vocabulary: `ok`, `refused`, `forbidden`, `invalid`, `not-found`, `unavailable`). The members are read through the type checker, so `Ok<T> | Failure` and intersections are seen as what they are; no name (`*Outcome`, `*Result`) decides anything. UI state unions (`status`, `state`, `type`, a `kind` of tree nodes or menu items) are not result vocabulary and pass; so does an alias that only composes the one union (`type Read = Outcome<Project>`, `Exclude<Outcome<T>, ...>`). `Outcome<T> | { ok: false; kind: "conflict" }` adds an arm to the one union and is refused.
 
 **Invalid** (`src/hooks/invite/useInvite.ts`)
 

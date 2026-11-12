@@ -33,12 +33,12 @@ function appWithPackages(context: TestContext, { config = true }: { config?: boo
   write('hfs.json', JSON.stringify({ hfs: 3, kind: 'app', project: 'fixture', sides: { be: { apps: [{ name: 'api', kind: 'api' }] }, fe: { grammar: 'core', apps: [{ name: 'web', kind: 'next' }] } } }));
   write('package.json', JSON.stringify({ name: 'fixture', private: true, workspaces: ['packages/*'] }));
   if (config) write('eslint.config.mjs', rootConfig);
-  write('packages/agent-sdk/package.json', JSON.stringify({ name: '@fixture/agent-sdk', private: true }));
-  write('packages/agent-sdk/src/index.ts', 'export const sdk = 1;\n');
-  write('packages/agent-sdk/src/node/index.ts', 'export const node = 1;\n');
-  write('packages/agent-sdk/src/workbench/View.tsx', 'export const View = 1;\n');
-  write('packages/agent-sdk/dist/index.ts', 'export const built = 1;\n');
-  write('packages/agent-sdk/node_modules/dep/index.ts', 'export const dep = 1;\n');
+  write('packages/sdk/package.json', JSON.stringify({ name: '@fixture/sdk', private: true }));
+  write('packages/sdk/src/index.ts', 'export const sdk = 1;\n');
+  write('packages/sdk/src/node/index.ts', 'export const node = 1;\n');
+  write('packages/sdk/src/workbench/View.tsx', 'export const View = 1;\n');
+  write('packages/sdk/dist/index.ts', 'export const built = 1;\n');
+  write('packages/sdk/node_modules/dep/index.ts', 'export const dep = 1;\n');
   return root;
 }
 
@@ -46,7 +46,7 @@ function appWithPackages(context: TestContext, { config = true }: { config?: boo
 function recorder(root: string, specs: LinterSpec[]): LinterRunner {
   return async (spec) => {
     specs.push(spec);
-    const files = ['packages/agent-sdk/src/index.ts', 'packages/agent-sdk/src/node/index.ts', 'packages/agent-sdk/src/workbench/View.tsx'];
+    const files = ['packages/sdk/src/index.ts', 'packages/sdk/src/node/index.ts', 'packages/sdk/src/workbench/View.tsx'];
     return { results: files.map((file) => ({
       filePath: path.join(root, file),
       messages: file.endsWith('node/index.ts') ? [{ ruleId: 'starci-be/explicit-export-surface', severity: 2, line: 1, column: 14, message: '[HFS_EXPLICIT_EXPORT_SURFACE] `node` is exported with an inferred type' }] : [],
@@ -66,7 +66,7 @@ test('the packages are a lint scope of the app root: run from the root over pack
   assert.deepEqual(specs[0]?.args, ['--format', 'json', 'packages']);
   assert.equal(specs[0]?.files, 3, 'the build output, the installed packages and nothing else are left out of the scope');
   assert.deepEqual(result.engine.sides, { packages: { files: 3 } });
-  assert.deepEqual(result.findings.map((finding) => [finding.path, finding.code, finding.rule, finding.line]), [['packages/agent-sdk/src/node/index.ts', 'HFS_EXPLICIT_EXPORT_SURFACE', 'starci-be/explicit-export-surface', 1]]);
+  assert.deepEqual(result.findings.map((finding) => [finding.path, finding.code, finding.rule, finding.line]), [['packages/sdk/src/node/index.ts', 'HFS_EXPLICIT_EXPORT_SURFACE', 'starci-be/explicit-export-surface', 1]]);
 });
 
 test('without the root config an app has no packages scope: the sides are the whole lint', async (t) => {
@@ -85,9 +85,9 @@ test('a changed list reaches the packages scope by its app-relative files only',
   assert.deepEqual(quiet.engine.sides, { packages: { files: 0, skipped: 'no changed source file' } });
   assert.equal(specs.length, 0);
   const seen: LinterSpec[] = [];
-  const listed = await eslintRepository({ repoRoot: root, app: app(root), opts: { side: 'packages' }, changed: ['packages/agent-sdk/src/node/index.ts'], existing: ['packages/agent-sdk/src/node/index.ts'], run: async (spec) => { seen.push(spec); return { results: [{ filePath: path.join(root, 'packages/agent-sdk/src/node/index.ts'), messages: [] }] }; } });
+  const listed = await eslintRepository({ repoRoot: root, app: app(root), opts: { side: 'packages' }, changed: ['packages/sdk/src/node/index.ts'], existing: ['packages/sdk/src/node/index.ts'], run: async (spec) => { seen.push(spec); return { results: [{ filePath: path.join(root, 'packages/sdk/src/node/index.ts'), messages: [] }] }; } });
   assert.deepEqual(listed.errors, []);
-  assert.deepEqual(seen[0]?.list, ['packages/agent-sdk/src/node/index.ts']);
+  assert.deepEqual(seen[0]?.list, ['packages/sdk/src/node/index.ts']);
   assert.equal(seen[0]?.cwd, root);
 });
 

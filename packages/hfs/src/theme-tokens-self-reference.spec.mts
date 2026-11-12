@@ -1,13 +1,13 @@
 // A custom property that names itself (`--accent: var(--accent)`) is invalid at computed-value time and blanks the colour it is meant to carry.
 // The theme-tokens codemod renames the private `--starci-core-*` aliases onto HeroUI's names; an alias whose rename names itself is dropped, not
-// written, and a rule block it leaves empty goes with the comment that introduced it. The before-text is the brand layer of a Nivo app as it stood.
+// written, and a rule block it leaves empty goes with the comment that introduced it. The before-text is the brand layer of a reference app as it stood.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { transformThemeTokens } from '../codemod/theme-tokens.mjs';
 
 const run = (text: string) => transformThemeTokens({ text, file: 'fe/apps/web/src/modules/brand/brand.css' });
 
-const NIVO_BEFORE = `:root,
+const APP_BEFORE = `:root,
 .light {
     --starci-core-accent-text: color-mix(in oklab, var(--accent) 70%, var(--foreground));
 }
@@ -46,8 +46,8 @@ const NIVO_BEFORE = `:root,
 }
 `;
 
-test('1. the twenty aliases of a Nivo brand layer are dropped, not renamed onto themselves; what the block also holds stays', () => {
-  const result = run(NIVO_BEFORE);
+test('1. the twenty aliases of an app brand layer are dropped, not renamed onto themselves; what the block also holds stays', () => {
+  const result = run(APP_BEFORE);
   assert.equal(result.text, `:root,
 .light {
     --accent-soft-foreground: color-mix(in oklab, var(--accent) 70%, var(--foreground));
@@ -117,6 +117,6 @@ test('3. an alias that points at another token is renamed as before, and a block
 });
 
 test('4. the second run changes nothing', () => {
-  const once = run(NIVO_BEFORE).text;
+  const once = run(APP_BEFORE).text;
   assert.equal(run(once).text, once);
 });

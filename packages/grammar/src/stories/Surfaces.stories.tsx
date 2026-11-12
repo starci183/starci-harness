@@ -26,7 +26,7 @@ export const SurfaceCardLabelByKind: Story = {
     <div data-story-label-by-kind="true" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '1.5rem', maxWidth: 720 }}>
       <div data-story-kind="section">
         <G.SurfaceCard label="Group info">
-          <G.Text>Keep the streak going with one short lesson a day.</G.Text>
+          <G.Text>Keep the streak going with one short task a day.</G.Text>
         </G.SurfaceCard>
       </div>
       <div data-story-kind="tile">
@@ -64,8 +64,8 @@ const FloatingCardPage = () => (
   <div data-story-dna-page="true" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0, maxWidth: 640 }}>
     <G.Section title="Weekly review" description="A floating card among other content.">
     <div data-story-dna="floating">
-      <G.SurfaceCard label="This week" fact="3 lessons">
-        <G.Text>Keep the streak going with one short lesson a day.</G.Text>
+      <G.SurfaceCard label="This week" fact="3 items">
+        <G.Text>Keep the streak going with one short task a day.</G.Text>
         <div data-story-dna="controls" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '0.75rem', alignItems: 'end' }}>
           <G.Input id="dna-input" name="name" label="Name" />
           <G.Select label="Plan" options={dnaPlanOptions} defaultValue="team" />
@@ -138,14 +138,14 @@ export const SurfaceCard: Story = {
   render: () => (
     <Matrix maxWidth={640}>
       <State label="Labelled with a fact" direction="column">
-        <G.SurfaceCard label="This week" fact="3 lessons">
-          <G.Text>Keep the streak going with one short lesson a day.</G.Text>
+        <G.SurfaceCard label="This week" fact="3 items">
+          <G.Text>Keep the streak going with one short task a day.</G.Text>
         </G.SurfaceCard>
       </State>
       <State label="Whole-card action (link) and highlight (selected)" direction="column">
-        <G.SurfaceCard ariaLabel="Grammar basics" wholeAction={{ kind: 'link', href: '#course', label: 'Open Grammar basics' }}>
+        <G.SurfaceCard ariaLabel="Grammar basics" wholeAction={{ kind: 'link', href: '#item', label: 'Open Grammar basics' }}>
           <G.Heading level={3}>Grammar basics</G.Heading>
-          <G.Text tone="muted">12 lessons</G.Text>
+          <G.Text tone="muted">12 items</G.Text>
         </G.SurfaceCard>
         <G.SurfaceCard label="Recommended" isHighlight>
           <G.Text>Highlighted surface.</G.Text>
@@ -321,13 +321,13 @@ export const SurfaceCardList: Story = {
         />
       </State>
       <State label="Loading (3 skeleton rows by default)" direction="column">
-        <G.SurfaceCard kind="list" label="Saved lessons" isLoading items={[]} empty={<G.EmptyNotice message="Nothing saved yet." />} />
+        <G.SurfaceCard kind="list" label="Saved items" isLoading items={[]} empty={<G.EmptyNotice message="Nothing saved yet." />} />
       </State>
       <State label="Loading (the rows it was given, as geometry)" direction="column">
-        <G.SurfaceCard kind="list" label="Saved lessons" isLoading items={checkRows} empty={<G.EmptyNotice message="Nothing saved yet." />} />
+        <G.SurfaceCard kind="list" label="Saved items" isLoading items={checkRows} empty={<G.EmptyNotice message="Nothing saved yet." />} />
       </State>
       <State label="Empty (a notice, not a list)" direction="column">
-        <G.SurfaceCard kind="list" label="Saved" items={[]} empty={<G.EmptyNotice message="Nothing saved yet." description="Saved lessons appear here." />} />
+        <G.SurfaceCard kind="list" label="Saved" items={[]} empty={<G.EmptyNotice message="Nothing saved yet." description="Saved items appear here." />} />
       </State>
     </Matrix>
   ),
@@ -338,14 +338,14 @@ export const PressableRowChevron: Story = {
   render: () => (
     <Matrix maxWidth={640}>
       <State label="onPress, href, with a fact, with a command (no chevron), plain (no chevron); loading keeps the space" direction="column">
-        <G.Section kind="list" title="Courses" empty={<G.EmptyNotice message="Nothing here." />} items={[
-          { id: 'press', title: 'Open the course', description: 'Pressing the row opens it', onPress: noop },
+        <G.Section kind="list" title="Items" empty={<G.EmptyNotice message="Nothing here." />} items={[
+          { id: 'press', title: 'Open the item', description: 'Pressing the row opens it', onPress: noop },
           { id: 'fact', title: 'With a fact', meta: { text: '8 min ago' }, badges: [{ label: 'New' }], onPress: noop },
-          { id: 'href', title: 'A link row', href: '#course' },
+          { id: 'href', title: 'A link row', href: '#item' },
           { id: 'action', title: 'Has its own command', onPress: noop, action: { label: 'Resume', press: noop } },
           { id: 'plain', title: 'Not pressable' },
         ]} />
-        <G.Section kind="list" title="Loading" isLoading empty={<G.EmptyNotice message="Nothing here." />} items={[{ id: 'a', title: 'Open the course', description: 'Pressing the row opens it', onPress: noop }]} />
+        <G.Section kind="list" title="Loading" isLoading empty={<G.EmptyNotice message="Nothing here." />} items={[{ id: 'a', title: 'Open the item', description: 'Pressing the row opens it', onPress: noop }]} />
       </State>
     </Matrix>
   ),
@@ -369,7 +369,7 @@ export const SurfaceCardListRow: Story = {
               leading: { icon: BookGlyph },
               title: 'Main account',
               badges: [{ label: 'Connected', tone: 'success', isDot: true }, { label: 'Test' }],
-              description: 'Bank A · •••• 4321 · Holder name · Used by: Accounting',
+              description: 'Bank A · •••• 4321 · Holder name · Used by: Billing',
               menu: { label: 'Options for Main account', entries: [{ id: 'rename', label: 'Rename' }] },
             },
             {
@@ -531,14 +531,14 @@ export const FigureDestinations: Story = {
 const AccordionCardDemo = () => {
   const [open, setOpen] = useState<ReadonlySet<string>>(new Set(['week-1']));
   const weeks = [
-    { id: 'week-1', title: 'Week 1', meta: '3 lessons', body: 'Articles, plurals and pronouns.' },
-    { id: 'week-2', title: 'Week 2', meta: '4 lessons', body: 'Present tenses.' },
+    { id: 'week-1', title: 'Week 1', meta: '3 items', body: 'Articles, plurals and pronouns.' },
+    { id: 'week-2', title: 'Week 2', meta: '4 items', body: 'Present tenses.' },
     { id: 'week-3', title: 'Week 3', meta: 'Locked', body: 'Past tenses.', isDisabled: true },
   ];
   return (
     <G.SurfaceCard
       kind="accordion"
-      label="Course outline"
+      label="Outline"
       items={weeks.map((week) => ({
         id: week.id,
         title: week.title,
@@ -578,7 +578,7 @@ export const SurfaceCardAccordion: Story = {
       <State label="Rows: one open (selected), one disabled" direction="column"><AccordionCardDemo /></State>
       <State label="Single item, collapsed" direction="column"><SingleAccordionDemo /></State>
       <State label="Loading" direction="column">
-        <G.SurfaceCard kind="accordion" label="Course outline" isLoading onItemOpenChange={noop} items={[{ id: 'w1', title: 'Week 1', meta: '3 lessons', body: 'x', isOpen: false }, { id: 'w2', title: 'Week 2', meta: '4 lessons', body: 'x', isOpen: false }]} />
+        <G.SurfaceCard kind="accordion" label="Outline" isLoading onItemOpenChange={noop} items={[{ id: 'w1', title: 'Week 1', meta: '3 items', body: 'x', isOpen: false }, { id: 'w2', title: 'Week 2', meta: '4 items', body: 'x', isOpen: false }]} />
       </State>
     </Matrix>
   ),
@@ -659,8 +659,8 @@ export const SurfaceCardTile: Story = {
       <State label="A grid of tiles: icon, logo and avatar marks; a status; an action or a whole-card link" direction="column">
         <G.Grid kind="cards">
           <G.SurfaceCard kind="tile" name="Google Drive" mark={{ icon: BookGlyph }} description="Reads the files you share with the agent." badge={{ label: 'Connected', tone: 'success', isDot: true }} action={{ label: 'Open', press: noop }} />
-          <G.SurfaceCard kind="tile" name="SePay" mark={{ logo: { src: placeholderImage('Pay', 40), alt: '' } }} description="Matches incoming payments." badge={{ label: 'Not set up', tone: 'muted', isDot: true }} action={{ label: 'Set up', press: noop }} />
-          <G.SurfaceCard kind="tile" name="Zalo OA" mark={{ avatar: { name: 'Zalo OA', kind: 'agent' } }} description="Answers customers on Zalo." wholeAction={{ kind: 'link', href: '#zalo', label: 'Open Zalo OA' }} />
+          <G.SurfaceCard kind="tile" name="Payments" mark={{ logo: { src: placeholderImage('Pay', 40), alt: '' } }} description="Matches incoming payments." badge={{ label: 'Not set up', tone: 'muted', isDot: true }} action={{ label: 'Set up', press: noop }} />
+          <G.SurfaceCard kind="tile" name="Chat channel" mark={{ avatar: { name: 'Chat channel', kind: 'agent' } }} description="Answers customers in chat." wholeAction={{ kind: 'link', href: '#chat', label: 'Open Chat channel' }} />
         </G.Grid>
       </State>
       <State label="Loading" direction="column">
@@ -677,10 +677,10 @@ export const EmptyNotice: Story = {
   render: () => (
     <Matrix maxWidth={560}>
       <State label="Message only" direction="column">
-        <G.EmptyNotice message="No lessons yet." />
+        <G.EmptyNotice message="No items yet." />
       </State>
       <State label="With icon and action" direction="column">
-        <G.EmptyNotice message="No saved lessons." description="Save a lesson to find it here." iconSource={BookGlyph} actionLabel="Browse lessons" actionStartContent={<G.Icon source={PlusGlyph} usage="leading" />} onAction={noop} />
+        <G.EmptyNotice message="No saved items." description="Save an item to find it here." iconSource={BookGlyph} actionLabel="Browse items" actionStartContent={<G.Icon source={PlusGlyph} usage="leading" />} onAction={noop} />
       </State>
       <State label="Action pending" direction="column">
         <G.EmptyNotice message="Nothing to import." actionLabel="Refresh" isActionPending onAction={noop} />
@@ -715,8 +715,8 @@ export const Section: Story = {
   render: () => (
     <Matrix maxWidth={720}>
       <State label="Region with count, trailing source meta and one page command" direction="column">
-        <G.Section title="Installations" count={2} meta="Inventoried at 10:00, 26 Sep 2026 (GMT+7)" description="Twelve short lessons." action={<G.Link variant="head" href="#">Share</G.Link>}>
-          <G.SurfaceCard label="Grammar basics" headingLevel={3}><G.Text>Everything the course covers.</G.Text></G.SurfaceCard>
+        <G.Section title="Installations" count={2} meta="Inventoried at 10:00, 26 Sep 2026 (GMT)" description="Twelve short notes." action={<G.Link variant="head" href="#">Share</G.Link>}>
+          <G.SurfaceCard label="Grammar basics" headingLevel={3}><G.Text>Everything the guide covers.</G.Text></G.SurfaceCard>
         </G.Section>
       </State>
       <State label="Long list with a filter row: Section of rows, section spacing" direction="column">
@@ -780,7 +780,7 @@ export const MediaFrame: Story = {
 
 export const MarkdownArticle: Story = {
   render: () => (
-    <G.MarkdownArticle ariaLabel="Lesson article">
+    <G.MarkdownArticle ariaLabel="Guide article">
       <h1>Articles in English</h1>
       <p>Use <strong>a</strong> before consonant sounds and <strong>an</strong> before vowel sounds.</p>
       <h2>Examples</h2>
@@ -801,7 +801,7 @@ export const FencedCodeBlock: Story = {
         <G.FencedCodeBlock language="tsx" code={'import { CoreGrammarRoot } from "../common/index.js"\n\nexport const App = () => <CoreGrammarRoot>…</CoreGrammarRoot>'} action={<G.Button size="sm" intent="neutral">Copy</G.Button>} />
       </State>
       <State label="Rendered children" direction="column">
-        <G.FencedCodeBlock language="sh"><code>npm install @starci/grammar</code></G.FencedCodeBlock>
+        <G.FencedCodeBlock language="sh"><code>npm install @acme/ui</code></G.FencedCodeBlock>
       </State>
     </Matrix>
   ),
@@ -828,10 +828,10 @@ export const HorizontalScrollRegion: Story = {
   render: () => (
     <Matrix maxWidth={520}>
       <State label="Overflow needed (focusable scroll region)" direction="column">
-        <G.HorizontalScrollRegion aria-label="Lesson cards" tabIndex={0}>
+        <G.HorizontalScrollRegion aria-label="Item cards" tabIndex={0}>
           <div style={{ display: 'flex', gap: '0.75rem', width: 'max-content' }}>
             {Array.from({ length: 8 }, (_, index) => (
-              <G.SurfaceCard key={index} ariaLabel={`Lesson ${index + 1}`}><G.Text>Lesson {index + 1}</G.Text></G.SurfaceCard>
+              <G.SurfaceCard key={index} ariaLabel={`Item ${index + 1}`}><G.Text>Item {index + 1}</G.Text></G.SurfaceCard>
             ))}
           </div>
         </G.HorizontalScrollRegion>
@@ -865,7 +865,7 @@ export const Contradiction: Story = {
         <G.Stack gap="row">
           <G.Cluster gap="row">
             <G.Quote source="Contract" byline="Page 2, signed 4 March" text={'The founders contribute a starting capital of 300 million.'} />
-            <G.Quote source="Chat" byline="Zalo, 09:12" text={'We transferred 285 million, the rest comes after the licence.'} />
+            <G.Quote source="Chat" byline="Chat, 09:12" text={'We transferred 285 million, the rest comes after the licence.'} />
           </G.Cluster>
           <G.Cluster gap="inline" justify="end">
             <G.Button intent="dismiss" onPress={noop}>Ask later</G.Button>
@@ -906,7 +906,7 @@ export const NeedsApproval: Story = {
 export const FencedCodeLanguageLabel: Story = {
   render: () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, inlineSize: 420 }}>
-      <G.FencedCodeBlock language="bash" code="npm install @starci/grammar" action={<G.Button size="sm" intent="neutral">Copy</G.Button>} />
+      <G.FencedCodeBlock language="bash" code="npm install @acme/ui" action={<G.Button size="sm" intent="neutral">Copy</G.Button>} />
       <G.FencedCodeBlock language="bash" showLanguage={false} code={'cd app\nnpm run dev'} action={<G.Button size="sm" intent="neutral">Copy</G.Button>} />
       <G.FencedCodeBlock language="bash" code={'cd app\nnpm run dev'} action={<G.Button size="sm" intent="neutral">Copy</G.Button>} />
     </div>

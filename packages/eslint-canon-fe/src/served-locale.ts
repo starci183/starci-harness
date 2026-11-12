@@ -3,7 +3,7 @@
  *
  * WHY THESE EXIST. An application obeyed the translation law completely - every label resolved in a
  * connected half, no literal below a block, both catalogues in step - and served a Vietnamese reader
- * an English course on a `/vi/` URL. The chrome came from the dictionary and the content came from an
+ * an English project on a `/vi/` URL. The chrome came from the dictionary and the content came from an
  * API that was never told which language to serve, so the failure looked like a translation gap and
  * was looked for in the dictionary, where there was nothing wrong. The header was missing, and no
  * gate had anything to say about a header nobody wrote.

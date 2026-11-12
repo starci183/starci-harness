@@ -3,7 +3,7 @@
 import type { Parsed } from './manifest-shape.mjs';
 import { isPlainObject } from '../../engine/plain-object.mjs';
 import { APP_KIND, connectionShapeProblems, NAME, PACKAGE_NAME, RUNTIME_KIND, SLOT_ID } from './manifest-shape.mjs';
-import { dbFunctionsOk, ddlRenderersOk, sqlPassThroughOk } from './rule-params-shape.mjs';
+import { dbFunctionsOk, ddlRenderersOk, receiptPortsOk, sqlPassThroughOk } from './rule-params-shape.mjs';
 import { engineOwnedOk } from './engine-owned.mjs';
 import { baselineResetOk } from './rules/database-reset.mjs';
 import { kindShapeProblems, patternShapeProblems } from './declaration-slots.mjs';
@@ -31,7 +31,7 @@ function dbBlockProblems(block: Parsed): string[] {
   if (block.image !== undefined && (typeof block.image !== 'string' || !/@sha256:[0-9a-f]{64}$/.test(block.image))) bad.push('db.image must be a digest-pinned image reference');
   if (block.forceRls !== undefined && !isStringList(block.forceRls)) bad.push('db.forceRls must be a list of strings');
   if (block.appRole !== undefined && (typeof block.appRole !== 'string' || !/^[a-z][a-z0-9_]*$/.test(block.appRole))) bad.push('db.appRole must name a role');
-  if (block.scopeSettings !== undefined && !(isStringList(block.scopeSettings) && block.scopeSettings.every((setting: string) => /^[a-z_][a-z0-9_]*(\.[a-z_][a-z0-9_]*)+$/.test(setting) && !setting.startsWith('request.jwt.')))) bad.push('db.scopeSettings must list custom transaction settings the app sets per request, each a dotted lower-case name such as nivo.workspace_id (never request.jwt.*)');
+  if (block.scopeSettings !== undefined && !(isStringList(block.scopeSettings) && block.scopeSettings.every((setting: string) => /^[a-z_][a-z0-9_]*(\.[a-z_][a-z0-9_]*)+$/.test(setting) && !setting.startsWith('request.jwt.')))) bad.push('db.scopeSettings must list custom transaction settings the app sets per request, each a dotted lower-case name such as app.workspace_id (never request.jwt.*)');
   if (block.scopeColumns !== undefined && !(isStringList(block.scopeColumns) && block.scopeColumns.length > 0 && block.scopeColumns.every((column: string) => /^[a-z_][a-z0-9_]*$/.test(column)))) bad.push('db.scopeColumns must list the owning column names a scope policy compares (default workspace_id)');
   if (block.scopeRoles !== undefined && !(Array.isArray(block.scopeRoles) && block.scopeRoles.length > 0 && block.scopeRoles.every((entry: Parsed) => isPlainObject(entry) && typeof entry.role === 'string' && /^[a-z][a-z0-9_]*$/.test(entry.role) && typeof entry.reason === 'string' && entry.reason.trim() !== '' && Object.keys(entry).every((key) => key === 'role' || key === 'reason')))) bad.push('db.scopeRoles must be a list of { role, reason } naming the NOLOGIN roles whose policies may read a db.scopeSettings setting');
   if (block.scopeSettings !== undefined && !(Array.isArray(block.scopeRoles) && block.scopeRoles.length > 0)) bad.push('db.scopeSettings needs db.scopeRoles: a declared setting counts only in policies of declared scope roles');
@@ -106,9 +106,10 @@ function declarationSideProblems(side: Parsed, value: Parsed, names: Parsed): st
   const bad: string[] = [];
   const at = `sides.${side}`;
   if (!isPlainObject(value)) return [`${at} must be an object`];
-  for (const key of Object.keys(value)) if (!['apps', 'optionalSlots', 'patterns', 'kinds', 'connections', 'reads', 'extraPackages', 'grammar', 'backing', 'dbFunctions', 'sqlPassThrough', 'engineOwned', 'ddlRenderers'].includes(key)) bad.push(`${at} has unknown key ${key}`);
+  for (const key of Object.keys(value)) if (!['apps', 'optionalSlots', 'patterns', 'kinds', 'connections', 'reads', 'extraPackages', 'grammar', 'backing', 'dbFunctions', 'sqlPassThrough', 'engineOwned', 'ddlRenderers', 'receiptPorts'].includes(key)) bad.push(`${at} has unknown key ${key}`);
   if (value.dbFunctions !== undefined && (side !== 'be' || !dbFunctionsOk(value.dbFunctions, { bare: true }))) bad.push(`${at}.dbFunctions belongs to the be side and lists {name, reason} database functions, each schema-qualified (schema.name, never pg_catalog) or a bare pg built-in of the canon's list, with unique names`);
   if (value.sqlPassThrough !== undefined && (side !== 'be' || !sqlPassThroughOk(value.sqlPassThrough))) bad.push(`${at}.sqlPassThrough belongs to the be side and lists {file, reason} files relative to the side folder, forward slashes, unique, each with the reason its SQL text is not the app's own`);
+  if (value.receiptPorts !== undefined && (side !== 'be' || !receiptPortsOk(value.receiptPorts))) bad.push(`${at}.receiptPorts belongs to the be side and lists {class, method, repeat, reason} or {class, method, many: true, reason}: a class of the app, its method that records a delivery once, the answer it gives a repeat ("false" or "undefined"), or many: true for a delivery of several events whose method answers the new ones (no repeat then), and the reason, each class and method once (R263)`);
   if (value.ddlRenderers !== undefined && (side !== 'be' || !ddlRenderersOk(value.ddlRenderers))) bad.push(`${at}.ddlRenderers belongs to the be side and lists {path, reason} files of a root package (packages/<name>/..., relative to the app root, forward slashes, a * only in the file name), unique, each with the reason it renders DDL text that a cli command writes as a new migration`);
   if (value.engineOwned !== undefined && (side !== 'be' || !engineOwnedOk(value.engineOwned))) bad.push(`${at}.engineOwned belongs to the be side and is { capability (kebab-case folder), tables (snake_case, unique), partitionsOf (one of tables), views (a prefix pattern such as v_*), manifest (a relative .json path below the app root) }`);
   bad.push(...appShapeProblems(value.apps, at, side, names));
@@ -142,7 +143,7 @@ function observeBlockProblems(observe: Parsed): string[] {
   return bad;
 }
 
-const DECLARATION_KEYS = new Set(['hfs', 'kind', 'project', 'edition', 'db', 'sides', 'browser', 'modules', 'lexicon', 'observe']);
+const DECLARATION_KEYS = new Set(['hfs', 'kind', 'project', 'edition', 'db', 'sides', 'browser', 'lexicon', 'observe']);
 const RUNTIME_DECLARATION_KEYS = new Set(['hfs', 'kind', 'project']);
 
 function productDeclarationProblems(declaration: Parsed, profiles: Parsed): string[] {
@@ -150,7 +151,6 @@ function productDeclarationProblems(declaration: Parsed, profiles: Parsed): stri
   for (const key of Object.keys(declaration)) if (!DECLARATION_KEYS.has(key)) bad.push(key === 'rulePacks' || key === 'checks' ? `unknown key ${key}: a project adds its own laws and checks in its ext/ folder (ext/manifest.json, PROJECT-LINT-3), never through hfs.json` : `unknown key ${key}`);
   bad.push(...dbBlockProblems(declaration.db), ...lexiconBlockProblems(declaration.lexicon), ...observeBlockProblems(declaration.observe));
   if (declaration.browser !== undefined && declaration.browser !== true) bad.push('browser is `true` when the app has a browser journey (slot app.browser), and is left out otherwise');
-  if (declaration.modules !== undefined && declaration.modules !== 'data') bad.push('modules is `"data"` when the app keeps its modules as data (seeds, no rendered registry package), and is left out otherwise');
   if (declaration.kind !== APP_KIND) bad.push(`kind must be ${APP_KIND} (a product is one app repository of the sides it declares) or ${RUNTIME_KIND} (the StarCi runtime repository)`);
   const sides = sidesProblems(declaration.sides);
   if (sides.length) { bad.push(...sides); return bad; }

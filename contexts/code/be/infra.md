@@ -13,7 +13,7 @@ temporal.md, retries resilience.md, logging logging.md.
 A raw library (the queue and Redis clients, the Postgres driver, socket and LISTEN engines, timers, loggers, date
 libraries, `node:async_hooks`) is imported only by the platform capability the table names; any other package
 dependency outside the framework and pure-library allowlists only by its one provider integration (a workspace package of
-the app itself, `@<project>/agent-sdk` and the like, is first-party source and no dependency of this kind; what such a
+the app itself, `@<project>/sdk` and the like, is first-party source and no dependency of this kind; what such a
 package imports is judged in the package, by this same rule, over its own files); model libraries
 follow [ai.md](ai.md) (BE-AI-1, BE-AI-3). The S3 client (`@aws-sdk/client-s3`, `@aws-sdk/s3-request-presigner`) is
 a dependency of `@starci/object-storage` alone and no app file imports it; the package (the ObjectStorage port with presigned PUT

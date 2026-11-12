@@ -25,18 +25,18 @@ function repository(base: string, folder: string, origin?: string): string {
 
 test('the origin remote names a clone, not the folder it is cloned into', (t) => {
   const base = mkdtemp(t, 'starci-repo-identity-');
-  for (const origin of ['https://github.com/acme/starci-next.git', 'git@github.com:acme/starci-next.git', 'https://github.com/acme/starci-next/', 'C:\\work\\repos\\starci-next', '/srv/repos/starci-next.git']) {
+  for (const origin of ['https://github.com/acme/example-app.git', 'git@github.com:acme/example-app.git', 'https://github.com/acme/example-app/', 'C:\\work\\repos\\example-app', '/srv/repos/example-app.git']) {
     const dir = repository(base, `clone-${fs.readdirSync(base).length}`, origin);
-    assert.equal(repositoryName(dir), 'starci-next', origin);
+    assert.equal(repositoryName(dir), 'example-app', origin);
   }
 });
 
 test('a worktree of a clone carries the origin name too', (t) => {
   const base = mkdtemp(t, 'starci-repo-identity-');
-  const main = repository(base, 'checkout-folder', 'https://github.com/acme/starci-next.git');
+  const main = repository(base, 'checkout-folder', 'https://github.com/acme/example-app.git');
   const lane = path.join(base, 'lanes', 'lane-1');
   git(main, 'worktree', 'add', '-q', '-b', 'lane-1', lane);
-  assert.equal(repositoryName(lane), 'starci-next');
+  assert.equal(repositoryName(lane), 'example-app');
 });
 
 test('without an origin remote the main checkout folder names the repository and its worktrees', (t) => {

@@ -16,8 +16,8 @@ import { feStack, forbiddingConcern, packageNameOf } from "./lib/fe-stack.ts"
 
 const tester = slotTester()
 
-const BLOCK = at("apps/web/src/components/blocks/course/CourseCard/index.tsx")
-const HOOK = at("apps/web/src/hooks/swr/api/graphql/queries/useQueryCourseSwr.ts")
+const BLOCK = at("apps/web/src/components/blocks/project/ProjectCard/index.tsx")
+const HOOK = at("apps/web/src/hooks/swr/api/graphql/queries/useQueryProjectSwr.ts")
 const AUTH = at("apps/web/src/modules/auth/index.ts")
 const AUTH_CLIENT = at("apps/web/src/modules/auth/client.ts")
 const API = at("apps/web/src/modules/api/graphql/clients/index.ts")

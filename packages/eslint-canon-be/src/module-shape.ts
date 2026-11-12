@@ -480,7 +480,7 @@ const isModuleDeclaration = (declaration: ts.Declaration): boolean => {
 /** The array of an `imports` property (the `@Module({ imports })` metadata or a dynamic module literal), else null. */
 const importsArrayOf = (property: TSESTree.Property): TSESTree.ArrayExpression | null => (!property.computed && keyName(property.key) === "imports" && property.value.type === "ArrayExpression" ? property.value : null)
 
-/** The PascalCase options type name a module file name implies: `sepay-feed-http` gives `SepayFeedHttpOptions`. */
+/** The PascalCase options type name a module file name implies: `acme-pay-feed-http` gives `AcmePayFeedHttpOptions`. */
 const optionsTypeOf = (name: string): string => `${name.replace(/(?:^|-)(\w)/g, (_: string, letter: string) => letter.toUpperCase())}Options`
 
 /**

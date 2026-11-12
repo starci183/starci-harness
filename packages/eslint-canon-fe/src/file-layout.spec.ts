@@ -45,13 +45,13 @@ test("FILE-2: a surface folder holds its two halves and their twins", () => {
       { filename: at(`${F}/pages/DashboardPage/classNames.ts`), code: cmp },
       { filename: at(`${F}/overlays/auth/SignInOverlay/index.tsx`), code: cmp },
       // blocks and composites are NOT surface folders - they may hold more than two files
-      { filename: at(`${R}/blocks/dashboard/DailyQuest/parts.tsx`), code: cmp },
+      { filename: at(`${R}/blocks/dashboard/SummaryCard/parts.tsx`), code: cmp },
       // a folder named like a surface tier that no slot owns is not judged here
       { filename: at("apps/web/src/modules/pages/DashboardPage/extra.ts"), code: cmp },
       { filename: at(`${R}/pages/DashboardPage/extra.ts`), code: cmp },
     ],
     invalid: [
-      { filename: at(`${F}/pages/DashboardPage/DailyQuest.tsx`), code: cmp, errors: [{ messageId: "extra" }] },
+      { filename: at(`${F}/pages/DashboardPage/SummaryCard.tsx`), code: cmp, errors: [{ messageId: "extra" }] },
       { filename: at(`${F}/layouts/ShellNav/utils/format.ts`), code: cmp, errors: [{ messageId: "extra" }] },
       // a nested folder is not a half, even one that holds an `index.tsx`
       { filename: at(`${F}/pages/DashboardPage/sub/index.tsx`), code: cmp, errors: [{ messageId: "extra" }] },
@@ -127,13 +127,13 @@ test("FILE-3: a helper folder under components has a real home elsewhere", () =>
       // a component or a category that happens to be called like a helper folder is a component, not a helper folder
       { filename: at(`${R}/leaves/utils/index.tsx`), code: cmp },
       { filename: at(`${R}/blocks/types/Card/index.tsx`), code: cmp },
-      { filename: at("packages/nivo-ui/src/leaves/hooks/index.tsx"), code: cmp },
+      { filename: at("packages/app-ui/src/leaves/hooks/index.tsx"), code: cmp },
     ],
     invalid: [
-      { filename: at(`${R}/blocks/dashboard/DailyQuest/utils/format.ts`), code: "export const f = () => null", errors: [{ messageId: "helper" }] },
+      { filename: at(`${R}/blocks/dashboard/SummaryCard/utils/format.ts`), code: "export const f = () => null", errors: [{ messageId: "helper" }] },
       { filename: at(`${R}/leaves/Text/constants/tone.ts`), code: "export const TONE = 1", errors: [{ messageId: "helper" }] },
       { filename: at(`${R}/blocks/dashboard/constants/tone.ts`), code: "export const TONE = 1", errors: [{ messageId: "helper" }] },
-      { filename: at("packages/nivo-ui/src/leaves/Text/types/tone.ts"), code: "export const TONE = 1", errors: [{ messageId: "helper" }] },
+      { filename: at("packages/app-ui/src/leaves/Text/types/tone.ts"), code: "export const TONE = 1", errors: [{ messageId: "helper" }] },
     ],
   })
 
@@ -147,7 +147,7 @@ test("FILE-1: the path predicts the name", () => {
       { filename: at(`${R}/leaves/Text/index.tsx`), code: "export const Text = () => null" },
       { filename: at(`${R}/leaves/Text/index.tsx`), code: "export const TextLink = () => null" },
       { filename: at(`${F}/overlays/auth/SignInOverlay/index.tsx`), code: "export const SignInOverlay = () => null" },
-      { filename: at("packages/nivo-ui/src/leaves/Text/index.tsx"), code: "export const Text = () => null" },
+      { filename: at("packages/app-ui/src/leaves/Text/index.tsx"), code: "export const Text = () => null" },
       // a file exporting nothing has nothing to disagree with
       { filename: at(`${R}/leaves/Text/index.tsx`), code: "const Text = () => null" },
       // not a PascalCase component folder
@@ -159,7 +159,7 @@ test("FILE-1: the path predicts the name", () => {
     ],
     invalid: [
       { filename: at(`${R}/leaves/Text/index.tsx`), code: "export const Paragraph = () => null", errors: [{ messageId: "mismatch" }] },
-      { filename: at("packages/nivo-ui/src/leaves/Text/index.tsx"), code: "export const Paragraph = () => null", errors: [{ messageId: "mismatch" }] },
+      { filename: at("packages/app-ui/src/leaves/Text/index.tsx"), code: "export const Paragraph = () => null", errors: [{ messageId: "mismatch" }] },
     ],
   })
 
@@ -194,11 +194,11 @@ test("FILE-5: each tier sits on its own side of the feature line", () => {
   tester.run("monorepo-tier-belongs-to-its-side", monorepoTierBelongsToItsSide, {
     valid: [
       // The shared package holds the tiers that know no feature.
-      { filename: at("packages/nivo-ui/src/leaves/Badge/index.tsx"), code: "export const Badge = () => null" },
-      { filename: at("packages/nivo-ui/src/branches/ModalBranch/index.tsx"), code: "export const ModalBranch = () => null" },
-      { filename: at("packages/nivo-ui/src/index.ts"), code: "export const x = 1" },
+      { filename: at("packages/app-ui/src/leaves/Badge/index.tsx"), code: "export const Badge = () => null" },
+      { filename: at("packages/app-ui/src/branches/ModalBranch/index.tsx"), code: "export const ModalBranch = () => null" },
+      { filename: at("packages/app-ui/src/index.ts"), code: "export const x = 1" },
       // a folder of the package that is no layer at all is another rule business
-      { filename: at("packages/nivo-ui/src/utils/format.ts"), code: "export const f = () => null" },
+      { filename: at("packages/app-ui/src/utils/format.ts"), code: "export const f = () => null" },
       // The app holds the tiers that know one.
       { filename: at("apps/web/src/components/blocks/workers/WorkerRow/index.tsx"), code: "export const WorkerRow = () => null" },
       { filename: at("apps/web/src/features/pages/WorkersPage/component.tsx"), code: "export const WorkersPageBase = () => null" },
@@ -207,8 +207,8 @@ test("FILE-5: each tier sits on its own side of the feature line", () => {
     ],
     invalid: [
       // The failure this rule was written for: a domain sentence in the shared package.
-      { filename: at("packages/nivo-ui/src/blocks/WorkerRow/index.tsx"), code: "export const WorkerRow = () => null", errors: [{ messageId: "featureInPackage" }] },
-      { filename: at("packages/nivo-ui/src/pages/WorkersPage/component.tsx"), code: "export const WorkersPageBase = () => null", errors: [{ messageId: "featureInPackage" }] },
+      { filename: at("packages/app-ui/src/blocks/WorkerRow/index.tsx"), code: "export const WorkerRow = () => null", errors: [{ messageId: "featureInPackage" }] },
+      { filename: at("packages/app-ui/src/pages/WorkersPage/component.tsx"), code: "export const WorkersPageBase = () => null", errors: [{ messageId: "featureInPackage" }] },
       // The mirror image: shared vocabulary trapped inside one app.
       { filename: at("apps/web/src/components/leaves/Badge/index.tsx"), code: "export const Badge = () => null", errors: [{ messageId: "vocabularyInApp" }] },
       { filename: at("apps/admin/src/components/composites/Table/index.tsx"), code: "export const Table = () => null", errors: [{ messageId: "vocabularyInApp" }] },
@@ -226,7 +226,7 @@ test("FILE-5: each tier sits on its own side of the feature line", () => {
   ONE_APP_WITH_PACKAGE.run("monorepo-tier-belongs-to-its-side (one app)", monorepoTierBelongsToItsSide, {
     valid: [
       { filename: at("apps/web/src/components/composites/SiteShell/index.tsx"), code: "export const SiteShell = () => null" },
-      { filename: at("packages/nivo-ui/src/blocks/FleetRow/index.tsx"), code: "export const FleetRow = () => null" },
+      { filename: at("packages/app-ui/src/blocks/FleetRow/index.tsx"), code: "export const FleetRow = () => null" },
     ],
     invalid: [],
   })
@@ -242,13 +242,13 @@ test("FILE-7: the source marker and owning tier agree", () => {
       { filename: at(`${R}/frames/ShellFrame/index.tsx`), code: "export const meta = { shape: 'frame' } as const" },
       { filename: at(`${F}/overlays/auth/SignInOverlay/component.tsx`), code: "export const meta = { shape: 'overlay' } as const" },
       { filename: at(`${F}/pages/Home/index.tsx`), code: "export const meta = { shape: 'page' } as const" },
-      { filename: at("packages/nivo-ui/src/leaves/Badge/index.tsx"), code: "export const meta = { shape: 'leaf' } as const" },
+      { filename: at("packages/app-ui/src/leaves/Badge/index.tsx"), code: "export const meta = { shape: 'leaf' } as const" },
       // a folder named like a layer that no slot owns declares nothing to agree with
       { filename: at("apps/web/src/modules/components/leaves/x.ts"), code: "export const meta = { shape: 'shell' } as const" },
     ],
     invalid: [
       { filename: at(`${R}/branches/ModalBranch/index.tsx`), code: "export const meta = { shape: 'shell' } as const", errors: [{ messageId: "mismatch" }] },
-      { filename: at("packages/nivo-ui/src/leaves/Badge/index.tsx"), code: "export const meta = { shape: 'block' } as const", errors: [{ messageId: "mismatch" }] },
+      { filename: at("packages/app-ui/src/leaves/Badge/index.tsx"), code: "export const meta = { shape: 'block' } as const", errors: [{ messageId: "mismatch" }] },
       { filename: at(`${F}/pages/Home/index.tsx`), code: "export const meta = { shape: 'layout' } as const", errors: [{ messageId: "mismatch" }] },
     ],
   })
@@ -261,14 +261,14 @@ test("FILE-8: shells are not a component tier", () => {
   tester.run("no-shell-tier", noShellTier, {
     valid: [
       { filename: at(`${R}/branches/ModalBranch/index.tsx`), code: "export const ModalBranch = () => null" },
-      { filename: at("packages/nivo-ui/src/branches/ModalBranch/index.tsx"), code: "export const ModalBranch = () => null" },
+      { filename: at("packages/app-ui/src/branches/ModalBranch/index.tsx"), code: "export const ModalBranch = () => null" },
       // another unknown folder is HFS_SLOT_UNDECLARED to name, and a `shells` folder outside the component tier is no shell tier
       { filename: at(`${R}/pages/Home/index.tsx`), code: "export const Home = () => null" },
       { filename: at("apps/web/src/modules/shells/x.ts"), code: "export const x = 1" },
     ],
     invalid: [
       { filename: at(`${R}/shells/ModalShell/index.tsx`), code: "export const ModalShell = () => null", errors: [{ messageId: "shell" }] },
-      { filename: at("packages/nivo-ui/src/shells/ModalShell/index.tsx"), code: "export const ModalShell = () => null", errors: [{ messageId: "shell" }] },
+      { filename: at("packages/app-ui/src/shells/ModalShell/index.tsx"), code: "export const ModalShell = () => null", errors: [{ messageId: "shell" }] },
     ],
   })
 

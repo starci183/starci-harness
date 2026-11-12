@@ -191,26 +191,26 @@ export const TimelineStates: Story = {
     ),
 }
 
-type Lesson = { readonly id: string; readonly title: string; readonly level: string; readonly minutes: number }
-const lessons: ReadonlyArray<Lesson> = [
-    { id: "l1", title: "Articles", level: "A1", minutes: 12 },
-    { id: "l2", title: "Present simple", level: "A1", minutes: 18 },
+type Doc = { readonly id: string; readonly title: string; readonly level: string; readonly minutes: number }
+const docs: ReadonlyArray<Doc> = [
+    { id: "l1", title: "Getting started", level: "A1", minutes: 12 },
+    { id: "l2", title: "Style guide", level: "A1", minutes: 18 },
 ]
-const noLessons: ReadonlyArray<Lesson> = []
+const noDocs: ReadonlyArray<Doc> = []
 const columns: ReadonlyArray<G.DataTableColumn> = [
-    { id: "title", label: "Lesson", isRowHeader: true },
+    { id: "title", label: "Document", isRowHeader: true },
     { id: "level", label: "Level" },
     { id: "minutes", label: "Minutes", align: "end" },
 ]
-const cell = (row: Lesson, columnId: string) => (columnId === "title" ? row.title : columnId === "level" ? row.level : row.minutes)
+const cell = (row: Doc, columnId: string) => (columnId === "title" ? row.title : columnId === "level" ? row.level : row.minutes)
 
 export const DataTableStates: Story = {
     render: () => (
         <Matrix maxWidth={640}>
-            <State label="Loading" direction="column"><G.DataTable label="Lessons" columns={columns} rows={lessons} renderCell={cell} isLoading emptyContent={emptyLine} /></State>
-            <State label="Content" direction="column"><G.DataTable label="Lessons" columns={columns} rows={lessons} renderCell={cell} emptyContent={emptyLine} /></State>
-            <State label="Error" direction="column"><G.DataTable label="Lessons" columns={columns} rows={noLessons} renderCell={cell} error={failure} emptyContent={emptyLine} /></State>
-            <State label="Empty" direction="column"><G.DataTable label="Lessons" columns={columns} rows={noLessons} renderCell={cell} emptyContent={emptyLine} /></State>
+            <State label="Loading" direction="column"><G.DataTable label="Documents" columns={columns} rows={docs} renderCell={cell} isLoading emptyContent={emptyLine} /></State>
+            <State label="Content" direction="column"><G.DataTable label="Documents" columns={columns} rows={docs} renderCell={cell} emptyContent={emptyLine} /></State>
+            <State label="Error" direction="column"><G.DataTable label="Documents" columns={columns} rows={noDocs} renderCell={cell} error={failure} emptyContent={emptyLine} /></State>
+            <State label="Empty" direction="column"><G.DataTable label="Documents" columns={columns} rows={noDocs} renderCell={cell} emptyContent={emptyLine} /></State>
         </Matrix>
     ),
 }

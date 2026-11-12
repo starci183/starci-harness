@@ -21,7 +21,7 @@ const groups: ReadonlyArray<G.SidebarGroup> = [
 ];
 
 const conversations: ReadonlyArray<G.ListBoxItem> = [
-  { id: 'linh', label: 'Linh Tran', description: 'Can the order for table 4 move to 19:30?' },
+  { id: 'linh', label: 'Sam Lee', description: 'Can the order for table 4 move to 19:30?' },
   { id: 'team', label: 'Kitchen team', description: 'Prep list for tomorrow is ready.' },
   { id: 'supplier', label: 'Supplier', description: 'The delivery slipped to Thursday.' },
 ];
@@ -48,20 +48,20 @@ const Shell = ({ scope, grid }: { readonly scope: ReturnType<typeof familyScope>
           {grid ?? (
           <G.PaneGrid label="Conversations workspace" areas={['list chat aside']} columns={['standard', 'fill', 'standard']}>
             <G.Pane area="list" surface scroll label="Conversation list">
-              <G.PaneSection as="header" align="center"><G.PaneHeader title="Hội thoại" /></G.PaneSection>
+              <G.PaneSection as="header" align="center"><G.PaneHeader title="Conversations" /></G.PaneSection>
               <G.PaneSection><G.ListBox label="Conversations" items={conversations} selectionMode="single" defaultSelectedIds={['linh']} inset="panel" /></G.PaneSection>
             </G.Pane>
             <G.Pane area="chat" label="Chat">
               <G.PaneSection align="center">
-                <G.PaneHeader title="Linh Tran" description="Zalo - 5 minutes ago" actions={<G.IconButton intent="neutral" source={EllipsisGlyph} label="More actions" />} />
+                <G.PaneHeader title="Sam Lee" description="Email - 5 minutes ago" actions={<G.IconButton intent="neutral" source={EllipsisGlyph} label="More actions" />} />
               </G.PaneSection>
               <G.PaneSection scroll={{ label: 'Conversation', role: 'log', align: 'end', tone: 'background' }}>
-                <G.MessageBubble author="Linh" meta="09:12" body="Can the order for table 4 move to 19:30?" />
+                <G.MessageBubble author="Sam" meta="09:12" body="Can the order for table 4 move to 19:30?" />
                 <G.MessageBubble side="outgoing" meta="09:14" body="Yes, I moved it." />
               </G.PaneSection>
             </G.Pane>
             <G.Pane area="aside" surface label="Needs you">
-              <G.PaneSection as="header" align="center"><G.Heading level={2}>Cần bạn duyệt</G.Heading></G.PaneSection>
+              <G.PaneSection as="header" align="center"><G.Heading level={2}>Needs your review</G.Heading></G.PaneSection>
               <G.PaneSection gap="section"><G.Text isStrong>Refund for table 4</G.Text><G.Text tone="muted">Waiting for your approval.</G.Text><G.Button intent="commit">Approve</G.Button></G.PaneSection>
             </G.Pane>
           </G.PaneGrid>
@@ -106,13 +106,13 @@ const stateAt = (canvasElement: HTMLElement) => {
   return { divider: getComputedStyle(tracks, '::after').content, stackPad: (area: string) => Number.parseFloat(getComputedStyle(stack(area) as HTMLElement).paddingTop) };
 };
 
-/** The agent workbench shape: a main pane with no head and an aside with one. No shared row, no spacer, no continuous divider: the aside head stands alone at the head height with its own bottom border, and the main pane starts at the top (0.37.3). */
+/** The two-pane workspace shape: a main pane with no head and an aside with one. No shared row, no spacer, no continuous divider: the aside head stands alone at the head height with its own bottom border, and the main pane starts at the top (0.37.3). */
 export const AsideHeadOnly: Story = {
   render: (_, { globals }) => <Shell scope={familyScope(globals)} grid={
-    <G.PaneGrid label="Workbench" areas={['main aside']} columns={['fill', 'standard']}>
+    <G.PaneGrid label="Workspace" areas={['main aside']} columns={['fill', 'standard']}>
       <G.Pane area="main" label="View"><G.PaneSection gap="section"><G.Text isStrong>View body</G.Text><G.Text tone="muted">No head in this pane.</G.Text></G.PaneSection></G.Pane>
       <G.Pane area="aside" surface label="Needs you">
-        <G.PaneSection as="header" align="center"><G.Heading level={2}>Cần bạn duyệt</G.Heading></G.PaneSection>
+        <G.PaneSection as="header" align="center"><G.Heading level={2}>Needs your review</G.Heading></G.PaneSection>
         <G.PaneSection><G.Text tone="muted">Waiting for your approval.</G.Text></G.PaneSection>
       </G.Pane>
     </G.PaneGrid>
@@ -131,7 +131,7 @@ export const AsideHeadOnly: Story = {
 /** A workspace grid in which no pane has a head: no head row, no divider, nothing reserved above the first band (the blank-band regression). */
 export const NoHeads: Story = {
   render: (_, { globals }) => <Shell scope={familyScope(globals)} grid={
-    <G.PaneGrid label="Workbench" areas={['main aside']} columns={['fill', 'standard']}>
+    <G.PaneGrid label="Workspace" areas={['main aside']} columns={['fill', 'standard']}>
       <G.Pane area="main" label="View"><G.PaneSection gap="section"><G.Text isStrong>View body</G.Text><G.Text tone="muted">No pane has a head.</G.Text></G.PaneSection></G.Pane>
       <G.Pane area="aside" surface label="Details"><G.PaneSection><G.Text tone="muted">Aside body.</G.Text></G.PaneSection></G.Pane>
     </G.PaneGrid>
@@ -152,20 +152,20 @@ export const NoHeads: Story = {
  */
 export const NestedGrids: Story = {
   render: (_, { globals }) => <Shell scope={familyScope(globals)} grid={
-    <G.PaneGrid label="Workbench tab" areas={['tab']} columns={['fill']}>
+    <G.PaneGrid label="Tab workspace" areas={['tab']} columns={['fill']}>
       <G.Pane area="tab" inset="flush">
-        <G.PaneGrid label="Workbench" areas={['main aside']} columns={['fill', 'standard']}>
+        <G.PaneGrid label="Workspace" areas={['main aside']} columns={['fill', 'standard']}>
           <G.Pane area="main" inset="flush">
             <G.PaneGrid label="Inbox" areas={['list thread']} columns={['standard', 'fill']}>
               <G.Pane area="list" surface label="Conversation list">
-                <G.PaneSection align="center"><G.PaneHeader title="Hội thoại" /></G.PaneSection>
-                <G.PaneSection><G.Text tone="muted">Linh Tran</G.Text></G.PaneSection>
+                <G.PaneSection align="center"><G.PaneHeader title="Conversations" /></G.PaneSection>
+                <G.PaneSection><G.Text tone="muted">Sam Lee</G.Text></G.PaneSection>
               </G.Pane>
               <G.Pane area="thread" label="Thread"><G.PaneSection align="center"><G.Text tone="muted">Pick a conversation.</G.Text></G.PaneSection></G.Pane>
             </G.PaneGrid>
           </G.Pane>
           <G.Pane area="aside" surface label="Needs you">
-            <G.PaneSection align="center"><G.PaneHeader title="Cần bạn duyệt" /></G.PaneSection>
+            <G.PaneSection align="center"><G.PaneHeader title="Needs your review" /></G.PaneSection>
             <G.PaneSection><G.Text tone="muted">Waiting for your approval.</G.Text></G.PaneSection>
           </G.Pane>
         </G.PaneGrid>
@@ -190,9 +190,9 @@ export const NestedGrids: Story = {
  * thread that scrolls, a composer) and an aside (head, a long list), in the fixed shell. Only the thread and the aside list scroll: the page, the band, the head and the composer stay put.
  */
 const longThread = Array.from({ length: 60 }, (_, index) => (
-  <G.MessageBubble key={index} side={index % 3 === 0 ? 'outgoing' : 'incoming'} author={index % 3 === 0 ? undefined : 'Chatbot'} meta={`${String(9 + Math.floor(index / 6)).padStart(2, '0')}:${String((index % 6) * 9).padStart(2, '0')}`} body={`Tin nhắn số ${index + 1}: Chatbot chăm sóc khách hàng cần bạn quyết định, sơ đồ của agent cần người duyệt.`} />
+  <G.MessageBubble key={index} side={index % 3 === 0 ? 'outgoing' : 'incoming'} author={index % 3 === 0 ? undefined : 'Chatbot'} meta={`${String(9 + Math.floor(index / 6)).padStart(2, '0')}:${String((index % 6) * 9).padStart(2, '0')}`} body={`Message ${index + 1}: the support chatbot needs your decision, the assistant plan needs a reviewer.`} />
 ));
-const longAside: ReadonlyArray<G.ListBoxItem> = Array.from({ length: 40 }, (_, index) => ({ id: `s${index}`, label: `Nguồn ${index + 1}`, description: 'Nhận tin khách · Tự làm' }));
+const longAside: ReadonlyArray<G.ListBoxItem> = Array.from({ length: 40 }, (_, index) => ({ id: `s${index}`, label: `Source ${index + 1}`, description: 'Receive messages · Automatic' }));
 
 const chatTabGrid = (
   <G.PaneGrid label="Chat tab" areas={['tab']}>
@@ -201,10 +201,10 @@ const chatTabGrid = (
         <G.Pane area="room" surface content="full" inset="flush" label="Room">
           <G.PaneSection align="center"><G.PaneHeader title="Chatbot" description="Agent" /></G.PaneSection>
           <G.PaneSection scroll={{ label: 'Thread', role: 'log', align: 'end', tone: 'background' }}>{longThread}</G.PaneSection>
-          <G.PaneSection as="footer" rule="start"><G.Input id="composer" name="composer" label="Nhắn cho agent" kind="text" /></G.PaneSection>
+          <G.PaneSection as="footer" rule="start"><G.Input id="composer" name="composer" label="Message the assistant" kind="text" /></G.PaneSection>
         </G.Pane>
         <G.Pane area="rail" surface scroll content="full" label="Sources">
-          <G.PaneSection align="center"><G.PaneHeader title="Agent trả lời từ" /></G.PaneSection>
+          <G.PaneSection align="center"><G.PaneHeader title="Assistant answers from" /></G.PaneSection>
           <G.PaneSection><G.ListBox label="Sources" items={longAside} selectionMode="single" inset="panel" /></G.PaneSection>
         </G.Pane>
       </G.PaneGrid>
@@ -231,7 +231,7 @@ const ChatTabShell = ({ scope }: { readonly scope: ReturnType<typeof familyScope
           header={{
             breadcrumbs: { label: 'Breadcrumb', items: [{ id: 'agents', label: 'Agent', href: '#agents' }, { id: 'bot', label: 'Chatbot' }] },
             title: 'Chatbot',
-            tabs: { label: 'Agent', selectedKey: 'chat', items: [{ id: 'work', label: 'Bàn làm việc' }, { id: 'chat', label: 'Trò chuyện' }, { id: 'setup', label: 'Thiết lập' }] },
+            tabs: { label: 'Agent', selectedKey: 'chat', items: [{ id: 'work', label: 'Work' }, { id: 'chat', label: 'Chat' }, { id: 'setup', label: 'Setup' }] },
           }}
         >
           {chatTabGrid}

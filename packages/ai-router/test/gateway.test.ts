@@ -20,7 +20,7 @@ describe("the OpenAI-compatible routes", () => {
     after(() => h.close())
 
     test("POST /v1/chat/completions routes a profile and answers the OpenAI completion without routing", async () => {
-        const reply = await http(h.url, "/v1/chat/completions", { key, body: chatBody("lesson") })
+        const reply = await http(h.url, "/v1/chat/completions", { key, body: chatBody("chat") })
         assert.equal(reply.status, 200)
         assert.equal(reply.json.object, "chat.completion")
         assert.equal((reply.json.choices as { message: { content: string } }[])[0]?.message.content, "ok")
@@ -41,7 +41,7 @@ describe("the OpenAI-compatible routes", () => {
 
     test("stream: true answers OpenAI chunks over SSE, ends with [DONE] and keeps the usage chunk unless asked", async () => {
         h.fake.on({ model: "m1" }, { stream: { chunks: ["Hel", "lo"] } })
-        const reply = await http(h.url, "/v1/chat/completions", { key, body: chatBody("lesson", { stream: true }) })
+        const reply = await http(h.url, "/v1/chat/completions", { key, body: chatBody("chat", { stream: true }) })
         assert.equal(reply.status, 200)
         assert.match(reply.headers.get("content-type") ?? "", /^text\/event-stream/)
         const data = events(reply.text)
@@ -54,7 +54,7 @@ describe("the OpenAI-compatible routes", () => {
 
     test("a stream that asked for usage gets the usage chunk", async () => {
         h.fake.on({ model: "m1" }, { stream: { chunks: ["a"] } })
-        const reply = await http(h.url, "/v1/chat/completions", { key, body: chatBody("lesson", { stream: true, stream_options: { include_usage: true } }) })
+        const reply = await http(h.url, "/v1/chat/completions", { key, body: chatBody("chat", { stream: true, stream_options: { include_usage: true } }) })
         const chunks = events(reply.text)
             .slice(0, -1)
             .map((item) => JSON.parse(item) as { choices: unknown[]; usage?: { total_tokens: number } })
@@ -87,20 +87,20 @@ describe("GET /v1/models lists what the calling key may use", () => {
     after(() => h.close())
 
     test("a key bound to a profile and a model sees those, with the model's aliases", async () => {
-        const key = await h.key({ profiles: ["lesson"], models: ["m1"] })
+        const key = await h.key({ profiles: ["chat"], models: ["m1"] })
         const reply = await http(h.url, "/v1/models", { key })
         assert.equal(reply.json.object, "list")
         const ids = (reply.json.data as { id: string; object: string; owned_by: string }[]).map((model) => model.id)
-        assert.deepEqual(ids.sort(), ["fast", "lesson", "m1"])
-        const one = await http(h.url, "/v1/models/lesson", { key })
-        assert.deepEqual(one.json, { id: "lesson", object: "model", created: 0, owned_by: "profile" })
-        assert.equal((await http(h.url, "/v1/models/quiz", { key })).status, 404)
+        assert.deepEqual(ids.sort(), ["chat", "fast", "m1"])
+        const one = await http(h.url, "/v1/models/chat", { key })
+        assert.deepEqual(one.json, { id: "chat", object: "model", created: 0, owned_by: "profile" })
+        assert.equal((await http(h.url, "/v1/models/summary", { key })).status, 404)
     })
 
     test("a wildcard key sees every profile and model", async () => {
         const key = await h.key()
         const ids = ((await http(h.url, "/v1/models", { key })).json.data as { id: string }[]).map((model) => model.id)
-        assert.deepEqual(ids.sort(), ["e1", "fast", "lesson", "m1", "m2", "quiz"])
+        assert.deepEqual(ids.sort(), ["chat", "e1", "fast", "m1", "m2", "summary"])
     })
 })
 
@@ -110,23 +110,23 @@ describe("error statuses in the OpenAI error shape", () => {
 
     before(async () => {
         h = await harness({ maxBodyBytes: 2048 })
-        key = await h.key({ profiles: ["lesson"], models: ["m1", "e1"] })
+        key = await h.key({ profiles: ["chat"], models: ["m1", "e1"] })
     })
     after(() => h.close())
 
     test("401 without a key and with a wrong key", async () => {
-        const none = await http(h.url, "/v1/chat/completions", { body: chatBody("lesson") })
+        const none = await http(h.url, "/v1/chat/completions", { body: chatBody("chat") })
         assert.equal(none.status, 401)
         assert.deepEqual(Object.keys(none.json.error as object).sort(), ["code", "message", "param", "type"])
         assert.equal(errorOf(none).type, "authentication_error")
-        const wrong = await http(h.url, "/v1/chat/completions", { key: "sk-starci-test-nope", body: chatBody("lesson") })
+        const wrong = await http(h.url, "/v1/chat/completions", { key: "sk-starci-test-nope", body: chatBody("chat") })
         assert.equal(wrong.status, 401)
         assert.equal(errorOf(wrong).code, "invalid_api_key")
         assert.equal((await http(h.url, "/v1/models", { key: "not-a-starci-key" })).status, 401)
     })
 
     test("403 for a profile or model the key may not call, 404 for one the pool does not have", async () => {
-        const profile = await http(h.url, "/v1/chat/completions", { key, body: chatBody("quiz") })
+        const profile = await http(h.url, "/v1/chat/completions", { key, body: chatBody("summary") })
         assert.equal(profile.status, 403)
         assert.equal(errorOf(profile).code, "model_not_allowed")
         assert.equal((await http(h.url, "/v1/chat/completions", { key, body: chatBody("m2") })).status, 403)
@@ -139,10 +139,10 @@ describe("error statuses in the OpenAI error shape", () => {
         assert.equal(errorOf(await http(h.url, "/v1/chat/completions", { key, body: "{nope" })).code, "invalid_json")
         assert.equal((await http(h.url, "/v1/chat/completions", { key, body: "[]" })).status, 400)
         assert.equal(errorOf(await http(h.url, "/v1/chat/completions", { key, body: { messages: [] } })).code, "missing_model")
-        assert.equal((await http(h.url, "/v1/chat/completions", { key, body: { model: "lesson" } })).status, 400)
+        assert.equal((await http(h.url, "/v1/chat/completions", { key, body: { model: "chat" } })).status, 400)
         assert.equal((await http(h.url, "/v1/embeddings", { key, body: { model: "e1" } })).status, 400)
         assert.equal(errorOf(await http(h.url, "/v1/embeddings", { key, body: { model: "m1", input: "x" } })).code, "model_not_supported")
-        assert.equal((await http(h.url, "/v1/chat/completions", { key, body: chatBody("lesson", { pad: "x".repeat(4096) }) })).status, 413)
+        assert.equal((await http(h.url, "/v1/chat/completions", { key, body: chatBody("chat", { pad: "x".repeat(4096) }) })).status, 413)
     })
 
     test("404 for an unknown route, 405 for a wrong method", async () => {
@@ -154,7 +154,7 @@ describe("error statuses in the OpenAI error shape", () => {
     test("502 when every attempt fails upstream, with no upstream detail beyond the scrubbed message", async () => {
         h.fake.on({ model: "m1" }, { status: 500 })
         h.fake.on({ model: "m2" }, { status: 500 })
-        const reply = await http(h.url, "/v1/chat/completions", { key, body: chatBody("lesson") })
+        const reply = await http(h.url, "/v1/chat/completions", { key, body: chatBody("chat") })
         assert.equal(reply.status, 502)
         assert.equal(errorOf(reply).code, "upstream_error")
         assert.equal(errorOf(reply).type, "api_error")
@@ -185,7 +185,7 @@ describe("error statuses in the OpenAI error shape", () => {
     test("a stream that fails before its first token is an ordinary error response", async () => {
         h.fake.on({ model: "m1" }, { status: 500 })
         h.fake.on({ model: "m2" }, { status: 500 })
-        const reply = await http(h.url, "/v1/chat/completions", { key, body: chatBody("lesson", { stream: true }) })
+        const reply = await http(h.url, "/v1/chat/completions", { key, body: chatBody("chat", { stream: true }) })
         assert.equal(reply.status, 502)
         assert.equal(errorOf(reply).code, "upstream_error")
         h.fake.reset()
@@ -193,7 +193,7 @@ describe("error statuses in the OpenAI error shape", () => {
 
     test("a stream that fails after its first token ends with an OpenAI error event", async () => {
         h.fake.on({ model: "m1" }, { stream: { chunks: ["a", "b", "c"], failAfter: 2, failWith: "error-event" } })
-        const reply = await http(h.url, "/v1/chat/completions", { key, body: chatBody("lesson", { stream: true }) })
+        const reply = await http(h.url, "/v1/chat/completions", { key, body: chatBody("chat", { stream: true }) })
         assert.equal(reply.status, 200)
         const data = events(reply.text)
         assert.notEqual(data.at(-1), "[DONE]")
@@ -237,20 +237,20 @@ describe("profile and model routing under a key's fallback binding", () => {
     after(() => h.close())
 
     test("a profile falls back to its fallback model", async () => {
-        const key = await h.key({ profiles: ["lesson"], models: [] })
+        const key = await h.key({ profiles: ["chat"], models: [] })
         h.fake.on({ model: "m1" }, { status: 500 })
-        const reply = await http(h.url, "/v1/chat/completions", { key, body: chatBody("lesson") })
+        const reply = await http(h.url, "/v1/chat/completions", { key, body: chatBody("chat") })
         assert.equal(reply.status, 200)
         assert.equal(reply.headers.get("x-ai-router-model"), "m2")
         h.fake.reset()
     })
 
     test("a key that may not fall back stays on the profile's model", async () => {
-        const key = await h.key({ profiles: ["lesson"], models: [], allowFallback: false })
+        const key = await h.key({ profiles: ["chat"], models: [], allowFallback: false })
         h.fake.reset()
         await h.router.reset()
         h.fake.on({ model: "m1" }, { status: 500 })
-        const reply = await http(h.url, "/v1/chat/completions", { key, body: chatBody("lesson") })
+        const reply = await http(h.url, "/v1/chat/completions", { key, body: chatBody("chat") })
         assert.equal(reply.status, 502)
         assert.ok(h.fake.calls.every((call) => call.model === "m1"))
         h.fake.reset()
@@ -276,7 +276,7 @@ describe("a gateway mounted on another server", () => {
         const fake = createFakeProvider()
         const router = createRouter(gatewayPool(fake))
         const gateway = createGateway(router, { keys: new MemoryKeyStore() })
-        const { secret } = await gateway.admin.create({ label: "mounted", profiles: ["lesson"] })
+        const { secret } = await gateway.admin.create({ label: "mounted", profiles: ["chat"] })
         const server = createServer((request, response) => {
             let raw = ""
             request.on("data", (chunk: Buffer) => {
@@ -289,7 +289,7 @@ describe("a gateway mounted on another server", () => {
         })
         await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve))
         const url = `http://127.0.0.1:${String((server.address() as AddressInfo).port)}`
-        const reply = await http(url, "/v1/chat/completions", { key: secret, body: chatBody("lesson") })
+        const reply = await http(url, "/v1/chat/completions", { key: secret, body: chatBody("chat") })
         assert.equal(reply.status, 200)
         assert.equal((await http(url, "/admin/keys", { key: "anything" })).status, 403)
         server.close()

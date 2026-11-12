@@ -26,7 +26,7 @@ const MONO_WORKSPACE_DEP = 'HFS_MONO_WORKSPACE_DEP';
 
 /** The npm workspaces of every app, in this order. */
 export const WORKSPACES = Object.freeze(['fe/apps/*', 'fe/packages/*']);
-/** The workspace of the app's own root packages (slot app.packages: packages/<name>, the agent SDK, a block library or a module package), added after the fe ones once one is tracked. */
+/** The workspace of the app's own root packages (slot app.packages: packages/<name>), added after the fe ones once one is tracked. */
 export const ROOT_PACKAGES_WORKSPACE = 'packages/*';
 
 /** The workspaces the tracked tree `files` calls for: the fe ones when the project declares fe (`repo`, PROJECT-1; both app sides when absent), then `packages/*` when a root package tracks its package.json. */

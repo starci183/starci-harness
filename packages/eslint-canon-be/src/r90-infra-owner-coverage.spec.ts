@@ -10,7 +10,7 @@ import { canonRuleTester } from "../fixtures/rule-tester.ts";
 
 const domain = at('src/modules/domain/order/order.service.ts');
 const httpOwner = at('src/modules/platform/http/http.client.ts');
-const integration = at('src/modules/integrations/payos/payos.client.ts');
+const integration = at('src/modules/integrations/beta-pay/beta-pay.client.ts');
 const rawHttp = 'import axios from "axios"; export { axios };';
 const httpCall = [
   'import { HttpClient } from "@modules/platform/http/http.client";',

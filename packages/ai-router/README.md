@@ -138,7 +138,7 @@ providers:
     models: [{ id: openai/gpt-4o-mini, aliases: [fast] }]
 defaults: { fallbacks: [smart], deadlineMs: 60000 }
 profiles:
-  lesson: { model: fast, fallbacks: [smart] }
+  chat: { model: fast, fallbacks: [smart] }
   grading: { model: smart, allowFallback: false, maxAttempts: 3 }
 ```
 
@@ -152,7 +152,7 @@ profiles:
 | `GET /health` | none; the admin token adds the pool's breakers and keys | `{ "status": "ok" }`, or `degraded` when no provider has a usable key |
 | `/admin/keys...` | admin token | the [admin API](#admin-api) |
 
-A request's `model` names a profile (`lesson`) or a pool model by id or alias (`gpt-4o-mini`, `fast`); a profile wins
+A request's `model` names a profile (`chat`) or a pool model by id or alias (`gpt-4o-mini`, `fast`); a profile wins
 when a name is both. A profile call routes by the profile's policy; a direct model call falls back only to the pool
 defaults' fallbacks that the key may call itself. The answer is the provider's OpenAI body without the router's
 `routing`; the response carries `x-request-id`, and a unary one `x-ai-router-model` (the model that answered) and
@@ -216,7 +216,7 @@ AiRouterGatewayModule.registerAsync({
         keys: await openSqliteKeyStore("/data/keys.sqlite"),
         mountedKeys: [
             // The secret is sk-starci-<label>- and at least 32 letters, digits, "_" or "-": openssl rand -hex 24
-            { label: "nivo_lite", secret: () => readFileSync("/run/secrets/nivo_lite_ai_key", "utf8").trim(), profiles: ["lesson"], owner: "nivo-lite", quota: { costPerMonth: 20 } },
+            { label: "app_one", secret: () => readFileSync("/run/secrets/app_one_ai_key", "utf8").trim(), profiles: ["chat"], owner: "app-one", quota: { costPerMonth: 20 } },
         ],
         listen: true,
     }),
@@ -254,7 +254,7 @@ Guarded by `Authorization: Bearer <admin token>` (403 `admin_disabled` when no t
 
 ```sh
 RUN="node node_modules/@starci/ai-router/dist/gateway/run.js"
-$RUN keys create --label lesson_app --profiles lesson --rpm 60 --cost-per-month 20 --config pool.yaml
+$RUN keys create --label chat_app --profiles chat --rpm 60 --cost-per-month 20 --config pool.yaml
 $RUN keys list   --config pool.yaml
 $RUN keys usage  key_1a2b3c4d5e6f7a8b --from 2026-10-01 --config pool.yaml
 $RUN keys rotate key_1a2b3c4d5e6f7a8b --url http://gateway:8080      # admin token from AI_ROUTER_ADMIN_TOKEN
@@ -273,7 +273,7 @@ LangChain (JS):
 import { ChatOpenAI, OpenAIEmbeddings } from "@langchain/openai"
 
 const llm = new ChatOpenAI({
-    model: "lesson", // a profile, or a pool model such as "gpt-4o-mini"
+    model: "chat", // a profile, or a pool model such as "gpt-4o-mini"
     apiKey: process.env.STARCI_AI_KEY, // sk-starci-...
     configuration: { baseURL: "http://127.0.0.1:3002/v1" },
 })
@@ -283,7 +283,7 @@ for await (const chunk of await llm.stream("Count to five.")) process.stdout.wri
 const embeddings = new OpenAIEmbeddings({ model: "text-embedding-3-small", apiKey: process.env.STARCI_AI_KEY, configuration: { baseURL: "http://127.0.0.1:3002/v1" } })
 ```
 
-LangChain (Python): `ChatOpenAI(model="lesson", api_key=..., base_url="http://127.0.0.1:3002/v1")`.
+LangChain (Python): `ChatOpenAI(model="chat", api_key=..., base_url="http://127.0.0.1:3002/v1")`.
 
 The OpenAI SDK, or any compatible client:
 
@@ -291,12 +291,12 @@ The OpenAI SDK, or any compatible client:
 import OpenAI from "openai"
 
 const client = new OpenAI({ apiKey: process.env.STARCI_AI_KEY, baseURL: "http://127.0.0.1:3002/v1" })
-const completion = await client.chat.completions.create({ model: "lesson", messages: [{ role: "user", content: "hi" }] })
+const completion = await client.chat.completions.create({ model: "chat", messages: [{ role: "user", content: "hi" }] })
 ```
 
 ```sh
 curl http://127.0.0.1:3002/v1/chat/completions -H "Authorization: Bearer $STARCI_AI_KEY" \
-  -H "content-type: application/json" -d '{"model":"lesson","stream":true,"messages":[{"role":"user","content":"hi"}]}'
+  -H "content-type: application/json" -d '{"model":"chat","stream":true,"messages":[{"role":"user","content":"hi"}]}'
 ```
 
 ### Deploy
@@ -356,7 +356,7 @@ fails with an `AiRouterError` saying the port is unknown and `listen.port` is th
 (`127.0.0.1`) and is `0.0.0.0` only when you set it. With `serve`, `gateway.appPort` plus `gateway.portOffset`
 (default 1) does the same; it cannot be combined with `gateway.port`.
 
-A client of an API on 3001 uses `http://127.0.0.1:3002/v1` as its OpenAI base URL: LangChain (below), OpenClaw, or any
+A client of an API on 3001 uses `http://127.0.0.1:3002/v1` as its OpenAI base URL: LangChain (below) or any
 OpenAI-compatible agent, with a virtual `sk-starci-...` key as its API key.
 
 ## Use it in a Nest app

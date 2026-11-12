@@ -170,7 +170,7 @@ test('R275 HFS finder leaves unavailable rendered model evidence to R267', () =>
   });
 });
 
-// An application whose ingress is a shared stack outside its own (nivo): `ingress.external.stack` instead of `ingress.component`.
+// An application whose ingress is a shared stack outside its own: `ingress.external.stack` instead of `ingress.component`.
 function externalFixture(edition: string) {
   const value = fixture(edition);
   delete value.doc.components.edge;

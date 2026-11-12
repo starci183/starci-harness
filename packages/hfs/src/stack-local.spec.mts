@@ -150,12 +150,12 @@ test('doctor reports the base port: the role table of the native ports and an ov
   const manifest = path.join(root, '.starcistacks', 'application-stacks.yaml');
   fs.writeFileSync(manifest, fs.readFileSync(manifest, 'utf8').replace('    local:\n', '    local:\n      basePort: 3000\n').replace('db: 54322', 'db: 3090'));
   const clear = host(root);
-  assert.equal(await run(root, ['doctor', '--env', 'dev'], clear, { peers: () => [{ project: 'nivo', repoRoot: 'D:/apps/nivo', basePort: 3100 }] }), 0);
+  assert.equal(await run(root, ['doctor', '--env', 'dev'], clear, { peers: () => [{ project: 'neighbour', repoRoot: 'D:/apps/neighbour', basePort: 3100 }] }), 0);
   assert.match(clear.out.join(''), /ok {4}base port: 3000 \(3000\.\.3099\)/u);
-  assert.match(clear.out.join(''), /ok {4}port range: 3000\.\.3099 overlaps no other project; compared nivo 3100\.\.3199 \(D:\/apps\/nivo\)/u);
+  assert.match(clear.out.join(''), /ok {4}port range: 3000\.\.3099 overlaps no other project; compared neighbour 3100\.\.3199 \(D:\/apps\/neighbour\)/u);
   const clash = host(root);
-  assert.equal(await run(root, ['doctor', '--env', 'dev'], clash, { peers: () => [{ project: 'nivo', repoRoot: 'D:/apps/nivo', basePort: 3050 }] }), 1);
-  assert.match(clash.out.join(''), /FAIL {2}port range: 3000\.\.3099 overlaps nivo 3050\.\.3149 \(D:\/apps\/nivo\)/u);
+  assert.equal(await run(root, ['doctor', '--env', 'dev'], clash, { peers: () => [{ project: 'neighbour', repoRoot: 'D:/apps/neighbour', basePort: 3050 }] }), 1);
+  assert.match(clash.out.join(''), /FAIL {2}port range: 3000\.\.3099 overlaps neighbour 3050\.\.3149 \(D:\/apps\/neighbour\)/u);
   fs.writeFileSync(manifest, fs.readFileSync(manifest, 'utf8').replace('basePort: 3000', 'basePort: 3010'));
   const off = host(root);
   assert.equal(await run(root, ['doctor', '--env', 'dev'], off, { peers: () => [] }), 1);
