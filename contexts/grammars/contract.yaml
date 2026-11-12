@@ -740,6 +740,22 @@ mustKeep:
       law: A surface never stands inside another surface (a card in a card, in Pane surface, in a Dialog, Drawer or Popover); the grammar has one depth, raised.
       measure: { kind: count, select: '[data-grammar-surface-card] [data-grammar-surface-card]', op: "=", value: 0 }
       owner: ui/components/card.md; src/core/surfaceContext.tsx
+    - id: DNA-COMMON-LIST-ON-WHITE-BORDERED
+      role: card
+      law: "A list (`Section kind=list`, `SurfaceCard kind=list`) on a white surface (a `Pane surface` aside, a drawer, a dialog, a popover) is a bordered rounded frame: a 1px separator border, the card radius and no shadow, rows divided full width inside it; it is never flat (SURFACE-ELEVATION, owner 2026-11-10, reverting the 0.37.14 flat aside list)."
+      measure:
+        kind: style
+        select: '.starci-core-pane[data-grammar-pane-surface="true"] .starci-core-section-list'
+        checks: [{ metric: border-width, op: "=", value: 1px }, { metric: border-color, op: "=", value: { token: --separator } }, { metric: box-shadow, op: "=", value: none }]
+      owner: ui/components/card.md
+    - id: DNA-COMMON-ROW-EDGE-PADDING
+      role: card
+      law: "A side of a row that touches the card's edge is p-4 (--grammar-card-padding-block, 16): the first row's top (no header zone above it) and the last row's bottom (no footer zone below it), a single-row card both. A side that touches a separator (between rows, under a zone divider) is p-3 (--grammar-row-gap, 12). Controls included: a row grows around a tall control; no row slot has a fixed block-size (ROW-EDGE-PADDING, owner 2026-11-10)."
+      measure:
+        kind: style
+        select: '[data-grammar-surface-content]:not([data-grammar-surface-headed]) .starci-core-owned-collection > .starci-core-static-row:first-child'
+        checks: [{ metric: padding-block-start, op: "=", value: { token: --grammar-card-padding-block } }, { metric: padding-block-end, op: "=", value: { token: --grammar-row-gap } }]
+      owner: ui/components/card.md
     - id: DNA-COMMON-CARD-LABEL-ABOVE
       role: card
       law: A card's label row sits above the card's content frame, never beside it; a card that heads a section carries it outside the painted material and a tile carries its name inside, with its mark.
@@ -1545,22 +1561,6 @@ mustKeep:
         select: '[data-component="PageHeader"]'
         checks: [{ metric: border-bottom-width, op: "=", value: 1px }, { metric: border-bottom-color, op: "=", value: { token: --separator } }]
       owner: ui/components/page-header.md
-    - id: DNA-COMMON-LIST-ON-WHITE-BORDERED
-      role: card
-      law: "A list (`Section kind=list`, `SurfaceCard kind=list`) on a white surface (a `Pane surface` aside, a drawer, a dialog, a popover) is a bordered rounded frame: a 1px separator border, the card radius and no shadow, rows divided full width inside it; it is never flat (SURFACE-ELEVATION, owner 2026-11-10, reverting the 0.37.14 flat aside list)."
-      measure:
-        kind: style
-        select: '.starci-core-pane[data-grammar-pane-surface="true"] .starci-core-section-list'
-        checks: [{ metric: border-width, op: "=", value: 1px }, { metric: border-color, op: "=", value: { token: --separator } }, { metric: box-shadow, op: "=", value: none }]
-      owner: ui/components/card.md
-    - id: DNA-COMMON-ROW-EDGE-PADDING
-      role: card
-      law: "A side of a row that touches the card's edge is p-4 (--grammar-card-padding-block, 16): the first row's top (no header zone above it) and the last row's bottom (no footer zone below it), a single-row card both. A side that touches a separator (between rows, under a zone divider) is p-3 (--grammar-row-gap, 12). Controls included: a row grows around a tall control; no row slot has a fixed block-size (ROW-EDGE-PADDING, owner 2026-11-10)."
-      measure:
-        kind: style
-        select: '[data-grammar-surface-content]:not([data-grammar-surface-headed]) .starci-core-owned-collection > .starci-core-static-row:first-child'
-        checks: [{ metric: padding-block-start, op: "=", value: { token: --grammar-card-padding-block } }, { metric: padding-block-end, op: "=", value: { token: --grammar-row-gap } }]
-      owner: ui/components/card.md
     - id: DNA-CORE-EDGE-TOP
       role: card
       law: A card on the page ground is the white surface at the card radius with a 1px separator border and the card shadow; a surface nested in a card keeps the border and drops the shadow.
