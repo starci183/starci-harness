@@ -41,6 +41,7 @@ lint rule or gate enforces a rule is in anatomy.md's tree and the rule's page (`
   - `{.gitkeep,*.mjs,*.cjs,*.ps1,*.sh}` — **app.scripts** optional · R385, R102, R103
   - `{env-sync.mjs,with-secrets.mjs,set-secrets.ps1,build-*.mjs}` — **app.scripts.delivery** optional · R06, R385, R102, R103
   - `integration/*.mjs` — **app.scripts.integration** optional · R06, R385, R102, R103
+  - `checks/*.mjs` — **app.checks** optional · R06, R385, R102, R103, R402
 - `packages/`
   - `<name>/` — **app.packages** optional · R25
   - `modules/` — **app.module-registry** optional · R05
