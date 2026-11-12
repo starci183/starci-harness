@@ -11,10 +11,11 @@ export const hostStatusVerb = defineVerb({
     schema: "starci/host-status@1",
     flags: {
         ids: { kind: "rest", summary: "the services to report (default every service)" },
+        stack: { kind: "string", summary: "only the services of this stack of ops/host.yaml (starci: the shared SonarQube, its tunnel and the local npm registry)" },
     },
     run: async (context, flags) => {
         const config = loadHost()
-        const data = await hostStatus(config, selectServices(config, flags.ids), context.cwd)
+        const data = await hostStatus(config, selectServices(config, flags.ids, flags.stack), context.cwd)
         const width = Math.max(...data.services.map((service) => service.id.length))
         const lines = data.services.map((service) => {
             // A service judged by its schedule alone already carries the schedule's evidence as its own.

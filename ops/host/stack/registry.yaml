@@ -1,0 +1,41 @@
+# One file of the host stack `starci` (ops/host/stack/): one Compose project, in this one folder, that holds the shared SonarQube (sonar.yaml),
+# its public tunnel (tunnel.yaml) and the local npm registry (registry.yaml). ops/host.yaml declares each container as a service of `stack: starci`;
+# `starci host up --stack starci` brings the whole stack up, idempotently.
+#
+# The local npm registry of this host: the Verdaccio that `starci deps publish-local --execute` publishes to and an app installs an
+# urgent package change from (contexts/authority/packages.md "The local registry"). Owned by ops/host.yaml (service local-registry);
+# `starci host up local-registry` runs it, `host down local-registry` stops it, never `down -v`. It is a file of its own so that
+# it starts without the secrets the SonarQube files read.
+#
+# The container is `starci-local-registry`, published on 127.0.0.1:4873 only (nothing beyond this machine reaches it), with
+# registry.config.yaml of this folder mounted read-only. Its storage is the named volume `starci-local-registry-storage`: what was
+# published locally survives a stopped, removed or recreated container, and only `docker volume rm` deletes it.
+# ${STARCI_HOST_PROJECT} exists so the CLI can be proved on a scratch project without touching the live container.
+#
+# The image is pinned by digest (the tag stays for the reader). A digest change is a deliberate edit, not a pull.
+name: ${STARCI_HOST_PROJECT:-starci}
+
+services:
+  local-registry:
+    image: verdaccio/verdaccio:5.33.0@sha256:9d622d256378c6e7ae09f384774ee2f0f8ac67a66c066db55921a0b7218abc4c
+    container_name: ${STARCI_HOST_PROJECT:-starci}-local-registry
+    ports:
+      - "127.0.0.1:4873:4873"
+    volumes:
+      - ./registry.config.yaml:/verdaccio/conf/config.yaml:ro
+      - local-registry-storage:/verdaccio/storage
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:4873/-/ping').then((answer) => process.exit(answer.ok ? 0 : 1), () => process.exit(1))"
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    restart: unless-stopped
+
+volumes:
+  local-registry-storage:
+    name: ${STARCI_HOST_PROJECT:-starci}-local-registry-storage

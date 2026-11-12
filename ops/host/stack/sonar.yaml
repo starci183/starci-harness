@@ -1,8 +1,11 @@
+# One file of the host stack `starci` (ops/host/stack/): one Compose project, in this one folder, that holds the shared SonarQube (sonar.yaml),
+# its public tunnel (tunnel.yaml) and the local npm registry (registry.yaml). ops/host.yaml declares each container as a service of `stack: starci`;
+# `starci host up --stack starci` brings the whole stack up, idempotently.
+#
 # The shared SonarQube of this host: Sonar Community Build, its PostgreSQL and the one-shot admin-password bootstrap.
 # Owned by ops/host.yaml (services sonar-postgres, sonar, sonar-bootstrap); `starci host up` runs it, never by hand with
-# `down -v`. It moved here from the retired legacy runtime (.claude/ext/sonar/ of starci-academy-backend) with the SAME Compose
-# project (`starci`), container names, service names and named volumes, so the running group and its data are
-# adopted, not recreated: `host up` starts only what is down, with `--no-recreate`, and leaves a running container untouched.
+# `down -v`. The project name, the container names and the named volumes are fixed, so a container that is recreated
+# finds its data: `host up` starts only what is down, with `--no-recreate`, and leaves a running container untouched.
 #
 # No secret is stored here or beside it (contexts/harness/rules.md rule 1). Compose reads ${SONARQUBE_DB_PASSWORD} and
 # ${SONARQUBE_ADMIN_PASSWORD} from the environment of the one process `host up` starts, which the CLI's secret loader

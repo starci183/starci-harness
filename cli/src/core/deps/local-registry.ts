@@ -10,9 +10,9 @@ import { cliPackageName } from "../version.js"
 
 /**
  * The npm registry on this machine (`starci deps publish-local`): a Verdaccio container named `starci-local-registry`, published
- * on 127.0.0.1 only, with no login, that stores what was published locally in a bind-mounted folder of the shared state base
- * and passes every other request through to registry.npmjs.org. It is the host service `local-registry` of ops/host.yaml
- * (compose file and config in ops/host/registry/), the only way it runs. It is not a publication: nothing in it reaches npm, CI or
+ * on 127.0.0.1 only, with no login, that stores what was published locally in the named volume `starci-local-registry-storage`
+ * and passes every other request through to registry.npmjs.org. It is the service `local-registry` of the host stack `starci`
+ * (ops/host.yaml; compose file and config in ops/host/stack/), the only way it runs. It is not a publication: nothing in it reaches npm, CI or
  * an app's committed files, and what it holds is published under the version committed in git (`deps publish-local` refuses a version
  * npm serves with other content).
  */
@@ -24,7 +24,7 @@ export const LOOPBACK = "127.0.0.1"
 /** The registry URL npm is given, with the trailing slash npm writes. */
 export const registryUrl = (port: number): string => `http://${LOOPBACK}:${String(port)}/`
 
-/** The registry's folder: `local-registry` of the shared state base (one container, one storage per machine, whichever checkout runs the CLI); its `storage/` is what the container mounts. */
+/** The folder of this CLI's own registry files (its publish npmrc): `local-registry` of the shared state base, one per machine whichever checkout runs the CLI. The registry's storage is the stack's named volume, no folder here. */
 export const registryFolder = (): string => join(sharedStateBase(), "local-registry")
 
 /**
@@ -132,7 +132,6 @@ export const registryState = async (io: RegistryIo = realIo): Promise<"up" | "do
  * never replaced; nothing here runs docker itself.
  */
 export const ensureRegistry = async (cwd: string, io: RegistryIo = realIo): Promise<void> => {
-    mkdirSync(join(registryFolder(), "storage"), { recursive: true })
     if (await io.answers()) return
     const outcomes = await io.up(cwd)
     if (await io.answers()) return

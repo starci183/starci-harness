@@ -1,5 +1,5 @@
-// The local registry of `deps publish-local`: one host service (ops/host.yaml `local-registry`, compose file and config in
-// ops/host/registry/), loopback-only by construction, the npm settings reach `@starci` only, and its lifecycle (state, an idempotent
+// The local registry of `deps publish-local`: one service of the host stack (ops/host.yaml `local-registry`, compose file and config in
+// ops/host/stack/), loopback-only by construction, the npm settings reach `@starci` only, and its lifecycle (state, an idempotent
 // start through `host up`) with the ping and the host start replaced. Built with the CLI, run by `npm test`.
 import assert from "node:assert/strict"
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs"
@@ -11,7 +11,7 @@ import type { UpOutcome } from "../../harness/host.js"
 import { ensureRegistry, installFlags, installNpmrc, publishNpmrc, registryFlags, registryFolder, registryState, registryUrl } from "./local-registry.js"
 import type { RegistryIo } from "./local-registry.js"
 
-const registryDir = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..", "ops", "host", "registry")
+const registryDir = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..", "ops", "host", "stack")
 
 const refusal = (code: string) => (error: unknown) => error instanceof Error && "code" in error && error.code === code
 
@@ -44,19 +44,23 @@ const inScratch = (t: { after: (fn: () => void) => void }): string => {
     return root
 }
 
-void test("the compose service pins the image by digest, publishes 127.0.0.1 only and keeps the container name", () => {
-    const text = readFileSync(join(registryDir, "compose.yaml"), "utf8")
+void test("the compose service pins the image by digest, publishes 127.0.0.1 only, keeps the container name, stores in a named volume and has a healthcheck", () => {
+    const text = readFileSync(join(registryDir, "registry.yaml"), "utf8")
     assert.match(text, /^\s+image:\s*verdaccio\/verdaccio:\S+@sha256:[0-9a-f]{64}$/m)
     assert.match(text, /^\s+container_name:\s*\$\{STARCI_HOST_PROJECT:-starci\}-local-registry$/m)
     const ports = [...text.matchAll(/^\s+-\s*"([^"]*:\d+:\d+)"$/gm)].map((one) => one[1])
     assert.deepEqual(ports, ["127.0.0.1:4873:4873"])
     assert.match(text, /^\s+restart:\s*unless-stopped$/m)
-    assert.match(text, /\.\/config\.yaml:\/verdaccio\/conf\/config\.yaml:ro$/m)
-    assert.match(text, /\$\{STARCI_REGISTRY_STORAGE:\?[^}]+\}:\/verdaccio\/storage$/m)
+    assert.match(text, /\.\/registry\.config\.yaml:\/verdaccio\/conf\/config\.yaml:ro$/m)
+    assert.match(text, /^\s+- local-registry-storage:\/verdaccio\/storage$/m)
+    assert.match(text, /^\s+name:\s*\$\{STARCI_HOST_PROJECT:-starci\}-local-registry-storage$/m, "the volume keeps one name, so what was published survives a recreated container")
+    assert.doesNotMatch(text, /STARCI_REGISTRY_STORAGE/, "no host folder is bind-mounted as the storage")
+    assert.match(text, /^\s+healthcheck:$/m)
+    assert.match(text, /127\.0\.0\.1:4873\/-\/ping/)
 })
 
 void test("the config proxies to npmjs, allows no new users and has no login", () => {
-    const config = readFileSync(join(registryDir, "config.yaml"), "utf8")
+    const config = readFileSync(join(registryDir, "registry.config.yaml"), "utf8")
     assert.match(config, /url: https:\/\/registry\.npmjs\.org\//)
     assert.match(config, /max_users: -1/)
     assert.match(config, /proxy: npmjs/)
@@ -87,7 +91,7 @@ void test("start is idempotent: a registry that answers is adopted and the host 
     await ensureRegistry(".", up.io)
     assert.equal(up.starts(), 0)
     assert.equal(registryFolder(), join(root, "local-registry"))
-    assert.ok(existsSync(join(root, "local-registry", "storage")))
+    assert.ok(!existsSync(join(root, "local-registry", "storage")), "the storage is the stack's named volume, no folder of the state base")
 })
 
 void test("start runs the host service once when the registry is down, and returns when it then answers", async (t) => {

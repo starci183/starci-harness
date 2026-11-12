@@ -254,7 +254,7 @@ slots:
   - id: ops.host-services
     path: "ops/host/**"
     presence: optional
-    holds: the compose files and tunnel config of the host services ops/host.yaml declares (Sonar, its database, the tunnel), as data the host verbs run
+    holds: the compose files of the host stack ops/host.yaml declares in ops/host/stack (Sonar, its database, the tunnel, the local npm registry and its config), as data the host verbs run
     rule: CONTRIB-9 data is data
   - id: ops.labels
     path: "ops/ops/*.md"

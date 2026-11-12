@@ -22,9 +22,9 @@ and no other package or app moves.
 
 An app uses an unreleased package edit (`@starci/hfs`, the CLI, a canon, the Grammar) at once, through one route: the npm
 registry on 127.0.0.1:4873, installed like npm. There is no other way: nothing is linked or copied into an app's
-`node_modules`, so every checkout, verify and walk runs the package its lockfile names. The registry is the compose host service
-`local-registry` of [ops/host.yaml](../../ops/host.yaml) (compose file and config in [ops/host/registry/](../../ops/host/registry/),
-storage in `local-registry/storage` of the shared state base): `starci host up local-registry` starts it, `starci host status`
+`node_modules`, so every checkout, verify and walk runs the package its lockfile names. The registry is the service
+`local-registry` of the host stack `starci` ([ops/host.yaml](../../ops/host.yaml); compose file and config in [ops/host/stack/](../../ops/host/stack/),
+storage in the named volume `starci-local-registry-storage`, which outlives the container): `starci host up local-registry` starts it alone, `starci host up --stack starci` with the rest of the stack, `starci host status`
 reports it, `starci host down local-registry` stops it, and `deps publish-local --execute` runs that same `host up` when it does
 not answer. A registry that answers is left as it is ([cli/README.md](../../cli/README.md) "A local registry").
 

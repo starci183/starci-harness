@@ -9,7 +9,7 @@ import type { AddressInfo } from "node:net"
 import { dirname, join } from "node:path"
 import test from "node:test"
 import { fileURLToPath } from "node:url"
-import { inRequiresOrder, inStopOrder, loadHost, probeService, startEnv } from "./host.js"
+import { inRequiresOrder, inStopOrder, loadHost, probeService, selectServices, startEnv } from "./host.js"
 import type { HostConfig, HostService } from "./host.js"
 
 const opsDir = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "ops")
@@ -83,24 +83,50 @@ void test("host down stops dependents before what they require", () => {
     assert.deepEqual(inStopOrder(config, [postgres]).map((service) => service.id), ["sonar-tunnel", "sonar-bootstrap", "sonar", "sonar-postgres"])
 })
 
+const STACK_FILES = ["sonar.yaml", "tunnel.yaml", "registry.yaml"]
+const STACK_SERVICES = ["sonar-postgres", "sonar", "sonar-bootstrap", "sonar-tunnel", "local-registry"]
+
 void test("the compose stack stores no secret value and pins every image by digest", () => {
-    for (const file of ["sonar/compose.yaml", "sonar/cloudflared.yaml", "registry/compose.yaml"]) {
-        const text = readFileSync(join(opsDir, "host", file), "utf8")
+    for (const file of STACK_FILES) {
+        const text = readFileSync(join(opsDir, "host", "stack", file), "utf8")
         for (const image of text.matchAll(/^\s+image:\s*(\S+)/gm)) assert.match(image[1] ?? "", /@sha256:[0-9a-f]{64}$/, `${file}: ${image[1] ?? ""}`)
         for (const secret of text.matchAll(/^\s+(?:POSTGRES_PASSWORD|SONAR_JDBC_PASSWORD|SONARQUBE_ADMIN_PASSWORD|TUNNEL_TOKEN):\s*(\S+)/gm)) assert.match(secret[1] ?? "", /^\$\{[A-Z_]+:\?/, `${file}: a secret is not read from the environment`)
     }
 })
 
-void test("the local registry is a compose host service like Sonar: ping check on 4873, compose up --no-recreate, docker stop, behind docker", () => {
+void test("the host stack is one compose project in one folder: every file names the project starci, and every stack service starts from that folder", () => {
+    for (const file of STACK_FILES) assert.match(readFileSync(join(opsDir, "host", "stack", file), "utf8"), /^name: \$\{STARCI_HOST_PROJECT:-starci\}$/m, file)
+    for (const gone of ["sonar", "registry"]) assert.ok(!existsSync(join(opsDir, "host", gone)), `ops/host/${gone} moved into ops/host/stack`)
+    const config = loadHost(opsDir)
+    assert.deepEqual(config.services.filter((service) => service.stack === "starci").map((service) => service.id), STACK_SERVICES)
+    for (const id of STACK_SERVICES) {
+        const argv = serviceOf(config, id).start?.argv ?? []
+        assert.deepEqual(argv.slice(0, 4), ["docker", "compose", "--project-directory", "{runtime}/ops/host/stack"], id)
+        const files = argv.flatMap((token, at) => (argv[at - 1] === "-f" ? [token] : []))
+        assert.ok(files.length > 0 && files.every((file) => file.startsWith("{runtime}/ops/host/stack/")), `${id}: ${files.join(", ")}`)
+        assert.deepEqual(argv.slice(-4, -1), ["up", "-d", "--no-recreate"], id)
+    }
+})
+
+void test("a stack selects its services, in ops/host.yaml order, and an unknown stack is refused", () => {
+    const config = loadHost(opsDir)
+    assert.deepEqual(selectServices(config, [], "starci").map((service) => service.id), STACK_SERVICES)
+    assert.deepEqual(inRequiresOrder(config, selectServices(config, [], "starci")).map((service) => service.id), ["docker", ...STACK_SERVICES])
+    assert.deepEqual(selectServices(config, ["sonar"], "starci").map((service) => service.id), ["sonar"], "an id narrows the stack")
+    assert.throws(() => selectServices(config, [], "nope"), (error: unknown) => error instanceof Error && "code" in error && error.code === "HOST_UNKNOWN_STACK")
+    assert.throws(() => selectServices(config, ["orca"], "starci"), (error: unknown) => error instanceof Error && "code" in error && error.code === "HOST_UNKNOWN_SERVICE")
+})
+
+void test("the local registry is a service of the host stack: ping check on 4873, compose up --no-recreate, docker stop, behind docker, its storage a named volume", () => {
     const config = loadHost(opsDir)
     const registry = serviceOf(config, "local-registry")
     assert.equal(registry.check?.http?.url, "http://127.0.0.1:4873/-/ping")
-    assert.deepEqual(registry.start?.argv, ["docker", "compose", "--project-directory", "{runtime}/ops/host/registry", "-f", "{runtime}/ops/host/registry/compose.yaml", "up", "-d", "--no-recreate", "local-registry"])
-    assert.deepEqual(registry.start.env, { STARCI_REGISTRY_STORAGE: "{shared-state}/local-registry/storage" })
+    assert.deepEqual(registry.start?.argv, ["docker", "compose", "--project-directory", "{runtime}/ops/host/stack", "-f", "{runtime}/ops/host/stack/registry.yaml", "up", "-d", "--no-recreate", "local-registry"])
+    assert.equal(registry.start.env, undefined, "the storage is a named volume: no host folder is handed to compose")
+    assert.equal(registry.start.secrets, undefined, "the registry starts without the Sonar secrets")
     assert.deepEqual(registry.stop?.argv, ["docker", "stop", "starci-local-registry"])
     assert.deepEqual(registry.requires, ["docker"])
     assert.deepEqual(inRequiresOrder(config, [registry]).map((service) => service.id), ["docker", "local-registry"])
-    assert.ok(existsSync(join(opsDir, "host", "registry", "compose.yaml")))
 })
 
 void test("a start env value expands the state tokens: {shared-state} is STARCI_LOCAL_ROOT when it is set", (t) => {

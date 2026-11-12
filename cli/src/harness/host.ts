@@ -39,6 +39,8 @@ const serviceSchema = z.strictObject({
     // How long `host up` and `host down` wait for this service's check to turn (default: the file's waitSeconds).
     waitSeconds: z.number().int().positive().optional(),
     platform: z.enum(["win32", "linux", "darwin", "any"]),
+    // The compose project this service is a container of (ops/host/stack/): `host up --stack <name>` brings the whole stack up.
+    stack: z.string().regex(/^[a-z][a-z0-9-]*$/).optional(),
     check: checkSchema.optional(),
     start: z
         .strictObject({
@@ -152,11 +154,19 @@ export const expandArgv = (argv: readonly string[]): string[] => argv.flatMap((t
 /** The platforms a service runs on, judged against a target platform. */
 export const appliesTo = (service: HostService, platform: string): boolean => service.platform === "any" || service.platform === platform
 
-/** The services ids name, in ops/host.yaml order; every service when none is named. Refuses an id that is no service. */
-export const selectServices = (config: HostConfig, ids: readonly string[]): HostService[] => {
-    const unknown = ids.filter((id) => !config.services.some((service) => service.id === id))
-    if (unknown.length > 0) throw new Refusal("HOST_UNKNOWN_SERVICE", `no service ${unknown.join(", ")} in ops/host.yaml (services: ${config.services.map((service) => service.id).join(", ")})`)
-    return ids.length === 0 ? [...config.services] : config.services.filter((service) => ids.includes(service.id))
+/**
+ * The services ids name, in ops/host.yaml order; every service when none is named. With `stack`, the services of that stack (its ids
+ * narrow it). Refuses a stack no service declares and an id that is no service, or no service of the stack.
+ */
+export const selectServices = (config: HostConfig, ids: readonly string[], stack?: string): HostService[] => {
+    const pool = stack === undefined ? config.services : config.services.filter((service) => service.stack === stack)
+    if (stack !== undefined && pool.length === 0) {
+        const stacks = [...new Set(config.services.flatMap((service) => (service.stack === undefined ? [] : [service.stack])))]
+        throw new Refusal("HOST_UNKNOWN_STACK", `no stack ${stack} in ops/host.yaml (stacks: ${stacks.join(", ")})`)
+    }
+    const unknown = ids.filter((id) => !pool.some((service) => service.id === id))
+    if (unknown.length > 0) throw new Refusal("HOST_UNKNOWN_SERVICE", `no service ${unknown.join(", ")} in ${stack === undefined ? "ops/host.yaml" : `stack ${stack} of ops/host.yaml`} (services: ${pool.map((service) => service.id).join(", ")})`)
+    return ids.length === 0 ? [...pool] : pool.filter((service) => ids.includes(service.id))
 }
 
 /** What one check found: up or not, and the evidence that says so. */

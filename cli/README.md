@@ -823,14 +823,17 @@ scheduler's command line carries one quoted path; without `--execute` it prints 
 installed with its evidence, and lists every other StarCi-named task (a disabled one as legacy) without changing it;
 `host up` starts what is down in `requires` order; `host uninstall` removes only the schedules ops/host.yaml declares.
 
-The host also keeps the docker compose group `starci` (the shared SonarQube) and the local npm registry as services:
-`sonar-postgres`, `sonar`, `sonar-bootstrap`, `sonar-tunnel` (files in [ops/host/sonar/](../ops/host/sonar/)) and `local-registry` (files in [ops/host/registry/](../ops/host/registry/)),
+The host also keeps one docker compose stack, `starci`: the shared SonarQube, its public tunnel and the local npm registry. Its files are one
+folder, [ops/host/stack/](../ops/host/stack/) (`sonar.yaml`, `tunnel.yaml`, `registry.yaml` and the registry's `registry.config.yaml`), one Compose
+project, and each container of it is a service of ops/host.yaml with `stack: starci`: `sonar-postgres`, `sonar`, `sonar-bootstrap`, `sonar-tunnel`
+and `local-registry`. `starci host up --stack starci` brings the whole stack up (idempotent: what is up is left alone), `host status --stack starci`
+reports it and `host down --stack starci` stops it; a stack no service declares is `HOST_UNKNOWN_STACK`. The services are
 each behind `docker`. A check is an `argv` or an `http` URL (a status, and with `json` a body value): `sonar` is up when
 `GET 127.0.0.1:9010/api/system/status` says `UP`, `sonar-tunnel` when `https://sonar.starci.org/api/server/version` answers 200,
 `sonar-postgres` when its container is healthy, `sonar-bootstrap` when its one-shot container exited 0, `local-registry` when
 `127.0.0.1:4873/-/ping` answers. `host up` runs `docker compose up -d --no-recreate <service>` only for a service whose check is
 down, so the running `starci` containers are adopted (same project name, container names and named volumes) and never
-recreated, and no volume is touched; the registry starts like them, `docker compose up -d --no-recreate local-registry` of ops/host/registry/compose.yaml (its storage bind-mounted from `local-registry/storage` of the shared state base, the `{shared-state}` token of ops/host.yaml, the `.runtime` of the main checkout), and is the container `deps publish-local --execute` also ensures through `host up local-registry`; `host status` reports it by its ping. `host down <service>...` stops a
+recreated, and no volume is touched; the registry starts like them, `docker compose up -d --no-recreate local-registry` of ops/host/stack/registry.yaml (a file of its own, so it starts without the SonarQube secrets; its storage is the named volume `starci-local-registry-storage`, so what was published survives a removed or recreated container; its healthcheck is the same ping), and is the container `deps publish-local --execute` also ensures through `host up local-registry`; `host status` reports it by its ping. `host down <service>...` stops a
 service and what requires it, dependents first, with `docker stop` (a service with no `stop`, the bootstrap job among them, is
 left alone); it never runs `compose down` and removes no container or volume, and it refuses to run with no service named
 (`HOST_DOWN_NEEDS_SERVICE`). A service's `start.secrets` (`SONARQUBE_DB_PASSWORD`, `SONARQUBE_ADMIN_PASSWORD`,

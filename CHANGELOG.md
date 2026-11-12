@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.0-alpha.120 - 2026-11-13
+
+- Changed: the host's containers are ONE compose stack, `starci`, defined in one folder: `ops/host/stack/` holds `sonar.yaml` (was `ops/host/sonar/compose.yaml`), `tunnel.yaml` (was `ops/host/sonar/cloudflared.yaml`), `registry.yaml` and `registry.config.yaml` (were `ops/host/registry/`). Every service of it in ops/host.yaml carries `stack: starci` (a new optional key of a service).
+- Added: `starci host up|status|down --stack <name>` select the services of a stack; `host up --stack starci` brings the shared SonarQube, its tunnel and the local npm registry up in one idempotent call. An unknown stack is `HOST_UNKNOWN_STACK`. Tests `cli/src/harness/host.test.ts`.
+- Changed: the local registry stores what was published in the named volume `starci-local-registry-storage` (it was a bind mount of `local-registry/storage` of the shared state base) and has a healthcheck (its ping). `deps publish-local` no longer makes a storage folder. Tests `cli/src/core/deps/local-registry.test.ts`.
+- Upgrade, on a host that runs the old containers: stop and remove the containers of the old `starci` project and the registry container that compose did not create (containers only, never a volume), run `starci host up --stack starci`, then copy the old registry storage into the volume or publish again. The alpha.119 number is the cleanup branch's.
+
 ## 1.1.0-alpha.118 - 2026-11-12
 
 - Changed: the CLI requires @starci/hfs@6.9.1, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
