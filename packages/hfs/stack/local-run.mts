@@ -23,7 +23,7 @@ export interface LocalDeps extends HostDeps {
   alive?: ((pid: number) => boolean) | undefined;
   kill?: ((pid: number) => void) | undefined;
   tcpOpen?: ((port: number) => Promise<boolean>) | undefined;
-  /** The other apps of the machine that declare a base port (the doctor's overlap row); the machine registry when absent. */
+  /** The other projects of the machine (the doctor's overlap row); the machine registries when absent (local-peers.mts machinePeers). */
   peers?: (() => PeerBase[]) | undefined;
   migrate?: ((urlEnv: string, env: NodeJS.ProcessEnv, cwd: string) => Promise<number>) | undefined;
 }

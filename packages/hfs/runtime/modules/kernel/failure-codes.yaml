@@ -5750,6 +5750,16 @@ STACKS_COMPOSE_PORT_ROLE:
   owner: op-retry
   kind: check-finding
 
+HFS_SCAFFOLD_BASE_PORT_TAKEN:
+  title: "The scaffold's named base port overlaps another project of the machine"
+  title_vi: "Cổng gốc đặt cho scaffold trùng dải cổng của một dự án khác trên máy"
+  meaning_vi: "starci app scaffold --base-port <n> đã bị từ chối: dải n..n+99 trùng dải trăm cổng (hoặc các cổng đã khai báo) của một dự án đã đăng ký trên máy, hay trùng dải 3900..3999 dành cho bản xem trước UI. Mỗi dự án sở hữu một trăm cổng riêng. Thông báo liệt kê mọi dự án đã so sánh và cổng gốc trống kế tiếp."
+  causes_vi:
+    - "Vi phạm R389: cổng gốc chọn tay rơi vào dải của dự án khác."
+  nextStep_vi: "Chạy lại starci app scaffold với --base-port bằng cổng gốc trống mà thông báo đề xuất, hoặc bỏ --base-port để scaffold tự chọn trăm cổng trống kế tiếp."
+  owner: supervisor
+  kind: verb-refusal
+
 STACKS_COMPOSE_PORT_LITERAL:
   title: "A compose file of a dev environment with a base port publishes a literal host port"
   title_vi: "File compose của môi trường dev có cổng gốc lại publish một cổng host cố định"

@@ -392,9 +392,19 @@ Rules learned from running apps on developer hosts; each holds in every app.
   that asks it to declare one. `starci app sync --execute` brings an existing app to the table: it moves the database, `mail` and `mailui` ports
   of each environment with a base to their slots (a slot another port holds stays, named) and gives an environment that runs no object store
   the `storage` service with its ports, its grant of the `storage` member's keys, its readiness probe and its console origin, pointing the api's
-  `STORAGE_ENDPOINT` at it (`sync/dev-services.mts` of `@starci/hfs`). `starci app stack doctor --env <env>` prints the `base port` row (the role table) and a `port range` row that fails
-  when another app registered on this machine (the machine registry's projects, the same environment name) declares an overlapping
-  `basePort` to `basePort + 99`, or the reserved range (a `port range reserved` row). The scaffold gives a new app a base of its own. The authority is `scripts/hfs/stack-base-port.mjs` of `@starci/hfs`.
+  `STORAGE_ENDPOINT` at it (`sync/dev-services.mts` of `@starci/hfs`). 
+  **Each project owns its own hundred.** No two projects of one machine share a port of `base` to `base + 99`: one project takes 3000,
+  the next 3100, a third 3200, and so on (the numbers are examples; the hundred is the project's, whatever it is). The projects of the
+  machine are the registered ones: the `ledgers` of every machine registry the CLI sees (its state base's `machine.sqlite` and, unless
+  `STARCI_LOCAL_ROOT` pins one store, the harness home's `.runtime/machine.sqlite`, since an app's installed CLI keeps a state base of its
+  own), each read from its registered checkout and every worktree of it (lanes included) for the environment of the same name; a project
+  that declares no `basePort` holds the ports its `local.ports` declares. `starci app stack doctor --env <env>` prints the `base port` row
+  (the role table) and a `port range` row that names every project it compared with its base (or its ports), the registries it read and
+  every checkout it could not read, and fails, with the next free base, when this app's hundred overlaps another project's, or the reserved
+  range (a `port range reserved` row). `starci app scaffold` checks the same projects: without `--base-port` it takes the name's base, or the
+  next free hundred of 3000 to 4900 when another project holds it, and says which; `--base-port <n>` that overlaps another project is
+  refused `HFS_SCAFFOLD_BASE_PORT_TAKEN` with the next free base. The authority is `scripts/hfs/stack-base-port.mjs` (the table) and
+  `stack/local-peers.mjs` (the projects) of `@starci/hfs`.
 - **A green check judges the running stack too.** `starci app check --env local` (the default, the fix-loop run; `--env prod` never asks, since CI has no dev stack) reads
   the live dev environment after the tree checks, for each docker-compose environment that declares a `local.database`, with two read-only checks that are never cached
   and say nothing when the stack is not up (one line says why):

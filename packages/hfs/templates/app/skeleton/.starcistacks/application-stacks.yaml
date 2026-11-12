@@ -46,7 +46,8 @@ environments:
     # awaited on its healthcheck, then readiness and the origins. The app images come from `starci app stack prepare --env dev --execute`.
     local:
       # The project base port (R389, PROJECT-STACKS-10): app = base, core = base+1, landing = base+2, the screenshot gallery serves on base+50 (R395),
-      # and the compose services take base+80 to base+99: the object store's S3 API base+93 and its console base+94.
+      # and the compose services take base+80 to base+99: the object store's S3 API base+93 and its console base+94. Each project owns its own
+      # hundred: the doctor fails a base another project of the machine holds.
       basePort: 3000
       ports:
         core: 3001

@@ -10,9 +10,11 @@ import { stacksLocalFindings } from '../runtime/scripts/hfs/rules/stacks-local.m
 import { basePortProblems, BASE_PORT_SPAN, COMPOSE_BAND, COMPOSE_ROLES, composePort, composePorts, literalPublishes, overlapsReserved, rangesOverlap, roleOf } from '../runtime/scripts/hfs/stack-base-port.mjs';
 import { normalizeLocal } from '../runtime/scripts/hfs/stack-local-config.mjs';
 import type { LocalConfig } from '../stack/local-config.mjs';
-import { basePortRows, machinePeers } from '../stack/local-peers.mjs';
-import type { PeerBase } from '../stack/local-peers.mjs';
-import { scaffoldBasePort } from '../scaffold/app.mjs';
+import { spawnSync } from 'node:child_process';
+import { basePortRows, harnessHomeOf, machinePeers, machineRegistries, nextFreeBase, overlapsOf } from '../stack/local-peers.mjs';
+import type { MachinePeers, PeerBase } from '../stack/local-peers.mjs';
+import { scaffoldBase, scaffoldBasePort } from '../scaffold/app.mjs';
+import { ScaffoldError } from '../scaffold/service.mjs';
 
 /** A local block whose native processes are `processes` (name -> port) and whose compose-only ports are `containers`. */
 function block(processes: Record<string, number>, { basePort, containers = { cache: 56379 } }: { basePort?: number; containers?: Record<string, number> } = {}) {
@@ -197,43 +199,110 @@ function localOf(root: string, basePort: number | null, ports: Record<string, nu
   return { ...config!, env: 'dev', appProject: 'demo', repoRoot: root, envDir: root, composeFiles: [], secretsDir: root };
 }
 
-test('doctor rows: the role table and the range are ok rows, a table violation and an overlapping app are fail rows', () => {
+const found = (peers: PeerBase[], unread: MachinePeers['unread'] = []): MachinePeers => ({ peers, unread, registries: ['D:/state/machine.sqlite'] });
+
+test('doctor rows: the role table and the range are ok rows naming every project compared; a table violation and an overlap are fail rows', () => {
   const peers: PeerBase[] = [{ project: 'nivo', repoRoot: 'D:/apps/nivo', basePort: 3100 }, { project: 'other', repoRoot: 'D:/apps/other', basePort: 4000 }];
-  const clear = basePortRows(localOf('x', 3300), peers);
+  const clear = basePortRows(localOf('x', 3300), found(peers));
   assert.deepEqual(clear.map((row) => [row.id, row.ok]), [['base port', true], ['port range', true]]);
-  assert.match(clear[1]?.detail ?? '', /3300\.\.3399 overlaps no other app of this machine \(2 with a base port checked\)/u);
-  const clash = basePortRows(localOf('x', 3050), peers);
+  assert.equal(clear[1]?.detail, '3300..3399 overlaps no other project; compared nivo 3100..3199 (D:/apps/nivo); other 4000..4099 (D:/apps/other); registries D:/state/machine.sqlite');
+  const clash = basePortRows(localOf('x', 3050), found(peers));
   assert.deepEqual(clash.map((row) => [row.id, row.ok]), [['base port', true], ['port range', false]]);
-  assert.match(clash[1]?.detail ?? '', /3050\.\.3149 overlaps nivo \(3100\.\.3199, D:\/apps\/nivo\)/u);
-  assert.doesNotMatch(clash[1]?.detail ?? '', /other/u);
-  assert.equal(basePortRows(localOf('x', 3100), peers)[1]?.ok, false, 'equal bases overlap');
-  assert.equal(basePortRows(localOf('x', 3200), peers)[1]?.ok, true, 'bases a span apart do not');
-  const off = basePortRows(localOf('x', 3300, { web: 3301 }), peers);
+  assert.match(clash[1]?.detail ?? '', /^3050\.\.3149 overlaps nivo 3100\.\.3199 \(D:\/apps\/nivo\); compared /u);
+  assert.match(clash[1]?.fix ?? '', /each project owns its own hundred: change local\.basePort to 3200, the next free base/u);
+  assert.equal(basePortRows(localOf('x', 3100), found(peers))[1]?.ok, false, 'equal bases overlap');
+  assert.equal(basePortRows(localOf('x', 3200), found(peers))[1]?.ok, true, 'bases a span apart do not');
+  const off = basePortRows(localOf('x', 3300, { web: 3301 }), found(peers));
   assert.equal(off[0]?.ok, false);
   assert.match(off[0]?.detail ?? '', /processes\.web is the primary front end: basePort = 3300, not 3301/u);
-  const none = basePortRows(localOf('x', null), peers);
+  const none = basePortRows(localOf('x', null), found(peers));
   assert.deepEqual(none.map((row) => [row.id, row.ok]), [['base port', true]], 'no base declared: one ok row asking for it, no overlap to judge');
+  const alone = basePortRows(localOf('x', 3300), { peers: [], unread: [], registries: [] });
+  assert.equal(alone[1]?.detail, '3300..3399 overlaps no other project; compared no other project; no machine registry found');
 });
 
-test('machinePeers reads the other apps from the machine registry: the same env, one per project, never this app or a lane of it', (t) => {
+test('a project that declares no base holds the ports it declares: a base whose hundred contains one of them overlaps it', () => {
+  const legacy: PeerBase = { project: 'legacy', repoRoot: 'D:/lanes/legacy', basePort: null, ports: [3100, 3103, 3105, 18787] };
+  const rows = basePortRows(localOf('x', 3105, { web: 3105 }), found([legacy]));
+  assert.equal(rows[1]?.ok, false);
+  assert.match(rows[1]?.detail ?? '', /^3105\.\.3204 overlaps legacy no basePort, ports 3100, 3103, 3105, 18787 \(D:\/lanes\/legacy\)/u);
+  assert.deepEqual(overlapsOf(3200, [legacy]), []);
+  assert.equal(nextFreeBase(3100, [legacy]), 3200);
+  const unread = basePortRows(localOf('x', 3300), found([], [{ repoRoot: 'D:/gone', why: 'the checkout no longer exists' }]));
+  assert.match(unread[1]?.detail ?? '', /not read: D:\/gone \(the checkout no longer exists\)$/u);
+});
+
+const git = (cwd: string, ...args: string[]): void => { assert.equal(spawnSync('git', ['-C', cwd, ...args], { encoding: 'utf8' }).status, 0, args.join(' ')); };
+
+test('machinePeers reads every registered project from the fake machine store, with its worktrees: one per project, never this app, retired ones left out, the unreadable named', (t) => {
   const registry = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-base-port-registry-'));
   t.after(() => fs.rmSync(registry, { recursive: true, force: true }));
+  const env = { STARCI_LOCAL_ROOT: registry } as NodeJS.ProcessEnv;
   const file = path.join(registry, 'machine.sqlite');
-  const env = { STARCI_TEST_MACHINE_FILE: file } as NodeJS.ProcessEnv;
   const own = app(t, BASE_APP(3000));
   const lane = app(t, BASE_APP(3000));
-  const nivo = app(t, BASE_APP(3100), 'nivo');
-  const bare = app(t, BASE_APP(null), 'legacy');
+  // A project whose registered checkout declares no base, while a lane worktree of it does: the lane's base is the project's.
+  const nivo = app(t, BASE_APP(null), 'nivo');
+  git(nivo, 'init', '-q', '-b', 'main');
+  git(nivo, '-c', 'user.email=spec@example.invalid', '-c', 'user.name=spec', 'add', '-A');
+  git(nivo, '-c', 'user.email=spec@example.invalid', '-c', 'user.name=spec', 'commit', '-qm', 'base');
+  const nivoLane = `${nivo}-lane`;
+  t.after(() => fs.rmSync(nivoLane, { recursive: true, force: true }));
+  git(nivo, 'worktree', 'add', '-q', '-b', 'lane', nivoLane);
+  fs.writeFileSync(path.join(nivoLane, '.starcistacks', 'application-stacks.yaml'), `schema: starci/application-stacks@1\nenvironments:\n${COMPOSE_ENV(BASE_APP(3100))}`);
+  const legacy = app(t, BASE_APP(null), 'legacy');
   const retired = app(t, BASE_APP(3500), 'gone');
-  const registered = [own, lane, nivo, bare, retired];
+  const missing = path.join(registry, 'no-such-checkout');
+  const registered = [own, lane, nivo, legacy, retired, missing];
   withMachine((m) => {
     registered.forEach((root, index) => m.registerLedger({ ledgerId: `ledger-${index}`, name: path.basename(root), repoRoot: root, file: path.join(registry, `ledger-${index}.sqlite`) }));
     m.setLedgerState('ledger-4', 'retired', { reason: 'spec' });
   }, { file, env });
-  const peers = machinePeers({ env }, { repoRoot: own, appProject: 'demo', env: 'dev' });
-  assert.deepEqual(peers.map((peer) => [peer.project, peer.basePort]), [['nivo', 3100]]);
-  assert.deepEqual(machinePeers({ env }, { repoRoot: own, appProject: 'demo', env: 'staging' }), [], 'another environment name declares nothing');
-  assert.deepEqual(machinePeers({ env: { STARCI_TEST_MACHINE_FILE: path.join(registry, 'absent.sqlite') } as NodeJS.ProcessEnv }, { repoRoot: own, appProject: 'demo', env: 'dev' }), [], 'no registry: no peers, no failure');
+  assert.deepEqual(machineRegistries(env, own), [path.resolve(file)], 'STARCI_LOCAL_ROOT pins one store: the harness home is not read');
+  const result = machinePeers({ env }, { repoRoot: own, appProject: 'demo', env: 'dev' });
+  assert.deepEqual(Object.fromEntries(result.peers.map((peer) => [peer.project, [peer.basePort, peer.ports]])), { nivo: [3100, []], legacy: [null, [56379, 3000]] });
+  assert.deepEqual(result.unread.map((entry) => [entry.repoRoot, entry.why]), [[path.resolve(missing), 'the checkout no longer exists']]);
+  assert.deepEqual(result.registries, [path.resolve(file)]);
+  const staging = machinePeers({ env }, { repoRoot: own, appProject: 'demo', env: 'staging' });
+  assert.deepEqual(staging.peers.map((peer) => [peer.basePort, peer.ports]), [[null, []], [null, []]], 'another environment name declares neither base nor ports');
+  assert.deepEqual(machinePeers({ env: { STARCI_LOCAL_ROOT: path.join(registry, 'empty') } as NodeJS.ProcessEnv }, { repoRoot: own, appProject: 'demo', env: 'dev' }), { peers: [], unread: [], registries: [] }, 'no registry: no peers, no failure');
+});
+
+test('the harness home of an app is the nearest ancestor that is a harness checkout or holds one as .claude', (t) => {
+  const top = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-harness-home-'));
+  t.after(() => fs.rmSync(top, { recursive: true, force: true }));
+  const home = path.join(top, '.claude');
+  for (const dir of ['cli', 'ops', 'policy']) fs.mkdirSync(path.join(home, dir), { recursive: true });
+  fs.writeFileSync(path.join(home, 'ops', 'checks.yaml'), '');
+  fs.writeFileSync(path.join(home, 'policy', 'quality.yaml'), '');
+  fs.mkdirSync(path.join(top, 'apps', 'shop'), { recursive: true });
+  assert.equal(harnessHomeOf(path.join(top, 'apps', 'shop')), home);
+  assert.equal(harnessHomeOf(home), home);
+  fs.mkdirSync(path.join(home, '.runtime'));
+  fs.writeFileSync(path.join(home, '.runtime', 'machine.sqlite'), '');
+  const env = { LOCALAPPDATA: path.join(top, 'appdata') } as NodeJS.ProcessEnv;
+  assert.ok(machineRegistries(env, path.join(top, 'apps', 'shop')).includes(path.join(home, '.runtime', 'machine.sqlite')), 'an installed CLI also reads the harness home registry, where the projects are registered');
+});
+
+test('the scaffold base: the name base when free, else the next free hundred said so; --base-port is refused HFS_SCAFFOLD_BASE_PORT_TAKEN with the next free base', () => {
+  const name = 'alpha';
+  const preferred = scaffoldBasePort(name);
+  const free = scaffoldBase({ name, root: 'D:/apps/alpha', found: found([]) });
+  assert.deepEqual(free, { port: preferred, line: `base port: ${preferred} (the name's base, free; compared no other project)` });
+  const holder: PeerBase = { project: 'nivo', repoRoot: 'D:/apps/nivo', basePort: preferred };
+  const moved = scaffoldBase({ name, root: 'D:/apps/alpha', found: found([holder]) });
+  assert.notEqual(moved.port, preferred);
+  assert.equal(overlapsOf(moved.port, [holder]).length, 0);
+  assert.match(moved.line, new RegExp(`^base port: ${moved.port} \\(the name's base ${preferred} overlaps nivo ${preferred}\\.\\.${preferred + 99} \\(D:/apps/nivo\\): the next free hundred; compared nivo`, 'u'));
+  assert.throws(() => scaffoldBase({ name, root: 'D:/apps/alpha', explicit: String(preferred + 50), found: found([holder]) }), (error: unknown) => {
+    assert.ok(error instanceof ScaffoldError);
+    assert.equal(error.code, 'HFS_SCAFFOLD_BASE_PORT_TAKEN');
+    assert.match(error.message, new RegExp(`^--base-port ${preferred + 50} \\(${preferred + 50}\\.\\.${preferred + 149}\\) overlaps nivo .*each project owns its own hundred \\(PROJECT-STACKS-10\\); the next free base is \\d+: run starci app scaffold alpha --base-port \\d+`, 'u'));
+    return true;
+  });
+  const elsewhere = preferred === 4800 ? 4700 : 4800;
+  assert.deepEqual(scaffoldBase({ name, root: 'D:/apps/alpha', explicit: String(elsewhere), found: found([holder]) }).port, elsewhere, 'a named base no project holds is taken');
+  assert.throws(() => scaffoldBase({ name, root: 'D:/apps/alpha', explicit: '3950', found: found([]) }), /overlaps the shared UI-lane preview/u);
 });
 
 test('the preview range 3900..3999 is reserved: a base whose range overlaps it fails a doctor row', () => {
@@ -242,7 +311,7 @@ test('the preview range 3900..3999 is reserved: a base whose range overlaps it f
   assert.equal(overlapsReserved(3999), true);
   assert.equal(overlapsReserved(3800), false);
   assert.equal(overlapsReserved(4000), false);
-  const rows = basePortRows(localOf('x', 3850, { web: 3850 }), []);
+  const rows = basePortRows(localOf('x', 3850, { web: 3850 }), found([]));
   assert.deepEqual(rows.map((row) => [row.id, row.ok]), [['base port', true], ['port range reserved', false], ['port range', true]]);
   assert.match(rows[1]?.detail ?? '', /3850\.\.3949 overlaps 3900\.\.3999, reserved for the shared UI-lane next dev preview/u);
 });

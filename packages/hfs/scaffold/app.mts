@@ -27,7 +27,8 @@ import { FE_APP_SCRIPTS, PACKAGE_MANAGER, ROOT_PACKAGES_WORKSPACE, WORKSPACES, f
 import { PROJECT_SIDES, type ProjectSide } from '../runtime/scripts/hfs/project-sides.mjs';
 import { contractOf, type ContractKind } from '../runtime/scripts/hfs/contract-kind.mjs';
 import { filesForSides, stackSidesVars } from './sides.mjs';
-import { composePort } from '../runtime/scripts/hfs/stack-base-port.mjs';
+import { composePort, overlapsReserved } from '../runtime/scripts/hfs/stack-base-port.mjs';
+import { describePeer, nextFreeBase, overlapsOf, type MachinePeers } from '../stack/local-peers.mjs';
 import { isLinkLike } from '../runtime/scripts/api/fs/is-link-like.mjs';
 import { unlinkOnly } from '../runtime/scripts/api/fs/lib.mjs';
 import { initializeAppIdentity } from '../runtime/scripts/hfs/secret-init.mjs';
@@ -487,8 +488,31 @@ export const scaffoldPorts = (base: number): Record<'basePort' | 'apiPort' | 'db
   storageConsolePort: String(composePort(base, 'storage-console')),
 });
 
-/** The base port a new app declares in local.basePort: 3000, 3100 ... 4900 without the reserved 3900 range, picked by the project name, so two new apps rarely start on the same range (the doctor reports an overlap). */
+/** The base a new app's name prefers: 3000, 3100 ... 4900 without the reserved 3900 range, picked by the project name (scaffoldBase moves it off a taken hundred). */
 export const scaffoldBasePort = (project: string): number => 3000 + 100 * ((slot: number) => (slot >= 9 ? slot + 1 : slot))([...project].reduce((hash, char) => (hash * 31 + (char.codePointAt(0) ?? 0)) >>> 0, 7) % 19);
+
+/**
+ * The base a new app takes (PROJECT-STACKS-10: each project owns its own hundred): `explicit` (`--base-port`) when it overlaps no other
+ * project of the machine, else refused HFS_SCAFFOLD_BASE_PORT_TAKEN with the next free base; without one, the name's base, or the next
+ * free hundred after it when another project holds it. `line` says which base was taken, every project compared and why.
+ */
+export function scaffoldBase({ name, root, explicit, found }: { name: string; root: string; explicit?: string | undefined; found: MachinePeers }): { port: number; line: string } {
+  const compared = `compared ${found.peers.length === 0 ? 'no other project' : found.peers.map(describePeer).join('; ')}${found.unread.length ? `; not read: ${found.unread.map((entry) => `${entry.repoRoot} (${entry.why})`).join('; ')}` : ''}`;
+  if (explicit !== undefined) {
+    const port = Number(explicit);
+    if (!/^\d+$/u.test(explicit) || port < 1024 || port + 99 > 65535) throw new ScaffoldError('HFS_SCAFFOLD_BASE_PORT_TAKEN', `--base-port takes a whole port from 1024 to 65436 (got ${explicit})`);
+    const clashes = [...overlapsOf(port, found.peers), ...(overlapsReserved(port) ? [{ project: 'the shared UI-lane preview', repoRoot: '3900..3999', basePort: 3900 }] : [])];
+    if (clashes.length) {
+      const free = nextFreeBase(port, found.peers);
+      throw new ScaffoldError('HFS_SCAFFOLD_BASE_PORT_TAKEN', `--base-port ${port} (${port}..${port + 99}) overlaps ${clashes.map(describePeer).join('; ')}: each project owns its own hundred (PROJECT-STACKS-10); ${free === null ? 'no hundred of 3000..4900 is free' : `the next free base is ${free}: run starci app scaffold ${name} --base-port ${free}`} (${compared})`);
+    }
+    return { port, line: `base port: ${port} (--base-port; ${compared})` };
+  }
+  const preferred = scaffoldBasePort(name);
+  const free = nextFreeBase(preferred, found.peers);
+  if (free === null) throw new ScaffoldError('HFS_SCAFFOLD_BASE_PORT_TAKEN', `no hundred of 3000..4900 is free for ${root}: name one with --base-port (${compared})`);
+  return { port: free, line: free === preferred ? `base port: ${free} (the name's base, free; ${compared})` : `base port: ${free} (the name's base ${preferred} overlaps ${overlapsOf(preferred, found.peers).map(describePeer).join('; ')}: the next free hundred; ${compared})` };
+}
 
 /**
  * A skeleton file with its variables filled. Only the skeleton names are variables: every other `{{name}}` is source the app keeps
@@ -815,7 +839,7 @@ export function settleScaffoldBranches(root: string, name: string, git: Scaffold
   return { committed: true, branch: 'dev', detail: '' };
 }
 
-export function scaffoldApp({ name, into, presets, harness, edition = 'full', sides = ['be', 'fe'], contract = 'graphql', registryVisibility = 'public', manifest = loadSlotManifest(), pins = canonPins({ harness }), lock = npmLock, initGit = gitInit, now = () => new Date() }: { name: string, into: string, presets: Presets | null | undefined, harness: { version?: string | undefined } | undefined, edition?: string, sides?: readonly ProjectSide[], contract?: ContractKind, registryVisibility?: string, manifest?: SlotManifest, pins?: Pins, lock?: (root: string) => LockResult, initGit?: InitGit, now?: () => Date }): { root: string, files: string[] } {
+export function scaffoldApp({ name, into, presets, harness, edition = 'full', sides = ['be', 'fe'], contract = 'graphql', registryVisibility = 'public', basePort = scaffoldBasePort(name), manifest = loadSlotManifest(), pins = canonPins({ harness }), lock = npmLock, initGit = gitInit, now = () => new Date() }: { name: string, into: string, presets: Presets | null | undefined, harness: { version?: string | undefined } | undefined, edition?: string, sides?: readonly ProjectSide[], contract?: ContractKind, registryVisibility?: string, /** The dev environment's base (scaffoldBase); the name's base when absent. */ basePort?: number, manifest?: SlotManifest, pins?: Pins, lock?: (root: string) => LockResult, initGit?: InitGit, now?: () => Date }): { root: string, files: string[] } {
   if (!NAME.test(String(name))) throw new ScaffoldError('HFS_SCAFFOLD_NAME_INVALID', `the app name ${name} must be kebab-case (a project name: ${NAME})`);
   const root = path.resolve(into, name);
   const existing = fs.lstatSync(root, { throwIfNoEntry: false });
@@ -832,7 +856,7 @@ export function scaffoldApp({ name, into, presets, harness, edition = 'full', si
   const app = resolveAppDeclaration(manifest, declaration);
   const pkg = packageManifest(name, pins, app.edition, app.sides.fe.grammar, coreFeStackPackages(), shape);
   const timestamp = now().toISOString().replace(/\D/g, '').slice(0, 14);
-  const vars = { ...scaffoldPorts(scaffoldBasePort(name)), sonarGate: String(sonarGateName(parseYaml(fs.readFileSync(SONAR_GATE_FILE, 'utf8')), app.edition)), timestamp, registryVisibility, ...stackSidesVars(sides) };
+  const vars = { ...scaffoldPorts(basePort), sonarGate: String(sonarGateName(parseYaml(fs.readFileSync(SONAR_GATE_FILE, 'utf8')), app.edition)), timestamp, registryVisibility, ...stackSidesVars(sides) };
   const files: GeneratedFile[] = [
     { path: 'hfs.json', content: jsonText(declaration) },
     { path: 'package.json', content: packageJsonText(pkg) },

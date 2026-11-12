@@ -40,9 +40,11 @@
 //                                            --ratchet is the pre-commit lint ratchet over the staged files against HEAD. Both take no other flag.
 //                                            Exit 1 with any error finding that is not report-only (gate-verdict.mts). The root checks run once and
 //                                            the side checks and the machine once per side, the side folder as their root; every path is app-relative.
-//   starci app scaffold <name> [--cwd <dir>] [--without <side[,side]>] [--contract graphql|rest]  a new app <dir>/<name>/ (<dir> is the global --cwd): the root
+//   starci app scaffold <name> [--cwd <dir>] [--without <side[,side]>] [--contract graphql|rest] [--base-port <n>]  a new app <dir>/<name>/ (<dir> is the global --cwd): the root
 //                                            (hfs.json, package.json, managed files, .starciwork) and the skeletons of the sides it declares, be and fe unless
 //                                            --without leaves one out (PROJECT-1; scaffold/app.mts); --contract rest makes the be api app a rest app. Accepts an empty unborn main Git root.
+//                                            The dev base port overlaps no project the machine's registries know (PROJECT-STACKS-10, scaffoldBase): --base-port
+//                                            names one and is refused HFS_SCAFFOLD_BASE_PORT_TAKEN with the next free base; without it the name's base, or the next free hundred.
 //   starci app slot <path> [--cwd <dir>] [--json]   which slot owns the path, its tier, allowed imports, required tests.
 //   starci app emit [--cwd <dir>]      write be/contracts/<app>/schema.graphql of every api app that serves GraphQL (emit/contracts.mts):
 //                                            printSchema(lexicographicSortSchema) of the resolvers the app root composes; no env, no database, no network.
@@ -116,7 +118,8 @@ import { ScaffoldError, newService, newSpec } from '../scaffold/service.mjs';
 import { EditionRefusal } from '../scaffold/edition-gate.mjs';
 import { addKind } from '../scaffold/add.mjs';
 import { removeModule } from '../scaffold/add-module.mjs';
-import { scaffoldApp, settleScaffoldBranches, type LockResult, type ScaffoldBranches } from '../scaffold/app.mjs';
+import { scaffoldApp, scaffoldBase, settleScaffoldBranches, type LockResult, type ScaffoldBranches } from '../scaffold/app.mjs';
+import { machinePeers, type MachinePeers } from '../stack/local-peers.mjs';
 import { PROJECT_SIDES, isProjectSide, type ProjectSide } from '../runtime/scripts/hfs/project-sides.mjs';
 import { CONTRACT_KINDS, type ContractKind } from '../runtime/scripts/hfs/contract-kind.mjs';
 import { SideRefusal, addNounSides, requireSides } from '../runtime/scripts/hfs/side-gate.mjs';
@@ -190,6 +193,8 @@ interface AppIo {
   stdout: (text: string) => unknown; stderr: (text: string) => unknown; presets?: Presets | undefined; prettier?: Prettier | undefined; lock?: ((root: string) => LockResult) | undefined;
   /** The git settle of a new app (settleScaffoldBranches); a spec hands a double. */
   settleBranches?: ((root: string, name: string) => ScaffoldBranches) | undefined;
+  /** The other projects of the machine the scaffold's base is checked against (machinePeers); a spec hands a fixed list. */
+  peers?: (() => MachinePeers) | undefined;
   // stdin reaches ci (text or a function) and secret (a function or a stream): main passes the shape both take.
   run?: unknown; stackMain?: ((argv: string[], io: { cwd: string; out: unknown; err: unknown }) => unknown) | undefined; env: NodeJS.ProcessEnv; stdin?: (() => string) | undefined; prompt?: Prompt | undefined;
   hostIdentity?: AgeHost | null | undefined; sops?: SecretSops | null | undefined; tools?: ({ spawn?: GhSpawn | undefined } & SecretToolOverrides) | undefined; platform?: NodeJS.Platform | undefined; stackIo?: Record<string, unknown> | undefined; runLinter?: LinterRunner | undefined;
@@ -228,7 +233,7 @@ const GATE_FLAGS = ['--gate'] as const;
 /** Both quality selectors dispatch to the existing combined Sonar/Codecov baseline family. */
 const CHECK_GATES = [...FAMILIES, 'codecov'] as const;
 const PARSED: Record<string, ParsedVerb> = {
-  scaffold: { run: scaffoldMain, value: ['--registry-visibility', '--without', '--contract'], edition: true, forms: [{ operands: '<name>' }] },
+  scaffold: { run: scaffoldMain, value: ['--registry-visibility', '--without', '--contract', '--base-port'], edition: true, forms: [{ operands: '<name>' }] },
   add: {
     run: addMain, ...ADD_FLAGS, list: ['--inject'],
     forms: [
@@ -252,7 +257,7 @@ const PARSED_FLAGS = new Set([...Object.values(PARSED).flatMap(flagsOf), '--edit
 /** The placeholder of a value flag in the usage; any other prints as <name>. */
 const PLACEHOLDERS: Record<string, string> = {
   '--gate': `<${CHECK_GATES.join('|')}>`,
-  '--registry-visibility': 'public|private', '--without': '<be|fe|packages>[,...]', '--contract': 'graphql|rest', '--side': 'be|fe|packages', '--env': CHECK_ENVS.join('|'), '--edition': 'full|lite', '--base': '<ref>', '--coverage-from': '<lcov>', '--shard': '<i>/<n>', '--inject': '<binding>',
+  '--registry-visibility': 'public|private', '--without': '<be|fe|packages>[,...]', '--contract': 'graphql|rest', '--base-port': '<port>', '--side': 'be|fe|packages', '--env': CHECK_ENVS.join('|'), '--edition': 'full|lite', '--base': '<ref>', '--coverage-from': '<lcov>', '--shard': '<i>/<n>', '--inject': '<binding>',
   '--event': '<event>', '--from': '<service>', '--service': '<Class>=<module>', '--owner': '<service>', '--failed': '<event>', '--done': '<event>',
   '--shapes': '<a,b,c>', '--blocks': '<a,b>', '--tabs': '<a,b>', '--kind': 'modal|drawer', '--isolation': 'database|schema', '--env-prefix': '<PREFIX>', '--image': '<service>=<ref>', '--sha': '<sha>',
   '--previous': '<release>', '--release': '<release>', '--out': '<path>', '--since': '<ISO>', '--timeout': '<seconds>', '--retry': '<seconds>',
@@ -972,7 +977,7 @@ export function scaffoldSides(without: string | undefined): ProjectSide[] {
   return sides;
 }
 
-async function scaffoldMain(opts: Opts, { cwd, harness, edition = 'full', presets, lock, settleBranches, stdout: out }: AppIo): Promise<number> {
+async function scaffoldMain(opts: Opts, { cwd, harness, edition = 'full', presets, lock, settleBranches, stdout: out, env, peers }: AppIo): Promise<number> {
   const [name, ...extra] = opts.positional;
   const registryVisibility = valueFlag(opts, 'registry-visibility');
   if (!name || extra.length) throw new UsageError(`starci app scaffold takes \`${((VERB_USAGE.scaffold as string[])[0] as string).slice('starci app scaffold '.length)}\``);
@@ -980,8 +985,13 @@ async function scaffoldMain(opts: Opts, { cwd, harness, edition = 'full', preset
   const contract = valueFlag(opts, 'contract');
   if (contract !== undefined && !(CONTRACT_KINDS as readonly string[]).includes(contract)) throw new UsageError(`starci app scaffold --contract takes ${CONTRACT_KINDS.join(' or ')} (got ${contract})`);
   if (contract === 'rest' && !sides.includes('be')) throw new UsageError('starci app scaffold --contract rest declares the contract of the be api app, but --without leaves out be');
-  const { root: created, files } = scaffoldApp({ name, into: path.resolve(cwd), harness, edition, presets: presets ?? scaffoldPresets(), sides, ...(contract === undefined ? {} : { contract: contract as ContractKind }), ...(registryVisibility === undefined ? {} : { registryVisibility }), ...(lock ? { lock } : {}) });
+  // Each project owns its own hundred (PROJECT-STACKS-10): the base is checked against every project the machine's registries know.
+  const root = path.resolve(cwd, name);
+  const found = peers ? peers() : machinePeers({ env }, { repoRoot: root, appProject: name, env: 'dev' });
+  const base = scaffoldBase({ name, root, explicit: valueFlag(opts, 'base-port'), found });
+  const { root: created, files } = scaffoldApp({ name, into: path.resolve(cwd), harness, edition, presets: presets ?? scaffoldPresets(), sides, basePort: base.port, ...(contract === undefined ? {} : { contract: contract as ContractKind }), ...(registryVisibility === undefined ? {} : { registryVisibility }), ...(lock ? { lock } : {}) });
   out(`starci app scaffold: created ${created} (${files.length} files)\n`);
+  out(`${base.line}\n`);
   const branches = (settleBranches ?? settleScaffoldBranches)(created, name);
   out(branches.branch === 'dev'
     ? 'git: the app is the first commit of main and dev is checked out at it; work on dev (and branches cut from it), main moves only by a release, and the first push sends both: git push -u origin main dev (contexts/project/branches.md PROJECT-BRANCH-1)\n'
