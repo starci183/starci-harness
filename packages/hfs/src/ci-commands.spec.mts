@@ -1,6 +1,6 @@
 // ci-commands.spec.mts - the managed CI builds the app's root workspace packages (packages/*: the agent SDK, the module packages and the rest) before
 // every step that reads their types or compiles code importing them: the fast job's boot proof, every side of the lint matrix, a multi-front-end build,
-// the Sonar scan, the nightly cache verify and the e2e run (knowledge/hfs/ci-standard.yaml packages-built-first). An app without root packages renders as before.
+// the Sonar scan and the nightly cache verify (knowledge/hfs/ci-standard.yaml packages-built-first). An app without root packages renders as before.
 import { test } from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';

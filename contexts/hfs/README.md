@@ -102,7 +102,7 @@ note says what the rule protects and what to do when it fires. A rule that guard
 | R03 | the tree holds only declared things | Track the file under a slot, or add it to `.gitignore` through the managed block. |
 | R04 | the shared ignore list | Run `starci app sync --execute`; never edit the managed `.gitignore` block by hand. |
 | R10 | `.starcistacks` shape | Fix the stack declaration to the edition's standard; dependencies in Docker, the app on Swarm. |
-| R12 | the automatic gate stays fast | Move the e2e out of pre-commit, coverage and automatic CI; run it on demand. |
+| R12 | the world layers run on a local machine only | Move the integration, e2e or contract run out of the hook, the coverage run or the workflow; run it locally (`npm run test:e2e`), where the release gate also runs its world rows. |
 | R13 | no commit skips the gate | Restore the pre-commit hook path and the CI lint step; never redirect `core.hooksPath`. |
 | R14 | one version per dependency | Align the versions or the root overrides; use npm only. |
 | R15 | canon packages match their pins | Change the pin in `contexts/stack/pins.yaml` or the dependency, not both silently. |

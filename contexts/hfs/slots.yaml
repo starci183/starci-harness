@@ -4,7 +4,7 @@
 # factories, the architecture machine and templates read this file; none hardcodes a path. Field meanings and the
 # ruleParams keys are explained in hfs/README.md; the reason for a slot's shape is its pattern topic.
 schema: starci/hfs-slots@3
-version: 3.38.0
+version: 3.39.0
 presenceValues:
   - required
   - optional
@@ -1034,8 +1034,8 @@ slots:
   - id: app.ci
     profiles:
       - app
-    editionWhy: lite CI proves boot through R272 wiring and lints its db migrations; full also
-      provides its e2e lane.
+    editionWhy: lite CI proves boot through R272 wiring and lints its db migrations; full CI runs the
+      unit specs. Neither runs a world layer (R12).
     path: .github/workflows/ci.yml
     presence: required
     tracked: tracked
@@ -1050,19 +1050,15 @@ slots:
   - id: app.ci-e2e
     profiles:
       - app
-    editionWhy: lite has no e2e world; R272 supplies its wiring proof, while optional contracts run separately.
     path: .github/workflows/e2e.yml
-    presence: optional
-    litePresence: forbidden
-    tracked: tracked
+    presence: forbidden
+    tracked: external
     tier: none
     tests: none
-    goesTo: "the full edition: a lite app has no e2e world; its unit specs and wiring proof run in
-      .github/workflows/ci.yml; contract specs use test:contract"
-    managedBy: ci-workflows
+    goesTo: "the local machine: npm run test:e2e, and the test:e2e row of the release gate (starci app
+      release gate) on a full app; CI runs no integration, e2e or contract spec"
     rules:
       - HFS_E2E_IN_AUTOMATIC_GATE
-      - HFS_MANAGED_FILE_DRIFT
   - id: app.ci-images
     profiles:
       - app

@@ -263,7 +263,6 @@ Refused (forbidden or external): `repo.side-root-forbidden`, `fe.tool-config-loc
 - `.github/`
   - `workflows/`
     - `ci.yml` — **app.ci** required · R12 (machine `e2e-in-automatic-gate`), R13 (machine `hooks-path-not-redirected`; hfs `ci-missing-canon`), R05 (hfs `managed-file-drift`)
-    - `e2e.yml` — **app.ci-e2e** optional · R12 (machine `e2e-in-automatic-gate`), R05 (hfs `managed-file-drift`)
     - `images.yml` — **app.ci-images** required · R05 (hfs `managed-file-drift`)
     - `db-deploy.yml` — **app.ci-db** optional · R05 (hfs `managed-file-drift`)
     - `stack-deploy.yml` — **app.ci-stack-deploy** optional · R05 (hfs `managed-file-drift`)
@@ -296,7 +295,7 @@ Refused (forbidden or external): `repo.side-root-forbidden`, `fe.tool-config-loc
 - `.sops.yaml` — **app.sops** required
 
 Git-ignored: `app.gallery-shots`, `app.build-output`.
-Refused (forbidden or external): `app.tool-config-local`, `app.tool-cache`, `app.agent-output`, `app.worktrees`, `app.plaintext-env`.
+Refused (forbidden or external): `app.tool-config-local`, `app.ci-e2e`, `app.tool-cache`, `app.agent-output`, `app.worktrees`, `app.plaintext-env`.
 
 ### full · be/
 

@@ -53,10 +53,10 @@ app's (both sides), `lib` and `runtime` carry no canon. A workspace root is neve
 | grammar lint (enforcer `eslint-grammar-core`) | fe | `fe`, `app` | through `lint`, inside the app's ESLint config | calls to the selected grammar's component API: names, props, variants, sizes, tokens |
 | `@starci/stylelint-canon` (enforcer `stylelint`) | fe CSS | `fe`, `app` | `canon` checks the wiring; stylelint itself runs in the app's scripts | grammar tokens only; brand values only in the brand file |
 | `@starci/prettier-config` | both | `be`, `fe`, `app` | `canon` checks the wiring; the format check runs in the app's scripts | layout of the source text |
-| `@starci/jest-preset` | be | `be`, `app` | `canon` checks the wiring; the specs run in CI (`unit`, `e2e`) | the unit test kit and its doubles |
+| `@starci/jest-preset` | be | `be`, `app` | `canon` checks the wiring; the unit specs run in CI (`unit`), the world layers on a local machine only (R12) | the unit test kit and its doubles |
 | app CLI `@starci/hfs` (enforcers `hfs`, `machine`) | the app root and both sides | apps | the app's scripts and CI (`starci app check`) | the tree against the slot manifest, `hfs.json`, generated contracts, catalogs, the import graph |
 | gate `sonar-new-code` (enforcer `sonar`) | each repository | `be`, `fe`, `app` | CI | coverage, duplication (message catalogs excluded from duplication only) and issues of new code |
-| gates `unit`, `e2e`, `build` | each repository | per profile | CI | the suites and the build; what a lite app cannot run is [lite.md](lite.md) "What CI runs" |
+| gates `unit`, `build` | each repository | per profile | CI | the unit suite and the build; the integration, e2e and contract specs run in no workflow (R12, [cicd.md](cicd.md) "Triggers and what runs") |
 
 ## Facts no machine checks yet
 

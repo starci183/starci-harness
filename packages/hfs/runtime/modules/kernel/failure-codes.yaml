@@ -3770,13 +3770,14 @@ HFS_DUPLICATE_SYMBOL:
   kind: check-finding
 
 HFS_E2E_IN_AUTOMATIC_GATE:
-  title: "E2E runs in automatic gate"
-  title_vi: "Kiểm thử e2e nằm trong cổng tự động"
-  meaning_vi: "Hook husky hoặc script tự động gọi cả kiểm thử e2e, trong khi e2e không được nằm trong cổng tự động."
+  title: "A world layer runs outside the local machine"
+  title_vi: "Kiểm thử integration, e2e hoặc contract chạy ngoài máy cục bộ"
+  meaning_vi: "Hook husky, lượt đo coverage hoặc một workflow CI gọi kiểm thử integration, e2e hoặc contract, trong khi các lớp này chỉ chạy trên máy cục bộ (chạy tay, và các hàng của cổng phát hành)."
   causes_vi:
     - "Pre-commit hoặc pre-push chạy e2e"
     - "Script lint:check kéo e2e vào"
-  nextStep_vi: "Op backend.scaffold gỡ e2e khỏi hook và script tự động."
+    - "Một workflow trong .github/workflows chạy test:e2e, test:integration hoặc test:contract, với bất kỳ trigger nào"
+  nextStep_vi: "Op backend.scaffold gỡ e2e khỏi hook, script tự động và workflow; e2e chạy trên máy cục bộ bằng npm run test:e2e."
   owner: other-op:backend.scaffold
   kind: check-finding
 

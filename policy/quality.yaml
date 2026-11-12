@@ -3,7 +3,8 @@
 # runtime: `starci check run` before a push and `starci task verify` on the clean checkout run these, scoped to what
 #   changed (a task that changes nothing: the tracked files under its allowPaths) and bounded by stepTimeoutSeconds per process. secrets and canon judge the changed scope; loosening reads
 #   the whole tree as it is (state-based, cheap).
-# ci: CI runs these on main after the push; nobody waits for them unless an action is listed in requireCi.
+# ci: CI runs these on main after the push; nobody waits for them unless an action is listed in requireCi. No tier holds the
+#   integration, e2e and contract specs: they run on a local machine only (contexts/hfs/rules.yaml R12).
 schema: starci/quality-policy@1
 runtime:
   stepTimeoutSeconds: 300
@@ -44,7 +45,7 @@ profiles:
     summary: a NestJS back end
     canon: [be]
     runtime: [secrets, loosening, canon, typecheck, lint]
-    ci: [unit, e2e, build, sonar-new-code]
+    ci: [unit, build, sonar-new-code]
   fe:
     summary: a Next.js front end
     canon: [fe, css]
@@ -54,7 +55,7 @@ profiles:
     summary: an app with its be/ and fe/ sides in one repository
     canon: [be, fe, css]
     runtime: [secrets, loosening, canon, typecheck, lint]
-    ci: [unit, e2e, build, sonar-new-code]
+    ci: [unit, build, sonar-new-code]
   lib:
     summary: a TypeScript package outside a StarCi app; its own tsconfig and ESLint config, no canon pin
     canon: []

@@ -1,5 +1,10 @@
 # Changelog
 
+## 6.9.2 - 2026-11-13
+
+- Changed (R12, `HFS_E2E_IN_AUTOMATIC_GATE`, manifest 3.39.0): the integration, e2e and contract specs run on a local machine only, by hand (`npm run test:e2e`) and as the world rows of the release gate; no CI workflow runs them, whatever its trigger. `starci app sync` renders no `.github/workflows/e2e.yml` (the template is gone) and `starci app sync --execute` removes a tracked one in either edition (`RETIRED_FILES`, `sync/index.mts`); slot `app.ci-e2e` is forbidden in both editions (`HFS_FORBIDDEN_PRESENT` names the local run), and the detector judges every workflow, a `workflow_dispatch`, `workflow_call` or scheduled one included (`runtime/scripts/hfs/architecture/automatic-gates.mts`). The release gate keeps its `test:integration`, `test:e2e` and `test:contract` rows, and `starci app check` runs none of them, as before. Specs `src/hfs-e2e-automatic-gate.spec.mts`, `src/ci-pipeline.spec.mts`, `src/hfs-slot-ownership.spec.mts`.
+- Upgrade, per existing full app: run `starci app sync --execute`, which deletes `.github/workflows/e2e.yml`, and commit the deletion; until then `starci app check` is red on it (`HFS_FORBIDDEN_PRESENT`, `HFS_E2E_IN_AUTOMATIC_GATE`). A workflow of the app's own that runs `test:integration`, `test:e2e` or `test:contract` loses that step.
+
 ## 6.9.1 - 2026-11-13
 
 - Fixed (release gate, cache verify lock): a `cache-verify.yml` the default branch does not hold yet answers `gh run list` with HTTP 404 "workflow cache-verify.yml not found on the default branch"; that is the "no verify yet" case (the lock is open, the gate trusts the cache main's CI verified), no longer `HFS_CHECK_CACHE_VERIFY_LOCKED` as unreadable, so an app's first release can bring the workflow to main. Any other gh failure stays unread. `release/cache-verify-lock.mts`; spec `src/release-cache-verify-lock.spec.mts`.

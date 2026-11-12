@@ -24,7 +24,6 @@ lint rule or gate enforces a rule is in anatomy.md's tree and the rule's page (`
 - `.github/`
   - `workflows/`
     - `ci.yml` — **app.ci** required · R12, R13, R05
-    - `e2e.yml` — **app.ci-e2e** optional · R12, R05
     - `images.yml` — **app.ci-images** required · R05
     - `db-deploy.yml` — **app.ci-db** optional · R05
     - `stack-deploy.yml` — **app.ci-stack-deploy** optional · R05
@@ -57,7 +56,7 @@ lint rule or gate enforces a rule is in anatomy.md's tree and the rule's page (`
 - `.sops.yaml` — **app.sops** required
 
 Git-ignored: `app.gallery-shots`, `app.build-output`.
-Refused (forbidden or external): `app.tool-config-local`, `app.tool-cache`, `app.agent-output`, `app.worktrees`, `app.plaintext-env`.
+Refused (forbidden or external): `app.tool-config-local`, `app.ci-e2e`, `app.tool-cache`, `app.agent-output`, `app.worktrees`, `app.plaintext-env`.
 
 ### full · be/
 

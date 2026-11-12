@@ -68,6 +68,10 @@ for (const edition of ['lite', 'full']) {
     assert.deepEqual(withCode(appFindings(edition, ['.sops.yaml']), 'HFS_FORBIDDEN_PRESENT'), []);
   });
 
+  test(`${edition}: app check refuses a tracked e2e workflow (slot app.ci-e2e is forbidden: no workflow runs a world layer) and accepts ci.yml`, () => {
+    assert.deepEqual(withCode(appFindings(edition, ['.github/workflows/e2e.yml', '.github/workflows/ci.yml']), 'HFS_FORBIDDEN_PRESENT'), ['.github/workflows/e2e.yml']);
+  });
+
   test(`${edition}: app check accepts the delivery scripts of the app root and refuses an unowned file beside them`, () => {
     assert.deepEqual(withCode(appFindings(edition, ['scripts/env-sync.mjs', 'scripts/with-secrets.mjs']), 'HFS_SLOT_UNDECLARED'), []);
     assert.deepEqual(withCode(appFindings(edition, ['scripts/notes/unowned.txt']), 'HFS_SLOT_UNDECLARED'), ['scripts/notes/unowned.txt']);

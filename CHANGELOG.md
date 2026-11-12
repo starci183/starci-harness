@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.0-alpha.119 - 2026-11-13
+
+- Changed: CI runs no integration, e2e or contract spec, in an app or here. The CI tier of [policy/quality.yaml](policy/quality.yaml) no longer names an `e2e` gate (`CI_GATES` of `cli/src/harness/policy.ts` is `unit`, `build`, `sonar-new-code`; a policy that still lists `e2e` is refused when it is read), and the rule is written where it lives: R12 of contexts/hfs/rules.yaml, contexts/project/cicd.md "Triggers and what runs", full.md, lite.md, lint.md, check-cache.md, contexts/authority/ci.md and contexts/code/shared/test.md SHARED-TEST-2. With `@starci/hfs` 6.9.2, `starci app sync --execute` removes an app's `.github/workflows/e2e.yml` and `starci app check` refuses a workflow that runs a world layer; the e2e specs run on the local machine (`npm run test:e2e`, the release gate's `test:e2e` row).
+- The CLI still requires @starci/hfs@6.9.1, the version npm serves; `check pins` is `pending` until the publish run's cli-follow step raises it to the pin, 6.9.2 (CONTRIB-20).
+
 ## 1.1.0-alpha.118 - 2026-11-12
 
 - Changed: the CLI requires @starci/hfs@6.9.1, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
