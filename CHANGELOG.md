@@ -2,6 +2,8 @@
 
 ## 1.1.0-alpha.119 - 2026-11-13
 
+- Changed: the CLI requires @starci/hfs@6.10.0, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
+
 - Changed (rule 9): the harness holds no app's business, and it lists no app's words either: the rule is held by review, with no check and no term list in `policy/`.
 - Removed: `docs/knowledge-analysis/`, the legacy runtime's analysis notes, which named apps; the shape exception that kept the folder (`contexts/hfs/harness.yaml` `never.knowledge-outside-contexts`) goes with it.
 - Changed: comments and one test fixture of the CLI name no app; `ops/liveness.yaml` and `ops/host/sonar/compose.yaml` say "a reference app" and "the legacy runtime".
