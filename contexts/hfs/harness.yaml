@@ -85,7 +85,6 @@ slots:
       - "knowledge/"
       - "notes/"
     presence: forbidden
-    enforce: target
     holds: knowledge outside contexts/; knowledge an agent loads lives only in contexts/
     rule: CONTRIB-4; contexts/README.md load order
   - id: never.package-js
