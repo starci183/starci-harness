@@ -50,6 +50,7 @@ lint rule or gate enforces a rule is in anatomy.md's tree and the rule's page (`
   - `<name>/` — **app.packages** optional · R25
   - `modules/` — **app.module-registry** optional · R05
 - `{be,fe}/` — **app.sides** required
+- `ext/` — **app.ext** optional · R381
 - `.starciwork/` — **app.starciwork** required · R07, R09
 - `.starcistacks/` — **app.starcistacks** required · R10, R01, R06, R09, R375, R259
   - `cache/` — **app.starcistacks.cache** optional

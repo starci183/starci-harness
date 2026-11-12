@@ -1,19 +1,21 @@
-// package-slots.mts - the slot manifest a root workspace package declares for its own tree (PROJECT-LINT-3, R382): `packages/<name>/slots.yaml`,
-//   schema: starci/package-slots@1
-//   closed: true                          # (default) every file below src/ belongs to a slot
-//   slots:
-//     - id: block
-//       path: src/blocks/<id>/            # a folder slot: one instance per value of its placeholders
-//       requires: [schema.ts, renderer.tsx, <id>.spec.ts]
-//       allows: ['*.ts', '*.tsx']         # (optional) what else an instance may hold
-//     - id: workbench
-//       path: src/workbench/**            # a glob slot
-//       coverage: { none: "front-end views, proven by the front end's own gates (SHARED-TEST-1)" }
-//     - { id: barrel, path: src/index.ts }
-// hfs enforces it as it enforces the be and fe slots: an instance lacking a required file, a file an instance does not allow and a file of no slot
-// are findings, and a manifest it cannot read is one too. Coverage follows the slots: every file of a package is measured at 100 per file in the
-// back end's unit run (BE-TEST-13), but its barrels and type files and the slots that opt out with `coverage: { none: <reason> }`, a reason required.
-// A package without a manifest keeps the harness's default scope (PACKAGE_UNMEASURED of coverage-scope.mts).
+// package-slots.mts - the slots a project declares for the tree of one of its root workspace packages (PROJECT-LINT-3, R382), in the project's
+// extension manifest (`ext/manifest.json`, scripts/lib/project-ext.mts), under `packages`, by the package's app-relative folder:
+//   "packages": { "packages/<name>": {
+//     "closed": true,                                          (default) every file below src/ belongs to a slot
+//     "slots": [
+//       { "id": "block", "path": "src/blocks/<id>/",           a folder slot: one instance per value of its placeholders
+//         "requires": ["schema.ts", "renderer.tsx", "<id>.spec.ts"],
+//         "allows": ["*.ts", "*.tsx"] },                       (optional) what else an instance may hold
+//       { "id": "views", "path": "src/views/**",               a glob slot
+//         "lint": "fe",                                        (optional) the canon that judges it: be (the default) or fe
+//         "coverage": { "none": "front-end views, proven by the front end's own gates (SHARED-TEST-1)" } },
+//       { "id": "barrel", "path": "src/index.ts" } ] } }
+// A package has no manifest of its own: the project declares it. `packages/<name>/slots.yaml` (`schema: starci/package-slots@1`, the same keys in
+// YAML) is still read for a package the project's manifest does not declare, with a warning (HFS_PACKAGE_SLOTS_MOVED), and goes with the next minor.
+// hfs enforces the slots as it enforces the be and fe slots: an instance lacking a required file, a file an instance does not allow and a file of no
+// slot are findings, and a declaration it cannot read is one too. Coverage follows the slots: every file of a package is measured at 100 per file in
+// the back end's unit run (BE-TEST-13), but its barrels and type files and the slots that opt out with `coverage: { none: <reason> }`, a reason
+// required. A package no declaration names keeps the harness's default scope (PACKAGE_UNMEASURED of coverage-scope.mts).
 import { parseYaml } from '../../engine/yaml.mjs';
 import { globExpression } from '../lib/glob.mjs';
 
@@ -23,28 +25,36 @@ export const PACKAGE_SLOTS_INVALID = 'HFS_PACKAGE_SLOTS_INVALID';
 export const PACKAGE_SLOT_MISSING = 'HFS_PACKAGE_SLOT_MISSING';
 export const PACKAGE_SLOT_DISALLOWED = 'HFS_PACKAGE_SLOT_DISALLOWED';
 export const PACKAGE_SLOT_UNPLACED = 'HFS_PACKAGE_SLOT_UNPLACED';
+export const PACKAGE_SLOTS_MOVED = 'HFS_PACKAGE_SLOTS_MOVED';
 /** The files of a package measured by no slot whatever its manifest says: the barrels and the type-only files, as in the back end. */
 export const PACKAGE_ALWAYS_UNMEASURED = Object.freeze(['src/**/index.ts', 'src/**/*.types.ts', 'src/**/*-types.ts']);
 
 /** One slot of a package manifest, read. */
-export interface PackageSlot { id: string; path: string; requires: string[]; allows: string[] | null; coverageNone: string | null }
+export interface PackageSlot { id: string; path: string; requires: string[]; allows: string[] | null; coverageNone: string | null; lint: 'be' | 'fe' }
 /** A package manifest read: its slots and whether every file of src/ must belong to one, or the problems that make it unreadable. */
 export type PackageSlots = { slots: PackageSlot[]; closed: boolean; problems: string[] };
 
 const plain = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value);
-const SLOT_KEYS = new Set(['id', 'path', 'requires', 'allows', 'coverage']);
+const SLOT_KEYS = new Set(['id', 'path', 'requires', 'allows', 'coverage', 'lint']);
 const PLACEHOLDER = /<([a-z][a-z0-9-]*)>/gu;
 const isFolderSlot = (slot: Pick<PackageSlot, 'path'>): boolean => slot.path.endsWith('/') && !slot.path.includes('*');
 const strings = (value: unknown): string[] | null => (Array.isArray(value) && value.every((item) => typeof item === 'string' && item.trim() !== '') ? (value as string[]) : null);
 
-/** The manifest text of a package, read and judged. */
+/** The slots.yaml text of a package (the read path that goes with the next minor), read and judged. */
 export function readPackageSlots(text: string): PackageSlots {
-  const problems: string[] = [];
   let doc: unknown;
   try { doc = parseYaml(text); } catch (error) { return { slots: [], closed: true, problems: [`is not YAML (${String((error as Error | undefined)?.message ?? error).split('\n')[0]})`] }; }
   if (!plain(doc) || doc['schema'] !== PACKAGE_SLOTS_SCHEMA) return { slots: [], closed: true, problems: [`is not a ${PACKAGE_SLOTS_SCHEMA} manifest`] };
-  const extra = Object.keys(doc).filter((key) => !['schema', 'closed', 'slots'].includes(key));
-  if (extra.length > 0) problems.push(`has unknown key ${extra.join(', ')} (schema, closed, slots)`);
+  const declared = Object.fromEntries(Object.entries(doc).filter(([key]) => key !== 'schema'));
+  return judgePackageSlots(declared);
+}
+
+/** One package's declaration (`{ closed?, slots }`, as the project's manifest holds it under `packages`), judged. */
+export function judgePackageSlots(doc: unknown): PackageSlots {
+  const problems: string[] = [];
+  if (!plain(doc)) return { slots: [], closed: true, problems: ['is not an object { closed, slots }'] };
+  const extra = Object.keys(doc).filter((key) => !['closed', 'slots'].includes(key));
+  if (extra.length > 0) problems.push(`has unknown key ${extra.join(', ')} (closed, slots)`);
   if (doc['closed'] !== undefined && typeof doc['closed'] !== 'boolean') problems.push('closed is true or false');
   const entries = Array.isArray(doc['slots']) ? doc['slots'] : [];
   if (entries.length === 0) problems.push('declares no slot');
@@ -72,7 +82,9 @@ export function readPackageSlots(text: string): PackageSlots {
       if (!plain(coverage) || Object.keys(coverage).join() !== 'none' || typeof coverage['none'] !== 'string' || coverage['none'].trim().length < 12) problems.push(`${where}: coverage is measured (the default) or { none: "<why this slot is not measured>" }, with its reason`);
       else coverageNone = coverage['none'].trim();
     }
-    slots.push({ id, path, requires: requires ?? [], allows, coverageNone });
+    const lint = entry['lint'] ?? 'be';
+    if (lint !== 'be' && lint !== 'fe') problems.push(`${where}: lint is be (the default) or fe, the canon that judges the slot's files`);
+    slots.push({ id, path, requires: requires ?? [], allows, coverageNone, lint: lint === 'fe' ? 'fe' : 'be' });
   });
   return { slots, closed: doc['closed'] !== false, problems };
 }
@@ -89,9 +101,13 @@ export function unmeasuredGlobs(manifest: PackageSlots): string[] {
   return [...PACKAGE_ALWAYS_UNMEASURED, ...manifest.slots.filter((slot) => slot.coverageNone !== null).map((slot) => (isFolderSlot(slot) ? `${slot.path.replace(PLACEHOLDER, '*')}**` : slot.path.replace(PLACEHOLDER, '*')))];
 }
 
-/** The findings of one package (`folder`, app-relative) under its manifest, over the package's tracked files (package-relative). */
-export function packageSlotProblems(folder: string, manifest: PackageSlots, files: readonly string[]): { code: string; path: string; message: string }[] {
-  const at = `${folder}/${PACKAGE_SLOTS_FILE}`;
+/** The globs (package-relative) of the slots a declaration hands to the front-end canon (`lint: fe`). */
+export function frontEndGlobs(manifest: PackageSlots): string[] {
+  return manifest.slots.filter((slot) => slot.lint === 'fe').map((slot) => (isFolderSlot(slot) ? `${slot.path.replace(PLACEHOLDER, '*')}**` : slot.path.replace(PLACEHOLDER, '*')));
+}
+
+/** The findings of one package (`folder`, app-relative) under its declaration at `at` (the file that holds it), over the package's tracked files (package-relative). */
+export function packageSlotProblems(folder: string, manifest: PackageSlots, files: readonly string[], at = `${folder}/${PACKAGE_SLOTS_FILE}`): { code: string; path: string; message: string }[] {
   if (manifest.problems.length > 0) return manifest.problems.map((problem) => ({ code: PACKAGE_SLOTS_INVALID, path: at, message: `${at} ${problem} (R382, PROJECT-LINT-3)` }));
   const out: { code: string; path: string; message: string }[] = [];
   const compiled = manifest.slots.map((slot) => ({ slot, expression: slotExpression(slot) }));

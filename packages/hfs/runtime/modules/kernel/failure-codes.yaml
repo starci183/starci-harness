@@ -6261,32 +6261,55 @@ STACKS_IMAGE_ENV_DIVERGES:
     - "Vi phạm R374: một môi trường dùng image upstream hoặc image nước ngoài thay vì image dựng từ thư mục."
   nextStep_vi: "Dùng build.context trỏ tới thư mục image (compose) hoặc tham chiếu image của dự án (stack)."
 
-HFS_RULE_PACK_INVALID:
-  title: "A rule pack of hfs.json is refused, or one of its rules cannot judge"
-  title_vi: "Một rule pack trong hfs.json bị từ chối, hoặc một luật của nó không chấm được"
-  meaning_vi: "hfs.json rulePacks chỉ được nêu package đã cài, export ./rule-pack là manifest starci/rule-pack@1; mỗi luật có id, mã finding, mức độ, spec, doc và đúng một engine (check hoặc eslint). Pack chỉ thêm luật: không tắt, không ghi đè, không dùng lại mã của harness. Pack bị từ chối không góp luật nào."
+HFS_EXT_INVALID:
+  title: "A project's ext/ folder is refused, or one of its rules cannot judge"
+  title_vi: "Thư mục ext/ của dự án bị từ chối, hoặc một luật của nó không chấm được"
+  meaning_vi: "Dự án chỉ thêm luật riêng trong thư mục ext/ ở gốc app, khai trong ext/manifest.json (starci/project-ext@1): mỗi luật có id, mã finding, mức độ, doc, appliesTo và đúng một engine (hfs, lint hoặc check). Extension chỉ thêm luật: không tắt, không ghi đè, không dùng lại mã của harness. Extension bị từ chối không góp luật nào và app check đỏ."
   causes_vi:
-    - "Vi phạm R381: pack không cài được hoặc không export ./rule-pack hợp lệ."
-    - "Vi phạm R381: một luật thiếu id, code, severity, spec hoặc doc, có khóa khác (off, overrides), hoặc dùng lại mã của harness hay của pack khác."
-    - "Vi phạm R381: một luật check ném lỗi hoặc trả finding không có path."
-  nextStep_vi: "Sửa manifest của pack (hoặc cài lại pack) cho đủ trường và chỉ thêm luật, rồi chạy lại starci app check."
+    - "Vi phạm R381: ext/manifest.json thiếu, không phải JSON hoặc không đúng starci/project-ext@1."
+    - "Vi phạm R381: một luật thiếu id, code, severity, doc hoặc appliesTo, có khóa khác (off, overrides), hoặc dùng lại mã của harness hay của luật khác."
+    - "Vi phạm R381: một file luật hay script đã khai không tồn tại, hoặc một file trong ext/hfs, ext/lint không được luật nào khai."
+    - "Vi phạm R381: một luật hfs ném lỗi hoặc trả finding không có path."
+  nextStep_vi: "Sửa ext/manifest.json (hoặc thêm file còn thiếu) cho đủ trường và chỉ thêm luật, rồi chạy lại starci app check."
+  owner: op-retry
+  kind: check-finding
+
+HFS_EXT_API_MISMATCH:
+  title: "A project's ext/ targets another extension API version than this hfs serves"
+  title_vi: "ext/ của dự án nhắm phiên bản extension API khác với bản hfs đang chạy"
+  meaning_vi: "ext/manifest.json khai api là phiên bản extension API mà thư mục nhắm tới. Một thay đổi phá vỡ của API tăng số này; manifest nhắm số khác bị từ chối cho tới khi ext/ của dự án được cập nhật, và trong lúc đó không luật nào của nó chạy."
+  causes_vi:
+    - "Vi phạm R381: hfs đã tăng extension API mà ext/ của dự án chưa cập nhật."
+    - "Vi phạm R381: ext/ nhắm API mới hơn bản @starci/hfs đang cài."
+  nextStep_vi: "Cập nhật ext/ của dự án theo mục Extension API trong README của @starci/hfs (hoặc cài bản hfs phục vụ API đó), rồi chạy lại starci app check."
   owner: op-retry
   kind: check-finding
 
 HFS_PACKAGE_SLOTS_INVALID:
-  title: "A package's slots.yaml cannot be read as a starci/package-slots@1 manifest"
-  title_vi: "slots.yaml của một package không đọc được theo starci/package-slots@1"
-  meaning_vi: "packages/<name>/slots.yaml phải là manifest starci/package-slots@1: mỗi slot có id, path dưới src/, requires/allows là danh sách, và coverage là measured hoặc { none: <lý do> }."
+  title: "The slots a project declares for a package cannot be read"
+  title_vi: "Phần slot mà dự án khai cho một package không đọc được"
+  meaning_vi: "ext/manifest.json khai slot của từng root package dưới packages[\"packages/<name>\"]: mỗi slot có id, path dưới src/, requires/allows là danh sách, coverage là measured hoặc { none: <lý do> }, lint là be hoặc fe."
   causes_vi:
-    - "Vi phạm R382: sai schema, khóa lạ, id trùng, path ngoài src/, hoặc coverage none không có lý do."
-  nextStep_vi: "Sửa slots.yaml theo đúng khuôn rồi chạy lại starci app check."
+    - "Vi phạm R382: khóa lạ, id trùng, path ngoài src/, coverage none không có lý do, hoặc lint không phải be/fe."
+    - "Vi phạm R382: manifest nêu một thư mục không phải root package, hoặc package vừa có slots.yaml vừa được khai trong manifest."
+  nextStep_vi: "Sửa phần packages của ext/manifest.json theo đúng khuôn rồi chạy lại starci app check."
+  owner: op-retry
+  kind: check-finding
+
+HFS_PACKAGE_SLOTS_MOVED:
+  title: "A package still declares its slots in its own slots.yaml"
+  title_vi: "Một package vẫn khai slot trong slots.yaml riêng"
+  meaning_vi: "Slot của một root package do dự án khai trong ext/manifest.json (packages[\"packages/<name>\"]). packages/<name>/slots.yaml chỉ còn được đọc trong minor này, kèm cảnh báo."
+  causes_vi:
+    - "Vi phạm R382: package còn slots.yaml và manifest của dự án chưa khai package đó."
+  nextStep_vi: "Chuyển nội dung slots.yaml vào ext/manifest.json dưới packages[\"packages/<name>\"] (cùng khóa, dạng JSON) rồi xóa slots.yaml."
   owner: op-retry
   kind: check-finding
 
 HFS_PACKAGE_SLOT_MISSING:
   title: "An instance of a package slot lacks a file its slot requires"
   title_vi: "Một instance của slot trong package thiếu file mà slot yêu cầu"
-  meaning_vi: "Mỗi thư mục khớp một folder slot của packages/<name>/slots.yaml phải chứa mọi file trong requires của slot đó."
+  meaning_vi: "Mỗi thư mục khớp một folder slot mà dự án khai cho package phải chứa mọi file trong requires của slot đó."
   causes_vi:
     - "Vi phạm R382: một block (hay instance khác) thiếu schema, renderer hoặc spec mà slot yêu cầu."
   nextStep_vi: "Thêm file còn thiếu vào instance, rồi chạy lại starci app check."
@@ -6304,12 +6327,12 @@ HFS_PACKAGE_SLOT_DISALLOWED:
   kind: check-finding
 
 HFS_PACKAGE_SLOT_UNPLACED:
-  title: "A file of a package belongs to no slot of its slots.yaml"
-  title_vi: "Một file của package không thuộc slot nào trong slots.yaml"
-  meaning_vi: "Một package khai slots.yaml (closed, mặc định) thì mọi file dưới src/ phải thuộc một slot đã khai."
+  title: "A file of a package belongs to no slot the project declares for it"
+  title_vi: "Một file của package không thuộc slot nào dự án khai cho nó"
+  meaning_vi: "Một package được dự án khai slot (closed, mặc định) thì mọi file dưới src/ phải thuộc một slot đã khai."
   causes_vi:
     - "Vi phạm R382: file nằm ngoài mọi slot của manifest."
-  nextStep_vi: "Đặt file vào slot đã khai, hoặc khai slot mới cho nó trong slots.yaml."
+  nextStep_vi: "Đặt file vào slot đã khai, hoặc khai slot mới cho nó trong ext/manifest.json."
   owner: op-retry
   kind: check-finding
 

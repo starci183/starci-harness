@@ -16,7 +16,7 @@
  * every conversation about the failure. Aliasing one here to match a target's older spelling would
  * leave two names for one rule and no way to tell which a message came from.
  */
-import { packEslintConfigs } from "@starci/hfs/runtime/scripts/lib/rule-packs.mjs"
+import { extEslintConfigs } from "@starci/hfs/runtime/scripts/lib/project-ext.mjs"
 import { buildBeConfig, buildBePackagesConfig } from "./lib/config.ts"
 import { pluginForEdition } from "./lib/edition.ts"
 import { recommended as aiGatewayRecommended, rules as aiGatewayRules } from "./ai-gateway.ts"
@@ -217,19 +217,19 @@ export default plugin
  */
 export const starciBeConfig = async ({ hfs }: { hfs?: HfsView | null | undefined }): Promise<TSESLint.FlatConfig.ConfigArray> => [
     ...(await buildBeConfig({ hfs, plugin: pluginForEdition({ plugin, hfs }), recommended })),
-    ...withPackRules(hfs, "be"),
+    ...withExtRules(hfs, "be"),
 ]
 
 /**
- * The ESLint rules of the app's rule packs (hfs.json `rulePacks`, contexts/project/lint.md PROJECT-LINT-3) for one scope: the one sanctioned way an app adds
- * a lint law, loaded by this factory so no tool config of the app defines a rule. A refused pack throws (HFS_RULE_PACK_INVALID): a lint run never guesses.
+ * The lint rules of the project's extension (ext/manifest.json and ext/lint/, contexts/project/lint.md PROJECT-LINT-3) for one scope: the one sanctioned way a
+ * project adds a lint law, loaded by this factory so no tool config of the app defines a rule. A refused extension throws (HFS_EXT_INVALID): a lint run never guesses.
  *
  * @param hfs - The HFS view the config was built for (its repoRoot is the folder of the eslint.config.mjs).
  * @param side - The scope: the be side, or the root packages.
- * @returns The pack blocks, none when the app declares no pack.
+ * @returns The extension's blocks, none when the app has no ext/ folder or no lint rule of it reaches the scope.
  */
-const withPackRules = (hfs: HfsView | null | undefined, side: "be" | "packages"): TSESLint.FlatConfig.ConfigArray =>
-    hfs === null || hfs === undefined ? [] : (packEslintConfigs(hfs.repoRoot, side, side === "packages" ? ["packages/*/src/**/*.{ts,tsx,mts,cts}"] : undefined) as unknown as TSESLint.FlatConfig.ConfigArray)
+const withExtRules = (hfs: HfsView | null | undefined, side: "be" | "packages"): TSESLint.FlatConfig.ConfigArray =>
+    hfs === null || hfs === undefined ? [] : (extEslintConfigs(hfs.repoRoot, side) as unknown as TSESLint.FlatConfig.ConfigArray)
 
 /** The levels a package is judged by: every rule of the be side but the project-graph rules, which judge the import graph of a side folder (the packages are not part of it). */
 const packageRecommended: Recommended = Object.fromEntries(Object.entries(recommended).filter(([name]) => !(name in projectGraphRecommended)))
@@ -243,7 +243,7 @@ const packageRecommended: Recommended = Object.fromEntries(Object.entries(recomm
  */
 export const starciBePackagesConfig = async ({ hfs }: { hfs?: HfsView | null | undefined }): Promise<TSESLint.FlatConfig.ConfigArray> => [
     ...(await buildBePackagesConfig({ hfs, plugin: pluginForEdition({ plugin, hfs }), recommended: packageRecommended })),
-    ...withPackRules(hfs, "packages"),
+    ...withExtRules(hfs, "packages"),
 ]
 
 export { linterOptions } from "./lib/config.ts"

@@ -105,7 +105,7 @@ export interface AppSourceFacts {
   runtimeExample: boolean; files: string[]; read: (file: string) => string; workPresent: boolean; hasImage: (file: string) => boolean;
   hasContracts: boolean; // the back end holds be/contracts/ (a back end that emits no contract has none)
   modules?: readonly string[]; otherPackages?: readonly string[]; // the module packages (packages/module-<name>) and the other folders of packages/
-  /** The unmeasured globs of each root package that declares a sound slot manifest (packages/<name>/slots.yaml, PROJECT-LINT-3), by app-relative folder. */
+  /** The unmeasured globs of each root package the project declares sound slots for (ext/manifest.json packages, PROJECT-LINT-3), by app-relative folder. */
   packageScopes?: Readonly<Record<string, readonly string[]>>;
   /** The default locale the app declares in its i18n routing source (the gallery's UI language, ruleParams.gallery); absent when none is declared. */
   defaultLocale?: string | null;

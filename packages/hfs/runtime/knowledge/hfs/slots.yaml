@@ -7,7 +7,7 @@
 # catalog READ this file through scripts/hfs/slots.mts; none of them hardcodes a path.
 # Shape: modules/schemas/hfs-slots.schema.yaml. The repository side is hfs.json: modules/schemas/hfs-repo.schema.yaml.
 schema: starci/hfs-slots@3
-version: 3.37.0
+version: 3.38.0
 
 versioning:
   # MAJOR.MINOR.PATCH of this manifest. A repository pins only the MAJOR in hfs.json ("hfs": 3).
@@ -957,6 +957,19 @@ slots:
     tracked: tracked
     tier: none
     tests: none
+  - id: app.ext
+    since: 3.38.0
+    profiles: [app]
+    editionWhy: Lite and full share the slot; a project of either edition adds its own laws in the same folder.
+    # R381: the project's extension folder, one subfolder per tool; ext/manifest.json declares every rule and check it holds and the app check runs them.
+    path: "ext/"
+    presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+    requires: [manifest.json]
+    allows: [manifest.json, README.md, "hfs/**", "lint/**", "checks/**", "docs/**"]
+    rules: [HFS_EXT_INVALID]
   - id: app.starciwork
     since: 3.1.0
     profiles: [app]

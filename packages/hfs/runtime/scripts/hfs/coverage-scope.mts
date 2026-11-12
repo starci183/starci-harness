@@ -16,7 +16,8 @@ import { braceVariants, globExpression } from '../lib/glob.mjs';
 import { declaredLogicOf, logicRolesOf, type Slot, type SlotManifest } from './manifest-shape.mjs';
 import { byCodeUnit } from '../lib/list.mjs';
 import { trimTrailingSlashes } from './trailing-slashes.mjs';
-import { PACKAGE_SLOTS_FILE, readPackageSlots, unmeasuredGlobs } from './package-slots.mjs';
+import { PACKAGE_SLOTS_FILE, judgePackageSlots, readPackageSlots, unmeasuredGlobs } from './package-slots.mjs';
+import { PROJECT_EXT_MANIFEST } from '../lib/project-ext.mjs';
 
 /** The slot and manifest shapes the coverage derivation reads (manifest-shape.mts). */
 export type ScopeSlot = Slot;
@@ -294,7 +295,7 @@ export interface PackagesCoverage { folders: string[]; files: string[]; excludes
  */
 export function packagesCoverage(folders: readonly string[], declared: (folder: string) => readonly string[] | null = () => null): PackagesCoverage {
   const sorted = [...new Set(folders)].sort(byCodeUnit);
-  // A package that declares its slots (packages/<name>/slots.yaml) is measured by them: everything but its barrels, type files and opted-out slots.
+  // A package whose slots the project declares (ext/manifest.json packages, PROJECT-LINT-3) is measured by them: everything but its barrels, type files and opted-out slots.
   return { folders: sorted, files: sorted.map((folder) => `${folder}/src/**/*.ts`), excludes: sorted.flatMap((folder) => (declared(folder) ?? PACKAGE_UNMEASURED).map((glob) => `${folder}/${glob}`)) };
 }
 
@@ -304,9 +305,28 @@ export const packageComponentId = (folder: string): string => `package-${folder.
 /** One Codecov component per root package, over everything below its `src/`: the 100 per file bar is read for each package apart, not only for the project and the patch. */
 export const packageComponents = (folders: readonly string[]): CoverageComponent[] => [...new Set(folders)].sort(byCodeUnit).map((folder): CoverageComponent => ({ id: packageComponentId(folder), name: packageComponentId(folder), paths: [`${folder}/src/**`] }));
 
-/** The unmeasured globs of each package that declares a sound slot manifest, read through `read` (app-relative text or null); null for the rest. */
+/**
+ * The unmeasured globs of each package the project declares sound slots for, read through `read` (app-relative text or null); null for the rest. The
+ * declaration is the project's extension manifest (`packages["<folder>"]`), else the package's own slots.yaml while that read path lasts.
+ */
 export function declaredPackageScopes(read: (file: string) => string | null): (folder: string) => readonly string[] | null {
+  let packages: Record<string, unknown> | null | undefined;
+  const declared = (): Record<string, unknown> | null => {
+    if (packages === undefined) {
+      packages = null;
+      try {
+        const manifest = JSON.parse(read(PROJECT_EXT_MANIFEST) ?? 'null') as { packages?: unknown } | null;
+        if (manifest !== null && typeof manifest === 'object' && manifest.packages !== null && typeof manifest.packages === 'object' && !Array.isArray(manifest.packages)) packages = manifest.packages as Record<string, unknown>;
+      } catch { /* an unreadable manifest declares nothing here; R381 reports it */ }
+    }
+    return packages;
+  };
   return (folder) => {
+    const inManifest = declared();
+    if (inManifest !== null && Object.hasOwn(inManifest, folder)) {
+      const manifest = judgePackageSlots(inManifest[folder]);
+      return manifest.problems.length > 0 ? null : unmeasuredGlobs(manifest);
+    }
     const text = read(`${folder}/${PACKAGE_SLOTS_FILE}`);
     if (text === null) return null;
     const manifest = readPackageSlots(text);

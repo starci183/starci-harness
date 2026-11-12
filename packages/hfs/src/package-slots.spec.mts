@@ -1,14 +1,16 @@
 // proves: HFS_PACKAGE_SLOT_UNPLACED@lite
 // proves: HFS_PACKAGE_SLOT_UNPLACED@full
-// Package-declared inner slots (PROJECT-LINT-3, R382): a root workspace package declares packages/<name>/slots.yaml and hfs holds its tree to it as it
-// holds the be and fe sides; its coverage follows the slots, every file measured at 100 per file but its barrels, its type files and the slots that opt
+// proves: HFS_PACKAGE_SLOTS_MOVED@lite
+// proves: HFS_PACKAGE_SLOTS_MOVED@full
+// A package's inner slots (PROJECT-LINT-3, R382): the project declares them in ext/manifest.json (packages, by folder) and hfs holds the package's tree to
+// them as it holds the be and fe sides; a package's own slots.yaml is the read path of one more minor; its coverage follows the slots, every file measured at 100 per file but its barrels, its type files and the slots that opt
 // out with a reason.
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { PACKAGE_SLOTS_INVALID, PACKAGE_SLOT_DISALLOWED, PACKAGE_SLOT_MISSING, PACKAGE_SLOT_UNPLACED, packageSlotProblems, readPackageSlots, unmeasuredGlobs } from '../runtime/scripts/hfs/package-slots.mjs';
+import { PACKAGE_SLOTS_INVALID, PACKAGE_SLOTS_MOVED, PACKAGE_SLOT_DISALLOWED, PACKAGE_SLOT_MISSING, PACKAGE_SLOT_UNPLACED, frontEndGlobs, judgePackageSlots, packageSlotProblems, readPackageSlots, unmeasuredGlobs } from '../runtime/scripts/hfs/package-slots.mjs';
 import { packageSlotFindings } from '../runtime/scripts/hfs/rules/app-extension-findings.mjs';
 import { declaredPackageScopes, packageMeasuredBy, packagesCoverage } from '../runtime/scripts/hfs/coverage-scope.mjs';
 import { mkdtemp } from './helpers/tmpdir.mjs';
@@ -92,8 +94,60 @@ for (const edition of ['lite', 'full']) {
   test(`${edition}: the app check judges every root package that declares slots.yaml, and leaves one without alone`, (t) => {
     const { root, files } = app(t);
     const found = packageSlotFindings({ repoRoot: root, files, repo: { kind: 'app', profile: 'app', edition }, isRoot: true });
-    assert.deepEqual(found.map((finding) => finding.code).sort(), [PACKAGE_SLOT_DISALLOWED, PACKAGE_SLOT_MISSING, PACKAGE_SLOT_UNPLACED]);
+    assert.deepEqual(found.map((finding) => finding.code).sort(), [PACKAGE_SLOTS_MOVED, PACKAGE_SLOT_DISALLOWED, PACKAGE_SLOT_MISSING, PACKAGE_SLOT_UNPLACED]);
+    assert.deepEqual(found.filter((finding) => finding.code === PACKAGE_SLOTS_MOVED).map((finding) => [finding.path, finding.level]), [['packages/blocks-core/slots.yaml', 'warning']], 'the package file is still read, with a warning that it moves');
     assert.ok(found.every((finding) => finding.path.startsWith('packages/blocks-core/')), 'agent-sdk declares no manifest');
     assert.deepEqual(packageSlotFindings({ repoRoot: root, files, repo: { kind: 'app', profile: 'app', edition }, isRoot: false }), []);
   });
 }
+
+const DECLARED = {
+  slots: [
+    { id: 'part', path: 'src/parts/<id>/', requires: ['schema.ts', '<id>.spec.ts'], allows: ['*.ts', '*.tsx'] },
+    { id: 'views', path: 'src/views/**', lint: 'fe', coverage: { none: "front-end views, proven by the front end's own gates" } },
+    { id: 'barrel', path: 'src/index.ts' },
+  ],
+};
+const UI_TREE = ['package.json', 'src/index.ts', 'src/parts/card/schema.ts', 'src/parts/card/card.spec.ts', 'src/parts/list/schema.ts', 'src/views/page.tsx', 'src/stray.ts'];
+
+/** An app whose ext/manifest.json declares `packages` (and no rule), with the root package packages/ui. */
+function projectApp(t: TestContext, packages: unknown, extra: string[] = []): { root: string; files: string[] } {
+  const root = mkdtemp(t, 'starci-project-slots-');
+  const files = [...UI_TREE.map((file) => `packages/ui/${file}`), 'ext/manifest.json', ...extra];
+  for (const file of files) {
+    fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+    fs.writeFileSync(path.join(root, file), file === 'ext/manifest.json' ? JSON.stringify({ schema: 'starci/project-ext@1', api: 1, packages }) : file.endsWith('slots.yaml') ? MANIFEST : 'export {}\n');
+  }
+  return { root, files };
+}
+
+test('the project declares the slots of a package in ext/manifest.json: the package is held to them, and a slot names its canon and its coverage', (t) => {
+  const manifest = judgePackageSlots(DECLARED);
+  assert.deepEqual(manifest.problems, []);
+  assert.deepEqual(frontEndGlobs(manifest), ['src/views/**']);
+  assert.deepEqual(unmeasuredGlobs(manifest), ['src/**/index.ts', 'src/**/*.types.ts', 'src/**/*-types.ts', 'src/views/**']);
+  assert.ok(judgePackageSlots({ slots: [{ id: 'x', path: 'src/**', lint: 'grammar' }] }).problems.some((problem) => /lint is be \(the default\) or fe/u.test(problem)));
+  const { root, files } = projectApp(t, { 'packages/ui': DECLARED });
+  for (const edition of ['lite', 'full']) {
+    const found = packageSlotFindings({ repoRoot: root, files, repo: { kind: 'app', profile: 'app', edition }, isRoot: true });
+    assert.deepEqual(found.map((finding) => [finding.code, finding.path]).sort(), [
+      [PACKAGE_SLOT_MISSING, 'packages/ui/src/parts/list/list.spec.ts'],
+      [PACKAGE_SLOT_UNPLACED, 'packages/ui/src/stray.ts'],
+    ]);
+    assert.match(found.find((finding) => finding.code === PACKAGE_SLOT_MISSING)?.message ?? '', /is a part of ext\/manifest\.json packages\["packages\/ui"\] and lacks list\.spec\.ts/u);
+  }
+  const scope = packagesCoverage(['packages/ui'], declaredPackageScopes((file) => { try { return fs.readFileSync(path.join(root, file), 'utf8'); } catch { return null; } }));
+  assert.equal(packageMeasuredBy(scope)('packages/ui/src/views/page.ts'), false, 'the opted-out slot of the manifest');
+  assert.equal(packageMeasuredBy(scope)('packages/ui/src/parts/card/schema.ts'), true);
+});
+
+test(`${PACKAGE_SLOTS_INVALID}: a declaration the manifest cannot hold is red at the manifest: an unreadable one, a folder that is no root package, a package declared twice`, (t) => {
+  const codes = (packages: unknown, extra: string[] = []): [string, string][] => {
+    const { root, files } = projectApp(t, packages, extra);
+    return packageSlotFindings({ repoRoot: root, files, repo: { kind: 'app', profile: 'app', edition: 'lite' }, isRoot: true, inScope: () => false }).map((finding): [string, string] => [finding.code, finding.path]);
+  };
+  assert.deepEqual(codes({ 'packages/ui': { slots: [{ id: 'x', path: 'lib/**' }] } }), [[PACKAGE_SLOTS_INVALID, 'ext/manifest.json']]);
+  assert.deepEqual(codes({ 'packages/ui': { slots: [{ id: 'all', path: 'src/**' }] }, 'packages/gone': { slots: [{ id: 'all', path: 'src/**' }] } }), [[PACKAGE_SLOTS_INVALID, 'ext/manifest.json']]);
+  const { root, files } = projectApp(t, { 'packages/ui': { slots: [{ id: 'all', path: 'src/**' }] } }, ['packages/ui/slots.yaml']);
+  assert.deepEqual(packageSlotFindings({ repoRoot: root, files, repo: { kind: 'app', profile: 'app', edition: 'lite' }, isRoot: true }).map((finding) => [finding.code, finding.path, finding.level]), [[PACKAGE_SLOTS_INVALID, 'packages/ui/slots.yaml', 'error']]);
+});

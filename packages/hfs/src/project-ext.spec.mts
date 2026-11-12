@@ -1,0 +1,172 @@
+// proves: HFS_EXT_INVALID@lite
+// proves: HFS_EXT_INVALID@full
+// proves: HFS_EXT_API_MISMATCH@lite
+// proves: HFS_EXT_API_MISMATCH@full
+// The project extension folder (PROJECT-LINT-3, R381): a project adds its own laws in ext/ at the app root, declared in ext/manifest.json. The app
+// check runs its machine rules and command checks under the rules' own codes, the canon factories load its ESLint rules, and an extension that
+// tries to do anything but add a rule, declares what is not there or targets another API version lends nothing while the check is red.
+import test from 'node:test';
+import type { TestContext } from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { PROJECT_EXT_API, PROJECT_EXT_API_MISMATCH, PROJECT_EXT_INVALID, extEslintConfigs, loadProjectExt, projectExtFindings } from '../runtime/scripts/lib/project-ext.mjs';
+import type { CommandResult } from '../runtime/scripts/lib/project-ext.mjs';
+import { projectExtCheckFindings, reservedCodes } from '../runtime/scripts/hfs/rules/app-extension-findings.mjs';
+import { declarationShapeProblems } from '../runtime/scripts/hfs/declaration-shape.mjs';
+import { mkdtemp } from './helpers/tmpdir.mjs';
+
+type Rule = Record<string, unknown>;
+const SHAPE: Rule = { id: 'ACME-SHAPE-1', code: 'ACME_SHAPE_INCOMPLETE', severity: 'error', doc: 'ext/docs/ACME-SHAPE-1.md', appliesTo: ['packages/ui/src/**'], hfs: 'shape.mjs' };
+const PROP: Rule = { id: 'ACME-PROP-1', code: 'ACME_PROP_ESCAPE', severity: 'warning', doc: 'https://example.invalid/acme-prop-1', appliesTo: ['fe/src/**/*.tsx', 'packages/ui/src/**/*.tsx'], lint: { tool: 'eslint', file: 'no-children-prop.mjs' } };
+const GENERATED: Rule = { id: 'ACME-GEN-1', code: 'ACME_GENERATED_DRIFT', severity: 'error', doc: 'ext/docs/ACME-SHAPE-1.md', appliesTo: ['packages/ui/src/**'], check: { command: ['node', 'ext/checks/generate.mjs', '--check'] } };
+const SOUND = [SHAPE, PROP, GENERATED];
+
+/** An app at a temp root with the extension `manifest` (an object, or raw text), its three modules, its doc and two package files. */
+function app(t: TestContext, { rules = SOUND, manifest, files = {} }: { rules?: unknown; manifest?: unknown; files?: Record<string, string | null> } = {}): string {
+  const root = mkdtemp(t, 'starci-project-ext-');
+  const write = (file: string, text: string): void => { fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true }); fs.writeFileSync(path.join(root, file), text); };
+  write('package.json', '{"private":true}\n');
+  write('hfs.json', JSON.stringify({ hfs: 3, kind: 'app', project: 'acme', sides: { be: { apps: [] }, fe: { apps: [] } } }));
+  const declared = manifest === undefined ? { schema: 'starci/project-ext@1', api: PROJECT_EXT_API, rules } : manifest;
+  write('ext/manifest.json', typeof declared === 'string' ? declared : JSON.stringify(declared));
+  write('ext/hfs/shape.mjs', "export default (context) => context.files.filter((file) => file.endsWith('.ts') && !(context.read(file) ?? '').includes('schema')).map((file) => ({ path: file, line: 1, message: file + ' has no schema' }));\n");
+  write('ext/lint/no-children-prop.mjs', "export default { meta: { type: 'problem' }, create: () => ({}) };\n");
+  write('ext/checks/generate.mjs', "process.stdout.write('compared\\n');\n");
+  write('ext/docs/ACME-SHAPE-1.md', '# ACME-SHAPE-1\n');
+  write('packages/ui/src/card.ts', 'export const card = 1;\n');
+  write('packages/ui/src/list.ts', 'export const schema = 1;\n');
+  write('be/src/main.ts', 'export const main = 1;\n');
+  for (const [file, text] of Object.entries(files)) { if (text === null) fs.rmSync(path.join(root, file)); else write(file, text); }
+  return root;
+}
+
+const tracked = ['hfs.json', 'ext/manifest.json', 'packages/ui/src/card.ts', 'packages/ui/src/list.ts', 'be/src/main.ts'];
+const read = (root: string) => (file: string): string | null => { try { return fs.readFileSync(path.join(root, file), 'utf8'); } catch { return null; } };
+const green = (): CommandResult => ({ status: 0, output: '' });
+const problems = (root: string): string[] => loadProjectExt(root, reservedCodes()).problems.map((problem) => problem.message);
+const repoOf = (edition: string) => ({ kind: 'app', profile: 'app', edition });
+
+test('a sound extension lends its rules: the machine rule judges the tracked files its appliesTo names, under its own code and severity, with its id and doc', (t) => {
+  const root = app(t);
+  const ext = loadProjectExt(root, reservedCodes());
+  assert.deepEqual(ext.problems, []);
+  assert.deepEqual(ext.rules.map((rule) => [rule.id, rule.code, rule.severity, rule.hfs !== undefined, rule.lint?.name ?? null, rule.check?.command ?? null]), [
+    ['ACME-SHAPE-1', 'ACME_SHAPE_INCOMPLETE', 'error', true, null, null],
+    ['ACME-PROP-1', 'ACME_PROP_ESCAPE', 'warning', false, 'no-children-prop', null],
+    ['ACME-GEN-1', 'ACME_GENERATED_DRIFT', 'error', false, null, ['node', 'ext/checks/generate.mjs', '--check']],
+  ]);
+  // be/src/main.ts has no schema either, and the rule never sees it: its reach is its declared paths
+  assert.deepEqual(projectExtFindings({ repoRoot: root, files: tracked, reserved: reservedCodes(), read: read(root), run: green }), [
+    { code: 'ACME_SHAPE_INCOMPLETE', level: 'error', path: 'packages/ui/src/card.ts', line: 1, message: 'packages/ui/src/card.ts has no schema (ACME-SHAPE-1, ext/docs/ACME-SHAPE-1.md)' },
+  ]);
+  for (const edition of ['lite', 'full']) {
+    const found = projectExtCheckFindings({ repoRoot: root, files: tracked, repo: repoOf(edition), isRoot: true, run: green });
+    assert.deepEqual(found.map((finding) => [finding.code, finding.path, finding.level]), [['ACME_SHAPE_INCOMPLETE', 'packages/ui/src/card.ts', 'error']]);
+    assert.deepEqual(projectExtCheckFindings({ repoRoot: root, files: tracked, repo: repoOf(edition), isRoot: false, run: green }), []);
+  }
+});
+
+test('an app without an ext/ folder has no extension and no finding', (t) => {
+  const root = app(t);
+  fs.rmSync(path.join(root, 'ext'), { recursive: true });
+  assert.deepEqual(loadProjectExt(root), { present: false, rules: [], packages: {}, problems: [] });
+  assert.deepEqual(projectExtCheckFindings({ repoRoot: root, files: tracked, repo: repoOf('lite'), isRoot: true }), []);
+  assert.deepEqual(extEslintConfigs(path.join(root, 'fe'), 'fe'), []);
+});
+
+test('a command check runs from the app root without a shell when a tracked file matches its appliesTo; another exit than 0 is its finding, whatever the path scope', (t) => {
+  const root = app(t);
+  const calls: (readonly string[])[] = [];
+  const failing = (command: readonly string[]): CommandResult => { calls.push(command); return { status: 3, output: 'out of date: packages/ui/src/generated.ts\nrun the generator\n' }; };
+  const found = projectExtCheckFindings({ repoRoot: root, files: tracked, repo: repoOf('lite'), isRoot: true, run: failing, inScope: () => false });
+  assert.deepEqual(calls, [['node', 'ext/checks/generate.mjs', '--check']]);
+  assert.deepEqual(found.map((finding) => [finding.code, finding.path, finding.level]), [['ACME_GENERATED_DRIFT', 'ext/manifest.json', 'error']]);
+  assert.match(found[0]?.message ?? '', /node ext\/checks\/generate\.mjs --check exited 3: out of date: packages\/ui\/src\/generated\.ts \| run the generator \(ACME-GEN-1, /u);
+  // no tracked file below its appliesTo: the check has nothing to judge and does not run
+  calls.length = 0;
+  assert.deepEqual(projectExtCheckFindings({ repoRoot: root, files: ['hfs.json', 'be/src/main.ts'], repo: repoOf('lite'), isRoot: true, run: failing }), []);
+  assert.deepEqual(calls, []);
+  // the real runner: node itself, the declared script, the app root as the working directory
+  assert.deepEqual(projectExtCheckFindings({ repoRoot: root, files: tracked, repo: repoOf('lite'), isRoot: true }).map((finding) => finding.code), ['ACME_SHAPE_INCOMPLETE']);
+  fs.writeFileSync(path.join(root, 'ext/checks/generate.mjs'), "process.stderr.write('drift in ' + process.cwd().length + '\\n'); process.exit(1);\n");
+  const real = projectExtCheckFindings({ repoRoot: root, files: tracked, repo: repoOf('lite'), isRoot: true });
+  assert.deepEqual(real.map((finding) => finding.code), ['ACME_SHAPE_INCOMPLETE', 'ACME_GENERATED_DRIFT']);
+  assert.match(real[1]?.message ?? '', /exited 1: drift in \d+/u);
+});
+
+test('the canon factories load the lint rules of the extension over the files its appliesTo names inside each config, at the rule\'s severity', (t) => {
+  const root = app(t);
+  const fe = extEslintConfigs(path.join(root, 'fe'), 'fe');
+  assert.deepEqual(fe.map((block) => [block.files, Object.keys(block.plugins), block.rules]), [[['src/**/*.tsx'], ['project-ext'], { 'project-ext/no-children-prop': 'warn' }]]);
+  assert.equal(typeof fe[0]?.plugins['project-ext']?.rules['no-children-prop']?.create, 'function');
+  const packages = extEslintConfigs(root, 'packages');
+  assert.deepEqual(packages.map((block) => [block.files, block.rules]), [[['packages/ui/src/**/*.tsx'], { 'project-ext/no-children-prop': 'warn' }]]);
+  assert.equal(packages[0]?.plugins['project-ext'], fe[0]?.plugins['project-ext'], 'one plugin object for every block');
+  assert.deepEqual(extEslintConfigs(path.join(root, 'be'), 'be'), [], 'no lint rule of the extension reaches be/');
+});
+
+test(`${PROJECT_EXT_INVALID}: an extension only adds; a rule that turns off, overrides or reuses a code, or lacks its doc, its reach or its engine, refuses the whole extension`, (t) => {
+  const refused = (rules: unknown, expected: RegExp, extra: Parameters<typeof app>[1] = {}): void => {
+    const root = app(t, { rules, ...extra });
+    const found = problems(root);
+    assert.ok(found.some((message) => expected.test(message)), `${String(expected)} not in ${JSON.stringify(found)}`);
+    assert.deepEqual(loadProjectExt(root, reservedCodes()).rules, [], 'a refused extension lends nothing');
+    const findings = projectExtCheckFindings({ repoRoot: root, files: tracked, repo: repoOf('lite'), isRoot: true, run: green, inScope: () => false });
+    assert.ok(findings.length > 0 && findings.every((finding) => finding.code === PROJECT_EXT_INVALID && finding.level === 'error' && finding.path === 'ext/manifest.json'), 'the refusal is red whatever the path scope');
+    assert.throws(() => extEslintConfigs(path.join(root, 'fe'), 'fe'), /HFS_EXT_INVALID: ext\/manifest\.json /u, 'a lint run never guesses');
+  };
+  refused([{ ...SHAPE, off: ['R26'] }], /rule 0 has off: an extension only adds rules, it never turns one off, overrides or lowers it/u);
+  refused([{ ...SHAPE, overrides: { R26: 'warn' } }], /has overrides/u);
+  refused([{ ...SHAPE, severity: 'off' }], /severity must be error or warning/u);
+  refused([{ ...SHAPE, code: 'HFS_EXT_INVALID' }], /HFS_EXT_INVALID is a code the harness reports/u);
+  refused([SHAPE, { ...GENERATED, id: 'ACME-SHAPE-1' }], /ACME-SHAPE-1: the id is declared twice/u);
+  refused([SHAPE, { ...GENERATED, code: 'ACME_SHAPE_INCOMPLETE' }], /ACME_SHAPE_INCOMPLETE is the code of another rule too/u);
+  refused([{ ...SHAPE, doc: 'docs/elsewhere.md' }], /doc must be a file below ext\//u);
+  refused([{ ...SHAPE, appliesTo: [] }], /appliesTo must list the app-relative globs/u);
+  refused([{ ...SHAPE, appliesTo: ['**/*.ts'] }], /must start at a named folder or file of the app root/u);
+  refused([{ ...SHAPE, appliesTo: ['../other/**'] }], /is not an app-relative path glob/u);
+  refused([{ ...SHAPE, lint: PROP['lint'] }], /exactly one engine/u);
+  refused([{ ...SHAPE, hfs: undefined }], /exactly one engine/u);
+  refused([{ ...PROP, lint: { tool: 'stylelint', file: 'no-children-prop.mjs' } }], /lint\.tool must be eslint/u);
+  refused([{ ...GENERATED, check: { command: ['npm', 'run', 'generate'] } }], /check\.command is an argument list that starts with node/u);
+  refused([SHAPE], /has disable: an extension holds only schema, api, rules, packages/u, { manifest: { schema: 'starci/project-ext@1', api: PROJECT_EXT_API, rules: [SHAPE], disable: ['R26'] } });
+  refused([], /is not a starci\/project-ext@1 manifest/u, { manifest: { schema: 'starci/rule-pack@1', api: PROJECT_EXT_API, rules: [SHAPE] } });
+  refused([], /cannot be read as JSON/u, { manifest: '{ not json' });
+  refused([], /declares no rule and no package/u);
+});
+
+test(`${PROJECT_EXT_INVALID}: a declared rule or check that cannot be found is red, and so is a rule file no rule declares`, (t) => {
+  const missing = (file: string, expected: RegExp): void => {
+    const root = app(t, { files: { [file]: null } });
+    assert.ok(problems(root).some((message) => expected.test(message)), `${String(expected)} not in ${JSON.stringify(problems(root))}`);
+    assert.deepEqual(projectExtCheckFindings({ repoRoot: root, files: tracked, repo: repoOf('full'), isRoot: true, run: green }).map((finding) => finding.code).filter((code) => code !== PROJECT_EXT_INVALID), []);
+  };
+  missing('ext/hfs/shape.mjs', /ACME-SHAPE-1: ext\/hfs\/shape\.mjs is declared and is not there/u);
+  missing('ext/lint/no-children-prop.mjs', /ACME-PROP-1: ext\/lint\/no-children-prop\.mjs is declared and is not there/u);
+  missing('ext/checks/generate.mjs', /ACME-GEN-1: the script ext\/checks\/generate\.mjs is declared and is not there/u);
+  missing('ext/manifest.json', /cannot be read as JSON/u);
+  const stray = app(t, { files: { 'ext/hfs/forgotten.mjs': 'export default () => [];\n' } });
+  assert.ok(problems(stray).some((message) => /ext\/hfs\/forgotten\.mjs is declared by no rule of the manifest/u.test(message)));
+  const broken = app(t, { files: { 'ext/hfs/shape.mjs': 'export default 1;\n' } });
+  assert.ok(problems(broken).some((message) => /must export by default a function \(context\) => findings/u.test(message)));
+  const throwing = app(t, { files: { 'ext/hfs/shape.mjs': "export default () => { throw new Error('boom'); };\n" } });
+  assert.deepEqual(projectExtFindings({ repoRoot: throwing, files: tracked, reserved: reservedCodes(), read: read(throwing), run: green }).map((finding) => [finding.code, /ACME-SHAPE-1 threw \(boom\)/u.test(finding.message)]), [[PROJECT_EXT_INVALID, true]]);
+  const pathless = app(t, { files: { 'ext/hfs/shape.mjs': "export default () => [{ message: 'no path' }];\n" } });
+  assert.deepEqual(projectExtFindings({ repoRoot: pathless, files: tracked, reserved: reservedCodes(), read: read(pathless), run: green }).map((finding) => finding.code), [PROJECT_EXT_INVALID]);
+});
+
+test(`${PROJECT_EXT_API_MISMATCH}: the extension API is versioned; a manifest of another version is refused and the finding names the project to update`, (t) => {
+  const older = app(t, { manifest: { schema: 'starci/project-ext@1', api: PROJECT_EXT_API + 1, rules: SOUND } });
+  const found = projectExtCheckFindings({ repoRoot: older, files: tracked, repo: repoOf('lite'), isRoot: true, run: green });
+  assert.deepEqual(found.map((finding) => [finding.code, finding.level, finding.path]), [[PROJECT_EXT_API_MISMATCH, 'error', 'ext/manifest.json']]);
+  assert.match(found[0]?.message ?? '', new RegExp(`project acme targets extension API ${String(PROJECT_EXT_API + 1)} and this @starci/hfs serves API ${String(PROJECT_EXT_API)}`, 'u'));
+  assert.throws(() => extEslintConfigs(path.join(older, 'fe'), 'fe'), /HFS_EXT_API_MISMATCH: /u);
+  const unversioned = app(t, { manifest: { schema: 'starci/project-ext@1', rules: SOUND } });
+  assert.ok(problems(unversioned).some((message) => /api must be the extension API version/u.test(message)));
+});
+
+test('hfs.json holds no extension key: rulePacks is refused with the place the laws live now', () => {
+  const found = declarationShapeProblems({ hfs: 3, kind: 'app', project: 'acme', rulePacks: ['@acme/hfs-rules'], sides: { be: { apps: [] }, fe: { apps: [] } } }, ['be', 'fe']);
+  assert.ok(found.some((problem) => /unknown key rulePacks: a project adds its own laws in its ext\/ folder/u.test(problem)), JSON.stringify(found));
+});

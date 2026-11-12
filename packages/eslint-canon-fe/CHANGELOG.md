@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.17.0 - 2026-11-13
+
+- Changed (PROJECT-LINT-3, R381): `starciFeConfig` loads the lint rules of the project's extension (`ext/manifest.json`, `ext/lint/`) through `extEslintConfigs` of `@starci/hfs` 6.9.0, over the files each rule's `appliesTo` names inside the fe side, under the plugin `project-ext`. A refused extension throws `HFS_EXT_INVALID`. Rule packs (hfs.json `rulePacks`) are gone. Requires `@starci/hfs` `~6.9.0`. Spec `src/project-ext.spec.ts`.
+
 ## 9.16.16 - 2026-11-12
 
 - Changed: the hfs 6.8 line (`@starci/hfs` 6.8.5) merged with `pkg/canon-fe-status-view-types`, `pkg/claude-work-concepts` and `pkg/claude-grammar-meter-foreground-fill`, so one installable set carries all of them: 9.16.12-9.16.14 (`no-view-data-status`, the `todo-tag` fix of R235) join the 6.8 line; peer `@starci/hfs ~6.8.0`.

@@ -8,7 +8,7 @@
  * Published IDs identify their owning law. Namespace migrations are explicit in the removed-vocabulary
  * catalog; compatibility aliases cannot create a second owner for a rule.
  */
-import { packEslintConfigs } from "@starci/hfs/runtime/scripts/lib/rule-packs.mjs"
+import { extEslintConfigs } from "@starci/hfs/runtime/scripts/lib/project-ext.mjs"
 import { createRequire } from "node:module"
 import { join } from "node:path"
 import { pathToFileURL } from "node:url"
@@ -288,21 +288,21 @@ export const starciFeConfig = ({ hfs }: { readonly hfs?: unknown } = {}): Linter
       sonar: loadSonarPlugins(),
       source: { ...recommended, ...reactHooksRules(reactHooks) },
     }),
-    ...withPackRules(hfs, "fe"),
+    ...withExtRules(hfs, "fe"),
   ]
 }
 
 /**
- * The ESLint rules of the app's rule packs (hfs.json `rulePacks`, contexts/project/lint.md PROJECT-LINT-3) for one scope: the one sanctioned way an app adds
- * a lint law, loaded by this factory so no tool config of the app defines a rule. A refused pack throws (HFS_RULE_PACK_INVALID): a lint run never guesses.
+ * The lint rules of the project's extension (ext/manifest.json and ext/lint/, contexts/project/lint.md PROJECT-LINT-3) for one scope: the one sanctioned way a
+ * project adds a lint law, loaded by this factory so no tool config of the app defines a rule. A refused extension throws (HFS_EXT_INVALID): a lint run never guesses.
  *
  * @param hfs - The HFS view the config was built for (its repoRoot is the folder of the eslint.config.mjs).
  * @param side - The scope: the fe side (the root packages take theirs from starciBePackagesConfig).
- * @returns The pack blocks, none when the app declares no pack or the view is missing.
+ * @returns The extension's blocks, none when the app has no ext/ folder, no lint rule of it reaches the scope, or the view is missing.
  */
-const withPackRules = (hfs: unknown, side: "fe"): Linter.Config[] => {
+const withExtRules = (hfs: unknown, side: "fe"): Linter.Config[] => {
   const root = typeof hfs === "object" && hfs !== null && "repoRoot" in hfs && typeof hfs.repoRoot === "string" ? hfs.repoRoot : null
-  return root === null ? [] : (packEslintConfigs(root, side) as unknown as Linter.Config[])
+  return root === null ? [] : (extEslintConfigs(root, side) as unknown as Linter.Config[])
 }
 
 /**

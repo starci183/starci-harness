@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.24.0 - 2026-11-13
+
+- Changed (PROJECT-LINT-3, R381): `starciBeConfig` and `starciBePackagesConfig` load the lint rules of the project's extension (`ext/manifest.json`, `ext/lint/`) through `extEslintConfigs` of `@starci/hfs` 6.9.0: one block per rule, over the files its `appliesTo` names inside the config (the be side's own folder, `packages/` for the root packages), under the plugin `project-ext`. A refused extension throws `HFS_EXT_INVALID`. Rule packs (hfs.json `rulePacks`) are gone. Requires `@starci/hfs` `~6.9.0`. Spec `src/project-ext.spec.ts`.
+
 ## 3.23.3 - 2026-11-12
 
 - Added: `cli-client-boundary` (R398 `BE_CLI_CLIENT_BOUNDARY`): a client cli (slots `be.app.client-cli`, `be.client-cli`) imports no domain, events, queues or projections module, nothing of the database capability or of a persistence folder, and no `typeorm`, `@nestjs/typeorm` or `pg`.

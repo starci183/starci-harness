@@ -87,6 +87,7 @@ Change a slot, a rule or a pattern's front matter, then regenerate in the same c
   - `<name>/` — **app.packages** optional · R25 (eslint-be `dead-exports`; eslint-fe `dead-exports`)
   - `modules/` — **app.module-registry** optional · R05 (hfs `managed-file-drift`)
 - `{be,fe}/` — **app.sides** required
+- `ext/` — **app.ext** optional · R381 (hfs `project-ext`)
 - `.starciwork/` — **app.starciwork** optional · R07 (hfs `agent-data-tracked`), R09 (hfs `identity-custody`)
 - `.starcistacks/` — **app.starcistacks** required · R10 (hfs `stacks-shape` `stacks-runtime` `stacks-evidence-runtime` `starcistacks-runtime` `starcistacks-runtime-gate`), R01 (hfs `slot-undeclared`; eslint-be `slot-undeclared`; eslint-fe `slot-undeclared`; machine `repository-tree-layout`), R06 (hfs `plaintext-secret` `plaintext-secret-staged`), R09 (hfs `identity-custody`), R375 (hfs `seeds-shape`), R259 (hfs `db-config-ext` `db-migration-destructive`)
   - `images/db/Dockerfile` — **app.db.image** required · R05 (hfs `managed-file-drift`)
@@ -288,6 +289,7 @@ Refused (forbidden or external): `repo.side-root-forbidden`, `fe.tool-config-loc
   - `<name>/` — **app.packages** optional · R25 (eslint-be `dead-exports`; eslint-fe `dead-exports`)
   - `modules/` — **app.module-registry** optional · R05 (hfs `managed-file-drift`)
 - `{be,fe}/` — **app.sides** required
+- `ext/` — **app.ext** optional · R381 (hfs `project-ext`)
 - `.starciwork/` — **app.starciwork** required · R07 (hfs `agent-data-tracked`), R09 (hfs `identity-custody`)
 - `.starcistacks/` — **app.starcistacks** required · R10 (hfs `stacks-shape` `stacks-runtime` `stacks-evidence-runtime` `starcistacks-runtime` `starcistacks-runtime-gate`), R01 (hfs `slot-undeclared`; eslint-be `slot-undeclared`; eslint-fe `slot-undeclared`; machine `repository-tree-layout`), R06 (hfs `plaintext-secret` `plaintext-secret-staged`), R09 (hfs `identity-custody`), R375 (hfs `seeds-shape`), R259 (hfs `db-config-ext` `db-migration-destructive`)
   - `cache/` — **app.starcistacks.cache** optional

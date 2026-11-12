@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.38.2 - 2026-11-13
+
+- Changed: version stamp only, cut with `@starci/hfs` 6.9.0 (the project extension folder, PROJECT-LINT-3): the family releases together; no component, token or stylesheet changes.
+
 ## 0.38.1 - 2026-11-12
 
 - Fixed: three spacing values stood off the scale (0 4 8 12 24 32, 16 only as `--grammar-inset-card`) and failed `starci/spacing-scale` over the Grammar stylesheets (`@starci/stylelint-canon` `src/spacing-scale.spec.ts`). Each now reads the token of its role, and no drawn size moves: a row of a `DataTable` drawn as a list under 768 (`.starci-core-data-table-list-row`, since 0.37.3) takes `var(--grammar-row-gap) var(--grammar-card-padding-inline)` (was `0.75rem 1rem`; 12 to its separators, 16 to the card's edges, ROW-EDGE-PADDING), its group band (`.starci-core-data-table-list-group`) `0.5rem var(--grammar-card-padding-inline)` (was `0.5rem 1rem`), and `--grammar-button-icon-padding` reads `var(--grammar-inset-card)` (was `1rem`, since 0.37.5): a Button with a glyph keeps HeroUI's 16 on md and lg, read from the one token that carries the step.

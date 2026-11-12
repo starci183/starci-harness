@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.38.2 - 2026-11-13
+
+- Changed: version stamp only, cut with `@starci/hfs` 6.9.0 (the project extension folder, PROJECT-LINT-3): requires `@starci/eslint-grammar-core` 0.38.2; no rule changes.
+
 ## 0.38.1 - 2026-11-12
 
 - Changed: released with the Grammar family at 0.38.1; peers `@starci/eslint-grammar-core` 0.38.1. No rule of this package changed.

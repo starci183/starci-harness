@@ -4,7 +4,7 @@
 # factories, the architecture machine and templates read this file; none hardcodes a path. Field meanings and the
 # ruleParams keys are explained in hfs/README.md; the reason for a slot's shape is its pattern topic.
 schema: starci/hfs-slots@3
-version: 3.37.0
+version: 3.38.0
 presenceValues:
   - required
   - optional
@@ -1393,6 +1393,26 @@ slots:
     tracked: tracked
     tier: none
     tests: none
+  - id: app.ext
+    profiles:
+      - app
+    editionWhy: Lite and full share the slot; a project of either edition adds its own laws in the same folder.
+    path: ext/
+    presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+    requires:
+      - manifest.json
+    allows:
+      - manifest.json
+      - README.md
+      - hfs/**
+      - lint/**
+      - checks/**
+      - docs/**
+    rules:
+      - HFS_EXT_INVALID
   - id: app.starciwork
     profiles:
       - app

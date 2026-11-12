@@ -292,7 +292,7 @@ rules:
     code: "HFS_TOOL_CONFIG_LOCAL"
     editions: ["lite", "full"]
     docs: ["docs/managed-tooling-coverage.md#local-tool-configuration"]
-    law: "Configs only call the factories; no local rules. An app's own lint rules come only through the rule packs of hfs.json rulePacks, which the canon factories load (R381, PROJECT-LINT-3)."
+    law: "Configs only call the factories; no local rules. A project's own lint rules come only through its ext/lint/ folder, declared in ext/manifest.json, which the canon factories load (R381, PROJECT-LINT-3)."
     kinds: [check, codemod]
     gates: [land, ci]
     failureCodes: ["HFS_TOOL_CONFIG_LOCAL"]
@@ -6465,31 +6465,31 @@ rules:
     witness:
       - {path: packages/eslint/grammar-core/choice-controls.spec.mjs, editions: [lite, full], codes: [FE_GROUPED_CHOICE_CONTROL]}
   - id: R381
-    code: "HFS_RULE_PACK_INVALID"
-    law: "An app adds its own laws only through rule packs hfs.json rulePacks names: an installed package that exports ./rule-pack, a starci/rule-pack@1 manifest whose every rule carries an id, a finding code, a severity, its spec and its doc and exactly one engine (a machine rule the app check runs, or an ESLint rule the canon factories load); a pack only adds, so a rule with any other key, a code the harness reports, an id or code another pack holds, a rule that throws or a finding without a path refuses the pack, which then lends nothing; its findings go through the harness's policy (a machine rule blocks like hfs, an ESLint rule follows the lint gate, its branch profile and the ratchet)."
+    code: "HFS_EXT_INVALID"
+    law: "A project adds its own laws only in its ext/ folder at the app root, declared in ext/manifest.json (starci/project-ext@1, with the extension API version it targets): every rule carries an id, a finding code, a severity, its doc, the app-relative globs it applies to and exactly one engine (a machine rule of ext/hfs/ the app check runs, an ESLint rule of ext/lint/ the canon factories load, or a command check the app check runs without a shell); the app check loads and runs them on every run; an extension only adds, so a rule or manifest with any other key, a code the harness reports, an id or code declared twice, a declared file that is not there, a rule file no rule declares, a rule that throws, a finding without a path or a manifest of another API version refuses the extension, which then lends nothing while the check is red; its findings go through the harness's policy (a machine rule and a command check block like hfs, an ESLint rule follows the lint gate, its branch profile and the ratchet)."
     kinds: [check]
     gates: [settle, land, ci]
-    failureCodes: ["HFS_RULE_PACK_INVALID"]
+    failureCodes: ["HFS_EXT_INVALID", "HFS_EXT_API_MISMATCH"]
     enforcers:
-      - {kind: hfs, id: rule-packs, at: scripts/hfs/rules/app-extension-findings.mjs}
+      - {kind: hfs, id: project-ext, at: scripts/hfs/rules/app-extension-findings.mjs}
     editions: [lite, full]
     docs:
-      - {path: contexts/project/lint.md#project-lint-3-an-app-extends-the-law-through-rule-packs-and-package-slot-manifests, editions: [lite, full]}
+      - {path: contexts/project/lint.md#project-lint-3-a-project-extends-the-law-through-its-ext-folder, editions: [lite, full]}
     proves:
-      - {path: packages/hfs/src/rule-packs.spec.mjs, editions: [lite, full]}
+      - {path: packages/hfs/src/project-ext.spec.mjs, editions: [lite, full]}
     witness:
-      - {path: packages/hfs/src/rule-packs.spec.mjs, editions: [lite, full]}
+      - {path: packages/hfs/src/project-ext.spec.mjs, editions: [lite, full]}
   - id: R382
     code: "HFS_PACKAGE_SLOT_UNPLACED"
-    law: "A root workspace package that declares packages/<name>/slots.yaml (starci/package-slots@1) is held to it as the be and fe sides are held to theirs: every file below its src/ belongs to a declared slot (unless closed is false), each instance of a folder slot holds every file the slot requires and nothing its allows leave out, and the manifest itself is readable; its coverage follows the slots, every file measured at 100 per file but the barrels, the type files and a slot that opts out with coverage: { none: <reason> }."
+    law: "A root workspace package whose slots the project's ext/manifest.json declares (packages, by the package's folder) is held to them as the be and fe sides are held to theirs: every file below its src/ belongs to a declared slot (unless closed is false), each instance of a folder slot holds every file the slot requires and nothing its allows leave out, and the declaration itself is readable; its coverage follows the slots, every file measured at 100 per file but the barrels, the type files and a slot that opts out with coverage none and its reason; a slot names the canon that judges it (lint be or fe). A package's own slots.yaml is read for one more minor, with a warning, for a package the manifest does not declare."
     kinds: [check]
     gates: [settle, land, ci]
-    failureCodes: ["HFS_PACKAGE_SLOT_UNPLACED", "HFS_PACKAGE_SLOT_MISSING", "HFS_PACKAGE_SLOT_DISALLOWED", "HFS_PACKAGE_SLOTS_INVALID"]
+    failureCodes: ["HFS_PACKAGE_SLOT_UNPLACED", "HFS_PACKAGE_SLOT_MISSING", "HFS_PACKAGE_SLOT_DISALLOWED", "HFS_PACKAGE_SLOTS_INVALID", "HFS_PACKAGE_SLOTS_MOVED"]
     enforcers:
       - {kind: hfs, id: package-slots, at: scripts/hfs/rules/app-extension-findings.mjs}
     editions: [lite, full]
     docs:
-      - {path: contexts/project/lint.md#project-lint-3-an-app-extends-the-law-through-rule-packs-and-package-slot-manifests, editions: [lite, full]}
+      - {path: contexts/project/lint.md#project-lint-3-a-project-extends-the-law-through-its-ext-folder, editions: [lite, full]}
     proves:
       - {path: packages/hfs/src/package-slots.spec.mjs, editions: [lite, full]}
     witness:
