@@ -79,16 +79,15 @@ the three realtime doors. How the edition is chosen is PROJECT-1 in [README.md](
 
 ## What CI runs
 
-- No e2e world, no browser journeys and no e2e workflow. Owners: slots `app.ci-e2e`, `app.browser`,
-  `app.browser-config`, `be.tests.e2e` (all forbidden under lite).
+- No e2e world and no browser journeys. Owners: slots `app.browser`, `app.browser-config`, `be.tests.e2e` (all
+  forbidden under lite).
 - Boot is proved by compiling the real AppModule graph with doubles, once a scan of the same graph found no provider ring,
   and each async pattern by its lite proof lane. Owners: R272, R401, R284; [code/be/test.md](../code/be/test.md) BE-TEST-12,
   [code/be/injection.md](../code/be/injection.md) BE-INJECTION-5.
 - Integration specs run against the local db service without containers or toxiproxy; contract specs are
-  optional. Owners: slots `be.tests.integration`, `be.tests.contract`.
+  optional. Both run on a local machine only, in no workflow (R12; [cicd.md](cicd.md) "Triggers and what runs"). Owners:
+  slots `be.tests.integration`, `be.tests.contract`.
 - CI lints the db migrations; no database type is generated. Owner: slot `app.ci`.
-- Open: the `app` profile's CI tier in [policy/quality.yaml](../../policy/quality.yaml) lists `e2e` for every app,
-  which a lite app cannot have.
 
 ## Work and custody
 

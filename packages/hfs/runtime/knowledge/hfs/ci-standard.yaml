@@ -92,7 +92,7 @@ items:
     requires: "in an app with root workspace packages (the lint matrix names packages, or the app's package.json declares build:modules), every step that matches rootPackages.readers follows a step of its job, or is a step, whose run holds one of rootPackages.builders: the fast job builds them before its boot proof, every side of the lint matrix before it lints, the sonar job before its scan; an app without root packages renders no such step"
     covers: [app-ci]
     check: ci-standard
-    by: [render packages/hfs/sync/ci-commands.mjs (also cache-verify.yml and e2e.yml)]
+    by: [render packages/hfs/sync/ci-commands.mjs (also cache-verify.yml)]
   - id: full-history-base-ref
     title: full history and the lint base STARCI_BASE_REF
     requires: "every actions/checkout of the managed CI fetches the full history (fetch-depth: 0), and the lint job writes STARCI_BASE_REF to GITHUB_ENV before it lints"

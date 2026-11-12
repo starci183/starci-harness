@@ -805,7 +805,11 @@ export async function renderRepo(root: string, { presets, parseYaml, notices, ma
 
 /** The folders a lite app's sync retires: the generated Supabase row types nothing reads any more. */
 const LITE_RETIRED_DIRS = Object.freeze(['supabase/types']);
-/** The files a lite app's sync retires, each with the reason the dry run prints. */
+/** The files the sync of an app of either edition retires, each with the reason the dry run prints. */
+const RETIRED_FILES: Readonly<Record<string, string>> = Object.freeze({
+  '.github/workflows/e2e.yml': 'no workflow runs a world layer (R12): the e2e specs run on the local machine (npm run test:e2e, and the test:e2e row of the release gate)',
+});
+/** The files a lite app's sync retires beside those of every edition, each with the reason the dry run prints. */
 const LITE_RETIRED_FILES: Readonly<Record<string, string>> = Object.freeze({
   [RETIRED_DB_DOCKERFILE]: `the db image moved to ${DB_DOCKERFILE}`,
   'be/src/modules/domain/identity/persistence/entities/auth-user.entity.ts': 'the sign-in reaches accounts through the account doors (be/src/modules/domain/identity/persistence/account-doors.port.ts); the application role holds no grant on schema auth',
@@ -818,11 +822,10 @@ const readEdition = (read: (relative: string) => string | null): unknown => {
   try { return (JSON.parse(read('hfs.json') ?? 'null') as { edition?: unknown } | null)?.edition ?? null; } catch { return null; }
 };
 /** Why a retired file goes: a retired file's own reason, else the folder's. */
-const retiredReason = (file: string): string => LITE_RETIRED_FILES[file] ?? 'the lite edition generates no database types';
+const retiredReason = (file: string): string => RETIRED_FILES[file] ?? LITE_RETIRED_FILES[file] ?? 'the lite edition generates no database types';
 
-/** The app-relative files of the retired folders that still exist under `root` of a lite app; sync --execute deletes them, the dry run reports them. */
+/** The app-relative retired files, and files of the retired folders of a lite app, that still exist under `root`; sync --execute deletes them, the dry run reports them. */
 export function retiredFiles(root: string, hfs: { edition?: string } | null | undefined): string[] {
-  if (hfs?.edition !== 'lite') return [];
   const found: string[] = [];
   const walk = (rel: string): void => {
     const full = path.join(root, rel);
@@ -831,6 +834,8 @@ export function retiredFiles(root: string, hfs: { edition?: string } | null | un
     if (stat.isDirectory()) for (const name of fs.readdirSync(full).sort(byCodeUnit)) walk(`${rel}/${name}`);
     else found.push(rel);
   };
+  for (const file of Object.keys(RETIRED_FILES)) walk(file);
+  if (hfs?.edition !== 'lite') return found;
   for (const dir of LITE_RETIRED_DIRS) walk(dir);
   for (const file of Object.keys(LITE_RETIRED_FILES)) walk(file);
   return found;

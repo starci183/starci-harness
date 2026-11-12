@@ -20,7 +20,7 @@ resolver, controller, module or app file, or of any other file, is a finding. In
 specs are `src/tests/integration/<area>/*.integration-spec.ts` on real infrastructure through `useTestWorld`; contract
 specs `src/tests/contract/<provider>/*.contract-spec.ts`; full adds `src/tests/e2e/<area>/*.e2e-spec.ts`. Test
 infrastructure lives only in `src/tests/world/`, shared data in `src/tests/fixtures/`. Integration and contract run
-through `npm run test:integration` (after `typecheck:tests`), never in a hook or the default typecheck.
+through `npm run test:integration` (after `typecheck:tests`) on a local machine, never in a hook, the default typecheck or a CI workflow (R12).
 
 In lite the world is also the one place of raw SQL text (R334): plain CRUD on an application table goes through its entity on
 `world.db.<connection>`, a database function of the app through `callDbFunction`, and seeded rows come from builders

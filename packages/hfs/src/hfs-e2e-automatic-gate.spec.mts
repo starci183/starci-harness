@@ -19,7 +19,6 @@ const cleanFiles = {
   }),
   '.husky/pre-push': 'npm run test:unit\n',
   '.github/workflows/ci.yml': 'on:\n  push:\n    branches: [main]\njobs:\n  unit:\n    steps:\n      - run: npm run test:unit\n',
-  '.github/workflows/e2e.yml': 'on:\n  workflow_dispatch:\njobs:\n  e2e:\n    steps:\n      - run: npm run test:e2e\n',
 };
 
 function appFixture(t: TestContext, edition: string, files: Record<string, string> = {}): string {
@@ -41,7 +40,7 @@ const automaticFindings = (root: string) => checkHfsWithoutConfig(root).violatio
   .filter(item => item.ruleId === CODE);
 
 for (const edition of ['lite', 'full']) {
-  test(`${edition} passes unit-only automatic gates with manually dispatched e2e`, t => {
+  test(`${edition} passes unit-only hooks and workflows, the e2e script run by hand`, t => {
     assert.deepEqual(automaticFindings(appFixture(t, edition)), []);
   });
 
@@ -56,4 +55,13 @@ for (const edition of ['lite', 'full']) {
     });
     assert.ok(automaticFindings(root).some(item => item.ruleId === CODE && item.path === '.github/workflows/ci.yml'));
   });
+
+  for (const [trigger, on] of Object.entries({ workflow_dispatch: 'on:\n  workflow_dispatch:\n', schedule: "on:\n  schedule:\n    - cron: '0 3 * * *'\n", workflow_call: 'on:\n  workflow_call:\n' })) {
+    for (const layer of ['e2e', 'integration', 'contract']) {
+      test(`${edition} rejects ${layer} in a ${trigger} workflow: no workflow runs a world layer, whatever its trigger (HFS_E2E_IN_AUTOMATIC_GATE)`, t => {
+        const root = appFixture(t, edition, { '.github/workflows/world.yml': `${on}jobs:\n  world:\n    steps:\n      - run: npm run test:${layer}\n` });
+        assert.deepEqual(automaticFindings(root).map(item => item.path), ['.github/workflows/world.yml']);
+      });
+    }
+  }
 }

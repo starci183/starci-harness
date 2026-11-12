@@ -108,7 +108,7 @@ rules:
       - {kind: hfs, id: sonar-config}
   - id: R12
     code: HFS_E2E_IN_AUTOMATIC_GATE
-    law: e2e never joins the pre-commit hook, coverage or automatic CI.
+    law: The integration, e2e and contract specs (the world layers) run on a local machine only, by hand and as the world rows of the release gate; no hook, coverage run or CI workflow runs them, whatever its trigger.
     failureCodes:
       - HFS_E2E_IN_AUTOMATIC_GATE
     enforcers:

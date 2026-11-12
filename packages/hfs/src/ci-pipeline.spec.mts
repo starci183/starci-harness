@@ -247,6 +247,23 @@ test('lite: sync retires the db-deploy.yml workflow; full keeps its own', (t) =>
   assert.equal(rendered('lite', TWO)['db-deploy'], undefined);
 });
 
+for (const edition of ['lite', 'full']) {
+  test(`${edition}: no managed workflow runs a world layer and sync retires a tracked e2e.yml (R12)`, (t) => {
+    const workflows = rendered(edition, TWO);
+    assert.equal(workflows['e2e'], undefined, 'no e2e.yml is rendered');
+    for (const [name, text] of Object.entries(workflows)) {
+      assert.doesNotMatch(text, /test:(?:e2e|integration|contract)|typecheck:tests|--selectProjects\s+(?:e2e|integration|contract)/u, `${name}.yml runs no world layer`);
+    }
+    assert.equal(Object.keys((parseWorkflow(workflows['ci']!) as Doc).jobs).some((id) => /e2e|integration|contract/u.test(id)), false, 'ci.yml has no world job');
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-e2e-retired-'));
+    t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    assert.deepEqual(retiredFiles(root, { edition }), []);
+    fs.mkdirSync(path.join(root, '.github', 'workflows'), { recursive: true });
+    fs.writeFileSync(path.join(root, '.github', 'workflows', 'e2e.yml'), 'name: e2e\non:\n  workflow_dispatch:\n');
+    assert.deepEqual(retiredFiles(root, { edition }), ['.github/workflows/e2e.yml']);
+  });
+}
+
 test('the declaration projects deploy.auto, approval, platforms, ci.imageCache and the sealed build values into the declared stack', () => {
   const stack = declaredStack({
     ci: { imageCache: 'registry' },

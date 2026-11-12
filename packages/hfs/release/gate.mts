@@ -82,7 +82,8 @@ const isAppCheck = (command: readonly string[]): boolean => command.length === A
 export const rowCommand = (command: readonly string[], full: boolean): readonly string[] => (full && isAppCheck(command) ? [...command, '--fresh'] : command);
 const SCRIPT_GATES = ['format:check', 'typecheck', 'build:be', 'lint', 'db:lint', 'build:fe', 'test'];
 // A full app has a test world (integration, e2e and contract projects, always present: the managed `test:e2e` script marks it), so those layers are rows of its gate;
-// a lite app's integration project exists only where it has integration specs, so it has no world rows.
+// a lite app's integration project exists only where it has integration specs, so it has no world rows. The gate runs on the machine that cuts the release and is the
+// one automated run of the world layers: no workflow runs them (R12).
 const WORLD_SCRIPTS = ['test:integration', 'test:e2e', 'test:contract'];
 // An app with an entity list (db/entity-list.mts) checks its entities against the migrated schema: a row of every gate, declared or default.
 const DB_DRIFT_COMMAND: readonly string[] = ['npx', 'starci', 'app', 'db', 'drift'];

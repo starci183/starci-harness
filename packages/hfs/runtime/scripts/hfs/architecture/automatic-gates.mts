@@ -1,7 +1,7 @@
 import { readTextFile } from '../../lib/read-text.mjs';
 
-// Integration, e2e and contract run MANUALLY only. No hook, default typecheck,
-// coverage run or automatic CI trigger may include those trees or run those projects. Linting the e2e files is not running them: ESLint reads them
+// Integration, e2e and contract (the world layers) run on a local machine only: by hand, and as the rows of the release gate. No hook, default typecheck,
+// coverage run or CI workflow, whatever its trigger, may include those trees or run those projects. Linting the e2e files is not running them: ESLint reads them
 // as syntax in the one repository-wide lint run (the factory's e2e block), so no `lint:e2e` command exists to judge.
 const E2E_COMMAND = new RegExp([
   String.raw`\btest:(?:e2e|integration|contract)\b|`,
@@ -45,7 +45,7 @@ function inspectHooks(state: GateState) {
     const text = readTextFile(state.root, hook);
     if (text === null) continue;
     const body = withoutComments(text);
-    if (runsE2e(body)) state.finding(state.rule, hook, `${hook} runs integration, e2e or contract. They are manual only; hooks run unit, lint and typecheck.`);
+    if (runsE2e(body)) state.finding(state.rule, hook, `${hook} runs integration, e2e or contract. They run on a local machine by hand; hooks run unit, lint and typecheck.`);
     for (const match of body.matchAll(/npm\s+run\s+([\w:.-]+)/gu)) state.pending.push(match[1] as string);
   }
 }
@@ -53,7 +53,7 @@ function inspectHooks(state: GateState) {
 function inspectLintStaged(state: GateState) {
   const lintStaged = state.pkg?.['lint-staged'];
   if (lintStaged && runsE2e(Object.values(lintStaged).flat().join('\n')))
-    state.finding(state.rule, 'package.json', 'lint-staged runs an integration, e2e or contract command. They are manual only.');
+    state.finding(state.rule, 'package.json', 'lint-staged runs an integration, e2e or contract command. They run on a local machine by hand.');
 }
 
 function inspectHookScripts(state: GateState) {
@@ -62,7 +62,7 @@ function inspectHookScripts(state: GateState) {
     state.called.add(name);
     const command = state.scripts[name];
     if (typeof command !== 'string') continue;
-    if (runsE2e(command)) state.finding(state.rule, 'package.json', `Script ${name} is run by a husky hook and touches integration, e2e or contract. They are manual only.`);
+    if (runsE2e(command)) state.finding(state.rule, 'package.json', `Script ${name} is run by a husky hook and touches integration, e2e or contract. They run on a local machine by hand.`);
     for (const match of command.matchAll(/npm\s+run\s+([\w:.-]+)/gu)) state.pending.push(match[1] as string);
   }
 }
@@ -83,14 +83,12 @@ function inspectWorkflows(state: GateState) {
   for (const file of state.tree.files().filter((entry: string) => /^\.github\/workflows\/[^/]+\.ya?ml$/u.test(entry))) {
     const text = readTextFile(state.root, file);
     if (text === null) continue;
-    const trigger = /^on:.*(?:\n(?:[ \t].*)?$)*/mu.exec(text)?.[0] ?? '';
-    if (!/\b(?:push|pull_request)\b/u.test(trigger)) continue;
     if (runsE2e(withoutComments(text)))
-      state.finding(state.rule, file, `${file} runs e2e on push or pull_request. Move the e2e job to its own workflow with on: workflow_dispatch only.`);
+      state.finding(state.rule, file, `${file} runs integration, e2e or contract. No workflow runs them, whatever its trigger: remove the step and run them on the local machine (npm run test:e2e; the release gate runs its world rows there).`);
   }
 }
 
-/** Check hooks, transitive hook scripts, unit scripts, coverage and automatic workflows. */
+/** Check hooks, transitive hook scripts, unit scripts, coverage and every workflow. */
 export function e2eInAutomaticGate({ root, tree, jestConfig, finding }: { root: string; tree: GateTree; jestConfig: string | null; finding: GateFinding }) {
   const rule = 'HFS_E2E_IN_AUTOMATIC_GATE';
   let pkg: GatePackage | null = null;

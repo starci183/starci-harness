@@ -46,6 +46,14 @@ on the release tag; the tag run is the release run, and the pipeline keys every 
 branches with a branch profile for `ci.yml`, and dispatch); a pull request targets `main` alone, so it always runs the full gate. It runs with read-only permissions, no environment and no secret; a fork's or Dependabot's run
 gets none anyway. `pull_request_target`, `workflow_run` and path filters stay refused, and so does every schedule but the nightly `cache-verify.yml`.
 
+**No workflow runs a world layer (R12).** The integration, e2e and contract specs need the test world, so they run on a local
+machine only: by hand (`npm run test:integration`, `npm run test:e2e`, `npm run test:contract`) and, on a full app, as the
+world rows of the release gate, which runs on the machine that cuts the release
+([check-cache.md](check-cache.md#the-operating-procedure) "Real rows"). No job or step of any workflow runs them, under any
+trigger, a manual dispatch included, and `starci app check` runs none of them in either edition: its `test` family is the
+unit specs. An app tracks no `.github/workflows/e2e.yml`: slot `app.ci-e2e` is forbidden and `starci app sync --execute`
+removes the file. `HFS_E2E_IN_AUTOMATIC_GATE` refuses a hook, a coverage run or a workflow that runs one.
+
 **One sha is judged once.** The first job, `plan`, reads the event and the refs and decides: `full` (the release checks of a
 candidate or tag, Sonar included, still diff-only against the trusted cache), `diff` (with its trusted base, per check-cache.md "Trust"), `defer` (main push of a tagged sha) or `reuse` (a successful `ci.yml` run of
 the same sha on its candidate branch, found through the API, whose run id becomes the evidence). Its outputs drive every
@@ -82,8 +90,8 @@ tests, coverage and the Sonar gate are binary.
 **Root packages are built before they are read.** An app's root workspace packages (`packages/*`) are imported by their package name, which resolves into their `dist`. Every job that reads their
 types or compiles code importing them builds them first with the app's managed `build:modules` script (`npm run
 build:modules`): the `fast` job before its boot proof, every side of the `lint` matrix in its "build the lint inputs"
-step, a multi-front-end build, the `sonar` job before its scan, the nightly `cache-verify` and the full edition's `e2e`
-run; the managed `typecheck`, `lint`, `test`, `build:be` and `build:fe` scripts already run it first. A check that finds a
+step, a multi-front-end build, the `sonar` job before its scan and the nightly `cache-verify`;
+the managed `typecheck`, `lint`, `test`, `build:be` and `build:fe` scripts already run it first. A check that finds a
 package unbuilt reads each import as nothing: the boot proof cannot compile the modules (`BE_APP_BOOT_PROOF_MISSING`), the
 typed lint reads them as `any` (`no-unsafe-*`), and both disagree with the cache records made with the packages built
 (`HFS_CHECK_CACHE_FORGED`). R301 refuses a CI that checks before it builds (ci-standard.yaml `packages-built-first`); an
