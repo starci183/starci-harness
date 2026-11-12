@@ -1391,8 +1391,8 @@ slots:
   - id: app.starciwork
     profiles:
       - app
-    editionWhy: lite optionally keeps .gitignore, workspace.yaml and brand records; full keeps the Work
-      catalog and product summaries.
+    editionWhy: lite optionally keeps .gitignore, workspace.yaml, brand records and the product's concepts;
+      full keeps the Work catalog and product summaries.
     path: .starciwork/
     presence: required
     tracked: tracked
@@ -1406,6 +1406,8 @@ slots:
       - workspace.yaml
       - index.yaml
       - brand/**
+      - concepts/index.yaml
+      - concepts/<name>/index.yaml
       - shell/index.yaml
       - features/<feature>/index.yaml
       - features/<feature>/<family>/<name>/index.yaml
@@ -1430,6 +1432,8 @@ slots:
       allows:
         - workspace.yaml
         - brand/**
+        - concepts/index.yaml
+        - concepts/<name>/index.yaml
     rules:
       - HFS_AGENT_DATA_TRACKED
       - HFS_IDENTITY_CUSTODY

@@ -1,10 +1,10 @@
 # Work: the product records of a project
 
-`.starciwork/` at the app root holds the product's Work: what the product must do, how it is designed, what was built
-and how it is accepted. It is product content, committed with the app; harness state never lives there
+`.starciwork/` at the app root holds the product's Work: the concepts the owner ruled, what the product must do, how it
+is designed, what was built and how it is accepted. It is product content, committed with the app; harness state never lives there
 ([contexts/harness/state.md](../harness/state.md)). Which paths the tree may hold is slot `app.starciwork` of
 [hfs/slots.yaml](../hfs/slots.yaml); the edition decides how much of it exists ([lite.md](lite.md), [full.md](full.md)).
-This file owns the record families, their lifecycle vocabulary and who writes what.
+This file owns the record families, the concepts, their lifecycle vocabulary and who writes what.
 
 ## The tree
 
@@ -14,6 +14,8 @@ This file owns the record families, their lifecycle vocabulary and who writes wh
 | `index.yaml` | `work/catalog@1` | the feature catalog: one `{id, directory, description}` per feature |
 | `features/<f>/index.yaml` | `work/feature@1` | the feature's scope: purpose, what is decided, what this release delivers, what is excluded, open questions |
 | `features/<f>/<family>/<name>/index.yaml` | per family, below | one record; `<name>` may nest by segment (`contract/purchase/<name>`) when a group needs it |
+| `concepts/index.yaml` | `work/concept-catalog@1` | the concept catalog: one `{id, directory, description}` per concept, in reading order (PROJECT-WORK-7) |
+| `concepts/<name>/index.yaml` | `work/concept@1` | one concept: a ruling of the owner about what the product is, with how much of it the code holds (PROJECT-WORK-7) |
 | `brand/index.yaml`, `brand/assets/**` | `work/brand@1` | the product's brand direction over its grammar's token names |
 | `shell/index.yaml` | `work/layout-tree@1` | the app shell every screen sits in |
 | `_resources/{environments,identities,fixtures}/<name>/resource.yaml` | `work/resource@1` | what UAT and runs resolve: an environment's origins and allowed effects, an identity's provider and sealed custody (never a secret value), a fixture's seed |
@@ -95,17 +97,54 @@ the current limits differ, and only a dated source shows when the design must be
 
 | writer | writes |
 |---|---|
-| the Kernel (its own reasoning) or a `docs` task it sends | every record's content: new records, revisions, `change`, `refs`, `blockers`, `requiresProof` |
+| the Kernel (its own reasoning) or a `docs` task it sends; an app session outside a workflow | every record's content: new records, revisions, `change`, `refs`, `blockers`, `requiresProof`; a concept and its catalog line once the owner ruled (PROJECT-WORK-7) |
 | a `code` or `test` task | code, never a record; what it learned goes into its result for the Kernel to record |
 | a `draw` or `image` task | a ui record's `direction` and its drawing, or an asset slot's `file` and its image; never its `state` |
 | a `uat` task | the run's evidence beside the flow (below), never the flow's steps or expectations |
 | the harness, at settle | only `state`, `activity` and the flow's `evidence.yaml` of the uat record the settled task walked |
-| the owner | decisions (`decision` outcomes) and taste; the Kernel records them |
+| the owner | decisions (`decision` outcomes), the rulings a concept records, and taste; the Kernel records them |
 
 The harness writes a uat record at settle ([cli/src/harness/settle.ts](../../cli/src/harness/settle.ts)): green sets
 `state: done` and `activity: idle` inside the task's harness commit, red sets `activity: blocked` in a Work commit of its
 own, and both append the run to `evidence.yaml`. Every other record's state change is a `docs` task's edit inside an
 allowPaths scope (`.starciwork/features/<f>`), held by review.
+
+## PROJECT-WORK-7 A product's concepts are read before designing and never bent silently
+
+A concept is a ruling of the owner about what the product is: where a kind of thing lives, what a part never does, how
+two parts divide one job. It holds across features, so no feature owns it: `concepts/index.yaml` lists every concept as
+`{id, directory, description}` in reading order, and `concepts/<name>/index.yaml` holds one. Both editions keep them. A
+`decision` record is a question of one feature with its options; a concept is the standing law every feature is checked
+against.
+
+| field | holds |
+|---|---|
+| `schema`, `id`, `title` | `work/concept@1`, `concept.<name>`, the ruling named in a few words |
+| `rule` | the ruling in one or two sentences, present tense, readable alone |
+| `why` | the reason the owner gave or the damage the ruling prevents |
+| `forbids` | what the ruling excludes, one line each |
+| `example` | one small case that shows the ruling applied |
+| `livesIn` | the code that holds it, as `{path, holds}`; empty until code exists |
+| `decided` | `{by, at, words, source}`: who ruled, the day, the owner's own words, verbatim and in his language, where they were recorded, and the record the ruling was taken from |
+| `status` | `built` (the code named in `livesIn` does what `rule` says), `partial`, `not-built` or `not-verified`; `built` and `notBuilt` list which part is which |
+| `refs` | the ids of the concepts and records it reads |
+| `extensions` | what the ruling needs beyond these fields: a name map, a table of approved shapes, a list of cases |
+
+- **Read first.** Before a requirement, a design, a contract, a plan or code of the product is written, its author reads
+  the catalog and every concept the work touches; a Kernel names them in the contract's `context.extend`.
+- **Written when the owner rules.** A ruling of the owner on the product is written into the concept it changes, or a new
+  one with its catalog line, in the change that first acts on it (PROJECT-WORK-5 names the writer). The record states
+  what holds now; `decided` keeps the day and the words, and the earlier text lives in git.
+- **A contradiction is raised.** A request, a design, a note or code that contradicts a concept is put to the owner with
+  the concept's id and both statements, and the contradicting part waits for the answer. Nobody applies it silently, and
+  nobody edits a concept to fit the code: only the owner's word changes a concept.
+- **Status never runs ahead of the code.** `built` is set by whoever read or proved the code `livesIn` names; a part
+  nobody checked is `not-verified`, and a ruling the code does not yet follow is `not-built` with the gap in `notBuilt`.
+
+Why: a ruling kept only in a chat or a session note is lost at the next session, and work designed without it rebuilds
+what the owner already refused; a concept marked as built before the code follows it is read as a shipped fact. The
+paths are admitted by slot `app.starciwork` (R212 holds the lite boundary); the content of a concept and the reading
+before design are held by review.
 
 ## Lanes
 

@@ -1,4 +1,4 @@
-// The edition boundary for Work readers: lite keeps workspace identity, brand records and their authored assets.
+// The edition boundary for Work readers: lite keeps workspace identity, brand records with their authored assets, and the concept records.
 import fs from 'node:fs';
 import path from 'node:path';
 import { isLiteProductPath } from './starciwork-boundary.mjs';
@@ -23,7 +23,7 @@ export function isLiteWorkRoot(workRoot: string | null | undefined): boolean {
   } catch { return false; }
 }
 
-/** Whether a reader may open `file`: external files are unaffected; lite Work paths keep workspace.yaml and brand/**. */
+/** Whether a reader may open `file`: external files are unaffected; lite Work paths keep workspace.yaml, brand/** and the concept records. */
 export function workPathAllowed(workRoot: string | null | undefined, file: string, { dir = false }: { dir?: boolean } = {}): boolean {
   if (!isLiteWorkRoot(workRoot)) return true;
   const rel = path.relative(path.resolve(workRoot as string), path.resolve(file)).replaceAll('\\', '/');
