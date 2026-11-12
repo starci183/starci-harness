@@ -397,8 +397,9 @@ export function jestCoverageSource(coverage: { roots: string[]; roles: string[];
  * script runs from be/ (`cd be && ...`, the folder its tsconfig and jest configuration are relative to) or runs the built app; an
  * fe script runs the fe app's workspace (@<project>/<app>): through turbo for dev (so the packages it imports are built first) and
  * through npm `-w` for start. be: `dev:be` runs the one api app from source and restarts it on change (`dev:be:<app>` each, with
- * several), `start:<app>` runs a built api or worker app, `cli` the built cli app (`npm run cli -- <group> <command>`) and, when the
- * back end declares a connection, `migrate` its migrate command (`cli migrate run`). fe: `dev:fe` runs the one Next app in
+ * several), `start:<app>` runs a built api or worker app, `cli` the built ops cli app (`npm run cli -- <group> <command>`) and, when the
+ * back end declares a connection, `migrate` its migrate command (`cli migrate run`); `build:<app>` builds the npm package of a client
+ * cli (the import closure of its main.ts, into be/apps/<app>/dist/), which has no start script and no image. fe: `dev:fe` runs the one Next app in
  * development (`dev:fe:<app>` each, with several), `start:<app>` serves a built one. Images:
  * `docker:build:<app>` builds the image of one app (the exact command its Dockerfile header states, tag `<project>/<app>:dev`) and
  * `docker:build` builds every image, one after the other, never pushing.
@@ -420,6 +421,7 @@ export function appScripts(app: ResolvedApp, source: Partial<Pick<AppSourceFacts
     ...(apis.length === 1 ? [line('dev:be', watch(apis[0] as AppEntry))] : apis.map(entry => line(`dev:be:${entry.name}`, watch(entry)))),
     ...(fe.length === 1 ? [line('dev:fe', dev(fe[0] as AppEntry))] : fe.map(entry => line(`dev:fe:${entry.name}`, dev(entry)))),
     ...be.flatMap(entry => {
+      if (entry.kind === CLIENT_CLI_KIND) return [line(`build:${entry.name}`, `cd be && tsc -p apps/${entry.name}/tsconfig.build.json && tsc-alias -p apps/${entry.name}/tsconfig.build.json`)];
       if (entry.kind !== 'cli') return [line(`start:${entry.name}`, built(entry))];
       return [line('cli', built(entry)), ...(connections.length ? [line('migrate', `${built(entry)} ${MIGRATE_COMMAND}`)] : [])];
     }),
@@ -431,6 +433,9 @@ export function appScripts(app: ResolvedApp, source: Partial<Pick<AppSourceFacts
   ].join('\n    ');
 }
 
+/** The kind of a command line a user installs from npm (slot be.app.client-cli): it is built as a package, never as an image. */
+const CLIENT_CLI_KIND = 'client-cli';
+
 /** The cli command that migrates every connection (src/features/cli/migrate/subs/run.cli.ts). */
 const MIGRATE_COMMAND = 'migrate run';
 
@@ -440,10 +445,10 @@ const opensPackages = (side: AppSide): boolean => (side.optionalSlots ?? []).som
 /** The stylesheets of the fe side the CSS canon judges, relative to fe/: every app and every workspace package (slot fe.route, fe.package.*). */
 export const STYLE_GLOB = '{apps,packages}/*/src/**/*.css';
 
-/** Required app images plus lite front ends whose optional Dockerfile the source holds. */
+/** Required app images (every back-end app but a client cli, which ships as an npm package) plus lite front ends whose optional Dockerfile the source holds. */
 function imageEntries(app: ResolvedApp, source: Partial<Pick<AppSourceFacts, 'hasImage'>> | undefined): ImageEntry[] {
   const frontend = app.sides.fe.apps.filter(entry => app.edition !== 'lite' || source?.hasImage?.(dockerfilePath('fe', entry.name)));
-  return [...app.sides.be.apps.map((entry): ImageEntry => ({ side: 'be', entry })), ...frontend.map((entry): ImageEntry => ({ side: 'fe', entry }))];
+  return [...app.sides.be.apps.filter(entry => entry.kind !== CLIENT_CLI_KIND).map((entry): ImageEntry => ({ side: 'be', entry })), ...frontend.map((entry): ImageEntry => ({ side: 'fe', entry }))];
 }
 
 /** The apps images.yml builds (one matrix entry per declared app): name and Dockerfile, be then fe, then a lite app's db image. */

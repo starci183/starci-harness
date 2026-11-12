@@ -2559,7 +2559,7 @@ rules:
     code: "BE_CLI_REQUIRED"
     editions: [lite, full]
     docs: [docs/backend-cli.md#back-end-cli-rules]
-    law: "Every one-off action of a back end lives in ONE app, `be/apps/cli` (kind cli, named cli): a back end that declares a connection (its migrations run as `cli migrate run`) or tracks a command under `src/features/cli/` declares exactly that app, and tracks its image `be/apps/cli/Dockerfile` (one image, run as `cli <group> <command>`)."
+    law: "Every one-off action of a back end lives in ONE app, the ops cli `be/apps/cli` (the only app of kind cli, named cli): a back end that declares a connection (its migrations run as `cli migrate run`) or tracks an ops command under `src/features/cli/` declares exactly that app, and tracks its image `be/apps/cli/Dockerfile` (one image, run as `cli <group> <command>`). A command line a user installs is an app of kind client-cli (R397), never a second app of kind cli."
     kinds: [check]
     gates: [settle, land, ci]
     failureCodes: ["BE_CLI_REQUIRED"]
@@ -2585,7 +2585,7 @@ rules:
     witness:
       - {path: packages/eslint/be/cli-coverage.spec.mjs, edition: lite, codes: [BE_CLI_BOOTSTRAP]}
       - {path: packages/eslint/be/cli-coverage.spec.mjs, edition: full, codes: [BE_CLI_BOOTSTRAP]}
-    law: "The cli app boots in its `main.ts` with `CommandFactory.run(...)` of nest-commander and never serves: `NestFactory.create*` of `@nestjs/core`, a `.listen()`, a microservice connection, an `@nestjs/platform-*` adapter or `@nestjs/microservices` in the cli app is refused (by the import that binds each name)."
+    law: "A cli app (the ops cli, kind cli; a client cli, kind client-cli) boots in its `main.ts` with `CommandFactory.run(...)` of nest-commander and never serves: `NestFactory.create*` of `@nestjs/core`, a `.listen()`, a microservice connection, an `@nestjs/platform-*` adapter or `@nestjs/microservices` in a cli app is refused (by the import that binds each name)."
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["BE_CLI_BOOTSTRAP"]
@@ -2604,7 +2604,7 @@ rules:
     witness:
       - {path: packages/eslint/be/cli-coverage.spec.mjs, edition: lite, codes: [BE_CLI_COMMAND_SHAPE]}
       - {path: packages/eslint/be/cli-coverage.spec.mjs, edition: full, codes: [BE_CLI_COMMAND_SHAPE]}
-    law: "A nest-commander command (`@Command` or `@SubCommand`, by the import that binds the decorator) is declared only in the cli feature root `src/features/cli/`: a group `@Command` in `<group>/<group>.cli.ts`, a `@SubCommand` extending `CommandRunner` in `<group>/subs/<name>.cli.ts`, one command per file, and every sub-command has its unit spec `<name>.cli.spec.ts` beside it (a command is an action runner, not a thin transport: R88 does not apply to it). `.cli.ts`, because `.command.ts` is the CQRS message. No two command classes of the cli feature root share a class name (the starter and `starci app add cli` write `<Group>Cli` and `<Group>RunCli`): nest-commander matches a sub-command by its class name, so a second `RunCli` runs the first one's action."
+    law: "A nest-commander command (`@Command` or `@SubCommand`, by the import that binds the decorator) is declared only in the feature root of its cli app (`src/features/cli/` of the ops cli, `src/features/client-cli/<app>/` of a client cli): a group `@Command` in `<group>/<group>.cli.ts`, a `@SubCommand` extending `CommandRunner` in `<group>/subs/<name>.cli.ts`, one command per file, and every sub-command has its unit spec `<name>.cli.spec.ts` beside it (a command is an action runner, not a thin transport: R88 does not apply to it). `.cli.ts`, because `.command.ts` is the CQRS message. No two command classes of one cli feature root share a class name (the starter and `starci app add cli` write `<Group>Cli` and `<Group>RunCli`): nest-commander matches a sub-command by its class name, so a second `RunCli` runs the first one's action."
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["BE_CLI_COMMAND_SHAPE"]
@@ -2625,7 +2625,7 @@ rules:
     witness:
       - {path: packages/eslint/be/cli-coverage.spec.mjs, edition: lite, codes: [BE_CLI_OWNER]}
       - {path: packages/eslint/be/cli-coverage.spec.mjs, edition: full, codes: [BE_CLI_OWNER]}
-    law: "`nest-commander` is imported only by the cli app and the cli feature root, and no back-end source parses command-line arguments itself: `process.argv` and the parsers commander, yargs and minimist are refused everywhere; a one-off action anywhere but a cli command is a door the rule closes."
+    law: "`nest-commander` is imported only by the cli apps (the ops cli, a client cli) and their feature roots, and no back-end source parses command-line arguments itself: `process.argv` and the parsers commander, yargs and minimist are refused everywhere; a one-off action anywhere but a cli command is a door the rule closes."
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["BE_CLI_OWNER"]
@@ -6659,6 +6659,38 @@ rules:
       - {path: packages/hfs/src/rest-contract.spec.mjs, editions: [lite, full]}
     witness:
       - {path: packages/hfs/src/rest-contract.spec.mjs, editions: [lite, full]}
+  - id: R397
+    code: "BE_CLI_CLIENT"
+    law: "A client cli is an app of kind `client-cli`: a command line a user installs from npm and runs on their own machine. `hfs.json` declares its npm `package` and its `bin` (no other app kind does, and no two client clis share either); its commands live in its own feature root `be/src/features/client-cli/<app>/` (every folder there is a declared client cli); and `be/apps/<app>/` tracks `package.json` (that name, that bin on `dist/apps/<app>/src/main.js`, not private, `files` holding `dist`, a semver version, every dependency one the app root pins at the same version) and `tsconfig.build.json` (outDir `./dist`, rootDir `../..`, files `[src/main.ts]`, include `[]`: the import closure of its main, built by `npm run build:<app>`). It has no image and no start script."
+    kinds: [check]
+    gates: [settle, land, ci]
+    failureCodes: ["BE_CLI_CLIENT"]
+    enforcers:
+      - {kind: hfs, id: cli, at: scripts/hfs/rules/cli.mjs}
+    editions: [lite, full]
+    docs:
+      - {path: contexts/code/be/cli.md#be-cli-5-a-client-cli-is-its-own-app-published-to-npm, editions: [lite, full]}
+    proves:
+      - {path: packages/hfs/src/hfs-cli-coverage.spec.mjs, editions: [lite, full], codes: [BE_CLI_CLIENT]}
+    witness:
+      - {path: packages/hfs/src/hfs-cli-coverage.spec.mjs, edition: lite, codes: [BE_CLI_CLIENT]}
+      - {path: packages/hfs/src/hfs-cli-coverage.spec.mjs, edition: full, codes: [BE_CLI_CLIENT]}
+  - id: R398
+    code: "BE_CLI_CLIENT_BOUNDARY"
+    law: "A client cli (its app `be/apps/<app>/src/` and its feature root `be/src/features/client-cli/<app>/`) imports no domain, events, queues or projections module, nothing of the database capability (`modules/platform/database`) or of a persistence folder, and no database library (`typeorm`, `@nestjs/typeorm`, `pg`): it reaches the server only through an integration client. The ops feature root and every other feature kind are refused by R156, and composing them by R45."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["BE_CLI_CLIENT_BOUNDARY"]
+    enforcers:
+      - {kind: eslint-be, id: cli-client-boundary}
+    editions: [lite, full]
+    docs:
+      - {path: contexts/code/be/cli.md#be-cli-5-a-client-cli-is-its-own-app-published-to-npm, editions: [lite, full]}
+    proves:
+      - {path: packages/eslint/be/cli-coverage.spec.mjs, editions: [lite, full], codes: [BE_CLI_CLIENT_BOUNDARY]}
+    witness:
+      - {path: packages/eslint/be/cli-coverage.spec.mjs, edition: lite, codes: [BE_CLI_CLIENT_BOUNDARY]}
+      - {path: packages/eslint/be/cli-coverage.spec.mjs, edition: full, codes: [BE_CLI_CLIENT_BOUNDARY]}
   - id: R399
     code: "HFS_SIDE_UNDECLARED"
     law: "A project declares its sides in hfs.json `sides`, any non-empty subset of `be`, `fe` and `packages` (`\"packages\": {}`, the root workspace packages/*), and its tree and stack declaration agree with them each way: a declared side tracks at least one file under its folder (HFS_SIDE_FOLDER_MISSING); a tracked be/, fe/ or packages/ belongs to a declared side (HFS_SIDE_UNDECLARED); `.starcistacks/application-stacks.yaml` states `sides: {be, fe, packages}` as booleans (STACKS_SIDES_UNDECLARED, a warning) equal to hfs.json (STACKS_SIDES_DRIFT); and no stack component runs an app of a side the project lacks: a deploy image of an app no declared side declares, front-end buildArgs without fe, a local process run from an undeclared side's folder (STACKS_COMPONENT_SIDE). `starci app sync --execute` writes what an existing app lacks: `\"packages\": {}` in hfs.json when packages/ holds a package, and the stack's `sides` field read from hfs.json."

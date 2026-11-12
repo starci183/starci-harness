@@ -39,6 +39,8 @@ export interface Slot {
   tests: SlotTests;
   owner?: boolean;
   appKind?: string;
+  /** The app kinds whose `<app>` folders the slot does not own or require (an app of that kind has no instance of it). */
+  exceptAppKinds?: string[];
   minInstances?: number;
   requiredWhen?: string;
   requiredInstances?: Record<string, string[]>;
@@ -93,7 +95,8 @@ export interface TierDef {
 export interface UnitRole {
   role: string;
   spec: string;
-  slot?: string;
+  /** The slots the role is unit-tested in (the cli role: the ops and the client cli feature roots); absent, every slot. */
+  slots?: string[];
   exempt?: string[];
 }
 
@@ -207,7 +210,7 @@ export const COVERAGE = ['required', 'none'];
 export const APP_KIND = 'app';
 
 /**
- * The unit-tested roles of a back end whose spec is required (ruleParams.be.unitRoles of the slot manifest): [{ role, spec, slot?, exempt? }].
+ * The unit-tested roles of a back end whose spec is required (ruleParams.be.unitRoles of the slot manifest): [{ role, spec, slots?, exempt? }].
  * THE one list: every check that asks "is this file unit-tested, and where is its spec" asks it here. What the unit run MEASURES is
  * logicRoles over the coverage-required slots (coverage-scope.mts), not this list.
  */
@@ -254,8 +257,8 @@ export function slotLogicProblems(slot: Parsed, at: string, logicRoles: readonly
 /** Shape problems of ruleParams.be.unitRoles: unique roles of the suffix vocabulary, each spec `<role>.spec`. */
 export function unitRolesProblems(be: Parsed): string[] {
   const roles = be.unitRoles;
-  const roleOk = (r: Parsed) => r !== null && typeof r === 'object' && !Array.isArray(r) && Object.keys(r).every((k: Parsed) => ['role', 'spec', 'slot', 'exempt'].includes(k)) && NAME.test(String(r.role)) && String(r.spec) === `${r.role}.spec` && (r.slot === undefined || /^be.[a-z0-9.-]+$/.test(String(r.slot))) && (r.exempt === undefined || (Array.isArray(r.exempt) && r.exempt.every((c: Parsed) => /^[A-Z][A-Z0-9_]+$/.test(String(c)))));
-  if (!Array.isArray(roles) || !roles.length || !roles.every(roleOk) || new Set(roles.map((r: Parsed) => r.role)).size !== roles.length) return ['ruleParams.be.unitRoles must be a non-empty list of unique {role, spec: <role>.spec, slot?, exempt?: [rule codes]}'];
+  const roleOk = (r: Parsed) => r !== null && typeof r === 'object' && !Array.isArray(r) && Object.keys(r).every((k: Parsed) => ['role', 'spec', 'slots', 'exempt'].includes(k)) && NAME.test(String(r.role)) && String(r.spec) === `${r.role}.spec` && (r.slots === undefined || (Array.isArray(r.slots) && r.slots.length > 0 && r.slots.every((id: Parsed) => /^be\.[a-z0-9.-]+$/.test(String(id))))) && (r.exempt === undefined || (Array.isArray(r.exempt) && r.exempt.every((c: Parsed) => /^[A-Z][A-Z0-9_]+$/.test(String(c)))));
+  if (!Array.isArray(roles) || !roles.length || !roles.every(roleOk) || new Set(roles.map((r: Parsed) => r.role)).size !== roles.length) return ['ruleParams.be.unitRoles must be a non-empty list of unique {role, spec: <role>.spec, slots?: [slot ids], exempt?: [rule codes]}'];
   if (Array.isArray(be.suffixes) && roles.some((r: Parsed) => !be.suffixes.includes(r.role))) return ['ruleParams.be.unitRoles names a role that is not in ruleParams.be.suffixes'];
   return [];
 }
@@ -269,7 +272,7 @@ export function roleListProblems(be: Parsed): string[] {
     else if (Array.isArray(be.suffixes) && list.some((role: Parsed) => !be.suffixes.includes(role))) bad.push(`ruleParams.be.${key} names a role that is not in ruleParams.be.suffixes`);
   }
   if (strList(be.valueRoles) && strList(be.logicRoles) && be.valueRoles.some((role: Parsed) => !be.logicRoles.includes(role))) bad.push('every ruleParams.be.valueRoles role is a logic role (ruleParams.be.logicRoles)');
-  if (strList(be.logicRoles) && Array.isArray(be.unitRoles) && be.unitRoles.some((r: Parsed) => r?.slot === undefined && !be.logicRoles.includes(r?.role))) bad.push('every ruleParams.be.unitRoles role that is not tied to a slot is a logic role (ruleParams.be.logicRoles)');
+  if (strList(be.logicRoles) && Array.isArray(be.unitRoles) && be.unitRoles.some((r: Parsed) => r?.slots === undefined && !be.logicRoles.includes(r?.role))) bad.push('every ruleParams.be.unitRoles role that is not tied to a slot is a logic role (ruleParams.be.logicRoles)');
   return bad;
 }
 /** The kind of a manifest and of a declaration that describes the StarCi runtime repository; also its one profile. */
@@ -279,7 +282,7 @@ export const MANIFEST_KINDS = [APP_KIND, RUNTIME_KIND];
 export const manifestKind = (m: Parsed): string => (isPlainObject(m) && m.kind !== undefined ? m.kind : APP_KIND);
 const strList = (v: Parsed) => stringList(v);
 
-const APP_SLOT_KEYS = ['id', 'profiles', 'path', 'presence', 'tracked', 'tier', 'tests', 'owner', 'appKind', 'minInstances', 'requiredWhen', 'requiredInstances', 'requires', 'pattern', 'trigger', 'allows', 'forbids', 'layers', 'kinds', 'roles', 'composedBy', 'budget', 'managedBy', 'liteManagedBy', 'rules', 'goesTo', 'why', 'since', 'perConnection', 'parent', 'editions', 'editionWhy', 'litePresence', 'lite', 'provider', 'coverage', 'entries', 'outcomeHome', 'templateNa', 'exemplifiedBy', 'role', 'importedBy', 'rewrittenBy', 'logic', 'managedOnly', 'managedWhenSides'];
+const APP_SLOT_KEYS = ['id', 'profiles', 'path', 'presence', 'tracked', 'tier', 'tests', 'owner', 'appKind', 'exceptAppKinds', 'minInstances', 'requiredWhen', 'requiredInstances', 'requires', 'pattern', 'trigger', 'allows', 'forbids', 'layers', 'kinds', 'roles', 'composedBy', 'budget', 'managedBy', 'liteManagedBy', 'rules', 'goesTo', 'why', 'since', 'perConnection', 'parent', 'editions', 'editionWhy', 'litePresence', 'lite', 'provider', 'coverage', 'entries', 'outcomeHome', 'templateNa', 'exemplifiedBy', 'role', 'importedBy', 'rewrittenBy', 'logic', 'managedOnly', 'managedWhenSides'];
 /** The roles a file slot may play that a rule reads (`role`): the entity registry of persistence.md BE-PERSISTENCE-3 (architecture/entity-registry.mts). */
 const SLOT_ROLES = ['entity-registry'];
 /** The fields a slot's `lite` overlay may hold: the same keys it would carry in the slot body, resolved under edition lite. */
@@ -345,6 +348,7 @@ const NAMED_SLOT_FIELDS: Array<[string, string]> = [['appKind', 'appKind must be
 
 function slotInstanceProblems(slot: Parsed, at: string): string[] {
   const bad = [];
+  if (slot.exceptAppKinds !== undefined && !(Array.isArray(slot.exceptAppKinds) && slot.exceptAppKinds.length > 0 && slot.exceptAppKinds.every((kind: Parsed) => NAME.test(String(kind))))) bad.push(`${at}: exceptAppKinds must be a non-empty list of app kind names`);
   if (slot.pattern !== undefined && !/^[a-z][a-z0-9-]*$/.test(String(slot.pattern))) bad.push(`${at}: pattern must be a kebab-case pattern name`);
   if (slot.requiredInstances !== undefined && !instancesShapeOk(slot.requiredInstances)) bad.push(`${at}: requiredInstances must map a variable to a non-empty list of names`);
   return bad;

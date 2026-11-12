@@ -17,7 +17,7 @@ import type { HfsClassification, HfsUnitRole, HfsView } from "./hfs.ts"
 export interface SpecRole {
     readonly role: string
     readonly spec: string
-    readonly slot?: string
+    readonly slots?: readonly string[]
     readonly exempt?: readonly string[]
     readonly optional?: boolean
     /** The spec is a size split, `<name>.<role>.<facet>.spec.ts`, of the main spec `<name>.<role>.spec.ts` (BE-TEST-1). */
@@ -56,10 +56,10 @@ export const isUnitSpecFile = (hfs: HfsView, filename: string): boolean => {
 export const isServiceSpecFile = (hfs: HfsView, filename: string): boolean => /\.service\.spec\.ts$/.test(baseOf(filename)) && isUnitSpecFile(hfs, filename)
 
 /**
- * The unit-tested roles of the back end: `ruleParams.be.unitRoles` of the slot manifest, the ONE list (`[{ role, spec, slot? }]`).
+ * The unit-tested roles of the back end: `ruleParams.be.unitRoles` of the slot manifest, the ONE list (`[{ role, spec, slots? }]`).
  *
  * @param {object} hfs - The HFS view.
- * @returns {ReadonlyArray<{ role: string, spec: string, slot?: string }>} The roles.
+ * @returns {ReadonlyArray<{ role: string, spec: string, slots?: string[] }>} The roles.
  */
 export const unitRoles = (hfs: HfsView): readonly HfsUnitRole[] => hfs.ruleParams.unitRoles ?? []
 
@@ -72,8 +72,8 @@ const inCoverageSlot = (hfs: HfsView, filename: string): boolean => {
 /** The roles whose spec is legal but not required: every logic role that is not a spec-required unit role. */
 const optionalRoles = (hfs: HfsView): SpecRole[] => (hfs.ruleParams.logicRoles ?? []).filter((role) => !unitRoles(hfs).some((unit) => unit.role === role)).map((role) => ({ role, spec: `${role}.spec`, optional: true }))
 
-/** Whether a role admits a file by its slot (a role with no slot admits any slot; an optional logic role only a coverage-required slot). */
-const inRoleSlot = (hfs: HfsView, role: SpecRole, filename: string): boolean => (role.optional === true ? inCoverageSlot(hfs, filename) : role.slot === undefined || hfs.slotOf(filename) === role.slot)
+/** Whether a role admits a file by its slot (a role with no slots admits any slot; an optional logic role only a coverage-required slot). */
+const inRoleSlot = (hfs: HfsView, role: SpecRole, filename: string): boolean => (role.optional === true ? inCoverageSlot(hfs, filename) : role.slots === undefined || role.slots.includes(hfs.slotOf(filename) ?? ""))
 
 /** The path of a classified file below the instance root of its slot. */
 const slotRelative = (found: HfsClassification): string => (found.root !== undefined && found.path.startsWith(`${found.root}/`) ? found.path.slice(found.root.length + 1) : baseOf(found.path))

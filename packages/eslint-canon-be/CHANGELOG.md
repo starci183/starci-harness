@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.23.3 - 2026-11-12
+
+- Added: `cli-client-boundary` (R398 `BE_CLI_CLIENT_BOUNDARY`): a client cli (slots `be.app.client-cli`, `be.client-cli`) imports no domain, events, queues or projections module, nothing of the database capability or of a persistence folder, and no `typeorm`, `@nestjs/typeorm` or `pg`.
+- Changed: `cli-bootstrap`, `cli-command-shape` and `cli-owner` judge every cli app and cli feature root, the ops cli (`apps/cli`, `src/features/cli/`) and a client cli (`apps/<app>`, `src/features/client-cli/<app>/`) alike.
+- Changed: a unit role names its slots as a list (`ruleParams.be.unitRoles[].slots`, manifest 3.37.0), so a `.cli.ts` command of a client cli owes its `.cli.spec.ts` like an ops command; the client cli slots and that list are in `@starci/hfs` 6.8.6.
+
 ## 3.23.2 - 2026-11-12
 
 - Changed: the hfs 6.8 line (`@starci/hfs` 6.8.5) merged with `pkg/canon-fe-status-view-types`, `pkg/claude-work-concepts` and `pkg/claude-grammar-meter-foreground-fill`, so one installable set carries all of them: the 3.21.2 and 3.21.3 changes (the `todo-tag` fix of R235) join the 3.23 line; peer `@starci/hfs ~6.8.0`.

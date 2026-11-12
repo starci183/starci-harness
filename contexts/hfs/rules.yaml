@@ -1156,21 +1156,21 @@ rules:
       - {kind: hfs, id: monorepo}
   - id: R147
     code: BE_CLI_REQUIRED
-    law: Every one-off back-end action lives in the one `be/apps/cli` app with its own image, required whenever the back end declares a connection or a cli command.
+    law: Every one-off back-end action lives in the one ops cli app `be/apps/cli` (the only app of kind `cli`) with its own image, required whenever the back end declares a connection or an ops command.
     failureCodes:
       - BE_CLI_REQUIRED
     enforcers:
       - {kind: hfs, id: cli}
   - id: R148
     code: BE_CLI_BOOTSTRAP
-    law: The cli app boots through nest-commander's `CommandFactory.run` and never serves.
+    law: A cli app, the ops cli or a client cli, boots through nest-commander's `CommandFactory.run` and never serves.
     failureCodes:
       - BE_CLI_BOOTSTRAP
     enforcers:
       - {kind: eslint-be, id: cli-bootstrap}
   - id: R149
     code: BE_CLI_COMMAND_SHAPE
-    law: A nest-commander command is declared only under `src/features/cli/`, one per file in its group or `subs/` folder, each sub-command with its unit spec beside it, and no two command classes of the app share a class name.
+    law: A nest-commander command is declared only in the feature root of its cli app (`src/features/cli/` of the ops cli, `src/features/client-cli/<app>/` of a client cli), one per file in its group or `subs/` folder, each sub-command with its unit spec beside it, and no two command classes of one feature root share a class name.
     failureCodes:
       - BE_CLI_COMMAND_SHAPE
     enforcers:
@@ -1179,7 +1179,7 @@ rules:
       - {kind: hfs, id: cli-command-names}
   - id: R150
     code: BE_CLI_OWNER
-    law: "`nest-commander` is imported only by the cli app and cli feature root, and no back-end source parses command-line arguments itself."
+    law: "`nest-commander` is imported only by the cli apps and their feature roots, and no back-end source parses command-line arguments itself."
     failureCodes:
       - BE_CLI_OWNER
     enforcers:
@@ -2762,6 +2762,20 @@ rules:
       - BE_REST_SECURITY
     enforcers:
       - {kind: hfs, id: rest-contract}
+  - id: R397
+    code: BE_CLI_CLIENT
+    law: "A client cli is an app of kind `client-cli` that declares its npm `package` and its `bin` in `hfs.json` (no other app does, and no two share either), keeps its commands in its own feature root `be/src/features/client-cli/<app>/`, and tracks `be/apps/<app>/package.json` (that name, that bin on `dist/apps/<app>/src/main.js`, not private, `files` holding `dist`, a version, every dependency at the app root's pin) and `be/apps/<app>/tsconfig.build.json` (it emits the import closure of `src/main.ts` into `dist/`)."
+    failureCodes:
+      - BE_CLI_CLIENT
+    enforcers:
+      - {kind: hfs, id: cli}
+  - id: R398
+    code: BE_CLI_CLIENT_BOUNDARY
+    law: A client cli (its app and its feature root) imports no domain, events, queues or projections module, nothing of the database capability or of a persistence folder, and no database library.
+    failureCodes:
+      - BE_CLI_CLIENT_BOUNDARY
+    enforcers:
+      - {kind: eslint-be, id: cli-client-boundary}
   - id: R399
     code: HFS_SIDE_UNDECLARED
     law: "A project's sides are the ones hfs.json declares (a non-empty subset of be, fe, packages): each declared side tracks files under its folder, no tracked be/, fe/ or packages/ belongs to an undeclared side, and the stack declaration states the same sides with no component of a missing side."

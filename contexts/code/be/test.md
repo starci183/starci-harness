@@ -1,5 +1,5 @@
 ---
-slots: [be.cli, be.tests, be.root-e2e]
+slots: [be.cli, be.client-cli, be.tests, be.root-e2e]
 ---
 # Test
 

@@ -3,8 +3,9 @@ id: be.cli
 title: Backend cli
 purpose: |-
   Given a one-off action (migrate, seed, sync, backup, an operator command), where does it live and how is it written? Every
-  one-off action is a nest-commander command of the cli feature root `be/src/features/cli/`, compiled into the one cli app
-  `be/apps/cli` and shipped as one image run as `cli <group> <command>`. A command is an action runner: thin (R203
+  one-off action is a nest-commander command of the cli feature root `be/src/features/cli/`, compiled into the one ops cli app
+  `be/apps/cli` and shipped as one image run as `cli <group> <command>`. A command line a user installs is a client cli: its
+  own app of kind `client-cli` with its own feature root `be/src/features/client-cli/<app>/`, published to npm. A command is an action runner: thin (R203
   `BE_FEATURE_THIN`) like every other feature file — it maps the command line and makes one delegating call into the
   modules — and it still owes its unit spec beside it (the `cli` role of `ruleParams.be.unitRoles`). Its slot is
   `coverage: none`, so a command is never a coverage target.
@@ -13,7 +14,7 @@ appliesTo:
 family: be
 # The slot ids this topic teaches (knowledge/hfs/slots.yaml); scripts/gates/read-digest.mjs inverts these
 # into the READ-step slot -> pattern-topic map (knowledge/op-gate.yaml kinds), each slot's topics in index.yaml order.
-slots: [be.app.cli, be.cli]
+slots: [be.app.cli, be.app.client-cli, be.app.client-cli.package, be.cli, be.client-cli]
 pattern: cli
 provenance:
   reviewedAt: 2026-10-02
@@ -29,11 +30,12 @@ provenance:
     test world's migration run and the deploy review prove those.
 rules:
   - id: BE-CLI-1
-    title: One cli app boots nest-commander and never serves
+    title: The one ops cli app boots nest-commander and never serves
     kind: mandatory
     hfsRules: [R147, R148]
     requirement: |-
-      Every one-off action of a back end runs in ONE app, `be/apps/cli` (slot `be.app.cli`, kind `cli`, named `cli`). It is
+      Every one-off action of a back end runs in ONE app, the ops cli `be/apps/cli` (slot `be.app.cli`, the only app of kind
+      `cli`, named `cli`); it never ships to a user, and a client cli (BE-CLI-6) boots the same way. It is
       required as soon as the back end declares a connection in `hfs.json` `sides.be.connections` (its migrations run as
       `cli migrate run`) or tracks a command under `src/features/cli/`, and it tracks its image `be/apps/cli/Dockerfile`: one
       image, run as `cli <group> <command>`. `apps/cli/src/main.ts` boots with `CommandFactory.run(AppModule, logger)` of
@@ -78,12 +80,13 @@ rules:
         - Confirm the deploy runs the cli image as a job and never as a long-running service.
     relatedExamples: []
   - id: BE-CLI-2
-    title: Commands live in the cli feature root as groups and sub-commands
+    title: Commands live in the feature root of their cli app as groups and sub-commands
     kind: mandatory
     hfsRules: [R149, R295]
     requirement: |-
-      A nest-commander command (`@Command` or `@SubCommand`) is declared only in the cli feature root `src/features/cli/`
-      (slot `be.cli`). The root holds `index.ts` and `cli.module.ts` and one folder per group: `<group>/<group>.cli.ts` (the
+      A nest-commander command (`@Command` or `@SubCommand`) is declared only in the feature root of its cli app: `src/features/cli/`
+      (slot `be.cli`) for the ops cli, `src/features/client-cli/<app>/` (slot `be.client-cli`, root module `<app>.module.ts`) for a
+      client cli. The ops root holds `index.ts` and `cli.module.ts` and one folder per group: `<group>/<group>.cli.ts` (the
       group `@Command` with its `subCommands`), `<group>/<group>.module.ts` and `<group>/subs/<name>.cli.ts` (a `@SubCommand`
       class extending `CommandRunner`), one command per file. Every module of the cli feature root has a module definition
       and an options file beside it (R295) and declares only its `@Module({ imports,
@@ -139,11 +142,11 @@ rules:
         - Confirm a command that writes is safe to re-run or refuses a second run explicitly.
     relatedExamples: [cli]
   - id: BE-CLI-4
-    title: Only the cli parses the command line
+    title: Only a cli app parses the command line
     kind: mandatory
     hfsRules: [R150]
     requirement: |-
-      `nest-commander` is imported only by `be/apps/cli` and `src/features/cli/`. No back-end source parses command-line
+      `nest-commander` is imported only by the cli apps (the ops cli, a client cli) and their feature roots. No back-end source parses command-line
       arguments itself: `process.argv` and the parsers `commander`, `yargs` and `minimist` are refused everywhere, the cli
       included. A one-off action anywhere but a cli command is a door this rule closes.
     rationale: |-
@@ -184,6 +187,39 @@ rules:
       manual:
         - Confirm the deploy runs `cli migrate run` to completion before the api and worker apps start.
     relatedExamples: [cli]
+  - id: BE-CLI-6
+    title: A client cli is its own app, published to npm
+    kind: mandatory
+    hfsRules: [R397, R398, R156]
+    requirement: |-
+      A command line a user installs and runs on their own machine is an app of kind `client-cli`, declared in `hfs.json` as
+      `{ "name": "<app>", "kind": "client-cli", "package": "<npm name>", "bin": "<command>" }` with `client-cli` among
+      `sides.be.kinds`. Its commands live in `src/features/client-cli/<app>/` and call the server through an integration client;
+      it imports no domain, events, queues or projections module, nothing of `platform/database` or of a persistence folder, no
+      `typeorm`, `@nestjs/typeorm` or `pg`, and no feature of another kind, the ops root `features/cli` included. It ships as a
+      package, never as an image: `be/apps/<app>/` tracks no Dockerfile and holds `package.json` (that name, bin
+      `{ "<command>": "dist/apps/<app>/src/main.js" }`, not private, `files` `["dist"]`, a version, its runtime dependencies at
+      the versions the app root pins) and `tsconfig.build.json` (extends `../../tsconfig.build.json`; outDir `./dist`, rootDir
+      `../..`, files `["src/main.ts"]`, include `[]`). `npm run build:<app>` compiles the import closure of its `main.ts` into
+      `be/apps/<app>/dist/`; the root `cli`, `migrate`, `start:*` and `docker:build*` scripts and the images workflow never name it.
+    rationale: |-
+      What reaches a user's machine must hold nothing of the server, so the audience is a kind of app with its own root, build
+      and manifest, and the ops commands cannot ride along in its package.
+    cases:
+      - id: case-1
+        when: A second app of kind `cli` is declared for the commands a user runs
+        write: 'Refused (BE_CLI_REQUIRED): `be/apps/cli` is the only app of kind `cli`; declare the user-facing command line as kind `client-cli`.'
+      - id: case-2
+        when: A client command injects a domain service or a repository
+        write: 'Refused (BE_CLI_CLIENT_BOUNDARY): the command calls the server through `modules/integrations/<provider>`.'
+    verification:
+      automated:
+        - BE_CLI_CLIENT
+        - BE_CLI_CLIENT_BOUNDARY
+        - BE_KIND_ISOLATION
+      manual:
+        - Confirm the package lists every dependency its build closure imports, and publish it from `be/apps/<app>` after `npm run build:<app>`.
+    relatedExamples: []
 files:
   - path: apps/cli/Dockerfile
     slot: repo.app-image

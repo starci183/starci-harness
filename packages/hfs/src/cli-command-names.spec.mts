@@ -1,6 +1,6 @@
 // proves: BE_CLI_COMMAND_SHAPE@full
 // proves: BE_CLI_COMMAND_SHAPE@lite
-// R149 across files (rules/cli.mts): nest-commander matches a sub-command by its class name, so two command classes of the cli feature root
+// R149 across files (rules/cli.mts): nest-commander matches a sub-command by its class name, so two command classes of one cli feature root
 // with one name are refused, and the starter and the cli pattern name a group's run sub-command `<Group>RunCli` (contexts/code/be/cli.md BE-CLI-2).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -46,6 +46,23 @@ test('R149: two command classes that share a name are refused at both files; dis
   assert.match(String(refused[0]!.message), /the command class MigrateRunCli is declared by .* and .*: nest-commander matches a sub-command by its class name/u);
   put('seed-enterprise', 'SeedEnterpriseRunCli');
   assert.deepEqual(codes([...files, ...collided]), [], 'unique names pass');
+});
+
+test('R149: each cli feature root is judged apart: a name shared inside a client cli root is refused, one shared with the ops root passes', (t) => {
+  const into = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-cli-names-'));
+  t.after(() => fs.rmSync(into, { recursive: true, force: true }));
+  const { root, files } = scaffoldApp({ name: 'demo', harness: HARNESS, into, edition: 'full', presets: bundledPresets(), lock: lockedOk, initGit: init });
+  const put = (group: string, name: string): string => {
+    const file = `be/src/features/client-cli/relay/${group}/subs/run.cli.ts`;
+    fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+    fs.writeFileSync(path.join(root, file), subCommand(group, name));
+    return file;
+  };
+  const codes = (tracked: string[]) => checkRepo({ repoRoot: root, harness: HARNESS, files: tracked }).findings.filter((finding) => finding.code === 'BE_CLI_COMMAND_SHAPE');
+  const client = [put('login', 'MigrateRunCli')];
+  assert.deepEqual(codes([...files, ...client]), [], 'the ops root and a client cli root are two apps');
+  client.push(put('sync', 'MigrateRunCli'));
+  assert.deepEqual(codes([...files, ...client]).map((finding) => finding.path).sort(), ['be/src/features/client-cli/relay/login/subs/run.cli.ts', 'be/src/features/client-cli/relay/sync/subs/run.cli.ts']);
 });
 
 test('the cli pattern names a group\'s run sub-command <Group>RunCli', () => {

@@ -5,7 +5,7 @@
 
 /** One side of an app declaration: its apps, connections, optional slots, reads and any other declared field. */
 export interface SideDeclaration {
-    readonly apps?: readonly { readonly name: string; readonly kind: string; readonly contract?: string }[]
+    readonly apps?: readonly { readonly name: string; readonly kind: string; readonly contract?: string; readonly package?: string; readonly bin?: string }[]
     readonly connections?: readonly { readonly name: string; readonly envPrefix: string; readonly owner?: string; readonly isolation?: string }[]
     readonly [field: string]: unknown
 }

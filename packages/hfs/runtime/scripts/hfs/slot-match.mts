@@ -128,7 +128,7 @@ const levenshtein = (a: string, b: string): number => {
   return row[b.length] as number;
 };
 
-/** The match of `p` against one variant: its slot, root and bindings, or null (not matching, filtered out, or an app-kind slot of another kind). */
+/** The match of `p` against one variant: its slot, root and bindings, or null (not matching, filtered out, an app-kind slot of another kind, or an app of a kind the slot excepts). */
 function matchVariant(variant: Variant, p: string, only: ((slot: Slot) => boolean) | undefined, appKind: Map<string, string>): Match | null {
   if (only && !only(variant.slot)) return null;
   const m = variant.regex.exec(p);
@@ -136,6 +136,7 @@ function matchVariant(variant: Variant, p: string, only: ((slot: Slot) => boolea
   const bindings: Bindings = {};
   variant.names.forEach((name, i) => { bindings[name] = m[i + 2] as string; });
   if (variant.slot.appKind !== undefined && appKind.get(bindings.app as string) !== variant.slot.appKind) return null;
+  if (bindings.app !== undefined && (variant.slot.exceptAppKinds ?? []).includes(appKind.get(bindings.app) as string)) return null;
   const root = variant.dir ? (m[1] as string) : path.posix.dirname(m[1] as string);
   return { variant, slot: variant.slot, root: root === '.' ? '' : root, bindings };
 }

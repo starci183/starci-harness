@@ -45,7 +45,7 @@ function growBindings(combos: Bindings[], name: string, values: string[]): void 
   combos.splice(0, combos.length, ...next);
 }
 
-const expandApps = (repo: RepoView, slot: Slot) => repo.apps.filter((a) => slot.appKind === undefined || a.kind === slot.appKind);
+const expandApps = (repo: RepoView, slot: Slot) => repo.apps.filter((a) => (slot.appKind === undefined || a.kind === slot.appKind) && !(slot.exceptAppKinds ?? []).includes(a.kind));
 
 function appendRequiredVariantPaths(repo: RepoView, slot: Slot, variant: string, paths: RequiredPath[]): void {
   const names = [...new Set(varsOf(variant))];

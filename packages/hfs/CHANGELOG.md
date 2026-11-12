@@ -1,5 +1,16 @@
 # Changelog
 
+## 6.8.6 - 2026-11-12
+
+- Added: a back end may hold client clis beside its one ops cli (manifest 3.37.0). App kind and trigger kind `client-cli`; slots `be.app.client-cli` (`be/apps/<app>/src/`), `be.app.client-cli.package` (`be/apps/<app>/{package.json,tsconfig.build.json,README.md}`) and `be.client-cli` (`be/src/features/client-cli/<app>/`, composed only by an app of kind `client-cli`). An app entry of `hfs.json` may carry `package` and `bin`.
+- Added: R397 `BE_CLI_CLIENT` (hfs `cli`): a client cli declares `package` and `bin` (no other app kind does, none shared), has its own feature root, and tracks a `package.json` (name, bin on `dist/apps/<app>/src/main.js`, not private, `files` holding `dist`, a version, dependencies at the app root's pins) and a `tsconfig.build.json` (the import closure of `src/main.ts` into `dist/`). R398 `BE_CLI_CLIENT_BOUNDARY` is `@starci/eslint-canon-be` 3.23.3 `cli-client-boundary`.
+- Changed: R147 `BE_CLI_REQUIRED` names the ops cli: `be/apps/cli` stays the only app of kind `cli`, and its message points a second command line at kind `client-cli`.
+- Changed (R149, `BE_CLI_COMMAND_SHAPE`): the shared-class-name check judges each cli feature root apart, the ops root and every client cli's own (`rules/cli.mts`): each is its own nest-commander app.
+- Changed: `starci app sync` renders `build:<app>` for a client cli (`cd be && tsc -p apps/<app>/tsconfig.build.json && tsc-alias -p apps/<app>/tsconfig.build.json`) and no `start:<app>`, `docker:build:<app>` or images.yml entry; the root `cli` and `migrate` scripts are the ops cli's.
+- Changed: slot field `exceptAppKinds` (the app kinds whose `<app>` folders a slot neither owns nor requires): `repo.app-image` excepts `client-cli`, so a Dockerfile under a client cli is owned by no slot. An app kind has exactly one slot without a `parent`.
+- Changed: `ruleParams.be.unitRoles[].slots` is a list (was `slot`): the `cli` role is unit-tested in `be.cli` and `be.client-cli`. Needs `@starci/eslint-canon-be` 3.23.3.
+- Upgrade, per existing app: none unless it adds a client cli. To add one: declare it in `hfs.json` (`sides.be.apps` and `client-cli` in `sides.be.kinds`), write `be/apps/<app>/` and `be/src/features/client-cli/<app>/`, then `starci app sync --execute`. Publishing the package (`npm publish be/apps/<app>` after `npm run build:<app>`) is the app's own step: the harness publishes no app package.
+
 ## 6.8.5 - 2026-11-12
 
 - Changed: the hfs 6.8 line (`@starci/hfs` 6.8.5) merged with `pkg/canon-fe-status-view-types`, `pkg/claude-work-concepts` and `pkg/claude-grammar-meter-foreground-fill`, so one installable set carries all of them: the gallery explain folders (R395, 6.7.0), concepts as Work of both editions (PROJECT-WORK-7, 6.7.1) and the surface-nesting fix of the Grammar 0.37.3-0.37.38 line join the 6.8 line (REST contract, sides, data repository, dev storage, derived ports, R401 `BE_DI_RING`). Manifest 3.36.0 (3.35.0 is taken by `pkg/claude-suite-and-checks`): the slots of 3.28.0 and 3.29.0 on the merged branches join those of 3.34.0. The canon pins name eslint-canon-be 3.23.2, eslint-canon-fe 9.16.16 and the Grammar family 0.38.0.

@@ -13,7 +13,8 @@ An app declares itself in `hfs.json` (kind app, its `edition` fixed at scaffold,
 backing services and its grammar). `sides` holds any non-empty subset of `be`, `fe` and `packages` (`"packages": {}`,
 the root workspace packages); only a declared side's slots and checks apply ([project/README.md](../project/README.md)
 PROJECT-1, R399; owner `@starci/hfs runtime/scripts/hfs/project-sides.mts`). An api app of be may add `contract`, `graphql` (the default) or `rest`
-([code/be/transport.md](../code/be/transport.md) BE-TRANSPORT-1, owner `@starci/hfs runtime/scripts/hfs/contract-kind.mts`). No product content lives here; product records belong in the app's `.starciwork`.
+([code/be/transport.md](../code/be/transport.md) BE-TRANSPORT-1, owner `@starci/hfs runtime/scripts/hfs/contract-kind.mts`); a client cli (kind `client-cli`) adds the npm
+`package` it is published as and the `bin` it installs ([code/be/cli.md](../code/be/cli.md) BE-CLI-5). No product content lives here; product records belong in the app's `.starciwork`.
 
 ## One word, one meaning: "slot"
 
@@ -38,7 +39,7 @@ PROJECT-1, R399; owner `@starci/hfs runtime/scripts/hfs/project-sides.mts`). An 
 | `tests`, `coverage` | `unit-beside`, `e2e` or `none`; whether the logic roles of the subtree, and the files its slots declare in `logic`, are measured |
 | `logic` | on a coverage-required `unit-beside` directory slot, the files it requires or allows that carry logic without a logic-role suffix (`passport.tokens.ts`): each is measured at 100 per file like a logic-role file, and its `<file>.spec.ts` beside it is a legitimate unit spec the slot admits unlisted; it names files, never a role |
 | `budget` | size budgets of the slot (lines per file, files, exports, hooks); the one owner of those numbers |
-| `trigger`, `pattern`, `appKind`, `composedBy`, `provider` | the feature kind, the declared pattern that enables it, the app kind it describes, the app kinds that compose it, the connection provider that enables it |
+| `trigger`, `pattern`, `appKind`, `exceptAppKinds`, `composedBy`, `provider` | the feature kind, the declared pattern that enables it, the app kind it describes, the app kinds whose `<app>` folders it neither owns nor requires (`repo.app-image`: a client cli has no image), the app kinds that compose it, the connection provider that enables it |
 | `managedBy`, `liteManagedBy` | the template directory the app sync renders it from; a difference is drift |
 | `managedWhenSides` | the sides a project must declare for sync to render the slot's managed files (PROJECT-1); absent: every project |
 | `managedOnly` | true: the slot only lists files sync renders (it needs `managedBy`); the slot that owns the path judges the file, so a rendered service keeps the rules and the tier of its folder |
