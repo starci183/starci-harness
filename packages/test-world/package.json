@@ -77,7 +77,7 @@
   },
   "devDependencies": {
     "@nestjs/common": "^11.1.0",
-    "@nestjs/core": "^11.1.0",
+    "@nestjs/core": "^12.4.2",
     "@nestjs/cqrs": "^11.0.0",
     "@nestjs/platform-express": "11.2.7",
     "@starci/common": "file:../common",
