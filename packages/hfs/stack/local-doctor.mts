@@ -15,7 +15,7 @@ import type { Prerequisite } from './local-host.mjs';
 import { preflight } from './local-prepare.mjs';
 import { compose, isAlive, stateOf } from './local-run.mjs';
 import type { LocalDeps } from './local-run.mjs';
-import { basePortRows, machinePeers } from './local-peers.mjs';
+import { basePortRows, peersOf } from './local-peers.mjs';
 import { readRecord } from './local-state.mjs';
 
 function custodyRows(ctx: StackContext, local: LocalConfig): Prerequisite[] {
@@ -36,7 +36,7 @@ function custodyRows(ctx: StackContext, local: LocalConfig): Prerequisite[] {
 /** `doctor` for a dev environment. */
 export async function doctorLocal(ctx: StackContext, local: LocalConfig, _options: Record<string, unknown> = {}, deps: LocalDeps = {}): Promise<ActionResult> {
   const host = await preflight(ctx, local, deps);
-  const found = local.basePort === null ? { peers: [], unread: [], registries: [] } : deps.peers ? { peers: deps.peers(), unread: [], registries: [] } : machinePeers(ctx, local);
+  const found = local.basePort === null ? { peers: [], unread: [], registries: [] } : peersOf(ctx, local, deps.peers);
   const rows: Prerequisite[] = [...custodyRows(ctx, local), ...basePortRows(local, found)];
   const lines = [...host.lines, ...tableLines(rows)];
   const dockerOk = host.rows.filter((row) => row.id === 'docker' || row.id === 'compose').every((row) => row.ok);

@@ -151,10 +151,11 @@ the stricter mode. The branch name alone decides, so a hook and CI agree; an ups
   push of `main` or of a release tag is judged as `main` whatever branch is checked out, `STARCI_JUDGED_BRANCH` of the managed pre-push
   hook), and every report-only finding counts again there, so whoever promotes fixes what the full gate refuses first.
 
-## PROJECT-LINT-3 An app extends the law through rule packs and package slot manifests
+## PROJECT-LINT-3 An app extends the law through rule packs, package slot manifests and project checks
 
-An app's own laws (a block library's shape, a spec schema, a naming rule of its modules) belong to the app, never to the generic harness, and
-they are still machine-held, through two extension points that only add.
+An app's own laws (a block library's shape, a spec schema, a naming rule of its modules, a vocabulary a migration retired) belong to the app,
+never to the generic harness, and they are still machine-held, through three extension points that only add. Outside them a repository keeps
+no check, lint rule or lint plugin of its own (R103).
 
 - **Rule packs.** `hfs.json` `rulePacks: ["@scope/hfs-rules"]` names installed packages. Each exports `./rule-pack`, a
   `starci/rule-pack@1` manifest (`packages/hfs/runtime/scripts/lib/rule-packs.mts`) whose every rule carries an `id` (`NIVO-BLOCK-1`), a
@@ -173,6 +174,16 @@ they are still machine-held, through two extension points that only add.
   `requires` and `allows`, glob and file slots, and `closed` (default true: every file below `src/` belongs to a slot). hfs holds the
   package to it as it holds the be and fe sides to theirs (`HFS_PACKAGE_SLOT_MISSING`, `HFS_PACKAGE_SLOT_DISALLOWED`,
   `HFS_PACKAGE_SLOT_UNPLACED`, `HFS_PACKAGE_SLOTS_INVALID`, R382).
+- **Project checks.** A check that reads the whole app as a program, where a rule over files is the wrong shape (an id no file may still
+  write, a generated list that must match its source), is a file of slot `app.checks`, `scripts/checks/<name>.mjs`, that `hfs.json` `checks`
+  declares as `{ "id": "<kebab-id>", "run": "scripts/checks/<name>.mjs", "why": "<what it guards>" }`. `starci app check` runs every declared
+  check as its own step, `checks`, wherever the hfs gate runs (CI's included): with this Node, from the app root, one after another; exit 0 is
+  green, any other exit is `HFS_PROJECT_CHECK_FAILED` (R402) naming the check, its exit and the last lines it printed, an hfs finding that
+  blocks like hfs. Its verdict is never cached, since a check reads what it reads. A file of `scripts/checks/` no declaration names, a
+  check-named file elsewhere in `scripts/` or `tools/` and a package script that runs one are `HFS_REPO_LOCAL_CHECK` (R103); a package script
+  that runs a declared check is the developer's shortcut to it. `starci app sync` names a loose check-named script and the declaration to add,
+  and never moves it: a check may resolve paths from its own folder, and its `why` is the project's to write. A check that re-implements a
+  canon or harness check is proposed to the harness instead.
 - **Package coverage follows the slots.** Every file of a package is measured at 100 per file in the back end's unit run (BE-TEST-13), but
   its barrels and type files and each slot that opts out with `coverage: { none: "<reason>" }`; an opt-out without its reason is refused.
   A package without a manifest keeps the harness's default scope (its `workbench/`, `public/` and `client/` subtrees unmeasured).

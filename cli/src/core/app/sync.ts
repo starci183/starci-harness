@@ -4,7 +4,7 @@ import { FORWARDED, runHfs } from "./hfs.js"
 /** `starci app sync`: compare every managed app file (and the Sonar block) with its canonical template, writing them under --execute; @starci/hfs runs it in-process in the app. */
 export const appSyncVerb = defineVerb({
     path: ["app", "sync"],
-    summary: "compare every managed app file and the Sonar block with their canonical template (exit 1 on drift); --execute writes them",
+    summary: "compare every managed app file and the Sonar block with their canonical template (exit 1 on drift); --execute writes them; a check kept outside scripts/checks/ is named with the hfs.json checks declaration to add, never moved",
     editions: BOTH_EDITIONS,
     effect: "local-write",
     roles: WRITERS,

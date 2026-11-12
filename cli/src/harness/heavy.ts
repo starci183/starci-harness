@@ -7,7 +7,7 @@ import type { DatabaseSync } from "node:sqlite"
 import { parse } from "yaml"
 import { z } from "zod"
 import { EXIT_HOST_HELD, Refusal } from "../shared/errors.js"
-import { pidAlive } from "../shared/exec.js"
+import { captureToolSync, pidAlive } from "../shared/exec.js"
 import type { RunOptions } from "../shared/exec.js"
 import { managedCpuTimes } from "./host-holders.js"
 import { governorStorePath, now } from "./ledger.js"
@@ -19,6 +19,33 @@ import { trimEndChars } from "../shared/trim.js"
 export type HeavyKind = "tsc" | "eslint" | "test" | "build" | "install" | "uat"
 
 const HEAVY_KINDS = ["tsc", "eslint", "test", "build", "install", "uat"] as const
+
+/** How long one reading of the host's free commit serves, in ms: its CIM query takes about half a second. */
+const COMMIT_READING_MS = 2000
+
+let commitReading: { readonly atMs: number; readonly mb: number | null } | undefined
+
+/**
+ * The commit charge the host can still give, in MB, on Windows (Win32_OperatingSystem FreeVirtualMemory): a process that cannot commit its memory
+ * fails to start (STATUS_COMMITMENT_LIMIT, exit 3221225773) or dies in its first fork however much RAM is free, and on a host whose processes commit
+ * more than they touch the free commit runs gigabytes under the free RAM. Null elsewhere (the kernel overcommits) and when the query fails.
+ */
+const freeCommitMb = (): number | null => {
+    if (process.platform !== "win32") return null
+    if (commitReading !== undefined && Date.now() - commitReading.atMs < COMMIT_READING_MS) return commitReading.mb
+    const shell = join(process.env.SystemRoot ?? String.raw`C:\Windows`, "System32", "WindowsPowerShell", "v1.0", "powershell.exe")
+    const run = captureToolSync(shell, ["-NoProfile", "-NonInteractive", "-Command", "[Console]::Out.Write((Get-CimInstance Win32_OperatingSystem -Property FreeVirtualMemory).FreeVirtualMemory)"], process.cwd(), 10_000)
+    const kb = Number(run.stdout)
+    commitReading = { atMs: Date.now(), mb: run.exitCode === 0 && Number.isFinite(kb) && kb > 0 ? Math.floor(kb / 1024) : null }
+    return commitReading.mb
+}
+
+/** The memory free for heavy commands, in MB: the free RAM, and on Windows never more than the free commit (`freeCommitMb`). */
+export const hostFreeMb = (): number => {
+    const ram = Math.floor(freemem() / 1_048_576)
+    const commit = freeCommitMb()
+    return commit === null ? ram : Math.min(ram, commit)
+}
 
 /** The kinds whose one process has a cap of its own (`heavy.caps`): a test run is sized at admission from the RAM free then (`testRunSizing`). */
 const FIXED_KINDS = ["tsc", "eslint", "build", "install", "uat"] as const
@@ -406,7 +433,7 @@ export const hostLoad = async (rules: HeavyRules = loadHeavyRules()): Promise<Ho
     const { cpu, managed } = await cpuLoad(rules)
     heavySlots()
     const { running, starved } = withGovernor((db) => ({ running: runningRows(db, rules), starved: starvedQueue(db, rules) }))
-    return admission(rules, Math.floor(freemem() / 1_048_576), cpu, running, undefined, starved, managed)
+    return admission(rules, hostFreeMb(), cpu, running, undefined, starved, managed)
 }
 
 /** The waiting rows in the order the governor serves them: first come, first served (the order they joined the queue). */
@@ -592,12 +619,19 @@ const workerHeapPreload = (): string => {
 }
 
 /**
+ * The variable naming the workers a test run was admitted with. Jest and vitest get them as `--maxWorkers` (`testWorkerArgs`); a runner the argv does not
+ * name (a package's `npm test` running `node --test`) reads it and runs that many spec processes at once, never the cores less one it would take unbounded.
+ */
+export const TEST_WORKERS_ENV = "STARCI_TEST_WORKERS"
+
+/**
  * The environment a test run's parent takes from its sizing: NODE_OPTIONS with the parent's heap and the preload that gives each worker the worker
- * cap as its heap, and STARCI_WORKER_HEAP_MB for it.
+ * cap as its heap, STARCI_WORKER_HEAP_MB for it, and TEST_WORKERS_ENV.
  */
 export const testRunEnv = (sizing: TestRunSizing, inherited: string, preload: string = workerHeapPreload()): Readonly<Record<string, string>> => ({
     NODE_OPTIONS: `${withHeap(inherited, sizing.parentMb)} --require=${preload}`,
     STARCI_WORKER_HEAP_MB: String(sizing.workerMb),
+    [TEST_WORKERS_ENV]: String(sizing.workers),
 })
 
 const RUNNER = /^(jest|vitest)(?:\.[cm]?js)?$/
@@ -744,7 +778,7 @@ export interface Governed {
     readonly freeMb: () => number
 }
 
-const liveHost = (): Governed => ({ rules: loadHeavyRules(), freeMb: () => Math.floor(freemem() / 1_048_576) })
+const liveHost = (): Governed => ({ rules: loadHeavyRules(), freeMb: hostFreeMb })
 
 /** How often a waiting command prints its position, so a hook that waits does not look hung. */
 const WAIT_LINE_MS = 60_000
@@ -874,7 +908,7 @@ export const governed = async <T>(host: Governed, kind: HeavyKind, label: string
  * refused launch is a wait; the task stays queued and a later step launches it.
  */
 export const seatRoom = (rules: HeavyRules = loadHeavyRules()): { readonly ok: boolean; readonly freeMb: number; readonly floorMb: number } => {
-    const freeMb = Math.floor(freemem() / 1_048_576)
+    const freeMb = hostFreeMb()
     return { ok: freeMb >= rules.seatFreeMb, freeMb, floorMb: rules.seatFreeMb }
 }
 

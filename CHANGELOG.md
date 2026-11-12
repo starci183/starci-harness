@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.0-alpha.117 - 2026-11-12
+
+- Fixed: the heavy governor sizes a room from the memory a command can really take. On Windows the free RAM it admits on is never more than the free commit charge (`hostFreeMb`, Win32_OperatingSystem FreeVirtualMemory read at most every 2 s): a child that cannot commit fails to start (exit 3221225773, STATUS_COMMITMENT_LIMIT) however much RAM is free, and a busy host had 5-6 GB less commit than RAM. A test run's admitted workers also reach a runner the argv does not name, as `STARCI_TEST_WORKERS` (`TEST_WORKERS_ENV`), which `@starci/hfs` 6.8.7's spec run takes as `node --test --test-concurrency`: unbounded it started 27 spec processes on a 28-core host, took twice the commit its slot planned and turned unrelated specs red (`pkg test hfs`).
+- Changed: `starci app check` and `starci app sync` say what `@starci/hfs` 6.8.7 adds: the project checks `hfs.json` `checks` declares run as their own step (R402), and sync names a check kept outside `scripts/checks/` with the declaration to add. With 6.8.7, `starci app stack up` refuses a base port range another registered project owns (`STACK_LOCAL_BASE_PORT_TAKEN`) and `starci app check --env local` reports it (`STACK_BASE_PORT_OVERLAP`, report-only).
+- The CLI still requires @starci/hfs@6.6.2, the version npm serves; `check pins` is `pending` until the publish run's cli-follow step raises it to the pin, 6.8.7 (CONTRIB-20).
+
 ## 1.1.0-alpha.116 - 2026-11-12
 
 - Added (CONTRIB-20): `deps publish-local` judges the peer line of what it publishes against the local registry (`core/deps/peer-line.ts`): a published version a workspace sibling peers with no release of that sibling admitting it (listed, or published in the same run), or a sibling published with it whose range excludes it, is refused `PUBLISH_LOCAL_PEER_ORPHAN` (an app on it fails `npm ci` with ERESOLVE: hfs 6.8.3 beside the Grammar lint 0.37.38, which peers `~6.7.0`); a published range that excludes the newest release the registry lists of the package it peers prints `warning PUBLISH_LOCAL_PEER_LINE`. Schema `starci/deps-publish-local@4` (`peerLine`). Spec `core/deps/peer-line.test.ts`.

@@ -83,6 +83,7 @@ Change a slot, a rule or a pattern's front matter, then regenerate in the same c
   - `{.gitkeep,*.mjs,*.cjs,*.ps1,*.sh}` — **app.scripts** optional · R385 (hfs `script-one-off`), R102 (hfs `spec-placement`; eslint-be `spec-placement`), R103 (hfs `repo-local-check`)
   - `{env-sync.mjs,with-secrets.mjs,set-secrets.ps1,build-*.mjs}` — **app.scripts.delivery** optional · R06 (hfs `plaintext-secret` `plaintext-secret-staged`), R385 (hfs `script-one-off`), R102 (hfs `spec-placement`; eslint-be `spec-placement`), R103 (hfs `repo-local-check`)
   - `integration/*.mjs` — **app.scripts.integration** optional · R06 (hfs `plaintext-secret` `plaintext-secret-staged`), R385 (hfs `script-one-off`), R102 (hfs `spec-placement`; eslint-be `spec-placement`), R103 (hfs `repo-local-check`)
+  - `checks/*.mjs` — **app.checks** optional · R06 (hfs `plaintext-secret` `plaintext-secret-staged`), R385 (hfs `script-one-off`), R102 (hfs `spec-placement`; eslint-be `spec-placement`), R103 (hfs `repo-local-check`), R402 (hfs `project-checks`)
 - `packages/`
   - `<name>/` — **app.packages** optional · R25 (eslint-be `dead-exports`; eslint-fe `dead-exports`)
   - `modules/` — **app.module-registry** optional · R05 (hfs `managed-file-drift`)
@@ -284,6 +285,7 @@ Refused (forbidden or external): `repo.side-root-forbidden`, `fe.tool-config-loc
 - `scripts/`
   - `{.gitkeep,*.mjs,*.cjs,*.ps1,*.sh}` — **app.scripts** optional · R385 (hfs `script-one-off`), R102 (hfs `spec-placement`; eslint-be `spec-placement`), R103 (hfs `repo-local-check`)
   - `integration/*.mjs` — **app.scripts.integration** optional · R06 (hfs `plaintext-secret` `plaintext-secret-staged`), R385 (hfs `script-one-off`), R102 (hfs `spec-placement`; eslint-be `spec-placement`), R103 (hfs `repo-local-check`)
+  - `checks/*.mjs` — **app.checks** optional · R06 (hfs `plaintext-secret` `plaintext-secret-staged`), R385 (hfs `script-one-off`), R102 (hfs `spec-placement`; eslint-be `spec-placement`), R103 (hfs `repo-local-check`), R402 (hfs `project-checks`)
 - `packages/`
   - `<name>/` — **app.packages** optional · R25 (eslint-be `dead-exports`; eslint-fe `dead-exports`)
   - `modules/` — **app.module-registry** optional · R05 (hfs `managed-file-drift`)

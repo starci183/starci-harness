@@ -2107,8 +2107,8 @@ rules:
     code: "HFS_REPO_LOCAL_CHECK"
     editions: [lite, full]
     docs: [docs/legacy-repo-rule-coverage.md#r103]
-    templateNa: "Repository-local checks and lint plugins are forbidden artifacts and have no managed scaffold."
-    law: "A repository keeps no check, lint rule or lint plugin of its own: no `check-*` file in `scripts/` or `tools/`, no `eslint-local-rules*` or local eslint plugin, no script that runs one; every check lives in the `.claude` runtime and the canons."
+    templateNa: "Repository-local checks and lint plugins are forbidden artifacts and have no managed scaffold; a project check is the app's own file of slot app.checks."
+    law: "A repository keeps no check, lint rule or lint plugin of its own outside the extension points of PROJECT-LINT-3 (rule packs, package slot manifests, project checks): no `eslint-local-rules*` or local eslint plugin; no check-named runnable file in `scripts/` or `tools/` (or one folder below) outside slot app.checks, a check-named file being one whose name holds the word check, checks or checker split on `-`, `_` and `.` (`check-schema.mjs`, `tool-names-check.mjs`, `flow_check.cjs`, `ids.check.mjs`, never `checkout.mjs`); no file of app.checks (`scripts/checks/*.mjs`) that hfs.json `checks` does not declare; and no package script that runs such a file (one that runs a declared check stays). A generic check lives in the `.claude` runtime and the canons."
     kinds: [check]
     gates: [land, ci]
     failureCodes: ["HFS_REPO_LOCAL_CHECK"]
@@ -6466,7 +6466,7 @@ rules:
       - {path: packages/eslint/grammar-core/choice-controls.spec.mjs, editions: [lite, full], codes: [FE_GROUPED_CHOICE_CONTROL]}
   - id: R381
     code: "HFS_RULE_PACK_INVALID"
-    law: "An app adds its own laws only through rule packs hfs.json rulePacks names: an installed package that exports ./rule-pack, a starci/rule-pack@1 manifest whose every rule carries an id, a finding code, a severity, its spec and its doc and exactly one engine (a machine rule the app check runs, or an ESLint rule the canon factories load); a pack only adds, so a rule with any other key, a code the harness reports, an id or code another pack holds, a rule that throws or a finding without a path refuses the pack, which then lends nothing; its findings go through the harness's policy (a machine rule blocks like hfs, an ESLint rule follows the lint gate, its branch profile and the ratchet)."
+    law: "An app adds its own laws through the extension points of PROJECT-LINT-3: the rule packs hfs.json rulePacks names, package slot manifests (R382) and project checks (R402). A rule pack is an installed package that exports ./rule-pack, a starci/rule-pack@1 manifest whose every rule carries an id, a finding code, a severity, its spec and its doc and exactly one engine (a machine rule the app check runs, or an ESLint rule the canon factories load); a pack only adds, so a rule with any other key, a code the harness reports, an id or code another pack holds, a rule that throws or a finding without a path refuses the pack, which then lends nothing; its findings go through the harness's policy (a machine rule blocks like hfs, an ESLint rule follows the lint gate, its branch profile and the ratchet)."
     kinds: [check]
     gates: [settle, land, ci]
     failureCodes: ["HFS_RULE_PACK_INVALID"]
@@ -6474,7 +6474,7 @@ rules:
       - {kind: hfs, id: rule-packs, at: scripts/hfs/rules/app-extension-findings.mjs}
     editions: [lite, full]
     docs:
-      - {path: contexts/project/lint.md#project-lint-3-an-app-extends-the-law-through-rule-packs-and-package-slot-manifests, editions: [lite, full]}
+      - {path: contexts/project/lint.md#project-lint-3-an-app-extends-the-law-through-rule-packs-package-slot-manifests-and-project-checks, editions: [lite, full]}
     proves:
       - {path: packages/hfs/src/rule-packs.spec.mjs, editions: [lite, full]}
     witness:
@@ -6489,7 +6489,7 @@ rules:
       - {kind: hfs, id: package-slots, at: scripts/hfs/rules/app-extension-findings.mjs}
     editions: [lite, full]
     docs:
-      - {path: contexts/project/lint.md#project-lint-3-an-app-extends-the-law-through-rule-packs-and-package-slot-manifests, editions: [lite, full]}
+      - {path: contexts/project/lint.md#project-lint-3-an-app-extends-the-law-through-rule-packs-package-slot-manifests-and-project-checks, editions: [lite, full]}
     proves:
       - {path: packages/hfs/src/package-slots.spec.mjs, editions: [lite, full]}
     witness:
@@ -6578,10 +6578,10 @@ rules:
       - {path: packages/hfs/src/pre-push-branches.spec.mjs, editions: [lite, full]}
   - id: R389
     code: "STACKS_BASE_PORT_ROLE"
-    law: "The host ports of a dev environment derive from its project base port, so two apps on one machine run side by side: with `local.basePort` declared in .starcistacks/application-stacks.yaml, the primary front end (the first process named web, app, console, fe or frontend) listens on base, the api (api, core, be, backend) on base+1, the AI gateway (gateway, ai-gateway, ai-router) on base+2, and every further native process on base+3 up to base+79 (base+2 up to base+79 when no gateway runs) (STACKS_BASE_PORT_ROLE); the compose services take base+80 up to base+99, and a compose port that plays a role of the table sits on its slot: the port `local.database` names on base+90, `mail` (the mail sink's SMTP) on base+91, `mailui` on base+92, `storage` (the object store's S3 API) on base+93 and `storage-console` on base+94 (STACKS_COMPOSE_PORT_ROLE); every compose file of the environment publishes its host ports from `local.ports` as `${STACK_PORT_<NAME>}`, never a literal port (STACKS_COMPOSE_PORT_LITERAL). An environment with native processes on ports and no `basePort` reports STACKS_BASE_PORT_UNDECLARED as a warning, never an error; Each project owns its own hundred: `starci app stack doctor --env <env>` fails its port range row, naming every registered project it compared (the ledgers of the state base's and the harness home's machine registries, each project's checkouts and worktrees; a project with no base holds its declared ports) and the next free base, when another project's hundred or ports overlap base..base+99; `starci app scaffold` takes the next free hundred when the name's base is held and refuses an overlapping `--base-port` (HFS_SCAFFOLD_BASE_PORT_TAKEN). `starci app sync --execute` moves an existing app's database and mail ports onto their slots and adds the storage service."
+    law: "The host ports of a dev environment derive from its project base port, so two apps on one machine run side by side: with `local.basePort` declared in .starcistacks/application-stacks.yaml, the primary front end (the first process named web, app, console, fe or frontend) listens on base, the api (api, core, be, backend) on base+1, the AI gateway (gateway, ai-gateway, ai-router) on base+2, and every further native process on base+3 up to base+79 (base+2 up to base+79 when no gateway runs) (STACKS_BASE_PORT_ROLE); the compose services take base+80 up to base+99, and a compose port that plays a role of the table sits on its slot: the port `local.database` names on base+90, `mail` (the mail sink's SMTP) on base+91, `mailui` on base+92, `storage` (the object store's S3 API) on base+93 and `storage-console` on base+94 (STACKS_COMPOSE_PORT_ROLE); every compose file of the environment publishes its host ports from `local.ports` as `${STACK_PORT_<NAME>}`, never a literal port (STACKS_COMPOSE_PORT_LITERAL). An environment with native processes on ports and no `basePort` reports STACKS_BASE_PORT_UNDECLARED as a warning, never an error; Each project owns its own hundred: `starci app stack doctor --env <env>` fails its port range row, naming every registered project it compared (the ledgers of the state base's and the harness home's machine registries, each project's checkouts and worktrees; a project with no base holds its declared ports) and the next free base, when another project's hundred or ports overlap base..base+99; `starci app scaffold` takes the next free hundred when the name's base is held and refuses an overlapping `--base-port` (HFS_SCAFFOLD_BASE_PORT_TAKEN); `starci app stack up --env <env>` refuses to start anything on an overlapping range, naming the other project and the next free base (STACK_LOCAL_BASE_PORT_TAKEN); `starci app check --env local` reports the overlap as a warning, report-only, since CI has no machine registry and stack up is where it blocks (STACK_BASE_PORT_OVERLAP). `starci app sync --execute` moves an existing app's database and mail ports onto their slots and adds the storage service."
     kinds: [check]
     gates: [settle, land, ci]
-    failureCodes: ["STACKS_BASE_PORT_ROLE", "STACKS_COMPOSE_PORT_ROLE", "STACKS_COMPOSE_PORT_LITERAL", "STACKS_BASE_PORT_UNDECLARED", "HFS_SCAFFOLD_BASE_PORT_TAKEN"]
+    failureCodes: ["STACKS_BASE_PORT_ROLE", "STACKS_COMPOSE_PORT_ROLE", "STACKS_COMPOSE_PORT_LITERAL", "STACKS_BASE_PORT_UNDECLARED", "HFS_SCAFFOLD_BASE_PORT_TAKEN", "STACK_LOCAL_BASE_PORT_TAKEN", "STACK_BASE_PORT_OVERLAP"]
     enforcers:
       - {kind: hfs, id: stacks-local, at: runtime/scripts/hfs/rules/stacks-local.mjs}
     editions: [lite, full]
@@ -6739,3 +6739,18 @@ rules:
       - {path: packages/hfs/src/hfs-di-ring.spec.mjs, editions: [lite]}
     witness:
       - {path: packages/hfs/src/hfs-di-ring.spec.mjs, editions: [lite]}
+  - id: R402
+    code: "HFS_PROJECT_CHECK_FAILED"
+    law: "Every project check hfs.json `checks` declares passes. A declaration is {id, run, why}: a unique kebab-case id, run a unique `scripts/checks/<name>.mjs` file of slot app.checks, and why the project keeps it (its shape is HFS_DECLARATION_INVALID). `starci app check` runs every declared check wherever the hfs gate runs (a whole run, `--gate hfs`, CI), as its own `checks` step after the structure pass: with the Node that runs the check, from the app root, one after another through the heavy governor; exit 0 is green and says so in one line, any other exit, or a missing file, is HFS_PROJECT_CHECK_FAILED naming the check, its file, its exit, what it guards and the last 20 lines it printed. An hfs finding: it blocks like hfs under the branch profile. A check reads what it reads, so its verdict is never cached."
+    kinds: [check]
+    gates: [settle, land, ci]
+    failureCodes: ["HFS_PROJECT_CHECK_FAILED"]
+    enforcers:
+      - {kind: hfs, id: project-checks, at: cache/project-checks.mjs}
+    editions: [lite, full]
+    docs:
+      - {path: contexts/project/lint.md#project-lint-3-an-app-extends-the-law-through-rule-packs-package-slot-manifests-and-project-checks, editions: [lite, full]}
+    proves:
+      - {path: packages/hfs/src/project-checks.spec.mjs, editions: [lite, full]}
+    witness:
+      - {path: packages/hfs/src/project-checks.spec.mjs, editions: [lite, full]}

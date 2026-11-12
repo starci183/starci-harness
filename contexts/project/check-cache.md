@@ -323,6 +323,7 @@ untracked tool cache of slot `app.tool-cache`, or none.
 | CI build steps (typecheck, `build be`, each `build fe`) | per step | the step's command and environment, the Node major, every tracked file of the folders it builds (every tracked file for the typecheck) and of the app root but the lockfile, and the lockfile installs its manifests resolve are unchanged | any of them; a step killed or timed out stores nothing | `check/build/` (the verdict, green or red with its finding; never an artifact) |
 | database migration checks (`npm run db:lint`, `app db drift`) | per step | its command, the db rules' inputs and their baseline at the merge-base, the migration chain, the scratch database image, the entity list's import closure, the engine manifest, the installs the drift check loads (the closure's packages, `typeorm`, `typescript`, `pg`) and the hfs that judges are unchanged | any of them; a host without a database stores nothing | `check/build/` (the verdict) |
 | production dependency audit | always | never | every run that selects it: the registry's advisories change without the tree | none |
+| project checks (`checks`: the files hfs.json `checks` declares, R402) | always | never | every run that selects hfs: a check reads what it reads (the tree, generated files, the network), which no key holds | none |
 | proofs, the gate verdict, the Sonar and Codecov predictions | always | never | every run | none |
 | Sonar scan against the server | scoped | the scanned content (every tracked file outside the cache folder, the properties, the coverage and lint reports they name), the target, the scanner version and the digest of the gate as the server holds it now (its conditions, else its name when the token cannot read them; a gate neither is readable for is never kept) are unchanged | any of them; a failure is never kept | the tool cache (`sonar-scan.json`) |
 
@@ -520,6 +521,8 @@ allow:
 
 - `coverage` (CI's coverage step) and `sonar` (the baselines) read the coverage the `test` family merged, so they come after `test`;
 - the lint ratchet reads the lint records of the run, so it comes after `lint`;
+- `checks` runs the project checks hfs.json declares (PROJECT-LINT-3) whenever the structure family runs, each a `build` child of the governor, and reads no other
+  step's result;
 - `build` runs CI's typecheck script (build:modules, then codegen, then tsc), `build:be` and each `build fe` in CI's order: its codegen and build:modules rewrite
   the generated code and the root packages' dist that `types`, `lint`, `test` and `wiring` read, so it comes after those four;
 - the Sonar scan uploads the findings and the lint report of every other step but the ratchet and runs only when they are green, so it comes last.

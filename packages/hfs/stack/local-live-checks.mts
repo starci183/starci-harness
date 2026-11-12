@@ -1,10 +1,14 @@
-// local-live-checks.mts - the two checks of `starci app check --env local` that read the LIVE state of the dev environment instead of the tree
-// (contexts/project/stacks.md PROJECT-STACKS-10), so a green check means the running dev stack is sound, not only that its files are:
+// local-live-checks.mts - the checks of `starci app check --env local` that read the LIVE state of the dev environment and of the machine instead of
+// the tree (contexts/project/stacks.md PROJECT-STACKS-10, PROJECT-STACKS-11), so a green check means the running dev stack is sound, not only that its files are:
+//   base-port-overlap    STACK_BASE_PORT_OVERLAP     the hundred of a dev environment's local.basePort overlaps another project the machine registries enrol
+//                                                    (stack/local-peers.mts, the doctor's `port range` row); a warning, report-only: the tree may be lawful
+//                                                    and either project may move, CI has no machine registry to compare (`--env prod` never asks), and the
+//                                                    command that would collide, `starci app stack up`, refuses it (STACK_LOCAL_BASE_PORT_TAKEN);
 //   pending-migrations   STACK_PENDING_MIGRATIONS    the migration files the repository holds that the dev database has not applied (the plan `starci app db migrate`
 //                                                    would run, read from supabase_migrations.schema_migrations); error, naming the files and the command that applies them;
 //   dead-letter-repeat   STACK_DEAD_LETTER_REPEAT    a queue or job that dead-lettered more than once in the last 24 hours of the api log of the environment
 //                                                    (<state base>/stack/<project>/<env>/logs/api.log); error, naming the queue, the job and the last error message.
-// Both are read-only and never cached (a cache of live state is a lie). A stack that is not up is not judged: there is nothing live to read, and the check says so in one line.
+// All are read-only and never cached (a cache of live state is a lie). A stack that is not up is not judged: there is nothing live to read, and the check says so in one line.
 // The database is reached the way the deploy reaches its own: `docker exec` in the db container with the credentials the container holds (no custody is opened, no value is read).
 import fs from 'node:fs';
 import path from 'node:path';
@@ -15,13 +19,16 @@ import type { StackContext } from './context.mjs';
 import { firstLine } from './context.mjs';
 import { isLocalEnvironment, loadLocalConfig } from './local-config.mjs';
 import type { LocalConfig } from './local-config.mjs';
+import { baseOverlap, overlapLine, peersOf } from './local-peers.mjs';
+import type { PeerBase } from './local-peers.mjs';
 import { compose, stateOf } from './local-run.mjs';
 import { logFile } from './local-state.mjs';
 
 export const PENDING_MIGRATIONS = 'STACK_PENDING_MIGRATIONS';
 export const DEAD_LETTER_REPEAT = 'STACK_DEAD_LETTER_REPEAT';
+export const BASE_PORT_OVERLAP = 'STACK_BASE_PORT_OVERLAP';
 /** The codes this module reports, for the failure-code catalog of `app check`. */
-export const LIVE_CODES = Object.freeze([PENDING_MIGRATIONS, DEAD_LETTER_REPEAT]);
+export const LIVE_CODES = Object.freeze([BASE_PORT_OVERLAP, PENDING_MIGRATIONS, DEAD_LETTER_REPEAT]);
 
 /** The window the dead-letter check looks back over, and the most of the log it reads (the tail; a bigger log is judged by its last bytes). */
 export const DEAD_LETTER_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -147,12 +154,29 @@ function deadLetterFindings(ctx: StackContext, local: LocalConfig, now: number):
   return { findings, line: `  live ${local.env}: dead-letter-repeat ${findings.length === 0 ? 'clean' : `${String(findings.length)} queue(s) repeat`} (${String(repeats.read)} dead letter(s) in the last 24 hours of ${display})` };
 }
 
-/** Both live checks over every dev environment of the app that declares a database; a stack that is not up is reported in one line, never as a finding. */
-export async function liveStateFindings({ ctx, repoRoot }: { ctx: StackContext; repoRoot: string }): Promise<LiveResult> {
+/** The base port overlap of one environment with the machine's other projects: a report-only warning naming them and the next free base, or none. */
+export function baseOverlapFindings(ctx: Pick<StackContext, 'env'>, local: LocalConfig, peers?: () => PeerBase[]): { findings: LiveFinding[]; line: string } | null {
+  if (local.basePort === null) return null;
+  const overlap = baseOverlap(local.basePort, peersOf(ctx, local, peers));
+  const line = `  machine ${local.env}: base-port-overlap ${overlap.clashes.length === 0 ? 'none' : `${String(overlap.clashes.length)} project(s)`} (${overlapLine(overlap)})`;
+  if (overlap.clashes.length === 0) return { findings: [], line };
+  return {
+    line,
+    findings: [{
+      code: BASE_PORT_OVERLAP, level: 'warning', path: `${STACKS_DIR}/${STACKS_FILE}`,
+      message: `environments.${local.env}.local.basePort: ${overlapLine(overlap)}; ${overlap.fix as string}. Report-only: starci app stack up --env ${local.env} refuses to start on it (STACK_LOCAL_BASE_PORT_TAKEN)`,
+    }],
+  };
+}
+
+/** The live checks over every dev environment of the app: the base port overlap of each, then, where it declares a database, its pending migrations and dead letters; a stack that is not up is reported in one line, never as a finding. */
+export async function liveStateFindings({ ctx, repoRoot, peers }: { ctx: StackContext; repoRoot: string; peers?: () => PeerBase[] }): Promise<LiveResult> {
   const result: LiveResult = { findings: [], lines: [] };
   for (const env of liveEnvironments(repoRoot)) {
     let local: LocalConfig;
     try { local = loadLocalConfig({ repoRoot, env }); } catch { continue; }
+    const overlap = baseOverlapFindings(ctx, local, peers);
+    if (overlap !== null) { result.findings.push(...overlap.findings); result.lines.push(overlap.line); }
     if (!local.database) continue;
     try {
       const pending = await pendingMigrations(ctx, local);

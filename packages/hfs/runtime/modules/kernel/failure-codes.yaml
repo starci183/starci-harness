@@ -4358,10 +4358,21 @@ HFS_RELEASE_TAG_MISMATCH:
 HFS_REPO_LOCAL_CHECK:
   title: "A repository keeps no check or lint rule of its own"
   title_vi: "Kho tự giữ bộ kiểm tra riêng"
-  meaning_vi: "Kho có nguồn kiểm tra hoặc luật lint cục bộ ở `<f>`: tệp `check-*` trong `scripts/` hay `tools/`, tệp `eslint-local-rules*`, plugin eslint cục bộ, hoặc script npm chạy một tệp `check-*`."
+  meaning_vi: "Kho có nguồn kiểm tra hoặc luật lint cục bộ ở `<f>` nằm ngoài các điểm mở rộng của PROJECT-LINT-3: tệp chạy được trong `scripts/` hay `tools/` có chữ check, checks hoặc checker trong tên (`check-x`, `x-check`, `x_check`, `x.check`) mà không nằm trong `scripts/checks/`, tệp trong `scripts/checks/` mà hfs.json `checks` không khai báo, tệp `eslint-local-rules*`, plugin eslint cục bộ, hoặc script npm chạy một tệp như vậy."
   causes_vi:
-    - "Vi phạm luật R103: mọi bộ kiểm tra sống trong runtime `.claude` (starci app check, các canon eslint); kho sản phẩm không giữ bộ kiểm tra hay luật riêng. `scripts/` chỉ chứa script vận hành."
-  nextStep_vi: "Op vừa tạo ra bản này sẽ được chạy lại để sửa theo lời nhắn của bộ kiểm tra: xóa tệp và script trỏ tới nó; nếu luật còn cần thì đề xuất vào canon trong runtime `.claude`, không giữ bản sao trong kho."
+    - "Vi phạm luật R103: bộ kiểm tra chung sống trong runtime `.claude` (starci app check, các canon eslint); luật riêng của app chỉ đi qua rule pack, manifest slot của package, hoặc project check khai báo trong hfs.json `checks` (PROJECT-LINT-3)."
+  nextStep_vi: "Nếu là luật riêng của dự án: chuyển tệp vào `scripts/checks/<tên>.mjs` (sửa đường dẫn nó tự suy từ thư mục của nó), khai báo {\"id\", \"run\", \"why\"} trong hfs.json `checks` và trỏ script npm vào tệp mới; nếu runtime `.claude` đã kiểm tra điều đó thì xóa tệp và script trỏ tới nó."
+  owner: op-retry
+  kind: check-finding
+
+HFS_PROJECT_CHECK_FAILED:
+  title: "A project check hfs.json declares failed"
+  title_vi: "Một project check khai báo trong hfs.json bị đỏ"
+  meaning_vi: "starci app check chạy mọi project check mà hfs.json `checks` khai báo (bước `checks`, ở mọi nơi cổng hfs chạy, kể cả CI) bằng Node đang chạy, từ gốc app. Check thoát khác 0, hoặc tệp `run` của nó không còn, là lỗi; thông báo nêu id, tệp, mã thoát, điều nó canh giữ và những dòng cuối nó in ra. Kết quả không bao giờ được cache."
+  causes_vi:
+    - "Mã hoặc dữ liệu của app vi phạm luật riêng mà check đó canh giữ (R402)."
+    - "Tệp của check bị xóa hoặc đổi tên mà khai báo trong hfs.json chưa đổi theo."
+  nextStep_vi: "Đọc các dòng cuối check in ra, sửa chỗ vi phạm rồi chạy lại starci app check; nếu tệp đã đổi chỗ thì sửa `run` trong hfs.json `checks`."
   owner: op-retry
   kind: check-finding
 
@@ -5857,6 +5868,26 @@ HFS_SCAFFOLD_BASE_PORT_TAKEN:
   nextStep_vi: "Chạy lại starci app scaffold với --base-port bằng cổng gốc trống mà thông báo đề xuất, hoặc bỏ --base-port để scaffold tự chọn trăm cổng trống kế tiếp."
   owner: supervisor
   kind: verb-refusal
+
+STACK_LOCAL_BASE_PORT_TAKEN:
+  title: "stack up refused: the environment's base port range overlaps another project of the machine"
+  title_vi: "stack up bị từ chối: dải cổng gốc của môi trường trùng một dự án khác trên máy"
+  meaning_vi: "starci app stack up --env <env> (chạy thử lẫn --execute) không khởi động gì khi dải local.basePort..basePort+99 trùng dải trăm cổng (hoặc các cổng đã khai báo) của một dự án đã đăng ký trên máy: hai stack sẽ giành cùng cổng, lần up thứ hai hỏng giữa chừng hoặc probe trả lời bằng tiến trình của dự án kia. Thông báo nêu dự án trùng, mọi dự án đã so sánh và cổng gốc trống kế tiếp."
+  causes_vi:
+    - "Vi phạm R389: hai dự án trên cùng máy khai cùng một trăm cổng."
+  nextStep_vi: "Đổi environments.<env>.local.basePort sang cổng gốc trống mà thông báo đề xuất (và các cổng suy ra từ nó, starci app sync --execute dời cổng compose), rồi chạy lại stack up."
+  owner: supervisor
+  kind: verb-refusal
+
+STACK_BASE_PORT_OVERLAP:
+  title: "The dev environment's base port range overlaps another project of the machine"
+  title_vi: "Dải cổng gốc của môi trường dev trùng một dự án khác trên máy"
+  meaning_vi: "starci app check --env local so dải local.basePort..basePort+99 của mỗi môi trường dev với các dự án đã đăng ký trên máy (cùng cách stack doctor đọc) và cảnh báo khi trùng, nêu dự án trùng và cổng gốc trống kế tiếp. Chỉ báo, không chặn: cây mã có thể đúng luật và dự án nào dời cũng được, CI không có sổ đăng ký máy (--env prod không hỏi), còn stack up là nơi chặn."
+  causes_vi:
+    - "Hai dự án trên cùng máy khai cùng một trăm cổng (R389)."
+  nextStep_vi: "Đổi environments.<env>.local.basePort của một trong hai dự án sang cổng gốc trống được đề xuất, rồi chạy lại starci app check."
+  owner: supervisor
+  kind: check-finding
 
 STACKS_COMPOSE_PORT_LITERAL:
   title: "A compose file of a dev environment with a base port publishes a literal host port"
