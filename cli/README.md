@@ -318,10 +318,12 @@ Every heavy command the harness spawns (tsc, eslint, a command check, a workspac
 build, `npm ci` or `npm install`, a contract's setup, a uat container) runs through `withHeavySlot` of
 `harness/heavy.ts`: a row of a machine-wide queue (`heavy_slots` in the machine.sqlite of the harness's main checkout,
 or of `STARCI_LOCAL_ROOT` when set: `governorStorePath` of `harness/ledger.ts`, so every worktree of the harness shares
-it), whose admissions the store's lock serialises. A command sizes itself greedily to the room it finds when it starts: the free RAM now, which already
+it), whose admissions the store's lock serialises. A command sizes itself greedily to the room it finds when it starts: the free RAM now (`hostFreeMb`: on
+Windows never more than the free commit charge, since a process that cannot commit fails to start however much RAM is free), which already
 excludes what running commands use, less `heavy.reserveMb` (the one headroom of the machine) and what the commands admitted in the last `heavy.plannedSeconds`
 planned (they have not grown into the free RAM yet, so two commands that start together never take the same room; after that long a command counts as the
-free RAM shows it). A test run takes the workers its room holds (`testRunSizing`), any other node tool runs under the smaller of its cap and the room
+free RAM shows it). A test run takes the workers its room holds (`testRunSizing`): jest and vitest as `--maxWorkers`, any other runner from
+`STARCI_TEST_WORKERS` (a package's `node --test` run as its `--test-concurrency`), any other node tool runs under the smaller of its cap and the room
 (`heapFor`), and `heavy.caps` and `heavy.testRun` hold the numbers. RAM free: it starts at once, when the room covers its least need (`needsOf`) and fewer
 than floor(logical cores / 2) run. RAM short: it waits in a first come, first served queue (`servingOrder`), holding nothing, only the head may start,
 and it starts when a running command ends or ages; every minute it prints its place, the MB it needs against the room and the running commands

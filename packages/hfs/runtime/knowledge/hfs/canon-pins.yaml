@@ -161,7 +161,7 @@ pins:
     source: packages/mail/package.json
     why: 'outgoing mail of a back end: a NestJS module and the Mailer port over SMTP (connect, greeting, socket and total timeouts, STARTTLS required by default, recipient, message and attachment checks, a shared SMTP target policy, coded errors, typed escaping render helpers returning { subject, text, html }), with @starci/mail/testing for its specs; the only importer of nodemailer (R90).'
   '@starci/hfs':
-    version: 6.8.3
+    version: 6.8.4
     group: starci
     install: registry
     side: both
