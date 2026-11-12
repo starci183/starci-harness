@@ -8,6 +8,8 @@
 
 ## 1.1.0-alpha.116 - 2026-11-12
 
+- Changed: the CLI requires @starci/hfs@6.8.6, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
+
 - Added (CONTRIB-20): `deps publish-local` judges the peer line of what it publishes against the local registry (`core/deps/peer-line.ts`): a published version a workspace sibling peers with no release of that sibling admitting it (listed, or published in the same run), or a sibling published with it whose range excludes it, is refused `PUBLISH_LOCAL_PEER_ORPHAN` (an app on it fails `npm ci` with ERESOLVE: hfs 6.8.3 beside the Grammar lint 0.37.38, which peers `~6.7.0`); a published range that excludes the newest release the registry lists of the package it peers prints `warning PUBLISH_LOCAL_PEER_LINE`. Schema `starci/deps-publish-local@4` (`peerLine`). Spec `core/deps/peer-line.test.ts`.
 - Changed: the rule is written: every hfs minor cuts both canons and the Grammar family (a patch) with it; the peer range stays same-minor (CONTRIBUTING.md CONTRIB-20, contexts/authority/packages.md, contexts/grammars/contributing.md). The version is 1.1.0-alpha.116 (alpha.115 is taken by `pkg/claude-suite-and-checks`); the CLI's requirement of `@starci/hfs` follows CI's cli-follow step.
 
