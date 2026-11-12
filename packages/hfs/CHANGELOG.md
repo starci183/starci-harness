@@ -2,6 +2,12 @@
 
 ## 6.10.0 - 2026-11-13
 
+- Changed: the harness tree holds no app, product or provider identifier (`starci check business`, the harness's `policy/business-terms.yaml`): spec fixtures, knowledge texts, comments and messages of this package use neutral names; no rule id, finding code or behaviour changes with them.
+- Removed: the agent-runtime layer (`stack/runtime-layers.mts`, the layer recipe under `stack/images/`, its step of `starci app stack up`, the layer copy of `scripts/sync-bundles.mts`) and the fork entry of R374's `fork-images.yaml` that served it; the fork list keeps the object store. The three unused product-name constants of `runtime/scripts/lib/example-refs.mts` are gone.
+- Changed (R252): the home secret folder `HFS_SCRIPT_PLAINTEXT_LOAD` guards is `.<project>/`, the project name of the app's hfs.json, read per run (`runtime/scripts/hfs/rules/script-hygiene.mts`); it was one app's folder name. Spec `src/hfs-script-hygiene.spec.mts`.
+- Changed (PROJECT-WORK-7, R212): slot `app.starciwork` admits the Markdown concepts `concepts/README.md` and `concepts/<topic>.md` in both editions, and the starter of both carries the catalog and one example topic; the YAML records `concepts/index.yaml` and `concepts/<name>/index.yaml` an app still keeps stay admitted. No gate reads a concept. Spec `src/hfs-starciwork-lite-forbidden.spec.mts`.
+- Changed: the module scaffold's SDK folder is `packages/sdk` (`@<project>/sdk`).
+- Changed: the pins name `@starci/test-world` 2.0.0, `@starci/heroicons` 0.4.0, `@starci/jest-preset` 2.9.1 and `@starci/ai-router` 0.6.1.
 - Added (R263): hfs.json `sides.be.receiptPorts`, a list of `{ class, method, repeat, reason }` (`repeat` is `"false"` or `"undefined"`, each class and method once, be side only; any other shape is `HFS_DECLARATION_INVALID`, `receiptPortsOk` of `runtime/scripts/hfs/rule-params-shape.mts`), handed to the back-end canon as `ruleParams.receiptPorts`. `@starci/eslint-canon-be` 3.25.0 reads it in `webhook-inbox-key`. Spec `src/hfs-database-access.spec.mts`.
 
 ## 6.9.0 - 2026-11-13

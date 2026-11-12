@@ -153,9 +153,9 @@ const CentredRows = () => {
         onChange={noop}
         items={[
           { id: 'send', title: 'Message customers over Chat', control: <G.Tabs appearance="primary" label="Message customers over Chat" selectedKey={send} onSelect={setSend} items={PERMISSION_MODES} /> },
-          { id: 'qr', title: 'Create a payment QR code', subtitle: 'QR code for the customer's order', control: <G.Tabs appearance="primary" label="Create a payment QR code" selectedKey={qr} onSelect={setQr} items={PERMISSION_MODES} /> },
-          { id: 'tell', title: 'Notify team', subtitle: 'Posts in the team's chat', control: <G.Switch label="Notify team" size="md" isLabelHidden isSelected={on} onSelectedChange={setOn} /> },
-          { id: 'plain', title: 'Read the customer's messages', subtitle: 'No control: keep top alignment' },
+          { id: 'qr', title: 'Create a payment QR code', subtitle: 'QR code for the order of the customer', control: <G.Tabs appearance="primary" label="Create a payment QR code" selectedKey={qr} onSelect={setQr} items={PERMISSION_MODES} /> },
+          { id: 'tell', title: 'Notify team', subtitle: 'Posts in the team chat', control: <G.Switch label="Notify team" size="md" isLabelHidden isSelected={on} onSelectedChange={setOn} /> },
+          { id: 'plain', title: 'Read customer messages', subtitle: 'No control: keep top alignment' },
         ]}
       />
       <G.SurfaceCard

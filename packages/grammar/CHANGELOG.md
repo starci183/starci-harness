@@ -2,6 +2,7 @@
 
 ## 0.38.3 - 2026-11-13
 
+- Changed: the default labels of `MessageBubble` reactions (`DEFAULT_REACTION_LABELS`) and the default `resetLabel` of `FlowGraph` are English; an app in another language passes its own. Stories, JSDoc, CSS comments and the README use neutral English copy; the story file `NivoCanvas.stories.tsx` is `CanvasParts.stories.tsx`.
 - Changed: version stamp only, cut with `@starci/hfs` 6.10.0: the family releases together; no component, token or stylesheet changes.
 
 ## 0.38.2 - 2026-11-13

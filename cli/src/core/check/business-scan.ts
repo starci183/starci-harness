@@ -72,7 +72,7 @@ export const loadBusinessPolicy = (root: string): BusinessPolicy => {
         const list: unknown = doc[key] ?? []
         if (!Array.isArray(list)) return invalid(`${key} is a list`)
         return list.map((entry: unknown, at) => {
-            if (!isRecord(entry) || Object.keys(entry).sort().join() !== [...fields].sort().join() || fields.some((field) => !isText(entry[field]))) return invalid(`${key}[${String(at)}] holds exactly ${fields.join(", ")}`)
+            if (!isRecord(entry) || Object.keys(entry).length !== fields.length || fields.some((field) => !isText(entry[field]))) return invalid(`${key}[${String(at)}] holds exactly ${fields.join(", ")}`)
             return Object.fromEntries(fields.map((field) => [field, String(entry[field]).trim()]))
         })
     }

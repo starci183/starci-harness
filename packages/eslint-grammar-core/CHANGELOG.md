@@ -2,6 +2,7 @@
 
 ## 0.38.3 - 2026-11-13
 
+- Changed: `no-raw-scroll` says "Grammar never shows scrollbars" in its description, message, doc and law title; spec fixtures and docs use neutral English copy. No rule id or behaviour changes.
 - Changed: version stamp only, cut with `@starci/hfs` 6.10.0; requires `@starci/hfs` `~6.10.0` and `@starci/eslint-canon-fe` `~9.18.0`. No rule changes.
 
 ## 0.38.2 - 2026-11-13

@@ -84,7 +84,7 @@ const EndCard = () => {
       label="Assistant permissions"
       selectionMode="multiple"
       items={[
-        { id: 'read', title: 'Read messages', subtitle: 'View the customer's conversation for context.' },
+        { id: 'read', title: 'Read messages', subtitle: 'View the conversation of the customer for context.' },
         { id: 'send', title: 'Message customers', subtitle: 'Reply to customers over Chat, on behalf of the shop.', control: <G.Tabs appearance="primary" label="Message customers" selectedKey={sendMode} onSelect={setSendMode} items={modeItems(false)} /> },
         { id: 'order', title: 'Update orders', subtitle: 'Change status and add order notes.', control: <G.Tabs appearance="primary" label="Update orders" selectedKey={orderMode} onSelect={setOrderMode} items={modeItems(!value.includes('order'))} /> },
         { id: 'notify', title: 'Notify team', control: <G.Switch label="Notify now" size="md" isLabelHidden isSelected={isOn} onSelectedChange={setIsOn} /> },

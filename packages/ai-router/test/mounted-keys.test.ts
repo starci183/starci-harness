@@ -107,8 +107,8 @@ describe("mounted keys", () => {
         assert.deepEqual(
             (await h.admin.list()).map((key) => [key.label, key.mounted]).sort(),
             [
-                ["batch", undefined],
                 ["app_one", true],
+                ["batch", undefined],
             ],
         )
     })

@@ -2,6 +2,7 @@
 
 ## 9.18.0 - 2026-11-13
 
+- Changed: spec fixtures, rule comments, messages and the docs use a neutral sample domain; no rule id or behaviour changes.
 - Changed: cut with `@starci/hfs` 6.10.0; requires `@starci/hfs` `~6.10.0`. No rule changes.
 
 ## 9.17.0 - 2026-11-13

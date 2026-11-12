@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.0-alpha.118 - 2026-11-13
+
+- Added: `starci check business`. It refuses a file of the harness tree that holds, as a whole token, an app, product or provider identifier `policy/business-terms.yaml` denies, outside the exact `{path, term}` pairs of its `allow`; an `allow` entry nothing uses is red too. A token is bounded by a character that is no letter or digit, by the edge of the text or by a camelCase boundary, in any letter case, and a file's path is judged with its text. It decides by membership in the list and never by meaning (`cli/src/core/check/business-scan.ts`); CI runs it as a `repo` gate. Proved against a scratch repository.
+- Changed: comments and one test fixture of the CLI name no app; `ops/liveness.yaml` and `ops/host/sonar/compose.yaml` say "a reference app" and "the legacy runtime".
+- Removed: `.github/workflows/images.yml`, which only published the runtime layer images that are gone.
+
 ## 1.1.0-alpha.117 - 2026-11-12
 
 - Fixed: the heavy governor sizes a room from the memory a command can really take. On Windows the free RAM it admits on is never more than the free commit charge (`hostFreeMb`, Win32_OperatingSystem FreeVirtualMemory read at most every 2 s): a child that cannot commit fails to start (exit 3221225773, STATUS_COMMITMENT_LIMIT) however much RAM is free, and a busy host had 5-6 GB less commit than RAM. A test run's admitted workers also reach a runner the argv does not name, as `STARCI_TEST_WORKERS` (`TEST_WORKERS_ENV`), which `@starci/hfs` 6.8.7's spec run takes as `node --test --test-concurrency`: unbounded it started 27 spec processes on a 28-core host, took twice the commit its slot planned and turned unrelated specs red (`pkg test hfs`).

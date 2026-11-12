@@ -242,9 +242,9 @@ test('a second block reuses the one copy of the status owners, and a block witho
   addKind({ repoRoot: root, noun: 'block', name: 'handoff-block', options: { shapes: SHAPES } });
   const second = addKind({ repoRoot: root, noun: 'block', name: 'item-list', options: { read: 'handoff' } });
   assert.ok(!second.created.some((relative) => relative.includes('/hooks/slot/') || relative.includes('/SlotView/')));
-  const pure = fs.readFileSync(path.join(app, 'src', 'components', 'blocks', 'LeadList', 'component.tsx'), 'utf8');
+  const pure = fs.readFileSync(path.join(app, 'src', 'components', 'blocks', 'ItemList', 'component.tsx'), 'utf8');
   assert.doesNotMatch(pure, /readonly shape|switch/);
-  assert.match(fs.readFileSync(path.join(app, 'stories', 'blocks', 'LeadList.stories.tsx'), 'utf8'), /export const ReadySkeleton/);
+  assert.match(fs.readFileSync(path.join(app, 'stories', 'blocks', 'ItemList.stories.tsx'), 'utf8'), /export const ReadySkeleton/);
   assert.deepEqual(typecheck(app), []);
 });
 
