@@ -38,10 +38,20 @@ export function lockOf(main: readonly VerifyRun[] | null, sameSha: readonly Veri
   return { state: 'locked', line: `${VERIFY_LOCKED}: the newest cache verify${own} concluded ${newest.conclusion ?? 'unknown'} (${newest.url ?? String(newest.databaseId)}); fix the record it names and dispatch ${VERIFY_WORKFLOW} on the release branch until it is green for this sha (or a newer verify of main is), or run the full gate (--full)` };
 }
 
+/** gh's answer for a workflow file the default branch does not hold yet: HTTP 404 naming the workflow, on its error stream or in its output. */
+function isWorkflowNotOnDefaultBranch(answer: Partial<SpawnResult> & { status: number | null }): boolean {
+  if (answer.status === 0) return false;
+  const text = `${String(answer.stderr ?? '')}\n${String(answer.stdout ?? '')}`;
+  return /HTTP 404\b/u.test(text) && text.includes(`workflow ${VERIFY_WORKFLOW} not found on the default branch`);
+}
+
 /** The runs `gh run list` answered for `args`, or null when gh could not answer. */
 function listRuns(ctx: VerbContext, args: readonly string[]): VerifyRun[] | null {
   let answer: Partial<SpawnResult> & { status: number | null };
   try { answer = ctx.spawn('gh', ['run', 'list', '--workflow', VERIFY_WORKFLOW, ...args, '--limit', '20', '--json', FIELDS], { cwd: ctx.cwd, env: ctx.env }); } catch { answer = { status: null }; }
+  // GitHub answers 404 for a workflow its default branch does not hold yet (an app whose first release brings cache-verify.yml to main):
+  // no verify has run, which is the "none yet" case, not an unreadable one.
+  if (!answer.error && isWorkflowNotOnDefaultBranch(answer)) return [];
   if (answer.error || answer.status !== 0) return null;
   try {
     const rows: unknown = JSON.parse(String(answer.stdout));

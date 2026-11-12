@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.1.0-alpha.118 - 2026-11-13
+## 1.1.0-alpha.119 - 2026-11-13
 
 - Changed (rule 9): the harness holds no app's business, and it lists no app's words either: the rule is held by review, with no check and no term list in `policy/`.
 - Removed: `docs/knowledge-analysis/`, the legacy runtime's analysis notes, which named apps; the shape exception that kept the folder (`contexts/hfs/harness.yaml` `never.knowledge-outside-contexts`) goes with it.
@@ -8,7 +8,13 @@
 - Removed: `.github/workflows/images.yml`, which only published the runtime layer images that are gone.
 - Removed (breaking for an app that used it): the verb `starci app remove` (`core/app/remove.ts`, schema `starci/app-remove@1`), which only forwarded `remove module <name>` to @starci/hfs; `starci app add module <name>` is gone with it, since @starci/hfs 6.10.0 holds no module scaffold. An app that keeps module packages owns them itself.
 
+## 1.1.0-alpha.118 - 2026-11-12
+
+- Changed: the CLI requires @starci/hfs@6.9.1, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
+
 ## 1.1.0-alpha.117 - 2026-11-12
+
+- Changed: the CLI requires @starci/hfs@6.9.0, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
 
 - Fixed: the heavy governor sizes a room from the memory a command can really take. On Windows the free RAM it admits on is never more than the free commit charge (`hostFreeMb`, Win32_OperatingSystem FreeVirtualMemory read at most every 2 s): a child that cannot commit fails to start (exit 3221225773, STATUS_COMMITMENT_LIMIT) however much RAM is free, and a busy host had 5-6 GB less commit than RAM. A test run's admitted workers also reach a runner the argv does not name, as `STARCI_TEST_WORKERS` (`TEST_WORKERS_ENV`), which `@starci/hfs` 6.8.7's spec run takes as `node --test --test-concurrency`: unbounded it started 27 spec processes on a 28-core host, took twice the commit its slot planned and turned unrelated specs red (`pkg test hfs`).
 - Changed: `starci app check` and `starci app sync` say what `@starci/hfs` 6.9.0 adds: the project checks `ext/manifest.json` `checks` declares run as their own step (R402), and sync names a check kept outside `ext/checks/` with the declaration to add. With 6.9.0, `starci app stack up` refuses a base port range another registered project owns (`STACK_LOCAL_BASE_PORT_TAKEN`) and `starci app check --env local` reports it (`STACK_BASE_PORT_OVERLAP`, report-only).

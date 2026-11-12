@@ -13,7 +13,7 @@ const HEAD = 'd'.repeat(40);
 const run = (id: number, conclusion: string, createdAt: string, status = 'completed'): VerifyRun => ({ databaseId: id, status, conclusion, createdAt, url: `https://ci.example.invalid/${id}` });
 
 /** A context whose gh answers `gh` (status and stdout, or a throw) and whose git answers a clean checkout at HEAD. */
-function contextOf(t: TestContext, gh: { status: number; stdout: string } | 'throw'): { ctx: VerbContext; asked: string[][] } {
+function contextOf(t: TestContext, gh: { status: number; stdout: string; stderr?: string } | 'throw'): { ctx: VerbContext; asked: string[][] } {
   const root = fs.mkdtempSync(path.join(tempRoot(), 'hfs-cache-verify-lock-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const asked: string[][] = [];
@@ -59,6 +59,15 @@ test('the lock is read from the verify workflow of the default branch, and an un
   assert.equal(readVerifyLock(contextOf(t, { status: 0, stdout: 'not json' }).ctx, 'main').state, 'unread');
   assert.equal(readVerifyLock(contextOf(t, { status: 0, stdout: '{}' }).ctx, 'main').state, 'unread');
   assert.equal(readVerifyLock(contextOf(t, 'throw').ctx, 'main').state, 'unread');
+});
+
+test('a cache-verify.yml the default branch does not hold yet (HTTP 404, the first release) is no verify yet: the lock is open; any other 404 stays unread', (t) => {
+  const missing = { status: 1, stdout: '', stderr: `HTTP 404: workflow ${VERIFY_WORKFLOW} not found on the default branch (https://api.github.com/repos/o/r/actions/workflows/${VERIFY_WORKFLOW})` };
+  const first = readVerifyLock(contextOf(t, missing).ctx, 'main');
+  assert.equal(first.state, 'open');
+  assert.match(first.line, /no finished cache-verify\.yml run yet/u);
+  assert.equal(readVerifyLock(contextOf(t, { status: 1, stdout: '', stderr: 'HTTP 404: Not Found (https://api.github.com/repos/o/r)' }).ctx, 'main').state, 'unread', 'a missing repository is not a missing workflow');
+  assert.equal(readVerifyLock(contextOf(t, { status: 1, stdout: '', stderr: 'HTTP 401: Bad credentials' }).ctx, 'main').state, 'unread');
 });
 
 test('a red nightly verify refuses the release gate before any row runs; the full gate (--full) never reads the cache and passes the lock', async (t) => {
