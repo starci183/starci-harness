@@ -1,7 +1,7 @@
 {
   "name": "@starci/auth",
-  "version": "0.6.0",
-  "description": "The sign-in of a StarCi app in one package, for both editions. Lite: a NestJS module (EdDSA access tokens with a multi-key JWKS, bcrypt passwords, pluggable OAuth sign-in providers with state and PKCE (Google, GitHub), rotating refresh tokens with a reuse grace window and reuse detection, a failures-only sign-in limit, the refresh cookie). Full: the OIDC client of the identity provider (discovery, JWKS with caching and rotation, algorithm-pinned token checks, role mapping, the authorization code flow with PKCE and nonce, Keycloak brokering and admin) and issuer presets (Keycloak, Google ID tokens, GitHub Actions OIDC). The door contracts, the front-end auth clients (lite and OIDC) with React bindings, and test doubles with a fake OIDC issuer.",
+  "version": "0.7.0",
+  "description": "The sign-in of a StarCi app in one package, for both editions. Lite: a NestJS module (EdDSA access tokens with a multi-key JWKS, bcrypt passwords, pluggable OAuth sign-in providers with state and PKCE (Google, GitHub), rotating refresh tokens with a reuse grace window and reuse detection, a failures-only sign-in limit, the refresh cookie, the API-key strategy with its issue and register helpers). Full: the OIDC client of the identity provider (discovery, JWKS with caching and rotation, algorithm-pinned token checks, role mapping, the authorization code flow with PKCE and nonce, Keycloak brokering and admin) and issuer presets (Keycloak, Google ID tokens, GitHub Actions OIDC). The door contracts, the front-end auth clients (lite and OIDC) with React bindings, and test doubles with a fake OIDC issuer.",
   "keywords": [
     "auth",
     "jwt",
@@ -12,6 +12,7 @@
     "github-oauth",
     "pkce",
     "refresh-token",
+    "api-key",
     "oidc",
     "openid-connect",
     "keycloak",

@@ -26,7 +26,10 @@ the glue of the package `@starci/auth`, which verifies the app's own EdDSA acces
 signing key and any number of retired keys published as the JWKS, so a key rotates without signing anybody out; in
 full, `integrations/keycloak`, the glue of its `@starci/auth/oidc` entry): the verifier pins the algorithm, checks issuer and
 audience, and builds the principal only after verification. `@starci/auth` is the one sign-in package of both editions and every
-provider and issuer lives in it. In lite it alone holds Passport (the sign-in providers, Google OAuth 2.0 and GitHub, each with state and PKCE in a
+provider and issuer lives in it. It also holds the API-key strategy of a `@Credential({ kind: "api-key" })` door: `ApiKeyVerifier` parses
+`Authorization: Bearer <prefix><keyId>.<secret>`, looks the id up through the app's `ApiKeyStore` port over its own key table,
+compares the secret's SHA-256 in constant time and refuses a revoked or expired key, and `issueApiKey` / `registerApiKey` store only
+that hash, so the app's `CredentialAuthenticator` keeps the table and judges the scope (workspace, holder, scopes) the record carries. In lite it alone holds Passport (the sign-in providers, Google OAuth 2.0 and GitHub, each with state and PKCE in a
 signed cookie of its own, `providers: [google(...), github(...)]`; email and password with bcrypt) and `jose`, signs the access tokens, serves their public JWKS, counts only sign-in
 failures against the limit and rotates the refresh token, which lives only in an httpOnly, Secure cookie the package sets;
 a spent refresh token presented again inside a short grace window is a racing tab and is answered with an access token
@@ -62,8 +65,8 @@ async find(userId: string, workspaceId: string, orderId: string): Promise<OrderV
 ```
 
 Enforced by: `jwt-alg-pinned` (R260), `tier-direction` (R26), `infra-import-owner` (R328, both editions), `own-jwks-only` and the
-machine `own-jwks-principal` (R329), `refresh-token-cookie-only` (R330), the hfs check `db-app-role` (R255: no grant of the application role on schema `auth`); refresh rotation with reuse detection and
-resource authorization in the service are held by specs and review.
+machine `own-jwks-principal` (R329), `refresh-token-cookie-only` (R330), the hfs check `db-app-role` (R255: no grant of the application role on schema `auth`); refresh rotation with reuse detection,
+the API-key strategy and resource authorization in the service are held by specs and review.
 
 ## BE-AUTH-3 Constant-time comparison and safe cookies
 

@@ -63,6 +63,9 @@ export const AUTH_ERROR_CODES = {
     ProviderRejected: "PASSPORT_PROVIDER_REJECTED",
     ProviderUnavailable: "PASSPORT_PROVIDER_UNAVAILABLE",
     ProvidersInvalid: "PASSPORT_PROVIDERS_INVALID",
+    ApiKeyRejected: "PASSPORT_API_KEY_REJECTED",
+    ApiKeyMalformed: "PASSPORT_API_KEY_MALFORMED",
+    ApiKeyRecordInvalid: "PASSPORT_API_KEY_RECORD_INVALID",
 } as const
 
 /** One wire code of sign-in. */
@@ -92,6 +95,9 @@ export const AUTH_ERROR_KINDS: Readonly<Record<AuthErrorCode, AuthErrorKind>> = 
     [AUTH_ERROR_CODES.ProviderRejected]: "unauthenticated",
     [AUTH_ERROR_CODES.ProviderUnavailable]: "unavailable",
     [AUTH_ERROR_CODES.ProvidersInvalid]: "internal",
+    [AUTH_ERROR_CODES.ApiKeyRejected]: "unauthenticated",
+    [AUTH_ERROR_CODES.ApiKeyMalformed]: "invalid",
+    [AUTH_ERROR_CODES.ApiKeyRecordInvalid]: "internal",
 }
 
 /** The person a session belongs to. */

@@ -1,4 +1,31 @@
 export { AUTH_AUTHENTICATOR, AUTH_DOORS_SERVICE, AUTH_FLOWS, AUTH_GOOGLE_STATE, AUTH_GOOGLE_STRATEGY, AUTH_LOCAL_STRATEGY, AUTH_PASSWORDS, AUTH_PRINCIPAL_VERIFIER, AUTH_PROVIDERS, AUTH_REFRESH_COOKIE, AUTH_SESSIONS, AUTH_SIGN_IN_BUDGET, AUTH_TOKENS } from "./auth.tokens.ts"
+export {
+    API_KEY_HEADER,
+    API_KEY_REJECTED_EVENT,
+    API_KEY_SECRET_BYTES,
+    API_KEY_TEXT_MAX,
+    ApiKeyPlaintext,
+    ApiKeyVerifier,
+    apiKeySecretMatches,
+    apiKeySecretSha256,
+    apiKeyTextOf,
+    issueApiKey,
+    parseApiKey,
+    readApiKeyText,
+    registerApiKey,
+} from "./api-keys.ts"
+export type {
+    ApiKeyHash,
+    ApiKeyHeaders,
+    ApiKeyPrincipal,
+    ApiKeyRecord,
+    ApiKeyRefusal,
+    ApiKeyStore,
+    ApiKeyVerifierOptions,
+    IssueApiKeyOptions,
+    IssuedApiKey,
+    PresentedApiKey,
+} from "./api-keys.ts"
 export { AuthModule, MODULE_OPTIONS_TOKEN as AUTH_OPTIONS } from "./auth.module.ts"
 export type { AuthModuleExtras, AuthRegisterAsyncOptions, AuthRegisterOptions } from "./auth.module.ts"
 export { SignInBudget } from "./budget.ts"

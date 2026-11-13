@@ -5,7 +5,7 @@ verify their identity provider's tokens (`./oidc`). Every provider and issuer li
 
 | entry | edition | holds |
 |---|---|---|
-| `@starci/auth/server` | lite | the NestJS module (`AuthModule.register` / `registerAsync`), the token signer and verifier (EdDSA, multi-key JWKS), rotating sessions, the sign-in budget, the refresh cookie, the passport flows, the sign-in providers (`google`, `github`, `defineProvider`) and the doors that run them |
+| `@starci/auth/server` | lite | the NestJS module (`AuthModule.register` / `registerAsync`), the token signer and verifier (EdDSA, multi-key JWKS), rotating sessions, the sign-in budget, the refresh cookie, the passport flows, the sign-in providers (`google`, `github`, `defineProvider`) and the doors that run them, and the API-key strategy (`ApiKeyVerifier`, `issueApiKey`, `registerApiKey`) |
 | `@starci/auth/oidc` | full | `OidcModule.register` / `registerAsync` (also `createOidc` without Nest): issuer discovery, the provider's JWKS with caching and rotation, the token verifier, `OidcPrincipalVerifier`, role mapping, `OidcClient` (authorization code flow with PKCE, state and nonce), `OidcTokenClient`, `OidcAdminClient`, `OidcBroker`, and the issuer presets (`keycloakIssuer`, `googleIssuer`, `githubActionsIssuer`, `createIssuerVerifier`) |
 | `@starci/auth/client` | lite | `createAuthClient`: access token in memory, one shared refresh, signed out only on 401 or 403 |
 | `@starci/auth/client/oidc` | full | `createOidcClient`: the browser half of a public OIDC client (PKCE redirect, callback, one shared refresh, the token in memory) |
@@ -57,6 +57,41 @@ primary verified address from `/user/emails`; a public address only is passed as
 A next provider is one file that calls `defineProvider({ id, options, profileOf, strategy })`: `strategy(context)` builds a passport
 strategy that keeps its round trip in `context.state` (an `OAuthStateClient`) and signs in through `signInWithProvider(context.authenticator, profile)`;
 the module registers it under `id` and the doors serve it.
+
+### API keys
+
+A machine caller (a service, an MCP client, a CLI) authenticates with a key the app issued: `Authorization: Bearer <prefix><keyId>.<secret>`,
+and `X-Api-Key: <key>` too when the verifier accepts it (a request naming both is refused). The app owns the table and the scope; the
+package owns the key format, the hash, the compare and the refusals.
+
+```ts
+import { ApiKeyVerifier, issueApiKey, readApiKeyText, registerApiKey } from "@starci/auth/server"
+
+// integrations/passport: the store is the app's port over its own key table; the scope is whatever the row holds
+const keys = new ApiKeyVerifier<{ workspaceId: string }>({
+    store: { findApiKey: (keyId) => credentials.findLive(keyId) }, // { id, secretSha256, revokedAt?, expiresAt?, scope } | null
+    prefix: "", // optional, e.g. "nvk_", so a leaked key is recognisable
+    acceptApiKeyHeader: false,
+    logger, clock,
+})
+const principal = await keys.authenticate(request.headers) // { keyId, scope }, or throws AuthError PASSPORT_API_KEY_REJECTED
+
+const issued = issueApiKey() // { id: a random uuid, secretSha256, key }; store id + secretSha256, show key.reveal() once
+const registered = registerApiKey(await readApiKeyText(process.stdin)) // { id, secretSha256 } of a key made elsewhere
+```
+
+| step | rule |
+|---|---|
+| the key | `<prefix><keyId>.<secret>`: the id `[A-Za-z0-9_-]{1,128}` (a random UUID when issued), the secret 32 random bytes in base64url (43 characters; 22 to 256 accepted on register), at most 1024 characters in all; an optional fixed prefix `[A-Za-z0-9_-]{0,32}` |
+| the lookup | the parsed key id through the app's `ApiKeyStore.findApiKey`; a malformed header or key never reaches the store |
+| the compare | the SHA-256 of the secret against the stored hex SHA-256 with `timingSafeEqual` over 32 bytes; an unknown id is compared against a digest no secret has, so it costs the same; a stored value that is no SHA-256 is `PASSPORT_API_KEY_RECORD_INVALID` (internal), never a refusal |
+| the record | after the secret matches, a key with `revokedAt` set or `expiresAt` at or before now is refused |
+| a refusal | `verify` answers `{ kind: "refused", code: "PASSPORT_API_KEY_REJECTED", detail: { reason, keyId? } }` (reason `missing`, `malformed`, `ambiguous`, `unknown`, `secret`, `revoked`, `expired`); `authenticate` throws it as an `AuthError` (unauthenticated); the logger's `auth.api-key-rejected` carries the same detail, never the key or its secret |
+| issue | `issueApiKey({ id?, prefix? })`: only `id` and `secretSha256` are stored; `key` is an `ApiKeyPlaintext` whose `reveal()` gives the text once and which prints, logs and serialises as `[api key]` |
+| register | `registerApiKey(text, { prefix? })` keeps the id and the hash of a given key (the newline of a pipe trimmed); `readApiKeyText(stream)` reads it from stdin, bounded; any other text is `PASSPORT_API_KEY_MALFORMED` (invalid), whose context never holds it |
+
+What the key may do (scopes, a holder's role, the workspace a call acts for, a rate) is the app's: it maps the principal's `scope`
+and judges it after `authenticate`, in its `CredentialAuthenticator` behind `@Credential({ kind: "api-key" })` (BE-AUTH-1).
 
 ## Full: the back end
 

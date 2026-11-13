@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.0 - 2026-11-13
+
+- Added: the API-key strategy in `@starci/auth/server`, so an app keeps only its key table and scope. `ApiKeyVerifier<S>` reads `Authorization: Bearer <prefix><keyId>.<secret>` (and `X-Api-Key` with `acceptApiKeyHeader`; both at once is refused), asks the app's `ApiKeyStore<S>.findApiKey(keyId)` for an `ApiKeyRecord<S>` (`id`, `secretSha256`, `revokedAt`, `expiresAt`, `scope`), compares the secret's SHA-256 with `timingSafeEqual` (an unknown id is compared too) and refuses a revoked or expired key; `verify` answers an `Outcome` of `ApiKeyPrincipal<S>` (`keyId`, `scope`), `authenticate` throws, `verifyKey` takes a bare key text. Helpers: `issueApiKey` (a random UUID id and a 32-byte secret; the hash to store and an `ApiKeyPlaintext` that prints as `[api key]`), `registerApiKey` and `readApiKeyText` (a given key from stdin, hash only), `parseApiKey`, `apiKeyTextOf`, `apiKeySecretSha256`, `apiKeySecretMatches`, and the constants `API_KEY_HEADER`, `API_KEY_REJECTED_EVENT`, `API_KEY_SECRET_BYTES`, `API_KEY_TEXT_MAX`.
+- Added: the codes `PASSPORT_API_KEY_REJECTED` (unauthenticated; the reason `missing`, `malformed`, `ambiguous`, `unknown`, `secret`, `revoked` or `expired` in its detail), `PASSPORT_API_KEY_MALFORMED` (invalid: a key text, id or prefix outside the format) and `PASSPORT_API_KEY_RECORD_INVALID` (internal: a stored hash that is no SHA-256).
+- Specs: `src/server/api-keys.spec.ts` (issue and verify, the prefix, both headers, each refusal reason, a revoked key with a wrong secret, malformed headers never reaching the store, the timing-safe compare and a corrupt stored hash, no key material in a log, an answer or an error, register from text and from a stream).
+
 ## 0.6.0 - 2026-11-09
 
 One auth package for both editions: the OIDC sign-in of `@starci/auth-oidc` moves in, and the lite sign-in providers become pluggable. Every 0.5.0 export, option, door, cookie and code is unchanged.
