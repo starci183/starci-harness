@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.25.2 - 2026-11-13
+
+- Fixed (R262, `health-signals`, `ready-real`): `RangeError: Maximum call stack size exceeded` at the first file of an app that holds a constant used many times. `expandedNodes` re-expanded a local constant at every identifier that named it (a cost per reference, and a doubling per nested constant) and appended each expansion with `push(...expansion)`, which overflows the call stack once the list is large. Each constant is now expanded once per call under a visited set shared by the whole walk, nodes are appended one by one, and a self-referencing constant or a ring of constants ends at its second visit. Verdicts are unchanged. Spec `src/health-ready.spec.ts` (a tripling chain of constants, a ring, a self reference). 3.25.1 is taken by the open branch `pkg/claude-lint-split-s2`, so this patch is 3.25.2.
+
 ## 3.25.0 - 2026-11-13
 
 - Changed (PROJECT-LINT-3, breaking for an app that relied on the fixed layout): `starciBePackagesConfig` knows no folder of a root package. It judges every script file of `packages/<pkg>/src/**` but the slots the project declares `lint: "fe"` in `ext/manifest.json` `packages` (the package view's `packageLint`); a back-end slot declared before a front-end slot it lies in stays back end. The fixed `src/workbench/**` and `src/public/**` ignores and the `src/workbench/contract/**` block are gone, so an undeclared package is back end whole. Spec `src/packages-config.spec.ts`.

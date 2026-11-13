@@ -170,3 +170,18 @@ for (const edition of ["lite", "full"] as const) {
         })
     })
 }
+
+for (const edition of ["lite", "full"] as const) {
+    test(`BE_READY_REAL@${edition}: constants referenced many times, in a tripling chain, in a ring or by themselves expand once, never overflow the stack`, () => {
+        const levels = Array.from({ length: 26 }, (_, index) => `const level${index + 1} = [level${index}, level${index}, level${index}]`).join("; ")
+        const shape = `const level0 = 1; ${levels}; const ring = [ring, other]; const other = [ring, ring]; const self = self; void level26; void ring; void self`
+        const crowded = queryReadinessFixture({
+            "src/modules/platform/http-security/readiness.ts": (code) => code.replace("const TIMEOUT = 1000;", `const TIMEOUT = 1000; ${shape};`),
+        })
+        const started = Date.now()
+        assert.doesNotThrow(() => {
+            testerOf(crowded.root, edition).run("ready-real", readyReal, { valid: [{ filename: crowded.filename, code: crowded.code }], invalid: [] })
+        })
+        assert.ok(Date.now() - started < 20_000, "the expansion of a constant is not repeated per reference")
+    })
+}

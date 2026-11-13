@@ -118,15 +118,29 @@ const bindingsOf = (program: Node): Map<string, Node> => {
     return bindings
 }
 
-/** Expand local constants when proving a race: a timeout promise or duration may be held in a const. */
-function expandedNodes(node: Node | null | undefined, bindings: ReadonlyMap<string, Node>, seen: ReadonlySet<string> = new Set()): Node[] {
+/**
+ * Expand local constants when proving a race: a timeout promise or duration may be held in a const.
+ * Each constant is expanded once per call (a visited set shared by the whole walk), so a constant referenced many times, constants that
+ * reference each other in a chain or a ring, and a constant that refers to itself cost one visit each, never one per reference.
+ * The nodes are appended one by one: a spread of a large expansion into `push` overflows the call stack.
+ */
+function expandedNodes(node: Node | null | undefined, bindings: ReadonlyMap<string, Node>): Node[] {
     const nodes: Node[] = []
-    walk(node, (child) => {
-        nodes.push(child)
-        if (child.type !== "Identifier" || seen.has(child.name) || !bindings.has(child.name)) return
-        const next = new Set(seen).add(child.name)
-        nodes.push(...expandedNodes(bindings.get(child.name), bindings, next))
-    })
+    const seen = new Set<Node>()
+    const expanded = new Set<string>()
+    const visit = (start: Node | null | undefined): void => {
+        walk(start, (child) => {
+            if (seen.has(child)) return
+            seen.add(child)
+            nodes.push(child)
+            if (child.type !== "Identifier" || expanded.has(child.name)) return
+            const init = bindings.get(child.name)
+            if (!init) return
+            expanded.add(child.name)
+            visit(init)
+        })
+    }
+    visit(node)
     return nodes
 }
 
