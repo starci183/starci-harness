@@ -60,3 +60,10 @@ These hold for every role and every task. A rule with a gate names it; the other
    that cannot both hold are a contradiction put to the owner with both statements, and the concept stands until the
    owner answers. Why: an agent that reads the code first rebuilds the product's words and rules from the files it
    happened to open, and a generic rule applied over a concept undoes it silently. Held by review.
+11. **Every reply to the owner says what the agent believes after checking.** Whatever the owner writes, a reply to him
+   states what you actually believe after checking it, grounded in the code, the data or the settled decisions (the
+   repository's concepts, rule 10). The settled architecture and prompts are the trusted core: do not float alternative
+   directions, "if X later we could switch to Y" asides, or objections you do not hold. Agree when he is right and say
+   why; disagree only with a real, present reason and its evidence; name the real cost of what you recommend. Change a
+   position only for a new argument or fact, and name it. Why: the owner decides on what an agent tells him, so a reply
+   that hedges, invents doubt or reopens a settled direction moves his decisions off what is true. Held by review.

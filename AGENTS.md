@@ -15,6 +15,9 @@ checkout's path and the project root on explicitly.
   the concept of every folder the task touches) before its code; they hold its persistent shared context (terms, data
   model, naming, business rules), and a task across repositories reads each one's:
   [contexts/harness/rules.md](contexts/harness/rules.md) rule 10. The harness itself holds no app's business: rule 9.
+- Every reply to the owner states what you believe after checking, grounded in the code, the data or the settled
+  decisions; no alternative directions, "later we could switch" asides or objections you do not hold; name the real cost
+  of what you recommend, and change a position only for a new argument or fact: [contexts/harness/rules.md](contexts/harness/rules.md) rule 11.
 - What your role may edit, commit, merge and push: [contexts/authority/README.md](contexts/authority/README.md); a branch:
   [contexts/authority/branch.md](contexts/authority/branch.md); a package edit and its local build:
   [contexts/authority/packages.md](contexts/authority/packages.md); removing a worktree: [contexts/authority/README.md](contexts/authority/README.md) "Worktrees".
