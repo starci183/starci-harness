@@ -2791,7 +2791,7 @@ rules:
     witness:
       - {path: packages/eslint/be/jobs-projections-coverage.spec.mjs, edition: lite, codes: [BE_JOB_EFFECT_PIECE]}
       - {path: packages/eslint/be/jobs-projections-coverage.spec.mjs, edition: full, codes: [BE_JOB_EFFECT_PIECE]}
-    law: "In a job step (slot be.feature.jobs.steps), and in a function that takes a `ClaimedJob`, every call on a receiver typed by an `integrations` owner is the `act` or the `confirm` read of an `Effects.once(key, effect, call)` call of `platform/effects`, which commits the intent row before the act and settles it with the result after, under the key `<jobId>:<effect>[:<part>]` (pattern fenced-job); a read belongs in the application layer, not in a job."
+    law: "In a job step (slot be.feature.jobs.steps), and in a function that takes a `ClaimedJob`, every call on a receiver typed by an `integrations` owner that its port does not declare an outside read (`OutsideReads<'member'>` of `platform/effects`, extended by an interface or implemented by a class) is the `act` or the `confirm` read of an `Effects.once(key, effect, call)` call of `platform/effects`, which commits the intent row before the act and settles it with the result after, under the key `<jobId>:<effect>[:<part>]` (pattern fenced-job); a declared read needs no intent, an undeclared member is an act, and a read that decides an act does not excuse the act."
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["BE_JOB_EFFECT_PIECE"]

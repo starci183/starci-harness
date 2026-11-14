@@ -99,6 +99,19 @@ test("job-effect-piece: an outside call of a job is the act or the confirm of Ef
                 // an act bound to a const and handed on as the act of the call object
                 { filename: DOMAIN, code: `${STEP_HEAD}export class Placing { constructor(private readonly mail: MailGateway, private readonly effects: Effects) {}
  run(job?: ClaimedJob): Promise<void> { const act = (): Promise<void> => this.mail.send("a"); if (job === undefined) return act(); return this.effects.once(job.jobId + ":mail", { name: "mail.send", settle: "repeatable" }, { act }) } }` },
+                // a member its port declares an outside read (OutsideReads of platform/effects) has no intent to protect
+                { filename: DOMAIN, code: `${STEP_HEAD}import type { MailBox, MailReader } from "@modules/integrations/mailer/mail-box.port"
+import type { FakeBox } from "@modules/integrations/mailer/own-reads.port"
+export class Placing { constructor(private readonly box: MailBox) {}
+ run(job: ClaimedJob): Promise<string> { return this.box.status(job.jobId) } }` },
+                { filename: STEP, code: `${STEP_HEAD}import type { MailBox, MailReader } from "@modules/integrations/mailer/mail-box.port"
+import type { FakeBox } from "@modules/integrations/mailer/own-reads.port"
+export const run = async (box: MailBox) => (await box.list()).length` },
+                // a class declares its reads by implementing the marker
+                { filename: DOMAIN, code: `${STEP_HEAD}import type { MailBox, MailReader } from "@modules/integrations/mailer/mail-box.port"
+import type { FakeBox } from "@modules/integrations/mailer/own-reads.port"
+export class Placing { constructor(private readonly reader: MailReader) {}
+ run(job: ClaimedJob): Promise<string> { return this.reader.status(job.jobId) } }` },
             ],
             invalid: [
                 { filename: STEP, code: `${STEP_HEAD}export const run = (mail: MailGateway) => mail.status("a")`, errors: [{ messageId: "outside" }] },
@@ -113,6 +126,25 @@ test("job-effect-piece: an outside call of a job is the act or the confirm of Ef
                 { filename: DOMAIN, code: `${STEP_HEAD}const mine = (effects: Effects, act: () => Promise<void>): Promise<void> => act()
 export class Placing { constructor(private readonly mail: MailGateway, private readonly effects: Effects) {}
  run(job: ClaimedJob): Promise<void> { return mine(this.effects, () => this.mail.send(job.jobId)) } }`, errors: [{ messageId: "outside" }] },
+                // a member the port does not declare a read is an act, even on a port that declares other reads
+                { filename: DOMAIN, code: `${STEP_HEAD}import type { MailBox, MailReader } from "@modules/integrations/mailer/mail-box.port"
+import type { FakeBox } from "@modules/integrations/mailer/own-reads.port"
+export class Placing { constructor(private readonly box: MailBox) {}
+ run(job: ClaimedJob): Promise<void> { return this.box.send(job.jobId) } }`, errors: [{ messageId: "outside" }] },
+                { filename: DOMAIN, code: `${STEP_HEAD}import type { MailBox, MailReader } from "@modules/integrations/mailer/mail-box.port"
+import type { FakeBox } from "@modules/integrations/mailer/own-reads.port"
+export class Placing { constructor(private readonly reader: MailReader) {}
+ run(job: ClaimedJob): Promise<void> { return this.reader.send(job.jobId) } }`, errors: [{ messageId: "outside" }] },
+                // a read used to decide an act does not excuse the act
+                { filename: DOMAIN, code: `${STEP_HEAD}import type { MailBox, MailReader } from "@modules/integrations/mailer/mail-box.port"
+import type { FakeBox } from "@modules/integrations/mailer/own-reads.port"
+export class Placing { constructor(private readonly box: MailBox) {}
+ async run(job: ClaimedJob): Promise<void> { if ((await this.box.status(job.jobId)) !== "sent") await this.box.send(job.jobId) } }`, errors: [{ messageId: "outside" }] },
+                // a look-alike marker declared outside platform/effects declares nothing
+                { filename: DOMAIN, code: `${STEP_HEAD}import type { MailBox, MailReader } from "@modules/integrations/mailer/mail-box.port"
+import type { FakeBox } from "@modules/integrations/mailer/own-reads.port"
+export class Placing { constructor(private readonly box: FakeBox) {}
+ run(job: ClaimedJob): Promise<string> { return this.box.status(job.jobId) } }`, errors: [{ messageId: "outside" }] },
                 // the key of the piece is not the act: an outside call there is a bare call
                 { filename: DOMAIN, code: `${STEP_HEAD}export class Placing { constructor(private readonly mail: MailGateway, private readonly effects: Effects) {}\n async run(job: ClaimedJob): Promise<void> { await this.effects.once(await this.mail.status(job.jobId), { name: "mail.send", settle: "repeatable" }, { act: async () => undefined }) } }`, errors: [{ messageId: "outside" }] },
             ],

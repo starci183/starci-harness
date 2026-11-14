@@ -31,7 +31,7 @@ atomically.
 
 Enforced by: `job-fence-required` (R158).
 
-## BE-JOBS-3 An outside effect goes through the effects piece
+## BE-JOBS-3 An outside write goes through the effects piece; an outside read needs no intent
 
 An act outside the app's database (a provider call, a mail, a paid model call, a write to an index) is made by
 `Effects.once(key, effect, call)` of `platform/effects`, never by a bare call on an integration port. The piece commits an intent
@@ -42,12 +42,21 @@ with no result is an unknown outcome, and the effect declares how it is settled:
 that throws releases its intent unless the failure says its outcome is unknown. A large answer is not kept on the row: the domain
 write that stores it settles the key in its own transaction (`settleIn(tx)`). A result that is a secret is sealed by the piece,
 never kept as plain text. A job declares its effects in its `defineJob` (BE-JOBS-9); the step and the domain method make no other
-outside call.
+outside WRITE.
+
+An outside READ (a page of an index, the rows a source holds, whether a client is configured) needs no intent: repeating it harms
+nothing, so there is nothing to protect. The port DECLARES its reads, never the caller and never a method's name: its contract
+extends `OutsideReads<"member" | ...>` of `platform/effects` (an interface), or implements it (a class). A member the port does not
+declare is an act, so a forgotten declaration only makes the check stricter. A member that creates or changes anything outside, even
+when it is safe to repeat (preparing a collection), is an act and goes through the piece as `repeatable`. A read that decides an act
+does not excuse the act: the act still goes through the piece.
 
 Why: fencing the local row does not fence the remote act. A row written before the act turns "did it happen?" after a crash
-into a declared answer, and one piece keeps that answer out of every feature.
+into a declared answer, and one piece keeps that answer out of every feature. A read changes nothing, so an intent row before it
+would be ceremony; declaring reads on the port keeps that judgement in one place, beside the members it judges.
 
-Enforced by: `job-effect-piece` (R159). Known gap: the rule reads job steps and the functions that take a `ClaimedJob`, so an
+Enforced by: `job-effect-piece` (R159): it reads the `OutsideReads` a port extends or implements, judged by its origin in
+`platform/effects`. Known gap: whether a declared read really changes nothing outside is held by review. Known gap: the rule reads job steps and the functions that take a `ClaimedJob`, so an
 outside call made by a domain method that no `ClaimedJob` reaches is judged by review.
 
 ## BE-JOBS-4 A job is a processor plus steps, both thin

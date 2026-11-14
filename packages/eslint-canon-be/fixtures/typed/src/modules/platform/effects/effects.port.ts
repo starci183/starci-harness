@@ -14,3 +14,11 @@ export interface EffectCall<T> {
 export interface Effects {
     once<T>(key: string, effect: EffectDeclaration, call: EffectCall<T>): Promise<T>
 }
+
+/** The key of the phantom member `OutsideReads` carries; never set. */
+declare const OUTSIDE_READS: unique symbol
+
+/** Fixture: what a port declares as its outside READS (no intent to protect); every member it does not name is an act. */
+export interface OutsideReads<Member extends string> {
+    readonly [OUTSIDE_READS]?: Member
+}

@@ -81,7 +81,7 @@ rules:
       manual: []
     relatedExamples: [fenced-job]
   - id: BE-JOBS-3
-    title: An outside effect goes through the effects piece
+    title: An outside write goes through the effects piece; an outside read needs no intent
     kind: mandatory
     hfsRules: [R159]
     requirement: |-
@@ -90,7 +90,9 @@ rules:
       it with the result after, under the key `<jobId>:<effect>[:<part>]` (the same on every retry and resume, never the fencing
       token). An unknown outcome is settled as the effect declares in its `defineJob`: `repeatable`, `confirm` (a declared read) or
       `person` (a dead letter). A large answer is settled by the domain write that stores it (`settleIn(tx)`), a secret result is
-      sealed by the piece. A read from an integration belongs in the application layer, not in a job.
+      sealed by the piece. An outside READ needs no intent: the port declares its reads by extending (an interface) or
+      implementing (a class) `OutsideReads<"member" | ...>` of `platform/effects`; an undeclared member is an act, and a member that
+      creates or changes anything outside, even safely repeatable, is an act (`repeatable`).
     rationale: |-
       Fencing the local row does not fence the remote effect. A row written before the act turns "did it happen?" after a crash
       into a declared answer.
@@ -98,6 +100,9 @@ rules:
       - id: case-1
         when: A job sends a mail
         write: 'await this.effects.once(`${job.jobId}:mail.send`, MAIL_SEND_EFFECT, { act: () => this.mailer.send(message) })'
+      - id: case-2
+        when: A job reads a page of an outside index
+        write: 'export interface SearchIndex extends OutsideReads<"page"> { page(after: string | null): Promise<Page>; upsert(points: ReadonlyArray<Point>): Promise<void> }'
     verification:
       automated:
         - BE_JOB_EFFECT_PIECE

@@ -858,11 +858,11 @@ BE_JOB_FENCE_REQUIRED:
 BE_JOB_EFFECT_PIECE:
   title: "An outside call of a job goes through the effects piece"
   title_vi: "Lời gọi ra ngoài của job không đi qua effects piece"
-  meaning_vi: "Một lời gọi tới integration trong `steps/<step>.step.ts`, hoặc trong hàm nhận `ClaimedJob`, không nằm trong `act` hay `confirm` của một lời gọi `Effects.once` của `platform/effects`."
+  meaning_vi: "Một lời gọi tới integration trong `steps/<step>.step.ts`, hoặc trong hàm nhận `ClaimedJob`, không nằm trong `act` hay `confirm` của một lời gọi `Effects.once` của `platform/effects`, và cổng đó không khai thành viên này là việc đọc (`OutsideReads<'member'>` của `platform/effects`)."
   causes_vi:
     - "Vi phạm luật R159: một tác dụng ra ngoài cơ sở dữ liệu chỉ an toàn khi dòng intent được commit trước khi làm và kết quả được ghi sau; nếu worker chết giữa chừng, effects piece xử lý kết quả chưa rõ theo khai báo của effect (`repeatable`, `confirm` hoặc `person`) thay vì làm lại mù quáng."
     - "Step hoặc phương thức domain gọi thẳng cổng integration."
-  nextStep_vi: "Op vừa tạo ra bản này sẽ được chạy lại để sửa theo lời nhắn của bộ kiểm tra: bọc lời gọi trong `effects.once(key, effect, { act, confirm? })`, khai effect trong `defineJob`; việc đọc dữ liệu đưa về lớp application."
+  nextStep_vi: "Op vừa tạo ra bản này sẽ được chạy lại để sửa theo lời nhắn của bộ kiểm tra: bọc lời gọi trong `effects.once(key, effect, { act, confirm? })`, khai effect trong `defineJob`; nếu thành viên chỉ ĐỌC bên ngoài (không tạo, không đổi gì), cổng khai nó trong `OutsideReads<'member'>` của `platform/effects`."
   owner: op-retry
   kind: check-finding
 
