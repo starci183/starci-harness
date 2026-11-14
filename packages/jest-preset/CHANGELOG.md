@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.10.0 - 2026-11-15
+
+- Added: `@starci/seed` joins the ESM-only dependencies compiled to CommonJS, so a back end's spec that imports the data standard's ports, memory references or git driver loads them. Spec: `test/preset.spec.ts`.
+
 ## 2.9.1 - 2026-11-13
 
 - Changed: the README's inbox example names a neutral provider. No code changes.
