@@ -26,6 +26,7 @@ const STEP = at("src/features/jobs/expire-orders/steps/expire-overdue.step.ts")
 const COMPENSATION = at("src/features/saga/place-order/compensations/reserve-order.compensation.ts")
 const SAGA_STEP = at("src/features/saga/place-order/steps/reserve-order.saga-step.ts")
 const WEBHOOK = at("src/features/webhooks/acme-pay/transport/http/acme-pay.webhook.ts")
+const SSE_DOOR = at("src/features/realtime/job-progress/transport/sse/job-progress.controller.ts")
 const SUBSCRIPTION = at("src/features/realtime/order-status/transport/graphql/order-status.subscription.ts")
 const CLI = at("src/features/cli/migrate/subs/run.cli.ts")
 const COMMAND = at("src/features/api/checkout/application/place-order.command.ts")
@@ -222,7 +223,7 @@ test("feature-thin: a feature file of a thin role maps parameters and makes one 
 
       async run(job: ClaimedJob): Promise<void> {
           await this.claims.advance({ jobId: job.jobId, expectedFencingToken: job.fencingToken, step: "expire" })
-          await this.orders.open(job.jobId, this.claims.runKey(job, "expire"))
+          await this.orders.open(job.jobId)
       }
   }`,
               },
@@ -292,6 +293,19 @@ test("feature-thin: a feature file of a thin role maps parameters and makes one 
 
       orderStatusChanged(principal: { id: string }, orderId: string): AsyncIterable<object> {
           return this.hub.subscribe(label(principal.id))
+      }
+  }`,
+              },
+              // a stream door that opens one stream read service (current state, then live) makes one delegating call
+              {
+                  filename: SSE_DOOR,
+                  code: `import { Headers, Sse } from "@nestjs/common"
+  import { OrderStreamService } from "@modules/domain/order/order-stream.service"
+  export class Door {
+      constructor(private readonly stream: OrderStreamService) {}
+
+      open(principal: { id: string }, room: string, lastEventId?: string): unknown {
+          return this.stream.open(principal, room, lastEventId)
       }
   }`,
               },

@@ -1,5 +1,5 @@
 import type { EntityManager } from "typeorm"
-import type { ClaimedJob, GuardedWrite, RunKey } from "./jobs.contracts"
+import type { ClaimedJob, GuardedWrite } from "./jobs.contracts"
 
 /** The one door to the job row. */
 export interface JobClaims {
@@ -7,7 +7,6 @@ export interface JobClaims {
     claim(params: { kind: string; workerId: string }): Promise<ClaimedJob | null>
     advance(write: GuardedWrite & { step: string }): Promise<void>
     complete(write: GuardedWrite): Promise<void>
-    runKey(job: ClaimedJob, step: string): RunKey
 }
 
 /** One external effect of a job. */

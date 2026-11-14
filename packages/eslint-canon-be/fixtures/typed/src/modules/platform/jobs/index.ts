@@ -1,3 +1,6 @@
-export type { ClaimedJob, GuardedWrite, RunKey } from "./jobs.contracts"
+export type { ClaimedJob, GuardedWrite } from "./jobs.contracts"
 export type { JobClaims, JobStep } from "./jobs.port"
+export type { JobProgress, JobProgressDeclaration, JobProgressTopic } from "./job-progress.port"
+export { defineJob } from "./job-definition"
+export type { JobDefinition } from "./job-definition"
 export { FencedProcessor } from "./fenced.processor"

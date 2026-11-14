@@ -1,6 +1,7 @@
 /**
  * The rules that hold the event-bus and queue patterns (catalog R152 `BE_OUTBOX_WRITE_TX`, R153 `BE_EVENT_CONSUMER_SHAPE`,
- * R154 `BE_QUEUE_PRODUCER_SHAPE`).
+ * R154 `BE_QUEUE_PRODUCER_SHAPE`). A job starts, and enqueues its next job, only from an outbox row written in the transaction of the
+ * change that calls for it: every outbox write, a producer call and a direct `QueueOutbox.write` alike, is judged by `outbox-write-tx`.
  *
  * The one durable path of an event is: a domain service writes the outbox row in ITS transaction (`eventBus.publish(event, tx)`), the
  * relay hands the row to Kafka, a consumer in `transport/message` receives it and dispatches one command. A queue job takes the same
@@ -82,11 +83,18 @@ interface OutboxWrite {
     expected: number
 }
 
-/** The outbox-writing call a node is: `{ kind: "publish", argument }` or `{ kind: "producer", argument }`, or null. */
+/**
+ * The outbox-writing call a node is: `{ kind: "publish", argument }` or `{ kind: "producer", argument }`, or null. A `write` on the
+ * `QueueOutbox` port is an outbox write wherever it is called: a typed producer's own (tier `queues`) is judged by `queue-producer-shape`,
+ * any other, a job enqueuing its next job included, is judged here like a producer call.
+ */
 const outboxWriteOf = (context: Context, hfs: HfsView, node: TSESTree.CallExpression): OutboxWrite | null => {
     const callee = node.callee
     if (callee.type === "MemberExpression" && !callee.computed && callee.property.type === "Identifier" && callee.property.name === "publish" && isEventBusType(context, callee.object)) {
         return { kind: "publish", argument: node.arguments[1], expected: 1 }
+    }
+    if (callee.type === "MemberExpression" && !callee.computed && callee.property.type === "Identifier" && callee.property.name === "write" && isQueueOutboxType(context, callee.object)) {
+        return hfs.tierOf(context.filename) === "queues" ? null : { kind: "producer", argument: node.arguments[0], expected: 0 }
     }
     const { checker, toTs } = typed(context)
     const tsNode = toTs(node)

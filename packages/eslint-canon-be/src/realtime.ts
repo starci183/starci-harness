@@ -10,11 +10,14 @@
  *     `.subscription.ts` holds one `@Resolver` class whose operations are `@Subscription`, and an SSE `.controller.ts` holds one
  *     `@Controller` class whose one route is `@Sse`. Each is the door its file role names, and none carries a query, a mutation or a
  *     plain REST route.
- *   - `realtime-read-only` (R185): the only value injected into a realtime door is the `RealtimeHub` of `platform/realtime`. No
- *     `EntityManager`, bus, queue, event bus or domain service reaches it.
+ *   - `realtime-read-only` (R185): the only value injected into a realtime door is the `RealtimeHub` of `platform/realtime`, or, in an SSE
+ *     door, ONE stream read service: a class of the platform or domain tier whose public methods all answer an rxjs `Observable`, so the
+ *     read of "current state, then live" happens in that service and the door stays one call. No `EntityManager`, bus, queue, event bus
+ *     or other domain service reaches it.
  *   - `realtime-topic-scope` (R186): the topic passed to `hub.subscribe` (or `hub.stream`, the SSE form) is built from the principal parameter of the handler
  *     (`@CurrentPrincipal()` of `domain/identity`, or `Principal` of `platform/cqrs` for a push-only stream), so a client
- *     can only listen to what the principal owns. A `Last-Event-ID` header only picks where the replay resumes inside that topic.
+ *     can only listen to what the principal owns; a call to a stream read service passes that principal, which builds the topic the same
+ *     way. A `Last-Event-ID` header only picks where the replay resumes inside that topic.
  *
  * What a receiver is comes from its TYPE, what a decorator is from the import that binds it, and where a parameter comes
  * from from the declaration its name resolves to. No rule here tests a path pattern or a variable name.
@@ -24,6 +27,8 @@ import { aliasTarget, callsOf, hasClassDecorator, injectedMembers, methodsDecora
 import { hfsOf } from "./lib/hfs.ts"
 import { decoratorCallee } from "./lib/import-source.ts"
 import { baseName, isOwnedType, ownerNameOf } from "./lib/ports.ts"
+import { originsOfType, typed } from "./lib/types.ts"
+import ts from "typescript"
 import type { TSESLint, TSESTree } from "@typescript-eslint/utils"
 import type { ClassNode, MethodCall } from "./lib/doors.ts"
 import type { Context, Node, Recommended, RuleModule, Rules } from "./lib/rule.ts"
@@ -37,6 +42,36 @@ const DOOR_SLOTS = new Set(["be.feature.realtime.graphql", "be.feature.realtime.
 
 /** The `RealtimeHub` port of `platform/realtime`. */
 const isHubType = (context: Context, node: Node): boolean => isOwnedType(context, node, { name: "RealtimeHub", capability: "realtime", tier: "platform" })
+
+/** The slot of server-sent-event doors, the only door kind that may call a stream read service. */
+const SSE_SLOT = "be.feature.realtime.sse"
+
+/** The tiers a stream read service lives in: the platform capability that owns the stream, or the domain capability that does. */
+const STREAM_SERVICE_TIERS = new Set(["platform", "domain"])
+
+/** The package and class of the stream a read service answers. */
+const OBSERVABLE_PACKAGE = "rxjs"
+const OBSERVABLE = "Observable"
+
+/** True when a TypeScript member is declared private or protected: not part of a class's public surface. */
+const isHidden = (symbol: ts.Symbol): boolean => (symbol.declarations ?? []).some((declaration) => (ts.getCombinedModifierFlags(declaration) & (ts.ModifierFlags.Private | ts.ModifierFlags.Protected)) !== 0)
+
+/**
+ * True when the node's type is a stream read service: declared in the repository by a platform or domain capability, with at least one
+ * public method and every public method answering an rxjs `Observable`. What the class IS comes from its type, never its name.
+ */
+const isStreamReadService = (context: Context, hfs: HfsView, node: Node): boolean => {
+    const { checker, toTs } = typed(context)
+    const tsNode = toTs(node)
+    if (!tsNode) return false
+    const type = ts.isTypeNode(tsNode) ? checker.getTypeFromTypeNode(tsNode) : checker.getTypeAtLocation(tsNode)
+    if (!originsOfType(checker, type).some((origin) => origin.module === null && STREAM_SERVICE_TIERS.has(hfs.tierOf(origin.file) ?? ""))) return false
+    const methods = type.getProperties().filter((symbol) => (symbol.flags & ts.SymbolFlags.Method) !== 0 && !isHidden(symbol))
+    return methods.length > 0 && methods.every((method) => {
+        const signatures = checker.getTypeOfSymbolAtLocation(method, tsNode).getCallSignatures()
+        return signatures.length > 0 && signatures.every((signature) => originsOfType(checker, checker.getReturnTypeOfSignature(signature)).some((origin) => origin.module === OBSERVABLE_PACKAGE && origin.name === OBSERVABLE))
+    })
+}
 
 /** The plain HTTP route decorators of `@nestjs/common`: an SSE controller carries none of them, its one route is `@Sse`. */
 const HTTP_ROUTES = ["Get", "Post", "Put", "Patch", "Delete", "All", "Options", "Head"] as const
@@ -141,19 +176,29 @@ const hasDecorator = (context: Context, decorator: TSESTree.Decorator, source: s
 export const realtimeReadOnly: RuleModule = {
     meta: {
         type: "problem",
-        docs: { description: "The only value a realtime door injects is the `RealtimeHub` of `platform/realtime`: no `EntityManager`, bus, queue, event bus or domain service." },
+        docs: { description: "A realtime door injects the `RealtimeHub` of `platform/realtime` and, in an SSE door, at most one stream read service (public methods that only answer an `Observable`): no `EntityManager`, bus, queue, event bus or other domain service." },
         schema: [],
         messages: {
-            injects: "`{{what}}` is injected into a realtime door. A realtime door reads and pushes only: it injects the `RealtimeHub` of `platform/realtime` and nothing that can write (an `EntityManager`, a `CommandBus`, an event bus, a queue, a domain service). The push is fed by a reactor that calls the hub; a write belongs in an api feature.",
+            injects: "`{{what}}` is injected into a realtime door. A realtime door reads and pushes only: it injects the `RealtimeHub` of `platform/realtime`, or in an SSE door one stream read service whose public methods only answer an `Observable`, and nothing that can write (an `EntityManager`, a `CommandBus`, an event bus, a queue, another domain service). The push is fed by a reactor that calls the hub; a write belongs in an api feature.",
+            second: "`{{what}}` is a second stream read service in this realtime door. A door makes ONE call: the read of the current state, the membership check and the topic live in one service, which this door asks.",
         },
     },
     create(context) {
         const hfs = hfsOf(context)
-        if (!DOOR_SLOTS.has(hfs.slotOf(context.filename) ?? "") || roleOf(context.filename) === null) return {}
+        const slot = hfs.slotOf(context.filename) ?? ""
+        if (!DOOR_SLOTS.has(slot) || roleOf(context.filename) === null) return {}
         return {
             ClassDeclaration(node) {
+                let services = 0
                 for (const { node: member, annotation } of injectedMembers(context, node)) {
-                    if (!annotation || !isHubType(context, annotation)) context.report({ node: member, messageId: "injects", data: { what: context.sourceCode.getText(member) } })
+                    const what = context.sourceCode.getText(member)
+                    if (annotation && isHubType(context, annotation)) continue
+                    if (slot === SSE_SLOT && annotation && isStreamReadService(context, hfs, annotation)) {
+                        services += 1
+                        if (services > 1) context.report({ node: member, messageId: "second", data: { what } })
+                        continue
+                    }
+                    context.report({ node: member, messageId: "injects", data: { what } })
                 }
             },
         }
@@ -200,6 +245,18 @@ const checkMethodTopics = (context: Context, hfs: HfsView, method: TSESTree.Meth
         })
         if (!scoped) context.report({ node: call, messageId: "scope" })
     }
+    if (hfs.slotOf(context.filename) !== SSE_SLOT) return
+    for (const { call, receiver } of callsOf(method)) {
+        if (receiver === null || isHubType(context, receiver) || !isStreamReadService(context, hfs, receiver)) continue
+        const passed = call.arguments.some((argument) => {
+            let scoped = false
+            walk(argument, (child) => {
+                if (child.type === "Identifier" && resolvesTo(context, child, principals)) scoped = true
+            })
+            return scoped
+        })
+        if (!passed) context.report({ node: call, messageId: "serviceScope" })
+    }
 }
 
 /** The topic a client subscribes to is built from the principal the handler receives. */
@@ -209,6 +266,7 @@ export const realtimeTopicScope: RuleModule = {
         docs: { description: "The topic passed to `RealtimeHub.subscribe` is built from the handler's `@CurrentPrincipal()` parameter or the push-only stream's platform `Principal` parameter." },
         schema: [],
         messages: {
+            serviceScope: "The call to the stream read service does not pass the principal. A realtime handler takes `@CurrentPrincipal() principal` and hands it to the service (`this.stream.open(principal, ...)`), which builds the principal-first topic and checks membership before it reads anything; a call that takes only a client selector is a leak.",
             scope: "The topic of this `subscribe` is not built from the principal. A realtime handler takes `@CurrentPrincipal() principal`, or a push-only stream takes the platform `Principal`, and subscribes to a topic made from `principal.id` (plus any verified id), so one client cannot listen to another's channel. A topic taken only from client input is a leak.",
         },
     },

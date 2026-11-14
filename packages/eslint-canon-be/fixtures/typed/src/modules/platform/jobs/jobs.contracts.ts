@@ -12,9 +12,6 @@ export interface GuardedWrite {
     readonly expectedFencingToken: number
 }
 
-/** The idempotency key of an external effect: only `JobClaims.runKey` makes one. */
-export type RunKey = string & { readonly __runKey: unique symbol }
-
 /** A write that forgot the token (fixture of a broken port). */
 export interface LooseWrite {
     readonly jobId: string

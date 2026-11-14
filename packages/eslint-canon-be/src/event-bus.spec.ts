@@ -45,6 +45,9 @@ test("outbox-write-tx: the outbox is written only by a domain service, with its 
               { filename: DOMAIN_SPEC, code: `${HEAD}export const probe = async (bus: EventBus, tx: EntityManager): Promise<void> => { await bus.publish(new OrderPlacedEvent("e", "o"), tx) }` },
               { filename: WORLD, code: `${HEAD}export const emit = async (bus: EventBus, tx: EntityManager): Promise<void> => { await bus.publish(new OrderPlacedEvent("e", "o"), tx) }` },
               { filename: FEATURE, code: `import type { EventBus } from "@modules/platform/event-bus"\nimport { OrderPlacedEvent } from "@modules/events/order"\nexport const waiting = (bus: EventBus): Promise<number> => bus.pendingRetries(OrderPlacedEvent)` },
+              // a direct write of the queue outbox is judged like a producer call: a domain service, inside its own transaction
+              { filename: DOMAIN, code: `${HEAD}import type { QueueOutbox } from "@modules/platform/queue"\nexport class Finishing { constructor(private readonly em: EntityManager, private readonly outbox: QueueOutbox) {}\n async finish(): Promise<void> { await this.em.transaction(async (manager) => { await this.outbox.write(manager, "search", { id: "a" }) }) } }` },
+              { filename: DOMAIN, code: `${HEAD}import type { QueueOutbox } from "@modules/platform/queue"\nexport class Finishing { constructor(private readonly outbox: QueueOutbox) {}\n async inside(tx: EntityManager): Promise<void> { await this.outbox.write(tx, "search", { id: "a" }) } }` },
           ],
           invalid: [
               { filename: FEATURE, code: `${HEAD}export class Handler { constructor(private readonly bus: EventBus) {}\n async run(tx: EntityManager): Promise<void> { await this.bus.publish(new OrderPlacedEvent("e", "o"), tx) } }`, errors: [{ messageId: "foreignTier" }] },
@@ -53,6 +56,8 @@ test("outbox-write-tx: the outbox is written only by a domain service, with its 
               { filename: DOMAIN, code: `${HEAD}export class Placing { constructor(private readonly em: EntityManager, private readonly bus: EventBus) {}\n async place(): Promise<void> { const alias = this.em; await this.bus.publish(new OrderPlacedEvent("e", "o"), alias) } }`, errors: [{ messageId: "noTransaction" }] },
               { filename: DOMAIN, code: `${HEAD}export class Placing { constructor(private readonly em: EntityManager, private readonly mail: MailQueue) {}\n async place(): Promise<void> { await this.em.transaction(async (manager) => { await manager.query("x"); await this.mail.enqueueMail({ to: "a" }, this.em) }) } }`, errors: [{ messageId: "noTransaction" }] },
               { filename: DOMAIN, code: `${HEAD}export class Placing { constructor(private readonly bus: EventBus) {}\n async place(): Promise<void> { await this.bus.publish(new OrderPlacedEvent("e", "o")) } }`, errors: [{ messageId: "noTransaction" }] },
+              { filename: DOMAIN, code: `${HEAD}import type { QueueOutbox } from "@modules/platform/queue"\nexport class Finishing { constructor(private readonly em: EntityManager, private readonly outbox: QueueOutbox) {}\n async finish(): Promise<void> { await this.outbox.write(this.em, "search", { id: "a" }) } }`, errors: [{ messageId: "noTransaction" }] },
+              { filename: FEATURE, code: `${HEAD}import type { QueueOutbox } from "@modules/platform/queue"\nexport class Handler { constructor(private readonly outbox: QueueOutbox) {}\n async run(tx: EntityManager): Promise<void> { await this.outbox.write(tx, "search", { id: "a" }) } }`, errors: [{ messageId: "foreignTier" }] },
           ],
       })
   })

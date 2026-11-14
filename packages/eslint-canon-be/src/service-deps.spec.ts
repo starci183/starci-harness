@@ -76,6 +76,8 @@ test("R83: a persistence class lives only where the manager may be held", () => 
             { filename: HANDLER, code: wrapper },
             { filename: SERVICE, code: wrapper },
             { filename: PLATFORM_DATABASE, code: wrapper },
+            // the effects piece of the jobs frame settles a key in the transaction of the domain write that keeps the act's answer
+            { filename: at("src/modules/platform/effects/effects.service.ts"), code: wrapper },
             // a typed queue producer takes the transaction of its caller
             { filename: at("src/modules/queues/mail/mail.queue.ts"), code: `${TYPEORM}export class MailQueue { enqueueMail(payload: object, tx: EntityManager): Promise<void> { return tx.query("select 1") } }` },
             // the cli, the test world and a migration receive a connection or a runner by nature

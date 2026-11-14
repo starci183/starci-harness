@@ -16,7 +16,7 @@ import test from "node:test"
 import { appDeclaration } from "../fixtures/app.ts"
 import { at, BE_DECLARATION, ruleTester, TYPED_ROOT } from "../fixtures/typed/tester.ts"
 import { hfsFromDeclaration } from "./lib/hfs.ts"
-import { jobFenceRequired, jobRunKey, jobShape, jobWriteOwner } from "./jobs.ts"
+import { jobEffectPiece, jobFenceRequired, jobShape, jobWriteOwner } from "./jobs.ts"
 import { projectionShape, projectionWriteOwner } from "./projections.ts"
 
 const OWNER = at("src/modules/platform/jobs/job-claim.service.ts")
@@ -34,7 +34,8 @@ import { JobEntity } from "@modules/platform/jobs/persistence/entities/job.entit
 `
 const CLAIMS = `import type { ClaimedJob, GuardedWrite, JobClaims } from "@modules/platform/jobs"
 `
-const EFFECT = `import type { ClaimedJob, JobClaims, RunKey } from "@modules/platform/jobs"
+const EFFECT = `import type { ClaimedJob } from "@modules/platform/jobs"
+import type { Effects } from "@modules/platform/effects"
 import { MailGateway } from "@modules/integrations/mailer/mail.gateway"
 `
 const JOB_SHAPE = `import type { ClaimedJob, JobStep } from "@modules/platform/jobs"
@@ -79,13 +80,13 @@ export interface JobClaims { complete(write: LooseWrite): Promise<void> }`, erro
             ],
         })
 
-        tester.run("job-run-key", jobRunKey, {
+        tester.run("job-effect-piece", jobEffectPiece, {
             valid: [
-                { filename: STEP, code: `${EFFECT}export const send = (mail: MailGateway, claims: JobClaims, job: ClaimedJob) => mail.send("a", claims.runKey(job, "send"))` },
+                { filename: STEP, code: `${EFFECT}export const send = (mail: MailGateway, effects: Effects, job: ClaimedJob) => effects.once(job.jobId + ":send", { name: "mail.send", settle: "repeatable" }, { act: () => mail.send("a") })` },
             ],
             invalid: [
-                { filename: STEP, code: `${EFFECT}export const send = (mail: MailGateway) => mail.status("a")`, errors: [{ messageId: "missing" }] },
-                { filename: STEP, code: `${EFFECT}export const send = (mail: MailGateway) => mail.send("a", "fixed" as RunKey)`, errors: [{ messageId: "forged" }] },
+                { filename: STEP, code: `${EFFECT}export const send = (mail: MailGateway) => mail.status("a")`, errors: [{ messageId: "outside" }] },
+                { filename: STEP, code: `${EFFECT}export const send = (mail: MailGateway) => mail.send("a")`, errors: [{ messageId: "outside" }] },
             ],
         })
 

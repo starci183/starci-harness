@@ -1,21 +1,24 @@
 /**
  * The rules that hold the fenced-job pattern (catalog R157 `BE_JOB_WRITE_OUTSIDE_OWNER`, R158 `BE_JOB_FENCE_REQUIRED`,
- * R159 `BE_JOB_RUN_KEY`, R160 `BE_JOB_SHAPE`).
+ * R159 `BE_JOB_EFFECT_PIECE`, R160 `BE_JOB_SHAPE`, R403 `BE_JOB_NEXT_DECLARED`, R404 `BE_JOB_PROGRESS_SHAPE`).
  *
- * A background job is a row whose `fencingToken` the claim bumps. A worker that lost its claim (a zombie) holds a stale token, so every
- * write to the row is guarded by `expectedFencingToken` and an external effect carries an idempotency key that includes the token.
- * `platform/jobs` is the ONE owner of the row: it declares the entity, the claim and the guarded writes, and nothing else writes it.
+ * A job is a step of a chain: a row whose `fencingToken` the claim bumps, declared once with `defineJob`. A worker that lost its claim (a
+ * zombie) holds a stale token, so every write to the row is guarded by `expectedFencingToken`, and every outside act goes through the
+ * effects piece, which commits an intent row before the act. `platform/jobs` is the ONE owner of the row: it declares the entity, the claim
+ * and the guarded writes, and nothing else writes it.
  *
- * Everything is found by TYPE ORIGIN (the `JobClaims`, `JobStep`, `RunKey` and `FencedProcessor` declared by `platform/jobs`, the entity
- * class declared by that owner, typeorm receivers and query builders) and by the slot view (`be.feature.jobs.steps`, `be.feature.jobs`); the
- * only names read are the contract's own members `runKey`, `jobId` and `expectedFencingToken`.
+ * Everything is found by TYPE ORIGIN (the `JobClaims`, `JobStep`, `ClaimedJob`, `JobProgressTopic`, `defineJob` and `FencedProcessor`
+ * declared by `platform/jobs`, the `Effects` port of `platform/effects`, the `RealtimeHub` of `platform/realtime`, the entity class
+ * declared by that owner, typeorm receivers and query builders) and by the slot view (`be.feature.jobs.steps`, `be.feature.jobs`,
+ * `be.queues`); the only names read are the contract's own members `once` (with its `act` and `confirm`), `next`, `progress`, `topic`,
+ * `jobId` and `expectedFencingToken`.
  */
 import ts from "typescript"
-import { walk } from "./lib/ast.ts"
+import { keyName, walk } from "./lib/ast.ts"
 import { writtenEntityOrigins } from "./lib/entity-writes.ts"
 import { hfsOf, inTestWorld } from "./lib/hfs.ts"
 import { baseName, isOwnedType, ownerNameOf } from "./lib/ports.ts"
-import { typeOrigins, typed } from "./lib/types.ts"
+import { originsOfType, typeOrigins, typed } from "./lib/types.ts"
 import type { TSESTree } from "@typescript-eslint/utils"
 import type { Context, Node, Recommended, RuleModule, Rules } from "./lib/rule.ts"
 import type { HfsView } from "./lib/hfs.ts"
@@ -23,7 +26,19 @@ import type { HfsView } from "./lib/hfs.ts"
 const isJobClaimsType = (context: Context, node: Node): boolean => isOwnedType(context, node, { name: "JobClaims", capability: "jobs", tier: "platform" })
 const isJobStepType = (context: Context, node: Node): boolean => isOwnedType(context, node, { name: "JobStep", capability: "jobs", tier: "platform" })
 const isFencedProcessorType = (context: Context, node: Node): boolean => isOwnedType(context, node, { name: "FencedProcessor", capability: "jobs", tier: "platform" })
-const isRunKeyType = (context: Context, node: Node): boolean => isOwnedType(context, node, { name: "RunKey", capability: "jobs", tier: "platform" })
+const isClaimedJobType = (context: Context, node: Node): boolean => isOwnedType(context, node, { name: "ClaimedJob", capability: "jobs", tier: "platform" })
+const isEffectsType = (context: Context, node: Node): boolean => isOwnedType(context, node, { name: "Effects", capability: "effects", tier: "platform" })
+const isRealtimeHubType = (context: Context, node: Node): boolean => isOwnedType(context, node, { name: "RealtimeHub", capability: "realtime", tier: "platform" })
+
+/** The contract's own members and types the rules below read. */
+const ONCE = "once"
+const ACT = "act"
+const CONFIRM = "confirm"
+const NEXT = "next"
+const PROGRESS = "progress"
+const TOPIC = "topic"
+const DEFINE_JOB = "defineJob"
+const PROGRESS_TOPIC = "JobProgressTopic"
 
 /** True for a file of the owner itself, and for the test composition. */
 const isOwnerOrTest = (hfs: HfsView, file: string): boolean => {
@@ -126,34 +141,205 @@ export const jobFenceRequired: RuleModule = {
     },
 }
 
-/** The class of an external effect of a step passes the key `JobClaims.runKey` made. */
-export const jobRunKey: RuleModule = {
+/** True for a function node that takes a `ClaimedJob`: the domain method a job's step calls. */
+const takesClaimedJob = (context: Context, fn: TSESTree.FunctionDeclaration | TSESTree.FunctionExpression | TSESTree.ArrowFunctionExpression): boolean =>
+    fn.params.some((param) => {
+        const target = param.type === "TSParameterProperty" ? param.parameter : param
+        const bound = target.type === "AssignmentPattern" ? target.left : target
+        return isClaimedJobType(context, bound)
+    })
+
+/** True when the node sits inside a function (or a closure of one) that takes a `ClaimedJob`. */
+const insideJobFunction = (context: Context, node: Node): boolean => {
+    for (let current: Node | undefined = node.parent; current; current = current.parent) {
+        if ((current.type === "FunctionDeclaration" || current.type === "FunctionExpression" || current.type === "ArrowFunctionExpression") && takesClaimedJob(context, current)) return true
+    }
+    return false
+}
+
+/** True when the call is an act or a confirm read the effects piece runs: inside the `act` or `confirm` of the call object of `Effects.once`. */
+const insideEffectCall = (context: Context, node: Node): boolean => {
+    let outermost: TSESTree.Property | undefined
+    for (let current: Node | undefined = node.parent; current; current = current.parent) {
+        if (current.type === "Property") outermost = current
+        if (current.type !== "CallExpression" || current.callee.type !== "MemberExpression" || current.callee.computed) continue
+        if (current.callee.property.type !== "Identifier" || current.callee.property.name !== ONCE || !isEffectsType(context, current.callee.object)) continue
+        const key = outermost ? keyName(outermost.key) : null
+        return key === ACT || key === CONFIRM
+    }
+    return false
+}
+
+/** An outside call of a job is made by the effects piece: its intent row before the act, its result after. */
+export const jobEffectPiece: RuleModule = {
     meta: {
         type: "problem",
-        docs: { description: "In a job step every call on an integration port passes a `RunKey` (made by `JobClaims.runKey`, which includes the fencing token), never a cast or a literal." },
+        docs: { description: "In a job step, and in a function that takes a `ClaimedJob`, every call on an integration port is the `act` or the `confirm` read of an `Effects.once` call of `platform/effects`." },
         schema: [],
         messages: {
-            missing: "`{{call}}` is an external call from a job step without a `RunKey` argument. An effect that a zombie worker may repeat must be idempotent at the provider: pass `this.claims.runKey(job, \"<step>\")` (it includes the fencing token) as the idempotency key. A read belongs in the application layer, not in a step.",
-            forged: "This `RunKey` is built with a cast. Only `JobClaims.runKey(job, step)` makes one, so the key always carries the fencing token of the claim.",
+            outside: "`{{call}}` is an outside call of a job made without the effects piece. An act outside the database (a provider call, a mail, a paid model call, a write to an index) goes through `Effects.once(key, effect, { act, confirm?, ... })` of `platform/effects`: its intent row is committed before the act and its result after, so a crash between them is settled as the effect declares (`repeatable`, `confirm` or `person`) and never acted twice blind. A read belongs in the application layer, not in a job.",
         },
     },
     create(context) {
         const hfs = hfsOf(context)
-        if (hfs.slotOf(context.filename) !== "be.feature.jobs.steps") return {}
+        const file = context.filename
+        const inStep = hfs.slotOf(file) === "be.feature.jobs.steps"
+        const inDomain = hfs.tierOf(file) === "domain"
+        if (!inStep && !inDomain) return {}
         return {
             CallExpression(node) {
                 const callee = node.callee
                 if (callee.type !== "MemberExpression" || callee.computed) return
+                if (!inStep && !insideJobFunction(context, node)) return
                 const origins = typeOrigins(context, callee.object)
                 if (!origins.some((origin) => origin.module === null && hfs.tierOf(origin.file) === "integrations")) return
-                const keyArguments = node.arguments.filter((argument) => isRunKeyType(context, argument))
-                if (keyArguments.length === 0) {
-                    context.report({ node, messageId: "missing", data: { call: context.sourceCode.getText(callee) } })
+                if (insideEffectCall(context, node)) return
+                context.report({ node, messageId: "outside", data: { call: context.sourceCode.getText(callee) } })
+            },
+        }
+    },
+}
+
+/** The names of the jobs the `defineJob` calls of the program declare, read once per program. */
+const declaredJobNames = (context: Context, hfs: HfsView): ReadonlySet<string> => {
+    const { program, checker } = typed(context)
+    const known = declaredNames.get(program)
+    if (known) return known
+    const names = new Set<string>()
+    const visit = (node: ts.Node): void => {
+        if (ts.isCallExpression(node) && isDefineJobCall(hfs, checker, node)) {
+            const name = propertyValue(node.arguments[0], "name")
+            const type = name ? checker.getTypeAtLocation(name) : undefined
+            if (type?.isStringLiteral()) names.add(type.value)
+        }
+        ts.forEachChild(node, visit)
+    }
+    for (const sourceFile of program.getSourceFiles()) {
+        if (!sourceFile.isDeclarationFile && hfs.slotOf(sourceFile.fileName) === "be.queues") visit(sourceFile)
+    }
+    declaredNames.set(program, names)
+    return names
+}
+
+/** The declared names per program: one scan serves every file linted in it. */
+const declaredNames = new WeakMap<ts.Program, ReadonlySet<string>>()
+
+/** The initializer of the property `name` in an object literal argument, or undefined. */
+const propertyValue = (argument: ts.Node | undefined, name: string): ts.Expression | undefined => {
+    if (!argument || !ts.isObjectLiteralExpression(argument)) return undefined
+    for (const property of argument.properties) {
+        if (ts.isPropertyAssignment(property) && ts.isIdentifier(property.name) && property.name.text === name) return property.initializer
+    }
+    return undefined
+}
+
+/** True when a TypeScript call is `defineJob` of `platform/jobs`, judged by the declaration the callee resolves to. */
+const isDefineJobCall = (hfs: HfsView, checker: ts.TypeChecker, call: ts.CallExpression): boolean => {
+    const target = ts.isPropertyAccessExpression(call.expression) ? call.expression.name : call.expression
+    let symbol = checker.getSymbolAtLocation(target)
+    if (symbol && (symbol.flags & ts.SymbolFlags.Alias) !== 0) symbol = checker.getAliasedSymbol(symbol)
+    return symbol?.getName() === DEFINE_JOB && (symbol.declarations ?? []).some((declaration) => {
+        const owner = declaration.getSourceFile().fileName
+        return hfs.tierOf(owner) === "platform" && ownerNameOf(hfs, owner) === "jobs"
+    })
+}
+
+/** The `defineJob` calls of an ESTree program, with the object literal they declare. */
+const isDefineJobNode = (context: Context, hfs: HfsView, node: TSESTree.CallExpression): boolean => {
+    const { checker, toTs } = typed(context)
+    const tsNode = toTs(node)
+    return Boolean(tsNode) && ts.isCallExpression(tsNode) && isDefineJobCall(hfs, checker, tsNode)
+}
+
+/** The value node of a property of an object literal, by key. */
+const memberOf = (object: TSESTree.ObjectExpression, name: string): TSESTree.Property | undefined =>
+    object.properties.find((property): property is TSESTree.Property => property.type === "Property" && !property.computed && keyName(property.key) === name)
+
+/** A job's `next` names only jobs a `defineJob` declares. */
+export const jobNextDeclared: RuleModule = {
+    meta: {
+        type: "problem",
+        docs: { description: "In a `defineJob` declaration `next` is an array literal of statically readable job names, each the name of a job a `defineJob` of the program declares." },
+        schema: [],
+        messages: {
+            shape: "`next` of a job declaration is an array literal of job names. A computed, spread or variable list hides which jobs the job may enqueue, and the queue platform refuses an enqueue its `next` does not list; write the names out.",
+            literal: "This `next` entry is not a statically readable job name (a string literal or an enum member). Name the job the way its own `defineJob` does, so the chain can be read from the declarations.",
+            unknown: "`next` lists the job `{{name}}`, but no `defineJob` of the program declares a job of that name. A chain is the jobs the declarations name: declare the next job, or delete the entry.",
+        },
+    },
+    create(context) {
+        const hfs = hfsOf(context)
+        if (hfs.slotOf(context.filename) !== "be.queues") return {}
+        const { checker, toTs } = typed(context)
+        return {
+            CallExpression(node) {
+                if (!isDefineJobNode(context, hfs, node)) return
+                const [declaration] = node.arguments
+                if (declaration?.type !== "ObjectExpression") return
+                const next = memberOf(declaration, NEXT)
+                if (!next) return
+                if (next.value.type !== "ArrayExpression") {
+                    context.report({ node: next.value, messageId: "shape" })
                     return
                 }
-                for (const argument of keyArguments) {
-                    walk(argument, (child) => { if (child.type === "TSAsExpression" || child.type === "TSTypeAssertion") context.report({ node: child, messageId: "forged" }) })
+                const declared = declaredJobNames(context, hfs)
+                for (const entry of next.value.elements) {
+                    if (!entry || entry.type === "SpreadElement") {
+                        context.report({ node: entry ?? next.value, messageId: "shape" })
+                        continue
+                    }
+                    const tsEntry = toTs(entry)
+                    const type = tsEntry ? checker.getTypeAtLocation(tsEntry) : undefined
+                    if (!type?.isStringLiteral()) context.report({ node: entry, messageId: "literal" })
+                    else if (!declared.has(type.value)) context.report({ node: entry, messageId: "unknown", data: { name: type.value } })
                 }
+            },
+        }
+    },
+}
+
+/** True when a type is a function type whose every return is `JobProgressTopic` of `platform/jobs`. */
+const returnsProgressTopic = (checker: ts.TypeChecker, hfs: HfsView, type: ts.Type): boolean => {
+    const signatures = type.getCallSignatures()
+    return signatures.length > 0 && signatures.every((signature) =>
+        originsOfType(checker, checker.getReturnTypeOfSignature(signature)).some((origin) =>
+            origin.module === null && origin.name === PROGRESS_TOPIC && hfs.tierOf(origin.file) === "platform" && ownerNameOf(hfs, origin.file) === "jobs"))
+}
+
+/** A job's progress is a view the frame publishes: its topic is built principal-first, and no domain method publishes it itself. */
+export const jobProgressShape: RuleModule = {
+    meta: {
+        type: "problem",
+        docs: { description: "A `defineJob` `progress.topic` is a function whose declared return type is `JobProgressTopic` of `platform/jobs` (principal first), and a function that takes a `ClaimedJob` never calls the `RealtimeHub`: it reports through `JobProgress`." },
+        schema: [],
+        messages: {
+            topic: "The `progress.topic` of this job does not return a `JobProgressTopic` of `platform/jobs`. A progress topic is principal first, then the chain root, so a client can only read what its principal owns: build it with a function whose declared return type is `JobProgressTopic`, never an object literal or a string.",
+            hub: "`{{call}}` publishes to the realtime hub from a function that takes a `ClaimedJob`. The progress of a job is a view the jobs frame publishes after commit: report step progress through `JobProgress.report(job, done, total, labelKey)`, which stores it on the job row first.",
+        },
+    },
+    create(context) {
+        const hfs = hfsOf(context)
+        const file = context.filename
+        const inQueues = hfs.slotOf(file) === "be.queues"
+        const inDomain = hfs.tierOf(file) === "domain"
+        if (!inQueues && !inDomain) return {}
+        const { checker, toTs } = typed(context)
+        return {
+            CallExpression(node) {
+                if (inQueues && isDefineJobNode(context, hfs, node)) {
+                    const [declaration] = node.arguments
+                    if (declaration?.type !== "ObjectExpression") return
+                    const progress = memberOf(declaration, PROGRESS)
+                    if (progress?.value.type !== "ObjectExpression") return
+                    const topic = memberOf(progress.value, TOPIC)
+                    const tsTopic = topic ? toTs(topic.value) : undefined
+                    if (!topic || !tsTopic || !returnsProgressTopic(checker, hfs, checker.getTypeAtLocation(tsTopic))) context.report({ node: topic ?? progress.value, messageId: "topic" })
+                    return
+                }
+                const callee = node.callee
+                if (!inDomain || callee.type !== "MemberExpression" || callee.computed) return
+                if (!isRealtimeHubType(context, callee.object) || !insideJobFunction(context, node)) return
+                context.report({ node, messageId: "hub", data: { call: context.sourceCode.getText(callee) } })
             },
         }
     },
@@ -207,14 +393,18 @@ export const jobShape: RuleModule = {
 export const rules = {
     "job-write-owner": jobWriteOwner,
     "job-fence-required": jobFenceRequired,
-    "job-run-key": jobRunKey,
+    "job-effect-piece": jobEffectPiece,
     "job-shape": jobShape,
+    "job-next-declared": jobNextDeclared,
+    "job-progress-shape": jobProgressShape,
 } satisfies Rules
 
 /** The level these laws ask for: `error`, switched off nowhere. */
 export const recommended: Recommended = {
     "starci-be/job-write-owner": "error",
     "starci-be/job-fence-required": "error",
-    "starci-be/job-run-key": "error",
+    "starci-be/job-effect-piece": "error",
     "starci-be/job-shape": "error",
+    "starci-be/job-next-declared": "error",
+    "starci-be/job-progress-shape": "error",
 }

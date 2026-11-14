@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.26.0 - 2026-11-14
+
+- Changed (R159, breaking): `job-run-key` is `job-effect-piece` (`BE_JOB_EFFECT_PIECE`). In a job step, and in a function that takes a `ClaimedJob` (a closure of it included), every call on an integration port is the `act` or the `confirm` read of an `Effects.once` call of `platform/effects`; a call made as the key argument, or outside the call object, is a finding. The `RunKey` of `platform/jobs` is no longer read. Spec `src/jobs.spec.ts`.
+- Added (R403, `job-next-declared`): in a `defineJob` declaration `next` is an array literal of statically readable job names, each the name of a job a `defineJob` of the program declares (a computed or spread entry, a name no declaration carries, are findings). Spec `src/jobs.spec.ts`.
+- Added (R404, `job-progress-shape`): a `defineJob` `progress.topic` is a function whose declared return type is `JobProgressTopic` of `platform/jobs`, and a function of `modules/domain` that takes a `ClaimedJob` never calls the `RealtimeHub` (it reports through `JobProgress`). Spec `src/jobs.spec.ts`.
+- Changed (R152, `outbox-write-tx`): a direct `QueueOutbox.write` outside a typed producer is judged like a producer call: only a domain service writes it, with the manager of its own transaction. Spec `src/event-bus.spec.ts`.
+- Changed (R185, R186, `realtime-read-only`, `realtime-topic-scope`): an SSE door may inject ONE stream read service (a class of the platform or domain tier whose public methods all answer an rxjs `Observable`) besides, or instead of, the `RealtimeHub`, and its call must pass the handler's principal (`serviceScope`); a second such service (`second`), a service that also writes, and a stream service in a gateway or a subscription door stay findings. `feature-thin` accepts the one-call door. Specs `src/realtime.spec.ts`, `src/feature-thin.spec.ts`.
+- Fixed (R83, `no-repository-class`): `effects` is a persistence capability, so a platform effects piece may hold the `EntityManager` (`settleIn(tx)`). Spec `src/service-deps.spec.ts`.
+- Changed: cut with `@starci/hfs` 6.11.0; requires `@starci/hfs` `~6.11.0`.
+
 ## 3.25.2 - 2026-11-13
 
 - Fixed (R262, `health-signals`, `ready-real`): `RangeError: Maximum call stack size exceeded` at the first file of an app that holds a constant used many times. `expandedNodes` re-expanded a local constant at every identifier that named it (a cost per reference, and a doubling per nested constant) and appended each expansion with `push(...expansion)`, which overflows the call stack once the list is large. Each constant is now expanded once per call under a visited set shared by the whole walk, nodes are appended one by one, and a self-referencing constant or a ring of constants ends at its second visit. Verdicts are unchanged. Spec `src/health-ready.spec.ts` (a tripling chain of constants, a ring, a self reference). 3.25.1 is taken by the open branch `pkg/claude-lint-split-s2`, so this patch is 3.25.2.

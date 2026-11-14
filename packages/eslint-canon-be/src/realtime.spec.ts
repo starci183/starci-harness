@@ -34,6 +34,10 @@ import { CurrentPrincipal } from "@modules/domain/identity"
 import { RealtimeHub } from "@modules/platform/realtime"
 `
 
+const STREAM_HEAD = `${SSE_HEAD}import { OrderStreamService } from "@modules/domain/order/order-stream.service"
+import { AuditStreamService } from "@modules/domain/order/audit-stream.service"
+import { MixedStreamService } from "@modules/domain/order/mixed-stream.service"
+`
 /** A gateway whose one handler body and constructor are given. */
 const gateway = ({ head = SOCKET_HEAD, ctor = "private readonly hub: RealtimeHub", params = "@CurrentPrincipal() principal: { id: string }", body = "return this.hub.subscribe(`orders:${principal.id}`)", extra = "" } = {}) => `${head}
 @WebSocketGateway()
@@ -140,6 +144,9 @@ test("realtime-read-only: the hub is the only injected value", () => {
             { filename: SSE, code: controller() },
             // a class with no constructor injects nothing
             { filename: SUBSCRIPTION, code: subscription({ ctor: "" }) },
+            // an SSE door may call ONE stream read service (public methods that only answer an Observable) instead of the hub, or beside it
+            { filename: SSE, code: controller({ head: STREAM_HEAD, ctor: "private readonly stream: OrderStreamService", body: "return this.stream.open(principal, 'room', lastEventId)" }) },
+            { filename: SSE, code: controller({ head: STREAM_HEAD, ctor: "private readonly hub: RealtimeHub, private readonly stream: OrderStreamService" }) },
             // outside the realtime slot nothing is judged
             { filename: OTHER_SLOT, code: subscription({ ctor: "private readonly hub: RealtimeHub, private readonly orders: OrderService" }) },
         ],
@@ -149,6 +156,10 @@ test("realtime-read-only: the hub is the only injected value", () => {
             { filename: SUBSCRIPTION, code: subscription({ head: `${GRAPHQL_HEAD}import { CommandBus } from "@nestjs/cqrs"\n`, ctor: "private readonly bus: CommandBus" }), errors: [{ messageId: "injects" }] },
             { filename: SSE, code: controller({ head: `${SSE_HEAD}import { OrderService } from "@modules/domain/order"
 `, ctor: "private readonly hub: RealtimeHub, private readonly orders: OrderService" }), errors: [{ messageId: "injects" }] },
+            // a second stream read service, a service that also writes, and a stream service in a door that is not SSE
+            { filename: SSE, code: controller({ head: STREAM_HEAD, ctor: "private readonly stream: OrderStreamService, private readonly audit: AuditStreamService" }), errors: [{ messageId: "second" }] },
+            { filename: SSE, code: controller({ head: STREAM_HEAD, ctor: "private readonly stream: MixedStreamService" }), errors: [{ messageId: "injects" }] },
+            { filename: SUBSCRIPTION, code: subscription({ head: `${GRAPHQL_HEAD}import { OrderStreamService } from "@modules/domain/order/order-stream.service"\n`, ctor: "private readonly stream: OrderStreamService" }), errors: [{ messageId: "injects" }] },
             // an untyped parameter cannot be proven to be the hub
             { filename: SUBSCRIPTION, code: subscription({ ctor: "private readonly hub" }), errors: [{ messageId: "injects" }] },
             // a lookalike hub of another owner is not the platform hub
@@ -167,6 +178,8 @@ test("realtime-topic-scope: the topic is built from the principal parameter", ()
             { filename: SSE, code: controller({ body: "return this.hub.stream(['orders', principal.id].join(':'), { after: lastEventId })" }) },
             // the principal id may be passed through a call
             { filename: SUBSCRIPTION, code: subscription({ body: "return this.hub.subscribe(['orders', principal.id].join(':'))" }) },
+            // a call to the stream read service passes the principal, which builds the principal-first topic
+            { filename: SSE, code: controller({ head: STREAM_HEAD, ctor: "private readonly stream: OrderStreamService", body: "return this.stream.open(principal, 'room', lastEventId)" }) },
             // a handler that never subscribes is not judged
             { filename: SUBSCRIPTION, code: subscription({ body: "return this.hub.subscribe.name as never" }) },
             // outside the realtime slot nothing is judged
@@ -180,6 +193,8 @@ test("realtime-topic-scope: the topic is built from the principal parameter", ()
             { filename: SSE, code: controller({ body: "return this.hub.stream(`orders:${lastEventId}`)" }), errors: [{ messageId: "scope" }] },
             { filename: SSE, code: controller({ body: "return this.hub.subscribe(`orders:${lastEventId}`)" }), errors: [{ messageId: "scope" }] },
             { filename: SSE, code: controller({ params: "@Headers(\"last-event-id\") lastEventId?: string", body: "return this.hub.stream('orders')" }), errors: [{ messageId: "scope" }] },
+            // a stream read service called with the client's selector alone is a leak
+            { filename: SSE, code: controller({ head: STREAM_HEAD, ctor: "private readonly stream: OrderStreamService", body: "return this.stream.open({ id: 'room' }, 'room', lastEventId)" }), errors: [{ messageId: "serviceScope" }] },
             // no principal parameter at all
             { filename: GATEWAY, code: gateway({ params: "", body: "return this.hub.subscribe('orders')" }), errors: [{ messageId: "scope" }] },
             // a principal parameter that is a lookalike decorator of another owner proves nothing

@@ -15,7 +15,7 @@
  * the file-name suffix the closed role vocabulary defines - never a path regex. What a receiver is comes
  * from its TYPE (`Logger` of `platform/logging`, `WebhookSignatureService` of `platform/http-security`) and
  * from whether the member is injected (`injectedMembers`); what a free function is comes from the file its
- * import resolves to. A job `step` records its fence through `JobClaims` (`advance`, `runKey`), and a webhook proves its signature through the shared `verify`
+ * import resolves to. A job `step` records its fence through `JobClaims` (`advance`), and a webhook proves its signature through the shared `verify`
  * or a declared domain verifier as its first call: a separate gate call is free beside the one intake delegation.
  * A combined domain proof and intake counts as the delegation. `.spec.ts` and `.d.ts` are never judged, and neither is a file whose tier is not
  * `feature` or whose role is not a thin role. A clean thin file is never flagged: that is the bar.
@@ -84,7 +84,7 @@ const isSignatureReceiver = (context: Context, node: Node): boolean => isOwnedTy
 /** The shape conversions a mapper may make on a value it received: a collection mapped item by item and a date written as text. They decide nothing and compute nothing. */
 const MAPPER_SHAPE_METHODS = new Set(["map", "toISOString"])
 
-/** The `JobClaims` port of `platform/jobs` - the fence a job step records itself through (`advance`, `runKey`): bookkeeping the fenced-job pattern requires, free beside the step's one delegating call. */
+/** The `JobClaims` port of `platform/jobs` - the fence a job step records itself through (`advance`): bookkeeping the fenced-job pattern requires, free beside the step's one delegating call. */
 const isClaimsReceiver = (context: Context, node: Node): boolean => isOwnedType(context, node, { name: "JobClaims", capability: "jobs", tier: "platform" })
 
 /** The `Logger` port of `platform/logging` - the one call that is always free. */
