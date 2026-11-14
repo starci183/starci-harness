@@ -8,6 +8,7 @@ import type { LocalConfig } from './local-config.mjs';
 import { isAlive, probe, stateOf } from './local-run.mjs';
 import type { LocalDeps } from './local-run.mjs';
 import { readRecord } from './local-state.mjs';
+import { probeRoutes } from './local-tunnel.mjs';
 
 /** `verify` for a dev environment. */
 export async function verifyLocal(ctx: StackContext, local: LocalConfig, _options: Record<string, unknown> = {}, deps: LocalDeps = {}): Promise<ActionResult> {
@@ -23,5 +24,8 @@ export async function verifyLocal(ctx: StackContext, local: LocalConfig, _option
     ok &&= result.ok;
     lines.push(`${result.ok ? 'ok    ' : 'FAIL  '}${result.detail}`);
   }
-  return { ok, lines, data: { checked: local.verify.length } };
+  const publicRows = await probeRoutes(ctx, local, true);
+  ok &&= publicRows.every((row) => row.startsWith('ok'));
+  lines.push(...publicRows);
+  return { ok, lines, data: { checked: local.verify.length + publicRows.length } };
 }

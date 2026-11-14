@@ -1,6 +1,6 @@
 // local-up.mts - `starci app stack up --env <dev env> [--execute]`: the one command that brings the whole dev environment up (PROJECT-STACKS-6).
 // Order: the base port range against the machine's other projects (an overlap refuses before anything starts), host prerequisites, dev custody, setup (install, codegen), compose services and their health, the environment's own database role,
-// migrations with a receipt, the seed levels with their receipts, the seed commands, native app processes, readiness, origins. Idempotent: what runs is kept, what changed is converged.
+// migrations with a receipt, the seed levels with their receipts, the seed commands, native app processes, readiness, the dev tunnel routes (PROJECT-STACKS-15), origins. Idempotent: what runs is kept, what changed is converged.
 // A dry run prints the plan. It never generates a replacement secret, never removes a volume and touches only its own compose project.
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -20,6 +20,7 @@ import { launch } from './local-host.mjs';
 import { baseOverlap, overlapLine, peersOf } from './local-peers.mjs';
 import { readRecord, writeRecord } from './local-state.mjs';
 import { SEED_RECEIPTS, seedStep } from './seeds.mjs';
+import { planTunnel, routeTunnel } from './local-tunnel.mjs';
 
 const SAFE_PASSWORD = /^[A-Za-z0-9_-]{8,}$/u;
 
@@ -166,6 +167,7 @@ function plan(local: LocalConfig, missing: string[]): string[] {
     ...local.seed.map((run) => `plan seed ${run.name}: ${run.argv.join(' ')}`),
     ...local.processes.map((run) => `plan process ${run.name}: ${run.argv.join(' ')}`),
     ...local.ready.map((row) => `plan ready ${row.name}: ${row.url}`),
+    ...planTunnel(local),
   ];
 }
 
@@ -212,6 +214,8 @@ export async function upLocal(ctx: StackContext, local: LocalConfig, { execute =
     if (!result.ok) throw failure('STACK_LOCAL_READY', `${row.name} is not ready: ${result.detail}; read a process log with: starci app stack logs --env ${local.env} --service ${local.processes.map((run) => run.name).join('|')}`);
   }
   lines.push(...await seed(ctx, local, custody, 'ready'));
+  lines.push(...await routeTunnel(ctx, local));
+  lines.push(...(local.tunnel?.routes ?? []).map((route) => `origin ${route.name} (public): https://${route.host}`));
   lines.push(...local.origins.map((origin) => `origin ${origin.name}: ${origin.url.replaceAll(/\$\{port\.([a-z][a-z0-9-]*)\}/gu, (_whole, name: string) => String(local.ports[name]))}`));
   return { ok: true, lines, data: { origins: local.origins } };
 }

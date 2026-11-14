@@ -49,6 +49,7 @@ import { projectSidesFindings } from './project-sides.mjs';
 import { dataBoundaryFindings } from './data-copies.mjs';
 import { dataStoresFindings } from './data-stores.mjs';
 import { dataSetsFindings } from './data-sets.mjs';
+import { storagePublicRuleFindings } from './stacks-storage-public.mjs';
 import type { Parsed } from './rule-types.mjs';
 import type { CheckFinding } from '../check.mjs';
 import { memoKeyed } from '../rule-memo.mjs';
@@ -60,6 +61,7 @@ export const A15_CODES = [
   'BE_DI_RING',
   'HFS_DATA_IN_CODE', 'HFS_DATA_DEPENDENCY', 'HFS_DATA_UNSEALED', 'HFS_DATA_STANDARD_SEALED', 'HFS_DATA_MANIFEST_DRIFT', 'HFS_DATA_FILE_SIZE', 'HFS_DATA_CAP',
   'DATA_STORE_UNDECLARED', 'DATA_STORE_KIND', 'DATA_STORE_ADAPTER', 'DATA_DERIVED_SOURCE',
+  'STORAGE_PUBLIC_ROUTE_MISSING', 'STORAGE_PUBLIC_ROUTE_CONSOLE', 'STORAGE_PUBLIC_LINK_INTERNAL',
   'DATA_PURPOSE', 'DATA_DRIVER_KIND', 'DATA_COPY_NAME', 'DATA_SEED_UNPINNED', 'DATA_FORCE_MISPLACED', 'DATA_BACKUP_LOADED', 'DATA_EXTENSION_UNDECLARED',
   'HFS_SIDE_FOLDER_MISSING', 'HFS_SIDE_UNDECLARED', 'STACKS_SIDES_UNDECLARED', 'STACKS_SIDES_DRIFT', 'STACKS_COMPONENT_SIDE',
   'BE_REST_OPERATION_ID', 'BE_REST_UNTYPED', 'BE_REST_ERROR_SHAPE', 'BE_REST_PAGINATION', 'BE_REST_SECURITY', 'BE_REST_APP_GRAPHQL',
@@ -82,6 +84,7 @@ export const FINDERS = [
   dataBoundaryFindings,
   dataStoresFindings,
   dataSetsFindings,
+  storagePublicRuleFindings,
   projectSidesFindings,
   restContractFindings,
   appGalleryFindings,

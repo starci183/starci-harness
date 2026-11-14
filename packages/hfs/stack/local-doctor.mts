@@ -17,6 +17,7 @@ import { compose, isAlive, stateOf } from './local-run.mjs';
 import type { LocalDeps } from './local-run.mjs';
 import { basePortRows, peersOf } from './local-peers.mjs';
 import { readRecord } from './local-state.mjs';
+import { tunnelRows } from './local-tunnel.mjs';
 
 function custodyRows(ctx: StackContext, local: LocalConfig): Prerequisite[] {
   const needed = neededKeys(local);
@@ -37,7 +38,7 @@ function custodyRows(ctx: StackContext, local: LocalConfig): Prerequisite[] {
 export async function doctorLocal(ctx: StackContext, local: LocalConfig, _options: Record<string, unknown> = {}, deps: LocalDeps = {}): Promise<ActionResult> {
   const host = await preflight(ctx, local, deps);
   const found = local.basePort === null ? { peers: [], unread: [], registries: [] } : peersOf(ctx, local, deps.peers);
-  const rows: Prerequisite[] = [...custodyRows(ctx, local), ...basePortRows(local, found)];
+  const rows: Prerequisite[] = [...custodyRows(ctx, local), ...basePortRows(local, found), ...tunnelRows(ctx, local)];
   const lines = [...host.lines, ...tableLines(rows)];
   const dockerOk = host.rows.filter((row) => row.id === 'docker' || row.id === 'compose').every((row) => row.ok);
   if (dockerOk) {

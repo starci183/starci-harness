@@ -6668,3 +6668,66 @@ DATA_EXTENSION_UNDECLARED:
   nextStep_vi: "Khai check trong ext/manifest.json hoặc sửa completeness."
   owner: op-retry
   kind: check-finding
+STORAGE_PUBLIC_ROUTE_MISSING:
+  title: "A dev object store has no public route on the dev tunnel"
+  title_vi: "Kho đối tượng của môi trường dev chưa có route công khai trên tunnel dev"
+  meaning_vi: "Môi trường dev có công bố địa chỉ công khai và chạy kho đối tượng (S3) nhưng không có tunnel.routes nào trỏ tới cổng S3 của kho: liên kết tới tệp sẽ là địa chỉ loopback, trình duyệt khác máy và nhà cung cấp không mở được."
+  causes_vi:
+    - "Vi phạm R428 (PROJECT-STACKS-15)."
+  nextStep_vi: "Thêm một mục vào local.tunnel.routes có port là cổng S3 của kho (không phải cổng console), rồi chạy starci app stack up --env <env> --execute để tạo ingress rule và bản ghi DNS."
+  owner: op-retry
+  kind: check-finding
+STORAGE_PUBLIC_ROUTE_CONSOLE:
+  title: "A tunnel route reaches the admin console of an object store"
+  title_vi: "Một route của tunnel trỏ vào console quản trị của kho đối tượng"
+  meaning_vi: "Một mục local.tunnel.routes trỏ tới cổng console của kho đối tượng: chỉ cổng S3 được công khai, console quản trị ở lại loopback."
+  causes_vi:
+    - "Vi phạm R428 (PROJECT-STACKS-15)."
+  nextStep_vi: "Xoá route đó, hoặc trỏ nó tới cổng S3 của kho."
+  owner: op-retry
+  kind: check-finding
+STORAGE_PUBLIC_LINK_INTERNAL:
+  title: "An object-store link would use an internal host"
+  title_vi: "Liên kết tới kho đối tượng sẽ dùng địa chỉ nội bộ"
+  meaning_vi: "Tiến trình đặt STORAGE_ENDPOINT (địa chỉ nội bộ để ghi) nhưng không đặt STORAGE_PUBLIC_URL, hoặc đặt nó thành loopback, localhost, tên container hay host không có route tunnel tới kho: liên kết app dựng ra không ai mở được."
+  causes_vi:
+    - "Vi phạm R428 (PROJECT-STACKS-15)."
+  nextStep_vi: "Đặt STORAGE_PUBLIC_URL thành https://<host của route tunnel tới kho>; dữ liệu lưu chỉ giữ bucket và key."
+  owner: op-retry
+  kind: check-finding
+STACK_LOCAL_TUNNEL_CERT:
+  title: "stack up refused: the machine has no Cloudflare account certificate"
+  title_vi: "stack up bị từ chối: máy chưa có chứng chỉ tài khoản Cloudflare"
+  meaning_vi: "Môi trường khai báo local.tunnel nhưng không có cert.pem trong thư mục cloudflared (CLOUDFLARED_HOME hoặc ~/.cloudflared): không thể tạo bản ghi DNS của các route."
+  causes_vi:
+    - "Môi trường khai báo local.tunnel (PROJECT-STACKS-15)."
+  nextStep_vi: "Chạy cloudflared tunnel login một lần trên máy này, rồi chạy lại stack up --execute."
+  owner: supervisor
+  kind: verb-refusal
+STACK_LOCAL_TUNNEL_CONFIG:
+  title: "stack up refused: the tunnel ingress file is missing or unusable"
+  title_vi: "stack up bị từ chối: tệp ingress của tunnel thiếu hoặc không dùng được"
+  meaning_vi: "Không có <tunnel>.yml trong thư mục cloudflared, nó không phải YAML hợp lệ, hoặc không có rule bắt-tất-cả (- service: http_status:404) để chèn route trước nó."
+  causes_vi:
+    - "Môi trường khai báo local.tunnel (PROJECT-STACKS-15)."
+  nextStep_vi: "Tạo tunnel một lần bằng cloudflared tunnel create <tên> và viết tệp ingress có rule bắt-tất-cả ở cuối, rồi chạy lại."
+  owner: supervisor
+  kind: verb-refusal
+STACK_LOCAL_TUNNEL_CONFLICT:
+  title: "stack up refused: a declared host already routes elsewhere in the tunnel ingress file"
+  title_vi: "stack up bị từ chối: host đã khai báo đang trỏ chỗ khác trong tệp ingress của tunnel"
+  meaning_vi: "Tệp ingress của tunnel trỏ host đã khai báo tới một service khác với local.tunnel.routes: stack up không sửa đè một rule có sẵn."
+  causes_vi:
+    - "Môi trường khai báo local.tunnel (PROJECT-STACKS-15)."
+  nextStep_vi: "Sửa rule trong tệp ingress hoặc sửa khai báo cho khớp (khai báo là nguồn đúng), rồi chạy lại."
+  owner: supervisor
+  kind: verb-refusal
+STACK_LOCAL_TUNNEL_DNS:
+  title: "stack up refused: cloudflared could not route a host to the tunnel"
+  title_vi: "stack up bị từ chối: cloudflared không trỏ được host vào tunnel"
+  meaning_vi: "cloudflared tunnel route dns --overwrite-dns thất bại cho một host của local.tunnel.routes (không có binary, tên tunnel sai, cert.pem không thuộc vùng DNS của host)."
+  causes_vi:
+    - "Môi trường khai báo local.tunnel (PROJECT-STACKS-15)."
+  nextStep_vi: "Đọc dòng lỗi của cloudflared trong thông báo, sửa tên tunnel, host hoặc cert.pem rồi chạy lại."
+  owner: supervisor
+  kind: verb-refusal

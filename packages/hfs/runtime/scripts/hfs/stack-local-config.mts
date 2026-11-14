@@ -26,7 +26,17 @@ export interface LocalCommand {
   after: 'migrate' | 'ready';
 }
 /** A compose service the environment starts and how its readiness is observed. */
-export interface LocalService { name: string; wait: 'healthy' | 'started' | 'tcp'; port: string | null }
+export interface LocalService {
+  name: string; wait: 'healthy' | 'started' | 'tcp'; port: string | null;
+  /** `object-store`: an S3 API (MinIO) whose links reach browsers and providers (PROJECT-STACKS-15, R428); `port` is its S3 port, never its admin console. */
+  kind?: 'object-store';
+  /** An object store only: the declared port of its admin console, which no tunnel route may reach. */
+  console?: string;
+}
+/** One public hostname of the environment's dev tunnel and the loopback port it routes to. */
+export interface LocalTunnelRoute { name: string; host: string; port: string }
+/** The locally managed named tunnel of the environment and the hostnames it publishes (PROJECT-STACKS-15); `stack up --execute` routes them. */
+export interface LocalTunnel { name: string; routes: LocalTunnelRoute[] }
 /** A native app process. */
 export interface LocalProcess extends LocalCommand { port: string | null; health: HttpProbe | null }
 /** One HTTP probe: the readiness of a process, a `ready` row or a `verify` row. */
@@ -66,10 +76,12 @@ export interface LocalBlock {
   ready: HttpProbe[];
   verify: HttpProbe[];
   origins: Array<{ name: string; url: string }>;
+  /** The dev tunnel (`local.tunnel`); absent when the environment publishes nothing. */
+  tunnel?: LocalTunnel;
   resources: { diskGb: number; ramMb: number };
 }
 
-const TOP = ['project', 'basePort', 'ports', 'services', 'database', 'databases', 'composeEnv', 'grants', 'dirs', 'custody', 'setup', 'seed', 'processes', 'ready', 'verify', 'origins', 'resources'];
+const TOP = ['project', 'basePort', 'ports', 'services', 'database', 'databases', 'composeEnv', 'grants', 'dirs', 'custody', 'setup', 'seed', 'processes', 'ready', 'verify', 'origins', 'tunnel', 'resources'];
 const COMMAND = ['name', 'argv', 'cwd', 'heavy', 'skipIfExists', 'env', 'files'];
 const SEED = [...COMMAND, 'after'];
 const PROCESS = [...COMMAND, 'port', 'health'];
@@ -176,7 +188,7 @@ function servicesOf(c: Collector, value: unknown, ports: Record<string, number>)
   if (!Array.isArray(value) || value.length === 0) { c.problem('services', 'must list the compose services `up` starts, dependencies first'); return []; }
   return value.map((item, index): LocalService => {
     const at = `services[${index}]`;
-    if (!closedFields(c, at, item, ['name', 'wait', 'port'], 'local')) return { name: '', wait: 'started', port: null };
+    if (!closedFields(c, at, item, ['name', 'wait', 'port', 'kind', 'console'], 'local')) return { name: '', wait: 'started', port: null };
     const entry = item as Record<string, unknown>;
     patternField(c, `${at}.name`, entry.name, NAME);
     const wait = String(entry.wait ?? 'healthy');
@@ -184,8 +196,46 @@ function servicesOf(c: Collector, value: unknown, ports: Record<string, number>)
     const port = entry.port === undefined ? null : String(entry.port);
     if (wait === 'tcp' && (port === null || !Object.hasOwn(ports, port))) c.problem(`${at}.port`, 'must name a declared port when wait is tcp');
     if (port !== null && !Object.hasOwn(ports, port)) c.problem(`${at}.port`, `${port} is not a declared port`);
-    return { name: String(entry.name ?? ''), wait: wait as LocalService['wait'], port };
+    const service: LocalService = { name: String(entry.name ?? ''), wait: wait as LocalService['wait'], port };
+    if (entry.kind !== undefined) {
+      if (entry.kind !== 'object-store') c.problem(`${at}.kind`, 'must be object-store (an S3 API whose links reach browsers and providers)');
+      else service.kind = 'object-store';
+    }
+    if (entry.console !== undefined) {
+      if (service.kind !== 'object-store') c.problem(`${at}.console`, 'belongs to an object-store service only');
+      else if (typeof entry.console !== 'string' || !Object.hasOwn(ports, entry.console)) c.problem(`${at}.console`, 'must name a declared port (the admin console, which no tunnel route may reach)');
+      else service.console = entry.console;
+    }
+    if (service.kind === 'object-store' && (port === null)) c.problem(`${at}.port`, 'an object-store service names its S3 port');
+    return service;
   });
+}
+
+/** A public DNS name: lowercase labels, at least two, never an address or a loopback name. */
+const PUBLIC_HOST = /^(?=.{4,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{0,61}[a-z0-9]$/u;
+
+/** `local.tunnel`: the named tunnel (its credentials are the machine's cert.pem, never a value here) and its routes, each a public host and a declared port. */
+function tunnelOf(c: Collector, value: unknown, ports: Record<string, number>): LocalTunnel | undefined {
+  if (value === undefined) return undefined;
+  if (!closedFields(c, 'tunnel', value, ['name', 'routes'], 'local')) return undefined;
+  const entry = value as Record<string, unknown>;
+  patternField(c, 'tunnel.name', entry.name, NAME);
+  const hosts = new Set<string>();
+  const routes = listOf(c, 'tunnel.routes', entry.routes, (item, index): LocalTunnelRoute => {
+    const at = `tunnel.routes[${index}]`;
+    if (!closedFields(c, at, item, ['name', 'host', 'port'], 'local')) return { name: '', host: '', port: '' };
+    const route = item as Record<string, unknown>;
+    patternField(c, `${at}.name`, route.name, NAME);
+    const host = String(route.host ?? '');
+    if (!PUBLIC_HOST.test(host) || host === 'localhost' || host.endsWith('.localhost')) c.problem(`${at}.host`, 'must be a public DNS name (not an address, localhost or a container name)');
+    if (hosts.has(host)) c.problem(`${at}.host`, `${host} is routed twice`);
+    hosts.add(host);
+    const port = String(route.port ?? '');
+    if (!Object.hasOwn(ports, port)) c.problem(`${at}.port`, `${port} is not a declared port`);
+    return { name: String(route.name ?? ''), host, port };
+  });
+  if (routes.length === 0) c.problem('tunnel.routes', 'must list at least one route');
+  return { name: String(entry.name ?? ''), routes };
 }
 
 function databaseOf(c: Collector, value: unknown, ports: Record<string, number>, services: LocalService[], role: string): LocalDatabase | null {
@@ -355,6 +405,8 @@ export function normalizeLocal(raw: unknown, { project, env }: { project: string
     }),
     resources: { diskGb: 10, ramMb: 4096 },
   };
+  const tunnel = tunnelOf(c, entry.tunnel, ports);
+  if (tunnel !== undefined) block.tunnel = tunnel;
   if (entry.resources !== undefined && closedFields(c, 'resources', entry.resources, ['diskGb', 'ramMb'], 'local')) {
     const value = entry.resources as Record<string, unknown>;
     for (const [key, floor] of [['diskGb', 1], ['ramMb', 512]] as const) {

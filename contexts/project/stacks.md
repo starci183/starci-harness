@@ -646,8 +646,65 @@ Enforced by: R426 (`data-stores`: `DATA_STORE_UNDECLARED`, `DATA_STORE_KIND`, `D
 (`data-sets`: `DATA_PURPOSE`, `DATA_DRIVER_KIND`, `DATA_COPY_NAME`, `DATA_SEED_UNPINNED`, `DATA_FORCE_MISPLACED`, `DATA_BACKUP_LOADED`,
 `DATA_EXTENSION_UNDECLARED`); the ports and the git driver by the specs of `@starci/seed`; the verbs by `packages/hfs/src/data-verb.spec.mts`.
 
+## PROJECT-STACKS-15 An object store a dev environment runs has a public route; links are built on it, never on the loopback
+
+A dev environment runs an S3 object store (MinIO) so an app can keep files and images. A link to one of its objects is followed by a browser, by a
+provider that fetches an image (a channel that downloads the picture it is sent) and by a person on another machine, so it must not name the machine
+it was written on. The rule has four parts; each project that runs an object store in a dev environment that publishes anything follows all four.
+
+- **One route, the S3 port only.** The store is declared in `environments.<env>.local.services[]` with `kind: object-store` (its `port` is its S3
+  API port; an optional `console` names its admin console port) or is the `component` of a `data.stores[]` of kind `storage`. The dev tunnel that
+  already publishes the app (the locally managed named tunnel of the machine, PROJECT-STACKS-10 "Through the ingress") gets one more public host,
+  declared once under `local.tunnel`: `{name: <tunnel>, routes: [{name, host, port}]}` where `port` names a declared port. The route to the store
+  names its S3 port; no route reaches the admin console, and the console stays on the loopback.
+- **Two values, never one.** The app receives the internal endpoint for its own writes (`STORAGE_ENDPOINT`, the loopback address, reached from the
+  process) and the public base its links are built on (`STORAGE_PUBLIC_URL`, `https://` plus the host of the store's route). The base is the
+  `publicEndpoint` option of `@starci/object-storage`: presigned requests are signed for it and `publicUrl` is read from it. Every process that
+  sets `STORAGE_ENDPOINT` sets `STORAGE_PUBLIC_URL`.
+- **Stored data holds no host.** A file or image reference in a table, a seed, a catalogue or an event is a bucket and a key. The link is built at
+  read time from the public base: presigned and expiring for a private bucket, `publicUrl(bucket, key)` only for a bucket the app declares public
+  (the picture bucket of its bootstrap). A link that contains `127.0.0.1`, `localhost`, a container name or the S3 port of the machine is a defect
+  wherever it is found: in a response, a stored value, a log line meant for a person or a message sent to a provider.
+- **The route is made from the declaration.** `starci app stack up --env <env> --execute` adds the declared hosts to the ingress file of the tunnel
+  (`~/.cloudflared/<tunnel>.yml`, edited as text: a missing host is inserted before the catch-all rule, nothing else changes, a host already routed
+  elsewhere is `STACK_LOCAL_TUNNEL_CONFLICT`) and makes each DNS record with `cloudflared tunnel route dns --overwrite-dns <tunnel> <host>` over the
+  machine's `cert.pem` (`STACK_LOCAL_TUNNEL_CERT`, `STACK_LOCAL_TUNNEL_CONFIG`, `STACK_LOCAL_TUNNEL_DNS`); no dashboard step. The connector of the tunnel
+  reads its ingress file when it starts, so `up` says when it must be restarted. `stack up` prints each public origin and reads
+  `https://<host>/minio/health/live` once (a wait, never a failure: DNS may need a moment); `stack verify` fails when that read is not 200;
+  `stack doctor` has a row for `cloudflared`, the certificate and the ingress file. A dry run prints the plan lines.
+
+```yaml
+environments:
+  dev:
+    runtime: docker-compose
+    local:
+      ports: {api: 4301, storage: 4393, storage-console: 4394}
+      services:
+        - {name: storage, wait: tcp, port: storage, kind: object-store, console: storage-console}
+      tunnel:
+        name: shop-dev
+        routes:
+          - {name: storage, host: shop-local-files.example.org, port: storage}
+      processes:
+        - name: api
+          argv: [node, dist/main.js]
+          port: api
+          env:
+            STORAGE_ENDPOINT: "http://127.0.0.1:${port.storage}"
+            STORAGE_PUBLIC_URL: "https://shop-local-files.example.org"
+```
+
+An environment that publishes nothing (no `tunnel`, no process holding a public `https` origin) keeps its loopback links: the rule starts with the first
+public origin, because until then nothing outside the machine follows a link. Production is not judged here: its `STORAGE_ENDPOINT` is already a public
+host (PROJECT-STACKS-4). The sandbox sample images a provider catalogue ships (a placeholder host in a seed) are stored as bucket and key like any
+file and served through the same public base; a project that wants a provider to fetch them seeds the files into the bucket.
+
+Enforced by: R428 (`stacks-storage-public`: `STORAGE_PUBLIC_ROUTE_MISSING`, `STORAGE_PUBLIC_ROUTE_CONSOLE`, `STORAGE_PUBLIC_LINK_INTERNAL`), the shape of
+`local.tunnel` and the service fields by R372 (`STACKS_LOCAL_CONFIG_INVALID`), the verbs by `packages/hfs/src/stacks-storage-public.spec.mts`; the stored value and the
+read-time link are held by review and by the app's own specs (no rule reads code for a host).
+
 ## Read with
 
 [lite.md](lite.md), [full.md](full.md); slots `app.starcistacks` and `app.plaintext-env` in
 [hfs/slots.yaml](../hfs/slots.yaml); R06, R10, R250 to R253, R266 to R268, R271, R275 to R277, R294, R296 to R299,
-R301, R372 to R375, R400, R426, R427 in [hfs/rules.yaml](../hfs/rules.yaml).
+R301, R372 to R375, R400, R426 to R428 in [hfs/rules.yaml](../hfs/rules.yaml).
