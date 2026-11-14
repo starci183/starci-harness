@@ -3,10 +3,11 @@ slots: [be.feature.saga, be.feature.saga.steps, be.feature.saga.compensations]
 ---
 # Sagas
 
-Decides how a flow that spans contexts or services is written when it declares an undo of its steps: a saga feature folder whose
-orchestrator lists the steps and the optional compensations a person may press, a versioned and fenced run state in
-`platform/saga`, consumers that advance it through the inbox, and events declared in the vendored contracts. A flow moves forward
-only unless it declares such an undo (BE-JOBS-7, BE-RESILIENCE-2). A saga folder is legal only when `sides.be.patterns`
+A saga is a flow with a declared undo: optional, pressed by a person, run as an ordinary forward step. The default is a chain of
+jobs that moves forward only (BE-JOBS-7, BE-RESILIENCE-2); a flow becomes a saga only when it declares such an undo. This file
+decides how that flow is written when it spans contexts or services: a saga feature folder whose orchestrator lists the steps and
+the optional compensations a person may press, a versioned and fenced run state in `platform/saga`, consumers that advance it
+through the inbox, and events declared in the vendored contracts. A saga folder is legal only when `sides.be.patterns`
 declares `saga`. In lite its events travel on the lite event bus and its state table is a migration; the rules are the same.
 
 Edition: whether lite admits this pattern is open ([project/lite.md](../../project/lite.md) "Patterns").
@@ -87,7 +88,8 @@ Enforced by: R391 BE_SAGA_CUSTOMER_HOLDING_LINE (candidate: planned, no checker 
 parks a customer run and reads the one holding line back).
 
 ## BE-SAGA-7 A run a customer waits on is on the waited ladder
-A run whose trigger is a customer message declares the `waited` ladder (1, 2, 4 and 8 minutes; BE-JOBS-7) in the declaration of its
+A run whose trigger is a customer message declares the `waited` ladder (minutes, such as 1, 2, 4 and 8, as the app's ladder policy
+declares them; BE-JOBS-7) in the declaration of its
 jobs, and every other run declares `background`. After the last rung the run is a dead letter with its one item for a person's
 "resume now", and a new build hands it back at once. Each resume replays through the inbox and the version fence, so a step already
 done is not repeated.

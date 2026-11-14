@@ -2721,7 +2721,7 @@ rules:
       - {kind: hfs, id: saga-holding-line, status: planned}
   - id: R392
     code: BE_SAGA_INTERACTIVE_RESUME_LADDER
-    law: "A flow a customer waits on declares the `waited` ladder (1, 2, 4 and 8 minutes) in the declaration of its jobs and every other flow `background`, each class declared once by the jobs platform; after the last rung the run is a dead letter with one item for a person, and a new build hands it back at once."
+    law: "A flow a customer waits on declares the `waited` ladder (minutes, such as 1, 2, 4 and 8) in the declaration of its jobs and every other flow `background` (seconds, such as 5, 10 and 20), each ladder declared once per class of flow by the jobs platform's ladder policy; after the last rung the run is a dead letter with one item for a person, and a new build hands it back at once."
     failureCodes:
       - BE_SAGA_INTERACTIVE_RESUME_LADDER
     enforcers:

@@ -112,9 +112,11 @@ Enforced by: R335, `infra-import-owner` (R90).
 domain method that ends early for a typed business reason returns; anything else throws. No feature or domain code catches to wait,
 loop, retry, count tries or swallow.
 
-A job names the ladder of its class of flow once, in its declaration (BE-JOBS-9), and `platform/jobs` declares the ladders once
-(`job-ladders.policy.ts`): `background` (nobody waits: a few short queue tries) and `waited` (a person waits on the result: 1, 2,
-4 and 8 minutes). A transient failure with starts left is `fail`ed and handed back to the queue with the ladder's pause; the
+A retry ladder is DECLARED per class of flow, never written in a job or a flow: `platform/jobs` declares each ladder once, its
+number of tries and the pause before each, in `job-ladders.policy.ts`, and a job names the ladder of its class once, in its
+declaration (BE-JOBS-9). The classes are `background` (nobody waits: a few short tries, such as 5, 10 and 20 seconds) and `waited`
+(a person waits on the result: minutes, such as 1, 2, 4 and 8); the numbers are the app's declaration, and a change of them is one
+edit of that policy. A transient failure with starts left is `fail`ed and handed back to the queue with the ladder's pause; the
 broker's own attempt count is a ceiling above every ladder. A job's start is counted before its work runs, so a crash is a counted
 start.
 

@@ -30,8 +30,9 @@ decides what a failure means, in one place:
   `DomainError` family: the data is wrong), `config` (a domain code naming a configuration or connection) or `code` (any other
   failure); an error that carries `failureClass` names its own. An event consumer's delivery that fails transiently is redelivered;
   any other goes to its dead letter at once under its class, where a person's requeue resumes it (BE-EVENT-BUS-4, BE-EVENT-BUS-6).
-- A `transient` failure with starts left is tried again on the job's ladder, declared once per class of flow: `background` (nobody
-  waits) or `waited` (a person waits: 1, 2, 4 and 8 minutes), with the pause the ladder names (BE-JOBS-7). A delivery started past
+- A `transient` failure with starts left is tried again on the job's ladder, DECLARED once per class of flow in the app's
+  `job-ladders.policy.ts`: `background` (nobody waits: seconds, such as 5, 10 and 20) or `waited` (a person waits: minutes, such as
+  1, 2, 4 and 8), with the pause the ladder declares (BE-JOBS-7). A delivery started past
   its ladder is a dead letter without running.
 - Any other failure, and a transient one on its last start, is a dead letter: the job is parked as `failed_awaiting_fix` under the
   build that ran it (`JobClaims.park`), never as a silent final one, and ONE item for a person is raised per park episode through
