@@ -171,6 +171,31 @@ image, so any digest-pinned supported reverse proxy serves.
   memory only. Either merges into a member that already exists only with `--into-existing`: a key the target holds with
   another value refuses the whole move, naming the key, an identical one merges, each target is written once and the
   source goes only after every target is written. The audit is a verb, not a gate row, until every app has moved.
+- **A sealed file outside the stack: `--ext <target>`.** A project may keep credentials in a sealed file that is no member of its `.starcistacks`:
+  a package's seed standard holds them in `secrets.<env>.enc.yaml` of its own checkout, the data around it plain. The project's extension declares
+  each such file once, in `secretTargets` of `ext/manifest.json` ([lint.md](lint.md) PROJECT-LINT-3): `{id, why, root, environments: {<env>: <file>},
+  recipients, under?, depth?}`, `root` the checkout folder (relative to the app root, `../` allowed), `environments` the sealed file of each stack
+  environment it serves, `recipients` the `.sops.yaml` below `root` whose creation rule names who the file is sealed to, `under` the mapping path the
+  keys live below and `depth` how many `/`-joined segments a key has (1: a flat `KEY`; 2 below `under: [accounts]`: `<account>/<member>`).
+  `starci app secret set --env <env> --ext <target> <KEY>...` (and `unset`, `list`) is the same command as for a member, with the same masked prompt,
+  redirected stdin, `--from-file` and `--generate`, the same writer claim and the same sops seam, rooted at the target's checkout so its own `.sops.yaml`
+  decides the recipients; the harness reads nothing of what the file means. It refuses an unknown target (naming the declared ones), an environment the
+  target does not seal, a checkout that is not on the machine, a missing `.sops.yaml`, and a key of another depth or one that carries an
+  environment (a leading DEV, PROD, PRODUCTION, STAGING, LOCAL or TEST: the environment is the file). A value never reaches the stack, the
+  manifest, an argument or the output, and `get` is refused for a target (the project's own door opens the file in memory). `--from-host` still
+  works for one key. Enforced by R429 (`secret-targets`: `HFS_SECRET_TARGET_MISSING`, `HFS_SECRET_TARGET_UNSEALED`, `HFS_SECRET_TARGET_PLAIN`: a declared
+  file that is absent, not a sops envelope, or carrying a plain value, judged when the checkout is on the machine) and, for the declaration, R381.
+
+  ```json
+  "secretTargets": [{
+    "id": "blocks-core", "why": "Credentials of the blocks-core seed standard, sealed per environment.",
+    "root": "../../Repositories/blocks-core-seed-standard",
+    "environments": {"dev": "secrets.dev.enc.yaml", "production": "secrets.prod.enc.yaml"},
+    "recipients": ".sops.yaml", "under": ["accounts"], "depth": 2
+  }]
+  ```
+
+  `starci app secret set --env dev --ext blocks-core crm-main/credential` prompts for the value masked and seals it as `accounts.crm-main.credential`.
 - **Moving an app to the standard.** In the app root, with the harness CLI:
   1. `starci app secret audit` lists what deviates; `starci app secret recipients --env <env>` shows each environment's
      recipients.

@@ -24,7 +24,8 @@ const hostValue = (hostKey: string): string => {
  * sealed member: the CLI takes the flag out, reads the key through the secret loader and hands it to @starci/hfs as the stdin `set`
  * would read, so the value never reaches the shell, an argument, output or evidence. `server-key --env <env>` makes the deploy server's
  * own age identity on the server, through the deploy's ssh transport, and seals the environment to it beside the owner key
- * (@starci/hfs `stack/server-key.mjs`).
+ * (@starci/hfs `stack/server-key.mjs`). `set|unset|list --env <env> --ext <target>` seals into a secret target the project's ext/manifest.json
+ * declares (a package's seed-standard credentials file) instead of a member of the stack; the harness holds nothing of what the file means.
  */
 export const appSecretVerb = defineVerb({
     path: ["app", "secret"],
@@ -39,10 +40,13 @@ export const appSecretVerb = defineVerb({
         const fromHost = argValue(flags.args, FROM_HOST)
         if (fromHost === undefined) return runHfs(context, "secret", flags.args, false)
         const args = withoutArg(flags.args, FROM_HOST)
-        const [action, , ...keys] = leadingOperands(withoutArg(args, "env"))
+        const target = argValue(args, "ext")
+        // `--ext <target>` names no slug: the operands are the action and the keys.
+        const [action, ...operands] = leadingOperands(withoutArg(withoutArg(args, "env"), "ext"))
+        const keys = target === undefined ? operands.slice(1) : operands
         if (action !== "set") throw new UsageError("--from-host is only valid for set")
         if (argValue(args, "generate") !== undefined) throw new UsageError("--from-host and --generate each give set its value; pass one")
-        if (keys.length !== 1) throw new UsageError("--from-host seals one key; name exactly one (set --env <env> <slug> <KEY> --from-host <HOST_KEY>)")
+        if (keys.length !== 1) throw new UsageError("--from-host seals one key; name exactly one (set --env <env> <slug> <KEY> --from-host <HOST_KEY>, or set --env <env> --ext <target> <KEY> --from-host <HOST_KEY>)")
         const value = hostValue(fromHost)
         return runHfs(context, "secret", args, false, () => value)
     },

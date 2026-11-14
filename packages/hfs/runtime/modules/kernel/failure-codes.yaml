@@ -6731,3 +6731,30 @@ STACK_LOCAL_TUNNEL_DNS:
   nextStep_vi: "Đọc dòng lỗi của cloudflared trong thông báo, sửa tên tunnel, host hoặc cert.pem rồi chạy lại."
   owner: supervisor
   kind: verb-refusal
+HFS_SECRET_TARGET_MISSING:
+  title: "A secret target lacks a file of its checkout"
+  title_vi: "Đích bí mật thiếu tệp trong checkout"
+  meaning_vi: "Một secretTargets của ext/manifest.json có checkout trên máy nhưng thiếu tệp .enc.yaml của một môi trường đã khai hoặc thiếu .sops.yaml của nó."
+  causes_vi:
+    - "Vi phạm R429 (PROJECT-STACKS-5)."
+  nextStep_vi: "Tạo tệp bằng starci app secret set --env <env> --ext <target> <KEY>, hoặc thêm .sops.yaml vào checkout."
+  owner: op-retry
+  kind: check-finding
+HFS_SECRET_TARGET_UNSEALED:
+  title: "A secret target file is not sealed"
+  title_vi: "Tệp của đích bí mật chưa được niêm phong"
+  meaning_vi: "Tệp .enc.yaml của một secretTargets không có khối sops: giá trị nằm ở dạng thường."
+  causes_vi:
+    - "Vi phạm R429 (PROJECT-STACKS-5)."
+  nextStep_vi: "Niêm phong bằng starci app secret set --env <env> --ext <target> <KEY> và xoá bản thường khỏi lịch sử."
+  owner: op-retry
+  kind: check-finding
+HFS_SECRET_TARGET_PLAIN:
+  title: "A sealed target file holds a plain value"
+  title_vi: "Tệp đã niêm phong của đích bí mật còn một giá trị thường"
+  meaning_vi: "Tệp có khối sops nhưng một giá trị không phải ENC[...]: nó nằm ở dạng thường trong tệp."
+  causes_vi:
+    - "Vi phạm R429 (PROJECT-STACKS-5)."
+  nextStep_vi: "Đặt lại khoá đó bằng starci app secret set --env <env> --ext <target> <KEY>."
+  owner: op-retry
+  kind: check-finding

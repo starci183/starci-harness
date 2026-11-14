@@ -2866,3 +2866,12 @@ rules:
       - STORAGE_PUBLIC_LINK_INTERNAL
     enforcers:
       - {kind: hfs, id: stacks-storage-public}
+  - id: R429
+    code: HFS_SECRET_TARGET_MISSING
+    law: "A secret target the project declares in `secretTargets` of ext/manifest.json (starci/project-ext@1: id, root, one `*.enc.yaml` file per environment, the `.sops.yaml` whose creation rule names the recipients, optional `under` and `depth`) holds sealed files only, judged when its checkout is on the machine and never by reading a value: a file of a declared environment, or the target's `.sops.yaml`, that is not in the checkout is HFS_SECRET_TARGET_MISSING, a file that is not a sops envelope (no `sops` block) HFS_SECRET_TARGET_UNSEALED, a file with its `sops` block and a value that is not an ENC[...] value HFS_SECRET_TARGET_PLAIN; the declaration's own shape is HFS_EXT_INVALID (R381). `starci app secret set|unset|list --env <env> --ext <target>` is the one writer: it resolves the target through the extension, prompts masked as set does, seals to the file's recipients and never prints a value or writes one to the stack; an unknown target, an environment the target does not seal, or a key naming an environment is refused."
+    failureCodes:
+      - HFS_SECRET_TARGET_MISSING
+      - HFS_SECRET_TARGET_UNSEALED
+      - HFS_SECRET_TARGET_PLAIN
+    enforcers:
+      - {kind: hfs, id: secret-targets}

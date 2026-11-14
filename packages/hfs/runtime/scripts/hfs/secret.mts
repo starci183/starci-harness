@@ -6,6 +6,7 @@
 // Every verb runs at the app root or --cwd. Exit 0 done, 2 refusal; --reveal is the only plaintext stdout path.
 // unset, rename and remove edit one sealed member and are dry runs until --execute (scripts/hfs/secret-edit.mts); so is recipients --add/--remove.
 // verify decrypts each member in memory and names only keys and violated shapes, never a value (R249).
+// `--ext <target>` (set, unset, list) seals into a secret target the project's ext/manifest.json declares instead of a member of the stack (scripts/hfs/secret-ext.mts).
 // server-key makes the deploy server's own age identity on the server and seals the environment to it (stack/server-key.mts).
 import fs from "node:fs";
 import path from "node:path";
@@ -31,6 +32,7 @@ import { stackContext } from "../../../stack/context.mjs";
 import { StackError } from "../../../stack/errors.mjs";
 import { serverKey } from "../../../stack/server-key.mjs";
 import { seedDevCustody } from "./secret-dev-init.mjs";
+import { listTargetKeys, resolveSecretTarget, setTargetValues, unsetTargetKey, validateTargetKey } from "./secret-ext.mjs";
 
 export { envelopeOf, formatOf, plaintextOf } from "./secret-document.mjs";
 export { setSecretValues } from "./secret-store.mjs";
@@ -42,7 +44,7 @@ const MOVE_VERBS = new Set(["migrate", "split"]);
 /** The flags the parser reads: repeatable lists, single values and booleans (optionsFor refuses each outside the actions that take it). */
 export const SECRET_FLAGS = Object.freeze({
   list: ["--add", "--remove", "--from-file", "--group"],
-  value: ["--cwd", "--env", "--generate", "--to", "--group-file", "--backup", "--restore"],
+  value: ["--cwd", "--env", "--ext", "--generate", "--to", "--group-file", "--backup", "--restore"],
   boolean: ["--to-file", "--reveal", "--execute", "--force-nonempty", "--into-existing", "--rotate"],
 });
 const LIST_FLAGS = SECRET_FLAGS.list;
@@ -57,6 +59,7 @@ interface SecretOptions {
   group?: string[];
   cwd?: string;
   env?: string;
+  ext?: string;
   generate?: string;
   to?: string;
   "group-file"?: string;
@@ -127,9 +130,9 @@ function parse(argv: string[]): SecretOptions {
 /** The operands and flags of one secret action, as the usage of `starci app secret` prints them. */
 export function secretUsage(verb: string): string {
   if (verb === "init") return "[--env <dev env> [--execute]]";
-  if (verb === "set") return "--env <env> <slug> <KEY> [KEY ...] [--generate <bytes>] [--from-file KEY=path ...]";
+  if (verb === "set") return "--env <env> <slug> <KEY> [KEY ...] [--generate <bytes>] [--from-file KEY=path ...] | --env <env> --ext <target> <KEY> [KEY ...]";
   if (verb === "get") return "--env <env> <slug> [KEY] --to-file [--reveal]";
-  if (verb === "unset") return "--env <env> <slug> <KEY> [--execute]";
+  if (verb === "unset") return "--env <env> <slug> <KEY> [--execute] | --env <env> --ext <target> <KEY> [--execute]";
   if (verb === "rename") return "--env <env> <slug> <OLD> <NEW> [--execute]";
   if (verb === "remove") return "--env <env> <slug> [--execute] [--force-nonempty]";
   if (verb === "recipients") return "--env <env> [--add <age1...|owner>] [--remove <age1...|owner>] [--execute]";
@@ -137,6 +140,7 @@ export function secretUsage(verb: string): string {
   if (verb === "split") return "--env <env> <slug> [--group KEY=member ...] [--group-file <yaml>] [--into-existing] [--execute]";
   if (verb === "audit") return "[--env <env>]";
   if (verb === "server-key") return "--env <env> [--rotate | --backup github | --restore github] [--execute]";
+  if (verb === "list") return "--env <env> [--ext <target>]";
   return "--env <env>";
 }
 
@@ -176,8 +180,23 @@ function environmentOf(verb: string, opts: SecretOptions): void {
   if (opts.env !== undefined) opts.positional.unshift(opts.env);
 }
 
+/** `--ext <target>`: set, unset and list only; the operands are the environment and the keys, there is no slug. */
+function targetOptionsFor(verb: string, opts: SecretOptions): void {
+  if (!["set", "unset", "list"].includes(verb)) throw new SecretError(`--ext is only valid for set, unset and list (a target's file is read in memory by the project's own door, never printed by get)`);
+  const keys = opts.positional.slice(1);
+  const bounds: Record<string, [number, number]> = { set: [1, Infinity], unset: [1, 1], list: [0, 0] };
+  const [low, high] = bounds[verb] as [number, number];
+  if (keys.length < low || keys.length > high) throw new SecretError(`usage: starci app secret ${verb} ${secretUsage(verb)}`);
+  if (opts.generate !== undefined && verb !== "set") throw new SecretError("--generate is only valid for set");
+  if (opts["from-file"] && verb !== "set") throw new SecretError("--from-file is only valid for set");
+  editOptionsFor(verb, opts);
+  const twice = keys.find((key, index) => keys.indexOf(key) !== index);
+  if (twice) throw new SecretError(`${verb} names ${twice} twice`);
+}
+
 function optionsFor(verb: string, opts: SecretOptions): void {
   environmentOf(verb, opts);
+  if (opts.ext !== undefined) return targetOptionsFor(verb, opts);
   const count = opts.positional.length;
   const bounds = ({
     init: [0, 1],
@@ -319,7 +338,7 @@ export async function secretMain(
   try {
     if (!VERBS.has(verb))
       throw new SecretError(
-        "usage: starci app secret init [--env <dev env> [--execute]] | set --env <env> <slug> <KEY> [KEY ...] | get --env <env> <slug> [KEY] --to-file | unset --env <env> <slug> <KEY> | rename --env <env> <slug> <OLD> <NEW> | remove --env <env> <slug> | materialize --env <env> | list --env <env> | verify --env <env> | recipients --env <env> [--add|--remove ...] [--execute] | migrate --env <env> <slug> [--to <slug>] [--into-existing] | split --env <env> <slug> [--group KEY=member] [--group-file <yaml>] [--into-existing] | audit [--env <env>] | server-key --env <env> [--rotate | --backup github | --restore github] [--execute]",
+        "usage: starci app secret init [--env <dev env> [--execute]] | set --env <env> <slug> <KEY> [KEY ...] | set|unset|list --env <env> --ext <target> [<KEY> ...] | get --env <env> <slug> [KEY] --to-file | unset --env <env> <slug> <KEY> | rename --env <env> <slug> <OLD> <NEW> | remove --env <env> <slug> | materialize --env <env> | list --env <env> | verify --env <env> | recipients --env <env> [--add|--remove ...] [--execute] | migrate --env <env> <slug> [--to <slug>] [--into-existing] | split --env <env> <slug> [--group KEY=member] [--group-file <yaml>] [--into-existing] | audit [--env <env>] | server-key --env <env> [--rotate | --backup github | --restore github] [--execute]",
       );
     const opts = parse(rest);
     optionsFor(verb, opts);
@@ -338,6 +357,20 @@ export async function secretMain(
           owner: () => ownerRecipient(repoRoot, env, { platform, tools, host: hostIdentity }),
         }),
       );
+    if (opts.ext !== undefined) {
+      const environment = opts.positional[0] as string;
+      const keys = opts.positional.slice(1);
+      const resolved = resolveSecretTarget(repoRoot, opts.ext, environment);
+      // The seam is rooted at the target's checkout: its own .sops.yaml names the recipients, and no stack member or app custody is read.
+      const targetSops = () => sops ?? defaultSops(env, resolved.root, platform, tools, hostIdentity);
+      if (verb === "list") return listTargetKeys(resolved, targetSops, stdout);
+      if (verb === "unset") return unsetTargetKey(resolved, keys[0] as string, { execute: opts.execute === true, sops: targetSops, stdout });
+      for (const name of keys) validateTargetKey(resolved.target, name);
+      const targetValues = await setValues(keys, { generate: opts.generate, stdin, prompt, random, fromFile: fromFiles(opts["from-file"], keys) });
+      const written = setTargetValues(resolved, targetValues, targetSops());
+      stdout(`sealed ${environment}/${resolved.target.id} (${written.join(", ")}) in ${path.basename(resolved.file)}\n`);
+      return 0;
+    }
     const [environment, slug, key] = opts.positional as [string, string, string | undefined];
     if (verb === "server-key")
       return await serverKeyVerb(repoRoot, environment, opts, {

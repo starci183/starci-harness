@@ -71,7 +71,7 @@ test('a sound extension lends its rules: the machine rule judges the tracked fil
 test('an app without an ext/ folder has no extension and no finding', (t) => {
   const root = app(t);
   fs.rmSync(path.join(root, 'ext'), { recursive: true });
-  assert.deepEqual(loadProjectExt(root), { present: false, rules: [], checks: [], packages: {}, problems: [] });
+  assert.deepEqual(loadProjectExt(root), { present: false, rules: [], checks: [], packages: {}, secretTargets: [], problems: [] });
   assert.deepEqual(projectExtCheckFindings({ repoRoot: root, files: tracked, repo: repoOf('lite'), isRoot: true }), []);
   assert.deepEqual(extEslintConfigs(path.join(root, 'fe'), 'fe'), []);
 });
@@ -111,10 +111,10 @@ test(`${PROJECT_EXT_INVALID}: an extension only adds; a rule that turns off, ove
   refused([{ ...SHAPE, hfs: undefined }], /exactly one engine/u);
   refused([{ ...PROP, lint: { tool: 'stylelint', file: 'no-children-prop.mjs' } }], /lint\.tool must be eslint/u);
   refused([{ ...SHAPE, hfs: undefined, check: { command: ['node', 'ext/checks/generate.mjs'] } }], /rule 0 has check: an extension only adds rules/u);
-  refused([SHAPE], /has disable: an extension holds only schema, api, rules, checks, packages/u, { manifest: { schema: 'starci/project-ext@1', api: PROJECT_EXT_API, rules: [SHAPE], disable: ['R26'] } });
+  refused([SHAPE], /has disable: an extension holds only schema, api, rules, checks, packages, secretTargets/u, { manifest: { schema: 'starci/project-ext@1', api: PROJECT_EXT_API, rules: [SHAPE], disable: ['R26'] } });
   refused([], /is not a starci\/project-ext@1 manifest/u, { manifest: { schema: 'starci/rule-pack@1', api: PROJECT_EXT_API, rules: [SHAPE] } });
   refused([], /cannot be read as JSON/u, { manifest: '{ not json' });
-  refused([], /declares no rule, no check and no package/u, { manifest: { schema: 'starci/project-ext@1', api: PROJECT_EXT_API, rules: [] } });
+  refused([], /declares no rule, no check, no package and no secret target/u, { manifest: { schema: 'starci/project-ext@1', api: PROJECT_EXT_API, rules: [] } });
 });
 
 test(`${PROJECT_EXT_INVALID}: a declared rule or check that cannot be found is red, and so is a rule file no rule declares`, (t) => {

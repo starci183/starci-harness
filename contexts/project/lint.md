@@ -160,7 +160,7 @@ extension point inside a package: a rule reaches a package by naming its paths. 
 lint plugin of its own (R103).
 
 - **The manifest declares everything.** `ext/manifest.json` (`starci/project-ext@1`, `packages/hfs/runtime/scripts/lib/project-ext.mts`) holds
-  `api`, the extension API version the folder targets, `rules`, `checks` and `packages`. Every rule carries an `id` (`APP-SHAPE-1`), a finding `code`, a
+  `api`, the extension API version the folder targets, `rules`, `checks`, `packages` and `secretTargets` (the sealed files outside the stack that `starci app secret --ext <id>` writes, [stacks.md](stacks.md) PROJECT-STACKS-5, R429). Every rule carries an `id` (`APP-SHAPE-1`), a finding `code`, a
   `severity` (`error` or `warning`), its `doc` (a file below `ext/` or an https link), `appliesTo` (app-relative globs that start at a named
   folder: the paths the rule judges) and exactly one engine:
   - `hfs`: a file of `ext/hfs/` whose default export is `(context) => findings`. `starci app check` runs it over the tracked files `appliesTo`

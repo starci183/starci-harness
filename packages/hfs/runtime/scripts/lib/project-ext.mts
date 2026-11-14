@@ -1,7 +1,7 @@
 // project-ext.mts - a project's extension folder (PROJECT-LINT-3, R381): `ext/` at the app root, the one place a project adds its own laws to the
 // harness's gates. One subfolder per tool, and one manifest that declares everything the folder holds:
 //   ext/manifest.json   { schema: 'starci/project-ext@1', api: <the extension API it targets>, rules?: [<rule>, ...], checks?: [<check>, ...],
-//                         packages?: {<folder>: <slots>} }
+//                         packages?: {<folder>: <slots>}, secretTargets?: [<target>, ...] }
 //   ext/hfs/            machine rules of the hfs family: an ES module whose default export is `(context) => findings`
 //   ext/lint/           ESLint rules the canon factories (eslint-canon-be, eslint-canon-fe, the packages config) load: a module whose default
 //                       export is an ESLint rule (`{ meta, create }`)
@@ -10,6 +10,8 @@
 // an https link), `appliesTo` (app-relative globs: the paths it judges; a rule reaches a package by naming its paths) and exactly one engine:
 //   hfs    '<file>'                                  a file of ext/hfs/; `starci app check` runs it over the tracked files `appliesTo` matches
 //   lint   { tool: 'eslint', file: '<file>' }        a file of ext/lint/; loaded for the files `appliesTo` matches in the config that owns them
+// Every secret target is { id, why, root, environments: {<env>: <file>}, recipients, under?, depth? }: a sealed file outside the stack's members that
+// `starci app secret set|unset|list --env <env> --ext <id>` writes (PROJECT-STACKS-5, R429); the harness resolves it here and knows nothing of its content.
 // Every check is { id, run, why }: a kebab-case id, `run` a file `ext/checks/<name>.mjs`, and what it guards (cache/project-checks.mts runs it).
 // An extension only adds: a rule or manifest with any other key (an `off`, `overrides` or `disable`), a code the harness already reports, an id or a
 // code declared twice, a declared file that is not there and a manifest of another API version refuse the whole extension (HFS_EXT_INVALID,
@@ -57,10 +59,21 @@ export interface ExtRule {
 }
 /** One project check the manifest declares: its id, the file of ext/checks/ it runs and what it guards. */
 export interface ExtCheck { readonly id: string; readonly run: string; readonly why: string }
+/**
+ * A sealed file a project keeps outside the stack's members (a package's seed standard holds its credentials in one per environment): `root` is the
+ * checkout folder (app-relative, `..` allowed: a sibling checkout), `environments` maps a stack environment to the file below `root`, `recipients` is the
+ * `.sops.yaml` below `root` whose creation rule says who the file is sealed to, `under` the mapping path the keys live below (default: the top level),
+ * `depth` how many `/`-joined segments a key has below it (default 1: a flat KEY).
+ */
+export interface SecretTarget { readonly id: string; readonly why: string; readonly root: string; readonly environments: Readonly<Record<string, string>>; readonly recipients: string; readonly under: readonly string[]; readonly depth: number }
 /** A project's extension: every sound rule, the declared project checks, the package declarations as written, and each problem. An extension with any problem lends no rule. */
-export interface ProjectExt { present: boolean; rules: ExtRule[]; checks: ExtCheck[]; packages: Record<string, unknown>; problems: { code: string; message: string }[] }
+export interface ProjectExt { present: boolean; rules: ExtRule[]; checks: ExtCheck[]; packages: Record<string, unknown>; secretTargets: SecretTarget[]; problems: { code: string; message: string }[] }
 
-const MANIFEST_KEYS = new Set(['schema', 'api', 'rules', 'checks', 'packages']);
+const MANIFEST_KEYS = new Set(['schema', 'api', 'rules', 'checks', 'packages', 'secretTargets']);
+const TARGET_KEYS = new Set(['id', 'why', 'root', 'environments', 'recipients', 'under', 'depth']);
+const TARGET_FILE = /^[A-Za-z0-9][A-Za-z0-9._-]*\.enc\.ya?ml$/u;
+const TARGET_ENV = /^[a-z0-9][a-z0-9-]*$/u;
+const TARGET_SEGMENT = /^[A-Za-z0-9_-]+$/u;
 const RULE_KEYS = new Set(['id', 'code', 'severity', 'doc', 'appliesTo', 'hfs', 'lint']);
 /** A project check's id (kebab-case) and its file: a `.mjs` file of ext/checks/ (R402). */
 const CHECK_ID = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/u;
@@ -216,6 +229,46 @@ function judgeChecks(appRoot: string, declared: unknown): { checks: ExtCheck[]; 
   return problems.length > 0 ? { checks: [], problems } : { checks, problems };
 }
 
+/** The problems of the manifest's `secretTargets` list, and the targets when it is sound. */
+function judgeSecretTargets(declared: unknown): { targets: SecretTarget[]; problems: string[] } {
+  if (declared === undefined) return { targets: [], problems: [] };
+  const shape = 'secretTargets is a list of { id, why, root, environments, recipients, under?, depth? }: a unique kebab-case id, what it holds, the checkout folder, one sealed file name (*.enc.yaml) per environment, the .sops.yaml below the folder, nothing else';
+  if (!Array.isArray(declared) || declared.length === 0) return { targets: [], problems: [shape] };
+  const problems: string[] = [];
+  const targets: SecretTarget[] = [];
+  const insideRoot = (value: string): boolean => value !== '' && !path.isAbsolute(value) && !/^[A-Za-z]:/u.test(value) && !value.includes('\\') && !path.posix.normalize(value).split('/').includes('..');
+  for (const [at, entry] of declared.entries()) {
+    const label = `secret target ${plain(entry) && typeof entry['id'] === 'string' ? entry['id'] : String(at)}`;
+    if (!plain(entry) || Object.keys(entry).some((key) => !TARGET_KEYS.has(key)) || typeof entry['id'] !== 'string' || !CHECK_ID.test(entry['id']) || text(entry['why']) === null || text(entry['root']) === null || typeof entry['recipients'] !== 'string' || !plain(entry['environments'])) { problems.push(`${label}: ${shape}`); continue; }
+    if (targets.some((other) => other.id === entry['id'])) problems.push(`${label}: the id is declared twice`);
+    const root = String(entry['root']).trim();
+    if (path.isAbsolute(root) || /^[A-Za-z]:/u.test(root) || root.includes('\\')) problems.push(`${label}: root is a relative path from the app root (a pinned checkout beside it may start with ../), never an absolute one`);
+    if (!insideRoot(entry['recipients']) || !/(^|\/)\.sops\.yaml$/u.test(entry['recipients'])) problems.push(`${label}: recipients is the .sops.yaml below the root whose creation rule names who the file is sealed to`);
+    const environments: Record<string, string> = {};
+    const names = Object.entries(entry['environments']);
+    if (names.length === 0) problems.push(`${label}: environments names at least one stack environment`);
+    for (const [env, file] of names) {
+      if (!TARGET_ENV.test(env)) problems.push(`${label}: ${env} is not an environment name`);
+      else if (typeof file !== 'string' || !TARGET_FILE.test(file)) problems.push(`${label}: the file of ${env} is a *.enc.yaml name in the root (${String(file)})`);
+      else if (Object.values(environments).includes(file)) problems.push(`${label}: ${file} serves two environments; each environment seals its own file`);
+      else environments[env] = file;
+    }
+    const under = entry['under'] === undefined ? [] : entry['under'];
+    if (!Array.isArray(under) || under.some((segment) => typeof segment !== 'string' || !TARGET_SEGMENT.test(segment))) problems.push(`${label}: under is the list of mapping names the keys live below`);
+    const depth = entry['depth'] === undefined ? 1 : entry['depth'];
+    if (typeof depth !== 'number' || !Number.isInteger(depth) || depth < 1 || depth > 4) problems.push(`${label}: depth is a whole number from 1 to 4`);
+    targets.push({ id: entry['id'], why: text(entry['why']) as string, root, environments, recipients: entry['recipients'], under: under as string[], depth: depth as number });
+  }
+  return problems.length > 0 ? { targets: [], problems } : { targets, problems };
+}
+
+/** The checkout folder, the sealed file of `environment` and the `.sops.yaml` of a target, absolute; the file is null when the target does not seal that environment. */
+export function secretTargetPaths(appRoot: string, target: SecretTarget, environment: string): { root: string; file: string | null; sopsFile: string } {
+  const root = path.resolve(appRoot, target.root);
+  const name = target.environments[environment];
+  return { root, file: name === undefined ? null : path.join(root, name), sopsFile: path.join(root, target.recipients) };
+}
+
 /** Every file of ext/<folder>/ as a path relative to that folder (forward slashes), none when the folder is absent. */
 function filesBelow(root: string, folder = ''): string[] {
   let entries: fs.Dirent[];
@@ -228,7 +281,7 @@ function filesBelow(root: string, folder = ''): string[] {
  * without an ext/ folder has no extension (`present` false) and no problem.
  */
 export function loadProjectExt(appRoot: string, reserved: ReadonlySet<string> = reservedCodes()): ProjectExt {
-  const result: ProjectExt = { present: hasProjectExt(appRoot), rules: [], checks: [], packages: {}, problems: [] };
+  const result: ProjectExt = { present: hasProjectExt(appRoot), rules: [], checks: [], packages: {}, secretTargets: [], problems: [] };
   if (!result.present) return result;
   const fail = (message: string, code = PROJECT_EXT_INVALID): ProjectExt => { result.problems.push({ code, message }); return result; };
   let manifest: unknown;
@@ -245,10 +298,11 @@ export function loadProjectExt(appRoot: string, reserved: ReadonlySet<string> = 
   const entries = Array.isArray(manifest['rules']) ? manifest['rules'] : [];
   if (manifest['rules'] !== undefined && !Array.isArray(manifest['rules'])) return fail('rules is a list');
   if (manifest['packages'] !== undefined && !plain(manifest['packages'])) return fail('packages maps a root package folder (packages/<name>) to its slots');
-  if (entries.length === 0 && manifest['checks'] === undefined && manifest['packages'] === undefined) return fail('declares no rule, no check and no package');
+  if (entries.length === 0 && manifest['checks'] === undefined && manifest['packages'] === undefined && manifest['secretTargets'] === undefined) return fail('declares no rule, no check, no package and no secret target');
   const judged = entries.map((entry, at) => judgeRule(appRoot, entry, at));
   const judgedChecks = judgeChecks(appRoot, manifest['checks']);
-  const problems = [...judged.flatMap((one) => one.problems), ...judgedChecks.problems];
+  const judgedTargets = judgeSecretTargets(manifest['secretTargets']);
+  const problems = [...judged.flatMap((one) => one.problems), ...judgedChecks.problems, ...judgedTargets.problems];
   const sound = judged.flatMap((one) => (one.rule === undefined ? [] : [one.rule]));
   for (const [at, rule] of sound.entries()) {
     if (sound.findIndex((other) => other.id === rule.id) < at) problems.push(`${rule.id}: the id is declared twice`);
@@ -270,6 +324,7 @@ export function loadProjectExt(appRoot: string, reserved: ReadonlySet<string> = 
     nextStep_vi: `Đọc tài liệu của luật (${rule.doc}), sửa chỗ vi phạm rồi chạy lại starci app check.`,
   });
   result.checks = judgedChecks.checks;
+  result.secretTargets = judgedTargets.targets;
   result.packages = plain(manifest['packages']) ? manifest['packages'] : {};
   return result;
 }

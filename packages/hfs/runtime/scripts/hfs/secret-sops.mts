@@ -44,6 +44,8 @@ export interface SecretSops {
   identity: AgeIdentitySource;
   requireIdentity: (file: string) => void;
   decrypt: (file: string, format: string) => Record<string, string>;
+  /** The whole decrypted YAML document of a sealed target file (nested mappings), in memory only; a target file may nest its keys (PROJECT-STACKS-5, `--ext`). */
+  decryptTree?: (file: string) => unknown;
   decryptBinary: (file: string) => string;
   updateKeys: (file: string) => void;
   seal: (request: SealRequest) => string;
@@ -270,6 +272,16 @@ export function defaultSops(
         map[match[1] as string] = (match[2] as string).replaceAll(String.raw`\n`, "\n");
       }
       return map;
+    },
+    decryptTree(file: string): unknown {
+      const result = sopsDecrypt(
+        binary,
+        ["decrypt", "--input-type", "yaml", "--output-type", "json", file],
+        { env: selectedEnv, cwd: repoRoot, invocation },
+      );
+      if (result.status !== 0) throw refuse(`decrypt ${path.basename(file)}; is the age identity installed?`, result, file, "yaml");
+      try { return JSON.parse(String(result.stdout)); } // reason: parsed-input boundary, the JSON sops printed
+      catch { throw new SecretError("sops returned an invalid JSON document"); }
     },
     /**
      * The ssh key and known_hosts of the deploy custody. A classic sops BINARY envelope (one `data` property) yields the file itself;
