@@ -11,7 +11,7 @@ export interface LocalRecord {
   ports: Record<string, number>;
   receipts: {
     migrate?: { at: string; digest: string };
-    seed: Record<string, { at: string; digest: string }>;
+    seed: Record<string, { at: string; digest: string; volumes?: string }>;
     setup: Record<string, { at: string; digest: string }>;
     database?: { at: string; role: string };
   };

@@ -108,15 +108,30 @@ async function seedLevels(ctx: StackContext, local: LocalConfig, custody: Custod
   return seedStep({ ctx, repoRoot: local.repoRoot, env: local.env, target, execute: true, command }).lines;
 }
 
-/** Runs the seed commands once each (a receipt keyed by the command's digest); the seed owns its idempotence beyond that. */
+/**
+ * The identity of the data a seed command wrote into: the names and creation times of the compose project's volumes. A receipt holds it,
+ * so a seed command runs again on volumes created after its receipt (a wiped or new stack) instead of answering "already done" from a
+ * state file that outlived the data.
+ */
+export function volumesIdentity(ctx: StackContext, local: LocalConfig): string {
+  const lines = (text: unknown): string[] => String(text ?? '').split(/\r?\n/u).map((line) => line.trim()).filter(Boolean).sort();
+  const names = lines(ctx.spawn('docker', ['volume', 'ls', '--filter', `label=com.docker.compose.project=${local.project}`, '--format', '{{.Name}}']).stdout);
+  if (names.length === 0) return 'none';
+  const inspected = ctx.spawn('docker', ['volume', 'inspect', '--format', '{{.Name}} {{.CreatedAt}}', ...names]);
+  return crypto.createHash('sha256').update(lines(inspected.stdout).join('\n')).digest('hex').slice(0, 16);
+}
+
+/** Runs the seed commands once each per volume set (a receipt keyed by the command's digest and the volumes' identity); the seed owns its idempotence beyond that. */
 async function seed(ctx: StackContext, local: LocalConfig, custody: Custody, after: 'migrate' | 'ready'): Promise<string[]> {
   const dir = stateOf(ctx, local);
   const record = readRecord(dir);
   const out: string[] = [];
+  const volumes = volumesIdentity(ctx, local);
   for (const run of local.seed.filter((item) => item.after === after)) {
-    if (record.receipts.seed[run.name]?.digest === commandDigest(run)) { out.push(`seed ${run.name}: already done`); continue; }
+    const held = record.receipts.seed[run.name];
+    if (held?.digest === commandDigest(run) && held.volumes === volumes) { out.push(`seed ${run.name}: already done`); continue; }
     await runCommand(ctx, local, run, runEnvironment(ctx, local, run, custody, 'owner'));
-    record.receipts.seed[run.name] = { at: new Date(ctx.now()).toISOString(), digest: commandDigest(run) };
+    record.receipts.seed[run.name] = { at: new Date(ctx.now()).toISOString(), digest: commandDigest(run), volumes };
     writeRecord(dir, record);
     out.push(`seed ${run.name}: done`);
   }

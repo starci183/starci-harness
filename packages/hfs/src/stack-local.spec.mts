@@ -60,6 +60,9 @@ function app(t: { after: (fn: () => void) => void }, { sealed = true, runtime = 
 interface Call { command: string; args: readonly string[]; input?: unknown; env?: NodeJS.ProcessEnv | undefined; background?: boolean }
 
 /** A host with every tool; `missing` names commands that are not installed, `held` ports someone else listens on. */
+/** When the fake stack's volume was created; a test moves it to stand for a wiped stack with new volumes. */
+const volumeCreatedAt = { at: '2026-01-01 00:00:00 +0000 UTC' };
+
 function host(root: string, { platform = 'linux', missing = [], decrypt }: { platform?: NodeJS.Platform; missing?: string[]; decrypt?: Sops['decrypt'] } = {}) {
   const calls: Call[] = [];
   const out: string[] = [];
@@ -77,6 +80,8 @@ function host(root: string, { platform = 'linux', missing = [], decrypt }: { pla
     if (command === 'docker' && args[0] === 'compose' && args.includes('ps')) return ok('cid1\n');
     if (command === 'docker' && args[0] === 'inspect') return ok('running healthy\n');
     if (command === 'docker' && args[0] === 'ps') return ok('');
+    if (command === 'docker' && args[0] === 'volume' && args[1] === 'ls') return ok('stack_db\n');
+    if (command === 'docker' && args[0] === 'volume' && args[1] === 'inspect') return ok(`stack_db ${volumeCreatedAt.at}\n`);
     return ok();
   };
   const spawn = ((command: string, args: readonly string[], options: { input?: unknown; env?: NodeJS.ProcessEnv; background?: boolean } = {}) => {
@@ -198,6 +203,11 @@ test('up --execute runs the steps in order, hands custody over as files, and a s
   assert.equal(await run(root, ['up', '--env', 'dev', '--execute'], again, { alive: () => true }), 0, again.err.join(''));
   assert.equal(again.calls.filter((call) => call.background).length, 0, 'a running process is kept');
   assert.match(again.out.join(''), /seed owner: already done/u);
+  volumeCreatedAt.at = '2026-02-02 00:00:00 +0000 UTC';
+  const wiped = host(root);
+  assert.equal(await run(root, ['up', '--env', 'dev', '--execute'], wiped, { alive: () => true }), 0, wiped.err.join(''));
+  assert.match(wiped.out.join(''), /seed owner: done/u, 'new volumes run the seed commands again: a state file that outlived the data is no receipt');
+  volumeCreatedAt.at = '2026-01-01 00:00:00 +0000 UTC';
 });
 
 test('up applies the seed levels after the migrations, in the database container under the owner role, with the receipts table', async (t) => {
