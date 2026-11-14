@@ -121,14 +121,14 @@ export function createGitDriver(options: GitDriverOptions): DriverAdapter {
     const env = options.env ?? {}
     const limits: DriverLimits = { forms: ["record", "blob"], maxFileBytes: GIT_SHARD_BYTES, maxCopyBytes: cap, warnCopyBytes: warn }
 
-    const git = (args: readonly string[], input?: Buffer): Buffer => {
-        const result = run("git", args, { cwd: options.checkout, env, ...(input === undefined ? {} : { input }) })
-        if (result.status !== 0) throw new DataRefusal("DATA_DRIVER_UNAVAILABLE", "transient", { driver: options.id, step: `git ${args[0] ?? ""}` })
+    const git = (args: readonly string[]): Buffer => {
+        const result = run("git", args, { cwd: options.checkout, env })
+        if (result.status !== 0) throw new DataRefusal("DATA_DRIVER_UNAVAILABLE", "transient", { driver: options.id, step: `git ${args.slice(0, 1).join("")}` })
         return result.stdout
     }
     const sops = (args: readonly string[], input: Buffer, identityEnv: Readonly<Record<string, string>>): Buffer => {
         const result = run("sops", args, { cwd: tmpdir(), input, env: { ...env, ...identityEnv } })
-        if (result.status !== 0) throw new DataRefusal("DATA_SEAL_FAILED", "configuration", { driver: options.id, step: `sops ${args[0] ?? ""}` })
+        if (result.status !== 0) throw new DataRefusal("DATA_SEAL_FAILED", "configuration", { driver: options.id, step: `sops ${args.slice(0, 1).join("")}` })
         return result.stdout
     }
     const seal = (path: string, plain: Buffer, recipients: readonly string[]): Buffer =>
@@ -140,7 +140,10 @@ export function createGitDriver(options: GitDriverOptions): DriverAdapter {
         if (!existsSync(join(options.checkout, ".git"))) {
             mkdirSync(options.checkout, { recursive: true })
             const cloned = options.remote !== undefined && run("git", ["clone", "-q", "-b", branch, options.remote, "."], { cwd: options.checkout, env }).status === 0
-            if (!cloned) git(["init", "-q", "-b", branch])
+            if (!cloned) {
+                git(["init", "-q", "-b", branch])
+                if (options.remote !== undefined) git(["remote", "add", "origin", options.remote])
+            }
         } else if (options.remote !== undefined) {
             const fetched = run("git", ["pull", "-q", "--ff-only", "origin", branch], { cwd: options.checkout, env })
             if (fetched.status !== 0 && run("git", ["rev-parse", "--verify", "-q", "HEAD"], { cwd: options.checkout, env }).status === 0)
@@ -253,8 +256,10 @@ export function createGitDriver(options: GitDriverOptions): DriverAdapter {
             const sealed = source.manifest.purpose === "seed-backup"
             if (sealed && context.recipients.length === 0)
                 throw new DataRefusal("DATA_SEAL_FAILED", "configuration", { driver: options.id, reason: "a seed-backup is sealed to its environment's recipients and none were given" })
-            prepare()
-            pinBytes()
+            if (!context.dryRun) {
+                prepare()
+                pinBytes()
+            }
             const previous = headManifest()
             const { files, shards } = await planFiles(source, previous)
             const facts: Record<string, FileFacts> = {}
@@ -327,11 +332,13 @@ export function createGitDriver(options: GitDriverOptions): DriverAdapter {
             const sealedPolicy = manifest.purpose === "seed-backup" ? "sops-age" : "none"
             checks.push({ name: "sealing", ok: manifest.sealing === sealedPolicy && (sealedPolicy === "none" || manifest.recipients.length > 0), detail: `purpose ${manifest.purpose} requires ${sealedPolicy}, the copy says ${manifest.sealing}` })
             const tree = git(["ls-tree", "-r", "-l", ref.locator]).toString("utf8").split("\n").filter((line) => line.trim() !== "")
-            const sizes = new Map(tree.map((line) => {
-                const [meta, path] = line.split("\t")
-                return [path ?? "", Number((meta ?? "").trim().split(/\s+/u)[3] ?? "0")] as const
-            }))
-            const copyFiles = [...sizes.keys()].filter((path) => COPY_ROOTS.some((root) => path.startsWith(`${root}/`)))
+            const listed = tree.flatMap((line) => {
+                const match = /^\S+ \S+ \S+\s+(\d+)\t(.+)$/u.exec(line)
+                return match === null ? [] : [{ path: String(match[2]), bytes: Number(match[1]) }]
+            })
+            const sizes = new Set(listed.map((item) => item.path))
+            const copyListed = listed.filter((item) => COPY_ROOTS.some((root) => item.path.startsWith(`${root}/`)))
+            const copyFiles = copyListed.map((item) => item.path)
             const expected = new Set(Object.keys(manifest.files).map((path) => (manifest.sealing === "none" ? path : `${path}${SEALED_SUFFIX}`)))
             const stray = copyFiles.filter((path) => !expected.has(path))
             const missing = [...expected].filter((path) => !sizes.has(path))
@@ -344,7 +351,7 @@ export function createGitDriver(options: GitDriverOptions): DriverAdapter {
                 })
                 checks.push({ name: "sealed", ok: notEnvelope.length === 0, detail: notEnvelope.length === 0 ? "every data file is a sops envelope" : `${String(notEnvelope.length)} files are not sops envelopes` })
             }
-            const total = copyFiles.reduce((sum, path) => sum + (sizes.get(path) ?? 0), 0)
+            const total = copyListed.reduce((sum, item) => sum + item.bytes, 0)
             checks.push({ name: "cap", ok: total <= cap, detail: `${String(total)} bytes of ${String(cap)}` })
             if (context !== null || manifest.sealing === "none") {
                 try {

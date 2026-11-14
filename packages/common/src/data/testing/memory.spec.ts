@@ -310,4 +310,10 @@ test("a natural key named like an Object.prototype member is created, held and c
     assert.deepEqual((await collect(store.export({}))).map((entry) => entry.key).sort(), ["constructor", "toString"])
 })
 
-void test.todo("memoryStore: a natural key named __proto__ is lost, because `content[entry.key] = value` assigns the prototype instead of an own key (memory.ts, import): a second import of the same entry answers applied, not unchanged")
+test("memoryStore keeps a natural key named __proto__ as an own key: a second import answers unchanged", async () => {
+    const store = memoryStore({ id: "db" })
+    const entry = recordEntry("things", "__proto__", { n: 1 })
+    async function* one() { await Promise.resolve(); yield entry }
+    assert.equal((await store.import(one(), { dryRun: false, mode: "merge" })).outcome, "applied")
+    assert.equal((await store.import(one(), { dryRun: false, mode: "merge" })).outcome, "unchanged")
+})

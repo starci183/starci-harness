@@ -221,7 +221,8 @@ test("a review tree reads, writes text (true only when it changed) and refuses p
     assert.equal(review.writeText("notes/a.txt", "one"), false)
     assert.equal(review.writeText("notes/a.txt", "two"), true)
     assert.equal(readFileSync(join(tree.dir, "notes/a.txt"), "utf8"), "two")
-    for (const path of ["../outside.txt", "/abs.txt", "..hidden"]) {
+    assert.equal(review.writeText("..hidden", "x"), true)
+    for (const path of ["../outside.txt", "/abs.txt"]) {
         const error = thrown(() => review.writeText(path, "x"))
         assert.equal(error.code, "DATA_COPY_MISSING", path)
     }

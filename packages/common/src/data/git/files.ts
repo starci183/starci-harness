@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
-import { dirname, isAbsolute, join, normalize, relative } from "node:path"
+import { dirname, isAbsolute, join, normalize } from "node:path"
 import { DataRefusal } from "../driver.ts"
 import type { OpenContext } from "../driver.ts"
 import type { RunResult, Runner } from "./driver.ts"
@@ -55,7 +55,7 @@ export function pinRepository(options: PinOptions): PinnedRepository {
     if (!/^[0-9a-f]{40}$/u.test(options.commit)) throw new DataRefusal("DATA_COPY_MISSING", "configuration", { reason: "the pin is not a 40-hex commit", name: options.name })
     const mirror = join(options.cache, `${options.name}.git`)
     mkdirSync(options.cache, { recursive: true })
-    const git = (args: readonly string[], input?: Buffer): RunResult => run("git", args, { cwd: existsSync(mirror) ? mirror : options.cache, env, ...(input === undefined ? {} : { input }) })
+    const git = (args: readonly string[]): RunResult => run("git", args, { cwd: mirror, env })
     const has = (): boolean => git(["cat-file", "-e", `${options.commit}^{commit}`]).status === 0
     if (!existsSync(mirror) && run("git", ["clone", "-q", "--bare", options.repository, mirror], { cwd: options.cache, env }).status !== 0)
         throw new DataRefusal("DATA_DRIVER_UNAVAILABLE", "transient", { step: "git clone", name: options.name })
@@ -94,11 +94,7 @@ export interface ReviewTree {
 export function openReviewTree(root: string, options: { readonly env?: Readonly<Record<string, string>>; readonly run?: Runner } = {}): ReviewTree {
     const run = options.run ?? defaultRunner
     if (!existsSync(join(root, ".git"))) throw new DataRefusal("DATA_COPY_MISSING", "configuration", { reason: "not a git working tree", root })
-    const full = (path: string): string => {
-        const target = join(root, safePath(path))
-        if (relative(root, target).startsWith("..")) throw new DataRefusal("DATA_COPY_MISSING", "configuration", { path })
-        return target
-    }
+    const full = (path: string): string => join(root, safePath(path))
     const readText = (path: string): string | null => (existsSync(full(path)) ? readFileSync(full(path), "utf8") : null)
     return {
         readText,
