@@ -92,6 +92,42 @@ const chipsHeight = (chips: ReadonlyArray<FlowGraphChip> | undefined): number =>
     return CHIP_GAP + rows * CHIP_ROW + (rows - 1) * CHIP_GAP
 }
 
+/**
+ * THE DECISION DIAMOND (0.39.1). A node with `shape: "diamond"` (any kind but `end`, never a loop card) is a diamond one card wide and {@link STEPS_DIAMOND_HEIGHT}
+ * tall, its label (the question) inside. Each branch leaves the vertex on its target's side, across the flow, and turns once into its target (see
+ * {@link stepsSideRoute}); a branch whose target stands straight ahead leaves the end vertex. Across (LR) the layout keeps half a diamond more between its branches,
+ * so each side run is longer than a corner.
+ */
+export const STEPS_DIAMOND_HEIGHT = 88
+/** The least side run of a diamond's branch out of its vertex before it turns: a corner and a little line. */
+export const isDiamond = (node: FlowGraphNode): boolean => node.shape === "diamond" && node.container === undefined && node.kind !== "end" && node.kind !== "output"
+/** Where a diamond's branch leaves: the vertex before its middle across the flow (`start`: top in LR, left in TB), the one after it (`end`), or the end vertex (`ahead`). */
+export type StepsDiamondSide = "start" | "end" | "ahead"
+
+/**
+ * THE LOOP FRAME'S EXITS (0.39.1). A `container` of `kind: "loop"` draws its `exits` as pills on its end edge: across (LR) stacked on the right edge, one width (the widest),
+ * each starting {@link STEPS_EXIT_INSET} inside the edge; down (TB) side by side on the bottom edge, centred on it. An edge out of an exit leaves the pill's far end.
+ * `offsets` are the pills' centres across the flow, from the frame's centre; `protrusion` how far past the frame's end edge they reach.
+ */
+export type StepsExits = {
+    readonly ports: ReadonlyArray<FlowGraphPort>
+    readonly offsets: ReadonlyArray<number>
+    readonly widths: ReadonlyArray<number>
+    readonly protrusion: number
+}
+/** The height of an exit pill (a 16 line, 1 above and below, the hairline border) and the room between two pills. */
+export const STEPS_EXIT_HEIGHT = 20
+export const STEPS_EXIT_GAP = 8
+/** Across (LR) an exit pill starts this far inside the frame's right edge (less than the frame's 16 padding, so it never covers a body card). */
+export const STEPS_EXIT_INSET = 12
+/** An exit pill shows this many characters; a longer one is cut with an ellipsis and read in full from its tooltip. */
+export const STEPS_EXIT_CHARS = 28
+const exitWidth = (port: FlowGraphPort): number => Math.ceil(Math.min(port.label.length, STEPS_EXIT_CHARS) * 6.5 + 2 * 8 + 2)
+/** The room a loop frame's `note` takes inside its bottom: a 16 line and the 8 above it. */
+export const STEPS_NOTE_ROW = 24
+
+export const isLoopFrame = (node: FlowGraphNode): boolean => node.container?.kind === "loop"
+
 /** The `steps` kind of a node; the `lanes` kinds map onto it, and a node without one is an action. */
 export const stepKindOf = (node: FlowGraphNode): FlowGraphStepKind => {
     switch (node.kind) {
@@ -107,6 +143,8 @@ export const isBackEdge = (edge: FlowGraphEdge): boolean => edge.variant === "ba
 
 /** The output ports of a node: its own `outputs`, else on a condition the labels of its labelled outgoing forward edges (each label once). */
 export const portsOf = (node: FlowGraphNode, edges: ReadonlyArray<FlowGraphEdge>): ReadonlyArray<FlowGraphPort> => {
+    // A loop frame's ports are its exits (0.39.1).
+    if (node.container !== undefined) return isLoopFrame(node) ? node.container.exits ?? [] : []
     // Any kind may declare `outputs` (0.37.4); only a condition derives ports from its labelled edges.
     if (node.outputs !== undefined) return node.outputs
     if (stepKindOf(node) !== "condition") return []
@@ -130,6 +168,7 @@ export const portOfEdge = (edge: FlowGraphEdge, ports: ReadonlyArray<FlowGraphPo
 /** The height a card draws at, estimated from its words and ports. */
 export const stepsNodeHeight = (node: FlowGraphNode, ports: number, direction: FlowGraphDirection = "TB"): number => {
     if (stepKindOf(node) === "end") return END_HEIGHT
+    if (isDiamond(node)) return STEPS_DIAMOND_HEIGHT
     const title = Math.min(STEPS_TITLE_LINES, wrappedLines(node.label, STEPS_TITLE_CHARS)) * TITLE_LINE
     // 0.37.35: the line is one line, cut with an ellipsis.
     const description = node.description === undefined || node.description === "" ? 0 : DESCRIPTION_LINE
@@ -168,6 +207,11 @@ export type StepsLayout = {
     readonly boxes: ReadonlyMap<string, { readonly width: number, readonly height: number }>
     /** The top-left corner of the content (margin excluded) in the same coordinates as `positions`. */
     readonly origin: FlowGraphPoint
+    /** The exits of every loop frame (0.39.1), by the frame's id. */
+    readonly exits: ReadonlyMap<string, StepsExits>
+    /** Where each branch of a diamond leaves (0.39.1), by edge id; and by node id, where each of its ports is drawn. */
+    readonly diamondSides: ReadonlyMap<string, StepsDiamondSide>
+    readonly portSides: ReadonlyMap<string, ReadonlyMap<string, StepsDiamondSide>>
 }
 
 /** Rounded orthogonal path through points (screen coordinates), every corner a quarter curve of `radius`. */
@@ -201,6 +245,8 @@ export const roundedPath = (points: ReadonlyArray<FlowGraphPoint>, radius: numbe
 export const STEPS_TRUNK = 24
 /** The corner radius of an orthogonal edge (0.37.27, owner drawing C). */
 export const STEPS_CORNER = 10
+/** The least side run of a diamond's branch out of its vertex before it turns (0.39.1): a corner and a little line. */
+export const STEPS_DIAMOND_RUN = STEPS_CORNER + 4
 
 /**
  * A forward edge's points (0.37.27, ORTHOGONAL ONLY): out of the source along the flow to the trunk, across to the target's line, then along into the target.
@@ -216,6 +262,16 @@ export const stepsForwardRoute = (source: FlowGraphPoint, target: FlowGraphPoint
     // A branch in its own lane (DNA-COMMON-FLOW-BRANCH-LANES) turns at its lane, keeping a corner and the arrowhead's run before the target; others share the trunk.
     const trunk = s.l + Math.max(0, lane === undefined ? Math.min(STEPS_TRUNK, (t.l - s.l) / 2) : Math.min(lane, t.l - s.l - STEPS_CORNER - STEPS_ARROW_ROOM))
     return [toScreen(s.a, s.l), toScreen(s.a, trunk), toScreen(t.a, trunk), toScreen(t.a, t.l)]
+}
+
+/**
+ * A diamond's branch out of a side vertex (0.39.1): ACROSS the flow out of the vertex to its target's line, then along into the target, one rounded turn.
+ */
+export const stepsSideRoute = (source: FlowGraphPoint, target: FlowGraphPoint, direction: FlowGraphDirection): ReadonlyArray<FlowGraphPoint> => {
+    const toScreen = (a: number, l: number): FlowGraphPoint => direction === "TB" ? { x: a, y: l } : { x: l, y: a }
+    const s = direction === "TB" ? { a: source.x, l: source.y } : { a: source.y, l: source.x }
+    const t = direction === "TB" ? { a: target.x, l: target.y } : { a: target.y, l: target.x }
+    return [toScreen(s.a, s.l), toScreen(t.a, s.l), toScreen(t.a, t.l)]
 }
 
 /** The straight run an edge keeps before its arrowhead after its last turn (the arrowhead is about 8 long). */
@@ -281,8 +337,33 @@ type Box = { readonly width: number, readonly height: number }
 const containerHeaderWidth = (node: FlowGraphNode): number => {
     const { shown, rest } = chipsOf(node.container?.chips)
     const chips = [...shown.map((chip) => chipWidth(chip.label)), ...(rest > 0 ? [chipWidth(`+${String(rest)}`)] : [])]
-    return 2 * 12 + Math.min((node.container?.label ?? node.label).length, 40) * 7.5 + chips.reduce((sum, width) => sum + width + 8, 0)
+    const description = node.container?.description === undefined || node.container.description === "" ? 0 : 8 + Math.min(node.container.description.length, 40) * 6.5
+    return 2 * 12 + Math.min((node.container?.label ?? node.label).length, 40) * 7.5 + description + chips.reduce((sum, width) => sum + width + 8, 0)
 }
+
+/** The exit pills of a loop frame on its end edge (see {@link StepsExits}), undefined for a frame with none or a group box. */
+const exitsOf = (node: FlowGraphNode, direction: FlowGraphDirection): StepsExits | undefined => {
+    const ports = isLoopFrame(node) ? node.container?.exits ?? [] : []
+    if (ports.length === 0) return undefined
+    if (direction === "LR") {
+        const width = Math.max(...ports.map(exitWidth))
+        // Centred on the body, between the header and the note.
+        const shift = (STEPS_CONTAINER_HEAD - noteRowOf(node)) / 2
+        const step = STEPS_EXIT_HEIGHT + STEPS_EXIT_GAP
+        return { ports, offsets: ports.map((_, index) => shift + (index - (ports.length - 1) / 2) * step), widths: ports.map(() => width), protrusion: width - STEPS_EXIT_INSET }
+    }
+    const widths = ports.map(exitWidth)
+    let at = -(widths.reduce((sum, width) => sum + width, 0) + STEPS_EXIT_GAP * (widths.length - 1)) / 2
+    const offsets = widths.map((width) => {
+        const centre = at + width / 2
+        at += width + STEPS_EXIT_GAP
+        return centre
+    })
+    return { ports, offsets, widths, protrusion: STEPS_EXIT_HEIGHT / 2 }
+}
+
+/** The room a loop frame's note takes inside its bottom, 0 without one. */
+const noteRowOf = (node: FlowGraphNode): number => isLoopFrame(node) && node.container?.note !== undefined && node.container.note !== "" ? STEPS_NOTE_ROW : 0
 
 /** Everything under a container: its children and their children, by `childIds`. */
 const descendantsOf = (root: FlowGraphNode, byId: ReadonlyMap<string, FlowGraphNode>): Set<string> => {
@@ -317,6 +398,7 @@ const coreLayout = (
     cardWidth: number,
     boxes: ReadonlyMap<string, Box>,
     ports: ReadonlyMap<string, ReadonlyArray<FlowGraphPort>>,
+    exits: ReadonlyMap<string, StepsExits>,
 ): Core => {
     const known = new Set(nodes.map((node) => node.id))
     const usable = edges.filter((edge) => known.has(edge.source) && known.has(edge.target) && edge.source !== edge.target)
@@ -387,7 +469,12 @@ const coreLayout = (
             across.set(id, centre)
             return centre
         }
-        const placed = own.map((child) => place(child, seen))
+        // Across (LR, 0.39.1) a diamond keeps half a diamond more between its branches, so each leaves its side vertex with a run longer than a corner.
+        const spread = direction === "LR" && byId.get(id) !== undefined && isDiamond(byId.get(id) as FlowGraphNode) ? STEPS_DIAMOND_HEIGHT / 2 : 0
+        const placed = own.map((child, index) => {
+            if (index > 0) cursor += spread
+            return place(child, seen)
+        })
         const centre = ((placed[0] ?? 0) + (placed[placed.length - 1] ?? 0)) / 2
         across.set(id, centre)
         return centre
@@ -423,13 +510,25 @@ const coreLayout = (
     const layerCount = Math.max(0, ...layers.values()) + 1
     const extent = new Array<number>(layerCount).fill(0)
     for (const node of nodes) {
-        const size = direction === "TB" ? heightOf(node) : widthOf(node)
+        // A loop frame's exit pills reach past its end edge (0.39.1): its layer holds them (TB: the frame stays centred on the layer's line).
+        const reach = exits.get(node.id)?.protrusion ?? 0
+        const size = direction === "TB" ? heightOf(node) + 2 * reach : widthOf(node) + reach
         extent[layerOf(node.id)] = Math.max(extent[layerOf(node.id)] ?? 0, size)
     }
-    const lanes = branchLanes(nodes, forward, ports, across, heightOf, widthOf, direction, layerOf)
+    const lanes = branchLanes(nodes, forward, ports, across, heightOf, widthOf, direction, layerOf, exits)
     const gaps = (direction === "LR" ? lrLayerGaps(layerCount, usable, layerOf, ports) : new Array<number>(layerCount).fill(STEPS_LAYER_GAP.TB))
         // A layer whose branches need more lanes than its gap holds widens to fit them (each lane, then a corner and the arrowhead's run).
         .map((gap, layer) => Math.max(gap, (lanes.depth.get(layer) ?? 0) === 0 ? 0 : STEPS_LANE_FIRST + ((lanes.depth.get(layer) ?? 1) - 1) * STEPS_LANE_STEP + STEPS_CORNER + STEPS_ARROW_ROOM))
+    // Across (LR, 0.39.1) a diamond with one branch ahead draws that port's label beside the end vertex: the gap after its layer holds the label and the bends.
+    if (direction === "LR") {
+        for (const node of nodes) {
+            if (!isDiamond(node)) continue
+            const own = ports.get(node.id) ?? []
+            if (own.length === 0 || kids(node.id).length >= 2) continue
+            const label = Math.max(0, ...own.map((port) => edgeLabelWidth(port.label.slice(0, STEPS_PORT_CHARS))))
+            gaps[layerOf(node.id)] = Math.max(gaps[layerOf(node.id)] ?? 0, label + 2 * STEPS_TRUNK)
+        }
+    }
     const layerStart: number[] = []
     let along = 0
     extent.forEach((size, layer) => {
@@ -508,16 +607,20 @@ const branchLanes = (
     widthOf: (node: FlowGraphNode) => number,
     direction: FlowGraphDirection,
     layerOf: (id: string) => number,
+    exits: ReadonlyMap<string, StepsExits>,
 ): { readonly slots: Map<string, number>, readonly depth: Map<number, number> } => {
     const slots = new Map<string, number>()
     const depth = new Map<number, number>()
     const byId = new Map(nodes.map((node) => [node.id, node]))
     for (const node of nodes) {
         const own = ports.get(node.id) ?? []
-        if (own.length === 0) continue
+        // A diamond's branches leave its vertices on their own (0.39.1, stepsSideRoute): no lanes.
+        if (own.length === 0 || isDiamond(node)) continue
         const centre = across.get(node.id) ?? 0
-        // Where each port's edge leaves, across the flow: LR the rows under the body, TB the cells along the bottom.
+        const exit = exits.get(node.id)
+        // Where each port's edge leaves, across the flow: LR the rows under the body, TB the cells along the bottom; a loop frame's exit pill (0.39.1).
         const portAt = (index: number): number => {
+            if (exit !== undefined) return centre + (exit.offsets[index] ?? 0)
             if (direction === "LR") {
                 const height = heightOf(node)
                 return centre + height / 2 - 1 - (own.length - index - 0.5) * STEPS_PORT_ROW_LR
@@ -607,7 +710,11 @@ const componentsOf = (nodes: ReadonlyArray<FlowGraphNode>, edges: ReadonlyArray<
 export const stepsLayout = (nodes: ReadonlyArray<FlowGraphNode>, edges: ReadonlyArray<FlowGraphEdge>, direction: FlowGraphDirection, shared?: { readonly cardWidth?: number, readonly islands?: StepsIslands, readonly width?: number }): StepsLayout => {
     const byId = new Map(nodes.map((node) => [node.id, node]))
     const ports = new Map(nodes.map((node) => [node.id, portsOf(node, edges)]))
-    const cardWidth = shared?.cardWidth ?? stepsCardWidth(ports, direction)
+    // A diamond's ports stand beside its vertices and a frame's exits on its edge (0.39.1): only a card's port row widens the cards.
+    const cardWidth = shared?.cardWidth ?? stepsCardWidth(new Map([...ports].filter(([id]) => {
+        const node = byId.get(id)
+        return node !== undefined && node.container === undefined && !isDiamond(node)
+    })), direction)
 
     // Loop cards: the children of each top-level container are laid out as a graph of their own, and the container stands as one box.
     const inside = new Set<string>()
@@ -620,6 +727,7 @@ export const stepsLayout = (nodes: ReadonlyArray<FlowGraphNode>, edges: Readonly
     }
     const top = nodes.filter((node) => !inside.has(node.id))
     const subs = new Map<string, { readonly layout: StepsLayout, readonly box: Box }>()
+    const exits = new Map<string, StepsExits>()
     const owner = new Map<string, string>()
     for (const node of top) {
         const below = owned.get(node.id)
@@ -628,7 +736,13 @@ export const stepsLayout = (nodes: ReadonlyArray<FlowGraphNode>, edges: Readonly
         const layout = stepsLayout(nodes.filter((child) => below.has(child.id)), edges.filter((edge) => below.has(edge.source) && below.has(edge.target)), direction, { cardWidth, islands: "stack" })
         const contentWidth = layout.width - 2 * STEPS_MARGIN
         const contentHeight = layout.height - 2 * STEPS_MARGIN
-        subs.set(node.id, { layout, box: { width: Math.max(cardWidth, contentWidth + 2 * STEPS_CONTAINER_PAD, containerHeaderWidth(node)), height: STEPS_CONTAINER_HEAD + contentHeight + 2 * STEPS_CONTAINER_PAD } })
+        const exit = exitsOf(node, direction)
+        // A loop frame's exits (0.39.1): side by side on the bottom edge (TB) the frame is as wide as the row; stacked on the right edge (LR) the body is as tall as the stack.
+        const exitRow = exit === undefined || direction === "LR" ? 0 : exit.widths.reduce((sum, width) => sum + width, 0) + STEPS_EXIT_GAP * (exit.widths.length - 1) + 2 * STEPS_CONTAINER_PAD
+        const exitStack = exit === undefined || direction === "TB" ? 0 : exit.ports.length * (STEPS_EXIT_HEIGHT + STEPS_EXIT_GAP) + STEPS_CONTAINER_PAD
+        const body = Math.max(contentHeight + 2 * STEPS_CONTAINER_PAD, exitStack)
+        subs.set(node.id, { layout, box: { width: Math.max(cardWidth, contentWidth + 2 * STEPS_CONTAINER_PAD, containerHeaderWidth(node), exitRow), height: STEPS_CONTAINER_HEAD + body + noteRowOf(node) } })
+        if (exit !== undefined) exits.set(node.id, exit)
     }
     const boxes = new Map<string, Box>([...subs].map(([id, sub]) => [id, sub.box]))
     // An edge into or out of a child is laid out as an edge of its container; an edge inside a container belongs to its own layout.
@@ -641,7 +755,7 @@ export const stepsLayout = (nodes: ReadonlyArray<FlowGraphNode>, edges: Readonly
 
     const cores = componentsOf(top, outerEdges).map((part) => {
         const ids = new Set(part.map((node) => node.id))
-        return coreLayout(part, outerEdges.filter((edge) => ids.has(edge.source) && ids.has(edge.target)), direction, cardWidth, boxes, ports)
+        return coreLayout(part, outerEdges.filter((edge) => ids.has(edge.source) && ids.has(edge.target)), direction, cardWidth, boxes, ports, exits)
     })
     // Islands (0.37.8): `wrap` places them left to right in input order and starts a new row when the next one would pass the available width (an island wider than the
     // width stands alone in its row); `stack` is one column. Rows and columns are 48 apart; every island is placed by the top-left corner of its own layout.
@@ -688,7 +802,9 @@ export const stepsLayout = (nodes: ReadonlyArray<FlowGraphNode>, edges: Readonly
         for (const [edgeId, route] of sub.layout.back) back.set(edgeId, { ...route, channel: route.channel + (direction === "TB" ? dy : dx) })
         for (const [childId, box] of sub.layout.boxes) allBoxes.set(childId, box)
         for (const [edgeId, trunk] of sub.layout.trunks) trunks.set(edgeId, trunk)
+        for (const [frameId, exit] of sub.layout.exits) exits.set(frameId, exit)
     }
+    const sides = diamondSidesOf(nodes, edges, ports, positions, direction, cardWidth)
     return {
         positions,
         layers,
@@ -700,5 +816,59 @@ export const stepsLayout = (nodes: ReadonlyArray<FlowGraphNode>, edges: Readonly
         height: contentHeight + 2 * STEPS_MARGIN,
         boxes: allBoxes,
         origin: { x: left, y: topEdge },
+        exits,
+        diamondSides: sides.edges,
+        portSides: sides.ports,
     }
+}
+
+/**
+ * Where each branch of a diamond leaves (0.39.1): the side vertex facing its target when the target stands more than half a diamond and a side run
+ * ({@link STEPS_DIAMOND_RUN}) off the diamond's middle across the flow, else the end vertex (`ahead`). One branch per side vertex; a second one goes ahead.
+ */
+const diamondSidesOf = (
+    nodes: ReadonlyArray<FlowGraphNode>,
+    edges: ReadonlyArray<FlowGraphEdge>,
+    ports: ReadonlyMap<string, ReadonlyArray<FlowGraphPort>>,
+    positions: ReadonlyMap<string, FlowGraphPoint>,
+    direction: FlowGraphDirection,
+    cardWidth: number,
+): { readonly edges: Map<string, StepsDiamondSide>, readonly ports: Map<string, Map<string, StepsDiamondSide>> } => {
+    const out = { edges: new Map<string, StepsDiamondSide>(), ports: new Map<string, Map<string, StepsDiamondSide>>() }
+    const acrossOf = (point: FlowGraphPoint) => direction === "TB" ? point.x : point.y
+    const half = (direction === "TB" ? cardWidth : STEPS_DIAMOND_HEIGHT) / 2
+    for (const node of nodes) {
+        if (!isDiamond(node)) continue
+        const own = ports.get(node.id) ?? []
+        const centre = positions.get(node.id)
+        if (own.length === 0 || centre === undefined) continue
+        const taken = new Map<string, StepsDiamondSide>()
+        const used = new Set<StepsDiamondSide>()
+        for (const edge of edges) {
+            if (edge.source !== node.id || isBackEdge(edge)) continue
+            const port = portOfEdge(edge, own)
+            const target = positions.get(edge.target)
+            if (port === undefined || target === undefined) continue
+            const known = taken.get(port.id)
+            if (known !== undefined) {
+                out.edges.set(edge.id, known)
+                continue
+            }
+            const delta = acrossOf(target) - acrossOf(centre)
+            const wanted: StepsDiamondSide = delta <= -(half + STEPS_DIAMOND_RUN) ? "start" : delta >= half + STEPS_DIAMOND_RUN ? "end" : "ahead"
+            const side: StepsDiamondSide = wanted !== "ahead" && used.has(wanted) ? "ahead" : wanted
+            used.add(side)
+            taken.set(port.id, side)
+            out.edges.set(edge.id, side)
+        }
+        // A port no edge leaves stands at the first free vertex, so its word is still drawn.
+        for (const port of own) {
+            if (taken.has(port.id)) continue
+            const free = (["start", "end", "ahead"] as const).find((side) => !used.has(side)) ?? "ahead"
+            used.add(free)
+            taken.set(port.id, free)
+        }
+        out.ports.set(node.id, taken)
+    }
+    return out
 }

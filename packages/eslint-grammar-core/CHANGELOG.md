@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.39.1 - 2026-11-14
+
+- Changed: released with the Grammar family at 0.39.1 (FlowGraph steps: decision diamond, loop frame with exits, fallback road). No rule of this package changed.
+
 ## 0.39.0 - 2026-11-13
 
 - Changed (PROJECT-LINT-3): `coreGrammarPackagesConfig` knows no folder of a root package. It judges every `.tsx` file of a package and the slots the project declares `lint: "fe"` (`ext/manifest.json` `packages`, the package view's `packageLint`); the fixed `src/workbench/**` and `src/public/**` subpaths and the `src/workbench/contract/**` exception are gone. Upgrade, per existing app: a package whose plain `.ts` files were judged there declares the folder as a `lint: "fe"` slot. Spec `src/packages-config.spec.ts`.

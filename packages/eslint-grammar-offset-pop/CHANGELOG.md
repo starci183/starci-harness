@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.39.1 - 2026-11-14
+
+- Changed: released with the Grammar family at 0.39.1 (FlowGraph steps: decision diamond, loop frame with exits, fallback road); peers `@starci/eslint-grammar-core` 0.39.1. No rule of this package changed.
+
 ## 0.39.0 - 2026-11-13
 
 - Changed: `offsetPopGrammarPackagesConfig` follows `coreGrammarPackagesConfig`: every `.tsx` file of a root package and the slots the project declares `lint: "fe"`, no fixed folder. Spec `src/inheritance.spec.ts`.

@@ -54,6 +54,20 @@ export type FlowGraphContainer = {
     readonly label: string
     readonly chips?: ReadonlyArray<FlowGraphChip>
     readonly childIds: ReadonlyArray<string>
+    /**
+     * What the box is (0.39.1): `group` (default) is the solid box above; `loop` is a body that repeats: a DASHED muted frame with no fill, its header the `label` and
+     * the muted `description`, its ways out (`exits`) as pills on its end edge and its `note` as a muted line inside its bottom.
+     */
+    readonly kind?: "group" | "loop"
+    /** `loop` only (0.39.1): a muted 12 line after the label in the header, e.g. "up to 6 rounds". */
+    readonly description?: string
+    /**
+     * `loop` only (0.39.1): the ways out of the loop, one pill each ON the frame's end edge (LR: the right edge, stacked; TB: the bottom edge, side by side), in
+     * order. An edge from the frame's id with `sourcePort` naming an exit's `id` leaves from its pill.
+     */
+    readonly exits?: ReadonlyArray<FlowGraphPort>
+    /** `loop` only (0.39.1): a muted 12 line inside the bottom of the frame, e.g. "not out yet: back to the first step". */
+    readonly note?: string
 }
 /** The agent a block belongs to (0.37.5): drawn as a 16px avatar and the name (12px, muted) under the title. */
 export type FlowGraphAgent = {
@@ -64,10 +78,13 @@ export type FlowGraphAgent = {
 export type FlowGraphPositions = Readonly<Record<string, { readonly x: number, readonly y: number }>>
 /** `forward` (default) runs down the flow; `back` (alias `return`) returns to an earlier or sibling step: dashed, with an optional pill label. */
 export type FlowGraphEdgeVariant = "forward" | "back" | "return"
-/** One entry of the kind legend under a `steps` graph. */
+/** What a legend entry names: a step kind, or `loop` (0.39.1), the dashed loop frame. */
+export type FlowGraphLegendKind = FlowGraphStepKind | "loop"
+/** One entry of the kind legend under a `steps` graph. `shape: "diamond"` (0.39.1) draws its swatch as a diamond, for a map that draws its conditions as diamonds. */
 export type FlowGraphLegendItem = {
-    readonly kind: FlowGraphStepKind
+    readonly kind: FlowGraphLegendKind
     readonly label: string
+    readonly shape?: "diamond"
 }
 /** The way edges run: top to bottom or left to right. */
 export type FlowGraphDirection = "TB" | "LR"
@@ -101,7 +118,10 @@ export type FlowGraphNode = {
     /** `steps` only: the run overlay, where the run is at this node. */
     readonly status?: FlowGraphRunStatus
     readonly size?: FlowGraphNodeSize
-    /** The node outline. Defaults to `stadium`. */
+    /**
+     * The node outline. Defaults to `stadium`. `steps` (0.39.1): `diamond` draws the node (any kind but `end`, never a loop card) as a decision diamond with its
+     * `label` (the question) inside and its ports' labels beside the vertices its branches leave; the other shapes keep the card.
+     */
     readonly shape?: FlowGraphNodeShape
     readonly count?: number | string
     /** Filtered out: the node draws faint, keeps its place and stays focusable; an edge dims with its target. */
@@ -129,6 +149,11 @@ export type FlowGraphEdge = {
     readonly variant?: FlowGraphEdgeVariant
     /** `steps` only, the run overlay: `true` the run took this edge (solid accent), `false` it did not (neutral, dashed and faded). */
     readonly isTaken?: boolean
+    /**
+     * `steps` only (0.39.1): the road taken when the awaited thing does not happen (a timeout, an else): a forward edge drawn DASHED, routed like any forward edge;
+     * its label pill (when it has one) is dashed too. `isPlaceholder` stays a slot not filled yet.
+     */
+    readonly isFallback?: boolean
 }
 
 /**

@@ -533,7 +533,7 @@ roles:
     ui: ui/components/diagram.md
     renderers: [MermaidDiagram, FlowGraph, BubbleMap]
     vendorParity: [skeleton, alert]
-    slots: ["MermaidDiagram: source, label, errorTitle", "FlowGraph: label, nodes (label, description, tone, kind, size, shape, isDimmed, count, href, position), edges (source, target, label), headers", "BubbleMap: label, nodes (label, description, tone, form, mark, caption, diameter, fill, ring, isDimmed, href), edges (source, target), expandedIds, fanLimit"]
+    slots: ["MermaidDiagram: source, label, errorTitle", "FlowGraph: label, nodes (label, description, tone, kind, size, shape, isDimmed, count, href, position; steps: outputs, chips, container (label, chips, childIds; kind loop: description, exits, note), agent, status), edges (source, target, label; steps: sourcePort, variant, isTaken, isFallback), headers, legend", "BubbleMap: label, nodes (label, description, tone, form, mark, caption, diameter, fill, ring, isDimmed, href), edges (source, target), expandedIds, fanLimit"]
     variants:
       height: { values: [sm, md, lg, fill], chosenBy: "app from the drawing; fill (FlowGraph steps) = the rest of the page height, the map of one workflow on its own page" }
       nodeShape: { values: [stadium, rect, round, diamond, circle], chosenBy: app from the node's meaning }
@@ -543,7 +543,7 @@ roles:
     sizes: none
     states: [loading (skeleton at the reserved box), ready, error (title and the source as code, in the region), empty (FlowGraph, BubbleMap)]
     grammarMayChange: [frame, node and edge paint through tokens]
-    dna: [DNA-COMMON-DIAGRAM-LOADING-BOX, DNA-COMMON-DIAGRAM-NAMED, DNA-COMMON-DIAGRAM-ERROR-SOURCE, DNA-COMMON-FLOW-EDGE-LABEL-SPOKEN, DNA-COMMON-FLOW-LANE-LABEL-ABOVE-LINES, DNA-COMMON-FLOW-LANE-LABEL-OPAQUE, DNA-COMMON-BUBBLE-TEXT-INSIDE-START, DNA-COMMON-BUBBLE-TEXT-INSIDE-END, DNA-COMMON-FLOW-READABLE-FLOOR, DNA-COMMON-FLOW-OPEN-ZOOM, DNA-COMMON-FLOW-CARD-SIZE, DNA-COMMON-FLOW-EDGE-DOT-ON-EDGE, DNA-COMMON-FLOW-SELECTED, DNA-COMMON-FLOW-BRANCH-LANES]
+    dna: [DNA-COMMON-DIAGRAM-LOADING-BOX, DNA-COMMON-DIAGRAM-NAMED, DNA-COMMON-DIAGRAM-ERROR-SOURCE, DNA-COMMON-FLOW-EDGE-LABEL-SPOKEN, DNA-COMMON-FLOW-LANE-LABEL-ABOVE-LINES, DNA-COMMON-FLOW-LANE-LABEL-OPAQUE, DNA-COMMON-BUBBLE-TEXT-INSIDE-START, DNA-COMMON-BUBBLE-TEXT-INSIDE-END, DNA-COMMON-FLOW-READABLE-FLOOR, DNA-COMMON-FLOW-OPEN-ZOOM, DNA-COMMON-FLOW-CARD-SIZE, DNA-COMMON-FLOW-EDGE-DOT-ON-EDGE, DNA-COMMON-FLOW-SELECTED, DNA-COMMON-FLOW-BRANCH-LANES, DNA-COMMON-FLOW-DIAMOND, DNA-COMMON-FLOW-LOOP-FRAME]
 
 # The DNA: every constraint a grammar keeps, each one law with the measurement a DNA gate performs on a render.
 # Layer 1 of grammars/README.md#three-layers: a DNA entry is a constraint, never a judgement; a choice rule moves here
@@ -1499,16 +1499,26 @@ mustKeep:
       owner: ui/components/diagram.md
     - id: DNA-COMMON-FLOW-SELECTED
       role: diagram
-      law: "A selected steps card has ONE border, 2px, in its status colour (done success, failed danger, waiting warning, running accent, skipped and not reached muted; a graph with no run status the foreground) and a soft tint of that colour as its ground, never a second ring: no outline and no box-shadow; an unselected card keeps one 1px border (in a run, its status colour). Keyboard focus shows only on focus-visible, a dashed 2px outline in the card's status colour 3px off the card (owner-approved drawing graph-selected, 0.37.35)."
+      law: "A selected steps card has ONE border, 2px, in its status colour (done success, failed danger, waiting warning, running accent, skipped and not reached muted; a graph with no run status the foreground) and a soft tint of that colour as its ground, never a second ring: no outline and no box-shadow; an unselected card keeps one 1px border (in a run, its status colour). Keyboard focus shows only on focus-visible, a dashed 2px outline in the card's status colour 3px off the card (owner-approved drawing graph-selected, 0.37.35). A decision diamond draws that one border as its outline (DNA-COMMON-FLOW-DIAMOND)."
       measure:
         kind: style
-        select: '[data-component="FlowGraph"][data-grammar-flow-layout="steps"] .starci-core-flow-graph-step[data-grammar-selected="true"]:not([data-kind="end"])'
+        select: '[data-component="FlowGraph"][data-grammar-flow-layout="steps"] .starci-core-flow-graph-step[data-grammar-selected="true"]:not([data-kind="end"]):not([data-grammar-flow-diamond])'
         checks: [{ metric: border-width, op: "=", value: 2px }, { metric: box-shadow, op: "=", value: none }, { metric: outline-style, op: "=", value: none }]
       owner: ui/components/diagram.md
     - id: DNA-COMMON-FLOW-BRANCH-LANES
       role: diagram
       law: "Each edge that leaves a port of a steps card (a condition's branch) runs its own lane: it turns once out of its port into the lane and once into its target, no segment runs past the higher or lower of its port and its target, and no two branches share a lane (the climbing ones nearest the card, upper port first, then the descending ones, lower port first); the cards of a column take their own heights, so the branches stand beside the ports (0.37.35)."
       measure: { kind: attr, select: '[data-component="FlowGraph"][data-grammar-flow-layout="steps"] [data-grammar-flow-lane]', metric: data-grammar-flow-lane, op: set }
+      owner: ui/components/diagram.md
+    - id: DNA-COMMON-FLOW-DIAMOND
+      role: diagram
+      law: "A steps node of shape diamond (a decision) is a diamond one card wide and 88 tall at zoom 1, its question inside at 14 medium in at most two lines, its outline the card's ONE border (1px, 2px in the status colour with the soft tint when selected, never a box border), each port's word 12 beside the vertex its branch leaves: a branch leaves the side vertex facing its target, across the flow, and turns once into it; a branch whose target stands ahead leaves the end vertex (0.39.1)."
+      measure: { kind: box, select: '[data-component="FlowGraph"][data-grammar-flow-layout="steps"] [data-grammar-flow-diamond]', metric: height, op: "=", value: 88px }
+      owner: ui/components/diagram.md
+    - id: DNA-COMMON-FLOW-LOOP-FRAME
+      role: diagram
+      law: "A steps loop frame (container kind loop) is a dashed muted outline with no fill round its body, its header the label (14 medium) and a muted description (12), its note a muted 12 line inside its bottom, and its ways out pills on its end edge, each the start of the edges of that way out (0.39.1)."
+      measure: { kind: style, select: '[data-component="FlowGraph"][data-grammar-flow-layout="steps"] [data-grammar-flow-container][data-kind="loop"]', checks: [{ metric: border-top-style, op: "=", value: dashed }] }
       owner: ui/components/diagram.md
     - id: DNA-COMMON-FLOW-EDGE-DOT-ON-EDGE
       role: diagram

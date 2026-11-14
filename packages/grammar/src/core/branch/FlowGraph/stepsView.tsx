@@ -18,8 +18,8 @@ import { isValidElement, memo, type ReactNode } from "react"
 import { Avatar } from "../../leaf/Avatar/index.js"
 import { Icon, type IconSource } from "../../leaf/Icon/index.js"
 import { useCustomTone } from "../../useCustomTone.js"
-import { chipsOf, roundedPath, stepsBackRoute, stepsForwardRoute, STEPS_CORNER, STEPS_PORT_CHARS, STEPS_TITLE_CHARS, STEPS_TITLE_LINES, type StepsBackRoute } from "./steps.js"
-import type { FlowGraphChip, FlowGraphDirection, FlowGraphLegendItem, FlowGraphNode, FlowGraphPort, FlowGraphRunStatus, FlowGraphStepKind, FlowGraphTone } from "./types.js"
+import { chipsOf, roundedPath, stepsBackRoute, stepsForwardRoute, stepsSideRoute, STEPS_CORNER, STEPS_EXIT_CHARS, STEPS_EXIT_INSET, STEPS_PORT_CHARS, STEPS_TITLE_CHARS, STEPS_TITLE_LINES, type StepsBackRoute, type StepsDiamondSide, type StepsExits } from "./steps.js"
+import type { FlowGraphChip, FlowGraphDirection, FlowGraphLegendItem, FlowGraphLegendKind, FlowGraphNode, FlowGraphPort, FlowGraphRunStatus, FlowGraphStepKind, FlowGraphTone } from "./types.js"
 
 /**
  * The tone of each `steps` kind. Core's palette is HeroUI's (accent, success, warning, danger, default), which has no purple, teal or coral:
@@ -211,10 +211,76 @@ export const FlowGraphStepView = memo(({ data }: NodeProps<Node<StepNodeData>>) 
 })
 FlowGraphStepView.displayName = "FlowGraphStepView"
 
+export type DiamondNodeData = StepNodeData & {
+    /** Where each port is drawn: beside the side vertex its branch leaves, or beside the end vertex (`ahead`). */
+    readonly portSides: ReadonlyMap<string, StepsDiamondSide>
+}
+
+/**
+ * A decision diamond (0.39.1, `shape: "diamond"`): the diamond in the card's border and ground (status, selected and dimmed as a card), its label (the question)
+ * inside at 14 medium, up to two lines, and each port's word (12 medium, muted; danger for an error port) beside the vertex its branch leaves. A side vertex holds the
+ * port's handle; a branch ahead leaves the end vertex (`out`). The kind's tile, line, tag, chips and agent are not drawn: they stay in the node's accessible name.
+ */
+export const FlowGraphDiamondView = memo(({ data }: NodeProps<Node<DiamondNodeData>>) => {
+    const { graphNode, kind, tone, ports, portSides, isSelected, direction, statusLabel } = data
+    const custom = useCustomTone(tone, STEP_BUILT_IN_TONES)
+    const sides = SIDES[direction]
+    const question = <span className="starci-core-flow-graph-diamond-label" {...(graphNode.label.length > STEPS_TITLE_CHARS * STEPS_TITLE_LINES ? { title: graphNode.label } : {})}>{graphNode.label}</span>
+    return (
+        <div
+            className="starci-core-flow-graph-step starci-core-flow-graph-diamond"
+            ref={custom.ref as never}
+            {...custom.attrs}
+            data-grammar-flow-node={graphNode.id}
+            data-grammar-flow-diamond="true"
+            data-grammar-selected={isSelected ? "true" : "false"}
+            data-kind={kind}
+            data-tone={tone}
+            data-status={graphNode.status}
+            data-dimmed={graphNode.isDimmed === true ? "true" : undefined}
+            data-placeholder={graphNode.isPlaceholder === true ? "true" : undefined}
+        >
+            <svg className="starci-core-flow-graph-diamond-shape" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+                <polygon points="50,0 100,50 50,100 0,50" />
+            </svg>
+            <StepHandles direction={direction} hasOut isAnchored={false} />
+            {graphNode.status === undefined ? null : (
+                <span className="starci-core-flow-graph-step-status" data-status={graphNode.status} data-grammar-flow-status={graphNode.status} aria-hidden="true">
+                    <Icon source={STATUS_GLYPHS[graphNode.status]} usage="chip" />
+                    {statusLabel === undefined || statusLabel === "" ? null : <span className="starci-core-flow-graph-step-status-word">{statusLabel}</span>}
+                </span>
+            )}
+            {graphNode.href === undefined ? question : (
+                <RouterLink className="starci-core-flow-graph-link starci-core-flow-graph-diamond-link" data-grammar-flow-link="true" href={graphNode.href}>{question}</RouterLink>
+            )}
+            {ports.map((port) => (
+                <span
+                    key={port.id}
+                    className="starci-core-flow-graph-diamond-port"
+                    data-grammar-flow-port={port.id}
+                    data-side={portSides.get(port.id) ?? "ahead"}
+                    {...(port.tone === undefined ? {} : { "data-tone": port.tone })}
+                    {...(port.label.length > STEPS_PORT_CHARS ? { title: port.label } : {})}
+                >
+                    {port.label}
+                </span>
+            ))}
+            {ports.flatMap((port) => {
+                const side = portSides.get(port.id) ?? "ahead"
+                if (side === "ahead") return []
+                return [<Handle key={port.id} className="starci-core-flow-graph-step-handle" id={`port:${port.id}`} isConnectable={false} position={side === "start" ? sides.start : sides.end} type="source" />]
+            })}
+        </div>
+    )
+})
+FlowGraphDiamondView.displayName = "FlowGraphDiamondView"
+
 export type ContainerNodeData = {
     readonly graphNode: FlowGraphNode
     readonly direction: FlowGraphDirection
     readonly isSelected: boolean
+    /** A loop frame's exit pills as the layout placed them (0.39.1). */
+    readonly exits?: StepsExits
     readonly [key: string]: unknown
 }
 
@@ -223,20 +289,44 @@ export type ContainerNodeData = {
  * at the places the layout gave them inside the box. It has the handles of a card, so an edge to or from its id meets its edge.
  */
 export const FlowGraphContainerView = memo(({ data }: NodeProps<Node<ContainerNodeData>>) => {
-    const { graphNode, direction, isSelected } = data
+    const { graphNode, direction, isSelected, exits } = data
+    const container = graphNode.container
+    const kind = container?.kind ?? "group"
+    const description = kind === "loop" ? container?.description : undefined
+    const note = kind === "loop" ? container?.note : undefined
     return (
-        <div className="starci-core-flow-graph-container" data-grammar-flow-node={graphNode.id} data-grammar-flow-container="true" data-grammar-selected={isSelected ? "true" : "false"}>
+        <div className="starci-core-flow-graph-container" data-kind={kind} data-grammar-flow-node={graphNode.id} data-grammar-flow-container="true" data-grammar-selected={isSelected ? "true" : "false"}>
             <StepHandles direction={direction} isAnchored={false} hasOut />
             <span className="starci-core-flow-graph-container-head">
-                <span className="starci-core-flow-graph-container-label">{graphNode.container?.label ?? graphNode.label}</span>
-                <StepChips chips={graphNode.container?.chips} />
+                <span className="starci-core-flow-graph-container-label">{container?.label ?? graphNode.label}</span>
+                {description === undefined || description === "" ? null : <span className="starci-core-flow-graph-container-description">{description}</span>}
+                <StepChips chips={container?.chips} />
             </span>
+            {note === undefined || note === "" ? null : <span className="starci-core-flow-graph-container-note" data-grammar-flow-note="true">{note}</span>}
+            {exits === undefined ? null : exits.ports.map((port, index) => <ExitPill key={port.id} port={port} direction={direction} offset={exits.offsets[index] ?? 0} width={exits.widths[index] ?? 0} />)}
         </div>
     )
 })
 FlowGraphContainerView.displayName = "FlowGraphContainerView"
 
 const STEP_LABEL = "starci-core-flow-graph-step-label"
+
+/**
+ * A way out of a loop frame (0.39.1): the FlowGraph's label pill (12, the hairline border on the surface) ON the frame's end edge, placed by the layout (LR: its start
+ * {@link STEPS_EXIT_INSET} inside the right edge, its middle at `offset` from the frame's middle; TB: centred on the bottom edge at `offset` across). Its edges leave
+ * the handle at its far end.
+ */
+const ExitPill = ({ port, direction, offset, width }: { readonly port: FlowGraphPort, readonly direction: FlowGraphDirection, readonly offset: number, readonly width: number }) => {
+    const place = direction === "LR"
+        ? { insetInlineStart: `calc(100% - ${String(STEPS_EXIT_INSET)}px)`, insetBlockStart: `calc(50% + ${String(offset)}px)`, inlineSize: `${String(width)}px` }
+        : { insetInlineStart: `calc(50% + ${String(offset)}px)`, insetBlockStart: "100%", inlineSize: `${String(width)}px` }
+    return (
+        <span className={`${STEP_LABEL} starci-core-flow-graph-exit`} data-grammar-flow-exit={port.id} style={place} {...(port.label.length > STEPS_EXIT_CHARS ? { title: port.label } : {})}>
+            <span className="starci-core-flow-graph-exit-label">{port.label}</span>
+            <Handle className="starci-core-flow-graph-step-handle starci-core-flow-graph-exit-handle" id={`port:${port.id}`} isConnectable={false} position={SIDES[direction].out} type="source" />
+        </span>
+    )
+}
 
 /**
  * A forward edge (0.37.27, drawing C): ORTHOGONAL ONLY, out of its port (or the card's end edge) to the shared trunk, across, then into the next card, a 10px
@@ -249,7 +339,9 @@ export const FlowGraphStepEdge = memo(({ sourceX, sourceY, targetX, targetY, mar
     const span = (direction === "LR" ? measured?.height : measured?.width) ?? 0
     const laneData = data?.["lane"]
     const lane = typeof laneData === "number" ? laneData : undefined
-    const points = stepsForwardRoute({ x: sourceX, y: sourceY }, { x: targetX, y: targetY }, direction, span, lane)
+    // A diamond's branch out of a side vertex (0.39.1) runs across, then along: one turn.
+    const isSide = data?.["side"] === "start" || data?.["side"] === "end"
+    const points = isSide ? stepsSideRoute({ x: sourceX, y: sourceY }, { x: targetX, y: targetY }, direction) : stepsForwardRoute({ x: sourceX, y: sourceY }, { x: targetX, y: targetY }, direction, span, lane)
     const turn = points[points.length - 2] ?? { x: sourceX, y: sourceY }
     const labelX = (turn.x + targetX) / 2
     const labelY = (turn.y + targetY) / 2
@@ -259,7 +351,7 @@ export const FlowGraphStepEdge = memo(({ sourceX, sourceY, targetX, targetY, mar
             <EdgeDot x={sourceX} y={sourceY} lane={lane} />
             {typeof label === "string" && label !== "" ? (
                 <EdgeLabelRenderer>
-                    <span className={STEP_LABEL} data-grammar-flow-edge-label="true" style={{ transform: `translate(-50%, -50%) translate(${String(labelX)}px, ${String(labelY)}px)` }}>{label}</span>
+                    <span className={STEP_LABEL} data-grammar-flow-edge-label="true" {...(data?.["isFallback"] === true ? { "data-variant": "fallback" } : {})} style={{ transform: `translate(-50%, -50%) translate(${String(labelX)}px, ${String(labelY)}px)` }}>{label}</span>
                 </EdgeLabelRenderer>
             ) : null}
         </>
@@ -296,14 +388,17 @@ FlowGraphBackEdge.displayName = "FlowGraphBackEdge"
 /** The kind legend under a `steps` graph: a small tile in each kind's tone and its name. */
 export const FlowGraphLegend = ({ items, kindTones = STEP_KIND_TONES }: { readonly items: ReadonlyArray<FlowGraphLegendItem>, readonly kindTones?: Readonly<Record<FlowGraphStepKind, FlowGraphTone>> }) => (
     <ul className="starci-core-flow-graph-legend" data-grammar-flow-legend="true">
-        {items.map((item) => <LegendEntry key={item.kind} item={item} tone={kindTones[item.kind]} />)}
+        {items.map((item) => <LegendEntry key={item.kind} item={item} tone={legendToneOf(item.kind, kindTones)} />)}
     </ul>
 )
+
+/** The tone of a legend entry: its kind's, and the loop frame's neutral (0.39.1). */
+const legendToneOf = (kind: FlowGraphLegendKind, kindTones: Readonly<Record<FlowGraphStepKind, FlowGraphTone>>): FlowGraphTone => kind === "loop" ? "neutral" : kindTones[kind]
 
 const LegendEntry = ({ item, tone }: { readonly item: FlowGraphLegendItem, readonly tone: FlowGraphTone }) => {
     const custom = useCustomTone(tone, STEP_BUILT_IN_TONES)
     return (
-        <li className="starci-core-flow-graph-legend-item" ref={custom.ref as never} {...custom.attrs} data-kind={item.kind} data-tone={tone}>
+        <li className="starci-core-flow-graph-legend-item" ref={custom.ref as never} {...custom.attrs} data-kind={item.kind} data-tone={tone} {...(item.shape === undefined ? {} : { "data-shape": item.shape })}>
             <span className="starci-core-flow-graph-legend-swatch" aria-hidden="true" />
             {item.label}
         </li>

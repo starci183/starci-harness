@@ -41,9 +41,9 @@ import {
     type LanesLayout,
 } from "./layout.js"
 import { useSurfaceHost } from "../../surfaceContext.js"
-import { isBackEdge, portOfEdge, stepKindOf, stepsLayout, stepsNodeHeight, type StepsLayout } from "./steps.js"
+import { isBackEdge, isDiamond, portOfEdge, stepKindOf, stepsLayout, stepsNodeHeight, type StepsExits, type StepsLayout } from "./steps.js"
 export { FlowGraphLegend } from "./stepsView.js"
-import { DEFAULT_STATUS_LABELS, STEPS_ARROW_BOX, STEPS_ARROW_STROKE, STEPS_TAKEN_TONE, STEPS_UNTAKEN_TONE, FlowGraphBackEdge, FlowGraphContainerView, FlowGraphLegend, FlowGraphStepEdge, FlowGraphStepView, STEP_KIND_TONES, stepAriaLabel, type ContainerNodeData, type StepNodeData } from "./stepsView.js"
+import { DEFAULT_STATUS_LABELS, STEPS_ARROW_BOX, STEPS_ARROW_STROKE, STEPS_TAKEN_TONE, STEPS_UNTAKEN_TONE, FlowGraphBackEdge, FlowGraphContainerView, FlowGraphDiamondView, FlowGraphLegend, FlowGraphStepEdge, FlowGraphStepView, STEP_KIND_TONES, stepAriaLabel, type ContainerNodeData, type DiamondNodeData, type StepNodeData } from "./stepsView.js"
 import type {
     FlowGraphDirection,
     FlowGraphEdge,
@@ -72,6 +72,7 @@ export type {
     FlowGraphLayerHeader,
     FlowGraphLayout,
     FlowGraphLegendItem,
+    FlowGraphLegendKind,
     FlowGraphNode,
     FlowGraphNodeKind,
     FlowGraphNodeShape,
@@ -280,12 +281,14 @@ FlowGraphLaneEdge.displayName = "FlowGraphLaneEdge"
 const EDGE_TYPES: EdgeTypes = { flowGraphLane: FlowGraphLaneEdge, flowGraphStep: FlowGraphStepEdge, flowGraphBack: FlowGraphBackEdge }
 const EDGE_LABEL_PADDING: [number, number] = [COMMON_SPACING_PX[2], COMMON_SPACING_PX[1]]
 const LABEL_RADIUS = COMMON_SPACING_PX[1]
-const NODE_TYPES: NodeTypes = { flowGraph: FlowGraphNodeView, flowGraphHeader: FlowGraphHeaderView, flowGraphStep: FlowGraphStepView, flowGraphContainer: FlowGraphContainerView }
+const NODE_TYPES: NodeTypes = { flowGraph: FlowGraphNodeView, flowGraphHeader: FlowGraphHeaderView, flowGraphStep: FlowGraphStepView, flowGraphDiamond: FlowGraphDiamondView, flowGraphContainer: FlowGraphContainerView }
 /** A steps graph is laid out with its own margin, so like lanes its fit keeps a small one and never magnifies. */
 const STEPS_MAX_ZOOM = 1
 /** The pixel height of a named or numeric canvas `height` (a CSS length string has none): the cap of a contained steps graph. */
 const heightCapPx = (height: FlowGraphHeight | "fill" | number | string | undefined): number | null =>
     height === "sm" ? 256 : height === "md" ? 384 : height === "lg" ? 512 : typeof height === "number" ? height : null
+/** A loop frame's exits for its node data (0.39.1), nothing for a frame with none. */
+const exitsData = (exits: StepsExits | undefined) => exits === undefined ? {} : { exits }
 const HEADER_OFFSET = 70
 /** The least height of a `fill` frame (0.37.33): 22.5rem. */
 export const FLOW_FILL_MIN = 360
@@ -466,7 +469,7 @@ const FlowGraphInner = ({
     }, [steps, nodes, flowDirection])
     const toTop = useCallback((id: string, point: { readonly x: number, readonly y: number }) => ({ x: point.x, y: point.y - (topOffsets.get(id) ?? 0) }), [topOffsets])
     const fromTop = useCallback((id: string, point: { readonly x: number, readonly y: number }) => ({ x: point.x, y: point.y + (topOffsets.get(id) ?? 0) }), [topOffsets])
-    const flowNodes = useMemo<Array<Node<NodeData> | Node<StepNodeData> | Node<ContainerNodeData>>>(() => steps !== null ? [...nodes].sort((a, b) => Number(b.container !== undefined) - Number(a.container !== undefined)).map((graphNode): Node<StepNodeData> | Node<ContainerNodeData> => {
+    const flowNodes = useMemo<Array<Node<NodeData> | Node<StepNodeData> | Node<DiamondNodeData> | Node<ContainerNodeData>>>(() => steps !== null ? [...nodes].sort((a, b) => Number(b.container !== undefined) - Number(a.container !== undefined)).map((graphNode): Node<StepNodeData> | Node<DiamondNodeData> | Node<ContainerNodeData> => {
         const kind = stepKindOf(graphNode)
         const box = steps.boxes.get(graphNode.id)
         if (box !== undefined) {
@@ -474,7 +477,7 @@ const FlowGraphInner = ({
                 id: graphNode.id,
                 type: "flowGraphContainer",
                 position: placed(graphNode.id, steps.positions.get(graphNode.id) ?? { x: 0, y: 0 }),
-                data: { graphNode, direction: flowDirection ?? "TB", isSelected: graphNode.id === currentId },
+                data: { graphNode, direction: flowDirection ?? "TB", isSelected: graphNode.id === currentId, ...exitsData(steps.exits.get(graphNode.id)) },
                 style: { width: box.width, height: box.height },
                 width: box.width,
                 height: box.height,
@@ -487,7 +490,8 @@ const FlowGraphInner = ({
         }
         return {
             id: graphNode.id,
-            type: "flowGraphStep",
+            // A decision diamond (0.39.1) carries where each of its ports is drawn.
+            type: isDiamond(graphNode) ? "flowGraphDiamond" : "flowGraphStep",
             position: toTop(graphNode.id, placed(graphNode.id, steps.positions.get(graphNode.id) ?? { x: 0, y: 0 })),
             ...(topOffsets.has(graphNode.id) ? { origin: [0.5, 0] as [number, number] } : {}),
             data: {
@@ -499,6 +503,7 @@ const FlowGraphInner = ({
                 isSelected: graphNode.id === currentId,
                 direction: flowDirection ?? "TB",
                 ...(graphNode.status === undefined ? {} : { statusLabel: statusLabels[graphNode.status] }),
+                ...(isDiamond(graphNode) ? { portSides: steps.portSides.get(graphNode.id) ?? new Map() } : {}),
             },
             selected: graphNode.id === currentId,
             ariaLabel: stepAriaLabel(graphNode, statusLabels),
@@ -554,11 +559,14 @@ const FlowGraphInner = ({
         const isBack = isBackEdge(edge)
         if (isBack && route === undefined) return []
         const port = isBack ? undefined : portOfEdge(edge, steps.ports.get(edge.source) ?? [])
+        // A diamond's branch (0.39.1) leaves the side vertex facing its target, or the end vertex when its target stands ahead.
+        const side = port === undefined ? undefined : steps.diamondSides.get(edge.id)
         const run = !isRun ? "" : edge.isTaken === true ? "starci-core-flow-graph-edge-taken" : "starci-core-flow-graph-edge-untaken"
         const classes = [
             "starci-core-flow-graph-edge",
             isBack ? "starci-core-flow-graph-edge-back" : "",
             edge.isPlaceholder === true ? "starci-core-flow-graph-edge-placeholder" : "",
+            !isBack && edge.isFallback === true ? "starci-core-flow-graph-edge-fallback" : "",
             dimmedIds.has(edge.target) ? "starci-core-flow-graph-edge-dimmed" : "",
             port?.tone === "danger" ? "starci-core-flow-graph-edge-danger" : "",
             run,
@@ -570,10 +578,10 @@ const FlowGraphInner = ({
             source: edge.source,
             target: edge.target,
             type: isBack ? "flowGraphBack" : "flowGraphStep",
-            sourceHandle: route !== undefined ? `back-out-${route.sourceSide}` : port === undefined ? "out" : `port:${port.id}`,
+            sourceHandle: route !== undefined ? `back-out-${route.sourceSide}` : port === undefined || side === "ahead" ? "out" : `port:${port.id}`,
             targetHandle: route !== undefined ? `back-in-${route.targetSide}` : "in",
             data: route === undefined
-                ? { direction: flowDirection ?? "LR", ...(steps.trunks.has(edge.id) ? { lane: steps.trunks.get(edge.id) } : {}) }
+                ? { direction: flowDirection ?? "LR", ...(steps.trunks.has(edge.id) ? { lane: steps.trunks.get(edge.id) } : {}), ...(side === "start" || side === "end" ? { side } : {}), ...(edge.isFallback === true ? { isFallback: true } : {}) }
                 : { route, direction: flowDirection ?? "LR" },
             // Drawing C (0.37.27): a small solid triangle in the edge's colour; a run's taken path is the success green.
             markerEnd: { type: MarkerType.ArrowClosed, markerUnits: "userSpaceOnUse", width: STEPS_ARROW_BOX, height: STEPS_ARROW_BOX, strokeWidth: STEPS_ARROW_STROKE, color: port?.tone === "danger" ? "var(--danger)" : isRun && edge.isTaken === true ? STEPS_TAKEN_TONE : isRun ? STEPS_UNTAKEN_TONE : "var(--muted)" },
@@ -709,7 +717,7 @@ const FlowGraphInner = ({
                             }}
                             onNodeDragStop={(_event, node) => commitMoved({ ...moved, ...live, [node.id]: fromTop(node.id, node.position) })}
                             nodesFocusable
-                            onNodeClick={(_event, node) => { if (node.type === "flowGraph" || node.type === "flowGraphStep" || node.type === "flowGraphContainer") activate(node.id) }}
+                            onNodeClick={(_event, node) => { if (node.type === "flowGraph" || node.type === "flowGraphStep" || node.type === "flowGraphDiamond" || node.type === "flowGraphContainer") activate(node.id) }}
                             onPaneClick={() => { if (currentId !== null) select(null) }}
                             panOnDrag={isInteractive || floored}
                             panOnScroll={false}

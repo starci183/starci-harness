@@ -2926,6 +2926,57 @@
         white-space: nowrap;
     }
 
+    /*
+     * A LOOP FRAME (0.39.1, `container.kind: "loop"`): a body that repeats is a DASHED frame in the muted ink with no fill (the dotted ground shows through; it is no
+     * surface, so its cards stand on the well as everywhere), its header the label (14 medium) and the muted description (12), its `note` a muted 12 line inside
+     * its bottom, and its ways out (`exits`) pills ON its end edge: the label pill of the FlowGraph (12, the hairline border on the surface) at the medium weight in
+     * the foreground, placed by the layout (steps.ts STEPS_EXIT_*). The edges of an exit leave the handle at the pill's far end.
+     */
+    .starci-core-flow-graph-container[data-kind="loop"] {
+        border-style: dashed;
+        border-color: var(--muted);
+        background: transparent;
+    }
+
+    .starci-core-flow-graph-container-description {
+        flex: none;
+        color: var(--muted);
+        font-size: var(--grammar-text-xs);
+        line-height: var(--grammar-leading-xs);
+        white-space: nowrap;
+    }
+
+    .starci-core-flow-graph-container-note {
+        position: absolute;
+        inset-inline: var(--grammar-inset-card);
+        inset-block-end: var(--grammar-inset-card);
+        overflow: hidden;
+        color: var(--muted);
+        font-size: var(--grammar-text-xs);
+        line-height: var(--grammar-leading-xs);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .starci-core-flow-graph-exit {
+        z-index: 1;
+        display: inline-flex;
+        box-sizing: border-box;
+        align-items: center;
+        block-size: var(--grammar-flow-exit-height);
+        color: var(--foreground);
+        font-weight: var(--grammar-weight-medium);
+        transform: translateY(-50%);
+    }
+
+    .starci-core-flow-graph[data-grammar-flow-direction="TB"] .starci-core-flow-graph-exit { transform: translate(-50%, -50%); }
+
+    .starci-core-flow-graph-exit-label {
+        min-inline-size: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
     .starci-core-flow-graph-step-port + .starci-core-flow-graph-step-port { border-inline-start: var(--grammar-hairline) solid var(--border); }
 
     .starci-core-flow-graph .starci-core-flow-graph-step-port-dot {
@@ -3034,6 +3085,78 @@
     }
 
     .starci-core-flow-graph .react-flow__node:focus-visible { outline: none; }
+
+    /*
+     * THE DECISION DIAMOND (0.39.1, `shape: "diamond"`): one card wide and --grammar-flow-diamond-height tall, the diamond drawn in the card's ONE border and ground
+     * (its width and colour follow the card's selected and run rules, so a selected diamond takes the 2px status border and the soft tint), its question inside at 14
+     * medium, centred, at most two lines in the middle 60% (where the diamond is wide enough), and each port's word (12 medium, muted; danger on an error port) beside
+     * the vertex its branch leaves: across (LR) right of the top or bottom vertex, or above the line after the end vertex; down (TB) above the line beside the left or
+     * right vertex, or right of the line under the bottom vertex.
+     */
+    .starci-core-flow-graph-step.starci-core-flow-graph-diamond {
+        align-items: center;
+        justify-content: center;
+        block-size: var(--grammar-flow-diamond-height);
+        border: 0;
+        background: transparent;
+    }
+
+    .starci-core-flow-graph-diamond-shape {
+        position: absolute;
+        inset: 0;
+        inline-size: 100%;
+        block-size: 100%;
+        overflow: visible;
+        pointer-events: none;
+    }
+
+    .starci-core-flow-graph-diamond-shape polygon {
+        fill: var(--surface);
+        stroke: var(--starci-flow-edge);
+        stroke-width: var(--starci-flow-border-width);
+        stroke-linejoin: round;
+        vector-effect: non-scaling-stroke;
+    }
+
+    .starci-core-flow-graph-diamond[data-grammar-selected="true"] { background: transparent; }
+    .starci-core-flow-graph-diamond[data-grammar-selected="true"] .starci-core-flow-graph-diamond-shape polygon { fill: color-mix(in oklab, var(--starci-flow-select) 8%, var(--surface)); }
+    .starci-core-flow-graph-diamond[data-placeholder="true"] .starci-core-flow-graph-diamond-shape polygon { stroke-dasharray: 4 5; }
+
+    .starci-core-flow-graph-diamond-link { display: contents; }
+
+    .starci-core-flow-graph-diamond-label {
+        position: relative;
+        display: -webkit-box;
+        max-inline-size: 60%;
+        overflow: hidden;
+        font-weight: var(--grammar-weight-medium);
+        text-align: center;
+        overflow-wrap: anywhere;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
+    }
+
+    .starci-core-flow-graph-diamond-port {
+        position: absolute;
+        max-inline-size: 16ch;
+        overflow: hidden;
+        color: var(--muted);
+        font-size: var(--grammar-text-xs);
+        font-weight: var(--grammar-weight-medium);
+        line-height: var(--grammar-leading-xs);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        pointer-events: none;
+    }
+
+    .starci-core-flow-graph-diamond-port[data-tone="danger"] { color: var(--danger); }
+    .starci-core-flow-graph[data-grammar-flow-direction="LR"] .starci-core-flow-graph-diamond-port[data-side="start"] { inset-block-end: 100%; inset-inline-start: calc(50% + var(--grammar-inline-gap)); }
+    .starci-core-flow-graph[data-grammar-flow-direction="LR"] .starci-core-flow-graph-diamond-port[data-side="end"] { inset-block-start: 100%; inset-inline-start: calc(50% + var(--grammar-inline-gap)); }
+    .starci-core-flow-graph[data-grammar-flow-direction="LR"] .starci-core-flow-graph-diamond-port[data-side="ahead"] { inset-block-end: 50%; inset-inline-start: calc(100% + var(--grammar-inline-gap)); }
+    .starci-core-flow-graph[data-grammar-flow-direction="TB"] .starci-core-flow-graph-diamond-port[data-side="start"] { inset-block-end: 50%; inset-inline-end: calc(100% + var(--grammar-inline-gap)); }
+    .starci-core-flow-graph[data-grammar-flow-direction="TB"] .starci-core-flow-graph-diamond-port[data-side="end"] { inset-block-end: 50%; inset-inline-start: calc(100% + var(--grammar-inline-gap)); }
+    .starci-core-flow-graph[data-grammar-flow-direction="TB"] .starci-core-flow-graph-diamond-port[data-side="ahead"] { inset-block-start: 100%; inset-inline-start: calc(50% + var(--grammar-inline-gap)); }
     .starci-core-flow-graph-step[data-dimmed="true"] { opacity: var(--grammar-opacity-dimmed); }
 
     /*
@@ -3093,6 +3216,8 @@
     .starci-core-flow-graph .starci-core-flow-graph-edge-untaken .starci-core-flow-graph-edge-dot { stroke: color-mix(in oklab, var(--muted) 55%, transparent); }
     .starci-core-flow-graph .starci-core-flow-graph-edge-danger .starci-core-flow-graph-edge-dot { stroke: var(--danger); }
     .starci-core-flow-graph .starci-core-flow-graph-edge-back .react-flow__edge-path { stroke-dasharray: 5 4; }
+    /* A FALLBACK road (0.39.1, `isFallback`: a timeout, an else) is a forward edge drawn dashed as a back edge is; its label pill is dashed too. */
+    .starci-core-flow-graph .starci-core-flow-graph-edge-fallback .react-flow__edge-path { stroke-dasharray: 5 4; }
 
     /* A label on a line (a back edge, an edge with no port): a small pill above every line. */
     .starci-core-flow-graph-step-label {
@@ -3108,7 +3233,7 @@
         pointer-events: none;
     }
 
-    .starci-core-flow-graph-step-label[data-variant="back"] { border-style: dashed; }
+    .starci-core-flow-graph-step-label:is([data-variant="back"], [data-variant="fallback"]) { border-style: dashed; }
 
     /* The kind legend under the canvas. */
     .starci-core-flow-graph-legend {
@@ -3154,6 +3279,9 @@
     }
 
     .starci-core-flow-graph-legend-item[data-kind="wait"] .starci-core-flow-graph-legend-swatch { border-style: dashed; border-color: var(--muted); }
+    /* 0.39.1: the loop frame's swatch is a dashed muted square with no fill; a diamond entry's swatch is turned on its corner. */
+    .starci-core-flow-graph-legend-item[data-kind="loop"] .starci-core-flow-graph-legend-swatch { border-style: dashed; border-color: var(--muted); background: transparent; }
+    .starci-core-flow-graph-legend-item[data-shape="diamond"] .starci-core-flow-graph-legend-swatch { transform: rotate(45deg); }
 
     .starci-core-flow-graph .react-flow__edge-textwrapper { pointer-events: none; }
     .starci-core-flow-graph .react-flow__edge-textbg { fill: var(--surface); stroke: var(--separator); stroke-width: 1px; }
