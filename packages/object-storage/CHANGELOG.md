@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0 - 2026-11-15
+
+- Added: `listKeys(bucket, after, limit)` on the port: every key of the bucket at any depth, in UTF-8 byte order, after `after` (exclusive; null = from the start), at most `limit` (1 to 1000), as `{ keys: ListedKey[], next }` (`next` is the last key of the page, null when the bucket has no more), so a whole-bucket backup can page through it. `ListedKey` is `{ key, size, contentType? }` (the content type only when the store reports it with the listing: S3 does not, the memory double does). A missing bucket answers an empty page. Over S3 it is ListObjectsV2 with `StartAfter` and `MaxKeys` and no delimiter. That S3 lists in UTF-8 binary order is NOT VERIFIED against the AWS documentation (not reachable when written); the memory double sorts by UTF-8 bytes.
+- Added: the coded error `OBJECT_STORAGE_LIMIT_INVALID` (kind `invalid`) for a page size that is not a whole number from 1 to 1000; a cursor of 0 or more than 1024 characters is `OBJECT_STORAGE_KEY_INVALID`.
+- Added: `S3Transport.listKeys` (a custom transport must implement it); exported types `ListedKey` and `ListedKeysPage`. `list` is unchanged.
+
 ## 0.2.0 - 2026-11-08
 
 - Changed: `ObjectStorageError` extends `DomainError` of `@starci/common` (now a dependency): `isDomainError` recognises it, `params` is `{}`; its name, codes, `kind`, `context`, `cause` and message (the code) are unchanged. `ObjectStorageErrorKind` is a subset of `ErrorKind`.

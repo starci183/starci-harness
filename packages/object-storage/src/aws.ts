@@ -13,7 +13,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
 import { OBJECT_STORAGE_ERROR_CODES, ObjectStorageError } from "./errors.ts"
 import { resolveOptions, revealed } from "./options.ts"
 import type { ObjectStorageOptions, ResolvedOptions } from "./options.ts"
-import type { ListedObject, ObjectHead, StoredObject } from "./port.ts"
+import type { ListedKeysPage, ListedObject, ObjectHead, StoredObject } from "./port.ts"
 import type { S3Transport, SignRequest } from "./transport.ts"
 
 const NOT_FOUND = new Set(["NoSuchKey", "NotFound", "NoSuchBucket"])
@@ -118,6 +118,21 @@ export class AwsS3Transport implements S3Transport {
             token = page.IsTruncated === true ? page.NextContinuationToken : undefined
         } while (token !== undefined)
         return found
+    }
+
+    async listKeys(bucket: string, after: string | null, limit: number): Promise<ListedKeysPage> {
+        try {
+            const page = await this.#calls.send(
+                new ListObjectsV2Command({ Bucket: bucket, MaxKeys: limit, ...(after === null ? {} : { StartAfter: after }) }),
+                this.#abort(),
+            )
+            const keys = (page.Contents ?? []).flatMap((entry) => (entry.Key === undefined ? [] : [{ key: entry.Key, size: entry.Size ?? 0 }]))
+            const last = keys.at(-1)
+            return { keys, next: page.IsTruncated === true && last !== undefined ? last.key : null }
+        } catch (failure) {
+            if (nameOf(failure) === "NoSuchBucket") return { keys: [], next: null }
+            throw unavailable(failure, "listKeys", bucket)
+        }
     }
 
     async sign(request: SignRequest): Promise<string> {

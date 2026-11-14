@@ -4,6 +4,7 @@ import type { UploadLimits } from "./options.ts"
 const BUCKET_NAME = /^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/u
 const FORBIDDEN_IN_KEY = /[\p{Cc}\\]/u
 const MAX_KEY_LENGTH = 1024
+const MAX_PAGE_KEYS = 1000
 
 /** True when `bucket` is a name S3-compatible stores accept (3 to 63 lowercase letters, digits, dots and hyphens, edges alphanumeric). */
 export const isValidBucketName = (bucket: string): boolean => BUCKET_NAME.test(bucket) && !bucket.includes("..")
@@ -33,6 +34,22 @@ export const prefixOf = (folder: string): string => {
     while (end > 0 && folder.charAt(end - 1) === "/") end -= 1
     const trimmed = folder.slice(0, end)
     return trimmed === "" ? "" : `${keyOf(trimmed)}/`
+}
+
+/** The page size of a key listing: a whole number from 1 to 1000, else LIMIT_INVALID. */
+export const pageLimitOf = (limit: number): number => {
+    if (!Number.isInteger(limit) || limit < 1 || limit > MAX_PAGE_KEYS) {
+        throw new ObjectStorageError(OBJECT_STORAGE_ERROR_CODES.LimitInvalid, { context: { limit, max: MAX_PAGE_KEYS } })
+    }
+    return limit
+}
+
+/** The cursor of a key listing: null (from the start) or a key an earlier page answered; not held to the key rules (a store may hold keys written elsewhere), but 1 to 1024 characters, else KEY_INVALID. */
+export const cursorOf = (after: string | null): string | null => {
+    if (after !== null && (after.length === 0 || after.length > MAX_KEY_LENGTH)) {
+        throw new ObjectStorageError(OBJECT_STORAGE_ERROR_CODES.KeyInvalid, { context: { after: after.slice(0, 64) } })
+    }
+    return after
 }
 
 /** The lifetime in seconds: the request, or the fallback when none is named; a whole number from 1 to `max`, else EXPIRY_INVALID. */

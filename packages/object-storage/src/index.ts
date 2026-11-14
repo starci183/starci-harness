@@ -16,6 +16,8 @@ export { DEFAULT_EXPIRES_IN_SECONDS, DEFAULT_TIMEOUT_MS, MAX_EXPIRES_IN_SECONDS 
 export type { ObjectStorageOptions, SecretInput, StorageClock, UploadLimits } from "./options.ts"
 export { admitsContentType, isValidBucketName, isValidObjectKey } from "./policy.ts"
 export type {
+    ListedKey,
+    ListedKeysPage,
     ListedObject,
     ObjectHead,
     ObjectStorage,

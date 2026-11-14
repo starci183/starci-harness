@@ -3,7 +3,7 @@ import type { DynamicModule } from "@nestjs/common"
 import { OBJECT_STORAGE_ERROR_CODES, ObjectStorageError } from "../errors.ts"
 import type { ObjectStorageOptions, StorageClock } from "../options.ts"
 import { admitsContentType } from "../policy.ts"
-import type { ListedObject, ObjectHead, StoredObject } from "../port.ts"
+import type { ListedKeysPage, ListedObject, ObjectHead, StoredObject } from "../port.ts"
 import { ObjectStorageService } from "../service.ts"
 import { OBJECT_STORAGE } from "../tokens.ts"
 import type { S3Transport, SignRequest } from "../transport.ts"
@@ -85,6 +85,17 @@ export class MemoryTransport implements S3Transport {
                 .filter(([key]) => key.startsWith(prefix) && !key.slice(prefix.length).includes("/"))
                 .map(([key, entry]) => ({ name: key.slice(prefix.length), lastModified: new Date(entry.at).toISOString() })),
         )
+    }
+
+    listKeys(bucket: string, after: string | null, limit: number): Promise<ListedKeysPage> {
+        return this.#run(() => {
+            const utf8 = (text: string): Buffer => Buffer.from(text, "utf8")
+            const sorted = [...(this.buckets.get(bucket) ?? [])]
+                .filter(([key]) => after === null || Buffer.compare(utf8(key), utf8(after)) > 0)
+                .toSorted(([left], [right]) => Buffer.compare(utf8(left), utf8(right)))
+            const page = sorted.slice(0, limit).map(([key, entry]) => ({ key, size: entry.bytes.byteLength, contentType: entry.contentType }))
+            return { keys: page, next: sorted.length > limit ? (page.at(-1)?.key ?? null) : null }
+        })
     }
 
     sign(request: SignRequest): Promise<string> {

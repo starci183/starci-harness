@@ -142,6 +142,40 @@ describe("reads, writes and deletes through the port", () => {
         assert.deepEqual(await storage.list("media", "f", -1), [])
     })
 
+    it("lists every key at any depth in UTF-8 byte order, paged by the last key", async () => {
+        const storage = createMemoryObjectStorage()
+        for (const key of ["\u{10000}.txt", "\uffff.txt", "b/c/d.txt", "a.txt", "b.txt", "\u00e9.txt"]) storage.seed("media", key, "xy", "text/plain")
+        const everything = await storage.listKeys("media", null, 1000)
+        assert.deepEqual(everything.keys.map((entry) => entry.key), ["a.txt", "b.txt", "b/c/d.txt", "\u00e9.txt", "\uffff.txt", "\u{10000}.txt"])
+        assert.deepEqual(everything.keys[0], { key: "a.txt", size: 2, contentType: "text/plain" })
+        assert.equal(everything.next, null)
+        const seen: string[] = []
+        let after: string | null = null
+        let pages = 0
+        do {
+            const page = await storage.listKeys("media", after, 4)
+            seen.push(...page.keys.map((entry) => entry.key))
+            after = page.next
+            pages += 1
+        } while (after !== null)
+        assert.deepEqual(seen, everything.keys.map((entry) => entry.key))
+        assert.equal(pages, 2)
+        assert.equal((await storage.listKeys("media", null, 6)).next, null)
+        assert.equal((await storage.listKeys("media", null, 5)).next, "\uffff.txt")
+        assert.deepEqual(await storage.listKeys("media", "\u{10000}.txt", 5), { keys: [], next: null })
+    })
+
+    it("answers an empty page for a missing bucket and validates the arguments of listKeys", async () => {
+        const storage = createMemoryObjectStorage()
+        assert.deepEqual(await storage.listKeys("absent", null, 5), { keys: [], next: null })
+        await assert.rejects(storage.listKeys("Bad", null, 5), { code: CODES.BucketInvalid })
+        for (const limit of [0, -1, 1001, 1.5, Number.NaN]) await assert.rejects(storage.listKeys("media", null, limit), { code: CODES.LimitInvalid })
+        for (const after of ["", "x".repeat(1025)]) await assert.rejects(storage.listKeys("media", after, 5), { code: CODES.KeyInvalid })
+        assert.equal(OBJECT_STORAGE_ERROR_KINDS[CODES.LimitInvalid], "invalid")
+        storage.store.down = true
+        await assert.rejects(storage.listKeys("media", null, 5), { code: CODES.Unavailable })
+    })
+
     it("sets a bucket up, public or not", async () => {
         const storage = createMemoryObjectStorage()
         await storage.ensureBucket("media")

@@ -147,12 +147,12 @@ pins:
     why: 'the sign-in of both editions: the lite NestJS module (EdDSA access tokens with a multi-key JWKS, passwords, pluggable sign-in providers with state and PKCE: Google, GitHub; rotating refresh sessions, the sign-in budget, the refresh cookie) at ./server, the full OIDC client of the identity provider (discovery, JWKS, verifier, Keycloak broker and admin) with the issuer presets (Keycloak, Google ID tokens, GitHub Actions OIDC) at ./oidc, the front-end clients and React bindings, the door contracts and test doubles with the fake issuer; the one importer of the identity libraries, reached by a back end only through integrations/passport (lite) and integrations/keycloak (full); @starci/jest-preset compiles it as an ESM-only dependency. It replaces the retired @starci/auth-oidc (starci app codemod auth-merge).'
 
   '@starci/object-storage':
-    version: 0.2.0
+    version: 0.3.0
     group: starci
     install: registry
     side: be
     source: packages/object-storage/package.json
-    why: 'object storage of a back end: a NestJS module and the ObjectStorage port over S3-compatible storage (presigned PUT and GET that sign the content type and size, head, get, put, list, delete, bucket setup, size and content-type limits, coded errors), with @starci/object-storage/testing for its specs; the only importer of @aws-sdk/client-s3 and @aws-sdk/s3-request-presigner (R331).'
+    why: 'object storage of a back end: a NestJS module and the ObjectStorage port over S3-compatible storage (presigned PUT and GET that sign the content type and size, head, get, put, list, whole-bucket key listing, delete, bucket setup, size and content-type limits, coded errors), with @starci/object-storage/testing for its specs; the only importer of @aws-sdk/client-s3 and @aws-sdk/s3-request-presigner (R331).'
   '@starci/mail':
     version: 0.2.0
     group: starci

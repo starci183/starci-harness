@@ -62,6 +62,23 @@ export interface ListedObject {
     readonly lastModified: string | null
 }
 
+/** One key of a whole-bucket listing. */
+export interface ListedKey {
+    /** The full key. */
+    readonly key: string
+    /** The size in bytes. */
+    readonly size: number
+    /** The content type, when the store reports it with the listing; absent otherwise (S3 does not). */
+    readonly contentType?: string
+}
+
+/** One page of `listKeys`. */
+export interface ListedKeysPage {
+    readonly keys: readonly ListedKey[]
+    /** The last key of the page, to pass as `after` for the next one; null when the bucket has no more. */
+    readonly next: string | null
+}
+
 /**
  * The object storage port of a back end. Buckets and key layout are the app's; every call validates the bucket and key, a
  * missing object answers `null` (never a throw), and every other failure rejects with an `ObjectStorageError`.
@@ -85,6 +102,12 @@ export interface ObjectStorage {
     removeMany(bucket: string, keys: readonly string[]): Promise<number>
     /** The files directly under `folder` (subfolders are omitted), newest first, up to `limit`. */
     list(bucket: string, folder: string, limit: number): Promise<readonly ListedObject[]>
+    /**
+     * Every key of the bucket at any depth, in UTF-8 byte order (S3 lists in UTF-8 binary order: NOT VERIFIED against the AWS
+     * documentation, which was not reachable), after `after` (exclusive; null = from the start), at most `limit` (1..1000);
+     * `next` is the last key of the page or null when the bucket has no more. A missing bucket answers an empty page.
+     */
+    listKeys(bucket: string, after: string | null, limit: number): Promise<ListedKeysPage>
     /** Creates the bucket when it is missing; a public one gets an anonymous read policy. Safe to run again. */
     ensureBucket(bucket: string, options?: { readonly publicRead?: boolean }): Promise<void>
     /** The address anyone reads `key` of a public bucket at; no request is made. */

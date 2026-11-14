@@ -20,6 +20,8 @@ const put = await storage.presignPut("media", `users/${id}/avatar.png`, { conten
 await storage.confirmUpload("media", key) // head + the limits, after the browser says it is done
 ```
 
+`listKeys(bucket, after, limit)` pages through every key of a bucket at any depth in UTF-8 byte order (`after` exclusive, `limit` 1 to 1000, `next` the last key or null) for a whole-bucket backup; `list` stays the one-folder, newest-first listing.
+
 The app keeps the bucket names, the key layout of each domain and the parsing of its settings. A call validates its bucket and key; a missing object answers `null` from `head` and `get`; every other failure rejects with an `ObjectStorageError` (a `DomainError` of `@starci/common`) whose `code` is stable and whose `kind` is `invalid`, `not-found` or `unavailable`.
 
 `publicEndpoint` is the origin browsers reach; presigned requests are signed for it while the back end calls `endpoint`. `limits` (`maxBytes`, `contentTypes`) apply to every upload unless a call names its own; while a size limit is in force `presignPut` requires `contentLength`, which the signature fixes.

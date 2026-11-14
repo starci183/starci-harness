@@ -1,4 +1,4 @@
-import type { ListedObject, ObjectHead, StoredObject } from "./port.ts"
+import type { ListedKeysPage, ListedObject, ObjectHead, StoredObject } from "./port.ts"
 
 /** What a transport is asked to sign. */
 export interface SignRequest {
@@ -24,6 +24,8 @@ export interface S3Transport {
     removeMany(bucket: string, keys: readonly string[]): Promise<number>
     /** The files directly under `prefix` (empty or ending in `/`), in any order. */
     list(bucket: string, prefix: string): Promise<readonly ListedObject[]>
+    /** One page of every key of the bucket, in UTF-8 byte order after `after`; a missing bucket answers an empty page. */
+    listKeys(bucket: string, after: string | null, limit: number): Promise<ListedKeysPage>
     sign(request: SignRequest): Promise<string>
     ensureBucket(bucket: string, publicRead: boolean): Promise<void>
     destroy(): void

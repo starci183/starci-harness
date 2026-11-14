@@ -19,6 +19,8 @@ export const OBJECT_STORAGE_ERROR_CODES = {
     SizeRequired: "OBJECT_STORAGE_SIZE_REQUIRED",
     /** The content type is not one the limits in force admit. */
     ContentTypeNotAllowed: "OBJECT_STORAGE_CONTENT_TYPE_NOT_ALLOWED",
+    /** A page size of `listKeys` is not a whole number from 1 to 1000. */
+    LimitInvalid: "OBJECT_STORAGE_LIMIT_INVALID",
 } as const
 
 /** A wire code of object storage. */
@@ -37,6 +39,7 @@ export const OBJECT_STORAGE_ERROR_KINDS: Readonly<Record<ObjectStorageErrorCode,
     OBJECT_STORAGE_SIZE_EXCEEDED: "invalid",
     OBJECT_STORAGE_SIZE_REQUIRED: "invalid",
     OBJECT_STORAGE_CONTENT_TYPE_NOT_ALLOWED: "invalid",
+    OBJECT_STORAGE_LIMIT_INVALID: "invalid",
 }
 
 /** The one error class of object storage, a `DomainError` of `@starci/common`: a wire code, the kind it travels as, the context for a log and the cause. */

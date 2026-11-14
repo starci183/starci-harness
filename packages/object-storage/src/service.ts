@@ -1,8 +1,8 @@
 import { OBJECT_STORAGE_ERROR_CODES, ObjectStorageError } from "./errors.ts"
 import { resolveOptions } from "./options.ts"
 import type { ObjectStorageOptions, ResolvedOptions, UploadLimits } from "./options.ts"
-import { bucketOf, checkContentType, checkSize, expiryOf, keyOf, limitsOf, prefixOf, publicAddressOf } from "./policy.ts"
-import type { ListedObject, ObjectHead, ObjectStorage, PresignGetRequest, PresignPutRequest, PresignedRequest, StoredObject } from "./port.ts"
+import { bucketOf, checkContentType, checkSize, cursorOf, expiryOf, keyOf, limitsOf, pageLimitOf, prefixOf, publicAddressOf } from "./policy.ts"
+import type { ListedKeysPage, ListedObject, ObjectHead, ObjectStorage, PresignGetRequest, PresignPutRequest, PresignedRequest, StoredObject } from "./port.ts"
 import type { S3Transport } from "./transport.ts"
 
 const DELETE_BATCH = 1000
@@ -106,6 +106,10 @@ export class ObjectStorageService implements ObjectStorage {
         const found = await this.#transport.list(bucketOf(bucket), prefixOf(folder))
         const stamp = (entry: ListedObject): number => (entry.lastModified === null ? 0 : Date.parse(entry.lastModified))
         return found.toSorted((left, right) => stamp(right) - stamp(left)).slice(0, Math.max(0, limit))
+    }
+
+    async listKeys(bucket: string, after: string | null, limit: number): Promise<ListedKeysPage> {
+        return await this.#transport.listKeys(bucketOf(bucket), cursorOf(after), pageLimitOf(limit))
     }
 
     async ensureBucket(bucket: string, options: { readonly publicRead?: boolean } = {}): Promise<void> {

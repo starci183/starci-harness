@@ -31,6 +31,7 @@ class FakeS3 {
     readonly policies = new Map<string, string>()
     broken = false
     pages = 0
+    lastRecursive: { start: string | null; max: number } | null = null
 
     async handle(request: IncomingMessage, response: ServerResponse): Promise<void> {
         const url = new URL(request.url ?? "/", "http://fake")
@@ -97,6 +98,17 @@ class FakeS3 {
     }
 
     private listCall(response: ServerResponse, url: URL, objects: Map<string, Stored>): void {
+        if (!url.searchParams.has("delimiter")) {
+            const start = url.searchParams.get("start-after")
+            const max = Number(url.searchParams.get("max-keys"))
+            const utf8 = (text: string): Buffer => Buffer.from(text, "utf8")
+            const all = [...objects.keys()].toSorted((left, right) => Buffer.compare(utf8(left), utf8(right))).filter((key) => start === null || Buffer.compare(utf8(key), utf8(start)) > 0)
+            const slice = all.slice(0, max)
+            this.lastRecursive = { start, max }
+            const rows = slice.map((key) => `<Contents><Key>${key}</Key><Size>${String(objects.get(key)?.body.length ?? 0)}</Size></Contents>`).join("")
+            xml(response, 200, `<ListBucketResult><IsTruncated>${String(all.length > max)}</IsTruncated>${rows}</ListBucketResult>`)
+            return
+        }
         const prefix = url.searchParams.get("prefix") ?? ""
         const after = url.searchParams.get("continuation-token")
         const names = [...objects.keys()].filter((key) => key.startsWith(prefix) && !key.slice(prefix.length).includes("/")).sort()
@@ -181,6 +193,23 @@ describe("the AWS transport against a local S3", () => {
         assert.equal((await storage.list("media", "list", 2)).length, 2)
     })
 
+    it("lists every key of the bucket at any depth in UTF-8 byte order, one page at a time", async () => {
+        for (const key of ["z/deep/2.txt", "z/1.txt", "\u00e9.txt", "\uffff.txt", "\u{10000}.txt"]) await storage.put("media", key, new Uint8Array(3), "text/plain")
+        const first = await storage.listKeys("media", "z/", 2)
+        assert.deepEqual(first, { keys: [{ key: "z/1.txt", size: 3 }, { key: "z/deep/2.txt", size: 3 }], next: "z/deep/2.txt" })
+        assert.deepEqual(fake.lastRecursive, { start: "z/", max: 2 })
+        const rest = await storage.listKeys("media", "\u00e9.txt", 10)
+        assert.deepEqual(rest.keys.map((entry) => entry.key), ["\uffff.txt", "\u{10000}.txt"])
+        assert.equal(rest.next, null)
+        const whole = await storage.listKeys("media", null, 1000)
+        assert.ok(whole.keys.length >= 5)
+        assert.equal(whole.keys.some((entry) => entry.contentType !== undefined), false)
+    })
+
+    it("answers an empty page for a missing bucket", async () => {
+        assert.deepEqual(await storage.listKeys("absent-bucket", null, 5), { keys: [], next: null })
+    })
+
     it("deletes one key and many, counting what the store reports", async () => {
         await storage.remove("media", "list/a.txt")
         assert.equal(await storage.removeMany("media", ["list/b.txt", "list/c.txt", "list/missing.txt"]), 2)
@@ -222,6 +251,7 @@ describe("the AWS transport against a local S3", () => {
                 () => storage.put("media", "k", new Uint8Array(1), "text/plain"),
                 () => storage.removeMany("media", ["k"]),
                 () => storage.list("media", "", 5),
+                () => storage.listKeys("media", null, 5),
                 () => storage.ensureBucket("media"),
             ]) {
                 await assert.rejects(call(), (failure: unknown) => {
