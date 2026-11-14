@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
 import type { StoredEntry } from "./copies.ts"
-import { chooseCopy, compareCopies, exportOnce, memorySpool, restoreFrom, spooledSource, unchangedSince, writeEverywhere } from "./copies.ts"
+import { causeLabel, chooseCopy, compareCopies, exportOnce, memorySpool, restoreFrom, spooledSource, unchangedSince, writeEverywhere } from "./copies.ts"
 import type { CopyReceipt, CopyRef, CopyVerdict, DriverAdapter, WriteContext } from "./driver.ts"
 import { DataRefusal } from "./driver.ts"
 import type { DataEntry, DataManifest, DataSetSummary, ManifestHeader, Selection } from "./manifest.ts"
@@ -73,19 +73,41 @@ test("exportOnce refuses a store whose sets or keys come out of order or repeat,
         assert.ok(error instanceof DataRefusal)
         assert.equal(error.code, "DATA_STORE_FAILED")
         assert.equal(error.retry, "configuration")
-        assert.deepEqual(error.params, { store: "one" })
+        assert.deepEqual(error.params, { store: "one", cause: "TypeError" })
         assert.ok(error.cause instanceof TypeError)
     }
 })
 
-test("exportOnce wraps a plain store failure and lets a DomainError through unchanged", async () => {
-    const boom = new Error("connection lost")
+test("exportOnce names the failing store and its cause by code or class, never by message, and lets a DataRefusal through", async () => {
+    const boom = new Error("connection lost to 10.0.0.1 with secret xyz")
     const wrapped = await thrownBy(() => exportOnce([scripted("one", [], boom)], {}, memorySpool(), header))
     assert.ok(wrapped instanceof DataRefusal)
     assert.equal(wrapped.code, "DATA_STORE_FAILED")
     assert.equal(wrapped.cause, boom)
+    assert.deepEqual(wrapped.params, { store: "one", cause: "Error" })
+    // a coded error of another @starci/common copy (no shared class identity) is named by its code
+    const foreign = Object.assign(new Error("DATA_STORES_SCOPE_MISSING"), { name: "DataStoresError", code: "DATA_STORES_SCOPE_MISSING", params: {} })
+    const named = await thrownBy(() => exportOnce([scripted("db", [], foreign)], {}, memorySpool(), header))
+    assert.ok(named instanceof DataRefusal)
+    assert.deepEqual(named.params, { store: "db", cause: "DataStoresError DATA_STORES_SCOPE_MISSING" })
+    // a PostgreSQL permission error names its SQLSTATE and its table
+    const denied = Object.assign(new Error("permission denied for table records"), { name: "QueryFailedError", code: "42501", table: "records" })
+    const deniedError = await thrownBy(() => exportOnce([scripted("db", [], denied)], {}, memorySpool(), header))
+    assert.ok(deniedError instanceof DataRefusal)
+    assert.deepEqual(deniedError.params, { store: "db", cause: "QueryFailedError 42501 on records" })
     const refusal = new DataRefusal("DATA_DRIVER_UNAVAILABLE", "transient")
     assert.equal(await thrownBy(() => exportOnce([scripted("one", [], refusal)], {}, memorySpool(), header)), refusal)
+})
+
+test("causeLabel reads a numeric code, a missing name, and a thrown non-object", () => {
+    assert.equal(causeLabel(Object.assign(Object.create(null) as object, { code: 7 })), "Error 7")
+    assert.equal(causeLabel("text"), "string")
+    assert.equal(causeLabel(null), "object")
+})
+
+test("an empty store is a valid export: no sets, no failure", async () => {
+    const source = await exportOnce([scripted("one", [])], {}, memorySpool(), header)
+    assert.deepEqual(source.manifest.sets, [])
 })
 
 test("exportOnce refuses an entry whose hash does not match its body", async () => {

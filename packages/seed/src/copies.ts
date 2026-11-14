@@ -1,4 +1,3 @@
-import { isDomainError } from "@starci/common"
 import type { CopyReceipt, CopyRef, CopyVerdict, DriverAdapter, ExportSource, WriteContext } from "./driver.ts"
 import { DataRefusal } from "./driver.ts"
 import type { DataEntry, DataManifest, ManifestHeader, Selection } from "./manifest.ts"
@@ -79,11 +78,25 @@ export async function exportOnce(stores: readonly StoreAdapter[], selection: Sel
                 last = { set: entry.set, key: entry.key }
             }
         } catch (cause) {
-            if (isDomainError(cause)) throw cause
-            throw new DataRefusal("DATA_STORE_FAILED", "configuration", { store: store.id }, cause)
+            if (cause instanceof DataRefusal) throw cause
+            throw new DataRefusal("DATA_STORE_FAILED", "configuration", { store: store.id, cause: causeLabel(cause) }, cause)
         }
     }
     return spooledSource(builder.build(header), spool)
+}
+
+/**
+ * What a store's failure was, safe to log: the coded error's code (a DomainError of any copy of @starci/common, so read by shape,
+ * never by `instanceof`), a driver's `code` (a PostgreSQL SQLSTATE, a Node errno) with the error's class, or the class alone. Never the
+ * message, which may quote a value.
+ */
+export function causeLabel(cause: unknown): string {
+    if (typeof cause !== "object" || cause === null) return typeof cause
+    const shaped = cause as { readonly code?: unknown; readonly name?: unknown; readonly table?: unknown }
+    const name = typeof shaped.name === "string" ? shaped.name : "Error"
+    const code = typeof shaped.code === "string" || typeof shaped.code === "number" ? String(shaped.code) : null
+    const table = typeof shaped.table === "string" ? ` on ${shaped.table}` : ""
+    return code === null ? name : `${name} ${code}${table}`
 }
 
 /** True when the export equals the one the last receipt recorded: a scheduled backup then writes nothing. */
