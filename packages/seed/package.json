@@ -1,7 +1,7 @@
 {
   "name": "@starci/seed",
   "version": "0.1.0",
-  "description": "The data standard of a StarCi project in one package: the two kinds of seed, the standard seed (loaded once by the bring-up) and the backup seed (written by the scheduled job, brought back by a sync). The ports (store and driver adapters, one export to several copies, the copy contract and the line protocol), in-memory references with the store and driver contract suites under ./testing, and a git driver (sealed by purpose with sops and age) under ./git.",
+  "description": "The data standard of a StarCi project in one package: the two kinds of seed, the standard seed (loaded once by the bring-up) and the backup seed (written by the scheduled job, brought back by a sync). The ports (store and driver adapters, one export to several copies, the copy contract and the line protocol), in-memory references with the store and driver contract suites under ./testing, a git driver (sealed by purpose with sops and age) under ./git, and the postgres store (the whole relational database as deterministic per-table rows) under ./postgres.",
   "keywords": [
     "seed",
     "backup",
@@ -39,6 +39,10 @@
       "types": "./dist/git/index.d.ts",
       "default": "./dist/git/index.js"
     },
+    "./postgres": {
+      "types": "./dist/postgres/index.d.ts",
+      "default": "./dist/postgres/index.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [
@@ -67,8 +71,10 @@
     "@eslint/js": "10.0.1",
     "@starci/common": "file:../common",
     "@types/node": "22.20.4",
+    "@types/pg": "8.23.1",
     "eslint": "10.13.0",
     "jiti": "2.7.0",
+    "pg": "8.23.1",
     "typescript": "5.9.3",
     "typescript-eslint": "8.72.0"
   },

@@ -1,5 +1,5 @@
 export { memoryDriver, memoryStore } from "./memory.ts"
 export type { MemoryDriver, MemoryDriverInit, MemorySets, MemoryStore, MemoryStoreInit } from "./memory.ts"
 export { driverContract, storeContract } from "./contract.ts"
-export type { ContractCase } from "./contract.ts"
+export type { ContractCase, StoreContractOptions } from "./contract.ts"
 export { memorySpool } from "../copies.ts"

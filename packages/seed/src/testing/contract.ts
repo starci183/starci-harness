@@ -32,11 +32,18 @@ async function* from<T>(items: readonly T[]): AsyncIterable<T> {
 const header: ManifestHeader = { format: "contract-seed-backup@1", purpose: "seed-backup", takenAt: "2026-01-01T00:00:00.000Z", source: { project: "contract", environment: "test" } }
 const sameBytes = (left: DataEntry, right: DataEntry): boolean => left.sha256 === right.sha256 && left.key === right.key && left.set === right.set
 
+/** What a store may state about itself for the suite. */
+export interface StoreContractOptions {
+    /** Answers a changed copy of an entry that is still valid for the store; by default a record gains a field and a blob a byte. */
+    readonly change?: (entry: DataEntry) => DataEntry
+}
+
 /**
  * The promises every store adapter keeps. `make` builds a fresh store holding at least one entry; `empty` a fresh store of
- * the same kind holding nothing, the target of an import. A real adapter runs this suite against its fakes.
+ * the same kind holding nothing, the target of an import. A real adapter runs this suite against its fakes. A store that
+ * holds only typed rows (a database) says in `change` how one of its entries becomes another valid one.
  */
-export function storeContract(make: () => Promise<StoreAdapter>, empty: () => Promise<StoreAdapter>): readonly ContractCase[] {
+export function storeContract(make: () => Promise<StoreAdapter>, empty: () => Promise<StoreAdapter>, options: StoreContractOptions = {}): readonly ContractCase[] {
     return [
         {
             name: "describes its sets, each with a schema and a form, and says what it cannot do",
@@ -110,7 +117,9 @@ export function storeContract(make: () => Promise<StoreAdapter>, empty: () => Pr
                 const first = entries.find((entry) => entry.form === "record") ?? entries[0]
                 if (first === undefined) throw new Error("contract broken: no entry to change")
                 const id = await target.identityOf(first.set, first.key)
-                const changed = first.form === "record"
+                const changed = options.change !== undefined
+                    ? options.change(first)
+                    : first.form === "record"
                     ? recordEntry(first.set, first.key, { ...(recordValue(first) as Record<string, JsonValue>), contractChanged: true })
                     : blobEntry(first.set, first.key, new Uint8Array([...first.body, 1]), first.media)
                 const report = await target.import(from([changed]), { dryRun: false, mode: "merge" })
