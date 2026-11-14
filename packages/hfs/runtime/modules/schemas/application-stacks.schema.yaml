@@ -25,14 +25,64 @@ properties:
       packages: {type: boolean}
   data:
     description: >-
-      The project's data repository (contexts/project/stacks.md PROJECT-STACKS-13), present when the project keeps business data in
-      git: its name is exactly `<project>-data` for the project hfs.json names, and it is private (R400, STACKS_DATA_REPOSITORY).
+      The project's data declaration (contexts/project/stacks.md PROJECT-STACKS-13, PROJECT-STACKS-14): the stores that must be kept (each
+      with its adapter), the components rebuilt from a store (derived), and the data sets, each a seed-standard or a seed-backup with its
+      destinations (R426 data-stores, R427 data-sets). Absent when the project has no stateful component.
     type: object
     additionalProperties: false
-    required: [repository, private]
     properties:
-      repository: {type: string, minLength: 1}
-      private: {type: boolean}
+      stores:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          required: [id, kind, level, component, adapter]
+          properties:
+            id: {type: string, minLength: 1}
+            kind: {type: string, enum: [database, storage]}
+            level: {type: string, enum: [logical, physical]}
+            component: {type: string, minLength: 1}
+            adapter:
+              type: object
+              additionalProperties: false
+              required: [module]
+              properties:
+                module: {type: string, minLength: 1}
+      derived:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          required: [component, from, rebuild]
+          properties:
+            component: {type: string, minLength: 1}
+            from: {type: string, minLength: 1}
+            rebuild: {type: string, minLength: 1}
+      sets:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          required: [id, purpose, stores, environments, to]
+          properties:
+            id: {type: string, minLength: 1}
+            purpose: {type: string, enum: [seed-standard, seed-backup]}
+            stores: {type: array, minItems: 1, items: {type: string, minLength: 1}}
+            environments: {type: array, minItems: 1, items: {type: string, minLength: 1}}
+            to:
+              type: array
+              minItems: 1
+              items:
+                type: object
+                additionalProperties: false
+                required: [driver]
+                properties:
+                  driver: {type: string, enum: [git, s3]}
+                  repository: {type: string, minLength: 1}
+            commit: {type: string, pattern: '^[0-9a-f]{40}$'}
+            force: {type: boolean}
+            everyMinutes: {type: integer, minimum: 1}
+            completeness: {type: string, pattern: '^ext:.+'}
   sources:
     type: array
     minItems: 1

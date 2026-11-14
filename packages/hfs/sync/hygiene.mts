@@ -6,8 +6,8 @@
 // .gitignore says (`git add -f`, a path tracked before a rule tightened). There is no override. It also
 // refuses every bypass marker the index holds (R303: an inline disable, a type-check escape, a skipped test, a failure swallowed in a hook or
 // workflow; scripts/lib/bypass-markers.mts), so a bypass fails at the commit and not only at the release. Its data guard (R400,
-// scripts/hfs/rules/data-repository.mts) refuses a document of the data format in any repository but a data repository, and in a data
-// repository an unsealed file under data/ or a manifest that does not list data/ exactly. At an HFS app root (hfs.json) it also
+// scripts/hfs/rules/data-copies.mts) refuses a copy document in any repository but a copy repository, and in a copy repository
+// an unsealed backup file, a sealed standard, a manifest that disagrees with the data files, a file over 4 MiB or a snapshot over 500 MiB. At an HFS app root (hfs.json) it also
 // refuses a back-end logic file the index adds without its unit spec beside it (BE_UNIT_SPEC_NOT_STAGED,
 // scripts/hfs/rules/staged-specs.mts over the coverage scope; a constants-only file has nothing to test), naming the file. The pre-commit hook judges the staged files;
 // scripts/gates/hfs-sync.mjs judges every tracked file.
@@ -21,7 +21,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { secretFileFindings } from '../runtime/scripts/hfs/rules/secrets.mjs';
 import { stagedSpecFindings } from '../runtime/scripts/hfs/rules/staged-specs.mjs';
-import { DATA_FOLDER, DATA_MANIFEST, dataInCodeFindings, dataRepositoryDeclared, dataRepositoryFindings } from '../runtime/scripts/hfs/rules/data-repository.mjs';
+import { DATA_MANIFEST, copyRepositoryDeclared, dataCopyFindings, dataInCodeFindings } from '../runtime/scripts/hfs/rules/data-copies.mjs';
 import { HFS_BYPASS_MARKER, bypassMessage } from '../runtime/scripts/hfs/rules/bypass-markers.mjs';
 import { bypassesIn } from '../runtime/scripts/lib/bypass-markers.mjs';
 import { loadSlotManifest } from '../runtime/scripts/hfs/slots.mjs';
@@ -128,18 +128,20 @@ function bypassGuardFindings(cwd: string, files: readonly string[]): HygieneFind
 }
 
 /**
- * The data guard (R400, scripts/hfs/rules/data-repository.mts) over `files` as the index holds them. In a data repository (a root
- * manifest.json naming the data format, no hfs.json) a commit that touches data/ or the manifest has the whole indexed data/ judged:
- * every file sealed, the manifest listing exactly those files with their counts. In any other repository a staged document of the
- * data format (a data manifest, a record file plaintext or sealed) is refused: business data never lives in a code repository.
+ * The data guard (R400, scripts/hfs/rules/data-copies.mts) over `files` as the index holds them. In a copy repository (a root
+ * manifest.json of schema starci/data-manifest@1, no hfs.json) every commit has the whole index judged: sealing by purpose, the manifest
+ * against the data files, the size of a file and of the snapshot. In any other repository a staged copy document (a data manifest, a
+ * sops binary-mode envelope) is refused: data lives in git only in a copy repository.
  */
 function dataGuardFindings(cwd: string, files: readonly string[]): HygieneFinding[] {
   const read = (file: string): string | null => stagedText(cwd, file, MAX_DATA_BYTES);
   const manifestText = read(DATA_MANIFEST);
   const asHygiene = (finding: { code: string; path?: unknown; message: string }): HygieneFinding => ({ file: String(finding.path), code: finding.code, message: finding.message });
-  if (dataRepositoryDeclared(manifestText, stagedText(cwd, 'hfs.json')) !== null) {
-    if (!files.some((file) => file === DATA_MANIFEST || file.startsWith(DATA_FOLDER))) return [];
-    return dataRepositoryFindings({ manifestText, files: trackedFiles(cwd), read }).map(asHygiene);
+  if (copyRepositoryDeclared(manifestText, stagedText(cwd, 'hfs.json')) !== null) {
+    const sizeOf = (file: string): number | null => {
+      try { return Number.parseInt(String(git(cwd, ['cat-file', '-s', `:${file}`])).trim(), 10); } catch { return null; }
+    };
+    return dataCopyFindings({ manifestText, files: trackedFiles(cwd), read, sizeOf }).map(asHygiene);
   }
   return files.filter((file) => file.endsWith('.json')).flatMap((file) => dataInCodeFindings(file, read(file)).map(asHygiene));
 }

@@ -6709,20 +6709,20 @@ rules:
       - {path: packages/hfs/src/project-sides.spec.mjs, editions: [lite, full]}
   - id: R400
     code: "HFS_DATA_IN_CODE"
-    law: "A project's business data lives in git only in its private data repository, named exactly `<project>-data`, whose root manifest.json names the data format (`format: \"<project>-data@<major>\"`, a `files` list) and which carries no hfs.json. In a code project the hfs check refuses a tracked document of the format, a data manifest or a record file (`schema: \"<project>-data/<entity>@<major>\"` with `items`) plaintext or sealed (HFS_DATA_IN_CODE), a package.json dependency or workspace, a submodule or a tsconfig/jsconfig path naming the data repository (HFS_DATA_DEPENDENCY), and an application-stacks.yaml `data` block that names another repository or is not private (STACKS_DATA_REPOSITORY). The commit hook's data guard refuses a staged document of the format in any repository but a data repository, and in a data repository a file under data/ that is no sops envelope (HFS_DATA_UNSEALED) or a manifest that does not list exactly the files of data/ with their item counts, a hex sha256 and a schema id of the format (HFS_DATA_MANIFEST_DRIFT)."
+    law: "Data lives in git only in a seed copy repository, `<name>-seed-standard` (plain, pinned by commit, read once by the bring-up) or `<name>-seed-backup-<env>` (one environment, always sealed, read only by an explicit sync): a copy repository has no hfs.json and a root manifest.json of schema `starci/data-manifest@1` whose purpose agrees with its format name; a code project tracks no copy document (a data manifest, the data/ blobs/ index/ tree next to one, a sops binary-mode envelope: HFS_DATA_IN_CODE) and never depends on a copy repository (package dependency, workspace, submodule, tsconfig path: HFS_DATA_DEPENDENCY); the commit hook refuses in a copy repository an unsealed backup file (HFS_DATA_UNSEALED), a sealed file in a standard (HFS_DATA_STANDARD_SEALED), a manifest that disagrees with the tracked data files or its format name (HFS_DATA_MANIFEST_DRIFT), a data file over 4 MiB (HFS_DATA_FILE_SIZE) and a snapshot over 500 MiB, which needs the s3 driver (HFS_DATA_CAP)."
     kinds: [check]
     gates: [settle, land, ci]
-    failureCodes: ["HFS_DATA_IN_CODE", "HFS_DATA_DEPENDENCY", "STACKS_DATA_REPOSITORY", "HFS_DATA_UNSEALED", "HFS_DATA_MANIFEST_DRIFT"]
+    failureCodes: ["HFS_DATA_IN_CODE", "HFS_DATA_DEPENDENCY", "HFS_DATA_UNSEALED", "HFS_DATA_STANDARD_SEALED", "HFS_DATA_MANIFEST_DRIFT", "HFS_DATA_FILE_SIZE", "HFS_DATA_CAP"]
     enforcers:
-      - {kind: hfs, id: data-repository, at: runtime/scripts/hfs/rules/data-repository.mjs}
+      - {kind: hfs, id: data-copies, at: runtime/scripts/hfs/rules/data-copies.mjs}
     editions: [lite, full]
-    templateNa: "A new app tracks no data and declares no data repository; the rule guards the boundary once data exists."
+    templateNa: "A new app tracks no data and declares no copy repository; the rule guards the boundary once data exists."
     docs:
-      - {path: contexts/project/stacks.md#project-stacks-13-business-data-lives-only-in-the-projects-sealed-data-repository, editions: [lite, full]}
+      - {path: contexts/project/stacks.md#project-stacks-13-data-lives-in-seed-copies-a-standard-is-how-a-thing-is-born-a-backup-is-what-it-became, editions: [lite, full]}
     proves:
-      - {path: packages/hfs/src/data-repository.spec.mjs, editions: [lite, full]}
+      - {path: packages/hfs/src/data-copies.spec.mjs, editions: [lite, full]}
     witness:
-      - {path: packages/hfs/src/data-repository.spec.mjs, editions: [lite, full]}
+      - {path: packages/hfs/src/data-copies.spec.mjs, editions: [lite, full]}
   - id: R401
     code: "BE_DI_RING"
     law: "No Nest provider of a lite back-end app reaches itself through its construction edges: a constructor parameter (`@Inject` included), an `@Inject` property, a `useFactory` `inject` entry and the target of a `useExisting` alias, an `@Optional` one counting when it resolves and a `forwardRef` one never (Nest defers it; R85 refuses forwardRef). The boot proof (R272) registers the real AppModule with Nest's own scanner before it compiles, resolves each edge with Nest's lookup, and refuses every elementary ring of two or more providers as BE_DI_RING, naming each provider with its module and source file and the edge that reaches the next; it then skips the compile, on which Nest refuses a ring of two and waits forever on a longer one. It runs wherever the boot proof runs: `starci app check` (the wiring step) and `starci app check --gate wiring` in the fast job of the lite app CI. Full proves boot through its e2e world, whose boot hangs on a ring."
@@ -6786,3 +6786,35 @@ rules:
       - {path: packages/eslint-canon-be/src/jobs.spec.ts, editions: [lite, full], codes: [BE_JOB_PROGRESS_SHAPE]}
     witness:
       - {path: packages/eslint-canon-be/src/jobs.spec.ts, editions: [lite, full], codes: [BE_JOB_PROGRESS_SHAPE]}
+  - id: R426
+    code: "DATA_STORE_UNDECLARED"
+    law: "Every stateful component or declared backing of the stack is the `component` of a store or of a `derived` entry of the `data:` declaration (DATA_STORE_UNDECLARED); a store has a kind of the closed list (database, storage) and a level logical or physical (DATA_STORE_KIND), an `adapter.module` that is a tracked source file holding a class that `implements StoreAdapter` (DATA_STORE_ADAPTER); a derived entry names a declared store in `from` and a non-empty `rebuild` (DATA_DERIVED_SOURCE); a project with no stateful component and no `data:` member is green."
+    kinds: [check]
+    gates: [settle, land, ci]
+    failureCodes: ["DATA_STORE_UNDECLARED", "DATA_STORE_KIND", "DATA_STORE_ADAPTER", "DATA_DERIVED_SOURCE"]
+    enforcers:
+      - {kind: hfs, id: data-stores, at: runtime/scripts/hfs/rules/data-stores.mjs}
+    editions: [lite, full]
+    templateNa: "The scaffold declares no stateful component beyond its database and the rule judges the declaration once it exists."
+    docs:
+      - {path: contexts/project/stacks.md#project-stacks-14-every-store-that-must-be-kept-has-an-adapter-every-copy-is-written-through-a-driver, editions: [lite, full]}
+    proves:
+      - {path: packages/hfs/src/data-stores.spec.mjs, editions: [lite, full]}
+    witness:
+      - {path: packages/hfs/src/data-stores.spec.mjs, editions: [lite, full]}
+  - id: R427
+    code: "DATA_PURPOSE"
+    law: "Every `data.sets[]` entry of the stack declaration has a purpose seed-standard or seed-backup, declared stores and declared environments (DATA_PURPOSE), a destination whose driver is git or s3 (DATA_DRIVER_KIND), a git repository named `<name>-seed-standard` for a standard and, with `{env}`, `<name>-seed-backup-<env>` for a backup (DATA_COPY_NAME); a standard is pinned by a 40-hex `commit` (DATA_SEED_UNPINNED), `force` and `commit` belong to a standard and `everyMinutes` to a backup (DATA_FORCE_MISPLACED); `completeness` is `ext:<id>` of a check of ext/manifest.json (DATA_EXTENSION_UNDECLARED); no seeds.yaml entry of any level, nor document it names, mentions a -seed-backup repository (DATA_BACKUP_LOADED)."
+    kinds: [check]
+    gates: [settle, land, ci]
+    failureCodes: ["DATA_PURPOSE", "DATA_DRIVER_KIND", "DATA_COPY_NAME", "DATA_SEED_UNPINNED", "DATA_FORCE_MISPLACED", "DATA_BACKUP_LOADED", "DATA_EXTENSION_UNDECLARED"]
+    enforcers:
+      - {kind: hfs, id: data-sets, at: runtime/scripts/hfs/rules/data-sets.mjs}
+    editions: [lite, full]
+    templateNa: "A new app declares no data sets; the rule guards the declaration once it exists."
+    docs:
+      - {path: contexts/project/stacks.md#project-stacks-14-every-store-that-must-be-kept-has-an-adapter-every-copy-is-written-through-a-driver, editions: [lite, full]}
+    proves:
+      - {path: packages/hfs/src/data-sets.spec.mjs, editions: [lite, full]}
+    witness:
+      - {path: packages/hfs/src/data-sets.spec.mjs, editions: [lite, full]}

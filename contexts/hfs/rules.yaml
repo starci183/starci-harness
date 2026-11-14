@@ -2794,15 +2794,17 @@ rules:
       - {kind: hfs, id: project-sides}
   - id: R400
     code: HFS_DATA_IN_CODE
-    law: "A project's business data lives in git only in its private data repository `<project>-data`, every file under its data/ sealed with sops and listed by its manifest; a code project tracks no document of the data format and never depends on the data repository."
+    law: "Data lives in git only in a seed copy repository, `<name>-seed-standard` (plain, pinned by commit, read once by the bring-up) or `<name>-seed-backup-<env>` (one environment, always sealed, read only by an explicit sync): a copy repository has no hfs.json and a root manifest.json of schema `starci/data-manifest@1` whose purpose agrees with its format name; a code project tracks no copy document (a data manifest, the data/ blobs/ index/ tree next to one, a sops binary-mode envelope: HFS_DATA_IN_CODE) and never depends on a copy repository (package dependency, workspace, submodule, tsconfig path: HFS_DATA_DEPENDENCY); the commit hook refuses in a copy repository an unsealed backup file (HFS_DATA_UNSEALED), a sealed file in a standard (HFS_DATA_STANDARD_SEALED), a manifest that disagrees with the tracked data files or its format name (HFS_DATA_MANIFEST_DRIFT), a data file over 4 MiB (HFS_DATA_FILE_SIZE) and a snapshot over 500 MiB, which needs the s3 driver (HFS_DATA_CAP)."
     failureCodes:
       - HFS_DATA_IN_CODE
       - HFS_DATA_DEPENDENCY
-      - STACKS_DATA_REPOSITORY
       - HFS_DATA_UNSEALED
+      - HFS_DATA_STANDARD_SEALED
       - HFS_DATA_MANIFEST_DRIFT
+      - HFS_DATA_FILE_SIZE
+      - HFS_DATA_CAP
     enforcers:
-      - {kind: hfs, id: data-repository}
+      - {kind: hfs, id: data-copies}
   - id: R401
     code: BE_DI_RING
     law: No Nest provider of a lite back-end app reaches itself through its constructor, property, factory or `useExisting` injections (a `forwardRef` edge aside, which R85 refuses); the boot proof scans the real AppModule before it compiles and names every ring of two or more providers, since Nest refuses a ring of two and hangs at boot on a longer one.
@@ -2832,3 +2834,26 @@ rules:
       - BE_JOB_PROGRESS_SHAPE
     enforcers:
       - {kind: eslint-be, id: job-progress-shape}
+  - id: R426
+    code: DATA_STORE_UNDECLARED
+    law: "Every stateful component or declared backing of the stack is the `component` of a store or of a `derived` entry of the `data:` declaration (DATA_STORE_UNDECLARED); a store has a kind of the closed list (database, storage) and a level logical or physical (DATA_STORE_KIND), an `adapter.module` that is a tracked source file holding a class that `implements StoreAdapter` (DATA_STORE_ADAPTER); a derived entry names a declared store in `from` and a non-empty `rebuild` (DATA_DERIVED_SOURCE); a project with no stateful component and no `data:` member is green."
+    failureCodes:
+      - DATA_STORE_UNDECLARED
+      - DATA_STORE_KIND
+      - DATA_STORE_ADAPTER
+      - DATA_DERIVED_SOURCE
+    enforcers:
+      - {kind: hfs, id: data-stores}
+  - id: R427
+    code: DATA_PURPOSE
+    law: "Every `data.sets[]` entry of the stack declaration has a purpose seed-standard or seed-backup, declared stores and declared environments (DATA_PURPOSE), a destination whose driver is git or s3 (DATA_DRIVER_KIND), a git repository named `<name>-seed-standard` for a standard and, with `{env}`, `<name>-seed-backup-<env>` for a backup (DATA_COPY_NAME); a standard is pinned by a 40-hex `commit` (DATA_SEED_UNPINNED), `force` and `commit` belong to a standard and `everyMinutes` to a backup (DATA_FORCE_MISPLACED); `completeness` is `ext:<id>` of a check of ext/manifest.json (DATA_EXTENSION_UNDECLARED); no seeds.yaml entry of any level, nor document it names, mentions a -seed-backup repository (DATA_BACKUP_LOADED)."
+    failureCodes:
+      - DATA_PURPOSE
+      - DATA_DRIVER_KIND
+      - DATA_COPY_NAME
+      - DATA_SEED_UNPINNED
+      - DATA_FORCE_MISPLACED
+      - DATA_BACKUP_LOADED
+      - DATA_EXTENSION_UNDECLARED
+    enforcers:
+      - {kind: hfs, id: data-sets}

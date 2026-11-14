@@ -8,6 +8,7 @@ import { isPlainObject as plain } from '../../../engine/plain-object.mjs';
 import { found, readText } from './read.mjs';
 import { memoUnit } from '../rule-memo.mjs';
 import { stacksDeploymentContexts } from './stacks-runtime.mjs';
+import { recoveryComponents } from './stateful-components.mjs';
 import type { Parsed } from './rule-types.mjs';
 
 // PostgreSQL initializes asynchronously, while HFS finders must stay synchronous.
@@ -66,29 +67,6 @@ function releaseIssues({ environment, spec, repoRoot, files }: { environment: Pa
     && Array.isArray(assertions) && assertions.length > 0 && assertions.every(present);
   return valid ? [] : [issue('STACKS_RELEASE_UNDECLARED', at,
     'Swarm release must declare tracked public imagesLock, pointer and previous records, and nonempty healthAssertions')];
-}
-
-function persistentVolume(volume: unknown) {
-  if (plain(volume)) return volume.type === 'volume' && present(volume.source);
-  if (!present(volume)) return false;
-  const source = volume.split(':')[0] as string; // split always yields one element
-  return volume.includes(':') && /^[A-Za-z0-9][A-Za-z0-9_.-]*$/.test(source);
-}
-
-function stateful(component: Parsed, service: Parsed) {
-  return component.role === 'stateful' || component.stateful === true
-    || present(component.database) || present(component.database?.provider)
-    || (Array.isArray(component.volumes) && component.volumes.length > 0)
-    || (Array.isArray(service.volumes) && service.volumes.some(persistentVolume));
-}
-
-function recoveryComponents({ doc, spec, model }: { doc: Parsed; spec: Parsed; model: Parsed }) {
-  const components = mapping(doc.components), services = mapping(model?.services);
-  const selected = new Set([...Object.keys(mapping(spec.components)), ...Object.keys(services)]);
-  // Every declared backing (the lite db: backing.db naming its component) owes a backup, as every stateful component does.
-  const required = new Set(Object.entries<Parsed>(mapping(doc.backing)).filter(([, entry]) => typeof entry?.provider === 'string').map(([id]) => id));
-  for (const id of selected) if (stateful(mapping(components[id]), mapping(services[id]))) required.add(id);
-  return [...required];
 }
 
 function backupIssues(context: Parsed) {
