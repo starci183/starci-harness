@@ -32,6 +32,7 @@
     "./runtime/*": "./runtime/*"
   },
   "dependencies": {
+    "@starci/seed": "0.1.0",
     "libpg-query": "18.1.5",
     "smol-toml": "1.9.0"
   },
@@ -67,6 +68,7 @@
     "stack/**",
     "release/**",
     "db/**",
+    "data/**",
     "ci/**",
     "cache/**",
     "coverage/**",

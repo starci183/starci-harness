@@ -4,9 +4,10 @@
 //                              unknown environment (stores name declared stores, environments name declared environments);
 //   DATA_DRIVER_KIND           a set with no destination, a driver outside {git, s3}, or a git destination without a repository;
 //   DATA_COPY_NAME             a git repository (its last path segment, without .git) that does not end -seed-standard for a standard, or for a
-//                              backup does not carry {env} and end -seed-backup-<env> for each of the set's environments;
+//                              backup does not carry {env} and end -seed-backup-<env> for each of the set's environments (<env> = the environment's declared `short`,
+//                              else its name; a `short` that is not lowercase kebab of at most 12 characters, or two environments with one label);
 //   DATA_SEED_UNPINNED         a seed-standard without `commit`, a 40-hex pin;
-//   DATA_FORCE_MISPLACED       `force` (a boolean) on a backup, `commit` on a backup, `everyMinutes` on a standard;
+//   DATA_FORCE_MISPLACED       `force` (a boolean) on a backup, `commit` on a backup, `everyMinutes` or `maxAgeMinutes` on a standard, a `maxAgeMinutes` that is not a whole number;
 //   DATA_BACKUP_LOADED         a seeds.yaml entry of any level, or a document it names, mentions a -seed-backup repository: a backup is
 //                              never loaded by a bring-up;
 //   DATA_EXTENSION_UNDECLARED  `completeness` is not `ext:<id>` of a check ext/manifest.json declares.
@@ -31,12 +32,39 @@ const COMMIT = /^[0-9a-f]{40}$/u;
 /** The last path segment of a repository URL or path, without a trailing slash or `.git`. */
 export const repositoryName = (repository: string): string => repository.replace(/[\\/]+$/u, '').split(/[\\/:]/u).pop()!.replace(/\.git$/u, '');
 
-/** DATA_COPY_NAME for one git destination of a set; the returned strings are the reasons. */
-function nameProblems(purpose: string, repository: string, environments: readonly string[]): string[] {
+/** The `short` an environment declares: lowercase kebab, at most 12 characters. */
+const SHORT_NAME = /^[a-z][a-z0-9-]{0,11}$/u;
+
+/** The `<env>` of an environment's backup repository: its declared `short`, else its name (PROJECT-STACKS-13). */
+export function environmentLabel(environments: unknown, env: string): string {
+  const declared = plain(environments) && plain(environments[env]) ? environments[env].short : undefined;
+  return typeof declared === 'string' && declared !== '' ? declared : env;
+}
+
+/** The repository of a destination for one environment: `{env}` becomes the environment's label (short name, else name). */
+export const resolveRepository = (template: string, label: string): string => template.replaceAll('{env}', label);
+
+/** DATA_COPY_NAME for one git destination of a set; the returned strings are the reasons. `labelOf` maps an environment to its `<env>`. */
+function nameProblems(purpose: string, repository: string, environments: readonly string[], labelOf: (env: string) => string): string[] {
   const name = repositoryName(repository);
   if (purpose === 'seed-standard') return name.endsWith('-seed-standard') ? [] : [`the repository ${name} of a seed-standard must end -seed-standard`];
-  if (!name.includes('{env}')) return [`the repository ${name} of a seed-backup must carry {env}: one repository per environment, ending -seed-backup-<env>`];
-  return environments.filter((env) => !name.replaceAll('{env}', env).endsWith(`-seed-backup-${env}`)).map((env) => `the repository ${name.replaceAll('{env}', env)} of the seed-backup for ${env} must end -seed-backup-${env}`);
+  if (!name.includes('{env}')) return [`the repository ${name} of a seed-backup must carry {env}: one repository per environment, ending -seed-backup-<env> (the environment's short name, else its name)`];
+  return environments.filter((env) => !resolveRepository(name, labelOf(env)).endsWith(`-seed-backup-${labelOf(env)}`)).map((env) => `the repository ${resolveRepository(name, labelOf(env))} of the seed-backup for ${env} must end -seed-backup-${labelOf(env)}`);
+}
+
+/** DATA_COPY_NAME for the `short` names of the environments: each is lowercase kebab of at most 12 characters, and no two environments share a label (their backup repositories would be one). */
+function shortProblems(environments: Record<string, Parsed>): string[] {
+  const problems: string[] = [];
+  const owners = new Map<string, string>();
+  for (const env of Object.keys(environments)) {
+    const entry = environments[env];
+    if (plain(entry) && entry.short !== undefined && !(typeof entry.short === 'string' && SHORT_NAME.test(entry.short))) problems.push(`environments.${env}.short ${JSON.stringify(entry.short)} must be lowercase kebab of at most 12 characters`);
+    const label = environmentLabel(environments, env);
+    const other = owners.get(label);
+    if (other !== undefined) problems.push(`the environments ${other} and ${env} share the backup name ${label}: their seed-backup repositories would be one (declare a distinct short)`);
+    else owners.set(label, env);
+  }
+  return problems;
 }
 
 /** DATA_PURPOSE, DATA_DRIVER_KIND, DATA_COPY_NAME, DATA_SEED_UNPINNED, DATA_FORCE_MISPLACED and DATA_EXTENSION_UNDECLARED over a parsed stack declaration. `extensionChecks` are the check ids of ext/manifest.json. Pure. */
@@ -48,6 +76,7 @@ export function dataSetFindings(doc: Parsed, extensionChecks: ReadonlySet<string
   const stores = new Set(list(data.stores).flatMap((store: Parsed) => (plain(store) && present(store.id) ? [store.id] : [])));
   const environments = new Set(Object.keys(mapping(doc.environments)));
   const ids = new Set<string>();
+  for (const problem of shortProblems(mapping(doc.environments))) at('DATA_COPY_NAME', 'environments', problem);
   list(data.sets).forEach((set: Parsed, index: number) => {
     const where = `sets[${String(index)}]`;
     if (!plain(set)) { at('DATA_PURPOSE', where, 'a data set is a mapping {id, purpose, stores, environments, to}'); return; }
@@ -69,12 +98,13 @@ export function dataSetFindings(doc: Parsed, extensionChecks: ReadonlySet<string
       if (!plain(destination) || !DRIVER_KINDS.includes(destination.driver)) { at('DATA_DRIVER_KIND', here, `driver ${JSON.stringify(plain(destination) ? destination.driver ?? null : null)} is outside the closed list (${DRIVER_KINDS.join(', ')}); a new driver is a harness change`, { set: set.id }); return; }
       if (destination.driver !== 'git') return;
       if (!present(destination.repository)) { at('DATA_DRIVER_KIND', here, 'a git destination names its repository (a URL or a path)', { set: set.id }); return; }
-      if (purpose !== null) for (const problem of nameProblems(purpose, destination.repository, envs)) at('DATA_COPY_NAME', here, problem, { set: set.id });
+      if (purpose !== null) for (const problem of nameProblems(purpose, destination.repository, envs, (env) => environmentLabel(doc.environments, env))) at('DATA_COPY_NAME', here, problem, { set: set.id });
     });
 
     if (purpose === 'seed-standard' && !(typeof set.commit === 'string' && COMMIT.test(set.commit))) at('DATA_SEED_UNPINNED', where, 'a seed-standard is pinned by commit: a 40-hex `commit`', { set: set.id });
     if (purpose === 'seed-standard' && set.force !== undefined && typeof set.force !== 'boolean') at('DATA_FORCE_MISPLACED', where, 'force is a boolean', { set: set.id });
-    if (purpose === 'seed-standard' && set.everyMinutes !== undefined) at('DATA_FORCE_MISPLACED', where, 'everyMinutes belongs to a seed-backup only', { set: set.id });
+    if (purpose === 'seed-standard') for (const key of ['everyMinutes', 'maxAgeMinutes']) if (set[key] !== undefined) at('DATA_FORCE_MISPLACED', where, `${key} belongs to a seed-backup only`, { set: set.id });
+    if (purpose === 'seed-backup' && set.maxAgeMinutes !== undefined && !(Number.isInteger(set.maxAgeMinutes) && set.maxAgeMinutes >= 1)) at('DATA_FORCE_MISPLACED', where, 'maxAgeMinutes is a whole number of minutes, at least 1', { set: set.id });
     if (purpose === 'seed-backup') for (const key of ['force', 'commit']) if (set[key] !== undefined) at('DATA_FORCE_MISPLACED', where, `${key} belongs to a seed-standard only`, { set: set.id });
 
     if (set.completeness !== undefined) {

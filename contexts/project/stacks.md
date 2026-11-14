@@ -514,11 +514,13 @@ and one driver and differ only in who writes them, when they are read and their 
 | kind | what it is | written by | read by | sealed | repository |
 |---|---|---|---|---|---|
 | `seed-standard` | how an environment is born: curated reference and foundation data | a person (reviewed, committed, pinned by commit) | the bring-up's seed step, ONCE (PROJECT-STACKS-12 receipts) | never: plain, readable, diffable | `<name>-seed-standard` |
-| `seed-backup` | the snapshot of what one environment has become | only that environment's scheduled backup job | only an explicit sync into the SAME environment; never a bring-up | always, to that environment's recipients | `<name>-seed-backup-<env>` |
+| `seed-backup` | the snapshot of what one environment has become | only that environment's scheduled backup job | only an explicit `starci app data sync` into the SAME environment; never a bring-up | always, to that environment's recipients | `<name>-seed-backup-<env>` (`<env>` = the environment's short name, else its name) |
 
 **The naming law.** A copy repository is `<name>-seed-standard` or `<name>-seed-backup-<env>`, private, where `<name>` is the
-project `hfs.json` names or a name the project's own extension defines, and `<env>` an environment `application-stacks.yaml` declares.
-The suffix states the kind and the manifest's `purpose` agrees with it. One environment's backup is one repository: its readers are the
+project `hfs.json` names or a name the project's own extension defines, and `<env>` the label of an environment `application-stacks.yaml` declares:
+the `short` the environment declares (lowercase kebab, at most 12 characters, unique across the environments), else its name; `{env}` in a repository
+template becomes that label (an environment `production` with `short: prod` keeps `<name>-seed-backup-prod`). The names stay literal: the harness
+never shortens or renames one. The suffix states the kind and the manifest's `purpose` agrees with it. One environment's backup is one repository: its readers are the
 holders of that environment's identity, a host of another environment never clones it, and the cap is per environment.
 
 **A standard is loaded once and keeps relations.** The seed step applies a `seed-standard` the first time an environment is brought up
@@ -567,8 +569,23 @@ renamed in place.
 Why: one model for every copy lets the harness prove sealing, size, pins and receipts the same way for every project, while a standard
 stays readable for review and a backup stays unreadable to every environment but its own.
 
-Known gap: the CLI surface (`starci app data sync|backup|verify|status`) is not built; a project syncs through its own command over its
-store adapters until it is, and the checkers read declarations and copy repositories, not a sync's run.
+**The verbs.** `starci app data <action> --env <env>` (the `starci/app-data@1` verb of `@starci/hfs`; `--json` prints the result; roles owner, release, supervisor)
+reads a backup, always through the git driver of `@starci/seed` over a checkout kept under the harness state base, never inside a repository, and always with the
+one age identity lookup of the harness (never printed):
+
+| action | does | refuses |
+|---|---|---|
+| `status [--set <id>]` | read-only: per `seed-backup` set of the environment, its repository and its newest copies with takenAt, export digest, the items per store and the copy's sealed bytes against the 500 MiB cap; a set whose declaration is refused is that set's own line | `DATA_SYNC_PURPOSE`, `DATA_SYNC_OTHER_ENVIRONMENT` for a named set |
+| `verify --set <id> [--from <commit>]` | read-only: the driver's full verify of one copy (the newest, or the commit) with the identity: structure, sealing, file index, cap and every digest | `DATA_SYNC_SNAPSHOT_MISSING`, `DATA_SYNC_OTHER_ENVIRONMENT`, `DATA_IDENTITY_MISSING` |
+| `sync --set <id> --from <commit> [--execute]` | dry by default: reads the snapshot into the environment's stores, mode `merge` (a key the snapshot lacks is left; no mirror sync is built), and prints per store and set what an import `created`, `updated`, left `unchanged` and `removed`; `--execute` applies it and prints the same counts and a receipt line | below |
+
+A sync refuses, each as a typed refusal (exit 2) and in a dry run too: `DATA_SYNC_PURPOSE` (the set is no `seed-backup`: a standard is never synced), `DATA_SYNC_OTHER_ENVIRONMENT`
+(the set does not list this environment, or its repository resolves to another environment's name, or the snapshot's `manifest.source.environment` is another environment's),
+`DATA_SYNC_SNAPSHOT_MISSING` (no such commit, or none holding a manifest), `DATA_SYNC_COPY_UNHEALTHY` (the verify fails: nothing is read), `DATA_SYNC_TARGET_UNPROTECTED`
+(the target stores hold data and no healthy copy taken in THIS environment, other than the snapshot being synced, is younger than the set's `maxAgeMinutes`, default 1440: the reset
+rule of PROJECT-STACKS-6, take a backup first) and `DATA_SYNC_UNREACHABLE` (the stores of a deployed environment are reached from its own host; from a developer machine only a dev
+docker-compose environment is synced). The harness reaches a store through its declared `adapter.command` (PROJECT-STACKS-14), run from the app root in the environment's custody;
+no value, store error text or identity reaches an output.
 
 Enforced by: R400 (`data-copies`: in a code project `HFS_DATA_IN_CODE`, `HFS_DATA_DEPENDENCY`; in a copy repository's commit hook
 `HFS_DATA_UNSEALED`, `HFS_DATA_STANDARD_SEALED`, `HFS_DATA_MANIFEST_DRIFT`, `HFS_DATA_FILE_SIZE`, `HFS_DATA_CAP`); R427 (the data sets).
@@ -599,8 +616,8 @@ The declaration, in `application-stacks.yaml` (the smallest example: a project w
 ```yaml
 data:
   stores:
-    - {id: database, kind: database, level: logical, component: db, adapter: {module: be/src/modules/platform/data-stores/database.adapter.ts}}
-    - {id: storage, kind: storage, level: logical, component: minio, adapter: {module: be/src/modules/platform/data-stores/storage.adapter.ts}}
+    - {id: database, kind: database, level: logical, component: db, adapter: {module: be/src/modules/platform/data-stores/database.adapter.ts, command: [npx, shop, data, database]}}
+    - {id: storage, kind: storage, level: logical, component: minio, adapter: {module: be/src/modules/platform/data-stores/storage.adapter.ts, command: [npx, shop, data, storage]}}
   derived:
     - {component: redis, from: database, rebuild: the relay republishes the outbox}
   sets:
@@ -615,16 +632,19 @@ data:
       stores: [database, storage]
       environments: [dev, production]
       everyMinutes: 1440
+      maxAgeMinutes: 1440
       to: [{driver: git, repository: https://github.com/example/shop-seed-backup-{env}}]
 ```
 
-`commit` and `force` belong to a `seed-standard` only, `everyMinutes` to a `seed-backup` only; `{env}` in a backup's repository is
-replaced by each environment, and the result ends `-seed-backup-<env>`. A store's adapter `module` is the source file of the class that
-implements `StoreAdapter`.
+`commit` and `force` belong to a `seed-standard` only, `everyMinutes` and `maxAgeMinutes` to a `seed-backup` only; `{env}` in a backup's repository is
+replaced by each environment's label (its declared `environments.<env>.short`, else its name), and the result ends `-seed-backup-<env>`. A store's adapter `module` is the source file of the class that
+implements `StoreAdapter`; its `command` is the argv, from the app root, of the app's own command that serves the store with `serveStore` of `@starci/seed` over the line
+protocol `starci/data-entries@1` (`describe`, `export <selection>`, `import <options>` with entry lines on stdin, `identity <set> <key>`), which `starci app data` runs; a store
+of a `seed-backup` set declares one.
 
-Enforced by: R426 (`data-stores`: `DATA_STORE_UNDECLARED`, `DATA_STORE_KIND`, `DATA_STORE_ADAPTER`, `DATA_DERIVED_SOURCE`) and R427
+Enforced by: R426 (`data-stores`: `DATA_STORE_UNDECLARED`, `DATA_STORE_KIND`, `DATA_STORE_ADAPTER` including the `command` of a backed-up store, `DATA_DERIVED_SOURCE`) and R427
 (`data-sets`: `DATA_PURPOSE`, `DATA_DRIVER_KIND`, `DATA_COPY_NAME`, `DATA_SEED_UNPINNED`, `DATA_FORCE_MISPLACED`, `DATA_BACKUP_LOADED`,
-`DATA_EXTENSION_UNDECLARED`); the ports and the git driver by the specs of `@starci/seed`.
+`DATA_EXTENSION_UNDECLARED`); the ports and the git driver by the specs of `@starci/seed`; the verbs by `packages/hfs/src/data-verb.spec.mts`.
 
 ## Read with
 

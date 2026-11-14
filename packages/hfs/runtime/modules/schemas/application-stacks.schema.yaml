@@ -48,6 +48,14 @@ properties:
               required: [module]
               properties:
                 module: {type: string, minLength: 1}
+                command:
+                  description: >-
+                    The argv, from the app root, of the app's own command that serves this store over the line protocol `starci/data-entries@1`
+                    (`serveStore` of @starci/seed), which `starci app data` runs with the environment's custody. Required for a store of a
+                    seed-backup set (R426).
+                  type: array
+                  minItems: 1
+                  items: {type: string, minLength: 1}
       derived:
         type: array
         items:
@@ -82,6 +90,7 @@ properties:
             commit: {type: string, pattern: '^[0-9a-f]{40}$'}
             force: {type: boolean}
             everyMinutes: {type: integer, minimum: 1}
+            maxAgeMinutes: {type: integer, minimum: 1}
             completeness: {type: string, pattern: '^ext:.+'}
   sources:
     type: array
@@ -593,6 +602,13 @@ $defs:
     additionalProperties: false
     required: [status, runtime, composeFiles, components, runbook, secrets]
     properties:
+      short:
+        description: >-
+          The environment's short name, the `<env>` of its seed-backup repository `<name>-seed-backup-<env>` (PROJECT-STACKS-13) and what `{env}` in
+          a repository template becomes: lowercase kebab, at most 12 characters, unique across the environments. Absent, the environment's name is used.
+        type: string
+        maxLength: 12
+        pattern: '^[a-z][a-z0-9-]*$'
       status: {const: supported}
       runtime: {enum: [docker-compose, docker-swarm]}
       composeFiles: {type: array, minItems: 1, items: {type: string, minLength: 1}}

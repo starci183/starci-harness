@@ -98,6 +98,22 @@ test('DATA_STORE_ADAPTER: the module is a tracked source file that implements St
   assert.deepEqual(generic, [], 'negative control: a class with several interfaces still implements it');
 });
 
+test('DATA_STORE_ADAPTER: adapter.command is an argv, and a store of a seed-backup set must have one', () => {
+  const backup = (): Json => stack({ sets: [{ id: 'shop-backup', purpose: 'seed-backup', stores: ['database'], environments: ['dev'], to: [{ driver: 'git', repository: 'x/shop-seed-backup-{env}' }] }] });
+  assert.deepEqual(run(stack()), [], 'no backup set: a store needs no command');
+  assert.deepEqual(run(backup()), ['DATA_STORE_ADAPTER'], 'the database is in a seed-backup set and has no command');
+  const served = backup();
+  served.data.stores[0].adapter.command = ['npx', 'starci-shop', 'data'];
+  assert.deepEqual(run(served), [], 'negative control: the command is declared');
+  for (const bad of [[], 'npx', [''], [7]]) {
+    const wrong = backup();
+    wrong.data.stores[0].adapter.command = bad;
+    assert.deepEqual(run(wrong), ['DATA_STORE_ADAPTER'], JSON.stringify(bad));
+  }
+  const standard = stack({ sets: [{ id: 'shop-standard', purpose: 'seed-standard', stores: ['database'], environments: ['dev'], to: [] }] });
+  assert.deepEqual(run(standard), [], 'a standard alone needs no command');
+});
+
 test('DATA_DERIVED_SOURCE: from names a declared store and rebuild is not empty', () => {
   const from = stack();
   from.data.derived[0].from = 'nothing';

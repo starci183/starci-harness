@@ -5,7 +5,8 @@
 //   DATA_STORE_KIND        a store with no id, an id declared twice, a kind outside the closed list (database, storage) or a level other than
 //                          logical or physical;
 //   DATA_STORE_ADAPTER     a store's `adapter.module` is absent, is no tracked source file under the app root, or holds no class that
-//                          `implements StoreAdapter`;
+//                          `implements StoreAdapter`; `adapter.command`, when present, is a non-empty argv of strings, and is required for a store of
+//                          a data set whose purpose is seed-backup (the command `starci app data` runs to reach the store, protocol starci/data-entries@1);
 //   DATA_DERIVED_SOURCE    a `derived` entry whose `rebuild` is empty, whose component is missing or whose `from`, when present, is no declared store
 //                          (`from` is optional: a source outside the project, such as an ingress's ACME certificates, names none).
 // A project with no stateful component and no `data:` member is green. R267's BACKUP_UNDECLARED (a swarm environment's backup records) is a
@@ -49,6 +50,7 @@ export function dataStoreFindings(doc: Parsed, tracked: ReadonlySet<string>, sou
   const components = declaredComponents(doc);
   const stores = list(data.stores), derived = list(data.derived);
   const storeIds = new Set<string>();
+  const backedUp = new Set(list(data.sets).flatMap((set: Parsed) => (plain(set) && set.purpose === 'seed-backup' ? list(set.stores).filter(present) : [])));
   const covered = new Set<string>();
 
   stores.forEach((store: Parsed, index: number) => {
@@ -65,6 +67,9 @@ export function dataStoreFindings(doc: Parsed, tracked: ReadonlySet<string>, sou
     if (!present(module) || !relative(module)) at('DATA_STORE_ADAPTER', where, 'adapter.module must name the app-relative source file of the class that implements StoreAdapter', { store: store.id });
     else if (!tracked.has(module)) at('DATA_STORE_ADAPTER', where, `adapter.module ${module} is no tracked source file`, { store: store.id, module });
     else if (!IMPLEMENTS.test(source(module) ?? '')) at('DATA_STORE_ADAPTER', where, `adapter.module ${module} holds no class that implements StoreAdapter`, { store: store.id, module });
+    const command = plain(store.adapter) ? store.adapter.command : undefined;
+    if (command !== undefined && !(Array.isArray(command) && command.length > 0 && command.every(present))) at('DATA_STORE_ADAPTER', where, 'adapter.command must be a non-empty argv of strings: the app command that serves the store over starci/data-entries@1', { store: store.id });
+    else if (command === undefined && present(store.id) && backedUp.has(store.id)) at('DATA_STORE_ADAPTER', where, `the store ${store.id} belongs to a seed-backup set, so adapter.command must name the app command that serves it over starci/data-entries@1 (starci app data runs it)`, { store: store.id });
   });
 
   derived.forEach((entry: Parsed, index: number) => {

@@ -2836,7 +2836,7 @@ rules:
       - {kind: eslint-be, id: job-progress-shape}
   - id: R426
     code: DATA_STORE_UNDECLARED
-    law: "Every stateful component or declared backing of the stack is the `component` of a store or of a `derived` entry of the `data:` declaration (DATA_STORE_UNDECLARED); a store has a kind of the closed list (database, storage) and a level logical or physical (DATA_STORE_KIND), an `adapter.module` that is a tracked source file holding a class that `implements StoreAdapter` (DATA_STORE_ADAPTER); a derived entry has a non-empty `rebuild` and, when it names a `from`, a declared store (DATA_DERIVED_SOURCE; `from` is optional for a source outside the project); a project with no stateful component and no `data:` member is green."
+    law: "Every stateful component or declared backing of the stack is the `component` of a store or of a `derived` entry of the `data:` declaration (DATA_STORE_UNDECLARED); a store has a kind of the closed list (database, storage) and a level logical or physical (DATA_STORE_KIND), an `adapter.module` that is a tracked source file holding a class that `implements StoreAdapter` and, for a store of a seed-backup set, an `adapter.command` argv of the app command that serves it over starci/data-entries@1 (DATA_STORE_ADAPTER); a derived entry has a non-empty `rebuild` and, when it names a `from`, a declared store (DATA_DERIVED_SOURCE; `from` is optional for a source outside the project); a project with no stateful component and no `data:` member is green."
     failureCodes:
       - DATA_STORE_UNDECLARED
       - DATA_STORE_KIND
@@ -2846,7 +2846,7 @@ rules:
       - {kind: hfs, id: data-stores}
   - id: R427
     code: DATA_PURPOSE
-    law: "Every `data.sets[]` entry of the stack declaration has a purpose seed-standard or seed-backup, declared stores and declared environments (DATA_PURPOSE), a destination whose driver is git or s3 (DATA_DRIVER_KIND), a git repository named `<name>-seed-standard` for a standard and, with `{env}`, `<name>-seed-backup-<env>` for a backup (DATA_COPY_NAME); a standard is pinned by a 40-hex `commit` (DATA_SEED_UNPINNED), `force` and `commit` belong to a standard and `everyMinutes` to a backup (DATA_FORCE_MISPLACED); `completeness` is `ext:<id>` of a check of ext/manifest.json (DATA_EXTENSION_UNDECLARED); no seeds.yaml entry of any level, nor document it names, mentions a -seed-backup repository (DATA_BACKUP_LOADED)."
+    law: "Every `data.sets[]` entry of the stack declaration has a purpose seed-standard or seed-backup, declared stores and declared environments (DATA_PURPOSE), a destination whose driver is git or s3 (DATA_DRIVER_KIND), a git repository named `<name>-seed-standard` for a standard and, with `{env}`, `<name>-seed-backup-<env>` for a backup, where `<env>` is the environment's declared `short` name (lowercase kebab, at most 12 characters, unique across the environments), else its name (DATA_COPY_NAME); a standard is pinned by a 40-hex `commit` (DATA_SEED_UNPINNED), `force` and `commit` belong to a standard and `everyMinutes` and `maxAgeMinutes` to a backup (DATA_FORCE_MISPLACED); `completeness` is `ext:<id>` of a check of ext/manifest.json (DATA_EXTENSION_UNDECLARED); no seeds.yaml entry of any level, nor document it names, mentions a -seed-backup repository (DATA_BACKUP_LOADED)."
     failureCodes:
       - DATA_PURPOSE
       - DATA_DRIVER_KIND

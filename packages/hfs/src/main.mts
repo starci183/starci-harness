@@ -153,6 +153,7 @@ import { RELEASE_FLAGS, releaseMain } from '../release/index.mjs';
 import { SPEC as DB_MIGRATE_FLAGS, dbMigrateMain } from '../db/migrate.mjs';
 import { SPEC as DB_POST_CUTOVER_FLAGS, dbPostCutoverMain } from '../db/post-cutover.mjs';
 import { SPEC as DB_DUMP_FLAGS, dbDumpMain } from '../db/dump.mjs';
+import { DATA_USAGE, dataMain } from '../data/cli.mjs';
 import { SPEC as DB_NEW_FLAGS, dbNewMain } from '../db/new.mjs';
 import { SPEC as DB_DRIFT_FLAGS, dbDriftMain } from '../db/drift.mjs';
 import { BASELINE_OPTIONS, DB_BOOLEAN_OPTIONS } from '../runtime/scripts/hfs/db-baseline-verb.mjs';
@@ -218,7 +219,7 @@ type UsageForm = ParsedVerb['forms'][number];
 /** An argument the parser refuses (an unknown flag, a missing value, a form a verb does not take): the one error `main` follows with the usage. */
 export class UsageError extends Error {}
 
-export const VERBS = Object.freeze(['scaffold', 'add', 'sync', 'check', 'upgrade', 'stack', 'world', 'release', 'slot', 'emit', 'secret', 'ci', 'db', 'coverage', 'codemod']);
+export const VERBS = Object.freeze(['scaffold', 'add', 'sync', 'check', 'upgrade', 'stack', 'world', 'release', 'slot', 'emit', 'secret', 'ci', 'db', 'data', 'coverage', 'codemod']);
 const DATABASE_VERBS = new Map<string | undefined, (argv: string[], io: VerbIo) => Promise<number> | number>([['baseline', dbBaselineMain], ['restamp', dbRestampMain],['migrate', dbMigrateMain], ['post-cutover', dbPostCutoverMain], ['dump', dbDumpMain], ['new', dbNewMain], ['drift', dbDriftMain]]);
 
 /**
@@ -302,6 +303,7 @@ const VERB_USAGE: Record<string, string[]> = {
     line('starci app ci local', specUsage(CI_LOCAL_FLAGS)),
   ],
   db: DATABASE_USAGE.map(([verb, operands, spec]) => line(`starci app db ${verb}`, operands, specUsage(spec, { ...PLACEHOLDERS, '--image': '<ref>', '--out': '<dir>' }))),
+  data: [...DATA_USAGE],
   coverage: COVERAGE_USAGE.replace(/^usage: /, '').split(' | ').map((text) => text.replace(' [--cwd <dir>]', '')),
 };
 export const USAGE = `${VERBS.flatMap((verb) => VERB_USAGE[verb]).join('\n')}
@@ -1029,7 +1031,7 @@ async function worldAppMain(argv: string[], { cwd, edition, stackMain, stdout: o
   return run(argv, { cwd, out, err }) as Promise<number>;
 }
 
-const DIRECT_VERBS = new Map<string, (argv: string[], io: AppIo) => Promise<number> | number>([['ci', async (argv: string[], io: AppIo) => (await import('../ci/cli.mjs')).ciMain(argv, io)], ['secret', secretMain], ['db', databaseMain], ['upgrade', upgradeAppMain], ['stack', stackAppMain], ['world', worldAppMain], ['release', releaseMain], ['coverage', async (argv: string[], io: AppIo) => (await import('../coverage/cli.mjs')).coverageMain(argv, io)], ['codemod', codemodMain]]);
+const DIRECT_VERBS = new Map<string, (argv: string[], io: AppIo) => Promise<number> | number>([['ci', async (argv: string[], io: AppIo) => (await import('../ci/cli.mjs')).ciMain(argv, io)], ['secret', secretMain], ['db', databaseMain], ['data', dataMain], ['upgrade', upgradeAppMain], ['stack', stackAppMain], ['world', worldAppMain], ['release', releaseMain], ['coverage', async (argv: string[], io: AppIo) => (await import('../coverage/cli.mjs')).coverageMain(argv, io)], ['codemod', codemodMain]]);
 
 function dispatchMain(verb: string, argv: string[], io: AppIo): Promise<number> | number {
   if (verb === 'sync') return syncMain([verb, ...argv], io);

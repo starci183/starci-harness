@@ -17,7 +17,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { backupLoadedFindings, dataSetFindings, dataSetsFindings, repositoryName } from '../runtime/scripts/hfs/rules/data-sets.mjs';
+import { backupLoadedFindings, dataSetFindings, dataSetsFindings, environmentLabel, repositoryName, resolveRepository } from '../runtime/scripts/hfs/rules/data-sets.mjs';
 import { mkdtemp } from './helpers/tmpdir.mjs';
 
 // reason: stack declarations are YAML-shaped trees the assertions build and judge.
@@ -72,6 +72,30 @@ test('DATA_COPY_NAME: -seed-standard for a standard; {env} and -seed-backup-<env
   assert.deepEqual(run((list) => { list[1].to[0].repository = 'https://github.com/example/shop-seed-backup'; }), ['DATA_COPY_NAME']);
   assert.deepEqual(run((list) => { list[1].to[0].repository = 'https://github.com/example/shop-seed-backup-production'; }), ['DATA_COPY_NAME'], 'a fixed environment name has no {env}');
   assert.deepEqual(run((list) => { list[1].to[0].repository = 'https://github.com/example/shop-{env}-seed-backup'; }), ['DATA_COPY_NAME', 'DATA_COPY_NAME'], 'the name must END -seed-backup-<env>, for each environment');
+});
+
+test('DATA_COPY_NAME: <env> is the environment short name, else its name; a short is lowercase kebab of at most 12 and unique', () => {
+  const withShort = (short: unknown, mutate: (list: Json[]) => void = () => undefined): string[] => {
+    const doc = stack(mutate);
+    doc.environments.production.short = short;
+    return codes(dataSetFindings(doc, new Set()));
+  };
+  assert.deepEqual(withShort('prod'), [], 'production with short prod and the template ...-seed-backup-{env} resolves to -seed-backup-prod');
+  assert.equal(resolveRepository(repositoryName('https://github.com/example/shop-seed-backup-{env}'), environmentLabel({ production: { short: 'prod' } }, 'production')), 'shop-seed-backup-prod');
+  assert.equal(environmentLabel({ production: {} }, 'production'), 'production', 'no short: the name');
+  assert.equal(environmentLabel(undefined, 'dev'), 'dev');
+  assert.deepEqual(withShort('prod', (list) => { list[1].to[0].repository = 'https://github.com/example/shop-seed-backup-{env}-x'; }), ['DATA_COPY_NAME', 'DATA_COPY_NAME'], 'the name must still END -seed-backup-<env>');
+  assert.deepEqual(withShort('Prod'), ['DATA_COPY_NAME'], 'not lowercase');
+  assert.deepEqual(withShort('a-very-long-name'), ['DATA_COPY_NAME'], 'over 12 characters');
+  assert.deepEqual(withShort('dev'), ['DATA_COPY_NAME'], 'two environments with one label: dev and production would share a repository');
+  assert.deepEqual(withShort(7), ['DATA_COPY_NAME']);
+});
+
+test('DATA_FORCE_MISPLACED: maxAgeMinutes belongs to a backup, as a whole number', () => {
+  assert.deepEqual(run((list) => { list[1].maxAgeMinutes = 720; }), [], 'negative control');
+  assert.deepEqual(run((list) => { list[0].maxAgeMinutes = 720; }), ['DATA_FORCE_MISPLACED']);
+  assert.deepEqual(run((list) => { list[1].maxAgeMinutes = 0; }), ['DATA_FORCE_MISPLACED']);
+  assert.deepEqual(run((list) => { list[1].maxAgeMinutes = 'day'; }), ['DATA_FORCE_MISPLACED']);
 });
 
 test('DATA_SEED_UNPINNED: a standard carries a 40-hex commit', () => {

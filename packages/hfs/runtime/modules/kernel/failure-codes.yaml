@@ -6590,7 +6590,7 @@ DATA_STORE_KIND:
 DATA_STORE_ADAPTER:
   title: "A data store has no adapter source file"
   title_vi: "Kho dữ liệu thiếu tệp adapter"
-  meaning_vi: "adapter.module của store là tệp mã nguồn được theo dõi chứa lớp implements StoreAdapter."
+  meaning_vi: "adapter.module của store là tệp mã nguồn được theo dõi chứa lớp implements StoreAdapter; store của một bộ seed-backup còn khai adapter.command (lệnh của ứng dụng phục vụ store qua starci/data-entries@1)."
   causes_vi:
     - "Vi phạm R426: đường dẫn thiếu, không được theo dõi, hoặc không có lớp implements StoreAdapter (PROJECT-STACKS-14)."
   nextStep_vi: "Trỏ adapter.module tới tệp chứa lớp implements StoreAdapter."
@@ -6626,7 +6626,7 @@ DATA_DRIVER_KIND:
 DATA_COPY_NAME:
   title: "A copy repository name breaks the naming law"
   title_vi: "Tên kho bản sao sai quy ước"
-  meaning_vi: "Kho seed-standard kết thúc -seed-standard; kho seed-backup chứa {env} và kết thúc -seed-backup-<env> cho từng môi trường."
+  meaning_vi: "Kho seed-standard kết thúc -seed-standard; kho seed-backup chứa {env} và kết thúc -seed-backup-<env> cho từng môi trường; <env> là tên ngắn (short) của môi trường nếu có, không thì tên môi trường."
   causes_vi:
     - "Vi phạm R427 (PROJECT-STACKS-13)."
   nextStep_vi: "Đổi tên kho theo quy ước."
