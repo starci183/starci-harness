@@ -78,6 +78,9 @@ export function composeValues(local: LocalConfig, custody: Custody | null): Reco
   return values;
 }
 
+/** The `files` key a run lists to receive the environment's owner connection string as `DATABASE_OWNER_URL_FILE`. */
+export const OWNER_URL_KEY = 'DATABASE_OWNER_URL';
+
 /** The environment a command or process runs with: ports expanded, custody as `<KEY>_FILE`, the database URL as the environment declares. */
 export function runEnvironment(ctx: StackContext, local: LocalConfig, run: LocalCommand, custody: Custody | null, role: 'owner' | 'app' | null): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = { ...ctx.env, ...portEnvironment(local.ports) };
@@ -90,6 +93,17 @@ export function runEnvironment(ctx: StackContext, local: LocalConfig, run: Local
       const file = path.join(custody.directory, local.database.urlEnv);
       fs.writeFileSync(file, url, { mode: 0o600 });
       env[`${local.database.urlEnv}_FILE`] = file;
+    }
+  }
+  // The environment's OWNER connection reaches only a run that lists `DATABASE_OWNER_URL` in `files`: the whole-database store of a
+  // seed-backup (PROJECT-STACKS-13) reads every table past row level security and restores with session_replication_role, which the
+  // app role may not; the app role is never widened for it.
+  if (custody && local.database && run.files.includes(OWNER_URL_KEY)) {
+    const owner = databaseUrl(local, custody, 'owner');
+    if (owner !== null) {
+      const file = path.join(custody.directory, OWNER_URL_KEY);
+      fs.writeFileSync(file, owner, { mode: 0o600 });
+      env[`${OWNER_URL_KEY}_FILE`] = file;
     }
   }
   // A further database reaches only the runs that list its URL key in `files` (the owner of the connection).

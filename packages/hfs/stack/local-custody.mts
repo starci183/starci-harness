@@ -16,8 +16,8 @@ export interface Custody { directory: string; values: Map<string, string> }
 /** Every key the environment's commands, processes, database and compose read. */
 export function neededKeys(local: LocalConfig): string[] {
   const keys = new Set<string>();
-  // The URL of a database is written by `up` from its password, never read from a sealed member.
-  const urls = new Set([local.database?.urlEnv, ...local.databases.map((database) => database.urlEnv)]);
+  // The URL of a database, and the owner connection a run lists as DATABASE_OWNER_URL, is written by `up` from its password, never read from a sealed member.
+  const urls = new Set([local.database?.urlEnv, 'DATABASE_OWNER_URL', ...local.databases.map((database) => database.urlEnv)]);
   for (const run of [...local.setup, ...local.seed, ...local.processes]) for (const key of run.files) if (!urls.has(key)) keys.add(key);
   for (const database of local.databases) { keys.add(database.password.key); keys.add(database.adminPassword.key); }
   for (const item of local.composeEnv) keys.add(item.key);

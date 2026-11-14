@@ -353,3 +353,15 @@ test('up provisions the role and database of each further connection and hands o
   const seed = h.calls.find((call) => !call.background && call.env && 'JWT_KEY_FILE' in call.env);
   assert.equal(seed?.env && 'LEDGER_DB_URL_FILE' in seed.env, false, 'a run that does not list the key never gets the connection URL');
 });
+
+test('a process that lists DATABASE_OWNER_URL in files gets the owner connection as a file, and no other run does', async (t) => {
+  const root = app(t, { block: BLOCK.replace('port: api, files: [JWT_KEY]', 'port: api, files: [JWT_KEY, DATABASE_OWNER_URL]') });
+  const h = host(root);
+  assert.equal(await run(root, ['up', '--env', 'dev', '--execute'], h), 0, h.err.join(''));
+  const api = h.calls.find((call) => call.background);
+  const file = (api?.env as NodeJS.ProcessEnv).DATABASE_OWNER_URL_FILE;
+  assert.ok(file, 'the listing process reads the owner connection through DATABASE_OWNER_URL_FILE');
+  assert.match(fs.readFileSync(file as string, 'utf8'), /^postgresql:\/\/demo_dev:[^@]+@127\.0\.0\.1:\d+\/demo_dev$/u);
+  const seed = h.calls.find((call) => !call.background && call.env && 'JWT_KEY_FILE' in call.env);
+  assert.equal(seed?.env && 'DATABASE_OWNER_URL_FILE' in seed.env, false, 'a run that does not list the key never gets the owner connection');
+});

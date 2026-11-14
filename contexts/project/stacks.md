@@ -537,7 +537,7 @@ scheduled job on the outbox + job frame of the back end (a tick enqueues one job
 exports the stores once, skips when the manifest digest equals the newest copy's (no change, no commit), and writes the one export to
 every destination; a configuration refusal (a copy past its cap) dead-letters with one item for a person, and a failed destination
 leaves the others written and raises one item (BE-JOBS-7). A verify job restores the newest copy into an isolated scratch store and
-compares digests. A sync is the only act that seeds from a backup: it names the snapshot, runs dry first, refuses a snapshot of another
+compares digests. The whole relational database is copied by the per-table store of `@starci/seed/postgres` (data only, rows in byte order of their primary key, one consistent snapshot; the schema comes from the migrations), which connects as the environment's OWNER role, never by widening the app role: in a dev environment a process lists `DATABASE_OWNER_URL` in its `files` and `stack up` writes the owner connection to `DATABASE_OWNER_URL_FILE` from custody; in a swarm environment it is a sealed member granted to that one consumer. A sync is the only act that seeds from a backup: it names the snapshot, runs dry first, refuses a snapshot of another
 environment (`DATA_SYNC_OTHER_ENVIRONMENT`), and refuses a non-empty target without a verified backup of that target younger than the
 declared age (the reset rule of PROJECT-STACKS-6). Turning a backup into a standard is a person's review in a standard's checkout,
 never a command. A secret a store keeps sealed by the app's own key travels still sealed, so a backup restores only where that key is
