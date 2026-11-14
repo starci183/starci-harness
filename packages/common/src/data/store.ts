@@ -91,8 +91,15 @@ export interface StoreAdapter {
     describe(): Promise<StoreDescription>
     /** Every entry of the selection, in (set, key) byte order; the same content yields the same stream. */
     export(selection: Selection): AsyncIterable<DataEntry>
-    /** Idempotent by natural key: the same entries imported twice change nothing the second time. Through the app's own doors. */
+    /**
+     * An upsert by natural key through the app's own doors that KEEPS RELATIONS: a key already held is updated in place and
+     * keeps its identity (never deleted and re-created), so every reference to it stays valid; the same entries imported
+     * twice change nothing the second time; a key the entries do not name is left alone (reported by a mirror, removed
+     * only by it); operational data the entries do not carry is never overwritten.
+     */
     import(entries: AsyncIterable<DataEntry>, options: ImportOptions): Promise<ImportReport>
+    /** The store's own identity of the row or object a natural key names (a database id, an object version), or null. The contract suite proves imports keep it. */
+    identityOf(set: string, key: string): Promise<string | null>
 }
 
 /** The outcome of an import from its per-set counts. */

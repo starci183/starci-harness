@@ -9,6 +9,7 @@ import type { StoreKind, StoreLevel } from "./words.ts"
  *   <argv> describe                  -> one line: StoreDescription
  *   <argv> export <Selection JSON>   -> one line per entry, then {"end": true, "items": n}
  *   <argv> import <ImportOptions>    <- entry lines on stdin; -> last line: ImportReport
+ *   <argv> identity <set> <key>      -> one line: {"identity": string | null}
  *
  * A record's body travels as its canonical JSON text, a blob's as base64. A value never reaches argv or a log.
  */
@@ -84,7 +85,11 @@ export async function serveStore(store: StoreAdapter, io: ServeIo): Promise<numb
         io.write(JSON.stringify(await store.import(entriesFromLines(io.lines), options)))
         return 0
     }
-    io.write(JSON.stringify({ error: "DATA_PROTOCOL_USAGE", usage: "describe | export <selection> | import <options>" }))
+    if (verb === "identity") {
+        io.write(JSON.stringify({ identity: await store.identityOf(argument ?? "", io.args[2] ?? "") }))
+        return 0
+    }
+    io.write(JSON.stringify({ error: "DATA_PROTOCOL_USAGE", usage: "describe | export <selection> | import <options> | identity <set> <key>" }))
     return 2
 }
 
@@ -122,6 +127,7 @@ export function commandStore(declared: { readonly id: string; readonly kind: Sto
             }
             if (!ended) throw new TypeError(`${declared.id}: the export ended without its end line`)
         },
+        identityOf: async (set: string, key: string) => (JSON.parse(await lastLine(run(["identity", set, key]))) as { identity: string | null }).identity,
         import: async (entries: AsyncIterable<DataEntry>, options: ImportOptions) =>
             JSON.parse(await lastLine(run(["import", JSON.stringify(options)], linesOf(entries)))) as ImportReport,
     }

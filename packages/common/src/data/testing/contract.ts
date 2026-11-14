@@ -2,7 +2,8 @@ import { exportOnce, memorySpool, restoreFrom, writeEverywhere } from "../copies
 import type { DriverAdapter, WriteContext } from "../driver.ts"
 import { DataRefusal } from "../driver.ts"
 import type { DataEntry, ManifestHeader } from "../manifest.ts"
-import { byteOrder, entryIntact } from "../manifest.ts"
+import type { JsonValue } from "../manifest.ts"
+import { blobEntry, byteOrder, entryIntact, recordEntry, recordValue } from "../manifest.ts"
 import type { StoreAdapter } from "../store.ts"
 
 /** One case of a contract suite: a name and a body that throws on a broken promise. Run it in any test runner. */
@@ -86,6 +87,50 @@ export function storeContract(make: () => Promise<StoreAdapter>, empty: () => Pr
                 check(first.outcome === "applied", `the first import answered ${first.outcome}`)
                 const second = await target.import(from(entries), { dryRun: false, mode: "merge" })
                 check(second.outcome === "unchanged", `the second import answered ${second.outcome}`)
+            },
+        },
+        {
+            name: "a re-import keeps every identity: the same entries keep the same ids (relations stay valid)",
+            run: async () => {
+                const entries = await collect((await make()).export({}))
+                const target = await empty()
+                await target.import(from(entries), { dryRun: false, mode: "merge" })
+                const before = await Promise.all(entries.map((entry) => target.identityOf(entry.set, entry.key)))
+                check(before.every((id) => id !== null), "an imported key has no identity")
+                await target.import(from(entries), { dryRun: false, mode: "merge" })
+                const after = await Promise.all(entries.map((entry) => target.identityOf(entry.set, entry.key)))
+                check(after.every((id, at) => id === before[at]), "a re-import changed an identity")
+            },
+        },
+        {
+            name: "a changed entry is updated in place: same identity, new content",
+            run: async () => {
+                const entries = await collect((await make()).export({}))
+                const target = await empty()
+                await target.import(from(entries), { dryRun: false, mode: "merge" })
+                const first = entries.find((entry) => entry.form === "record") ?? entries[0]
+                if (first === undefined) throw new Error("contract broken: no entry to change")
+                const id = await target.identityOf(first.set, first.key)
+                const changed = first.form === "record"
+                    ? recordEntry(first.set, first.key, { ...(recordValue(first) as Record<string, JsonValue>), contractChanged: true })
+                    : blobEntry(first.set, first.key, new Uint8Array([...first.body, 1]), first.media)
+                const report = await target.import(from([changed]), { dryRun: false, mode: "merge" })
+                check(report.sets.some((set) => set.updated === 1), "the changed entry was not counted as an update")
+                check((await target.identityOf(first.set, first.key)) === id, "the update re-created the row")
+                const back = await collect(target.export({ sets: [first.set] }))
+                check(back.some((entry) => entry.key === first.key && entry.sha256 === changed.sha256), "the new content was not written")
+            },
+        },
+        {
+            name: "a merge leaves alone every key the entries do not name",
+            run: async () => {
+                const entries = await collect((await make()).export({}))
+                const target = await empty()
+                await target.import(from(entries), { dryRun: false, mode: "merge" })
+                const report = await target.import(from(entries.slice(0, 1)), { dryRun: false, mode: "merge" })
+                check(report.sets.every((set) => set.removed === 0), "a merge removed a key")
+                const back = await collect(target.export({}))
+                check(back.length === entries.length, "a key absent from the import disappeared")
             },
         },
         {
