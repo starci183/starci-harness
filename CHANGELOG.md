@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.123 - 2026-11-15
+
+- Added: `starci app data status|verify|sync --env <env>` (`cli/src/core/app/data.ts`, schema `starci/app-data@1`, roles owner, release, supervisor, effect remote), forwarded to `@starci/hfs`: the explicit read of a seed-backup copy and the sync of a snapshot into the same environment (dry until `--execute`, merge mode; PROJECT-STACKS-13). The verb needs `@starci/hfs` 6.13.0 (`data` family); the CLI's own requirement stays on the pin npm serves until the cli-follow step raises it (CONTRIB-20), so a lane that runs it from the local registry installs `starci-harness` and `@starci/hfs` together (`deps install-local`). The version skips alpha.121 and alpha.122, which `pkg/claude-lint-grammar-split` claims.
+
 ## 1.1.0-alpha.120 - 2026-11-13
 
 - Changed: the host's containers are ONE compose stack, `starci`, defined in one folder: `ops/host/stack/` holds `sonar.yaml` (was `ops/host/sonar/compose.yaml`), `tunnel.yaml` (was `ops/host/sonar/cloudflared.yaml`), `registry.yaml` and `registry.config.yaml` (were `ops/host/registry/`). Every service of it in ops/host.yaml carries `stack: starci` (a new optional key of a service).
