@@ -16,7 +16,7 @@ import { findStackDeclaration } from '../../lib/stack-declaration.mjs';
 import { found, readJson, readText } from './read.mjs';
 import type { Finding, Parsed, Repo } from './rule-types.mjs';
 
-// The closed lists are owned by `@starci/common` data/words.ts (DATA_PURPOSES, DRIVER_KINDS); @starci/hfs does not depend on it, so they are copied.
+// The closed lists are owned by `@starci/seed` src/words.ts (DATA_PURPOSES, DRIVER_KINDS); @starci/hfs does not depend on it, so they are copied.
 /** The purposes of a data set. */
 export const DATA_PURPOSES: readonly string[] = ['seed-standard', 'seed-backup'];
 /** The drivers a copy may be written through. */

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
-import { isDomainError } from "../error.ts"
+import { isDomainError } from "@starci/common"
 import { DataRefusal, holdingFor } from "./driver.ts"
 import type { DataManifest, DataSetSummary } from "./manifest.ts"
 

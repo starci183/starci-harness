@@ -1,4 +1,4 @@
-import { isDomainError } from "../error.ts"
+import { isDomainError } from "@starci/common"
 import type { CopyReceipt, CopyRef, CopyVerdict, DriverAdapter, ExportSource, WriteContext } from "./driver.ts"
 import { DataRefusal } from "./driver.ts"
 import type { DataEntry, DataManifest, ManifestHeader, Selection } from "./manifest.ts"

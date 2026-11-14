@@ -25,8 +25,8 @@ import { isSopsEnvelope } from '../../lib/sops-envelope.mjs';
 import { found } from './read.mjs';
 import type { Finding, Parsed, Repo } from './rule-types.mjs';
 
-// The limits below are owned by `@starci/common` data/words.ts (GIT_CAP_BYTES, GIT_SHARD_BYTES); @starci/hfs does not depend on
-// @starci/common, so the numbers are copied, and a spec pins them to the law (4 MiB per file, 500 MiB per snapshot).
+// The limits below are owned by `@starci/seed` src/words.ts (GIT_CAP_BYTES, GIT_SHARD_BYTES); @starci/hfs does not depend on
+// @starci/seed, so the numbers are copied, and a spec pins them to the law (4 MiB per file, 500 MiB per snapshot).
 /** The whole snapshot one git copy may hold: 500 MiB. */
 export const GIT_CAP_BYTES = 524_288_000;
 /** The largest data file of a git copy: 4 MiB. */

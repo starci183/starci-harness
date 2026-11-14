@@ -37,8 +37,8 @@ against:
   components it runs, its runbook and its secrets. A component absent from an environment's map does not run there.
 - `secrets`: per environment, each member's `name`, `where` (environment-relative), `recipientPolicy` and
   `keyCustody`; names only, never a value.
-- `data`: the project's data repository, `{repository: <project>-data, private: true}`, when it keeps business data in git
-  (PROJECT-STACKS-13; R400 `STACKS_DATA_REPOSITORY`).
+- `data`: the stores that must be kept, the stateful components that are rebuilt instead, and the data sets copied from them,
+  each a `seed-standard` or a `seed-backup` with its destinations (PROJECT-STACKS-13, PROJECT-STACKS-14; R426, R427).
 - `ci` and `services`: the names CI reads and the delivery services it calls (PROJECT-STACKS-7, PROJECT-STACKS-8).
 - `branches`: the branch profile of each branch that lowers a polish gate, `dev` only ([lint.md](lint.md) PROJECT-LINT-2).
 - remote application APIs the app consumes, each with its owner (PROJECT-STACKS-9).
@@ -450,7 +450,7 @@ The data an app seeds lives in two levels of `.starcistacks/`, tracked, one stru
 - `.starcistacks/seeds/`, the shared level, applied in every environment and first: plans, the first-party catalogue, module definitions.
 - `.starcistacks/<env>/seeds/`, applied in that environment only, after the shared level: synthetic accounts, sample workspaces and demo
   data in the dev environment, a production's initial configuration in its own; the business's own records never, they live in the data
-  repository (PROJECT-STACKS-13). `<env>` is an environment name `application-stacks.yaml` declares,
+  copies (PROJECT-STACKS-13). `<env>` is an environment name `application-stacks.yaml` declares,
   exactly as declared; `seeds` and `cache` are no environment names.
 
 Each level is a manifest, `seeds.yaml` (schema `starci/seeds@1`), and the folders `sql/`, `data/` and `files/`. The manifest lists every file
@@ -506,51 +506,127 @@ Enforced by: R375 (`seeds-shape`: `HFS_SEEDS_SHAPE`, `HFS_SEED_MANIFEST`, `HFS_S
 migrations, the archive and the bootstrap); the scaffold and the codemod by `hfs-seeds-shape.spec.mts` and `seeds-layout-codemod.spec.mts`,
 the seed step by `stack-seeds.spec.mts` and `stack-local.spec.mts`.
 
-## PROJECT-STACKS-13 Business data lives only in the project's sealed data repository
+## PROJECT-STACKS-13 Data lives in seed copies: a standard is how a thing is born, a backup is what it became
 
-A project's real business data (its customers, contracts, invoices, balances: the records the business runs on, as opposed to code,
-seeds and secrets) is kept in git only in one repository of its own, the **data repository**, named exactly `<project>-data` for the
-project `hfs.json` names, and private. It holds:
+A project keeps data outside its code in **seed copies**, of exactly two kinds, which share one model (PROJECT-STACKS-14), one layout
+and one driver and differ only in who writes them, when they are read and their name:
 
-- `manifest.json` at its root, plaintext and holding no data: `format: "<project>-data@<major>"`, the snapshot's time and source, and
-  per data file its `path`, `entity`, `schema` id, `items` count and the `sha256` of its canonical plaintext;
-- `data/<entity>.json`, the records of one entity in a versioned interchange format (`schema: "<project>-data/<entity>@<major>"`,
-  `items` sorted and unique by natural key, no database or workspace id), each file sealed whole with sops and age: keys and structure
-  readable, every value `ENC[...]`, the sops block with its recipients and mac;
-- `schema/`, the JSON Schema of each entity, and the description of the format;
-- `.sops.yaml`, naming the recipients every data file is sealed to: the owner's identity (PROJECT-STACKS-5) and any identity that must
-  restore;
-- the repository's own tools to export, verify, seal, back up and restore, and nothing else: no binary (a document's file stays where the
-  business keeps it; the snapshot holds its index), no application code, no plaintext, no private key.
+| kind | what it is | written by | read by | sealed | repository |
+|---|---|---|---|---|---|
+| `seed-standard` | how an environment is born: curated reference and foundation data | a person (reviewed, committed, pinned by commit) | the bring-up's seed step, ONCE (PROJECT-STACKS-12 receipts) | never: plain, readable, diffable | `<name>-seed-standard` |
+| `seed-backup` | the snapshot of what one environment has become | only that environment's scheduled backup job | only an explicit sync into the SAME environment; never a bring-up | always, to that environment's recipients | `<name>-seed-backup-<env>` |
 
-**Backup is a push.** A backup exports the records to a directory outside every repository, verifies the export, seals it, commits the
-sealed files with the manifest, and pushes the data repository: the push is the backup. An unchanged entity file stays byte-identical,
-so a backup with no change commits nothing. **Restore** verifies the sealed snapshot with the identity (every file against its schema and
-the manifest's counts and sha256), decrypts it to a directory outside every repository, and hands that directory to the application's own
-import, which is idempotent by natural key. This snapshot is not the database backup of PROJECT-STACKS-6, which an environment keeps for
-its stores; seed levels (PROJECT-STACKS-12) hold reference, configuration and synthetic data, never these records.
+**The naming law.** A copy repository is `<name>-seed-standard` or `<name>-seed-backup-<env>`, private, where `<name>` is the
+project `hfs.json` names or a name the project's own extension defines, and `<env>` an environment `application-stacks.yaml` declares.
+The suffix states the kind and the manifest's `purpose` agrees with it. One environment's backup is one repository: its readers are the
+holders of that environment's identity, a host of another environment never clones it, and the cap is per environment.
 
-**Code and data stay apart.** A code project tracks no document of the format, in plaintext or sealed, and never depends on the data
-repository's content: no package dependency or workspace, submodule or path into it. A project that has one declares it in
-`application-stacks.yaml`: `data: {repository: <project>-data, private: true}`. `.starcistacks/<env>/secrets/` keeps holding the
-project's secrets (PROJECT-STACKS-5); the data repository holds records, never a credential.
+**A standard is loaded once and keeps relations.** The seed step applies a `seed-standard` the first time an environment is brought up
+and records a receipt (data set, pinned commit, manifest digest, time) in `public.starci_seed_receipts`; every later bring-up skips the
+set whole. A changed pin is reported (`DATA_STANDARD_CHANGED`) and never applied by itself. Only `force: true`, declared on that data set
+in `application-stacks.yaml` and nowhere else (no CLI flag, no variable), re-seeds, once per pinned commit (the receipt records the
+forced commit, so the same stack text never re-seeds twice). A re-seed is an upsert by natural key: a row keeps its identity and is
+updated in place, never deleted and re-created; a thing the standard no longer names is reported and left; data the standard does
+not carry is never overwritten. A project-level standard holds no secret at all: its layout has no sealed file and no place for a
+credential; the project's secrets stay in its stack custody (PROJECT-STACKS-5).
 
-A repository is a data repository when its root carries no `hfs.json` and its root `manifest.json` names the format: the manifest the
-restore reads is the declaration, so no second file states the same fact, and a code project (`hfs.json`) is never one, whatever it tracks.
-The harness proves the sealing and the manifest's shape and counts; the sha256 and the schemas need the identity, so they are the data
-repository's own verify, and its pre-commit hook runs `starci app check --staged` beside its own.
+**A backup is per environment, sealed, and comes back only by a sync.** Each environment that declares a `seed-backup` has its own
+scheduled job on the outbox + job frame of the back end (a tick enqueues one job per due set and slot, BE-JOBS-6, BE-JOBS-9) that
+exports the stores once, skips when the manifest digest equals the newest copy's (no change, no commit), and writes the one export to
+every destination; a configuration refusal (a copy past its cap) dead-letters with one item for a person, and a failed destination
+leaves the others written and raises one item (BE-JOBS-7). A verify job restores the newest copy into an isolated scratch store and
+compares digests. A sync is the only act that seeds from a backup: it names the snapshot, runs dry first, refuses a snapshot of another
+environment (`DATA_SYNC_OTHER_ENVIRONMENT`), and refuses a non-empty target without a verified backup of that target younger than the
+declared age (the reset rule of PROJECT-STACKS-6). Turning a backup into a standard is a person's review in a standard's checkout,
+never a command. A secret a store keeps sealed by the app's own key travels still sealed, so a backup restores only where that key is
+held; a sync that finds another key refuses with a typed reason instead of re-sealing by guess.
 
-Why: the records outlive any one code base and are read by people the code never meets; in the code repository every clone, agent
-worktree, CI cache and fork would carry them, while a separate private repository sealed to named identities keeps one custody, a history of
-every snapshot, and a backup that is one push to a remote outside the host's failure domain.
+**What a copy repository holds** (the `git` driver, `@starci/seed/git`): `manifest.json` (schema `starci/data-manifest@1`:
+the sets with counts and digests, the file index, the shard widths, the sealing and its public recipients; no value), record shards
+`data/<store>/<set>/<shard>.json`, object chunks `blobs/<store>/<set>/<aa>/<id>[.<n>].bin` and `index/<store>/<set>.json`. In a
+backup every one of them is a sops envelope (`*.sops.json`, binary mode, age) to the environment's recipients; in a standard none is.
+Binaries are allowed only as these chunk entries, never as a loose file. No file exceeds 4 MiB (GitHub warns over 50 MiB and blocks
+over 100 MiB); the whole snapshot (the data files of the working tree, history not counted) is at most 500 MiB, warned past 400 MiB;
+past the cap the driver refuses (`DATA_GIT_CAP_EXCEEDED`): the data set has outgrown git and needs the `s3` driver. Git keeps each
+changed sealed file whole in its history (sealed bytes do not delta); when a backup repository's pack passes 2 GiB its owner re-roots the
+branch. No application code, no plaintext export, no private key.
 
-Enforced by: R400 (`data-repository`, owner `@starci/hfs` `runtime/scripts/hfs/rules/data-repository.mts`): in the hfs check of a code
-project `HFS_DATA_IN_CODE`, `HFS_DATA_DEPENDENCY`, `STACKS_DATA_REPOSITORY`; in the commit hook's data guard (`sync/hygiene.mts`)
-`HFS_DATA_IN_CODE` in any repository but a data repository, and in a data repository `HFS_DATA_UNSEALED` and `HFS_DATA_MANIFEST_DRIFT`.
-That the remote is private and that the data repository's hook calls the guard are held by review.
+**Code and copies stay apart.** A code project tracks no copy document (a data manifest or a shard) and never depends on a copy
+repository (no package dependency, workspace, submodule or path into one).
+
+**A project may define a stricter kind on top.** A data set may declare `completeness: ext:<check id>`, naming a check of the project's
+`ext/manifest.json` (PROJECT-LINT-3): the project's own document and layout then live in that repository (for instance plain data plus
+one sealed credential file per environment), the harness judges the declaration (name, pin, purpose, the once-and-force rule) and the
+project reads the repository through `pinRepository` of `@starci/seed/git`, while the project's check judges what makes the
+copy complete.
+
+A repository written in the earlier `<project>-data@<major>` format (an entity file per record type, sealed value by value) is a
+`seed-backup` in that format: its owner re-exports it through the driver into `<project>-seed-backup-<env>` and retires it; it is not
+renamed in place.
+
+Why: one model for every copy lets the harness prove sealing, size, pins and receipts the same way for every project, while a standard
+stays readable for review and a backup stays unreadable to every environment but its own.
+
+Known gap: the CLI surface (`starci app data sync|backup|verify|status`) is not built; a project syncs through its own command over its
+store adapters until it is, and the checkers read declarations and copy repositories, not a sync's run.
+
+Enforced by: R400 (`data-copies`: in a code project `HFS_DATA_IN_CODE`, `HFS_DATA_DEPENDENCY`; in a copy repository's commit hook
+`HFS_DATA_UNSEALED`, `HFS_DATA_STANDARD_SEALED`, `HFS_DATA_MANIFEST_DRIFT`, `HFS_DATA_FILE_SIZE`, `HFS_DATA_CAP`); R427 (the data sets).
+
+## PROJECT-STACKS-14 Every store that must be kept has an adapter; every copy is written through a driver
+
+The model is two closed lists of adapters behind one interface each, owned by `@starci/seed` (every project pins
+`@starci/seed`):
+
+- a **store adapter** (`StoreAdapter`) for each thing that must be seeded or backed up, of kind `database` (the relational database)
+  or `storage` (the object store, binaries included): it describes its sets and what it cannot do, EXPORTS a deterministic stream of
+  entries (set, natural key, body, sha256) in key order, IMPORTS entries as an upsert by natural key that keeps each row's identity
+  (`identityOf`), and passes `storeContract` of `@starci/seed/testing` on its fakes;
+- a **driver adapter** (`DriverAdapter`) for each place a copy is kept, of kind `git` (now) or `s3` (when a set outgrows git): it
+  plans what it holds of an export (a subset names each omitted set), writes, lists, reads and verifies, and passes `driverContract`.
+
+One export goes to every destination of its data set (`writeEverywhere`: each destination an isolated leg, outcome complete, partial
+or failed); copies are compared by their manifests (`compareCopies`) and a restore takes the newest healthy one (`chooseCopy`). A new
+store kind or driver is a harness change (the type, this rule and R426/R427 together).
+
+A stateful component that is rebuilt from a store (a queue or cache store rebuilt from the database's outbox, a vector index rebuilt by
+its reconcile) is declared **derived** with its source and how it is rebuilt, never copied: a copied queue restored beside a restored
+database redelivers work that already happened.
+
+The declaration, in `application-stacks.yaml` (the smallest example: a project with a database and an object store, no extension):
+
+```yaml
+data:
+  stores:
+    - {id: database, kind: database, level: logical, component: db, adapter: {module: be/src/modules/platform/data-stores/database.store.ts}}
+    - {id: storage, kind: storage, level: logical, component: minio, adapter: {module: be/src/modules/platform/data-stores/storage.store.ts}}
+  derived:
+    - {component: redis, from: database, rebuild: the relay republishes the outbox}
+  sets:
+    - id: shop-standard
+      purpose: seed-standard
+      stores: [database]
+      environments: [dev, production]
+      to: [{driver: git, repository: https://github.com/example/shop-seed-standard}]
+      commit: 0123456789abcdef0123456789abcdef01234567
+    - id: shop-backup
+      purpose: seed-backup
+      stores: [database, storage]
+      environments: [dev, production]
+      everyMinutes: 1440
+      to: [{driver: git, repository: https://github.com/example/shop-seed-backup-{env}}]
+```
+
+`commit` and `force` belong to a `seed-standard` only, `everyMinutes` to a `seed-backup` only; `{env}` in a backup's repository is
+replaced by each environment, and the result ends `-seed-backup-<env>`. A store's adapter `module` is the source file of the class that
+implements `StoreAdapter`.
+
+Enforced by: R426 (`data-stores`: `DATA_STORE_UNDECLARED`, `DATA_STORE_KIND`, `DATA_STORE_ADAPTER`, `DATA_DERIVED_SOURCE`) and R427
+(`data-sets`: `DATA_PURPOSE`, `DATA_DRIVER_KIND`, `DATA_COPY_NAME`, `DATA_SEED_UNPINNED`, `DATA_FORCE_MISPLACED`, `DATA_BACKUP_LOADED`,
+`DATA_EXTENSION_UNDECLARED`); the ports and the git driver by the specs of `@starci/seed`.
 
 ## Read with
 
 [lite.md](lite.md), [full.md](full.md); slots `app.starcistacks` and `app.plaintext-env` in
 [hfs/slots.yaml](../hfs/slots.yaml); R06, R10, R250 to R253, R266 to R268, R271, R275 to R277, R294, R296 to R299,
-R301, R372 to R375, R400 in [hfs/rules.yaml](../hfs/rules.yaml).
+R301, R372 to R375, R400, R426, R427 in [hfs/rules.yaml](../hfs/rules.yaml).

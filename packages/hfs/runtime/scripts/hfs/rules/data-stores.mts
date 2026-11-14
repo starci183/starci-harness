@@ -15,7 +15,7 @@ import { found, readText } from './read.mjs';
 import { statefulComponentsOf } from './stateful-components.mjs';
 import type { Finding, Parsed, Repo } from './rule-types.mjs';
 
-// The closed lists are owned by `@starci/common` data/words.ts (STORE_KINDS); @starci/hfs does not depend on it, so they are copied.
+// The closed lists are owned by `@starci/seed` src/words.ts (STORE_KINDS); @starci/hfs does not depend on it, so they are copied.
 /** The store kinds. */
 export const STORE_KINDS: readonly string[] = ['database', 'storage'];
 /** The store levels. */

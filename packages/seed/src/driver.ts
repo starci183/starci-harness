@@ -1,5 +1,5 @@
-import { DomainError } from "../error.ts"
-import type { ErrorParams } from "../error.ts"
+import { DomainError } from "@starci/common"
+import type { ErrorParams } from "@starci/common"
 import type { DataEntry, DataManifest, DataSetSummary, Selection } from "./manifest.ts"
 import type { DriverKind, EntryForm } from "./words.ts"
 

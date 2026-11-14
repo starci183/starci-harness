@@ -31,15 +31,3 @@ throw new OrdersError({ code: OrdersErrorCode.NotShippable, params: { id }, caus
 An app imports it through `@modules/platform/errors`, which re-exports it; a package imports it from `@starci/common` and keeps its own class name, its codes and its extra fields (`kind`, `context`, `detail`).
 
 Not here: anything that names a framework (the Nest module helpers stay in `@starci/nest-kit`), React (the Grammar and `next-*` packages), a product, or a shape the packages disagree on (the `Outcome` of `@starci/auth` carries a `detail`, this one `params`).
-
-## Data ports (`@starci/common/data`)
-
-The `./data` subpath holds the ports of the data standard: what an app or a harness job needs to keep a project's data in more than one place, with no runtime dependency and no knowledge of any database, git or S3 client.
-
-- `StoreAdapter` is a thing that must be kept (a database, a storage bucket). It describes its sets, exports entries in (set, key) byte order, imports them by natural key (idempotent, relations kept, `merge` or `mirror`, dry run) and answers `identityOf`. `commandStore` and `serveStore` carry one over the line protocol `starci/data-entries@1` through an app's own command.
-- `DriverAdapter` is where a copy is kept (git, s3). It plans what it will hold, writes one export (an export it already holds changes nothing), lists, reads and verifies copies, and refuses with `DataRefusal` (a code and a retry class, `configuration` or `transient`).
-- An export is `DataEntry` values (a canonical-JSON record or opaque blob, each with its sha256) summarised by a `DataManifest`; `ManifestBuilder` builds it and `exportDigest` is the identity two copies are compared on.
-- `exportOnce`, `writeEverywhere`, `compareCopies`, `chooseCopy` and `restoreFrom` run the one-export-to-several-copies flow; each leg is isolated, so a failing driver never stops another.
-- `@starci/common/data/testing` holds `memoryStore`, `memoryDriver` and `memorySpool` as references, and the contract suites `storeContract` and `driverContract`: a real adapter runs them against its fakes (each case throws when a promise is broken, in any test runner).
-
-`src/data/**/*.spec.ts` hold the package's own specs, and the package's `npm test` requires 100% line, branch and function coverage over them.

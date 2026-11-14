@@ -35,6 +35,7 @@ updates:
       - /packages/next-i18n
       - /packages/object-storage
       - /packages/prettier-config
+      - /packages/seed
       - /packages/stylelint-canon
       - /packages/test-world
       - /packages/tsconfig
