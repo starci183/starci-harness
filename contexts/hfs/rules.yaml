@@ -1244,7 +1244,7 @@ rules:
       - {kind: eslint-be, id: job-fence-required}
   - id: R159
     code: BE_JOB_EFFECT_PIECE
-    law: "In a job step, and in a function that takes a `ClaimedJob`, every call on an integration port that its port does not declare an outside read (`OutsideReads<'member'>` of `platform/effects`, extended by an interface or implemented by a class) is the `act` or the `confirm` read of an `Effects.once` call of `platform/effects`, which commits the intent row before the act and the result after; a declared read needs no intent, an undeclared member is an act."
+    law: "In a job step, and in a function that takes a `ClaimedJob`, every call on an integration port that its port does not declare an outside read (`OutsideReads<'member'>` of `platform/effects`, extended by the port's interface, by an interface merged with a client class, or held by the contract a class implements) is the `act` or the `confirm` read of an `Effects.once` call of `platform/effects`, which commits the intent row before the act and the result after; a declared read needs no intent, an undeclared member is an act."
     failureCodes:
       - BE_JOB_EFFECT_PIECE
     enforcers:

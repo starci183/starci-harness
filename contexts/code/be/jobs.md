@@ -46,7 +46,9 @@ outside WRITE.
 
 An outside READ (a page of an index, the rows a source holds, whether a client is configured) needs no intent: repeating it harms
 nothing, so there is nothing to protect. The port DECLARES its reads, never the caller and never a method's name: its contract
-extends `OutsideReads<"member" | ...>` of `platform/effects` (an interface), or implements it (a class). A member the port does not
+extends `OutsideReads<"member" | ...>` of `platform/effects`; a client class with no contract merges an interface of its own name
+that extends it (TypeScript refuses a class that only implements the phantom member), and a class that implements a port contract
+holds the contract's declaration. A member the port does not
 declare is an act, so a forgotten declaration only makes the check stricter. A member that creates or changes anything outside, even
 when it is safe to repeat (preparing a collection), is an act and goes through the piece as `repeatable`. A read that decides an act
 does not excuse the act: the act still goes through the piece.

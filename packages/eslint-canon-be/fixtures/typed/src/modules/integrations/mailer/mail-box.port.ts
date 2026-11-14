@@ -7,8 +7,18 @@ export interface MailBox extends OutsideReads<"status" | "list"> {
     send(to: string): Promise<void>
 }
 
-/** Fixture: a client class that declares its read by implementing the marker. */
-export declare class MailReader implements OutsideReads<"status"> {
+/** Fixture: a client class that implements a port contract which declares the reads: the contract's declaration counts. */
+export declare class MailReader implements MailBox {
+    status(id: string): Promise<string>
+    list(): Promise<ReadonlyArray<string>>
+    send(to: string): Promise<void>
+}
+
+/** Fixture: a client class with no contract declares its reads through an interface of its own name merged with it. */
+export interface MailClient extends OutsideReads<"status"> {}
+
+/** Fixture: the client class the merged interface declares the reads of. */
+export declare class MailClient {
     status(id: string): Promise<string>
     send(to: string): Promise<void>
 }

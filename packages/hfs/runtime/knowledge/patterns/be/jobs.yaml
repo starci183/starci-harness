@@ -90,8 +90,8 @@ rules:
       it with the result after, under the key `<jobId>:<effect>[:<part>]` (the same on every retry and resume, never the fencing
       token). An unknown outcome is settled as the effect declares in its `defineJob`: `repeatable`, `confirm` (a declared read) or
       `person` (a dead letter). A large answer is settled by the domain write that stores it (`settleIn(tx)`), a secret result is
-      sealed by the piece. An outside READ needs no intent: the port declares its reads by extending (an interface) or
-      implementing (a class) `OutsideReads<"member" | ...>` of `platform/effects`; an undeclared member is an act, and a member that
+      sealed by the piece. An outside READ needs no intent: the port's interface declares its reads by extending
+      `OutsideReads<"member" | ...>` of `platform/effects` (a client class with no contract: an interface of its own name merged with it); an undeclared member is an act, and a member that
       creates or changes anything outside, even safely repeatable, is an act (`repeatable`).
     rationale: |-
       Fencing the local row does not fence the remote effect. A row written before the act turns "did it happen?" after a crash

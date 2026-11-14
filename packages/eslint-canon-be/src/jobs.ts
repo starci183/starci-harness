@@ -232,8 +232,8 @@ const isOutsideReadsMarker = (hfs: HfsView, property: ts.Symbol): boolean =>
     })
 
 /**
- * The members a port declares as outside READS: the string literals of the `OutsideReads` its type extends (an interface) or
- * implements (a class). A member the port does not declare is an act, so a forgotten declaration only makes the rule stricter.
+ * The members a port declares as outside READS: the string literals of the `OutsideReads` its type extends (the port's interface, or an
+ * interface merged with a client class) or that the contract a class implements extends. A member the port does not declare is an act, so a forgotten declaration only makes the rule stricter.
  */
 const declaredReads = (hfs: HfsView, checker: ts.TypeChecker, type: ts.Type): ReadonlySet<string> => {
     const reads = new Set<string>()
@@ -268,7 +268,7 @@ export const jobEffectPiece: RuleModule = {
         docs: { description: "In a job step, and in a function that takes a `ClaimedJob`, every call on an integration port that its port does not declare an outside read (`OutsideReads` of `platform/effects`) is the `act` or the `confirm` read of an `Effects.once` call of `platform/effects`." },
         schema: [],
         messages: {
-            outside: "`{{call}}` is an outside call of a job made without the effects piece. An act outside the database (a provider call, a mail, a paid model call, a write to an index) goes through `Effects.once(key, effect, { act, confirm?, ... })` of `platform/effects`: its intent row is committed before the act and its result after, so a crash between them is settled as the effect declares (`repeatable`, `confirm` or `person`) and never acted twice blind. A member that only reads the outside world has no intent to protect: its port declares it in `OutsideReads<\"member\">` of `platform/effects` (an interface extends it, a class implements it); an undeclared member is an act.",
+            outside: "`{{call}}` is an outside call of a job made without the effects piece. An act outside the database (a provider call, a mail, a paid model call, a write to an index) goes through `Effects.once(key, effect, { act, confirm?, ... })` of `platform/effects`: its intent row is committed before the act and its result after, so a crash between them is settled as the effect declares (`repeatable`, `confirm` or `person`) and never acted twice blind. A member that only reads the outside world has no intent to protect: its port declares it in `OutsideReads<\"member\">` of `platform/effects` (the port's interface extends it; a client class with no contract merges an interface of its own name that extends it); an undeclared member is an act.",
         },
     },
     create(context) {
