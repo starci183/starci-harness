@@ -27,7 +27,7 @@ const STACK_FILE = '.starcistacks/application-stacks.yaml';
 const mapping = (value: unknown): Record<string, Parsed> => (plain(value) ? value as Record<string, Parsed> : {});
 const list = (value: unknown): Parsed[] => (Array.isArray(value) ? value : []);
 const present = (value: unknown): value is string => typeof value === 'string' && value.trim() !== '';
-const IMPLEMENTS = /\bimplements\b[^{]*\bStoreAdapter\b/u;
+const IMPLEMENTS = /\bimplements\b[^{]*\bStoreAdapter\b|\)\s*:\s*StoreAdapter\b/u;
 
 /** The component ids a stack declaration names: components and backing. */
 const declaredComponents = (doc: Parsed): Set<string> => new Set([...Object.keys(mapping(doc.components)), ...Object.keys(mapping(doc.backing))]);
@@ -66,7 +66,7 @@ export function dataStoreFindings(doc: Parsed, tracked: ReadonlySet<string>, sou
     const module = plain(store.adapter) ? store.adapter.module : undefined;
     if (!present(module) || !relative(module)) at('DATA_STORE_ADAPTER', where, 'adapter.module must name the app-relative source file of the class that implements StoreAdapter', { store: store.id });
     else if (!tracked.has(module)) at('DATA_STORE_ADAPTER', where, `adapter.module ${module} is no tracked source file`, { store: store.id, module });
-    else if (!IMPLEMENTS.test(source(module) ?? '')) at('DATA_STORE_ADAPTER', where, `adapter.module ${module} holds no class that implements StoreAdapter`, { store: store.id, module });
+    else if (!IMPLEMENTS.test(source(module) ?? '')) at('DATA_STORE_ADAPTER', where, `adapter.module ${module} holds no class that implements StoreAdapter and no factory whose declared return type is StoreAdapter`, { store: store.id, module });
     const command = plain(store.adapter) ? store.adapter.command : undefined;
     if (command !== undefined && !(Array.isArray(command) && command.length > 0 && command.every(present))) at('DATA_STORE_ADAPTER', where, 'adapter.command must be a non-empty argv of strings: the app command that serves the store over starci/data-entries@1', { store: store.id });
     else if (command === undefined && present(store.id) && backedUp.has(store.id)) at('DATA_STORE_ADAPTER', where, `the store ${store.id} belongs to a seed-backup set, so adapter.command must name the app command that serves it over starci/data-entries@1 (starci app data runs it)`, { store: store.id });

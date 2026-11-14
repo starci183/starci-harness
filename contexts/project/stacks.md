@@ -638,7 +638,7 @@ data:
 
 `commit` and `force` belong to a `seed-standard` only, `everyMinutes` and `maxAgeMinutes` to a `seed-backup` only; `{env}` in a backup's repository is
 replaced by each environment's label (its declared `environments.<env>.short`, else its name), and the result ends `-seed-backup-<env>`. A store's adapter `module` is the source file of the class that
-implements `StoreAdapter`; its `command` is the argv, from the app root, of the app's own command that serves the store with `serveStore` of `@starci/seed` over the line
+implements `StoreAdapter`, or of the factory whose declared return type is `StoreAdapter` (a package store such as `postgresStore`); its `command` is the argv, from the app root, of the app's own command that serves the store with `serveStore` of `@starci/seed` over the line
 protocol `starci/data-entries@1` (`describe`, `export <selection>`, `import <options>` with entry lines on stdin, `identity <set> <key>`), which `starci app data` runs; a store
 of a `seed-backup` set declares one.
 

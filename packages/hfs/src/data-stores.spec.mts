@@ -96,6 +96,8 @@ test('DATA_STORE_ADAPTER: the module is a tracked source file that implements St
   assert.match(bare[0]!.message, /holds no class that implements StoreAdapter/);
   const generic = dataStoreFindings(stack(), tracked, (file) => (file === DB ? 'export class DatabaseStore extends Base implements Other, StoreAdapter {\n}\n' : source(file)));
   assert.deepEqual(generic, [], 'negative control: a class with several interfaces still implements it');
+  const factory = dataStoreFindings(stack(), tracked, (file) => (file === DB ? 'export const databaseOf = (run: Runner): StoreAdapter =>\n    postgresStore({ id: "database", run })\n' : source(file)));
+  assert.deepEqual(factory, [], 'a factory whose declared return type is StoreAdapter builds the store (a package store such as postgresStore)');
 });
 
 test('DATA_STORE_ADAPTER: adapter.command is an argv, and a store of a seed-backup set must have one', () => {
