@@ -9,8 +9,8 @@ test("the closed vocabularies list their members in manifest order and are froze
     for (const list of [STORE_KINDS, DRIVER_KINDS, DATA_PURPOSES]) assert.ok(Object.isFrozen(list))
 })
 
-test("the git sizes are 100 MiB, 80 MiB and 4 MiB", () => {
-    assert.equal(GIT_CAP_BYTES, 100 * 1024 * 1024)
-    assert.equal(GIT_WARN_BYTES, 80 * 1024 * 1024)
+test("the git sizes are 500 MiB, 400 MiB (80%) and 4 MiB", () => {
+    assert.equal(GIT_CAP_BYTES, 500 * 1024 * 1024)
+    assert.equal(GIT_WARN_BYTES, 400 * 1024 * 1024)
     assert.equal(GIT_SHARD_BYTES, 4 * 1024 * 1024)
 })

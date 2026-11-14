@@ -138,10 +138,10 @@ test("a door that refuses a key is reported by code, writes nothing for it, and 
     assert.deepEqual(store.snapshot(), { s: { bad: 1, good: 3 } })
 })
 
-test("memoryDriver defaults to a git driver with the 100 MiB cap and the 80 MiB warning, holding records and blobs", () => {
+test("memoryDriver defaults to a git driver with the 500 MiB cap and the 400 MiB warning, holding records and blobs", () => {
     const driver = memoryDriver({ id: "git" })
     assert.equal(driver.kind, "git")
-    assert.deepEqual(driver.limits(), { forms: ["record", "blob"], maxFileBytes: null, maxCopyBytes: 104_857_600, warnCopyBytes: 83_886_080 })
+    assert.deepEqual(driver.limits(), { forms: ["record", "blob"], maxFileBytes: null, maxCopyBytes: 524_288_000, warnCopyBytes: 419_430_400 })
     assert.equal(memoryDriver({ id: "s3", kind: "s3", limits: { maxFileBytes: 10 } }).limits().maxFileBytes, 10)
     assert.equal(memoryDriver({ id: "s3", kind: "s3" }).kind, "s3")
 })
@@ -298,4 +298,16 @@ test("identityOf is null for a name the maps only inherit from Object.prototype"
     assert.equal(await store.identityOf("s", "toString"), null)
 })
 
-void test.todo("memoryStore: a natural key named like an Object.prototype member (constructor, toString) is read from the prototype by `content[entry.key]` (memory.ts, import), so the import counts it as held or throws instead of creating it")
+test("a natural key named like an Object.prototype member is created, held and compared like any other", async () => {
+    const store = memoryStore({ id: "db" })
+    const entries = [recordEntry("s", "constructor", 2), recordEntry("s", "toString", 3)]
+    const first = await store.import(from(entries), merge)
+    assert.deepEqual(first.sets.map((set) => [set.created, set.updated, set.unchanged]), [[2, 0, 0]])
+    assert.notEqual(await store.identityOf("s", "constructor"), null)
+    assert.notEqual(await store.identityOf("s", "toString"), null)
+    const second = await store.import(from(entries), merge)
+    assert.equal(second.outcome, "unchanged")
+    assert.deepEqual((await collect(store.export({}))).map((entry) => entry.key).sort(), ["constructor", "toString"])
+})
+
+void test.todo("memoryStore: a natural key named __proto__ is lost, because `content[entry.key] = value` assigns the prototype instead of an own key (memory.ts, import): a second import of the same entry answers applied, not unchanged")

@@ -136,4 +136,10 @@ test("a contract case that breaks says so with the contract broken prefix", asyn
     assert.ok(all.some((result) => result.error?.startsWith("contract broken: ") === true))
 })
 
-void test.todo("storeContract: a store that mirrors on a merge import is not caught, because the merge case imports entries.slice(0, 1) whose set holds one key, so a mirror removes nothing (contract.ts merge case)")
+test("a store that mirrors on a merge import fails the merge case", async () => {
+    const mirroring = (): Promise<StoreAdapter> => {
+        const store = memoryStore({ id: "db" })
+        return Promise.resolve({ ...store, import: (entries, options) => store.import(entries, { ...options, mode: "mirror" }) })
+    }
+    assert.ok(failing(await results(storeContract(fresh, mirroring))).includes("a merge leaves alone every key the entries do not name"))
+})
