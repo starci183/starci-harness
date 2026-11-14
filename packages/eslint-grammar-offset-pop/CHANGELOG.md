@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.39.2 - 2026-11-14
+
+- Changed: version stamp only, with the Grammar family 0.39.2 (cut with `@starci/hfs` 6.12.0); requires `@starci/eslint-grammar-core` 0.39.2. No rule changes.
+
 ## 0.39.1 - 2026-11-14
 
 - Changed: released with the Grammar family at 0.39.1 (FlowGraph steps: decision diamond, loop frame with exits, fallback road); peers `@starci/eslint-grammar-core` 0.39.1. No rule of this package changed.

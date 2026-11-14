@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.39.2 - 2026-11-14
+
+- Changed: version stamp only, with the Grammar family 0.39.2 (cut with `@starci/hfs` 6.12.0); the components are those of 0.39.1 below. No component changes.
+
 ## 0.39.1 - 2026-11-14 - FlowGraph steps: decision diamond, loop frame with exits, fallback road
 
 - A patch: new optional fields only, no lint rule of an `eslint-grammar-*` package, no prop or law id removed (contexts/grammars/contributing.md "Patch or minor"); the canon pins' `~0.39.0` admits it.

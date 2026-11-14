@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.39.2 - 2026-11-14
+
+- Changed: version stamp only, cut with `@starci/hfs` 6.12.0; requires `@starci/hfs` `~6.12.0` and `@starci/eslint-canon-fe` `~9.19.0`. No rule changes.
+
 ## 0.39.1 - 2026-11-14
 
 - Changed: released with the Grammar family at 0.39.1 (FlowGraph steps: decision diamond, loop frame with exits, fallback road). No rule of this package changed.

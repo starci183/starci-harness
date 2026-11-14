@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.19.0 - 2026-11-14
+
+- Changed: cut with `@starci/hfs` 6.12.0; requires `@starci/hfs` `~6.12.0`. No rule changes.
+
 ## 9.18.0 - 2026-11-13
 
 - Changed (PROJECT-LINT-3, breaking for an app that relied on the fixed layout): `starciFePackagesConfig` and `scopeToPackages(config, hfs)` know no folder of a root package. The front end's files are every `.tsx` file of a package and the slots the project declares `lint: "fe"` in `ext/manifest.json` `packages` (the package view's `packageLint`), each less the back-end slots declared before it; the fixed `src/workbench/**` and `src/public/**` subpaths and the `src/workbench/contract/**` exception are gone. Upgrade, per existing app: declare each such folder as a `lint: "fe"` slot, and a React-free contract inside one as a slot before it. Spec `src/packages-config.spec.ts`.

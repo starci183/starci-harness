@@ -8,7 +8,7 @@
 - Changed (R152, `outbox-write-tx`): a direct `QueueOutbox.write` outside a typed producer is judged like a producer call: only a domain service writes it, with the manager of its own transaction. Spec `src/event-bus.spec.ts`.
 - Changed (R185, R186, `realtime-read-only`, `realtime-topic-scope`): an SSE door may inject ONE stream read service (a class of the platform or domain tier whose public methods all answer an rxjs `Observable`) besides, or instead of, the `RealtimeHub`, and its call must pass the handler's principal (`serviceScope`); a second such service (`second`), a service that also writes, and a stream service in a gateway or a subscription door stay findings. `feature-thin` accepts the one-call door. Specs `src/realtime.spec.ts`, `src/feature-thin.spec.ts`.
 - Fixed (R83, `no-repository-class`): `effects` is a persistence capability, so a platform effects piece may hold the `EntityManager` (`settleIn(tx)`). Spec `src/service-deps.spec.ts`.
-- Changed: cut with `@starci/hfs` 6.11.0; requires `@starci/hfs` `~6.11.0`.
+- Changed: cut with `@starci/hfs` 6.12.0; requires `@starci/hfs` `~6.12.0`. Carries the 3.25.2 fix below.
 
 ## 3.25.2 - 2026-11-13
 
