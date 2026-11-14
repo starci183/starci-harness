@@ -24,16 +24,21 @@ is therefore legal without a re-export.
 
 Enforced by: `realtime-shape` (R184), `rest-door-needs-a-reason` (R278), `infra-import-owner` (R90).
 
-## BE-REALTIME-2 A door reads the hub and nothing else; the committing service publishes
+## BE-REALTIME-2 A door reads and nothing else; the committing service publishes
 
-A door injects only `@InjectRealtimeHub() private readonly hub: RealtimeHub` and returns
-`this.hub.stream(topic, { after: lastEventId })`. No manager, bus, queue or domain service, so a long-lived connection
-cannot write. It sends no snapshot: the client reads current state through a membership-checked query on every open.
+A door injects `@InjectRealtimeHub() private readonly hub: RealtimeHub` and returns `this.hub.stream(topic, { after: lastEventId })`.
+When a stream must begin with the current state (a late subscriber to a view of rows, BE-REALTIME-8), the door injects instead ONE
+stream read service, a class whose public methods only read and answer an `Observable`, and returns one call on it that passes the
+principal, the client's selector and `lastEventId`: the read (the membership check, the current state) happens in that service,
+which builds the principal-first topic (BE-REALTIME-3) and follows it through the hub, so the door stays one call. No manager, bus,
+queue or other domain service reaches a door, so a long-lived connection cannot write. A door that needs no first state sends no
+snapshot: the client reads current state through a membership-checked query on every open.
 The domain service that commits a change publishes the frames: on the Postgres hub inside its transaction (`within`),
 on Redis or memory after the transaction resolved.
 
-Why: a door that can only touch the hub cannot change business state, and a frame pushed before commit can announce a
-change that rolls back.
+Why: a door that can only touch the hub or one read service cannot change business state, and a frame pushed before commit can
+announce a change that rolls back. Putting the first-state read in one service keeps it the single place that checks membership and
+orders "current state, then live".
 
 Enforced by: `realtime-read-only` (R185), `feature-thin` (R203), `infra-import-owner` (R90).
 
@@ -41,7 +46,8 @@ Enforced by: `realtime-read-only` (R185), `feature-thin` (R203), `infra-import-o
 
 Every stream takes `@CurrentPrincipal()` and builds its topic with the owning domain's pure topic builder
 (`<name>.policy.ts`, exported by the capability, returning a typed `RealtimeTopic<Frame>`) from the principal's id plus
-any client selector inside that prefix. The publisher reads the current members and publishes one frame per member
+any client selector inside that prefix; a door that calls a stream read service passes it the principal, which builds the topic the
+same way. The publisher reads the current members and publishes one frame per member
 topic, so a non-member's stream stays silent. A stream is never `@Public`; the browser authenticates with its bearer
 token, never a token in the URL, and `Last-Event-ID` only resumes inside the caller's own topic.
 
@@ -95,3 +101,21 @@ lite). The door's spec covers its wiring with a hub double.
 Why: the door has no logic; the risk is delivery, isolation and leaks on a real connection.
 
 Enforced by: R155, R284.
+
+## BE-REALTIME-8 One generic door streams the progress of jobs, current state first
+
+The progress of a job chain (BE-JOBS-10) is served by ONE generic realtime door of the app, not one per job: it reads the rows through
+the stream read service of `platform/jobs` (BE-REALTIME-2) and returns that one call. The stream is for one chain root, a bounded set
+of roots, or the workspace, on one connection; its topic is principal-first and the service checks membership before anything is
+read (BE-REALTIME-3). A late or reconnecting subscriber first gets the current state of each job of the stream read from its row,
+including the next retry time, then the live frames, and `Last-Event-ID` resumes inside the caller's own topic (BE-REALTIME-5). The
+frames carry keys only. A domain method never publishes job progress to the hub: it reports through the `JobProgress` port of the
+frame (BE-JOBS-10).
+
+Why: a view of job rows must show the state a client missed before it shows what is new, and one door means one place for isolation,
+membership and replay.
+
+Enforced by: `realtime-read-only` (R185), `realtime-topic-scope` (R186), `job-progress-shape` (R404). Known gap: the rules judge
+that a door calls one stream read service with the principal; that the service checks membership before reading, and reads the
+current state before it follows the topic, is proven by the service's own specs and the realtime scenarios (BE-REALTIME-4).
+

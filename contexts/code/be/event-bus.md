@@ -45,8 +45,9 @@ A consumer is `transport/message/<event>.consumer.ts` implementing `EventConsume
 `handle(delivery)` dispatches one command forwarding `delivery.eventId` and `delivery.correlationId`. The service the command reaches
 claims the event first (BE-IDEMPOTENCY-1). A transient throw (`classifyFailure` of `@starci/nest-kit`, BE-RESILIENCE-2) schedules a
 retry with exponential backoff on `events.<service>.retry`; after the event's attempts, or at once for a failure a retry cannot fix
-(input, code or config, its class prefixed to the reason), the message goes to `events.<service>.dlq`, which an operator reads and requeues through `eventBus.deadLetters(event)`
-and `eventBus.requeue(id)` from a cli command; `eventBus.pendingRetries(event)` lets a failure-injection spec wait for a retry. The
+(input, code or config, its class prefixed to the reason), the message goes to `events.<service>.dlq`, which a person reads and requeues through `eventBus.deadLetters(event)`
+and `eventBus.requeue(id)` from a cli command or the app's stopped-work page, and which raises the same ONE item for a person as a job's
+dead letter (BE-JOBS-7, `FlowAlerts`); `eventBus.pendingRetries(event)` lets a failure-injection spec wait for a retry. The
 retry budget fits the consumer's side effects. Lite's consumer loop, dedupe key and dead letter are BE-EVENT-BUS-6.
 
 Why: delivery repeats and fails; a thin door keeps the decision in the domain and a dead letter keeps a poison message from blocking
@@ -80,8 +81,8 @@ Lite:
   archived; a transient throw leaves it to reappear when the timeout lapses; a failure a retry cannot fix (`classifyFailure` of
   `@starci/nest-kit`: input, code or config, the reason its class), a message read more than the consumer's `maxDeliveries`
   (default 5), or one with a malformed envelope or dedupe key, moves to `<queue>__dead` while the original is archived, and the move is
-  logged with the event and the consumer. An operator reads and replays it through `eventBus.deadLetters(queue, limit)` and
-  `eventBus.requeue(queue, id)`.
+  logged with the event and the consumer and raised as ONE item for a person (BE-JOBS-7). A person reads and replays it through
+  `eventBus.deadLetters(queue, limit)` and `eventBus.requeue(queue, id)`.
 - Delivery is unordered: two events of one aggregate may arrive in either order and either may repeat, so a reactor reads the
   current state it acts on instead of trusting the order of events.
 

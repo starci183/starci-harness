@@ -3037,7 +3037,7 @@ slots:
     coverage: none
     rules:
       - BE_JOB_SHAPE
-      - BE_JOB_RUN_KEY
+      - BE_JOB_EFFECT_PIECE
   - id: be.platform.jobs
     profiles:
       - be

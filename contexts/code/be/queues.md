@@ -10,19 +10,20 @@ declares `queue` in `sides.be.patterns` and Redis in `sides.be.backing`.
 ## BE-QUEUES-1 A queue is a typed producer that writes the outbox in the caller's transaction
 
 `modules/queues/<queue>/` holds `<queue>.contracts.ts` (the `<QUEUE>_QUEUE` name, a `<Queue>Job` enum of job names,
-one documented `<Job>Payload` interface per job carrying ids only, its `is<Job>Payload` guard and the dedupe key
-function), `<queue>.queue.ts`, `<queue>.decorators.ts` (`Inject<Queue>Queue`), module files and `index.ts`. The producer
+one documented `<Job>Payload` interface per job carrying ids only and its `is<Job>Payload` guard), `<queue>.jobs.ts` (the
+`defineJob` declaration of each job, whose once key is the dedupe key: BE-JOBS-9), `<queue>.queue.ts`, `<queue>.decorators.ts` (`Inject<Queue>Queue`), module files and `index.ts`. The producer
 class has one `enqueue<Job>(payload, tx: EntityManager)` per job, each a single `QueueOutbox.write(tx, queue, payload,
-{ job, dedupeKey })`. Only a domain service calls a producer, inside its transaction, with that transaction's manager.
+{ job, dedupeKey })`. Only a domain service calls a producer, inside its transaction, with that transaction's manager; a job enqueues its next job
+the same way, in the transaction that finishes it (BE-JOBS-9), and no other code writes the outbox.
 
 Why: the job row commits with the change that caused it, and the dedupe key makes the same request one job.
 
 ```ts
 /** Enqueues the run of a queued generation in the caller's transaction: the job exists exactly when its row does. */
 enqueueGenerate(payload: GeneratePayload, tx: EntityManager): Promise<void> {
-    return this.outbox.write(tx, AGENTS_QUEUE, payload, {
-        job: AgentsJob.Generate,
-        dedupeKey: agentsDedupeKey(AgentsJob.Generate, payload.generationId),
+    return this.outbox.write(tx, GENERATE_JOB.queue, payload, {
+        job: GENERATE_JOB.name,
+        dedupeKey: GENERATE_JOB.onceKey(payload),
     })
 }
 ```
@@ -33,9 +34,10 @@ Enforced by: `queue-producer-shape`, `outbox-write-tx` (R154, R152).
 
 Only `platform/queue` imports BullMQ or Redis for the queue. Its relay reads committed outbox rows and adds each job
 with the outbox id as job id, marking the row sent only after Redis confirmed the job durably, so a relay that crashes
-in between re-adds harmlessly. Attempts, backoff, retention and per-workspace limits are `queue.policy.ts`; a job that fails in a way a retry cannot
-fix, or runs out of attempts, is parked as `failed_awaiting_fix` and resumed on its own (BE-RESILIENCE-2), never kept as a dead
-letter. `QueueRedelivery` hands a resumed job back under its new delivery id. Redis runs with append-only persistence on a named
+in between re-adds harmlessly. The pause between a job's tries is its declared ladder (BE-JOBS-7); `queue.policy.ts` holds the broker's attempt ceiling above every
+ladder, retention and per-workspace limits. A job that fails in a way a retry cannot fix, or runs out of its ladder, is a dead
+letter, parked as `failed_awaiting_fix` and handed back by a new build, the bounded sweep or a person (BE-JOBS-7), never kept as a
+bare broker dead letter. `QueueRedelivery` hands a resumed job back under its new delivery id. Redis runs with append-only persistence on a named
 volume.
 
 Why: the relay is at least once; a deterministic job id makes it effectively once.

@@ -1193,7 +1193,7 @@ rules:
       - {kind: hfs, id: event-class-contract}
   - id: R152
     code: BE_OUTBOX_WRITE_TX
-    law: Only a domain service writes the outbox, passing the manager of its own transaction to the event bus or queue producer.
+    law: Only a domain service writes the outbox (an event publish, a queue producer call or a direct `QueueOutbox.write`), passing the manager of its own transaction, so a job starts, and enqueues its next job, only with the change that calls for it.
     failureCodes:
       - BE_OUTBOX_WRITE_TX
     enforcers:
@@ -1243,12 +1243,12 @@ rules:
     enforcers:
       - {kind: eslint-be, id: job-fence-required}
   - id: R159
-    code: BE_JOB_RUN_KEY
-    law: A job step passes a `RunKey` from `JobClaims.runKey` to every integration call and performs no read.
+    code: BE_JOB_EFFECT_PIECE
+    law: In a job step, and in a function that takes a `ClaimedJob`, every call on an integration port is the `act` or the `confirm` read of an `Effects.once` call of `platform/effects`, which commits the intent row before the act and the result after.
     failureCodes:
-      - BE_JOB_RUN_KEY
+      - BE_JOB_EFFECT_PIECE
     enforcers:
-      - {kind: eslint-be, id: job-run-key}
+      - {kind: eslint-be, id: job-effect-piece}
   - id: R160
     code: BE_JOB_SHAPE
     law: Job processors and steps exist only in their job folder, a processor extending `FencedProcessor` and a step implementing `JobStep`.
@@ -1315,7 +1315,7 @@ rules:
       - {kind: eslint-be, id: service-isolation}
   - id: R169
     code: BE_SAGA_STEP_COMPENSATION
-    law: A declared saga is one folder whose orchestrator imports every step and its same-named compensation.
+    law: A declared saga is one folder whose orchestrator imports every step and every compensation; a compensation (the optional declared undo, pressed by a person and run as a forward step) has the step of the same name, and a step needs none.
     failureCodes:
       - BE_SAGA_STEP_COMPENSATION
     enforcers:
@@ -1429,14 +1429,14 @@ rules:
       - {kind: eslint-be, id: realtime-shape}
   - id: R185
     code: BE_REALTIME_WRITES
-    law: A realtime door only reads and pushes; its one injected dependency is the `RealtimeHub` of `platform/realtime`.
+    law: A realtime door only reads and pushes; it injects the `RealtimeHub` of `platform/realtime` and, in an SSE door, at most one stream read service whose public methods only answer an `Observable`.
     failureCodes:
       - BE_REALTIME_WRITES
     enforcers:
       - {kind: eslint-be, id: realtime-read-only}
   - id: R186
     code: BE_REALTIME_TOPIC_SCOPE
-    law: A realtime handler subscribes only to topics built from its `@CurrentPrincipal()`.
+    law: A realtime handler subscribes only to topics built from its `@CurrentPrincipal()`, and a call to a stream read service passes that principal.
     failureCodes:
       - BE_REALTIME_TOPIC_SCOPE
     enforcers:
@@ -2584,7 +2584,7 @@ rules:
       - {kind: hfs, id: boot-logger}
   - id: R377
     code: BE_FLOW_FAILURE_SWALLOWED
-    law: "Every job and saga flow runs itself again after a failure of any kind: a processor, a job step, a saga step or compensation and a message consumer never catch a failure without rethrowing or parking it, and no back-end source sets BullMQ's `removeOnFail` to delete failed jobs (`true`, a bare count, an unreadable value), while a bounded retention of the broker copy (an object literal naming `age` or `count`), `false` and a type member that only declares the option are accepted, the parked row being the durable failure; the runner classifies the failure (`classifyFailure`), retries a transient one and parks any other as `failed_awaiting_fix` with one alert until a resume, so no flow ends as a silent dead letter."
+    law: "Every job and saga flow runs itself again after a failure of any kind: a processor, a job step, a saga step or compensation, a message consumer and a domain method that takes a `ClaimedJob` never catch a failure without rethrowing or parking it (feature and domain code never catches to wait, loop, retry, count or swallow), and no back-end source sets BullMQ's `removeOnFail` to delete failed jobs (`true`, a bare count, an unreadable value), while a bounded retention of the broker copy (an object literal naming `age` or `count`), `false` and a type member that only declares the option are accepted, the parked row being the durable failure; the runner classifies the failure (`classifyFailure`), retries a transient one on the flow's declared ladder and ends any other as a dead letter, parked `failed_awaiting_fix` with one item for a person per park episode until a resume, so no flow ends silently."
     failureCodes:
       - BE_FLOW_FAILURE_SWALLOWED
     enforcers:
@@ -2721,7 +2721,7 @@ rules:
       - {kind: hfs, id: saga-holding-line, status: planned}
   - id: R392
     code: BE_SAGA_INTERACTIVE_RESUME_LADDER
-    law: "A parked run whose trigger is a customer message resumes on a short bounded ladder declared beside the run (about 1, 5 and 30 minutes, then it stays parked with its alert) and on the first boot of a new build, instead of waiting for the 15-minute sweep and its 30-minute floor; a batch run keeps the plain sweep."
+    law: "A flow a customer waits on declares the `waited` ladder (1, 2, 4 and 8 minutes) in the declaration of its jobs and every other flow `background`, each class declared once by the jobs platform; after the last rung the run is a dead letter with one item for a person, and a new build hands it back at once."
     failureCodes:
       - BE_SAGA_INTERACTIVE_RESUME_LADDER
     enforcers:
@@ -2818,3 +2818,17 @@ rules:
       - HFS_PROJECT_CHECK_FAILED
     enforcers:
       - {kind: hfs, id: project-checks}
+  - id: R403
+    code: BE_JOB_NEXT_DECLARED
+    law: "In a `defineJob` declaration `next` is an array literal of statically readable job names, each the name of a job a `defineJob` of the program declares; the queue platform refuses, at run time, an enqueue of a job the running job's `next` does not list (Known gap: the call site is judged by that refusal, review and the chain's specs)."
+    failureCodes:
+      - BE_JOB_NEXT_DECLARED
+    enforcers:
+      - {kind: eslint-be, id: job-next-declared}
+  - id: R404
+    code: BE_JOB_PROGRESS_SHAPE
+    law: "A `defineJob` `progress.topic` is a function whose declared return type is `JobProgressTopic` of `platform/jobs` (the principal first, then the chain root), and a function that takes a `ClaimedJob` never calls the `RealtimeHub`: it reports step progress through `JobProgress`, which the jobs frame stores on the row and publishes."
+    failureCodes:
+      - BE_JOB_PROGRESS_SHAPE
+    enforcers:
+      - {kind: eslint-be, id: job-progress-shape}

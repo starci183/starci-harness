@@ -3,21 +3,25 @@ slots: [be.feature.saga, be.feature.saga.steps, be.feature.saga.compensations]
 ---
 # Sagas
 
-Decides how a flow that spans contexts or services and must be undone when a later step fails is written: a saga feature folder
-whose orchestrator pairs every step with its compensation, a versioned and fenced run state in `platform/saga`, consumers that
-advance it through the inbox, and events declared in the vendored contracts. A saga folder is legal only when `sides.be.patterns`
+Decides how a flow that spans contexts or services is written when it declares an undo of its steps: a saga feature folder whose
+orchestrator lists the steps and the optional compensations a person may press, a versioned and fenced run state in
+`platform/saga`, consumers that advance it through the inbox, and events declared in the vendored contracts. A flow moves forward
+only unless it declares such an undo (BE-JOBS-7, BE-RESILIENCE-2). A saga folder is legal only when `sides.be.patterns`
 declares `saga`. In lite its events travel on the lite event bus and its state table is a migration; the rules are the same.
 
 Edition: whether lite admits this pattern is open ([project/lite.md](../../project/lite.md) "Patterns").
 
-## BE-SAGA-1 Every step has a compensation, and the orchestrator lists them all
-`features/saga/<saga>/` holds `<saga>.saga.service.ts`, `steps/<step>.saga-step.ts` and `compensations/<step>.compensation.ts`: every
-step has a compensation of the same name and every compensation a step, and the orchestrator passes every compensation of its folder
-to `platform/saga` as an object naming the step it undoes. A compensation undoes every effect of its step, including those another
-service made.
+## BE-SAGA-1 A declared undo is a compensation beside its step, pressed by a person and run forward
+`features/saga/<saga>/` holds `<saga>.saga.service.ts`, `steps/<step>.saga-step.ts` and, for a step that declares an undo,
+`compensations/<step>.compensation.ts`: a compensation has the step of the same name, a step needs no compensation, and the
+orchestrator passes every step and every compensation of its folder to `platform/saga`, each compensation as an object naming the
+step it undoes. A compensation is optional. A person presses it, and it runs as an ordinary forward step of the flow: a job of its
+own on the job runner's ladder, with its own row, effects and dead letter; no machine runs it because a later step failed. It
+undoes every effect of its step, including those another service made.
 
-Why: a forward step with no way back leaves a half-done flow when a later step fails; pairing by file makes the missing half a
-finding, and listing both keeps an unrun step from hiding.
+Why: a flow moves forward only, and a failure leaves a typed failed or stopped row a person sees; when the business can undo a step,
+the undo is a declared, reviewable act a person decides to make, not a reflex that can itself fail half-way. Pairing by file name
+makes an undo with no step a finding, and listing both keeps an unrun step from hiding.
 
 Enforced by: R169 BE_SAGA_STEP_COMPENSATION, R01 HFS_SLOT_UNDECLARED.
 
@@ -25,7 +29,7 @@ Enforced by: R169 BE_SAGA_STEP_COMPENSATION, R01 HFS_SLOT_UNDECLARED.
 `<saga>.saga-state.ts` exports the state type with `status` and `version: number`. The orchestrator is thin; `platform/saga` owns the
 run: a transition names the version it read and moves it by one, after taking its event through the inbox. A saga consumer passes
 the delivery's `eventId` to its command. A failing step or compensation lets its failure reach the runner, which retries a transient
-one and parks any other with one alert until a resume (BE-RESILIENCE-2), except a step declared non-blocking (BE-SAGA-5); the resumed delivery replays through the inbox and the
+one on its ladder and parks any other with one item until a resume (BE-JOBS-7), except a step declared non-blocking (BE-SAGA-5); the resumed delivery replays through the inbox and the
 version fence, so a step already done is not repeated.
 
 Why: deliveries repeat and arrive late; the version fence stops a late delivery from moving a run twice, and the inbox makes a
@@ -49,23 +53,21 @@ through the world (an infra or app outage or latency, a fake's `failNext`, an in
 runs, and reads the compensated state back; one more spec runs the saga from the api call to its final state. Lite proves the same
 scenarios in integration specs.
 
-Why: the compensation exists for failures; a happy-flow spec proves nothing about it, and a fault injected at delivery proves retry
-and resume.
+Why: a compensation undoes what a person decides to undo; a happy-flow spec proves nothing about it, and a fault injected at delivery
+proves retry and resume.
 
 Enforced by: R173 BE_SAGA_E2E_MISSING, R167 BE_ASYNC_SPEC_MISSING, R284 BE_LITE_PROOF_LANE_MISSING.
 
 ## BE-SAGA-5 A side step does not block the run
 A step that only informs (an owner notice posted into team chat, a report, analytics, an echo of the message) is declared non-blocking
 in the run definition, beside the step, and sits on a branch the flow does not wait for. When it fails, the runner records the failure
-on the run and raises one alert (BE-RESILIENCE-2), then continues to the next step; the run is never parked for it, and a transient
+on the run and raises one item (BE-JOBS-7), then continues to the next step; the run is never parked for it, and a transient
 failure of it is retried on its own job. The step that answers the customer, and every step it needs, is never ordered after a side
-step. A step that changes state another step reads, or whose failure must undo earlier work, is not a side step and stays blocking
-with its compensation (BE-SAGA-1).
+step. A step that changes state another step reads, or whose failure the outcome depends on, is not a side step and stays blocking.
 
 Why: BE-SAGA-2 parks a run on any failure that is not transient, which is right for a step the outcome depends on and wrong for a
-notice: on 2026-11-09 a `notify-order` step that posted an owner notice failed on a migration the dev database had not applied, parked
-the whole sales run and left a customer with no reply for the 30 minutes before the resume sweep. Declaring what only informs
-keeps the customer path independent of the side paths.
+notice: a step that posts an owner notice and fails on a migration the database has not applied would park the whole run and leave a
+customer with no reply until a resume. Declaring what only informs keeps the customer path independent of the side paths.
 
 Enforced by: R390 BE_SAGA_SIDE_STEP_BLOCKING (candidate: planned, no checker yet; held by review until the step declaration carries a
 `blocking` field the checker can read, as `rules/saga.mts` reads `event` today).
@@ -84,14 +86,15 @@ turns silence into an expectation; claimed once, it cannot become spam.
 Enforced by: R391 BE_SAGA_CUSTOMER_HOLDING_LINE (candidate: planned, no checker yet; held by review and by the e2e spec of BE-SAGA-4 that
 parks a customer run and reads the one holding line back).
 
-## BE-SAGA-7 An interactive run resumes on a short ladder
-A parked run whose trigger is a customer message resumes on a bounded ladder declared beside the run, about 1, 5 and then 30 minutes
-after the park, and at once on the first boot of a new build (`ParkedJobResumerService`, BE-RESILIENCE-2); after the last rung it stays
-parked with its alert for the owner's "resume now". Each resume replays through the inbox and the version fence, so a step already done is
-not repeated. A run not triggered by a customer keeps the plain sweep (`parked-jobs:sweep`, every 15 minutes).
+## BE-SAGA-7 A run a customer waits on is on the waited ladder
+A run whose trigger is a customer message declares the `waited` ladder (1, 2, 4 and 8 minutes; BE-JOBS-7) in the declaration of its
+jobs, and every other run declares `background`. After the last rung the run is a dead letter with its one item for a person's
+"resume now", and a new build hands it back at once. Each resume replays through the inbox and the version fence, so a step already
+done is not repeated.
 
-Why: the sweep's cadence suits a batch job nobody waits for; a customer waits minutes, and most causes of a park (a migration applied a
-minute later, a provider back after a blip) are gone within the first rungs. Bounding the ladder keeps a run that cannot succeed from
-retrying forever.
+Why: a customer waits minutes, and most causes of a park (a migration applied a minute later, a provider back after a blip) are gone
+within the first rungs; a ladder declared once per class of flow keeps that cadence out of every flow's own code, and bounding it
+keeps a run that cannot succeed from retrying forever.
 
-Enforced by: R392 BE_SAGA_INTERACTIVE_RESUME_LADDER (candidate: planned, no checker yet; held by review).
+Enforced by: R392 BE_SAGA_INTERACTIVE_RESUME_LADDER (candidate: planned, no checker yet; held by review; the ladder name is a typed
+member of every job declaration, so a job without one does not compile).

@@ -3,9 +3,10 @@ slots: [be.feature.jobs, be.feature.jobs.steps, be.feature.jobs.queue, be.platfo
 ---
 # Fenced background jobs
 
-How background work that must survive a worker that stalls, restarts or is replaced is claimed and settled: a job row
-whose fencing token every claim bumps, guarded writes that refuse a stale token, and run keys for remote effects.
-Starting a job is queues.md; which process runs it background.md. A lite app declares `fenced-job` and Redis.
+How every long flow runs: a chain of jobs, each started by a queue outbox row, claimed under a fencing token that every claim
+bumps, judged by one runner and one retry ladder per class of flow, ended by a dead letter a person resumes, with every
+outside effect made through one effects piece. Starting a job is queues.md; which process runs it background.md; what a flow
+that must be undone declares saga.md. A lite app declares `fenced-job` and Redis.
 
 ## BE-JOBS-1 `platform/jobs` alone writes the job row, claiming it atomically
 
@@ -30,22 +31,32 @@ atomically.
 
 Enforced by: `job-fence-required` (R158).
 
-## BE-JOBS-3 A remote effect carries a run key that includes the token
+## BE-JOBS-3 An outside effect goes through the effects piece
 
-A call on an integration port inside a step passes `claims.runKey(job, step)` (`<jobId>:<step>:<fencingToken>`), the
-only constructible `RunKey`, as the provider's idempotency key. When the provider cannot dedupe, constrain overlap and
-reconcile before a retry.
+An act outside the app's database (a provider call, a mail, a paid model call, a write to an index) is made by
+`Effects.once(key, effect, call)` of `platform/effects`, never by a bare call on an integration port. The piece commits an intent
+row before the act and settles it with the result after, under the key `<jobId>:<effect>[:<part>]`, which is the same on every
+retry and resume and never carries the fencing token. A key already settled with a kept result answers without acting. An intent
+with no result is an unknown outcome, and the effect declares how it is settled: `repeatable` (act again under the same key),
+`confirm` (a declared read tells whether the act happened) or `person` (a dead letter: only a person decides to act again); an act
+that throws releases its intent unless the failure says its outcome is unknown. A large answer is not kept on the row: the domain
+write that stores it settles the key in its own transaction (`settleIn(tx)`). A result that is a secret is sealed by the piece,
+never kept as plain text. A job declares its effects in its `defineJob` (BE-JOBS-9); the step and the domain method make no other
+outside call.
 
-Why: fencing the local row does not fence the remote effect; the key ties the effect to one claim.
+Why: fencing the local row does not fence the remote act. A row written before the act turns "did it happen?" after a crash
+into a declared answer, and one piece keeps that answer out of every feature.
 
-Enforced by: `job-run-key` (R159).
+Enforced by: `job-effect-piece` (R159). Known gap: the rule reads job steps and the functions that take a `ClaimedJob`, so an
+outside call made by a domain method that no `ClaimedJob` reaches is judged by review.
 
 ## BE-JOBS-4 A job is a processor plus steps, both thin
 
 `features/jobs/<job>/` holds `index.ts` (exporting `<Job>QueueModule`), `<job>.module.ts` providing the steps,
 `steps/<step>.step.ts` (a class implementing `JobStep`) and `transport/queue/<job>.processor.ts` (a class extending
 `FencedProcessor` with `queue` and `job` set from the queue's contracts) plus `<job>-queue.module.ts`, which imports
-the job module and registers the processor with `JobProcessorRegistry` on init. The step records itself first
+the job module and registers the processor with `JobProcessorRegistry` on init; the processor sets `definition` to the job's declaration
+(BE-JOBS-9). The step records itself first
 (`claims.advance`), then makes one delegating call into a domain service, which validates the payload and does the
 work; the processor's `process` calls its step.
 
@@ -85,7 +96,8 @@ module with `ScheduleModule.forRoot()`) registers one `CronJob` per tick in `Sch
 tick; each firing runs one transaction on the jobs connection that takes `advisoryXactLock(tx, "tick:<name>")`, claims
 the tick's UTC minute through `job_tick_claim` (the `job_ticks` row of the jobs migration, moved forward only) and, only
 when it moved the row, writes one job of the tick's queue into the queue outbox with correlation id
-`tick:<name>:<minute>`. The job runs through its processor like any enqueued job. No other file imports
+`tick:<name>:<minute>`. The job runs through its processor like any enqueued job: the runner judges a scheduled delivery with the same
+classifier and ladders as any other (BE-JOBS-7), so a tick that fails for good is a dead letter too. No other file imports
 `@nestjs/schedule` or `cron`, and no file uses a cron decorator.
 
 Why: cron in a replicated process fires once per replica; the lock serialises the replicas and the forward-only minute
@@ -93,26 +105,54 @@ claim lets exactly one of them enqueue, in the transaction that writes the outbo
 
 Enforced by: R335, `infra-import-owner` (R90).
 
-## BE-JOBS-7 A job a retry cannot fix is parked, alerted once and resumed
+## BE-JOBS-7 One judge, one ladder per class of flow, then a dead letter a person resumes
 
-The runner classifies every failure with `classifyFailure(cause, DomainError)` of `@starci/nest-kit` (BE-RESILIENCE-2): a transient one with attempts left is `fail`ed and
-rethrown; any other parks the row as `failed_awaiting_fix` with `failure_class`, `parked_build` and `parked_at`, and `park` answers
-whether its one alert is due (`alerted_at`). `ParkedJobResumerService` resumes at boot every job parked under another build, the
-`parked-jobs:sweep` tick (lite `JOB_TICKS`; in full a scheduler on `PARKED_JOBS_SWEEP_QUEUE`) every parked job, and
-`resume({ jobId })` one job for the owner's "resume now" (a sweep delivery carrying `{ jobId }` asks for it: `ParkedJobResumeRequestsService`,
-registered alone by `JobsModule.register({ requestsOnly: true, connection })`, writes it through the outbox, and the lite cli's
-`cli queues resume [--job <id>]`, rendered once the app has its cli app and its jobs platform, calls it); each resume counts `resume_count` and hands the job back as
-`<jobKey>:r<resume_count>`: the `:` is the outbox's, whose check `job_outbox_dedupe_key_check` refuses a dedupe key with none. `jobKeyOf` strips the one last `:r<digits>` (a job key may hold `:` itself but never ends in `:r<digits>`). An app rendered before the park moves onto it with `starci app codemod self-recovery`: against the
-template snapshot of that release (`templates/snapshots/<version>` of `@starci/hfs`) it rewrites each untouched platform file to the
-current template, adds the new ones and, in lite, the `jobs-failed-awaiting-fix` db migration (full adds `JobsFailedAwaitingFix` as
-a file of the tree), and leaves a file the app edited for a person, writing nothing while one is.
+`JobRunnerService` of `platform/jobs` is the only place a job failure is judged: `classifyFailure(cause, DomainError)` of
+`@starci/nest-kit` (BE-RESILIENCE-2) names the class (`transient`, `input`, `config`, `code`; a retry hint counts as transient). A
+domain method that ends early for a typed business reason returns; anything else throws. No feature or domain code catches to wait,
+loop, retry, count tries or swallow.
 
-Why: the row already holds the fence and the recorded steps, so parking and resuming it keeps every guarantee of BE-JOBS-1 to
-BE-JOBS-3 while no failure ends as a dead letter nobody restarts.
+A job names the ladder of its class of flow once, in its declaration (BE-JOBS-9), and `platform/jobs` declares the ladders once
+(`job-ladders.policy.ts`): `background` (nobody waits: a few short queue tries) and `waited` (a person waits on the result: 1, 2,
+4 and 8 minutes). A transient failure with starts left is `fail`ed and handed back to the queue with the ladder's pause; the
+broker's own attempt count is a ceiling above every ladder. A job's start is counted before its work runs, so a crash is a counted
+start.
 
-Enforced by: R377 `BE_FLOW_FAILURE_SWALLOWED`, `job-write-owner` (R157).
+The end of the ladder is a DEAD LETTER: anything but a transient failure at once, a transient failure on its last start, a payload
+its guard refuses, and a delivery whose counted start is past its ladder (it killed its worker every time; it is not run again).
+The runner parks the row as `failed_awaiting_fix` with `failure_class`, `parked_build`, `parked_at` and the park episode, the
+domain row shows the state the job's failure hook wrote (resumable), and `park` answers whether the ONE item for a person of the
+episode is due (`alerted_at`; BE-JOBS-8). Scheduled jobs (BE-JOBS-6) and an event consumer's buried event (BE-EVENT-BUS-4) are
+judged by the same classifier and raise the same item; a buried event has a person's requeue door.
 
-## BE-JOBS-8 The owner's "stopped work" page is the app's, over the resume door the jobs platform gives
+A dead letter is handed back, each time as `<jobKey>:r<resume_count>` (the `:` is the outbox's, whose check
+`job_outbox_dedupe_key_check` refuses a dedupe key with none; `jobKeyOf` strips the one last `:r<digits>`):
+
+- a new build hands back every dead letter of every class, at boot (`ParkedJobResumerService`), without a new item;
+- the periodic sweep (`parked-jobs:sweep`, lite `JOB_TICKS`; in full a scheduler on `PARKED_JOBS_SWEEP_QUEUE`) hands back only
+  transient dead letters, a bounded number of times each, without a new item;
+- a person's resume (`resume({ jobId })`, or `cli queues resume [--job <id>]`, which writes the request through the outbox with
+  `ParkedJobResumeRequestsService`, registered alone by `JobsModule.register({ requestsOnly: true, connection })`) hands back one job
+  and opens a new episode with its own item.
+
+A resumed job claims its own row again, so its recorded steps and its settled effects are kept and nothing repeats. An app rendered
+before this model moves onto it with `starci app codemod self-recovery`: against the template snapshot of that release
+(`templates/snapshots/<version>` of `@starci/hfs`) it rewrites each untouched platform file to the current template, adds the new
+ones and, in lite, the `jobs-failed-awaiting-fix` db migration (full adds `JobsFailedAwaitingFix` as a file of the tree), and leaves
+a file the app edited for a person, writing nothing while one is.
+
+Why: classifying in one place and bounding every wait by a declared ladder means no flow retries forever and none stops silently:
+each ends as a dead letter with one item, and a new build, a bounded sweep or a person brings it back as soon as its cause is
+fixed, with the row, the fence and the effect ledger making the rerun safe.
+
+Enforced by: R377 `BE_FLOW_FAILURE_SWALLOWED`, `no-hand-rolled-retry` (R81), `job-write-owner` (R157). Known gap: no gate reads the
+ladder numbers, the one item per park episode, the bound of the sweep's hand-backs or that a delivery past its ladder is not run; the
+platform's own specs and the chain's two specs (a job killed between steps, a job that fails for good and is resumed) prove them, and
+a count of tries kept on a domain row is judged by review. The `platform/jobs` templates render the claim, the fence, the sweep and
+the resumer; `defineJob`, the ladders, `platform/effects`, the episodes and the progress view are an app's own
+platform code until a template carries them, and the rules that read those types judge only where the types exist.
+
+## BE-JOBS-8 The person's "stopped work" page is the app's, over the resume door the jobs platform gives
 
 A lite app has no owner role of the harness: who may see and resume stopped work is the app's own authorization, and the app draws
 the page. The jobs platform gives it the door's two halves and nothing that would sit unused in an app without the page:
@@ -122,8 +162,8 @@ the page. The jobs platform gives it the door's two halves and nothing that woul
 - the action is `ParkedJobResumerService.resume({ jobId })` in the process that holds the queue, answering how many jobs went back (0 for
   an id that is not parked: the page reports it and refreshes); from a process with no Redis it is
   `ParkedJobResumeRequestsService.request(jobId)`, which writes the request through the outbox for the sweep;
-- `FlowAlerts` is bound to the app's notification of the same person, so the one alert of a parked job (`ParkedFlowAlert`, action
-  `resume`) leads to that page.
+- `FlowAlerts` is bound to the app's notification of the same person, so the one item of a park episode (`ParkedFlowAlert`, action
+  `resume`, keyed by the job and the episode) leads to that page.
 
 The door is an ordinary feature of the app, its query and mutation thin doors, its service the only caller of the two ports:
 
@@ -149,9 +189,48 @@ export class StoppedWorkService {
 ```
 
 The front end's page lists the items with their reason and class and offers "resume now" on each; it never retries on its own, and
-the item leaves the list once the job is no longer parked.
+the item leaves the list once the job is no longer parked; a resume of it opens a new episode and so a new item.
 
 Why: the owner of a lite app is a person the app names, not a harness role, so a page rendered by the harness would guess who may
 resume what; giving the contract and the example keeps every app's page on the same two ports and the same refusal.
 
 Enforced by: held by review; the ports are `job-write-owner` (R157) and R377 `BE_FLOW_FAILURE_SWALLOWED`.
+
+## BE-JOBS-9 A job declares itself, starts from an outbox row and enqueues its next in the transaction that finishes it
+
+A job is declared once with `defineJob` of `platform/jobs`, in `modules/queues/<queue>/<queue>.jobs.ts` beside its payload guard: its
+`name`, its `queue`, its `ladder` (BE-JOBS-7), the guard of its payload (a payload it refuses is a dead letter at once, class
+`input`), its once key (the outbox dedupe key, ids only, so the same request is one job), its `next` (the names of the jobs it may
+enqueue; empty at the end of a chain), its outside `effects` with their settle (BE-JOBS-3) and optionally its `progress`
+(BE-JOBS-10). The producer and the processor both read the declaration, so the name, the key and the queue are written once.
+
+A job starts only from a queue outbox row written in the transaction of the change that calls for it (BE-QUEUES-1), and it
+enqueues the next job of its chain, only a job its `next` lists, in the transaction that finishes it. Every long flow is such a
+chain of jobs; a flow whose steps wait on a person or a timer wakes by an outbox row too.
+
+Why: one declaration is the single place a reader and a checker find what a job is, which jobs follow it and what it does outside;
+an outbox row written with the change means a job exists exactly when the change committed, and one written with the finish means
+a chain never loses its next step.
+
+Enforced by: `job-next-declared` (R403), `outbox-write-tx` (R152), `queue-producer-shape` (R154). Known gap: a job that enqueues a
+job its `next` does not list is refused by the queue platform at run time; the rule reads the declarations, so a call site is
+judged by review and the chain's specs.
+
+## BE-JOBS-10 Progress is an optional view of the job rows
+
+A job that declares `progress` (a `topic(payload)` returning the platform's `JobProgressTopic`: the principal first, then the chain
+root, the same root for every job of a chain) gets a view of its rows: every committed state change of the job row (running, retry
+at a time, done, dead letter with its class) is published after commit, and a domain method reports the step progress of its work
+through the `JobProgress` port of the frame (`report(job, done, total, labelKey)`), which stores it on the row first and then
+publishes it. Nobody listening changes nothing, and a publish failure never fails the job. The frames carry keys only, no text a
+person reads. One generic door serves the stream (BE-REALTIME-8): for one chain root, or a bounded set of roots, or the whole
+workspace, on one connection, principal-first and membership-checked; a late or reconnecting subscriber first gets the current state
+read from the rows, including the next retry time, then the live frames (`Last-Event-ID` resumes).
+
+Why: progress is a view of state the rows already hold, so it is correct after a crash and costs nothing when unwatched; one door
+keeps isolation and replay in one place instead of one per job.
+
+Enforced by: `job-progress-shape` (R404), `realtime-topic-scope` (R186). Known gap: no gate reads that a late subscriber gets the
+current state before the live frames, that a publish failure never fails the job or that frames carry keys only; the platform's
+specs and a real stream client spec prove them.
+

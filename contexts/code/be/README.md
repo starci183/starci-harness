@@ -21,8 +21,8 @@ kind (api, webhooks, realtime, jobs, cli, client-cli) → domain, persistence �
 | [transport](transport.md) | GraphQL default, REST evidence, one dispatch, no envelope | BE-TRANSPORT-1 … 3 |
 | [api-auth](api-auth.md) | Default deny, identity and resource authorization, bounds, cursors, edge, probes | BE-AUTH-1 … 4, 6 … 8 |
 | [webhooks](webhooks.md) | Signed door, verify first, durable intake, proof | BE-WEBHOOK-1 … 4 |
-| [realtime](realtime.md) | Read-only doors, principal topics, resume, shared hubs, proof | BE-REALTIME-1 … 5, 7 |
-| [jobs](jobs.md) | Fenced job row, guarded writes, run keys, processor and steps | BE-JOBS-1 … 5 |
+| [realtime](realtime.md) | Read-only doors, principal topics, resume, shared hubs, the job progress door, proof | BE-REALTIME-1 … 5, 7, 8 |
+| [jobs](jobs.md) | Chain of jobs: fenced row, guarded writes, effects piece, ladders and dead letter, declaration, progress | BE-JOBS-1 … 10 |
 | [queues](queues.md) | Typed producers, relay identity, schedules | BE-QUEUES-1 … 4 |
 | [background](background.md) | Every background task has a composed runner | BE-BACKGROUND-1, 2 |
 | [cli](cli.md) | The one ops cli app and the client clis, groups and sub-commands, thin commands, argv ownership, a client cli as an npm package | BE-CLI-1 … 5 |
@@ -42,11 +42,11 @@ kind (api, webhooks, realtime, jobs, cli, client-cli) → domain, persistence �
 | [logging](logging.md) | Logger port, enum identities, correlation when declared | BE-LOGGING-1, 2, 4 |
 | [messages](messages.md) | Message bundles, locale resolution | BE-MESSAGES-1, 2 |
 | [temporal](temporal.md) | The injected clock and ids | BE-TEMPORAL-1 |
-| [resilience](resilience.md) | Retry through job attempts and the platform timer | BE-RESILIENCE-1 |
+| [resilience](resilience.md) | Retry on the job's ladder, the dead letter and the platform timer | BE-RESILIENCE-1, 2 |
 | [test](test.md) | Placement, testing module, kit doubles, cases, assertions, world, coverage, builders | BE-TEST-1, 2, 4, 5, 7, 9, 12, 13, 16 |
 | [event-bus](event-bus.md) | Full: event classes, publish in the transaction, consumers, proof | BE-EVENT-BUS-2 … 5 |
 | [reactors](reactors.md) | Full: consumers of another context, replayable local copies | BE-REACTORS-1, 3 |
-| [saga](saga.md) | Full: step and compensation pairs, fenced run state, contracts, failure specs | BE-SAGA-1 … 4 |
+| [saga](saga.md) | Full: steps with optional declared undos, fenced run state, contracts, failure specs | BE-SAGA-1 … 7 |
 | [projections](projections.md) | Full: read models with one writer, recompute and get, replay | BE-PROJECTIONS-1 … 4 |
 | [services](services.md) | Full: service placement, pinned images, vendored contracts, additive events | BE-SERVICES-1 … 4, BE-PERSISTENCE-15 |
 
@@ -69,9 +69,9 @@ mechanism; the rule in its last column owns the code and the proof.
 | can a caller repeat a mutation? | a stable operation identity | the effect must not double (a charge, a message), which takes a replayed committed outcome | BE-IDEMPOTENCY-3 |
 | must a commit lead to a job or an event? | the outbox row written in the same transaction | another context or service must react | BE-PERSISTENCE-5, BE-QUEUES-1; BE-EVENT-BUS-3 |
 | can a delivery arrive twice? | the inbox claim in the receiver's transaction | never less: every delivery is at least once | BE-IDEMPOTENCY-1 |
-| does the work cross independent transactions? | one local transaction, when the steps can share one | a later step can fail after an earlier one committed elsewhere and must be undone | BE-SAGA-1 … 4 |
-| can a stalled or replaced worker still write? | the fenced job row and its guarded writes | the effect is remote, which takes a run key | BE-JOBS-2, BE-JOBS-3 |
-| can a remote call fail transiently? | a required deadline on the call | the call must be retried, which only a job's bounded attempts do | BE-INFRA-2, BE-RESILIENCE-1 |
+| does the work cross independent transactions? | one local transaction, when the steps can share one | a person must be able to undo an earlier step that committed elsewhere, a declared undo | BE-SAGA-1 … 4 |
+| can a stalled or replaced worker still write? | the fenced job row and its guarded writes | the effect is remote, which goes through the effects piece | BE-JOBS-2, BE-JOBS-3 |
+| can a remote call fail transiently? | a required deadline on the call | the call must be retried, which only a job's declared ladder does | BE-INFRA-2, BE-RESILIENCE-1 |
 | can one failing dependency exhaust the app? | bounded lists, rate tiers and queue concurrency | isolation or a breaker is measured to be needed; no topic owns one, so it is held by review | BE-PERSISTENCE-9, BE-AUTH-4 |
 | can contracts and read models evolve apart? | versioned event classes that only add | a read model must be rebuilt, which replay does | BE-EVENT-BUS-2, BE-PERSISTENCE-15; BE-PROJECTIONS-4 |
 | who may act on this resource? | default deny and the domain service's resource check | never less: every door and job reaches the same check | BE-AUTH-1, BE-AUTH-2 |
