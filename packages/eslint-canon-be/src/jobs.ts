@@ -18,7 +18,7 @@ import { keyName, walk } from "./lib/ast.ts"
 import { writtenEntityOrigins } from "./lib/entity-writes.ts"
 import { hfsOf, inTestWorld } from "./lib/hfs.ts"
 import { baseName, isOwnedType, ownerNameOf } from "./lib/ports.ts"
-import { originsOfType, typeOrigins, typed } from "./lib/types.ts"
+import { originsOfType, resolvedSymbol, typeOrigins, typed } from "./lib/types.ts"
 import type { TSESTree } from "@typescript-eslint/utils"
 import type { Context, Node, Recommended, RuleModule, Rules } from "./lib/rule.ts"
 import type { HfsView } from "./lib/hfs.ts"
@@ -157,15 +157,64 @@ const insideJobFunction = (context: Context, node: Node): boolean => {
     return false
 }
 
-/** True when the call is an act or a confirm read the effects piece runs: inside the `act` or `confirm` of the call object of `Effects.once`. */
+/** True for `Effects.once(...)`: a call of `once` on the `Effects` port of `platform/effects`. */
+const isEffectsOnce = (context: Context, call: TSESTree.CallExpression): boolean =>
+    call.callee.type === "MemberExpression"
+    && !call.callee.computed
+    && call.callee.property.type === "Identifier"
+    && call.callee.property.name === ONCE
+    && isEffectsType(context, call.callee.object)
+
+/**
+ * True for a call of a function that `platform/effects` itself declares and that is handed the `Effects` port (a helper of the piece,
+ * such as one that answers what the act answered): the piece runs the functions passed to it inside its own `Effects.once`.
+ */
+const isEffectsHelperCall = (context: Context, call: TSESTree.CallExpression): boolean => {
+    if (!call.arguments.some((argument) => argument.type !== "SpreadElement" && isEffectsType(context, argument))) return false
+    const hfs = hfsOf(context)
+    const { checker, toTs } = typed(context)
+    const target = toTs(call.callee.type === "MemberExpression" ? call.callee.property : call.callee)
+    const symbol = resolvedSymbol(checker, target ? checker.getSymbolAtLocation(target) : undefined)
+    return (symbol?.declarations ?? []).some((declaration) => {
+        const file = String(declaration.getSourceFile().fileName).replace(/\\/g, "/")
+        return hfs.tierOf(file) === "platform" && ownerNameOf(hfs, file) === "effects"
+    })
+}
+
+/**
+ * True when the expression is handed to the effects piece as an act or a confirm read: the value of `act` or `confirm` in the call
+ * object of `Effects.once`, or a function argument of a helper of the piece.
+ */
+const isHandedToEffects = (context: Context, expression: Node): boolean => {
+    const parent = expression.parent
+    if (parent?.type === "CallExpression" && parent.arguments.includes(expression as TSESTree.CallExpressionArgument)) return isEffectsHelperCall(context, parent)
+    if (parent?.type !== "Property" || parent.value !== expression) return false
+    const key = keyName(parent.key)
+    if (key !== ACT && key !== CONFIRM) return false
+    const object = parent.parent
+    const call = object?.parent
+    return object?.type === "ObjectExpression" && call?.type === "CallExpression" && call.arguments.includes(object) && isEffectsOnce(context, call)
+}
+
+/**
+ * True when the function is an act or a confirm read the effects piece runs: handed to it directly, or bound to a `const` whose every
+ * use hands it to the piece (`const act = () => ...` then `{ act }`).
+ */
+const isEffectsAct = (context: Context, fn: Node): boolean => {
+    if (isHandedToEffects(context, fn)) return true
+    const declarator = fn.parent
+    if (declarator?.type !== "VariableDeclarator" || declarator.init !== fn || declarator.id.type !== "Identifier") return false
+    if (declarator.parent.type !== "VariableDeclaration" || declarator.parent.kind !== "const") return false
+    const uses = context.sourceCode.getDeclaredVariables(declarator).flatMap((variable) => variable.references.filter((reference) => !reference.init))
+    // A use that only calls it (`return act()`, a path with no job) makes no outside call of a job by itself; the rule judges the uses that hand it on.
+    const handed = uses.filter((reference) => !(reference.identifier.parent.type === "CallExpression" && reference.identifier.parent.callee === reference.identifier))
+    return handed.length > 0 && handed.every((reference) => isHandedToEffects(context, reference.identifier))
+}
+
+/** True when the call is an act or a confirm read the effects piece runs: inside a function handed to `Effects.once` or to a helper of the piece. */
 const insideEffectCall = (context: Context, node: Node): boolean => {
-    let outermost: TSESTree.Property | undefined
     for (let current: Node | undefined = node.parent; current; current = current.parent) {
-        if (current.type === "Property") outermost = current
-        if (current.type !== "CallExpression" || current.callee.type !== "MemberExpression" || current.callee.computed) continue
-        if (current.callee.property.type !== "Identifier" || current.callee.property.name !== ONCE || !isEffectsType(context, current.callee.object)) continue
-        const key = outermost ? keyName(outermost.key) : null
-        return key === ACT || key === CONFIRM
+        if ((current.type === "FunctionExpression" || current.type === "ArrowFunctionExpression") && isEffectsAct(context, current)) return true
     }
     return false
 }

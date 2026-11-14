@@ -78,7 +78,7 @@ test("job-fence-required: every guarded write requires its token, never casts ar
 })
 
 const STEP_HEAD = `import type { ClaimedJob } from "@modules/platform/jobs"
-import type { Effects } from "@modules/platform/effects"
+import { onceAnswered, type Effects } from "@modules/platform/effects"
 import { MailGateway } from "@modules/integrations/mailer/mail.gateway"
 `
 
@@ -93,6 +93,12 @@ test("job-effect-piece: an outside call of a job is the act or the confirm of Ef
                 // a domain method no job reaches calls its port as before
                 { filename: DOMAIN, code: `${STEP_HEAD}export class Reading { constructor(private readonly mail: MailGateway) {}\n read(): Promise<string> { return this.mail.status("a") } }` },
                 { filename: HANDLER, code: `${STEP_HEAD}export const read = (mail: MailGateway) => mail.status("a")` },
+                // a helper of the piece handed the Effects port runs the act it is passed inside its own Effects.once
+                { filename: DOMAIN, code: `${STEP_HEAD}export class Placing { constructor(private readonly mail: MailGateway, private readonly effects: Effects) {}
+ run(job: ClaimedJob): Promise<string> { return onceAnswered(this.effects, job.jobId + ":read", { name: "mail.status", settle: "repeatable" }, () => this.mail.status("a")) } }` },
+                // an act bound to a const and handed on as the act of the call object
+                { filename: DOMAIN, code: `${STEP_HEAD}export class Placing { constructor(private readonly mail: MailGateway, private readonly effects: Effects) {}
+ run(job?: ClaimedJob): Promise<void> { const act = (): Promise<void> => this.mail.send("a"); if (job === undefined) return act(); return this.effects.once(job.jobId + ":mail", { name: "mail.send", settle: "repeatable" }, { act }) } }` },
             ],
             invalid: [
                 { filename: STEP, code: `${STEP_HEAD}export const run = (mail: MailGateway) => mail.status("a")`, errors: [{ messageId: "outside" }] },
@@ -100,6 +106,13 @@ test("job-effect-piece: an outside call of a job is the act or the confirm of Ef
                 { filename: DOMAIN, code: `${STEP_HEAD}export class Placing { constructor(private readonly mail: MailGateway) {}\n run(job: ClaimedJob): Promise<void> { return this.mail.send(job.jobId) } }`, errors: [{ messageId: "outside" }] },
                 // a closure of a job function is still the job's
                 { filename: DOMAIN, code: `${STEP_HEAD}export class Placing { constructor(private readonly mail: MailGateway) {}\n async run(job: ClaimedJob): Promise<void> { await Promise.all(["a", "b"].map((to) => this.mail.send(to + job.jobId))) } }`, errors: [{ messageId: "outside" }] },
+                // a const act that is only called, never handed to the piece, is a bare call
+                { filename: DOMAIN, code: `${STEP_HEAD}export class Placing { constructor(private readonly mail: MailGateway) {}
+ run(job: ClaimedJob): Promise<void> { const act = (): Promise<void> => this.mail.send(job.jobId); return act() } }`, errors: [{ messageId: "outside" }] },
+                // a function of the app that is handed the Effects port is no helper of the piece
+                { filename: DOMAIN, code: `${STEP_HEAD}const mine = (effects: Effects, act: () => Promise<void>): Promise<void> => act()
+export class Placing { constructor(private readonly mail: MailGateway, private readonly effects: Effects) {}
+ run(job: ClaimedJob): Promise<void> { return mine(this.effects, () => this.mail.send(job.jobId)) } }`, errors: [{ messageId: "outside" }] },
                 // the key of the piece is not the act: an outside call there is a bare call
                 { filename: DOMAIN, code: `${STEP_HEAD}export class Placing { constructor(private readonly mail: MailGateway, private readonly effects: Effects) {}\n async run(job: ClaimedJob): Promise<void> { await this.effects.once(await this.mail.status(job.jobId), { name: "mail.send", settle: "repeatable" }, { act: async () => undefined }) } }`, errors: [{ messageId: "outside" }] },
             ],
