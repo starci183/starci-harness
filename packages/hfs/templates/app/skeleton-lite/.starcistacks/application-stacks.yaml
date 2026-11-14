@@ -276,6 +276,11 @@ environments:
             url: "https://{{project}}.example.invalid/health/live"
             status: 200
             retry: true
+data:
+  stores:
+    - {id: database, kind: database, level: logical, component: db, adapter: {module: be/src/modules/platform/data-stores/database.adapter.ts}}
+  derived:
+    - {component: ingress, rebuild: the ingress re-issues its certificates (ACME)}
 k8s:
   status: deferred
   reason: Lite production uses Docker Swarm with its own PostgreSQL service; Kubernetes belongs to a future full-edition deployment.

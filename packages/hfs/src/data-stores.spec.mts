@@ -110,6 +110,17 @@ test('DATA_DERIVED_SOURCE: from names a declared store and rebuild is not empty'
   assert.deepEqual(run(component), ['DATA_DERIVED_SOURCE', 'DATA_STORE_UNDECLARED'], 'the ghost is no component and redis is left uncovered');
 });
 
+test('DATA_DERIVED_SOURCE: from is optional (a source outside the project), and a from that is present names a declared store', () => {
+  const outside = stack();
+  outside.data.derived = [{ component: 'redis', rebuild: 'the cache re-fills from its upstream' }];
+  assert.deepEqual(run(outside), [], 'a derived entry with no from and a rebuild is green');
+  outside.data.derived[0].rebuild = '';
+  assert.deepEqual(run(outside), ['DATA_DERIVED_SOURCE'], 'no from still owes a rebuild');
+  const empty = stack();
+  empty.data.derived[0].from = '';
+  assert.deepEqual(run(empty), ['DATA_DERIVED_SOURCE'], 'a from that is present but empty names no store');
+});
+
 test('R426 over a work tree: the finder reads the stack declaration and the adapter sources', (t) => {
   const root = mkdtemp(t, 'hfs-data-stores-');
   const write = (file: string, text: string): void => { fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true }); fs.writeFileSync(path.join(root, file), text); };

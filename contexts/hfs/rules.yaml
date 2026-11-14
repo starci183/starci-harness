@@ -2836,7 +2836,7 @@ rules:
       - {kind: eslint-be, id: job-progress-shape}
   - id: R426
     code: DATA_STORE_UNDECLARED
-    law: "Every stateful component or declared backing of the stack is the `component` of a store or of a `derived` entry of the `data:` declaration (DATA_STORE_UNDECLARED); a store has a kind of the closed list (database, storage) and a level logical or physical (DATA_STORE_KIND), an `adapter.module` that is a tracked source file holding a class that `implements StoreAdapter` (DATA_STORE_ADAPTER); a derived entry names a declared store in `from` and a non-empty `rebuild` (DATA_DERIVED_SOURCE); a project with no stateful component and no `data:` member is green."
+    law: "Every stateful component or declared backing of the stack is the `component` of a store or of a `derived` entry of the `data:` declaration (DATA_STORE_UNDECLARED); a store has a kind of the closed list (database, storage) and a level logical or physical (DATA_STORE_KIND), an `adapter.module` that is a tracked source file holding a class that `implements StoreAdapter` (DATA_STORE_ADAPTER); a derived entry has a non-empty `rebuild` and, when it names a `from`, a declared store (DATA_DERIVED_SOURCE; `from` is optional for a source outside the project); a project with no stateful component and no `data:` member is green."
     failureCodes:
       - DATA_STORE_UNDECLARED
       - DATA_STORE_KIND

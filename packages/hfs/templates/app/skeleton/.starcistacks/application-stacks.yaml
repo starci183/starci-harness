@@ -203,6 +203,11 @@ environments:
             url: "https://www.{{project}}.example.invalid/health/live"
             status: 200
             retry: true
+data:
+  stores:
+    - {id: database, kind: database, level: logical, component: postgres, adapter: {module: be/src/modules/platform/data-stores/database.adapter.ts}}
+  derived:
+    - {component: ingress, rebuild: the ingress re-issues its certificates (ACME)}
 k8s:
   status: deferred
   reason: This starter declares Docker Swarm production; no Kubernetes environment is provisioned.

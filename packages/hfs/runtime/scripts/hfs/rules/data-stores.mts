@@ -6,7 +6,8 @@
 //                          logical or physical;
 //   DATA_STORE_ADAPTER     a store's `adapter.module` is absent, is no tracked source file under the app root, or holds no class that
 //                          `implements StoreAdapter`;
-//   DATA_DERIVED_SOURCE    a `derived` entry whose `from` is no declared store, whose `rebuild` is empty or whose component is missing.
+//   DATA_DERIVED_SOURCE    a `derived` entry whose `rebuild` is empty, whose component is missing or whose `from`, when present, is no declared store
+//                          (`from` is optional: a source outside the project, such as an ingress's ACME certificates, names none).
 // A project with no stateful component and no `data:` member is green. R267's BACKUP_UNDECLARED (a swarm environment's backup records) is a
 // separate law over the same stateful definition.
 import { isPlainObject as plain } from '../../../engine/plain-object.mjs';
@@ -68,10 +69,10 @@ export function dataStoreFindings(doc: Parsed, tracked: ReadonlySet<string>, sou
 
   derived.forEach((entry: Parsed, index: number) => {
     const where = `derived[${String(index)}]`;
-    if (!plain(entry)) { at('DATA_DERIVED_SOURCE', where, 'a derived entry is a mapping {component, from, rebuild}'); return; }
+    if (!plain(entry)) { at('DATA_DERIVED_SOURCE', where, 'a derived entry is a mapping {component, from?, rebuild}'); return; }
     if (!present(entry.component) || !components.has(entry.component)) at('DATA_DERIVED_SOURCE', where, `the component ${JSON.stringify(entry.component ?? null)} is no component or backing of the stack`);
     else covered.add(entry.component);
-    if (!present(entry.from) || !storeIds.has(entry.from)) at('DATA_DERIVED_SOURCE', where, `from ${JSON.stringify(entry.from ?? null)} is no declared store`, { component: entry.component });
+    if (entry.from !== undefined && (!present(entry.from) || !storeIds.has(entry.from))) at('DATA_DERIVED_SOURCE', where, `from ${JSON.stringify(entry.from ?? null)} is no declared store`, { component: entry.component });
     if (!present(entry.rebuild)) at('DATA_DERIVED_SOURCE', where, 'rebuild must say how the component is rebuilt from its source', { component: entry.component });
   });
 

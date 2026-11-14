@@ -591,15 +591,16 @@ store kind or driver is a harness change (the type, this rule and R426/R427 toge
 
 A stateful component that is rebuilt from a store (a queue or cache store rebuilt from the database's outbox, a vector index rebuilt by
 its reconcile) is declared **derived** with its source and how it is rebuilt, never copied: a copied queue restored beside a restored
-database redelivers work that already happened.
+database redelivers work that already happened. A derived entry's `from` is optional: a component rebuilt from a source outside the
+project (an ingress re-issues its certificates from ACME) declares `rebuild` alone, and a `from` that is present names a declared store.
 
 The declaration, in `application-stacks.yaml` (the smallest example: a project with a database and an object store, no extension):
 
 ```yaml
 data:
   stores:
-    - {id: database, kind: database, level: logical, component: db, adapter: {module: be/src/modules/platform/data-stores/database.store.ts}}
-    - {id: storage, kind: storage, level: logical, component: minio, adapter: {module: be/src/modules/platform/data-stores/storage.store.ts}}
+    - {id: database, kind: database, level: logical, component: db, adapter: {module: be/src/modules/platform/data-stores/database.adapter.ts}}
+    - {id: storage, kind: storage, level: logical, component: minio, adapter: {module: be/src/modules/platform/data-stores/storage.adapter.ts}}
   derived:
     - {component: redis, from: database, rebuild: the relay republishes the outbox}
   sets:
