@@ -1,13 +1,13 @@
 // saga.mts - the saga pattern of a product that declares `patterns: ["saga"]` in hfs.json (R169 to R173). A saga is a feature of the saga kind
 //   be/src/features/saga/<saga>/
-//     <saga>.saga.service.ts              the orchestrator: the list of its steps and compensations (a service, unit-tested beside it)
+//     <saga>.saga.service.ts              the orchestrator: the list of its steps and optional compensations (a service, unit-tested beside it)
 //     <saga>.saga-state.ts                the persisted state of a run, typed with its `status` and its `version` fence
 //     steps/<step>.saga-step.ts                one step, dispatching one command, naming the event it puts on the wire
-//     compensations/<step>.compensation.ts  the compensation of that step, naming the failure event that triggers it
+//     compensations/<step>.compensation.ts  the optional declared undo of that step, pressed by a person and run as a forward step, naming its event
 //   be/src/features/saga/<saga>/transport/message/<event>.consumer.ts   the consumers that advance it, through the inbox
 //   be/contracts/<service>/events.json   every event, a compensating one declaring `compensates: "<step event>"`
 // Five tree checks (the slot manifest owns the paths: an undeclared saga folder is HFS_SLOT_NOT_ENABLED):
-//   R169 BE_SAGA_STEP_COMPENSATION  every step has a compensation of the same name and the other way round, and the orchestrator imports them all;
+//   R169 BE_SAGA_STEP_COMPENSATION  every compensation has the step of the same name (a step needs none), and the orchestrator imports every step and compensation;
 //   R170 BE_SAGA_STATE_VERSIONED    every orchestrator has its `.saga-state.ts` whose exported state type carries `status` and a numeric `version`,
 //                                   and imports the fenced store of `platform/saga`;
 //   R171 BE_SAGA_EVENT_CONTRACT     a step and a compensation each name their event (`readonly event = "<name>"`), both are in a contract, and the
@@ -100,9 +100,8 @@ function featureParts(files: string[], feature: Parsed) {
 
 function stepCompensationFindings(folder: string, steps: Parsed, compensations: Parsed, orchestrators: Parsed) {
   const findings = [];
-  for (const [stem, file] of steps) if (!compensations.has(stem)) findings.push(found(SAGA_STEP_COMPENSATION, file, `${file} is a saga step with no compensation: add ${folder}compensations/${stem}.compensation.ts, the command that undoes it; every forward step of a saga has one.`, { step: stem }));
-  for (const [stem, file] of compensations) if (!steps.has(stem)) findings.push(found(SAGA_STEP_COMPENSATION, file, `${file} is a compensation of no step: ${folder}steps/${stem}.saga-step.ts does not exist; a compensation undoes the step of the same name.`, { step: stem }));
-  if (orchestrators.length === 0 && (steps.size > 0 || compensations.size > 0)) findings.push(found(SAGA_STEP_COMPENSATION, folder, `${folder} holds steps or compensations but no orchestrator: add <saga>.saga.service.ts, the list of the steps and their compensations.`));
+  for (const [stem, file] of compensations) if (!steps.has(stem)) findings.push(found(SAGA_STEP_COMPENSATION, file, `${file} is a compensation of no step: ${folder}steps/${stem}.saga-step.ts does not exist; a compensation is the declared undo of the step of the same name.`, { step: stem }));
+  if (orchestrators.length === 0 && (steps.size > 0 || compensations.size > 0)) findings.push(found(SAGA_STEP_COMPENSATION, folder, `${folder} holds steps or compensations but no orchestrator: add <saga>.saga.service.ts, the list of the steps and their optional compensations.`));
   return findings;
 }
 

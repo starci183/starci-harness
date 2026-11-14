@@ -70,10 +70,23 @@ for (const edition of ['lite', 'full']) {
       'be/src/features/events/orders/transport/message/order-placed.consumer.ts': HANDING_ON_CONSUMER,
       'be/src/features/jobs/digest/transport/queue/digest.processor.ts': 'try { await run() } catch (cause) { await this.claims.park(write(cause)) }\n// catch { } removeOnFail\n',
       'be/src/features/jobs/digest/steps/send.step.spec.ts': SWALLOWING_STEP,
-      'be/src/modules/domain/mail/mail.service.ts': SWALLOWING_STEP,
+      'be/src/modules/domain/mail/mail.service.ts': 'export class MailService {\n    parse(raw: string): void {\n        try { this.read(raw) } catch (cause) { this.logger.warn("bad mail", cause) }\n    }\n}\n',
+      'be/src/modules/domain/mail/send-mail.service.ts': 'export class SendMail {\n    async send(job: ClaimedJob): Promise<void> {\n        try { await this.mailer.send(job.jobId) } catch (cause) { throw new MailError(cause) }\n    }\n}\n',
       'be/src/features/jobs/digest/steps/open.step.ts': 'try { await open() } catch (cause) { if (cause) {\n',
     }, edition);
     assert.deepEqual(codesOf(context), [`${BE_FLOW_FAILURE_SWALLOWED} be/src/features/jobs/digest/steps/open.step.ts`]);
+  });
+
+  test(`${BE_FLOW_FAILURE_SWALLOWED}: ${edition} refuses a domain method of a job that catches to swallow, retry or count`, (t) => {
+    const context = fixture(t, {
+      'be/src/modules/domain/mail/send-mail.service.ts': SWALLOWING_STEP,
+      'be/src/modules/domain/index/index-source.service.ts': 'export class IndexSource {\n    async run(job: ClaimedJob): Promise<void> {\n        for (let tries = 0; tries < 3; tries += 1) {\n            try { await this.index(job.jobId); return } catch { this.tries.count(job.jobId) }\n        }\n    }\n}\n',
+      'be/src/modules/domain/index/read-source.service.ts': 'export class ReadSource {\n    async run(job: ClaimedJob): Promise<void> {\n        try { await this.read(job.jobId) } catch (cause) { throw cause }\n    }\n}\n',
+    }, edition);
+    assert.deepEqual(codesOf(context).sort(), [
+      `${BE_FLOW_FAILURE_SWALLOWED} be/src/modules/domain/index/index-source.service.ts`,
+      `${BE_FLOW_FAILURE_SWALLOWED} be/src/modules/domain/mail/send-mail.service.ts`,
+    ]);
   });
 }
 

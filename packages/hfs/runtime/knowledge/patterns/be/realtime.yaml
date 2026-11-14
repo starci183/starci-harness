@@ -117,16 +117,19 @@ rules:
     hfsRules: [R185, R90, R203]
     requirement: |-
       A realtime door is thin (R203 `BE_FEATURE_THIN`): it maps the subscription or the message and makes one delegating call
-      to the hub. The only value it injects is the `RealtimeHub` of `platform/realtime` (`subscribe(topic, options?)` returns an
+      to the hub, or, in an SSE door that must begin with the current state (the progress of jobs), to ONE stream read service (a
+      class of the platform or domain tier whose public methods only answer an `Observable`; it checks membership, reads the state
+      and follows the principal-first topic, and the door passes it the principal). The value it injects is the `RealtimeHub` of
+      `platform/realtime` (`subscribe(topic, options?)` returns an
       async iterable of frames, `publish(topic, frame)` pushes one and settles once the hub accepted it; a topic is a typed `RealtimeTopic<T>` built by the owning domain
       contract, never a string written in a door). An SSE controller calls `hub.stream(topic, { after })` instead, which returns the
       `Observable<MessageEvent>` Nest needs (the hub maps its own subscription with `eventStream` of `platform/realtime`): the
       opening frame, one event per frame with its `id`, and the comment heartbeat. No `EntityManager`, `CommandBus`, `QueryBus`, event bus, queue or
-      service of `modules/domain` is injected: a domain service may write, so it is not provably read-only. The data a client
+      other service of `modules/domain` is injected: a domain service may write, so it is not provably read-only. The data a client
       needs is pushed by a reactor (or by the domain service that commits the change, in an app with no event bus); the socket
       library and the pub/sub engine (`socket.io`, `@socket.io/postgres-adapter`, `@socket.io/redis-adapter`, `graphql-subscriptions`, `graphql-ws`, `pg` for LISTEN and `ioredis`) are imported only by `platform/realtime`,
       and so is the heartbeat timer (`setInterval` is owned by `platform/realtime`, `infraOwners`). Because the door reads only the
-      hub, a snapshot cannot be sent on connect from the door: the client reads the current state through a query operation that
+      hub (or its one stream read service), a snapshot cannot be sent on connect from a hub door: the client reads the current state through a query operation that
       checks resource membership first (or again on every open), and the stream carries the changes (BE-REALTIME-3).
     rationale: |-
       A door that can only touch the hub cannot change business state, so the biggest risk of a long-lived unauthenticated-looking

@@ -2124,7 +2124,7 @@ slots:
     allows: ["<step>.step.ts"]
     tests: none
     coverage: none
-    rules: [BE_JOB_SHAPE, BE_JOB_RUN_KEY]
+    rules: [BE_JOB_SHAPE, BE_JOB_EFFECT_PIECE]
   - id: be.platform.jobs
     since: 3.1.0
     profiles: [be]

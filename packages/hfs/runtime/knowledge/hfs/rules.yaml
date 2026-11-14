@@ -2662,7 +2662,7 @@ rules:
     witness:
       - {path: packages/eslint/be/event-bus-coverage.spec.mjs, edition: lite, codes: [BE_OUTBOX_WRITE_TX]}
       - {path: packages/eslint/be/event-bus-coverage.spec.mjs, edition: full, codes: [BE_OUTBOX_WRITE_TX]}
-    law: "The outbox is written only by a domain service, with the manager of its own transaction: `eventBus.publish(event, tx)` and a queue producer's `enqueueX(payload, tx)` are called only in a file of `modules/domain` (the test world, e2e and fixtures aside), and `tx` is the `manager` parameter of a `.transaction(async (manager) => ...)` callback or a function parameter typed `EntityManager`; the injected shared manager, an alias, an outer manager or a missing argument is a finding. The call is found by the receiver's TYPE (the `EventBus` port of platform/event-bus) or by the resolved signature's declaring tier (queues), never by a name."
+    law: "The outbox is written only by a domain service, with the manager of its own transaction: `eventBus.publish(event, tx)`, a queue producer's `enqueueX(payload, tx)` and a direct `QueueOutbox.write(tx, ...)` (a job enqueuing its next job included) are called only in a file of `modules/domain` (the test world, e2e and fixtures aside), and `tx` is the `manager` parameter of a `.transaction(async (manager) => ...)` callback or a function parameter typed `EntityManager`; the injected shared manager, an alias, an outer manager or a missing argument is a finding. The call is found by the receiver's TYPE (the `EventBus` port of platform/event-bus) or by the resolved signature's declaring tier (queues), never by a name."
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["BE_OUTBOX_WRITE_TX"]
@@ -2780,23 +2780,23 @@ rules:
     enforcers:
       - {kind: eslint-be, id: job-fence-required}
   - id: R159
-    code: "BE_JOB_RUN_KEY"
+    code: "BE_JOB_EFFECT_PIECE"
     editions: [lite, full]
     docs: [docs/code-pattern-enforcement.md#backend-jobs-and-projections-rules]
-    templateNa: "External integration calls in job steps depend on the product integration and payload; the generic job scaffold does not generate that call site."
+    templateNa: "A call on an integration port in a job depends on the product integration; the generic job scaffold does not generate that call site."
     proves:
-      - {path: packages/eslint/be/jobs-projections-coverage.spec.mjs, editions: [lite, full], codes: [BE_JOB_RUN_KEY]}
+      - {path: packages/eslint/be/jobs-projections-coverage.spec.mjs, editions: [lite, full], codes: [BE_JOB_EFFECT_PIECE]}
     exemplifiedBy:
-      - {path: packages/eslint/be/jobs-projections-coverage.spec.mjs, editions: [lite, full], codes: [BE_JOB_RUN_KEY]}
+      - {path: packages/eslint/be/jobs-projections-coverage.spec.mjs, editions: [lite, full], codes: [BE_JOB_EFFECT_PIECE]}
     witness:
-      - {path: packages/eslint/be/jobs-projections-coverage.spec.mjs, edition: lite, codes: [BE_JOB_RUN_KEY]}
-      - {path: packages/eslint/be/jobs-projections-coverage.spec.mjs, edition: full, codes: [BE_JOB_RUN_KEY]}
-    law: "In a job step (slot be.feature.jobs.steps) every call on a receiver typed by an `integrations` owner passes an argument of the `RunKey` type of `platform/jobs`, produced by `JobClaims.runKey(job, step)` (it includes the fencing token), never built with a cast; a read belongs in the application layer, not in a step (pattern fenced-job)."
+      - {path: packages/eslint/be/jobs-projections-coverage.spec.mjs, edition: lite, codes: [BE_JOB_EFFECT_PIECE]}
+      - {path: packages/eslint/be/jobs-projections-coverage.spec.mjs, edition: full, codes: [BE_JOB_EFFECT_PIECE]}
+    law: "In a job step (slot be.feature.jobs.steps), and in a function that takes a `ClaimedJob`, every call on a receiver typed by an `integrations` owner is the `act` or the `confirm` read of an `Effects.once(key, effect, call)` call of `platform/effects`, which commits the intent row before the act and settles it with the result after, under the key `<jobId>:<effect>[:<part>]` (pattern fenced-job); a read belongs in the application layer, not in a job."
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
-    failureCodes: ["BE_JOB_RUN_KEY"]
+    failureCodes: ["BE_JOB_EFFECT_PIECE"]
     enforcers:
-      - {kind: eslint-be, id: job-run-key}
+      - {kind: eslint-be, id: job-effect-piece}
   - id: R160
     code: "BE_JOB_SHAPE"
     editions: [lite, full]
@@ -2967,7 +2967,7 @@ rules:
     code: "BE_SAGA_STEP_COMPENSATION"
     editions: [lite, full]
     docs: [docs/microservices.md#r169]
-    law: "In a product that declares the `saga` pattern (`patterns: [\"saga\"]` in hfs.json sides.be) a saga is the folder `be/src/features/saga/<saga>/` (`<saga>.saga.ts` the orchestrator, `steps/<step>.step.ts`, `compensations/<step>.compensation.ts`): every step has a compensation of the same name and every compensation a step, the orchestrator imports every step and every compensation of its folder, and a folder of steps or compensations has an orchestrator; the folders themselves are slots enabled only by the declared pattern, so an undeclared saga is `HFS_SLOT_NOT_ENABLED`."
+    law: "In a product that declares the `saga` pattern (`patterns: [\"saga\"]` in hfs.json sides.be) a saga is the folder `be/src/features/saga/<saga>/` (`<saga>.saga.ts` the orchestrator, `steps/<step>.step.ts`, `compensations/<step>.compensation.ts`): every compensation (the optional declared undo of a step, pressed by a person and run as a forward step) has the step of the same name and a step needs none, the orchestrator imports every step and every compensation of its folder, and a folder of steps or compensations has an orchestrator; the folders themselves are slots enabled only by the declared pattern, so an undeclared saga is `HFS_SLOT_NOT_ENABLED`."
     kinds: [check]
     gates: [land, ci]
     failureCodes: ["BE_SAGA_STEP_COMPENSATION"]
@@ -3272,7 +3272,7 @@ rules:
     witness:
       - {path: packages/eslint/be/webhooks-realtime-coverage.spec.mjs, edition: lite, codes: [BE_REALTIME_WRITES]}
       - {path: packages/eslint/be/webhooks-realtime-coverage.spec.mjs, edition: full, codes: [BE_REALTIME_WRITES]}
-    law: "A realtime door (gateway, subscription or SSE controller) reads and pushes only: the one value injected into it is the `RealtimeHub` of `platform/realtime`; no `EntityManager`, bus, queue, event bus or domain service reaches it."
+    law: "A realtime door (gateway, subscription or SSE controller) reads and pushes only: it injects the `RealtimeHub` of `platform/realtime` and, in an SSE door, at most one stream read service (a class of the platform or domain tier whose public methods only answer an rxjs `Observable`), so the read of the current state happens in that service and the door makes one call; no `EntityManager`, bus, queue, event bus or other domain service reaches it."
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["BE_REALTIME_WRITES"]
@@ -3291,7 +3291,7 @@ rules:
     witness:
       - {path: packages/eslint/be/webhooks-realtime-coverage.spec.mjs, edition: lite, codes: [BE_REALTIME_TOPIC_SCOPE]}
       - {path: packages/eslint/be/webhooks-realtime-coverage.spec.mjs, edition: full, codes: [BE_REALTIME_TOPIC_SCOPE]}
-    law: "The topic a realtime handler (including the `@Sse` method of an SSE controller) passes to `RealtimeHub.subscribe` is built from the handler's `@CurrentPrincipal()` parameter of `domain/identity`, so a client can only listen to channels its principal owns; a `Last-Event-ID` header only chooses where the replay inside that topic resumes."
+    law: "The topic a realtime handler (including the `@Sse` method of an SSE controller) passes to `RealtimeHub.subscribe` is built from the handler's `@CurrentPrincipal()` parameter of `domain/identity`, so a client can only listen to channels its principal owns; a `Last-Event-ID` header only chooses where the replay inside that topic resumes. A call from an SSE door to a stream read service passes that principal, which builds the principal-first topic and checks membership."
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["BE_REALTIME_TOPIC_SCOPE"]
@@ -6401,7 +6401,7 @@ rules:
       - {path: packages/hfs/src/hfs-boot-logger.spec.mjs, editions: [lite, full]}
   - id: R377
     code: "BE_FLOW_FAILURE_SWALLOWED"
-    law: "Every job and saga flow runs itself again after a failure of any kind: a processor, a job step, a saga step or compensation and a message consumer never catch a failure without rethrowing or parking it, and no back-end source sets BullMQ's `removeOnFail` to delete failed jobs (`true`, a bare count, an unreadable value), while a bounded retention of the broker copy (an object literal naming `age` or `count`), `false` and a type member that only declares the option are accepted, the parked row being the durable failure; the runner classifies the failure (`classifyFailure`), retries a transient one and parks any other as `failed_awaiting_fix` with one alert until a resume, so no flow ends as a silent dead letter."
+    law: "Every job and saga flow runs itself again after a failure of any kind: a processor, a job step, a saga step or compensation, a message consumer and a domain method that takes a `ClaimedJob` never catch a failure without rethrowing or parking it (feature and domain code never catches to wait, loop, retry, count or swallow), and no back-end source sets BullMQ's `removeOnFail` to delete failed jobs (`true`, a bare count, an unreadable value), while a bounded retention of the broker copy (an object literal naming `age` or `count`), `false` and a type member that only declares the option are accepted, the parked row being the durable failure; the runner classifies the failure (`classifyFailure`), retries a transient one on the flow's declared ladder and ends any other as a dead letter, parked `failed_awaiting_fix` with one item for a person per park episode until a resume, so no flow ends silently."
     kinds: [check]
     gates: [settle, land, ci]
     failureCodes: ["BE_FLOW_FAILURE_SWALLOWED"]
@@ -6754,3 +6754,35 @@ rules:
       - {path: packages/hfs/src/project-checks.spec.mjs, editions: [lite, full]}
     witness:
       - {path: packages/hfs/src/project-checks.spec.mjs, editions: [lite, full]}
+  - id: R403
+    code: "BE_JOB_NEXT_DECLARED"
+    law: "In a `defineJob` declaration `next` is an array literal of statically readable job names, each the name of a job a `defineJob` of the program declares; the queue platform refuses, at run time, an enqueue of a job the running job's `next` does not list (Known gap: the call site is judged by that refusal, review and the chain's specs)."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["BE_JOB_NEXT_DECLARED"]
+    enforcers:
+      - {kind: eslint-be, id: job-next-declared}
+    editions: [lite, full]
+    templateNa: "A job declaration depends on the product's chain; the generic job scaffold declares no next job."
+    docs:
+      - {path: contexts/code/be/jobs.md#be-jobs-9-a-job-declares-itself-starts-from-an-outbox-row-and-enqueues-its-next-in-the-transaction-that-finishes-it, editions: [lite, full]}
+    proves:
+      - {path: packages/eslint-canon-be/src/jobs.spec.ts, editions: [lite, full], codes: [BE_JOB_NEXT_DECLARED]}
+    witness:
+      - {path: packages/eslint-canon-be/src/jobs.spec.ts, editions: [lite, full], codes: [BE_JOB_NEXT_DECLARED]}
+  - id: R404
+    code: "BE_JOB_PROGRESS_SHAPE"
+    law: "A `defineJob` `progress.topic` is a function whose declared return type is `JobProgressTopic` of `platform/jobs` (the principal first, then the chain root), and a function that takes a `ClaimedJob` never calls the `RealtimeHub`: it reports step progress through `JobProgress`, which the jobs frame stores on the row and publishes."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["BE_JOB_PROGRESS_SHAPE"]
+    enforcers:
+      - {kind: eslint-be, id: job-progress-shape}
+    editions: [lite, full]
+    templateNa: "Job progress is optional and depends on the product's view; the generic job scaffold declares none."
+    docs:
+      - {path: contexts/code/be/jobs.md#be-jobs-10-progress-is-an-optional-view-of-the-job-rows, editions: [lite, full]}
+    proves:
+      - {path: packages/eslint-canon-be/src/jobs.spec.ts, editions: [lite, full], codes: [BE_JOB_PROGRESS_SHAPE]}
+    witness:
+      - {path: packages/eslint-canon-be/src/jobs.spec.ts, editions: [lite, full], codes: [BE_JOB_PROGRESS_SHAPE]}

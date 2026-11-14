@@ -75,10 +75,8 @@ test('a pattern absent from both slots and proof scenarios is refused in hfs.jso
 
 // ------------------------------------------------------------------------------------------------ R169 BE_SAGA_STEP_COMPENSATION
 
-test('BE_SAGA_STEP_COMPENSATION: a step without a compensation, a compensation without a step and an orchestrator that omits one are refused', () => {
-  const missing = saga('BE_SAGA_STEP_COMPENSATION', { [COMPENSATION]: null });
-  assert.deepEqual(missing.map((f) => f.path), [STEP]);
-  assert.match(missing.find((f) => f.path === STEP)!.message!, /saga step with no compensation/);
+test('BE_SAGA_STEP_COMPENSATION: a compensation without a step and an orchestrator that omits one are refused; a step with no compensation passes', () => {
+  assert.deepEqual(saga('BE_SAGA_STEP_COMPENSATION', { [COMPENSATION]: null }), []);
   const orphan = saga('BE_SAGA_STEP_COMPENSATION', { [STEP]: null });
   assert.match(orphan.find((f) => f.path === COMPENSATION)!.message!, /compensation of no step/);
   const unlisted = saga('BE_SAGA_STEP_COMPENSATION', { [ORCHESTRATOR]: "import { SagaService } from '../../../modules/platform/saga';\nexport class PlaceSaga {}\n" });
@@ -148,7 +146,7 @@ test('lite uses its integration proof lane while saga structure, state, contract
 
   const broken = run(declaration, sagaRepo({
     [SPEC]: null,
-    [COMPENSATION]: null,
+    [ORCHESTRATOR]: "import { SagaService } from '../../../modules/platform/saga';\nexport class PlaceSaga {}\n",
     [STATE]: 'export interface PlaceSagaState { status: string; version: string }\n',
     [STEP]: 'export class ReserveStep {}\n',
     [CONSUMER]: 'export class InvoiceRejectedConsumer { handle(): string { return "x" } }\n',

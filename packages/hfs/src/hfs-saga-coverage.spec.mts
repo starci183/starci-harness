@@ -60,9 +60,9 @@ test.after(() => {
 });
 
 for (const edition of ['lite', 'full']) {
-  test(`${edition} rejects saga steps without matching compensations or a complete orchestrator`, () => {
+  test(`${edition} rejects a compensation without its step or a complete orchestrator, and takes a step with no compensation`, () => {
     assert.deepEqual(sagaFindings(fixture(edition, { [COMPENSATION]: null }))
-      .filter((finding) => finding.code === 'BE_SAGA_STEP_COMPENSATION').map((finding) => finding.path), [STEP]);
+      .filter((finding) => finding.code === 'BE_SAGA_STEP_COMPENSATION'), []);
     assert.deepEqual(sagaFindings(fixture(edition, { [STEP]: null }))
       .filter((finding) => finding.code === 'BE_SAGA_STEP_COMPENSATION').map((finding) => finding.path), [COMPENSATION]);
     assert.deepEqual(sagaFindings(fixture(edition, { [ORCHESTRATOR]: null }))

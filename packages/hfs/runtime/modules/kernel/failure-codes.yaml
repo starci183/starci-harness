@@ -855,14 +855,34 @@ BE_JOB_FENCE_REQUIRED:
   owner: op-retry
   kind: check-finding
 
-BE_JOB_RUN_KEY:
-  title: "An external effect of a job step carries a run key with the fencing token"
-  title_vi: "Tác dụng ngoài của step không mang run key chứa fencing token"
-  meaning_vi: "Một lời gọi tới integration trong `steps/<step>.step.ts` không truyền đối số kiểu `RunKey`, hoặc `RunKey` được tạo bằng ép kiểu thay vì `JobClaims.runKey`."
+BE_JOB_EFFECT_PIECE:
+  title: "An outside call of a job goes through the effects piece"
+  title_vi: "Lời gọi ra ngoài của job không đi qua effects piece"
+  meaning_vi: "Một lời gọi tới integration trong `steps/<step>.step.ts`, hoặc trong hàm nhận `ClaimedJob`, không nằm trong `act` hay `confirm` của một lời gọi `Effects.once` của `platform/effects`."
   causes_vi:
-    - "Vi phạm luật R159: một worker zombie có thể lặp lại tác dụng ngoài; nhà cung cấp chỉ chặn được lặp nếu khoá idempotency gồm `jobId`, bước và fencing token của lần claim."
-    - "Step truyền chuỗi cố định, hoặc `as RunKey` để tránh lỗi kiểu."
-  nextStep_vi: "Op vừa tạo ra bản này sẽ được chạy lại để sửa theo lời nhắn của bộ kiểm tra: tạo khoá bằng `this.claims.runKey(job, \"<step>\")` và truyền cho integration; việc đọc dữ liệu đưa về lớp application."
+    - "Vi phạm luật R159: một tác dụng ra ngoài cơ sở dữ liệu chỉ an toàn khi dòng intent được commit trước khi làm và kết quả được ghi sau; nếu worker chết giữa chừng, effects piece xử lý kết quả chưa rõ theo khai báo của effect (`repeatable`, `confirm` hoặc `person`) thay vì làm lại mù quáng."
+    - "Step hoặc phương thức domain gọi thẳng cổng integration."
+  nextStep_vi: "Op vừa tạo ra bản này sẽ được chạy lại để sửa theo lời nhắn của bộ kiểm tra: bọc lời gọi trong `effects.once(key, effect, { act, confirm? })`, khai effect trong `defineJob`; việc đọc dữ liệu đưa về lớp application."
+  owner: op-retry
+  kind: check-finding
+
+BE_JOB_NEXT_DECLARED:
+  title: "A job's next lists only jobs a defineJob declares"
+  title_vi: "`next` của job liệt kê job không được khai báo"
+  meaning_vi: "Trong khai báo `defineJob`, `next` không phải mảng literal, một phần tử không đọc được tĩnh thành tên job, hoặc tên đó không phải tên job của một `defineJob` nào trong chương trình."
+  causes_vi:
+    - "Vi phạm luật R403: chuỗi job chỉ đọc được từ các khai báo; nền tảng queue từ chối ở lúc chạy việc đưa vào hàng đợi một job mà `next` của job đang chạy không liệt kê."
+  nextStep_vi: "Op vừa tạo ra bản này sẽ được chạy lại để sửa theo lời nhắn của bộ kiểm tra: viết tên job tiếp theo trực tiếp (literal hoặc thành viên enum) và khai job đó bằng `defineJob`, hoặc xoá mục."
+  owner: op-retry
+  kind: check-finding
+
+BE_JOB_PROGRESS_SHAPE:
+  title: "A job's progress topic is principal first and the frame publishes it"
+  title_vi: "Topic tiến độ của job không bắt đầu bằng principal hoặc domain tự phát lên hub"
+  meaning_vi: "`progress.topic` của một `defineJob` không trả về `JobProgressTopic` của `platform/jobs`, hoặc một hàm nhận `ClaimedJob` gọi thẳng `RealtimeHub`."
+  causes_vi:
+    - "Vi phạm luật R404: tiến độ là một khung nhìn của các dòng job; topic bắt đầu bằng principal để một client chỉ đọc được thứ principal của nó sở hữu, và khung job phát sau commit."
+  nextStep_vi: "Op vừa tạo ra bản này sẽ được chạy lại để sửa theo lời nhắn của bộ kiểm tra: dựng topic bằng hàm có kiểu trả về `JobProgressTopic`, và báo tiến độ bước qua `JobProgress.report(job, done, total, labelKey)`."
   owner: op-retry
   kind: check-finding
 
@@ -1255,12 +1275,12 @@ BE_REALTIME_TOPIC_SCOPE:
 BE_REALTIME_WRITES:
   title: "A realtime door can write"
   title_vi: "Cửa realtime có khả năng ghi dữ liệu"
-  meaning_vi: "Cửa realtime chỉ đọc và đẩy tin: giá trị duy nhất được tiêm vào là `RealtimeHub` của platform/realtime. EntityManager, bus lệnh, hàng đợi, event bus hoặc service miền (có thể ghi) không bao giờ được tiêm vào cửa này; tin đẩy do một reactor gọi hub, không do cửa."
+  meaning_vi: "Cửa realtime chỉ đọc và đẩy tin: được tiêm `RealtimeHub` của platform/realtime và, ở cửa SSE, tối đa một service đọc luồng (lớp của platform hoặc domain mà mọi phương thức công khai chỉ trả về `Observable`). EntityManager, bus lệnh, hàng đợi, event bus hoặc service miền (có thể ghi) không bao giờ được tiêm vào cửa này; tin đẩy do một reactor gọi hub, không do cửa."
   causes_vi:
     - "Gateway tiêm EntityManager hoặc CommandBus để cập nhật dữ liệu khi nhận tin của client"
     - "Subscription tiêm service miền để đọc, nhưng service đó có phương thức ghi"
     - "Cửa tiêm một lớp giả danh RealtimeHub do owner khác khai báo"
-  nextStep_vi: "Bỏ mọi thứ khác ngoài RealtimeHub khỏi cửa; việc ghi thuộc về một feature api, và nguồn dữ liệu đẩy đi do một reactor (transport/message) gọi RealtimeHub.publish sau khi sự kiện đến. Op vừa tạo ra bản này sẽ được chạy lại để sửa theo lời nhắn của bộ kiểm tra và knowledge/patterns/be/realtime.yaml; không thêm ngoại lệ, không tắt luật."
+  nextStep_vi: "Bỏ mọi thứ khác ngoài RealtimeHub (hoặc một service đọc luồng ở cửa SSE) khỏi cửa; việc ghi thuộc về một feature api, và nguồn dữ liệu đẩy đi do một reactor (transport/message) gọi RealtimeHub.publish sau khi sự kiện đến. Op vừa tạo ra bản này sẽ được chạy lại để sửa theo lời nhắn của bộ kiểm tra và knowledge/patterns/be/realtime.yaml; không thêm ngoại lệ, không tắt luật."
   owner: op-retry
   kind: check-finding
 
@@ -1338,12 +1358,12 @@ BE_SAGA_STATE_VERSIONED:
   kind: check-finding
 
 BE_SAGA_STEP_COMPENSATION:
-  title: "Every saga step has a compensation and the orchestrator lists them"
-  title_vi: "Bước saga thiếu bù trừ hoặc orchestrator không liệt kê đủ"
-  meaning_vi: "Một bước `saga/steps/<step>.step.ts` không có `saga/compensations/<step>.compensation.ts` (hoặc ngược lại), thư mục saga không có orchestrator `<saga>.saga.ts`, hoặc orchestrator không import đủ mọi bước và mọi bù trừ của thư mục."
+  title: "Every saga compensation has its step and the orchestrator lists them"
+  title_vi: "Bù trừ saga không có bước tương ứng hoặc orchestrator không liệt kê đủ"
+  meaning_vi: "Một bù trừ `saga/compensations/<step>.compensation.ts` không có `saga/steps/<step>.step.ts`, thư mục saga không có orchestrator `<saga>.saga.ts`, hoặc orchestrator không import đủ mọi bước và mọi bù trừ của thư mục."
   causes_vi:
-    - "Vi phạm luật R169: mỗi bước tiến của saga có đúng một bù trừ cùng tên; orchestrator liệt kê tất cả, nên không có bước nào chạy mà không có đường lùi."
-  nextStep_vi: "Op vừa tạo ra bản này sẽ được chạy lại để sửa theo lời nhắn của bộ kiểm tra: thêm bù trừ cho bước (một lệnh hoàn tác) và import nó trong orchestrator; không thêm ngoại lệ."
+    - "Vi phạm luật R169: bù trừ là phép hoàn tác tuỳ chọn của một bước, do một người bấm và chạy như một bước tiến; nó phải có bước cùng tên, và orchestrator liệt kê tất cả nên không có bước nào chạy mà không ai thấy."
+  nextStep_vi: "Op vừa tạo ra bản này sẽ được chạy lại để sửa theo lời nhắn của bộ kiểm tra: đặt bù trừ cạnh bước cùng tên (hoặc xoá bù trừ mồ côi) và import mọi bước và bù trừ trong orchestrator; không thêm ngoại lệ."
   owner: op-retry
   kind: check-finding
 
@@ -3426,7 +3446,7 @@ HFS_AUTH_COOKIE_DOMAIN_MISSING:
 BE_FLOW_FAILURE_SWALLOWED:
   title: "A job or saga flow swallows a failure or deletes its failed job"
   title_vi: "Một job hoặc saga nuốt lỗi hoặc xoá job đã lỗi"
-  meaning_vi: "Một processor, step, saga step, compensation hay consumer bắt lỗi mà không ném lại cũng không park, hoặc một file đặt removeOnFail: luồng dừng mà không retry, không park failed_awaiting_fix và không có cảnh báo, nên không bao giờ tự chạy lại."
+  meaning_vi: "Một processor, step, saga step, compensation, consumer hay phương thức domain nhận `ClaimedJob` bắt lỗi mà không ném lại cũng không park, hoặc một file đặt removeOnFail: luồng dừng mà không retry, không park failed_awaiting_fix và không có cảnh báo, nên không bao giờ tự chạy lại."
   causes_vi:
     - "Vi phạm R377: một catch trong file luồng không throw cũng không gọi park."
     - "Vi phạm R377: removeOnFail đặt true, một số trần hoặc giá trị không đọc được, nên xoá ngay job đã lỗi; giữ bản broker có giới hạn bằng { age } hoặc { count } (bản ghi park trong PostgreSQL là lỗi bền)."

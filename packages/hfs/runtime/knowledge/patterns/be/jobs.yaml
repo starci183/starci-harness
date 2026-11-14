@@ -3,9 +3,12 @@ id: be.jobs
 title: Fenced background jobs
 purpose: |-
   Given work that runs in the background and must survive a worker that stalls, restarts or is replaced, how is it claimed and
-  settled? A job is a row whose `fencingToken` the claim bumps. Every write on a claimed job carries the token the writer holds and
-  is refused when it is stale, so a zombie worker (one that lost its claim but kept running) changes nothing, and every external
-  effect carries a run key that includes the token, so the provider drops a repeat. `platform/jobs` is the one owner of the row.
+  settled? A job is a step of a chain, declared once with `defineJob` and started by a queue outbox row; it is a row whose
+  `fencingToken` the claim bumps. Every write on a claimed job carries the token the writer holds and is refused when it is
+  stale, so a zombie worker (one that lost its claim but kept running) changes nothing, and every outside act goes through the
+  effects piece (an intent row before the act, the result after), so a crash settles as the effect declares. One runner judges
+  every failure on one ladder per class of flow and ends it as a dead letter with one item for a person. `platform/jobs` is the one
+  owner of the row.
 appliesTo:
   - backend
 family: be
@@ -21,9 +24,10 @@ provenance:
     - knowledge/hfs/rules.yaml
     - https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html
   limitations: |-
-    Static checks prove who writes the job row, that the token is required in the type and not cast around, that effects carry a
-    run key and that a processor has the fenced base. They do not prove that the provider honours the idempotency key or that a
-    step is safe to repeat; the test-world scenarios (`fenced-job/*`) prove the zombie and re-dispatch behaviour against real
+    Static checks prove who writes the job row, that the token is required in the type and not cast around, that an outside call
+    of a job is the act of an effects call, that a job's next lists declared jobs, that a progress topic is typed principal first
+    and that a processor has the fenced base. They do not prove that a settle policy is the right one for an effect, that a step is
+    safe to repeat or that a call site enqueues only its next jobs; the test-world scenarios (`fenced-job/*`) prove the zombie and re-dispatch behaviour against real
     Postgres and a double of the provider.
 rules:
   - id: BE-JOBS-1
@@ -77,26 +81,28 @@ rules:
       manual: []
     relatedExamples: [fenced-job]
   - id: BE-JOBS-3
-    title: An external effect carries a run key that includes the token
+    title: An outside effect goes through the effects piece
     kind: mandatory
     hfsRules: [R159]
     requirement: |-
-      `JobClaims.runKey(job, step)` returns a `RunKey` (`<jobId>:<step>:<fencingToken>`); it is the only way to make one. The step's
-      one delegating call hands the payload as delivered, the run key and `job.correlationId` to the module service that owns the effect, and every
-      call that reaches an integration passes the key as the provider's idempotency key, so a repeated effect of a stale
-      worker is dropped by the provider. A read from an integration belongs in the application layer, not in a step. When the
-      provider cannot enforce idempotency, constrain overlap and reconcile before a retry.
+      An act outside the app's database is made by `Effects.once(key, effect, { act, confirm?, keep?, from? })` of
+      `platform/effects`, never by a bare call on an integration port: the piece commits an intent row before the act and settles
+      it with the result after, under the key `<jobId>:<effect>[:<part>]` (the same on every retry and resume, never the fencing
+      token). An unknown outcome is settled as the effect declares in its `defineJob`: `repeatable`, `confirm` (a declared read) or
+      `person` (a dead letter). A large answer is settled by the domain write that stores it (`settleIn(tx)`), a secret result is
+      sealed by the piece. A read from an integration belongs in the application layer, not in a job.
     rationale: |-
-      Fencing the local row does not fence the remote effect. The key ties the effect to one claim.
+      Fencing the local row does not fence the remote effect. A row written before the act turns "did it happen?" after a crash
+      into a declared answer.
     cases:
       - id: case-1
-        when: A step archives a receipt
-        write: 'await this.receipts.archiveReceipt(job.payload, this.claims.runKey(job, "store"), job.correlationId)'
+        when: A job sends a mail
+        write: 'await this.effects.once(`${job.jobId}:mail.send`, MAIL_SEND_EFFECT, { act: () => this.mailer.send(message) })'
     verification:
       automated:
-        - BE_JOB_RUN_KEY
+        - BE_JOB_EFFECT_PIECE
       manual:
-        - Confirm the provider documents idempotent handling of its key.
+        - Confirm the declared settle of each effect is the right one for its provider.
     relatedExamples: [fenced-job]
   - id: BE-JOBS-4
     title: A job is a processor plus steps, started by a producer and run by a worker or api app
@@ -134,7 +140,7 @@ rules:
       An app that declares `fenced-job` has tests titled `fenced-job/<scenario>: ...` for `claim-bumps-token`,
       `zombie-fenced-out` (a worker with a stale token gets `JobFencedOut` and the external double sees zero calls) and
       `redispatch-isolated` (a re-dispatch claims a higher token, the old worker's write is refused and the new run's effects carry
-      their own run key), run on the test world with real Postgres.
+      their own effect settles), run on the test world with real Postgres.
     rationale: |-
       The fence is a runtime property; only a paused old worker resuming after reassignment shows it holds.
     cases:
@@ -170,7 +176,7 @@ files:
     template: jobs/platform/jobs.decorators.ts.tpl
   - path: src/modules/platform/jobs/jobs.contracts.ts
     slot: be.platform.jobs
-    role: "ClaimedJob with the delivery correlationId, GuardedWrite (the token is required), RunKey."
+    role: "ClaimedJob with the delivery correlationId, GuardedWrite (the token is required)."
     template: jobs/platform/jobs.contracts.ts.tpl
   - path: src/modules/platform/jobs/jobs.port.ts
     slot: be.platform.jobs
@@ -187,14 +193,14 @@ files:
     template: jobs/platform/job-claim.service.spec.ts.tpl
   - path: src/modules/platform/jobs/job-runner.service.ts
     slot: be.platform.jobs
-    role: "Subscribes processors to their queues; claim, process, complete, fail a transient failure for a retry or park the rest with one alert, fenced out means stop."
+    role: "Subscribes processors to their queues; claim, process, complete, fail a transient failure for a retry on the job's ladder or park the rest as a dead letter with one item, fenced out means stop."
     template: jobs/platform/job-runner.service.ts.tpl
   - path: src/modules/platform/jobs/job-runner.service.spec.ts
     slot: be.platform.jobs
     template: jobs/platform/job-runner.service.spec.ts.tpl
   - path: src/modules/platform/jobs/parked-job-resumer.service.ts
     slot: be.platform.jobs
-    role: "Resumes parked jobs: at boot those of an earlier build, on the sweep every one, and one on the owner's demand (BE-RESILIENCE-2)."
+    role: "Hands dead letters back (BE-JOBS-7): at boot those of an earlier build, on the sweep the transient ones, and one on a person's demand."
     template: jobs/platform/parked-job-resumer.service.ts.tpl
   - path: src/modules/platform/jobs/parked-job-resumer.service.spec.ts
     slot: be.platform.jobs
@@ -285,8 +291,8 @@ files:
   - path: src/features/jobs/<job>/steps/<step>.step.ts
     slot: be.feature.jobs.steps
     template: jobs/job.step.ts.tpl
-    role: 'One external effect; implements JobStep — thin (R203 `BE_FEATURE_THIN`): the fence call first, then one delegating call that hands the payload, the run key and correlationId to a service of the modules; the payload guards live there.'
-    rules: [BE_JOB_SHAPE, BE_JOB_RUN_KEY]
+    role: 'One step of a job; implements JobStep — thin (R203 `BE_FEATURE_THIN`): the fence call first, then one delegating call that hands the payload and correlationId to a service of the modules; the payload guards live there, and every outside call is an `Effects.once`.'
+    rules: [BE_JOB_SHAPE, BE_JOB_EFFECT_PIECE]
   - path: src/features/jobs/<job>/application/<action>.command.ts
     slot: be.feature.application
     optional: true
@@ -310,7 +316,7 @@ liteAdapter:
     a declared replicated-job running a cli command.
   ports:
     - {port: job claim (platform/jobs), adapter: "the claim and guarded writes as the job_claim, job_advance, job_complete and job_fail functions of the jobs migration in db/migrations, called through callDbFunction of platform/database (R334)"}
-    - {port: processor delivery, adapter: "full's BullMQ worker (attempts and exponential backoff from the queue policy, a job a retry cannot fix parked as failed_awaiting_fix and resumed at a new build, by the sweep or on demand (BE-RESILIENCE-2))"}
+    - {port: processor delivery, adapter: "full's BullMQ worker (the job's declared ladder with the queue policy's attempt ceiling above it, a job a retry cannot fix a dead letter parked as failed_awaiting_fix and handed back by a new build, the bounded sweep or a person (BE-JOBS-7))"}
     - {port: tick scheduler (platform/jobs), adapter: "JOB_TICKS of job-ticks.contracts.ts as data and JobTickService (job-tick.service.ts, composed with ScheduleModule.forRoot() by the lite jobs.module.ts): one CronJob per tick in SchedulerRegistry, each firing taking advisoryXactLock and claiming the tick's UTC minute through the job_tick_claim function of the jobs migration before it writes the queue outbox (R335, contexts/code/be/jobs.md BE-JOBS-6)"}
   proof: >-
     Unit specs as full (job-claim.service.spec.ts); declaring fenced-job requires integration specs titled

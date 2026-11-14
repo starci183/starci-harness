@@ -3,7 +3,7 @@ id: be.saga
 title: Sagas
 purpose: |-
   Given a flow that spans services and must be undone when a later step fails, how is it written so that hfs can check it?
-  A saga is a feature of the saga kind (`be/src/features/saga/<saga>/`): an orchestrator that lists the steps and, for each, the compensation that undoes it; the
+  A saga is a feature of the saga kind (`be/src/features/saga/<saga>/`): an orchestrator that lists the steps and the optional compensations a person may press to undo one; the
   persisted state of a run with a version fence; consumers that advance it through the inbox; and the events it relies on,
   declared in the vendored contracts. The saga pattern is declared (`patterns: ["saga"]` in hfs.json sides.be); an
   undeclared saga folder is refused.
@@ -68,7 +68,7 @@ files:
   - path: src/features/saga/<saga>/compensations/<step>.compensation.ts
     slot: be.feature.saga.compensations
     template: saga/saga.compensation.ts.tpl
-    role: "The compensation of the step of the same name; REQUIRED for every step. Names the step it undoes and the failure event, and dispatches one command; the orchestrator passes it to `platform/saga` as the compensation object."
+    role: "The optional declared undo of the step of the same name. Names the step it undoes and the failure event, and dispatches one command; the orchestrator passes it to `platform/saga` as the compensation object."
     suffix: compensation
     rules: [R169, R171, R173]
   - path: src/features/saga/<saga>/application/undo-<saga>.command.ts
@@ -158,18 +158,19 @@ files:
     optional: true
 rules:
   - id: BE-SAGA-1
-    title: Every step has a compensation, and the orchestrator lists them all
+    title: A declared undo is a compensation beside its step, pressed by a person and run forward
     kind: mandatory
     hfsRules: [R169, R01]
     requirement: |-
       A saga is `be/src/features/saga/<saga>/` with `<saga>.saga.service.ts`, `steps/<step>.saga-step.ts` and
-      `compensations/<step>.compensation.ts`: every step has a compensation of the same name and every compensation a step,
-      and the orchestrator passes every compensation of its folder to `platform/saga` (the compensation names the step it
-      undoes). The folders are slots enabled by the declared pattern; a saga folder in a product that does not declare
+      `compensations/<step>.compensation.ts`: a compensation has the step of the same name and a step needs none, and the
+      orchestrator passes every step and every compensation of its folder to `platform/saga` (the compensation names the step it
+      undoes). A person presses a compensation, and it runs as an ordinary forward step: a job of its own on the runner's ladder. The folders are slots enabled by the declared pattern; a saga folder in a product that does not declare
       `patterns: ["saga"]` is `HFS_SLOT_NOT_ENABLED`.
     rationale: |-
-      A forward step with no way back leaves a half-done flow when a later step fails. Naming the pair by file makes the
-      missing half a finding, and listing both in the orchestrator keeps a step nobody runs from hiding.
+      A flow moves forward only, and a failure leaves a typed failed or stopped row a person sees; when the business can undo a
+      step, the undo is a declared act a person decides to make. Naming the pair by file makes an undo with no step a finding, and
+      listing both in the orchestrator keeps a step nobody runs from hiding.
     cases:
       - id: case-1
         when: A new step
