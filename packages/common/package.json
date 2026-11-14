@@ -1,7 +1,7 @@
 {
   "name": "@starci/common",
-  "version": "1.0.1",
-  "description": "The concepts every StarCi app and package share, with no runtime dependency, shipped as CommonJS and ESM over one class identity: the coded error base DomainError (code, params, cause) with its guard and the closed ErrorKind set, the Outcome result, the object guards isRecord and isPlainRecord and the sequential runner eachInOrder.",
+  "version": "1.1.0",
+  "description": "The concepts every StarCi app and package share, with no runtime dependency, shipped as CommonJS and ESM over one class identity: the coded error base DomainError (code, params, cause) with its guard and the closed ErrorKind set, the Outcome result, the object guards isRecord and isPlainRecord and the sequential runner eachInOrder; and, under ./data, the ports of the data standard (store and driver adapters, one export to several copies) with in-memory references and contract suites under ./data/testing.",
   "keywords": [
     "error",
     "domain-error",
@@ -31,6 +31,26 @@
       "require": {
         "types": "./dist/cjs/index.d.ts",
         "default": "./dist/cjs/index.js"
+      }
+    },
+    "./data": {
+      "import": {
+        "types": "./dist/esm/data/index.d.ts",
+        "default": "./dist/esm/data/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/data/index.d.ts",
+        "default": "./dist/cjs/data/index.js"
+      }
+    },
+    "./data/testing": {
+      "import": {
+        "types": "./dist/esm/data/testing/index.d.ts",
+        "default": "./dist/esm/data/testing/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/data/testing/index.d.ts",
+        "default": "./dist/cjs/data/testing/index.js"
       }
     },
     "./package.json": "./package.json"
