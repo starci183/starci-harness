@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.39.3 - 2026-11-14
+
+- Changed: follows @starci/hfs 6.13.0 (peer line): version stamp only, with the Grammar family 0.39.3. No component changes.
+
 ## 0.39.2 - 2026-11-14
 
 - Changed: version stamp only, with the Grammar family 0.39.2 (cut with `@starci/hfs` 6.12.0); the components are those of 0.39.1 below. No component changes.

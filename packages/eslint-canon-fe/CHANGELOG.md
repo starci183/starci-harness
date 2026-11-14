@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.20.0 - 2026-11-14
+
+- Changed: cut with `@starci/hfs` 6.13.0 (peer line); requires `@starci/hfs` `~6.13.0`. No rule changes.
+
 ## 9.19.0 - 2026-11-14
 
 - Changed: cut with `@starci/hfs` 6.12.0; requires `@starci/hfs` `~6.12.0`. No rule changes.

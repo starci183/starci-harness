@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.27.0 - 2026-11-14
+
+- Changed: cut with `@starci/hfs` 6.13.0 (peer line); requires `@starci/hfs` `~6.13.0`. No rule changes.
+
 ## 3.26.0 - 2026-11-14
 
 - Changed (R159, breaking): `job-run-key` is `job-effect-piece` (`BE_JOB_EFFECT_PIECE`). In a job step, and in a function that takes a `ClaimedJob` (a closure of it included), every call on an integration port is the `act` or the `confirm` read of an `Effects.once` call of `platform/effects`; a call made as the key argument, or outside the call object, is a finding. A function handed to a helper that `platform/effects` itself declares together with the `Effects` port (one that answers what its act answered) is an act too, and so is a `const` function whose every use hands it to the piece (`const act = ...` then `{ act }`); a use that only calls it adds no finding of its own. A member its port declares an outside READ (the port's interface extends `OutsideReads<"member" | ...>` of `platform/effects`, a client class merges an interface of its own name that extends it, or a class implements a contract that does; judged by that interface's origin, never by a name) needs no intent; an undeclared member is an act, and a read that decides an act does not excuse the act. Fixtures `integrations/mailer/mail-box.port.ts`, `own-reads.port.ts`. The `RunKey` of `platform/jobs` is no longer read. Spec `src/jobs.spec.ts`.

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.39.3 - 2026-11-14
+
+- Changed: follows @starci/hfs 6.13.0 (peer line): version stamp only; requires `@starci/hfs` `~6.13.0` and `@starci/eslint-canon-fe` `~9.20.0`. No rule changes.
+
 ## 0.39.2 - 2026-11-14
 
 - Changed: version stamp only, cut with `@starci/hfs` 6.12.0; requires `@starci/hfs` `~6.12.0` and `@starci/eslint-canon-fe` `~9.19.0`. No rule changes.
