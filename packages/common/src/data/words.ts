@@ -34,11 +34,11 @@ export const DRIVER_KINDS: readonly DriverKind[] = Object.freeze(["git", "s3"])
 /** The purposes. */
 export const DATA_PURPOSES: readonly DataPurpose[] = Object.freeze(["seed-standard", "seed-backup"])
 
-/** The whole sealed snapshot one git copy may hold: 100 MiB, history not counted. */
-export const GIT_CAP_BYTES = 104_857_600
+/** The whole snapshot one git copy may hold (its data files in the working tree, history not counted): 500 MiB. Past it the copy needs s3. */
+export const GIT_CAP_BYTES = 524_288_000
 
-/** The size at which a git copy warns that it nears its cap: 80 MiB. */
-export const GIT_WARN_BYTES = 83_886_080
+/** The size at which a git copy warns that it nears its cap: 80% of it, 400 MiB. */
+export const GIT_WARN_BYTES = 419_430_400
 
-/** The largest sealed shard or blob chunk the git driver writes: 4 MiB. */
+/** The largest shard or blob chunk file the git driver writes: 4 MiB, far under GitHub's 50 MiB push warning and 100 MiB per-file block. */
 export const GIT_SHARD_BYTES = 4_194_304

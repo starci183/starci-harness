@@ -53,6 +53,16 @@
         "default": "./dist/cjs/data/testing/index.js"
       }
     },
+    "./data/git": {
+      "import": {
+        "types": "./dist/esm/data/git/index.d.ts",
+        "default": "./dist/esm/data/git/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/data/git/index.d.ts",
+        "default": "./dist/cjs/data/git/index.js"
+      }
+    },
     "./package.json": "./package.json"
   },
   "files": [

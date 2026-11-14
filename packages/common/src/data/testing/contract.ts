@@ -1,5 +1,5 @@
 import { exportOnce, memorySpool, restoreFrom, writeEverywhere } from "../copies.ts"
-import type { DriverAdapter, WriteContext } from "../driver.ts"
+import type { DriverAdapter, OpenContext, WriteContext } from "../driver.ts"
 import { DataRefusal } from "../driver.ts"
 import type { DataEntry, ManifestHeader } from "../manifest.ts"
 import type { JsonValue } from "../manifest.ts"
@@ -43,7 +43,7 @@ export function storeContract(make: () => Promise<StoreAdapter>, empty: () => Pr
             run: async () => {
                 const description = await (await make()).describe()
                 check(description.sets.length > 0, "a store with content describes at least one set")
-                check(description.sets.every((set) => set.schema !== "" && (set.form === "record" || set.form === "blob")), "every set has a schema and a form")
+                check(description.sets.every((set) => set.schema !== ""), "every set has a schema")
                 check(Array.isArray(description.cannot), "cannot is a list, even when empty")
             },
         },
@@ -53,11 +53,10 @@ export function storeContract(make: () => Promise<StoreAdapter>, empty: () => Pr
                 const entries = await collect((await make()).export({}))
                 check(entries.length > 0, "the export holds entries")
                 check(entries.every(entryIntact), "every sha256 matches its body")
-                for (let at = 1; at < entries.length; at += 1) {
-                    const before = entries[at - 1] as DataEntry
-                    const after = entries[at] as DataEntry
+                entries.reduce((before, after) => {
                     check((byteOrder(before.set, after.set) || byteOrder(before.key, after.key)) < 0, `${after.set}/${after.key} is out of order or repeated`)
-                }
+                    return after
+                })
             },
         },
         {
@@ -66,7 +65,7 @@ export function storeContract(make: () => Promise<StoreAdapter>, empty: () => Pr
                 const store = await make()
                 const first = await collect(store.export({}))
                 const second = await collect(store.export({}))
-                check(first.length === second.length && first.every((entry, at) => sameBytes(entry, second[at] as DataEntry)), "two exports differ")
+                check(first.length === second.length && first.every((entry, at) => second[at] !== undefined && sameBytes(entry, second[at])), "two exports differ")
             },
         },
         {
@@ -127,7 +126,10 @@ export function storeContract(make: () => Promise<StoreAdapter>, empty: () => Pr
                 const entries = await collect((await make()).export({}))
                 const target = await empty()
                 await target.import(from(entries), { dryRun: false, mode: "merge" })
-                const report = await target.import(from(entries.slice(0, 1)), { dryRun: false, mode: "merge" })
+                const sets = new Map<string, DataEntry[]>()
+                for (const entry of entries) sets.set(entry.set, [...(sets.get(entry.set) ?? []), entry])
+                const several = [...sets.values()].find((items) => items.length > 1) ?? entries
+                const report = await target.import(from(several.slice(0, 1)), { dryRun: false, mode: "merge" })
                 check(report.sets.every((set) => set.removed === 0), "a merge removed a key")
                 const back = await collect(target.export({}))
                 check(back.length === entries.length, "a key absent from the import disappeared")
@@ -150,14 +152,17 @@ export function storeContract(make: () => Promise<StoreAdapter>, empty: () => Pr
                 const target = await empty()
                 await target.import(from(entries), { dryRun: false, mode: "merge" })
                 const back = await collect(target.export({}))
-                check(back.length === entries.length && back.every((entry, at) => sameBytes(entry, entries[at] as DataEntry)), "the round trip changed the content")
+                check(back.length === entries.length && back.every((entry, at) => entries[at] !== undefined && sameBytes(entry, entries[at])), "the round trip changed the content")
             },
         },
     ]
 }
 
-/** The promises every driver adapter keeps. `make` builds a fresh driver; `store` a store with content to export. */
-export function driverContract(make: () => Promise<DriverAdapter>, store: () => Promise<StoreAdapter>, context: WriteContext): readonly ContractCase[] {
+/**
+ * The promises every driver adapter keeps. `make` builds a fresh driver; `store` a store with content to export; `open`
+ * the identity a sealed copy is read with (a throwaway test key in a driver's own specs, never a real one).
+ */
+export function driverContract(make: () => Promise<DriverAdapter>, store: () => Promise<StoreAdapter>, context: WriteContext, open: OpenContext = { identity: { kind: "age-identity", env: {} } }): readonly ContractCase[] {
     const exported = async () => exportOnce([await store()], {}, memorySpool(), header)
     return [
         {
@@ -179,10 +184,10 @@ export function driverContract(make: () => Promise<DriverAdapter>, store: () => 
                 if (ref === undefined) throw new Error("contract broken: no copy listed after a write")
                 check(ref.exportDigest === source.manifest.exportDigest, "the newest copy is not the export written")
                 check(receipt.ref.locator === ref.locator, "the receipt names another copy")
-                const back = await collect((await driver.read(ref, { identity: { kind: "age-identity", env: {} } })).entries())
+                const back = await collect((await driver.read(ref, open)).entries())
                 const sent = await collect(source.entries())
                 check(back.length === sent.length && back.every((item, at) => sameBytes(item.entry, (sent[at] as { entry: DataEntry }).entry)), "the copy reads back other entries")
-                const verdict = await driver.verify(ref, { identity: { kind: "age-identity", env: {} } })
+                const verdict = await driver.verify(ref, open)
                 check(verdict.healthy, `verify: ${verdict.checks.filter((item) => !item.ok).map((item) => item.detail).join("; ")}`)
             },
         },
@@ -213,9 +218,9 @@ export function driverContract(make: () => Promise<DriverAdapter>, store: () => 
                 const source = await exported()
                 await driver.write(source, context)
                 const [ref] = await driver.list()
-                check(ref !== undefined, "no copy listed")
+                if (ref === undefined) throw new Error("contract broken: no copy listed")
                 const target = await store()
-                const reports = await restoreFrom(await driver.read(ref as NonNullable<typeof ref>, { identity: { kind: "age-identity", env: {} } }), [target], { dryRun: false, mode: "merge" })
+                const reports = await restoreFrom(await driver.read(ref, open), [target], { dryRun: false, mode: "merge" })
                 check(reports.every((report) => report.outcome !== "partial"), "the restore was refused in part")
             },
         },

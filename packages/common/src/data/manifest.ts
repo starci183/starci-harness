@@ -203,16 +203,16 @@ export function manifestProblems(document: unknown): readonly string[] {
     const problems: string[] = []
     if (typeof document !== "object" || document === null || Array.isArray(document)) return ["the manifest is not an object"]
     const value = document as Record<string, unknown>
-    if (value["schema"] !== "starci/data-manifest@1") problems.push("schema is not starci/data-manifest@1")
-    if (typeof value["format"] !== "string" || !/^[a-z0-9][a-z0-9-]*@\d+$/u.test(value["format"])) problems.push("format is not <name>@<major>")
-    if (!["seed-standard", "seed-backup"].includes(String(value["purpose"]))) problems.push("purpose is not seed-standard or seed-backup")
-    if (typeof value["takenAt"] !== "string") problems.push("takenAt is missing")
-    if (!Array.isArray(value["sets"])) return [...problems, "sets is not a list"]
-    const sets = value["sets"] as DataSetSummary[]
+    if (value.schema !== "starci/data-manifest@1") problems.push("schema is not starci/data-manifest@1")
+    if (typeof value.format !== "string" || !/^[a-z0-9][a-z0-9-]*@\d+$/u.test(value.format)) problems.push("format is not <name>@<major>")
+    if (!["seed-standard", "seed-backup"].includes(String(value.purpose))) problems.push("purpose is not seed-standard or seed-backup")
+    if (typeof value.takenAt !== "string") problems.push("takenAt is missing")
+    if (!Array.isArray(value.sets)) return [...problems, "sets is not a list"]
+    const sets = value.sets as (DataSetSummary | null)[]
     for (const set of sets) {
         if (typeof set?.store !== "string" || typeof set.set !== "string" || typeof set.digest !== "string" || !Number.isInteger(set.items))
             problems.push(`a set entry is incomplete: ${JSON.stringify(set)}`)
     }
-    if (problems.length === 0 && value["exportDigest"] !== exportDigestOf(sets)) problems.push("exportDigest does not match the sets")
+    if (problems.length === 0 && value.exportDigest !== exportDigestOf(sets as DataSetSummary[])) problems.push("exportDigest does not match the sets")
     return problems
 }

@@ -10,7 +10,7 @@ writeFileSync("dist/cjs/package.json", '{"type": "commonjs"}\n')
 
 const require = createRequire(import.meta.url)
 
-for (const [entry, depth] of [["", ".."], ["data/", "../.."], ["data/testing/", "../../.."]] as const) {
+for (const [entry, depth] of [["", ".."], ["data/", "../.."], ["data/testing/", "../../.."], ["data/git/", "../../.."]] as const) {
     const names = Object.keys(require(`../dist/cjs/${entry}index.js`) as Record<string, unknown>).sort()
     mkdirSync(`dist/esm/${entry}`, { recursive: true })
     writeFileSync(`dist/esm/${entry}index.js`, `export { ${names.join(", ")} } from "${depth}/cjs/${entry}index.js"\n`)

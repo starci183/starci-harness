@@ -9,7 +9,7 @@ export interface DriverLimits {
     readonly forms: readonly EntryForm[]
     /** The largest file or object it writes, or null for no limit. */
     readonly maxFileBytes: number | null
-    /** The largest whole copy it keeps, or null (git: 100 MiB of the sealed snapshot, history not counted). */
+    /** The largest whole copy it keeps, or null (git: 500 MiB of the snapshot, history not counted). */
     readonly maxCopyBytes: number | null
     /** The size at which a write warns that the copy nears `maxCopyBytes`, or null. */
     readonly warnCopyBytes: number | null
