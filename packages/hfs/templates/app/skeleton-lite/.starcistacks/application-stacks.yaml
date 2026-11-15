@@ -278,7 +278,7 @@ environments:
             retry: true
 data:
   stores:
-    - {id: database, kind: database, level: logical, component: db, adapter: {module: be/src/modules/platform/data-stores/database.adapter.ts}}
+    - {id: database, kind: database, level: logical, component: db, adapter: {module: be/src/modules/integrations/seed/database.adapter.ts}}
   derived:
     - {component: ingress, rebuild: the ingress re-issues its certificates (ACME)}
 k8s:

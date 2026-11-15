@@ -17,8 +17,8 @@ import { mkdtemp } from './helpers/tmpdir.mjs';
 
 // reason: stack declarations are YAML-shaped trees the assertions build and judge.
 type Json = any;
-const DB = 'be/src/modules/platform/data-stores/database.store.ts';
-const OBJECTS = 'be/src/modules/platform/data-stores/storage.store.ts';
+const DB = 'be/src/modules/integrations/seed/database.adapter.ts';
+const OBJECTS = 'be/src/modules/integrations/seed/storage.adapter.ts';
 const ADAPTER = 'export class DatabaseStore implements StoreAdapter {}\n';
 const SOURCES: Record<string, string> = { [DB]: ADAPTER, [OBJECTS]: 'export class StorageStore implements StoreAdapter {}\n' };
 const tracked = new Set(Object.keys(SOURCES));

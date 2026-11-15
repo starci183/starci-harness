@@ -1,8 +1,15 @@
 import type { DataEntry, ImportReport, StoreAdapter, StoreDescription } from "@starci/seed"
+import type { StoreIdentity } from "./seed.contracts"
+
+/** An export of no entry: its iterator is done at once. */
+const NO_ENTRIES: AsyncIterable<DataEntry> = {
+    [Symbol.asyncIterator]: () => ({ next: () => Promise.resolve({ done: true, value: undefined }) }),
+}
 
 /**
  * The relational database as a store of the data standard (PROJECT-STACKS-14). It holds no set yet: the app declares each set it
- * keeps and copies here, with the export and the upsert that go with it.
+ * keeps and copies here, with the export and the upsert that go with it. It has no dependencies, so the DI container builds it
+ * without a decorator.
  */
 export class DatabaseStore implements StoreAdapter {
     readonly id = "database"
@@ -21,8 +28,8 @@ export class DatabaseStore implements StoreAdapter {
     }
 
     /** Yields nothing: no set is declared. */
-    async *export(): AsyncIterable<DataEntry> {
-        yield* []
+    export(): AsyncIterable<DataEntry> {
+        return NO_ENTRIES
     }
 
     /** Counts nothing: no set is declared. */
@@ -31,7 +38,7 @@ export class DatabaseStore implements StoreAdapter {
     }
 
     /** No set is declared, so no key has an identity. */
-    identityOf(): Promise<string | null> {
+    identityOf(): Promise<StoreIdentity> {
         return Promise.resolve(null)
     }
 }

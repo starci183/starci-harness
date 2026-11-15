@@ -7,7 +7,7 @@
 # catalog READ this file through scripts/hfs/slots.mts; none of them hardcodes a path.
 # Shape: modules/schemas/hfs-slots.schema.yaml. The repository side is hfs.json: modules/schemas/hfs-repo.schema.yaml.
 schema: starci/hfs-slots@3
-version: 3.39.0
+version: 3.40.0
 
 versioning:
   # MAJOR.MINOR.PATCH of this manifest. A repository pins only the MAJOR in hfs.json ("hfs": 3).
@@ -227,6 +227,7 @@ ruleParams:
       minio: []                                          # storage goes through @starci/object-storage
       nodemailer: []                                     # the SMTP client is a dependency of @starci/mail alone; no app file imports it
       "@starci/mail": [integrations/mail]                # outgoing mail: the Mailer port, parsed and registered by its one glue
+      "@starci/seed": [integrations/seed]                # the data standard: the StoreAdapter port, the app's store adapters composed by its one glue (R426)
       "@supabase": []                                    # no Supabase client in a back end
       "@nestjs/passport": []                             # the identity libraries are @starci/auth's dependencies, never an app's (R328)
       passport: []
@@ -2275,6 +2276,25 @@ slots:
     rules: [BE_TIER_DIRECTION, BE_ERROR_HOME, BE_SECRET_DEFAULT, BE_INFRA_OWNER, BE_STORAGE_OWNER]
     coverage: required
     since: 3.9.0
+  - id: be.integrations.seed
+    profiles: [be]
+    exemplifiedBy:
+      - packages/hfs/templates/be/skeleton/src/modules/integrations/seed/
+    # The glue of @starci/seed, the data standard (PROJECT-STACKS-14, R426): the one module that imports the package (R90). A store
+    # adapter that reads only through platform (the starter's DatabaseStore, a package store such as postgresStore) is a <store>.adapter.ts
+    # here, registered by seed.module.ts (DataSeedModule), so the file a store's `adapter.module` names is composed into an app; an adapter that reads a
+    # domain's own data lives in a domain capability, registered by its module, and takes the port from this folder's index (an
+    # integration never imports the domain, BE-INFRA-3).
+    path: "src/modules/integrations/seed/"
+    presence: optional
+    tracked: tracked
+    tier: integrations
+    owner: true
+    requires: [index.ts, seed.options.ts, seed.decorators.ts, seed.module-definition.ts, seed.module.ts]
+    tests: unit-beside
+    rules: [BE_TIER_DIRECTION, BE_ERROR_HOME, BE_SECRET_DEFAULT, BE_INFRA_OWNER]
+    coverage: required
+    since: 3.40.0
   - id: be.integrations.keycloak
     profiles: [be]
     editions: [full]

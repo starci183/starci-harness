@@ -127,6 +127,7 @@ Refused (forbidden or external): `app.tool-config-local`, `app.ci-e2e`, `app.too
       - `<provider>/` — **be.integrations** optional · [be/ai](../code/be/ai.md), [be/idempotency](../code/be/idempotency.md), [be/infra](../code/be/infra.md), [be/resilience](../code/be/resilience.md) · R26, R38, R44, R112, R326, R327, R344
         - `model/` — **be.integrations.model** opt-in · [be/ai](../code/be/ai.md) · R26, R90, R112
       - `object-storage/` — **be.integrations.object-storage** optional · R26, R38, R44, R90, R331
+      - `seed/` — **be.integrations.seed** optional · R26, R38, R44, R90
       - `keycloak/` — **be.integrations.keycloak** optional · R26, R38, R44, R90, R328, R112
   - `tests/`
     - `world/` — **be.tests.world** optional · [be/test](../code/be/test.md) · R47, R100

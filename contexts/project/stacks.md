@@ -641,8 +641,8 @@ The declaration, in `application-stacks.yaml` (the smallest example: a project w
 ```yaml
 data:
   stores:
-    - {id: database, kind: database, level: logical, component: db, adapter: {module: be/src/modules/platform/data-stores/database.adapter.ts, command: [npx, shop, data, database]}}
-    - {id: storage, kind: storage, level: logical, component: minio, adapter: {module: be/src/modules/platform/data-stores/storage.adapter.ts, command: [npx, shop, data, storage]}}
+    - {id: database, kind: database, level: logical, component: db, adapter: {module: be/src/modules/integrations/seed/database.adapter.ts, command: [npx, shop, data, database]}}
+    - {id: storage, kind: storage, level: logical, component: minio, adapter: {module: be/src/modules/integrations/seed/storage.adapter.ts, command: [npx, shop, data, storage]}}
   derived:
     - {component: redis, from: database, rebuild: the relay republishes the outbox}
   sets:
@@ -663,7 +663,13 @@ data:
 
 `commit` and `force` belong to a `seed-standard` only, `everyMinutes` and `maxAgeMinutes` to a `seed-backup` only; `{env}` in a backup's repository is
 replaced by each environment's label (its declared `environments.<env>.short`, else its name), and the result ends `-seed-backup-<env>`. A store's adapter `module` is the source file of the class that
-implements `StoreAdapter`, or of the factory whose declared return type is `StoreAdapter` (a package store such as `postgresStore`); its `command` is the argv, from the app root, of the app's own command that serves the store with `serveStore` of `@starci/seed` over the line
+implements `StoreAdapter`, or of the factory whose declared return type is `StoreAdapter` (a package store such as `postgresStore`). In a back end
+`@starci/seed` is imported only by its one integration, `be/src/modules/integrations/seed/` (slot `be.integrations.seed`,
+[code/be/infra.md](../code/be/infra.md) BE-INFRA-1), and every store adapter is registered by a module composed into an app, so it is
+reached from the app's root, never named by the declaration alone. An adapter that reads only through platform (the starter's
+`DatabaseStore`, a package store) is `integrations/seed/<store>.adapter.ts`, registered by its `DataSeedModule`; one that reads a domain's own
+data lives in a domain capability, registered by that capability's module, and takes the port from `@modules/integrations/seed` (an
+integration never imports the domain, BE-INFRA-3); its `command` is the argv, from the app root, of the app's own command that serves the store with `serveStore` of `@starci/seed` over the line
 protocol `starci/data-entries@1` (`describe`, `export <selection>`, `import <options>` with entry lines on stdin, `identity <set> <key>`), which `starci app data` runs; a store
 of a `seed-backup` set declares one.
 

@@ -134,6 +134,7 @@ Refused (forbidden or external): `app.tool-config-local`, `app.ci-e2e`, `app.ci-
       - `passport/` — **be.integrations.passport** required · R26, R38, R44, R90, R328, R329, R330
       - `mail/` — **be.integrations.mail** required · R26, R38, R44, R90
       - `object-storage/` — **be.integrations.object-storage** required · R26, R38, R44, R90, R331
+      - `seed/` — **be.integrations.seed** optional · R26, R38, R44, R90
   - `tests/`
     - `world/` — **be.tests.world** optional · [be/test](../code/be/test.md) · R47, R100
       - `kit/` — **be.tests.world.kit** optional · [be/test](../code/be/test.md)

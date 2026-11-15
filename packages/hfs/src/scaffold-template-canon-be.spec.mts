@@ -1,5 +1,5 @@
 // scaffold-template-canon-be.spec.mts - the skeleton's platform capabilities, code and specs, the lite sign-in (identity and passport), its
-// specs included, pass the back-end canon they ship with, its borrowed typescript-eslint, stylistic and Sonar way rules included (shippedCanon), and so do the entity base of platform/database and the table entity that extends it, which
+// specs included, and the store adapters of integrations/seed (the data standard, R426) pass the back-end canon they ship with, its borrowed typescript-eslint, stylistic and Sonar way rules included (shippedCanon), and so do the entity base of platform/database and the table entity that extends it, which
 // the first `starci app add table` writes in either edition (persistence.md BE-PERSISTENCE-3).
 // An app copies a platform capability byte-identical, so a skeleton file the canon refuses is a finding every app inherits
 // and cannot fix. Each edition is scaffolded into a temp folder and every file under its src/modules/platform is linted, typed, with the
@@ -29,6 +29,7 @@ const AUTH = path.resolve(HFS, '..', 'auth');
 const MAIL = path.resolve(HFS, '..', 'mail');
 const NEST_KIT = path.resolve(HFS, '..', 'nest-kit');
 const COMMON = path.resolve(HFS, '..', 'common');
+const SEED = path.resolve(HFS, '..', 'seed');
 /** Where the types a skeleton file imports are installed: this package's dev dependencies and the kit's (jest's globals). */
 const INSTALLS = [path.join(HFS, 'node_modules'), path.join(KIT, 'node_modules'), path.join(AUTH, 'node_modules'), path.join(MAIL, 'node_modules'), path.join(NEST_KIT, 'node_modules')];
 
@@ -79,6 +80,11 @@ const installCommon = (root: string) => {
   for (const part of ['package.json', 'dist']) fs.cpSync(path.join(COMMON, part), path.join(root, 'node_modules', '@starci', 'common', part), { recursive: true });
 };
 
+/** The data standard, built, where every back end installs it: the store adapters of integrations/seed implement its StoreAdapter port. */
+const installSeed = (root: string) => {
+  for (const part of ['package.json', 'dist']) fs.cpSync(path.join(SEED, part), path.join(root, 'node_modules', '@starci', 'seed', part), { recursive: true });
+};
+
 /** The sign-in package, built, where a lite app installs it (its dependencies resolve from the package's own installs). */
 const installAuth = (root: string) => {
   for (const part of ['package.json', 'dist']) fs.cpSync(path.join(AUTH, part), path.join(root, 'node_modules', '@starci', 'auth', part), { recursive: true });
@@ -92,6 +98,8 @@ const installMail = (root: string) => {
 /** The entity base of platform/database and the entity of the table `add table` writes over a postgres connection. */
 const ENTITY_BASE = 'src/modules/platform/database/abstract.entity.ts';
 const TABLE_ENTITY = 'src/modules/domain/widgets/persistence/entities/widgets.entity.ts';
+/** The one integration of @starci/seed: the starter's store adapter, its spec and the module that registers it (BE-INFRA-1, PROJECT-STACKS-14). */
+const SEED_INTEGRATION = 'src/modules/integrations/seed/**/*.ts';
 
 /**
  * The connection retry window of the rendered DatabaseModule: an app that boots beside the db service of its stack waits about 30 s
@@ -124,6 +132,7 @@ for (const edition of ['full', 'lite']) {
     installKit(root);
     installNestKit(root);
     installCommon(root);
+    installSeed(root);
     if (edition === 'lite') { installAuth(root); installMail(root); }
     const be = path.join(root, 'be');
     const project = lintProject(be);
@@ -138,10 +147,11 @@ for (const edition of ['full', 'lite']) {
     // lite also lints the specs beside the logic files be.integrations.passport declares (`logic`): unit specs held to the canon form.
     const passportSpecs = edition === 'lite' ? ['kit'].map((part) => `src/modules/integrations/passport/passport.${part}.spec.ts`) : [];
     const signIn = edition === 'lite' ? ['src/modules/domain/identity/**/*.ts', 'src/modules/integrations/passport/{index,passport.config,passport.decorators,passport.kit,passport.kit.spec,passport.options,passport.module,passport.module-definition}.ts', 'src/modules/integrations/passport/errors/*.ts', 'src/tests/fixtures/builders/identity.builder.ts'] : [];
-    const results = await eslint.lintFiles(['src/modules/platform/**/*.ts', TABLE_ENTITY, ...passportSpecs, ...signIn]);
+    const results = await eslint.lintFiles(['src/modules/platform/**/*.ts', SEED_INTEGRATION, TABLE_ENTITY, ...passportSpecs, ...signIn]);
     const linted = results.map((result) => path.relative(be, result.filePath).split(path.sep).join('/'));
     assert.ok(linted.includes('src/modules/platform/http/fetch-http-client.client.ts'), 'the client is linted');
     assert.ok(linted.includes('src/modules/platform/http/fetch-http-client.client.spec.ts'), 'its spec is linted');
+    assert.ok(linted.includes('src/modules/integrations/seed/database.adapter.ts') && linted.includes('src/modules/integrations/seed/seed.module.ts'), 'the store adapter and the module that composes it are linted');
     for (const spec of passportSpecs) assert.ok(linted.includes(spec), `${spec} is linted`);
     assert.ok(linted.includes(ENTITY_BASE) && linted.includes(TABLE_ENTITY), 'the entity base and the table entity extending it are linted');
     const entity = fs.readFileSync(path.join(be, TABLE_ENTITY), 'utf8');

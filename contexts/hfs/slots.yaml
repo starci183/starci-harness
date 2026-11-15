@@ -4,7 +4,7 @@
 # factories, the architecture machine and templates read this file; none hardcodes a path. Field meanings and the
 # ruleParams keys are explained in hfs/README.md; the reason for a slot's shape is its pattern topic.
 schema: starci/hfs-slots@3
-version: 3.39.0
+version: 3.40.0
 presenceValues:
   - required
   - optional
@@ -293,6 +293,8 @@ ruleParams:
       nodemailer: []
       "@starci/mail":
         - integrations/mail
+      "@starci/seed":
+        - integrations/seed
       "@supabase": []
       "@nestjs/passport": []
       passport: []
@@ -3274,6 +3276,34 @@ slots:
       - BE_SECRET_DEFAULT
       - BE_INFRA_OWNER
       - BE_STORAGE_OWNER
+    coverage: required
+  - id: be.integrations.seed
+    profiles:
+      - be
+    exemplifiedBy:
+      - packages/hfs/templates/be/skeleton/src/modules/integrations/seed/
+    # The glue of @starci/seed, the data standard (PROJECT-STACKS-14, R426): the one module that imports the package (R90). A store
+    # adapter that reads only through platform (the starter's DatabaseStore, a package store such as postgresStore) is a <store>.adapter.ts
+    # here, registered by seed.module.ts (DataSeedModule), so the file a store's `adapter.module` names is composed into an app; an adapter that reads a
+    # domain's own data lives in a domain capability, registered by its module, and takes the port from this folder's index (an
+    # integration never imports the domain, BE-INFRA-3).
+    path: src/modules/integrations/seed/
+    presence: optional
+    tracked: tracked
+    tier: integrations
+    owner: true
+    requires:
+      - index.ts
+      - seed.options.ts
+      - seed.decorators.ts
+      - seed.module-definition.ts
+      - seed.module.ts
+    tests: unit-beside
+    rules:
+      - BE_TIER_DIRECTION
+      - BE_ERROR_HOME
+      - BE_SECRET_DEFAULT
+      - BE_INFRA_OWNER
     coverage: required
   - id: be.integrations.keycloak
     profiles:

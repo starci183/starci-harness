@@ -8,13 +8,15 @@ import {
 } from "@modules/integrations/passport"
 import { MailModule } from "@modules/integrations/mail"
 import { ObjectStorageModule } from "@modules/integrations/object-storage"
+import { DataSeedModule } from "@modules/integrations/seed"
 import type { ApiOptions } from "../api.options"
 
-/** The sign-in, object storage and mail packages of the app, each registered once with the app's typed settings. */
+/** The sign-in, object storage, mail and data standard packages of the app, each registered once with the app's typed settings. */
 export const integrationModules = (options: ApiOptions): Array<DynamicModule> => [
     PassportModule.register({ ...options.passport, authenticator: PASSPORT_AUTHENTICATOR, isGlobal: true }),
     ObjectStorageModule.register({ ...options.objectStorage, isGlobal: true }),
     MailModule.register({ ...options.mail, isGlobal: true }),
+    DataSeedModule.register({ isGlobal: true }),
 ]
 
 /** The passport integration ports bound once for this app. */
