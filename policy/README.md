@@ -8,7 +8,7 @@ live in the canon packages ([packages/](../packages/README.md)). The CLI validat
 |---|---|---|
 | [quality.yaml](quality.yaml) | the two gate tiers, the profiles, the default profile of each kind of tree, and `requireCi` | `check run`, `task verify`, the actions `requireCi` lists |
 | [canon.yaml](canon.yaml) | the canon package of each stack and tool, by npm name | the `canon` gate |
-| [loosening.yaml](loosening.yaml) | the banned loosening markers, the scan bounds, the declared exceptions and `branchProfiles`, the polish gates an app's branch profile may lower on the branches it names | `check loosening`; `starci app`, which hands `branchProfiles` to @starci/hfs |
+| [loosening.yaml](loosening.yaml) | the banned loosening markers, the scan bounds, the declared exceptions and `branchProfiles`, the polish gates an app's branch profile may lower on the branches it names, and `optionalGates`, the gates an app may switch off for the whole app (every gate but hfs, secrets and db, PROJECT-LINT-4) | `check loosening`; `starci app`, which hands `branchProfiles` to @starci/hfs |
 | [security.yaml](security.yaml) | the secret scan's configuration: sops envelopes per profile, `neverRead`, exceptions; `secretKeys`, the keys the CLI's secret loader may read | `check secrets`, `task verify`, `release push` |
 
 ## Tiers

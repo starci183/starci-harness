@@ -18,6 +18,7 @@ import { readCacheDir } from '../cache/trust.mjs';
 import { hashText } from '../cache/hash.mjs';
 import { git } from '../cache/git.mjs';
 import { APP_CHECK_COMMAND } from '../release/gate.mjs';
+import { ciWorkflowCommands } from '../sync/ci-commands.mjs';
 import { pinFindings } from '../runtime/scripts/hfs/pin-findings.mjs';
 import { CHECK_ENVS, checkEnvOf, judgedForEnv, localOnlyCodes, localReported, localVerdictLine, type EnvFinding } from '../runtime/scripts/hfs/check-env.mjs';
 import type { CacheRecord } from '../cache/types.mjs';
@@ -180,9 +181,12 @@ test('the managed hook, the CI templates and the release gate judge as prod', ()
     const verify = read(`${flavour}/github/workflows/cache-verify.yml`);
     assert.match(verify, /starci app check --env prod --fresh \$\{\{ matrix\.args \}\}$/mu, 'every shard of the verify judges as prod');
     const ci = read(`${flavour}/github/workflows/ci.yml`);
+    // The format and boot-proof steps are rendered by sync/ci-commands.mts (`ciFormatRun`, `ciWiringRun`: an off gate renders an echo instead, PROJECT-LINT-4): the placeholder stands for a command that judges as prod.
+    const rendered = ciWorkflowCommands({ files: [], read: () => { throw Object.assign(new Error('absent'), { code: 'ENOENT' }); } });
     const runs = ci.split('\n').filter((line) => /starci app check\b/u.test(line) && !line.trimStart().startsWith('#'));
-    assert.ok(runs.length > 0);
+    assert.ok(runs.length > 0 || ci.includes('{{ciFormatRun}}'));
     for (const line of runs) assert.match(line, /--env prod$/u, line);
+    for (const key of ['ciFormatRun', 'ciWiringRun']) assert.match(rendered[key] ?? '', /--env prod$/u, key);
   }
   assert.deepEqual(APP_CHECK_COMMAND.slice(-2), ['--env', 'prod']);
 });

@@ -9,14 +9,17 @@
 // The declaration's quality/delivery services contract (custody, CI wiring, project keys) stays check-starcistacks's.
 // HFS_BRANCH_PROFILE_INVALID (R378): the `branches` block of the declaration (readBranchProfiles of the stack-declaration reader) lowers only a polish gate
 // (lint, sonar, codecov) on a branch policy/loosening.yaml branchProfiles allows, never on the default branch.
+// HFS_GATE_DECLARATION_INVALID (R430): the `gates` block (readGateDeclarations of the same reader) switches off any gate but hfs, secrets and db for the whole app, each with a reason;
+// an id that is no gate, a gate that is never switchable (hfs, secrets, db), a gate whose reader stays on and a missing reason are findings, and a refused block switches nothing off.
 import { braceVariants, globExpression } from '../../lib/glob.mjs';
-import { declaredStack, findStackDeclaration, readBranchProfiles, STACK_ROOT, text } from '../../lib/stack-declaration.mjs';
+import { declaredStack, findStackDeclaration, readBranchProfiles, readGateDeclarations, STACK_ROOT, text } from '../../lib/stack-declaration.mjs';
 import { found } from './read.mjs';
 import { hostCrontabFindings, stacksRuntimeFindings } from './stacks-runtime.mjs';
 import type { Parsed, Resolver } from './rule-types.mjs';
 
 const STACKS_SHAPE = 'HFS_STACKS_SHAPE';
 export const BRANCH_PROFILE_INVALID = 'HFS_BRANCH_PROFILE_INVALID';
+export const GATE_DECLARATION_INVALID = 'HFS_GATE_DECLARATION_INVALID';
 const STACKS_SLOT = 'app.starcistacks';
 const HOST_SONAR_ROOT = '.claude/ext/sonar';
 const INSIDE_SECRETS = /^[^/]+\/secrets\/[^/]+\.enc(?:\.yaml)?$/;
@@ -49,6 +52,7 @@ function declarationFindings(files: string[], prefix: string, declaration: Parse
   }
   if (declaration.error) return [shapeFinding(declared, `${declared} cannot be read: ${declaration.error}`)];
   for (const problem of readBranchProfiles(declaration.doc).problems) findings.push(found(BRANCH_PROFILE_INVALID, declared, `${declared} ${problem.at}: ${problem.message}`));
+  for (const problem of readGateDeclarations(declaration.doc).problems) findings.push(found(GATE_DECLARATION_INVALID, declared, `${declared} ${problem.at}: ${problem.message}`));
   const services = declaration.doc?.services;
   if (services === undefined || typeof services.sonar !== 'object' || services.sonar === null) {
     findings.push(shapeFinding(declared, `${declared} declares no sonar service; every repository states its Sonar owner (a local one is owned by the host: stack.owner host, root ${HOST_SONAR_ROOT})`));

@@ -35,6 +35,13 @@ branchProfiles:
   branches: [dev, ui/*]
   gates: [lint, sonar, codecov]
   reason: "the flow-F product branch of an app, and the ui/* feature branches that merge into it, take product and UI work under the full safety gate while lint and Sonar only report (with the lint ratchet blocking on the files a commit touches); main keeps the full gate and promoting dev to main runs it"
+# An app's `gates` block (its .starcistacks/application-stacks.yaml, PROJECT-LINT-4) switches gates off for every branch, each with a reason: the gates listed here, which are every gate but
+# the hfs ones (hfs, secrets and db are never listed: the harness's own rules always run). @starci/hfs refuses any other id (HFS_GATE_DECLARATION_INVALID); `starci app` hands
+# the list to it; a project's overlay may narrow it, never widen it.
+optionalGates:
+  cites: PROJECT-LINT-4
+  gates: [lint, format, sonar, codecov, test, coverage, types, build, audit, wiring, checks, deps]
+  reason: "an app whose product model is not settled may defer its quality and test investment; the gates that are the harness's own rules (hfs, secrets, db) are never switchable, and a declared-off gate is reported off (declared) and never counted as passed"
 # A code marker reads code, never the text of a string, template or comment; a directive marker reads comments, so a
 # comment that spells a directive is a finding wherever it stands, a rule's doc comment included.
 exceptions:

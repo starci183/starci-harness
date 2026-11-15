@@ -7,15 +7,15 @@
 // A branch takes its own entry, else every pattern entry that matches it (`ui/*` for ui/3), merged to the stricter mode per gate (profileFor).
 // The default branch is the declaration's (ci.github.defaultBranch, else main), or CI's STARCI_DEFAULT_BRANCH when it is set. No branch, the default branch, a branch with no profile and a declaration with any HFS_BRANCH_PROFILE_INVALID problem run the full gate: every gate blocks.
 import { runGit } from '../api/git/lib.mjs';
-import { findStackDeclaration, profileFor, profilePolicy, readBranchProfiles, type GateMode, type ProfileGate } from '../lib/stack-declaration.mjs';
+import { findStackDeclaration, optionalGatePolicy, profileFor, profilePolicy, readBranchProfiles, readGateDeclarations, type GateMode, type ProfileGate } from '../lib/stack-declaration.mjs';
 
 /**
  * The branch profile a run is under: the branch, how it was chosen, the profile's name when one applies (else null: the full gate), the declaration key that
  * gave it (the branch itself, or the pattern such as `ui/*` that covers it) and each gate's mode.
  */
-export interface ActiveProfile { branch: string | null; source: string; profile: string | null; modes: Record<ProfileGate, GateMode> }
+export interface ActiveProfile { branch: string | null; source: string; profile: string | null; modes: Record<ProfileGate, GateMode>; declaredOff: Partial<Record<ProfileGate, string>> }
 
-const FULL_GATE: Record<ProfileGate, GateMode> = Object.freeze({ hfs: 'blocking', format: 'blocking', db: 'blocking', secrets: 'blocking', wiring: 'blocking', types: 'blocking', lint: 'blocking', test: 'blocking', sonar: 'blocking', codecov: 'blocking' });
+const FULL_GATE: Record<ProfileGate, GateMode> = Object.freeze({ hfs: 'blocking', format: 'blocking', db: 'blocking', secrets: 'blocking', wiring: 'blocking', types: 'blocking', lint: 'blocking', test: 'blocking', sonar: 'blocking', codecov: 'blocking', build: 'blocking', audit: 'blocking', checks: 'blocking', coverage: 'blocking', deps: 'blocking' });
 const set = (value: string | undefined): string | null => (value !== undefined && value.trim() !== '' ? value.trim() : null);
 
 /** The branch a run judges and how it was chosen: a pull request into `defaultBranch` is judged as the default branch. */
@@ -34,10 +34,21 @@ export function judgedBranch(repoRoot: string, env: NodeJS.ProcessEnv, defaultBr
   return name !== '' && name !== 'HEAD' ? { branch: name, source: 'the checked-out branch (git rev-parse --abbrev-ref HEAD)' } : { branch: null, source: 'no checked-out branch' };
 }
 
-/** The branch profile of a run at `repoRoot` under `env`. */
+/**
+ * The branch profile of a run at `repoRoot` under `env`, with the gates the app switches off for every branch (`gates` of the declaration, PROJECT-LINT-4: the one reader
+ * of that block, so `app check`, the hooks, the release gate and the rendered CI agree). A gate declared off is off on the default branch too, and wins over any branch profile.
+ */
 export function activeProfile(repoRoot: string, env: NodeJS.ProcessEnv = process.env): ActiveProfile {
   const declaration = findStackDeclaration(repoRoot);
-  const read = readBranchProfiles(declaration.doc, profilePolicy(env));
+  const switched = readGateDeclarations(declaration.doc, optionalGatePolicy(env));
+  const profile = branchProfile(repoRoot, env, declaration.doc);
+  const modes = { ...profile.modes };
+  for (const gate of Object.keys(switched.off) as ProfileGate[]) modes[gate] = 'off';
+  return { ...profile, modes, declaredOff: switched.off };
+}
+
+function branchProfile(repoRoot: string, env: NodeJS.ProcessEnv, doc: unknown): Omit<ActiveProfile, 'declaredOff'> {
+  const read = readBranchProfiles(doc, profilePolicy(env));
   const defaultBranch = set(env.STARCI_DEFAULT_BRANCH) ?? read.defaultBranch;
   const { branch, source } = judgedBranch(repoRoot, env, defaultBranch);
   // The default branch never takes a profile, whatever a pattern would match (the reader refuses such a pattern too; STARCI_DEFAULT_BRANCH may name another branch).
@@ -59,9 +70,13 @@ export function familyModes(profile: ActiveProfile): Record<string, GateMode> {
 /** How a profile is named in a message: `branch profile dev`, or `branch profile ui/* (pattern)` when a pattern covers the branch. */
 export const profileLabel = (profile: ActiveProfile): string => (profile.profile === null ? 'no branch profile' : profile.profile === profile.branch ? `branch profile ${profile.profile}` : `branch profile ${profile.profile} (a pattern covering ${profile.branch ?? 'the branch'})`);
 
-/** The one-line notice of every gate a profile does not keep blocking: `<gate>: report on branch <b> (branch profile ...)`. */
+/** How a gate the declaration switches off reads wherever gates are listed: `off (declared: <reason>)`, never silently absent and never counted as passed. */
+export const offLine = (profile: ActiveProfile, gate: ProfileGate): string => `off (declared: ${profile.declaredOff[gate] ?? 'no reason'})`;
+
+/** The one-line notice of every gate a profile does not keep blocking: `<gate>: report on branch <b> (branch profile ...)`, and of every gate the app declares off: `<gate>: off (declared: <reason>)`. */
 export function profileNotices(profile: ActiveProfile): string[] {
-  if (profile.profile === null) return [];
-  return (Object.entries(profile.modes) as [ProfileGate, GateMode][]).filter(([, mode]) => mode !== 'blocking')
-    .map(([gate, mode]) => `${gate}: ${mode === 'off' ? 'off, not run' : 'report, its findings are listed but never count'} on branch ${profile.branch ?? (profile.profile as string)} (${profileLabel(profile)} of .starcistacks/application-stacks.yaml; ${profile.source})`);
+  const declared = (Object.keys(profile.declaredOff) as ProfileGate[]).map((gate) => `${gate}: ${offLine(profile, gate)}, not run and not counted as passed (gates of .starcistacks/application-stacks.yaml)`);
+  if (profile.profile === null) return declared;
+  return declared.concat((Object.entries(profile.modes) as [ProfileGate, GateMode][]).filter(([gate, mode]) => mode !== 'blocking' && profile.declaredOff[gate] === undefined)
+    .map(([gate, mode]) => `${gate}: ${mode === 'off' ? 'off, not run' : 'report, its findings are listed but never count'} on branch ${profile.branch ?? (profile.profile as string)} (${profileLabel(profile)} of .starcistacks/application-stacks.yaml; ${profile.source})`));
 }

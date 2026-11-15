@@ -6,11 +6,18 @@
 # runs default to `--env local`). A push of main or of a release tag is judged as main (STARCI_JUDGED_BRANCH), whatever branch is checked out: it runs the full gate. Any other push runs under the branch profile of the
 # pushed branch (.starcistacks/application-stacks.yaml branches): a gate it reports runs and records but never counts, the lint of a line the branch changed since main
 # and the predicted coverage of the changed lines still block, and where lint reports the lint ratchet still refuses a pushed commit that adds a lint finding to a file it touches.
+# Gates the app declares off for every branch (`gates` of the declaration, PROJECT-LINT-4) are skipped by `app check`, each printed `off (declared: <reason>)`; `deps check` follows its own
+# gate (`deps`), except on a push of main or a release tag, which always runs it: a pin npm cannot serve breaks the release build.
 set -e
 refs=$(cat)
 printf '%s\n' "$refs" | STARCI_PUSH_REMOTE="$1" node --input-type=module -e "import { main } from '@starci/hfs/runtime/scripts/guards/release-push-gate.mjs'; process.exit(await main());"
 case "$refs" in
   *" refs/heads/main "*|*" refs/tags/v"*) STARCI_JUDGED_BRANCH=main; export STARCI_JUDGED_BRANCH ;;
 esac
-node node_modules/starci-harness/dist/main.js deps check
+deps=$(node node_modules/starci-harness/dist/main.js app check --profile --gate deps)
+if [ "$deps" = off ] && [ "${STARCI_JUDGED_BRANCH:-}" != main ]; then
+  echo "deps: off by declaration (gates of .starcistacks/application-stacks.yaml), not run"
+else
+  node node_modules/starci-harness/dist/main.js deps check
+fi
 node node_modules/starci-harness/dist/main.js app check --env prod

@@ -6850,3 +6850,19 @@ rules:
       - {path: packages/hfs/src/secret-ext.spec.mjs, editions: [lite, full]}
     witness:
       - {path: packages/hfs/src/secret-ext.spec.mjs, editions: [lite, full]}
+  - id: R430
+    code: "HFS_GATE_DECLARATION_INVALID"
+    law: "An app's `gates` block (.starcistacks/application-stacks.yaml, PROJECT-LINT-4) switches off, for the whole app and every branch, any gate but the three that are the harness's own rules: `hfs`, `secrets` and `db` are never switched off, whatever the declaration says; every other id (lint, format, sonar, codecov, test, coverage, types, build, audit, wiring, checks, deps) may be, each as `{ run: off, reason }` with a mandatory reason and only where policy/loosening.yaml optionalGates lists it; an id that is no gate, a gate that is never switchable, a missing reason, a `run` other than off and a switched-off gate whose reader stays on (test needs coverage, codecov and sonar; lint needs sonar; coverage needs codecov) are HFS_GATE_DECLARATION_INVALID, and a refused block switches nothing off. One reader (readGateDeclarations, folded by activeProfile) serves `starci app check` in both envs, the managed hooks, the release gate (whose build rows always run) and the rendered CI, and every one reports an off gate as `off (declared: <reason>)`, never as passed."
+    kinds: [check]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["HFS_GATE_DECLARATION_INVALID"]
+    enforcers:
+      - {kind: hfs, id: gate-declaration, at: scripts/lib/stack-declaration.mjs}
+      - {kind: hfs, id: stacks-shape, at: scripts/hfs/rules/stacks.mjs}
+    editions: [lite, full]
+    docs:
+      - {path: contexts/project/lint.md#project-lint-4-an-app-may-switch-every-gate-off-but-the-hfs-ones, editions: [lite, full]}
+    proves:
+      - {path: packages/hfs/src/gate-declaration.spec.mjs, editions: [lite, full]}
+    witness:
+      - {path: packages/hfs/src/gate-declaration.spec.mjs, editions: [lite, full]}

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.125 - 2026-11-15
+
+- Added: an app may declare gates off for the whole app (`gates` of `.starcistacks/application-stacks.yaml`, contexts/project/lint.md PROJECT-LINT-4, `@starci/hfs` 6.13.0): `policy/loosening.yaml` gains `optionalGates` (the ids an app may switch off: every gate but hfs, secrets and db, narrowed by a project's overlay, never widened), `starci app` hands it to `@starci/hfs` as `STARCI_OPTIONAL_GATES` (`cli/src/harness/policy.ts`, `cli/src/core/app/hfs.ts`), and the help of `starci app check` says a declared gate is listed `off (declared: <reason>)` and never counted as passed.
+
 ## 1.1.0-alpha.124 - 2026-11-15
 
 - Added: `starci app secret set|unset|list --env <env> --ext <target>` forwards to `@starci/hfs` 6.13.0: the sealed file of a secret target the project's `ext/manifest.json` declares (`secretTargets`) instead of a member of the stack; `set --ext <target> <KEY> --from-host <HOST_KEY>` takes its one key without a slug (`cli/src/core/app/secret.ts`).

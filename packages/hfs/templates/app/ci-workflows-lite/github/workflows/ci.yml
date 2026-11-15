@@ -87,7 +87,7 @@ jobs:
             git merge-base --is-ancestor "$GITHUB_SHA" refs/remotes/origin/dev || { echo "::error::main moves only to a commit on dev (contexts/project/branches.md PROJECT-BRANCH-1)"; exit 1; }
           fi{{planBranchProfiles}}
           { echo "checks=$checks"; echo "images=$images"; echo "push=$push"; echo "full=$full"; echo "release=$release"; echo "ci_run=$ci_run"; echo "sonar=$sonar"; echo "codecov=$codecov"; } >> "$GITHUB_OUTPUT"
-          echo "plan: $note" >> "$GITHUB_STEP_SUMMARY"
+          echo "plan: $note" >> "$GITHUB_STEP_SUMMARY"{{planGatesOff}}
 
   fast:
     needs: plan
@@ -99,20 +99,20 @@ jobs:
       - name: production dependency audit
         run: {{auditCommand}}
       - name: format
-        run: npx --no-install starci app check --gate format --env prod
+        run: {{ciFormatRun}}
 {{ciPackagesBuild}}
       - name: boot proof
-        run: npx --no-install starci app check --gate wiring --env prod
+        run: {{ciWiringRun}}
         env:
           NODE_OPTIONS: {{nodeOptions}}
       - name: typecheck
-        run: npm run typecheck
+        run: {{ciTypecheckRun}}
         env:
           NODE_OPTIONS: {{nodeOptions}}
 
   lint:
     needs: plan
-    if: ${{ needs.plan.outputs.checks == 'true' }}
+    if: ${{ needs.plan.outputs.checks == 'true'{{offLint}} }}
     timeout-minutes: {{timeoutLint}}
     runs-on: ubuntu-latest
     strategy:
@@ -126,7 +126,7 @@ jobs:
 
   test:
     needs: plan
-    if: ${{ needs.plan.outputs.checks == 'true' }}
+    if: ${{ needs.plan.outputs.checks == 'true'{{offTest}} }}
     timeout-minutes: {{timeoutTest}}
     runs-on: ubuntu-latest
     strategy:
@@ -139,7 +139,7 @@ jobs:
       # A shard (STARCI_COVERAGE_SHARD=1, the jest preset) measures only the files its specs load, without the per-file threshold, and writes istanbul
       # JSON; the coverage job merges the shards by source location and proves 100 per file on the merged report. The shard count never exceeds what the unit specs fill.
       - name: unit
-        run: npm test -- --ci --forceExit --cacheDirectory .jest-cache --shard=${{ matrix.shard }}/{{testShardTotal}}
+        run: {{ciTestRun}}
         env:
           STARCI_COVERAGE_SHARD: "1"
 {{> app/ci-workflows/jest-cache-save.yml}}
@@ -151,7 +151,7 @@ jobs:
 
   coverage:
     needs: [plan, test]
-    timeout-minutes: {{timeoutCoverage}}
+{{coverageIf}}    timeout-minutes: {{timeoutCoverage}}
     runs-on: ubuntu-latest
     # Codecov OIDC authentication requires a job-scoped identity token.
     permissions:
@@ -184,7 +184,7 @@ jobs:
     steps:
 {{> app/ci-workflows/install-steps.yml}}
       - name: build be
-        run: npm run build:be
+        run: {{ciBuildBeRun}}
 {{ciBuildSteps}}
 {{> app/ci-workflows/build-cache-save.yml}}
       - name: database migration checks
@@ -231,7 +231,7 @@ jobs:
           }
           expect plan success
           if [[ "$CHECKS" == true ]]; then want=success; else want=idle; fi
-          for job in fast lint test coverage build; do expect "$job" "$want"; done
+          for job in {{verdictJobs}}; do expect "$job" "$want"; done{{verdictIdle}}
           if [[ "$IMAGES" == true ]]; then expect images success; else expect images idle; fi{{verdictSonarCheck}}
           exit "$fail"
 {{ciDeployJobs}}

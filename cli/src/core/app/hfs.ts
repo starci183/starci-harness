@@ -212,6 +212,7 @@ export const runHfs = async (context: VerbContext, verb: HfsVerb, argv: readonly
     Object.assign(process.env, hfsLimitsEnv(), {
         STARCI_PROFILE_BRANCHES: policy.loosening.branchProfiles.branches.join(","),
         STARCI_PROFILE_GATES: policy.loosening.branchProfiles.gates.join(","),
+        STARCI_OPTIONAL_GATES: policy.loosening.optionalGates.gates.join(","),
     })
     const { hostIdentity = hostAgeIdentity(context.cwd), ...more } = extra
     const harness = { version: packageVersion(), ...more }

@@ -187,6 +187,27 @@ properties:
       status: {enum: [deferred, supported]}
       reason: {type: string, minLength: 1}
   ci: {$ref: '#/$defs/ciDeclaration'}
+  gates:
+    description: >-
+      Quality gates this app does not run, on every branch and in every runner (starci app check in both envs, the managed pre-commit and pre-push hooks, the release gate and the rendered
+      CI): per gate `{ run: off, reason }`, the reason mandatory. Every gate but hfs, secrets and db (the harness's own rules, never switched off) may be, and only those
+      policy/loosening.yaml optionalGates lists. A gate left out runs; a gate whose reader stays on (test: coverage, codecov, sonar; lint: sonar; coverage: codecov) is refused. An off gate is reported as `off (declared: <reason>)`, never counted as passed. scripts/lib/stack-declaration.mjs
+      readGateDeclarations judges it (HFS_GATE_DECLARATION_INVALID); a refused block switches nothing off.
+    type: object
+    additionalProperties: false
+    properties:
+      lint: {$ref: '#/$defs/gateOff'}
+      format: {$ref: '#/$defs/gateOff'}
+      sonar: {$ref: '#/$defs/gateOff'}
+      codecov: {$ref: '#/$defs/gateOff'}
+      test: {$ref: '#/$defs/gateOff'}
+      coverage: {$ref: '#/$defs/gateOff'}
+      types: {$ref: '#/$defs/gateOff'}
+      build: {$ref: '#/$defs/gateOff'}
+      audit: {$ref: '#/$defs/gateOff'}
+      wiring: {$ref: '#/$defs/gateOff'}
+      checks: {$ref: '#/$defs/gateOff'}
+      deps: {$ref: '#/$defs/gateOff'}
   branches:
     description: >-
       Branch profiles: per branch, or per branch pattern (ui/*: a literal first segment, * any characters but /, never release/), the mode of each gate it names (blocking, report: run, print and record but never count, off: not run); a gate left
@@ -238,6 +259,13 @@ properties:
       error-tracking: {$ref: '#/$defs/service'}
 $defs:
   gateMode: {enum: [blocking, report, off]}
+  gateOff:
+    type: object
+    additionalProperties: false
+    required: [run, reason]
+    properties:
+      run: {const: off}
+      reason: {type: string, minLength: 1}
   service:
     type: object
     additionalProperties: false

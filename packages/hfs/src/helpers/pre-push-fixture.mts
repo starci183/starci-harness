@@ -21,7 +21,7 @@ export const git = (cwd: string, ...args: string[]): string => {
  * Install a package-resolution wrapper so the rendered hook runs the actual bundled gate in a disposable Git repository, beside a
  * stand-in for the harness's `starci deps check` that exits with `depsExit` and its `starci app check --env prod` that exits with `freshExit`.
  */
-export function repository(t: Pick<TestContext, 'after'>, hookText: string, { depsExit = 0, freshExit = 0 }: { depsExit?: number; freshExit?: number } = {}): PrePushRepository {
+export function repository(t: Pick<TestContext, 'after'>, hookText: string, { depsExit = 0, freshExit = 0, depsMode = 'blocking' }: { depsExit?: number; freshExit?: number; depsMode?: 'blocking' | 'off' } = {}): PrePushRepository {
   const root = mkdtemp(t, 'hfs-pre-push-');
   git(root, 'init', '-q', '-b', 'main');
   fs.writeFileSync(path.join(root, 'a.txt'), 'first');
@@ -42,6 +42,7 @@ export function repository(t: Pick<TestContext, 'after'>, hookText: string, { de
   fs.writeFileSync(path.join(harness, 'main.js'), [
     "const verb = process.argv.slice(2).join(' ');",
     `if (verb === 'app check --env prod') { console.log('app check judged branch: ' + (process.env.STARCI_JUDGED_BRANCH || '(the checkout)')); if (${freshExit} !== 0) console.error('HFS_CHECK_CACHE_UNWARMED: stand-in'); process.exit(${freshExit}); }`,
+    `if (verb === 'app check --profile --gate deps') { console.log('${depsMode}'); process.exit(0); }`,
     "if (verb !== 'deps check') process.exit(2);",
     `if (${depsExit} !== 0) console.error('DEPS_PIN_UNPUBLISHED: stand-in');`,
     `process.exit(${depsExit});`,

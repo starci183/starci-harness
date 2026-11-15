@@ -130,6 +130,8 @@ export type LooseningException = z.infer<typeof looseningException>
 
 /** The polish gates of an app check, the only gates an app's branch profile may lower (@starci/hfs keeps every other gate blocking). */
 export const POLISH_GATES = ["lint", "sonar", "codecov"] as const
+/** The gates an app may switch off for the whole app (`gates` of its .starcistacks/application-stacks.yaml, PROJECT-LINT-4): every gate but the hfs ones (hfs, secrets, db). */
+export const OPTIONAL_GATES = ["lint", "format", "sonar", "codecov", "test", "coverage", "types", "build", "audit", "wiring", "checks", "deps"] as const
 
 // A branch name, or a pattern of @starci/hfs (`ui/*`: a literal first segment, then segments where `*` stands for any characters but `/`), which can never be a
 // one-segment branch such as main; @starci/hfs refuses again any entry that names or matches the app's default branch.
@@ -149,6 +151,17 @@ const branchProfiles = z.object({
     reason,
 })
 
+// The gates an app may declare off for every branch (`gates` of its application-stacks.yaml): the harness lists them here, citing its rule; `starci app` hands the list to
+// @starci/hfs, which refuses any other id (hfs, secrets and db are never listed) and a declaration with no reason.
+const optionalGates = z.object({
+    cites,
+    gates: z.array(z.enum(OPTIONAL_GATES)).refine(unique, "each gate once"),
+    reason,
+})
+
+/** The gates an app may switch off, and the rule the exception rests on. */
+export type OptionalGatesPolicy = z.infer<typeof optionalGates>
+
 /** What an app's branch profile may lower: the branches and the polish gates, and the rule the exception rests on. */
 export type BranchProfilePolicy = z.infer<typeof branchProfiles>
 
@@ -157,6 +170,7 @@ const looseningSchema = z.object({
     banned: z.array(z.enum(LOOSENING_MARKERS)).min(1),
     scan: z.object({ maxFileBytes: z.number().int().positive() }),
     branchProfiles,
+    optionalGates,
     exceptions: z.array(looseningException),
 })
 
@@ -165,6 +179,7 @@ const looseningOverlay = z.object({
     schema: z.literal("starci/loosening-policy@1"),
     banned: z.array(z.enum(LOOSENING_MARKERS)).optional(),
     branchProfiles: z.object({ branches: z.array(branchName).optional(), gates: z.array(z.enum(POLISH_GATES)).optional() }).optional(),
+    optionalGates: z.object({ gates: z.array(z.enum(OPTIONAL_GATES)).optional() }).optional(),
     exceptions: z.array(looseningException).optional(),
 })
 
@@ -250,8 +265,10 @@ const refuseUnqualified = (file: string, exceptions: readonly KindView[] | undef
 }
 
 /** EXCEPTION_RULE_UNKNOWN when the branch profile exception cites an id the rule book does not hold. */
-const refuseUncited = (file: string, profiles: BranchProfilePolicy): void => {
-    if (!ruleBookIds(runtimeRoot()).has(profiles.cites)) throw new Refusal("EXCEPTION_RULE_UNKNOWN", `${file}: branchProfiles cites ${profiles.cites}, which is no rule id of contexts/ or CONTRIBUTING.md`)
+const refuseUncited = (file: string, profiles: BranchProfilePolicy, optional: OptionalGatesPolicy): void => {
+    const ids = ruleBookIds(runtimeRoot())
+    if (!ids.has(profiles.cites)) throw new Refusal("EXCEPTION_RULE_UNKNOWN", `${file}: branchProfiles cites ${profiles.cites}, which is no rule id of contexts/ or CONTRIBUTING.md`)
+    if (!ids.has(optional.cites)) throw new Refusal("EXCEPTION_RULE_UNKNOWN", `${file}: optionalGates cites ${optional.cites}, which is no rule id of contexts/ or CONTRIBUTING.md`)
 }
 
 /** The runtime's policy files with a project's overlay applied. */
@@ -338,7 +355,7 @@ export const loadPolicy = (repositoryRoot?: string, dir: string = locatePolicy()
     let security = readYaml(join(dir, "security.yaml"), securitySchema)
     refuseUnqualified(join(dir, "loosening.yaml"), loosening.exceptions)
     refuseUnqualified(join(dir, "security.yaml"), security.exceptions)
-    refuseUncited(join(dir, "loosening.yaml"), loosening.branchProfiles)
+    refuseUncited(join(dir, "loosening.yaml"), loosening.branchProfiles, loosening.optionalGates)
     checkCrossReferences(dir, quality, canon, security)
     // The runtime's exceptions name the runtime repository's own files; any other repository starts with none.
     if (repositoryRoot !== undefined && !sameDir(join(repositoryRoot, "policy"), dir)) {
@@ -366,7 +383,8 @@ const applyOverlay = (overlay: string, loosening: LooseningPolicy, security: Sec
             branches: loosening.branchProfiles.branches.filter((branch) => narrowed.branches?.includes(branch) ?? true),
             gates: loosening.branchProfiles.gates.filter((gate) => narrowed.gates?.includes(gate) ?? true),
         }
-        tightened = { ...loosening, banned: [...new Set([...loosening.banned, ...(extra.banned ?? [])])], branchProfiles: profiles, exceptions: extra.exceptions ?? [] }
+        const optional = extra.optionalGates === undefined ? loosening.optionalGates : { ...loosening.optionalGates, gates: loosening.optionalGates.gates.filter((gate) => extra.optionalGates?.gates?.includes(gate) ?? true) }
+        tightened = { ...loosening, banned: [...new Set([...loosening.banned, ...(extra.banned ?? [])])], branchProfiles: profiles, optionalGates: optional, exceptions: extra.exceptions ?? [] }
     }
     const securityFile = join(overlay, "security.yaml")
     if (existsSync(securityFile)) {

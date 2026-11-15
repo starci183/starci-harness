@@ -6,7 +6,9 @@
 # of the staged files of each side (the fe packages are built first: the apps import their emitted types, the way the managed lint script does),
 # eslint of the staged files of the root workspace packages through the managed root eslint.config.mjs (the packages are built first: they import each other's
 # emitted types) and stylelint over the staged CSS of fe; where a branch profile reports lint, the lint ratchet (starci app check --ratchet: no staged file
-# gains a lint finding over HEAD, a new one carries none); where it is off, nothing.
+# gains a lint finding over HEAD, a new one carries none); where it is off, nothing. An app can declare gates off for every branch (`gates` of the declaration,
+# contexts/project/lint.md PROJECT-LINT-4): lint and format are then skipped here and the hook says so (`starci app check --profile` lists each reason); the unit-spec guard
+# of `app check --staged` follows the test gate. hfs, secrets and db are never off.
 npx --no-install starci app check --staged || exit $?
 npx --no-install starci app sync || exit $?
 lint=$(npx --no-install starci app check --profile --gate lint) || exit $?
@@ -22,6 +24,13 @@ if [ "$lint" = blocking ]; then
     xargs -0 -n 50 sh -c 'if [ "$#" -gt 0 ]; then cd fe && npx stylelint "$@"; fi' sh || exit $?
 elif [ "$lint" = report ]; then
   npx --no-install starci app check --ratchet || exit $?
+elif [ "$lint" = off ]; then
+  echo "lint: off by declaration (gates of .starcistacks/application-stacks.yaml; starci app check --profile lists the reason), not run" || exit $?
 fi || exit $?
-git diff --cached --name-only --diff-filter=ACMR -z |
-  xargs -0 -n 50 sh -c 'if [ "$#" -gt 0 ]; then npx prettier --check --ignore-unknown -- "$@"; fi' sh || exit $?
+format=$(npx --no-install starci app check --profile --gate format) || exit $?
+if [ "$format" = off ]; then
+  echo "format: off by declaration (gates of .starcistacks/application-stacks.yaml; starci app check --profile lists the reason), not run" || exit $?
+else
+  git diff --cached --name-only --diff-filter=ACMR -z |
+    xargs -0 -n 50 sh -c 'if [ "$#" -gt 0 ]; then npx prettier --check --ignore-unknown -- "$@"; fi' sh || exit $?
+fi || exit $?

@@ -14,7 +14,7 @@ rule; every other page links to it.
    unborn `main` and its output names the two steps left.
 4. Lane and feature branches fork from `dev` and merge back into `dev`. Nobody commits on `main` directly.
 5. Promoting `dev` to `main` passes the full `starci app check` gate. The branch profile of `dev`
-   ([lint.md](lint.md) PROJECT-LINT-2) never applies to `main`: a push of `main` or of a release tag is judged as `main` whatever branch
+   ([lint.md](lint.md) PROJECT-LINT-2) never applies to `main` (the gates an app switches off for the whole app, [lint.md](lint.md) PROJECT-LINT-4, are off on `main` too): a push of `main` or of a release tag is judged as `main` whatever branch
    is checked out, and a merge of `dev` into `main` cannot skip `app check`.
 
 **Enforced by** (R388):

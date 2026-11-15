@@ -9,7 +9,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { firstLine } from '../stack/context.mjs';
 import { failure, refusal } from '../stack/errors.mjs';
-import { assertUnmoved, git, inspect, releaseDir, runGate, summaryOf } from './gate.mjs';
+import { assertUnmoved, git, inspect, offRows, releaseDir, runGate, summaryOf } from './gate.mjs';
 import type { Gate, GateRow, ReleaseConfig } from './gate.mjs';
 import type { VerbContext, VerbResult } from './index.mjs';
 import { assertNames, branchRefs, probe, tagRefs } from './push.mjs';
@@ -34,8 +34,9 @@ function reasonOf(value: unknown): string {
 /** An urgent check: a gate to run (or reuse), with an optional note. */
 interface UrgentCheck { name: string; gate: Gate | null; note: string | null }
 
-function urgentGates(config: ReleaseConfig): UrgentCheck[] {
-  const declared = URGENT_CHECKS.map((name) => config.gates.find((gate) => gate.name === name)).filter((gate): gate is Gate => Boolean(gate));
+function urgentGates(config: ReleaseConfig, off: ReadonlyMap<string, string>): UrgentCheck[] {
+  // A check whose gate the app declares off (PROJECT-LINT-4: `types`) is not run; the build checks always are.
+  const declared = URGENT_CHECKS.filter((name) => !off.has(name)).map((name) => config.gates.find((gate) => gate.name === name)).filter((gate): gate is Gate => Boolean(gate));
   if (declared.length === 0) throw refusal('RELEASE_URGENT_NO_CHECKS', `the release gates declare none of ${URGENT_CHECKS.join(', ')}: an urgent release still runs its fast local checks`);
   return declared.map((gate) => ({ name: gate.name, gate, note: null }));
 }
@@ -104,7 +105,7 @@ export async function releaseUrgentPush(ctx: VerbContext, config: ReleaseConfig,
   const { head, chosen } = facts;
   const common = releaseDir(ctx);
   const dir = path.join(common, head.slice(0, 12));
-  const checks = urgentGates(config);
+  const checks = urgentGates(config, offRows(ctx.cwd, ctx.env as NodeJS.ProcessEnv).dropped);
   const out = [...facts.out, `urgent         ${URGENT_RULING}`, `reason         ${reason}`, `role           ${role}`, ...planOf(checks)];
   const data: Record<string, unknown> = { head, tag: chosen.tag, remote, branch, urgent: true, reason, role, checks: [], pushed: false };
   if (facts.red.length > 0) return { ok: false, lines: [...out, ...facts.red.map((item) => `RED: ${item}`), 'nothing run, nothing pushed.'], data: { ...data, red: facts.red } };

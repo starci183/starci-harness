@@ -4763,6 +4763,17 @@ HFS_BRANCH_PROFILE_INVALID:
   owner: op-retry
   kind: check-finding
 
+HFS_GATE_DECLARATION_INVALID:
+  title: "An app switches off a gate it may not, with no reason, or names no gate"
+  title_vi: "Một app tắt gate không được tắt, tắt không nêu lý do, hoặc khai một id không phải gate"
+  meaning_vi: "Khối `gates` của .starcistacks/application-stacks.yaml được tắt mọi gate trừ hfs, secrets và db cho cả app (lint, format, sonar, codecov, test, coverage, types, build, audit, wiring, checks, deps), mỗi gate là `{ run: off, reason: \"...\" }` với lý do ngắn bắt buộc. Các gate hfs (cấu trúc, slot, stack, tên, managed file), secrets (quét và lưu secret đã seal) và db (luật migration) là luật của chính harness nên không bao giờ tắt được; một gate đọc kết quả của gate đã tắt (test cho coverage, codecov, sonar; lint cho sonar) cũng phải tắt. Một khối bị từ chối không tắt gate nào: lần chạy dùng toàn bộ gate và finding này chặn."
+  causes_vi:
+    - "Vi phạm R430: tắt hfs, secrets hoặc db, hoặc tắt một gate mà gate đọc nó vẫn chạy."
+    - "Vi phạm R430: một gate tắt không có `reason`, hoặc một id không phải gate, hoặc `run` khác off."
+  nextStep_vi: "Sửa khối gates: không khai hfs, secrets, db; mỗi gate khác `{ run: off, reason: \"<vì sao app không chạy>\" }`; muốn chạy lại thì xoá mục đó, rồi chạy lại starci app check."
+  owner: op-retry
+  kind: check-finding
+
 LINT_RATCHET_RAISED:
   title: "A commit on a branch that reports lint adds lint findings to a file it touches"
   title_vi: "Một commit trên nhánh lint ở chế độ report thêm lỗi lint vào file nó sửa"

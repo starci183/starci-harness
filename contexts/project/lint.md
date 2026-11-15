@@ -35,6 +35,8 @@ and the laws with their enforcers are [hfs/rules.yaml](../hfs/rules.yaml).
   error findings that the branch profile does not report), each under the
   branch profile of the branch it judges (PROJECT-LINT-2). The harness does not call them; they run in the app's CI.
 
+An app may switch gates off for the whole app (PROJECT-LINT-4); every gate a row below names but hfs, secrets and db is then the app's to run.
+
 A profile picks the tiers' gates and its canon stacks. `be` and `fe` are a side repository's, `app` a one-repository
 app's (both sides), `lib` and `runtime` carry no canon. A workspace root is never typechecked as one project: the
 `typecheck` gate skips it and checks each member against its own `tsconfig.json`.
@@ -150,6 +152,38 @@ the stricter mode. The branch name alone decides, so a hook and CI agree; an ups
 - **Promotion.** Moving `dev` to `main` is the release of [branches.md](branches.md) PROJECT-BRANCH-1: the full gate runs on it (a
   push of `main` or of a release tag is judged as `main` whatever branch is checked out, `STARCI_JUDGED_BRANCH` of the managed pre-push
   hook), and every report-only finding counts again there, so whoever promotes fixes what the full gate refuses first.
+
+## PROJECT-LINT-4 An app may switch every gate off but the hfs ones
+
+An app whose product is not settled may defer the quality and test work that would be thrown away. Its `.starcistacks/application-stacks.yaml` says so once, for the whole app, on
+every branch (the default branch too, unlike a branch profile, PROJECT-LINT-2), with a mandatory reason:
+
+```yaml
+gates:
+  lint: { run: off, reason: "the product model is not settled; quality and test investment is deferred until it is stable; hfs compliance is kept" }
+  test: { run: off, reason: "..." }
+```
+
+- **Which gates.** The closed set of ids is `hfs`, `secrets`, `db`, `lint`, `format`, `sonar`, `codecov`, `test`, `coverage`, `types`, `build`, `audit`, `wiring`, `checks`, `deps`.
+  The first three are the harness's own rules (@starci/hfs): `hfs` (structure, slots, stacks, naming, managed-file drift, the bypass markers, the project ext rules), `secrets` (the
+  secret scan and the sealed-secret custody) and `db` (the migration shape, sealing and row-level-security rules). They are **never** switched off, whatever the declaration says. Every
+  other id may be: `lint` (ESLint, the canon and grammar rules, stylelint), `format` (Prettier), `sonar` (the scan and the quality gate), `codecov` (the upload), `test` (the unit specs
+  and, with them, the unit-spec guard of the pre-commit hook), `coverage` (the per-file threshold proof), `types` (the type-check), `build` (the CI-parity builds), `audit` (the dependency
+  audit), `wiring` (the boot proof), `checks` (the project's own commands of `ext/manifest.json`) and `deps` (`starci deps check`, the pre-push pin check). Which side of the line a
+  check is on is read from where its code lives: a rule of [hfs/rules.yaml](../hfs/rules.yaml) enforced by the structure, secrets or db run stays; a command, a tool or a threshold is the app's.
+- **Gates that read another.** `test` off needs `coverage`, `codecov` and `sonar` off (they read its coverage), `lint` off needs `sonar` off (the scan imports the lint report) and `coverage` off needs
+  `codecov` off; a declaration that leaves a reader on is refused.
+- **One reader.** `readGateDeclarations` (`packages/hfs/runtime/scripts/lib/stack-declaration.mts`) reads the block, and `activeProfile` (`branch-profile.mts`) folds it into the mode of each gate,
+  where it wins over any branch profile. `starci app check` (both `--env`, every `--gate`), the managed pre-commit and pre-push hooks (`--profile --gate lint|format|deps`), the release gate and
+  the rendered CI (`app sync`) all read it there. A run that holds a declaration the reader refused runs the full gate and fails `HFS_GATE_DECLARATION_INVALID` (R430): an id that is no gate, one of
+  `hfs`, `secrets` or `db`, a gate with no `reason` or a `run` other than `off`, a gate whose reader stays on.
+- **Off stays visible.** Every runner prints `<gate>: off (declared: <reason>)`, `starci app check` ends with the list of gates off by declaration and never claims them passed, the release gate
+  names them in its plan and in the L4 record (`gatesOff`), the rendered CI passes the job with a line that says the gate is off (or skips the job, which the verdict expects), and
+  `starci app check --profile` lists every gate with its mode.
+- **Release to production.** The release gate drops the rows of a gate declared off, but the `build` rows always run: an image cannot be made without a build. `deps check` always runs on a push of
+  `main` or of a `v*` tag, since a pin npm cannot serve breaks the release build; elsewhere it follows its gate.
+- **The default.** An app that declares nothing runs every gate. What a project may switch off at all is `optionalGates` of [policy/loosening.yaml](../../policy/loosening.yaml), which its
+  overlay may narrow and never widen. A gate switched off is a decision of the app's owner, recorded in its declaration with the reason; turning it on is deleting its entry.
 
 ## PROJECT-LINT-3 A project extends the law through its ext folder
 

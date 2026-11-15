@@ -62,8 +62,12 @@ export function declaredStack(entry: unknown): DeclaredStack | null {
   return { owner: text(stack.owner), root: root === null ? null : posixPath(root), repository: text(stack.repository), hostOwned: text(stack.owner) === 'host' };
 }
 
-/** The gates a branch profile names: every gate `starci app check --gate` selects. */
-export const PROFILE_GATES = Object.freeze(['hfs', 'format', 'db', 'secrets', 'wiring', 'types', 'lint', 'test', 'sonar', 'codecov'] as const);
+/**
+ * The gates of a run: every gate `starci app check --gate` selects, and the three steps and checks that run inside another gate or beside the app check and have a
+ * mode of their own: `checks` (the project's own ext checks, inside the hfs run), `coverage` (the per-file threshold proof, inside the test run) and `deps`
+ * (`starci deps check`, the pre-push pin check).
+ */
+export const PROFILE_GATES = Object.freeze(['hfs', 'format', 'db', 'secrets', 'wiring', 'types', 'lint', 'test', 'sonar', 'codecov', 'build', 'audit', 'checks', 'coverage', 'deps'] as const);
 /** One gate a branch profile names. */
 export type ProfileGate = (typeof PROFILE_GATES)[number];
 /** The polish gates, the only ones a branch profile may lower; every other gate (hfs, types, wiring, db, secrets, format, test) blocks on every branch. */
@@ -127,6 +131,59 @@ export function profileFor(profiles: BranchProfiles['profiles'], branch: string)
     if (strictest !== 'blocking') gates[gate] = strictest;
   }
   return { key: matching.join(' + '), gates };
+}
+
+/**
+ * The gates an app never switches off (`gates` of the declaration, PROJECT-LINT-4), whatever the declaration says: the three the harness itself judges, the rules of @starci/hfs.
+ * `hfs` (structure, slots, stacks, naming, managed-file drift, the bypass markers, the project ext rules), `secrets` (the secret scan and the sealed-secret custody) and `db` (the
+ * migration shape, sealing and row-level-security rules). Every other gate is the app's own to run or not.
+ */
+export const HFS_GATES: ReadonlySet<ProfileGate> = Object.freeze(new Set<ProfileGate>(['hfs', 'secrets', 'db']));
+/** The gates an app may switch off for the whole app: every gate that is not an hfs gate. */
+export const OPTIONAL_GATES: ReadonlySet<ProfileGate> = Object.freeze(new Set<ProfileGate>(PROFILE_GATES.filter((gate) => !HFS_GATES.has(gate))));
+/**
+ * Gates that read the output of another, so one cannot be off while the reader runs: Sonar imports the lint report and the coverage of the unit run, the coverage
+ * proof and the Codecov upload read the lcov the unit run writes. Switching a gate off needs every gate that reads it off too (HFS_GATE_DECLARATION_INVALID names the pair).
+ */
+export const GATE_READERS: Readonly<Partial<Record<ProfileGate, readonly ProfileGate[]>>> = Object.freeze({ test: ['coverage', 'codecov', 'sonar'], lint: ['sonar'], coverage: ['codecov'] });
+/** The optional gates the policy lets an app switch off (the CLI hands policy/loosening.yaml `optionalGates` in as STARCI_OPTIONAL_GATES); never one outside OPTIONAL_GATES. */
+export function optionalGatePolicy(env: NodeJS.ProcessEnv = process.env): ReadonlySet<ProfileGate> {
+  return new Set((listEnv(env.STARCI_OPTIONAL_GATES) ?? [...OPTIONAL_GATES]).filter((gate): gate is ProfileGate => OPTIONAL_GATES.has(gate as ProfileGate)));
+}
+/** The gates a declaration switches off for the whole app, each with its reason, and every problem of the `gates` block. */
+export interface GateDeclarations { off: Partial<Record<ProfileGate, string>>; problems: ProfileProblem[] }
+
+/**
+ * The `gates` block of a stack declaration (`gates: { lint: { run: off, reason: "..." } }`), read and judged: an id that is no gate, a gate that is never
+ * switchable (hfs, secrets, db) or that the policy does not list, a `run` other than `off` and an empty reason are problems, and so
+ * is every shape error. The reader keeps nothing when any problem stands, so a refused block switches no gate off (the full gate runs and the finding blocks).
+ */
+export function readGateDeclarations(doc: unknown, allowed: ReadonlySet<ProfileGate> = optionalGatePolicy()): GateDeclarations {
+  const result: GateDeclarations = { off: {}, problems: [] };
+  const block = plain(doc) ? doc['gates'] : undefined;
+  if (block === undefined) return result;
+  const problem = (at: string, message: string): void => { result.problems.push({ at, message }); };
+  if (!plain(block)) { problem('gates', 'gates is a mapping of gate id to { run: off, reason }'); return result; }
+  const off: Partial<Record<ProfileGate, string>> = {};
+  for (const [id, entry] of Object.entries(block)) {
+    const at = `gates.${id}`;
+    const known = PROFILE_GATES.find((candidate) => candidate === id);
+    if (known === undefined) { problem(at, `${id} is not a gate (${PROFILE_GATES.join(', ')}); the gates an app may switch off are ${[...OPTIONAL_GATES].join(', ')}`); continue; }
+    if (!OPTIONAL_GATES.has(known)) { problem(at, `${id} is never switched off: it blocks in every app (only ${[...OPTIONAL_GATES].join(', ')} may be switched off, PROJECT-LINT-4)`); continue; }
+    if (!allowed.has(known)) { problem(at, `${id} may not be switched off: policy/loosening.yaml optionalGates allows ${[...allowed].join(', ') || 'none'}`); continue; }
+    if (!plain(entry) || Object.keys(entry).some((key) => key !== 'run' && key !== 'reason')) { problem(at, `a switched-off gate is { run: off, reason: "<why>" }`); continue; }
+    if (entry['run'] !== 'off') { problem(`${at}.run`, `${id} is declared with run ${JSON.stringify(entry['run'] ?? null)}: a gate that runs is not declared, so the only value is off`); continue; }
+    const reason = text(entry['reason']);
+    if (reason === null) { problem(`${at}.reason`, `${id} is switched off with no reason: say in one short sentence why the app does not run it`); continue; }
+    off[known] = reason;
+  }
+  for (const [gate, readers] of Object.entries(GATE_READERS) as [ProfileGate, readonly ProfileGate[]][]) {
+    if (off[gate] === undefined) continue;
+    const missing = readers.filter((reader) => off[reader] === undefined);
+    if (missing.length > 0) problem(`gates.${gate}`, `${gate} is switched off but ${missing.join(', ')} read${missing.length === 1 ? 's' : ''} its output: switch ${missing.length === 1 ? 'it' : 'them'} off too, or keep ${gate} on`);
+  }
+  if (result.problems.length === 0) result.off = off;
+  return result;
 }
 
 /** The default branch of a declaration: ci.github.defaultBranch, else main. */

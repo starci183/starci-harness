@@ -107,7 +107,7 @@ import { dbBaselineMain } from '../runtime/scripts/hfs/db-baseline-verb.mjs';
 import { dbRestampMain } from '../runtime/scripts/hfs/db-restamp-verb.mjs';
 import { formatCoverageReport } from '../runtime/scripts/hfs/coverage-from.mjs';
 import { gateVerdict } from '../runtime/scripts/hfs/gate-verdict.mjs';
-import { activeProfile, familyModes, profileLabel, profileNotices, type ActiveProfile } from '../runtime/scripts/hfs/branch-profile.mjs';
+import { activeProfile, familyModes, offLine, profileLabel, profileNotices, type ActiveProfile } from '../runtime/scripts/hfs/branch-profile.mjs';
 import { PROFILE_GATES } from '../runtime/scripts/lib/stack-declaration.mjs';
 import { HFS_DECLARATION_FILE, HfsSlotsError, SIDES, loadSlotManifest, readRepoDeclaration } from '../runtime/scripts/hfs/slots.mjs';
 import { main as syncMain } from '../sync/cli.mjs';
@@ -392,6 +392,8 @@ function printCheck(result: Dynamic, out: (text: string) => unknown): void {
   for (const f of result.findings) byCode.set(f.code, [...(byCode.get(f.code) ?? []), f]);
   for (const [code, list] of byCode) printFindingGroup(code, list, out);
   out(`\n${counts.error} error finding${counts.error === 1 ? '' : 's'}${counts.reported ? ` (${counts.reported} of them report only, outside the verdict on branch ${result.branchProfile?.profile})` : ''}${counts.local ? ` (${counts.local} of them local, report only until the restore)` : ''}, ${counts.warning} warning${counts.warning === 1 ? '' : 's'}, ${counts.info} report-only\n`);
+  const off = (result.branchProfile?.gatesOff ?? []) as { gate: string; reason: string }[];
+  if (off.length > 0) out(`gates off by declaration, not judged and not counted as passed: ${off.map((entry) => `${entry.gate} (declared: ${entry.reason})`).join('; ')}\n`);
   const counting = Object.entries((result.counting ?? {}) as Record<string, number>).sort(([a], [b]) => a.localeCompare(b));
   if (counting.length) out(`counting (warn, not in the verdict): ${counting.map(([rule, count]) => `${rule} ${count}`).join(', ')}\n`);
 }
@@ -622,7 +624,7 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
     if (selected.has('db')) bodies.set('db', (step) => runDbStep(appInput(session, step.execute), parts));
     if (selected.has('wiring')) bodies.set('wiring', (step) => runWiringStep(appInput(session, step.execute), parts));
     // The project checks ext/manifest.json declares (R402) belong to the hfs gate, as the extension's hfs rules do: they run wherever it runs, as their own step.
-    if (selected.has('hfs')) bodies.set('checks', async (step) => {
+    if (selected.has('hfs') && modes.checks !== 'off') bodies.set('checks', async (step) => {
       const checked = await runProjectChecks({ repoRoot, run: step.parity, env: io.env });
       found.set('checks', withWhy(checked.findings, readWhy(skillRoot, checked.findings.length > 0 ? [PROJECT_CHECK_FAILED] : [])));
       said.set('checks', checked.lines);
@@ -631,7 +633,7 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
   let proved: Dynamic;
   /** The app pass merged with the coverage proof on top, once its steps have ended. */
   const proof = (): Dynamic => {
-    proved ??= withCheckProofs(seamResult ?? mergeAppPass({ repoRoot, tracked, edition: undefined }, parts, session?.reports ?? []), { repoRoot, edition, wiring: false, coverageFrom });
+    proved ??= withCheckProofs(seamResult ?? mergeAppPass({ repoRoot, tracked, edition: undefined }, parts, session?.reports ?? []), { repoRoot, edition, wiring: false, coverageFrom: modes.coverage === 'off' ? undefined : coverageFrom });
     return proved;
   };
   if (selected.has('lint')) {
@@ -663,7 +665,7 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
       found.set('test', tests.findings);
     });
     // A whole run also runs CI's own coverage step on the merged lcov (`app coverage verify`): the local merge proof.
-    if (whole) bodies.set('coverage', async () => { if (tests?.result?.lcov !== undefined && tests.findings.length === 0) found.set('coverage', await coverageParity(repoRoot, tests.result.lcov)); });
+    if (whole && modes.coverage !== 'off') bodies.set('coverage', async () => { if (tests?.result?.lcov !== undefined && tests.findings.length === 0) found.set('coverage', await coverageParity(repoRoot, tests.result.lcov)); });
   }
   for (const family of ['audit', 'build'] as const) {
     if (session === undefined || !selected.has(family)) continue;
@@ -685,6 +687,7 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
   // Whenever it does not run, the run says why in one line.
   if (!whole) said.set('sonar-scan', ['  sonar scan: not run, only a run with no selector, flag or --gate (a whole run) runs it']);
   else if (session === undefined) said.set('sonar-scan', ['  sonar scan: not run, this run keeps no check cache session']);
+  else if (profile.declaredOff.sonar !== undefined) said.set('sonar-scan', [`  sonar scan: ${offLine(profile, 'sonar')}, not run`]);
   else if (profile.modes.sonar === 'off') said.set('sonar-scan', [`  sonar scan: not run, the branch profile ${profile.profile ?? profile.branch ?? 'in force'} turns the sonar gate off`]);
   else {
     bodies.set('sonar-scan', async (step) => {
@@ -770,7 +773,8 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
   if (localListed.length > 0) Object.assign(counts, { local: localListed.length });
   const counting: Record<string, number> = {};
   for (const finding of linterFindings) if (finding.level === 'warning') counting[finding.rule] = (counting[finding.rule] ?? 0) + 1;
-  const branchProfile = { branch: profile.branch, source: profile.source, profile: profile.profile, modes: profile.modes, notices: profileNotices(profile).filter((notice) => [...requested].some((family) => notice.startsWith(`${family}:`) || (family === 'sonar' && notice.startsWith('codecov:')))) };
+  const gatesOff = (Object.entries(profile.declaredOff) as [string, string][]).map(([gate, reason]) => ({ gate, reason }));
+  const branchProfile = { branch: profile.branch, source: profile.source, profile: profile.profile, modes: profile.modes, gatesOff, notices: profileNotices(profile).filter((notice) => [...requested].some((family) => notice.startsWith(`${family}:`) || (family === 'sonar' && notice.startsWith('codecov:')))) };
   const result = { ...checked, untracked: unjudged.length, findings, families: reports, steps, predictions: lines, counting, branchProfile, cacheWarnings: [...(checked.cacheWarnings ?? []), ...(flushed?.warnings ?? [])], counts, ...(linted ? { eslint: { ...linted.engine, errors: toolErrors } } : {}), ok: verdict.pass && toolErrors.length === 0, gate: verdict };
   return { result, seconds: (Date.now() - started) / 1000, raw };
 }
@@ -811,7 +815,7 @@ function printProfile(opts: Opts, io: AppIo): number {
   else if (one !== undefined) io.stdout(`${profile.modes[one]}\n`);
   else {
     io.stdout(`branch ${profile.branch ?? '(none)'} (${profile.source}): ${profile.profile === null ? 'no branch profile, the full gate' : profileLabel(profile)}\n`);
-    for (const gate of PROFILE_GATES) io.stdout(`  ${gate} ${profile.modes[gate]}\n`);
+    for (const gate of PROFILE_GATES) io.stdout(`  ${gate} ${profile.declaredOff[gate] === undefined ? profile.modes[gate] : offLine(profile, gate)}\n`);
   }
   return 0;
 }

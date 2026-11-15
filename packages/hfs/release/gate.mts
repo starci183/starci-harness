@@ -20,6 +20,8 @@ import { sonarQualityGate } from './sonar-quality-gate.mjs';
 import type { SpawnResult, VerbContext, VerbResult } from './index.mjs';
 import type { HeavyRequest } from '../stack/context.mjs';
 import { readVerifyLock, type VerifyLock } from './cache-verify-lock.mjs';
+import { activeProfile } from '../runtime/scripts/hfs/branch-profile.mjs';
+import type { ProfileGate } from '../runtime/scripts/lib/stack-declaration.mjs';
 
 /** One gate of the release: a name, an argument array (never a shell string), an optional jest summary and extra environment. */
 export interface Gate {
@@ -517,6 +519,30 @@ function planLines(config: ReleaseConfig, facts: Facts, dir: string, recordPath:
   return out;
 }
 
+/**
+ * The gate each default release row belongs to, for the gates an app declares off (`gates` of the declaration, PROJECT-LINT-4). The rows of hfs, secrets and db gates (`db-lint`,
+ * `db-drift`) are never here: they always run. The `app-check` row runs `app check --env prod`, which reads the same declaration, so it follows it by itself.
+ */
+const ROW_GATE: ReadonlyMap<string, ProfileGate> = new Map<string, ProfileGate>([
+  ['format-check', 'format'], ['typecheck', 'types'], ['lint', 'lint'], ['test', 'test'], ['test-integration', 'test'], ['test-e2e', 'test'], ['test-contract', 'test'],
+  ['audit', 'audit'], ['sonar', 'sonar'], ['build-be', 'build'], ['build-fe', 'build'],
+]);
+/** What a release does with a declared-off gate: it drops the rows of the gate, except the build rows, which always run (an image cannot be made without a build). */
+export function offRows(cwd: string, env: NodeJS.ProcessEnv): { dropped: Map<string, string>; lines: string[]; entries: { gate: string; reason: string }[] } {
+  const declared = activeProfile(cwd, env).declaredOff;
+  const dropped = new Map<string, string>();
+  const lines: string[] = [];
+  for (const [name, gate] of ROW_GATE) {
+    const reason = declared[gate];
+    if (reason === undefined || gate === 'build') continue;
+    dropped.set(name, reason);
+  }
+  for (const [gate, reason] of Object.entries(declared)) lines.push(gate === 'build'
+    ? `build: off (declared: ${reason}), but a release builds the image: the build rows run`
+    : `${gate}: off (declared: ${reason}), its rows do not run and are not counted as passed`);
+  return { dropped, lines, entries: Object.entries(declared).map(([gate, reason]) => ({ gate, reason })) };
+}
+
 export function assertUnmoved(ctx: VerbContext, head: string): void {
   const now = git(ctx, ['rev-parse', 'HEAD']).stdout;
   if (now !== head) throw failure('RELEASE_HEAD_MOVED', `HEAD moved during the gates (${head.slice(0, 10)} -> ${now.slice(0, 10)}). No record.`);
@@ -524,12 +550,14 @@ export function assertUnmoved(ctx: VerbContext, head: string): void {
   if (dirty.length > 0) throw failure('RELEASE_TREE_DIRTY', `the gates left ${dirty.length} changed or untracked path(s) (first: ${(dirty[0] as string).slice(0, 100)}): generated files differ from HEAD. Commit or ignore them properly, then rerun. No record.`);
 }
 
-function writeRecord(ctx: VerbContext, { head, tag, results, recordPath, requireCi, promotedFrom = null }: { head: string; tag: string; results: GateRow[]; recordPath: string; requireCi: boolean; promotedFrom?: Record<string, unknown> | null }): void {
+function writeRecord(ctx: VerbContext, { head, tag, results, recordPath, requireCi, promotedFrom = null, gatesOff = [] }: { head: string; tag: string; results: GateRow[]; recordPath: string; requireCi: boolean; promotedFrom?: Record<string, unknown> | null; gatesOff?: { gate: string; reason: string }[] }): void {
   const record = {
     schema: 'starci-app-l4-record/1', head, tag, createdAt: new Date(ctx.now()).toISOString(), producedBy: 'starci app release gate',
     note: 'Every gate passed on a clean HEAD; every entry links its log and sha256.',
     ci: requireCi === true ? { required: true, note: 'starci app release push waits for the candidate CI of this sha (release.requireCi=true)' } : { required: false, note: CI_NOT_REQUIRED },
     ...(promotedFrom ? { promotedFrom } : {}),
+    // A gate the app declares off is named in the record with its reason, never counted among the gates that passed.
+    ...(gatesOff.length > 0 ? { gatesOff } : {}),
     gates: results,
   };
   fs.mkdirSync(path.dirname(recordPath), { recursive: true });
@@ -613,8 +641,11 @@ export async function releaseGate(ctx: VerbContext, config: ReleaseConfig, optio
   execute?: boolean; source?: string | boolean | undefined; tagPrefix?: string | boolean | undefined; platform?: string; backfill?: string | boolean | undefined; openTicket?: unknown;
   full?: boolean; readLock?: (ctx: VerbContext, defaultBranch: string, sha?: string) => VerifyLock;
 } = {}): Promise<VerbResult> {
+  // The gates the app declares off (PROJECT-LINT-4) are not rows of this release, each named in the plan and in the L4 record; the build rows stay.
+  const off = offRows(ctx.cwd, ctx.env as NodeJS.ProcessEnv);
+  config = { ...config, gates: config.gates.filter((gate) => !off.dropped.has(gate.name)) };
   // Sonar is a row of the managed CI, so it is a row of the local gate whenever the app declares services.sonar; a missing token is a refusal, never a skip.
-  if (config.services?.sonar) config = { ...config, gates: [...config.gates.filter((gate) => gate.name !== 'sonar'), sonarGate(config.services, ctx, options.execute === true)] };
+  if (config.services?.sonar && !off.dropped.has('sonar')) config = { ...config, gates: [...config.gates.filter((gate) => gate.name !== 'sonar'), sonarGate(config.services, ctx, options.execute === true)] };
   const credentialNames: string[] = config.gates.find(gate => gate.provider)?.credentialNames ?? ['SONAR_TOKEN', config.services?.sonar?.token].filter(Boolean);
   ctx = Object.create(ctx, {env: {value: withoutCredentials(ctx.env, credentialNames)}}) as VerbContext;
   // The CI verdict of a release is the candidate run of its own sha, judged by `starci app release push` (candidate-ci.mts);
@@ -624,7 +655,7 @@ export async function releaseGate(ctx: VerbContext, config: ReleaseConfig, optio
   const urgent = options.backfill === undefined ? null : backfillTarget(ctx, common, options.backfill as string, facts.head);
   const recordPath = l4Path(common, facts.head);
   const dir = path.join(common, facts.head.slice(0, 12));
-  const plan = [...facts.out, ...planLines(config, facts, dir, recordPath)];
+  const plan = [...facts.out, ...planLines(config, facts, dir, recordPath), ...off.lines.map((line) => `gate ${line}`)];
   if (urgent) plan.push(`back-fill      urgent release ${urgent.tag} (${URGENT_RULING}): green promotes it to this L4 record with no new tag and no push; red opens a fix ticket and changes nothing on prod`);
   const appCheckRow = config.gates.find((gate) => isAppCheck(gate.command));
   const base = { head: facts.head, tag: facts.chosen.tag, record: recordPath, gates: config.gates.map((gate) => gate.name),
@@ -646,7 +677,7 @@ export async function releaseGate(ctx: VerbContext, config: ReleaseConfig, optio
   }
   if (failed.length > 0) return { ok: false, lines: [...plan, ...report, `gate(s) red: ${failed.map((item) => item.name).join(', ')}. No L4 record, no tag.`], data: { ...base, executed: true, results } };
   assertUnmoved(ctx, facts.head);
-  writeRecord(ctx, { head: facts.head, tag: facts.chosen.tag, results, recordPath, requireCi: config.requireCi, promotedFrom: urgent ? { record: `${facts.head}.urgent.json`, reason: urgent.reason, role: urgent.role, at: urgent.createdAt } : null });
+  writeRecord(ctx, { head: facts.head, tag: facts.chosen.tag, results, recordPath, requireCi: config.requireCi, gatesOff: off.entries, promotedFrom: urgent ? { record: `${facts.head}.urgent.json`, reason: urgent.reason, role: urgent.role, at: urgent.createdAt } : null });
   if (urgent) {
     writeUrgent(common, { ...urgent, backfill: { state: 'promoted', at: new Date(ctx.now()).toISOString(), l4: recordPath } });
     return { ok: true, lines: [...plan, ...report, `L4 record written: ${recordPath}`, `back-fill green: urgent release ${urgent.tag} is promoted to a normal L4 release (no re-release, no push)`], data: { ...base, executed: true, results, promoted: true } };

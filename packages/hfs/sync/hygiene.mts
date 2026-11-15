@@ -21,6 +21,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { secretFileFindings } from '../runtime/scripts/hfs/rules/secrets.mjs';
 import { stagedSpecFindings } from '../runtime/scripts/hfs/rules/staged-specs.mjs';
+import { activeProfile } from '../runtime/scripts/hfs/branch-profile.mjs';
 import { DATA_MANIFEST, copyRepositoryDeclared, dataCopyFindings, dataInCodeFindings } from '../runtime/scripts/hfs/rules/data-copies.mjs';
 import { HFS_BYPASS_MARKER, bypassMessage } from '../runtime/scripts/hfs/rules/bypass-markers.mjs';
 import { bypassesIn } from '../runtime/scripts/lib/bypass-markers.mjs';
@@ -190,7 +191,10 @@ async function ledgerHygieneFindings(cwd = process.cwd()): Promise<HygieneFindin
 export async function runWorkHygiene({ cwd = process.cwd(), out = (line: string): unknown => process.stdout.write(`${line}\n`), files }: { cwd?: string; out?: (line: string) => unknown; files?: string[] } = {}): Promise<number> {
   const judged = judge(cwd, files ?? stagedFiles(cwd));
   const { checked } = judged;
-  const findings = [...judged.findings, ...(files ? [] : missingSpecFindings(cwd))];
+  // The unit-spec guard is the test gate's: an app that declares tests off (PROJECT-LINT-4) asks for no spec beside a new logic file, and says so.
+  const testOff = activeProfile(cwd).declaredOff.test;
+  if (!files && testOff !== undefined) out(`test: off (declared: ${testOff}); the unit-spec guard is not run`);
+  const findings = [...judged.findings, ...(files || testOff !== undefined ? [] : missingSpecFindings(cwd))];
   const ledgerFindings = await ledgerHygieneFindings(cwd);
   const all = [...findings, ...ledgerFindings];
   for (const finding of all) out(`${finding.code} ${finding.file} ${finding.message}`);
