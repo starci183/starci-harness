@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { freshnessFindings, uncommittedCacheFiles, UNPORTABLE, UNWARMED } from '../cache/freshness.mjs';
+import { freshnessFindings, pristineFirstCommit, uncommittedCacheFiles, UNPORTABLE, UNWARMED } from '../cache/freshness.mjs';
 
 function repo(t: { after(fn: () => void): void }): string {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'starci-cache-fresh-'));
@@ -46,4 +46,30 @@ test('a host that cannot write a portable cache refuses the push and names the r
   const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'starci-cache-fresh-nogit-'));
   t.after(() => fs.rmSync(outside, { recursive: true, force: true }));
   assert.deepEqual(uncommittedCacheFiles(outside), ['.starcistacks/cache (git status failed)']);
+});
+
+test('the pristine first commit (a root commit with no cache, what app scaffold records) passes the push gate; any later commit is judged', (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'starci-cache-first-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const git = (...args: string[]) => spawnSync('git', ['-c', 'user.email=bench@example.invalid', '-c', 'user.name=bench', '-c', 'commit.gpgsign=false', ...args], { cwd: root, encoding: 'utf8' });
+  git('init', '-q');
+  fs.writeFileSync(path.join(root, 'hfs.json'), '{}\n');
+  git('add', '-A');
+  git('commit', '-q', '-m', 'scaffold');
+  assert.equal(pristineFirstCommit(root), true);
+  // The hook's run writes the cache into the working tree: the first commit does not carry it, so there is nothing stale to push.
+  fs.mkdirSync(path.join(root, '.starcistacks', 'cache', 'check', 'hfs'), { recursive: true });
+  fs.writeFileSync(path.join(root, '.starcistacks', 'cache', 'check', 'hfs', 'root.jsonl'), '{}\n');
+  const written = ['.starcistacks/cache/check/hfs/root.jsonl'];
+  assert.deepEqual(freshnessFindings({ root, ...portable, written }), []);
+  assert.deepEqual(freshnessFindings({ root, ...portable, portable: false, localReasons: ['@starci/x is linked'], written }), [], 'the first commit pushes no cache, so none can be unportable');
+  // The next commit (the cache on dev, or any work) has a parent: the push gate judges it.
+  git('commit', '-q', '--allow-empty', '-m', 'work');
+  assert.equal(pristineFirstCommit(root), false);
+  assert.equal(freshnessFindings({ root, ...portable, written })[0]?.code, UNWARMED);
+  // A root commit that carries a cache is judged like any other.
+  const warm = repo(t);
+  assert.equal(pristineFirstCommit(warm), false);
+  assert.equal(freshnessFindings({ root: warm, ...portable, written })[0]?.code, UNWARMED);
+  assert.equal(freshnessFindings({ root: warm, ...portable, written, firstCommit: true }).length, 0, 'the caller may answer the question itself');
 });

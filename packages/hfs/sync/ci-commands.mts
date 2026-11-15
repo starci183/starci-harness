@@ -3,7 +3,7 @@ import { parseYaml } from '../runtime/engine/yaml.mjs';
 import { refusal } from '../stack/errors.mjs';
 import { byCodeUnit } from '../report/order.mjs';
 import { ENTITY_LIST } from '../db/entity-list.mjs';
-import { isBranchPattern, readBranchProfiles, readGateDeclarations, type BranchProfiles, type ProfileGate } from '../runtime/scripts/lib/stack-declaration.mjs';
+import { idleJobs, isBranchPattern, readBranchProfiles, readGateDeclarations, type BranchProfiles, type ProfileGate } from '../runtime/scripts/lib/stack-declaration.mjs';
 import { sideDeclared } from '../runtime/scripts/hfs/project-sides.mjs';
 
 // reason: the stack declaration and its quality services are YAML parsed from disk; each field is read where the CI text needs it
@@ -282,6 +282,8 @@ export function ciWorkflowCommands(source: CiSource | undefined, lcovReport = 'b
   // The gates the app declares off (`gates` of the declaration, read once by readGateDeclarations: a refused block switches nothing off).
   const declaration = buildDeclaration(source);
   const off = readGateDeclarations(declaration).off;
+  // The jobs the declaration idles (IDLE_JOBS, the one table the bypass check reads too).
+  const idle = idleJobs(off);
   const run = (gate: ProfileGate, command: string): string => (off[gate] === undefined ? command : offStep(gate, off[gate] as string));
   const configuredSonar = quality === undefined ? { token: 'SONAR_TOKEN', hostVar: 'SONAR_HOST_URL' } : quality.sonar;
   const sonar = configuredSonar?.wiring === 'not-used' || configuredSonar?.mode === 'disabled' || off.sonar !== undefined ? null : configuredSonar;
@@ -312,11 +314,13 @@ export function ciWorkflowCommands(source: CiSource | undefined, lcovReport = 'b
     // The fast job's boot proof compiles every app root, which imports the root packages: the step that builds them precedes it.
     ciPackagesBuild: packagesBuildStep(rootPackages),
     ciBuildEnv: build.env,
-    ciBuildSteps: off.build === undefined ? build.steps : ['      - name: build fe', `        run: ${offStep('build', off.build)}`].join('\n'),
+    // An app without fe builds no front end, so its off build renders no fe step either.
+    ciBuildSteps: off.build === undefined || build.steps === '' ? build.steps : ['      - name: build fe', `        run: ${offStep('build', off.build)}`].join('\n'),
     // The coverage judgement alone over the merged report: the fast and lint jobs already ran every other rule of the app check.
     ciCoverageProof: run('coverage', exampleCommand(source, 'npx starci app coverage verify ' + lcovReport)),
     // An app with an entity list also checks its entities against the schema its migrations build, in the build job (a runner with Docker).
-    ciDatabaseLint: exampleCommand(source, (source?.files ?? []).includes(ENTITY_LIST.slice('be/'.length)) ? 'npm run db:lint && npx starci app db drift' : 'npm run db:lint'),
+    // The db gate never switches off; with the build off no step before it builds the root packages its drift check reads, so it builds them itself.
+    ciDatabaseLint: exampleCommand(source, (off.build === undefined ? '' : modulesFirst) + ((source?.files ?? []).includes(ENTITY_LIST.slice('be/'.length)) ? 'npm run db:lint && npx starci app db drift' : 'npm run db:lint')),
     auditCommand: run('audit', `npm audit${audit.omitDev ? ' --omit=dev' : ''} --audit-level=${audit.level}`),
     sonarTokenSecret: sonar?.token ?? 'SONAR_TOKEN',
     sonarHostVar: sonar?.hostVar ?? 'SONAR_HOST_URL',
@@ -331,11 +335,11 @@ export function ciWorkflowCommands(source: CiSource | undefined, lcovReport = 'b
     ciTestRun: run('test', 'npm test -- --ci --forceExit --cacheDirectory .jest-cache --shard=${{ matrix.shard }}/' + String(settings.testShardTotal)),
     ciBuildBeRun: run('build', 'npm run build:be'),
     // A job whose whole gate is off is left out by its `if`: skipped, which the verdict expects, and the plan summary names it.
-    offLint: off.lint === undefined ? '' : ' && false',
-    offTest: off.test === undefined ? '' : ' && false',
-    coverageIf: off.coverage !== undefined && off.codecov !== undefined ? '    if: ${{ false }}\n' : '',
-    verdictJobs: ['fast', ...(off.lint === undefined ? ['lint'] : []), ...(off.test === undefined ? ['test'] : []), ...(off.coverage !== undefined && off.codecov !== undefined ? [] : ['coverage']), 'build'].join(' '),
-    verdictIdle: [...(off.lint === undefined ? [] : ['lint']), ...(off.test === undefined ? [] : ['test']), ...(off.coverage !== undefined && off.codecov !== undefined ? ['coverage'] : [])].map((job) => `\n          expect ${job} idle`).join(''),
+    offLint: idle.has('lint') ? ' && false' : '',
+    offTest: idle.has('test') ? ' && false' : '',
+    coverageIf: idle.has('coverage') ? '    if: ${{ false }}\n' : '',
+    verdictJobs: ['fast', 'lint', 'test', 'coverage', 'build'].filter((job) => !idle.has(job)).join(' '),
+    verdictIdle: ['lint', 'test', 'coverage'].filter((job) => idle.has(job)).map((job) => `\n          expect ${job} idle`).join(''),
     planGatesOff: Object.entries(off).map(([gate, reason]) => `\n          echo "gate ${gate}: off (declared: ${String(reason).replaceAll('"', "'").replaceAll('`', "'").replaceAll('$', '')})" >> "$GITHUB_STEP_SUMMARY"`).join(''),
     ciLintSteps: off.lint !== undefined ? ['      - name: lint', `        run: ${offStep('lint', off.lint)}`].join('\n') : ['      - name: build the lint inputs', `        run: ${lintInputs}`, ...(sonar ? [
       '      - name: lint with Sonar import',

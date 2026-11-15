@@ -4,7 +4,8 @@
 //     ts-nocheck directives), a Sonar exclusion comment, an istanbul / c8 / v8 coverage ignore;
 //   - a skipped, focused or todo test, or a skip option (a front end has no specs, but its source is still judged for the inline disables);
 //   - a failure swallowed in a hook, a script or a workflow: `|| true`, `continue-on-error`, `set +e`, `HUSKY=0`, `--no-verify`,
-//     `fail_ci_if_error: false`, `--passWithNoTests`;
+//     `fail_ci_if_error: false`, `--passWithNoTests`, a constant false `if` on a check job or step (a job of the managed ci.yml that the
+//     gate declaration idles, IDLE_JOBS of scripts/lib/stack-declaration.mts, is the render of that declaration, never a bypass);
 //   - a gate configuration relaxed: a coverage target or threshold below the canon, a relaxing switch, a disabled ESLint rule, a strictness option
 //     turned off, an exception file the design-truths manifest does not list.
 // The tree is read as it stands, by the library of the runtime's own loosening check (scripts/lib/loosening-state.mts, knowledge/hfs/design-truths.yaml);
@@ -13,7 +14,8 @@
 import fs from 'node:fs';
 import { parseYaml } from '../../../engine/yaml.mjs';
 import { found, readText } from './read.mjs';
-import { bypassesIn } from '../../lib/bypass-markers.mjs';
+import { bypassesIn, MANAGED_CI } from '../../lib/bypass-markers.mjs';
+import { declaredGatesOff, idleJobs } from '../../lib/stack-declaration.mjs';
 import { findingLine, stateFindings } from '../../lib/loosening-state.mjs';
 import type { Parsed } from './rule-types.mjs';
 
@@ -23,10 +25,15 @@ const TRUTHS_FILE = new URL('../../../knowledge/hfs/design-truths.yaml', import.
 /** The finding message of one marker of `file`. */
 export const bypassMessage = (file: string, hit: Parsed) => `${file}:${hit.line} spells ${hit.label} (${hit.text.slice(0, 80)}); a check is satisfied, never bypassed: fix the cause and delete the marker`;
 
-const markerFindings = ({ repoRoot, files }: { repoRoot: string; files: string[] }) => files.flatMap((file: string) => {
-  const text = readText(repoRoot, file);
-  return text === null ? [] : bypassesIn(file, text).map((hit: Parsed) => found(HFS_BYPASS_MARKER, file, bypassMessage(file, hit), { line: hit.line }));
-});
+const markerFindings = ({ repoRoot, files }: { repoRoot: string; files: string[] }) => {
+  // The jobs of the managed ci.yml the gate declaration idles are its render (PROJECT-LINT-4), not a bypass.
+  // Read only when the managed ci.yml is judged: its per-file record depends on the declaration (perFileRules deps), every other file on itself alone.
+  const idle = files.includes(MANAGED_CI) ? idleJobs(declaredGatesOff(repoRoot)) : new Set<string>();
+  return files.flatMap((file: string) => {
+    const text = readText(repoRoot, file);
+    return text === null ? [] : bypassesIn(file, text, { idle }).map((hit: Parsed) => found(HFS_BYPASS_MARKER, file, bypassMessage(file, hit), { line: hit.line }));
+  });
+};
 
 /** The relaxed gate configuration of `files`: the library's findings other than the markers and the lists. */
 const configFindings = ({ repoRoot, files }: { repoRoot: string; files: string[] }) => stateFindings({ files, read: (file: string) => readText(repoRoot, file), truths: parseYaml(fs.readFileSync(TRUTHS_FILE, 'utf8')), lists: false })

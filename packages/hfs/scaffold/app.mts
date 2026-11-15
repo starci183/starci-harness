@@ -394,9 +394,10 @@ export function peerDependencies(pkg: Pick<PackageManifest, 'dependencies' | 'de
  * transitive dependency otherwise brings its own (zustand 4 under @xyflow/react, dayjs under typeorm, a hoisted newer zod
  * that breaks the zodResolver types), and @xyflow/react and react-aria-components stay the grammar's one version. Two are security overrides, each dropped when
  * upstream ships the fix (canon-pins.yaml says why): @graphql-tools/utils (@nestjs/graphql 13.x pulls <=12.0.0, GHSA-7mx3-vvmw-hjmv) and multer
- * (@nestjs/platform-express depends on exactly 2.4.0, GHSA-q7qp-rjg7-q26m).
+ * (@nestjs/platform-express depends on exactly 2.4.0, GHSA-q7qp-rjg7-q26m). tslib is one copy too: @nestjs 11 depends on exactly 2.8.1 while
+ * @whatwg-node/promise-helpers 2 (under @graphql-tools/utils) requires ^2.9.1, so no range meets both and the pin wins (R14, HFS_DEP_VERSION_SKEW).
  */
-const ROOT_OVERRIDES = Object.freeze(['@graphql-tools/utils', '@xyflow/react', 'dayjs', 'multer', 'react-aria-components', 'zod', 'zustand']);
+const ROOT_OVERRIDES = Object.freeze(['@graphql-tools/utils', '@xyflow/react', 'dayjs', 'multer', 'react-aria-components', 'tslib', 'zod', 'zustand']);
 
 /**
  * The root package.json of a new app, the monorepo root: name, workspaces, npm, its edition's dependencies with their runtime

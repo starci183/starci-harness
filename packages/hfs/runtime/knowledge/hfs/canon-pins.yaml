@@ -168,7 +168,7 @@ pins:
     source: packages/seed/package.json
     why: 'the data standard of a project: the StoreAdapter and DriverAdapter ports, one export written to several copies, the copy contract and the line protocol, with the store and driver contract suites (./testing) and the git driver (./git); the starter back end implements StoreAdapter for its database in integrations/seed, the one importer of the package (R426, R90), and imports only its types.'
   '@starci/hfs':
-    version: 6.13.1
+    version: 6.13.2
     group: starci
     install: registry
     side: both
@@ -349,10 +349,10 @@ pins:
     side: be
     why: 'the observable runtime Nest is built on; the reference app declares ^7.8.1 and resolves 7.8.2.'
   tslib:
-    version: 2.8.1
+    version: 2.9.1
     group: framework
     side: be
-    why: 'the helper runtime the TypeScript emit references (importHelpers); the reference app declares ^2.8.1 and resolves 2.8.1.'
+    why: 'the helper runtime the TypeScript emit references (importHelpers). One copy for the whole install: @whatwg-node/promise-helpers 2 (under @graphql-tools/utils) requires ^2.9.1 while @nestjs 11 declares exactly 2.8.1, so a scaffold holds it by a root override at this pin.'
   server-only:
     version: 0.0.1
     group: framework

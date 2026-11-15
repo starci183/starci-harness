@@ -88,6 +88,8 @@ import { appRootFindings } from './rules/app-root.mjs';
 import { frontendFindings } from './rules/frontend-tree.mjs';
 import { lintSuppressionFindings } from './rules/lint-suppression.mjs';
 import { bypassMarkerFindings } from './rules/bypass-markers.mjs';
+import { MANAGED_CI } from '../lib/bypass-markers.mjs';
+import { DECLARATION, STACK_ROOT } from '../lib/stack-declaration.mjs';
 import { repoLocalCheckFindings } from './rules/repo-local-checks.mjs';
 import { liteSecretFindings } from './rules/lite-secrets.mjs';
 import { readmeManifestOf, untrackedSecretFindings } from './rules/secrets.mjs';
@@ -262,7 +264,8 @@ interface ContentRuleInput {
 export function perFileRules({ repoRoot, repo, resolver, inScope, isRoot }: { repoRoot: string; repo: CheckRepo; resolver: CheckResolver; inScope: (file: string) => boolean; isRoot: boolean }): FileRule[] {
   return [
     { id: 'secret', run: (list) => liteSecretFindings({ repoRoot, files: list.filter((file) => inScope(file)), resolver, repo }), deps: (file) => readmeManifestOf(file) ?? [] },
-    { id: 'bypass-marker', run: (list) => bypassMarkerFindings({ repoRoot, files: list.filter((file) => inScope(file)) }) },
+    // The managed ci.yml is judged with the gate declaration, whose idled jobs are its render (R303, PROJECT-LINT-4).
+    { id: 'bypass-marker', run: (list) => bypassMarkerFindings({ repoRoot, files: list.filter((file) => inScope(file)) }), deps: (file) => (file === MANAGED_CI ? [`${STACK_ROOT}/${DECLARATION}`] : []) },
     ...(isRoot ? [] : [{ id: 'size-soft', run: (list: string[]) => sizeSoftFindings({ repoRoot, resolver, files: list, inScope }) }]),
   ];
 }

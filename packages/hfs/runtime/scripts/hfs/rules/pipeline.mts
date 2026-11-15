@@ -5,10 +5,13 @@
 //                              a version named in the step is the starci-harness pin,
 //                              the version of the CLI that runs the check (canon-pins.mts; an installed one is pinned by the pin check, R15)
 //   (the push hook is no lint or typecheck step: it checks the release gate, scripts/hfs/runtime-rules/hook-shape.mts keeps its shape)
+// An app whose stack declaration switches the lint gate off (PROJECT-LINT-4) renders no lint step and is not required one; one that drops the step
+// without the declaration is refused.
 // A missing file is the slot manifest's finding (HFS_SLOT_REQUIRED_MISSING); a file that is present and lacks the step is this rule's.
 // The redirect of `core.hooksPath` away from husky is the architecture machine's (HFS_HOOKS_PATH_REDIRECTED).
 import { found, readJson, readText } from './read.mjs';
 import { isRuntimeExampleApp } from '../../lib/runtime-example.mjs';
+import { declaredGatesOff } from '../../lib/stack-declaration.mjs';
 import type { Parsed } from './rule-types.mjs';
 
 const CI_MISSING_CANON = 'HFS_CI_MISSING_CANON';
@@ -87,7 +90,7 @@ const exampleCommandOf = (command: string) => command.startsWith(EXAMPLE_RUN_PRE
 export function pipelineFindings({ repoRoot, files, pins }: { repoRoot: string; files: string[]; pins: Parsed }) {
   const findings = [];
   const pinned = pins?.[hfsPackage]?.version;
-  const ci = files.includes(CI_FILE) ? readText(repoRoot, CI_FILE) : null;
+  const ci = files.includes(CI_FILE) && declaredGatesOff(repoRoot).lint === undefined ? readText(repoRoot, CI_FILE) : null;
   if (ci !== null) {
     const scripts = readJson(repoRoot, 'package.json')?.scripts ?? {};
     const commands = commandsOf(ci);

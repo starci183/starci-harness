@@ -186,6 +186,26 @@ export function readGateDeclarations(doc: unknown, allowed: ReadonlySet<ProfileG
   return result;
 }
 
+/**
+ * The gates the stack declaration of the app at `repoRoot` switches off, each with its reason: the one reader every rule that requires a gate's step in a managed
+ * file calls, so a gate declared off is not required where the render (`app sync`) leaves it out, and a gate removed without a declaration is still refused.
+ */
+export function declaredGatesOff(repoRoot: unknown): Partial<Record<ProfileGate, string>> {
+  // The one file alone (no folder probe), so a per-file rule that reads it declares exactly that dependency.
+  const file = path.join(path.resolve(String(repoRoot ?? '')), STACK_ROOT, DECLARATION);
+  if (!isFile(file)) return {};
+  const read = readDeclaration(file);
+  return read.doc === undefined ? {} : readGateDeclarations(read.doc).off;
+}
+
+/**
+ * The jobs of the managed ci.yml a declaration idles (its `if` is constant false, and the verdict expects it idle), each with the gates that must all be off:
+ * the lint job by lint, the test job by test, the coverage job by coverage and codecov together. The renderer and the bypass check read this one table.
+ */
+export const IDLE_JOBS: Readonly<Record<string, readonly ProfileGate[]>> = Object.freeze({ lint: ['lint'], test: ['test'], coverage: ['coverage', 'codecov'] });
+/** The jobs of IDLE_JOBS whose gates `off` all switches off. */
+export const idleJobs = (off: Partial<Record<ProfileGate, string>>): Set<string> => new Set(Object.entries(IDLE_JOBS).filter(([, gates]) => gates.every((gate) => off[gate] !== undefined)).map(([job]) => job));
+
 /** The default branch of a declaration: ci.github.defaultBranch, else main. */
 export const declaredDefaultBranch = (doc: unknown): string => text((plain(doc) && plain(doc['ci']) && plain((doc['ci'] as Record<string, unknown>)['github']) ? ((doc['ci'] as Record<string, Record<string, unknown>>)['github'] as Record<string, unknown>)['defaultBranch'] : null)) ?? 'main';
 

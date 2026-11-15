@@ -150,18 +150,38 @@ function textLabelsOf(kind: BypassFileKind, line: string): string[] {
   return [...labelsOf(SWALLOW, text), ...labelsOf(own, text)];
 }
 
-const CONSTANT_FALSE = /^\s*(?:-\s+)?if:\s*(?:\$\{\{\s*)?false\b/;
+// `if: false`, `if: ${{ false }}`, and an expression that ends `&& false` (false whatever comes before it).
+const CONSTANT_FALSE = /^\s*(?:-\s+)?if:\s*(?:(?:\$\{\{\s*)?false\b|\$\{\{.*&&\s*false\s*\}\}\s*$)/;
 const CHECK_STEP = /(?:run|uses|name):[^\n]*(?:test|lint|check|audit|tsc|coverage|sonar|codecov|jest|eslint|stylelint|prettier|verify|scan)/i;
+/** The managed workflow whose jobs a gate declaration idles (IDLE_JOBS of scripts/lib/stack-declaration.mts). */
+export const MANAGED_CI = '.github/workflows/ci.yml';
 
-/** A job or a check step of a workflow that a constant false condition keeps from running (a setup step disabled for an app without build values is none). */
-function disabledHits(text: string): BypassHit[] {
+/** The id of the job that holds line `index` of a workflow: the nearest key above it at the indent of a job (2), or null. */
+function jobAt(lines: readonly string[], index: number): string | null {
+  for (let at = index; at >= 0; at -= 1) {
+    const key = /^ {2}([\w-]+):\s*$/.exec(lines[at] as string);
+    if (key) return key[1] as string;
+  }
+  return null;
+}
+
+/**
+ * A job or a check step of a workflow that a constant false condition keeps from running (a setup step disabled for an app without build values is none).
+ * A job of the managed ci.yml that the app's gate declaration idles (`idle`, idleJobs of the declaration) is the render of that declaration, never a bypass:
+ * the same constant false on any other job, or with no declaration, is refused.
+ */
+function disabledHits(file: string, text: string, idle: ReadonlySet<string>): BypassHit[] {
   const lines = text.split('\n');
   const hits: BypassHit[] = [];
   lines.forEach((content, index) => {
     if (!CONSTANT_FALSE.test(content)) return;
     const indent = content.search(/\S/);
     const label = 'a constant false condition';
-    if (indent === 4) { hits.push({ line: index + 1, label, text: content.trim() }); return; }
+    if (indent === 4) {
+      const job = jobAt(lines, index);
+      if (!(file === MANAGED_CI && job !== null && idle.has(job))) hits.push({ line: index + 1, label, text: content.trim() });
+      return;
+    }
     let start = index;
     while (start > 0 && !/^\s*-\s/.test(lines[start] as string) && (lines[start] as string).search(/\S/) >= indent) start -= 1;
     let end = index + 1;
@@ -322,13 +342,13 @@ function manifestHits(text: string): BypassHit[] {
 
 /**
  * Every bypass marker of the text of one file: [{line, label, text}] (line numbers from 1). The file's kind decides the patterns;
- * a file of no kind has none.
+ * a file of no kind has none. `idle` names the jobs of the managed ci.yml the app's gate declaration idles (idleJobs), whose constant false `if` is its render.
  */
-export function bypassesIn(file: string, text: string): BypassHit[] {
+export function bypassesIn(file: string, text: string, { idle = new Set<string>() }: { idle?: ReadonlySet<string> } = {}): BypassHit[] {
   const kind = bypassFileKind(file, text);
   if (!kind || typeof text !== 'string') return [];
   if (kind === 'code') return codeHits(file, text);
   if (kind === 'manifest') return manifestHits(text);
   const hits = text.split(/\r?\n/).flatMap((content, index) => textLabelsOf(kind, content).map((label) => ({ line: index + 1, label, text: content.trim() })));
-  return kind === 'workflow' ? [...hits, ...alwaysHits(text), ...disabledHits(text)] : hits;
+  return kind === 'workflow' ? [...hits, ...alwaysHits(text), ...disabledHits(file, text, idle)] : hits;
 }

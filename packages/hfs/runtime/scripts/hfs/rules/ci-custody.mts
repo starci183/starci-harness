@@ -1,7 +1,7 @@
 // ci-custody.mts - R296-R298: CI declarations, sealed app keys and workflow reads agree by consumer, without decrypting or contacting GitHub.
 import fs from 'node:fs';
 import { list } from '../../lib/list.mjs';
-import { findStackDeclaration, STACK_ROOT } from '../../lib/stack-declaration.mjs';
+import { findStackDeclaration, readGateDeclarations, STACK_ROOT, type ProfileGate } from '../../lib/stack-declaration.mjs';
 import { readCiDeclaration, sealedKeyNames, workflowReferences, ciNamesOfServices, serviceBindings, boundSealedKey, runtimeGranted, serviceCredentialNames, type ServiceBinding } from '../ci-declaration.mjs';
 import { repositoryName, identityQueryEnvironment } from '../repo-identity.mjs';
 import { found } from './read.mjs';
@@ -69,8 +69,12 @@ function driftFindings(doc: Parsed, ci: Parsed, references: Parsed) {
   const findings = workflowFindings(doc, declared, references);
   if (doc.ci === undefined) return findings;
   const reads = new Set(references.map(({ kind, name }: { kind: string; name: string }) => identity(kind, name)));
+  // A service whose id names a gate the declaration switches off (PROJECT-LINT-4: sonar, codecov) has no workflow consumer in the render, so its names need no read.
+  const off = readGateDeclarations(doc).off;
+  const unconsumed = new Set(ciNamesOfServices(doc).filter((entry) => off[entry.service as ProfileGate] !== undefined && typeof entry.name === 'string')
+    .map((entry) => identity(`${entry.kind}s`, String(entry.name))));
   for (const { kind, name, optional } of declared) {
-    if (!optional && !reads.has(identity(kind, name))) findings.push(found('CI_DECLARATION_DRIFT', atCi(kind),
+    if (!optional && !reads.has(identity(kind, name)) && !unconsumed.has(identity(kind, name))) findings.push(found('CI_DECLARATION_DRIFT', atCi(kind),
       `${name} is declared in ci.${kind} as non-optional but no workflow reads it; remove the declaration, mark it optional or wire its workflow consumer`));
   }
   const names = new Set(declared.map(({ kind, name }) => identity(kind, name)));

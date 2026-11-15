@@ -31,7 +31,7 @@ pins:
   '@starci/jest-preset': {version: 2.10.0, group: starci, side: be, install: registry, why: "the back-end Jest preset; pairs exactly with @starci/test-world"}
   '@starci/test-world': {version: 2.0.0, group: starci, side: be, install: registry, why: "the back-end e2e world; pairs exactly with @starci/jest-preset"}
   '@starci/ai-router': {version: 0.7.0, group: starci, side: be, install: registry, why: "the AI pool router module of a back end; jest-preset compiles it as ESM"}
-  '@starci/hfs': {version: 6.13.1, group: starci, side: both, install: registry, why: "the app implementation starci-harness runs for starci app"}
+  '@starci/hfs': {version: 6.13.2, group: starci, side: both, install: registry, why: "the app implementation starci-harness runs for starci app"}
   '@langchain/core': {version: 1.3.5, group: framework, side: be, why: "the LangChain core of the one AI integration (contexts/code/be/ai.md)"}
   '@langchain/openai': {version: 1.8.2, group: framework, side: be, why: "ChatOpenAI and OpenAIEmbeddings of the one AI integration, pointed at the ai-router gateway"}
   typescript: {version: 5.9.3, group: tooling, side: both}
@@ -68,7 +68,7 @@ pins:
   bullmq: {version: 6.3.11, group: framework, side: be, why: "the queue transport of both editions behind platform/queue"}
   reflect-metadata: {version: 0.2.2, group: framework, side: be}
   rxjs: {version: 7.8.2, group: framework, side: be}
-  tslib: {version: 2.8.1, group: framework, side: be}
+  tslib: {version: 2.9.1, group: framework, side: be, why: "the helper runtime the TypeScript emit references (importHelpers); one copy for the whole install, held by a root override over the exact 2.8.1 that @nestjs 11 declares"}
   server-only: {version: 0.0.1, group: framework, side: fe, why: "the Next marker that fails a client bundle importing it"}
   next-intl: {version: 4.13.6, group: framework, side: fe, why: "the one i18n library"}
   graphql: {version: 16.14.2, group: framework, side: both, why: "one version for both sides"}

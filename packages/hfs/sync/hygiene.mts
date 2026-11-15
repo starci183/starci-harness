@@ -25,6 +25,8 @@ import { activeProfile } from '../runtime/scripts/hfs/branch-profile.mjs';
 import { DATA_MANIFEST, copyRepositoryDeclared, dataCopyFindings, dataInCodeFindings } from '../runtime/scripts/hfs/rules/data-copies.mjs';
 import { HFS_BYPASS_MARKER, bypassMessage } from '../runtime/scripts/hfs/rules/bypass-markers.mjs';
 import { bypassesIn } from '../runtime/scripts/lib/bypass-markers.mjs';
+import { STACK_ROOT, idleJobs, readGateDeclarations } from '../runtime/scripts/lib/stack-declaration.mjs';
+import { parseYaml } from '../runtime/engine/yaml.mjs';
 import { loadSlotManifest } from '../runtime/scripts/hfs/slots.mjs';
 import { runGit } from '../runtime/scripts/api/git/lib.mjs';
 import { loadTypescript } from '../runtime/scripts/lib/package-at.mjs';
@@ -122,9 +124,14 @@ function secretGuardFindings(cwd: string, files: readonly string[], alreadyRefus
 
 /** The bypass markers (R303) of `files` read from the index: an inline disable, a type-check escape, a skipped test or a swallowed failure fails at the commit. */
 function bypassGuardFindings(cwd: string, files: readonly string[]): HygieneFinding[] {
+  // The jobs of the managed ci.yml the staged gate declaration idles are its render (PROJECT-LINT-4), not a bypass; the commit records that declaration.
+  const declared = stagedText(cwd, `${STACK_ROOT}/application-stacks.yaml`);
+  let doc: unknown = null;
+  try { doc = declared === null ? null : parseYaml(declared); } catch { doc = null; }
+  const idle = idleJobs(readGateDeclarations(doc).off);
   return files.flatMap((file): HygieneFinding[] => {
     const text = stagedText(cwd, file);
-    return text === null ? [] : bypassesIn(file, text).map((hit: unknown) => ({ file, code: HFS_BYPASS_MARKER, message: bypassMessage(file, hit) }));
+    return text === null ? [] : bypassesIn(file, text, { idle }).map((hit: unknown) => ({ file, code: HFS_BYPASS_MARKER, message: bypassMessage(file, hit) }));
   });
 }
 

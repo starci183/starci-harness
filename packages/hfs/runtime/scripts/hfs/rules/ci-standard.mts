@@ -11,6 +11,7 @@
 //   cache-saved-always     no cache keyed by the commit sha; actions/cache/save runs under if: always()
 //   timeouts               every job declares timeout-minutes
 //   sha-pinned-actions     every remote `uses:` names a 40-hex commit sha (docker:// a sha256 digest; ./ local actions allowed)
+// An item never requires the step of a gate the app's stack declaration switches off (PROJECT-LINT-4: coverage, test, wiring), since `app sync` renders none.
 // `ciStandardFindings({doc, file, scope})` is the pure core: scope `app-ci` (an app's managed .github/workflows/ci.yml: the example apps and every app through the
 // app check) or `runtime` (the runtime repository's own workflows, scripts/hfs/runtime-rules/runtime-ci-standard.mjs), each checking the items whose `covers` names it.
 import fs from 'node:fs';
@@ -22,6 +23,10 @@ import { isPlainObject as record } from '../../../engine/plain-object.mjs';
 import { byCodeUnit } from '../../lib/list.mjs';
 import type { Parsed } from './rule-types.mjs';
 import { sideDeclared } from '../project-sides.mjs';
+import { declaredGatesOff, type ProfileGate } from '../../lib/stack-declaration.mjs';
+
+/** The gates the app's stack declaration switches off (PROJECT-LINT-4): the render leaves their steps out, so an item never requires the step of an off gate. */
+type GatesOff = Partial<Record<ProfileGate, string>>;
 
 export const CI_STANDARD = 'CI_STANDARD';
 const STANDARD_FILE = new URL('../../../knowledge/hfs/ci-standard.yaml', import.meta.url);
@@ -51,7 +56,7 @@ const runOf = (step: Parsed) => (typeof step.run === 'string' ? step.run : '');
 /** The items of the standard this file checks for `scope`: their ids. */
 const checkedItems = (standard: Parsed, scope: Parsed) => new Set(standard.items.filter((item: Parsed) => item.check === 'ci-standard' && item.covers.includes(scope)).map((item: Parsed) => item.id));
 
-function jobShape(doc: Parsed, edition: string, standard: Parsed, say: Parsed) {
+function jobShape(doc: Parsed, edition: string, standard: Parsed, say: Parsed, off: GatesOff) {
   const shape = standard.jobs[edition] ?? standard.jobs.full;
   const ids = jobsOf(doc).map(([id]) => id);
   const out = [];
@@ -67,7 +72,8 @@ function jobShape(doc: Parsed, edition: string, standard: Parsed, say: Parsed) {
   const upload = withStep((step: Parsed) => usesOf(step).startsWith('codecov/codecov-action@'));
   const proof = withStep((step: Parsed) => COVERAGE_PROOF.test(runOf(step)));
   if (unit.join() !== 'test') out.push(say('job-shape', `the unit run must be a step of the test job alone, not of ${unit.join(', ') || 'no job'}`));
-  if (proof.join() !== 'coverage') out.push(say('job-shape', `the coverage proof must be a step of the coverage job alone, not of ${proof.join(', ') || 'no job'}`));
+  // With coverage off the render keeps no proof step; a proof that is there still belongs to the coverage job.
+  if (proof.length > 0 ? proof.join() !== 'coverage' : off.coverage === undefined) out.push(say('job-shape', `the coverage proof must be a step of the coverage job alone, not of ${proof.join(', ') || 'no job'}`));
   if (upload.length && upload.join() !== 'coverage') out.push(say('job-shape', `the Codecov upload must be a step of the coverage job alone, not of ${upload.join(', ')}`));
   const oidc = jobsOf(doc).filter(([, job]) => job.permissions?.['id-token'] === 'write').map(([id]) => id);
   if (upload.length && oidc.join() !== 'coverage') out.push(say('job-shape', `only the coverage job holds the OIDC id-token (id-token: write), not ${oidc.join(', ') || 'no job'}`));
@@ -97,13 +103,14 @@ function pipelineShape(doc: Parsed, ids: readonly string[], deployIds: readonly 
   return out;
 }
 
-function testSharding(doc: Parsed, say: Parsed) {
+function testSharding(doc: Parsed, say: Parsed, off: GatesOff) {
   const test = record(doc.jobs?.test) ? doc.jobs.test : null;
   if (!test) return [];
   const out = [];
   const shards = test.strategy?.matrix?.shard;
   if (!Array.isArray(shards) || !shards.length) out.push(say('test-sharding', 'the test job must be a matrix over shard (ci.jobs.test.shards)'));
-  const unit = stepsOf(test).find((step: Parsed) => step.name === 'unit');
+  // With test off the unit step is the render's off notice: it runs no shard.
+  const unit = off.test === undefined ? stepsOf(test).find((step: Parsed) => step.name === 'unit') : undefined;
   const total = /--shard=\$\{\{\s*matrix\.shard\s*\}\}\/(\d+)/.exec(unit ? runOf(unit) : '');
   if (unit && !total) out.push(say('test-sharding', 'the unit run must pass --shard=${{ matrix.shard }}/<N>'));
   if (total && Array.isArray(shards) && Number(total[1]) !== shards.length) out.push(say('test-sharding', `the unit run's shard total ${total[1]} must equal the ${shards.length} matrix shards`));
@@ -161,8 +168,8 @@ function cacheSavedAlways(doc: Parsed, say: Parsed) {
 
 const BOOT_PROOF = /\bapp check\b[^\n]*--gate[ =]wiring\b/;
 
-function bootProof(doc: Parsed, edition: string, say: Parsed) {
-  if (edition !== 'lite') return [];
+function bootProof(doc: Parsed, edition: string, say: Parsed, off: GatesOff) {
+  if (edition !== 'lite' || off.wiring !== undefined) return [];
   const steps = record(doc.jobs?.fast) ? stepsOf(doc.jobs.fast) : [];
   const proof = steps.findIndex((step: Parsed) => BOOT_PROOF.test(runOf(step)));
   const typecheck = steps.findIndex((step: Parsed) => /\bnpm run typecheck\b/.test(runOf(step)));
@@ -256,18 +263,18 @@ function shaPinned(doc: Parsed, say: Parsed) {
 }
 
 /** The R301 findings of one workflow document: scope `app-ci` (with the app's edition) or `runtime`. Pure over the document and the standard. */
-export function ciStandardFindings({ doc, file, scope, edition = 'full', standard = ciStandard(), rootPackages, appSides = ['be', 'fe'] }: { doc: Parsed; file: string; scope: Parsed; edition?: string; standard?: Parsed; rootPackages?: boolean; appSides?: readonly string[] }) {
+export function ciStandardFindings({ doc, file, scope, edition = 'full', standard = ciStandard(), rootPackages, appSides = ['be', 'fe'], off = {} }: { doc: Parsed; file: string; scope: Parsed; edition?: string; standard?: Parsed; rootPackages?: boolean; appSides?: readonly string[]; off?: GatesOff }) {
   if (!record(doc)) return [];
   const items = checkedItems(standard, scope);
   const say = (item: Parsed, why: string) => found(CI_STANDARD, file, `${CI_STANDARD} ${file}: [${item}] ${why} (knowledge/hfs/ci-standard.yaml)`, { item });
   const checks = {
-    'job-shape': () => jobShape(doc, edition, standard, say),
-    'boot-proof': () => bootProof(doc, edition, say),
+    'job-shape': () => jobShape(doc, edition, standard, say, off),
+    'boot-proof': () => bootProof(doc, edition, say, off),
     'full-history-base-ref': () => fullHistory(doc, say),
     'heap-per-step': () => heapPerStep(doc, standard, say),
     'sonar-lint-per-side': () => sonarLintPerSide(doc, say),
     'required-providers': () => requiredProviders(doc, say),
-    'test-sharding': () => testSharding(doc, say),
+    'test-sharding': () => testSharding(doc, say, off),
     'lint-parallel': () => lintParallel(doc, say, appSides),
     'packages-built-first': () => packagesBuiltFirst(doc, standard, rootPackages === true || lintsPackages(doc), say),
     'cache-saved-always': () => cacheSavedAlways(doc, say),
@@ -292,6 +299,7 @@ function declaresBuildModules(repoRoot: string | undefined): boolean {
 export function ciStandardAppFindings(ctx: Parsed) {
   const edition = ctx.repo?.edition === 'lite' ? 'lite' : 'full';
   const rootPackages = declaresBuildModules(ctx.repoRoot);
+  const off = declaredGatesOff(ctx.repoRoot);
   return appWorkflowFindings({ ...ctx, inScope: (file: string) => file === APP_CI && (ctx.inScope ?? (() => true))(file) },
-    ({ path: file, text }: { path: string; text: string }) => ciStandardFindings({ doc: parseWorkflow(text), file, scope: 'app-ci', edition, rootPackages, appSides: (['be', 'fe'] as const).filter((side) => sideDeclared(ctx.repo, side)) }), { dedupe: true });
+    ({ path: file, text }: { path: string; text: string }) => ciStandardFindings({ doc: parseWorkflow(text), file, scope: 'app-ci', edition, rootPackages, appSides: (['be', 'fe'] as const).filter((side) => sideDeclared(ctx.repo, side)), off }), { dedupe: true });
 }

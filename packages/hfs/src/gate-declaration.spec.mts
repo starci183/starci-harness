@@ -10,7 +10,15 @@ import path from 'node:path';
 import { main } from './main.mjs';
 import { activeProfile, familyModes, profileNotices } from '../runtime/scripts/hfs/branch-profile.mjs';
 import { checkRepo } from '../runtime/scripts/hfs/check.mjs';
-import { HFS_GATES, OPTIONAL_GATES, PROFILE_GATES, optionalGatePolicy, readGateDeclarations } from '../runtime/scripts/lib/stack-declaration.mjs';
+import { HFS_GATES, OPTIONAL_GATES, PROFILE_GATES, idleJobs, optionalGatePolicy, readGateDeclarations } from '../runtime/scripts/lib/stack-declaration.mjs';
+import { bypassesIn, MANAGED_CI as CI } from '../runtime/scripts/lib/bypass-markers.mjs';
+import { bypassMarkerFindings } from '../runtime/scripts/hfs/rules/bypass-markers.mjs';
+import { ciStandardFindings } from '../runtime/scripts/hfs/rules/ci-standard.mjs';
+import { pipelineFindings } from '../runtime/scripts/hfs/rules/pipeline.mjs';
+import { supplyChainFindings } from '../runtime/scripts/hfs/rules/supply-chain.mjs';
+import { ciCustodyFindings } from '../runtime/scripts/hfs/rules/ci-custody.mjs';
+import { judge as hygieneJudge } from '../sync/hygiene.mjs';
+import { spawnSync } from 'node:child_process';
 import { ciWorkflowCommands, offStep, verifyShards } from '../sync/ci-commands.mjs';
 import { offRows } from '../release/gate.mjs';
 import { parseWorkflow } from '../runtime/scripts/hfs/runtime-rules/workflow-source.mjs';
@@ -169,4 +177,49 @@ test('the pre-push hook skips deps check for an app that declares it off, and al
   assert.match(dev.stdout, /deps: off by declaration/u);
   const release = push(declared, [ref('refs/heads/main', declared.head, ZERO), ref('refs/heads/dev', declared.head, ZERO)]);
   assert.equal(release.status, 1, 'a push of main always runs the pin check');
+});
+
+test('every reader of a managed CI file reads the declaration: the render of a declared-off gate is compliant, the same file with nothing declared is refused', (t) => {
+  const read = (yaml: string) => (file: string): string => { if (file === '../.starcistacks/application-stacks.yaml') return yaml; throw Object.assign(new Error('absent'), { code: 'ENOENT' }); };
+  // With the build off nothing before the database step builds the root packages, so the step builds them; an app without fe renders no fe build step.
+  const packagesApp = ciWorkflowCommands({ files: [], read: read(declaration(ALL_OFF)) }, undefined, undefined, { rootPackages: true, app: { declaredSides: ['be', 'packages'], sides: { fe: { apps: [] } } } as never });
+  assert.match(packagesApp['ciDatabaseLint'] ?? '', /^npm run build:modules --silent && npm run db:lint/u);
+  assert.equal(packagesApp['ciBuildSteps'], '');
+  assert.equal(ciWorkflowCommands({ files: [], read: read(declaration('')) }, undefined, undefined, { rootPackages: true })['ciDatabaseLint'], 'npm run db:lint', 'an app with the build on builds the packages in the build step');
+  const ciDeclaration = (gates: string): string => ['schema: starci/application-stacks@1', 'ci:', '  secrets:', '    - {name: SONAR_TOKEN, scope: repository, purpose: the Sonar analysis token}',
+    '  vars:', '    - {name: SONAR_HOST_URL, scope: repository, value: "https://sonar.example.invalid", purpose: the Sonar host}', 'services:', '  sonar:', '    provider: sonarqube', '    mode: local',
+    '    stack:', '      owner: host', '      root: .claude/ext/sonar', '    ci: {wiring: required, workflow: .github/workflows/ci.yml, token: SONAR_TOKEN, hostVar: SONAR_HOST_URL}', gates === '' ? '' : `gates:\n${gates}`].join('\n') + '\n';
+  for (const edition of ['full', 'lite'] as const) {
+    const source = { files: [], read: read(declaration(ALL_OFF)), stack: { images: [], passEnv: [], imageEnvironments: {}, environments: [], imageCache: 'gha' }, hasImage: () => true } as unknown as NonNullable<NonNullable<Parameters<typeof renderTargets>[2]>['source']>;
+    const text = renderTargets({ ...structuredClone(APP), edition }, PRESETS, { source }).find((target) => target.path === '.github/workflows/ci.yml')?.content ?? '';
+    const offAll = readGateDeclarations(doc(off(...OPTIONAL_GATES))).off;
+    const gateItems = new Set(['job-shape', 'boot-proof', 'test-sharding', 'packages-built-first']);
+    const items = (gates: typeof offAll): string[] => ciStandardFindings({ doc: parseWorkflow(text), file: CI, scope: 'app-ci', edition, rootPackages: false, off: gates }).map((finding: Doc) => finding.extra?.item ?? finding.item).filter((item: string) => gateItems.has(item));
+    assert.deepEqual(items(offAll), [], `${edition}: the CI standard reads the declaration`);
+    assert.ok(items({}).length > 0, `${edition}: the same file with nothing declared misses required steps`);
+    assert.deepEqual(bypassesIn(CI, text, { idle: idleJobs(offAll) }), [], `${edition}: the idled jobs are the render, not a bypass`);
+    assert.deepEqual(bypassesIn(CI, text).map((hit) => hit.label), ['a constant false condition', 'a constant false condition', 'a constant false condition'], `${edition}: undeclared, each idled job is a bypass (\`&& false\` included)`);
+    assert.equal(bypassesIn('.github/workflows/other.yml', text, { idle: idleJobs(offAll) }).length, 3, 'only the managed ci.yml carries the render');
+    const root = app(t, ALL_OFF);
+    fs.writeFileSync(path.join(root, '.starcistacks', 'application-stacks.yaml'), ciDeclaration(ALL_OFF));
+    fs.mkdirSync(path.join(root, '.github', 'workflows'), { recursive: true });
+    fs.writeFileSync(path.join(root, CI), text);
+    const judged = (): string[] => [
+      ...pipelineFindings({ repoRoot: root, files: [CI], pins: {} }),
+      ...supplyChainFindings({ repoRoot: root, files: [CI], repo: { kind: 'app', edition } as never, isRoot: true, inScope: (file) => file === CI }).filter((finding: Doc) => finding.code === 'HFS_AUDIT_STEP_MISSING'),
+      ...ciCustodyFindings({ repoRoot: root, repo: { kind: 'app', edition } as never, isRoot: true }).filter((finding: Doc) => finding.code === 'CI_DECLARATION_DRIFT'),
+      ...bypassMarkerFindings({ repoRoot: root, files: [CI] }),
+    ].map((finding: Doc) => finding.code).sort();
+    assert.deepEqual(judged(), [], `${edition}: lint canon, audit step, CI declaration and bypass rules accept the render of the declaration`);
+    // The pre-commit guard reads the staged declaration the commit records.
+    const git = (...args: string[]) => spawnSync('git', ['-c', 'user.email=bench@example.invalid', '-c', 'user.name=bench', ...args], { cwd: root, encoding: 'utf8' });
+    git('init', '-q');
+    git('add', '-A');
+    const staged = (): number => hygieneJudge(root, [CI]).findings.filter((finding) => finding.code === 'HFS_BYPASS_MARKER').length;
+    assert.equal(staged(), 0, `${edition}: the staged render of the staged declaration passes the commit guard`);
+    fs.writeFileSync(path.join(root, '.starcistacks', 'application-stacks.yaml'), ciDeclaration(''));
+    git('add', '-A');
+    assert.equal(staged(), 3, `${edition}: staged with nothing declared, each idled job is refused at the commit`);
+    assert.deepEqual(judged(), ['CI_DECLARATION_DRIFT', 'CI_DECLARATION_DRIFT', 'HFS_AUDIT_STEP_MISSING', 'HFS_BYPASS_MARKER', 'HFS_BYPASS_MARKER', 'HFS_BYPASS_MARKER', 'HFS_CI_MISSING_CANON'], `${edition}: with nothing declared the same file is refused by each`);
+  }
 });

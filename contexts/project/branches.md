@@ -24,7 +24,8 @@ rule; every other page links to it.
   the local one and the remote-tracking one (or the dev pushed with it): `BRANCH_MAIN_NOT_ON_DEV`; unless it is the checked-out
   `HEAD`, the tree the hook's check judges: `BRANCH_MAIN_NOT_CHECKED_OUT`; and a push of `dev` is refused when it deletes `dev` or when
   `main` (local, remote-tracking or pushed with it) is not its ancestor: `BRANCH_DEV_NOT_ON_MAIN`. The one bootstrap path is the first push into
-  an empty remote: it must push `main` and `dev` together, both at the same commit (`git push origin main dev`); `main` alone into an
+  an empty remote: it must push `main` and `dev` together, both at the same commit (`git push origin main dev`), and the scaffold's first commit passes the hook as it is
+  (it carries no check cache, [check-cache.md](check-cache.md) "Scaffold"); `main` alone into an
   empty remote is refused `BRANCH_MAIN_NOT_ON_DEV`.
 - the same hook runs `starci app check --env prod` with `STARCI_JUDGED_BRANCH=main` for a push of `main` or of a `v*` tag, so the full gate
   runs and the profile of the checked-out branch is ignored ([lint.md](lint.md) PROJECT-LINT-2 "Which profile a run is under").

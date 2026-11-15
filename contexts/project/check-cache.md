@@ -578,7 +578,9 @@ preset's merge one record at a time, so the parent holds about three times the r
   `--fresh`: one plain run would serialize the families that CI runs in parallel. Every `app check` of the managed workflows and of the hook
   carries `--env prod`: `cache-verify.yml` runs `app check --env prod --fresh --gate <family>` as one job per family nightly and on dispatch, the managed pre-push hook runs `app check --env prod`, and
   the release gate runs its `app-check` row diff-only against the warm cache unless `--full` is given, and the rows `app check` covers reuse that row's verdict ([The operating procedure](#the-operating-procedure)).
-- **Scaffold.** `app scaffold` writes the templates above and no cache; the app's first check builds it in full.
+- **Scaffold.** `app scaffold` writes the templates above and no cache; the app's first check builds it in full. Its first commit, a root commit that carries no cache,
+  is pushed as it is (the bootstrap push of [branches.md](branches.md) PROJECT-BRANCH-1, `main` and `dev` at that commit): it pushes no record, so the push gate refuses nothing for it
+  (`pristineFirstCommit`, `packages/hfs/cache/freshness.mts`), CI runs it in full, and the cache the hook's run wrote is the first commit on `dev`.
 - **Adoption.** `app sync --execute` and `app upgrade` bring an existing app the same templates and never create,
   move or delete cache records; its first run after them is full and writes the folder, which the developer commits.
 
@@ -591,7 +593,7 @@ missing cache is `HFS_CHECK_CACHE_MISSING`. Why: CI trusts a committed artifact 
 judged it, so a hand edit can cost time but never pass a file. Enforcement:
 forged fails the run; stale and missing warn in CI (report-only, the run is full or wider and still correct); a push
 whose cache a real run on its tree changes is refused at the pre-push hook (`HFS_CHECK_CACHE_UNWARMED`,
-`HFS_CHECK_CACHE_UNPORTABLE`, `packages/hfs/cache/freshness.mts`), so CI never goes cold and past its ESLint budget; and a red
+`HFS_CHECK_CACHE_UNPORTABLE`, `packages/hfs/cache/freshness.mts`), so CI never goes cold and past its ESLint budget (the pristine first commit, which carries no cache, is the one push it lets through); and a red
 or unreadable cache verify refuses the release gate (`HFS_CHECK_CACHE_VERIFY_LOCKED`) until a newer green one, or one green for the release's sha, clears it.
 
 ## Edge cases

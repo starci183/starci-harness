@@ -177,6 +177,10 @@ gates:
   where it wins over any branch profile. `starci app check` (both `--env`, every `--gate`), the managed pre-commit and pre-push hooks (`--profile --gate lint|format|deps`), the release gate and
   the rendered CI (`app sync`) all read it there. A run that holds a declaration the reader refused runs the full gate and fails `HFS_GATE_DECLARATION_INVALID` (R430): an id that is no gate, one of
   `hfs`, `secrets` or `db`, a gate with no `reason` or a `run` other than `off`, a gate whose reader stays on.
+- **Every reader of a managed file reads it.** What the declaration switches off, `app sync` leaves out of the managed CI, and every hfs rule that requires a gate's step reads
+  the same declaration (`declaredGatesOff`, `IDLE_JOBS` of `stack-declaration.mts`): the lint step (R13), the audit step (R269), the coverage proof, the boot proof and the sharded unit run
+  of the CI standard (R301), the CI names of a service whose gate is off (R298: the Sonar token and host) and the idled jobs whose `if` is constant false (R303, in the tree and in the
+  pre-commit guard). An app whose managed files are rendered for its declaration is compliant; the same step removed, or the same job idled, without the declaration is still refused.
 - **Off stays visible.** Every runner prints `<gate>: off (declared: <reason>)`, `starci app check` ends with the list of gates off by declaration and never claims them passed, the release gate
   names them in its plan and in the L4 record (`gatesOff`), the rendered CI passes the job with a line that says the gate is off (or skips the job, which the verdict expects), and
   `starci app check --profile` lists every gate with its mode.

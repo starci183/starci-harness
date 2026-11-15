@@ -1,6 +1,7 @@
 // R269: app repositories in both editions declare dependency updates, a production audit gate, and image SBOM/provenance.
 import { parseWorkflow, workflowFindings } from '../runtime-rules/workflow-source.mjs';
 import { found, readText } from './read.mjs';
+import { declaredGatesOff } from '../../lib/stack-declaration.mjs';
 import type { Finding, Parsed, Repo } from './rule-types.mjs';
 
 const DEPENDABOT = '.github/dependabot.yml';
@@ -202,7 +203,8 @@ export function supplyChainFindings({ repoRoot, files, all = files, repo, isRoot
   const parsed = (file: string) => tracked.has(file) ? parseWorkflow(readText(repoRoot, file) ?? '') : null;
   const findings = [];
   if (inScope(DEPENDABOT) && !hasDependabot(parsed(DEPENDABOT))) findings.push(found('HFS_DEPENDABOT_MISSING', DEPENDABOT, 'Declare Dependabot version 2 updates for npm, github-actions and docker, each with a directory and schedule; every npm update must group minor+patch version updates, restrict every group to minor/patch (never major), include a security-updates group, and ignore all @starci/* updates (canon pins move only by starci upgrade).'));
-  if (inScope(CI) && !hasAudit(stepsOf(parsed(CI)))) findings.push(found('HFS_AUDIT_STEP_MISSING', CI, 'CI must run npm audit --omit=dev in an enabled step whose failure stops the job.'));
+  // An app whose stack declaration switches the audit gate off (PROJECT-LINT-4) renders no audit step and is not required one.
+  if (inScope(CI) && declaredGatesOff(repoRoot).audit === undefined && !hasAudit(stepsOf(parsed(CI)))) findings.push(found('HFS_AUDIT_STEP_MISSING', CI, 'CI must run npm audit --omit=dev in an enabled step whose failure stops the job.'));
   if (inScope(IMAGES) && !imageEvidence(stepsOf(parsed(IMAGES)))) findings.push(found('HFS_SBOM_MISSING', IMAGES, 'The images workflow must generate an SBOM and provenance for its release images in enabled steps.'));
   findings.push(...workflowFindings({ files: [...tracked].filter((file) => inScope(file)), read: (file: string) => readText(repoRoot, file) }, workflowPinFindings));
   return findings;

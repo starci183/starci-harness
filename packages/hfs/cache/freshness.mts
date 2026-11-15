@@ -58,6 +58,21 @@ export interface FreshnessInput {
   readonly uncommitted?: readonly string[] | undefined;
   /** The largest cache file a push may carry, in MB (cacheFileLimitMb when not given). */
   readonly limitMb?: number | undefined;
+  /** Whether HEAD is the first commit of the repository and holds no cache file (pristineFirstCommit; read from git when not given). */
+  readonly firstCommit?: boolean | undefined;
+}
+
+/**
+ * Whether HEAD is the pristine first commit of an app: a root commit (no parent) whose tree holds no file under the cache folder, which is what
+ * `starci app scaffold` records (it writes no cache, contexts/project/check-cache.md). Its push is the bootstrap push of PROJECT-BRANCH-1 (main and dev at
+ * that one commit into an empty remote): it carries no record to be stale, so CI runs it in full (HFS_CHECK_CACHE_MISSING warns there), and the cache the
+ * hook's run writes is the first commit on dev.
+ */
+export function pristineFirstCommit(root: string): boolean {
+  const parents = git(root, ['rev-list', '--parents', '--max-count=1', 'HEAD']);
+  if (!parents.ok || parents.stdout.trim().split(/\s+/u).length !== 1) return false;
+  const cache = git(root, ['ls-tree', '-r', '--name-only', 'HEAD', '--', CACHE_DIR]);
+  return cache.ok && cache.stdout.trim() === '';
 }
 
 /** The cache paths git does not hold as committed: modified, added, deleted or untracked under the cache folder. */
@@ -69,6 +84,8 @@ export function uncommittedCacheFiles(root: string): string[] {
 
 /** The refusals of the push gate for one `--fresh` run; empty when the committed cache is what a real run on the tree produces. */
 export function freshnessFindings(input: FreshnessInput): FreshnessFinding[] {
+  // The pristine first commit pushes no cache, so nothing it pushes can be too large, unportable or stale.
+  if (input.firstCommit ?? pristineFirstCommit(input.root)) return [];
   const limitMb = input.limitMb ?? cacheFileLimitMb();
   // Before anything else: a file the host refuses fails the push after its upload started, whatever else holds.
   const oversized = oversizedCacheFiles(input.root, limitMb).map((entry): FreshnessFinding => ({
