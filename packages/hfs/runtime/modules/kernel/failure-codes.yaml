@@ -6718,7 +6718,7 @@ STACK_LOCAL_TUNNEL_CERT:
 STACK_LOCAL_TUNNEL_CONFIG:
   title: "stack up refused: the tunnel ingress file is missing or unusable"
   title_vi: "stack up bị từ chối: tệp ingress của tunnel thiếu hoặc không dùng được"
-  meaning_vi: "Không có <tunnel>.yml trong thư mục cloudflared, nó không phải YAML hợp lệ, hoặc không có rule bắt-tất-cả (- service: http_status:404) để chèn route trước nó."
+  meaning_vi: "Không có <tunnel>.yml trong thư mục cloudflared, nó không phải YAML hợp lệ, không ghi id tunnel (tunnel: <id>), hoặc không có rule bắt-tất-cả (- service: http_status:404) để chèn route trước nó."
   causes_vi:
     - "Môi trường khai báo local.tunnel (PROJECT-STACKS-15)."
   nextStep_vi: "Tạo tunnel một lần bằng cloudflared tunnel create <tên> và viết tệp ingress có rule bắt-tất-cả ở cuối, rồi chạy lại."
@@ -6736,7 +6736,7 @@ STACK_LOCAL_TUNNEL_CONFLICT:
 STACK_LOCAL_TUNNEL_DNS:
   title: "stack up refused: cloudflared could not route a host to the tunnel"
   title_vi: "stack up bị từ chối: cloudflared không trỏ được host vào tunnel"
-  meaning_vi: "cloudflared tunnel route dns --overwrite-dns thất bại cho một host của local.tunnel.routes (không có binary, tên tunnel sai, cert.pem không thuộc vùng DNS của host)."
+  meaning_vi: "cloudflared --config <tunnel>.yml tunnel route dns --overwrite-dns <id> thất bại cho một host của local.tunnel.routes (không có binary, id tunnel sai, cert.pem không thuộc vùng DNS của host), hoặc cloudflared báo đã trỏ host vào một tunnel khác với id mà tệp ingress ghi."
   causes_vi:
     - "Môi trường khai báo local.tunnel (PROJECT-STACKS-15)."
   nextStep_vi: "Đọc dòng lỗi của cloudflared trong thông báo, sửa tên tunnel, host hoặc cert.pem rồi chạy lại."

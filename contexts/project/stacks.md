@@ -692,8 +692,11 @@ it was written on. The rule has four parts; each project that runs an object sto
   wherever it is found: in a response, a stored value, a log line meant for a person or a message sent to a provider.
 - **The route is made from the declaration.** `starci app stack up --env <env> --execute` adds the declared hosts to the ingress file of the tunnel
   (`~/.cloudflared/<tunnel>.yml`, edited as text: a missing host is inserted before the catch-all rule, nothing else changes, a host already routed
-  elsewhere is `STACK_LOCAL_TUNNEL_CONFLICT`) and makes each DNS record with `cloudflared tunnel route dns --overwrite-dns <tunnel> <host>` over the
-  machine's `cert.pem` (`STACK_LOCAL_TUNNEL_CERT`, `STACK_LOCAL_TUNNEL_CONFIG`, `STACK_LOCAL_TUNNEL_DNS`); no dashboard step. The connector of the tunnel
+  elsewhere is `STACK_LOCAL_TUNNEL_CONFLICT`) and makes each DNS record with `cloudflared --config <ingress file> tunnel route dns --overwrite-dns <tunnel id> <host>`
+  over the machine's `cert.pem`, naming the tunnel's own ingress file and the id its `tunnel:` holds: without `--config` cloudflared reads the
+  home's default `config.yml`, whose tunnel wins, and the record lands on another tunnel of the machine. An ingress file with no `tunnel:` is
+  `STACK_LOCAL_TUNNEL_CONFIG`, and a record cloudflared reports routed to another tunnel id is `STACK_LOCAL_TUNNEL_DNS` (`STACK_LOCAL_TUNNEL_CERT`
+  when the certificate is absent); no dashboard step. The connector of the tunnel
   reads its ingress file when it starts, so `up` says when it must be restarted. `stack up` prints each public origin and reads
   `https://<host>/minio/health/live` once (a wait, never a failure: DNS may need a moment); `stack verify` fails when that read is not 200;
   `stack doctor` has a row for `cloudflared`, the certificate and the ingress file. A dry run prints the plan lines.

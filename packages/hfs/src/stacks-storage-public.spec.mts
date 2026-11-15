@@ -88,3 +88,37 @@ test('the ingress file gets the missing host before its catch-all and nothing el
   assert.throws(() => withRoutes(file, [{ host: 'demo-local.example.org', service: 'http://127.0.0.1:9999' }], 'demo-dev.yml'), { code: 'STACK_LOCAL_TUNNEL_CONFLICT' });
   assert.throws(() => withRoutes('ingress:\n  - hostname: a.example.org\n    service: http://127.0.0.1:1\n', wanted, 'demo-dev.yml'), { code: 'STACK_LOCAL_TUNNEL_CONFIG' });
 });
+
+test('the DNS record is routed to the declared tunnel: its own ingress file and its id, never the default config.yml of the home', async () => {
+  const fs = await import('node:fs');
+  const os = await import('node:os');
+  const path = await import('node:path');
+  const { routeTunnel, tunnelRows } = await import('../stack/local-tunnel.mjs');
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-tunnel-'));
+  try {
+    fs.writeFileSync(path.join(home, 'cert.pem'), 'not a certificate');
+    // The home's default file names ANOTHER tunnel of the machine: a route made without --config lands there.
+    fs.writeFileSync(path.join(home, 'config.yml'), 'tunnel: 99999999-0000-0000-0000-000000000000\ningress:\n  - service: http_status:404\n');
+    const own = path.join(home, 'demo-dev.yml');
+    fs.writeFileSync(own, 'tunnel: 2ce9c0e0-1111-2222-3333-444444444444\ncredentials-file: x.json\ningress:\n  - service: http_status:404\n');
+    const config = normalizeLocal(local(), { project: 'demo', env: 'dev' }).config as Json;
+    const calls: string[][] = [];
+    let answer = 'INF Added CNAME demo-local-files.example.org which will route to this tunnel tunnelID=2ce9c0e0-1111-2222-3333-444444444444';
+    const ctx: Json = {
+      env: { CLOUDFLARED_HOME: home },
+      spawn: (command: string, args: string[]) => { calls.push([command, ...args]); return { status: 0, stdout: '', stderr: answer }; },
+      fetch: async () => ({ status: 200 }),
+    };
+    const lines = await routeTunnel(ctx, config);
+    assert.deepEqual(calls, [['cloudflared', '--config', own, 'tunnel', 'route', 'dns', '--overwrite-dns', '2ce9c0e0-1111-2222-3333-444444444444', 'demo-local-files.example.org']]);
+    assert.ok(lines.some((line: string) => line.includes('DNS routes demo-local-files.example.org to the tunnel 2ce9c0e0-1111-2222-3333-444444444444')));
+    answer = 'INF demo-local-files.example.org is already configured to route to your tunnel tunnelID=99999999-0000-0000-0000-000000000000';
+    await assert.rejects(routeTunnel(ctx, config), { code: 'STACK_LOCAL_TUNNEL_DNS' });
+    fs.writeFileSync(own, 'credentials-file: x.json\ningress:\n  - service: http_status:404\n');
+    await assert.rejects(routeTunnel(ctx, config), { code: 'STACK_LOCAL_TUNNEL_CONFIG' });
+    const row = tunnelRows(ctx, config).find((entry: Json) => entry.id === 'tunnel demo-dev');
+    assert.equal(row?.ok, false);
+  } finally {
+    fs.rmSync(home, { recursive: true, force: true });
+  }
+});
