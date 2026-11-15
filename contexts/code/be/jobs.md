@@ -8,6 +8,13 @@ bumps, judged by one runner and one retry ladder per class of flow, ended by a d
 outside effect made through one effects piece. Starting a job is queues.md; which process runs it background.md; what a flow
 that must be undone declares saga.md. A lite app declares `fenced-job` and Redis.
 
+A back end whose jobs run on Postgres alone, with no queue broker, takes the outbox, the claim, the fence, the ladders, the dead
+letters and the timers from `@starci/outbox` and writes none of them: its `platform/jobs` is the one importer, registers
+`OutboxModule` over the app's connection, copies the package's `migrations/outbox.sql` into its migrations and re-exports the `Outbox` to
+the producers and handlers; the rules below hold through the package's API (`enqueue(tx, ...)` for BE-QUEUES-1, the fence of
+`ClaimedJob` for BE-JOBS-2, `effectKey` for BE-JOBS-3, its `ladders` for BE-JOBS-7). A defect or a missing rule of it is fixed in the
+package ([authority/packages.md](../../authority/packages.md)), never shimmed in the app.
+
 ## BE-JOBS-1 `platform/jobs` alone writes the job row, claiming it atomically
 
 `platform/jobs` owns the job table (a migration of the app; in lite under `db/migrations/`), its `jobs.sql.ts`
