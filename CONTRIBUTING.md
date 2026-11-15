@@ -259,7 +259,8 @@ else, though it is not pushed yet) and only then pushes the commit to main with 
 `HARNESS_BOT_TOKEN` (a fine-grained token, contents: write on this repository; a push with `GITHUB_TOKEN` starts no run; without it the CLI
 waits). The `ci` run of that commit finds nothing due: when a diff changes only the CLI's version and requirements, its lockfile and the changelog,
 and the CLI version it holds is on npm, `release affected` plans no package and no harness job. Every CI job installs the CLI with the siblings of the commit packed over the registry copies
-([.github/actions/cli-install](.github/actions/cli-install/action.yml)), and the publish run publishes the CLI as committed,
+([.github/actions/cli-install](.github/actions/cli-install/action.yml)), the siblings those require at run time packed with them (a version npm
+does not serve yet comes from its tarball) and every `file:` sibling they copy built first, and the publish run publishes the CLI as committed,
 refusing while a sibling it requires is held. `starci release publish --execute` from a
 workstation is Debug's fallback when CI cannot publish, with the owner's approval.
 

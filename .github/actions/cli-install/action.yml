@@ -13,25 +13,41 @@ runs:
         (cd cli && npm ci --ignore-scripts --no-audit --no-fund)
         packs="$RUNNER_TEMP/cli-siblings"
         mkdir -p "$packs"
-        dirs=$(node -e '
+        # Each line is "<pack|build> packages/<dir>", siblings first. Packed: the siblings the CLI requires and, transitively, the
+        # siblings they require at run time (a sibling version npm does not serve yet is installed from its tarball, never fetched).
+        # Built before them: every sibling one of those installs as a `file:../<name>` copy (npm copies its built dist).
+        steps=$(node -e '
           const fs = require("fs")
-          const cli = JSON.parse(fs.readFileSync("cli/package.json", "utf8"))
-          const wanted = new Set(Object.keys({ ...cli.dependencies, ...cli.peerDependencies }))
+          const byName = new Map()
           for (const dir of fs.readdirSync("packages")) {
             const file = `packages/${dir}/package.json`
-            if (fs.existsSync(file) && wanted.has(JSON.parse(fs.readFileSync(file, "utf8")).name)) console.log(`packages/${dir}`)
+            if (fs.existsSync(file)) byName.set(JSON.parse(fs.readFileSync(file, "utf8")).name, { dir: `packages/${dir}`, manifest: JSON.parse(fs.readFileSync(file, "utf8")) })
           }
+          const cli = JSON.parse(fs.readFileSync("cli/package.json", "utf8"))
+          const runtime = (m) => Object.keys({ ...m.dependencies, ...m.peerDependencies }).filter((name) => byName.has(name))
+          const copies = (m) => Object.entries(m.devDependencies ?? {}).filter(([name, spec]) => byName.has(name) && String(spec).startsWith("file:")).map(([name]) => name)
+          const packed = new Set()
+          const pack = (name) => { if (packed.has(name)) return; packed.add(name); runtime(byName.get(name).manifest).forEach(pack) }
+          runtime(cli).forEach(pack)
+          const order = []
+          const seen = new Set()
+          const visit = (name) => { if (seen.has(name)) return; seen.add(name); const m = byName.get(name).manifest; [...runtime(m), ...copies(m)].forEach(visit); order.push(name) }
+          packed.forEach(visit)
+          for (const name of order) console.log(`${packed.has(name) ? "pack" : "build"} ${byName.get(name).dir}`)
         ')
-        for dir in $dirs; do
+        while read -r step dir; do
+          [ -n "$dir" ] || continue
           (
             cd "$dir"
             if node -e 'const s = require("./package.json").scripts ?? {}; process.exit(s.build || s.prepack ? 0 : 1)'; then
               npm ci --no-audit --no-fund && npm run build --if-present
             fi
-            npm pack --pack-destination "$packs" > /dev/null
-            echo "the CLI runs on $dir at $(node -p 'require("./package.json").version')"
+            if [ "$step" = pack ]; then
+              npm pack --pack-destination "$packs" > /dev/null
+              echo "the CLI runs on $dir at $(node -p 'require("./package.json").version')"
+            fi
           )
-        done
+        done <<< "$steps"
         if compgen -G "$packs/*.tgz" > /dev/null; then
           (cd cli && npm install --no-save --ignore-scripts --no-audit --no-fund "$packs"/*.tgz)
         fi
