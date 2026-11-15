@@ -35,20 +35,19 @@ describe("RefreshCookie flags", () => {
         ])
     })
 
-    it("carries the configured domain, path, legacy paths and SameSite on every write and clear", () => {
+    it("carries the configured path, legacy paths and SameSite on every write and clear, the live copy on the configured domain", () => {
         const { calls, response } = recorder()
         const cookie = new RefreshCookie({ name: "r", domain: "example.test", path: "/auth/refresh", legacyPaths: ["/", "/old"], sameSite: "strict" })
         cookie.issue(response, tokens, from("api.example.test"))
         cookie.clear(response, from("api.example.test"))
-        assert.equal(calls.length, 2 + 1 + 3)
+        assert.equal(calls.length, 5 + 1 + 6)
         for (const call of calls) {
             assert.equal(call.options.httpOnly, true)
             assert.equal(call.options.secure, true)
             assert.equal(call.options.sameSite, "strict")
-            assert.equal(call.options.domain, "example.test")
         }
-        assert.deepEqual(calls.filter((call) => call.kind === "clear").map((call) => call.options.path), ["/", "/old", "/auth/refresh", "/", "/old"])
-        assert.equal(calls.find((call) => call.kind === "set")?.options.path, "/auth/refresh")
+        const set = calls.filter((call) => call.kind === "set")
+        assert.deepEqual(set.map((call) => [call.options.path, call.options.domain]), [["/auth/refresh", "example.test"]])
     })
 
     it("clears the root path and the legacy path", () => {
@@ -63,8 +62,7 @@ describe("RefreshCookie domain by request host", () => {
     const domains = (request: HttpRequest) => {
         const { calls, response } = recorder()
         cookie.issue(response, tokens, request)
-        cookie.clear(response, request)
-        return [...new Set(calls.map((call) => call.options.domain ?? "host-only"))]
+        return calls.filter((call) => call.kind === "set").map((call) => call.options.domain ?? "host-only")
     }
 
     it("keeps localhost host-only when no domain is configured", () => {
@@ -84,6 +82,34 @@ describe("RefreshCookie domain by request host", () => {
     it("falls back to the configured domain for an unlisted host, and for no host", () => {
         assert.deepEqual(domains(from("evilstarci.org")), ["fallback.test"])
         assert.deepEqual(domains(from()), ["fallback.test"])
+    })
+})
+
+describe("RefreshCookie stale copies", () => {
+    const variant = (call: { options: Partial<CookieWrite> }) => `${call.options.domain ?? "host-only"} ${call.options.path ?? "-"}`
+
+    it("clears every other copy a host may keep before it sets the live one, so a copy from an earlier deployment never shadows it", () => {
+        const { calls, response } = recorder()
+        new RefreshCookie({ name: "r", domain: "example.test" }).issue(response, tokens, from("api.example.test"))
+        assert.deepEqual(
+            calls.map((call) => `${call.kind} ${variant(call)}`),
+            ["clear example.test /auth", "clear host-only /", "clear host-only /auth", "set example.test /"],
+        )
+    })
+
+    it("clears every copy on sign-out or a refused cookie: each domain the host may hold it on, each path", () => {
+        const { calls, response } = recorder()
+        new RefreshCookie({ name: "r", domains: ["starci.org", "local.starci.org"], domain: "fallback.test" }).clear(response, from("api.local.starci.org"))
+        assert.deepEqual(calls.map(variant), [
+            "local.starci.org /",
+            "local.starci.org /auth",
+            "host-only /",
+            "host-only /auth",
+            "fallback.test /",
+            "fallback.test /auth",
+            "starci.org /",
+            "starci.org /auth",
+        ])
     })
 })
 

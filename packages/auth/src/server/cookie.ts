@@ -31,26 +31,50 @@ export class RefreshCookie {
         return { userAgent: text?.slice(0, MAX_AGENT_LENGTH) ?? null, ip: request.ip ?? null }
     }
 
-    /** Sets the cookie to the refresh token of a session, clearing the copies older sessions kept under their paths. */
+    /**
+     * Sets the cookie to the refresh token of a session, first clearing every other copy of the same name the browser may still keep for
+     * this host: the paths older sessions used and the other domains (host-only, the configured one, every listed one the host falls
+     * under). A browser sends every copy and the first one in its header is read, so a stale copy left from an earlier deployment would
+     * shadow the session just started.
+     */
     issue(response: HttpResponse, tokens: SessionTokens, request: HttpRequest): void {
         const domain = this.#domainOf(request)
-        for (const path of this.#legacyPaths()) response.clearCookie(this.#options.name, this.#flags(path, domain))
+        for (const variant of this.#variants(request)) {
+            if (variant.domain === domain && variant.path === this.#path()) continue
+            response.clearCookie(this.#options.name, this.#flags(variant.path, variant.domain))
+        }
         response.cookie(this.#options.name, tokens.cookieToken, {
             ...this.#flags(this.#path(), domain),
             maxAge: tokens.refreshMaxAgeSeconds * MILLISECONDS,
         })
     }
 
-    /** Clears the cookie on its path and on the paths older sessions used. */
+    /** Clears every copy of the cookie this host may hold: its path and the legacy paths, on each domain the cookie was or is set on. */
     clear(response: HttpResponse, request: HttpRequest): void {
-        const domain = this.#domainOf(request)
-        for (const path of [this.#path(), ...this.#legacyPaths()]) response.clearCookie(this.#options.name, this.#flags(path, domain))
+        for (const variant of this.#variants(request)) response.clearCookie(this.#options.name, this.#flags(variant.path, variant.domain))
+    }
+
+    /**
+     * Every (domain, path) the cookie may live under for a request: the live domain first, then host-only, the configured domain and each
+     * listed domain the host falls under; each on the live path and the legacy paths.
+     */
+    #variants(request: HttpRequest): readonly { readonly domain: string | undefined; readonly path: string }[] {
+        const host = this.#hostOf(request)
+        const domains: (string | undefined)[] = [this.#domainOf(request), undefined, this.#options.domain]
+        for (const listed of this.#options.domains ?? []) if (host === listed || host.endsWith(`.${listed}`)) domains.push(listed)
+        const unique = domains.filter((domain, index) => domains.indexOf(domain) === index)
+        const paths = [this.#path(), ...this.#legacyPaths()]
+        return unique.flatMap((domain) => paths.map((path) => ({ domain, path })))
+    }
+
+    #hostOf(request: HttpRequest): string {
+        const header = request.headers.host
+        return (Array.isArray(header) ? header[0] : header)?.replace(/:\d+$/u, "").toLowerCase() ?? ""
     }
 
     /** The `Domain` for a request: the longest listed domain its host (without the port) equals or ends under, else the configured one. */
     #domainOf(request: HttpRequest): string | undefined {
-        const header = request.headers.host
-        const host = (Array.isArray(header) ? header[0] : header)?.replace(/:\d+$/u, "").toLowerCase() ?? ""
+        const host = this.#hostOf(request)
         const fits = (this.#options.domains ?? []).filter((domain) => host === domain || host.endsWith(`.${domain}`))
         return fits.sort((a, b) => b.length - a.length)[0] ?? this.#options.domain
     }

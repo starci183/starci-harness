@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.1 - 2026-11-15
+
+- Fixed: a refresh cookie left by an earlier deployment never shadows a new sign-in. A browser keeps one copy per (domain, path) and sends every one, and the first copy in the header is the one read; a stale copy (host-only from before a `domain` was configured, or under a legacy path) was read first, its refusal then cleared only the live domain's copy, i.e. the session just started, and the person stayed signed out. `RefreshCookie.issue` now clears every other copy the host may hold (the legacy paths and the other domains: host-only, the configured `domain`, each listed `domains` entry the host falls under) before it sets the live one; `clear` clears all of them. The live cookie (name, domain, path, flags) is unchanged.
+- Specs: `src/server/cookie.spec.ts` (the copies cleared before the live one on sign-in, every copy cleared on sign-out or refusal).
+
 ## 0.7.0 - 2026-11-13
 
 - Added: the API-key strategy in `@starci/auth/server`, so an app keeps only its key table and scope. `ApiKeyVerifier<S>` reads `Authorization: Bearer <prefix><keyId>.<secret>` (and `X-Api-Key` with `acceptApiKeyHeader`; both at once is refused), asks the app's `ApiKeyStore<S>.findApiKey(keyId)` for an `ApiKeyRecord<S>` (`id`, `secretSha256`, `revokedAt`, `expiresAt`, `scope`), compares the secret's SHA-256 with `timingSafeEqual` (an unknown id is compared too) and refuses a revoked or expired key; `verify` answers an `Outcome` of `ApiKeyPrincipal<S>` (`keyId`, `scope`), `authenticate` throws, `verifyKey` takes a bare key text. Helpers: `issueApiKey` (a random UUID id and a 32-byte secret; the hash to store and an `ApiKeyPlaintext` that prints as `[api key]`), `registerApiKey` and `readApiKeyText` (a given key from stdin, hash only), `parseApiKey`, `apiKeyTextOf`, `apiKeySecretSha256`, `apiKeySecretMatches`, and the constants `API_KEY_HEADER`, `API_KEY_REJECTED_EVENT`, `API_KEY_SECRET_BYTES`, `API_KEY_TEXT_MAX`.
