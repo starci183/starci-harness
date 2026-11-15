@@ -1,5 +1,6 @@
 import { AiRouterError } from "./errors.ts"
 import { baseUrlOf, presetOf, PROVIDER_PRESETS } from "./providers.ts"
+import type { Protocol } from "./providers.ts"
 import type { CallOptions, CandidateRef, Capability, CatalogModel, ModelConfig, ModelPolicy, PoolConfig, ProviderConfig, RouterCatalog } from "./types.ts"
 
 /** The capabilities of a model that declares none. */
@@ -166,6 +167,7 @@ export function validateConfig(config: PoolConfig): void {
         positive(provider.weight, `provider "${provider.id}" weight`)
         positive(provider.maxConcurrency, `provider "${provider.id}" maxConcurrency`)
         positive(provider.defaultMaxTokens, `provider "${provider.id}" defaultMaxTokens`)
+        if (provider.thinking !== undefined && preset.protocol !== "anthropic") throw configError(`provider "${provider.id}" (${preset.kind}) sets thinking, which only an anthropic provider has`)
         positive(provider.budget?.costPerDay, `provider "${provider.id}" budget.costPerDay`, true)
         positive(provider.budget?.costPerMonth, `provider "${provider.id}" budget.costPerMonth`, true)
         if (provider.keys.length === 0) throw configError(`provider "${provider.id}" has no keys`)
@@ -187,6 +189,11 @@ export function validateConfig(config: PoolConfig): void {
             models.add(model.id)
             positive(model.weight, `model "${model.id}" weight`)
             positive(model.contextWindow, `model "${model.id}" contextWindow`)
+            for (const price of ["input", "output", "cacheRead", "cacheWrite", "cacheWrite1h"] as const) positive(model.cost?.[price], `model "${model.id}" cost.${price}`, true)
+            for (const field of model.omit ?? []) {
+                // Without its messages or its model a request is no request; every other field is the model's to refuse.
+                if (field === "" || field === "messages" || field === "model") throw configError(`model "${model.id}" cannot omit "${field}"`)
+            }
             if (model.dimensions !== undefined && (!Number.isInteger(model.dimensions) || model.dimensions < 1)) throw configError(`model "${model.id}" dimensions must be a positive integer`)
             if (!preset.embeddings && (model.capabilities ?? []).includes("embeddings")) throw configError(`provider "${provider.id}" (${preset.kind}) has no embeddings API, so model "${model.id}" cannot declare embeddings`)
         }
@@ -319,16 +326,18 @@ const OPERATIONS: readonly ("chat" | "embeddings")[] = ["chat", "embeddings"]
 
 /** Lists the profiles and models of a validated pool; a model id served by several providers is one entry. */
 export function buildCatalog(config: PoolConfig): RouterCatalog {
-    const models = new Map<string, { aliases: Set<string>; providers: string[]; capabilities: Set<Capability>; contextWindow?: number; cost?: ModelConfig["cost"] }>()
+    const models = new Map<string, { aliases: Set<string>; providers: string[]; protocols: Set<Protocol>; capabilities: Set<Capability>; contextWindow?: number; cost?: ModelConfig["cost"]; dimensions?: number }>()
     for (const provider of config.providers) {
         for (const model of provider.models) {
             let entry = models.get(model.id)
             if (entry === undefined) {
-                entry = { aliases: new Set(), providers: [], capabilities: new Set() }
+                entry = { aliases: new Set(), providers: [], protocols: new Set(), capabilities: new Set() }
                 models.set(model.id, entry)
             }
             for (const alias of model.aliases ?? []) entry.aliases.add(alias)
             entry.providers.push(provider.id)
+            entry.protocols.add(presetOf(provider).protocol)
+            if (entry.dimensions === undefined && model.dimensions !== undefined) entry.dimensions = model.dimensions
             for (const capability of model.capabilities ?? DEFAULT_CAPABILITIES) entry.capabilities.add(capability)
             if (entry.contextWindow === undefined && model.contextWindow !== undefined) entry.contextWindow = model.contextWindow
             if (entry.cost === undefined && model.cost !== undefined) entry.cost = model.cost
@@ -340,19 +349,36 @@ export function buildCatalog(config: PoolConfig): RouterCatalog {
         const capabilities = new Set(matchesOf(config, { model: name }).flatMap(({ model }) => model.capabilities ?? DEFAULT_CAPABILITIES))
         return OPERATIONS.filter((operation) => capabilities.has(operation))
     }
+    // The protocols a profile's candidates are served through, in the order the profile tries them.
+    const protocols = (policy: ModelPolicy, names: readonly string[]): Protocol[] => {
+        const source = sourceOf(defaults, policy, {}, undefined)
+        const refs: { model: string; provider?: string | null }[] = "candidates" in source ? source.candidates.flat() : names.map((model) => ({ model }))
+        return [...new Set(refs.flatMap((ref) => matchesOf(config, ref).map(({ provider }) => presetOf(provider).protocol)))]
+    }
     return {
         defaults: namesOf({}, defaults),
+        providers: config.providers.map((provider) => ({ id: provider.id, kind: presetOf(provider).kind, protocol: presetOf(provider).protocol })),
         profiles: Object.entries<ModelPolicy>(config.profiles ?? {}).map(([name, policy]) => {
             const named = namesOf(defaults, policy)
-            return { name, ...named, pinned: policy.pinned === true, serves: serves(named.model) }
+            const dimensions = named.model === undefined ? undefined : matchesOf(config, { model: named.model })[0]?.model.dimensions
+            return {
+                name,
+                ...named,
+                pinned: policy.pinned === true,
+                serves: serves(named.model),
+                protocols: protocols(policy, [...(named.model === undefined ? [] : [named.model]), ...named.fallbacks]),
+                ...(dimensions === undefined ? {} : { dimensions }),
+            }
         }),
         models: [...models].map(([id, entry]): CatalogModel => ({
             id,
             aliases: [...entry.aliases],
             providers: entry.providers,
+            protocols: [...entry.protocols],
             capabilities: [...entry.capabilities],
             ...(entry.contextWindow === undefined ? {} : { contextWindow: entry.contextWindow }),
             ...(entry.cost === undefined ? {} : { cost: entry.cost }),
+            ...(entry.dimensions === undefined ? {} : { dimensions: entry.dimensions }),
         })),
     }
 }

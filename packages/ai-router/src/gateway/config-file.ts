@@ -34,6 +34,7 @@ export interface GatewayFileConfig {
 }
 
 type Schema =
+    | "any"
     | "string"
     | "number"
     | "boolean"
@@ -84,6 +85,7 @@ const FILE: Schema = {
                     kind: { enum: Object.keys(PROVIDER_PRESETS) },
                     baseUrl: "string",
                     defaultMaxTokens: "number",
+                    thinking: { enum: ["drop", "replay"] },
                     budget: { fields: { costPerDay: "number", costPerMonth: "number" } },
                     keysFromEnv: "string",
                     headers: { map: "string" },
@@ -96,7 +98,11 @@ const FILE: Schema = {
                                 id: "string",
                                 aliases: { list: "string" },
                                 contextWindow: "number",
-                                cost: { fields: { input: "number", output: "number" }, required: ["input", "output"] },
+                                cost: { fields: { input: "number", output: "number", cacheRead: "number", cacheWrite: "number", cacheWrite1h: "number" }, required: ["input", "output"] },
+                                params: { map: "any" },
+                                omit: { list: "string" },
+                                forcedToolUse: "boolean",
+                                cacheControl: "boolean",
                                 capabilities: CAPABILITIES,
                                 weight: "number",
                                 identity: "string",
@@ -138,6 +144,8 @@ function configError(message: string): AiRouterError {
 }
 
 function check(value: unknown, schema: Schema, where: string): void {
+    // A model's request defaults are the provider's own fields: the file names them, the provider judges them.
+    if (schema === "any") return
     if (schema === "string") {
         if (typeof value !== "string") throw configError(`${where} must be a string`)
         return

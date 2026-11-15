@@ -1,4 +1,5 @@
 import type { AttemptError } from "./attempt.ts"
+import { tokenParts } from "./cache.ts"
 import { windowEnd } from "./classify.ts"
 import { DEFAULT_CAPABILITIES, identityOf, modelMatches } from "./config.ts"
 import type { BreakerSettings, ResolvedPolicy, Settings } from "./config.ts"
@@ -93,6 +94,9 @@ interface LaneCounters {
     failures: Partial<Record<ErrorClass, number>>
     promptTokens: number
     completionTokens: number
+    cachedTokens: number
+    cacheWriteTokens: number
+    reasoningTokens: number
     cost: number
 }
 
@@ -112,11 +116,19 @@ function breakerState(record: HealthRecord, now: number): BreakerState {
     return record.openUntil > now ? "open" : "half-open"
 }
 
-/** The cost of a usage on a model, or undefined when the model has no cost or the provider reported no usage. */
+/**
+ * The cost of a usage on a model, or undefined when the model has no cost or the provider reported no usage. The prompt
+ * is priced in its parts: what was read from the cache at `cacheRead`, what was written to it at `cacheWrite` (its
+ * one-hour part at `cacheWrite1h`), the rest at `input`; a cache price the model does not declare is `input`.
+ */
 export function costOf(model: ModelConfig, usage: Usage | undefined): number | undefined {
     if (model.cost === undefined || usage === undefined) return undefined
-    const completion = usage.completion_tokens ?? 0
-    return (usage.prompt_tokens * model.cost.input + completion * model.cost.output) / 1_000_000
+    const { input, output } = model.cost
+    const cacheWrite = model.cost.cacheWrite ?? input
+    const parts = tokenParts(usage)
+    const plain = usage.prompt_tokens - parts.cached - parts.cacheWrite
+    const prompt = plain * input + parts.cached * (model.cost.cacheRead ?? input) + (parts.cacheWrite - parts.cacheWrite1h) * cacheWrite + parts.cacheWrite1h * (model.cost.cacheWrite1h ?? cacheWrite)
+    return (prompt + (usage.completion_tokens ?? 0) * output) / 1_000_000
 }
 
 /** The UTC day (`YYYY-MM-DD`) and month (`YYYY-MM`) of a time. */
@@ -425,7 +437,7 @@ export class PoolState {
     #count(lane: Lane): LaneCounters {
         let counters = this.#counters.get(lane.id)
         if (counters === undefined) {
-            counters = { attempts: 0, successes: 0, failures: {}, promptTokens: 0, completionTokens: 0, cost: 0 }
+            counters = { attempts: 0, successes: 0, failures: {}, promptTokens: 0, completionTokens: 0, cachedTokens: 0, cacheWriteTokens: 0, reasoningTokens: 0, cost: 0 }
             this.#counters.set(lane.id, counters)
         }
         return counters
@@ -511,6 +523,10 @@ export class PoolState {
         const cost = costOf(lane.model, usage)
         counters.promptTokens += usage?.prompt_tokens ?? 0
         counters.completionTokens += usage?.completion_tokens ?? 0
+        const parts = tokenParts(usage)
+        counters.cachedTokens += parts.cached
+        counters.cacheWriteTokens += parts.cacheWrite
+        counters.reasoningTokens += parts.reasoning
         counters.cost += cost ?? 0
         await this.#spend(lane, cost, now)
         return cost

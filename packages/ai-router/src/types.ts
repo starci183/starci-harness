@@ -6,10 +6,27 @@ export type MaybePromise<T> = T | Promise<T>
 /** What a model can do; a request needs every capability its shape implies. */
 export type Capability = "chat" | "streaming" | "tools" | "json" | "embeddings" | "vision"
 
-/** The price of a model per one million tokens, in whatever currency the pool uses. */
+/**
+ * The price of a model per one million tokens, in whatever currency the pool uses. The cache prices default to `input`:
+ * a provider that bills a cached prompt less (or a cache write more) declares them, and the cost of a call counts each
+ * part of the prompt at its own price.
+ */
 export interface ModelCost {
     readonly input: number
     readonly output: number
+    /** Prompt tokens read from the provider's prompt cache (`usage.prompt_tokens_details.cached_tokens`). Default `input`. */
+    readonly cacheRead?: number
+    /** Prompt tokens written to the cache (`cache_write_tokens`); Anthropic's 5-minute write. Default `input`. */
+    readonly cacheWrite?: number
+    /** Prompt tokens written to a one-hour cache (`cache_write_1h_tokens`). Default `cacheWrite`. */
+    readonly cacheWrite1h?: number
+}
+
+/** A prompt-cache breakpoint as a request marks it: on a content part, on a message, on a tool, or at the top level. */
+export interface CacheControl {
+    readonly type: "ephemeral"
+    /** How long the entry lives; the provider's default (five minutes at Anthropic) when absent. */
+    readonly ttl?: "5m" | "1h"
 }
 
 /** One model a provider serves. `id` is the name sent to the provider; `aliases` are names a caller may use instead. */
@@ -29,6 +46,25 @@ export interface ModelConfig {
     readonly identity?: string
     /** The length of the vectors an embeddings model answers; a response of another length fails the attempt. */
     readonly dimensions?: number
+    /**
+     * Request fields sent to this model when a chat request does not set them (`{ max_tokens: 32000, output_config:
+     * { effort: "medium" } }`): what one model needs and another would refuse lives here, never in the app. Shallow: a
+     * field the request sets replaces the whole default.
+     */
+    readonly params?: Readonly<Record<string, unknown>>
+    /** Request fields never sent to this model (`["temperature", "top_p"]` for a model that refuses sampling parameters). */
+    readonly omit?: readonly string[]
+    /**
+     * False for a model that refuses a forced tool choice (Claude Opus 5.5, Sonnet 5.5, Fable 5.1 and later): `tool_choice`
+     * `required` or a named function is sent as `auto` with a system instruction to make the call. `auto` does not
+     * guarantee a call, so the caller checks one was made. Default true: the choice is sent as asked.
+     */
+    readonly forcedToolUse?: boolean
+    /**
+     * Whether this model's provider takes `cache_control` breakpoints. Default: true on an `anthropic` provider and for
+     * `anthropic/*` models on `openrouter`, false elsewhere, where the markers are removed before the request is sent.
+     */
+    readonly cacheControl?: boolean
 }
 
 /** Returns the secret of a key at the moment of an attempt; an empty or missing answer disables the key. */
@@ -79,8 +115,15 @@ export interface ProviderConfig {
     readonly weight?: number
     /** The most requests this provider carries at once in this process, across its keys. */
     readonly maxConcurrency?: number
-    /** The `max_tokens` sent to a provider that requires one (Anthropic) when the request sets none. Default 4096. */
+    /** The `max_tokens` sent to a provider that requires one (Anthropic) when the request sets none. Default 16000. */
     readonly defaultMaxTokens?: number
+    /**
+     * What an Anthropic provider does with the thinking blocks of an answer that calls tools. `drop` (the default) never
+     * sends them back: the next request carries the turn without its reasoning, which the API accepts. `replay` keeps
+     * each such turn in this process and sends it back exactly as it was received while the conversation before it is
+     * unchanged, so the model keeps its reasoning across a tool loop whatever the client above forwards.
+     */
+    readonly thinking?: "drop" | "replay"
     readonly budget?: ProviderBudget
     readonly keys: readonly KeyConfig[]
     readonly models: readonly ModelConfig[]
@@ -204,6 +247,8 @@ export interface PoolConfig<Profiles extends string = string> {
 export interface ContentPart {
     readonly type: string
     readonly text?: string
+    /** Marks a prompt-cache breakpoint after this part. */
+    readonly cache_control?: CacheControl
     readonly [key: string]: unknown
 }
 
@@ -221,6 +266,8 @@ export interface ChatMessage {
     readonly name?: string
     readonly tool_calls?: readonly ToolCall[]
     readonly tool_call_id?: string
+    /** Marks a prompt-cache breakpoint after this message's last part. */
+    readonly cache_control?: CacheControl
 }
 
 /** An OpenAI chat-completions request; unknown fields pass through to an OpenAI-compatible provider. */
@@ -240,14 +287,39 @@ export interface ChatCompletionRequest {
     readonly parallel_tool_calls?: boolean
     readonly response_format?: { readonly type: string; readonly [key: string]: unknown }
     readonly stream_options?: { readonly include_usage?: boolean }
+    /** Automatic prompt caching: the provider places one breakpoint on the last cacheable block. */
+    readonly cache_control?: CacheControl
     readonly [key: string]: unknown
 }
 
-/** Token counts a provider reports. */
+/** How the prompt tokens split between the provider's prompt cache and full-price input. */
+export interface PromptTokensDetails {
+    /** Tokens read from the cache. */
+    readonly cached_tokens?: number
+    /** Tokens written to the cache, every lifetime together. */
+    readonly cache_write_tokens?: number
+    /** The part of `cache_write_tokens` written to a one-hour cache. */
+    readonly cache_write_1h_tokens?: number
+    readonly [key: string]: unknown
+}
+
+/** How the completion tokens split. */
+export interface CompletionTokensDetails {
+    /** Tokens the model spent thinking; they are part of `completion_tokens`. */
+    readonly reasoning_tokens?: number
+    readonly [key: string]: unknown
+}
+
+/**
+ * Token counts a provider reports. `prompt_tokens` is the whole prompt: cache reads and writes are parts of it, listed
+ * in `prompt_tokens_details`, whatever the provider's own usage shape.
+ */
 export interface Usage {
     readonly prompt_tokens: number
     readonly completion_tokens?: number
     readonly total_tokens: number
+    readonly prompt_tokens_details?: PromptTokensDetails
+    readonly completion_tokens_details?: CompletionTokensDetails
     readonly [key: string]: unknown
 }
 
@@ -356,6 +428,43 @@ export interface EmbeddingsBody {
 /** An OpenAI embeddings response, with the routing that produced it. */
 export interface EmbeddingsResponse extends EmbeddingsBody {
     readonly routing: RoutingInfo
+}
+
+/**
+ * A request in the Anthropic Messages shape, for a model an Anthropic provider serves. Every field passes to the
+ * provider as it is (cache breakpoints, thinking, tools); `model` names a pool model or is left to the policy.
+ */
+export interface AnthropicMessagesRequest {
+    readonly model?: string
+    readonly messages: readonly unknown[]
+    readonly max_tokens?: number
+    readonly system?: unknown
+    readonly tools?: readonly unknown[]
+    readonly [key: string]: unknown
+}
+
+/** An Anthropic message as the provider answered it, with the usage the router read from it and the routing. */
+export interface AnthropicMessageResult {
+    /** The provider's answer, untouched. */
+    readonly message: Readonly<Record<string, unknown>>
+    /** Its usage in the router's shape. */
+    readonly usage?: Usage
+    readonly routing: RoutingInfo
+}
+
+/** One server-sent event of an Anthropic stream as the provider sent it, and the lane that serves the stream. */
+export interface AnthropicStreamEvent {
+    /** The event's type (`message_start`, `content_block_delta`, ...). */
+    readonly event: string
+    /** Its JSON data, untouched. */
+    readonly data: string
+    readonly provider: string
+    readonly model: string
+}
+
+/** A stream of Anthropic events plus the id that names the call in telemetry. */
+export interface AnthropicStream extends AsyncIterable<AnthropicStreamEvent> {
+    readonly requestId: string
 }
 
 /** The per-call options of `chat`, `stream` and `embeddings`. */
@@ -518,6 +627,12 @@ export interface LaneStats {
     readonly failures: Readonly<Partial<Record<ErrorClass, number>>>
     readonly promptTokens: number
     readonly completionTokens: number
+    /** The part of `promptTokens` read from the provider's prompt cache. */
+    readonly cachedTokens: number
+    /** The part of `promptTokens` written to the provider's prompt cache. */
+    readonly cacheWriteTokens: number
+    /** The part of `completionTokens` the model spent thinking. */
+    readonly reasoningTokens: number
     readonly cost: number
 }
 
@@ -544,6 +659,10 @@ export interface AiRouter<Profiles extends string = string> {
     stream(request: ChatCompletionRequest, options?: CallOptions<Profiles>): ChatStream
     /** Sends an embeddings request through the pool. */
     embeddings(request: EmbeddingsRequest, options?: CallOptions<Profiles>): Promise<EmbeddingsResponse>
+    /** Sends a request in the Anthropic Messages shape, untranslated, through the pool's Anthropic providers only. */
+    messages(request: AnthropicMessagesRequest, options?: CallOptions<Profiles>): Promise<AnthropicMessageResult>
+    /** Streams an Anthropic Messages request as the provider's own events; fails over only before the first content. */
+    messagesStream(request: AnthropicMessagesRequest, options?: CallOptions<Profiles>): AnthropicStream
     /** Reads every breaker, blacklisted key, headroom and budget from the store. */
     health(): Promise<HealthSnapshot>
     /** Returns this process's counters. */
@@ -561,9 +680,20 @@ export interface CatalogModel {
     readonly id: string
     readonly aliases: readonly string[]
     readonly providers: readonly string[]
+    /** The wire protocols of those providers, each once, in provider order: `openai`, `anthropic`. */
+    readonly protocols: readonly ("openai" | "anthropic")[]
     readonly capabilities: readonly Capability[]
     readonly contextWindow?: number
     readonly cost?: ModelCost
+    /** The vector length of an embeddings model, when it declares one. */
+    readonly dimensions?: number
+}
+
+/** One provider as the catalog lists it: its id, its kind and the wire protocol it speaks. No key. */
+export interface CatalogProvider {
+    readonly id: string
+    readonly kind: ProviderKind
+    readonly protocol: "openai" | "anthropic"
 }
 
 /** One named profile as the catalog lists it. */
@@ -577,11 +707,16 @@ export interface CatalogProfile {
     readonly pinned: boolean
     /** The operations its first model serves: `chat`, `embeddings` or both. */
     readonly serves: readonly ("chat" | "embeddings")[]
+    /** The wire protocols of its candidates' providers, each once, in candidate order: the first is its first candidate's. */
+    readonly protocols: readonly ("openai" | "anthropic")[]
+    /** The vector length of its first model, when that model declares one. */
+    readonly dimensions?: number
 }
 
 /** The names a caller may route by: the defaults' fallbacks, every profile and every model. */
 export interface RouterCatalog {
     readonly defaults: { readonly model?: string; readonly fallbacks: readonly string[] }
+    readonly providers: readonly CatalogProvider[]
     readonly profiles: readonly CatalogProfile[]
     readonly models: readonly CatalogModel[]
 }

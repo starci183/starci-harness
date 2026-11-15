@@ -26,6 +26,22 @@ export interface FakeToolCall {
     readonly argumentChunks?: readonly string[]
 }
 
+/** One thinking block a scripted reply opens with; its text is empty unless given, as when the provider hides it. */
+export interface FakeThinking {
+    readonly text?: string
+    /** The opaque signature an Anthropic thinking block carries. Default `sig_fake`. */
+    readonly signature?: string
+}
+
+/** How much of a scripted reply's prompt the provider's cache served or stored; each is a part of `usage.prompt_tokens`. */
+export interface FakeCacheUsage {
+    readonly read?: number
+    /** Tokens written, every lifetime together. */
+    readonly write?: number
+    /** The part of `write` stored for an hour. */
+    readonly write1h?: number
+}
+
 /** One scripted answer. Everything is optional: the default is a 200 chat reply `ok`. */
 export interface FakeReply {
     readonly status?: number
@@ -38,7 +54,13 @@ export interface FakeReply {
     readonly text?: string
     /** Tool calls the reply makes (OpenAI `tool_calls`, Anthropic `tool_use` blocks). */
     readonly toolCalls?: readonly FakeToolCall[]
+    /** Thinking before the text: Anthropic `thinking` blocks with a signature, OpenAI `reasoning_content` for their text. */
+    readonly thinking?: readonly FakeThinking[]
     readonly usage?: Usage
+    /** Cache reads and writes, reported in the protocol's own usage shape. */
+    readonly cache?: FakeCacheUsage
+    /** Thinking tokens, reported in the protocol's own usage shape. */
+    readonly reasoningTokens?: number
     /** The vector of every embedding. Default `[0.1, 0.2, 0.3]`. */
     readonly embedding?: readonly number[]
     /** Replaces the whole JSON body. */
@@ -68,6 +90,13 @@ export interface FakeCall {
     readonly protocol: "openai" | "anthropic"
     readonly headers: Readonly<Record<string, string>>
     readonly body: Readonly<Record<string, unknown>>
+    /**
+     * Where the request marks cache breakpoints, in request order: `top` (automatic caching), `system.<i>`, `tools.<i>`,
+     * `messages.<i>` (on a message) and `messages.<i>.content.<j>` (on a part or block). The same in either protocol.
+     */
+    readonly cacheBreakpoints: readonly string[]
+    /** The id its answer carries, one per request (`msg_fake_<n>`, `fake-<n>`): a client that keys messages by id sees each once. */
+    readonly answerId: string
 }
 
 /** A scriptable provider that answers in process, OpenAI-compatible and Anthropic Messages alike, for consumers' tests. */
@@ -167,6 +196,60 @@ interface Script {
     readonly replies: FakeReply[]
 }
 
+function isMarked(value: unknown): boolean {
+    return isPlainRecord(value) && isPlainRecord(value.cache_control)
+}
+
+/** The places a request body marks a cache breakpoint. */
+function breakpointsOf(body: Readonly<Record<string, unknown>>): string[] {
+    const out: string[] = isMarked(body) ? ["top"] : []
+    const list = (value: unknown): unknown[] => (Array.isArray(value) ? value : [])
+    list(body.system).forEach((block, index) => {
+        if (isMarked(block)) out.push(`system.${String(index)}`)
+    })
+    list(body.tools).forEach((tool, index) => {
+        if (isMarked(tool)) out.push(`tools.${String(index)}`)
+    })
+    list(body.messages).forEach((message, index) => {
+        if (isMarked(message)) out.push(`messages.${String(index)}`)
+        list(isPlainRecord(message) ? message.content : undefined).forEach((part, at) => {
+            if (isMarked(part)) out.push(`messages.${String(index)}.content.${String(at)}`)
+        })
+    })
+    return out
+}
+
+/** A scripted reply's usage as an OpenAI-compatible provider reports it. */
+function openAiUsage(reply: FakeReply, fallback: Usage): Usage {
+    const usage = reply.usage ?? fallback
+    const cache = reply.cache
+    const hour = cache?.write1h === undefined ? {} : { cache_write_1h_tokens: cache.write1h }
+    return {
+        ...usage,
+        ...(cache === undefined ? {} : { prompt_tokens_details: { cached_tokens: cache.read ?? 0, cache_write_tokens: cache.write ?? 0, ...hour } }),
+        ...(reply.reasoningTokens === undefined ? {} : { completion_tokens_details: { reasoning_tokens: reply.reasoningTokens } }),
+    }
+}
+
+/** A scripted reply's usage as Anthropic reports it: the uncached input apart from the cache reads and writes. */
+function anthropicUsage(reply: FakeReply, prompt: number, output: number): { input: Record<string, unknown>; output: Record<string, unknown> } {
+    const cache = reply.cache
+    const read = cache?.read ?? 0
+    const write = cache?.write ?? 0
+    const hour = cache?.write1h ?? 0
+    return {
+        input: {
+            input_tokens: prompt - read - write,
+            ...(cache === undefined ? {} : { cache_read_input_tokens: read, cache_creation_input_tokens: write, cache_creation: { ephemeral_5m_input_tokens: write - hour, ephemeral_1h_input_tokens: hour } }),
+        },
+        output: { output_tokens: output, ...(reply.reasoningTokens === undefined ? {} : { output_tokens_details: { thinking_tokens: reply.reasoningTokens } }) },
+    }
+}
+
+function reasoningText(reply: FakeReply): string {
+    return (reply.thinking ?? []).map((block) => block.text ?? "").filter((text) => text !== "").join("\n\n")
+}
+
 function wait(ms: number, signal: AbortSignal | null | undefined): Promise<void> {
     return new Promise((resolve, reject) => {
         const aborted = (): Error => (signal?.reason instanceof Error ? signal.reason : new Error("aborted"))
@@ -206,11 +289,13 @@ function headerRecord(init: RequestInit): Record<string, string> {
 /** One frame of a scripted stream: an SSE event to send, a stall, or the scripted failure. */
 type Frame = { readonly event?: string; readonly data: string } | "stall" | "fail"
 
-function openAiFrames(reply: FakeReply, model: string, pieces: readonly string[]): Frame[] {
+function openAiFrames(reply: FakeReply, call: FakeCall, pieces: readonly string[]): Frame[] {
     const options = reply.stream ?? {}
-    const base = { id: "fake-stream", object: "chat.completion.chunk", created: 0, model }
+    const base = { id: call.answerId, object: "chat.completion.chunk", created: 0, model: call.model }
     const frame = (delta: Record<string, unknown>, finish: string | null = null): Frame => ({ data: JSON.stringify({ ...base, choices: [{ index: 0, delta, finish_reason: finish }] }) })
     const frames: Frame[] = [frame({ role: "assistant" })]
+    const reasoning = reasoningText(reply)
+    if (reasoning !== "") frames.push(frame({ reasoning_content: reasoning }))
     pieces.forEach((piece, index) => {
         if (options.stallAfter === index) frames.push("stall")
         if (options.failAfter === index) frames.push("fail")
@@ -223,19 +308,27 @@ function openAiFrames(reply: FakeReply, model: string, pieces: readonly string[]
     })
     frames.push(frame({}, reply.toolCalls === undefined ? "stop" : "tool_calls"))
     if (options.includeUsage !== false) {
-        const usage = reply.usage ?? { prompt_tokens: 10, completion_tokens: pieces.length, total_tokens: 10 + pieces.length }
+        const usage = openAiUsage(reply, { prompt_tokens: 10, completion_tokens: pieces.length, total_tokens: 10 + pieces.length })
         frames.push({ data: JSON.stringify({ ...base, choices: [], usage }) })
     }
     frames.push({ data: "[DONE]" })
     return frames
 }
 
-function anthropicFrames(reply: FakeReply, model: string, pieces: readonly string[]): Frame[] {
+function anthropicFrames(reply: FakeReply, call: FakeCall, pieces: readonly string[]): Frame[] {
+    const model = call.model
     const options = reply.stream ?? {}
     const event = (name: string, data: Record<string, unknown>): Frame => ({ event: name, data: JSON.stringify({ type: name, ...data }) })
-    const input = reply.usage?.prompt_tokens ?? 10
-    const frames: Frame[] = [event("message_start", { message: { id: "msg_fake", type: "message", role: "assistant", model, content: [], stop_reason: null, usage: { input_tokens: input, output_tokens: 1 } } }), event("ping", {})]
+    const usage = anthropicUsage(reply, reply.usage?.prompt_tokens ?? 10, reply.usage?.completion_tokens ?? pieces.length)
+    const frames: Frame[] = [event("message_start", { message: { id: call.answerId, type: "message", role: "assistant", model, content: [], stop_reason: null, usage: { ...usage.input, output_tokens: 1 } } }), event("ping", {})]
     let block = 0
+    for (const thinking of reply.thinking ?? []) {
+        frames.push(event("content_block_start", { index: block, content_block: { type: "thinking", thinking: "", signature: "" } }))
+        frames.push(event("content_block_delta", { index: block, delta: { type: "thinking_delta", thinking: thinking.text ?? "" } }))
+        frames.push(event("content_block_delta", { index: block, delta: { type: "signature_delta", signature: thinking.signature ?? "sig_fake" } }))
+        frames.push(event("content_block_stop", { index: block }))
+        block++
+    }
     if (pieces.length > 0) {
         frames.push(event("content_block_start", { index: block, content_block: { type: "text", text: "" } }))
         pieces.forEach((piece, index) => {
@@ -253,8 +346,7 @@ function anthropicFrames(reply: FakeReply, model: string, pieces: readonly strin
         frames.push(event("content_block_stop", { index: block }))
         block++
     }
-    const output = reply.usage?.completion_tokens ?? pieces.length
-    frames.push(event("message_delta", { delta: { stop_reason: reply.toolCalls === undefined ? "end_turn" : "tool_use", stop_sequence: null }, usage: { output_tokens: output } }))
+    frames.push(event("message_delta", { delta: { stop_reason: reply.toolCalls === undefined ? "end_turn" : "tool_use", stop_sequence: null }, usage: usage.output }))
     frames.push(event("message_stop", {}))
     return frames
 }
@@ -262,7 +354,7 @@ function anthropicFrames(reply: FakeReply, model: string, pieces: readonly strin
 function streamBody(reply: FakeReply, call: FakeCall, signal: AbortSignal | null | undefined): ReadableStream<Uint8Array> {
     const options = reply.stream ?? {}
     const pieces = options.chunks ?? (reply.toolCalls !== undefined && reply.text === undefined ? [] : (reply.text ?? "ok").split(/(?<= )/))
-    const frames = call.protocol === "anthropic" ? anthropicFrames(reply, call.model, pieces) : openAiFrames(reply, call.model, pieces)
+    const frames = call.protocol === "anthropic" ? anthropicFrames(reply, call, pieces) : openAiFrames(reply, call, pieces)
     const failure =
         call.protocol === "anthropic"
             ? `event: error\ndata: ${JSON.stringify({ type: "error", error: { type: "overloaded_error", message: "Overloaded" } })}\n\n`
@@ -326,30 +418,33 @@ function jsonBody(reply: FakeReply, call: FakeCall): unknown {
         }
     }
     const text = reply.text ?? (reply.toolCalls === undefined ? "ok" : "")
-    const usage = reply.usage ?? { prompt_tokens: 10, completion_tokens: 2, total_tokens: 12 }
+    const usage = openAiUsage(reply, { prompt_tokens: 10, completion_tokens: 2, total_tokens: 12 })
     if (call.protocol === "anthropic") {
+        const counted = anthropicUsage(reply, usage.prompt_tokens, usage.completion_tokens ?? 0)
         const content = [
+            ...(reply.thinking ?? []).map((thinking) => ({ type: "thinking", thinking: thinking.text ?? "", signature: thinking.signature ?? "sig_fake" })),
             ...(text === "" ? [] : [{ type: "text", text }]),
             ...(reply.toolCalls ?? []).map(toolUseBlock),
         ]
         return {
-            id: "msg_fake",
+            id: call.answerId,
             type: "message",
             role: "assistant",
             model: call.model,
             content,
             stop_reason: reply.toolCalls === undefined ? "end_turn" : "tool_use",
             stop_sequence: null,
-            usage: { input_tokens: usage.prompt_tokens, output_tokens: usage.completion_tokens ?? 0 },
+            usage: { ...counted.input, ...counted.output },
         }
     }
+    const reasoning = reasoningText(reply)
     const calls = (reply.toolCalls ?? []).map((tool) => ({ id: tool.id, type: "function", function: { name: tool.name, arguments: tool.arguments } }))
     return {
-        id: `fake-${String(Date.now())}`,
+        id: call.answerId,
         object: "chat.completion",
         created: 0,
         model: call.model,
-        choices: [{ index: 0, message: { role: "assistant", content: text === "" && calls.length > 0 ? null : text, ...(calls.length > 0 ? { tool_calls: calls } : {}) }, finish_reason: calls.length > 0 ? "tool_calls" : "stop" }],
+        choices: [{ index: 0, message: { role: "assistant", content: text === "" && calls.length > 0 ? null : text, ...(reasoning === "" ? {} : { reasoning_content: reasoning }), ...(calls.length > 0 ? { tool_calls: calls } : {}) }, finish_reason: calls.length > 0 ? "tool_calls" : "stop" }],
         usage,
     }
 }
@@ -373,15 +468,18 @@ export function createFakeProvider(): FakeProvider {
             const headers = headerRecord(init)
             const parsed: unknown = typeof init.body === "string" ? JSON.parse(init.body) : {}
             const body = isPlainRecord(parsed) ? parsed : {}
+            const protocol = url.pathname.endsWith("/messages") ? "anthropic" : "openai"
             const call: FakeCall = {
                 url: input,
                 path: url.pathname,
                 key: headers["x-api-key"] ?? (headers.authorization ?? "").replace(/^Bearer /, ""),
                 model: typeof body.model === "string" ? body.model : "",
                 stream: body.stream === true,
-                protocol: url.pathname.endsWith("/messages") ? "anthropic" : "openai",
+                protocol,
                 headers,
                 body,
+                cacheBreakpoints: breakpointsOf(body),
+                answerId: `${protocol === "anthropic" ? "msg_fake_" : "fake-"}${String(calls.length + 1)}`,
             }
             calls.push(call)
             const script = scripts.find((candidate) => matches(candidate.match, call))

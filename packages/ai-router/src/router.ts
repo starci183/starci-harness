@@ -14,9 +14,13 @@ import { baseUrlOf, presetOf } from "./providers.ts"
 import { resolveSecret } from "./secrets.ts"
 import { readChunk, readCompletion, readEmbeddings, readUsage, vectorLength } from "./shapes.ts"
 import { parseSse } from "./sse.ts"
+import type { SseEvent } from "./sse.ts"
+import { shapeRequest } from "./model-request.ts"
 import { MemoryStateStore } from "./store.ts"
 import type {
     AiRouter,
+    AnthropicMessagesRequest,
+    AnthropicStreamEvent,
     CallOptions,
     Capability,
     ChatCompletionChunk,
@@ -29,6 +33,8 @@ import type {
     Usage,
 } from "./types.ts"
 import { wireOf } from "./wire/index.ts"
+import { nativeItems, nativeRequest, nativeUsage } from "./wire/native.ts"
+import type { Streamed } from "./wire/native.ts"
 
 const BUSY_POLL_MS = 250
 const ERROR_BODY_LIMIT = 4096
@@ -175,6 +181,20 @@ function chatNeed(request: ChatCompletionRequest, streaming: boolean, policy: Re
     }
 }
 
+/** What a request in the Anthropic Messages shape needs of a lane. */
+function messagesNeed(request: AnthropicMessagesRequest, streaming: boolean, policy: ResolvedPolicy): Need {
+    const capabilities = new Set<Capability>(["chat", ...policy.require])
+    if (streaming) capabilities.add("streaming")
+    if (request.tools !== undefined && request.tools.length > 0) capabilities.add("tools")
+    return {
+        capabilities: [...capabilities],
+        promptTokens: estimateTokens(JSON.stringify([request.system ?? "", request.messages])),
+        outputTokens: request.max_tokens ?? 0,
+        oneIdentity: policy.pinned,
+        dimensions: null,
+    }
+}
+
 function hasToken(chunk: ChatCompletionChunk): boolean {
     return chunk.choices.some((choice) =>
         Object.entries(choice.delta).some(([field, value]) => field !== "role" && value !== null && value !== undefined && value !== "" && !(Array.isArray(value) && value.length === 0)),
@@ -233,6 +253,13 @@ export function createRouter<P extends string = string>(config: PoolConfig<P>): 
     const fetchImpl: FetchLike = config.fetch ?? ((input, init) => fetch(input, init))
     const random = config.random ?? Math.random
     const catalog = buildCatalog(config)
+    const anthropicProviders = config.providers.filter((provider) => presetOf(provider).protocol === "anthropic").map((provider) => provider.id)
+
+    /** The call's options with its providers narrowed to those that speak the Anthropic protocol. */
+    function nativeOptions(options: CallOptions<P>): CallOptions<P> {
+        const asked = options.policy?.providers
+        return { ...options, policy: { ...options.policy, providers: asked === undefined ? anthropicProviders : anthropicProviders.filter((id) => asked.includes(id)) } }
+    }
 
     // The policy is resolved at once, so a bad profile or model throws from the call itself; the clock starts at start().
     function prepare(operation: Operation, model: string | undefined, options: CallOptions<P>, need: (policy: ResolvedPolicy) => Need): { requestId: string; start: () => Call } {
@@ -323,12 +350,20 @@ export function createRouter<P extends string = string>(config: PoolConfig<P>): 
         }
     }
 
-    async function open(call: Call, pick: Pick, scope: AttemptScope, operation: "chat" | "stream" | "embeddings", body: Record<string, unknown>, options: CallOptions<P>): Promise<Response> {
+    /** Sends one attempt; `context` is what the lane's adapter needs again to read the answer. */
+    async function open(call: Call, pick: Pick, scope: AttemptScope, operation: "chat" | "stream" | "embeddings", body: Record<string, unknown>, options: CallOptions<P>, native = false): Promise<{ response: Response; context: unknown }> {
         const secret = await resolveSecret(pick.lane.key)
         if (secret === undefined) throw new AttemptError("auth", `key ${pick.lane.key.alias} resolved to no value`, { missingKey: true })
         scope.secret = secret
         const wire = wireOf(pick.lane.provider)
-        const request = operation === "embeddings" ? wire.embeddings(body, pick.lane.model.id) : wire.chat(body, pick.lane.model.id, operation === "stream", pick.lane.provider)
+        // A chat request is shaped for the model that serves this attempt: the next lane may need another shape.
+        const streaming = operation === "stream"
+        const request =
+            operation === "embeddings"
+                ? wire.embeddings(body, pick.lane.model.id)
+                : native
+                  ? nativeRequest(shapeRequest(body, pick.lane.model, true), pick.lane.model, streaming)
+                  : wire.chat(shapeRequest(body, pick.lane.model), pick.lane.model, streaming, pick.lane.provider)
         let response: Response
         try {
             response = await fetchImpl(`${baseUrlOf(pick.lane.provider)}${request.path}`, {
@@ -341,7 +376,7 @@ export function createRouter<P extends string = string>(config: PoolConfig<P>): 
             throw scope.classify(error)
         }
         if (!response.ok) throw await errorOf(pick.lane, response)
-        return response
+        return { response, context: request.context }
     }
 
     function begin(call: Call, pick: Pick): void {
@@ -426,7 +461,7 @@ export function createRouter<P extends string = string>(config: PoolConfig<P>): 
         return call.error("network", error instanceof Error ? error.message : "the call failed")
     }
 
-    async function unary<T>(call: Call, operation: "chat" | "embeddings", body: Record<string, unknown>, options: CallOptions<P>, parse: (json: Record<string, unknown>, lane: Lane) => { value: T; usage: Usage | undefined }): Promise<{ value: T; routing: RoutingInfo }> {
+    async function unary<T>(call: Call, operation: "chat" | "embeddings", body: Record<string, unknown>, options: CallOptions<P>, parse: (json: Record<string, unknown>, lane: Lane, context: unknown) => { value: T; usage: Usage | undefined }, native = false): Promise<{ value: T; routing: RoutingInfo }> {
         try {
             for (;;) {
                 const pick = await next(call)
@@ -434,7 +469,7 @@ export function createRouter<P extends string = string>(config: PoolConfig<P>): 
                 const scope = new AttemptScope(call, call.policy.timeoutMs)
                 const started = Date.now()
                 try {
-                    const response = await open(call, pick, scope, operation, body, options)
+                    const { response, context } = await open(call, pick, scope, operation, body, options, native)
                     let json: unknown
                     try {
                         json = await response.json()
@@ -444,7 +479,7 @@ export function createRouter<P extends string = string>(config: PoolConfig<P>): 
                     if (!isPlainRecord(json) && !Array.isArray(json)) throw new AttemptError("transient", "the provider answered a body that is not an object")
                     // An error inside a 200 body (OpenRouter does this) is classified like an error status.
                     if (!isPlainRecord(json) || (json.error !== undefined && json.error !== null)) throw failureOf(pick.lane, undefined, json, null, "the provider answered an error")
-                    const parsed = parse(json, pick.lane)
+                    const parsed = parse(json, pick.lane, context)
                     const latencyMs = Date.now() - started
                     const routing = await succeed(call, pick, readRateLimit(response.headers, Date.now()), latencyMs, parsed.usage, { request: body, response: json })
                     settle(call, routing, null)
@@ -469,7 +504,19 @@ export function createRouter<P extends string = string>(config: PoolConfig<P>): 
         }
     }
 
-    async function* streamCall(call: Call, body: Record<string, unknown>, options: CallOptions<P>): AsyncGenerator<ChatCompletionChunk, void, undefined> {
+    /** A provider stream as OpenAI chunks: the lane's adapter translates, and a chunk with content is the first token. */
+    async function* chatItems(lane: Lane, events: AsyncIterable<SseEvent>, context: unknown): AsyncGenerator<Streamed<ChatCompletionChunk>, void, undefined> {
+        for await (const event of wireOf(lane.provider).chunks(events, context)) {
+            if (event.kind !== "chunk") {
+                yield event
+                continue
+            }
+            const chunk = readChunk(event.chunk)
+            if (chunk !== undefined) yield { kind: "item", item: chunk, token: hasToken(chunk), usage: readUsage(chunk.usage) }
+        }
+    }
+
+    async function* streamCall<T>(call: Call, body: Record<string, unknown>, options: CallOptions<P>, items: (lane: Lane, events: AsyncIterable<SseEvent>, context: unknown) => AsyncGenerator<Streamed<T>, void, undefined>, native = false): AsyncGenerator<T, void, undefined> {
         let settled = false
         try {
             for (;;) {
@@ -483,24 +530,26 @@ export function createRouter<P extends string = string>(config: PoolConfig<P>): 
                 // "pending" in the finally block means the consumer stopped reading: no catch ran and no success did.
                 let outcome: "pending" | "failed" | "done" = "pending"
                 try {
-                    const response = await open(call, pick, scope, "stream", body, options)
+                    const { response, context } = await open(call, pick, scope, "stream", body, options, native)
                     info = readRateLimit(response.headers, Date.now())
                     if (response.body === null) throw new AttemptError("transient", "the provider answered no stream body")
-                    const held: ChatCompletionChunk[] = []
-                    for await (const event of wireOf(pick.lane.provider).chunks(parseSse(response.body))) {
-                        if (event.kind === "malformed") throw new AttemptError("stream", "the provider streamed an event that is not JSON")
-                        if (event.kind === "error") throw failureOf(pick.lane, undefined, event.body, null, "the provider streamed an error")
-                        const chunk = readChunk(event.chunk)
-                        if (chunk === undefined) continue
-                        const chunkUsage = readUsage(chunk.usage)
-                        if (chunkUsage !== undefined) usage = chunkUsage
-                        scope.arm(call.policy.timeoutMs)
-                        if (firstToken) {
-                            yield chunk
+                    const held: T[] = []
+                    for await (const event of items(pick.lane, parseSse(response.body), context)) {
+                        // The provider is at work (a ping, hidden thinking) with nothing for the caller yet: the idle timeout starts over.
+                        if (event.kind === "alive") {
+                            scope.arm(call.policy.timeoutMs)
                             continue
                         }
-                        held.push(chunk)
-                        if (hasToken(chunk)) {
+                        if (event.kind === "malformed") throw new AttemptError("stream", "the provider streamed an event that is not JSON")
+                        if (event.kind === "error") throw failureOf(pick.lane, undefined, event.body, null, "the provider streamed an error")
+                        if (event.usage !== undefined) usage = event.usage
+                        scope.arm(call.policy.timeoutMs)
+                        if (firstToken) {
+                            yield event.item
+                            continue
+                        }
+                        held.push(event.item)
+                        if (event.token) {
                             firstToken = true
                             for (const early of held.splice(0)) yield early
                         }
@@ -547,8 +596,8 @@ export function createRouter<P extends string = string>(config: PoolConfig<P>): 
             const body: Record<string, unknown> = { ...request }
             delete body.stream
             const { start } = prepare("chat", request.model, options, (policy) => chatNeed(request, false, policy))
-            const { value, routing } = await unary(start(), "chat", body, options, (json, lane) => {
-                const completion = readCompletion(wireOf(lane.provider).chatResponse(json))
+            const { value, routing } = await unary(start(), "chat", body, options, (json, lane, context) => {
+                const completion = readCompletion(wireOf(lane.provider).chatResponse(json, context))
                 if (completion === undefined) throw new AttemptError("transient", "the provider answered a completion without choices")
                 return { value: completion, usage: completion.usage }
             })
@@ -560,7 +609,33 @@ export function createRouter<P extends string = string>(config: PoolConfig<P>): 
             const { requestId, start } = prepare("stream", request.model, options, (policy) => chatNeed(request, true, policy))
             return {
                 requestId,
-                [Symbol.asyncIterator]: () => streamCall(start(), body, options),
+                [Symbol.asyncIterator]: () => streamCall(start(), body, options, chatItems),
+            }
+        },
+        async messages(request, options = {}) {
+            const native = nativeOptions(options)
+            const { start } = prepare("chat", request.model, native, (policy) => messagesNeed(request, false, policy))
+            const { value, routing } = await unary(
+                start(),
+                "chat",
+                { ...request },
+                native,
+                (json) => {
+                    if (json.type !== "message" || !Array.isArray(json.content)) throw new AttemptError("transient", "the provider answered a body that is not a message")
+                    return { value: json, usage: nativeUsage(json.usage) }
+                },
+                true,
+            )
+            const usage = nativeUsage(value.usage)
+            return { message: value, ...(usage === undefined ? {} : { usage }), routing }
+        },
+        messagesStream(request, options = {}) {
+            const native = nativeOptions(options)
+            const { requestId, start } = prepare("stream", request.model, native, (policy) => messagesNeed(request, true, policy))
+            const items = (lane: Lane, events: AsyncIterable<SseEvent>): AsyncGenerator<Streamed<AnthropicStreamEvent>, void, undefined> => nativeItems(lane.provider, lane.model, events)
+            return {
+                requestId,
+                [Symbol.asyncIterator]: () => streamCall(start(), { ...request }, native, items, true),
             }
         },
         async embeddings(request, options = {}) {

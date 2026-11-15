@@ -65,7 +65,7 @@ describe("the work profile", () => {
         const result = await router.chat(chat, { profile: "work" })
         assert.equal(result.routing.provider, "deepseek")
         assert.equal(result.routing.model, "deepseek-v4-pro")
-        assert.deepEqual(router.catalog().profiles.find((profile) => profile.name === "work"), { name: "work", model: "claude-sonnet-5-5", fallbacks: ["anthropic/claude-sonnet-5-5", "deepseek-v4-pro"], pinned: false, serves: ["chat"] })
+        assert.deepEqual(router.catalog().profiles.find((profile) => profile.name === "work"), { name: "work", model: "claude-sonnet-5-5", fallbacks: ["anthropic/claude-sonnet-5-5", "deepseek-v4-pro"], pinned: false, serves: ["chat"], protocols: ["anthropic", "openai"] })
     })
 
     test("allowFallback false keeps it on its first tier", async () => {

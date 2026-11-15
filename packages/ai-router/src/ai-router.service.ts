@@ -1,6 +1,9 @@
 import type { OnApplicationShutdown } from "@nestjs/common"
 import type {
     AiRouter,
+    AnthropicMessageResult,
+    AnthropicMessagesRequest,
+    AnthropicStream,
     CallOptions,
     ChatCompletion,
     ChatCompletionRequest,
@@ -52,6 +55,16 @@ export class AiRouterService<Profiles extends string = string> implements AiRout
     /** Sends an embeddings request through the pool. */
     embeddings(request: EmbeddingsRequest, options: CallOptions<Profiles> = {}): Promise<EmbeddingsResponse> {
         return this.router.embeddings(request, this.#options(options))
+    }
+
+    /** Sends a request in the Anthropic Messages shape, untranslated, through the pool's Anthropic providers. */
+    messages(request: AnthropicMessagesRequest, options: CallOptions<Profiles> = {}): Promise<AnthropicMessageResult> {
+        return this.router.messages(request, this.#options(options))
+    }
+
+    /** Streams an Anthropic Messages request as the provider's own events; the stream ends `cancelled` when the application shuts down. */
+    messagesStream(request: AnthropicMessagesRequest, options: CallOptions<Profiles> = {}): AnthropicStream {
+        return this.router.messagesStream(request, this.#options(options))
     }
 
     /** Reads every breaker, blacklisted key, headroom and budget from the store. */

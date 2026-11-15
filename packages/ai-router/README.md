@@ -1,13 +1,15 @@
 # @starci/ai-router
 
-A router for OpenAI-compatible calls across many providers, each with an array of keys, behind one virtual key per app.
-It load-balances below (Anthropic, OpenRouter, Qwen, DeepSeek, OpenAI, Gemini, Groq and any OpenAI-compatible endpoint),
-blacklists a key whose quota is spent or whose secret is refused, and exposes one OpenAI-compatible API above. It is
-usable three ways over one engine:
+A router for chat and embeddings calls across many providers, each with an array of keys, behind one virtual key per
+app. It load-balances below (Anthropic, OpenRouter, Qwen, DeepSeek, OpenAI, Gemini, Groq and any OpenAI-compatible
+endpoint), blacklists a key whose quota is spent or whose secret is refused, and exposes one gateway above that speaks
+the OpenAI and the Anthropic protocols. It is usable three ways over one engine:
 
-- **as a gateway service** (`run.js serve`): an OpenAI-compatible HTTP endpoint (`/v1/chat/completions`, streaming
-  included, `/v1/embeddings`, `/v1/models`) with its own virtual API keys, per-key quotas and usage accounting, so any
-  app (LangChain, an OpenAI SDK, curl, a non-Node service) uses the pool by pointing its base URL at it;
+- **as a gateway service** (`run.js serve`): an HTTP endpoint in the OpenAI shape (`/v1/chat/completions`, streaming
+  included, `/v1/embeddings`, `/v1/models`) and in the Anthropic Messages shape (`/v1/messages`) with its own virtual
+  API keys, per-key quotas and usage accounting, so any app (LangChain, an OpenAI or Anthropic SDK, curl, a non-Node
+  service) uses the pool by pointing its base URL at it; `@starci/ai-router/langchain` hands a LangChain app the right
+  client for a name;
 - **as a NestJS module**: register the pool once at the app root, inject `AiRouterService`, and call `chat`, `stream`
   and `embeddings`; `AiRouterGatewayModule` hosts the gateway in the same process;
 - **as a plain Node library**: `createRouter(config)` from `@starci/ai-router/gateway`, with no Nest at all.
@@ -16,11 +18,13 @@ The router picks a healthy key for each attempt, backs off what is failing, hono
 quota or credit is spent until its window ends (or its secret changes), retries on a different key or provider, falls
 back across providers and models by profile, keeps embeddings on one model, and tells you what it did without ever
 exposing a key or a prompt. [docs/design.md](docs/design.md) is the design: the provider matrix, the error
-classification per provider, the blacklist lifecycle, profiles and key scopes, the Anthropic adapter and the env naming.
+classification per provider, the blacklist lifecycle, profiles and key scopes, the Anthropic adapter, prompt caching,
+thinking with tools, the native Anthropic route, the LangChain entry and the env naming.
 
 - ESM, typed, Node 20 or newer (the durable key store needs Node 22.13 or newer for `node:sqlite`). One runtime
   dependency, `yaml`, for the config file. `@nestjs/common`, `@nestjs/core` (11 or 12) and `reflect-metadata` are
   optional peer dependencies: the root entry needs them, `@starci/ai-router/gateway`, `@starci/ai-router/cli` and the `run.js` process entry do not.
+  `@langchain/openai`, `@langchain/anthropic` and `@langchain/core` are optional peers of `@starci/ai-router/langchain` alone.
 - OpenAI chat-completions and embeddings shapes in and out. A provider's `kind` sets its protocol, auth header, default
   base URL and error classification: `anthropic` (the Messages API, through a protocol adapter for chat, streaming,
   tools and JSON), `openrouter`, `qwen` (DashScope compatible mode), `deepseek`, `openai`, `gemini` (its OpenAI
@@ -57,7 +61,7 @@ AiRouterModule.registerAsync({
     useFactory: async () =>
         poolFromEnv({
             providers: [
-                { kind: "anthropic", models: [{ id: "claude-sonnet-5-5", cost: { input: 3, output: 15 } }] },
+                { kind: "anthropic", models: [{ id: "claude-sonnet-5-5", cost: { input: 2, output: 10, cacheRead: 0.1, cacheWrite: 2.5, cacheWrite1h: 4 } }] },
                 { kind: "openrouter", models: [{ id: "anthropic/claude-sonnet-5-5" }, { id: "openai/text-embedding-3-small", identity: "text-embedding-3-small", dimensions: 1536, capabilities: ["embeddings"] }] },
                 { kind: "deepseek", models: [{ id: "deepseek-v4-pro" }] },
                 { kind: "qwen", models: [{ id: "qwen3.8-max" }] },
@@ -148,15 +152,20 @@ profiles:
 |---|---|---|
 | `POST /v1/chat/completions` | virtual key | a chat completion; `stream: true` answers OpenAI `chat.completion.chunk` events over SSE ending with `data: [DONE]` |
 | `POST /v1/embeddings` | virtual key | an embeddings response |
-| `GET /v1/models`, `GET /v1/models/{id}` | virtual key | the profiles and pool models (ids and aliases) this key may call |
+| `POST /v1/messages` | virtual key (as `x-api-key`, or a bearer token) | an Anthropic message, untranslated, from an Anthropic provider; `stream: true` answers Anthropic's own events |
+| `GET /v1/models`, `GET /v1/models/{id}` | virtual key | the profiles and pool models (ids and aliases) this key may call, each with `kind` (the protocol of its first candidate), `kinds`, `serves` and, for embeddings, `dimensions` |
 | `GET /health` | none; the admin token adds the pool's breakers and keys | `{ "status": "ok" }`, or `degraded` when no provider has a usable key |
 | `/admin/keys...` | admin token | the [admin API](#admin-api) |
 
 A request's `model` names a profile (`chat`) or a pool model by id or alias (`gpt-4o-mini`, `fast`); a profile wins
 when a name is both. A profile call routes by the profile's policy; a direct model call falls back only to the pool
-defaults' fallbacks that the key may call itself. The answer is the provider's OpenAI body without the router's
-`routing`; the response carries `x-request-id`, and a unary one `x-ai-router-model` (the model that answered) and
-`x-ai-router-attempts`. For a stream the gateway always asks the provider for usage (for accounting) and forwards the
+defaults' fallbacks that the key may call itself. The answer is the provider's body without the router's `routing`
+(which names a key); the lane that answered is inside its usage, `usage.served = { provider, model, attempts, cost? }`,
+on every route, unary and streamed (the final usage chunk; the `message_start` event of an Anthropic stream). The
+response carries `x-request-id` (the client's own when it sends a well-formed one no call in flight uses, so an app in
+the router's process can match the call to the router's events; it must be unique per call), and a unary one
+`x-ai-router-provider`, `x-ai-router-model`, `x-ai-router-attempts` and `x-ai-router-cost`. A request header
+`x-ai-router-kind: openai` (or `anthropic`) keeps a chat call on the providers of that protocol. For a stream the gateway always asks the provider for usage (for accounting) and forwards the
 usage chunk only when the client set `stream_options.include_usage`. Nothing is sent before the first chunk, so a pool
 failure before the first token is an ordinary error response; after it, the stream ends with an OpenAI error event.
 
@@ -297,6 +306,63 @@ const completion = await client.chat.completions.create({ model: "chat", message
 ```sh
 curl http://127.0.0.1:3002/v1/chat/completions -H "Authorization: Bearer $STARCI_AI_KEY" \
   -H "content-type: application/json" -d '{"model":"chat","stream":true,"messages":[{"role":"user","content":"hi"}]}'
+```
+
+### LangChain clients by name
+
+An app that uses LangChain asks `@starci/ai-router/langchain` for the client of a name and never builds a provider
+client itself. `kind` is the wire protocol the gateway serves that name through (`openai` for every OpenAI-compatible
+provider, `anthropic` for an Anthropic one); the common path uses `model` and never reads it.
+
+```ts
+import { createRoutedModels, usageOf } from "@starci/ai-router/langchain"
+import { createAgent } from "langchain"
+
+const ai = createRoutedModels({ gatewayUrl: "http://127.0.0.1:3002", virtualKey: process.env.STARCI_AI_KEY ?? "", fetch: platformFetch, timeoutMs: 120_000 })
+
+const picked = await ai.chat("auto-heavy") // a pool model id, an alias or a profile
+const agent = createAgent({ model: picked.model, tools }) // a ChatAnthropic or a ChatOpenAI: the agent does not care
+const reply = await picked.model.invoke(messages)
+usageOf(reply) // { inputTokens, cacheReadTokens, cacheWriteTokens, outputTokens, reasoningTokens, model, provider, cost }
+
+if (picked.kind === "anthropic") {
+    // a provider's own feature, on its own client: automatic prompt caching as a call option
+    await picked.model.invoke(messages, { cache_control: { type: "ephemeral" } })
+}
+
+const next = picked.fallbacks[0] // the same name through its other protocol, for the app's own retry
+const { embeddings, dimensions } = await ai.embeddings("embed")
+```
+
+- `ai.chat(name, { timeoutMs?, maxTokens?, fields? })` reads the gateway's `GET /v1/models` once (again when a name is
+  unknown, or on `ai.refresh()`) and builds the client: `maxRetries: 0` (the router fails over between keys and
+  providers; the app owns its tries), usage on streams, the injected `fetch`, the timeout. `fields.openai` and
+  `fields.anthropic` are extra constructor fields of that kind's client.
+- A profile whose candidates span two protocols is the client of its first candidate's protocol; `fallbacks` holds the
+  other protocols' clients in the order the pool tries them, each kept on its own protocol's providers. Moving to one
+  is the app's retry.
+- `usageOf(reply)` has one shape for both kinds, unary and streamed (the chunks added up): `inputTokens` is the prompt
+  billed at the full price, beside the cache reads and writes; `model` and `provider` are the pool's ids of the lane
+  that answered.
+- `@langchain/openai`, `@langchain/anthropic` and `@langchain/core` are optional peer dependencies, imported when a kind
+  is first built: install the ones the pool's protocols need. A refusal is a `RoutedModelsError` with a code
+  (`ROUTED_NAME_UNKNOWN`, `ROUTED_CATALOG_UNAVAILABLE`, `ROUTED_KIND_UNSUPPORTED`, `ROUTED_NOT_CHAT`,
+  `ROUTED_NOT_EMBEDDINGS`, `ROUTED_PACKAGE_MISSING`).
+- A new protocol is one interface member and one factory: `declare module "@starci/ai-router/langchain" { interface
+  RoutedChatKinds { gemini: ChatGoogle } }` and `registerChatKind("gemini", async (context) => new ChatGoogle(...))`.
+
+### Call it from an Anthropic client
+
+`POST /v1/messages` speaks the Anthropic Messages protocol under the same virtual key, sent as `x-api-key`. The request
+reaches an Anthropic provider untranslated (cache breakpoints, thinking blocks, betas), the answer and the stream events
+come back as the provider sent them, and errors are in Anthropic's shape. A name only an OpenAI-protocol provider serves
+is refused 400 `model_not_supported`.
+
+```ts
+import Anthropic from "@anthropic-ai/sdk"
+
+const client = new Anthropic({ apiKey: process.env.STARCI_AI_KEY, baseURL: "http://127.0.0.1:3002", maxRetries: 0 })
+const message = await client.messages.create({ model: "sonnet", max_tokens: 16000, messages: [{ role: "user", content: "hi" }] })
 ```
 
 ### Deploy
@@ -515,10 +581,11 @@ A named registration provides no default instance; `@InjectAiRouterService()` wi
 | `providers[].headers` | extra headers for every request (the auth header, `authorization` or `x-api-key`, is ignored here) | none |
 | `providers[].weight` | multiplies the round-robin share of every lane of the provider | 1 |
 | `providers[].maxConcurrency` | in-flight requests across the provider's keys, in this process | unbounded |
-| `providers[].defaultMaxTokens` | the `max_tokens` sent to Anthropic, which requires one, when a request sets none | 4096 |
+| `providers[].defaultMaxTokens` | the `max_tokens` sent to Anthropic, which requires one, when neither the request nor the model's `params` sets one | 16000 |
+| `providers[].thinking` | on an `anthropic` provider: `drop` never sends an answer's thinking blocks back; `replay` sends a tool-calling turn back as it was received | `drop` |
 | `providers[].budget` | `{ costPerDay?, costPerMonth? }` in the models' cost unit; past it the provider is out until the next UTC day or month | none |
 | `providers[].keys[]` | `{ alias, env }` or `{ alias, resolve }`, plus `weight`, `maxConcurrency` (`keysFromEnv` builds them) | at least one |
-| `providers[].models[]` | `{ id, aliases?, contextWindow?, cost?, capabilities?, weight?, identity?, dimensions? }` | at least one |
+| `providers[].models[]` | `{ id, aliases?, contextWindow?, cost?, capabilities?, weight?, identity?, dimensions?, params?, omit?, forcedToolUse?, cacheControl? }` | at least one |
 | `defaults` | the policy every call starts from | none |
 | `profiles` | named policies a call selects with `{ profile }` | none |
 | `resilience.keyBreaker` | `{ failureThreshold, cooldownMs, maxCooldownMs }` per key | 3, 15000, 300000 |
@@ -536,11 +603,77 @@ A named registration provides no default instance; `@InjectAiRouterService()` wi
 | `random` | the jitter source | `Math.random` |
 
 A model's `id` is the name sent to the provider; a caller may name it by `id` or any alias, and an alias shared by
-several providers makes them interchangeable for that call. `cost` is per one million tokens, `input` and `output`, in
-whatever unit you budget in. `capabilities` defaults to `chat`, `streaming`, `tools` and `json`; an embeddings model
+several providers makes them interchangeable for that call. `cost` is per one million tokens, `input` and `output`
+plus the optional `cacheRead`, `cacheWrite` and `cacheWrite1h` (each `input` when left out), in whatever unit you
+budget in. `params`, `omit`, `forcedToolUse` and `cacheControl` shape the request for that model
+([One model's shape](#one-models-shape-never-the-apps)). `capabilities` defaults to `chat`, `streaming`, `tools` and `json`; an embeddings model
 declares `["embeddings"]` (refused on a kind with no embeddings API: `anthropic`, `deepseek`, `groq`). `identity` names
 one model served under different ids (`openai/text-embedding-3-small` at OpenRouter is `text-embedding-3-small`), and
 `dimensions` the vector length an embeddings model answers: a response of another length fails the attempt.
+
+## Prompt caching
+
+Mark cache breakpoints once, in the OpenAI shape; each lane receives them as its provider takes them, and a provider
+that caches a prefix on its own (DeepSeek, OpenAI, Gemini, most OpenAI-compatible endpoints) receives none:
+
+```ts
+await router.chat({
+    model: "auto-heavy",
+    messages: [
+        { role: "system", content: [
+            { type: "text", text: craft, cache_control: { type: "ephemeral", ttl: "1h" } }, // the tools render before it
+            { type: "text", text: shopRules, cache_control: { type: "ephemeral" } },
+            { type: "text", text: stepGoal, cache_control: { type: "ephemeral" } },
+        ] },
+        ...conversation,
+    ],
+    tools,
+    cache_control: { type: "ephemeral" }, // automatic: one breakpoint on the last cacheable block
+})
+```
+
+A breakpoint sits on a content part, on a message (its last part), on a tool, or at the top level. Anthropic takes at
+most four, the top-level one included: a request with more is refused as `invalid_request` before it is sent. `ttl` is
+`"5m"` (the default) or `"1h"`. An `anthropic` provider and `anthropic/*` models on `openrouter` take breakpoints;
+`cacheControl: true` on a model says its provider does too. [docs/design.md](docs/design.md#prompt-caching) has the
+table per provider.
+
+Usage reports the cache in one shape for every provider, and `cost` prices each part:
+
+```ts
+reply.usage
+// { prompt_tokens: 10000, completion_tokens: 500, total_tokens: 10500,
+//   prompt_tokens_details: { cached_tokens: 6000, cache_write_tokens: 3000, cache_write_1h_tokens: 1000 },
+//   completion_tokens_details: { reasoning_tokens: 200 } }
+// with cost: { input: 2, output: 10, cacheRead: 0.1, cacheWrite: 2.5, cacheWrite1h: 4 } (Claude Sonnet 5.5's list prices,
+// per million tokens, read 2026-11-10): 1000 at 2, 6000 at 0.1, 2000 at 2.5, 1000 at 4, 500 at 10.
+```
+
+`prompt_tokens` is the whole prompt; the cache reads and writes are parts of it. A cache price a model does not declare
+is its `input` price.
+
+## One model's shape, never the app's
+
+A request that fails over reaches the next model in that model's own shape, from the model's config:
+
+```ts
+{
+    id: "claude-sonnet-5-5",
+    cost: { input: 2, output: 10, cacheRead: 0.1, cacheWrite: 2.5, cacheWrite1h: 4 },
+    params: { max_tokens: 32000, output_config: { effort: "medium" } }, // sent when the request sets none
+    omit: ["temperature", "top_p", "top_k"], // never sent: this model refuses non-default sampling
+    forcedToolUse: false, // a forced tool_choice becomes auto plus an instruction: this model refuses to be forced
+}
+```
+
+With `forcedToolUse: false` a call is not guaranteed, so the caller checks that one was made and retries when none
+was, as it would for any optional tool call.
+
+On an `anthropic` provider, `thinking: "replay"` keeps the thinking blocks of an answer that calls tools in this
+process and sends the turn back exactly as it was received on the next request of the loop, while the conversation
+before it is unchanged; the default, `"drop"`, never sends them back, which the API accepts.
+[docs/design.md](docs/design.md#thinking-with-tools) says why, and what a client that speaks the Anthropic protocol to
+the gateway gets instead.
 
 ## Policies
 
@@ -634,7 +767,9 @@ reply; breaking out of the loop cancels the body and frees the key's slot.
   `afterFirstToken: true`. The router does not retry it, since a second answer cannot be spliced onto the first; retry
   the whole call if your use allows it.
 - `timeoutMs` bounds the wait for the first token and then each gap between chunks; `deadlineMs` bounds the whole
-  stream.
+  stream. A provider that shows it is at work before its first token (Anthropic's pings and hidden thinking) restarts
+  that wait, so a model that thinks for a minute is not timed out; a unary call has no such sign, so give a thinking
+  model's profile a `timeoutMs` that covers its thinking, or stream.
 - Stopping early counts as a success of the lane. Usage is read from a final usage chunk when the provider sends one
   (OpenAI does when you pass `stream_options: { include_usage: true }`).
 - Policy errors (an unknown model or profile) throw from `stream()` itself; everything else is thrown from iteration.
@@ -717,9 +852,14 @@ await app.close()
 ```
 
 A reply may set `status`, `headers`, `latencyMs`, `error: "network"`, `text`, `toolCalls` (`{ id, name, arguments,
-argumentChunks? }`), `usage`, `embedding`, a raw `body`, and `stream: { chunks, delayMs, failAfter, failWith: "network" |
+argumentChunks? }`), `thinking` (`{ text?, signature? }` blocks before the text), `usage`, `cache` (`{ read?, write?,
+write1h? }`, parts of the prompt, reported in the protocol's own usage shape), `reasoningTokens`, `embedding`, a raw
+`body`, and `stream: { chunks, delayMs, failAfter, failWith: "network" |
 "error-event", stallAfter, stallMs, includeUsage }`. A request to `/messages` (an `anthropic` provider) is answered in
-the Anthropic shape, unary and SSE, and its key is read from `x-api-key`. `PROVIDER_ERRORS[kind][case]` holds each
+the Anthropic shape, unary and SSE, and its key is read from `x-api-key`. Each recorded call lists where its request
+marked cache breakpoints, `call.cacheBreakpoints` (`top`, `system.<i>`, `tools.<i>`, `messages.<i>`,
+`messages.<i>.content.<j>`), the same for either protocol, so a spec asserts `["system.0", "system.1"]` reached Claude
+and `[]` reached DeepSeek. `PROVIDER_ERRORS[kind][case]` holds each
 provider's real error answers (`rate_limited`, `quota_exhausted`, `invalid_key`, `overloaded`, `bad_request`, and a
 provider's second shapes such as `anthropic.spend_cap` or `openrouter.free_daily`), to script with
 `fake.on({ key }, PROVIDER_ERRORS.anthropic.quota_exhausted)`. Everything is deterministic except the latencies you

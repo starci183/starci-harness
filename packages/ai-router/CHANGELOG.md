@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.7.0 - 2026-11-13
+
+One virtual key, two protocols: the gateway speaks Anthropic Messages beside OpenAI, a LangChain app asks for the client
+of a name, and prompt caching and thinking cross both. [docs/design.md](docs/design.md) has the sections "Prompt
+caching", "Thinking with tools", "A model's own request shape", "The native Anthropic route", "Who served, and what it
+cost" and "The LangChain entry" (Anthropic's docs read 2026-11-10; LangChain's packages read at the versions below).
+
+- Added: `@starci/ai-router/langchain`. `createRoutedModels({ gatewayUrl, virtualKey, fetch?, timeoutMs?, headers? })` gives `chat(name)`, a discriminated union by protocol (`{ kind: "openai", model: ChatOpenAI }`, `{ kind: "anthropic", model: ChatAnthropic }`, with `name` and `fallbacks`), `embeddings(name)` (`{ kind: "openai", embeddings: OpenAIEmbeddings, dimensions }`) and `refresh()`; `usageOf(reply)` reads one usage shape for both kinds (`inputTokens`, `cacheReadTokens`, `cacheWriteTokens`, `outputTokens`, `reasoningTokens`, `model`, `provider`, `cost`); `RoutedChatKinds` and `registerChatKind` add a kind without touching the core; `RoutedModelsError`. The clients never retry (`maxRetries: 0`). `@langchain/openai` (^1.8.2), `@langchain/anthropic` (^1.6.2) and `@langchain/core` (^1.3.5) are optional peer dependencies, imported when a kind is first built.
+- Added: the gateway's `POST /v1/messages`, the Anthropic Messages protocol under the same virtual key (`x-api-key` or a bearer token): the request reaches an Anthropic provider untranslated, the answer and stream events come back as sent, errors are in Anthropic's shape, `anthropic-beta` is forwarded, and a name no Anthropic provider serves is refused 400 `model_not_supported`. In process: `router.messages()` and `router.messagesStream()` (`AnthropicMessagesRequest`, `AnthropicMessageResult`, `AnthropicStream`, `AnthropicStreamEvent`), also on `AiRouterService`.
+- Added: `GET /v1/models` lists `kind`, `kinds`, `serves` and `dimensions` per name; the catalog has `providers` (`CatalogProvider`), `CatalogModel.protocols` and `dimensions`, `CatalogProfile.protocols` and `dimensions`. A request header `x-ai-router-kind: openai | anthropic` keeps a chat call on that protocol's providers.
+- Added: prompt-cache breakpoints in the OpenAI shape: `cache_control` (`{ type: "ephemeral", ttl? }`, `CacheControl`) on a content part, a message, a tool or the top level. The Anthropic adapter sends them as blocks, tool and top-level breakpoints (a marked system prompt becomes system blocks) and refuses more than four; `anthropic/*` on OpenRouter keeps part and top-level breakpoints; every other lane receives none. `ModelConfig.cacheControl` overrides per model.
+- Added: usage reports the cache and thinking apart, in one shape for every provider: `prompt_tokens_details.cached_tokens`, `cache_write_tokens`, `cache_write_1h_tokens` and `completion_tokens_details.reasoning_tokens` (`PromptTokensDetails`, `CompletionTokensDetails`); `ModelCost` takes `cacheRead`, `cacheWrite` and `cacheWrite1h` and a call's cost prices each part; `LaneStats` counts `cachedTokens`, `cacheWriteTokens` and `reasoningTokens`.
+- Added: a model's own request shape, applied per attempt on both routes: `ModelConfig.params` (default request fields), `omit` (fields never sent) and `forcedToolUse: false` (a forced `tool_choice` becomes `auto` plus an instruction, for models that refuse one).
+- Added: `ProviderConfig.thinking` on an `anthropic` provider: `drop` (the default) never sends thinking blocks back; `replay` keeps each tool-calling turn in process and sends it back exactly as received while the conversation before it is unchanged. Thinking text, when the request asks to see it, is `reasoning_content`.
+- Added: every answer names its lane inside its usage, `usage.served = { provider, model, attempts, cost? }`, on both routes, unary and streamed; response headers `x-ai-router-provider` and `x-ai-router-cost`; the gateway takes a client's well-formed `x-request-id` as the call's id.
+- Added: the fake provider scripts `thinking`, `cache` and `reasoningTokens`, gives each answer its own id (`FakeCall.answerId`), and records where each request marked cache breakpoints (`FakeCall.cacheBreakpoints`); `FakeThinking`, `FakeCacheUsage`.
+- Changed: the `max_tokens` an Anthropic provider is sent when nothing sets one is 16000 (was 4096): thinking counts toward it on current models. `defaultMaxTokens` or a model's `params` sets another.
+- Changed: a provider stream that shows it is at work before its first token (Anthropic's pings and hidden thinking) restarts the attempt's idle timeout instead of being timed out at `timeoutMs`.
+- Changed: Anthropic usage adds `cache_write_tokens` to `prompt_tokens_details` (and `cache_write_1h_tokens` when the answer splits writes); a refusal sets `message.refusal`.
+- Fixed: the README's and the design's example price of `claude-sonnet-5-5` (2 and 10 per million tokens, cache read 0.1, writes 2.5 and 4).
+
+### Migration from 0.6
+
+- A request that carried `cache_control` to a provider other than Anthropic or `anthropic/*` on OpenRouter no longer sends it; a model whose provider takes breakpoints (Gemini on OpenRouter, Qwen) sets `cacheControl: true`.
+- A pool with an Anthropic model whose output limit is below 16000 sets `defaultMaxTokens` (or the model's `params.max_tokens`).
+- A custom `Wire` takes the lane's `ModelConfig` in `chat` (was the model id) and may return and receive a `context`; `WireEvent` adds `alive`.
+- Code that builds a `RouterCatalog`, a `CatalogModel` or a `CatalogProfile` adds `providers` and `protocols`; code that implements `AiRouter` adds `messages` and `messagesStream`; a `LaneStats` literal adds the three token counters.
+- Fake answers carry `msg_fake_<n>` and `fake-<n>` ids, no longer `msg_fake` and `fake-stream`.
+
 ## 0.6.1 - 2026-11-13
 
 - Changed: the README's examples use neutral profile, label and owner names. No code changes.

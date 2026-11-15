@@ -127,8 +127,8 @@ describe("the Anthropic answer", () => {
             stop_reason: "tool_use",
             usage: { input_tokens: 10, output_tokens: 5, cache_read_input_tokens: 100, cache_creation_input_tokens: 20 },
         })
-        assert.deepEqual(answer.choices, [{ index: 0, message: { role: "assistant", content: "Let me check.", tool_calls: [{ id: "toolu_1", type: "function", function: { name: "weather", arguments: '{"city":"Hue"}' } }] }, finish_reason: "tool_calls" }])
-        assert.deepEqual(answer.usage, { prompt_tokens: 130, completion_tokens: 5, total_tokens: 135, prompt_tokens_details: { cached_tokens: 100 } })
+        assert.deepEqual(answer.choices, [{ index: 0, message: { role: "assistant", content: "Let me check.", reasoning_content: "...", tool_calls: [{ id: "toolu_1", type: "function", function: { name: "weather", arguments: '{"city":"Hue"}' } }] }, finish_reason: "tool_calls" }])
+        assert.deepEqual(answer.usage, { prompt_tokens: 130, completion_tokens: 5, total_tokens: 135, prompt_tokens_details: { cached_tokens: 100, cache_write_tokens: 20 } })
         const bare = fromAnthropicMessage({ content: [{ type: "tool_use", id: "t", name: "n" }] })
         assert.equal(bare.id, "anthropic")
         assert.deepEqual(bare.choices, [{ index: 0, message: { role: "assistant", content: null, tool_calls: [{ id: "t", type: "function", function: { name: "n", arguments: "{}" } }] }, finish_reason: null }])
@@ -159,7 +159,7 @@ describe("chat through an Anthropic provider", () => {
         assert.equal(result.object, "chat.completion")
         assert.equal(result.choices[0]?.message.content, "ok")
         assert.equal(result.choices[0].finish_reason, "stop")
-        assert.deepEqual(result.usage, { prompt_tokens: 10, completion_tokens: 2, total_tokens: 12, prompt_tokens_details: { cached_tokens: 0 } })
+        assert.deepEqual(result.usage, { prompt_tokens: 10, completion_tokens: 2, total_tokens: 12, prompt_tokens_details: { cached_tokens: 0, cache_write_tokens: 0 } })
         assert.equal(result.routing.provider, "anthropic")
     })
 
@@ -224,12 +224,12 @@ describe("streaming through an Anthropic provider", () => {
         assert.equal(fake.calls[0]?.body.stream, true)
         assert.equal(fake.calls[0].headers.accept, "text/event-stream")
         assert.deepEqual(chunks[0]?.choices[0]?.delta, { role: "assistant", content: "" })
-        assert.equal(chunks[0].id, "msg_fake")
+        assert.equal(chunks[0].id, "msg_fake_1")
         assert.equal(chunks[0].object, "chat.completion.chunk")
         assert.equal(text(chunks), "Hello world")
         assert.equal(chunks.at(-2)?.choices[0]?.finish_reason, "stop")
         assert.deepEqual(chunks.at(-1)?.choices, [])
-        assert.deepEqual(chunks.at(-1)?.usage, { prompt_tokens: 12, completion_tokens: 3, total_tokens: 15, prompt_tokens_details: { cached_tokens: 0 } })
+        assert.deepEqual(chunks.at(-1)?.usage, { prompt_tokens: 12, completion_tokens: 3, total_tokens: 15, prompt_tokens_details: { cached_tokens: 0, cache_write_tokens: 0 } })
     })
 
     test("a streamed tool_use block becomes tool_calls deltas with its arguments in pieces", async () => {

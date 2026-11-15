@@ -4,7 +4,7 @@ import { createServer } from "node:http"
 import type { IncomingMessage, Server, ServerResponse } from "node:http"
 import type { AddressInfo } from "node:net"
 import { AiRouterError } from "../errors.ts"
-import type { AiRouter, CallOptions, CatalogModel, ChatCompletionChunk, ChatCompletionRequest, EmbeddingsRequest, MaybePromise, ModelPolicy, RouterCatalog, Usage } from "../types.ts"
+import type { AiRouter, AnthropicMessagesRequest, AnthropicStreamEvent, CallOptions, CatalogModel, ChatCompletionChunk, ChatCompletionRequest, EmbeddingsRequest, MaybePromise, ModelPolicy, RouterCatalog, Usage } from "../types.ts"
 import { dayOf, KeyAdmin, KeyAdminError } from "./keys.ts"
 import type { KeySpec, KeyStore, MountedKeySpec, StoredKey } from "./keys.ts"
 
@@ -197,17 +197,65 @@ interface Target {
     readonly dropModel: boolean
 }
 
+/** One name of `GET /v1/models`: OpenAI's model object, plus how the gateway serves it. */
+interface ListedModel {
+    readonly id: string
+    readonly object: "model"
+    readonly created: number
+    readonly owned_by: string
+    /** The protocol of its first candidate: the client to speak to it with. Absent when nothing serves it. */
+    readonly kind?: Kind
+    /** Every protocol it is served through, in the order they are tried. */
+    readonly kinds: readonly Kind[]
+    readonly serves: readonly ("chat" | "embeddings")[]
+    /** The vector length of an embeddings name, when its model declares one. */
+    readonly dimensions?: number
+}
+
 /** An authenticated, admitted request on its way to the router. */
 interface Prepared {
     readonly key: StoredKey
     readonly body: Record<string, unknown>
     readonly target: Target
     readonly started: number
+    readonly requestId: string
 }
 
 interface Captured {
     usage?: Usage
     cost?: number
+    served?: Served
+}
+
+/** Which lane answered, as a response says it: never the key. */
+interface Served {
+    readonly provider: string
+    readonly model: string
+    readonly attempts: number
+    readonly cost?: number
+}
+
+/** A request id a client may name its call by: short, and nothing a header or a log line could be broken with. */
+const REQUEST_ID = /^[A-Za-z0-9._:-]{1,128}$/
+
+/** The wire protocols a client may speak to the gateway, and a model may be served through. */
+type Kind = "openai" | "anthropic"
+
+/** The header by which a client keeps its call on the providers of one protocol. */
+const KIND_HEADER = "x-ai-router-kind"
+
+/** A usage with the lane that answered inside it: the one place every client library hands on untouched. */
+function withRouting(usage: unknown, served: Served | undefined): unknown {
+    return isPlainRecord(usage) && served !== undefined ? { ...usage, served } : usage
+}
+
+/** A refusal in Anthropic's error shape, for a client that speaks the Messages API. */
+function nativeErrorBody(error: GatewayError): { type: "error"; error: { type: string; message: string; code: string } } {
+    return { type: "error", error: { type: error.type, message: error.message, code: error.code } }
+}
+
+function servedHeaders(served: Served): Record<string, string> {
+    return { "x-ai-router-provider": served.provider, "x-ai-router-model": served.model, "x-ai-router-attempts": String(served.attempts), ...(served.cost === undefined ? {} : { "x-ai-router-cost": String(served.cost) }) }
 }
 
 /** Creates the gateway over a router; nothing listens until `listen`. */
@@ -227,7 +275,18 @@ export function createGateway(router: AiRouter, options: GatewayOptions): AiRout
         if (slot === undefined || event.outcome !== "success") return
         if (event.usage !== undefined) slot.usage = event.usage
         if (event.cost !== undefined) slot.cost = event.cost
+        slot.served = { provider: event.provider, model: event.model, attempts: event.attempt, ...(event.cost === undefined ? {} : { cost: event.cost }) }
     })
+    const inflight = new Set<string>()
+
+    /**
+     * The id of one call: the client's own `x-request-id` when it sends a well-formed one no call in flight uses, so an
+     * app in the router's process can match its call to the router's events; else a new one.
+     */
+    function requestIdOf(request: IncomingMessage): string {
+        const named = request.headers["x-request-id"]
+        return typeof named === "string" && REQUEST_ID.test(named) && !inflight.has(named) ? named : randomUUID()
+    }
 
     function report(error: unknown): void {
         try {
@@ -252,8 +311,10 @@ export function createGateway(router: AiRouter, options: GatewayOptions): AiRout
     }
 
     async function authenticate(request: IncomingMessage): Promise<StoredKey> {
-        const secret = bearer(request)
-        if (secret === undefined) throw new GatewayError(401, "missing_api_key", "send the key as Authorization: Bearer sk-starci-...")
+        // An Anthropic client sends its key as x-api-key; it is the same virtual key.
+        const named = request.headers["x-api-key"]
+        const secret = bearer(request) ?? (typeof named === "string" && named !== "" ? named : undefined)
+        if (secret === undefined) throw new GatewayError(401, "missing_api_key", "send the key as Authorization: Bearer sk-starci-... (or as x-api-key)")
         const key = await admin.authenticate(secret)
         if (key === undefined) throw new GatewayError(401, "invalid_api_key", "the API key is not valid")
         if (key.revokedAt !== null) throw new GatewayError(401, "invalid_api_key", "the API key was revoked")
@@ -261,7 +322,22 @@ export function createGateway(router: AiRouter, options: GatewayOptions): AiRout
         return key
     }
 
-    function target(key: StoredKey, name: unknown, operation: "chat" | "embeddings"): Target {
+    /** The providers that speak one protocol; a call narrowed to a kind is routed among them only. */
+    function providersOf(kind: Kind): string[] {
+        return catalog.providers.filter((provider) => provider.protocol === kind).map((provider) => provider.id)
+    }
+
+    /** Narrows a target to the providers of one protocol, refusing a name none of them serves. */
+    function narrowed(routed: Target, name: string, served: readonly Kind[], kind: Kind | undefined): Target {
+        if (kind === undefined) return routed
+        if (!served.includes(kind)) {
+            const route = served.includes("anthropic") ? "/v1/messages" : "/v1/chat/completions"
+            throw new GatewayError(400, "model_not_supported", `"${name}" is not served through the ${kind} protocol: call it at ${route}`)
+        }
+        return { ...routed, options: { ...routed.options, policy: { ...routed.options.policy, providers: providersOf(kind) } } }
+    }
+
+    function target(key: StoredKey, name: unknown, operation: "chat" | "embeddings", kind?: Kind): Target {
         if (typeof name !== "string" || name === "") throw new GatewayError(400, "missing_model", "model is required: a profile name or a model id")
         const pinned: ModelPolicy = key.allowFallback ? {} : { allowFallback: false }
         const needs = operation === "embeddings" ? "embeddings" : "chat"
@@ -269,7 +345,7 @@ export function createGateway(router: AiRouter, options: GatewayOptions): AiRout
         if (profile !== undefined) {
             if (!allows(key.profiles, name)) throw new GatewayError(403, "model_not_allowed", `this key may not call profile "${name}"`)
             if (profile.serves.length > 0 && !profile.serves.includes(needs)) throw new GatewayError(400, "model_not_supported", `the profile "${name}" does not serve ${operation}`)
-            return { options: { profile: name, ...(key.allowFallback ? {} : { policy: pinned }) }, dropModel: true }
+            return narrowed({ options: { profile: name, ...(key.allowFallback ? {} : { policy: pinned }) }, dropModel: true }, name, profile.protocols, kind)
         }
         const model = modelNamed(catalog, name)
         if (model === undefined) throw new GatewayError(404, "model_not_found", `the model "${name}" does not exist`)
@@ -283,7 +359,7 @@ export function createGateway(router: AiRouter, options: GatewayOptions): AiRout
             const entry = modelNamed(catalog, fallback)
             return entry !== undefined && entry.id !== model.id && modelAllowed(key, entry)
         })
-        return { options: { policy: { model: name, fallbacks, ...pinned } }, dropModel: false }
+        return narrowed({ options: { policy: { model: name, fallbacks, ...pinned } }, dropModel: false }, name, model.protocols, kind)
     }
 
     async function admit(key: StoredKey, now: number): Promise<void> {
@@ -316,16 +392,20 @@ export function createGateway(router: AiRouter, options: GatewayOptions): AiRout
     }
 
     /** Reads the body and applies the key's bindings and quotas; a refusal is recorded against the key. */
-    async function prepare(key: StoredKey, request: IncomingMessage, operation: "chat" | "embeddings"): Promise<Prepared> {
+    async function prepare(key: StoredKey, request: IncomingMessage, operation: "chat" | "embeddings", native = false): Promise<Prepared> {
         const started = clock()
         try {
             const body = await readBody(request, maxBody)
             if (!isPlainRecord(body)) throw new GatewayError(400, "invalid_request", "the request body must be a JSON object")
             if (operation === "chat" && !Array.isArray(body.messages)) throw new GatewayError(400, "invalid_request", "messages is required")
+            const asked = request.headers[KIND_HEADER]
+            if (asked !== undefined && asked !== "openai" && asked !== "anthropic") throw new GatewayError(400, "invalid_request", `${KIND_HEADER} must be openai or anthropic`)
+            // A Messages request is served by Anthropic providers only: nothing translates it for another protocol.
+            const kind: Kind | undefined = native ? "anthropic" : operation === "chat" ? asked : undefined
             if (operation === "embeddings" && typeof body.input !== "string" && !Array.isArray(body.input)) throw new GatewayError(400, "invalid_request", "input is required")
-            const resolved = target(key, body.model, operation)
+            const resolved = target(key, body.model, operation, kind)
             await admit(key, started)
-            return { key, body, target: resolved, started }
+            return { key, body, target: resolved, started, requestId: requestIdOf(request) }
         } catch (error) {
             if (error instanceof GatewayError) await record(key, started, error.outcome, undefined, undefined)
             throw error
@@ -347,25 +427,27 @@ export function createGateway(router: AiRouter, options: GatewayOptions): AiRout
         return controller
     }
 
-    async function unary(response: ServerResponse, operation: "chat" | "embeddings", { key, body, target: routed, started }: Prepared): Promise<void> {
-        const requestId = randomUUID()
+    async function unary(response: ServerResponse, operation: "chat" | "embeddings", { key, body, target: routed, started, requestId }: Prepared): Promise<void> {
         const headers = { "x-request-id": requestId }
         const options: CallOptions = { ...routed.options, requestId, signal: controllerFor(response).signal }
+        inflight.add(requestId)
         try {
             const result =
                 operation === "chat" ? await router.chat(callBody(body, routed) as unknown as ChatCompletionRequest, options) : await router.embeddings(callBody(body, routed) as unknown as EmbeddingsRequest, options)
             const { routing, ...answer } = result
-            send(response, 200, answer, { ...headers, "x-ai-router-model": routing.model, "x-ai-router-attempts": String(routing.attempts) })
+            const served: Served = { provider: routing.provider, model: routing.model, attempts: routing.attempts, ...(routing.cost === undefined ? {} : { cost: routing.cost }) }
+            send(response, 200, { ...answer, ...(answer.usage === undefined ? {} : { usage: withRouting(answer.usage, served) }) }, { ...headers, ...servedHeaders(served) })
             await record(key, started, "success", result.usage, routing.cost)
         } catch (error) {
             const refusal = fromRouterError(error, clock())
             await record(key, started, `error:${error instanceof AiRouterError ? error.errorClass : "unknown"}`, undefined, undefined)
             sendError(response, refusal, headers)
+        } finally {
+            inflight.delete(requestId)
         }
     }
 
-    async function stream(response: ServerResponse, { key, body, target: routed, started }: Prepared): Promise<void> {
-        const requestId = randomUUID()
+    async function stream(response: ServerResponse, { key, body, target: routed, started, requestId }: Prepared): Promise<void> {
         const headers = { "x-request-id": requestId }
         const controller = controllerFor(response)
         // Usage is always asked of the provider, for the key's accounting; the client gets the usage chunk only if it asked.
@@ -374,6 +456,9 @@ export function createGateway(router: AiRouter, options: GatewayOptions): AiRout
         const call = { ...callBody(body, routed), stream_options: { ...asked, include_usage: true } } as unknown as ChatCompletionRequest
         const slot: Captured = {}
         captured.set(requestId, slot)
+        inflight.add(requestId)
+        // The usage chunk closes the stream: it is held until the attempt has settled, so it can say which lane answered.
+        let last: ChatCompletionChunk | undefined
         let outcome = "success"
         let iterator: AsyncIterator<ChatCompletionChunk> | undefined
         try {
@@ -384,8 +469,9 @@ export function createGateway(router: AiRouter, options: GatewayOptions): AiRout
             try {
                 while (next.done !== true) {
                     const chunk = next.value
-                    if (wantsUsage || chunk.usage === undefined || chunk.usage === null) await write(response, `data: ${JSON.stringify(chunk)}\n\n`)
-                    else if (chunk.choices.length > 0) {
+                    if (chunk.choices.length === 0 && chunk.usage !== undefined && chunk.usage !== null) last = chunk
+                    else if (wantsUsage || chunk.usage === undefined || chunk.usage === null) await write(response, `data: ${JSON.stringify(chunk)}\n\n`)
+                    else {
                         const rest: Record<string, unknown> = { ...chunk }
                         delete rest.usage
                         await write(response, `data: ${JSON.stringify(rest)}\n\n`)
@@ -396,6 +482,7 @@ export function createGateway(router: AiRouter, options: GatewayOptions): AiRout
                     }
                     next = await iterator.next()
                 }
+                if (outcome === "success" && wantsUsage && last !== undefined) await write(response, `data: ${JSON.stringify({ ...last, usage: withRouting(last.usage, slot.served) })}\n\n`)
                 if (outcome === "success") response.end("data: [DONE]\n\n")
             } catch (error) {
                 // After the first token the status is sent; the failure goes down the stream as an OpenAI error object.
@@ -408,22 +495,117 @@ export function createGateway(router: AiRouter, options: GatewayOptions): AiRout
         } finally {
             await iterator?.return?.()
             captured.delete(requestId)
+            inflight.delete(requestId)
             await record(key, started, outcome, slot.usage, slot.cost)
         }
     }
 
-    function listed(key: StoredKey): { id: string; object: "model"; created: number; owned_by: string }[] {
-        const out = new Map<string, { id: string; object: "model"; created: number; owned_by: string }>()
+    /**
+     * What the calling key may name, each with the protocols it is served through: `kind` is the first (a profile's first
+     * candidate's), `kinds` all of them in the order they are tried; an embeddings name says its vector length.
+     */
+    function listed(key: StoredKey): ListedModel[] {
+        const out = new Map<string, ListedModel>()
+        const described = (protocols: readonly Kind[], serves: readonly ("chat" | "embeddings")[], dimensions: number | undefined): Pick<ListedModel, "kind" | "kinds" | "serves" | "dimensions"> => ({
+            ...(protocols[0] === undefined ? {} : { kind: protocols[0] }),
+            kinds: protocols,
+            serves,
+            ...(dimensions === undefined ? {} : { dimensions }),
+        })
         for (const profile of catalog.profiles) {
-            if (allows(key.profiles, profile.name)) out.set(profile.name, { id: profile.name, object: "model", created: 0, owned_by: "profile" })
+            if (allows(key.profiles, profile.name)) out.set(profile.name, { id: profile.name, object: "model", created: 0, owned_by: "profile", ...described(profile.protocols, profile.serves, profile.dimensions) })
         }
         for (const model of catalog.models) {
             if (!modelAllowed(key, model)) continue
+            const serves = (["chat", "embeddings"] as const).filter((operation) => model.capabilities.includes(operation))
             for (const name of [model.id, ...model.aliases]) {
-                if (!out.has(name)) out.set(name, { id: name, object: "model", created: 0, owned_by: model.providers.join(",") })
+                if (!out.has(name)) out.set(name, { id: name, object: "model", created: 0, owned_by: model.providers.join(","), ...described(model.protocols, serves, model.dimensions) })
             }
         }
         return [...out.values()]
+    }
+
+    function sendNativeError(response: ServerResponse, error: GatewayError, headers: Readonly<Record<string, string>> = {}): void {
+        send(response, error.status, nativeErrorBody(error), error.retryAfter === undefined ? headers : { ...headers, "retry-after": String(error.retryAfter) })
+    }
+
+    /** The headers of an Anthropic client the provider must see: its beta features. */
+    function nativeHeaders(request: IncomingMessage): Record<string, string> {
+        const beta = request.headers["anthropic-beta"]
+        return typeof beta === "string" && beta !== "" ? { "anthropic-beta": beta } : {}
+    }
+
+    /** A Messages request answered by an Anthropic provider, its body untouched but for the lane inside `usage`. */
+    async function messagesUnary(request: IncomingMessage, response: ServerResponse, { key, body, target: routed, started, requestId }: Prepared): Promise<void> {
+        const headers = { "x-request-id": requestId }
+        inflight.add(requestId)
+        try {
+            const result = await router.messages(callBody(body, routed) as unknown as AnthropicMessagesRequest, { ...routed.options, requestId, signal: controllerFor(response).signal, headers: nativeHeaders(request) })
+            const routing = result.routing
+            const served: Served = { provider: routing.provider, model: routing.model, attempts: routing.attempts, ...(routing.cost === undefined ? {} : { cost: routing.cost }) }
+            send(response, 200, { ...result.message, usage: withRouting(result.message.usage, served) }, { ...headers, ...servedHeaders(served) })
+            await record(key, started, "success", result.usage, routing.cost)
+        } catch (error) {
+            await record(key, started, `error:${error instanceof AiRouterError ? error.errorClass : "unknown"}`, undefined, undefined)
+            sendNativeError(response, fromRouterError(error, clock()), headers)
+        } finally {
+            inflight.delete(requestId)
+        }
+    }
+
+    /** A Messages stream: the provider's own events, the first one naming the lane inside the message's `usage`. */
+    async function messagesStream(request: IncomingMessage, response: ServerResponse, { key, body, target: routed, started, requestId }: Prepared): Promise<void> {
+        const headers = { "x-request-id": requestId }
+        const controller = controllerFor(response)
+        const slot: Captured = {}
+        captured.set(requestId, slot)
+        inflight.add(requestId)
+        let outcome = "success"
+        let iterator: AsyncIterator<AnthropicStreamEvent> | undefined
+        const frame = (event: string, data: string): string => `event: ${event}\ndata: ${data}\n\n`
+        try {
+            iterator = router.messagesStream(callBody(body, routed) as unknown as AnthropicMessagesRequest, { ...routed.options, requestId, signal: controller.signal, headers: nativeHeaders(request) })[Symbol.asyncIterator]()
+            // Nothing is sent before the first event, so a pool failure before the first content is an ordinary error response.
+            let next = await iterator.next()
+            const first = next.done === true ? undefined : next.value
+            response.writeHead(200, {
+                "content-type": "text/event-stream; charset=utf-8",
+                "cache-control": "no-cache",
+                connection: "keep-alive",
+                "x-accel-buffering": "no",
+                ...headers,
+                ...(first === undefined ? {} : { "x-ai-router-provider": first.provider, "x-ai-router-model": first.model }),
+            })
+            try {
+                while (next.done !== true) {
+                    const event = next.value
+                    let data = event.data
+                    if (event.event === "message_start") {
+                        const parsed: unknown = JSON.parse(data)
+                        if (isPlainRecord(parsed) && isPlainRecord(parsed.message)) data = JSON.stringify({ ...parsed, message: { ...parsed.message, usage: withRouting(parsed.message.usage ?? {}, { provider: event.provider, model: event.model, attempts: 1 }) } })
+                    }
+                    await write(response, frame(event.event, data))
+                    if (response.destroyed) {
+                        outcome = "cancelled"
+                        break
+                    }
+                    next = await iterator.next()
+                }
+                if (outcome === "success") response.end()
+            } catch (error) {
+                // After the first event the status is sent; the failure goes down the stream as Anthropic's error event.
+                outcome = `error:${error instanceof AiRouterError ? error.errorClass : "unknown"}`
+                if (!response.destroyed) response.end(frame("error", JSON.stringify(nativeErrorBody(fromRouterError(error, clock())))))
+            }
+        } catch (error) {
+            outcome = `error:${error instanceof AiRouterError ? error.errorClass : "unknown"}`
+            sendNativeError(response, fromRouterError(error, clock()), headers)
+        } finally {
+            await iterator?.return?.()
+            captured.delete(requestId)
+            inflight.delete(requestId)
+            await record(key, started, outcome, slot.usage, slot.cost)
+        }
     }
 
     async function models(request: IncomingMessage, response: ServerResponse, id: string | null): Promise<void> {
@@ -540,6 +722,19 @@ export function createGateway(router: AiRouter, options: GatewayOptions): AiRout
             const prepared = await prepare(await authenticate(request), request, operation)
             if (operation === "chat" && prepared.body.stream === true) await stream(response, prepared)
             else await unary(response, operation, prepared)
+            return
+        }
+        if (path === "/v1/messages") {
+            // A client of the Messages API reads refusals in Anthropic's error shape.
+            try {
+                only("POST")
+                const prepared = await prepare(await authenticate(request), request, "chat", true)
+                if (prepared.body.stream === true) await messagesStream(request, response, prepared)
+                else await messagesUnary(request, response, prepared)
+            } catch (error) {
+                if (!(error instanceof GatewayError) || response.headersSent) throw error
+                sendNativeError(response, error)
+            }
             return
         }
         throw new GatewayError(404, "not_found", `no route ${method} ${path}`)

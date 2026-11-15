@@ -100,8 +100,8 @@ describe("the catalog", () => {
         const catalog = router.catalog()
         assert.deepEqual(catalog.defaults, { model: "m1", fallbacks: ["m2"] })
         assert.deepEqual(catalog.profiles, [
-            { name: "quick", model: "fast", fallbacks: ["m2"], pinned: false, serves: ["chat"] },
-            { name: "pinned", model: "m2", fallbacks: [], pinned: false, serves: ["chat"] },
+            { name: "quick", model: "fast", fallbacks: ["m2"], pinned: false, serves: ["chat"], protocols: ["openai"] },
+            { name: "pinned", model: "m2", fallbacks: [], pinned: false, serves: ["chat"], protocols: ["openai"] },
         ])
         assert.deepEqual(
             catalog.models.map((model) => [model.id, model.aliases, model.providers]),

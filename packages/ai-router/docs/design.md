@@ -1,8 +1,9 @@
 # @starci/ai-router design: many providers below, one virtual key above
 
-This is the design of `@starci/ai-router` 0.5: how a pool of upstream providers, each with an array of keys, is
-load-balanced behind one OpenAI-compatible gateway, how a key whose quota is spent or whose secret is refused is
-blacklisted, and how an app declares all of it from env. The README is the reference of every option; this document
+This is the design of `@starci/ai-router`: how a pool of upstream providers, each with an array of keys, is
+load-balanced behind one gateway that speaks the OpenAI and the Anthropic protocols, how a key whose quota is spent or
+whose secret is refused is blacklisted, how prompt caching and thinking cross the protocols, and how an app declares
+all of it from env. The README is the reference of every option; this document
 says why the pieces are shaped as they are, and what was read to shape them.
 
 ## The shape
@@ -19,9 +20,10 @@ says why the pieces are shaped as they are, and what was read to shape them.
                                                                               └── groq, ollama, vllm, ...    OpenAI
 ```
 
-- **Above:** every client of an app speaks OpenAI chat-completions and embeddings to the gateway with one virtual key
-  per app and environment (`STARCI_AI_KEY`, `sk-starci-<label>-...`), mounted from a sealed secret
-  (`virtualKeyFromEnv`). It names a profile as its `model`. No app uses the admin token or the admin API; both stay in
+- **Above:** every client of an app speaks OpenAI chat-completions and embeddings, or Anthropic Messages
+  (`/v1/messages`), to the gateway with one virtual key per app and environment (`STARCI_AI_KEY`,
+  `sk-starci-<label>-...`), mounted from a sealed secret (`virtualKeyFromEnv`). It names a profile as its `model`; a
+  LangChain app asks `@starci/ai-router/langchain` for the client of that name. No app uses the admin token or the admin API; both stay in
   the package for an operator who runs the standalone gateway.
 - **Below:** each provider is declared with an array of keys (`<PREFIX>_API_KEY`, `_2`, ...). A lane is one
   (provider, key, model). The router picks a lane per attempt by health, weight and headroom, and translates the
@@ -34,7 +36,7 @@ package's. The table is what `PROVIDER_PRESETS` (`src/providers.ts`) encodes.
 
 | kind | default base URL | protocol | auth header | embeddings | env prefix | docs read |
 |---|---|---|---|---|---|---|
-| `anthropic` | `https://api.anthropic.com/v1` (`/messages`) | Anthropic Messages, through the adapter | `x-api-key`, `anthropic-version: 2023-06-01` | none | `ANTHROPIC` | platform.claude.com/docs/en/api/errors, /api/rate-limits, /api/messages, /build-with-claude/streaming, /build-with-claude/handling-stop-reasons, /build-with-claude/structured-outputs, /models/overview |
+| `anthropic` | `https://api.anthropic.com/v1` (`/messages`) | Anthropic Messages, through the adapter | `x-api-key`, `anthropic-version: 2023-06-01` | none | `ANTHROPIC` | platform.claude.com/docs/en/api/errors, /api/rate-limits, /api/messages, /build-with-claude/streaming, /build-with-claude/handling-stop-reasons, /build-with-claude/structured-outputs, /models/overview; on 2026-11-10 /build-with-claude/prompt-caching, /thinking, /thinking-tool-workflows, /preserved-thinking |
 | `openrouter` | `https://openrouter.ai/api/v1` | OpenAI | `Authorization: Bearer` (optional `HTTP-Referer`, `X-OpenRouter-Title` as provider `headers`) | yes (`/embeddings`) | `OPENROUTER` | openrouter.ai/docs/api/reference/overview, /errors-and-debugging, /limits, /embeddings |
 | `qwen` | `https://dashscope-intl.aliyuncs.com/compatible-mode/v1` (Singapore; `DASHSCOPE_BASE_URL` for `dashscope.aliyuncs.com` or a workspace host `{WorkspaceId}.<region>.maas.aliyuncs.com`) | OpenAI (DashScope compatible mode) | `Authorization: Bearer` | yes (`text-embedding-v4`, default 1024 dims) | `DASHSCOPE` | alibabacloud.com/help/en/model-studio/compatibility-of-openai-with-dashscope, /error-code, /embedding, /models |
 | `deepseek` | `https://api.deepseek.com` | OpenAI | `Authorization: Bearer` | none | `DEEPSEEK` | api-docs.deepseek.com, /quick_start/error_codes, /quick_start/rate_limit |
@@ -184,11 +186,12 @@ auth headers, request body, unary answer and stream events.
 
 | OpenAI request | Anthropic request |
 |---|---|
-| `system` and `developer` messages | top-level `system`, joined by a blank line |
+| `system` and `developer` messages | top-level `system`: one string joined by a blank line, or blocks when a part marks a cache breakpoint |
+| `cache_control` on a part, a message, a tool or the top level | the same breakpoint on the block, the tool or the request ("Prompt caching") |
 | `user` content string or parts; `image_url` (data URL or URL) | `text` blocks; `image` with a `base64` or `url` source; empty text left out |
 | `assistant` content and `tool_calls` | `text` blocks then `tool_use` blocks (`arguments` parsed; not JSON is refused) |
 | `tool` messages | `tool_result` blocks in a user turn; consecutive turns of one role merge |
-| `max_completion_tokens` / `max_tokens` | `max_tokens` (required: else the provider's `defaultMaxTokens`, else 4096) |
+| `max_completion_tokens` / `max_tokens` | `max_tokens` (required: else the model's `params`, else the provider's `defaultMaxTokens`, else 16000) |
 | `stop` | `stop_sequences` |
 | `tools` (`function`) | `{ name, description, input_schema, strict }`; other tool types pass as they are |
 | `tool_choice` `auto` / `none` / `required` / `{ function }`, `parallel_tool_calls: false` | `auto` / `none` / `any` / `{ type: "tool", name }`, `disable_parallel_tool_use` |
@@ -199,21 +202,188 @@ auth headers, request body, unary answer and stream events.
 | `n` above 1 | refused, `invalid_request` |
 | `seed`, penalties, `logprobs`, `stream_options` | dropped |
 
-Answers: text blocks join into `content`, `tool_use` blocks become `tool_calls`, thinking blocks are dropped;
-`stop_reason` maps `end_turn`/`stop_sequence`/`pause_turn` to `stop`, `max_tokens`/`model_context_window_exceeded` to
-`length`, `tool_use` to `tool_calls`, `refusal` to `content_filter`; usage counts cache reads and writes into
-`prompt_tokens` and reports cache reads as `prompt_tokens_details.cached_tokens`.
+Answers: text blocks join into `content`, `tool_use` blocks become `tool_calls`, the text of thinking blocks (empty
+unless the request asked to see it) becomes `reasoning_content`, and the blocks themselves follow "Thinking with
+tools"; `stop_reason` maps `end_turn`/`stop_sequence`/`pause_turn` to `stop`, `max_tokens`/
+`model_context_window_exceeded` to `length`, `tool_use` to `tool_calls`, `refusal` to `content_filter` with the reason
+as `message.refusal`; usage is the shape of "Prompt caching".
 
 Streams: `message_start` becomes the role chunk; `text_delta` content chunks; a `tool_use` block start a `tool_calls`
 delta with id and name, and its `input_json_delta` pieces argument deltas at the tool call's own index; `message_delta`
-the finish reason (its usage is cumulative); `message_stop` a final usage chunk. `ping`, `content_block_stop`, thinking
-deltas and event types Anthropic adds later are skipped, as its docs ask. An `error` event is classified like an error
+the finish reason (its usage is cumulative, and the last one holds the thinking tokens); `message_stop` a final usage
+chunk. `ping`, `content_block_stop`, hidden thinking deltas and event types Anthropic adds later carry nothing for the
+caller, as its docs ask, but each restarts the attempt's idle timeout: a model that thinks for a minute before its
+first visible token is at work, not stalled (the call's `deadlineMs` still bounds it). An `error` event is classified like an error
 status; a stream that ends before `message_stop` is a failed attempt. Failover is before the first token only, as for
 every provider.
 
-Current models need care the adapter does not take for you: forced tool use (`tool_choice` `any`/`tool`) is refused on
-Opus 5.5 and Sonnet 5.5, a `temperature` below 1 on 4.7 and later, and assistant prefill on 4.6 and later. These answer 400
-and are not retried.
+Current models refuse requests older ones took: a forced tool choice (`tool_choice` `any`/`tool`) on Opus 5.5 and
+Sonnet 5.5, non-default sampling parameters on 4.7 and later, `thinking: { type: "disabled" }` on Opus 5.5 and
+Sonnet 5.5, assistant prefill on 4.6 and later. They answer 400 and are not retried. The first three are a model's
+config ("A model's own request shape"), never the app's; prefill has no replacement but structured output.
+
+The adapter sends `anthropic-version: 2023-06-01`, the version it is written against; a provider header overrides it.
+`2026-10-21` refuses `temperature`, `top_p` and `top_k` at any value.
+
+## Prompt caching
+
+A provider caches a prompt prefix either on its own (DeepSeek, OpenAI, Gemini, Groq, most OpenAI-compatible endpoints)
+or at breakpoints the request marks (Anthropic, and `anthropic/*` through OpenRouter). An app marks breakpoints once, in
+the OpenAI shape, and each lane receives them in the form its provider takes, or not at all:
+
+```ts
+await router.chat({
+    model: "auto-heavy",
+    messages: [
+        { role: "system", content: [
+            { type: "text", text: craft, cache_control: { type: "ephemeral", ttl: "1h" } },  // L1; the tools render before it
+            { type: "text", text: shopRules, cache_control: { type: "ephemeral" } },          // L2
+            { type: "text", text: stepGoal, cache_control: { type: "ephemeral" } },           // L3
+        ] },
+        ...conversation,                                                                       // L4, append-only
+    ],
+    tools,
+    cache_control: { type: "ephemeral" },  // automatic: one more breakpoint on the last cacheable block
+})
+```
+
+| where the request marks it | Anthropic provider | `anthropic/*` on OpenRouter | every other lane |
+|---|---|---|---|
+| a content part (`text`, `image_url`) of a system, user or assistant message | `cache_control` on that block; a marked system prompt is sent as blocks, one per part | kept on the part | removed |
+| a message (`cache_control` beside `content`) | on the message's last block; on the `tool_result` for a tool message | moved to the last part (a string content becomes one text part) | removed |
+| a tool (`cache_control` beside `function`) | on the tool definition | removed: tools render before the system prompt, whose breakpoint covers them | removed |
+| the top level | top-level `cache_control` (automatic caching) | kept | removed |
+
+- **Limit.** Anthropic takes at most four breakpoints, the top-level one included; a request that marks more is refused
+  by the adapter as `invalid_request`, before it is sent. The TTL (`"5m"`, the default, or `"1h"`) passes as written; a
+  one-hour entry must sit before any five-minute one, which the API enforces.
+- **Who takes markers.** `ModelConfig.cacheControl` decides for a model; without it, an `anthropic` provider and
+  `anthropic/*` models on `openrouter` take them and nothing else does. A direct Qwen model or a Gemini model on
+  OpenRouter, which take explicit breakpoints too, set `cacheControl: true`.
+- **What is cached.** The render order is tools, system, messages, and a breakpoint caches everything before it. A
+  system prompt with no breakpoint is one string; a marked one becomes blocks, so adding the first
+  breakpoint changes the prefix once. A prompt below the model's minimum (512 tokens on Sonnet 5.5) is not cached and
+  no error says so: read the usage.
+
+Usage is one shape for every lane. `prompt_tokens` is the whole prompt; its cache parts are in
+`prompt_tokens_details`: `cached_tokens` (read), `cache_write_tokens` (written, every lifetime together) and
+`cache_write_1h_tokens` (the one-hour part, when the provider splits it); thinking is
+`completion_tokens_details.reasoning_tokens`, a part of `completion_tokens`. Anthropic lists the uncached input apart
+from the cache reads and writes; the adapter adds them up. A model's `cost` prices each part: `cacheRead`, `cacheWrite`
+and `cacheWrite1h` per million tokens, each defaulting to `input` (`cacheWrite1h` to `cacheWrite`), so a model that
+declares only `input` and `output` is priced at those two alone.
+
+## Thinking with tools
+
+Current Claude models think by default, and on Sonnet 5.5 and Opus 5.5 thinking cannot be turned off (`thinking:
+{ type: "disabled" }` is a 400; Sonnet 5.5's lowest setting is `{ type: "between_tools" }`, which no other model
+accepts). An answer that calls a tool carries `thinking` blocks with a signature, and the API binds each block to the
+model, the account and the conversation before it (system, tools and earlier messages).
+
+The OpenAI shape has no field for those blocks, so the adapter chooses per provider, `ProviderConfig.thinking`:
+
+- **`drop`, the default.** The blocks are never sent back: the next request of the tool loop carries the assistant turn
+  as text and `tool_use` only. Anthropic's preserved-thinking page lists removing every thinking block as valid ("the
+  model loses that reasoning"), nothing fails, and the prompt cache still matches, since the cached prefix is the
+  request and not the answer. It is the default because it can never be refused: nothing replayed, nothing to bind.
+- **`replay`, the opt-in.** The adapter keeps each answer that thought and then called tools (its content blocks as
+  received, up to 2000 turns per provider in this process, least recently used first) under the ids of its tool calls.
+  When a later request carries an assistant message with exactly those tool calls, the turn goes back as it was
+  received, thinking and signatures included, whatever the client above forwarded. It is replayed only while the
+  request up to that turn (system, tools, earlier turns; key order and breakpoints aside) has the digest it had when the
+  turn was produced; after an edit the turn goes back rebuilt, without thinking, and so does every later one, which is
+  the documented way to continue. A turn the memory forgot, or a second process, degrades to `drop`.
+
+Thinking text reaches the caller as `reasoning_content` (the message, or stream deltas) when the request asks to see it
+(`thinking: { type: "adaptive", display: "summarized" }`); by default Claude returns it empty. Thinking tokens are
+billed as output and count toward `max_tokens`, which is why the adapter's default is 16000.
+
+An app that speaks the Anthropic protocol to the gateway (below) needs neither: its client carries the blocks itself.
+
+## A model's own request shape
+
+What one model needs and another refuses is the model's config, applied to each attempt just before the request is
+translated for that lane, so a request that fails over reaches the next model in that model's shape:
+
+| `ModelConfig` | effect |
+|---|---|
+| `params` | request fields sent when the request does not set them (`{ max_tokens: 32000, output_config: { effort: "medium" } }`); shallow |
+| `omit` | request fields never sent (`["temperature", "top_p", "top_k"]` for Sonnet 5.5, which refuses non-default sampling) |
+| `forcedToolUse: false` | `tool_choice` `required` or a named function becomes `auto` plus a system instruction to make the call, for models that refuse a forced choice (Opus 5.5, Sonnet 5.5, Fable 5.1 and later); `auto` guarantees no call, so the caller checks one was made |
+| `cacheControl` | whether its provider takes cache breakpoints (above) |
+
+## The native Anthropic route
+
+`POST /v1/messages` on the gateway speaks the Anthropic Messages protocol, under the same virtual key (read from
+`x-api-key`, or a bearer token). The request goes to an Anthropic provider untranslated: only `model` becomes the
+lane's model id, and the model's own shape applies (`params`, `omit`, and `forcedToolUse: false`, which turns
+`tool_choice` `any` or `tool` into `auto` with the instruction at the end of `system`). Cache breakpoints, thinking blocks, tool results and
+whatever the API adds later pass through, and so does the client's `anthropic-beta` header. The answer and the stream
+events come back as the provider sent them. The router reads only what it accounts for: usage, the first content
+(failover is over once a `content_block_delta` arrived), an `error` event, a stream cut before `message_stop`.
+
+- **Routing.** The call is narrowed to the providers of the Anthropic protocol; keys rotate and fail over among them as
+  for any call. `router.messages()` and `router.messagesStream()` are the same calls in process.
+- **A name no Anthropic provider serves** is refused 400 `model_not_supported`, naming the route that serves it.
+  Nothing translates a Messages request for an OpenAI-protocol provider: that adapter would be a second protocol
+  surface to keep correct for a path with no caller, since an app asks for the client of the name's own protocol.
+- **Errors** on this route are in Anthropic's shape (`{ type: "error", error: { type, message, code } }`), and a failure
+  after the first event is an `error` event.
+
+A profile whose candidates span two protocols is served on each route by its own protocol's candidates. On
+`/v1/chat/completions` such a profile is served by every candidate, Anthropic ones through the adapter, unless the
+request carries `x-ai-router-kind: openai` (or `anthropic`), which narrows the call to that protocol's providers.
+
+`GET /v1/models` says how each name is served: `kind` (the protocol of its first candidate), `kinds` (every protocol,
+in the order the pool tries them), `serves` (`chat`, `embeddings`) and, for an embeddings name, `dimensions`.
+
+## Who served, and what it cost
+
+Every answer names its lane where each client library hands it on untouched: inside the provider's `usage`, as
+`usage.served = { provider, model, attempts, cost? }` (the pool's provider id and model id, never a key). It is there
+on both routes, unary and streamed: in a chat completion's `usage` and its final usage chunk, in an Anthropic message's
+`usage` and in the `usage` of its `message_start` event. The response headers say the same (`x-ai-router-provider`,
+`x-ai-router-model`, `x-ai-router-attempts`, `x-ai-router-cost`). In process, `ChatCompletion.routing` and the `attempt`
+event carry it with the key's alias; a client may name its call with an `x-request-id` header (letters, digits and
+`._:-`, up to 128, unique per call since providers see it as the idempotency key) to match the gateway's call to
+those events.
+
+## The LangChain entry
+
+`@starci/ai-router/langchain` gives an app LangChain clients over the gateway, by name:
+
+```ts
+const ai = createRoutedModels({ gatewayUrl, virtualKey })
+const picked = await ai.chat(node.model)          // a pool model id or a profile
+const agent = createAgent({ model: picked.model, tools })
+const usage = usageOf(reply)                      // tokens by part, model, provider: the same for every kind
+```
+
+- **`kind` is the protocol**, never the model family: `{ kind: "openai", model: ChatOpenAI }` for every OpenAI-compatible
+  provider, `{ kind: "anthropic", model: ChatAnthropic }` for an Anthropic one. It comes from the gateway's catalog
+  (`GET /v1/models`, read once and again when a name is unknown). The common path uses `picked.model` and never reads
+  `kind`; a provider's own feature does.
+- **A profile of two protocols** is the client of its first candidate's protocol, with the other protocols' clients in
+  `picked.fallbacks`, in the order the pool tries them. Each client sends `x-ai-router-kind`, so it stays on its own
+  protocol's providers: the router fails over between keys and providers inside a protocol, and moving to the next
+  protocol is the app's retry. The fallbacks are not wrapped into one runnable because LangChain's
+  `RunnableWithFallbacks` is no chat model (it has no `bindTools`), so an agent could not take it, and because the
+  clients never retry (`maxRetries: 0`): the app owns its tries and decides which one moves on.
+- **New kinds** extend one interface, `RoutedChatKinds` (module augmentation), and register a factory with
+  `registerChatKind`; the core and the built-in kinds are untouched.
+- **Optional peers.** `@langchain/openai`, `@langchain/anthropic` and `@langchain/core` are optional peer dependencies,
+  imported the first time a kind is built; the router's core imports none of them.
+- **Usage.** `usageOf(reply)` reads LangChain's `usage_metadata` (which both clients fill the same way: the whole
+  input, with `cache_read` and `cache_creation` as parts) and the `usage.served` the gateway wrote, which both keep in
+  `response_metadata.usage`: `inputTokens` (full price), `cacheReadTokens`, `cacheWriteTokens`, `outputTokens`,
+  `reasoningTokens`, `model`, `provider`, `cost`.
+- **Embeddings.** `ai.embeddings(name)` is `{ kind: "openai", embeddings: OpenAIEmbeddings, dimensions }` for a pinned
+  profile or an embeddings model; it never changes model identity, and Anthropic has no embeddings API.
+
+Verified against `@langchain/openai` 1.8.2, `@langchain/anthropic` 1.6.2 and `@langchain/core` 1.3.6: the constructor
+fields the entry sets (`configuration.baseURL`, `anthropicApiUrl`, `clientOptions`, `maxRetries`, `streamUsage`), and
+where each puts usage. `ChatAnthropic` sends `thinking` only when the app sets it, and its own `max_tokens` default for
+a name it does not know is 4096, so the entry sends 16000 unless told otherwise.
 
 ## Config from env
 
@@ -237,7 +407,7 @@ has; a profile left with nothing is refused at startup naming the variables that
 ```ts
 const pool = poolFromEnv({
     providers: [
-        { kind: "anthropic", models: [{ id: "claude-sonnet-5-5", cost: { input: 3, output: 15 } }] },
+        { kind: "anthropic", models: [{ id: "claude-sonnet-5-5", cost: { input: 2, output: 10, cacheRead: 0.1, cacheWrite: 2.5, cacheWrite1h: 4 } }] },
         { kind: "openrouter", models: [{ id: "anthropic/claude-sonnet-5-5" }, { id: "openai/text-embedding-3-small", identity: "text-embedding-3-small", dimensions: 1536, capabilities: ["embeddings"] }] },
         { kind: "deepseek", models: [{ id: "deepseek-v4-pro" }] },
         { kind: "qwen", models: [{ id: "qwen3.8-max" }] },

@@ -93,7 +93,7 @@ describe("GET /v1/models lists what the calling key may use", () => {
         const ids = (reply.json.data as { id: string; object: string; owned_by: string }[]).map((model) => model.id)
         assert.deepEqual(ids.sort(), ["chat", "fast", "m1"])
         const one = await http(h.url, "/v1/models/chat", { key })
-        assert.deepEqual(one.json, { id: "chat", object: "model", created: 0, owned_by: "profile" })
+        assert.deepEqual(one.json, { id: "chat", object: "model", created: 0, owned_by: "profile", kind: "openai", kinds: ["openai"], serves: ["chat"] })
         assert.equal((await http(h.url, "/v1/models/summary", { key })).status, 404)
     })
 
