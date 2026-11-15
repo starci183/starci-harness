@@ -31,6 +31,7 @@ const LINKED: Readonly<Record<string, string>> = {
   common: '../../common/dist',
   'nest-kit': '../../nest-kit/dist',
   mail: '../../mail/dist',
+  seed: '../../seed/dist',
 };
 const PACKAGES = path.resolve(import.meta.dirname, '..', '..');
 
