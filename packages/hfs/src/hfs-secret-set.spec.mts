@@ -167,6 +167,16 @@ test("set refuses a key named twice", async (t) => {
   assert.match(result.err, /set names K1 twice/u);
 });
 
+test("--generate names its byte count when it is missing or when a key stands where the count goes", async (t) => {
+  const { root, env } = app(t);
+  const missing = await run(["set", "--env", "dev", "gateway", "K1", "--generate"], { cwd: root, env, stdin: () => "x", sops: fakeSops([]) });
+  assert.equal(missing.code, 2);
+  assert.match(missing.err, /--generate needs a value: --generate <bytes> \(a whole byte count from 1 to 1024, e\.g\. --generate 32\)/u);
+  const misplaced = await run(["set", "--env", "dev", "gateway", "K1", "--generate", "K2"], { cwd: root, env, stdin: () => "x", sops: fakeSops([]) });
+  assert.equal(misplaced.code, 2);
+  assert.match(misplaced.err, /--generate <bytes>: the value after --generate is the byte count/u);
+});
+
 test("adding to an existing member with no identity anywhere refuses before any prompt, naming every place and the fix", async (t) => {
   const { root, dir, env } = app(t);
   fs.writeFileSync(path.join(dir, "gateway.enc"), sealedDotenv(["GATEWAY_IPN_SECRET_KEY"]));

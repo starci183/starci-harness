@@ -385,21 +385,33 @@ test('an urgent deploy is an attempt of its own trigger, journals its floor refu
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, `${sha}.urgent.json`), JSON.stringify({ schema: 'starci-app-urgent-record/1', head: sha, tag: 'v1.0.0', role: 'owner', reason: 'tonight', pushed: true }));
   fs.mkdirSync(path.join(root, '.starcistacks'));
-  fs.writeFileSync(path.join(root, '.starcistacks', 'application-stacks.yaml'), 'database:\n  projectRef: abcdefghijklmnopqrst\n');
+  fs.writeFileSync(path.join(root, '.starcistacks', 'application-stacks.yaml'), 'database:\n  target: stack\n  service: db\n');
+  fs.writeFileSync(path.join(root, '.sops.yaml'), `creation_rules:\n  - age: age1${'q'.repeat(58)}\n`);
   const identity = path.join(root, 'identity.txt');
   fs.writeFileSync(identity, 'stand-in identity\n');
   const records = recordsDouble();
-  const store = { current: async () => OLD_RELEASE, ...records };
+  const store = {
+    current: async () => OLD_RELEASE, store: async () => {},
+    fetch: async (_id: string, at: string) => { fs.mkdirSync(at, { recursive: true }); fs.writeFileSync(path.join(at, 'stack.yaml'), OLD_STACK); fs.writeFileSync(path.join(at, 'release.json'), '{}'); return at; },
+    ...records,
+  };
   const deps = {
-    releaseStore: () => store, ssh: async () => ({ cleanup() {} }),
-    floor: { backup: async () => { throw new Error('supabase is not reachable'); } },
+    releaseStore: () => store, ssh: async () => ({ cleanup() {} }), provisionRelease: async () => ({ ok: true, lines: [] }),
+    // The urgent path backs a stack database up on the manager, as every deploy does; here that dump fails.
+    floor: {
+      dbContainer: async () => 'abcdef012345',
+      containerTarget: () => ({ url: 'postgresql://postgres@127.0.0.1:5432/app', container: 'abcdef012345', own: true, env: {}, secrets: [], how: 'double' }),
+      emptiness: async () => ({ empty: false, history: true, publicTables: 2 }),
+      migrate: async () => ({ ok: true, lines: ['plan 1'], data: { done: false, pushFiles: ['20261102000000_orders-total.sql'] } }),
+      managerBackup: async () => { throw new Error('docker exec failed'); },
+    },
   } as unknown as Partial<DeployDeps>;
   const spawn = (command: string, args: string[]) => (command === 'git' ? { status: 0, stdout: path.join(root, '.git'), stderr: '' } : { status: 0, stdout: args.join(' '), stderr: '' });
   const ctx = contextOf({ cwd: root, env: { SOPS_AGE_KEY_FILE: identity, STARCI_ROLE: 'owner' }, now: Date.now, sleep: async () => {}, spawn });
   const out = path.join(root, 'out');
   fs.mkdirSync(out);
-  const config = configOf({ repoRoot: root, project: 'shop', stack: 'shop', env: 'production', ingress: null, tasks: {}, postDeploy: [] });
-  const rendered = { renderRelease: async (_c: unknown, _k: unknown, o: { out: string }) => { fs.writeFileSync(path.join(o.out, 'stack.yaml'), NEW_STACK); return { ok: true, lines: [] }; } };
+  const config = configOf({ repoRoot: root, project: 'shop', stack: 'shop', env: 'production', ingress: null, tasks: {}, postDeploy: [], remote: { serverRecipient: null }, backup: null });
+  const rendered = { renderRelease: async (_c: unknown, _k: unknown, o: { out: string }) => { fs.writeFileSync(path.join(o.out, 'stack.yaml'), NEW_STACK); fs.writeFileSync(path.join(o.out, 'release.json'), JSON.stringify({ sourceSha: sha })); return { ok: true, lines: [] }; } };
   const result = await deployRelease(ctx, config, { sourceSha: sha, execute: true, urgent: true, out, reason: 'tonight' }, { ...deps, ...rendered } as Partial<DeployDeps>);
   assert.equal(result.ok, false);
   assert.equal(result.refused?.code, 'STACK_DEPLOY_BACKUP_FAILED');

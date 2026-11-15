@@ -140,7 +140,7 @@ its phases, each one a recorded step:
 | lock | takes `/srv/<stack>/deploy.lock` on the manager (flock, held for the run; the owner's urgent deploy takes the same) | waits up to 10 minutes, then refuses `STACK_DEPLOY_LOCKED`; nothing changed |
 | preflight | render and inspect locally, provision, store the release, pre-pull its images, and confirm the rollback target's images still pull | refuses; services untouched |
 | idempotence | when the accepted release already has this `sourceSha`, prints `already current` and ends green | none |
-| backup | when the migrate preview has pending migrations: a fresh encrypted dump of the database, receipt verified, a test decrypt on the manager with its own identity (the urgent floor's steps) | refuses; services untouched |
+| backup | when the migrate preview has pending migrations (always under the urgent floor): a fresh encrypted dump of the database, receipt verified, a test decrypt on the manager with its own identity; the urgent path takes the same step in the same place | refuses; services untouched |
 | migrate | `app db migrate` preview, then execute, inside the database service's own container through the Docker transport (expand migrations only) | refuses; services untouched; the applied part stays and the backup is its way back |
 | deploy | `docker stack deploy` of the stored bytes; Swarm's `update_config` rolls a failing service back on its own | stack rollback |
 | converge | desired against running, update state `completed`, no failed task of the new spec, twice | stack rollback |
@@ -187,9 +187,16 @@ The migration moves into the deploy, before the services update, under three rul
   down migrations; full's `down()` stays an owner-run step. The backup taken before the migration, with its receipt, is the
   way back for data, and restoring it waits for the owner's yes, given with its loss window.
 - **Backup only when something will change.** The preview runs first; with nothing pending there is no backup and the
-  record says so. With something pending, the backup, its verified receipt and its test decrypt are the urgent floor's
-  steps (`STACK_URGENT_BACKUP_*` codes become `STACK_DEPLOY_BACKUP_*` for both paths). The archive stays on the manager,
-  encrypted to the `.sops.yaml` recipients; copying it off the host remains the owner's job.
+  record says so. With something pending, the backup, its verified receipt and its test decrypt run under the
+  `STACK_DEPLOY_BACKUP_*` codes. The archive stays on the manager, encrypted to the `.sops.yaml` recipients; copying it off
+  the host remains the owner's job.
+- **The safety steps run where the data is, whichever path triggered the deploy.** The urgent path runs these same
+  database phases, the seed step and the contract pass, in the same place and under the same codes: a `stack` database is
+  previewed and migrated inside its container and backed up, receipted and test-decrypted on the manager through the
+  deploy's own ssh runner, so the operator's machine needs nothing beyond what the stack tooling already needs (no
+  PostgreSQL client, no route to the database, no `DATABASE_URL`, no `SOPS_AGE_KEY_FILE`). Its one difference is the
+  floor: the backup is taken even when nothing is pending. An `external` database is backed up where the deploy runs on
+  either path.
 
 The migration runs inside the database service's container through the Docker transport, the way the first start already
 does (`inContainer`), so the database never listens beyond its stack network and CI never holds a `DATABASE_URL`. An app
@@ -255,9 +262,11 @@ several databases, and the owner confirms it holds no data to keep; the next dep
   never written by hand. It builds and pushes the images on the operator's machine before the transport reaches the server
   and deploys their digests. `app check`, lint and the tests wait for the back-fill. The record satisfies `requireCi` for
   `deploy.prod` and `release.cut` when the caller passes `--urgent`; the floor still runs and refuses with its own code when
-  a step fails: a fresh encrypted database backup whose receipt is verified and which a test decrypt opens (or, under
-  `--first-start`, the proof that the database is empty), migrate preview then execute, the readiness verify and the
-  automatic rollback. It is auditable on the server side too: the tag annotation carries `Starci-Urgent: <role>` and
+  a step fails: the rollback target, then the deploy's own database phases (Database migrations below) with a fresh
+  encrypted backup taken always, made, receipted and test-decrypted on the manager for a `stack` database (or, on an
+  empty database or under `--first-start`, the first start: the proof that the database is empty, every migration and the
+  app role's sealed password), the expand migrations, the seed step after convergence (PROJECT-STACKS-12), the readiness
+  verify, the automatic rollback and the contract migrations after the accept. It is auditable on the server side too: the tag annotation carries `Starci-Urgent: <role>` and
   `Starci-Urgent-Reason: <text>` trailers (written by `release push --urgent`), the manager's deploy record carries the
   same, and the back-fill runs the full gate on the same commit, as the tag's CI run or `starci app release gate --backfill
   <tag>`: green promotes the record to a normal L4 with no re-release, red opens a `verify` ticket (a red CI the harness

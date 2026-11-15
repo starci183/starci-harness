@@ -95,10 +95,15 @@ export interface SecretMainPorts {
   serverKeyIo?: ServerKeyIo | undefined;
 }
 
+/** What a value flag's message names when its value is missing: the form it takes. */
+const VALUE_FORMS: Readonly<Record<string, string>> = Object.freeze({
+  "--generate": "--generate <bytes> (a whole byte count from 1 to 1024, e.g. --generate 32)",
+});
+
 function valueOption(opts: SecretOptions, flag: string, value: string | undefined): void {
   const store = opts as unknown as Record<string, unknown>;
   if (value === undefined || value.startsWith("--"))
-    throw new SecretError(`${flag} needs a value`);
+    throw new SecretError(`${flag} needs a value${VALUE_FORMS[flag] ? `: ${VALUE_FORMS[flag]}` : ""}`);
   if (Object.hasOwn(opts, flag.slice(2)))
     throw new SecretError(`${flag} may be given only once`);
   store[flag.slice(2)] = value;

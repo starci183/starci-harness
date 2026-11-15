@@ -1,10 +1,9 @@
-// The safety floor of an urgent deploy (stack/urgent-floor.mts): every step is a refusal with its own
-// code when it fails, the steps run in their order (backup, verify, test decrypt, rollback target, migrate preview, migrate, deploy), and nothing
-// after a refused step runs.
+// The safety floor of an urgent deploy (stack/urgent-floor.mts): its own steps (pushed record, render, rollback target) refuse with their own
+// codes before anything remote changes; then the deploy's own database phases, seed step and contract pass run (stack-urgent-database.spec.mts
+// drives them through deployRelease), and a refusal of a shared step keeps its code. Nothing after a refused step runs.
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { tempRoot } from '../runtime/engine/temp-root.mjs';
@@ -17,26 +16,24 @@ import type { DeployConfig } from '../stack/config.mjs';
 import type { DeployDeps } from '../stack/deploy.mjs';
 import type { StackContext } from '../stack/context.mjs';
 
-/** The steps a floor double fails, by name. */
-interface Fail { backup?: boolean; hash?: boolean; decrypt?: boolean; preview?: boolean; migrate?: boolean; noPrevious?: boolean; deploy?: string }
+/** How the deploy double ends. */
+interface Fail { noPrevious?: boolean; deploy?: string }
 interface FirstFail { noContainer?: boolean; notEmpty?: boolean; preview?: boolean; noPrevious?: boolean }
-interface AppShape { record?: boolean; pushed?: boolean; database?: boolean }
+interface AppShape { record?: boolean; pushed?: boolean; database?: boolean; target?: 'stack' | 'external' }
 /** The stack context with its seams writable, as a spec edits them. */
 type Ctx = { -readonly [K in keyof StackContext]: StackContext[K] };
 
 const SHA = 'a'.repeat(40);
-const PARTS = ['roles.sql', 'schema.sql', 'data.sql', 'rowcounts.json'];
-const sha256 = (file: string) => createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 
-/** An app root with the urgent record of SHA (pushed unless told otherwise), a database block and an identity file. */
-function app(t: TestContext, { record = true, pushed = true, database = true }: AppShape = {}) {
+/** An app root with the urgent record of SHA (pushed unless told otherwise), a database block (a `stack` one by default) and an identity file. */
+function app(t: TestContext, { record = true, pushed = true, database = true, target = 'stack' }: AppShape = {}) {
   const root = fs.mkdtempSync(path.join(tempRoot(), 'hfs-urgent-floor-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const records = path.join(root, '.git', 'starci-release');
   fs.mkdirSync(records, { recursive: true });
   if (record) fs.writeFileSync(path.join(records, `${SHA}.urgent.json`), JSON.stringify({ schema: 'starci-app-urgent-record/1', head: SHA, tag: 'v1.0.0', role: 'owner', reason: 'tonight', pushed }));
   fs.mkdirSync(path.join(root, '.starcistacks'));
-  fs.writeFileSync(path.join(root, '.starcistacks', 'application-stacks.yaml'), database ? 'database:\n  projectRef: abcdefghijklmnopqrst\n' : 'release: {}\n');
+  fs.writeFileSync(path.join(root, '.starcistacks', 'application-stacks.yaml'), database ? `database:\n  target: ${target}\n  service: postgres\n` : 'release: {}\n');
   const identity = path.join(root, 'identity.txt');
   fs.writeFileSync(identity, 'stand-in identity file; the decrypt is stubbed\n');
   const spawn = (command: string, args: string[]) => {
@@ -48,84 +45,62 @@ function app(t: TestContext, { record = true, pushed = true, database = true }: 
   return { root, ctx: { cwd: root, env: { SOPS_AGE_KEY_FILE: identity }, now: Date.now, spawn } as unknown as Ctx, config: { repoRoot: root, project: 'floor', stack: 'floor' } as unknown as DeployConfig };
 }
 
-/** The collaborators, each recording its call; `fail` names the step that goes wrong and how. */
-function world(root: string, fail: Fail = {}) {
+/** The deploy as the floor drives it, each call recorded; `fail` names how it ends. The deploy's own phases are stack-urgent-database.spec.mts's. */
+function world(fail: Fail = {}) {
   const calls: string[] = [];
-  const out = path.join(root, 'backups');
-  const deps = {
-    backup: async () => {
-      calls.push('backup');
-      if (fail.backup) throw Object.assign(new Error('supabase is not reachable'), { code: 'DB_BACKUP_CLI_FAILED' });
-      fs.mkdirSync(out, { recursive: true });
-      const archive = path.join(out, 'floor.tar.age');
-      fs.writeFileSync(archive, `age-encryption.org/v1\n${'x'.repeat(200)}`);
-      const receipt = { schemaOnly: false, at: new Date().toISOString(), file: 'floor.tar.age', bytes: fs.statSync(archive).size, sha256: fail.hash ? '0'.repeat(64) : sha256(archive), parts: PARTS };
-      return { receipt, receiptPath: path.join(out, 'floor.receipt.json') };
-    },
-    decrypt: async () => { calls.push('decrypt'); if (fail.decrypt) throw new Error('no identity matched'); return { parts: PARTS }; },
-    migrate: async (_ctx: unknown, { execute }: { execute: boolean }) => {
-      calls.push(execute ? 'migrate' : 'preview');
-      if (!execute && fail.preview) return { ok: false, lines: ['RED: remote version 1 is unexplained'] };
-      if (execute && fail.migrate) throw new Error('DB_FINAL_MISMATCH');
-      return { ok: true, lines: [execute ? 'applied 1' : 'plan 1'] };
-    },
-  };
   const run = {
     render: async () => { calls.push('render'); return { releaseId: 'c'.repeat(16) }; },
     dryRun: async () => { calls.push('dry-run'); return { ok: true, lines: ['dry run: release would deploy'], data: { executed: false } }; },
     openStore: async () => ({ current: async () => { calls.push('current'); return fail.noPrevious ? '' : 'b'.repeat(16); } }),
     deployExecute: async (...args: unknown[]) => {
       calls.push('deploy');
-      assert.deepEqual(args, [], 'a plain urgent deploy hands the deploy no first-start hooks: its stack is deployed whole, as before');
+      assert.deepEqual(args, [], 'a plain urgent deploy hands the deploy no first-start hooks: the deploy chooses its own database phases');
+      if (fail.deploy === 'backup') return { ok: false, refused: { code: 'STACK_DEPLOY_BACKUP_FAILED', message: 'the fresh database backup failed (docker exec failed); nothing was migrated or deployed' }, lines: ['deploy not started; the services are untouched'], data: { rolledBack: false, steps: [{ step: 'db-preview', ok: true }, { step: 'backup', ok: false }] } };
       if (fail.deploy === 'rolled-back') return { ok: false, lines: ['deploy failed at verify', 'rolled back'], data: { previous: 'b'.repeat(16), rolledBack: true, steps: [{ step: 'deploy', ok: true }, { step: 'verify', ok: false }] } };
       if (fail.deploy === 'stuck') return { ok: false, lines: ['ROLLBACK DID NOT CONVERGE'], data: { previous: 'b'.repeat(16), rolledBack: false, steps: [{ step: 'deploy', ok: true }, { step: 'verify', ok: false }] } };
       if (fail.deploy === 'early') return { ok: false, lines: ['deploy not started'], data: { rolledBack: false, steps: [{ step: 'render', ok: true }, { step: 'provision', ok: false }] } };
       return { ok: true, lines: ['deployed release c'], data: { releaseId: 'c'.repeat(16), steps: [{ step: 'deploy', ok: true }] } };
     },
-    sha256,
   };
-  return { calls, deps, run };
+  return { calls, run };
 }
 
 const OPTIONS = { sourceSha: SHA, execute: true, urgent: true };
 
-test('the floor runs in order and the urgent deploy is accepted when every step is green', async (t) => {
-  const { ctx, config, root } = app(t);
-  const { calls, deps, run } = world(root);
-  const result = await urgentDeploy(ctx, config, OPTIONS, run, deps);
+test('the floor checks its record and rollback target, then hands the deploy its own database phases; green is accepted', async (t) => {
+  const { ctx, config } = app(t);
+  const { calls, run } = world();
+  const result = await urgentDeploy(ctx, config, OPTIONS, run);
   assert.equal(result.ok, true, result.lines.join('\n'));
   assert.equal(result.data!.urgent, 'v1.0.0');
-  assert.deepEqual(calls, ['backup', 'decrypt', 'render', 'current', 'preview', 'migrate', 'deploy']);
+  assert.deepEqual(calls, ['render', 'current', 'deploy']);
 });
 
 test('a dry run plans the floor and touches nothing', async (t) => {
-  const { ctx, config, root } = app(t);
-  const { calls, deps, run } = world(root);
-  const result = await urgentDeploy(ctx, config, { ...OPTIONS, execute: false }, run, deps);
+  const { ctx, config } = app(t);
+  const { calls, run } = world();
+  const result = await urgentDeploy(ctx, config, { ...OPTIONS, execute: false }, run);
   assert.equal(result.ok, true);
-  assert.ok(result.lines.some((line) => line.includes('floor (never skipped)')));
+  assert.ok(result.lines.some((line) => line.includes('floor (never skipped)') && line.includes('on the manager') && line.includes('seed')));
   assert.deepEqual(calls, ['dry-run']);
 });
 
 const REFUSALS: [string, Fail, string, string[]][] = [
-  ['a failed backup', { backup: true }, 'STACK_DEPLOY_BACKUP_FAILED', ['backup']],
-  ['a backup whose receipt does not match its archive', { hash: true }, 'STACK_DEPLOY_BACKUP_UNVERIFIED', ['backup']],
-  ['a failed test decrypt', { decrypt: true }, 'STACK_DEPLOY_BACKUP_DECRYPT_FAILED', ['backup', 'decrypt']],
-  ['no previous release to roll back to', { noPrevious: true }, 'STACK_URGENT_NO_ROLLBACK_TARGET', ['backup', 'decrypt', 'render', 'current']],
-  ['a red migration preview', { preview: true }, 'STACK_DEPLOY_MIGRATE_PREVIEW_RED', ['backup', 'decrypt', 'render', 'current', 'preview']],
-  ['a failed migration', { migrate: true }, 'STACK_DEPLOY_MIGRATE_FAILED', ['backup', 'decrypt', 'render', 'current', 'preview', 'migrate']],
-  ['a red readiness verify that rolled back', { deploy: 'rolled-back' }, 'STACK_URGENT_RED_ROLLED_BACK', ['backup', 'decrypt', 'render', 'current', 'preview', 'migrate', 'deploy']],
-  ['a red release whose rollback did not converge', { deploy: 'stuck' }, 'STACK_URGENT_ROLLBACK_FAILED', ['backup', 'decrypt', 'render', 'current', 'preview', 'migrate', 'deploy']],
-  ['a release red before the stack deploy', { deploy: 'early' }, 'STACK_URGENT_DEPLOY_NOT_STARTED', ['backup', 'decrypt', 'render', 'current', 'preview', 'migrate', 'deploy']],
+  ['no previous release to roll back to', { noPrevious: true }, 'STACK_URGENT_NO_ROLLBACK_TARGET', ['render', 'current']],
+  ['a shared database step refused by the deploy (its code is kept)', { deploy: 'backup' }, 'STACK_DEPLOY_BACKUP_FAILED', ['render', 'current', 'deploy']],
+  ['a red readiness verify that rolled back', { deploy: 'rolled-back' }, 'STACK_URGENT_RED_ROLLED_BACK', ['render', 'current', 'deploy']],
+  ['a red release whose rollback did not converge', { deploy: 'stuck' }, 'STACK_URGENT_ROLLBACK_FAILED', ['render', 'current', 'deploy']],
+  ['a release red before the stack deploy', { deploy: 'early' }, 'STACK_URGENT_DEPLOY_NOT_STARTED', ['render', 'current', 'deploy']],
 ];
 
 for (const [title, fail, code, steps] of REFUSALS) {
   test(`${code}: ${title} is refused and nothing after it runs`, async (t) => {
-    const { ctx, config, root } = app(t);
-    const { calls, deps, run } = world(root, fail);
-    const result = await urgentDeploy(ctx, config, OPTIONS, run, deps);
+    const { ctx, config } = app(t);
+    const { calls, run } = world(fail);
+    const result = await urgentDeploy(ctx, config, OPTIONS, run);
     assert.equal(result.ok, false);
     assert.equal(result.refused!.code, code);
+    assert.equal(result.data!.urgent, 'v1.0.0');
     assert.deepEqual(calls, steps);
   });
 }
@@ -139,22 +114,31 @@ const PRECONDITIONS: [string, AppShape, { skipPublic?: boolean }, string][] = [
 
 for (const [title, shape, options, code] of PRECONDITIONS) {
   test(`${code}: ${title} is refused before any step`, async (t) => {
-    const { ctx, config, root } = app(t, shape);
-    const { calls, deps, run } = world(root);
-    await assert.rejects(urgentDeploy(ctx, config, { ...OPTIONS, ...options }, run, deps), (error: { code?: string }) => error.code === code);
+    const { ctx, config } = app(t, shape);
+    const { calls, run } = world();
+    await assert.rejects(urgentDeploy(ctx, config, { ...OPTIONS, ...options }, run), (error: { code?: string }) => error.code === code);
     assert.deepEqual(calls, []);
   });
 }
 
-test('STACK_DEPLOY_BACKUP_DECRYPT_UNAVAILABLE: without an age identity the backup cannot be proven, so nothing runs', async (t) => {
-  const { ctx, config, root } = app(t);
-  const { calls, deps, run } = world(root);
-  await assert.rejects(urgentDeploy({ ...ctx, env: {} }, config, OPTIONS, run, deps), (error: { code?: string }) => error.code === 'STACK_DEPLOY_BACKUP_DECRYPT_UNAVAILABLE');
+test('STACK_DEPLOY_BACKUP_DECRYPT_UNAVAILABLE: an external database\'s local test decrypt needs an age identity, so nothing runs without one', async (t) => {
+  const { ctx, config } = app(t, { target: 'external' });
+  const { calls, run } = world();
+  await assert.rejects(urgentDeploy({ ...ctx, env: {} }, config, OPTIONS, run), (error: { code?: string }) => error.code === 'STACK_DEPLOY_BACKUP_DECRYPT_UNAVAILABLE');
   assert.deepEqual(calls, []);
 });
 
-// The first start (--first-start --db-service): no backup and no test decrypt; the deploy's first-start step (between edge and converge) waits for
-// the database container, proves it empty and migrates inside it; each failure is its own code and the deploy rolls back.
+test('a stack database needs no identity on the operator\'s machine: its backup is test-decrypted on the manager', async (t) => {
+  const { ctx, config } = app(t);
+  const { calls, run } = world();
+  const result = await urgentDeploy({ ...ctx, env: {} }, config, OPTIONS, run);
+  assert.equal(result.ok, true, result.lines.join('\n'));
+  assert.deepEqual(calls, ['render', 'current', 'deploy']);
+});
+
+// The first start of an external database (--first-start --db-service): no backup and no test decrypt; the deploy's first-start step (between
+// the hold deploy and the real one) waits for the database container, proves it empty and migrates inside it, reached by the operator's
+// --db-url-env; each failure is its own code and the deploy rolls back. A `stack` database's first start is stack-urgent-database.spec.mts's.
 const FIRST = { ...OPTIONS, firstStart: true, dbService: 'postgres' };
 const URL_ENV = { DATABASE_URL: 'postgresql://supabase_admin:s3cret@app-postgres:5432/postgres' };
 const CONTAINER = 'f00dfeed0123456789';
@@ -192,13 +176,12 @@ function firstWorld(fail: FirstFail = {}) {
       calls.push('converge+verify');
       return { ok: true, lines: [...step.lines, 'deployed release c'], data: { releaseId: 'c'.repeat(16), steps: [{ step: 'deploy', ok: true }, { step: 'first-start', ok: true }] } };
     },
-    sha256,
   };
   return { calls, deps, run };
 }
 
 test('a first start backs nothing up, proves the database empty and migrates it inside its container before converge', async (t) => {
-  const { ctx, config } = app(t);
+  const { ctx, config } = app(t, { target: 'external' });
   ctx.env = { ...URL_ENV };
   const { calls, deps, run } = firstWorld();
   const result = await urgentDeploy(ctx, config, FIRST, run, deps);
@@ -210,7 +193,7 @@ test('a first start backs nothing up, proves the database empty and migrates it 
 });
 
 test('a first start dry run plans it and touches nothing', async (t) => {
-  const { ctx, config } = app(t);
+  const { ctx, config } = app(t, { target: 'external' });
   ctx.env = { ...URL_ENV };
   const { calls, deps, run } = firstWorld();
   const result = await urgentDeploy(ctx, config, { ...FIRST, execute: false }, run, deps);
@@ -229,7 +212,7 @@ const FIRST_REFUSALS: [string, FirstFail, string, string[]][] = [
 
 for (const [title, fail, code, steps] of FIRST_REFUSALS) {
   test(`${code}: a first start with ${title} is refused, rolled back, and nothing after it runs`, async (t) => {
-    const { ctx, config } = app(t);
+    const { ctx, config } = app(t, { target: 'external' });
     ctx.env = { ...URL_ENV };
     const { calls, deps, run } = firstWorld(fail);
     const result = await urgentDeploy(ctx, config, FIRST, run, deps);
@@ -240,7 +223,7 @@ for (const [title, fail, code, steps] of FIRST_REFUSALS) {
 }
 
 test('STACK_FIRST_START_USAGE: a first start without --db-service is refused before any step', async (t) => {
-  const { ctx, config } = app(t);
+  const { ctx, config } = app(t, { target: 'external' });
   const { calls, deps, run } = firstWorld();
   await assert.rejects(urgentDeploy(ctx, config, { ...FIRST, dbService: undefined }, run, deps), (error: { code?: string }) => error.code === 'STACK_FIRST_START_USAGE');
   assert.deepEqual(calls, []);

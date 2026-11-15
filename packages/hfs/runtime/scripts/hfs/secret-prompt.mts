@@ -154,7 +154,7 @@ export async function setValues(
   if (generate !== undefined) {
     const bytes = Number(generate);
     if (!Number.isInteger(bytes) || bytes < 1 || bytes > 1024)
-      throw new SecretError("--generate must be a whole byte count from 1 to 1024");
+      throw new SecretError("--generate <bytes>: the value after --generate is the byte count, a whole number from 1 to 1024 (e.g. --generate 32); the keys come before it");
     return { ...files, ...Object.fromEntries(rest.map((key) => [key, (random as (bytes: number) => Buffer)(bytes).toString("base64url")])) };
   }
   if (typeof stdin === "function") return { ...files, ...stdinValues(rest, stdin()) };

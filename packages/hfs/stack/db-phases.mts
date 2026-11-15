@@ -5,8 +5,10 @@
 //   STACK_DEPLOY_MIGRATE_PREVIEW_RED, STACK_DEPLOY_MIGRATE_FAILED (urgent: formerly STACK_URGENT_BACKUP_*, _DECRYPT_*, _MIGRATE_*).
 // The automatic path of a deploy (an app that declares the `database:` block of application-stacks.yaml):
 //   before the stack deploy   db-preview   migrate preview of every pending migration; red refuses (STACK_DEPLOY_MIGRATE_PREVIEW_RED)
-//                             backup       ONLY when something is pending: a fresh age-encrypted dump on the manager, receipt verified, test decrypt
-//                                          with the manager's own identity (STACK_DEPLOY_BACKUP_*); nothing pending means no backup and the record says so
+//                             backup       ONLY when something is pending (always under the urgent floor, alwaysBackup): a fresh age-encrypted dump on
+//                                          the manager, receipt verified, test decrypt with the manager's own identity (STACK_DEPLOY_BACKUP_*); nothing
+//                                          pending means no backup and the record says so. The urgent path takes the same steps in the same place: a
+//                                          deploy's safety steps run where the data is, whichever path triggered the deploy
 //                             migrate      the EXPAND migrations (everything but `*_contract_*`), inside the database container (STACK_DEPLOY_MIGRATE_FAILED)
 //   after accept              contract     the `*_contract_*` migrations; red leaves the release accepted (STACK_DEPLOY_CONTRACT_FAILED)
 //   an empty database         first start  chosen when no release was ever accepted or when the running database is empty (no migration
@@ -246,6 +248,11 @@ export interface PhaseInput {
   run: Runner | null;
   dbUrlEnv?: string | undefined;
   backupOut?: string | undefined;
+  /**
+   * The urgent floor (urgent-floor.mts): the backup is taken even when nothing is pending, since the floor is never skipped. Where it is made is
+   * the same either way: on the manager for a `stack` database, where the deploy runs for an `external` one.
+   */
+  alwaysBackup?: boolean | undefined;
 }
 
 /**
@@ -366,7 +373,7 @@ export async function expandPhase(p: PhaseInput): Promise<PhaseResult> {
   const files = filesOf(preview);
   record.contract = files.filter(isContractMigration);
   record.expand = files.filter((file) => !record.contract.includes(file));
-  if (!record.pending) {
+  if (!record.pending && p.alwaysBackup !== true) {
     lines.push('db: no migration is pending: no backup was taken and nothing is migrated');
     return { ok: true, lines, steps, record };
   }
@@ -375,6 +382,10 @@ export async function expandPhase(p: PhaseInput): Promise<PhaseResult> {
   if ('code' in made) return stop('backup', made.code, made.message);
   record.backup = made.backup;
   steps.push({ step: 'backup', ok: true });
+  if (!record.pending) {
+    lines.push('db: no migration is pending: the urgent floor took its backup all the same, and nothing is migrated');
+    return { ok: true, lines, steps, record };
+  }
   let applied: MigrateResult;
   try { applied = await f.migrate(ctx, { target: reached.migrate, execute: true, phase: 'expand' }); } catch (error) { applied = { ok: false, lines: [messageOf(error)] }; }
   lines.push(...(applied.lines ?? []).map((line) => `db: migrate: ${line}`));

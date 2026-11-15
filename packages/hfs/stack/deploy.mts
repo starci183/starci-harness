@@ -6,10 +6,11 @@
 // verified backup only when something is pending, the expand migrations inside the database container before the stack deploy, the contract migrations
 // after accept, and an automatic first start on an empty database (no accepted release, or a running database with no migration history and no
 // table in public). An app without the block deploys its stack alone.
-// An urgent deploy (`urgent`) runs the safety floor of urgent-floor.mts first (fresh verified encrypted
-// backup with a test decrypt, rollback target, migrate preview then execute) and refuses with the floor's own code when a step of it fails; its
-// first start (`firstStart`) deploys the stack with only the database running (the `deploy-hold` step), proves the database empty and migrates it inside its own
-// container (the `first-start` step), then deploys the real stack and converges.
+// An urgent deploy (`urgent`) runs the safety floor of urgent-floor.mts first (pushed urgent record, rollback target) and then the same database
+// phases, seed step and contract pass as any deploy, in the same place (a `stack` database's backup and test decrypt on the manager), with one
+// difference: its backup is never skipped (alwaysBackup); a refused step keeps its own code. Its first start (`firstStart`) deploys the stack with
+// only the database running (the `deploy-hold` step), proves the database empty, migrates it inside its own container and gives the app role its
+// sealed password (the `first-start` step), then deploys the real stack, converges and seeds.
 // Every execute run is one recorded ATTEMPT (journal.mts): the deploy lock of the manager (shared with the owner's urgent deploy), the deploy journal written at
 // every phase boundary, the skip when the accepted release already runs this commit, and the live services snapshotted after converge, after a rollback and on accept
 // (status.mts; `stack status` and `stack verify` judge them). Preflight also pulls the images of the rollback target, so a registry clean-up cannot strand a rollback.
@@ -74,7 +75,7 @@ export interface DeployOptions {
   redeploy?: boolean | undefined;
   /** How long to wait for a held deploy lock, in seconds (default 600). */
   lockWaitSeconds?: number | undefined;
-  /** The `first-start` step the urgent floor adds between edge and converge. */
+  /** The `first-start` step the urgent floor's --first-start hands over, run between the hold deploy and the real one. */
   firstStartStep?: (() => Promise<FirstStartStepResult>) | undefined;
   /** The stack service of the database a first start bootstraps: the one service its hold deploy leaves running. */
   firstStartDb?: string | undefined;
@@ -132,7 +133,6 @@ export const DEFAULT_DEPS: Readonly<DeployDeps> = Object.freeze({
   floor: {},
 });
 
-const fileSha256 = (file: string): string => createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 
 const IMAGE_LINE = /^[ \t]+image:[ \t]*(\S+)[ \t]*$/gmu;
 const QUOTE = /^["']|["']$/gu;
@@ -388,12 +388,15 @@ async function deployExecute(ctx: StackContext, config: DeployConfig, options: D
   // bootstrapped and migrated, and then the real stack is deployed.
   // An app that declares the `database:` block migrates in every deploy (db-phases.mts); the first start is chosen by itself when no release was
   // ever accepted or when the running database is empty (firstStartReason).
-  const database = options.urgent === true ? null : await declaredDatabase(ctx, config);
-  const phase: PhaseInput | null = database ? { ctx, config, database, f: { ...FLOOR_DEPS, ...d.floor }, run, dbUrlEnv: options.dbUrlEnv, backupOut: options.backupOut } : null;
+  // The urgent path takes the same database steps in the same place (the floor only adds: the backup is never skipped).
+  const database = await declaredDatabase(ctx, config);
+  const phase: PhaseInput | null = database ? { ctx, config, database, f: { ...FLOOR_DEPS, ...d.floor }, run, dbUrlEnv: options.dbUrlEnv, backupOut: options.backupOut, alwaysBackup: options.urgent === true } : null;
   const unknown = database ? unknownDatabaseService(config, database) : null;
   if (unknown) return { ok: false, refused: unknown, lines: [...lines, 'deploy not started; the services are untouched'], data: { ...data, refused: unknown.code } };
-  let first = options.firstStartStep && options.firstStartDb ? { step: options.firstStartStep, service: options.firstStartDb } : null;
   let firstCode: string | null = null;
+  const handed = options.firstStartStep;
+  // A red first-start step keeps its own code, whether the step was handed over (the urgent floor's --first-start) or chosen below.
+  let first = handed && options.firstStartDb ? { service: options.firstStartDb, step: async () => { const outcome = await handed(); firstCode = outcome.code ?? null; return outcome; } } : null;
   const reason = phase && !first ? await firstStartReason(phase, previous) : null;
   if (phase && reason) {
     const automatic = firstStartHooks(phase, reason);
@@ -473,8 +476,10 @@ export async function deployRelease(ctx: StackContext, config: DeployConfig, opt
     const dryRun = async () => {
       const { rendered, releaseId } = await render();
       const post = config.postDeploy.length > 0 ? ` post-deploy tasks (${config.postDeploy.join(', ')}),` : '';
-      const database = options.urgent === true ? null : await declaredDatabase(ctx, config);
-      const databasePlan = database ? `; database (${database.target === 'stack' ? `inside the ${database.service} container, no URL held` : 'external, by --db-url-env'}): migrate preview, a verified backup only when a migration is pending, the expand migrations before the deploy, the contract migrations after the accept, and an automatic first start on an empty database${hasSeedEntries(config.repoRoot, config.env) ? `; ${seedPlanLine(config.repoRoot, config.env)}` : ''}` : '';
+      const database = await declaredDatabase(ctx, config);
+      const where = database?.target === 'stack' ? 'made and test-decrypted on the manager' : 'made and test-decrypted where the deploy runs';
+      const backupPlan = options.urgent === true ? `a verified backup ${where} (always: the urgent floor)` : `a verified backup ${where} only when a migration is pending`;
+      const databasePlan = database ? `; database (${database.target === 'stack' ? `inside the ${database.service} container, no URL held` : 'external, by --db-url-env'}): migrate preview, ${backupPlan}, the expand migrations before the deploy, the contract migrations after the accept, and an automatic first start on an empty database${hasSeedEntries(config.repoRoot, config.env) ? `; ${seedPlanLine(config.repoRoot, config.env)}` : ''}` : '';
       const plan = options.skipPublic
         ? `dry run: release ${releaseId} would be provisioned, stored, pre-pulled, deployed, converged,${post} and verified inside the stack (public hosts skipped); it would stay pending until ingress publish and stack accept${databasePlan}`
         : `dry run: release ${releaseId} would be provisioned, stored, pre-pulled, deployed, converged,${post} verified, accepted${databasePlan}`;
@@ -483,7 +488,7 @@ export async function deployRelease(ctx: StackContext, config: DeployConfig, opt
     if (options.execute !== true) {
       if (options.urgent !== true) return await dryRun();
       const never = (what: string) => () => Promise.reject(new Error(`a dry run ${what}`));
-      return await urgentDeploy(ctx, config, options, { render, dryRun, openStore: never('opens no store'), deployExecute: never('deploys nothing'), sha256: fileSha256 }, d.floor);
+      return await urgentDeploy(ctx, config, options, { render, dryRun, openStore: never('opens no store'), deployExecute: never('deploys nothing') }, d.floor);
     }
     if (options.urgent !== true) await render();
     const run = await openRunner(ctx, config, options, d, cleanups);
@@ -502,7 +507,7 @@ export async function deployRelease(ctx: StackContext, config: DeployConfig, opt
       const seams = { run, store, rec };
       const done = options.urgent === true
         ? await urgentDeploy(ctx, config, options, {
-          render, dryRun, openStore: async () => store, sha256: fileSha256,
+          render, dryRun, openStore: async () => store,
           deployExecute: (extra: Pick<DeployOptions, 'firstStartStep' | 'firstStartDb'> = {}) => deployExecute(ctx, config, { ...options, ...extra }, d, out, seams),
           note: (record) => rec.note({ urgent: record }),
         }, d.floor)

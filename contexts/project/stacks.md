@@ -520,7 +520,7 @@ withheld, never printed or stored. A `sql`
 entry runs in one transaction with its receipt. A `data` or `test-account` entry validates its documents, opens each secret reference in
 memory with the environment's age identity and hands the resolved documents to its app command on stdin; no opened value reaches a file,
 argv, a log or a receipt, and a failing command's or probe's output is withheld (`STACK_SEED_COMMAND`, `STACK_SEED_PROBE` for a probe that cannot run). A `files` entry is validated only: the harness has no
-object-storage client, so the upload stays the app's. `starci app stack up` runs the step after the migrations; a deploy runs it after
+object-storage client, so the upload stays the app's. `starci app stack up` runs the step after the migrations; a deploy, urgent or not, runs it after
 convergence (so a data command is the new release's), its app commands and probes in a task of the jobs service, and its dry run
 names every entry, each applied unless its receipt holds; a dry run runs no probe. The scaffold's `cli seed run` still applies the `sql/` folders of the shared level and then
 the environment's for a manual run.

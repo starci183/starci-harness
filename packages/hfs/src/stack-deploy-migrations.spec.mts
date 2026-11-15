@@ -311,7 +311,7 @@ test('skipPublic: the contract migrations wait for the accept verb, which applie
 test('a dry run names the database phases and makes no remote or database call', async (t) => {
   const { result, order } = await run(t, { execute: false, expand: EXPAND });
   assert.equal(result.ok, true);
-  assert.ok(result.lines.some((line) => line.includes('migrate preview, a verified backup only when a migration is pending')));
+  assert.ok(result.lines.some((line) => line.includes('migrate preview, a verified backup made and test-decrypted on the manager only when a migration is pending')));
   assert.deepEqual(order, []);
 });
 
