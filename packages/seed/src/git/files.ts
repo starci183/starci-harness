@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
-import { dirname, isAbsolute, join, normalize } from "node:path"
+import { dirname, join, normalize, posix, win32 } from "node:path"
 import { DataRefusal } from "../driver.ts"
 import type { OpenContext } from "../driver.ts"
 import type { RunResult, Runner } from "./driver.ts"
@@ -44,7 +44,8 @@ const defaultRunner: Runner = (program, args, options): RunResult => {
 
 function safePath(path: string): string {
     const clean = normalize(path).split("\\").join("/")
-    if (isAbsolute(path) || clean.startsWith("../") || clean === "..") throw new DataRefusal("DATA_COPY_MISSING", "configuration", { path })
+    // A repository path is the same on every machine: a drive or root prefix of either platform is refused on both.
+    if (posix.isAbsolute(path) || win32.isAbsolute(path) || clean.startsWith("../") || clean === "..") throw new DataRefusal("DATA_COPY_MISSING", "configuration", { path })
     return clean
 }
 
