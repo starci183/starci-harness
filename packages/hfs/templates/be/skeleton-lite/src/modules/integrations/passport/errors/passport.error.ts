@@ -1,6 +1,6 @@
 import { DomainError, type ErrorKind } from "@modules/platform/errors"
 
-/** Codes of the passport integration: the wire codes @starci/auth names for the token, key, Google and sign-in provider legs (the kit spec holds the parity). */
+/** Codes of the passport integration: the wire codes @starci/auth names for the token, key, Google, sign-in provider and API-key legs (the kit spec holds the parity). */
 export enum PassportErrorCode {
     /** The access token failed signature, issuer, audience or expiry verification. */
     AccessTokenInvalid = "PASSPORT_ACCESS_TOKEN_INVALID",
@@ -22,6 +22,12 @@ export enum PassportErrorCode {
     ProviderUnavailable = "PASSPORT_PROVIDER_UNAVAILABLE",
     /** The configured sign-in providers cannot be served (one named twice, or an id that cannot be a door path). */
     ProvidersInvalid = "PASSPORT_PROVIDERS_INVALID",
+    /** An API key was refused (missing, malformed, ambiguous, unknown, wrong secret, revoked or expired); the reason stays in the log and never reaches the wire. */
+    ApiKeyRejected = "PASSPORT_API_KEY_REJECTED",
+    /** A key text, id or prefix is outside the API-key format. */
+    ApiKeyMalformed = "PASSPORT_API_KEY_MALFORMED",
+    /** A stored API-key record is unusable (its hash is no SHA-256). */
+    ApiKeyRecordInvalid = "PASSPORT_API_KEY_RECORD_INVALID",
 }
 
 /** How each passport code travels. */
@@ -36,6 +42,9 @@ export const PASSPORT_ERROR_KINDS: Record<PassportErrorCode, ErrorKind> = {
     [PassportErrorCode.ProviderRejected]: "unauthenticated",
     [PassportErrorCode.ProviderUnavailable]: "unavailable",
     [PassportErrorCode.ProvidersInvalid]: "internal",
+    [PassportErrorCode.ApiKeyRejected]: "unauthenticated",
+    [PassportErrorCode.ApiKeyMalformed]: "invalid",
+    [PassportErrorCode.ApiKeyRecordInvalid]: "internal",
 }
 
 /** The one error class of the passport integration. */

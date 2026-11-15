@@ -100,6 +100,22 @@ describe("IdentitySignInService refusals", () => {
         expect(passport).toMatchObject({ code: PassportErrorCode.GoogleRejected })
     })
 
+    it("keeps the three API-key codes in the passport family", async () => {
+        const { subject, doors } = await build()
+
+        for (const [wire, code] of [
+            ["PASSPORT_API_KEY_REJECTED", PassportErrorCode.ApiKeyRejected],
+            ["PASSPORT_API_KEY_MALFORMED", PassportErrorCode.ApiKeyMalformed],
+            ["PASSPORT_API_KEY_RECORD_INVALID", PassportErrorCode.ApiKeyRecordInvalid],
+        ] as const) {
+            doors.login.mockRejectedValue(new AuthError(wire))
+            const refused: unknown = await subject.login(EXCHANGE).catch((error: unknown) => error)
+
+            expect(refused).toBeInstanceOf(PassportError)
+            expect(refused).toMatchObject({ code })
+        }
+    })
+
     it("reads a code neither family names as unauthenticated", async () => {
         const { subject, doors } = await build()
         doors.login.mockRejectedValue(Object.assign(new AuthError("IDENTITY_REFRESH_REUSED"), { code: "NOT_A_CODE" }))

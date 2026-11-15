@@ -29,7 +29,7 @@ audience, and builds the principal only after verification. `@starci/auth` is th
 provider and issuer lives in it. It also holds the API-key strategy of a `@Credential({ kind: "api-key" })` door: `ApiKeyVerifier` parses
 `Authorization: Bearer <prefix><keyId>.<secret>`, looks the id up through the app's `ApiKeyStore` port over its own key table,
 compares the secret's SHA-256 in constant time and refuses a revoked or expired key, and `issueApiKey` / `registerApiKey` store only
-that hash, so the app's `CredentialAuthenticator` keeps the table and judges the scope (workspace, holder, scopes) the record carries. In lite it alone holds Passport (the sign-in providers, Google OAuth 2.0 and GitHub, each with state and PKCE in a
+that hash, so the app's `CredentialAuthenticator` keeps the table and judges the scope (workspace, holder, scopes) the record carries. Its refusals are passport codes (`PASSPORT_API_KEY_REJECTED`, `_MALFORMED`, `_RECORD_INVALID`), which the lite passport error family names with the package's kinds (401, 400, 500) and the reason of a refusal never reaches the wire. In lite it alone holds Passport (the sign-in providers, Google OAuth 2.0 and GitHub, each with state and PKCE in a
 signed cookie of its own, `providers: [google(...), github(...)]`; email and password with bcrypt) and `jose`, signs the access tokens, serves their public JWKS, counts only sign-in
 failures against the limit and rotates the refresh token, which lives only in an httpOnly, Secure cookie the package sets;
 a spent refresh token presented again inside a short grace window is a racing tab and is answered with an access token
