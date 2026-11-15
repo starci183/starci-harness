@@ -32,13 +32,30 @@ interface Server {
 
 const root = mkdtempSync(join(tmpdir(), "seed-postgres-spec-"))
 const cleanups: (() => Promise<void> | void)[] = []
+/** The SQLSTATE of a connection the server ended (admin_shutdown): what the teardown's DROP DATABASE ... WITH (FORCE) and container removal do. */
+const TERMINATED = "57P01"
+/** Errors an idle pooled connection raised other than that termination; the run fails on any. */
+const strayErrors: string[] = []
 after(async () => {
     for (const cleanup of cleanups.reverse()) await cleanup()
     rmSync(root, { recursive: true, force: true })
+    assert.deepEqual(strayErrors, [], "no idle connection failed for another reason")
 })
 
+/**
+ * A pool that answers the error node-postgres emits for an idle connection (unhandled, it is an uncaughtException): a connection the
+ * teardown terminates is expected, any other error is recorded and fails the run.
+ */
+function poolOf(connectionString: string, max: number): pg.Pool {
+    const pool = new pg.Pool({ connectionString, max })
+    pool.on("error", (error: Error & { code?: string }) => {
+        if (error.code !== TERMINATED) strayErrors.push(error.code ?? error.name)
+    })
+    return pool
+}
+
 async function waitFor(url: string): Promise<pg.Pool> {
-    const pool = new pg.Pool({ connectionString: url, max: 4 })
+    const pool = poolOf(url, 4)
     for (let attempt = 0; attempt < 90; attempt += 1) {
         try {
             await pool.query("SELECT 1")
@@ -175,7 +192,7 @@ async function scratch(server: Server, withData: boolean): Promise<Scratch> {
     } catch {
         await server.admin.query(`CREATE DATABASE ${name} TEMPLATE template0 ENCODING 'UTF8'`)
     }
-    const pool = new pg.Pool({ connectionString: server.urlFor(name), max: 4 })
+    const pool = poolOf(server.urlFor(name), 4)
     cleanups.push(async () => {
         await pool.end()
         await server.admin.query(`DROP DATABASE IF EXISTS ${name} WITH (FORCE)`)
@@ -358,7 +375,7 @@ withServer("a role without the owner right cannot import: a refusal with the SQL
     const url = new URL(srv.urlFor(String(await scalar(b.pool, "SELECT current_database()"))))
     url.username = role
     url.password = `x${suffix}`
-    const limited = new pg.Pool({ connectionString: url.toString(), max: 2 })
+    const limited = poolOf(url.toString(), 2)
     cleanups.push(() => limited.end())
     const target = postgresStore({ id: "database", run: runnerOver(limited), pageRows: 2 })
     await assert.rejects(restoreFrom(await exportOf(a), [target], { dryRun: false, mode: "merge" }), (error: unknown) => {
