@@ -2,6 +2,8 @@
 
 ## 1.1.0-alpha.125 - 2026-11-15
 
+- Changed: the CLI requires @starci/hfs@6.13.0, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
+
 - Added: an app may declare gates off for the whole app (`gates` of `.starcistacks/application-stacks.yaml`, contexts/project/lint.md PROJECT-LINT-4, `@starci/hfs` 6.13.0): `policy/loosening.yaml` gains `optionalGates` (the ids an app may switch off: every gate but hfs, secrets and db, narrowed by a project's overlay, never widened), `starci app` hands it to `@starci/hfs` as `STARCI_OPTIONAL_GATES` (`cli/src/harness/policy.ts`, `cli/src/core/app/hfs.ts`), and the help of `starci app check` says a declared gate is listed `off (declared: <reason>)` and never counted as passed.
 
 ## 1.1.0-alpha.124 - 2026-11-15
