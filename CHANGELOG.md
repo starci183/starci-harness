@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.128 - 2026-11-15
+
+- Changed: the CLI requires @starci/hfs@6.13.3, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
+
 ## 1.1.0-alpha.127 - 2026-11-15
 
 - Changed: the CLI requires @starci/hfs@6.13.2, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
