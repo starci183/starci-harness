@@ -1,5 +1,9 @@
 # Changelog
 
+## 6.13.4 - 2026-11-15
+
+- Changed: the canon pin of `@starci/auth` is 0.7.1 (`runtime/knowledge/hfs/canon-pins.yaml`, `contexts/stack/pins.yaml`): a refresh cookie left by an earlier deployment (host-only, another domain, a legacy path) is cleared at sign-in and on a refusal, so it never shadows the new session.
+
 ## 6.13.3 - 2026-11-15
 
 - Fixed (`stack deploy --urgent`, contexts/project/cicd.md "The urgent path" and "Database migrations"): a deploy's safety steps run where the data is, whichever path triggered the deploy. The urgent floor now keeps only what an urgent release adds (the pushed urgent record, the rollback target, the public verify) and then runs the deploy's own database phases (`stack/db-phases.mts`), in the same place and under the same codes as the automatic path. For a `database.target: stack` database the migrate preview and the migrations run inside its container, and the backup is made, receipted and test-decrypted ON THE MANAGER through the deploy's ssh runner with the server's identity: the operator's machine needs no PostgreSQL client, no route to the database, no `DATABASE_URL` and no `SOPS_AGE_KEY_FILE` (was: `STACK_DEPLOY_BACKUP_FAILED (DB_CLI_MISSING)` on a machine without them). The floor's one difference stays: its backup is taken even when nothing is pending (`alwaysBackup`). An `external` database is backed up where the deploy runs, as before. The expand migrations run before the deploy and the contract ones after the accept (was: every migration before the deploy).

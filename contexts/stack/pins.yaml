@@ -16,7 +16,7 @@ pins:
   '@starci/visual-effects': {version: 0.1.0, group: starci, side: fe, install: registry, why: "the visual effects of a front end over the Grammar theme, confetti first, on an overlay canvas of their own and skipped for reduced motion"}
   '@starci/object-storage': {version: 0.3.0, group: starci, side: be, install: registry, why: "object storage of a back end: the ObjectStorage port over S3-compatible storage; the only importer of the AWS S3 client libraries"}
   '@starci/nest-kit': {version: 0.2.2, group: starci, side: be, install: registry, why: "the module definition of every back-end module: defineConfigurableModule and defineCapabilityModule, one typed call per <x>.module-definition.ts"}
-  '@starci/auth': {version: 0.7.0, group: starci, side: both, install: registry, why: "the sign-in of both editions: the lite server module with its sign-in providers, the full OIDC client of the identity provider with its issuer presets, the front-end clients, contracts and test doubles with the fake issuer; the only importer of the identity libraries"}
+  '@starci/auth': {version: 0.7.1, group: starci, side: both, install: registry, why: "the sign-in of both editions: the lite server module with its sign-in providers, the full OIDC client of the identity provider with its issuer presets, the front-end clients, contracts and test doubles with the fake issuer; the only importer of the identity libraries"}
   '@starci/mail': {version: 0.2.0, group: starci, side: be, install: registry, why: "outgoing mail of a back end: the Mailer port over SMTP with timeouts, required STARTTLS, attachments, a shared SMTP target policy, coded errors, typed render helpers; the only importer of nodemailer"}
   '@starci/seed': {version: 0.1.0, group: starci, side: both, install: registry, why: "the data standard of a project: the store and driver ports, one export written to several copies, the copy contract and the line protocol, in-memory references with the store and driver contract suites (./testing) and the git driver (./git: seed-standard in plaintext, seed-backup sealed with sops and age, the 500 MiB snapshot cap); depends on @starci/common for DomainError"}
   '@starci/grammar': {version: 0.39.3, range: '~0.39.3', group: starci, side: fe, install: registry, why: "the grammar package an app composes (grammars core and offset-pop)"}
@@ -31,7 +31,7 @@ pins:
   '@starci/jest-preset': {version: 2.10.0, group: starci, side: be, install: registry, why: "the back-end Jest preset; pairs exactly with @starci/test-world"}
   '@starci/test-world': {version: 2.0.0, group: starci, side: be, install: registry, why: "the back-end e2e world; pairs exactly with @starci/jest-preset"}
   '@starci/ai-router': {version: 0.7.0, group: starci, side: be, install: registry, why: "the AI pool router module of a back end; jest-preset compiles it as ESM"}
-  '@starci/hfs': {version: 6.13.3, group: starci, side: both, install: registry, why: "the app implementation starci-harness runs for starci app"}
+  '@starci/hfs': {version: 6.13.4, group: starci, side: both, install: registry, why: "the app implementation starci-harness runs for starci app"}
   '@langchain/core': {version: 1.3.5, group: framework, side: be, why: "the LangChain core of the one AI integration (contexts/code/be/ai.md)"}
   '@langchain/openai': {version: 1.8.2, group: framework, side: be, why: "ChatOpenAI and OpenAIEmbeddings of the one AI integration, pointed at the ai-router gateway"}
   typescript: {version: 5.9.3, group: tooling, side: both}

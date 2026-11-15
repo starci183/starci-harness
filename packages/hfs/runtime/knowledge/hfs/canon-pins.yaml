@@ -139,7 +139,7 @@ pins:
     source: packages/nest-kit/package.json
     why: 'the module definition of every back-end module: defineConfigurableModule and defineCapabilityModule return the module base class, the options token and the options types with their types stated, so a <x>.module-definition.ts is one call that the lint on stated export types (R368) and the duplicate-code check (R21) both accept; @starci/jest-preset compiles it as an ESM-only dependency.'
   '@starci/auth':
-    version: 0.7.0
+    version: 0.7.1
     group: starci
     install: registry
     side: both
@@ -168,7 +168,7 @@ pins:
     source: packages/seed/package.json
     why: 'the data standard of a project: the StoreAdapter and DriverAdapter ports, one export written to several copies, the copy contract and the line protocol, with the store and driver contract suites (./testing) and the git driver (./git); the starter back end implements StoreAdapter for its database in integrations/seed, the one importer of the package (R426, R90), and imports only its types.'
   '@starci/hfs':
-    version: 6.13.3
+    version: 6.13.4
     group: starci
     install: registry
     side: both
