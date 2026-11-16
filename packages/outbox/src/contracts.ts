@@ -6,6 +6,17 @@ import type { OutboxTables } from "./tables.ts"
 /** The state of one job row. `closed` is a dead letter a person ended for good. */
 export type JobState = "queued" | "running" | "done" | "parked" | "closed"
 
+/** A state change of a job a notification may be asked for: claimed by a worker, done, failed and retried later, parked. */
+export type NotifyState = "claimed" | "done" | "failed" | "parked"
+
+/** The notification of one job: its state changes are published as events `job.<state>` on this topic of the job's scope. */
+export interface JobNotify {
+    /** The topic of the job's scope the events go to (`jobs`, `imports`); a client follows it through `sse`. */
+    readonly topic: string
+    /** The state changes published; all four by default. */
+    readonly on?: readonly NotifyState[]
+}
+
 /** What a transaction enqueues: one job, kept once by its once key. */
 export interface EnqueueJob {
     /** The scope the job's concurrency is counted in (a tenant, an account), or null for an unscoped queue with no slots. */
@@ -20,6 +31,11 @@ export interface EnqueueJob {
     readonly onceKey: string
     /** The job is not started before this instant; now when absent. */
     readonly notBefore?: Date | undefined
+    /**
+     * Publishes the job's state changes as events of its scope (a job with a null scope is refused `OUTBOX_EVENT_INVALID`), so a client
+     * follows its progress through `sse` instead of polling. Kept with the job: a second enqueue under the once key changes nothing.
+     */
+    readonly notify?: JobNotify | undefined
 }
 
 /**
@@ -45,6 +61,81 @@ export interface ClaimedJob {
     readonly fence: number
     /** How many times the job was handed back from a dead letter. */
     readonly resumeCount: number
+    /** The notification its enqueue asked for, with every state it publishes; absent when none. */
+    readonly notify?: { readonly topic: string; readonly on: readonly NotifyState[] }
+}
+
+/** What a transaction publishes: one event of a scope's topic, written with the caller's change and announced after it commits. */
+export interface PublishEvent {
+    /** The scope the event belongs to (a tenant, an account): only a subscriber of this scope receives it. */
+    readonly scope: string
+    /** The topic within the scope (`jobs`, `orders`). */
+    readonly topic: string
+    /** What happened (`order.paid`); the client switches on it. */
+    readonly type: string
+    /** The document the client receives (ids and states, never a secret). */
+    readonly data?: object
+}
+
+/** One event as a subscriber receives it. `seq` is its place in the stream, the SSE `id` a client resumes after (`Last-Event-ID`). */
+export interface OutboxEvent {
+    readonly seq: string
+    readonly scope: string
+    readonly topic: string
+    readonly type: string
+    readonly data: unknown
+    readonly createdAt: string
+}
+
+/** What a subscriber follows: one scope, which the server takes from the caller's own principal, never from the request. */
+export interface Subscription {
+    /** The scope; required. */
+    readonly scope: string
+    /** The topics of the scope; at least one. */
+    readonly topics: readonly string[]
+    /** Resume after this seq: every event of the scope's topics after it is replayed first, in order. Digits only; anything else starts live. */
+    readonly lastEventId?: string | undefined
+}
+
+/** How a subscriber hears its events, and the end of its subscription when the outbox closes it. */
+export interface SubscriptionHandlers {
+    readonly onEvent: (event: OutboxEvent) => void
+    /** The outbox stopped (or lost its listener for good): the subscription is over. */
+    readonly onClose?: (cause?: unknown) => void
+}
+
+/** A notification as the listening connection hands it over. */
+export interface Notification {
+    readonly channel: string
+    readonly payload?: string | undefined
+}
+
+/**
+ * The dedicated connection that LISTENs: a connected node-postgres `Client` has this shape. It is never a pooled connection, since a pool
+ * hands it to other work and a LISTEN lives as long as the connection.
+ */
+export interface NotificationClient {
+    query(sql: string): Promise<unknown>
+    on(event: "notification", listener: (message: Notification) => void): unknown
+    on(event: "error", listener: (error: Error) => void): unknown
+    on(event: "end", listener: () => void): unknown
+    end(): Promise<void>
+}
+
+/** The settings of the event streams a process serves. */
+export interface StreamOptions {
+    /** Opens the dedicated listening connection, connected (`async () => { const c = new pg.Client(config); await c.connect(); return c }`). */
+    readonly listener?: () => Promise<NotificationClient>
+    /** The comment line that keeps an idle stream alive, every so many ms (15000; the client's heartbeat timeout is 45000). */
+    readonly heartbeatMs?: number
+    /** The bytes a stream may hold unsent before its client is dropped as too slow (1048576). */
+    readonly maxBufferedBytes?: number
+    /** How long a stream may stay full before its client is dropped, ms (10000). */
+    readonly drainTimeoutMs?: number
+    /** The `retry:` the stream sends, the client's first reconnect delay, ms (2000). */
+    readonly retryMs?: number
+    /** The first wait before the listening connection is opened again after it broke, ms (1000; doubled up to 30000). */
+    readonly reconnectMs?: number
 }
 
 /** What a handler gets besides its job. */
@@ -193,6 +284,12 @@ export interface OutboxOptions extends OutboxTables {
     readonly autoResumes?: number
     /** How long `stop` waits for running jobs before it aborts them and hands their rows back, ms (30000). */
     readonly shutdownGraceMs?: number
+    /** How long an event is kept for a client to resume after, ms (86400000, a day); the worker deletes older ones. */
+    readonly eventRetentionMs?: number
+    /** How often the worker deletes events past their retention, ms (600000). */
+    readonly eventSweepMs?: number
+    /** The event streams this process serves (`sse`, `subscribe`). */
+    readonly stream?: StreamOptions
     readonly clock?: Clock
     readonly schedule?: Schedule
 }

@@ -10,7 +10,7 @@ that must be undone declares saga.md. A lite app declares `fenced-job` and Redis
 
 A back end whose jobs run on Postgres alone, with no queue broker, takes the outbox, the claim, the fence, the ladders, the dead
 letters and the timers from `@starci/outbox` and writes none of them: its `platform/jobs` is the one importer, registers
-`OutboxModule` over the app's connection, copies the package's `migrations/outbox.sql` into its migrations (declaring the package's slot table, keyed by queue, scope and slot, in hfs.json `db.keyExceptions`, BE-PERSISTENCE-20) and re-exports the `Outbox` to
+`OutboxModule` over the app's connection, copies the package's `migrations/outbox.sql` into its migrations (every table keyed by BE-PERSISTENCE-20) and re-exports the `Outbox` to
 the producers and handlers; the rules below hold through the package's API (`enqueue(tx, ...)` for BE-QUEUES-1, the fence of
 `ClaimedJob` for BE-JOBS-2, `effectKey` for BE-JOBS-3, its `ladders` for BE-JOBS-7). A defect or a missing rule of it is fixed in the
 package ([authority/packages.md](../../authority/packages.md)), never shimmed in the app.
@@ -246,6 +246,9 @@ publishes it. Nobody listening changes nothing, and a publish failure never fail
 person reads. One generic door serves the stream (BE-REALTIME-8): for one chain root, or a bounded set of roots, or the whole
 workspace, on one connection, principal-first and membership-checked; a late or reconnecting subscriber first gets the current state
 read from the rows, including the next retry time, then the live frames (`Last-Event-ID` resumes).
+With `@starci/outbox` the view is the package's: a job enqueued with `notify` publishes `job.claimed`, `job.done`, `job.failed` and
+`job.parked`, a handler reports its steps with `publish(context.tx, ...)`, the door is `outbox.sse` scoped by the principal, and a client
+follows a job or run through it with `@starci/event-stream`, never by polling.
 
 Why: progress is a view of state the rows already hold, so it is correct after a crash and costs nothing when unwatched; one door
 keeps isolation and replay in one place instead of one per job.

@@ -11,7 +11,7 @@ import { deferralOf, defer } from "./contracts.ts"
 import type { Schedule } from "./contracts.ts"
 import { OutboxError, OutboxErrorCode } from "./errors.ts"
 import { DEFAULT_LADDERS, isPastLadder, ladderVerdictOf } from "./ladders.ts"
-import { OUTBOX, Outbox, OutboxModule, outboxDdl, pgDatabase, reasonOf, resolveTables, rowsOf } from "./index.ts"
+import { OUTBOX, Outbox, OutboxModule, outboxDdl, outboxUpgradeDdl, pgDatabase, reasonOf, resolveTables, rowsOf, sseFrame, tableSingular } from "./index.ts"
 import type { OutboxDatabase, PgClientLike, Queryable } from "./index.ts"
 
 /** A database that answers no rows: enough for everything that never reaches Postgres. */
@@ -36,6 +36,41 @@ describe("tables and DDL", () => {
 
     it("ships migrations/outbox.sql as the default rendering, the file an app copies into its migrations", () => {
         assert.equal(readFileSync(new URL("../migrations/outbox.sql", import.meta.url), "utf8"), outboxDdl())
+    })
+
+    it("ships the 0.1.0 to 0.2.0 contract migration as the default rendering, and renders it for renamed tables", () => {
+        assert.equal(readFileSync(new URL("../migrations/outbox_contract_0_2_0.sql", import.meta.url), "utf8"), outboxUpgradeDdl())
+        const renamed = outboxUpgradeDdl({ schema: "jobs", jobs: "queue_entries", slots: "queue_slots", grantTo: "app_be" })
+        assert.match(renamed, /rename column job_id to queue_entry_id;/u)
+        assert.match(renamed, /rename constraint queue_slots_job_id_fkey to queue_slots_queue_entry_id_fkey;/u)
+        assert.match(renamed, /grant select, insert, update, delete on table "jobs"."outbox_events" to "app_be";/u)
+    })
+
+    it("keys the slot table by id uuid with its natural key unique, and names its foreign key by the job table's singular", () => {
+        const ddl = outboxDdl()
+        assert.match(ddl, /create table "public"."outbox_slots" \(\n {4}id uuid primary key default gen_random_uuid\(\),/u)
+        assert.match(ddl, /outbox_job_id uuid constraint outbox_slots_outbox_job_id_fkey references/u)
+        assert.match(ddl, /create index outbox_slots_outbox_job_id_idx on "public"."outbox_slots" \(outbox_job_id\)/u)
+        assert.match(ddl, /constraint outbox_events_seq_key unique \(seq\)/u)
+        assert.deepEqual(
+            ["outbox_jobs", "categories", "boxes", "batches", "status", "items", "job"].map(tableSingular),
+            ["outbox_job", "category", "box", "batch", "status", "item", "job"],
+        )
+        assert.equal(resolveTables({ schema: "s", events: "feed" }).channel, "outbox:s.feed")
+    })
+
+    it("writes an event as one default SSE frame whose id is its seq", () => {
+        const frame = sseFrame({ seq: "42", scope: "a", topic: "jobs", type: "job.done", data: { text: "two\nlines" }, createdAt: "2026-11-16T10:00:00.000Z" })
+        assert.equal(frame.split("\n\n").length, 2, "one frame, ended by one blank line")
+        assert.ok(frame.startsWith("id: 42\ndata: {"))
+        assert.deepEqual(JSON.parse(frame.slice(frame.indexOf("data: ") + 6).trim()), {
+            seq: "42",
+            scope: "a",
+            topic: "jobs",
+            type: "job.done",
+            data: { text: "two\nlines" },
+            createdAt: "2026-11-16T10:00:00.000Z",
+        })
     })
 })
 

@@ -26,16 +26,24 @@ export interface Statements {
     readonly sweepTimers: string
     readonly purge: string
     readonly stats: string
+    readonly lockEvents: string
+    readonly publish: string
+    readonly scopeHead: string
+    readonly eventsAfter: string
+    readonly replay: string
+    readonly purgeEvents: string
 }
 
-const CLAIMED_COLUMNS = "id::text as id, scope::text as scope, queue, name, payload, once_key, attempts, fence::text as fence, resume_count"
+const CLAIMED_COLUMNS =
+    "id::text as id, scope::text as scope, queue, name, payload, once_key, attempts, fence::text as fence, resume_count, notify_topic, notify_on"
+const EVENT_COLUMNS = "seq::text as seq, scope::text as scope, topic, type, data, created_at"
 const PARKED_COLUMNS =
     "id::text as id, scope::text as scope, queue, name, payload, attempts, last_error, failure_class, park_reason, parked_at, parked_build, resume_count"
 
 /** The statements over these tables. */
 export const statementsOf = (t: ResolvedTables): Statements => {
-    const { jobs: J, slots: S, timers: T, scopeType: ST } = t
-    const releaseSlots = `s as (update ${S} set job_id = null, lease_until = null where job_id in (select id from j) returning 1)`
+    const { jobs: J, slots: S, timers: T, events: E, scopeType: ST, jobRef: R } = t
+    const releaseSlots = `s as (update ${S} set ${R} = null, lease_until = null where ${R} in (select id from j) returning 1)`
     const fenced = `id = $1::uuid and fence = $2::bigint and state = 'running'`
     const resumeSet = (pick: string): string => `with pick as (${pick} for update skip locked),
 j as (update ${J} t set state = 'queued', attempts = 0, not_before = $1, resume_count = t.resume_count + 1, failure_class = null,
@@ -45,8 +53,8 @@ j as (update ${J} t set state = 'queued', attempts = 0, not_before = $1, resume_
 select count(*)::int as n from j`
     return {
         enqueue: `with ins as (
-  insert into ${J} (scope, queue, name, payload, once_key, not_before)
-  values ($1::${ST}, $2, $3, $4::jsonb, $5, $6)
+  insert into ${J} (scope, queue, name, payload, once_key, not_before, notify_topic, notify_on)
+  values ($1::${ST}, $2, $3, $4::jsonb, $5, $6, $7, $8::text[])
   on conflict (once_key) do nothing returning id)
 select id::text as id, true as created from ins
 union all
@@ -59,7 +67,7 @@ select id::text as id, false as created from ${J} where once_key = $5 and not ex
   where (j.state = 'queued' and j.not_before <= $1) or (j.state = 'running' and j.lease_until < $1)
 ), busy as (
   select s.queue, s.scope, count(*) as held from ${S} s
-  where s.job_id is not null and s.lease_until >= $1 group by s.queue, s.scope
+  where s.${R} is not null and s.lease_until >= $1 group by s.queue, s.scope
 )
 select due.id::text as id from due
 left join busy on busy.queue = due.queue and busy.scope = due.scope
@@ -70,10 +78,10 @@ limit $4`,
 where j.id = any($1::uuid[]) and ((j.state = 'queued' and j.not_before <= $2) or (j.state = 'running' and j.lease_until < $2))
 for update skip locked`,
         lockSlot: `select pg_advisory_xact_lock(hashtextextended($1, 0)) as locked`,
-        slotsOf: `select slot, job_id::text as job_id, lease_until from ${S} where queue = $1 and scope = $2::${ST}`,
-        freeSlotsOf: `update ${S} set job_id = null, lease_until = null where job_id = any($1::uuid[])`,
-        takeSlot: `insert into ${S} (queue, scope, slot, job_id, lease_until) values ($1, $2::${ST}, $3, $4::uuid, $5)
-on conflict (queue, scope, slot) do update set job_id = excluded.job_id, lease_until = excluded.lease_until`,
+        slotsOf: `select slot, ${R}::text as job_id, lease_until from ${S} where queue = $1 and scope = $2::${ST}`,
+        freeSlotsOf: `update ${S} set ${R} = null, lease_until = null where ${R} = any($1::uuid[])`,
+        takeSlot: `insert into ${S} (queue, scope, slot, ${R}, lease_until) values ($1, $2::${ST}, $3, $4::uuid, $5)
+on conflict (queue, scope, slot) do update set ${R} = excluded.${R}, lease_until = excluded.lease_until`,
         start: `update ${J} set state = 'running', attempts = attempts + 1, fence = fence + 1, lease_until = $2, claimed_by = $3, finished_at = null
 where id = any($1::uuid[])
 returning ${CLAIMED_COLUMNS}`,
@@ -95,7 +103,7 @@ j as (update ${J} t set state = 'parked', lease_until = null, claimed_by = null,
 ${releaseSlots}
 select alert from j`,
         renew: `with j as (update ${J} set lease_until = $3 where ${fenced} returning id),
-s as (update ${S} set lease_until = $3 where job_id in (select id from j) returning 1)
+s as (update ${S} set lease_until = $3 where ${R} in (select id from j) returning 1)
 select count(*)::int as n from j`,
         resumeOne: resumeSet(`select id from ${J} where id = $3::uuid and state = 'parked'`),
         resumeTransient: resumeSet(
@@ -128,5 +136,17 @@ x as (delete from ${J} t using d where t.id = d.id returning 1),
 y as (delete from ${T} where (fired_at < $1 or cancelled_at < $1) returning 1)
 select (select count(*) from x)::int as n`,
         stats: `select queue, state, count(*)::int as n from ${J} group by queue, state order by queue, state`,
+        // The lock that orders the events of one scope: held from the write to the commit, so a later seq of the scope never commits first.
+        lockEvents: `select pg_advisory_xact_lock(hashtextextended($1 || $2::${ST}::text, 0)) as locked`,
+        // The announcement is sent at commit only, so a rolled-back write wakes nobody; its payload is the scope.
+        publish: `with ev as (insert into ${E} (scope, topic, type, data, created_at) values ($1::${ST}, $2, $3, $4::jsonb, $5) returning seq, scope)
+select ev.seq::text as seq from ev cross join lateral (select pg_notify($6, ev.scope::text)) as announced`,
+        scopeHead: `select coalesce(max(seq), 0)::text as seq from ${E} where scope = $1::${ST}`,
+        eventsAfter: `select ${EVENT_COLUMNS} from ${E} where scope = $1::${ST} and seq > $2::bigint order by seq limit $3`,
+        replay: `select ${EVENT_COLUMNS} from ${E}
+where scope = $1::${ST} and topic = any($2::text[]) and seq > $3::bigint and seq <= $4::bigint order by seq limit $5`,
+        purgeEvents: `with d as (select id from ${E} where created_at < $1 order by created_at limit $2),
+x as (delete from ${E} t using d where t.id = d.id returning 1)
+select count(*)::int as n from x`,
     }
 }
