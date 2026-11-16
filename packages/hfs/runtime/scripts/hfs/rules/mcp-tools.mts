@@ -4,11 +4,21 @@
 // the `tools/list` result of the server at that contract major. The canon emits no MCP catalog, so the check is the shape: the
 // file names a declared be app and its own contract, the contract is the server name at an integer major, every tool has a unique
 // name, a description and an object input schema. A file that is not JSON is a finding too.
+// HFS_MCP_TOOLS_SNAPSHOT_MISSING (R302) is the presence half: a back end whose source (src/**, apps/**, specs aside) imports the MCP server
+// entry of the SDK (`@modelcontextprotocol/sdk/server`, any subpath) serves an MCP server, so it commits at least one catalog under
+// contracts/<app>/; without one, the shape check above has nothing to judge and the agent runtime's tools are unreviewed. Reported in
+// `--env local`, blocking in `--env prod` (the code is localOnly).
 import { isPlainObject as plain } from '../../../engine/plain-object.mjs';
 import { found, readText } from './read.mjs';
 import type { Parsed, Repo } from './rule-types.mjs';
 
 const MCP_TOOLS_SNAPSHOT = 'HFS_MCP_TOOLS_SNAPSHOT';
+const MCP_TOOLS_SNAPSHOT_MISSING = 'HFS_MCP_TOOLS_SNAPSHOT_MISSING';
+/** A back-end source file, specs and declaration files aside. */
+const SOURCE = /^(?:src|apps)\/.+(?<!\.d)\.[cm]?ts$/u;
+const SPEC = /[.-](?:spec|integration-spec|e2e-spec|contract-spec)\.[cm]?ts$/u;
+/** An import, re-export, dynamic import or require of the SDK's server entry. */
+const MCP_SERVER_IMPORT = /(?:\bfrom\s*|\bimport\s*\(\s*|\brequire\s*\(\s*|^\s*import\s+)['"]@modelcontextprotocol\/sdk\/server(?:\/[^'"]*)?['"]/mu;
 const SNAPSHOT = /^contracts\/([^/]+)\/([^/]+)\.tools\.json$/u;
 const CONTRACT = /^([a-z][a-z0-9-]*)@([1-9]\d*)$/u;
 
@@ -60,5 +70,15 @@ export function mcpToolsSnapshotFindings({ repoRoot, files, repo }: { repoRoot: 
     const problems = doc === undefined ? ['is not readable JSON'] : snapshotProblems(doc, stem!);
     if (problems.length) findings.push(found(MCP_TOOLS_SNAPSHOT, file, `${file} is not a canonical MCP tool catalog: ${problems.join('; ')}; ${fix}`, { app, problems }));
   }
+  findings.push(...missingCatalogFindings(repoRoot, files));
   return findings;
+}
+
+/** HFS_MCP_TOOLS_SNAPSHOT_MISSING: the back end serves an MCP server (its source imports the SDK's server entry) and commits no catalog. */
+function missingCatalogFindings(repoRoot: string, files: readonly string[]) {
+  if (files.some((file) => SNAPSHOT.test(file))) return [];
+  const servers = files.filter((file) => SOURCE.test(file) && !SPEC.test(file) && MCP_SERVER_IMPORT.test(readText(repoRoot, file) ?? ''));
+  if (servers.length === 0) return [];
+  const [first] = servers;
+  return [found(MCP_TOOLS_SNAPSHOT_MISSING, first!, `${first} serves an MCP server (it imports @modelcontextprotocol/sdk/server${servers.length > 1 ? `, as ${servers.length - 1} more file${servers.length === 2 ? ' does' : 's do'}` : ''}), but the back end commits no tool catalog: commit the server's \`tools/list\` result at contracts/<app>/<server>@<major>.tools.json of the app that serves it (R302, BE-AI-6)`, { local: true, servers })];
 }

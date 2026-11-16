@@ -1,5 +1,7 @@
 // proves: HFS_MCP_TOOLS_SNAPSHOT@lite
 // proves: HFS_MCP_TOOLS_SNAPSHOT@full
+// proves: HFS_MCP_TOOLS_SNAPSHOT_MISSING@lite
+// proves: HFS_MCP_TOOLS_SNAPSHOT_MISSING@full
 // R302 HFS_MCP_TOOLS_SNAPSHOT: a committed MCP tool catalog `contracts/<app>/<contract>.tools.json` has the canonical tools/list
 // shape and belongs to a declared be app.
 import test from 'node:test';
@@ -57,5 +59,28 @@ for (const edition of ['lite', 'full']) {
     assert.deepEqual(shape!.problems, ['tool a is listed twice', 'tool b has no description', 'tool b has no inputSchema of type object']);
     const [broken] = judge(t, { 'contracts/mcp/shop-mcp@1.tools.json': '{ not json' });
     assert.deepEqual(broken!.problems, ['is not readable JSON']);
+  });
+}
+
+const SERVER = 'import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"\nexport const server = new McpServer({ name: "shop-mcp", version: "1.0.0" })\n';
+
+for (const edition of ['lite', 'full']) {
+  test(`HFS_MCP_TOOLS_SNAPSHOT_MISSING ${edition}: a back end that serves an MCP server and commits no catalog is a violation, report-only in --env local`, (t) => {
+    const findings = judge(t, {
+      'src/modules/integrations/mcp/mcp.server.ts': SERVER,
+      'apps/mcp/src/main.ts': 'const { StdioServerTransport } = require("@modelcontextprotocol/sdk/server/stdio.js")\n',
+      'contracts/api/schema.graphql': 'type Query { a: Int }',
+    });
+    assert.deepEqual(findings.map(({ code, path: file, local }) => [code, file, local]), [['HFS_MCP_TOOLS_SNAPSHOT_MISSING', 'src/modules/integrations/mcp/mcp.server.ts', true]]);
+    assert.deepEqual(findings[0]!.servers, ['src/modules/integrations/mcp/mcp.server.ts', 'apps/mcp/src/main.ts']);
+    assert.match(findings[0]!.message, /contracts\/<app>\/<server>@<major>\.tools\.json/);
+  });
+
+  test(`HFS_MCP_TOOLS_SNAPSHOT_MISSING ${edition}: a served MCP server with its catalog, an MCP client and a spec that imports the server pass`, (t) => {
+    assert.deepEqual(judge(t, { 'src/modules/integrations/mcp/mcp.server.ts': SERVER, 'contracts/mcp/shop-mcp@1.tools.json': catalog() }), []);
+    assert.deepEqual(judge(t, {
+      'src/modules/integrations/agent/agent.client.ts': 'import { Client } from "@modelcontextprotocol/sdk/client/index.js"\nexport const client = new Client({ name: "a", version: "1" })\n',
+      'src/tests/integration/mcp/mcp.integration-spec.ts': SERVER,
+    }), []);
   });
 }

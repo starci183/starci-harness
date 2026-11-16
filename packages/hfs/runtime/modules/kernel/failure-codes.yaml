@@ -2516,6 +2516,18 @@ FE_I18N_CATALOG:
   owner: op-retry
   kind: check-finding
 
+FE_I18N_LOCALE_MISSING:
+  title: "Every declared locale has its catalog, and every catalog is a declared locale"
+  title_vi: "Locale khai báo thiếu catalog, hoặc catalog của locale không khai báo"
+  meaning_vi: "`defineI18n` của app khai báo một locale mà `modules/i18n/messages/<locale>.json` chưa được track, hoặc có một catalog cho locale mà `defineI18n` không khai báo. FE_I18N_CATALOG chỉ so key giữa các catalog đang có, nên một locale không có catalog nào lọt qua và next-intl phục vụ locale đó không có câu chữ."
+  causes_vi:
+    - "Vi phạm R60 (FE-I18N-3): thêm locale vào `defineI18n` mà chưa viết catalog, hoặc xóa locale nhưng để lại catalog."
+    - "`--env local` chỉ liệt kê, `--env prod` (hook push, CI, phát hành) chặn."
+  nextStep_vi: "Viết catalog cho locale khai báo với đủ key như các locale khác, hoặc bỏ locale khỏi `defineI18n`; xóa catalog của locale không khai báo."
+  owner: op-retry
+  kind: check-finding
+  localOnly: true
+
 FE_I18N_FORMATTER:
   title: "Numbers, money and dates through the next-intl formatter"
   title_vi: "Định dạng số, tiền, ngày ngoài formatter của next-intl"
@@ -4199,6 +4211,18 @@ HFS_MCP_TOOLS_SNAPSHOT:
   owner: op-retry
   kind: check-finding
 
+HFS_MCP_TOOLS_SNAPSHOT_MISSING:
+  title: "A back end that serves an MCP server commits its tool catalog"
+  title_vi: "Back end phục vụ server MCP nhưng chưa commit danh mục tool"
+  meaning_vi: "Mã nguồn back end import `@modelcontextprotocol/sdk/server` (tức là phục vụ một server MCP) nhưng không có tệp `contracts/<app>/<server>@<major>.tools.json` nào được track, nên luật hình dạng R302 không có gì để xét và các tool của agent runtime không được review."
+  causes_vi:
+    - "Vi phạm R302 (BE-AI-6): server MCP được thêm mà chưa commit kết quả `tools/list` của nó."
+    - "`--env local` chỉ liệt kê, `--env prod` (hook push, CI, phát hành) chặn."
+  nextStep_vi: "Lấy kết quả `tools/list` của server, ghi `{ contract, server: { name, version }, tools }` vào `contracts/<app>/<server>@<major>.tools.json` của app phục vụ server đó và khai báo slot `be.contract.mcp-tools` trong `sides.be.optionalSlots`."
+  owner: op-retry
+  kind: check-finding
+  localOnly: true
+
 HFS_MIN_INSTANCES:
   title: "Fewer instances of a slot than required"
   title_vi: "Số thực thể của ô ít hơn mức tối thiểu"
@@ -4826,6 +4850,18 @@ HFS_CONCEPT_CONVENTIONS_MISSING:
   nextStep_vi: "Viết `.starciwork/concepts/conventions.md` theo các heading của PROJECT-WORK-7 và thêm dòng `| [conventions](conventions.md) | <thư mục> | <một dòng> |` vào README của concepts."
   owner: op-retry
   kind: check-finding
+
+HFS_CONCEPT_UNCATALOGUED:
+  title: "The concept catalog has one row per concept"
+  title_vi: "Concept không có dòng trong catalog, hoặc dòng catalog trỏ tới concept không tồn tại"
+  meaning_vi: "Một tệp `.starciwork/concepts/<topic>.md` được track mà không dòng nào của bảng `.starciwork/concepts/README.md` trỏ tới, hoặc một dòng của bảng trỏ tới concept không được track. Người đọc tìm concept qua catalog, nên concept không có dòng sẽ không bao giờ được đọc trước code."
+  causes_vi:
+    - "Vi phạm R433 (PROJECT-WORK-7): thêm concept mà quên thêm dòng catalog, hoặc xóa/đổi tên concept mà để lại dòng cũ."
+    - "`--env local` chỉ liệt kê, `--env prod` (hook push, CI, phát hành) chặn."
+  nextStep_vi: "Thêm dòng `| [<topic>](<topic>.md) | <thư mục chứa chủ đề> | <một dòng> |` cho concept, hoặc viết lại concept / xóa dòng trỏ tới concept đã mất."
+  owner: op-retry
+  kind: check-finding
+  localOnly: true
 
 HFS_GATE_DECLARATION_INVALID:
   title: "An app switches off a gate it may not, with no reason, or names no gate"

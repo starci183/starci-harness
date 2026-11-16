@@ -1243,14 +1243,16 @@ rules:
     code: "FE_I18N_CATALOG"
     editions: [lite, full]
     docs: [docs/architecture.md#r60]
-    law: "Same keys in every catalog, `pick` for clients."
+    law: "A catalog for every declared locale and none for another, same keys in every catalog, `pick` for clients."
     kinds: [check]
     gates: [land, ci]
-    failureCodes: ["FE_I18N_CATALOG"]
+    failureCodes: ["FE_I18N_CATALOG", "FE_I18N_LOCALE_MISSING"]
     enforcers:
       - {kind: hfs, id: i18n-catalog, at: scripts/hfs/rules/frontend-tree.mjs}
+      - {kind: hfs, id: i18n-locale-catalog, at: scripts/hfs/rules/i18n-locales.mjs}
     proves:
       - {path: packages/hfs/src/hfs-i18n-catalog-coverage.spec.mjs, editions: [lite, full]}
+      - {path: packages/hfs/src/i18n-locale-presence.spec.mjs, editions: [lite, full]}
     exemplifiedBy:
       - {path: packages/hfs/templates/fe/skeleton-lite/apps/web/src/modules/i18n/messages, edition: lite}
       - {path: packages/hfs/templates/fe/skeleton/apps/app/src/modules/i18n/messages, edition: full}
@@ -5193,10 +5195,10 @@ rules:
       - {path: packages/hfs/src/ci-standard.spec.mjs, editions: [lite, full], codes: [CI_STANDARD]}
   - id: R302
     code: "HFS_MCP_TOOLS_SNAPSHOT"
-    law: "An app that commits the MCP tool catalog of its server keeps it at `be/contracts/<app>/<contract>.tools.json` (slot be.contract.mcp-tools, opt-in), `<contract>` being `<server>@<major>`, as the server's `tools/list` result: `{ contract, server: { name, version }, tools }` where the contract equals the file name and the server name, and every tool has a unique name, a description and an object `inputSchema`."
+    law: "A back end whose source imports `@modelcontextprotocol/sdk/server` serves an MCP server and commits its tool catalog (HFS_MCP_TOOLS_SNAPSHOT_MISSING otherwise); an app that commits the MCP tool catalog of its server keeps it at `be/contracts/<app>/<contract>.tools.json` (slot be.contract.mcp-tools, opt-in), `<contract>` being `<server>@<major>`, as the server's `tools/list` result: `{ contract, server: { name, version }, tools }` where the contract equals the file name and the server name, and every tool has a unique name, a description and an object `inputSchema`."
     kinds: [check]
     gates: [land, ci]
-    failureCodes: ["HFS_MCP_TOOLS_SNAPSHOT"]
+    failureCodes: ["HFS_MCP_TOOLS_SNAPSHOT", "HFS_MCP_TOOLS_SNAPSHOT_MISSING"]
     enforcers:
       - {kind: hfs, id: mcp-tools-snapshot, at: scripts/hfs/rules/mcp-tools.mjs}
     editions: [lite, full]
@@ -5204,7 +5206,7 @@ rules:
       - {path: docs/hfs-contract-snapshots.md#r302, editions: [lite, full]}
     templateNa: "The canon emits no MCP catalog: the app commits its server's tools/list result, so there is no scaffolded snapshot."
     proves:
-      - {path: packages/hfs/src/mcp-tools-snapshot.spec.mjs, editions: [lite, full], codes: [HFS_MCP_TOOLS_SNAPSHOT]}
+      - {path: packages/hfs/src/mcp-tools-snapshot.spec.mjs, editions: [lite, full], codes: [HFS_MCP_TOOLS_SNAPSHOT, HFS_MCP_TOOLS_SNAPSHOT_MISSING]}
     exemplifiedBy:
       - {path: packages/hfs/src/mcp-tools-snapshot.spec.mjs, editions: [lite, full], codes: [HFS_MCP_TOOLS_SNAPSHOT]}
     witness:
@@ -6902,10 +6904,10 @@ rules:
       - {path: packages/hfs/src/failure-class-conventions.spec.mjs, editions: [lite, full]}
   - id: R433
     code: "HFS_CONCEPT_CONVENTIONS_MISSING"
-    law: "Every app keeps a `conventions` concept: `.starciwork/concepts/conventions.md` is tracked and the catalog `.starciwork/concepts/README.md` has a row linking it; the check reads the tree and the catalog, never the concept's content, which is held by review."
+    law: "Every app keeps a `conventions` concept: `.starciwork/concepts/conventions.md` is tracked and the catalog `.starciwork/concepts/README.md` has a row linking it, and the catalog has one row per concept (every tracked `.starciwork/concepts/<topic>.md` is linked by a row, and every row links a tracked concept); the check reads the tree and the catalog, never the concept's content, which is held by review."
     kinds: [check]
     gates: [settle, land, ci]
-    failureCodes: ["HFS_CONCEPT_CONVENTIONS_MISSING"]
+    failureCodes: ["HFS_CONCEPT_CONVENTIONS_MISSING", "HFS_CONCEPT_UNCATALOGUED"]
     enforcers:
       - {kind: hfs, id: concept-conventions, at: scripts/hfs/rules/concepts-conventions.mjs}
     editions: [lite, full]

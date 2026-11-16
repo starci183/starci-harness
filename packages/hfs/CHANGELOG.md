@@ -1,5 +1,14 @@
 # Changelog
 
+## 6.13.10 - 2026-11-16
+
+- Added (R60 `FE_I18N_LOCALE_MISSING`, new `runtime/scripts/hfs/rules/i18n-locales.mts`): every locale a front-end app's `defineI18n` declares (a literal `locales` list, inline or a const of the same file, read as a TypeScript syntax tree from `apps/<app>/src/modules/i18n/`) has its `messages/<locale>.json`, and a catalog of a locale it does not declare is refused. `FE_I18N_CATALOG` compares only the catalogs that exist, so a declared locale with no catalog passed it. A computed list is not judged. Spec: `src/i18n-locale-presence.spec.mts`.
+- Added (R433 `HFS_CONCEPT_UNCATALOGUED`, `rules/concepts-conventions.mts`): the concept catalog has one row per concept, so a tracked `.starciwork/concepts/<topic>.md` no row links, and a row whose concept is not tracked, are findings (PROJECT-WORK-7). Judged once the catalog is tracked; the conventions row stays `HFS_CONCEPT_CONVENTIONS_MISSING`'s. Spec: `src/failure-class-conventions.spec.mts`, whose scaffold case now copies every skeleton concept.
+- Added (R302 `HFS_MCP_TOOLS_SNAPSHOT_MISSING`, `rules/mcp-tools.mts`): a back end whose source (`src/**`, `apps/**`, specs aside) imports `@modelcontextprotocol/sdk/server` serves an MCP server and commits at least one `contracts/<app>/<server>@<major>.tools.json`; the shape check had nothing to judge when the catalog was absent (BE-AI-6). Spec: `src/mcp-tools-snapshot.spec.mts`.
+- All three are `localOnly` in `failure-codes.yaml`: reported in `--env local`, blocking in `--env prod` (the pre-push hook, CI and the release gate).
+- Added (contexts): `contexts/harness/presence-audit.md`, every hfs rule and contexts law that requires something to exist, classified by whether its absence is refused; PROJECT-WORK-7, FE-I18N-3 and BE-AI-6 name the new codes.
+- Upgrade: an app with a concept missing from its catalog, a declared locale without a catalog or an MCP server without its committed catalog fixes it before its next push; nothing else changes.
+
 ## 6.13.9 - 2026-11-16
 
 - Added (managed scripts, `templates/app/package-scripts-lite/package.json`): a lite app's scripts carry `test:e2e` (`npm run typecheck:tests && cd be && jest --selectProjects e2e`) beside `test:integration`; `starci app sync` renders it, as `HFS_EDITION_FORBIDDEN_PRESENT` already allowed it (6.13.7) but the template did not carry it. The lite README template names both scripts, the sequence and the result cache. Spec: `src/lite-test-scripts.spec.mts`.
