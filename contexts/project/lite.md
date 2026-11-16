@@ -79,14 +79,17 @@ the three realtime doors. How the edition is chosen is PROJECT-1 in [README.md](
 
 ## What CI runs
 
-- No e2e world and no browser journeys. Owners: slots `app.browser`, `app.browser-config`, `be.tests.e2e` (all
-  forbidden under lite).
+- No browser journeys and no full test world (no container, toxiproxy or `world.infra`). Owners: slots `app.browser`,
+  `app.browser-config` (forbidden under lite).
 - Boot is proved by compiling the real AppModule graph with doubles, once a scan of the same graph found no provider ring,
   and each async pattern by its lite proof lane. Owners: R272, R401, R284; [code/be/test.md](../code/be/test.md) BE-TEST-12,
   [code/be/injection.md](../code/be/injection.md) BE-INJECTION-5.
 - Integration specs run against the local db service without containers or toxiproxy; contract specs are
-  optional. Both run only on request, on a local machine, in no workflow (R12; [cicd.md](cicd.md) "Triggers and what runs"). Owners:
-  slots `be.tests.integration`, `be.tests.contract`.
+  optional. A lite app may also carry e2e flows, `src/tests/e2e/<flow>/*.e2e-spec.ts`, that boot the full app(s) through
+  `useTestWorld({ apps })` on that same db service (what separates an e2e flow from an integration spec is
+  [code/be/test.md](../code/be/test.md) BE-TEST-12). All three run only on request, on a local machine, in no workflow
+  (R12; [cicd.md](cicd.md) "Triggers and what runs"), and an e2e flow never stands in for the wiring proof. Owners:
+  slots `be.tests.integration`, `be.tests.e2e`, `be.tests.contract`; R212, R272.
 - CI lints the db migrations; no database type is generated. Owner: slot `app.ci`.
 
 ## Work and custody

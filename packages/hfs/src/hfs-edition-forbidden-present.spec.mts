@@ -1,5 +1,5 @@
 // proves: HFS_EDITION_FORBIDDEN_PRESENT@lite
-// Full intentionally permits the e2e world; the paired fixture below proves that exemption.
+// Full permits the whole test world; lite permits `test:e2e` (an e2e flow on the local db service, on request) but no container, `test:world` or `test:browser`.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -17,11 +17,11 @@ for (const edition of ['lite', 'full']) {
     };
     const findings = () => checkRepo({ repoRoot, declaration, files: ['package.json'], tree: false }).findings
       .filter((finding) => finding.code === 'HFS_EDITION_FORBIDDEN_PRESENT');
-    const pkg = { scripts: { test: 'jest --selectProjects unit', 'test:e2e': 'jest --selectProjects e2e' }, devDependencies: { testcontainers: '10.0.0' } };
+    const pkg = { scripts: { test: 'jest --selectProjects unit', 'test:e2e': 'jest --selectProjects e2e', 'test:world': 'node world.mjs' }, devDependencies: { testcontainers: '10.0.0' } };
     fs.writeFileSync(path.join(repoRoot, 'package.json'), JSON.stringify(pkg));
     if (edition === 'lite') {
       assert.deepEqual(findings().map(({ code, path: file, name, level }) => ({ code, file, name, level })), [
-        { code: 'HFS_EDITION_FORBIDDEN_PRESENT', file: 'package.json', name: 'test:e2e', level: 'error' },
+        { code: 'HFS_EDITION_FORBIDDEN_PRESENT', file: 'package.json', name: 'test:world', level: 'error' },
         { code: 'HFS_EDITION_FORBIDDEN_PRESENT', file: 'package.json', name: 'testcontainers', level: 'error' },
       ]);
     } else assert.deepEqual(findings(), [], 'full owns e2e infrastructure');

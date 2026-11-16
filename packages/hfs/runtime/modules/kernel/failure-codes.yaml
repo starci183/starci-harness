@@ -1603,8 +1603,20 @@ BE_TEST_TOPOLOGY:
   meaning_vi: "Cấu hình test lệch chuẩn: `<detail>`."
   causes_vi:
     - "Vi phạm luật R47: một `jest.config.js` (preset `@starci/jest-preset`) với bốn project `unit`, `integration`, `e2e`, `contract`; thư mục và hậu tố spec luôn khớp nhau; `diagnostics: false` + `isolatedModules: true`; `test:integration`, `test:e2e`, `test:contract` là script npm của app (`npm run test:integration`); `src/tests/world/` là nơi duy nhất dựng hạ tầng test và chỉ chứa `global-setup.ts`, `global-teardown.ts`, `use-test-world.ts`, `fakes/` và file gốc có hậu tố vai trò (kể cả `test-world.config.ts`)."
+    - "Vi phạm luật R47 (BE-TEST-12) về hạ tầng test tự chế: một tệp dưới `src/tests/` ngoài `src/tests/world/` (thường là `fixtures/`) import `@nestjs/testing`, `AppModule`/`app.module`, `NestFactory`, testcontainers hoặc docker client, gọi `createTestingModule` hoặc `.listen(`, hoặc một tệp dưới `src/tests/` hay một integration/e2e/contract spec gọi `overrideProvider`, `overrideGuard`, `overrideModule`. Hạ tầng test chỉ nằm trong `src/tests/world/` (`@starci/test-world`); `src/tests/fixtures/` chỉ giữ dữ liệu và builder, spec dựng world bằng `useTestWorld(...)` và giả chỉ ở mép mạng (`world.fake.<provider>`)."
     - "Vi phạm luật R47 về stack thật: mọi dịch vụ khai trong `.starcistacks/<env>` (Postgres, Redis, Keycloak, mail host, k3s...) chạy THẬT trong world qua toxiproxy, world đọc dịch vụ và phiên bản image từ stack lúc chạy; `fakes/<provider>/` chỉ giả SaaS bên ngoài mà đội không vận hành. Ngoại lệ duy nhất: dịch vụ stateless cần phần cứng đặc biệt hoặc model bên ngoài (GPU inference, embedding tự host) được giả khi mục `stacks` của dịch vụ đó trong `test-world.config.ts` khai `{ fakedBy, reason }` với `reason` không rỗng; dịch vụ có trạng thái (database, cache, identity, storage, mail, queue, search hoặc có volume bền) không bao giờ được giả, và mục `fakedBy` trỏ tới dịch vụ hoặc fake (mục `fakes` hay thư mục `fakes/`) không tồn tại bị coi là cũ. `test-world.config.ts` khai world theo đúng một dạng export có tên `export const { useTestWorld, useSandbox } = defineTestWorld({...})` (`stack`, `stacks` theo từng dịch vụ, `fakes`); export default không được đọc và bị báo lỗi."
   nextStep_vi: "Op vừa tạo ra bản này sẽ được chạy lại để sửa theo lời nhắn của bộ kiểm tra (nợ hàng loạt có codemod của HFS); không cần ai can thiệp thêm."
+  owner: op-retry
+  kind: check-finding
+
+BE_SPEC_WORLD_MISSING:
+  title: "An integration or e2e spec does not get its world from useTestWorld of the repository's test world"
+  title_vi: "Spec integration/e2e không dựng world bằng useTestWorld"
+  meaning_vi: "`<file>` là một `*.integration-spec.ts` hoặc `*.e2e-spec.ts` nhưng không import `useTestWorld` từ `src/tests/world/use-test-world` của repository rồi gọi nó: world được dựng tại chỗ (một `bootWorld`, một helper trong `fixtures/`, `Test.createTestingModule`) thay vì dùng world chung: `<detail>`."
+  causes_vi:
+    - "Repository tự viết một hàm khởi động world trong `src/tests/fixtures/` hoặc ngay trong spec thay vì khai báo `src/tests/world/` (`test-world.config.ts`, `use-test-world.ts`, `global-setup.ts`, `global-teardown.ts`) với `@starci/test-world`"
+    - "Spec import `useTestWorld` từ nơi khác, hoặc import mà không gọi"
+  nextStep_vi: "Dựng `src/tests/world/` theo README của `@starci/test-world` (khai báo `defineTestWorld`, các fake ở mép mạng), chuyển mọi hạ tầng của helper tự chế vào đó, sửa spec thành `useTestWorld({ modules })` (integration) hoặc `useTestWorld({ apps })` (e2e), rồi xoá helper cũ. Op vừa tạo ra bản này sẽ được chạy lại để sửa theo lời nhắn của bộ kiểm tra; không thêm ngoại lệ."
   owner: op-retry
   kind: check-finding
 

@@ -69,8 +69,8 @@ for (const edition of ['lite', 'full']) {
     assert.deepEqual(editionFindings.map(({ code, path: file }) => ({ code, file })), [], `no edition finding for the door in ${edition}`);
     assert.deepEqual(findings().filter((finding) => finding.path?.includes('/transport/graphql/') && /forbidden/i.test(finding.code)), [], 'the door files are not forbidden slots');
     // the control: the same checker still refuses what the edition forbids
-    fs.writeFileSync(path.join(repoRoot, 'package.json'), JSON.stringify({ scripts: { test: 'jest --selectProjects unit', 'test:e2e': 'jest --selectProjects e2e' }, dependencies: { 'graphql-ws': '6.2.1' } }));
+    fs.writeFileSync(path.join(repoRoot, 'package.json'), JSON.stringify({ scripts: { test: 'jest --selectProjects unit', 'test:e2e': 'jest --selectProjects e2e', 'test:world': 'node world.mjs' }, dependencies: { 'graphql-ws': '6.2.1' } }));
     const forbidden = findings().filter((finding) => finding.code === 'HFS_EDITION_FORBIDDEN_PRESENT').map((finding) => finding.name);
-    assert.deepEqual(forbidden, edition === 'lite' ? ['test:e2e'] : [], `the e2e script is judged by the edition (${edition})`);
+    assert.deepEqual(forbidden, edition === 'lite' ? ['test:world'] : [], `the world script is judged by the edition (${edition})`);
   });
 }

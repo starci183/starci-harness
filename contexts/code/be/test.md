@@ -19,7 +19,9 @@ beside `orders.service.spec.ts` and `orders.service.ts`); a split with no main s
 resolver, controller, module or app file, or of any other file, is a finding. Integration
 specs are `src/tests/integration/<area>/*.integration-spec.ts` on real infrastructure through `useTestWorld`; contract
 specs `src/tests/contract/<provider>/*.contract-spec.ts`; full adds `src/tests/e2e/<area>/*.e2e-spec.ts`. Test
-infrastructure lives only in `src/tests/world/`, shared data in `src/tests/fixtures/`. Integration and contract run
+infrastructure lives only in `src/tests/world/`, shared data and builders in `src/tests/fixtures/` (a fixtures file holds
+data and builders only: no boot helper, no `@nestjs/testing`, no AppModule, no `NestFactory`, no container or docker client,
+no `.listen(`, no `override*` call; BE-TEST-12). Integration and contract run
 through `npm run test:integration` (after `typecheck:tests`) on a local machine, never in a hook, the default typecheck or a CI workflow (R12).
 
 In lite the world is also the one place of raw SQL text (R334): plain CRUD on an application table goes through its entity on
@@ -30,8 +32,12 @@ the main database. A unit spec of a listed pass-through file may pass its fake `
 
 Why: one placement rule makes discovery mechanical, and slow suites stay out of fast gates.
 
-Enforced by: `unit-test-colocated`, `test-world-files`, `tests-infra-only-in-world`, `test-world-shape` (R47),
-`spec-placement` (R102), R112, R334 (the world's raw SQL).
+Enforced by: `unit-test-colocated`, `test-world-files`, `tests-infra-only-in-world`, `test-world-shape`,
+`test-infra-placement` (R47: BE_TEST_TOPOLOGY for a file outside `src/tests/world/` that imports `@nestjs/testing`, an
+AppModule, `NestFactory`, `testcontainers` or a docker client or calls `createTestingModule` or `.listen(`, and
+BE_SPEC_WORLD_MISSING for an integration or e2e spec that gets its world anywhere but `useTestWorld` of
+`src/tests/world/use-test-world`; hfs reads the tree, so it holds on a branch that lints nothing), `spec-placement` (R102),
+R112, R334 (the world's raw SQL).
 
 ## BE-TEST-2 The subject is built by the testing module from providers only
 
@@ -120,6 +126,19 @@ Enforced by: `no-call-only-spec`, `spec-behavior-assertion`, `spec-exact-values`
 
 ## BE-TEST-12 Integration specs boot the real world; the app is proved by its boot
 
+Integration and e2e differ by what they prove, in both editions. An **integration** spec proves one module or capability:
+`useTestWorld({ modules })`, real infrastructure, no HTTP door of ours. An **e2e** spec proves a flow:
+`src/tests/e2e/<flow>/*.e2e-spec.ts` through `useTestWorld({ apps })` boots the full app(s) (lite: on its local db service,
+without container or toxiproxy), seeds a real package through the app's deploy door, drives the app only through its external
+doors (HTTP, a webhook, GraphQL; never by importing a service, a module or the AppModule), fakes only at the network edge
+(`world.fake.<provider>`) and asserts persisted state (`world.db.<connection>`). Both run only on request, never in CI, a hook or a
+release gate row (R12). Neither assembles its own world: the world is `src/tests/world/` and nothing else, a boot helper,
+`Test.createTestingModule`, an AppModule import, `NestFactory`, a container, a docker client or `.listen(` outside it is a homemade
+world (BE_TEST_TOPOLOGY), `src/tests/fixtures/` holds data and builders only, and a spec that does not call `useTestWorld` of
+`src/tests/world/use-test-world` is BE_SPEC_WORLD_MISSING. A violating file is `src/tests/fixtures/e2e/world.ts` that boots
+`Test.createTestingModule({ imports: [AppModule] }).overrideProvider(...)` and `.listen(0)`, with specs calling its `bootWorld`; a
+passing one declares `src/tests/world/test-world.config.ts` and its specs call `useTestWorld({ modules })` or `useTestWorld({ apps })`.
+
 Integration specs boot capability modules through `useTestWorld({ modules })` on the local stack (lite: the db
 CLI database and the declared Redis), fake only external providers at the network edge, override no provider, guard or
 token, and assert persisted state. Lite proves composition by compiling the real AppModule graph (`starci app check
@@ -134,7 +153,7 @@ off (SHARED-LOOSENING-1, marker `tls-unverified`), so the issuer check a spec pr
 Why: a hand-assembled module can pass while the real app cannot start, and transaction, lock and fence claims need the
 real store.
 
-Enforced by: `tests-no-override`, `e2e-uses-production-transport`, `e2e-asserts-persisted-state` (R47, R48), R272, R401, R284.
+Enforced by: `tests-no-override` (eslint, and `test-infra-placement` of hfs: an `overrideProvider`, `overrideGuard` or `overrideModule` call under `src/tests/` or in any integration, e2e or contract spec is BE_TEST_TOPOLOGY), `test-infra-placement` (BE_SPEC_WORLD_MISSING), `e2e-uses-production-transport`, `e2e-asserts-persisted-state` (R47, R48), R272, R401, R284.
 
 ## BE-TEST-13 Coverage is 100 per measured file, from one derivation
 

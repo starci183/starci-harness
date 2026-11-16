@@ -3465,19 +3465,17 @@ slots:
   - id: be.tests.e2e
     profiles:
       - be
-    editionWhy: full proves app flows through its e2e world; lite uses the R272 wiring proof and
-      unit/integration specs.
-    path: src/tests/e2e/<area>/*.e2e-spec.ts
+    editionWhy: both editions prove a whole flow through useTestWorld({ apps }); lite runs it on its
+      local db service, full on its whole stack, and never in CI (R12).
+    path: src/tests/e2e/<flow>/*.e2e-spec.ts
     presence: optional
-    litePresence: forbidden
     tracked: tracked
     tier: e2e
     tests: e2e
-    goesTo: "the full edition: a lite app has no e2e world; its logic is proven by unit specs and its
-      database by optional integration specs on `npm run db:start`"
     coverage: none
-    why: flow e2e through useTestWorld({ apps }); external services are the world's network fakes; run
-      by test:e2e
+    why: a whole flow through useTestWorld({ apps }) driven only through external doors, network-edge
+      fakes only, persisted state asserted; a spec of one module or capability is an integration spec;
+      run by test:e2e on request only
     rules:
       - HFS_E2E_IN_AUTOMATIC_GATE
       - BE_TEST_TOPOLOGY

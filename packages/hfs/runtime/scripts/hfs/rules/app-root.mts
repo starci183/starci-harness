@@ -26,6 +26,7 @@ import { seedsFindings } from './seeds.mjs';
 import { serviceFindings } from './services.mjs';
 import { stacksFindings } from './stacks.mjs';
 import { testTopologyFindings } from './test-topology.mjs';
+import { testInfraPlacementFindings } from './test-infra-placement.mjs';
 import type { Parsed, Repo } from './rule-types.mjs';
 import type { Resolver } from '../slots.mjs';
 
@@ -49,6 +50,7 @@ export function appRootFindings({ repoRoot, files, all, repo, resolver, pins, ph
     ...sagaFindings({ repoRoot, files: all }),
     ...(be ? kindFindings({ files: all, repo }) : []),
     ...integrationSpecFindings({ repoRoot, files: all }),
+    ...(be ? testInfraPlacementFindings({ repoRoot, files: all }) : []),
     ...(be && fe ? feContractFindings({ repoRoot, files: all }) : []),
     ...pipelineFindings({ repoRoot, files, pins }),
     ...testTopologyFindings({ repoRoot, files }),

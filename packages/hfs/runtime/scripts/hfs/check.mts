@@ -103,6 +103,7 @@ import { onLintSurface } from './architecture/surface.mjs';
 import type { Surface } from './architecture/index.mjs';
 import { checkAppRoot, trackedTreeView } from './architecture/hfs.mjs';
 import { testTopologyFindings } from './rules/test-topology.mjs';
+import { testInfraPlacementFindings } from './rules/test-infra-placement.mjs';
 import { feNoTestsFindings } from './rules/fe-no-tests.mjs';
 import { editionFindings } from './rules/edition.mjs';
 import { feStackFindings } from './rules/fe-stack.mjs';
@@ -292,7 +293,7 @@ function contentRuleFindings({ repoRoot, repo, resolver, files, all, scoped, pin
       ...checkAppRoot({ root: repoRoot, resolver, tree: trackedTreeView(all) }).violations.map((item) => ({ code: item.ruleId, level: 'error', path: item.path, line: item.line, column: item.column, source: 'machine', message: `${item.path}: ${item.message}` })),
     );
   } else if (repo.profile === 'be') {
-    findings.push(...contractFindings({ repoRoot, files, repo, resolver }), ...mcpToolsSnapshotFindings({ repoRoot, files, repo }), ...testTopologyFindings({ repoRoot, files }), ...failureClassFindings({ repoRoot, files: files.filter((file) => inScope(file)) }));
+    findings.push(...contractFindings({ repoRoot, files, repo, resolver }), ...mcpToolsSnapshotFindings({ repoRoot, files, repo }), ...testTopologyFindings({ repoRoot, files }), ...testInfraPlacementFindings({ repoRoot, files }), ...failureClassFindings({ repoRoot, files: files.filter((file) => inScope(file)) }));
   } else {
     findings.push(...frontendFindings({ repoRoot, files, repo }), ...feNoTestsFindings({ repoRoot, files: files.filter((file) => inScope(file)) }));
   }

@@ -91,7 +91,7 @@ Enforced by: `no-event-bus`, `transport-is-thin` (R87, R88).
 
 Every refusal and branch an operation can take is asserted in the domain service spec (BE-TEST-5). In full each
 resolver and controller also has an e2e flow on the booted app (happy path, each declared refusal by code, the
-unauthenticated call); lite has no e2e world, so its composition is proved by the wiring check (BE-TEST-12).
+unauthenticated call); a lite app proves its composition by the wiring check, and an e2e flow run on request never replaces it (BE-TEST-12).
 
 Why: a door is thin and has no logic to unit-test; what breaks is the decision (service spec) and the wiring (boot
 proof).

@@ -105,7 +105,7 @@ testValues: [unit-beside, e2e, none]
 # transaction, cache and locks on Postgres or the declared Redis, schedules as platform/jobs ticks enqueueing through the queue
 # outbox (R335), storage on S3-compatible MinIO (integrations/object-storage) and auth through integrations/passport. Realtime uses SSE or the socket.io gateway
 # in the api process, which scales horizontally and stateless (memory hub for one replica or tests; the Redis hub and @socket.io/redis-adapter when Redis is declared, else the Postgres hub and @socket.io/postgres-adapter, for N replicas; websocket only, no sticky sessions). Integration and provider sandbox contract specs are optional;
-# declared patterns owe their integration proofs (R284). Lite has no e2e world. Production uses declared docker-swarm under
+# declared patterns owe their integration proofs (R284); a lite e2e flow (src/tests/e2e, useTestWorld({ apps })) is optional and on request only. Production uses declared docker-swarm under
 # .starcistacks/production/infra/swarm/; lite runs its PostgreSQL as the db service of its
 # stack and only the backing services sides.be.backing declares. The front end is full's (R97).
 # Lite is this same manifest filtered: a slot whose `editions` lacks lite does not exist for a lite app, `litePresence` replaces
@@ -779,8 +779,8 @@ slots:
     # refusing any test or test tooling inside fe/). Declared by `browser: true` in hfs.json; the managed script `test:browser` exists only then.
     path: "browser/"
     presence: opt-in
-    litePresence: forbidden     # a browser journey runs against a provisioned stack: e2e, which lite does not have
-    goesTo: "the full edition: a lite app has no e2e world, so no browser journey"
+    litePresence: forbidden     # a browser journey runs against a provisioned stack, which lite does not run (a lite e2e flow drives the app's HTTP, webhook and GraphQL doors)
+    goesTo: "the full edition: a lite app runs no browser journey; a flow through the app's external doors is src/tests/e2e/<flow>/*.e2e-spec.ts"
     tracked: tracked
     tier: none
     tests: none
@@ -2330,9 +2330,9 @@ slots:
       why: >-
         the world of the optional integration specs of a lite app: global-setup.ts connects to the local db service
         (`npm run db:start`, with the migrations applied by `npm run db:push`) and starts no container, no toxiproxy and no stack of its
-        own; use-test-world.ts exports useTestWorld({ modules: [...] }) -> world.db.<connection> (the shared EntityManager) and
-        world.fake.<provider> (a network-edge fake of an external SaaS). There is no world.apps (no e2e) and no world.infra
-        (no self-hosted service to cut)
+        own; use-test-world.ts exports useTestWorld({ modules: [...] } | { apps: {...} }) -> world.db.<connection> (the shared EntityManager),
+        world.apps.<name> (an e2e flow's booted app, its door and its listening port) and
+        world.fake.<provider> (a network-edge fake of an external SaaS). There is no world.infra (no self-hosted service to cut)
     allows: [global-setup.ts, global-teardown.ts, use-test-world.ts, "fakes/<provider>/server.ts", fakes/, "<name>.sql.ts"]   # jest globalSetup/globalTeardown default-export (Jest API); fakes/<provider>/server.ts is the fake server of a provider, a literal file name BE_SOURCE_FORM reads as its role; plus root files with a role suffix (test-world-files, R47)
     tests: none
     coverage: none
@@ -2368,7 +2368,10 @@ slots:
     allows: [i18n/]   # i18n/ is the one folder that may carry localized text
     tests: none
     coverage: none
-    why: payload fixtures with a role suffix (the doubles come from @starci/jest-preset, not from here); the test data builders live in its builders/ slot; importable by unit specs, integration and e2e; never imports a feature
+    why: >-
+      DATA and BUILDERS only: payload fixtures with a role suffix (the doubles come from @starci/jest-preset, not from here) and the test data builders of its
+      builders/ slot; importable by unit specs, integration and e2e; never imports a feature. A boot helper, an AppModule, @nestjs/testing, NestFactory, a
+      container or docker client, `.listen(` or an `override*` call is infrastructure and lives only in the world slot (BE_TEST_TOPOLOGY, BE-TEST-12)
   - id: be.tests.fixtures.builders
     since: 3.1.0
     profiles: [be]
@@ -2414,16 +2417,24 @@ slots:
   - id: be.tests.e2e
     since: 3.1.0
     profiles: [be]
-    editionWhy: "R212: full proves app flows through its e2e world; lite uses the R272 wiring proof and unit/integration specs."
-    path: "src/tests/e2e/<area>/*.e2e-spec.ts"
+    editionWhy: "R212: both editions prove a whole flow through useTestWorld({ apps }); lite runs it on its local db service, full on its whole stack. An e2e spec is never CI's (R12)."
+    path: "src/tests/e2e/<flow>/*.e2e-spec.ts"
     presence: optional
-    litePresence: forbidden       # R212: lite has no e2e world
     tracked: tracked
     tier: e2e
     tests: e2e
-    goesTo: "the full edition: a lite app has no e2e world; its logic is proven by unit specs and its database by optional integration specs on `npm run db:start`"
     coverage: none
-    why: flow e2e through useTestWorld({ apps }); external services are the world's network fakes; run by test:e2e
+    lite:
+      why: >-
+        optional under lite: a flow through useTestWorld({ apps }) that boots the full app(s) on the local db service
+        (`npm run db:start`), seeds a real package through the app's deploy door, drives the app only through its external doors
+        (HTTP, a webhook, GraphQL), fakes only at the network edge (world.fake.<provider>) and asserts persisted state
+        (world.db.<connection>); run only on request by test:e2e, never by CI, a hook or a release gate row (R12). One module or
+        capability is an integration spec instead (useTestWorld({ modules }))
+    why: >-
+      a whole flow through useTestWorld({ apps }): the real app(s) boot, a real package is seeded through the app's deploy door, the spec drives only
+      external doors (HTTP, a webhook, GraphQL), fakes only at the network edge (world.fake.<provider>), overrides nothing and asserts persisted state;
+      a spec that exercises one module or capability is an integration spec; run by test:e2e on request only (R12)
     rules: [HFS_CI_E2E_AUTOMATIC, BE_TEST_TOPOLOGY, BE_E2E_FLOW]
   - id: be.tests.contract
     since: 3.1.0

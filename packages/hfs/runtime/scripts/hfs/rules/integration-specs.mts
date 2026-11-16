@@ -29,7 +29,7 @@ const INFRA_OUTAGES = new Set(['cut', 'latency', 'during', 'connection']);
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
 /** The TypeScript compiler of the app (else of the runtime), or null. */
-const typescriptFor = (repoRoot: string) => loadTypescript(repoRoot, HERE);
+export const typescriptFor = (repoRoot: string) => loadTypescript(repoRoot, HERE);
 
 /** The compiler options of the side (its tsconfig.json, `extends` and `paths` resolved by TypeScript itself). */
 function optionsOf(ts: Ts, sideRoot: Parsed) {
@@ -87,7 +87,7 @@ function topLevelConst(ts: Ts, file: Parsed, name: string) {
  * The judge of one app: resolves an import of a parsed file to a repository-relative path, finds the top-level const of a file,
  * and reads files once.
  */
-function judgeOf(ts: Ts, repoRoot: string, side: string) {
+export function judgeOf(ts: Ts, repoRoot: string, side: string) {
   const options = optionsOf(ts, path.join(repoRoot, side));
   const cache = new Map();
   const parsed = (rel: string) => {
