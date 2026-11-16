@@ -108,40 +108,52 @@ export class HeadlessPage {
             "about:blank",
         ]
         const child = spawn(binary, args, { stdio: ["ignore", "ignore", "pipe"] })
-        const endpoint = await new Promise<string>((resolve, reject) => {
-            let seen = ""
-            const timer = setTimeout(() => {
-                reject(new Refusal("DNA_BROWSER_START", `${binary} printed no DevTools endpoint in ${String(LAUNCH_TIMEOUT_MS / 1000)}s`))
-            }, LAUNCH_TIMEOUT_MS)
-            child.on("error", (error) => {
-                clearTimeout(timer)
-                reject(new Refusal("DNA_BROWSER_START", `${binary} did not start: ${error.message}`))
-            })
-            child.stderr.on("data", (chunk: Buffer) => {
-                seen += chunk.toString("utf8")
-                const match = /DevTools listening on (ws:\/\/\S+)/.exec(seen)
-                if (match?.[1] !== undefined) {
+        let socket: WebSocket | undefined
+        try {
+            const endpoint = await new Promise<string>((resolve, reject) => {
+                let seen = ""
+                const timer = setTimeout(() => {
+                    reject(new Refusal("DNA_BROWSER_START", `${binary} printed no DevTools endpoint in ${String(LAUNCH_TIMEOUT_MS / 1000)}s`))
+                }, LAUNCH_TIMEOUT_MS)
+                child.on("error", (error) => {
                     clearTimeout(timer)
-                    resolve(match[1])
-                }
+                    reject(new Refusal("DNA_BROWSER_START", `${binary} did not start: ${error.message}`))
+                })
+                child.stderr.on("data", (chunk: Buffer) => {
+                    seen += chunk.toString("utf8")
+                    const match = /DevTools listening on (ws:\/\/\S+)/.exec(seen)
+                    if (match?.[1] !== undefined) {
+                        clearTimeout(timer)
+                        resolve(match[1])
+                    }
+                })
             })
-        })
-        const socket = new WebSocket(endpoint)
-        await new Promise<void>((resolve, reject) => {
-            socket.addEventListener("open", () => {
-                resolve()
+            const opened = new WebSocket(endpoint)
+            socket = opened
+            await new Promise<void>((resolve, reject) => {
+                opened.addEventListener("open", () => {
+                    resolve()
+                })
+                opened.addEventListener("error", () => {
+                    reject(new Refusal("DNA_BROWSER_START", `could not connect to ${endpoint}`))
+                })
             })
-            socket.addEventListener("error", () => {
-                reject(new Refusal("DNA_BROWSER_START", `could not connect to ${endpoint}`))
-            })
-        })
-        const page = new HeadlessPage(child, socket, profile)
-        const target = (await page.call("Target.createTarget", { url: "about:blank" })) as { targetId: string }
-        const attached = (await page.call("Target.attachToTarget", { targetId: target.targetId, flatten: true })) as { sessionId: string }
-        page.session = attached.sessionId
-        await page.call("Page.enable", {})
-        await page.call("Emulation.setDeviceMetricsOverride", { width: viewport.width, height: viewport.height, deviceScaleFactor: 1, mobile: false })
-        return page
+            const page = new HeadlessPage(child, opened, profile)
+            const target = (await page.call("Target.createTarget", { url: "about:blank" })) as { targetId: string }
+            const attached = (await page.call("Target.attachToTarget", { targetId: target.targetId, flatten: true })) as { sessionId: string }
+            page.session = attached.sessionId
+            await page.call("Page.enable", {})
+            await page.call("Emulation.setDeviceMetricsOverride", { width: viewport.width, height: viewport.height, deviceScaleFactor: 1, mobile: false })
+            return page
+        } catch (failure) {
+            // A browser that never answered still runs: kill it, so the process (a test run, a CI job) does not wait on it forever.
+            socket?.close()
+            child.kill()
+            child.stderr.destroy()
+            child.unref()
+            rmSync(profile, { recursive: true, force: true, maxRetries: 40, retryDelay: 250 })
+            throw failure
+        }
     }
 
     private receive(text: string): void {
