@@ -6,8 +6,6 @@ import assert from 'node:assert/strict';
 import { checkApplicationStacks } from '../runtime/scripts/hfs/stacks-gate.mjs';
 import { swarmFixture } from './helpers/swarm-stack-fixture.mjs';
 
-const code = 'HFS_STACKS_SHAPE';
-
 for (const edition of ['lite', 'full']) {
   const findings = (fixture: ReturnType<typeof swarmFixture>) => checkApplicationStacks({ repoRoot: fixture.root, environment: 'production', deploymentModelFile: fixture.modelFile, repo: { edition } }).errors;
 
