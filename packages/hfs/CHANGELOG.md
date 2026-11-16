@@ -1,5 +1,10 @@
 # Changelog
 
+## 6.13.18 - 2026-11-17
+
+- Fixed (release): 6.13.17 reached npm from 018abe9f5, a commit whose ci run was red (its Sonar gate), before the fixes below landed: it still pins `next` 16.4.2 and makes R435 an error. 6.13.18 carries what 6.13.17 was meant to: `next` 16.4.5 (GHSA-pc58-hwjq-p385, GHSA-rhh4-g77r-r9qj, GHSA-vvgp-ww4w-46vf, GHSA-7qx7-33qx-rqx2, GHSA-mfr8-8qww-v76h, GHSA-vc7v-qv4w-wrv8, GHSA-f3mh-rxg3-f5g2) and R435 `HFS_DATA_SECOND_LOADER` report-only until the bring-up loader ships. Pin 6.13.18, not 6.13.17.
+- Changed (CONTRIB-20, publish.yml, `.github/scripts/publish-gate.mts`): nothing publishes unless the whole ci run of the commit is green, the Sonar quality gate and the app job included; publish.yml starts only on a successful ci and the gate holds every package and the CLI when any job of the run is not green (spec: `cli/src/core/release/publish-workflow.test.ts`).
+
 ## 6.13.17 - 2026-11-17
 
 - Security (`knowledge/hfs/canon-pins.yaml`, owner-approved): `next` 16.4.5, which fixes the advisories published 2026-11-03 that affect 16.x up to 16.4.4: GHSA-pc58-hwjq-p385, GHSA-rhh4-g77r-r9qj, GHSA-vvgp-ww4w-46vf, GHSA-7qx7-33qx-rqx2, GHSA-mfr8-8qww-v76h, GHSA-vc7v-qv4w-wrv8, GHSA-f3mh-rxg3-f5g2. An app on 16.4.2 reports HFS_CANON_PIN_DRIFT until it moves.

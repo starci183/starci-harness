@@ -21,9 +21,9 @@ permissions:
   contents: read
 
 jobs:
-  # A package publishes once its own ci jobs are green, however the rest of the run ended (a red Sonar or app job never holds a
-  # package, a red gate or package job holds what it gates; .github/scripts/publish-gate.mts), so the run is taken when ci
-  # succeeded or failed, never when it was cancelled by a newer push. One job, not one per phase: a job-level concurrency group
+  # Nothing publishes unless the WHOLE ci run of the commit is green, the Sonar quality gate and the app job included (2026-11-17:
+  # a red Sonar let three packages out): the run is taken only when ci succeeded, never when it failed or was cancelled by a newer
+  # push, and .github/scripts/publish-gate.mts holds every package and the CLI again when any job of that run is not green. One job, not one per phase: a job-level concurrency group
   # is taken only by a job that runs, so a run for a pull request, a manual run or a cancelled ci never queues here, and the
   # CLI's phase cannot be overtaken by the next run's packages phase.
   publish:
@@ -31,7 +31,7 @@ jobs:
       github.event.workflow_run.event == 'push'
       && github.event.workflow_run.head_branch == 'main'
       && github.event.workflow_run.head_repository.full_name == github.repository
-      && (github.event.workflow_run.conclusion == 'success' || github.event.workflow_run.conclusion == 'failure')
+      && github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     concurrency:
       group: publish-main

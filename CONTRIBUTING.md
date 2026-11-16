@@ -211,8 +211,8 @@ separate step CI takes alone. CI is two workflows. [.github/workflows/ci.yml](.g
 or to main, so a newer push cancels the `ci` run still going for an older commit (on main as on a pull request) and the newer run tests the
 whole tree: its `plan` measures from the last main commit whose `ci` run succeeded, and a cancelled run is not a success. Each `package` job
 packs its package once, after its specs, and keeps the tarball as the artifact `tarball-<name>-<version>-<sha>`.
-[.github/workflows/publish.yml](.github/workflows/publish.yml) starts when a `ci` run of a push to main completes (succeeded or failed,
-never cancelled), reads that run's jobs, plan and tarballs, and publishes; it checks out the run's commit, is never cancelled and queues one
+[.github/workflows/publish.yml](.github/workflows/publish.yml) starts when a `ci` run of a push to main succeeds (never when it failed or was
+cancelled: every job green, the Sonar quality gate and the app job included), reads that run's jobs, plan and tarballs, and publishes; it checks out the run's commit, is never cancelled and queues one
 run at a time (group `publish-main`; a queued run is replaced by a newer queued one). It publishes nothing when its commit is no longer main's
 tip when its turn comes (an older commit published after a newer one would move the `alpha` dist-tag back; the run of the newer commit publishes
 every version not yet on npm, the older ones included). Its run is named `publish <sha>` and is red for that sha when it fails: `starci check ci`
@@ -224,8 +224,8 @@ their specs (`--tarballs`: the tested bits, stamped with the commit, never rebui
 is built and packed in the run), four `npm publish` at a time, and read back together. A package publishes once the repo-wide gates (`gate (repo)`: secrets, loosening, shape) are green and so is the
 `package` job of every folder of its build order the plan tested, itself and the siblings it needs, and, for the Grammar and
 a package that builds it, the `grammar proof` job (the theme proof; the render proof is not part of CI and runs by hand); a due package any of them failed is held and named, and so is each dependent of it ([.github/scripts/publish-gate.mts](.github/scripts/publish-gate.mts)).
-The CLI follows in the same run, once the harness job and every gate are green. Sonar and
-the app job never hold a package or the CLI. A `publish` run is never cancelled, so a publication is never cut short, and a
+The CLI follows in the same run, once the harness job and every gate are green. A red Sonar quality gate or app job holds every package and
+the CLI (2026-11-17): nothing publishes from a ci run that is not green as a whole. A `publish` run is never cancelled, so a publication is never cut short, and a
 re-run (of the failed jobs) publishes only what is still missing. The plan is refused, before anything reaches npm, when a package changed since the base (its
 specs and test folders aside) while its version is already on npm (`RELEASE_VERSION_NOT_BUMPED`, measured from the
 commit npm recorded for that version), and when a due package requires a sibling (`dependencies`, `peerDependencies`)

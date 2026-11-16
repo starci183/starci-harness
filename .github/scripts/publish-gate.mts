@@ -30,6 +30,12 @@ const every = (JSON.parse(read("EVERY")) as { data: { packages: EveryPackage[] }
 const jobs = read("JOBS").split("\n").filter((line) => line.trim() !== "").map((line) => JSON.parse(line) as JobRow)
 const tested = new Set((JSON.parse(process.env.MATRIX || '{"include":[]}') as { include: Array<{ package: string }> }).include.map((entry) => entry.package))
 
+// The whole run must be green (Sonar and the app job included): publish.yml only starts on a successful ci, and this repeats it for a
+// re-run or a manual dispatch, so one red job of the run holds every package and the CLI.
+const notGreen = jobs.filter((job) => job.conclusion !== "success" && job.conclusion !== "skipped")
+for (const job of notGreen) console.log(`::warning::${job.name} is ${job.conclusion}: nothing publishes`)
+const runGreen = jobs.length > 0 && notGreen.length === 0
+
 const repoGates = jobs.filter((job) => job.name.startsWith("gate (repo) "))
 const gatesGreen = repoGates.length > 0 && repoGates.every((job) => job.conclusion === "success")
 for (const job of repoGates) console.log(`${job.name}: ${job.conclusion}`)
@@ -47,6 +53,7 @@ const red = (dir: string): boolean => tested.has(dir) && jobs.find((job) => job.
 
 const due = rows.filter((row) => row.action === "publish" && row.dir !== "cli")
 const reasonOf = (row: PlanRow): string | undefined => {
+    if (!runGreen) return "the ci run is not green"
     if (!gatesGreen) return "a gate (repo) job is not green"
     if (proofRan && buildOf(row.dir).includes(PROOF_DIR) && proofConclusion !== "success") return `grammar proof is ${proofConclusion ?? "missing"}`
     const failed = buildOf(row.dir).filter(red)
@@ -82,6 +89,6 @@ for (const row of rows) console.log(`${row.package}@${row.version}: ${ready.has(
 const gates = jobs.filter((job) => job.name.startsWith("gate ("))
 const everyGateGreen = gates.length > 0 && gates.every((job) => job.conclusion === "success")
 const harness = jobs.find((job) => job.name === "harness")?.conclusion
-const cli = everyGateGreen && (harness === "success" || harness === "skipped")
+const cli = runGreen && everyGateGreen && (harness === "success" || harness === "skipped")
 console.log(`cli: ${cli ? "ready" : `held (gates ${everyGateGreen ? "green" : "not green"}, harness ${harness ?? "missing"})`}`)
 appendFileSync(process.env.GITHUB_OUTPUT!, `publish=${order.join(" ")}\nbuild=${build.join(" ")}\nheld=${held.join(" ")}\ncli=${String(cli)}\n`)
