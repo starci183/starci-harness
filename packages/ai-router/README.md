@@ -95,6 +95,21 @@ A virtual key carries the profiles it may call and, optionally, an allowlist of 
 default). A model it names that is neither is refused 403 `model_not_allowed`, never remapped; `/v1/models` lists only
 what it may call; its quotas count every call whatever the model. See [key scopes](docs/design.md#key-scopes).
 
+## Known models, OpenRouter and `auto`
+
+The router knows the Claude 5 ids (`claude-fable-5-2`, `claude-opus-5-5`, `claude-sonnet-5-5`, `claude-haiku-5-5`) and the OpenAI GPT-6 ids (`gpt-6-astra`, `gpt-6.1-sol`, `gpt-6.1-terra`, `gpt-6-luna`) with the facts their vendors state (the sources and what is left out are in the 0.8.0 changelog entry). OpenRouter's catalog is read at run time. A provider is in the pool only when its key is in env, so a deployment with one key lists one provider's models and nothing fails at boot.
+
+```ts
+import { availableModels, createRouter, defaultProviderSpecs, fetchOpenRouterModels, poolFromEnv, withAutoProfiles } from "@starci/ai-router/gateway"
+
+const openRouterModels = process.env.OPENROUTER_API_KEY ? await fetchOpenRouterModels({ apiKey: process.env.OPENROUTER_API_KEY }) : undefined
+const router = createRouter(withAutoProfiles(poolFromEnv({ providers: defaultProviderSpecs({ openRouterModels }) })))
+
+router.availableModels() // [{ id: "claude-opus-5-5", provider: "anthropic", label: "Claude Opus 5.5", vision: true, tools: true, contextTokens: 1000000 }, ...]
+await router.chat({ messages }, { profile: "auto-high" }) // opus first, then the tiers below, then above; only providers with keys
+await router.chat({ model: "openrouter/vendor/model", messages }) // sent to OpenRouter as vendor/model
+```
+
 ## Run it as a gateway
 
 One process (one container) holds the pool, the virtual keys and the admin API. The package declares no `bin` (the

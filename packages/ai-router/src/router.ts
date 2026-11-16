@@ -1,6 +1,7 @@
 import { isPlainRecord } from "@starci/common"
 import { AttemptError } from "./attempt.ts"
 import { classifyFailure } from "./classify.ts"
+import { availableModels } from "./known-models.ts"
 import { buildCatalog, resolvePolicy, resolveSettings, validateConfig } from "./config.ts"
 import type { ResolvedPolicy, Settings } from "./config.ts"
 import { AiRouterError, isRetryable, scrub } from "./errors.ts"
@@ -659,6 +660,7 @@ export function createRouter<P extends string = string>(config: PoolConfig<P>): 
             return { ...value, routing }
         },
         catalog: () => catalog,
+        availableModels: () => availableModels(config),
         health: () => state.health(),
         stats: () => state.stats(),
         on: (event, handler) => emitter.on(event, handler),
