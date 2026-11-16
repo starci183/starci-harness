@@ -204,8 +204,8 @@ tests:
 ```
 
 `workers` is an integer from 1 to 8 (the Kafka broker has 8 slot listeners) and is the number of data slots a run of that kind provisions: the files run in
-parallel, each in a process of its own bound to a slot, never two on one slot. A kind absent, or the block absent, is 1: one file at a time. A lite app has
-no data slots, so its workers stay 1 (`HFS_STACKS_SHAPE` refuses more). A wrong shape is a finding (the `tests` property of the schema `starci/application-stacks@1`:
+parallel, each in a process of its own bound to a slot, never two on one slot. A kind absent, or the block absent, is 1: one file at a time. A lite app may declare them too: slots are a `@starci/test-world`
+feature, not an edition's. A wrong shape is a finding (the `tests` property of the schema `starci/application-stacks@1`:
 unknown kinds, a non-integer, 0 or more than 8). `starci test <kind> --workers <n>` (`STARCI_TEST_WORLD_WORKERS=<n>`) overrides it for one run;
 jest's `--maxWorkers` is never read, the harness sizes it for unit runs.
 

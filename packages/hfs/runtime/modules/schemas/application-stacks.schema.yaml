@@ -190,7 +190,7 @@ properties:
     description: >-
       The world slots the integration and e2e runs of a back end declare (contexts/code/be/test.md BE-TEST-17): how many spec files of a kind run at
       once, each on a data slot of its own. A kind absent runs one file at a time. A full app's test world provisions that many slots, from 1 to 8 (the
-      Kafka broker has 8 slot listeners); a lite app has no data slots and runs one file at a time (R47, HFS_STACKS_SHAPE).
+      Kafka broker has 8 slot listeners); the library's slots are no edition's, so a lite app may declare them too.
     type: object
     additionalProperties: false
     properties:

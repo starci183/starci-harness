@@ -40,7 +40,7 @@ against:
 - `data`: the stores that must be kept, the stateful components that are rebuilt instead, and the data sets copied from them,
   each a `seed-standard` or a `seed-backup` with its destinations (PROJECT-STACKS-13, PROJECT-STACKS-14; R426, R427).
 - `tests`: the world slots of the integration and e2e runs, `{ integration: { workers: n }, e2e: { workers: n } }`, each `workers` an integer from 1 to 8 (absent is 1: one
-  spec file at a time; a lite app has no data slots, so 1): how many spec files of the kind run at once, each on a data slot of its own, with the exclusive
+  spec file at a time; a lite app may declare them too): how many spec files of the kind run at once, each on a data slot of its own, with the exclusive
   specs alone afterwards ([code/be/test.md](../code/be/test.md) BE-TEST-17; `HFS_STACKS_SHAPE`).
 - `ci` and `services`: the names CI reads and the delivery services it calls (PROJECT-STACKS-7, PROJECT-STACKS-8).
 - `branches`: the branch profile of each branch that lowers a polish gate, `dev` only ([lint.md](lint.md) PROJECT-LINT-2).

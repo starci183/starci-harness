@@ -29,15 +29,12 @@ for (const edition of ['lite', 'full']) {
   });
 }
 
-test('tests.<kind>.workers above one is a full app\'s: a lite app has no world data slots', t => {
-  const lite = swarmFixture(t, 'lite');
-  lite.manifest.tests = { e2e: { workers: 3 } };
-  lite.write();
-  const refused = checkApplicationStacks({ repoRoot: lite.root, environment: 'production', deploymentModelFile: lite.modelFile, repo: { edition: 'lite' } }).errors;
-  assert.ok(refused.some(item => item.code === code && item.path === 'tests.e2e.workers'), JSON.stringify(refused));
-  const full = swarmFixture(t, 'full');
-  full.manifest.tests = { integration: { workers: 3 }, e2e: { workers: 8 } };
-  full.write();
-  const accepted = checkApplicationStacks({ repoRoot: full.root, environment: 'production', deploymentModelFile: full.modelFile, repo: { edition: 'full' } }).errors;
-  assert.deepEqual(accepted.filter(item => item.path.includes('tests')), []);
-});
+for (const edition of ['lite', 'full']) {
+  test(`tests.<kind>.workers ${edition}: more than one is allowed (slots are a library feature, not an edition one)`, t => {
+    const fixture = swarmFixture(t, edition);
+    fixture.manifest.tests = { integration: { workers: 3 }, e2e: { workers: 8 } };
+    fixture.write();
+    const errors = checkApplicationStacks({ repoRoot: fixture.root, environment: 'production', deploymentModelFile: fixture.modelFile, repo: { edition } }).errors;
+    assert.deepEqual(errors.filter(item => item.path.includes('tests')), []);
+  });
+}
