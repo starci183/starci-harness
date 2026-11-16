@@ -1,5 +1,11 @@
 # Changelog
 
+## 6.13.16 - 2026-11-17
+
+- Changed (`knowledge/hfs/canon-pins.yaml`): the Grammar family moves to `@starci/grammar`, `@starci/eslint-grammar-core` and `@starci/eslint-grammar-offset-pop` 0.40.0 (`~0.40.0`: one field look, DataTable flat by default, the figures ribbon, the theme hooks) and `@starci/stylelint-canon` to 2.9.0 (brand.css may set the Grammar theme hooks).
+- Changed (`knowledge/hfs/canon-pins.yaml`): `@starci/ai-router` 0.9.0 (media generation: images, speech, video jobs via `createMedia()` from `@starci/ai-router/gateway`).
+- Changed (`knowledge/grammars/core/playbook.yaml`): the core playbook follows the Grammar 0.40.0 field law (one look).
+
 ## 6.13.15 - 2026-11-17
 
 - Removed (`knowledge/hfs/slots.yaml` `app.starciwork`, `contexts/hfs/slots.yaml`): the per-feature Work documents. The full edition no longer admits `features/<feature>/**` (br, fr, nfr, sds, contract, data, decision, integration, journey, impl, ui, uat, gap) or the feature catalog `index.yaml` (`work/catalog@1`), and no longer requires the catalog; it keeps `workspace.yaml`, the concepts, `brand/**`, `shell/`, `_resources/**` and `_derived/`. Lite is unchanged and still refuses a leftover `features/` (`HFS_STARCIWORK_LITE_FORBIDDEN`, R212, whose message and next step now say the documents are retired in both editions).

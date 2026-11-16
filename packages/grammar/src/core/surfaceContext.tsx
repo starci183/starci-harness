@@ -17,7 +17,7 @@ export type SurfaceHost = "card" | "pane" | "overlay" | "chrome" | "chat"
 
 const SurfaceHostContext = createContext<SurfaceHost | null>(null)
 
-/** Supplies the nested-control layer to every child, including portalled overlay content. */
+/** Supplies the surface host (card, pane, overlay, chrome, chat) to every child, including portalled overlay content; a field never reads it (one look, 0.40.0). */
 export const SurfaceNesting = ({ children, host = "chrome" }: { readonly children: ReactNode; readonly host?: SurfaceHost }) => (
     <SurfaceHostContext.Provider value={host}>{children}</SurfaceHostContext.Provider>
 )

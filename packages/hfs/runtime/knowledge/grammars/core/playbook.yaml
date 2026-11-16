@@ -358,7 +358,6 @@ guidance:
       subordinate; never raise both. The family DNA owns their surface paint.
       The field `variant` is not in the prop types, so an app cannot set it; FE_GRAMMAR_LAYOUT_ONLY rejects
       application paint utilities, arbitrary paint properties and inline style paint.
-      DRAW_NESTED_VARIANT checks the surface stamps.
       ListBox resolves inset="panel" inside that context; callers may select the same value explicitly
       elsewhere. Its rows and sections captions share the panel edge. The list kind of SurfaceCard owns its list
       shell with no added inset; SurfaceCard composition="joined" owns flush bands. A grouping wrapper
