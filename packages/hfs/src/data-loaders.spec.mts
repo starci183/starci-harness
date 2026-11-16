@@ -65,3 +65,9 @@ test('R435 at the app root: every tracked text file is read, one finding per fil
   assert.deepEqual(dataSecondLoaderFindings({ repoRoot: root, repo: { kind: 'package' }, isRoot: true, all }), [], 'only an app loads a standard');
   assert.deepEqual(dataSecondLoaderFindings({ repoRoot: root, repo: { kind: 'app' }, isRoot: true }), [], 'no tracked file, nothing read');
 });
+
+test('R435 is report-only until the bring-up loader of data.sets ships: every finding is a warning', () => {
+  const findings = secondLoaderFindings('scripts/content.sh', 'git clone https://github.com/example/shop-seed-standard content\n');
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0]?.level, 'warning');
+});

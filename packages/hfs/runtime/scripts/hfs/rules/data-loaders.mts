@@ -37,7 +37,8 @@ export const isLoaderCandidate = (file: string): boolean => SCANNED.test(file) &
 const WHY = 'a seed-standard reaches an app only through the bring-up seed step, at the commit data.sets pins (an upsert by natural key, force once per pin); declare the standard in data.sets of .starcistacks/application-stacks.yaml and remove this path (R435, PROJECT-STACKS-13)';
 
 const loader = (file: string, line: number, kind: 'git' | 'command' | 'env', what: string): Finding =>
-  found('HFS_DATA_SECOND_LOADER', file, `${file}:${String(line)} ${what}: ${WHY}`, { kind, line });
+  // Report-only (a warning) until the bring-up loader that applies the pinned data.sets standards ships; it turns into an error in that train.
+  found('HFS_DATA_SECOND_LOADER', file, `${file}:${String(line)} ${what}: ${WHY}`, { kind, line, level: 'warning' });
 
 /** The script findings of a package.json text: a content-sync name, or a script that names a -seed-standard repository. */
 function scriptFindings(file: string, text: string): Finding[] {

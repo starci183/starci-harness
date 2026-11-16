@@ -1,8 +1,8 @@
-import { spawnSync } from "node:child_process"
 import { createHash } from "node:crypto"
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { basename, dirname, join, resolve } from "node:path"
 import { EXIT_USAGE, Refusal } from "../../shared/errors.js"
+import { captureGitSync } from "../../shared/git.js"
 import { BOTH_EDITIONS, WRITERS, defineVerb } from "../../shared/verb.js"
 import { cliPackageName, packageVersion } from "../version.js"
 
@@ -209,7 +209,7 @@ export function initStandard(root: string, options: { readonly adapter: boolean;
         written.push(file)
     }
     chmodSync(join(root, STANDARD_HOOK), 0o755)
-    const hooksPath = existsSync(join(root, ".git")) && spawnSync("git", ["config", "core.hooksPath", ".githooks"], { cwd: root, windowsHide: true }).status === 0
+    const hooksPath = existsSync(join(root, ".git")) && captureGitSync(["config", "core.hooksPath", ".githooks"], root).exitCode === 0
     return { root, name, adapter: options.adapter, written, kept, hooksPath }
 }
 

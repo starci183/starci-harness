@@ -1,6 +1,6 @@
 {
   "name": "@starci/next-i18n",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "The next-intl stack of a StarCi Next.js front end, written once and generic over the app's locales: the typed routing config (defineI18n), the locale-negotiating proxy, the locale-aware navigation, the request config that loads the app's own message catalogs and the locale read of the [locale] layout. The app keeps its catalogs and names its locales.",
   "keywords": [
     "next-intl",
@@ -82,7 +82,7 @@
     "@types/react-dom": "19.3.0",
     "eslint": "10.13.0",
     "jiti": "2.7.0",
-    "next": "16.4.2",
+    "next": "16.4.5",
     "next-intl": "4.13.6",
     "react": "19.2.3",
     "react-dom": "19.2.3",

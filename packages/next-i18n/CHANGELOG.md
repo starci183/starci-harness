@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.1 - 2026-11-17
+
+- Security: the development and test copy of `next` moves to 16.4.5 (the 2026-11-03 advisories on 16.x up to 16.4.4); the peer range `next >=16` is unchanged.
+
 ## 0.1.0 - 2026-11-03
 
 The next-intl stack of a StarCi front end, lifted from the product that ran it in production and from the starter's per-app i18n workspace package, and generalised over the app's locales: typed, no product names, no component.
