@@ -39,6 +39,10 @@ secretKeys:
   - SONARQUBE_DB_PASSWORD
   - SONARQUBE_ADMIN_PASSWORD
   - CLOUDFLARE_TUNNEL_TOKEN
+  # The host embeddings door of ops/host.yaml (embeddings-gate, embeddings-tunnel): the bearer token apps send, and the run token of
+  # the locally managed tunnel starci-host-services. An app receives the bearer token through `app secret set ... --from-host EMBEDDINGS_API_KEY`.
+  - EMBEDDINGS_API_KEY
+  - HOST_SERVICES_TUNNEL_TOKEN
 exceptions:
   - path: packages/hfs/templates/be/patterns/realtime/channel.gateway.spec.ts.tpl
     rule: assigned-secret

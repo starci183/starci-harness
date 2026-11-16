@@ -158,8 +158,8 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [grammars/offset-pop.md](../grammars/offset-pop.md) · 7 KB — `offset-pop` is the playful, mobile-first grammar for consumer and learning apps: a cream canvas, objects drawn like stickers (an ink outline and a hard offset shadow), one pink ...
   - sections: Material and why · How offset-pop fills the contract · Departures · What an app must not add · Lint
 - [harness/axes.md](../harness/axes.md) · 1 KB
-- [harness/host.md](../harness/host.md) · 5 KB — What a shell on the harness host does differently from the textbook, and the one way to work with it.
-  - sections: Spawning a process · The host stack · Dependencies through a link · Files and folders
+- [harness/host.md](../harness/host.md) · 10 KB — What a shell on the harness host does differently from the textbook, and the one way to work with it.
+  - sections: Spawning a process · The host stack · Host services · Dependencies through a link · Files and folders
 - [harness/presence-audit.md](../harness/presence-audit.md) · 10 KB — A law that says an app must contain something, or a round must produce something, is enforced only when a check refuses its absence as well as a wrong one.
   - sections: hfs rules · contexts laws · Not added
 - [harness/questions.md](../harness/questions.md) · 9 KB

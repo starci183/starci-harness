@@ -37,6 +37,51 @@ What a shell on the harness host does differently from the textbook, and the one
   store fails with `read-only file system` (a build, a container removal) and stays so after space is freed, until Docker
   Desktop restarts. Free space first, then ask the owner to restart it: a restart stops every stack on the host.
 
+## Host services
+
+A host service is a model or server the host runs once for every app of every environment, published through the host stack
+the way the SonarQube is, so an app on a workstation, in CI or in production reaches it by one public URL. Each is a service
+of [ops/host.yaml](../../ops/host.yaml) whose check is its doctor and verify row: `starci host status <id>` reads it,
+`starci host up <id>` starts what is down.
+
+### embeddings
+
+The host's GPU embedding model, `qwen3-embedding:8b`, served at `https://embed.starci.org`.
+
+- **Where it runs.** The model runs in the host's native Ollama on `127.0.0.1:11434` (service `embeddings`, up when
+  `/api/tags` names the model), never in a container: the native install reaches the GPU today, Docker Desktop's GPU
+  passthrough on Windows and WSL is fragile, and the model is already pulled there. The harness never changes that install or
+  its models. In front of it the stack runs two containers from [embeddings.yaml](../../ops/host/stack/embeddings.yaml):
+  the gate `embeddings-gate` (Caddy, [embeddings.Caddyfile](../../ops/host/stack/embeddings.Caddyfile)), which reaches Ollama at
+  `host.docker.internal:11434` (Docker Desktop forwards it to the host's loopback) and is also served on `127.0.0.1:11435` for a
+  process of the host; and `embeddings-tunnel`, the connector of the locally managed tunnel `starci-host-services`, whose ingress
+  ([embeddings-tunnel.yml](../../ops/host/stack/embeddings-tunnel.yml)) sends `embed.starci.org` to the gate on the stack's
+  network. The DNS record is made once with `cloudflared --config ops/host/stack/embeddings-tunnel.yml tunnel route dns
+  --overwrite-dns starci-host-services embed.starci.org` (the `--config` keeps the record off the tunnel of the home's default
+  config.yml, as [project/stacks.md](../project/stacks.md) says for an app's tunnel); no dashboard step.
+- **Auth.** Every call carries `Authorization: Bearer <EMBEDDINGS_API_KEY>`. The token is a host secret: a random value
+  appended to the harness `secret.env` once, never printed, read by the secret loader ([rules.md](rules.md) rule 1,
+  policy/security.yaml `secretKeys`) into the one compose process `host up` starts, and by Caddy from its environment when it
+  loads the Caddyfile; the tunnel's run token, `HOST_SERVICES_TUNNEL_TOKEN`, is kept the same way. The gate strips the token
+  before Ollama. `embeddings-gate` and `embeddings-tunnel` read up only while `GET /v1/models` without the token answers 401,
+  so a gate that answered openly reads down.
+- **Routes and limits.** Served: `POST /v1/embeddings`, `POST /api/embed`, `GET /v1/models`. Every other method or path is
+  404, with or without the token; a served route without the token is 401. A body over 1 MB is 413. At most 4 requests reach
+  Ollama at once and the rest wait in Caddy, which with Ollama's own queue bounds the GPU's load. Known gap: there is no per-key
+  requests-per-minute limit, since stock Caddy has no rate limiter (it needs the `caddy-ratelimit` plugin and a custom build); a
+  leaked token is bounded only by the concurrency cap until it is rotated, and a Cloudflare rate-limiting rule on the host is the
+  limit to add when one is needed.
+- **The GPU is shared.** The host's GPU has 8 GB and desktop apps hold about 3.6 GB of it, so Ollama keeps about 89% of the
+  loaded model on the GPU and the rest on the CPU; the first call after the model unloads waits tens of seconds while it loads.
+- **How an app consumes it.** The owner copies the token into the app's own custody, never into a file of the app's tree:
+  `starci app secret set --env <env> <member> LOCAL_AI_API_KEY --from-host EMBEDDINGS_API_KEY` seals it without printing it
+  ([cli/README.md](../../cli/README.md) "Host secrets"), and a process that needs the value outside the app's runtime reads it
+  with `starci app secret get --env <env> <member> LOCAL_AI_API_KEY --to-file` only. The app declares a `@starci/ai-router`
+  provider of `kind: "local"` with `baseUrl: "https://embed.starci.org/v1"`, its key `{ ref: "LOCAL_AI_API_KEY" }`, and the
+  model `localModel("qwen3-embedding:8b", { dimensions: 1024 })`: the model's 4096 numbers are cut to 1024 by Matryoshka
+  truncation and L2-normalized (`truncate: "mrl"`, the ai-router README "Embedding dimensions"), the size a pgvector index
+  takes. Through `poolFromEnv` the same comes from `LOCAL_AI_BASE_URL=https://embed.starci.org/v1` and `LOCAL_AI_API_KEY`.
+
 ## Dependencies through a link
 
 A package manager command that writes `node_modules` never runs through a link. npm, pnpm and yarn rewrite the folder they install into:

@@ -1,0 +1,11 @@
+# The ingress of the locally managed Cloudflare tunnel `starci-host-services` (ops/host/stack/embeddings.yaml, container
+# cloudflared-embeddings). Its connector reads this file when it starts; a changed rule needs `host down embeddings-tunnel` then
+# `host up embeddings-tunnel`. The DNS record of each host is made with
+# `cloudflared --config ops/host/stack/embeddings-tunnel.yml tunnel route dns --overwrite-dns starci-host-services <host>`,
+# naming this file so the record lands on this tunnel and not on the one of the home's default config.yml. Only the gate is
+# reachable: every other host and path the tunnel receives answers 404.
+tunnel: starci-host-services
+ingress:
+  - hostname: embed.starci.org
+    service: http://embeddings-gate:8080
+  - service: http_status:404

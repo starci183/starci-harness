@@ -1,0 +1,55 @@
+# One file of the host stack `starci` (ops/host/stack/): one Compose project, in this one folder, that holds the shared SonarQube (sonar.yaml),
+# its public tunnel (tunnel.yaml), the local npm registry (registry.yaml) and the public door of the host's embedding model (embeddings.yaml).
+# ops/host.yaml declares each container as a service of `stack: starci`; `starci host up --stack starci` brings the whole stack up, idempotently.
+#
+# Publishes the host's embedding model as https://embed.starci.org, for any app of any environment. The model runs in the native
+# Ollama of the host (service `embeddings` of ops/host.yaml, 127.0.0.1:11434), never in a container: its GPU works natively today,
+# Docker Desktop's GPU passthrough on Windows/WSL is fragile, and the model is already pulled there. Two containers stand in front of it:
+#
+#   embeddings-gate     Caddy (embeddings.Caddyfile): the bearer token, the three served routes, the body cap and the upstream
+#                       concurrency cap; it reaches Ollama at host.docker.internal:11434, which Docker Desktop forwards to the host's
+#                       loopback. Also served on 127.0.0.1:${STARCI_PORT_EMBEDDINGS:-11435} for a process of this machine.
+#   cloudflared-embeddings  the connector of the locally managed tunnel `starci-host-services`, whose ingress is embeddings-tunnel.yml
+#                       (embed.starci.org -> embeddings-gate:8080 on this project's network). The DNS record is made once with
+#                       `cloudflared --config ops/host/stack/embeddings-tunnel.yml tunnel route dns --overwrite-dns starci-host-services embed.starci.org`.
+#
+# No secret is stored here (contexts/harness/rules.md rule 1): ${EMBEDDINGS_API_KEY} (the bearer token apps send) and
+# ${HOST_SERVICES_TUNNEL_TOKEN} (the run token of the tunnel) are filled in the one process `host up` starts, from the CLI's secret
+# loader (policy/security.yaml secretKeys), and `host up` refuses HOST_SECRET_MISSING naming the key when one is unset. Caddy reads
+# the token from its environment when it loads the Caddyfile; it is never written to a file. The images are pinned by digest.
+name: ${STARCI_HOST_PROJECT:-starci}
+
+services:
+  embeddings-gate:
+    image: caddy:2.10.2@sha256:c3d7ee5d2b11f9dc54f947f68a734c84e9c9666c92c88a7f30b9cba5da182adb
+    container_name: ${STARCI_HOST_PROJECT:-starci}-embeddings-gate
+    command: caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
+    environment:
+      EMBEDDINGS_API_KEY: ${EMBEDDINGS_API_KEY:?set EMBEDDINGS_API_KEY in the harness secret.env or the environment}
+    volumes:
+      - ./embeddings.Caddyfile:/etc/caddy/Caddyfile:ro
+    ports:
+      - "127.0.0.1:${STARCI_PORT_EMBEDDINGS:-11435}:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - wget -q -O /dev/null http://127.0.0.1:8081/healthz
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  cloudflared-embeddings:
+    image: cloudflare/cloudflared:2026.8.2@sha256:0aa26e284f05e6c77ae375b8c9c11d9eb6a448fb7bcd8d40f31cb6176189eb38
+    container_name: ${STARCI_HOST_PROJECT:-starci}-cloudflared-embeddings
+    command: tunnel --no-autoupdate --config /etc/cloudflared/config.yml run
+    environment:
+      TUNNEL_TOKEN: ${HOST_SERVICES_TUNNEL_TOKEN:?set HOST_SERVICES_TUNNEL_TOKEN in the harness secret.env or the environment}
+    volumes:
+      - ./embeddings-tunnel.yml:/etc/cloudflared/config.yml:ro
+    depends_on:
+      embeddings-gate:
+        condition: service_healthy
+    restart: unless-stopped

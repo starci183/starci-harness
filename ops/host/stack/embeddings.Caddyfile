@@ -1,0 +1,60 @@
+# The gate of the host's embedding model (ops/host/stack/embeddings.yaml, container embeddings-gate), the only way in from the
+# tunnel. It serves three routes and nothing else:
+#   POST /v1/embeddings   the OpenAI-compatible embeddings call
+#   POST /api/embed       Ollama's own embeddings call
+#   GET  /v1/models       the models list
+# A served route without `Authorization: Bearer <EMBEDDINGS_API_KEY>` answers 401; every other method or path answers 404,
+# with or without the token. A request body over 1 MB is refused 413. At most 4 requests reach Ollama at once; the rest wait in
+# Caddy. The token comes from the container's environment ({$EMBEDDINGS_API_KEY} is read when the file is loaded) and is
+# removed from the request before it reaches Ollama, with the Origin header, and the Host is rewritten to the loopback name
+# Ollama accepts.
+{
+	admin off
+	auto_https off
+}
+
+(ollama) {
+	reverse_proxy host.docker.internal:11434 {
+		header_up Host localhost:11434
+		header_up -Authorization
+		header_up -Origin
+		transport http {
+			max_conns_per_host 4
+			response_header_timeout 120s
+		}
+	}
+}
+
+:8080 {
+	request_body {
+		max_size 1MB
+	}
+
+	@anonymous not header Authorization "Bearer {$EMBEDDINGS_API_KEY}"
+
+	@embed {
+		method POST
+		path /v1/embeddings /api/embed
+	}
+	@models {
+		method GET
+		path /v1/models
+	}
+
+	handle @embed {
+		respond @anonymous "Unauthorized" 401
+		import ollama
+	}
+	handle @models {
+		respond @anonymous "Unauthorized" 401
+		import ollama
+	}
+	handle {
+		respond "Not Found" 404
+	}
+}
+
+# The container's own health probe; never published and never reached by the tunnel.
+:8081 {
+	respond /healthz "ok" 200
+}
