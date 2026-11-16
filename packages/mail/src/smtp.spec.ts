@@ -212,31 +212,24 @@ describe("SMTP delivery against a fake server", () => {
         const [mail] = server.received
         assert.ok(mail)
         assert.deepEqual(mail.to, ["ada@example.com", "grace@example.com", "boss@example.com", "audit@example.com"])
-        const headers = mail.raw.slice(0, mail.raw.indexOf("
-
-")).replace(/
-[ 	]+/gu, " ")
-        assert.match(headers, /^To: ada@example.com$/mu)
-        assert.match(headers, /^Cc: grace@example.com$/mu)
-        assert.match(headers, /^In-Reply-To: <c2@mail.acme.test>$/mu)
-        assert.match(headers, /^References: <c1@mail.acme.test> <c2@mail.acme.test>$/mu)
-        assert.match(headers, /^Message-ID: <c3@mail.acme.test>$/mu)
+        const headers = mail.raw.slice(0, mail.raw.indexOf("\r\n\r\n")).replace(/\r\n[ \t]+/gu, " ")
+        assert.match(headers, /^To: ada@example\.com$/mu)
+        assert.match(headers, /^Cc: grace@example\.com$/mu)
+        assert.match(headers, /^In-Reply-To: <c2@mail\.acme\.test>$/mu)
+        assert.match(headers, /^References: <c1@mail\.acme\.test> <c2@mail\.acme\.test>$/mu)
+        assert.match(headers, /^Message-ID: <c3@mail\.acme\.test>$/mu)
         assert.doesNotMatch(mail.raw, /bcc/iu)
-        assert.doesNotMatch(mail.raw, /boss@example.com|audit@example.com/u)
+        assert.doesNotMatch(mail.raw, /boss@example\.com|audit@example\.com/u)
     })
 
     it("refuses a header-injecting Cc, Bcc, In-Reply-To or References before it connects", async () => {
         const server = await start()
         const mailer = createMailer(optionsFor(server))
         for (const extra of [
-            { cc: "b@x.test
-Bcc: evil@y.test" },
-            { bcc: ["b@x.test
-X-Evil: 1"] },
-            { inReplyTo: "<a@x.test>
-Bcc: evil@y.test" },
-            { references: ["<a@x.test>
-X-Evil: 1"] },
+            { cc: "b@x.test\r\nBcc: evil@y.test" },
+            { bcc: ["b@x.test\nX-Evil: 1"] },
+            { inReplyTo: "<a@x.test>\r\nBcc: evil@y.test" },
+            { references: ["<a@x.test>\r\nX-Evil: 1"] },
         ]) {
             await failure(mailer.send({ to: "ada@example.com", message, ...extra }))
         }

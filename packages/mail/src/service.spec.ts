@@ -133,28 +133,23 @@ describe("Mailer checks (the same in the SMTP port and the memory outbox)", () =
         const mailer = createMemoryMailer()
         for (const request of [
             { to: "a@x.test", cc: "bad", message },
-            { to: "a@x.test", cc: ["b@x.test
-Bcc: evil@y.test"], message },
+            { to: "a@x.test", cc: ["b@x.test\r\nBcc: evil@y.test"], message },
             { to: "a@x.test", bcc: ["Display <b@x.test>"], message },
-            { to: "a@x.test", bcc: "b@x.test
-X-Evil: 1", message },
+            { to: "a@x.test", bcc: "b@x.test\nX-Evil: 1", message },
         ]) {
             assert.equal((await refused(mailer.send(request))).code, MAIL_ERROR_CODES.AddressInvalid, JSON.stringify(request).slice(0, 50))
         }
         const longId = `<${"a".repeat(260)}@x.test>`
         for (const request of [
             { to: "a@x.test", inReplyTo: "c2@mail.acme.test", message },
-            { to: "a@x.test", inReplyTo: "<c2@mail.acme.test>
-Bcc: evil@y.test", message },
+            { to: "a@x.test", inReplyTo: "<c2@mail.acme.test>\r\nBcc: evil@y.test", message },
             { to: "a@x.test", inReplyTo: "<a b@x.test>", message },
             { to: "a@x.test", inReplyTo: "<a@b@x.test>", message },
             { to: "a@x.test", inReplyTo: longId, message },
             { to: "a@x.test", references: ["<c1@x.test>", "<c2@x.test> <c3@x.test>"], message },
-            { to: "a@x.test", references: "<c1@x.test>
-X-Evil: 1", message },
+            { to: "a@x.test", references: "<c1@x.test>\nX-Evil: 1", message },
             { to: "a@x.test", references: Array.from({ length: 51 }, (_unused, index) => `<m${String(index)}@x.test>`), message },
-            { to: "a@x.test", messageId: "<x@y.test>
-Bcc: evil@y.test", message },
+            { to: "a@x.test", messageId: "<x@y.test>\r\nBcc: evil@y.test", message },
             { to: "a@x.test", messageId: "plain", message },
         ]) {
             assert.equal((await refused(mailer.send(request))).code, MAIL_ERROR_CODES.MessageInvalid, JSON.stringify(request).slice(0, 60))
@@ -164,8 +159,7 @@ Bcc: evil@y.test", message },
 
     it("judges a Message-ID by its angle form", () => {
         for (const good of ["<a@b.test>", "<a.b+c@mail.example.com>", "<uuid-1234@localhost>"]) assert.equal(isValidMessageId(good), true, good)
-        for (const bad of ["", "<>", "<@b.test>", "<a@>", "a@b.test", "<a@b.test", "<a
-@b.test>", "<a@b..test>", "<a@b.test>x"]) assert.equal(isValidMessageId(bad), false, JSON.stringify(bad))
+        for (const bad of ["", "<>", "<@b.test>", "<a@>", "a@b.test", "<a@b.test", "<a\r\n@b.test>", "<a@b..test>", "<a@b.test>x"]) assert.equal(isValidMessageId(bad), false, JSON.stringify(bad))
     })
 
     it("fails the next sends on demand with the injected code and recovers", async () => {
