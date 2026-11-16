@@ -295,8 +295,8 @@ type ResolverStatus = { readonly kind: "done"; readonly commits: readonly string
 const FAILED_TASK: ReadonlySet<string> = new Set(["failed", "cancelled", "awaiting_owner"])
 
 /**
- * The commits a done task landed, oldest first: every commit its settle wrote carries its `Starci-Task` trailer (a Work commit
- * takes the candidate's message), so they are the commits of its settle commit's history that name it.
+ * The commits a done task landed, oldest first: every commit its settle wrote carries its `Starci-Task` trailer, so they are
+ * the commits of its settle commit's history that name it.
  */
 const landedCommits = async (repo: string, taskId: string, settle: string | null): Promise<string[]> => {
     if (settle === null) return []
