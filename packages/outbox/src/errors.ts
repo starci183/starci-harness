@@ -17,6 +17,12 @@ export const OutboxErrorCode = {
     PayloadRefused: "OUTBOX_PAYLOAD_REFUSED",
     /** The lease of the job was lost before it settled: a newer claim owns the row now. */
     LeaseLost: "OUTBOX_LEASE_LOST",
+    /** An event names no scope, topic or type, or a notification is asked for a job with no scope or for a state it does not know. */
+    EventInvalid: "OUTBOX_EVENT_INVALID",
+    /** A subscription names no scope or no topic: the scope filter is required on the server, from the caller's own principal. */
+    SubscriptionInvalid: "OUTBOX_SUBSCRIPTION_INVALID",
+    /** A stream was asked of an outbox whose options name no `stream.listener` (the dedicated connection that LISTENs). */
+    StreamUnconfigured: "OUTBOX_STREAM_UNCONFIGURED",
 } as const
 
 /** One code of the outbox. */
@@ -31,6 +37,9 @@ export const OUTBOX_ERROR_KINDS: Readonly<Record<OutboxErrorCode, ErrorKind>> = 
     OUTBOX_LADDER_UNKNOWN: "internal",
     OUTBOX_PAYLOAD_REFUSED: "invalid",
     OUTBOX_LEASE_LOST: "unavailable",
+    OUTBOX_EVENT_INVALID: "invalid",
+    OUTBOX_SUBSCRIPTION_INVALID: "invalid",
+    OUTBOX_STREAM_UNCONFIGURED: "internal",
 }
 
 /** The one error class of the outbox, a coded `DomainError` of `@starci/common`. */

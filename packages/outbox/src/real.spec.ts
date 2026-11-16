@@ -1,13 +1,26 @@
 import "reflect-metadata"
 import assert from "node:assert/strict"
 import { randomBytes } from "node:crypto"
-import { spawnSync } from "node:child_process"
+import { spawn, spawnSync } from "node:child_process"
+import { readFileSync } from "node:fs"
+import { createServer } from "node:http"
+import { Writable } from "node:stream"
 import { after, describe, test } from "node:test"
 import { DomainError } from "@starci/common"
 import pg from "pg"
 import { DataSource } from "typeorm"
 import { defer } from "./contracts.ts"
-import type { ClaimedJob, Clock, JobContext, JobHandler, OutboxOptions, ParkedJob } from "./contracts.ts"
+import type {
+    ClaimedJob,
+    Clock,
+    JobContext,
+    JobHandler,
+    NotificationClient,
+    OutboxEvent,
+    OutboxOptions,
+    ParkedJob,
+    SubscriptionHandlers,
+} from "./contracts.ts"
 import { Outbox } from "./outbox.ts"
 import { pgDatabase, run } from "./sql.ts"
 import type { OutboxDatabase } from "./sql.ts"
@@ -258,7 +271,7 @@ describe("the outbox on real Postgres", { skip }, () => {
         assert.equal(parked.failure_class, "input")
         assert.equal(parked.park_reason, "class")
         assert.match(String(parked.last_error), /RefusedError APP_REFUSED/u)
-        assert.equal(await scalar(pool, "SELECT count(*)::int AS n FROM outbox_slots WHERE job_id IS NOT NULL"), 0, "every slot is free")
+        assert.equal(await scalar(pool, "SELECT count(*)::int AS n FROM outbox_slots WHERE outbox_job_id IS NOT NULL"), 0, "every slot is free")
     })
 
     test("TypeORM: a DataSource is the outbox database and its EntityManager the caller's transaction", async () => {
@@ -433,7 +446,7 @@ describe("the outbox on real Postgres", { skip }, () => {
         const renewed = clock.current.getTime() + 9000
         for (let wait = 0; wait < 100 && pending.length === 0; wait += 1) await pause(5)
         assert.equal(((await state(id)).lease_until as Date).getTime(), renewed)
-        assert.equal(((await run(pool, "SELECT lease_until FROM outbox_slots WHERE job_id = $1", [id]))[0]?.lease_until as Date).getTime(), renewed)
+        assert.equal(((await run(pool, "SELECT lease_until FROM outbox_slots WHERE outbox_job_id = $1", [id]))[0]?.lease_until as Date).getTime(), renewed)
         await pool.query("UPDATE outbox_jobs SET fence = fence + 1 WHERE id = $1", [id])
         pending.shift()?.()
         assert.equal(await result, "lost")
@@ -510,7 +523,7 @@ describe("the outbox on real Postgres", { skip }, () => {
         assert.deepEqual(byScope(first), { "solo/a": 1, "work/a": 2, "work/b": 2, "work/big": 2, "work/c": 2, "work/d": 1 })
         const second = await box.claim()
         assert.deepEqual(byScope(second), { "work/d": 1 }, "only the slot left free is taken while the first claims run")
-        const total = await scalar(pool, "SELECT count(*)::int AS n FROM outbox_slots WHERE job_id IS NOT NULL")
+        const total = await scalar(pool, "SELECT count(*)::int AS n FROM outbox_slots WHERE outbox_job_id IS NOT NULL")
         assert.equal(total, 11)
     })
 
@@ -594,7 +607,7 @@ describe("the outbox on real Postgres", { skip }, () => {
                 if (seen.has(`${job.id}:${String(job.fence)}`)) twice += 1
                 seen.add(`${job.id}:${String(job.fence)}`)
             }
-            await pool.query("WITH j AS (UPDATE outbox_jobs SET state = 'done' WHERE state = 'running' RETURNING id) UPDATE outbox_slots SET job_id = NULL WHERE job_id IN (SELECT id FROM j)")
+            await pool.query("WITH j AS (UPDATE outbox_jobs SET state = 'done' WHERE state = 'running' RETURNING id) UPDATE outbox_slots SET outbox_job_id = NULL WHERE outbox_job_id IN (SELECT id FROM j)")
         }
         assert.equal(twice, 0)
         assert.equal(seen.size, 480)
@@ -661,5 +674,457 @@ describe("the outbox on real Postgres", { skip }, () => {
         clock.advance(1000)
         assert.equal(await next.purge(clock.now()), 1)
         assert.equal(id.length, 36)
+    })
+})
+
+/* ---------------------------------------------------------------------------------------------------------------
+ * Events: publish in the caller's transaction, one LISTEN per process, replay after Last-Event-ID, retention, SSE.
+ * ---------------------------------------------------------------------------------------------------------------- */
+
+/** The dedicated listening connection of one "process": a connected pg Client. */
+const listenerOf =
+    (url: string) =>
+    async (): Promise<NotificationClient> => {
+        const client = new pg.Client({ connectionString: url })
+        await client.connect()
+        return client
+    }
+
+/** A subscriber that keeps what it hears. */
+const collector = (): { readonly events: OutboxEvent[]; readonly handlers: SubscriptionHandlers; readonly closed: () => boolean } => {
+    const events: OutboxEvent[] = []
+    let closed = false
+    return {
+        events,
+        handlers: {
+            onEvent: (event) => {
+                events.push(event)
+            },
+            onClose: () => {
+                closed = true
+            },
+        },
+        closed: () => closed,
+    }
+}
+
+const until = async (what: string, ready: () => boolean | Promise<boolean>, ms = 5000): Promise<void> => {
+    const deadline = Date.now() + ms
+    while (!(await ready())) {
+        if (Date.now() > deadline) throw new Error(`timed out waiting for ${what}`)
+        await pause(10)
+    }
+}
+
+/** An outbox that serves streams over the lab's database, stopped when the run ends. */
+const streaming = (made: Lab, options: Partial<OutboxOptions> = {}): Outbox => {
+    const box = made.outbox({ ...options, stream: { listener: listenerOf(made.url), ...options.stream } })
+    cleanups.push(() => box.stop(10))
+    return box
+}
+
+const publishOne = async (box: Outbox, db: OutboxDatabase, scope: string, topic: string, type: string, data: object = {}): Promise<string> =>
+    (await db.transaction((tx) => box.publish(tx, { scope, topic, type, data }))).seq
+
+/** The frames of an SSE body, read as they come, until `enough` holds or the time runs out. */
+const readFrames = async (
+    url: string,
+    headers: Record<string, string>,
+    enough: (frames: readonly { readonly id?: string; readonly data?: string; readonly comment?: string }[]) => boolean,
+): Promise<{ readonly status: number; readonly type: string | null; readonly frames: readonly { readonly id?: string; readonly data?: string; readonly comment?: string }[] }> => {
+    const abort = new AbortController()
+    const response = await fetch(url, { headers, signal: abort.signal })
+    const frames: { id?: string; data?: string; comment?: string }[] = []
+    const body = response.body
+    assert.ok(body !== null)
+    const reader = body.pipeThrough(new TextDecoderStream()).getReader()
+    let buffer = ""
+    const deadline = Date.now() + 5000
+    while (!enough(frames) && Date.now() < deadline) {
+        const { value, done } = await reader.read()
+        if (done) break
+        buffer += value
+        for (let end = buffer.indexOf("\n\n"); end >= 0; end = buffer.indexOf("\n\n")) {
+            const frame: { id?: string; data?: string; comment?: string } = {}
+            for (const line of buffer.slice(0, end).split("\n")) {
+                if (line.startsWith("id: ")) frame.id = line.slice(4)
+                else if (line.startsWith("data: ")) frame.data = line.slice(6)
+                else if (line.startsWith(": ")) frame.comment = line.slice(2)
+            }
+            frames.push(frame)
+            buffer = buffer.slice(end + 2)
+        }
+    }
+    abort.abort()
+    return { status: response.status, type: response.headers.get("content-type"), frames }
+}
+
+/** A response whose client never reads: every write stays buffered. */
+class StuckResponse extends Writable {
+    status = 0
+    dropped = false
+    constructor() {
+        super({ highWaterMark: 1024, write: () => undefined })
+    }
+    writeHead(status: number): this {
+        this.status = status
+        return this
+    }
+    override destroy(error?: Error): this {
+        this.dropped = true
+        return super.destroy(error)
+    }
+}
+
+describe("events on real Postgres", { skip }, () => {
+    test("publish: a rolled-back transaction emits nothing; a committed event reaches subscribers of two connections through NOTIFY", async () => {
+        const made = await lab()
+        const box = streaming(made)
+        const other = streaming(made)
+        const here = collector()
+        const there = collector()
+        await box.subscribe({ scope: "a", topics: ["orders"] }, here.handlers)
+        await other.subscribe({ scope: "a", topics: ["orders"] }, there.handlers)
+
+        const client = await made.pool.connect()
+        await client.query("BEGIN")
+        await box.publish(client, { scope: "a", topic: "orders", type: "order.paid", data: { orderId: "o1" } })
+        await client.query("ROLLBACK")
+        client.release()
+        await pause(300)
+        assert.deepEqual([here.events, there.events], [[], []], "a rolled-back publish is heard by nobody")
+        assert.equal(await scalar(made.pool, "SELECT count(*)::int AS n FROM outbox_events"), 0)
+
+        const seq = await publishOne(box, made.db, "a", "orders", "order.paid", { orderId: "o2" })
+        await until("both subscribers", () => here.events.length === 1 && there.events.length === 1)
+        const [heard] = here.events
+        assert.deepEqual({ ...heard, createdAt: undefined }, { seq, scope: "a", topic: "orders", type: "order.paid", data: { orderId: "o2" }, createdAt: undefined })
+        assert.deepEqual(there.events, here.events)
+        await assert.rejects(made.db.transaction((tx) => box.publish(tx, { scope: "", topic: "t", type: "x" })), { code: "OUTBOX_EVENT_INVALID" })
+        await assert.rejects(box.subscribe({ scope: "a", topics: [] }, here.handlers), { code: "OUTBOX_SUBSCRIPTION_INVALID" })
+        await assert.rejects(made.outbox().subscribe({ scope: "a", topics: ["t"] }, here.handlers), { code: "OUTBOX_STREAM_UNCONFIGURED" })
+    })
+
+    test("an event published by another process reaches this process's subscriber", async () => {
+        const made = await lab()
+        const box = streaming(made)
+        const heard = collector()
+        await box.subscribe({ scope: "tenant-1", topics: ["imports"] }, heard.handlers)
+        const script = [
+            `import pg from "pg"`,
+            `import { Outbox } from ${JSON.stringify(new URL("./outbox.ts", import.meta.url).href)}`,
+            `import { pgDatabase } from ${JSON.stringify(new URL("./sql.ts", import.meta.url).href)}`,
+            `const pool = new pg.Pool({ connectionString: process.env.OUTBOX_CHILD_URL, max: 1 })`,
+            `const db = pgDatabase(pool)`,
+            `const box = new Outbox({ database: db })`,
+            `for (const n of [1, 2, 3]) await db.transaction((tx) => box.publish(tx, { scope: "tenant-1", topic: "imports", type: "import.progress", data: { n } }))`,
+            `await pool.end()`,
+        ].join("\n")
+        const child = spawn(process.execPath, ["--input-type=module", "-e", script], {
+            cwd: new URL("..", import.meta.url),
+            env: { ...process.env, OUTBOX_CHILD_URL: made.url },
+            stdio: ["ignore", "ignore", "pipe"],
+        })
+        let stderr = ""
+        child.stderr.on("data", (chunk: Buffer) => {
+            stderr += chunk.toString()
+        })
+        const code = await new Promise<number | null>((resolve) => {
+            child.on("close", resolve)
+        })
+        assert.equal(code, 0, stderr)
+        await until("three events from the other process", () => heard.events.length === 3)
+        assert.deepEqual(
+            heard.events.map((event) => event.data),
+            [{ n: 1 }, { n: 2 }, { n: 3 }],
+        )
+    })
+
+    test("scope isolation: a subscriber of scope A never sees an event of scope B", async () => {
+        const made = await lab()
+        const box = streaming(made)
+        const a = collector()
+        const b = collector()
+        await box.subscribe({ scope: "A", topics: ["t"] }, a.handlers)
+        await box.subscribe({ scope: "B", topics: ["t"] }, b.handlers)
+        for (let n = 0; n < 6; n += 1) await publishOne(box, made.db, n % 2 === 0 ? "A" : "B", "t", "tick", { n })
+        await until("both scopes", () => a.events.length === 3 && b.events.length === 3)
+        await pause(100)
+        assert.deepEqual(
+            a.events.map((event) => [event.scope, event.data]),
+            [
+                ["A", { n: 0 }],
+                ["A", { n: 2 }],
+                ["A", { n: 4 }],
+            ],
+        )
+        assert.ok(b.events.every((event) => event.scope === "B"))
+    })
+
+    test("resume: Last-Event-ID replays exactly the missed events of the scope's topics, in order, then live ones, none twice", async () => {
+        const made = await lab()
+        const box = streaming(made)
+        const seqs: string[] = []
+        for (let n = 1; n <= 5; n += 1) {
+            seqs.push(await publishOne(box, made.db, "A", "t", "step", { n }))
+            await publishOne(box, made.db, "B", "t", "noise", { n })
+            await publishOne(box, made.db, "A", "other", "noise", { n })
+        }
+        const resumed = collector()
+        await box.subscribe({ scope: "A", topics: ["t"], lastEventId: seqs[1] }, resumed.handlers)
+        assert.deepEqual(
+            resumed.events.map((event) => event.data),
+            [{ n: 3 }, { n: 4 }, { n: 5 }],
+            "the replay is handed before the subscribe answers",
+        )
+        assert.deepEqual(
+            resumed.events.map((event) => event.seq),
+            seqs.slice(2),
+        )
+        await publishOne(box, made.db, "A", "t", "step", { n: 6 })
+        await until("the live event", () => resumed.events.length === 4)
+        assert.deepEqual(resumed.events[3]?.data, { n: 6 })
+
+        const live = collector()
+        await box.subscribe({ scope: "A", topics: ["t"], lastEventId: "not-a-seq" }, live.handlers)
+        assert.equal(live.events.length, 0, "a resume point that is no seq starts live")
+    })
+
+    test("SSE: headers, retry, replay after the Last-Event-ID header, live frames and heartbeats; a stream with no scope is refused", async () => {
+        const made = await lab()
+        const box = streaming(made, { stream: { heartbeatMs: 50 } })
+        const seqs: string[] = []
+        for (let n = 1; n <= 3; n += 1) seqs.push(await publishOne(box, made.db, "A", "jobs", "job.done", { n }))
+        const server = createServer((request, response) => {
+            void box.sse(request, response, { scope: "A", topics: ["jobs"] })
+        })
+        await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve))
+        cleanups.push(
+            () =>
+                new Promise<void>((resolve) => {
+                    server.closeAllConnections()
+                    server.close(() => {
+                        resolve()
+                    })
+                }),
+        )
+        const address = server.address()
+        assert.ok(address !== null && typeof address === "object")
+        const url = `http://127.0.0.1:${String(address.port)}/events`
+        const later = setTimeout(() => {
+            void publishOne(box, made.db, "A", "jobs", "job.done", { n: 4 })
+        }, 200)
+        const read = await readFrames(url, { "last-event-id": seqs[0] ?? "" }, (frames) => frames.filter((frame) => frame.id !== undefined).length >= 3 && frames.some((frame) => frame.comment === "heartbeat"))
+        clearTimeout(later)
+        assert.equal(read.status, 200)
+        assert.equal(read.type, "text/event-stream; charset=utf-8")
+        const ids = read.frames.flatMap((frame) => (frame.id === undefined ? [] : [frame.id]))
+        assert.equal(ids[0], seqs[1])
+        assert.equal(ids[1], seqs[2])
+        assert.equal(ids.length, 3)
+        const data = read.frames.flatMap((frame) => (frame.data === undefined ? [] : [JSON.parse(frame.data) as { type: string; data: unknown; seq: string }]))
+        assert.deepEqual(
+            data.map((frame) => frame.data),
+            [{ n: 2 }, { n: 3 }, { n: 4 }],
+        )
+        assert.ok(read.frames.some((frame) => frame.comment === "heartbeat"))
+        await assert.rejects(box.sse({ headers: {} }, new StuckResponse(), { scope: "", topics: ["jobs"] }), { code: "OUTBOX_SUBSCRIPTION_INVALID" })
+    })
+
+    test("a slow client is dropped without holding the others; a closed stream unsubscribes", async () => {
+        const made = await lab()
+        const box = streaming(made, { stream: { maxBufferedBytes: 4096, drainTimeoutMs: 60_000 } })
+        const fast = collector()
+        await box.subscribe({ scope: "A", topics: ["t"] }, fast.handlers)
+        const slow = new StuckResponse()
+        await box.sse({ headers: {} }, slow, { scope: "A", topics: ["t"] })
+        assert.equal(slow.status, 200)
+        const filler = "x".repeat(500)
+        for (let n = 0; n < 40; n += 1) await publishOne(box, made.db, "A", "t", "fill", { n, filler })
+        await until("every event at the fast subscriber", () => fast.events.length === 40)
+        assert.equal(slow.dropped, true, "the slow client was dropped once it held more than maxBufferedBytes")
+        assert.deepEqual(
+            fast.events.map((event) => (event.data as { n: number }).n),
+            Array.from({ length: 40 }, (_, n) => n),
+        )
+
+        const gone = new StuckResponse()
+        const heard = collector()
+        await box.subscribe({ scope: "B", topics: ["t"] }, heard.handlers)
+        await box.sse({ headers: {} }, gone, { scope: "B", topics: ["t"] })
+        gone.emit("close")
+        await publishOne(box, made.db, "B", "t", "after", {})
+        await until("the subscriber that stayed", () => heard.events.length === 1)
+        assert.equal(gone.writableLength < 200, true, "nothing is written to a stream after its request closed")
+        await box.stop(10)
+        assert.equal(fast.closed(), true, "stop ends every subscription")
+    })
+
+    test("retention: events older than the window are deleted, by purgeEvents and by the worker's timer", async () => {
+        const made = await lab()
+        const box = made.outbox()
+        await publishOne(box, made.db, "A", "t", "old", {})
+        await publishOne(box, made.db, "A", "t", "old", {})
+        made.clock.advance(25 * 60 * 60 * 1000)
+        await publishOne(box, made.db, "A", "t", "new", {})
+        assert.equal(await box.purgeEvents(), 2)
+        assert.deepEqual(
+            (await run(made.pool, "SELECT type FROM outbox_events")).map((row) => row.type),
+            ["new"],
+        )
+        made.clock.advance(2 * 60 * 60 * 1000)
+        const worker = made.outbox({ eventRetentionMs: 60 * 60 * 1000, eventSweepMs: 1, pollMs: 5 })
+        worker.start()
+        await until("the worker's purge", async () => (await scalar(made.pool, "SELECT count(*)::int AS n FROM outbox_events")) === 0)
+        await worker.stop(10)
+    })
+
+    test("job notifications: claimed, done, failed and parked reach the job's scope; done commits with the handler's work", async () => {
+        const made = await lab()
+        const box = streaming(made)
+        const heard = collector()
+        await box.subscribe({ scope: "s", topics: ["jobs"] }, heard.handlers)
+        box.handle(recorder("ok"))
+        box.handle(
+            recorder("flaky", () => {
+                throw new TransientError("try later")
+            }),
+        )
+        box.handle(
+            recorder("refused", () => {
+                throw new RefusedError({ code: "APP_REFUSED" })
+            }),
+        )
+        const enqueue = (name: string, on?: readonly ("claimed" | "done" | "failed" | "parked")[]): Promise<string> =>
+            made.db.transaction(async (tx) => {
+                const answer = await box.enqueue(tx, { scope: "s", queue: "work", name, payload: {}, onceKey: `n:${name}`, notify: { topic: "jobs", ...(on === undefined ? {} : { on }) } })
+                assert.ok(answer.id !== null)
+                return answer.id
+            })
+        const ok = await enqueue("ok")
+        const flaky = await enqueue("flaky", ["failed"])
+        const refused = await enqueue("refused", ["parked"])
+        await box.drain()
+        await until("four notifications", () => heard.events.length === 4)
+        const byJob = (id: string): string[] => heard.events.filter((event) => (event.data as { jobId: string }).jobId === id).map((event) => event.type)
+        assert.deepEqual(byJob(ok), ["job.claimed", "job.done"])
+        assert.deepEqual(byJob(flaky), ["job.failed"])
+        assert.deepEqual(byJob(refused), ["job.parked"])
+        const failed = heard.events.find((event) => event.type === "job.failed")?.data as { failureClass: string; retryAt: string; attempt: number }
+        assert.equal(failed.failureClass, "transient")
+        assert.equal(failed.attempt, 1)
+        assert.ok(!Number.isNaN(Date.parse(failed.retryAt)))
+        await assert.rejects(
+            box.enqueue(made.pool, { scope: null, queue: "work", name: "ok", payload: {}, onceKey: "n:unscoped", notify: { topic: "jobs" } }),
+            { code: "OUTBOX_EVENT_INVALID" },
+        )
+        await assert.rejects(
+            box.enqueue(made.pool, { scope: "s", queue: "work", name: "ok", payload: {}, onceKey: "n:bad", notify: { topic: "jobs", on: ["started" as "done"] } }),
+            { code: "OUTBOX_EVENT_INVALID" },
+        )
+    })
+})
+
+describe("the 0.1.0 to 0.2.0 upgrade on real Postgres", { skip }, () => {
+    /** Columns, constraints and indexes of the outbox tables, in a comparable order. */
+    const shape = async (pool: pg.Pool): Promise<readonly string[]> => [
+        ...(
+            await run(
+                pool,
+                `SELECT table_name || '.' || column_name || ' ' || data_type || ' ' || is_nullable || ' ' || coalesce(column_default, '') || ' ' || is_identity AS line
+                 FROM information_schema.columns WHERE table_schema = 'public' AND table_name LIKE 'outbox_%'`,
+            )
+        ).map((row) => String(row.line)),
+        ...(
+            await run(
+                pool,
+                `SELECT conrelid::regclass::text || ' ' || conname || ' ' || pg_get_constraintdef(oid) AS line FROM pg_constraint WHERE conrelid::regclass::text LIKE 'outbox_%'`,
+            )
+        ).map((row) => String(row.line)),
+        ...(await run(pool, `SELECT indexdef AS line FROM pg_indexes WHERE schemaname = 'public' AND tablename LIKE 'outbox_%'`)).map((row) => String(row.line)),
+    ].sort()
+
+    test("a populated 0.1.0 database keeps every job, slot and timer, ends in the shape of a new install, and runs on 0.2.0", async () => {
+        const name = `outbox_${randomBytes(6).toString("hex")}`
+        await server().admin.query(`CREATE DATABASE ${name}`)
+        const pool = poolOf(server().urlFor(name), 4)
+        cleanups.push(async () => {
+            await pool.end()
+            await server().admin.query(`DROP DATABASE IF EXISTS ${name} WITH (FORCE)`)
+        })
+        await pool.query(readFileSync(new URL("./fixtures/outbox-0.1.0.sql", import.meta.url), "utf8"))
+        const clock = new ManualClock()
+        const at = clock.now()
+        const jobs = [
+            ["queued", "a"],
+            ["queued", "b"],
+            ["running", "a"],
+            ["done", "a"],
+            ["parked", "b"],
+        ] as const
+        const ids: string[] = []
+        for (const [index, [state, scope]] of jobs.entries()) {
+            const row = (
+                await run(
+                    pool,
+                    `INSERT INTO outbox_jobs (scope, queue, name, payload, once_key, state, not_before, lease_until, fence, attempts, failure_class, park_reason, parked_at)
+                     VALUES ($1, 'work', 'n', $2::jsonb, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id::text AS id`,
+                    [
+                        scope,
+                        JSON.stringify({ index }),
+                        `old:${String(index)}`,
+                        state,
+                        at,
+                        state === "running" ? at : null,
+                        state === "running" ? 1 : 0,
+                        state === "running" ? 1 : 0,
+                        state === "parked" ? "code" : null,
+                        state === "parked" ? "class" : null,
+                        state === "parked" ? at : null,
+                    ],
+                )
+            )[0]
+            assert.ok(row !== undefined)
+            ids.push(String(row.id))
+        }
+        const running = ids[2]
+        await pool.query("INSERT INTO outbox_slots (queue, scope, slot, job_id, lease_until) VALUES ('work', 'a', 0, $1, $2)", [running, at])
+        await pool.query("INSERT INTO outbox_timers (scope, key, due_at, queue, name) VALUES ('a', 'k', $1, 'timers', 'timer.fired')", [at])
+        const before = await run(pool, "SELECT id::text AS id, state, payload, once_key FROM outbox_jobs ORDER BY once_key")
+
+        await pool.query(readFileSync(new URL("../migrations/outbox_contract_0_2_0.sql", import.meta.url), "utf8"))
+
+        assert.deepEqual(await run(pool, "SELECT id::text AS id, state, payload, once_key FROM outbox_jobs ORDER BY once_key"), before, "every job is kept as it was")
+        const slot = (await run(pool, "SELECT id, outbox_job_id::text AS job FROM outbox_slots"))[0]
+        assert.ok(slot !== undefined)
+        assert.equal(slot.job, running)
+        assert.match(String(slot.id), /^[0-9a-f-]{36}$/u)
+        assert.equal(await scalar(pool, "SELECT count(*)::int AS n FROM outbox_timers"), 1)
+
+        const fresh = `outbox_${randomBytes(6).toString("hex")}`
+        await server().admin.query(`CREATE DATABASE ${fresh}`)
+        const freshPool = poolOf(server().urlFor(fresh), 2)
+        cleanups.push(async () => {
+            await freshPool.end()
+            await server().admin.query(`DROP DATABASE IF EXISTS ${fresh} WITH (FORCE)`)
+        })
+        await freshPool.query(outboxDdl())
+        assert.deepEqual(await shape(pool), await shape(freshPool), "the upgraded tables have the columns, constraints and indexes of a new install")
+
+        const box = new Outbox({ database: pgDatabase(pool), clock, leaseMs: 1000 })
+        const ran: string[] = []
+        box.handle({
+            name: "n",
+            handle: (job) => {
+                ran.push(job.id)
+                return Promise.resolve()
+            },
+        })
+        clock.advance(5000)
+        const report = await box.drain()
+        assert.equal(report.done, 3, "the two queued jobs and the running one whose lease ran out")
+        assert.deepEqual([...ran].sort(), [ids[0], ids[1], running].sort())
+        assert.equal(await scalar(pool, "SELECT count(*)::int AS n FROM outbox_slots WHERE outbox_job_id IS NOT NULL"), 0)
+        assert.equal(await scalar(pool, "SELECT count(*)::int AS n FROM outbox_jobs"), 6, "five old jobs and the fired timer's")
     })
 })

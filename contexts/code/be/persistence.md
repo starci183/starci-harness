@@ -290,8 +290,8 @@ that constraint. A one-column foreign key is named `<referenced table singular>_
 `id` referencing that row. The singular of a table name is a fixed rule set on its last word (`categories` category, `boxes` box,
 `order_items` order_item; a word in `ss`, `us` or `is` stays), and an irregular plural is the app's own map, hfs.json
 `db.singulars` (`{ "people": "person" }`). Every foreign key has an index, a primary key or a unique constraint of its table whose leading
-columns are its columns, in some migration of the set. A table whose key a package or a natural key fixes (the slot table of
-`@starci/outbox`, a window keyed by its bucket) is listed in hfs.json `db.keyExceptions` as `{ table, reason }`: its key shape and foreign
+columns are its columns, in some migration of the set. A table whose key a package or a natural key fixes (a window keyed by
+its bucket) is listed in hfs.json `db.keyExceptions` as `{ table, reason }`: its key shape and foreign
 key names are not judged, its indexes still are. A migration already on the base unchanged is the backlog: its key findings are reported
 as known items, never blocking, and every new migration is judged in full. A migration that drops, renames, changes a type or replaces a
 constraint is a `*_contract_*` migration (BE-PERSISTENCE-19), and migration stamps strictly increase (R213).

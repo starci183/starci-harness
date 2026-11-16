@@ -12,22 +12,29 @@ import type {
     Enqueued,
     JobContext,
     JobHandler,
+    NotifyState,
     OutboxOptions,
     ParkedJob,
+    PublishEvent,
     ResumedBy,
     RunResult,
     Schedule,
+    Subscription,
+    SubscriptionHandlers,
 } from "./contracts.ts"
 import { TIMER_FIRED_JOB, TIMER_QUEUE, deferralOf } from "./contracts.ts"
 import { OutboxError, OutboxErrorCode } from "./errors.ts"
+import { EventHub } from "./hub.ts"
 import { DEFAULT_LADDERS, isPastLadder, ladderVerdictOf } from "./ladders.ts"
 import type { JobLadder } from "./ladders.ts"
 import { reasonOf } from "./reason.ts"
 import { run } from "./sql.ts"
 import type { OutboxDatabase, Queryable, Row } from "./sql.ts"
+import { serveSse } from "./sse.ts"
+import type { SseLimits, SseRequest, SseResponse } from "./sse.ts"
 import { statementsOf } from "./statements.ts"
 import type { Statements } from "./statements.ts"
-import { resolveTables } from "./tables.ts"
+import { NOTIFY_STATES, resolveTables } from "./tables.ts"
 import type { ResolvedTables } from "./tables.ts"
 
 /** The limits an outbox runs under, every one resolved. */
@@ -42,6 +49,10 @@ interface Limits {
     readonly resumeSweepMs: number
     readonly autoResumes: number
     readonly shutdownGraceMs: number
+    readonly eventRetentionMs: number
+    readonly eventSweepMs: number
+    readonly reconnectMs: number
+    readonly sse: SseLimits
 }
 
 /** A bound on one drain, so a handler that chains itself forever cannot spin it without end. */
@@ -50,6 +61,9 @@ const MAX_DRAIN_ROUNDS = 10_000
 const TIMER_SWEEP_LIMIT = 200
 /** Dead letters one resume pass hands back at most. */
 const RESUME_BATCH = 100
+/** Events one purge round deletes at most; the purge goes on until a round comes back short. */
+const EVENT_PURGE_BATCH = 5000
+const MAX_EVENT_PURGE_ROUNDS = 100
 const SECOND = 1000
 const MIN_RENEW_MS = 1000
 
@@ -73,6 +87,15 @@ const limitsOf = (options: OutboxOptions): Limits => {
         resumeSweepMs: positive(options.resumeSweepMs, 300_000, "resumeSweepMs"),
         autoResumes: positive(options.autoResumes, 3, "autoResumes"),
         shutdownGraceMs: positive(options.shutdownGraceMs, 30_000, "shutdownGraceMs"),
+        eventRetentionMs: positive(options.eventRetentionMs, 86_400_000, "eventRetentionMs"),
+        eventSweepMs: positive(options.eventSweepMs, 600_000, "eventSweepMs"),
+        reconnectMs: positive(options.stream?.reconnectMs, 1000, "stream.reconnectMs"),
+        sse: {
+            heartbeatMs: positive(options.stream?.heartbeatMs, 15_000, "stream.heartbeatMs"),
+            maxBufferedBytes: positive(options.stream?.maxBufferedBytes, 1_048_576, "stream.maxBufferedBytes"),
+            drainTimeoutMs: positive(options.stream?.drainTimeoutMs, 10_000, "stream.drainTimeoutMs"),
+            retryMs: positive(options.stream?.retryMs, 2000, "stream.retryMs"),
+        },
     }
 }
 
@@ -106,17 +129,35 @@ const FAILURE_CLASSES: ReadonlySet<string> = new Set(["transient", "input", "cod
 
 const failureClassOf = (value: string | null): FailureClass => (value !== null && FAILURE_CLASSES.has(value) ? (value as FailureClass) : "code")
 
-const claimedOf = (row: Row): ClaimedJob => ({
-    id: text(row, "id"),
-    scope: textOrNull(row, "scope"),
-    queue: text(row, "queue"),
-    name: text(row, "name"),
-    payload: row.payload,
-    onceKey: text(row, "once_key"),
-    attempt: Number(row.attempts),
-    fence: Number(row.fence),
-    resumeCount: Number(row.resume_count),
-})
+const NOTIFY_STATE_SET: ReadonlySet<string> = new Set(NOTIFY_STATES)
+
+const isNotifyState = (value: unknown): value is NotifyState => typeof value === "string" && NOTIFY_STATE_SET.has(value)
+
+const claimedOf = (row: Row): ClaimedJob => {
+    const topic = textOrNull(row, "notify_topic")
+    const job = {
+        id: text(row, "id"),
+        scope: textOrNull(row, "scope"),
+        queue: text(row, "queue"),
+        name: text(row, "name"),
+        payload: row.payload,
+        onceKey: text(row, "once_key"),
+        attempt: Number(row.attempts),
+        fence: Number(row.fence),
+        resumeCount: Number(row.resume_count),
+    }
+    if (topic === null) return job
+    const on = Array.isArray(row.notify_on) ? (row.notify_on as unknown[]).filter(isNotifyState) : []
+    return { ...job, notify: { topic, on } }
+}
+
+/** Refuses an event with no scope, topic or type. */
+const checkEvent = (event: PublishEvent): void => {
+    const fields: readonly unknown[] = [event.scope, event.topic, event.type]
+    if (fields.some((field) => typeof field !== "string" || field === "")) {
+        throw new OutboxError({ code: OutboxErrorCode.EventInvalid, params: { scope: event.scope, topic: event.topic, type: event.type } })
+    }
+}
 
 const parkedOf = (row: Row): ParkedJob => ({
     id: text(row, "id"),
@@ -167,6 +208,8 @@ export class Outbox {
     private running = false
     private lastTimerSweep = Number.NEGATIVE_INFINITY
     private lastResumeSweep = Number.NEGATIVE_INFINITY
+    private lastEventSweep = Number.NEGATIVE_INFINITY
+    private hub: EventHub | undefined
 
     private readonly options: OutboxOptions
 
@@ -196,8 +239,24 @@ export class Outbox {
         if (!job.onceKey.includes(":") || job.queue === "" || job.name === "") {
             throw new OutboxError({ code: OutboxErrorCode.JobInvalid, params: { onceKey: job.onceKey, queue: job.queue, name: job.name } })
         }
+        const notify = job.notify
+        if (notify !== undefined) {
+            const on: readonly unknown[] = notify.on ?? NOTIFY_STATES
+            if (job.scope === null || job.scope === "" || notify.topic === "" || on.length === 0 || !on.every(isNotifyState)) {
+                throw new OutboxError({ code: OutboxErrorCode.EventInvalid, params: { scope: String(job.scope), topic: notify.topic, on: on.map(String).join(",") } })
+            }
+        }
         const notBefore = job.notBefore ?? this.clock.now()
-        const rows = await run(tx, this.sql.enqueue, [job.scope, job.queue, job.name, JSON.stringify(job.payload), job.onceKey, notBefore])
+        const rows = await run(tx, this.sql.enqueue, [
+            job.scope,
+            job.queue,
+            job.name,
+            JSON.stringify(job.payload),
+            job.onceKey,
+            notBefore,
+            notify?.topic ?? null,
+            notify === undefined ? null : [...new Set(notify.on ?? NOTIFY_STATES)],
+        ])
         const row = rows[0]
         if (row !== undefined) return { id: text(row, "id"), created: row.created === true }
         const held = (await run(tx, this.sql.onceKeyId, [job.onceKey]))[0]
@@ -230,6 +289,91 @@ export class Outbox {
     /** Fires every due timer once, each into one job in the same statement; the count fired. */
     async sweepTimers(): Promise<number> {
         return count(await run(this.database, this.sql.sweepTimers, [this.clock.now(), TIMER_SWEEP_LIMIT]))
+    }
+
+    /* ------------------------------------------------------------------ events --------------------------------------------------- */
+
+    /**
+     * Publishes an event of a scope's topic in the caller's transaction (`tx`): it exists, and its subscribers hear of it, exactly when the
+     * caller's change commits; a rollback leaves nothing and wakes nobody. The write takes the advisory lock of its scope until the commit,
+     * so the events of one scope commit in seq order (a resume after a seq never skips one): publish last in the transaction, and a
+     * transaction that publishes to several scopes publishes them in sorted order. Answers the event's seq.
+     */
+    async publish(tx: Queryable, event: PublishEvent): Promise<{ readonly seq: string }> {
+        checkEvent(event)
+        await run(tx, this.sql.lockEvents, [this.eventLockPrefix, event.scope])
+        const row = (await run(tx, this.sql.publish, [event.scope, event.topic, event.type, JSON.stringify(event.data ?? {}), this.clock.now(), this.tables.channel]))[0]
+        return { seq: row === undefined ? "0" : text(row, "seq") }
+    }
+
+    /**
+     * Subscribes to one scope's topics through this process's one listening connection (`stream.listener`): the events after
+     * `lastEventId` first, in order, then each event as its transaction commits. The scope is the caller's own, taken from its principal on
+     * the server, never from the request. Answers the unsubscribe.
+     */
+    async subscribe(subscription: Subscription, handlers: SubscriptionHandlers): Promise<() => void> {
+        return this.events().subscribe(subscription, handlers)
+    }
+
+    /**
+     * Serves one Server-Sent Events stream of a scope's topics on a Node request and response (Express `req, res`; Fastify `req.raw,
+     * reply.raw`): replay after `Last-Event-ID`, live events, a heartbeat, and a slow client dropped without holding the others. Each
+     * frame's `id` is the event's seq and its data the JSON of the event, the frame `@starci/event-stream` resumes. A Nest controller is one
+     * line: `return this.outbox.sse(req, res, { scope: principal.workspaceId, topics: ["jobs"] })`.
+     */
+    async sse(request: SseRequest, response: SseResponse, subscription: Subscription): Promise<void> {
+        const hub = this.events()
+        await serveSse((wanted, handlers) => hub.subscribe(wanted, handlers), request, response, subscription, this.limits.sse, (event, cause) => {
+            this.report(event, cause)
+        })
+    }
+
+    /** Deletes the events created before `before` (now less `eventRetentionMs` by default); the count deleted. The worker runs it every `eventSweepMs`. */
+    async purgeEvents(before: Date = new Date(this.clock.now().getTime() - this.limits.eventRetentionMs)): Promise<number> {
+        let total = 0
+        for (let round = 0; round < MAX_EVENT_PURGE_ROUNDS; round += 1) {
+            const deleted = count(await run(this.database, this.sql.purgeEvents, [before, EVENT_PURGE_BATCH]))
+            total += deleted
+            if (deleted < EVENT_PURGE_BATCH) break
+        }
+        return total
+    }
+
+    private get eventLockPrefix(): string {
+        return `outbox:events:${this.tables.bare.schema}.${this.tables.bare.events}:`
+    }
+
+    private events(): EventHub {
+        const listener = this.options.stream?.listener
+        if (listener === undefined) throw new OutboxError({ code: OutboxErrorCode.StreamUnconfigured, params: { option: "stream.listener" } })
+        this.hub ??= new EventHub({
+            database: this.database,
+            sql: this.sql,
+            channel: this.tables.channel,
+            scopeType: this.tables.scopeType,
+            listener,
+            reconnectMs: this.limits.reconnectMs,
+            report: (event, cause, fields) => {
+                this.report(event, cause, fields)
+            },
+        })
+        return this.hub
+    }
+
+    /** Whether the job asked to publish this state change. */
+    private wants(job: ClaimedJob, state: NotifyState): boolean {
+        return job.notify !== undefined && job.scope !== null && job.notify.on.includes(state)
+    }
+
+    /** Publishes a state change of a job that asked for it, in `tx`. */
+    private async notifyJob(tx: Queryable, job: ClaimedJob, state: NotifyState, extra: Readonly<Record<string, unknown>> = {}): Promise<void> {
+        if (job.notify === undefined || job.scope === null || !this.wants(job, state)) return
+        await this.publish(tx, {
+            scope: job.scope,
+            topic: job.notify.topic,
+            type: `job.${state}`,
+            data: { jobId: job.id, name: job.name, queue: job.queue, state, attempt: job.attempt, ...extra },
+        })
     }
 
     /* ------------------------------------------------------------------ handlers ------------------------------------------------- */
@@ -351,6 +495,7 @@ export class Outbox {
         signal?.addEventListener("abort", forward, { once: true })
         const stopRenewing = this.keepLease(job, abort)
         try {
+            if (this.wants(job, "claimed")) await this.database.transaction((tx) => this.notifyJob(tx, job, "claimed"))
             return await this.database.transaction(async (tx): Promise<RunResult> => {
                 const context: JobContext = {
                     tx,
@@ -366,7 +511,9 @@ export class Outbox {
                         ? count(await run(tx, this.sql.done, [job.id, job.fence, now]))
                         : count(await run(tx, this.sql.requeue, [job.id, job.fence, new Date(now.getTime() + deferSeconds * SECOND), false, null, null]))
                 if (settled !== 1) throw new OutboxError({ code: OutboxErrorCode.LeaseLost, params: { jobId: job.id } })
-                return deferSeconds === undefined ? "done" : "deferred"
+                if (deferSeconds !== undefined) return "deferred"
+                await this.notifyJob(tx, job, "done")
+                return "done"
             })
         } catch (cause) {
             if (cause instanceof OutboxError && cause.code === OutboxErrorCode.LeaseLost) return "lost"
@@ -375,8 +522,14 @@ export class Outbox {
             const reason = reasonOf(cause, this.options.redact)
             if (verdict.kind === "park") return await this.park(job, verdict.why, failureClass, reason)
             const notBefore = new Date(this.clock.now().getTime() + verdict.afterSeconds * SECOND)
-            const settled = count(await run(this.database, this.sql.requeue, [job.id, job.fence, notBefore, true, reason, failureClass]))
-            return settled === 1 ? "retried" : "lost"
+            const requeue = [job.id, job.fence, notBefore, true, reason, failureClass]
+            if (!this.wants(job, "failed")) return count(await run(this.database, this.sql.requeue, requeue)) === 1 ? "retried" : "lost"
+            return await this.database.transaction(async (tx): Promise<RunResult> => {
+                await run(tx, this.sql.lockEvents, [this.eventLockPrefix, job.scope])
+                if (count(await run(tx, this.sql.requeue, requeue)) !== 1) return "lost"
+                await this.notifyJob(tx, job, "failed", { failureClass, retryAt: notBefore.toISOString() })
+                return "retried"
+            })
         } finally {
             stopRenewing()
             signal?.removeEventListener("abort", forward)
@@ -414,7 +567,16 @@ export class Outbox {
     /** Parks the job under its fence and tells the hook once per episode, after the park committed. */
     private async park(job: ClaimedJob, why: "class" | "exhausted", failureClass: FailureClass, reason: string): Promise<RunResult> {
         const now = this.clock.now()
-        const rows = await run(this.database, this.sql.park, [job.id, job.fence, now, reason, failureClass, why, this.options.buildId ?? null])
+        const parkWith = [job.id, job.fence, now, reason, failureClass, why, this.options.buildId ?? null]
+        const rows = this.wants(job, "parked")
+            ? await this.database.transaction(async (tx) => {
+                  // The scope's event lock first, as every event write takes it, so the park and its event keep the scope's seq order.
+                  await run(tx, this.sql.lockEvents, [this.eventLockPrefix, job.scope])
+                  const parked = await run(tx, this.sql.park, parkWith)
+                  if (parked.length > 0) await this.notifyJob(tx, job, "parked", { failureClass, why })
+                  return parked
+              })
+            : await run(this.database, this.sql.park, parkWith)
         const row = rows[0]
         if (row === undefined) return "lost"
         if (row.alert === true && this.options.onParked !== undefined) {
@@ -478,7 +640,8 @@ export class Outbox {
 
     /**
      * Stops the loop: no new claim; the running jobs get `graceMs` to settle, then each is aborted and its row handed back at once with
-     * its start not spent (the row leaves `running`, so a handler that still finishes commits nothing).
+     * its start not spent (the row leaves `running`, so a handler that still finishes commits nothing). Then every event stream of this
+     * process ends (its clients reconnect to another process and resume) and the listening connection closes.
      */
     async stop(graceMs: number = this.limits.shutdownGraceMs): Promise<void> {
         this.running = false
@@ -505,6 +668,9 @@ export class Outbox {
         )
         for (const flight of left) flight.abort.abort(new OutboxError({ code: OutboxErrorCode.LeaseLost, params: { jobId: flight.job.id } }))
         await Promise.allSettled(left.map((flight) => flight.done))
+        const hub = this.hub
+        this.hub = undefined
+        await hub?.close()
     }
 
     /** How many jobs this worker runs now. */
@@ -530,6 +696,10 @@ export class Outbox {
             if (now - this.lastResumeSweep >= this.limits.resumeSweepMs) {
                 this.lastResumeSweep = now
                 await this.resumeTransient()
+            }
+            if (now - this.lastEventSweep >= this.limits.eventSweepMs) {
+                this.lastEventSweep = now
+                await this.purgeEvents()
             }
             const room = this.limits.maxInFlight - this.inFlight.size
             if (room > 0 && this.running) {

@@ -1,7 +1,7 @@
 {
   "name": "@starci/outbox",
-  "version": "0.1.0",
-  "description": "The Postgres job outbox of a StarCi back end in one package: a job enqueued in the caller's own transaction and kept once by its once key, a fair claim through per-(queue, scope) concurrency slots locked in one sorted order (no deadlock between claimers), leases fenced by a token every claim bumps and renewed while the handler runs, expired leases recovered, one retry ladder per class of flow, a dead letter parked with its failure class and one alert per episode, resumed by a person, a new build or the bounded sweep, scheduled starts and keyed timers, graceful shutdown, the DDL of its three tables, and a NestJS module.",
+  "version": "0.2.0",
+  "description": "The Postgres job outbox of a StarCi back end in one package: a job enqueued in the caller's own transaction and kept once by its once key, a fair claim through per-(queue, scope) concurrency slots locked in one sorted order (no deadlock between claimers), leases fenced by a token every claim bumps and renewed while the handler runs, expired leases recovered, one retry ladder per class of flow, a dead letter parked with its failure class and one alert per episode, resumed by a person, a new build or the bounded sweep, scheduled starts and keyed timers, graceful shutdown, job and app events written in the caller's transaction and served as Server-Sent Events from one LISTEN connection per process (scope-filtered, resumed after Last-Event-ID, slow clients dropped), the DDL of its four tables with the upgrade from 0.1.0, and a NestJS module.",
   "keywords": [
     "outbox",
     "jobs",
@@ -9,7 +9,9 @@
     "postgres",
     "lease",
     "retry",
-    "nestjs"
+    "nestjs",
+    "sse",
+    "listen-notify"
   ],
   "license": "MIT",
   "author": "starci183",
@@ -32,6 +34,7 @@
       "default": "./dist/index.js"
     },
     "./outbox.sql": "./migrations/outbox.sql",
+    "./outbox_contract_0_2_0.sql": "./migrations/outbox_contract_0_2_0.sql",
     "./package.json": "./package.json"
   },
   "files": [
