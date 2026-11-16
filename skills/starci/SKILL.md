@@ -87,7 +87,7 @@ Kernel's own call; report it. Never decide for the owner, enter a credential or 
 | Do one task yourself in this chat (inline runner) | [references/inline-task.md](references/inline-task.md) |
 | Know what an Orca worker sees and does | [references/worker.md](references/worker.md) |
 | Write or review front-end UI on a grammar | [references/ui-on-grammar.md](references/ui-on-grammar.md) |
-| Walk flows in a browser with evidence (a `uat` task) | [references/uat.md](references/uat.md) |
+| Walk screens in a browser with evidence (an `audit` task's `uat run`) | [references/uat.md](references/uat.md) |
 | Router picks, provider circuits, budgets | [references/routing-and-providers.md](references/routing-and-providers.md) |
 | Push, cut, publish, read CI | [references/release.md](references/release.md) |
 | A workflow or task is stuck | [references/debug.md](references/debug.md) |

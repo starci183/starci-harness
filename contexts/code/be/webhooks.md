@@ -6,8 +6,8 @@ slots: [be.feature.webhooks, be.feature.webhooks.http, be.feature.webhooks.dto]
 How a delivery a provider POSTs is received (a third-party OAuth redirect, a public GET with the auth-handshake reason
 off the webhook paths, is not a webhook door): one public door that proves the delivery first and hands it to one domain
 intake, which records it durably; a job processes it after commit (verify, record, job). The inbox claim is
-BE-IDEMPOTENCY-1; the provider's signing scheme, callback setup and live proof come from its `integration` record's
-research (PROJECT-WORK-4 in [project/work.md](../../project/work.md)).
+BE-IDEMPOTENCY-1; the provider's signing scheme, callback setup and live proof come from the research of its integration
+(PROJECT-WORK-4 in [project/work.md](../../project/work.md)).
 
 ## BE-WEBHOOK-1 A webhook is a kind folder with one door, its module and its spec
 

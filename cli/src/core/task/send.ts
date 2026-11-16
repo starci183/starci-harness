@@ -1,17 +1,14 @@
-import { mkdirSync, writeFileSync } from "node:fs"
-import { dirname, join, posix, resolve } from "node:path"
+import { resolve } from "node:path"
 import type { DatabaseSync } from "node:sqlite"
-import { contractProblems, normaliseRepoPath, parseContract, readContract } from "../../harness/contract.js"
+import { contractProblems, normaliseRepoPath, readContract } from "../../harness/contract.js"
 import type { Contract } from "../../harness/contract.js"
-import { inTransaction, openExistingLedger, openLedger, projectDir } from "../../harness/ledger.js"
+import { inTransaction, openLedger } from "../../harness/ledger.js"
 import { loadOps } from "../../harness/ops.js"
 import { createTask, getTask, isAdmitted, recordEvent, tryAfter } from "../../harness/tasks.js"
 import { worktreeSelector } from "../../harness/orca/client.js"
 import type { TaskRow } from "../../harness/tasks.js"
-import { assertRunPlace, freshRunId, locateWorkRoot, readUatRecord, uatBinding, uatContract } from "../../harness/work.js"
-import type { WorkRoot } from "../../harness/work.js"
 import { EXIT_USAGE, Refusal } from "../../shared/errors.js"
-import { repositoryRoot, resolveSha } from "../../shared/git.js"
+import { repositoryRoot } from "../../shared/git.js"
 import { callerRole, ROLE_ENV } from "../../shared/role.js"
 import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
 import type { VerbResult } from "../../shared/verb.js"
@@ -28,16 +25,7 @@ interface SendData {
     readonly workflow: string | null
     readonly contract: string
     readonly root: string
-    readonly uat: UatSent | null
     readonly launch: SeatStartData | null
-}
-
-/** The Work flow a `--uat` task walks: the record, the run folder it writes, and the Work root it was queued in. */
-interface UatSent {
-    readonly flow: string
-    readonly record: string
-    readonly run: string
-    readonly workRoot: WorkRoot
 }
 
 /** The flags only a launch uses; each one without --launch is a usage error, not silently ignored. */
@@ -69,38 +57,6 @@ const roleMayLaunch = (): boolean => {
     return role === undefined || seatStartVerb.roles.includes(role)
 }
 
-/** The run folder a task's uat-flow check names, for a retry that must write the same one; undefined for a task that walks no flow. */
-const runOfTask = (root: string, taskId: string): string | undefined => {
-    const db = openExistingLedger(root)
-    if (db === undefined) throw new Refusal("TASK_UNKNOWN", `no task ${taskId}: ${root} has no ledger yet`)
-    try {
-        return uatBinding(getTask(db, taskId).contract, loadOps())?.run
-    } finally {
-        db.close()
-    }
-}
-
-/**
- * The contract of `--uat <flow>`, built from the Work record in the Work root and written to contracts/ of that project's state
- * folder. A retry walks into the run folder of the task it retries, so its allowPaths stay the same work. Refused when git
- * would commit the run folder or ignores the flow's evidence.yaml (assertRunPlace).
- */
-const uatSend = async (cwd: string, flow: string, retryOf: string | undefined): Promise<{ readonly file: string; readonly contract: Contract; readonly uat: UatSent }> => {
-    const workRoot = await locateWorkRoot(cwd)
-    const root = workRoot.root
-    const record = readUatRecord(root, flow)
-    const previous = retryOf === undefined ? undefined : runOfTask(root, retryOf)
-    if (retryOf !== undefined && previous === undefined) throw new Refusal("RETRY_NOT_SAME_WORK", `task ${retryOf} walks no Work flow; send this one as a new task`)
-    const runId = previous === undefined ? freshRunId() : posix.basename(previous)
-    const contract = parseContract(uatContract(record, { revision: await resolveSha(root, "HEAD"), runId }))
-    const run = posix.join(record.place.runs, runId)
-    await assertRunPlace(root, { record: record.place.record, run })
-    const file = join(projectDir(root), "contracts", `uat-${flow.replace(/[^a-z0-9-]+/g, "-")}-${runId}.json`)
-    mkdirSync(dirname(file), { recursive: true })
-    writeFileSync(file, `${JSON.stringify(contract, null, 2)}\n`)
-    return { file, contract, uat: { flow, record: record.place.record, run, workRoot } }
-}
-
 /** Refuses launch flags (`given`) on a send without --launch. */
 const assertNoLaunchFlags = (given: readonly string[]): void => {
     if (given.length === 0) return
@@ -122,14 +78,13 @@ const assertLaunchAllowed = (agent: string | undefined, model: string | undefine
 /** `starci task send <contract>`: registers a fit contract as a queued task; --launch also starts its worker seat. */
 export const taskSendVerb = defineVerb({
     path: ["task", "send"],
-    summary: "queue a fit contract (or --uat: one built from a Work flow, in its Work root) as a task; --launch also starts an Orca worker on it; prints the task id",
+    summary: "queue a fit contract as a task; --launch also starts an Orca worker on it; prints the task id",
     editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["kernel", "supervisor", "owner", "coordinator", "agent"],
     schema: "starci/task-send@1",
     flags: {
-        contract: { kind: "string", summary: "the contract json file (or --uat instead)", positional: true },
-        uat: { kind: "string", summary: "instead of a contract: walk the Work flow uat.<feature>.<flow>; the task is queued in the Work root (the app's hfs.json work.root, or this repository)" },
+        contract: { kind: "string", summary: "the contract json file", required: true, positional: true },
         workflow: { kind: "string", summary: "the workflow the task belongs to" },
         "retry-of": { kind: "string", summary: "the task this one retries (same label and allowPaths); it gets the next try number" },
         launch: { kind: "boolean", summary: "then start a worker seat on the task, as seat start does (the router picks agent and model unless both are given)" },
@@ -144,12 +99,9 @@ export const taskSendVerb = defineVerb({
         if (flags.launch) assertLaunchAllowed(flags.agent, flags.model)
         else assertNoLaunchFlags(LAUNCH_FLAGS.filter((name) => flags[name] !== undefined))
         const timeoutMs = parseTimeout(flags.timeout)
-        if ((flags.contract === undefined) === (flags.uat === undefined)) throw new Refusal("CLI_USAGE", "task send takes a contract file or --uat <flow>, exactly one of the two", EXIT_USAGE)
-        const fromWork = flags.uat === undefined ? undefined : await uatSend(context.cwd, flags.uat, flags["retry-of"])
-        const file = fromWork?.file ?? resolve(context.cwd, flags.contract ?? "")
-        const contract = fromWork?.contract ?? readContract(file)
-        // A uat task is queued where its Work is, so its run, its record and its harness commit share one repository.
-        const root = fromWork?.uat.workRoot.root ?? (await repositoryRoot(context.cwd))
+        const file = resolve(context.cwd, flags.contract)
+        const contract = readContract(file)
+        const root = await repositoryRoot(context.cwd)
         // A contract this ledger admitted already (a retry of the same hash) keeps the context budget it passed then.
         const problems = contractProblems(contract, loadOps(), { budget: !isAdmitted(root, contract) })
         if (problems.length > 0) {
@@ -178,16 +130,15 @@ export const taskSendVerb = defineVerb({
                 if (retryOf !== undefined) assertRetry(db, contract, retryOf)
                 return createTask(db, contract, { worktree: checkout, ...(workflowId === undefined ? {} : { workflowId }), ...(retryOf === undefined ? {} : { retryOf }) })
             })
-            sent = { task: task.id, status: task.status, label: task.label, hash: task.contractHash, tryNo: task.tryNo, retryOf: task.retryOf, workflow: task.workflowId, contract: file, root, uat: fromWork?.uat ?? null }
+            sent = { task: task.id, status: task.status, label: task.label, hash: task.contractHash, tryNo: task.tryNo, retryOf: task.retryOf, workflow: task.workflowId, contract: file, root }
         } finally {
             db.close()
         }
-        const where = sent.uat === null ? [] : [`walks ${sent.uat.flow} into ${sent.uat.run}; queued in the Work root ${root} (from ${sent.uat.workRoot.from}): file its result and verify it there`]
-        if (!flags.launch) return { data: { ...sent, launch: null } satisfies SendData, message: [sent.task, ...where].join("\n") }
+        if (!flags.launch) return { data: { ...sent, launch: null } satisfies SendData, message: sent.task }
         try {
             const choice = chooseLaunch(root, sent.task, flags, true)
             const started = await startSeat({ root, cwd: context.cwd, task: sent.task, agent: choice.agent, model: choice.model, effort: choice.effort, pick: choice.pick, worktree: flags.worktree, run: flags.run, timeoutMs })
-            return { data: { ...sent, status: "running", launch: started.data } satisfies SendData, message: [sent.task, ...where, ...routeLines(choice), started.message].join("\n") }
+            return { data: { ...sent, status: "running", launch: started.data } satisfies SendData, message: [sent.task, ...routeLines(choice), started.message].join("\n") }
         } catch (error: unknown) {
             if (!(error instanceof Refusal)) throw error
             throw new Refusal(error.code, `task ${sent.task} was sent, but its launch did not run a worker: ${error.message}`, error.exitCode)

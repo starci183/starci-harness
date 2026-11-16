@@ -20,19 +20,19 @@ starci task status
 starci app info
 ```
 
-`app info` answers in a lite app only. Then read the app's `hfs.json` and its `.starciwork/` (specs,
-architecture, `features/<f>`) and the code the goal touches. Fold what you find into the goal and the tasks.
+`app info` answers in a lite app only. Then read the app's `hfs.json` and its `.starciwork/` (the concept catalog
+`concepts/README.md` and the concepts of the folders the goal touches) and the code the goal touches. Fold what you find into the goal and the tasks.
 
 ## 3. Draft the tasks
 
 Split the goal into tasks, one outcome each. Per task decide:
 
-- `label`: one of the op files of `ops/ops/` (code, test, draw, image, audit, review, verify, uat, docs, deliver). Its op
+- `label`: one of the op files of `ops/ops/` (code, test, draw, image, audit, review, verify, docs, deliver). Its op
   gives the base context, inputs, output keys and checks, and the difficulty floor; the task only extends them. Every Work
   record a task is over walks its lane ([ops/lanes.yaml](../../../ops/lanes.yaml)): plan a task for each step its evidence
   does not satisfy yet, each behind the step before it, or define refuses `FLOW_INCOMPLETE` and names the missing step.
 - `allowPaths`: literal files or folders, never a glob, never `.` and never the whole `.starciwork`. Inside
-  `.starciwork` name one scope, for example `.starciwork/features/<f>`.
+  `.starciwork` name one scope, for example `.starciwork/concepts`.
 - `checks`: presets from `ops/checks.yaml`. At least one behavioural check (`tests-pass`, `json-required`,
   `result-json`, `probe`, `ci-green` or a command) for every label that requires it. What a task, the
   merged batch and CI each run is [contexts/authority/](../../../contexts/authority/README.md); never ask a task for a suite.

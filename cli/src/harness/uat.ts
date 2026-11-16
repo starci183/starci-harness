@@ -234,9 +234,6 @@ export const runContainer = async (spec: UatRunSpec, cwd: string): Promise<UatRu
 /** The copy of its receipt `starci uat run` leaves in the run folder, so a settle that digests the folder cites the receipt. */
 export const RECEIPT_FILE = "starci-receipt.json"
 
-/** What a uat script observed, written by the script into its run folder: `{"steps": [{order, status, screenshot, checks, observed}]}`. */
-export const CHECKS_FILE = "checks.json"
-
 /** The sha256 of a file's bytes, hex. */
 export const fileSha256 = (path: string): string => createHash("sha256").update(readFileSync(path)).digest("hex")
 
@@ -320,20 +317,6 @@ export const writeReceipt = (receipt: UatReceipt): string => {
     const copy = join(receipt.folder, RECEIPT_FILE)
     writeFileSync(copy, text)
     return storeBlob(copy)
-}
-
-/** The receipt the harness keeps for the latest run into `folder` and its digest, or undefined when no run wrote one. */
-export const readReceipt = (folder: string): { readonly receipt: UatReceipt; readonly sha256: string } | undefined => {
-    const file = receiptPath(folder)
-    if (!existsSync(file)) return undefined
-    let raw: unknown
-    try {
-        raw = JSON.parse(readFileSync(file, "utf8"))
-    } catch {
-        return undefined
-    }
-    const parsed = uatReceiptSchema.safeParse(raw)
-    return parsed.success ? { receipt: parsed.data, sha256: fileSha256(file) } : undefined
 }
 
 /** The line prefix of the page tally the container's relay prints on stderr at exit (harness/uat-preamble.ts). */

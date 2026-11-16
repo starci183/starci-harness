@@ -566,8 +566,8 @@ CREATE TABLE IF NOT EXISTS artifact_proofs(
 
 -- work_citations: which artifact/blob a Work (git) record cites - pins the blob, renders the record's images, detects broken citations.
 CREATE TABLE IF NOT EXISTS work_citations(
-  record_id   TEXT NOT NULL,                     -- uat.<feature>.<flow>, ui.<feature>.<screen>, impl.<...>, brand
-  record_path TEXT NOT NULL,                     -- features/<f>/<family>/<name>/evidence.yaml
+  record_id   TEXT NOT NULL,                     -- brand, shell, a _resources record
+  record_path TEXT NOT NULL,                     -- brand/evidence.yaml, shell/evidence.yaml
   field       TEXT NOT NULL,                     -- 'run.screens[0]', 'assets[3]'
   artifact_id INTEGER REFERENCES job_artifacts(artifact_id) ON DELETE RESTRICT,
   sha256      TEXT NOT NULL REFERENCES blobs(sha256) ON DELETE RESTRICT,

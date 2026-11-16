@@ -167,7 +167,7 @@ export function exampleSourcePaths(root: string, ids: Iterable<string> | null = 
  * trees are not app Work; an absent own tree contributes no checker input. */
 export function exampleWorkRoots(root: string): string[] {
   return discoverExampleApps(root).flatMap((app) => {
-    const relative = `${EXAMPLES_ROOT}/${app}/.starciwork/index.yaml`;
+    const relative = `${EXAMPLES_ROOT}/${app}/.starciwork/workspace.yaml`;
     const directory = path.dirname(path.join(root, relative)), stat = fs.lstatSync(directory, { throwIfNoEntry: false });
     if (!stat) return [];
     if (!stat.isDirectory() || stat.isSymbolicLink()) throw new Error(`invalid example Work directory: ${app}`);
@@ -205,7 +205,7 @@ export function exampleArtifactReadOptions(runtimeRoot: unknown, workRoot: unkno
     throw new Error(`invalid example Work artifact context: ${relative}`);
   referenceFile(base, `${EXAMPLES_ROOT}/${app}/hfs.json`, { exact: true });
   const ownWork = path.join(base, EXAMPLES_ROOT, app, WORK_DIR_NAME);
-  if (!isLiteWorkRoot(ownWork)) referenceFile(base, `${EXAMPLES_ROOT}/${app}/.starciwork/index.yaml`, { exact: true });
+  if (!isLiteWorkRoot(ownWork)) referenceFile(base, `${EXAMPLES_ROOT}/${app}/.starciwork/workspace.yaml`, { exact: true });
   if (!workPathAllowed(ownWork, target, { dir: true })) throw new Error('lite .starciwork holds only workspace.yaml, brand/ and the concept records (plus .gitignore)');
   referenceFile(base, relative, { directory: true, exact: true });
   const resolution = path.resolve(resolveRoot);

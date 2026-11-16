@@ -21,11 +21,11 @@ import { recheckOf, recordBaselineFindings, runCheck } from "../../harness/run-c
 import type { CheckOutcome, CheckPlace, ResultSource } from "../../harness/run-checks.js"
 import { closeSeatsOfTask } from "../../harness/seats.js"
 import type { SeatClosing } from "../../harness/seats.js"
-import { assertSettleLockHeld, blockWork, settle, settleLockHolder, settleMessage, thisVerifier, verifyLockKey, withSettleLock, workLine } from "../../harness/settle.js"
+import { assertSettleLockHeld, settle, settleLockHolder, settleMessage, thisVerifier, verifyLockKey, withSettleLock } from "../../harness/settle.js"
 import { LAND_CONFLICT, LAND_CONFLICT_EVENT, LandConflict, landLockKey, landTargetOf, opWorktreeOf, refreshOpInstall, removeOpWorktree } from "../../harness/land.js"
 import { HOST_HELD, withHeavyBound } from "../../harness/heavy.js"
 import type { LandTarget, OpWorktree, WorktreeRemoval } from "../../harness/land.js"
-import type { Settlement, Verifier, WorkWrite } from "../../harness/settle.js"
+import type { Settlement, Verifier } from "../../harness/settle.js"
 import { clearIntent, getTask, isAdmitted, lastEvent, latestAttempt, markIntent, recordEvent, recordSettleCommit, resultOf, setStatus, setVerdict, taskCheckout, VERIFY_HOST_HELD } from "../../harness/tasks.js"
 import type { AttemptRow, TaskRow, TaskStatus } from "../../harness/tasks.js"
 import { asRefusal, Refusal } from "../../shared/errors.js"
@@ -62,7 +62,6 @@ interface TaskVerifyData {
     readonly verdict: "green" | "red"
     readonly checks: readonly CheckOutcome[]
     readonly settlement: Settlement | null
-    readonly work: WorkWrite | null
     readonly status: TaskStatus
     readonly preserved: Preserved | null
     readonly conflict: readonly string[] | null
@@ -307,7 +306,6 @@ const deadlined = async <T>(db: DatabaseSync, taskId: string, attemptId: string,
 interface Ending {
     readonly status: TaskStatus
     readonly settlement: Settlement | null
-    readonly work: WorkWrite | null
     readonly preserved: Preserved | null
     readonly conflict: readonly string[] | null
     readonly seats: readonly SeatClosing[]
@@ -360,7 +358,6 @@ const reply = (taskId: string, attempt: AttemptRow, task: TaskRow, built: CleanV
         verdict,
         checks,
         settlement,
-        work: ending.work,
         status,
         preserved,
         conflict,
@@ -372,7 +369,6 @@ const reply = (taskId: string, attempt: AttemptRow, task: TaskRow, built: CleanV
     const extra = [
         `task ${taskId}: ${status}; ${landed}`,
         ...(worktree === null ? [] : [`worktree: ${worktree.path} ${worktree.removed ? "removed" : "left"}; ${worktree.detail}`]),
-        ...(ending.work === null ? [] : [workLine(ending.work)]),
         ...seatLine(ending),
         ...(settlement?.warnings ?? []).map((warning) => `warning: ${warning}`),
         ...(built?.notes ?? []).map((note) => `note: ${note}`),
@@ -508,16 +504,13 @@ interface Settling {
     readonly deferred: readonly string[]
 }
 
-/** A red verify: the task fails with its work preserved, and a uat task's record turns blocked in a Work commit. */
+/** A red verify: the task fails with its work preserved. */
 const failRed = async (at: Settling, built: CleanVerify, underLand: <T>(work: () => Promise<T>) => Promise<T>): Promise<Pass> => {
-    const { db, root, task, attempt, input, target, unsettled } = at
+    const { db, root, task, attempt, target, unsettled } = at
     const { preserved, repair } = await preserveEnding(db, root, task, attempt.id)
     const escaped = await returnEscaped(db, task, attempt.id, target, underLand)
     failTask(db, task.id, attempt.id, repair)
-    // A uat task's record turns blocked in a Work commit of its own on the target branch, under its land lock.
-    const work = await underLand(() => blockWork(target.checkout, task, input.result, built.checks.filter((check) => check.status === "red").map((check) => check.name)))
-    if (work !== null) recordEvent(db, "work-written", task.id, work)
-    return { built, ending: { ...unsettled, status: "failed", work, preserved, ...(repair === null ? {} : { repair }), ...escapedOf(escaped) } }
+    return { built, ending: { ...unsettled, status: "failed", preserved, ...(repair === null ? {} : { repair }), ...escapedOf(escaped) } }
 }
 
 /** A clean verify that threw: custody, a held host or a missing verdict end the settle; a conflict fails the task and keeps its work. */
@@ -574,7 +567,7 @@ const settlePass = async (at: Settling, locked: boolean): Promise<Pass> => {
     }
     // The branch moved: from here the task is done whatever else happens (a crash here is reconciled by --recover from git).
     finishTask(db, task.id, attempt.id, settlement, "task-settled", settlement, deferred)
-    return { built, ending: { ...unsettled, status: "done", settlement, work: settlement.work } }
+    return { built, ending: { ...unsettled, status: "done", settlement } }
 }
 
 /**
@@ -626,7 +619,7 @@ const judgeTask = async (db: DatabaseSync, callerRoot: string, ops: Ops, task: T
         timeoutMs: task.contract.budget.minutes * MINUTE_MS,
         ...(target.own ? {} : { target: target.checkout }),
     }
-    const unsettled: Ending = { status: task.status, settlement: null, work: null, preserved: null, conflict: null, seats: [] }
+    const unsettled: Ending = { status: task.status, settlement: null, preserved: null, conflict: null, seats: [] }
     const noted = (built: CleanVerify | null): CleanVerify | null => (built === null || deferred.length === 0 ? built : { ...built, notes: [...built.notes, `left to the workflow's wave verify: ${deferred.join(", ")}`] })
     if (!commit) {
         const onto = target.own ? undefined : await resolveSha(target.checkout, `refs/heads/${target.branch}`)

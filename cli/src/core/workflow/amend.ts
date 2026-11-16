@@ -1,7 +1,7 @@
 import type { DatabaseSync } from "node:sqlite"
 import { resolve } from "node:path"
 import { openLedger } from "../../harness/ledger.js"
-import { planPlace } from "../../harness/graph.js"
+import { planPlace, readPlanSource } from "../../harness/graph.js"
 import type { Classified, PlanSource, PlanPlace } from "../../harness/graph.js"
 import type { Ops } from "../../harness/ops.js"
 import { loadOps } from "../../harness/ops.js"
@@ -14,7 +14,7 @@ import type { VerbContext, VerbResult } from "../../shared/verb.js"
 import { cancelTasks, readSnapshot, reconcile, reportMessage, reportOf, stepWorkflow } from "./engine.js"
 import type { StepAction, WorkflowReport } from "./engine.js"
 import { regoal } from "./goal-change.js"
-import { buildReplan, classCounts, classificationTable, readReplanSource } from "./replan.js"
+import { buildReplan, classCounts, classificationTable } from "./replan.js"
 import type { RelayAdd, Replan } from "./replan.js"
 
 const keyList = (value: string | undefined): ReadonlySet<string> =>
@@ -178,7 +178,7 @@ export const workflowAmendVerb = defineVerb({
         const root = place.repo
         const file = resolve(context.cwd, named)
         const ops = loadOps()
-        const source = await readReplanSource(file, ops, place)
+        const source = readPlanSource(file, ops)
         if (flags.desired !== undefined && source.kind !== "workflow") throw new Refusal("WORKFLOW_INVALID", `${file} is a change file; --desired takes a whole starci/workflow@1 file (a change file goes to --change)`)
         const ask: AmendAsk = { root, workflowId: flags.workflow, file, source, ops, place, basedOn, cmdId: flags["cmd-id"], keepEffect: keyList(flags["keep-effect"]), accepts: keyList(flags.accept) }
         return amend(context, ask)

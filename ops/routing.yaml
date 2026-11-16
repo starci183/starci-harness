@@ -31,7 +31,6 @@ tiers:
   high:
     - {agent: claude, model: claude-opus-5-5, effort: high}
     - {agent: codex, model: gpt-6.1-sol, effort: high}
-  # Claude is in the everyday tiers, so a uat task always has a member whose pool takes the uat label.
   medium:
     - {agent: claude, model: claude-sonnet-5-5, effort: medium}
     - {agent: devin, model: swe-2-max}
@@ -52,13 +51,13 @@ pools:
     provider: claude
     maxParallel: 6
     coordinatorReserve: 4
-    labels: [code, test, draw, audit, review, verify, uat, docs, deliver, supervisor, kernel]
+    labels: [code, test, draw, audit, review, verify, docs, deliver, supervisor, kernel]
     tools: [git, node, browser, docker]
   # Only Codex takes image work: image generation runs on GPT-6.1 Sol alone (labelTiers keeps image on the high tier).
   codex:
     provider: codex
     maxParallel: 10
-    labels: [code, test, draw, audit, review, verify, uat, docs, deliver, image, supervisor, kernel]
+    labels: [code, test, draw, audit, review, verify, docs, deliver, image, supervisor, kernel]
     tools: [git, node, browser, docker]
   devin:
     provider: devin

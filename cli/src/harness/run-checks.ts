@@ -26,7 +26,7 @@ import { relayHeadOf } from "./reconcile.js"
 import { ruleOwnerOf } from "./rule-pages.js"
 import { recordEvent } from "./tasks.js"
 import type { TaskRow } from "./tasks.js"
-import { WORK_DIR, judgeUatWalk, parseUatRecord, recordFileOfId } from "./work.js"
+import { WORK_DIR, recordFileOfId } from "./work.js"
 
 /** The verdict of one check. */
 export interface CheckOutcome {
@@ -415,27 +415,6 @@ const runProbeCheck = async (check: ResolvedCheck & { readonly check: { readonly
 }
 
 /**
- * A uat walk (T1): the Work record of the candidate against the observations the script wrote during a receipted `starci uat run`
- * into the run folder of the source work tree, which is git-ignored (harness/work.ts judgeUatWalk). The filed result only has to
- * agree; red names every mismatch, the first failing step first.
- */
-const runUatFlowCheck = (check: ResolvedCheck & { readonly check: { readonly kind: "uat-flow" } }, place: CheckPlace): CheckOutcome => {
-    const { record: recordPath, run } = check.check
-    const file = join(place.root, recordPath)
-    if (!existsSync(file)) return outcome(check, [`missing: ${recordPath}`], "")
-    const document = readJsonDocument(RESULT_FILE, place)
-    if ("problem" in document) return outcome(check, [document.problem], "")
-    let judged
-    try {
-        judged = judgeUatWalk(parseUatRecord(readFileSync(file, "utf8"), recordPath), join(place.source ?? place.root, run), document.value)
-    } catch (error: unknown) {
-        return outcome(check, [error instanceof Error ? error.message : String(error)], "")
-    }
-    const problems = judged.problems.map((problem) => problem.text)
-    return outcome(check, judged.failingStep === undefined ? problems : [`first failing step: ${String(judged.failingStep)}`, ...problems], `the receipted run in ${run} walks every step of ${recordPath}, and ${document.from} agrees`)
-}
-
-/**
  * A command whose exit the filed result's verdict must agree with (T0): the harness runs the suite on the clean checkout, and the
  * check is green when the worker reported what the run did, passed for exit 0 and failed for any other, so a red suite reported
  * honestly is a finding and a claim the run contradicts is red.
@@ -661,8 +640,6 @@ export const runCheck = async (check: ResolvedCheck, contract: Contract, place: 
             return runJsonCheck({ ...check, check: primitive }, place)
         case "probe":
             return runProbeCheck({ ...check, check: primitive })
-        case "uat-flow":
-            return runUatFlowCheck({ ...check, check: primitive }, place)
         case "cited":
             return runCitedCheck({ ...check, check: primitive }, contract, place)
         case "cite": {

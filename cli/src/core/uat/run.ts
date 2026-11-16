@@ -199,7 +199,7 @@ export const uatRunVerb = defineVerb({
         const startedAt = new Date().toISOString()
         const run = await runContainer({ container, runImage: prepared.runImage, scriptDir, scriptName: basename(script), outDir: out, forwards, timeoutMs, shmSize: config.shmSize, env, args: flags.args }, context.cwd)
         const endedAt = new Date().toISOString()
-        // The harness's receipt of what it ran and saw: a uat-flow check reads observations only through it.
+        // The harness's receipt of what it ran and saw: a screenshot counts only as this receipt holds it.
         const stored = receiptFiles(out, before)
         const pages = pagesOf(run.stderr)
         const receipt: UatReceipt = {

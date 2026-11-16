@@ -1,8 +1,7 @@
 # Project
 
-What a StarCi project is, how a piece of product work travels from a record to a settled commit, and where to read
-for each kind of task. It is product-agnostic: a product's own requirements, brand and screens are its `.starciwork`
-records, never this folder. It links each fact to its owner and restates none: how the harness finds a project and where its
+What a StarCi project is, how a piece of product work travels from a goal to a settled commit, and where to read
+for each kind of task. It is product-agnostic: a product's own concepts and brand are its `.starciwork`, never this folder. It links each fact to its owner and restates none: how the harness finds a project and where its
 state lives is [contexts/harness/state.md](../harness/state.md) ("How a project is found", "Where state lives").
 
 ## PROJECT-1 A project is one app root that declares its sides and holds the Work of each
@@ -35,10 +34,10 @@ are laid out in one of two ways:
 - **One repository per side.** The app root is the repository whose `.starciwork/workspace.yaml` lists the others
   by `{role, name}`; each side repository carries its own `hfs.json` and canon but no `.starciwork`.
 
-Either way the app root holds the Work of every side: an fe screen, an fe implementation record and an fe UAT flow
-are records of the app root's `.starciwork`, never of the fe repository. A side repository is still its own harness
-project (its own git common dir, so its own ledger), so one task changes one repository: an fe code change and the
-record change that follows it are two tasks.
+Either way the app root holds the Work of every side: the concepts and the brand an fe screen follows live in the app
+root's `.starciwork`, never in the fe repository. A side repository is still its own harness project (its own git common
+dir, so its own ledger), so one task changes one repository: an fe code change and the concept change that follows it
+are two tasks.
 
 `hfs.json` holds the choices an app makes once ([hfs/README.md](../hfs/README.md) owns its keys):
 
@@ -53,20 +52,19 @@ record change that follows it are two tasks.
 A profile left undeclared takes the default of its kind, so a side repository that is only `be` or only `fe`
 declares `"policy": "be"` or `"policy": "fe"`; the key is `policy`, and any other spelling is not read.
 
-## PROJECT-2 Work travels from a record to a settled commit
+## PROJECT-2 Work travels from a goal to a settled commit
 
 ```text
-Work record          .starciwork record: what must be true (fr, br, sds, contract, ui, uat ...), state todo
+goal                 what the owner asked, read against the concepts of the folders it touches
   -> contract        the Kernel (or the inline agent) writes one task contract per slice; a workflow file orders them
   -> op              a worker does the input inside allowPaths and dry-replays its own checks
   -> clean verify    the harness rebuilds HEAD plus allowPaths on a clean checkout and replays every check
   -> settle          green moves the branch to a harness commit of exactly those paths; red preserves and resets them
-  -> Work state      the record's state, activity and evidence links follow what was settled
 ```
 
-- **Record first.** A change of behaviour starts by editing the record that owns it ([work.md](work.md)); code and
-  tests trace to records and never redefine them. A record's `requiresProof` names the commands that prove it; the
-  Kernel carries them into the contract's `checks.extend`, beside the checks its op file holds as base.
+- **Concepts first.** A change that moves a term, a shape or a rule the product keeps edits its concept in the same
+  change ([work.md](work.md) PROJECT-WORK-7); code and tests never redefine a concept. The commands that prove a slice
+  are the contract's `checks.extend`, beside the checks its op file holds as base.
 - **Contract.** Its shape, presets and refusals are `starci explain` (`contract new`, `contract check`) and
   [README.md](../../README.md) "How it works"; a docs task names a scope inside `.starciwork` as its allowPaths, never the
   whole tree. A project whose clean checkout lacks generated code (GraphQL types, catalogs)
@@ -75,8 +73,8 @@ Work record          .starciwork record: what must be true (fr, br, sds, contrac
 - **Op and verify.** The worker brief is the worker procedure of [ops/ops/README.md](../../ops/ops/README.md) followed
   by the label's op file; checks cover only what the task
   changed, and the full suite is CI's after the push.
-- **Settle and state.** Who writes a record's state and what counts as evidence is PROJECT-WORK-5 and PROJECT-WORK-6
-  in [work.md](work.md).
+- **Settle.** The harness writes no Work at settle; who writes which part of `.starciwork` is PROJECT-WORK-5 in
+  [work.md](work.md).
 
 ## PROJECT-3 An app's shared code lives in root workspace packages
 
@@ -111,11 +109,10 @@ rule 10).
 
 | task | read, in order |
 |---|---|
-| write code (be or fe) | [code/README.md "Read for a coding task"](../code/README.md#read-for-a-coding-task), which starts with the anatomy slice of the side and edition (`anatomy-<edition>-<side>.md`) and opens this file and [lint.md](lint.md) on demand → the records the contract names |
-| change UI | [contexts/ui](../ui/README.md) and the app's grammar ([grammars](../grammars/README.md)) → the `ui` record of the screen ([work.md](work.md)) → [code/fe](../code/fe/README.md) → [lint.md](lint.md) |
-| write or change product records | [work.md](work.md) → the feature's `index.yaml` and the records it cites |
+| write code (be or fe) | [code/README.md "Read for a coding task"](../code/README.md#read-for-a-coding-task), which starts with the anatomy slice of the side and edition (`anatomy-<edition>-<side>.md`) and opens this file and [lint.md](lint.md) on demand → the files the contract names |
+| change UI | [contexts/ui](../ui/README.md) and the app's grammar ([grammars](../grammars/README.md)) → the brand record ([work.md](work.md)) → [code/fe](../code/fe/README.md) → [lint.md](lint.md) |
+| write or change the product's Work | [work.md](work.md) → the concept catalog `concepts/README.md` and the concepts it lists |
 | run, stand up or deploy an environment | [stacks.md](stacks.md) → the edition file ([lite.md](lite.md) or [full.md](full.md)) |
-| run UAT | the flow record (`features/<f>/uat/<flow>/index.yaml`) and [work.md](work.md) PROJECT-WORK-6 → [stacks.md](stacks.md) for the environment it names → `starci explain uat` |
 | add a gate or a rule | [lint.md](lint.md) PROJECT-LINT-1 → [packages/README.md](../../packages/README.md) or [policy/](../../policy/) |
 
 ## Files
@@ -131,6 +128,6 @@ rule 10).
 | [gallery.md](gallery.md) | the screenshot gallery every app carries: one folder per screen with its three shots and an `explain.md` that says why each region is drawn that way, links and flows between screens, the port, and the bugs the gate and the gallery flag (PROJECT-GALLERY-1 to 3) |
 | [cicd.md](cicd.md) | the delivery pipeline every app's `.github/` gets (proposed): triggers, checks, one attested image build, the automatic Swarm deploy with migrations, verification and rollback, records, gates |
 | [stacks.md](stacks.md) | how an app runs: the `.starcistacks/` shape against project values, the dev and vps environments, ingress, sealed custody, the operations with their safety rules, local-run rules |
-| [work.md](work.md) | the `.starciwork` record families and the product's concepts, their state, who writes what, UAT flows and evidence |
+| [work.md](work.md) | the `.starciwork` tree and the product's concepts, who writes what, the lanes of the brand and the environments |
 | [lite.md](lite.md) | only what the lite edition does differently (backing services, patterns, infrastructure, deploy targets, CI, Work), each linked to its owner |
 | [full.md](full.md) | only what the full edition does differently, in the same sections, each linked to its owner |

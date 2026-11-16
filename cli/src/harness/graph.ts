@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto"
 import { readFileSync } from "node:fs"
-import { dirname, posix, resolve } from "node:path"
+import { dirname, resolve } from "node:path"
 import { parse } from "yaml"
 import { z } from "zod"
 import { Refusal } from "../shared/errors.js"
@@ -11,8 +11,6 @@ import { checkEntrySchema, keyNameSchema, outputSpecSchema } from "./ops.js"
 import type { Ops } from "./ops.js"
 import { loadRouting } from "./routing.js"
 import type { ResultStatus, TaskStatus } from "./tasks.js"
-import { locateWorkRoot, readUatRecord, samePath, uatBinding, uatContract, uatPlace } from "./work.js"
-import type { UatBinding, WorkRoot } from "./work.js"
 
 /** The schema tag of a workflow file: the Kernel's goal and its graph of contracts. */
 export const WORKFLOW_SCHEMA = "starci/workflow@1"
@@ -41,11 +39,10 @@ const riskTagSchema = z.string().refine((tag) => loadRouting().qualification.ris
  * Inline, `context`, `inputs`, `output` and `checks` are the Kernel's extend; the label's op file adds its base; `cites` are the
  * anchor ids the task answers for (harness/cite.ts); `composedBy` is the key of the task that wires in the module this one
  * writes (core/check/composition.ts). `readPaths`
- * is the earlier spelling of `context`. `uat: <flow id>` is a third form: the contract built from that Work record (uatContract).
+ * is the earlier spelling of `context`.
  */
 const taskFieldsShape = {
     contract: z.string().min(1).optional(),
-    uat: z.string().min(1).optional(),
     label: z.string().min(1).optional(),
     summary: z.string().min(1).optional(),
     details: z.string().optional(),
@@ -216,44 +213,13 @@ const routeOf = (fields: TaskFields, previous: TaskRoute = {}): TaskRoute => ({
     ...(fields.risk === undefined ? {} : { risk: fields.risk }),
 })
 
-/** Where the tasks of a workflow resolve: its repository, and the project's Work root or the refusal that says why it has none. */
+/** Where the tasks of a workflow resolve: its repository. */
 export interface PlanPlace {
     readonly repo: string
-    readonly work: WorkRoot | Refusal
 }
 
-/** The place of a workflow file used from `cwd`; a missing Work root refuses only a task that walks a Work flow. */
-export const planPlace = async (cwd: string): Promise<PlanPlace> => {
-    const repo = await repositoryRoot(cwd)
-    try {
-        return { repo, work: await locateWorkRoot(cwd) }
-    } catch (error: unknown) {
-        if (error instanceof Refusal) return { repo, work: error }
-        throw error
-    }
-}
-
-/**
- * The Work root a workflow's uat task reads its record from: the workflow's own repository. A walk is settled where its Work
- * is, so a workflow defined in another repository than the project's Work root is refused, never split across two ledgers.
- */
-const workRootOf = (place: PlanPlace): string => {
-    if (place.work instanceof Refusal) throw place.work
-    if (!samePath(place.work.root, place.repo)) {
-        throw new Refusal("WORK_ROOT_ELSEWHERE", `a uat task walks a Work flow of ${place.work.root} (from ${place.work.from}), but this workflow is defined in ${place.repo}; define it in the Work root`)
-    }
-    return place.work.root
-}
-
-/** The run id of a workflow's uat task: stable per workflow and task key, so a replan builds the same contract. */
-const uatRunId = (workflow: string, key: string): string => `${workflow}-${key}`
-
-/** Who a task is, for the contract of a uat task: its workflow and key, and where the workflow resolves. */
-interface TaskAt {
-    readonly workflow: string
-    readonly key: string
-    readonly place: PlanPlace
-}
+/** The place of a workflow file used from `cwd`. */
+export const planPlace = async (cwd: string): Promise<PlanPlace> => ({ repo: await repositoryRoot(cwd) })
 
 /** A one-key object holding `value`, or nothing when it is undefined, for spreading an optional field. */
 const optional = <K extends string, V>(key: K, value: V | undefined): Partial<Record<K, V>> => (value === undefined ? {} : ({ [key]: value } as Partial<Record<K, V>>))
@@ -301,17 +267,11 @@ const inlineContract = (fields: TaskFields, base: string, ops: Ops, previous?: C
 }
 
 /**
- * Resolves one task's fields to its contract: a contract file (relative to `dir`, the folder of the file naming it), a Work
- * flow (`uat`, built from its record in the Work root), or the fields written inline (on top of `previous` when an edit
- * changes a task that has one). The forms never mix.
+ * Resolves one task's fields to its contract: a contract file (relative to `dir`, the folder of the file naming it), or the
+ * fields written inline (on top of `previous` when an edit changes a task that has one). The forms never mix.
  */
-const resolveContract = (fields: TaskFields, dir: string, base: string, ops: Ops, at: TaskAt, previous?: Contract): Contract => {
+const resolveContract = (fields: TaskFields, dir: string, base: string, ops: Ops, previous?: Contract): Contract => {
     const inline = INLINE_FIELDS.filter((name) => fields[name] !== undefined)
-    if (fields.uat !== undefined) {
-        const others = [...(fields.contract === undefined ? [] : ["contract"]), ...inline]
-        if (others.length > 0) throw new Refusal("WORKFLOW_INVALID", `a uat task names its Work flow only; its contract is built from the record (drop: ${others.join(", ")})`)
-        return parseContract(uatContract(readUatRecord(workRootOf(at.place), fields.uat), { revision: base, runId: uatRunId(at.workflow, at.key) }))
-    }
     if (fields.contract !== undefined) {
         if (inline.length > 0) throw new Refusal("WORKFLOW_INVALID", `a task names a contract file or writes its contract inline, not both (inline: ${inline.join(", ")})`)
         return readContract(resolve(dir, fields.contract))
@@ -322,7 +282,7 @@ const resolveContract = (fields: TaskFields, dir: string, base: string, ops: Ops
 const prettify = (error: z.ZodError): string => z.prettifyError(error)
 
 /** Reads a workflow file or a change file (yaml or json), validating its schema; the contracts of a workflow file are resolved too. */
-export const readPlanSource = (file: string, ops: Ops, place: PlanPlace): PlanSource => {
+export const readPlanSource = (file: string, ops: Ops): PlanSource => {
     const raw = readDocument(file)
     const dir = dirname(file)
     const tag = typeof raw === "object" && raw !== null && "schema" in raw ? raw.schema : undefined
@@ -334,7 +294,6 @@ export const readPlanSource = (file: string, ops: Ops, place: PlanPlace): PlanSo
     const parsed = workflowFileSchema.safeParse(raw)
     if (!parsed.success) throw new Refusal("WORKFLOW_INVALID", `${file} is not a valid ${WORKFLOW_SCHEMA} file (or ${CHANGE_SCHEMA}):\n${prettify(parsed.error)}`)
     const { tasks: written, ...header } = parsed.data
-    if (written.some((task) => task.uat !== undefined)) workRootOf(place)
     const problems: string[] = []
     const tasks: PlanTask[] = []
     for (const { id, ...fields } of written) {
@@ -343,8 +302,7 @@ export const readPlanSource = (file: string, ops: Ops, place: PlanPlace): PlanSo
             continue
         }
         try {
-            const at = { workflow: header.id, key: id, place }
-            tasks.push({ key: id, contract: resolveContract(fields, dir, header.base, ops, at), dependsOn: fields.dependsOn ?? [], route: routeOf(fields), round: 0 })
+            tasks.push({ key: id, contract: resolveContract(fields, dir, header.base, ops), dependsOn: fields.dependsOn ?? [], route: routeOf(fields), round: 0 })
         } catch (error: unknown) {
             problems.push(`task ${id}: ${messageOf(error)}`)
         }
@@ -352,52 +310,31 @@ export const readPlanSource = (file: string, ops: Ops, place: PlanPlace): PlanSo
     return { kind: "workflow", header, tasks, problems }
 }
 
-/** The Work flow a change adds or sets on a task, if any. */
-const uatOfChange = (change: ChangeEntry): string | undefined => {
-    if (change.op === "add") return change.task.uat
-    return change.op === "edit" ? change.set.uat : undefined
-}
-
-/**
- * The uat walks a plan source asks for (its uat-flow bindings), so a caller can check their run places (assertRunPlace) before
- * it records the graph: every uat task of a workflow file, and the tasks a change file adds or edits to walk a Work flow.
- */
-export const uatWalksOf = (source: PlanSource, ops: Ops): UatBinding[] => {
-    if (source.kind === "workflow") return source.tasks.flatMap((task) => uatBinding(task.contract, ops) ?? [])
-    return source.changes.flatMap((change) => {
-        const flow = uatOfChange(change)
-        if (flow === undefined) return []
-        const place = uatPlace(flow)
-        const key = change.op === "add" ? change.task.id : change.id
-        return [{ record: place.record, run: posix.join(place.runs, uatRunId(source.workflow, key)) }]
-    })
-}
-
 /** Applies one change to the working task map (and the retry set); a change that cannot apply throws a Refusal. */
 const applyChange = (
     change: ChangeEntry,
     key: string,
     state: { readonly tasks: Map<string, PlanTask>; readonly retries: Set<string>; readonly keepEffect: Set<string>; readonly accepts: Set<string> },
-    where: { readonly dir: string; readonly base: string; readonly ops: Ops; readonly at: TaskAt },
+    where: { readonly dir: string; readonly base: string; readonly ops: Ops },
 ): void => {
     const { tasks, retries } = state
-    const { dir, base, ops, at } = where
+    const { dir, base, ops } = where
     const existing = tasks.get(key)
     if (change.op === "add") {
         if (existing !== undefined) throw new Refusal("WORKFLOW_INVALID", "the graph has this task already; edit it instead")
         if (isGeneratedKey(key)) throw new Refusal("WORKFLOW_INVALID", GENERATED_KEY)
         const { id, ...fields } = change.task
-        tasks.set(id, { key: id, contract: resolveContract(fields, dir, base, ops, at), dependsOn: fields.dependsOn ?? [], route: routeOf(fields), round: 0 })
+        tasks.set(id, { key: id, contract: resolveContract(fields, dir, base, ops), dependsOn: fields.dependsOn ?? [], route: routeOf(fields), round: 0 })
         return
     }
     if (existing === undefined) throw new Refusal("WORKFLOW_INVALID", "no such task in the graph")
     switch (change.op) {
         case "edit": {
             if (isRelayKey(key)) throw new Refusal("WORKFLOW_INVALID", `${key} is a relay node, the harness's own: its contract carries exactly a shared need's commits; retry, accept or remove it`)
-            const touchesContract = change.set.contract !== undefined || change.set.uat !== undefined || INLINE_FIELDS.some((name) => change.set[name] !== undefined)
+            const touchesContract = change.set.contract !== undefined || INLINE_FIELDS.some((name) => change.set[name] !== undefined)
             tasks.set(key, {
                 key,
-                contract: touchesContract ? resolveContract(change.set, dir, base, ops, at, existing.contract) : existing.contract,
+                contract: touchesContract ? resolveContract(change.set, dir, base, ops, existing.contract) : existing.contract,
                 dependsOn: change.set.dependsOn ?? existing.dependsOn,
                 route: routeOf(change.set, existing.route),
                 round: existing.round,
@@ -437,9 +374,7 @@ export const applyChanges = (
     dir: string,
     base: string,
     ops: Ops,
-    plan: { readonly workflow: string; readonly place: PlanPlace },
 ): ChangesApplied => {
-    if (changes.some((change) => uatOfChange(change) !== undefined)) workRootOf(plan.place)
     const tasks = new Map(current.map((task) => [task.key, task]))
     const retries = new Set<string>()
     const keepEffect = new Set<string>()
@@ -448,7 +383,7 @@ export const applyChanges = (
     for (const change of changes) {
         const key = change.op === "add" ? change.task.id : change.id
         try {
-            applyChange(change, key, { tasks, retries, keepEffect, accepts }, { dir, base, ops, at: { workflow: plan.workflow, key, place: plan.place } })
+            applyChange(change, key, { tasks, retries, keepEffect, accepts }, { dir, base, ops })
         } catch (error: unknown) {
             problems.push(`${change.op} ${key}: ${messageOf(error)}`)
         }

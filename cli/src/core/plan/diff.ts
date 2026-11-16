@@ -1,11 +1,11 @@
 import { resolve } from "node:path"
 import { openExistingLedger } from "../../harness/ledger.js"
-import { planPlace } from "../../harness/graph.js"
+import { planPlace, readPlanSource } from "../../harness/graph.js"
 import { loadOps } from "../../harness/ops.js"
 import { snapshotOf } from "../../harness/workflow.js"
 import { Refusal } from "../../shared/errors.js"
 import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
-import { buildReplan, classCounts, classificationTable, readReplanSource } from "../workflow/replan.js"
+import { buildReplan, classCounts, classificationTable } from "../workflow/replan.js"
 
 /** `starci plan diff <workflow> --to <file>`: the keep, continue, redo, add and drop classification an amend would apply; changes nothing. */
 export const planDiffVerb = defineVerb({
@@ -27,7 +27,7 @@ export const planDiffVerb = defineVerb({
         if (db === undefined) throw new Refusal("WORKFLOW_UNKNOWN", `no workflow ${flags.workflow}: this project has no ledger yet`)
         try {
             const snapshot = snapshotOf(db, flags.workflow)
-            const replan = buildReplan(db, snapshot, file, await readReplanSource(file, ops, place), ops, place)
+            const replan = buildReplan(db, snapshot, file, readPlanSource(file, ops), ops, place)
             const cancels = replan.classification.flatMap((row) => (row.cancel === null ? [] : [row.cancel]))
             const message = [
                 `diff of ${snapshot.workflow.id} graph v${String(snapshot.workflow.graphVersion)} -> v${String(snapshot.workflow.graphVersion + 1)}: ${replan.unchanged ? "no change" : classCounts(replan.classification)}`,

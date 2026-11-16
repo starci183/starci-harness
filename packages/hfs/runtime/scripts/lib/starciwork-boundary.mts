@@ -11,49 +11,29 @@ import path from 'node:path';
 // The one source of the .starciwork/.gitignore text: the app root template `starci app sync` renders (packages/hfs/templates).
 const TEMPLATE = path.join(import.meta.dirname, '..', '..', 'packages', 'hfs', 'templates', 'app', 'starciwork.gitignore');
 
-// The record families that hold nothing but index.yaml and evidence.yaml (ui, impl, uat and ac have their own rows).
-const PLAIN_FAMILIES = Object.freeze(['br', 'fr', 'nfr', 'data', 'journey', 'decision', 'sds', 'contract', 'integration', 'gap', 'event']);
-const RECORD_FILE = /^(index|evidence)\.yaml$/;
-const UAT_FILE = /^(index\.yaml|evidence\.yaml|accounts\.yaml|fixtures\.yaml|seed\.sql|cleanup\.sql)$/;
-const PLAIN = new RegExp(`^(${PLAIN_FAMILIES.join('|')})$`);
+const RECORD_FILE = /^(index|evidence).yaml$/;
 const ANY = /^.+$/;
 const REST = '**';
-// One or more record-name folders: a record may nest by name segment where a group needs it (br/title/required,
-// fr/cart/add, ui/<group>/<screen>, impl/<repo>/<group>/<name>). A nesting folder is never assets/ or an agent-data
-// folder (DENY_SEGMENT), so a capture or run can never pass as a record.
-const NEST = '+';
-const NEST_SEGMENT = /^(?!assets$).+$/;
 
-// Each pattern is a list of segment matchers: a string (exact), a RegExp (one segment), '+' (one or more record-name
-// folders) or '**' (one or more segments of anything). Order follows §5.1.
+// Each pattern is a list of segment matchers: a string (exact), a RegExp (one segment) or '**' (one or more segments
+// of anything). Order follows §5.1.
 /** A path pattern: a list of segment matchers (see below). */
 type Pattern = readonly (string | RegExp)[];
 
 const PRODUCT_PATTERNS: readonly Pattern[] = Object.freeze([
-  ['.gitignore'], ['.gitattributes'], ['workspace.yaml'], ['index.yaml'],
+  ['.gitignore'], ['.gitattributes'], ['workspace.yaml'],
   ['brand', RECORD_FILE], ['brand', 'assets', REST],
   ['concepts', 'index.yaml'], ['concepts', ANY, 'index.yaml'],
   ['shell', RECORD_FILE],
   ['_resources', /^(environments|identities|fixtures|runtimes)$/, ANY, REST],
   ['_resources', 'grammar-captures', REST],
   ['_derived', /^(index\.yaml|frontier\.md|critique\.yaml|critique\.md)$/],
-  ['features', 'index.yaml'],
-  ['features', ANY, 'index.yaml'],
-  ['features', ANY, /^(br|ac|fr|nfr|data|journey|decision|sds|ui|impl|uat|contract|integration|gap|event)$/, 'index.yaml'],
-  ['features', ANY, PLAIN, NEST, RECORD_FILE],
-  ['features', ANY, 'br', NEST, 'ac', NEST, RECORD_FILE],
-  ['features', ANY, 'ui', NEST, RECORD_FILE],
-  ['features', ANY, 'ui', NEST, /^(flow|lifecycle-interface)\.yaml$/],
-  ['features', ANY, 'ui', NEST, 'assets', REST],
-  ['features', ANY, 'impl', ANY, 'index.yaml'],
-  ['features', ANY, 'impl', ANY, NEST, RECORD_FILE],
-  ['features', ANY, 'uat', NEST, UAT_FILE],
 ].map((pattern) => Object.freeze(pattern)));
 // The concept records of a product (the catalog and one record per concept), the same in both editions.
 const CONCEPT_PATTERNS: readonly Pattern[] = PRODUCT_PATTERNS.filter((pattern) => pattern[0] === 'concepts');
 
-// Agent output that is refused even where a pattern above would admit it: draw rounds inside a ui record's
-// assets, stray report copies, evidence bundles, evidence/ captures and UAT runs anywhere, temp JSON.
+// Agent output that is refused even where a pattern above would admit it: draw rounds, stray report copies,
+// evidence bundles, evidence/ captures and UAT runs anywhere, temp JSON.
 const DENY_SEGMENT = /^(draw-loop|evidence|runs|kernel-evidence|kernel-strays|kernel-approvals)$/;
 const DENY_FILE = /^(report.*\.json|.*\.tmp\.json)$/;
 
@@ -73,11 +53,6 @@ function walk(pattern: Pattern, p: number, parts: string[], i: number, prefix: b
   if (p === pattern.length) return false;
   const m = pattern[p] as string | RegExp;
   if (m === REST) return prefix || parts.length > i;
-  if (m === NEST) {
-    if (!NEST_SEGMENT.test(parts[i] as string)) return false;
-    // consume this folder, then either stop nesting or keep nesting
-    return walk(pattern, p + 1, parts, i + 1, prefix) || walk(pattern, p, parts, i + 1, prefix);
-  }
   return fits(m, parts[i] as string) && walk(pattern, p + 1, parts, i + 1, prefix);
 }
 const matchFile = (pattern: Pattern, parts: string[]): boolean => walk(pattern, 0, parts, 0, false);
@@ -103,9 +78,8 @@ const ROOT_CACHE_FILE = /^(.*\.tmp\.json|tmp-.*\.json|scan-i18n.*\.json|runtime-
 /**
  * The §5.2 category of a KNOWN agent-data path, or null when the path is not one. Known agent data — the
  * categories scripts/work/validate/check-example-work.mjs refuses in a .starciwork tree [HFS_AGENT_DATA_TRACKED]:
- * ledger, logs-db, worktrees, kernel-evidence, kernel-strays, evidence-bundle, capture (impl captures),
- * layout-capture (shell/assets), uat-run, draw-round, interface-audit (features/<f>/operations/), stray-report,
- * cache. A path that is neither known agent data nor on the §5.1 list
+ * ledger, logs-db, worktrees, kernel-evidence, kernel-strays, evidence-bundle, layout-capture (shell/assets),
+ * draw-round, stray-report, cache. A path that is neither known agent data nor on the §5.1 list
  * (isProductPath) is drift: product records in a retired layout, kept and reported, never removed by a script.
  */
 const rootAgentDataCategory = (parts: string[], dir: boolean, top: string): string | null => {
@@ -121,10 +95,7 @@ const rootAgentDataCategory = (parts: string[], dir: boolean, top: string): stri
 
 const nestedAgentDataCategory = (dirs: string[], name: string | null | undefined): string | null => {
   if (dirs.includes('draw-loop')) return 'draw-round';
-  if (dirs.includes('runs') && dirs[0] === 'features' && dirs.includes('uat')) return 'uat-run';
   if (dirs.includes('evidence')) return 'evidence-bundle';
-  if (dirs[0] === 'features' && dirs.includes('operations')) return 'interface-audit';
-  if (dirs[0] === 'features' && dirs.includes('impl') && dirs.includes('assets')) return 'capture';
   if (dirs[0] === 'shell' && dirs[1] === 'assets') return 'layout-capture';
   if (name && /^report.*\.json$/.test(name)) return 'stray-report';
   if (name?.endsWith('.tmp.json')) return 'cache';

@@ -75,7 +75,7 @@ may switch those gates off ([project/lint.md](../project/lint.md) PROJECT-LINT-4
 |---|---|---|---|
 | PROJECT-STACKS-3, PROJECT-STACKS-6 | a runbook per environment with the seven operations | a | `stacks-gate.mts:257` (`runbook-path-invalid`, `runbook-command-missing`) |
 | PROJECT-STACKS-12 | seed data only in the seed levels, each with its manifest | a | R375 `rules/seeds.mts` |
-| PROJECT-WORK-4 | an integration record designed from the provider's current documentation | c | judgement: whether its author read the documentation is not in the tree |
+| PROJECT-WORK-4 | an integration designed from the provider's current documentation | c | judgement: whether its author read the documentation is not in the tree |
 | PROJECT-WORK-7 | the concept of every folder a task touches is read first | c | review only; no law requires every folder to have a concept, so coverage is not checkable |
 | BE-API-3 | an e2e spec per resolver and controller (full) | c | review only (`Enforced by` says so) |
 | BE-TEST-5 | every branch, boundary and refusal per method | c | judgement; R273 measures the lines it reaches |

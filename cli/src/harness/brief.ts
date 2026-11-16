@@ -79,8 +79,6 @@ const describeCheck = (check: PrimitiveCheck): string => {
         }
         case "probe":
             return `${check.url} answers ${String(check.status)}`
-        case "uat-flow":
-            return `your result walks every step of ${check.record}, each check at its expected value, with report.md and a screenshot per step in ${check.run}`
         case "cited": {
             const keys = (check.trace ?? []).map((trace) => trace.key)
             const work = (check.trace ?? []).filter((trace) => trace.cites === "work").map((trace) => trace.key)

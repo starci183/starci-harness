@@ -9,7 +9,7 @@ import { currentGoal } from "../../harness/goal.js"
 import { taskState } from "../../harness/graph.js"
 import type { NodeView, PlanNode } from "../../harness/graph.js"
 import { kernelTitle, opTitle } from "../../harness/kernel.js"
-import { evaluateFlow, flowCheckoutOf, flowLines, loadLanes, recordsOf, roleOf } from "../../harness/lanes.js"
+import { evaluateFlow, flowCheckoutOf, flowLines, loadLanes, recordsOf } from "../../harness/lanes.js"
 import type { FlowReport } from "../../harness/lanes.js"
 import { livenessOf, loadLiveness } from "../../harness/liveness.js"
 import { readMachine, runningWorkers, textOf } from "../../harness/machine.js"
@@ -279,12 +279,10 @@ const flowOf = (db: DatabaseSync, snapshot: Snapshot, repo: string): FlowReport 
     return evaluateFlow(snapshot.nodes, { repo: checkout, db, requires: snapshot.workflow.header.requires ?? [], workflowId: snapshot.workflow.id, base: snapshot.workflow.header.base }, loadLanes(loadOps()))
 }
 
-/** The Work record a contract is over and the side (be, fe) its repository's role in workspace.yaml gives it. */
-const recordOf = (contract: Contract, repo: string): { readonly record: string | null; readonly side: "be" | "fe" | null } => {
-    const ref = recordsOf(contract, repo)[0]
-    if (ref === undefined) return { record: null, side: null }
-    const role = roleOf(ref, repo)
-    return { record: ref.id, side: role === "be" || role === "fe" ? role : null }
+/** The Work record a contract is over and the side (be, fe) its `side` input names. */
+const recordOf = (contract: Contract): { readonly record: string | null; readonly side: "be" | "fe" | null } => {
+    const side = contract.input.extend?.side ?? contract.input.base?.side
+    return { record: recordsOf(contract)[0]?.id ?? null, side: side === "be" || side === "fe" ? side : null }
 }
 
 const nodeOf = (db: DatabaseSync, repo: string, node: PlanNode, view: NodeView | undefined): GraphNode => {
@@ -299,7 +297,7 @@ const nodeOf = (db: DatabaseSync, repo: string, node: PlanNode, view: NodeView |
         member: latest?.member ?? null,
         startedAt: latest?.startedAt ?? null,
         dependsOn: node.dependsOn,
-        ...recordOf(node.contract, repo),
+        ...recordOf(node.contract),
         why: view?.why ?? null,
     }
 }
@@ -439,7 +437,7 @@ export const taskOf = async (project: string, id: string): Promise<TaskDetail> =
         label: contract.label,
         title: contract.input.summary,
         state: view?.state ?? taskState({ id: task.id, status: task.status, result: task.result, tryNo: task.tryNo, redChecks: task.redChecks, lost: task.lost, recheck: task.recheck }),
-        contract: { summary: contract.input.summary, allowPaths: contract.context.allowPaths, dependsOn: node?.dependsOn ?? [], record: recordOf(contract, place.repo).record, step },
+        contract: { summary: contract.input.summary, allowPaths: contract.context.allowPaths, dependsOn: node?.dependsOn ?? [], record: recordOf(contract).record, step },
         checks,
         route: routeOf(place.repo, id, attempts),
         attempts: attempts.map((attempt) => ({ n: attempt.seq, member: attempt.member, outcome: attempt.outcome, at: attempt.startedAt })),

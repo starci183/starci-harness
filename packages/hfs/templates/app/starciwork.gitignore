@@ -5,13 +5,11 @@
 !/.gitignore
 !/.gitattributes
 !/workspace.yaml
-!/index.yaml
 !/brand/
 !/concepts/
 !/shell/
 !/_resources/
 !/_derived/
-!/features/
 /brand/*
 !/brand/index.yaml
 !/brand/evidence.yaml
@@ -33,8 +31,6 @@
 evidence/
 runs/
 draw-loop/
-operations/
 report*.json
 *.tmp.json
-/features/**/impl/**/assets/
 /shell/assets/

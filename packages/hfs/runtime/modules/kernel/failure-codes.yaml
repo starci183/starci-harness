@@ -5002,7 +5002,7 @@ HFS_STARCIWORK_LITE_FORBIDDEN:
   causes_vi:
     - "Ứng dụng lite còn index.yaml, shell/, features/, _resources/, uat hoặc br trong .starciwork"
     - "Có tệp khác nằm ngoài workspace.yaml, brand/, các bản ghi concept và .gitignore trong Work của lite"
-  nextStep_vi: "Giữ nguyên workspace.yaml, brand/**, các bản ghi concept và .gitignore, chuyển nội dung khác ra khỏi .starciwork (lite không lên full được: khi cần các bản ghi đó, dựng một ứng dụng full mới), rồi chạy lại kiểm tra."
+  nextStep_vi: "Giữ nguyên workspace.yaml, brand/**, các bản ghi concept và .gitignore; xoá features/ và index.yaml (tài liệu theo từng feature đã bỏ ở cả hai edition, ngữ cảnh chung nằm trong concepts/), chuyển nội dung khác ra khỏi .starciwork, rồi chạy lại kiểm tra."
   owner: op-retry
   kind: check-finding
 

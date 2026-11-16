@@ -1,5 +1,13 @@
 # Changelog
 
+## 6.13.15 - 2026-11-17
+
+- Removed (`knowledge/hfs/slots.yaml` `app.starciwork`, `contexts/hfs/slots.yaml`): the per-feature Work documents. The full edition no longer admits `features/<feature>/**` (br, fr, nfr, sds, contract, data, decision, integration, journey, impl, ui, uat, gap) or the feature catalog `index.yaml` (`work/catalog@1`), and no longer requires the catalog; it keeps `workspace.yaml`, the concepts, `brand/**`, `shell/`, `_resources/**` and `_derived/`. Lite is unchanged and still refuses a leftover `features/` (`HFS_STARCIWORK_LITE_FORBIDDEN`, R212, whose message and next step now say the documents are retired in both editions).
+- Removed (`templates/app/skeleton/.starciwork`): the scaffolded `index.yaml` catalog and `features/system-health/index.yaml`; a full app scaffolds `workspace.yaml` and the concepts.
+- Changed (`templates/app/starciwork.gitignore`): the full `.starciwork/.gitignore` no longer re-admits `index.yaml` and `features/`; `starci app sync` renders the new block.
+- Changed (`runtime/scripts/lib/starciwork-boundary.mts`): the product path list drops the feature record patterns and the feature-only agent-data categories (`uat-run`, `interface-audit`, `capture`); `example-refs.mts` finds a full example's Work tree by its `workspace.yaml`.
+- Specs: `hfs-starciwork-lite-forbidden.spec.mts`, `hfs-repository-tree-layout.spec.mts`.
+
 ## 6.13.14 - 2026-11-17
 
 - Fixed (`runtime/scripts/hfs/rules/services.mts`, R163 `HFS_SERVICE_PLACEMENT`): the manifest of an agent workbench, `packages/<pkg>/workbench/<app>/package.json` (a standalone Vite app a package's cli builds and uploads), is no second service root. It is judged as a front-end app: no `be/` folder beside it, not a member of the root `workspaces`, every dependency an exact version; otherwise the finding names what drifted. Any other nested `package.json`, and any Dockerfile outside `be/apps/<service>/`, stays refused. Closes ticket tk-43cb47279507. Specs: `hfs-services-legacy-coverage.spec.mts` (lite and full), `hfs-microservice-rules.spec.mts`.

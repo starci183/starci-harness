@@ -78,7 +78,7 @@ const namedInputsSchema = z.record(keyNameSchema, z.string().min(1))
 
 const outputKeysSchema = z.record(keyNameSchema, outputSpecSchema)
 
-/** The budget of a contract whose writer names none: `contract new`, an inline workflow task and a uat contract built from a Work record. */
+/** The budget of a contract whose writer names none: `contract new` and an inline workflow task. */
 export const DEFAULT_BUDGET = { minutes: 60, tries: 3 } as const
 
 const budgetSchema = z.strictObject({ minutes: z.number().int().positive(), tries: z.number().int().positive().max(5) })
@@ -373,7 +373,7 @@ export const ruleIdsIn = (text: string): Set<string> => {
     return ids
 }
 
-// A Work record id: lower-case dotted segments (impl.shop.web.cart, integration.commerce.gateway).
+// A Work record id: lower-case dotted segments (environment.dev).
 const WORK_ID = /^[a-z][a-z0-9-]*(?:\.[a-z0-9][a-z0-9-]*)+$/
 
 /**
@@ -577,7 +577,7 @@ const checkProblems = (contract: Contract, resolved: ResolvedContract, ops: Ops)
     if (lacksBehaviouralCheck(resolved, checks)) {
         const forms = behaviouralPresets(ops).map((preset) => presetForm(preset.name, preset.args))
         problems.push(
-            `label ${contract.label} needs at least one behavioural check, one the harness observes itself (T0) or reads from a receipted run (T1); lint, typecheck and the worker's own result (T2) prove nothing about behaviour. Add one of these to checks.extend: ${forms.join(", ")}`,
+            `label ${contract.label} needs at least one behavioural check, one the harness observes itself (T0); lint, typecheck and the worker's own result (T2) prove nothing about behaviour. Add one of these to checks.extend: ${forms.join(", ")}`,
         )
     }
     return problems
@@ -591,7 +591,7 @@ const allowPathProblems = (allowPaths: readonly string[]): string[] => {
     for (const path of allowPaths) {
         // The schema already normalised the entry, so `./src/` and `src` are the same path here.
         if (path === ".") problems.push(`allowPaths entry "${path}" is the whole repository; name concrete folders or files`)
-        if (path === WORK_TREE) problems.push(`allowPaths entry "${path}" is the whole Work tree; name the scope inside it (for example ${WORK_TREE}/features/<feature>)`)
+        if (path === WORK_TREE) problems.push(`allowPaths entry "${path}" is the whole Work tree; name the scope inside it (for example ${WORK_TREE}/concepts)`)
         if (neverRead(policy, path)) problems.push(`allowPaths entry "${path}" names a file policy/security.yaml neverRead lists; the harness never opens it, so no task may write it`)
         problems.push(...placeProblems("allowPaths entry", path))
         if (seen.has(path)) problems.push(`allowPaths entry "${path}" is named twice`)

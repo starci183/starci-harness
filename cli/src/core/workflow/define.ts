@@ -3,11 +3,10 @@ import { workflowBudgets } from "../../harness/budget.js"
 import type { WorkflowBudget } from "../../harness/budget.js"
 import { assertOwnSources } from "../../harness/foreign-source.js"
 import { assertScope } from "../../harness/goal.js"
-import { buildGraph, planPlace, readPlanSource, uatWalksOf } from "../../harness/graph.js"
+import { buildGraph, planPlace, readPlanSource } from "../../harness/graph.js"
 import { assertFlow, flowLines } from "../../harness/lanes.js"
 import { openExistingLedger, openLedger } from "../../harness/ledger.js"
 import { loadOps } from "../../harness/ops.js"
-import { assertRunPlace } from "../../harness/work.js"
 import { insertWorkflow } from "../../harness/workflow.js"
 import type { WorkflowStatus } from "../../harness/workflow.js"
 import { Refusal } from "../../shared/errors.js"
@@ -50,7 +49,7 @@ export const workflowDefineVerb = defineVerb({
         const file = resolve(context.cwd, flags.file)
         const ops = loadOps()
         const place = await planPlace(context.cwd)
-        const source = readPlanSource(file, ops, place)
+        const source = readPlanSource(file, ops)
         if (source.kind !== "workflow") throw new Refusal("WORKFLOW_INVALID", `${file} is a change file; define takes a starci/workflow@1 file (a change goes to workflow amend)`)
         const built = buildGraph(source.tasks, ops)
         const problems = [...source.problems, ...built.problems]
@@ -70,7 +69,6 @@ export const workflowDefineVerb = defineVerb({
                 known?.close()
             }
         })()
-        await Promise.all(uatWalksOf(source, ops).map((walk) => assertRunPlace(root, walk)))
         const nodes = built.nodes.map((node) => ({ key: node.key, label: node.contract.label, dependsOn: node.dependsOn, contractHash: node.contractHash, hash: node.hash }))
         if (flags.check) {
             const message = [`${file} is fit: workflow ${source.header.id}, ${String(nodes.length)} task(s); nothing recorded`, ...built.notes.map((note) => `note: ${note}`), ...lanes.map((line) => `lane: ${line}`)].join("\n")

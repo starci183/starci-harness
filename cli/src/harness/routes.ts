@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs"
+import { readFileSync } from "node:fs"
 import { join, resolve } from "node:path"
 import type { DatabaseSync } from "node:sqlite"
 import { parse } from "yaml"
@@ -6,8 +6,7 @@ import { z } from "zod"
 import { Refusal } from "../shared/errors.js"
 import { readContract } from "./contract.js"
 import { CHANGE_SCHEMA } from "./graph.js"
-import { opWorktreeOf } from "./land.js"
-import { laneOf, loadLanes, recordsOf, repoOfLedger } from "./lanes.js"
+import { laneOf, loadLanes, recordsOf } from "./lanes.js"
 import { loadOps } from "./ops.js"
 import type { Ops } from "./ops.js"
 import { getTask, hostHeldAttempt, latestAttempt, resultOf } from "./tasks.js"
@@ -98,8 +97,8 @@ const takenOf = (db: DatabaseSync, workflowId: string, route: string, key: strin
             .get(workflowId, route, key)?.n ?? 0,
     )
 
-/** The label a route's `to` asks for on a task, or undefined when it does not resolve (`build` of a task over no record with a lane). */
-const targetOf = (route: Route, label: string, build: () => string | undefined): string | undefined => {
+/** The label a route's `to` asks for on a task. */
+const targetOf = (route: Route, label: string, build: () => string): string => {
     if (route.to === "same") return label
     if (route.to === "build") return build()
     return route.to.label
@@ -116,19 +115,14 @@ export const routeOptions = (db: DatabaseSync, workflowId: string, kind: RoutedK
     const cause = causeOf(db, taskId, kind)
     const held = hostHeldAttempt(db, taskId)
     const ops = loadOps()
-    const build = (): string | undefined => {
-        // A settled task's Op worktree is removed: its records are read where it lands, else from the ledger's repository.
-        const repo = [task.worktree ?? undefined, opWorktreeOf(db, task.id)?.target, repoOfLedger(db)].find((candidate): candidate is string => candidate !== undefined && existsSync(candidate))
-        if (repo === undefined) return undefined
+    // The build label of the lane of a Work record the task is over, else code (ops/routes.yaml `to: build`).
+    const build = (): string => {
         const lanes = loadLanes(ops)
-        return recordsOf(task.contract, repo)
-            .map((ref) => laneOf(ref, lanes, repo)?.build)
-            .find((label) => label !== undefined)
+        return recordsOf(task.contract).map((ref) => laneOf(ref, lanes)?.build).find((label) => label !== undefined) ?? "code"
     }
     for (const route of loadRoutes(ops)) {
         if (route.on.decision !== kind || route.on.cause !== cause || (route.on.from !== "any" && route.on.from !== task.label)) continue
         const label = targetOf(route, task.label, build)
-        if (label === undefined) continue
         const taken = takenOf(db, workflowId, route.id, key)
         const to = typeof route.to === "string" ? route.to : `label ${route.to.label}`
         if (taken >= route.limit && !held) return { key, cause, held, routes: [], gate: "owner" }
@@ -146,10 +140,9 @@ const changeSchema = z.object({
     changes: z.array(z.object({ op: z.string(), id: z.string().optional(), task: z.record(z.string(), z.unknown()).optional(), set: z.record(z.string(), z.unknown()).optional() })),
 })
 
-/** The label a change file's added task carries: inline, a Work flow (uat), or its contract file's. */
+/** The label a change file's added task carries: inline, or its contract file's. */
 const addedLabel = (task: Record<string, unknown>, dir: string): string | undefined => {
     if (typeof task.label === "string") return task.label
-    if (typeof task.uat === "string") return "uat"
     if (typeof task.contract !== "string") return undefined
     try {
         return readContract(resolve(dir, task.contract)).label

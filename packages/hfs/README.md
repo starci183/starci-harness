@@ -80,8 +80,9 @@ The lite `app.starciwork` slot is optional when the app has no brand records and
 optional `workspace.yaml` metadata, `brand/**` (the existing brand record, drawing records, references and assets) and the concepts:
 `concepts/README.md` and `concepts/<topic>.md`, and the records `concepts/index.yaml` and `concepts/<name>/index.yaml` of an app that still keeps them (R212).
 Workspace metadata supplies the project id and repo roles for app-root detection and front-end role mapping. Lite readers
-read workspace metadata normally and skip the feature catalog, shell and feature records. The scaffold writes `.gitignore`
-and `workspace.yaml` and retains `brand/` only when present.
+read workspace metadata normally and skip the shell. The scaffold writes `.gitignore` and `workspace.yaml` and retains
+`brand/` only when present. No edition's `app.starciwork` admits per-feature Work documents (`features/`) or a feature
+catalog (a root `index.yaml`); the full scaffold writes `workspace.yaml` and the concepts.
 
 The lite additions are deliberately narrow:
 

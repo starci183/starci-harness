@@ -41,8 +41,6 @@ export const primitiveCheckSchema = z.discriminatedUnion("kind", [
         expect: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional(),
     }),
     z.object({ kind: z.literal("probe"), url: z.url(), status: z.coerce.number().int() }),
-    // A uat walk: the receipted observations of `starci uat run` in the run folder judged against a Work record (harness/work.ts).
-    z.object({ kind: z.literal("uat-flow"), record: z.string().min(1), run: z.string().min(1) }),
     // The read trace: each id the result cites under `key` must be named by one of `files` (resolved by resolveChecks); a
     // `work` key may also cite a Work record that one of its files or `named` (the Work ids and paths the inputs name) points at.
     z.object({
@@ -77,8 +75,9 @@ export type PrimitiveCheck = z.infer<typeof primitiveCheckSchema>
 
 /**
  * Who observed what a check judges. T0: the harness itself (a process it ran on the clean checkout, a probe, CI, the tree).
- * T1: values parsed from files whose digests a T0 receipt holds (a `starci uat run` walk). T2: the worker's own claims (its
- * filed result, a json file it wrote). Only T0 and T1 prove behaviour; a T2 check may make a task red, never green by itself.
+ * T1: values parsed from files whose digests a T0 receipt holds; no check kind reads one, and a ledger row may still carry it.
+ * T2: the worker's own claims (its filed result, a json file it wrote). Only T0 and T1 prove behaviour; a T2 check may make a
+ * task red, never green by itself.
  * A `cite` check is T0: the harness resolves each cited id against the contexts and reads the changed files' imports itself;
  * it is never behavioural (BEHAVIOURAL_KINDS), so it too can only make a task red.
  */
@@ -86,12 +85,11 @@ export type TrustTier = "T0" | "T1" | "T2"
 
 /** The trust tier of a check, by its kind alone, so no preset or contract can declare a claim to be an observation. */
 export const trustTier = (kind: string): TrustTier => {
-    if (kind === "json" || kind === "cited") return "T2"
-    return kind === "uat-flow" ? "T1" : "T0"
+    return kind === "json" || kind === "cited" ? "T2" : "T0"
 }
 
 /** The kinds a check written out in a contract proves behaviour with: each runs, or reads, what the harness observed. */
-export const BEHAVIOURAL_KINDS: ReadonlySet<string> = new Set(["command", "probe", "uat-flow"])
+export const BEHAVIOURAL_KINDS: ReadonlySet<string> = new Set(["command", "probe"])
 
 const argValueSchema = z.union([z.string(), z.number(), z.array(z.string())])
 

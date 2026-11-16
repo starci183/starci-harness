@@ -1,6 +1,6 @@
 ---
 schema: starci/op@1
-summary: generate real artwork (the asset slots a drawn ui record declares, illustrations, mockup renders)
+summary: generate real artwork (the artwork slots a drawn direction leaves, illustrations, mockup renders)
 floor: hard
 hostTools: [git]
 perRecord: true
@@ -17,5 +17,5 @@ checks:
   behavioural: false
 ---
 Generate each image the contract asks for and write it under the contract's allowPaths, in the format and size it names;
-for a ui record's asset slot, write the file's path into that slot's `file`. An image never carries a secret, a real
+for an artwork slot a drawn direction leaves, write the file at the path the contract names for it. An image never carries a secret, a real
 person's likeness, or another brand's mark. Name what each file shows in your summary.

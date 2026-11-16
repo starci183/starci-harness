@@ -3625,7 +3625,7 @@ rules:
   - id: R212
     editions: [lite, full]
     codeEditions: {HFS_EDITION_FORBIDDEN_PRESENT: [lite], HFS_STARCIWORK_LITE_FORBIDDEN: [lite], HFS_BACKING_UNDECLARED: [lite], HFS_BACKING_UNUSED: [lite]}
-    editionWhy: "Full keeps the whole Work tree and test world; lite is a minimal production, so its infrastructure and Work surfaces are limited to what that needs and it admits only the backing services it declares."
+    editionWhy: "Full keeps the app shell, the run resources and the test world, and neither edition admits per-feature Work documents (slot app.starciwork); lite is a minimal production, so its infrastructure and Work surfaces are limited to what that needs and it admits only the backing services it declares."
     docs: [docs/lite-edition.md#edition-validation]
     templateNa: "The hfs.json edition declaration is generated programmatically by packages/hfs/scaffold/app.mjs; no managed declaration template exists. Forbidden paths are rejected rather than scaffolded."
     code: "HFS_EDITION_INVALID"

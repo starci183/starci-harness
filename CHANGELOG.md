@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.1.0-alpha.136 - 2026-11-17
+
+- Removed: the per-feature Work documents (`.starciwork/features/<feature>/**` and the `index.yaml` catalog) from the harness. `.starciwork` holds `workspace.yaml`, the concepts, the brand and, in full, the shell, the run resources and the derived summaries (`contexts/project/work.md`, rewritten: PROJECT-WORK-1, -2, -3 and -6 are gone; PROJECT-WORK-4 keeps a provider's research in its concept and the building task's contract; PROJECT-WORK-5 and -7 hold).
+- Removed: the `uat` label and the Work-flow walk it ran: `ops/ops/uat.md`, the `uat-flow` check kind and preset, the `uat-red-repairs-build` route, `task send --uat`, a workflow task's `uat:` form (now refused as an unknown key), the uat record and `evidence.yaml` writes of `task verify` (`blockWork`, the `work` field of its json and of a settlement), and the uat record helpers of `harness/work.ts`. `starci uat run` stays: the receipted Playwright walk of an `audit` task.
+- Changed (`ops/lanes.yaml`, `harness/lanes.ts`): lanes walk the Work records that remain, the brand (docs) and each environment resource (deliver, review); the feature lanes (business, architecture, ui, impl-fe, impl-be, uat, integration), `heldUntil`, `over: feature`, `optionalWhen` and the satisfiers `direction-approved`, `assets-exist`, `owners-landed` and `uat-receipted` are gone, and `TASK_NOT_SPLIT` counts the lane records a task carries.
+- Changed (`ops/routes.yaml`, `harness/routes.ts`): a route `to: build` resolves to the build label of a Work record's lane the task is over, else `code`, so a red `verify` or `review` keeps its repair route.
+- Changed (`ops/ops/draw.md`, `image.md`, `audit.md`): a screen is described by the task's contract and its direction lives under the task's allowPaths, not in a `ui` record; the harness UI's graph node takes its side from the contract's `side` input.
+- Changed (contexts): PROJECT-2 travels from a goal to a settled commit; `contexts/project/README.md`, `lite.md`, `full.md`, `lint.md`, `stacks.md`, `harness/state.md`, `harness/rules.md`, `code/be/infra.md`, `code/be/webhooks.md` and the skill's `define-workflow.md` and `uat.md` follow; the anatomy and section indexes are regenerated.
+- The CLI still requires the @starci/hfs its package.json names; `check pins` is `pending` until the publish run's cli-follow step raises it to the pin, 6.13.15 (CONTRIB-20).
+
 ## 1.1.0-alpha.135 - 2026-11-16
 
 - Changed: the CLI requires @starci/hfs@6.13.14, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).

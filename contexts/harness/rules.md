@@ -33,7 +33,7 @@ These hold for every role and every task. A rule with a gate names it; the other
    [AGENTS.md](../../AGENTS.md) links for every host, never in one runtime's hooks or settings. Held by review (the brief check of "Looking a
    rule up"); `starci contexts search --eval` measures that every recorded miss is found.
 8. **Machine actions are the harness's.** An agent never installs Playwright or browsers, or runs Docker by hand: a
-   `uat` worker writes a short Playwright script and calls `starci uat run`, which runs it in the image pinned in
+   worker that walks a screen (an `audit` task) writes a short Playwright script and calls `starci uat run`, which runs it in the image pinned in
    [ops/uat.yaml](../../ops/uat.yaml) and keeps the playwright package inside that image, never in the product.
 9. **The harness holds no app's business.** No source of this repository (`cli/`, `ops/`, `policy/`, `contexts/`,
    `packages/`, `skills/`, `app/`, `images/`, the templates and the root documents) names or encodes one app: no product

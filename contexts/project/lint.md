@@ -72,11 +72,9 @@ Each leaves this list the day a machine checks it.
 - **Interface decisions.** Which component, rank, ramp step, state coverage and composition a screen uses
   ([contexts/ui](../ui/README.md)); [ui/proof/thresholds.yaml](../ui/proof/thresholds.yaml) holds the numbers a
   proof gate would read, and no gate of this repository runs it.
-- **Work record shape.** Every fact of [work.md](work.md) for the families other than `work/uat-flow@1`: schemas and
-  fields per family, id form, leaf-only state, proof that cannot outrun its target. The harness validates a uat flow
-  record and its evidence file only when a uat task is sent, judged or settled (`cli/src/harness/work.ts`).
-- **Who writes a record's state.** Outside the uat records the settle writes, a record's state is a `docs` task's edit,
-  held by review (PROJECT-WORK-5 in [work.md](work.md)).
+- **Work record shape.** The schema and fields of a brand, shell or resource record of [work.md](work.md); no check reads
+  them beyond the paths slot `app.starciwork` admits.
+- **Who writes which part of the Work.** PROJECT-WORK-5 in [work.md](work.md), held by review.
 - **The `hfs.json` profile key.** Its spelling and default are PROJECT-1 in [README.md](README.md); no check refuses
   a profile under another key.
 - **Pins.** That an app's `@starci/*` and shared dependencies sit at the versions of [stack/pins.yaml](../stack/pins.yaml):

@@ -21,7 +21,7 @@ export interface ReviewMainOptions {
   apply: (target: string, receipt: string, args: string[]) => ReviewAnswer;
 }
 
-/** How many directories below its start a record walk descends (features/<f>/ui/<r> is 3). */
+/** How many directories below its start a record walk descends. */
 const RECORD_DEPTH = 12;
 /** Directories a record walk never enters: a record's own files and the kernel's evidence hold no records. */
 const RECORD_SKIP = Object.freeze(['node_modules', 'assets', 'evidence', 'runs', '_derived', 'kernel-evidence', 'kernel-strays', 'kernel-approvals']);

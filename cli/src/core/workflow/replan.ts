@@ -3,13 +3,12 @@ import { contractHash } from "../../harness/contract.js"
 import { assertOwnSources } from "../../harness/foreign-source.js"
 import { assertDeliverables, assertScope, currentGoal, withGoal } from "../../harness/goal.js"
 import type { Goal } from "../../harness/goal.js"
-import { applyChanges, buildGraph, isGeneratedKey, readPlanSource, uatWalksOf } from "../../harness/graph.js"
+import { applyChanges, buildGraph, isGeneratedKey } from "../../harness/graph.js"
 import type { Classified, PlanNode, PlanPlace, PlanSource, PlanTask, WorkflowHeader } from "../../harness/graph.js"
 import { assertFlow, flowCheckoutOf } from "../../harness/lanes.js"
 import type { Ops } from "../../harness/ops.js"
 import { carryHashes, classifyReplan, freshRounds, readResults, revertRows } from "../../harness/reconcile.js"
 import type { Results } from "../../harness/reconcile.js"
-import { assertRunPlace } from "../../harness/work.js"
 import { graphVersions, retryOfNode } from "../../harness/workflow.js"
 import type { Snapshot } from "../../harness/workflow.js"
 import { asRefusal, Refusal } from "../../shared/errors.js"
@@ -68,16 +67,6 @@ const withRequires = (header: WorkflowHeader, requires: WorkflowHeader["requires
     return requires === undefined ? rest : { ...rest, requires }
 }
 
-/**
- * Reads the replan file of a workflow and checks the run place of every uat walk it asks for (assertRunPlace), the async part
- * a replan needs before buildReplan judges it against the ledger.
- */
-export const readReplanSource = async (file: string, ops: Ops, place: PlanPlace): Promise<PlanSource> => {
-    const source = readPlanSource(file, ops, place)
-    await Promise.all(uatWalksOf(source, ops).map((walk) => assertRunPlace(place.repo, walk)))
-    return source
-}
-
 /** What a replan file asks for before the graph is built: the goal, the tasks, the Kernel's per-key choices, and the problems so far. */
 interface Asked {
     readonly header: WorkflowHeader
@@ -93,10 +82,10 @@ type ChangeSource = Extract<PlanSource, { readonly kind: "change" }>
 type WorkflowSource = Exclude<PlanSource, ChangeSource>
 
 /** A change file applied to the current graph; it must name this workflow. */
-const tasksOfChange = (snapshot: Snapshot, file: string, source: ChangeSource, ops: Ops, place: PlanPlace): Asked => {
+const tasksOfChange = (snapshot: Snapshot, file: string, source: ChangeSource, ops: Ops): Asked => {
     const { workflow } = snapshot
     if (source.workflow !== workflow.id) throw new Refusal("WORKFLOW_MISMATCH", `${file} changes workflow ${source.workflow}, not ${workflow.id}`)
-    const applied = applyChanges(snapshot.nodes, source.changes, source.dir, workflow.header.base, ops, { workflow: workflow.id, place })
+    const applied = applyChanges(snapshot.nodes, source.changes, source.dir, workflow.header.base, ops)
     return { ...applied, header: workflow.header, reason: source.reason ?? `change file ${file}` }
 }
 
@@ -138,7 +127,7 @@ const nodesOf = (db: DatabaseSync, snapshot: Snapshot, tasks: readonly PlanTask[
 const STARTS: ReadonlySet<Classified["class"]> = new Set<Classified["class"]>(["redo", "add", "rework", "redo-live", "revert"])
 
 /**
- * Builds the replan a file asks for (`source`, read by readReplanSource): a change file (add, edit, remove, retry, accept)
+ * Builds the replan a file asks for (`source`, read by readPlanSource): a change file (add, edit, remove, retry, accept)
  * applied to the current graph, or a desired graph (a whole workflow file of the same id and runner) reconciled against it by
  * task key. The header always carries the current goal (only a goal change moves it); the new graph must be fit, inside the
  * goal's scope ceiling (SCOPE_EXCEEDED), keep every deliverable of that goal (GOAL_SHRUNK), walk the lane of every Work record it
@@ -150,7 +139,7 @@ const STARTS: ReadonlySet<Classified["class"]> = new Set<Classified["class"]>(["
 export const buildReplan = (db: DatabaseSync, snapshot: Snapshot, file: string, source: PlanSource, ops: Ops, place: PlanPlace, options: ReplanOptions = {}): Replan => {
     const { workflow } = snapshot
     const goal = currentGoal(db, workflow.id, workflow.header, workflow.goalVersion)
-    const asked = source.kind === "change" ? tasksOfChange(snapshot, file, source, ops, place) : tasksOfWorkflowFile(snapshot, file, source, options)
+    const asked = source.kind === "change" ? tasksOfChange(snapshot, file, source, ops) : tasksOfWorkflowFile(snapshot, file, source, options)
     if (asked.problems.length > 0) throw unfit(workflow.id, asked.problems)
     const header = withRequires(withGoal(asked.header, goal), workflow.header.requires)
     const results = options.results ?? readResults(db, workflow.id, snapshot.tasks)

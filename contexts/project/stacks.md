@@ -373,7 +373,7 @@ mock and called verified.
 
 Rules learned from running apps on developer hosts; each holds in every app.
 
-- **Through the ingress.** The person and the `uat` worker open the app at the dev ingress origin
+- **Through the ingress.** The person and the `audit` worker open the app at the dev ingress origin
   (PROJECT-STACKS-4); a dev environment whose app processes run natively declares no compose ingress, and the origin `up` prints (the web
   process on its loopback port) is that origin.
 - **Bind Next to `localhost`.** A Next dev server started with `-H 127.0.0.1` normalizes its own host to `localhost`

@@ -68,7 +68,7 @@ for (const edition of ['lite', 'full']) {
   });
 
   test(`${edition}: a Work tree inside the front-end side is refused, the app root keeps it`, (context) => {
-    assert.deepEqual(paths(sideRun(context, 'fe', edition, { ...ROOT_FE, ...APP_FE, '.starciwork/index.yaml': 'records: []\n' }), 'HFS_WORK_IN_FE'), ['.starciwork']);
+    assert.deepEqual(paths(sideRun(context, 'fe', edition, { ...ROOT_FE, ...APP_FE, '.starciwork/workspace.yaml': 'schema: work/workspace@1\n' }), 'HFS_WORK_IN_FE'), ['.starciwork']);
     assert.deepEqual(paths(sideRun(context, 'fe', edition, { ...ROOT_FE, ...APP_FE }), 'HFS_WORK_IN_FE'), []);
   });
 

@@ -1,5 +1,5 @@
 // proves: HFS_STARCIWORK_LITE_FORBIDDEN@lite
-// Full retains Work features; the paired fixture below proves that exemption.
+// Neither edition admits per-feature Work documents; lite refuses them by its boundary, full judges no Work path by it.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -37,7 +37,7 @@ for (const edition of ['lite', 'full']) {
       assert.deepEqual(untracked.map(({ code, path: file }) => ({ code, file })), [{
         code: 'HFS_STARCIWORK_LITE_FORBIDDEN', file: '.starciwork/features',
       }], 'removing a leftover from the index must not hide the local forbidden tree');
-    } else assert.deepEqual(tracked, [], 'full retains the feature tree');
+    } else assert.deepEqual(tracked, [], 'the lite boundary does not judge a full app');
 
     fs.rmSync(path.join(repoRoot, '.starciwork', 'features'), { recursive: true, force: true });
     assert.deepEqual(findings(allowed, true), [], 'workspace metadata, brand evidence and the concept records remain legal');
