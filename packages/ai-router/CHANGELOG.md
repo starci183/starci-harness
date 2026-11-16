@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.0 - 2026-11-17
+
+Media beside chat: images, speech and video jobs, key-gated like the chat providers. Additive: nothing declared before changes, and `AiRouter` gains no method. The README section "Media: images, speech and video" lists each vendor page read 2026-11-17.
+
+- Added: `createMedia({ env?, fetch?, timeoutMs?, baseUrls?, catalogue?, now? })` with `generateImage({ prompt, size?, n?, referenceImages?, model?, provider? })` (`{ images: [{ bytes, mime }], model, provider, usage: { units } }`), `synthesizeSpeech({ text, voice?, format? })` (`{ bytes, mime, model, provider, usage: { characters } }`), `startVideo({ prompt, seconds?, size? })` (`{ jobId, provider }`), `getVideo(jobId)` (`running`, `done` with bytes and mime, or `failed` with error and failureClass), `availableMediaModels()` (`{ kind, id, provider, label }`) and `auto(kind)`. A provider with no key (`OPENAI_API_KEY`, `GEMINI_API_KEY`, `ELEVENLABS_API_KEY`) is absent and nothing fails at boot.
+- Added: images from OpenAI (`gpt-image-2.5-flare`, `gpt-image-2.5-sunburst`; generations, and edits with multipart `image[]` for reference images) and Google (`gemini-nano-banana-2.1`, `gemini-3-pro-image`, `gemini-3.1-flash-lite-image` through `POST /v1beta/interactions`); speech from OpenAI (`gpt-4o-mini-tts`, shut down 2027-01-06 per its page) and ElevenLabs (`eleven_multilingual_v2`); video from Google (`gemini-omni-1.2-flash`).
+- Added: `MediaError` with `failureClass` (`refused`, `transient`, `auth`, `invalid_request`, `not_found`, `unavailable`), `retryable` and the code `AI_ROUTER_MEDIA_<CLASS>`; `classifyMediaStatus`, `MEDIA_CATALOGUE`, `AI_ROUTER_MEDIA_ERROR_CODES`. A call without `model` fails over across models and keys on `auth` and `transient`; `refused` and `invalid_request` stop at once.
+- Left out because the pages do not support it: OpenAI video (Sora and the Videos API are shut down, per its guide), Google Veo (preview models shut down, per its video page), fal (its queue page documents no video model, input or output). Google's pages show no usage fields or blocked-result shape, so image usage is the images returned and an answer with no image is `refused`; Google video is documented as one synchronous request, so its job lives in this process (kept an hour after it finishes, lost on restart).
+
 ## 0.8.0 - 2026-11-16
 
 The router knows the current Claude 5 and OpenAI models by id, offers OpenRouter's catalog at run time, lists what a caller may choose, and routes `auto-*` profiles by effort tier within the providers that have keys. Additive: nothing declared before changes.

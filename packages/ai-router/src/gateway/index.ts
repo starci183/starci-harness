@@ -7,6 +7,8 @@ export { keysFromEnv, poolFromEnv, providersFromEnv, virtualKeyFromEnv } from ".
 export type { EnvPoolSpec, EnvProviderSpec, EnvSource, VirtualKeyEnvSpec } from "../env.ts"
 export { availableModels, clearOpenRouterCatalogCache, defaultProviderSpecs, EFFORT_TIERS, fetchOpenRouterModels, KNOWN_MODELS, knownModelConfigs, withAutoProfiles } from "../known-models.ts"
 export type { AvailableModel, DefaultProvidersOptions, EffortTier, KnownModel, OpenRouterCatalogOptions } from "../known-models.ts"
+export { AI_ROUTER_MEDIA_ERROR_CODES, classifyMediaStatus, createMedia, MEDIA_CATALOGUE, MediaError } from "../media.ts"
+export type { AvailableMediaModel, CatalogueEntry, ImageRequest, ImageResult, MediaBlob, MediaErrorCode, MediaFailureClass, MediaKind, MediaOptions, MediaRouter, SpeechRequest, SpeechResult, VideoJob, VideoRequest, VideoStatus } from "../media.ts"
 export { PROVIDER_PRESETS } from "../providers.ts"
 export type { Protocol, ProviderPreset, QuotaWindow } from "../providers.ts"
 export { openSqliteStateStore, redisStateStore, STATE_STORE_SCHEMA } from "../state-stores.ts"

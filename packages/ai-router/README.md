@@ -110,6 +110,39 @@ await router.chat({ messages }, { profile: "auto-high" }) // opus first, then th
 await router.chat({ model: "openrouter/vendor/model", messages }) // sent to OpenRouter as vendor/model
 ```
 
+## Media: images, speech and video
+
+Chat is not the only thing an app asks of a vendor. `createMedia` generates images, synthesizes speech and runs video jobs over the providers whose keys are in env, key-gated exactly like chat: a provider with no key is absent from `availableMediaModels()` and nothing fails at boot. It is separate from `createRouter`, so no `AiRouter` implementer changes.
+
+```ts
+import { createMedia } from "@starci/ai-router/gateway"
+
+const media = createMedia() // reads OPENAI_API_KEY, GEMINI_API_KEY, ELEVENLABS_API_KEY (and _2.., _API_KEYS) from process.env
+media.availableMediaModels() // [{ kind: "image", id: "gpt-image-2.5-flare", provider: "openai", label: "GPT Image 2.5 Flare" }, ...]
+media.auto("image") // the first available model of the kind, the one a call without `model` tries first
+
+const { images, model, usage } = await media.generateImage({ prompt: "a red fox", size: "1024x1024", n: 2, referenceImages: [{ bytes, mime: "image/png" }] })
+const speech = await media.synthesizeSpeech({ text: "Hello", voice: "marin", format: "mp3" }) // { bytes, mime, model, provider, usage: { characters } }
+const { jobId } = await media.startVideo({ prompt: "waves at dusk", seconds: 8, size: "16:9" })
+const state = await media.getVideo(jobId) // { status: "running" } | { status: "done", bytes, mime, model } | { status: "failed", error, failureClass }
+```
+
+| kind | provider (key) | models | documentation read 2026-11-17 |
+|---|---|---|---|
+| image | OpenAI (`OPENAI_API_KEY`) | `gpt-image-2.5-flare`, `gpt-image-2.5-sunburst`; reference images through `/v1/images/edits` | developers.openai.com/api/reference/resources/images/methods/generate, developers.openai.com/api/docs/guides/image-generation |
+| image | Google (`GEMINI_API_KEY`) | `gemini-nano-banana-2.1`, `gemini-3-pro-image`, `gemini-3.1-flash-lite-image` through the Interactions API | aistudio.google.com/docs/image-generation |
+| speech | OpenAI | `gpt-4o-mini-tts` (the page says it shuts down 2027-01-06) | developers.openai.com/api/docs/guides/text-to-speech |
+| speech | ElevenLabs (`ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID` for the default voice) | `eleven_multilingual_v2` | elevenlabs.io/docs/api-reference/text-to-speech/convert |
+| video | Google | `gemini-omni-1.2-flash`, 3 to 15 seconds | aistudio.google.com/docs/omni |
+
+A call without `model` tries the available models of its kind in the order above and each model's keys in order; a 401 or 403 moves to the next key, a 429, 5xx, timeout or network failure to the next model, and a content-policy refusal or an invalid request stops at once. `model` and `provider` pin a call. `OPENAI_BASE_URL` and `createMedia({ baseUrls })` move a base URL; `fetch` replaces the HTTP client (the specs use fakes).
+
+Usage is what the vendor pages state: images report `units` (the images returned, plus OpenAI's token counts), speech reports `characters` (neither page documents a duration). `size` is `<width>x<height>` for OpenAI and read as an aspect ratio by Google (`16:9` is also accepted); video reads only its orientation.
+
+Every failure is a `MediaError` with `failureClass`: `refused` (content policy: OpenAI's moderation block, Google answering text and no image, a blocked video prompt), `transient` (429, 408, 409, 425, 5xx, timeout, network; `retryable` is true), `auth` (401, 403), `invalid_request` (any other 4xx, a bad argument, a voice or format no available provider serves), `not_found` (an unknown video job) and `unavailable` (no provider with a key serves the kind). Its `code` is `AI_ROUTER_MEDIA_<CLASS>`; no message holds a key.
+
+Video is a job: `startVideo` returns `{ jobId, provider }` at once and `getVideo` polls. Google's page documents the video call as one synchronous request with no background mode, so the job is that request held by this process: a restart loses a running job (`getVideo` then answers `not_found`), and a finished job is kept one hour. OpenAI video is not offered because the Sora models and the Videos API are shut down, Google Veo because its preview models are shut down, and fal because its queue page documents no video model, input or output.
+
 ## Run it as a gateway
 
 One process (one container) holds the pool, the virtual keys and the admin API. The package declares no `bin` (the
