@@ -1,5 +1,10 @@
 # Changelog
 
+## 6.13.14 - 2026-11-17
+
+- Fixed (`runtime/scripts/hfs/rules/services.mts`, R163 `HFS_SERVICE_PLACEMENT`): the manifest of an agent workbench, `packages/<pkg>/workbench/<app>/package.json` (a standalone Vite app a package's cli builds and uploads), is no second service root. It is judged as a front-end app: no `be/` folder beside it, not a member of the root `workspaces`, every dependency an exact version; otherwise the finding names what drifted. Any other nested `package.json`, and any Dockerfile outside `be/apps/<service>/`, stays refused. Closes ticket tk-43cb47279507. Specs: `hfs-services-legacy-coverage.spec.mts` (lite and full), `hfs-microservice-rules.spec.mts`.
+- Changed (contexts, `rules.yaml` R163): the law and BE-SERVICES-1 (`contexts/code/be/services.md`) name the workbench manifest.
+
 ## 6.13.13 - 2026-11-17
 
 - Added (`runtime/scripts/hfs/stack-local-config.mts`, `gallery.mts`, `sync/`): a dev tunnel route named `gallery` with `port: gallery` (`environments.<env>.local.tunnel.routes[]`) publishes the screenshot gallery on its derived port (base + 50); it needs `local.basePort`, and every other route still names a declared port. `starci app sync` renders the declared gallery hosts into `server.allowedHosts` of the managed `gallery/vite.config.js` (the template variable `galleryAllowedHosts`, `[]` when none), so Vite no longer answers 403 to the tunnel host; `stack up --execute` routes the host to the gallery port like any other route.
