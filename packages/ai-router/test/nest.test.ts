@@ -250,6 +250,7 @@ describe("the package entries", () => {
     test("the gateway entry exports the Nest-free router, gateway and key stores", () => {
         const names = ["AI_ROUTER_ERROR_CODES", "AiRouterError", "KEY_STORE_SCHEMA", "KeyAdmin", "KeyAdminError", "MemoryKeyStore", "MountedKeyError", "createGateway", "createRouter", "loadGatewayConfig", "openKeyStore", "openSqliteKeyStore", "parseGatewayConfig", "serveGateway",
             "EMPTY_RECORD", "MemoryStateStore", "PROVIDER_PRESETS", "STATE_STORE_SCHEMA", "classifyFailure", "keysFromEnv", "openSqliteStateStore", "parseHealthRecord", "poolFromEnv", "providersFromEnv", "readProviderError", "redisStateStore", "toHealthRecord", "virtualKeyFromEnv",
+            "LOCAL_DEADLINE_MS", "LOCAL_FIRST_TOKEN_TIMEOUT_MS", "LOCAL_MODELS", "holdsModel", "localModel", "probeLocal", "probeLocalProvider",
             "EFFORT_TIERS", "KNOWN_MODELS", "availableModels", "clearOpenRouterCatalogCache", "defaultProviderSpecs", "fetchOpenRouterModels", "knownModelConfigs", "withAutoProfiles",
             "AI_ROUTER_MEDIA_ERROR_CODES", "MEDIA_CATALOGUE", "MediaError", "classifyMediaStatus", "createMedia"]
         assert.deepEqual(Object.keys(gateway).sort(), names.sort())

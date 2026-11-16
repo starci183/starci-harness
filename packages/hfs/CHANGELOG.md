@@ -1,5 +1,9 @@
 # Changelog
 
+## 6.13.17 - 2026-11-17
+
+- Changed (`knowledge/hfs/canon-pins.yaml`): `@starci/ai-router` 0.10.0 (the `local` provider kind: a self-hosted OpenAI-compatible GPU endpoint such as Ollama, keyless allowed, cost 0, MRL embedding truncation) and `@starci/test-world` 2.2.1 (a run shrinks its slots when Redis databases run out instead of failing). The Grammar family 0.40.1 (Switch `kind="toggle" | "compact"`) is admitted by the existing `~0.40.0` range.
+
 ## 6.13.16 - 2026-11-17
 
 - Changed (`knowledge/hfs/canon-pins.yaml`): the Grammar family moves to `@starci/grammar`, `@starci/eslint-grammar-core` and `@starci/eslint-grammar-offset-pop` 0.40.0 (`~0.40.0`: one field look, DataTable flat by default, the figures ribbon, the theme hooks) and `@starci/stylelint-canon` to 2.9.0 (brand.css may set the Grammar theme hooks).

@@ -43,6 +43,7 @@ package's. The table is what `PROVIDER_PRESETS` (`src/providers.ts`) encodes.
 | `openai` | `https://api.openai.com/v1` | OpenAI | `Authorization: Bearer` | yes (`text-embedding-3-small` 1536, `-large` 3072, `dimensions` accepted) | `OPENAI` | developers.openai.com/api/docs/guides/error-codes, /rate-limits, /embeddings |
 | `gemini` | `https://generativelanguage.googleapis.com/v1beta/openai` | OpenAI compatibility (beta) | `Authorization: Bearer` | yes (`gemini-embedding-001`, default 3072) | `GEMINI` | ai.google.dev/gemini-api/docs/openai, /api-errors, /rate-limits, /embeddings, /troubleshooting |
 | `groq` | `https://api.groq.com/openai/v1` | OpenAI | `Authorization: Bearer` | not declared (unverified) | `GROQ` | console.groq.com/docs/openai, /errors, /rate-limits |
+| `local` | `http://localhost:11434/v1` (Ollama) | OpenAI | `Authorization: Bearer`, only when a key is set | yes (`/v1/embeddings`, else Ollama's `/api/embed`) | `LOCAL_AI` | docs.ollama.com/api/openai-compatibility, docs.ollama.com/gpu (read 2026-11-17) |
 | `openai-compatible` | required | OpenAI | `Authorization: Bearer` | yes | the app names one | docs.ollama.com/api/openai-compatibility, docs.vllm.ai/en/latest/serving/online_serving/ |
 
 Facts that shaped the code:
@@ -78,6 +79,7 @@ status alone.
 | `auth` | the key is blacklisted until its secret changes (or `authDisableMs`) | at once, another key |
 | `transient` | the key's and provider's breakers count it | after backoff, another lane |
 | `invalid_request` | none | no: the caller's request is wrong |
+| `model_not_found` | none | no: a `local` server does not hold the model (404 with a JSON error); the caller pulls it |
 
 | provider | rate_limit | quota (window) | auth | transient | invalid_request |
 |---|---|---|---|---|---|
@@ -89,6 +91,7 @@ status alone.
 | Gemini | 429 per-minute (`RESOURCE_EXHAUSTED`, `rate_limit_exceeded`, `too_many_requests`) | 429 `quota_exceeded` or a per-day limit (next midnight America/Los_Angeles); 402 `payment_required`; 400 `failed_precondition` naming billing | 401 `authentication`, "API key not valid", 403 `permission_denied`, "reported as leaked" | 500, 503, 504 | 400, 404 |
 | Groq | 429 tokens per minute | 429 on requests per day (until `x-ratelimit-reset-requests`) | 401 | 498 (flex capacity), 500, 502, 503 | 400, 413, 422 |
 | openai-compatible | 429 | 402 | 401, 403 | 5xx, connection refused | other 4xx |
+| local | 429 | 402 | 401, 403 | 5xx, connection refused (`network`) | other 4xx; `model_not_found` for a 404 with a JSON error |
 
 Gemini words its per-minute 429 like a spent quota ("You exceeded your current quota"); only a per-day limit or the
 `quota_exceeded` code is treated as one, else a short cooldown would become a day-long blacklist. The fake provider's
@@ -417,6 +420,51 @@ const pool = poolFromEnv({
     store: await openSqliteStateStore("/data/ai-router-state.sqlite"),
 })
 ```
+
+## The local provider
+
+`kind: "local"` is an endpoint on the owner's own hardware (Ollama, vLLM, the llama.cpp server). It reuses the `openai`
+protocol, `openAiWire` and the classifier of `openai-compatible`; a mechanism was added only where the 0.9.0 code, read
+at the lines below, cannot express the behaviour with an existing kind. Line numbers are 0.9.0's.
+
+| behaviour | why `openai-compatible` cannot | what 0.10.0 adds |
+|---|---|---|
+| a key that may be absent | `open` turns an unset key into an `auth` failure with `missingKey` (`router.ts:356-357`), which blacklists the key until a secret appears (`pool.ts:577`); `validateConfig` refuses a provider with no keys (`config.ts:173`); `poolFromEnv` drops a provider with no key in env (`env.ts:107`) | `keysOf` (`config.ts`): a `ref` key becomes an env key, and a `local` provider with no key gets one that resolves to nothing; `open` skips the check for `local`, sends no `Authorization`; `providersFromEnv` keeps a `local` provider whose base URL is set |
+| the first-token wait | one number, `policy.timeoutMs`, starts every attempt and restarts at every chunk (`router.ts:470`, `526`, `541`, `547`); a model loading into VRAM exceeds 60 s while the silence between chunks should stay short | `firstTokenTimeoutMs` (provider, preset default 120000): the first arm of an attempt and the arms before the first token use `max(timeoutMs, firstTokenTimeoutMs)`; later arms use `timeoutMs` |
+| the call deadline | `deadlineMs` defaults to 120000 for every call (`config.ts:299`), shorter than a cold load plus a long answer | 300000 when every provider the call can reach is local (`LOCAL_DEADLINE_MS`) |
+| cost 0 | `costOf` is `undefined` for a model without a price (`pool.ts:125`), so a local call reports no cost | `local` usage counts at 0 (`pool.ts`, in `succeeded`), a declared price still wins |
+| a missing model | a missing model is a 404, which every kind classifies `invalid_request` with a bad request (`classify.ts:134`) | class `model_not_found`: a `local` 404 with a JSON error body, not retryable (`errors.ts:30`'s set does not list it) |
+| the embeddings path | `openAiWire.embeddings` has one path and `open` one `fetch` (`wire/wire.ts:54`, `router.ts:370`) | `localWire.embeddingsFallback`: on a 404 from `/v1/embeddings`, `POST /api/embed` at the server root, its answer adapted by `embeddingsResponse` |
+| a vector cut to a size | the dimension filter keeps only models declared at the asked length (`pool.ts:217`) and the answer is checked against the declaration (`router.ts:654`) | `truncate: "mrl"`: the lane is kept for any asked size, the vector is cut and renormalized (`src/vectors.ts`) |
+| isolation | `validatePolicy` knows names, not kinds (`config.ts:100`) | `isolationProblem` at load (defaults and profiles) and at each call (`resolvePolicy`) |
+
+What an existing mechanism already does, so nothing was added: an unreachable endpoint is a `fetch` rejection that
+`AttemptScope.classify` turns into a `network` failure (`router.ts:148`), which is retryable (`errors.ts:30`), feeds the key's and
+the provider's breaker (`pool.ts:580`) and backs off like a `transient` one. That is the class a caller falls back on; a new
+`unavailable` class would repeat it. Health and model discovery are not an attempt, so `probeLocal` (`src/local.ts`) is a
+function beside `fetchOpenRouterModels` (`known-models.ts:99`), not a method of `AiRouter`: a method would break every
+implementer of the interface.
+
+### Local isolation
+
+A local provider and a hosted one never share a chain by accident. The chain of a call is its candidates: the model and fallbacks
+(or candidates) of the call, its profile and the defaults, resolved to providers (narrowed by `providers`). `isolationProblem` refuses it
+when one name is served by both kinds (a swap nobody asked for), or when both kinds appear and any candidate does not name its
+`provider`. A profile whose candidates all name their provider may list both; that listing is the explicit statement. It runs in
+`validateConfig` for the defaults and every profile, so a bad pool does not start, and in `resolvePolicy` for the merge of the
+call, so a call cannot build the bridge a profile avoided. A pool with no `local` provider skips the check and routes as before.
+`withAutoProfiles` draws only from `KNOWN_MODELS`, which names no local model, so `auto` never reaches the GPU.
+
+### Truncating an embedding
+
+An MRL model packs its meaning into the leading numbers, so `v[0:N] / ||v[0:N]||` is a valid N-dimensional vector and the vector
+of a smaller size is the prefix of a larger one up to scale. `truncate: "mrl"` makes the router the only party that cuts:
+it removes `dimensions` from the request (Ollama documents `dimensions` on `/api/embed` and `/v1/embeddings`, but a server, a model or a
+version may ignore it, and a vector the endpoint cut and one the router cut would differ), takes the native vector, cuts it to
+`request.dimensions ?? model.dimensions` and normalizes. A vector shorter than the cut, a non-integer size and base64 are the caller's
+mistakes (`invalid_request`). A model without `truncate` is unchanged: `dimensions` goes to the endpoint and the answer must
+match the declaration. The reason the app cuts at all: pgvector indexes `vector` to 2000 dimensions and `halfvec` to 4000, and the
+native vector of Qwen3 Embedding 8B has 4096.
 
 ## Constraints
 

@@ -115,6 +115,8 @@ export function classifyFailure(kind: ProviderKind, status: number | undefined, 
     const effective = info.status
     const out = (errorClass: ErrorClass, window?: QuotaWindow): Classified => ({ errorClass, code, ...(window === undefined ? {} : { window }) })
 
+    // A self-hosted server answers 404 with a JSON error for a model it does not hold (Ollama: not pulled; vLLM: not served); a 404 with no JSON body is a wrong path, the caller's request.
+    if (kind === "local" && effective === 404 && isPlainRecord(Array.isArray(body) ? body[0] : body)) return out("model_not_found")
     // OpenRouter's in-flight budget is a 402 that clears by itself: a short wait, not a spent quota.
     if (codes.includes("openrouter_in_flight_budget")) return out("rate_limit")
     if (effective === 401 || has(AUTH_CODES) || AUTH_MESSAGE.test(info.message)) {

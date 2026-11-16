@@ -7,6 +7,8 @@ import type { ModelConfig, ProviderConfig } from "../types.ts"
 export interface WireRequest {
     readonly path: string
     readonly body: Record<string, unknown>
+    /** True: `path` hangs from the server root (the base URL without its `/v1`), for a server's own API beside its OpenAI one. */
+    readonly native?: boolean
     /** What the adapter needs again to read this request's answer; the router hands it back untouched. */
     readonly context?: unknown
 }
@@ -31,6 +33,10 @@ export interface Wire {
     chat(body: Record<string, unknown>, model: ModelConfig, stream: boolean, provider: ProviderConfig): WireRequest
     /** An embeddings request. */
     embeddings(body: Record<string, unknown>, model: string): WireRequest
+    /** The request to send when the first embeddings path answers 404 (the endpoint is absent), in the server's own API; absent: no second path. */
+    embeddingsFallback?(body: Record<string, unknown>, model: string): WireRequest
+    /** An embeddings answer as an OpenAI `list` record; `context` is the request's. Absent: the answer already is one. */
+    embeddingsResponse?(json: Record<string, unknown>, context?: unknown): Record<string, unknown>
     /** A unary chat answer as an OpenAI `chat.completion` record; `context` is the request's. */
     chatResponse(json: Record<string, unknown>, context?: unknown): Record<string, unknown>
     /** A provider stream as OpenAI chunks; the router stops at the end of the iterable. `context` is the request's. */
@@ -70,6 +76,26 @@ export const openAiWire: Wire = {
                 return
             }
             if (Array.isArray(json.choices)) yield { kind: "chunk", chunk: json }
+        }
+    },
+}
+
+/**
+ * A self-hosted server's wire (Ollama, vLLM, llama.cpp): the OpenAI one, with the server's own embeddings API as the
+ * second path. Ollama's `POST /api/embed` takes `{ model, input }` and answers `{ model, embeddings: number[][],
+ * prompt_eval_count }`; it exists on every Ollama build that has embeddings at all, and `/v1/embeddings` on newer ones.
+ */
+export const localWire: Wire = {
+    ...openAiWire,
+    embeddingsFallback: (body, model) => ({ path: "/api/embed", native: true, body: { model, input: body.input }, context: { native: true } }),
+    embeddingsResponse: (json, context) => {
+        if (!isPlainRecord(context) || context.native !== true || !Array.isArray(json.embeddings)) return json
+        const prompt = typeof json.prompt_eval_count === "number" ? json.prompt_eval_count : 0
+        return {
+            object: "list",
+            model: typeof json.model === "string" ? json.model : "",
+            data: json.embeddings.map((embedding: unknown, index: number) => ({ object: "embedding", index, embedding })),
+            usage: { prompt_tokens: prompt, total_tokens: prompt },
         }
     },
 }

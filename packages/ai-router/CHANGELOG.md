@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.10.0 - 2026-11-17
+
+A self-hosted GPU as a provider: `kind: "local"` for Ollama, vLLM and the llama.cpp server. Additive: a pool with no `local` provider routes exactly as before, except that `ErrorClass` gains `model_not_found`. The README section "Local GPU (Ollama / vLLM / llama.cpp)" and docs/design.md "The local provider" give the design and cite the 0.9.0 lines that could not express each behaviour. Sources read 2026-11-17: docs.ollama.com/api/openai-compatibility, docs.ollama.com/api/embed, docs.ollama.com/gpu, ollama.com/library (qwen3-embedding, nomic-embed-text, bge-m3, qwen2.5), the pgvector README and NVIDIA's CUDA 12.8 release notes.
+
+- Added: `kind: "local"` (`PROVIDER_PRESETS.local`): the OpenAI protocol, default base URL `http://localhost:11434/v1`, env prefix `LOCAL_AI`. Keys are optional: `keys: []`, or `{ ref: "LOCAL_AI_API_KEY", optional: true }` (`RefKeyConfig`; `alias` defaults to the variable name, `KeyCommon.optional` is refused on any other kind). An unset key sends no `Authorization` header and is never blacklisted as missing. `poolFromEnv` keeps a `local` provider whose base URL is set (`LOCAL_AI_BASE_URL` or the spec's `baseUrl`) without a key, and leaves it out otherwise; nothing registers it for you, so `defaultProviderSpecs` is unchanged.
+- Added: cost 0: a `local` call's usage is counted at 0 in attempt events, `routing.cost`, `stats()` and budgets, with or without a price on the model.
+- Added: embeddings fall back to the server's own API: when `/v1/embeddings` answers 404 the call goes to Ollama's `POST /api/embed` at the server root and its answer is read as the OpenAI list (`Wire.embeddingsFallback`, `embeddingsResponse`, `WireRequest.native`).
+- Added: `ModelConfig.truncate: "mrl"` with `dimensions`: the router cuts each vector to `dimensions` (or to the call's own `dimensions`, any size from 1 to what the model answers) and L2-normalizes it, without relying on the endpoint honouring `dimensions`; a base64 request, a non-integer size or a vector shorter than the cut is `invalid_request`. pgvector indexes `vector` to 2000 dimensions and `halfvec` to 4000, so `qwen3-embedding:8b` (4096 native) is used cut to 1024.
+- Added: `ErrorClass` `model_not_found` (code `AI_ROUTER_MODEL_NOT_FOUND`, gateway 404 `model_not_found`, not retryable): a `local` 404 with a JSON error body, which is how Ollama and vLLM answer a model they do not hold. A 404 with no JSON body stays `invalid_request`. An unreachable endpoint stays `network` (retryable, feeds the breakers): the class a caller falls back on.
+- Added: `ProviderConfig.firstTokenTimeoutMs` (default 120000 on `local`): an attempt waits at least that long for the first answer or first token, while `timeoutMs` keeps governing the silence between chunks; a call whose providers are all local gets a 300000 ms deadline when the policy sets none (`LOCAL_FIRST_TOKEN_TIMEOUT_MS`, `LOCAL_DEADLINE_MS`).
+- Added: isolation checked at load and at each call: a model name both a local and a hosted provider serve, model names or fallbacks that put one kind behind the other, or defaults that do, are refused with an error naming the profile; a profile whose `candidates` each name their `provider` may list both. Pools without a `local` provider are not checked.
+- Added: `probeLocal({ baseUrl?, apiKey?, fetch?, timeoutMs? })` (`GET /v1/models`, else Ollama's `GET /api/tags`; unreachable is an `AiRouterError` of class `network` or `timeout`), `probeLocalProvider(provider)`, `holdsModel(probe, id)`; `LOCAL_MODELS` and `localModel(id, { dimensions? })` for `qwen3-embedding:8b` (4096, MRL), `nomic-embed-text`, `bge-m3`, `qwen2.5:7b` and `qwen2.5:3b`, priced at 0.
+- Added: the gateway config file takes `kind: local` with no keys, `keys[].ref` and `optional`, `firstTokenTimeoutMs` and `models[].truncate`.
+- Tests: `test/local.test.ts` runs against a keyless fake server that speaks the OpenAI API and Ollama's own; `test/local-smoke.test.ts` runs against a real server when one answers on `LOCAL_AI_BASE_URL` (default `http://localhost:11434/v1`) and skips otherwise.
+
+### Migration from 0.9
+
+- Code that switches over `ErrorClass` or `AI_ROUTER_ERROR_CODES` adds `model_not_found`.
+- `ProviderConfig.keys` is typed `(KeyConfig | RefKeyConfig)[]`; read keys through `keysOf(provider)` (not exported from the entries) if you iterate them.
+
 ## 0.9.0 - 2026-11-17
 
 Media beside chat: images, speech and video jobs, key-gated like the chat providers. Additive: nothing declared before changes, and `AiRouter` gains no method. The README section "Media: images, speech and video" lists each vendor page read 2026-11-17.

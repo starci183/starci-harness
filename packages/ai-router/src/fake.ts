@@ -182,6 +182,14 @@ export const PROVIDER_ERRORS = Object.freeze({
         overloaded: { status: 498, body: { error: { message: "Flex tier capacity exceeded", type: "capacity_exceeded" } } },
         bad_request: { status: 400, body: { error: { message: "'messages.0.name' : property 'name' is unsupported", type: "invalid_request_error" } } },
     },
+    local: {
+        rate_limited: { status: 429, body: { error: { message: "too many requests", type: "rate_limit_error" } } },
+        quota_exhausted: { status: 402, body: { error: { message: "payment required", type: "payment_required" } } },
+        invalid_key: { status: 401, body: { error: { message: "invalid api key", type: "authentication_error" } } },
+        overloaded: { status: 503, body: { error: { message: "server busy", type: "api_error" } } },
+        bad_request: { status: 400, body: { error: { message: "bad request", type: "invalid_request_error" } } },
+        model_missing: { status: 404, body: { error: { message: "model \"qwen2.5:7b\" not found, try pulling it first", type: "api_error", param: null, code: null } } },
+    },
     "openai-compatible": {
         rate_limited: { status: 429, body: { error: { message: "too many requests", type: "rate_limit_error" } } },
         quota_exhausted: { status: 402, body: { error: { message: "payment required", type: "payment_required" } } },

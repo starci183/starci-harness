@@ -48,6 +48,12 @@ export interface ModelConfig {
     /** The length of the vectors an embeddings model answers; a response of another length fails the attempt. */
     readonly dimensions?: number
     /**
+     * `mrl`: the model is Matryoshka-trained, so a vector cut to its first N numbers and scaled to unit length is a
+     * valid N-dimensional embedding. The router sends the request without `dimensions` (an endpoint may ignore it), cuts
+     * every vector to `dimensions` (or to the request's own `dimensions`) and L2-normalizes it. Needs `dimensions`.
+     */
+    readonly truncate?: "mrl"
+    /**
      * Request fields sent to this model when a chat request does not set them (`{ max_tokens: 32000, output_config:
      * { effort: "medium" } }`): what one model needs and another would refuse lives here, never in the app. Shallow: a
      * field the request sets replaces the whole default.
@@ -77,6 +83,8 @@ interface KeyCommon {
     readonly weight?: number
     /** The most requests this key carries at once in this process. */
     readonly maxConcurrency?: number
+    /** On a `local` provider: the endpoint may need no key, so an unset secret sends the request without credentials and never blacklists the key. Refused on any other kind. */
+    readonly optional?: boolean
 }
 
 /** A key read from an environment variable at each attempt. */
@@ -89,6 +97,17 @@ export interface ResolverKeyConfig extends KeyCommon {
     readonly resolve: KeyResolver
 }
 
+/**
+ * A key named by reference, the form of a `local` provider: `ref` is the environment variable that holds the secret,
+ * and `optional` says the endpoint may need none, so an unset variable sends the request without credentials instead of
+ * blacklisting the key. `alias` defaults to `ref`.
+ */
+export interface RefKeyConfig extends Omit<KeyCommon, "alias"> {
+    /** The environment variable that holds the secret. */
+    readonly ref: string
+    readonly alias?: string
+}
+
 /** One API key of a provider, given by reference: an environment variable name or a resolver. */
 export type KeyConfig = EnvKeyConfig | ResolverKeyConfig
 
@@ -97,7 +116,7 @@ export type KeyConfig = EnvKeyConfig | ResolverKeyConfig
  * embeddings, and how its errors are classified (docs/design.md, the provider matrix). `openai-compatible` (the default)
  * is any endpoint that speaks the OpenAI chat-completions API with a bearer key: Ollama, vLLM, Together, LiteLLM...
  */
-export type ProviderKind = "openai" | "anthropic" | "openrouter" | "qwen" | "deepseek" | "gemini" | "groq" | "openai-compatible"
+export type ProviderKind = "openai" | "anthropic" | "openrouter" | "qwen" | "deepseek" | "gemini" | "groq" | "openai-compatible" | "local"
 
 /** A provider's own spending cap, in the unit of the models' `cost`; past it the provider is no candidate until the next UTC day or month. */
 export interface ProviderBudget {
@@ -119,6 +138,12 @@ export interface ProviderConfig {
     /** The `max_tokens` sent to a provider that requires one (Anthropic) when the request sets none. Default 16000. */
     readonly defaultMaxTokens?: number
     /**
+     * How long an attempt waits for the first answer or first token (a model loading into GPU memory), when that is
+     * longer than the policy's `timeoutMs`, which keeps governing the silence between chunks. Default: the kind's
+     * (120000 for `local`, none elsewhere).
+     */
+    readonly firstTokenTimeoutMs?: number
+    /**
      * What an Anthropic provider does with the thinking blocks of an answer that calls tools. `drop` (the default) never
      * sends them back: the next request carries the turn without its reasoning, which the API accepts. `replay` keeps
      * each such turn in this process and sends it back exactly as it was received while the conversation before it is
@@ -126,7 +151,8 @@ export interface ProviderConfig {
      */
     readonly thinking?: "drop" | "replay"
     readonly budget?: ProviderBudget
-    readonly keys: readonly KeyConfig[]
+    /** One or more keys; a `local` provider may declare none (`keysOf` in config.ts is what the router reads). */
+    readonly keys: readonly (KeyConfig | RefKeyConfig)[]
     readonly models: readonly ModelConfig[]
 }
 
@@ -490,6 +516,7 @@ export type ErrorClass =
     | "network"
     | "stream"
     | "invalid_request"
+    | "model_not_found"
     | "cancelled"
     | "deadline"
     | "no_candidate"
