@@ -152,7 +152,7 @@ test('the columns a table entity inherits from the entity base of platform/datab
   for (const name of ['typescript', 'typeorm', 'reflect-metadata', 'pg']) shimPackage(be, name);
   const columns = await loadEntityColumns(root);
   assert.deepEqual(columns.map(({ column, type, nullable }): [string, string, boolean] => [column, type, nullable]).sort(([a], [b]) => a.localeCompare(b)), [
-    ['created_at', 'timestamp with time zone', false], ['id', 'uuid', false], ['owner_id', 'uuid', false], ['updated_at', 'timestamp with time zone', false],
+    ['created_at', 'timestamp with time zone', false], ['id', 'uuid', false], ['owner_user_id', 'uuid', false], ['updated_at', 'timestamp with time zone', false],
   ]);
   assert.ok(columns.every((column) => column.entity === 'WidgetEntity' && column.table === 'widgets'), 'the base maps no table of its own');
   const schema = columns.map(({ column, type, nullable }) => ({ schema: 'public', table: 'widgets', column, type, nullable, enumName: null, view: false }));

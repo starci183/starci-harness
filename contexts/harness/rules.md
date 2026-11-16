@@ -50,16 +50,22 @@ These hold for every role and every task. A rule with a gate names it; the other
    makes every other app inherit one app's decisions, and an agent reads an example as the law. It is
    held by review: no check lists an app's words, because such a list would itself be an app's knowledge inside the
    harness.
-10. **Read the repository's concepts before its code.** Before any change in a repository, read that repository's
-   `.starciwork/concepts`: `concepts/README.md` first, then the concept of every folder the task touches, and only then
-   the code ([contexts/project/work.md](../project/work.md) PROJECT-WORK-7). They hold the persistent shared context of
+10. **Read the repository's declarations, then its concepts, before its code.** Before any change in a repository, read
+   that repository's `.starcistacks/application-stacks.yaml` whole (the gates it declares off and their reasons, its components,
+   environments, ports, tunnel, secret members and backing services) and the `.starcistacks/<env>/README.md` of every environment the
+   task touches ([contexts/project/stacks.md](../project/stacks.md)); then its `.starciwork/concepts`: `concepts/README.md` first, the
+   `conventions` concept, then the concept of every folder the task touches, and only then the code
+   ([contexts/project/work.md](../project/work.md) PROJECT-WORK-7). A task that contradicts a declaration (it needs a gate the app
+   declares off, a port, a component or a service the stack does not declare) stops and asks the owner with both statements. They hold the persistent shared context of
    that repository: its terms, data model, naming and business rules, and the folders that hold them. A task that spans
    repositories reads each repository's concepts before editing it, and a brief names the concepts its reader opens.
    When that context changes, the concept is edited to the current truth in the same change. The rules of this tree are
    generic: they say how any app is built and never stand in for a concept or overrule one. A harness rule and a concept
    that cannot both hold are a contradiction put to the owner with both statements, and the concept stands until the
    owner answers. Why: an agent that reads the code first rebuilds the product's words and rules from the files it
-   happened to open, and a generic rule applied over a concept undoes it silently. Held by review.
+   happened to open, and a generic rule applied over a concept undoes it silently; an agent that skips the stack declaration
+   proves a gate the app switched off or starts a service on a port another one owns. Held by review, and R433
+   (`HFS_CONCEPT_CONVENTIONS_MISSING`) keeps every app's `conventions` concept and its catalog row.
 11. **Every reply to the owner says what the agent believes after checking.** Whatever the owner writes, a reply to him
    states what you actually believe after checking it, grounded in the code, the data or the settled decisions (the
    repository's concepts, rule 10). The settled architecture and prompts are the trusted core: do not float alternative

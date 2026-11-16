@@ -7,6 +7,7 @@ import { Refusal } from "../../shared/errors.js"
 import { captureNpm } from "../../shared/exec.js"
 import type { RunOptions } from "../../shared/exec.js"
 import { withHeavySlot } from "../../harness/heavy.js"
+import { installHazard } from "../../harness/install-guard.js"
 import { git, nulPaths } from "../../shared/git.js"
 import { cliPackageName } from "../version.js"
 
@@ -134,14 +135,21 @@ export const installStale = (folder: string): boolean => {
     return existsSync(lock) && statSync(lock).mtimeMs > statSync(installed).mtimeMs
 }
 
-/** Installs receive process options only after proving node_modules is private, including after the governor's wait. */
+/**
+ * Installs receive process options only after proving node_modules is private, including after the governor's wait: neither a link
+ * (DEPS_INSTALL_LINKED) nor a real folder another worktree links to (DEPS_INSTALL_SHARED), the install guard's two hazards (harness/install-guard.ts).
+ */
 const unlinkedInstallOptions = (folder: string, options: RunOptions = {}): RunOptions => {
     const modules = join(folder, "node_modules")
-    if (lstatSync(modules, { throwIfNoEntry: false })?.isSymbolicLink() !== true) return options
-    throw new Refusal(
-        "DEPS_INSTALL_LINKED",
-        `${modules} is a junction or symlink; npm will not install dependencies through it because that would mutate the shared target. Materialize a private node_modules for this checkout, or unlink only the link itself and install this checkout's lockfile before retrying; keep the shared target intact`,
-    )
+    if (lstatSync(modules, { throwIfNoEntry: false })?.isSymbolicLink() === true) {
+        throw new Refusal(
+            "DEPS_INSTALL_LINKED",
+            `${modules} is a junction or symlink; npm will not install dependencies through it because that would mutate the shared target. Materialize a private node_modules for this checkout, or unlink only the link itself and install this checkout's lockfile before retrying; keep the shared target intact`,
+        )
+    }
+    const hazard = installHazard(folder)
+    if (hazard !== undefined) throw new Refusal("DEPS_INSTALL_SHARED", hazard.message)
+    return options
 }
 
 /** Builds a package, installing missing or stale private dependencies; refuses DEPS_INSTALL_LINKED before reinstalling a linked install. */

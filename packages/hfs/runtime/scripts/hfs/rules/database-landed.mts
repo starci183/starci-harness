@@ -6,14 +6,17 @@ import { mergeBase } from '../../api/git/merge-base.mjs';
 import { sameText } from '../../lib/same-text.mjs';
 import { readText } from './read.mjs';
 import { defaultGit } from './database-migrations.mjs';
-import { DB_DYNAMIC_DDL, DB_MIGRATION_DESTRUCTIVE, isActiveMigration } from './database-constants.mjs';
+import { DB_DYNAMIC_DDL, DB_FOREIGN_KEY_INDEX, DB_FOREIGN_KEY_NAME, DB_MIGRATION_DESTRUCTIVE, DB_PRIMARY_KEY_SHAPE, isActiveMigration } from './database-constants.mjs';
 import type { Parsed } from './rule-types.mjs';
 
 /** What the downgrade reads of a finding: its code, level, file and message. */
 type LandableFinding = { code: string; level: string; path?: string | undefined; message?: unknown };
 
-/** The codes a landed migration reports as known items: the ones only a rewrite of the immutable file could clear. */
-export const LANDED_KNOWN_CODES: ReadonlySet<string> = new Set([DB_MIGRATION_DESTRUCTIVE, DB_DYNAMIC_DDL]);
+/**
+ * The codes a landed migration reports as known items: the ones only a rewrite of the immutable file could clear, and the key shape of
+ * R431, whose tables and foreign keys on the base are the backlog a new migration does not inherit (a later migration may still clear one).
+ */
+export const LANDED_KNOWN_CODES: ReadonlySet<string> = new Set([DB_MIGRATION_DESTRUCTIVE, DB_DYNAMIC_DDL, DB_PRIMARY_KEY_SHAPE, DB_FOREIGN_KEY_NAME, DB_FOREIGN_KEY_INDEX]);
 
 /** The merge-base the database rules compare with: of HEAD and `base` when named, else origin/main, else main; null when none resolves. */
 export function landedBase(repoRoot: string, base?: string): { ref: string; sha: string } | null {

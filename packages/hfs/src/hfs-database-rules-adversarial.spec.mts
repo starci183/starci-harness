@@ -43,7 +43,9 @@ const git = (dir: string, args: string[], env: NodeJS.ProcessEnv = {}) => execFi
   env: { ...withoutGitLocalEnv(process.env), ...env },
   stdio: ['ignore', 'pipe', 'pipe'],
 });
-const uniqueCodes = (findings: { code: string }[]) => [...new Set(findings.map((finding) => finding.code))].sort(byCodeUnit);
+/** The key shape of R431 has its own spec (db-key-shape.spec.mts); these adversarial tables are keyed freely to probe the other rules. */
+const KEY_SHAPE = new Set(['DB_PRIMARY_KEY_SHAPE', 'DB_FOREIGN_KEY_NAME', 'DB_FOREIGN_KEY_INDEX']);
+const uniqueCodes = (findings: { code: string }[]) => [...new Set(findings.map((finding) => finding.code).filter((code) => !KEY_SHAPE.has(code)))].sort(byCodeUnit);
 const expectCodes = async ({ contents, files = Object.keys(contents), supabase, codes }: { contents: Record<string, string>; files?: string[]; supabase?: unknown; codes: string[] }) => {
   const dir = repo(contents, supabase);
   const findings = await checkDatabase({ repoRoot: dir, files, git: noRemote });

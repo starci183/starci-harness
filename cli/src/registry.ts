@@ -92,6 +92,7 @@ import { supervisorSubmitVerb } from "./core/supervisor/submit.js"
 import { supervisorTickVerb } from "./core/supervisor/tick.js"
 import { connectTelegramVerb } from "./core/connect/telegram.js"
 import { hostStatusVerb } from "./core/host/status.js"
+import { hostGuardVerb } from "./core/host/guard.js"
 import { hostLoadVerb } from "./core/host/load.js"
 import { hostUpVerb } from "./core/host/up.js"
 import { hostDownVerb } from "./core/host/down.js"
@@ -215,6 +216,7 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     supervisorTickVerb,
     connectTelegramVerb,
     hostStatusVerb,
+    hostGuardVerb,
     hostLoadVerb,
     hostUpVerb,
     hostDownVerb,

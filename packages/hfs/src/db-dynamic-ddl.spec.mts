@@ -40,7 +40,7 @@ for (const edition of ['lite', 'full']) {
   });
 
   test(`DB_DYNAMIC_DDL@${edition} accepts the same table as inspectable static DDL`, async (t) => {
-    const sql = 'create table public.items (id uuid);\nalter table public.items enable row level security;';
+    const sql = 'create table public.items (id uuid primary key);\nalter table public.items enable row level security;';
     assert.deepEqual(await judge(t, edition, sql), []);
   });
 }

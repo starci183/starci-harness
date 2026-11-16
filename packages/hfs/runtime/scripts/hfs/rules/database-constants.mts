@@ -15,6 +15,12 @@ export const DB_MIGRATION_DESTRUCTIVE = 'DB_MIGRATION_DESTRUCTIVE';
 export const DB_DESTRUCTIVE_RULING_UNPROVEN = 'DB_DESTRUCTIVE_RULING_UNPROVEN';
 export const HFS_SEED_PII = 'HFS_SEED_PII';
 export const DB_VAULT_WRITE = 'DB_VAULT_WRITE';
+/** R431: an app table's primary key is `id uuid`. */
+export const DB_PRIMARY_KEY_SHAPE = 'DB_PRIMARY_KEY_SHAPE';
+/** R431: a one-column foreign key is named `[<role>_]<referenced table singular>_id`. */
+export const DB_FOREIGN_KEY_NAME = 'DB_FOREIGN_KEY_NAME';
+/** R431: every foreign key has an index leading with its columns. */
+export const DB_FOREIGN_KEY_INDEX = 'DB_FOREIGN_KEY_INDEX';
 
 export const DB_DIR = 'db';
 export const MIGRATIONS_DIR = `${DB_DIR}/migrations`;

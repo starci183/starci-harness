@@ -1,9 +1,10 @@
 -- The claim and the receipt event share the intake transaction; a consumer reads the event from its pgmq queue after commit.
 create table public.inbox (
+    id uuid primary key default gen_random_uuid(),
     source text not null check (source <> ''),
     event_id text not null check (event_id <> ''),
     claimed_at timestamptz not null default now(),
-    primary key (source, event_id)
+    constraint inbox_source_event_id_key unique (source, event_id)
 );
 
 alter table public.inbox enable row level security;

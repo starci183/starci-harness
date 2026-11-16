@@ -6,6 +6,7 @@ import { contractReleaseFindings, defaultGit, migrationShapeFindings } from './d
 import { migrationSetPolicyFindings, sqlAnalysis } from './database-sql.mjs';
 import { migrationSetDefinerFindings } from './database-plpgsql.mjs';
 import { databaseAccessFindings } from './database-access.mjs';
+import { migrationSetKeyFindings } from './database-keys.mjs';
 import { BOOTSTRAP_FILE, DB_DIR, DB_MIGRATION_SHAPE, isActiveMigration, LITE_DB_MIGRATION, MIGRATIONS_ARCHIVE_DIR, MIGRATIONS_DIR } from './database-constants.mjs';
 import { isSeedFile } from './seeds.mjs';
 import { byCodeUnit } from '../../lib/list.mjs';
@@ -19,7 +20,10 @@ export const DB_DEFINER_REVOKE = 'DB_DEFINER_REVOKE';
 export {
   DB_DEFINER_SAFE,
   DB_DYNAMIC_DDL,
+  DB_FOREIGN_KEY_INDEX,
+  DB_FOREIGN_KEY_NAME,
   DB_MIGRATION_SHAPE,
+  DB_PRIMARY_KEY_SHAPE,
   DB_POLICY_SHAPE,
   DB_RLS_REQUIRED,
   DB_STORAGE_POLICY,
@@ -85,6 +89,7 @@ export async function checkDatabase({ repoRoot, files, base, git, edition, db }:
     ...migrationSetPolicyFindings(analyses),
     ...migrationSetDefinerFindings(analyses, APP_SCHEMAS),
     ...await databaseAccessFindings({ analyses, exposed: APP_SCHEMAS, db: declared }),
+    ...migrationSetKeyFindings(analyses, APP_SCHEMAS, declared),
   );
   return findings;
 }

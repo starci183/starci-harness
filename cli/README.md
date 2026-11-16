@@ -610,7 +610,11 @@ still holds the record of the removed package overlay (`deps-local.json`); `deps
 is the `package-specs` check preset, `pkg handoff` records it in the host store's `package_handoffs` for Debug, and `release push` and `release publish` refuse it to every role but
 debug and owner (`PKG_EDIT_PUSH_REFUSED`). A package build installs only a stale install: one whose npm record (`node_modules/.package-lock.json`, read through a junction too) lacks a package of the lockfile at its locked version (`installSatisfies`), so a worktree that links a cached install builds against it however new its lockfile is. A stale install behind a `node_modules` junction or symlink is refused
 `DEPS_INSTALL_LINKED` before npm changes it (`core/deps/packages.ts`):
-materialize a private install, or unlink the link itself and install that checkout's lockfile, preserving its shared target.
+materialize a private install, or unlink the link itself and install that checkout's lockfile, preserving its shared target; a real
+`node_modules` another worktree of the repository links to is refused `DEPS_INSTALL_SHARED` the same way. Both hazards are the install
+guard's (`harness/install-guard.ts`, contexts/harness/host.md "Dependencies through a link"), which `host guard <line>` applies to any shell
+command line (every npm, pnpm or yarn command that writes `node_modules`, chained, in the background or wrapped; exit 1 on a deny) and
+`host guard --hook` to a host's pre-tool hook input on stdin, answering its deny decision (`core/host/guard.ts`).
 
 #### CI verdict and publication
 

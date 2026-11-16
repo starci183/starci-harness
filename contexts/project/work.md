@@ -115,7 +115,10 @@ A concept is one topic of what stays true across the whole source of a product: 
 its things are named, the business rules it keeps, and the folders that hold them. It holds across features, so no feature owns it.
 Both editions keep them, as Markdown with no schema, in `.starciwork/concepts/`:
 
-- `README.md` is the catalog: a table `| Concept | Read when you touch (folders) | One line |`, one row per concept.
+- `README.md` is the catalog: a table `| Concept | Read when you touch (folders) | One line |`, one row per concept. Every app's catalog
+  lists a `conventions` concept, `conventions.md`: the app's own naming, keys and foreign key names, error classes and how it proves
+  behaviour, the part of the generic rules it narrows (BE-PERSISTENCE-20, BE-RESILIENCE-2) in its own words. The scaffold renders it,
+  and R433 (`HFS_CONCEPT_CONVENTIONS_MISSING`) refuses an app whose tree lacks it or whose catalog does not link it.
 - `<topic>.md` is one concept, at most about sixty lines, under fixed headings in this order:
 
 | heading | holds |
@@ -131,8 +134,9 @@ Both editions keep them, as Markdown with no schema, in `.starciwork/concepts/`:
 | `Related:` | links to the concepts it reads |
 
 - **Read first.** Before a requirement, a design, a contract, a plan or code of the product is written or changed, its author reads
-  `concepts/README.md`, then the concept of every folder the work touches, and only then the code; a Kernel names them in the
-  contract's `context.extend`.
+  `.starcistacks/application-stacks.yaml` whole and the `.starcistacks/<env>/README.md` of each environment the work touches, then
+  `concepts/README.md`, the `conventions` concept and the concept of every folder the work touches, and only then the code; a Kernel
+  names them in the contract's `context.extend`, and a task that contradicts a declaration stops and asks the owner.
 - **Only what persists.** A concept holds no history, decision log, progress, status or file path: those go stale with every commit
   and bury what stays true. History lives in git, a question that awaits the owner in the feature's `decision` record.
 - **Edited to the current truth.** When that shared context changes (a term gains a meaning, a shape a key, a rule a new must), the
@@ -143,7 +147,8 @@ Both editions keep them, as Markdown with no schema, in `.starciwork/concepts/`:
 Why: an agent that opens the code first rebuilds the product's words and rules from whatever files it happened to read, and two
 agents rebuild them differently; a short page per topic, read first, gives every reader the same frame, and it stays short only
 while it holds nothing that changes with each commit. The paths are admitted by slot `app.starciwork` (R212 holds the lite
-boundary). No gate reads a concept: its content and the reading before code are held by review. A `work/concept@1` record
+boundary). No gate reads a concept's content: it and the reading before code are held by review; R433 checks only that the
+`conventions` concept exists and the catalog links it. A `work/concept@1` record
 (`concepts/index.yaml`, `concepts/<name>/index.yaml`) an app still keeps stays admitted; the app rewrites it as Markdown itself.
 
 ## Lanes

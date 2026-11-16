@@ -27,6 +27,8 @@
 //   HFS_MCP_TOOLS_SNAPSHOT        (R302, rules/mcp-tools.mts) a committed MCP tool catalog that is not the canonical `tools/list` snapshot
 //   BE_TEST_TOPOLOGY              (R47, rules/test-topology.mts) a `.test` file, a testing/ folder, a second jest configuration
 //   FE_NO_TESTS                   (R97, rules/fe-no-tests.mts) a front end holds a spec, e2e or test-tool file, a test script or a test dependency; no exception
+//   BE_FAILURE_CLASS_BY_TEXT      (R432, rules/failure-class.mts) a back-end source matches a failure code text to decide what a failure is
+//   HFS_CONCEPT_CONVENTIONS_MISSING (R433, rules/concepts-conventions.mts) the app root has no conventions concept or its catalog does not link it
 //   FE_STACK_FORBIDDEN            (rules/fe-stack.mts) a front-end manifest (the fe side's, or the app root's minus the back end's own libraries)
 //                                 declares a package knowledge/hfs/fe-stack.yaml forbids
 //   HFS_LITE_SECRET_CUSTODY       (R220, rules/lite-secrets.mts) under edition lite: secret material or a forbidden custody path; the R06 scan itself runs for every edition
@@ -34,7 +36,7 @@
 //                                 dependency of infrastructure lite does not run (test containers, fault proxy, Kafka)
 //   HFS_BACKING_UNDECLARED, HFS_BACKING_UNUSED (R212, rules/edition.mts) under edition lite: a client library or a pattern of a backing
 //                                 service hfs.json sides.be.backing does not declare or the edition does not admit, or a declared service no dependency consumes
-//   DB_MIGRATION_SHAPE ... LITE_DB_MIGRATION (R213-R215, R332, rules/database.mts, async: passed in as extraFindings) the db/ migrations, policies, definer functions and buckets; generated types
+//   DB_MIGRATION_SHAPE ... LITE_DB_MIGRATION, DB_PRIMARY_KEY_SHAPE, DB_FOREIGN_KEY_NAME, DB_FOREIGN_KEY_INDEX (R213-R215, R332, R431, rules/database.mts, async: passed in as extraFindings) the db/ migrations, policies, definer functions and buckets; generated types
 //   BE_SPEC_PLACEMENT             (R102, rules/spec-placement.mts) a spec or test file outside the four test layers, scripts/ and tools/ included
 //   HFS_REPO_LOCAL_CHECK          (R103, rules/repo-local-checks.mts) a local eslint rule or plugin, a check-named script outside ext/checks/, an undeclared project check
 //   HFS_LINT_SUPPRESSION_FILE     (R104, rules/lint-suppression.mts) an eslint suppressions file, script or option
@@ -85,6 +87,8 @@ import { treeFindings } from './tree-findings.mjs';
 import { contractFindings } from './rules/contract.mjs';
 import { mcpToolsSnapshotFindings } from './rules/mcp-tools.mjs';
 import { appRootFindings } from './rules/app-root.mjs';
+import { conceptConventionsFindings } from './rules/concepts-conventions.mjs';
+import { failureClassFindings } from './rules/failure-class.mjs';
 import { frontendFindings } from './rules/frontend-tree.mjs';
 import { lintSuppressionFindings } from './rules/lint-suppression.mjs';
 import { bypassMarkerFindings } from './rules/bypass-markers.mjs';
@@ -122,7 +126,7 @@ export const CHECK_CODES = Object.freeze([
   'BE_TEST_TOPOLOGY', 'BE_SPEC_PLACEMENT', 'HFS_REPO_LOCAL_CHECK', 'HFS_PROJECT_CHECK_FAILED', 'HFS_LINT_SUPPRESSION_FILE', 'HFS_BYPASS_MARKER', 'HFS_PROOF_COMMAND_FILE_MISSING', 'HFS_PEER_INTEGRATION_MISSING', 'BE_INTEGRATION_SPEC_MISSING', 'FE_GRAPHQL_CONTRACT', 'FE_NO_TESTS', 'HFS_MONO_WORKSPACES', 'HFS_MONO_FE_WORKSPACE', 'HFS_MONO_NEST_PROJECTS', 'HFS_MONO_WORKSPACE_DEP', 'BE_CLI_REQUIRED', 'BE_CLI_COMMAND_SHAPE', 'FE_WIRE_GENERATED', 'FE_I18N_PLACEMENT', 'FE_I18N_CATALOG', 'HFS_SERVICE_PLACEMENT', 'HFS_IMAGE_UNPINNED', 'HFS_SERVICE_STACK_DECLARATION', 'HFS_EVENT_CONTRACT', 'BE_ASYNC_SPEC_MISSING', 'BE_SAGA_STEP_COMPENSATION', 'BE_SAGA_STATE_VERSIONED', 'BE_SAGA_EVENT_CONTRACT', 'BE_SAGA_CONSUMER_DEDUPE', 'BE_EVENT_CLASS_CONTRACT', 'BE_PATTERN_SPEC_MISSING', 'BE_CONTRACT_BREAKING', 'BE_KIND_DECLARATION', 'BE_KIND_EMPTY', 'HFS_DOCKER_BUILD_CONTEXT', 'HFS_DOCKER_STAGES', 'HFS_DOCKER_ENTRY', 'HFS_DOCKER_BASE_PIN', 'HFS_DOCKER_SECRETS', 'BE_SAGA_E2E_MISSING',
   'FE_STACK_FORBIDDEN', 'HFS_EDITION_FORBIDDEN_PRESENT', 'HFS_BACKING_UNDECLARED', 'HFS_BACKING_UNUSED', 'HFS_LITE_SECRET_CUSTODY', 'HFS_STARCIWORK_LITE_FORBIDDEN',
   'DB_MIGRATION_SHAPE', 'DB_RLS_REQUIRED', 'DB_DYNAMIC_DDL', 'DB_POLICY_SHAPE', 'DB_DEFINER_SAFE', 'DB_STORAGE_POLICY', 'LITE_DB_MIGRATION',
-  'HFS_DOCKER_HEALTHCHECK_FAKE', 'DB_APP_ROLE', 'DB_FORCE_RLS_DEFAULT',
+  'HFS_DOCKER_HEALTHCHECK_FAKE', 'DB_APP_ROLE', 'DB_FORCE_RLS_DEFAULT', 'DB_PRIMARY_KEY_SHAPE', 'DB_FOREIGN_KEY_NAME', 'DB_FOREIGN_KEY_INDEX', 'BE_FAILURE_CLASS_BY_TEXT', 'HFS_CONCEPT_CONVENTIONS_MISSING',
   'DB_POLICY_TAUTOLOGY', 'DB_VIEW_UNSAFE', 'DB_STORAGE_PREFIX', 'DB_DEFINER_REVOKE',
   'HFS_GITIGNORE_BLOCK_DRIFT', 'HFS_SONAR_CONFIG', 'HFS_COVERAGE_SCOPE_DRIFT', 'HFS_FORMAT', 'HFS_CHECK_CACHE_FORGED', 'HFS_CHECK_CACHE_STALE', 'HFS_CHECK_CACHE_MISSING', 'HFS_CHECK_CACHE_UNWARMED', 'HFS_CHECK_CACHE_UNPORTABLE', 'HFS_CHECK_CACHE_VERIFY_LOCKED',
   'HFS_EMPTY_DIR', 'HFS_GHOST_TREE', 'HFS_UNTRACKED_ROOT_ENTRY',
@@ -284,10 +288,11 @@ function contentRuleFindings({ repoRoot, repo, resolver, files, all, scoped, pin
   if (isRoot) {
     findings.push(
       ...appRootFindings({ repoRoot, files, all, repo, resolver, pins, phase }),
+      ...conceptConventionsFindings({ repoRoot, files: files.filter((file) => inScope(file) || file.startsWith('.starciwork/concepts/')) }),
       ...checkAppRoot({ root: repoRoot, resolver, tree: trackedTreeView(all) }).violations.map((item) => ({ code: item.ruleId, level: 'error', path: item.path, line: item.line, column: item.column, source: 'machine', message: `${item.path}: ${item.message}` })),
     );
   } else if (repo.profile === 'be') {
-    findings.push(...contractFindings({ repoRoot, files, repo, resolver }), ...mcpToolsSnapshotFindings({ repoRoot, files, repo }), ...testTopologyFindings({ repoRoot, files }));
+    findings.push(...contractFindings({ repoRoot, files, repo, resolver }), ...mcpToolsSnapshotFindings({ repoRoot, files, repo }), ...testTopologyFindings({ repoRoot, files }), ...failureClassFindings({ repoRoot, files: files.filter((file) => inScope(file)) }));
   } else {
     findings.push(...frontendFindings({ repoRoot, files, repo }), ...feNoTestsFindings({ repoRoot, files: files.filter((file) => inScope(file)) }));
   }

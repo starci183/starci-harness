@@ -41,7 +41,7 @@ interface OwnedId {
 }
 
 /**
- * Requires the row of `entity` with this id and owner (its `id` and `owner_id` columns) and lets the capability own its
+ * Requires the row of `entity` with this id and owner (its `id` and `ownerId` properties, whatever column `ownerId` maps) and lets the capability own its
  * typed not-found error of that id; absent and denied rows share it. The read is the entity's query builder with named
  * parameters, so the capability writes no SQL (R334).
  */
@@ -55,7 +55,7 @@ export const requireOwnedEntity = async (
     const row = await entityManager
         .createQueryBuilder(entity, "owned")
         .select("owned.id", "id")
-        .where("owned.id = :id AND owned.owner_id = :ownerId", { id, ownerId })
+        .where("owned.id = :id AND owned.ownerId = :ownerId", { id, ownerId })
         .getRawOne<OwnedId>()
     if (row === undefined) return notFound(id)
     return row

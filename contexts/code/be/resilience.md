@@ -28,7 +28,10 @@ decides what a failure means, in one place:
 - `classifyFailure(cause, DomainError)` of `@starci/nest-kit` names its class, the one rule the job runner, the lite pgmq consumer and
   the full event runner apply: `transient` (a dropped connection, a timeout, a lock conflict), `input` (an error of the app's
   `DomainError` family: the data is wrong), `config` (a domain code naming a configuration or connection) or `code` (any other
-  failure); an error that carries `failureClass` names its own. An event consumer's delivery that fails transiently is redelivered;
+  failure); an error that carries `failureClass` names its own. That is the only way a class is decided: code that knows a failure is
+  transient or permanent throws its error with an explicit `failureClass`, and no code matches an error's code or message text
+  (`ECONNRESET`, `40001`, `/timeout/`) to decide it, since a second list drifts from the judge's (R432 `BE_FAILURE_CLASS_BY_TEXT`). A back end
+  with a Postgres job outbox takes it from `@starci/outbox` ([jobs.md](jobs.md)), whose runner applies this judge. An event consumer's delivery that fails transiently is redelivered;
   any other goes to its dead letter at once under its class, where a person's requeue resumes it (BE-EVENT-BUS-4, BE-EVENT-BUS-6).
 - A `transient` failure with starts left is tried again on the job's ladder, DECLARED once per class of flow in the app's
   `job-ladders.policy.ts`: `background` (nobody waits: seconds, such as 5, 10 and 20) or `waited` (a person waits: minutes, such as
@@ -58,7 +61,7 @@ Why: a flow that stays failed needs a person to notice and restart it; classifyi
 parking with one item and handing back on the next build, a bounded sweep or a person's resume brings every flow back as soon as its
 cause is fixed, and the outbox, the inbox, the fence and the effect ledger make the rerun safe.
 
-Enforced by: `no-hand-rolled-retry` (R81), R377 `BE_FLOW_FAILURE_SWALLOWED`, `job-fence-required` (R158), `job-effect-piece` (R159).
+Enforced by: `no-hand-rolled-retry` (R81), R377 `BE_FLOW_FAILURE_SWALLOWED`, `job-fence-required` (R158), `job-effect-piece` (R159), R432 `BE_FAILURE_CLASS_BY_TEXT` (a failure code matched in back-end source).
 Known gap: R377 reads the catch blocks of the flow files (processors, steps, saga steps and compensations, consumers) and of the
 domain files that name a `ClaimedJob`; a domain method a job reaches without taking one, and a try counter or a wait written with a
 timer outside a loop, are judged by review.
