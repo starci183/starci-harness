@@ -154,7 +154,7 @@ pins:
     source: packages/object-storage/package.json
     why: 'object storage of a back end: a NestJS module and the ObjectStorage port over S3-compatible storage (presigned PUT and GET that sign the content type and size, head, get, put, list, whole-bucket key listing, delete, bucket setup, size and content-type limits, coded errors), with @starci/object-storage/testing for its specs; the only importer of @aws-sdk/client-s3 and @aws-sdk/s3-request-presigner (R331).'
   '@starci/mail':
-    version: 0.2.0
+    version: 0.3.0
     group: starci
     install: registry
     side: be
