@@ -17,7 +17,7 @@ void test("publish.yml starts only when the ci run succeeded, never on a failed 
     assert.doesNotMatch(workflow, /workflow_run\.conclusion == 'failure'/u, "a failed ci run must never start a publication")
 })
 
-const gate = (jobs: ReadonlyArray<{ readonly name: string; readonly conclusion: string }>): Record<string, string> => {
+const gate = (jobs: readonly { readonly name: string; readonly conclusion: string }[]): Record<string, string> => {
     const dir = mkdtempSync(join(tmpdir(), "publish-gate-"))
     try {
         const plan = { data: { rows: [{ action: "publish", dir: "packages/seed", package: "@starci/seed", version: "9.9.9" }] } }
