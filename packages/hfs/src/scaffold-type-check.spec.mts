@@ -67,8 +67,17 @@ ${output.slice(-6000)}`));
   });
 }
 
-/** `npm install` in a folder, awaited. */
-const install = (cwd: string, args: readonly string[]): Promise<void> => runNode(cwd, npmCli(), args);
+/** A registry connection that dropped mid-install: the network's fault, never the templates', so the install is tried again. */
+const TRANSIENT_NETWORK = /ECONNRESET|ETIMEDOUT|ECONNREFUSED|EAI_AGAIN|ENOTFOUND|socket hang up|network read/;
+
+/** `npm install` in a folder, awaited; a transient registry network error is retried up to three attempts, any other failure is final. */
+async function install(cwd: string, args: readonly string[]): Promise<void> {
+  for (let attempt = 1; ; attempt += 1) {
+    try { await runNode(cwd, npmCli(), [...args, '--fetch-retries=5']); return; } catch (error) {
+      if (attempt >= 3 || !(error instanceof Error) || !TRANSIENT_NETWORK.test(error.message)) throw error;
+    }
+  }
+}
 
 /** Every package.json of the app outside node_modules. */
 const manifests = (folder: string): string[] =>
