@@ -10,6 +10,7 @@ gallery/
     explain.md                     required when any png exists
     links.json                     optional navigation hotspots
   flows.json                       optional named flows (ordered screen ids)
+  routes.json                      optional route exclusions, each with its reason (PROJECT-GALLERY-4)
 ```
 
 ## PROJECT-GALLERY-1 Every app carries a gallery, and every UI fix round saves shots to it
@@ -85,7 +86,44 @@ Every design decision on a screen is traceable to an owner law and a Grammar ref
    as an edge.
 3. A `to` or a flow step that names no screen folder is `HFS_APP_GALLERY_LINKS`.
 
-**Enforced by** (R395, `packages/hfs/runtime/scripts/hfs/rules/gallery.mts`, values from `ruleParams.gallery`):
+## PROJECT-GALLERY-4 Every route of the front end has a screen
+
+1. **The rule.** Every user-facing route of the app's front end has at least one screen folder in `gallery/pages/` whose `explain.md`
+   front matter `route` matches it. A route is a Next app router `page.tsx` under `fe/apps/<app>/src/app` (the slot `fe.route`, the
+   same shape in both editions). Its pattern is its folder path without the `[locale]` prefix and the `(group)` folders:
+   `fe/apps/web/src/app/[locale]/(console)/agents/[agentKey]/page.tsx` is `/agents/[agentKey]`. A parallel slot (`@modal`), an
+   intercepting route (`(.)photo`) and a private folder (`_parts`) own no screen. A dynamic segment (`[id]`, `[...rest]`) is one
+   screen: `/agents/[agentKey]` and `/agents/:key` are the same route, and a state or an agent variant of it is its own folder with
+   the same `route`.
+2. **Coverage is judged by `explain.md`.** The shots are local evidence (PROJECT-GALLERY-1 item 5) and never tracked, so a route is
+   covered by a screen folder with an `explain.md` (front matter, regions) whether or not any PNG exists on this machine. A QA round
+   that saves its shots outside `gallery/pages/` covers nothing.
+3. **Exclusions.** A route that is not a product screen (a developer-only tool page, a redirect) is declared in `gallery/routes.json`,
+   each with the reason it has no screen:
+   ```json
+   { "exclude": [{ "route": "/dev/flow-canvas", "reason": "developer tool, not shipped to users" }] }
+   ```
+   A missing `reason`, a file that is not this shape, and an exclusion of a route the front end does not have are
+   `HFS_APP_GALLERY_LINKS`. The file is the app's (slot `app.gallery-routes`), committed.
+4. **Severity.** `HFS_APP_GALLERY_ROUTE_MISSING` is a warning in `--env local` (a round in progress lists what it has not drawn yet)
+   and an error in `--env prod` (the push hook, CI, the release gate; [check-cache.md](check-cache.md) owns the two environments).
+
+## PROJECT-GALLERY-5 A screen's explanation changes with its source
+
+1. **The rule.** A change to a screen's source that leaves that screen's `explain.md` untouched is `HFS_APP_GALLERY_EXPLAIN_STALE`.
+   The source of a screen is best-effort mapped: the route's `page.tsx` and every file under the feature folder `features/pages/<Name>/`
+   the page imports (a thin page imports exactly one feature; a component a feature takes from `components/` is not followed). A
+   route with several screen folders is current when any of their `explain.md` files is touched.
+2. **What is judged.** `starci app check` (a whole run) judges the files the commits since the base, the index and the work tree
+   change: the base is the merge-base of `HEAD` with `STARCI_BASE_REF`, else with `origin/<branch>`, else `HEAD^` (the base the lint
+   ratchet uses). The pre-commit guard (`starci app check --staged`) lists the same finding for the staged files and never blocks
+   the commit.
+3. **Severity.** A warning in `--env local`, an error in `--env prod`, as item 4 of PROJECT-GALLERY-4. An excluded route and a route
+   with no screen have nothing to keep current (the second is `HFS_APP_GALLERY_ROUTE_MISSING`).
+4. **Keeping it current.** Re-read each region of the screen against the new source, rewrite the `Vì sao`, `Luật` and `Grammar` lines
+   that changed (a fix that changes no visible region still opens `explain.md` and confirms it), and re-shoot the shots (PROJECT-GALLERY-1).
+
+**Enforced by** (R395, `packages/hfs/runtime/scripts/hfs/rules/gallery.mts` and `gallery-routes.mts`, values from `ruleParams.gallery`):
 
 - `HFS_APP_GALLERY_MISSING`: no `gallery/`, or one of its managed files is absent.
 - `HFS_APP_GALLERY_SCRIPT`: `gallery/package.json` has no `dev` script of the form `vite --port <base + 50> --strictPort`, or the
@@ -99,7 +137,12 @@ Every design decision on a screen is traceable to an owner law and a Grammar ref
 - `HFS_APP_GALLERY_REGION_UNCLEAR`: a region says `CHƯA RÕ` or `SAI`. It is a warning in `--env local` (reported, not blocking, so a
   round in progress can name what it has not fixed yet) and an error in `--env prod` (the push hook, CI, the release gate;
   [check-cache.md](check-cache.md) owns the two environments, and the code is `localOnly` in the failure catalog).
-- `HFS_APP_GALLERY_LINKS`: a `links.json` or `flows.json` is not the shape above, or names a screen folder that does not exist.
+- `HFS_APP_GALLERY_LINKS`: a `links.json`, `flows.json` or `routes.json` is not the shape above, or names a screen folder or a route that
+  does not exist.
+- `HFS_APP_GALLERY_ROUTE_MISSING` (PROJECT-GALLERY-4; `localOnly` in the failure catalog, so a warning in `--env local`): a `page.tsx` route
+  of the front end has no screen folder whose `explain.md` `route` matches it and no reasoned exclusion in `gallery/routes.json`.
+- `HFS_APP_GALLERY_EXPLAIN_STALE` (PROJECT-GALLERY-5, `rules/gallery-coupling.mts`, run by `starci app check` over the commits since the base and
+  by `starci app check --staged`, which only lists it; `localOnly`): a screen's source changed and its `explain.md` did not.
 - `HFS_APP_GALLERY_FRONT_MATTER` (a warning): the front matter lacks `title`, `route` or `area`, or its `area` is not the
   folder's.
 

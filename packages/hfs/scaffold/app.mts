@@ -599,6 +599,8 @@ function fixedSkeletonFiles(context: SkeletonContext, relative: string, source: 
   const { scope, directory, app, vars, apps } = context;
   if (scope === 'be' && relative === 'src/tests/fixtures/builders/cli.builder.ts' && !declaresCliApp(app)) return [];
   if (scope === 'be' && relative.startsWith(CLI_APP_DIR) && !declaresCliApp(app)) return [];
+  // The starter screens of the gallery (PROJECT-GALLERY-4) describe the starter's own routes: an app without a front end has none.
+  if (scope === 'app' && relative.startsWith('gallery/pages/') && app.sides!.fe.apps.length === 0) return [];
   const fixedApp = apps.find(entry => relative.startsWith(`apps/${entry.name}/`));
   if (scope === 'fe' && relative.startsWith('apps/') && !fixedApp) return [];
   const appVars = fixedApp ? { app: fixedApp.name, appPascal: pascal(fixedApp.name) } : {};

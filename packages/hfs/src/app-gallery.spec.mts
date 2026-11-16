@@ -212,7 +212,7 @@ test('app sync adds the gallery to an existing app, restores a hand edit, and a 
   lines.length = 0;
   assert.equal(await runSync(['--execute', '--cwd', root], { cwd: root, out, presets: bundledPresets() }), 0);
   assert.match(lines.at(-1) ?? '', /0 written/u);
-  assert.deepEqual(findings(root), []);
+  assert.deepEqual([...new Set(codes(findings(root)))], ['HFS_APP_GALLERY_ROUTE_MISSING'], 'sync writes the app, never its screens: an app that had no gallery/pages has every route to cover (PROJECT-GALLERY-4)');
 });
 
 test('the dev stack starts the gallery on base + 50 next to web and api, with its install, a readiness row and an origin', (t) => {
@@ -387,7 +387,7 @@ test('a screen folder with shots and no explain.md is HFS_APP_GALLERY_EXPLAIN_MI
   assert.equal(finding?.path, 'gallery/pages/inbox/today/explain.md');
   assert.match(finding?.message ?? '', /has 3 shots and no explain\.md/u);
   assert.deepEqual(rest, [], 'a folder with no shot needs none yet');
-  assert.deepEqual(galleryScreens(root, PARAMS), { screens: [{ area: 'inbox', screen: 'empty-folder', shots: 0, stray: [] }, { area: 'inbox', screen: 'today', shots: 3, stray: [] }], loose: [] });
+  assert.deepEqual(galleryScreens(root, PARAMS).screens.filter((screen) => screen.area === 'inbox'), [{ area: 'inbox', screen: 'empty-folder', shots: 0, stray: [] }, { area: 'inbox', screen: 'today', shots: 3, stray: [] }]);
   page(root, 'inbox', 'today', [], EXPLAIN_OK);
   assert.deepEqual(findings(root), []);
   assert.deepEqual(findings(root, [], 'full'), []);
@@ -468,7 +468,7 @@ test('a screen folder holds only the three widths, explain.md and links.json: a 
   for (const name of ['1440-open.png', 'sales-1440.png', 'before/', 'notes.txt', 'sub/']) assert.match(finding?.message ?? '', new RegExp(`"${name.replace('.', '\\.')}"`, 'u'), name);
   assert.doesNotMatch(finding?.message ?? '', /"1440\.png"/u);
   assert.deepEqual(rest, []);
-  assert.equal(galleryScreens(root, PARAMS).screens[0]?.shots, 1, 'only the allowed shot is counted');
+  assert.equal(galleryScreens(root, PARAMS).screens.find((screen) => screen.area === 'inbox')?.shots, 1, 'only the allowed shot is counted');
   const variant = page(root, 'inbox', 'today', [], EXPLAIN_OK);
   fs.rmSync(at(variant, 'before'), { recursive: true });
   for (const name of ['1440-open.png', 'sales-1440.png', 'notes.txt']) fs.rmSync(at(variant, name));

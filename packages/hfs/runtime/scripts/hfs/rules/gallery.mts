@@ -11,7 +11,12 @@
 //   HFS_APP_GALLERY_REGION_UNCLEAR     a region says `CHƯA RÕ` or `SAI` (a bug its author has not fixed): blocks in `--env prod`, reported in `--env local` (the code is localOnly);
 //   HFS_APP_GALLERY_FRONT_MATTER       the explain.md front matter lacks `title`, `route` or `area`, or names another area than its folder (a warning);
 //   HFS_APP_GALLERY_SCREEN_FILE        a screen folder holds a file or folder other than 1440.png, 1920.png, 390.png, explain.md and links.json (a state or an agent is its own folder);
-//   HFS_APP_GALLERY_LINKS              a links.json or the flows.json is malformed or names a screen folder that does not exist.
+//   HFS_APP_GALLERY_LINKS              a links.json, the flows.json or the routes.json is malformed or names a screen folder or a route that does not exist;
+// and the coverage of the front end (PROJECT-GALLERY-4), judged from the explain.md files alone (the shots are local evidence):
+//   HFS_APP_GALLERY_ROUTE_MISSING      a `page.tsx` route of the front end has no screen folder whose explain.md `route` matches it and is not excluded in gallery/routes.json:
+//                                       blocks in `--env prod`, reported in `--env local` (the code is localOnly);
+//   HFS_APP_GALLERY_EXPLAIN_STALE      (rules/gallery-coupling.mts, run by `starci app check` over the commits since the base and by the staged guard) a change to a screen's source
+//                                       without a change to its explain.md.
 import fs from 'node:fs';
 import path from 'node:path';
 import { isPlainObject as plain } from '../../../engine/plain-object.mjs';
@@ -19,6 +24,7 @@ import { findStackDeclaration } from '../../lib/stack-declaration.mjs';
 import { declaredBasePort, galleryParams, galleryPort } from '../gallery.mjs';
 import type { GalleryParams } from '../gallery.mjs';
 import { flowList, linkTargets, missingFrontMatter, parseExplain, SHOT_FILES } from '../gallery-explain.mjs';
+import { feRoutes, routeExclusions, routeKey } from '../gallery-routes.mjs';
 import { found, readJson, readText } from './read.mjs';
 import type { Parsed, Repo } from './rule-types.mjs';
 
@@ -107,6 +113,40 @@ function jsonOf(repoRoot: string, file: string): { kind: 'absent' } | { kind: 'i
 
 /** The ids in `ids` that name no screen, as one message fragment. */
 const dangling = (ids: readonly string[], known: ReadonlySet<string>): string[] => [...new Set(ids.filter((id) => !known.has(id)))];
+
+/** The comparison keys of the routes the explain.md files of the screens declare (`route` of the front matter). */
+export function declaredRouteKeys(repoRoot: string, params: GalleryParams, screens: readonly GalleryScreen[]): Set<string> {
+  const keys = new Set<string>();
+  for (const { area, screen } of screens) {
+    const route = parseExplain(readText(repoRoot, `${params.pages}/${area}/${screen}/explain.md`) ?? '').meta['route'] ?? '';
+    if (route !== '') keys.add(routeKey(route));
+  }
+  return keys;
+}
+
+/**
+ * Findings of the coverage (PROJECT-GALLERY-4): every `page.tsx` route of the front end has a screen folder whose explain.md `route` matches it, or a reasoned exclusion in
+ * `gallery/routes.json`. A missing screen is HFS_APP_GALLERY_ROUTE_MISSING (`local`: report-only in `--env local`, an error in `--env prod`); an unreadable `routes.json`
+ * and an exclusion of a route the front end does not have are HFS_APP_GALLERY_LINKS.
+ */
+function routeFindings(repoRoot: string, params: GalleryParams, screens: readonly GalleryScreen[]) {
+  const routes = feRoutes(repoRoot);
+  if (routes.length === 0) return [];
+  const findings = [];
+  const file = `${params.dir}/routes.json`;
+  const { exclusions, problem } = routeExclusions(readText(repoRoot, file));
+  if (problem !== null) findings.push(found('HFS_APP_GALLERY_LINKS', file, `${file} ${problem} (PROJECT-GALLERY-4)`));
+  const real = new Set(routes.map((route) => route.key));
+  const stale = exclusions.filter((entry) => !real.has(routeKey(entry.route)));
+  if (stale.length > 0) findings.push(found('HFS_APP_GALLERY_LINKS', file, `${file} excludes ${named(stale.map((entry) => entry.route))}, which ${stale.length === 1 ? 'is' : 'are'} no route of the front end: drop the entr${stale.length === 1 ? 'y' : 'ies'} (PROJECT-GALLERY-4)`));
+  const excluded = new Set(exclusions.map((entry) => routeKey(entry.route)));
+  const covered = declaredRouteKeys(repoRoot, params, screens);
+  for (const route of routes) {
+    if (covered.has(route.key) || excluded.has(route.key)) continue;
+    findings.push(found('HFS_APP_GALLERY_ROUTE_MISSING', route.file, `the route ${route.route} of ${route.app} has no screen in ${params.pages}/: add ${params.pages}/<area>/<screen>/explain.md whose front matter \`route\` is ${route.route}, or declare the route in ${file} with a reason (a developer-only route); a warning in --env local, an error in --env prod (PROJECT-GALLERY-4)`, { local: true }));
+  }
+  return findings;
+}
 
 /**
  * Findings of the pages (PROJECT-GALLERY-2): the layout of every screen folder, an explain.md beside any shot with its front matter, a `Vì sao` and a `Grammar` in every region and no
@@ -199,5 +239,7 @@ export function appGalleryFindings({ repoRoot, repo, isRoot, all = [], inScope =
   const tracked = all.filter((file) => file.startsWith(`${params.pages}/`) && file.toLowerCase().endsWith('.png'));
   if (tracked.length > 0) findings.push(found('HFS_APP_GALLERY_SHOTS_TRACKED', tracked[0] as string, `${tracked.length} screenshot PNG${tracked.length === 1 ? ' is' : 's are'} tracked under ${params.pages}/ (first: ${tracked[0]}): untrack them (git rm --cached) and keep ${params.dir}/${params.ignoredShots} ignored`));
   findings.push(...explainFindings(repoRoot, params, inScope));
+  // No gallery at all is one finding (HFS_APP_GALLERY_MISSING), not one per route.
+  if (missing.length < GALLERY_FILES.length) findings.push(...routeFindings(repoRoot, params, galleryScreens(repoRoot, params).screens));
   return findings;
 }

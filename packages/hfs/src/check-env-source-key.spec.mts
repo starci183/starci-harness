@@ -124,7 +124,7 @@ test('records a run on the local build wrote are reused warm after the restore t
   assert.equal(rebuilt.decide('format').mode, 'diff', 'and no other');
 });
 
-const EXPECTED_LOCAL_ONLY = ['HFS_APP_GALLERY_REGION_UNCLEAR', 'HFS_CANON_PIN_DRIFT', 'HFS_CHECK_CACHE_UNPORTABLE'];
+const EXPECTED_LOCAL_ONLY = ['HFS_APP_GALLERY_EXPLAIN_STALE', 'HFS_APP_GALLERY_REGION_UNCLEAR', 'HFS_APP_GALLERY_ROUTE_MISSING', 'HFS_CANON_PIN_DRIFT', 'HFS_CHECK_CACHE_UNPORTABLE'];
 
 test('the local-only finding set is the one list of failure-codes.yaml', () => {
   assert.deepEqual([...localOnlyCodes()].sort(), EXPECTED_LOCAL_ONLY);

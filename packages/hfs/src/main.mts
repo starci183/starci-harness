@@ -125,6 +125,7 @@ import { SideRefusal, addNounSides, requireSides } from '../runtime/scripts/hfs/
 import { newImages } from '../scaffold/image.mjs';
 import { ESLINT_HEAP_ENV, PACKAGES, cachedLinters, eslintRepository, runLinter as nativeLinter, type CachedLinters } from '../lint/run.mjs';
 import { devBranchFinding } from '../runtime/scripts/hfs/dev-branch.mjs';
+import { changedSince, EXPLAIN_STALE, galleryStaleFindings } from '../runtime/scripts/hfs/rules/gallery-coupling.mjs';
 import { liveStateFindings } from '../stack/local-live-checks.mjs';
 import { stackContext } from '../stack/context.mjs';
 import { COVERAGE_NEW_CODE, LINT_NEW_CODE, newCodeCoverageFindings, newCodeLintFinding, onChangedLine } from '../cache/new-code.mjs';
@@ -729,6 +730,11 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
   // An app keeps main and dev (PROJECT-BRANCH-1): a whole run warns when it has no dev branch.
   const noDev = whole && session !== undefined ? devBranchFinding(repoRoot) : null;
   if (noDev !== null) extra.push(...withWhy([noDev] as Dynamic[], readWhy(skillRoot, [noDev.code])));
+  // A screen's source changed without its explain.md (PROJECT-GALLERY-5): judged over the commits since the base, the index and the work tree of a whole run; report-only in `--env local`, an error in `--env prod`.
+  if (whole && session !== undefined && selected.has('hfs')) {
+    const stale = galleryStaleFindings({ repoRoot, changed: changedSince(repoRoot, ratchetBase(repoRoot, io.env, profile.branch).base) });
+    if (stale.length > 0) extra.push(...withWhy(stale as Dynamic[], readWhy(skillRoot, [EXPLAIN_STALE])));
+  }
   // `--env local` also judges the LIVE dev environment (PROJECT-STACKS-11): the migration files its database has not applied and the queues that keep dead-lettering. Never cached; not asked of `--env prod`.
   if (env === 'local' && selected.has('hfs') && session !== undefined) {
     const live = await liveStateFindings({ ctx: stackContext({ ...(io.stackIo ?? {}), cwd: repoRoot, env: io.env }), repoRoot });

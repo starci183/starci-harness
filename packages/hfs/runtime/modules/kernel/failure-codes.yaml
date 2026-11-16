@@ -3373,6 +3373,31 @@ HFS_APP_GALLERY_LINKS:
   owner: op-retry
   kind: check-finding
 
+HFS_APP_GALLERY_ROUTE_MISSING:
+  title: "Every route of the front end has a gallery screen"
+  title_vi: "Route của front end chưa có màn hình trong gallery"
+  meaning_vi: "Một page.tsx của fe/apps/<app>/src/app (một route người dùng thấy) không có thư mục gallery/pages/<khu>/<màn hình>/ nào mà explain.md có `route` trùng với nó, và route cũng không được loại trừ trong gallery/routes.json. Segment động ([id]) tính là một màn hình."
+  causes_vi:
+    - "Vi phạm R395 (PROJECT-GALLERY-4): mỗi route của ứng dụng phải có ít nhất một màn hình trong gallery, kể cả khi chưa có ảnh (độ phủ tính bằng explain.md, ảnh là bằng chứng cục bộ)."
+    - "Ứng dụng có gallery (Vite) nhưng chưa ai viết gallery/pages cho các route, hoặc route mới được thêm mà màn hình chưa được thêm vào gallery."
+    - "`--env local` chỉ liệt kê (đang làm dở), `--env prod` (hook push, CI, phát hành) chặn."
+  nextStep_vi: "Tạo gallery/pages/<khu>/<màn hình>/explain.md với front matter `route` đúng route đó và mỗi vùng ba dòng Vì sao, Luật, Grammar; route chỉ dành cho nhà phát triển thì khai báo trong gallery/routes.json cùng lý do."
+  owner: op-retry
+  kind: check-finding
+  localOnly: true
+
+HFS_APP_GALLERY_EXPLAIN_STALE:
+  title: "A screen's explain.md changes with its source"
+  title_vi: "Mã của màn hình đổi nhưng explain.md không đổi theo"
+  meaning_vi: "Các commit kể từ nhánh gốc (hoặc commit đang tạo) đổi page.tsx của một route hoặc tệp trong thư mục features/pages/<Tên>/ mà page.tsx nhập, nhưng không đổi explain.md của màn hình đó trong gallery/pages."
+  causes_vi:
+    - "Vi phạm R395 (PROJECT-GALLERY-5): người sửa giao diện phải cập nhật lời giải thích (và ảnh) cùng lúc với màn hình; nếu không, gallery nói về màn hình cũ."
+    - "`--env local` và hook commit chỉ liệt kê, `--env prod` (hook push, CI, phát hành) chặn."
+  nextStep_vi: "Mở explain.md của màn hình, đối chiếu từng vùng với giao diện mới, sửa Vì sao/Luật/Grammar (hoặc chụp lại ảnh) rồi commit cùng thay đổi; nếu giao diện không đổi gì nhìn thấy được, vẫn mở explain.md và xác nhận nó còn đúng."
+  owner: op-retry
+  kind: check-finding
+  localOnly: true
+
 HFS_APP_LAYOUT_INVALID:
   title: "App directory layout invalid"
   title_vi: "Bố cục thư mục ứng dụng chưa đúng"

@@ -849,6 +849,15 @@ slots:
     tier: none
     tests: none
     rules: [HFS_APP_GALLERY_LINKS]
+  - id: app.gallery-routes
+    since: 6.13.10
+    profiles: [app]
+    path: gallery/routes.json
+    presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+    rules: [HFS_APP_GALLERY_LINKS, HFS_APP_GALLERY_ROUTE_MISSING]
   - id: app.github-meta
     since: 3.1.0
     profiles: [app]

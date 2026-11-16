@@ -2742,7 +2742,7 @@ rules:
       - {kind: hfs, id: dead-letter-repeat}
   - id: R395
     code: HFS_APP_GALLERY_MISSING
-    law: "Every app source repository carries the screenshot gallery at `gallery/` (a Vite app rendered by `starci app sync`) that serves on the app's base port + `ruleParams.gallery.portOffset` with a `dev` script using --strictPort, pins its vite version exactly, and keeps `gallery/pages/**/*.png` git-ignored and untracked; every UI fix round saves its shots in `gallery/pages/<area>/<screen>/` (one folder is one screen: one agent, one state; only `1440.png`, `1920.png`, `390.png`, `explain.md` and an optional `links.json`; no `before/`) beside an `explain.md` (front matter `title`, `route`, `area`; one `## <region name>` per visible region with the lines `Vì sao:`, `Luật:` and `Grammar:`): a screen folder with shots and no `explain.md`, any other file name in a screen folder, a region without a `Vì sao` or `Grammar` value, a `links.json` or `flows.json` that names a screen folder that does not exist, and (in `--env prod`; a warning in `--env local`) a region that says `CHƯA RÕ` or `SAI` fail."
+    law: "Every app source repository carries the screenshot gallery at `gallery/` (a Vite app rendered by `starci app sync`) that serves on the app's base port + `ruleParams.gallery.portOffset` with a `dev` script using --strictPort, pins its vite version exactly, and keeps `gallery/pages/**/*.png` git-ignored and untracked; every UI fix round saves its shots in `gallery/pages/<area>/<screen>/` (one folder is one screen: one agent, one state; only `1440.png`, `1920.png`, `390.png`, `explain.md` and an optional `links.json`; no `before/`) beside an `explain.md` (front matter `title`, `route`, `area`; one `## <region name>` per visible region with the lines `Vì sao:`, `Luật:` and `Grammar:`): a screen folder with shots and no `explain.md`, any other file name in a screen folder, a region without a `Vì sao` or `Grammar` value, a `links.json` or `flows.json` that names a screen folder that does not exist,, (in `--env prod`; a warning in `--env local`) a region that says `CHƯA RÕ` or `SAI`, a `page.tsx` route of the front end (`fe/apps/<app>/src/app`, a dynamic segment is one screen) with no screen folder whose `explain.md` front matter `route` matches it and no reasoned exclusion in `gallery/routes.json`, and a change to a screen's source (its `page.tsx` and the `features/pages/<Name>/` folders it imports) in the commits since the base that leaves its `explain.md` untouched (`HFS_APP_GALLERY_EXPLAIN_STALE`; both the last two are warnings in `--env local`) fail."
     failureCodes:
       - HFS_APP_GALLERY_MISSING
       - HFS_APP_GALLERY_SCRIPT
@@ -2754,6 +2754,8 @@ rules:
       - HFS_APP_GALLERY_FRONT_MATTER
       - HFS_APP_GALLERY_SCREEN_FILE
       - HFS_APP_GALLERY_LINKS
+      - HFS_APP_GALLERY_ROUTE_MISSING
+      - HFS_APP_GALLERY_EXPLAIN_STALE
     enforcers:
       - {kind: hfs, id: gallery}
   - id: R396
