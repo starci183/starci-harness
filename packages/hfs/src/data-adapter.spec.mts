@@ -21,6 +21,9 @@ import type { PinVerifier, StandardPin } from '../stack/standard-gate.mjs';
 import type { RunResult, StackContext } from '../stack/context.mjs';
 import type { DbTarget } from '../db/postgres.mjs';
 import { seedStep } from '../stack/seeds.mjs';
+import { ManifestBuilder, memorySpool, spooledSource } from '@starci/seed';
+import type { ExportSource } from '@starci/seed';
+import { STANDARD_TAKEN_AT } from '@starci/seed/git';
 import { mkdtemp } from './helpers/tmpdir.mjs';
 
 const gitEnv = { ...Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('GIT_'))), GIT_AUTHOR_NAME: 'spec', GIT_AUTHOR_EMAIL: 'spec@example.test', GIT_COMMITTER_NAME: 'spec', GIT_COMMITTER_EMAIL: 'spec@example.test' };
@@ -174,13 +177,13 @@ test('R434 the bring-up reads the pins of the environment: a git seed-standard p
   const root = mkdtemp(t, 'hfs-standard-pins-');
   fs.mkdirSync(path.join(root, '.starcistacks'));
   fs.writeFileSync(path.join(root, '.starcistacks/application-stacks.yaml'), stack(`${standardSet()}${standardSet(', completeness: "ext:core"').replace('articles', 'core')}    - {id: backup, purpose: seed-backup, stores: [database], environments: [dev], to: [{driver: git, repository: "https://github.com/example/shop-seed-backup-{env}"}]}\n    - {id: loose, purpose: seed-standard, stores: [database], environments: [dev], to: [{driver: s3}], commit: ${PIN_A}}\n    - {id: unpinned, purpose: seed-standard, stores: [database], environments: [dev], to: [{driver: git, repository: https://github.com/example/x-seed-standard}]}\n`));
-  assert.deepEqual(standardPins(root, 'dev'), [{ set: 'articles', repository: 'https://github.com/example/shop-seed-standard', name: 'shop-seed-standard', commit: PIN_A }]);
+  assert.deepEqual(standardPins(root, 'dev'), [{ set: 'articles', repository: 'https://github.com/example/shop-seed-standard', name: 'shop-seed-standard', commit: PIN_A, stores: ['database'], force: false }]);
   assert.deepEqual(standardPins(root, 'staging'), []);
   assert.deepEqual(standardPins(mkdtemp(t, 'hfs-standard-none-'), 'dev'), [], 'an app with no stack declaration loads no standard');
 });
 
 test('R434 STACK_SEED_ADAPTER_DRIFT: the gate verifies each pin once, refuses a drifting or unreadable pin, and plans in a dry run', () => {
-  const pin: StandardPin = { set: 'articles', repository: 'https://github.com/example/shop-seed-standard', name: 'shop-seed-standard', commit: PIN_A };
+  const pin: StandardPin = { set: 'articles', repository: 'https://github.com/example/shop-seed-standard', name: 'shop-seed-standard', commit: PIN_A, stores: ['database'], force: false };
   const clean: PinVerifier = () => ({ adapter: true, findings: [] });
   assert.deepEqual(standardGate({ pins: [pin], receipts: [], execute: true, verify: clean }), { lines: ['seed standard/articles: the adapter output matches the committed standard (shop-seed-standard@aaaaaaaaaaaa)'], verified: [pin] });
   assert.deepEqual(standardGate({ pins: [pin], receipts: [], execute: true, verify: () => ({ adapter: false, findings: [] }) }).lines, ['seed standard/articles: no adapter, the committed standard stands (shop-seed-standard@aaaaaaaaaaaa)']);
@@ -203,7 +206,7 @@ test('R434 the real verifier: a pinned commit is checked out, its adapter instal
   const bad = git(root, 'rev-parse', 'HEAD');
   const cache = mkdtemp(t, 'hfs-standard-cache-');
   const verify = pinnedStandardVerifier({ cache });
-  const pin = (commit: string): StandardPin => ({ set: 'articles', repository: root, name: 'shop-seed-standard', commit });
+  const pin = (commit: string): StandardPin => ({ set: 'articles', repository: root, name: 'shop-seed-standard', commit, stores: ['database'], force: false });
   assert.deepEqual(verify(pin(good)), { adapter: true, findings: [] });
   const drift = verify(pin(bad));
   assert.deepEqual(drift.findings.map((finding) => `${finding.code} ${finding.path}`), ['HFS_DATA_ADAPTER_DRIFT data/database/articles/all.json']);
@@ -213,14 +216,14 @@ test('R434 the real verifier: a pinned commit is checked out, its adapter instal
   fs.writeFileSync(path.join(plain, 'manifest.json'), '{}\n');
   git(plain, 'add', '-A');
   git(plain, 'commit', '-q', '-m', 'no adapter');
-  assert.deepEqual(verify({ set: 'plain', repository: plain, name: 'plain-seed-standard', commit: git(plain, 'rev-parse', 'HEAD') }), { adapter: false, findings: [] });
+  assert.deepEqual(verify({ set: 'plain', repository: plain, name: 'plain-seed-standard', commit: git(plain, 'rev-parse', 'HEAD'), stores: [], force: false }), { adapter: false, findings: [] });
   const failing = pinnedStandardVerifier({ cache, spawn: () => ({ status: 1 }) });
   assert.throws(() => failing(pin(good)), (error: Error & { code?: string }) => error.code === 'GIT_FAILED');
 });
 
 const NO_ENTRY = "seed: no entry in .starcistacks/seeds or the environment's level";
 
-test('R434 the seed step runs the gate before any entry: a drifting pin refuses the step, a verified pin writes its receipt once', (t) => {
+test('R434 the seed step runs the gate before any entry: a drifting pin refuses the step, a verified pin writes its receipt once', async (t) => {
   const root = mkdtemp(t, 'hfs-standard-step-');
   fs.mkdirSync(path.join(root, '.starcistacks'));
   fs.writeFileSync(path.join(root, '.starcistacks/application-stacks.yaml'), stack(standardSet()));
@@ -238,10 +241,39 @@ test('R434 the seed step runs the gate before any entry: a drifting pin refuses 
   // reason: the step reads only spawn of the context here: no entry opens a secret.
   const ctx = { env: {}, cwd: root, spawn: (_command: string, args: readonly string[]) => psql(args) } as unknown as StackContext;
   const target: DbTarget = { how: 'url', url: 'postgresql://owner@127.0.0.1:5432/app', env: {}, secrets: [] };
-  const input = (standards: PinVerifier, execute = true) => ({ ctx, repoRoot: root, env: 'production', target, execute, command: () => assert.fail('no entry runs'), standards });
-  assert.throws(() => seedStep(input(() => ({ adapter: true, findings: [{ code: 'HFS_DATA_ADAPTER_DRIFT', level: 'error', path: 'manifest.json', message: 'manifest.json differs' }] }))), /STACK_SEED_ADAPTER_DRIFT|drifts from the committed standard/u);
-  assert.deepEqual(state.rows, [], 'a refused pin writes no receipt');
-  assert.deepEqual(seedStep(input(() => ({ adapter: true, findings: [] }))).lines, ['seed standard/articles: the adapter output matches the committed standard (shop-seed-standard@aaaaaaaaaaaa)', NO_ENTRY]);
-  assert.deepEqual(state.rows, [{ scope: 'standard', id: 'articles', hash: PIN_A }]);
-  assert.deepEqual(seedStep(input(() => assert.fail('verified once per pin'))).lines, ['seed standard/articles: verified before (shop-seed-standard@aaaaaaaaaaaa, once per pin)', NO_ENTRY]);
+  // The loader after the gate reads an empty standard here (standard-load.spec.mts proves the read and the doors): no store is filled, no door runs.
+  const empty = async (): Promise<ExportSource> => spooledSource(new ManifestBuilder().build({ format: 'shop-seed-standard@1', purpose: 'seed-standard', takenAt: STANDARD_TAKEN_AT, source: { project: 'shop', environment: 'standard' } }), memorySpool());
+  const input = (standards: PinVerifier, execute = true) => ({ ctx, repoRoot: root, env: 'production', target, execute, command: () => assert.fail('no entry runs'), standards, standardReader: empty });
+  await assert.rejects(seedStep(input(() => ({ adapter: true, findings: [{ code: 'HFS_DATA_ADAPTER_DRIFT', level: 'error', path: 'manifest.json', message: 'manifest.json differs' }] }))), /STACK_SEED_ADAPTER_DRIFT|drifts from the committed standard/u);
+  assert.equal(state.rows.length, 0, 'a refused pin writes no receipt');
+  assert.deepEqual((await seedStep(input(() => ({ adapter: true, findings: [] })))).lines, ['seed standard/articles: the adapter output matches the committed standard (shop-seed-standard@aaaaaaaaaaaa)', 'seed standard/articles: unchanged shop-seed-standard@aaaaaaaaaaaa (no set)', NO_ENTRY]);
+  assert.deepEqual(state.rows.map((row) => `${row.id} ${row.hash.slice(0, 12)}`), ['articles aaaaaaaaaaaa', `articles@${PIN_A} ${state.rows[1]?.hash.slice(0, 12) ?? ''}`]);
+  assert.deepEqual((await seedStep(input(() => assert.fail('verified once per pin')))).lines, ['seed standard/articles: verified before (shop-seed-standard@aaaaaaaaaaaa, once per pin)', 'seed standard/articles: kept (shop-seed-standard@aaaaaaaaaaaa applied before, once per pin)', NO_ENTRY]);
+});
+
+/** An adapter that, like renderStandard of @starci/seed, commits its output in a scratch git copy before it writes: git inherits its environment. */
+const SCRATCH_GIT_ADAPTER = DETERMINISTIC.replace("import path from 'node:path';", `import path from 'node:path';
+import os from 'node:os';
+import { spawnSync } from 'node:child_process';
+const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'fixture-render-'));
+const scratchGit = (...args: string[]) => spawnSync('git', ['-c', 'user.name=render', '-c', 'user.email=render@example.test', '-C', scratch, ...args], { encoding: 'utf8' });
+scratchGit('init', '-q', '-b', 'main');
+fs.writeFileSync(path.join(scratch, 'rendered.json'), '{}');
+scratchGit('add', '-A');
+scratchGit('commit', '-q', '-m', 'the scratch render commit');
+fs.rmSync(scratch, { recursive: true, force: true });`);
+
+test('R434 under a real pre-commit hook the adapter runs without the hook\'s GIT_* environment: the branch keeps only the user\'s commit and the index is untouched', (t) => {
+  const root = standardRepository(t, SCRATCH_GIT_ADAPTER);
+  const hook = path.join(root, '.git', 'hooks', 'pre-commit');
+  const judgeUrl = new URL('../sync/hygiene.mjs', import.meta.url).href;
+  fs.writeFileSync(path.join(root, '.git', 'hooks', 'guard.mjs'), `import { judge } from ${JSON.stringify(judgeUrl)};\nconst found = judge(process.cwd(), []).findings.filter((finding) => finding.code.startsWith('HFS_DATA_'));\nfor (const finding of found) console.error(finding.code + ' ' + finding.file);\nprocess.exitCode = found.length === 0 ? 0 : 1;\n`);
+  fs.writeFileSync(hook, `#!/bin/sh\nexec ${JSON.stringify(process.execPath.split(path.sep).join('/'))} .git/hooks/guard.mjs\n`, { mode: 0o755 });
+  const staged = git(root, 'ls-files', '-s');
+  // A commit driven with GIT_DIR and GIT_WORK_TREE set (a worktree, an IDE, a hook manager): git hands them, with GIT_INDEX_FILE, to the hook.
+  const committed = spawnSync('git', ['commit', '-q', '-m', 'the user commit'], { cwd: root, env: { ...gitEnv, GIT_DIR: path.join(root, '.git'), GIT_WORK_TREE: root }, windowsHide: true, encoding: 'utf8' });
+  assert.equal(committed.status, 0, committed.stderr);
+  assert.deepEqual(git(root, 'log', '--format=%s').split('\n'), ['the user commit'], 'no scratch render commit lands on the user\'s branch');
+  assert.equal(git(root, 'ls-files', '-s'), staged, 'the index holds exactly what the user staged');
+  assert.equal(git(root, 'status', '--porcelain'), '', 'nothing left staged or changed by the hook');
 });

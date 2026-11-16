@@ -4,15 +4,17 @@
 // byte for byte, with the committed manifest.json, data/, blobs/ and index/ (R434, rules/data-adapter.mts). A pin whose output drifts, or
 // that cannot be read, is refused STACK_SEED_ADAPTER_DRIFT and nothing of the seed step applies. A verified pin is recorded in the seed
 // receipts (scope `standard`, the set's id, the commit as its hash), so each pin is verified once: the same commit is never judged twice.
-// This is the one path a standard takes into an app: the app reads no standard by any other way (R435, rules/data-loaders.mts).
+// The loader of standard-load.mts then applies each verified pin through the app's seed doors. This is the one path a standard takes into an
+// app: the app reads no standard by any other way (R435, rules/data-loaders.mts).
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { pinRepository } from '@starci/seed/git';
+import type { Runner } from '@starci/seed/git';
 import { isPlainObject as plain } from '../runtime/engine/plain-object.mjs';
 import { starciLocalRoot } from '../runtime/engine/runtime-root.mjs';
-import { ADAPTER_DIR, ADAPTER_ENTRY, RAW_DIR, adapterDriftOf, committedOnDisk } from '../runtime/scripts/hfs/rules/data-adapter.mjs';
+import { ADAPTER_DIR, ADAPTER_ENTRY, RAW_DIR, adapterDriftOf, committedOnDisk, withoutGitEnvironment } from '../runtime/scripts/hfs/rules/data-adapter.mjs';
 import type { AdapterSpawn } from '../runtime/scripts/hfs/rules/data-adapter.mjs';
 import { environmentLabel, repositoryName, resolveRepository } from '../runtime/scripts/hfs/rules/data-sets.mjs';
 import type { Finding } from '../runtime/scripts/hfs/rules/rule-types.mjs';
@@ -26,8 +28,11 @@ export const STANDARD_SCOPE = 'standard';
 const INSTALL_TIMEOUT_MS = 10 * 60 * 1000;
 const COMMIT = /^[0-9a-f]{40}$/u;
 
-/** One seed-standard an environment loads: its set, its repository (with `{env}` resolved) and the commit it is pinned to. */
-export interface StandardPin { set: string; repository: string; name: string; commit: string }
+/**
+ * One seed-standard an environment loads: its set, its repository (with `{env}` resolved), the commit it is pinned to, the stores it fills and
+ * whether the set declares `force: true` (a changed pin re-seeds once; standard-load.mts).
+ */
+export interface StandardPin { set: string; repository: string; name: string; commit: string; stores: readonly string[]; force: boolean }
 
 /** What a verification found: whether the pinned commit carries an adapter, and the drift of its output (none: it matches). */
 export interface PinVerdict { adapter: boolean; findings: readonly Finding[] }
@@ -46,7 +51,8 @@ export function standardPins(repoRoot: string, env: string): StandardPin[] {
     const destination = (Array.isArray(set.to) ? set.to : []).find((to: unknown) => plain(to) && to.driver === 'git' && typeof to.repository === 'string');
     if (destination === undefined) return [];
     const repository = resolveRepository(String(destination.repository), label);
-    return [{ set: set.id, repository, name: repositoryName(repository), commit: set.commit }];
+    const stores = Array.isArray(set.stores) ? set.stores.filter((store: unknown): store is string => typeof store === 'string') : [];
+    return [{ set: set.id, repository, name: repositoryName(repository), commit: set.commit, stores, force: set.force === true }];
   });
 }
 
@@ -81,6 +87,12 @@ export function standardGate({ pins, receipts, execute, verify }: { pins: readon
 /** What the real verifier runs: git and npm through `launch`, node for the adapter. */
 export interface VerifierDeps { cache: string; platform?: NodeJS.Platform; spawn?: AdapterSpawn }
 
+/** The git runner of a pin's mirror and of the seed driver over it: spawnSync with the caller's environment minus every GIT_* variable. */
+export const pinRunner: Runner = (program, args, options) => {
+  const done = spawnSync(program, [...args], { cwd: options.cwd, input: options.input, env: { ...withoutGitEnvironment(), ...options.env }, maxBuffer: 1 << 30, windowsHide: true });
+  return { status: done.status, stdout: done.stdout, stderr: done.stderr };
+};
+
 const realSpawn: AdapterSpawn = (program, args, options) => spawnSync(program, [...args], { ...options, encoding: 'utf8', windowsHide: true });
 
 /**
@@ -90,14 +102,14 @@ const realSpawn: AdapterSpawn = (program, args, options) => spawnSync(program, [
  */
 export function pinnedStandardVerifier({ cache, platform = process.platform, spawn = realSpawn }: VerifierDeps): PinVerifier {
   return (pin) => {
-    const pinned = pinRepository({ repository: pin.repository, commit: pin.commit, cache, name: pin.name });
+    const pinned = pinRepository({ repository: pin.repository, commit: pin.commit, cache, name: pin.name, run: pinRunner });
     if (pinned.readText(ADAPTER_ENTRY) === null) return { adapter: false, findings: [] };
     const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'starci-standard-'));
     try {
       const tree = path.join(scratch, 'tree');
       const run = (command: string, args: readonly string[], cwd: string, timeout = INSTALL_TIMEOUT_MS): void => {
         const [program, argv] = launch(platform, command, args);
-        const done = spawn(program, argv, { cwd, timeout, env: process.env });
+        const done = spawn(program, argv, { cwd, timeout, env: withoutGitEnvironment() });
         if (done.error !== undefined || done.status !== 0) throw Object.assign(new Error(`${command} ${args[0] ?? ''} failed`), { code: `${command.toUpperCase()}_FAILED` });
       };
       run('git', ['clone', '-q', '--no-checkout', path.join(cache, `${pin.name}.git`), tree], scratch);

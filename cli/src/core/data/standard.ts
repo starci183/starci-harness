@@ -191,9 +191,10 @@ export const standardFiles = (name: string, project: string, adapter: boolean, c
     ])
 
 /** Writes the standard's files into `root` (an existing file kept unless `force`) and points the repository's hooks at `.githooks`. */
-export function initStandard(root: string, options: { readonly adapter: boolean; readonly force: boolean }): StandardInitData {
-    const name = basename(root)
-    if (!NAME.test(name)) throw new Refusal("DATA_COPY_NAME", `${name} is no seed-standard name: a standard's repository is <name>-seed-standard, lowercase kebab (PROJECT-STACKS-13)`)
+export function initStandard(root: string, options: { readonly adapter: boolean; readonly force: boolean; readonly name?: string | undefined }): StandardInitData {
+    // `name` names the repository when the folder does not (a repository converted in place during its rename); it is validated, never the folder.
+    const name = options.name ?? basename(root)
+    if (!NAME.test(name)) throw new Refusal("DATA_COPY_NAME", `${name} is no seed-standard name: a standard's repository is <name>-seed-standard, lowercase kebab (PROJECT-STACKS-13)${options.name === undefined ? "; a folder named otherwise takes --name <name>-seed-standard" : ""}`)
     if (existsSync(join(root, "hfs.json"))) throw new Refusal("DATA_IN_CODE", `${root} holds hfs.json: a code project is never a copy repository (R400); init a standard in its own repository`)
     const project = name.slice(0, -"-seed-standard".length)
     const written: string[] = []
@@ -217,7 +218,7 @@ export function initStandard(root: string, options: { readonly adapter: boolean;
 export const dataStandardVerb = defineVerb({
     path: ["data", "standard"],
     summary:
-        "init a seed-standard copy repository (the folder, named <name>-seed-standard): .gitattributes, an empty plain manifest.json, the commit hook .githooks/pre-commit (core.hooksPath set) and the CI workflow .github/workflows/seed-standard.yml, both running starci app check --staged (R400, R434); --adapter adds raw/README.md and an adapter/ (main.ts, a convert.ts stub, package.json pinning @starci/seed, tsconfig.json) whose output over raw/ the hook and CI compare byte for byte with the committed layout (HFS_DATA_ADAPTER_DRIFT); an existing file is kept unless --force",
+        "init a seed-standard copy repository (the folder, named <name>-seed-standard, or any folder with --name <name>-seed-standard): .gitattributes, an empty plain manifest.json, the commit hook .githooks/pre-commit (core.hooksPath set) and the CI workflow .github/workflows/seed-standard.yml, both running starci app check --staged (R400, R434); --adapter adds raw/README.md and an adapter/ (main.ts, a convert.ts stub, package.json pinning @starci/seed, tsconfig.json) whose output over raw/ the hook and CI compare byte for byte with the committed layout (HFS_DATA_ADAPTER_DRIFT); an existing file is kept unless --force",
     editions: BOTH_EDITIONS,
     effect: "local-write",
     roles: WRITERS,
@@ -227,10 +228,11 @@ export const dataStandardVerb = defineVerb({
         dir: { kind: "string", summary: "the standard's repository folder (default: the working directory)" },
         adapter: { kind: "boolean", summary: "add raw/ and an adapter/ that converts it into the standard layout" },
         force: { kind: "boolean", summary: "rewrite the managed files that exist" },
+        name: { kind: "string", summary: "the repository's name, <name>-seed-standard, when the folder is named otherwise (a repository converted in place during its rename); validated instead of the folder" },
     },
     run: (context, flags) => {
         if (flags.action !== "init") return Promise.reject(new Refusal("CLI_USAGE", `starci data standard ${flags.action}: the one action is init`, EXIT_USAGE))
-        const data = initStandard(resolve(context.cwd, flags.dir ?? "."), { adapter: flags.adapter, force: flags.force })
+        const data = initStandard(resolve(context.cwd, flags.dir ?? "."), { adapter: flags.adapter, force: flags.force, name: flags.name })
         const next = data.adapter ? `; next: npm install --prefix adapter, commit adapter/package-lock.json, author raw/, run node adapter/main.ts` : ""
         const kept = data.kept.length === 0 ? "" : `; kept ${data.kept.join(", ")} (--force rewrites them)`
         const hooks = data.hooksPath ? "; core.hooksPath is .githooks" : "; no git repository yet: run git init, then git config core.hooksPath .githooks"

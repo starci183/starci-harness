@@ -10,7 +10,9 @@
 // to the app command it names on stdin, never in argv, a file or a log; its receipt is written once the command succeeded. A `files` entry
 // is validated only: the harness has no object-storage client, so its upload stays the app's. Without `execute` the step reads the
 // receipts and prints what would apply. Before any entry, the gate of standard-gate.mts verifies each pinned seed-standard of the environment
-// once per pin (R434): a standard whose adapter output drifts from its committed layout is refused STACK_SEED_ADAPTER_DRIFT.
+// once per pin (R434): a standard whose adapter output drifts from its committed layout is refused STACK_SEED_ADAPTER_DRIFT. Then the loader of
+// standard-load.mts applies each verified pin through the app's seed doors (an upsert by natural key, one receipt per standard and commit, a
+// changed pin only with the set's `force: true`), still before any entry of the levels: a standard is how the environment is born.
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -30,6 +32,8 @@ import { failure, refusal } from './errors.mjs';
 import type { ActionResult } from './remote.mjs';
 import { STANDARD_SCOPE, pinnedStandardVerifier, standardCache, standardGate, standardPins } from './standard-gate.mjs';
 import type { PinVerifier, StandardPin } from './standard-gate.mjs';
+import { appliedId, commandDoor, extensionStandards, loadStandards, pinnedStandardReader, standardStores } from './standard-load.mjs';
+import type { SeedDoor, StandardReader } from './standard-load.mjs';
 
 /** The receipts table of the seed step, in the app's database. */
 export const SEED_RECEIPTS = 'public.starci_seed_receipts';
@@ -55,6 +59,10 @@ export interface SeedStepInput {
   command: (argv: readonly string[], input: string) => RunResult;
   /** Verifies a pinned seed-standard before anything applies (standard-gate.mts); the real verifier over the harness's cache by default. */
   standards?: PinVerifier | undefined;
+  /** Reads a verified pin at its commit (standard-load.mts); the git driver over the harness's cache by default. */
+  standardReader?: StandardReader | undefined;
+  /** The seed door of a store; the store's adapter.command over starci/data-entries@1, run by `command`, by default. */
+  doors?: SeedDoor | undefined;
 }
 
 /** One receipt row. */
@@ -79,7 +87,7 @@ function levelsOf(repoRoot: string, env: string): SeedLevel[] {
 function receiptsOf(input: SeedStepInput): Receipt[] {
   const [present] = queryRows(input.ctx, input.target, `select to_regclass(${literal(SEED_RECEIPTS)}) is not null as present`);
   if (present?.present !== true) return [];
-  return queryRows(input.ctx, input.target, `select scope, id, hash, secrets from ${SEED_RECEIPTS}`).map((row) => ({ scope: String(row.scope), id: String(row.id), hash: String(row.hash), secrets: String(row.secrets) }));
+  return queryRows(input.ctx, input.target, `select scope, id, hash, secrets from ${SEED_RECEIPTS} order by applied_at, scope, id`).map((row) => ({ scope: String(row.scope), id: String(row.id), hash: String(row.hash), secrets: String(row.secrets) }));
 }
 
 /** The statement that records an entry's receipt and the outcome of its run. */
@@ -90,6 +98,11 @@ const receiptSql = (item: Planned, env: string, secrets: string, outcome: string
 /** The statement that records a verified standard pin: scope `standard`, the set's id, the commit as its hash. */
 const pinReceiptSql = (pin: StandardPin, env: string): string =>
   `insert into ${SEED_RECEIPTS} (scope, id, hash, secrets, env, outcome) values (${literal(STANDARD_SCOPE)}, ${literal(pin.set)}, ${literal(pin.commit)}, '', ${literal(env)}, 'verified') ` +
+  'on conflict (scope, id) do update set hash = excluded.hash, env = excluded.env, outcome = excluded.outcome, applied_at = now()';
+
+/** The statement that records an applied standard pin: scope `standard`, id `<set>@<commit>` (one receipt per standard and commit), the export digest as its hash. */
+const appliedReceiptSql = (pin: StandardPin, env: string, exportDigest: string, outcome: string): string =>
+  `insert into ${SEED_RECEIPTS} (scope, id, hash, secrets, env, outcome) values (${literal(STANDARD_SCOPE)}, ${literal(appliedId(pin))}, ${literal(exportDigest)}, '', ${literal(env)}, ${literal(outcome)}) ` +
   'on conflict (scope, id) do update set hash = excluded.hash, env = excluded.env, outcome = excluded.outcome, applied_at = now()';
 
 /** The outcome an app command answered on its last output line, or `applied`; the rest of its output is never read. */
@@ -204,18 +217,27 @@ function keptLine(item: Planned, receipt: Receipt | undefined): string | null {
 }
 
 /** The seed step of `env`: plans it, or with `execute` applies it. Returns { ok, lines, data: { applied, kept } }. */
-export function seedStep(input: SeedStepInput): ActionResult {
+export async function seedStep(input: SeedStepInput): Promise<ActionResult> {
   const planned: Planned[] = levelsOf(input.repoRoot, input.env).flatMap((level) => level.entries.map((entry) => ({
     level, scope: level.env ?? SHARED_SCOPE, entry, hash: entryDigest(path.join(input.repoRoot, level.dir), entry),
   })));
   const pins = standardPins(input.repoRoot, input.env);
-  if (planned.length === 0 && pins.length === 0) return { ok: true, lines: ['seed: no entry in .starcistacks/seeds or the level of the environment'], data: { applied: [], entries: 0 } };
+  const extensions = extensionStandards(input.repoRoot, input.env);
+  if (planned.length === 0 && pins.length === 0 && extensions.length === 0) return { ok: true, lines: ['seed: no entry in .starcistacks/seeds or the level of the environment'], data: { applied: [], entries: 0 } };
   const receipts = receiptsOf(input);
   const applied: string[] = [];
   // The standards first: a pin whose adapter output drifts refuses the step before any entry applies (R434).
   const gate = standardGate({ pins, receipts, execute: input.execute, verify: input.standards ?? pinnedStandardVerifier({ cache: standardCache() }) });
   const lines: string[] = [...gate.lines];
   if (input.execute) psqlTransaction(input.ctx, input.target, [...RECEIPTS_DDL.map((sql) => ({ sql })), ...gate.verified.map((pin) => ({ sql: pinReceiptSql(pin, input.env) }))], { code: 'STACK_SEED_RECEIPT' });
+  // Then the verified pins apply through the seed doors, each pin's receipt written once all its stores applied (standard-load.mts).
+  const loaded = await loadStandards({
+    pins, extensions, receipts, execute: input.execute, stores: pins.length === 0 ? [] : standardStores(input.repoRoot),
+    read: input.standardReader ?? pinnedStandardReader({ cache: standardCache() }), door: input.doors ?? commandDoor(input.command),
+    record: (pin, exportDigest, outcome) => { psqlTransaction(input.ctx, input.target, [{ sql: appliedReceiptSql(pin, input.env, exportDigest, outcome) }], { code: 'STACK_SEED_RECEIPT' }); },
+  });
+  lines.push(...loaded.lines);
+  applied.push(...loaded.applied);
   for (const item of planned) {
     const receipt = receipts.find((row) => row.scope === item.scope && row.id === item.entry.id);
     const kept = keptLine(item, receipt);
@@ -256,7 +278,7 @@ export function hasSeedEntries(repoRoot: string, env: string): boolean {
 /** What a deploy's dry run says of the seed step: every entry of the two levels, each applied unless its receipt holds. */
 export function seedPlanLine(repoRoot: string, env: string): string {
   const entries = [
-    ...standardPins(repoRoot, env).map((pin) => `${STANDARD_SCOPE}/${pin.set} (verify ${pin.name}@${pin.commit.slice(0, 12)})`),
+    ...standardPins(repoRoot, env).map((pin) => `${STANDARD_SCOPE}/${pin.set} (verify and load ${pin.name}@${pin.commit.slice(0, 12)})`),
     ...levelsOf(repoRoot, env).flatMap((level) => level.entries.map((entry) => `${level.env ?? SHARED_SCOPE}/${entry.id} (${entry.kind}, ${entry.mode})`)),
   ];
   return `seed after convergence, each entry unless its receipt in ${SEED_RECEIPTS} holds: ${entries.join(', ')}`;

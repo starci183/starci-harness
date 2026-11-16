@@ -6744,6 +6744,47 @@ STACK_SEED_ADAPTER_DRIFT:
   nextStep_vi: "Ghim một commit mà kiểm tra của chính kho seed-standard đã xanh (sửa raw/ hoặc adapter/ trong kho đó rồi commit lại), cập nhật commit trong data.sets, rồi chạy lại bring-up."
   owner: supervisor
   kind: verb-refusal
+STACK_SEED_STANDARD_UNREADABLE:
+  title: "The seed step cannot read a pinned seed-standard at its commit"
+  title_vi: "Bước seed không đọc được seed-standard đã ghim tại commit của nó"
+  meaning_vi: "Sau cổng R434, bộ nạp của bước seed lấy từng seed-standard của môi trường tại commit mà data.sets ghim (pinRepository vào bộ đệm của harness). Kho hoặc commit không tới được thì không mục nào của chuẩn được áp dụng và không có biên nhận."
+  causes_vi:
+    - "Commit được ghim không có trong kho seed-standard (chưa push, bị xoá lịch sử, gõ sai)."
+    - "Máy chạy bring-up không tới được kho (mạng, quyền đọc kho riêng)."
+  nextStep_vi: "Push commit đó lên kho seed-standard hoặc sửa commit trong data.sets, kiểm tra quyền đọc kho từ máy chạy bring-up, rồi chạy lại bring-up."
+  owner: supervisor
+  kind: verb-refusal
+STACK_SEED_STANDARD_SCHEMA:
+  title: "A pinned seed-standard is no healthy plain standard, or fills a store its set does not list"
+  title_vi: "Seed-standard đã ghim không phải chuẩn plain lành mạnh, hoặc nạp vào kho mà tập dữ liệu không liệt kê"
+  meaning_vi: "Bộ nạp kiểm bản sao tại commit đã ghim bằng verify của git driver (manifest starci/data-manifest@1, không niêm phong, tệp, giới hạn dung lượng, digest từng tập) và đòi purpose seed-standard; mỗi kho mà chuẩn nạp phải nằm trong stores của tập đó. Sai một điều là chuẩn bị từ chối trước khi bản ghi nào được áp dụng."
+  causes_vi:
+    - "data/ của kho chuẩn bị sửa tay nên digest không khớp manifest, hoặc thiếu hay thừa tệp."
+    - "Commit được ghim là một seed-backup hay một định dạng khác, không phải seed-standard."
+    - "Chuẩn có tập thuộc một kho mà stores của tập trong data.sets không nêu."
+  nextStep_vi: "Sinh lại đầu ra của chuẩn bằng adapter hoặc git driver trong kho seed-standard và commit, hoặc thêm kho vào stores của tập; rồi ghim commit mới và chạy lại bring-up."
+  owner: supervisor
+  kind: verb-refusal
+STACK_SEED_STORE_COMMAND:
+  title: "A store a seed-standard fills has no seed door"
+  title_vi: "Kho mà seed-standard nạp vào không có cửa seed"
+  meaning_vi: "Chuẩn được áp dụng qua cửa seed của ứng dụng: adapter.command của từng kho trong data.stores, phục vụ kho qua giao thức starci/data-entries@1 (serveStore của @starci/seed). Kho không khai lệnh đó, hoặc không được khai trong data.stores, thì chuẩn không có đường vào."
+  causes_vi:
+    - "data.stores thiếu adapter.command cho kho mà một seed-standard nạp (R426 DATA_STORE_ADAPTER)."
+    - "Chuẩn nạp một kho mà data.stores không khai."
+  nextStep_vi: "Thêm vào ứng dụng một lệnh phục vụ kho bằng serveStore và khai argv của nó ở adapter.command của kho, rồi chạy lại bring-up."
+  owner: op-retry
+  kind: verb-refusal
+STACK_SEED_DOOR_REFUSED:
+  title: "The app's seed door failed or refused a key of a pinned seed-standard"
+  title_vi: "Cửa seed của ứng dụng lỗi hoặc từ chối một khoá của seed-standard đã ghim"
+  meaning_vi: "Bộ nạp chạy thử khô qua mọi cửa trước (không ghi gì), rồi mới upsert theo khoá tự nhiên. Cửa từ chối một khoá ở lượt khô thì không bản ghi nào được áp dụng; cửa thoát khác 0 hoặc từ chối ở lượt thật thì không có biên nhận, nên lần bring-up sau áp dụng lại cả chuẩn (upsert nên an toàn). Đầu ra của lệnh bị giữ kín."
+  causes_vi:
+    - "Logic nhập của kho trong ứng dụng từ chối bản ghi (ràng buộc, khoá không hợp lệ, tập chưa khai)."
+    - "Lệnh của kho không chạy được hoặc không trả ImportReport ở dòng cuối."
+  nextStep_vi: "Chạy lệnh của kho với import trên một bản sao dev để xem mã từ chối, sửa cửa của ứng dụng hoặc nội dung chuẩn, rồi chạy lại bring-up."
+  owner: op-retry
+  kind: verb-refusal
 DATA_STORE_UNDECLARED:
   title: "A stateful component is neither a store nor derived"
   title_vi: "Thành phần có trạng thái chưa là kho dữ liệu cũng chưa là derived"

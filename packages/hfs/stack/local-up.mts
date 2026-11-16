@@ -106,7 +106,7 @@ async function seedLevels(ctx: StackContext, local: LocalConfig, custody: Custod
     const [program, args] = launch(ctx.platform, argv[0] ?? '', argv.slice(1));
     return ctx.spawn(program, args, { cwd: local.repoRoot, env, input });
   };
-  return seedStep({ ctx, repoRoot: local.repoRoot, env: local.env, target, execute: true, command }).lines;
+  return (await seedStep({ ctx, repoRoot: local.repoRoot, env: local.env, target, execute: true, command })).lines;
 }
 
 /**

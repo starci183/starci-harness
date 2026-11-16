@@ -68,17 +68,22 @@ void test("a file a person changed is kept unless --force; a name that is no sta
         assert.throws(() => initStandard(root, { adapter: false, force: false }), { code: "DATA_IN_CODE" })
     })
     scratch("shop-content", (root) => {
-        assert.throws(() => initStandard(root, { adapter: false, force: false }), { code: "DATA_COPY_NAME" })
+        assert.throws(() => initStandard(root, { adapter: false, force: false }), (error: Error & { code?: string }) => error.code === "DATA_COPY_NAME" && /--name <name>-seed-standard/u.test(error.message))
+        assert.throws(() => initStandard(root, { adapter: false, force: false, name: "Shop_Content" }), { code: "DATA_COPY_NAME" }, "the given name is validated, not the folder")
+        const renamed = initStandard(root, { adapter: true, force: false, name: "shop-seed-standard" })
+        assert.equal(renamed.name, "shop-seed-standard", "a folder converted in place during its rename takes --name")
+        assert.match(readFileSync(join(root, "manifest.json"), "utf8"), /"format": "shop-seed-standard@1"/u)
+        assert.match(readFileSync(join(root, "adapter/convert.ts"), "utf8"), /shop-seed-standard@1/u)
     })
     assert.equal(emptyManifest("a-seed-standard", "a").endsWith("}\n"), true)
     // reason: the verb reads only cwd of its context.
     const context = { cwd: tmpdir() } as unknown as VerbContext
-    await assert.rejects(dataStandardVerb.run(context, { action: "update", dir: undefined, adapter: false, force: false }), { code: "CLI_USAGE" })
+    await assert.rejects(dataStandardVerb.run(context, { action: "update", dir: undefined, adapter: false, force: false, name: undefined }), { code: "CLI_USAGE" })
     const parent = mkdtempSync(join(tmpdir(), "starci-standard-verb-"))
     try {
         const root = join(parent, "x-seed-standard")
         mkdirSync(root)
-        const result = await dataStandardVerb.run(context, { action: "init", dir: root, adapter: true, force: false })
+        const result = await dataStandardVerb.run(context, { action: "init", dir: root, adapter: true, force: false, name: undefined })
         assert.match(result.message, /^x-seed-standard: wrote 10 file\(s\); no git repository yet.*; next: npm install --prefix adapter/u)
     } finally {
         rmSync(parent, { recursive: true, force: true })

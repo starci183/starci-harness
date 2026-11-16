@@ -10,7 +10,8 @@
 //                                            upper-case name holding SEED_STANDARD (`process.env.CONTENT_SEED_STANDARD_URL`).
 // Not judged: the `data.sets` declaration (its keys are lower case, so it is never an env assignment), the project's extension (ext/: a
 // `completeness` check reads its standard through pinRepository, PROJECT-STACKS-13), the work tree (.starciwork), Markdown, lock files and
-// the committed check cache. The seed step that loads a standard is the harness's own code (@starci/hfs stack/seeds.mts), never the app's.
+// the committed check cache. The seed step that loads a standard is the harness's own code (@starci/hfs stack/seeds.mts, its loader
+// stack/standard-load.mts), never the app's. An error: the loader ships, so an app has its lawful path in.
 import { readText, found } from './read.mjs';
 import type { Finding, Repo } from './rule-types.mjs';
 
@@ -37,8 +38,7 @@ export const isLoaderCandidate = (file: string): boolean => SCANNED.test(file) &
 const WHY = 'a seed-standard reaches an app only through the bring-up seed step, at the commit data.sets pins (an upsert by natural key, force once per pin); declare the standard in data.sets of .starcistacks/application-stacks.yaml and remove this path (R435, PROJECT-STACKS-13)';
 
 const loader = (file: string, line: number, kind: 'git' | 'command' | 'env', what: string): Finding =>
-  // Report-only (a warning) until the bring-up loader that applies the pinned data.sets standards ships; it turns into an error in that train.
-  found('HFS_DATA_SECOND_LOADER', file, `${file}:${String(line)} ${what}: ${WHY}`, { kind, line, level: 'warning' });
+  found('HFS_DATA_SECOND_LOADER', file, `${file}:${String(line)} ${what}: ${WHY}`, { kind, line });
 
 /** The script findings of a package.json text: a content-sync name, or a script that names a -seed-standard repository. */
 function scriptFindings(file: string, text: string): Finding[] {

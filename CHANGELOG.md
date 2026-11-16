@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.0-alpha.139 - 2026-11-17
+
+- Added: `starci data standard init --name <name>-seed-standard` (`core/data/standard.ts`): a repository converted in place during its rename is scaffolded under the given name, which is validated instead of the folder's (`DATA_COPY_NAME`); a folder named otherwise is told about `--name`.
+- Changed (contexts): `project/stacks.md` PROJECT-STACKS-13 replaces the "Known gap" of the seed step with "The loader" (the receipt per standard and commit, the read, the seed doors, the dry run then the upsert, the force-once rule, a worked example), and R435 is an error; PROJECT-STACKS-14 names a store's `adapter.command` the seed door a standard store declares too; `hfs/rules.yaml` R426, R435; `harness/presence-audit.md` R426; the generated `project/index.md` and `project/stacks-sections.md`.
+- The loader and the R435 error ship in @starci/hfs 6.13.19; until the cli-follow step raises the CLI's requirement to it, the CLI runs the hfs it requires.
+
 ## 1.1.0-alpha.138 - 2026-11-17
 
 - Added (`ops/host.yaml`, `ops/host/stack/embeddings.yaml`, `embeddings.Caddyfile`, `embeddings-tunnel.yml`): the host service `embeddings`, the host's GPU embedding model `qwen3-embedding:8b` in its native Ollama (127.0.0.1:11434, never a container: the GPU works natively and Docker Desktop's GPU passthrough on Windows/WSL is fragile), published as https://embed.starci.org for any app. Two containers of the `starci` stack stand in front of it: `embeddings-gate` (Caddy pinned by digest: `Authorization: Bearer <EMBEDDINGS_API_KEY>` required, only `POST /v1/embeddings`, `POST /api/embed` and `GET /v1/models` served, every other path 404, a 1 MB body cap, at most 4 requests to Ollama at once; also on 127.0.0.1:11435) and `embeddings-tunnel` (the connector of the locally managed tunnel `starci-host-services`, ingress embed.starci.org to the gate on the stack network). Each service's check is its status row: the model listed by `/api/tags`, and the gate and the public origin up only while `/v1/models` without the token answers 401.

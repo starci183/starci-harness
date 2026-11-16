@@ -100,7 +100,7 @@ test('DATA_STORE_ADAPTER: the module is a tracked source file that implements St
   assert.deepEqual(factory, [], 'a factory whose declared return type is StoreAdapter builds the store (a package store such as postgresStore)');
 });
 
-test('DATA_STORE_ADAPTER: adapter.command is an argv, and a store of a seed-backup set must have one', () => {
+test('DATA_STORE_ADAPTER: adapter.command is an argv, and a store of a seed-backup or a seed-standard set must have one', () => {
   const backup = (): Json => stack({ sets: [{ id: 'shop-backup', purpose: 'seed-backup', stores: ['database'], environments: ['dev'], to: [{ driver: 'git', repository: 'x/shop-seed-backup-{env}' }] }] });
   assert.deepEqual(run(stack()), [], 'no backup set: a store needs no command');
   assert.deepEqual(run(backup()), ['DATA_STORE_ADAPTER'], 'the database is in a seed-backup set and has no command');
@@ -113,7 +113,11 @@ test('DATA_STORE_ADAPTER: adapter.command is an argv, and a store of a seed-back
     assert.deepEqual(run(wrong), ['DATA_STORE_ADAPTER'], JSON.stringify(bad));
   }
   const standard = stack({ sets: [{ id: 'shop-standard', purpose: 'seed-standard', stores: ['database'], environments: ['dev'], to: [] }] });
-  assert.deepEqual(run(standard), [], 'a standard alone needs no command');
+  assert.deepEqual(run(standard), ['DATA_STORE_ADAPTER'], 'the bring-up applies a standard through the door of the store: it needs the command');
+  standard.data.stores[0].adapter.command = ['npx', 'starci-shop', 'data'];
+  assert.deepEqual(run(standard), [], 'negative control: the door is declared');
+  const project = stack({ sets: [{ id: 'shop-standard', purpose: 'seed-standard', stores: ['database'], environments: ['dev'], to: [], completeness: 'ext:catalogue' }] });
+  assert.deepEqual(run(project), [], 'a project kind (completeness) reads its own standard: no door is needed');
 });
 
 test('DATA_DERIVED_SOURCE: from names a declared store and rebuild is not empty', () => {

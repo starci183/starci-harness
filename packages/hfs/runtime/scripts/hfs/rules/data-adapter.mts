@@ -107,6 +107,14 @@ export type AdapterSpawn = (program: string, args: readonly string[], options: {
 
 const defaultSpawn: AdapterSpawn = (program, args, options) => spawnSync(program, [...args], { ...options, encoding: 'utf8', windowsHide: true });
 
+/**
+ * The environment of every child the guard and the bring-up gate spawn (the adapter, and git or npm in a scratch checkout): the caller's, minus
+ * every `GIT_*` variable. A commit hook runs with GIT_DIR, GIT_INDEX_FILE, GIT_WORK_TREE and their kin set; inherited, they point the git the
+ * adapter's renderStandard runs in its scratch copy at the user's repository, which then gains a commit and a rewritten index.
+ */
+export const withoutGitEnvironment = (env: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv =>
+  Object.fromEntries(Object.entries(env).filter(([key]) => !/^GIT_/iu.test(key)));
+
 /** The node flags that let `node` run a .ts entry: none where type stripping is on (Node 23.6 and later), `--experimental-strip-types` before. */
 export const stripTypesFlags = (features: { typescript?: unknown } = process.features as { typescript?: unknown }): string[] => (features.typescript ? [] : ['--experimental-strip-types']);
 
@@ -114,7 +122,7 @@ export const stripTypesFlags = (features: { typescript?: unknown } = process.fea
 export function renderAdapter(root: string, rawDir: string, outDir: string, spawn: AdapterSpawn = defaultSpawn): Rendered {
   if (!fs.existsSync(path.join(root, ADAPTER_ENTRY))) return { ok: false, reason: `${ADAPTER_ENTRY} is missing` };
   fs.mkdirSync(outDir, { recursive: true });
-  const run = spawn(process.execPath, [...stripTypesFlags(), path.join(root, ADAPTER_ENTRY), '--raw', rawDir, '--out', outDir], { cwd: root, timeout: ADAPTER_TIMEOUT_MS, env: process.env });
+  const run = spawn(process.execPath, [...stripTypesFlags(), path.join(root, ADAPTER_ENTRY), '--raw', rawDir, '--out', outDir], { cwd: root, timeout: ADAPTER_TIMEOUT_MS, env: withoutGitEnvironment() });
   if (run.error !== undefined || run.status !== 0) {
     const stderr = String(run.stderr ?? '');
     const last = stderr.trim().split('\n').filter((line) => line.startsWith('the adapter failed') || /Error/u.test(line)).at(-1);

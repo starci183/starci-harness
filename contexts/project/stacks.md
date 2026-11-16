@@ -607,11 +607,14 @@ answers). A repeated key or a set mixing records and blobs is refused by the man
 
 The guard. The commit hook and CI run the adapter twice over `raw/` as the index holds it and compare what it writes, by git blob id, with
 the committed `manifest.json`, `data/`, `blobs/` and `index/`; a run that fails, two runs that differ (a non-deterministic adapter), a
-hand edit of `data/`, `raw/` committed without its output and an `adapter/` change left unstaged are HFS_DATA_ADAPTER_DRIFT. An adapter
+hand edit of `data/`, `raw/` committed without its output and an `adapter/` change left unstaged are HFS_DATA_ADAPTER_DRIFT. The adapter, and the git and npm
+the bring-up gate runs in its scratch checkout, run without the caller's `GIT_*` variables: under a hook they would point the scratch git
+of `renderStandard` at the user's repository. An adapter
 repository without its entry, its package, the hook or the workflow is HFS_DATA_ADAPTER_UNGUARDED. `starci data standard init [--adapter]
-[--dir <folder>] [--force]` writes the guard, `.gitattributes`, an empty plain manifest (byte for byte what the driver renders for no entry)
+[--dir <folder>] [--name <name>-seed-standard] [--force]` writes the guard, `.gitattributes`, an empty plain manifest (byte for byte what the driver renders for no entry)
 and, with `--adapter`, `raw/README.md` and a compiling `adapter/` stub, and sets `core.hooksPath` to `.githooks`; a file a person changed is
-kept unless `--force`. Then `npm install --prefix adapter` and commit `adapter/package-lock.json` (CI installs with `npm ci`).
+kept unless `--force`. The folder is named `<name>-seed-standard`; a repository converted in place during its rename passes `--name`, which is
+validated instead of the folder. Then `npm install --prefix adapter` and commit `adapter/package-lock.json` (CI installs with `npm ci`).
 
 A worked example: lessons written as Markdown, with their images.
 
@@ -646,10 +649,59 @@ upserts the lessons into the `database` store and the images into the `storage` 
 destination, no project `completeness`) through `pinRepository` into the harness's cache and, when the pinned commit carries `adapter/`,
 installs it from its lockfile in a scratch checkout and runs the same drift check; a pin whose output drifts, or that cannot be read, is
 refused STACK_SEED_ADAPTER_DRIFT and nothing is seeded. A verified pin is recorded in the seed receipts (scope `standard`, the set's id, the
-commit), so each pin is verified once. No app reads a standard any other way: a git clone, pull or fetch of a `-seed-standard` repository,
-a content-sync command, or an environment variable naming one is HFS_DATA_SECOND_LOADER (R435). Known gap: R435 reads one line at a time,
-so a repository name kept in a variable and cloned on another line is held by review. Known gap: the seed step verifies a pinned standard;
-applying its entries into the stores is the receipt-and-upsert law above, not yet a step of `stack/seeds.mts`.
+commit), so each pin is verified once. Then the loader below applies it. No app reads a standard any other way: a git clone, pull or fetch of a
+`-seed-standard` repository, a content-sync command, or an environment variable naming one is HFS_DATA_SECOND_LOADER (R435, an error). Known
+gap: R435 reads one line at a time, so a repository name kept in a variable and cloned on another line is held by review.
+
+**The loader** (`packages/hfs/stack/standard-load.mts`, called by `seedStep` of `stack/seeds.mts` after the gate and before the levels: a
+standard is how the environment is born). Per pin of the environment, in declaration order:
+
+1. **Receipt.** One receipt per (standard, commit) in `public.starci_seed_receipts`: scope `standard`, id `<set>@<commit>`, hash the manifest's
+   export digest, the outcome (`applied` or `unchanged`, `forced` before it on a forced pin), the environment and the time. A receipt for the
+   pinned commit skips the pin (`kept`) and no door runs. No receipt for the set at all is the first bring-up: the pin applies. A receipt for
+   another commit is a changed pin: it is reported `DATA_STANDARD_CHANGED` and left, unless the set declares `force: true`; then it applies
+   once and its own receipt holds it, so the same stack text never re-seeds twice.
+2. **Read.** `pinRepository` fetches the pin into the same bare mirror the gate filled, and the git driver of `@starci/seed` over that mirror
+   verifies the commit (manifest `starci/data-manifest@1`, plain sealing, the file index, the cap and every set's digest) and reads its
+   `data/<store>/<set>/*.json` records and `blobs/` chunks into entries. A pin that cannot be fetched is STACK_SEED_STANDARD_UNREADABLE; a copy that
+   does not verify, is no `seed-standard` or fills a store the set's `stores` do not list is STACK_SEED_STANDARD_SCHEMA.
+3. **Doors.** Each store the copy fills is reached through its seed door: the store's `adapter.command` (PROJECT-STACKS-14), served with
+   `serveStore` over `starci/data-entries@1` and run by the seed step's own runner (from the app root in the api's environment on a dev stack, in a
+   task of the jobs service on a deploy). A store with no command, or none in `data.stores`, is STACK_SEED_STORE_COMMAND.
+4. **Dry run, then apply.** `restoreFrom` first imports every store with `{dryRun: true, mode: mirror}`: nothing is written, a refused key
+   refuses the pin before any record applies, and the mirror's `removed` count is what the standard no longer names. Then `{dryRun: false,
+   mode: merge}`: an upsert by natural key that keeps each row's identity and removes nothing; what the standard no longer names is reported
+   and left. A door that exits non-zero (its output withheld), answers no ImportReport or refuses a key is STACK_SEED_DOOR_REFUSED.
+5. **Receipt last.** The receipt is written only after every store of the pin applied. A refusal at any step writes none, so the next
+   bring-up applies the pin again, which an upsert by natural key makes safe. Pins before a refused one keep their receipts.
+
+A set with `completeness: ext:<check>` is the project's: the loader names it (`left to the project`) and reads nothing. A dry run plans each pin
+from the receipts and opens no door.
+
+A worked example: the set `lessons` of an app `shop` fills `database` and `storage`, each store declaring its door.
+
+```yaml
+data:
+  stores:
+    - {id: database, kind: database, level: logical, component: db, adapter: {module: be/src/modules/integrations/seed/database.adapter.ts, command: [npx, shop, data, database]}}
+    - {id: storage, kind: storage, level: logical, component: minio, adapter: {module: be/src/modules/integrations/seed/storage.adapter.ts, command: [npx, shop, data, storage]}}
+  sets:
+    - {id: lessons, purpose: seed-standard, stores: [database, storage], environments: [dev, production], to: [{driver: git, repository: https://github.com/example/shop-seed-standard}], commit: <A>}
+```
+
+```
+first bring-up at A    seed standard/lessons: no adapter, the committed standard stands (shop-seed-standard@<A>)
+                       seed standard/lessons: applied shop-seed-standard@<A> (lessons: 2 created, 0 updated, 0 unchanged; lesson-images: 1 created, ...)
+                       receipt (standard, lessons@<A>, <export digest>, applied)
+second bring-up at A   seed standard/lessons: kept (shop-seed-standard@<A> applied before, once per pin)
+pin moved to B         seed standard/lessons: DATA_STANDARD_CHANGED: pinned shop-seed-standard@<B>, applied <A>; not re-seeded: ...
+B with force: true     seed standard/lessons: applied shop-seed-standard@<B>, forced (DATA_STANDARD_CHANGED from <A>) (lessons: 0 created,
+                       1 updated, 0 unchanged; ...; 1 key(s) the standard no longer names left in place)
+                       receipt (standard, lessons@<B>, <export digest>, forced applied)
+next bring-up at B     seed standard/lessons: kept (shop-seed-standard@<B> applied before, once per pin)
+```
+
+Leaving `force: true` on the set is harmless: it re-seeds once per pinned commit, never on every bring-up.
 
 **Code and copies stay apart.** A code project tracks no copy document (a data manifest or a shard) and never depends on a copy
 repository (no package dependency, workspace, submodule or path into one).
@@ -688,8 +740,9 @@ no value, store error text or identity reaches an output.
 Enforced by: R400 (`data-copies`: in a code project `HFS_DATA_IN_CODE`, `HFS_DATA_DEPENDENCY`; in a copy repository's commit hook
 `HFS_DATA_UNSEALED`, `HFS_DATA_STANDARD_SEALED`, `HFS_DATA_MANIFEST_DRIFT`, `HFS_DATA_FILE_SIZE`, `HFS_DATA_CAP`, raw/ included); R427 (the data sets);
 R434 (`data-adapter`, `standard-gate`: `HFS_DATA_ADAPTER_DRIFT`, `HFS_DATA_ADAPTER_UNGUARDED`, `STACK_SEED_ADAPTER_DRIFT`); R435 (`data-loaders`:
-`HFS_DATA_SECOND_LOADER`); the adapter's render by the specs of `@starci/seed` (`git/standard.spec.ts`), the guard by
-`packages/hfs/src/data-adapter.spec.mts` and `data-loaders.spec.mts`, the scaffold by `cli/src/core/data/standard.test.ts`.
+`HFS_DATA_SECOND_LOADER`; `standard-load`: `STACK_SEED_STANDARD_UNREADABLE`, `STACK_SEED_STANDARD_SCHEMA`, `STACK_SEED_STORE_COMMAND`,
+`STACK_SEED_DOOR_REFUSED`); the adapter's render by the specs of `@starci/seed` (`git/standard.spec.ts`), the guard by
+`packages/hfs/src/data-adapter.spec.mts` and `data-loaders.spec.mts`, the loader by `standard-load.spec.mts`, the scaffold by `cli/src/core/data/standard.test.ts`.
 
 ## PROJECT-STACKS-14 Every store that must be kept has an adapter; every copy is written through a driver
 
@@ -747,9 +800,10 @@ reached from the app's root, never named by the declaration alone. An adapter th
 data lives in a domain capability, registered by that capability's module, and takes the port from `@modules/integrations/seed` (an
 integration never imports the domain, BE-INFRA-3); its `command` is the argv, from the app root, of the app's own command that serves the store with `serveStore` of `@starci/seed` over the line
 protocol `starci/data-entries@1` (`describe`, `export <selection>`, `import <options>` with entry lines on stdin, `identity <set> <key>`), which `starci app data` runs; a store
-of a `seed-backup` set declares one.
+of a `seed-backup` set declares one, and so does a store a `seed-standard` fills (no project `completeness`): that command is the app's **seed door**,
+the one way the bring-up's loader writes a standard into the store (PROJECT-STACKS-13, "The loader").
 
-Enforced by: R426 (`data-stores`: `DATA_STORE_UNDECLARED`, `DATA_STORE_KIND`, `DATA_STORE_ADAPTER` including the `command` of a backed-up store, `DATA_DERIVED_SOURCE`) and R427
+Enforced by: R426 (`data-stores`: `DATA_STORE_UNDECLARED`, `DATA_STORE_KIND`, `DATA_STORE_ADAPTER` including the `command` of a backed-up store and of a store a standard fills, `DATA_DERIVED_SOURCE`) and R427
 (`data-sets`: `DATA_PURPOSE`, `DATA_DRIVER_KIND`, `DATA_COPY_NAME`, `DATA_SEED_UNPINNED`, `DATA_FORCE_MISPLACED`, `DATA_BACKUP_LOADED`,
 `DATA_EXTENSION_UNDECLARED`); the ports and the git driver by the specs of `@starci/seed`; the verbs by `packages/hfs/src/data-verb.spec.mts`.
 
