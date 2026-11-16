@@ -136,7 +136,7 @@ Refused (forbidden or external): `app.tool-config-local`, `app.ci-e2e`, `app.too
       - `builders/*.builder.ts` — **be.tests.fixtures.builders** optional · [be/test](../code/be/test.md) · R89
       - `i18n/` — **be.tests.fixtures.i18n** optional · [be/test](../code/be/test.md)
     - `integration/<capability>/*.integration-spec.ts` — **be.tests.integration** optional · [be/test](../code/be/test.md) · R47, R112
-    - `e2e/<area>/*.e2e-spec.ts` — **be.tests.e2e** optional · [be/test](../code/be/test.md) · R12, R47, R48
+    - `e2e/<flow>/*.e2e-spec.ts` — **be.tests.e2e** optional · [be/test](../code/be/test.md) · R12, R47, R48
     - `contract/<provider>/*.contract-spec.ts` — **be.tests.contract** optional · [be/test](../code/be/test.md) · R47
 
 Git-ignored: `repo.build-output`, `repo.generated`.
