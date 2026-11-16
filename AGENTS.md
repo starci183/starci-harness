@@ -11,9 +11,11 @@ checkout's path and the project root on explicitly.
 
 - Look a rule up before you act, in English and in several phrasings, and after every context compaction:
   [contexts/harness/rules.md](contexts/harness/rules.md) rule 7, as [contexts/README.md](contexts/README.md) "Looking a rule up" says.
-- Before changing anything in a repository, read that repository's `.starciwork/concepts` (`concepts/README.md`, then
-  the concept of every folder the task touches) before its code; they hold its persistent shared context (terms, data
-  model, naming, business rules), and a task across repositories reads each one's:
+- Before changing anything in a repository, read its `.starcistacks/application-stacks.yaml` WHOLE (gates declared off with
+  their reasons, components, environments, ports, tunnel, secret members, backing services) and the `.starcistacks/<env>/README.md`
+  of each environment the task touches; then its `.starciwork/concepts` (`concepts/README.md`, the `conventions` concept, then
+  the concept of every folder the task touches); only then its code. They hold its persistent shared context (terms, data model,
+  naming, business rules), and a task across repositories reads each one's. A task that contradicts a declaration stops and asks:
   [contexts/harness/rules.md](contexts/harness/rules.md) rule 10. The harness itself holds no app's business: rule 9.
 - Every reply to the owner states what you believe after checking, grounded in the code, the data or the settled
   decisions; no alternative directions, "later we could switch" asides or objections you do not hold; name the real cost

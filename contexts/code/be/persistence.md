@@ -280,3 +280,25 @@ is on the base the declaration is spent. The procedure, with its proof, is "Rese
 Why: a view, definer or configuration change can expose rows while the base table looks protected.
 
 Enforced by: R214, R215, R256, R259, R213, R257 (hfs checks).
+
+## BE-PERSISTENCE-20 Keys: `id uuid`, foreign keys named by the table they reference, every foreign key indexed
+
+Every table an app creates in its schema has the primary key `id uuid primary key default gen_random_uuid()`; a natural key (a
+claim's source and event, a window's bucket, a tick's name) is a unique constraint beside it, and `on conflict (<its columns>)` targets
+that constraint. A one-column foreign key is named `<referenced table singular>_id` (`customer_id` to `customers`) or
+`<role>_<referenced table singular>_id` (`owner_user_id`, `billing_customer_id`); a table that extends another row shares its key, its
+`id` referencing that row. The singular of a table name is a fixed rule set on its last word (`categories` category, `boxes` box,
+`order_items` order_item; a word in `ss`, `us` or `is` stays), and an irregular plural is the app's own map, hfs.json
+`db.singulars` (`{ "people": "person" }`). Every foreign key has an index, a primary key or a unique constraint of its table whose leading
+columns are its columns, in some migration of the set. A table whose key a package or a natural key fixes (the slot table of
+`@starci/outbox`, a window keyed by its bucket) is listed in hfs.json `db.keyExceptions` as `{ table, reason }`: its key shape and foreign
+key names are not judged, its indexes still are. A migration already on the base unchanged is the backlog: its key findings are reported
+as known items, never blocking, and every new migration is judged in full. A migration that drops, renames, changes a type or replaces a
+constraint is a `*_contract_*` migration (BE-PERSISTENCE-19), and migration stamps strictly increase (R213).
+
+Why: one key shape and one naming rule let every reader and every generated query join without looking the table up, and a foreign key
+with no index turns every delete of its parent and every join into a scan.
+
+Enforced by: R431 (`DB_PRIMARY_KEY_SHAPE`, `DB_FOREIGN_KEY_NAME`, `DB_FOREIGN_KEY_INDEX`, hfs checks over the migrations of
+`db/migrations`). Known gap: the check reads the SQL migrations of `db/migrations` only, so a full app's TypeORM migrations under `be/`
+are held by review, and an index a later migration drops still counts.

@@ -2882,3 +2882,26 @@ rules:
       - HFS_GATE_DECLARATION_INVALID
     enforcers:
       - {kind: hfs, id: gate-declaration}
+  - id: R431
+    code: DB_PRIMARY_KEY_SHAPE
+    law: "Every table an app creates in its schema has the primary key `id uuid` (DB_PRIMARY_KEY_SHAPE; a natural key is a unique constraint beside it); a one-column foreign key is named `<referenced table singular>_id` or `<role>_<referenced table singular>_id`, or is the table's own `id` when the table shares the key of the row it extends (DB_FOREIGN_KEY_NAME), the singular being a fixed rule set on the last word of the table name with the app's map of irregular plurals, hfs.json `db.singulars`, first; every foreign key has an index, primary key or unique constraint of its table whose leading columns are its columns somewhere in the migration set (DB_FOREIGN_KEY_INDEX). A table hfs.json `db.keyExceptions` lists with a reason is not judged for its key shape or foreign key names. The rule binds every new migration: a migration already on the base unchanged is the backlog, its findings reported as known items, never blocking."
+    failureCodes:
+      - DB_PRIMARY_KEY_SHAPE
+      - DB_FOREIGN_KEY_NAME
+      - DB_FOREIGN_KEY_INDEX
+    enforcers:
+      - {kind: hfs, id: db-key-shape}
+  - id: R432
+    code: BE_FAILURE_CLASS_BY_TEXT
+    law: "Whether a failure is transient or permanent is decided only by `classifyFailure` of @starci/nest-kit, which reads an explicit `failureClass` the error carries first: no back-end source (src/**, not a spec) matches an error's code or message text against a transient failure code (ECONNRESET, ETIMEDOUT, EAI_AGAIN, 40001, 40P01, 57P01 and their siblings), as a quoted literal or inside a regular expression literal; code that knows a class throws its error with `failureClass`, and a back end with a Postgres job outbox takes the outbox, its runner and its judge from @starci/outbox."
+    failureCodes:
+      - BE_FAILURE_CLASS_BY_TEXT
+    enforcers:
+      - {kind: hfs, id: failure-class}
+  - id: R433
+    code: HFS_CONCEPT_CONVENTIONS_MISSING
+    law: "Every app keeps a `conventions` concept: `.starciwork/concepts/conventions.md` is tracked and the catalog `.starciwork/concepts/README.md` has a row linking it; the check reads the tree and the catalog, never the concept's content, which is held by review."
+    failureCodes:
+      - HFS_CONCEPT_CONVENTIONS_MISSING
+    enforcers:
+      - {kind: hfs, id: concept-conventions}

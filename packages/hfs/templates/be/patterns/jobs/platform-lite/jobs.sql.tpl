@@ -152,9 +152,10 @@ grant execute on function public.job_awaiting_fix() to app_be;
 -- @nestjs/schedule fires the tick; under advisoryXactLock('tick:<name>') job_tick_claim moves the row to the new minute and
 -- answers claimed, so exactly one replica enqueues the tick's job per minute and a replica that comes later answers not claimed.
 create table public.job_ticks (
+    id uuid primary key default gen_random_uuid(),
     name varchar(200) not null,
     minute varchar(16) not null,
-    constraint job_ticks_pkey primary key (name)
+    constraint job_ticks_name_key unique (name)
 );
 
 alter table public.job_ticks enable row level security;

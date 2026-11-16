@@ -13,9 +13,10 @@ harness). [README.md](../README.md) is the overview and says how it works.
 Read the files of your task's row, in order, before planning or editing. A task that spans rows reads each row. Every
 row starts with [harness/rules.md](harness/rules.md), the rules no task may bend, then
 [authority/README.md](authority/README.md), what your role may edit, commit, merge, push and publish and which tier of
-checks it runs, under either runner. Then, in the repository the task changes, its `.starciwork/concepts`, before its code: the catalog
-`concepts/README.md` and the concept of every folder the task touches, once per repository the task edits
-([harness/rules.md](harness/rules.md) rule 10).
+checks it runs, under either runner. Then, in the repository the task changes and before its code: its `.starcistacks/application-stacks.yaml`
+whole and the `.starcistacks/<env>/README.md` of each environment the task touches, then its `.starciwork/concepts` (the catalog
+`concepts/README.md`, the `conventions` concept and the concept of every folder the task touches), once per repository the task edits; a
+task that contradicts a declaration stops and asks ([harness/rules.md](harness/rules.md) rule 10).
 
 | task | read |
 |---|---|

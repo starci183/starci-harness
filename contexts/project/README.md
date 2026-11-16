@@ -103,6 +103,12 @@ project-graph rules judge the side folders and not the packages.
 
 ## Where to read for a task
 
+Every task in an app reads, before its own row and before any code: the app's `.starcistacks/application-stacks.yaml` WHOLE (the gates
+it declares off with their reasons, its components, environments, ports, tunnel, secret members and backing services), the
+`.starcistacks/<env>/README.md` of each environment it touches, then `.starciwork/concepts/README.md`, the `conventions` concept and the
+concept of every folder it touches. A task that contradicts a declaration stops and asks the owner ([harness/rules.md](../harness/rules.md)
+rule 10).
+
 | task | read, in order |
 |---|---|
 | write code (be or fe) | [code/README.md "Read for a coding task"](../code/README.md#read-for-a-coding-task), which starts with the anatomy slice of the side and edition (`anatomy-<edition>-<side>.md`) and opens this file and [lint.md](lint.md) on demand → the records the contract names |

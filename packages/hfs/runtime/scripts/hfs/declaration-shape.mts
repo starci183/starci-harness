@@ -26,7 +26,7 @@ function dbBlockProblems(block: Parsed): string[] {
   if (block === undefined) return [];
   if (!isPlainObject(block)) return ['db must be an object'];
   const bad: string[] = [];
-  for (const key of Object.keys(block)) if (!['urlEnv', 'image', 'forceRls', 'forceRlsExemptions', 'appRole', 'scopeSettings', 'scopeColumns', 'scopeRoles', 'baselineReset', 'destructiveRulings'].includes(key)) bad.push(`db has unknown key ${key}`);
+  for (const key of Object.keys(block)) if (!['urlEnv', 'image', 'forceRls', 'forceRlsExemptions', 'appRole', 'scopeSettings', 'scopeColumns', 'scopeRoles', 'baselineReset', 'destructiveRulings', 'singulars', 'keyExceptions'].includes(key)) bad.push(`db has unknown key ${key}`);
   if (block.urlEnv !== undefined && (typeof block.urlEnv !== 'string' || !/^[A-Z][A-Z0-9_]*$/.test(block.urlEnv))) bad.push('db.urlEnv must name an UPPER_CASE environment variable');
   if (block.image !== undefined && (typeof block.image !== 'string' || !/@sha256:[0-9a-f]{64}$/.test(block.image))) bad.push('db.image must be a digest-pinned image reference');
   if (block.forceRls !== undefined && !isStringList(block.forceRls)) bad.push('db.forceRls must be a list of strings');
@@ -37,6 +37,8 @@ function dbBlockProblems(block: Parsed): string[] {
   if (block.scopeSettings !== undefined && !(Array.isArray(block.scopeRoles) && block.scopeRoles.length > 0)) bad.push('db.scopeSettings needs db.scopeRoles: a declared setting counts only in policies of declared scope roles');
   if (block.baselineReset !== undefined && !baselineResetOk(block.baselineReset)) bad.push('db.baselineReset must be { baseline (db/migrations/<ts14>_<name>.sql), ruling (the reset id), date (YYYY-MM-DD), reason } declaring the one baseline that replaces the whole older migration history');
   if (block.forceRlsExemptions !== undefined && !Array.isArray(block.forceRlsExemptions)) bad.push('db.forceRlsExemptions must be a list of { table, reason }');
+  if (block.singulars !== undefined && !(isPlainObject(block.singulars) && Object.entries(block.singulars).every(([plural, single]) => /^[a-z][a-z0-9_]*$/.test(plural) && typeof single === 'string' && /^[a-z][a-z0-9_]*$/.test(single)))) bad.push('db.singulars must map a lower-case plural table name or word to its singular ({ "people": "person" }), the irregular nouns of the foreign key names (R431)');
+  if (block.keyExceptions !== undefined && !(Array.isArray(block.keyExceptions) && block.keyExceptions.every((entry: Parsed) => isPlainObject(entry) && typeof entry.table === 'string' && /^(?:[a-z_][a-z0-9_]*\.)?[a-z_][a-z0-9_]*$/.test(entry.table) && typeof entry.reason === 'string' && entry.reason.trim() !== '' && Object.keys(entry).every((key) => key === 'table' || key === 'reason')))) bad.push('db.keyExceptions must be a list of { table, reason } naming each table whose primary key and foreign key names are not judged (R431), with why');
   if (block.destructiveRulings !== undefined && !(Array.isArray(block.destructiveRulings) && block.destructiveRulings.every(isDestructiveRuling))) bad.push('db.destructiveRulings must be a list of { migration, objects, reason, date } naming one db/migrations file, the objects it destroys, why and the date it was accepted (YYYY-MM-DD)');
   return bad;
 }

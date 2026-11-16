@@ -243,7 +243,7 @@ grant select, insert, update, delete on public.items to app_be;
 create view public.item_view with (security_invoker = true) as select id from public.items;
 ${definer}
 revoke execute on function public.identity(uuid) from public, anon, authenticated;
-create table public.countries (code text primary key);
+create table public.countries (id uuid primary key default gen_random_uuid(), code text not null unique);
 alter table public.countries enable row level security;
 create policy countries_public_read on public.countries for select to anon using (true);
 grant select on public.countries to anon;

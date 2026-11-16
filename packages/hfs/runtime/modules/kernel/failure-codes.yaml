@@ -4763,6 +4763,57 @@ HFS_BRANCH_PROFILE_INVALID:
   owner: op-retry
   kind: check-finding
 
+DB_PRIMARY_KEY_SHAPE:
+  title: "An app table's primary key is id uuid"
+  title_vi: "Bảng của app không có khóa chính id uuid"
+  meaning_vi: "Migration mới tạo bảng trong schema của app mà khóa chính không phải đúng một cột `id` kiểu uuid (khóa tự nhiên, khóa ghép, id bigint, hoặc không có khóa chính)."
+  causes_vi:
+    - "Vi phạm R431: khóa tự nhiên được dùng làm khóa chính thay vì là ràng buộc unique bên cạnh id."
+  nextStep_vi: "Viết `id uuid primary key default gen_random_uuid()` và chuyển khóa tự nhiên thành `unique (...)`; nếu bảng do package sở hữu hoặc buộc khóa theo khóa tự nhiên, khai báo nó trong hfs.json db.keyExceptions kèm lý do."
+  owner: op-retry
+  kind: check-finding
+
+DB_FOREIGN_KEY_NAME:
+  title: "A foreign key column is named [<role>_]<referenced table singular>_id"
+  title_vi: "Tên cột khóa ngoại không theo bảng nó tham chiếu"
+  meaning_vi: "Migration mới khai báo khóa ngoại một cột mà tên cột không phải `<số ít của bảng được tham chiếu>_id` hay `<vai trò>_<số ít của bảng được tham chiếu>_id` (ví dụ `owner_id` trỏ tới users phải là `owner_user_id`)."
+  causes_vi:
+    - "Vi phạm R431: cột khóa ngoại chỉ mang tên vai trò hoặc tên một bảng khác."
+    - "Danh từ số nhiều bất quy tắc chưa được khai trong hfs.json db.singulars."
+  nextStep_vi: "Đổi tên cột thành `<số ít>_id` hoặc `<vai trò>_<số ít>_id` trong migration mới; với số nhiều bất quy tắc, thêm cặp `<số nhiều>: <số ít>` vào hfs.json db.singulars."
+  owner: op-retry
+  kind: check-finding
+
+DB_FOREIGN_KEY_INDEX:
+  title: "Every foreign key has an index leading with its columns"
+  title_vi: "Khóa ngoại thiếu index"
+  meaning_vi: "Khóa ngoại khai báo trong migration mới không có index, khóa chính hay ràng buộc unique nào của bảng bắt đầu bằng đúng các cột của nó trong tập migration, nên mỗi lần xóa bảng cha hay join đều quét toàn bảng."
+  causes_vi:
+    - "Vi phạm R431: tạo khóa ngoại mà quên index."
+  nextStep_vi: "Thêm `create index <bảng>_<cột>_idx on <schema>.<bảng> (<cột>)` trong cùng migration hoặc một migration mới."
+  owner: op-retry
+  kind: check-finding
+
+BE_FAILURE_CLASS_BY_TEXT:
+  title: "A failure's class is never decided by matching its code or message text"
+  title_vi: "Phân loại lỗi tạm thời hay vĩnh viễn bằng cách so chuỗi mã lỗi"
+  meaning_vi: "Mã nguồn back end so mã hoặc thông điệp của lỗi với chuỗi của lỗi tạm thời (ECONNRESET, ETIMEDOUT, 40001, ...) bằng literal hoặc regex để quyết định thử lại; chỉ `classifyFailure` của @starci/nest-kit được quyết định, dựa trên `failureClass` mà lỗi mang theo."
+  causes_vi:
+    - "Vi phạm R432: viết danh sách mã lỗi thứ hai, lệch với bộ phân loại chung."
+  nextStep_vi: "Xóa phép so chuỗi; nơi biết lỗi là tạm thời hay vĩnh viễn thì ném lỗi kèm `failureClass` (transient, input, config hoặc code) và để job runner phân loại; app có job outbox dùng @starci/outbox."
+  owner: op-retry
+  kind: check-finding
+
+HFS_CONCEPT_CONVENTIONS_MISSING:
+  title: "Every app keeps a conventions concept its catalog links"
+  title_vi: "App thiếu concept conventions"
+  meaning_vi: "`.starciwork/concepts/conventions.md` chưa được track, hoặc bảng `.starciwork/concepts/README.md` không có dòng trỏ tới nó; concept này giữ quy ước đặt tên, khóa, khóa ngoại, lớp lỗi và cách chứng minh của app, và được đọc trước khi sửa code."
+  causes_vi:
+    - "Vi phạm R433: app được tạo trước khi scaffold render concept conventions, hoặc concept bị xóa khỏi catalog."
+  nextStep_vi: "Viết `.starciwork/concepts/conventions.md` theo các heading của PROJECT-WORK-7 và thêm dòng `| [conventions](conventions.md) | <thư mục> | <một dòng> |` vào README của concepts."
+  owner: op-retry
+  kind: check-finding
+
 HFS_GATE_DECLARATION_INVALID:
   title: "An app switches off a gate it may not, with no reason, or names no gate"
   title_vi: "Một app tắt gate không được tắt, tắt không nêu lý do, hoặc khai một id không phải gate"

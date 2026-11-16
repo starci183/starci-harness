@@ -539,11 +539,17 @@ const DATABASE_SQL_FILE = "be/src/modules/platform/database/database.sql.ts";
 const deferredDatabaseFile = (skeleton: string, relative: string) => (text: string) =>
   text || render(fs.readFileSync(path.join(TEMPLATES_DIR, "be", skeleton, ...relative.split("/")), "utf8"), {});
 
+/**
+ * An app's copy of the sql helpers written before a table's owner became `owner_user_id` (R431) reads the owner by its old column; it is
+ * moved to the entity property `ownerId`, which maps `owner_id` on an older table and `owner_user_id` on a new one, so both stay owned.
+ */
+const ownerByProperty = (text: string): string => text.replace("owned.owner_id = :ownerId", "owned.ownerId = :ownerId");
+
 function tableRegistrations({ root, repo, fe, edit }: { root: string, repo: TableRepo, fe: boolean, edit: Edit }): void {
   const errorFile = "be/src/modules/platform/database/errors/database.error.ts";
   if (repo.edition === "lite" && fs.existsSync(at(root, errorFile))) edit(errorFile, withSqlIdentifierError);
   // requireOwnedEntity lives in the sql helpers the lite starter leaves out; the first table writes them.
-  if (repo.edition === "lite") edit(DATABASE_SQL_FILE, deferredDatabaseFile("skeleton-lite", "src/modules/platform/database/database.sql.ts"));
+  if (repo.edition === "lite") edit(DATABASE_SQL_FILE, (text) => deferredDatabaseFile("skeleton-lite", "src/modules/platform/database/database.sql.ts")(ownerByProperty(text)));
   // The table's entity extends UuidAbstractEntity, which no starter carries in either edition; the first table writes it.
   edit(`be/${ENTITY_BASE_FILE}`, deferredDatabaseFile("skeleton", ENTITY_BASE_FILE));
     const registrations = [

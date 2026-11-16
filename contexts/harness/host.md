@@ -37,6 +37,23 @@ What a shell on the harness host does differently from the textbook, and the one
   store fails with `read-only file system` (a build, a container removal) and stays so after space is freed, until Docker
   Desktop restarts. Free space first, then ask the owner to restart it: a restart stops every stack on the host.
 
+## Dependencies through a link
+
+A package manager command that writes `node_modules` never runs through a link. npm, pnpm and yarn rewrite the folder they install into:
+through a junction or a symlink that folder is another checkout's install or the harness install cache, and an `npm ci` there empties the
+install every checkout linked to it uses. The writing commands are `ci`, `install` (`i`, `add`), `uninstall` (`remove`, `rm`), `update`,
+`prune`, `dedupe`, `rebuild`, `link`, `unlink` and their aliases, of npm, pnpm and yarn (a bare `yarn` installs). A command is refused when
+its target's `node_modules` is a junction or symlink, or is a real folder another worktree of the same repository links its own
+`node_modules` to. It is judged wherever it hides: chained (`&&`, `||`, `;`, `|`), sent to the background (`&`, `start /b`, a host's
+background run), wrapped (`cmd /c`, `sh -c`, `powershell -Command`), after a `cd`, or aimed with `--prefix`, `-C`, `--dir` or `--cwd`. To
+install a linked checkout, remove only the link (a plain unlink, never a recursive delete through it) and install its own lockfile.
+
+The judge is one: `installRefusals` of `cli/src/harness/install-guard.ts`. The CLI's own installs ask it before npm runs
+(`DEPS_INSTALL_LINKED`, `DEPS_INSTALL_SHARED`, `cli/src/core/deps/packages.ts`), and every agent host asks it before a shell command
+through `starci host guard --hook`, its pre-tool hook (Claude Code: a `PreToolUse` hook on the shell tool running
+`node <runtime root>/cli/dist/main.js host guard --hook`; the verb answers the deny decision on stdout). `starci host guard <line>` judges a
+line by hand. Why: one `npm ci` in a lane whose `node_modules` was a junction emptied the install every other lane ran on.
+
 ## Files and folders
 
 - **`robocopy /MIR` follows junctions.** It can delete through a directory junction (a worktree's `node_modules`). Always
