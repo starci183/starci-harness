@@ -149,4 +149,4 @@ runs the app's use case. The app neither embeds the runtime nor calls back into 
 
 Why: every effect an agent has then passes the checks a human's request passes, and is attributable after the fact.
 
-Enforced by: R302 (hfs `mcp-tools-snapshot`) for the catalog; the runtime's credentials and tool routing are review only.
+Enforced by: R302 (hfs `mcp-tools-snapshot`) for the catalog's shape, and its presence: a back end whose source imports `@modelcontextprotocol/sdk/server` and commits no `contracts/<app>/<server>@<major>.tools.json` is `HFS_MCP_TOOLS_SNAPSHOT_MISSING` (reported in `--env local`, blocking in `--env prod`); the runtime's credentials and tool routing are review only.

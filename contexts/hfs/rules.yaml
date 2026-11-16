@@ -610,11 +610,13 @@ rules:
       - {kind: hfs, id: i18n-placement}
   - id: R60
     code: FE_I18N_CATALOG
-    law: Every catalog has the same keys, and client components receive only the keys they `pick`.
+    law: Every locale the app's `defineI18n` declares has its catalog and every catalog is a declared locale, every catalog has the same keys, and client components receive only the keys they `pick`.
     failureCodes:
       - FE_I18N_CATALOG
+      - FE_I18N_LOCALE_MISSING
     enforcers:
       - {kind: hfs, id: i18n-catalog}
+      - {kind: hfs, id: i18n-locale-catalog}
   - id: R61
     code: FE_STYLE_TOKEN_ONLY
     law: Application CSS uses the selected Grammar tokens and the declared brand owner, which sets HeroUI's tokens, and every declaration resolves.
@@ -2060,9 +2062,10 @@ rules:
       - {kind: hfs, id: ci-standard}
   - id: R302
     code: HFS_MCP_TOOLS_SNAPSHOT
-    law: A committed MCP tool catalog is the server's `tools/list` result at `be/contracts/<app>/<server>@<major>.tools.json`.
+    law: A back end that serves an MCP server (its source imports `@modelcontextprotocol/sdk/server`) commits its tool catalog, and a committed MCP tool catalog is the server's `tools/list` result at `be/contracts/<app>/<server>@<major>.tools.json`.
     failureCodes:
       - HFS_MCP_TOOLS_SNAPSHOT
+      - HFS_MCP_TOOLS_SNAPSHOT_MISSING
     enforcers:
       - {kind: hfs, id: mcp-tools-snapshot}
   - id: R303
@@ -2902,8 +2905,9 @@ rules:
       - {kind: hfs, id: failure-class}
   - id: R433
     code: HFS_CONCEPT_CONVENTIONS_MISSING
-    law: "Every app keeps a `conventions` concept: `.starciwork/concepts/conventions.md` is tracked and the catalog `.starciwork/concepts/README.md` has a row linking it; the check reads the tree and the catalog, never the concept's content, which is held by review."
+    law: "Every app keeps a `conventions` concept: `.starciwork/concepts/conventions.md` is tracked and the catalog `.starciwork/concepts/README.md` has a row linking it, and the catalog has one row per concept (every tracked `.starciwork/concepts/<topic>.md` is linked by a row, and every row links a tracked concept); the check reads the tree and the catalog, never the concept's content, which is held by review."
     failureCodes:
       - HFS_CONCEPT_CONVENTIONS_MISSING
+      - HFS_CONCEPT_UNCATALOGUED
     enforcers:
       - {kind: hfs, id: concept-conventions}

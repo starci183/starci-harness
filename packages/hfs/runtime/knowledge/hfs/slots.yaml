@@ -850,7 +850,7 @@ slots:
     tests: none
     rules: [HFS_APP_GALLERY_LINKS]
   - id: app.gallery-routes
-    since: 6.13.10
+    since: 6.13.11
     profiles: [app]
     path: gallery/routes.json
     presence: optional

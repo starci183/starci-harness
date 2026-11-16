@@ -1,0 +1,1 @@
+{"compilerOptions":{"target":"ES2022","module":"CommonJS","experimentalDecorators":true,"emitDecoratorMetadata":true,"esModuleInterop":true,"skipLibCheck":true,"paths":{"@modules/*":["./src/modules/*"]}}}

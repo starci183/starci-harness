@@ -1,0 +1,1 @@
+export const TRIGGER_DECIDERS: unique symbol = Symbol('TRIGGER_DECIDERS');

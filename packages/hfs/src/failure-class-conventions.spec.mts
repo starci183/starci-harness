@@ -2,7 +2,9 @@
 // proves: BE_FAILURE_CLASS_BY_TEXT@full
 // proves: HFS_CONCEPT_CONVENTIONS_MISSING@lite
 // proves: HFS_CONCEPT_CONVENTIONS_MISSING@full
-/** R432 (a failure's class is never read from its code text) and R433 (every app keeps a conventions concept its catalog links), on real files. */
+// proves: HFS_CONCEPT_UNCATALOGUED@lite
+// proves: HFS_CONCEPT_UNCATALOGUED@full
+/** R432 (a failure's class is never read from its code text) and R433 (every app keeps a conventions concept its catalog links, and one catalog row per concept), on real files. */
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -54,7 +56,37 @@ for (const edition of ['lite', 'full']) {
 
   test(`HFS_CONCEPT_CONVENTIONS_MISSING@${edition} accepts the concept the scaffold renders`, (t) => {
     const skeleton = path.join(TEMPLATES, edition === 'lite' ? 'skeleton-lite' : 'skeleton', '.starciwork', 'concepts');
-    const { root, files } = tree(t, Object.fromEntries(['README.md', 'conventions.md'].map((name) => [`.starciwork/concepts/${name}`, fs.readFileSync(path.join(skeleton, name), 'utf8')])));
+    const { root, files } = tree(t, Object.fromEntries(fs.readdirSync(skeleton).map((name) => [`.starciwork/concepts/${name}`, fs.readFileSync(path.join(skeleton, name), 'utf8')])));
     assert.deepEqual(conceptConventionsFindings({ repoRoot: root, files }), []);
+  });
+
+  const CATALOG = (rows: string) => `| Concept | Read when you touch (folders) | One line |\n| --- | --- | --- |\n| [conventions](conventions.md) | \`be/src/\` | Conventions. |\n${rows}`;
+
+  test(`HFS_CONCEPT_UNCATALOGUED@${edition} refuses a concept no catalog row links and a row whose concept is not tracked, report-only in --env local`, (t) => {
+    const { root, files } = tree(t, {
+      '.starciwork/concepts/README.md': CATALOG('| [orders](orders.md) | `be/src/modules/domain/orders/` | Orders. |\n| [billing](./billing.md) | `be/src/modules/domain/billing/` | Billing. |\n'),
+      '.starciwork/concepts/conventions.md': '# Conventions\n',
+      '.starciwork/concepts/orders.md': '# Orders\n',
+      '.starciwork/concepts/payments.md': '# Payments\n',
+    });
+    const findings = conceptConventionsFindings({ repoRoot: root, files });
+    assert.deepEqual(findings.map(({ code, path: file, local }) => [code, file, local]), [
+      ['HFS_CONCEPT_UNCATALOGUED', '.starciwork/concepts/payments.md', true],
+      ['HFS_CONCEPT_UNCATALOGUED', '.starciwork/concepts/README.md', true],
+    ]);
+    assert.match(String(findings[0]?.message), /\| \[payments\]\(payments\.md\) \|/u);
+    assert.match(String(findings[1]?.message), /linking billing\.md/u);
+  });
+
+  test(`HFS_CONCEPT_UNCATALOGUED@${edition} accepts one row per concept and a legacy concept record, and leaves a missing catalog to R433`, (t) => {
+    const passing = tree(t, {
+      '.starciwork/concepts/README.md': CATALOG('| [orders](./orders.md) | `be/src/modules/domain/orders/` | Orders. |\n'),
+      '.starciwork/concepts/conventions.md': '# Conventions\n',
+      '.starciwork/concepts/orders.md': '# Orders\n',
+      '.starciwork/concepts/legacy/index.yaml': 'schema: work/concept@1\n',
+    });
+    assert.deepEqual(conceptConventionsFindings({ repoRoot: passing.root, files: passing.files }), []);
+    const bare = tree(t, { '.starciwork/concepts/conventions.md': '# Conventions\n', '.starciwork/concepts/orders.md': '# Orders\n' });
+    assert.deepEqual(conceptConventionsFindings({ repoRoot: bare.root, files: bare.files }).map(({ code }) => code), ['HFS_CONCEPT_CONVENTIONS_MISSING']);
   });
 }

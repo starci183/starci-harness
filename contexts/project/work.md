@@ -118,7 +118,10 @@ Both editions keep them, as Markdown with no schema, in `.starciwork/concepts/`:
 - `README.md` is the catalog: a table `| Concept | Read when you touch (folders) | One line |`, one row per concept. Every app's catalog
   lists a `conventions` concept, `conventions.md`: the app's own naming, keys and foreign key names, error classes and how it proves
   behaviour, the part of the generic rules it narrows (BE-PERSISTENCE-20, BE-RESILIENCE-2) in its own words. The scaffold renders it,
-  and R433 (`HFS_CONCEPT_CONVENTIONS_MISSING`) refuses an app whose tree lacks it or whose catalog does not link it.
+  and R433 (`HFS_CONCEPT_CONVENTIONS_MISSING`) refuses an app whose tree lacks it or whose catalog does not link it. A concept no
+  row links, or a row whose concept is not tracked, is `HFS_CONCEPT_UNCATALOGUED` (R433; reported in `--env local`, blocking in
+  `--env prod`): a reader finds concepts through the catalog, so an unlisted concept is never read. A passing catalog has one row per
+  `<topic>.md`; a violating one leaves `payments.md` tracked with no row, or keeps the row of a deleted `billing.md`.
 - `<topic>.md` is one concept, at most about sixty lines, under fixed headings in this order:
 
 | heading | holds |
@@ -148,7 +151,7 @@ Why: an agent that opens the code first rebuilds the product's words and rules f
 agents rebuild them differently; a short page per topic, read first, gives every reader the same frame, and it stays short only
 while it holds nothing that changes with each commit. The paths are admitted by slot `app.starciwork` (R212 holds the lite
 boundary). No gate reads a concept's content: it and the reading before code are held by review; R433 checks only that the
-`conventions` concept exists and the catalog links it. A `work/concept@1` record
+`conventions` concept exists, the catalog links it and the catalog has one row per tracked concept. A `work/concept@1` record
 (`concepts/index.yaml`, `concepts/<name>/index.yaml`) an app still keeps stays admitted; the app rewrites it as Markdown itself.
 
 ## Lanes
