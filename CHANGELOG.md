@@ -8,6 +8,8 @@
 
 ## 1.1.0-alpha.136 - 2026-11-17
 
+- Changed: the CLI requires @starci/hfs@6.13.16, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
+
 - Removed: the per-feature Work documents (`.starciwork/features/<feature>/**` and the `index.yaml` catalog) from the harness. `.starciwork` holds `workspace.yaml`, the concepts, the brand and, in full, the shell, the run resources and the derived summaries (`contexts/project/work.md`, rewritten: PROJECT-WORK-1, -2, -3 and -6 are gone; PROJECT-WORK-4 keeps a provider's research in its concept and the building task's contract; PROJECT-WORK-5 and -7 hold).
 - Removed: the `uat` label and the Work-flow walk it ran: `ops/ops/uat.md`, the `uat-flow` check kind and preset, the `uat-red-repairs-build` route, `task send --uat`, a workflow task's `uat:` form (now refused as an unknown key), the uat record and `evidence.yaml` writes of `task verify` (`blockWork`, the `work` field of its json and of a settlement), and the uat record helpers of `harness/work.ts`. `starci uat run` stays: the receipted Playwright walk of an `audit` task.
 - Changed (`ops/lanes.yaml`, `harness/lanes.ts`): lanes walk the Work records that remain, the brand (docs) and each environment resource (deliver, review); the feature lanes (business, architecture, ui, impl-fe, impl-be, uat, integration), `heldUntil`, `over: feature`, `optionalWhen` and the satisfiers `direction-approved`, `assets-exist`, `owners-landed` and `uat-receipted` are gone, and `TASK_NOT_SPLIT` counts the lane records a task carries.
