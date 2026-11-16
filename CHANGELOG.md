@@ -2,6 +2,8 @@
 
 ## 1.1.0-alpha.131 - 2026-11-16
 
+- Changed: the CLI requires @starci/hfs@6.13.6, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
+
 - Changed (contexts, R12): integration and e2e run on request only, never automatically, never in CI, a hook or a default release gate row, and an agent or lane proves a change by the typecheck and the gates its contract declares unless the task or the owner asks for a suite. Written in AGENTS.md "Where the rules are", contexts/project/cicd.md "Triggers and what runs", full.md, lite.md, lint.md, check-cache.md, contexts/authority/branch.md, contexts/code/shared/test.md and contexts/hfs (rules.yaml R12, slots.yaml `app.ci-e2e`, README.md). Rides with @starci/hfs 6.13.6 (the CI standard item `no-world-layers`, the release gate without world rows).
 - The CLI still requires the @starci/hfs its package.json names; `check pins` is `pending` until the publish run's cli-follow step raises it to the pin, 6.13.6 (CONTRIB-20).
 
