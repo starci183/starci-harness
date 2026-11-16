@@ -27,9 +27,10 @@ const EXPECTED: Readonly<Record<ProviderKind, Readonly<Record<string, ErrorClass
     gemini: { rate_limited: "rate_limit", quota_exhausted: "quota", prepay: "quota", invalid_key: "auth", leaked_key: "auth", overloaded: "transient", bad_request: "invalid_request" },
     groq: { rate_limited: "rate_limit", quota_exhausted: "quota", invalid_key: "auth", overloaded: "transient", bad_request: "invalid_request" },
     "openai-compatible": { rate_limited: "rate_limit", quota_exhausted: "quota", invalid_key: "auth", overloaded: "transient", bad_request: "invalid_request" },
+    local: { rate_limited: "rate_limit", quota_exhausted: "quota", invalid_key: "auth", overloaded: "transient", bad_request: "invalid_request", model_missing: "model_not_found" },
 }
 
-const KINDS: readonly ProviderKind[] = ["openai", "anthropic", "openrouter", "qwen", "deepseek", "gemini", "groq", "openai-compatible"]
+const KINDS: readonly ProviderKind[] = ["openai", "anthropic", "openrouter", "qwen", "deepseek", "gemini", "groq", "openai-compatible", "local"]
 
 describe("the classification table", () => {
     for (const kind of KINDS) {

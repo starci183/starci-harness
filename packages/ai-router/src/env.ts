@@ -13,7 +13,8 @@ import type { CandidateRef, KeyConfig, ModelConfig, ModelPolicy, PoolConfig, Pro
  *   P_API_KEYS                                 a list in one variable, split at commas and whitespace, aliases `<id>-list-1`, ...
  *   P_BASE_URL                                 moves the endpoint (a Qwen region or workspace host, an Ollama host)
  *
- * The prefixes are ANTHROPIC, OPENROUTER, DASHSCOPE (Qwen), DEEPSEEK, OPENAI, GEMINI and GROQ; an `openai-compatible`
+ * The prefixes are ANTHROPIC, OPENROUTER, DASHSCOPE (Qwen), DEEPSEEK, OPENAI, GEMINI, GROQ and LOCAL_AI (a `local`
+ * provider, whose key is optional: it is kept when `LOCAL_AI_BASE_URL` or the spec's `baseUrl` is set); an `openai-compatible`
  * provider names its own. Every key is read at each attempt, so a rotated secret needs no restart and lifts its blacklist.
  */
 
@@ -104,8 +105,9 @@ export function providersFromEnv(specs: readonly EnvProviderSpec[], env: EnvSour
         const id = spec.id ?? (spec.kind === "openai-compatible" ? undefined : spec.kind)
         if (id === undefined) throw configError(`an openai-compatible provider (prefix ${prefix}) needs an id`)
         const keys = keysFromEnv(prefix, id, env, spec.keyMaxConcurrency)
-        if (keys.length === 0) continue
         const baseUrl = spec.baseUrl ?? (present(env, `${prefix}_BASE_URL`) ? env[`${prefix}_BASE_URL`]?.trim() : undefined)
+        // A self-hosted provider needs no key: setting its base URL is what turns it on, and without one it is absent.
+        if (keys.length === 0 && !(PROVIDER_PRESETS[spec.kind].local && baseUrl !== undefined)) continue
         out.push({
             id,
             kind: spec.kind,
@@ -151,7 +153,7 @@ function prune(config: PoolConfig, policy: ModelPolicy): ModelPolicy | null {
  */
 export function poolFromEnv<P extends string = string>(spec: EnvPoolSpec<P>, env: EnvSource = process.env): PoolConfig<P> {
     const providers = providersFromEnv(spec.providers, env)
-    const expected = spec.providers.map((entry) => `${envPrefixOf(entry)}_API_KEY`).join(", ")
+    const expected = spec.providers.map((entry) => `${envPrefixOf(entry)}_${PROVIDER_PRESETS[entry.kind].local ? "BASE_URL" : "API_KEY"}`).join(", ")
     if (providers.length === 0) throw configError(`no provider has a key in env: set one of ${expected}`)
     const { defaults: declaredDefaults, profiles: declaredProfiles, ...settings } = { ...spec, providers }
     const served: PoolConfig = settings

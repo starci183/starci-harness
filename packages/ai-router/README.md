@@ -28,7 +28,8 @@ thinking with tools, the native Anthropic route, the LangChain entry and the env
 - OpenAI chat-completions and embeddings shapes in and out. A provider's `kind` sets its protocol, auth header, default
   base URL and error classification: `anthropic` (the Messages API, through a protocol adapter for chat, streaming,
   tools and JSON), `openrouter`, `qwen` (DashScope compatible mode), `deepseek`, `openai`, `gemini` (its OpenAI
-  endpoint), `groq`, and `openai-compatible` (the default: Ollama, vLLM, Together, LiteLLM...).
+  endpoint), `groq`, `local` (a self-hosted GPU: keys optional, cost 0, see [Local GPU](#local-gpu-ollama--vllm--llamacpp)), and
+  `openai-compatible` (the default: vLLM, Together, LiteLLM...).
 - Keys are references (an environment variable name or a resolver function), read at each attempt and named by alias
   everywhere else.
 
@@ -88,7 +89,7 @@ AiRouterGatewayModule.registerAsync({
 | `<PREFIX>_API_KEY_2` ... `<PREFIX>_API_KEY_<n>` | more keys, aliases `<kind>-<n>`; gaps allowed, no upper bound |
 | `<PREFIX>_API_KEY_FILE`, `<PREFIX>_API_KEY_<n>_FILE` | a key mounted as a file (its first line) |
 | `<PREFIX>_API_KEYS` | several keys in one variable, split at commas and whitespace |
-| `<PREFIX>_BASE_URL` | another endpoint: a Qwen region or workspace host, an Ollama host |
+| `<PREFIX>_BASE_URL` | another endpoint: a Qwen region or workspace host, an Ollama host (`LOCAL_AI_BASE_URL` keeps a `local` provider in `poolFromEnv`; `LOCAL_AI_API_KEY` is its optional key) |
 | `STARCI_AI_KEY` (or `STARCI_AI_KEY_FILE`) | the app's virtual key, `sk-starci-<label>-...`, bound to `work` and `embed` |
 
 A virtual key carries the profiles it may call and, optionally, an allowlist of exact model ids (`models`, empty by
@@ -142,6 +143,121 @@ Usage is what the vendor pages state: images report `units` (the images returned
 Every failure is a `MediaError` with `failureClass`: `refused` (content policy: OpenAI's moderation block, Google answering text and no image, a blocked video prompt), `transient` (429, 408, 409, 425, 5xx, timeout, network; `retryable` is true), `auth` (401, 403), `invalid_request` (any other 4xx, a bad argument, a voice or format no available provider serves), `not_found` (an unknown video job) and `unavailable` (no provider with a key serves the kind). Its `code` is `AI_ROUTER_MEDIA_<CLASS>`; no message holds a key.
 
 Video is a job: `startVideo` returns `{ jobId, provider }` at once and `getVideo` polls. Google's page documents the video call as one synchronous request with no background mode, so the job is that request held by this process: a restart loses a running job (`getVideo` then answers `not_found`), and a finished job is kept one hour. OpenAI video is not offered because the Sora models and the Videos API are shut down, Google Veo because its preview models are shut down, and fal because its queue page documents no video model, input or output.
+
+## Local GPU (Ollama / vLLM / llama.cpp)
+
+`kind: "local"` is a self-hosted endpoint that speaks the OpenAI API: Ollama (`http://localhost:11434/v1`, the default),
+vLLM, or the llama.cpp server. It is the `openai-compatible` protocol with the differences a GPU on your own desk
+needs, and nothing is on until you declare it: a pool with no `local` provider never reaches one.
+
+```ts
+import { createRouter, localModel } from "@starci/ai-router/gateway"
+
+const router = createRouter({
+    providers: [
+        {
+            id: "gpu",
+            kind: "local",
+            baseUrl: "http://localhost:11434/v1", // the default; vLLM is usually http://host:8000/v1
+            // Optional: omit `keys` for a keyless server. A ref names the variable that holds the key; an unset variable sends no credentials and blacklists nothing.
+            keys: [{ ref: "LOCAL_AI_API_KEY", optional: true }],
+            models: [
+                // 4096 dimensions natively, cut to 1024 and L2-normalized (see below).
+                localModel("qwen3-embedding:8b", { dimensions: 1024 }),
+                // A chat model only when one is installed: `ollama pull qwen2.5:7b`.
+                localModel("qwen2.5:7b"),
+            ],
+        },
+        { id: "claude", kind: "anthropic", keys: [{ alias: "a1", env: "ANTHROPIC_API_KEY" }], models: [{ id: "claude-sonnet-5-5" }] },
+    ],
+    profiles: {
+        // Pinned: the embeddings space never changes under the index.
+        "local-embed": { pinned: true, model: "qwen3-embedding:8b", providers: ["gpu"] },
+        "local-chat": { model: "qwen2.5:7b", providers: ["gpu"] },
+        // The one way to put both in a chain: list each candidate with its provider. Without it the pool is refused at load.
+        "local-then-paid": { candidates: [{ model: "qwen2.5:7b", provider: "gpu" }, { model: "claude-sonnet-5-5", provider: "claude" }] },
+    },
+})
+
+const { data } = await router.embeddings({ model: "local-embed", input: ["xin chào"] }) // 1024 numbers, unit length
+```
+
+Through `poolFromEnv` a `local` provider is kept when its base URL is set (the spec's `baseUrl`, or `LOCAL_AI_BASE_URL`) and
+absent when it is not; `LOCAL_AI_API_KEY` is read when present. Nothing registers a local provider for you: the
+credential and the models are declared in code.
+
+What a `local` provider changes, and nothing else:
+
+| behaviour | rule |
+|---|---|
+| keys | none, or `{ ref, optional: true }`; an unset key sends the request without an `Authorization` header and is never blacklisted as missing. A server that answers 401 is an `auth` failure like any other |
+| cost | 0 in every attempt event, `routing.cost` and `stats()`, with or without a price on the model |
+| embeddings | `POST /v1/embeddings`; when that path answers 404 the call goes to Ollama's `POST /api/embed` (`{ model, input }`, answer `{ embeddings }`), at the server root even when the base URL ends in `/v1` |
+| unreachable server | class `network` (retryable, feeds the key's and the provider's breaker, backs off by the same table as every provider); never decided by message text |
+| a model that is not pulled | class `model_not_found` (`AI_ROUTER_MODEL_NOT_FOUND`, HTTP 404 at the gateway), not retried, so the caller can say `ollama pull <model>`. A server answers 404 with a JSON error for a missing model; a 404 with no JSON body is a wrong path and stays `invalid_request` |
+| first token | a model loads into GPU memory on first use, which takes tens of seconds. An attempt waits at least `firstTokenTimeoutMs` (default 120000, per provider) for the first answer or first token; the policy's `timeoutMs` (default 60000) keeps governing the silence between chunks. A call whose providers are all local gets a 300000 ms deadline unless the policy sets one |
+| isolation | a local provider is never mixed into a hosted chain, nor a hosted one into a local chain, unless a profile lists both as candidates that each name their provider (see below) |
+
+### Discovery and health
+
+```ts
+import { holdsModel, probeLocal } from "@starci/ai-router/gateway"
+
+const probe = await probeLocal({ baseUrl: "http://localhost:11434/v1" }) // { source: "/v1/models" | "/api/tags", models: [{ id, sizeBytes? }] }
+holdsModel(probe, "qwen3-embedding:8b")
+```
+
+It asks `GET /v1/models` and, when that is absent, Ollama's `GET /api/tags`. A server that does not answer throws an
+`AiRouterError` of class `network` (`timeout` when it answers late), so a caller falls back by class. `probeLocalProvider(provider)`
+probes the server a configured provider points at, with its key.
+
+### Isolation
+
+A call's chain is every candidate its profile, the defaults and the call itself name. The pool is refused at load, and a
+call at the call, when the chain would cross: a model name both a local and a hosted provider serve (`m-chat` on the GPU and
+on a hosted provider), model names or fallbacks that put one kind behind the other, or defaults that do. The explicit way
+is a profile whose `candidates` each name their `provider`, as `local-then-paid` above. Restrict a profile with
+`providers: ["gpu"]` to keep a shared model name on the GPU. NIVO's own policy stays the NIVO credit; this lane is for a
+self-hosted or development GPU.
+
+### Embedding dimensions, `truncate: "mrl"` and pgvector
+
+`ModelConfig.truncate: "mrl"` says the model was trained so that the first N numbers of its vector are a valid N-dimensional
+embedding (Matryoshka representation learning). The router asks the endpoint for the model's own vector (it never relies on
+the endpoint honouring `dimensions`), cuts it to the model's declared `dimensions` or to the call's own `dimensions`, and scales it
+to unit length (L2), so a 1024-dimension vector is the prefix of the 4096-dimension one, renormalized. A call may ask for any size
+from 1 to what the model answers; anything else is `invalid_request`, and `encoding_format: "base64"` is refused for such a model.
+A model without `truncate` gets `dimensions` passed through, as before.
+
+Why 1024: pgvector indexes a `vector` column (HNSW or IVFFlat) up to 2000 dimensions and a `halfvec` column up to 4000
+([pgvector](https://github.com/pgvector/pgvector#readme)), so Qwen3 Embedding 8B's native 4096 cannot be indexed as `vector`
+or as `halfvec` without cutting it. Qwen3 Embedding 8B takes output sizes from 32 to 4096
+([Ollama](https://ollama.com/library/qwen3-embedding)); `localModel("qwen3-embedding:8b", { dimensions: 1024 })` is cut to the size your column
+holds, and the size is part of the pinned identity of the profile.
+
+### Models that fit 8 GB of VRAM, and the RTX 5060
+
+`LOCAL_MODELS` and `localModel(id)` declare, priced at 0 (sizes are the download; the loaded model takes more, since its context
+comes on top: `qwen3-embedding:8b` was measured at about 6.9 GB resident with a 4096-token context):
+
+| model | use | size | context | dimensions | source |
+|---|---|---|---|---|---|
+| `qwen3-embedding:8b` | embeddings, MRL | 4.7 GB | 4096 as a default server loads it (the model supports 32K) | 4096, any size from 32 | [ollama.com/library/qwen3-embedding](https://ollama.com/library/qwen3-embedding) |
+| `nomic-embed-text` | embeddings | 274 MB | 2K | 768 (model card) | [ollama.com/library/nomic-embed-text](https://ollama.com/library/nomic-embed-text) |
+| `bge-m3` | embeddings, 100+ languages | 1.2 GB | 8K | 1024 (model card) | [ollama.com/library/bge-m3](https://ollama.com/library/bge-m3) |
+| `qwen2.5:7b` | chat, tools | 4.7 GB | 32K | | [ollama.com/library/qwen2.5](https://ollama.com/library/qwen2.5) |
+| `qwen2.5:3b` | chat, tools, small | 1.9 GB | 32K | | [ollama.com/library/qwen2.5](https://ollama.com/library/qwen2.5) |
+
+The GeForce RTX 5060 is a Blackwell card (compute capability 12.0): Ollama lists it for NVIDIA driver 550 or newer
+([docs.ollama.com/gpu](https://docs.ollama.com/gpu); that page names no CUDA version). Code for compute capability 12.0 was first
+shipped by CUDA Toolkit 12.8 ([NVIDIA CUDA 12.8 release notes](https://docs.nvidia.com/cuda/archive/12.8.0/cuda-toolkit-release-notes/index.html)),
+whose Linux driver floor is 570.117, so a self-built llama.cpp or vLLM needs CUDA 12.8 or newer and a 570-series driver or newer, and an
+Ollama build is current enough when `ollama ps` shows the model on the GPU. A desktop that holds VRAM (browsers, a compositor) leaves less of the 8 GB to the model;
+a model that does not fit runs partly on the CPU (`ollama ps` shows the split) and is slower, not wrong.
+
+An opt-in check against a real server lives in `test/local-smoke.test.ts`: it runs when something answers on `LOCAL_AI_BASE_URL`
+(default `http://localhost:11434/v1`), embeds with `qwen3-embedding:8b` when it is already pulled, chats when a chat model is,
+and skips otherwise. It never pulls a model.
 
 ## Run it as a gateway
 
@@ -624,7 +740,7 @@ A named registration provides no default instance; `@InjectAiRouterService()` wi
 | field | meaning | default |
 |---|---|---|
 | `providers[].id` | a name, unique, without `/` | required |
-| `providers[].kind` | `anthropic`, `openrouter`, `qwen`, `deepseek`, `openai`, `gemini`, `groq` or `openai-compatible`: protocol, auth header, default base URL, embeddings support and error classification ([provider matrix](docs/design.md#provider-matrix)) | `openai-compatible` |
+| `providers[].kind` | `anthropic`, `openrouter`, `qwen`, `deepseek`, `openai`, `gemini`, `groq`, `local` or `openai-compatible`: protocol, auth header, default base URL, embeddings support and error classification ([provider matrix](docs/design.md#provider-matrix)) | `openai-compatible` |
 | `providers[].baseUrl` | the URL the API paths hang from (`.../v1`) | the kind's; required for `openai-compatible` |
 | `providers[].headers` | extra headers for every request (the auth header, `authorization` or `x-api-key`, is ignored here) | none |
 | `providers[].weight` | multiplies the round-robin share of every lane of the provider | 1 |
@@ -783,6 +899,7 @@ waits for it rather than failing. When none will be, it fails at once with the c
 | connection failure | `network` | as transient | yes, after backoff |
 | attempt timeout | `timeout` | as transient | yes, after backoff |
 | broken or malformed stream before the first token | `stream` (or the streamed error's class) | as transient | yes, after backoff |
+| a `local` provider's 404 with a JSON error body (the model is not pulled) | `model_not_found` | none | no |
 | 400, 404, 422, other 4xx, an invalid-request error object | `invalid_request` | none | no |
 | the caller's signal aborted | `cancelled` | the attempt in flight is aborted | no |
 | the call's deadline passed | `deadline` | the attempt in flight is aborted | no |

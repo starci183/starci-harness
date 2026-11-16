@@ -85,13 +85,14 @@ const FILE: Schema = {
                     kind: { enum: Object.keys(PROVIDER_PRESETS) },
                     baseUrl: "string",
                     defaultMaxTokens: "number",
+                    firstTokenTimeoutMs: "number",
                     thinking: { enum: ["drop", "replay"] },
                     budget: { fields: { costPerDay: "number", costPerMonth: "number" } },
                     keysFromEnv: "string",
                     headers: { map: "string" },
                     weight: "number",
                     maxConcurrency: "number",
-                    keys: { list: { fields: { alias: "string", env: "string", file: "string", weight: "number", maxConcurrency: "number" }, required: ["alias"] } },
+                    keys: { list: { fields: { alias: "string", env: "string", file: "string", ref: "string", optional: "boolean", weight: "number", maxConcurrency: "number" }, required: ["alias"] } },
                     models: {
                         list: {
                             fields: {
@@ -107,6 +108,7 @@ const FILE: Schema = {
                                 weight: "number",
                                 identity: "string",
                                 dimensions: "number",
+                                truncate: { enum: ["mrl"] },
                             },
                             required: ["id"],
                         },
@@ -236,14 +238,16 @@ export function parseGatewayConfig(raw: unknown, base: string = process.cwd(), e
         }
         const listed = Array.isArray(provider.keys) ? provider.keys.filter(isPlainRecord) : []
         const prefix = typeof provider.keysFromEnv === "string" ? provider.keysFromEnv : undefined
-        if (prefix === undefined && listed.length === 0) throw configError(`${where} needs keys or keysFromEnv`)
+        // A self-hosted provider may declare no key at all.
+        if (prefix === undefined && listed.length === 0 && provider.kind !== "local") throw configError(`${where} needs keys or keysFromEnv`)
         const fromEnv = prefix === undefined ? [] : keysFromEnv(prefix, String(provider.id), env)
         const declared = listed.map((key, at): KeyConfig => {
-            const ref = secretRef({ env: key.env, file: key.file }, `${where}.keys[${String(at)}]`, base)
+            const ref = secretRef({ env: key.ref ?? key.env, file: key.file }, `${where}.keys[${String(at)}]`, base)
             const common = {
                 alias: key.alias as string,
                 ...(key.weight === undefined ? {} : { weight: key.weight as number }),
                 ...(key.maxConcurrency === undefined ? {} : { maxConcurrency: key.maxConcurrency as number }),
+                ...(key.optional === undefined ? {} : { optional: key.optional as boolean }),
             }
             return "env" in ref ? { ...common, env: ref.env } : { ...common, resolve: () => readSecret(ref) }
         })

@@ -105,6 +105,9 @@ function fromRouterError(error: unknown, now: number): GatewayError {
             const status = error.status !== undefined && error.status >= 400 && error.status < 500 && error.status !== 401 && error.status !== 403 && error.status !== 429 ? error.status : 400
             return new GatewayError(status, "upstream_invalid_request", error.message)
         }
+        case "model_not_found":
+            // A self-hosted server does not hold the model (not pulled): a 404 the caller fixes by pulling it, never retried.
+            return new GatewayError(404, "model_not_found", error.message)
         case "config":
             return new GatewayError(400, "invalid_request", error.message)
         case "no_candidate":

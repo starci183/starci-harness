@@ -11,6 +11,7 @@ import { readRateLimit } from "./headers.ts"
 import type { RateLimitInfo } from "./headers.ts"
 import { PoolState } from "./pool.ts"
 import type { Blacklisted, Lane, Need, Pick } from "./pool.ts"
+import { truncateVector } from "./vectors.ts"
 import { baseUrlOf, presetOf } from "./providers.ts"
 import { resolveSecret } from "./secrets.ts"
 import { readChunk, readCompletion, readEmbeddings, readUsage, vectorLength } from "./shapes.ts"
@@ -34,6 +35,7 @@ import type {
     Usage,
 } from "./types.ts"
 import { wireOf } from "./wire/index.ts"
+import type { WireRequest } from "./wire/index.ts"
 import { nativeItems, nativeRequest, nativeUsage } from "./wire/native.ts"
 import type { Streamed } from "./wire/native.ts"
 
@@ -332,7 +334,7 @@ export function createRouter<P extends string = string>(config: PoolConfig<P>): 
         }
     }
 
-    function headers(lane: Lane, secret: string, call: Call, options: CallOptions<P>, accept: string): Record<string, string> {
+    function headers(lane: Lane, secret: string | undefined, call: Call, options: CallOptions<P>, accept: string): Record<string, string> {
         const wire = wireOf(lane.provider)
         const out: Record<string, string> = {}
         // Neither the provider's headers nor the caller's may carry or replace the secret's header.
@@ -345,7 +347,7 @@ export function createRouter<P extends string = string>(config: PoolConfig<P>): 
             ...out,
             "content-type": "application/json",
             accept,
-            ...wire.headers(secret, lane.provider),
+            ...(secret === undefined ? {} : wire.headers(secret, lane.provider)),
             "x-request-id": call.requestId,
             "idempotency-key": call.requestId,
         }
@@ -354,30 +356,49 @@ export function createRouter<P extends string = string>(config: PoolConfig<P>): 
     /** Sends one attempt; `context` is what the lane's adapter needs again to read the answer. */
     async function open(call: Call, pick: Pick, scope: AttemptScope, operation: "chat" | "stream" | "embeddings", body: Record<string, unknown>, options: CallOptions<P>, native = false): Promise<{ response: Response; context: unknown }> {
         const secret = await resolveSecret(pick.lane.key)
-        if (secret === undefined) throw new AttemptError("auth", `key ${pick.lane.key.alias} resolved to no value`, { missingKey: true })
+        // A self-hosted endpoint may need no key: an unset one sends no credentials and is never blacklisted as missing.
+        if (secret === undefined && !presetOf(pick.lane.provider).local) throw new AttemptError("auth", `key ${pick.lane.key.alias} resolved to no value`, { missingKey: true })
         scope.secret = secret
         const wire = wireOf(pick.lane.provider)
         // A chat request is shaped for the model that serves this attempt: the next lane may need another shape.
         const streaming = operation === "stream"
-        const request =
+        const truncating = pick.lane.model.truncate !== undefined
+        if (operation === "embeddings" && truncating && body.encoding_format === "base64") throw new AttemptError("invalid_request", `model ${pick.lane.model.id} truncates vectors, which it answers as float lists only`)
+        // A truncating model is asked for its own vector: the router cuts it, so the endpoint's `dimensions` is never relied on.
+        const embedBody = truncating ? Object.fromEntries(Object.entries(body).filter(([field]) => field !== "dimensions")) : body
+        let request: WireRequest =
             operation === "embeddings"
-                ? wire.embeddings(body, pick.lane.model.id)
+                ? wire.embeddings(embedBody, pick.lane.model.id)
                 : native
                   ? nativeRequest(shapeRequest(body, pick.lane.model, true), pick.lane.model, streaming)
                   : wire.chat(shapeRequest(body, pick.lane.model), pick.lane.model, streaming, pick.lane.provider)
-        let response: Response
-        try {
-            response = await fetchImpl(`${baseUrlOf(pick.lane.provider)}${request.path}`, {
-                method: "POST",
-                headers: headers(pick.lane, secret, call, options, operation === "stream" ? "text/event-stream" : "application/json"),
-                body: JSON.stringify(request.body),
-                signal: scope.controller.signal,
-            })
-        } catch (error) {
-            throw scope.classify(error)
+        const post = async (sent: WireRequest): Promise<Response> => {
+            const base = baseUrlOf(pick.lane.provider)
+            try {
+                return await fetchImpl(`${sent.native === true ? base.replace(/\/v1$/, "") : base}${sent.path}`, {
+                    method: "POST",
+                    headers: headers(pick.lane, secret, call, options, operation === "stream" ? "text/event-stream" : "application/json"),
+                    body: JSON.stringify(sent.body),
+                    signal: scope.controller.signal,
+                })
+            } catch (error) {
+                throw scope.classify(error)
+            }
+        }
+        let response = await post(request)
+        // The OpenAI embeddings path is absent on this server (404): ask in its own API. A 404 that means a missing model answers 404 there too, and is classified from that answer.
+        if (operation === "embeddings" && response.status === 404 && wire.embeddingsFallback !== undefined) {
+            await response.body?.cancel().catch(() => undefined)
+            request = wire.embeddingsFallback(embedBody, pick.lane.model.id)
+            response = await post(request)
         }
         if (!response.ok) throw await errorOf(pick.lane, response)
         return { response, context: request.context }
+    }
+
+    /** How long an attempt on this lane waits for its first answer or token: the policy's timeout, or the provider's longer wait for a model to load. */
+    function firstWaitMs(lane: Lane, call: Call): number {
+        return Math.max(call.policy.timeoutMs, lane.provider.firstTokenTimeoutMs ?? presetOf(lane.provider).firstTokenTimeoutMs ?? 0)
     }
 
     function begin(call: Call, pick: Pick): void {
@@ -467,7 +488,7 @@ export function createRouter<P extends string = string>(config: PoolConfig<P>): 
             for (;;) {
                 const pick = await next(call)
                 begin(call, pick)
-                const scope = new AttemptScope(call, call.policy.timeoutMs)
+                const scope = new AttemptScope(call, firstWaitMs(pick.lane, call))
                 const started = Date.now()
                 try {
                     const { response, context } = await open(call, pick, scope, operation, body, options, native)
@@ -523,7 +544,8 @@ export function createRouter<P extends string = string>(config: PoolConfig<P>): 
             for (;;) {
                 const pick = await next(call)
                 begin(call, pick)
-                const scope = new AttemptScope(call, call.policy.timeoutMs)
+                const first = firstWaitMs(pick.lane, call)
+                const scope = new AttemptScope(call, first)
                 const started = Date.now()
                 let firstToken = false
                 let usage: Usage | undefined
@@ -538,13 +560,13 @@ export function createRouter<P extends string = string>(config: PoolConfig<P>): 
                     for await (const event of items(pick.lane, parseSse(response.body), context)) {
                         // The provider is at work (a ping, hidden thinking) with nothing for the caller yet: the idle timeout starts over.
                         if (event.kind === "alive") {
-                            scope.arm(call.policy.timeoutMs)
+                            scope.arm(firstToken ? call.policy.timeoutMs : first)
                             continue
                         }
                         if (event.kind === "malformed") throw new AttemptError("stream", "the provider streamed an event that is not JSON")
                         if (event.kind === "error") throw failureOf(pick.lane, undefined, event.body, null, "the provider streamed an error")
                         if (event.usage !== undefined) usage = event.usage
-                        scope.arm(call.policy.timeoutMs)
+                        scope.arm(firstToken ? call.policy.timeoutMs : first)
                         if (firstToken) {
                             yield event.item
                             continue
@@ -640,6 +662,9 @@ export function createRouter<P extends string = string>(config: PoolConfig<P>): 
             }
         },
         async embeddings(request, options = {}) {
+            if (request.dimensions !== undefined && (!Number.isInteger(request.dimensions) || request.dimensions < 1)) {
+                throw new AiRouterError({ errorClass: "invalid_request", message: "dimensions must be a positive integer" })
+            }
             const { start } = prepare("embeddings", request.model, options, (policy) => ({
                 capabilities: ["embeddings", ...policy.require],
                 promptTokens: estimateTokens(typeof request.input === "string" ? request.input : request.input.join("\n")),
@@ -648,9 +673,15 @@ export function createRouter<P extends string = string>(config: PoolConfig<P>): 
                 oneIdentity: true,
                 dimensions: request.dimensions ?? null,
             }))
-            const { value, routing } = await unary(start(), "embeddings", { ...request }, options, (json, lane) => {
-                const embeddings = readEmbeddings(json)
+            const { value, routing } = await unary(start(), "embeddings", { ...request }, options, (json, lane, context) => {
+                const embeddings = readEmbeddings(wireOf(lane.provider).embeddingsResponse?.(json, context) ?? json)
                 if (embeddings === undefined) throw new AttemptError("transient", "the provider answered embeddings without a list of vectors")
+                if (lane.model.truncate !== undefined) {
+                    // The vectors are cut to the asked length (else the model's), then scaled to unit length: a prefix of an MRL vector, renormalized.
+                    const target = request.dimensions ?? lane.model.dimensions ?? 0
+                    const cut = embeddings.data.map((entry) => ({ ...entry, embedding: truncateVector(entry.embedding, target) }))
+                    return { value: { ...embeddings, data: cut }, usage: embeddings.usage }
+                }
                 const expected = lane.model.dimensions
                 const wrong = expected === undefined ? undefined : embeddings.data.find((entry) => vectorLength(entry.embedding) !== expected)
                 // A vector of another length is another space: never handed to a caller whose index holds the pinned one.

@@ -20,21 +20,33 @@ export interface ProviderPreset {
     readonly envPrefix: string | null
     /** The official docs this preset was read from (docs/design.md lists the date). */
     readonly docs: string
+    /** True for a self-hosted endpoint: keys are optional (none declared, or one that may be unset), its calls cost nothing and its model files load on first use. */
+    readonly local: boolean
+    /** How long an attempt may wait for the first answer or token, beyond the policy's `timeoutMs`; null: no extra wait. */
+    readonly firstTokenTimeoutMs: number | null
 }
+
+/** A `local` provider's default wait for a model to load into GPU memory and answer first. */
+export const LOCAL_FIRST_TOKEN_TIMEOUT_MS = 120_000
+
+/** A `local` call's default whole-call deadline: a cold load plus a long answer outlasts the 120 s of a hosted call. */
+export const LOCAL_DEADLINE_MS = 300_000
 
 /**
  * The provider matrix (docs/design.md): read from each provider's official documentation on 2026-10-31. A base URL is
  * the default only; `baseUrl` (or `<PREFIX>_BASE_URL`) moves it, e.g. Qwen to another region or workspace host.
  */
 export const PROVIDER_PRESETS: Readonly<Record<ProviderKind, ProviderPreset>> = Object.freeze({
-    openai: { kind: "openai", protocol: "openai", baseUrl: "https://api.openai.com/v1", auth: "bearer", embeddings: true, envPrefix: "OPENAI", docs: "https://developers.openai.com/api/docs/guides/error-codes" },
-    anthropic: { kind: "anthropic", protocol: "anthropic", baseUrl: "https://api.anthropic.com/v1", auth: "x-api-key", embeddings: false, envPrefix: "ANTHROPIC", docs: "https://platform.claude.com/docs/en/api/errors" },
-    openrouter: { kind: "openrouter", protocol: "openai", baseUrl: "https://openrouter.ai/api/v1", auth: "bearer", embeddings: true, envPrefix: "OPENROUTER", docs: "https://openrouter.ai/docs/api/reference/errors-and-debugging" },
-    qwen: { kind: "qwen", protocol: "openai", baseUrl: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1", auth: "bearer", embeddings: true, envPrefix: "DASHSCOPE", docs: "https://www.alibabacloud.com/help/en/model-studio/error-code" },
-    deepseek: { kind: "deepseek", protocol: "openai", baseUrl: "https://api.deepseek.com", auth: "bearer", embeddings: false, envPrefix: "DEEPSEEK", docs: "https://api-docs.deepseek.com/quick_start/error_codes" },
-    gemini: { kind: "gemini", protocol: "openai", baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai", auth: "bearer", embeddings: true, envPrefix: "GEMINI", docs: "https://ai.google.dev/gemini-api/docs/api-errors" },
-    groq: { kind: "groq", protocol: "openai", baseUrl: "https://api.groq.com/openai/v1", auth: "bearer", embeddings: false, envPrefix: "GROQ", docs: "https://console.groq.com/docs/errors" },
-    "openai-compatible": { kind: "openai-compatible", protocol: "openai", baseUrl: null, auth: "bearer", embeddings: true, envPrefix: null, docs: "https://docs.vllm.ai/en/latest/serving/online_serving/" },
+    openai: { kind: "openai", protocol: "openai", baseUrl: "https://api.openai.com/v1", auth: "bearer", embeddings: true, envPrefix: "OPENAI", docs: "https://developers.openai.com/api/docs/guides/error-codes", local: false, firstTokenTimeoutMs: null },
+    anthropic: { kind: "anthropic", protocol: "anthropic", baseUrl: "https://api.anthropic.com/v1", auth: "x-api-key", embeddings: false, envPrefix: "ANTHROPIC", docs: "https://platform.claude.com/docs/en/api/errors", local: false, firstTokenTimeoutMs: null },
+    openrouter: { kind: "openrouter", protocol: "openai", baseUrl: "https://openrouter.ai/api/v1", auth: "bearer", embeddings: true, envPrefix: "OPENROUTER", docs: "https://openrouter.ai/docs/api/reference/errors-and-debugging", local: false, firstTokenTimeoutMs: null },
+    qwen: { kind: "qwen", protocol: "openai", baseUrl: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1", auth: "bearer", embeddings: true, envPrefix: "DASHSCOPE", docs: "https://www.alibabacloud.com/help/en/model-studio/error-code", local: false, firstTokenTimeoutMs: null },
+    deepseek: { kind: "deepseek", protocol: "openai", baseUrl: "https://api.deepseek.com", auth: "bearer", embeddings: false, envPrefix: "DEEPSEEK", docs: "https://api-docs.deepseek.com/quick_start/error_codes", local: false, firstTokenTimeoutMs: null },
+    gemini: { kind: "gemini", protocol: "openai", baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai", auth: "bearer", embeddings: true, envPrefix: "GEMINI", docs: "https://ai.google.dev/gemini-api/docs/api-errors", local: false, firstTokenTimeoutMs: null },
+    groq: { kind: "groq", protocol: "openai", baseUrl: "https://api.groq.com/openai/v1", auth: "bearer", embeddings: false, envPrefix: "GROQ", docs: "https://console.groq.com/docs/errors", local: false, firstTokenTimeoutMs: null },
+    // A self-hosted endpoint (Ollama, vLLM, llama.cpp server): the OpenAI protocol, the default base is Ollama's.
+    local: { kind: "local", protocol: "openai", baseUrl: "http://localhost:11434/v1", auth: "bearer", embeddings: true, envPrefix: "LOCAL_AI", docs: "https://docs.ollama.com/api/openai-compatibility", local: true, firstTokenTimeoutMs: LOCAL_FIRST_TOKEN_TIMEOUT_MS },
+    "openai-compatible": { kind: "openai-compatible", protocol: "openai", baseUrl: null, auth: "bearer", embeddings: true, envPrefix: null, docs: "https://docs.vllm.ai/en/latest/serving/online_serving/", local: false, firstTokenTimeoutMs: null },
 })
 
 /** The preset of a provider: its kind's, `openai-compatible` when it names none. */

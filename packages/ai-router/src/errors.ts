@@ -44,6 +44,7 @@ export const AI_ROUTER_ERROR_CODES: Readonly<Record<ErrorClass, `AI_ROUTER_${Upp
     network: "AI_ROUTER_NETWORK",
     stream: "AI_ROUTER_STREAM",
     invalid_request: "AI_ROUTER_INVALID_REQUEST",
+    model_not_found: "AI_ROUTER_MODEL_NOT_FOUND",
     cancelled: "AI_ROUTER_CANCELLED",
     deadline: "AI_ROUTER_DEADLINE",
     no_candidate: "AI_ROUTER_NO_CANDIDATE",

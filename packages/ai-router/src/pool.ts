@@ -1,7 +1,7 @@
 import type { AttemptError } from "./attempt.ts"
 import { tokenParts } from "./cache.ts"
 import { windowEnd } from "./classify.ts"
-import { DEFAULT_CAPABILITIES, identityOf, modelMatches } from "./config.ts"
+import { DEFAULT_CAPABILITIES, identityOf, keysOf, modelMatches } from "./config.ts"
 import type { BreakerSettings, ResolvedPolicy, Settings } from "./config.ts"
 import type { Emitter } from "./events.ts"
 import type { RateLimitInfo } from "./headers.ts"
@@ -214,12 +214,13 @@ export class PoolState {
                             const worst = (need.promptTokens * model.cost.input + need.outputTokens * model.cost.output) / 1_000_000
                             if (worst > policy.maxCost) continue
                         }
-                        if (need.dimensions !== null && model.dimensions !== undefined && model.dimensions !== need.dimensions) continue
+                        // A truncating model answers any length up to its native one: the answer is checked, not the declaration.
+                        if (need.dimensions !== null && model.dimensions !== undefined && model.truncate === undefined && model.dimensions !== need.dimensions) continue
                         if (need.oneIdentity) {
                             identity ??= identityOf(model)
                             if (identityOf(model) !== identity) continue
                         }
-                        for (const key of provider.keys) {
+                        for (const key of keysOf(provider)) {
                             const id = `${provider.id}/${key.alias}/${model.id}`
                             if (lanes.some((lane) => lane.id === id)) continue
                             lanes.push({ provider, key, model, rank, weight: ref.weight, id, pair: `${provider.id}/${key.alias}` })
@@ -520,7 +521,8 @@ export class PoolState {
         this.#samples.set(lane.id, (this.#samples.get(lane.id) ?? 0) + 1)
         const counters = this.#count(lane)
         counters.successes++
-        const cost = costOf(lane.model, usage)
+        // A self-hosted model costs nothing, with or without a price declared: its usage is counted and its cost is 0.
+        const cost = costOf(lane.model, usage) ?? (presetOf(lane.provider).local && usage !== undefined ? 0 : undefined)
         counters.promptTokens += usage?.prompt_tokens ?? 0
         counters.completionTokens += usage?.completion_tokens ?? 0
         const parts = tokenParts(usage)
@@ -591,7 +593,7 @@ export class PoolState {
             this.#providers.map(async (provider) => {
                 const record = await this.#read(this.#providerId(provider.id))
                 const keys = await Promise.all(
-                    provider.keys.map(async (key) => {
+                    keysOf(provider).map(async (key) => {
                         const keyRecord = await this.#read(this.#keyId(provider.id, key.alias))
                         const models = await Promise.all(
                             provider.models.map(async (model) => {

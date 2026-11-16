@@ -1,7 +1,7 @@
 import { AiRouterError } from "./errors.ts"
-import { baseUrlOf, presetOf, PROVIDER_PRESETS } from "./providers.ts"
+import { baseUrlOf, LOCAL_DEADLINE_MS, presetOf, PROVIDER_PRESETS } from "./providers.ts"
 import type { Protocol } from "./providers.ts"
-import type { CallOptions, CandidateRef, Capability, CatalogModel, ModelConfig, ModelPolicy, PoolConfig, ProviderConfig, RouterCatalog } from "./types.ts"
+import type { CallOptions, CandidateRef, Capability, CatalogModel, KeyConfig, ModelConfig, ModelPolicy, PoolConfig, ProviderConfig, RouterCatalog } from "./types.ts"
 
 /** The capabilities of a model that declares none. */
 export const DEFAULT_CAPABILITIES: readonly Capability[] = ["chat", "streaming", "tools", "json"]
@@ -56,6 +56,61 @@ export interface ResolvedPolicy {
 
 function configError(message: string): AiRouterError {
     return new AiRouterError({ errorClass: "config", message })
+}
+
+const KEYS = new WeakMap<ProviderConfig, readonly KeyConfig[]>()
+
+/**
+ * The keys the router reads for a provider: a `ref` key as the environment key it names (its alias defaults to the
+ * name), and for a `local` provider with none declared a single key that resolves to nothing, so its calls go out
+ * without credentials. The secret of a `local` key is never required (src/router.ts, `open`).
+ */
+export function keysOf(provider: ProviderConfig): readonly KeyConfig[] {
+    let keys = KEYS.get(provider)
+    if (keys === undefined) {
+        keys = provider.keys.map((key): KeyConfig => {
+            if (!("ref" in key)) return key
+            const { ref, alias, ...rest } = key
+            return { ...rest, alias: alias ?? ref, env: ref }
+        })
+        if (keys.length === 0 && presetOf(provider).local) keys = [{ alias: "keyless", resolve: () => undefined }]
+        KEYS.set(provider, keys)
+    }
+    return keys
+}
+
+/** True for a provider of kind `local`: a self-hosted endpoint. */
+export function isLocal(provider: ProviderConfig): boolean {
+    return presetOf(provider).local
+}
+
+/** The providers a list of candidates can resolve to, narrowed to `only` when the policy restricts its providers. */
+function providersOfRefs(config: PoolConfig, refs: readonly { readonly model: string; readonly provider?: string | null }[], only: ReadonlySet<string> | null): ProviderConfig[] {
+    const out = new Set<ProviderConfig>()
+    for (const ref of refs) for (const { provider } of matchesOf(config, ref)) if (only === null || only.has(provider.id)) out.add(provider)
+    return [...out]
+}
+
+/**
+ * Why a policy would put a local provider and a hosted one in one chain, or null. A name both serve is a silent swap
+ * and is refused; a local and a hosted candidate in one policy are allowed only when every candidate names its provider,
+ * so the profile that lists both says so itself (docs/design.md, "Local isolation").
+ */
+function isolationProblem(config: PoolConfig, refs: readonly { readonly model: string; readonly provider?: string | null }[], only: ReadonlySet<string> | null, where: string): string | null {
+    let local = false
+    let hosted = false
+    for (const ref of refs) {
+        const served = providersOfRefs(config, [ref], only)
+        const here = served.some(isLocal)
+        const there = served.some((provider) => !isLocal(provider))
+        if (here && there) return `${where} names model "${ref.model}", which both a local and a hosted provider serve: give the candidate its provider`
+        local ||= here
+        hosted ||= there
+    }
+    if (local && hosted && refs.some((ref) => ref.provider === undefined || ref.provider === null)) {
+        return `${where} mixes a local provider with a hosted one: a local call never falls back to a hosted provider, nor the reverse, unless the profile lists both as candidates that each name their provider`
+    }
+    return null
 }
 
 function positive(value: number | undefined, name: string, allowZero = false): void {
@@ -170,17 +225,20 @@ export function validateConfig(config: PoolConfig): void {
         if (provider.thinking !== undefined && preset.protocol !== "anthropic") throw configError(`provider "${provider.id}" (${preset.kind}) sets thinking, which only an anthropic provider has`)
         positive(provider.budget?.costPerDay, `provider "${provider.id}" budget.costPerDay`, true)
         positive(provider.budget?.costPerMonth, `provider "${provider.id}" budget.costPerMonth`, true)
-        if (provider.keys.length === 0) throw configError(`provider "${provider.id}" has no keys`)
+        positive(provider.firstTokenTimeoutMs, `provider "${provider.id}" firstTokenTimeoutMs`)
+        if (provider.keys.length === 0 && !preset.local) throw configError(`provider "${provider.id}" has no keys`)
         if (provider.models.length === 0) throw configError(`provider "${provider.id}" has no models`)
         const aliases = new Set<string>()
-        for (const key of provider.keys) {
-            if (key.alias === "" || key.alias.includes("/")) throw configError(`key alias "${key.alias}" of provider "${provider.id}" must be non-empty and without "/"`)
-            if (aliases.has(key.alias)) throw configError(`provider "${provider.id}" declares key "${key.alias}" twice`)
-            aliases.add(key.alias)
-            const sources = ("env" in key ? 1 : 0) + ("resolve" in key ? 1 : 0)
-            if (sources !== 1) throw configError(`key "${key.alias}" of provider "${provider.id}" needs exactly one of env or resolve`)
-            positive(key.weight, `key "${key.alias}" weight`)
-            positive(key.maxConcurrency, `key "${key.alias}" maxConcurrency`)
+        for (const [at, key] of provider.keys.entries()) {
+            const alias = "ref" in key ? (key.alias ?? key.ref) : key.alias
+            if (alias === "" || alias.includes("/")) throw configError(`key alias "${alias}" of provider "${provider.id}" must be non-empty and without "/"`)
+            if (aliases.has(alias)) throw configError(`provider "${provider.id}" declares key "${alias}" twice`)
+            aliases.add(alias)
+            const sources = ("env" in key ? 1 : 0) + ("resolve" in key ? 1 : 0) + ("ref" in key ? 1 : 0)
+            if (sources !== 1) throw configError(`key ${String(at)} ("${alias}") of provider "${provider.id}" needs exactly one of env or resolve (a local provider's key may be a ref instead)`)
+            if (key.optional !== undefined && !preset.local) throw configError(`key "${alias}" of provider "${provider.id}" is optional, which only a local provider's keys can be`)
+            positive(key.weight, `key "${alias}" weight`)
+            positive(key.maxConcurrency, `key "${alias}" maxConcurrency`)
         }
         const models = new Set<string>()
         for (const model of provider.models) {
@@ -195,18 +253,37 @@ export function validateConfig(config: PoolConfig): void {
                 if (field === "" || field === "messages" || field === "model") throw configError(`model "${model.id}" cannot omit "${field}"`)
             }
             if (model.dimensions !== undefined && (!Number.isInteger(model.dimensions) || model.dimensions < 1)) throw configError(`model "${model.id}" dimensions must be a positive integer`)
+            if (model.truncate !== undefined) {
+                if (model.dimensions === undefined) throw configError(`model "${model.id}" truncates to its dimensions: declare them`)
+                if (!(model.capabilities ?? []).includes("embeddings")) throw configError(`model "${model.id}" truncates vectors, so it must declare the embeddings capability`)
+            }
             if (!preset.embeddings && (model.capabilities ?? []).includes("embeddings")) throw configError(`provider "${provider.id}" (${preset.kind}) has no embeddings API, so model "${model.id}" cannot declare embeddings`)
         }
     }
     positive(config.resilience?.quotaBlacklistMs, "resilience.quotaBlacklistMs")
     if (config.defaults !== undefined) {
         validatePolicy(config, config.defaults, "defaults")
+        validateIsolation(config, {}, config.defaults, "defaults")
         if (config.defaults.pinned === true) throw configError("defaults cannot be pinned: pin a profile")
     }
     for (const [name, policy] of Object.entries<ModelPolicy>(config.profiles ?? {})) {
         validatePolicy(config, policy, `profile "${name}"`)
+        validateIsolation(config, config.defaults ?? {}, policy, `profile "${name}"`)
         if (policy.pinned === true) validatePinned(config, policy, `profile "${name}"`)
     }
+}
+
+/** Refuses a profile (or the defaults) whose chain would mix local and hosted providers silently. */
+function validateIsolation(config: PoolConfig, defaults: ModelPolicy, policy: ModelPolicy, where: string): void {
+    if (!config.providers.some(isLocal)) return
+    const source = sourceOf(defaults, policy, {}, undefined)
+    const merged: ModelPolicy = { ...defaults, ...policy }
+    const refs: { model: string; provider: string | null }[] =
+        "candidates" in source
+            ? source.candidates.flat().map((ref) => ({ model: ref.model, provider: ref.provider ?? null }))
+            : [...(source.model === undefined ? [] : [source.model]), ...(merged.fallbacks ?? [])].map((model) => ({ model, provider: null }))
+    const problem = isolationProblem(config, refs, merged.providers === undefined ? null : new Set(merged.providers), where)
+    if (problem !== null) throw configError(problem)
 }
 
 /** Applies the defaults of every pool-wide setting. */
@@ -288,6 +365,12 @@ export function resolvePolicy<P extends string>(config: PoolConfig<P>, options: 
         tiers = names.map(single)
     }
     if (merged.allowFallback === false) tiers = tiers.slice(0, 1)
+    const only = merged.providers === undefined ? null : new Set(merged.providers)
+    const served = providersOfRefs(config, tiers.flat(), only)
+    if (served.some(isLocal)) {
+        const problem = isolationProblem(config, tiers.flat(), only, "the call")
+        if (problem !== null) throw configError(problem)
+    }
     const models: string[] = []
     for (const ref of tiers.flat()) if (!models.includes(ref.model)) models.push(ref.model)
     return {
@@ -296,7 +379,7 @@ export function resolvePolicy<P extends string>(config: PoolConfig<P>, options: 
         pinned,
         maxAttempts: merged.maxAttempts ?? 4,
         timeoutMs: merged.timeoutMs ?? 60_000,
-        deadlineMs: merged.deadlineMs ?? 120_000,
+        deadlineMs: merged.deadlineMs ?? (served.length > 0 && served.every(isLocal) ? LOCAL_DEADLINE_MS : 120_000),
         maxCost: merged.budget?.maxCost ?? null,
         providers: merged.providers === undefined ? null : new Set(merged.providers),
         require: merged.require ?? [],
