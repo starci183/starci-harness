@@ -1,6 +1,7 @@
 import type { InfraName } from "../../config/types"
 import type { ProxiedEndpoint } from "../contracts"
 import type { ServiceDefinition } from "./definition"
+import { debeziumService } from "./debezium"
 import { kafkaService } from "./kafka"
 import { keycloakService } from "./keycloak"
 import { mailService } from "./mail"
@@ -23,4 +24,5 @@ export const SERVICE_DEFINITIONS: Readonly<Record<InfraName, AnyServiceDefinitio
     kafka: erase(kafkaService),
     keycloak: erase(keycloakService),
     mail: erase(mailService),
+    debezium: erase(debeziumService),
 }

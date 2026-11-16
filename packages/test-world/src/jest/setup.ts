@@ -22,7 +22,7 @@ import { dirname, join, resolve } from "node:path"
 import { NestFactory } from "@nestjs/core"
 import { Client } from "pg"
 import { readStackDefinition, resolveInfraImages, resolveSiblingImages } from "../config/stack-file"
-import type { AnyTestWorldConfig, InfraName, PostgresStack } from "../config/types"
+import type { AnyTestWorldConfig, DebeziumStack, InfraName, PostgresStack } from "../config/types"
 import { validateDeclaration } from "../config/validate"
 import { TestWorldErrorCode, worldError } from "../errors"
 import { lazyRequire } from "../lazy"
@@ -135,6 +135,7 @@ const attachRequest = (config: AnyTestWorldConfig, root: string, namespace: Name
     const keycloak = objectOf<{ realm: string; clientId?: string }>(config.stacks.keycloak)
     const minio = objectOf<{ buckets?: ReadonlyArray<string> }>(config.stacks.minio)
     const kafka = objectOf<{ topics?: ReadonlyArray<string> }>(config.stacks.kafka)
+    const debezium = objectOf<DebeziumStack>(config.stacks.debezium)
     return {
         namespace,
         runId,
@@ -143,6 +144,9 @@ const attachRequest = (config: AnyTestWorldConfig, root: string, namespace: Name
         ...(keycloak === null ? {} : { keycloak: { realmFile: resolve(root, keycloak.realm), clientId: keycloak.clientId } }),
         ...(minio === null ? {} : { minio: { buckets: minio.buckets ?? [] } }),
         ...(kafka === null ? {} : { kafka: { topics: kafka.topics ?? [] } }),
+        ...(debezium === null
+            ? {}
+            : { debezium: { connections: debezium.connections ?? postgres?.connections.map((connection) => connection.name) ?? [], tables: debezium.tables, stream: debezium.stream, properties: debezium.properties } }),
         ...(config.k3d?.enable === true
             ? { k3d: { images: Object.entries(config.k3d.images ?? {}).map(([name, dockerfile]) => ({ name, dockerfile })) } }
             : {}),

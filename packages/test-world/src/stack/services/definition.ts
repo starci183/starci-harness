@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto"
 import type { InfraName } from "../../config/types"
-import type { AttachRequest, Namespace, ProxiedEndpoint } from "../contracts"
+import type { AttachRequest, Namespace, ProxiedEndpoint, RunInfra } from "../contracts"
 import type { Docker } from "../docker"
 import type { FetchLike, Pause } from "../health"
 import type { PgConnect } from "../pg"
@@ -39,10 +39,32 @@ export interface ServiceSpec {
     readonly command: ReadonlyArray<string>
 }
 
+/** What a slot's Debezium Server is started with: where it reads, where it writes and what it calls itself, all from the slot's provisioned Postgres and Redis. */
+export interface DebeziumPlan {
+    /** The replication slot and the publication (one name). */
+    readonly slotName: string
+    /** The topic prefix: `<namespace.kebab>`. */
+    readonly topicPrefix: string
+    /** The stored single stream every event goes to, or null for a stream per table. */
+    readonly stream: string | null
+    /** The Postgres the connector reads, as the container reaches it on the stack network. */
+    readonly postgres: { readonly host: string; readonly port: number; readonly user: string; readonly password: string; readonly database: string; readonly schemas: ReadonlyArray<string> }
+    /** The Redis it writes to, as the container reaches it on the stack network. */
+    readonly redis: { readonly host: string; readonly port: number; readonly db: number }
+    /** Captured tables (`schema.table`), empty for every table of the captured schemas. */
+    readonly tables: ReadonlyArray<string>
+    /** The declaration's further properties (without the `debezium.` prefix). */
+    readonly properties: Readonly<Record<string, string>>
+}
+
 /** Per-start hints for {@link ServiceDefinition.spec}. */
 export interface SpecHints {
     /** The proxy port each slot listener of the broker advertises, in listener order (Kafka only). */
     readonly kafkaListenerPorts: ReadonlyArray<number> | null
+    /** Postgres only: start with logical decoding on. */
+    readonly logicalReplication?: boolean
+    /** Debezium only: the plan the container's configuration is built from. */
+    readonly debezium?: DebeziumPlan | null
 }
 
 /** What a service is asked to provision for one run. */
@@ -53,6 +75,8 @@ export interface ProvisionInput {
     leaseRedisDb(): Promise<number>
     /** Leases a Kafka slot listener (1-based) for the namespace from the registry. */
     leaseKafkaListener(): Promise<number>
+    /** What the attach has provisioned so far (the services this one is `after`). */
+    readonly infra: Readonly<Partial<RunInfra>>
 }
 
 /** The service-specific part of a run's infra (`RunX` without the endpoint), plus notes to keep for `reset`. */
@@ -67,6 +91,8 @@ export interface ResetInput {
     readonly keepTables: Readonly<Record<string, ReadonlyArray<string>>>
     /** The notes {@link ProvisionResult.notes} stored for this namespace. */
     readonly notes: Readonly<Record<string, string>>
+    /** What the run provisioned. */
+    readonly infra: Readonly<Partial<RunInfra>>
 }
 
 /** What a deprovision is given besides the run. */
@@ -74,6 +100,8 @@ export interface DeprovisionInput {
     readonly namespace: Namespace
     /** Frees the Redis DB index lease of the namespace. */
     releaseRedisDb(): Promise<void>
+    /** What the run provisioned (a service torn down before another it reads still finds it). */
+    readonly infra: Readonly<Partial<RunInfra>>
 }
 
 /** One infrastructure service: how to start it, when it is ready, and what a namespace owns in it. */
@@ -89,6 +117,13 @@ export interface ServiceDefinition<TRun extends ProxiedEndpoint> {
      * is global to the server and so cannot be shared without one slot reaching another.
      */
     readonly scope?: "shared" | "namespace"
+    /**
+     * Services whose provisioned run this one's container is configured from: the attach starts it after they are provisioned
+     * (never with the shared containers) and tears it down before them.
+     */
+    readonly after?: ReadonlyArray<InfraName>
+    /** Whether the app (or a spec) talks to it through a toxiproxy proxy (default true); false: no proxy, `ProxiedEndpoint.proxy` is empty and an outage is the container's. */
+    readonly proxied?: boolean
     /** The generated secrets of a new container of this service. */
     newSecrets(): Record<string, string>
     /** The default container spec for an image. */

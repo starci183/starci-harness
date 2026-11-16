@@ -7,7 +7,7 @@ import { join } from "node:path"
 import { parse } from "yaml"
 import { TestWorldErrorCode, worldError } from "../errors"
 import type { StackImageRequest } from "../stack/contracts"
-import { KAFKA_IMAGE } from "../stack/naming"
+import { DEBEZIUM_IMAGE, KAFKA_IMAGE } from "../stack/naming"
 import { INFRA_SERVICES, type FakedService, type InfraName, type SiblingServiceDeclaration, type StacksDeclaration } from "./types"
 
 /** One service of the stack definition that has an image. */
@@ -94,6 +94,7 @@ const KIND_PATTERN: Readonly<Record<InfraName, string>> = {
     kafka: "kafka",
     keycloak: "keycloak",
     mail: "mailpit|mail",
+    debezium: "debezium|debezium-server|cdc",
 }
 
 /** The image repository's last path segment: `quay.io/keycloak/keycloak:26.0` gives `keycloak`. */
@@ -108,6 +109,8 @@ const repositoryName = (image: string): string => {
 /** Whether a stack definition service is of this infra kind (by its compose name or its image repository). */
 export const matchesKind = (kind: InfraName, name: string, image: string): boolean => {
     const pattern = new RegExp(`^(${KIND_PATTERN[kind]})$`, "i")
+    // Debezium Server's repository is a bare `server`, so the image is known by its owner segment.
+    if (kind === "debezium" && /(^|\/)debezium\/server[:@]/i.test(image)) return true
     return pattern.test(name) || pattern.test(repositoryName(image))
 }
 
@@ -130,8 +133,9 @@ export const selectedInfraServices = (stacks: StacksDeclaration): ReadonlyArray<
  */
 export const resolveInfraImages = (stacks: StacksDeclaration, definition: StackDefinition, stackDir = ".starcistacks/dev"): ReadonlyArray<StackImageRequest> =>
     selectedInfraServices(stacks).map((service) => {
+        const logicalReplication = service === "postgresql" && asRecord(stacks.postgresql)?.logicalReplication === true
         const override = asRecord(stacks[service])?.image
-        if (typeof override === "string" && override !== "") return pinned({ service, image: override }, stackDir)
+        if (typeof override === "string" && override !== "") return pinned({ service, image: override, ...(logicalReplication ? { logicalReplication } : {}) }, stackDir)
         const found = Object.entries(definition.services).find(([name, entry]) => matchesKind(service, name, entry.image))
         if (found === undefined) {
             const names = Object.entries(definition.services).map(([name, entry]) => `${name} (${entry.image})`)
@@ -140,15 +144,24 @@ export const resolveInfraImages = (stacks: StacksDeclaration, definition: StackD
                 `stacks.${service} is declared but the stack definition ${stackDir} has no ${service} service; it has: ${names.length === 0 ? "no services with an image" : names.join(", ")}. Add the service to a compose file under ${stackDir}/infra/compose or set stacks.${service}.image.`,
             )
         }
-        return pinned({ service, image: found[1].image }, stackDir)
+        return pinned({ service, image: found[1].image, ...(logicalReplication ? { logicalReplication } : {}) }, stackDir)
     })
 
-/** Kafka runs the ONE pinned image ({@link KAFKA_IMAGE}): no Redpanda, no cp-kafka, no tag without its digest. */
+/**
+ * Kafka runs the ONE pinned image ({@link KAFKA_IMAGE}): no Redpanda, no cp-kafka, no tag without its digest. Debezium Server
+ * runs the ONE pinned image ({@link DEBEZIUM_IMAGE}) the same way.
+ */
 const pinned = (request: StackImageRequest, stackDir: string): StackImageRequest => {
     if (request.service === "kafka" && request.image !== KAFKA_IMAGE) {
         throw worldError(
             TestWorldErrorCode.StackDefinition,
             `stacks.kafka resolves to ${request.image} in ${stackDir}; the StarCi event bus is Apache Kafka in KRaft mode at exactly ${KAFKA_IMAGE} (pinned by digest; no Redpanda, no cp-kafka, no undigested tag)`,
+        )
+    }
+    if (request.service === "debezium" && request.image !== DEBEZIUM_IMAGE) {
+        throw worldError(
+            TestWorldErrorCode.StackDefinition,
+            `stacks.debezium resolves to ${request.image} in ${stackDir}; the StarCi change-data-capture server is Debezium Server at exactly ${DEBEZIUM_IMAGE} (pinned by digest; no other tag, no undigested reference)`,
         )
     }
     return request

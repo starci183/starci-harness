@@ -148,4 +148,67 @@ describe("validateDeclaration", () => {
         const root = fixture(FILES)
         assert.match(problemsOf(config({ stacks: { kafka: { fakedBy: "llm", reason: "no broker here" } } }), root), /stacks\.kafka: kafka is our own event bus and always runs real/)
     })
+
+    test("postgres logical replication is a boolean", () => {
+        const root = fixture(FILES)
+        assert.doesNotThrow(() => validateDeclaration(config({ stacks: { postgresql: { connections: [{ name: "main" }], logicalReplication: true }, redis: {} } }), root))
+        assert.match(problemsOf(config({ stacks: { postgresql: { connections: [{ name: "main" }], logicalReplication: "yes" }, redis: {} } }), root), /stacks\.postgresql\.logicalReplication: must be true or false, got yes/)
+    })
+
+    describe("stacks.debezium", () => {
+        const withDebezium = (debezium: Record<string, unknown>, extra: Record<string, unknown> = {}) =>
+            config({ stacks: { postgresql: { connections: [{ name: "main" }, { name: "audit" }], logicalReplication: true }, redis: {}, debezium, ...extra } })
+
+        test("passes with a logical postgres and redis, and is selected last as a real service", () => {
+            const root = fixture(FILES)
+            assert.deepEqual(validateDeclaration(withDebezium({ connections: ["main"], tables: ["public.orders"], stream: "cdc", properties: { "format.value.schemas.enable": "true" } }), root), ["postgresql", "redis", "debezium"])
+            assert.doesNotThrow(() => validateDeclaration(config({ stacks: { postgresql: { connections: [{ name: "a", database: "core", schema: "a" }, { name: "b", database: "core", schema: "b" }], logicalReplication: true }, redis: {}, debezium: {} } }), root))
+        })
+
+        test("can never be declared as faked: it reads the real WAL", () => {
+            const root = fixture(FILES)
+            assert.match(problemsOf(withDebezium({ fakedBy: "llm", reason: "no image" }), root), /stacks\.debezium: Debezium Server is a stack service that reads the real WAL and always runs real/)
+        })
+
+        test("needs a real postgres with logical replication and a real redis", () => {
+            const root = fixture(FILES)
+            assert.match(problemsOf(config({ stacks: { postgresql: { connections: [{ name: "main" }] }, redis: {}, debezium: {} } }), root), /stacks\.postgresql\.logicalReplication` must be true/)
+            assert.match(problemsOf(config({ stacks: { redis: {}, debezium: {} } }), root), /stacks\.postgresql` must be declared and not faked/)
+            assert.match(problemsOf(config({ stacks: { postgresql: { connections: [{ name: "main" }], logicalReplication: true }, debezium: {} } }), root), /stacks\.redis` must be declared and not faked/)
+            assert.match(problemsOf(config({ stacks: { postgresql: { connections: [{ name: "main" }], logicalReplication: true }, redis: { fakedBy: "llm", reason: "cache" }, debezium: {} } }), root), /stacks\.redis` must be declared and not faked/)
+        })
+
+        test("captures declared connections of one database", () => {
+            const root = fixture(FILES)
+            assert.match(problemsOf(withDebezium({ connections: ["nope"] }), root), /connections: "nope" is not a connection of stacks\.postgresql\.connections \(main, audit\)/)
+            assert.match(problemsOf(withDebezium({}), root), /one Debezium Server reads one database, but main, audit are captured/)
+            assert.match(problemsOf(withDebezium({ connections: [] }), root), /stacks\.debezium\.connections: at least one Postgres connection is captured/)
+        })
+
+        test("tables, stream and properties are checked: the library's own properties and a double route are refused", () => {
+            const root = fixture(FILES)
+            const message = problemsOf(
+                withDebezium({
+                    connections: ["main"],
+                    tables: ["orders", "public.ok"],
+                    stream: "bad stream",
+                    properties: { "debezium.sink.type": "kafka", "source.slot.name": "mine", "sink.redis.db.index": "9", "source.database.hostname": "h", "transforms.x.type": "t", "format.value": "json" },
+                }),
+                root,
+            )
+            for (const expected of [
+                'stacks.debezium.tables: "orders" must be schema.table',
+                'stacks.debezium.stream: "bad stream" must match',
+                "properties.debezium.sink.type: write the property without",
+                "properties.source.slot.name: the library owns it",
+                "properties.sink.redis.db.index: the library owns it",
+                "properties.source.database.hostname: the library owns it",
+                "properties.transforms.x.type: `stream` routes every event through the library's own transform",
+            ]) {
+                assert.ok(message.includes(expected), `missing "${expected}" in:\n${message}`)
+            }
+            assert.equal(message.includes("properties.format.value:"), false, "a payload property is the declaration's")
+            assert.doesNotThrow(() => validateDeclaration(withDebezium({ connections: ["main"], properties: { "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState", transforms: "unwrap" } }), root))
+        })
+    })
 })

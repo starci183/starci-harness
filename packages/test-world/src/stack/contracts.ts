@@ -28,6 +28,8 @@ export interface StackImageRequest {
     readonly service: InfraName
     /** The full image reference including the tag (`pgvector/pgvector:pg16`). */
     readonly image: string
+    /** Postgres only: started with logical decoding on (`wal_level=logical`, replication slots and WAL senders). It is another container identity (image plus arguments), never the default one. */
+    readonly logicalReplication?: boolean | undefined
 }
 
 /** One Postgres connection as the stack provisions it: a database of its own, or a schema (with its own login) of a shared one. */
@@ -56,8 +58,22 @@ export interface AttachRequest {
     readonly minio?: { readonly buckets: ReadonlyArray<string> }
     /** Kafka: logical topic names to create (each stored as `<namespace.kebab>.<name>`). */
     readonly kafka?: { readonly topics: ReadonlyArray<string> }
+    /** Debezium Server: the change-data-capture road of the slot's database to the slot's Redis DB. */
+    readonly debezium?: DebeziumRequest
     /** The k3d cluster; absent when the repository does not use it. */
     readonly k3d?: K3dRequest
+}
+
+/** What the slot's Debezium Server captures and where it writes. */
+export interface DebeziumRequest {
+    /** The Postgres connections (logical names) captured; they all live in one logical database. */
+    readonly connections: ReadonlyArray<string>
+    /** Only these tables (`schema.table`) are captured; absent: every table of the captured schemas. */
+    readonly tables?: ReadonlyArray<string> | undefined
+    /** One declared Redis stream every change event is written to (stored as `<namespace.kebab>.<stream>`); absent: one stream per table. */
+    readonly stream?: string | undefined
+    /** Further Debezium Server properties (without the `debezium.` prefix), applied after the library's defaults. */
+    readonly properties?: Readonly<Record<string, string>> | undefined
 }
 
 /** One own image built by content hash. */
@@ -154,6 +170,25 @@ export interface RunMail extends ProxiedEndpoint {
     readonly apiPort: number
 }
 
+/**
+ * The provisioned Debezium Server of a data slot: one container per slot reading the slot's database through its own
+ * replication slot and publication and writing to the slot's Redis DB. Nothing goes through toxiproxy (the app never talks to
+ * it): `port` and `directPort` are the published HTTP port of its management endpoint and `proxy` is empty; its outage is the
+ * container's own (stop and start), not a toxic.
+ */
+export interface RunDebezium extends ProxiedEndpoint {
+    /** The replication slot (`<namespace.snake>_cdc`, shortened with a hash when long). */
+    readonly slotName: string
+    /** The publication of the slot (same name). */
+    readonly publicationName: string
+    /** The topic prefix, so the stream prefix: `<namespace.kebab>`; a table's stream is `<prefix>.<schema>.<table>`. */
+    readonly streamPrefix: string
+    /** The declared single stream (stored name), or null when each table has its own. */
+    readonly stream: string | null
+    /** The stored database the connector reads. */
+    readonly database: string
+}
+
 /** The provisioned Keycloak realm of a run. */
 export interface RunKeycloak extends ProxiedEndpoint {
     /** The realm imported for the repository (`<namespace.kebab>-<realm>`). */
@@ -197,6 +232,7 @@ export interface RunInfra {
     readonly kafka?: RunKafka
     readonly keycloak?: RunKeycloak
     readonly mail?: RunMail
+    readonly debezium?: RunDebezium
     readonly cluster?: RunCluster
 }
 
@@ -227,7 +263,7 @@ export interface StackStatus {
 
 /** The behaviors the rest of the library needs from layer (a). Implemented by `stack/index.ts`. */
 export interface StackApi {
-    /** Starts every missing shared container the images name (idempotent, serialised across processes by a lock), waits until healthy, and answers the status. A service of a data slot's own (mail) is started by that slot's attach, never here. The CLI `up`. */
+    /** Starts every missing shared container the images name (idempotent, serialised across processes by a lock), waits until healthy, and answers the status. A service of a data slot's own (mail, debezium) is started by that slot's attach, never here. The CLI `up`. */
     up(services: ReadonlyArray<StackImageRequest>, k3d?: K3dRequest & { readonly root: string }): Promise<StackStatus>
     /** Stops and removes the shared containers that no live lease uses; with `force`, all of them. The CLI `down`. */
     down(options?: { readonly force?: boolean }): Promise<StackStatus>

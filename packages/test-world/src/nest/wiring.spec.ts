@@ -176,3 +176,18 @@ test("run directories are created under the run directory and stable per name", 
     assert.equal(wiring.directory("uploads"), first)
     assert.notEqual(wiring.directory("exports"), first)
 })
+
+test("debezium wires the slot's server url, replication slot and the stream a table's changes land in; a declared single stream wins, and an undeclared one throws", () => {
+    const base = context()
+    const run = { host: "127.0.0.1", port: 30110, directPort: 30110, proxy: "", image: "quay.io/debezium/server", container: "c", slotName: "shop_a1b2c3_w1_cdc", publicationName: "shop_a1b2c3_w1_cdc", streamPrefix: "shop-a1b2c3-w1", stream: null, database: "shop_a1b2c3_primary" }
+    const { debezium } = buildWiring({ ...base, infra: { ...base.infra, debezium: run } })
+    assert.equal(debezium.url, "http://127.0.0.1:30110")
+    assert.equal(debezium.slotName, "shop_a1b2c3_w1_cdc")
+    assert.equal(debezium.publicationName, "shop_a1b2c3_w1_cdc")
+    assert.equal(debezium.streamPrefix, "shop-a1b2c3-w1")
+    assert.equal(debezium.stream("public.orders"), "shop-a1b2c3-w1.public.orders")
+    const routed = buildWiring({ ...base, infra: { ...base.infra, debezium: { ...run, stream: "shop-a1b2c3-w1.cdc" } } }, { host: "host.docker.internal" }).debezium
+    assert.equal(routed.stream("public.orders"), "shop-a1b2c3-w1.cdc")
+    assert.equal(routed.url, "http://host.docker.internal:30110")
+    assert.throws(() => buildWiring(context()).debezium, /TEST_WORLD_NOT_DECLARED.*debezium/)
+})

@@ -1,6 +1,7 @@
 import type { PostgresConnectionRequest, PostgresSchemaLogin, RunPostgres } from "../contracts"
 import { quoteIdent, withPg } from "../pg"
 import type { PgClient, PgConfig } from "../pg"
+import { POSTGRES_LOGICAL_ARGS } from "../naming"
 import { randomSecret } from "./definition"
 import type { ServiceDefinition, ServiceTarget } from "./definition"
 
@@ -66,9 +67,9 @@ export const postgresService: ServiceDefinition<RunPostgres> = {
     name: "postgresql",
     port: 5432,
     newSecrets: () => ({ password: randomSecret() }),
-    spec: (_image, secrets) => ({
+    spec: (_image, secrets, hints) => ({
         env: { POSTGRES_USER: SUPERUSER, POSTGRES_PASSWORD: secrets.password ?? "", POSTGRES_DB: "postgres" },
-        command: ["-c", "fsync=off", "-c", "synchronous_commit=off", "-c", "full_page_writes=off", "-c", "max_connections=300"],
+        command: ["-c", "fsync=off", "-c", "synchronous_commit=off", "-c", "full_page_writes=off", "-c", "max_connections=300", ...(hints.logicalReplication === true ? POSTGRES_LOGICAL_ARGS : [])],
     }),
     ready: async (target) => {
         const result = await withPg(target.net.pg, configOf(target, target.secrets.password ?? "", "postgres"), (client) => client.query("select 1"))

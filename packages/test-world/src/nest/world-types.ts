@@ -136,6 +136,25 @@ export interface KeycloakInfraHandle extends InfraHandle {
     rotateClientSecret(client: string): Promise<string>
 }
 
+/**
+ * The outage of the slot's Debezium Server (`stacks.debezium`). Nothing the app talks to goes through it, so its outage is not a
+ * toxic: `cut()` stops the container, so no change is delivered while Postgres keeps the WAL for its replication slot, and
+ * `restore()` starts it again and waits until it streams, so everything committed meanwhile is delivered in order. Like every
+ * outage it takes the run's outage lock exclusively and keeps it until `restore()` (or the world stops).
+ */
+export interface DebeziumInfraHandle {
+    /** Stops the server: nothing reaches the streams until `restore`. */
+    cut(): Promise<void>
+    /** Starts the server again and waits until it holds its replication slot; what was committed while it was down is then delivered. */
+    restore(): Promise<void>
+    /** Cuts the server, runs `during` while it is down, then restores it. */
+    during<T>(during: () => Promise<T>): Promise<T>
+    /** Stops and starts the server again in the same world (a process restart: the slot's position is kept by Postgres). */
+    restart(): Promise<void>
+    /** Waits until every change the database committed so far is in its stream (a logical decoding message travels the same WAL), so a spec asserts a stream that is complete. */
+    drain(): Promise<void>
+}
+
 /** The infrastructure handles of the world; a service the declaration does not run throws `NotDeclared`. */
 export interface WorldInfra {
     readonly postgresql: PostgresInfraHandle
@@ -146,6 +165,8 @@ export interface WorldInfra {
     readonly keycloak: KeycloakInfraHandle
     /** The SMTP side of the mail sink: `stall()` leaves a sender waiting for a greeting that never comes, `cut()` refuses its connection, `latency(ms)` slows it. */
     readonly mail: InfraHandle
+    /** The slot's Debezium Server: `cut()`, `restore()`, `during(fn)`, `restart()` and `drain()` (no latency or stall: nothing the app talks to goes through it). */
+    readonly debezium: DebeziumInfraHandle
 }
 
 /** The admin handle of the repository's realm in the real Keycloak. */

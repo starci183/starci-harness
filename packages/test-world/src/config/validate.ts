@@ -3,9 +3,15 @@ import { existsSync, readFileSync, statSync } from "node:fs"
 import { isAbsolute, join } from "node:path"
 import { TestWorldErrorCode, worldError } from "../errors"
 import { isFakedService, isInfraName, selectedInfraServices } from "./stack-file"
-import { INFRA_SERVICES, type InfraName, type KeycloakStack, type PostgresStack, type TestWorldConfig } from "./types"
+import { INFRA_SERVICES, type DebeziumStack, type InfraName, type KeycloakStack, type PostgresStack, type TestWorldConfig } from "./types"
 
 const IDENTIFIER = /^[A-Za-z]\w*$/
+/** A stream name is a Redis key segment under `<namespace.kebab>.`: dotted words of letters, digits, `_` and `-`. */
+const STREAM_NAME = /^[A-Za-z0-9][\w-]*(\.[A-Za-z0-9][\w-]*)*$/
+/** A captured table: `schema.table`, as Debezium's `table.include.list` takes it. */
+const TABLE_NAME = /^[A-Za-z_]\w*\.[A-Za-z_]\w*$/
+/** A Debezium Server property the library owns: the source connection, the slot and publication, the topic prefix and the sink. */
+const OWNED_PROPERTY = /^(sink\.type|sink\.redis\.(address|db\.index|user|password|ssl\.enabled)|source\.(connector\.class|database\.[a-z.]+|topic\.prefix|slot\.name|publication\.name|plugin\.name|offset\.storage(\..+)?))$/
 
 const isNonEmptyString = (value: unknown): value is string => typeof value === "string" && value.trim() !== ""
 
@@ -15,6 +21,39 @@ const asRecord = (value: unknown): Readonly<Record<string, unknown>> | undefined
 const resolvePath = (root: string, path: string): string => (isAbsolute(path) ? path : join(root, path))
 
 const isFile = (path: string): boolean => existsSync(path) && statSync(path).isFile()
+
+/** The problems of a `stacks.debezium` entry against the rest of the `stacks` block. */
+const debeziumProblems = (debezium: DebeziumStack, stacks: Readonly<Record<string, unknown>> | undefined): ReadonlyArray<string> => {
+    const problems: Array<string> = []
+    const postgres = stacks?.postgresql
+    const postgresReal = postgres !== undefined && !isFakedService(postgres)
+    const declared = postgresReal ? ((postgres as PostgresStack).connections ?? []) : []
+    if (!postgresReal) problems.push("stacks.debezium: it reads the WAL of the real Postgres, so `stacks.postgresql` must be declared and not faked")
+    else if ((postgres as PostgresStack).logicalReplication !== true) {
+        problems.push("stacks.debezium: it reads the WAL through a replication slot, so `stacks.postgresql.logicalReplication` must be true (the server then runs with wal_level=logical in a container of its own)")
+    }
+    const redis = stacks?.redis
+    if (redis === undefined || isFakedService(redis)) problems.push("stacks.debezium: it writes its change events to the slot's Redis DB, so `stacks.redis` must be declared and not faked")
+    const chosen: ReadonlyArray<unknown> = debezium.connections ?? declared.map((connection) => connection?.name)
+    if (!Array.isArray(chosen) || chosen.length === 0) problems.push("stacks.debezium.connections: at least one Postgres connection is captured")
+    else {
+        const names = declared.map((connection) => connection?.name)
+        for (const name of chosen) if (!names.includes(name as string)) problems.push(`stacks.debezium.connections: "${String(name)}" is not a connection of stacks.postgresql.connections (${names.join(", ") || "none"})`)
+        const databases = new Set(declared.filter((connection) => chosen.includes(connection?.name)).map((connection) => connection?.database ?? connection?.name))
+        if (databases.size > 1) {
+            problems.push(`stacks.debezium.connections: one Debezium Server reads one database, but ${[...databases].join(", ")} are captured; capture the connections of one database (schema-per-context connections share one)`)
+        }
+    }
+    for (const table of debezium.tables ?? []) if (!TABLE_NAME.test(table)) problems.push(`stacks.debezium.tables: "${table}" must be schema.table (for example public.orders)`)
+    if (debezium.stream !== undefined && !STREAM_NAME.test(debezium.stream)) problems.push(`stacks.debezium.stream: "${debezium.stream}" must match ${STREAM_NAME.source}`)
+    for (const [key, value] of Object.entries(debezium.properties ?? {})) {
+        if (typeof value !== "string") problems.push(`stacks.debezium.properties.${key}: the value must be a string`)
+        if (key.startsWith("debezium.")) problems.push(`stacks.debezium.properties.${key}: write the property without the \`debezium.\` prefix`)
+        else if (OWNED_PROPERTY.test(key)) problems.push(`stacks.debezium.properties.${key}: the library owns it (the source connection, the slot, the publication, the topic prefix and the sink come from the slot's wiring)`)
+        else if (debezium.stream !== undefined && /^transforms(\.|$)/.test(key)) problems.push(`stacks.debezium.properties.${key}: \`stream\` routes every event through the library's own transform; declare either \`stream\` or your own \`transforms\``)
+    }
+    return problems
+}
 
 /**
  * Validates the declaration against the repository at `root`. Throws ConfigInvalid listing ALL problems; otherwise answers
@@ -48,6 +87,10 @@ export const validateDeclaration = (config: TestWorldConfig, root: string): Read
         if (!faked) continue
         if (key === "kafka") {
             problems.push("stacks.kafka: kafka is our own event bus and always runs real (Apache Kafka in KRaft mode); only third parties are faked at the network edge")
+            continue
+        }
+        if (key === "debezium") {
+            problems.push("stacks.debezium: Debezium Server is a stack service that reads the real WAL and always runs real (the pinned image); only a third party's change feed is faked at the network edge")
             continue
         }
         if (key === "mail") {
@@ -107,6 +150,14 @@ export const validateDeclaration = (config: TestWorldConfig, root: string): Read
             }
         }
     }
+
+    if (postgresql !== undefined && !isFakedService(postgresql)) {
+        const logical: unknown = (postgresql as PostgresStack).logicalReplication
+        if (logical !== undefined && typeof logical !== "boolean") problems.push(`stacks.postgresql.logicalReplication: must be true or false, got ${String(logical)}`)
+    }
+
+    const debezium = stacks?.debezium
+    if (debezium !== undefined && !isFakedService(debezium)) problems.push(...debeziumProblems(debezium as DebeziumStack, stacks))
 
     const keycloak = stacks?.keycloak
     if (keycloak !== undefined && !isFakedService(keycloak)) {

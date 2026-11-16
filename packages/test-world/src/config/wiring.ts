@@ -106,6 +106,20 @@ export interface WiredMail {
     readonly apiUrl: string
 }
 
+/** The Debezium Server of the run (one per data slot): the change-data-capture road of the slot's database to the slot's Redis DB. */
+export interface WiredDebezium {
+    /** `http://host:port` of its management endpoint (`/q/health/live`), published directly. */
+    readonly url: string
+    /** The replication slot of the slot (`<namespace.snake>_cdc`), for a spec that reads `pg_replication_slots`. */
+    readonly slotName: string
+    /** The publication of the slot (same name). */
+    readonly publicationName: string
+    /** The prefix of every stream it writes (`<namespace.kebab>`): a table's stream is `<streamPrefix>.<schema>.<table>`. */
+    readonly streamPrefix: string
+    /** The stored Redis stream a table's change events are written to (`stream("public.orders")`), or the one declared `stacks.debezium.stream` whatever the table. */
+    stream(table: string): string
+}
+
 /** A fake at the network edge as the app is pointed at it. */
 export interface WiredFake {
     /** The base URL of an HTTP fake (`https://` for a fake declared `https`; empty for an SMTP fake). */
@@ -164,6 +178,7 @@ export interface WorldWiring<TApp extends string = string, TDb extends string = 
     readonly kafka: WiredKafka
     readonly keycloak: WiredKeycloak
     readonly mail: WiredMail
+    readonly debezium: WiredDebezium
     /** The fakes by their `fakes` key. */
     readonly fake: Readonly<Record<TFake, WiredFake>>
     /** The sibling services by name. */
