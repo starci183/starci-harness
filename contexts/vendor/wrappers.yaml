@@ -14,7 +14,7 @@ wrappers:
   - { file: core/frame/AlertDialog/index.tsx, wraps: [AlertDialog], delegates: { AlertDialog: [CloseTrigger, Trigger] } }
   - { file: core/branch/Calendar/index.tsx, wraps: [Calendar] }
   - { file: core/branch/ComboBox/index.tsx, wraps: [ComboBox, Input, ListBox, Spinner] }
-  - { file: core/branch/DataTable/index.tsx, wraps: [Checkbox, Table], delegates: { Table: [ColumnResizer] },
+  - { file: core/branch/DataTable/index.tsx, wraps: [Checkbox, Link, Table], delegates: { Table: [ColumnResizer] },
       overrides: [
         { kind: style, target: "Table.Column:padding", reason: "a header cell takes the container inset inline and the nested step in the block axis, on the spacing scale" },
         { kind: style, target: "Table.Cell:padding", reason: "a cell takes the container inset inline and the nested step in the block axis, a 40px row" } ] }

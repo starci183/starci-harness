@@ -2,4 +2,4 @@
 # in the commit that changes it, so the change shows in review. Read by `contexts anatomy` (cli/src/core/contexts/knowledge-gates.ts).
 schema: starci/vendor-pins@1
 pins:
-  wrappers.yaml: d21d5e8d10ed53f8adfeecc258edf08db0a53e93607f6aa89930212fe5d5b9ce
+  wrappers.yaml: 82a8b1759acd3f205248cce0b1fe810c12b25955b85f5930a7d5ee5d21b63c8b
