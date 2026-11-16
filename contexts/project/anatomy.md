@@ -79,6 +79,7 @@ Change a slot, a rule or a pattern's front matter, then regenerate in the same c
   - `package-lock.json` — **app.gallery-lock** optional
   - `pages/**/{explain.md,links.json}` — **app.gallery-explain** optional · R395 (hfs `gallery`)
   - `flows.json` — **app.gallery-flows** optional · R395 (hfs `gallery`)
+  - `routes.json` — **app.gallery-routes** optional · R395 (hfs `gallery`)
 - `scripts/`
   - `{.gitkeep,*.mjs,*.cjs,*.ps1,*.sh}` — **app.scripts** optional · R385 (hfs `script-one-off`), R102 (hfs `spec-placement`; eslint-be `spec-placement`), R103 (hfs `repo-local-check`)
   - `{env-sync.mjs,with-secrets.mjs,set-secrets.ps1,build-*.mjs}` — **app.scripts.delivery** optional · R06 (hfs `plaintext-secret` `plaintext-secret-staged`), R385 (hfs `script-one-off`), R102 (hfs `spec-placement`; eslint-be `spec-placement`), R103 (hfs `repo-local-check`)
@@ -281,6 +282,7 @@ Refused (forbidden or external): `repo.side-root-forbidden`, `fe.tool-config-loc
   - `package-lock.json` — **app.gallery-lock** optional
   - `pages/**/{explain.md,links.json}` — **app.gallery-explain** optional · R395 (hfs `gallery`)
   - `flows.json` — **app.gallery-flows** optional · R395 (hfs `gallery`)
+  - `routes.json` — **app.gallery-routes** optional · R395 (hfs `gallery`)
 - `scripts/`
   - `{.gitkeep,*.mjs,*.cjs,*.ps1,*.sh}` — **app.scripts** optional · R385 (hfs `script-one-off`), R102 (hfs `spec-placement`; eslint-be `spec-placement`), R103 (hfs `repo-local-check`)
   - `integration/*.mjs` — **app.scripts.integration** optional · R06 (hfs `plaintext-secret` `plaintext-secret-staged`), R385 (hfs `script-one-off`), R102 (hfs `spec-placement`; eslint-be `spec-placement`), R103 (hfs `repo-local-check`)
