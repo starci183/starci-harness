@@ -40,7 +40,7 @@ The API reads `PORT`, `HTTP_SECURITY_ALLOWED_ORIGINS`, `PRIMARY_DB_URL`, `PRIMAR
 
 Production browser build values live in `.starcistacks/application-stacks.yaml` under `environments.production.deploy.images.web.buildArgs.values`. Before building deployment images, replace the placeholders with your site's and your API's public origins. These values reach every browser; every credential stays in sealed runtime custody.
 
-`npm test` runs the back end's unit specs with per-file coverage. Optional integration specs run with `npm run test:integration` against the local database (`npm run db:start`, then `npm run db:push`); a lite app has no e2e world.
+`npm test` runs the back end's unit specs with per-file coverage. Optional integration specs run with `npm run test:integration`, and e2e flows with `npm run test:e2e`, against the local database (`npm run db:start`, then `npm run db:push`); both run on request only, one spec file at a time (a lite app has no world slots), and a spec whose inputs are unchanged since its last green run is skipped and reported cached (`starci test integration` and `starci test e2e`, `--full` ignores the cache, `--spec <path>` runs one regardless).
 
 The public runtime template tracks only sealed member names. Scaffolding creates this app's own age recipient and encrypts generated placeholder values into the declared `.starcistacks/<environment>/secrets/*.enc` members. Keep the matching host age identity in untracked local custody, then use `starci app secret set` to replace each placeholder with an actual value before deployment. Product apps retain sealed member custody. Runtime specs use disposable copies with ephemeral identities and remove them afterwards.
 

@@ -175,6 +175,7 @@ A cancelled or skipped run is no verdict. A forged record stays an error finding
 | `check/` | the per-file results of `app check` (formatter) and the input-set results of its scoped steps; `check/build/` the verdicts of the CI-parity build steps |
 | `lint/<side>/` | per source file: content hash, resolved local imports with the type surface digest, ESLint results; the project-graph findings per file; stylelint results |
 | `test-coverage/` | per unit spec: its closure key with the packages and files its run loaded, and the lines, branches and functions it covers in each source; per source: what is instrumented |
+| `test/<kind>/` | the result records of the integration and e2e runs, one `<area>.jsonl` per area of `src/tests/<kind>/`: per spec its key, the digests behind it, `passed` and the duration of the green run in ms (the one field that is not a pure function of the tree); written by the jest runner of `@starci/jest-preset`, not by `app check`, and read by no gate ([code/be/test.md](../code/be/test.md) BE-TEST-17) |
 | `sonar-baseline/` | reference data only: the new-code base commit, the quality gate's conditions as read from their owner with that owner's digest, the analysis scope settings' digest |
 | `codecov-baseline/` | reference data only: the base commit, the patch and project targets of `codecov.yml` with its digest |
 
@@ -566,7 +567,7 @@ preset's merge one record at a time, so the parent holds about three times the r
 ## The slot, the templates and adoption
 
 - **Slot.** `app.starcistacks.cache` (both editions): `.starcistacks/cache/`, tracked, presence optional, admitting
-  `fingerprint.jsonl`, `check/**`, `lint/**`, `test-coverage/**`, `sonar-baseline/**` and `codecov-baseline/**` and
+  `fingerprint.jsonl`, `check/**`, `lint/**`, `test-coverage/**`, `test/**`, `sonar-baseline/**` and `codecov-baseline/**` and
   nothing else. It is app-owned and written only by `app check`; `app sync` never renders,
   overwrites or judges its content, and managed-file drift does not cover it. `cache` is a reserved name that
   `.starcistacks/application-stacks.yaml` refuses as an environment.

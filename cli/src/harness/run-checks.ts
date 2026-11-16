@@ -95,6 +95,8 @@ export interface CommandOptions {
     readonly timeoutMs?: number
     readonly custody?: Custody
     readonly keysOf?: string
+    /** Variables for this run's child only (a world run's cache and worker switches); a custody key of the same name wins. */
+    readonly env?: Readonly<Record<string, string>>
 }
 
 /**
@@ -104,8 +106,9 @@ export interface CommandOptions {
  * no try; CUSTODY_KEY_MISSING when custody holds none of them, the owner's block.
  */
 export const heavyCommand = async (argv: readonly string[], cwd: string, options: CommandOptions): Promise<ToolRun> => {
-    const { custody, keysOf, ...rest } = options
-    const ran = await withHeavySlot("test", argv.slice(0, 3).join(" "), cwd, custody === undefined ? rest : { ...rest, env: custody.env }, async (held) => withOomNote(await captureCommand(testWorkerArgs(argv, held), cwd, held.options), held))
+    const { custody, keysOf, env, ...rest } = options
+    const given = custody === undefined ? env : { ...env, ...custody.env }
+    const ran = await withHeavySlot("test", argv.slice(0, 3).join(" "), cwd, given === undefined ? rest : { ...rest, env: given }, async (held) => withOomNote(await captureCommand(testWorkerArgs(argv, held), cwd, held.options), held))
     const run = custody === undefined ? ran : { ...ran, stdout: scrubbed(ran.stdout, custody.values), stderr: scrubbed(ran.stderr, custody.values) }
     if (run.exitCode !== 0 && keysOf !== undefined) await assertKeysHanded(`${run.stdout}
 ${run.stderr}`, keysOf)

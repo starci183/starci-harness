@@ -40,6 +40,11 @@ export interface AppsWorldSpec<TName extends string = string> {
     readonly apps: ReadonlyArray<TName> | { readonly [K in TName]?: true | AppOverride }
     /** The jest timeout of every hook and step of the spec, in milliseconds. */
     readonly testTimeoutMs?: number
+    /**
+     * The spec file is timing-sensitive (a latency budget, a soak, a load run): it runs alone, after every parallel file of its kind has ended, whatever
+     * `tests.<kind>.workers` declares. The jest-preset runner reads this literal from the file's `useTestWorld(...)` call; it has no other effect.
+     */
+    readonly exclusive?: boolean
 }
 
 /** A modules world: only these capability modules, over the platform base of the declaration. */
@@ -53,6 +58,11 @@ export interface ModulesWorldSpec<TName extends string = string> {
     readonly apps?: ReadonlyArray<TName>
     /** The jest timeout of every hook and step of the spec, in milliseconds. */
     readonly testTimeoutMs?: number
+    /**
+     * The spec file is timing-sensitive (a latency budget, a soak, a load run): it runs alone, after every parallel file of its kind has ended, whatever
+     * `tests.<kind>.workers` declares. The jest-preset runner reads this literal from the file's `useTestWorld(...)` call; it has no other effect.
+     */
+    readonly exclusive?: boolean
 }
 
 /** What a spec asks the world for. */

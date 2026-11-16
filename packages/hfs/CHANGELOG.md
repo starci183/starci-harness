@@ -1,5 +1,13 @@
 # Changelog
 
+## 6.13.9 - 2026-11-16
+
+- Added (managed scripts, `templates/app/package-scripts-lite/package.json`): a lite app's scripts carry `test:e2e` (`npm run typecheck:tests && cd be && jest --selectProjects e2e`) beside `test:integration`; `starci app sync` renders it, as `HFS_EDITION_FORBIDDEN_PRESENT` already allowed it (6.13.7) but the template did not carry it. The lite README template names both scripts, the sequence and the result cache. Spec: `src/lite-test-scripts.spec.mts`.
+- Added (`runtime/modules/schemas/application-stacks.schema.yaml`, `stacks-gate.mts`): the `tests` property of `application-stacks.yaml`, `{ integration: { workers: n }, e2e: { workers: n } }` with `workers` an integer from 1 to 8, declares how many spec files of a world kind run at once, each on a data slot (absent is 1: sequential); an unknown kind, a non-integer or a value outside 1 to 8 is `schema-shape-invalid`, and a lite app, which has no world data slots, declaring more than 1 is `HFS_STACKS_SHAPE`. Spec: `src/stacks-tests-workers.spec.mts`.
+- Added (slot `app.starcistacks.cache`): `.starcistacks/cache/` admits `test/**`, the result records of the integration and e2e runs (`@starci/jest-preset` 2.11.0, `contexts/code/be/test.md` BE-TEST-17); `app check` neither reads nor writes them.
+- Changed (canon pins, `contexts/stack/pins.yaml`, `runtime/knowledge/hfs/canon-pins.yaml`): `@starci/jest-preset` 2.11.0 and `@starci/test-world` 2.2.0, a pair (integration and e2e run on the slots the app declares, exclusive specs alone, and a spec file whose inputs are unchanged since its last green run is skipped and reported cached).
+- Changed (contexts): `contexts/code/be/test.md` BE-TEST-17 and `contexts/code/shared/test.md` SHARED-TEST-4, "Integration and e2e run on the slots `.starcistacks` declares, exclusive specs alone, with a cache" (the declaration, the exclusive marker, the inputs of a spec, `--full`, `--spec`, the records and the report); `contexts/project/stacks.md` PROJECT-STACKS-2 lists `tests`; BE-TEST-1 and BE-TEST-12, `contexts/project/cicd.md` (R12) and `contexts/project/check-cache.md` ("Layout and format", the slot) point at them.
+
 ## 6.13.8 - 2026-11-16
 
 - Added (R47 `BE_TEST_TOPOLOGY`, `runtime/scripts/hfs/architecture/test-world-files.mts`): a world that declares `stacks.debezium` (change data capture, `@starci/test-world` 2.1.0 README "Change data capture (Debezium)") is refused unless it also declares `stacks.postgresql.logicalReplication: true` and `stacks.redis`, and unless the stack definition declares the Debezium service. One finding at the `stacks.debezium` entry names every missing half.

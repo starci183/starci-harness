@@ -97,24 +97,26 @@ function proofConfig(be: string): ReturnType<typeof preset.starciJestConfig> {
   }
 }
 
-test('lite creates integration and contract projects only for matching specs, without a world or e2e project', () => {
+test('lite creates integration, e2e and contract projects only for matching specs, without a world; integration and e2e run on the cache runner', () => {
   const { root, be, put } = proofRepo('lite');
   try {
     for (const name of ['integration', 'contract']) fs.mkdirSync(path.join(be, 'src/tests', name), { recursive: true });
     assert.deepEqual(proofConfig(be).projects.map((project) => project.displayName), ['unit']);
     put('src/tests/integration/queue/helper.spec.ts', '');
     put('src/tests/contract/provider/helper.integration-spec.ts', '');
-    put('src/tests/e2e/api/boot.e2e-spec.ts', '');
+    put('src/tests/e2e/api/helper.spec.ts', '');
     assert.deepEqual(proofConfig(be).projects.map((project) => project.displayName), ['unit']);
     put('src/tests/integration/queue/delivery.integration-spec.ts', '');
     assert.deepEqual(proofConfig(be).projects.map((project) => project.displayName), ['unit', 'integration']);
+    put('src/tests/e2e/api/boot.e2e-spec.ts', '');
     put('src/tests/contract/provider/nested/payload.contract-spec.ts', '');
     const config = proofConfig(be);
-    assert.deepEqual(config.projects.map((project) => project.displayName), ['unit', 'integration', 'contract']);
+    assert.deepEqual(config.projects.map((project) => project.displayName), ['unit', 'integration', 'e2e', 'contract']);
     for (const project of config.projects.slice(1)) {
       assert.deepEqual(project.testMatch, [`**/src/tests/${String(project.displayName)}/**/*.${String(project.displayName)}-spec.ts`]);
       assert.equal(transformOf(project)[1].tsconfig, 'src/tests/tsconfig.json');
-      for (const option of ['runner', 'globalSetup', 'globalTeardown', 'setupFilesAfterEnv']) assert.equal(option in project, false, option);
+      for (const option of ['globalSetup', 'globalTeardown', 'setupFilesAfterEnv']) assert.equal(option in project, false, option);
+      assert.equal(project.runner, project.displayName === 'contract' ? undefined : preset.CACHE_RUNNER, `${String(project.displayName)}: integration and e2e run in sequence with the cache, contract on the stock runner`);
     }
   } finally {
     removeTree(root);
@@ -137,10 +139,10 @@ test('full and undeclared repositories without a world keep unit-only config eve
   }
 });
 
-test('jest runs selected lite integration and contract specs with TypeScript and no world state', () => {
+test('jest runs selected lite integration, e2e and contract specs with TypeScript and no world state', () => {
   const { root, be, put } = proofRepo('lite');
   try {
-    for (const name of ['integration', 'contract']) put(`src/tests/${name}/proof/pass.${name}-spec.ts`, 'const value: number = 42; test("proof", () => expect(value).toBe(42));\n');
+    for (const name of ['integration', 'e2e', 'contract']) put(`src/tests/${name}/proof/pass.${name}-spec.ts`, 'const value: number = 42; test("proof", () => expect(value).toBe(42));\n');
     // Resolve peer modules from this spec's install, preserving the preset's transform settings.
     put('jest.config.js', `const config = require(${JSON.stringify(distPath('index.js'))}).starciJestConfig(${JSON.stringify(OPTIONS)})
 for (const project of config.projects) {
@@ -150,13 +152,13 @@ for (const project of config.projects) {
 module.exports = config
 `);
     const jestPackage = require.resolve('jest/package.json');
-    const result = spawnSync(process.execPath, [path.join(path.dirname(jestPackage), 'bin', 'jest.js'), '--selectProjects', 'integration', 'contract', '--runInBand', '--ci', '--json', '--outputFile', path.join(be, 'report.json'), '--cacheDirectory', path.join(be, '.jest-cache')], {
+    const result = spawnSync(process.execPath, [path.join(path.dirname(jestPackage), 'bin', 'jest.js'), '--selectProjects', 'integration', 'e2e', 'contract', '--runInBand', '--ci', '--json', '--outputFile', path.join(be, 'report.json'), '--cacheDirectory', path.join(be, '.jest-cache')], {
       cwd: be, encoding: 'utf8', env: { ...process.env, NODE_PATH: path.dirname(path.dirname(jestPackage)) }, timeout: 120_000,
     });
     assert.equal(result.status, 0, result.stdout + result.stderr);
     const report: { numPassedTestSuites: number; numPassedTests: number } = JSON.parse(fs.readFileSync(path.join(be, 'report.json'), 'utf8'));
-    assert.equal(report.numPassedTestSuites, 2);
-    assert.equal(report.numPassedTests, 2);
+    assert.equal(report.numPassedTestSuites, 3);
+    assert.equal(report.numPassedTests, 3);
     assert.equal(fs.existsSync(path.join(be, 'src/tests/world')), false);
   } finally {
     removeTree(root);
@@ -309,6 +311,7 @@ test('each test kind is its own project, matched by folder and suffix together; 
   assert.equal('globalSetup' in unit, false, 'unit specs need no world');
   assert.equal('runner' in unit, false, 'unit specs run on the stock runner');
   assert.equal(path.basename(preset.WORLD_RUNNER), 'world-runner.js');
+  assert.equal(path.basename(preset.CACHE_RUNNER), 'cache-runner.js');
   assert.deepEqual(preset.TEST_KIND_FOLDERS, ['world', 'integration', 'e2e', 'contract']);
 });
 
@@ -749,7 +752,7 @@ test('the index exports the whole kit and the package.json declares typeorm as a
   const pkg: { peerDependenciesMeta: { typeorm: { optional: boolean } }; dependencies?: Record<string, string> } = require('../package.json');
   assert.equal(pkg.peerDependenciesMeta.typeorm.optional, true);
   assert.equal(Object.keys(pkg.dependencies ?? {}).length, 0);
-  for (const file of ['entity-manager.js', 'ids.js', 'matchers.js', 'mock.js', 'clock.js', 'cache.js', 'lock.js', 'event-bus.js', 'queue.js', 'builders.js', 'world-runner.js']) {
+  for (const file of ['entity-manager.js', 'ids.js', 'matchers.js', 'mock.js', 'clock.js', 'cache.js', 'lock.js', 'event-bus.js', 'queue.js', 'builders.js', 'world-runner.js', 'cache-runner.js', 'world-cache.js']) {
     assert.doesNotMatch(fs.readFileSync(new URL(`../dist/${file}`, import.meta.url), 'utf8'), /require\(["'](typeorm|@nestjs)/, `${file} pulls in no infra`);
   }
 });
@@ -804,10 +807,10 @@ test("${label} boots with its own Person type", async () => {
 })
 `;
 
-interface WorldState { version: number; library?: string; runId: string; slots?: Array<{ slot: number }> }
+interface WorldState { version: number; library?: string; runId: string; slots?: Array<{ slot: number }>; workers?: Record<string, number> }
 
 /** The state file @starci/test-world 1.1 and later publishes (protocol 2), with `slots` data slots. */
-const worldState = (slots: number): WorldState => ({ version: 2, library: '@starci/test-world@1.1.0', runId: 'r', slots: Array.from({ length: slots }, (_, index) => ({ slot: index + 1 })) });
+const worldState = (slots: number, workers?: Record<string, number>): WorldState => ({ version: 2, library: '@starci/test-world@1.1.0', runId: 'r', slots: Array.from({ length: slots }, (_, index) => ({ slot: index + 1 })), ...(workers === undefined ? {} : { workers }) });
 
 /**
  * A repository with the preset's jest config, a world that loads the registry in the main process and publishes `state` as
@@ -830,7 +833,8 @@ module.exports = config
 `);
   put('src/tests/world/global-setup.ts', `module.exports = async () => {
   require("fake-graphql")
-  const file = require("path").join(process.cwd(), "world-state.json")
+  require("fs").mkdirSync(require("path").join(process.cwd(), ".world"), { recursive: true })
+  const file = require("path").join(process.cwd(), ".world", "world-state.json")
   require("fs").writeFileSync(file, ${JSON.stringify(JSON.stringify(state))})
   process.env.STARCI_TEST_WORLD_STATE = file
 }
@@ -844,14 +848,14 @@ module.exports = config
 }
 
 /** Runs the repository's jest (the preset's peer) on the e2e project and answers its exit status and output. */
-function spawnE2e(root: string, extra: string[]): { status: number | null; output: string } {
+function spawnE2e(root: string, extra: string[], env: Record<string, string> = {}): { status: number | null; output: string } {
   const jestPackage = require.resolve('jest/package.json');
   const jestBin = path.join(path.dirname(jestPackage), 'bin', 'jest.js');
-  const result = spawnSync(process.execPath, [jestBin, '--selectProjects', 'e2e', '--ci', '--json', '--outputFile', path.join(root, 'report.json'), '--cacheDirectory', path.join(root, '.jest-cache'), ...extra], {
+  const result = spawnSync(process.execPath, [jestBin, '--selectProjects', 'e2e', '--ci', '--json', '--outputFile', path.join(root, '.world', 'report.json'), '--cacheDirectory', path.join(root, '.jest-cache'), ...extra], {
     cwd: root,
     encoding: 'utf8',
     // the fixture resolves jest (and the world runner its jest-runner) from the same installation as this spec
-    env: { ...process.env, NODE_PATH: path.dirname(path.dirname(jestPackage)) },
+    env: { ...process.env, NODE_PATH: path.dirname(path.dirname(jestPackage)), ...env },
     timeout: 240_000,
   });
   const error = result.error ? '\n' + result.error.message : '';
@@ -861,11 +865,11 @@ function spawnE2e(root: string, extra: string[]): { status: number | null; outpu
 interface JestReport { testResults: Array<{ name: string; status: string; message: string }> }
 
 /** Runs the repository's jest on the e2e project and answers its JSON report. */
-function runE2e(root: string, extra: string[]): { status: number | null; report: JestReport; output: string } {
-  fs.rmSync(path.join(root, 'report.json'), { force: true });
-  const { status, output } = spawnE2e(root, extra);
-  assert.equal(fs.existsSync(path.join(root, 'report.json')), true, `jest wrote no report:\n${output}`);
-  return { status, report: JSON.parse(fs.readFileSync(path.join(root, 'report.json'), 'utf8')), output };
+function runE2e(root: string, extra: string[], env: Record<string, string> = {}): { status: number | null; report: JestReport; output: string } {
+  fs.rmSync(path.join(root, '.world', 'report.json'), { force: true });
+  const { status, output } = spawnE2e(root, extra, env);
+  assert.equal(fs.existsSync(path.join(root, '.world', 'report.json')), true, `jest wrote no report:\n${output}`);
+  return { status, report: JSON.parse(fs.readFileSync(path.join(root, '.world', 'report.json'), 'utf8')), output };
 }
 
 const resultsOf = (report: JestReport): Record<string, { status: string; message: string }> => Object.fromEntries(report.testResults.map((file) => [path.basename(file.name), { status: file.status, message: file.message }]));
@@ -924,18 +928,37 @@ test('e2e isolation is the runner: on the stock in-band runner the same files co
   }
 });
 
-test('the world runner runs up to min(--maxWorkers, slots) files at once, each in its own process, never two on one slot', () => {
-  const root = isolationRepo({ stockRunner: false, state: worldState(2) });
+const slotsOf = (events: TimelineEvent[]): string[] => [...new Set(events.map((entry) => entry.slot))].sort((left, right) => left.localeCompare(right));
+
+test('the world runner is sequential by default, one file at a time on one slot, whatever jest --maxWorkers says and however many slots the world provisioned', () => {
+  const root = isolationRepo({ stockRunner: false, state: worldState(3) });
   try {
-    const widths: Array<[string[], number]> = [[['--maxWorkers=3'], 2], [['--maxWorkers=2'], 2], [['--maxWorkers=1'], 1], [['--runInBand'], 1]];
-    for (const [extra, width] of widths) {
+    for (const extra of [[], ['--maxWorkers=3'], ['--maxWorkers=2'], ['--runInBand']]) {
       fs.rmSync(path.join(root, 'timeline.log'), { force: true });
-      const { status, output } = runE2e(root, extra);
+      const { status, output } = runE2e(root, extra, { STARCI_TEST_CACHE: 'off' });
       assert.equal(status, 0, output);
       const events = timelineOf(root);
       assert.equal(events.length, 6, output);
-      const timeline = events.map((e) => `${e.event} ${e.label}@${e.slot}`).join(', ');
-      assert.equal(concurrencyOf(events), width, `${extra.join(' ')}: ${timeline}`);
+      assert.equal(concurrencyOf(events), 1, `${extra.join(' ')}: ${events.map((e) => `${e.event} ${e.label}@${e.slot}`).join(', ')}`);
+      assert.deepEqual(slotsOf(events), ['1'], 'one slot is used');
+      assert.equal(new Set(events.map((entry) => entry.pid)).size, 3, 'each file ran in a process of its own');
+    }
+  } finally {
+    removeTree(root);
+  }
+});
+
+test('the world runner runs up to min(STARCI_TEST_WORLD_WORKERS, slots) files at once, each in its own process, never two on one slot', () => {
+  const root = isolationRepo({ stockRunner: false, state: worldState(2) });
+  try {
+    const widths: Array<[string, number]> = [['3', 2], ['2', 2], ['1', 1], ['0', 1], ['many', 1]];
+    for (const [workers, width] of widths) {
+      fs.rmSync(path.join(root, 'timeline.log'), { force: true });
+      const { status, output } = runE2e(root, [], { STARCI_TEST_WORLD_WORKERS: workers, STARCI_TEST_CACHE: 'off' });
+      assert.equal(status, 0, output);
+      const events = timelineOf(root);
+      assert.equal(events.length, 6, output);
+      assert.equal(concurrencyOf(events), width, `${workers}: ${events.map((e) => `${e.event} ${e.label}@${e.slot}`).join(', ')}`);
       for (const entry of events) assert.ok(['1', '2'].slice(0, width).includes(entry.slot), `${entry.label} ran on slot ${entry.slot}`);
       assert.equal(new Set(events.map((entry) => entry.pid)).size, 3, 'each file ran in a process of its own');
     }
@@ -944,14 +967,158 @@ test('the world runner runs up to min(--maxWorkers, slots) files at once, each i
   }
 });
 
-test('the world runner widens with the slots the world provisioned: three slots run three files at once', () => {
+test('the world runner widens with the slots the world provisioned: three workers on three slots run three files at once', () => {
   const root = isolationRepo({ stockRunner: false, state: worldState(3) });
   try {
-    const { status, output } = runE2e(root, ['--maxWorkers=3']);
+    const { status, output } = runE2e(root, [], { STARCI_TEST_WORLD_WORKERS: '3', STARCI_TEST_CACHE: 'off' });
     assert.equal(status, 0, output);
     const events = timelineOf(root);
     assert.equal(concurrencyOf(events), 3, events.map((e) => `${e.event} ${e.label}@${e.slot}`).join(', '));
-    assert.deepEqual([...new Set(events.map((entry) => entry.slot))].sort((left, right) => left.localeCompare(right)), ['1', '2', '3']);
+    assert.deepEqual(slotsOf(events), ['1', '2', '3']);
+  } finally {
+    removeTree(root);
+  }
+});
+
+test('the workers the world published for a kind are the files that kind runs at once, capped by the slots', () => {
+  for (const [workers, slots, width] of [[{ e2e: 2 }, 3, 2], [{ e2e: 3 }, 3, 3], [{ e2e: 3 }, 2, 2], [{ integration: 3 }, 3, 1], [{ e2e: 1 }, 3, 1]] as const) {
+    const root = isolationRepo({ stockRunner: false, state: worldState(slots, { ...workers }) });
+    try {
+      const { status, output } = runE2e(root, [], { STARCI_TEST_CACHE: 'off' });
+      assert.equal(status, 0, output);
+      const events = timelineOf(root);
+      assert.equal(concurrencyOf(events), width, `${JSON.stringify(workers)} on ${String(slots)} slots: ${events.map((e) => `${e.event} ${e.label}@${e.slot}`).join(', ')}`);
+    } finally {
+      removeTree(root);
+    }
+  }
+});
+
+test('an exclusive spec runs alone, after the parallel files of its kind', () => {
+  const root = isolationRepo({ stockRunner: false, state: worldState(3, { e2e: 3 }) });
+  try {
+    const exclusive = path.join(root, 'src', 'tests', 'e2e', 'people', 'first.e2e-spec.ts');
+    fs.writeFileSync(exclusive, `// useTestWorld({ apps: ['api'], exclusive: true })\n${E2E_SPEC('the first file')}`);
+    const { status, output } = runE2e(root, [], { STARCI_TEST_CACHE: 'off' });
+    assert.equal(status, 0, output);
+    const events = timelineOf(root);
+    const labels = events.map((entry) => `${entry.event} ${entry.label}`);
+    const firstStart = labels.indexOf('start the first file');
+    assert.deepEqual(labels.slice(0, firstStart).filter((label) => label.startsWith('end')).length, 2, `both parallel files ended before it started: ${labels.join(', ')}`);
+    assert.deepEqual(labels.slice(firstStart), ['start the first file', 'end the first file'], 'it ran alone, last');
+    assert.match(output, /first\.e2e-spec\.ts.*exclusive, alone/);
+    assert.equal(concurrencyOf(events), 2, 'the other two ran in parallel');
+  } finally {
+    removeTree(root);
+  }
+});
+
+interface Recorded { spec: string; key: string; ms: number; result: string; parts: Record<string, string> }
+
+/** The records of the e2e kind of a fixture repository, by spec file name. */
+function recordsOf(root: string): Record<string, Recorded> {
+  const folder = path.join(root, '.starcistacks', 'cache', 'test', 'e2e');
+  const out: Record<string, Recorded> = {};
+  for (const file of fs.existsSync(folder) ? fs.readdirSync(folder) : []) {
+    for (const line of fs.readFileSync(path.join(folder, file), 'utf8').trim().split('\n')) {
+      const record: Recorded = JSON.parse(line);
+      out[path.basename(record.spec)] = record;
+    }
+  }
+  return out;
+}
+
+/** What the run's stderr lines say of each spec file: `ran`, `cached` or `FAILED`. */
+function outcomesOf(output: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const match of output.matchAll(/^ {2}(ran|cached|FAILED) +(\S+)/gm)) out[path.basename(match[2] ?? '')] = match[1] ?? '';
+  return out;
+}
+
+const ALL = (outcome: string): Record<string, string> => ({ 'first.e2e-spec.ts': outcome, 'second.e2e-spec.ts': outcome, 'third.e2e-spec.ts': outcome });
+
+test('the result cache: a green file is recorded, an unchanged one is cached and not run, a changed one runs, a red one is never cached', () => {
+  const root = isolationRepo({ stockRunner: false, state: worldState(2) });
+  try {
+    fs.mkdirSync(path.join(root, '.starcistacks', 'dev'), { recursive: true });
+    fs.writeFileSync(path.join(root, '.starcistacks', 'application-stacks.yaml'), 'components: {}\n');
+    const started = (): string[] => timelineOf(root).filter((entry) => entry.event === 'start').map((entry) => entry.label);
+    const run = (extra: string[] = [], env: Record<string, string> = {}): { status: number | null; output: string } => {
+      fs.rmSync(path.join(root, 'timeline.log'), { force: true });
+      return runE2e(root, extra, env);
+    };
+    const folder = path.join(root, 'src', 'tests', 'e2e', 'people');
+    // 1. nothing recorded: all three run, in sequence, and each green file is recorded
+    const first = run();
+    assert.equal(first.status, 0, first.output);
+    assert.deepEqual(outcomesOf(first.output), ALL('ran'), first.output);
+    assert.equal(started().length, 3);
+    const recorded = recordsOf(root);
+    assert.deepEqual(Object.keys(recorded).sort(), ['first.e2e-spec.ts', 'second.e2e-spec.ts', 'third.e2e-spec.ts']);
+    for (const record of Object.values(recorded)) {
+      assert.equal(record.result, 'passed');
+      assert.ok(record.ms >= 1000, 'the record keeps the duration of the green run');
+      assert.deepEqual(Object.keys(record.parts), ['closure', 'lock', 'spec', 'stack', 'tree', 'versions', 'world'], 'the digests behind the key, sorted');
+    }
+    const area = fs.readFileSync(path.join(root, '.starcistacks', 'cache', 'test', 'e2e', 'people.jsonl'), 'utf8');
+    assert.equal(area.endsWith('\n'), true);
+    assert.equal(area.includes('\r'), false);
+    assert.deepEqual(area.trim().split('\n').map((line) => (JSON.parse(line) as { spec: string }).spec), ['src/tests/e2e/people/first.e2e-spec.ts', 'src/tests/e2e/people/second.e2e-spec.ts', 'src/tests/e2e/people/third.e2e-spec.ts'], 'one line per spec, sorted, app-relative');
+    // 2. nothing changed: nothing runs, every file is cached and jest sees skipped files
+    const second = run();
+    assert.equal(second.status, 0, second.output);
+    assert.deepEqual(outcomesOf(second.output), ALL('cached'), second.output);
+    assert.match(second.output, /3 spec file\(s\), 0 ran, 3 cached, 0 failed/);
+    assert.equal(fs.existsSync(path.join(root, 'timeline.log')), false, 'no file ran');
+    assert.deepEqual(recordsOf(root), recorded, 'a cached run rewrites nothing');
+    // 3. one file changes: only it runs, and the line says what changed
+    fs.writeFileSync(path.join(folder, 'second.e2e-spec.ts'), `${E2E_SPEC('the second file')}// edited\n`);
+    const third = run();
+    assert.deepEqual(outcomesOf(third.output), { ...ALL('cached'), 'second.e2e-spec.ts': 'ran' }, third.output);
+    assert.match(third.output, /second\.e2e-spec\.ts.*changed: spec/);
+    assert.deepEqual(started(), ['the second file']);
+    assert.notEqual(recordsOf(root)['second.e2e-spec.ts']?.key, recorded['second.e2e-spec.ts']?.key);
+    assert.equal(recordsOf(root)['first.e2e-spec.ts']?.key, recorded['first.e2e-spec.ts']?.key);
+    // 4. the application source it can reach changes: every file runs
+    fs.mkdirSync(path.join(root, 'src', 'modules'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'src', 'modules', 'people.ts'), 'export const people = 1\n');
+    const fourth = run();
+    assert.deepEqual(outcomesOf(fourth.output), ALL('ran'), fourth.output);
+    assert.match(fourth.output, /changed: tree/);
+    // 5. --full runs everything and refreshes the records; a file named on the command line runs regardless
+    assert.deepEqual(outcomesOf(run([], { STARCI_TEST_CACHE: 'off' }).output), ALL('ran'));
+    const named = run(['first.e2e-spec']);
+    assert.deepEqual(outcomesOf(named.output), { 'first.e2e-spec.ts': 'ran' }, named.output);
+    assert.match(named.output, /named on the command line/);
+    // 6. a red file is never cached: its record goes, the others stay, and it runs again next time
+    fs.writeFileSync(path.join(folder, 'third.e2e-spec.ts'), 'test("breaks", () => { expect(1).toBe(2) })\n');
+    const red = run();
+    assert.equal(red.status, 1, red.output);
+    assert.deepEqual(outcomesOf(red.output), { ...ALL('cached'), 'third.e2e-spec.ts': 'FAILED' }, red.output);
+    assert.deepEqual(Object.keys(recordsOf(root)).sort(), ['first.e2e-spec.ts', 'second.e2e-spec.ts']);
+    assert.equal(outcomesOf(run().output)['third.e2e-spec.ts'], 'FAILED', 'a red file is run again, never cached');
+    // 7. a deleted spec leaves no record behind once its area is written again
+    fs.rmSync(path.join(folder, 'second.e2e-spec.ts'));
+    fs.writeFileSync(path.join(folder, 'third.e2e-spec.ts'), E2E_SPEC('the third file'));
+    run();
+    assert.deepEqual(Object.keys(recordsOf(root)).sort(), ['first.e2e-spec.ts', 'third.e2e-spec.ts']);
+  } finally {
+    removeTree(root);
+  }
+});
+
+test('the result cache writes its report as json for the verb that started the run', () => {
+  const root = isolationRepo({ stockRunner: false, state: worldState(1) });
+  try {
+    fs.mkdirSync(path.join(root, '.starcistacks'), { recursive: true });
+    const reportFile = path.join(root, '.world', 'cache-report.json');
+    runE2e(root, [], { STARCI_TEST_REPORT: reportFile });
+    const report: { lines: Array<{ spec: string; outcome: string; ms: number }>; summary: string } = JSON.parse(fs.readFileSync(reportFile, 'utf8'));
+    assert.deepEqual(report.lines.map((line) => line.outcome), ['ran', 'ran', 'ran']);
+    assert.match(report.summary, /3 ran, 0 cached, 0 failed/);
+    runE2e(root, [], { STARCI_TEST_REPORT: reportFile });
+    const cached: { lines: Array<{ outcome: string }> } = JSON.parse(fs.readFileSync(reportFile, 'utf8'));
+    assert.deepEqual(cached.lines.map((line) => line.outcome), ['cached', 'cached', 'cached']);
   } finally {
     removeTree(root);
   }
@@ -962,7 +1129,7 @@ test('a state file of another test-world protocol is a typed pair mismatch namin
   for (const state of states) {
     const root = isolationRepo({ stockRunner: false, state });
     try {
-      const { status, output } = spawnE2e(root, ['--maxWorkers=2']);
+      const { status, output } = spawnE2e(root, []);
       assert.notEqual(status, 0, output);
       assert.match(output, /JEST_PRESET_WORLD_PAIR_MISMATCH/);
       const pkg: { version: string } = require('../package.json');

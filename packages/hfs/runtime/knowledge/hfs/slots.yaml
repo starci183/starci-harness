@@ -1131,14 +1131,14 @@ slots:
   - id: app.starcistacks.cache
     profiles: [app]
     # The committed result cache of `starci app check` (contexts/project/check-cache.md): JSON Lines records keyed by
-    # content, one folder per family. App-owned and written only by the CLI; sync never renders, overwrites or judges it. Both editions.
+    # content, one folder per family; `test/<kind>/` holds the result records of the integration and e2e runs (written by the jest runner of @starci/jest-preset). App-owned and written only by the CLI; sync never renders, overwrites or judges it. Both editions.
     path: ".starcistacks/cache/"
     presence: optional
     tracked: tracked
     tier: none
     tests: none
     since: 3.15.0
-    allows: ["fingerprint.jsonl", "check/**", "lint/**", "test-coverage/**", "sonar-baseline/**", "codecov-baseline/**"]
+    allows: ["fingerprint.jsonl", "check/**", "lint/**", "test-coverage/**", "test/**", "sonar-baseline/**", "codecov-baseline/**"]
   - id: app.db.bootstrap
     profiles: [app]
     editions: [lite]

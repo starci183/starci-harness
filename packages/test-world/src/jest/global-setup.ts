@@ -8,7 +8,7 @@ import { rememberedDeclaration } from "../config/registry"
 import { TestWorldErrorCode, worldError } from "../errors"
 import { lazyRequire } from "../lazy"
 import { registerTsPaths } from "./paths"
-import { setupWorld } from "./setup"
+import { requestedWorkers, selectedKinds, setupWorld } from "./setup"
 import type { SetupHandles } from "./setup"
 
 /** Where the setup keeps what the teardown needs; jest runs both in the same parent process. */
@@ -19,9 +19,9 @@ export const setupHandles = (): SetupHandles | null => ((globalThis as Record<sy
 
 /**
  * The globalSetup. `projectConfig.rootDir` is the be side (the declaration lives under it); declared paths resolve from its app
- * root (appRootOf). `globalConfig.maxWorkers` sizes the run's data slots (one per jest worker, capped by the declaration's `workers`).
+ * root (appRootOf). The data slots of a run are the workers `.starcistacks/application-stacks.yaml` declares for the selected kinds (`tests.integration.workers`, `tests.e2e.workers`, one when absent), or `STARCI_TEST_WORLD_WORKERS` when asked for explicitly, capped by the declaration's `workers`; jest's `--maxWorkers` is not read.
  */
-export default async function globalSetup(globalConfig?: { readonly maxWorkers?: number }, projectConfig?: { readonly rootDir?: string }): Promise<void> {
+export default async function globalSetup(_globalConfig?: unknown, projectConfig?: { readonly rootDir?: string }): Promise<void> {
     const root = projectConfig?.rootDir ?? process.cwd()
     registerTsPaths(root)
     const file = join(root, "src", "tests", "world", "test-world.config.ts")
@@ -34,5 +34,5 @@ export default async function globalSetup(globalConfig?: { readonly maxWorkers?:
     if (declaration === null) {
         throw worldError(TestWorldErrorCode.ConfigInvalid, `${file} did not call defineTestWorld(...) from @starci/test-world`)
     }
-    ;(globalThis as Record<symbol, unknown>)[HANDLES_KEY] = await setupWorld(declaration, root, globalConfig?.maxWorkers)
+    ;(globalThis as Record<symbol, unknown>)[HANDLES_KEY] = await setupWorld(declaration, root, { explicit: requestedWorkers(), kinds: selectedKinds(process.argv) })
 }

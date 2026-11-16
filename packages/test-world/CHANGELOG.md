@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.2.0 - 2026-11-16
+
+- Added: the slots of a run are the workers the app declares, `tests: { integration: { workers: n }, e2e: { workers: n } }` in `.starcistacks/application-stacks.yaml` (`readTestWorkers`, `TEST_KINDS`, `MAX_SLOTS`): an integer from 1 to 8 for each kind, one when absent (a sequential run); any other shape is `TEST_WORLD_CONFIG_INVALID`. A run provisions the most `workers` of the kinds its command line selects (`selectedKinds` of `--selectProjects`, both when none), or `STARCI_TEST_WORLD_WORKERS=<n>` when it asks for them explicitly (`starci test <kind> --workers <n>`), and publishes the workers of each kind in its state file (`workers`, additive: the protocol stays 2).
+- Added: `exclusive?: boolean` on `AppsWorldSpec` and `ModulesWorldSpec`: a spec that declares `useTestWorld({ ..., exclusive: true })` (a latency budget, a soak, a load run) runs alone after the parallel batch of its kind; the world runner of `@starci/jest-preset` reads the literal, the library gives it no other effect.
+- Changed: jest's `--maxWorkers` is no longer read to size the slots (the harness sizes it for unit runs), and the `workers` of the declaration is a cap only when it is set (it had a default of 2); `DEFAULT_WORKERS` is gone, `MAX_SLOTS` (8, the Kafka broker's slot listeners) bounds a run. `requestedWorkers`, `selectedKinds`, `workersOfRun` and `WORKERS_ENV` are exported from `src/jest/setup.ts`.
+- Unchanged: the state file protocol (2). `@starci/jest-preset` 2.11.0 is the pair: its world runner runs the files of a kind on the workers published, the exclusive ones alone afterwards, and holds the result cache of the integration and e2e kinds.
+- Specs: the slot and worker cases of `src/jest/slots.spec.ts` (the cap, the explicit request, the stacks block and its wrong shapes, the selected kinds).
+
 ## 2.1.0 - 2026-11-16
 
 - Added: `stacks.postgresql.logicalReplication: true` starts the shared Postgres with logical decoding on (`wal_level=logical`, `max_replication_slots=16`, `max_wal_senders=16`: one slot and one walsender for each of the 8 data slots a machine runs at once, doubled for the leftovers of a crashed run). It changes the container identity: the container name is keyed by the image plus these arguments (`serviceContainerName(service, image, logicalReplication)`), so a logical Postgres is a warm container of its own and the default container other repositories share is neither started with the arguments nor altered. `StackImageRequest.logicalReplication` carries the flag; `POSTGRES_LOGICAL_ARGS` and `POSTGRES_LOGICAL_CAPACITY` are exported from the stack naming.

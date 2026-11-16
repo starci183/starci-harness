@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.0-alpha.132 - 2026-11-16
+
+- Added: `starci test integration` and `starci test e2e` (`core/test/world.ts`), a person's run of the world suites, on request only (R12): the app's `npm run test:<kind>` under a heavy-command slot, on the world slots `.starcistacks/application-stacks.yaml` declares (`tests.<kind>.workers`, one when absent), exclusive specs alone after the parallel ones, through the result cache of `@starci/jest-preset` 2.11.0: a spec file whose inputs are unchanged since its last green run is skipped and reported `cached`, a new, changed or previously red one runs. `--full` ignores the cache, `--spec <path>` (repeatable) runs the named files regardless, `--workers <n>` overrides the declared workers for the run. The verb prints one line per spec file with its time, the counts and the time the cache saved, and answers them as json; red (exit 1) when a spec or the typecheck of the tests fails. When every spec file of the kind is cached the verb starts nothing (`preflight` of `@starci/jest-preset/world-cache`): no typecheck and no world. Specs: `core/test/world.test.ts`.
+- Changed: `heavyCommand` takes an `env` for the child it starts (the world run's cache and worker switches); a custody key of the same name wins.
+- Changed (contexts): BE-TEST-17 and SHARED-TEST-4, "Integration and e2e run on the slots `.starcistacks` declares, exclusive specs alone, with a cache"; `cli/README.md` "Integration and e2e runs".
+
 ## 1.1.0-alpha.131 - 2026-11-16
 
 - Changed: the CLI requires @starci/hfs@6.13.6, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).

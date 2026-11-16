@@ -86,6 +86,36 @@ export const readStackDefinition = (root: string, stackDir: string): StackDefini
     return { services }
 }
 
+/** The world kinds a `tests:` block of `.starcistacks/application-stacks.yaml` may size. */
+export const TEST_KINDS: ReadonlyArray<"integration" | "e2e"> = ["integration", "e2e"]
+/** The most data slots one run provisions: the Kafka broker has 8 slot listeners machine-wide. */
+export const MAX_SLOTS = 8
+
+/**
+ * The workers each world kind runs with, from `tests: { integration: { workers: n }, e2e: { workers: n } }` of `<root>/.starcistacks/application-stacks.yaml`:
+ * the data slots a run of that kind provisions and the spec files it runs at once. A kind or the block absent is one (sequential); a key that is not a kind, a
+ * kind that is not a mapping, or a `workers` that is not an integer from 1 to {@link MAX_SLOTS} is `TEST_WORLD_CONFIG_INVALID`.
+ */
+export const readTestWorkers = (root: string): Readonly<Record<"integration" | "e2e", number>> => {
+    const out = { integration: 1, e2e: 1 }
+    const stacksFile = join(root, ".starcistacks", "application-stacks.yaml")
+    if (!existsSync(stacksFile)) return out
+    const block = asRecord(readYaml(stacksFile))?.tests
+    if (block === undefined || block === null) return out
+    const tests = asRecord(block)
+    if (tests === undefined) throw worldError(TestWorldErrorCode.ConfigInvalid, `${stacksFile}: tests must be a mapping of kinds (integration, e2e) to { workers }`)
+    for (const [kind, value] of Object.entries(tests)) {
+        if (kind !== "integration" && kind !== "e2e") throw worldError(TestWorldErrorCode.ConfigInvalid, `${stacksFile}: tests.${kind} is not a world kind (integration, e2e)`)
+        const entry = asRecord(value)
+        const workers = entry?.workers
+        if (entry === undefined || Object.keys(entry).some((key) => key !== "workers") || typeof workers !== "number" || !Number.isInteger(workers) || workers < 1 || workers > MAX_SLOTS) {
+            throw worldError(TestWorldErrorCode.ConfigInvalid, `${stacksFile}: tests.${kind} must be { workers: <integer 1 to ${String(MAX_SLOTS)}> }`)
+        }
+        out[kind] = workers
+    }
+    return out
+}
+
 const KIND_PATTERN: Readonly<Record<InfraName, string>> = {
     postgresql: "postgres|postgresql|pgvector|paradedb",
     redis: "redis|valkey",

@@ -391,6 +391,8 @@ const checkStacksManifest=(manifest: Parsed,model: Parsed,{stacksRoot,environmen
   const lite=repo.edition==='lite';
   checkStacksTree({stacksRoot,manifest,environmentNames,add,lite});
   checkKubernetesDeclaration(manifest,add);
+  if(lite)for(const kind of ['integration','e2e'])if(Number((object(manifest.tests)?manifest.tests[kind]?.workers:undefined)??1)>1)
+    add('HFS_STACKS_SHAPE',`tests.${kind}.workers`,'a lite app has no world data slots: its integration and e2e specs run one file at a time, so workers stays 1 or absent');
   for(const issue of swarmInventoryIssues({components:manifest.components,lite,swarm:new Set(Object.values(object(manifest.environments)?manifest.environments:{}).filter((spec: Parsed)=>spec?.runtime==='docker-swarm').flatMap((spec: Parsed)=>Object.keys(object(spec.components)?spec.components:{})))}))add('HFS_STACKS_SHAPE',issue.at,issue.message);
   checkSelectedEnvironment({environment,environmentNames,environments,stacksRoot,ids,root,model,manifest,lite,repo,add});
 };

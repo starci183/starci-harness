@@ -21,7 +21,7 @@ import { tmpdir } from "node:os"
 import { dirname, join, resolve } from "node:path"
 import { NestFactory } from "@nestjs/core"
 import { Client } from "pg"
-import { readStackDefinition, resolveInfraImages, resolveSiblingImages } from "../config/stack-file"
+import { MAX_SLOTS, readStackDefinition, readTestWorkers, resolveInfraImages, resolveSiblingImages, TEST_KINDS } from "../config/stack-file"
 import type { AnyTestWorldConfig, DebeziumStack, InfraName, PostgresStack } from "../config/types"
 import { validateDeclaration } from "../config/validate"
 import { TestWorldErrorCode, worldError } from "../errors"
@@ -34,9 +34,6 @@ import { removeSiblings, startSiblings } from "./siblings"
 import type { StartedSibling } from "./siblings"
 import { writeRunState } from "./context"
 import type { RunContext } from "./context"
-
-/** The slot count when the declaration names no `workers` cap: each slot holds a share of the real stack, so it stays small. */
-export const DEFAULT_WORKERS = 2
 
 /** What the teardown needs of one slot. */
 export interface SlotHandles {
@@ -52,9 +49,45 @@ export interface SetupHandles {
     readonly config: AnyTestWorldConfig
 }
 
-/** The number of slots of a run: one per jest worker, at most the declaration's `workers` (default {@link DEFAULT_WORKERS}). */
-export const slotCountOf = (config: AnyTestWorldConfig, maxWorkers: number | undefined): number =>
-    Math.max(1, Math.min(maxWorkers ?? 1, config.workers ?? DEFAULT_WORKERS))
+/** The variable that sets the spec files a run runs at once whatever the stacks file declares (a positive integer): `starci test <kind> --workers <n>`. */
+export const WORKERS_ENV = "STARCI_TEST_WORLD_WORKERS"
+
+/** The workers a run asked for explicitly, `undefined` when it asked for none; jest's own `--maxWorkers` is never read, the harness sizes it for unit runs. */
+export const requestedWorkers = (env: NodeJS.ProcessEnv = process.env): number | undefined => {
+    const asked = Number(env[WORKERS_ENV])
+    return Number.isInteger(asked) && asked >= 1 ? asked : undefined
+}
+
+/** The number of slots of a run: one per worker (one when none), at most the declaration's `workers` when it names a cap, and {@link MAX_SLOTS}. */
+export const slotCountOf = (config: AnyTestWorldConfig, workers: number | undefined): number =>
+    Math.max(1, Math.min(workers ?? 1, config.workers ?? MAX_SLOTS, MAX_SLOTS))
+
+/** The world kinds a jest command line selects (`--selectProjects integration e2e`), every kind when it selects none. */
+export const selectedKinds = (argv: ReadonlyArray<string>): ReadonlyArray<"integration" | "e2e"> => {
+    const named: string[] = []
+    for (let at = 0; at < argv.length; at += 1) {
+        const arg = argv[at] ?? ""
+        if (arg.startsWith("--selectProjects=")) named.push(arg.slice("--selectProjects=".length))
+        else if (arg === "--selectProjects") {
+            for (let next = at + 1; next < argv.length && !(argv[next] ?? "").startsWith("-"); next += 1) named.push(argv[next] ?? "")
+        }
+    }
+    const kinds = TEST_KINDS.filter((kind) => named.includes(kind))
+    return kinds.length === 0 ? TEST_KINDS : kinds
+}
+
+/** What a run asks of the slots: the workers it names explicitly and the kinds it selects. */
+export interface SlotRequest {
+    readonly explicit?: number | undefined
+    readonly kinds?: ReadonlyArray<"integration" | "e2e">
+}
+
+/**
+ * The spec files each selected kind runs at once: the explicit request when there is one, else `tests.<kind>.workers` of the app's `.starcistacks/application-stacks.yaml`
+ * (one when absent). The run provisions the most of them as data slots, at most the declaration's `workers` cap.
+ */
+export const workersOfRun = (declared: Readonly<Record<"integration" | "e2e", number>>, request: SlotRequest): Readonly<Record<string, number>> =>
+    Object.fromEntries((request.kinds ?? TEST_KINDS).map((kind) => [kind, request.explicit ?? declared[kind]]))
 
 const MIGRATION_TABLE = /migrations|typeorm_metadata/i
 
@@ -250,9 +283,9 @@ const setupSlot = async (plan: SlotPlan, slot: number): Promise<SlotHandles> => 
 
 /**
  * Starts the run and publishes its coordinates. `rootDirectory` is the jest project's rootDir (the be side of an app);
- * `maxWorkers` is the run's jest worker count (the globalConfig's), which sizes the slots with the declaration's cap.
+ * `maxWorkers` is the workers the run asked for explicitly ({@link requestedWorkers}), which size the slots with the declaration's cap.
  */
-export const setupWorld = async (config: AnyTestWorldConfig, rootDirectory: string, maxWorkers?: number): Promise<SetupHandles> => {
+export const setupWorld = async (config: AnyTestWorldConfig, rootDirectory: string, request: SlotRequest = {}): Promise<SetupHandles> => {
     const root = resolve(config.root ?? appRootOf(rootDirectory))
     const selected: ReadonlyArray<InfraName> = validateDeclaration(config, root)
     const definition = readStackDefinition(root, config.stack)
@@ -265,9 +298,11 @@ export const setupWorld = async (config: AnyTestWorldConfig, rootDirectory: stri
         secretSeed: randomBytes(24).toString("hex"),
     }
     const slots: Array<SlotHandles> = []
+    const asked = workersOfRun(readTestWorkers(root), request)
+    const count = slotCountOf(config, Math.max(1, ...Object.values(asked)))
     try {
-        for (let slot = 1; slot <= slotCountOf(config, maxWorkers); slot += 1) slots.push(await setupSlot(plan, slot))
-        writeRunState(plan.runId, slots.map((entry) => entry.context))
+        for (let slot = 1; slot <= count; slot += 1) slots.push(await setupSlot(plan, slot))
+        writeRunState(plan.runId, slots.map((entry) => entry.context), Object.fromEntries(Object.entries(asked).map(([kind, workers]) => [kind, Math.min(workers, count)])))
         return { runId: plan.runId, slots, config }
     } catch (cause) {
         for (const made of slots) await disposeSlot(made)

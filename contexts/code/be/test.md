@@ -22,7 +22,7 @@ specs `src/tests/contract/<provider>/*.contract-spec.ts`; full adds `src/tests/e
 infrastructure lives only in `src/tests/world/`, shared data and builders in `src/tests/fixtures/` (a fixtures file holds
 data and builders only: no boot helper, no `@nestjs/testing`, no AppModule, no `NestFactory`, no container or docker client,
 no `.listen(`, no `override*` call; BE-TEST-12). Integration and contract run
-through `npm run test:integration` (after `typecheck:tests`) on a local machine, never in a hook, the default typecheck or a CI workflow (R12).
+through `npm run test:integration` and `npm run test:e2e` (after `typecheck:tests`; `starci test integration|e2e` is the same run with the cache report, BE-TEST-17) on a local machine, never in a hook, the default typecheck or a CI workflow (R12).
 
 In lite the world is also the one place of raw SQL text (R334): plain CRUD on an application table goes through its entity on
 `world.db.<connection>`, a database function of the app through `callDbFunction`, and seeded rows come from builders
@@ -132,7 +132,7 @@ Integration and e2e differ by what they prove, in both editions. An **integratio
 without container or toxiproxy), seeds a real package through the app's deploy door, drives the app only through its external
 doors (HTTP, a webhook, GraphQL; never by importing a service, a module or the AppModule), fakes only at the network edge
 (`world.fake.<provider>`) and asserts persisted state (`world.db.<connection>`). Both run only on request, never in CI, a hook or a
-release gate row (R12). Neither assembles its own world: the world is `src/tests/world/` and nothing else, a boot helper,
+release gate row (R12), on the slots the app declares, exclusive specs alone, and through a result cache (BE-TEST-17). Neither assembles its own world: the world is `src/tests/world/` and nothing else, a boot helper,
 `Test.createTestingModule`, an AppModule import, `NestFactory`, a container, a docker client or `.listen(` outside it is a homemade
 world (BE_TEST_TOPOLOGY), `src/tests/fixtures/` holds data and builders only, and a spec that does not call `useTestWorld` of
 `src/tests/world/use-test-world` is BE_SPEC_WORLD_MISSING. A violating file is `src/tests/fixtures/e2e/world.ts` that boots
@@ -192,3 +192,54 @@ orders.find.mockResolvedValue(orderOf({ status: "draft" }))
 
 Enforced by: `persisting-builder-in-builders-slot`, `spec-no-raw-insert`, `spec-no-repeated-row-literal`,
 `builder-arranges-only`, `tests-keep-constraints` (R98, R99, R101, R100).
+
+## BE-TEST-17 Integration and e2e run on the slots `.starcistacks` declares, exclusive specs alone, with a cache
+
+An app declares how many spec files of a world kind run at once in its `.starcistacks/application-stacks.yaml`:
+
+```yaml
+tests:
+  integration: { workers: 3 }
+  e2e: { workers: 3 }
+```
+
+`workers` is an integer from 1 to 8 (the Kafka broker has 8 slot listeners) and is the number of data slots a run of that kind provisions: the files run in
+parallel, each in a process of its own bound to a slot, never two on one slot. A kind absent, or the block absent, is 1: one file at a time. A lite app has
+no data slots, so its workers stay 1 (`HFS_STACKS_SHAPE` refuses more). A wrong shape is a finding (the `tests` property of the schema `starci/application-stacks@1`:
+unknown kinds, a non-integer, 0 or more than 8). `starci test <kind> --workers <n>` (`STARCI_TEST_WORLD_WORKERS=<n>`) overrides it for one run;
+jest's `--maxWorkers` is never read, the harness sizes it for unit runs.
+
+A timing-sensitive spec (a latency budget, a soak, a load run) declares itself exclusive: `useTestWorld({ apps, exclusive: true })` (a typed option of
+`@starci/test-world`). The runner reads that literal from the file and runs every exclusive file of a kind alone, one at a time, after the parallel
+batch of its kind has ended.
+
+A spec file whose inputs are unchanged since its last green run is not run: the run reports it `cached`, with the duration of the green run it
+stands for. A new, changed or previously red file runs, and its green run is recorded. The inputs of a spec are the digest of
+
+- the spec file, and its import closure, resolved through the tsconfig (aliases, `extends`, a root package outside the jest root, type-only,
+  dynamic and `require` imports, JSON);
+- the application source it can reach: every code, configuration and data file of the jest root (`be/`) but the other specs, the world folder and
+  build output (the world boots modules, migrations and seeds that no import of the spec names);
+- the world declaration, `src/tests/world/**`;
+- the lockfiles of the jest root and the app root;
+- the stack definition, `.starcistacks/application-stacks.yaml` and every `.starcistacks/<env>/` but its sealed `runtime/` (so a change of `tests.workers`
+  re-runs the files, once);
+- the versions of `@starci/test-world` and `@starci/jest-preset`, and the kind.
+
+`--full` ignores the cache and runs every file; `--spec <path>` runs the named files whatever the cache says; both record what ran green. A red
+spec is never cached: its record is removed. A spec that boots a live provider (`useSandbox`) is never cached, and a run that filters tests by
+name (`-t`) records nothing. The records are JSON Lines in the app repository, `.starcistacks/cache/test/<kind>/<area>.jsonl` (one line per spec:
+its path, key, the digests behind the key, `passed` and the duration in ms; sorted, LF), committed with the code like the check cache, so a warm
+cache survives across machines and a merge of two branches is a union. Each file of the run is a line of the report, `ran`, `cached` or `FAILED`
+with its time, and the run ends with the counts and the time the cache saved. `starci test <kind>` asks the cache first and, when every file of the
+kind is cached, starts no world at all. The cache serves lite and full alike; the contract kind is never cached.
+
+This changes nothing about when a world suite runs: only on request, never in CI, a hook or a release gate row (R12).
+
+Why: a world spec costs seconds to minutes and most of a local session changes one module, so running again a green file whose inputs did not
+move proves nothing new; the app, which knows how much of the real stack its machine holds, declares the parallelism, and a spec that measures time
+must not share the machine with another.
+
+Enforced by: the `tests` property of the stacks schema and `HFS_STACKS_SHAPE` (the declaration), R12 and `HFS_E2E_IN_AUTOMATIC_GATE` (when a suite
+runs); the slots, the exclusive batch and the cache are `@starci/jest-preset`'s world runner and `starci test integration|e2e`, proved by the
+packages' own specs.

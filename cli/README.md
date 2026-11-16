@@ -385,6 +385,18 @@ On Windows `host load` also reads the CPU of Defender's real-time scan (MsMpEng)
 prints the owner's `Add-MpPreference -ExclusionPath` command for the state base and every registered repository, which the
 harness never runs.
 
+### Integration and e2e runs (`starci test integration|e2e`)
+
+`starci test integration` and `starci test e2e` (`core/test/world.ts`) are a person's run of the world suites, on request only (R12): the app's own
+`npm run test:<kind>` (the typecheck of the tests, then jest on that one project) under a heavy-command slot, with the switches the verb puts in the
+child's environment. The suite runs on the world slots the app declares (`tests: { integration: { workers: n }, e2e: { workers: n } }` in `.starcistacks/application-stacks.yaml`, one file at a time when absent), the specs that declare `exclusive: true` alone after the parallel ones, and through the result cache of `@starci/jest-preset`: a spec file whose
+inputs are unchanged since its last green run is skipped and reported `cached`; a new, changed or previously red file runs. `--full` sets
+`STARCI_TEST_CACHE=off` (every file runs, the green ones are recorded), `--spec <path>` (repeatable) names the files to run whatever the cache says, and
+`--workers <n>` sets `STARCI_TEST_WORLD_WORKERS=<n>` (n files at once on n slots, instead of the declared workers). The runner writes its report to the file `STARCI_TEST_REPORT` names;
+the verb prints one line per spec file with its time, the counts and the time the cache saved, and answers them as json (`lines`, `ran`, `cached`,
+`failed`). Red (exit 1) when a spec or the typecheck fails. The records are the app's, `.starcistacks/cache/test/<kind>/` (contexts/code/be/test.md
+BE-TEST-17). Before it starts jest the verb asks the preset's `preflight` (`@starci/jest-preset/world-cache`, 2.11.0 and later); when every spec file of the kind is cached (and neither `--full` nor `--spec` is given) it reports them and starts nothing, no typecheck and no world, whose globalSetup would run before any runner could skip a file. A live-provider spec is still run through `starci test live`, which names its specs and so bypasses the cache.
+
 ### Custody into a live suite
 
 A command check whose scoped jest run holds an opt-in live suite (a spec calling `useSandbox(...)` or

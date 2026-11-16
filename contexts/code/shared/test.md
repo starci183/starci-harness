@@ -61,3 +61,21 @@ an integration spec in disguise.
 Enforced by: R212 HFS_EDITION_FORBIDDEN_PRESENT (`test:world`, `test:browser`, containers), R272 BE_APP_BOOT_PROOF_MISSING (the
 wiring proof stays the gate), R47 BE_TEST_TOPOLOGY and BE_SPEC_WORLD_MISSING (every integration and e2e spec boots through
 `useTestWorld` of the repository's world, in both editions).
+
+## SHARED-TEST-4 Integration and e2e run on the slots `.starcistacks` declares, exclusive specs alone, with a cache
+
+When a person asks for an integration or e2e run, it is `starci test integration` or `starci test e2e` (or the app's `npm run test:integration`
+and `npm run test:e2e`, the same run without the verb's report). The files of a kind run in parallel on as many world slots as
+`.starcistacks/application-stacks.yaml` declares (`tests: { integration: { workers: n }, e2e: { workers: n } }`, one when absent: one file at a time);
+a spec that declares itself exclusive (`useTestWorld({ apps, exclusive: true })`: a latency budget, a soak, a load run) runs alone after the parallel
+batch. A spec file whose inputs are unchanged since its last green run is skipped and reported `cached`; only changed, new or previously red files
+run. `--full` ignores the cache, `--spec <path>` runs one file regardless, `--workers <n>` overrides the declared workers for one run. The records are
+the app's, committed under `.starcistacks/cache/test/<kind>/`; the declaration, the inputs, the records and the report are
+[be/test.md](../be/test.md) BE-TEST-17. A task or lane runs a world suite only when it names one (SHARED-TEST-2), and then through this run, so a
+repeated run costs the changed files only.
+
+Why: the app declares the parallelism its machine can hold, the cache turns a repeated world run into the changed files, and one verb makes the
+slots, the exclusive batch, the cache and the report the same for an agent and a person.
+
+Enforced by: R12 (when a world suite may run); `HFS_STACKS_SHAPE` (the `tests` declaration); the run itself is `@starci/jest-preset`'s world runner and
+`starci test integration|e2e`.

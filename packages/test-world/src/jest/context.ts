@@ -74,13 +74,15 @@ export interface RunState {
     /** The run token the slot tokens derive from. */
     readonly runId: string
     readonly slots: ReadonlyArray<RunContext>
+    /** The spec files each world kind may run at once (`tests.<kind>.workers` of the stacks file, or the explicit request); absent is one. Additive: the protocol is unchanged. */
+    readonly workers?: Readonly<Record<string, number>>
 }
 
 const missing = (detail: string, cause?: unknown) => worldError(TestWorldErrorCode.StateMissing, detail, cause)
 
 /** Writes the state file of the run (every slot) and publishes its path in the environment. */
-export const writeRunState = (runId: string, slots: ReadonlyArray<RunContext>): string => {
-    const state: RunState = { version: STATE_VERSION, library: LIBRARY, runId, slots }
+export const writeRunState = (runId: string, slots: ReadonlyArray<RunContext>, workers?: Readonly<Record<string, number>>): string => {
+    const state: RunState = { version: STATE_VERSION, library: LIBRARY, runId, slots, ...(workers === undefined ? {} : { workers }) }
     const path = join(tmpdir(), `starci-test-world-${randomUUID()}.json`)
     writeFileSync(path, JSON.stringify(state), "utf8")
     process.env[STATE_FILE_ENV] = path

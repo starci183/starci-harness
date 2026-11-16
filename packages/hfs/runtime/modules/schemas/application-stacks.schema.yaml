@@ -186,6 +186,16 @@ properties:
     properties:
       status: {enum: [deferred, supported]}
       reason: {type: string, minLength: 1}
+  tests:
+    description: >-
+      The world slots the integration and e2e runs of a back end declare (contexts/code/be/test.md BE-TEST-17): how many spec files of a kind run at
+      once, each on a data slot of its own. A kind absent runs one file at a time. A full app's test world provisions that many slots, from 1 to 8 (the
+      Kafka broker has 8 slot listeners); a lite app has no data slots and runs one file at a time (R47, HFS_STACKS_SHAPE).
+    type: object
+    additionalProperties: false
+    properties:
+      integration: {$ref: '#/$defs/testWorkers'}
+      e2e: {$ref: '#/$defs/testWorkers'}
   ci: {$ref: '#/$defs/ciDeclaration'}
   gates:
     description: >-
@@ -258,6 +268,12 @@ properties:
       analytics: {$ref: '#/$defs/service'}
       error-tracking: {$ref: '#/$defs/service'}
 $defs:
+  testWorkers:
+    type: object
+    additionalProperties: false
+    required: [workers]
+    properties:
+      workers: {type: integer, minimum: 1, maximum: 8}
   gateMode: {enum: [blocking, report, off]}
   gateOff:
     type: object

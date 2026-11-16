@@ -226,14 +226,18 @@ const underTests = (folder: string): string => String.raw`[\\/]src[\\/]tests[\\/
  * contract project is never part of `test` or `test:e2e`, and a contract spec skips itself without sandbox config. The
  * test tree compiles against `src/tests/tsconfig.json`, the nearest config of every file under `src/tests/`. The
  * integration, e2e and contract projects share the world's `global-setup.ts`/`global-teardown.ts` (`src/tests/world/`) and
- * run their spec files up to `min(--maxWorkers, slots)` at once, each in a worker process of its own bound to one data slot
- * of the test world (`world-runner.js`; a slot's data is reset when a file boots, so no two files ever share a slot). A declared lite app instead runs its existing integration and contract specs without a world, on jest's stock runner. The unit project alone has a `setupFilesAfterEnv` (the Outcome matchers).
+ * run their spec files on the data slots of the test world the app declares (`tests: { integration: { workers: n }, e2e: { workers: n } }` of `.starcistacks/application-stacks.yaml`, one file at a time when absent), each in a process of its own
+ * (`world-runner.js`; a slot's data is reset when a file boots, so no two files ever share a slot); a spec that declares `exclusive: true` in its `useTestWorld` call runs alone after the parallel files.
+ * The integration and e2e files go through the result cache (world-cache.ts): a file whose inputs are unchanged since its last green run is skipped and reported cached.
+ * A declared lite app runs its existing integration, e2e and contract specs without a world: integration and e2e one file at a time on the same cache (`cache-runner.js`), contract on jest's stock runner. The unit project alone has a `setupFilesAfterEnv` (the Outcome matchers).
  * Coverage is collected from the logic roles of the measured roots only (`coverage` option), with a per-file threshold of 100 on lines, branches, functions and
  * statements: the `test` script runs the unit project with `--coverage`, fails below it and writes `coverage/lcov.info` for Sonar. It uses v8: istanbul instruments the helpers TypeScript emits (`__decorate`, `__param`, `__awaiter`, interop wrappers)
  * as thousands of branches no spec can cover, while v8 measures the real source.
  */
 /** The runner of the integration, e2e and contract projects (`world-runner.js`): every spec file in a worker process of its own. */
 const WORLD_RUNNER: string = require.resolve("./world-runner.js")
+/** The runner of the integration and e2e projects of an app without a world globalSetup (lite): the same sequence and result cache, no data slots. */
+const CACHE_RUNNER: string = require.resolve("./cache-runner.js")
 
 /** True when the repository at `root` has the test world's global setup (`src/tests/world/global-setup.ts`). */
 function hasTestWorld(root: string): boolean {
@@ -347,13 +351,14 @@ function starciJestConfig(options: StarciJestOptions): StarciJestConfig {
     moduleNameMapper: { ...MODULE_NAME_MAPPER },
     transformIgnorePatterns: [...TRANSFORM_IGNORE_PATTERNS],
   }
-  const suite = (displayName: string, suffix: string): StarciJestProject => ({
+  const suite = (displayName: string, suffix: string, runner?: string): StarciJestProject => ({
     ...shared,
     transform: transform("src/tests/tsconfig.json"),
     displayName,
     // A glob without the root's absolute path: jest's roots (src, apps) already bound the search, and a root path that holds a dot-named folder (a checkout under `.claude`) turns its backslash separator into a glob escape on Windows, so a path-prefixed pattern would match no file.
     testMatch: [`**/src/tests/${displayName}/**/*.${suffix}.ts`],
     // Full's world gives every spec file its own process and data slot; lite needs neither its runner nor its hooks.
+    ...(runner === undefined ? {} : { runner }),
     ...(world ? {
       runner: WORLD_RUNNER,
       globalSetup: "<rootDir>/src/tests/world/global-setup.ts",
@@ -362,9 +367,10 @@ function starciJestConfig(options: StarciJestOptions): StarciJestConfig {
   })
   const testProjects = world ? [suite("integration", "integration-spec"), suite("e2e", "e2e-spec"), suite("contract", "contract-spec")] : []
   if (!world && isLiteApp(root)) {
-    for (const name of ["integration", "contract"]) {
+    for (const name of ["integration", "e2e", "contract"]) {
       const suffix = `${name}-spec`
-      if (hasCoverageSubjects(root, `src/tests/${name}/**/*.${suffix}.ts`)) testProjects.push(suite(name, suffix))
+      // integration and e2e run in sequence with the result cache (world-cache.ts); contract specs run live, on jest's stock runner
+      if (hasCoverageSubjects(root, `src/tests/${name}/**/*.${suffix}.ts`)) testProjects.push(suite(name, suffix, name === "contract" ? undefined : CACHE_RUNNER))
     }
   }
   // A shard of the managed CI (STARCI_COVERAGE_SHARD=1, one of npm test -- --shard=i/N) measures only the files its tests load, without the per-file threshold, and
@@ -450,4 +456,5 @@ export {
   COVERAGE_THRESHOLD,
   UNIT_COMPILER_OPTIONS,
   WORLD_RUNNER,
+  CACHE_RUNNER,
 }

@@ -21,9 +21,9 @@ the logic files a slot declares (`logic`) and the exclusions. A repository has n
   `src/tests/tsconfig.json`, start the one test world through `globalSetup`/`globalTeardown`
   (`src/tests/world/global-setup.ts`, `global-teardown.ts`) and run on the world runner (`world-runner.js`, `WORLD_RUNNER`): every
   spec file in a worker process of its own and never in band, so nothing the globalSetup or another file left on a process global
-  (a framework registry such as `@nestjs/graphql`'s type metadata) reaches the file; and up to `min(--maxWorkers, slots)` files at
-  once, each bound to its own data slot of `@starci/test-world` 1.1.0 (`STARCI_TEST_WORLD_SLOT`), never two files on one slot,
-  because the test world resets a slot's data when a file boots. The runner reads test-world state protocol 2 only: pin
+  (a framework registry such as `@nestjs/graphql`'s type metadata) reaches the file; on the data slots of `@starci/test-world` the app declares (`tests.<kind>.workers`, one file at a time when absent;
+  `STARCI_TEST_WORLD_SLOT`), up to `min(workers, slots)` files at once, an exclusive spec alone afterwards, never two files on one slot,
+  because the test world resets a slot's data when a file boots; and through the result cache ("Result cache and slots" below). The runner reads test-world state protocol 2 only: pin
   the two packages together (`knowledge/stack/pins.yaml`); another protocol fails with `JEST_PRESET_WORLD_PAIR_MISMATCH`. Only the unit project has a `setupFilesAfterEnv`. The managed scripts select one
   project each: `test`, `test:integration`, `test:e2e`, `test:contract`; a contract spec skips itself without sandbox config.
 - **The three path aliases** `@features/*`, `@modules/*`, `@tests/*` (`MODULE_NAME_MAPPER`), the same ones the managed `tsconfig.json` declares.
@@ -48,6 +48,45 @@ the logic files a slot declares (`logic`) and the exclusions. A repository has n
   status paths and components from the one derivation (`scripts/hfs/coverage-scope.mjs`), so jest, Sonar and Codecov measure the same files;
   the Sonar gate holds coverage at 100 overall, on new code and per file. `sonarExclusions()` still renders `sonar.exclusions`
   (`**/*.spec.ts,**/*.e2e-spec.ts,**/dist/**,**/coverage/**`). There is no coverage exclusion list.
+
+## Result cache and slots (integration and e2e)
+
+The world runner runs the files of each kind on the workers the world published for it: the app declares them, `tests: { integration: { workers: n }, e2e: { workers: n } }` in
+`.starcistacks/application-stacks.yaml` (an integer from 1 to 8; absent is 1, one file at a time), or a run asks for them with `STARCI_TEST_WORLD_WORKERS=<n>`
+(`starci test integration|e2e --workers <n>`). `@starci/test-world` provisions that many data slots and writes the workers of each kind in its state file; the runner runs
+up to `min(workers, slots)` files at once, each in a process of its own on a free slot, never two on one slot. Jest's `--maxWorkers` is not read for a world run
+(the harness sizes it for unit runs). A spec that declares `useTestWorld({ ..., exclusive: true })` (a latency budget, a soak, a load run; the runner reads the literal from
+the file, `isExclusive`) runs alone, one at a time, after the parallel files of its kind have ended. A lite app, which has no world `globalSetup`, runs its integration and
+e2e projects on the same cache and exclusive handling without slots, one file at a time (`cache-runner.js`, `CACHE_RUNNER`); its contract project stays on jest's stock runner.
+
+Before a file runs the runner asks the cache, and a spec file whose inputs are unchanged since its last green run is not run: jest sees a skipped
+file, the report says `cached`. A new, changed or previously red file runs, and its green run is recorded; a red run removes the record, so a red
+spec is never cached. The key of a spec is the digest of:
+
+| input | what it is |
+|---|---|
+| `spec` | the spec file |
+| `closure` | every local file its imports reach, resolved through the nearest `tsconfig.json` (aliases, `extends`), static, type-only, `import("...")`, re-export and `require` imports, JSON; a package is the lockfile's |
+| `tree` | the application source it can reach: every code, configuration and data file of the jest root but the other specs, `src/tests/world/` and build output (dot folders, `node_modules`, `dist`, `coverage`) |
+| `world` | the world declaration, `src/tests/world/**` |
+| `lock` | the lockfiles of the jest root and the app root |
+| `stack` | `.starcistacks/application-stacks.yaml` (its `tests:` block included) and every `.starcistacks/<env>/` but its sealed `runtime/` |
+| `versions` | the installed `@starci/test-world` and this preset |
+
+and the kind. CRLF and LF hash alike (text is git's test: no NUL in the first 8000 bytes), so one commit keys the same on Windows and Linux. Without
+`typescript` in the app there is no closure and the tree alone keys the spec.
+
+- **`STARCI_TEST_CACHE=off`** (`--full`) ignores the cache and runs every file; a run that names spec paths (`jest <path>`, `--spec`) runs them whatever the
+  cache says; both record the files that ran green. A run with a test-name filter (`-t`) records nothing, and a spec that boots a live provider (`useSandbox`)
+  is never cached. The contract kind is never cached.
+- **Records** are in the app repository, `.starcistacks/cache/test/<kind>/<area>.jsonl` (the app root is the nearest folder holding `.starcistacks`; the area
+  is the first folder of the spec below `src/tests/<kind>/`, `root` for a file directly in it), committed with the code like the check cache: one JSON line per
+  spec with its app-relative path, `key`, the digests behind the key (`parts`, 16 hex each, so a run says what changed: `changed: closure, tree`), `result`
+  (`passed`) and `ms`, the duration of the green run (the one field that is not a pure function of the tree); lines sorted by spec, keys sorted, LF. A record of
+  a spec that no longer exists is dropped when its area is written.
+- **Preflight**: a world's `globalSetup` (containers, migrations) runs before any runner could skip a file, so `@starci/jest-preset/world-cache` exports `preflight(root, kind)`, the cache's answer for every spec file of a kind with no jest process: `starci test integration|e2e` asks it first and, when every file is cached, reports and starts nothing.
+- **Report**: one line per file on stderr, `cached  <spec>  (green before in 4.2s)`, `ran     <spec>  (2.0s, changed: spec)` or `FAILED  <spec>  (...)`, and
+  a summary with the counts, the time spent and the time the cache saved. `STARCI_TEST_REPORT=<file>` also writes `{ lines, summary }` as json.
 
 ## The unit standard in one page
 

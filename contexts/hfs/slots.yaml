@@ -1636,6 +1636,7 @@ slots:
       - check/**
       - lint/**
       - test-coverage/**
+      - test/**
       - sonar-baseline/**
       - codecov-baseline/**
   - id: app.db.bootstrap

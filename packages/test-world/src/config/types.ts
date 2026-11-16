@@ -280,8 +280,9 @@ export interface TestWorldConfig<
     /** The app root every declared path is relative to; default the directory of the app's hfs.json found from the jest rootDir (the rootDir itself or its parent). */
     readonly root?: string
     /**
-     * The most data slots a run provisions (default 2): world spec files run up to `min(--maxWorkers, workers)` at once, each
-     * slot a complete set of databases, realm, Redis DB, buckets, fakes and proxies. Size it from the host's headroom.
+     * A cap on the data slots a run provisions (default none, at most 8). The slots are the workers `.starcistacks/application-stacks.yaml` declares
+     * (`tests: { integration: { workers: n }, e2e: { workers: n } }`, one when absent) or `STARCI_TEST_WORLD_WORKERS` names: world spec files run up to
+     * `min(workers, this cap)` at once, each slot a complete set of databases, realm, Redis DB, buckets, fakes and proxies. Size it from the host's headroom.
      */
     readonly workers?: number
     /** Nest logger levels of the booted apps (default `["error", "warn"]`). */

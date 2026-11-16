@@ -57,6 +57,9 @@ R272), never the e2e suite. An app tracks no `.github/workflows/e2e.yml`: slot `
 --execute` removes the file. `HFS_E2E_IN_AUTOMATIC_GATE` refuses a hook, a coverage run or a workflow that runs one, and R301
 `CI_STANDARD` refuses a `run` step that does (jest `--selectProjects integration|e2e|contract`, a `*.integration-spec` or
 `*.e2e-spec` path, `test:e2e`, `test:integration`, `test:contract` or an `e2e` npm script).
+When a person asks for one, it runs on the world slots `.starcistacks/application-stacks.yaml` declares (`tests.<kind>.workers`, one file at a time when absent), exclusive
+specs alone, and skips a file whose inputs are unchanged since its last green run (`starci test integration|e2e`, `--full` ignores the cache;
+[code/be/test.md](../code/be/test.md) BE-TEST-17): the records are committed under `.starcistacks/cache/test/` and are no part of any gate.
 
 **One sha is judged once.** The first job, `plan`, reads the event and the refs and decides: `full` (the release checks of a
 candidate or tag, Sonar included, still diff-only against the trusted cache), `diff` (with its trusted base, per check-cache.md "Trust"), `defer` (main push of a tagged sha) or `reuse` (a successful `ci.yml` run of
