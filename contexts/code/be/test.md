@@ -150,6 +150,8 @@ provider whose contract requires TLS (an OIDC issuer and its JWKS) is faked over
 `trustedCa` (BE-INFRA-2), passed as `HTTP_TRUSTED_CA` in the environment the world builds, never by turning verification
 off (SHARED-LOOSENING-1, marker `tls-unverified`), so the issuer check a spec proves is the one production runs.
 
+A back end whose consumers are woken by the database's own change feed (WAL, Debezium Server, a Redis stream) proves that road end to end with `stacks.debezium` (`@starci/test-world` README "Change data capture (Debezium)"). The stack declares the `debezium` compose service (the pinned `quay.io/debezium/server` image; kind `cdc`, stateful like a queue, so never fakeable and `fakedBy` is refused), and the declaration pairs it with `stacks.postgresql.logicalReplication: true` and `stacks.redis`; a world that declares `stacks.debezium` without one of those, or whose stack has no `debezium` service, is BE_TEST_TOPOLOGY (R47 `test-world-files`). A passing world: `stacks: { postgresql: { connections: [{ name: "primary" }], logicalReplication: true }, redis: {}, debezium: {} }`; a violating one drops `logicalReplication` or `redis`.
+
 Why: a hand-assembled module can pass while the real app cannot start, and transaction, lock and fence claims need the
 real store.
 

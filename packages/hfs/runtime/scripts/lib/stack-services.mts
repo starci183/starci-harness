@@ -74,6 +74,7 @@ const KNOWN_IMAGES: Readonly<Record<string, KnownImage>> = Object.freeze({
   mongo: { kind: 'database', aliases: ['mongo', 'mongodb', 'database', 'db'], probe: { tcp: true } },
   clickhouse: { kind: 'database', aliases: ['clickhouse', 'database', 'db'], probe: { tcp: true } },
   kafka: { kind: 'queue', aliases: ['kafka', 'queue', 'broker'], probe: { tcp: true } },
+  debezium: { kind: 'cdc', aliases: ['debezium', 'cdc'], probe: { http: { path: '/q/health/live', containerPort: 8080 } } },
   redpanda: { kind: 'queue', aliases: ['redpanda', 'kafka', 'queue', 'broker'], probe: { tcp: true } },
   elasticsearch: { kind: 'search', aliases: ['elasticsearch', 'elastic', 'search'], probe: { tcp: true } },
   opensearch: { kind: 'search', aliases: ['opensearch', 'search'], probe: { tcp: true } },
@@ -84,7 +85,7 @@ const KNOWN_IMAGES: Readonly<Record<string, KnownImage>> = Object.freeze({
  * a persistent volume) is stateful: it always runs real in the test world and can never be faked, even with a declared
  * exception (BE-CONVENTION 1.16: only stateless compute that needs special hardware or an external model may be faked).
  */
-export const STATEFUL_KINDS: ReadonlySet<string> = Object.freeze(new Set(['database', 'cache', 'identity', 'storage', 'mail', 'queue', 'search']));
+export const STATEFUL_KINDS: ReadonlySet<string> = Object.freeze(new Set(['database', 'cache', 'identity', 'storage', 'mail', 'queue', 'cdc', 'search']));
 
 /** The repository name of an image reference: `quay.io/keycloak/keycloak:26.0` -> `keycloak`. */
 export const repositoryOf = (image: string): string => {
@@ -196,7 +197,8 @@ export function readStack({ root, environment = DEFAULT_ENVIRONMENT }: { root: s
     const image = typeof definition.image === 'string' ? definition.image : components[name]?.image;
     if (typeof image !== 'string') continue;
     const repository = repositoryOf(image);
-    const known = KNOWN_IMAGES[repository];
+    // `server` alone names nothing; Debezium Server is `<registry>/debezium/server`.
+    const known = KNOWN_IMAGES[repository === 'server' && /(^|\/)debezium\/server$/u.test(imagePathOf(image)) ? 'debezium' : repository];
     const role = components[name]?.role ?? 'stateful';
     const profiles = asList<string>(definition.profiles);
     const command = typeof definition.command === 'string' ? words(definition.command) : asList(definition.command).map(String);

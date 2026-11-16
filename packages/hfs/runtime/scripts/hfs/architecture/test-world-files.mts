@@ -65,13 +65,16 @@ type FakeProviders = Map<string, string>;
  *    `const world: TestWorldApi = defineTestWorld({ ... })` whose `useTestWorld` and `useSandbox` are exported consts typed from
  *    `TestWorldApi` (a `const` initialized by a `defineTestWorld(<object literal>)` call). A config without it (a default export, or a declaration the machine cannot
  *    read) is refused: the world it declares could not be judged.
- * 3. Fakes against the stack. Every service the stack declares runs real in the world; a fake
+ * 3. Change data capture. A world that declares `stacks.debezium` runs the change feed end to end (WAL, Debezium Server, a
+ *    Redis stream): it requires `stacks.postgresql.logicalReplication: true` and `stacks.redis`, and the stack definition must
+ *    declare the `debezium` compose service (kind `cdc`, stateful: never fakeable, like a queue).
+ * 4. Fakes against the stack. Every service the stack declares runs real in the world; a fake
  *    (a `fakes/<provider>/` folder, or a `fakes` entry of the declaration such as `smtp: smtpFake()`) is a network-edge fake
  *    of an external SaaS the team does not operate. A fake of a stack service (its own name, its image repository or a
  *    well-known alias of the image) is refused, except the one owner-approved exception: a stack service that is stateless
  *    compute needing special hardware or an external model (GPU inference, a self-hosted embedding model) whose `stacks` entry
  *    declares it faked: `stacks: { "<stack service>": { fakedBy: "<fake>", reason: "<non-empty>" } }`. A stack service of a
- *    stateful kind (database, cache, identity, storage, mail, queue, search) or with a persistent volume is never accepted, and
+ *    stateful kind (database, cache, identity, storage, mail, queue, cdc, search) or with a persistent volume is never accepted, and
  *    an entry that names a stack service or a fake (a `fakes` entry or a `fakes/` folder) that does not exist, or has no
  *    reason, is refused as stale or empty. The declaration's `stack` (`".starcistacks/<env>"`) names the stack environment the
  *    world runs (default `dev`); the machine reads the literal object of the declaration through the TypeScript AST and
@@ -275,6 +278,33 @@ function reportServiceFakes(fakes: WorldFake[], services: WorldService[], declar
   }
 }
 
+/** The value of `stacks.<service>` of the declaration: its initializer, or null when the world does not declare it. */
+function stacksEntry(ts: TypeScriptApi, literal: ObjectLiteralExpression, service: string): { node: Node; property: ObjectLiteralElementLike } | null {
+  const stacksNode = propertyOf(ts, literal, 'stacks');
+  const stacks = stacksNode ? unwrap(ts, stacksNode) : null;
+  if (!stacks || !ts.isObjectLiteralExpression(stacks)) return null;
+  const property = stacks.properties.find(candidate => ts.isPropertyAssignment(candidate) && nameText(ts, candidate.name) === service);
+  return property && ts.isPropertyAssignment(property) ? { node: property.initializer, property } : null;
+}
+
+/** R47 part 3: a world that declares `stacks.debezium` also declares the Postgres with logical replication and Redis, and the stack declares the Debezium service. */
+function reportDebeziumNeeds(ts: TypeScriptApi, sourceFile: SourceFile, literal: ObjectLiteralExpression, services: WorldService[], configPath: string | null, stackHint: string, violations: WorldViolation[]): void {
+  const debezium = stacksEntry(ts, literal, 'debezium');
+  if (!debezium) return;
+  const problems: string[] = [];
+  const postgresql = stacksEntry(ts, literal, 'postgresql');
+  const body = postgresql ? unwrap(ts, postgresql.node) : null;
+  const flag = body && ts.isObjectLiteralExpression(body) ? propertyOf(ts, body, 'logicalReplication') : null;
+  if (flag?.kind !== ts.SyntaxKind.TrueKeyword) problems.push('stacks.postgresql.logicalReplication must be true (the change feed is the WAL: wal_level=logical)');
+  if (!stacksEntry(ts, literal, 'redis')) problems.push('stacks.redis must be declared (Debezium Server writes the change events to a Redis stream)');
+  if (!services.some(service => service.kind === 'cdc')) problems.push(`${stackHint} declares no \`debezium\` service (the quay.io/debezium/server image, a stateful change-data-capture service that always runs real)`);
+  if (problems.length === 0) return;
+  violations.push({
+    ruleId: RULE, path: configPath, ...sourceLocation(sourceFile, debezium.property), slot: WORLD_SLOT,
+    message: `${configPath} declares stacks.debezium, which proves the database change feed end to end, but ${problems.join('; ')}.`,
+  });
+}
+
 export function checkTestWorldFiles(input: CheckInput) {
   const { config, graph, ts, resolver, tree } = checkerScope(input);
   const suffixes = graph.resolver.ruleParams()?.suffixes ?? [];
@@ -287,6 +317,7 @@ export function checkTestWorldFiles(input: CheckInput) {
   const worldSource = configFile?.sourceFile;
   const declared = literal && worldSource ? fakedByOf(ts, worldSource, literal) : [];
   const fakeEntries = literal && worldSource ? fakeEntriesOf(ts, worldSource, literal) : [];
+  if (literal && worldSource) reportDebeziumNeeds(ts, worldSource, literal, services, configPath, stackHint, violations);
   reportDeclaredFakeProblems(declared, services, fakeProviders, fakeEntries, configPath, stackHint, violations);
 
   // Every fake the world runs: the repository's fakes/<provider>/ folders and the fakes entries of the declaration.

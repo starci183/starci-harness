@@ -1,5 +1,15 @@
 # Changelog
 
+## 6.13.8 - 2026-11-16
+
+- Added (R47 `BE_TEST_TOPOLOGY`, `runtime/scripts/hfs/architecture/test-world-files.mts`): a world that declares `stacks.debezium` (change data capture, `@starci/test-world` 2.1.0 README "Change data capture (Debezium)") is refused unless it also declares `stacks.postgresql.logicalReplication: true` and `stacks.redis`, and unless the stack definition declares the Debezium service. One finding at the `stacks.debezium` entry names every missing half.
+- Added (`runtime/scripts/lib/stack-services.mts`): the stack reader knows the `quay.io/debezium/server` image (matched by its `debezium/server` path, since `server` alone names nothing) as kind `cdc`, probed on `/q/health/live`. `cdc` joins the stateful kinds, so a fake of the `debezium` service, or `stacks.debezium: { fakedBy }`, is refused like a fake of a queue.
+- Changed (canon pins, `contexts/stack/pins.yaml`, `runtime/knowledge/hfs/canon-pins.yaml`): `@starci/test-world` 2.1.0, paired with `@starci/jest-preset` 2.10.0 (the state protocol is unchanged).
+- Changed (contexts): `contexts/code/be/test.md` BE-TEST-12 says how a back end proves its change feed, with a passing and a violating declaration; the `BE_TEST_TOPOLOGY` failure text names the Debezium requirement.
+- Tests: `src/test-world-debezium.spec.mts` (a world with logical replication, Redis and the service passes; one without logical replication, without Redis or without the stack service is refused; a fake of the Debezium service is refused as stateful; both editions).
+- Upgrade: an app that adopts `stacks.debezium` adds the `debezium` compose service to `.starcistacks/<env>`, `logicalReplication: true` to its Postgres and a `redis` entry; no existing app changes.
+
+
 ## 6.13.7 - 2026-11-16
 
 - Fixed (R47 `BE_TEST_TOPOLOGY`, BE-TEST-12, new `rules/test-infra-placement.mts`): a homemade test world no longer passes. hfs reads the tracked tree (TypeScript syntax trees, imports resolved through the side's tsconfig) and refuses, outside `src/tests/world/`, a file under `src/tests/` that imports `@nestjs/testing`, an app's `AppModule` or `app.module`, `NestFactory`, `testcontainers`, `@testcontainers/*`, `dockerode` or `docker-modem`, or calls `createTestingModule` or `.listen(` ("test infrastructure lives only in src/tests/world/ (@starci/test-world)"); and any `overrideProvider`, `overrideGuard`, `overrideModule`, `overrideInterceptor`, `overrideFilter` or `overridePipe` call under `src/tests/` or in any integration, e2e or contract spec (the machine half of `tests-no-override`, which an app that lints nothing on its dev branch never ran). The slot `be.tests.fixtures` is documented as data and builders only.
