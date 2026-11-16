@@ -2,7 +2,9 @@
 // A product keeps every back-end service as a Nest app at `be/apps/<service>/` of the one repository, sharing the `be/src` libraries and
 // the one package.json; the services it does not own stay pinned images in the stack. Five tree checks:
 //   R163 HFS_SERVICE_PLACEMENT      a service root (a Dockerfile, or a package.json other than the app's own and a workspace package's:
-//                                   fe/apps/<app>, fe/packages/<pkg> or a root packages/<name>, or the screenshot gallery's of R395)
+//                                   fe/apps/<app>, fe/packages/<pkg> or a root packages/<name>, the screenshot gallery's of R395, or the
+//                                   agent workbench's of a package: packages/<pkg>/workbench/<app>/, a standalone front-end app with exact
+//                                   dependency versions, outside the npm workspaces)
 //                                   exists only at be/apps/<service>/ (fe/apps/<app>/Dockerfile is a front end's);
 //   R164 HFS_IMAGE_UNPINNED         in a multi-service product every component image of application-stacks.yaml is a digest or an exact
 //                                   version (x.y.z), never a missing tag, `latest`, a branch word or a major/minor-only tag;
@@ -23,7 +25,7 @@ import { loadTypescript } from '../../lib/package-at.mjs';
 import { propertyText } from '../../lib/ts-ast.mjs';
 import { folded, readEventClasses, snapshotText } from '../../lib/event-contract.mjs';
 import { galleryParams } from '../gallery.mjs';
-import { found, readText } from './read.mjs';
+import { found, readJson, readText } from './read.mjs';
 import { byCodeUnit } from '../../lib/list.mjs';
 import { eventTableFindings, eventTableServices } from './event-tables.mjs';
 import type { Parsed, Repo, Ts } from './rule-types.mjs';
@@ -42,6 +44,10 @@ const BE_SERVICE_FILE = /^be\/apps\/([^/]+)\/(.+)$/;
 const DOCKERFILE = /(?:^|\/)Dockerfile(?:\.[^/]+)?$/;
 /** The manifest of a workspace package: a front-end app or package, or a root workspace package (slot app.packages, packages/<name>/). */
 const WORKSPACE_PACKAGE_JSON = /^(?:fe\/(?:packages|apps)|packages)\/[^/]+\/package\.json$/;
+/** The manifest of an agent workbench: a standalone Vite app a package ships (`packages/<pkg>/workbench/<app>/package.json`), built by the package's cli. */
+const WORKBENCH_PACKAGE_JSON = /^packages\/[^/]+\/workbench\/[^/]+\/package\.json$/;
+const EXACT_VERSION = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/;
+const DEPENDENCY_BLOCKS = ['dependencies', 'devDependencies', 'optionalDependencies'];
 const SNAPSHOT = /^be\/contracts\/([^/]+)\/events\.json$/;
 const DIGEST = /@sha256:[0-9a-f]{64}$/;
 const EXACT_TAG = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/;
@@ -58,18 +64,47 @@ const typescriptFor = (repoRoot: string) => loadTypescript(repoRoot, HERE);
 
 // ------------------------------------------------------------------------------------------------ R163 placement
 
+/** A workspace pattern as a regular expression over a repository path (`*` one segment, `**` any depth). */
+const workspaceExpression = (pattern: string) => {
+  const escaped = pattern.replace(/^\.\//, '').replace(/\/$/, '').replace(/[.+^$(){}|[\]\\]/g, '\\$&');
+  return new RegExp(`^${escaped.replace(/\*\*/g, '@@').replace(/\*/g, '[^/]+').replace(/@@/g, '.+')}$`);
+};
+
+/** The reasons a workbench manifest is no front-end app of its own, none when it is: a be/ folder, a workspace member, a dependency that is not an exact version. */
+function workbenchProblems({ repoRoot, file, files }: { repoRoot: string; file: string; files: string[] }) {
+  const directory = path.posix.dirname(file);
+  const problems: string[] = [];
+  if (files.some((other) => other.startsWith(`${directory}/be/`))) problems.push(`${directory}/ holds a be/ folder, so it is a service, not a front-end app`);
+  const declared = readJson(repoRoot, 'package.json')?.workspaces;
+  const patterns: unknown[] = Array.isArray(declared) ? declared : Array.isArray(declared?.packages) ? declared.packages : [];
+  if (patterns.some((pattern) => typeof pattern === 'string' && workspaceExpression(pattern).test(directory))) problems.push(`${directory} is a member of the root package.json workspaces: a workbench is built by its package's cli, outside the workspaces`);
+  const manifest = readJson(repoRoot, file);
+  if (manifest === null) return [...problems, `${file} is not valid JSON`];
+  for (const block of DEPENDENCY_BLOCKS) {
+    const entries = manifest[block];
+    if (entries === null || typeof entries !== 'object') continue;
+    for (const [name, version] of Object.entries<unknown>(entries)) if (typeof version !== 'string' || !EXACT_VERSION.test(version)) problems.push(`${block}.${name} is ${typeof version === 'string' ? `"${version}", not an exact version` : 'not a version'}: pin it exactly`);
+  }
+  return problems;
+}
+
 /**
  * Findings of R163: a service root outside `be/apps/<service>/`. The manifest of a client cli (`be/apps/<name>/package.json` of an app hfs.json
  * declares with kind `client-cli`) is the package R397 requires that app to publish, so it is no second service root; the same file of any
  * other be app, of an undeclared folder, or nested deeper stays one.
  */
-function servicePlacementFindings({ files, repo }: { files: string[]; repo: Repo }) {
+function servicePlacementFindings({ repoRoot, files, repo }: { repoRoot: string; files: string[]; repo: Repo }) {
   const findings = [];
   const clientCliManifests = new Set((repo.sides?.be?.apps ?? []).filter((app: Parsed) => app.kind === CLIENT_CLI_KIND && typeof app.name === 'string').map((app: Parsed) => `be/apps/${String(app.name)}/package.json`));
   const gallery = `${galleryParams().dir}/package.json`; // the screenshot gallery is a standalone Vite app, not a service (R395)
   for (const file of files) {
     if (file.startsWith('.starciwork/') || file.startsWith('.starcistacks/') || file.includes('node_modules/')) continue;
     const dockerfile = DOCKERFILE.test(file) && !BE_SERVICE_FILE.test(file) && !/^fe\/apps\/[^/]+\/Dockerfile(?:\.[^/]+)?$/.test(file) && file !== 'Dockerfile';
+    if (WORKBENCH_PACKAGE_JSON.test(file)) {
+      const problems = workbenchProblems({ repoRoot, file, files });
+      if (problems.length > 0) findings.push(found(SERVICE_PLACEMENT, file, `${file} is the manifest of an agent workbench (packages/<pkg>/workbench/<app>/), a standalone front-end app, but ${problems.join('; ')}.`));
+      continue;
+    }
     const manifest = path.posix.basename(file) === 'package.json' && file !== 'package.json' && file !== gallery && !WORKSPACE_PACKAGE_JSON.test(file) && !clientCliManifests.has(file);
     const rootDockerfile = file === 'Dockerfile';
     if (!dockerfile && !manifest && !rootDockerfile) continue;
@@ -255,7 +290,7 @@ function asyncSpecFindings({ repoRoot, files }: { repoRoot: string; files: strin
 /** Every finding of the microservice policy over the app at `repoRoot`; `files` are its tracked app-relative paths. */
 export function serviceFindings({ repoRoot, files, repo }: { repoRoot: string; files: string[]; repo: Repo }) {
   return [
-    ...servicePlacementFindings({ files, repo }),
+    ...servicePlacementFindings({ repoRoot, files, repo }),
     ...imagePinFindings({ repoRoot, repo }),
     ...serviceStackFindings({ repoRoot, repo }),
     ...eventContractFindings({ repoRoot, files }),

@@ -71,6 +71,20 @@ test('HFS_SERVICE_PLACEMENT: a root workspace package (packages/<name>/package.j
   assert.deepEqual(pathsOf(findings), ['packages/ui-kit/Dockerfile', 'packages/ui-kit/server/package.json']);
 });
 
+test('HFS_SERVICE_PLACEMENT: an agent workbench (packages/<pkg>/workbench/<app>/package.json) with exact versions outside the workspaces is no service root; any other nested manifest still is', () => {
+  const manifest = (dependencies: Record<string, string>) => `${JSON.stringify({ name: 'workbench', private: true, dependencies })}\n`;
+  assert.deepEqual(only(APP, (dir) => {
+    put(dir, 'packages/shop/workbench/orders/package.json', manifest({ react: '19.1.0' }));
+  }, 'HFS_SERVICE_PLACEMENT'), []);
+  const findings = only(APP, (dir) => {
+    put(dir, 'packages/shop/workbench/orders/package.json', manifest({ react: '^19.1.0' }));
+    put(dir, 'packages/shop/workbench/orders/web/package.json', manifest({}));
+    put(dir, 'packages/shop/tools/orders/package.json', manifest({}));
+  }, 'HFS_SERVICE_PLACEMENT');
+  assert.deepEqual(pathsOf(findings), ['packages/shop/tools/orders/package.json', 'packages/shop/workbench/orders/package.json', 'packages/shop/workbench/orders/web/package.json']);
+  assert.match(findings.find((f) => f.path === 'packages/shop/workbench/orders/package.json')!.message!, /dependencies\.react is "\^19\.1\.0", not an exact version/);
+});
+
 // ------------------------------------------------------------------------------------------------ R164 HFS_IMAGE_UNPINNED
 
 test('HFS_IMAGE_UNPINNED: a multi-service stack with a moving image (no tag, latest, major only) is refused, each component named', () => {

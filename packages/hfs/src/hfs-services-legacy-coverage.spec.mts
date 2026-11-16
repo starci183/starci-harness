@@ -68,6 +68,20 @@ for (const edition of ['lite', 'full']) {
     assert.ok(serviceFindings({ repoRoot: os.tmpdir(), files, repo: undeclared }).some((finding) => finding.code === 'HFS_SERVICE_PLACEMENT' && finding.path === 'be/apps/relay-cli/package.json'), 'without the declaration the same file is a service root');
   });
 
+  test(`${edition} HFS_SERVICE_PLACEMENT accepts the package.json of an agent workbench (packages/<pkg>/workbench/<app>) and refuses a drifted one`, (t) => {
+    const workbench = (extra: Record<string, unknown> = {}) => `${JSON.stringify({ name: 'shop-workbench', private: true, dependencies: { react: '19.1.0' }, devDependencies: { vite: '7.1.0' }, ...extra })}\n`;
+    const root = (workspaces: string[]) => `${JSON.stringify({ private: true, workspaces })}\n`;
+    const place = (contents: Record<string, string>) => findings(t, edition, contents, 'HFS_SERVICE_PLACEMENT');
+    assert.deepEqual(place({ 'package.json': root(['packages/*']), 'packages/shop/workbench/orders/package.json': workbench() }), [], 'a pinned workbench outside the workspaces passes');
+    assert.deepEqual(place({ 'package.json': root(['packages/*']), 'packages/shop/workbench/orders/package.json': workbench({ dependencies: { react: '^19.1.0' } }) }), ['HFS_SERVICE_PLACEMENT'], 'a range is refused');
+    assert.deepEqual(place({ 'package.json': root(['packages/**']), 'packages/shop/workbench/orders/package.json': workbench() }), ['HFS_SERVICE_PLACEMENT'], 'a workspace member is refused');
+    assert.deepEqual(place({ 'package.json': root([]), 'packages/shop/workbench/orders/package.json': workbench(), 'packages/shop/workbench/orders/be/main.ts': 'export {};\n' }), ['HFS_SERVICE_PLACEMENT'], 'a be/ folder makes it a service');
+    assert.deepEqual(place({ 'package.json': root([]), 'packages/shop/workbench/orders/Dockerfile': 'FROM node:24.0.0\n' }), ['HFS_SERVICE_PLACEMENT'], 'a Dockerfile stays refused');
+    assert.deepEqual(place({ 'package.json': root([]), 'packages/shop/workbench/orders/web/package.json': workbench() }), ['HFS_SERVICE_PLACEMENT'], 'a deeper manifest stays refused');
+    assert.deepEqual(place({ 'package.json': root([]), 'packages/shop/other/orders/package.json': workbench() }), ['HFS_SERVICE_PLACEMENT'], 'only the workbench folder is allowed');
+    assert.deepEqual(place({ 'package.json': root([]), 'packages/shop/workbench/package.json': workbench() }), ['HFS_SERVICE_PLACEMENT'], 'the workbench folder itself is no app');
+  });
+
   test(`${edition} HFS_IMAGE_UNPINNED rejects a moving service image`, (t) => {
     assert.deepEqual(findings(t, edition, {
       [STACK_FILE]: stack({ image: 'demo/core:latest' }),

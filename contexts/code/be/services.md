@@ -10,7 +10,9 @@ Edition: full; a lite app is one stateless back end ([project/full.md](../../pro
 
 ## BE-SERVICES-1 A service lives only at be/apps/<service>, and no service imports its sibling
 A service is a Nest app at `be/apps/<service>/` (its `be.app.*` files and its own Dockerfile and image) sharing the `be/src`
-libraries and the repository's one `package.json`; a Dockerfile or `package.json` anywhere else makes a second service root. In a
+libraries and the repository's one `package.json`; a Dockerfile or `package.json` anywhere else makes a second service root. The one nested manifest allowed is an agent workbench's,
+`packages/<pkg>/workbench/<app>/package.json`: a standalone front-end app the package's cli builds, not a service (no `be/` folder, not in
+the root `workspaces`, every dependency an exact version). In a
 multi-service product each api or worker app is a `role: service` component of the application stacks. No service app imports a
 file of another: shared code lives in `be/src`, and services meet through the wire.
 
