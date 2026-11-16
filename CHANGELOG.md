@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.0-alpha.131 - 2026-11-16
+
+- Changed (contexts, R12): integration and e2e run on request only, never automatically, never in CI, a hook or a default release gate row, and an agent or lane proves a change by the typecheck and the gates its contract declares unless the task or the owner asks for a suite. Written in AGENTS.md "Where the rules are", contexts/project/cicd.md "Triggers and what runs", full.md, lite.md, lint.md, check-cache.md, contexts/authority/branch.md, contexts/code/shared/test.md and contexts/hfs (rules.yaml R12, slots.yaml `app.ci-e2e`, README.md). Rides with @starci/hfs 6.13.6 (the CI standard item `no-world-layers`, the release gate without world rows).
+- The CLI still requires the @starci/hfs its package.json names; `check pins` is `pending` until the publish run's cli-follow step raises it to the pin, 6.13.6 (CONTRIB-20).
+
 ## 1.1.0-alpha.130 - 2026-11-16
 
 - Added (contexts/harness/host.md "Dependencies through a link"): the install guard `installRefusals` (`cli/src/harness/install-guard.ts`) reads a whole shell command line, every command of it chained (`&&`, `||`, `;`, `|`), sent to the background (`&`, `start /b`) or wrapped (`cmd /c`, `sh -c`, `powershell -Command`), follows each `cd` and `--prefix`/`-C`/`--dir`/`--cwd`, and refuses every npm, pnpm or yarn command that writes `node_modules` (`ci`, `install`, `i`, `uninstall`, `update`, `prune`, `dedupe`, `rebuild`, `link` and their aliases; a bare `yarn`) whose target `node_modules` is a junction or symlink, or a real folder another worktree of the same repository links to. `starci host guard <line>` judges a line (exit 1 on a deny) and `starci host guard --hook` reads a host's pre-tool hook input on stdin and prints the deny decision (`cli/src/core/host/guard.ts`, schema `starci/host-guard@1`). The CLI's own package builds refuse the second hazard too, `DEPS_INSTALL_SHARED` beside `DEPS_INSTALL_LINKED` (`core/deps/packages.ts`). Spec `harness/install-guard.test.ts` on real junctions and git worktrees, the lane `npm ci` through a junction to the main install among them.

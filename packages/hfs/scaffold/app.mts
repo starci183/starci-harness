@@ -876,7 +876,7 @@ export function scaffoldApp({ name, into, presets, harness, edition = 'full', si
       { path: `fe/packages/${name}-${pkg}/tsconfig.build.json`, content: jsonText(fePackageBuildTsconfig()) },
     ])),
     ...filesForSides((['app', 'be', 'fe'] as const).filter(scope => scope === 'app' || sides.includes(scope)).flatMap(scope => skeletonOf(scope, app, vars)), { project: name, edition: app.edition, sides, contract, feApps: (app.edition === 'lite' ? LITE_STARTER_SIDES : STARTER_SIDES).fe.apps.map(entry => entry.name), api: (app.edition === 'lite' ? LITE_STARTER_SIDES : STARTER_SIDES).be.apps.find(entry => entry.kind === 'api')?.name ?? 'api' }),
-    // A full app has a test world (integration, e2e and contract are rows of its release gate); lite has none (R212).
+    // A full app has a test world (integration, e2e and contract, run on request only: R12); lite has none (R212).
     ...(app.edition === 'lite' ? [] : testWorldFiles(app)),
   ];
   const writes = scaffoldWrites(root, original);

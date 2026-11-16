@@ -144,7 +144,7 @@ The edition is chosen once at scaffold: a lite app stays lite and a full app sta
 A new full app ships its test world (`scaffold/test-world.mts`): the `@starci/test-world` declaration under `be/src/tests/world/`
 (the dev stack's Postgres per connection, the api apps, the cli app's migration runner as the migrate step), an integration spec of
 readiness over the real database and one e2e spec per api app booted over the migrated database, beside the contract spec of the
-be skeleton, so `test:integration`, `test:e2e` and `test:contract` of the release gate run real specs. On a full app that has no
+be skeleton, so `npm run test:integration`, `test:e2e` and `test:contract`, run on request only (R12), run real specs. On a full app that has no
 `be/src/tests/world/global-setup.ts`, `starci app upgrade [--execute]` adds those files and the test devDependencies it lacks; a world
 file that exists and differs refuses (`HFS_UPGRADE_FILE_CONFLICT`) and nothing is overwritten.
 

@@ -1809,7 +1809,8 @@ CI_STANDARD:
   meaning_vi: "Workflow CI (của app, của ví dụ hoặc của runtime) không đáp ứng một mục của knowledge/hfs/ci-standard.yaml; mục bị vi phạm được nêu trong ngoặc vuông."
   causes_vi:
     - "Vi phạm R301: job shape, lịch sử đầy đủ và STARCI_BASE_REF, heap cho bước nặng, lint Sonar theo từng phía, probe nhà cung cấp tùy chọn, timeout hoặc ghim action theo sha."
-  nextStep_vi: "App: chạy starci app sync --execute để render lại CI chuẩn (không sửa tay); runtime: sửa workflow theo mục được nêu."
+    - "Mục [no-world-layers]: một bước run của workflow chạy kiểm thử integration, e2e hoặc contract (jest --selectProjects e2e, test:e2e, test:integration, tệp *.e2e-spec, script npm tên e2e). Các lớp này chỉ chạy khi có người yêu cầu, trên máy cục bộ, không bao giờ nằm trong CI."
+  nextStep_vi: "App: chạy starci app sync --execute để render lại CI chuẩn (không sửa tay); runtime: sửa workflow theo mục được nêu. Với [no-world-layers]: xóa bước chạy integration/e2e khỏi workflow; muốn chạy thì gọi tay npm run test:e2e trên máy cục bộ."
   owner: op-retry
   kind: check-finding
 
@@ -3792,12 +3793,12 @@ HFS_DUPLICATE_SYMBOL:
 HFS_E2E_IN_AUTOMATIC_GATE:
   title: "A world layer runs outside the local machine"
   title_vi: "Kiểm thử integration, e2e hoặc contract chạy ngoài máy cục bộ"
-  meaning_vi: "Hook husky, lượt đo coverage hoặc một workflow CI gọi kiểm thử integration, e2e hoặc contract, trong khi các lớp này chỉ chạy trên máy cục bộ (chạy tay, và các hàng của cổng phát hành)."
+  meaning_vi: "Hook husky, lượt đo coverage hoặc một workflow CI gọi kiểm thử integration, e2e hoặc contract, trong khi các lớp này chỉ chạy khi có người yêu cầu, trên máy cục bộ (chạy tay), không thuộc CI và không có hàng nào của cổng phát hành chạy chúng."
   causes_vi:
     - "Pre-commit hoặc pre-push chạy e2e"
     - "Script lint:check kéo e2e vào"
     - "Một workflow trong .github/workflows chạy test:e2e, test:integration hoặc test:contract, với bất kỳ trigger nào"
-  nextStep_vi: "Op backend.scaffold gỡ e2e khỏi hook, script tự động và workflow; e2e chạy trên máy cục bộ bằng npm run test:e2e."
+  nextStep_vi: "Op backend.scaffold gỡ e2e khỏi hook, script tự động và workflow; e2e chỉ chạy khi có yêu cầu, trên máy cục bộ bằng npm run test:e2e."
   owner: other-op:backend.scaffold
   kind: check-finding
 

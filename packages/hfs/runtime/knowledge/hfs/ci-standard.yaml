@@ -84,7 +84,7 @@ items:
     by: [R251 HFS_DEPLOY_WORKFLOW]
   - id: boot-proof
     title: a lite app's fast job proves its Nest composition
-    requires: "the fast job of a lite app's CI runs the boot proof (`starci app check --gate wiring`, R272) before its typecheck (and after the root packages are built, packages-built-first), so a provider a domain module needs and an app root does not compose fails the run instead of every boot; full keeps its e2e boot proof"
+    requires: "the fast job of a lite app's CI runs the boot proof (`starci app check --gate wiring`, R272) before its typecheck (and after the root packages are built, packages-built-first), so a provider a domain module needs and an app root does not compose fails the run instead of every boot; a full app's CI has no e2e boot step either: the e2e suite is never part of CI (no-world-layers), and the wiring gate is the boot proof where an app has one"
     covers: [app-ci]
     check: ci-standard
   - id: packages-built-first
@@ -133,6 +133,12 @@ items:
     requires: "no step or job sets continue-on-error; a Codecov upload sets fail_ci_if_error: true; no Codecov or Sonar step has an availability probe or an `if` that reads a secret, CODECOV_TOKEN or SONAR_TOKEN (the sonar job refuses a missing token with its own failing step); a red step is red"
     covers: [app-ci, runtime]
     check: ci-standard
+  - id: no-world-layers
+    title: no workflow runs an integration, e2e or contract suite
+    requires: "no `run` step of any workflow runs a world layer, whatever its trigger or job: no jest `--selectProjects integration|e2e|contract`, no `*.integration-spec`, `*.e2e-spec` or `*.contract-spec` path, no `test:e2e`, `test:integration` or `test:contract` script and no `e2e`, `integration` or `contract` npm script. The integration and e2e suites run only when a person asks for them (`npm run test:e2e` on a local machine), are no part of CI, and are no default row of the release gate (R12)"
+    covers: [app-ci, runtime]
+    check: ci-standard
+    by: [R12 HFS_E2E_IN_AUTOMATIC_GATE]
   - id: timeouts
     title: a timeout on every job, configurable per job
     requires: "every job declares timeout-minutes; the managed CI renders ci.jobs.<job>.timeoutMinutes of the manifest, else defaults.timeoutMinutes"

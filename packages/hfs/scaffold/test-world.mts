@@ -1,7 +1,7 @@
 // test-world.mts - the test world of a full app: the declaration of @starci/test-world under be/src/tests/world/ and one baseline
 // real spec per world layer, rendered from templates/be/test-world/ for the api apps and connections hfs.json declares.
 //
-// A full app's release gate runs integration, e2e and contract (the managed test:* scripts), and the jest preset gives those
+// A full app has integration, e2e and contract scripts (the managed test:* scripts) that run on request only (R12), and the jest preset gives those
 // projects only to an app that has be/src/tests/world/global-setup.ts. The scaffold writes these files into every new full app,
 // and `starci app upgrade` adds the missing ones to an existing full app (never overwriting a file the app already has):
 //   - world/: the declaration (stack .starcistacks/dev, Postgres per connection, the api apps, the cli app's migration runner as
