@@ -1,5 +1,9 @@
 # Changelog
 
+## 6.13.12 - 2026-11-17
+
+- Changed: the bundled `knowledge/hfs/canon-pins.yaml` follows the Grammar family 0.39.4 (`@starci/grammar`, `@starci/eslint-grammar-core`, `@starci/eslint-grammar-offset-pop`: version and `~0.39.4` range) and names its own version. No rule changes.
+
 ## 6.13.11 - 2026-11-16
 
 - Added (R395 `HFS_APP_GALLERY_ROUTE_MISSING`, `runtime/scripts/hfs/gallery-routes.mts`, `rules/gallery.mts`): every user-facing route of the front end, a `page.tsx` under `fe/apps/<app>/src/app` (the `[locale]` prefix, `(group)` folders, parallel slots, intercepting routes and private folders are not part of a route; a dynamic segment is one screen), needs at least one screen folder in `gallery/pages` whose `explain.md` front matter `route` matches it (the locale prefix, a trailing slash and the name of a dynamic parameter are ignored). Coverage is judged from the explain.md files alone: the shots stay git-ignored local evidence, so shots saved elsewhere cover nothing. A route that is not a product screen is declared in the new `gallery/routes.json` (`{ "exclude": [{ "route", "reason" }] }`, slot `app.gallery-routes`); an exclusion with no reason, a malformed file or an exclusion of a route the front end does not have is `HFS_APP_GALLERY_LINKS`. The code is `localOnly`: a warning in `--env local`, an error in `--env prod` (the push hook, CI, the release gate), the split `HFS_APP_GALLERY_REGION_UNCLEAR` uses. An app with a gallery and no `gallery/pages` (nivoos-lite) now fails `--env prod` for every route.
