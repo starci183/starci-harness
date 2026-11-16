@@ -62,6 +62,33 @@ export const requestedWorkers = (env: NodeJS.ProcessEnv = process.env): number |
 export const slotCountOf = (config: AnyTestWorldConfig, workers: number | undefined): number =>
     Math.max(1, Math.min(workers ?? 1, config.workers ?? MAX_SLOTS, MAX_SLOTS))
 
+/** True when the failure, or a failure it wraps, is {@link TestWorldErrorCode.SlotsExhausted}: a shared lease (a Redis DB index) has none free. */
+export const isSlotsExhausted = (failure: unknown): boolean => {
+    for (let at: unknown = failure, depth = 0; at !== undefined && at !== null && depth < 8; depth += 1) {
+        if (Reflect.get(Object(at), "code") === TestWorldErrorCode.SlotsExhausted) return true
+        at = Reflect.get(Object(at), "cause")
+    }
+    return false
+}
+
+/**
+ * Makes slots 1..count in order. When a later slot cannot lease a shared resource because live runs hold every one (a Redis DB index), the run goes on
+ * with the slots it already made and says so, instead of failing: the spec files then share fewer slots. The first slot, and any other failure, still throws.
+ */
+export const provisionSlots = async <Slot>(count: number, make: (slot: number) => Promise<Slot>, warn: (message: string) => void): Promise<Slot[]> => {
+    const made: Slot[] = []
+    for (let slot = 1; slot <= count; slot += 1) {
+        try {
+            made.push(await make(slot))
+        } catch (failure) {
+            if (made.length === 0 || !isSlotsExhausted(failure)) throw failure
+            warn(`test-world: ${String(made.length)} of ${String(count)} slot(s): slot ${String(slot)} found no free Redis database (live runs hold them all), so the run goes on with ${String(made.length)}`)
+            break
+        }
+    }
+    return made
+}
+
 /** The world kinds a jest command line selects (`--selectProjects integration e2e`), every kind when it selects none. */
 export const selectedKinds = (argv: ReadonlyArray<string>): ReadonlyArray<"integration" | "e2e"> => {
     const named: string[] = []
@@ -301,8 +328,8 @@ export const setupWorld = async (config: AnyTestWorldConfig, rootDirectory: stri
     const asked = workersOfRun(readTestWorkers(root), request)
     const count = slotCountOf(config, Math.max(1, ...Object.values(asked)))
     try {
-        for (let slot = 1; slot <= count; slot += 1) slots.push(await setupSlot(plan, slot))
-        writeRunState(plan.runId, slots.map((entry) => entry.context), Object.fromEntries(Object.entries(asked).map(([kind, workers]) => [kind, Math.min(workers, count)])))
+        slots.push(...(await provisionSlots(count, (slot) => setupSlot(plan, slot), (message) => process.stderr.write(`${message}\n`))))
+        writeRunState(plan.runId, slots.map((entry) => entry.context), Object.fromEntries(Object.entries(asked).map(([kind, workers]) => [kind, Math.min(workers, slots.length)])))
         return { runId: plan.runId, slots, config }
     } catch (cause) {
         for (const made of slots) await disposeSlot(made)

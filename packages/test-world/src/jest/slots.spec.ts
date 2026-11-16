@@ -4,11 +4,11 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import test from "node:test"
 import type { AnyTestWorldConfig } from "../config/types"
-import { TestWorldErrorCode } from "../errors"
+import { TestWorldErrorCode, worldError } from "../errors"
 import { LIBRARY, SLOT_ENV, STATE_FILE_ENV, STATE_VERSION, readRunContext, removeRunState, writeRunState } from "./context"
 import type { RunContext } from "./context"
 import { MAX_SLOTS, readTestWorkers } from "../config/stack-file"
-import { requestedWorkers, selectedKinds, slotCountOf, WORKERS_ENV, withRealmUserIds, workersOfRun } from "./setup"
+import { isSlotsExhausted, provisionSlots, requestedWorkers, selectedKinds, slotCountOf, WORKERS_ENV, withRealmUserIds, workersOfRun } from "./setup"
 
 const slotContext = (slot: number): RunContext => ({
     slot,
@@ -120,4 +120,20 @@ test("a slot's seeds name the realm users by the ids the slot's realm stores the
     const context = { infra: { toxiproxyApi: "x", keycloak: { userIds: { [pinned]: "stored-id" } } } } as unknown as RunContext
     assert.equal(withRealmUserIds(`INSERT INTO persons (id) VALUES ('${pinned}'); -- ${pinned}`, context), "INSERT INTO persons (id) VALUES ('stored-id'); -- stored-id")
     assert.equal(withRealmUserIds("SELECT 1", { infra: { toxiproxyApi: "x" } } as unknown as RunContext), "SELECT 1")
+})
+
+test("a run whose later slot finds no free Redis database goes on with the slots it made", async () => {
+    const warned: string[] = []
+    const made = await provisionSlots(3, async (slot) => {
+        if (slot === 3) throw worldError(TestWorldErrorCode.SlotsExhausted, "all 16 redis databases are leased by live runs")
+        return slot
+    }, (message) => warned.push(message))
+    assert.deepEqual(made, [1, 2])
+    assert.match(warned[0] ?? "", /2 of 3 slot\(s\)/)
+})
+
+test("the first slot, and any other failure, still fails the run", async () => {
+    await assert.rejects(provisionSlots(2, async () => { throw worldError(TestWorldErrorCode.SlotsExhausted, "none free") }, () => undefined), { code: TestWorldErrorCode.SlotsExhausted })
+    await assert.rejects(provisionSlots(2, async (slot) => { if (slot === 2) throw worldError(TestWorldErrorCode.InfrastructureFailed, "docker"); return slot }, () => undefined), { code: TestWorldErrorCode.InfrastructureFailed })
+    assert.equal(isSlotsExhausted({ cause: { code: TestWorldErrorCode.SlotsExhausted } }), true)
 })

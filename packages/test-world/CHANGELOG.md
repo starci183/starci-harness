@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.2.1 - 2026-11-17
+
+- Fixed: a run whose later slot finds no free Redis database (live runs hold all 16) goes on with the slots it already made and says so on stderr (`test-world: 2 of 3 slot(s): ...`), instead of failing the whole run; the spec files share fewer slots. The first slot, and any other failure, still fails the run (`provisionSlots`, `isSlotsExhausted` in `jest/setup.ts`; the run state records the slots actually made).
+- Added: `TestWorldErrorCode.SlotsExhausted` (`TEST_WORLD_SLOTS_EXHAUSTED`), thrown by the Redis DB lease when none is free (it was `TEST_WORLD_INFRASTRUCTURE_FAILED`). Specs: `src/jest/slots.spec.ts`.
+
 ## 2.2.0 - 2026-11-16
 
 - Added: the slots of a run are the workers the app declares, `tests: { integration: { workers: n }, e2e: { workers: n } }` in `.starcistacks/application-stacks.yaml` (`readTestWorkers`, `TEST_KINDS`, `MAX_SLOTS`): an integer from 1 to 8 for each kind, one when absent (a sequential run); any other shape is `TEST_WORLD_CONFIG_INVALID`. A run provisions the most `workers` of the kinds its command line selects (`selectedKinds` of `--selectProjects`, both when none), or `STARCI_TEST_WORLD_WORKERS=<n>` when it asks for them explicitly (`starci test <kind> --workers <n>`), and publishes the workers of each kind in its state file (`workers`, additive: the protocol stays 2).

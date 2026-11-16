@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import test from "node:test"
-import { CACHE_ENV, REPORT_ENV, WORKERS_ENV, linesOf, preflightOf, reportOf, testE2eVerb, testIntegrationVerb, workersOf, worldRun } from "./world.js"
+import { CACHE_ENV, REPORT_ENV, WORKERS_ENV, linesOf, preflightOf, reportOf, testE2eVerb, testIntegrationVerb, specPattern, workersOf, worldRun } from "./world.js"
 import type { WorldLine } from "./world.js"
 
 void test("the verbs are `test integration` and `test e2e`, local-write, on request", () => {
@@ -23,9 +23,9 @@ void test("a run is the app's own script of the kind, on the declared workers an
     assert.equal(CACHE_ENV in plain.env, false, "the cache is on")
 })
 
-void test("--full turns the cache off, --spec names the files after `--` with forward slashes, --workers sets the worker count", () => {
+void test("--full turns the cache off, --spec names the files as one escaped --testPathPattern= after `--`, --workers sets the worker count", () => {
     const run = worldRun("e2e", { full: true, spec: ["be\\src\\tests\\e2e\\todo\\flow.e2e-spec.ts", "other.e2e-spec"], workers: 3 }, "r.json")
-    assert.deepEqual(run.argv, ["npm", "run", "test:e2e", "--", "be/src/tests/e2e/todo/flow.e2e-spec.ts", "other.e2e-spec"])
+    assert.deepEqual(run.argv, ["npm", "run", "test:e2e", "--", "--testPathPattern=be/src/tests/e2e/todo/flow\\.e2e-spec\\.ts|other\\.e2e-spec"])
     assert.deepEqual(run.env, { [REPORT_ENV]: "r.json", [WORKERS_ENV]: "3", [CACHE_ENV]: "off" })
 })
 
@@ -83,4 +83,12 @@ void test("the preflight is read through the preset the app has installed, and a
     } finally {
         for (const root of roots) rmSync(root, { recursive: true, force: true })
     }
+})
+
+void test("a spec is never a bare argument that jest --selectProjects would read as a project name", () => {
+    const run = worldRun("integration", { full: false, spec: ["src/a(1).spec.ts"], workers: undefined }, "r.json")
+    assert.equal(run.argv.length, 5)
+    assert.ok(run.argv[4]?.startsWith("--testPathPattern="))
+    assert.equal(new RegExp(run.argv[4]?.slice("--testPathPattern=".length) ?? "").test("D:/app/be/src/a(1).spec.ts"), true)
+    assert.equal(specPattern("a.b"), "a\\.b")
 })

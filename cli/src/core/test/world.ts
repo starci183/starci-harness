@@ -79,9 +79,16 @@ export const workersOf = (given: string | undefined): number | undefined => {
     return workers
 }
 
-/** The command and the environment of one run: the app's script, the named specs after `--`, and the cache and worker switches in the environment. */
+/** A spec named on the command line as a jest path pattern: forward slashes (jest maps them to the platform separator) and every regex character escaped, so a path or a part of one matches literally. */
+export const specPattern = (spec: string): string => spec.replaceAll("\\", "/").replace(/[.*+?^${}()|[\]]/g, "\\$&")
+
+/**
+ * The command and the environment of one run: the app's script, the named specs as ONE `--testPathPattern=` flag after `--`, and the cache and
+ * worker switches in the environment. The flag is joined with `=`: npm appends the arguments to the end of the script, which ends in
+ * `jest --selectProjects <kind>`, and a bare path there was read as one more project name, so every spec of the kind ran.
+ */
 export const worldRun = (kind: WorldKind, flags: { readonly full: boolean; readonly spec: readonly string[]; readonly workers: number | undefined }, report: string): { readonly argv: readonly string[]; readonly env: Readonly<Record<string, string>> } => ({
-    argv: ["npm", "run", `test:${kind}`, ...(flags.spec.length === 0 ? [] : ["--", ...flags.spec.map((spec) => spec.replaceAll("\\", "/"))])],
+    argv: ["npm", "run", `test:${kind}`, ...(flags.spec.length === 0 ? [] : ["--", `--testPathPattern=${flags.spec.map(specPattern).join("|")}`])],
     env: { [REPORT_ENV]: report, ...(flags.workers === undefined ? {} : { [WORKERS_ENV]: String(flags.workers) }), ...(flags.full ? { [CACHE_ENV]: "off" } : {}) },
 })
 

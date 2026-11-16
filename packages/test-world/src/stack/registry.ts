@@ -252,7 +252,7 @@ export const leaseRedisDb = (data: RegistryData, namespace: string): number => {
             return db
         }
     }
-    throw worldError(TestWorldErrorCode.InfrastructureFailed, `all ${REDIS_DB_COUNT} redis databases are leased by live runs (${Object.keys(data.redisDbs).join(", ")})`)
+    throw worldError(TestWorldErrorCode.SlotsExhausted, `all ${REDIS_DB_COUNT} redis databases are leased by live runs (${Object.keys(data.redisDbs).join(", ")})`)
 }
 
 /** Frees the Redis DB index of a namespace. */

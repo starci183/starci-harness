@@ -15,6 +15,8 @@ export const TestWorldErrorCode = {
     StackDefinition: "TEST_WORLD_STACK_DEFINITION",
     /** Docker, toxiproxy, k3d or a service container failed. */
     InfrastructureFailed: "TEST_WORLD_INFRASTRUCTURE_FAILED",
+    /** A shared resource a slot leases (a Redis DB index) has none free: live runs hold them all. A run that already made a slot goes on with fewer. */
+    SlotsExhausted: "TEST_WORLD_SLOTS_EXHAUSTED",
     /** `waitFor` ran out of time. */
     TimedOut: "TEST_WORLD_TIMED_OUT",
     /** A fake refused a control call or a failure could not be armed. */

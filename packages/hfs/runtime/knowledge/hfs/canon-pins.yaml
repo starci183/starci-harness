@@ -118,7 +118,7 @@ pins:
     source: packages/jest-preset/package.json
     why: 'the Jest preset of a back end: the world runner runs the integration and e2e files on the workers the app declares (`tests.<kind>.workers` of .starcistacks/application-stacks.yaml, one when absent; an exclusive spec runs alone after the parallel batch), each in its own process bound to one data slot of the test world (STARCI_TEST_WORLD_SLOT), and skips a file whose inputs (the spec and its import closure, the be source tree, the world declaration, the lockfile, the stack definition, the test-world and preset versions) are unchanged since its last green run, reporting it cached (records in .starcistacks/cache/test/<kind>/); a lite app has the same sequence and cache on cache-runner.js, and reads test-world state protocol 2 only: it pairs exactly with @starci/test-world, and any other state file is JEST_PRESET_WORLD_PAIR_MISMATCH. The unit run writes the lcov Sonar and Codecov import (services only); the integration, e2e and contract projects run every spec file in a worker process of its own (world-runner.cjs), so a process-global framework registry (@nestjs/graphql type metadata) never leaks between e2e files; it ships the unit kit (mockEntityManager, fakeTransaction, fakeQueryBuilder, queueQueryBuilders, fakeIds, FakeClock, Outcome matchers) and the recordingOutbox claim side.'
   '@starci/test-world':
-    version: 2.2.0
+    version: 2.2.1
     group: starci
     install: registry
     side: be
