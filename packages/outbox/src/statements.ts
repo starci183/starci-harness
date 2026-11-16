@@ -36,6 +36,7 @@ export interface Statements {
 
 const CLAIMED_COLUMNS =
     "id::text as id, scope::text as scope, queue, name, payload, once_key, attempts, fence::text as fence, resume_count, notify_topic, notify_on"
+// An ORDER BY names the table's column (`e.seq`): a bare `seq` binds to the text output column below and orders 10 before 7.
 const EVENT_COLUMNS = "seq::text as seq, scope::text as scope, topic, type, data, created_at"
 const PARKED_COLUMNS =
     "id::text as id, scope::text as scope, queue, name, payload, attempts, last_error, failure_class, park_reason, parked_at, parked_build, resume_count"
@@ -142,9 +143,9 @@ select (select count(*) from x)::int as n`,
         publish: `with ev as (insert into ${E} (scope, topic, type, data, created_at) values ($1::${ST}, $2, $3, $4::jsonb, $5) returning seq, scope)
 select ev.seq::text as seq from ev cross join lateral (select pg_notify($6, ev.scope::text)) as announced`,
         scopeHead: `select coalesce(max(seq), 0)::text as seq from ${E} where scope = $1::${ST}`,
-        eventsAfter: `select ${EVENT_COLUMNS} from ${E} where scope = $1::${ST} and seq > $2::bigint order by seq limit $3`,
-        replay: `select ${EVENT_COLUMNS} from ${E}
-where scope = $1::${ST} and topic = any($2::text[]) and seq > $3::bigint and seq <= $4::bigint order by seq limit $5`,
+        eventsAfter: `select ${EVENT_COLUMNS} from ${E} e where scope = $1::${ST} and seq > $2::bigint order by e.seq limit $3`,
+        replay: `select ${EVENT_COLUMNS} from ${E} e
+where scope = $1::${ST} and topic = any($2::text[]) and seq > $3::bigint and seq <= $4::bigint order by e.seq limit $5`,
         purgeEvents: `with d as (select id from ${E} where created_at < $1 order by created_at limit $2),
 x as (delete from ${E} t using d where t.id = d.id returning 1)
 select count(*)::int as n from x`,
