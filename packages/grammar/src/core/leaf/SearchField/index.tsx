@@ -9,7 +9,6 @@ import {
     FieldLabel,
     FieldSkeletonScope,
     loadingFieldProps,
-    fieldVariantAttributes,
     vendorFieldProps,
     type FieldControlProps,
     type FieldSizeProps,
@@ -86,7 +85,6 @@ const SearchFieldControl = ({
     ...field
 }: Omit<SearchFieldProps, "isLoading">) => {
     // A search box is the field tone wherever it stands (page ground or surface), with no border or shadow of its own.
-    const variant = "secondary" as const
     return (
         <HeroSearchField
             data-tier="leaf"
@@ -95,8 +93,6 @@ const SearchFieldControl = ({
             className="starci-core-field starci-core-search-field"
             data-grammar-search-measure={measure}
             fullWidth
-            variant={variant}
-            {...fieldVariantAttributes(variant)}
             {...vendorFieldProps({ ...field, isPending })}
             isReadOnly={field.isReadOnly === true}
             {...(value === undefined ? defaultValue === undefined ? {} : { defaultValue } : { value })}

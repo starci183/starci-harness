@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.9.0 - 2026-11-17
+
+- Added: the Grammar theme hooks (`@starci/grammar` 0.40.0, `common/theme-hooks.json`) are theme tokens of `brand.css`. `starci/theme-layer-shape` admits them there, and `starci/no-grammar-private-token` lets brand.css alone write them; every other family-prefixed name stays private, and no other stylesheet may write a hook. `vocabulary.generated.ts` gains `THEME_HOOKS`, read from the grammar snapshot (`npm run vocabulary` copies `common/theme-hooks.json`). Specs: `src/no-grammar-private-token.spec.ts`, `src/theme-layer-shape.spec.ts`, `src/vocabulary.spec.ts`.
+
 ## 2.8.0 - 2026-11-09
 
 - Changed: `starci/spacing-scale` accepts 16 (`1rem`, `16px`) as the value of the Grammar token `--grammar-inset-card` alone, the card's own inset of the Grammar 0.27.0 scale (0 4 8 12 16 24 32, where 16 is never a gap); 16 anywhere else, a padding, a gap or another token, stays off the scale. Spec: `src/spacing-scale.spec.ts`.

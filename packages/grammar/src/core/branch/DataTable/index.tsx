@@ -129,13 +129,13 @@ export type DataTableProps<Row extends DataTableRow> = NoChildren & DataTableRow
     /** Container inline size in px below which `low` priority columns collapse into the row. Default 640. */
     readonly collapseBelow?: number
     /**
-     * `card` (default): the table standing alone is a white card (0.37.8, replacing the 0.36.0 HeroUI grey frame): the card radius, the shadow on the pink well and a 1px
-     * border on a white surface, the column labels (12, muted) on the white, 1px full-width dividers under the labels and between rows, and the `footer` under the last row
-     * behind a full-width line. No grey frame, gutter or header strip. There is no wrapper around it
-     * (the single-child-card law: never wrap a lone table in a SurfaceCard; title it with a Section head and put one `caption` under it).
-     * `frame`: the same white face with no radius, shadow or edge of its own, for a host that is itself the card (a
-     * `SurfaceCard kind="table"`). `none`: plain hairline rows under a muted heading with no container paint, for a table inside a card
-     * (full bleed) that must not be a surface inside a surface.
+     * `none` (default, 0.40.0): the table sits flat on whatever holds it: plain hairline rows (`--separator`) under a muted heading row with
+     * no container paint (no fill, radius, shadow or edge), and the `footer` under the last row behind a full-width line. A table is a
+     * collection, not an object, so it is never a card of its own: on the page it stands on the page ground under its `Section` head and
+     * caption, and inside a card it runs full bleed. There is no wrapper around it (the single-child-card law: never wrap a lone table in a
+     * SurfaceCard). `card`: the table drawn as its own white card (the card radius, the shadow on the page ground and a 1px border on a white
+     * surface), the column labels (12, muted) on the white, 1px full-width dividers; the default before 0.40.0, kept for an app that wants it.
+     * `frame`: the same white face with no radius, shadow or edge of its own, for a host that is itself the card (a `SurfaceCard kind="table"`).
      */
     readonly surface?: "card" | "frame" | "none"
     /**
@@ -376,7 +376,7 @@ export const DataTable = <Row extends DataTableRow>({
     maxBlockSize,
     onRowAction,
     collapseBelow = DEFAULT_COLLAPSE_BELOW,
-    surface = "card",
+    surface = "none",
     footer,
     resizable = false,
     id: tableId,
@@ -660,6 +660,6 @@ export const DataTable = <Row extends DataTableRow>({
             {footer === undefined || isLoading || failed ? null : <HeroTable.Footer className="starci-core-data-table-footer" data-grammar-table-footer="true">{footer}</HeroTable.Footer>}
         </HeroTable>
     )
-    // The table is a white card (0.37.8: labels on the white, 1px row dividers, the footer behind a line): no wrapper. On a white surface it takes the border and drops the shadow (CSS).
+    // No wrapper: the table is flat by default (`none`, 0.40.0); `card` draws its own white card, which on a white surface takes the border and drops the shadow (CSS).
     return table
 }

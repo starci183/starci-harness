@@ -34,7 +34,7 @@ const PINS: readonly { readonly selector: string; readonly holds: readonly strin
     { selector: ".starci-core-page-container", holds: ["margin-inline: auto"] },
     { selector: ".starci-core-page-header .starci-core-page-container", holds: ["width: 100%", "margin-inline: 0"] },
     { selector: '.starci-core-surface-zone:not([data-grammar-zone="figures"]) .starci-core-text:not([data-size="figure"])', holds: ["font-size: var(--grammar-text-sm)"] },
-    { selector: ".starci-core-surface", holds: ["border: 0", "box-shadow: var(--surface-shadow)"] },
+    { selector: ".starci-core-surface", holds: ["border: var(--starci-core-card-border, 0)", "box-shadow: var(--surface-shadow)"] },
     { selector: ".starci-core-section-list", holds: ["border: 0", "border-radius: var(--starci-core-surface-radius)"] },
     { selector: '.starci-core-data-table[data-grammar-table-surface="card"]', holds: ["border-radius: var(--starci-core-table-radius)", "box-shadow: var(--surface-shadow)"] },
     { selector: ".starci-core-data-table:not([data-grammar-table-surface=\"none\"])", holds: ["background: var(--surface)", "border: 0"] },

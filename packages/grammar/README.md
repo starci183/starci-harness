@@ -724,7 +724,7 @@ A `sm` Button never carries an icon. The second tab layer is `Page header.subTab
 
 **The single-child-card law.** A card groups two or more different parts (figures, a list, actions) or carries zones
 (tabs, search, head actions). A table, list or chart standing alone is the surface: a `Section` titles it (`title`) and one
-muted line goes under it (`Section caption`). A standalone `DataTable` sits in its own card (edge, card radius, card shadow; HeroUI's native look inside); a `Section kind="list"` draws the same card edge. Lint `single-child-card` refuses the card around a lone one. Text
+muted line goes under it (`Section caption`). A standalone `DataTable` is flat by default (`surface="none"`, 0.40.0: hairline rows, no fill, radius, shadow or edge; `surface="card"` draws its own white card); a `Section kind="list"` draws the card edge. Lint `single-child-card` refuses the card around a lone one. Text
 in a card zone (a selection count, a filter caption, a hint) is sm 13.
 
 **The surface-in-surface law.** A list of rows inside a surface (a card body, a drawer or dialog, a pane band, a rail or
@@ -791,12 +791,13 @@ a surface: the top layer is raised and a nested layer is subordinate; never rais
 Each family's DNA owns the paint. SurfaceCard and bounded
 SurfaceAccordionCard derive their depth from the parent context. SurfaceAccordionCard defaults to
 `frame="bounded"`; `frame="unpainted"` and Rail pass the parent's context through.
-Omit a field's `variant`: Input, CopyField, SearchField, Textarea, NumberField, DateField, TimeField, Select,
-ComboBox, DatePicker, DateRangePicker, Checkbox, CheckboxGroup, RadioGroup, PressableField and OtpInput use `secondary`
-inside these surfaces and `primary` outside. Overlay triggers keep their surrounding context.
-Tabs also default to `secondary` inside a surface and `primary` on the page background. The FE
-canon's `FE_NESTED_VARIANT` rejects static field variants throughout app code and explicit primary
-Tabs inside a painted surface. `FE_GRAMMAR_LAYOUT_ONLY` rejects application paint utilities,
+A field has ONE look wherever it stands (0.40.0): Input, CopyField, SearchField, Textarea, NumberField, DateField, TimeField,
+Select, ComboBox, DatePicker, DateRangePicker, Checkbox, CheckboxGroup, RadioGroup, PressableField and OtpInput draw HeroUI's
+`primary` field in these surfaces and outside them alike; the theme gives it its edge (`--field-border`, `--field-border-width`).
+There is no field `variant` to pass. Overlay triggers keep their surrounding context.
+Tabs are the underline (`secondary`) wherever they stand; the pill (`appearance="primary"`) is chosen by meaning
+(a mode switch of two to four options, R380), never by the surface. The FE canon's `FE_NESTED_VARIANT` rejects a field
+`variant` written in app code. `FE_GRAMMAR_LAYOUT_ONLY` rejects application paint utilities,
 arbitrary paint properties and inline style paint; application CSS carries layout only.
 
 ListBox defaults to `inset="panel"` inside the same context. Its box aligns with the panel's search
@@ -875,6 +876,14 @@ person uses Avatar. The default `layout="row"` keeps the overlapping member row 
   the widest the content of a page or a workspace's main column grows; it is centered with the existing inline padding, so a wide
   screen never stretches the blocks (the page background, the header band and the aside stay full width). An app sets HeroUI's
   `--radius` and `--field-radius` and leaves these two alone unless its brand needs another card radius or measure.
+- **Theme hooks.** `@starci/grammar/theme-hooks.json` (`src/common/theme-hooks.json`) lists the optional custom properties an app's
+  theme layer may set on `:root` and its dark blocks beside HeroUI's tokens: each hook's name, its fallback (the look an app that
+  sets none keeps), the part it paints and what it means. The Grammar never declares a hook (a declaration on the grammar root
+  would shadow the app's value); every rule reads it with its fallback, which `npm run check:hooks` holds. They cover a card's edge
+  on the page ground and a whole-action card's hover and press, the selected table row, the current page and today's schedule
+  cell, the Sidebar's selected item (fill, words, weight and a start-edge bar), the underline colour of Tabs, the field focus ring,
+  the toggle plates (ChoiceChips, FilterButtonGroup, RadioGroup rows, the Select pill), the destructive entry button's outline, the
+  chat faces, the Quote, and a selected FlowGraph step's ground.
 - **Spacing.** Every family uses the Common 4px scale (`COMMON_SPACING_SCALE`,
   `COMMON_SPACING_TOKENS`), and Common's `--grammar-*-gap` / `--grammar-page-inset` variables.
 - **Dark.** The mode is the app's: `.dark` (or `data-theme="dark"`) on `html`, as HeroUI reads it. The roots take no

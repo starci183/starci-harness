@@ -30,10 +30,13 @@ export const figureItems = (items: readonly Figure[], isLoading: boolean): reado
  * Inside a Pane (a `Section kind="figures"` in a pane) the strip is one bordered row: the cells stay in one row down to 20rem of the
  * strip's own width (2 x 2 below it), the value at the 2xl step so four cells fit a 380px list pane (G9c-1).
  * A real `<dl>`: the term, then the figure and its unit, then its meta as a second `<dd>` of the same term.
+ * `ribbon` (0.40.0) draws the strip as a ribbon wherever it stands: a hairline on its top and bottom edges, the same dividers between cells,
+ * open ends, no radius and no fill. It wins over the card and pane placements.
  */
-export const FigureCells = ({ items, isLoading, isDisabled = false }: { readonly items: readonly Figure[]; readonly isLoading: boolean; readonly isDisabled?: boolean }) => {
+export const FigureCells = ({ items, isLoading, isDisabled = false, ribbon = false }: { readonly items: readonly Figure[]; readonly isLoading: boolean; readonly isDisabled?: boolean; readonly ribbon?: boolean }) => {
     const pending = (value: string | number) => <SkeletonPlaceholder>{value}</SkeletonPlaceholder>
-    const placement = usePaneContext() === undefined ? "card" : "pane"
+    const inPane = usePaneContext() !== undefined
+    const placement = ribbon ? "ribbon" : inPane ? "pane" : "card"
     return (
         <dl
             className="starci-core-description-list"

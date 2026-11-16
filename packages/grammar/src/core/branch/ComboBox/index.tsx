@@ -1,7 +1,6 @@
 "use client"
 
 import { LoadingScope, withRegionLoading } from "../../regionScope.js"
-import { useFieldVariant } from "../../surfaceContext.js"
 import {
     ComboBox as HeroComboBox,
     Input as HeroInput,
@@ -16,7 +15,6 @@ import {
     FieldLabel,
     FieldSkeletonScope,
     loadingFieldProps,
-    fieldVariantAttributes,
     useGrammarPortal,
     vendorFieldProps,
     type FieldControlProps,
@@ -91,7 +89,6 @@ const ComboBoxControl = ({
     menuTrigger = "input",
     ...field
 }: Omit<ComboBoxProps, "isLoading">) => {
-    const variant = useFieldVariant()
     const { anchor, portalProps } = useGrammarPortal()
     const [chosen, setChosen] = useState<string | null>(defaultValue ?? null)
     const [typed, setTyped] = useState<string | null>(null)
@@ -105,8 +102,6 @@ const ComboBoxControl = ({
             data-contract="A11Y-1 FEEDBACK-1 STATE-1"
             className="starci-core-field starci-core-combo-box"
             fullWidth
-            variant={variant}
-            {...fieldVariantAttributes(variant)}
             {...vendorFieldProps({ ...field, isPending })}
             isReadOnly={field.isReadOnly === true}
             allowsCustomValue={allowsCustomValue}

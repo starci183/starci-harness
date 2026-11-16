@@ -42,6 +42,11 @@ type HeadlessList = ListSection & HeadlessFigures
 type FiguresSection = NoChildren & {
     readonly kind: "figures"
     readonly items: readonly Figure[]
+    /**
+     * Draws the strip as a ribbon (0.40.0): a full-width band with a hairline (`--separator`) on its top and bottom edges only, the cells divided by
+     * vertical hairlines, open ends, no radius and no fill. Off by default: the strip keeps its card or pane placement.
+     */
+    readonly ribbon?: boolean
 } & ((SectionHeadProps & { readonly ariaLabel?: never }) | HeadlessFigures)
 
 /** The status every section takes from its read (contexts/ui/loading.md). */
@@ -128,7 +133,8 @@ const ListBody = ({ list, isLoading, error }: { readonly list: ListSection; read
  * list that searches, filters or pages: typed `items`, an optional `filter` and a required `empty` state. Its title owns
  * the list heading and accessible name. A standalone bounded worklist on the page canvas is `SurfaceCard kind="list"`.
  * `kind="figures"` reuses the unpainted FigureCells strip inside an existing surface; a required `ariaLabel` keeps an
- * already-headed strip headless, while `title` gives a strip its own visible heading. Those forms cannot be mixed.
+ * already-headed strip headless, while `title` gives a strip its own visible heading. Those forms cannot be mixed. `ribbon` draws the strip
+ * as a band between two hairlines on the page (no card).
  */
 export const Section = (props: SectionProps) => {
     const { title, description, count, isAttention, fact, meta, action, headingLevel = 2, id, error } = props
@@ -138,7 +144,7 @@ export const Section = (props: SectionProps) => {
     const body = (() => {
         if (props.kind === "list") return <ListBody list={props} isLoading={isLoading} error={error} />
         if (failed) return <ErrorView error={error} />
-        if (props.kind === "figures") return <FigureCells items={figureItems(props.items, isLoading)} isLoading={isLoading} />
+        if (props.kind === "figures") return <FigureCells items={figureItems(props.items, isLoading)} isLoading={isLoading} ribbon={props.ribbon === true} />
         return <LoadingScope isLoading={isLoading}>{props.children}</LoadingScope>
     })()
     return (

@@ -32,8 +32,9 @@ Choice `text-field.choose.columns`: how the fields of one form are laid out. The
 | pairs | short fields that read as pairs (name and plan, retries and URL) in a wide owner | `Grid kind="form"` (two columns once its own container is 31rem wide; the 30rem `measure="form"` stays one column); its rows align on the control line | DNA-COMMON-FIELD-ROW-CONTROL-LINE |
 
 ## Variants
-None for the app: the treatment follows the layer, canvas or inside a surface, resolved by the grammar
-(`DNA-COMMON-FIELD-BY-LAYER`; the prop types have no `variant`).
+None: a field has one look on the canvas and inside a surface alike (`DNA-COMMON-FIELD-ONE-LOOK`; the prop types have no
+`variant`). The theme sets it through the field tokens (`--field-background`, `--field-border`, `--field-border-width`, `--field-border-focus`)
+and the field ring hooks (owner: @starci/grammar `src/common/theme-hooks.json`).
 
 ## Size
 The parts of every field stand on the Field rule (label 8, help 4, field to field 24, [field](field.md) FIELD-1..4).

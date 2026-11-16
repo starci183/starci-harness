@@ -2,7 +2,6 @@
 
 import { FieldSkeletonScope, loadingFieldProps } from "../../leaf/Field/index.js"
 import { withRegionLoading } from "../../regionScope.js"
-import { useFieldVariant } from "../../surfaceContext.js"
 import {
     DateField as HeroDateField,
     DateRangePicker as HeroDateRangePicker,
@@ -13,7 +12,6 @@ import {
     FieldDescription,
     FieldErrorText,
     FieldLabel,
-    fieldVariantAttributes,
     useGrammarPortal,
     vendorFieldProps,
     type FieldControlProps,
@@ -67,7 +65,6 @@ const DateRangePickerControl = ({
     endName,
     ...field
 }: Omit<DateRangePickerProps, "isLoading">) => {
-    const variant = useFieldVariant()
     const { anchor, portalProps } = useGrammarPortal()
     return (
         <HeroDateRangePicker
@@ -75,7 +72,6 @@ const DateRangePickerControl = ({
             data-component="DateRangePicker"
             data-contract="A11Y-1 FEEDBACK-1"
             className="starci-core-field starci-core-date-picker"
-            {...fieldVariantAttributes(variant)}
             {...vendorFieldProps(field)}
             isReadOnly={field.isReadOnly === true}
             granularity={granularity}
@@ -90,7 +86,7 @@ const DateRangePickerControl = ({
         >
             {anchor}
             <FieldLabel isHidden={field.isLabelHidden} isRequired={field.isRequired}>{field.label}</FieldLabel>
-            <HeroDateField.Group className="starci-core-date-group" variant={variant} data-grammar-field-control="true">
+            <HeroDateField.Group className="starci-core-date-group" data-grammar-field-control="true">
                 <DateSegments slot="start" />
                 <HeroDateRangePicker.RangeSeparator className="starci-core-date-range-separator" />
                 <DateSegments slot="end" />

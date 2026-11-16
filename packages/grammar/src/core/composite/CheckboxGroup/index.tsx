@@ -1,7 +1,6 @@
 "use client"
 
 import { withRegionLoading } from "../../regionScope.js"
-import { useFieldVariant } from "../../surfaceContext.js"
 import { Checkbox as HeroCheckbox, CheckboxGroup as HeroCheckboxGroup } from "@heroui/react"
 import type { ReactNode } from "react"
 import {
@@ -10,7 +9,6 @@ import {
     FieldLabel,
     FieldSkeletonScope,
     loadingFieldProps,
-    fieldVariantAttributes,
     vendorFieldProps,
     type FieldControlProps,
 } from "../../leaf/Field/index.js"
@@ -74,7 +72,6 @@ const CheckboxGroupControl = ({
     isDataLoading = false,
     ...field
 }: Omit<CheckboxGroupProps, "isLoading"> & { readonly isDataLoading?: boolean }) => {
-    const variant = useFieldVariant()
     return (
         <HeroCheckboxGroup
             data-tier="composite"
@@ -82,8 +79,6 @@ const CheckboxGroupControl = ({
             data-contract="A11Y-1 FEEDBACK-1 STATE-1"
             data-grammar-orientation={orientation}
             className="starci-core-field starci-core-choice-group"
-            variant={variant}
-            {...fieldVariantAttributes(variant)}
             {...vendorFieldProps(field)}
             isReadOnly={field.isReadOnly === true}
             {...(value === undefined ? defaultValue === undefined ? {} : { defaultValue: [...defaultValue] } : { value: [...value] })}
@@ -98,7 +93,6 @@ const CheckboxGroupControl = ({
                         value={option.value}
                         isDisabled={option.isDisabled === true}
                         className="starci-core-choice starci-core-checkbox"
-                        variant={variant}
                         data-grammar-option="true"
                     >
                         <CheckboxItem label={option.label} description={option.description} isStandalone={false} isDataLoading={isDataLoading} />

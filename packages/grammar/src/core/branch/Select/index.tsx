@@ -1,7 +1,6 @@
 "use client"
 
 import { LoadingScope, withRegionLoading } from "../../regionScope.js"
-import { useFieldVariant } from "../../surfaceContext.js"
 import { useCollectionItemPresentation, type ItemDescriptionLines } from "../../collectionItem.js"
 import {
     Description as HeroDescription,
@@ -18,7 +17,6 @@ import {
     FieldLabel,
     FieldSkeletonScope,
     loadingFieldProps,
-    fieldVariantAttributes,
     useGrammarPortal,
     vendorFieldProps,
     type FieldControlProps,
@@ -127,7 +125,6 @@ const SelectControl = ({
     isPending = false,
     ...field
 }: Omit<SelectProps, "isLoading">) => {
-    const variant = useFieldVariant()
     const [heldValue] = useState<string | null>(value ?? defaultValue ?? null)
     const { anchor, portalProps } = useGrammarPortal()
     const readOnly = field.isReadOnly === true
@@ -144,8 +141,6 @@ const SelectControl = ({
             className="starci-core-select"
             data-grammar-select-appearance={appearance}
             fullWidth
-            variant={variant}
-            {...fieldVariantAttributes(variant)}
             {...vendorFieldProps({ ...field, isPending })}
             // The vendor draws its own English "Select an item" when none is given; the Grammar speaks no language of its own, so the default is an empty (but sized) value.
             placeholder={placeholder ?? "\u00a0"}

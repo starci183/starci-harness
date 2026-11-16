@@ -5,7 +5,8 @@
  * themes through HeroUI's tokens in `brand.css` (`theme-layer-shape`) and composes through the grammar's props.
  */
 import { makeRule } from "./lib/make-rule.ts"
-import { FAMILY_PREFIXES } from "./lib/vocabulary.ts"
+import { fileKind, fileOf } from "./lib/scope.ts"
+import { FAMILY_PREFIXES, isThemeHook } from "./lib/vocabulary.ts"
 
 // The prefixes are plain custom-property names (letters and hyphens), so they need no escaping.
 const READ = new RegExp(String.raw`var\(\s*(${FAMILY_PREFIXES.join("|")})[\w-]*`, "g")
@@ -17,8 +18,10 @@ export const noGrammarPrivateToken = makeRule(
     read: (name: string) => `\`${name}\` is a private token of the grammar and is read by an app stylesheet. It is the grammar's plumbing and may change; read HeroUI's tokens.`,
   },
   ({ root, report }) => {
+    const isBrand = fileKind(fileOf(root)) === "brand"
     root.walkDecls((decl) => {
-      if (FAMILY_PREFIXES.some((prefix) => decl.prop.startsWith(prefix))) report(decl, "written", [decl.prop], { word: decl.prop })
+      const hookInBrand = isBrand && isThemeHook(decl.prop)
+      if (!hookInBrand && FAMILY_PREFIXES.some((prefix) => decl.prop.startsWith(prefix))) report(decl, "written", [decl.prop], { word: decl.prop })
       for (const match of decl.value.matchAll(READ)) {
         const name = /var\(\s*(--[\w-]+)/.exec(match[0])?.[1] ?? match[0]
         report(decl, "read", [name], { word: name })

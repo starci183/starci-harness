@@ -307,8 +307,8 @@ Soft faces are translucent, so contrast is measured on the composed pixels, neve
 
 **The layer chain** holds on every screen: page background, then an owning surface, then its nested controls.
 Grouped content stands in a surface; only page-level marks (a brand lockup, the page heading) sit on the
-background. A form is one unit: its fields and its actions stand in the same surface. Controls in a surface take the
-grammar's treatment, resolved from context; the app never passes a field variant (the prop types have none).
+background. A form is one unit: its fields and its actions stand in the same surface. A field has one look in a surface and on
+the background alike; the app never passes a field variant (the prop types have none).
 
 ### Boundary
 `separator` draws a line **between** things; `border` outlines **one** thing.

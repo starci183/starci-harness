@@ -2,7 +2,6 @@
 
 import { withRegionLoading } from "../../regionScope.js"
 import { SkeletonPlaceholder } from "../../leaf/Skeleton/index.js"
-import { useFieldVariant } from "../../surfaceContext.js"
 import { Radio as HeroRadio, RadioGroup as HeroRadioGroup } from "@heroui/react"
 import {
     FieldDescription,
@@ -10,7 +9,6 @@ import {
     FieldLabel,
     FieldSkeletonScope,
     loadingFieldProps,
-    fieldVariantAttributes,
     vendorFieldProps,
     type FieldControlProps,
 } from "../../leaf/Field/index.js"
@@ -66,7 +64,6 @@ const RadioGroupControl = ({
     isDataLoading = false,
     ...field
 }: Omit<RadioGroupProps, "isLoading"> & { readonly isDataLoading?: boolean }) => {
-    const variant = useFieldVariant()
     return (
         <HeroRadioGroup
             data-tier="composite"
@@ -76,8 +73,6 @@ const RadioGroupControl = ({
             data-grammar-radio-appearance={appearance}
             className="starci-core-field starci-core-choice-group"
             orientation={orientation}
-            variant={variant}
-            {...fieldVariantAttributes(variant)}
             {...vendorFieldProps(field)}
             isReadOnly={field.isReadOnly === true}
             {...(value === undefined ? defaultValue === undefined ? {} : { defaultValue } : { value })}

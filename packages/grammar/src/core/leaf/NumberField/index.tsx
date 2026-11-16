@@ -1,7 +1,6 @@
 "use client"
 
 import { withRegionLoading } from "../../regionScope.js"
-import { useFieldVariant } from "../../surfaceContext.js"
 import { NumberField as HeroNumberField } from "@heroui/react"
 import {
     FieldDescription,
@@ -9,7 +8,6 @@ import {
     FieldLabel,
     FieldSkeletonScope,
     loadingFieldProps,
-    fieldVariantAttributes,
     vendorFieldProps,
     type FieldControlProps,
     type FieldSizeProps,
@@ -69,7 +67,6 @@ const NumberFieldControl = ({
     hideSteppers = false,
     ...field
 }: Omit<NumberFieldProps, "isLoading">) => {
-    const variant = useFieldVariant()
     return (
         <HeroNumberField
             data-tier="leaf"
@@ -77,8 +74,6 @@ const NumberFieldControl = ({
             data-contract="A11Y-1 FEEDBACK-1 STATE-1"
             className="starci-core-field starci-core-number-field"
             fullWidth
-            variant={variant}
-            {...fieldVariantAttributes(variant)}
             {...vendorFieldProps(field)}
             isReadOnly={field.isReadOnly === true}
             {...(value === undefined ? defaultValue === undefined ? {} : { defaultValue } : { value })}

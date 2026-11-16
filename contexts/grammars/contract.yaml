@@ -256,7 +256,7 @@ roles:
     sizes: { steps: [md], default: md }
     states: [rest, focus-visible, invalid, disabled, read-only, skeleton]
     grammarMayChange: [fill, border, focus treatment, corner via field-radius]
-    dna: [DNA-COMMON-FIELD-MD, DNA-COMMON-FIELD-BY-LAYER, DNA-COMMON-FIELD-NAME-IS-LABEL, DNA-COMMON-FIELD-ERROR-DESCRIBES, DNA-COMMON-FIELD-ONE-RING, DNA-COMMON-FIELD-ANATOMY-ORDER, DNA-COMMON-FIELD-ROW-CONTROL-LINE, DNA-COMMON-CHOICE-RING, DNA-COMMON-FIELD-SM]
+    dna: [DNA-COMMON-FIELD-MD, DNA-COMMON-FIELD-ONE-LOOK, DNA-COMMON-FIELD-NAME-IS-LABEL, DNA-COMMON-FIELD-ERROR-DESCRIBES, DNA-COMMON-FIELD-ONE-RING, DNA-COMMON-FIELD-ANATOMY-ORDER, DNA-COMMON-FIELD-ROW-CONTROL-LINE, DNA-COMMON-CHOICE-RING, DNA-COMMON-FIELD-SM]
 
   - id: select
     ui: ui/components/select.md
@@ -268,7 +268,7 @@ roles:
     sizes: { steps: [md], default: md }
     states: [open, selected, focus-visible, invalid, disabled, pending, skeleton]
     grammarMayChange: [trigger and option paint, popover edge, arrangement indicatorSide]
-    dna: [DNA-COMMON-FIELD-MD, DNA-COMMON-OVERLAY-IN-ROOT, DNA-COMMON-FIELD-BY-LAYER, DNA-COMMON-FIELD-NAME-IS-LABEL, DNA-COMMON-FIELD-ERROR-DESCRIBES, DNA-COMMON-FIELD-ANATOMY-ORDER, DNA-COMMON-FIELD-ROW-CONTROL-LINE, DNA-COMMON-FIELD-SM, DNA-COMMON-SELECT-NO-VENDOR-ENGLISH]
+    dna: [DNA-COMMON-FIELD-MD, DNA-COMMON-OVERLAY-IN-ROOT, DNA-COMMON-FIELD-ONE-LOOK, DNA-COMMON-FIELD-NAME-IS-LABEL, DNA-COMMON-FIELD-ERROR-DESCRIBES, DNA-COMMON-FIELD-ANATOMY-ORDER, DNA-COMMON-FIELD-ROW-CONTROL-LINE, DNA-COMMON-FIELD-SM, DNA-COMMON-SELECT-NO-VENDOR-ENGLISH]
 
   - id: copy-field
     ui: ui/components/text-field.md
@@ -281,7 +281,7 @@ roles:
     sizes: { steps: [md], default: md }
     states: [rest, focus-visible, pending, copied (about 2s, announced politely), failed, disabled, skeleton]
     grammarMayChange: [the field frame's paint as Input's, the action glyph paint]
-    dna: [DNA-COMMON-FIELD-MD, DNA-COMMON-FIELD-BY-LAYER, DNA-COMMON-FIELD-ANATOMY-ORDER, DNA-COMMON-FIELD-ROW-CONTROL-LINE, DNA-COMMON-COPYFIELD-MASKED, DNA-COMMON-COPYFIELD-TAIL]
+    dna: [DNA-COMMON-FIELD-MD, DNA-COMMON-FIELD-ONE-LOOK, DNA-COMMON-FIELD-ANATOMY-ORDER, DNA-COMMON-FIELD-ROW-CONTROL-LINE, DNA-COMMON-COPYFIELD-MASKED, DNA-COMMON-COPYFIELD-TAIL]
 
   - id: dialog
     ui: ui/components/dialog-drawer.md
@@ -919,18 +919,11 @@ mustKeep:
       law: Arrow keys move focus between tabs.
       measure: { kind: interaction, select: '[data-component="Tabs"] [role="tab"][aria-selected="true"]', act: [focus, press ArrowRight], then: { select: 'document :focus', kind: a11y, metric: role, op: "=", value: tab } }
       owner: vendor/parity.yaml tabs
-    - id: DNA-COMMON-FIELD-BY-LAYER
+    - id: DNA-COMMON-FIELD-ONE-LOOK
       role: [input, select, copy-field]
-      law: A field on the canvas takes the primary treatment and a field inside a surface the secondary one, never by app choice; a search box is the field tone (secondary) in both places.
-      measure:
-        kind: attr
-        metric: data-grammar-variant
-        op: "="
-        cases:
-          - { select: ':is([data-component="Input"],[data-component="Select"],[data-component="NumberField"],[data-component="Textarea"],[data-component="CopyField"]):not([data-grammar-nesting="surface"] *)', value: primary }
-          - { select: '[data-grammar-nesting="surface"] :is([data-component="Input"],[data-component="Select"],[data-component="NumberField"],[data-component="Textarea"],[data-component="CopyField"])', value: secondary }
-          - { select: '[data-component="SearchField"]', value: secondary }
-      owner: FE-CSS-1; UI-10; U6-5 (a search box is the field tone wherever it stands)
+      law: A field has one look wherever it stands (the page, a card, a pane, a dialog, a drawer, a popover, a bar); no host changes it and the app never chooses one. The vendor's secondary field is never drawn.
+      measure: { kind: count, select: ':is(.input--secondary, .input-group--secondary, .textarea--secondary, .select--secondary, .number-field--secondary, .search-field--secondary, .date-input-group--secondary, .combo-box--secondary)', op: "=", value: 0 }
+      owner: FE-CSS-1; UI-10
     - id: DNA-COMMON-FIELD-NAME-IS-LABEL
       role: [input, select]
       law: A field's accessible name is its visible label, never its placeholder.

@@ -6,7 +6,6 @@ import { useCallback, useId, useRef } from "react"
 import { InputOTP, Label as HeroLabel, REGEXP_ONLY_DIGITS } from "@heroui/react"
 import { horizontalScrollRegionClassName } from "../../classNames.js"
 import { HorizontalScrollFrame } from "../../HorizontalScrollFrame.js"
-import { useFieldVariant } from "../../surfaceContext.js"
 import type { NoChildren } from "../../tier.js"
 
 export type OtpInputProps = NoChildren & {
@@ -41,7 +40,6 @@ export type OtpInputProps = NoChildren & {
  * which the focused input already reaches, so the region adds no extra Tab stop.
  */
 const OtpInputControl = (props: Omit<OtpInputProps, "isLoading">) => {
-    const variant = useFieldVariant()
     const regionRef = useRef<HTMLDivElement>(null)
     const generatedLabelId = useId()
     const onChange = useCallback((nextValue: string) => {
@@ -61,7 +59,6 @@ const OtpInputControl = (props: Omit<OtpInputProps, "isLoading">) => {
             className={horizontalScrollRegionClassName}
             data-contract="PADDING-1 MEASURE-3 OVERFLOW-3 OVERFLOW-5"
             data-grammar-overflow="always"
-            data-grammar-variant={variant}
             hideScrollBar
             orientation="horizontal"
             scrollPreviousLabel="Scroll left"
@@ -82,7 +79,6 @@ const OtpInputControl = (props: Omit<OtpInputProps, "isLoading">) => {
                 aria-invalid={props.isInvalid === true ? true : undefined}
                 aria-describedby={props.describedBy}
                 {...(labelId === undefined ? {} : { "aria-labelledby": labelId })}
-                variant={variant}
                 onChange={onChange}
             >
                 <InputOTP.Group>
@@ -96,7 +92,7 @@ const OtpInputControl = (props: Omit<OtpInputProps, "isLoading">) => {
 
     if (props.label === undefined) return control
     return (
-        <div className="starci-core-otp-field" data-grammar-otp-field="true" data-component="OtpInput" data-tier="branch" data-grammar-variant={variant}>
+        <div className="starci-core-otp-field" data-grammar-otp-field="true" data-component="OtpInput" data-tier="branch">
             <HeroLabel
                 className={props.isLabelHidden === true ? "starci-core-visually-hidden" : "starci-core-otp-label"}
                 htmlFor={props.id}

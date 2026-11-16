@@ -96,7 +96,7 @@ components:
     keep: [one slot per character]
     customMayChange: [slot paint]
   - id: select
-    keep: [required Trigger and Popover, Value, Indicator, embedded ListBox Label Description, field variants]
+    keep: [required Trigger and Popover, Value, Indicator, embedded ListBox Label Description]
     customMayChange: [trigger paint, popover edge, indicator side]
   - id: combo-box
     keep: [InputGroup trigger, required Popover, embedded ListBox]

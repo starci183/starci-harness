@@ -2,7 +2,6 @@
 
 import { FieldSkeletonScope, loadingFieldProps } from "../Field/index.js"
 import { withRegionLoading } from "../../regionScope.js"
-import { useFieldVariant } from "../../surfaceContext.js"
 import { Icon, type IconSource } from "../Icon/index.js"
 import {
     pressableFieldClassName,
@@ -37,7 +36,6 @@ export type PressableFieldProps = NoChildren & {
  * field is one press target - so it carries its own accessible name and no form value.
  */
 const PressableFieldControl = ({ label, placeholder, source, shortcut, isDisabled = false, onPress }: Omit<PressableFieldProps, "isLoading">) => {
-    const variant = useFieldVariant()
     return (
         <button
             type="button"
@@ -45,7 +43,6 @@ const PressableFieldControl = ({ label, placeholder, source, shortcut, isDisable
             disabled={isDisabled}
             data-tier="leaf"
             data-component="PressableField"
-            data-grammar-variant={variant}
             data-disabled={isDisabled ? "true" : "false"}
             data-contract="MEASURE-2 PADDING-3 GAP-2 SURFACE-4 TONE-1"
             className={pressableFieldClassName}

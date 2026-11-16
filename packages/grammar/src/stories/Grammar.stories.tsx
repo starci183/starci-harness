@@ -188,7 +188,7 @@ export const Leaves: Story = {
         </div>
         <Divider label="or" />
         <Input id="i1" name="a" label="Email" kind="email" placeholder="you@example.com" />
-        <Input id="i2" name="b" label="On a surface — secondary" kind="text" placeholder="secondary field" />
+        <Input id="i2" name="b" label="Name" kind="text" placeholder="Your name" />
         <Input id="i3" name="c" label="With error" isInvalid errorMessage="This value is not accepted." defaultValue="bad input" />
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
           <Heading level={2}>Heading</Heading>

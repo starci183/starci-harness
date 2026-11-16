@@ -2,7 +2,6 @@
 
 import { withRegionLoading } from "../../regionScope.js"
 import { SkeletonPlaceholder } from "../Skeleton/index.js"
-import { useFieldVariant } from "../../surfaceContext.js"
 import { Checkbox as HeroCheckbox } from "@heroui/react"
 import type { ReactNode } from "react"
 import {
@@ -11,7 +10,6 @@ import {
     FieldLabel,
     FieldSkeletonScope,
     loadingFieldProps,
-    fieldVariantAttributes,
     vendorFieldProps,
     type FieldControlProps,
 } from "../Field/index.js"
@@ -77,15 +75,12 @@ const CheckboxControl = ({
     isIndeterminate = false,
     ...field
 }: Omit<CheckboxProps, "isLoading">) => {
-    const variant = useFieldVariant()
     return (
         <HeroCheckbox
             data-tier="leaf"
             data-component="Checkbox"
             data-contract="A11Y-1 STATE-1"
             className="starci-core-choice starci-core-checkbox"
-            variant={variant}
-            {...fieldVariantAttributes(variant)}
             {...vendorFieldProps(field)}
             isReadOnly={field.isReadOnly === true}
             isIndeterminate={isIndeterminate}

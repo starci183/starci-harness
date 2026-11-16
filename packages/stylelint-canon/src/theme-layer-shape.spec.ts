@@ -93,3 +93,8 @@ test("no rule of the canon refuses a brand layer that sets HeroUI's tokens, what
 `
   assert.deepEqual((await lint(code, FILES.brand)).map((warning) => `${warning.rule}: ${warning.text}`), [])
 })
+
+test("a published theme hook is a theme token of brand.css", async () => {
+  const { lintRule, FILES } = await import("./testing.ts")
+  assert.deepEqual(await lintRule("theme-layer-shape", ":root { --starci-core-tabs-indicator: var(--foreground); }", FILES.brand), [])
+})

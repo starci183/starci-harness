@@ -1,7 +1,6 @@
 "use client"
 
 import { withRegionLoading } from "../../regionScope.js"
-import { useFieldVariant } from "../../surfaceContext.js"
 import { FieldDescription, FieldSkeletonScope, loadingFieldProps, type FieldSizeProps } from "../../leaf/Field/index.js"
 import { useEffect, useState, type ClipboardEvent, type ComponentType, type ReactNode } from "react"
 import {
@@ -121,7 +120,6 @@ const InputControl = ({
     onPaste,
     autoFocus = false,
 }: Omit<InputProps, "isLoading">) => {
-    const variant = useFieldVariant()
     const [isRevealed, setIsRevealed] = useState(false)
     const kind = KINDS[kindName]
     const isSecret = kindName === "password" || kindName === "newPassword"
@@ -162,8 +160,6 @@ const InputControl = ({
             data-component="Input"
             {...(size === "sm" ? { "data-grammar-field-size": "sm" } : {})}
             fullWidth
-            variant={variant}
-            data-grammar-variant={variant}
             isInvalid={invalid}
             isDisabled={isDisabled}
             isRequired={isRequired}
@@ -189,7 +185,7 @@ const InputControl = ({
                 data-copyable={canCopy ? "true" : "false"}
             >
                 {canReveal || canCopy ? (
-                    <HeroInputGroup fullWidth variant={variant}>
+                    <HeroInputGroup fullWidth>
                         <HeroInputGroup.Input
                             id={id}
                             name={name}

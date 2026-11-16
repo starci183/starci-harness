@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.40.0 - 2026-11-17
+
+- Changed: released with the Grammar family at 0.40.0 (one field look: the surface-dependent field variant removed; `DataTable` flat by default; the figures ribbon; the theme hooks). No rule of this package changed: none read the field variant.
+
 ## 0.39.4 - 2026-11-17
 
 - Changed: released with the Grammar family at 0.39.4 (row links, `ListBoxItem.href`, FlowGraph minimap and edge routing). No rule of this package changed.

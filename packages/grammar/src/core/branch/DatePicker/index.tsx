@@ -2,7 +2,6 @@
 
 import { FieldSkeletonScope, loadingFieldProps } from "../../leaf/Field/index.js"
 import { withRegionLoading } from "../../regionScope.js"
-import { useFieldVariant } from "../../surfaceContext.js"
 import {
     Calendar as HeroCalendar,
     DateField as HeroDateField,
@@ -14,7 +13,6 @@ import {
     FieldDescription,
     FieldErrorText,
     FieldLabel,
-    fieldVariantAttributes,
     useGrammarPortal,
     vendorFieldProps,
     type FieldControlProps,
@@ -92,7 +90,6 @@ const DatePickerControl = ({
     granularity = "day",
     ...field
 }: Omit<DatePickerProps, "isLoading">) => {
-    const variant = useFieldVariant()
     const { anchor, portalProps } = useGrammarPortal()
     return (
         <HeroDatePicker
@@ -100,7 +97,6 @@ const DatePickerControl = ({
             data-component="DatePicker"
             data-contract="A11Y-1 FEEDBACK-1"
             className="starci-core-field starci-core-date-picker"
-            {...fieldVariantAttributes(variant)}
             {...vendorFieldProps(field)}
             isReadOnly={field.isReadOnly === true}
             granularity={granularity}
@@ -112,7 +108,7 @@ const DatePickerControl = ({
         >
             {anchor}
             <FieldLabel isHidden={field.isLabelHidden} isRequired={field.isRequired}>{field.label}</FieldLabel>
-            <HeroDateField.Group className="starci-core-date-group" variant={variant} data-grammar-field-control="true">
+            <HeroDateField.Group className="starci-core-date-group" data-grammar-field-control="true">
                 <DateSegments />
                 <HeroDateField.Suffix className="starci-core-date-suffix">
                     <HeroDatePicker.Trigger className="starci-core-date-trigger">

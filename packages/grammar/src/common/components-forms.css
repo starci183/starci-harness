@@ -160,7 +160,7 @@
     }
 
     .starci-core-field-control > :where(input, select, textarea):focus-visible {
-        outline: 2px solid var(--focus);
+        outline: var(--starci-core-field-ring-width, var(--grammar-ring-width)) solid var(--starci-core-field-ring, var(--focus));
         outline-offset: 2px;
     }
 
@@ -319,7 +319,7 @@
     }
 
     .starci-core-copy-field-group:has(.starci-core-copy-field-value:focus-visible) {
-        box-shadow: 0 0 0 var(--grammar-ring-width) var(--focus);
+        box-shadow: 0 0 0 var(--starci-core-field-ring-width, var(--grammar-ring-width)) var(--starci-core-field-ring, var(--focus));
     }
 
     .starci-core-copy-field-tooltip {
@@ -433,7 +433,26 @@
     }
 
     .starci-core-combo-box-group:focus-within {
-        box-shadow: 0 0 0 var(--grammar-ring-width) var(--focus);
+        box-shadow: 0 0 0 var(--starci-core-field-ring-width, var(--grammar-ring-width)) var(--starci-core-field-ring, var(--focus));
+    }
+
+    /*
+     * THE FIELD RING HOOK (0.40.0). A field's focus ring is the vendor's 2px `--focus` ring (Tailwind `ring-2 ring-focus`) on the field box, or
+     * Grammar's own ring above (ComboBox, CopyField, a native control in `Field`). Two optional tokens retune every one of them at once and leave
+     * the keyboard ring of buttons and links (`--focus`) alone: `--starci-core-field-ring` (colour, default `--focus`), e.g. a soft accent mix, and
+     * `--starci-core-field-ring-width` (default `--grammar-ring-width`, 2px). On a vendor field box the width grows through the ring offset,
+     * painted in the same colour, so the default adds nothing. An invalid field keeps the vendor's danger ring. A Select trigger takes the colour
+     * only: its vendor ring stands off the box by HeroUI's ring offset. `!important`: the vendor sets these variables in its focus rules and the
+     * sheets load in either order.
+     */
+    :is(.input, .input-group, .textarea, .number-field__group, .search-field__group, .date-input-group, .input-otp__slot):not([data-invalid="true"], [aria-invalid="true"]) {
+        --tw-ring-color: var(--starci-core-field-ring, var(--focus)) !important;
+        --tw-ring-offset-color: var(--starci-core-field-ring, var(--focus)) !important;
+        --tw-ring-offset-width: calc(var(--starci-core-field-ring-width, var(--grammar-ring-width)) - var(--grammar-ring-width)) !important;
+    }
+
+    .select:not([data-invalid="true"], [aria-invalid="true"]) .select__trigger {
+        --tw-ring-color: var(--starci-core-field-ring, var(--focus)) !important;
     }
 
     @media (forced-colors: active) {
@@ -549,6 +568,15 @@
      */
     .starci-core-button.button--secondary { --button-fg: var(--default-foreground); }
 
+    /*
+     * The destructive entry button (HeroUI "danger-soft"): the danger soft pair with no edge by default. 0.40.0: `--starci-core-button-danger-soft`
+     * (fill, default `--danger-soft`) and `--starci-core-button-danger-soft-border` (a `border` value, default `0`) draw it as an outline instead.
+     */
+    .starci-core-button.button--danger-soft {
+        --button-bg: var(--starci-core-button-danger-soft, var(--danger-soft));
+        border: var(--starci-core-button-danger-soft-border, 0);
+    }
+
     /* An unselected radio or checkbox draws its own ring in the muted foreground (U2-G6). The vendor control paints only the field border and
        the field shadow, which an app may set to transparent (inputs without an edge): the choice would then be a pale disc on a pale row.
        A family or app may retune --grammar-choice-ring; it defaults to --muted. */
@@ -558,18 +586,21 @@
     }
 
     /* RadioGroup appearance="rows": every option its own row on the field ground, the chosen one on the accent soft pair. */
+    /* 0.40.0: the plate hooks of ChoiceChips and FilterButtonGroup (styles.css "THE PLATE HOOKS") paint these rows too. */
     [data-grammar-radio-appearance="rows"] .starci-core-radio {
         box-sizing: border-box;
         inline-size: 100%;
         padding: var(--grammar-inset);
+        border: var(--starci-core-plate-border, 0);
         border-radius: var(--field-radius);
-        background: var(--surface-secondary);
+        background: var(--starci-core-plate, var(--surface-secondary));
         color: var(--foreground);
     }
 
     [data-grammar-radio-appearance="rows"] .starci-core-radio[data-selected="true"] {
-        background: var(--accent-soft);
-        color: var(--accent-soft-foreground);
+        border: var(--starci-core-plate-selected-border, var(--starci-core-plate-border, 0));
+        background: var(--starci-core-plate-selected, var(--accent-soft));
+        color: var(--starci-core-plate-selected-foreground, var(--accent-soft-foreground));
     }
 
     [data-grammar-radio-appearance="rows"] .starci-core-radio [data-slot="description"] { color: var(--muted); font-size: var(--grammar-text-xs); line-height: var(--grammar-leading-xs); }

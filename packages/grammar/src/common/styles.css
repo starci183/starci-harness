@@ -2,7 +2,6 @@
 @layer starci-grammar-theme, starci-grammar-common, starci-grammar-core, starci-grammar-offset-pop;
 @import "./ramps.css";
 @import "./components-forms.css";
-@import "./components-surface-controls.css";
 @import "./components-overlays.css";
 @import "./components-navigation.css";
 @import "./components-list-panel.css";
@@ -1151,8 +1150,12 @@
         --starci-core-row-inset: var(--grammar-row-gap) var(--grammar-card-padding-inline);
         /* Stat strip cells in a card are boxes of their own: the card padding on every side. */
         --starci-core-strip-cell-inset: var(--grammar-card-padding-block) var(--grammar-card-padding-inline);
-        /* 0.36.0 (SURFACE-ELEVATION): a card on the pink well has the card shadow and NO border; on a white surface (pane, aside, drawer, dialog, popover) it has the border and no shadow (below). Automatic from context. */
-        border: 0;
+        /*
+         * 0.36.0 (SURFACE-ELEVATION): a card on the pink well has the card shadow and NO border; on a white surface (pane, aside, drawer, dialog, popover) it has the border and no shadow (below). Automatic from context.
+         * 0.40.0: `--starci-core-card-border` (a `border` value, default `0`) gives a card on the page ground an edge of its own, apart from the list frame and
+         * the table, which `--surface-shadow` also paints: a theme that drops the shadow (`--surface-shadow: none`) keeps its cards bordered and its lists flat.
+         */
+        border: var(--starci-core-card-border, 0);
         box-shadow: var(--surface-shadow);
     }
 
@@ -1633,13 +1636,18 @@
         transition: background-color var(--starci-core-motion-duration) var(--starci-core-motion-easing);
     }
 
+    /*
+     * A whole-action card answers the pointer with a fill: the accent soft pair by default. 0.40.0: `--starci-core-card-hover` and
+     * `--starci-core-card-active` take the hover (and keyboard focus) and the press fill, so a theme that keeps the accent for signals
+     * gives a hovered card a neutral fill instead.
+     */
     .starci-core-surface-card[data-grammar-interaction="whole-action"] .starci-core-surface:has([data-grammar-whole-action]:hover),
     .starci-core-surface-card[data-grammar-interaction="whole-action"] .starci-core-surface:has([data-grammar-whole-action]:focus-visible) {
-        background: var(--accent-soft);
+        background: var(--starci-core-card-hover, var(--accent-soft));
     }
 
     .starci-core-surface-card[data-grammar-interaction="whole-action"] .starci-core-surface:has([data-grammar-whole-action]:active) {
-        background: color-mix(in oklab, var(--accent) 14%, var(--surface));
+        background: var(--starci-core-card-active, color-mix(in oklab, var(--accent) 14%, var(--surface)));
     }
 
     [data-grammar-whole-action][aria-disabled="true"],
@@ -1866,10 +1874,12 @@
         margin-block-end: calc(-1 * var(--starci-core-tabs-line-width));
     }
 
+    /* The underline's colour is the accent by default; `--starci-core-tabs-indicator` (0.40.0) takes it (the vendor paints it, so `!important`). */
     .starci-core-tabs-frame[data-grammar-tabs-variant="secondary"] .starci-core-tabs .tabs__indicator {
         bottom: calc(-1 * var(--starci-core-tabs-line-width)) !important;
         height: 2px !important;
         margin-block-end: 0 !important;
+        background: var(--starci-core-tabs-indicator, var(--accent)) !important;
     }
 
     /* A label edit resizes the selected tab; the indicator tracks it without the vendor width animation. */
@@ -1973,7 +1983,7 @@
     /* In a card zone the first filter label stands on the card's inline edge (16), like the rows and the table below it. */
     .starci-core-surface-zone .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tabs .tabs__tab:first-child { padding-inline-start: 0 !important; }
     .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tabs .tabs__tab[aria-selected="true"] { font-weight: var(--grammar-weight-medium); }
-    .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tabs .tabs__indicator { top: auto !important; background: var(--accent); }
+    .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tabs .tabs__indicator { top: auto !important; background: var(--starci-core-tabs-indicator, var(--accent)); }
     .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tab-content { gap: var(--grammar-identity-gap); }
 
     .starci-core-tabs-more { display: inline-flex; flex: none; align-items: stretch; min-height: var(--starci-core-control-min-size); padding-inline: var(--grammar-inline-gap); color: var(--muted); font-size: var(--grammar-text-sm); }
@@ -3490,10 +3500,36 @@
         background: var(--default);
     }
 
+    /*
+     * THE SELECTED ITEM. Default: the accent soft pair, no bar. 0.40.0 hooks, each defaulting to that look: `--starci-core-sidebar-selected` (fill),
+     * `--starci-core-sidebar-selected-foreground` (words and glyph), `--starci-core-sidebar-selected-weight` (the label weight),
+     * `--starci-core-sidebar-bar-width` (default 0: no bar) and `--starci-core-sidebar-bar` (default `--accent`): a bar on the item's start edge,
+     * full height, drawn by `::before` so it never competes with the focus ring (a box-shadow). `--starci-core-sidebar-selected-start-radius`
+     * squares the start corners of a selected item so the bar stands straight (default: the item radius). The collapsed rail keeps its pills, no bar.
+     */
     .starci-core-sidebar-item[data-selected="true"],
     .starci-core-sidebar-item[data-grammar-current="true"] {
-        background: var(--accent-soft) !important;
-        color: var(--accent-soft-foreground);
+        background: var(--starci-core-sidebar-selected, var(--accent-soft)) !important;
+        color: var(--starci-core-sidebar-selected-foreground, var(--accent-soft-foreground));
+    }
+
+    .starci-core-sidebar:not([data-collapsed="true"]) .starci-core-sidebar-item:is([data-selected="true"], [data-grammar-current="true"]) {
+        border-start-start-radius: var(--starci-core-sidebar-selected-start-radius, var(--grammar-radius-md)) !important;
+        border-end-start-radius: var(--starci-core-sidebar-selected-start-radius, var(--grammar-radius-md)) !important;
+    }
+
+    .starci-core-sidebar:not([data-collapsed="true"]) .starci-core-sidebar-item:is([data-selected="true"], [data-grammar-current="true"])::before {
+        content: "";
+        position: absolute;
+        inset-block: 0;
+        inset-inline-start: 0;
+        inline-size: var(--starci-core-sidebar-bar-width, 0);
+        background: var(--starci-core-sidebar-bar, var(--accent));
+        pointer-events: none;
+    }
+
+    .starci-core-sidebar-item:is([data-selected="true"], [data-grammar-current="true"]) .starci-core-sidebar-item-label {
+        font-weight: var(--starci-core-sidebar-selected-weight, var(--grammar-weight-medium));
     }
 
     .starci-core-sidebar-item[data-focus-visible="true"] {
@@ -3510,7 +3546,8 @@
         flex: 1 1 0%;
         overflow: hidden;
         font-size: var(--grammar-text-md);
-        font-weight: var(--grammar-weight-medium);
+        /* 0.40.0: `--starci-core-sidebar-weight` takes the weight of an unselected item (default medium, as a selected one). */
+        font-weight: var(--starci-core-sidebar-weight, var(--grammar-weight-medium));
         text-overflow: ellipsis;
         white-space: nowrap;
     }
@@ -3817,8 +3854,13 @@
     }
 
     :is(.starci-core-pane:is([data-grammar-pane-content="chat"], :has(> .starci-core-pane-stack > [data-grammar-pane-section-thread="true"]), :has(> :is(.starci-core-pane-body, .starci-core-pane-scroll) > .starci-core-pane-stack > [data-grammar-pane-section-thread="true"])), :is(.starci-core-drawer, .starci-core-dialog, .starci-core-popover-dialog):has([data-grammar-pane-section-thread="true"])) .starci-core-message-bubble:is([data-grammar-bubble-side="incoming"], [data-grammar-bubble-content="card"]) .starci-core-message-bubble-body {
-        border: 0 !important;
+        /* 0.40.0: no edge by default; the bubble tokens (THE BUBBLE TOKENS) may give the other party's message, or a MessageCard, a hairline in the thread. */
+        border: var(--starci-core-bubble-incoming-border, 0) !important;
         box-shadow: none !important;
+    }
+
+    :is(.starci-core-pane:is([data-grammar-pane-content="chat"], :has(> .starci-core-pane-stack > [data-grammar-pane-section-thread="true"]), :has(> :is(.starci-core-pane-body, .starci-core-pane-scroll) > .starci-core-pane-stack > [data-grammar-pane-section-thread="true"])), :is(.starci-core-drawer, .starci-core-dialog, .starci-core-popover-dialog):has([data-grammar-pane-section-thread="true"])) .starci-core-message-bubble[data-grammar-bubble-content="card"] .starci-core-message-bubble-body {
+        border: var(--starci-core-message-card-border, var(--starci-core-bubble-incoming-border, 0)) !important;
     }
 
     /*
@@ -4484,7 +4526,8 @@
         border-inline-start: 1px solid var(--separator);
     }
 
-    .starci-core-schedule-cell[data-grammar-current="true"] { background: var(--accent-soft); }
+    /* Today's cell: the accent soft fill by default; `--starci-core-schedule-current` (0.40.0) takes it, so a theme can mark today with a neutral fill. */
+    .starci-core-schedule-cell[data-grammar-current="true"] { background: var(--starci-core-schedule-current, var(--accent-soft)); }
     .starci-core-schedule-cell-column { display: none; }
 
     .starci-core-schedule-cell-label {
@@ -4714,8 +4757,14 @@
     .starci-core-choice-chips { display: flex; min-width: 0; flex-direction: column; }
     .starci-core-choice-chips-row { display: flex; min-width: 0; flex-wrap: wrap; justify-content: flex-start; gap: var(--grammar-inline-gap); }
     .starci-core-choice-chip { flex: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
-    .starci-core-choice-chip { background: var(--surface-secondary); color: var(--foreground); }
-    .starci-core-choice-chip[data-selected="true"] { background: var(--accent-soft); color: var(--accent-soft-foreground); }
+    /*
+     * THE PLATE HOOKS (0.40.0): a toggle plate (a ChoiceChip, a FilterButton, a RadioGroup row) reads its fill, its edge and its selected pair from
+     * optional tokens, each defaulting to today's paint: `--starci-core-plate` (unselected fill: `--surface-secondary` here and on the rows,
+     * `--surface` on a FilterButton), `--starci-core-plate-border` (a `border` value, default `0`: no edge), `--starci-core-plate-selected` and
+     * `--starci-core-plate-selected-foreground` (default the accent soft pair) and `--starci-core-plate-selected-border` (default the unselected edge).
+     */
+    .starci-core-choice-chip { border: var(--starci-core-plate-border, 0); background: var(--starci-core-plate, var(--surface-secondary)); color: var(--foreground); }
+    .starci-core-choice-chip[data-selected="true"] { border: var(--starci-core-plate-selected-border, var(--starci-core-plate-border, 0)); background: var(--starci-core-plate-selected, var(--accent-soft)); color: var(--starci-core-plate-selected-foreground, var(--accent-soft-foreground)); }
     /* width="fill": the chips grow evenly from their own width and wrap only when they cannot fit (G-batch6). */
     .starci-core-choice-chips[data-grammar-width="fill"] :is(.starci-core-choice-chip, .starci-core-choice-chips-skeleton, .starci-core-tooltip-disabled-trigger) { flex: 1 0 auto; justify-content: center; }
     .starci-core-choice-chips[data-grammar-width="fill"] .starci-core-tooltip-disabled-trigger > .starci-core-choice-chip { inline-size: 100%; }
@@ -4756,10 +4805,13 @@
         .starci-core-page[data-grammar-page-header-collapse="narrow"] > :is(.starci-core-page-header, .starci-core-page-trail) { display: none; }
     }
 
-    /* Select appearance="pill": the trigger is a pill (a picker in a page head), the field tone, no shadow. */
-    .starci-core-select[data-grammar-select-appearance="pill"] .starci-core-select-trigger { border-radius: var(--grammar-radius-pill); background: var(--surface-secondary); box-shadow: none; }
+    /*
+     * Select appearance="pill": the trigger is a pill (a picker in a page head), the field tone, no shadow. 0.40.0: the plate hooks (THE PLATE HOOKS)
+     * paint its fill and edge: `--starci-core-plate` (default `--surface-secondary`) and `--starci-core-plate-border` (default: the field border).
+     */
+    .starci-core-select[data-grammar-select-appearance="pill"] .starci-core-select-trigger { border-radius: var(--grammar-radius-pill); background: var(--starci-core-plate, var(--surface-secondary)); box-shadow: none; }
     /* Select appearance="compact": the pill at the dense control step (2rem), for a toolbar, a pane head or a card zone. */
-    .starci-core-select[data-grammar-select-appearance="compact"] .starci-core-select-trigger { min-block-size: 2rem; block-size: 2rem; border-radius: var(--grammar-radius-pill); background: var(--surface-secondary); box-shadow: none; padding-block: 0; }
+    .starci-core-select[data-grammar-select-appearance="compact"] .starci-core-select-trigger { min-block-size: 2rem; block-size: 2rem; border-radius: var(--grammar-radius-pill); background: var(--starci-core-plate, var(--surface-secondary)); box-shadow: none; padding-block: 0; }
 
     /* DisclosureList: sibling disclosures joined into one list, divided by full-bleed lines. */
     .starci-core-disclosure-list { display: flex; min-width: 0; margin: 0; padding: 0; flex-direction: column; list-style: none; }
@@ -6069,8 +6121,9 @@
     .starci-core-filter-button { flex: none; gap: 0.5rem; white-space: nowrap; }
     .starci-core-filter-button-count { font-variant-numeric: tabular-nums; opacity: var(--grammar-opacity-secondary); }
     /* The rest takes the surface; selected is the accent soft pair. */
-    .starci-core-filter-button:not(.starci-core-filter-button-probe-item) { background: var(--surface); color: var(--surface-foreground); }
-    .starci-core-filter-button[data-selected="true"] { background: var(--accent-soft); color: var(--accent-soft-foreground); }
+    /* The plate hooks (THE PLATE HOOKS, above) paint it; the unselected fill defaults to the surface here. */
+    .starci-core-filter-button:not(.starci-core-filter-button-probe-item) { border: var(--starci-core-plate-border, 0); background: var(--starci-core-plate, var(--surface)); color: var(--surface-foreground); }
+    .starci-core-filter-button[data-selected="true"] { border: var(--starci-core-plate-selected-border, var(--starci-core-plate-border, 0)); background: var(--starci-core-plate-selected, var(--accent-soft)); color: var(--starci-core-plate-selected-foreground, var(--accent-soft-foreground)); }
     .starci-core-filter-button-probe { position: absolute; inset-block-start: 0; inset-inline-start: 0; display: flex; flex-wrap: nowrap; visibility: hidden; pointer-events: none; block-size: 0; overflow: hidden; }
     .starci-core-filter-button-skeleton { display: inline-block; inline-size: 5rem; block-size: 2rem; }
     .starci-core-filter-button-panel { display: flex; min-width: 16rem; flex-direction: column; gap: 0.5rem; }
@@ -6153,8 +6206,9 @@
      * and a muted Text stay readable on the solid fill; a link keeps its underline so it is not told by colour alone.
      */
     .starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body {
-        background: var(--accent);
-        color: var(--accent-foreground);
+        border: var(--starci-core-bubble-outgoing-border, 0);
+        background: var(--starci-core-bubble-outgoing, var(--accent));
+        color: var(--starci-core-bubble-outgoing-foreground, var(--accent-foreground));
     }
 
     .starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body :is(a, code, kbd, mark, [data-component="Code"], [data-component="Kbd"], [data-component="Link"], [data-component="Text"], [data-component="TextAction"], [data-component="Markdown"]) {
@@ -6163,7 +6217,7 @@
 
     .starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body :is(a, [data-component="Link"]) { text-decoration: underline; }
     .starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body [data-component="Text"][data-tone="muted"] { opacity: var(--grammar-opacity-secondary); }
-    .starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body :is(code, kbd, [data-component="Code"], [data-component="Kbd"]) { background: color-mix(in oklab, var(--accent-foreground) 16%, transparent); }
+    .starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body :is(code, kbd, [data-component="Code"], [data-component="Kbd"]) { background: color-mix(in oklab, var(--starci-core-bubble-outgoing-foreground, var(--accent-foreground)) 16%, transparent); }
 
     /* The soft face is the brand's tint with its own foreground: the AI bubble is `--accent-soft`, with no token of its own. */
     .starci-core-message-bubble[data-grammar-bubble-side="outgoing"][data-grammar-bubble-tone="soft"] .starci-core-message-bubble-body {
@@ -6200,12 +6254,32 @@
 
     .starci-core-message-bubble .starci-core-message-bubble-body { border-radius: var(--grammar-bubble-radius); }
 
+    /*
+     * THE BUBBLE TOKENS (0.40.0): optional, each defaulting to the faces above. The other party's message: `--starci-core-bubble-incoming` (fill,
+     * default `--surface`), `--starci-core-bubble-incoming-foreground` (default `--surface-foreground`), `--starci-core-bubble-incoming-border`
+     * (a `border` value, default `0`). The reader's own: `--starci-core-bubble-outgoing` (default `--accent`), `--starci-core-bubble-outgoing-foreground`
+     * (default `--accent-foreground`), `--starci-core-bubble-outgoing-border` (default `0`). A MessageCard: `--starci-core-message-card` and
+     * `--starci-core-message-card-border`, defaulting to the incoming face. A theme whose thread and surface are both white gives the other party a
+     * quiet fill and its own message a hairline instead of the accent. The soft tone (`tone="soft"`) keeps the accent soft pair.
+     */
     .starci-core-message-bubble[data-grammar-bubble-side="incoming"] .starci-core-message-bubble-body,
     .starci-core-message-bubble[data-grammar-bubble-content="card"] .starci-core-message-bubble-body {
         border: 0;
         background: var(--surface);
         color: var(--surface-foreground);
         box-shadow: none;
+    }
+
+    .starci-core-message-bubble[data-grammar-bubble-side="incoming"] .starci-core-message-bubble-body {
+        border: var(--starci-core-bubble-incoming-border, 0);
+        background: var(--starci-core-bubble-incoming, var(--surface));
+        color: var(--starci-core-bubble-incoming-foreground, var(--surface-foreground));
+    }
+
+    .starci-core-message-bubble[data-grammar-bubble-content="card"] .starci-core-message-bubble-body {
+        border: var(--starci-core-message-card-border, var(--starci-core-bubble-incoming-border, 0));
+        background: var(--starci-core-message-card, var(--starci-core-bubble-incoming, var(--surface)));
+        color: var(--starci-core-bubble-incoming-foreground, var(--surface-foreground));
     }
 
     :is(.starci-core-surface, .starci-core-pane[data-grammar-pane-surface="true"], .starci-core-drawer, .starci-core-dialog-container, .starci-core-popover) .starci-core-message-bubble:is([data-grammar-bubble-side="incoming"], [data-grammar-bubble-content="card"]):not([data-grammar-scroll-region-tone="background"] *) .starci-core-message-bubble-body {
@@ -6460,6 +6534,12 @@
         color: var(--foreground);
     }
 
+    /* 0.40.0: `--starci-core-quote` (fill, default `--surface-secondary`) and `--starci-core-quote-edge` (a `border` value on the start edge, default `0`). */
+    .starci-core-quote {
+        border-inline-start: var(--starci-core-quote-edge, 0);
+        background: var(--starci-core-quote, var(--surface-secondary));
+    }
+
     .starci-core-inset { gap: var(--grammar-inline-gap); }
     .starci-core-inset-label { color: var(--muted); font-size: var(--grammar-text-xs); font-weight: var(--grammar-weight-semibold); line-height: var(--grammar-leading-xs); }
 
@@ -6487,6 +6567,7 @@
     .starci-core-quote .starci-core-skeleton { --starci-core-skeleton-line: 0.875rem; }
 
     @media (forced-colors: active) {
+        .starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body,
         .starci-core-message-bubble-body { border: 1px solid CanvasText; }
     }
 

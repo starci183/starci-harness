@@ -244,9 +244,10 @@ stands inside another surface; a card of one lone table, list or chart is no car
 ### COLLECTION-4 A single-child card is no card
 A card (`SurfaceCard`) groups two or more heterogeneous parts (figures, a list, actions), or it carries zones (`headers`/`footers`: tabs,
 search, filters, paging) or head actions (`labelEnd`). A card of list or key-value rows (`SurfaceCard kind="list"|"table"|"select"`, a `ListBox`, `DisclosureList`, `Section kind="list"`, a `DescriptionList`) is valid alone or not (0.37.8: one list card with its head and count chip, or a bordered key-value card on a white aside, is the law). A standalone `DataTable` or chart IS the surface: its title sits above it as
-a section head (`Section title`) and one caption sits below it (`Section caption`, muted 14), and it is never wrapped in a bare card. A standalone `DataTable` (`surface="card"`,
-the default) sits in its own card (white, the card radius, the shadow on the pink well and a 1px border on a white surface) and looks like a list card inside it (0.37.8: no grey frame, gutters or header strip; the column labels 12 muted on the white and 1px full-width row dividers); inside a `SurfaceCard` the table goes full-bleed with no frame of its own (`surface="none"`, as
-`kind="table"` does). Every `Section kind="list"` draws the same card edge (a shadow only on the page ground) wherever it stands (BOUNDARY-7). Measure: lint
+a section head (`Section title`) and one caption sits below it (`Section caption`, muted 14), and it is never wrapped in a bare card. A standalone `DataTable` is flat
+(`surface="none"`, the default): a collection, never a card of its own, its column labels 12 muted and 1px full-width row dividers on whatever holds it,
+no fill, radius, shadow or edge; inside a `SurfaceCard` it runs full bleed the same way, and `kind="table"` draws it as its `frame`. `surface="card"`
+is the white card for an app that asks for it. Every `Section kind="list"` draws the same card edge (a shadow only on the page ground) wherever it stands (BOUNDARY-7). Measure: lint
 `single-child-card` (a lone `DataTable` or chart only) in `@starci/eslint-grammar-core` (error). See [components/card.md](components/card.md) and
 [components/list-table.md](components/list-table.md).
 

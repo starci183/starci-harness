@@ -179,6 +179,17 @@
         min-inline-size: var(--starci-core-control-min-size);
     }
 
+    /*
+     * The current page is HeroUI's active link, filled with `--default` (a neutral fill, never the accent). 0.40.0: `--starci-core-pagination-current`
+     * takes that fill (and its hover and press), so it can be the same neutral as a selected row or a selected navigation item. `!important`: the
+     * vendor writes the variable on the same link and the sheets load in either order.
+     */
+    .starci-core-pagination-page[data-grammar-current="true"] {
+        --pagination-link-bg: var(--starci-core-pagination-current, var(--default)) !important;
+        --pagination-link-bg-hover: var(--starci-core-pagination-current, var(--default-hover)) !important;
+        --pagination-link-bg-pressed: var(--starci-core-pagination-current, var(--default-hover)) !important;
+    }
+
     .starci-core-pagination-step {
         display: inline-flex;
         align-items: center;
@@ -1174,9 +1185,13 @@
         width: var(--starci-core-control-min-size);
     }
 
+    /*
+     * A selected row: the accent soft pair by default. 0.40.0: `--starci-core-table-selected` and `--starci-core-table-selected-foreground` take
+     * the fill and the words, so a theme that keeps the accent for signals selects a row with a neutral fill (as ListBox selects with `--default`).
+     */
     .starci-core-data-table-row[data-grammar-selected="true"] {
-        background: var(--accent-soft);
-        color: var(--accent-soft-foreground);
+        background: var(--starci-core-table-selected, var(--accent-soft));
+        color: var(--starci-core-table-selected-foreground, var(--accent-soft-foreground));
     }
 
     .starci-core-data-table-placeholder {
@@ -1323,6 +1338,12 @@
         min-inline-size: 0;
         background: var(--surface);
         border-radius: var(--starci-core-table-body-radius);
+    }
+
+    /* A flat table (`surface="none"`) stays flat as a list: no fill and no radius of its own, the rows divided by the same lines. */
+    .starci-core-data-table[data-grammar-table-surface="none"] .starci-core-data-table-list {
+        background: transparent;
+        border-radius: 0;
     }
 
     .starci-core-data-table-list-row {
@@ -1708,6 +1729,20 @@
 
     @container starci-core-description-strip (min-width: 20rem) {
         .starci-core-description-list[data-grammar-description-layout="stat-strip"][data-grammar-figures-placement="pane"] .starci-core-description-pair { flex-basis: 0; }
+    }
+
+    /*
+     * THE RIBBON (0.40.0, `Section kind="figures" ribbon`): the strip as a full-width band on the page. A hairline on the top and bottom edges
+     * only, open ends (no line on the start or end edge), no radius, no fill, no shadow. The cells keep their dividers: the strip clips the
+     * cells' edge lines to its padding box, so each vertical divider runs the full cell height and meets both hairlines, and a wrapped row
+     * (2 + 2 + 1, 3 + 2) is divided from the next by the same horizontal line.
+     */
+    .starci-core-description-list[data-grammar-description-layout="stat-strip"][data-grammar-figures-placement="ribbon"] {
+        border-block: 1px solid var(--separator);
+        border-inline: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
     }
 
     /* ---------- ListBox ---------- */
@@ -3120,7 +3155,8 @@
     .starci-core-flow-graph-step[data-grammar-selected="true"] {
         --starci-flow-border-width: var(--grammar-ring-width);
         --starci-flow-edge: var(--starci-flow-select);
-        background: color-mix(in oklab, var(--starci-flow-select) 8%, var(--surface));
+        /* 0.40.0: `--starci-core-flow-selected` takes the selected card's ground (default: 8% of its status colour on the surface); `var(--surface)` keeps it white, the 2px status border alone marking it. */
+        background: var(--starci-core-flow-selected, color-mix(in oklab, var(--starci-flow-select) 8%, var(--surface)));
         box-shadow: none;
         outline: none;
     }
@@ -3166,7 +3202,7 @@
     }
 
     .starci-core-flow-graph-diamond[data-grammar-selected="true"] { background: transparent; }
-    .starci-core-flow-graph-diamond[data-grammar-selected="true"] .starci-core-flow-graph-diamond-shape polygon { fill: color-mix(in oklab, var(--starci-flow-select) 8%, var(--surface)); }
+    .starci-core-flow-graph-diamond[data-grammar-selected="true"] .starci-core-flow-graph-diamond-shape polygon { fill: var(--starci-core-flow-selected, color-mix(in oklab, var(--starci-flow-select) 8%, var(--surface))); }
     .starci-core-flow-graph-diamond[data-placeholder="true"] .starci-core-flow-graph-diamond-shape polygon { stroke-dasharray: 4 5; }
 
     .starci-core-flow-graph-diamond-link { display: contents; }

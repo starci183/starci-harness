@@ -10,7 +10,7 @@ const meta: Meta = {
 export default meta;
 type Story = StoryObj;
 
-/** Header paint supplies secondary fields while the shell's page content keeps the primary default. */
+/** A field has one look (0.40.0): the header and the page content draw the same primary field, with no vendor secondary class anywhere. */
 export const ShellHeader: Story = {
   render: () => (
     <G.WorkspaceShell
@@ -25,8 +25,9 @@ export const ShellHeader: Story = {
   ),
   play: async ({ canvasElement }) => {
     await waitFor(() => {
-      expect(canvasElement.querySelector('[data-grammar-workspace-header] [data-component="Input"]')).toHaveAttribute('data-grammar-variant', 'secondary');
-      expect(canvasElement.querySelector('[data-grammar-workspace-primary] [data-component="Input"]')).toHaveAttribute('data-grammar-variant', 'primary');
+      expect(canvasElement.querySelector('[data-grammar-workspace-header] [data-component="Input"]')).not.toBeNull();
+      expect(canvasElement.querySelector('[data-grammar-workspace-primary] [data-component="Input"]')).not.toBeNull();
+      expect(canvasElement.querySelectorAll('[class*="--secondary"]:is(.input, .input-group, .textarea)')).toHaveLength(0);
       expect(canvasElement.querySelector('[data-grammar-workspace-navigation-track]')).toHaveAttribute('data-grammar-workspace-navigation-track', 'intrinsic');
       expect(canvasElement.querySelector('[data-grammar-workspace-navigation-visibility]')).toHaveAttribute('data-grammar-workspace-navigation-visibility', 'wide');
       expect(canvasElement.querySelector('[data-grammar-workspace-opener] [data-component="IconButton"]')).toHaveAttribute('data-size', 'control');
@@ -87,6 +88,6 @@ export const ShellSlotHeader: Story = {
 export const TopBarSearch: Story = {
   render: () => <G.TopBar brand={<G.Text>Workspace</G.Text>} actions={<G.Input id="topbar-query" name="query" label="Search" />} />,
   play: async ({ canvasElement }) => {
-    await waitFor(() => expect(canvasElement.querySelector('[data-component="Input"]')).toHaveAttribute('data-grammar-variant', 'secondary'));
+    await waitFor(() => expect(canvasElement.querySelector('.input--secondary, .input-group--secondary')).toBeNull());
   },
 };

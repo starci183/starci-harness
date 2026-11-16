@@ -351,16 +351,14 @@ guidance:
       AlertDialog, Drawer and Popover establish the surface nesting context; Rail and
       an unpainted accordion SurfaceCard pass their parent's context through. Input, SearchField, Textarea,
       NumberField, DateField, TimeField, Select, ComboBox, DatePicker, DateRangePicker, Checkbox,
-      CheckboxGroup, RadioGroup, OtpInput and PressableField resolve variant="secondary" inside it and
-      variant="primary" outside. Compose the surface and omit the field variant.
-      Switch and Slider have no layer variant; a Radio follows its RadioGroup. PaneGrid's
+      CheckboxGroup, RadioGroup, OtpInput and PressableField have ONE look inside it and outside it: the field
+      never changes with the surface. Compose the surface; a field has no variant. PaneGrid's
       collapsed-pane drawer also establishes the context. SurfaceCard and a bounded accordion SurfaceCard derive
       data-grammar-surface-depth from the parent context. The top layer is raised and a nested layer is
       subordinate; never raise both. The family DNA owns their surface paint.
       The field `variant` is not in the prop types, so an app cannot set it; FE_GRAMMAR_LAYOUT_ONLY rejects
       application paint utilities, arbitrary paint properties and inline style paint.
-      DRAW_NESTED_VARIANT checks the corresponding rendered variant and
-      surface stamps.
+      DRAW_NESTED_VARIANT checks the surface stamps.
       ListBox resolves inset="panel" inside that context; callers may select the same value explicitly
       elsewhere. Its rows and sections captions share the panel edge. The list kind of SurfaceCard owns its list
       shell with no added inset; SurfaceCard composition="joined" owns flush bands. A grouping wrapper

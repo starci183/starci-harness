@@ -2,7 +2,7 @@
  * The grammar token vocabulary as the rules use it. `vocabulary.generated.ts` is read from the grammar
  * package's CSS (`extract-vocabulary.ts`); a family prefix admits every token under it.
  */
-import { DECLARED, VENDOR } from "./vocabulary.generated.ts"
+import { DECLARED, THEME_HOOKS, VENDOR } from "./vocabulary.generated.ts"
 import { FAMILY_PREFIXES } from "./extract-vocabulary.ts"
 
 export { FAMILY_PREFIXES }
@@ -19,4 +19,9 @@ export const isGrammarToken = (name: string): boolean => NAMES.has(name) || FAMI
 export const isKnownToken = (name: string, appTokens: readonly string[] = []): boolean => isGrammarToken(name) || appTokens.includes(name)
 
 /** True for a token the app's theme layer may set: HeroUI's whole token list and the grammar's published names, plus the `--info*` family and the four app brand tokens of the intent `informative` (HeroUI declares `--font-sans` and `--font-mono`, which NAMES holds; any other `--font-*` is the app's own type and stays foreign); never a family-prefixed private token. */
-export const isThemeToken = (name: string): boolean => NAMES.has(name) || /^--info(?:-[\w-]+)?$/.test(name) || APP_BRAND_TOKENS.has(name)
+export const isThemeToken = (name: string): boolean => NAMES.has(name) || /^--info(?:-[\w-]+)?$/.test(name) || APP_BRAND_TOKENS.has(name) || isThemeHook(name)
+
+const HOOKS: ReadonlySet<string> = new Set(THEME_HOOKS)
+
+/** True for a theme hook the grammar publishes (`common/theme-hooks.json`): a family custom property the grammar reads with a fallback and an app's brand.css alone may set. */
+export const isThemeHook = (name: string): boolean => HOOKS.has(name)

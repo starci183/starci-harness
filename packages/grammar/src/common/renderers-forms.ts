@@ -23,7 +23,7 @@ import { ComboBox } from "../core/branch/ComboBox/index.js"
 import { DatePicker } from "../core/branch/DatePicker/index.js"
 import { DateRangePicker } from "../core/branch/DateRangePicker/index.js"
 
-export { Field, fieldVariantAttributes, type FieldControlAttributes, type FieldControlProps, type FieldProps, type FieldVariant } from "../core/leaf/Field/index.js"
+export { Field, type FieldControlAttributes, type FieldControlProps, type FieldProps } from "../core/leaf/Field/index.js"
 export { Textarea, type TextareaMentionOption, type TextareaMentions, type TextareaProps } from "../core/branch/Textarea/index.js"
 export { SearchField, type SearchFieldProps } from "../core/leaf/SearchField/index.js"
 export { NumberField, type NumberFieldProps } from "../core/leaf/NumberField/index.js"

@@ -5,8 +5,7 @@ import { CheckIcon, DocumentDuplicateIcon, ExclamationCircleIcon } from "@heroic
 import { InputGroup as HeroInputGroup, Label as HeroLabel, Tooltip as HeroTooltip } from "@heroui/react"
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react"
 import { useOverlayContainer } from "../../overlayScope.js"
-import { useFieldVariant } from "../../surfaceContext.js"
-import { FieldSkeletonScope, StaticFieldError, fieldStateAttributes, fieldVariantAttributes } from "../../leaf/Field/index.js"
+import { FieldSkeletonScope, StaticFieldError, fieldStateAttributes } from "../../leaf/Field/index.js"
 import { tooltipContentClassName } from "../../tooltipClassName.js"
 import type { NoChildren } from "../../tier.js"
 
@@ -97,7 +96,6 @@ const CopyFieldInner = (props: CopyFieldProps) => props.isLoading === true
  */
 const CopyFieldControl = (props: CopyFieldProps) => {
     const { label, isLabelHidden = false, description, copyLabel, copiedLabel, copyErrorLabel, isDisabled = false, isLoading = false } = props
-    const variant = useFieldVariant()
     const id = `copy-field${useId().replaceAll(":", "")}`
     const labelId = `${id}-label`
     const descriptionId = description == null ? undefined : `${id}-description`
@@ -156,7 +154,6 @@ const CopyFieldControl = (props: CopyFieldProps) => {
             className="starci-core-field starci-core-copy-field"
             data-grammar-copy-masked={props.masked === true ? "true" : "false"}
             data-grammar-copy-state={isLoading ? "idle" : state}
-            {...fieldVariantAttributes(variant)}
             {...fieldStateAttributes({ isInvalid: failed, isDisabled, isReadOnly: true, isPending: state === "pending" })}
         >
             <HeroLabel
@@ -168,7 +165,6 @@ const CopyFieldControl = (props: CopyFieldProps) => {
             </HeroLabel>
             <HeroInputGroup
                 fullWidth
-                variant={variant}
                 className="starci-core-copy-field-group"
                 data-grammar-field-control="true"
                 {...(isDisabled ? { isDisabled: true } : {})}

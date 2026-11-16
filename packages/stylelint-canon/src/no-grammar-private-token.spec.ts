@@ -20,3 +20,9 @@ test("refuses reading a private token", async () => {
 test("allows HeroUI tokens and local custom properties", async () => {
   assert.deepEqual(await rule(".a { color: var(--accent); --row-index: 3; margin: var(--spacing); }"), [])
 })
+
+test("brand.css may write a published theme hook of the grammar, and only there", async () => {
+  assert.deepEqual(await rule(":root { --starci-core-card-border: 1px solid var(--border); --starci-core-sidebar-bar-width: 2px; }", FILES.brand), [])
+  assert.equal((await rule(".a { --starci-core-card-border: 1px solid red; }")).length, 1)
+  assert.equal((await rule(":root { --starci-core-not-a-hook: 1; }", FILES.brand)).length, 1)
+})

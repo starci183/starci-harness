@@ -1,6 +1,6 @@
 {
   "name": "@starci/grammar",
-  "version": "0.39.4",
+  "version": "0.40.0",
   "description": "Reusable StarCi React components, compositions, and packaged visual DNA.",
   "keywords": [
     "starci",
@@ -43,6 +43,7 @@
     "./core.css": "./dist/core/styles.css",
     "./core/styles.css": "./dist/core/styles.css",
     "./core/theme.css": "./dist/core/theme.css",
+    "./theme-hooks.json": "./dist/common/theme-hooks.json",
     "./offset-pop": {
       "types": "./dist/offset-pop/index.d.ts",
       "import": "./dist/offset-pop/index.js"
@@ -62,7 +63,8 @@
     "check:tones": "node scripts/check-tone-tokens.mts",
     "check:type": "node scripts/check-type-roles.mts",
     "check:avatar": "node scripts/check-avatar-mark.mts",
-    "test": "npm run typecheck && npm run check:loading && npm run check:client && npm run check:tones && npm run check:type && npm run check:avatar && npm run lint && npm run build",
+    "check:hooks": "node scripts/check-theme-hooks.mts",
+    "test": "npm run typecheck && npm run check:loading && npm run check:client && npm run check:tones && npm run check:type && npm run check:avatar && npm run check:hooks && npm run lint && npm run build",
     "pack:check": "npm run build && npm pack --dry-run",
     "prepack": "npm run typecheck && npm run build",
     "storybook": "storybook dev -p 6006",

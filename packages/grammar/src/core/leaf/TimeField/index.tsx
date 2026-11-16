@@ -2,13 +2,11 @@
 
 import { FieldSkeletonScope, loadingFieldProps } from "../Field/index.js"
 import { withRegionLoading } from "../../regionScope.js"
-import { useFieldVariant } from "../../surfaceContext.js"
 import { TimeField as HeroTimeField, type TimeValue } from "@heroui/react"
 import {
     FieldDescription,
     FieldErrorText,
     FieldLabel,
-    fieldVariantAttributes,
     isFieldInvalid,
     vendorFieldProps,
     type FieldControlProps,
@@ -46,7 +44,6 @@ const TimeFieldControl = ({
     hourCycle,
     ...field
 }: Omit<TimeFieldProps, "isLoading">) => {
-    const variant = useFieldVariant()
     return (
         <HeroTimeField
             data-tier="leaf"
@@ -54,7 +51,6 @@ const TimeFieldControl = ({
             data-contract="A11Y-1 FEEDBACK-1 STATE-1"
             className="starci-core-field starci-core-time-field"
             fullWidth
-            {...fieldVariantAttributes(variant)}
             {...vendorFieldProps(field)}
             isReadOnly={field.isReadOnly === true}
             granularity={granularity}
@@ -65,7 +61,7 @@ const TimeFieldControl = ({
             {...(maxValue === undefined ? {} : { maxValue })}
         >
             <FieldLabel isHidden={field.isLabelHidden} isRequired={field.isRequired}>{field.label}</FieldLabel>
-            <DateFieldBox isInvalid={isFieldInvalid(field)} isDisabled={field.isDisabled === true} variant={variant}>
+            <DateFieldBox isInvalid={isFieldInvalid(field)} isDisabled={field.isDisabled === true}>
                 <DateSegments />
             </DateFieldBox>
             <FieldDescription>{field.description}</FieldDescription>

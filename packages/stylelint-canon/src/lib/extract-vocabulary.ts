@@ -27,6 +27,17 @@ export const GRAMMAR_CSS: readonly string[] = [
   "offset-pop/components-navigation.css",
 ]
 
+/** The grammar's published theme hooks (optional custom properties an app's brand.css may set), relative to the grammar package. */
+export const GRAMMAR_THEME_HOOKS = "common/theme-hooks.json"
+
+/** The names `theme-hooks.json` lists; none when the grammar ships no such file. */
+export const extractThemeHooks = (grammarSrcDir: string): string[] => {
+  const file = path.join(grammarSrcDir, GRAMMAR_THEME_HOOKS)
+  if (!fs.existsSync(file)) return []
+  const parsed = JSON.parse(fs.readFileSync(file, "utf8")) as { hooks?: { name?: unknown }[] }
+  return (parsed.hooks ?? []).map((hook) => String(hook.name)).filter((name) => name.startsWith("--")).sort(byCodeUnit)
+}
+
 /** HeroUI's `variables.css` snapshot, relative to the package root: the theme an app sets. */
 export const HEROUI_VARIABLES = "fixtures/heroui/variables.css"
 
@@ -62,6 +73,7 @@ export interface Vocabulary {
   vendor: string[]
   breakpoints: string[]
   statusTones: string[]
+  themeHooks: string[]
 }
 
 /** The custom properties a CSS text declares. */
@@ -93,5 +105,5 @@ export function extractVocabulary(grammarSrcDir: string, heroVariablesFile: stri
   declared.add("--info-foreground")
   const own = [...declared].filter((name) => !inFamily(name)).sort(byCodeUnit)
   const vendor = [...referenced].filter((name) => !declared.has(name) && !inFamily(name)).sort(byCodeUnit)
-  return { declared: own, vendor, breakpoints: extractBreakpoints(texts), statusTones: [...STATUS_TONES] }
+  return { declared: own, vendor, breakpoints: extractBreakpoints(texts), statusTones: [...STATUS_TONES], themeHooks: extractThemeHooks(grammarSrcDir) }
 }

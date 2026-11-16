@@ -84,7 +84,8 @@ squares the input's inner corners beside them. Variants `primary` and `secondary
 surface: the neutral `--default` fill and no shadow, because a white field on a white card disappears. Text is
 16px on touch and 14px above, since a smaller focused input makes iOS zoom. Every single-line field family
 (InputGroup, Select trigger, Search, Number, Date and Time fields) is 36px, one step under a button. House: fields
-are 40px so a field and its submit align, and the variant comes from the surface context.
+are 40px so a field and its submit align, and a field is always `primary`, in a surface as on the page: one look, its edge
+set by the theme's field tokens; the grammar never draws `secondary`.
 
 ## Select
 

@@ -11,7 +11,7 @@ import { fileURLToPath } from "node:url"
 import postcss, { AtRule } from "postcss"
 import type { Container, Document } from "postcss"
 import { extractHeroTokens, extractVocabulary, FAMILY_PREFIXES, GRAMMAR_CSS, HEROUI_VARIABLES } from "./lib/extract-vocabulary.ts"
-import { BREAKPOINTS, DECLARED, STATUS_TONES, VENDOR } from "./lib/vocabulary.generated.ts"
+import { BREAKPOINTS, DECLARED, STATUS_TONES, THEME_HOOKS, VENDOR } from "./lib/vocabulary.generated.ts"
 import { isGrammarToken, isKnownToken } from "./lib/vocabulary.ts"
 
 const here = path.dirname(fileURLToPath(import.meta.url))
@@ -24,6 +24,7 @@ test("the generated vocabulary equals what the grammar CSS declares and reads", 
   assert.deepEqual(VENDOR, fresh.vendor, "VENDOR is stale: run `npm run vocabulary` in packages/stylelint")
   assert.deepEqual(BREAKPOINTS, fresh.breakpoints, "BREAKPOINTS is stale: run `npm run vocabulary` in packages/stylelint")
   assert.deepEqual(STATUS_TONES, fresh.statusTones, "STATUS_TONES is stale: run `npm run vocabulary` in packages/stylelint")
+  assert.deepEqual(THEME_HOOKS, fresh.themeHooks, "THEME_HOOKS is stale: run `npm run vocabulary` in packages/stylelint")
 })
 
 test("the four family namespaces and the semantic layer are grammar tokens", () => {
