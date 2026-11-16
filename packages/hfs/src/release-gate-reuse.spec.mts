@@ -78,12 +78,12 @@ const children = (plain: Call[]) => argvs(plain.filter((call) => call.command !=
 test('a green app-check row is the verdict of every row it covers: they run no child, and the L4 record names the run they stand on', async (t) => {
   const { ctx, plain, governed, git } = world(t);
   const config = configOf();
-  assert.deepEqual(config.gates.map((gate) => gate.name), ['app-check', 'audit', 'format-check', 'typecheck', 'build-be', 'lint', 'db-lint', 'build-fe', 'test', ...WORLD_ROWS, 'db-drift']);
+  assert.deepEqual(config.gates.map((gate) => gate.name), ['app-check', 'audit', 'format-check', 'typecheck', 'build-be', 'lint', 'db-lint', 'build-fe', 'test', 'db-drift']);
   const result = await releaseGate(ctx(), config, { execute: true, platform: 'linux' });
   assert.equal(result.ok, true, result.lines!.join('\n'));
   // the only plain child of the gate is app check itself: no typecheck, build, lint, test, audit or drift child is spawned
   assert.deepEqual(children(plain), ['npx starci app check --env prod']);
-  assert.deepEqual(governed.map((call) => call.argv.join(' ')), ['npm run test:integration', 'npm run test:e2e', 'npm run test:contract']);
+  assert.deepEqual(governed, [], 'no default row runs a world layer: they run on request only (R12)');
   const record = recordOf(result);
   const appCheck = record.gates.find((row) => row.name === 'app-check')!;
   assert.equal(appCheck.reused, undefined);
@@ -95,7 +95,7 @@ test('a green app-check row is the verdict of every row it covers: they run no c
     assert.deepEqual(row.reusedFrom, { gate: 'app-check', head: HEAD, command: appCheck.command, log: appCheck.log, logSha256: appCheck.logSha256 }, `${name} names the app-check run it stands on`);
     assert.equal(row.log, appCheck.log);
   }
-  for (const name of WORLD_ROWS) assert.equal(record.gates.find((row) => row.name === name)!.reused, undefined, `${name} is a real row`);
+  for (const name of WORLD_ROWS) assert.equal(record.gates.some((row) => row.name === name), false, `${name} is no default row: a world layer runs on request only (R12)`);
   assert.equal(result.lines!.filter((line) => line.startsWith('REUSED ')).length, COVERED_ROWS.length);
   assert.equal(tagged(git), true, 'the annotated tag is created');
   assert.deepEqual(result.data!.reuses, COVERED_ROWS);
@@ -108,7 +108,7 @@ test('the printed plan says which rows reuse the app-check verdict and which run
   const text = result.lines!.join('\n');
   for (const name of COVERED_ROWS) assert.match(text, new RegExp(`^  ${name.padEnd(17)} .*\\[reuses the app-check verdict, runs no command`, 'mu'), name);
   assert.match(text, /^ {2}app-check\s+npx starci app check --env prod {2}\[runs: app check governs each of its own steps\]/mu);
-  for (const name of WORLD_ROWS) assert.match(text, new RegExp(`^  ${name.padEnd(17)} npm run .*\\[runs, governed \\(heavy slot, kind test: heap caps, worker sizing\\)\\]`, 'mu'), name);
+  for (const name of WORLD_ROWS) assert.doesNotMatch(text, new RegExp(`^  ${name} `, 'mu'), `${name} is no default row (R12)`);
   assert.match(text, /db-drift .*runs governed instead when app-check had no database \(CI_PARITY_DB_SKIPPED\)/u);
   assert.deepEqual(result.data!.reuses, COVERED_ROWS);
   assert.deepEqual([children(plain), governed], [[], []], 'a dry run runs nothing');
@@ -119,7 +119,7 @@ test('--full runs the app-check row as --fresh and the covered rows still reuse 
   const result = await releaseGate(ctx(), configOf(), { execute: true, full: true, platform: 'linux' });
   assert.equal(result.ok, true, result.lines!.join('\n'));
   assert.deepEqual(children(plain), ['npx starci app check --env prod --fresh']);
-  assert.equal(governed.length, 3);
+  assert.equal(governed.length, 0, 'no default row is a governed world layer (R12)');
   assert.match(result.lines!.join('\n'), /full gate \(--full\): the app-check row runs `app check --env prod --fresh`[^\n]*covers reuse that verdict/u);
   assert.equal(recordOf(result).gates.filter((row) => row.reused).length, COVERED_ROWS.length);
 });
@@ -162,13 +162,10 @@ test('a row an app declares of its own under a covered name still runs, through 
 
 test('a row that runs a heavy command is admitted by the governor with its kind, its label and the whole environment, and a starci verb or an audit is no heavy child', async (t) => {
   const { ctx, plain, governed } = world(t);
-  const result = await releaseGate(ctx({ env: { KEEP_PUBLIC: 'kept' } }), configOf(), { execute: true, platform: 'linux' });
+  const declared = configOf({ gates: [{ name: 'app-check', command: ['npx', 'starci', 'app', 'check', '--env', 'prod'] }, { name: 'smoke', command: ['npm', 'run', 'test:smoke'] }] });
+  const result = await releaseGate(ctx({ env: { KEEP_PUBLIC: 'kept' } }), declared, { execute: true, platform: 'linux' });
   assert.equal(result.ok, true);
-  assert.deepEqual(governed.map((call) => [call.kind, call.label, call.argv.join(' ')]), [
-    ['test', 'release gate test-integration', 'npm run test:integration'],
-    ['test', 'release gate test-e2e', 'npm run test:e2e'],
-    ['test', 'release gate test-contract', 'npm run test:contract'],
-  ]);
+  assert.deepEqual(governed.map((call) => [call.kind, call.label, call.argv.join(' ')]), [['test', 'release gate smoke', 'npm run test:smoke']]);
   for (const call of governed) assert.equal(call.env.KEEP_PUBLIC, 'kept', 'the governor gets the environment the row would have run in');
   assert.equal(plain.some((call) => call.command === 'npm'), false);
   const gate = (name: string, command: string[]): Gate => ({ name, command, summary: null, env: {} });

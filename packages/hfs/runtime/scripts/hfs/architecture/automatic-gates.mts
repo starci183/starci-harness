@@ -1,6 +1,6 @@
 import { readTextFile } from '../../lib/read-text.mjs';
 
-// Integration, e2e and contract (the world layers) run on a local machine only: by hand, and as the rows of the release gate. No hook, default typecheck,
+// Integration, e2e and contract (the world layers) run only when a person asks for them, on a local machine (`npm run test:e2e`); no release gate row runs them. No hook, default typecheck,
 // coverage run or CI workflow, whatever its trigger, may include those trees or run those projects. Linting the e2e files is not running them: ESLint reads them
 // as syntax in the one repository-wide lint run (the factory's e2e block), so no `lint:e2e` command exists to judge.
 const E2E_COMMAND = new RegExp([
@@ -45,7 +45,7 @@ function inspectHooks(state: GateState) {
     const text = readTextFile(state.root, hook);
     if (text === null) continue;
     const body = withoutComments(text);
-    if (runsE2e(body)) state.finding(state.rule, hook, `${hook} runs integration, e2e or contract. They run on a local machine by hand; hooks run unit, lint and typecheck.`);
+    if (runsE2e(body)) state.finding(state.rule, hook, `${hook} runs integration, e2e or contract. They run only on request, on a local machine; hooks run unit, lint and typecheck.`);
     for (const match of body.matchAll(/npm\s+run\s+([\w:.-]+)/gu)) state.pending.push(match[1] as string);
   }
 }
@@ -84,7 +84,7 @@ function inspectWorkflows(state: GateState) {
     const text = readTextFile(state.root, file);
     if (text === null) continue;
     if (runsE2e(withoutComments(text)))
-      state.finding(state.rule, file, `${file} runs integration, e2e or contract. No workflow runs them, whatever its trigger: remove the step and run them on the local machine (npm run test:e2e; the release gate runs its world rows there).`);
+      state.finding(state.rule, file, `${file} runs integration, e2e or contract. No workflow runs them, whatever its trigger: remove the step: they run only on request, on the local machine (npm run test:e2e), and are no part of CI.`);
   }
 }
 

@@ -23,6 +23,9 @@ checkout's path and the project root on explicitly.
 - What your role may edit, commit, merge and push: [contexts/authority/README.md](contexts/authority/README.md); a branch:
   [contexts/authority/branch.md](contexts/authority/branch.md); a package edit and its local build:
   [contexts/authority/packages.md](contexts/authority/packages.md); removing a worktree: [contexts/authority/README.md](contexts/authority/README.md) "Worktrees".
+- Integration and e2e suites run on request only (a `starci` verb or npm script the person invokes, `npm run test:e2e`), never in CI, a
+  hook or a default gate row: an agent proves a change by the typecheck and the gates its contract declares, and runs a suite only
+  when asked: [contexts/project/cicd.md](contexts/project/cicd.md) "Triggers and what runs" (R12).
 - Run `starci app check` (`--env local`, the default) while you work; the pre-push hook, CI and the release gate run `--env prod`
   ([contexts/project/check-cache.md](contexts/project/check-cache.md) "The operating procedure").
 - An app's branches, `main` and `dev`: [contexts/project/branches.md](contexts/project/branches.md) PROJECT-BRANCH-1; the `dev` branch profile: [contexts/project/lint.md](contexts/project/lint.md) PROJECT-LINT-2.

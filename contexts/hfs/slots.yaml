@@ -1057,8 +1057,8 @@ slots:
     tracked: external
     tier: none
     tests: none
-    goesTo: "the local machine: npm run test:e2e, and the test:e2e row of the release gate (starci app
-      release gate) on a full app; CI runs no integration, e2e or contract spec"
+    goesTo: "the local machine, on request only: npm run test:e2e; CI and the release gate run no
+      integration, e2e or contract spec"
     rules:
       - HFS_E2E_IN_AUTOMATIC_GATE
   - id: app.ci-images

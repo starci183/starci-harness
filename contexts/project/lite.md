@@ -85,7 +85,7 @@ the three realtime doors. How the edition is chosen is PROJECT-1 in [README.md](
   and each async pattern by its lite proof lane. Owners: R272, R401, R284; [code/be/test.md](../code/be/test.md) BE-TEST-12,
   [code/be/injection.md](../code/be/injection.md) BE-INJECTION-5.
 - Integration specs run against the local db service without containers or toxiproxy; contract specs are
-  optional. Both run on a local machine only, in no workflow (R12; [cicd.md](cicd.md) "Triggers and what runs"). Owners:
+  optional. Both run only on request, on a local machine, in no workflow (R12; [cicd.md](cicd.md) "Triggers and what runs"). Owners:
   slots `be.tests.integration`, `be.tests.contract`.
 - CI lints the db migrations; no database type is generated. Owner: slot `app.ci`.
 

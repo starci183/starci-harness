@@ -83,10 +83,8 @@ const isAppCheck = (command: readonly string[]): boolean => command.length === A
 /** The command a gate row runs: under `--full` the `app check --env prod` row gains `--fresh`, every other row is unchanged. */
 export const rowCommand = (command: readonly string[], full: boolean): readonly string[] => (full && isAppCheck(command) ? [...command, '--fresh'] : command);
 const SCRIPT_GATES = ['format:check', 'typecheck', 'build:be', 'lint', 'db:lint', 'build:fe', 'test'];
-// A full app has a test world (integration, e2e and contract projects, always present: the managed `test:e2e` script marks it), so those layers are rows of its gate;
-// a lite app's integration project exists only where it has integration specs, so it has no world rows. The gate runs on the machine that cuts the release and is the
-// one automated run of the world layers: no workflow runs them (R12).
-const WORLD_SCRIPTS = ['test:integration', 'test:e2e', 'test:contract'];
+// The world layers (integration, e2e and contract: `test:integration`, `test:e2e`, `test:contract`) are no default row of the gate: they run only when someone asks for
+// them (`npm run test:e2e`), never from a hook, a workflow, a lane or this gate (R12). A row an app declares of its own under `release.gates` stays its own choice.
 // An app with an entity list (db/entity-list.mts) checks its entities against the migrated schema: a row of every gate, declared or default.
 const DB_DRIFT_COMMAND: readonly string[] = ['npx', 'starci', 'app', 'db', 'drift'];
 const DB_DRIFT: Gate = { name: 'db-drift', command: [...DB_DRIFT_COMMAND], summary: null, env: {} };
@@ -95,8 +93,8 @@ const DB_DRIFT: Gate = { name: 'db-drift', command: [...DB_DRIFT_COMMAND], summa
  * The rows `starci app check` (whole run, `--env prod`) already judges, by gate name: the script or command the row runs by default and the family of `app check`
  * that judges it (contexts/project/check-cache.md "The command surface", "CI parity"). A row of this table whose command is the default one runs nothing when
  * the `app-check` row of the same run passed: it takes that row's verdict. A row an app declares with another command under one of these names still runs.
- * Not here, so always real rows: Sonar on the main project key (`app check` scans the derived `<key>-local`), the world layers (`test:integration`, `test:e2e`,
- * `test:contract`) and every row an app declares of its own.
+ * Not here, so always real rows: Sonar on the main project key (`app check` scans the derived `<key>-local`), and every row an app declares of its own (a world layer
+ * among them, which no default row runs: R12).
  */
 const COVERED: ReadonlyMap<string, { script?: string; command?: readonly string[]; family: string; needsDatabase?: boolean }> = new Map([
   ['format-check', { script: 'format:check', family: 'format (Prettier over every tracked file)' }],
@@ -147,8 +145,7 @@ const scriptGate = (script: string): Gate => ({
 /** Default gates run app-check, the enabled audit, then every managed script present in the app and the entity drift row, Sonar following when it is declared. */
 function defaultGates(scripts: Record<string, unknown> | undefined, audit: Gate | null, entities: boolean): Gate[] {
   const present = SCRIPT_GATES.filter((script) => typeof scripts?.[script] === 'string');
-  const world = typeof scripts?.['test:e2e'] === 'string' ? WORLD_SCRIPTS.filter((script) => typeof scripts?.[script] === 'string') : [];
-  return [{ name: 'app-check', command: [...APP_CHECK_COMMAND], summary: null, env: {} }, ...(audit ? [audit] : []), ...present.map(scriptGate), ...world.map(scriptGate), ...(entities ? [DB_DRIFT] : [])];
+  return [{ name: 'app-check', command: [...APP_CHECK_COMMAND], summary: null, env: {} }, ...(audit ? [audit] : []), ...present.map(scriptGate), ...(entities ? [DB_DRIFT] : [])];
 }
 
 /** Shared quality settings retain the release reader's audit validation, disabled mode and legacy string host compatibility. */

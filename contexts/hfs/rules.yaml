@@ -108,7 +108,7 @@ rules:
       - {kind: hfs, id: sonar-config}
   - id: R12
     code: HFS_E2E_IN_AUTOMATIC_GATE
-    law: The integration, e2e and contract specs (the world layers) run on a local machine only, by hand and as the world rows of the release gate; no hook, coverage run or CI workflow runs them, whatever its trigger.
+    law: The integration, e2e and contract specs (the world layers) run only when a person asks for them, on a local machine (`npm run test:e2e`); no hook, coverage run, CI workflow, release gate row or lane runs them by default, whatever its trigger, and they are no part of CI.
     failureCodes:
       - HFS_E2E_IN_AUTOMATIC_GATE
     enforcers:

@@ -46,13 +46,17 @@ on the release tag; the tag run is the release run, and the pipeline keys every 
 branches with a branch profile for `ci.yml`, and dispatch); a pull request targets `main` alone, so it always runs the full gate. It runs with read-only permissions, no environment and no secret; a fork's or Dependabot's run
 gets none anyway. `pull_request_target`, `workflow_run` and path filters stay refused, and so does every schedule but the nightly `cache-verify.yml`.
 
-**No workflow runs a world layer (R12).** The integration, e2e and contract specs need the test world, so they run on a local
-machine only: by hand (`npm run test:integration`, `npm run test:e2e`, `npm run test:contract`) and, on a full app, as the
-world rows of the release gate, which runs on the machine that cuts the release
-([check-cache.md](check-cache.md#the-operating-procedure) "Real rows"). No job or step of any workflow runs them, under any
-trigger, a manual dispatch included, and `starci app check` runs none of them in either edition: its `test` family is the
-unit specs. An app tracks no `.github/workflows/e2e.yml`: slot `app.ci-e2e` is forbidden and `starci app sync --execute`
-removes the file. `HFS_E2E_IN_AUTOMATIC_GATE` refuses a hook, a coverage run or a workflow that runs one.
+**Integration and e2e run on request only, and are no part of CI (R12, CI standard item `no-world-layers`).** The integration,
+e2e and contract specs need the test world, so they run only when a person asks for them, on a local machine: by hand
+(`npm run test:integration`, `npm run test:e2e`, `npm run test:contract`). Nothing starts them on its own: no workflow, no
+husky hook, no coverage run, no default row of the release gate and no agent or lane (an agent proves its change by the
+typecheck and the gates its contract declares, and runs a world suite only when its task or the owner names it). No job or
+step of any workflow runs them, under any trigger, a manual dispatch included, and `starci app check` runs none of them in
+either edition: its `test` family is the unit specs. The boot proof CI keeps is the wiring gate (`app check --gate wiring`,
+R272), never the e2e suite. An app tracks no `.github/workflows/e2e.yml`: slot `app.ci-e2e` is forbidden and `starci app sync
+--execute` removes the file. `HFS_E2E_IN_AUTOMATIC_GATE` refuses a hook, a coverage run or a workflow that runs one, and R301
+`CI_STANDARD` refuses a `run` step that does (jest `--selectProjects integration|e2e|contract`, a `*.integration-spec` or
+`*.e2e-spec` path, `test:e2e`, `test:integration`, `test:contract` or an `e2e` npm script).
 
 **One sha is judged once.** The first job, `plan`, reads the event and the refs and decides: `full` (the release checks of a
 candidate or tag, Sonar included, still diff-only against the trusted cache), `diff` (with its trusted base, per check-cache.md "Trust"), `defer` (main push of a tagged sha) or `reuse` (a successful `ci.yml` run of

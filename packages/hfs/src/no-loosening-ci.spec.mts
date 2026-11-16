@@ -112,9 +112,10 @@ const gateNames = (requireCi: boolean | undefined) => configOf({ requireCi }, SC
 test('requireCi does not change the local gate: every CI row runs whether or not the push waits for the candidate CI', () => {
   assert.deepEqual(gateNames(false), gateNames(true));
   assert.deepEqual(gateNames(undefined), gateNames(true));
-  for (const row of ['app-check', 'audit', 'format-check', 'typecheck', 'build-be', 'lint', 'db-lint', 'build-fe', 'test', 'test-integration', 'test-e2e', 'test-contract']) {
+  for (const row of ['app-check', 'audit', 'format-check', 'typecheck', 'build-be', 'lint', 'db-lint', 'build-fe', 'test']) {
     assert.ok(gateNames(false).includes(row), row);
   }
+  for (const row of ['test-integration', 'test-e2e', 'test-contract']) assert.equal(gateNames(false).includes(row), false, `${row} runs on request only (R12), no default row`);
 });
 
 test('the local gate has a row for every npm script step of the managed CI', () => {
@@ -127,11 +128,13 @@ test('the local gate has a row for every npm script step of the managed CI', () 
   for (const script of new Set(scriptSteps.filter((name) => name !== 'codegen' && name !== 'lint:fix'))) assert.ok(rows.has(`npm run ${script}`), `the gate has a row for npm run ${script}`);
 });
 
-test('a lite app has no test world rows', () => {
+test('no app, lite or full, has a test world row in its default gate: integration, e2e and contract run on request only (R12)', () => {
   const { 'test:e2e': removed, 'test:contract': alsoRemoved, ...lite } = SCRIPTS;
   assert.equal(typeof removed + typeof alsoRemoved, 'stringstring');
-  const names = configOf({}, lite).gates.map((gate) => gate.name);
-  assert.equal(names.some((name) => /^test-(integration|e2e|contract)$/u.test(name)), false);
+  for (const scripts of [SCRIPTS, lite]) {
+    const names = configOf({}, scripts).gates.map((gate) => gate.name);
+    assert.equal(names.some((name) => /^test-(integration|e2e|contract)$/u.test(name)), false);
+  }
 });
 
 test('a declared Sonar is a row of the local gate and a missing token refuses instead of skipping', async () => {

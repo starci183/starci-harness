@@ -9,6 +9,7 @@
 //   lint-parallel          the lint job is a matrix over the app sides the project declares (be, fe; PROJECT-1), plus packages in an app with root packages
 //   packages-built-first   in an app with root packages, a step that reads their types (rootPackages.readers) follows, or is, a step that builds them (rootPackages.builders)
 //   cache-saved-always     no cache keyed by the commit sha; actions/cache/save runs under if: always()
+//   no-world-layers        no run step runs an integration, e2e or contract suite (they run on request only, never in CI: R12)
 //   timeouts               every job declares timeout-minutes
 //   sha-pinned-actions     every remote `uses:` names a 40-hex commit sha (docker:// a sha256 digest; ./ local actions allowed)
 // An item never requires the step of a gate the app's stack declaration switches off (PROJECT-LINT-4: coverage, test, wiring), since `app sync` renders none.
@@ -166,6 +167,20 @@ function cacheSavedAlways(doc: Parsed, say: Parsed) {
   return out;
 }
 
+/** A command that runs a world layer: a jest project of the layer, a spec file of it, or an npm/pnpm/yarn script named for it (`test:e2e`, `e2e`, `test:integration:ci`). */
+const WORLD_RUN = /--selectProjects[ =]+(?:e2e|integration|contract)\b|\.(?:e2e|integration|contract)-spec\b|\b(?:npm|pnpm|yarn)\s+(?:run(?:-script)?\s+)?(?:[\w-]+:)*(?:e2e|integration|contract)(?::[\w-]+)*(?=\s|$|[;&|])/;
+
+function noWorldLayers(doc: Parsed, say: Parsed) {
+  const out = [];
+  for (const [id, job] of jobsOf(doc)) {
+    for (const step of stepsOf(job)) {
+      const command = runOf(step).split('\n').filter((line: string) => !/^\s*#/.test(line)).join('\n');
+      if (WORLD_RUN.test(command)) out.push(say('no-world-layers', `job ${id}, step ${step.name ?? command.split('\n')[0].slice(0, 60)}: it runs an integration, e2e or contract suite; those run only on request on a local machine (npm run test:e2e), never in a workflow (R12)`));
+    }
+  }
+  return out;
+}
+
 const BOOT_PROOF = /\bapp check\b[^\n]*--gate[ =]wiring\b/;
 
 function bootProof(doc: Parsed, edition: string, say: Parsed, off: GatesOff) {
@@ -278,6 +293,7 @@ export function ciStandardFindings({ doc, file, scope, edition = 'full', standar
     'lint-parallel': () => lintParallel(doc, say, appSides),
     'packages-built-first': () => packagesBuiltFirst(doc, standard, rootPackages === true || lintsPackages(doc), say),
     'cache-saved-always': () => cacheSavedAlways(doc, say),
+    'no-world-layers': () => noWorldLayers(doc, say),
     timeouts: () => timeouts(doc, say),
     'sha-pinned-actions': () => shaPinned(doc, say),
   };

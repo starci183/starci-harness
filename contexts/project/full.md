@@ -50,12 +50,12 @@ Each line names the owner of the fact; the slot or rule is the authority, not th
 
 ## What CI runs
 
-- The e2e world boots the app's own stack from `.starcistacks/<env>` behind toxiproxy, with real migrations; every
+- The e2e world (run on request only, outside CI) boots the app's own stack from `.starcistacks/<env>` behind toxiproxy, with real migrations; every
   consumed event and saga has its e2e spec. Owners: slots `be.tests.world`, `be.tests.e2e`;
   [code/be/test.md](../code/be/test.md) BE-TEST-12; BE-SERVICES-4; R173; the `@starci/test-world` pin in
   [stack/pins.yaml](../stack/pins.yaml).
-- The e2e specs and browser journeys run on a local machine only, by hand and as the world rows of the release gate; no
-  workflow runs them. Owners: R12; slots `app.ci-e2e` (forbidden), `app.browser`, `app.browser-config`;
+- The e2e specs and browser journeys run only on request, on a local machine (`npm run test:e2e`): no workflow, hook or
+  release gate row runs them, and they are no part of CI. Owners: R12; slots `app.ci-e2e` (forbidden), `app.browser`, `app.browser-config`;
   [cicd.md](cicd.md) "Triggers and what runs".
 
 ## Work

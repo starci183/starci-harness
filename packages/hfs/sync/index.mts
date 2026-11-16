@@ -807,7 +807,7 @@ export async function renderRepo(root: string, { presets, parseYaml, notices, ma
 const LITE_RETIRED_DIRS = Object.freeze(['supabase/types']);
 /** The files the sync of an app of either edition retires, each with the reason the dry run prints. */
 const RETIRED_FILES: Readonly<Record<string, string>> = Object.freeze({
-  '.github/workflows/e2e.yml': 'no workflow runs a world layer (R12): the e2e specs run on the local machine (npm run test:e2e, and the test:e2e row of the release gate)',
+  '.github/workflows/e2e.yml': 'no workflow runs a world layer (R12): the e2e specs run only on request, on the local machine (npm run test:e2e)',
 });
 /** The files a lite app's sync retires beside those of every edition, each with the reason the dry run prints. */
 const LITE_RETIRED_FILES: Readonly<Record<string, string>> = Object.freeze({

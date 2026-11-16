@@ -21,7 +21,9 @@ The harness's cheap state checks, `check secrets` and `check loosening`, belong 
 
 ## What a branch never runs
 
-No tests, no coverage, no build, no Storybook plays or DNA measurement, no full lint and no full typecheck. The
+No tests, no coverage, no build, no Storybook plays or DNA measurement, no full lint and no full typecheck. Never an
+integration, e2e or contract suite either, unless the owner or the task names one: those run on request only (R12,
+[../project/cicd.md](../project/cicd.md) "Triggers and what runs"). The
 one build a branch takes is the one that publishes a package edit to the local registry ([packages.md](packages.md)). A branch never runs
 its own `npm ci` or `npm install` where a shared install exists (the main checkout's, the workflow worktree's, or the
 harness's install cache, one of which the harness links into each Op worktree, and replaces by the install of the worktree's own
