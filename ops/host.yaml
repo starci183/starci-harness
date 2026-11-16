@@ -81,7 +81,7 @@ services:
       log: "{state}/telegram-bridge.log"
     requires: []
   # The host stack `starci`: one docker compose project (project name, container names and volume names fixed), its files in
-  # ops/host/stack/ (sonar.yaml, tunnel.yaml, registry.yaml). Every container of it is a service here with `stack: starci`, and
+  # ops/host/stack/ (sonar.yaml, tunnel.yaml, registry.yaml, embeddings.yaml). Every container of it is a service here with `stack: starci`, and
   # `starci host up --stack starci` brings the whole stack up. `start` runs `docker compose up -d --no-recreate <service>`: only what is
   # down starts, a running container is never recreated, and no volume is touched. `stop` is `docker stop`, never `compose down`.
   # `secrets` come from the CLI's secret loader (policy/security.yaml secretKeys) into the compose process's environment only.
@@ -173,3 +173,60 @@ services:
     install:
       kind: none
     requires: [docker]
+  # The host's embedding model, published as https://embed.starci.org for any app (contexts/harness/host.md "Host services").
+  # The model runs in the native Ollama of the host, never in a container (its GPU works natively; Docker Desktop's GPU passthrough
+  # on Windows/WSL is fragile; the model is already pulled there); the gate and the tunnel are containers of the stack
+  # (ops/host/stack/embeddings.yaml). `embeddings-gate` and `embeddings-tunnel` are up when they refuse a call without the token,
+  # so a gate that answered openly would read down.
+  - id: embeddings
+    summary: the native Ollama of the host on 127.0.0.1:11434 (its own install, on the GPU), its model list naming qwen3-embedding:8b
+    platform: win32
+    check:
+      http:
+        url: http://127.0.0.1:11434/api/tags
+      json:
+        path: models.0.name
+        equals: qwen3-embedding:8b
+    start:
+      argv: ["{env:LOCALAPPDATA}/Programs/Ollama/ollama app.exe"]
+      detach: true
+    install:
+      kind: none
+    requires: []
+  - id: embeddings-gate
+    summary: the bearer-token gate in front of the embedding model (container starci-embeddings-gate, Caddy, served on 127.0.0.1:11435), refusing /v1/models without the token
+    platform: any
+    stack: starci
+    check:
+      http:
+        url: http://127.0.0.1:11435/v1/models
+        status: 401
+    start:
+      argv: [docker, compose, --project-directory, "{runtime}/ops/host/stack", -f, "{runtime}/ops/host/stack/embeddings.yaml", up, -d, --no-recreate, embeddings-gate]
+      env:
+        STARCI_PORT_EMBEDDINGS: "11435"
+      secrets: [EMBEDDINGS_API_KEY, HOST_SERVICES_TUNNEL_TOKEN]
+    stop:
+      argv: [docker, stop, starci-embeddings-gate]
+    install:
+      kind: none
+    requires: [docker, embeddings]
+  - id: embeddings-tunnel
+    summary: the Cloudflare tunnel starci-host-services (container starci-cloudflared-embeddings) that publishes the gate as https://embed.starci.org, the public origin refusing /v1/models without the token
+    platform: any
+    stack: starci
+    waitSeconds: 60
+    check:
+      http:
+        url: https://embed.starci.org/v1/models
+        status: 401
+    start:
+      argv: [docker, compose, --project-directory, "{runtime}/ops/host/stack", -f, "{runtime}/ops/host/stack/embeddings.yaml", up, -d, --no-recreate, cloudflared-embeddings]
+      env:
+        STARCI_PORT_EMBEDDINGS: "11435"
+      secrets: [EMBEDDINGS_API_KEY, HOST_SERVICES_TUNNEL_TOKEN]
+    stop:
+      argv: [docker, stop, starci-cloudflared-embeddings]
+    install:
+      kind: none
+    requires: [embeddings-gate]

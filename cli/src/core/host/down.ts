@@ -12,7 +12,7 @@ export const hostDownVerb = defineVerb({
     schema: "starci/host-down@1",
     flags: {
         ids: { kind: "rest", summary: "the services to stop (at least one, or a stack), with what requires them" },
-        stack: { kind: "string", summary: "only the services of this stack of ops/host.yaml (starci: the shared SonarQube, its tunnel and the local npm registry)" },
+        stack: { kind: "string", summary: "only the services of this stack of ops/host.yaml (starci: the shared SonarQube, its tunnel, the local npm registry and the embeddings gate and tunnel)" },
     },
     run: async (context, flags) => {
         if (flags.ids.length === 0 && flags.stack === undefined) throw new Refusal("HOST_DOWN_NEEDS_SERVICE", "name the service or the stack to stop (host down never stops every service)")

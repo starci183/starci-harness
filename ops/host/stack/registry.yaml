@@ -1,5 +1,6 @@
 # One file of the host stack `starci` (ops/host/stack/): one Compose project, in this one folder, that holds the shared SonarQube (sonar.yaml),
-# its public tunnel (tunnel.yaml) and the local npm registry (registry.yaml). ops/host.yaml declares each container as a service of `stack: starci`;
+# its public tunnel (tunnel.yaml), the local npm registry (registry.yaml) and the public door of the host's embedding model (embeddings.yaml).
+# ops/host.yaml declares each container as a service of `stack: starci`;
 # `starci host up --stack starci` brings the whole stack up, idempotently.
 #
 # The local npm registry of this host: the Verdaccio that `starci deps publish-local --execute` publishes to and an app installs an

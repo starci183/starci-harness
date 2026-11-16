@@ -11,7 +11,7 @@ export const hostStatusVerb = defineVerb({
     schema: "starci/host-status@1",
     flags: {
         ids: { kind: "rest", summary: "the services to report (default every service)" },
-        stack: { kind: "string", summary: "only the services of this stack of ops/host.yaml (starci: the shared SonarQube, its tunnel and the local npm registry)" },
+        stack: { kind: "string", summary: "only the services of this stack of ops/host.yaml (starci: the shared SonarQube, its tunnel, the local npm registry and the embeddings gate and tunnel)" },
     },
     run: async (context, flags) => {
         const config = loadHost()
