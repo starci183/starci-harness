@@ -47,6 +47,7 @@ import { appGalleryFindings } from './gallery.mjs';
 import { restContractFindings } from './rest-contract.mjs';
 import { projectSidesFindings } from './project-sides.mjs';
 import { dataBoundaryFindings } from './data-copies.mjs';
+import { dataSecondLoaderFindings } from './data-loaders.mjs';
 import { dataStoresFindings } from './data-stores.mjs';
 import { dataSetsFindings } from './data-sets.mjs';
 import { storagePublicRuleFindings } from './stacks-storage-public.mjs';
@@ -61,6 +62,7 @@ export const A15_CODES = [
   // codes-begin
   'BE_DI_RING',
   'HFS_DATA_IN_CODE', 'HFS_DATA_DEPENDENCY', 'HFS_DATA_UNSEALED', 'HFS_DATA_STANDARD_SEALED', 'HFS_DATA_MANIFEST_DRIFT', 'HFS_DATA_FILE_SIZE', 'HFS_DATA_CAP',
+  'HFS_DATA_ADAPTER_DRIFT', 'HFS_DATA_ADAPTER_UNGUARDED', 'HFS_DATA_SECOND_LOADER',
   'DATA_STORE_UNDECLARED', 'DATA_STORE_KIND', 'DATA_STORE_ADAPTER', 'DATA_DERIVED_SOURCE',
   'STORAGE_PUBLIC_ROUTE_MISSING', 'STORAGE_PUBLIC_ROUTE_CONSOLE', 'STORAGE_PUBLIC_LINK_INTERNAL',
   'HFS_SECRET_TARGET_MISSING', 'HFS_SECRET_TARGET_UNSEALED', 'HFS_SECRET_TARGET_PLAIN',
@@ -84,6 +86,7 @@ export const A15_CODES = [
 export const FINDERS = [
   // finders-begin
   dataBoundaryFindings,
+  dataSecondLoaderFindings,
   dataStoresFindings,
   dataSetsFindings,
   storagePublicRuleFindings,

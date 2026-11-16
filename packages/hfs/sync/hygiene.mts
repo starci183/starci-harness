@@ -7,7 +7,9 @@
 // refuses every bypass marker the index holds (R303: an inline disable, a type-check escape, a skipped test, a failure swallowed in a hook or
 // workflow; scripts/lib/bypass-markers.mts), so a bypass fails at the commit and not only at the release. Its data guard (R400,
 // scripts/hfs/rules/data-copies.mts) refuses a copy document in any repository but a copy repository, and in a copy repository
-// an unsealed backup file, a sealed standard, a manifest that disagrees with the data files, a file over 4 MiB or a snapshot over 500 MiB. At an HFS app root (hfs.json) it also
+// an unsealed backup file, a sealed standard, a manifest that disagrees with the data files, a file over 4 MiB or a snapshot over 500 MiB (raw/
+// included), and in a standard with an adapter/ (R434, scripts/hfs/rules/data-adapter.mts) an output the adapter does not write from raw/ or a
+// missing guard. At an HFS app root (hfs.json) it also
 // refuses a back-end logic file the index adds without its unit spec beside it (BE_UNIT_SPEC_NOT_STAGED,
 // scripts/hfs/rules/staged-specs.mts over the coverage scope; a constants-only file has nothing to test), naming the file. The pre-commit hook judges the staged files;
 // scripts/gates/hfs-sync.mjs judges every tracked file.
@@ -17,13 +19,15 @@
 // a bare repo — carries no scripts/housekeeping/ledger-hygiene.mjs at its root, so that section is silently absent:
 // never a crash, never machine-state findings blamed on a repository that does not own them.
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { secretFileFindings } from '../runtime/scripts/hfs/rules/secrets.mjs';
 import { stagedSpecFindings } from '../runtime/scripts/hfs/rules/staged-specs.mjs';
 import { galleryStaleFindings } from '../runtime/scripts/hfs/rules/gallery-coupling.mjs';
 import { activeProfile } from '../runtime/scripts/hfs/branch-profile.mjs';
-import { DATA_MANIFEST, copyRepositoryDeclared, dataCopyFindings, dataInCodeFindings } from '../runtime/scripts/hfs/rules/data-copies.mjs';
+import { DATA_MANIFEST, copyManifestOf, copyRepositoryDeclared, dataCopyFindings, dataInCodeFindings } from '../runtime/scripts/hfs/rules/data-copies.mjs';
+import { ADAPTER_DIR, ADAPTER_OUTPUTS, RAW_DIR, adapterDriftOf, adapterGuardFindings, isAdapterOutput, isAdapterRepository } from '../runtime/scripts/hfs/rules/data-adapter.mjs';
 import { HFS_BYPASS_MARKER, bypassMessage } from '../runtime/scripts/hfs/rules/bypass-markers.mjs';
 import { bypassesIn } from '../runtime/scripts/lib/bypass-markers.mjs';
 import { STACK_ROOT, idleJobs, readGateDeclarations } from '../runtime/scripts/lib/stack-declaration.mjs';
@@ -144,6 +148,36 @@ function bypassGuardFindings(cwd: string, files: readonly string[]): HygieneFind
   });
 }
 
+const parseJson = (text: string | null): unknown => {
+  try { return text === null ? null : JSON.parse(text); } catch { return null; }
+};
+
+/**
+ * R434 over the index of an adapter repository (scripts/hfs/rules/data-adapter.mts): raw/ as the index holds it is checked out into a scratch
+ * folder, the adapter of the working tree (adapter/ with its node_modules) runs over it twice, and what it writes is compared by blob id with the
+ * index's manifest.json, data/, blobs/ and index/. An adapter/ the index does not hold as it stands is refused first: the check would judge
+ * code the commit does not record.
+ */
+function adapterIndexDrift(cwd: string, tracked: readonly string[]): Array<{ code: string; path?: unknown; message: string }> {
+  try { git(cwd, ['diff', '--quiet', '--', ADAPTER_DIR]); } catch {
+    return [{ code: 'HFS_DATA_ADAPTER_DRIFT', path: ADAPTER_DIR, message: `${ADAPTER_DIR} has changes the index does not hold: stage them (or set them aside) so the adapter that runs is the one the commit records (R434)` }];
+  }
+  const committed = new Map<string, string>();
+  for (const line of (git(cwd, ['ls-files', '-s', '-z', '--', ...ADAPTER_OUTPUTS.map((output) => output.replace(/\/$/u, ''))], { maxBuffer: 64 * 1024 * 1024 }) as string).split('\0').filter(Boolean)) {
+    const match = /^\d+ ([0-9a-f]+) \d\t(.+)$/u.exec(line);
+    if (match !== null && isAdapterOutput(String(match[2]))) committed.set(String(match[2]), String(match[1]));
+  }
+  const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'starci-adapter-'));
+  try {
+    const raw = tracked.filter((file) => file.startsWith(RAW_DIR));
+    if (raw.length > 0) git(cwd, ['checkout-index', `--prefix=${scratch.split(path.sep).join('/')}/index/`, '-z', '--stdin'], { input: raw.join('\0') });
+    fs.mkdirSync(path.join(scratch, 'index', 'raw'), { recursive: true });
+    return adapterDriftOf({ root: cwd, rawDir: path.join(scratch, 'index', 'raw'), committed, scratch });
+  } finally {
+    fs.rmSync(scratch, { recursive: true, force: true });
+  }
+}
+
 /**
  * The data guard (R400, scripts/hfs/rules/data-copies.mts) over `files` as the index holds them. In a copy repository (a root
  * manifest.json of schema starci/data-manifest@1, no hfs.json) every commit has the whole index judged: sealing by purpose, the manifest
@@ -158,7 +192,10 @@ function dataGuardFindings(cwd: string, files: readonly string[]): HygieneFindin
     const sizeOf = (file: string): number | null => {
       try { return Number.parseInt(String(git(cwd, ['cat-file', '-s', `:${file}`])).trim(), 10); } catch { return null; }
     };
-    return dataCopyFindings({ manifestText, files: trackedFiles(cwd), read, sizeOf }).map(asHygiene);
+    const tracked = trackedFiles(cwd);
+    const copy = dataCopyFindings({ manifestText, files: tracked, read, sizeOf });
+    const standard = copyManifestOf(parseJson(manifestText))?.purpose === 'seed-standard' && isAdapterRepository(tracked);
+    return (standard ? [...copy, ...adapterGuardFindings({ files: tracked, read }), ...adapterIndexDrift(cwd, tracked)] : copy).map(asHygiene);
   }
   return files.filter((file) => file.endsWith('.json')).flatMap((file) => dataInCodeFindings(file, read(file)).map(asHygiene));
 }

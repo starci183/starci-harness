@@ -581,6 +581,76 @@ past the cap the driver refuses (`DATA_GIT_CAP_EXCEEDED`): the data set has outg
 changed sealed file whole in its history (sealed bytes do not delta); when a backup repository's pack passes 2 GiB its owner re-roots the
 branch. No application code, no plaintext export, no private key.
 
+**A standard may carry raw/ and an adapter.** There is one standard layout for every project. A project whose content is awkward to author
+as JSON records (lessons, articles, prompts written as Markdown, a catalogue kept as YAML, images) keeps that material inside its standard
+repository and converts it there; the committed layout above stays exactly as it is, and the bring-up never sees the difference:
+
+| path | holds | written by | rules |
+|---|---|---|---|
+| `manifest.json`, `data/<store>/<set>/*.json`, `blobs/`, `index/` | the standard, as every standard holds it | the adapter, through the git driver; never by hand | R400; R434 |
+| `raw/` | what people author: Markdown, YAML, code, images, any layout the adapter reads | people, reviewed and committed | plain, never sealed, 4 MiB a file, counted in the 500 MiB (R400) |
+| `adapter/` | `main.ts`, `convert.ts`, `package.json` (pins `@starci/seed`, lockfile committed), `tsconfig.json` | people | R434 |
+| `.githooks/pre-commit`, `.github/workflows/seed-standard.yml`, `.gitattributes` | the guard: `starci app check --staged` on every commit and in CI | `starci data standard init` | R434 |
+
+`data/` stays the record shards only; that is why the authored folder is `raw/`.
+
+The adapter contract (`@starci/seed/git`): `adapter/convert.ts` exports `convert(rawDir: string): StandardContent | Promise<StandardContent>`,
+`{format, project, entries}`, where `format` is `<repository name>@<major>` and each entry is `{store, entry}` built with `recordEntry` or
+`blobEntry` of `@starci/seed`, its store a store id of the app's `data.stores`. `adapter/main.ts` is one line,
+`process.exitCode = await runStandardAdapter(convert, process.argv.slice(2))`; `node adapter/main.ts` from the repository root (or
+`--raw <dir> --out <dir>`) renders the entries through `renderStandard`, the one git driver writing into a scratch working copy, and
+replaces `manifest.json`, `data/`, `blobs/` and `index/` with what it wrote. An adapter reads `raw/` and writes nothing itself: no copy
+file, no `raw/` file, nothing outside the four outputs. Its output is deterministic: the driver orders sets and keys and writes canonical
+JSON, `renderStandard` fixes `takenAt` (`1970-01-01T00:00:00.000Z`: a standard is identified by its commit, never by a time) and
+`source.environment` (`standard`), and the adapter brings no clock, random id or file-system order into an entry (sort what `readdirSync`
+answers). A repeated key or a set mixing records and blobs is refused by the manifest builder.
+
+The guard. The commit hook and CI run the adapter twice over `raw/` as the index holds it and compare what it writes, by git blob id, with
+the committed `manifest.json`, `data/`, `blobs/` and `index/`; a run that fails, two runs that differ (a non-deterministic adapter), a
+hand edit of `data/`, `raw/` committed without its output and an `adapter/` change left unstaged are HFS_DATA_ADAPTER_DRIFT. An adapter
+repository without its entry, its package, the hook or the workflow is HFS_DATA_ADAPTER_UNGUARDED. `starci data standard init [--adapter]
+[--dir <folder>] [--force]` writes the guard, `.gitattributes`, an empty plain manifest (byte for byte what the driver renders for no entry)
+and, with `--adapter`, `raw/README.md` and a compiling `adapter/` stub, and sets `core.hooksPath` to `.githooks`; a file a person changed is
+kept unless `--force`. Then `npm install --prefix adapter` and commit `adapter/package-lock.json` (CI installs with `npm ci`).
+
+A worked example: lessons written as Markdown, with their images.
+
+```
+shop-seed-standard/
+  raw/lessons/01-welcome.md          # "# Welcome" then the body; ![cover](images/welcome.png)
+  raw/lessons/images/welcome.png
+  adapter/convert.ts
+```
+
+```ts
+export function convert(rawDir: string): StandardContent {
+    const dir = join(rawDir, "lessons")
+    const entries: StoredEntry[] = []
+    for (const file of readdirSync(dir).filter((name) => name.endsWith(".md")).sort()) {
+        const text = readFileSync(join(dir, file), "utf8")
+        const images = [...text.matchAll(/!\[[^\]]*\]\(images\/([^)]+)\)/gu)].map((match) => `lessons/${match[1]}`)
+        entries.push({ store: "database", entry: recordEntry("lessons", file.slice(0, -3), { title: /^# (.+)$/mu.exec(text)?.[1] ?? file, body: text, images }) })
+    }
+    for (const image of readdirSync(join(dir, "images")).sort())
+        entries.push({ store: "storage", entry: blobEntry("lesson-images", `lessons/${image}`, readFileSync(join(dir, "images", image)), "image/png") })
+    return { format: "shop-seed-standard@1", project: "shop", entries }
+}
+```
+
+`node adapter/main.ts` writes `data/database/lessons/all.json` (one record per lesson, keyed `01-welcome`, its images named by their bucket
+key), `blobs/storage/lesson-images/<aa>/<id>.bin` and `index/storage/lesson-images.json`, and the manifest that lists them; the bring-up
+upserts the lessons into the `database` store and the images into the `storage` store by those keys.
+
+**One path in.** A standard reaches an app only through the bring-up's seed step at the commit `data.sets` pins, an upsert by natural key with
+`force` once per pin. Before any entry of the seed levels applies, the seed step reads each pinned seed-standard of the environment (a git
+destination, no project `completeness`) through `pinRepository` into the harness's cache and, when the pinned commit carries `adapter/`,
+installs it from its lockfile in a scratch checkout and runs the same drift check; a pin whose output drifts, or that cannot be read, is
+refused STACK_SEED_ADAPTER_DRIFT and nothing is seeded. A verified pin is recorded in the seed receipts (scope `standard`, the set's id, the
+commit), so each pin is verified once. No app reads a standard any other way: a git clone, pull or fetch of a `-seed-standard` repository,
+a content-sync command, or an environment variable naming one is HFS_DATA_SECOND_LOADER (R435). Known gap: R435 reads one line at a time,
+so a repository name kept in a variable and cloned on another line is held by review. Known gap: the seed step verifies a pinned standard;
+applying its entries into the stores is the receipt-and-upsert law above, not yet a step of `stack/seeds.mts`.
+
 **Code and copies stay apart.** A code project tracks no copy document (a data manifest or a shard) and never depends on a copy
 repository (no package dependency, workspace, submodule or path into one).
 
@@ -616,7 +686,10 @@ docker-compose environment is synced). The harness reaches a store through its d
 no value, store error text or identity reaches an output.
 
 Enforced by: R400 (`data-copies`: in a code project `HFS_DATA_IN_CODE`, `HFS_DATA_DEPENDENCY`; in a copy repository's commit hook
-`HFS_DATA_UNSEALED`, `HFS_DATA_STANDARD_SEALED`, `HFS_DATA_MANIFEST_DRIFT`, `HFS_DATA_FILE_SIZE`, `HFS_DATA_CAP`); R427 (the data sets).
+`HFS_DATA_UNSEALED`, `HFS_DATA_STANDARD_SEALED`, `HFS_DATA_MANIFEST_DRIFT`, `HFS_DATA_FILE_SIZE`, `HFS_DATA_CAP`, raw/ included); R427 (the data sets);
+R434 (`data-adapter`, `standard-gate`: `HFS_DATA_ADAPTER_DRIFT`, `HFS_DATA_ADAPTER_UNGUARDED`, `STACK_SEED_ADAPTER_DRIFT`); R435 (`data-loaders`:
+`HFS_DATA_SECOND_LOADER`); the adapter's render by the specs of `@starci/seed` (`git/standard.spec.ts`), the guard by
+`packages/hfs/src/data-adapter.spec.mts` and `data-loaders.spec.mts`, the scaffold by `cli/src/core/data/standard.test.ts`.
 
 ## PROJECT-STACKS-14 Every store that must be kept has an adapter; every copy is written through a driver
 

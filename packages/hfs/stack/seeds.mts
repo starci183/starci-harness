@@ -9,7 +9,8 @@
 // app's schema, opens their secret references in memory with the environment's age identity (the sops seam) and hands the resolved documents
 // to the app command it names on stdin, never in argv, a file or a log; its receipt is written once the command succeeded. A `files` entry
 // is validated only: the harness has no object-storage client, so its upload stays the app's. Without `execute` the step reads the
-// receipts and prints what would apply.
+// receipts and prints what would apply. Before any entry, the gate of standard-gate.mts verifies each pinned seed-standard of the environment
+// once per pin (R434): a standard whose adapter output drifts from its committed layout is refused STACK_SEED_ADAPTER_DRIFT.
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -27,6 +28,8 @@ import { DB_WAIT_SECONDS } from './db-phases.mjs';
 import type { DeployDatabase, FloorDeps } from './db-phases.mjs';
 import { failure, refusal } from './errors.mjs';
 import type { ActionResult } from './remote.mjs';
+import { STANDARD_SCOPE, pinnedStandardVerifier, standardCache, standardGate, standardPins } from './standard-gate.mjs';
+import type { PinVerifier, StandardPin } from './standard-gate.mjs';
 
 /** The receipts table of the seed step, in the app's database. */
 export const SEED_RECEIPTS = 'public.starci_seed_receipts';
@@ -50,6 +53,8 @@ export interface SeedStepInput {
   execute: boolean;
   /** Runs an app command (a document entry's, or an entry's probe) with its input on stdin. */
   command: (argv: readonly string[], input: string) => RunResult;
+  /** Verifies a pinned seed-standard before anything applies (standard-gate.mts); the real verifier over the harness's cache by default. */
+  standards?: PinVerifier | undefined;
 }
 
 /** One receipt row. */
@@ -81,6 +86,11 @@ function receiptsOf(input: SeedStepInput): Receipt[] {
 const receiptSql = (item: Planned, env: string, secrets: string, outcome: string): string =>
   `insert into ${SEED_RECEIPTS} (scope, id, hash, secrets, env, outcome) values (${literal(item.scope)}, ${literal(item.entry.id)}, ${literal(item.hash)}, ${literal(secrets)}, ${literal(env)}, ${literal(outcome)}) ` +
   'on conflict (scope, id) do update set hash = excluded.hash, secrets = excluded.secrets, env = excluded.env, outcome = excluded.outcome, applied_at = now()';
+
+/** The statement that records a verified standard pin: scope `standard`, the set's id, the commit as its hash. */
+const pinReceiptSql = (pin: StandardPin, env: string): string =>
+  `insert into ${SEED_RECEIPTS} (scope, id, hash, secrets, env, outcome) values (${literal(STANDARD_SCOPE)}, ${literal(pin.set)}, ${literal(pin.commit)}, '', ${literal(env)}, 'verified') ` +
+  'on conflict (scope, id) do update set hash = excluded.hash, env = excluded.env, outcome = excluded.outcome, applied_at = now()';
 
 /** The outcome an app command answered on its last output line, or `applied`; the rest of its output is never read. */
 function outcomeOf(stdout: string): string {
@@ -198,11 +208,14 @@ export function seedStep(input: SeedStepInput): ActionResult {
   const planned: Planned[] = levelsOf(input.repoRoot, input.env).flatMap((level) => level.entries.map((entry) => ({
     level, scope: level.env ?? SHARED_SCOPE, entry, hash: entryDigest(path.join(input.repoRoot, level.dir), entry),
   })));
-  if (planned.length === 0) return { ok: true, lines: ['seed: no entry in .starcistacks/seeds or the level of the environment'], data: { applied: [], entries: 0 } };
+  const pins = standardPins(input.repoRoot, input.env);
+  if (planned.length === 0 && pins.length === 0) return { ok: true, lines: ['seed: no entry in .starcistacks/seeds or the level of the environment'], data: { applied: [], entries: 0 } };
   const receipts = receiptsOf(input);
-  const lines: string[] = [];
   const applied: string[] = [];
-  if (input.execute) psqlTransaction(input.ctx, input.target, RECEIPTS_DDL.map((sql) => ({ sql })), { code: 'STACK_SEED_RECEIPT' });
+  // The standards first: a pin whose adapter output drifts refuses the step before any entry applies (R434).
+  const gate = standardGate({ pins, receipts, execute: input.execute, verify: input.standards ?? pinnedStandardVerifier({ cache: standardCache() }) });
+  const lines: string[] = [...gate.lines];
+  if (input.execute) psqlTransaction(input.ctx, input.target, [...RECEIPTS_DDL.map((sql) => ({ sql })), ...gate.verified.map((pin) => ({ sql: pinReceiptSql(pin, input.env) }))], { code: 'STACK_SEED_RECEIPT' });
   for (const item of planned) {
     const receipt = receipts.find((row) => row.scope === item.scope && row.id === item.entry.id);
     const kept = keptLine(item, receipt);
@@ -235,14 +248,17 @@ function serviceContainer(ctx: StackContext, config: Pick<DeployConfig, 'stack'>
   return splitLines(found.stdout)[0];
 }
 
-/** True when either seed level of the environment declares an entry. */
+/** True when either seed level of the environment declares an entry, or the environment loads a pinned seed-standard (its gate runs in the seed step). */
 export function hasSeedEntries(repoRoot: string, env: string): boolean {
-  return readSeedLevel(repoRoot, null).entries.length > 0 || readSeedLevel(repoRoot, env).entries.length > 0;
+  return readSeedLevel(repoRoot, null).entries.length > 0 || readSeedLevel(repoRoot, env).entries.length > 0 || standardPins(repoRoot, env).length > 0;
 }
 
 /** What a deploy's dry run says of the seed step: every entry of the two levels, each applied unless its receipt holds. */
 export function seedPlanLine(repoRoot: string, env: string): string {
-  const entries = levelsOf(repoRoot, env).flatMap((level) => level.entries.map((entry) => `${level.env ?? SHARED_SCOPE}/${entry.id} (${entry.kind}, ${entry.mode})`));
+  const entries = [
+    ...standardPins(repoRoot, env).map((pin) => `${STANDARD_SCOPE}/${pin.set} (verify ${pin.name}@${pin.commit.slice(0, 12)})`),
+    ...levelsOf(repoRoot, env).flatMap((level) => level.entries.map((entry) => `${level.env ?? SHARED_SCOPE}/${entry.id} (${entry.kind}, ${entry.mode})`)),
+  ];
   return `seed after convergence, each entry unless its receipt in ${SEED_RECEIPTS} holds: ${entries.join(', ')}`;
 }
 

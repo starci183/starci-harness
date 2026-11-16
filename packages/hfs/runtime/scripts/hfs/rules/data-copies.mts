@@ -15,8 +15,10 @@
 //   HFS_DATA_MANIFEST_DRIFT  the manifest's `files` keys and the tracked data files disagree (sealed names carry `.sops.json` when the
 //                            sealing is sops-age), or its purpose and its format name (`<name>-seed-standard@N`,
 //                            `<name>-seed-backup-<env>@N`) disagree;
-//   HFS_DATA_FILE_SIZE       a data file over 4 MiB;
-//   HFS_DATA_CAP             the data files together over 500 MiB: the data set has outgrown git and needs the s3 driver.
+//   HFS_DATA_FILE_SIZE       a data file, or a file of raw/ (what people author in a standard with an adapter, R434), over 4 MiB;
+//   HFS_DATA_CAP             the data files and raw/ together over 500 MiB: the data set has outgrown git and needs the s3 driver.
+// raw/ is judged like the data files for sealing (a standard holds no sealed file anywhere), for size and for the manifest, whose files index
+// names data files only; data-adapter.mts (R434) judges that the outputs are the adapter's.
 // Findings name files, fields and counts, never a value; keys of a document are read, no value beyond them.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -36,6 +38,8 @@ export const GIT_SHARD_BYTES = 4_194_304;
 export const DATA_MANIFEST_SCHEMA = 'starci/data-manifest@1';
 /** The manifest at a copy repository's root. */
 export const DATA_MANIFEST = 'manifest.json';
+/** The folder a seed-standard keeps its authored material in, beside an adapter/ (R434): sized and capped like the data files, never listed by the manifest. */
+export const RAW_TREE = 'raw/';
 /** The trees of a copy repository that hold data files. */
 export const DATA_TREES = ['data/', 'blobs/', 'index/'] as const;
 /** The suffix of a sealed data file (sops binary mode). */
@@ -67,6 +71,8 @@ export function formatPurpose(format: unknown): { purpose: 'seed-standard' | 'se
 export const copyRepositoryDeclared = (manifestText: string | null, hfsText: string | null): Record<string, Parsed> | null => (hfsText === null ? copyManifestOf(parse(manifestText)) : null);
 
 const isDataFile = (file: string): boolean => DATA_TREES.some((tree) => file.startsWith(tree));
+/** A file the size limits count: a data file, or a file of raw/. */
+const isSizedFile = (file: string): boolean => isDataFile(file) || file.startsWith(RAW_TREE);
 
 /** What a parsed document of a copy is when it is tracked in a code project: a manifest, or a sops binary-mode envelope (`data` member); null for any other document. */
 function copyDocumentKind(file: string, doc: Parsed, text: string): string | null {
@@ -155,7 +161,8 @@ function driftFindings(manifest: Record<string, Parsed>, files: readonly string[
   if (manifest.purpose === 'seed-backup' && manifest.sealing !== 'sops-age') out.push(drift(`${DATA_MANIFEST} sealing is ${JSON.stringify(manifest.sealing ?? null)}; a seed-backup is always sops-age`));
   if (!plain(manifest.files)) return [...out, drift(`${DATA_MANIFEST} has no files index (an object keyed by the plain data file name)`)];
   const suffix = manifest.sealing === 'sops-age' ? SEALED_SUFFIX : '';
-  const expected = new Set(Object.keys(manifest.files).map((key) => `${key}${suffix}`));
+  for (const key of Object.keys(manifest.files)) if (!isDataFile(key)) out.push(drift(`${DATA_MANIFEST} lists ${key}, which is no data file: its files index names files of data/, blobs/ and index/ only (raw/ is authored material, never an output)`));
+  const expected = new Set(Object.keys(manifest.files).filter(isDataFile).map((key) => `${key}${suffix}`));
   const tracked = new Set(files.filter(isDataFile));
   for (const name of expected) if (!tracked.has(name)) out.push(drift(`${DATA_MANIFEST} lists ${name}, which is not tracked`));
   for (const name of tracked) if (!expected.has(name)) out.push(drift(`${name} is tracked but ${DATA_MANIFEST} does not list it`, name));
@@ -190,11 +197,11 @@ export function dataCopyFindings({ manifestText, files, read, sizeOf }: { manife
     }
   }
   let total = 0;
-  for (const file of dataFiles) {
+  for (const file of files.filter(isSizedFile)) {
     const size = sizeOf(file) ?? 0;
     total += size;
-    if (size > GIT_SHARD_BYTES) findings.push(found('HFS_DATA_FILE_SIZE', file, `${file} is ${String(size)} bytes; no data file of a git copy exceeds ${String(GIT_SHARD_BYTES)} bytes (4 MiB): write it in smaller shards or chunks (PROJECT-STACKS-13)`, { bytes: size }));
+    if (size > GIT_SHARD_BYTES) findings.push(found('HFS_DATA_FILE_SIZE', file, `${file} is ${String(size)} bytes; no data file or raw/ file of a git copy exceeds ${String(GIT_SHARD_BYTES)} bytes (4 MiB): write it in smaller shards or chunks, or split the authored file (PROJECT-STACKS-13)`, { bytes: size }));
   }
-  if (total > GIT_CAP_BYTES) findings.push(found('HFS_DATA_CAP', DATA_MANIFEST, `the data files of this copy hold ${String(total)} bytes, over the ${String(GIT_CAP_BYTES)} bytes (500 MiB) a git copy may hold: the data set has outgrown git, declare the s3 driver for it (PROJECT-STACKS-13, PROJECT-STACKS-14)`, { bytes: total }));
+  if (total > GIT_CAP_BYTES) findings.push(found('HFS_DATA_CAP', DATA_MANIFEST, `the data files and raw/ of this copy hold ${String(total)} bytes, over the ${String(GIT_CAP_BYTES)} bytes (500 MiB) a git copy may hold: the data set has outgrown git, declare the s3 driver for it (PROJECT-STACKS-13, PROJECT-STACKS-14)`, { bytes: total }));
   return findings;
 }

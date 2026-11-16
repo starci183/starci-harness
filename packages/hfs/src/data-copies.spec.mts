@@ -179,3 +179,15 @@ test('R400 the commit hook: a copy repository is judged by its index, any other 
   const code = repository({ 'hfs.json': '{"kind":"app"}\n', 'manifest.json': json(standard([])), 'be/x.sops.json': envelope });
   assert.deepEqual(guard(code, ['manifest.json', 'be/x.sops.json']), ['HFS_DATA_IN_CODE manifest.json', 'HFS_DATA_IN_CODE be/x.sops.json'], 'a code project is no copy repository, whatever it tracks');
 });
+
+test('R400 over raw/ (R434): a raw/ file is sized and capped like a data file and never listed by the manifest', () => {
+  const files = { 'data/a/0.json': '{}', 'raw/a.md': '# a', 'raw/big.png': 'x' };
+  const big = dataCopyFindings({ manifestText: json(standard(['data/a/0.json'])), ...reader(files, { 'raw/big.png': GIT_SHARD_BYTES + 1 }) });
+  assert.deepEqual(big.map((finding) => `${finding.code} ${finding.path}`), ['HFS_DATA_FILE_SIZE raw/big.png']);
+  const listed = dataCopyFindings({ manifestText: json(standard(['data/a/0.json', 'raw/a.md'])), ...reader(files) });
+  assert.deepEqual(listed.map((finding) => `${finding.code} ${finding.path}`), ['HFS_DATA_MANIFEST_DRIFT manifest.json']);
+  assert.match(listed[0]?.message ?? '', /lists raw\/a\.md, which is no data file/u);
+  const many = Array.from({ length: 126 }, (_, at) => `raw/${String(at)}.md`);
+  const cap = dataCopyFindings({ manifestText: json(standard([])), ...reader(Object.fromEntries(many.map((name) => [name, '#'])), Object.fromEntries(many.map((name) => [name, GIT_SHARD_BYTES]))) });
+  assert.deepEqual(codes(cap), ['HFS_DATA_CAP'], 'raw/ counts toward the 500 MiB of the snapshot');
+});

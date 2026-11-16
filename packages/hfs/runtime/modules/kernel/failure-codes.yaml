@@ -6705,6 +6705,45 @@ HFS_DATA_CAP:
   nextStep_vi: "Khai báo driver s3 cho bộ dữ liệu đó trong application-stacks.yaml."
   owner: op-retry
   kind: check-finding
+HFS_DATA_ADAPTER_DRIFT:
+  title: "A seed-standard's output is not what its adapter writes from raw/"
+  title_vi: "Đầu ra của seed-standard không khớp với những gì adapter ghi từ raw/"
+  meaning_vi: "Trong kho seed-standard có adapter/, manifest.json, data/, blobs/ và index/ đã commit phải trùng từng byte với đầu ra của node adapter/main.ts chạy trên raw/ (theo index). Adapter không chạy được, hai lần chạy cho kết quả khác nhau (adapter không tất định), một tệp đầu ra lệch, thiếu hoặc thừa so với commit, hoặc adapter/ có thay đổi chưa stage đều bị từ chối."
+  causes_vi:
+    - "Vi phạm R434: data/ bị sửa tay trong kho có adapter, hoặc raw/ được commit mà không chạy lại adapter (PROJECT-STACKS-13)."
+    - "Adapter dùng đồng hồ, id ngẫu nhiên hoặc thứ tự hệ thống tệp nên mỗi lần chạy ra kết quả khác."
+    - "Chưa cài phụ thuộc của adapter (npm ci --prefix adapter)."
+  nextStep_vi: "Sửa raw/ (hoặc adapter/), chạy lại node adapter/main.ts từ gốc kho rồi stage cả đầu ra; không sửa tay data/. Adapter phải tất định: không đồng hồ, không id ngẫu nhiên."
+  owner: op-retry
+  kind: check-finding
+HFS_DATA_ADAPTER_UNGUARDED:
+  title: "An adapter repository lacks its entry, package, commit hook or CI workflow"
+  title_vi: "Kho có adapter thiếu entry, package, hook commit hoặc workflow CI"
+  meaning_vi: "Kho seed-standard có adapter/ phải theo dõi adapter/main.ts, adapter/package.json, hook .githooks/pre-commit và workflow .github/workflows/seed-standard.yml; hook và workflow đều chạy starci app check --staged để kiểm lại adapter trước mỗi commit và trên CI."
+  causes_vi:
+    - "Vi phạm R434: kho được dựng tay, thiếu phần mà starci data standard init --adapter viết (PROJECT-STACKS-13)."
+  nextStep_vi: "Chạy starci data standard init --adapter trong kho để viết các tệp còn thiếu, rồi commit chúng."
+  owner: op-retry
+  kind: check-finding
+HFS_DATA_SECOND_LOADER:
+  title: "An app reads a seed-standard by a path other than the bring-up seed step"
+  title_vi: "Ứng dụng đọc seed-standard qua đường khác ngoài bước seed của bring-up"
+  meaning_vi: "Seed-standard chỉ vào ứng dụng qua bước seed của bring-up, tại commit mà data.sets ghim. Một dòng chạy git clone/pull/fetch trên kho -seed-standard, một lệnh kiểu content sync, hoặc một biến môi trường nêu kho -seed-standard (hay tên chứa SEED_STANDARD) là đường nạp thứ hai và bị từ chối."
+  causes_vi:
+    - "Vi phạm R435: script hoặc mã nguồn tự kéo nội dung từ kho seed-standard (PROJECT-STACKS-13)."
+  nextStep_vi: "Khai báo seed-standard trong data.sets của .starcistacks/application-stacks.yaml (ghim commit) và xoá đường nạp đó; bring-up nạp chuẩn bằng upsert theo khoá tự nhiên."
+  owner: op-retry
+  kind: check-finding
+STACK_SEED_ADAPTER_DRIFT:
+  title: "The seed step refused a pinned seed-standard whose adapter output drifts"
+  title_vi: "Bước seed từ chối seed-standard đã ghim có đầu ra adapter bị lệch"
+  meaning_vi: "Trước khi áp dụng, bước seed của bring-up đọc từng seed-standard của môi trường tại commit đã ghim; nếu commit đó có adapter/, adapter được chạy lại trên raw/ và so từng byte với đầu ra đã commit. Đầu ra lệch, hoặc commit không đọc được, làm bước seed dừng trước khi áp dụng bất cứ mục nào."
+  causes_vi:
+    - "Vi phạm R434: commit được ghim mang data/ sửa tay hoặc adapter không tất định."
+    - "Kho hoặc commit được ghim không tới được từ máy chạy bring-up."
+  nextStep_vi: "Ghim một commit mà kiểm tra của chính kho seed-standard đã xanh (sửa raw/ hoặc adapter/ trong kho đó rồi commit lại), cập nhật commit trong data.sets, rồi chạy lại bring-up."
+  owner: supervisor
+  kind: verb-refusal
 DATA_STORE_UNDECLARED:
   title: "A stateful component is neither a store nor derived"
   title_vi: "Thành phần có trạng thái chưa là kho dữ liệu cũng chưa là derived"

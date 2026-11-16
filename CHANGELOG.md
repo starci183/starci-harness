@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.0-alpha.137 - 2026-11-17
+
+- Added: `starci data standard init [--adapter] [--dir <folder>] [--force]` (`core/data/standard.ts`, PROJECT-STACKS-13, R434) makes a `<name>-seed-standard` folder a copy repository born with its guard: `.gitattributes` (`* -text`), an empty plain `manifest.json` (byte for byte what the git driver renders for no entry), the commit hook `.githooks/pre-commit` and the CI workflow `.github/workflows/seed-standard.yml`, each running `starci app check --staged`, with `core.hooksPath` set to `.githooks`; `--adapter` adds `raw/README.md` and an `adapter/` (`main.ts` over `runStandardAdapter`, a `convert.ts` stub turning raw/*.md into records, `package.json` pinning @starci/seed 0.2.0 and this CLI, `tsconfig.json` for type stripping). A file a person changed is kept unless `--force`; a folder whose name is no standard's is refused `DATA_COPY_NAME`, an app root `DATA_IN_CODE`.
+- Changed (contexts): `project/stacks.md` PROJECT-STACKS-13 gains "A standard may carry raw/ and an adapter" (the layout table, the adapter contract, the guard, a worked example) and "One path in" (the seed step's pin gate, R435); `hfs/rules.yaml` R434, R435; `harness/presence-audit.md` R434.
+- The adapter guard runs in `starci app check --staged` once the CLI requires an @starci/hfs that carries R434 (6.13.17); until the cli-follow step raises the pin, a copy repository's hook runs the guard of the hfs the CLI requires.
+
 ## 1.1.0-alpha.136 - 2026-11-17
 
 - Removed: the per-feature Work documents (`.starciwork/features/<feature>/**` and the `index.yaml` catalog) from the harness. `.starciwork` holds `workspace.yaml`, the concepts, the brand and, in full, the shell, the run resources and the derived summaries (`contexts/project/work.md`, rewritten: PROJECT-WORK-1, -2, -3 and -6 are gone; PROJECT-WORK-4 keeps a provider's research in its concept and the building task's contract; PROJECT-WORK-5 and -7 hold).

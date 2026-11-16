@@ -1,6 +1,6 @@
 {
   "name": "@starci/seed",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "The data standard of a StarCi project in one package: the two kinds of seed, the standard seed (loaded once by the bring-up) and the backup seed (written by the scheduled job, brought back by a sync). The ports (store and driver adapters, one export to several copies, the copy contract and the line protocol), in-memory references with the store and driver contract suites under ./testing, a git driver (sealed by purpose with sops and age) under ./git, and the postgres store (the whole relational database as deterministic per-table rows) under ./postgres.",
   "keywords": [
     "seed",
