@@ -206,6 +206,15 @@ A node's `shape` is its flowchart outline: `stadium` (the default pill), `rect`,
 `circle` (a start or end). An edge's `label` is drawn on a chip at its midpoint and repeated, as "source → target:
 label", in the graph's visually hidden edge list.
 
+### FlowGraph overview map and edge routing (0.39.4)
+
+`minimap` draws an overview map of the whole graph in the canvas's end-bottom corner, beside the zoom controls: one muted block per card (measured, so a dragged card is where it stands), the part in view cut out of a veil, in the surface
+and separator tokens (`.starci-core-flow-graph-minimap`). A press or drag in it centres the canvas there. It is off by default, drawn only while the graph is interactive and hidden under 48rem; `minimapLabel` names it.
+
+A `steps` edge goes round the cards (0.39.4): when an edge's drawn route (a join that skips layers, a loop back to an earlier step) would cross a card other than its own two ends, the stretch between its leaving and entering runs is routed round
+the cards by an orthogonal shortest path (fewest turns, `STEPS_AVOID_CLEARANCE` clear of each card; `stepsAvoidRoute`, `routeAroundBoxes`). An edge that crosses nothing is drawn as before. The obstacles are the measured cards, so a dragged card
+and a card that grew are obstacles where they stand; a loop frame is not one. Stories `Flow graph edge routing and minimap (0.39.4)` sample every edge's drawn path and assert none enters another card.
+
 ### FlowGraph steps (0.35.0)
 
 `layout="steps"` is the card map of a workflow, top-down by default (`direction="LR"` runs across), on the well (`--background`) with no
@@ -434,6 +443,10 @@ BubbleMap, DescriptionList, Disclosure, FlowGraph, ListBox, LogoStack, MermaidDi
 neutral `Button size="sm"` (every Button size is a pill, so the row reads as suggestions): the only pattern. A Chip, a
 `ChoiceChips`, a `TagGroup` or a row of `Link`s that runs an action or sends its own label is refused (lint
 `suggestion-buttons`). `<Cluster gap="inline" label="Suggested questions">{questions.map((q) => <Button key={q.id} size="sm" onPress={() => ask(q.text)}>{q.text}</Button>)}</Cluster>`
+
+A `DataTable` row with an `href` is a real link in both layouts (0.39.4). In the table layout the vendor row navigates on a click and on Enter through `GrammarRoot`'s router (one keyboard stop, the table's focus ring), and
+the row-header cell's content is also a real `<a>` stretched over the row (out of the tab order), so middle-click, "open in new tab" and copy-link work; a modifier click opens a new tab. At phone width (the list layout, under 768 px) the title is the
+anchor, stretched over the whole row, the one tab stop; the focus ring is drawn on the row. A plain click navigates once through the router in both, and `onRowAction` still runs alongside.
 
 `DataTable` `onRowAction(id)` (and `SurfaceCard kind="table"` `onRowAction`) makes every row pressable, to open a drawer: a click or
 Enter / Space on the focused row (React Aria's row action, so the row is a focus stop with the table's focus ring), the pointer cursor
@@ -802,6 +815,10 @@ A `ListBoxItem` is `label` (a string: the title, accessible name and typeahead t
 selects the visible line limit. The same prop and default apply to `DropdownMenuItem`, `SidebarItem`
 and the `ListOption` descriptions used by Select and ComboBox. The packaged stylesheet clamps the
 vendor `Description` slot; its full text stays available to assistive technology.
+A `ListBoxItem` with `href` (0.39.4) is a navigation row: a real anchor (`<a role="option">`) that opens the destination through `GrammarRoot`'s router, in a new tab on a modifier or middle click, with copy-link, Enter on the
+focused row and the focus ring; `onAction` runs alongside. An item is either selectable or a link: `href` belongs to a list with `selectionMode="none"` (the default when any item has an `href`) and is ignored in a selecting
+list, which draws no link. A Data nav or a mail list is `<ListBox label="Mail" selectionMode="none" items={[{ id: "inbox", label: "Inbox", href: "/mail/inbox" }]} />`.
+
 `ListBoxItem.emphasis="unread"` makes both the label and description strong using the active family's
 DNA. Omit it for a read row, which keeps HeroUI's normal label and muted description.
 Optional `labelLeading` puts a decorative glyph in the title line itself, inside HeroUI's `Label` before the

@@ -321,6 +321,163 @@ export const stepsBackRoute = (
     ]
 }
 
+/** A card's box in the edges' coordinates (the top-left corner and the size), the obstacle an edge keeps clear of. */
+export type StepsBox = { readonly x: number, readonly y: number, readonly width: number, readonly height: number }
+
+/** The clear room an edge keeps beside a card it goes round (0.39.4). */
+export const STEPS_AVOID_CLEARANCE = 14
+/** The cost of a turn against a unit of length when an edge is routed round cards: the route with the fewest turns wins over a slightly longer one. */
+const AVOID_TURN_COST = 48
+
+/** True when the orthogonal segment `a`-`b` passes through the inside of `box` (touching its border is not a crossing). */
+export const segmentCrossesBox = (a: FlowGraphPoint, b: FlowGraphPoint, box: StepsBox): boolean => {
+    const left = Math.min(a.x, b.x)
+    const right = Math.max(a.x, b.x)
+    const top = Math.min(a.y, b.y)
+    const bottom = Math.max(a.y, b.y)
+    return right > box.x + 0.5 && left < box.x + box.width - 0.5 && bottom > box.y + 0.5 && top < box.y + box.height - 0.5
+}
+
+/** True when any segment of the path crosses any of the boxes. */
+export const routeCrossesBoxes = (points: ReadonlyArray<FlowGraphPoint>, boxes: ReadonlyArray<StepsBox>): boolean => {
+    for (let index = 1; index < points.length; index += 1) {
+        const from = points[index - 1] as FlowGraphPoint
+        const to = points[index] as FlowGraphPoint
+        for (const box of boxes) if (segmentCrossesBox(from, to, box)) return true
+    }
+    return false
+}
+
+const dropCollinear = (points: ReadonlyArray<FlowGraphPoint>): ReadonlyArray<FlowGraphPoint> => points.filter((point, index) => {
+    const before = points[index - 1]
+    const after = points[index + 1]
+    if (before === undefined || after === undefined) return true
+    if (before.x === point.x && point.x === after.x) return false
+    if (before.y === point.y && point.y === after.y) return false
+    return true
+})
+
+type HeapItem = { readonly state: number, readonly cost: number }
+
+/** A binary min-heap on `cost`, the queue of {@link routeAroundBoxes}. */
+const heapPush = (heap: HeapItem[], item: HeapItem): void => {
+    heap.push(item)
+    let at = heap.length - 1
+    while (at > 0) {
+        const parent = (at - 1) >> 1
+        if ((heap[parent] as HeapItem).cost <= (heap[at] as HeapItem).cost) break
+        const swap = heap[parent] as HeapItem
+        heap[parent] = heap[at] as HeapItem
+        heap[at] = swap
+        at = parent
+    }
+}
+
+const heapPop = (heap: HeapItem[]): HeapItem => {
+    const top = heap[0] as HeapItem
+    const last = heap.pop() as HeapItem
+    if (heap.length === 0) return top
+    heap[0] = last
+    let at = 0
+    for (;;) {
+        const left = 2 * at + 1
+        const right = left + 1
+        let least = at
+        if (left < heap.length && (heap[left] as HeapItem).cost < (heap[least] as HeapItem).cost) least = left
+        if (right < heap.length && (heap[right] as HeapItem).cost < (heap[least] as HeapItem).cost) least = right
+        if (least === at) break
+        const swap = heap[least] as HeapItem
+        heap[least] = heap[at] as HeapItem
+        heap[at] = swap
+        at = least
+    }
+    return top
+}
+
+/**
+ * The shortest orthogonal path from `from` to `to` that keeps {@link STEPS_AVOID_CLEARANCE} clear of every box (0.39.4), fewest turns first among equals: a Dijkstra
+ * over the grid the boxes' padded edges and the two ends draw. `first` names the axis the path leaves `from` along, so an edge keeps leaving its card the way
+ * the flow runs. Null when there is none.
+ */
+export const routeAroundBoxes = (from: FlowGraphPoint, to: FlowGraphPoint, boxes: ReadonlyArray<StepsBox>, first?: "x" | "y"): ReadonlyArray<FlowGraphPoint> | null => {
+    const padded = boxes.map((box) => ({ x: box.x - STEPS_AVOID_CLEARANCE, y: box.y - STEPS_AVOID_CLEARANCE, width: box.width + 2 * STEPS_AVOID_CLEARANCE, height: box.height + 2 * STEPS_AVOID_CLEARANCE }))
+    const inside = (point: FlowGraphPoint) => padded.some((box) => point.x > box.x + 0.5 && point.x < box.x + box.width - 0.5 && point.y > box.y + 0.5 && point.y < box.y + box.height - 0.5)
+    if (inside(from) || inside(to)) return null
+    const xs = [...new Set([from.x, to.x, ...padded.flatMap((box) => [box.x, box.x + box.width])])].sort((a, b) => a - b)
+    const ys = [...new Set([from.y, to.y, ...padded.flatMap((box) => [box.y, box.y + box.height])])].sort((a, b) => a - b)
+    const columns = xs.length
+    const rows = ys.length
+    const startX = xs.indexOf(from.x)
+    const startY = ys.indexOf(from.y)
+    const endX = xs.indexOf(to.x)
+    const endY = ys.indexOf(to.y)
+    // A state is a grid node and the axis it arrived along (0 = x, 1 = y); the start takes the axis it must leave by.
+    const stateOf = (column: number, row: number, axis: 0 | 1) => (row * columns + column) * 2 + axis
+    const cost = new Map<number, number>()
+    const previous = new Map<number, number>()
+    const heap: HeapItem[] = []
+    const seeds: ReadonlyArray<0 | 1> = first === undefined ? [0, 1] : first === "x" ? [0] : [1]
+    for (const axis of seeds) {
+        cost.set(stateOf(startX, startY, axis), 0)
+        heapPush(heap, { state: stateOf(startX, startY, axis), cost: 0 })
+    }
+    const clear = (a: FlowGraphPoint, b: FlowGraphPoint) => !padded.some((box) => segmentCrossesBox(a, b, box))
+    let reached = -1
+    while (heap.length > 0) {
+        const { state, cost: spent } = heapPop(heap)
+        if (spent > (cost.get(state) ?? Infinity)) continue
+        const axis = (state % 2) as 0 | 1
+        const node = (state - axis) / 2
+        const column = node % columns
+        const row = (node - column) / columns
+        if (column === endX && row === endY) { reached = state; break }
+        const here = { x: xs[column] as number, y: ys[row] as number }
+        const moves: ReadonlyArray<readonly [number, number, 0 | 1]> = [[column - 1, row, 0], [column + 1, row, 0], [column, row - 1, 1], [column, row + 1, 1]]
+        for (const [nextColumn, nextRow, nextAxis] of moves) {
+            if (nextColumn < 0 || nextColumn >= columns || nextRow < 0 || nextRow >= rows) continue
+            const there = { x: xs[nextColumn] as number, y: ys[nextRow] as number }
+            if (!clear(here, there)) continue
+            const next = stateOf(nextColumn, nextRow, nextAxis)
+            const total = spent + Math.abs(there.x - here.x) + Math.abs(there.y - here.y) + (nextAxis === axis ? 0 : AVOID_TURN_COST)
+            if (total < (cost.get(next) ?? Infinity)) {
+                cost.set(next, total)
+                previous.set(next, state)
+                heapPush(heap, { state: next, cost: total })
+            }
+        }
+    }
+    if (reached < 0) return null
+    const path: FlowGraphPoint[] = []
+    for (let state: number | undefined = reached; state !== undefined; state = previous.get(state)) {
+        const node = (state - (state % 2)) / 2
+        const column = node % columns
+        path.push({ x: xs[column] as number, y: ys[(node - column) / columns] as number })
+    }
+    return dropCollinear(path.reverse())
+}
+
+/**
+ * An edge that goes round the cards (0.39.4). `points` is the edge's own route (a forward or a back edge); when none of its segments crosses a card in `boxes`
+ * (the cards other than its two ends) it is kept as drawn, otherwise the stretch between its leaving run and its entering run is routed round them
+ * ({@link routeAroundBoxes}), so no segment of an edge crosses a card. Screen coordinates.
+ */
+export const stepsAvoidRoute = (points: ReadonlyArray<FlowGraphPoint>, boxes: ReadonlyArray<StepsBox>, direction: FlowGraphDirection): ReadonlyArray<FlowGraphPoint> => {
+    if (points.length < 2 || boxes.length === 0 || !routeCrossesBoxes(points, boxes)) return points
+    const source = points[0] as FlowGraphPoint
+    const target = points[points.length - 1] as FlowGraphPoint
+    const flow: "x" | "y" = direction === "LR" ? "x" : "y"
+    const sign = (flow === "x" ? target.x - source.x : target.y - source.y) >= 0 ? 1 : -1
+    // The straight stretch a path keeps out of its source and into its target, so the arrowhead enters square.
+    const lead = (point: FlowGraphPoint, other: FlowGraphPoint) => Math.min(STEPS_TRUNK, Math.max(STEPS_CORNER + STEPS_ARROW_ROOM, Math.abs(flow === "x" ? point.x - other.x : point.y - other.y) / 2))
+    const step = (point: FlowGraphPoint, along: number): FlowGraphPoint => flow === "x" ? { x: point.x + along, y: point.y } : { x: point.x, y: point.y + along }
+    const isBack = points.length > 4
+    const from = isBack ? points[1] as FlowGraphPoint : step(source, sign * lead(source, target))
+    const to = isBack ? points[points.length - 2] as FlowGraphPoint : step(target, -sign * lead(target, source))
+    const routed = routeAroundBoxes(from, to, boxes, isBack ? undefined : flow)
+    if (routed === null) return points
+    return dropCollinear([source, ...routed, target])
+}
+
 /** The room a loop card keeps between its box and its children, and the height of its header line (label and chips). */
 export const STEPS_CONTAINER_PAD = 16
 export const STEPS_CONTAINER_HEAD = 40

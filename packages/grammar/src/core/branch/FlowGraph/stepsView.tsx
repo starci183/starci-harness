@@ -12,13 +12,13 @@ import {
     QuestionMarkCircleIcon,
     XCircleIcon,
 } from "@heroicons/react/24/outline"
-import { BaseEdge, EdgeLabelRenderer, Handle, useInternalNode, Position, type EdgeProps, type Node, type NodeProps } from "@xyflow/react"
+import { BaseEdge, EdgeLabelRenderer, Handle, useInternalNode, useStore, Position, type EdgeProps, type Node, type NodeProps } from "@xyflow/react"
 import { Link as RouterLink } from "react-aria-components"
-import { isValidElement, memo, type ReactNode } from "react"
+import { isValidElement, memo, useMemo, type ReactNode } from "react"
 import { Avatar } from "../../leaf/Avatar/index.js"
 import { Icon, type IconSource } from "../../leaf/Icon/index.js"
 import { useCustomTone } from "../../useCustomTone.js"
-import { chipsOf, roundedPath, stepsBackRoute, stepsForwardRoute, stepsSideRoute, STEPS_CORNER, STEPS_EXIT_CHARS, STEPS_EXIT_INSET, STEPS_PORT_CHARS, STEPS_TITLE_CHARS, STEPS_TITLE_LINES, type StepsBackRoute, type StepsDiamondSide, type StepsExits } from "./steps.js"
+import { chipsOf, roundedPath, stepsAvoidRoute, stepsBackRoute, stepsForwardRoute, stepsSideRoute, STEPS_CORNER, STEPS_EXIT_CHARS, STEPS_EXIT_INSET, STEPS_PORT_CHARS, STEPS_TITLE_CHARS, STEPS_TITLE_LINES, type StepsBackRoute, type StepsBox, type StepsDiamondSide, type StepsExits } from "./steps.js"
 import type { FlowGraphChip, FlowGraphDirection, FlowGraphLegendItem, FlowGraphLegendKind, FlowGraphNode, FlowGraphPort, FlowGraphRunStatus, FlowGraphStepKind, FlowGraphTone } from "./types.js"
 
 /**
@@ -312,6 +312,29 @@ FlowGraphContainerView.displayName = "FlowGraphContainerView"
 const STEP_LABEL = "starci-core-flow-graph-step-label"
 
 /**
+ * The boxes of the cards an edge must not cross (0.39.4): every step and diamond card but the edge's own two ends, in the edges' coordinates, read from the
+ * measured nodes so a dragged card and a card that wraps to another height are obstacles where they stand. A loop frame is not one: an edge crosses its border to reach the cards inside.
+ */
+const useObstacles = (source: string, target: string): ReadonlyArray<StepsBox> => {
+    const key = useStore((state) => {
+        let out = ""
+        for (const node of state.nodeLookup.values()) {
+            if (node.id === source || node.id === target || (node.type !== "flowGraphStep" && node.type !== "flowGraphDiamond")) continue
+            const width = node.measured.width
+            const height = node.measured.height
+            if (width === undefined || height === undefined) continue
+            const at = node.internals.positionAbsolute
+            out += `${String(Math.round(at.x))},${String(Math.round(at.y))},${String(Math.round(width))},${String(Math.round(height))};`
+        }
+        return out
+    })
+    return useMemo(() => key === "" ? [] : key.split(";").filter((part) => part !== "").map((part) => {
+        const [x = 0, y = 0, width = 0, height = 0] = part.split(",").map(Number)
+        return { x, y, width, height }
+    }), [key])
+}
+
+/**
  * A way out of a loop frame (0.39.1): the FlowGraph's label pill (12, the hairline border on the surface) ON the frame's end edge, placed by the layout (LR: its start
  * {@link STEPS_EXIT_INSET} inside the right edge, its middle at `offset` from the frame's middle; TB: centred on the bottom edge at `offset` across). Its edges leave
  * the handle at its far end.
@@ -333,7 +356,8 @@ const ExitPill = ({ port, direction, offset, width }: { readonly port: FlowGraph
  * rounded corner at every turn, the round dot at its start and the small solid arrowhead at its end; a label without a port is a pill on its last run.
  * A branch out of a port (0.37.35) turns at its own lane (`data.lane`, DNA-COMMON-FLOW-BRANCH-LANES), so no two branches share a vertical run.
  */
-export const FlowGraphStepEdge = memo(({ sourceX, sourceY, targetX, targetY, markerEnd, label, data, target }: EdgeProps) => {
+export const FlowGraphStepEdge = memo(({ sourceX, sourceY, targetX, targetY, markerEnd, label, data, source, target }: EdgeProps) => {
+    const obstacles = useObstacles(source, target)
     const direction = (data?.["direction"] as FlowGraphDirection | undefined) ?? "LR"
     const measured = useInternalNode(target)?.measured
     const span = (direction === "LR" ? measured?.height : measured?.width) ?? 0
@@ -341,7 +365,7 @@ export const FlowGraphStepEdge = memo(({ sourceX, sourceY, targetX, targetY, mar
     const lane = typeof laneData === "number" ? laneData : undefined
     // A diamond's branch out of a side vertex (0.39.1) runs across, then along: one turn.
     const isSide = data?.["side"] === "start" || data?.["side"] === "end"
-    const points = isSide ? stepsSideRoute({ x: sourceX, y: sourceY }, { x: targetX, y: targetY }, direction) : stepsForwardRoute({ x: sourceX, y: sourceY }, { x: targetX, y: targetY }, direction, span, lane)
+    const points = isSide ? stepsSideRoute({ x: sourceX, y: sourceY }, { x: targetX, y: targetY }, direction) : stepsAvoidRoute(stepsForwardRoute({ x: sourceX, y: sourceY }, { x: targetX, y: targetY }, direction, span, lane), obstacles, direction)
     const turn = points[points.length - 2] ?? { x: sourceX, y: sourceY }
     const labelX = (turn.x + targetX) / 2
     const labelY = (turn.y + targetY) / 2
@@ -364,13 +388,17 @@ const BACK_RADIUS = 12
 const LR_LABEL_GAP = 6
 
 /** A back edge: dashed, routed round the cards through the channel under its source's layer, its label a pill on the channel run. */
-export const FlowGraphBackEdge = memo(({ sourceX, sourceY, targetX, targetY, markerEnd, label, data }: EdgeProps) => {
+export const FlowGraphBackEdge = memo(({ sourceX, sourceY, targetX, targetY, markerEnd, label, data, source, target }: EdgeProps) => {
+    const obstacles = useObstacles(source, target)
     const route = data?.["route"] as StepsBackRoute | undefined
     const direction = (data?.["direction"] as FlowGraphDirection | undefined) ?? "TB"
     if (route === undefined) return null
-    const points = stepsBackRoute({ x: sourceX, y: sourceY }, { x: targetX, y: targetY }, route, direction)
-    const from = points[2] ?? { x: sourceX, y: sourceY }
-    const to = points[3] ?? { x: targetX, y: targetY }
+    const points = stepsAvoidRoute(stepsBackRoute({ x: sourceX, y: sourceY }, { x: targetX, y: targetY }, route, direction), obstacles, direction)
+    // The label sits on the run along the channel: the longest run of the route (the channel stays the 3rd run when the edge is not rerouted).
+    const runs = points.slice(1).map((point, index) => ({ from: points[index] as { x: number, y: number }, to: point }))
+    const longest = runs.reduce((best, run) => Math.hypot(run.to.x - run.from.x, run.to.y - run.from.y) > Math.hypot(best.to.x - best.from.x, best.to.y - best.from.y) ? run : best, runs[0] ?? { from: { x: sourceX, y: sourceY }, to: { x: targetX, y: targetY } })
+    const from = points.length === 6 ? points[2] as { x: number, y: number } : longest.from
+    const to = points.length === 6 ? points[3] as { x: number, y: number } : longest.to
     return (
         <>
             <BaseEdge path={roundedPath(points, BACK_RADIUS)} {...(markerEnd === undefined ? {} : { markerEnd })} />

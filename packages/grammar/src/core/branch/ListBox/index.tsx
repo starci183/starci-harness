@@ -14,7 +14,8 @@ import type { NoChildren } from "../../tier.js"
 /** The leading identity slot is 32, 40 or 48px; HeroUI retains the row's own padding and radius. */
 export type ListBoxSize = "sm" | "md" | "lg"
 
-export type ListBoxItem = {
+/** The fields every item has, selectable or a link. */
+type ListBoxItemFields = {
     readonly id: string
     /** The row's title, its accessible name and its typeahead text. */
     readonly label: string
@@ -42,6 +43,15 @@ export type ListBoxItem = {
     /** Marks under the description, in one wrapping row (a status `Badge`, a channel `Badge`). */
     readonly footer?: ReactNode
     readonly isDisabled?: boolean
+}
+
+export type ListBoxItem = ListBoxItemFields & {
+    /**
+     * A destination (0.39.4): the item is a real anchor (`<a role="option">`) that opens `href` through the app's `GrammarRoot` router (client navigation) and in a new tab on a
+     * modifier or middle click, with copy-link, Enter on the focused item and the focus ring; `onAction` runs alongside. An item is either selectable or a link (list law: a
+     * navigation list does not select): `href` applies in a list with `selectionMode="none"`, which is the default when any item has one, and is ignored in a selecting list.
+     */
+    readonly href?: string
 }
 
 /** A named section whose caption and option content share an edge. Item ids are unique across sections. */
@@ -83,7 +93,7 @@ export type ListBoxProps = NoChildren & ListBoxContent & {
     readonly descriptionLines?: ItemDescriptionLines
     /** The leading slot size shared by rows (default md, 40px); a row may override it. */
     readonly size?: ListBoxSize
-    /** `none` makes an actionable (not selectable) list; rows then only fire `onAction`. */
+    /** `none` makes an actionable (not selectable) list; rows then only fire `onAction`, or open their `href`. Defaults to `none` when an item has an `href`, else `single`. */
     readonly selectionMode?: "none" | "single" | "multiple"
     readonly selectedIds?: ReadonlyArray<string>
     readonly defaultSelectedIds?: ReadonlyArray<string>
@@ -120,7 +130,7 @@ export const ListBox = ({
     inset,
     size = "md",
     descriptionLines = "wrap",
-    selectionMode = "single",
+    selectionMode: selectionModeProp,
     selectedIds,
     defaultSelectedIds,
     onSelectionChange,
@@ -134,7 +144,8 @@ export const ListBox = ({
     const nested = useSurfaceNesting()
     const inPane = usePaneContext() !== undefined
     const resolvedInset = inset ?? (nested || inPane ? "panel" : "default")
-    const allItems = sections === undefined ? items : sections.flatMap((section) => section.items)
+    const allItems: ReadonlyArray<ListBoxItem> = sections === undefined ? items : sections.flatMap((section) => section.items)
+    const selectionMode = selectionModeProp ?? (allItems.some((item) => item.href !== undefined) ? "none" : "single")
     const renderLabel = (item: ListBoxItem) => (
         <HeroLabel data-grammar-item-label="true">
             {item.labelLeading === undefined ? null : (
@@ -153,6 +164,7 @@ export const ListBox = ({
             data-grammar-list-size={item.size ?? size}
             data-grammar-list-emphasis={item.emphasis}
             textValue={item.label}
+            {...(item.href === undefined || selectionMode !== "none" ? {} : { href: item.href, "data-grammar-list-link": "true" })}
             {...(item.isDisabled === undefined ? {} : { isDisabled: item.isDisabled })}
         >
             <ButtonPlacementProvider placement="item">

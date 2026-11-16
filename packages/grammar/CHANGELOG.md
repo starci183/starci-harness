@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.39.4 - 2026-11-17 - Row links, ListBox link items, FlowGraph minimap and edge routing
+
+- A patch: new optional props and renderer fixes only, no lint rule of an `eslint-grammar-*` package, nothing removed (contexts/grammars/contributing.md "Patch or minor"); the canon pins' `~0.39.3` admits it.
+- Fixed: a `DataTable` row with `href` at phone width (the list layout, under 768 px) drew a pressable-looking row with no link and no navigation. The title is now a real anchor stretched over the whole row (the app's router navigates a plain click, a modifier or middle click opens a new tab, Enter on the focused anchor follows it, the focus ring is drawn on the row); `onRowAction` still runs on the same click.
+- Changed: in the table layout the row-header cell's content is also a real `<a>` stretched over the vendor row (out of the tab order; the row stays the one keyboard stop and navigates through `GrammarRoot`'s router), so middle-click, "open in new tab" and copy-link work. A row without `href` is unchanged.
+- Added: `ListBoxItem.href`: a navigation item is a real anchor (`<a role="option">`) with router navigation, new-tab on modifier or middle click, Enter and the focus ring; `onAction` runs alongside. An item is either selectable or a link: `href` applies in a `selectionMode="none"` list (the default when any item has an `href`) and is ignored in a selecting list.
+- Added: `FlowGraph` `minimap` and `minimapLabel`: an overview map (one muted block per measured card, the part in view cut out of a veil, press or drag to centre the canvas), in the surface and separator tokens, hidden under 48rem and while the graph is not interactive. Off by default.
+- Changed: a `steps` edge whose route would cross a card other than its two ends (a join that skips layers, a loop back to an earlier step) is routed round the cards by an orthogonal shortest path with the fewest turns, `STEPS_AVOID_CLEARANCE` clear of each card (`stepsAvoidRoute`, `routeAroundBoxes`, `segmentCrossesBox`, `routeCrossesBoxes` in `steps.ts`). An edge that crosses nothing is drawn exactly as before. A back edge's label sits on the longest run of its route.
+- Stories: `Surfaces/Row links (0.39.4)` (`DataTableRowIsALink` at 1920 and 390: the anchors, the router call, Enter; `ListBoxItemIsALink`; `ListBoxSelectionStaysSeparate`) and `Flow graph edge routing and minimap (0.39.4)` (`JoinAndLoopAcross`, `JoinAndLoopDown`: every edge's path sampled, none inside another card; `Minimap`).
+
 ## 0.39.3 - 2026-11-14
 
 - Changed: follows @starci/hfs 6.13.0 (peer line): version stamp only, with the Grammar family 0.39.3. No component changes.

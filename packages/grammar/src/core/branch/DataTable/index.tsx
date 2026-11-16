@@ -1,6 +1,6 @@
 "use client"
 
-import { Checkbox as HeroCheckbox, Table as HeroTable, type Selection, type SortDescriptor } from "@heroui/react"
+import { Checkbox as HeroCheckbox, Link as HeroLink, Table as HeroTable, type Selection, type SortDescriptor } from "@heroui/react"
 import { useEffect, useRef, useState, type CSSProperties, type DragEventHandler, type KeyboardEvent, type MouseEvent, type ReactNode } from "react"
 import { Skeleton } from "../../leaf/Skeleton/index.js"
 import { ButtonPlacementProvider } from "../../buttonIntent.js"
@@ -287,11 +287,31 @@ type CellBodyProps<Row extends DataTableRow> = {
     /** Low-priority columns folded into this cell as stacked secondary text. */
     readonly collapsed: ReadonlyArray<DataTableColumn<Row>>
     readonly renderCell: (row: Row, columnId: string) => ReactNode
+    /** The row's destination, on the row-header cell only: its content becomes the row's real anchor (see `TableRowLink`). */
+    readonly href?: string
 }
 
-const CellBody = <Row extends DataTableRow>({ row, column, renderBody, collapsed, renderCell }: CellBodyProps<Row>) => (
+/**
+ * The anchor of a table row that has an `href` (0.39.4). The vendor row already navigates on press and on Enter through the app's router, but a `tr` is not an
+ * anchor: it has no middle-click, no "open in new tab" and no copy-link. The row-header cell's content is therefore also a real `<a>` stretched over the row
+ * (CSS `::after`); it is out of the tab order (the row is the one keyboard stop, with its focus ring) and a primary click is left to the row's press, which
+ * navigates through `GrammarRoot`'s router (and opens a new tab itself on a modifier click), so one click navigates once. A middle-click or the context menu is the platform's.
+ */
+const TableRowLink = ({ href, children }: { readonly href: string; readonly children: ReactNode }) => (
+    <a
+        href={href}
+        tabIndex={-1}
+        className="starci-core-data-table-row-link"
+        data-grammar-table-row-anchor="true"
+        onClick={(event) => { if (event.button === 0) event.preventDefault() }}
+    >
+        {children}
+    </a>
+)
+
+const CellBody = <Row extends DataTableRow>({ row, column, renderBody, collapsed, renderCell, href }: CellBodyProps<Row>) => (
     <>
-        {renderBody(row, column)}
+        {href === undefined ? renderBody(row, column) : <TableRowLink href={href}>{renderBody(row, column)}</TableRowLink>}
         {collapsed.length === 0 ? null : (
             <div className="starci-core-data-table-secondary" data-grammar-table-secondary="true">
                 {collapsed.map((hidden) => (
@@ -551,14 +571,14 @@ export const DataTable = <Row extends DataTableRow>({
                                             })}
                                         >
                                             <ButtonPlacementProvider placement="item">
-                                            {interaction === undefined ? <CellBody row={row} column={column} renderBody={renderBody} collapsed={column.id === hostColumnId ? collapsed : []} renderCell={renderCell} /> : (
+                                            {interaction === undefined ? <CellBody row={row} column={column} renderBody={renderBody} collapsed={column.id === hostColumnId ? collapsed : []} renderCell={renderCell} {...(column.id === rowHeaderId && row.href !== undefined ? { href: row.href } : {})} /> : (
                                                 <div
                                                     className="starci-core-data-table-cell-content"
                                                     {...(interaction.onDragOver === undefined ? {} : { onDragOver: interaction.onDragOver })}
                                                     {...(interaction.onDragLeave === undefined ? {} : { onDragLeave: interaction.onDragLeave })}
                                                     {...(interaction.onDrop === undefined ? {} : { onDrop: interaction.onDrop })}
                                                 >
-                                                    <CellBody row={row} column={column} renderBody={renderBody} collapsed={column.id === hostColumnId ? collapsed : []} renderCell={renderCell} />
+                                                    <CellBody row={row} column={column} renderBody={renderBody} collapsed={column.id === hostColumnId ? collapsed : []} renderCell={renderCell} {...(column.id === rowHeaderId && row.href !== undefined ? { href: row.href } : {})} />
                                                 </div>
                                             )}
                                             </ButtonPlacementProvider>
@@ -571,20 +591,40 @@ export const DataTable = <Row extends DataTableRow>({
     )
     // Under 768 px a table of three or more columns is a list: the first column the title, the others one muted line of values.
     const [titleColumn, ...otherColumns] = shown
-    const listRow = (row: Row) => (
-        <div
-            key={row.id}
-            role="listitem"
-            className="starci-core-data-table-list-row"
-            data-grammar-table-row-pressable={onRowAction !== undefined || row.href !== undefined ? "true" : "false"}
-            {...(onRowAction === undefined ? {} : { onClick: () => onRowAction(row.id), tabIndex: 0, onKeyDown: (event: KeyboardEvent<HTMLDivElement>) => { if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); onRowAction(row.id) } } })}
-        >
-            <div className="starci-core-data-table-list-title">{titleColumn === undefined ? null : renderCell(row, titleColumn.id)}</div>
-            <div className="starci-core-data-table-list-meta">
-                {otherColumns.map((column) => <span key={column.id} className="starci-core-data-table-list-value" data-grammar-table-column-id={column.id}>{renderCell(row, column.id)}</span>)}
+    const listRow = (row: Row) => {
+        const title = titleColumn === undefined ? null : renderCell(row, titleColumn.id)
+        // A row with an `href` is a real anchor: the title is the link (stretched over the row, as `ListRow`'s is), so the platform owns Enter, middle-click,
+        // the modifier click, copy-link and the focus order, and `GrammarRoot`'s router makes a plain click a client navigation. Its own `onRowAction` still runs
+        // on the same click (it bubbles), so the anchor is the row's one tab stop.
+        const pressKeys = row.href !== undefined ? {} : { tabIndex: 0, onKeyDown: (event: KeyboardEvent<HTMLDivElement>) => { if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); onRowAction?.(row.id) } } }
+        return (
+            <div
+                key={row.id}
+                role="listitem"
+                className="starci-core-data-table-list-row"
+                data-grammar-table-row-pressable={onRowAction !== undefined || row.href !== undefined ? "true" : "false"}
+                data-grammar-table-row-link={row.href === undefined ? "false" : "true"}
+                {...(onRowAction === undefined ? {} : { onClick: () => onRowAction(row.id), ...pressKeys })}
+            >
+                <div className="starci-core-data-table-list-title">
+                    {row.href === undefined ? title : (
+                        <HeroLink
+                            className="starci-core-link starci-core-data-table-list-link"
+                            data-grammar-link-content="text"
+                            data-grammar-link-variant="plain"
+                            data-grammar-table-row-anchor="true"
+                            href={row.href}
+                        >
+                            {title}
+                        </HeroLink>
+                    )}
+                </div>
+                <div className="starci-core-data-table-list-meta">
+                    {otherColumns.map((column) => <span key={column.id} className="starci-core-data-table-list-value" data-grammar-table-column-id={column.id}>{renderCell(row, column.id)}</span>)}
+                </div>
             </div>
-        </div>
-    )
+        )
+    }
     const listBody = (
         <div ref={scrollRef} className="starci-core-data-table-list" role="list" aria-label={label} aria-busy={isLoading || undefined} data-grammar-table-state={state}>
             {isLoading ? skeletonRows.map((row) => <div key={row.id} role="listitem" className="starci-core-data-table-list-row" data-grammar-skeleton="true"><Skeleton shape="text" /></div>) : null}

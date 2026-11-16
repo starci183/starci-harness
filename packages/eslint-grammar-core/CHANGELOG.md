@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.39.4 - 2026-11-17
+
+- Changed: released with the Grammar family at 0.39.4 (row links, `ListBoxItem.href`, FlowGraph minimap and edge routing). No rule of this package changed.
+
 ## 0.39.3 - 2026-11-14
 
 - Changed: follows @starci/hfs 6.13.0 (peer line): version stamp only; requires `@starci/hfs` `~6.13.0` and `@starci/eslint-canon-fe` `~9.20.0`. No rule changes.

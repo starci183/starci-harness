@@ -24,7 +24,7 @@ import {
 import { Link as RouterLink } from "react-aria-components"
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from "react"
 import { Skeleton } from "../../leaf/Skeleton/index.js"
-import { CONTAIN_MIN_ZOOM, CONTROLS_INSET, FIT_OPTIONS, LANES_FIT_OPTIONS, LANES_MAX_ZOOM, MAX_ZOOM, Refit, labelFor, labelledEdges, readableZoomFor } from "./canvas.js"
+import { CONTAIN_MIN_ZOOM, CONTROLS_INSET, FIT_OPTIONS, LANES_FIT_OPTIONS, LANES_MAX_ZOOM, MAX_ZOOM, OverviewMap, Refit, labelFor, labelledEdges, readableZoomFor } from "./canvas.js"
 import { COMMON_SPACING_PX } from "../../../common/spacing.js"
 import {
     FLOW_GRAPH_NODE_MAX_WIDTH,
@@ -127,6 +127,13 @@ export type FlowGraphProps = NoChildren & {
     readonly isInteractive?: boolean
     /** Zoom buttons. Defaults to on while the graph is interactive. */
     readonly showControls?: boolean
+    /**
+     * An overview map of the whole graph in the canvas's end-bottom corner (0.39.4), beside the zoom controls: the cards as small blocks in the muted tone, the part in view
+     * cut out of a veil over the rest, drawn in the surface and separator tokens. It pans and zooms the canvas (click or drag in it). Off by default; it is hidden under 48rem (a phone canvas has
+     * no room for it) and while the graph is not interactive. `minimapLabel` names it for assistive technology.
+     */
+    readonly minimap?: boolean
+    readonly minimapLabel?: string
     /**
      * `steps` is the card map of a workflow (0.35.0): white step cards on the well, top-down (`direction="LR"` runs across), an icon
      * tile per node `kind`, a condition card with named output ports its edges leave from, smooth curved edges with an arrowhead, dashed
@@ -363,6 +370,8 @@ const FlowGraphInner = ({
     fit = "readable",
     isInteractive = true,
     showControls,
+    minimap = false,
+    minimapLabel,
     layout: layoutProp,
     direction,
     headers,
@@ -730,6 +739,9 @@ const FlowGraphInner = ({
                             {background === "dots"
                                 ? <Background className="starci-core-flow-graph-background" gap={18} size={1.2} variant={BackgroundVariant.Dots} />
                                 : <Background className="starci-core-flow-graph-background" gap={1000} size={0} />}
+                            {minimap && isInteractive ? (
+                                <OverviewMap label={minimapLabel ?? `${label}: overview`} />
+                            ) : null}
                             {controls ? (
                                 <Controls aria-label={`${label}: zoom`} className="starci-core-flow-graph-controls" showInteractive={false}>
                                     {isEditable ? <ControlButton aria-label={resetLabel} className="starci-core-flow-graph-reset" onClick={() => commitMoved({})} title={resetLabel} /> : null}

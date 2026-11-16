@@ -1199,6 +1199,25 @@
         cursor: pointer;
     }
 
+    /* 0.39.4: a row with an `href` carries a real anchor (the row-header cell's content) stretched over the row, so middle-click, "open in new tab" and copy-link work; the row stays the one keyboard stop. */
+    .starci-core-data-table-row[data-grammar-table-row-link="true"] { position: relative; }
+
+    .starci-core-data-table-row-link {
+        color: inherit;
+        text-decoration: none;
+    }
+
+    .starci-core-data-table-row-link::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+    }
+
+    .starci-core-data-table-row[data-grammar-table-row-link="true"] .starci-core-data-table-cell :is(button, input, select, textarea, [role="button"], [role="checkbox"], a:not(.starci-core-data-table-row-link)) {
+        position: relative;
+        z-index: 1;
+    }
+
     /* A pressable row takes the hover fill a pressable list row has (the secondary surface), over the cells' own paint. */
     @media (hover: hover) {
         .starci-core-data-table .starci-core-data-table-row[data-grammar-table-row-pressable="true"]:hover .table__cell {
@@ -1318,6 +1337,34 @@
 
     .starci-core-data-table-list-row:last-child { border-block-end: 0; }
     .starci-core-data-table-list-row[data-grammar-table-row-pressable="true"] { cursor: pointer; }
+
+    /* 0.39.4: a list row with an `href` is a real anchor: the title Link stretches over the row (as a `ListRow`'s does); the focus ring is drawn on the row, not on the title text. */
+    .starci-core-data-table-list-row[data-grammar-table-row-link="true"] { position: relative; }
+
+    .starci-core-data-table-list-link,
+    .starci-core-data-table-list-link:is(:hover, [data-hovered="true"]) {
+        color: inherit;
+        text-decoration-line: none;
+    }
+
+    .starci-core-data-table-list-link::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+    }
+
+    .starci-core-data-table-list-link:focus-visible,
+    .starci-core-data-table-list-link[data-focus-visible="true"] { outline: none; }
+
+    .starci-core-data-table-list-row:has(.starci-core-data-table-list-link:is(:focus-visible, [data-focus-visible="true"])) {
+        outline: 2px solid var(--focus);
+        outline-offset: -2px;
+    }
+
+    .starci-core-data-table-list-row[data-grammar-table-row-link="true"] :is(button, input, select, textarea, [role="button"], a:not(.starci-core-data-table-list-link)) {
+        position: relative;
+        z-index: 1;
+    }
 
     .starci-core-data-table-list-title {
         min-inline-size: 0;
@@ -3324,6 +3371,26 @@
     .starci-core-flow-graph .react-flow__node:focus-visible > .starci-core-flow-graph-node {
         outline: 2px solid var(--focus);
         outline-offset: 2px;
+    }
+
+    /* 0.39.4: the overview map, in the surface and separator tokens: the cards as muted blocks, the part in view cut out of a muted veil, hidden on a phone. */
+    .starci-core-flow-graph-minimap {
+        inline-size: 10rem;
+        block-size: 6.5rem;
+        overflow: hidden;
+        border: 1px solid var(--separator);
+        border-radius: var(--grammar-radius-md);
+        background: var(--surface);
+        cursor: crosshair;
+        touch-action: none;
+    }
+
+    .starci-core-flow-graph-minimap-svg { display: block; inline-size: 100%; block-size: 100%; }
+    .starci-core-flow-graph-minimap-node { fill: color-mix(in oklab, var(--muted) 55%, transparent); }
+    .starci-core-flow-graph-minimap-mask { fill: color-mix(in oklab, var(--muted) 16%, transparent); stroke: var(--focus); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+
+    @media (max-width: 47.99rem) {
+        .starci-core-flow-graph-minimap { display: none; }
     }
 
     .starci-core-flow-graph-controls {

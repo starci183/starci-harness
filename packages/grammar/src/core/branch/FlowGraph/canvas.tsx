@@ -1,7 +1,7 @@
 "use client"
 
-import { useReactFlow, useStore } from "@xyflow/react"
-import { useEffect } from "react"
+import { Panel, useReactFlow, useStore } from "@xyflow/react"
+import { useEffect, type PointerEvent } from "react"
 import type { FlowGraphNodeSize } from "./types.js"
 
 /** What the readable zoom needs of a node: its size step, and whether it is a bubble (whose text keeps one screen size). */
@@ -219,3 +219,70 @@ export const labelledEdges = (nodes: ReadonlyArray<{ readonly id: string, readon
     return edges.flatMap((edge) => edge.label === undefined || edge.label === "" ? [] : [{ id: edge.id, text: `${names.get(edge.source) ?? edge.source} → ${names.get(edge.target) ?? edge.target}: ${edge.label}` }])
 }
 
+
+/** The overview map's drawing size (px). */
+const MINIMAP_PAD = 24
+
+/**
+ * The overview map of a graph (0.39.4): one rounded block per card, read from the measured nodes (so a dragged card and a card that grew are where they stand), and the part in view
+ * cut out of a veil over the rest. A press or drag in it centres the canvas there at the zoom it has. It is drawn in the grammar tokens by CSS (`.starci-core-flow-graph-minimap*`);
+ * the vendor's `MiniMap` reads node sizes from the caller's own node objects, which carry none here, so it would draw no block.
+ */
+export const OverviewMap = ({ label }: { readonly label: string }) => {
+    const { setCenter, getZoom } = useReactFlow()
+    const key = useStore((state) => {
+        let out = ""
+        for (const node of state.nodeLookup.values()) {
+            const width = node.measured.width
+            const height = node.measured.height
+            if (width === undefined || height === undefined || node.hidden === true) continue
+            const at = node.internals.positionAbsolute
+            out += `${String(Math.round(at.x))},${String(Math.round(at.y))},${String(Math.round(width))},${String(Math.round(height))};`
+        }
+        return out
+    })
+    const transform = useStore((state) => state.transform)
+    const canvasWidth = useStore((state) => state.width)
+    const canvasHeight = useStore((state) => state.height)
+    const blocks = key.split(";").filter((part) => part !== "").map((part) => {
+        const [x = 0, y = 0, width = 0, height = 0] = part.split(",").map(Number)
+        return { x, y, width, height }
+    })
+    const zoom = transform[2] || 1
+    const view = { x: -transform[0] / zoom, y: -transform[1] / zoom, width: canvasWidth / zoom, height: canvasHeight / zoom }
+    const bounds = [...blocks, view].reduce((box, next) => ({
+        left: Math.min(box.left, next.x),
+        top: Math.min(box.top, next.y),
+        right: Math.max(box.right, next.x + next.width),
+        bottom: Math.max(box.bottom, next.y + next.height),
+    }), { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity })
+    if (blocks.length === 0 || !Number.isFinite(bounds.left)) return null
+    const box = { x: bounds.left - MINIMAP_PAD, y: bounds.top - MINIMAP_PAD, width: bounds.right - bounds.left + 2 * MINIMAP_PAD, height: bounds.bottom - bounds.top + 2 * MINIMAP_PAD }
+    const centre = (event: PointerEvent<SVGSVGElement>) => {
+        const svg = event.currentTarget
+        const matrix = svg.getScreenCTM()
+        if (matrix === null) return
+        const point = new DOMPoint(event.clientX, event.clientY).matrixTransform(matrix.inverse())
+        void setCenter(point.x, point.y, { zoom: getZoom(), duration: 0 })
+    }
+    return (
+        <Panel position="bottom-right" className="starci-core-flow-graph-minimap" data-grammar-flow-minimap="true">
+            <svg
+                aria-label={label}
+                className="starci-core-flow-graph-minimap-svg"
+                role="img"
+                viewBox={`${String(box.x)} ${String(box.y)} ${String(box.width)} ${String(box.height)}`}
+                onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); centre(event) }}
+                onPointerMove={(event) => { if (event.buttons === 1) centre(event) }}
+            >
+                {blocks.map((block, index) => <rect key={index} className="starci-core-flow-graph-minimap-node" height={block.height} rx={6} width={block.width} x={block.x} y={block.y} />)}
+                <path
+                    className="starci-core-flow-graph-minimap-mask"
+                    d={`M${String(box.x)},${String(box.y)}h${String(box.width)}v${String(box.height)}h${String(-box.width)}z M${String(view.x)},${String(view.y)}h${String(view.width)}v${String(view.height)}h${String(-view.width)}z`}
+                    fillRule="evenodd"
+                    pointerEvents="none"
+                />
+            </svg>
+        </Panel>
+    )
+}
