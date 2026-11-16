@@ -23,7 +23,13 @@ import { readRunContext } from "../jest/context"
 import type { RunContext } from "../jest/context"
 import { createClusterClient } from "../stack/cluster/client"
 import type { ClusterClient, RunInfra } from "../stack/contracts"
+import { Docker } from "../stack/docker"
+import { realPause } from "../stack/health"
+import { realPgConnect } from "../stack/pg"
 import type { PgConnect } from "../stack/pg"
+import { redisRoundTrip } from "../stack/resp"
+import { drainDebezium, waitDebeziumStreaming } from "../stack/services/debezium"
+import type { ServiceNet } from "../stack/services/definition"
 import { createProxyToxics } from "../stack/toxiproxy"
 import type { TestApi, TestCaller, TestHttp } from "./api"
 import { createTestApi } from "./graphql"
@@ -39,7 +45,7 @@ import { redisSize } from "./redis-probe"
 import { buildWiring, RUN_DIRECTORY } from "./wiring"
 import { WorldLock } from "./world-lock"
 import { lazyRequire } from "../lazy"
-import type { AppHandle, DatabaseOutageHandle, InfraHandle, KeycloakInfraHandle, ModulesWorldSpec, PostgresInfraHandle, PostgresWriteFault, PostgresWriteOperation, ProviderToken, RedisInfraHandle, ServiceHandle, SignedInPerson, WaitForOptions, WorldBucket, WorldInfra, WorldKeycloak, WorldRequestScope, WorldSpec } from "./world-types"
+import type { AppHandle, DatabaseOutageHandle, DebeziumInfraHandle, InfraHandle, KeycloakInfraHandle, ModulesWorldSpec, PostgresInfraHandle, PostgresWriteFault, PostgresWriteOperation, ProviderToken, RedisInfraHandle, ServiceHandle, SignedInPerson, WaitForOptions, WorldBucket, WorldInfra, WorldKeycloak, WorldRequestScope, WorldSpec } from "./world-types"
 
 const DEFAULT_WAIT_MS = 30_000
 const DEFAULT_POLL_MS = 250
@@ -96,6 +102,8 @@ export interface WorldDependencies {
     readonly lockIntervalMs?: number
     /** Replaces the `pg` client of the database outages (`infra.postgresql.connection(name)`). */
     readonly pgConnect?: PgConnect
+    /** Replaces the docker CLI that stops and starts the slot's Debezium Server (`infra.debezium`). */
+    readonly docker?: Docker
 }
 
 /** The folder of the run's outage lock inside the run directory. */
@@ -114,6 +122,8 @@ export class World {
     private readonly subscriptions: Array<GraphqlSubscription<unknown>> = []
     /** The connections this world took down (`infra.postgresql.connection(name).cut()`) and has not restored yet. */
     private readonly downConnections = new Set<string>()
+    /** Whether this world stopped the slot's Debezium Server (`infra.debezium.cut()`) and has not started it again. */
+    private debeziumDown = false
     /** Named faults stay registered through unknown provisioning or cleanup; stop attempts every cleanup independently. */
     private readonly writeFaults = new Map<string, { connection: string; table: string; fault: PostgresWriteFault }>()
 
@@ -424,6 +434,38 @@ export class World {
                 },
             }
         }
+        const debeziumHandle = (): DebeziumInfraHandle => {
+            const run = infra.debezium
+            if (run === undefined || postgres === undefined || redis === undefined) throw notDeclared("infra.debezium")
+            const docker = this.dependencies.docker ?? new Docker()
+            const net = this.serviceNet(docker)
+            const cut = async (): Promise<void> => {
+                await this.beginOutage("debezium")
+                this.debeziumDown = true
+                await docker.run(["stop", "--time", "5", run.container])
+            }
+            const restore = async (): Promise<void> => {
+                await this.startDebezium(docker, net, infra)
+                this.endOutage("debezium")
+            }
+            return {
+                cut,
+                restore,
+                during: async <T>(during: () => Promise<T>): Promise<T> => {
+                    await cut()
+                    try {
+                        return await during()
+                    } finally {
+                        await restore()
+                    }
+                },
+                restart: async (): Promise<void> => {
+                    await cut()
+                    await restore()
+                },
+                drain: () => drainDebezium(net, { postgresql: postgres, redis }, run),
+            }
+        }
         return {
             get postgresql(): PostgresInfraHandle {
                 return handle("postgresql", postgres?.proxy, postgres?.directPort, () => ({ connection: databaseOutage })) as PostgresInfraHandle
@@ -442,6 +484,9 @@ export class World {
             },
             get mail() {
                 return handle("mail", infra.mail?.proxy, infra.mail?.directPort)
+            },
+            get debezium(): DebeziumInfraHandle {
+                return debeziumHandle()
             },
             get keycloak(): KeycloakInfraHandle {
                 const run = infra.keycloak
@@ -665,6 +710,20 @@ export class World {
         if (response.status !== 200) throw worldError(TestWorldErrorCode.FakeControlFailed, `resetting the fakes answered ${response.status}`)
     }
 
+    /** The IO the stack's services use, for the readers and outages of the world that reach a container directly. */
+    private serviceNet(docker: Docker): ServiceNet {
+        return { docker, fetch, pg: this.dependencies.pgConnect ?? realPgConnect, redis: redisRoundTrip, pause: realPause }
+    }
+
+    /** Starts the slot's stopped Debezium Server and waits until it holds its replication slot again. */
+    private async startDebezium(docker: Docker, net: ServiceNet, infra: RunInfra): Promise<void> {
+        const { debezium, postgresql } = infra
+        if (debezium === undefined || postgresql === undefined) return
+        if ((await docker.state(debezium.container)) !== "running") await docker.run(["start", debezium.container])
+        await waitDebeziumStreaming(net, postgresql, debezium)
+        this.debeziumDown = false
+    }
+
     private async restoreInfra(context: RunContext): Promise<void> {
         const { infra } = context
         const proxies = [infra.postgresql, infra.redis, infra.minio, infra.qdrant, infra.kafka, infra.keycloak, infra.mail].flatMap((entry) => (entry === undefined ? [] : [entry.proxy]))
@@ -674,6 +733,11 @@ export class World {
             await restoreConnections(infra.postgresql, [...this.downConnections], this.dependencies.pgConnect).catch(() => undefined)
         }
         this.downConnections.clear()
+        // A server this world stopped and a failed spec never started lets the next spec file's reset find it streaming.
+        if (this.debeziumDown) {
+            const docker = this.dependencies.docker ?? new Docker()
+            await this.startDebezium(docker, this.serviceNet(docker), infra).catch(() => undefined)
+        }
     }
 
     private async openDatabases(wired: Readonly<Record<string, { readonly url: string }>>): Promise<ReadonlyArray<{ name: string; dataSource: DataSource }>> {

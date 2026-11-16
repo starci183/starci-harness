@@ -41,8 +41,38 @@ export const KAFKA_SLOT_LISTENERS = 8
 /** The broker's shape, part of its container identity: a container of another shape is another container, never reused. */
 const KAFKA_SHAPE = `slot-listeners-${KAFKA_SLOT_LISTENERS}`
 
-/** The container name of a service on an image; the Kafka broker's name also carries its listener shape. */
-export const serviceContainerName = (service: string, image: string): string => containerName(service, service === "kafka" ? `${image}#${KAFKA_SHAPE}` : image)
+/**
+ * The ONE Debezium Server image of the StarCi stacks, pinned by its multi-arch index digest like Kafka: the stack definition
+ * must name exactly this reference (the Postgres connector with the Redis stream sink ships in it).
+ */
+export const DEBEZIUM_IMAGE = "quay.io/debezium/server:3.0.8.Final@sha256:b898e3709abfe0a6fe6a51b7b8f23bba8a1ed26076e8bce8e4137a5e2d54f0c4"
+
+/** How many replication slots and WAL senders a logical Postgres allows: one of each per attached data slot (8 machine-wide), doubled for the leftovers of a crashed run. */
+export const POSTGRES_LOGICAL_CAPACITY = 16
+
+/** The server arguments that turn logical decoding on; they are part of the container identity of a logical Postgres. */
+export const POSTGRES_LOGICAL_ARGS: ReadonlyArray<string> = ["-c", "wal_level=logical", "-c", `max_replication_slots=${POSTGRES_LOGICAL_CAPACITY}`, "-c", `max_wal_senders=${POSTGRES_LOGICAL_CAPACITY}`]
+
+/** The Postgres container shape of a logical-replication request: the image plus the arguments, so it never reuses (or alters) the default container. */
+const POSTGRES_LOGICAL_SHAPE = POSTGRES_LOGICAL_ARGS.join(" ")
+
+/** The container name of a service on an image; the Kafka broker's name also carries its listener shape, a logical Postgres its server arguments. */
+export const serviceContainerName = (service: string, image: string, logicalReplication = false): string => {
+    if (service === "kafka") return containerName(service, `${image}#${KAFKA_SHAPE}`)
+    if (service === "postgresql" && logicalReplication) return containerName(service, `${image}#${POSTGRES_LOGICAL_SHAPE}`)
+    return containerName(service, image)
+}
+
+/** The longest name Postgres accepts for a replication slot or a publication. */
+const POSTGRES_NAME_LENGTH = 63
+
+/** The replication slot and publication name of a data slot's Debezium: `<namespace.snake>_cdc`, shortened with a hash of the namespace when it would exceed Postgres's limit. */
+export const debeziumSlotName = (snake: string): string => {
+    const name = `${snake}_cdc`
+    if (name.length <= POSTGRES_NAME_LENGTH) return name
+    const hash = imageKey(snake)
+    return `${snake.slice(0, POSTGRES_NAME_LENGTH - "_cdc".length - hash.length - 1)}_${hash}_cdc`
+}
 
 /** The name of the toxiproxy proxy of one slot listener (1-based) of the Kafka broker of one image. */
 export const kafkaProxyName = (image: string, listener: number): string => `kafka-${imageKey(image)}-s${listener}`

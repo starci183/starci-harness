@@ -13,7 +13,7 @@ be/src/tests/world/
 
 ## Hard rule
 
-Nothing in a spec reads or writes `process.env`, starts a container, imports `DataSource`, testcontainers or a migration, or uses skips or sleeps. The library is the only place allowed to do infrastructure. Everything in our own stack runs REAL (postgres, redis, minio, qdrant, kafka, Keycloak with its realm, the mailpit mail sink, k3d); only external SaaS is faked, at the network edge. Stateless compute that needs special hardware (vLLM, self-hosted embedding) may be faked by protocol with a declared `fakedBy` and `reason`.
+Nothing in a spec reads or writes `process.env`, starts a container, imports `DataSource`, testcontainers or a migration, or uses skips or sleeps. The library is the only place allowed to do infrastructure. Everything in our own stack runs REAL (postgres, redis, minio, qdrant, kafka, Keycloak with its realm, the mailpit mail sink, Debezium Server, k3d); only external SaaS is faked, at the network edge. Stateless compute that needs special hardware (vLLM, self-hosted embedding) may be faked by protocol with a declared `fakedBy` and `reason`.
 
 ## The declaration
 
@@ -26,13 +26,14 @@ import type { TestWorldApi } from "@starci/test-world"
 const world: TestWorldApi = defineTestWorld({
     stack: ".starcistacks/dev",                       // relative to the app root (never be/); service list and image versions come from its compose files
     stacks: {
-        postgresql: { connections: [{ name: "primary", seeds: [".starcistacks/dev/seeds/01.sql"] }] },
+        postgresql: { connections: [{ name: "primary", seeds: [".starcistacks/dev/seeds/01.sql"] }], logicalReplication: true },   // logicalReplication only when stacks.debezium is declared
         keycloak: { realm: ".starcistacks/dev/infra/compose/realm-todo.json", clientId: "todo-api" },
         redis: {},
         minio: { buckets: ["uploads"] },
         qdrant: {},
         kafka: { topics: ["events"] },
         mail: {},                                          // the stack's mailpit (compose service `mail`): the real mail sink, one container per data slot
+        debezium: { connections: ["primary"] },            // Debezium Server (the pinned image): the slot's WAL to the slot's Redis streams, one container per data slot
         vllm: { fakedBy: "llm", reason: "needs a GPU" },   // selection only: no container, the protocol fake answers
     },
     k3d: { enable: true, images: { api: "Dockerfile" } },  // own images: built by content hash (src-<hash>), reused when the tag exists
@@ -53,7 +54,7 @@ export const useTestWorld: TestWorldApi["useTestWorld"] = world.useTestWorld
 export const useSandbox: TestWorldApi["useSandbox"] = world.useSandbox
 ```
 
-`w` (the wiring) carries every URL of the run, built before any app boots: `w.apps.<name>.{url,port}` (ports are reserved first, so apps that call each other know each other), `w.db.<conn>.{url,host,port,user,password,database,schema}`, `w.redis`, `w.minio`, `w.qdrant`, `w.kafka.{brokers,topic(name),group(name),clientId(name)}` (every topic, consumer group and client id of an app under test comes from here, so it is the slot's), `w.keycloak.{baseUrl,realm,issuer,tokenUrl,jwksUrl,clientId,clientSecret(client)}` (every confidential client of the realm file gets a secret generated per run; the file never carries one), `w.mail.{host,port,url,apiUrl}` (SMTP host and port the app sends to, through toxiproxy; `url` is `smtp://host:port`; `apiUrl` is the sink's HTTP API base, published directly), `w.fake.<name>.{url,port,values,endpoints,ca}`, `w.services`, `w.cluster`, `w.directory(name)`, `w.secret(label)`. A service the declaration does not run throws `TEST_WORLD_NOT_DECLARED` when read.
+`w` (the wiring) carries every URL of the run, built before any app boots: `w.apps.<name>.{url,port}` (ports are reserved first, so apps that call each other know each other), `w.db.<conn>.{url,host,port,user,password,database,schema}`, `w.redis`, `w.minio`, `w.qdrant`, `w.kafka.{brokers,topic(name),group(name),clientId(name)}` (every topic, consumer group and client id of an app under test comes from here, so it is the slot's), `w.keycloak.{baseUrl,realm,issuer,tokenUrl,jwksUrl,clientId,clientSecret(client)}` (every confidential client of the realm file gets a secret generated per run; the file never carries one), `w.mail.{host,port,url,apiUrl}` (SMTP host and port the app sends to, through toxiproxy; `url` is `smtp://host:port`; `apiUrl` is the sink's HTTP API base, published directly), `w.debezium.{url,slotName,publicationName,streamPrefix,stream(table)}` (the slot's change-data-capture server: its management URL, its replication slot and publication, and the Redis stream a table's changes are written to), `w.fake.<name>.{url,port,values,endpoints,ca}`, `w.services`, `w.cluster`, `w.directory(name)`, `w.secret(label)`. A service the declaration does not run throws `TEST_WORLD_NOT_DECLARED` when read.
 
 ## The spec-facing API (frozen)
 
@@ -71,7 +72,7 @@ const world = useTestWorld({ apps: ["todo", "worker"] })   // or { todo: true },
 | `world.apps.<name>.api` | `graphql(op, vars?, lang?)`, `read/mutate`, `get/post/put/delete` (Buffer body = raw bytes), `as(token)` / `bearing(token)`, `signIn`, `baseUrl`. `op` is a key of the app's `operations` registry or a document string. Refusals resolve as data (`errorCode`). |
 | `world.db.<connection>` | the shared TypeORM `EntityManager` of the connection. |
 | `world.fake.<name>` | `failNext({status,timeout,badSignature,truncateStream,times,match})`, `requests()`, `reset()` plus each fake's own methods (`mails()`, `settle()`, `replayWebhook()`, `delayWebhook()`, ...). |
-| `world.infra.<svc>` | `latency(ms)`, `stall()`, `cut()`, `restore()`, `during(fn)` through toxiproxy (`stall()`: the service keeps accepting connections and says nothing, so the client's own timeout fires); `redis.size()`; `keycloak.rotateClientSecret(client)` (new secret on the real realm, so an app holding the old one is stale); `postgresql.connection(name).cut()/restore()/during(fn)` takes one connection's database down while the others serve. |
+| `world.infra.<svc>` | `latency(ms)`, `stall()`, `cut()`, `restore()`, `during(fn)` through toxiproxy (`stall()`: the service keeps accepting connections and says nothing, so the client's own timeout fires); `redis.size()`; `keycloak.rotateClientSecret(client)` (new secret on the real realm, so an app holding the old one is stale); `postgresql.connection(name).cut()/restore()/during(fn)` takes one connection's database down while the others serve; `debezium.cut()/restore()/during(fn)/restart()/drain()` (no latency or stall: nothing the app talks to goes through it; see "Change data capture"). |
 | `world.keycloak` | `person(email, password)`, `token(email, password)` on the real realm; `events(personId)` (the user events the realm stored: LOGIN, LOGOUT, ...; the realm import enables events) and `sessions(personId)` (live sessions and the clients holding their tokens), read through the admin API. |
 | `world.mail` | the real mail sink (`stacks.mail`): `messages(to?)` lists what the apps sent (oldest first; `to` matches To, Cc or Bcc), `read(id)` and `waitFor(to, { subject?, timeoutMs?, intervalMs? })` answer a whole message (`subject`, `text`, `html`, `from`, `to`, `cc`, `bcc`, `attachments`; `waitFor` the newest match), `clear()`, and the failure injection: `refuse("sender" \| "recipient" \| "authentication", { status = 550, probability = 100 })` makes the sink answer `MAIL FROM`, `RCPT TO` or `AUTH` with that SMTP code until `acceptAll()`. A silent server (a timeout) is `world.infra.mail.stall()`, a refused connection `world.infra.mail.cut()`, a slow one `world.infra.mail.latency(ms)`; the sink's chaos has no delay or connection-level trigger. |
 | `world.buckets.<name>` | run-isolated MinIO/S3 bucket declared in `stacks.minio.buckets`: `{ endpoint, region, bucket, accessKeyId, secretAccessKey, forcePathStyle }`; stored name is `<namespace>-<name>`. |
@@ -89,9 +90,9 @@ Inside a sandbox contract spec, `sandbox.request({ method: "GET" | "POST", url, 
 GraphQL subscriptions: `world.apps.<name>.api.as(token).subscribe(operation, { variables })` opens a graphql-ws subscription (the caller's bearer goes in `connectionParams.authorization`) and resolves once the server acknowledged it; trigger the push afterwards, `await sub.next()` for the next frame, `sub.frames()` to prove nothing arrived, `await sub.close()` to release it.
 ## One warm stack for all repos
 
-`starci app world up|down|status` (the managed `npm run test:world` brings it up). The globalSetup attaches to the stack or starts it. Containers are keyed by image (`starci-ts-<service>-<hash of image>`): two repositories on the same Postgres image share one container, another version gets its own. Machine state lives in `~/.starci/test-stack` (registry with leases, cross-process lock).
+`starci app world up|down|status` (the managed `npm run test:world` brings it up). The globalSetup attaches to the stack or starts it. Containers are keyed by image (`starci-ts-<service>-<hash of image>`): two repositories on the same Postgres image share one container, another version gets its own, and a Postgres started with `logicalReplication` (image plus its arguments) is a container of its own beside the default one. Machine state lives in `~/.starci/test-stack` (registry with leases, cross-process lock).
 
-Per-repository and per-slot isolation is enforced by the library from the namespace `<package>_<6 hex of the checkout path>_w<slot>`: Postgres databases `<ns>_<connection>` (or, for contexts that start as schemas of one database, `<ns>_<database>` with a schema and a login role `<ns>_<connection>` per context), a Keycloak realm `<ns>-<realm>`, a Redis DB index leased per namespace, MinIO buckets `<ns>-<name>`, Qdrant collection prefixes, a mail sink container per slot, Kafka topic, consumer-group and client-id prefixes `<ns>.` and a Kafka broker listener per slot, k3d namespaces `<ns>-<name>`, toxiproxy proxies per run. Two repositories (or two checkouts of one) run e2e concurrently; two runs of the same checkout collide with `TEST_WORLD_NAMESPACE_BUSY`. Kafka is the ONE pinned image `apache/kafka:4.2.2@sha256:1213eb39...` (KRaft, no ZooKeeper; Redpanda, cp-kafka and undigested tags are refused) and always runs real; the broker has 8 slot listeners, each advertising its own toxiproxy port, so a slot's Kafka traffic flows only through its own proxy (8 concurrent slots machine-wide).
+Per-repository and per-slot isolation is enforced by the library from the namespace `<package>_<6 hex of the checkout path>_w<slot>`: Postgres databases `<ns>_<connection>` (or, for contexts that start as schemas of one database, `<ns>_<database>` with a schema and a login role `<ns>_<connection>` per context), a Keycloak realm `<ns>-<realm>`, a Redis DB index leased per namespace, MinIO buckets `<ns>-<name>`, Qdrant collection prefixes, a mail sink container and a Debezium Server container per slot (its replication slot and publication `<ns>_cdc`, its stream prefix `<ns.kebab>`), Kafka topic, consumer-group and client-id prefixes `<ns>.` and a Kafka broker listener per slot, k3d namespaces `<ns>-<name>`, toxiproxy proxies per run. Two repositories (or two checkouts of one) run e2e concurrently; two runs of the same checkout collide with `TEST_WORLD_NAMESPACE_BUSY`. Kafka is the ONE pinned image `apache/kafka:4.2.2@sha256:1213eb39...` (KRaft, no ZooKeeper; Redpanda, cp-kafka and undigested tags are refused) and always runs real; the broker has 8 slot listeners, each advertising its own toxiproxy port, so a slot's Kafka traffic flows only through its own proxy (8 concurrent slots machine-wide).
 
 k3d: one cluster per k3s image plus a local registry with pull-through mirrors for vendor images; own images are built by content hash (Dockerfile + lockfile + COPY'd sources), reused when the tag exists, and garbage-collected keeping the last 3 `src-*` tags.
 
@@ -131,6 +132,48 @@ await world.mail.acceptAll()
 await world.infra.mail.stall()
 await world.infra.mail.restore()
 ```
+
+## Change data capture (Debezium)
+
+A back end whose consumers are woken by the database's own change feed (WAL, then Debezium Server, then a Redis stream, then an app consumer) proves that road end to end with `stacks.debezium`; nothing of it is faked. Declare both halves: the library refuses a declaration that has one without the other (`TEST_WORLD_CONFIG_INVALID` lists every problem).
+
+```ts
+stacks: {
+    postgresql: { connections: [{ name: "primary" }], logicalReplication: true },   // wal_level=logical
+    redis: {},
+    debezium: { connections: ["primary"] },
+}
+```
+
+| Key | Meaning |
+|---|---|
+| `postgresql.logicalReplication` | Starts the server with `wal_level=logical`, `max_replication_slots=16` and `max_wal_senders=16` (one slot and one walsender for each of the 8 data slots a machine runs at once, doubled for what a crashed run leaves). It changes the container identity: the name is keyed by the image plus these arguments, so a logical Postgres is its own warm container (`starci-ts-postgresql-<hash of image#args>`) and the default container other repositories share is never started with them nor altered. Without the flag the container and its arguments are what they were. |
+| `debezium.connections` | The `stacks.postgresql.connections` names captured (default: every declared one). One Debezium Server reads one database, so they must live in one logical database (schema-per-context connections share one and are captured by their schemas). |
+| `debezium.tables` | `schema.table` list to capture; default every table of the captured schemas. |
+| `debezium.stream` | One Redis stream (stored as `<namespace.kebab>.<stream>`) every change event is written to, through the library's own `RegexRouter` transform; default a stream per table, `<namespace.kebab>.<schema>.<table>`. A declaration that sets its own `transforms` cannot also set `stream`. |
+| `debezium.properties` | Further Debezium Server properties, written without the `debezium.` prefix (`"format.value.schemas.enable": "true"`, `"source.snapshot.mode": "initial"`, `"transforms": "unwrap"`), applied after the library's defaults. The ones the library owns (the source connection, the slot, the publication, the topic prefix, the sink and its address and DB) are refused. |
+| `debezium.image` | Rarely needed; it must still be the pinned one. |
+
+The image is pinned like Kafka's: exactly `DEBEZIUM_IMAGE` (`quay.io/debezium/server:3.0.8.Final@sha256:b898e370...`), found in the stack definition as the compose service `debezium` (or any service on the `quay.io/debezium/server` image); any other tag, an undigested reference or another vendor's image is `TEST_WORLD_STACK_DEFINITION`. It is a stack service, so it always runs real (`stacks.debezium: { fakedBy }` is `TEST_WORLD_CONFIG_INVALID`, as R47 requires).
+
+Wiring, per slot (nothing is shared across slots or repositories): one container `starci-ts-debezium-<hash of image#<namespace.snake>>`, started by the slot's attach after its Postgres databases and Redis DB exist (its configuration is those), reading the slot's database through its own replication slot and publication `<namespace.snake>_cdc` (shortened with a hash of the namespace past the 63 characters Postgres allows) and writing to the slot's own Redis DB with topic prefix `<namespace.kebab>`. It captures changes only (`snapshot.mode=no_data`) over a `FOR ALL TABLES` publication, so tables the migrate step creates afterwards are captured; the migrate and seed rows of a run are events the first reset drops. The slot's lease holds the container; readiness is its `/q/health/live` and then the replication slot being active (it is streaming). It has no toxiproxy proxy: the app never talks to it.
+
+```ts
+const world = useTestWorld({ apps: ["api"] })
+// the app's consumer reads the stream the table's changes land in: w.debezium.stream("public.orders")
+await world.waitFor("order change delivered", async () => (await consumedOrders(world)).length === 1)
+// Debezium is down: the committed change waits in the WAL for its slot, and is delivered after the restart
+await world.infra.debezium.during(async () => {
+    await placeOrder(world)              // commits while no change can be delivered
+    expect(await consumedOrders(world)).toHaveLength(0)
+})
+await world.waitFor("delivered after the outage", async () => (await consumedOrders(world)).length === 1)
+await world.infra.debezium.drain()       // everything committed so far is in the streams
+```
+
+`world.infra.debezium`: `cut()` stops the container (Postgres keeps the WAL for the slot), `restore()` starts it and waits until it holds its slot again, `during(fn)` and `restart()` are both, and `drain()` waits until every change committed so far is in its stream (it emits a transactional logical decoding message with `pg_logical_emit_message`, no table touched, and waits for it in the message stream; WAL is ordered, so everything before it was delivered first). Like every outage `cut()` takes the run's outage lock exclusively and keeps it until `restore()` or the world's stop (a world that stops with it down starts it again). Before every spec file the reset drains the connector after the database and the Redis DB were emptied, then empties the Redis DB, so no spec reads another's events. Teardown (and the reclaim of a crashed run) removes the container, ends its walsender and drops the replication slot and the publication, before the database that holds them is dropped.
+
+Known limits: one Debezium Server reads one database, so `stacks.debezium.connections` may not span two logical databases; the payload shape is Debezium's (`format.value.schemas.enable` is `false` by default; set `properties` for a consumer that expects another format).
 
 ## Fakes
 

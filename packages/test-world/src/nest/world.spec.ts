@@ -14,6 +14,7 @@ import { FakesHost } from "../fakes/framework/host"
 import { defineHttpFake } from "../fakes/framework/http-fake"
 import { SLOT_ENV, STATE_FILE_ENV, writeRunState, removeRunState } from "../jest/context"
 import type { RunContext } from "../jest/context"
+import { Docker } from "../stack/docker"
 import { World } from "./world"
 import type { WorldSpec } from "./world-types"
 import { REQUEST } from "@nestjs/core"
@@ -779,5 +780,88 @@ test("write faults own the outage lock, stop attempts every cleanup, and unknown
         refused = ""
         await world.stop()
         await other.stop()
+    }
+})
+
+test("the slot's Debezium Server outage is the container's: cut stops it under the outage lock, restore starts it and waits until it streams, restart and during do both, a world that stops with it down starts it again, and an undeclared one is not declared", async () => {
+    const context = await publish()
+    const commands: Array<string> = []
+    let running = true
+    const docker = new Docker(async (_command, args) => {
+        commands.push(args.join(" "))
+        if (args[0] === "inspect") return { code: 0, stdout: running ? "running" : "exited", stderr: "" }
+        if (args[0] === "stop") running = false
+        if (args[0] === "start") running = true
+        return { code: 0, stdout: "", stderr: "" }
+    })
+    const pgConnect = () => ({
+        connect: async () => undefined,
+        query: async () => ({ rows: [{ active: running }] }),
+        end: async () => undefined,
+        on: () => undefined,
+    })
+    const cdcContext = {
+        ...context,
+        infra: {
+            toxiproxyApi: "http://127.0.0.1:1",
+            postgresql: { host: "127.0.0.1", port: 1, directPort: 2, proxy: "pg", image: "postgres", container: "pgc", user: "u", password: "p", databases: { primary: "t_primary" }, schemas: {} },
+            redis: { host: "127.0.0.1", port: 3, directPort: 4, proxy: "rd", image: "redis", container: "rdc", db: 2 },
+            debezium: { host: "127.0.0.1", port: 5, directPort: 5, proxy: "", image: "debezium", container: "dbz", slotName: "t_000000_cdc", publicationName: "t_000000_cdc", streamPrefix: "t-000000", stream: null, database: "t_primary" },
+        },
+    } as RunContext
+    removeRunState()
+    publishSlot(cdcContext)
+    const options = { resetRun: async () => undefined, lockIntervalMs: 5, pgConnect, docker }
+    const outage = new World(declaration([]), { apps: ["worker"] } as WorldSpec, options)
+    const other = new World(declaration([]), { apps: ["worker"] } as WorldSpec, options)
+    await outage.start()
+    await other.start()
+    try {
+        await other.enterTest()
+        let cut = false
+        const cutting = outage.infra.debezium.cut().then(() => {
+            cut = true
+        })
+        await settle()
+        assert.equal(cut, false, "the outage waits for the other file's running test")
+        assert.deepEqual(commands, [], "nothing reached docker while the other test ran")
+        other.leaveTest()
+        await cutting
+        assert.deepEqual(commands, ["stop --time 5 dbz"])
+        let entered = false
+        const entering = other.enterTest().then(() => {
+            entered = true
+        })
+        await settle()
+        assert.equal(entered, false, "the other file's next test waits while the server is down")
+        await outage.infra.debezium.restore()
+        await entering
+        assert.deepEqual(commands.slice(1), ["inspect --type container --format {{.State.Status}} dbz", "start dbz"])
+        assert.equal(running, true)
+        other.leaveTest()
+        commands.length = 0
+        await outage.infra.debezium.during(async () => {
+            assert.equal(running, false, "the server is down inside during")
+        })
+        assert.equal(running, true)
+        await outage.infra.debezium.restart()
+        assert.deepEqual((commands as Array<string>).filter((command) => command.startsWith("stop") || command.startsWith("start")), ["stop --time 5 dbz", "start dbz", "stop --time 5 dbz", "start dbz"])
+        await outage.infra.debezium.cut()
+        commands.length = 0
+        await outage.stop()
+        assert.deepEqual(commands, ["inspect --type container --format {{.State.Status}} dbz", "start dbz"], "a world that stops with the server down starts it again")
+        assert.equal(running, true)
+    } finally {
+        await other.stop()
+        await outage.stop()
+    }
+    removeRunState()
+    publishSlot(context)
+    const bare = new World(declaration([]), { apps: ["worker"] } as WorldSpec, { resetRun: async () => undefined })
+    await bare.start()
+    try {
+        assert.throws(() => bare.infra.debezium, /TEST_WORLD_NOT_DECLARED.*infra\.debezium/)
+    } finally {
+        await bare.stop()
     }
 })

@@ -40,7 +40,8 @@ import type { IsAlive } from "./registry"
 import { redisRoundTrip } from "./resp"
 import type { RedisRoundTrip } from "./resp"
 import { SERVICE_DEFINITIONS } from "./services"
-import type { Secrets, ServiceNet, ServiceTarget } from "./services/definition"
+import { debeziumPlanOf } from "./services/debezium"
+import type { DebeziumPlan, Secrets, ServiceNet, ServiceTarget } from "./services/definition"
 import { ToxiproxyClient } from "./toxiproxy"
 
 /** What {@link createStack} may be given; every field defaults to the real thing. */
@@ -145,12 +146,14 @@ export const createStack = (dependencies: StackDependencies = {}): StackApi => {
         return { container: name, apiUrl }
     }
 
-    const startService = async (request: StackImageRequest, kafkaListenerPorts: ReadonlyArray<number> | null, owner: Namespace | undefined): Promise<Ensured> => {
+    /** The container of a namespace-scoped service: one per data slot, named from its image and the slot's namespace. */
+    const slotContainerName = (request: StackImageRequest, owner: Namespace): string => containerName(request.service, `${request.image}#${owner.snake}`)
+
+    const startService = async (request: StackImageRequest, kafkaListenerPorts: ReadonlyArray<number> | null, owner: Namespace | undefined, debezium: DebeziumPlan | null = null): Promise<Ensured> => {
         const definition = SERVICE_DEFINITIONS[request.service]
-        // A namespace-scoped service is one container per data slot, named from its image and the slot's namespace.
-        const name = definition.scope === "namespace" && owner !== undefined ? containerName(request.service, `${request.image}#${owner.snake}`) : serviceContainerName(request.service, request.image)
+        const name = definition.scope === "namespace" && owner !== undefined ? slotContainerName(request, owner) : serviceContainerName(request.service, request.image, request.logicalReplication === true)
         const secrets = { ...(await registry().update((data) => secretsFor(data, name, () => definition.newSecrets()))) }
-        const spec = definition.spec(request.image, secrets, { kafkaListenerPorts })
+        const spec = definition.spec(request.image, secrets, { kafkaListenerPorts, logicalReplication: request.logicalReplication === true, debezium })
         const extra = definition.extraPorts ?? []
         await ensureContainer(docker, { name, image: request.image, service: request.service, publish: [definition.port, ...extra].map((port) => `${HOST}::${port}`), env: spec.env, command: spec.command })
         const directPort = await waitForPort(name, definition.port)
@@ -269,11 +272,12 @@ export const createStack = (dependencies: StackDependencies = {}): StackApi => {
 
     const withRunToxiproxy = (infra: RunInfra): ToxiproxyClient => new ToxiproxyClient(infra.toxiproxyApi, fetchImpl)
 
+    /** The runs of an infra, the services configured from others (`after`) last: the order of a reset. A teardown reverses it. */
     const runsOf = (infra: RunInfra): ReadonlyArray<{ readonly service: InfraName; readonly run: ProxiedEndpoint }> =>
         INFRA_SERVICES.flatMap((service) => {
             const run = infra[service]
             return run === undefined ? [] : [{ service, run }]
-        })
+        }).sort((left, right) => Number(SERVICE_DEFINITIONS[left.service].after !== undefined) - Number(SERVICE_DEFINITIONS[right.service].after !== undefined))
 
     const targetOfRun = (run: ProxiedEndpoint): ServiceTarget => targetOf(run.container, run.image, run.directPort, {})
 
@@ -287,16 +291,21 @@ export const createStack = (dependencies: StackDependencies = {}): StackApi => {
                 errors.push(cause)
             }
         }
-        for (const { service, run } of runsOf(infra)) {
+        // A service configured from others (debezium reads the database and writes to Redis) goes first: its replication slot
+        // must be dropped before the database it lives in.
+        const runs = runsOf(infra)
+        const dependent = (service: InfraName): boolean => SERVICE_DEFINITIONS[service].after !== undefined
+        for (const { service, run } of [...runs.filter((entry) => dependent(entry.service)), ...runs.filter((entry) => !dependent(entry.service))]) {
             await attempt(() =>
                 SERVICE_DEFINITIONS[service].deprovision(targetOfRun(run), run, {
                     namespace,
                     releaseRedisDb: () => registry().update((data) => releaseRedisDb(data, namespace.snake)),
+                    infra,
                 }),
             )
             // A Kafka slot listener's proxy belongs to the broker and stays for the next lessee (its toxics are cleared when it is
-            // leased again); every other proxy belongs to this run alone.
-            if (service !== "kafka") await attempt(() => withRunToxiproxy(infra).deleteProxy(run.proxy))
+            // leased again); a service with no proxy has none; every other proxy belongs to this run alone.
+            if (service !== "kafka" && run.proxy !== "") await attempt(() => withRunToxiproxy(infra).deleteProxy(run.proxy))
         }
         if (infra.cluster !== undefined) await attempt(async () => (await clusterApi()).detach({ namespace, runId }))
         await registry().update((data) => {
@@ -368,24 +377,29 @@ export const createStack = (dependencies: StackDependencies = {}): StackApi => {
             const partial: Record<string, unknown> = { toxiproxyApi: "" }
             const infraOf = (): RunInfra => partial as unknown as RunInfra
             try {
-                const { toxiproxy, ensured } = await ensureStack(request.services, namespace)
+                // A leftover container of this namespace belongs to a dead run (the lease above is ours): it would hold a replication slot of the database about to be dropped.
+                for (const stale of request.services.filter((entry) => SERVICE_DEFINITIONS[entry.service].after !== undefined)) await docker.remove(slotContainerName(stale, namespace))
+                const { toxiproxy, ensured } = await ensureStack(request.services.filter((entry) => SERVICE_DEFINITIONS[entry.service].after === undefined), namespace)
                 partial.toxiproxyApi = toxiproxy.apiUrl
-                await registry().update((data) => {
-                    const lease = data.leases.find((entry) => entry.runId === runId)
-                    if (lease !== undefined) data.leases = data.leases.map((entry) => (entry.runId === runId ? { ...entry, containers: [toxiproxy.container, ...ensured.map((item) => item.container)] } : entry))
-                })
+                const held: Array<string> = [toxiproxy.container, ...ensured.map((item) => item.container)]
+                const holdContainers = (): Promise<void> =>
+                    registry().update((data) => {
+                        data.leases = data.leases.map((entry) => (entry.runId === runId ? { ...entry, containers: [...held] } : entry))
+                    })
+                await holdContainers()
                 const client = new ToxiproxyClient(toxiproxy.apiUrl, fetchImpl)
-                for (const item of ensured) {
+                const provisionItem = async (item: Ensured): Promise<void> => {
                     const definition = SERVICE_DEFINITIONS[item.service]
                     const target = targetOf(item.container, item.image, item.directPort, item.secrets, item.extraPorts)
                     const provisioned = await definition.provision(target, {
                         namespace,
                         request,
+                        infra: infraOf(),
                         leaseRedisDb: () => registry().update((data) => leaseRedisDb(data, namespace.snake)),
                         leaseKafkaListener: () => registry().update((data) => leaseKafkaListener(data, namespace.snake)),
                     })
-                    let proxy: string
-                    let port: number
+                    let proxy = ""
+                    let port = item.directPort
                     if (item.service === "kafka") {
                         // The slot's own listener: its proxy is cleared of any toxic a previous lessee left, then probed end to end.
                         const listener = (provisioned.run as { readonly listener: number }).listener
@@ -394,7 +408,7 @@ export const createStack = (dependencies: StackDependencies = {}): StackApi => {
                         await client.resetToxics(proxy)
                         await client.setEnabled(proxy, true)
                         await waitUntil(`kafka listener ${listener} through ${HOST}:${port}`, () => kafkaProbe(HOST, port), { timeoutMs: 60_000, intervalMs: 500, pause })
-                    } else {
+                    } else if (definition.proxied !== false) {
                         proxy = proxyNameOf(runId, item.service)
                         port = await registry().update((data) => leaseProxyPort(data, proxy, { runId, container: null }))
                         await client.createProxy({ name: proxy, listenPort: port, upstream: `${item.container}:${definition.port}` })
@@ -404,6 +418,21 @@ export const createStack = (dependencies: StackDependencies = {}): StackApi => {
                     await recordProvisioned(namespace, runId, infraOf())
                     const notes = provisioned.notes
                     if (notes !== undefined) await registry().update((data) => { Object.assign(data.notes, notes) })
+                }
+                for (const item of ensured) await provisionItem(item)
+                // The services configured from others (debezium reads the database and writes the Redis DB): started now that those exist.
+                for (const dependent of request.services.filter((entry) => SERVICE_DEFINITIONS[entry.service].after !== undefined)) {
+                    const plan = dependent.service === "debezium" ? debeziumPlanOf(request, infraOf()) : null
+                    let item: Ensured
+                    try {
+                        item = await registry().lock("up", () => startService(dependent, null, namespace, plan), { timeoutMs: UP_LOCK_TIMEOUT_MS })
+                    } catch (cause) {
+                        await docker.remove(slotContainerName(dependent, namespace))
+                        throw cause
+                    }
+                    held.push(item.container)
+                    await holdContainers()
+                    await provisionItem(item)
                 }
                 if (request.k3d !== undefined) {
                     const cluster = await clusterApi()
@@ -423,7 +452,7 @@ export const createStack = (dependencies: StackDependencies = {}): StackApi => {
         async reset(request) {
             const { namespace, infra, keepTables } = request
             const notes = registry().read().notes
-            for (const { service, run } of runsOf(infra)) await SERVICE_DEFINITIONS[service].reset(targetOfRun(run), run, { namespace, keepTables, notes })
+            for (const { service, run } of runsOf(infra)) await SERVICE_DEFINITIONS[service].reset(targetOfRun(run), run, { namespace, keepTables, notes, infra })
             if (infra.cluster !== undefined) await (await clusterApi()).reset({ namespace })
         },
     }

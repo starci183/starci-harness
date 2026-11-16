@@ -7,7 +7,7 @@ import type { FakeDefinition } from "../fakes/framework/contracts"
 import type { WorldWiring } from "./wiring"
 
 /** The infrastructure services the shared stack runs; the keys of `stacks`. */
-export const INFRA_SERVICES = ["postgresql", "redis", "minio", "qdrant", "kafka", "keycloak", "mail"] as const
+export const INFRA_SERVICES = ["postgresql", "redis", "minio", "qdrant", "kafka", "keycloak", "mail", "debezium"] as const
 
 /** One infrastructure service of the shared stack. */
 export type InfraName = (typeof INFRA_SERVICES)[number]
@@ -49,6 +49,12 @@ export interface PostgresStack {
     readonly connections: ReadonlyArray<PostgresConnectionDeclaration>
     /** Overrides the image the stack definition names (rarely needed). */
     readonly image?: string
+    /**
+     * Starts the server with logical decoding on (`wal_level=logical`, `max_replication_slots` and `max_wal_senders` sized for
+     * the 8 data slots a machine runs at once, with headroom), which `stacks.debezium` needs. It changes the container's identity
+     * (image plus arguments), so it runs in its own warm container and never alters the default one other repositories share.
+     */
+    readonly logicalReplication?: boolean
 }
 
 /** The `stacks` entry of Keycloak. */
@@ -85,6 +91,25 @@ export interface KafkaStack extends PlainStack {
  */
 export type MailStack = PlainStack
 
+/**
+ * The `stacks` entry of Debezium Server: the change-data-capture road of the slot's database (WAL, through a replication slot
+ * and a publication of the slot's own) to the slot's Redis DB (a Redis stream per table, or one declared stream). It always runs
+ * real (a stack service, R47), pinned by digest like Kafka, one container per data slot. It needs `stacks.postgresql` with
+ * `logicalReplication: true` and `stacks.redis`.
+ */
+export interface DebeziumStack {
+    /** The `stacks.postgresql.connections` names captured (default: every declared connection); all must live in one logical database (one Debezium Server reads one database). */
+    readonly connections?: ReadonlyArray<string>
+    /** Only these tables (`schema.table`, `public.orders`) are captured; default: every table of the captured schemas. */
+    readonly tables?: ReadonlyArray<string>
+    /** One Redis stream (stored as `<namespace.kebab>.<stream>`) every change event is written to; default: a stream per table, `<namespace.kebab>.<schema>.<table>`. */
+    readonly stream?: string
+    /** Further Debezium Server properties (without the `debezium.` prefix, e.g. `format.value.schemas.enable`), applied after the library's defaults; the properties the library owns (the source connection, the slot, the sink) are refused. */
+    readonly properties?: Readonly<Record<string, string>>
+    /** Overrides the image the stack definition names; it must still be the pinned one. */
+    readonly image?: string
+}
+
 /** The `stacks` block. Known services take their spec; any name may instead be faked with a declared reason. */
 export interface StacksDeclaration {
     readonly postgresql?: PostgresStack | FakedService
@@ -94,6 +119,7 @@ export interface StacksDeclaration {
     readonly qdrant?: PlainStack | FakedService
     readonly kafka?: KafkaStack | FakedService
     readonly mail?: MailStack
+    readonly debezium?: DebeziumStack
     readonly [service: string]: unknown
 }
 

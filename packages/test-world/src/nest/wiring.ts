@@ -6,6 +6,7 @@ import type { RunContext } from "../jest/context"
 import type {
     WiredApp,
     WiredCluster,
+    WiredDebezium,
     WiredDatabase,
     WiredFake,
     WiredKafka,
@@ -173,6 +174,20 @@ export const buildWiring = (context: RunContext, options: WiringOptions = {}): W
                   url: `smtp://${swapHost(infra.mail.host, host)}:${infra.mail.port}`,
                   apiUrl: `http://${swapHost(infra.mail.host, host)}:${infra.mail.apiPort}`,
               } satisfies WiredMail),
+    )
+
+    lazy(
+        "debezium",
+        "debezium",
+        infra.debezium === undefined
+            ? undefined
+            : ({
+                  url: `http://${swapHost(infra.debezium.host, host)}:${infra.debezium.port}`,
+                  slotName: infra.debezium.slotName,
+                  publicationName: infra.debezium.publicationName,
+                  streamPrefix: infra.debezium.streamPrefix,
+                  stream: (table: string): string => infra.debezium?.stream ?? `${infra.debezium?.streamPrefix ?? ""}.${table}`,
+              } satisfies WiredDebezium),
     )
 
     const fake: Record<string, WiredFake> = {}

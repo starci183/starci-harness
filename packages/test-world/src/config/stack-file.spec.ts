@@ -4,8 +4,8 @@ import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { afterEach, describe, test } from "node:test"
 import { TestWorldError, TestWorldErrorCode } from "../errors"
-import { readStackDefinition, resolveImageString, resolveInfraImages, resolveSiblingImage, selectedInfraServices } from "./stack-file"
-import { KAFKA_IMAGE } from "../stack/naming"
+import { matchesKind, readStackDefinition, resolveImageString, resolveInfraImages, resolveSiblingImage, selectedInfraServices } from "./stack-file"
+import { DEBEZIUM_IMAGE, KAFKA_IMAGE } from "../stack/naming"
 
 const roots: string[] = []
 
@@ -121,6 +121,30 @@ describe("resolveInfraImages", () => {
         }
         assert.throws(() => resolveInfraImages({ kafka: { image: "apache/kafka:latest" } }, definitionOf({ kafka: KAFKA_IMAGE })), /pinned by digest/)
         assert.match(KAFKA_IMAGE, /^apache\/kafka:\d+\.\d+\.\d+@sha256:[0-9a-f]{64}$/)
+    })
+    test("debezium is the ONE pinned Debezium Server image, found by its image or its compose name; any other tag or an undigested reference is refused", () => {
+        assert.match(DEBEZIUM_IMAGE, /^quay\.io\/debezium\/server:\d+\.\d+\.\d+\.Final@sha256:[0-9a-f]{64}$/)
+        assert.deepEqual(resolveInfraImages({ debezium: {} }, definitionOf({ cdc: DEBEZIUM_IMAGE, db: "pgvector/pgvector:pg16" })), [{ service: "debezium", image: DEBEZIUM_IMAGE }])
+        assert.deepEqual(resolveInfraImages({ debezium: {} }, definitionOf({ capture: DEBEZIUM_IMAGE })), [{ service: "debezium", image: DEBEZIUM_IMAGE }])
+        for (const image of ["quay.io/debezium/server:3.0.8.Final", "quay.io/debezium/server:3.0.0.Final@sha256:" + "0".repeat(64), "debezium/server:3.0.8.Final@sha256:" + "0".repeat(64)]) {
+            assert.throws(
+                () => resolveInfraImages({ debezium: {} }, definitionOf({ debezium: image })),
+                (error: unknown) => error instanceof TestWorldError && error.code === TestWorldErrorCode.StackDefinition && error.message.includes(DEBEZIUM_IMAGE) && error.message.includes(image),
+                image,
+            )
+        }
+        assert.throws(() => resolveInfraImages({ debezium: { image: "quay.io/debezium/server:latest" } }, definitionOf({ debezium: DEBEZIUM_IMAGE })), /pinned by digest/)
+        assert.equal(matchesKind("debezium", "worker", "ghcr.io/acme/server:1"), false, "a bare `server` repository of another owner is not debezium")
+        assert.equal(matchesKind("redis", "cdc", DEBEZIUM_IMAGE), false)
+    })
+    test("a logical-replication postgres carries the flag on its image request, and only the postgres request does", () => {
+        const definition = definitionOf({ db: "pgvector/pgvector:pg16", cache: "redis:7-alpine" })
+        assert.deepEqual(resolveInfraImages({ postgresql: { connections: [], logicalReplication: true }, redis: {} }, definition), [
+            { service: "postgresql", image: "pgvector/pgvector:pg16", logicalReplication: true },
+            { service: "redis", image: "redis:7-alpine" },
+        ])
+        assert.deepEqual(resolveInfraImages({ postgresql: { connections: [], logicalReplication: false } }, definition), [{ service: "postgresql", image: "pgvector/pgvector:pg16" }])
+        assert.deepEqual(resolveInfraImages({ postgresql: { connections: [], logicalReplication: true, image: "postgres:17" } }, definition), [{ service: "postgresql", image: "postgres:17", logicalReplication: true }])
     })
     test("a missing service names the key, the stack dir and what was found", () => {
         assert.throws(
