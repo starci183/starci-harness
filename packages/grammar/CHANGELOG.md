@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.40.1 - 2026-11-17 - Switch kinds: toggle and compact
+
+- A patch: a new optional prop and renderer CSS only, no lint rule of an `eslint-grammar-*` package, nothing removed, no default changed (contexts/grammars/contributing.md "Patch or minor"); the canon pins' `~0.40.0` admits it. `eslint-grammar-core` and `eslint-grammar-offset-pop` carry the family version only.
+- Added (owner ruling 2026-11-17, "add a second kind of Switch: the first is the 40px one of the light/dark toggle, the second is a small one that replaces the oversized switch of an inline setting"): `Switch kind="toggle" | "compact"` (`SwitchKind`, `src/core/leaf/Switch/index.tsx`). `toggle` is today's switch and stays the default (track 72x40, thumb 32). `compact` is a 32x18 track with a 14px thumb inset 2px, for a setting in a settings or list row, a table cell or a toolbar; it is Grammar's own geometry (HeroUI's `sm` is 2rem x 1rem, `md` 2.5rem x 1.25rem, `lg` 3rem x 1.5rem, `@heroui/styles/dist/components/switch.css:151-165`, none 18px tall), keyed on `data-grammar-switch-kind`.
+- Both kinds: the accent track when on (as a checked Checkbox), the keyboard ring on the track is `--starci-core-field-ring` (default `--focus`), disabled at 45% (`--grammar-opacity-faded`), thumb travel 150ms (`--grammar-switch-travel`) and none under `prefers-reduced-motion`. The last three change the toggle's disabled opacity and travel time slightly (the vendor used its disabled opacity and 300ms).
+- Compact draws no thumb glyph (a 14px thumb is too small for one): `thumbIcon` and `selectedThumbIcon` are ignored on it.
+- `size` is kept: `size="control"` is `kind="toggle"`, `md` and `lg` stay HeroUI's sizes. When `kind` is given it wins and `size` is ignored. A Switch with neither renders as before.
+- Not done: no lint rule asks for `compact` inside a row or list (no rule of `eslint-grammar-core` reads a Switch's ancestors in its style); the guidance is in the docs and held by review.
+- Stories: `Controls/Switch row` `TwoKinds` and `TwoKindsAt390` assert the rendered track and thumb (toggle 72x40 thumb 32, compact 32x18 thumb 14 inset 2, no glyph), `CompactSettingsRows` and `CompactSettingsRowsAt390` the labelled row and the 45% disabled opacity.
+- Docs: README (Switch), `contexts/ui/components/field.md` (SWITCH-KIND).
+
 ## 0.40.0 - 2026-11-17 - One field look, a flat table, the ribbon and the theme hooks
 
 - A minor, not a patch: exports and a prop are removed (below), a DNA law is replaced and the default of `DataTable surface` changes what an app that passes none shows; the canon pins' range moves to `~0.40.0`.

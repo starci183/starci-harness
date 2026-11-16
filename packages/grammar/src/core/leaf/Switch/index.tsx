@@ -17,6 +17,11 @@ import type { NoChildren } from "../../tier.js"
 export type SwitchSize = "md" | "lg" | "control"
 
 /**
+ * The two StarCi switches (0.40.1, owner): `toggle` is the standalone 72x40 control (thumb 32), `compact` the 32x18 track with a 14px thumb for a setting in a row or a list.
+ */
+export type SwitchKind = "toggle" | "compact"
+
+/**
  * A Switch with a visible label MUST carry its description (owner, 0.37.5): the row is label + description at the start and the control at the end.
  * Only a bare control (`isLabelHidden`, an icon-only or theme switch) may go without.
  */
@@ -30,8 +35,15 @@ export type SwitchProps = NoChildren & Omit<FieldControlProps, "description" | "
     readonly defaultSelected?: boolean
     readonly onSelectedChange?: (isSelected: boolean) => void
     /**
-     * `control` (default) is the one StarCi size: a 40px track (2.5rem, the IconButton and bar control height) with a round thumb that may carry a
-     * glyph, so a switch lines up with the buttons beside it. `md` and `lg` are HeroUI's own smaller sizes, kept for a dense table cell.
+     * Which StarCi switch (0.40.1, owner). `toggle` (default) is the standalone, prominent switch: a 72x40 track (the IconButton and bar control height) with a 32px round thumb that
+     * may carry a glyph, so it lines up with the buttons beside it (the theme switch). `compact` is 32x18 with a 14px thumb inset 2px, for a setting in a settings or list row, a table
+     * cell or a toolbar; it draws no thumb glyph (too small), so `thumbIcon` and `selectedThumbIcon` are ignored on it. The track is the accent when on, the focus ring the field ring,
+     * disabled 45%, and the thumb travels in 150ms (none under reduced motion), on both kinds.
+     */
+    readonly kind?: SwitchKind
+    /**
+     * Kept for compatibility. `control` is the same as `kind="toggle"`; `md` and `lg` are HeroUI's own smaller sizes, kept for a dense table cell. When `kind` is given it wins and `size` is
+     * ignored; without `kind` the switch is the `toggle` (`control`) unless `size` says `md` or `lg`. New code states `kind`.
      * With `isLabelHidden` the label stays the accessible name and draws nothing, for a switch that carries only an aria label.
      */
     readonly size?: SwitchSize
@@ -67,16 +79,22 @@ const SwitchInner = ({ isLoading = false, ...props }: SwitchProps) => isLoading
     ? <FieldSkeletonScope component="Switch"><SwitchControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
     : <SwitchControl {...props} />
 
-const SwitchControl = ({ value, isSelected, defaultSelected, onSelectedChange, size = "control", thumbIcon, selectedThumbIcon, ...field }: Omit<SwitchProps, "isLoading">) => (
+const SwitchControl = ({ value, isSelected, defaultSelected, onSelectedChange, kind, size = "control", thumbIcon: wantedThumbIcon, selectedThumbIcon: wantedSelectedThumbIcon, ...field }: Omit<SwitchProps, "isLoading">) => {
+    /* `kind` wins over the legacy `size`; a compact switch is too small for a glyph. */
+    const look: SwitchSize | "compact" = kind === "compact" ? "compact" : kind === "toggle" ? "control" : size
+    const thumbIcon = look === "compact" ? undefined : wantedThumbIcon
+    const selectedThumbIcon = look === "compact" ? undefined : wantedSelectedThumbIcon
+    return (
     <HeroSwitch
         data-tier="leaf"
         data-component="Switch"
         data-contract="A11Y-1 STATE-1"
-        data-grammar-switch-size={size}
+        data-grammar-switch-size={look}
+        data-grammar-switch-kind={look === "compact" ? "compact" : "toggle"}
         data-grammar-switch-labelled={field.isLabelHidden === true ? "false" : "true"}
         data-grammar-switch-icons={thumbIcon === undefined ? "none" : selectedThumbIcon === undefined ? "single" : "swap"}
         className="starci-core-choice starci-core-switch"
-        size={size === "control" ? "lg" : size}
+        size={look === "control" ? "lg" : look === "compact" ? "sm" : look}
         {...vendorFieldProps(field)}
         isReadOnly={field.isReadOnly === true}
         {...(value === undefined ? {} : { value })}
@@ -92,16 +110,17 @@ const SwitchControl = ({ value, isSelected, defaultSelected, onSelectedChange, s
             <HeroSwitch.Thumb data-grammar-switch-thumb="true">
                 {thumbIcon === undefined ? null : (
                     <HeroSwitch.Icon>
-                        <span aria-hidden="true" className="starci-core-switch-icon" data-grammar-switch-icon="off"><Icon source={thumbIcon} usage={size === "md" ? "chip" : "leading"} /></span>
+                        <span aria-hidden="true" className="starci-core-switch-icon" data-grammar-switch-icon="off"><Icon source={thumbIcon} usage={look === "md" ? "chip" : "leading"} /></span>
                         {selectedThumbIcon === undefined ? null : (
-                            <span aria-hidden="true" className="starci-core-switch-icon" data-grammar-switch-icon="on"><Icon source={selectedThumbIcon} usage={size === "md" ? "chip" : "leading"} /></span>
+                            <span aria-hidden="true" className="starci-core-switch-icon" data-grammar-switch-icon="on"><Icon source={selectedThumbIcon} usage={look === "md" ? "chip" : "leading"} /></span>
                         )}
                     </HeroSwitch.Icon>
                 )}
             </HeroSwitch.Thumb>
         </HeroSwitch.Control>
     </HeroSwitch>
-)
+    )
+}
 
 /**
  * An immediate on/off setting (`role="switch"`). Use Checkbox for a choice that only takes effect

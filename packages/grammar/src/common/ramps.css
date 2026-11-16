@@ -91,6 +91,8 @@
         /* MOTION. One duration and one easing for a state change; loops have a cycle of their own. */
         --starci-core-motion-duration: 180ms;
         --starci-core-motion-easing: cubic-bezier(0.2, 0, 0, 1);
+        /* A Switch thumb crossing its track (both kinds); none under reduced motion. */
+        --grammar-switch-travel: 150ms;
         --grammar-loop-skeleton: 2s;
         --grammar-loop-spin: 1s;
         --grammar-loop-spin-fast: 0.8s;
@@ -107,6 +109,11 @@
 
         /* GEOMETRY of the parts: sizes, measures and layers that have no HeroUI token. Spacing is in styles.css. */
         --starci-core-control-min-size: 2.5rem;
+        /* The compact Switch: a 32x18 track, a 14px thumb, the thumb 2px in from the track on every side. */
+        --grammar-switch-compact-width: 2rem;
+        --grammar-switch-compact-height: 1.125rem;
+        --grammar-switch-compact-thumb: 0.875rem;
+        --grammar-switch-compact-inset: calc(var(--grammar-hairline) * 2);
         /* A public page (booking, a job): a main column and one rail in about 66rem, narrower than the product page. */
         --starci-core-narrow-measure: 66.5rem;
         --starci-core-field-min-height: var(--starci-core-control-min-size);
