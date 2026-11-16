@@ -6867,6 +6867,15 @@ STACK_LOCAL_TUNNEL_DNS:
   nextStep_vi: "Đọc dòng lỗi của cloudflared trong thông báo, sửa tên tunnel, host hoặc cert.pem rồi chạy lại."
   owner: supervisor
   kind: verb-refusal
+STACK_LOCAL_TUNNEL_GALLERY:
+  title: "stack up refused: the declared gallery route has no gallery to reach"
+  title_vi: "stack up bị từ chối: route gallery đã khai báo không có gallery để trỏ tới"
+  meaning_vi: "local.tunnel.routes có route tên gallery nhưng app không phục vụ gallery (không có gallery/package.json ở gốc app, hoặc tên cổng gallery đã bị chiếm), nên không có cổng loopback để rule ingress trỏ tới."
+  causes_vi:
+    - "Môi trường khai báo local.tunnel với route gallery (PROJECT-GALLERY-1 mục 4)."
+  nextStep_vi: "Chạy starci app sync --execute để render gallery (cần local.basePort), hoặc bỏ route gallery khỏi khai báo, rồi chạy lại."
+  owner: supervisor
+  kind: verb-refusal
 HFS_SECRET_TARGET_MISSING:
   title: "A secret target lacks a file of its checkout"
   title_vi: "Đích bí mật thiếu tệp trong checkout"

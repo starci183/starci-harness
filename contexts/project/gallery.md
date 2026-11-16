@@ -35,6 +35,13 @@ gallery/
    table of the ports around it). `starci app stack up --env dev` starts it next to the other native processes, installs its
    dependencies once, waits for it to answer and records it with them; `stack down` stops it. An environment that declares its own
    process named `gallery` keeps it.
+   The dev server binds the IPv4 loopback (`server.host` `127.0.0.1` of the managed `vite.config.js`), the address the dev tunnel's ingress
+   rule reaches (an IPv6-only bind answers 502 there; `localhost` in a browser still works). A public host for the gallery is declared once,
+   as a route of the environment's `local.tunnel` named `gallery` with `port: gallery` (the derived port, not a `local.ports` entry; it needs
+   `local.basePort`): `{name: gallery, host: <project>-gallery-dev.example.org, port: gallery}`. `starci app sync` renders those hosts into
+   `server.allowedHosts` of `gallery/vite.config.js` (Vite answers 403 to any other `Host`; the managed file is drift until sync writes the host),
+   and `stack up --execute` adds the ingress rule and DNS record like any other route of the tunnel, so the host the config admits and the one
+   the tunnel serves are the one declaration. `STACK_LOCAL_TUNNEL_GALLERY` refuses the route of an app with no gallery.
 5. **The PNGs are never committed.** They are local evidence of a round, ignored by the managed `.gitignore` block
    (`gallery/pages/**/*.png`); the gallery app, every `explain.md`, every `links.json` and `flows.json` are source and are committed.
 6. **A new app and an existing one.** A new app has the gallery from its scaffold. An existing app gets it from the next

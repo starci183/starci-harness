@@ -33,6 +33,8 @@ export interface LocalService {
   /** An object store only: the declared port of its admin console, which no tunnel route may reach. */
   console?: string;
 }
+/** The route name and port name of the gallery in `local.tunnel.routes[]`: its port is derived (base + `ruleParams.gallery.portOffset`), not declared in `local.ports` (PROJECT-GALLERY-1 item 4). */
+export const GALLERY_ROUTE = 'gallery';
 /** One public hostname of the environment's dev tunnel and the loopback port it routes to. */
 export interface LocalTunnelRoute { name: string; host: string; port: string }
 /** The locally managed named tunnel of the environment and the hostnames it publishes (PROJECT-STACKS-15); `stack up --execute` routes them. */
@@ -215,7 +217,7 @@ function servicesOf(c: Collector, value: unknown, ports: Record<string, number>)
 const PUBLIC_HOST = /^(?=.{4,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{0,61}[a-z0-9]$/u;
 
 /** `local.tunnel`: the named tunnel (its credentials are the machine's cert.pem, never a value here) and its routes, each a public host and a declared port. */
-function tunnelOf(c: Collector, value: unknown, ports: Record<string, number>): LocalTunnel | undefined {
+function tunnelOf(c: Collector, value: unknown, ports: Record<string, number>, basePort: number | null): LocalTunnel | undefined {
   if (value === undefined) return undefined;
   if (!closedFields(c, 'tunnel', value, ['name', 'routes'], 'local')) return undefined;
   const entry = value as Record<string, unknown>;
@@ -231,7 +233,11 @@ function tunnelOf(c: Collector, value: unknown, ports: Record<string, number>): 
     if (hosts.has(host)) c.problem(`${at}.host`, `${host} is routed twice`);
     hosts.add(host);
     const port = String(route.port ?? '');
-    if (!Object.hasOwn(ports, port)) c.problem(`${at}.port`, `${port} is not a declared port`);
+    // The gallery route (PROJECT-GALLERY-1 item 4) reaches the derived gallery port (base + portOffset), which `local.ports` does not declare.
+    if (route.name === GALLERY_ROUTE) {
+      if (port !== GALLERY_ROUTE) c.problem(`${at}.port`, `the ${GALLERY_ROUTE} route's port is ${GALLERY_ROUTE} (the gallery port derives from local.basePort)`);
+      if (basePort === null) c.problem(`${at}`, `the ${GALLERY_ROUTE} route needs local.basePort: the gallery port derives from it`);
+    } else if (!Object.hasOwn(ports, port)) c.problem(`${at}.port`, `${port} is not a declared port`);
     return { name: String(route.name ?? ''), host, port };
   });
   if (routes.length === 0) c.problem('tunnel.routes', 'must list at least one route');
@@ -405,7 +411,7 @@ export function normalizeLocal(raw: unknown, { project, env }: { project: string
     }),
     resources: { diskGb: 10, ramMb: 4096 },
   };
-  const tunnel = tunnelOf(c, entry.tunnel, ports);
+  const tunnel = tunnelOf(c, entry.tunnel, ports, Number.isInteger(entry.basePort) ? (entry.basePort as number) : null);
   if (tunnel !== undefined) block.tunnel = tunnel;
   if (entry.resources !== undefined && closedFields(c, 'resources', entry.resources, ['diskGb', 'ramMb'], 'local')) {
     const value = entry.resources as Record<string, unknown>;

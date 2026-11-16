@@ -31,7 +31,7 @@ import type { Slot, SlotManifest } from '../runtime/scripts/hfs/manifest-shape.m
 import { managedGroupOf } from '../runtime/scripts/hfs/edition-slots.mjs';
 import { declaredSlotEnabled } from '../runtime/scripts/hfs/declaration-slots.mjs';
 import { feAppPackageName } from '../runtime/scripts/hfs/rules/monorepo.mjs';
-import { declaredDefaultLocale, galleryParams, galleryPort, galleryTexts } from '../runtime/scripts/hfs/gallery.mjs';
+import { declaredDefaultLocale, galleryAllowedHosts, galleryParams, galleryPort, galleryTexts } from '../runtime/scripts/hfs/gallery.mjs';
 import { DEFAULT_PORT, NODE_IMAGE, dockerfilePath } from '../runtime/scripts/hfs/rules/docker.mjs';
 import { isFile } from '../runtime/scripts/lib/fs-kind.mjs';
 import { readDeclaredSonarKey } from './sonar-key.mjs';
@@ -558,6 +558,8 @@ export function variables(app: ResolvedApp, scope: string, presets: Presets | nu
     // The gallery's words follow the app's default locale (vi and en; en when none is declared or the locale has no table, gallery.mts GALLERY_LABELS).
     ...galleryTexts(source.defaultLocale, app.project, galleryPort(source.stack?.basePort, galleryParams(manifest)) ?? ''),
     galleryVite: galleryParams(manifest).vite,
+    // The tunnel hosts the stack declares for the gallery (`local.tunnel.routes[]` named gallery): Vite answers 403 to any other Host.
+    galleryAllowedHosts: galleryAllowedHosts(source.stack?.galleryHosts ?? []),
     readmeBadges: source.badges ?? '',
     project: app.project,
     appBinary: APP_BINARY,

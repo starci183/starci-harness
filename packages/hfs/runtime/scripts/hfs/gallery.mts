@@ -3,6 +3,7 @@
 // base port (`environments.<env>.local.basePort`, stack-base-port.mts): base + `portOffset`. Pure functions; nothing here touches the disk.
 import { isPlainObject as plain } from '../../engine/plain-object.mjs';
 import { loadSlotManifest } from './slots.mjs';
+import { GALLERY_ROUTE } from './stack-local-config.mjs';
 import { CANON_INDENT, CANON_PRINT_WIDTH } from '../../../sync/canon-layout.mjs';
 
 /** The `ruleParams.gallery` block of the slot manifest. */
@@ -47,6 +48,23 @@ export function declaredBasePort(doc: unknown): number | null {
   }
   return null;
 }
+
+/** The public hosts the dev tunnel declares for the gallery (`local.tunnel.routes[]` named `gallery`) in the environments `declaredBasePort` reads, sorted, without duplicates; empty when none. */
+export function declaredGalleryHosts(doc: unknown): string[] {
+  const environments = plain(doc) && plain((doc as Record<string, unknown>)['environments']) ? (doc as { environments: Record<string, unknown> }).environments : {};
+  const hosts = new Set<string>();
+  for (const spec of Object.values(environments)) {
+    if (!plain(spec) || (spec as Record<string, unknown>)['runtime'] !== 'docker-compose') continue;
+    const local = (spec as Record<string, unknown>)['local'];
+    const tunnel = plain(local) ? (local as Record<string, unknown>)['tunnel'] : undefined;
+    const routes = plain(tunnel) && Array.isArray((tunnel as Record<string, unknown>)['routes']) ? ((tunnel as Record<string, unknown>)['routes'] as unknown[]) : [];
+    for (const route of routes) if (plain(route) && (route as Record<string, unknown>)['name'] === GALLERY_ROUTE && typeof (route as Record<string, unknown>)['host'] === 'string') hosts.add((route as Record<string, unknown>)['host'] as string);
+  }
+  return [...hosts].sort();
+}
+
+/** The JSON array literal of `server.allowedHosts` the managed vite.config.js carries: the declared gallery hosts, `[]` when none (Vite always admits localhost and addresses). */
+export const galleryAllowedHosts = (hosts: readonly string[]): string => JSON.stringify([...hosts]);
 
 /** The words the managed gallery shows. `title` and `readme` carry `{project}` and `{port}` placeholders the renderer fills; the other words carry `{n}`-style placeholders main.js fills. */
 export interface GalleryLabels {

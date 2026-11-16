@@ -691,6 +691,9 @@ it was written on. The rule has four parts; each project that runs an object sto
   already publishes the app (the locally managed named tunnel of the machine, PROJECT-STACKS-10 "Through the ingress") gets one more public host,
   declared once under `local.tunnel`: `{name: <tunnel>, routes: [{name, host, port}]}` where `port` names a declared port. The route to the store
   names its S3 port; no route reaches the admin console, and the console stays on the loopback.
+  One more route role: a route named `gallery` with `port: gallery` publishes the screenshot gallery (PROJECT-GALLERY-1 item 4); its port is the derived
+  base + 50, never a `local.ports` entry, and it needs `local.basePort`. `starci app sync` renders its host into `server.allowedHosts` of the managed
+  `gallery/vite.config.js`, which binds `127.0.0.1`, the address every route's ingress rule reaches; the other routes name declared ports.
 - **Two values, never one.** The app receives the internal endpoint for its own writes (`STORAGE_ENDPOINT`, the loopback address, reached from the
   process) and the public base its links are built on (`STORAGE_PUBLIC_URL`, `https://` plus the host of the store's route). The base is the
   `publicEndpoint` option of `@starci/object-storage`: presigned requests are signed for it and `publicUrl` is read from it. Every process that

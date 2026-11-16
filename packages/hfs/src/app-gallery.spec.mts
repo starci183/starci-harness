@@ -13,7 +13,7 @@ import { scaffoldBasePort, scaffoldApp } from '../scaffold/app.mjs';
 import type { LockResult } from '../scaffold/app.mjs';
 import { init } from '../runtime/scripts/api/git/init.mjs';
 import { loadSlotManifest } from '../runtime/scripts/hfs/slots.mjs';
-import { galleryParams, galleryPort, declaredBasePort, galleryLocale, galleryTexts, declaredDefaultLocale, GALLERY_LABELS } from '../runtime/scripts/hfs/gallery.mjs';
+import { galleryParams, galleryPort, declaredBasePort, galleryLocale, galleryTexts, declaredDefaultLocale, GALLERY_LABELS, declaredGalleryHosts, galleryAllowedHosts } from '../runtime/scripts/hfs/gallery.mjs';
 import { appGalleryFindings, galleryScreens, GALLERY_FILES, ignoresShots } from '../runtime/scripts/hfs/rules/gallery.mjs';
 import { parseExplain, missingFrontMatter, linkTargets, flowList, SHOT_FILES } from '../runtime/scripts/hfs/gallery-explain.mjs';
 import { judgedForEnv, localOnlyCodes } from '../runtime/scripts/hfs/check-env.mjs';
@@ -223,13 +223,64 @@ test('the dev stack starts the gallery on base + 50 next to web and api, with it
   assert.deepEqual(local.processes.map((run) => run.name), ['api', 'web', 'gallery']);
   assert.equal(local.ports['gallery'], base + 50);
   assert.deepEqual({ argv: gallery?.argv, cwd: gallery?.cwd, port: gallery?.port }, { argv: ['npm', 'run', 'dev'], cwd: 'gallery', port: 'gallery' });
-  assert.equal(gallery?.health?.url, 'http://localhost:${port.gallery}/');
+  assert.equal(gallery?.health?.url, 'http://127.0.0.1:${port.gallery}/');
   const install = local.setup.find((run) => run.name === 'gallery-install');
   assert.deepEqual({ argv: install?.argv, cwd: install?.cwd, skip: install?.skipIfExists, heavy: install?.heavy }, { argv: ['npm', 'install', '--no-audit', '--no-fund'], cwd: 'gallery', skip: 'node_modules', heavy: 'install' });
-  assert.ok(local.ready.some((row) => row.name === 'gallery-live' && row.url === 'http://localhost:${port.gallery}/'));
+  assert.ok(local.ready.some((row) => row.name === 'gallery-live' && row.url === 'http://127.0.0.1:${port.gallery}/'));
   assert.ok(local.origins.some((origin) => origin.name === 'gallery'));
   assert.equal(local.ports['web'], base);
   assert.equal(local.ports['api'], base + 1);
+});
+
+const STACK_FILE = '.starcistacks/application-stacks.yaml';
+/** Declares the gallery route (and an api route beside it) on the dev tunnel of a starter, right after its `basePort:` line. */
+const declareGalleryHost = (root: string, host: string): void => {
+  const file = at(root, ...STACK_FILE.split('/'));
+  const text = fs.readFileSync(file, 'utf8');
+  const lines = text.split(/\r?\n/u);
+  const index = lines.findIndex((line) => /^\s+basePort:/u.test(line));
+  const pad = /^\s*/u.exec(lines[index] as string)![0];
+  lines.splice(index + 1, 0, `${pad}tunnel:`, `${pad}  name: demo-dev`, `${pad}  routes:`, `${pad}    - {name: gallery, host: ${host}, port: gallery}`);
+  fs.writeFileSync(file, lines.join('\n'));
+};
+
+test('the declared gallery hosts are the hosts of the routes named gallery, sorted; none is []', () => {
+  const doc = parseYaml('environments:\n  dev:\n    runtime: docker-compose\n    local:\n      basePort: 3100\n      tunnel:\n        name: t\n        routes:\n          - {name: web, host: web.example.org, port: web}\n          - {name: gallery, host: b-gallery.example.org, port: gallery}\n  prod:\n    runtime: swarm\n');
+  assert.deepEqual(declaredGalleryHosts(doc), ['b-gallery.example.org']);
+  assert.deepEqual(declaredGalleryHosts({ environments: { dev: { runtime: 'docker-compose', local: { basePort: 3100 } } } }), []);
+  assert.deepEqual(declaredGalleryHosts(null), []);
+  assert.equal(galleryAllowedHosts([]), '[]');
+  assert.equal(galleryAllowedHosts(['a.example.org']), '["a.example.org"]');
+});
+
+for (const edition of ['lite', 'full'] as const) {
+  test(`a ${edition} app that declares a gallery tunnel host gets it in server.allowedHosts and a bind the tunnel reaches, and the stack routes it to the gallery port`, async (t) => {
+    const root = starter(t, edition);
+    const out = (): void => {};
+    const run = async (...args: string[]): Promise<number> => runSync([...args, '--cwd', root], { cwd: root, out, presets: bundledPresets() });
+    assert.match(read(root, 'gallery/vite.config.js'), /host: "127\.0\.0\.1"/u, 'the tunnel routes to 127.0.0.1, which an IPv6-only bind refuses');
+    assert.match(read(root, 'gallery/vite.config.js'), /allowedHosts: \[\]/u, 'no declared host, no extra host');
+    assert.doesNotMatch(read(root, 'gallery/vite.config.js'), /\{\{/u);
+    declareGalleryHost(root, 'demo-gallery-dev.example.org');
+    assert.equal(await run(), 1, 'a declared host the config does not carry is drift');
+    assert.equal(await run('--execute'), 0);
+    assert.match(read(root, 'gallery/vite.config.js'), /allowedHosts: \["demo-gallery-dev\.example\.org"\]/u);
+    assert.equal(await run(), 0, 'a second run changes nothing');
+    const local = loadLocalConfig({ repoRoot: root, env: 'dev' });
+    assert.deepEqual(local.tunnel?.routes, [{ name: 'gallery', host: 'demo-gallery-dev.example.org', port: 'gallery' }]);
+    assert.equal(local.ports['gallery'], galleryPort(local.basePort, PARAMS), 'the route reaches the derived gallery port');
+    fs.rmSync(at(root, 'gallery'), { recursive: true });
+    assert.throws(() => loadLocalConfig({ repoRoot: root, env: 'dev' }), /STACK_LOCAL_TUNNEL_GALLERY|serves no gallery/u, 'a gallery route with no gallery is refused');
+  });
+}
+
+test('the gallery route names the gallery port and needs a base port; any other route still names a declared port', () => {
+  const base = { basePort: 3100, ports: { db: 54322, web: 3100 }, services: [{ name: 'db', wait: 'healthy' }], processes: [{ name: 'web', argv: ['node', 'x.js'], port: 'web' }] };
+  const route = (entry: object, extra: object = {}) => normalizeLocal({ ...base, ...extra, tunnel: { name: 'demo-dev', routes: [entry] } }, { project: 'demo', env: 'dev' });
+  assert.ok(route({ name: 'gallery', host: 'g.example.org', port: 'gallery' }).config, 'port gallery without a declared port');
+  assert.match(JSON.stringify(route({ name: 'gallery', host: 'g.example.org', port: 'web' }).problems), /gallery route's port is gallery/u);
+  assert.match(JSON.stringify(route({ name: 'gallery', host: 'g.example.org', port: 'gallery' }, { basePort: undefined }).problems), /needs local\.basePort/u);
+  assert.match(JSON.stringify(route({ name: 'site', host: 's.example.org', port: 'gallery' }).problems), /not a declared port/u);
 });
 
 test('the gallery process joins only an app that has a gallery and a base port, and never replaces one the app declares', (t) => {

@@ -2,7 +2,7 @@
 // The block is read and judged by the module `starci app check` uses (runtime/scripts/hfs/stack-local-config.mts).
 import fs from 'node:fs';
 import path from 'node:path';
-import { normalizeLocal, LOCAL_CONFIG_CODE } from '../runtime/scripts/hfs/stack-local-config.mjs';
+import { normalizeLocal, LOCAL_CONFIG_CODE, GALLERY_ROUTE } from '../runtime/scripts/hfs/stack-local-config.mjs';
 import type { LocalBlock } from '../runtime/scripts/hfs/stack-local-config.mjs';
 import { galleryParams, galleryPort } from '../runtime/scripts/hfs/gallery.mjs';
 import { readYaml, STACKS_DIR, STACKS_FILE } from './config.mjs';
@@ -38,7 +38,7 @@ export function withGallery(config: LocalBlock, repoRoot: string): LocalBlock {
   const taken = config.processes.some((run) => run.name === 'gallery') || Object.hasOwn(config.ports, 'gallery') || Object.values(config.ports).includes(port ?? -1)
     || config.setup.some((run) => run.name === 'gallery-install') || config.seed.some((run) => run.name === 'gallery-install');
   if (port === null || taken || !fs.existsSync(path.join(repoRoot, params.dir, 'package.json'))) return config;
-  const url = 'http://localhost:${port.gallery}/';
+  const url = 'http://127.0.0.1:${port.gallery}/'; // the managed vite.config.js binds the IPv4 loopback, the address the tunnel route reaches
   const command = { heavy: 'none' as const, skipIfExists: null, env: {}, files: [], after: 'migrate' as const };
   return {
     ...config,
@@ -65,5 +65,7 @@ export function loadLocalConfig({ repoRoot, env }: { repoRoot: string; env: stri
   }
   const envDir = path.join(repoRoot, STACKS_DIR, env);
   const composeFiles = ((environment.composeFiles as string[] | undefined) ?? []).map((file) => path.join(envDir, file));
-  return { ...withGallery(config, repoRoot), env, appProject, repoRoot, envDir, composeFiles, secretsDir: path.join(envDir, 'secrets') };
+  const served = withGallery(config, repoRoot);
+  if (served.tunnel?.routes.some((route) => route.name === GALLERY_ROUTE) && !Object.hasOwn(served.ports, GALLERY_ROUTE)) throw refusal('STACK_LOCAL_TUNNEL_GALLERY', `environments.${env}.local.tunnel routes ${GALLERY_ROUTE}, but the app serves no gallery (no gallery/package.json at the app root, or a taken ${GALLERY_ROUTE} port name): run \`starci app sync --execute\` to render it, or drop the route`);
+  return { ...served, env, appProject, repoRoot, envDir, composeFiles, secretsDir: path.join(envDir, 'secrets') };
 }

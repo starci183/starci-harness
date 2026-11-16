@@ -1,5 +1,14 @@
 # Changelog
 
+## 6.13.13 - 2026-11-17
+
+- Added (`runtime/scripts/hfs/stack-local-config.mts`, `gallery.mts`, `sync/`): a dev tunnel route named `gallery` with `port: gallery` (`environments.<env>.local.tunnel.routes[]`) publishes the screenshot gallery on its derived port (base + 50); it needs `local.basePort`, and every other route still names a declared port. `starci app sync` renders the declared gallery hosts into `server.allowedHosts` of the managed `gallery/vite.config.js` (the template variable `galleryAllowedHosts`, `[]` when none), so Vite no longer answers 403 to the tunnel host; `stack up --execute` routes the host to the gallery port like any other route.
+- Fixed (`templates/app/gallery/gallery/vite.config.js`, `stack/local-config.mts`): the gallery dev server binds `127.0.0.1` (it bound the IPv6 `::1` only, so a tunnel ingress rule to `http://127.0.0.1:<port>` answered 502); the stack's readiness probe of the gallery reads `http://127.0.0.1:<port>/`.
+- Added (`failure-codes.yaml`): `STACK_LOCAL_TUNNEL_GALLERY`, `stack up` refuses a gallery route when the app serves no gallery.
+- Changed (contexts): `contexts/project/gallery.md` PROJECT-GALLERY-1 item 4 and `contexts/project/stacks.md` PROJECT-STACKS-15 name the gallery route; the schema text of `local.tunnel` follows.
+- Tests: `src/app-gallery.spec.mts` (the declared hosts, lite and full: drift, sync writes `allowedHosts`, the stack routes the host to the derived port, a route with no gallery is refused; the route's port and base port rules).
+- Upgrade: an app whose gallery sits behind its dev tunnel declares `{name: gallery, host: <host>, port: gallery}` in `local.tunnel.routes`, runs `starci app sync --execute` (rewrites `gallery/vite.config.js`), and drops any `__VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS` workaround.
+
 ## 6.13.12 - 2026-11-17
 
 - Changed: the bundled `knowledge/hfs/canon-pins.yaml` follows the Grammar family 0.39.4 (`@starci/grammar`, `@starci/eslint-grammar-core`, `@starci/eslint-grammar-offset-pop`: version and `~0.39.4` range) and names its own version. No rule changes.

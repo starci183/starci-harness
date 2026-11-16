@@ -675,7 +675,7 @@ $defs:
           processes, readiness and verification probes. Names, ports and argv lists only, never a value. The authority is scripts/hfs/stack-local-config.mjs; rule R340 judges it.
           `basePort` (a whole port, 1024 to 65436) is the project base port: the native process ports follow the role table of scripts/hfs/stack-base-port.mjs
           (front end base, api base+1, AI gateway base+2, the rest above, all within base..base+99; rule R389).
-          `tunnel` ({name, routes: [{name, host, port}]}) names the machine's locally managed named tunnel and the public hosts it routes to declared ports; a `services[]` entry of `kind: object-store` (with an optional `console` port) is an S3 store whose S3 port must be routed there, and its processes set `STORAGE_PUBLIC_URL` to that host (PROJECT-STACKS-15; rule R428).
+          `tunnel` ({name, routes: [{name, host, port}]}) names the machine's locally managed named tunnel and the public hosts it routes to declared ports (a route named `gallery` with port `gallery` publishes the screenshot gallery on its derived port, base + 50: PROJECT-GALLERY-1 item 4); a `services[]` entry of `kind: object-store` (with an optional `console` port) is an S3 store whose S3 port must be routed there, and its processes set `STORAGE_PUBLIC_URL` to that host (PROJECT-STACKS-15; rule R428).
         type: object
       ingress:
         description: "The one selected ingress component and the hosts it routes, or external with the stack name when the ingress is a shared stack outside this one (then no component; rule R275 judges which of the two is declared)."
