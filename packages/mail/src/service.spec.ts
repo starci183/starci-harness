@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { describe, it } from "node:test"
-import { MAIL_ERROR_CODES, MAIL_ERROR_KINDS, MailError, isValidMailbox } from "./index.ts"
+import { MAIL_ERROR_CODES, MAIL_ERROR_KINDS, MailError, isValidMailbox, isValidMessageId } from "./index.ts"
 import type { MailMessage } from "./index.ts"
 import { isDomainError } from "@starci/common"
 import { resolveMailOptions } from "./options.ts"
@@ -95,6 +95,77 @@ describe("Mailer checks (the same in the SMTP port and the memory outbox)", () =
             assert.equal(error.code, MAIL_ERROR_CODES.MessageInvalid, JSON.stringify(request).slice(0, 60))
         }
         assert.equal(mailer.outbox.length, 0)
+    })
+
+    it("sends Cc and Bcc as recipients, keeps one copy of an address in the first list that names it, and counts all three against the limit", async () => {
+        const mailer = createMemoryMailer(testMailOptions({ maxRecipients: 4 }))
+        const sent = await mailer.send({ to: "ada@example.com", cc: ["grace@example.com", "ADA@example.com"], bcc: "boss@example.com", message })
+        assert.deepEqual(sent.accepted, ["ada@example.com", "grace@example.com", "boss@example.com"])
+        const mail = mailer.outbox[0]
+        assert.ok(mail)
+        assert.deepEqual(mail.cc, ["grace@example.com"])
+        assert.deepEqual(mail.bcc, ["boss@example.com"])
+        assert.equal(mailer.lastTo("boss@example.com"), mail)
+        const error = await refused(mailer.send({ to: ["a@x.test", "b@x.test"], cc: ["c@x.test", "d@x.test"], bcc: "e@x.test", message }))
+        assert.equal(error.code, MAIL_ERROR_CODES.MessageInvalid)
+    })
+
+    it("carries In-Reply-To, References and a named Message-ID, and generates one when none is named", async () => {
+        const mailer = createMemoryMailer()
+        const named = await mailer.send({
+            to: "ada@example.com",
+            inReplyTo: "<c2@mail.acme.test>",
+            references: ["<c1@mail.acme.test>", "<c2@mail.acme.test>", "<c1@mail.acme.test>"],
+            messageId: "<c3.reply@mail.acme.test>",
+            message,
+        })
+        assert.equal(named.messageId, "<c3.reply@mail.acme.test>")
+        const mail = mailer.outbox[0]
+        assert.ok(mail)
+        assert.equal(mail.inReplyTo, "<c2@mail.acme.test>")
+        assert.deepEqual(mail.references, ["<c1@mail.acme.test>", "<c2@mail.acme.test>"])
+        const plain = await mailer.send({ to: "ada@example.com", references: "<c1@mail.acme.test>", message })
+        assert.match(plain.messageId, /^<memory-2@/u)
+        assert.equal(mailer.outbox[1]?.inReplyTo, null)
+    })
+
+    it("refuses a bad Cc or Bcc address with MAIL_ADDRESS_INVALID, and a bad thread header with MAIL_MESSAGE_INVALID, sending nothing", async () => {
+        const mailer = createMemoryMailer()
+        for (const request of [
+            { to: "a@x.test", cc: "bad", message },
+            { to: "a@x.test", cc: ["b@x.test
+Bcc: evil@y.test"], message },
+            { to: "a@x.test", bcc: ["Display <b@x.test>"], message },
+            { to: "a@x.test", bcc: "b@x.test
+X-Evil: 1", message },
+        ]) {
+            assert.equal((await refused(mailer.send(request))).code, MAIL_ERROR_CODES.AddressInvalid, JSON.stringify(request).slice(0, 50))
+        }
+        const longId = `<${"a".repeat(260)}@x.test>`
+        for (const request of [
+            { to: "a@x.test", inReplyTo: "c2@mail.acme.test", message },
+            { to: "a@x.test", inReplyTo: "<c2@mail.acme.test>
+Bcc: evil@y.test", message },
+            { to: "a@x.test", inReplyTo: "<a b@x.test>", message },
+            { to: "a@x.test", inReplyTo: "<a@b@x.test>", message },
+            { to: "a@x.test", inReplyTo: longId, message },
+            { to: "a@x.test", references: ["<c1@x.test>", "<c2@x.test> <c3@x.test>"], message },
+            { to: "a@x.test", references: "<c1@x.test>
+X-Evil: 1", message },
+            { to: "a@x.test", references: Array.from({ length: 51 }, (_unused, index) => `<m${String(index)}@x.test>`), message },
+            { to: "a@x.test", messageId: "<x@y.test>
+Bcc: evil@y.test", message },
+            { to: "a@x.test", messageId: "plain", message },
+        ]) {
+            assert.equal((await refused(mailer.send(request))).code, MAIL_ERROR_CODES.MessageInvalid, JSON.stringify(request).slice(0, 60))
+        }
+        assert.equal(mailer.outbox.length, 0)
+    })
+
+    it("judges a Message-ID by its angle form", () => {
+        for (const good of ["<a@b.test>", "<a.b+c@mail.example.com>", "<uuid-1234@localhost>"]) assert.equal(isValidMessageId(good), true, good)
+        for (const bad of ["", "<>", "<@b.test>", "<a@>", "a@b.test", "<a@b.test", "<a
+@b.test>", "<a@b..test>", "<a@b.test>x"]) assert.equal(isValidMessageId(bad), false, JSON.stringify(bad))
     })
 
     it("fails the next sends on demand with the injected code and recovers", async () => {

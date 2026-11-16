@@ -41,20 +41,60 @@ export const mailboxOf = (value: string): string => {
     return trimmed
 }
 
-/** The recipients of a call, each a valid mailbox, none repeated (compared ignoring case), at most `max`. */
-export const recipientsOf = (to: string | readonly string[], max: number): readonly string[] => {
-    const list = typeof to === "string" ? [to] : to
-    if (list.length === 0 || list.length > max) throw new MailError(MAIL_ERROR_CODES.MessageInvalid, { detail: `recipients ${String(list.length)} of at most ${String(max)}` })
+/**
+ * The To, Cc and Bcc lists of one call as three lists of valid mailboxes. An address already in an earlier list (To, then Cc,
+ * then Bcc, compared ignoring case) is dropped from the later one, so the server never gets it twice; To is required, Cc and
+ * Bcc are optional, and the three together are at most `max`.
+ */
+export const recipientListsOf = (
+    request: { readonly to: string | readonly string[]; readonly cc?: string | readonly string[]; readonly bcc?: string | readonly string[] },
+    max: number,
+): { readonly to: readonly string[]; readonly cc: readonly string[]; readonly bcc: readonly string[] } => {
+    const listOf = (value: string | readonly string[] | undefined): readonly string[] => (value === undefined ? [] : typeof value === "string" ? [value] : value)
+    const toList = listOf(request.to)
+    const ccList = listOf(request.cc)
+    const bccList = listOf(request.bcc)
+    const total = toList.length + ccList.length + bccList.length
+    if (toList.length === 0 || total > max) throw new MailError(MAIL_ERROR_CODES.MessageInvalid, { detail: `recipients ${String(total)} of at most ${String(max)}` })
     const seen = new Set<string>()
-    const out: string[] = []
-    for (const entry of list) {
-        const mailbox = mailboxOf(entry)
-        if (!seen.has(mailbox.toLowerCase())) {
-            seen.add(mailbox.toLowerCase())
-            out.push(mailbox)
+    const take = (list: readonly string[]): readonly string[] => {
+        const out: string[] = []
+        for (const entry of list) {
+            const mailbox = mailboxOf(entry)
+            if (!seen.has(mailbox.toLowerCase())) {
+                seen.add(mailbox.toLowerCase())
+                out.push(mailbox)
+            }
         }
+        return out
     }
-    return out
+    return { to: take(toList), cc: take(ccList), bcc: take(bccList) }
+}
+
+const MAX_MESSAGE_ID_LENGTH = 255
+const MAX_REFERENCES = 50
+const ID_ATOM = /^[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*$/u
+
+/** Whether a text is a Message-ID in its angle form (`<local@domain>`): dot-atoms on both sides, no whitespace, control characters or inner brackets. */
+export const isValidMessageId = (value: string): boolean => {
+    if (value.length > MAX_MESSAGE_ID_LENGTH || !value.startsWith("<") || !value.endsWith(">")) return false
+    const inner = value.slice(1, -1)
+    const at = inner.indexOf("@")
+    if (at < 1 || at !== inner.lastIndexOf("@")) return false
+    return ID_ATOM.test(inner.slice(0, at)) && ID_ATOM.test(inner.slice(at + 1))
+}
+
+/** A Message-ID that passed `isValidMessageId`, or a `MAIL_MESSAGE_INVALID` rejection naming the field. */
+export const messageIdOf = (value: string, field: string): string => {
+    if (!isValidMessageId(value)) throw new MailError(MAIL_ERROR_CODES.MessageInvalid, { detail: `${field} ${JSON.stringify(value.slice(0, 80))}` })
+    return value
+}
+
+/** The References of a reply: one id or a list, each a valid Message-ID, none repeated, at most fifty. */
+export const referencesOf = (references: string | readonly string[]): readonly string[] => {
+    const list = typeof references === "string" ? [references] : references
+    if (list.length > MAX_REFERENCES) throw new MailError(MAIL_ERROR_CODES.MessageInvalid, { detail: `references ${String(list.length)} of at most ${String(MAX_REFERENCES)}` })
+    return [...new Set(list.map((entry) => messageIdOf(entry, "references")))]
 }
 
 /** A sender as a name and a valid mailbox; the display name is one line of at most a hundred characters. */

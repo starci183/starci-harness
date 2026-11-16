@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0 - 2026-11-16
+
+- Added: `SendMailRequest.cc` and `bcc` (one mailbox or several, the plain mailbox form of `to`): Cc is written in the headers, Bcc only in the SMTP envelope and never in a header. To, Cc and Bcc together are counted against `maxRecipients`; an address already named in an earlier list (To, then Cc, then Bcc, ignoring case) is dropped from the later one. `accepted` lists every envelope recipient the server took.
+- Added: `SendMailRequest.inReplyTo`, `references` and `messageId`, each a Message-ID in its angle form (`<local@domain>`, dot-atoms, at most 255 characters, no whitespace, control characters or inner brackets; at most 50 references, repeats dropped): a reply threads, and a caller that must know the id before the send names it, so `SentMail.messageId` is that id (omitted, nodemailer generates one as before). A bad address stays `MAIL_ADDRESS_INVALID`; a bad id or reference list is `MAIL_MESSAGE_INVALID`; CRLF in any of them is refused before any connection.
+- Added: `isValidMessageId`; `MailEnvelope` gains `cc`, `bcc`, `inReplyTo`, `references` and `messageId` (a custom `MailTransport` reads them); the in-memory outbox keeps them, answers `to(address)` for a Cc or Bcc recipient and keeps a named `messageId`.
+- The package has no read side (no IMAP), so there is no Cc or References to read.
+
 ## 0.2.0 - 2026-11-08
 
 - Changed: `MailError` extends `DomainError` of `@starci/common` (now a dependency): `isDomainError` recognises it, `params` is `{}`; its name, codes, `kind`, `detail`, `context`, `cause` and message (the code) are unchanged. `MailErrorKind` is a subset of `ErrorKind`.

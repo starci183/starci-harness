@@ -27,9 +27,9 @@ export class MemoryTransport implements MailTransport {
     deliver(envelope: MailEnvelope): Promise<SentMail> {
         const failure = this.#failures.shift()
         if (failure !== undefined) return Promise.reject(new MailError(failure, { detail: "injected by the test" }))
-        const messageId = `<memory-${String(this.#sent.length + 1)}@mail.test>`
+        const messageId = envelope.messageId ?? `<memory-${String(this.#sent.length + 1)}@mail.test>`
         this.#sent.push({ ...envelope, messageId, link: LINK.exec(envelope.text)?.[0] ?? null })
-        return Promise.resolve({ messageId, accepted: [...envelope.to] })
+        return Promise.resolve({ messageId, accepted: [...envelope.to, ...envelope.cc, ...envelope.bcc] })
     }
 
     close(): void {
@@ -70,7 +70,7 @@ export class MemoryMailer extends MailService {
     /** The messages sent to one mailbox (compared ignoring case), oldest first. */
     to(address: string): readonly OutboxMail[] {
         const wanted = address.toLowerCase()
-        return this.#memory.sent.filter((mail) => mail.to.some((entry) => entry.toLowerCase() === wanted))
+        return this.#memory.sent.filter((mail) => [...mail.to, ...mail.cc, ...mail.bcc].some((entry) => entry.toLowerCase() === wanted))
     }
 
     /** The newest message sent to one mailbox, or undefined. */

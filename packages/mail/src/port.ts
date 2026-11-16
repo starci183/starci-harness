@@ -29,6 +29,16 @@ export interface RenderedMail extends MailMessage {
 export interface SendMailRequest {
     /** One mailbox or several; the address alone (`ada@example.com`), never a display form. */
     readonly to: string | readonly string[]
+    /** Visible copies: one mailbox or several, the same plain form as `to`; counted with `to` and `bcc` against `maxRecipients`. */
+    readonly cc?: string | readonly string[]
+    /** Hidden copies: delivered to, never written in a header (the server sees them in the SMTP envelope only). */
+    readonly bcc?: string | readonly string[]
+    /** The Message-ID this message answers, in its angle form (`<local@domain>`): what makes a reply thread. */
+    readonly inReplyTo?: string
+    /** The Message-IDs of the thread, oldest first, each in its angle form (at most 50): a reply lists its parent's References, then the parent's id. */
+    readonly references?: string | readonly string[]
+    /** The Message-ID of this message (`<local@domain>`) when the caller must know it before the send; omitted, the transport generates one. */
+    readonly messageId?: string
     /** The message. */
     readonly message: MailMessage
     /** The From of this message when it differs from the options'. */

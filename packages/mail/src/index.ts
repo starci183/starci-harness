@@ -27,7 +27,7 @@ export {
 } from "./options.ts"
 export type { MailAuth, MailOptions, MailSecurity, MailSender, SecretInput } from "./options.ts"
 export type { MailAttachment, MailMessage, Mailer, RenderedMail, SendMailRequest, SentMail } from "./port.ts"
-export { admitsContentType, isValidMailbox } from "./policy.ts"
+export { admitsContentType, isValidMailbox, isValidMessageId } from "./policy.ts"
 export { PUBLIC_MAIL_PORTS, assertSmtpTarget, isPrivateAddress, isWellFormedHost } from "./target.ts"
 export type { ResolveAddresses, SmtpTargetPolicy } from "./target.ts"
 export { DEFAULT_ACCENT, SafeHtml, escapeHtml, html, oneLine, raw, renderTransactional, safeUrl } from "./render.ts"

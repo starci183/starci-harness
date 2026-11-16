@@ -194,6 +194,56 @@ describe("SMTP delivery against a fake server", () => {
         assert.match(mail.raw, /Content-Type: multipart\/alternative/u)
     })
 
+    it("puts Cc, In-Reply-To, References and the named Message-ID in the headers and Cc plus Bcc in the SMTP envelope, never Bcc in a header", async () => {
+        const server = await start()
+        const mailer = createMailer(optionsFor(server))
+        const sent = await mailer.send({
+            to: "ada@example.com",
+            cc: ["grace@example.com"],
+            bcc: ["boss@example.com", "audit@example.com"],
+            inReplyTo: "<c2@mail.acme.test>",
+            references: ["<c1@mail.acme.test>", "<c2@mail.acme.test>"],
+            messageId: "<c3@mail.acme.test>",
+            message,
+        })
+        mailer.onModuleDestroy()
+        assert.equal(sent.messageId, "<c3@mail.acme.test>")
+        assert.deepEqual(sent.accepted, ["ada@example.com", "grace@example.com", "boss@example.com", "audit@example.com"])
+        const [mail] = server.received
+        assert.ok(mail)
+        assert.deepEqual(mail.to, ["ada@example.com", "grace@example.com", "boss@example.com", "audit@example.com"])
+        const headers = mail.raw.slice(0, mail.raw.indexOf("
+
+")).replace(/
+[ 	]+/gu, " ")
+        assert.match(headers, /^To: ada@example.com$/mu)
+        assert.match(headers, /^Cc: grace@example.com$/mu)
+        assert.match(headers, /^In-Reply-To: <c2@mail.acme.test>$/mu)
+        assert.match(headers, /^References: <c1@mail.acme.test> <c2@mail.acme.test>$/mu)
+        assert.match(headers, /^Message-ID: <c3@mail.acme.test>$/mu)
+        assert.doesNotMatch(mail.raw, /bcc/iu)
+        assert.doesNotMatch(mail.raw, /boss@example.com|audit@example.com/u)
+    })
+
+    it("refuses a header-injecting Cc, Bcc, In-Reply-To or References before it connects", async () => {
+        const server = await start()
+        const mailer = createMailer(optionsFor(server))
+        for (const extra of [
+            { cc: "b@x.test
+Bcc: evil@y.test" },
+            { bcc: ["b@x.test
+X-Evil: 1"] },
+            { inReplyTo: "<a@x.test>
+Bcc: evil@y.test" },
+            { references: ["<a@x.test>
+X-Evil: 1"] },
+        ]) {
+            await failure(mailer.send({ to: "ada@example.com", message, ...extra }))
+        }
+        mailer.onModuleDestroy()
+        assert.deepEqual(server.received, [])
+    })
+
     it("refuses a login over a channel with no encryption when the options are built", () => {
         assert.throws(() => resolveMailOptions({ host: "h", port: 25, security: "none", auth: { user: "u", pass: "p" }, from: "a@b.test" }), /no encryption/u)
     })

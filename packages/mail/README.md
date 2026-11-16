@@ -31,6 +31,14 @@ await mailer.send({ to: "ada@example.com", message: renderTransactional({
 - Requires STARTTLS by default (`security: "starttls"`): a server that offers none fails the send with `MAIL_TLS` instead of receiving the message in the clear. `"tls"` is implicit TLS (port 465); `"none"` is a local mail sink and is refused together with a login. Certificates are verified (TLS 1.2 or later) unless `allowSelfSigned` is set for a development catcher.
 - Rejects with a `MailError` (a `DomainError` of `@starci/common`) whose `code` is stable and whose `kind` is `invalid`, `rate-limited` or `unavailable`: `MAIL_AUTH`, `MAIL_APP_PASSWORD`, `MAIL_CONNECT`, `MAIL_TIMEOUT`, `MAIL_DNS`, `MAIL_TLS`, `MAIL_SENDER`, `MAIL_RECIPIENT`, `MAIL_LIMIT`, `MAIL_UNKNOWN`, `MAIL_ADDRESS_INVALID`, `MAIL_MESSAGE_INVALID`. The server's words ride in `detail`, the host and port in `context`, the cause in `cause`; the password is in none of them.
 
+## Copies and threads
+
+`send` takes `cc` (visible), `bcc` (delivered, never written in a header), `inReplyTo`, `references` and `messageId`. The three recipient lists together stay within `maxRecipients` and an address named twice is sent once. A reply threads with the parent's id and the thread so far, and a caller that stores the id of what it sends names it up front; every id is in its angle form (`<local@domain>`) and a malformed one, or any line break in a recipient or an id, is refused before a connection.
+
+```ts
+const sent = await mailer.send({ to: "ada@example.com", cc: "ops@example.com", bcc: "archive@example.com", inReplyTo: parent.messageId, references: [...parent.references, parent.messageId], messageId: "<reply-42@mail.example.com>", message })
+```
+
 ## Attachments and user-chosen servers
 
 `message.attachments` takes up to `maxAttachments` files (default 3) of `maxAttachmentBytes` together (default 5 MiB); `attachmentContentTypes` lists the admitted media types. For a server a user typed in (a workspace's own SMTP account) call `assertSmtpTarget(host, port)` when saving it and set `publicTargetOnly` on the options of the mailer you build for it: only public mail ports and only hosts that resolve to public addresses pass.
