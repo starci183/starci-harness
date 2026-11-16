@@ -1,3 +1,4 @@
+import type { AvailableModel } from "./known-models.ts"
 import type { OnApplicationShutdown } from "@nestjs/common"
 import type {
     AiRouter,
@@ -96,6 +97,11 @@ export class AiRouterService<Profiles extends string = string> implements AiRout
     /** Lists the pool's profiles and models by name. */
     catalog(): RouterCatalog {
         return this.router.catalog()
+    }
+
+    /** The chat models a caller may choose, from the providers whose keys are configured. */
+    availableModels(): AvailableModel[] {
+        return this.router.availableModels()
     }
 
     /** Aborts every call still in flight through this service and releases its handlers. */

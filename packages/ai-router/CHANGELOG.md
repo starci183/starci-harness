@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.8.0 - 2026-11-16
+
+The router knows the current Claude 5 and OpenAI models by id, offers OpenRouter's catalog at run time, lists what a caller may choose, and routes `auto-*` profiles by effort tier within the providers that have keys. Additive: nothing declared before changes.
+
+- Added: `KNOWN_MODELS` and `knownModelConfigs("anthropic" | "openai")`: `claude-fable-5-2`, `claude-opus-5-5`, `claude-sonnet-5-5`, `claude-haiku-5-5`, `gpt-6-astra`, `gpt-6.1-sol`, `gpt-6.1-terra`, `gpt-6-luna`, each with chat, streaming, json, tools and vision and a 1M (Claude) or 1.05M (OpenAI) token window. Sources, read 2026-11-16: https://platform.claude.com/docs/en/models/overview (ids, window, image input, tool use, prices, cache-read share) and https://developers.openai.com/api/docs/models (ids, window, image input, function calling). Left out because the pages do not state it: Haiku 5.5's price (the page says "From $0.10 / $0.50"), every Claude cache-write price, and OpenAI prices. Opus 5.5 and Sonnet 5.5 carry `forcedToolUse: false`.
+- Added: `fetchOpenRouterModels({ baseUrl?, apiKey?, fetch?, ttlMs?, now? })` reads OpenRouter's `GET /api/v1/models` (https://openrouter.ai/docs/api-reference/list-available-models), cached per base URL (one hour by default), into `ModelConfig`s: the id sent is `<vendor>/<model>`, the name a caller uses is `openrouter/<vendor>/<model>` (an alias); vision from `architecture.input_modalities`, tools from `supported_parameters`, the window from `context_length`, each left out when the entry omits it; prices are not read. `clearOpenRouterCatalogCache()`.
+- Added: `defaultProviderSpecs({ openRouterModels? })` for `poolFromEnv`: Anthropic, OpenAI and OpenRouter, each present only when its key is in env (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `OPENROUTER_API_KEY`); without a key the provider and its models are absent and nothing fails at boot.
+- Added: `availableModels()` on the router and `AiRouterService` (and `availableModels(config)`): `{ id, provider, label, vision, tools, contextTokens? }` per chat model per provider in the pool, so an app lists choices. `AvailableModel`.
+- Added: `withAutoProfiles(config)` adds `auto-low`, `auto-medium`, `auto-high`, `auto-max` and `auto` (medium): each starts at its effort tier, then the tiers below, then those above, over the known models the pool serves, so it never reaches a provider without a key. `EFFORT_TIERS`, `EffortTier`. The tier of a model is this package's ranking from the vendors' descriptions and prices, not a vendor claim. A profile the app declares is kept.
+
+### Migration from 0.7
+
+- Code that implements `AiRouter` adds `availableModels`.
+
 ## 0.7.0 - 2026-11-13
 
 One virtual key, two protocols: the gateway speaks Anthropic Messages beside OpenAI, a LangChain app asks for the client

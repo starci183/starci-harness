@@ -1,3 +1,4 @@
+import type { AvailableModel } from "./known-models.ts"
 import type { StateStore } from "./store.ts"
 
 /** A value or a promise of it: store adapters and key resolvers may answer either way. */
@@ -673,6 +674,8 @@ export interface AiRouter<Profiles extends string = string> {
     reset(target?: ResetTarget): Promise<void>
     /** Lists the pool's profiles and models by name, with no key: what a caller may ask for. */
     catalog(): RouterCatalog
+    /** The chat models a caller may choose, one per provider serving them: only providers in the pool, which has the ones with keys. */
+    availableModels(): AvailableModel[]
 }
 
 /** One model of the pool as the catalog lists it: one entry per configured id, merged across the providers serving it. */
