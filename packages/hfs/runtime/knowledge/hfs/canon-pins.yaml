@@ -147,7 +147,7 @@ pins:
     why: 'the sign-in of both editions: the lite NestJS module (EdDSA access tokens with a multi-key JWKS, passwords, pluggable sign-in providers with state and PKCE: Google, GitHub; rotating refresh sessions, the sign-in budget, the refresh cookie) at ./server, the full OIDC client of the identity provider (discovery, JWKS, verifier, Keycloak broker and admin) with the issuer presets (Keycloak, Google ID tokens, GitHub Actions OIDC) at ./oidc, the front-end clients and React bindings, the door contracts and test doubles with the fake issuer; the one importer of the identity libraries, reached by a back end only through integrations/passport (lite) and integrations/keycloak (full); @starci/jest-preset compiles it as an ESM-only dependency. It replaces the retired @starci/auth-oidc (starci app codemod auth-merge).'
 
   '@starci/object-storage':
-    version: 0.3.0
+    version: 0.3.1
     group: starci
     install: registry
     side: be

@@ -227,12 +227,14 @@ describe("the AWS transport against a local S3", () => {
         assert.ok(signedHeaders.includes("content-type"), signedHeaders.join(","))
         assert.ok(signedHeaders.includes("content-length"), signedHeaders.join(","))
         assert.equal(signed.expiresAt, "2026-03-01T00:10:00.000Z")
+        assert.deepEqual([...url.searchParams.keys()].filter((name) => /^x-amz-(checksum|sdk-checksum)/iu.test(name)), [])
         assert.deepEqual(signed.headers, { "Content-Type": "image/png", "Content-Length": "1234" })
     })
 
     it("signs a GET with the default lifetime and an optional download name", async () => {
         const plain = await storage.presignGet("media", "users/u1/a b.txt")
         assert.equal(new URL(plain.url).searchParams.get("X-Amz-Expires"), "300")
+        assert.deepEqual([...new URL(plain.url).searchParams.keys()].filter((name) => /^x-amz-(checksum|sdk-checksum)/iu.test(name)), [])
         assert.equal(new URL(plain.url).pathname, "/media/users/u1/a%20b.txt")
         const named = await storage.presignGet("media", "k.txt", { downloadName: "report 1.txt" })
         assert.match(new URL(named.url).searchParams.get("response-content-disposition") ?? "", /^attachment; filename="report%201\.txt"$/u)

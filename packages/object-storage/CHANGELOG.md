@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.1 - 2026-11-16
+
+- Fixed: presigned PUT URLs carried the CRC32 checksum of an empty body (the AWS SDK v3 default `requestChecksumCalculation: "WHEN_SUPPORTED"`), so MinIO and a browser uploading the real bytes were refused. Both S3 clients now set `requestChecksumCalculation` and `responseChecksumValidation` to `WHEN_REQUIRED`; `presignPut` and `presignGet` URLs carry no `x-amz-checksum-*` or `x-amz-sdk-checksum-algorithm` parameter, and a plain PUT or GET of the bytes satisfies them.
+
 ## 0.3.0 - 2026-11-15
 
 - Added: `listKeys(bucket, after, limit)` on the port: every key of the bucket at any depth, in UTF-8 byte order, after `after` (exclusive; null = from the start), at most `limit` (1 to 1000), as `{ keys: ListedKey[], next }` (`next` is the last key of the page, null when the bucket has no more), so a whole-bucket backup can page through it. `ListedKey` is `{ key, size, contentType? }` (the content type only when the store reports it with the listing: S3 does not, the memory double does). A missing bucket answers an empty page. Over S3 it is ListObjectsV2 with `StartAfter` and `MaxKeys` and no delimiter. That S3 lists in UTF-8 binary order is NOT VERIFIED against the AWS documentation (not reachable when written); the memory double sorts by UTF-8 bytes.

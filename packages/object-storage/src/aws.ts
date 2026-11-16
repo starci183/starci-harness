@@ -41,7 +41,9 @@ const guarded = async <T>(call: Promise<T>, operation: string, bucket: string): 
 }
 
 /**
- * The S3 transport over the AWS SDK: the one file of an app's dependency tree that imports it. Calls go to the internal
+ * The S3 transport over the AWS SDK (both clients set `requestChecksumCalculation` and `responseChecksumValidation` to
+ * `WHEN_REQUIRED`, typed in @aws-sdk/checksums flexible-checksums constants of client-s3 3.1150.0, so a presigned URL carries no
+ * checksum of an empty body and a plain PUT or GET of the real bytes satisfies it): the one file of an app's dependency tree that imports it. Calls go to the internal
  * endpoint; presigned requests are signed by a second client for the public origin, so the signature covers the host a
  * browser will send the request to.
  */
@@ -54,7 +56,7 @@ export class AwsS3Transport implements S3Transport {
         this.#options = resolveOptions(options)
         const credentials = { accessKeyId: revealed(options.accessKeyId), secretAccessKey: revealed(options.secretAccessKey) }
         const client = (endpoint: string): S3Client =>
-            new S3Client({ endpoint, region: this.#options.region, credentials, forcePathStyle: this.#options.forcePathStyle, maxAttempts: 2 })
+            new S3Client({ endpoint, region: this.#options.region, credentials, forcePathStyle: this.#options.forcePathStyle, maxAttempts: 2, requestChecksumCalculation: "WHEN_REQUIRED", responseChecksumValidation: "WHEN_REQUIRED" })
         this.#calls = client(this.#options.endpoint)
         this.#signer = this.#options.publicEndpoint === this.#options.endpoint ? this.#calls : client(this.#options.publicEndpoint)
     }
