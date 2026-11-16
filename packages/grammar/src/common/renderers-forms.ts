@@ -28,7 +28,7 @@ export { Textarea, type TextareaMentionOption, type TextareaMentions, type Texta
 export { SearchField, type SearchFieldProps } from "../core/leaf/SearchField/index.js"
 export { NumberField, type NumberFieldProps } from "../core/leaf/NumberField/index.js"
 export { Checkbox, type CheckboxProps } from "../core/leaf/Checkbox/index.js"
-export { Switch, type SwitchProps, type SwitchSize } from "../core/leaf/Switch/index.js"
+export { Switch, type SwitchKind, type SwitchProps, type SwitchSize } from "../core/leaf/Switch/index.js"
 export { Slider, type SliderProps, type SliderValue } from "../core/leaf/Slider/index.js"
 export { DateField, type DateFieldProps, type DateGranularity } from "../core/leaf/DateField/index.js"
 export { TimeField, type TimeFieldProps } from "../core/leaf/TimeField/index.js"

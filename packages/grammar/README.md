@@ -506,11 +506,11 @@ CORS request; the renderer leaves this unset by default to preserve ordinary med
 The [HTML media and track standard](https://html.spec.whatwg.org/multipage/media.html#the-track-element)
 defines the native loading and caption behaviour.
 
-`Switch` takes `size="md" | "lg"` (`lg` is the StarCi 4rem by 2.25rem pill with a 1.75rem round thumb) and
+`Switch` takes `kind="toggle" | "compact"`. `toggle` (the default) is the standalone, prominent switch: a 72 by 40 track with a 32px thumb, for the theme switch of a bar. `compact` is a 32 by 18 track with a 14px thumb inset 2px, for a setting in a settings row, a list, a table cell or a toolbar; it draws no thumb glyph. Both kinds have the accent track when on, the field ring on keyboard focus, 45% when disabled, and a 150ms thumb travel (none under reduced motion). `size` is kept for compatibility: `size="control"` is `kind="toggle"`, `md` and `lg` are HeroUI's own sizes, and `kind` wins when both are given. `Switch` also takes
 `thumbIcon` / `selectedThumbIcon` for a glyph inside the thumb, so a sun/moon theme switch is
-`<Switch size="lg" label="Dark mode" thumbIcon={Sun} selectedThumbIcon={Moon} />`.
+`<Switch kind="toggle" label="Dark mode" isLabelHidden thumbIcon={Sun} selectedThumbIcon={Moon} />`.
 
-`Switch size="control"` and `Avatar` / `AvatarButton size="control"` share the control height (2.75rem, the
+`Switch kind="toggle"` (`size="control"`) and `Avatar` / `AvatarButton size="control"` share the control height (2.75rem, the
 IconButton of a bar), so a language button, a theme switch, a bell and an avatar line up at one height; `Switch
 isLabelHidden` keeps its label as the accessible name and draws nothing. `WorkspaceShell viewport="fixed"` is one
 viewport tall (`100dvh`) with the header on top and the navigation and primary regions scrolling on their own, so an

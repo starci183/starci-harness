@@ -632,6 +632,56 @@
         --grammar-switch-thumb: calc(var(--grammar-switch-height) - 0.5rem);
     }
 
+    /*
+     * --- Switch kind "compact" (0.40.1) ---
+     * The switch of a settings or list row: a 32x18 track (2rem x 1.125rem; HeroUI's `sm` is 32x16 and has no 18px step, so the geometry is Grammar's), a 14px thumb
+     * (0.875rem) inset 2px (0.125rem) on every side. No thumb glyph is drawn at this size. The on position is the same margin rule as the toggle's.
+     */
+    [data-component="Switch"][data-grammar-switch-kind="compact"] {
+        --grammar-switch-height: var(--grammar-switch-compact-height);
+        --grammar-switch-width: var(--grammar-switch-compact-width);
+        --grammar-switch-thumb: var(--grammar-switch-compact-thumb);
+        --grammar-switch-inset: var(--grammar-switch-compact-inset);
+    }
+
+    [data-component="Switch"][data-grammar-switch-kind="compact"] [data-grammar-switch-track] {
+        inline-size: var(--grammar-switch-width) !important;
+        block-size: var(--grammar-switch-height) !important;
+    }
+
+    [data-component="Switch"][data-grammar-switch-kind="compact"] [data-grammar-switch-thumb] {
+        inline-size: var(--grammar-switch-thumb) !important;
+        block-size: var(--grammar-switch-thumb) !important;
+        flex-shrink: 0;
+        margin-inline-start: var(--grammar-switch-inset) !important;
+    }
+
+    [data-component="Switch"][data-grammar-switch-kind="compact"][data-selected="true"] [data-grammar-switch-thumb] {
+        margin-inline-start: calc(var(--grammar-switch-width) - var(--grammar-switch-thumb) - var(--grammar-switch-inset)) !important;
+    }
+
+    /*
+     * Both kinds: the keyboard ring on the track is the field ring (`--starci-core-field-ring`, default `--focus`, the same hook as every field), the thumb travels in 150ms
+     * and stands still under reduced motion, and a disabled switch is drawn at 45%. `!important`: the vendor sets these in its own focus and transition rules.
+     */
+    [data-component="Switch"] [data-grammar-switch-track] {
+        --tw-ring-color: var(--starci-core-field-ring, var(--focus)) !important;
+    }
+
+    [data-component="Switch"] [data-grammar-switch-thumb] {
+        transition: margin var(--grammar-switch-travel) var(--starci-core-motion-easing), background-color var(--grammar-switch-travel) var(--starci-core-motion-easing) !important;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        [data-component="Switch"] [data-grammar-switch-thumb] {
+            transition: none !important;
+        }
+    }
+
+    [data-component="Switch"][data-disabled="true"] {
+        opacity: var(--grammar-opacity-faded);
+    }
+
     /* A switch is a capsule on every theme: the track and the thumb are pills, whatever radius the app sets for its controls. */
     [data-component="Switch"] [data-grammar-switch-track],
     [data-component="Switch"] [data-grammar-switch-thumb] {
