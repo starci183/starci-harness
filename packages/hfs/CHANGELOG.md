@@ -1,5 +1,10 @@
 # Changelog
 
+## 6.13.26 - 2026-11-17
+
+- Changed (`codemod/surface-card-kinds.mts`): `starci app codemod surface-card-kinds` migrates a `SurfaceListCard` into `<Section kind="list">` (Grammar 0.43.0 removed `SurfaceCard kind="list"`): `label` to `title`, `labelEnd` to `action`, `note` to `caption`, `height="fill"` to `fill`, `label` with `labelHidden` to `ariaLabel`, `isLoading` kept; a `footer` is `LIST_CARD_BODY` and another `height` `LIST_HEIGHT`, both left for a person; the import is `Section`. `section-frame` reasons and `removed-vocabulary.yaml` name `Section kind="list"`. Spec: `surface-card-kinds-codemod.spec.mts`.
+- Changed (`knowledge/hfs/canon-pins.yaml`, R352): @starci/eslint-canon-fe 9.20.1 (FE_TABLE_IN_CARD names `Section kind="list"`; the header-slot rule covers a Section `action`); the `@starci/hfs` self-pin is 6.13.26.
+
 ## 6.13.25 - 2026-11-17
 
 - Changed (`knowledge/hfs/canon-pins.yaml`): the Grammar family at 0.43.0 (`~0.43.0`): one look for a list. `SurfaceCard kind="list"` is removed (refused by `starci-grammar/surface-card-list`, FE_SURFACE_CARD_LIST); `Section kind="list"` is flat by default (hairline dividers, rows on the title's edge) with `layout` rows, keyValue or suggestions; the list theme hooks `--starci-core-list-frame`, `-frame-border`, `-radius` and `-inset` are gone. @starci/stylelint-canon 2.9.4 (refuses those hooks in brand.css). The `@starci/hfs` self-pin is 6.13.25.

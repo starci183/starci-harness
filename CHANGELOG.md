@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.146 - 2026-11-17
+
+- Changed (pins): @starci/eslint-canon-fe 9.20.1 and @starci/hfs 6.13.26, which no longer name the removed `SurfaceCard kind="list"` (the R351 message, the surface-card-kinds codemod); R352 in hfs/rules.yaml. Until the cli-follow step raises the CLI's requirement, the CLI runs the hfs it requires.
+
 ## 1.1.0-alpha.145 - 2026-11-17
 
 - Changed: the CLI requires @starci/hfs@6.13.25, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
