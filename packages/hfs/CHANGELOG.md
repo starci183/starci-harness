@@ -1,5 +1,9 @@
 # Changelog
 
+## 6.13.32 - 2026-11-18
+
+- Added (`audit/judge.mts`, `audit/cli.mts`, PROJECT-LINT-5): time-boxed npm-audit exceptions. The production audit step of the CI template and of the pre-push parity step is `npx --no-install starci app audit --omit-dev --level=<level>`: it runs `npm audit --omit=dev --json` and judges the report against `.starcistacks/security/audit-exceptions.yaml` (entries: exact GHSA `advisory`, `package`, `via` dependency roots, `reason`, `approvedBy`, `approvedAt`, `expires`). A finding at or above the level is exempt only when an active exception matches its advisory and package and every lockfile path to the package starts at a `via` root; anything else is `AUDIT_HIGH`. Codes: `AUDIT_EXCEPTION_EXPIRED`, `AUDIT_EXCEPTION_TOO_LONG` (over 14 days), `AUDIT_EXCEPTION_FIX_AVAILABLE`, `AUDIT_EXCEPTION_UNUSED`, `AUDIT_EXCEPTION_INVALID`, `AUDIT_REPORT_UNREADABLE` (errors) and `AUDIT_EXCEPTION_ACTIVE` (printed on every run). An exception needs the owner's approval; an agent never adds one. R269 (`HFS_AUDIT_STEP_MISSING`) accepts the new step and still refuses a swallowed one. The managed .gitignore tracks the exceptions file. The `@starci/hfs` self-pin is 6.13.32.
+
 ## 6.13.31 - 2026-11-18
 
 - Fixed (`cache/built-packages.mts`, `cache/app-families.mts`): the types step of `starci app check` builds the workspace packages its programs resolve through a build output (an `exports`/`main`/`module`/`types` target no tracked file holds, such as `dist`) before the first `tsc`, dependencies first, each by its own `build` script, skipped while its stamp (tracked sources, the built packages it needs, the lockfile) is unchanged and its outputs exist. A program that reads such a package is keyed by that package's sources, so a stale record can no longer hide diagnostics. A failed build is `TYPES_PACKAGE_BUILD_FAILED` (one finding per package; its readers are not run).

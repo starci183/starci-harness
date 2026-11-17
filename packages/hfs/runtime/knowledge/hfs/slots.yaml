@@ -1167,7 +1167,7 @@ slots:
     tracked: tracked
     tier: none
     tests: none
-    since: 6.14.0
+    since: 6.13.32
     allows: ["audit-exceptions.yaml"]
     rules: [AUDIT_EXCEPTION_INVALID]
   - id: app.db.bootstrap
