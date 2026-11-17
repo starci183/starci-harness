@@ -1,41 +1,73 @@
-# The board format
+# The fragment format
 
-## Canvas
+A lane writes one fragment, `pages/<NN>-<slug>.html` under `.starcistacks/canvas/` (the folder, the screen ids, the
+states and the sizes are PROJECT-GALLERY-6's). The board classes are those of [kit/canvas.css](../kit/canvas.css); the
+colours and Grammar roles are the `var(--…)` tokens and classes of the app's `tokens.css`.
 
-- Background: a neutral grey (`#ececec` in kit.css as `--board-ground`), the page body scrolls both ways.
-- Rows: one per page, in the app's navigation order; a 160px gap between rows, 64px between frames of a row.
-- Each row starts with the page's concept note, then the frames: for each state in the order of the state list,
-  the 1440 frame, then its 390 frame.
+## A screen is one section
 
-## Frame
+Each screen of the page, its base screen first and then each state the page has in the order of the state table, is one
+section:
 
-- A frame is a fixed box of the width it is labelled with (1440 or 390) and the height of its content (at least
-  900 for 1440 and 844 for 390), clipped, with the app's page ground (white on a white theme) and a soft
-  shadow so it stands on the grey.
-- It holds one screen: the app shell (sidebar or top bar on 1440, top bar and bottom bar or drawer opener on 390)
-  and the page in that state, with real Vietnamese sample data (names, amounts in đ, dates as dd/mm/yyyy).
-- The label sits 12px above the frame, 14px medium, muted: `Khách hàng, danh sách · 1440`.
+```html
+<section class="page" id="customers-list-empty" data-pid="customers/list-empty" data-route="/customers" data-title="Khách hàng, trống">
+  <h2>Khách hàng, trống</h2>
+  <div class="pid">gallery: customers/list-empty</div>
+  <div class="status">Bản vẽ, chờ duyệt</div>
+  <div class="row">
+    <div class="frame"><div class="lbl">Khách hàng, trống · 1440</div><div class="scr w1440 zoom">…the full screen with the app shell…</div></div>
+    <div class="frame"><div class="lbl">Khách hàng, trống · 390</div><div class="scr w390">…</div></div>
+    <div class="note">…the screen's explain.md…</div>
+  </div>
+</section>
+```
 
-## States
+- `id` is the screen id with `/` written `-`; `data-pid` is the gallery id itself; `data-route` the route of the screen.
+- The label is `<Trang>, <trạng thái> · 1440` or `· 390` (the base screen's state is `danh sách`, or the page's own word for
+  its resting state). A frame is drawn at real pixels: `.w1440` or `.w390`, and `.zoom` shows a 1440 frame at 50%.
+- The status chip reads the screen's status in `design.json`: `Bản vẽ, chờ duyệt` (drafted), `Đã duyệt` (approved),
+  `Đã code` (built), `Khớp gallery` (matches).
+- Inside a frame: the app shell (sidebar or top bar on 1440; top bar and bottom bar or drawer opener on 390, really
+  reflowed, never shrunk) and the screen in its state. A Grammar element the screen lacks carries a small
+  `cần Grammar` tag where it is drawn.
+- A fragment may hold one `<style>` whose every selector starts with its sections' ids (`section[id^="customers-"]`) or
+  a lane class; it uses the `var(--…)` tokens and writes no new hex colour. No `<script>`, no external image.
 
-| state | what the frame shows |
+## The note is the explain.md
+
+The note holds exactly the screen's `explain.md` (PROJECT-GALLERY-2 item 1), so the code lane copies it line for line:
+
+```html
+<div class="note">
+  <div class="fm">title: Khách hàng, trống · route: /customers · area: customers</div>
+  <p class="intro"><b>Concept: Khách hàng.</b> Mục tiêu: … Thao tác: <code>contacts(search, limit)</code>, <code>createObject</code>;
+    cần API: <code>importContacts</code>. Bố cục: … Nút chính: … Lọc: … Khác bản hiện tại: … Lưu ý xung đột: …</p>
+  <h4>Trạng thái trống</h4>
+  <p>Vì sao: …</p>
+  <p>Luật: …</p>
+  <p>Grammar: <code>EmptyState</code> kind <code>first-record</code>, slot <code>action</code></p>
+</div>
+```
+
+| note | explain.md |
 |---|---|
-| danh sách | the list with real rows, the primary action, filters at rest |
-| chi tiết | one record open (detail pane on 1440, its own screen on 390) |
-| trống | no record yet, the empty state with the one action that creates the first |
-| lần đầu | the first visit: onboarding hint or setup step, when the page has one |
-| đang tải | the skeleton of the ready layout, same boxes, nothing else |
-| lỗi | the load failed: the error with retry, the shell intact |
-| không khớp bộ lọc | filters set, no match: the empty state that clears the filters |
-| đang soạn | the create or edit form open, with a validation message on one field |
+| `.fm` (`title · route · area`) | the front matter `title`, `route`, `area` |
+| `.intro` | the introduction, the text before the first `## ` |
+| each `<h4>` | one `## <region name>` |
+| the `<p>` lines under it | its `Vì sao:`, `Luật:` and `Grammar:` lines |
 
-## Concept note
+The introduction is one dense paragraph, its clauses in this order:
 
-A yellow note (`--board-note: #fff3b0`), 360px wide, 14px text, its title `Concept: <Trang>` bold. One
-paragraph, the clauses in this order and labelled inline:
+- **Mục tiêu:** the business job of the page, in the owner's words.
+- **Thao tác:** the real operations the screen calls, by their names in the code, and each missing one as
+  `cần API: <operation>`.
+- **Bố cục:** the list and detail split and why.
+- **Nút chính:** the single primary action.
+- **Lọc:** how search, filters and sort work.
+- **Khác bản hiện tại:** the jobs that change against today's app: a job added, merged, moved to another page or
+  dropped. Never a comparison of layouts.
+- **Lưu ý xung đột:** where two sources disagree, which one the drawing follows, naming each source.
 
-> **Concept: Khách hàng.** **Mục tiêu:** chủ shop tìm lại một khách trong 5 giây để xem nợ và nhắn tiếp.
-> **Bố cục:** danh sách bên trái, chi tiết bên phải trên 1440; trên 390 chi tiết là màn riêng. **Hành động chính:**
-> "Thêm khách" (một nút đỏ duy nhất). **Lọc:** ô tìm theo tên hoặc số điện thoại, chip "Còn nợ" và "Mới tuần
-> này", không có bộ lọc nâng cao. **Khác bản hiện tại:** bỏ bảng 9 cột, cột nợ thành badge; chi tiết không còn
-> là dialog. **Lưu ý xung đột:** brief nói xoá khách được, concept `customers` nói chỉ lưu trữ: theo concept.
+Every visible region of the screen has its `<h4>` and three lines; a state screen explains all its regions, not only
+the one its state changes. The `Grammar:` line names the element, its kind and slot, and a missing element as
+`cần Grammar: <what>`.

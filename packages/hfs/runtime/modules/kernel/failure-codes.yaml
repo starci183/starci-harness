@@ -3385,6 +3385,69 @@ HFS_APP_GALLERY_LINKS:
   owner: op-retry
   kind: check-finding
 
+HFS_APP_GALLERY_DESIGN_MANIFEST:
+  title: "The design manifest of the gallery is readable and well formed"
+  title_vi: ".starcistacks/canvas/design.json không đọc được hoặc sai dạng"
+  meaning_vi: ".starcistacks/canvas/design.json (sổ theo dõi bản vẽ thiết kế trước khi code) không phải JSON, hoặc không đúng dạng { \"areas\": [...], \"pages\": { \"<khu>/<màn hình>\": { status, approvedAt, board, shots } } }: mã màn hình sai, khu không có trong areas, status lạ, thiếu approvedAt khi đã duyệt, thiếu link board, hoặc sha ảnh không phải sha256."
+  causes_vi:
+    - "Vi phạm R395 (PROJECT-GALLERY-6): sổ thiết kế là nguồn duy nhất cho biết trang nào đã được chủ dự án duyệt, đã code và đã khớp; sổ hỏng thì không kiểm được gì."
+    - "Sửa tay sai cú pháp, đặt tên trang khác với thư mục gallery/pages, hoặc đặt approvedAt cho trang chưa được duyệt."
+  nextStep_vi: "Sửa .starcistacks/canvas/design.json theo dạng trong contexts/project/gallery.md PROJECT-GALLERY-6: mỗi trang có status (drafted, approved, built, matches), board (link https), approvedAt ISO từ approved trở đi, shots 1440 và 390 là sha256 từ built trở đi."
+  owner: op-retry
+  kind: check-finding
+
+HFS_APP_GALLERY_DESIGN_PAGE_MISSING:
+  title: "A built design page has its gallery screen"
+  title_vi: "Trang thiết kế đã built nhưng gallery chưa có màn hình đó"
+  meaning_vi: ".starcistacks/canvas/design.json ghi một trang ở trạng thái built hoặc matches mà gallery/pages/<khu>/<màn hình>/explain.md không tồn tại."
+  causes_vi:
+    - "Vi phạm R395 (PROJECT-GALLERY-6): trang đã code phải có màn hình trong gallery với explain.md là đúng ghi chú đã được duyệt."
+    - "Mã trang trong sổ khác tên thư mục, hoặc lane code đặt built mà chưa chép explain.md vào gallery."
+    - "`--env local` chỉ liệt kê, `--env prod` (hook push, CI, phát hành) chặn."
+  nextStep_vi: "Chép explain.md đã duyệt vào gallery/pages/<khu>/<màn hình>/ (và chụp ảnh), hoặc sửa mã trang trong .starcistacks/canvas/design.json cho đúng thư mục."
+  owner: op-retry
+  kind: check-finding
+  localOnly: true
+
+HFS_APP_GALLERY_DESIGN_UNAPPROVED:
+  title: "A screen of a designed area has an approved design"
+  title_vi: "Màn hình thuộc khu thiết kế trước nhưng chưa có bản vẽ được duyệt"
+  meaning_vi: "Khu của màn hình có trong `areas` của .starcistacks/canvas/design.json (khu này vẽ trước rồi mới code), màn hình đã có trong gallery (explain.md hoặc ảnh), nhưng sổ không có mục cho nó hoặc mục chỉ ở trạng thái drafted."
+  causes_vi:
+    - "Vi phạm R395 (PROJECT-GALLERY-6): ở khu vẽ trước, không màn hình nào được code trước khi chủ dự án nói \"đẹp\" cho bản vẽ của nó."
+    - "Thêm một trạng thái mới (một thư mục màn hình) mà không vẽ, hoặc đưa khu vào `areas` trước khi các trang của nó được duyệt."
+    - "`--env local` chỉ liệt kê, `--env prod` (hook push, CI, phát hành) chặn."
+  nextStep_vi: "Vẽ màn hình đó trên board bằng /claude-design, chờ chủ dự án duyệt rồi đặt approved; nếu khu chưa thiết kế xong thì bỏ nó khỏi `areas`."
+  owner: op-retry
+  kind: check-finding
+  localOnly: true
+
+HFS_APP_GALLERY_DESIGN_SHOT_MISSING:
+  title: "A built design page records and holds its 1440 and 390 shots"
+  title_vi: "Trang thiết kế đã built mà thiếu ảnh 1440 hoặc 390"
+  meaning_vi: "Một trang built hoặc matches trong .starcistacks/canvas/design.json không ghi sha256 của ảnh 1440 hoặc 390, hoặc thư mục màn hình trong cây làm việc có ảnh nhưng thiếu 1440.png hoặc 390.png."
+  causes_vi:
+    - "Vi phạm R395 (PROJECT-GALLERY-6): ảnh 1440 và 390 của trang đã code là bằng chứng để so với khung đã duyệt; ảnh không được commit nên sha trong sổ là bằng chứng mà CI đọc được."
+    - "Lane code đặt built mà chưa chụp hoặc chưa ghi sha."
+    - "`--env local` chỉ liệt kê, `--env prod` (hook push, CI, phát hành) chặn."
+  nextStep_vi: "Chụp gallery/pages/<khu>/<màn hình>/1440.png và 390.png từ bản đã code, rồi ghi sha256 của chúng vào `shots` của trang trong .starcistacks/canvas/design.json."
+  owner: op-retry
+  kind: check-finding
+  localOnly: true
+
+HFS_APP_GALLERY_DESIGN_SHOT_STALE:
+  title: "A design page's recorded shots are newer than its approval and are the shots in the gallery"
+  title_vi: "Ảnh của trang thiết kế cũ hơn lần duyệt hoặc không phải ảnh đã ghi"
+  meaning_vi: "Một trang drafted hoặc approved trong .starcistacks/canvas/design.json vẫn ghi `shots` (ảnh chụp trước lần duyệt), hoặc ảnh 1440.png hay 390.png trong cây làm việc có sha256 khác sha đã ghi cho trang built hoặc matches."
+  causes_vi:
+    - "Vi phạm R395 (PROJECT-GALLERY-6): ảnh không được commit và thời gian sửa tệp vô nghĩa trên CI, nên thứ tự được giữ trong sổ: duyệt (hoặc vẽ lại) xoá `shots`, lane code ghi lại sha sau khi chụp."
+    - "Màn hình được chụp lại sau khi sổ ghi sha (giao diện đã đổi) mà chưa so lại với khung đã duyệt."
+    - "`--env local` chỉ liệt kê, `--env prod` (hook push, CI, phát hành) chặn."
+  nextStep_vi: "Trang mới duyệt hoặc vẽ lại: xoá `shots`. Ảnh đã chụp lại: so ảnh mới với khung đã duyệt trên board, rồi ghi sha mới (built, hoặc matches sau khi người duyệt xác nhận)."
+  owner: op-retry
+  kind: check-finding
+  localOnly: true
+
 HFS_APP_GALLERY_ROUTE_MISSING:
   title: "Every route of the front end has a gallery screen"
   title_vi: "Route của front end chưa có màn hình trong gallery"

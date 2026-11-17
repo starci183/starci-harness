@@ -5,7 +5,7 @@
 Every file of `contexts/` with its size, the first sentence it opens with, its sections and the ids it names. A Kernel
 reads this index instead of the whole tree, then opens only the files its tasks need and names them in each contract.
 
-- [README.md](../README.md) · 20 KB — Read this file first, in this repository or in any app the harness drives.
+- [README.md](../README.md) · 21 KB — Read this file first, in this repository or in any app the harness drives.
   - sections: Load order · Two layers of context · Harness · Authority · The boundary model: four owners, one app · Three layers decide an interface · Map · Reading order by task · Feedback hardens · House rules for editing contexts
 - [authority/README.md](../authority/README.md) · 9 KB — Who may edit, commit, merge to main, push and publish, and which checks each role runs.
   - sections: Three tiers of checks · Roles · Worktrees · Not enforced yet
@@ -160,7 +160,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [harness/axes.md](../harness/axes.md) · 1 KB
 - [harness/host.md](../harness/host.md) · 10 KB — What a shell on the harness host does differently from the textbook, and the one way to work with it.
   - sections: Spawning a process · The host stack · Host services · Dependencies through a link · Files and folders
-- [harness/presence-audit.md](../harness/presence-audit.md) · 10 KB — A law that says an app must contain something, or a round must produce something, is enforced only when a check refuses its absence as well as a wrong one.
+- [harness/presence-audit.md](../harness/presence-audit.md) · 11 KB — A law that says an app must contain something, or a round must produce something, is enforced only when a check refuses its absence as well as a wrong one.
   - sections: hfs rules · contexts laws · Not added
 - [harness/questions.md](../harness/questions.md) · 9 KB
 - [harness/roles.md](../harness/roles.md) · 7 KB — The owner talks to each project's `[Supervisor] <project>`, which runs in the project's main checkout; each running orca workflow of the project has a `[Kernel] <workflow>` under ...
@@ -171,13 +171,13 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: One word, one meaning: "slot" · Slot fields · Rule parameters (`ruleParams`) · Rules · The harness's own shape · Editing · Rule notes
 - [hfs/harness.yaml](../hfs/harness.yaml) · 19 KB — The harness repository's own HFS: what may exist in this repository (hfs.json kind runtime) and where.
   - ids: app.package, app.tree, cli.edition-verbs, cli.entry, cli.harness, cli.package, cli.shared, cli.verb-data, cli.verbs, contexts.harness-shape, contexts.knowledge, contexts.load-order, github.actions, github.ci, github.meta, github.scripts, github.workflows, images.dockerfile, images.readme, images.sources, never.build-output, never.cli-js, never.env, never.examples and 37 more
-- [hfs/rules.yaml](../hfs/rules.yaml) · 166 KB — The HFS rule catalog: one entry per rule, its finding code, its law in one sentence, the failure codes it reports and the enforcers that judge it.
+- [hfs/rules.yaml](../hfs/rules.yaml) · 167 KB — The HFS rule catalog: one entry per rule, its finding code, its law in one sentence, the failure codes it reports and the enforcers that judge it.
   - ids: R01, R02, R03, R04, R05, R06, R07, R09, R10, R100, R101, R102, R103, R104, R105, R106, R107, R108, R109, R11, R110, R111, R112, R113 and 304 more
 - [hfs/slots.yaml](../hfs/slots.yaml) · 116 KB — The HFS slot manifest: what may exist in an app repository and where.
-  - ids: PROJECT-1, R399, app.agent-output, app.browser, app.browser-config, app.build-output, app.ci, app.ci-authorize-deploy-key, app.ci-cache-verify, app.ci-db, app.ci-deploy, app.ci-e2e, app.ci-images, app.ci-stack-deploy, app.ci-stack-key-restore, app.db, app.db.bootstrap, app.db.image, app.db.migrations, app.db.migrations.archive, app.declaration, app.dependabot, app.deploy, app.dockerignore and 153 more
+  - ids: PROJECT-1, R399, app.agent-output, app.browser, app.browser-config, app.build-output, app.ci, app.ci-authorize-deploy-key, app.ci-cache-verify, app.ci-db, app.ci-deploy, app.ci-e2e, app.ci-images, app.ci-stack-deploy, app.ci-stack-key-restore, app.db, app.db.bootstrap, app.db.image, app.db.migrations, app.db.migrations.archive, app.declaration, app.dependabot, app.deploy, app.dockerignore and 154 more
 - [project/README.md](../project/README.md) · 13 KB — What a StarCi project is, how a piece of product work travels from a goal to a settled commit, and where to read for each kind of task.
   - sections: PROJECT-1 A project is one app root that declares its sides and holds the Work of each · PROJECT-2 Work travels from a goal to a settled commit · PROJECT-3 An app's shared code lives in root workspace packages · Where to read for a task · Files
-- [project/anatomy.md](../project/anatomy.md) · 89 KB — The canonical tree of an app, one per edition (`lite`, `full`) and place (the app root, `be/`, `fe/`).
+- [project/anatomy.md](../project/anatomy.md) · 90 KB — The canonical tree of an app, one per edition (`lite`, `full`) and place (the app root, `be/`, `fe/`).
   - sections: Why the tree is shaped this way · Regenerating and the drift check · Read with · Tree
 - [project/branches.md](../project/branches.md) · 3 KB — An app repository (never the harness repository itself) has two long-lived branches and one way between them.
   - sections: PROJECT-BRANCH-1 An app has exactly two long-lived branches, `main` and `dev`
@@ -187,8 +187,8 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: What an app has today · Triggers and what runs · The pipeline graph · Database migrations · Secrets and access · Gates · Records · Compared with common practice · Work packages · As built by the work packages · Open decisions · Sources · Read with
 - [project/full.md](../project/full.md) · 4 KB — Only the differences of a full app from the shared project model (README.md); everything not named here is the same in both editions.
   - sections: Shape of production · Backing services · Patterns · Infrastructure the project runs · Deploy targets · What CI runs · Work · Read with
-- [project/gallery.md](../project/gallery.md) · 14 KB — Every app source repository carries a screenshot gallery at `gallery/`: the one place where the shots of every screen and the explanation of why each region is drawn that way are ...
-  - sections: PROJECT-GALLERY-1 Every app carries a gallery, and every UI fix round saves shots to it · PROJECT-GALLERY-2 Every screen is explained, region by region; a region that cannot be explained is a bug · PROJECT-GALLERY-3 Screens link into flows · PROJECT-GALLERY-4 Every route of the front end has a screen · PROJECT-GALLERY-5 A screen's explanation changes with its source
+- [project/gallery.md](../project/gallery.md) · 21 KB — Every app source repository carries a screenshot gallery at `gallery/`: the one place where the shots of every screen and the explanation of why each region is drawn that way are ...
+  - sections: PROJECT-GALLERY-1 Every app carries a gallery, and every UI fix round saves shots to it · PROJECT-GALLERY-2 Every screen is explained, region by region; a region that cannot be explained is a bug · PROJECT-GALLERY-3 Screens link into flows · PROJECT-GALLERY-4 Every route of the front end has a screen · PROJECT-GALLERY-5 A screen's explanation changes with its source · PROJECT-GALLERY-6 An area can be drawn before code: the design canvas mirrors the gallery and records each screen's approval
 - [project/lint.md](../project/lint.md) · 28 KB — Which machine judges which kind of fact in a project, where it runs, and which standard facts no machine judges yet.
   - sections: Where a check runs · Packages and gates · Facts no machine checks yet · PROJECT-LINT-1 A fact a machine can decide moves to the machine · PROJECT-LINT-2 A branch profile lowers only the polish gates · PROJECT-LINT-4 An app may switch every gate off but the hfs ones · PROJECT-LINT-3 A project extends the law through its ext folder · Read with
 - [project/lite.md](../project/lite.md) · 14 KB — Only the differences of a lite app from the shared project model (README.md); everything not named here is the same in both editions, including the code structure, the front-end ...

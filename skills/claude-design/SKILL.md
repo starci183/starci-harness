@@ -1,69 +1,85 @@
 ---
 name: claude-design
 description: >-
-  Draw a product mockup the StarCi way: a grey canvas of labelled frames, one frame per screen state at
-  exactly 1440 and 390, every page with all its states and one yellow concept note, drawn on the app's
-  current Grammar with a shared kit.css, by one Opus lead and up to ten Sonnet lanes, assembled by a node
-  script and published as an Artifact. Use on an explicit /claude-design request, or when the owner asks
-  to "vẽ mockup", "vẽ lại trang", "canvas mockup" or "claude design" for a StarCi app.
+  Draw an app's gallery before code, the StarCi way: every page of an area and each of its states as a gallery screen at
+  1440 and 390, each with its explain.md as the note, composed from the page's real business (its backend operations,
+  fields, states, permissions) and the app's Grammar only, never copied from the old screen. One Opus lead and up to ten
+  Sonnet lanes draw it into the app's .starcistacks/canvas/, a node assembler builds the board, an Artifact publishes it,
+  and design.json tracks each screen from drafted to approved, built and matches. Use on an explicit /claude-design
+  request, or when the owner asks to "vẽ mockup", "vẽ lại trang", "canvas mockup" or "claude design" for a StarCi app.
 disable-model-invocation: true
 triggers: [user]
 ---
 
 # claude-design
 
-A mockup that the owner reads like a design board: every page, every state, both sizes, and in one note why the
-page is drawn that way. It is a redesign of the page's job, never a copy of the current screen: the owner fixes the
-business, the drawer fixes the design.
+The design pass is the app's gallery drawn before code. Where the canvas lives, how its screens map onto the gallery
+(ids, the eight states, the sizes), the note being the screen's `explain.md`, the lifecycle drafted → approved → built →
+matches with who sets each status, and what `starci app check` judges are owned by
+[PROJECT-GALLERY-6](../../contexts/project/gallery.md#project-gallery-6-an-area-can-be-drawn-before-code-the-design-canvas-mirrors-the-gallery-and-records-each-screens-approval).
+This skill owns how a screen is designed and how the board is produced.
 
-## The format (exact)
+## Method
 
-- **One grey canvas**, frames laid out in rows: one row per page, its states left to right.
-- **One frame = one screen state at one width.** The label above it is `<Trang>, <trạng thái> · 1440` or
-  `<Trang>, <trạng thái> · 390`. Exactly two widths: 1440 (desktop) and 390 (phone); never 1920, 768 or other.
-- **Every page draws all of its states**: the eight states of the state table in [references/format.md](references/format.md#states)
-  (danh sách to đang soạn), in its order. A state that cannot happen on the page is left out, and the concept note says
-  so in one clause.
-- **One yellow sticky note per page**, at the start of the page's row, titled `Concept: <Trang>`, one dense
-  paragraph in this order: **Mục tiêu** (the business job of the page, in the owner's words) → **bố cục** (list /
-  detail split and why) → **hành động chính** (the single primary action) → **lọc** (how filtering and search work)
-  → **Khác bản hiện tại:** (what changes against the current screen) → **Lưu ý xung đột:** (which decision the
-  drawing follows where two sources disagree, and the source of each).
+A page is designed from exactly two inputs, and the drawer composes the best UX from them:
 
-[references/format.md](references/format.md) has the canvas geometry, the label and note markup and a worked
-example of a note.
+1. **The business, read from the code.** The page's real backend operations (GraphQL or REST resolvers, commands,
+   queries, by their names in the code), the fields they read and write, the states a record goes through, and who may do
+   what (permissions, approvals). Read the app's `be/` contracts, resolvers and domain services and its
+   `.starciwork/concepts`. The current `fe/` page and its gallery shots only tell which jobs exist; their layout is never
+   copied or redrawn.
+2. **The Grammar.** Only its elements, kinds, slots and tokens: `contexts/ui/components/<role>.md`, the installed
+   `@starci/grammar`, the app's `hfs.json` (`sides.fe.grammar`) and its brand.css theme hooks, in the reading order of
+   [the starci skill's UI reference](../starci/references/ui-on-grammar.md).
 
-## Drawn on the app's Grammar
+Two gaps never stop the drawing and are never a question for the owner:
 
-The frames are drawn with the app's current Grammar look, never a free style:
+- **A Grammar element the UX needs and the Grammar lacks** is drawn anyway, marked `cần Grammar: <what>` in the frame and on
+  that region's `Grammar:` line of the note, and listed in the lane report as a Grammar request.
+- **A backend operation, query or field the page needs and the code lacks** is drawn as if it existed, named
+  `cần API: <operation>` in the note's introduction beside the operations that exist, and listed in the lane report; it is
+  built when the page is coded, inside that page's build slice.
 
-- Read the app's `hfs.json` (`sides.fe.grammar`), its brand.css (the theme hooks it sets) and the installed
-  `@starci/grammar` version, then [the starci skill's UI reference](../starci/references/ui-on-grammar.md) for the
-  reading order of `contexts/ui` and `contexts/grammars`.
-- A white theme is #fff with hairlines; cards only for real objects (a record, a message, a file), never as a page
-  section frame; **one** red primary action per frame; badges carry meaning (status, count), never decoration.
-- Component names, props and states are the Grammar's (`contexts/ui/components/<role>.md`); a capability the
-  Grammar lacks is noted in the concept as a gap, never invented.
+Only a real business choice (what the business wants) goes to the owner. Each note names the real operations the
+screen uses and the Grammar elements that draw it.
+
+## The look
+
+The frames carry the app's current Grammar look, never a free style:
+
+- A white theme is #fff with 1px hairlines; lists and tables lie flat on the surface with hairline rows; a card only for
+  a real object (a customer, an agent, a provider, a dialog), never as a section frame.
+- A page head band with the title, a facts line and the **one** primary action; one red pill primary per view, every
+  other button neutral.
+- Tabs: the selected one in the brand colour (text and underline), counts on tabs, overflow in "+n".
+- Badges carry meaning: waiting amber soft, done or verified green soft, neutral gray soft, danger red soft.
+- Inline links underlined; a checked checkbox in the brand colour; a visible off track on a switch; a disabled button
+  says why.
+- Natural Vietnamese UI copy with real sample data (names, amounts in đ, dates dd/mm/yyyy), a strong type hierarchy
+  and generous whitespace; no external images (inline SVG, initials avatars).
+
+[references/format.md](references/format.md) has the markup of a page fragment, its frames and its note.
 
 ## Production
 
-One **Opus lead** and up to **ten Sonnet lanes**:
+One **Opus lead** and up to **ten Sonnet lanes**, in the app's `.starcistacks/canvas/`:
 
-1. The lead reads the app (routes, `.starciwork/concepts`, the gallery shots of the current screens, the owner's
-   business notes) and writes `kit.css` (the one shared stylesheet: canvas, frame, label, note, and the Grammar
-   look as CSS custom properties taken from the app's brand.css) and one brief per page in `briefs/<page>.md`
-   (the page's job, its states, its primary action, its data, the conflicts and how to settle them).
-2. Each lane draws **one page fragment**, `pages/<page>.html`: the page's note and all its frames at both widths,
-   only with the classes of `kit.css`, never its own colours or sizes. Lanes run in parallel, one page each.
-3. A node script assembles the fragments in page order into one `index.html` (kit inlined, fragments in rows) and
-   refuses a fragment that writes a colour, a px length or a `<style>` of its own.
-4. The lead reviews the assembled board at full size, fixes what breaks the one product (a second primary, a card
-   used as a frame, a missing state, a label not in the format) and publishes it as an Artifact.
+1. The lead reads the app (its routes, `be/` operations, `.starcistacks/canvas/design.json` and the gallery ids), copies
+   the kit (`canvas.css` from [kit/](kit/), `tokens.css` written from the app's brand.css and Grammar roles) and writes one
+   brief per page in `briefs/<NN>-<slug>.md`.
+2. Each lane draws **one page**, `pages/<NN>-<slug>.html`: one section per screen of the page (its base screen and each
+   state), each with its 1440 and 390 frames and its note. Lanes run in parallel, one page each.
+3. The assembler [kit/build.mjs](kit/build.mjs) joins the fragments in `NN` order into `<app>-design.html`.
+4. The lead reviews the board at full size, fixes what breaks the one product, sets each drawn screen `drafted` in
+   `design.json`, publishes the board as an Artifact and records its link as `board`.
+5. The lifecycle then runs as PROJECT-GALLERY-6 item 5 says: the lead sets `approved` on the owner's "đẹp" for a page,
+   the code lane builds and shoots it and sets `built`, the lead or a reviewer compares and sets `matches`.
 
-[references/production.md](references/production.md) has the folder layout, the brief template, the lane prompt,
-the assembler's contract and the review checklist.
+[references/production.md](references/production.md) has the brief template, the lane prompt, the assembler's
+contract, the review checklist and each lifecycle step's commands.
 
 ## Done means
 
-The Artifact link to the board; per page, the states drawn and any left out with the reason; the conflicts the
-notes settle; and the Grammar gaps found. The owner reviews the business; a fix round redraws only the pages it names.
+The Artifact link to the board and the committed canvas; per page, the screens drawn and the states left out with the
+reason; the `cần Grammar` and `cần API` items; the business questions for the owner. A fix round redraws only the pages
+the owner names, and a redrawn approved screen returns to `drafted`.

@@ -78,13 +78,13 @@ export function looseCheckNotices(root: string): string[] {
 /** The two key names the lite starter shipped with an environment in them, and the name each takes (R248, ENV_KEY_ENVIRONMENT_NAMED). */
 const RENAMED_KEYS: Readonly<Record<string, string>> = { DEV_DB_OWNER_PASSWORD: 'DB_OWNER_PASSWORD', DEV_DB_APP_PASSWORD: 'DB_APP_PASSWORD' };
 
-/** Every text file below `.starcistacks/` that is no sealed member and no cache, app-relative with forward slashes. */
+/** Every text file below `.starcistacks/` that is no sealed member, no cache and no design canvas, app-relative with forward slashes. */
 function stackTextFiles(root: string, folder = '.starcistacks'): string[] {
   let entries: fs.Dirent[];
   try { entries = fs.readdirSync(path.join(root, folder), { withFileTypes: true }); } catch { return []; }
   return entries.flatMap((entry) => {
     const file = `${folder}/${entry.name}`;
-    if (entry.isDirectory()) return entry.name === 'secrets' || entry.name === 'cache' ? [] : stackTextFiles(root, file);
+    if (entry.isDirectory()) return entry.name === 'secrets' || entry.name === 'cache' || entry.name === 'canvas' ? [] : stackTextFiles(root, file);
     return /\.(?:ya?ml|md|json)$/u.test(entry.name) ? [file] : [];
   });
 }

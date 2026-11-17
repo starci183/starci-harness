@@ -1,0 +1,21 @@
+/* claude-design canvas (skills/claude-design, PROJECT-GALLERY-6): the grey board, labelled frames and the yellow notes that hold each screen's explain.md. The lead copies it into the app's .starcistacks/canvas/. */
+.board{background:#efefef;padding:32px 24px 48px}
+.page{margin:0 0 56px}
+.page>h2{font-size:20px;font-weight:600;margin:0 0 4px;color:#171717}
+.page>.pid{font:12px/1.4 ui-monospace,Menlo,monospace;color:#737373;margin:0 0 6px}
+.page>.status{display:inline-block;font-size:12px;border-radius:999px;padding:2px 10px;background:#faeeda;color:#633806;margin:0 0 16px}
+.row{display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap}
+.frame{flex:none}
+.frame>.lbl{font-size:12px;color:#525252;margin:0 0 6px}
+.frame>.scr{background:#fff;border:1px solid #e5e5e5;box-shadow:0 1px 2px rgba(0,0,0,.04);overflow:hidden;position:relative}
+.w1440{width:1440px}.w390{width:390px}
+.zoom{zoom:.5}               /* desktop frames are drawn at real px, shown at 50% */
+.note{width:420px;background:#fdf1a7;padding:14px 16px;font-size:15px;line-height:1.55;color:#2b2b2b;box-shadow:0 1px 0 rgba(0,0,0,.08)}
+.note b{font-weight:600}
+.index{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid #e5e5e5;padding:10px 24px;display:flex;gap:8px;flex-wrap:wrap}
+.index a{font-size:13px;color:#404040;text-decoration:none;border:1px solid #e5e5e5;border-radius:999px;padding:3px 12px}
+@media (max-width:700px){.board{padding:16px}.note{width:100%}}
+.note>.fm{font:12px/1.4 ui-monospace,Menlo,monospace;color:#6b5a00;margin:0 0 8px}
+.note>.intro{margin:0 0 8px}
+.note>h4{font-size:15px;font-weight:600;margin:12px 0 4px}
+.note>p{margin:0 0 4px}

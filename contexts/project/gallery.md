@@ -130,7 +130,79 @@ Every design decision on a screen is traceable to an owner law and a Grammar ref
 4. **Keeping it current.** Re-read each region of the screen against the new source, rewrite the `Vì sao`, `Luật` and `Grammar` lines
    that changed (a fix that changes no visible region still opens `explain.md` and confirms it), and re-shoot the shots (PROJECT-GALLERY-1).
 
-**Enforced by** (R395, `packages/hfs/runtime/scripts/hfs/rules/gallery.mts` and `gallery-routes.mts`, values from `ruleParams.gallery`):
+## PROJECT-GALLERY-6 An area can be drawn before code: the design canvas mirrors the gallery and records each screen's approval
+
+The design pass (`/claude-design`; [skills/claude-design/SKILL.md](../../skills/claude-design/SKILL.md) owns how it is drawn and produced) is
+the gallery drawn before code: it takes the business of an existing or planned page and draws its best UX on the app's Grammar, for the owner
+to approve before the page is coded. This rule owns where the canvas lives, how it maps onto the gallery, the lifecycle of a screen and what
+the gate judges.
+
+1. **The canvas lives in the app.** `.starcistacks/canvas/` at the app root (slot `app.starcistacks.canvas`, both editions; a reserved folder,
+   never an environment) holds the whole design and is committed:
+   ```
+   .starcistacks/canvas/
+     tokens.css  canvas.css         the shared kit: the app's Grammar look as tokens, and the board (frames, labels, notes)
+     briefs/<NN>-<slug>.md          one brief per page, written by the lead
+     pages/<NN>-<slug>.html         one fragment per page, written by its lane; NN is the board order
+     <app>-design.html              the assembled board, the assembler's output
+     design.json                    the status of every designed screen (item 4)
+   ```
+   `<slug>` is the gallery id of the page's base screen with `/` written `-` (`04-customers-list.html` for `customers/list`). The canvas is outside
+   every lint and format scope (`.prettierignore` ignores `.starcistacks/`; ESLint and stylelint judge the sides). A published Artifact is only a
+   view of `<app>-design.html`; the canvas in the repository is the source.
+2. **The same ids, states and sizes as the gallery.** Every drawn screen is a gallery screen id `<area>/<screen>` (PROJECT-GALLERY-1 item 3): an
+   existing page keeps its ids, a new one proposes them. A state is its own screen, named from the page's base screen with the suffix of its
+   state:
+
+   | state | screen id | what the frame shows |
+   |---|---|---|
+   | danh sách (at rest) | `<screen>` | the page with real rows, the primary action, filters at rest |
+   | chi tiết | `<screen>-detail` | one record open (a pane on 1440, its own screen on 390); a detail with its own route is its own page |
+   | trống | `<screen>-empty` | no record yet, with the one action that creates the first |
+   | lần đầu | `<screen>-first-visit` | the first visit: the onboarding hint or setup step |
+   | đang tải | `<screen>-loading` | the skeleton of the ready layout |
+   | lỗi | `<screen>-error` | the load failed: the error with retry, the shell intact |
+   | không khớp bộ lọc | `<screen>-no-match` | filters set, no match: the empty state that clears them |
+   | đang soạn | `<screen>-editing` | the create or edit form open, a validation message on one field |
+
+   A state the page cannot reach is not drawn. The design draws 1440 and 390 only. The gallery round of the built page also shoots 1920
+   (PROJECT-GALLERY-1 item 2): 1920 is the 1440 layout given more width, never drawn, compared or recorded.
+3. **The note is the screen's `explain.md`.** Each drawn screen carries one note in the format of PROJECT-GALLERY-2 item 1 (front matter,
+   introduction, one region per region with its `Vì sao`, `Luật` and `Grammar` lines); what it says, the real operations and Grammar elements and
+   the `cần Grammar` and `cần API` marks, is the [Method of the skill](../../skills/claude-design/SKILL.md#method). When the page is built, the
+   note is copied as that screen's `explain.md`; the gallery never holds a second wording.
+4. **`design.json`.** One manifest records the status of every designed screen:
+   ```json
+   {
+     "areas": ["customers"],
+     "pages": {
+       "customers/list": { "status": "matches", "approvedAt": "2026-11-17T09:30:00+07:00", "board": "https://claude.ai/artifact/…",
+                           "shots": { "1440": "<sha256>", "390": "<sha256>" } }
+     }
+   }
+   ```
+   `areas` lists the areas whose screens are designed before code; every page id is in one of them. `board` is the https link of the published
+   board. `approvedAt` (ISO with a zone) is set from `approved` on and absent before. `shots` holds the lowercase sha256 of the 1440 and 390 PNGs
+   from `built` on and is absent before. No other key.
+5. **The lifecycle, and who sets each status.**
+   - `drafted`: the lead, when the screen is drawn on the board. A redraw of an approved screen returns it to `drafted` and drops `approvedAt` and
+     `shots`.
+   - `approved`: the lead, only when the owner said the page is approved ("đẹp") in the owner's own words; no other word approves. It sets
+     `approvedAt` and drops any `shots`. The lead adds an area to `areas` once its screens are approved.
+   - `built`: the code lane that builds the screen: it codes the page (with every `cần API` operation of its notes), saves the screen's shots in
+     `gallery/pages/<area>/<screen>/` at 1440, 1920 and 390, copies the approved note as its `explain.md`, and records the sha256 of the 1440 and
+     390 PNGs.
+   - `matches`: the lead or a reviewer, never the lane that built it, after comparing the shots with the approved frames; it records the sha256 of
+     the shots it compared.
+6. **How the order is judged.** The shots are never tracked (PROJECT-GALLERY-1 item 5) and file times mean nothing in a fresh checkout, so a
+   shot's age is read neither from the disk nor from git. The manifest carries the order: an approval drops the shot record, so a sha recorded on
+   a page is by construction taken after its latest approval, and a shot record on a page that is only drafted or approved is older than the
+   approval. Where the work tree holds the PNGs (the author's machine, the push hook), each is hashed and must equal the recorded sha; a fresh
+   checkout judges the record alone.
+7. **Severity.** A manifest that is not this shape is an error. The other findings are warnings in `--env local` and errors in `--env prod`, as
+   item 4 of PROJECT-GALLERY-4.
+
+**Enforced by** (R395, `packages/hfs/runtime/scripts/hfs/rules/gallery.mts`, `gallery-routes.mts` and `gallery-design.mts`, values from `ruleParams.gallery`):
 
 - `HFS_APP_GALLERY_MISSING`: no `gallery/`, or one of its managed files is absent.
 - `HFS_APP_GALLERY_SCRIPT`: `gallery/package.json` has no `dev` script of the form `vite --port <base + 50> --strictPort`, or the
@@ -152,5 +224,13 @@ Every design decision on a screen is traceable to an owner law and a Grammar ref
   by `starci app check --staged`, which only lists it; `localOnly`): a screen's source changed and its `explain.md` did not.
 - `HFS_APP_GALLERY_FRONT_MATTER` (a warning): the front matter lacks `title`, `route` or `area`, or its `area` is not the
   folder's.
+- `HFS_APP_GALLERY_DESIGN_MANIFEST` (PROJECT-GALLERY-6): `.starcistacks/canvas/design.json` is not JSON or not the shape of its item 4.
+- `HFS_APP_GALLERY_DESIGN_PAGE_MISSING` (`localOnly`): a `built` or `matches` page has no `gallery/pages/<area>/<screen>/explain.md`.
+- `HFS_APP_GALLERY_DESIGN_UNAPPROVED` (`localOnly`): a screen (an `explain.md` or a shot) of an area listed in `areas` has no design entry or
+  only a `drafted` one.
+- `HFS_APP_GALLERY_DESIGN_SHOT_MISSING` (`localOnly`): a `built` or `matches` page records no sha256 of its 1440 or 390 shot, or the work tree
+  holds shots of the screen without one of those widths.
+- `HFS_APP_GALLERY_DESIGN_SHOT_STALE` (`localOnly`): a `drafted` or `approved` page still records `shots` (a record older than the approval), or
+  a 1440 or 390 shot in the work tree is not the sha the manifest records.
 
 The shots are the author's work in every UI round; a reviewer compares the screens, and reads their explanation, in the gallery.

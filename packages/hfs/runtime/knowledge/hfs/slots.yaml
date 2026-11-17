@@ -1145,6 +1145,19 @@ slots:
     tests: none
     since: 3.15.0
     allows: ["fingerprint.jsonl", "check/**", "lint/**", "test-coverage/**", "test/**", "sonar-baseline/**", "codecov-baseline/**"]
+  - id: app.starcistacks.canvas
+    profiles: [app]
+    # The design canvas of the app (contexts/project/gallery.md PROJECT-GALLERY-6): the gallery drawn before code, one fragment per page, the shared kit, the
+    # briefs, the assembled board and design.json, the status of every designed gallery screen. Written by the /claude-design lanes, never rendered by sync;
+    # outside every lint and format scope (.prettierignore ignores .starcistacks/, eslint and stylelint judge the sides only). Both editions.
+    path: ".starcistacks/canvas/"
+    presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+    since: 6.13.24
+    allows: ["design.json", "tokens.css", "canvas.css", "briefs/<page>.md", "pages/<page>.html", "<app>-design.html"]
+    rules: [HFS_APP_GALLERY_DESIGN_MANIFEST, HFS_APP_GALLERY_DESIGN_PAGE_MISSING, HFS_APP_GALLERY_DESIGN_UNAPPROVED, HFS_APP_GALLERY_DESIGN_SHOT_MISSING, HFS_APP_GALLERY_DESIGN_SHOT_STALE]
   - id: app.db.bootstrap
     profiles: [app]
     editions: [lite]

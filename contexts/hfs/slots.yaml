@@ -1643,6 +1643,27 @@ slots:
       - test/**
       - sonar-baseline/**
       - codecov-baseline/**
+  - id: app.starcistacks.canvas
+    profiles:
+      - app
+    path: .starcistacks/canvas/
+    presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+    allows:
+      - design.json
+      - tokens.css
+      - canvas.css
+      - briefs/<page>.md
+      - pages/<page>.html
+      - "<app>-design.html"
+    rules:
+      - HFS_APP_GALLERY_DESIGN_MANIFEST
+      - HFS_APP_GALLERY_DESIGN_PAGE_MISSING
+      - HFS_APP_GALLERY_DESIGN_UNAPPROVED
+      - HFS_APP_GALLERY_DESIGN_SHOT_MISSING
+      - HFS_APP_GALLERY_DESIGN_SHOT_STALE
   - id: app.db.bootstrap
     profiles:
       - app

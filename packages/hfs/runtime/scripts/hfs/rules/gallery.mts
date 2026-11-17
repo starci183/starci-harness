@@ -16,7 +16,8 @@
 //   HFS_APP_GALLERY_ROUTE_MISSING      a `page.tsx` route of the front end has no screen folder whose explain.md `route` matches it and is not excluded in gallery/routes.json:
 //                                       blocks in `--env prod`, reported in `--env local` (the code is localOnly);
 //   HFS_APP_GALLERY_EXPLAIN_STALE      (rules/gallery-coupling.mts, run by `starci app check` over the commits since the base and by the staged guard) a change to a screen's source
-//                                       without a change to its explain.md.
+//                                       without a change to its explain.md;
+// and the design pass drawn before code (PROJECT-GALLERY-6, rules/gallery-design.mts): HFS_APP_GALLERY_DESIGN_MANIFEST, _PAGE_MISSING, _UNAPPROVED, _SHOT_MISSING, _SHOT_STALE.
 import fs from 'node:fs';
 import path from 'node:path';
 import { isPlainObject as plain } from '../../../engine/plain-object.mjs';
@@ -25,6 +26,7 @@ import { declaredBasePort, galleryParams, galleryPort } from '../gallery.mjs';
 import type { GalleryParams } from '../gallery.mjs';
 import { flowList, linkTargets, missingFrontMatter, parseExplain, SHOT_FILES } from '../gallery-explain.mjs';
 import { feRoutes, routeExclusions, routeKey } from '../gallery-routes.mjs';
+import { designFindings } from './gallery-design.mjs';
 import { found, readJson, readText } from './read.mjs';
 import type { Parsed, Repo } from './rule-types.mjs';
 
@@ -240,6 +242,9 @@ export function appGalleryFindings({ repoRoot, repo, isRoot, all = [], inScope =
   if (tracked.length > 0) findings.push(found('HFS_APP_GALLERY_SHOTS_TRACKED', tracked[0] as string, `${tracked.length} screenshot PNG${tracked.length === 1 ? ' is' : 's are'} tracked under ${params.pages}/ (first: ${tracked[0]}): untrack them (git rm --cached) and keep ${params.dir}/${params.ignoredShots} ignored`));
   findings.push(...explainFindings(repoRoot, params, inScope));
   // No gallery at all is one finding (HFS_APP_GALLERY_MISSING), not one per route.
-  if (missing.length < GALLERY_FILES.length) findings.push(...routeFindings(repoRoot, params, galleryScreens(repoRoot, params).screens));
+  if (missing.length < GALLERY_FILES.length) {
+    const { screens } = galleryScreens(repoRoot, params);
+    findings.push(...routeFindings(repoRoot, params, screens), ...designFindings(repoRoot, params, screens));
+  }
   return findings;
 }
