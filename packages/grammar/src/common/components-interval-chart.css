@@ -1,0 +1,148 @@
+/*
+ * Common anatomy for IntervalChart: a row per label with its range as a bar, the best reading as a mark inside it, one dashed
+ * reference line through every row, and the value as text at the row's end. Rows share the chart's three columns (label, plot,
+ * value) through subgrid, so every plot is one width and the reference stands at one place; a chart narrower than 33rem stacks
+ * each row. Every colour resolves through Common semantic variables: a tone is its `x-soft` on the range and `x` on the mark.
+ */
+@layer starci-grammar-common {
+    .starci-core-interval-chart { container: starci-core-interval-chart / inline-size; min-width: 0; }
+
+    .starci-core-interval-body {
+        display: grid;
+        min-width: 0;
+        grid-template-columns: minmax(6rem, 10rem) minmax(0, 1fr) minmax(8rem, auto);
+        column-gap: var(--grammar-inset);
+    }
+
+    .starci-core-interval-rows {
+        display: grid;
+        grid-column: 1 / -1;
+        grid-template-columns: subgrid;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .starci-core-interval-row {
+        display: grid;
+        grid-column: 1 / -1;
+        grid-template-columns: subgrid;
+        align-items: center;
+        padding-block: var(--grammar-inline-gap);
+        border-block-end: var(--grammar-hairline) solid var(--separator);
+        font-size: var(--grammar-text-md);
+        line-height: var(--grammar-leading-md);
+    }
+
+    .starci-core-interval-label {
+        display: flex;
+        min-width: 0;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 0 var(--grammar-identity-gap);
+        color: var(--foreground);
+    }
+
+    .starci-core-interval-plot {
+        position: relative;
+        display: block;
+        block-size: 1.75rem;
+        min-width: 0;
+    }
+
+    .starci-core-interval-axis {
+        position: absolute;
+        inset-inline: 0;
+        inset-block-start: calc(50% - 1px);
+        block-size: 2px;
+        background: var(--separator);
+    }
+
+    .starci-core-interval-range {
+        position: absolute;
+        inset-block-start: calc(50% - 0.375rem);
+        inset-inline-start: var(--starci-core-interval-low);
+        inline-size: var(--starci-core-interval-span);
+        min-inline-size: 2px;
+        block-size: 0.75rem;
+        border-radius: var(--grammar-radius-pill);
+        background: var(--default);
+    }
+
+    .starci-core-interval-range[data-grammar-skeleton="true"] { background: var(--surface-secondary); }
+    .starci-core-interval-range[data-grammar-tone="accent"] { background: var(--accent-soft); }
+    .starci-core-interval-range[data-grammar-tone="success"] { background: var(--success-soft); }
+    .starci-core-interval-range[data-grammar-tone="warning"] { background: var(--warning-soft); }
+    .starci-core-interval-range[data-grammar-tone="danger"] { background: var(--danger-soft); }
+
+    .starci-core-interval-point {
+        position: absolute;
+        inset-block-start: calc(50% - 0.5rem);
+        inset-inline-start: var(--starci-core-interval-point);
+        box-sizing: border-box;
+        inline-size: 1rem;
+        block-size: 1rem;
+        margin-inline-start: -0.5rem;
+        border: 0.1875rem solid var(--muted);
+        border-radius: var(--grammar-radius-pill);
+        background: var(--surface);
+    }
+
+    .starci-core-interval-point[data-grammar-tone="accent"] { border-color: var(--accent); }
+    .starci-core-interval-point[data-grammar-tone="success"] { border-color: var(--success); }
+    .starci-core-interval-point[data-grammar-tone="warning"] { border-color: var(--warning); }
+    .starci-core-interval-point[data-grammar-tone="danger"] { border-color: var(--danger); }
+
+    /* The reference line runs the row's whole height, through its padding, so the rows read as one dashed line. */
+    .starci-core-interval-reference {
+        position: absolute;
+        inset-block: calc(-1 * var(--grammar-inline-gap) - var(--grammar-hairline));
+        inset-inline-start: var(--starci-core-interval-reference);
+        inline-size: 0;
+        border-inline-start: 1.5px dashed var(--muted);
+        pointer-events: none;
+    }
+
+    .starci-core-interval-value {
+        min-width: 0;
+        color: var(--foreground);
+        font-variant-numeric: tabular-nums;
+        text-align: end;
+    }
+
+    .starci-core-interval-scale {
+        display: grid;
+        grid-column: 1 / -1;
+        grid-template-columns: subgrid;
+        padding-block-start: var(--grammar-identity-gap);
+        color: var(--muted);
+        font-size: var(--grammar-text-xs);
+        line-height: var(--grammar-leading-xs);
+        font-variant-numeric: tabular-nums;
+    }
+
+    .starci-core-interval-scale-plot {
+        display: flex;
+        grid-column: 2;
+        justify-content: space-between;
+        min-width: 0;
+    }
+
+    .starci-core-interval-scale-plot > .starci-core-skeleton-group { min-inline-size: 2rem; }
+
+    @container starci-core-interval-chart (max-width: 33rem) {
+        .starci-core-interval-body { grid-template-columns: minmax(0, 1fr); }
+
+        .starci-core-interval-row {
+            grid-template-columns: minmax(0, 1fr) auto;
+            grid-template-areas: "label value" "plot plot";
+            row-gap: var(--grammar-identity-gap);
+        }
+
+        .starci-core-interval-label { grid-area: label; }
+        .starci-core-interval-plot { grid-area: plot; }
+        .starci-core-interval-value { grid-area: value; }
+        .starci-core-interval-scale-plot { grid-column: 1; }
+        .starci-core-interval-reference { inset-block: -0.125rem; }
+    }
+}
