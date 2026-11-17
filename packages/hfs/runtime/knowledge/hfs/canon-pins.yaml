@@ -168,7 +168,7 @@ pins:
     source: packages/seed/package.json
     why: 'the data standard of a project: the StoreAdapter and DriverAdapter ports, one export written to several copies, the copy contract and the line protocol, with the store and driver contract suites (./testing) and the git driver (./git, with renderStandard and runStandardAdapter, the adapter of a standard that keeps raw/: R434); the starter back end implements StoreAdapter for its database in integrations/seed, the one importer of the package (R426, R90), and imports only its types.'
   '@starci/hfs':
-    version: 6.13.30
+    version: 6.13.31
     group: starci
     install: registry
     side: both

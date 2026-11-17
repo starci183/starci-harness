@@ -1,5 +1,11 @@
 # Changelog
 
+## 6.13.31 - 2026-11-18
+
+- Fixed (`cache/built-packages.mts`, `cache/app-families.mts`): the types step of `starci app check` builds the workspace packages its programs resolve through a build output (an `exports`/`main`/`module`/`types` target no tracked file holds, such as `dist`) before the first `tsc`, dependencies first, each by its own `build` script, skipped while its stamp (tracked sources, the built packages it needs, the lockfile) is unchanged and its outputs exist. A program that reads such a package is keyed by that package's sources, so a stale record can no longer hide diagnostics. A failed build is `TYPES_PACKAGE_BUILD_FAILED` (one finding per package; its readers are not run).
+- Fixed (`cache/codegen.mts`): the types step runs the app's root `codegen` script before the package builds and the programs, skipped while its inputs are unchanged and its generated files exist; the generated files are inputs of the program key. A failure is `TYPES_CODEGEN_FAILED`. A fresh StarCi Next tree type-checks with no hand-run build or codegen (470 findings before, 0 after).
+- Added (`rules/gallery-coupling.mts`, PROJECT-GALLERY-7): a UI change goes canvas first, then code, then gallery. `HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED` flags a screen whose source changed in the judged set, in a canvas-managed area (design.json lists its area or page), whose page is missing, drafted or approved before the change, unless the same change updates its design.json entry; a warning in `--env local`, an error in `--env prod`, listed and never blocking in the commit guard. Spec: `app-gallery-design-change.spec.mts`. The `@starci/hfs` self-pin is 6.13.31.
+
 ## 6.13.30 - 2026-11-18
 
 - Fixed (`templates/app/gitignore`, `templates/app/gitignore-lite`): the managed ignore block re-includes `.starcistacks/canvas/**`, so the design canvas PROJECT-GALLERY-6 places there (design.json, the boards, the shots) is tracked without `git add -f`. Spec: `hfs-gitignore-block-drift.spec.mts`.

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.151 - 2026-11-18
+
+- Fixed (app check types): workspace packages read through a build output, and the app's codegen, run before `tsc` (`TYPES_PACKAGE_BUILD_FAILED`, `TYPES_CODEGEN_FAILED`); contexts/project/check-cache.md says why a run with another hfs rewrites the committed check cache (commit the rewrite). Added: PROJECT-GALLERY-7, a UI change goes canvas first, then code, then gallery (`HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED`), linked from the contexts, the starci and claude-design skills and the code and draw ops. @starci/hfs 6.13.31. Until the cli-follow step raises the CLI's requirement, the CLI runs the hfs it requires.
+
 ## 1.1.0-alpha.150 - 2026-11-18
 
 - Changed: the CLI requires @starci/hfs@6.13.30, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
