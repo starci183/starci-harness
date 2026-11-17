@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.27.1 - 2026-11-18
+
+- Added (`lib/nivoos-profile.ts`): the lint profile of a declared nivoos business package (slot `app.nivoos-package`, `lintProfile: nivoos`, PROJECT-BUSINESS-1): `no-non-ascii-source` allows Vietnamese letters inside string and template literals (comments, identifiers and emoji stay refused); `no-default-export` allows the default export of `src/<name>.package.ts`, which the SDK loads; `explicit-export-surface`, `require-public-member-jsdoc`, `job-shape` and `throw-domain-error` do not apply to the package source (nothing imports it, the SDK interface owns its members, `.step.ts` is the SDK file kind, an SDK node fails with a coded `Error`). Every other rule, `schema-bounded` included, still applies.
+
 ## 3.27.0 - 2026-11-14
 
 - Changed: cut with `@starci/hfs` 6.13.0 (peer line); requires `@starci/hfs` `~6.13.0`. No rule changes.

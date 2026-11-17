@@ -2,6 +2,7 @@
 
 ## 6.13.35 - 2026-11-18
 
+- Added (slot `app.nivoos-package`, PROJECT-BUSINESS-1): a business repo is one lite app plus its nivoos business package plus its seed standard. An app declares `sides.nivoos.packages: [{ name, entry?, out? }]` in hfs.json; each package lives at `packages/<name>/` and is linted by the `nivoos` profile of @starci/eslint-canon-be 3.27.1 (Vietnamese copy in literals, the SDK default-export entry). `starci app check` runs `nivoos package check <entry> --out <out>` per declared package (`HFS_NIVOOS_PACKAGE_CHECK`, R436); an undeclared SDK package is `HFS_NIVOOS_UNDECLARED`, a declared one missing its files `HFS_NIVOOS_PACKAGE_MISSING`. New slot keys `declaredBy`, `exceptDeclaredBy`, `lintProfile`. contexts/project/business-repo.md is the template.
 - Changed (`knowledge/hfs/canon-pins.yaml`): the Grammar family at 0.45.1 (`~0.45.1`): a Popover has one width, `min(26rem, 100vw - 2rem)`, so a panel of rows (a notification list) no longer collapses to its narrowest word; `edgeTone` (`"accent" | "success" | "warning" | "danger"`, type `RowEdgeTone`) on `ListRowData` and `DataTableRow` draws the 2px start-edge bar on Section list items, ListRow, Board items, table rows and the phone list row. The `@starci/hfs` self-pin is 6.13.35.
 
 ## 6.13.34 - 2026-11-18

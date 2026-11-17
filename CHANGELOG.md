@@ -2,6 +2,7 @@
 
 ## 1.1.0-alpha.155 - 2026-11-18
 
+- Added: the business-repo template (PROJECT-BUSINESS-1): a declared nivoos package in a lite app (`sides.nivoos`), its SDK lint profile (@starci/eslint-canon-be 3.27.1) and the `nivoos package check` step of `starci app check`.
 - Changed (pins): the Grammar family at 0.45.1 (a Popover of one width, `edgeTone` on list and table rows) and @starci/hfs 6.13.35; contexts ui (dialog-drawer, list-table). Until the cli-follow step raises the CLI's requirement, the CLI runs the hfs it requires.
 
 ## 1.1.0-alpha.154 - 2026-11-18
