@@ -1163,6 +1163,19 @@ slots:
     tests: none
     since: 3.15.0
     allows: ["fingerprint.jsonl", "check/**", "lint/**", "test-coverage/**", "test/**", "sonar-baseline/**", "codecov-baseline/**"]
+  - id: app.starcistacks.brand
+    profiles: [app]
+    # The brand sheet of the app (contexts/project/brand.md PROJECT-BRAND-1): brand.md (name, the brand colour tokens by NAME, voice), illustration.md (the concept of the AI images) and illustration.yaml (its
+    # machine-readable half: the versioned basePrompt every image prompt starts with), plus references/ (the approved reference images). App-owned: `starci app scaffold` writes the starter once
+    # (templates/app/skeleton*/.starcistacks/brand/) and the app edits it; sync never renders or overwrites it. Read first by /claude-design and by every image or design brief. Both editions.
+    path: ".starcistacks/brand/"
+    presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+    since: 6.14.0
+    allows: ["brand.md", "illustration.md", "illustration.yaml", "references/**"]
+    rules: [HFS_BRAND_INVALID, HFS_BRAND_MISSING, HFS_BRAND_PROMPT_STALE, HFS_BRAND_PROMPT_INCOMPLETE]
   - id: app.starcistacks.canvas
     profiles: [app]
     # The design canvas of the app (contexts/project/gallery.md PROJECT-GALLERY-6): the gallery drawn before code, one fragment per page, the shared kit, the

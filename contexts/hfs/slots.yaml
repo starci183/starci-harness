@@ -1663,6 +1663,24 @@ slots:
       - test/**
       - sonar-baseline/**
       - codecov-baseline/**
+  - id: app.starcistacks.brand
+    profiles:
+      - app
+    path: .starcistacks/brand/
+    presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+    allows:
+      - brand.md
+      - illustration.md
+      - illustration.yaml
+      - references/**
+    rules:
+      - HFS_BRAND_INVALID
+      - HFS_BRAND_MISSING
+      - HFS_BRAND_PROMPT_STALE
+      - HFS_BRAND_PROMPT_INCOMPLETE
   - id: app.starcistacks.canvas
     profiles:
       - app

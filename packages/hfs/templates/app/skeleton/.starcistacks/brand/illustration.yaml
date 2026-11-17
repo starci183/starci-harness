@@ -1,0 +1,14 @@
+# The machine-readable half of illustration.md (contexts/project/brand.md PROJECT-BRAND-2). Every image prompt is basePrompt.text followed by the image's own subject;
+# its prompt file records this version. Change the text, raise the version, make the images again.
+basePrompt:
+  version: 1
+  text: >-
+    A single 3D clay, soft-plastic object, centred on a plain white background, lit softly from the top left with a gentle contact shadow.
+    One object plus at most one small accent element. Use only the brand colour TODO(brand) with neutral grey and cream. No text, no letters,
+    no medical crosses, no faces. Square composition, 1024 by 1024 pixels, generous empty space around the object.
+ratio: "1:1"
+size: 1024
+placements: [first-visit, empty-page, paywall, not-found, server-error]
+render:
+  "1440": 160
+  "390": 120

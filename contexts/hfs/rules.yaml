@@ -2958,3 +2958,13 @@ rules:
     enforcers:
       - {kind: hfs, id: nivoos}
       - {kind: hfs, id: nivoos-package-check}
+  - id: R437
+    code: HFS_BRAND_INVALID
+    law: "An app that keeps AI-generated images prompts them from its brand sheet: `.starcistacks/brand/illustration.yaml` holds `basePrompt: { version: <integer from 1>, text }`, the block every image prompt starts with, and every `statics/**/*.prompt.yaml` records the `basePrompt.version` it was built from, a `subject` and a `prompt` that starts with the current base text; a brand sheet whose basePrompt is not that shape (HFS_BRAND_INVALID, an error), a prompt file in an app with no illustration.yaml (HFS_BRAND_MISSING), a prompt file whose recorded version is absent or not the current one (HFS_BRAND_PROMPT_STALE) and a prompt file with no subject, not YAML or whose prompt does not start with the base text (HFS_BRAND_PROMPT_INCOMPLETE) fail; the last three are a warning in `--env local` and an error in `--env prod`. `starci app scaffold` writes the starter folder once (brand.md, illustration.md, illustration.yaml, references/) and `starci app sync` never overwrites it (PROJECT-BRAND-1, PROJECT-BRAND-2)."
+    failureCodes:
+      - HFS_BRAND_INVALID
+      - HFS_BRAND_MISSING
+      - HFS_BRAND_PROMPT_STALE
+      - HFS_BRAND_PROMPT_INCOMPLETE
+    enforcers:
+      - {kind: hfs, id: brand}

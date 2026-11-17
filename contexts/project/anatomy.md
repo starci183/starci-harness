@@ -93,6 +93,7 @@ Change a slot, a rule or a pattern's front matter, then regenerate in the same c
 - `.starcistacks/` — **app.starcistacks** required · R10 (hfs `stacks-shape` `stacks-runtime` `stacks-evidence-runtime` `starcistacks-runtime` `starcistacks-runtime-gate`), R01 (hfs `slot-undeclared`; eslint-be `slot-undeclared`; eslint-fe `slot-undeclared`; machine `repository-tree-layout`), R06 (hfs `plaintext-secret` `plaintext-secret-staged`), R09 (hfs `identity-custody`), R375 (hfs `seeds-shape`), R259 (hfs `db-config-ext` `db-migration-destructive`)
   - `images/db/Dockerfile` — **app.db.image** required · R05 (hfs `managed-file-drift`)
   - `cache/` — **app.starcistacks.cache** optional
+  - `brand/` — **app.starcistacks.brand** optional · R436 (hfs `brand`)
   - `canvas/` — **app.starcistacks.canvas** optional · R395 (hfs `gallery`)
   - `security/` — **app.starcistacks.security** optional · R269 (hfs `supply-chain`)
 - `.sops.yaml` — **app.sops** required
@@ -298,6 +299,7 @@ Refused (forbidden or external): `repo.side-root-forbidden`, `fe.tool-config-loc
 - `.starciwork/` — **app.starciwork** required · R07 (hfs `agent-data-tracked`), R09 (hfs `identity-custody`)
 - `.starcistacks/` — **app.starcistacks** required · R10 (hfs `stacks-shape` `stacks-runtime` `stacks-evidence-runtime` `starcistacks-runtime` `starcistacks-runtime-gate`), R01 (hfs `slot-undeclared`; eslint-be `slot-undeclared`; eslint-fe `slot-undeclared`; machine `repository-tree-layout`), R06 (hfs `plaintext-secret` `plaintext-secret-staged`), R09 (hfs `identity-custody`), R375 (hfs `seeds-shape`), R259 (hfs `db-config-ext` `db-migration-destructive`)
   - `cache/` — **app.starcistacks.cache** optional
+  - `brand/` — **app.starcistacks.brand** optional · R436 (hfs `brand`)
   - `canvas/` — **app.starcistacks.canvas** optional · R395 (hfs `gallery`)
   - `security/` — **app.starcistacks.security** optional · R269 (hfs `supply-chain`)
 - `.sops.yaml` — **app.sops** required

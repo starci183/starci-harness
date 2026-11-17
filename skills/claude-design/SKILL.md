@@ -27,6 +27,8 @@ screen's canvas page, before its code. The order is canvas, code, gallery, and [
 
 ## Method
 
+Read the app's `.starcistacks/brand/` first ([PROJECT-BRAND-3](../../contexts/project/brand.md#project-brand-3-a-design-or-image-brief-reads-the-brand-folder-first)): its colour token names, voice and illustration concept bound every frame, and an illustration is prompted as its basePrompt plus a subject.
+
 A page is designed from exactly two inputs, and the drawer composes the best UX from them:
 
 1. **The business, read from the code.** The page's real backend operations (GraphQL or REST resolvers, commands,

@@ -24,7 +24,7 @@ const STACKS_SLOT = 'app.starcistacks';
 const HOST_SONAR_ROOT = '.claude/ext/sonar';
 const INSIDE_SECRETS = /^[^/]+\/secrets\/[^/]+\.enc(?:\.yaml)?$/;
 /** The folders of .starcistacks/ that are no environment, each with what it holds: the one list every stack check reads. */
-export const RESERVED_STACK_FOLDERS: ReadonlyMap<string, string> = new Map([['cache', 'the committed check cache'], ['canvas', 'the design canvas drawn before code'], ['security', 'the time-boxed audit exceptions (PROJECT-LINT-5)'], ['images', 'the image folders of the services the app customises'], ['seeds', 'the shared seed level']]);
+export const RESERVED_STACK_FOLDERS: ReadonlyMap<string, string> = new Map([['cache', 'the committed check cache'], ['brand', 'the brand sheet the images are prompted from (PROJECT-BRAND-1)'], ['canvas', 'the design canvas drawn before code'], ['security', 'the time-boxed audit exceptions (PROJECT-LINT-5)'], ['images', 'the image folders of the services the app customises'], ['seeds', 'the shared seed level']]);
 
 /** The anchored expressions of a slot's `allows` entries: `<name>` is one path segment, braces alternate. */
 const allowedExpressions = (allows: Parsed) => allows.flatMap((entry: Parsed) => braceVariants(entry.replace(/<[a-z][a-z0-9-]*>/g, '*'))).map((variant: Parsed) => globExpression(variant.endsWith('/') ? `${variant}**` : variant));
@@ -34,8 +34,9 @@ const shapeFinding = (file: string, message: string, extra?: Parsed) => found(ST
 function treeFindings(files: string[], allowed: Parsed, prefix: string) {
   const findings = [];
   // `cache` and `canvas` are reserved, each its own slot and never an environment: .starcistacks/cache/ is the committed check cache (slot app.starcistacks.cache), written by
-  // the CLI; .starcistacks/canvas/ is the design canvas (slot app.starcistacks.canvas, PROJECT-GALLERY-6), written by the /claude-design lanes.
-  for (const file of files.filter((f: Parsed) => f.startsWith(prefix) && !f.startsWith(`${prefix}cache/`) && !f.startsWith(`${prefix}canvas/`) && !f.startsWith(`${prefix}security/`))) {
+  // the CLI; .starcistacks/canvas/ is the design canvas (slot app.starcistacks.canvas, PROJECT-GALLERY-6), written by the /claude-design lanes; .starcistacks/brand/ is the brand
+  // sheet the images are prompted from (slot app.starcistacks.brand, PROJECT-BRAND-1), scaffolded once and edited by the app.
+  for (const file of files.filter((f: Parsed) => f.startsWith(prefix) && !f.startsWith(`${prefix}cache/`) && !f.startsWith(`${prefix}brand/`) && !f.startsWith(`${prefix}canvas/`) && !f.startsWith(`${prefix}security/`))) {
     const rel = file.slice(prefix.length);
     if (/\.enc(?:\.yaml)?$/.test(rel) && !INSIDE_SECRETS.test(rel)) findings.push(shapeFinding(file, `${file} is a sealed secret outside <env>/secrets/<slug>.enc.yaml; move it to .starcistacks/<env>/secrets/`));
     else if (!allowed.some((expression: Parsed) => expression.test(rel))) findings.push(shapeFinding(file, `${file} is not part of the standard .starcistacks shape (application-stacks.yaml, images/<name>/ and <env>/{README.md, environment.json, infra, runtime/{config,env}, secrets/<slug>.enc.yaml}, and the seed levels seeds/ and <env>/seeds/ with their seeds.yaml, sql/, data/ and files/); move or delete it`));

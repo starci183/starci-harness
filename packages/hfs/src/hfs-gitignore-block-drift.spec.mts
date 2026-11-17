@@ -103,3 +103,23 @@ for (const edition of ['lite', 'full']) {
     assert.equal(ignored('.starcistacks/local/notes.txt'), true);
   });
 }
+
+// The brand sheet (PROJECT-BRAND-1) and its reference images are tracked under .starcistacks/brand/.
+for (const edition of ['lite', 'full']) {
+  test(`${edition}: the managed ignore block keeps .starcistacks/brand tracked, references included`, context => {
+    const { root } = synced(context, edition);
+    execFileSync('git', ['init', '--quiet'], { cwd: root });
+    const ignored = (file: string): boolean => {
+      try {
+        execFileSync('git', ['check-ignore', '--quiet', '--no-index', file], { cwd: root });
+        return true;
+      } catch {
+        return false;
+      }
+    };
+    assert.equal(ignored('.starcistacks/brand/brand.md'), false);
+    assert.equal(ignored('.starcistacks/brand/illustration.yaml'), false);
+    assert.equal(ignored('.starcistacks/brand/references/empty-customers.png'), false);
+    assert.equal(ignored('.starcistacks/local/notes.txt'), true);
+  });
+}

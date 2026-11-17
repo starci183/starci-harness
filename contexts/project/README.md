@@ -127,6 +127,7 @@ rule 10).
 | [check-cache.md](check-cache.md) | the committed result cache in `.starcistacks/cache/` (proposed): when a run is full or incremental on a host and in CI, the fingerprint, trust, which step reuses what |
 | [branches.md](branches.md) | the two long-lived branches of an app, `main` and `dev`, and how the pre-push hook holds them (PROJECT-BRANCH-1) |
 | [gallery.md](gallery.md) | the screenshot gallery every app carries: one folder per screen with its three shots and an `explain.md` that says why each region is drawn that way, links and flows between screens, the port, and the bugs the gate and the gallery flag (PROJECT-GALLERY-1 to 3) |
+| [brand.md](brand.md) | the brand sheet `.starcistacks/brand/` (name, colour token names, voice, the illustration concept and its versioned `basePrompt`, reference images), scaffolded once and edited by the app; every image prompt is basePrompt + subject and every design or image brief reads the folder first (PROJECT-BRAND-1 to 3) |
 | [cicd.md](cicd.md) | the delivery pipeline every app's `.github/` gets (proposed): triggers, checks, one attested image build, the automatic Swarm deploy with migrations, verification and rollback, records, gates |
 | [stacks.md](stacks.md) | how an app runs: the `.starcistacks/` shape against project values, the dev and vps environments, ingress, sealed custody, the operations with their safety rules, local-run rules |
 | [work.md](work.md) | the `.starciwork` tree and the product's concepts, who writes what, the lanes of the brand and the environments |

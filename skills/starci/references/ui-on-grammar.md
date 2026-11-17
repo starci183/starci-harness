@@ -19,6 +19,7 @@ capability the package lacks is a gap to record (`COMMON_CAPABILITY_MISSING`), n
 
 ## Read in this order
 
+0. The app's `.starcistacks/brand/` first, before any design or image brief ([PROJECT-BRAND-3](../../../contexts/project/brand.md#project-brand-3-a-design-or-image-brief-reads-the-brand-folder-first)).
 1. `contexts/README.md` at the runtime root, when it exists, for the map of the knowledge tree.
 2. [contexts/ui/README.md](../../../contexts/ui/README.md) and
    [composition.md](../../../contexts/ui/composition.md): hierarchy, actions, states, decided before any DOM.

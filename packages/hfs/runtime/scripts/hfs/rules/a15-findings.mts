@@ -44,6 +44,7 @@ import { workflowContextsFindings } from './workflow-contexts.mjs';
 import { ciStandardAppFindings } from './ci-standard.mjs';
 import { feBuildArgsFindings } from './fe-build-args.mjs';
 import { appGalleryFindings } from './gallery.mjs';
+import { brandFindings } from './brand.mjs';
 import { restContractFindings } from './rest-contract.mjs';
 import { projectSidesFindings } from './project-sides.mjs';
 import { dataBoundaryFindings } from './data-copies.mjs';
@@ -73,6 +74,7 @@ export const A15_CODES = [
   'HFS_APP_GALLERY_MISSING', 'HFS_APP_GALLERY_SCRIPT', 'HFS_APP_GALLERY_VITE_UNPINNED', 'HFS_APP_GALLERY_SHOTS_TRACKED',
   'HFS_APP_GALLERY_EXPLAIN_MISSING', 'HFS_APP_GALLERY_REGION_INCOMPLETE', 'HFS_APP_GALLERY_REGION_UNCLEAR', 'HFS_APP_GALLERY_FRONT_MATTER', 'HFS_APP_GALLERY_SCREEN_FILE', 'HFS_APP_GALLERY_LINKS', 'HFS_APP_GALLERY_ROUTE_MISSING',
   'HFS_APP_GALLERY_DESIGN_MANIFEST', 'HFS_APP_GALLERY_DESIGN_PAGE_MISSING', 'HFS_APP_GALLERY_DESIGN_UNAPPROVED', 'HFS_APP_GALLERY_DESIGN_SHOT_MISSING', 'HFS_APP_GALLERY_DESIGN_SHOT_STALE', 'HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED',
+  'HFS_BRAND_INVALID', 'HFS_BRAND_MISSING', 'HFS_BRAND_PROMPT_STALE', 'HFS_BRAND_PROMPT_INCOMPLETE',
   'FE_STACK_FAMILY_LINT_MISSING',
   'HFS_TEXT_CORRUPT',
   'FE_PUBLIC_BUILD_ARG_MISSING',
@@ -96,6 +98,7 @@ export const FINDERS = [
   projectSidesFindings,
   restContractFindings,
   appGalleryFindings,
+  brandFindings,
   feBuildArgsFindings,
   workflowContextsFindings,
   ciStandardAppFindings,

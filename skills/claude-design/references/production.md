@@ -6,7 +6,7 @@ PROJECT-GALLERY-6's) and committed on the lane's branch.
 ## The kit (the lead)
 
 - `canvas.css`: copied unchanged from [kit/canvas.css](../kit/canvas.css), the board, frame, label, status and note classes.
-- `tokens.css`: the app's Grammar look. Custom properties taken from the app's brand.css and the Grammar's theme hooks
+- `tokens.css`: the app's Grammar look (the brand token names are the ones `.starcistacks/brand/brand.md` lists, [PROJECT-BRAND-3](../../../contexts/project/brand.md#project-brand-3-a-design-or-image-brief-reads-the-brand-folder-first)). Custom properties taken from the app's brand.css and the Grammar's theme hooks
   (`--bg`, `--fg`, `--fg2`, `--muted`, `--faint`, `--border`, `--sep`, `--hover`, `--fill`, `--selected`, `--accent`,
   `--accent-soft`, `--accent-text`, the `--ok`, `--warn`, `--err` and `--info` pairs, `--r`, `--r-card`, `--shadow-pop`), and one
   class per Grammar role a lane draws, named after the role in `contexts/ui/components/` (`.btn.primary`, `.btn.secondary`,

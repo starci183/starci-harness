@@ -537,6 +537,8 @@ const CLI_APP_DIR = 'apps/cli/';
 const declaresCliApp = (app: SkeletonApp) => app.sides!.be.apps.some(entry => entry.kind === 'cli' && entry.name === 'cli'); // be scopes are rendered for resolved declarations only
 
 const LITE_APP_REUSED = new Set(['.editorconfig', '.gitattributes', '.nvmrc']);
+/** The app-owned brand sheet (PROJECT-BRAND-1) is one starter for both editions. */
+const BRAND_STARTER = '.starcistacks/brand/';
 /**
  * The be files a generator writes when it first needs them, never the starter, so a fresh app carries no file and no export that
  * nothing reads (R25). In both editions: the entity bases of platform/database (abstract.entity.ts, BE-PERSISTENCE-3), written by
@@ -580,7 +582,7 @@ const liteOverlaid = (() => {
  * does not replace (R212: a lite back end keeps full's unit specs).
  */
 const liteBaseFile = (scope: Scope, rel: string): boolean => {
-  if (scope === 'app') return LITE_APP_REUSED.has(rel);
+  if (scope === 'app') return LITE_APP_REUSED.has(rel) || rel.startsWith(BRAND_STARTER);
   // The shared fe app core (apps/__app__/) is one tree for both editions; the lite overlay replaces only modules/auth/client.ts.
   if (scope === 'fe') return rel.startsWith(`apps/${APP_DIR}/`);
   if (!rel.endsWith('.spec.ts')) return liteBaseSource(rel);
