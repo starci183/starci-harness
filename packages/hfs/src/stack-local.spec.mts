@@ -187,8 +187,9 @@ test('up --execute runs the steps in order, hands custody over as files, and a s
   assert.equal(first, 0, h.err.join(''));
   const steps = h.calls.map((call) => `${call.command} ${call.args.filter((arg) => !arg.includes(path.sep)).join(' ')}`);
   const index = (needle: string): number => steps.findIndex((step) => step.includes(needle));
-  assert.ok(index('npm') >= 0 && index('npm') < index('up -d db'), 'setup before the services');
-  assert.ok(index('up -d db') > 0 && index('exec -T db') > index('up -d db'), 'the database role is provisioned after the service is up');
+  assert.ok(index('npm') >= 0 && index('npm') < index('up -d --build db'), 'setup before the services');
+  assert.ok(steps.some((step) => /compose.* up -d --build db$/u.test(step) || step.includes('up -d --build db')), 'a changed build input rebuilds: compose up carries --build');
+  assert.ok(index('up -d --build db') > 0 && index('exec -T db') > index('up -d --build db'), 'the database role is provisioned after the service is up');
   assert.deepEqual(record, ['migrate DATABASE_URL true']);
   const sql = h.calls.filter((call) => call.args.includes('exec')).map((call) => String(call.input));
   assert.match(sql[0] as string, /CREATE ROLE "demo_dev" LOGIN SUPERUSER PASSWORD/u);

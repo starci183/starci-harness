@@ -24,7 +24,8 @@ import { braceVariants } from '../runtime/scripts/lib/glob.mjs';
 import { codecovPaths, coverageComponents, declaredPackageScopes, jestCoverage, packageComponents, packagesCoverage, sonarCoverageExclusions, type PackagesCoverage } from '../runtime/scripts/hfs/coverage-scope.mjs';
 import { restDoorVariables } from './rest-doors.mjs';
 import { declaredSidesEdits, type DeclarationEdit } from './declared-sides.mjs';
-import { devServicesUpgrade } from './dev-services.mjs';
+import { devServicesUpgrade, STORAGE_IMAGE } from './dev-services.mjs';
+import { storageNeed, staticsFilesOnDisk } from '../runtime/scripts/lib/storage-need.mjs';
 import { APP_SCOPE, SIDES, declaredAppSides, litePresenceOf, loadSlotManifest, resolveAppDeclaration, sideDeclared, slotInEdition, type ProjectSide, type RepoView } from '../runtime/scripts/hfs/slots.mjs';
 import type { AppRepo } from '../runtime/scripts/hfs/slot-app-view.mjs';
 import type { Slot, SlotManifest } from '../runtime/scripts/hfs/manifest-shape.mjs';
@@ -40,7 +41,7 @@ import { RETIRED_GROUP, guardWrites, heldLines, isGuardedSource, type GuardedWri
 import { HARNESS_CHECK_COPIES, environmentKeyNotices, harnessCheckScriptEdits, looseCheckNotices } from './harness-checks.mjs';
 import { readDeclaredStack, stackWorkflowVariables } from './stack-images.mjs';
 import type { ImageApp } from './stack-images.mjs';
-import { DB_DOCKERFILE, DB_IMAGE_APP, RETIRED_DB_DOCKERFILE } from '../db/image.mjs';
+import { DB_DOCKERFILE, DB_IMAGE_APP, MC, RETIRED_DB_DOCKERFILE, STORAGE_DOCKERFILE, STORAGE_IMAGE_APP } from '../db/image.mjs';
 import { byCodeUnit } from '../report/order.mjs';
 import { isRuntimeExampleApp } from '../runtime/scripts/lib/runtime-example.mjs';
 import { BUILD_MODULES, ciWorkflowCommands } from './ci-commands.mjs';
@@ -103,6 +104,8 @@ type ParseYaml = (text: string) => any;
 /** The app's source facts sync renders from (appSource). */
 export interface AppSourceFacts {
   runtimeExample: boolean; files: string[]; read: (file: string) => string; workPresent: boolean; hasImage: (file: string) => boolean;
+  /** The project needs its own object store: statics/ holds a file, or its back end uses storage (storage-need.mts). Absent: the starter's yes. */
+  storageNeeded?: boolean;
   hasContracts: boolean; // the back end holds be/contracts/ (a back end that emits no contract has none)
   /** The root workspace packages of the app: the names of the folders of packages/ that hold a package.json and a src/, sorted. */
   rootPackages?: readonly string[];
@@ -112,6 +115,9 @@ export interface AppSourceFacts {
   defaultLocale?: string | null;
   stack: any; quality: any; badges: string; qualityDeclared: boolean; // reason: stack and quality come from the YAML-parsed declaration
 }
+
+/** The condition a slot's `managedWhen` names. Without source facts (a render of the declaration alone, a scaffold) the starter's storage holds. */
+const factHolds = (fact: string, source: AppSourceFacts | undefined): boolean => fact !== 'storage' || source?.storageNeeded !== false;
 
 // mode: file = whole file, block = the marked block inside a file the app also writes to, scripts = the `scripts` block of
 // package.json, section = the whole file but the one marked section a database verb owns (db/bootstrap.sql, whose squash section
@@ -137,10 +143,12 @@ function managedTemplate(scope: string, group: string, file: string, hasTemplate
   return directories.map(dir => `${dir}/${group}/${file}`).find(name => hasTemplate(name));
 }
 
-function slotTargets(slot: ManifestSlot, scope: string, edition: string, manifest: SlotManifest, hasTemplate: (name: string) => boolean, enabled: (slot: ManifestSlot) => boolean, declares: (side: string) => boolean): Target[] {
+function slotTargets(slot: ManifestSlot, scope: string, edition: string, manifest: SlotManifest, hasTemplate: (name: string) => boolean, enabled: (slot: ManifestSlot) => boolean, declares: (side: string) => boolean, needs: (fact: string) => boolean): Target[] {
   if (!slot.profiles.includes(scope) || !slotInEdition(manifest, slot, edition)) return [];
   // A slot whose managed files serve a side renders them only for a project that declares it (managedWhenSides, PROJECT-1).
   if ((slot.managedWhenSides ?? []).some(side => !declares(side))) return [];
+  // A slot whose managed files serve a condition (managedWhen: storage) renders them only for a project where it holds (storage-need.mts).
+  if ((slot.managedWhen ?? []).some(fact => !needs(fact))) return [];
   // An opt-in slot is rendered only for a repository that enables it (app.browser-config with `browser: true`).
   if (slot.presence === 'opt-in' && !enabled(slot)) return [];
   if (edition === 'lite' && litePresenceOf(slot, scope) === 'forbidden') return [];
@@ -170,10 +178,10 @@ function unlistedTargets(scope: string, edition: string): Target[] {
  * its scope or under common. `enabled(slot)` decides an opt-in slot (renderTargets passes the declaration's); without it every slot
  * counts, which is what an inventory of the templates needs.
  */
-export function targetsOf(scope: string, { edition = 'full', manifest = loadSlotManifest() as SlotManifest, hasTemplate = (name: string): boolean => fs.existsSync(path.join(TEMPLATES_DIR, name)), enabled = (_slot: ManifestSlot): boolean => true, declares = (_side: string): boolean => true }: {
-  edition?: string; manifest?: SlotManifest; hasTemplate?: (name: string) => boolean; enabled?: (slot: ManifestSlot) => boolean; declares?: (side: string) => boolean;
+export function targetsOf(scope: string, { edition = 'full', manifest = loadSlotManifest() as SlotManifest, hasTemplate = (name: string): boolean => fs.existsSync(path.join(TEMPLATES_DIR, name)), enabled = (_slot: ManifestSlot): boolean => true, declares = (_side: string): boolean => true, needs = (_fact: string): boolean => true }: {
+  edition?: string; manifest?: SlotManifest; hasTemplate?: (name: string) => boolean; enabled?: (slot: ManifestSlot) => boolean; declares?: (side: string) => boolean; needs?: (fact: string) => boolean;
 } = {}): Target[] {
-  const listed = manifest.slots.flatMap(slot => slotTargets(slot, scope, edition, manifest, hasTemplate, enabled, declares));
+  const listed = manifest.slots.flatMap(slot => slotTargets(slot, scope, edition, manifest, hasTemplate, enabled, declares, needs));
   return [...listed, ...unlistedTargets(scope, edition)];
 }
 
@@ -370,6 +378,9 @@ export function appDefaultLocale(root: string): string | null {
   return null;
 }
 
+const readJson = (file: string): unknown => { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; } };
+const readStackDoc = (root: string, parse: ParseYaml | undefined): unknown => { try { return (parse ?? bundledParseYaml)(fs.readFileSync(path.join(root, '.starcistacks', 'application-stacks.yaml'), 'utf8')); } catch { return null; } };
+
 export function appSource(root: string, { parseYaml, notices }: { parseYaml?: ParseYaml | undefined; notices?: string[] | undefined } = {}): AppSourceFacts {
   const files: string[] = [];
   const walk = (dir: string): void => {
@@ -391,6 +402,7 @@ export function appSource(root: string, { parseYaml, notices }: { parseYaml?: Pa
     stack: readDeclaredStack(root, { parseYaml }), quality: readDeclaredQuality(root, { parseYaml }),
     badges: readDeclaredBadges(root, { parseYaml, notices }),
     defaultLocale: appDefaultLocale(root),
+    storageNeeded: storageNeed({ staticsFiles: staticsFilesOnDisk(root), packageJson: readJson(path.join(root, 'package.json')), stack: readStackDoc(root, parseYaml) }).needed,
     qualityDeclared: hasDeclaredServices(root, { parseYaml }) };
 }
 
@@ -476,14 +488,17 @@ function imageEntries(app: ResolvedApp, source: Partial<Pick<AppSourceFacts, 'ha
 }
 
 /** The apps images.yml builds (one matrix entry per declared app): name and Dockerfile, be then fe, then a lite app's db image. */
-export function imageApps(app: ResolvedApp, source: Partial<Pick<AppSourceFacts, 'hasImage'>> | undefined): ImageApp[] {
-  const db = app.edition === 'lite' ? [{ name: DB_IMAGE_APP, file: DB_DOCKERFILE }] : [];
+export function imageApps(app: ResolvedApp, source: Partial<Pick<AppSourceFacts, 'hasImage' | 'storageNeeded'>> | undefined): ImageApp[] {
+  // A lite app that has statics/ or needs object storage also ships its own MinIO image (slot app.storage.image, PROJECT-STATICS-5).
+  const storage = app.edition === 'lite' && source?.storageNeeded !== false ? [{ name: STORAGE_IMAGE_APP, file: STORAGE_DOCKERFILE }] : [];
+  const db = app.edition === 'lite' ? [{ name: DB_IMAGE_APP, file: DB_DOCKERFILE }, ...storage] : [];
   return [...imageEntries(app, source).map(image => ({ name: image.entry.name, file: dockerfilePath(image.side, image.entry.name) })), ...db];
 }
 
 /** The Dockerfile of the app a deploy image names (be first, then fe, then a lite app's db image); an app hfs.json does not declare cannot be built by the managed workflow. */
 function stackDockerfile(app: ResolvedApp, name: string): string {
   if (app.edition === 'lite' && name === DB_IMAGE_APP) return DB_DOCKERFILE;
+  if (app.edition === 'lite' && name === STORAGE_IMAGE_APP) return STORAGE_DOCKERFILE;
   const side = (['be', 'fe'] as const).find(which => app.sides[which].apps.some(entry => entry.name === name));
   if (!side) throw new SyncError('HFS_SYNC_STACK_IMAGE', `deploy.images names the app ${name}, which hfs.json does not declare under be or fe`);
   return dockerfilePath(side, name);
@@ -593,6 +608,12 @@ export function variables(app: ResolvedApp, scope: string, presets: Presets | nu
     // A lite app's own database runs in development as one container of the image its .starcistacks/images/db/Dockerfile builds.
     dbImage: dbLocalImage(app.project),
     dbBaseImage: DB_BASE_IMAGE,
+    // The managed .starcistacks/images/storage/Dockerfile (slot app.storage.image): the pinned MinIO and the mc compiled from its pinned source tag.
+    minioImage: STORAGE_IMAGE,
+    mcBuildImage: MC.buildImage,
+    mcSource: MC.source,
+    mcSha256: MC.sha256,
+    mcTag: MC.tag,
     pgvectorPackage: PGVECTOR_PACKAGE,
     pgmqVersion: PGMQ.version,
     pgmqSource: PGMQ.source,
@@ -687,7 +708,7 @@ function renderOnce(hfs: unknown, presets: Presets | null | undefined, { sonarKe
   return [APP_SCOPE, ...declaredAppSides(app)].flatMap(scope => {
     const vars = variables(app, scope, presets, sonarKey, manifest, source);
     const repo = scope === APP_SCOPE ? app : app.sides[scope as 'be' | 'fe'];
-    const declaredTargets = targetsOf(scope, { edition: app.edition as string, manifest, hasTemplate, enabled: slot => declaredSlotEnabled(slot, repo), declares: side => sideDeclared(app, side as ProjectSide) });
+    const declaredTargets = targetsOf(scope, { edition: app.edition as string, manifest, hasTemplate, enabled: slot => declaredSlotEnabled(slot, repo), declares: side => sideDeclared(app, side as ProjectSide), needs: fact => factHolds(fact, source) });
     if (scope === APP_SCOPE && source?.badges) declaredTargets.push({ path: 'README.md', mode: 'block', markdown: true, template: 'app/readme-badges/README.md' });
     const targets = declaredTargets
       .filter(target => !(app.edition === 'lite' && source?.workPresent === false && target.path === '.starciwork/.gitignore'))
@@ -881,6 +902,13 @@ export function guardedWrites(root: string, targets: readonly RenderedTarget[], 
   return [...writes, ...retired.map((file): GuardedWrite => ({ path: file, group: RETIRED_GROUP, text: null }))];
 }
 
+/** The starter statics/.gitkeep: the storage image copies statics/, so an app that needs storage and has no folder gets it (PROJECT-STATICS-1). */
+function staticsStarterEdits(root: string, read: (relative: string) => string | null): DeclarationEdit[] {
+  if (fs.existsSync(path.join(root, 'statics'))) return [];
+  const needed = storageNeed({ staticsFiles: [], packageJson: readJson(path.join(root, 'package.json')), stack: readStackDoc(root, undefined) }).needed;
+  return needed && read('hfs.json') !== null ? [{ path: 'statics/.gitkeep', reason: 'the storage image copies statics/, the folder of the repo-owned media (PROJECT-STATICS-1)', content: '' }] : [];
+}
+
 /** The edits sync makes to an existing app's own declarations, one per file in order (a later edit of a file builds on the earlier), and the notices of what it left. */
 export function upgradeEdits(root: string): { edits: DeclarationEdit[]; notices: string[] } {
   const edits = new Map<string, DeclarationEdit>();
@@ -891,7 +919,7 @@ export function upgradeEdits(root: string): { edits: DeclarationEdit[]; notices:
     try { return fs.readFileSync(path.join(root, relative), 'utf8'); } catch { return null; }
   };
   const services = devServicesUpgrade(root, read);
-  for (const edit of [...services.edits, ...(readEdition(read) === 'lite' ? harnessCheckScriptEdits(read) : [])]) {
+  for (const edit of [...services.edits, ...staticsStarterEdits(root, read), ...(readEdition(read) === 'lite' ? harnessCheckScriptEdits(read) : [])]) {
     const earlier = edits.get(edit.path);
     edits.set(edit.path, earlier ? { path: edit.path, reason: `${earlier.reason}; ${edit.reason}`, content: edit.content } : edit);
   }
@@ -941,7 +969,7 @@ export async function runSync(argv: string[], { cwd = process.cwd(), out = (line
     // its dev environments get the starter's dev services and the compose ports of their base port (R389), on top of the sides edit.
     const { edits: declared, notices: upgradeNotices } = upgradeEdits(root);
     for (const notice of upgradeNotices) out(notice);
-    if (write) for (const edit of declared) { fs.writeFileSync(path.join(root, edit.path), edit.content); out(`wrote ${edit.path} (${edit.reason})`); }
+    if (write) for (const edit of declared) { fs.mkdirSync(path.dirname(path.join(root, edit.path)), { recursive: true }); fs.writeFileSync(path.join(root, edit.path), edit.content); out(`wrote ${edit.path} (${edit.reason})`); }
     else for (const edit of declared) out(`HFS_SYNC_DRIFT ${edit.path}: ${edit.reason}; run "npx --no-install starci app sync --execute"`);
     const notices: string[] = [];
     const { hfs, targets } = await renderRepo(root, { presets, parseYaml, notices });

@@ -16,7 +16,6 @@ import type { RunResult, StackContext } from './context.mjs';
 import { failure, refusal } from './errors.mjs';
 import type { ActionResult } from './remote.mjs';
 import { requireAgeIdentity } from './sealed.mjs';
-import { DB_DOCKERFILE, DB_IMAGE_APP } from '../db/image.mjs';
 import { scanImage } from './image-scan.mjs';
 import type { ImageScan } from './image-scan.mjs';
 
@@ -56,9 +55,15 @@ function ownerOf(ctx: StackContext, config: DeployConfig): string {
   return (match[1] as string).toLowerCase();
 }
 
-/** The Dockerfile of an app: be/apps/<app>/Dockerfile or fe/apps/<app>/Dockerfile, or the managed .starcistacks/images/db/Dockerfile for the db image; ambiguity and absence are refusals. */
-function dockerfileOf(config: DeployConfig, app: string): string {
-  if (app === DB_IMAGE_APP && fs.existsSync(path.join(config.repoRoot, DB_DOCKERFILE))) return DB_DOCKERFILE;
+/** The managed Dockerfile of an app that keeps its image with the stacks (.starcistacks/images/<app>/Dockerfile: the db and the storage image). */
+const imageFolderDockerfile = (app: string): string => `.starcistacks/images/${app}/Dockerfile`;
+
+/**
+ * The Dockerfile of an app: .starcistacks/images/<app>/Dockerfile when the stacks keep one (the managed db and storage images; the build context stays the app root,
+ * and a Dockerfile-specific ignore file beside it narrows it), else be/apps/<app>/Dockerfile or fe/apps/<app>/Dockerfile; ambiguity and absence are refusals.
+ */
+export function dockerfileOf(config: DeployConfig, app: string): string {
+  if (/^[a-z][a-z0-9-]*$/u.test(app) && fs.existsSync(path.join(config.repoRoot, imageFolderDockerfile(app)))) return imageFolderDockerfile(app);
   const found = SIDES.map((side) => `${side}/apps/${app}/Dockerfile`).filter((file) => fs.existsSync(path.join(config.repoRoot, file)));
   if (found.length === 0) throw refusal('STACK_BUILD_NO_DOCKERFILE', `no Dockerfile for app ${app} (be/apps/${app}/Dockerfile or fe/apps/${app}/Dockerfile)`);
   if (found.length > 1) throw refusal('STACK_BUILD_AMBIGUOUS', `app ${app} has a Dockerfile on both sides: ${found.join(', ')}`);

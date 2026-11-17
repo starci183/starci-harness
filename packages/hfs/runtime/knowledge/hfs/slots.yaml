@@ -7,7 +7,7 @@
 # catalog READ this file through scripts/hfs/slots.mts; none of them hardcodes a path.
 # Shape: modules/schemas/hfs-slots.schema.yaml. The repository side is hfs.json: modules/schemas/hfs-repo.schema.yaml.
 schema: starci/hfs-slots@3
-version: 3.40.0
+version: 3.41.0
 
 versioning:
   # MAJOR.MINOR.PATCH of this manifest. A repository pins only the MAJOR in hfs.json ("hfs": 3).
@@ -77,6 +77,8 @@ versioning:
 #               liteManagedBy is managed only in lite; its effective lite.path still lists literal files.
 #               the managed file list lives here and nowhere in code. A difference is HFS_MANAGED_FILE_DRIFT (a
 #               back end's tsconfig.json: HFS_TS_STRICT when a flag or an option was added).
+#   managedWhen the conditions of the project under which sync renders the managed files (storage: the project has statics/ or its back end needs object storage,
+#               scripts/lib/storage-need.mts); a file already present is judged either way. Absent: always.
 #   managedOnly true: the slot only lists files sync renders (needs managedBy); the path is judged by the slot that owns it, so the rendered
 #               file keeps the rules and the tier of its folder (a sign-in service is a domain service)
 #   rules       rule codes from knowledge/hfs/rules.yaml.
@@ -1152,6 +1154,33 @@ slots:
     tests: none
     since: 3.11.0
     rules: [HFS_MANAGED_FILE_DRIFT]
+  - id: app.storage.image
+    since: 3.41.0
+    profiles: [app]
+    # The managed image of the storage service when the project has statics/ or its backend needs object storage (PROJECT-STATICS-2, R440): FROM the
+    # pinned MinIO, plus an mc built from a pinned source tag, plus the statics/ folder, which the entrypoint writes into the bucket through the S3 API.
+    # The build context is the app root; the Dockerfile-specific ignore admits statics/ only. Dev compose and production both build it.
+    path: ".starcistacks/images/storage/{Dockerfile,Dockerfile.dockerignore}"
+    presence: optional
+    tracked: tracked
+    managedBy: storage-image
+    managedWhen: [storage]
+    tier: none
+    tests: none
+    rules: [HFS_MANAGED_FILE_DRIFT]
+  - id: app.statics
+    since: 3.41.0
+    profiles: [app]
+    # The repo-owned static media of the app (PROJECT-STATICS-1): images and videos the app serves from its own object store, keyed by their path under
+    # statics/ (the staticsKey), with a <name>.prompt.yaml sidecar for an AI image (judged against the brand sheet, R436). The
+    # storage image carries the folder into the bucket (app.storage.image). R438 judges the names, kinds and sizes, so the slot admits any name.
+    path: "statics/"
+    presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+    allows: [".gitkeep", "**"]
+    rules: [HFS_STATICS_FILE_KIND, HFS_STATICS_KEY, HFS_STATICS_FILE_SIZE, HFS_STATICS_TREE_SIZE, HFS_STATICS_PROMPT_ORPHAN, HFS_STATICS_PROMPT_SCHEMA]
   - id: app.starcistacks.cache
     profiles: [app]
     # The committed result cache of `starci app check` (contexts/project/check-cache.md): JSON Lines records keyed by
@@ -1223,12 +1252,12 @@ slots:
   - id: repo.side-root-forbidden
     since: 3.1.0
     profiles: [be, fe]
-    path: "{package.json,package-lock.json,hfs.json,README.md,.gitignore,.gitattributes,.husky/,.github/,.starciwork/,.starcistacks/,db/,.sops.yaml,sonar-project.properties,codecov.yml,.prettierrc,.prettierignore,scripts/}"
+    path: "{package.json,package-lock.json,hfs.json,README.md,.gitignore,.gitattributes,.husky/,.github/,.starciwork/,.starcistacks/,db/,.sops.yaml,sonar-project.properties,codecov.yml,.prettierrc,.prettierignore,scripts/,statics/}"
     presence: forbidden
     tracked: external
     tier: none
     tests: none
-    goesTo: "the app root: one package.json, lockfile, hfs.json, README, git and CI files, hooks, formatter, Sonar and Codecov configuration, scripts/, .starciwork, .starcistacks and .sops.yaml per app"
+    goesTo: "the app root: one package.json, lockfile, hfs.json, README, git and CI files, hooks, formatter, Sonar and Codecov configuration, scripts/, .starciwork, .starcistacks, statics/ and .sops.yaml per app"
   - id: be.tool-config
     since: 3.1.0
     profiles: [be]

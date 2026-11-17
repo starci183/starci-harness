@@ -19,6 +19,8 @@ fe/apps/*/AGENTS.md
 !.starcistacks/cache/**
 !.starcistacks/canvas/**
 !.starcistacks/security/audit-exceptions.yaml
+!.starcistacks/images/storage/Dockerfile
+!.starcistacks/images/storage/Dockerfile.dockerignore
 !.starcistacks/*/README.md
 !.starcistacks/*/environment.json
 !.starcistacks/*/seeds/**

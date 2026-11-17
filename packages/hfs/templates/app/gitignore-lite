@@ -20,6 +20,8 @@ fe/apps/*/AGENTS.md
 !.starcistacks/canvas/**
 !.starcistacks/security/audit-exceptions.yaml
 !.starcistacks/images/db/Dockerfile
+!.starcistacks/images/storage/Dockerfile
+!.starcistacks/images/storage/Dockerfile.dockerignore
 !.starcistacks/*/README.md
 !.starcistacks/*/environment.json
 !.starcistacks/*/seeds/**

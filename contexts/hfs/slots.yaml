@@ -4,7 +4,7 @@
 # factories, the architecture machine and templates read this file; none hardcodes a path. Field meanings and the
 # ruleParams keys are explained in hfs/README.md; the reason for a slot's shape is its pattern topic.
 schema: starci/hfs-slots@3
-version: 3.40.0
+version: 3.41.0
 presenceValues:
   - required
   - optional
@@ -1647,6 +1647,37 @@ slots:
     tests: none
     rules:
       - HFS_MANAGED_FILE_DRIFT
+  - id: app.storage.image
+    profiles:
+      - app
+    path: .starcistacks/images/storage/{Dockerfile,Dockerfile.dockerignore}
+    presence: optional
+    tracked: tracked
+    managedBy: storage-image
+    managedWhen:
+      - storage
+    tier: none
+    tests: none
+    rules:
+      - HFS_MANAGED_FILE_DRIFT
+  - id: app.statics
+    profiles:
+      - app
+    path: statics/
+    presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+    allows:
+      - .gitkeep
+      - "**"
+    rules:
+      - HFS_STATICS_FILE_KIND
+      - HFS_STATICS_KEY
+      - HFS_STATICS_FILE_SIZE
+      - HFS_STATICS_TREE_SIZE
+      - HFS_STATICS_PROMPT_ORPHAN
+      - HFS_STATICS_PROMPT_SCHEMA
   - id: app.starcistacks.cache
     profiles:
       - app
@@ -1734,13 +1765,13 @@ slots:
       - fe
     path: "{package.json,package-lock.json,hfs.json,README.md,.gitignore,.gitattributes,.husky/,.github\
       /,.starciwork/,.starcistacks/,db/,.sops.yaml,sonar-project.properties,codecov.yml,.pret\
-      tierrc,.prettierignore,scripts/}"
+      tierrc,.prettierignore,scripts/,statics/}"
     presence: forbidden
     tracked: external
     tier: none
     tests: none
     goesTo: "the app root: one package.json, lockfile, hfs.json, README, git and CI files, hooks,
-      formatter, Sonar and Codecov configuration, scripts/, .starciwork, .starcistacks and
+      formatter, Sonar and Codecov configuration, scripts/, .starciwork, .starcistacks, statics/ and
       .sops.yaml per app"
   - id: be.tool-config
     profiles:

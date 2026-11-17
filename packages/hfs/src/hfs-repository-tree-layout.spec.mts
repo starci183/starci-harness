@@ -77,3 +77,10 @@ for (const edition of ['lite', 'full']) {
     assert.deepEqual(paths(sideRun(context, 'be', edition, ROOT_BE), 'HFS_STACKS_IN_SIDE'), []);
   });
 }
+
+for (const edition of ['lite', 'full']) {
+  test(`${edition}: statics/ is an app-root entry (slot app.statics) and is refused inside a side`, (context) => {
+    assert.deepEqual(paths(rootRun(context, edition, { ...ROOT_FE, ...APP_FE, '../statics/illustrations/empty/customers.png': 'x' }), 'HFS_ROOT_ENTRY_FORBIDDEN'), []);
+    assert.deepEqual(paths(sideRun(context, 'be', edition, { ...ROOT_BE, 'statics/customers.png': 'x' }), 'HFS_ROOT_ENTRY_FORBIDDEN'), ['statics']);
+  });
+}

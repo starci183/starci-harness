@@ -1,6 +1,7 @@
 // local-up.mts - `starci app stack up --env <dev env> [--execute]`: the one command that brings the whole dev environment up (PROJECT-STACKS-6).
 // Order: the base port range against the machine's other projects (an overlap refuses before anything starts), host prerequisites, dev custody, setup (install, codegen), compose services and their health, the environment's own database role,
 // migrations with a receipt, the migration runners (seed commands of mode always), the seed levels and the loader of the pinned seed-standards with their receipts, the other seed commands, native app processes, readiness, the dev tunnel routes (PROJECT-STACKS-15), origins. Idempotent: what runs is kept, what changed is converged.
+// `compose up --build` rebuilds an image whose build inputs changed (the db image, the storage image with its statics/) and is a cached no-op otherwise.
 // A dry run prints the plan. It never generates a replacement secret, never removes a volume and touches only its own compose project.
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -173,7 +174,7 @@ function plan(local: LocalConfig, missing: string[]): string[] {
   return [
     `plan custody: ${missing.length ? `missing ${missing.join(', ')}: ${missingStep(local, missing)}` : 'open the sealed dev values into host-local files'}`,
     ...local.setup.map((run) => `plan setup ${run.name}: ${run.argv.join(' ')}`),
-    `plan services: ${local.services.map((service) => `${service.name} (wait ${service.wait})`).join(', ')}`,
+    `plan services: compose up -d --build ${local.services.map((service) => `${service.name} (wait ${service.wait})`).join(', ')} (a changed build input rebuilds, cached otherwise)`,
     ...(local.database ? [`plan database: own role ${local.database.role}, database ${local.database.name}, then starci app db migrate`, ...local.databases.map((database) => `plan database (connection ${database.connection}): own role ${database.role}, database ${database.name}`), `plan seed levels: .starcistacks/seeds, then .starcistacks/${local.env}/seeds, each entry once per content hash (receipts in ${SEED_RECEIPTS})`] : []),
     ...local.seed.map((run) => `plan seed ${run.name}: ${run.argv.join(' ')}`),
     ...local.processes.map((run) => `plan process ${run.name}: ${run.argv.join(' ')}`),
@@ -210,7 +211,7 @@ export async function upLocal(ctx: StackContext, local: LocalConfig, { execute =
   lines.push(...await runSetup(ctx, local, custody));
   makeDataDirectories(ctx, local);
   const values = composeValues(local, custody);
-  const started = await compose(ctx, local, ['up', '-d', ...local.services.map((service) => service.name)], { values, heavy: true, label: 'compose up' });
+  const started = await compose(ctx, local, ['up', '-d', '--build', ...local.services.map((service) => service.name)], { values, heavy: true, label: 'compose up' });
   if (started.status !== 0) throw failure('STACK_LOCAL_COMPOSE', `docker compose up failed: ${(started.stderr.trim().split(/\r?\n/u)[0] ?? '').slice(0, 200)}`);
   const deadline = ctx.now() + timeoutSeconds * 1000;
   for (const service of local.services) {
