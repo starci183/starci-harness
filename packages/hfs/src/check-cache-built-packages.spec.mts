@@ -2,11 +2,13 @@
 // a fresh tree holds no dist, so a program that imports one would report every import. The key of such a program changes with the package's tracked sources.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { runTypesForApp } from '../cache/app-families.mjs';
 import { buildPackages, builtPackagesOf, programsWithBuiltReads, TYPES_PACKAGE_BUILD_FAILED } from '../cache/built-packages.mjs';
+import { generatedInputs, TYPES_CODEGEN_FAILED } from '../cache/codegen.mjs';
 import { createFakeSession } from '../cache/fake-session.mjs';
 import type { ParityRun } from '../cache/parity-family.mjs';
 import { programKey, type TypesProgram } from '../cache/types-family.mjs';
@@ -117,4 +119,72 @@ test('the types step builds the packages before the first tsc, so a program that
   assert.deepEqual(order, ['fe/packages/i18n', 'fe/packages/ui']);
   assert.equal(seen['fe/apps/web'], true);
   assert.equal(outcome.result.ok, true);
+});
+
+/** `app()` with a root `codegen` script, a `.gitignore` for `__generated__` and a git repository, so generated files are untracked and ignored. */
+function appWithCodegen(): ReturnType<typeof app> {
+  const made = app();
+  fs.writeFileSync(path.join(made.root, 'package.json'), json({ name: 'app', workspaces: ['fe/apps/*', 'fe/packages/*'], scripts: { codegen: 'node scripts/codegen.mjs' } }));
+  made.files['package.json'] = fs.readFileSync(path.join(made.root, 'package.json'), 'utf8');
+  fs.writeFileSync(path.join(made.root, '.gitignore'), '__generated__/\n');
+  execFileSync('git', ['init', '-q'], { cwd: made.root });
+  return made;
+}
+
+/** A command port: `npm run codegen` writes the generated file (or fails), a workspace build writes its dist. */
+function generator(root: string, calls: string[], failCodegen = false): ParityRun {
+  const build = builder(root, calls);
+  return async (request) => {
+    if (!/codegen/u.test(request.argv.at(-1) ?? '')) return build(request);
+    calls.push('codegen');
+    if (failCodegen) return { status: 1, stdout: '', stderr: 'Unable to find any GraphQL type definitions\n' };
+    fs.mkdirSync(path.join(root, 'fe/apps/web/src/__generated__'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'fe/apps/web/src/__generated__/graphql.ts'), 'export type T = 1;\n');
+    return { status: 0, stdout: '', stderr: '' };
+  };
+}
+
+test('the types step runs the app codegen before the first tsc, skips it while its inputs and outputs are unchanged, and runs it again when an input changed', async () => {
+  const { root, files } = appWithCodegen();
+  const tracked = Object.keys(files).sort();
+  const calls: string[] = [];
+  const env = { STARCI_CACHE_HOME: path.join(root, '.home') };
+  const seen: boolean[] = [];
+  const tsc = (): { status: number; output: string; files: string[] } => { seen.push(fs.existsSync(path.join(root, 'fe/apps/web/src/__generated__/graphql.ts'))); return { status: 0, output: '', files: [] }; };
+  const step = (changes: Record<string, string> = {}): ReturnType<typeof runTypesForApp> => runTypesForApp(createFakeSession({ files: { ...files, ...changes } }), { repoRoot: root, tracked, env, parity: generator(root, calls), tsc });
+  await step();
+  assert.equal(calls[0], 'codegen', 'codegen runs before the package builds and the first tsc');
+  assert.ok(seen.length > 0 && seen.every(Boolean), 'every program ran with the generated file present');
+  calls.length = 0;
+  await step();
+  assert.ok(!calls.includes('codegen'), 'unchanged inputs and present outputs skip it');
+  await step({ 'be/contracts/schema.graphql': 'type Q { a: Int }\n' });
+  assert.equal(calls.filter((call) => call === 'codegen').length, 1, 'a changed schema runs it again');
+  assert.ok(generatedInputs(root, 'fe/apps/web/').includes('fe/apps/web/src/__generated__/graphql.ts'));
+});
+
+test('a failed codegen is one coded failure and no program runs', async () => {
+  const { root, files } = appWithCodegen();
+  const calls: string[] = [];
+  const ran: string[] = [];
+  const outcome = await runTypesForApp(createFakeSession({ files }), {
+    repoRoot: root, tracked: Object.keys(files).sort(), env: { STARCI_CACHE_HOME: path.join(root, '.home') }, parity: generator(root, calls, true),
+    tsc: (program) => { ran.push(program.name); return { status: 0, output: '', files: [] }; },
+  });
+  assert.deepEqual(outcome.findings.map((found) => found.code), [TYPES_CODEGEN_FAILED]);
+  assert.match(outcome.findings[0]?.message ?? '', /Unable to find any GraphQL/u);
+  assert.deepEqual(ran, []);
+  assert.deepEqual(calls, ['codegen'], 'the package builds are not started either');
+});
+
+test('the key of a program holds the generated files it reads: a changed output re-keys it', () => {
+  const { root, files } = appWithCodegen();
+  fs.mkdirSync(path.join(root, 'fe/apps/web/src/__generated__'), { recursive: true });
+  const generated = path.join(root, 'fe/apps/web/src/__generated__/graphql.ts');
+  fs.writeFileSync(generated, 'export type T = 1;\n');
+  const session = createFakeSession({ files });
+  const inputs = { untracked: generatedInputs(root, 'fe/apps/web/') };
+  const same = programKey({ ...WEB, tsconfig: 'fe/apps/web/tsconfig.json' }, { ...session, root } as never, inputs);
+  fs.writeFileSync(generated, 'export type T = 2;\n');
+  assert.notEqual(programKey(WEB, { ...session, root } as never, inputs), same);
 });

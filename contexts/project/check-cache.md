@@ -346,7 +346,14 @@ changed one runs that program's `tsc` in full. TypeScript's `.tsbuildinfo` speed
 result (it holds versions and signatures, not findings), so it stays in the untracked tool cache of slot
 `app.tool-cache` and is never committed.
 
-Before any program runs, the `types` step builds the workspace packages the programs resolve through a build output. A *built package* is a workspace
+Before any program runs, the `types` step runs the app's code generation when the root `package.json` declares a `codegen` script (the command the dev and build scripts and the CI build
+steps already run: `npm run codegen`), because the code it generates sits in untracked `__generated__` folders a fresh tree does not have. It is skipped while its stamp (the tracked
+`package.json` and lockfile files, `*.graphql` and `*.gql` files, anything under a folder named `graphql`, `contracts`, `scripts` or `codegen`, and `codegen*` files) is unchanged and every
+generated file it produced is present; the stamp is host state in the tool cache. A failed generation is the finding `TYPES_CODEGEN_FAILED` and no program runs. The generated files under a
+program's folder are untracked inputs of its key, hashed by content, so a change of the generation's inputs that changes its output re-keys the programs that read it. The CI build steps
+(`build`, later in the run) still run the codegen their own commands carry; that is CI's command, run as CI runs it.
+
+The `types` step then builds the workspace packages the programs resolve through a build output. A *built package* is a workspace
 package (a folder the root `package.json` `workspaces` names) whose `exports`, `main`, `module` or `types` points into a folder git does not track (`dist`);
 in a fresh tree that folder is absent and `tsc` would report every import of the package as a diagnostic that is no defect of the code. Each built package is
 built by its own `build` script (`npm run build --workspace <folder>` from the app root, one child through the governor), the built packages it depends on first.

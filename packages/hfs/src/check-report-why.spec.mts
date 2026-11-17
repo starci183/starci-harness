@@ -8,6 +8,7 @@ import { readWhy } from '../runtime/scripts/hfs/check.mjs';
 import { withWhy } from '../runtime/scripts/hfs/check-results.mjs';
 import { GATE_FAILED, SCAN_FAILED, SCAN_SKIPPED } from '../cache/sonar-scan-family.mjs';
 import { TYPES_PACKAGE_BUILD_FAILED } from '../cache/built-packages.mjs';
+import { TYPES_CODEGEN_FAILED } from '../cache/codegen.mjs';
 import * as parity from '../cache/parity-family.mjs';
 
 test('every finding code of the Sonar scan, the skipped warning included, has a catalog entry that withWhy attaches', () => {
@@ -34,7 +35,8 @@ test('every CI_PARITY finding code the parity family can emit, its exported cons
   assert.ok(findings.every((finding) => typeof finding.title === 'string' && typeof finding.titleVi === 'string' && typeof finding.nextStepVi === 'string'));
 });
 
-test('a failed package build of the types step has a catalog entry that withWhy attaches', () => {
-  const findings = withWhy([{ code: TYPES_PACKAGE_BUILD_FAILED, level: 'error' }], readWhy(skillRoot, [TYPES_PACKAGE_BUILD_FAILED]));
+test('a failed package build or code generation of the types step has a catalog entry that withWhy attaches', () => {
+  const codes = [TYPES_PACKAGE_BUILD_FAILED, TYPES_CODEGEN_FAILED];
+  const findings = withWhy(codes.map((code) => ({ code, level: 'error' })), readWhy(skillRoot, codes));
   assert.ok(findings.every((finding) => typeof finding.title === 'string' && typeof finding.titleVi === 'string' && typeof finding.nextStepVi === 'string'));
 });

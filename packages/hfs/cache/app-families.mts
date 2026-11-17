@@ -17,6 +17,7 @@ import { toolCacheDir } from './run-log.mjs';
 import { untrackedProgramInputs } from './side-key.mjs';
 import { createJestEnvironment, installedSpecMerge, runTestFamily, shardArgs, type TestFamilyResult } from './test-family.mjs';
 import { buildPackages, builtPackagesOf, programsDependingOn, programsWithBuiltReads, TYPES_PACKAGE_BUILD_FAILED } from './built-packages.mjs';
+import { generatedInputs, runCodegen, TYPES_CODEGEN_FAILED } from './codegen.mjs';
 import type { ParityRun } from './parity-family.mjs';
 import { createTscRunner, runTypesFamily, type TypesFamilyResult, type TypesProgram } from './types-family.mjs';
 import { changedLinesFromDiff, gitRunner, lineCoverageOf, recordsAtCommit, runQualityFamily, type ChangedLines, type QualityFamilyResult } from './quality-baselines.mjs';
@@ -50,9 +51,11 @@ export async function runTypesForApp(session: CheckSession, { repoRoot, tracked,
   const programs = programsWithBuiltReads(programsOf(tracked), built, repoRoot);
   const trackedSet = new Set(tracked);
   // The packages programs resolve through a build output are built first (built-packages.mts): a fresh tree holds no dist, and tsc would report every import of them.
-  const builds = parity === undefined || built.length === 0 ? undefined : await buildPackages({ session, repoRoot, built, toolCacheDir: toolCacheDir(repoRoot, env), env, run: parity });
+  // The app's code generation (`npm run codegen`) runs first: its untracked output is read by the programs, and a failure of it blocks them all.
+  const generated = parity === undefined ? undefined : await runCodegen({ session, repoRoot, toolCacheDir: toolCacheDir(repoRoot, env), env, run: parity });
+  const builds = parity === undefined || generated?.state === 'failed' || built.length === 0 ? undefined : await buildPackages({ session, repoRoot, built, toolCacheDir: toolCacheDir(repoRoot, env), env, run: parity });
   const failedBuilds = builds?.failed ?? [];
-  const blocked = new Set(programsDependingOn(programs, built, new Set(failedBuilds.map((failed) => failed.pkg.name)), repoRoot));
+  const blocked = new Set(generated?.state === 'failed' ? programs.map((program) => program.name) : programsDependingOn(programs, built, new Set(failedBuilds.map((failed) => failed.pkg.name)), repoRoot));
   const result = await runTypesFamily({
     session, programs, blocked, run: tsc ?? createTscRunner({ appRoot: repoRoot, execute }), toolCacheDir: toolCacheDir(repoRoot, env),
     ...(concurrency === undefined ? {} : { concurrency }),
@@ -61,11 +64,12 @@ export async function runTypesForApp(session: CheckSession, { repoRoot, tracked,
       const side = program.name.startsWith('be') ? 'be' : rootPackage ? program.name : 'fe';
       const prefix = `${program.reads?.[0] ?? side}/`;
       const staged = runGitText(repoRoot, ['ls-files', '-s', '-z', '--', prefix]).stdout.split('\0').filter(Boolean).map((line) => line.replace(/^\d+ ([0-9a-f]+) (\d)\t(.*)$/u, '$3:$1:$2'));
-      return { staged, untracked: untrackedProgramInputs(repoRoot, side, trackedSet).filter((file) => file.startsWith(prefix)) };
+      return { staged, untracked: [...new Set([...untrackedProgramInputs(repoRoot, side, trackedSet).filter((file) => file.startsWith(prefix)), ...generatedInputs(repoRoot, prefix)])].sort() };
     },
   });
+  const codegenFindings: CheckFinding[] = generated?.state === 'failed' ? [{ code: TYPES_CODEGEN_FAILED, level: 'error', engine: 'tsc', path: 'package.json', message: generated.message ?? 'npm run codegen failed' }] : [];
   const buildFindings: CheckFinding[] = failedBuilds.map(({ pkg, message }) => ({ code: TYPES_PACKAGE_BUILD_FAILED, level: 'error', engine: 'tsc', path: `${pkg.dir}/package.json`, message }));
-  return { result, findings: [...buildFindings, ...result.findings.map((found) => asFinding(found, 'TS_DIAGNOSTIC', 'error', 'tsc'))] };
+  return { result, findings: [...codegenFindings, ...buildFindings, ...result.findings.map((found) => asFinding(found, 'TS_DIAGNOSTIC', 'error', 'tsc'))] };
 }
 
 /** `--test`: the unit specs of the back end through the app's own Jest, reused by closure key; the merged total is judged by `@starci/hfs` (the coverage proof). */

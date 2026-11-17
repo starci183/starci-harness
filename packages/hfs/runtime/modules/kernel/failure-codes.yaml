@@ -4055,6 +4055,17 @@ CI_PARITY_SONAR_GATE_FAILED:
   owner: op-retry
   kind: check-finding
 
+TYPES_CODEGEN_FAILED:
+  title: "The app's code generation fails before the type programs run"
+  title_vi: "Bước sinh mã (codegen) của app thất bại trước khi các chương trình tsc chạy"
+  meaning_vi: "Bước types của `starci app check` chạy `npm run codegen` (script codegen ở package.json gốc) trước chương trình tsc đầu tiên, vì mã sinh ra (thư mục __generated__ không được git theo dõi) không có trong cây mới. Khi codegen thất bại, không chương trình tsc nào chạy (không báo hàng trăm lỗi import chưa phân giải) và bước types đỏ với đúng mã này."
+  causes_vi:
+    - "Schema hoặc tài liệu (operation) GraphQL sai, hoặc thiếu tệp hợp đồng mà script codegen đọc."
+    - "Thiếu dependency của codegen trong node_modules (chưa chạy npm ci)."
+  nextStep_vi: "Chạy npm run codegen từ gốc app để đọc lỗi đầy đủ, sửa đầu vào của nó, rồi chạy lại starci app check."
+  owner: op-retry
+  kind: check-finding
+
 TYPES_PACKAGE_BUILD_FAILED:
   title: "A workspace package that programs resolve through its build output fails to build"
   title_vi: "Một package workspace mà các chương trình tsc đọc qua thư mục build của nó không build được"
