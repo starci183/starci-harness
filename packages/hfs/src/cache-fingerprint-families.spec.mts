@@ -236,7 +236,7 @@ test('a @starci package resolved from a registry on this machine, linked, or wit
 });
 
 test('an in-repo workspace member under @starci is portable, private or not; a link outside the repo is not', (t) => {
-  const lock = { '': { name: 'app' }, 'packages/nivoos-sdk': { version: '0.1.0' }, 'node_modules/@starci/nivoos-sdk': { link: true, resolved: 'packages/nivoos-sdk' } };
+  const lock = { '': {}, 'packages/nivoos-sdk': { version: '0.1.0' }, 'node_modules/@starci/nivoos-sdk': { link: true, resolved: 'packages/nivoos-sdk' } };
   assert.equal(workspaceMemberOf(lock['node_modules/@starci/nivoos-sdk'], lock), 'packages/nivoos-sdk');
   for (const resolved of ['../sibling/sdk', 'D:/elsewhere/sdk', '/abs/sdk', 'file:../sdk', 'packages/missing', 'node_modules/x']) {
     assert.equal(workspaceMemberOf({ link: true, resolved }, lock), null, resolved);
