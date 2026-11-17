@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.153 - 2026-11-18
+
+- Added: `@starci/gallery` 0.1.0, the screenshot gallery of an app as one Vite config over the Grammar: canvas frames and shots in one place (Bản vẽ / Đối chiếu / Ảnh thật), truthful statuses and counts, the flow map; `starci app sync` renders the thin `gallery/` over it. Changed: gallery widths are 1440 and 390 only (owner 2026-11-18). @starci/hfs 6.13.33. Until the cli-follow step raises the CLI's requirement, the CLI runs the hfs it requires.
+
 ## 1.1.0-alpha.152 - 2026-11-18
 
 - Changed: the CLI requires @starci/hfs@6.13.32, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
