@@ -25,6 +25,7 @@ updates:
       - /packages/auth-oidc
       - /packages/common
       - /packages/event-stream
+      - /packages/gallery
       - /packages/grammar
       - /packages/heroicons
       - /packages/hfs

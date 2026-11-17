@@ -806,7 +806,7 @@ slots:
   - id: app.gallery
     since: 3.27.0
     profiles: [app]
-    path: "gallery/{package.json,index.html,README.md,vite.config.js,src/main.js,src/explain.js,src/style.css}"
+    path: "gallery/{package.json,index.html,README.md,vite.config.js}"
     presence: optional
     tracked: tracked
     tier: none

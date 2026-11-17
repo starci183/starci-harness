@@ -22,6 +22,7 @@ import { loadLocalConfig, withGallery } from '../stack/local-config.mjs';
 import { normalizeLocal } from '../runtime/scripts/hfs/stack-local-config.mjs';
 import { parseYaml } from '../runtime/engine/yaml.mjs';
 import { checkRepo } from '../runtime/scripts/hfs/check.mjs';
+import { bundledPins } from '../runtime/scripts/hfs/canon-pins.mjs';
 
 const HARNESS = { version: '1.1.0-alpha.3' };
 const PARAMS = galleryParams();
@@ -77,18 +78,18 @@ for (const edition of ['lite', 'full']) {
   });
 }
 
-test('the shipped gallery is the reference: one folder per screen, its shots, explain.md, links.json and flows.json read by import.meta.glob', (t) => {
+test('the shipped gallery is a thin config over @starci/gallery: one vite.config.js, no page code, the package pinned like the other harness packages', (t) => {
   const root = starter(t, 'lite');
-  const main = read(root, 'gallery/src/main.js');
-  assert.match(main, /import\.meta\.glob\("\/pages\/\*\*\/\*\.png"/u);
-  assert.match(main, /"\/pages\/\*\*\/explain\.md"/u);
-  assert.match(main, /"\/pages\/\*\*\/links\.json"/u);
-  assert.match(main, /"\/flows\.json"/u);
-  assert.match(main, /T\.flowsTab/u, 'the flow map view');
-  assert.match(main, /from "\.\/explain\.js"/u);
-  assert.doesNotMatch(main, /\{\{/u, 'no template variable leaks into the app source');
-  assert.doesNotMatch(read(root, 'gallery/src/explain.js'), /\{\{/u);
-  assert.match(read(root, 'gallery/vite.config.js'), /\*\*\/\*\.png/u, 'the dev server does not watch the PNGs');
+  const config = read(root, 'gallery/vite.config.js');
+  assert.match(config, /import \{ defineGallery \} from "@starci\/gallery\/vite"/u);
+  assert.match(config, /app: "demo"/u);
+  assert.match(config, /locale: "vi"/u);
+  assert.match(config, /allowedHosts: \[\]/u);
+  assert.match(read(root, 'gallery/index.html'), /src="\/@starci-gallery\/main\.js"/u, "the entry is the package's");
+  for (const file of GALLERY_FILES) assert.doesNotMatch(read(root, `gallery/${file}`), /\{\{/u, `no template variable leaks into ${file}`);
+  assert.equal(fs.existsSync(at(root, 'gallery', 'src')), false, 'no app code per page');
+  const pin = (bundledPins()['@starci/gallery'] as { version: string }).version;
+  assert.equal(JSON.parse(read(root, 'gallery/package.json')).devDependencies['@starci/gallery'], pin);
 });
 
 test('no gallery at all is HFS_APP_GALLERY_MISSING and names the sync that writes it', (t) => {
@@ -104,10 +105,10 @@ test('no gallery at all is HFS_APP_GALLERY_MISSING and names the sync that write
 
 test('one missing managed file is named', (t) => {
   const root = starter(t, 'lite');
-  fs.rmSync(at(root, 'gallery', 'src', 'main.js'));
+  fs.rmSync(at(root, 'gallery', 'vite.config.js'));
   const [missing] = findings(root);
   assert.equal(missing?.code, 'HFS_APP_GALLERY_MISSING');
-  assert.match(missing?.message ?? '', /missing gallery\/src\/main\.js/u);
+  assert.match(missing?.message ?? '', /missing gallery\/vite\.config\.js/u);
 });
 
 test('a dev script off base + 50, without --strictPort or absent is HFS_APP_GALLERY_SCRIPT', (t) => {
@@ -258,7 +259,7 @@ for (const edition of ['lite', 'full'] as const) {
     const root = starter(t, edition);
     const out = (): void => {};
     const run = async (...args: string[]): Promise<number> => runSync([...args, '--cwd', root], { cwd: root, out, presets: bundledPresets() });
-    assert.match(read(root, 'gallery/vite.config.js'), /host: "127\.0\.0\.1"/u, 'the tunnel routes to 127.0.0.1, which an IPv6-only bind refuses');
+    assert.match(read(root, 'gallery/vite.config.js'), /127\.0\.0\.1/u, 'the config says why the bind is the IPv4 loopback, which defineGallery sets (packages/gallery vite.spec.ts)');
     assert.match(read(root, 'gallery/vite.config.js'), /allowedHosts: \[\]/u, 'no declared host, no extra host');
     assert.doesNotMatch(read(root, 'gallery/vite.config.js'), /\{\{/u);
     declareGalleryHost(root, 'demo-gallery-dev.example.org');
@@ -328,7 +329,7 @@ test('the gallery language is the default locale of the app: vi and en have a ta
   assert.equal(declaredDefaultLocale("defineI18n({ locales: LOCALES, defaultLocale: 'en' })"), 'en');
   assert.equal(declaredDefaultLocale('export const nothing = 1'), null);
   for (const locale of Object.keys(GALLERY_LABELS)) assert.deepEqual(Object.keys(GALLERY_LABELS[locale] ?? {}).sort(), Object.keys(GALLERY_LABELS['en'] ?? {}).sort(), `${locale} has every label`);
-  assert.notEqual(galleryTexts('vi', 'demo', 3050)['galleryLabels'], galleryTexts('en', 'demo', 3050)['galleryLabels']);
+  assert.notEqual(galleryTexts('vi', 'demo', 3050)['galleryTitle'], galleryTexts('en', 'demo', 3050)['galleryTitle']);
 });
 
 for (const edition of ['lite', 'full'] as const) {
@@ -339,10 +340,7 @@ for (const edition of ['lite', 'full'] as const) {
     // the scaffold default is vi
     assert.equal(read(root, 'gallery/index.html').includes('<html lang="vi">'), true);
     assert.match(read(root, 'gallery/index.html'), /<title>Th\u01b0 vi\u1ec7n \u1ea3nh demo<\/title>/u);
-    const viMain = read(root, 'gallery/src/main.js');
-    assert.match(viMain, /search: "T\u00ecm m\u00e0n h\u00ecnh"/u);
-    assert.match(viMain, /flowsTab: "B\u1ea3n \u0111\u1ed3 lu\u1ed3ng"/u);
-    assert.doesNotMatch(viMain, /Search screens|Flow map/u);
+    assert.match(read(root, 'gallery/vite.config.js'), /locale: "vi"/u, "the app words are the package's, chosen by this locale");
     assert.match(read(root, 'gallery/README.md'), /^# Th\u01b0 vi\u1ec7n \u1ea3nh demo$/mu);
     assert.match(read(root, 'gallery/README.md'), /http:\/\/localhost:\d+ \(c\u1ed5ng g\u1ed1c/u);
     assert.doesNotMatch(read(root, 'gallery/README.md'), /\{\w+\}|\{\{/u);
@@ -353,10 +351,7 @@ for (const edition of ['lite', 'full'] as const) {
     assert.equal(await run('--execute'), 0);
     assert.equal(read(root, 'gallery/index.html').includes('<html lang="en">'), true);
     assert.match(read(root, 'gallery/index.html'), /<title>demo gallery<\/title>/u);
-    const enMain = read(root, 'gallery/src/main.js');
-    assert.match(enMain, /search: "Search screens"/u);
-    assert.match(enMain, /flowsTab: "Flow map"/u);
-    assert.doesNotMatch(enMain, /T\u00ecm trang/u);
+    assert.match(read(root, 'gallery/vite.config.js'), /locale: "en"/u);
     assert.match(read(root, 'gallery/README.md'), /^# demo gallery$/mu);
     assert.equal(await run(), 0);
     // a locale without a table falls back to en
@@ -419,13 +414,15 @@ test('explain.md is read as front matter and regions: the three lines, bullets, 
   for (const bad of [[{ name: 'x' }], { x: 'a/b' }, { x: [3] }, 'x', null]) assert.equal(flowList(bad), null, JSON.stringify(bad));
 });
 
-test('the template explain.js is the same reader as the gate: both answer alike over the same texts', async () => {
-  const template = (await import(new URL('../templates/app/gallery/gallery/src/explain.js', import.meta.url).href)) as { parseExplain: typeof parseExplain; linkList: (json: unknown) => { to: string }[] | null; flowList: typeof flowList; SHOT_WIDTHS: string[] };
+// The reader of @starci/gallery (packages/gallery/src/explain.ts, built to dist) and the gate's reader answer alike over the same texts. Needs the package built (`npm run build` in packages/gallery).
+const GALLERY_DIST = new URL('../../gallery/dist/explain.js', import.meta.url);
+test('the gallery package reads explain.md, links and flows as the gate does: both answer alike over the same texts', { skip: !fs.existsSync(GALLERY_DIST) && 'packages/gallery is not built' }, async () => {
+  const pkg = (await import(GALLERY_DIST.href)) as { parseExplain: typeof parseExplain; linkList: (json: unknown) => { to: string }[]; flowList: (json: unknown) => { name: string; screens: string[] }[]; SHOT_WIDTHS: string[] };
   const texts = [EXPLAIN_OK, '## A\nVì sao: CHƯA RÕ\nGrammar: x', '## A\r\nVì sao: SAI\r\nGrammar: `X`\r\n## B\r\nVì sao: fine', '---\ntitle: "Quoted"\n---\n## A\nGrammar: `X`', '', 'no regions at all'];
-  for (const text of texts) assert.deepEqual(template.parseExplain(text), parseExplain(text), text.slice(0, 30));
-  assert.deepEqual(template.SHOT_WIDTHS.map((width) => `${width}.png`).sort(), [...SHOT_FILES].sort());
-  for (const json of [[{ to: 'a/b' }], { links: [{ to: 'a/b', x: 1 }] }, {}, [{ to: 1 }], null]) assert.deepEqual(template.linkList(json)?.map((link) => link.to) ?? null, linkTargets(json), JSON.stringify(json));
-  for (const json of [{ a: ['x/y'] }, [{ name: 'a', screens: ['x/y'] }], { a: 'x/y' }, [{ name: 'a' }], null]) assert.deepEqual(template.flowList(json), flowList(json), JSON.stringify(json));
+  for (const text of texts) assert.deepEqual(pkg.parseExplain(text), parseExplain(text), text.slice(0, 30));
+  assert.deepEqual(pkg.SHOT_WIDTHS.map((width) => `${width}.png`).sort(), [...SHOT_FILES].sort());
+  for (const json of [[{ to: 'a/b' }], { links: [{ to: 'a/b', x: 1 }] }, {}, [{ to: 1 }], null]) assert.deepEqual(pkg.linkList(json).map((link) => link.to), linkTargets(json) ?? [], JSON.stringify(json));
+  for (const json of [{ a: ['x/y'] }, [{ name: 'a', screens: ['x/y'] }], { a: 'x/y' }, [{ name: 'a' }], null]) assert.deepEqual(pkg.flowList(json), flowList(json) ?? [], JSON.stringify(json));
 });
 
 test('a screen folder with shots and no explain.md is HFS_APP_GALLERY_EXPLAIN_MISSING, in the work tree where the shots are', (t) => {

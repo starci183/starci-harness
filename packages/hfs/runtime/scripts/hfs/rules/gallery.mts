@@ -31,7 +31,7 @@ import { found, readJson, readText } from './read.mjs';
 import type { Parsed, Repo } from './rule-types.mjs';
 
 /** The files the gallery is made of, gallery-relative: the managed ones (slot app.gallery). */
-export const GALLERY_FILES = Object.freeze(['package.json', 'index.html', 'README.md', 'vite.config.js', 'src/main.js', 'src/explain.js', 'src/style.css']);
+export const GALLERY_FILES = Object.freeze(['package.json', 'index.html', 'README.md', 'vite.config.js']);
 const EXACT_VERSION = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/u;
 const posix = path.posix;
 

@@ -1,0 +1,89 @@
+{
+  "name": "@starci/gallery",
+  "version": "0.1.0",
+  "description": "The screenshot gallery of a StarCi app as one Vite config: the screens of gallery/pages with their explanations, the approved design frames of the canvas beside the real shots (side by side, a slider, shot only), each screen's status from design.json, its states, the flow map. Built with the StarCi Grammar.",
+  "keywords": [
+    "starci",
+    "gallery",
+    "screenshots",
+    "design",
+    "vite",
+    "grammar"
+  ],
+  "license": "MIT",
+  "author": "starci183",
+  "homepage": "https://github.com/starci183/starci-harness/tree/main/packages/gallery#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/starci183/starci-harness.git",
+    "directory": "packages/gallery"
+  },
+  "bugs": {
+    "url": "https://github.com/starci183/starci-harness/issues"
+  },
+  "private": false,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./vite": {
+      "types": "./dist/vite.d.ts",
+      "default": "./dist/vite.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.spec.*",
+    "LICENSE",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "sideEffects": [
+    "./dist/**/*.css"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "node -e \"require('node:fs').rmSync('dist', {recursive: true, force: true})\" && tsc -p tsconfig.build.json && node scripts/finish-build.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "test": "npm run typecheck && npm run lint && node --test \"src/**/*.spec.ts\"",
+    "prepack": "npm run build",
+    "prepublishOnly": "npm test && npm run build"
+  },
+  "dependencies": {
+    "@heroui/react": "3.2.6",
+    "@heroui/styles": "3.2.6",
+    "@starci/grammar": "0.45.0",
+    "@tailwindcss/postcss": "4.3.3",
+    "@xyflow/react": "12.11.6",
+    "react": "19.2.3",
+    "react-aria-components": "1.21.1",
+    "react-dom": "19.2.3",
+    "tailwindcss": "4.3.3"
+  },
+  "peerDependencies": {
+    "vite": ">=6"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/node": "22.20.4",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "eslint": "10.13.0",
+    "jiti": "2.7.0",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.72.0",
+    "vite": "6.3.5"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}

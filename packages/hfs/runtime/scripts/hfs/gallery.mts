@@ -4,7 +4,6 @@
 import { isPlainObject as plain } from '../../engine/plain-object.mjs';
 import { loadSlotManifest } from './slots.mjs';
 import { GALLERY_ROUTE } from './stack-local-config.mjs';
-import { CANON_INDENT, CANON_PRINT_WIDTH } from '../../../sync/canon-layout.mjs';
 
 /** The `ruleParams.gallery` block of the slot manifest. */
 export interface GalleryParams {
@@ -66,87 +65,40 @@ export function declaredGalleryHosts(doc: unknown): string[] {
 /** The JSON array literal of `server.allowedHosts` the managed vite.config.js carries: the declared gallery hosts, `[]` when none (Vite always admits localhost and addresses). */
 export const galleryAllowedHosts = (hosts: readonly string[]): string => JSON.stringify([...hosts]);
 
-/** The words the managed gallery shows. `title` and `readme` carry `{project}` and `{port}` placeholders the renderer fills; the other words carry `{n}`-style placeholders main.js fills. */
+/** The words the managed files carry: the document title and the README. The gallery app's own words (search box, tabs, status names) live in @starci/gallery, which reads the same locale from vite.config.js. */
 export interface GalleryLabels {
+  /** The document title, with `{project}`. */
   title: string;
-  search: string;
-  empty: string;
-  noPages: string;
-  onlyBugs: string;
-  summary: string;
-  explained: string;
-  noRegions: string;
-  unclearRegions: string;
-  problemMissing: string;
-  problemUnclear: string;
-  noImages: string;
-  meta: string;
-  screensTab: string;
-  flowsTab: string;
-  noFlows: string;
-  linksHeading: string;
-  openScreen: string;
+  /** The README body, with `{project}` and `{port}`. */
   readme: readonly string[];
 }
 
-/** The UI language of the gallery by locale; `en` is the fallback of every locale this table does not hold. The explain.md field names (`Vì sao`, `Luật`, `Grammar`) are the owner's and stay as written in both. */
+/** The language of the managed gallery files by locale; `en` is the fallback of every locale this table does not hold. The explain.md field names (`Vì sao`, `Luật`, `Grammar`) are the owner's and stay as written in both. */
 export const GALLERY_LABELS: Readonly<Record<string, GalleryLabels>> = Object.freeze({
   en: {
     title: '{project} gallery',
-    search: 'Search screens',
-    empty: 'No screens yet. Put the shots and explain.md in gallery/pages/<area>/<screen>/',
-    noPages: 'No screens.',
-    onlyBugs: 'only screens with bugs',
-    summary: '{shown} screens · {regions} regions explained · {badRegions} regions missing Why/Grammar or unclear · {hidden} screens hidden (no explain.md)',
-    explained: 'explained',
-    noRegions: 'BUG: no region yet',
-    unclearRegions: 'BUG: {n} unclear regions',
-    problemMissing: 'missing {field}',
-    problemUnclear: '{field} is unclear or wrong',
-    noImages: 'No shots in this mode.',
-    meta: 'route: {route} · area: {area}',
-    screensTab: 'Screens',
-    flowsTab: 'Flow map',
-    noFlows: 'No flow yet. Name flows in gallery/flows.json and mark hotspots in a screen links.json.',
-    linksHeading: 'Links between screens',
-    openScreen: 'Open {to}',
     readme: [
-      'One folder per screen: its shots at each width and the explanation of every region (PROJECT-GALLERY-1, PROJECT-GALLERY-2).',
+      'One folder per screen: its shots at each width and the explanation of every region (PROJECT-GALLERY-1, PROJECT-GALLERY-2). The gallery app is a thin config over @starci/gallery: vite.config.js is the whole of it.',
       '',
-      '- `pages/<area>/<screen>/` is one screen (one agent, one state). It holds only the shots `<width>.png` (1440, 1920 and 390), the explanation file explain.md and the optional links.json, nothing else. A state or an agent variant is its own folder; before and after comparisons belong in fix reports.',
+      '- `pages/<area>/<screen>/` is one screen (one agent, one state). It holds only the shots `<width>.png` (1440, 1920 and 390), the explanation file explain.md and the optional links.json, nothing else. A state or an agent variant is its own folder (`<screen>-empty`, `<screen>-loading`, `<screen>-error`); before and after comparisons belong in fix reports.',
       '- explain.md has a front matter (`title`, `route`, `area`) and one `## <region name>` per region, each with the lines `Vì sao:`, `Luật:` (a memory file name or a contexts anchor) and `Grammar:`. A region that cannot be explained with a law and a Grammar reference is a bug: fix it before reporting; CHƯA RÕ or SAI is a warning locally and an error in `starci app check --env prod`.',
       '- links.json lists hotspots of the screen, `{ "to": "<area>/<screen>", "x", "y", "w", "h" }` (fractions of the shot); flows.json names ordered screen ids, `{ "<flow name>": ["<area>/<screen>"] }`. The Flow map view draws them.',
-      '- `npm install && npm run dev` serves it on http://localhost:{port} (the app base port + 50); `starci app stack up --env dev` starts it with the app. New files appear on reload. The gallery shows only the screens that have an explain.md; `starci app check` fails on the others.',
-      '- The PNGs are git-ignored; explain.md, links.json, flows.json and the gallery app are source, the app managed by `starci app sync`.',
+      '- The design canvas (the canvas folder of .starcistacks, PROJECT-GALLERY-6) gives each screen its approved frame beside the real shot and its status dot (design.json): matches green, built but differs amber, stale red, not built grey.',
+      '- `npm install && npm run dev` serves it on http://localhost:{port} (the app base port + 50); `starci app stack up --env dev` starts it with the app. New files appear on reload. The gallery shows only the screens that have an explain.md or a design entry; `starci app check` fails on the others.',
+      '- The PNGs are git-ignored; explain.md, links.json, flows.json and vite.config.js are source, the config managed by `starci app sync`.',
     ],
   },
   vi: {
     title: 'Thư viện ảnh {project}',
-    search: 'Tìm màn hình',
-    empty: 'Chưa có màn hình nào. Đặt ảnh và explain.md vào gallery/pages/<area>/<screen>/',
-    noPages: 'Không có màn hình.',
-    onlyBugs: 'chỉ màn hình lỗi',
-    summary: '{shown} màn hình · {regions} vùng đã ghi · {badRegions} vùng thiếu Vì sao/Grammar hoặc chưa rõ · {hidden} màn hình bị ẩn (thiếu explain.md)',
-    explained: 'đã giải thích',
-    noRegions: 'LỖI: chưa có vùng nào',
-    unclearRegions: 'LỖI: {n} vùng chưa rõ',
-    problemMissing: 'thiếu {field}',
-    problemUnclear: '{field} chưa rõ hoặc sai',
-    noImages: 'Không có ảnh ở chế độ này.',
-    meta: 'route: {route} · khu: {area}',
-    screensTab: 'Màn hình',
-    flowsTab: 'Bản đồ luồng',
-    noFlows: 'Chưa có luồng. Đặt tên luồng trong gallery/flows.json và đánh dấu vùng bấm trong links.json của màn hình.',
-    linksHeading: 'Liên kết giữa các màn hình',
-    openScreen: 'Mở {to}',
     readme: [
-      'Mỗi màn hình một thư mục: ảnh ở từng độ rộng và lời giải thích của mọi vùng (PROJECT-GALLERY-1, PROJECT-GALLERY-2).',
+      'Mỗi màn hình một thư mục: ảnh ở từng độ rộng và lời giải thích của mọi vùng (PROJECT-GALLERY-1, PROJECT-GALLERY-2). Ứng dụng thư viện là một cấu hình mỏng trên @starci/gallery: vite.config.js là toàn bộ.',
       '',
-      '- `pages/<area>/<screen>/` là một màn hình (một agent, một trạng thái). Thư mục chỉ chứa các ảnh `<width>.png` (1440, 1920 và 390), tệp giải thích explain.md và links.json tùy chọn, không gì khác. Bản trạng thái hoặc bản của agent khác là thư mục riêng; so sánh trước/sau nằm trong báo cáo sửa.',
+      '- `pages/<area>/<screen>/` là một màn hình (một agent, một trạng thái). Thư mục chỉ chứa các ảnh `<width>.png` (1440, 1920 và 390), tệp giải thích explain.md và links.json tùy chọn, không gì khác. Bản trạng thái hoặc bản của agent khác là thư mục riêng (`<screen>-empty`, `<screen>-loading`, `<screen>-error`); so sánh trước/sau nằm trong báo cáo sửa.',
       '- explain.md có front matter (`title`, `route`, `area`) và mỗi vùng một mục `## <tên vùng>` với các dòng `Vì sao:`, `Luật:` (tên tệp memory hoặc anchor contexts) và `Grammar:`. Vùng không giải thích được bằng một luật và một tham chiếu Grammar là lỗi: sửa trước khi báo cáo; CHƯA RÕ hoặc SAI là cảnh báo khi chạy local và là lỗi ở `starci app check --env prod`.',
       '- links.json liệt kê các vùng bấm của màn hình, `{ "to": "<area>/<screen>", "x", "y", "w", "h" }` (tỉ lệ của ảnh); flows.json đặt tên các luồng gồm mã màn hình có thứ tự, `{ "<tên luồng>": ["<area>/<screen>"] }`. Chế độ Bản đồ luồng vẽ chúng.',
-      '- `npm install && npm run dev` chạy thư viện tại http://localhost:{port} (cổng gốc của app + 50); `starci app stack up --env dev` khởi động cùng app. Tệp mới hiện sau khi tải lại. Thư viện chỉ hiện màn hình có explain.md; `starci app check` fail ở các màn hình còn lại.',
-      '- Các tệp PNG bị git bỏ qua; explain.md, links.json, flows.json và ứng dụng thư viện là mã nguồn, ứng dụng do `starci app sync` quản lý.',
+      '- Canvas thiết kế (thư mục canvas của .starcistacks, PROJECT-GALLERY-6) cho mỗi màn khung đã duyệt cạnh ảnh thật và chấm trạng thái (design.json): khớp xanh lá, đã code còn lệch vàng, ảnh cũ đỏ, chưa code xám.',
+      '- `npm install && npm run dev` chạy thư viện tại http://localhost:{port} (cổng gốc của app + 50); `starci app stack up --env dev` khởi động cùng app. Tệp mới hiện sau khi tải lại. Thư viện chỉ hiện màn hình có explain.md hoặc có mục trong design; `starci app check` fail ở các màn hình còn lại.',
+      '- Các tệp PNG bị git bỏ qua; explain.md, links.json, flows.json và vite.config.js là mã nguồn, cấu hình do `starci app sync` quản lý.',
     ],
   },
 });
@@ -157,25 +109,15 @@ export function galleryLocale(declared: string | null | undefined): string {
   return Object.hasOwn(GALLERY_LABELS, primary) ? primary : 'en';
 }
 
-/** One label entry as Prettier prints it: `key: "value",` on one line while it fits the canon print width, else the value alone on the next line. */
-const labelLine = (key: string, value: string): string => {
-  const line = `${CANON_INDENT}${key}: ${JSON.stringify(value)},`;
-  return line.length <= CANON_PRINT_WIDTH ? `${line}\n` : `${CANON_INDENT}${key}:\n${CANON_INDENT}${CANON_INDENT}${JSON.stringify(value)},\n`;
-};
-
-/** The label table as the object literal the canon Prettier config prints: unquoted keys, double-quoted strings, 4 spaces, a trailing comma (a managed file is rendered format-clean). */
-const labelsLiteral = (words: Record<string, string>): string => `{\n${Object.entries(words).map(([key, value]) => labelLine(key, value)).join('')}}`;
-
-/** The managed gallery's template variables for a default locale: the document language, the JSON label table main.js reads, the title and the README body. */
+/** The managed gallery's template variables for a default locale: the language (also the `locale` of vite.config.js), the document title and the README body. */
 export function galleryTexts(declared: string | null | undefined, project: string, port: number | string): Record<string, string> {
   const lang = galleryLocale(declared);
   const labels = GALLERY_LABELS[lang] as GalleryLabels;
   const fill = (text: string): string => text.replaceAll('{project}', project).replaceAll('{port}', String(port));
-  const { readme, title, ...words } = labels;
+  const { readme, title } = labels;
   return {
     galleryLang: lang,
     galleryTitle: fill(title),
-    galleryLabels: labelsLiteral(words),
     galleryReadme: readme.map(fill).join('\n'),
   };
 }
