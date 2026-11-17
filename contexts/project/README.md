@@ -113,6 +113,7 @@ rule 10).
 | change UI | [project/gallery.md](gallery.md) PROJECT-GALLERY-7 (the approved canvas page comes first) → [contexts/ui](../ui/README.md) and the app's grammar ([grammars](../grammars/README.md)) → the brand record ([work.md](work.md)) → [code/fe](../code/fe/README.md) → [lint.md](lint.md) |
 | write or change the product's Work | [work.md](work.md) → the concept catalog `concepts/README.md` and the concepts it lists |
 | run, stand up or deploy an environment | [stacks.md](stacks.md) → the edition file ([lite.md](lite.md) or [full.md](full.md)) |
+| keep an image, a video or a prompt of the app; run its own MinIO | [statics.md](statics.md) |
 | add a gate or a rule | [lint.md](lint.md) PROJECT-LINT-1 → [packages/README.md](../../packages/README.md) or [policy/](../../policy/) |
 
 ## Files
@@ -130,6 +131,7 @@ rule 10).
 | [brand.md](brand.md) | the brand sheet `.starcistacks/brand/` (name, colour token names, voice, the illustration concept and its versioned `basePrompt`, reference images), scaffolded once and edited by the app; every image prompt is basePrompt + subject and every design or image brief reads the folder first (PROJECT-BRAND-1 to 3) |
 | [cicd.md](cicd.md) | the delivery pipeline every app's `.github/` gets (proposed): triggers, checks, one attested image build, the automatic Swarm deploy with migrations, verification and rollback, records, gates |
 | [stacks.md](stacks.md) | how an app runs: the `.starcistacks/` shape against project values, the dev and vps environments, ingress, sealed custody, the operations with their safety rules, local-run rules |
+| [statics.md](statics.md) | the repo-owned media of an app: the `statics/` folder and its keys, the storage image and the condition under which every project ships its own MinIO, serving, production |
 | [work.md](work.md) | the `.starciwork` tree and the product's concepts, who writes what, the lanes of the brand and the environments |
 | [lite.md](lite.md) | only what the lite edition does differently (backing services, patterns, infrastructure, deploy targets, CI, Work), each linked to its owner |
 | [full.md](full.md) | only what the full edition does differently, in the same sections, each linked to its owner |

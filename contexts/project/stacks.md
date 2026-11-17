@@ -249,7 +249,7 @@ role, dev-only custody to generate, setup and seed commands, native processes, r
 runs until `--execute`; `doctor`, `status`, `logs` and `verify` are read-only. **`up` is the one command**: it checks the host table, opens the dev
 custody, runs the setup (install, codegen), starts the compose services under the heavy-command governor (a lite app's dev compose runs its database, Mailpit, the `mail` sink the sign-in mails reach on loopback, its web UI an origin, and
 MinIO, the `storage` object store whose root credentials are the dev `storage` member's keys and whose console is an origin; a full app's runs
-`storage` too) and waits for their health, gives the
+`storage` too; the store is built from the managed `.starcistacks/images/storage/Dockerfile` and loads the repo-owned `statics/` into its bucket, [statics.md](statics.md) PROJECT-STATICS-2) with `docker compose up --build` (a changed build input rebuilds, cached otherwise) and waits for their health, gives the
 environment its own database role and the app role its own password, migrates with a receipt, applies the seed levels with their receipts (PROJECT-STACKS-12), runs the declared seed commands once per set of volumes (a receipt holds the volumes' names and creation times, so a wiped stack seeds again; a command declared `mode: always`, a migration runner idempotent by its own ledger such as TypeORM's, runs on every up, so a new migration reaches an existing stack, and runs right after `db migrate`, before the seed levels and the loader of the pinned seed-standards, whose doors write into the tables it creates), starts the native
 processes, waits for readiness and prints the origins. An agent never runs Docker by hand ([harness/rules.md](../harness/rules.md) hard rule 8);
 the runbook of a docker-compose environment names `starci app stack up --env <env>` and carries no docker command (R373). `down` ends the processes
@@ -863,15 +863,15 @@ environments:
 
 An environment that publishes nothing (no `tunnel`, no process holding a public `https` origin) keeps its loopback links: the rule starts with the first
 public origin, because until then nothing outside the machine follows a link. Production is not judged here: its `STORAGE_ENDPOINT` is already a public
-host (PROJECT-STACKS-4). The sandbox sample images a provider catalogue ships (a placeholder host in a seed) are stored as bucket and key like any
+host (PROJECT-STACKS-4). The repo-owned statics (`statics/`, [statics.md](statics.md)) are the other public thing in the store: the storage image makes the `statics` prefix of the bucket, and nothing else of it, publicly readable (`mc anonymous set download <bucket>/<prefix>`), so a published object needs no presigned link and the rest of the bucket stays private. The front end reads their base from `NEXT_PUBLIC_STATICS_URL` (the gallery `VITE_STATICS_URL`), `<public storage origin>/<bucket>/<prefix>`; with `local.tunnel` declared a process that sets it names an `https://` route host of the store (`STORAGE_PUBLIC_LINK_INTERNAL`, R428). The sandbox sample images a provider catalogue ships (a placeholder host in a seed) are stored as bucket and key like any
 file and served through the same public base; a project that wants a provider to fetch them seeds the files into the bucket.
 
-Enforced by: R428 (`stacks-storage-public`: `STORAGE_PUBLIC_ROUTE_MISSING`, `STORAGE_PUBLIC_ROUTE_CONSOLE`, `STORAGE_PUBLIC_LINK_INTERNAL`), the shape of
+Enforced by: R428 (`stacks-storage-public`: `STORAGE_PUBLIC_ROUTE_MISSING`, `STORAGE_PUBLIC_ROUTE_CONSOLE`, `STORAGE_PUBLIC_LINK_INTERNAL`, also for the statics base), R440 for the store itself ([statics.md](statics.md)), the shape of
 `local.tunnel` and the service fields by R372 (`STACKS_LOCAL_CONFIG_INVALID`), the verbs by `packages/hfs/src/stacks-storage-public.spec.mts`; the stored value and the
 read-time link are held by review and by the app's own specs (no rule reads code for a host).
 
 ## Read with
 
-[lite.md](lite.md), [full.md](full.md); slots `app.starcistacks` and `app.plaintext-env` in
+[lite.md](lite.md), [full.md](full.md), [statics.md](statics.md); slots `app.starcistacks` and `app.plaintext-env` in
 [hfs/slots.yaml](../hfs/slots.yaml); R06, R10, R250 to R253, R266 to R268, R271, R275 to R277, R294, R296 to R299,
-R301, R372 to R375, R400, R426 to R428 in [hfs/rules.yaml](../hfs/rules.yaml).
+R301, R372 to R375, R400, R426 to R428, R438 to R440 in [hfs/rules.yaml](../hfs/rules.yaml).
