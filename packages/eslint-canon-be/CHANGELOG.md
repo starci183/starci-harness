@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.27.2 - 2026-11-18
+
+- Changed (`lib/nivoos-profile.ts`): the nivoos authoring profile no longer applies `no-non-ascii-source` to a declared package (Vietnamese in literals, comments and identifiers); the literal-only narrowing inside the rule is removed and the rule is listed in `NIVOOS_RELAXED` with its reason. An undeclared package keeps the whole rule.
+
 ## 3.27.1 - 2026-11-18
 
 - Added (`lib/nivoos-profile.ts`): the lint profile of a declared nivoos business package (slot `app.nivoos-package`, `lintProfile: nivoos`, PROJECT-BUSINESS-1): `no-non-ascii-source` allows Vietnamese letters inside string and template literals (comments, identifiers and emoji stay refused); `no-default-export` allows the default export of `src/<name>.package.ts`, which the SDK loads; `explicit-export-surface`, `require-public-member-jsdoc`, `job-shape` and `throw-domain-error` do not apply to the package source (nothing imports it, the SDK interface owns its members, `.step.ts` is the SDK file kind, an SDK node fails with a coded `Error`). Every other rule, `schema-bounded` included, still applies.

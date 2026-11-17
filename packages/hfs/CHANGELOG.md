@@ -1,5 +1,11 @@
 # Changelog
 
+## 6.13.36 - 2026-11-18
+
+- Added (`knowledge/hfs/design-truths.yaml`, owner-approved 2026-11-18): the audit exceptions of PROJECT-LINT-5 are a design truth, `.starcistacks/security/audit-exceptions.yaml` with up to ten entries (cite PROJECT-LINT-5); an owner-approved exception the audit judge accepts is no longer `HFS_BYPASS_MARKER`, an eleventh entry still is. The pin digest is updated.
+- Changed (`sync/index.mts`, PROJECT-BUSINESS-1): a declared nivoos package is no library package: `be/jest.config.js`, `codecov.yml` and `sonar-project.properties` no longer list it and `package.json` gains no `build:modules` or `dev:be` watch entry for it; its source is still linted. The managed `.prettierignore` lists each declared package's seed folder (`packages/<name>/<out>/`, `out` defaults to `seed`), so `HFS_FORMAT` never reformats what `nivoos package build` writes.
+- Changed (`knowledge/hfs/canon-pins.yaml`): @starci/eslint-canon-be 3.27.2. The `@starci/hfs` self-pin is 6.13.36.
+
 ## 6.13.35 - 2026-11-18
 
 - Fixed (`cache/fingerprint.mts`): an installed `@starci` package that is a workspace member of the app itself (a lock link to a folder inside the repository that the lockfile records as a package) is portable whether it is private or meant to publish, keyed by its folder and version; a link outside the repository still makes the run unportable (`HFS_CHECK_CACHE_UNPORTABLE`). nivoos-lite's `@starci/nivoos-sdk`, `@starci/nivoos-cli` and `@starci/nivoos-provider-templates` push again.
