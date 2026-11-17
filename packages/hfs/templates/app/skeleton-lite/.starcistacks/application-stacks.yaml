@@ -33,6 +33,14 @@ components:
     compose: infra/swarm/stack.yaml
     purpose: The app's own PostgreSQL, the official postgres image plus pgvector built from .starcistacks/images/db/Dockerfile, migrated by starci app db migrate.
     required: true
+  storage:
+    role: service
+    stateful: true
+    volumes: [storage-data]
+    image: "{{project}}/storage:v0.0.0@sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    compose: infra/swarm/stack.yaml
+    purpose: The app's own MinIO, built from .starcistacks/images/storage/Dockerfile; its entrypoint loads statics/ into the bucket through the S3 API and never deletes (PROJECT-STATICS-2).
+    required: true
   ingress:
     role: ingress
     stateful: true
@@ -126,6 +134,7 @@ environments:
             NEXT_PUBLIC_SITE_URL: "http://localhost:${port.web}"
             NEXT_PUBLIC_API_URL: "http://localhost:${port.api}"
             NEXT_PUBLIC_GRAPHQL_URL: "http://localhost:${port.api}/graphql"
+            NEXT_PUBLIC_STATICS_URL: "http://localhost:${port.storage}/{{project}}-dev/statics"
           health: {url: "http://localhost:${port.web}/health/live"}
       ready:
         - {name: storage-live, url: "http://localhost:${port.storage}/minio/health/live"}
@@ -149,16 +158,20 @@ environments:
       api: {replicas: 1, port: 3001}
       web: {replicas: 1, port: 3000}
       db: {replicas: 1, port: 5432}
+      storage: {replicas: 1, port: 9000}
       ingress: {replicas: 1, port: 443, httpPort: 80}
     runbook: README.md
     ingress:
       component: ingress
-      hosts: ["{{project}}.example.invalid", "api.{{project}}.example.invalid"]
+      hosts: ["{{project}}.example.invalid", "api.{{project}}.example.invalid", "storage.{{project}}.example.invalid"]
     dns:
       - host: "{{project}}.example.invalid"
         owner: Production operator
         receipt: .starcistacks/production/infra/swarm/owner-actions.md#dns
       - host: "api.{{project}}.example.invalid"
+        owner: Production operator
+        receipt: .starcistacks/production/infra/swarm/owner-actions.md#dns
+      - host: "storage.{{project}}.example.invalid"
         owner: Production operator
         receipt: .starcistacks/production/infra/swarm/owner-actions.md#dns
     tls:
@@ -172,6 +185,11 @@ environments:
     backup:
       - component: ingress
         target: Owner-provisioned encrypted off-host storage for both ingress volumes
+        retention: Thirty daily snapshots
+        owner: Production operator
+        restoreProof: .starcistacks/production/infra/swarm/recovery/restore-proof.md
+      - component: storage
+        target: Owner-provisioned encrypted off-host storage for the storage-data volume (objects the app uploaded; the statics are rebuilt from the image)
         retention: Thirty daily snapshots
         owner: Production operator
         restoreProof: .starcistacks/production/infra/swarm/recovery/restore-proof.md
@@ -232,6 +250,8 @@ environments:
           app: api
         db:
           app: db
+        storage:
+          app: storage
         web:
           app: web
           # Public browser configuration; replace these placeholders before deployment.
@@ -239,8 +259,10 @@ environments:
             values:
               NEXT_PUBLIC_SITE_URL: "https://{{project}}.example.invalid"
               NEXT_PUBLIC_API_URL: "https://api.{{project}}.example.invalid"
+              NEXT_PUBLIC_STATICS_URL: "https://storage.{{project}}.example.invalid/{{project}}-production/statics"
       volumes:
         - {{project}}-production-db-data
+        - {{project}}-production-storage-data
         - {{project}}-production-ingress-data
         - {{project}}-production-ingress-config-data
       secrets:
@@ -257,6 +279,11 @@ environments:
             filePointers: true
             from:
               - member: db-password
+          - service: storage
+            filePointers: true
+            from:
+              - member: storage-access-key-id
+              - member: storage-secret-access-key
       # Release tasks: an idempotent write the release owes the data (a catalogue sync, a seed upsert) is declared under tasks and listed in postDeploy.
       # A deploy runs postDeploy after the stack converged and before verify, which stays read-only. Uncomment and name the real command:
       # tasks:

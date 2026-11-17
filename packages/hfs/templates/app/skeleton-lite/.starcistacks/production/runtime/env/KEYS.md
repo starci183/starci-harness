@@ -18,7 +18,7 @@ This inventory declares names, consumers and mounted file paths. Scaffolding gen
 | `AUTH_JWT_KEY_ID` | API signing key id, published in the JWKS |
 | `AUTH_COOKIE_DOMAIN` | API cookie `Domain` (a bare domain such as `example.com`, no scheme or port); optional while the web and the API share one host, required when they are served on different hosts, because a host-only refresh cookie never reaches the web server's forwarded `Cookie` header |
 | `AUTH_JWT_PRIVATE_KEY` | API Ed25519 (EdDSA) signing key; reads `AUTH_JWT_PRIVATE_KEY_FILE` at `/run/secrets/auth-jwt-private-key` |
-| `STORAGE_ENDPOINT` | API S3-compatible storage endpoint |
+| `STORAGE_ENDPOINT` | API storage endpoint: the public host of the app's own `storage` service (the ingress routes it to the S3 port, never the console) |
 | `STORAGE_REGION` | API storage signing region |
 | `STORAGE_BUCKET` | API storage bucket |
 | `STORAGE_ACCESS_KEY_ID` | API storage credential; reads `STORAGE_ACCESS_KEY_ID_FILE` at `/run/secrets/storage-access-key-id` |
@@ -31,5 +31,7 @@ This inventory declares names, consumers and mounted file paths. Scaffolding gen
 | `NEXT_PUBLIC_SITE_URL` | Front-end site URL |
 | `NEXT_PUBLIC_API_URL` | Front-end auth doors of the API |
 | `NEXT_PUBLIC_GRAPHQL_URL` | Front-end GraphQL transport |
+| `NEXT_PUBLIC_STATICS_URL` | Front-end public base of the repo-owned statics: `https://storage.<host>/<bucket>/statics` (the `storage` service built from `.starcistacks/images/storage/Dockerfile`, PROJECT-STATICS-5) |
+| `STATICS_BUCKET`, `STATICS_PREFIX`, `STATICS_PUBLIC` | The `storage` service: the bucket, the prefix its entrypoint loads `statics/` into, and whether that prefix alone is publicly readable (`download` or `none`) |
 
 Public front-end configuration is supplied at build time and stays outside sealed custody. Set real values in the six `.starcistacks/production/secrets/*.enc` members at the declared paths; their versioned external secrets are `{{project}}-production-<member>-v1`. The database deploy workflow reads `DATABASE_URL` from the sealed `database-url` member of its environment; it never enters an API container.

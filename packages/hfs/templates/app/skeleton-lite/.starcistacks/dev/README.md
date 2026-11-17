@@ -35,7 +35,10 @@ two apps run side by side on one machine.
 
 **Storage.** The api reaches the `storage` service on its S3 port (`STORAGE_ENDPOINT`) and creates its bucket (`STORAGE_BUCKET`) on its first
 readiness probe, so `/health/ready` answers only once the database and the bucket answer; the console is the `storage` origin `up` prints.
-The volume `storage-data` is rebuildable development data.
+The service is built from the managed `.starcistacks/images/storage/Dockerfile` (the pinned MinIO, an `mc` client and the repo-owned `statics/` folder): on a fresh volume its entrypoint
+loads `statics/` into the bucket through the S3 API, and `up` rebuilds the image (cached when nothing changed), so a changed static is mirrored again, adding and overwriting only: an
+object the app uploaded stays. The `statics/` prefix of the bucket, and nothing else, is publicly readable; the front end builds its URLs from
+`NEXT_PUBLIC_STATICS_URL` and a staticsKey (PROJECT-STATICS-4). The volume `storage-data` is rebuildable development data.
 
 The database volume `db-data` is rebuildable development data: `starci app db migrate` recreates its schema from `db/bootstrap.sql` and
 `db/migrations` (an absent `db/migrations` is an empty chain). A seed command that runs a migration runner with its own ledger (TypeORM)

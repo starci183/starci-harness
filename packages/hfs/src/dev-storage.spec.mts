@@ -1,5 +1,5 @@
-// The dev object store of the starters and the compose ports of the base port (R389, PROJECT-STACKS-10): both editions' dev compose run the StarCi
-// MinIO as the `storage` service, pinned once in contexts/stack/pins.yaml and held equal to the harness images/sources.json; every host port of the
+// The dev object store of the starters and the compose ports of the base port (R389, PROJECT-STACKS-10): both editions' dev compose build the `storage` service from
+// the managed storage image (PROJECT-STATICS-2), which starts from the StarCi MinIO pinned once in contexts/stack/pins.yaml and held equal to the harness images/sources.json; every host port of the
 // rendered starters follows the role table; and `starci app sync` brings an existing app to that shape (sync/dev-services.mts), touching nothing else.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -10,7 +10,7 @@ import { parseYaml } from '../runtime/engine/yaml.mjs';
 import { basePortProblems, literalPublishes } from '../runtime/scripts/hfs/stack-base-port.mjs';
 import { normalizeLocal } from '../runtime/scripts/hfs/stack-local-config.mjs';
 import { scaffoldPorts } from '../scaffold/app.mjs';
-import { devServicesUpgrade, STORAGE_IMAGE } from '../sync/dev-services.mjs';
+import { composeWithStorageImage, devServicesUpgrade, STORAGE_IMAGE } from '../sync/dev-services.mjs';
 import { upgradeEdits } from '../sync/index.mjs';
 
 const REPOSITORY = path.resolve(import.meta.dirname, '..', '..', '..');
@@ -26,12 +26,14 @@ const starter = (skeleton: string, compose: string, base = 3000) => {
 };
 const STARTERS = [['lite', 'skeleton-lite', 'compose.yaml'], ['full', 'skeleton', 'stack.yaml']] as const;
 
-test('one MinIO reference: the pin is the published StarCi build of images/sources.json, and both starters and the sync upgrade run it', () => {
+test('one MinIO reference: the pin is the published StarCi build of images/sources.json, and the managed storage image starts from it', () => {
   const reference = `ghcr.io/starci183/minio:${String(pins.minio.version)}`;
   assert.equal(reference, sources.minio.published.reference);
   assert.match(reference, /@sha256:[0-9a-f]{64}$/u);
   assert.equal(STORAGE_IMAGE, reference);
-  for (const [edition, skeleton, compose] of STARTERS) assert.equal(starter(skeleton, compose).compose.services.storage.image, reference, edition);
+  const dockerfile = fs.readFileSync(path.join(TEMPLATES, 'storage-image', 'starcistacks', 'images', 'storage', 'Dockerfile'), 'utf8');
+  assert.match(dockerfile, /^FROM \{\{minioImage\}\}$/mu);
+  for (const [edition, skeleton, compose] of STARTERS) assert.equal(starter(skeleton, compose).compose.services.storage.image, `demo-storage:local`, edition);
 });
 
 for (const [edition, skeleton, compose] of STARTERS) {
@@ -39,9 +41,10 @@ for (const [edition, skeleton, compose] of STARTERS) {
     const { stacks, compose: file } = starter(skeleton, compose);
     const storage = file.services.storage;
     assert.deepEqual(storage.ports, ['127.0.0.1:${STACK_PORT_STORAGE}:9000', '127.0.0.1:${STACK_PORT_STORAGE_CONSOLE}:9001']);
-    assert.deepEqual(storage.environment, { MINIO_ROOT_USER_FILE: '/run/secrets/STORAGE_ACCESS_KEY_ID', MINIO_ROOT_PASSWORD_FILE: '/run/secrets/STORAGE_SECRET_ACCESS_KEY' });
+    assert.deepEqual(storage.environment, { MINIO_ROOT_USER_FILE: '/run/secrets/STORAGE_ACCESS_KEY_ID', MINIO_ROOT_PASSWORD_FILE: '/run/secrets/STORAGE_SECRET_ACCESS_KEY', STATICS_BUCKET: 'demo-dev', STATICS_PREFIX: 'statics', STATICS_PUBLIC: 'download' });
     assert.ok(storage.volumes.includes('${STACK_GRANT_STORAGE}:/run/secrets:ro'));
-    assert.equal(storage.build, undefined);
+    assert.deepEqual(storage.build, { context: '../../../..', dockerfile: '.starcistacks/images/storage/Dockerfile' });
+    assert.match(JSON.stringify(storage.healthcheck.test), /\/tmp\/statics-ready/u);
     assert.ok(Object.hasOwn(file.volumes, 'storage-data'));
     const { config, problems } = normalizeLocal(stacks.environments.dev.local, { project: 'demo', env: 'dev' });
     assert.deepEqual(problems, []);
@@ -162,7 +165,9 @@ test('sync upgrades an old app: db, mail and mailui move to their slots and the 
   assert.ok(text.includes('      # The project base port.\n') && text.endsWith('  production:\n    runtime: docker-swarm\n'), 'comments and the other environments stay');
   const compose = parseYaml(fs.readFileSync(path.join(root, '.starcistacks', 'dev', 'infra', 'compose', 'compose.yaml'), 'utf8'));
   assert.deepEqual(Object.keys(compose.services), ['db', 'mail', 'storage']);
-  assert.equal(compose.services.storage.image, STORAGE_IMAGE);
+  assert.equal(compose.services.storage.image, 'demo-storage:local');
+  assert.deepEqual(compose.services.storage.build, { context: '../../../..', dockerfile: '.starcistacks/images/storage/Dockerfile' });
+  assert.equal(compose.services.storage.environment.STATICS_BUCKET, 'demo-dev');
   assert.deepEqual(compose.services.mail, { image: 'mailpit', ports: ['127.0.0.1:${STACK_PORT_MAIL}:1025'] }, 'the mail service already publishes from its port name');
   assert.deepEqual(compose.volumes, { 'db-data': {}, 'storage-data': {} });
   assert.deepEqual(devServicesUpgrade(root), { edits: [], notices: [] });
@@ -190,4 +195,48 @@ test('the sync dry run chains the sides edit and the dev services edit of one de
   assert.match(stack[0]?.content ?? '', /^sides: \{be: true, fe: true, packages: false\}$/mu);
   assert.match(stack[0]?.content ?? '', /^ {8}storage: 3493$/mu);
   assert.match(stack[0]?.reason ?? '', /sides field.*; the dev ports follow the role table/u);
+});
+
+// An app whose dev compose runs the pinned MinIO as it is: the sync converges it to the storage image when it needs storage (PROJECT-STATICS-2).
+const STOCK_STORAGE = `name: demo-dev
+services:
+  storage:
+    image: ${STORAGE_IMAGE}
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER_FILE: /run/secrets/STORAGE_ACCESS_KEY_ID
+      MINIO_ROOT_PASSWORD_FILE: /run/secrets/STORAGE_SECRET_ACCESS_KEY
+    ports:
+      - "127.0.0.1:\${STACK_PORT_STORAGE}:9000"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9000/minio/health/live"]
+      interval: 5s
+    restart: unless-stopped
+volumes:
+  storage-data: {}
+`;
+
+test('composeWithStorageImage turns the stock storage service into the build of the storage image, keeps every other line and is idempotent', () => {
+  const converged = composeWithStorageImage(STOCK_STORAGE, 'demo', 'demo-dev') as string;
+  const storage = parseYaml(converged).services.storage;
+  assert.deepEqual(storage.build, { context: '../../../..', dockerfile: '.starcistacks/images/storage/Dockerfile' });
+  assert.equal(storage.image, 'demo-storage:local');
+  assert.equal(storage.command, undefined);
+  assert.deepEqual(storage.environment, { MINIO_ROOT_USER_FILE: '/run/secrets/STORAGE_ACCESS_KEY_ID', MINIO_ROOT_PASSWORD_FILE: '/run/secrets/STORAGE_SECRET_ACCESS_KEY', STATICS_BUCKET: 'demo-dev', STATICS_PREFIX: 'statics', STATICS_PUBLIC: 'download' });
+  assert.match(JSON.stringify(storage.healthcheck.test), /\/tmp\/statics-ready/u);
+  assert.equal(storage.restart, 'unless-stopped');
+  assert.equal(composeWithStorageImage(converged, 'demo', 'demo-dev'), null, 'a service that builds is left alone');
+  assert.equal(composeWithStorageImage('services:\n  db:\n    image: postgres\n', 'demo', 'demo-dev'), null, 'no storage service, nothing to converge');
+  assert.equal(composeWithStorageImage(STOCK_STORAGE.replace('ghcr.io/starci183/minio', 'ghcr.io/other/store'), 'demo', 'demo-dev'), null, 'only a MinIO image is converged');
+});
+
+test('the sync upgrade converges the compose storage service of an app that has statics/, and leaves one that needs no storage', (t) => {
+  const withStatics = oldApp(t, OLD_STACKS.replace('        storage: 3493\n', ''), STOCK_STORAGE);
+  fs.mkdirSync(path.join(withStatics, 'statics', 'art'), { recursive: true });
+  fs.writeFileSync(path.join(withStatics, 'statics', 'art', 'a.png'), 'x');
+  const edits = devServicesUpgrade(withStatics).edits.filter((edit) => edit.path.endsWith('compose.yaml'));
+  assert.equal(edits.length, 1);
+  assert.equal(parseYaml(edits[0]?.content ?? '').services.storage.image, 'demo-storage:local');
+  const nothing = oldApp(t, OLD_STACKS.replaceAll(/ {8}- \{member: storage.*\n/gu, ''), STOCK_STORAGE);
+  assert.deepEqual(devServicesUpgrade(nothing).edits.filter((edit) => edit.path.endsWith('compose.yaml')), []);
 });

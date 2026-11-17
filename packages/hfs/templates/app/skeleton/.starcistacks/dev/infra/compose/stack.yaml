@@ -1,6 +1,6 @@
 # Rendered development model. App images and owner infrastructure must be provisioned before use.
 # Host ports come from environments.dev.local.ports through STACK_PORT_<NAME>, which derive from the project base port (R389, PROJECT-STACKS-10);
-# every port publishes on loopback only. `storage` is the dev object store (the StarCi source-built MinIO, images/sources.json of the harness,
+# every port publishes on loopback only. `storage` is the dev object store, built from the managed .starcistacks/images/storage/Dockerfile (the StarCi source-built MinIO,
 # pinned by digest in contexts/stack/pins.yaml); its root credentials are the dev `storage` member's keys, read from the least grant STACK_GRANT_STORAGE.
 services:
   core:
@@ -64,11 +64,16 @@ services:
       timeout: 5s
       retries: 5
   storage:
-    image: ghcr.io/starci183/minio:RELEASE.2025-10-15T17-29-55Z-starci.1@sha256:ec6dfba54eaa8e0d77bed9e7c6d86df90ad341f914ecfd3d613f0f811155f40f
-    command: ["server", "/data", "--console-address", ":9001"]
+    build:
+      context: ../../../..
+      dockerfile: .starcistacks/images/storage/Dockerfile
+    image: {{project}}-storage:local
     environment:
       MINIO_ROOT_USER_FILE: /run/secrets/STORAGE_ACCESS_KEY_ID
       MINIO_ROOT_PASSWORD_FILE: /run/secrets/STORAGE_SECRET_ACCESS_KEY
+      STATICS_BUCKET: {{project}}-dev
+      STATICS_PREFIX: statics
+      STATICS_PUBLIC: download
     ports:
       - "127.0.0.1:${STACK_PORT_STORAGE}:9000"
       - "127.0.0.1:${STACK_PORT_STORAGE_CONSOLE}:9001"
@@ -77,11 +82,11 @@ services:
       - ${STACK_GRANT_STORAGE}:/run/secrets:ro
     networks: [app]
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9000/minio/health/live"]
+      test: ["CMD-SHELL", "test -f /tmp/statics-ready && wget -q -O /dev/null http://127.0.0.1:9000/minio/health/live"]
       interval: 5s
       timeout: 5s
-      retries: 20
-      start_period: 5s
+      retries: 30
+      start_period: 10s
 networks:
   app:
     driver: bridge

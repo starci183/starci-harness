@@ -4,7 +4,8 @@
 # keys), never from the environment. Every port publishes on loopback only.
 # `mail` is the dev mail sink (Mailpit, an unmodified upstream image pinned by digest in contexts/stack/pins.yaml): the api sends the
 # confirmation and reset mails to its SMTP port, over a plain channel that exists on loopback only, and a person reads them in its web UI.
-# `storage` is the dev object store (the StarCi source-built MinIO, images/sources.json of the harness, pinned by digest in contexts/stack/pins.yaml):
+# `storage` is the dev object store, built from the managed .starcistacks/images/storage/Dockerfile (the StarCi source-built MinIO pinned by digest in contexts/stack/pins.yaml,
+# plus the statics/ folder, which its entrypoint loads into the bucket; PROJECT-STATICS-2):
 # its root credentials are the dev `storage` member's keys, the same keys the api signs with, and the api creates its bucket on its first
 # readiness probe. The api and web run natively against these containers.
 name: {{project}}-dev
@@ -44,11 +45,16 @@ services:
       start_period: 5s
     restart: unless-stopped
   storage:
-    image: ghcr.io/starci183/minio:RELEASE.2025-10-15T17-29-55Z-starci.1@sha256:ec6dfba54eaa8e0d77bed9e7c6d86df90ad341f914ecfd3d613f0f811155f40f
-    command: ["server", "/data", "--console-address", ":9001"]
+    build:
+      context: ../../../..
+      dockerfile: .starcistacks/images/storage/Dockerfile
+    image: {{project}}-storage:local
     environment:
       MINIO_ROOT_USER_FILE: /run/secrets/STORAGE_ACCESS_KEY_ID
       MINIO_ROOT_PASSWORD_FILE: /run/secrets/STORAGE_SECRET_ACCESS_KEY
+      STATICS_BUCKET: {{project}}-dev
+      STATICS_PREFIX: statics
+      STATICS_PUBLIC: download
     ports:
       - "127.0.0.1:${STACK_PORT_STORAGE}:9000"
       - "127.0.0.1:${STACK_PORT_STORAGE_CONSOLE}:9001"
@@ -56,11 +62,11 @@ services:
       - storage-data:/data
       - ${STACK_GRANT_STORAGE}:/run/secrets:ro
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9000/minio/health/live"]
+      test: ["CMD-SHELL", "test -f /tmp/statics-ready && wget -q -O /dev/null http://127.0.0.1:9000/minio/health/live"]
       interval: 5s
       timeout: 5s
-      retries: 20
-      start_period: 5s
+      retries: 30
+      start_period: 10s
     restart: unless-stopped
 volumes:
   db-data: {}

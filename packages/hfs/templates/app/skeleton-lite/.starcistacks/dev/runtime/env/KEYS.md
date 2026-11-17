@@ -22,4 +22,6 @@ Names only. Dev values are generated once by the owner-armed `starci app secret 
 | `MAIL_DEFAULT_LANGUAGE`, `MAIL_CONFIRM_TTL_SECONDS`, `MAIL_RESET_TTL_SECONDS` | API mail language (`vi` or `en`) and link lifetimes; optional |
 | `MAIL_USER`, `MAIL_PASSWORD` | API mail server login; optional, the password reads `MAIL_PASSWORD_FILE` |
 | `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_GRAPHQL_URL` | Front-end site, auth doors and GraphQL transport |
+| `NEXT_PUBLIC_STATICS_URL` | Front-end public base of the repo-owned statics: `http://localhost:<storage port>/<bucket>/statics` (PROJECT-STATICS-4) |
+| `STATICS_BUCKET`, `STATICS_PREFIX`, `STATICS_PUBLIC` | The dev `storage` service (built from `.starcistacks/images/storage/Dockerfile`): the bucket, the prefix its entrypoint loads `statics/` into, and whether that prefix alone is publicly readable (`download` or `none`) |
 | `DATABASE_URL` | `starci app db` verbs; the stack verb composes it in memory for the migration |

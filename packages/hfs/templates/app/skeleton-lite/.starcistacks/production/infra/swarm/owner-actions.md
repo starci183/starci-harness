@@ -4,7 +4,7 @@ Status: pending owner execution. This record states intended configuration and c
 
 ## DNS
 
-The production operator replaces `{{project}}.example.invalid` and `api.{{project}}.example.invalid` with owned public names, updates the manifest, Caddyfile and public configuration together, and publishes address records for the intended Swarm node. Record the provider, zone, actual hosts and dated DNS receipt here.
+The production operator replaces `{{project}}.example.invalid`, `api.{{project}}.example.invalid` and `storage.{{project}}.example.invalid` with owned public names, updates the manifest, Caddyfile and public configuration together, and publishes address records for the intended Swarm node. Record the provider, zone, actual hosts and dated DNS receipt here.
 
 ## TLS
 

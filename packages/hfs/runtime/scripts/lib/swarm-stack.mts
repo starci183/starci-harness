@@ -57,7 +57,7 @@ export function swarmInventoryIssues({ components, lite = false, swarm }: { comp
   for (const [id, entry] of Object.entries(catalog)) {
     const component = mapping(entry);
     if (lite && (swarm === undefined || swarm.has(id)) && present(component.image) && BACKING_IMAGE.test(repositoryOf(component.image)))
-      add(`components.${id}.image`, 'lite runs no backing image; its db component runs the image .starcistacks/images/db/Dockerfile builds, storage is the external S3 endpoint, identity the API');
+      add(`components.${id}.image`, 'lite runs no backing image; its db component runs the image .starcistacks/images/db/Dockerfile builds, a project that has statics/ or needs object storage runs its own MinIO as the `storage` service of the image .starcistacks/images/storage/Dockerfile builds (PROJECT-STATICS-5), identity is the API');
     jobDeclarationIssues(id, component, catalog, add);
   }
   return errors;
@@ -125,7 +125,7 @@ export function swarmModelIssues({ model, components, bindings, lite = false }: 
     else if (service.ports?.length && component.role !== 'ingress')
       add(`services.${id}.ports`, 'only a component with role ingress may publish Swarm ports');
     if (lite && present(service.image) && BACKING_IMAGE.test(repositoryOf(service.image)))
-      add(`services.${id}.image`, 'lite stack runs no backing image; its db service runs the image .starcistacks/images/db/Dockerfile builds');
+      add(`services.${id}.image`, 'lite stack runs no backing image; its db service runs the image .starcistacks/images/db/Dockerfile builds and its storage service the image .starcistacks/images/storage/Dockerfile builds');
     jobServiceIssues(id, service, component, services, bound, add);
   }
   for (const id of Object.keys(bound)) {

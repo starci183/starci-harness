@@ -1,6 +1,14 @@
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import type { NextConfig } from "next"
+
+/** The `next/image` remote patterns of the repo-owned statics: the origin and path of NEXT_PUBLIC_STATICS_URL, when the build holds it. */
+const staticsPatterns = (): NonNullable<NonNullable<NextConfig["images"]>["remotePatterns"]> => {
+    const base = process.env.NEXT_PUBLIC_STATICS_URL
+    if (base === undefined || base === "") return []
+    const url = new URL(base)
+    return [{ protocol: url.protocol === "https:" ? "https" : "http", hostname: url.hostname, port: url.port, pathname: `${url.pathname.replace(/\/+$/u, "")}/**` }]
+}
 import createNextIntlPlugin from "next-intl/plugin"
 
 /** The request config lives in this app's i18n module. */
@@ -17,6 +25,7 @@ const nextConfig: NextConfig = {
     outputFileTracingRoot: WORKSPACE_ROOT,
     turbopack: { root: WORKSPACE_ROOT },
     poweredByHeader: false,
+    images: { remotePatterns: staticsPatterns() },
 }
 
 export default withNextIntl(nextConfig)

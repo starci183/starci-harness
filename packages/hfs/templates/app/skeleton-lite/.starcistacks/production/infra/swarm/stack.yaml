@@ -124,6 +124,44 @@ services:
       restart_policy:
         condition: on-failure
         delay: 5s
+  storage:
+    image: "{{project}}/storage:v0.0.0@sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    environment:
+      MINIO_ROOT_USER_FILE: /run/secrets/storage-access-key-id
+      MINIO_ROOT_PASSWORD_FILE: /run/secrets/storage-secret-access-key
+      STATICS_BUCKET: {{project}}-production
+      STATICS_PREFIX: statics
+      STATICS_PUBLIC: download
+    secrets:
+      - source: storage-access-key-id
+        target: storage-access-key-id
+      - source: storage-secret-access-key
+        target: storage-secret-access-key
+    volumes:
+      - storage-data:/data
+    networks: [app]
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /tmp/statics-ready && wget -q -O /dev/null http://127.0.0.1:9000/minio/health/live"]
+      interval: 30s
+      timeout: 5s
+      start_period: 60s
+      retries: 5
+    deploy:
+      replicas: 1
+      placement:
+        constraints: ["node.labels.{{project}} == production"]
+      update_config:
+        parallelism: 1
+        order: stop-first
+        failure_action: rollback
+        monitor: 30s
+      # The store owns a data volume and is single-writer: never run two at once, so rollback stays stop-first.
+      rollback_config:
+        parallelism: 1
+        order: stop-first
+      restart_policy:
+        condition: on-failure
+        delay: 5s
   ingress:
     image: caddy:2.10.2@sha256:c3d7ee5d2b11f9dc54f947f68a734c84e9c9666c92c88a7f30b9cba5da182adb
     configs:
@@ -186,6 +224,9 @@ volumes:
   db-data:
     external: true
     name: "{{project}}-production-db-data"
+  storage-data:
+    external: true
+    name: "{{project}}-production-storage-data"
   ingress-data:
     external: true
     name: "{{project}}-production-ingress-data"
