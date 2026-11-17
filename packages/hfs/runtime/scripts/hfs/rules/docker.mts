@@ -31,7 +31,7 @@ const DOCKER_SECRETS = 'HFS_DOCKER_SECRETS';
 const DOCKER_HEALTHCHECK_FAKE = 'HFS_DOCKER_HEALTHCHECK_FAKE';
 
 /** The one node base image of every Dockerfile of the canon: an exact node version on an exact alpine release. */
-export const NODE_IMAGE = 'node:22.14.0-alpine3.21';
+export const NODE_IMAGE = 'node:22.20.0-alpine3.21';
 /** The two stages every Dockerfile has: the build, then the runtime that ships. */
 const BUILD_STAGE = 'build';
 const RUNTIME_STAGE = 'runtime';

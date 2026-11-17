@@ -18,6 +18,7 @@ WORKDIR /app
 COPY --from=manifests /app ./
 RUN npm ci --ignore-scripts
 
+COPY turbo.json ./
 COPY be/tsconfig.json be/tsconfig.build.json be/
 COPY be/src be/src
 {{copyBeInputs}}COPY be/apps/{{app}} be/apps/{{app}}
