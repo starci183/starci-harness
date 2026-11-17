@@ -13,7 +13,7 @@ const record = (findings: Finding[]): CacheRecord => ({ path: 'db', step: 'db-ru
 
 test('the committed record (sorted on disk) equals the computed one whatever order the rules produced', () => {
   const committed = parseRecords(serializeRecords([record(FINDINGS)])).records;
-  for (const order of [FINDINGS, [...FINDINGS].reverse(), [FINDINGS[2], FINDINGS[0], FINDINGS[4], FINDINGS[1], FINDINGS[3]]]) {
+  for (const order of [FINDINGS, [...FINDINGS].reverse(), [2, 0, 4, 1, 3].map((index) => FINDINGS[index]!)]) {
     assert.deepEqual(verifyCommitted({ trusted: new Map(), computed: new Map([['check/db', [record(order)]]]), committed: new Map([['check/db', committed]]) }), []);
   }
   const different = verifyCommitted({ trusted: new Map(), computed: new Map([['check/db', [record([...FINDINGS.slice(1), at(1, 0, 'DB_X', 'other')])]]]), committed: new Map([['check/db', committed]]) });
