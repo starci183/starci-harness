@@ -2,6 +2,8 @@
 
 ## 1.1.0-alpha.148 - 2026-11-17
 
+- Changed: the CLI requires @starci/hfs@6.13.28, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
+
 - Changed (pins): the Grammar family at 0.44.0 (the Switch kind in the bar lint, filter Tabs in a Section filter, a stronger Switch off track, the stacked filter row), @starci/stylelint-canon 2.9.5 and @starci/hfs 6.13.28. Until the cli-follow step raises the CLI's requirement, the CLI runs the hfs it requires.
 
 ## 1.1.0-alpha.147 - 2026-11-17
