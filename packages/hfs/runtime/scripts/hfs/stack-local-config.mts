@@ -24,6 +24,8 @@ export interface LocalCommand {
   name: string; argv: string[]; cwd: string; heavy: 'install' | 'build' | 'none'; skipIfExists: string | null; env: Record<string, string>; files: string[];
   /** Seed only: `migrate` runs it once the database is migrated, `ready` once the processes answer (a seed that signs up through the api). */
   after: 'migrate' | 'ready';
+  /** Seed only: `once` (default) runs it once per volume set; `always` runs it on every up (a migration runner idempotent by its own ledger, such as TypeORM's). */
+  mode?: 'once' | 'always' | undefined;
 }
 /** A compose service the environment starts and how its readiness is observed. */
 export interface LocalService {
@@ -85,7 +87,7 @@ export interface LocalBlock {
 
 const TOP = ['project', 'basePort', 'ports', 'services', 'database', 'databases', 'composeEnv', 'grants', 'dirs', 'custody', 'setup', 'seed', 'processes', 'ready', 'verify', 'origins', 'tunnel', 'resources'];
 const COMMAND = ['name', 'argv', 'cwd', 'heavy', 'skipIfExists', 'env', 'files'];
-const SEED = [...COMMAND, 'after'];
+const SEED = [...COMMAND, 'after', 'mode'];
 const PROCESS = [...COMMAND, 'port', 'health'];
 
 const text = (value: unknown): value is string => typeof value === 'string' && value.trim() !== '';
@@ -142,7 +144,13 @@ function command(c: Collector, at: string, value: unknown, allowed: readonly str
     name, argv, cwd: entry.cwd === undefined ? '.' : relative(c, `${at}.cwd`, entry.cwd), heavy: heavy as LocalCommand['heavy'],
     skipIfExists: entry.skipIfExists === undefined ? null : relative(c, `${at}.skipIfExists`, entry.skipIfExists), env,
     files: strings(c, `${at}.files`, entry.files, KEY), after: afterOf(c, at, entry.after),
+    ...(entry.mode === undefined ? {} : { mode: modeOf(c, at, entry.mode) }),
   };
+}
+
+function modeOf(c: Collector, at: string, value: unknown): 'once' | 'always' {
+  if (value !== 'once' && value !== 'always') c.problem(`${at}.mode`, 'must be once or always (always: a migration runner that runs on every up, idempotent by its own ledger)');
+  return value === 'always' ? 'always' : 'once';
 }
 
 function afterOf(c: Collector, at: string, value: unknown): 'migrate' | 'ready' {

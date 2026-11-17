@@ -75,12 +75,17 @@ async function migrate(ctx: StackContext, local: LocalConfig, custody: Custody, 
   if (!database || url === null) return 'migrate: no database declared';
   const container = firstLine((await compose(ctx, local, ['ps', '-q', database.service])).stdout);
   const env = { ...ctx.env, DATABASE_URL: url, STARCI_DB_CONTAINER: container };
+  const report: string[] = [];
   const run = deps.migrate ?? (async (urlEnv: string, environment: NodeJS.ProcessEnv, cwd: string): Promise<number> => {
     const { main } = await import('../src/main.mjs');
-    return main(['db', 'migrate', '--db-url-env', urlEnv, '--execute'], { cwd, env: environment, stdout: () => {}, stderr: () => {} }) as Promise<number>;
+    const keep = (text: string): void => { report.push(...String(text).split(/\r?\n/u).map((line) => line.trim()).filter(Boolean)); };
+    return main(['db', 'migrate', '--db-url-env', urlEnv, '--execute'], { cwd, env: environment, stdout: keep, stderr: keep }) as Promise<number>;
   });
   const code = await run('DATABASE_URL', env, local.repoRoot);
-  if (code !== 0) throw failure('STACK_LOCAL_MIGRATE', `starci app db migrate exited ${code}; run it with --db-url-env DATABASE_URL to read its report`);
+  if (code !== 0) {
+    const coded = report.find((line) => /\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b/u.test(line)) ?? report[0];
+    throw failure('STACK_LOCAL_MIGRATE', `starci app db migrate exited ${code}${coded === undefined ? '' : `: ${coded.slice(0, 400).replaceAll(url, '[redacted]')}`}; run it with --db-url-env DATABASE_URL to read its full report`);
+  }
   const dir = stateOf(ctx, local);
   const record = readRecord(dir);
   record.receipts.migrate = { at: new Date(ctx.now()).toISOString(), digest: migrationsDigest(local.repoRoot) };
@@ -122,7 +127,11 @@ export function volumesIdentity(ctx: StackContext, local: LocalConfig): string {
   return crypto.createHash('sha256').update(lines(inspected.stdout).join('\n')).digest('hex').slice(0, 16);
 }
 
-/** Runs the seed commands once each per volume set (a receipt keyed by the command's digest and the volumes' identity); the seed owns its idempotence beyond that. */
+/**
+ * Runs the seed commands: a `once` command once per volume set (a receipt keyed by the command's digest and the volumes' identity), the seed
+ * owning its idempotence beyond that; an `always` command (a migration runner such as TypeORM's, idempotent by its own ledger) on every up,
+ * so a new migration reaches an existing stack.
+ */
 async function seed(ctx: StackContext, local: LocalConfig, custody: Custody, after: 'migrate' | 'ready'): Promise<string[]> {
   const dir = stateOf(ctx, local);
   const record = readRecord(dir);
@@ -130,11 +139,11 @@ async function seed(ctx: StackContext, local: LocalConfig, custody: Custody, aft
   const volumes = volumesIdentity(ctx, local);
   for (const run of local.seed.filter((item) => item.after === after)) {
     const held = record.receipts.seed[run.name];
-    if (held?.digest === commandDigest(run) && held.volumes === volumes) { out.push(`seed ${run.name}: already done`); continue; }
+    if (run.mode !== 'always' && held?.digest === commandDigest(run) && held.volumes === volumes) { out.push(`seed ${run.name}: already done`); continue; }
     await runCommand(ctx, local, run, runEnvironment(ctx, local, run, custody, 'owner'));
     record.receipts.seed[run.name] = { at: new Date(ctx.now()).toISOString(), digest: commandDigest(run), volumes };
     writeRecord(dir, record);
-    out.push(`seed ${run.name}: done`);
+    out.push(`seed ${run.name}: done${run.mode === 'always' ? ' (always)' : ''}`);
   }
   return out;
 }

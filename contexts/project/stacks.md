@@ -250,7 +250,7 @@ runs until `--execute`; `doctor`, `status`, `logs` and `verify` are read-only. *
 custody, runs the setup (install, codegen), starts the compose services under the heavy-command governor (a lite app's dev compose runs its database, Mailpit, the `mail` sink the sign-in mails reach on loopback, its web UI an origin, and
 MinIO, the `storage` object store whose root credentials are the dev `storage` member's keys and whose console is an origin; a full app's runs
 `storage` too) and waits for their health, gives the
-environment its own database role and the app role its own password, migrates with a receipt, applies the seed levels with their receipts (PROJECT-STACKS-12), runs the declared seed commands once per set of volumes (a receipt holds the volumes' names and creation times, so a wiped stack seeds again), starts the native
+environment its own database role and the app role its own password, migrates with a receipt, applies the seed levels with their receipts (PROJECT-STACKS-12), runs the declared seed commands once per set of volumes (a receipt holds the volumes' names and creation times, so a wiped stack seeds again; a command declared `mode: always`, a migration runner idempotent by its own ledger such as TypeORM's, runs on every up, so a new migration reaches an existing stack), starts the native
 processes, waits for readiness and prints the origins. An agent never runs Docker by hand ([harness/rules.md](../harness/rules.md) hard rule 8);
 the runbook of a docker-compose environment names `starci app stack up --env <env>` and carries no docker command (R373). `down` ends the processes
 and stops the compose project, never a volume, image or another project. A vps environment keeps the Swarm verbs below; `up`, `down`, `doctor` and

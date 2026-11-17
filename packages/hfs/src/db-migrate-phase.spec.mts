@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { isContractMigration, loadDatabase, migrateDatabase } from '../db/migrate.mjs';
+import { buildModel, isContractMigration, loadDatabase, migrateDatabase } from '../db/migrate.mjs';
 import type { MigrationPhase } from '../db/migrate.mjs';
 import { stackContext } from '../stack/context.mjs';
 import type { Spawn } from '../stack/context.mjs';
@@ -117,4 +117,11 @@ test('database.target and database.service are judged and default to the stack d
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
+});
+
+test('an absent db/migrations is an empty chain, never a silent refusal (an app whose schema a TypeORM runner owns)', (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-migrate-absent-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const model = buildModel(root, loadDatabase(root));
+  assert.deepEqual([model.files, model.push], [[], []]);
 });

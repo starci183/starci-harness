@@ -1,5 +1,14 @@
 # Changelog
 
+## 6.13.20 - 2026-11-17
+
+- Fixed (`stack/local-up.mts`, `stack-local-config.mts`): a seed command of `local.seed` takes `mode: once | always` (default once). An `always` command (a migration runner idempotent by its own ledger, such as TypeORM's `migrate-typeorm`) runs on every `starci app stack up`, so a new migration reaches an existing stack; a `once` command keeps its receipt per volume set. Before, every seed command ran once per volume set and a new TypeORM migration never ran on a stack that already had one.
+- Fixed (`db/migrate.mts`): an absent `db/migrations` (or `database.migrationsDir`) is an empty chain, no longer a refusal; `stack up` no longer stops at `db migrate` with a silent exit 2 on an app that has no SQL migration yet. A directory that exists but cannot be read is still `DB_MIGRATIONS_MISSING`.
+- Fixed (`stack/local-up.mts`): a failed `db migrate` under `stack up` keeps its report and `STACK_LOCAL_MIGRATE` names its first coded line (the database URL redacted) instead of a bare exit code.
+- Changed: the dev README of the lite template says an absent `db/migrations` is an empty chain and when to declare `mode: always`; `contexts/project/stacks.md` PROJECT-STACKS-6.
+- Specs: `stack-local.spec.mts` (always vs once, the mode judged, the coded migrate failure), `db-migrate-phase.spec.mts` (absent folder).
+- Changed (`knowledge/hfs/canon-pins.yaml`): the `@starci/hfs` self-pin is 6.13.20.
+
 ## 6.13.19 - 2026-11-17
 
 - Added: the bring-up loader of the pinned seed-standards (`stack/standard-load.mts`, PROJECT-STACKS-13 "The loader"). After the R434 gate, `seedStep` reads each pinned `data.sets` seed-standard of the environment at its commit (`pinRepository`, then the git driver of @starci/seed over the same mirror: its verify and its read) and applies it through the app's seed door, each store's `adapter.command` over `starci/data-entries@1` (`commandStore`, run by the seed step's own command runner): a dry run through every door first (`restoreFrom`, mode mirror, nothing written), then an upsert by natural key (mode merge). One receipt per standard and commit (scope `standard`, id `<set>@<commit>`, hash the export digest), written only once every store applied: a receipt skips the pin, a first pin applies, a changed pin is reported `DATA_STANDARD_CHANGED` and applies only with the set's `force: true`, once per commit; what the standard no longer names is reported and left. A set with `completeness: ext:` is left to the project. New refusals: `STACK_SEED_STANDARD_UNREADABLE`, `STACK_SEED_STANDARD_SCHEMA`, `STACK_SEED_STORE_COMMAND`, `STACK_SEED_DOOR_REFUSED` (`modules/kernel/failure-codes.yaml`, R435 `failureCodes`, enforcer `standard-load`).

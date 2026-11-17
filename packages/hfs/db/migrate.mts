@@ -128,7 +128,9 @@ export function loadDatabase(root: string): DatabaseDecl {
 
 /* ---- the repository model */
 
+/** The .sql names of a directory, an absent directory holding none (an app with no SQL migration yet, or one whose schema a TypeORM runner owns). */
 const sqlNames = (dir: string, what: string): string[] => {
+  if (!fs.existsSync(dir)) return [];
   try { return fs.readdirSync(dir).filter((name) => name.endsWith('.sql')).sort(byCodeUnit); } catch { throw refusal('DB_MIGRATIONS_MISSING', `${what} (${dir}) is not readable`); }
 };
 

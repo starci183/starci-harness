@@ -365,3 +365,30 @@ test('a process that lists DATABASE_OWNER_URL in files gets the owner connection
   const seed = h.calls.find((call) => !call.background && call.env && 'JWT_KEY_FILE' in call.env);
   assert.equal(seed?.env && 'DATABASE_OWNER_URL_FILE' in seed.env, false, 'a run that does not list the key never gets the owner connection');
 });
+
+test('an always seed command runs on every up (a TypeORM migration runner); a once command keeps its volume receipt', async (t) => {
+  const root = app(t, { block: BLOCK.replace('seed: [{name: owner, argv: [node, seed.mjs], files: [JWT_KEY]}]', 'seed: [{name: owner, argv: [node, seed.mjs], files: [JWT_KEY]}, {name: migrate-typeorm, argv: [node, typeorm.mjs], mode: always}]') });
+  const first = host(root);
+  assert.equal(await run(root, ['up', '--env', 'dev', '--execute'], first), 0, first.err.join(''));
+  assert.match(first.out.join(''), /seed migrate-typeorm: done \(always\)/u);
+  const again = host(root);
+  assert.equal(await run(root, ['up', '--env', 'dev', '--execute'], again, { alive: () => true }), 0, again.err.join(''));
+  assert.match(again.out.join(''), /seed owner: already done/u);
+  assert.match(again.out.join(''), /seed migrate-typeorm: done \(always\)/u, 'a new migration reaches an existing stack');
+  assert.ok(again.calls.some((call) => call.args.includes('typeorm.mjs')), 'the runner ran again');
+});
+
+test('the seed mode is judged: once or always', () => {
+  const bad = normalizeLocal({ ports: { db: 54322 }, services: [{ name: 'db', wait: 'healthy' }], seed: [{ name: 'x', argv: ['node', 'x.mjs'], mode: 'sometimes' }] }, { project: 'demo', env: 'dev' });
+  assert.ok(bad.problems.some((problem) => JSON.stringify(problem).includes('must be once or always')), JSON.stringify(bad.problems));
+  const good = normalizeLocal({ ports: { db: 54322 }, services: [{ name: 'db', wait: 'healthy' }], seed: [{ name: 'x', argv: ['node', 'x.mjs'], mode: 'always' }] }, { project: 'demo', env: 'dev' });
+  assert.equal(good.config?.seed[0]?.mode, 'always', JSON.stringify(good.problems));
+});
+
+test('a failed db migrate names its coded refusal instead of a bare exit', async (t) => {
+  const root = app(t);
+  const h = host(root);
+  const code = await run(root, ['up', '--env', 'dev', '--execute'], h, { migrate: async () => 2 });
+  assert.notEqual(code, 0);
+  assert.match(h.err.join('') + h.out.join(''), /STACK_LOCAL_MIGRATE/u);
+});

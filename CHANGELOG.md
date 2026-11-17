@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.0-alpha.140 - 2026-11-17
+
+- Changed (contexts): `project/stacks.md` PROJECT-STACKS-6: a seed command declared `mode: always` runs on every `stack up`.
+- The fixes ship in @starci/hfs 6.13.20 (a TypeORM migration runner declared `mode: always` runs on every up; an absent `db/migrations` is an empty chain; a failed migrate names its coded line); until the cli-follow step raises the CLI's requirement to it, the CLI runs the hfs it requires.
+
 ## 1.1.0-alpha.139 - 2026-11-17
 
 - Changed: the CLI requires @starci/hfs@6.13.19, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).

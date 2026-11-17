@@ -38,4 +38,5 @@ readiness probe, so `/health/ready` answers only once the database and the bucke
 The volume `storage-data` is rebuildable development data.
 
 The database volume `db-data` is rebuildable development data: `starci app db migrate` recreates its schema from `db/bootstrap.sql` and
-`db/migrations`. Key names of the environment are in `.starcistacks/dev/runtime/env/KEYS.md`.
+`db/migrations` (an absent `db/migrations` is an empty chain). A seed command that runs a migration runner with its own ledger (TypeORM)
+is declared `mode: always`, so it runs on every `up`; any other seed command runs once per set of volumes. Key names of the environment are in `.starcistacks/dev/runtime/env/KEYS.md`.
