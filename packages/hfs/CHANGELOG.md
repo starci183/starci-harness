@@ -1,5 +1,9 @@
 # Changelog
 
+## 6.13.34 - 2026-11-18
+
+- Fixed (`audit/judge.mts`, PROJECT-LINT-5): an audit exception's `via` names packages a path passes THROUGH, not only the roots it starts at: a finding is exempt when every lockfile path to the package passes through a `via` package before it (a second walk stops at every `via` package; a node it still reaches fails `AUDIT_HIGH`, naming the dependencies the bypassing paths come from). A fix is npm's `fixAvailable: true`, a non-major update, or a major update of the vulnerable package itself; a semver-major change of another package (npm moving a parent, often backwards) is no fix: it no longer raises `AUDIT_EXCEPTION_FIX_AVAILABLE` and is printed on the `AUDIT_EXCEPTION_ACTIVE` line. The `@starci/hfs` self-pin is 6.13.34.
+
 ## 6.13.33 - 2026-11-18
 
 - Changed (`templates/app/gallery`, `sync/index.mts`, PROJECT-GALLERY-1): the managed `gallery/` is a thin config over `@starci/gallery` 0.1.0: `vite.config.js` calls `defineGallery({ app, locale, allowedHosts })` from `@starci/gallery/vite`, `package.json` pins `@starci/gallery` and `vite` (devDependencies), and the managed `src/` files are gone; the port, the 127.0.0.1 bind, the tunnel hosts and the locale stay. The gallery is the one place to see a screen: its canvas frame and note (Bản vẽ, so a draft is reviewed without the claude.ai board), the comparison with its shot (Đối chiếu: side by side, slider, onion skin, difference) and the shot with its explanation (Ảnh thật); a tree by area with a truthful status per screen (design.json when it records the page, else what exists: coded but not recorded, coded with no frame, drawn but not coded); counts that add up; capitalized labels; a lightbox; tabs on a phone (PROJECT-GALLERY-6 item 8).
