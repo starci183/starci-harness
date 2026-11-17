@@ -160,7 +160,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [harness/axes.md](../harness/axes.md) · 1 KB
 - [harness/host.md](../harness/host.md) · 10 KB — What a shell on the harness host does differently from the textbook, and the one way to work with it.
   - sections: Spawning a process · The host stack · Host services · Dependencies through a link · Files and folders
-- [harness/presence-audit.md](../harness/presence-audit.md) · 11 KB — A law that says an app must contain something, or a round must produce something, is enforced only when a check refuses its absence as well as a wrong one.
+- [harness/presence-audit.md](../harness/presence-audit.md) · 12 KB — A law that says an app must contain something, or a round must produce something, is enforced only when a check refuses its absence as well as a wrong one.
   - sections: hfs rules · contexts laws · Not added
 - [harness/questions.md](../harness/questions.md) · 9 KB
 - [harness/roles.md](../harness/roles.md) · 7 KB — The owner talks to each project's `[Supervisor] <project>`, which runs in the project's main checkout; each running orca workflow of the project has a `[Kernel] <workflow>` under ...
@@ -171,17 +171,19 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: One word, one meaning: "slot" · Slot fields · Rule parameters (`ruleParams`) · Rules · The harness's own shape · Editing · Rule notes
 - [hfs/harness.yaml](../hfs/harness.yaml) · 19 KB — The harness repository's own HFS: what may exist in this repository (hfs.json kind runtime) and where.
   - ids: app.package, app.tree, cli.edition-verbs, cli.entry, cli.harness, cli.package, cli.shared, cli.verb-data, cli.verbs, contexts.harness-shape, contexts.knowledge, contexts.load-order, github.actions, github.ci, github.meta, github.scripts, github.workflows, images.dockerfile, images.readme, images.sources, never.build-output, never.cli-js, never.env, never.examples and 37 more
-- [hfs/rules.yaml](../hfs/rules.yaml) · 169 KB — The HFS rule catalog: one entry per rule, its finding code, its law in one sentence, the failure codes it reports and the enforcers that judge it.
-  - ids: R01, R02, R03, R04, R05, R06, R07, R09, R10, R100, R101, R102, R103, R104, R105, R106, R107, R108, R109, R11, R110, R111, R112, R113 and 305 more
+- [hfs/rules.yaml](../hfs/rules.yaml) · 170 KB — The HFS rule catalog: one entry per rule, its finding code, its law in one sentence, the failure codes it reports and the enforcers that judge it.
+  - ids: R01, R02, R03, R04, R05, R06, R07, R09, R10, R100, R101, R102, R103, R104, R105, R106, R107, R108, R109, R11, R110, R111, R112, R113 and 306 more
 - [hfs/slots.yaml](../hfs/slots.yaml) · 117 KB — The HFS slot manifest: what may exist in an app repository and where.
-  - ids: PROJECT-1, R399, app.agent-output, app.browser, app.browser-config, app.build-output, app.ci, app.ci-authorize-deploy-key, app.ci-cache-verify, app.ci-db, app.ci-deploy, app.ci-e2e, app.ci-images, app.ci-stack-deploy, app.ci-stack-key-restore, app.db, app.db.bootstrap, app.db.image, app.db.migrations, app.db.migrations.archive, app.declaration, app.dependabot, app.deploy, app.dockerignore and 156 more
-- [project/README.md](../project/README.md) · 13 KB — What a StarCi project is, how a piece of product work travels from a goal to a settled commit, and where to read for each kind of task.
+  - ids: PROJECT-1, R399, app.agent-output, app.browser, app.browser-config, app.build-output, app.ci, app.ci-authorize-deploy-key, app.ci-cache-verify, app.ci-db, app.ci-deploy, app.ci-e2e, app.ci-images, app.ci-stack-deploy, app.ci-stack-key-restore, app.db, app.db.bootstrap, app.db.image, app.db.migrations, app.db.migrations.archive, app.declaration, app.dependabot, app.deploy, app.dockerignore and 157 more
+- [project/README.md](../project/README.md) · 14 KB — What a StarCi project is, how a piece of product work travels from a goal to a settled commit, and where to read for each kind of task.
   - sections: PROJECT-1 A project is one app root that declares its sides and holds the Work of each · PROJECT-2 Work travels from a goal to a settled commit · PROJECT-3 An app's shared code lives in root workspace packages · Where to read for a task · Files
 - [project/anatomy.md](../project/anatomy.md) · 90 KB — The canonical tree of an app, one per edition (`lite`, `full`) and place (the app root, `be/`, `fe/`).
   - sections: Why the tree is shaped this way · Regenerating and the drift check · Read with · Tree
 - [project/branches.md](../project/branches.md) · 3 KB — An app repository (never the harness repository itself) has two long-lived branches and one way between them.
   - sections: PROJECT-BRANCH-1 An app has exactly two long-lived branches, `main` and `dev`
-- [project/business-repo.md](../project/business-repo.md) · 12 KB — How one business is built on StarCi: one repository that holds the business's own services as a lite app, the business package its agents run from, and the seed standard that ...
+- [project/brand.md](../project/brand.md) · 6 KB — The brand an app's pictures and designs are made from: one folder, `.starcistacks/brand/`, that every design or image brief reads first.
+  - sections: PROJECT-BRAND-1 An app carries its brand sheet in `.starcistacks/brand/`, written once by scaffold and edited by the app · PROJECT-BRAND-2 An AI image is its basePrompt plus a subject, and its prompt file says which basePrompt · PROJECT-BRAND-3 A design or image brief reads the brand folder first
+- [project/business-repo.md](../project/business-repo.md) · 10 KB — How one business is built on StarCi: one repository that holds the business's own services as a lite app, the business package its agents run from, and the seed standard that ...
   - sections: PROJECT-BUSINESS-1 A business is one repository: a lite app, its nivoos package and its seed standard
 - [project/check-cache.md](../project/check-cache.md) · 73 KB — Every StarCi app commits the results of its checks in `.starcistacks/cache/`, keyed by content, so `starci app check` and the unit specs judge only what differs from the cache, on ...
   - sections: The operating procedure · The command surface · Progress and the run log · When a run is full · Layout and format · The journal · The fingerprint · Trust · Which step reuses what · ESLint · Unit coverage · Sonar and Codecov · CI parity · Orchestration · The memory plan · The slot, the templates and adoption · The law · Edge cases · As built · Read with
