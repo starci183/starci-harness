@@ -2,6 +2,8 @@
 
 ## 1.1.0-alpha.152 - 2026-11-18
 
+- Changed: the CLI requires @starci/hfs@6.13.32, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
+
 - Added: `starci app audit`, the production dependency audit with time-boxed, owner-approved exceptions (`.starcistacks/security/audit-exceptions.yaml`, at most 14 days, every path under the declared roots, active ones printed on every run; PROJECT-LINT-5). The CI template and the pre-push parity step run it. @starci/hfs 6.13.32. Until the cli-follow step raises the CLI's requirement, the CLI runs the hfs it requires.
 
 ## 1.1.0-alpha.151 - 2026-11-18
