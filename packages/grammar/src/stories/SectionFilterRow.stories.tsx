@@ -5,7 +5,8 @@ import * as G from '../common/index.js';
 
 /**
  * A section's filter row (0.43.1): `Tabs kind="filter"`, a `SearchField` and two `Select`s share ONE flat wrapping row, the controls on one
- * bottom edge, in the order given; below the narrow step (the row's own width under 48rem) they stack, each the full width. A list's
+ * bottom edge, in the order given. Below the narrow step (the row's own width under 48rem, 0.44.0) the tabs and the search each take a full
+ * line, and two `compact` selects keep their content width and share the next line; a `field` select takes a full line. A list's
  * `filter` and a region's draw the same row. `Headless` is a catalog region under the page title, named by `ariaLabel` with no heading of
  * its own.
  */
@@ -43,22 +44,27 @@ const STATES = [
   { id: 'done', label: 'Completed' },
 ];
 
-const Toolbar = () => {
+type Appearance = 'compact' | 'field';
+
+const Toolbar = ({ appearance = 'compact' }: { readonly appearance?: Appearance }) => {
   const [level, setLevel] = useState('all');
   return (
     <>
       <G.Tabs label="Level" kind="filter" selectedKey={level} onSelect={setLevel} items={LEVELS} />
       <G.SearchField label="Search topics" isLabelHidden placeholder="Search topics" clearLabel="Clear search" />
-      <G.Select label="Track" isLabelHidden options={TRACKS} defaultValue="all" />
-      <G.Select label="Progress" isLabelHidden options={STATES} defaultValue="any" />
+      <G.Select label="Track" isLabelHidden appearance={appearance} options={TRACKS} defaultValue="all" />
+      <G.Select label="Progress" isLabelHidden appearance={appearance} options={STATES} defaultValue="any" />
     </>
   );
 };
 
 const NARROW = 48 * 16;
 
-/** The row's peers in order: one shared line (bottoms on one edge, left to right) when the row is wide, one per line, full width, when it is narrow. */
-const expectRow = (row: HTMLElement) => {
+/**
+ * The row's peers in order. Wide: one shared line (bottoms on one edge, left to right). Narrow: the tabs and the search each a full line; `compact`
+ * selects keep their content width and share the next line (one bottom edge, left to right), `field` selects each a full line.
+ */
+const expectRow = (row: HTMLElement, appearance: Appearance = 'compact') => {
   // A Select keeps its vendor's hidden `template` beside it; it is no peer.
   const peers = [...row.children].filter((node): node is HTMLElement => node instanceof HTMLElement && node.tagName !== 'TEMPLATE');
   expect(peers.map((node) => node.dataset.component ?? (node.classList.contains('starci-core-tabs-frame') ? 'Tabs' : node.className))).toEqual(['Tabs', 'SearchField', 'Select', 'Select']);
@@ -69,8 +75,18 @@ const expectRow = (row: HTMLElement) => {
     for (const box of boxes) expect(Math.abs(Math.round(box.bottom) - bottom)).toBeLessThanOrEqual(1);
     for (let index = 1; index < boxes.length; index += 1) expect(boxes[index]?.left ?? 0).toBeGreaterThan(boxes[index - 1]?.right ?? 0);
   } else {
-    for (let index = 1; index < boxes.length; index += 1) expect(boxes[index]?.top ?? 0).toBeGreaterThanOrEqual(boxes[index - 1]?.bottom ?? 0);
-    for (const box of boxes) expect(Math.round(box.width)).toBe(Math.round(rowBox.width));
+    const [tabs, search, first, second] = boxes as [DOMRect, DOMRect, DOMRect, DOMRect];
+    for (const box of [tabs, search]) expect(Math.round(box.width)).toBe(Math.round(rowBox.width));
+    expect(search.top).toBeGreaterThanOrEqual(tabs.bottom);
+    expect(first.top).toBeGreaterThanOrEqual(search.bottom);
+    if (appearance === 'compact') {
+      for (const box of [first, second]) expect(box.width).toBeLessThan(rowBox.width / 2);
+      expect(Math.abs(Math.round(second.bottom) - Math.round(first.bottom))).toBeLessThanOrEqual(1);
+      expect(second.left).toBeGreaterThan(first.right);
+    } else {
+      for (const box of [first, second]) expect(Math.round(box.width)).toBe(Math.round(rowBox.width));
+      expect(second.top).toBeGreaterThanOrEqual(first.bottom);
+    }
   }
 };
 
@@ -149,5 +165,17 @@ export const RegionLoading: Story = {
       if (skeleton === null) throw new Error('the loading row renders its skeleton');
       expectRow(skeleton);
     });
+  },
+};
+
+/** `field` selects in the row: one row when wide; narrow, each select takes a full line like the search. */
+export const FieldSelects: Story = {
+  render: () => (
+    <G.Page header={{ title: 'Essentials' }}>
+      <G.Section kind="list" title="Topics" count={3} items={ROWS} empty={null} filter={<Toolbar appearance="field" />} />
+    </G.Page>
+  ),
+  play: async ({ canvasElement }) => {
+    await waitFor(() => expectRow(rowOf(canvasElement, 'list'), 'field'));
   },
 };

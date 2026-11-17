@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.44.0 - 2026-11-17
+
+- Changed: `navbar-control-size` (`FE_NAVBAR_CONTROL_SIZE`) reads a `Switch` by its `kind`, which the Grammar lets win over `size`: `kind="toggle"` passes alone (no `size` needed), a `Switch` with neither `kind` nor `size` passes (the toggle is the default), and `kind="compact"` is refused in the bar with its own message (`compact`: 32x18 breaks the bar's one 40px height, DNA-COMMON-BAR-ONE-HEIGHT) whatever `size` it carries; before, `size="control"` beside `kind="compact"` silenced the rule although the Grammar ignored it. Fix text and docs `docs/app-shell.md` updated.
+- Changed: `tabs-in-well` (`FE_TABS_IN_WELL`) passes a `Tabs kind="filter"` in the `filter` row of a `Section` (list and region alike, directly or through a fragment, conditional or `&&`), the filter row of 0.43.1; a views `Tabs` there, a filter `Tabs` in a section's body or in another element's `filter` prop, and loose tabs stay findings. Message, `grammar-laws.yaml` TABS-IN-WELL and `docs/tabs.md` (now with a `tabs-in-well` section) updated.
+
 ## 0.43.1 - 2026-11-17
 
 - Version: moves with the Grammar family (@starci/grammar 0.43.1: the disabled reason on touch, one section filter row, a headless region). No rule changed.

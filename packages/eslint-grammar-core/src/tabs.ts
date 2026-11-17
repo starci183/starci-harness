@@ -165,21 +165,26 @@ export const tabsDepth: Rule.RuleModule = defineRule({
 /** The pink well and the panes: underline Tabs written in their children sit on the well, not in the white header band. */
 const WELL_HOSTS: ReadonlySet<string> = new Set(["Page", "Pane", "PaneSection"])
 
+/** Whether a JSX attribute is the `filter` row of a `Section` (a list's or a region's alike, 0.43.1). */
+const isSectionFilter = (node: TSESTree.JSXAttribute): boolean =>
+  node.name.type === "JSXIdentifier" && node.name.name === "filter" && node.parent.type === "JSXOpeningElement" && elementName(node.parent) === "Section"
+
 /**
  * The second tab layer stands in the white header band (owner, 2026-11-09, TABS-IN-WELL): `Page header={{ tabs, subTabs }}`, on its own
  * full-width separator, flush with the band's left inset. An underline `Tabs` written as a child of a `Page`, `Pane` or `PaneSection`
- * stands on the pink well or in a pane body, so it is a finding. A drawer, dialog, modal, popover or sheet starts its own surface.
+ * stands on the pink well or in a pane body, so it is a finding, unless it narrows a list from a header row of its own: a card (its header
+ * zones) or a `Tabs kind="filter"` in a `Section`'s `filter` row (0.43.1). A drawer, dialog, modal, popover or sheet starts its own surface.
  */
 export const tabsInWell: Rule.RuleModule = defineRule({
   meta: {
     type: "problem",
     docs: {
-      description: "An underline Tabs stands in the white header band (Page header.subTabs), never in the pink well or a pane body.",
+      description: "An underline Tabs stands in the white header band (Page header.subTabs), a card's header zone or, kind=\"filter\", a Section's filter row; never loose in the pink well or a pane body.",
       url: "knowledge/ui/presentation/grammar-laws.yaml#TABS-IN-WELL",
     },
     schema: [],
     messages: {
-      well: "This underline `Tabs` stands in the body of a `{{host}}`, on the pink well or in a pane. The second tab layer sits in the white header band under the page tabs: `Page header` with `subTabs`, on its own full-width separator and flush with the band left inset. Move it to `header.subTabs`, or make the views a `switch` zone or a filter zone of a card.",
+      well: "This underline `Tabs` stands in the body of a `{{host}}`, on the pink well or in a pane. The second tab layer sits in the white header band under the page tabs: `Page header` with `subTabs`, on its own full-width separator and flush with the band left inset. Move it to `header.subTabs`, make the views a `switch` zone or a filter zone of a card, or, to narrow a list, pass it as `Tabs kind=\"filter\"` in the `filter` row of its `Section`.",
     },
   },
   create(context) {
@@ -187,8 +192,10 @@ export const tabsInWell: Rule.RuleModule = defineRule({
     return {
       JSXOpeningElement(opening) {
         if (elementName(opening) !== "Tabs" || isPill(opening)) return
+        const isFilter = literalOf(attributeOf(opening, "kind")) === "filter"
         let child: TSESTree.Node = opening.parent ?? opening
         for (let node: TSESTree.Node | null | undefined = child.parent; node !== undefined && node !== null; child = node, node = node.parent) {
+          if (node.type === "JSXAttribute" && isFilter && isSectionFilter(node)) return
           if (node.type !== "JSXElement") continue
           const name = elementName(node.openingElement)
           if (name === null) continue

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.44.0 - 2026-11-17
+
+- Version: moves with the Grammar family (@starci/grammar 0.44.0); peers @starci/eslint-grammar-core 0.44.0 and inherits its changed `navbar-control-size` and `tabs-in-well`. No rule of its own changed.
+
 ## 0.43.1 - 2026-11-17
 
 - Version: moves with the Grammar family (@starci/grammar 0.43.1); peers @starci/eslint-grammar-core 0.43.1. No rule changed.

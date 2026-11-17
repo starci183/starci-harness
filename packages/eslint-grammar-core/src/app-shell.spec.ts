@@ -115,6 +115,10 @@ for (const lite of [false, true]) {
         { filename: FILE, code: 'const view = <WorkspaceShell viewport="fixed" compactHeader={<Drawer trigger={<IconButton size="control" />}><Form><Input label={copy.query} /><Button /></Form></Drawer>} />' },
         { filename: FILE, code: 'const view = <TopBar brand={<Button size="control" {...(disabled ? { isDisabled: true } : {})} />} />' },
         { filename: FILE, code: 'const view = <TopBar actions={<SegmentedControl label={copy.language} isLabelHidden size="control" options={options} />} />' },
+        { filename: FILE, code: 'const view = <TopBar actions={<Switch label={copy.theme} isLabelHidden kind="toggle" />} />' },
+        { filename: FILE, code: 'const view = <TopBar actions={<Switch label={copy.theme} isLabelHidden kind="toggle" size="md" />} />' },
+        { filename: FILE, code: 'const kind = "toggle"; const view = <TopBar actions={<Switch label={copy.theme} isLabelHidden kind={kind} />} />' },
+        { filename: FILE, code: 'const view = <TopBar actions={<Switch label={copy.theme} isLabelHidden />} />' },
         { filename: PAGE, code: `${SITE_IMPORTS} export const SiteShell = (props: Props) => <WorkspaceShell viewport="flow" primaryLabel={props.main} header={${SITE_BAR}} primary={props.children} />` },
       ],
       invalid: [
@@ -139,6 +143,11 @@ for (const lite of [false, true]) {
         { filename: FILE, code: 'const view = <Drawer placement="left" trigger={<IconButton size="sm" />}>{body ?? <Sidebar presentation="drawer" />}</Drawer>', errors: [{ messageId: "control" }] },
         { filename: FILE, code: 'const view = <TopBar brand={enabled && <Button size="lg" />} />', errors: [{ messageId: "control" }] },
         { filename: FILE, code: 'const view = <TopBar brand={<Button size="control" {...(large ? { size: "lg" } : {})} />} />', errors: [{ messageId: "control" }] },
+        { filename: FILE, code: 'const view = <TopBar actions={<Switch label={copy.theme} isLabelHidden kind="compact" />} />', errors: [{ messageId: "compact" }] },
+        { filename: FILE, code: 'const view = <TopBar actions={<Switch label={copy.theme} isLabelHidden kind="compact" size="control" />} />', errors: [{ messageId: "compact" }] },
+        { filename: FILE, code: 'const view = <TopBar actions={<Switch label={copy.theme} isLabelHidden kind={dense ? "compact" : "toggle"} />} />', errors: [{ messageId: "compact" }] },
+        { filename: FILE, code: 'const view = <TopBar actions={<Switch label={copy.theme} isLabelHidden kind={kind} size="control" />} />', errors: [{ messageId: "control" }] },
+        { filename: FILE, code: 'const view = <TopBar actions={<Switch label={copy.theme} isLabelHidden size="md" />} />', errors: [{ messageId: "control" }] },
       ],
     })
   })

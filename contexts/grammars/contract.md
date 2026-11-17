@@ -486,8 +486,8 @@ a container's children stand closer than its siblings, and its page command hugs
 text at `md`. A card heads itself with its `label`, so a section around one card is refused.
 
 A region (`kind="region"`, the default) holds children under an optional `filter` that narrows all of them. A list's filter and a
-region's are one flat wrapping row: the filter tabs, the search and its selects share a line on one bottom edge, and stack below the
-narrow step. A region the page title already names supplies `ariaLabel` in place of `title`, as a headless list or strip does.
+region's are one flat wrapping row: the filter tabs, the search and its selects share a line on one bottom edge; below the narrow
+step the tabs and the search take a line each and the compact selects share the next at their content width. A region the page title already names supplies `ariaLabel` in place of `title`, as a headless list or strip does.
 
 `kind="figures"` is the unpainted key-figure strip inside an existing surface. It reuses the exact FigureCells renderer
 and typed `Figure` data of `SurfaceCard kind="figures"`, including neutral values, dividers, responsive wrapping and

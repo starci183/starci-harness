@@ -520,7 +520,7 @@ roles:
     ui: ui/components/list-table.md
     renderers: [Section]
     vendorParity: []                              # no HeroUI part: a Common frame
-    slots: ["title (the heading and landmark name; a region, a list or a figures strip the surrounding heading already names takes ariaLabel instead and draws none)", headingLevel, "filter (Tabs kind=filter, a SearchField and its Selects: one flat wrapping row under the head, the controls on one bottom edge, stacked below the narrow step; on kind list it narrows the rows, on kind region everything the section holds)", "items (kind list: typed rows; kind figures: shared Figure data)", "children (kind region)", "action (the page command, at the end of the titled head row)", "empty (required for list) and error (ErrorData)"]
+    slots: ["title (the heading and landmark name; a region, a list or a figures strip the surrounding heading already names takes ariaLabel instead and draws none)", headingLevel, "filter (Tabs kind=filter, a SearchField and its Selects: one flat wrapping row under the head, the controls on one bottom edge; below the narrow step the tabs and the search a line each, compact selects sharing the next at their content width; on kind list it narrows the rows, on kind region everything the section holds)", "items (kind list: typed rows; kind figures: shared Figure data)", "children (kind region)", "action (the page command, at the end of the titled head row)", "empty (required for list) and error (ErrorData)"]
     variants:
       kind: { values: [region, list, figures], chosenBy: app from list-table.choose.role or card.choose.role for contained figures }
     sizes: none

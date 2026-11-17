@@ -94,3 +94,56 @@ export const LabelledRow: Story = {
     });
   },
 };
+
+/** The sRGB channels (0..255) a computed CSS colour paints, read back through a 1px canvas so any colour syntax (oklab, color-mix) resolves. */
+const paintedRgb = (color: string): readonly [number, number, number] => {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1;
+  canvas.height = 1;
+  const context = canvas.getContext('2d')!;
+  context.fillStyle = color;
+  context.fillRect(0, 0, 1, 1);
+  const [r = 0, g = 0, b = 0] = context.getImageData(0, 0, 1, 1).data;
+  return [r, g, b];
+};
+
+/** WCAG relative luminance of an sRGB colour. */
+const luminance = ([r, g, b]: readonly [number, number, number]): number => {
+  const linear = (channel: number) => {
+    const value = channel / 255;
+    return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b);
+};
+
+const offTrackRender = () => (
+  <div style={{ width: 360, padding: 16, background: '#fff' }}>
+    <G.Switch label="Auto reply" description="The assistant replies right away." kind="compact" />
+    <G.Switch label="Show the waiting count" description="Shows how many turns are waiting." kind="compact" defaultSelected />
+    <G.Switch label="Dark theme" isLabelHidden />
+  </div>
+);
+
+/**
+ * The off track on white (0.44.0): the default fill is the foreground at 28% over the surface, a light grey (between neutral-300 and neutral-400)
+ * that reads on #fff with no app token, on both kinds. A switch has no border by default; the hairline is the opt-in
+ * `--starci-core-switch-track-off-border`.
+ */
+const assertOffTrack = async (canvasElement: HTMLElement) => {
+  await waitFor(() => {
+    for (const kind of ['compact', 'toggle'] as const) {
+      const switchEl = canvasElement.querySelector<HTMLElement>(`[data-component="Switch"][data-grammar-switch-kind="${kind}"]:not([data-selected="true"])`);
+      if (switchEl === null) throw new Error(`an off ${kind} switch renders`);
+      const track = switchEl.querySelector<HTMLElement>('[data-grammar-switch-track="true"]')!;
+      const style = getComputedStyle(track);
+      const fill = luminance(paintedRgb(style.backgroundColor));
+      expect(fill).toBeLessThan(0.55);
+      expect(fill).toBeGreaterThan(0.35);
+      expect(style.outlineStyle === 'none' || style.outlineWidth === '0px').toBe(true);
+      expect(style.borderTopWidth).toBe('0px');
+    }
+  });
+};
+
+export const OffTrackOnWhite: Story = { render: offTrackRender, play: async ({ canvasElement }) => { await assertOffTrack(canvasElement); } };
+export const OffTrackOnWhiteAt390: Story = { parameters: PHONE, render: offTrackRender, play: async ({ canvasElement }) => { await assertOffTrack(canvasElement); } };

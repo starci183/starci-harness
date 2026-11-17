@@ -72,8 +72,8 @@ controlled selection and its panel.
 ## The second layer
 The second underline layer is `Page header.subTabs`: inside the white header band, under the page tabs, on its own full-width separator, the same size
 as layer 1 (14, 40 high, selected weight 500, the 2px underline exactly on the separator) and flush with the band's left inset, the same x as layer 1, with
-no extra indent. It never stands on the pink well or in a pane body: lint `starci-grammar/tabs-in-well` refuses an underline `Tabs` written in the body of a
-`Page`, `Pane` or `PaneSection`.
+no extra indent. It never stands loose on the pink well or in a pane body: lint `starci-grammar/tabs-in-well` refuses an underline `Tabs` written in the body of a
+`Page`, `Pane` or `PaneSection` outside a header row of its own, a card's header zone or, `kind="filter"`, a `Section`'s `filter` row ([list-table.md](list-table.md) "Filter row").
 
 ## Rules
 STATE-6, CTA-1, ACCENT-3, HIERARCHY-3. Lint: `starci-grammar/tabs-switch-zone`, `starci-grammar/tabs-depth`, `starci-grammar/tabs-in-well`,

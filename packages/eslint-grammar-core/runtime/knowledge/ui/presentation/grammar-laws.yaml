@@ -169,7 +169,8 @@ rules:
         assert: |-
           It is `Page header.subTabs`: inside the white header band, under layer 1, on its own full-width separator, the same size as layer 1
           (14, 40 high, selected weight 500, the 2px underline exactly on the separator) and flush with the band's left inset, the same x as layer 1.
-          An underline Tabs written in the body of a Page, Pane or PaneSection (the pink well, a pane body) is refused.
+          An underline Tabs written loose in the body of a Page, Pane or PaneSection (the pink well, a pane body) is refused; one in a header row of
+          its own, a card's header zone or, kind="filter", a Section's filter row, is not loose.
   - id: LINK-LOOK
     title: A Link is HeroUI's own link and takes its size from the line
     governs: The look of a Grammar Link.

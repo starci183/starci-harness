@@ -21,7 +21,10 @@ export and rendered Base chain prove a `TopBar` in every alternative.
 Workspace exports resolve back to source. Raw or unknown imported headers are red; the actual
 bar's own actions are checked where composed. Each lint source snapshot has fresh dependency proofs.
 
-`navbar-control-size` requires `size="control"` on each bar control. Unknown trailing prop spreads
+`navbar-control-size` requires the shared 40px height of each bar control through its published API: `Button` and
+`IconButton` at `md` (their default), `Switch` as `kind="toggle"` (a stated `kind` wins and the Grammar ignores `size` beside it;
+with no `kind`, the toggle unless `size` says `md` or `lg`), every other control at `size="control"`. A `Switch kind="compact"`
+(32x18) is refused in the bar with its own message, whatever `size` it carries. Unknown trailing prop spreads
 cannot prove a size; put the explicit size after a spread. A left `Drawer` containing
 `Sidebar presentation="drawer"` also identifies a mobile bar opener when composed in a separate
 client owner. Its trigger is checked; drawer bodies and footers retain their normal field sizes.
@@ -35,7 +38,7 @@ does not execute application code.
 | --- | --- | --- |
 | `app-shell-frame` | An app `Shell` returns a hand-written `<header>` and `<nav>`. | `WorkspaceShell viewport="fixed"` owns the app frame. |
 | `no-shell-bottom-tabs` | The shell supplies `compactNavigation={<BottomNav />}`. | The shell supplies `navigationDrawer` with a drawer `Sidebar`. |
-| `navbar-control-size` | A navbar `IconButton` uses `size="md"`. | The same control uses `size="control"`. |
+| `navbar-control-size` | A navbar `IconButton` uses `size="sm"`; the theme `Switch` is `kind="compact"`. | The `IconButton` keeps `md`; the theme `Switch` is `kind="toggle"`. |
 | `navbar-cluster` | Account precedes notifications, or a language trigger uses a regular `Button`. | Language menu, theme switch, notification popover, account menu use their stated Grammar trigger kinds in that order. |
 | `no-navbar-create` | A navbar button or attached menu item creates a record. | The page owns its create action. |
 

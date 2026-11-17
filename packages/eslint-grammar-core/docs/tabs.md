@@ -1,8 +1,8 @@
 # Tabs: where the pill stands, and how many layers
 
-Law module: `tabs.ts`. Knowledge: `grammar-laws.yaml` `TABS-SWITCH-ZONE`, `TABS-DEPTH`. Component law: `contexts/ui/components/tabs.md`.
+Law module: `tabs.ts`. Knowledge: `grammar-laws.yaml` `TABS-SWITCH-ZONE`, `TABS-DEPTH`, `TABS-IN-WELL`. Component law: `contexts/ui/components/tabs.md`.
 
-Underline tabs switch panels: the page tabs (`Page header.tabs`) and, inside a tab's panel, a region set. The pill (`appearance="primary"`) is a different thing: a mode or period switch of one block's data. Both rules are errors in `coreGrammarConfig`; none can be switched off or suppressed inline.
+Underline tabs switch panels: the page tabs (`Page header.tabs`) and, inside a tab's panel, a region set. The pill (`appearance="primary"`) is a different thing: a mode or period switch of one block's data. The three rules are errors in `coreGrammarConfig`; none can be switched off or suppressed inline.
 
 ## `starci-grammar/tabs-switch-zone`
 
@@ -47,3 +47,24 @@ Finding code: `FE_TABS_DEPTH`. Over the underline `Tabs` of one file. Every tab 
 ```
 
 The rule reads one file. A set whose page tabs are drawn by another file (a layout, or a frame component such as a renderer package) is not judged against them: that link is runtime composition, not an import the rule can follow.
+
+## `starci-grammar/tabs-in-well`
+
+Finding code: `FE_TABS_IN_WELL`. An underline `Tabs` written as a child of a `Page`, `Pane` or `PaneSection` stands loose on the pink well or in a pane body: the second layer is `Page header.subTabs`. A `Tabs` stands in a header row of its own, and passes, inside a `SurfaceCard` (its header zones) or, as `kind="filter"`, in the `filter` row of a `Section` (a list's or a region's alike, 0.43.1, `contexts/ui/components/list-table.md` "Filter row"), directly or through a fragment, conditional or `&&`. A `Drawer`, `Dialog`, `Modal`, `Popover` or `Sheet` starts its own surface and ends the climb.
+
+**Invalid**
+
+```tsx
+<Page header={{ title, tabs }}>
+  <Tabs label="Status" items={statuses} selectedKey={status} onSelect={setStatus} />
+  <Section title="Catalog" filter={<Tabs label="Views" items={views} selectedKey={view} onSelect={setView} />}>{body}</Section>
+</Page>
+```
+
+**Valid**
+
+```tsx
+<Page header={{ title }}>
+  <Section kind="list" title="Topics" items={rows} empty={empty} filter={<><Tabs label="Level" kind="filter" items={levels} selectedKey={level} onSelect={setLevel} /><SearchField label="Search" /></>} />
+</Page>
+```

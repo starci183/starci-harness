@@ -125,7 +125,7 @@ export const why: Record<string, WhyEntry> = {
   "navbar-control-size": {
     code: "FE_NAVBAR_CONTROL_SIZE",
     en: "A navbar control does not use Grammar's shared control height.",
-    fix: "Set size=\"control\" on every visible bar control.",
+    fix: "Give every visible bar control the shared height: Button and IconButton at md (the default), Switch kind=\"toggle\" (never compact), the other controls size=\"control\".",
   },
   "no-navbar-create": {
     code: "FE_NAVBAR_CREATE",

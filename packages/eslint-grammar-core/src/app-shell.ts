@@ -131,28 +131,47 @@ const delegatesImportedBar = (context: ReaderContext, expression: Node | null): 
   return imported && !controls && !unknown
 }
 
-/** Buttons publish the shared 40px height as `md` (their default), while other bar controls publish `control`. */
-const hasBarControlHeight = (context: ReaderContext, control: TSESTree.JSXOpeningElement, name: string | null): boolean => {
+/** Whether every value a prop can take is one of the given string literals. */
+const everyLiteral = (context: ReaderContext, expression: Resolved | null | undefined, allowed: ReadonlySet<string>): boolean =>
+  everyValue(context, expression, (value) => value.type === "Literal" && typeof value.value === "string" && allowed.has(value.value))
+
+const TOGGLE: ReadonlySet<string> = new Set(["toggle"])
+const SWITCH_KINDS: ReadonlySet<string> = new Set(["toggle", "compact"])
+
+/**
+ * A bar control's height comes from its published API. Buttons publish the shared 40px height as `md` (their default). A `Switch` publishes it
+ * as `kind="toggle"`: a stated `kind` wins and the Grammar ignores `size` beside it, so the kind alone decides, and a Switch with no `kind` is
+ * the toggle unless `size` says `md` or `lg`. The other bar controls publish `control`.
+ */
+const barControlHeight = (context: ReaderContext, control: TSESTree.JSXOpeningElement, name: string | null): "control" | "compact" | "other" => {
+  if (name === "Switch") {
+    const kind = propOf(context, control, "kind")
+    if (kind.known && kind.value !== null && everyLiteral(context, kind.value, SWITCH_KINDS)) return everyLiteral(context, kind.value, TOGGLE) ? "control" : "compact"
+    if (!kind.known || kind.value !== null) return "other"
+  }
   const size = propOf(context, control, "size")
-  if (!size.known) return false
-  if ((name === "Button" || name === "IconButton") && (size.value === null
-    || everyValue(context, size.value, (value) => value.type === "Literal" && value.value === "md"))) return true
-  return textProp(context, control, "size") === "control"
+  if (!size.known) return "other"
+  if ((name === "Button" || name === "IconButton" || name === "Switch") && size.value === null) return "control"
+  if ((name === "Button" || name === "IconButton") && everyLiteral(context, size.value, new Set(["md"]))) return "control"
+  return textProp(context, control, "size") === "control" ? "control" : "other"
 }
 
 /** Every visible control in a navbar band uses the shared control height through its published size API. */
 export const navbarControlSize: Rule.RuleModule = defineRule({
   meta: meta("FE_NAVBAR_CONTROL_SIZE", "FE-APP-SHELL-2 requires the shared control height on bar controls.", {
-    control: "FE_NAVBAR_CONTROL_SIZE: {{name}} in the navbar band needs Grammar's shared control height: omit size or use md for Button/IconButton, and use control for the other bar controls.",
+    control: "FE_NAVBAR_CONTROL_SIZE: {{name}} in the navbar band needs Grammar's shared control height: omit size or use md for Button/IconButton, kind=\"toggle\" (or no kind and no size) for Switch, and size=\"control\" for the other bar controls.",
+    compact: "FE_NAVBAR_CONTROL_SIZE: a Switch kind=\"compact\" (32x18, no thumb glyph) in the navbar band breaks the bar's one 40px height; the bar's switch is kind=\"toggle\" (72x40, the theme switch). Compact is for a setting in a row, a list, a table cell or a toolbar.",
   }),
   create(context) {
     if (!isProductSource(context)) return {}
     const reported = new Set<TSESTree.JSXOpeningElement>()
     return { JSXOpeningElement(node) {
       visitBar(context, node, (control, name) => {
-        if (!isBarControl(context, control, name) || hasBarControlHeight(context, control, name) || reported.has(control)) return
+        if (!isBarControl(context, control, name) || reported.has(control)) return
+        const height = barControlHeight(context, control, name)
+        if (height === "control") return
         reported.add(control)
-        context.report({ node: control, messageId: "control", data: { name } })
+        context.report({ node: control, messageId: height === "compact" ? "compact" : "control", data: { name } })
       })
     } }
   },

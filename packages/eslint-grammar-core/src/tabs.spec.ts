@@ -87,10 +87,21 @@ test("tabs-in-well: the second layer stands in the header band, never in the wel
       { filename: BLOCK, code: `export const A = () => <div><Tabs label="Status" ${ITEMS} selectedKey={s} /></div>` },
       { filename: BLOCK, code: `export const A = () => <Page header={{ title: "x" }}><Tabs appearance="primary" label="Status" ${ITEMS} selectedKey={s} /></Page>` },
       { filename: SCRIPT, code: `export const A = () => <Page header={{ title: "x" }}><Tabs label="Status" ${ITEMS} selectedKey={s} /></Page>` },
+      // a filter tabs in a Section's filter row (0.43.1): a region's and a list's alike, directly, in a fragment, or in a Pane
+      { filename: BLOCK, code: `export const A = () => <Page header={{ title: "x" }}><Section title="Catalog" filter={<Tabs label="Level" kind="filter" ${ITEMS} selectedKey={s} />}><Content /></Section></Page>` },
+      { filename: BLOCK, code: `export const A = () => <Page header={{ title: "x" }}><Section kind="list" title="Topics" items={rows} empty={null} filter={<><Tabs label="Level" kind="filter" ${ITEMS} selectedKey={s} /><SearchField label="Search" /></>} /></Page>` },
+      { filename: BLOCK, code: `export const A = () => <Page header={{ title: "x", tabs }}><Section ariaLabel="Find" filter={ready && <Tabs label="Level" kind="filter" ${ITEMS} selectedKey={s} />}><Content /></Section></Page>` },
+      { filename: BLOCK, code: `export const A = () => <Pane label="Side"><PaneSection><Section kind="list" title="Runs" items={rows} empty={null} filter={<Tabs label="Status" kind="filter" ${ITEMS} selectedKey={s} />} /></PaneSection></Pane>` },
     ],
     invalid: [
       { filename: BLOCK, code: `export const A = () => <Page header={{ title: "Agent", tabs }}><Tabs label="Status" ${ITEMS} selectedKey={s} /></Page>`, errors: [{ messageId: "well" }] },
       { filename: BLOCK, code: `export const A = () => <Pane label="Side"><PaneSection><Tabs label="Status" ${ITEMS} selectedKey={s} /></PaneSection></Pane>`, errors: [{ messageId: "well" }] },
+      // still loose: a filter tabs in a Section's body, a views tabs in its filter row, a filter tabs in another element's filter prop or loose in the well
+      { filename: BLOCK, code: `export const A = () => <Page header={{ title: "x" }}><Section title="Catalog"><Tabs label="Level" kind="filter" ${ITEMS} selectedKey={s} /></Section></Page>`, errors: [{ messageId: "well" }] },
+      { filename: BLOCK, code: `export const A = () => <Page header={{ title: "x" }}><Section title="Catalog" filter={<Tabs label="Views" ${ITEMS} selectedKey={s} />}><Content /></Section></Page>`, errors: [{ messageId: "well" }] },
+      { filename: BLOCK, code: `export const A = () => <Page header={{ title: "x" }}><Stack filter={<Tabs label="Level" kind="filter" ${ITEMS} selectedKey={s} />} /></Page>`, errors: [{ messageId: "well" }] },
+      { filename: BLOCK, code: `export const A = () => <Page header={{ title: "x" }}><Tabs label="Level" kind="filter" ${ITEMS} selectedKey={s} /></Page>`, errors: [{ messageId: "well" }] },
+      { filename: BLOCK, code: `export const A = () => <Pane label="Side"><PaneSection><Section title="Runs" filter={<Content />}><Tabs label="Status" kind="filter" ${ITEMS} selectedKey={s} /></Section></PaneSection></Pane>`, errors: [{ messageId: "well" }] },
     ],
   })
 })

@@ -729,9 +729,9 @@
 
     /*
      * A SWITCH HAS NO BORDER by default (owner, 0.36.2): HeroUI's native look. Off: a grey track with no outline, hairline or ring; on: the primary
-     * colour (the accent). The off track has its own hook (0.40.2, owner): `--starci-core-switch-track-off`, by default the foreground at 16% over the
-     * surface (about neutral-300 on white), no longer `--default`, which a white theme sets to the surface and which ghost hover shares, so the off
-     * track of a compact switch vanished on a white card. `--starci-core-switch-track-off-border` (default 0) lets a theme draw a hairline on it, as an
+     * colour (the accent). The off track has its own hook (0.40.2, owner): `--starci-core-switch-track-off`, by default the foreground at 28% over the
+     * surface (0.44.0: between neutral-300 and neutral-400 on white, so a compact 32x18 track reads on a white card with no app token), never
+     * `--default`, which a white theme sets to the surface and which ghost hover shares. `--starci-core-switch-track-off-border` (default 0) lets a theme draw a hairline on it, as an
      * inset outline so neither the track's geometry nor the focus ring moves. The thumb is white (`--surface`) with a soft shadow, both states, and a thumb glyph takes the muted tone off and the accent on. The only
      * ring is the vendor's focus ring on keyboard focus (`:focus-visible`), which a box-shadow on the track here would hide, so the track sets none.
      * Keyed on the component's stamps; `!important` for the same reason as the size rules above.
@@ -742,7 +742,7 @@
     }
 
     [data-component="Switch"]:not([data-selected="true"]) [data-grammar-switch-track] {
-        background: var(--starci-core-switch-track-off, color-mix(in oklab, var(--foreground) 16%, var(--surface))) !important;
+        background: var(--starci-core-switch-track-off, color-mix(in oklab, var(--foreground) 28%, var(--surface))) !important;
         outline: var(--starci-core-switch-track-off-border, 0);
         outline-offset: calc(-1 * var(--grammar-hairline));
     }

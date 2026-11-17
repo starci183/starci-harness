@@ -33,12 +33,15 @@ Key figures inside an existing surface use the same unpainted Section owner thro
 `card.choose.role:contained-figures` decides. It reuses the card's FigureCells anatomy and loading geometry. A strip
 already under a heading uses `ariaLabel` and adds no visible heading; a strip that owns its heading uses `title`.
 
-## Filter row (0.43.1)
+## Filter row (0.43.1, narrow step 0.44.0)
 A section's `filter`, a list's or a region's, is ONE flat row in the order given: `Tabs kind="filter"`, then the `SearchField`, then its
 `Select`s, the controls on one bottom edge at the inline gap. The tabs hug their labels, the search grows into what is left (never under
-12rem), each select keeps its own width; a peer that no longer fits wraps to the next line. Below 48rem of the row's own width the peers
-stack, each the full width. The row lays the peers out itself, so an app wraps them in no `Cluster` or `Grid` and gives them no width.
-Story `Surfaces/Section filter row (0.43.1)` (its play tests measure one row at 1440 and the stack at 390).
+12rem), each select keeps its own width; a peer that no longer fits wraps to the next line. Below 48rem of the row's own width the tabs and
+the search each take a full line, and the selects follow by their look: a `compact` or `pill` select keeps its content width and shares a
+wrapping line with the next one, a `field` select takes a full line. A filter row's selects are `compact`. The row lays the peers out itself,
+so an app wraps them in no `Cluster` or `Grid` and gives them no width. The `filter` row is where a `Tabs kind="filter"` stands in a page
+or pane body (lint `starci-grammar/tabs-in-well` passes it there). Story `Surfaces/Section filter row (0.43.1)` (its play tests measure
+one row at 1440 and the narrow step at 390, compact and field selects).
 
 ## Section head (0.36.0)
 A `Section` head is ONE row: the label (14, 500) and an optional count chip (12) at the start; at the end at most ONE thing, a navigation `Link variant="head"` (the label then an arrow `→` that slides about 3px on hover, the hover underline,

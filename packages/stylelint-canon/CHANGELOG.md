@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.9.5 - 2026-11-17
+
+- Changed (fixture): the theme hooks of @starci/grammar 0.44.0 (`--starci-core-switch-track-off` falls back to the foreground at 28% over the surface). The hook names are unchanged, so the vocabulary is the same 41 hooks.
+
 ## 2.9.4 - 2026-11-17
 
 - Changed (vocabulary): the theme hooks of @starci/grammar 0.43.0. `--starci-core-list-frame`, `--starci-core-list-frame-border`, `--starci-core-list-radius` and `--starci-core-list-inset` are gone (a list is flat by default), so brand.css may no longer set them (41 hooks).

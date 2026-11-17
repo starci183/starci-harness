@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.44.0 - 2026-11-17 - A readable off track, a narrow filter row that keeps its pickers
+
+- A minor by the release gate: `eslint-grammar-core` changes two rules (`navbar-control-size`, `tabs-in-well`). The Grammar's own API is unchanged.
+- Changed (`Switch`, both kinds, off): the default off track `--starci-core-switch-track-off` is the foreground at 28% over the surface (was 16%, about neutral-300, which a compact 32x18 track on #fff barely showed); on white it stands between neutral-300 and neutral-400. Still no border by default (owner 0.36.2): the hairline stays the opt-in `--starci-core-switch-track-off-border`. Theme hook fallback text updated in `theme-hooks.json`. Story `Controls/Switch row` `OffTrackOnWhite` (and at 390): its play test measures the fill on #fff and the absent border.
+- Changed (`Section` `filter` row, below 48rem of its own width): the tabs and the search each take a full line; a `compact` or `pill` `Select` keeps its content width and shares a wrapping line with the next one (before, every peer took the full width, so a compact picker stood as a 358px bar at 390); a `field` `Select` still takes a full line. The loading skeleton no longer turns into a column, so it wraps the same way. Story `Surfaces/Section filter row (0.43.1)`: the toolbar's selects are `compact`; new `FieldSelects`; the play tests measure the narrow step for both looks.
+
 ## 0.43.1 - 2026-11-17 - The reason on touch, one filter row
 
 - A patch (the release gate counts a removed or renamed export or prop member; this adds one union member and removes none). `eslint-grammar-core` and `eslint-grammar-offset-pop` carry the family version only.

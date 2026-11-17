@@ -341,8 +341,9 @@
      * The filter row of a section, a list's or a region's alike (0.43.1): ONE flat wrapping row in the order given, the controls on one bottom
      * edge (GAP-2). The tabs hug their labels, the search grows into what is left (never under 12rem), each select keeps its own width and
      * never wraps its words; a peer that no longer fits wraps to the next line. Every peer is a field the vendor draws full width, so the row
-     * sets each one's share here. Its own width decides the narrow step (48rem, the Grammar's stacking step): below it the peers stack, each
-     * the full width. While the section loads, the skeleton around the peers lays them out the same way.
+     * sets each one's share here. Its own width decides the narrow step (48rem, the Grammar's stacking step): below it the tabs, the search and a
+     * `field` select each take a full line, while a `pill` or `compact` select keeps its content width and shares a wrapping line with the next
+     * one, as in a card's search zone. While the section loads, the skeleton around the peers lays them out the same way.
      */
     .starci-core-section-filter {
         container: starci-core-section-filter / inline-size;
@@ -386,17 +387,12 @@
     }
 
     @container starci-core-section-filter (max-width: 48rem) {
-        .starci-core-section-filter > .starci-core-skeleton-placeholder[data-shape="block"] {
-            flex-direction: column;
-            align-items: stretch;
-        }
-
         /* The same selectors as the wide shares above, so the narrow step outranks none of them by accident and wins by order. */
         :is(.starci-core-section-filter, .starci-core-section-filter > .starci-core-skeleton-placeholder) > .starci-core-tabs-frame[data-grammar-tabs-kind="filter"],
         :is(.starci-core-section-filter, .starci-core-section-filter > .starci-core-skeleton-placeholder) > [data-component="SearchField"],
-        :is(.starci-core-section-filter, .starci-core-section-filter > .starci-core-skeleton-placeholder) > [data-component="Select"] {
+        :is(.starci-core-section-filter, .starci-core-section-filter > .starci-core-skeleton-placeholder) > [data-component="Select"][data-grammar-select-appearance="field"] {
             min-width: 0;
-            flex: none;
+            flex: 1 1 100%;
             width: 100%;
             max-width: 100%;
         }
