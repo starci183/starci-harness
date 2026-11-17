@@ -1,4 +1,4 @@
-// proves: HFS_BRAND_INVALID@lite
+﻿// proves: HFS_BRAND_INVALID@lite
 // proves: HFS_BRAND_INVALID@full
 // proves: HFS_BRAND_MISSING@lite
 // proves: HFS_BRAND_MISSING@full
@@ -6,6 +6,8 @@
 // proves: HFS_BRAND_PROMPT_STALE@full
 // proves: HFS_BRAND_PROMPT_INCOMPLETE@lite
 // proves: HFS_BRAND_PROMPT_INCOMPLETE@full
+// proves: HFS_BRAND_BASE_UNKNOWN@lite
+// proves: HFS_BRAND_BASE_UNKNOWN@full
 // R437, the brand sheet (rules/brand.mts; contexts/project/brand.md PROJECT-BRAND-1, PROJECT-BRAND-2): `.starcistacks/brand/illustration.yaml` holds `basePrompt: { version, text }`, and every
 // `statics/**/*.prompt.yaml` records the current version, a subject and a prompt that starts with the base text. The sheet's shape is an error; the rest are `local` (report-only in `--env local`).
 import { test } from 'node:test';
@@ -20,12 +22,12 @@ import { scaffoldApp } from '../scaffold/app.mjs';
 import type { LockResult } from '../scaffold/app.mjs';
 import { init } from '../runtime/scripts/api/git/init.mjs';
 import { checkRepo } from '../runtime/scripts/hfs/check.mjs';
-import { brandFindings, parseBasePrompt } from '../runtime/scripts/hfs/rules/brand.mjs';
+import { brandFindings, parseBasePrompt, parseMediaBases } from '../runtime/scripts/hfs/rules/brand.mjs';
 import { localOnlyCodes } from '../runtime/scripts/hfs/check-env.mjs';
 import { A15_CODES, FINDERS } from '../runtime/scripts/hfs/rules/a15-findings.mjs';
 import { loadSlotManifest } from '../runtime/scripts/hfs/slots.mjs';
 
-const CODES = ['HFS_BRAND_INVALID', 'HFS_BRAND_MISSING', 'HFS_BRAND_PROMPT_STALE', 'HFS_BRAND_PROMPT_INCOMPLETE'];
+const CODES = ['HFS_BRAND_INVALID', 'HFS_BRAND_MISSING', 'HFS_BRAND_PROMPT_STALE', 'HFS_BRAND_PROMPT_INCOMPLETE', 'HFS_BRAND_BASE_UNKNOWN'];
 const BASE = 'A single 3D clay object on a white background, lit from the top left. One object plus at most one accent.';
 const SHEET = (version: number | string = 1): string => `basePrompt:\n  version: ${version}\n  text: >-\n    A single 3D clay object on a white background,\n    lit from the top left. One object plus at most one accent.\n`;
 const PROMPT = (over: Record<string, string> = {}): string => {
@@ -55,10 +57,11 @@ test('the brand codes ship with the check, the three prompt codes are localOnly,
   for (const code of CODES) assert.ok(A15_CODES.includes(code), code);
   assert.ok(FINDERS.includes(brandFindings));
   assert.deepEqual(CODES.filter((code) => localOnlyCodes().has(code)), CODES.slice(1));
+  assert.equal(CODES.length, 5);
   const slot = loadSlotManifest().slots.find((entry) => entry.id === 'app.starcistacks.brand');
   assert.equal(slot?.path, '.starcistacks/brand/');
   assert.equal(slot?.tracked, 'tracked');
-  for (const file of ['brand.md', 'illustration.md', 'illustration.yaml', 'references/**']) assert.ok(slot?.allows?.includes(file), file);
+  for (const file of ['brand.md', 'illustration.md', 'illustration.yaml', 'media.md', 'media.yaml', 'references/**']) assert.ok(slot?.allows?.includes(file), file);
 });
 
 for (const edition of ['lite', 'full']) {
@@ -155,7 +158,7 @@ for (const edition of ['lite', 'full']) {
     t.after(() => fs.rmSync(into, { recursive: true, force: true }));
     const lockedOk = (root: string): LockResult => { fs.writeFileSync(path.join(root, 'package-lock.json'), '{}\n'); return { ok: true }; };
     const { root, files } = scaffoldApp({ name: 'demo', harness: { version: '1.1.0-alpha.3' }, into, edition, presets: bundledPresets(), lock: lockedOk, initGit: init });
-    for (const file of ['brand.md', 'illustration.md', 'illustration.yaml', 'references/.gitkeep']) assert.ok(files.includes(`.starcistacks/brand/${file}`), file);
+    for (const file of ['brand.md', 'illustration.md', 'illustration.yaml', 'media.md', 'media.yaml', 'references/.gitkeep']) assert.ok(files.includes(`.starcistacks/brand/${file}`), file);
     const brand = fs.readFileSync(path.join(root, '.starcistacks', 'brand', 'brand.md'), 'utf8');
     assert.match(brand, /^# demo brand$/mu);
     assert.ok(!brand.includes('{{'), 'every skeleton variable is filled');
@@ -168,3 +171,76 @@ for (const edition of ['lite', 'full']) {
     assert.deepEqual(codes(), []);
   });
 }
+
+// R437 media bases: `.starcistacks/brand/media.yaml` holds `bases: { <name>: { version, text } }`; a prompt file names its base in `basePrompt.name` (default `illustration`).
+const MEDIA_FILE = '.starcistacks/brand/media.yaml';
+const MEDIA = (version: number | string = 1): string => `bases:\n  social-image:\n    version: ${version}\n    text: >-\n      A natural photo,\n      soft daylight. No text.\n  presenter:\n    version: 1\n    text: A presenter in a plain studio.\n`;
+const SOCIAL = 'A natural photo, soft daylight. No text.';
+const named = (name: string, version = 1): string => `\n  name: ${name}\n  version: ${version}`;
+const MEDIA_PROMPT = (over: Record<string, string> = {}): string => PROMPT({ basePrompt: named('social-image'), prompt: JSON.stringify(`${SOCIAL}\n\na team at a counter`), ...over });
+const SOCIAL_FILE = 'statics/social/launch/hero.prompt.yaml';
+
+for (const edition of ['lite', 'full']) {
+  test(`${edition}: a prompt file made from a media base by name, version and text is green, with or without an illustration.yaml`, (t) => {
+    assert.deepEqual(run(app(t, { [MEDIA_FILE]: MEDIA(), [SOCIAL_FILE]: MEDIA_PROMPT() }), edition), []);
+    assert.deepEqual(run(app(t, { [SHEET_FILE]: SHEET(), [MEDIA_FILE]: MEDIA(), [SOCIAL_FILE]: MEDIA_PROMPT(), [IMAGE]: PROMPT() }), edition), []);
+  });
+
+  test(`${edition}: HFS_BRAND_BASE_UNKNOWN when a prompt file names a base neither file defines, or names none and there is no illustration.yaml, local`, (t) => {
+    const unknown = run(app(t, { [SHEET_FILE]: SHEET(), [MEDIA_FILE]: MEDIA(), [SOCIAL_FILE]: MEDIA_PROMPT({ basePrompt: named('video-broll') }) }), edition);
+    assert.deepEqual(codes(unknown), ['HFS_BRAND_BASE_UNKNOWN']);
+    assert.equal(unknown[0]?.local, true);
+    assert.match(unknown[0]?.message ?? '', /"video-broll".*known: social-image, presenter, illustration/u);
+    assert.deepEqual(codes(run(app(t, { [MEDIA_FILE]: MEDIA(), [IMAGE]: PROMPT() }), edition)), ['HFS_BRAND_BASE_UNKNOWN']);
+    assert.deepEqual(codes(run(app(t, { [SHEET_FILE]: SHEET(), [SOCIAL_FILE]: MEDIA_PROMPT() }), edition)), ['HFS_BRAND_BASE_UNKNOWN']);
+    assert.deepEqual(codes(run(app(t, { [SHEET_FILE]: SHEET(), [SOCIAL_FILE]: MEDIA_PROMPT({ basePrompt: named('7') }) }), edition)), ['HFS_BRAND_BASE_UNKNOWN']);
+  });
+
+  test(`${edition}: a media prompt is stale against its own base's version and incomplete against its own base's text`, (t) => {
+    const stale = run(app(t, { [MEDIA_FILE]: MEDIA(2), [SOCIAL_FILE]: MEDIA_PROMPT() }), edition);
+    assert.deepEqual(codes(stale), ['HFS_BRAND_PROMPT_STALE']);
+    assert.match(stale[0]?.message ?? '', /current one is 2.*base `social-image`/u);
+    assert.ok(stale.every((finding) => finding.local === true));
+    // The illustration base text is not the social-image text.
+    const incomplete = run(app(t, { [SHEET_FILE]: SHEET(), [MEDIA_FILE]: MEDIA(), [SOCIAL_FILE]: MEDIA_PROMPT({ prompt: `${BASE} a team at a counter` }) }), edition);
+    assert.deepEqual(codes(incomplete), ['HFS_BRAND_PROMPT_INCOMPLETE']);
+    // A media base raised to version 2 leaves the illustration prompt (version 1) green.
+    assert.deepEqual(run(app(t, { [SHEET_FILE]: SHEET(), [MEDIA_FILE]: MEDIA(2), [IMAGE]: PROMPT() }), edition), []);
+  });
+
+  test(`${edition}: HFS_BRAND_INVALID is an error for a media.yaml of the wrong shape, and a base of an invalid file is not also unknown`, (t) => {
+    const bases = (name: string, body: string): string => `bases:\n  ${name}:\n${body}`;
+    const bodies = ['bases: [', 'name: x\n', 'bases: {}\n', bases('illustration', '    version: 1\n    text: x\n'), bases('Social_Image', '    version: 1\n    text: x\n'), bases('a-b', '    version: 0\n    text: x\n'), bases('a-b', '    version: 1\n    text: ""\n'), 'bases:\n  a-b: text\n'];
+    for (const body of bodies) {
+      const [finding, ...rest] = run(app(t, { [MEDIA_FILE]: body }), edition);
+      assert.equal(finding?.code, 'HFS_BRAND_INVALID', body);
+      assert.equal(finding?.path, MEDIA_FILE);
+      assert.equal(finding?.local, undefined);
+      assert.deepEqual(rest, []);
+    }
+    assert.deepEqual(codes(run(app(t, { [SHEET_FILE]: SHEET(), [MEDIA_FILE]: 'bases: [', [SOCIAL_FILE]: MEDIA_PROMPT(), [IMAGE]: PROMPT() }), edition)), ['HFS_BRAND_INVALID']);
+  });
+}
+
+test('parseMediaBases: the names, versions and texts of the bases', () => {
+  const { bases, problem } = parseMediaBases(MEDIA());
+  assert.equal(problem, null);
+  assert.deepEqual([...(bases ?? new Map()).keys()], ['social-image', 'presenter']);
+  assert.match(parseMediaBases('bases: 1\n').problem ?? '', /no `bases` object/u);
+  assert.match(parseMediaBases('bases:\n  x1:\n    version: "1"\n    text: a\n').problem ?? '', /not a positive integer/u);
+});
+
+test('the starter media.yaml holds social-image, video-broll and presenter at version 1, none asking for text in the pixels, and a prompt from each is judged green', (t) => {
+  const sheet = fs.readFileSync(path.join(TEMPLATE, 'media.yaml'), 'utf8');
+  const { bases, problem } = parseMediaBases(sheet);
+  assert.equal(problem, null);
+  assert.deepEqual([...(bases ?? new Map()).keys()], ['social-image', 'video-broll', 'presenter']);
+  const files: Record<string, string> = { [MEDIA_FILE]: sheet };
+  for (const [name, base] of bases ?? new Map<string, { version: number; text: string }>()) {
+    assert.equal(base.version, 1, name);
+    assert.match(base.text, /No text, no letters, no numbers/u, name);
+    files[`statics/media/${name}.prompt.yaml`] = PROMPT({ basePrompt: named(name), prompt: JSON.stringify(`${base.text}\n\na team at a counter`) });
+  }
+  assert.match(fs.readFileSync(path.join(TEMPLATE, 'media.md'), 'utf8'), /^# \{\{project\}\} media$/mu);
+  assert.deepEqual(run(app(t, files)), []);
+});

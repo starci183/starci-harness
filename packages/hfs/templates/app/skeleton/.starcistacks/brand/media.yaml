@@ -1,0 +1,22 @@
+# The named bases of the app's other generated media (contexts/project/brand.md PROJECT-BRAND-2), beside illustration.yaml, whose basePrompt is read as the base named `illustration`.
+# A media prompt is bases[name].text, a blank line, then the subject; its prompt file records `basePrompt: { name, version }`. Change a text, raise its version, make the media again.
+# No base asks for text, letters or numbers in the pixels: words are laid over the media afterwards, never drawn by the model.
+bases:
+  social-image:
+    version: 1
+    text: >-
+      A natural, photographic image for a social post, in 4:5 or 1:1 framing, soft daylight, an honest real-life setting with a clear single subject and generous
+      empty space around it. The brand colour TODO(brand) appears only as a small accent, with neutral tones elsewhere. No text, no letters, no numbers, no logos,
+      no signage, no watermarks, no distorted hands, no close-up faces.
+  video-broll:
+    version: 1
+    text: >-
+      A calm, vertical 9:16 b-roll shot in natural daylight, a real service-business setting such as a counter, a workshop or a shopfront, slow steady camera
+      movement, shallow depth of field. The brand colour TODO(brand) appears only as a small accent, with neutral tones elsewhere. No text, no letters, no numbers,
+      no logos, no signage, no subtitles, no faces in close-up.
+  presenter:
+    version: 1
+    text: >-
+      A presenter framed from the chest up, centred, facing the camera in a plain, softly lit studio with a clean background of neutral tones and a small accent of
+      the brand colour TODO(brand). Vertical 9:16 framing with clear space above the head for captions added later. No text, no letters, no numbers, no logos,
+      no on-screen graphics.

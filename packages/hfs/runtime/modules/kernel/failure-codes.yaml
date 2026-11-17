@@ -7216,7 +7216,7 @@ HFS_SECRET_TARGET_PLAIN:
 HFS_BRAND_INVALID:
   title: "The brand sheet has a valid basePrompt"
   title_vi: "Tờ thương hiệu có basePrompt hợp lệ"
-  meaning_vi: ".starcistacks/brand/illustration.yaml không phải YAML, hoặc basePrompt không đúng dạng { version: số nguyên từ 1, text: khối chữ không rỗng }."
+  meaning_vi: ".starcistacks/brand/illustration.yaml không phải YAML, hoặc basePrompt không đúng dạng { version: số nguyên từ 1, text: khối chữ không rỗng }; hoặc .starcistacks/brand/media.yaml không đúng dạng bases: { <tên kebab-case khác illustration>: { version: số nguyên từ 1, text: khối chữ không rỗng } }."
   causes_vi:
     - "Vi phạm R437 (PROJECT-BRAND-2): basePrompt là nơi duy nhất ghi khối mở đầu của mọi prompt ảnh và phiên bản của nó; hỏng thì không kiểm được ảnh nào còn mới."
     - "Sửa tay sai cú pháp, đặt version là chữ hoặc số thập phân, hoặc để text rỗng."
@@ -7260,6 +7260,19 @@ HFS_BRAND_PROMPT_INCOMPLETE:
   owner: op-retry
   kind: check-finding
   localOnly: true
+HFS_BRAND_BASE_UNKNOWN:
+  title: "A prompt file names a base the brand sheet defines"
+  title_vi: "Tệp prompt ảnh chỉ tên một base mà tờ thương hiệu có định nghĩa"
+  meaning_vi: "Một tệp statics/**/*.prompt.yaml ghi basePrompt.name (mặc định illustration) không có trong .starcistacks/brand/illustration.yaml (base illustration) lẫn .starcistacks/brand/media.yaml (bases)."
+  causes_vi:
+    - "Vi phạm R437 (PROJECT-BRAND-2): mỗi prompt phải bắt đầu bằng đúng một base có tên và phiên bản, nếu không phong cách của media không còn một nguồn."
+    - "Gõ sai tên base, hoặc base chưa được thêm vào media.yaml."
+    - "`--env local` chỉ liệt kê, `--env prod` chặn."
+  nextStep_vi: "Sửa basePrompt.name thành một base có trong tờ thương hiệu, hoặc thêm base đó vào .starcistacks/brand/media.yaml (bases: { <tên>: { version: 1, text: ... } })."
+  owner: op-retry
+  kind: check-finding
+  localOnly: true
+
 HFS_STATICS_FILE_KIND:
   title: "A file under statics/ is not media or a prompt sidecar"
   title_vi: "Tệp trong statics/ không phải media hay tệp prompt đi kèm"

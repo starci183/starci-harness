@@ -4,8 +4,10 @@
 //   HFS_BRAND_INVALID            `.starcistacks/brand/illustration.yaml` is not YAML or its `basePrompt` is not `{ version: <positive integer>, text: <non-empty> }` (an error);
 //   HFS_BRAND_MISSING            a `statics/**/*.prompt.yaml` exists and the app has no readable `.starcistacks/brand/illustration.yaml` to prompt from;
 //   HFS_BRAND_PROMPT_STALE       a prompt file records no `basePrompt.version`, or one other than the current: the image was made from an older brand prompt and is made again;
-//   HFS_BRAND_PROMPT_INCOMPLETE  a prompt file is not YAML, has no `subject`, or its `prompt` does not start with the current basePrompt text.
-// The last three are localOnly: a warning in `--env local` (a brand prompt moves while images are redrawn), an error in `--env prod`. The prompt files are read from the work tree, since the
+//   HFS_BRAND_PROMPT_INCOMPLETE  a prompt file is not YAML, has no `subject`, or its `prompt` does not start with the current basePrompt text;
+//   HFS_BRAND_BASE_UNKNOWN       a prompt file names (`basePrompt.name`, default `illustration`) a base that neither illustration.yaml nor `.starcistacks/brand/media.yaml` (`bases: { <name>: { version, text } }`) defines.
+// A prompt file is judged against the base it names, by that base's version and text; a media.yaml that is not that shape is HFS_BRAND_INVALID too (a base inside it is never judged then).
+// The prompt-file codes are localOnly: a warning in `--env local` (a brand prompt moves while images are redrawn), an error in `--env prod`. The prompt files are read from the work tree, since the
 // images they sit beside may be seeded and never tracked.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -18,6 +20,8 @@ import type { Parsed } from './rule-types.mjs';
 export const BRAND_DIR = '.starcistacks/brand';
 /** The machine-readable half of the brand: the one place the base prompt and its version are written. */
 export const BRAND_ILLUSTRATION_FILE = `${BRAND_DIR}/illustration.yaml`;
+/** The named media bases beside the illustration (PROJECT-BRAND-2): `bases: { <name>: { version, text } }`. Optional. */
+export const BRAND_MEDIA_FILE = `${BRAND_DIR}/media.yaml`;
 /** The folder of the app's statics (contexts/project/statics.md) whose prompt files this rule judges. */
 export const STATICS_DIR = 'statics';
 export const PROMPT_SUFFIX = '.prompt.yaml';
@@ -59,12 +63,42 @@ export function promptFiles(repoRoot: string): string[] {
   return out;
 }
 
-/** The problems of one prompt file against the current basePrompt: the stale and the incomplete message, each null when it holds. */
-function promptProblems(text: string, base: BasePrompt): { stale: string | null; incomplete: string | null } {
+/** The base a prompt file that names none is made from. */
+export const DEFAULT_BASE = 'illustration';
+/** A media base name: lowercase kebab-case; `illustration` is reserved for illustration.yaml. */
+const BASE_NAME = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/u;
+
+/** The named bases of a media.yaml text (`bases: { <name>: { version, text } }`), or the problem that makes it invalid. */
+export function parseMediaBases(text: string): { bases: Map<string, BasePrompt> | null; problem: string | null } {
   let doc: Parsed;
-  try { doc = parseYaml(text); } catch { return { stale: null, incomplete: 'is not YAML' }; }
-  if (!plain(doc)) return { stale: null, incomplete: 'is not a YAML object of prompt, basePrompt and subject' };
+  try { doc = parseYaml(text); } catch { return { bases: null, problem: 'is not YAML' }; }
+  const raw: unknown = plain(doc) ? (doc as Record<string, unknown>)['bases'] : undefined;
+  if (!plain(raw)) return { bases: null, problem: 'has no `bases` object' };
+  const bases = new Map<string, BasePrompt>();
+  for (const [name, entry] of Object.entries(raw as Record<string, unknown>)) {
+    if (!BASE_NAME.test(name) || name === DEFAULT_BASE) return { bases: null, problem: `names a base ${JSON.stringify(name)}, which is not a lowercase kebab-case name other than \`${DEFAULT_BASE}\` (that one is illustration.yaml)` };
+    if (!plain(entry)) return { bases: null, problem: `has a base \`${name}\` that is not \`{ version, text }\`` };
+    const { version, text: body } = entry as Record<string, unknown>;
+    if (!positiveInteger(version)) return { bases: null, problem: `has a base \`${name}\` with a version of ${JSON.stringify(version)}, not a positive integer` };
+    if (typeof body !== 'string' || folded(body) === '') return { bases: null, problem: `has a base \`${name}\` with an empty text` };
+    bases.set(name, { version, text: body });
+  }
+  if (bases.size === 0) return { bases: null, problem: 'has an empty `bases` object' };
+  return { bases, problem: null };
+}
+
+/** A prompt file read: its record and the base it names (`basePrompt.name`, else the illustration), or why it is not a record. */
+function readPrompt(text: string): { record: Record<string, unknown>; name: unknown } | { error: string } {
+  let doc: Parsed;
+  try { doc = parseYaml(text); } catch { return { error: 'is not YAML' }; }
+  if (!plain(doc)) return { error: 'is not a YAML object of prompt, basePrompt and subject' };
   const record = doc as Record<string, unknown>;
+  const named = plain(record['basePrompt']) ? (record['basePrompt'] as Record<string, unknown>)['name'] : undefined;
+  return { record, name: named === undefined ? DEFAULT_BASE : named };
+}
+
+/** The problems of one prompt file against the base it names: the stale and the incomplete message, each null when it holds. */
+function promptProblems(record: Record<string, unknown>, base: BasePrompt): { stale: string | null; incomplete: string | null } {
   const recorded = plain(record['basePrompt']) ? (record['basePrompt'] as Record<string, unknown>)['version'] : undefined;
   const stale = recorded === base.version ? null : recorded === undefined ? `records no basePrompt.version (the current one is ${base.version})` : `records basePrompt.version ${JSON.stringify(recorded)}, the current one is ${base.version}`;
   const subject = record['subject'];
@@ -83,17 +117,30 @@ export function brandFindings({ repoRoot, repo, isRoot }: { repoRoot: string; re
   const sheet = readText(repoRoot, BRAND_ILLUSTRATION_FILE);
   const parsed = sheet === null ? null : parseBasePrompt(sheet);
   if (parsed !== null && parsed.base === null) findings.push(found('HFS_BRAND_INVALID', BRAND_ILLUSTRATION_FILE, `${BRAND_ILLUSTRATION_FILE} ${parsed.problem as string}: it holds \`basePrompt: { version: <integer from 1>, text: <the block every image prompt starts with> }\` ${RULE}`));
+  const media = readText(repoRoot, BRAND_MEDIA_FILE);
+  const mediaParsed = media === null ? null : parseMediaBases(media);
+  if (mediaParsed !== null && mediaParsed.bases === null) findings.push(found('HFS_BRAND_INVALID', BRAND_MEDIA_FILE, `${BRAND_MEDIA_FILE} ${mediaParsed.problem as string}: it holds \`bases: { <name>: { version: <integer from 1>, text: <the block every prompt of that name starts with> } }\` ${RULE}`));
   const files = promptFiles(repoRoot);
   if (files.length === 0) return findings;
-  if (parsed === null) return [...findings, found('HFS_BRAND_MISSING', BRAND_ILLUSTRATION_FILE, `${files.length} prompt file${files.length === 1 ? '' : 's'} under ${STATICS_DIR}/ (first: ${files[0] as string}) and no ${BRAND_ILLUSTRATION_FILE}: write the brand folder (\`starci app scaffold\` writes the starter, contexts/project/brand.md PROJECT-BRAND-1), then prompt the images again from its basePrompt ${RULE}`, local)];
-  const { base } = parsed;
-  if (base === null) return findings;
+  if (sheet === null && media === null) return [...findings, found('HFS_BRAND_MISSING', BRAND_ILLUSTRATION_FILE, `${files.length} prompt file${files.length === 1 ? '' : 's'} under ${STATICS_DIR}/ (first: ${files[0] as string}) and no ${BRAND_ILLUSTRATION_FILE}: write the brand folder (\`starci app scaffold\` writes the starter, contexts/project/brand.md PROJECT-BRAND-1), then prompt the images again from its basePrompt ${RULE}`, local)];
+  const known = new Map<string, BasePrompt>(mediaParsed?.bases ?? []);
+  if (parsed?.base) known.set(DEFAULT_BASE, parsed.base);
   for (const file of files) {
     const text = readText(repoRoot, file);
     if (text === null) continue;
-    const { stale, incomplete } = promptProblems(text, base);
-    if (stale !== null) findings.push(found('HFS_BRAND_PROMPT_STALE', file, `${file} ${stale}: the image was prompted from another brand base; build its prompt again as the basePrompt of ${BRAND_ILLUSTRATION_FILE} plus its subject, generate it again and record the version ${RULE}`, local));
-    if (incomplete !== null) findings.push(found('HFS_BRAND_PROMPT_INCOMPLETE', file, `${file} ${incomplete}: a prompt file records \`basePrompt: { version }\`, a \`subject\` and the \`prompt\` that starts with the basePrompt text ${RULE}`, local));
+    const read = readPrompt(text);
+    if ('error' in read) { findings.push(found('HFS_BRAND_PROMPT_INCOMPLETE', file, `${file} ${read.error}: a prompt file records \`basePrompt: { name, version }\`, a \`subject\` and the \`prompt\` that starts with the base text ${RULE}`, local)); continue; }
+    const { name } = read;
+    const base = typeof name === 'string' ? known.get(name) : undefined;
+    if (base === undefined) {
+      // A base that lives in a sheet that is itself invalid is that sheet's finding, not this file's.
+      const invalidOwner = name === DEFAULT_BASE ? parsed !== null && parsed.base === null : mediaParsed !== null && mediaParsed.bases === null;
+      if (!invalidOwner) findings.push(found('HFS_BRAND_BASE_UNKNOWN', file, `${file} names the base ${JSON.stringify(name)}, which neither ${BRAND_ILLUSTRATION_FILE} (the base \`${DEFAULT_BASE}\`) nor ${BRAND_MEDIA_FILE} defines (known: ${[...known.keys()].join(', ') || 'none'}): name a defined base in \`basePrompt.name\` or add it to ${BRAND_MEDIA_FILE} ${RULE}`, local));
+      continue;
+    }
+    const { stale, incomplete } = promptProblems(read.record, base);
+    if (stale !== null) findings.push(found('HFS_BRAND_PROMPT_STALE', file, `${file} ${stale}: the image was prompted from another version of the base \`${name as string}\`; build its prompt again as that base's text plus its subject, generate it again and record the version ${RULE}`, local));
+    if (incomplete !== null) findings.push(found('HFS_BRAND_PROMPT_INCOMPLETE', file, `${file} ${incomplete}: a prompt file records \`basePrompt: { name, version }\`, a \`subject\` and the \`prompt\` that starts with the base text ${RULE}`, local));
   }
   return findings;
 }
