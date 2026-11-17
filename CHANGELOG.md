@@ -2,6 +2,8 @@
 
 ## 1.1.0-alpha.139 - 2026-11-17
 
+- Changed: the CLI requires @starci/hfs@6.13.19, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
+
 - Added: `starci data standard init --name <name>-seed-standard` (`core/data/standard.ts`): a repository converted in place during its rename is scaffolded under the given name, which is validated instead of the folder's (`DATA_COPY_NAME`); a folder named otherwise is told about `--name`.
 - Changed (contexts): `project/stacks.md` PROJECT-STACKS-13 replaces the "Known gap" of the seed step with "The loader" (the receipt per standard and commit, the read, the seed doors, the dry run then the upsert, the force-once rule, a worked example), and R435 is an error; PROJECT-STACKS-14 names a store's `adapter.command` the seed door a standard store declares too; `hfs/rules.yaml` R426, R435; `harness/presence-audit.md` R426; the generated `project/index.md` and `project/stacks-sections.md`.
 - The loader and the R435 error ship in @starci/hfs 6.13.19; until the cli-follow step raises the CLI's requirement to it, the CLI runs the hfs it requires.
