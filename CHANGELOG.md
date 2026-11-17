@@ -2,6 +2,8 @@
 
 ## 1.1.0-alpha.154 - 2026-11-18
 
+- Changed: the CLI requires @starci/hfs@6.13.34, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
+
 - Fixed (app audit): an exception's `via` is a package every path passes through, and a breaking change of another package is not a fix (PROJECT-LINT-5). @starci/hfs 6.13.34. Until the cli-follow step raises the CLI's requirement, the CLI runs the hfs it requires.
 
 ## 1.1.0-alpha.153 - 2026-11-18
