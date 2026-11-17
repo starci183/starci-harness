@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.0 - 2026-11-17
+
+- Changed (`starci/data-entries@1`): every protocol line `serveStore` writes starts with `ANSWER_MARK` (`starci/data-entries@1 `), and `commandStore` reads the marked lines of a door's stdout, leaving out whatever the app framework logs before or after them (a NestJS CLI that logs at shutdown after the answer). A door that marks no line (built on 0.2.0 or earlier) is read by its JSON object lines, any other line being a log line; before, the answer had to be the last stdout line. New exports `ANSWER_MARK`, `protocolText`.
+
 ## 0.2.0 - 2026-11-17
 
 - Added (`@starci/seed/git`): the adapter of a seed-standard that keeps its authored material in `raw/` (PROJECT-STACKS-13, R434). `renderStandard(content, outDir)` writes `{format, project, entries}` through `createGitDriver` into a scratch working copy (plaintext, purpose seed-standard) and replaces `manifest.json`, `data/`, `blobs/` and `index/` of `outDir`, leaving every other file; `takenAt` is `STANDARD_TAKEN_AT` (1970-01-01T00:00:00.000Z) and `source.environment` is `STANDARD_ENVIRONMENT` (standard), so the same content renders the same bytes in any entry order; a format that is no `<name>-seed-standard@<major>` is refused `DATA_FORM_REFUSED`. `runStandardAdapter(convert, argv)` is the body of an adapter's `main.ts`: `--raw` (default raw) and `--out` (default the repository root), exit 0, usage 2, a failed convert or render 1 with its code or error on one line. Types `StandardContent`, `StandardConvert`, `RenderOptions`, `AdapterIo`; constants `STANDARD_OUTPUTS`, `STANDARD_RAW`.

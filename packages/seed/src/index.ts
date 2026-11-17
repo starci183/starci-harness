@@ -34,5 +34,5 @@ export type {
 } from "./driver.ts"
 export { causeLabel, chooseCopy, compareCopies, exportOnce, memorySpool, restoreFrom, spooledSource, unchangedSince, writeEverywhere } from "./copies.ts"
 export type { CopyDifference, CopyLeg, CopyRun, Spool, StoredEntry } from "./copies.ts"
-export { DATA_PROTOCOL, commandStore, decodeEntry, encodeEntry, serveStore } from "./protocol.ts"
+export { ANSWER_MARK, DATA_PROTOCOL, commandStore, protocolText, decodeEntry, encodeEntry, serveStore } from "./protocol.ts"
 export type { CommandRunner, EntryLine, ServeIo } from "./protocol.ts"

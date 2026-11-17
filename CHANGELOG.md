@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.0-alpha.141 - 2026-11-17
+
+- Changed (contexts): `project/stacks.md`: the `mode: always` seed commands run before the seed levels and the loader; the door's answer is its marked protocol line; `STACK_SEED_ADAPTER_INSTALL`.
+- The fixes ship in @starci/hfs 6.13.21 and @starci/seed 0.3.0; until the cli-follow step raises the CLI's requirement to it, the CLI runs the hfs it requires.
+
 ## 1.1.0-alpha.140 - 2026-11-17
 
 - Changed (contexts): `project/stacks.md` PROJECT-STACKS-6: a seed command declared `mode: always` runs on every `stack up`.

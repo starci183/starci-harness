@@ -6744,6 +6744,16 @@ STACK_SEED_ADAPTER_DRIFT:
   nextStep_vi: "Ghim một commit mà kiểm tra của chính kho seed-standard đã xanh (sửa raw/ hoặc adapter/ trong kho đó rồi commit lại), cập nhật commit trong data.sets, rồi chạy lại bring-up."
   owner: supervisor
   kind: verb-refusal
+STACK_SEED_ADAPTER_INSTALL:
+  title: "The seed step could not install the adapter dependencies of a pinned seed-standard"
+  title_vi: "Bước seed không cài được dependency của adapter trong seed-standard đã ghim"
+  meaning_vi: "Trước khi áp dụng, bước seed chạy `npm ci` cho adapter/ của seed-standard tại commit đã ghim để chạy lại adapter (R434). Lệnh npm thất bại nên không kiểm được đầu ra adapter và không có mục nào được áp dụng. Đây không phải lệch đầu ra adapter (STACK_SEED_ADAPTER_DRIFT)."
+  causes_vi:
+    - "adapter/package.json hoặc lockfile của nó ghim một phiên bản registry không phục vụ (ví dụ một bản harness chưa publish)."
+    - "Máy chạy bring-up không tới được registry npm."
+  nextStep_vi: "Sửa adapter/package.json và lockfile trong kho seed-standard để mọi dependency là bản đã publish, commit, ghim commit đó trong data.sets rồi chạy lại bring-up."
+  owner: supervisor
+  kind: verb-refusal
 STACK_SEED_STANDARD_UNREADABLE:
   title: "The seed step cannot read a pinned seed-standard at its commit"
   title_vi: "Bước seed không đọc được seed-standard đã ghim tại commit của nó"

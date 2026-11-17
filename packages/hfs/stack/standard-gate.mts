@@ -72,6 +72,8 @@ export function standardGate({ pins, receipts, execute, verify }: { pins: readon
     let verdict: PinVerdict;
     try { verdict = verify(pin); } catch (error) {
       const code = (error as { code?: unknown }).code;
+      if (code === 'NPM_FAILED') throw refusal('STACK_SEED_ADAPTER_INSTALL', `${short(pin)} of the set ${pin.set}: npm ci of its adapter/ failed${(error as Error).message.includes(': ') ? ` (${(error as Error).message.slice((error as Error).message.indexOf(': ') + 2)})` : ''}; the adapter's dependencies must resolve from its lockfile (a dependency pinned to a version the registry does not serve fails here): fix adapter/package.json and its lockfile in the standard, commit, and pin that commit`);
+      if (code === 'GIT_FAILED') throw refusal('STACK_SEED_STANDARD_UNREADABLE', `${short(pin)} of the set ${pin.set}: git could not check the pin out (${(error as Error).message}); nothing was seeded`);
       throw refusal('STACK_SEED_ADAPTER_DRIFT', `${short(pin)} of the set ${pin.set} cannot be read at its pin${typeof code === 'string' ? ` (${code})` : ''}: a standard is loaded only from a commit the bring-up can verify (R434)`);
     }
     if (verdict.findings.length > 0) {
@@ -110,7 +112,10 @@ export function pinnedStandardVerifier({ cache, platform = process.platform, spa
       const run = (command: string, args: readonly string[], cwd: string, timeout = INSTALL_TIMEOUT_MS): void => {
         const [program, argv] = launch(platform, command, args);
         const done = spawn(program, argv, { cwd, timeout, env: withoutGitEnvironment() });
-        if (done.error !== undefined || done.status !== 0) throw Object.assign(new Error(`${command} ${args[0] ?? ''} failed`), { code: `${command.toUpperCase()}_FAILED` });
+        if (done.error !== undefined || done.status !== 0) {
+          const said = String(done.stderr ?? '').split(/\r?\n/u).map((line) => line.trim()).filter((line) => /\b(?:ERR|error|E[0-9]{3}|fatal)\b/u.test(line)).slice(0, 2).join(' ').slice(0, 300);
+          throw Object.assign(new Error(`${command} ${args[0] ?? ''} failed${said === '' ? '' : `: ${said}`}`), { code: `${command.toUpperCase()}_FAILED` });
+        }
       };
       run('git', ['clone', '-q', '--no-checkout', path.join(cache, `${pin.name}.git`), tree], scratch);
       run('git', ['-c', 'advice.detachedHead=false', 'checkout', '-q', '--detach', pin.commit], tree);

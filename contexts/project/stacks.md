@@ -250,7 +250,7 @@ runs until `--execute`; `doctor`, `status`, `logs` and `verify` are read-only. *
 custody, runs the setup (install, codegen), starts the compose services under the heavy-command governor (a lite app's dev compose runs its database, Mailpit, the `mail` sink the sign-in mails reach on loopback, its web UI an origin, and
 MinIO, the `storage` object store whose root credentials are the dev `storage` member's keys and whose console is an origin; a full app's runs
 `storage` too) and waits for their health, gives the
-environment its own database role and the app role its own password, migrates with a receipt, applies the seed levels with their receipts (PROJECT-STACKS-12), runs the declared seed commands once per set of volumes (a receipt holds the volumes' names and creation times, so a wiped stack seeds again; a command declared `mode: always`, a migration runner idempotent by its own ledger such as TypeORM's, runs on every up, so a new migration reaches an existing stack), starts the native
+environment its own database role and the app role its own password, migrates with a receipt, applies the seed levels with their receipts (PROJECT-STACKS-12), runs the declared seed commands once per set of volumes (a receipt holds the volumes' names and creation times, so a wiped stack seeds again; a command declared `mode: always`, a migration runner idempotent by its own ledger such as TypeORM's, runs on every up, so a new migration reaches an existing stack, and runs right after `db migrate`, before the seed levels and the loader of the pinned seed-standards, whose doors write into the tables it creates), starts the native
 processes, waits for readiness and prints the origins. An agent never runs Docker by hand ([harness/rules.md](../harness/rules.md) hard rule 8);
 the runbook of a docker-compose environment names `starci app stack up --env <env>` and carries no docker command (R373). `down` ends the processes
 and stops the compose project, never a volume, image or another project. A vps environment keeps the Swarm verbs below; `up`, `down`, `doctor` and
@@ -648,7 +648,7 @@ upserts the lessons into the `database` store and the images into the `storage` 
 `force` once per pin. Before any entry of the seed levels applies, the seed step reads each pinned seed-standard of the environment (a git
 destination, no project `completeness`) through `pinRepository` into the harness's cache and, when the pinned commit carries `adapter/`,
 installs it from its lockfile in a scratch checkout and runs the same drift check; a pin whose output drifts, or that cannot be read, is
-refused STACK_SEED_ADAPTER_DRIFT and nothing is seeded. A verified pin is recorded in the seed receipts (scope `standard`, the set's id, the
+refused STACK_SEED_ADAPTER_DRIFT and nothing is seeded (an `npm ci` of its adapter that fails is STACK_SEED_ADAPTER_INSTALL, a checkout that fails STACK_SEED_STANDARD_UNREADABLE). A verified pin is recorded in the seed receipts (scope `standard`, the set's id, the
 commit), so each pin is verified once. Then the loader below applies it. No app reads a standard any other way: a git clone, pull or fetch of a
 `-seed-standard` repository, a content-sync command, or an environment variable naming one is HFS_DATA_SECOND_LOADER (R435, an error). Known
 gap: R435 reads one line at a time, so a repository name kept in a variable and cloned on another line is held by review.
@@ -739,7 +739,7 @@ no value, store error text or identity reaches an output.
 
 Enforced by: R400 (`data-copies`: in a code project `HFS_DATA_IN_CODE`, `HFS_DATA_DEPENDENCY`; in a copy repository's commit hook
 `HFS_DATA_UNSEALED`, `HFS_DATA_STANDARD_SEALED`, `HFS_DATA_MANIFEST_DRIFT`, `HFS_DATA_FILE_SIZE`, `HFS_DATA_CAP`, raw/ included); R427 (the data sets);
-R434 (`data-adapter`, `standard-gate`: `HFS_DATA_ADAPTER_DRIFT`, `HFS_DATA_ADAPTER_UNGUARDED`, `STACK_SEED_ADAPTER_DRIFT`); R435 (`data-loaders`:
+R434 (`data-adapter`, `standard-gate`: `HFS_DATA_ADAPTER_DRIFT`, `HFS_DATA_ADAPTER_UNGUARDED`, `STACK_SEED_ADAPTER_DRIFT`, `STACK_SEED_ADAPTER_INSTALL`); R435 (`data-loaders`:
 `HFS_DATA_SECOND_LOADER`; `standard-load`: `STACK_SEED_STANDARD_UNREADABLE`, `STACK_SEED_STANDARD_SCHEMA`, `STACK_SEED_STORE_COMMAND`,
 `STACK_SEED_DOOR_REFUSED`); the adapter's render by the specs of `@starci/seed` (`git/standard.spec.ts`), the guard by
 `packages/hfs/src/data-adapter.spec.mts` and `data-loaders.spec.mts`, the loader by `standard-load.spec.mts`, the scaffold by `cli/src/core/data/standard.test.ts`.
@@ -799,7 +799,7 @@ reached from the app's root, never named by the declaration alone. An adapter th
 `DatabaseStore`, a package store) is `integrations/seed/<store>.adapter.ts`, registered by its `DataSeedModule`; one that reads a domain's own
 data lives in a domain capability, registered by that capability's module, and takes the port from `@modules/integrations/seed` (an
 integration never imports the domain, BE-INFRA-3); its `command` is the argv, from the app root, of the app's own command that serves the store with `serveStore` of `@starci/seed` over the line
-protocol `starci/data-entries@1` (`describe`, `export <selection>`, `import <options>` with entry lines on stdin, `identity <set> <key>`), which `starci app data` runs; a store
+protocol `starci/data-entries@1` (`describe`, `export <selection>`, `import <options>` with entry lines on stdin, `identity <set> <key>`), which `starci app data` runs. Every protocol line `serveStore` writes starts with `starci/data-entries@1 ` (@starci/seed 0.3.0), so whatever else the app writes to stdout before or after it (a framework logging at shutdown) is left out; a door that marks no line is read by its JSON object lines. A store
 of a `seed-backup` set declares one, and so does a store a `seed-standard` fills (no project `completeness`): that command is the app's **seed door**,
 the one way the bring-up's loader writes a standard into the store (PROJECT-STACKS-13, "The loader").
 

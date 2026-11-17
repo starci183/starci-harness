@@ -3,7 +3,7 @@ import { test } from "node:test"
 import type { DataEntry, Selection } from "./manifest.ts"
 import { blobEntry, recordEntry } from "./manifest.ts"
 import type { CommandRunner, ServeIo } from "./protocol.ts"
-import { DATA_PROTOCOL, commandStore, decodeEntry, encodeEntry, serveStore } from "./protocol.ts"
+import { ANSWER_MARK, DATA_PROTOCOL, commandStore, decodeEntry, encodeEntry, protocolText, serveStore } from "./protocol.ts"
 import type { ImportOptions, ImportReport, StoreAdapter } from "./store.ts"
 import type { MemoryStore } from "./testing/memory.ts"
 import { memoryStore } from "./testing/memory.ts"
@@ -28,7 +28,9 @@ async function* entriesFrom(entries: readonly DataEntry[]): AsyncIterable<DataEn
 async function serve(store: StoreAdapter, args: readonly string[], input: readonly string[] = []): Promise<{ code: number; out: string[] }> {
     const out: string[] = []
     const io: ServeIo = { args, lines: linesFrom(input), write: (line) => { out.push(line) } }
-    return { code: await serveStore(store, io), out }
+    const code = await serveStore(store, io)
+    assert.ok(out.every((line) => line.startsWith(ANSWER_MARK)), "every line a door writes is marked")
+    return { code, out: out.map((line) => line.slice(ANSWER_MARK.length)) }
 }
 
 /** A command runner that is the app's command, served in memory. */
@@ -178,4 +180,40 @@ test("commandStore refuses an entry whose body does not match its hash", async (
     const line = JSON.parse(encodeEntry(recordEntry("s", "k", 1))) as Record<string, string>
     const run: CommandRunner = () => linesFrom([JSON.stringify({ ...line, sha256: "0".repeat(64) }), JSON.stringify({ end: true, items: 1 })])
     await assert.rejects(() => collect(commandStore({ id: "remote", kind: "database", level: "logical" }, run).export({})), /does not match its sha256/u)
+})
+
+test("protocolText reads a marked line, an unmarked JSON object line until a line is marked, and leaves log lines out", () => {
+    assert.equal(protocolText(`${ANSWER_MARK}{"a":1}`, false), '{"a":1}')
+    assert.equal(protocolText(`${ANSWER_MARK}{"a":1}`, true), '{"a":1}')
+    assert.equal(protocolText(' {"a":1} ', false), '{"a":1}')
+    assert.equal(protocolText('{"a":1}', true), null)
+    assert.equal(protocolText("[Nest] 123 - LOG [NestApplication] shutdown", false), null)
+    assert.equal(protocolText("{not json", false), null)
+})
+
+test("commandStore reads the answer of a door whose app framework logs before and after it (a NestJS CLI at shutdown)", async () => {
+    const source = seeded()
+    const noisy: CommandRunner = async function* (args, input) {
+        yield "[Nest] 4242  - LOG [NestFactory] Starting Nest application..."
+        yield '{"level":"info","msg":"a JSON log line before the answer"}'
+        yield* runnerOver(source)(args, input)
+        yield "[Nest] 4242  - LOG [NestApplication] Nest application successfully stopped"
+        yield '{"level":"info","msg":"a JSON log line after the answer"}'
+    }
+    const remote = commandStore({ id: "remote", kind: "database", level: "logical" }, noisy)
+    assert.deepEqual(await remote.describe(), await source.describe())
+    assert.equal(await remote.identityOf("products", "a"), await source.identityOf("products", "a"))
+    assert.deepEqual(await collect(remote.export({})), await collect(source.export({})))
+    const target = memoryStore({ id: "db" })
+    const report = await commandStore({ id: "remote", kind: "database", level: "logical" }, async function* (args, input) {
+        yield* runnerOver(target)(args, input)
+        yield "[Nest] 4242  - LOG [NestApplication] Nest application successfully stopped"
+    }).import(entriesFrom(await collect(source.export({}))), { dryRun: false, mode: "merge" })
+    assert.equal(report.outcome, "applied")
+})
+
+test("commandStore still reads a door that marks no line (built on @starci/seed before 0.3.0) by its JSON object lines", async () => {
+    const entry = recordEntry("s", "k", 1)
+    const legacy: CommandRunner = () => linesFrom(["booting", encodeEntry(entry), JSON.stringify({ end: true, items: 1 }), "bye"])
+    assert.deepEqual(await collect(commandStore({ id: "remote", kind: "database", level: "logical" }, legacy).export({})), [entry])
 })

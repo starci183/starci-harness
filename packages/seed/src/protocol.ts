@@ -12,8 +12,29 @@ import type { StoreKind, StoreLevel } from "./words.ts"
  *   <argv> identity <set> <key>      -> one line: {"identity": string | null}
  *
  * A record's body travels as its canonical JSON text, a blob's as base64. A value never reaches argv or a log.
+ *
+ * Every protocol line `serveStore` writes starts with ANSWER_MARK, so the harness reads the protocol out of a stdout an app framework also logs
+ * to, before or after the answer (a NestJS CLI that logs at shutdown). The harness reads the marked lines; a door that marks none (a door built
+ * on @starci/seed before 0.3.0) is read by its JSON object lines, any other line being a log line.
  */
 export const DATA_PROTOCOL = "starci/data-entries@1"
+
+/** The prefix of every protocol line a door writes: the protocol's name and one space. */
+export const ANSWER_MARK = `${DATA_PROTOCOL} `
+
+/** The protocol text of one stdout line: a marked line without its mark, an unmarked JSON object line as it is, a log line null. */
+export function protocolText(line: string, marked: boolean): string | null {
+    if (line.startsWith(ANSWER_MARK)) return line.slice(ANSWER_MARK.length)
+    if (marked) return null
+    const text = line.trim()
+    if (!text.startsWith("{")) return null
+    try {
+        JSON.parse(text)
+        return text
+    } catch {
+        return null
+    }
+}
 
 /** One entry as a protocol line. */
 export interface EntryLine {
@@ -63,8 +84,9 @@ async function* entriesFromLines(lines: AsyncIterable<string>): AsyncIterable<Da
     for await (const line of lines) if (line.trim() !== "") yield decodeEntry(line)
 }
 
-/** Serves one store over the protocol from an app's command; answers the exit code. */
-export async function serveStore(store: StoreAdapter, io: ServeIo): Promise<number> {
+/** Serves one store over the protocol from an app's command; answers the exit code. Every line it writes carries ANSWER_MARK. */
+export async function serveStore(store: StoreAdapter, served: ServeIo): Promise<number> {
+    const io: ServeIo = { ...served, write: (line) => { served.write(`${ANSWER_MARK}${line}`) } }
     const [verb, argument] = io.args
     if (verb === "describe") {
         io.write(JSON.stringify(await store.describe()))
@@ -96,9 +118,29 @@ export async function serveStore(store: StoreAdapter, io: ServeIo): Promise<numb
 /** Runs the app's command with extra arguments and optional stdin lines; yields its stdout lines. */
 export type CommandRunner = (args: readonly string[], input?: AsyncIterable<string>) => AsyncIterable<string>
 
+/**
+ * The protocol lines of a command's stdout: its marked lines when it marks any (a JSON log line before the first one is dropped), else, at
+ * its end, its JSON object lines; log lines are left out.
+ */
+async function* protocolLines(lines: AsyncIterable<string>): AsyncIterable<string> {
+    let marked = false
+    const held: string[] = []
+    for await (const line of lines) {
+        if (line.startsWith(ANSWER_MARK)) marked = true
+        const text = protocolText(line, marked)
+        if (text === null || text.trim() === "") continue
+        if (marked) {
+            held.length = 0
+            yield text
+        } else held.push(text)
+    }
+    yield* held
+}
+
+/** The answer of a command: its last protocol line, whatever the app logged before or after it. */
 async function lastLine(lines: AsyncIterable<string>): Promise<string> {
     let last = ""
-    for await (const line of lines) if (line.trim() !== "") last = line
+    for await (const line of protocolLines(lines)) last = line
     return last
 }
 
@@ -114,8 +156,7 @@ export function commandStore(declared: { readonly id: string; readonly kind: Sto
         async *export(selection: Selection) {
             let items = 0
             let ended = false
-            for await (const line of run(["export", JSON.stringify(selection)])) {
-                if (line.trim() === "") continue
+            for await (const line of protocolLines(run(["export", JSON.stringify(selection)]))) {
                 const parsed = JSON.parse(line) as { end?: boolean; items?: number }
                 if (parsed.end === true) {
                     if (parsed.items !== items) throw new TypeError(`${declared.id}: the command counted ${String(parsed.items)} entries, ${String(items)} arrived`)

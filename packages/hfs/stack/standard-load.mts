@@ -2,7 +2,7 @@
 // path in"). After the gate of standard-gate.mts verified every pin (R434), each pin is read at its commit through `pinRepository` and the git
 // driver of @starci/seed (the driver's own verify, then its read) and applied through the app's seed door: the `adapter.command` each store
 // declares, served with `serveStore` over the line protocol starci/data-entries@1 (`import <options>`, the entry lines on stdin, the
-// ImportReport on the last line), run by the seed step's own command runner (the api's environment on a dev stack, the jobs service on a
+// ImportReport as its last protocol line: a line marked `starci/data-entries@1 `, or its last JSON object line from a door that marks none; log lines the app framework writes around it are left out), run by the seed step's own command runner (the api's environment on a dev stack, the jobs service on a
 // deploy). The apply is `restoreFrom` in mode merge: an upsert by natural key that keeps each row's identity and removes nothing. A dry run
 // through every door (mode mirror, nothing written) comes first, so a door that refuses a key refuses the pin before any record applies, and
 // its `removed` count is what the standard no longer names: reported, and left. One receipt per (standard, commit) in the seed receipts
@@ -113,7 +113,7 @@ async function through(pin: StandardPin, source: ExportSource, doors: readonly S
     reports = await restoreFrom(source, doors, { dryRun, mode: dryRun ? 'mirror' : 'merge' });
   } catch (error) {
     if (error instanceof StackError) throw error;
-    const reason = error instanceof Error && error.message.startsWith('the door of the store') ? error.message : 'a door answered no ImportReport on its last line';
+    const reason = error instanceof Error && error.message.startsWith('the door of the store') ? error.message : 'a door answered no ImportReport (a line marked starci/data-entries@1, or a JSON object line)';
     throw failure('STACK_SEED_DOOR_REFUSED', `${named(pin)} of the set ${pin.set}: ${reason}; ${dryRun ? 'nothing of the pin was applied' : 'no receipt was written, so the next bring-up applies the pin again (an upsert by natural key)'}`);
   }
   const refused = refusedOf(reports);

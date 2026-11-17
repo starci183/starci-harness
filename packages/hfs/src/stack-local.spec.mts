@@ -392,3 +392,17 @@ test('a failed db migrate names its coded refusal instead of a bare exit', async
   assert.notEqual(code, 0);
   assert.match(h.err.join('') + h.out.join(''), /STACK_LOCAL_MIGRATE/u);
 });
+
+test('the always seed commands run right after db migrate, before the seed levels (and the loader of the pinned standards), the once commands after them', async (t) => {
+  const root = app(t, { block: BLOCK.replace('seed: [{name: owner, argv: [node, seed.mjs], files: [JWT_KEY]}]', 'seed: [{name: owner, argv: [node, seed.mjs], files: [JWT_KEY]}, {name: migrate-typeorm, argv: [node, typeorm.mjs], mode: always}]') });
+  fs.mkdirSync(path.join(root, '.starcistacks', 'seeds', 'sql'), { recursive: true });
+  fs.writeFileSync(path.join(root, '.starcistacks/seeds/seeds.yaml'), 'schema: starci/seeds@1\nentries:\n  - {id: plans, kind: sql, path: sql/010-plans.sql, target: primary, mode: upsert}\n');
+  fs.writeFileSync(path.join(root, '.starcistacks/seeds/sql/010-plans.sql'), "insert into plans values ('free') on conflict do nothing;\n");
+  const h = host(root);
+  assert.equal(await run(root, ['up', '--env', 'dev', '--execute'], h), 0, h.err.join(''));
+  const steps = h.calls.map((call) => call.args.join(' '));
+  const runner = steps.findIndex((step) => step.includes('typeorm.mjs'));
+  const level = steps.findIndex((step) => step.includes('create table if not exists public.starci_seed_receipts'));
+  const once = steps.findIndex((step) => step.includes('seed.mjs'));
+  assert.ok(runner >= 0 && level > runner && once > level, `runner ${String(runner)} < seed levels ${String(level)} < once ${String(once)}`);
+});

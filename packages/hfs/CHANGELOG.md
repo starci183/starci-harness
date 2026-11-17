@@ -1,5 +1,14 @@
 # Changelog
 
+## 6.13.21 - 2026-11-17
+
+- Fixed (`stack/local-up.mts`): `stack up` runs the seed commands of `mode: always` (a migration runner such as `migrate-typeorm`) right after `db migrate`, before the seed levels and the loader of the pinned `data.sets` seed-standards, so on a fresh database the store doors write into tables that exist; the `once` commands still run after the seed levels.
+- Fixed (`stack/standard-gate.mts`, R434): an `npm ci` of a pinned standard's adapter that fails (a dependency pinned to a version the registry does not serve) is the new refusal `STACK_SEED_ADAPTER_INSTALL` and quotes npm's error line, no longer `STACK_SEED_ADAPTER_DRIFT`; a checkout that fails is `STACK_SEED_STANDARD_UNREADABLE`.
+- Changed: requires @starci/seed 0.3.0, whose `commandStore` reads a door's answer from its marked protocol lines (`starci/data-entries@1 `), whatever the app logs around it; a door on an older @starci/seed is read by its JSON object lines (`stack/standard-load.mts`).
+- Contexts: `project/stacks.md` PROJECT-STACKS-6, -13, -14; `hfs/rules.yaml` R434; `modules/kernel/failure-codes.yaml` `STACK_SEED_ADAPTER_INSTALL`.
+- Specs: `stack-local.spec.mts` (the order), `data-adapter.spec.mts` (`STACK_SEED_ADAPTER_INSTALL`).
+- Changed (`knowledge/hfs/canon-pins.yaml`): the `@starci/hfs` self-pin is 6.13.21.
+
 ## 6.13.20 - 2026-11-17
 
 - Fixed (`stack/local-up.mts`, `stack-local-config.mts`): a seed command of `local.seed` takes `mode: once | always` (default once). An `always` command (a migration runner idempotent by its own ledger, such as TypeORM's `migrate-typeorm`) runs on every `starci app stack up`, so a new migration reaches an existing stack; a `once` command keeps its receipt per volume set. Before, every seed command ran once per volume set and a new TypeORM migration never ran on a stack that already had one.

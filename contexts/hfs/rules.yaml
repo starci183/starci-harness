@@ -2918,6 +2918,7 @@ rules:
       - HFS_DATA_ADAPTER_DRIFT
       - HFS_DATA_ADAPTER_UNGUARDED
       - STACK_SEED_ADAPTER_DRIFT
+      - STACK_SEED_ADAPTER_INSTALL
     enforcers:
       - {kind: hfs, id: data-adapter}
       - {kind: hfs, id: standard-gate}

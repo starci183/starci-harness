@@ -1,6 +1,6 @@
 // local-up.mts - `starci app stack up --env <dev env> [--execute]`: the one command that brings the whole dev environment up (PROJECT-STACKS-6).
 // Order: the base port range against the machine's other projects (an overlap refuses before anything starts), host prerequisites, dev custody, setup (install, codegen), compose services and their health, the environment's own database role,
-// migrations with a receipt, the seed levels with their receipts, the seed commands, native app processes, readiness, the dev tunnel routes (PROJECT-STACKS-15), origins. Idempotent: what runs is kept, what changed is converged.
+// migrations with a receipt, the migration runners (seed commands of mode always), the seed levels and the loader of the pinned seed-standards with their receipts, the other seed commands, native app processes, readiness, the dev tunnel routes (PROJECT-STACKS-15), origins. Idempotent: what runs is kept, what changed is converged.
 // A dry run prints the plan. It never generates a replacement secret, never removes a volume and touches only its own compose project.
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -130,14 +130,16 @@ export function volumesIdentity(ctx: StackContext, local: LocalConfig): string {
 /**
  * Runs the seed commands: a `once` command once per volume set (a receipt keyed by the command's digest and the volumes' identity), the seed
  * owning its idempotence beyond that; an `always` command (a migration runner such as TypeORM's, idempotent by its own ledger) on every up,
- * so a new migration reaches an existing stack.
+ * so a new migration reaches an existing stack. `up` runs the `always` commands of `after: migrate` right after `db migrate`, before the
+ * seed levels and the loader of the pinned seed-standards (whose doors write into the tables those runners create), and the `once` commands
+ * after them.
  */
-async function seed(ctx: StackContext, local: LocalConfig, custody: Custody, after: 'migrate' | 'ready'): Promise<string[]> {
+async function seed(ctx: StackContext, local: LocalConfig, custody: Custody, after: 'migrate' | 'ready', mode: 'once' | 'always' | 'any' = 'any'): Promise<string[]> {
   const dir = stateOf(ctx, local);
   const record = readRecord(dir);
   const out: string[] = [];
   const volumes = volumesIdentity(ctx, local);
-  for (const run of local.seed.filter((item) => item.after === after)) {
+  for (const run of local.seed.filter((item) => item.after === after && (mode === 'any' || (item.mode ?? 'once') === mode))) {
     const held = record.receipts.seed[run.name];
     if (run.mode !== 'always' && held?.digest === commandDigest(run) && held.volumes === volumes) { out.push(`seed ${run.name}: already done`); continue; }
     await runCommand(ctx, local, run, runEnvironment(ctx, local, run, custody, 'owner'));
@@ -216,7 +218,7 @@ export async function upLocal(ctx: StackContext, local: LocalConfig, { execute =
     lines.push(`service ${ready.detail}`);
     if (!ready.ok) throw failure('STACK_LOCAL_SERVICE', `${service.name} did not become ready in ${timeoutSeconds}s (${ready.detail}); read it with: starci app stack logs --env ${local.env} --service ${service.name}`);
   }
-  lines.push(await provisionDatabase(ctx, local, custody), await migrate(ctx, local, custody, deps), ...await seedLevels(ctx, local, custody), ...await seed(ctx, local, custody, 'migrate'), ...startProcesses(ctx, local, custody, deps));
+  lines.push(await provisionDatabase(ctx, local, custody), await migrate(ctx, local, custody, deps), ...await seed(ctx, local, custody, 'migrate', 'always'), ...await seedLevels(ctx, local, custody), ...await seed(ctx, local, custody, 'migrate', 'once'), ...startProcesses(ctx, local, custody, deps));
   for (const row of local.ready) {
     const result = await waitFor(ctx, deadline, () => probe(ctx, local, row));
     lines.push(`${result.ok ? 'ok    ' : 'FAIL  '}ready ${result.detail}`);

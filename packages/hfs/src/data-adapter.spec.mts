@@ -5,6 +5,8 @@
 // proves: HFS_DATA_ADAPTER_UNGUARDED@full
 // proves: STACK_SEED_ADAPTER_DRIFT@lite
 // proves: STACK_SEED_ADAPTER_DRIFT@full
+// proves: STACK_SEED_ADAPTER_INSTALL@lite
+// proves: STACK_SEED_ADAPTER_INSTALL@full
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -194,6 +196,14 @@ test('R434 STACK_SEED_ADAPTER_DRIFT: the gate verifies each pin once, refuses a 
   const unreadable: PinVerifier = () => { throw Object.assign(new Error('no such commit'), { code: 'DATA_COPY_MISSING' }); };
   assert.throws(() => standardGate({ pins: [pin], receipts: [], execute: true, verify: unreadable }), (error: Error & { code?: string }) => error.code === 'STACK_SEED_ADAPTER_DRIFT' && /cannot be read at its pin \(DATA_COPY_MISSING\)/u.test(error.message));
   assert.throws(() => standardGate({ pins: [pin], receipts: [], execute: true, verify: () => { throw new Error('boom'); } }), /cannot be read at its pin: a standard/u);
+});
+
+test('R434 STACK_SEED_ADAPTER_INSTALL: an npm ci of the adapter that fails is named as such, never as drift; a failed checkout is unreadable', () => {
+  const pin: StandardPin = { set: 'articles', repository: 'https://github.com/example/shop-seed-standard', name: 'shop-seed-standard', commit: PIN_A, stores: ['database'], force: false };
+  const npm: PinVerifier = () => { throw Object.assign(new Error('npm ci failed: npm error notarget No matching version found for starci-harness@1.1.0-alpha.137'), { code: 'NPM_FAILED' }); };
+  assert.throws(() => standardGate({ pins: [pin], receipts: [], execute: true, verify: npm }), (error: Error & { code?: string }) => error.code === 'STACK_SEED_ADAPTER_INSTALL' && /npm ci of its adapter\/ failed \(npm error notarget No matching version found for starci-harness@1\.1\.0-alpha\.137\)/u.test(error.message));
+  const git: PinVerifier = () => { throw Object.assign(new Error('git checkout failed'), { code: 'GIT_FAILED' }); };
+  assert.throws(() => standardGate({ pins: [pin], receipts: [], execute: true, verify: git }), (error: Error & { code?: string }) => error.code === 'STACK_SEED_STANDARD_UNREADABLE');
 });
 
 test('R434 the real verifier: a pinned commit is checked out, its adapter installed from its lockfile and run; a drifting commit is named', (t) => {
