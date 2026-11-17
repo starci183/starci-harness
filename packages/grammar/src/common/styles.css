@@ -337,13 +337,69 @@
         line-height: var(--grammar-leading-md);
     }
 
-    /* The filter row of a list section: the peers that narrow the list sit side by side (GAP-2). */
+    /*
+     * The filter row of a section, a list's or a region's alike (0.43.1): ONE flat wrapping row in the order given, the controls on one bottom
+     * edge (GAP-2). The tabs hug their labels, the search grows into what is left (never under 12rem), each select keeps its own width and
+     * never wraps its words; a peer that no longer fits wraps to the next line. Every peer is a field the vendor draws full width, so the row
+     * sets each one's share here. Its own width decides the narrow step (48rem, the Grammar's stacking step): below it the peers stack, each
+     * the full width. While the section loads, the skeleton around the peers lays them out the same way.
+     */
     .starci-core-section-filter {
+        container: starci-core-section-filter / inline-size;
         display: flex;
         min-width: 0;
         flex-wrap: wrap;
-        align-items: center;
+        align-items: flex-end;
         gap: var(--grammar-inline-gap);
+    }
+
+    .starci-core-section-filter > .starci-core-skeleton-placeholder[data-shape="block"] {
+        display: flex;
+        min-width: 0;
+        flex: 1 1 100%;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        gap: var(--grammar-inline-gap);
+    }
+
+    :is(.starci-core-section-filter, .starci-core-section-filter > .starci-core-skeleton-placeholder) > .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] {
+        flex: 0 1 auto;
+        width: auto;
+        max-width: 100%;
+    }
+
+    :is(.starci-core-section-filter, .starci-core-section-filter > .starci-core-skeleton-placeholder) > [data-component="SearchField"] {
+        min-width: min(100%, 12rem);
+        flex: 1 1 12rem;
+        width: auto;
+    }
+
+    :is(.starci-core-section-filter, .starci-core-section-filter > .starci-core-skeleton-placeholder) > [data-component="Select"] {
+        min-width: 0;
+        max-width: 100%;
+        flex: none;
+        width: max-content;
+    }
+
+    :is(.starci-core-section-filter, .starci-core-section-filter > .starci-core-skeleton-placeholder) > [data-component="Select"] :is(.starci-core-select-trigger, .select__value) {
+        white-space: nowrap;
+    }
+
+    @container starci-core-section-filter (max-width: 48rem) {
+        .starci-core-section-filter > .starci-core-skeleton-placeholder[data-shape="block"] {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        /* The same selectors as the wide shares above, so the narrow step outranks none of them by accident and wins by order. */
+        :is(.starci-core-section-filter, .starci-core-section-filter > .starci-core-skeleton-placeholder) > .starci-core-tabs-frame[data-grammar-tabs-kind="filter"],
+        :is(.starci-core-section-filter, .starci-core-section-filter > .starci-core-skeleton-placeholder) > [data-component="SearchField"],
+        :is(.starci-core-section-filter, .starci-core-section-filter > .starci-core-skeleton-placeholder) > [data-component="Select"] {
+            min-width: 0;
+            flex: none;
+            width: 100%;
+            max-width: 100%;
+        }
     }
 
         /* The one caption under a section's body (a lone table, list or chart): muted sm, a row step below it like every Section child. */
@@ -5194,6 +5250,42 @@
     .starci-core-tooltip-disabled-trigger:has(> [data-component="Button"][data-width="fill"]) {
         display: flex;
         inline-size: 100%;
+    }
+
+    /*
+     * A disabled Button's reason (0.43.1): one element, the description the button points at. Where a pointer can hover, the tooltip
+     * shows it and this line stays out of sight. Where none can (a touch phone), the tooltip never opens, so the line stands under the
+     * button in the field-description style (muted, xs, snug), an identity step below it, wrapping within the button's column.
+     */
+    .starci-core-button-reason {
+        display: none;
+    }
+
+    @media (hover: none), (pointer: coarse) {
+        .starci-core-tooltip-disabled-trigger:has(> .starci-core-button-reason) {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: var(--grammar-identity-gap);
+        }
+
+        .starci-core-tooltip-disabled-trigger:has(> [data-component="Button"]:is([data-width="fill"], [data-width="fill-narrow"])) {
+            align-items: stretch;
+        }
+
+        /* A row of buttons that centres its peers keeps them on one top edge instead: the line hangs under its own button, never lifting the others. */
+        :is(.starci-core-cluster[data-grammar-align="center"], .starci-core-overlay-footer, .starci-core-alert-actions, .starci-core-page-header-actions, .starci-core-pane-header-actions, .starci-core-pinned-action-bar-actions):has(> .starci-core-tooltip-disabled-trigger > .starci-core-button-reason) {
+            align-items: flex-start;
+        }
+
+        .starci-core-button-reason {
+            display: block;
+            max-inline-size: 100%;
+            margin: 0;
+            color: var(--muted);
+            font-size: var(--grammar-text-xs);
+            line-height: var(--grammar-leading-snug);
+            overflow-wrap: anywhere;
+        }
     }
 
     /* --- Pinned action bar (0.6.0): the narrow-screen page command, sticky at the bottom edge. --- */

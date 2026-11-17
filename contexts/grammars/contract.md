@@ -139,7 +139,8 @@ Button is a command (`onPress`) or a destination (`href`) drawn as a button; the
 only paints. Its variant comes from intent and placement, its size from the ramp: `sm`, `md`, `lg`, and `control`
 in a bar. `pending` means this control accepted work: label and box unchanged, a second press refused.
 `disabled` means the work cannot start, and its `disabledReason` says why in a tooltip on hover and keyboard focus
-that is also the button's accessible description, since a disabled control is otherwise mute; `skeleton` means the
+that is also the button's accessible description, since a disabled control is otherwise mute; where no pointer can hover, the
+same description stands as a helper line under the button, since a tooltip cannot be reached there; `skeleton` means the
 content never resolved. A grammar may repaint each vendor variant through its tokens and give the press its own
 motion; it keeps the variant names, so the emphasis ladder means the same in every grammar. `IconButton` is the same contract drawn square or round at the step;
 `FileButton` is an `IconButton` whose press opens the browser's file picker and reports the files; `TextAction` is the quietest command, set in text.
@@ -483,6 +484,10 @@ A titled section is a named region whose title is its heading and its landmark n
 canvas. Its head, filter and content stand one row step (12) apart, because the page body stands its sections a region step apart and
 a container's children stand closer than its siblings, and its page command hugs its label at the end of the head row, its
 text at `md`. A card heads itself with its `label`, so a section around one card is refused.
+
+A region (`kind="region"`, the default) holds children under an optional `filter` that narrows all of them. A list's filter and a
+region's are one flat wrapping row: the filter tabs, the search and its selects share a line on one bottom edge, and stack below the
+narrow step. A region the page title already names supplies `ariaLabel` in place of `title`, as a headless list or strip does.
 
 `kind="figures"` is the unpainted key-figure strip inside an existing surface. It reuses the exact FigureCells renderer
 and typed `Figure` data of `SurfaceCard kind="figures"`, including neutral values, dividers, responsive wrapping and

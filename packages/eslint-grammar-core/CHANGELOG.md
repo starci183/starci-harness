@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.43.1 - 2026-11-17
+
+- Version: moves with the Grammar family (@starci/grammar 0.43.1: the disabled reason on touch, one section filter row, a headless region). No rule changed.
+
 ## 0.43.0 - 2026-11-17
 
 - Added: `surface-card-list` (`FE_SURFACE_CARD_LIST`, law LIST-ONE-LOOK): a Grammar `SurfaceCard` whose `kind` is the literal `"list"` is refused with the fix: `<Section kind="list" title items empty />` with `ListRow` rows; `label` becomes `title`, `labelEnd` becomes `action`, a filter or search goes in the list's `filter`, `layout` stays. No autofix: the zones, the import and the look change too. Doc `docs/surface-card-list.md`.

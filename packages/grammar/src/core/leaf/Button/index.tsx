@@ -27,8 +27,9 @@ type ButtonBase = {
     readonly endContent?: ReactNode
     readonly isDisabled?: boolean
     /**
-     * Why the action is unavailable. A disabled Button shows these words in a Tooltip on hover and keyboard focus
-     * and carries them as its accessible description. It has no effect while the Button is enabled.
+     * Why the action is unavailable. A disabled Button carries these words as its accessible description and shows them in a Tooltip on
+     * hover and keyboard focus; where no pointer can hover (a touch phone, `(hover: none)` or `(pointer: coarse)`) it draws them as a
+     * muted helper line under the button instead (0.43.1), since a tooltip cannot be reached there. It has no effect while the Button is enabled.
      */
     readonly disabledReason?: string
     /**
@@ -157,17 +158,17 @@ const ButtonInner = (props: ButtonProps) => {
     const explained = props.isDisabled === true && reason !== undefined && reason !== ""
     const control = <ButtonControl {...props} {...(explained ? { reasonId } : {})} />
     if (!explained) return control
-    return (
-        <>
-            <span id={reasonId} hidden>{reason}</span>
-            <DisabledReason reason={reason} reasonId={reasonId}>{control}</DisabledReason>
-        </>
-    )
+    return <DisabledReason reason={reason} reasonId={reasonId}>{control}</DisabledReason>
 }
 
 /**
  * The words a disabled Button gives for being unavailable, on hover and keyboard focus. The platform skips a disabled control,
  * so the vendor trigger around it carries the events. A leaf uses the vendor part, never the grammar Tooltip (a branch).
+ *
+ * The words live in ONE element, the description both the trigger and the control point at, so a screen reader hears them once in
+ * either mode. It is hidden from the reading order (`aria-hidden`: a description reference still reads it) and from sight where a
+ * pointer can hover; where none can (`(hover: none)`, `(pointer: coarse)`), the packaged stylesheet shows it as the field-description
+ * line under the button, since the tooltip never opens there. A media query, not a prop: the input decides, never the app.
  */
 const DisabledReason = ({ reason, reasonId, children }: { readonly reason: string; readonly reasonId: string; readonly children: ReactNode }) => {
     const { anchor, container } = useOverlayContainer("Tooltip")
@@ -180,6 +181,7 @@ const DisabledReason = ({ reason, reasonId, children }: { readonly reason: strin
                 aria-describedby={reasonId}
             >
                 {children}
+                <span id={reasonId} className="starci-core-button-reason" data-grammar-button-reason="true" aria-hidden="true">{reason}</span>
             </HeroTooltip.Trigger>
             {anchor}
             {container === null ? null : (

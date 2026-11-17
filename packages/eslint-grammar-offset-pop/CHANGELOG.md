@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.43.1 - 2026-11-17
+
+- Version: moves with the Grammar family (@starci/grammar 0.43.1); peers @starci/eslint-grammar-core 0.43.1. No rule changed.
+
 ## 0.43.0 - 2026-11-17
 
 - Version: moves with the Grammar family (@starci/grammar 0.43.0: `SurfaceCard kind="list"` removed, a list is a flat `Section kind="list"`). It inherits the new `starci-grammar/surface-card-list` rule and the changed `single-child-card` from @starci/eslint-grammar-core 0.43.0; no rule of its own changed.

@@ -39,7 +39,10 @@ type ListSection = {
     readonly items: readonly SectionRow[]
     /** What a list with no row says: one line and its action. */
     readonly empty: ReactNode
-    /** The row that narrows the list: a `FilterButtonGroup` and a `SearchField`. Drawn between the head and the rows. */
+    /**
+     * The row that narrows the list: `Tabs kind="filter"`, a `SearchField` and its `Select`s, drawn between the head and the rows as the same flat
+     * wrapping row a region's `filter` draws (0.43.1).
+     */
     readonly filter?: ReactNode
 }
 
@@ -50,6 +53,12 @@ type HeadlessFigures = Pick<SectionHeadProps, "id"> & {
 
 /** A list whose visible heading already belongs to the surrounding region (a pane head): it draws no heading and is named by `ariaLabel`. */
 type HeadlessList = ListSection & HeadlessFigures
+
+/**
+ * A region whose visible heading already belongs to the page or its surrounding region (0.43.1): a catalog toolbar and its lists under the
+ * page title. It draws no heading and is named by `ariaLabel`, as a headless list is.
+ */
+type HeadlessRegion = RegionSection & HeadlessFigures
 
 type FiguresSection = NoChildren & {
     readonly kind: "figures"
@@ -103,6 +112,7 @@ type SublabelSection = (RegionSection | ListSection) & {
 export type SectionProps = SectionStatus & SectionCaption & (
     | (SectionHeadProps & NoSublabel & (RegionSection | ListSection))
     | (HeadlessList & NoSublabel)
+    | (HeadlessRegion & NoSublabel)
     | (FiguresSection & NoSublabel)
     | SublabelSection
 )
@@ -114,7 +124,12 @@ const listRows = (props: ListSection, isLoading: boolean) => {
     return props.items.map((row) => <ListRow key={row.id} row={row} isLoading={isLoading} />)
 }
 
-/** The flat row that narrows a section's body (a list's rows, or everything a region holds): its peers side by side, never a card. */
+/**
+ * The flat row that narrows a section's body (a list's rows, or everything a region holds): its peers side by side, never a card. One wrapping
+ * row in the order given (tabs, then the search, then the selects), the controls on one bottom edge: the tabs hug their labels, the search
+ * grows into what is left, each select keeps its own width. Below the narrow step (the row's own width under 48rem) the peers stack, each
+ * the row's full width. A list's filter and a region's are this one row.
+ */
 const FilterRow = ({ filter, isLoading }: { readonly filter: ReactNode; readonly isLoading: boolean }) => filter === undefined ? null : (
     <div className="starci-core-section-filter" data-contract="GAP-2">
         {isLoading ? <SkeletonPlaceholder shape="block">{filter}</SkeletonPlaceholder> : filter}
@@ -152,7 +167,8 @@ const ListBody = ({ list, isLoading, error }: { readonly list: ListSection; read
  * one step closer than the region step a section keeps from its siblings (the proximity law).
  *
  * `kind="region"` (the default) holds `children`, with an optional flat `filter` row that narrows all of them (a catalog of several lists under one
- * toolbar, never a rowless card borrowed for its zones). `kind="list"` is THE list, wherever it stands (the page canvas, a card body, a
+ * toolbar, never a rowless card borrowed for its zones); a region whose heading the page already gives takes `ariaLabel` in place of `title`
+ * (0.43.1). `kind="list"` is THE list, wherever it stands (the page canvas, a card body, a
  * drawer, a pane): plain rows on the surface, divided by hairlines, aligned with the section title, with no frame, fill, radius or
  * shadow. Typed `items`, an optional `layout`, an optional `filter` and a required `empty` state; its title owns the list heading and
  * accessible name.

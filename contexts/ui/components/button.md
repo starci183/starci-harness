@@ -88,6 +88,15 @@ variant (0.42.0): a neutral fill (the foreground at 6% over the surface) and neu
 hover or press change; a ghost or outline button keeps no fill, an edged destructive entry drops its danger edge. A
 disabled primary is never an accent wash and a disabled destructive never a pale red; pending and loading keep their look.
 
+The reason reaches every input (0.43.1). It is one description element the button and its trigger point at, so a screen
+reader hears it once. Where a pointer can hover it shows in the tooltip on hover and keyboard focus; where none can
+(`(hover: none)` or `(pointer: coarse)`, a touch phone), the tooltip never opens, so the same words stand as a muted helper
+line under the button (the field-description style, xs), and a row of buttons keeps its peers on one top edge. The input
+decides, never a prop. The line is not drawn for a pointer, whatever the intent or placement: a disabled button has one
+look (it is neutral whatever its intent), and a page whose reader must see why its commit waits before pointing at it says
+so in its own content (the field's error or description, an `Alert`), not through the button. Story
+`Controls/Button disabled reason on touch (0.43.1)`.
+
 ## Owner split
 - **Grammar owns:** variants, the intent x placement map, sizes and their values, the pill shape, pending anatomy,
   the destination/command split by `href`.

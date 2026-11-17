@@ -520,7 +520,7 @@ roles:
     ui: ui/components/list-table.md
     renderers: [Section]
     vendorParity: []                              # no HeroUI part: a Common frame
-    slots: ["title (the heading and landmark name; figures may instead require ariaLabel for a headless strip)", headingLevel, "filter (Tabs kind=filter, a SearchField and its Selects: a flat row under the head; on kind list it narrows the rows, on kind region everything the section holds)", "items (kind list: typed rows; kind figures: shared Figure data)", "children (kind region)", "action (the page command, at the end of the titled head row)", "empty (required for list) and error (ErrorData)"]
+    slots: ["title (the heading and landmark name; a region, a list or a figures strip the surrounding heading already names takes ariaLabel instead and draws none)", headingLevel, "filter (Tabs kind=filter, a SearchField and its Selects: one flat wrapping row under the head, the controls on one bottom edge, stacked below the narrow step; on kind list it narrows the rows, on kind region everything the section holds)", "items (kind list: typed rows; kind figures: shared Figure data)", "children (kind region)", "action (the page command, at the end of the titled head row)", "empty (required for list) and error (ErrorData)"]
     variants:
       kind: { values: [region, list, figures], chosenBy: app from list-table.choose.role or card.choose.role for contained figures }
     sizes: none
@@ -854,7 +854,7 @@ mustKeep:
       owner: ui/loading.md
     - id: DNA-COMMON-DISABLED-REASON
       role: button
-      law: A disabled button's reason is its accessible description and shows in a tooltip on hover and keyboard focus.
+      law: A disabled button's reason is its accessible description and shows in a tooltip on hover and keyboard focus; where no pointer can hover, it shows as a helper line under the button.
       measure: { kind: interaction, select: '[data-component="Button"]:is([disabled],[data-disabled="true"],[aria-disabled="true"])', act: [focus], then: { select: 'document [role="tooltip"]', kind: text, metric: text, op: "=", value: { fixture: disabledReason } } }
       owner: contract roles.button
     - id: DNA-COMMON-BUTTONGROUP-JOINED
