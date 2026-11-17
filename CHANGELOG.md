@@ -2,6 +2,8 @@
 
 ## 1.1.0-alpha.156 - 2026-11-18
 
+- Changed: the CLI requires @starci/hfs@6.13.36, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
+
 - Changed (pins): @starci/hfs 6.13.36 (the audit exceptions are a design truth; a declared nivoos package is no library in sync and its seed is never formatted) and @starci/eslint-canon-be 3.27.2 (no-non-ascii-source off for a declared nivoos package). Until the cli-follow step raises the CLI's requirement, the CLI runs the hfs it requires.
 
 ## 1.1.0-alpha.155 - 2026-11-18
