@@ -1,5 +1,9 @@
 # Changelog
 
+## 6.13.28 - 2026-11-17
+
+- Changed (`knowledge/hfs/canon-pins.yaml`): the Grammar family at 0.44.0 (`~0.44.0`): `navbar-control-size` reads a Switch by its `kind` (toggle passes alone, compact stays refused in a bar: 40px bar controls, R314); `tabs-in-well` allows filter Tabs in a Section `filter`; the Switch off track defaults to the foreground at 28% over the surface (no border, owner law 0.36.2); compact and pill Selects keep their width when a filter row stacks. @starci/stylelint-canon 2.9.5. The `@starci/hfs` self-pin is 6.13.28.
+
 ## 6.13.27 - 2026-11-17
 
 - Changed (`knowledge/hfs/canon-pins.yaml`): the Grammar family at 0.43.1 (`~0.43.1`): a disabled Button's `disabledReason` is a visible helper line on a touch screen (`(hover: none), (pointer: coarse)`) and stays a tooltip under a mouse; the `filter` of a Section (`kind="list"` and `kind="region"`) is one wrapping row (tabs, search, selects) that stacks under 48rem of its own width; a region may be headless, named by `ariaLabel`. The `@starci/hfs` self-pin is 6.13.27.
