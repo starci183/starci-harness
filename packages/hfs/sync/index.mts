@@ -394,7 +394,8 @@ export function jestCoverageSource(coverage: { roots: string[]; roles: string[];
 
 /**
  * The script lines the apps add to the root package.json, each ending with a comma (the template puts them mid-object). A be
- * script runs from be/ (`cd be && ...`, the folder its tsconfig and jest configuration are relative to) or runs the built app; an
+ * script runs from be/ (`cd be && ...`, the folder its tsconfig and jest configuration are relative to) or runs the built app; `dev:be`
+ * runs ts-node-dev transpile-only with a 1s debounce over be/src, be/apps and each root package's dist; an
  * fe script runs the fe app's workspace (@<project>/<app>): through turbo for dev (so the packages it imports are built first) and
  * through npm `-w` for start. be: `dev:be` runs the one api app from source and restarts it on change (`dev:be:<app>` each, with
  * several), `start:<app>` runs a built api or worker app, `cli` the built ops cli app (`npm run cli -- <group> <command>`) and, when the
@@ -410,7 +411,11 @@ export function appScripts(app: ResolvedApp, source: Partial<Pick<AppSourceFacts
   const fe = app.sides.fe.apps;
   const apis = be.filter(entry => entry.kind === 'api');
   const connections = app.sides.be.connections ?? [];
-  const watch = (entry: AppEntry): string => `cd be && ts-node-dev --respawn -r tsconfig-paths/register apps/${entry.name}/src/main.ts`;
+  // Transpile only (the type check is the gate's, not the dev loop's), a 1s debounce so a merge that writes several files restarts once
+  // on the whole tree, and an explicit watch list (be/src, be/apps and the dist of each root workspace package) so a file the api had not
+  // loaded yet, or a rebuilt package, restarts it too; ts-node-dev alone watches only the files it already required.
+  const watched = ['src', 'apps', ...rootPackageFolders(source).map(folder => `../${folder}/dist`)].join(',');
+  const watch = (entry: AppEntry): string => `cd be && ts-node-dev --respawn --transpile-only --debounce 1000 --watch ${watched} -r tsconfig-paths/register apps/${entry.name}/src/main.ts`;
   const built = (entry: AppEntry): string => `node be/dist/apps/${entry.name}/src/main.js`;
   const workspace = (entry: AppEntry): string => feAppPackageName(app.project, entry.name);
   // Both editions generate before they run: the fe's GraphQL wire types, and under lite the database types check.

@@ -96,7 +96,7 @@ environments:
         - {name: codegen, argv: [npm, run, codegen, --silent], heavy: build}
       processes:
         - name: api
-          argv: [npx, ts-node-dev, --respawn, -r, tsconfig-paths/register, apps/api/src/main.ts]
+          argv: [npx, ts-node-dev, --respawn, --transpile-only, --debounce, "1000", --watch, "src,apps", -r, tsconfig-paths/register, apps/api/src/main.ts]
           cwd: be
           port: api
           files: [GOOGLE_CLIENT_SECRET, AUTH_JWT_PRIVATE_KEY, STORAGE_ACCESS_KEY_ID, STORAGE_SECRET_ACCESS_KEY]

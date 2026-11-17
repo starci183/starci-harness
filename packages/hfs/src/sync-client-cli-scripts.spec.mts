@@ -39,3 +39,10 @@ test('a client cli gets its package build and neither a start script nor an imag
   assert.equal(scripts['docker:build'], 'npm run docker:build:core && npm run docker:build:cli && npm run docker:build:web');
   assert.deepEqual(imageApps(resolved, undefined).map((image) => image.name), ['core', 'cli', 'web']);
 });
+
+test('dev:be restarts on the whole tree: transpile-only, a 1s debounce, and a watch over be/src, be/apps and each root package dist', () => {
+  const alone = scriptsOf(appScripts(app([CORE, OPS]), undefined));
+  assert.equal(alone['dev:be'], 'cd be && ts-node-dev --respawn --transpile-only --debounce 1000 --watch src,apps -r tsconfig-paths/register apps/core/src/main.ts');
+  const withPackages = scriptsOf(appScripts(app([CORE, OPS]), { rootPackages: ['ui-kit', 'contracts'] }));
+  assert.match(withPackages['dev:be'] ?? '', /--watch src,apps,\.\.\/packages\/ui-kit\/dist,\.\.\/packages\/contracts\/dist -r /u);
+});

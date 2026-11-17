@@ -239,7 +239,7 @@ pins:
     version: 2.0.0
     group: tooling
     side: be
-    why: 'the watch runner of the managed dev:be:<app> script (ts-node-dev --respawn -r tsconfig-paths/register); 2.0.0 is its latest release.'
+    why: 'the watch runner of the managed dev:be:<app> script (ts-node-dev --respawn --transpile-only --debounce 1000 --watch src,apps,<root package dists> -r tsconfig-paths/register); 2.0.0 is its latest release.'
   tsc-alias:
     version: 1.9.7
     group: tooling
