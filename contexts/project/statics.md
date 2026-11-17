@@ -71,8 +71,8 @@ Enforced by: R440 (`storage-image`: `STACK_STORAGE_MISSING`, `STACK_STORAGE_UNUS
 ## PROJECT-STATICS-3 Media lives in statics, never beside the code
 
 A tracked media file under `fe/**/public/**` or `{fe,be}/**/src/**` is `HFS_STATIC_ASSET_OUTSIDE_STATICS`: move it to `statics/<area>/` and reference it
-by its staticsKey, so the store serves it and a page never bundles it. Exempt: the route metadata files Next.js reads by name
-(`src/app/{icon,favicon,apple-icon,opengraph-image,twitter-image}.*`), `public/favicon.ico`, and the small build-time binaries a back end keeps under
+by its staticsKey, so the store serves it and a page never bundles it. Exempt: `fe/**/public/` holds only the favicon (`favicon.*`), the PWA/manifest icons (`apple-touch-icon*.png`, `android-chrome-*.png`, `mstile-*.png`, `safari-pinned-tab.svg`, `icon-*.png`, `icons/**`) and the app logo (`*logo*.{png,svg,webp}` directly in `public/` or in `public/brand/`), by a fixed name pattern with no hfs.json allowlist; every other image, video or file lives in `statics/` and is served by the CDN (MinIO behind Cloudflare). Also exempt: the route metadata files Next.js reads by name
+(`src/app/{icon,favicon,apple-icon,opengraph-image,twitter-image}.*`), and the small build-time binaries a back end keeps under
 `be/**/src/assets/` (slot `be.assets`, `HFS_ASSET_KIND`).
 
 Why: one folder for media is the only way the size, name and prompt rules above hold.

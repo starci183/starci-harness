@@ -17,6 +17,12 @@ for (const edition of ['lite', 'full']) {
     assert.equal(isStaticAssetOutside('fe/apps/web/src/components/icon.png'), true);
   });
 
+  test(`${edition}: public holds only the favicon, the logo and the PWA icons`, () => {
+    for (const file of ['favicon.ico', 'favicon.png', 'apple-touch-icon.png', 'apple-touch-icon-180x180.png', 'android-chrome-192x192.png', 'mstile-150x150.png', 'safari-pinned-tab.svg', 'icon-512.png', 'icons/maskable.png', 'logo.svg', 'app-logo.webp', 'brand/logo.svg', 'brand/logo-dark.png']) assert.equal(isStaticAssetOutside(`fe/apps/web/public/${file}`), false, file);
+    for (const file of ['hero.png', 'images/x.webp', 'brand/hero.png', 'brand/sub/logo.svg', 'img/logo.svg', 'banner.mp4']) assert.equal(isStaticAssetOutside(`fe/apps/web/public/${file}`), true, file);
+    assert.equal(isStaticAssetOutside('fe/apps/web/src/logo.svg'), true);
+  });
+
   test(`${edition}: only an app root is judged`, () => {
     assert.deepEqual(staticsOutsideFindings({ repo: { kind: 'app', edition }, isRoot: false, all: ['fe/apps/web/public/hero.png'] }), []);
     assert.deepEqual(staticsOutsideFindings({ repo: { kind: 'package' }, isRoot: true, all: ['fe/apps/web/public/hero.png'] }), []);
