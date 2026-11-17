@@ -86,7 +86,7 @@ Kernel's own call; report it. Never decide for the owner, enter a credential or 
 | Start, step, watch, amend or stop a workflow | [references/run-workflow.md](references/run-workflow.md) |
 | Do one task yourself in this chat (inline runner) | [references/inline-task.md](references/inline-task.md) |
 | Know what an Orca worker sees and does | [references/worker.md](references/worker.md) |
-| Write or review front-end UI on a grammar | [references/ui-on-grammar.md](references/ui-on-grammar.md) |
+| Write or review front-end UI on a grammar (every UI change starts with its approved canvas page, `/claude-design`) | [references/ui-on-grammar.md](references/ui-on-grammar.md) |
 | Walk screens in a browser with evidence (an `audit` task's `uat run`) | [references/uat.md](references/uat.md) |
 | Router picks, provider circuits, budgets | [references/routing-and-providers.md](references/routing-and-providers.md) |
 | Push, cut, publish, read CI | [references/release.md](references/release.md) |

@@ -55,3 +55,7 @@ search "<need>" --scope ui`) and read it; decide by it, then list under `cites` 
 your files import (`tabs.choose`, or a finer `tabs.choose.<term>`), the DNA and rule ids you applied, and every id the
 contract hands you. A family you import with no Choose anchor cited, or an id that resolves to nothing, is red
 (`anchors-cited`); the reviewer then grades each cite against your diff.
+
+A slice that changes what a screen shows needs the screen's canvas page approved first (`design.json` page `approved`, then `built` with the
+change): [PROJECT-GALLERY-7](../../contexts/project/gallery.md#project-gallery-7-a-ui-change-goes-canvas-first-then-code-then-gallery). When the page is
+not approved, the slice is `blocked` naming it; you never draw or approve it yourself.

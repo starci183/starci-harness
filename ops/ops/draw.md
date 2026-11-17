@@ -38,3 +38,6 @@ pick the role, variant, intent and spacing step it gives; list under `cites` the
 the direction composes (`tabs.choose`, or a finer `tabs.choose.<term>`), the DNA and rule ids you applied, and every id the
 contract hands you. An id that resolves to nothing is red (`anchors-cited`); the code that builds the screen and its
 audit are graded against these cites.
+
+A direction for an app that keeps a canvas is the canvas page of the screen (`.starcistacks/canvas`, `/claude-design`); the owner approves it before any code
+([PROJECT-GALLERY-7](../../contexts/project/gallery.md#project-gallery-7-a-ui-change-goes-canvas-first-then-code-then-gallery)).

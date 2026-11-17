@@ -110,7 +110,7 @@ rule 10).
 | task | read, in order |
 |---|---|
 | write code (be or fe) | [code/README.md "Read for a coding task"](../code/README.md#read-for-a-coding-task), which starts with the anatomy slice of the side and edition (`anatomy-<edition>-<side>.md`) and opens this file and [lint.md](lint.md) on demand → the files the contract names |
-| change UI | [contexts/ui](../ui/README.md) and the app's grammar ([grammars](../grammars/README.md)) → the brand record ([work.md](work.md)) → [code/fe](../code/fe/README.md) → [lint.md](lint.md) |
+| change UI | [project/gallery.md](gallery.md) PROJECT-GALLERY-7 (the approved canvas page comes first) → [contexts/ui](../ui/README.md) and the app's grammar ([grammars](../grammars/README.md)) → the brand record ([work.md](work.md)) → [code/fe](../code/fe/README.md) → [lint.md](lint.md) |
 | write or change the product's Work | [work.md](work.md) → the concept catalog `concepts/README.md` and the concepts it lists |
 | run, stand up or deploy an environment | [stacks.md](stacks.md) → the edition file ([lite.md](lite.md) or [full.md](full.md)) |
 | add a gate or a rule | [lint.md](lint.md) PROJECT-LINT-1 → [packages/README.md](../../packages/README.md) or [policy/](../../policy/) |

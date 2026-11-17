@@ -71,5 +71,7 @@ Each status is set by the role PROJECT-GALLERY-6 item 5 names, and only then:
   they match, set `status: matches` and record the sha of the shots compared. A shot that differs goes back to the code
   lane; a design that must change is redrawn and returns to `drafted`.
 
+A UI change to a page that is already built enters this flow at step 1: its page is redrawn or adjusted (back to `drafted`, `approvedAt` and `shots` dropped), approved again, then coded and shot. PROJECT-GALLERY-7 owns the order; `HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED` flags code that skipped it.
+
 `starci app check` then judges the manifest against the gallery (the `HFS_APP_GALLERY_DESIGN_*` codes of
 PROJECT-GALLERY-6).

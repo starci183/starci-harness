@@ -3461,6 +3461,19 @@ HFS_APP_GALLERY_ROUTE_MISSING:
   kind: check-finding
   localOnly: true
 
+HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED:
+  title: "A change to a screen's source follows an approved canvas page"
+  title_vi: "Mã màn hình đổi nhưng trang canvas chưa được duyệt trước khi code"
+  meaning_vi: "Các commit kể từ nhánh gốc, chỉ mục hoặc cây làm việc đổi mã của một màn hình thuộc khu có trong .starcistacks/canvas/design.json, nhưng trang của màn hình trong sổ không có, chỉ ở trạng thái drafted, hoặc được duyệt (approvedAt) trước lần đổi mã mới nhất; thay đổi cũng không cập nhật mục của trang trong sổ."
+  causes_vi:
+    - "Vi phạm R395 (PROJECT-GALLERY-7): mọi thay đổi giao diện đi theo thứ tự canvas, rồi code, rồi gallery; sửa mã khi bản vẽ chưa được chủ dự án duyệt lại là đảo thứ tự đó."
+    - "Khu chưa quản lý bằng canvas (không có trong areas và không trang nào trong pages) thì không bị xét."
+    - "`--env local` và hook commit chỉ liệt kê, `--env prod` (hook push, CI, phát hành) chặn."
+  nextStep_vi: "Vẽ lại thay đổi trên canvas bằng /claude-design, chờ chủ dự án nói \"đẹp\" rồi đặt approved với approvedAt mới trong design.json, sau đó mới code; commit cùng thay đổi mục của trang."
+  owner: op-retry
+  kind: check-finding
+  localOnly: true
+
 HFS_APP_GALLERY_EXPLAIN_STALE:
   title: "A screen's explain.md changes with its source"
   title_vi: "Mã của màn hình đổi nhưng explain.md không đổi theo"

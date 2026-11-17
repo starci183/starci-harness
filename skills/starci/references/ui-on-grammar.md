@@ -4,6 +4,13 @@ A front end is drawn in its grammar: the `@starci/grammar` package owns every co
 value. The app owns only product facts (copy, routes, data) and the layout of boundaries it owns. This holds
 for a `draw` contract (the screen's direction), an `audit` contract and any `code` contract that touches the front end.
 
+## Step 0: the canvas page is approved
+
+Before a `draw` contract, an `audit` contract or any `code` contract changes what a screen shows, the app's `.starcistacks/canvas` page for that screen is drawn
+and approved (`design.json` page `approved`, `approvedAt` after the draft), by `/claude-design`. Code follows the approved frames, then the gallery is shot
+and the page moves `built` to `matches`. [PROJECT-GALLERY-7](../../../contexts/project/gallery.md#project-gallery-7-a-ui-change-goes-canvas-first-then-code-then-gallery) owns the order and the check
+(`HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED`). A contract with no page to draw from stops and asks for the drawing; it never codes first.
+
 ## Resolve the grammar
 
 Read the app's `hfs.json` `sides.fe.grammar`; there is no default grammar, and an unknown one stops you.

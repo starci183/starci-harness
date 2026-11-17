@@ -1,14 +1,15 @@
-// gallery-coupling.mts - HFS_APP_GALLERY_EXPLAIN_STALE (R395, contexts/project/gallery.md PROJECT-GALLERY-5): a change to the source of a screen (the route's `page.tsx` and the feature
+// gallery-coupling.mts - also HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED (PROJECT-GALLERY-7, below: a screen source change without a fresh approved canvas page, same judged set); HFS_APP_GALLERY_EXPLAIN_STALE (R395, contexts/project/gallery.md PROJECT-GALLERY-5): a change to the source of a screen (the route's `page.tsx` and the feature
 // folders it imports, gallery-routes.mts) that does not touch that screen's `gallery/pages/<area>/<screen>/explain.md` leaves the explanation behind the screen. The judged set is
 // the files a change touches: the commits since the base, the index and the work tree (`changedSince`, run by `starci app check`), or the staged files (`stagedFiles`, the commit guard of
 // sync/hygiene.mts, which only reports). A route that has several screen folders (a state or an agent variant is its own folder) is current when any of its explain.md files is touched;
 // a route that has none is the coverage's (HFS_APP_GALLERY_ROUTE_MISSING) and an excluded route (gallery/routes.json) has no screen to keep current. The finding is `local`:
-// report-only in `--env local`, an error in `--env prod` (the code is localOnly in the failure catalog).
+
 import { runGit } from '../../api/git/lib.mjs';
 import { galleryParams } from '../gallery.mjs';
 import { parseExplain } from '../gallery-explain.mjs';
 import { feRoutes, isSourceOf, routeExclusions, routeKey } from '../gallery-routes.mjs';
 import { galleryScreens } from './gallery.mjs';
+import { DESIGN_FILE, isApproved, parseDesign } from './gallery-design.mjs';
 import { found, readJson, readText } from './read.mjs';
 import type { Parsed } from './rule-types.mjs';
 
@@ -47,4 +48,65 @@ export function changedSince(repoRoot: string, base: string | null): string[] {
   if (base === null) return [];
   const run = runGit(['diff', '--name-only', '--no-renames', '-z', base], { dir: repoRoot, maxBuffer: 64 * 1024 * 1024 });
   return run.error || run.status !== 0 ? [] : String(run.stdout ?? '').split('\0').filter(Boolean);
+}
+
+export const DESIGN_CHANGE_UNAPPROVED = 'HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED';
+
+/** The newest time (ms) a commit in `base..HEAD` touched `file`; null when no commit of the range did. */
+function newestCommitTime(repoRoot: string, base: string, file: string): number | null {
+  const run = runGit(['log', '-1', '--format=%cI', `${base}..HEAD`, '--', file], { dir: repoRoot });
+  const stamp = run.error || run.status !== 0 ? '' : String(run.stdout ?? '').trim();
+  const time = stamp === '' ? Number.NaN : Date.parse(stamp);
+  return Number.isNaN(time) ? null : time;
+}
+
+/** The design.json text of `base`, or null when the base has none. */
+function designAtBase(repoRoot: string, base: string): string | null {
+  const run = runGit(['show', `${base}:${DESIGN_FILE}`], { dir: repoRoot, maxBuffer: 64 * 1024 * 1024 });
+  return run.error || run.status !== 0 ? null : String(run.stdout ?? '');
+}
+
+/**
+ * HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED (PROJECT-GALLERY-7): a change to a screen's source (the same screen to source map as the stale-explanation finding) whose design.json page
+ * is missing, only `drafted`, or approved before the change. Only a canvas-managed screen is judged: its area is in `areas` or one of its pages is in `pages`, so an app with no
+ * canvas is never flagged. `base` is the judged range's base (`HEAD` for the staged guard); a source file's change time is the newest commit of `base..HEAD` that touched it, and
+ * `now` for a change not yet committed (the index and the work tree). A change passes when the page is approved and either `approvedAt` is not earlier than that time or the
+ * page's entry in design.json differs from the base's (the same change records the approval, or the lane's build with its shots). `local`, as the stale-explanation finding.
+ */
+export function galleryDesignChangeFindings({ repoRoot, changed, base, manifest, now = Date.now() }: { repoRoot: string; changed: readonly string[]; base: string | null; manifest?: Parsed; now?: number }) {
+  if (base === null || changed.length === 0 || readJson(repoRoot, 'hfs.json')?.kind !== 'app') return [];
+  const text = readText(repoRoot, DESIGN_FILE);
+  const design = text === null ? null : parseDesign(text).manifest;
+  if (design === null) return [];
+  const params = galleryParams(manifest);
+  const managed = new Set([...design.areas, ...Object.keys(design.pages).map((id) => id.split('/')[0] ?? '')]);
+  const touched = new Set(changed.map((file) => file.replaceAll('\\', '/')));
+  const excluded = new Set(routeExclusions(readText(repoRoot, `${params.dir}/routes.json`)).exclusions.map((entry) => routeKey(entry.route)));
+  const idsOf = new Map<string, string[]>();
+  for (const { area, screen } of galleryScreens(repoRoot, params).screens) {
+    const route = parseExplain(readText(repoRoot, `${params.pages}/${area}/${screen}/explain.md`) ?? '').meta['route'] ?? '';
+    if (route !== '' && managed.has(area)) idsOf.set(routeKey(route), [...(idsOf.get(routeKey(route)) ?? []), `${area}/${screen}`]);
+  }
+  const uncommitted = new Set(changedSince(repoRoot, 'HEAD'));
+  const baseText = designAtBase(repoRoot, base);
+  const baseDesign = baseText === null ? null : parseDesign(baseText).manifest;
+  const findings = [];
+  for (const route of feRoutes(repoRoot)) {
+    const ids = idsOf.get(route.key);
+    if (ids === undefined || excluded.has(route.key)) continue;
+    const edited = [...touched].filter((file) => isSourceOf(route, file));
+    if (edited.length === 0) continue;
+    const changedAt = Math.max(...edited.map((file) => (uncommitted.has(file) ? now : (newestCommitTime(repoRoot, base, file) ?? now))));
+    const problems: string[] = [];
+    for (const id of ids) {
+      const page = design.pages[id];
+      if (page === undefined) problems.push(`${id} has no design entry`);
+      else if (!isApproved(page.status)) problems.push(`${id} is only ${page.status}`);
+      else if (JSON.stringify(baseDesign?.pages[id]) !== JSON.stringify(page)) continue;
+      else if (Date.parse(page.approvedAt ?? '') < changedAt) problems.push(`${id} was approved at ${page.approvedAt}, before the change at ${new Date(changedAt).toISOString()}`);
+    }
+    if (problems.length === 0) continue;
+    findings.push(found(DESIGN_CHANGE_UNAPPROVED, edited[0] as string, `the screen of ${route.route} changed (${edited.slice(0, 3).join(', ')}${edited.length > 3 ? `, and ${edited.length - 3} more` : ''}) without an approved canvas page: ${problems.join('; ')}. Draw the change on the canvas (/claude-design), have the owner approve it in ${DESIGN_FILE}, then code it; a warning in --env local, an error in --env prod (PROJECT-GALLERY-7)`, { local: true }));
+  }
+  return findings;
 }

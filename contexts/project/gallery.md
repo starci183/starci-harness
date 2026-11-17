@@ -234,3 +234,33 @@ the gate judges.
   a 1440 or 390 shot in the work tree is not the sha the manifest records.
 
 The shots are the author's work in every UI round; a reviewer compares the screens, and reads their explanation, in the gallery.
+
+## PROJECT-GALLERY-7 A UI change goes canvas first, then code, then gallery
+
+Any change that a user can see on a screen (a new screen, a redesign, a fix round, a moved region, a changed copy or state) follows one order. The
+canvas of PROJECT-GALLERY-6 is where the owner decides how the screen looks; the code follows the decision, and the gallery proves it matches.
+
+1. **Canvas first.** Update the screen's page in the app's `.starcistacks/canvas/`: draw or adjust its frames and its concept note with
+   `/claude-design` ([skills/claude-design/SKILL.md](../../skills/claude-design/SKILL.md)), set the page `drafted` in `design.json` and publish the
+   board. The owner approves it in the owner's own words; only then does the lead set the page `approved` with a new `approvedAt` (PROJECT-GALLERY-6
+   item 5). A change to a screen the canvas does not hold yet starts by adding its page and its area to `design.json`.
+2. **Then the code.** The code lane builds the approved page, and the same commit records the page's build in `design.json` (PROJECT-GALLERY-6
+   item 5, `built`). Code written before the approval is a draft: it is redone from the approved frames, never approved after the fact.
+3. **Finally the gallery.** Shoot the screen (PROJECT-GALLERY-1 item 2), copy the approved note as `explain.md` (PROJECT-GALLERY-5), then a reviewer
+   moves the page `built` → `matches` after comparing the shots with the approved frames.
+4. **Who is bound.** Every author of a UI change: a worker, a Kernel plan, the Supervisor and a person alike. A change that touches no visible
+   region (a rename, a refactor, a type fix) needs no canvas page.
+5. **Canvas-managed.** A screen is canvas-managed when its area is in `areas` of `design.json` or one of its pages is in `pages`. An app with no
+   `design.json`, and a screen of an area it does not list, is outside this rule until its first page is drawn.
+
+**Enforced by** (R395, `rules/gallery-coupling.mts`, run by `starci app check` and, listing only, by the commit guard):
+
+- `HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED` (`localOnly`: a warning in `--env local`, an error in `--env prod`, as item 4 of PROJECT-GALLERY-4; the
+  commit guard lists it and never blocks): the source of a canvas-managed screen changed (the same screen to source map and the same judged set as
+  `HFS_APP_GALLERY_EXPLAIN_STALE` of PROJECT-GALLERY-5: the commits since the base, the index and the work tree) and the screen's page in
+  `design.json` is missing, `drafted`, or `approved` with an `approvedAt` earlier than the newest change of that screen's source. The time of a
+  change is the committer time of the newest commit since the base that touched its source files; a change not yet committed counts as now. The change
+  passes when the page's entry in `design.json` also differs from the base's (a fresh `approvedAt`, or the build recorded with its shots), which is how
+  an approved page is built in one change. A route with several screen folders needs every one of its canvas-managed screens to pass.
+  The rule judges code against the canvas, so a screen with no `explain.md` has no mapped source and is not judged here (`HFS_APP_GALLERY_ROUTE_MISSING` is its finding).
+  It is not `HFS_APP_GALLERY_DESIGN_UNAPPROVED`, which judges a screen existing in a designed area, not a change.

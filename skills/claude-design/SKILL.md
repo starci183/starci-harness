@@ -5,7 +5,7 @@ description: >-
   1440 and 390, each with its explain.md as the note, composed from the page's real business (its backend operations,
   fields, states, permissions) and the app's Grammar only, never copied from the old screen. One Opus lead and up to ten
   Sonnet lanes draw it into the app's .starcistacks/canvas/, a node assembler builds the board, an Artifact publishes it,
-  and design.json tracks each screen from drafted to approved, built and matches. Use on an explicit /claude-design
+  and design.json tracks each screen from drafted to approved, built and matches. Required before any UI change of a StarCi app (canvas first, then code, then gallery). Use on an explicit /claude-design
   request, or when the owner asks to "vẽ mockup", "vẽ lại trang", "canvas mockup" or "claude design" for a StarCi app.
 disable-model-invocation: true
 triggers: [user]
@@ -18,6 +18,12 @@ The design pass is the app's gallery drawn before code. Where the canvas lives, 
 matches with who sets each status, and what `starci app check` judges are owned by
 [PROJECT-GALLERY-6](../../contexts/project/gallery.md#project-gallery-6-an-area-can-be-drawn-before-code-the-design-canvas-mirrors-the-gallery-and-records-each-screens-approval).
 This skill owns how a screen is designed and how the board is produced.
+
+## When to use it
+
+Every UI change, not only a new area: any change a user can see (a redesign, a fix round, a moved region, a changed state or copy) starts here, on the
+screen's canvas page, before its code. The order is canvas, code, gallery, and [PROJECT-GALLERY-7](../../contexts/project/gallery.md#project-gallery-7-a-ui-change-goes-canvas-first-then-code-then-gallery) owns it and its check
+(`HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED`). A change to an existing page redraws or adjusts its page and concept note; the owner approves; only then is it coded.
 
 ## Method
 

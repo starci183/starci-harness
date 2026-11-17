@@ -24,7 +24,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { secretFileFindings } from '../runtime/scripts/hfs/rules/secrets.mjs';
 import { stagedSpecFindings } from '../runtime/scripts/hfs/rules/staged-specs.mjs';
-import { galleryStaleFindings } from '../runtime/scripts/hfs/rules/gallery-coupling.mjs';
+import { galleryDesignChangeFindings, galleryStaleFindings } from '../runtime/scripts/hfs/rules/gallery-coupling.mjs';
 import { activeProfile } from '../runtime/scripts/hfs/branch-profile.mjs';
 import { DATA_MANIFEST, copyManifestOf, copyRepositoryDeclared, dataCopyFindings, dataInCodeFindings } from '../runtime/scripts/hfs/rules/data-copies.mjs';
 import { ADAPTER_DIR, ADAPTER_OUTPUTS, RAW_DIR, adapterDriftOf, adapterGuardFindings, isAdapterOutput, isAdapterRepository } from '../runtime/scripts/hfs/rules/data-adapter.mjs';
@@ -108,7 +108,8 @@ function missingSpecFindings(cwd: string, { added = addedFiles(cwd), indexed, ma
 function staleScreenReports(cwd: string): HygieneFinding[] {
   if (!fs.existsSync(path.join(cwd, 'hfs.json'))) return [];
   try {
-    return galleryStaleFindings({ repoRoot: cwd, changed: stagedFiles(cwd) }).map((finding) => ({ file: finding.path, code: finding.code, message: finding.message }));
+    const staged = stagedFiles(cwd);
+    return [...galleryStaleFindings({ repoRoot: cwd, changed: staged }), ...galleryDesignChangeFindings({ repoRoot: cwd, changed: staged, base: 'HEAD' })].map((finding) => ({ file: finding.path, code: finding.code, message: finding.message }));
   } catch { return []; }
 }
 

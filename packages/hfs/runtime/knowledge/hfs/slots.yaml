@@ -1157,7 +1157,7 @@ slots:
     tests: none
     since: 6.13.24
     allows: ["design.json", "tokens.css", "canvas.css", "briefs/<page>.md", "pages/<page>.html", "<app>-design.html"]
-    rules: [HFS_APP_GALLERY_DESIGN_MANIFEST, HFS_APP_GALLERY_DESIGN_PAGE_MISSING, HFS_APP_GALLERY_DESIGN_UNAPPROVED, HFS_APP_GALLERY_DESIGN_SHOT_MISSING, HFS_APP_GALLERY_DESIGN_SHOT_STALE]
+    rules: [HFS_APP_GALLERY_DESIGN_MANIFEST, HFS_APP_GALLERY_DESIGN_PAGE_MISSING, HFS_APP_GALLERY_DESIGN_UNAPPROVED, HFS_APP_GALLERY_DESIGN_SHOT_MISSING, HFS_APP_GALLERY_DESIGN_SHOT_STALE, HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED]
   - id: app.db.bootstrap
     profiles: [app]
     editions: [lite]
