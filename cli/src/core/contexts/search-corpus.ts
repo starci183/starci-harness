@@ -59,7 +59,7 @@ const filesUnder = (root: string, dir: string, pattern: RegExp): string[] =>
               .map((entry) => relative(root, join(entry.parentPath, entry.name)).replaceAll("\\", "/"))
         : []
 
-/** The files searched, relative to the runtime root: contexts/, the op files and ops data, policy/, the starci skill and the harness documents. */
+/** The files searched, relative to the runtime root: contexts/, the op files and ops data, policy/, the skills and the harness documents. */
 export const corpusFiles = (root: string): string[] => {
     const skip = new Set([...repeatingFiles()].map((file) => `contexts/${file}`))
     const docs = ["README.md", "CONTRIBUTING.md", "cli/README.md", "packages/README.md"].filter((file) => existsSync(join(root, file)))
@@ -67,7 +67,7 @@ export const corpusFiles = (root: string): string[] => {
         ...filesUnder(root, "contexts", /\.(md|ya?ml)$/),
         ...filesUnder(root, "ops", /\.(md|ya?ml)$/),
         ...filesUnder(root, "policy", /\.(md|ya?ml)$/),
-        ...filesUnder(root, "skills/starci", /\.md$/),
+        ...filesUnder(root, "skills", /\.md$/),
         ...docs,
     ]
         .filter((file) => !skip.has(file))
