@@ -1,6 +1,6 @@
 # Sidebar
 
-Contract: [shell](../../grammars/contract.md#shell). Vendor: [ListBox](../../vendor/heroui.md#listbox). The role of the sidebar in the shell is FE-APP-SHELL-1, -4 and -6 of [composition](../composition.md).
+Contract: [shell](../../grammars/contract.md#shell). Vendor: [ListBox](../../vendor/heroui.md#dropdown). The role of the sidebar in the shell is FE-APP-SHELL-1, -4 and -6 of [composition](../composition.md).
 
 ## Job
 List the places of the app in groups, each with an optional count, as the wide width's navigation (rail or expanded) and as the drawer or sheet of the compact width.
