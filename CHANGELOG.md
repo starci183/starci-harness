@@ -2,6 +2,8 @@
 
 ## 1.1.0-alpha.149 - 2026-11-17
 
+- Changed: the CLI requires @starci/hfs@6.13.29, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
+
 - Changed (pins): the Grammar family at 0.45.0 (a card is one object: the collection kinds and zones of SurfaceCard removed, one flat DataTable, the figures ribbon, the card-is-object and data-table-surface lints), @starci/stylelint-canon 2.9.6, @starci/eslint-canon-fe 9.20.2 and @starci/hfs 6.13.29; the harness app migrated. Until the cli-follow step raises the CLI's requirement, the CLI runs the hfs it requires.
 
 ## 1.1.0-alpha.148 - 2026-11-17
