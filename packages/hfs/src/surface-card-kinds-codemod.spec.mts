@@ -46,11 +46,12 @@ test('1. a ListRow with leading, badges, actions or children keeps its source an
   assert.ok(codes(children).includes('LIST_ROW_SHAPE'));
 });
 
-test('2. a stat strip alone in a card becomes kind="figures" and description becomes value', () => {
+test('2. a stat strip alone in a card becomes Section kind="figures" and description becomes value', () => {
   const result = run('SurfaceCard, DescriptionList', 'const A = () => <SurfaceCard ariaLabel="Usage" composition="joined"><DescriptionList layout="stat-strip" isLoading={l} items={[{ id: "a", term: "Revenue", description: "1,200", unit: "usd" }]} /></SurfaceCard>;');
   assert.equal(result.findings.some(finding => finding.code === 'FIGURES_BY_HAND'), true, 'composition="joined" with a strip is left for a person');
   const plain = run('SurfaceCard, DescriptionList', 'const A = () => <SurfaceCard ariaLabel="Usage"><DescriptionList layout="stat-strip" isLoading={l} items={[{ id: "a", term: "Revenue", description: "1,200", unit: "usd" }]} /></SurfaceCard>;');
-  assert.equal(plain.text, `import { SurfaceCard } from '${GRAMMAR}';\nconst A = () => <SurfaceCard kind="figures" ariaLabel="Usage" isSkeleton={l} items={[{ id: "a", term: "Revenue", value: "1,200", unit: "usd" }]} />;`.replace(`import { SurfaceCard } from`, `import { SurfaceCard, DescriptionList } from`));
+  assert.equal(plain.text, `import { SurfaceCard, DescriptionList, Section } from '${GRAMMAR}';
+const A = () => <Section kind="figures" ariaLabel="Usage" isLoading={l} items={[{ id: "a", term: "Revenue", value: "1,200", unit: "usd" }]} />;`);
 });
 
 test('3. default-valued dropped props are removed; real ones are reported', () => {

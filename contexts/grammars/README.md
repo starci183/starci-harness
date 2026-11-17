@@ -44,8 +44,7 @@ reviewer names the choice row or the law it would add.
 
 **A rule moves down when it becomes measurable.** A choice rule whose outcome can be read off the DOM becomes a
 DNA entry and its Choose row cites the id: "one commit per view" is a choice when the LLM assigns intents, and a
-constraint once counted (`DNA-COMMON-ONE-ACCENT-FILL`); "one highlighted card per view" likewise
-(`DNA-COMMON-ONE-HIGHLIGHT`). A taste verdict that recurs becomes a choice row or a threshold. Movement is only
+constraint once counted (`DNA-COMMON-ONE-ACCENT-FILL`). A taste verdict that recurs becomes a choice row or a threshold. Movement is only
 downward, and each move deletes the sentence it replaces (CONTRIB-6). Every Choose row says whether it is
 measured (a DNA id), measurable (a candidate) or a judgement.
 
@@ -102,7 +101,7 @@ decides product facts and layout. A row whose last column is not "nothing" is a 
 | Radius, shadow, motion | `src/<id>/dna.ts` and `src/<id>/styles.css`, shaped by contract `tokens` and `dna`; type, corner and stroke ramps in `src/common/ramps.css` | nothing |
 | Spacing scale and rhythm | `src/common/spacing.ts`; the defaults of every composition hold the proximity law (children closer than the container's siblings) | which relationship a gap expresses ([ui/presentation](../ui/presentation.md) G6), under lint `gap-proximity` |
 | Field rhythm (label 8, help 4, field to field 24) | the form CSS of Common, `Form`, `Grid kind="form"`, `Fieldset` | nothing: the `label` prop, never a hand-made label (lint `field-label`) |
-| A list of rows, inside a surface or on the canvas | `Section kind="list"` draws the flat rows (BOUNDARY-7) | `Section kind="list"`, never a card (lint `surface-card-list`) and never blocks divided by `Divider` (lint `surface-in-surface`) |
+| A list of rows, inside a surface or on the canvas | `Section kind="list"` draws the flat rows (BOUNDARY-7) | `Section kind="list"`, never a card (lint `surface-card-list`, `card-is-object`) and never blocks divided by `Divider` (lint `surface-in-surface`) |
 | Control heights | Common tokens `--grammar-control-height-*`, contract `sizes` | `sm` or `lg` by [ui/scale](../ui/scale.md) (gap G-6); `control` never |
 | Hit area and target floor | Common tokens `--grammar-target-*`, contract `sizes.target` | nothing |
 | Corners | contract `tokens.corner` roles, values from the grammar's base radius | the corner role of an app-owned box ([ui/presentation](../ui/presentation.md)) |

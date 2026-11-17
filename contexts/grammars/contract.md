@@ -59,7 +59,7 @@ the box is the ramp, the hit area meets its floor without redrawing the box (`DN
 three times `radius`, so whether a Button is a pill follows from the grammar's radius, never from a per-button
 choice. The grammar publishes the corner roles an app may name (`tiny`, `compact`, `control`, `surface`, `hero`,
 `pill`) as `--grammar-radius-*`, each set from its base radius; an app never writes a literal corner, which would
-freeze one grammar's value into every grammar. One corner may stand out: a SurfaceCard or MediaFrame names it in
+freeze one grammar's value into every grammar. One corner may stand out: a MediaFrame names it in
 `accentCorner` (a logical corner, `start-start` to `end-end`), drawn at the Common accent radius
 `--grammar-accent-corner` while the others keep the family's radius; an app never rounds one
 corner itself.
@@ -102,28 +102,25 @@ Each heading is one role of [contract.yaml](contract.yaml) `roles`.
 
 ### Card
 
-Card is one subject on its own surface, and a surface never stands inside another (a card, a `Pane surface`, a `Dialog`,
-`Drawer`, `AlertDialog` or `Popover`): the card has one depth, raised, and no nested edge exists. Its body is a
-compiler-checked `kind`: `body` (the default, the app's children), `figures`, `list`, `accordion` and `tile`. A
-list needs its `items` and an `empty` state, `wholeAction` exists only where the card holds no inner control, and any kind takes
-typed `headers` (`filter`, `search` with trailing `filters` selects, `toolbar`, `switch`, `figures`, `custom`) and `footers` (`more`, `paging`, `custom`) that stack full-bleed
-above and below the body, divided by the one divider the shell draws between neighbours instead of nesting cards or a `Divider`
-(a tab strip in a zone stands on that divider, which is its line); the head takes an optional `description`, one muted sm line 4 below the label; the card holds its content 16 in and its label 8 above the surface (4 in a cards grid); `kind="table"` takes `onRowAction`, the whole row one pressable (as `DataTable` does); `measure` caps a form card's width so the page does not. Highlight is a claim
-that this card is the next step, so one per view. `treatment` is the face: `surface`, `soft` (the brand's light
-tint, `accentSoft`, under the default foreground) or `ink` (the brand ink, the signature band); `soft` and `ink`
-carry the decorative artwork slot, `ink` also the motif. A painted treatment rebinds the whole surface pair on its
-ground (surface, foreground, muted, separator, border and the accent and tone text tokens), because a child that
-paints its own circle or ring from the surface token and its text from a foreground token stays legible only while
-both move together. A grammar decides the material (fill, edge, radius, the ink and its inks); the slots, the kinds, the
-treatments' grounds and the refusal of nesting are the same everywhere.
+A card is ONE object on its own surface (a customer, an agent, a provider, a plan, a message, an approval), a dialog or an
+overlay; a collection (a list, a table, facts, figures, disclosures, a choice) is never a card and stands flat in a `Section`
+([ui/composition](../ui/composition.md) COLLECTION-2). A card never stands inside another card; a `Dialog`, `Drawer` or `Popover` may
+host an object card with the same look, so the card has one depth and no nested edge exists. Its body is a
+compiler-checked `kind`: `body` (the default, the object's free content) and `tile`. `wholeAction` exists only where the card
+holds no inner control. A `body` card takes one `actions` band at its foot, under a `--separator` hairline, for the object's
+commands (approve and decline, reconnect, choose); `Tabs`, `SearchField` and `Divider` there throw in development
+(`useRefuseInCardActions`, `src/core/zoneContext.tsx`). The card holds its content 16 in and its label 8 above the surface (4 in a
+cards grid). `measure` is `content` (the default, the card fills its host), `narrow` (30rem, start-aligned) or `formCompact`
+(the centred measure of the one form with no page around it). `emphasis="accent"` marks the one card a set of peers recommends or
+the reader has chosen. Its edge and its whole-action fills are [ui/presentation](../ui/presentation.md#boundary) BOUNDARY-6
+(`DNA-CORE-EDGE-TOP`). A grammar decides the
+material (fill, edge, radius); the slots, the kinds and the refusal of nesting are the same everywhere.
 
 Where the name sits follows the card's kind, in every grammar. A card that heads a section
 carries its label outside the material, an unpainted row above it, because the label names what follows. A tile, one of
 several peers repeated in a grid, carries its name inside, beside its logo or mark, because the tile is the thing named and
 an outside label would float away from it. A docked region is a `Pane`, never a card. No prop moves the name, and a family
 paints it but never moves it.
-
-A row of key figures is `kind="figures"`: touching cells (gap 0), each a box in the card at the nested inset (8), divided by lines, not gaps - a vertical line between the cells of a row and a horizontal line between rows, running to the strip's edge and never on its outer edge. The strip answers its own width (container query, no script): one row from 40rem, 2 x 2 from 18rem, one column below, a last odd cell spanning its row, with the right line at every wrap. In a `bands` card it is a face and the shell's seam divides it from the next face (a Meter face, say). Its skeleton keeps the same cells and lines. The line colour is the family's separator (`--separator`, ink in Offset Pop), so dark mode follows the tokens.
 
 A tile (`kind="tile"`) is one peer repeated in a `Grid kind="cards"`: its name stays inside. A compact identity has a
 typed mark; a media identity has a typed `poster`, retaining the same frame for its image or localized absence text.
@@ -170,7 +167,7 @@ A decision and its way out are not peers, so they are two buttons at the inline 
 Tabs switch whole panels; each tab owns its panel. HeroUI's `primary` is a segmented pill on a soft track and its
 `secondary` is an underline bar; the contract keeps those names one to one. Page tabs, region tabs inside a surface and
 filter tabs over a collection (`kind="filter"`) take the underline, with the first label on the content edge; `primary` is
-only the switch of a mode or period of the same data in a card's `switch` header zone, two to four options. Every label is
+only the switch of a mode or period of the same data, two to four options, as the `action` of the `Section` that holds that data or a row's `control`. Every label is
 one size, 14 (the selected one 500 plus the underline, 40 high), in every layer and in the pill. A page stacks at most two underline layers: the page tabs and one region
 set, which `Page header.subTabs` draws as the second row of the header band on its own full-width separator (a region set
 inside a page tab's panel draws its own separator). `end` puts a command at the strip's end, inside the strip frame, so the
@@ -429,7 +426,7 @@ notice. An empty region reads the same way, its message as the title and its des
 ### Data views
 
 Three data views answer situations no other component does, each in the four states of a region. A `Board` is peer
-columns of rows (stages) that scroll as one row and snap, one stage at a time on a phone; each column is a card of rows, 8 apart, with
+columns of rows (stages) that scroll as one row and snap, one stage at a time on a phone; each column is a tinted ground whose items are object cards, 8 apart, with
 its title and count, answers for its own empty state, and a loading board keeps its titles and draws its rows as geometry. A
 `ScheduleGrid` places entries by row and column (a week by hour, people by day, a month by week) in a real table with a
 caption, column headings and a heading per row; below 48rem of its own width it reads as an agenda in which each entry names
@@ -483,17 +480,22 @@ A titled section is a named region whose title is its heading and its landmark n
 `Tabs kind="filter"` and a `layout` (`rows`, `keyValue`, `suggestions`); it is the one list owner, within a surface and on the
 canvas. Its head, filter and content stand one row step (12) apart, because the page body stands its sections a region step apart and
 a container's children stand closer than its siblings, and its page command hugs its label at the end of the head row, its
-text at `md`. A card heads itself with its `label`, so a section around one card is refused.
+text at `md`. The head carries `title`, `count` (marked `isAttention` when the number is work waiting for the reader), `fact`,
+`meta` and that one `action`; the `caption` stands under the content. A card heads itself with its `label`, so a section around one card is refused.
 
 A region (`kind="region"`, the default) holds children under an optional `filter` that narrows all of them. A list's filter and a
 region's are one flat wrapping row: the filter tabs, the search and its selects share a line on one bottom edge; below the narrow
 step the tabs and the search take a line each and the compact selects share the next at their content width. A region the page title already names supplies `ariaLabel` in place of `title`, as a headless list or strip does.
 
-`kind="figures"` is the unpainted key-figure strip inside an existing surface. It reuses the exact FigureCells renderer
-and typed `Figure` data of `SurfaceCard kind="figures"`, including neutral values, dividers, responsive wrapping and
-native destinations. Loading uses the same known cells or shared default three-cell shape; error replaces the strip.
-A strip that owns its visible heading supplies `title`. An already-headed strip supplies required `ariaLabel` and
-adds no heading; the compiler rejects mixing the forms or supplying head controls to a headless strip.
+`kind="figures"` is the one look of key figures, the ribbon, wherever it stands (the page, a pane, a drawer): a 1px `--border`
+hairline on its top and bottom edges, open ends, no fill, no radius and no shadow, its touching cells (gap 0) divided by vertical
+`--border` hairlines between the cells of a row and a horizontal one between rows, never on its outer edge. A cell's inset and
+type are [ui/presentation](../ui/presentation.md) `space.choose.component` and FONT-5, and a cell may be a native destination.
+The strip answers its own width (container query, no script): one row from 40rem, 2 x 2 from 18rem, one column below, a last odd
+cell spanning its row; five cells take one row from 52rem, 3 + 2 from 30rem and 2 + 2 + 1 below. The strip stands in its own
+`Section`, above the section it summarises. Loading uses the same known cells or the shared default three-cell shape; error
+replaces the strip. A strip that owns its visible heading supplies `title`. An already-headed strip supplies required
+`ariaLabel` and adds no heading; the compiler rejects mixing the forms or supplying head controls to a headless strip.
 
 ### Diagram
 

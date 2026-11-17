@@ -14,7 +14,7 @@ Every chat (team chat, an agent's chat, an inbox customer thread, the assistant)
   passes, and meets the head line above and the composer's line below edge to edge;
 - **a message of someone else** (`MessageBubble` incoming, every `MessageCard`) is the flat `--surface` with its foreground: no border, no
   shadow, in every content kind (text, card); a message is never a card. Outside any chat frame, on a white surface (a drawer of pinned
-  messages, a white pane, a card), the same face wears the 1px `--separator` edge so it does not vanish (SURFACE-ELEVATION), still no shadow;
+  messages, a white pane), the same face wears the 1px `--separator` edge so it does not vanish, still no shadow;
   inside a chat frame it never does;
 - **the reader's own message** is `--accent` with `--accent-foreground`; inline links, mentions, code and muted lines inherit it.
 
@@ -88,7 +88,7 @@ Grouping and reactions (Grammar 0.32.0). `groupPosition` (`single` default, `fir
 and the time gap) shapes the bubble like Messenger: a lone bubble is rounded 18, only the corners where two bubbles of one sender touch are 4
 (first: bottom on the sender's side; middle: both; last: top), logical corners so RTL mirrors; the avatar sits beside the last bubble and the
 earlier ones keep a spacer; the author line shows on single and first. An incoming bubble and a `MessageCard` are the flat surface on the
-thread (0.37.31; they were lifted with a border and the card shadow before); an outgoing bubble keeps the brand fill. Reactions are presentation only: `reactions` (`{ emoji, count, mine }`), `onReact`,
+thread; an outgoing bubble keeps the brand fill. Reactions are presentation only: `reactions` (`{ emoji, count, mine }`), `onReact`,
 `onReply`, `onShare`. The hover or long-press toolbar is a labelled `toolbar` with arrow keys (six emoji, reply, share); the pill on the bottom
 corner shows up to three emoji and the total and adds the viewer's top reaction on press; each tap bursts floating emoji (none under reduced
 motion). The composer band (a `PaneSection as="footer"` or `rule="start"`) keeps the row gap between its divider and its rows. Stories
@@ -101,7 +101,7 @@ None. `side` is whose message it is, not a style.
 It takes no step; the words use the body step (14) and the author line and meta the small-name step (12) ([../scale.md](../scale.md), FONT-7).
 
 ## States
-`isHighlight` draws the focus ring round the bubble (a link jumped here). Loading draws the face with two skeleton lines
+`isHighlight` draws the focus ring round the bubble (a link jumped here); a render highlights one thing (lint `one-highlight-per-render`, R359). Loading draws the face with two skeleton lines
 (`isLoading`, STATE-8); a whole loading thread is the thread's own bubbles with `isLoading`. Actions show on hover and focus as the grammar's floating toolbar beside the bubble: icon commands named by tooltips that never overlap its text.
 
 ## Owner split

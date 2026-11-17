@@ -522,7 +522,7 @@ export const noTableInCard = defineRule({
     schema: [],
     messages: {
       table:
-        "FE_TABLE_IN_CARD: this DataTable stands inside a SurfaceCard (here or in the component that renders it). Plain rows with a few facts are a `Section kind=\"list\"` with its `title` on the section and the note as its `caption`, and no card around it; a table that compares records across many columns sits in its section with its label outside, with no card around it.",
+        "FE_TABLE_IN_CARD: this DataTable stands inside a SurfaceCard (here or in the component that renders it). Plain rows with a few facts are a `Section kind=\"list\"` with its `title` on the section and the note as its `caption`, and no card around it; a table is a `Section` holding a `DataTable` (title and count on the section, `footer={<Pagination />}` on the table), with no card around it.",
     },
   },
   create(context) {
@@ -637,9 +637,9 @@ export const noHeadingAboveCard = defineRule({
     schema: [],
     messages: {
       header:
-        "FE_HEADING_ABOVE_CARD: this Section holds a single card, and a card has a label by design. Drop the Section: move its title to the card's `label`, the count to `fact`, the action to `labelEnd` and the note to `footer`. Several cards under one Section stay legal.",
+        "FE_HEADING_ABOVE_CARD: this Section holds a single card, and a card has a label by design. Drop the Section: move its title to the card's `label`, the count to `fact`, the action to `labelEnd`; a note is the card's `note`. Several cards under one Section stay legal.",
       name:
-        "FE_HEADING_ABOVE_CARD: this card's `ariaLabel` repeats the title of the Section around it. Give the card that title as its `label` (count in `fact`, action in `labelEnd`, note in `footer`) and drop the Section.",
+        "FE_HEADING_ABOVE_CARD: this card's `ariaLabel` repeats the title of the Section around it. Give the card that title as its `label` (count in `fact`, action in `labelEnd`, note in `note`) and drop the Section.",
     },
   },
   create(context) {

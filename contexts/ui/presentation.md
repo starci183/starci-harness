@@ -53,8 +53,8 @@ An inset steps down one level each time a box sits inside another, and an inner 
 | Level | Box | Inset (the token that owns it) |
 | --- | --- | --- |
 | 0 frame | the page gutter; the overlay as a floating page | gutter 12, 24 from the medium breakpoint (48rem), 32 from wide (70rem), stepped, never fluid (`--grammar-page-inset`), except on `Page chrome="panes"`, where the header takes 12 at every width so the gutter column starts at the pane content edge; a dialog or drawer 12 on every side (`--grammar-overlay-inset`) |
-| 1 surface | a card (dense or holding a form or prose alike) and a zone of a card; a pane | a card and its zones 16 on every side (`--grammar-inset-card`, `--grammar-card-padding-*`; rows a card divides by lines keep the row step on the block sides and 16 inline); a pane 12 (`--grammar-inset`, `--grammar-pane-inset-*`) |
-| 2 box in a surface | a notice in a card, a `Quote`, a list option, a table cell's block side, a stat cell (never a card: a surface does not stand in a surface) | 8 (`--grammar-inset-nested`) |
+| 1 surface | a card; a pane | a card 16 on every side (`--grammar-inset-card`, `--grammar-card-padding-*`; its `actions` band the row step on the block sides and 16 inline); a pane 12 (`--grammar-inset`, `--grammar-pane-inset-*`) |
+| 2 box in a surface | a notice in a card, a `Quote`, a list option, a table cell's block side (never a card: a surface does not stand in a surface) | 8 (`--grammar-inset-nested`) |
 | 3 control | a button, field, tab, chip, badge | the control's height decides the block padding; inline sm 8, md 12, lg 24, one step less on a glyph's side (`--grammar-control-padding-*`) |
 
 The named exceptions above a parent's level are the card's 16 (the one use of that step: a card stands in a page
@@ -126,11 +126,10 @@ Padding and gap together:
 Margin:
 
 - **M1 No margin in layout.** Only the grammar writes one, in three named cases: `MARGIN-AUTO` centring a capped
-  container (a form card, a reading measure, the page body and the workspace main pane: MEASURE-8), an absolutely placed marker (a badge on an avatar), and a vendor part's
+  container (a form, a reading measure, the page body and the workspace main pane: MEASURE-8), an absolutely placed marker (a badge on an avatar), and a vendor part's
   internal offset kept for parity.
 - **M2 Bleed is an API, never a negative margin**: `PaneSection bleed="inline"` (a horizontal chip row reaching both
-  pane edges, the inset becoming its scroll padding), `SurfaceCard` `headers` and `footers` (zones to the card edge), the
-  artwork band of a painted card (its first face, edge to edge and clipped by the card's radius, never inset).
+  pane edges, the inset becoming its scroll padding) and the `actions` band of a `SurfaceCard` (its hairline to the card edge).
 
 ### Text edge
 
@@ -151,9 +150,9 @@ the spacing of that row: a role prop or nothing, never a gap, margin, padding or
 | Page tabs (underline) | labels 24 apart; a second row (`header.subTabs`) on its own separator | first label 0, 12 per side | none | `header.tabs`, `header.subTabs` |
 | Sidebar item and rail | items identity, groups section | item 12 by derived 40; collapsed rail 12 | none | `groups` data |
 | `Section` | head, filter and content one row step (12) apart (G6); title to count identity; the action slot's text at `md` | none: the section adds none | none | `title`, `kind` |
-| `SurfaceCard`, any kind | zones row; label 8 above the surface (4 in a cards `Grid`); label to fact inline; label to head `description` identity; title to meta identity; seams between zones 0 | 16 on every side; a zone of a card the same, so a seam runs full-bleed | none | `kind`, `label`, `description`, `fact`, `footer` |
+| `SurfaceCard` `body` | label 8 above the surface (4 in a cards `Grid`); label to fact inline; title to meta identity; the `actions` band under a full-bleed hairline | 16 on every side; the `actions` band 12 block, 16 inline | none | `kind`, `label`, `fact`, `actions` |
 | `kind="list"` rows | rows divided by lines (n-1, seam 0) or by gap, never both | row 12 block, no inline inset: the row content on the title's edge (BOUNDARY-7) | none | `items` |
-| `kind="figures"` | cells touching (0) with a line between cells and rows; label to figure to meta identity | cell 8 | none | `items` |
+| `Section kind="figures"` | cells touching (0) with a line between cells and rows; label to figure to meta identity | cell 14 block, 20 inline | none | `items` |
 | `kind="tile"` | mark to name inline; status and action at the bottom row | 12 | none | `name`, `mark`, `badge`, `action` |
 | Card or tile grid (`Grid kind="cards"`), `week`, `week-summary` | inline (8) on both axes; the title to the grid row (12), because siblings sit closer than their heading | none | none | `kind` |
 | `Grid kind="sections"`, `pair`, `featured` | section (24) on both axes | none | none | `kind` |
@@ -161,7 +160,7 @@ the spacing of that row: a role prop or nothing, never a gap, margin, padding or
 | Dialog, Drawer | header, body and footer row; footer actions inline; a field stack in the body section (24, the Field rule) | 12 | none | `title`, `body`, `footer` |
 | `Footer` | main and legal region (32), brand and directory section (24), groups row (12), links inline (8) | none | none | `Footer` data |
 | `Board` | a column's cards inline (8) | the column's ground | none | `columns` |
-| Box in a surface (a notice, a `Quote`, a stat cell) | identity | 8 | none | the component |
+| Box in a surface (a notice, a `Quote`) | identity | 8 | none | the component |
 | `ListBox` option | avatar to text row; title to description identity | 8 (h 40) | none | `items` |
 | Table | seam | cells 12 inline, 8 block (h 40) | none | `columns`, `rows` |
 | `Alert`, `Toast` | glyph to text inline; identity | 12 (8 in a surface); the toast's close side 8 | none | `title`, `description`, `action` |
@@ -215,7 +214,7 @@ weights):
 - **FONT-7 The final type scale (owner, 2026-11-09).** One role, one size, one weight everywhere it appears. It overrides every
   earlier size for these roles. Measure: `check:type` (`packages/grammar/scripts/check-type-roles.mts`).
   - **14px for ALL UI text**: body, labels, section and card titles (were 16), row titles, tabs (were 13), buttons, links
-    (including `Section.action`), inputs, descriptions, captions, hints, zone text (was 13), and the figure labels and meta of
+    (including `Section.action`), inputs, descriptions, captions, hints, filter-row text, and the figure labels and meta of
     `figures` cells.
   - **12px only for small names**: meta lines, badges, chips, counts, timestamps, breadcrumb separators.
   - **No 13 anywhere.** `Text size="sm"` and `--grammar-text-sm` are 14; `sm` stays as a name and equals `md`.
@@ -236,7 +235,7 @@ weights):
   | big figure value (display) | figure 20 | `Text size="figure"`, the value of a figures cell |
   | meta, badges, chips, counts, timestamps | xs 12 muted | meta lines, `Badge`, `Chip` |
   | every tab (page, region, filter) | md 14 / 400, the selected one 500 plus the underline; 40 high | `Tabs` ([tabs](components/tabs.md) Size) |
-  | zone and bar labels and their counts (a selection bar "20 / 72 selected", a filter caption, a toolbar note) and a zone hint | md 14 (a hint muted) | any `Text` in a card or board header or footer zone: the zone sets 14, whatever size the `Text` names |
+  | bar labels and their counts (a selection bar "20 / 72 selected", a filter caption, a toolbar note) and a bar hint | md 14 (a hint muted) | any `Text` in a `Section filter` row or a board header: the row sets 14, whatever size the `Text` names |
   | the one caption under a lone table, list or chart | md 14 muted | `Section caption` ([composition](composition.md) COLLECTION-4) |
   | table header | md 14 / 500 muted | the table's own header |
 
@@ -298,10 +297,10 @@ A surface and its foreground always travel as a pair. Prefer the earliest that w
 | --- | --- | --- |
 | SURFACE-1 | none: inherit the parent face | a layout container whose children own their faces; a chat or log scroll region on the background tone |
 | SURFACE-2 | surface face + surface foreground | one bounded object (the card face); grammar-painted |
-| SURFACE-3 | secondary surface + foreground | a neutral recessed band inside a card zone |
-| SURFACE-4 | accent-soft + a foreground paired with it (its soft accent text on a band; the default foreground and muted on a whole card, `SurfaceCard treatment="soft"`) | a band or a card the product deliberately raises; it still says in words why |
+| SURFACE-3 | secondary surface + foreground | a neutral recessed band |
+| SURFACE-4 | accent-soft + its soft accent text | a band the product deliberately raises; it still says in words why |
 | SURFACE-5 | success-soft under the neutral foreground | a band whose outcome authority settled; before settlement it stays SURFACE-3 |
-| SURFACE-6 | full accent, no foreground | a decorative slab carrying no copy and no control; inside a card it is a `custom` header zone |
+| SURFACE-6 | full accent, no foreground | a decorative slab carrying no copy and no control |
 
 Soft faces are translucent, so contrast is measured on the composed pixels, never on the token.
 
@@ -320,8 +319,8 @@ the background alike; the app never passes a field variant (the prop types have 
 | BOUNDARY-3 | one parent declaration for a uniform set | no row can miss or add a line |
 | BOUNDARY-4 | inline-axis seams | exist only at the width where the columns exist |
 | BOUNDARY-5 | an outline | belongs to a grammar object (media frame, code block, a quote's ground) |
-| BOUNDARY-6 | elevation | a card on the page ground is raised (the card shadow) and wears a 1px `separator` border at the card radius; a surface nested in a card keeps the border and drops the shadow, so there is one depth and no doubled edge |
-| BOUNDARY-7 | a list of rows, wherever it stands (the page canvas, a card body, a Drawer or Dialog body, a `PaneSection`, a rail) | one look (0.43.0, owner 2026-11-17): plain rows on the surface, divided by hairlines (n-1), the row content aligned with the section title, with no frame, fill, radius or shadow, by default and with no theme hook; `Section kind="list"` draws it by itself. A list is never a card (`SurfaceCard` has no `list` kind), and a hand-made list (blocks divided by `Divider`) is refused. Lint: `starci-grammar/surface-card-list`, `starci-grammar/surface-in-surface` |
+| BOUNDARY-6 | a card | every card, on every ground (the page, a canvas pane, an overlay), is white at the card radius with a 1px `border` edge and no shadow; a whole-action card fills `surface-secondary` on hover and `default` on press. One depth: a surface never stands in a surface, so no edge is doubled. The overlay (a `Dialog`, `Drawer`, `Popover`) is the one layer with a shadow (`--overlay-shadow`). `DNA-CORE-EDGE-TOP` |
+| BOUNDARY-7 | a list of rows, wherever it stands (the page canvas, a card body, a Drawer or Dialog body, a `PaneSection`, a rail) | one look: plain rows on the surface, divided by hairlines (n-1), the row content aligned with the section title, with no frame, fill, radius or shadow, by default and with no theme hook; `Section kind="list"` draws it by itself. A row of a list or a table hovers `surface-secondary`; a selected row is `default` grey with a 2px accent bar on its start edge, as the sidebar's current item. A list is never a card, and a hand-made list (blocks divided by `Divider`) is refused. Lint: `starci-grammar/surface-card-list`, `starci-grammar/surface-in-surface`; `DNA-COMMON-LIST-ONE-LOOK` |
 
 Elevation is the family's (contract: the card's edge).
 
@@ -354,7 +353,7 @@ Prefer **fluid, then fitted, then capped; never fixed.**
 | MEASURE-1 | page measure | a routed page adopts the page container's measure (default, reading, full); it never caps a region |
 | MEASURE-2 | fluid | the region takes its host's width |
 | MEASURE-3 | fitted | follows its content, always with a full-width cap |
-| MEASURE-4 | capped | one step of the contract's width scale; prose caps at the reading measure; a form, auth panel or single-task region caps itself (the surface's form measure, or a capped centred region), never left-aligned in a wide column |
+| MEASURE-4 | capped | one step of the contract's width scale; prose caps at the reading measure; a form, auth panel or single-task region caps itself (a `formCompact` card for the one form with no page around it, or a capped centred region), never left-aligned in a wide column |
 | MEASURE-5 | minimum height | a stable floor that still grows; the same floor in empty and populated states |
 | MEASURE-6 | inherited height | fills a definite host height |
 | MEASURE-7 | capped height | travels with a scroll owner; a cap without one clips silently |
@@ -396,6 +395,6 @@ The default (start-aligned, wrapping) is right far more often than any rule here
 | --- | --- |
 | a control's step | its corner role, glyph, label rank and the row's other controls ([scale.md](scale.md)) |
 | a surface's face | the paired foreground, contrast on composed pixels, the controls' treatment |
-| a card's bands | separator count (`budgets.hairlinesPerCard`), side-contact padding, full-bleed dividers |
+| a card's `actions` band | separator count (`budgets.hairlinesPerCard`), its padding, the full-bleed hairline |
 | a region's gap | its role (G2: monotonic against its parent and children), R1 against the inset of its box |
 | a region's measure | `min-w-0`, overflow owner, truncation rules of its text |

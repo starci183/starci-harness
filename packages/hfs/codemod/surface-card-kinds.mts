@@ -39,7 +39,7 @@ const CARD_GONE: ReadonlyMap<string, { code: string; reason: string; defaultValu
 ]);
 const REMOVED = new Map([
   ['SurfaceListCard', 'SurfaceListCard is gone: a list is Section kind="list"'],
-  ['SurfaceAccordionCard', 'SurfaceAccordionCard is gone: an accordion is SurfaceCard kind="accordion" with title, meta and body per item'],
+  ['SurfaceAccordionCard', 'SurfaceAccordionCard is gone: an accordion is a Section holding a DisclosureList'],
   ['StaticStateRow', 'StaticStateRow is gone: a row is an item of Section kind="list"'],
   ['ListRow', 'ListRow is internal: a row is an item of Section kind="list"'],
 ]);
@@ -168,7 +168,7 @@ export function transformSurfaceCardKinds({ ts, text, file = 'component.tsx' }: 
     } else { flag(element, 'LIST_CHILDREN', 'the rows are not written as direct rows or one .map', component); return; }
 
     const props = attributes(opening);
-    if (props.has('footer')) { flag(element, 'LIST_CARD_BODY', 'a footer (and figures or a paging row) stays on a SurfaceCard that holds the list: put `<Section kind="list" ... />` in the card body, and give the section the caption', component); return; }
+    if (props.has('footer')) { flag(element, 'LIST_CARD_BODY', 'a footer has no counterpart on Section kind="list": the note is its `caption`, a command at its foot is the section `action`; move it by hand', component); return; }
     const height = props.get('height');
     if (height && literal(height) !== 'fill' && literal(height) !== 'auto') { flag(height, 'LIST_HEIGHT', 'height is gone from the list: a list that fills its host is `fill`, any other height is a Pane or a Grid cell', component); return; }
     const named = props.has('label') && props.has('ariaLabel');
@@ -219,7 +219,7 @@ export function transformSurfaceCardKinds({ ts, text, file = 'component.tsx' }: 
         const elements = array && ts.isArrayLiteralExpression(array) ? [...array.elements] : undefined;
         const objects = elements?.filter(ts.isObjectLiteralExpression);
         if (!objects || objects.length !== elements?.length || spread(opening) || spread(inner) || props.has('composition')) {
-          flag(element, 'FIGURES_BY_HAND', 'the stat strip is not an array literal of object literals in a card of its own: move it to SurfaceCard kind="figures" by hand', component);
+          flag(element, 'FIGURES_BY_HAND', 'the stat strip is not an array literal of object literals in a card of its own: move it to Section kind="figures" by hand', component);
           return;
         }
         const renamed = objects.map(object => `{ ${object.properties.map(property => {
@@ -227,13 +227,19 @@ export function transformSurfaceCardKinds({ ts, text, file = 'component.tsx' }: 
           const key = property.name.getText(source);
           return key === 'description' && ts.isPropertyAssignment(property) ? `value: ${property.initializer.getText(source)}` : property.getText(source);
         }).join(', ')} }`);
-        const kept = opening.attributes.properties.filter(ts.isJsxAttribute).filter(prop => !CARD_GONE.has(prop.name.getText(source))).map(prop => prop.getText(source));
+        const kept = opening.attributes.properties.filter(ts.isJsxAttribute).filter(prop => !CARD_GONE.has(prop.name.getText(source)) && !(prop.name.getText(source) === 'ariaLabel' && props.has('label'))).map(prop => prop.getText(source).replace(/^label/, 'title').replace(/^labelEnd/, 'action'));
         const loading = innerProps.get('isLoading');
-        if (loading) kept.push(loading.getText(source).replace('isLoading', 'isSkeleton'));
-        if (!props.has('label') && !props.has('ariaLabel')) flag(element, 'FIGURES_NEED_NAME', 'a figures card needs a label or an ariaLabel', component);
-        edit(element.getStart(source), element.end, `<${component} kind="figures" ${kept.join(' ')} items={[${renamed.join(', ')}]} />`);
-        for (const tagName of [inner.tagName]) if (ts.isIdentifier(tagName)) gone.add(tagName);
-        change(element, 'STAT_STRIP_FIGURES', 'SurfaceCard > DescriptionList layout="stat-strip"', 'SurfaceCard kind="figures"');
+        if (loading) kept.push(loading.getText(source));
+        if (!props.has('label') && !props.has('ariaLabel')) flag(element, 'FIGURES_NEED_NAME', 'a figures strip needs a title or an ariaLabel', component);
+        const tag = sectionTag(opening.tagName);
+        needsSection = true;
+        edit(element.getStart(source), element.end, `<${tag} kind="figures" ${kept.join(' ')} items={[${renamed.join(', ')}]} />`);
+        const markGone = (node: Node): void => {
+          if ((ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node) || ts.isJsxClosingElement(node)) && ts.isIdentifier(node.tagName)) gone.add(node.tagName);
+          ts.forEachChild(node, markGone);
+        };
+        markGone(element);
+        change(element, 'STAT_STRIP_FIGURES', 'SurfaceCard > DescriptionList layout="stat-strip"', 'Section kind="figures"');
         return;
       }
     }
@@ -263,7 +269,7 @@ export function transformSurfaceCardKinds({ ts, text, file = 'component.tsx' }: 
       else if (name === 'SurfaceAccordionCard') flag(node, 'ACCORDION_BY_HAND', REMOVED.get('SurfaceAccordionCard') ?? '', opening.tagName.getText(source));
       else if (name === 'Grid' && literal(attributes(opening).get('kind')) === 'cards') {
         const labelled = ts.isJsxElement(node) ? node.children.filter(child => (ts.isJsxElement(child) || ts.isJsxSelfClosingElement(child)) && exportOf((ts.isJsxElement(child) ? child.openingElement : child).tagName) === 'SurfaceCard' && attributes(ts.isJsxElement(child) ? child.openingElement : child).has('label')) : [];
-        if (labelled.length >= 2) flag(node, 'LABEL_IN_GRID', 'labelled cards repeated in a Grid of cards are tiles: use SurfaceCard kind="tile" (name, mark, description, badge, action), or one kind="list" card when the peers are compared', opening.tagName.getText(source));
+        if (labelled.length >= 2) flag(node, 'LABEL_IN_GRID', 'labelled cards repeated in a Grid of cards are tiles: use SurfaceCard kind="tile" (name, mark, description, badge, action), or one Section kind="list" when the peers are compared', opening.tagName.getText(source));
       }
     }
     ts.forEachChild(node, visit);

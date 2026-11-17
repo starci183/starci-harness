@@ -115,23 +115,18 @@ roles:
   - id: card
     ui: ui/components/card.md
     renderers: [SurfaceCard]
-    vendorParity: [card, accordion]
-    slots: ["label (a card that heads a section: outside the material)", "name with mark or typed poster (tile identity inside)", "tile poster: Image-owned data or localized absence, one preserved media frame", "tile facts: plain text; badge or up to three typed badges; primary ItemAction and typed overflow ItemMenu", fact, labelEnd, content, footer, "wholeAction: excludes inner actions and menu", "Figure: optional whole-cell href with Link.onFollow and isDisabled, neutral values", "ItemAction: Button.isPending preserves action-owned busy state", "artwork (soft and ink: decorative art carrying its assetSlot)", "motif (ink only)"]
+    vendorParity: [card]
+    slots: ["label (a card that heads a section: outside the material)", "name with mark or typed poster (tile identity inside)", "tile poster: Image-owned data or localized absence, one preserved media frame", "tile facts: plain text; badge or up to three typed badges; primary ItemAction and typed overflow ItemMenu", fact, labelEnd, content, "actions (body: the one band of commands at the object's foot, under a --separator hairline; Tabs, SearchField and Divider throw there in development)", note, "wholeAction: excludes inner actions and menu", "ItemAction: Button.isPending preserves action-owned busy state"]
     variants:
-      kind: { values: [body, figures, details, accordion, select, table, tile], chosenBy: app, compiler: a discriminated union; a list is no card kind (Section kind=list, removed 0.43.0) }
+      kind: { values: [body, tile], chosenBy: app, compiler: "a discriminated union; a card is one object, a dialog or an overlay, and a collection (list, table, facts, figures, disclosures, a choice) is never a card" }
       labelPlacement: { values: [outside, inside], chosenBy: "the card's kind, never an app or a family: outside for a card that heads a section, inside for a tile repeated in a grid" }
-      measure: { values: [content, form, formCompact], chosenBy: app }
-      highlight: { values: [false, true], chosenBy: app, limit: one per view }
-      treatment:
-        values: [surface, soft, ink]
-        meaning: { surface: "the family's surface face", soft: "the brand's light tint (accentSoft) under the default foreground; may carry copy and controls", ink: "the family's brand ink, a full-strength slab with no control (SURFACE-6)" }
-        chosenBy: app by card.choose.treatment
-        rebinds: "a painted treatment rebinds the whole surface pair (surface, foreground, muted, separator, border, the text accents) on its ground, so every child paints a pair that holds"
+      measure: { values: [content, narrow, formCompact], chosenBy: app }
+      emphasis: { values: [none, accent], chosenBy: "app: the one card a set of peers recommends or the reader has chosen, with the reason in words beside it" }
     sizes: none
     states: [neutral, pending, PresentationState]
-    grammarMayChange: [surface paint, edge (border/shadow by depth), radius via surfaceRadius, the label's paint, the ink ground and its inks]
-    dna: [DNA-COMMON-LIST-ONE-LOOK, DNA-COMMON-ROW-EDGE-PADDING, DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE, DNA-COMMON-CARD-LABEL-ABOVE, DNA-COMMON-CARD-LABEL-HEADING, DNA-COMMON-ONE-HIGHLIGHT, DNA-COMMON-DIVIDER-FULL-BLEED, DNA-COMMON-SOFT-GROUND, DNA-COMMON-TREATMENT-TEXT-CONTRAST, DNA-CORE-EDGE-TOP, DNA-CORE-CARD-LABEL-OUTSIDE, DNA-OFFSET-POP-STICKER, DNA-OFFSET-POP-CARD-LABEL-OUTSIDE, DNA-COMMON-TILE-BYLINE, DNA-COMMON-TILE-FIGURE-START, DNA-COMMON-TILE-FIGURE-BEFORE-ACTION]
-    lint: [starci-grammar/no-raised-surface-in-surface, starci-grammar/surface-card-list]
+    grammarMayChange: [surface paint, edge, radius via surfaceRadius, the label's paint]
+    dna: [DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE, DNA-COMMON-CARD-LABEL-ABOVE, DNA-COMMON-CARD-LABEL-HEADING, DNA-COMMON-DIVIDER-FULL-BLEED, DNA-CORE-EDGE-TOP, DNA-CORE-CARD-LABEL-OUTSIDE, DNA-OFFSET-POP-STICKER, DNA-OFFSET-POP-CARD-LABEL-OUTSIDE, DNA-COMMON-TILE-BYLINE, DNA-COMMON-TILE-FIGURE-START, DNA-COMMON-TILE-FIGURE-BEFORE-ACTION]
+    lint: [starci-grammar/no-raised-surface-in-surface, starci-grammar/card-is-object, starci-grammar/surface-card-list]
 
   - id: button
     ui: ui/components/button.md
@@ -311,8 +306,8 @@ roles:
 
   - id: list
     ui: ui/components/list-table.md
-    renderers: [ListBox, SurfaceCard, DataTable]
-    vendorParity: [list-box, table, checkbox]
+    renderers: [ListBox, DataTable]
+    vendorParity: [list-box, table, checkbox, accordion]
     slots: ["items: label, description, leading, trailing, href", "ListRowData: string title; href links its title with optional Link.onFollow; without href, no onFollow", "columns: editor, priority", "rows: href", emptyContent]
     variants:
       descriptionLines: { values: [wrap, 1, 2, 3], meaning: { wrap: the ListBox default, 1: the ListRow default }, chosenBy: app }
@@ -323,7 +318,7 @@ roles:
     sizes: leading slot sm/md/lg match the control ladder
     states: [hover, focus-visible, selected, disabled, loading (same rows at rest), empty]
     grammarMayChange: [row state paint, seam paint]
-    dna: [DNA-COMMON-LIST-SEAMS, DNA-COMMON-SEAM-FULL-BLEED, DNA-COMMON-ROW-DESCRIPTION-ONE-LINE, DNA-COMMON-OPTION-DESCRIPTION-WRAPS, DNA-COMMON-TABLE-ROW-LINK, DNA-COMMON-TABLE-FOLD, DNA-COMMON-ROW-ACTION-END, DNA-COMMON-DISCLOSURE-CHEVRON-START, DNA-COMMON-FIGURES-PANE-ROW, DNA-COMMON-DESCRIPTION-DRAWER-COLUMNS, DNA-COMMON-STEPPER-BAR, DNA-COMMON-STEPPER-BAR-NO-CONNECTOR, DNA-COMMON-DISCLOSURE-CHEVRON-TITLE-NEXT, DNA-COMMON-TABLE-NO-CLIP, DNA-COMMON-ROW-TEXT-FIRST, DNA-COMMON-STEPPER-MARKER-FILLS, DNA-COMMON-STEPPER-MARKER-UPCOMING, DNA-COMMON-LIST-ROW-DIFF, DNA-COMMON-ROW-CONTROL-CENTRE, DNA-COMMON-CARD-SUGGESTIONS]
+    dna: [DNA-COMMON-LIST-ONE-LOOK, DNA-COMMON-LIST-SEAMS,DNA-COMMON-SEAM-FULL-BLEED, DNA-COMMON-ROW-DESCRIPTION-ONE-LINE, DNA-COMMON-OPTION-DESCRIPTION-WRAPS, DNA-COMMON-TABLE-ROW-LINK, DNA-COMMON-TABLE-FOLD, DNA-COMMON-ROW-ACTION-END, DNA-COMMON-DISCLOSURE-CHEVRON-START, DNA-COMMON-DESCRIPTION-DRAWER-COLUMNS, DNA-COMMON-STEPPER-BAR, DNA-COMMON-STEPPER-BAR-NO-CONNECTOR, DNA-COMMON-DISCLOSURE-CHEVRON-TITLE-NEXT, DNA-COMMON-TABLE-NO-CLIP, DNA-COMMON-ROW-TEXT-FIRST, DNA-COMMON-STEPPER-MARKER-FILLS, DNA-COMMON-STEPPER-MARKER-UPCOMING, DNA-COMMON-LIST-ROW-DIFF, DNA-COMMON-CARD-SUGGESTIONS]
 
   - id: alert
     ui: ui/components/toast-alert.md
@@ -737,25 +732,17 @@ mustKeep:
     # --- surfaces and cards
     - id: DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE
       role: card
-      law: A surface never stands inside another surface (a card in a card, in Pane surface, in a Dialog, Drawer or Popover); the grammar has one depth, raised.
+      law: A card never stands inside another card; a Dialog, Drawer or Popover may host an object card with the same look, so the grammar has one depth.
       measure: { kind: count, select: '[data-grammar-surface-card] [data-grammar-surface-card]', op: "=", value: 0 }
       owner: ui/components/card.md; src/core/surfaceContext.tsx
     - id: DNA-COMMON-LIST-ONE-LOOK
-      role: card
-      law: "A list is one thing: `Section kind=list` of ListRows, plain rows on whatever it stands on (the page canvas, a card body, a pane, a drawer), divided by hairlines, the row content aligned with the section title, with no frame, fill, radius or shadow, by default and with no theme hook. A list is never a card: SurfaceCard has no list kind."
+      role: list
+      law: "A list is one thing: `Section kind=list` of ListRows, plain rows on whatever it stands on (the page canvas, a card body, a pane, a drawer), divided by hairlines, the row content aligned with the section title, with no frame, fill, radius or shadow, by default and with no theme hook. A list is never a card."
       measure:
         kind: style
         select: '.starci-core-section-list'
         checks: [{ metric: border-width, op: "=", value: 0px }, { metric: box-shadow, op: "=", value: none }, { metric: padding-inline-start, op: "=", value: 0px }]
       owner: ui/presentation.md
-    - id: DNA-COMMON-ROW-EDGE-PADDING
-      role: card
-      law: "A side of a row that touches the card's edge is p-4 (--grammar-card-padding-block, 16): the first row's top (no header zone above it) and the last row's bottom (no footer zone below it), a single-row card both. A side that touches a separator (between rows, under a zone divider) is p-3 (--grammar-row-gap, 12). Controls included: a row grows around a tall control; no row slot has a fixed block-size (ROW-EDGE-PADDING, owner 2026-11-10)."
-      measure:
-        kind: style
-        select: '[data-grammar-surface-content]:not([data-grammar-surface-headed]) .starci-core-owned-collection > .starci-core-static-row:first-child'
-        checks: [{ metric: padding-block-start, op: "=", value: { token: --grammar-card-padding-block } }, { metric: padding-block-end, op: "=", value: { token: --grammar-row-gap } }]
-      owner: ui/components/card.md
     - id: DNA-COMMON-CARD-LABEL-ABOVE
       role: card
       law: A card's label row sits above the card's content frame, never beside it; a card that heads a section carries it outside the painted material and a tile carries its name inside, with its mark.
@@ -766,38 +753,14 @@ mustKeep:
       law: A card label is a heading and names its card.
       measure: { kind: a11y, select: '[data-grammar-surface-label] > :first-child', metric: role, op: "=", value: heading }
       owner: contract roles.card
-    - id: DNA-COMMON-ONE-HIGHLIGHT
-      role: card
-      law: A view holds at most one highlighted card.
-      measure: { kind: count, select: 'document [data-grammar-highlight="true"]', op: "<=", value: 1 }
-      owner: contract roles.card variants.highlight
-      followUp: G-9
     - id: DNA-COMMON-DIVIDER-FULL-BLEED
       role: card
       law: A horizontal divider runs the full inner width of its surface, inline inset 0px on both sides.
       measure: { kind: relation, select: '[data-component="Divider"][data-grammar-divider="bare"][data-grammar-divider-orientation="horizontal"]', metric: [left, right], op: "=", ref: { within: '[data-grammar-frame="bounded"]', select: self, metric: [inner-left, inner-right] } }
       owner: ui/presentation.md R3
-    - id: DNA-COMMON-SOFT-GROUND
-      role: card
-      law: A soft card's ground is the family's accent-soft tint.
-      measure: { kind: style, select: '[data-component="SurfaceCard"] > [data-grammar-surface-treatment="soft"]', metric: background-color, op: "=", value: { token: --accent-soft } }
-      owner: ui/components/card.md card.choose.treatment
-    - id: DNA-COMMON-TREATMENT-TEXT-CONTRAST
-      role: card
-      law: In every SurfaceCard treatment and theme, a step number reads against its own circle and text reads against the card's ground.
-      measure:
-        kind: style
-        metric: contrast
-        op: ">="
-        value: { threshold: contrast.text }
-        cases:
-          - { select: '[data-grammar-surface-treatment] [data-component="Stepper"] [data-grammar-step-marker]' }
-          - { select: '[data-grammar-surface-treatment] :is([data-component="Text"], [data-grammar-section-header] :is(h2, h3, p))' }
-      owner: ui/components/card.md card.choose.treatment; COLOR-5; story Navigation & Data / Stepper on every treatment, Surfaces / Soft surface card
-      followUp: "contexts/harness/questions.md: retire the law, or name the colour to move"
     - id: DNA-COMMON-ACCENT-CORNER
-      role: card
-      law: The corner a SurfaceCard or MediaFrame names in accentCorner is drawn at the Common accent radius.
+      role: mascot
+      law: The corner a MediaFrame names in accentCorner is drawn at the Common accent radius.
       measure: { kind: style, select: '[data-grammar-accent-corner="end-end"]', metric: border-end-end-radius, op: "=", value: { token: --grammar-accent-corner } }
       owner: grammars/contract.md (Corners are roles)
     # --- lists
@@ -1139,14 +1102,9 @@ mustKeep:
       law: "An unselected radio draws a ring of its own (the muted foreground), so it stays visible when the app sets the field border and shadow to transparent (U2-G6)."
       measure: { kind: style, select: '.starci-core-radio:not([data-selected]) [data-grammar-choice-control="radio"]', metric: box-shadow, op: "!=", value: none }
       owner: contract roles.input
-    - id: DNA-COMMON-ROW-CONTROL-CENTRE
-      role: list
-      law: "In a select or list row with a control, the checkbox and its text block are one group, and the group and the control are vertically centred on each other (within 1px); the row padding (p-4 at the card's edges, p-3 at a separator) and the 40px touch target of a phone hold; a row without a control keeps its top alignment (owner 'căn center cho control và checkbox + text', 0.37.29)."
-      measure: { kind: relation, select: '.starci-core-select-item[data-grammar-select-has-control="true"] > .starci-core-select-control > *', metric: center-y, op: "=", tolerance: 1, ref: { within: '.starci-core-select-item', select: '.starci-core-choice-content', metric: center-y } }
-      owner: ui/components/card.md
     - id: DNA-COMMON-LIST-ROW-DIFF
       role: list
-      law: "A diff row (ListRowData.diff, 0.37.28, owner drawing 'So sánh phiên bản') has a monospace gutter mark at its start, + added, − removed, ~ changed, in its tone's ink, read with its label (diffLabel) before the title, never colour alone; its ground is the tone's soft pair (added success, removed danger, changed warning); a removed title is struck through; a changed row's 'from → to' is the 12 muted line; the row padding holds (ROW-EDGE-PADDING)."
+      law: "A diff row (ListRowData.diff, 0.37.28, owner drawing 'So sánh phiên bản') has a monospace gutter mark at its start, + added, − removed, ~ changed, in its tone's ink, read with its label (diffLabel) before the title, never colour alone; its ground is the tone's soft pair (added success, removed danger, changed warning); a removed title is struck through; a changed row's 'from → to' is the 12 muted line; the row padding holds."
       measure: { kind: style, select: '[data-component="ListRow"][data-grammar-diff="added"]', metric: background-color, op: "=", value: { token: --success-soft } }
       owner: ui/components/list-table.md
     - id: DNA-COMMON-CARD-SUGGESTIONS
@@ -1163,11 +1121,6 @@ mustKeep:
       role: list
       law: "A disclosure with chevron start draws its chevron before its title (G7-8)."
       measure: { kind: relation, select: '[data-grammar-disclosure-chevron="start"] .starci-core-disclosure-indicator', metric: right, op: "<=", ref: { within: '.starci-core-disclosure-trigger', select: '.starci-core-disclosure-title', metric: left } }
-      owner: contract roles.list
-    - id: DNA-COMMON-FIGURES-PANE-ROW
-      role: list
-      law: "Figures in a pane stand in one bordered row while the strip is 20rem wide or more: every cell starts on the line of the first (G9c-1)."
-      measure: { kind: relation, select: '[data-grammar-figures-placement="pane"] .starci-core-description-pair:last-child', metric: top, op: "<=", ref: { within: '[data-grammar-figures-placement="pane"]', select: '.starci-core-description-pair:first-child', metric: bottom } }
       owner: contract roles.list
     - id: DNA-COMMON-DESCRIPTION-DRAWER-COLUMNS
       role: list
@@ -1309,7 +1262,7 @@ mustKeep:
       owner: ui/components/message-bubble.md
     - id: DNA-COMMON-CHAT-INCOMING-FLAT
       role: pane-grid
-      law: "In a thread and anywhere in a chat frame, a message of someone else (MessageBubble incoming, MessageCard) is the flat surface: --surface with its foreground, no border, no shadow (a message is never a card); outside any chat frame on a white surface (a drawer of pinned messages, a white pane, a card) it wears the 1px separator edge, still no shadow (SURFACE-ELEVATION). An app never restyles it (lint message-surfaces)."
+      law: "In a thread and anywhere in a chat frame, a message of someone else (MessageBubble incoming, MessageCard) is the flat surface: --surface with its foreground, no border, no shadow (a message is never a card); outside any chat frame on a white surface (a drawer of pinned messages, a white pane) it wears the 1px separator edge, still no shadow. An app never restyles it (lint message-surfaces)."
       measure:
         kind: style
         select: '[data-grammar-pane-section-thread="true"] .starci-core-message-bubble:is([data-grammar-bubble-side="incoming"], [data-grammar-bubble-content="card"]) > .starci-core-message-bubble-stack > .starci-core-message-bubble-body'
@@ -1566,12 +1519,12 @@ mustKeep:
       owner: ui/components/page-header.md
     - id: DNA-CORE-EDGE-TOP
       role: card
-      law: A card on the page ground is the white surface at the card radius with a 1px separator border and the card shadow; a surface nested in a card keeps the border and drops the shadow.
+      law: Every card, on every ground, is the white surface at the card radius with a 1px border edge and no shadow.
       measure:
         kind: style
         select: '[data-grammar-surface-card] > [data-grammar-frame="bounded"]'
         target: painted-box
-        checks: [{ metric: box-shadow, op: "!=", value: none }, { metric: border-width, op: "=", value: 1px }, { metric: border-color, op: "=", value: { token: --separator } }]
+        checks: [{ metric: box-shadow, op: "=", value: none }, { metric: border-width, op: "=", value: 1px }, { metric: border-color, op: "=", value: { token: --border } }]
       owner: ui/components/card.md
     - id: DNA-CORE-CARD-LABEL-OUTSIDE
       role: card

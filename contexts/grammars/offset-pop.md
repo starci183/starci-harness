@@ -39,7 +39,7 @@ this file says why.
 
 | Role | offset-pop |
 |---|---|
-| Card | Sticker (O-1); surface radius larger than core's, smaller on narrow viewports; highlight is the one sticker holding the next step; `soft` is the blush sticker (`accentSoft`) with ink text, `ink` the ink sticker with canvas text |
+| Card | Sticker (O-1); surface radius larger than core's, smaller on narrow viewports |
 | Button | Every variant outlined with a small offset and heavy label; press travel; commit is the view's one pink fill with ink text |
 | ButtonGroup | Vendor arrangement; the outline replaces the collapsed borders |
 | Tabs | Underline in pink with the current label in `--accent-soft-foreground` |
@@ -53,7 +53,7 @@ this file says why.
 | Alert | Alert `surface` is a sticker with the tone on indicator and title; `soft` is the tone's palette fill with ink text (O-10); stacked toasts are spaced so each shadow clears the next |
 | EmptyState | Common's notice on the sticker; the first-run artwork is the Mascot below |
 | Avatar | Common initials and agent badge, inherited unchanged |
-| Mascot | Common's scale and transparent ground, inherited unchanged: no sticker, no ink outline (the family's framed Image skips an Image a Mascot draws or a SurfaceCard artwork zone holds) |
+| Mascot | Common's scale and transparent ground, inherited unchanged: no sticker, no ink outline (the family's framed Image skips an Image a Mascot draws) |
 | Shell | The contract shell: bar, sidebar and left drawer as stickers; no bottom dock (O-4) |
 | Page header | A surface band closed by the TopBar's ink rule at the outline width, a heavy heading; page tabs stand on the rule with the pink underline over it |
 | Page | Common's frame around the offset-pop band; the body's rhythm and gutter are Common's |

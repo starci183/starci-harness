@@ -6037,7 +6037,7 @@ rules:
 
   - id: R351
     code: "FE_TABLE_IN_CARD"
-    law: "A DataTable is not placed inside a SurfaceCard, on the page or in a pane: plain rows with a few facts are a Section kind=list with its title and its caption, and a table that belongs to a card is an exception named in this rule. The rule reads the JSX of the file: a DataTable enclosed by a SurfaceCard element, or rendered by a component of the same file that a SurfaceCard encloses."
+    law: "A DataTable is not placed inside a SurfaceCard, on the page or in a pane: plain rows with a few facts are a Section kind=list with its title and its caption, and a table is a Section holding the DataTable, with no card around it. The rule reads the JSX of the file: a DataTable enclosed by a SurfaceCard element, or rendered by a component of the same file that a SurfaceCard encloses."
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_TABLE_IN_CARD"]
@@ -6091,7 +6091,7 @@ rules:
 
   - id: R354
     code: "FE_HEADING_ABOVE_CARD"
-    law: "A card has a label by design, so a heading over it is wrong: a Section (not kind=\"list\") whose only child is one SurfaceCard (of any kind), and a card whose ariaLabel is the Section title, are refused; the title moves to the label, the count to fact, the action to labelEnd and the note to footer. Several cards under one Section stay legal."
+    law: "A card has a label by design, so a heading over it is wrong: a Section (not kind=\"list\") whose only child is one SurfaceCard (of any kind), and a card whose ariaLabel is the Section title, are refused; the title moves to the label, the count to fact, the action to labelEnd and a note to the card's note. Several cards under one Section stay legal."
     kinds: [lint]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_HEADING_ABOVE_CARD"]

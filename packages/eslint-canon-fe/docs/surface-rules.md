@@ -59,7 +59,7 @@ const Frame = () => (
 
 ## `starci-fe/no-table-in-card`
 
-Finding code: `FE_TABLE_IN_CARD` (R351). A `DataTable` is not placed in a `SurfaceCard`. Plain rows with a few facts are a `Section kind="list"` with its `title` on the section and the note as its `caption`, and no card around it; a table that compares records across many columns sits in its section with no card around it. The rule reads the file: a Grammar `DataTable` enclosed by a Grammar `SurfaceCard` element is a finding, and so is a `DataTable` rendered by a component of the same file (a declaration, a variable's function, a `memo` or `forwardRef` wrapper, followed through other components of the file) that a `SurfaceCard` encloses. A card in another file that renders a table component is judged where the card is written. There is no inline exemption; a table complex enough to sit in a card is named in this rule.
+Finding code: `FE_TABLE_IN_CARD` (R351). A `DataTable` is not placed in a `SurfaceCard`. Plain rows with a few facts are a `Section kind="list"` with its `title` on the section and the note as its `caption`, and no card around it; a table is a `Section` holding a `DataTable` (title and count on the section, `footer={<Pagination />}` on the table), with no card around it. The rule reads the file: a Grammar `DataTable` enclosed by a Grammar `SurfaceCard` element is a finding, and so is a `DataTable` rendered by a component of the same file (a declaration, a variable's function, a `memo` or `forwardRef` wrapper, followed through other components of the file) that a `SurfaceCard` encloses. A card in another file that renders a table component is judged where the card is written. There is no inline exemption.
 
 Invalid:
 
@@ -86,6 +86,17 @@ const Rules = () => (
     items={rules.map((rule) => ({ id: rule.id, title: rule.title, description: rule.summary }))}
     empty={<EmptyNotice message="No rules." />}
   />
+)
+```
+
+A table is a `Section` holding a `DataTable`:
+
+```tsx
+import { DataTable, Section } from "@starci/grammar/core"
+const Rules = () => (
+  <Section title="Rules" count={rows.length}>
+    <DataTable label="Rules" columns={columns} rows={rows} renderCell={renderCell} emptyContent={null} />
+  </Section>
 )
 ```
 
@@ -127,7 +138,7 @@ const Filter = () => <FilterButtonGroup label="Team" options={options} value={te
 
 ## `starci-fe/no-heading-above-card`
 
-Finding code: `FE_HEADING_ABOVE_CARD` (R354). A card carries its own label, so a heading over it is wrong. A Grammar `Section` (not `kind="list"`) whose only child is one `SurfaceCard` is refused, and so is a card whose `ariaLabel` is the `Section`'s `title`. Several cards under one `Section` stay legal, and a `Section` holding anything else is not judged. The fix moves the title to the card's `label`, the count to `fact`, the action to `labelEnd` and the note to `footer`.
+Finding code: `FE_HEADING_ABOVE_CARD` (R354). A card carries its own label, so a heading over it is wrong. A Grammar `Section` (not `kind="list"`) whose only child is one `SurfaceCard` is refused, and so is a card whose `ariaLabel` is the `Section`'s `title`. Several cards under one `Section` stay legal, and a `Section` holding anything else is not judged. The fix moves the title to the card's `label`, the count to `fact`, the action to `labelEnd`; a note is the card's `note`.
 
 Invalid:
 
@@ -144,6 +155,6 @@ Valid:
 
 ```tsx
 import { SurfaceCard } from "@starci/grammar/core"
-const Rules = () => <SurfaceCard label="Rules" fact="3" labelEnd={add} footer={note}>{rules}</SurfaceCard>
+const Rules = () => <SurfaceCard label="Rules" fact="3" labelEnd={add} note={note}>{rules}</SurfaceCard>
 ```
 

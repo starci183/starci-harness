@@ -42,7 +42,7 @@ family that publishes the shared HeroUI surface and field API: `no-app-surface-p
 within the nearest painted surface, a `Pane` or a `PaneSection` included (`FE_LIST_PANEL_PADDING`),
 `no-hand-built-panes` refuses a multi-pane frame drawn by hand, a vertical divider as a column seam or
 columns inside a joined card, where `PaneGrid` owns both (`FE_HAND_BUILT_PANES`), and
-`no-heading-above-card` refuses a `Section` around a single card (`FE_HEADING_ABOVE_CARD`), `no-selectable-tag-group` refuses a selection on a `TagGroup` (`FE_TAG_GROUP_SELECTION`), `no-fill-command-in-header` refuses a `width="fill"` Button in a page, card or section header slot (`FE_COMMAND_FILLS_HEADER`), and `no-table-in-card` refuses a `DataTable` inside a `SurfaceCard`, where a `Section kind="list"` with its note as `caption` holds plain rows (`FE_TABLE_IN_CARD`). The R65 budget law's
+`no-heading-above-card` refuses a `Section` around a single card (`FE_HEADING_ABOVE_CARD`), `no-selectable-tag-group` refuses a selection on a `TagGroup` (`FE_TAG_GROUP_SELECTION`), `no-fill-command-in-header` refuses a `width="fill"` Button in a page, card or section header slot (`FE_COMMAND_FILLS_HEADER`), and `no-table-in-card` refuses a `DataTable` inside a `SurfaceCard`, where a `Section` holds the table and a `Section kind="list"` with its note as `caption` holds plain rows (`FE_TABLE_IN_CARD`). The R65 budget law's
 `no-app-relative-clock` leaves live relative time and countdowns to Grammar's shared clock.
 
 The spacing law (R350) leaves every distance to Grammar: `no-spacing-utility` refuses a padding, margin, gap

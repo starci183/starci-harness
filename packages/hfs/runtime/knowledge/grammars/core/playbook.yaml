@@ -1177,13 +1177,10 @@ anatomyObservations:
       success"); separator; a task-cell grid using `divide-y`/`divide-x` for edge-to-edge
       cell lines. the reference purchase card: joined card = intro band + full-bleed journey
       illustration band + benefit list, with MISSING-ASSET discipline — the illustration is
-      withheld entirely under the dark scheme rather than repainted. Grammar ships the
-      card-level "special" affordance itself: `SurfaceCard isHighlight` wraps the surface in
-      an animated conic-gradient edge sweep (`starci-core-surface-highlight-sweep`, 3s spin,
-      suppressed while `pending`). Direction prompts MAY therefore use: a tinted hero slab
-      band with anchored decorative art, state-semantic tinted bands (accent-soft /
-      surface-secondary / success-soft), and the card edge highlight — but a highlight or
-      tint must always MEAN a state, never mere prettiness.
+      withheld entirely under the dark scheme rather than repainted. Direction prompts MAY use state-semantic tinted bands
+      (accent-soft / surface-secondary / success-soft) — but a tint must always MEAN a state,
+      never mere prettiness; a card stays white with its 1px edge (the Grammar has no tinted,
+      ink or highlighted card).
   - id: direction-scale-drift
     lane: ui
     kind: known-drift

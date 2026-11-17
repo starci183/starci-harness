@@ -467,7 +467,7 @@ removed:
     kind: grammar
     name: Backdrop
     as: grammar component
-    use: "a soft SurfaceCard, or Freestyle for a tinted brand ground"
+    use: "Freestyle for a tinted brand ground"
     scan: false
   - id: grammar-statusdot-with-text
     kind: grammar
@@ -625,7 +625,7 @@ removed:
     kind: grammar
     name: SurfaceAccordionCard
     as: grammar component
-    use: "SurfaceCard kind=\"accordion\""
+    use: "Section with a DisclosureList"
     shipped: true
     scan: false
   - id: grammar-staticstaterow

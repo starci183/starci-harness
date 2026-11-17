@@ -17,8 +17,7 @@
 9. **Rating.** HeroUI ships no rating: is a rating one radio group of stars (the platform pattern for one value from a
    closed set), or another pattern?
 10. **Final colours.** Are the grammar's colours final, so no package change, lane or law moves a colour on its own, and a
-   law that only a colour change can satisfy (`DNA-COMMON-TREATMENT-TEXT-CONTRAST`) is exempt from the run until it is
-   retired or the colour to move is named? Or may a law move a colour?
+   law that only a colour change can satisfy is exempt from the run until it is retired or the colour to move is named? Or may a law move a colour?
 11. **Soft-treatment text contrast.** `DNA-COMMON-TREATMENT-TEXT-CONTRAST` fails on colour alone (a text on a soft card
    in core at 4.43:1 against 4.5:1, a text in offset-pop at 1:1) and runs as a known gap. Retire the law, or name the
    colours of the soft treatment to move?
@@ -69,8 +68,7 @@
 28. **Two kept wrapper repaints.** The vertical scroll region (filling its parent) and Rating (as a radio group) keep a
    repaint of the vendor component. Keep both as rules of the grammar, or revert them to the vendor?
 29. **What the Grammar contract cannot express.** Should the contract gain tokens that vary by a named viewport condition
-   (offset-pop's narrow offset and radius), `motion-duration` and `motion-easing` names Common reads, an ink-band role (or
-   drop `SurfaceCard treatment="ink"`), and a `font-display` role (or accept display type voice as custom paint)?
+   (offset-pop's narrow offset and radius), `motion-duration` and `motion-easing` names Common reads, and a `font-display` role (or accept display type voice as custom paint)?
 30. **Choices an app still makes two ways.** `sm` or `md` by context, Drawer placement, `Toaster` placement, `Tabs` `inset`,
    mixed glyph sizes in a region, and a skeleton an app or a frame draws. Close each by an API that removes the choice
    (item placement and dense `Toolbar` set `sm`, a responsive Drawer default, a shell-set Toaster placement, `inset`

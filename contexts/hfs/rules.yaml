@@ -2326,7 +2326,7 @@ rules:
       - {kind: eslint-grammar-core, id: mascot-asset-slot-required}
   - id: R340
     code: FE_RAISED_SURFACE_IN_SURFACE
-    law: 'A card never stands inside another card; a SurfaceCard that another SurfaceCard of the same file encloses is refused. A white Pane surface, Drawer, Dialog, AlertDialog or Popover HOSTS cards: on a white ground a card is the group and draws a 1px border with no shadow (SURFACE-ELEVATION). The Grammar throws the card-in-card refusal in development. Across files the whole-program rule closes it (R356).'
+    law: 'A card never stands inside another card; a SurfaceCard that another SurfaceCard of the same file encloses is refused. A white Pane surface, Drawer, Dialog, AlertDialog or Popover may hold an object card, drawn as everywhere: a 1px --border edge and no shadow (BOUNDARY-6). The Grammar throws the card-in-card refusal in development. Across files the whole-program rule closes it (R356).'
     failureCodes:
       - FE_RAISED_SURFACE_IN_SURFACE
     enforcers:
@@ -2414,7 +2414,7 @@ rules:
 
   - id: R351
     code: FE_TABLE_IN_CARD
-    law: "A DataTable is not placed inside a SurfaceCard, on the page or in a pane: plain rows with a few facts are a Section kind=list with its title and its caption, and no table belongs to a card. The rule reads the JSX of the file: a DataTable enclosed by a SurfaceCard element, or rendered by a component of the same file that a SurfaceCard encloses."
+    law: "A DataTable is not placed inside a SurfaceCard, on the page or in a pane: plain rows with a few facts are a Section kind=list with its title and its caption, and a table is a Section holding the DataTable, with no card around it. The rule reads the JSX of the file: a DataTable enclosed by a SurfaceCard element, or rendered by a component of the same file that a SurfaceCard encloses."
     failureCodes:
       - FE_TABLE_IN_CARD
     enforcers:
@@ -2438,7 +2438,7 @@ rules:
 
   - id: R354
     code: FE_HEADING_ABOVE_CARD
-    law: "A card has a label by design, so a heading over it is wrong: a Section (not kind=\"list\") whose only child is one SurfaceCard, and a card whose ariaLabel is the Section title, are refused; the title moves to the label, the count to fact, the action to labelEnd and the note to footer. Several cards under one Section stay legal."
+    law: "A card has a label by design, so a heading over it is wrong: a Section (not kind=\"list\") whose only child is one SurfaceCard, and a card whose ariaLabel is the Section title, are refused; the title moves to the label, the count to fact, the action to labelEnd and a note to the card's note. Several cards under one Section stay legal."
     failureCodes:
       - FE_HEADING_ABOVE_CARD
     enforcers:
@@ -2446,7 +2446,7 @@ rules:
 
   - id: R355
     code: FE_SURFACE_CARD_KIND
-    law: "A SurfaceCard is one component whose kind the compiler checks, and what a kind draws is not drawn by hand around it: a card of the body kind (the default) holds no raw ul, ol, li or dl, no Divider, and no Heading standing as a second title, and a Section whose only child is one SurfaceCard frames one subject twice. Rows are a Section kind=list (a list is never a card), key figures kind=figures, faces divided by seams the typed headers and footers zones; the card's title is its label."
+    law: "A SurfaceCard is one component whose kind the compiler checks, and what a kind draws is not drawn by hand around it: a card of the body kind (the default) holds no raw ul, ol, li or dl, no Divider, and no Heading standing as a second title, and a Section whose only child is one SurfaceCard frames one subject twice. Rows are a Section kind=list (a list is never a card), key figures a Section kind=figures, a table a Section holding a DataTable, a disclosure list a Section holding a DisclosureList; the card's title is its label and its commands are its one `actions` band."
     failureCodes:
       - FE_SURFACE_CARD_KIND
     enforcers:

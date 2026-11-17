@@ -277,7 +277,7 @@ export function transformSectionFrame({ ts, text, file = 'component.tsx' }: { ts
       else flag(weight, 'TEXT_WEIGHT_DYNAMIC', 'weight is not a literal: Text takes isStrong, a boolean', component);
     }
     if (props.has('parentEmphasis')) flag(props.get('parentEmphasis') ?? opening, 'TEXT_PARENT_EMPHASIS', 'parentEmphasis is gone: the accent on a selected parent has no replacement; the selection draws itself', component);
-    if (literal(props.get('size')) === 'metric-lead') flag(props.get('size') ?? opening, 'TEXT_METRIC_LEAD', 'size="metric-lead" is gone: a key figure is a SurfaceCard kind="figures" item', component);
+    if (literal(props.get('size')) === 'metric-lead') flag(props.get('size') ?? opening, 'TEXT_METRIC_LEAD', 'size="metric-lead" is gone: a key figure is an item of Section kind="figures"', component);
     if (literal(props.get('tone')) === 'accent') flag(props.get('tone') ?? opening, 'TEXT_TONE_ACCENT', 'tone="accent" is gone: a mention is Text isStrong, a destination is Link', component);
     // A strong block line that heads a group of blocks is a heading wearing a weight.
     const as = literal(props.get('as'));

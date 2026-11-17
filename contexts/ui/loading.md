@@ -24,7 +24,7 @@ loading and error together cannot be built. `isValidating` is the one flag that 
 
 ## What the Grammar takes
 
-`Section`, every kind of `SurfaceCard`, `ListBox`, `Timeline`, `DataTable`, `MessageBubble` and `PaneSection` take one `isLoading`
+`Section`, both kinds of `SurfaceCard`, `ListBox`, `Timeline`, `DataTable`, `MessageBubble` and `PaneSection` take one `isLoading`
 and one `error` slot (`{ message, description?, actionLabel?, onAction? }`); every leaf, branch and composite takes `isLoading` and
 nothing else. The component derives its skeleton from the rows and fields it was given (the same-shape placeholder), or draws a
 default of three rows when it was given none. `PaneSection` and `Section` tell every Grammar component inside them, so one flag

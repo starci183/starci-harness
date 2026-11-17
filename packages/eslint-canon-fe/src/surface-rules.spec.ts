@@ -357,7 +357,7 @@ for (const edition of ["lite", "full"]) {
       invalid: [
         { code: head + 'const A = () => <Section title="Rules"><SurfaceCard label="Rules">x</SurfaceCard></Section>', errors: [header] },
         { code: head + 'const A = () => <Section title={t("rules")} action={<b />}><SurfaceCard ariaLabel={t("rules")}>x</SurfaceCard></Section>', errors: [header, name] },
-        { code: head + 'const A = () => <Section title="Rules"><SurfaceCard kind="accordion" ariaLabel="Other" items={[]} onItemOpenChange={noop} /></Section>', errors: [header] },
+        { code: head + 'const A = () => <Section title="Rules"><SurfaceCard ariaLabel="Other">x</SurfaceCard></Section>', errors: [header] },
         // a repeated name is refused even under several cards
         { code: head + 'const A = () => <Section title="Rules"><SurfaceCard ariaLabel="Rules">x</SurfaceCard><SurfaceCard label="b">y</SurfaceCard></Section>', errors: [name] },
       ],

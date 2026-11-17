@@ -68,7 +68,7 @@ This table only routes a need to the page whose own Choose tables decide; it is 
 | type a value, or copy one the product holds | [text-field](text-field.md) |
 | space the label, control, help and fields of any form control | [field](field.md) |
 | pick from a list too long for segments | [select](select.md) |
-| present one subject | [card](card.md) |
+| present one object | [card](card.md) |
 | a task that interrupts, or a secondary task beside the page | [dialog-drawer](dialog-drawer.md) |
 | commands that do not deserve a visible button | [menu](menu.md) |
 | several of one kind of thing; a list that searches, filters or pages (a section); the stages of one process | [list-table](list-table.md) |

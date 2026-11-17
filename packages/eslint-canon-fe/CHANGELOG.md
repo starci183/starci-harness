@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.20.2 - 2026-11-17
+
+- Changed: `no-table-in-card` (R351) names a `Section` holding the `DataTable` (title and count on the section, `footer={<Pagination />}` on the table) and drops the exemption sentence. `no-heading-above-card` (R354) moves the note to the card's `note`, not a `footer`, since Grammar 0.45.0 removed the card `footers`.
+
 ## 9.20.1 - 2026-11-17
 
 - Changed: `no-table-in-card` (R351) names `Section kind="list"` (title on the section, note as its `caption`, no card around it) for plain rows, since Grammar 0.43.0 removed `SurfaceCard kind="list"`. `no-fill-command-in-header` (R352) also judges the `action` of a `Section`.

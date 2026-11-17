@@ -21,9 +21,9 @@ scoped rules `src/core/styles.css`, root `CoreGrammarRoot` (`src/core/index.ts`)
 - **Neutral page, white surfaces.** The canvas is a near-white neutral and surfaces are white, so content and
   the one accent carry the page; status hues appear only for settled facts. Dark is its own palette, not an
   inversion.
-- **One edge.** Every surface on the page ground is a card: white, the surface radius, a 1px `--separator` border and the soft
-  diffuse card shadow (0.32.0; owner 2026-11-09). A surface nested in a card (a table, a notice) keeps the border and
-  drops the shadow, so there is one depth and no doubled edge. Captions and titles stay outside the card.
+- **One edge.** A card is an object, and every card is white at the surface radius with a 1px `--border` edge and no shadow
+  on every ground ([ui/presentation](../ui/presentation.md#boundary) BOUNDARY-6); collections stand flat. Captions and titles stay
+  outside the card.
 - **Radius from one token.** `--radius` is the control radius, so fields and tooltips take it and the Button
   corner (three times it) exceeds half of every height: Buttons are pills, and a Button skeleton is a pill too.
   Surfaces take the larger surface radius. A Button drawn with the control corner is a defect.
@@ -35,7 +35,7 @@ scoped rules `src/core/styles.css`, root `CoreGrammarRoot` (`src/core/index.ts`)
 
 | Role | core |
 |---|---|
-| Card | White material; shadow and a 1px separator border; surface radius; a card that heads a section carries its label outside the material, above it; a tile carries its name inside with its mark; seams run full-bleed; `soft` is the `accentSoft` lavender under the default foreground, `ink` the violet accent with white or black text read from its lightness |
+| Card | White material; a 1px border edge and no shadow (BOUNDARY-6); surface radius; a card that heads a section carries its label outside the material, above it; a tile carries its name inside with its mark; the `actions` hairline runs full-bleed |
 | Button | Vendor variants through the tokens: commit is the violet fill with white text, alternative the neutral fill with accent text; pill corner; vendor press |
 | ButtonGroup | Vendor arrangement unchanged |
 | Tabs | Underline: accent indicator, current label in `--accent-soft-foreground` |

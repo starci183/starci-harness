@@ -214,7 +214,7 @@ guidance is the field's `description`, which does not come and go with validatio
 ### FEEDBACK-2 Recover at the smallest owner
 A failed or empty region recovers through its own `EmptyNotice` action, scoped to the failed operation; an unsafe
 repeat (a purchase) becomes a distinct safe operation; work outside the region survives. An empty drawing (map,
-chart, graph) still renders what is known, with the notice as the card's last band.
+chart, graph) still renders what is known, with the notice under it in its region.
 
 ### FEEDBACK-3 Claim only after settlement
 Pending clears on a real settlement; the result names the outcome that arrived; one `live="polite"` owner
@@ -233,22 +233,34 @@ A published container is used where one exists (see
 values of one kind entered by the user are one single-value field per row with its own remove action and an "add another"
 command, never a "one per line" textarea.
 
-### COLLECTION-2 A card is one subject
-A card presents one entity or one summary of one subject. Several kinds of content of that subject are zones of
-the same card (`headers` above the body, `footers` below it), divided by the seams the shell draws, never inner cards and never a `Divider`. Comparing
-a fact across peers is rows, a `Section kind="list"` or a table; recognising and opening a peer is a tile (`kind="tile"`), several
-of which stand in a `Grid kind="cards"`. Equal labelled cards that each repeat a heading are neither. A surface never
-stands inside another surface; a card of one lone table, list or chart is no card (COLLECTION-4). See [components/card.md](components/card.md).
+### COLLECTION-2 A card is one object
+A card is ONE object with its own face (a customer, an agent, a provider, a plan, a message, an approval), a dialog or an
+overlay. The object's own facts, copy and controls are its body, and its commands its one `actions` band at the foot; a
+section of content, a page's facts or a form with a page around it is no object and is never a card. Comparing a fact across
+peers is rows, a `Section kind="list"` or a table; recognising and opening a peer is a tile (`kind="tile"`), several of which
+stand in a `Grid kind="cards"`. Equal labelled cards that each repeat a heading are neither. A surface never stands inside
+another surface. Measure: lint `card-is-object` in `@starci/eslint-grammar-core` refuses a `body` card whose only content,
+through layout wrappers, is a collection, a form or a placeholder (a `DataTable`, a `Section kind="list"`, a `DescriptionList`,
+a `DisclosureList`, a `Form`, a `Fieldset` or fields, an `EmptyNotice`, a chart), and passes `measure="formCompact"`. See
+[components/card.md](components/card.md).
 
-### COLLECTION-4 A single-child card is no card
-A card (`SurfaceCard`) groups two or more heterogeneous parts (figures, a list, actions), or it carries zones (`headers`/`footers`: tabs,
-search, filters, paging) or head actions (`labelEnd`). A card of key-value or choice rows (`SurfaceCard kind="table"|"select"|"details"`, a `ListBox`, `DisclosureList`, a `DescriptionList`) is valid alone or not (0.37.8). A list is a `Section kind="list"` that titles itself, never a card's lone content (COLLECTION-1). A standalone `DataTable` or chart IS the surface: its title sits above it as
-a section head (`Section title`) and one caption sits below it (`Section caption`, muted 14), and it is never wrapped in a bare card. A standalone `DataTable` is flat
-(`surface="none"`, the default): a collection, never a card of its own, its column labels 12 muted and 1px full-width row dividers on whatever holds it,
-no fill, radius, shadow or edge; inside a `SurfaceCard` it runs full bleed the same way, and `kind="table"` draws it as its `frame`. `surface="card"`
-is the white card for an app that asks for it. Measure: lint
-`single-child-card` (a lone `DataTable`, chart or `Section kind="list"`) in `@starci/eslint-grammar-core` (error). See [components/card.md](components/card.md) and
-[components/list-table.md](components/list-table.md).
+### COLLECTION-4 A collection stands flat in a Section
+A collection is never in a card: it stands flat in a `Section`, which carries its title, count, fact, one page command and its
+`caption`. Each collection has one owner:
+
+| collection | owner |
+| --- | --- |
+| rows of peers | `Section kind="list"` (COLLECTION-1) |
+| records compared across columns | `Section`, its `filter` row, a flat `DataTable` and the `DataTable footer` pager ([components/list-table.md](components/list-table.md) `list-table.choose.role:table`) |
+| facts of a page or a region | `Section` + `DescriptionList isDivided`; the facts of ONE object stay a `DescriptionList` in that object's card body |
+| key figures | `Section kind="figures"`, the ribbon ([../grammars/contract.md](../grammars/contract.md#section)) |
+| disclosures | `Section` + `DisclosureList` |
+| a choice of one or several options | `RadioGroup` or `CheckboxGroup` (options with a `description`) in a `Section` or `Form`; a row with an end control is a `Section kind="list"` row's `control` |
+
+A standalone chart is the surface the same way: its title a `Section title` above it and one `Section caption` below. Measure:
+lint `card-is-object` (COLLECTION-2); lint `rows-in-card` refuses a `DescriptionList` or `DisclosureList` that stands neither in
+a `Section` nor in the body of an object card; lint `data-table-surface` refuses `surface` on a `DataTable` and its fix removes
+it.
 
 ### COLLECTION-3 A group identity shows its members
 A group or conversation identity is one composite of its members' identities, distinguishable from one person's,
@@ -281,7 +293,7 @@ One task with no support is one region. Support the reader consults alongside th
 role. Every further region names its task role. A list, detail and info screen is one `PaneGrid` of `Pane`s, mounted as
 `Page chrome="panes"` on a tabbed app page; panes touch, one divider stands between neighbours, and a pane that
 disappears takes its divider with it. Each pane's content is `PaneSection` bands at the pane's content inset. Options that apply to a whole batch
-and rarely change sit closed in one disclosure card below the main task, its summary saying in words who the result
+and rarely change sit closed in one disclosure (a `Section` with a `DisclosureList`) below the main task, its summary saying in words who the result
 is for. In a panel offering several sources, each source sits with its own kind (a cloud picker a secondary button under
 the drop zone, links a list of inputs with an "add" command), with no separate staging step.
 
@@ -289,7 +301,7 @@ the drop zone, links a list of inputs with an "add" command), with no separate s
 A page is one of two frame types, declared by `Page layout="report" | "workspace"` (which `chrome` carries: `standard` is a report, `panes` and `bleed` are workspaces; a `layout` that disagrees with its `chrome` throws `PAGE_LAYOUT_CHROME_MISMATCH`), and never a mix. Ask: is there a persistent selection column or a
 full-height chat or editor? Then B, else A.
 
-- **A, report page** (`chrome="standard"`): the page well is pink and card surfaces stack in ONE direction, a vertical column 24 apart.
+- **A, report page** (`chrome="standard"`): the page well is pink and its sections and object cards stack in ONE direction, a vertical column 24 apart.
   Side by side only for sibling cards of the same role and height (figure cells, short equal cards). A card beside a column of
   other cards is two axes and is refused, and so are cards of different kinds in one row. Lint `starci-grammar/layout-two-axis`.
 - **B, workspace page** (`chrome="panes"`, or `"bleed"` for a full-height chat or editor): a grid of panes split by dividers. Side
@@ -348,7 +360,7 @@ to 1279, phone below 768. Type stays 14 / 12 at every tier. Page inset 32 / 24 /
 
 | Piece | Desktop | Tablet | Phone |
 | --- | --- | --- | --- |
-| Report page (A): figures cells (the ribbon answers its own width: 52rem and over one row, 30rem to 52rem three columns, below it two) | all in one row | 3 columns; five cells are 3 + 2 (two balanced rows; 2 + 2 + 1 would take three rows and strand one cell) | 2 columns; an odd last cell spans the full row (five cells are 2 + 2 + 1). Lines follow the grid: vertical between the cells of a row, horizontal between rows, none doubled. Each cell keeps its label (14 muted, one or two lines), value (20) and meta (12) |
+| Report page (A): key figures | the ribbon answers its own width, not the tier ([../grammars/contract.md](../grammars/contract.md#section) Section) | the same | the same |
 | Report page (A): sibling equal cards | side by side | stacked | stacked |
 | Report page (A): DataTable | table | table | a row list: the primary column is the title, the other columns merge into the description line (`priority="low"` columns fold under `collapseBelow`) |
 | Report page (A): tab strips | one line | one line | scroll horizontally |
@@ -375,8 +387,8 @@ inline build.
 ### DISCIPLINE-2 Numbers are the heroes of an overview
 Each lead figure is the largest text in its cell, at the leading-value rank in the default tone; its label is
 smaller and muted; its unit is lighter than the value; figures compared across cells or updated in place use
-tabular numerals (`Text tabular`). A figure never takes a status colour. A row of key figures is an ordinary card
-with a stat strip, at most `budgets.ribbonCells` cells, never a bare strip on the canvas and never a painted slab.
+tabular numerals (`Text tabular`). A figure never takes a status colour. A row of key figures is a `Section
+kind="figures"`, the ribbon, at most `budgets.ribbonCells` cells, never a card and never a painted slab.
 Type counts: `type.region`, `type.view`. Proof: TASTE-6.
 
 ### DISCIPLINE-3 One signature moment per page

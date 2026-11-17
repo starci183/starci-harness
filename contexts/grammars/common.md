@@ -18,8 +18,8 @@ to the caller:
 - **Context instead of props.** A painted surface (`SurfaceCard`, `Sidebar`, `Dialog`, `AlertDialog`, `Drawer`,
   `Popover`) opens a surface context. Fields, choice controls and `Tabs` read it to pick their look, the way HeroUI's
   own `secondary` field exists for a field inside a surface: on the canvas a field is a filled box, inside a surface it
-  would vanish into the same white, so it takes the neutral fill. The same context refuses a surface inside a surface: a
-  card in a card, in `Pane surface` or in an overlay throws in development (`owner: src/core/surfaceContext.tsx`). The app
+  would vanish into the same white, so it takes the neutral fill. The same context refuses a card inside a card: it
+  throws in development (`owner: src/core/surfaceContext.tsx`). The app
   omits these props; lint refuses a static one.
 - **Typed meaning instead of looks.** A command declares `intent`, a destination is an `href`, a status is a
   `PresentationState` (`neutral`, `informative`, `affirmative`, `cautionary`, `negative`, `pending`,
@@ -69,13 +69,13 @@ relationship is a different shape.
 
 | Idiom | When | Composition |
 |---|---|---|
-| Zones | One heading holds several kinds of content | One `SurfaceCard` with typed `headers` and `footers`; full-bleed zones divided by the shell's seams, never inner cards or a `Divider`. Insets follow side contact |
-| Neutral summary band | A card states a measure before its evidence | The first band on the secondary surface; it is a summary, never a verdict. It takes a state colour only for a proven outcome |
-| Bottom action band | A card has one way onward | One action in the last band against the bottom edge; at most one per card |
+| Sections, not zones | One heading holds several kinds of content | One `Section` per content under the heading (a figures ribbon above the section it summarises, the filter row, the list or table, its caption); never a card holding them, never inner cards or a `Divider` ([ui/composition](../ui/composition.md) COLLECTION-4) |
+| Object actions | An object card has its ways onward | The card's one `actions` band at its foot, under its hairline |
+| Neutral summary band | A region states a measure before its evidence | The first band on the secondary surface; it is a summary, never a verdict. It takes a state colour only for a proven outcome |
 | Art is a band | Generated imagery belongs to a surface | Its own full-bleed band, the asset's ratio kept, no inset frame; decorative art is `aria-hidden` |
 | Title and one supporting line | A row, cell or surface names a thing | Title, then one muted qualifying line, stacked at the tightest gap by `Stack gap="identity"` |
-| Pending is the same tree | Data is loading | The finished tree at rest: same card, bands and row count, skeleton on every owner, never a spinner; an action that must not fire yet is disabled, not removed |
-| One highlighted card | Peers share a view and one is the next step | `isHighlight` on that one card only; the peers keep the same props, so the difference reads as rank |
+| Pending is the same tree | Data is loading | The finished tree at rest: same sections, cards and row count, skeleton on every owner, never a spinner; an action that must not fire yet is disabled, not removed |
+| One emphasised card | Peers share a view and one is recommended or chosen | `emphasis="accent"` on that one card only, with the reason in words; the peers keep the same props, so the difference reads as rank |
 | Single-column form | A step asks for input | `Form`, fields in one column, the status sentence, one commit; secondary ways onward follow as text actions, never a second commit |
 
 ## Playbook shapes
@@ -94,15 +94,15 @@ from all three is asked, not invented.
 
 | Shape | Composition |
 |---|---|
-| Single-offer decision page | Explanation in the primary column as bands (summary band, art band, title-and-line rows); the decision card highlighted in the rail of `Grid kind="main-rail"` with the bottom action band; pending as the same tree |
-| Multi-section overview | One zoned card per section; a `figures` header where a section states a measure; a `more` footer where it leads on; one highlighted section (the next step) per page |
+| Single-offer decision page | Explanation in the primary column as bands (summary band, art band, title-and-line rows); the decision card emphasised in the rail of `Grid kind="main-rail"` with its `actions` band; pending as the same tree |
+| Multi-section overview | One `Section` per section; a `Section kind="figures"` above a section that states a measure; a `Link variant="head"` as the section `action` where it leads on; object cards only for objects |
 | Sign-in | Surface header as title and line; one single-column form per step, one commit each; the way to the other journey last, as a text action |
 | Settings or profile form | `Form` (server refusals in `validationErrors` by field name) around one `Fieldset` per named group; each field carries its own label, description and error, and short fields that pair sit in a `Grid kind="form"` so a row aligns on its controls; a value the product holds is a `CopyField`; a switch applies immediately, a checkbox submits with the form; one commit after the last group |
 | Destructive confirmation | Entry button `intent="destructive"`; `AlertDialog` naming the consequence, dismiss first and focused, confirm last; a reversible action is not confirmed: act, then offer undo in a toast |
 | Secondary task | `Drawer` (side on wide layouts, bottom on a phone) or `Dialog` when the task is short and must block the page; one overlay at a time |
 | App shell | One root; `WorkspaceShell` owns the frame, the bar and the mobile drawer; bar controls share one height; one `Toaster` last in the root; the shell's meaning is in [ui](../ui/README.md) and its checks in the grammar lint |
 | One question per screen | Progress from a real count; the prompt as the heading; the answer choices as the control itself (radio group, checkbox group or `ChoiceChips`), each choice a full-width row; one commit at the bottom, disabled until a choice exists so nothing moves; the outcome as an Alert in place above the action; an optional explanation in a bottom drawer. A wrong answer is an outcome, never a field error |
-| Result | One highlighted card with the display heading, the score and its facts as real labelled values, one commit onward and a quieter way to review; an earned reward announced politely as a toast |
+| Result | One card with the display heading, the score and its facts as real labelled values, one commit onward and a quieter way to review; an earned reward announced politely as a toast |
 | Browse and pick | A labelled search field; filters as `Tabs kind="filter"`; a list box when picking is the task, a `Section kind="list"` when rows only report; pagination; pending keeps the list shape |
 | Data status of a region | Loading, forbidden, failed and empty (a signed-out viewer never reaches a region: the session gate redirects) render through the product's one status view in that region's place, inside the unchanged surface; the recipe belongs to [code/fe](../code/fe/README.md) |
 

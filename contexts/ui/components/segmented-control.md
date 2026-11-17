@@ -1,6 +1,6 @@
 # Choosing one value
 
-The Grammar has no segmented control: `SegmentedControl` is removed (the pill-in-a-track look is `Tabs appearance="primary"`, a switch of a mode or period of the same data, in a card's `switch` header zone). Choosing a value of a form is `ChoiceChips` or `RadioGroup`.
+The Grammar has no segmented control: `SegmentedControl` is removed (the pill-in-a-track look is `Tabs appearance="primary"`, a switch of a mode or period of the same data, [tabs](tabs.md) `tabs.choose.role:switch`). Choosing a value of a form is `ChoiceChips` or `RadioGroup`.
 
 ## Job
 Choose **one value** among two to five short, mutually exclusive options that are all worth seeing at once.

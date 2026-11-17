@@ -14,7 +14,7 @@ applies wins.
 | --- | --- | --- | --- |
 | failed | the region's read failed | `EmptyNotice` naming what could not load, with a retry when it is safe (FEEDBACK-2) | judgement |
 | filtered | a filter left no results | `EmptyNotice` offering to clear the filter | judgement |
-| drawing | a chart, map or graph has no data | the drawing still renders what is known; the notice is the card's last band | judgement |
+| drawing | a chart, map or graph has no data | the drawing still renders what is known; the notice stands under it in its region | judgement |
 | first-run | the page has never held content | `EmptyNotice` with `artwork` (the brand's mascot, when the brand record allows it on this surface, drawn as `Mascot` `md` and tied to its `assetSlot`), else its glyph; this is the page's signature moment (DISCIPLINE-3), so no other art band shares the page | judgement |
 | not-ready | the region cannot work until a setup step is done (a connection not made, a key not set) | `EmptyNotice` stating the state in plain words with the one next step as its action; on an item, the state is a `Badge` and the item's one action | `DNA-COMMON-EMPTY-ONE-ACTION`; judgement |
 | empty | a collection has no items | `EmptyNotice` in the collection's place: title, one line, the action that ends the emptiness | `DNA-COMMON-EMPTY-ONE-ACTION` |
