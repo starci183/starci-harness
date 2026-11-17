@@ -51,7 +51,9 @@ lint rule or gate enforces a rule is in anatomy.md's tree and the rule's page (`
 - `ext/` — **app.ext** optional · R381, R06, R103, R402
 - `.starciwork/` — **app.starciwork** optional · R07, R09
 - `.starcistacks/` — **app.starcistacks** required · R10, R01, R06, R09, R375, R259
-  - `images/db/Dockerfile` — **app.db.image** required · R05
+  - `images/`
+    - `db/Dockerfile` — **app.db.image** required · R05
+    - `storage/{Dockerfile,Dockerfile.dockerignore}` — **app.storage.image** optional · R05
   - `cache/` — **app.starcistacks.cache** optional
   - `brand/` — **app.starcistacks.brand** optional · R437
   - `canvas/` — **app.starcistacks.canvas** optional · R395
@@ -62,6 +64,7 @@ lint rule or gate enforces a rule is in anatomy.md's tree and the rule's page (`
     - `<stamp>_<name>.sql` — **app.db.migrations** required · R213, R332
     - `archive/` — **app.db.migrations.archive** optional
   - `bootstrap.sql` — **app.db.bootstrap** required · R05
+- `statics/` — **app.statics** optional · R438
 
 Git-ignored: `app.gallery-shots`, `app.build-output`.
 Refused (forbidden or external): `app.tool-config-local`, `app.ci-e2e`, `app.ci-db`, `app.browser`, `app.browser-config`, `app.tool-cache`, `app.agent-output`, `app.worktrees`, `app.plaintext-env`.

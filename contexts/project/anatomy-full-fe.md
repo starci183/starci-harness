@@ -53,11 +53,13 @@ lint rule or gate enforces a rule is in anatomy.md's tree and the rule's page (`
 - `ext/` — **app.ext** optional · R381, R06, R103, R402
 - `.starciwork/` — **app.starciwork** required · R07, R09
 - `.starcistacks/` — **app.starcistacks** required · R10, R01, R06, R09, R375, R259
+  - `images/storage/{Dockerfile,Dockerfile.dockerignore}` — **app.storage.image** optional · R05
   - `cache/` — **app.starcistacks.cache** optional
   - `brand/` — **app.starcistacks.brand** optional · R437
   - `canvas/` — **app.starcistacks.canvas** optional · R395
   - `security/` — **app.starcistacks.security** optional · R269
 - `.sops.yaml` — **app.sops** required
+- `statics/` — **app.statics** optional · R438
 
 Git-ignored: `app.gallery-shots`, `app.build-output`.
 Refused (forbidden or external): `app.tool-config-local`, `app.ci-e2e`, `app.tool-cache`, `app.agent-output`, `app.worktrees`, `app.plaintext-env`.

@@ -91,7 +91,9 @@ Change a slot, a rule or a pattern's front matter, then regenerate in the same c
 - `ext/` — **app.ext** optional · R381 (hfs `project-ext`), R06 (hfs `plaintext-secret` `plaintext-secret-staged`), R103 (hfs `repo-local-check`), R402 (hfs `project-checks`)
 - `.starciwork/` — **app.starciwork** optional · R07 (hfs `agent-data-tracked`), R09 (hfs `identity-custody`)
 - `.starcistacks/` — **app.starcistacks** required · R10 (hfs `stacks-shape` `stacks-runtime` `stacks-evidence-runtime` `starcistacks-runtime` `starcistacks-runtime-gate`), R01 (hfs `slot-undeclared`; eslint-be `slot-undeclared`; eslint-fe `slot-undeclared`; machine `repository-tree-layout`), R06 (hfs `plaintext-secret` `plaintext-secret-staged`), R09 (hfs `identity-custody`), R375 (hfs `seeds-shape`), R259 (hfs `db-config-ext` `db-migration-destructive`)
-  - `images/db/Dockerfile` — **app.db.image** required · R05 (hfs `managed-file-drift`)
+  - `images/`
+    - `db/Dockerfile` — **app.db.image** required · R05 (hfs `managed-file-drift`)
+    - `storage/{Dockerfile,Dockerfile.dockerignore}` — **app.storage.image** optional · R05 (hfs `managed-file-drift`)
   - `cache/` — **app.starcistacks.cache** optional
   - `brand/` — **app.starcistacks.brand** optional · R437 (hfs `brand`)
   - `canvas/` — **app.starcistacks.canvas** optional · R395 (hfs `gallery`)
@@ -102,6 +104,7 @@ Change a slot, a rule or a pattern's front matter, then regenerate in the same c
     - `<stamp>_<name>.sql` — **app.db.migrations** required · R213 (hfs `db-migration-shape`), R332 (hfs `lite-db-path`)
     - `archive/` — **app.db.migrations.archive** optional
   - `bootstrap.sql` — **app.db.bootstrap** required · R05 (hfs `managed-file-drift`)
+- `statics/` — **app.statics** optional · R438 (hfs `statics-shape`)
 
 Git-ignored: `app.gallery-shots`, `app.build-output`.
 Refused (forbidden or external): `app.tool-config-local`, `app.ci-e2e`, `app.ci-db`, `app.browser`, `app.browser-config`, `app.tool-cache`, `app.agent-output`, `app.worktrees`, `app.plaintext-env`.
@@ -298,11 +301,13 @@ Refused (forbidden or external): `repo.side-root-forbidden`, `fe.tool-config-loc
 - `ext/` — **app.ext** optional · R381 (hfs `project-ext`), R06 (hfs `plaintext-secret` `plaintext-secret-staged`), R103 (hfs `repo-local-check`), R402 (hfs `project-checks`)
 - `.starciwork/` — **app.starciwork** required · R07 (hfs `agent-data-tracked`), R09 (hfs `identity-custody`)
 - `.starcistacks/` — **app.starcistacks** required · R10 (hfs `stacks-shape` `stacks-runtime` `stacks-evidence-runtime` `starcistacks-runtime` `starcistacks-runtime-gate`), R01 (hfs `slot-undeclared`; eslint-be `slot-undeclared`; eslint-fe `slot-undeclared`; machine `repository-tree-layout`), R06 (hfs `plaintext-secret` `plaintext-secret-staged`), R09 (hfs `identity-custody`), R375 (hfs `seeds-shape`), R259 (hfs `db-config-ext` `db-migration-destructive`)
+  - `images/storage/{Dockerfile,Dockerfile.dockerignore}` — **app.storage.image** optional · R05 (hfs `managed-file-drift`)
   - `cache/` — **app.starcistacks.cache** optional
   - `brand/` — **app.starcistacks.brand** optional · R437 (hfs `brand`)
   - `canvas/` — **app.starcistacks.canvas** optional · R395 (hfs `gallery`)
   - `security/` — **app.starcistacks.security** optional · R269 (hfs `supply-chain`)
 - `.sops.yaml` — **app.sops** required
+- `statics/` — **app.statics** optional · R438 (hfs `statics-shape`)
 
 Git-ignored: `app.gallery-shots`, `app.build-output`.
 Refused (forbidden or external): `app.tool-config-local`, `app.ci-e2e`, `app.tool-cache`, `app.agent-output`, `app.worktrees`, `app.plaintext-env`.
