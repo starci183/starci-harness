@@ -20,6 +20,7 @@ import {
     sidebarSectionLabelClassName,
     sidebarToggleClassName,
 } from "./classNames.js"
+import type { NavigationBadgeTone } from "../../navigationBadgeTone.js"
 import type { NoChildren } from "../../tier.js"
 
 export type SidebarItem = {
@@ -39,6 +40,13 @@ export type SidebarItem = {
     /** Count announcement, e.g. "3 unread conversations". */
     readonly badgeLabel?: string
     readonly badgeMax?: number
+    /**
+     * The tone of the count (0.46.0): `neutral` (default) for a count that is only information; `danger`, `warning`, `accent` or `success` for work waiting for the
+     * person or an outcome. The words of the count stay in `badgeLabel`; the tone is never the only signal.
+     */
+    readonly badgeTone?: NavigationBadgeTone
+    /** A destination (0.46.0): the item is a real anchor that opens `href` through the app root's router; `onAction` runs alongside. Without it the item is a command. */
+    readonly href?: string
     readonly isDisabled?: boolean
 }
 
@@ -197,6 +205,7 @@ export const Sidebar = ({
                                 onFocus={(event) => showTooltip(event.target, item, "focus")}
                                 onBlur={() => hideTooltip("focus")}
                                 onKeyDown={(event) => { if (event.key === "Escape") hideTooltip() }}
+                                {...(item.href === undefined ? {} : { href: item.href })}
                                 {...(item.isDisabled === undefined ? {} : { isDisabled: item.isDisabled })}
                             >
                                 {item.source === undefined ? null : <Icon source={item.source} usage="leading" />}
@@ -206,7 +215,7 @@ export const Sidebar = ({
                                         <HeroDescription data-grammar-item-description="true" data-grammar-description-lines={item.descriptionLines ?? itemPresentation.descriptionLines}>{item.description}</HeroDescription>
                                     </div>
                                 )}
-                                {badgeText === null ? null : <span aria-hidden className="starci-core-icon-button-badge starci-core-sidebar-item-badge" data-grammar-sidebar-badge="true">{badgeText}</span>}
+                                {badgeText === null ? null : <span aria-hidden className="starci-core-icon-button-badge starci-core-sidebar-item-badge" data-grammar-sidebar-badge="true" data-grammar-badge-tone={item.badgeTone ?? "neutral"}>{badgeText}</span>}
                                 {trailingId === undefined ? null : <span id={trailingId} className={sidebarItemTrailingClassName}>{item.trailing}</span>}
                             </ListBox.Item>
                         )})}

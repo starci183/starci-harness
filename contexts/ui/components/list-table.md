@@ -50,6 +50,14 @@ row on its first cell, and its phone list row). The words stay in a badge or the
 for that. `verdict` (success and danger, for a row that reports an outcome) draws the same bar; `edgeTone` wins when both are set. A selected table row draws the accent bar over its
 tone. No theme hook. Story `Surfaces/Row edge tone (0.45.1)`.
 
+## Unread row (0.46.0)
+A row the person has not read takes `emphasis: "unread"` (`ListRowData`: a `Section kind="list"` item, a `Board` item), the fact a `ListBox` item already states with the same name and value. Its title takes the strong weight (semibold) and an accent dot follows it on the title line, so the row's box does not change and
+a pressable or linked title keeps the weight; the description and the meta stay muted. The dot is decorative and the weight is not a name: pass `unreadLabel` (the app's word, "Unread") and it is read before the title, as `diffLabel` is for a diff row. One look, no prop for the dot's colour, no read-state style: a read row is the plain row.
+It is a fact of the row, not a status: the badge and the meta keep the words ("2 min ago"), and `state` and `edgeTone` are unrelated. A list that marks rows read as they are opened changes the row's `emphasis` and nothing else. `ListBox` keeps its own unread look (the strong weight on label and description).
+
+Evidence (Rule 1). NIVO console shell canvas, repository `nivoos-lite` at `8759c8ab`, `.starcistacks/canvas/`: `GRAMMAR-GAPS.md:11` (G3: an unread mark on a list row, dot plus strong weight; `ListBox` has `emphasis: "unread"`, `ListRow` has none);
+`pages/05-notifications-panel.html:57` and `pages/06-notifications-list.html:42` (the notification panel and the full list, each asking for the mark on `ListRow`). Story `Surfaces/Unread row (0.46.0)`.
+
 ## Section head (0.36.0)
 A `Section` head is ONE row: the label (14, 500) and an optional count chip (12) at the start; at the end at most ONE thing, a navigation `Link variant="head"` (the label then an arrow `→` that slides about 3px on hover, the hover underline,
 the inherited size; distinct from the inline `↗` Link), an info `IconButton` or (0.37.25) a text `Button intent="neutral" size="sm"` with no icon ("Gắn thêm provider" at the end of "Provider đã gắn  2"; never the commit). No description under the label: `description` is drawn as a caption (12, muted) below the list or table, with `caption`. Lint `starci-grammar/section-head-action`

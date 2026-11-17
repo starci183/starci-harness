@@ -53,9 +53,6 @@ const REMOVED: ReadonlyMap<string, { code: string; reason: string }> = new Map([
   ['NavigationFeatureNavProps', { code: 'NAVIGATION_FEATURE_NAV_TOP_BAR', reason: 'NavigationFeatureNavProps is gone: use TopBarProps' }],
   ['Subnav', { code: 'REMOVED_COMPONENT', reason: 'Subnav is gone: a section identity is the TopBar `menu`, a second layer is its `subnavigation`' }],
   ['SubnavProps', { code: 'REMOVED_COMPONENT', reason: 'SubnavProps is gone with Subnav' }],
-  ['BottomNav', { code: 'REMOVED_COMPONENT', reason: 'BottomNav is gone: a bottom tab bar is refused (R316); navigate with the Sidebar drawer or TopBar menu' }],
-  ['BottomNavItem', { code: 'REMOVED_COMPONENT', reason: 'BottomNavItem is gone with BottomNav' }],
-  ['BottomNavProps', { code: 'REMOVED_COMPONENT', reason: 'BottomNavProps is gone with BottomNav' }],
   ['PrimaryRailLayoutProps', { code: 'PRIMARY_RAIL_LAYOUT_GRID', reason: 'PrimaryRailLayoutProps is gone: type the layout as GridProps' }],
   ['FormGridProps', { code: 'FORM_GRID_GRID', reason: 'FormGridProps is gone: type the layout as GridProps' }],
 ]);

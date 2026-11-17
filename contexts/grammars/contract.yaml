@@ -292,6 +292,17 @@ roles:
     grammarMayChange: [surface paint and edge, backdrop paint, shadow direction]
     dna: [DNA-COMMON-OVERLAY-IN-ROOT, DNA-COMMON-DIALOG-NAMED, DNA-COMMON-DIALOG-ESCAPE, DNA-COMMON-DIALOG-FOCUS-TRAP, DNA-COMMON-ALERTDIALOG-TONE-INFORMATIVE, DNA-COMMON-ALERTDIALOG-DISMISS-FIRST]
 
+  - id: command-palette
+    ui: ui/components/command-palette.md
+    renderers: [CommandPalette]
+    vendorParity: [modal, list-box, search-field]
+    slots: ["label: required title and field name", closeLabel, "query and onQueryChange: the app searches, the palette never filters", "groups: id, label, items of id, label, hint, source, shortcut, href, isDisabled", onAction, "empty: required notice", isLoading, error, footer, "isOpen, defaultOpen, onOpenChange"]
+    variants: {}
+    sizes: a lg dialog standing at the top of the page; the screen below 40rem
+    states: [closed, open with results, no result, loading, failed]
+    grammarMayChange: ["nothing; the placement, the field, the rows and the keyboard are Common"]
+    dna: [DNA-COMMON-COMMAND-PALETTE-ONE-FIELD]
+
   - id: menu
     ui: ui/components/menu.md
     renderers: [DropdownMenu]
@@ -314,11 +325,11 @@ roles:
       leadingSize: { values: [sm, md, lg], chosenBy: app from the leading content }
       selectionIndicator: { values: [check, none], chosenBy: app }
       inset: { values: [default, panel], chosenBy: context }
-      emphasis: { values: [unread], chosenBy: app from the fact }
+      emphasis: { values: [unread], chosenBy: app from the fact (a ListBox item, and since 0.46.0 a ListRowData: strong title weight and an accent dot) }
     sizes: leading slot sm/md/lg match the control ladder
     states: [hover, focus-visible, selected, disabled, loading (same rows at rest), empty]
     grammarMayChange: [row state paint, seam paint]
-    dna: [DNA-COMMON-LIST-ONE-LOOK, DNA-COMMON-LIST-SEAMS,DNA-COMMON-SEAM-FULL-BLEED, DNA-COMMON-ROW-DESCRIPTION-ONE-LINE, DNA-COMMON-OPTION-DESCRIPTION-WRAPS, DNA-COMMON-TABLE-ROW-LINK, DNA-COMMON-TABLE-FOLD, DNA-COMMON-ROW-ACTION-END, DNA-COMMON-DISCLOSURE-CHEVRON-START, DNA-COMMON-DESCRIPTION-DRAWER-COLUMNS, DNA-COMMON-STEPPER-BAR, DNA-COMMON-STEPPER-BAR-NO-CONNECTOR, DNA-COMMON-DISCLOSURE-CHEVRON-TITLE-NEXT, DNA-COMMON-TABLE-NO-CLIP, DNA-COMMON-ROW-TEXT-FIRST, DNA-COMMON-STEPPER-MARKER-FILLS, DNA-COMMON-STEPPER-MARKER-UPCOMING, DNA-COMMON-LIST-ROW-DIFF, DNA-COMMON-CARD-SUGGESTIONS]
+    dna: [DNA-COMMON-LIST-ONE-LOOK, DNA-COMMON-LIST-SEAMS,DNA-COMMON-SEAM-FULL-BLEED, DNA-COMMON-ROW-DESCRIPTION-ONE-LINE, DNA-COMMON-OPTION-DESCRIPTION-WRAPS, DNA-COMMON-TABLE-ROW-LINK, DNA-COMMON-TABLE-FOLD, DNA-COMMON-ROW-ACTION-END, DNA-COMMON-DISCLOSURE-CHEVRON-START, DNA-COMMON-DESCRIPTION-DRAWER-COLUMNS, DNA-COMMON-STEPPER-BAR, DNA-COMMON-STEPPER-BAR-NO-CONNECTOR, DNA-COMMON-DISCLOSURE-CHEVRON-TITLE-NEXT, DNA-COMMON-TABLE-NO-CLIP, DNA-COMMON-ROW-TEXT-FIRST, DNA-COMMON-STEPPER-MARKER-FILLS, DNA-COMMON-STEPPER-MARKER-UPCOMING, DNA-COMMON-LIST-ROW-DIFF, DNA-COMMON-LIST-ROW-UNREAD, DNA-COMMON-CARD-SUGGESTIONS]
 
   - id: alert
     ui: ui/components/toast-alert.md
@@ -484,16 +495,17 @@ roles:
 
   - id: shell
     ui: ui/composition.md
-    renderers: [WorkspaceShell, TopBar, Sidebar, Page, Grid]
+    renderers: [WorkspaceShell, TopBar, Sidebar, BottomNav, Page, Grid]
     vendorParity: [drawer, list-box]
-    slots: ["header: identity, navigation, actions", navigation, compactHeader, primary, floatingLayer]
+    slots: ["header: identity, navigation, actions", navigation, compactHeader, "compactNavigation: a BottomNav of two to five places, its \"more\" place a bottom Drawer of a Sidebar (0.46.0; ui/components/bottom-nav.md)", primary, floatingLayer, "Sidebar item: label, source, description, trailing, href, badge with badgeLabel, badgeMax and badgeTone (neutral default, accent, success, warning, danger; 0.46.0)"]
     variants:
       viewport: { values: [fixed, flow], chosenBy: app kind (workspace or public site) }
       sidebarPresentation: { values: [rail, drawer], chosenBy: viewport width }
-    sizes: every bar control is size control
-    states: [sidebar expanded, sidebar collapsed, drawer open]
+      badgeTone: { values: [neutral, accent, success, warning, danger], chosenBy: app from the fact (work waiting for the person is danger or warning; ui/components/sidebar.md) }
+    sizes: every bar control is size control; a BottomNav place is the control height with its hit area at the bar height
+    states: [sidebar expanded, sidebar collapsed, drawer open, bottom nav current place, bottom nav more sheet open]
     grammarMayChange: [bar and sidebar paint]
-    dna: [DNA-COMMON-BAR-ONE-HEIGHT, DNA-COMMON-NO-BOTTOM-TABS, DNA-COMMON-ONE-SHELL, DNA-COMMON-ONE-SCROLL-OWNER]
+    dna: [DNA-COMMON-BAR-ONE-HEIGHT, DNA-COMMON-NO-BOTTOM-TABS, DNA-COMMON-NAV-BADGE-TONE, DNA-COMMON-ONE-SHELL, DNA-COMMON-ONE-SCROLL-OWNER]
 
   - id: page
     ui: ui/components/page-header.md
@@ -711,9 +723,9 @@ mustKeep:
       owner: grammars/common.md#one-root
     - id: DNA-COMMON-NO-BOTTOM-TABS
       role: shell
-      law: The shell has no bottom tab bar; on a phone the navigation is the drawer.
-      measure: { kind: count, context: { viewport: 375x812 }, select: '[data-component="BottomNav"]', op: "=", value: 0 }
-      owner: contract roles.shell; lint no-shell-bottom-tabs
+      law: "The shell has no bottom tab bar of its own: a bottom bar of places is a BottomNav in WorkspaceShell compactNavigation (two to five places, its more place a bottom sheet; 0.46.0, owner 2026-11-18) and nowhere else; otherwise the navigation on a phone is the drawer."
+      measure: { kind: count, context: { viewport: 375x812 }, select: 'document [data-component="BottomNav"]:not([data-grammar-workspace-compact-navigation] [data-component="BottomNav"])', op: "=", value: 0 }
+      owner: contract roles.shell; ui/components/bottom-nav.md; lint no-shell-bottom-tabs (still refuses the bar in product code until it is amended)
     - id: DNA-COMMON-ONE-SHELL
       role: shell
       law: One shell owns the frame, the bar and the mobile drawer.
@@ -1102,6 +1114,21 @@ mustKeep:
       law: "An unselected radio draws a ring of its own (the muted foreground), so it stays visible when the app sets the field border and shadow to transparent (U2-G6)."
       measure: { kind: style, select: '.starci-core-radio:not([data-selected]) [data-grammar-choice-control="radio"]', metric: box-shadow, op: "!=", value: none }
       owner: contract roles.input
+    - id: DNA-COMMON-NAV-BADGE-TONE
+      role: shell
+      law: "A count on a navigation item (Sidebar, BottomNav) of tone danger is the danger tint with the danger soft ink, never the solid accent plate it was before 0.46.0; every tone reads its x-soft with x-soft-foreground pair and the count is always printed."
+      measure: { kind: style, select: '.starci-core-sidebar-item-badge[data-grammar-badge-tone="danger"]', metric: color, op: "=", value: { token: --danger-soft-foreground } }
+      owner: ui/components/sidebar.md
+    - id: DNA-COMMON-LIST-ROW-UNREAD
+      role: list
+      law: "An unread row (ListRowData.emphasis unread, 0.46.0) has its title in the strong weight and an accent dot after it on the title line; the read rows keep the medium weight."
+      measure: { kind: style, select: '[data-component="ListRow"][data-grammar-emphasis="unread"] .starci-core-list-row-name', checks: [{ metric: font-weight, op: "=", value: 600 }] }
+      owner: ui/components/list-table.md
+    - id: DNA-COMMON-COMMAND-PALETTE-ONE-FIELD
+      role: command-palette
+      law: "An open command palette holds exactly one search field and one named list of results inside its dialog; the caret stays in the field while the arrows move the active result (virtual focus)."
+      measure: { kind: count, select: '[data-grammar-command-palette] input[type="search"]', op: "<=", value: 1 }
+      owner: ui/components/command-palette.md
     - id: DNA-COMMON-LIST-ROW-DIFF
       role: list
       law: "A diff row (ListRowData.diff, 0.37.28, owner drawing 'So sánh phiên bản') has a monospace gutter mark at its start, + added, − removed, ~ changed, in its tone's ink, read with its label (diffLabel) before the title, never colour alone; its ground is the tone's soft pair (added success, removed danger, changed warning); a removed title is struck through; a changed row's 'from → to' is the 12 muted line; the row padding holds."

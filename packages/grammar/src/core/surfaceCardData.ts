@@ -106,6 +106,13 @@ export type ListRowData = {
     readonly verdict?: "success" | "danger"
     /** The tone of the row's 2px leading edge (0.45.1), for a row that waits for the reader or leads the list; see `RowEdgeTone`. */
     readonly edgeTone?: RowEdgeTone
+    /**
+     * `unread` (0.46.0): the row has not been read. Its title takes the strong weight and an accent dot follows it, the one look of an unread row (the same fact as a
+     * `ListBox` item's `emphasis: "unread"`). The dot is decorative: `unreadLabel` is the word a screen reader reads before the title.
+     */
+    readonly emphasis?: "unread"
+    /** The word read before the title of an unread row, in the app's language ("Unread"). Without it the weight and the dot are visual only. */
+    readonly unreadLabel?: string
     readonly action?: ItemAction
     /**
      * Where the command and the menu stand. `below` (default) lets them wrap under the copy when the row is narrow (below 28rem of its

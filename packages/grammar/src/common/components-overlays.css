@@ -138,6 +138,42 @@
         height: 100%;
     }
 
+    /*
+     * THE COMMAND PALETTE (0.46.0) is a dialog that stands at the top of the page, not in its middle, so the results growing and shrinking while the person types
+     * never move the field; on a phone (below 40rem) it fills the screen, as a `size="full"` dialog does.
+     */
+    .starci-core-overlay-backdrop:has(.starci-core-command-palette) {
+        align-items: flex-start;
+    }
+
+    .starci-core-dialog-container:has(.starci-core-command-palette) {
+        margin-block-start: var(--grammar-region-gap);
+    }
+
+    @media (max-width: 40rem) {
+        .starci-core-dialog-container:has(.starci-core-command-palette) {
+            width: 100%;
+            height: 100%;
+            margin-block-start: 0;
+        }
+    }
+
+    /* A phone's palette is the screen: the dialog grows to the container's height, the results scroll in the body. */
+    @media (max-width: 40rem) {
+        .starci-core-dialog-container:has(.starci-core-command-palette) > .starci-core-dialog {
+            flex: 1 1 auto;
+        }
+    }
+
+    /* The padding gives the field's focus ring room inside the body, which clips what overflows it. */
+    .starci-core-command-palette {
+        display: flex;
+        min-width: 0;
+        flex-direction: column;
+        gap: var(--grammar-row-gap);
+        padding: var(--grammar-ring-width);
+    }
+
     .starci-core-dialog-container[data-entering] {
         animation: starci-core-overlay-rise var(--starci-core-motion-duration) var(--starci-core-motion-easing);
     }

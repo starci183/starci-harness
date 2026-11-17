@@ -1691,6 +1691,30 @@
         overflow-wrap: anywhere;
     }
 
+    /*
+     * THE UNREAD ROW (0.46.0): one look, the fact of a `ListBox` item's `emphasis: "unread"` on a `ListRow`. The title takes the strong weight (the link or the press
+     * button inside it inherits it) and an accent dot follows it, on the title line, so the row's box does not change. The dot is decorative; the hidden `unreadLabel`
+     * is its word.
+     */
+    .starci-core-list-row[data-grammar-emphasis="unread"] :is(.starci-core-list-row-name, .starci-core-list-row-name > *) {
+        font-weight: var(--grammar-weight-semibold);
+    }
+
+    /* The title of an unread row does not wrap its dot onto a line of its own: the name shrinks and wraps inside, the dot stays on the first line at the name's end. */
+    .starci-core-list-row[data-grammar-emphasis="unread"] .starci-core-list-row-title {
+        flex-wrap: nowrap;
+    }
+
+    .starci-core-list-row-unread {
+        flex: none;
+        align-self: flex-start;
+        width: 0.5rem;
+        height: 0.5rem;
+        margin-block-start: calc((var(--grammar-leading-md) - 0.5rem) / 2);
+        border-radius: var(--grammar-radius-pill);
+        background: var(--accent);
+    }
+
     /* A pressable row: the title is the one focusable button and its hit area is the whole row; commands and the menu sit above it. */
     .starci-core-list-row[data-grammar-row-pressable="true"] { position: relative; }
     .starci-core-list-row[data-grammar-row-pressable="true"]:hover { background: var(--surface-secondary); }
@@ -2930,6 +2954,23 @@
         box-shadow: none;
     }
 
+    /*
+     * THE TONE OF A NAVIGATION COUNT (0.46.0): a count on a `Sidebar` item (and on a `BottomNav` item) is `neutral` by default and takes a tone for work waiting for
+     * the person. A tone on its tint is `x-soft` with `x-soft-foreground`; neutral is `default` with `default-foreground`, as a `Badge` of that tone. The tint is
+     * layered over the surface so the rail's count, which overlaps its glyph, never lets the glyph show through a translucent soft ground.
+     */
+    :is(.starci-core-sidebar, .starci-core-bottom-nav) :is(.starci-core-sidebar-item-badge, .starci-core-bottom-nav-badge) {
+        --starci-core-nav-badge-ground: var(--default);
+        --starci-core-nav-badge-ink: var(--default-foreground);
+        background: linear-gradient(var(--starci-core-nav-badge-ground), var(--starci-core-nav-badge-ground)), var(--surface);
+        color: var(--starci-core-nav-badge-ink);
+    }
+
+    :is(.starci-core-sidebar-item-badge, .starci-core-bottom-nav-badge)[data-grammar-badge-tone="accent"] { --starci-core-nav-badge-ground: var(--accent-soft); --starci-core-nav-badge-ink: var(--accent-soft-foreground); }
+    :is(.starci-core-sidebar-item-badge, .starci-core-bottom-nav-badge)[data-grammar-badge-tone="success"] { --starci-core-nav-badge-ground: var(--success-soft); --starci-core-nav-badge-ink: var(--success-soft-foreground); }
+    :is(.starci-core-sidebar-item-badge, .starci-core-bottom-nav-badge)[data-grammar-badge-tone="warning"] { --starci-core-nav-badge-ground: var(--warning-soft); --starci-core-nav-badge-ink: var(--warning-soft-foreground); }
+    :is(.starci-core-sidebar-item-badge, .starci-core-bottom-nav-badge)[data-grammar-badge-tone="danger"] { --starci-core-nav-badge-ground: var(--danger-soft); --starci-core-nav-badge-ink: var(--danger-soft-foreground); }
+
     .starci-core-sidebar-footer {
         min-width: 0;
         padding: 0.75rem;
@@ -2940,6 +2981,104 @@
         .starci-core-sidebar[data-presentation="rail"] {
             transition: none;
         }
+    }
+
+    /*
+     * BOTTOM NAV (0.46.0). The compact navigation slot of the shell shows below 48rem; a `BottomNav` fills it edge to edge, so the slot gives up its inset. The bar is the
+     * places in one row, each an equal share: a glyph over its one-line name, the control height (the 40 of a bar's controls) with the hit area stretched to the bar's
+     * height by a pseudo element, so the box never grows. The bar keeps the device's bottom safe area. The count is the sidebar's, pinned to the glyph's end corner.
+     */
+    .starci-core-workspace-shell-compact-navigation:has(> .starci-core-bottom-nav) {
+        padding: 0;
+    }
+
+    .starci-core-bottom-nav {
+        flex: 1 1 auto;
+        min-width: 0;
+        padding-block: var(--grammar-identity-gap) calc(var(--grammar-identity-gap) + env(safe-area-inset-bottom));
+        padding-inline: var(--grammar-inline-gap);
+    }
+
+    .starci-core-bottom-nav-list {
+        display: flex;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        gap: var(--grammar-identity-gap);
+    }
+
+    .starci-core-bottom-nav-place {
+        display: flex;
+        min-width: 0;
+        flex: 1 1 0%;
+    }
+
+    .starci-core-bottom-nav-item {
+        position: relative;
+        display: flex;
+        min-width: 0;
+        min-height: var(--starci-core-control-min-size);
+        flex: 1 1 auto;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: var(--grammar-identity-gap);
+        padding: 0;
+        border: 0;
+        border-radius: var(--grammar-radius-md);
+        background: none;
+        color: var(--muted);
+        font: inherit;
+        text-decoration: none;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .starci-core-bottom-nav-item::after {
+        content: "";
+        position: absolute;
+        inset-block: calc(-1 * var(--grammar-identity-gap));
+        inset-inline: 0;
+    }
+
+    .starci-core-bottom-nav-item[data-hovered="true"] {
+        color: var(--foreground);
+    }
+
+    .starci-core-bottom-nav-item[data-grammar-current="true"] {
+        background: var(--default);
+        color: var(--foreground);
+    }
+
+    .starci-core-bottom-nav-item[data-focus-visible="true"] {
+        outline: var(--grammar-ring-width) solid var(--focus);
+        outline-offset: calc(-1 * var(--grammar-ring-width));
+    }
+
+    .starci-core-bottom-nav-glyph {
+        position: relative;
+        display: inline-flex;
+        flex: none;
+    }
+
+    /* The count rides the glyph's end corner, its start edge one identity gap inside the glyph, so the glyph stays readable under it. */
+    .starci-core-bottom-nav-glyph > .starci-core-bottom-nav-badge {
+        inset-block-start: calc(-1 * var(--grammar-inline-gap));
+        inset-inline: calc(100% - var(--grammar-identity-gap)) auto;
+    }
+
+    .starci-core-bottom-nav-label {
+        max-width: 100%;
+        overflow: hidden;
+        font-size: var(--grammar-text-xs);
+        font-weight: var(--grammar-weight-medium);
+        line-height: var(--grammar-leading-xs);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .starci-core-bottom-nav-item[data-grammar-current="true"] .starci-core-bottom-nav-label {
+        font-weight: var(--grammar-weight-semibold);
     }
 
     /* --- PaneGrid: named areas laid out flush; the divider is the start edge of the later pane (n-1 lines, never doubled). --- */

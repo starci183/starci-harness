@@ -161,6 +161,7 @@ const ListRowInner = ({ row, isLoading = false }: ListRowProps) => {
                 {...(row.value == null ? {} : { "data-grammar-value": "true" })}
                 {...(row.verdict === undefined ? {} : { "data-verdict": row.verdict })}
                 {...(row.edgeTone === undefined ? {} : { "data-edge-tone": row.edgeTone })}
+                {...(row.emphasis === undefined ? {} : { "data-grammar-emphasis": row.emphasis })}
                 {...(row.diff === undefined ? {} : { "data-grammar-diff": row.diff })}
                 {...(row.onPress === undefined && row.href === undefined ? {} : { "data-grammar-row-pressable": "true" })}
                 {...(drag === undefined ? {} : {
@@ -183,6 +184,7 @@ const ListRowInner = ({ row, isLoading = false }: ListRowProps) => {
                 <span className="starci-core-list-row-copy" data-contract="GAP-1">
                     <span className="starci-core-list-row-title">
                         {row.diff === undefined ? null : <span className="starci-core-visually-hidden" data-grammar-diff-label="true">{`${row.diffLabel ?? DIFF_LABELS[row.diff]}: `}</span>}
+                        {row.emphasis !== "unread" || row.unreadLabel === undefined ? null : <span className="starci-core-visually-hidden" data-grammar-unread-label="true">{`${row.unreadLabel}: `}</span>}
                         <span className="starci-core-list-row-name">
                             {row.href !== undefined
                                 ? <Link variant="plain" href={row.href} {...(row.onFollow === undefined ? {} : { onFollow: row.onFollow })}>{row.title}</Link>
@@ -190,6 +192,7 @@ const ListRowInner = ({ row, isLoading = false }: ListRowProps) => {
                                     ? row.title
                                     : <button type="button" className="starci-core-list-row-press" data-grammar-row-press="true" onClick={row.onPress} {...pressKeys}>{row.title}</button>}
                         </span>
+                        {row.emphasis === "unread" ? <span className="starci-core-list-row-unread" data-grammar-unread-dot="true" aria-hidden="true" /> : null}
                     </span>
                     {row.description === undefined ? null : <span className="starci-core-list-row-description" data-contract="TONE-2 FONT-2" {...(typeof row.description === "string" ? {} : { "data-grammar-description-rich": "true" })}>{row.description}</span>}
                     {row.diff !== "changed" || row.change === undefined ? null : <span className="starci-core-list-row-change" data-grammar-diff-change="true">{`${row.change.from} → ${row.change.to}`}</span>}

@@ -15,7 +15,8 @@ Choice `dialog-drawer.choose.role`: what holds the task above the page. The firs
 | confirm | an irreversible action needs its confirmation | `AlertDialog`: dismiss first and focused, solid danger confirm last, no commit (CTA-4) | `DNA-COMMON-ALERTDIALOG-DISMISS-FIRST` |
 | none | a non-destructive action would only be acknowledged | nothing: no step exists only to acknowledge (UX-2) | judgement |
 | inform | information that does not block | an inline region, a popover or `toast-alert.choose.owner`, not a modal | judgement |
-| nav | compact navigation | the shell's navigation drawer from the leading edge (FE-APP-SHELL-4) | judgement |
+| nav | compact navigation | the shell's navigation drawer from the leading edge (FE-APP-SHELL-4); for a few daily places, a [bottom-nav](bottom-nav.md) whose "more" place opens a bottom `Drawer` | judgement |
+| search | one search of the whole app that groups its results | [command-palette](command-palette.md): a `Dialog` standing at the top of the page, the screen at 390 | judgement |
 | long | a longer secondary task that keeps page context (add documents, edit details, filters) | `Drawer` from the trailing edge | judgement |
 | short | a short focused task that blocks the page (rename, invite) | `Dialog` | judgement |
 

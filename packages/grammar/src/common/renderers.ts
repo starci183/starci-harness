@@ -74,3 +74,4 @@ export { formCompactSurfaceClassName, formFieldClassName, formPageClassName, for
 export * from "./renderers-forms.js"
 export * from "./renderers-overlays.js"
 export * from "./renderers-navigation.js"
+export * from "./renderers-shell.js"

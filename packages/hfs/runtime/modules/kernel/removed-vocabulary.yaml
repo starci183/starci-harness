@@ -652,12 +652,6 @@ removed:
     as: grammar component
     use: "TopBar menu"
     scan: false
-  - id: grammar-bottomnav
-    kind: grammar
-    name: BottomNav
-    as: grammar component
-    use: "the drawer (no bottom tab bar)"
-    scan: false
   - id: grammar-navigationfeaturenav
     kind: grammar
     name: NavigationFeatureNav

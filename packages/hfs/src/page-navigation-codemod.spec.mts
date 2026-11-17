@@ -50,9 +50,9 @@ test('2. the page parts are left for a person with the way to Page', () => {
   assert.match(result.text, /<PageHeader title="t" \/>/);
 });
 
-test('3. Rail, NavigationFeatureNav, Subnav, BottomNav and their types are reported', () => {
+test('3. Rail, NavigationFeatureNav, Subnav and their types are reported (BottomNav is a component again, 0.46.0)', () => {
   const result = run('Rail, NavigationFeatureNav, Subnav, BottomNav, type BottomNavItem, type PageHeaderProps', 'const A = () => null;');
-  assert.deepEqual(codes(result), ['RAIL_GRID', 'NAVIGATION_FEATURE_NAV_TOP_BAR', 'REMOVED_COMPONENT', 'REMOVED_COMPONENT', 'REMOVED_COMPONENT', 'PAGE_HEADER_LOOSE']);
+  assert.deepEqual(codes(result), ['RAIL_GRID', 'NAVIGATION_FEATURE_NAV_TOP_BAR', 'REMOVED_COMPONENT', 'PAGE_HEADER_LOOSE']);
   assert.match(result.findings[1]?.reason ?? '', /subnavigation/);
 });
 

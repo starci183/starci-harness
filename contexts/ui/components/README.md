@@ -70,6 +70,9 @@ This table only routes a need to the page whose own Choose tables decide; it is 
 | pick from a list too long for segments | [select](select.md) |
 | present one object | [card](card.md) |
 | a task that interrupts, or a secondary task beside the page | [dialog-drawer](dialog-drawer.md) |
+| the places of the app: the sidebar and the tone of its counts | [sidebar](sidebar.md) |
+| the compact width's bar of daily places and its sheet of the rest | [bottom-nav](bottom-nav.md) |
+| one search of the whole app, grouped results, Ctrl K | [command-palette](command-palette.md) |
 | commands that do not deserve a visible button | [menu](menu.md) |
 | several of one kind of thing; a list that searches, filters or pages (a section); the stages of one process | [list-table](list-table.md) |
 | report an outcome or a notice | [toast-alert](toast-alert.md) |
