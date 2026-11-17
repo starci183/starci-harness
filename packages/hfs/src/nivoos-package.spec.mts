@@ -22,6 +22,9 @@ import { serviceFindings } from '../runtime/scripts/hfs/rules/services.mjs';
 import { declaredAppSides, loadSlotManifest, resolveRepoDeclaration } from '../runtime/scripts/hfs/slots.mjs';
 import { declaredPackagesHfsView } from '../runtime/scripts/hfs/view.mjs';
 import { mkdtemp } from './helpers/tmpdir.mjs';
+import { renderTargets, type AppSourceFacts } from '../sync/index.mjs';
+import { formatFindings } from '../sync/format.mjs';
+import { createRequire } from 'node:module';
 
 // reason: hfs.json declarations are JSON trees the assertions build and judge.
 type Json = any;
@@ -174,4 +177,58 @@ test('an app that declares no nivoos package runs no check', async (t) => {
   const { run, asked } = recordingRun();
   assert.deepEqual(await runNivoosPackageChecks({ repoRoot: root, run, env: process.env }), { findings: [], lines: [] });
   assert.deepEqual(asked, []);
+});
+
+// ---------------------------------------------------------------------------------------------------- sync and format
+
+const PRESETS = { sonarExclusions: '**/*.spec.ts' };
+const STACK = { images: [], passEnv: [], imageEnvironments: {}, environments: [], imageCache: 'gha' };
+/** The root files sync renders for an app declaring the nivoos package `biz` (seed folder `out`) over source facts that list the folders `rootPackages`. */
+const rendered = (rootPackages: string[], out?: string) => {
+  const sides = { be: BE, nivoos: { packages: [{ name: 'biz', ...(out === undefined ? {} : { out }) }] } };
+  const source = { files: [], read: () => '', rootPackages, packageScopes: {}, stack: STACK, hasImage: () => true } as unknown as AppSourceFacts;
+  const targets = renderTargets(declarationOf(sides), PRESETS, { source });
+  return (file: string): string => targets.find((target) => target.path === file)?.content ?? '';
+};
+
+test('sync: a declared package is no jest project, Codecov path or component, Sonar source or tsconfig, no build:modules or dev watch entry; a library package beside it still is', () => {
+  const render = rendered(['biz', 'shared']);
+  for (const file of ['sonar-project.properties', 'codecov.yml', 'be/jest.config.js', 'package.json']) {
+    const text = render(file);
+    assert.ok(text.length > 0, `${file} is rendered`);
+    assert.equal(text.includes('packages/biz'), false, `${file} names no declared package`);
+    assert.equal(text.includes('package-biz'), false, `${file} has no component of it`);
+  }
+  assert.match(render('sonar-project.properties'), /^sonar\.sources=be\/apps,be\/src,packages\/shared\/src$/m);
+  assert.ok(render('codecov.yml').includes('package-shared') && render('be/jest.config.js').includes('packages/shared'), 'the library package is still measured');
+});
+
+test('sync: a project whose only package is a declared one has no library scope, yet its root eslint config still lints the package', () => {
+  const render = rendered(['biz']);
+  assert.equal(render('package.json').includes('build:modules'), false);
+  assert.equal(render('sonar-project.properties').includes('packages/biz'), false);
+  assert.ok(render('eslint.config.mjs').includes('starciBePackagesConfig'), 'the lint config reaches the package');
+});
+
+test('sync: the seed folder of each declared package is in the managed .prettierignore (out defaults to seed, a custom out is normalised); an app declaring none gains no line', () => {
+  assert.match(rendered(['biz'])('.prettierignore'), /^packages\/biz\/seed\/$/m);
+  assert.match(rendered(['biz'], './build/seed/')('.prettierignore'), /^packages\/biz\/build\/seed\/$/m);
+  const source = { files: [], read: () => '' } as unknown as AppSourceFacts;
+  const plain = renderTargets(declarationOf({ be: BE }), PRESETS, { source }).find((target) => target.path === '.prettierignore')?.content ?? '';
+  assert.equal(plain.includes('packages/'), false);
+  assert.ok(plain.endsWith('**/i18n/messages/**\n'));
+});
+
+test('format: the format gate reformats the raw seed the nivoos build wrote, until the rendered .prettierignore lists its folder', async (t) => {
+  const root = mkdtemp(t, 'starci-nivoos-format-');
+  const seed = 'packages/biz/seed/biz@1.0.0.json';
+  fs.mkdirSync(path.join(root, 'packages/biz/seed'), { recursive: true });
+  fs.mkdirSync(path.join(root, 'node_modules'), { recursive: true });
+  fs.symlinkSync(path.dirname(createRequire(import.meta.url).resolve('prettier/package.json')), path.join(root, 'node_modules/prettier'), 'junction');
+  fs.writeFileSync(path.join(root, 'package.json'), '{"private":true}');
+  fs.writeFileSync(path.join(root, '.prettierrc'), '{}');
+  fs.writeFileSync(path.join(root, seed), '{"package":{"key":"biz"},"cells":[ ]}\n');
+  assert.equal((await formatFindings({ repoRoot: root, files: [seed] })).length, 1, 'unignored, the raw seed is a finding');
+  fs.writeFileSync(path.join(root, '.prettierignore'), rendered(['biz'])('.prettierignore'));
+  assert.deepEqual(await formatFindings({ repoRoot: root, files: [seed] }), [], 'ignored by the managed file');
 });

@@ -332,6 +332,24 @@ function rootPackagesOf(root: string): string[] {
 export const rootPackageFolders = (source: Partial<Pick<AppSourceFacts, 'rootPackages'>> | undefined): string[] =>
   (source?.rootPackages ?? []).map(name => `packages/${name}`);
 
+/**
+ * The root packages the back end measures and builds as libraries: the root workspace packages less the nivoos packages the project declares. A declared
+ * nivoos package is SDK-authored business content that `nivoos package check` proves (PROJECT-BUSINESS-1): it has no unit specs, no dist and no `build`
+ * script, so it is no jest project, Codecov path or component, Sonar source, test or tsconfig, and no `build:modules` or dev watch entry. Its source is
+ * still linted (packagesLintTargets) and its seed output is kept out of the formatter (nivoosSeedIgnore).
+ */
+export const libraryPackageFolders = (app: Pick<ResolvedApp, 'nivoosPackages'>, source: Partial<Pick<AppSourceFacts, 'rootPackages'>> | undefined): string[] => {
+  const declared = new Set((app.nivoosPackages ?? []).map(entry => `packages/${entry.name}`));
+  return rootPackageFolders(source).filter(folder => !declared.has(folder));
+};
+
+/**
+ * The managed .prettierignore lines of the declared nivoos packages: the folder each seed document is built into (`packages/<name>/<out>/`, out defaults
+ * to seed). `nivoos package build` writes it raw and `nivoos package check` needs it byte for byte, so no formatter may rewrite it.
+ */
+export const nivoosSeedIgnore = (app: Pick<ResolvedApp, 'nivoosPackages'>): string[] =>
+  (app.nivoosPackages ?? []).map(entry => `packages/${entry.name}/${path.posix.normalize(entry.out).replace(/^(?:\.\/)+/, '').replace(/\/+$/, '')}/`);
+
 /** The i18n routing files an app declares its languages in: the product i18n package of a full app, then each web app's i18n module (FE-I18N-1). */
 function routingFiles(root: string): string[] {
   const names = (dir: string): string[] => { try { return fs.readdirSync(path.join(root, dir), { withFileTypes: true }).filter(entry => entry.isDirectory()).map(entry => entry.name).sort(byCodeUnit); } catch { return []; } };
@@ -415,7 +433,7 @@ export function appScripts(app: ResolvedApp, source: Partial<Pick<AppSourceFacts
   // Transpile only (the type check is the gate's, not the dev loop's), a 1s debounce so a merge that writes several files restarts once
   // on the whole tree, and an explicit watch list (be/src, be/apps and the dist of each root workspace package) so a file the api had not
   // loaded yet, or a rebuilt package, restarts it too; ts-node-dev alone watches only the files it already required.
-  const watched = ['src', 'apps', ...rootPackageFolders(source).map(folder => `../${folder}/dist`)].join(',');
+  const watched = ['src', 'apps', ...libraryPackageFolders(app, source).map(folder => `../${folder}/dist`)].join(',');
   const watch = (entry: AppEntry): string => `cd be && ts-node-dev --respawn --transpile-only --debounce 1000 --watch ${watched} -r tsconfig-paths/register apps/${entry.name}/src/main.ts`;
   const built = (entry: AppEntry): string => `node be/dist/apps/${entry.name}/src/main.js`;
   const workspace = (entry: AppEntry): string => feAppPackageName(app.project, entry.name);
@@ -433,7 +451,7 @@ export function appScripts(app: ResolvedApp, source: Partial<Pick<AppSourceFacts
     }),
     ...fe.map(entry => line(`start:${entry.name}`, `npm run start -w ${workspace(entry)}`)),
     ...(app.edition !== 'lite' && app.optionalSlots.includes('app.browser') ? [line('test:browser', 'playwright test -c browser/playwright.config.ts')] : []),
-    ...(rootPackageFolders(source).length ? [line('build:modules', 'turbo run build --filter=./packages/*')] : []),
+    ...(libraryPackageFolders(app, source).length ? [line('build:modules', 'turbo run build --filter=./packages/*')] : []),
     line('docker:build', images.map(image => `npm run docker:build:${image.entry.name}`).join(' && ')),
     ...images.map(image => line(`docker:build:${image.entry.name}`, imageCommand(image))),
   ].join('\n    ');
@@ -553,7 +571,7 @@ export function variables(app: ResolvedApp, scope: string, presets: Presets | nu
   const quality = source.quality ?? qualityServices({});
   // The root packages are built before anything imports them (typecheck, lint, the fe build and the be
   // run), and their logic is measured by the back end's unit run like its own (packagesCoverage, BE-TEST-13).
-  const rootPackages = packagesCoverage(rootPackageFolders(source), (folder) => source.packageScopes?.[folder] ?? null);
+  const rootPackages = packagesCoverage(libraryPackageFolders(app, source), (folder) => source.packageScopes?.[folder] ?? null);
   const moduleDirs = rootPackages.folders;
   const modulesFirst = moduleDirs.length ? `${BUILD_MODULES} && ` : '';
   const grammarLint = scope === 'fe' ? grammarLintFor(fe.grammar) : null;
@@ -604,6 +622,7 @@ export function variables(app: ResolvedApp, scope: string, presets: Presets | nu
     sonarHostLine: sonarHostLine(quality.sonar),
     sonarExclusions: sonarScope(presets).exclusions.join(','),
     sonarTestInclusions: sonarScope(presets).tests.join(','),
+    nivoosSeedIgnore: scope === APP_SCOPE ? nivoosSeedIgnore(app).join(LINE) : '',
     sonarSources: [...(withBe ? ['be/apps', 'be/src'] : []), ...(withFe ? ['fe/apps'] : []), ...(packages ? ['fe/packages'] : []), ...moduleDirs.map(dir => `${dir}/src`)].join(','),
     lcovReport: LCOV_REPORT,
     cpdExclusions: SONAR_CPD_EXCLUSIONS.join(','),

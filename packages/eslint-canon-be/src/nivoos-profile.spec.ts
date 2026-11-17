@@ -92,7 +92,8 @@ test("the config judges a declared package by its own blocks: the canon less the
         const profiled = ruleBlocks.find((block) => JSON.stringify(block.files) === JSON.stringify([["packages/biz/src/**", "**/*.{ts,mts,cts,js,mjs,cjs}"]]))
         assert.ok(profiled !== undefined, "the declared package has its own rule block")
         for (const relaxed of Object.keys(NIVOOS_RELAXED)) assert.equal(relaxed in (profiled.rules ?? {}), false, `${relaxed} is relaxed`)
-        for (const kept of ["starci-be/schema-bounded", "starci-be/require-export-jsdoc", "starci-be/no-inline-object-type", "starci-be/no-default-export", "starci-be/no-non-ascii-source"]) assert.equal((profiled.rules ?? {})[kept], "error", `${kept} is kept`)
+        for (const kept of ["starci-be/schema-bounded", "starci-be/require-export-jsdoc", "starci-be/no-inline-object-type", "starci-be/no-default-export"]) assert.equal((profiled.rules ?? {})[kept], "error", `${kept} is kept`)
+        assert.equal("starci-be/no-non-ascii-source" in (profiled.rules ?? {}), false, "no-non-ascii-source is not applied to the package")
         for (const reason of Object.values(NIVOOS_RELAXED)) assert.ok(reason.length > 120, "each relaxation says why")
     } finally { app.cleanup() }
 })
@@ -115,16 +116,18 @@ test("Vietnamese copy in a string or template literal and the default export of 
     } finally { app.cleanup() }
 })
 
-test("the profile still refuses a Vietnamese identifier or comment, an emoji, and an undocumented export", async () => {
-    const identifier = "/** A name. */\nexport const tên: number = 1\n"
-    const comment = "// Chào khách\n/** A name. */\nexport const name: number = 1\n"
-    const emoji = "/** A name. */\nexport const name: string = \"ok ✅\"\n"
+test("no-non-ascii-source is off for a declared package (Vietnamese in comments, literals and identifiers, emoji) and on for an undeclared one; an undocumented export is still refused", async () => {
+    const identifier = ["/** Tên. */", "export const tên: number = 1", ""].join("\n")
+    const comment = ["// Chào khách", "/** A name. */", "export const name: number = 1", ""].join("\n")
+    const emoji = ["/** A name. */", 'export const name: string = "ok ✅"', ""].join("\n")
     const undocumented = "export class Plain {}\n"
     const app = appWith({ "src/identifier.ts": identifier, "src/comment.ts": comment, "src/emoji.ts": emoji, "src/plain.ts": undocumented })
     try {
         for (const [what, text] of [["identifier", identifier], ["comment", comment], ["emoji", emoji]] as const) {
             const found = await lint(app.root, app.hfs, `packages/biz/src/${what}.ts`, text)
-            assert.ok(found.includes("starci-be/no-non-ascii-source"), `${what} is refused: ${found.join(", ")}`)
+            assert.equal(found.includes("starci-be/no-non-ascii-source"), false, `${what} passes in the declared package: ${found.join(", ")}`)
+            const refused = await lint(app.root, app.hfs, `packages/other/src/${what}.ts`, text)
+            assert.ok(refused.includes("starci-be/no-non-ascii-source"), `${what} is refused in an undeclared package: ${refused.join(", ")}`)
         }
         assert.ok((await lint(app.root, app.hfs, "packages/biz/src/plain.ts", undocumented)).includes("starci-be/require-export-jsdoc"))
     } finally { app.cleanup() }

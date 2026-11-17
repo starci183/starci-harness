@@ -4,8 +4,8 @@
  * and the slot's `lintProfile: nivoos` is what puts its source under this profile: the profile is applied by the slot, never by a disable in the file.
  *
  * The profile keeps the whole canon and relaxes exactly what an SDK package cannot satisfy, each for a reason the real findings of a package showed (the
- * `nivo-web` package: 508 findings, of which these relaxations account for 412 and 96 are source to fix). Two rules narrow inside their own file
- * (`no-non-ascii-source` for string literals, `no-default-export` for the package entry); the rest is a rule the profile does not enable, in `NIVOOS_RELAXED`.
+ * `nivo-web` package: 508 findings, of which these relaxations account for 412 and 96 are source to fix). One rule narrows inside its own file
+ * (`no-default-export` for the package entry); the rest is a rule the profile does not enable, in `NIVOOS_RELAXED`.
  */
 import { normalizePath } from "./path.ts"
 import type { HfsView } from "./hfs-view.ts"
@@ -47,6 +47,8 @@ export const isNivoosEntry = (filename: string): boolean => /\/packages\/[^/]+\/
  * reason is the finding: what the real package showed and why the rule's own purpose does not hold for SDK code.
  */
 export const NIVOOS_RELAXED: Readonly<Record<string, string>> = Object.freeze({
+    "starci-be/no-non-ascii-source":
+        "A business package is written for a Vietnamese business: its titles, labels, prompts, guidance and brain documents are Vietnamese, and so are the comments that explain them to the people who own the business. The rule exists so source prose is English for a reader who does not share the author's language; the readers of this package do share it, so the rule is not applied to the package at all, comments included. Identifiers stay ASCII by the package convention (one class per node, named for its key) and the canon has no other rule to hold them to it. Owner direction 2026-11-18.",
     "starci-be/explicit-export-surface":
         "Its purpose is that importers read a file's declared types without inferring them and are not re-linted when it changes. Nothing imports a business package's source: the nivoos CLI loads the entry and writes the seed document, and the SDK's own interfaces (Node, NodeIf, NodeRun, Workspace, Package) type every member. The SDK idioms it refuses cannot be annotated at all: `export class X extends NodeRun(Cell)<typeof State>` (an extends clause with a call), an exported `z.strictObject(...)` schema the next line's `typeof` reads, `export default {...} satisfies Package`. 186 of 508 findings.",
     "starci-be/require-public-member-jsdoc":
