@@ -1,5 +1,11 @@
 # Changelog
 
+## 6.13.24 - 2026-11-17
+
+- Added (PROJECT-GALLERY-6, `rules/gallery-design.mts`, R395): the design pass of `/claude-design`, the gallery drawn before code. An app keeps its canvas in `.starcistacks/canvas/` (slot `app.starcistacks.canvas`: `tokens.css`, `canvas.css`, `briefs/<NN>-<slug>.md`, `pages/<NN>-<slug>.html`, the assembled `<app>-design.html`) and its manifest `.starcistacks/canvas/design.json` (`areas`, and per gallery id `<area>/<screen>` a `status` drafted, approved, built or matches, `approvedAt`, `board`, `shots` 1440 and 390 sha256). New codes: `HFS_APP_GALLERY_DESIGN_MANIFEST` (error), `HFS_APP_GALLERY_DESIGN_PAGE_MISSING`, `HFS_APP_GALLERY_DESIGN_UNAPPROVED`, `HFS_APP_GALLERY_DESIGN_SHOT_MISSING`, `HFS_APP_GALLERY_DESIGN_SHOT_STALE` (report-only in local, an error in prod). `canvas` is reserved under `.starcistacks` (never an environment) and the harness text scans skip it. Spec: `app-gallery-design.spec.mts`.
+- Fixed (templates `app/gitignore`, `app/gitignore-lite`): `fe/apps/*/AGENTS.md`, which `next dev` writes, is ignored; a root, `fe/` or `be/` AGENTS.md is not. Spec: `hfs-gitignore-block-drift.spec.mts`.
+- Changed (`knowledge/hfs/canon-pins.yaml`): the Grammar family at 0.41.1 (`~0.41.1`: graphs open fitted to the pane, back edges routed round the cards, pill and compact Selects sized to their value, the section column divider hook, a neutral disabled Button for every intent, table action cells on one line) and @starci/stylelint-canon 2.9.3; the `@starci/hfs` self-pin is 6.13.24.
+
 ## 6.13.23 - 2026-11-17
 
 - Fixed (`sync/index.mts`, managed root package.json): `dev:be` runs `ts-node-dev --respawn --transpile-only --debounce 1000 --watch src,apps,<each root package's ../packages/<name>/dist>`. A merge that wrote several files restarted the api on a half-written tree and its type check killed it; ts-node-dev alone watched only the files it had required, so a new file or a rebuilt workspace package never restarted it. The lite template's api process (`.starcistacks/application-stacks.yaml`) runs the same flags. Spec: `sync-client-cli-scripts.spec.mts`.
