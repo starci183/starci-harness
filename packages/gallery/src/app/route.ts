@@ -2,9 +2,12 @@ import { useEffect, useState } from "react"
 import { SHOT_WIDTHS } from "../explain.ts"
 import type { Width } from "../explain.ts"
 
-export type View = "side" | "slider" | "shot"
-/** The pane of a narrow window, one at a time: the design, the shot, the slider over both, the explanation. */
-export type Pane = "design" | "shot" | "slider" | "explain"
+import { VIEWS } from "../views.ts"
+import type { View } from "../views.ts"
+
+export type { View }
+/** The pane of a narrow window, one at a time: the design, the shot, the comparison of both, the explanation. */
+export type Pane = "design" | "shot" | "compare" | "explain"
 export interface Route {
     readonly screen: string | null
     readonly flows: boolean
@@ -22,7 +25,7 @@ export function parseHash(hash: string): Route {
         screen: path === "" || path === "flows" ? null : decodeURIComponent(path),
         flows: path === "flows",
         width: SHOT_WIDTHS.find((one) => one === width) ?? "1440",
-        view: view === "slider" || view === "shot" ? view : "side",
+        view: VIEWS.find((one) => one === view) ?? "side",
     }
 }
 

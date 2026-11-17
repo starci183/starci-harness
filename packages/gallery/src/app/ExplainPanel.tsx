@@ -65,12 +65,17 @@ export function ExplainPanel({ screen, labels, devUrl }: ExplainProps): ReactEle
                 <Heading level={2}>{cap(screen.title)}</Heading>
                 <div className="sg-chips">
                     <Badge isDot tone={TONE[screen.status]}>
-                        {statusLabel(labels, screen.status)}
+                        {statusLabel(labels, screen.status, screen.designStatus)}
                     </Badge>
                     <Text size="xs" tone="muted" mono>
                         {screen.id}
                     </Text>
                 </div>
+                {screen.status === "unrecorded" || screen.status === "codedOnly" ? (
+                    <Text size="sm" tone="muted">
+                        {labels.unrecordedHint}
+                    </Text>
+                ) : null}
                 {screen.route === null ? null : (
                     <Text size="sm" tone="muted" mono>
                         {`${labels.route}: ${screen.route}`}

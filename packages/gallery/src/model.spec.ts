@@ -8,6 +8,7 @@ import { test } from "node:test"
 import { introClauses, noteToMarkdown, parseExplain } from "./explain.ts"
 import { capitalize } from "./labels.ts"
 import { loadGallery } from "./load.ts"
+import { effectiveView } from "./views.ts"
 import { buildModel, devPath, splitState, statusOf } from "./model.ts"
 
 const EXPLAIN = (title: string, route: string, area: string): string =>
@@ -19,6 +20,11 @@ const FRAGMENT = `<section class="page" id="customers-list" data-pid="customers/
   <div class="note"><div class="fm">title: Khách hàng · route: /customers · area: customers</div><p class="intro"><b>Concept.</b> Mục tiêu: a. Thao tác: <code>x</code>.</p><h4>Đầu trang</h4><p>Vì sao: y</p><p>Grammar: <code>Page</code></p></div></div>
 </section>`
 
+const section = (pid: string): string =>
+    `<section class="page" id="${pid.replace("/", "-")}" data-pid="${pid}" data-route="/billing" data-title="Hóa đơn"><div class="frame"><div class="scr w1440" style="height:700px"><div>x</div></div></div><div class="note"><div class="fm">title: Hóa đơn · route: /billing · area: billing</div><h4>Đầu trang</h4><p>Vì sao: y</p><p>Grammar: <code>Page</code></p></div></section>`
+/** A frame and a shot (no design.json entry), and a frame alone. */
+const BILLING = `${section("billing/invoices")}${section("billing/plans")}`
+
 /** A gallery with five screens: a matching one, a built one with a stale shot, a drafted one with frame only, and two states of one page. */
 function fixture(): { root: string; sha: (file: string) => string } {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "starci-gallery-"))
@@ -27,13 +33,14 @@ function fixture(): { root: string; sha: (file: string) => string } {
         fs.writeFileSync(path.join(root, file), text)
     }
     const png = (name: string): Buffer => Buffer.from(`png ${name}`)
-    for (const [id, route] of [["customers/list", "/customers"], ["customers/list-empty", "/customers"], ["customers/detail", "/customers/[id]"], ["inbox/today", "/inbox"]] as const) {
+    for (const [id, route] of [["customers/list", "/customers"], ["customers/list-empty", "/customers"], ["customers/detail", "/customers/[id]"], ["inbox/today", "/inbox"], ["billing/invoices", "/billing"]] as const) {
         const [area = ""] = id.split("/")
         write(`gallery/pages/${id}/explain.md`, EXPLAIN(id, route, area))
         write(`gallery/pages/${id}/1440.png`, png(id))
         write(`gallery/pages/${id}/390.png`, png(id))
     }
     write("gallery/pages/orphan/shot/1440.png", png("orphan"))
+    write("gallery/pages/inbox/notes/explain.md", EXPLAIN("inbox/notes", "/inbox/notes", "inbox"))
     write("gallery/flows.json", JSON.stringify({ onboarding: ["customers/list", "customers/list-empty"] }))
     const sha = (id: string): string => createHash("sha256").update(png(id)).digest("hex")
     write(
@@ -49,6 +56,7 @@ function fixture(): { root: string; sha: (file: string) => string } {
         }),
     )
     write(".starcistacks/canvas/pages/01-customers-list.html", FRAGMENT)
+    write(".starcistacks/canvas/pages/02-billing.html", BILLING)
     write(".starcistacks/canvas/tokens.css", ":root{--bg:#fff}")
     return { root: path.join(root, "gallery"), sha }
 }
@@ -62,7 +70,11 @@ test("the state of a screen id is its longest known suffix; any other name is a 
 })
 
 test("a status follows design.json: drafted and approved are not built, built and matches hold while the shots are the recorded ones, anything else is stale", () => {
-    assert.equal(statusOf(undefined, undefined), "none")
+    assert.equal(statusOf(undefined, undefined), "none", "nothing exists")
+    assert.equal(statusOf(undefined, undefined, true, true), "unrecorded", "a frame and a shot with no record: coded, not recorded")
+    assert.equal(statusOf(undefined, undefined, true, false), "codedOnly", "a shot with no frame")
+    assert.equal(statusOf(undefined, undefined, false, true), "drawn", "a frame with no shot")
+    assert.equal(statusOf({ status: "approved" }, undefined, true, true), "notBuilt", "a design.json entry is the record, whatever is on disk")
     assert.equal(statusOf({ status: "approved" }, undefined), "notBuilt")
     assert.equal(statusOf({ status: "drafted" }, undefined), "notBuilt")
     assert.equal(statusOf({ status: "approved", shots: { "1440": "a" } }, undefined), "stale", "a shot record older than the approval")
@@ -75,14 +87,19 @@ test("a status follows design.json: drafted and approved are not built, built an
 test("the model joins pages, design.json and canvas frames: the tree, the dots, the counts and the states", () => {
     const { root } = fixture()
     const model = buildModel(loadGallery({ root, pages: "pages", canvas: "../.starcistacks/canvas" }).raw)
-    assert.deepEqual(model.areas.map((area) => area.area), ["customers", "inbox"])
+    assert.deepEqual(model.areas.map((area) => area.area), ["billing", "customers", "inbox"])
     assert.equal(model.screens["customers/list"]?.status, "matches")
     assert.equal(model.screens["customers/list-empty"]?.status, "stale", "built, but its shots are not the recorded sha")
     assert.equal(model.screens["customers/list-loading"]?.status, "notBuilt", "designed, no folder, no shot")
     assert.equal(model.screens["customers/detail"]?.status, "stale", "an approved screen that records shots")
-    assert.equal(model.screens["inbox/today"]?.status, "none")
+    assert.equal(model.screens["inbox/today"]?.status, "codedOnly")
+    assert.equal(model.screens["inbox/notes"]?.status, "none")
+    assert.equal(model.screens["billing/invoices"]?.status, "unrecorded")
+    assert.equal(model.screens["billing/plans"]?.status, "drawn")
     assert.equal(model.screens["orphan/shot"], undefined, "a folder with no explain.md and no design is hidden")
-    assert.deepEqual(model.counts, { total: 5, matches: 1, differs: 0, stale: 2, notBuilt: 1, hidden: 1 })
+    assert.deepEqual(model.counts, { total: 8, matches: 1, differs: 0, stale: 2, unrecorded: 2, notCoded: 3, hidden: 1 })
+    const { total, matches, differs, stale, unrecorded, notCoded } = model.counts
+    assert.equal(matches + differs + stale + unrecorded + notCoded, total, "every screen is counted once")
     assert.deepEqual(model.pages["customers/list"], ["customers/list", "customers/list-empty", "customers/list-loading"], "the page and its states in table order")
     assert.deepEqual(model.flows, [{ name: "onboarding", screens: ["customers/list", "customers/list-empty"] }])
     assert.equal(model.screens["customers/list"].route, "/customers")
@@ -92,7 +109,7 @@ test("the model joins pages, design.json and canvas frames: the tree, the dots, 
 test("the canvas frames are served per width, and the note of a fragment is the explain.md it copies", () => {
     const { root } = fixture()
     const loaded = loadGallery({ root, pages: "pages", canvas: "../.starcistacks/canvas" })
-    assert.deepEqual(loaded.frames.map((frame) => frame.file), ["customers__list__1440.html", "customers__list__390.html"])
+    assert.deepEqual(loaded.frames.map((frame) => frame.file), ["customers__list__1440.html", "customers__list__390.html", "billing__invoices__1440.html", "billing__plans__1440.html"])
     assert.ok(!loaded.frames[0]?.html.includes("zoom"), "the board's 50% zoom is dropped")
     assert.equal(loaded.raw.frames["customers/list"]?.heights["1440"], 900)
     const explain = parseExplain(loaded.raw.frames["customers/list"].noteMarkdown ?? "")
@@ -123,4 +140,11 @@ test("a label is capitalized for display by the locale, diacritics included, and
     assert.equal(capitalize("ép", "vi"), "Ép")
     assert.equal(capitalize("Đã có", "vi"), "Đã có")
     assert.equal(capitalize("", "vi"), "")
+})
+
+test("a comparison needs both sides: a screen with only a design or only a shot shows that one", () => {
+    assert.equal(effectiveView("diff", true, true), "diff")
+    assert.equal(effectiveView("side", true, false), "design")
+    assert.equal(effectiveView("onion", false, true), "shot")
+    assert.equal(effectiveView("slider", false, false), "slider")
 })

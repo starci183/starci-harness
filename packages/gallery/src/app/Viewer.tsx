@@ -1,6 +1,6 @@
 import { Slider, Tabs, Text } from "@starci/grammar/core"
 import { useEffect, useRef, useState } from "react"
-import type { ReactElement, RefObject } from "react"
+import type { CSSProperties, ReactElement, RefObject } from "react"
 import type { Width } from "../explain.ts"
 import { frameFile } from "../frames.ts"
 import { fill } from "../labels.ts"
@@ -8,7 +8,9 @@ import type { Labels } from "../labels.ts"
 import type { Model, Screen } from "../model.ts"
 import { Lightbox } from "./Lightbox.tsx"
 import type { LightboxKind } from "./Lightbox.tsx"
-import type { Pane, View } from "./route.ts"
+import { COMPARE_VIEWS } from "../views.ts"
+import type { View } from "../views.ts"
+import type { Pane } from "./route.ts"
 
 const pct = (fraction: number | undefined): string => `${String((fraction ?? 0) * 100)}%`
 const base = (): string => import.meta.env.BASE_URL
@@ -19,6 +21,8 @@ const BOARD_PADDING = 32
 /** Side by side holds while each column keeps at least this width; below it the two stack. */
 const MIN_COLUMN = 320
 const COLUMN_GAP = 16
+/** The design.json statuses from which the drawing is the approved one. */
+const APPROVED = ["approved", "built", "matches"]
 
 /** The width of an element, followed while the window is resized. */
 function useWidth<T extends HTMLElement>(): [RefObject<T | null>, number] {
@@ -114,27 +118,34 @@ export interface ViewerProps {
     readonly model: Model
     readonly labels: Labels
     readonly width: Width
-    /** The view of a wide window: side by side, a slider, the shot alone. */
+    /** The view of a wide window: the design, a comparison of design and shot, the shot. */
     readonly view: View
-    /** The pane of a narrow window (one at a time): design, shot or slider. */
+    /** The pane of a narrow window (one at a time): design, shot or the comparison (its way is `view`). */
     readonly pane: Exclude<Pane, "explain"> | null
     readonly onOpen: (id: string) => void
 }
 
-/** The viewer: design and shot side by side, a slider over both, or the shot alone; in a narrow window one pane at a time. Each frame opens full size on a press. */
+/**
+ * The viewer: the design frame alone, the real shot alone, or the two compared: side by side, a slider that wipes the shot over the design, an onion skin (the shot over the
+ * design at an opacity), a difference (the shot over the design with mix-blend-mode difference, so a shape that differs lights up). Both images are aligned to the same
+ * width at the top left. Each frame opens full size on a press; in a narrow window one pane shows at a time.
+ */
 export function Viewer({ screen, model, labels, width, view, pane, onOpen }: ViewerProps): ReactElement {
     const [ref, outer] = useWidth<HTMLDivElement>()
-    const [split, setSplit] = useState(50)
+    const [amount, setAmount] = useState(50)
     const [lightbox, setLightbox] = useState<LightboxKind | null>(null)
     const available = Math.max(outer - BOARD_PADDING, 0)
+    const designTitle = screen.designStatus !== null && APPROVED.includes(screen.designStatus) ? labels.designApproved : labels.design
     const narrow = pane !== null
-    const mode = narrow ? (pane === "design" ? "design" : pane === "shot" ? "shot" : "slider") : view
+    const mode: View = narrow ? (pane === "design" ? "design" : pane === "shot" ? "shot" : COMPARE_VIEWS.includes(view) ? view : "slider") : view
     const columns = mode === "side" && available >= 2 * MIN_COLUMN + COLUMN_GAP ? 2 : 1
     const each = columns === 2 ? (available - COLUMN_GAP) / 2 : available
     const cap = (value: number): number => (width === "390" ? Math.min(value, PHONE_STAGE) : value)
     const open = (kind: LightboxKind) => (): void => {
         setLightbox(kind)
     }
+    const overlay = mode === "slider" || mode === "onion" || mode === "diff"
+    const overStyle: CSSProperties = mode === "slider" ? { clipPath: `inset(0 ${String(100 - amount)}% 0 0)` } : mode === "onion" ? { opacity: amount / 100 } : mode === "diff" ? { mixBlendMode: "difference" } : {}
     return (
         <div ref={ref} className="sg-board">
             {mode === "side" ? (
@@ -142,7 +153,7 @@ export function Viewer({ screen, model, labels, width, view, pane, onOpen }: Vie
                     <figure>
                         <figcaption>
                             <Text size="xs" tone="muted" isStrong>
-                                {labels.design}
+                                {designTitle}
                             </Text>
                         </figcaption>
                         <DesignFrame screen={screen} width={width} labels={labels} available={cap(each)} onOpen={open("design")} />
@@ -159,34 +170,50 @@ export function Viewer({ screen, model, labels, width, view, pane, onOpen }: Vie
                     </figure>
                 </div>
             ) : null}
-            {mode === "design" ? <DesignFrame screen={screen} width={width} labels={labels} available={cap(available)} onOpen={open("design")} /> : null}
-            {mode === "slider" ? (
+            {mode === "design" ? (
+                <figure className="sg-single">
+                    <figcaption>
+                        <Text size="xs" tone="muted" isStrong>
+                            {designTitle}
+                        </Text>
+                    </figcaption>
+                    <DesignFrame screen={screen} width={width} labels={labels} available={cap(available)} onOpen={open("design")} />
+                </figure>
+            ) : null}
+            {overlay ? (
                 <div className="sg-slider">
-                    <Slider
-                        label={labels.slider}
-                        value={split}
-                        minValue={0}
-                        maxValue={100}
-                        step={1}
-                        onValueChange={(value) => {
-                            setSplit(typeof value === "number" ? value : (value[0] ?? 50))
-                        }}
-                    />
-                    <div className="sg-stage" style={width === "390" ? { maxWidth: PHONE_STAGE } : undefined}>
+                    {mode === "diff" ? null : (
+                        <Slider
+                            label={mode === "onion" ? labels.onionOpacity : labels.slider}
+                            value={amount}
+                            minValue={0}
+                            maxValue={100}
+                            step={1}
+                            onValueChange={(value) => {
+                                setAmount(typeof value === "number" ? value : (value[0] ?? 50))
+                            }}
+                        />
+                    )}
+                    <div className="sg-stage" data-mode={mode} style={width === "390" ? { maxWidth: PHONE_STAGE } : undefined}>
                         <div className="sg-under">
                             <DesignFrame screen={screen} width={width} labels={labels} available={cap(available)} />
                         </div>
-                        <div className="sg-over" style={{ clipPath: `inset(0 ${String(100 - split)}% 0 0)` }}>
+                        <div className="sg-over" style={overStyle}>
                             <Shot screen={screen} width={width} labels={labels} model={model} onOpenScreen={onOpen} />
                         </div>
-                        <div className="sg-handle" style={{ left: `${String(split)}%` }} aria-hidden="true" />
+                        {mode === "slider" ? <div className="sg-handle" style={{ left: `${String(amount)}%` }} aria-hidden="true" /> : null}
                     </div>
                 </div>
             ) : null}
             {mode === "shot" ? (
-                <div style={width === "390" ? { maxWidth: PHONE_STAGE } : undefined}>
+                <figure className="sg-single" style={width === "390" ? { maxWidth: PHONE_STAGE } : undefined}>
+                    <figcaption>
+                        <Text size="xs" tone="muted" isStrong>
+                            {labels.shot}
+                        </Text>
+                    </figcaption>
                     <Shot screen={screen} width={width} labels={labels} model={model} onOpenScreen={onOpen} onOpen={open("shot")} />
-                </div>
+                </figure>
             ) : null}
             {lightbox === null ? null : (
                 <Lightbox
@@ -203,8 +230,20 @@ export function Viewer({ screen, model, labels, width, view, pane, onOpen }: Vie
     )
 }
 
-/** The widths, and in a wide window the views: two switches of the one viewer. */
-export function ViewSwitches({ labels, width, view, showView, onChange }: { readonly labels: Labels; readonly width: Width; readonly view: View; readonly showView: boolean; readonly onChange: (next: { width?: Width; view?: View }) => void }): ReactElement {
+export interface SwitchesProps {
+    readonly labels: Labels
+    readonly width: Width
+    readonly view: View
+    /** Whether the screen has a design frame and a shot at this width: a view that needs the missing one is disabled. */
+    readonly hasDesign: boolean
+    readonly hasShot: boolean
+    readonly showView: boolean
+    readonly onChange: (next: { width?: Width; view?: View }) => void
+}
+
+/** The widths and, in a wide window, the three views (Bản vẽ, Đối chiếu, Ảnh thật); a view with only one side to show is disabled, and the reason stands beside. */
+export function ViewSwitches({ labels, width, view, hasDesign, hasShot, showView, onChange }: SwitchesProps): ReactElement {
+    const group = view === "design" || view === "shot" ? view : "compare"
     return (
         <div className="sg-switches">
             <Tabs
@@ -223,17 +262,37 @@ export function ViewSwitches({ labels, width, view, showView, onChange }: { read
                 <Tabs
                     appearance="primary"
                     label={labels.view}
-                    selectedKey={view}
+                    selectedKey={group}
                     onSelect={(key) => {
-                        onChange({ view: key as View })
+                        onChange({ view: key === "compare" ? (COMPARE_VIEWS.includes(view) ? view : "side") : (key as View) })
                     }}
                     items={[
-                        { id: "side", label: labels.viewSide },
-                        { id: "slider", label: labels.viewSlider },
-                        { id: "shot", label: labels.viewShot },
+                        { id: "design", label: labels.viewDesign, isDisabled: !hasDesign },
+                        { id: "compare", label: labels.viewCompare, isDisabled: !(hasDesign && hasShot) },
+                        { id: "shot", label: labels.viewShot, isDisabled: !hasShot },
                     ]}
                 />
             ) : null}
         </div>
+    )
+}
+
+/** The ways to compare, under the Đối chiếu view. */
+export function CompareModes({ labels, view, onChange }: { readonly labels: Labels; readonly view: View; readonly onChange: (view: View) => void }): ReactElement {
+    return (
+        <Tabs
+            kind="filter"
+            label={labels.viewCompare}
+            selectedKey={view}
+            onSelect={(key) => {
+                onChange(key as View)
+            }}
+            items={[
+                { id: "side", label: labels.viewSide },
+                { id: "slider", label: labels.viewSlider },
+                { id: "onion", label: labels.viewOnion },
+                { id: "diff", label: labels.viewDiff },
+            ]}
+        />
     )
 }

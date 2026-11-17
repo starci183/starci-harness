@@ -1,4 +1,4 @@
-import { Button, CoreGrammarRoot, Heading, Tabs, Text } from "@starci/grammar/core"
+import { Badge, Button, CoreGrammarRoot, Heading, Tabs, Text } from "@starci/grammar/core"
 import { useState } from "react"
 import type { ReactElement } from "react"
 import { data } from "./data.ts"
@@ -7,16 +7,19 @@ import type { Labels } from "../labels.ts"
 import { ExplainPanel } from "./ExplainPanel.tsx"
 import { FlowMap } from "./FlowMap.tsx"
 import { useNarrow } from "./media.ts"
+import { statusLabel, TONE } from "./status.ts"
 import { useRoute } from "./route.ts"
 import type { Pane } from "./route.ts"
+import { COMPARE_VIEWS, effectiveView } from "../views.ts"
 import { States } from "./States.tsx"
+import { Legend } from "./Legend.tsx"
 import { Tree } from "./Tree.tsx"
-import { Viewer, ViewSwitches } from "./Viewer.tsx"
+import { CompareModes, Viewer, ViewSwitches } from "./Viewer.tsx"
 
 const { model, devUrl } = data
 const labels: Labels = labelsFor(data.locale)
 
-/** "67 màn · 41 khớp · 26 chưa code": the screens, how many match and how many are not built; the others only when there are some. */
+/** "67 màn · 41 khớp · 26 chưa code": the screens, how many match and how many have no shot; the other counts only when there are some. They add up: total = khớp + lệch + cũ + đã code chưa ghi duyệt + chưa code. */
 function summary(): string {
     const { counts } = model
     return [
@@ -24,7 +27,8 @@ function summary(): string {
         fill(labels.countsMatches, { n: counts.matches }),
         ...(counts.differs > 0 ? [fill(labels.countsDiffers, { n: counts.differs })] : []),
         ...(counts.stale > 0 ? [fill(labels.countsStale, { n: counts.stale })] : []),
-        fill(labels.countsNotBuilt, { n: counts.notBuilt }),
+        ...(counts.unrecorded > 0 ? [fill(labels.countsUnrecorded, { n: counts.unrecorded })] : []),
+        fill(labels.countsNotCoded, { n: counts.notCoded }),
     ].join(" · ")
 }
 
@@ -54,6 +58,9 @@ export function App(): ReactElement {
     const narrow = useNarrow()
     const [pane, setPane] = useState<Pane>("design")
     const screen = route.screen === null ? null : (model.screens[route.screen] ?? null)
+    const hasDesign = screen?.frame?.widths.includes(route.width) ?? false
+    const hasShot = screen?.shots.includes(route.width) ?? false
+    const view = effectiveView(route.view, hasDesign, hasShot)
     const open = (id: string): void => {
         go({ screen: id, flows: false })
     }
@@ -66,6 +73,7 @@ export function App(): ReactElement {
                         <Text size="sm" tone="muted" tabular>
                             {summary()}
                         </Text>
+                        <Legend labels={labels} />
                         {model.counts.hidden > 0 ? (
                             <Text size="xs" tone="muted">
                                 {fill(labels.hidden, { n: model.counts.hidden })}
@@ -84,7 +92,7 @@ export function App(): ReactElement {
                             { id: "flows", label: labels.flows },
                         ]}
                     />
-                    {screen !== null && !route.flows ? <ViewSwitches labels={labels} width={route.width} view={route.view} showView={!narrow} onChange={go} /> : null}
+                    {screen !== null && !route.flows ? <ViewSwitches labels={labels} width={route.width} view={view} hasDesign={hasDesign} hasShot={hasShot} showView={!narrow} onChange={go} /> : null}
                     {screen !== null && !route.flows && !narrow ? (
                         <Button intent="neutral" size="sm" onPress={toggleExplain}>
                             {explainOpen ? labels.hideExplain : labels.showExplain}
@@ -99,6 +107,29 @@ export function App(): ReactElement {
                     {!route.flows && screen !== null ? (
                         <>
                             <States screen={screen} model={model} labels={labels} onOpen={open} />
+                            {(!narrow && COMPARE_VIEWS.includes(view)) || (narrow && pane === "compare" && hasDesign && hasShot) ? (
+                                <CompareModes
+                                    labels={labels}
+                                    view={COMPARE_VIEWS.includes(view) ? view : "slider"}
+                                    onChange={(next) => {
+                                        go({ view: next })
+                                    }}
+                                />
+                            ) : null}
+                            {hasDesign && hasShot ? null : (
+                                <div className="sg-reason">
+                                    <Text size="sm" tone="muted">
+                                        {hasDesign ? labels.reasonNoShot : labels.reasonNoDesign}
+                                    </Text>
+                                    </div>
+                            )}
+                            {narrow ? (
+                                <div className="sg-reason">
+                                    <Badge isDot tone={TONE[screen.status]}>
+                                        {statusLabel(labels, screen.status, screen.designStatus)}
+                                    </Badge>
+                                </div>
+                            ) : null}
                             {narrow ? (
                                 <Tabs
                                     appearance="primary"
@@ -108,9 +139,9 @@ export function App(): ReactElement {
                                         setPane(key as Pane)
                                     }}
                                     items={[
-                                        { id: "design", label: labels.paneDesign },
-                                        { id: "shot", label: labels.paneShot },
-                                        { id: "slider", label: labels.viewSlider },
+                                        { id: "design", label: labels.paneDesign, isDisabled: !hasDesign },
+                                        { id: "shot", label: labels.paneShot, isDisabled: !hasShot },
+                                        { id: "compare", label: labels.viewCompare, isDisabled: !(hasDesign && hasShot) },
                                         { id: "explain", label: labels.explain },
                                     ]}
                                 />
@@ -120,7 +151,7 @@ export function App(): ReactElement {
                                     <ExplainPanel screen={screen} labels={labels} devUrl={devUrl} />
                                 </div>
                             ) : (
-                                <Viewer screen={screen} model={model} labels={labels} width={route.width} view={route.view} pane={narrow ? (pane === "explain" ? "design" : pane) : null} onOpen={open} />
+                                <Viewer screen={screen} model={model} labels={labels} width={route.width} view={view} pane={narrow ? (pane === "explain" ? "design" : pane) : null} onOpen={open} />
                             )}
                         </>
                     ) : null}

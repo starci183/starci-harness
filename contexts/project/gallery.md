@@ -19,9 +19,12 @@ gallery/
    config over the harness package `@starci/gallery` (`packages/gallery`, built with the Grammar): `gallery/vite.config.js` calls
    `defineGallery({ app, locale, allowedHosts })` and that is the whole app, with no page code of its own. The package reads
    `gallery/pages/**`, `gallery/flows.json` and the design canvas (`.starcistacks/canvas`, PROJECT-GALLERY-6; the folder is an option,
-   `../.starcistacks/canvas` by default) at build and dev time. It shows a tree of the screens, each with a status dot from `design.json`
-   (matches green, built but differs amber, stale red, not built grey), the screen's approved design frame beside its real shot (side by
-   side, a slider, or the shot alone) at width 1440 or 390, the states of its page as chips, its explanation (PROJECT-GALLERY-2)
+   `../.starcistacks/canvas` by default) at build and dev time. It shows a tree of the screens, each with a status dot (a `design.json` entry is the record: matches green, built but differs amber, stale red,
+   drawn and not coded grey; a screen with no entry is read from what exists: a frame and a shot are coded and not recorded, a shot alone coded with
+   no drawing, a frame alone drawn and not coded), and the top bar counts them so that screens = khớp + lệch + cũ + đã code chưa ghi duyệt + chưa code (a
+   screen with no shot is not coded). A screen opens in three views at width 1440 or 390: the design frame (Bản vẽ), the comparison of the design
+   and the shot (Đối chiếu: side by side, a slider, an onion skin, a difference) and the shot (Ảnh thật); a view that needs the missing side is
+   disabled with its reason. A phone shows one pane at a time, the states of its page as chips, its explanation (PROJECT-GALLERY-2)
    and a flow map of the screens (PROJECT-GALLERY-3). The files of `gallery/` are managed (`package.json`, `index.html`,
    `README.md`, `vite.config.js`): `starci app sync --execute`
    renders them (slot `app.gallery`, templates in `packages/hfs/templates/app/gallery`), `package.json` pins `@starci/gallery`
@@ -208,6 +211,11 @@ the gate judges.
    checkout judges the record alone.
 7. **Severity.** A manifest that is not this shape is an error. The other findings are warnings in `--env local` and errors in `--env prod`, as
    item 4 of PROJECT-GALLERY-4.
+
+8. **The gallery is where the canvas is reviewed too.** Every page of the canvas shows in the gallery's tree, drafted or approved and not coded yet, with
+   no `gallery/pages` folder needed: its frames at 1440 and 390 and its note (what the board shows on claude.ai; whoever does not open the board there reads
+   it here) with the chip of its status (`Bản vẽ, chờ duyệt`, `Đã duyệt, chưa code`). The gallery only reads: approval is the owner's word recorded in
+   `design.json` by the lead (item 5), and no button of the gallery writes it.
 
 **Enforced by** (R395, `packages/hfs/runtime/scripts/hfs/rules/gallery.mts`, `gallery-routes.mts` and `gallery-design.mts`, values from `ruleParams.gallery`):
 

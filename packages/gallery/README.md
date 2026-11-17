@@ -25,8 +25,7 @@ export default defineGallery({ app: "starci-next", locale: "vi", allowedHosts: [
 
 ## What it shows
 
-- The top bar: counts ("67 màn · 41 khớp · 26 chưa code"), the width switch (1440, 390) and the view switch: side by side (the approved design frame and
-  the real shot), a slider over both, the shot only. The flow map is a second view.
+- The top bar: counts ("127 màn · 0 khớp · 6 đã code chưa ghi duyệt · 121 chưa code", which add up), the width switch (1440, 390), the three views (Bản vẽ, Đối chiếu, Ảnh thật) and a legend of the dots. Đối chiếu compares the approved design frame and the real shot side by side, with a slider, as an onion skin or as a difference (a shape that differs lights up); a view that needs the missing side is disabled with its reason. A canvas page with no shot yet (drafted, or approved and not coded) shows read-only with its note. The flow map is a second view.
 - The tree: areas and screens, each with the dot of its status in `design.json`: matches green, built but differs amber, stale red (the shots are not the recorded
   sha256, or an approved screen still records shots), not built grey.
 - The states of a page: sibling screens named with the state suffixes of PROJECT-GALLERY-6 (`-detail`, `-empty`, `-first-visit`, `-loading`, `-error`,

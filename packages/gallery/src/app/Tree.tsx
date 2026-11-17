@@ -27,7 +27,7 @@ export function Tree({ model, labels, selected, onSelect }: TreeProps): ReactEle
                     .map((screen) => ({
                         id: screen.id,
                         label: cap(screen.title),
-                        labelLeading: screen.status === "none" ? undefined : <StatusDot tone={dotTone(screen.status)} aria-label={statusLabel(labels, screen.status)} />,
+                        labelLeading: screen.status === "none" ? undefined : <StatusDot tone={dotTone(screen.status)} aria-label={statusLabel(labels, screen.status, screen.designStatus)} />,
                         description: screen.name,
                         descriptionLines: 1 as const,
                         size: "sm" as const,

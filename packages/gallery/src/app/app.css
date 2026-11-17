@@ -344,3 +344,40 @@ body,
 .sg-explain-head {
     overflow-wrap: anywhere;
 }
+
+.sg-legend {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.sg-legend li {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.sg-single {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.sg-stage {
+    isolation: isolate;
+    background: #fff;
+}
+
+.sg-stage[data-mode="diff"] .sg-under,
+.sg-stage[data-mode="onion"] .sg-under {
+    position: relative;
+}
+
+.sg-reason {
+    padding: 0.5rem 1rem;
+    background: var(--background);
+}

@@ -4,7 +4,8 @@ export interface Labels {
     readonly title: string
     readonly counts: string
     readonly countsMatches: string
-    readonly countsNotBuilt: string
+    readonly countsNotCoded: string
+    readonly countsUnrecorded: string
     readonly countsDiffers: string
     readonly countsStale: string
     readonly hidden: string
@@ -13,6 +14,15 @@ export interface Labels {
     readonly viewSide: string
     readonly viewSlider: string
     readonly viewShot: string
+    readonly viewDesign: string
+    readonly viewCompare: string
+    readonly viewOnion: string
+    readonly viewDiff: string
+    readonly onionOpacity: string
+    readonly reasonNoDesign: string
+    readonly reasonNoShot: string
+    readonly statusDrafted: string
+    readonly statusApproved: string
     readonly screens: string
     readonly flows: string
     readonly search: string
@@ -22,6 +32,11 @@ export interface Labels {
     readonly statusDiffers: string
     readonly statusStale: string
     readonly statusNotBuilt: string
+    readonly statusUnrecorded: string
+    readonly statusCodedOnly: string
+    readonly unrecordedHint: string
+    readonly designApproved: string
+    readonly legend: string
     readonly statusNone: string
     readonly design: string
     readonly shot: string
@@ -72,7 +87,8 @@ export const LABELS = Object.freeze({
         title: "{app} gallery",
         counts: "{total} screens",
         countsMatches: "{n} match",
-        countsNotBuilt: "{n} not built",
+        countsNotCoded: "{n} not coded",
+        countsUnrecorded: "{n} coded, not recorded",
         countsDiffers: "{n} differ",
         countsStale: "{n} stale",
         hidden: "{n} screens hidden (no explain.md)",
@@ -80,7 +96,16 @@ export const LABELS = Object.freeze({
         view: "View",
         viewSide: "Side by side",
         viewSlider: "Slider",
-        viewShot: "Shot only",
+        viewShot: "Shot",
+        viewDesign: "Design",
+        viewCompare: "Compare",
+        viewOnion: "Onion skin",
+        viewDiff: "Difference",
+        onionOpacity: "Shot opacity",
+        reasonNoDesign: "No design frame at this width, so there is nothing to compare with.",
+        reasonNoShot: "No shot at this width yet, so there is nothing to compare with.",
+        statusDrafted: "Drawn, awaiting approval",
+        statusApproved: "Approved, not coded",
         screens: "Screens",
         flows: "Flow map",
         search: "Search screens",
@@ -89,9 +114,14 @@ export const LABELS = Object.freeze({
         statusMatches: "Matches the design",
         statusDiffers: "Built, differs",
         statusStale: "Stale shot",
-        statusNotBuilt: "Not built",
-        statusNone: "Not designed",
-        design: "Approved design",
+        statusNotBuilt: "Drawn, not coded",
+        statusUnrecorded: "Coded, not recorded",
+        statusCodedOnly: "Coded, no design drawn",
+        unrecordedHint: "Drawn and coded, but design.json has no entry for this page: record it (PROJECT-GALLERY-6, PROJECT-GALLERY-7).",
+        designApproved: "Approved design",
+        legend: "Legend",
+        statusNone: "No design yet",
+        design: "Design",
         shot: "Real shot",
         noDesign: "No design frame for this screen.",
         noShot: "No shot yet.",
@@ -138,7 +168,8 @@ export const LABELS = Object.freeze({
         title: "Thư viện ảnh {app}",
         counts: "{total} màn",
         countsMatches: "{n} khớp",
-        countsNotBuilt: "{n} chưa code",
+        countsNotCoded: "{n} chưa code",
+        countsUnrecorded: "{n} đã code chưa ghi duyệt",
         countsDiffers: "{n} lệch",
         countsStale: "{n} ảnh cũ",
         hidden: "{n} màn bị ẩn (thiếu explain.md)",
@@ -146,7 +177,16 @@ export const LABELS = Object.freeze({
         view: "Xem",
         viewSide: "Cạnh nhau",
         viewSlider: "Trượt so",
-        viewShot: "Chỉ ảnh",
+        viewShot: "Ảnh thật",
+        viewDesign: "Bản vẽ",
+        viewCompare: "Đối chiếu",
+        viewOnion: "Phủ mờ",
+        viewDiff: "Chênh lệch",
+        onionOpacity: "Độ mờ của ảnh thật",
+        reasonNoDesign: "Chưa có khung bản vẽ ở độ rộng này nên chưa đối chiếu được.",
+        reasonNoShot: "Chưa có ảnh ở độ rộng này nên chưa đối chiếu được.",
+        statusDrafted: "Bản vẽ, chờ duyệt",
+        statusApproved: "Đã duyệt, chưa code",
         screens: "Màn hình",
         flows: "Bản đồ luồng",
         search: "Tìm màn hình",
@@ -155,9 +195,14 @@ export const LABELS = Object.freeze({
         statusMatches: "Khớp bản vẽ",
         statusDiffers: "Đã code, còn lệch",
         statusStale: "Ảnh đã cũ",
-        statusNotBuilt: "Chưa code",
+        statusNotBuilt: "Có bản vẽ, chưa code",
+        statusUnrecorded: "Đã code, chưa ghi duyệt",
+        statusCodedOnly: "Đã code, chưa có bản vẽ",
+        unrecordedHint: "Đã có bản vẽ và đã code, nhưng design.json chưa có mục cho trang này: hãy ghi lại (PROJECT-GALLERY-6, PROJECT-GALLERY-7).",
+        designApproved: "Bản vẽ đã duyệt",
+        legend: "Chú giải",
         statusNone: "Chưa có bản vẽ",
-        design: "Bản vẽ đã duyệt",
+        design: "Bản vẽ",
         shot: "Ảnh thật",
         noDesign: "Màn này chưa có khung vẽ.",
         noShot: "Chưa có ảnh.",

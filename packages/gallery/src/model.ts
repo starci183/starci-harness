@@ -3,8 +3,11 @@
 import { flowList, linkList, noteToMarkdown, parseExplain, SHOT_WIDTHS } from "./explain.ts"
 import type { Explain, Flow, Link, Width } from "./explain.ts"
 
-/** The status of a screen, from design.json and the shots (PROJECT-GALLERY-6): the colour of its dot. */
-export type Status = "matches" | "differs" | "stale" | "notBuilt" | "none"
+/**
+ * The status of a screen: the colour of its dot. With a design.json entry its status is the record (matches, differs, stale, notBuilt: drafted or approved with no shot). Without
+ * one it is read from what exists: a frame and a shot are `unrecorded` (coded, not recorded in design.json), a shot alone `codedOnly`, a frame alone `drawn`, neither `none`.
+ */
+export type Status = "matches" | "differs" | "stale" | "notBuilt" | "drawn" | "unrecorded" | "codedOnly" | "none"
 
 /** The state suffixes of a screen id, in the order of the state table of PROJECT-GALLERY-6 item 2. */
 export const STATE_KINDS = ["detail", "empty", "first-visit", "loading", "error", "no-match", "editing"] as const
@@ -69,7 +72,10 @@ export interface Counts {
     readonly matches: number
     readonly differs: number
     readonly stale: number
-    readonly notBuilt: number
+    /** Coded (a shot exists) with no design.json record: `unrecorded` and `codedOnly`. */
+    readonly unrecorded: number
+    /** No shot: `notBuilt`, `drawn` and `none`. total = matches + differs + stale + unrecorded + notCoded. */
+    readonly notCoded: number
     readonly hidden: number
 }
 
@@ -98,8 +104,8 @@ export function splitState(id: string): { page: string; state: StateKind | "base
  * The status of a screen: its design.json entry says drafted or approved (no code yet: not built), built (coded, not yet compared) or matches. A built or matching
  * screen whose PNGs are not the sha256 the manifest records, and a drafted or approved one that still records shots, is stale (PROJECT-GALLERY-6 item 6).
  */
-export function statusOf(entry: unknown, shotsMatchRecord: boolean | undefined): Status {
-    if (!plain(entry)) return "none"
+export function statusOf(entry: unknown, shotsMatchRecord: boolean | undefined, hasShot = false, hasFrame = false): Status {
+    if (!plain(entry)) return hasShot ? (hasFrame ? "unrecorded" : "codedOnly") : hasFrame ? "drawn" : "none"
     const status = entry.status
     const recorded = plain(entry.shots) && Object.keys(entry.shots).length > 0
     if (status === "matches") return shotsMatchRecord === false ? "stale" : "matches"
@@ -137,7 +143,7 @@ export function buildModel(raw: RawGallery): Model {
             name: id.slice(slash + 1),
             title: titleOf(id, explain, frame),
             route: nonEmpty(explain?.meta.route) ?? nonEmpty(frame?.route) ?? null,
-            status: statusOf(entry, rawScreen?.shotsMatchRecord),
+            status: statusOf(entry, rawScreen?.shotsMatchRecord, (rawScreen?.shots.length ?? 0) > 0, (frame?.widths.length ?? 0) > 0),
             designStatus: plain(entry) && typeof entry.status === "string" ? entry.status : null,
             board: plain(entry) && typeof entry.board === "string" ? entry.board : null,
             shots: rawScreen?.shots ?? [],
@@ -166,7 +172,15 @@ export function buildModel(raw: RawGallery): Model {
         screens,
         flows: flowList(raw.flows),
         pages,
-        counts: { total: all.length, matches: count("matches"), differs: count("differs"), stale: count("stale"), notBuilt: count("notBuilt"), hidden },
+        counts: {
+            total: all.length,
+            matches: count("matches"),
+            differs: count("differs"),
+            stale: count("stale"),
+            unrecorded: count("unrecorded") + count("codedOnly"),
+            notCoded: count("notBuilt") + count("drawn") + count("none"),
+            hidden,
+        },
     }
 }
 
