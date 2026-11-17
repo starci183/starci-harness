@@ -434,12 +434,12 @@ slots:
 
   # --- skills and the app
   - id: skills.skill
-    path: "skills/<skill>/{SKILL.md,references/*.md,agents/*.yaml}"
+    path: "skills/<skill>/{SKILL.md,references/*.md,agents/*.yaml,kit/*.{css,mjs}}"
     presence: required
     per: "skills/<skill>/"
     requires:
       - SKILL.md
-    holds: the skill an agent host loads to operate the harness, with its references
+    holds: a skill an agent host loads, with its references and, for a skill that ships one, its kit (stylesheets and node scripts it copies or runs)
     rule: CONTRIB-4
   - id: app.package
     path: "app/{package.json,package-lock.json,README.md}"
