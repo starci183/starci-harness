@@ -133,8 +133,13 @@ const figureCells = (count: number): readonly G.Figure[] =>
  * The cells of a ribbon tile the strip exactly: no inset, no gap. A vertical hairline goes from the strip's top edge to its bottom edge and, wrapped, a row spans the strip from
  * its left edge to its right edge. Returns the number of rows.
  */
-const assertFullBleed = (strip: HTMLElement) => {
-  const cells = Array.from(strip.querySelectorAll<HTMLElement>('[data-grammar-description-pair]'));
+const assertFullBleed = (ribbon: HTMLElement) => {
+  // The ribbon draws its hairlines as its own top and bottom border: the cells tile its padding box.
+  const style = getComputedStyle(ribbon);
+  const outer = ribbon.getBoundingClientRect();
+  const inner = { left: outer.left + Number.parseFloat(style.borderLeftWidth), right: outer.right - Number.parseFloat(style.borderRightWidth), top: outer.top + Number.parseFloat(style.borderTopWidth), bottom: outer.bottom - Number.parseFloat(style.borderBottomWidth) };
+  const strip = { getBoundingClientRect: () => inner } as unknown as HTMLElement;
+  const cells = Array.from(ribbon.querySelectorAll<HTMLElement>('[data-grammar-description-pair]'));
   expect(cells.length).toBeGreaterThan(1);
   const edge = (a: number, b: number) => expect(Math.abs(a - b)).toBeLessThanOrEqual(0.5);
   const rows: HTMLElement[][] = [];

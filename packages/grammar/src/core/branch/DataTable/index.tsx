@@ -591,6 +591,7 @@ export const DataTable = <Row extends DataTableRow>({
                 key={row.id}
                 role="listitem"
                 className="starci-core-data-table-list-row"
+                data-grammar-selected={selectionMode !== "none" && isRowSelected(row.id) ? "true" : "false"}
                 data-grammar-table-row-pressable={onRowAction !== undefined || row.href !== undefined ? "true" : "false"}
                 data-grammar-table-row-link={row.href === undefined ? "false" : "true"}
                 {...(onRowAction === undefined ? {} : { onClick: () => onRowAction(row.id), ...pressKeys })}

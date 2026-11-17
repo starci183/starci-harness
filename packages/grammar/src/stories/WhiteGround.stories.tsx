@@ -83,8 +83,11 @@ export const ObjectCard: Story = {
     await waitFor(() => {
       const cards = Array.from(canvasElement.querySelectorAll<HTMLElement>('.starci-core-surface'));
       expect(cards.length).toBe(3);
-      for (const card of cards) expect(getComputedStyle(card).boxShadow).toBe('none');
-      expect(canvasElement.querySelectorAll('[data-grammar-surface-emphasis="accent"]').length).toBe(1);
+      for (const card of cards) {
+        expect(Number.parseFloat(getComputedStyle(card).borderTopWidth)).toBe(1);
+        if (card.dataset.grammarSurfaceEmphasis === undefined) expect(getComputedStyle(card).boxShadow).toBe('none');
+      }
+      expect(canvasElement.querySelectorAll('.starci-core-surface[data-grammar-surface-emphasis="accent"]').length).toBe(1);
       expect(canvasElement.querySelectorAll('[data-grammar-surface-actions]').length).toBe(1);
     }, { timeout: 4000 });
   },
@@ -177,7 +180,8 @@ export const SectionFilterTable: Story = {
       const table = canvasElement.querySelector<HTMLElement>('[data-component="DataTable"]');
       if (section === null || table === null) throw new Error('the section and its table render');
       expect(section.querySelector('.starci-core-section-filter')).not.toBeNull();
-      expect(table.querySelectorAll('[data-grammar-table-row="true"]').length).toBe(8);
+      // At phone width the table is its list of rows (`phone="list"`).
+      expect(table.querySelectorAll('[data-grammar-table-row="true"], .starci-core-data-table-list-row').length).toBe(8);
       expect(getComputedStyle(table).boxShadow).toBe('none');
     }, { timeout: 4000 });
   },
@@ -274,10 +278,11 @@ export const SelectedRow: Story = {
   render: () => <CustomerTable />,
   play: async ({ canvasElement }) => {
     await waitFor(() => {
-      const selected = canvasElement.querySelectorAll<HTMLElement>('[data-grammar-table-row="true"][data-grammar-selected="true"]');
+      const rows = ':is([data-grammar-table-row="true"], .starci-core-data-table-list-row)';
+      const selected = canvasElement.querySelectorAll<HTMLElement>(`${rows}[data-grammar-selected="true"]`);
       expect(selected.length).toBe(1);
       expect(selected[0]?.textContent).toContain('Hoa Sen Cafe');
-      expect(canvasElement.querySelectorAll('[data-grammar-table-row="true"][data-grammar-selected="false"]').length).toBe(4);
+      expect(canvasElement.querySelectorAll(`${rows}[data-grammar-selected="false"]`).length).toBe(4);
     }, { timeout: 4000 });
   },
 };

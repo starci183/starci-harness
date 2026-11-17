@@ -73,7 +73,8 @@ export const ListAndBoard: Story = {
       const title = canvasList.querySelector<HTMLElement>('.starci-core-list-row-name')!;
       expect(Math.abs(title.getBoundingClientRect().left - heading.getBoundingClientRect().left)).toBeLessThanOrEqual(1);
       const item = canvasElement.querySelector<HTMLElement>('.starci-core-board-cards > .starci-core-list-row')!;
-      expect(getComputedStyle(item).boxShadow).not.toBe('none');
+      expect(getComputedStyle(item).boxShadow).toBe('none');
+      expect(Number.parseFloat(getComputedStyle(item).borderTopWidth)).toBe(1);
       expect(Number.parseFloat(getComputedStyle(item).borderTopLeftRadius)).toBeGreaterThan(0);
     }, { timeout: 5000 });
   },

@@ -995,8 +995,10 @@
      */
     .starci-core-data-table {
         --starci-core-table-bleed: var(--grammar-row-gap);
+        box-sizing: border-box;
         min-width: 0;
-        max-width: calc(100% + 2 * var(--starci-core-table-bleed));
+        inline-size: calc(100% + 2 * var(--starci-core-table-bleed));
+        max-width: none;
         margin-inline: calc(-1 * var(--starci-core-table-bleed));
         padding: 0;
         border: 0;
@@ -1174,6 +1176,12 @@
     }
 
     .starci-core-data-table-row[data-grammar-selected="true"] > :first-child {
+        box-shadow: inset var(--grammar-ring-width) 0 0 0 var(--accent);
+    }
+
+    /* The phone list marks a selected row the same way. */
+    .starci-core-data-table-list-row[data-grammar-selected="true"] {
+        background: var(--default);
         box-shadow: inset var(--grammar-ring-width) 0 0 0 var(--accent);
     }
 
