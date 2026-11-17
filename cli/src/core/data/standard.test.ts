@@ -68,7 +68,7 @@ void test("a file a person changed is kept unless --force; a name that is no sta
         assert.throws(() => initStandard(root, { adapter: false, force: false }), { code: "DATA_IN_CODE" })
     })
     scratch("shop-content", (root) => {
-        assert.throws(() => initStandard(root, { adapter: false, force: false }), (error: Error & { code?: string }) => error.code === "DATA_COPY_NAME" && /--name <name>-seed-standard/u.test(error.message))
+        assert.throws(() => initStandard(root, { adapter: false, force: false }), (error: Error & { code?: string }) => error.code === "DATA_COPY_NAME" && error.message.includes("--name <name>-seed-standard"))
         assert.throws(() => initStandard(root, { adapter: false, force: false, name: "Shop_Content" }), { code: "DATA_COPY_NAME" }, "the given name is validated, not the folder")
         const renamed = initStandard(root, { adapter: true, force: false, name: "shop-seed-standard" })
         assert.equal(renamed.name, "shop-seed-standard", "a folder converted in place during its rename takes --name")
