@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.46.0 - 2026-11-18
+
+- New rule `starci-grammar/no-raw-media` (R442 `FE_RAW_MEDIA_ELEMENT`): a raw `<img>`, `<video>` or `<picture>` in app source is refused with the component to use (`Image`, `Illustration`, `Video`). It applies where `no-raw-structural-element` does (app source and workspace packages except the `<family>-ui` package, the Grammar's own implementation) and leaves Freestyle regions alone. It overlaps the canon `no-native-img` (R62 `FE_NATIVE_IMAGE`, which still points at `next/image`): see the report.
+- Changed: `generated-art-in-mascot-or-media-frame` (R338) admits `Illustration` beside `Mascot` and `MediaFrame`.
+- Changed (`eslint-grammar-core`, a MINOR with the media lane; `no-shell-bottom-tabs`, R316 `FE_APP_SHELL_BOTTOM_TABS`, `src/app-shell.ts`): a Grammar `BottomNav` passes only as the `compactNavigation` of a `WorkspaceShell` (inline, through a `const`, or through an import alias); a hand-made bottom tab bar (now also a local component named `BottomNav`), any other `compactNavigation` and a `BottomNav` anywhere else are refused. Spec: six valid and five invalid cases added. FE-APP-SHELL-4 (`contexts/ui/composition.md`, the `app-shell.yaml` and `rules.yaml` R316 copies in `eslint-grammar-core` and `hfs`, both playbooks, `contract.md`, `contexts/hfs`, the lint `why` text and the failure-code title) is amended the same way (owner decision 2026-11-18).
+
 ## 0.45.1 - 2026-11-18
 
 - Version: moves with the Grammar family (@starci/grammar 0.45.1: a content-sized Popover, `edgeTone` on rows). No rule changed.

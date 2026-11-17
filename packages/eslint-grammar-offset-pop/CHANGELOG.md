@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.46.0 - 2026-11-18
+
+- Changed: the family version 0.46.0 (the media family, the one empty state and the shell chrome of @starci/grammar; `no-raw-media` and the amended `no-shell-bottom-tabs` of @starci/eslint-grammar-core); the peer on @starci/eslint-grammar-core is 0.46.0. No rule change of its own.
+
 ## 0.45.1 - 2026-11-18
 
 - Version: moves with the Grammar family (@starci/grammar 0.45.1); peers @starci/eslint-grammar-core 0.45.1. No rule changed.

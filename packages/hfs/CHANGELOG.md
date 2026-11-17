@@ -1,5 +1,14 @@
 # Changelog
 
+## 6.13.38 - 2026-11-18
+
+- New check R443 `FE_ERROR_PAGE_NOT_EMPTY_STATE` (error): the not-found, error and global-error boundaries of a web app (the files R53 requires) draw `EmptyNotice scope="page"` with an `illustration` through their own import closure; a hand-rolled page is refused. Spec `src/error-pages.spec.mts`.
+- Templates (lite `skeleton-lite`, full `skeleton`: the apps and the `<project>-ui` composites): `NotFoundNotice`, `ErrorNotice` and `GlobalErrorNotice` compose `EmptyNotice scope="page"` with an illustration (statics keys `illustrations/errors/not-found.webp` and `illustrations/errors/server-error.webp`), the title and description in the app's locale, "Về trang chủ" and, on the failure pages, "Thử lại"; the messages gain `description` and `home` keys.
+- Stack: the `media` concern (`hls.js`, `dashjs`) in `fe-stack`, `fe.yaml`, `pins.yaml` and the canon pins.
+- Rules: R442 and R443 in `rules.yaml` and its runtime mirror; `vendor/wrappers.yaml` rows for the new Skeleton and Modal imports (digest in `vendor/pins.yaml`).
+- Also changed (hfs, two files outside the Grammar): `BottomNav` leaves `packages/hfs/runtime/modules/kernel/removed-vocabulary.yaml` (the anatomy gate refused the docs naming it) and `BottomNav`, `BottomNavItem`, `BottomNavProps` leave the `page-navigation` codemod's removed list (`codemod/page-navigation.mts`, its spec updated). These ride the hfs release, not the Grammar patch.
+- Changed (`knowledge/hfs/canon-pins.yaml`): the Grammar family at 0.46.0 (`~0.46.0`). The `@starci/hfs` self-pin is 6.13.38. App migration: D:/starci-tmp/claude-20261117/grammar-media/MIGRATION-0.46.0.md (Image `aspect`/`fallback`/`srcSet`, Video `src`/`captions`, EmptyNotice `iconSource`/`artwork`, the R442 raw-media lint, the R443 error pages, BottomNav only as `compactNavigation`).
+
 ## 6.13.37 - 2026-11-18
 
 - Added (`.starcistacks/brand/`, PROJECT-BRAND-1..3, R437, owner 2026-11-18): an app's brand sheet. `brand.md` (name, brand colour token names, never values, voice), `illustration.md` (the AI-image concept and its only placements: first-visit, whole-page empty, paywall, 404, 500), `illustration.yaml` (`basePrompt: { version, text }`, ratio, size) and `references/`. `starci app scaffold` writes the starter once and `sync` never renders it. Briefs and `/claude-design` read it first and prompt an image as basePrompt + subject. `HFS_BRAND_INVALID` (error), `HFS_BRAND_MISSING`, `HFS_BRAND_PROMPT_STALE` and `HFS_BRAND_PROMPT_INCOMPLETE` (a warning in `--env local`, an error in prod).
