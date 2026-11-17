@@ -1,5 +1,5 @@
 import { ExclamationTriangleIcon } from "@heroicons/react/24/outline"
-import { Alert, FencedCodeBlock, SurfaceCard, Text } from "@starci/grammar/core"
+import { Alert, FencedCodeBlock, Section, SurfaceCard, Text } from "@starci/grammar/core"
 import type { DataSlot, SlotLabels } from "../../../modules/types"
 import { SlotView } from "../../composites/SlotView"
 
@@ -60,18 +60,19 @@ export const FlowCheckBlockBase = (props: FlowCheckBlockBaseProps) => {
                     )
                 }
                 return (
-                    <SurfaceCard
-                        {...head}
-                        kind="list"
-                        headers={[{ kind: "custom", children: flow }]}
-                        items={check.problems.map((problem) => ({
-                            id: problem,
-                            title: problem,
-                            state: "negative" as const,
-                            leading: { icon: ExclamationTriangleIcon },
-                        }))}
-                        empty={null}
-                    />
+                    <SurfaceCard {...head} headers={[{ kind: "custom", children: flow }]}>
+                        <Section
+                            kind="list"
+                            ariaLabel={check.problemsTitle}
+                            items={check.problems.map((problem) => ({
+                                id: problem,
+                                title: problem,
+                                state: "negative" as const,
+                                leading: { icon: ExclamationTriangleIcon },
+                            }))}
+                            empty={null}
+                        />
+                    </SurfaceCard>
                 )
             }} />
     )

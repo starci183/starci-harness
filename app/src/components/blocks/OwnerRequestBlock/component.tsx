@@ -1,4 +1,4 @@
-import { Button, Code, EmptyNotice, Select, SurfaceCard, Text, Textarea } from "@starci/grammar/core"
+import { Button, Code, EmptyNotice, Select, Section, SurfaceCard, Text, Textarea } from "@starci/grammar/core"
 import type { DataSlot, SlotLabels, ToneLabel } from "../../../modules/types"
 import { SlotView } from "../../composites/SlotView"
 
@@ -101,9 +101,9 @@ export const OwnerRequestBlockBase = (props: OwnerRequestBlockBaseProps) => {
                     )} />
             </SurfaceCard>
             <SlotView slot={props.props.requests} placeholder={REQUESTS_PLACEHOLDER} labels={labels.requestsSlot} onRetry={props.on.retryRequests} render={(requests, isLoading) => (
-                    <SurfaceCard
+                    <Section
                         kind="list"
-                        label={labels.list}
+                        title={labels.list}
                         headingLevel={2}
                         isLoading={isLoading}
                         empty={<EmptyNotice message={labels.requestsSlot.empty} />}

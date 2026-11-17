@@ -7,6 +7,7 @@ import {
     EmptyNotice,
     Link,
     PinnedActionBar,
+    Section,
     SurfaceCard,
     Tabs,
     Text,
@@ -211,9 +212,9 @@ const ModelsPanel = (props: PanelProps) => {
 
 const LanesPanel = (props: PanelProps) => (
     <div className="app-stack">
-        <SurfaceCard
+        <Section
             kind="list"
-            label={props.group.label}
+            title={props.group.label}
             headingLevel={2}
             fact={props.group.description}
             isLoading={props.isLoading}

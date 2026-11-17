@@ -111,10 +111,10 @@ export const WorkflowGraphBlockBase = (props: WorkflowGraphBlockBaseProps) => {
                         ) : (
                             <div className="app-stack">
                                 {graph.waves.map((wave) => (
-                                    <SurfaceCard
+                                    <Section
                                         key={wave.id}
                                         kind="list"
-                                        label={wave.label}
+                                        title={wave.label}
                                         headingLevel={3}
                                         isLoading={isLoading}
                                         empty={<EmptyNotice message={labels.empty} />}

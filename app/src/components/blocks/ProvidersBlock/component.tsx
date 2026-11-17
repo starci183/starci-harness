@@ -1,4 +1,4 @@
-import { EmptyNotice, Meter, RelativeTime, SurfaceCard, Text, type PresentationState } from "@starci/grammar/core"
+import { EmptyNotice, Meter, RelativeTime, Section, SurfaceCard, Text, type PresentationState } from "@starci/grammar/core"
 import type { DataSlot, SlotLabels, ToneLabel } from "../../../modules/types"
 import { SlotView } from "../../composites/SlotView"
 
@@ -88,9 +88,9 @@ export const ProvidersBlockBase = (props: ProvidersBlockBaseProps) => {
     const { labels } = props.props
     return (
         <SlotView slot={props.props.providers} placeholder={PROVIDERS_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry} render={(providers, isLoading) => (
-                <SurfaceCard
+                <Section
                     kind="list"
-                    label={labels.title}
+                    title={labels.title}
                     headingLevel={2}
                     fact={labels.fact}
                     isLoading={isLoading}
