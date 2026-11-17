@@ -38,7 +38,7 @@ if [ "$(mc cat "local/$STATICS_BUCKET/.starci/statics.sha256" 2>/dev/null || tru
   mc mirror --overwrite --quiet /statics "local/$STATICS_BUCKET/$STATICS_PREFIX"
   echo "$digest" | mc pipe "local/$STATICS_BUCKET/.starci/statics.sha256" >/dev/null
 fi
-[ "$STATICS_PUBLIC" = none ] || mc anonymous set "$STATICS_PUBLIC" "local/$STATICS_BUCKET/$STATICS_PREFIX" >/dev/null
+[ "$STATICS_PUBLIC" = none ] || mc anonymous set "$STATICS_PUBLIC" "local/$STATICS_BUCKET/$STATICS_PREFIX/" >/dev/null
 touch /tmp/statics-ready
 wait "$pid" || wait "$pid"
 SCRIPT

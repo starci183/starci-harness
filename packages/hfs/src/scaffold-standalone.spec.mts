@@ -184,7 +184,7 @@ test('the lite starter keeps its vector backing in its db service without a Qdra
   const model = parseYaml(read('.starcistacks/production/infra/swarm/stack.yaml'));
   const { override } = await renderedOverride(root, stacks.environments.production, model);
   assert.equal(override.version, model.version);
-  assert.deepEqual(Object.keys(override.services).sort(), ['api', 'db', 'web']);
+  assert.deepEqual(Object.keys(override.services).sort(), ['api', 'db', 'storage', 'web']);
 });
 
 test('full and lite scaffolds leave Compose versions to the runtime default', (t) => {

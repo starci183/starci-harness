@@ -84,7 +84,7 @@ Enforced by: R439 (`statics-outside`: `HFS_STATIC_ASSET_OUTSIDE_STATICS`).
 The front end reads one public base, `NEXT_PUBLIC_STATICS_URL` (the gallery: `VITE_STATICS_URL`), the full prefix of the statics in the store:
 `<public storage origin>/<bucket>/<prefix>`. In dev without a tunnel that is `http://localhost:${port.storage}/<project>-dev/statics`; with a tunnel
 declared it is `https://<the storage route host>/<project>-dev/statics` (R428, PROJECT-STACKS-15). The env owner module of the front end reads it once
-and exposes `staticsUrl(key)`; `next.config` derives `images.remotePatterns` from its origin and path. Code and data hold keys only, never a URL.
+(an exported reader the first image adds, since an unused export is dead code, `HFS_UNUSED_EXPORT`) and hands it to the Grammar statics provider with the staticsKey; the starter's `next.config` derives `images.remotePatterns` from its origin and path. Code and data hold keys only, never a URL.
 
 Enforced by: R428 (`STORAGE_PUBLIC_LINK_INTERNAL` for a statics base that is not a storage route host), R49 for the env module.
 

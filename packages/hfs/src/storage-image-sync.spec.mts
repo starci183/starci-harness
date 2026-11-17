@@ -28,7 +28,7 @@ for (const edition of ['lite', 'full'] as const) {
     assert.match(dockerfile, /^COPY --chown=minio:minio statics\/ \/statics\/$/mu);
     assert.match(dockerfile, /mc mirror --overwrite --quiet \/statics /u);
     assert.doesNotMatch(dockerfile, /^\s*mc mirror.*--remove/mu, 'the entrypoint never deletes');
-    assert.match(dockerfile, /mc anonymous set "\$STATICS_PUBLIC" "local\/\$STATICS_BUCKET\/\$STATICS_PREFIX"/u, 'the public policy is the prefix, never the bucket');
+    assert.match(dockerfile, /mc anonymous set "\$STATICS_PUBLIC" "local\/\$STATICS_BUCKET\/\$STATICS_PREFIX\/"/u, 'the public policy is the prefix, never the bucket');
     assert.doesNotMatch(dockerfile, /\{\{/u, 'every variable is rendered');
     assert.equal(files.get(IGNORE), '*\n!statics/\n');
   });
