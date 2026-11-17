@@ -2,7 +2,7 @@
 
 ## 2.9.3 - 2026-11-17
 
-- Changed (vocabulary): the theme hook of @starci/grammar 0.41.1, `--starci-core-grid-section-divider`, which brand.css alone may set (45 hooks).
+- Changed (vocabulary): the theme hook of @starci/grammar 0.42.0, `--starci-core-grid-section-divider`, which brand.css alone may set (45 hooks).
 
 ## 2.9.2 - 2026-11-17
 

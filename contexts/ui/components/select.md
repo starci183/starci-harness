@@ -37,7 +37,7 @@ by arrow traversal.
 ## Compact
 `appearance="compact"` is the pill at the dense control step (32): a picker in a toolbar, a pane head or a card zone.
 
-A pill (`pill` and `compact`) sizes to its value (0.41.1), in a `Cluster`, a `Stack` or a page head alike: never under
+A pill (`pill` and `compact`) sizes to its value (0.42.0), in a `Cluster`, a `Stack` or a page head alike: never under
 8rem nor over 20rem (nor its row), a longer value cut with an ellipsis on one line. It never fills its row; the `field`
 appearance fills its column.
 

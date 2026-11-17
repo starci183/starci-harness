@@ -320,7 +320,7 @@ const parseBoxes = (key: string): ReadonlyArray<StepsBox> => key === "" ? [] : k
 /**
  * The boxes of the cards an edge must not cross (0.39.4): every step and diamond card but the edge's own two ends, in the edges' coordinates, read from the
  * measured nodes so a dragged card and a card that wraps to another height are obstacles where they stand. A loop frame is not one: an edge crosses its border to reach the cards inside.
- * `ends` (0.41.1) are the boxes of the edge's own source and target: a rerouted stretch keeps clear of them as well, so a back edge never runs through the card it returns to.
+ * `ends` (0.42.0) are the boxes of the edge's own source and target: a rerouted stretch keeps clear of them as well, so a back edge never runs through the card it returns to.
  */
 const useObstacles = (source: string, target: string): { readonly others: ReadonlyArray<StepsBox>, readonly ends: ReadonlyArray<StepsBox> } => {
     const key = useStore((state) => {

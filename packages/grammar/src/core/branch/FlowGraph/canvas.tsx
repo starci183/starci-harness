@@ -65,9 +65,9 @@ export const CONTAIN_MIN_ZOOM = 0.8
 /** The most tall a floored steps canvas grows when no `height` caps it (screen pixels, the `lg` step): the rest is reached by panning. */
 const FLOORED_HEIGHT_CAP = 512
 /**
- * THE OPENING ZOOM OF A STEPS GRAPH (0.37.33, owner drawing graph-state, law DNA-COMMON-FLOW-OPEN-ZOOM; rewritten 0.41.1). A step card reads at zoom 1 (176 x 64 since
+ * THE OPENING ZOOM OF A STEPS GRAPH (0.37.33, owner drawing graph-state, law DNA-COMMON-FLOW-OPEN-ZOOM; rewritten 0.42.0). A step card reads at zoom 1 (176 x 64 since
  * 0.37.35, title 14, line 12). On open the graph is fitted to the pane width: a graph that fits at zoom 1 opens at 1 (never magnified), a wider one is scaled down
- * until its last column is in view, at any pane width. Before 0.41.1 a fit under 0.95 opened at zoom 1 at the entry node, so the right columns of a wide graph were cut
+ * until its last column is in view, at any pane width. Before 0.42.0 a fit under 0.95 opened at zoom 1 at the entry node, so the right columns of a wide graph were cut
  * off at 1440 and 1920 until the reader panned. The fit never goes below the readable floor {@link CONTAIN_MIN_ZOOM} (0.8, DNA-COMMON-FLOW-READABLE-FLOOR): a graph that
  * would need less opens at the floor at its entry node and pans. Pan and zoom work after the fit as before.
  */
@@ -121,7 +121,7 @@ export const Refit = ({ signature, readableZoom, onGrow, fitOptions, maxZoom, an
         if (stepsFit === true) {
             const bounds = getNodesBounds(getNodes())
             if (bounds.width === 0 || bounds.height === 0) return
-            // The opening zoom (DNA-COMMON-FLOW-OPEN-ZOOM, 0.41.1): fitted to the pane width (at most 1) down to the readable floor, else the floor at the entry, panned.
+            // The opening zoom (DNA-COMMON-FLOW-OPEN-ZOOM, 0.42.0): fitted to the pane width (at most 1) down to the readable floor, else the floor at the entry, panned.
             const floor = Math.min(Math.max(containFloor ?? STEPS_MIN_ZOOM, STEPS_MIN_ZOOM), maxZoom)
             const cap = fixedHeight ? height : heightCap
             const place = (startInset: number) => {

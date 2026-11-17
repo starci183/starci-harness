@@ -578,7 +578,7 @@
     }
 
     /*
-     * A DISABLED BUTTON IS NEUTRAL (0.41.1), whatever its intent, step or variant, Button and IconButton alike. The vendor only dims a disabled button to
+     * A DISABLED BUTTON IS NEUTRAL (0.42.0), whatever its intent, step or variant, Button and IconButton alike. The vendor only dims a disabled button to
      * `--disabled-opacity`, so a disabled primary read as a pink accent wash and a disabled destructive as a pale red: a colour that still says "act".
      * Disabled now draws HeroUI's disabled pair at full opacity: a neutral fill (the foreground at 6% over the surface) and neutral words (the foreground
      * at 40%), with no hover or press change. A ghost or outline button keeps no fill (an outline keeps its neutral edge), and an edged destructive entry

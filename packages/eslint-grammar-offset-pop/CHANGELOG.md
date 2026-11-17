@@ -1,8 +1,8 @@
 # Changelog
 
-## 0.41.1 - 2026-11-17
+## 0.42.0 - 2026-11-17
 
-- Version: moves with the Grammar family (@starci/grammar 0.41.1: the steps graph opens fitted, back edges clear their own cards, the pill Select sizes to its value, the section divider hook, neutral disabled buttons, one-line action cells); no rule changed.
+- Version: moves with the Grammar family (@starci/grammar 0.42.0: the steps graph opens fitted, back edges clear their own cards, the pill Select sizes to its value, the section divider hook, neutral disabled buttons, one-line action cells); no rule changed.
 
 ## 0.41.0 - 2026-11-17
 

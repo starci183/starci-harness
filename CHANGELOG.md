@@ -3,7 +3,7 @@
 ## 1.1.0-alpha.144 - 2026-11-17
 
 - Added (skills): `skills/claude-design/` (`/claude-design`): the gallery drawn before code. Its method (the business read from the code and the Grammar's elements, never the old screen; `cần Grammar` and `cần API` marked, never asked), its look, the fragment and note format (the note is the screen's explain.md), the production by one Opus lead and up to ten Sonnet lanes, and its kit (`kit/canvas.css`, `kit/build.mjs`, the assembler). The harness shape lets a skill ship `kit/*.css` and `kit/*.mjs`; the contexts search reads every skill; contexts/README.md routes a mockup board to it.
-- Changed (pins): the Grammar family at 0.41.1, @starci/stylelint-canon 2.9.3, @starci/hfs 6.13.24 (PROJECT-GALLERY-6 and its five design codes, the AGENTS.md ignore). Until the cli-follow step raises the CLI's requirement, the CLI runs the hfs it requires.
+- Changed (pins): the Grammar family at 0.42.0, @starci/stylelint-canon 2.9.3, @starci/hfs 6.13.24 (PROJECT-GALLERY-6 and its five design codes, the AGENTS.md ignore). Until the cli-follow step raises the CLI's requirement, the CLI runs the hfs it requires.
 
 ## 1.1.0-alpha.143 - 2026-11-17
 

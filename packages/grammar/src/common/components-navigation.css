@@ -1305,7 +1305,7 @@
     }
 
     /*
-     * AN ACTION CELL NEVER WRAPS (0.41.1). A cell that holds buttons (Button, IconButton, a ButtonGroup, a disabled one inside its reason's trigger) keeps them on
+     * AN ACTION CELL NEVER WRAPS (0.42.0). A cell that holds buttons (Button, IconButton, a ButtonGroup, a disabled one inside its reason's trigger) keeps them on
      * one line, and its column sizes to them: a `Cluster` of two buttons wraps by default, and a `fit` column's min-content was its widest button, so
      * a delete button stood under a disable button. The row grows nowhere; a table wider than its container scrolls as any wide table does.
      */

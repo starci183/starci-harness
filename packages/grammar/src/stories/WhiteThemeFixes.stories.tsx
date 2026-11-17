@@ -4,13 +4,13 @@ import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 
 /**
- * THE WHITE-THEME RESHOOT FIXES (0.41.1). One page with every part the NIVO reshoot named: a wide steps graph that opens fitted to its pane, with a
+ * THE WHITE-THEME RESHOOT FIXES (0.42.0). One page with every part the NIVO reshoot named: a wide steps graph that opens fitted to its pane, with a
  * back edge to its entry node routed round that node's card; a pill Select in a Cluster sized to its value; a `Grid kind="sections"` whose columns
  * take the section divider hook; disabled buttons of every intent drawn neutral; a table whose action cell keeps its buttons on one line.
  * `Defaults` sets no hook; `White` sets `--starci-core-grid-section-divider` on the root, as an app's brand.css sets it on `:root`.
  */
 const meta: Meta = {
-  title: 'Surfaces/White theme fixes (0.41.1)',
+  title: 'Surfaces/White theme fixes (0.42.0)',
   parameters: { grammar: { bleed: false } },
 };
 export default meta;
@@ -18,7 +18,7 @@ type Story = StoryObj;
 
 const noop = () => undefined;
 
-/** Five cards in a line, a condition and the end pill: wider than a 1160 well at zoom 1 (it fits at about 0.9), so before 0.41.1 it opened at zoom 1 with its end cut off. */
+/** Five cards in a line, a condition and the end pill: wider than a 1160 well at zoom 1 (it fits at about 0.9), so before 0.42.0 it opened at zoom 1 with its end cut off. */
 const nodes: ReadonlyArray<G.FlowGraphNode> = [
   { id: 'start', kind: 'event', label: 'Message received', description: 'Zalo OA' },
   { id: 'read', kind: 'action', label: 'Read the customer', description: 'Contact record' },
