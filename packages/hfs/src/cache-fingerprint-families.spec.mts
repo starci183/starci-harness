@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import ts from 'typescript';
-import { computeFingerprint, differencesByFamily, familiesOfPart, familyOfFolder, fingerprintDifferences, localReasonOf, lockPackageName, packageDigests } from '../cache/fingerprint.mjs';
+import { computeFingerprint, differencesByFamily, familiesOfPart, familyOfFolder, fingerprintDifferences, localReasonOf, lockPackageName, packageDigests, workspaceMemberOf } from '../cache/fingerprint.mjs';
 import { dirtySetOf, packageOf, resolveReferences, type ImportGraph, type ImportNode } from '../cache/import-graph.mjs';
 import { FAMILIES } from '../cache/types.mjs';
 
@@ -233,4 +233,23 @@ test('a @starci package resolved from a registry on this machine, linked, or wit
   assert.match(localReasonOf('x', { version: '1.0.0' }, false) ?? '', /no recorded integrity/u);
   assert.equal(localReasonOf('x', { ...published, resolved: 'http://127.0.0.1:4873/@starci/x/-/x-1.0.1-local.1.tgz' }, false, 'f'.repeat(64)), null, 'a build that carries a source digest is portable from any registry');
   assert.match(localReasonOf('x', published, true, 'f'.repeat(64)) ?? '', /linked or copied from a local folder/u, 'a linked folder is judged by its files, whatever its manifest says');
+});
+
+test('an in-repo workspace member under @starci is portable, private or not; a link outside the repo is not', (t) => {
+  const lock = { '': { name: 'app' }, 'packages/nivoos-sdk': { version: '0.1.0' }, 'node_modules/@starci/nivoos-sdk': { link: true, resolved: 'packages/nivoos-sdk' } };
+  assert.equal(workspaceMemberOf(lock['node_modules/@starci/nivoos-sdk'], lock), 'packages/nivoos-sdk');
+  for (const resolved of ['../sibling/sdk', 'D:/elsewhere/sdk', '/abs/sdk', 'file:../sdk', 'packages/missing', 'node_modules/x']) {
+    assert.equal(workspaceMemberOf({ link: true, resolved }, lock), null, resolved);
+  }
+  assert.equal(workspaceMemberOf({ version: '1.0.0', integrity: 'sha512-x' }, lock), null);
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'starci-fingerprint-workspace-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  fs.mkdirSync(path.join(root, 'packages', 'nivoos-sdk'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'packages', 'nivoos-sdk', 'package.json'), JSON.stringify({ name: '@starci/nivoos-sdk', version: '0.1.0' }));
+  fs.mkdirSync(path.join(root, 'node_modules', '@starci', 'nivoos-sdk'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'node_modules', '@starci', 'nivoos-sdk', 'package.json'), JSON.stringify({ name: '@starci/nivoos-sdk', version: '0.1.0' }));
+  fs.writeFileSync(path.join(root, 'package-lock.json'), JSON.stringify({ lockfileVersion: 3, packages: lock }));
+  const fingerprint = computeFingerprint({ root, tracked: [] });
+  assert.ok(!fingerprint.localReasons.some((reason) => reason.includes('nivoos-sdk')), fingerprint.localReasons.join('; '));
+  assert.ok(fingerprint.parts.some((part) => part.name === 'pkg:@starci/nivoos-sdk'));
 });

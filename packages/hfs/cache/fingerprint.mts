@@ -6,7 +6,8 @@
 // the Node major the unit specs run on, and the configuration files by normalised content. A harness or tool package (every @starci package, starci-harness) is
 // keyed by its source digest (`starciSource` of its package.json, stamped when it is packed) when it carries one, so the local-registry build and the npm build of
 // one source yield the same keys; one without a digest is keyed by version and integrity. A run whose CLI or any @starci package is linked or copied from a local
-// folder, or resolved from a registry on this machine without a source digest, has no portable fingerprint.
+// folder, or resolved from a registry on this machine without a source digest, has no portable fingerprint. A workspace member of the app itself (a lock link
+// to a folder inside the repository that the lockfile records as a package) is the repository's own source: portable, keyed by its folder and version.
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -144,6 +145,18 @@ export function resolvedOnThisMachine(resolved: string | undefined): boolean {
   }
 }
 
+/**
+ * Whether a lock entry is a workspace member of this repository: a link whose target is a relative folder inside the app root that the lockfile itself
+ * records as a package. Its content is the repository's own tracked source, so it is portable on every host whether or not it is private or published.
+ */
+export function workspaceMemberOf(entry: LockEntry | undefined, lock: Readonly<Record<string, LockEntry>>): string | null {
+  const target = entry?.link === true ? entry.resolved : undefined;
+  if (typeof target !== 'string' || target === '' || path.isAbsolute(target) || /^[a-z][a-z0-9+.-]*:/iu.test(target)) return null;
+  const parts = target.split(/[\\/]/u);
+  if (parts.includes('..') || parts.includes('node_modules')) return null;
+  return target in lock ? target : null;
+}
+
 /** Why an installed `@starci` package has no portable fingerprint (linked, copied, or resolved from a registry on this machine), or null when it is a published install. */
 export function localReasonOf(name: string, entry: LockEntry | undefined, linked: boolean, source?: string): string | null {
   if (source !== undefined && !linked) return null;
@@ -210,6 +223,8 @@ export function computeFingerprint({ root, tracked, hfsDir = fileURLToPath(new U
     const version = String(manifest?.['version'] ?? 'unknown');
     const source = sourceOf(manifest);
     const entry = lock[`node_modules/@starci/${name}`];
+    const member = workspaceMemberOf(entry, lock);
+    if (member !== null) { add(`pkg:@starci/${name}`, `workspace:${member}\0${version}`); continue; }
     let linked = entry?.link === true;
     try { linked = linked || fs.lstatSync(dir).isSymbolicLink(); } catch { /* absent: not installed */ }
     const reason = localReasonOf(name, entry, linked, source);
