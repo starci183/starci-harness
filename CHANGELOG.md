@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.150 - 2026-11-18
+
+- Fixed (claude-design): `app sync` keeps `.starcistacks/canvas/` tracked, and `approvedAt` is documented and checked as a full ISO timestamp with its zone (a bare date is refused by name); @starci/hfs 6.13.30. Until the cli-follow step raises the CLI's requirement, the CLI runs the hfs it requires.
+
 ## 1.1.0-alpha.149 - 2026-11-17
 
 - Changed: the CLI requires @starci/hfs@6.13.29, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).

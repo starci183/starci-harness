@@ -1,5 +1,10 @@
 # Changelog
 
+## 6.13.30 - 2026-11-18
+
+- Fixed (`templates/app/gitignore`, `templates/app/gitignore-lite`): the managed ignore block re-includes `.starcistacks/canvas/**`, so the design canvas PROJECT-GALLERY-6 places there (design.json, the boards, the shots) is tracked without `git add -f`. Spec: `hfs-gitignore-block-drift.spec.mts`.
+- Changed (`rules/gallery-design.mts`, HFS_APP_GALLERY_DESIGN_MANIFEST): an approved page whose `approvedAt` is a bare date is refused by name; the message asks for a full ISO timestamp with its zone (e.g. 2026-11-17T09:30:00+07:00). The `@starci/hfs` self-pin is 6.13.30.
+
 ## 6.13.29 - 2026-11-17
 
 - Changed (`knowledge/hfs/canon-pins.yaml`): the Grammar family at 0.45.0 (`~0.45.0`): a card is one object. SurfaceCard keeps `body` and `tile` (the table, details, figures, accordion and select kinds, the header and footer zones, `count`, the ink and highlight treatments and `accentCorner` are removed; a body card gains an `actions` band); a DataTable has one flat look (no `surface`) and a selected row is grey with a 2px accent bar; `Section kind="figures"` is always the ribbon; Board `headers` is `filter`; lints `card-is-object` and `data-table-surface` (autofix), `rows-in-card` fixed. @starci/stylelint-canon 2.9.6, @starci/eslint-canon-fe 9.20.2. The `@starci/hfs` self-pin is 6.13.29.
