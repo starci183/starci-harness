@@ -89,7 +89,7 @@ component has one story with its states side by side, in both families, both mod
 | a key changes (a selected room, a filter, a page) | only the region keyed by it returns to skeleton | `states-loading-states--list-box-states` |
 | background refresh | the content unchanged; at most the pending cue of the control that asked (CTA-3) | `leaves-skeleton-parity--rows-ready` |
 | a read failed | that region's `error` slot with its retry | `states-loading-states--data-table-states` |
-| loading ended with no items | the `empty` slot in the collection's place; a list requires `empty` | `states-loading-states--surface-card-list-states` |
+| loading ended with no items | the `empty` slot in the collection's place; a list requires `empty` | `states-loading-states--section-list-states` |
 
 A skeleton equals the ready box: the shape comes from the same fields the ready render draws, so nothing jumps when the data lands
 (TASTE-10, `SkeletonParity`). Where a block cannot give a same-shape placeholder, the component's default of three rows stands.

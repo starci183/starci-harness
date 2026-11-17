@@ -11,7 +11,7 @@ export const ZeroChip: Story = {
   render: () => (
     <div style={{ width: 420, display: 'flex', flexDirection: 'column', gap: 24 }}>
       <G.Section kind="list" title="Needs attention" count={0} items={[]} empty={<G.EmptyNotice message="Nothing needs your attention" />} />
-      <G.SurfaceCard kind="list" label="Orders" count={0} items={[]} empty={<G.EmptyNotice message="No orders yet" />} />
+      <G.Section kind="list" title="Orders" count={0} items={[]} empty={<G.EmptyNotice message="No orders yet" />} />
     </div>
   ),
   play: async ({ canvasElement }) => {

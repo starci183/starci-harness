@@ -13,7 +13,7 @@ import { SectionCaption, SectionHead, type SectionHeadProps } from "./head.js"
 
 export type { SectionHeadingLevel, SectionHeadProps } from "./head.js"
 
-/** One row of a list section: the same data a list card's row has, drawn by the same row. */
+/** One row of a list section: the `ListRowData` a Board item has too, drawn by the same `ListRow`. */
 export type SectionRow = ListRowData
 
 type RegionSection = {
@@ -23,13 +23,19 @@ type RegionSection = {
     /**
      * The toolbar that narrows everything the section holds (0.41.0): several lists or groups under one filter, a catalog. `Tabs kind="filter"`, a
      * `SearchField` and its `Select`s, drawn as a flat row between the head and the children, on the surface the section stands on, never a card.
-     * A toolbar of one list is that list's own `filter` (`kind="list"`) or a card's `toolbar` zone when the list is a card.
+     * A toolbar of one list is that list's own `filter` (`kind="list"`).
      */
     readonly filter?: ReactNode
 }
 
 type ListSection = {
     readonly kind: "list"
+    /**
+     * `rows` (default): title with a supporting line. `keyValue`: each row is a key (`title`, muted, 14) and its `value` (normal text, 14, at the end), so the
+     * hierarchy reads key then value. `suggestions` (law DNA-COMMON-CARD-SUGGESTIONS): the replies a message card offers, one row per reply, its plain text (14,
+     * regular, wrapping, never truncated) with a trailing chevron; give every row `onPress` (it sends that text) and nothing else.
+     */
+    readonly layout?: "rows" | "keyValue" | "suggestions"
     readonly items: readonly SectionRow[]
     /** What a list with no row says: one line and its action. */
     readonly empty: ReactNode
@@ -124,7 +130,14 @@ const ListBody = ({ list, isLoading, error }: { readonly list: ListSection; read
         <>
             {filter}
             {!isLoading && list.items.length === 0 ? list.empty : (
-                <Rows className="starci-core-section-list" data-contract="MARGIN-0 PADDING-0 GAP-0">
+                <Rows
+                    className="starci-core-section-list"
+                    role="list"
+                    aria-busy={isLoading || undefined}
+                    data-grammar-list="true"
+                    {...(list.layout === "keyValue" || list.layout === "suggestions" ? { "data-grammar-list-layout": list.layout } : {})}
+                    data-contract="MARGIN-0 PADDING-0 GAP-0"
+                >
                     {listRows(list, isLoading)}
                 </Rows>
             )}
@@ -139,9 +152,10 @@ const ListBody = ({ list, isLoading, error }: { readonly list: ListSection; read
  * one step closer than the region step a section keeps from its siblings (the proximity law).
  *
  * `kind="region"` (the default) holds `children`, with an optional flat `filter` row that narrows all of them (a catalog of several lists under one
- * toolbar, never a rowless card borrowed for its zones). `kind="list"` owns rows inside an existing surface, or a standalone
- * list that searches, filters or pages: typed `items`, an optional `filter` and a required `empty` state. Its title owns
- * the list heading and accessible name. A standalone bounded worklist on the page canvas is `SurfaceCard kind="list"`.
+ * toolbar, never a rowless card borrowed for its zones). `kind="list"` is THE list, wherever it stands (the page canvas, a card body, a
+ * drawer, a pane): plain rows on the surface, divided by hairlines, aligned with the section title, with no frame, fill, radius or
+ * shadow. Typed `items`, an optional `layout`, an optional `filter` and a required `empty` state; its title owns the list heading and
+ * accessible name.
  * `kind="figures"` reuses the unpainted FigureCells strip inside an existing surface; a required `ariaLabel` keeps an
  * already-headed strip headless, while `title` gives a strip its own visible heading. Those forms cannot be mixed. `ribbon` draws the strip
  * as a band between two hairlines on the page (no card).

@@ -25,7 +25,6 @@ test("SURFACE-IN-SURFACE: a hand-made divided row list inside a surface is refus
     valid: [
       // the Grammar list
       { filename: BLOCK, code: code("<SurfaceCard label=\"Runs\"><Section kind=\"list\" items={rows} /></SurfaceCard>") },
-      { filename: BLOCK, code: code("<SurfaceCard label=\"Runs\" kind=\"list\" items={rows} empty={null} />") },
       // a divided list outside any surface
       { filename: BLOCK, code: code(`<Stack gap="row">${ROWS}</Stack>`) },
       // a stack with no Divider

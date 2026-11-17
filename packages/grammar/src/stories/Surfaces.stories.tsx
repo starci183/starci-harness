@@ -304,30 +304,30 @@ const checkRows: readonly G.ListRowData[] = [
   { id: 'd', title: 'Backup', state: 'pending' },
 ];
 
-/** `kind="list"`: rows as data, drawn by one row; the list answers for its empty and loading states. */
-export const SurfaceCardList: Story = {
-  name: 'SurfaceCard kind list',
+/** `Section kind="list"`: rows as data, drawn by one row, flat on the surface; the list answers for its empty and loading states. */
+export const SectionList: Story = {
+  name: 'Section kind list',
   render: () => (
     <Matrix maxWidth={640}>
-      <State label="Rows with states, a fact and a note" direction="column">
-        <G.SurfaceCard kind="list" label="Checks" fact="4 items" note={<G.Text tone="muted" size="sm">Updated just now.</G.Text>} items={checkRows} empty={<G.EmptyNotice message="Nothing to check." />} />
+      <State label="Rows with states, a fact and a caption" direction="column">
+        <G.Section kind="list" title="Checks" fact="4 items" caption="Updated just now." items={checkRows} empty={<G.EmptyNotice message="Nothing to check." />} />
       </State>
       <State label="Verdict collection (a row reports a direction)" direction="column">
-        <G.SurfaceCard
+        <G.Section
           kind="list"
-          label="Movement"
+          title="Movement"
           items={[{ id: 'up', title: 'Ada', verdict: 'success' }, { id: 'down', title: 'Grace', verdict: 'danger' }]}
           empty={<G.EmptyNotice message="No movement." />}
         />
       </State>
       <State label="Loading (3 skeleton rows by default)" direction="column">
-        <G.SurfaceCard kind="list" label="Saved items" isLoading items={[]} empty={<G.EmptyNotice message="Nothing saved yet." />} />
+        <G.Section kind="list" title="Saved items" isLoading items={[]} empty={<G.EmptyNotice message="Nothing saved yet." />} />
       </State>
       <State label="Loading (the rows it was given, as geometry)" direction="column">
-        <G.SurfaceCard kind="list" label="Saved items" isLoading items={checkRows} empty={<G.EmptyNotice message="Nothing saved yet." />} />
+        <G.Section kind="list" title="Saved items" isLoading items={checkRows} empty={<G.EmptyNotice message="Nothing saved yet." />} />
       </State>
       <State label="Empty (a notice, not a list)" direction="column">
-        <G.SurfaceCard kind="list" label="Saved" items={[]} empty={<G.EmptyNotice message="Nothing saved yet." description="Saved items appear here." />} />
+        <G.Section kind="list" title="Saved" items={[]} empty={<G.EmptyNotice message="Nothing saved yet." description="Saved items appear here." />} />
       </State>
     </Matrix>
   ),
@@ -357,11 +357,11 @@ export const SurfaceCardListRow: Story = {
   render: () => (
     <Matrix maxWidth={720}>
       <State label="Several accounts of one provider" direction="column">
-        <G.SurfaceCard
+        <G.Section
           kind="list"
-          label="Bank feed"
+          title="Bank feed"
           fact="3 accounts"
-          labelEnd={<G.Button intent="neutral" onPress={noop}>Add</G.Button>}
+          action={<G.Button intent="neutral" onPress={noop}>Add</G.Button>}
           empty={<G.EmptyNotice message="No accounts." />}
           items={[
             {
@@ -396,9 +396,9 @@ export const SurfaceCardListRow: Story = {
         />
       </State>
       <State label="Avatars, positions and a destination" direction="column">
-        <G.SurfaceCard
+        <G.Section
           kind="list"
-          label="Seats"
+          title="Seats"
           empty={<G.EmptyNotice message="No seats." />}
           items={[
             { id: 'a', leading: { avatar: { name: 'Alex Morgan', kind: 'person' } }, title: 'Alex Morgan', description: 'Owner', action: { label: 'Open', href: '#alex' } },
@@ -420,11 +420,11 @@ const ListTitleDestinationDemo = () => {
   return (
     <Matrix maxWidth={640}>
       <State label="Title navigation and a separate command" direction="column">
-        <G.SurfaceCard kind="list" label="Pending requests" items={rows} empty={<G.EmptyNotice message="Nothing waiting" />} />
+        <G.Section kind="list" title="Pending requests" items={rows} empty={<G.EmptyNotice message="Nothing waiting" />} />
         <G.Text>{`Follow callbacks: ${followed}`}</G.Text>
       </State>
       <State label="Loading removes the title destination" direction="column">
-        <G.SurfaceCard kind="list" label="Pending requests" isLoading items={rows} empty={<G.EmptyNotice message="Nothing waiting" />} />
+        <G.Section kind="list" title="Pending requests" isLoading items={rows} empty={<G.EmptyNotice message="Nothing waiting" />} />
       </State>
     </Matrix>
   );
@@ -453,7 +453,7 @@ const BusyItemActionDemo = () => {
   return (
     <Matrix maxWidth={640}>
       <State label="Busy row commands and destinations keep their labels" direction="column">
-        <G.SurfaceCard kind="list" label="Providers" empty={<G.EmptyNotice message="No providers" />}
+        <G.Section kind="list" title="Providers" empty={<G.EmptyNotice message="No providers" />}
           items={[
             { id: 'install', title: 'Storage provider', action: { label: 'Installing', press: activate, isPending: true } },
             { id: 'open', title: 'Messaging provider', action: { label: 'Opening', href: '#provider', isPending: true } },
@@ -620,22 +620,21 @@ export const SurfaceCardFigures: Story = {
   ),
 };
 
-/** Header zones above a list: a custom face and a figures strip, divided by the seams the shell draws. */
+/** Header zones above a body: a custom face and a figures strip, divided by the seams the shell draws; the rows are a flat list in the body. */
 export const SurfaceCardZoneFaces: Story = {
   name: 'SurfaceCard header zones',
   render: () => (
     <Matrix maxWidth={720}>
       <State label="Body, figures, then a list" direction="column">
         <G.SurfaceCard
-          kind="list"
           label="Workspace"
           headers={[
             { kind: 'custom', children: <G.Text>Support runs on the Team plan, owned by Alex Morgan.</G.Text> },
             { kind: 'figures', items: stripFigures.slice(0, 3) },
           ]}
-          items={checkRows.slice(0, 2)}
-          empty={<G.EmptyNotice message="Nothing to check." />}
-        />
+        >
+          <G.Section kind="list" ariaLabel="Checks" items={checkRows.slice(0, 2)} empty={<G.EmptyNotice message="Nothing to check." />} />
+        </G.SurfaceCard>
       </State>
       <State label="A custom picture zone, then a body" direction="column">
         <G.SurfaceCard

@@ -213,7 +213,7 @@ export const BranchLanesNoOvershoot: Story = {
 export const SuggestionsChevron390: Story = {
   render: () => (
     <div style={{ width: 390, boxSizing: 'border-box', padding: 16, background: 'var(--background)' }}>
-      <G.SurfaceCard
+      <G.Section
         kind="list"
         layout="suggestions"
         ariaLabel="Reply suggestions"

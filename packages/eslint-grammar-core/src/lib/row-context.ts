@@ -65,14 +65,9 @@ export const propertyOf = (object: TSESTree.ObjectExpression, name: string): TSE
   return null
 }
 
-const isListKind = (object: TSESTree.ObjectExpression): boolean => {
-  const kind = propertyOf(object, "kind")?.value
-  return kind?.type === "Literal" && kind.value === "list"
-}
-
 /**
- * True when an object literal is a ListRow data object in the source: it stands in the `items` of a list collection
- * (`{ kind: "list", items }`, or `items` of a `Section` / `SurfaceCard` written `kind="list"`), through any `.map` callback, array,
+ * True when an object literal is a ListRow data object in the source: it stands in the `items` of a `Section` written
+ * `kind="list"`, through any `.map` callback, array,
  * conditional or `as` wrapper, or it is the `row` of a `<ListRow>`. A row list declared elsewhere and passed by name is not followed.
  */
 export const isListRow = (object: TSESTree.ObjectExpression, bound: ReadonlyMap<string, string>): boolean => {
@@ -95,8 +90,7 @@ export const isListRow = (object: TSESTree.ObjectExpression, bound: ReadonlyMap<
         if (parent.callee === node || parent.callee.type !== "MemberExpression") return false
         continue
       case "Property":
-        if (parent.value !== node || keyName(parent) !== "items") return false
-        return parent.parent.type === "ObjectExpression" && isListKind(parent.parent)
+        return false
       case "JSXExpressionContainer": {
         const attribute = parent.parent
         if (attribute.type !== "JSXAttribute" || attribute.name.type !== "JSXIdentifier") return false
@@ -104,7 +98,7 @@ export const isListRow = (object: TSESTree.ObjectExpression, bound: ReadonlyMap<
         const { grammar } = elementOf(opening, bound)
         if (attribute.name.name === "row") return grammar === "ListRow"
         if (attribute.name.name !== "items") return false
-        return literalAttribute(opening, "kind") === "list" && (grammar === "Section" || grammar === "SurfaceCard")
+        return literalAttribute(opening, "kind") === "list" && grammar === "Section"
       }
       default:
         return false

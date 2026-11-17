@@ -40,7 +40,7 @@ export const rowsInCard: Rule.RuleModule = defineRule({
     docs: { description: "ROWS-IN-CARD: a DescriptionList or DisclosureList stands in a SurfaceCard or a Section, so it is a card (shadow on the well, 1px border on a white surface)." },
     schema: [],
     messages: {
-      bare: "A `{{name}}` stands with no card around it. Rows are always a card: put them in a `Section` (`kind=\"list\"`) or a `SurfaceCard`; Grammar draws the shadow on the pink well and the 1px border on a white aside, pane or drawer by itself.",
+      bare: "A `{{name}}` stands with no card around it. Key-value and disclosure rows stand in a `SurfaceCard` (Grammar draws the shadow on the pink well and the 1px border on a white aside, pane or drawer by itself) or a `Section`; a plain list of rows is `Section kind=\"list\"`, flat.",
     },
   },
   create(context) {

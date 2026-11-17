@@ -5,7 +5,7 @@ import { BookGlyph, HomeGlyph, Matrix, State, familyScope, noop } from './fixtur
 /**
  * The status pair rule: content on a tone background wears the pair
  * `x-soft` and `x-soft-foreground`; a mark that stands alone wears `x`. These stories draw the places the rule reaches in
- * the grammar's own CSS: the alert dialog's icon tile (on its tint) and the note under a list card.
+ * the grammar's own CSS: the alert dialog's icon tile (on its tint) and the caption under a list.
  */
 const meta: Meta = {
   title: 'Status pair',
@@ -45,7 +45,7 @@ export const AlertDialogCautionary: Story = dialogTone('cautionary');
 export const AlertDialogInformative: Story = dialogTone('informative');
 export const AlertDialogNeutral: Story = dialogTone('neutral');
 
-/** The note under a list card: a small muted line under the card, the full width of the list, in light and dark. */
+/** The line under a list (its caption) and the note under a card: a small muted line, in light and dark. */
 export const SurfaceCardFooter: Story = {
   render: (_, { globals }) => (
     <Matrix maxWidth={720}>
@@ -53,11 +53,11 @@ export const SurfaceCardFooter: Story = {
         <G.GrammarRoot key={theme} {...familyScope(globals)} theme={theme} data-story-footer-theme={theme} style={{ padding: '1.5rem', background: 'var(--background, Canvas)' }}>
           <State label={`${theme}: a plain-text footer`} direction="column">
             <div style={{ width: 640, maxWidth: '100%' }}>
-              <G.SurfaceCard
+              <G.Section
                 kind="list"
-                label="Permissions"
+                title="Permissions"
                 fact="3 rules"
-                note="Locked rules are set by the workspace owner."
+                caption="Locked rules are set by the workspace owner."
                 empty={<G.EmptyNotice message="No rules." />}
                 items={[
                   { id: 'read', leading: { icon: BookGlyph }, title: 'Read the knowledge', description: 'Customers and every agent' },
@@ -76,17 +76,9 @@ export const SurfaceCardFooter: Story = {
           </State>
           <State label={`${theme}: a footer that is a muted Text`} direction="column">
             <div style={{ width: 640, maxWidth: '100%' }}>
-              <G.SurfaceCard
-                kind="list"
-                label="Permissions"
-                fact="2 rules"
-                note={<G.Text tone="muted">Locked rules are set by the workspace owner.</G.Text>}
-                empty={<G.EmptyNotice message="No rules." />}
-                items={[
-                  { id: 'read', leading: { icon: BookGlyph }, title: 'Read the knowledge', description: 'Customers and every agent' },
-                  { id: 'write', leading: { icon: BookGlyph }, title: 'Write notes', description: 'Agents only' },
-                ]}
-              />
+              <G.SurfaceCard label="Workspace" fact="2 seats" note={<G.Text tone="muted">Locked rules are set by the workspace owner.</G.Text>}>
+                <G.Text>Plan: Team</G.Text>
+              </G.SurfaceCard>
             </div>
           </State>
         </G.GrammarRoot>

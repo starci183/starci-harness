@@ -15,7 +15,7 @@ const ROWS = [
   { id: 'a', title: 'Email', description: 'Receives customer messages' },
   { id: 'b', title: 'Chat', description: 'Receives customer messages' },
 ];
-const card = (label: string) => <G.SurfaceCard kind="list" label={label} items={ROWS} empty={<G.EmptyNotice message="Empty" />} />;
+const card = (label: string) => <G.SurfaceCard label={label}><G.Text>{ROWS.map((row) => row.title).join(', ')}</G.Text></G.SurfaceCard>;
 
 /** A `SurfaceCard` in a white aside and in an open drawer: 1px border, no shadow; on the pink well: shadow, no border. Development no longer throws. */
 export const CardOnWhiteGround: Story = {
@@ -30,7 +30,7 @@ export const CardOnWhiteGround: Story = {
   ),
   play: async ({ canvasElement }) => {
     await waitFor(() => {
-      const cardIn = (scope: Element | null) => scope?.querySelector<HTMLElement>('.starci-core-surface[data-grammar-surface-kind="list"]') ?? null;
+      const cardIn = (scope: Element | null) => scope?.querySelector<HTMLElement>('.starci-core-surface[data-grammar-surface-kind="body"]') ?? null;
       const well = cardIn(canvasElement.querySelector('[data-grammar-pane-area="well"]'));
       const aside = cardIn(canvasElement.querySelector('[data-grammar-pane-area="aside"]'));
       const drawer = cardIn(document.querySelector('.starci-core-drawer'));

@@ -102,7 +102,7 @@ decides product facts and layout. A row whose last column is not "nothing" is a 
 | Radius, shadow, motion | `src/<id>/dna.ts` and `src/<id>/styles.css`, shaped by contract `tokens` and `dna`; type, corner and stroke ramps in `src/common/ramps.css` | nothing |
 | Spacing scale and rhythm | `src/common/spacing.ts`; the defaults of every composition hold the proximity law (children closer than the container's siblings) | which relationship a gap expresses ([ui/presentation](../ui/presentation.md) G6), under lint `gap-proximity` |
 | Field rhythm (label 8, help 4, field to field 24) | the form CSS of Common, `Form`, `Grid kind="form"`, `Fieldset` | nothing: the `label` prop, never a hand-made label (lint `field-label`) |
-| A list of rows inside a surface | `Section kind="list"` draws the nested surface | `Section kind="list"`, never blocks divided by `Divider` (lint `surface-in-surface`) |
+| A list of rows, inside a surface or on the canvas | `Section kind="list"` draws the flat rows (BOUNDARY-7) | `Section kind="list"`, never a card (lint `surface-card-list`) and never blocks divided by `Divider` (lint `surface-in-surface`) |
 | Control heights | Common tokens `--grammar-control-height-*`, contract `sizes` | `sm` or `lg` by [ui/scale](../ui/scale.md) (gap G-6); `control` never |
 | Hit area and target floor | Common tokens `--grammar-target-*`, contract `sizes.target` | nothing |
 | Corners | contract `tokens.corner` roles, values from the grammar's base radius | the corner role of an app-owned box ([ui/presentation](../ui/presentation.md)) |

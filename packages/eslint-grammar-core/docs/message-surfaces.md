@@ -2,7 +2,7 @@
 
 Law module: `message-surfaces.ts`. Finding code: `FE_MESSAGE_SURFACES`. Knowledge: `knowledge/ui/presentation/grammar-laws.yaml#MESSAGE-SURFACES`. Grammar laws: `DNA-COMMON-CHAT-SURFACES` (0.37.31), `DNA-COMMON-CHAT-FRAME` (0.37.33).
 
-Every chat (team chat, an agent's chat, an inbox thread, the assistant) draws the same three faces, and they belong to the Grammar: the thread is the page tone (`--background`; a `PaneSection scroll role="log"` paints it whatever `tone` says), a message of someone else (`MessageBubble` incoming, `MessageCard`) is the flat `--surface` with no border and no shadow, and the reader's own message is `--accent` with `--accent-foreground`. The replies a message card offers are `SurfaceCard kind="list" layout="suggestions"` (one bordered list, a pressable plain-text row per reply with a chevron); the pills by the composer stay `Button size="sm"` (`suggestion-buttons`).
+Every chat (team chat, an agent's chat, an inbox thread, the assistant) draws the same three faces, and they belong to the Grammar: the thread is the page tone (`--background`; a `PaneSection scroll role="log"` paints it whatever `tone` says), a message of someone else (`MessageBubble` incoming, `MessageCard`) is the flat `--surface` with no border and no shadow, and the reader's own message is `--accent` with `--accent-foreground`. The replies a message card offers are `Section kind="list" layout="suggestions"` (one flat list, a pressable plain-text row per reply with a chevron); the pills by the composer stay `Button size="sm"` (`suggestion-buttons`).
 
 A chat is one frame on any page (0.37.33): its head, its thread and its composer footer are `--background`, whether it stands in a white pane, the aside, a drawer, a dialog or a popover; the rest of the page keeps its own rule. The frame is a `Pane content="chat"` (a pane whose own stack holds a thread is drawn as one too); the app gives it no tone, and a message in it is flat (no border, no shadow).
 
@@ -33,5 +33,5 @@ A spread, a computed class and a tone held in a variable are not read; a thread 
 ```tsx
 <Pane area="room" content="chat" label="Room" footer={composer}>{head}{thread}</Pane>
 <PaneSection scroll={{ label: "Thread", role: "log", align: "end" }}>{thread}</PaneSection>
-<MessageCard title="Workflow paused" body={<SurfaceCard kind="list" layout="suggestions" ariaLabel="Suggestions" empty={null} items={replies} />} />
+<MessageCard title="Workflow paused" body={<Section kind="list" layout="suggestions" ariaLabel="Suggestions" empty={null} items={replies} />} />
 ```

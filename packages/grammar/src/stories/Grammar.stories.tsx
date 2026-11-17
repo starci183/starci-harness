@@ -8,6 +8,7 @@ import {
   Input,
   Page,
   TopBar,
+  Section,
   SurfaceCard,
   type ListRowData,
   Text,
@@ -129,7 +130,7 @@ const taskRow = (title: string, done: boolean): ListRowData => ({
 
 /** Full tasks screen: shell + composer card + collection card — the anatomy the direction maps. */
 export const TasksScreen: Story = {
-  name: 'Tasks (shell + composer + list card)',
+  name: 'Tasks (shell + composer + list)',
   render: () => (
     <WorkspaceShell
       header={topNav}
@@ -149,12 +150,12 @@ export const TasksScreen: Story = {
                 <Button type="submit" intent="commit">Add task</Button>
               </form>
             </SurfaceCard>
-            <SurfaceCard
+            <Section
               kind="list"
-              label="All tasks"
+              title="All tasks"
               headingLevel={2}
               fact="4 tasks"
-              note={<Text tone="muted">Completed tasks stay here until you delete them.</Text>}
+              caption="Completed tasks stay here until you delete them."
               empty={<EmptyNotice message="No tasks yet." />}
               items={[
                 taskRow('Plan the week', false),
@@ -215,9 +216,9 @@ export const EmptyState: Story = {
               <Heading level={1}>Your tasks</Heading>
               <Text tone="muted">A little progress, every day.</Text>
             </div>
-            <SurfaceCard
+            <Section
               kind="list"
-              label="All tasks"
+              title="All tasks"
               headingLevel={2}
               fact="0 tasks"
               items={[]}

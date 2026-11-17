@@ -5,8 +5,8 @@ import * as G from '../common/index.js';
 import { noop } from './fixtures.js';
 
 /**
- * 0.37.5: the seam between header zones reads on the white card, including a table card (0.37.8: no grey frame); `SurfaceCard kind="list" layout="keyValue"` draws muted keys and normal values
- * (values wrap under the key on a narrow card); `Pane head` is a sticky one-row head with a close button.
+ * 0.37.5: the seam between header zones reads on the white card, including a table card (0.37.8: no grey frame); `Section kind="list" layout="keyValue"` draws muted keys and normal values
+ * (values wrap under the key on a narrow list); `Pane head` is a sticky one-row head with a close button.
  */
 const meta: Meta = { title: 'Surfaces/Zone seam, key-value rows and pane head', parameters: { layout: 'fullscreen' } };
 export default meta;
@@ -36,12 +36,12 @@ export const ZoneSeamContrast: Story = {
   render: () => (
     <div style={{ width: 'min(100%, 720px)', padding: 24, display: 'grid', gap: 24 }}>
       <G.SurfaceCard kind="table" label="Table card" columns={COLUMNS} rows={[{ id: 'r1', cells: { name: 'OR-1001', total: '120,000' } }]} empty={<G.EmptyNotice message="Empty" />} headers={[...zones]} />
-      <G.SurfaceCard kind="list" label="On a white card" items={[{ id: 'a', title: 'OR-1001' }]} empty={<G.EmptyNotice message="Empty" />} headers={[...zones]} />
+      <G.SurfaceCard kind="details" label="On a white card" items={[{ id: 'a', term: 'Order', description: 'OR-1001' }]} headers={[...zones]} />
     </div>
   ),
   play: async ({ canvasElement }) => {
     await waitFor(() => {
-      for (const kind of ['table', 'list']) {
+      for (const kind of ['table', 'details']) {
         const card = canvasElement.querySelector<HTMLElement>(`.starci-core-surface[data-grammar-surface-kind="${kind}"]`);
         const zone = card?.querySelector<HTMLElement>('[data-grammar-zone]');
         if (card == null || zone == null) throw new Error('the card and its zone render');
@@ -62,8 +62,8 @@ const FACTS = [
 export const KeyValueRows: Story = {
   render: () => (
     <div style={{ padding: 24, display: 'grid', gap: 24, gridTemplateColumns: '30rem 16rem', alignItems: 'start' }}>
-      <G.SurfaceCard kind="list" layout="keyValue" label="Order details" items={FACTS} empty={<G.EmptyNotice message="Empty" />} />
-      <G.SurfaceCard kind="list" layout="keyValue" label="Narrow" items={FACTS} empty={<G.EmptyNotice message="Empty" />} />
+      <G.Section kind="list" layout="keyValue" title="Order details" items={FACTS} empty={<G.EmptyNotice message="Empty" />} />
+      <G.Section kind="list" layout="keyValue" title="Narrow" items={FACTS} empty={<G.EmptyNotice message="Empty" />} />
     </div>
   ),
   play: async ({ canvasElement }) => {

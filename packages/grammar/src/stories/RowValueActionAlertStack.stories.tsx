@@ -27,10 +27,10 @@ const rowsAreOneLine = (canvasElement: HTMLElement) => {
     const box = row.getBoundingClientRect();
     const value = row.querySelector<HTMLElement>('[data-grammar-row-value="true"]')!.getBoundingClientRect();
     const button = row.querySelector<HTMLElement>('.starci-core-list-row-actions [data-component="Button"]')!.getBoundingClientRect();
-    // The command stands after the value on the same line, inside the row padding, at the end.
+    // The command stands after the value on the same line, inside the row, at the end.
     expect(button.left).toBeGreaterThanOrEqual(value.right - 1);
     expect(Math.abs((button.top + button.bottom) / 2 - (value.top + value.bottom) / 2)).toBeLessThan(box.height / 2);
-    expect(button.right).toBeLessThanOrEqual(box.right - 15);
+    expect(button.right).toBeLessThanOrEqual(box.right + 0.5); // a flat list row has no inline inset (0.43.0)
     expect(button.bottom).toBeLessThanOrEqual(box.bottom - 11);
   }
 };
@@ -39,7 +39,7 @@ export const ValueBadgeAndEndAction: Story = {
   name: 'List row: value, badge and end action at 1440',
   render: () => (
     <div data-host style={{ inlineSize: 1440 }}>
-      <G.SurfaceCard kind="list" label="Delivery" items={ROWS} empty={<G.EmptyNotice message="Empty" />} />
+      <G.Section kind="list" title="Delivery" items={ROWS} empty={<G.EmptyNotice message="Empty" />} />
     </div>
   ),
   play: async ({ canvasElement }) => { await waitFor(() => rowsAreOneLine(canvasElement)); },
@@ -49,14 +49,14 @@ export const ValueBadgeAndEndActionAt390: Story = {
   name: 'List row: value, badge and end action at 390',
   render: () => (
     <div data-host style={{ inlineSize: 390 }}>
-      <G.SurfaceCard kind="list" label="Delivery" items={ROWS} empty={<G.EmptyNotice message="Empty" />} />
+      <G.Section kind="list" title="Delivery" items={ROWS} empty={<G.EmptyNotice message="Empty" />} />
     </div>
   ),
   play: async ({ canvasElement }) => {
     await waitFor(() => {
       for (const button of Array.from(canvasElement.querySelectorAll<HTMLElement>('.starci-core-list-row-actions [data-component="Button"]'))) {
         const row = button.closest('li')!.getBoundingClientRect();
-        expect(button.getBoundingClientRect().right).toBeLessThanOrEqual(row.right - 15);
+        expect(button.getBoundingClientRect().right).toBeLessThanOrEqual(row.right + 0.5);
       }
     });
   },
@@ -67,7 +67,7 @@ const StackedAlert = () => (
   <div style={{ display: 'grid', gridTemplateRows: '260px' }}>
   <G.Stack gap="section">
     <G.Alert tone="neutral" title="Policy not inferred yet" description="The shop is out of credit. Top up and try again." action={{ label: 'Retry', onAction: noop }} />
-    <G.SurfaceCard kind="list" label="Delivery" items={ROWS.slice(0, 1)} empty={<G.EmptyNotice message="Empty" />} />
+    <G.Section kind="list" title="Delivery" items={ROWS.slice(0, 1)} empty={<G.EmptyNotice message="Empty" />} />
   </G.Stack>
   </div>
 );

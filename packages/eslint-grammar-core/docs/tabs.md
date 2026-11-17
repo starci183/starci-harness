@@ -20,7 +20,7 @@ Finding code: `FE_TABS_SWITCH_ZONE`. A `<Tabs appearance="primary">` written in 
 
 ```tsx
 <SurfaceCard kind="select" label="Agent" selectionMode="multiple" items={[{ id: "send", title: "Send", control: <Tabs appearance="primary" label="Send" items={modes} selectedKey={mode} onSelect={setMode} /> }]} value={value} onChange={setValue} />
-<SurfaceCard kind="list" label="Cash" headers={[{ kind: "switch", label: "Period", items: periods, selectedKey: period, onSelect: setPeriod }]} items={rows} empty={empty} />
+<SurfaceCard kind="table" label="Cash" columns={columns} headers={[{ kind: "switch", label: "Period", items: periods, selectedKey: period, onSelect: setPeriod }]} rows={rows} empty={empty} />
 ```
 
 ## `starci-grammar/tabs-depth`

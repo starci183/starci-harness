@@ -174,20 +174,6 @@
         letter-spacing: var(--grammar-tracking-snug);
     }
 
-    /*
-     * A scrollable SurfaceListCard renders its collection AS the vertical scroll region, and the
-     * family layer outranks Common, so clipping it would override Common's overflow-y: auto
-     * (OVERFLOW-3) and stop the list scrolling. Only a list that does not scroll is clipped here.
-     */
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-list] {
-        border-radius: calc(var(--offset-pop-surface-radius) - var(--offset-pop-outline-width));
-    }
-
-    /* A scroll region already clips its rows to that radius through its own overflow. */
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-list]:not([data-grammar-scroll-region]) {
-        overflow: clip;
-    }
-
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-row] {
         background: transparent;
     }

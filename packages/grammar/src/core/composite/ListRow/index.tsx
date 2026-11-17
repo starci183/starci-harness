@@ -69,7 +69,7 @@ const RowAction = ({ action }: { readonly action: ItemAction }) => {
 }
 
 /**
- * The one drawing of a row, inside `SurfaceCard kind="list"` and the `Section` of rows: leading mark, title with its
+ * The one drawing of a row, inside the `Section` of rows (and a Board item card): leading mark, title with its
  * badges, one supporting line, one visible command and a menu, with an optional detail under the copy. It is an `<li>`
  * and is never rendered loose; the collection that holds it is the list.
  */
@@ -226,7 +226,7 @@ const ListRowInner = ({ row, isLoading = false }: ListRowProps) => {
 }
 
 /**
- * The one drawing of a row, inside `SurfaceCard kind="list"` and the `Section` of rows: leading mark, title with its
+ * The one drawing of a row, inside the `Section` of rows (and a Board item card): leading mark, title with its
  * badges, one supporting line, one visible command and a menu, with an optional detail under the copy. It is an `<li>`
  * and is never rendered loose; the collection that holds it is the list.
  */

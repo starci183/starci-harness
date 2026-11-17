@@ -54,7 +54,7 @@ An inset steps down one level each time a box sits inside another, and an inner 
 | --- | --- | --- |
 | 0 frame | the page gutter; the overlay as a floating page | gutter 12, 24 from the medium breakpoint (48rem), 32 from wide (70rem), stepped, never fluid (`--grammar-page-inset`), except on `Page chrome="panes"`, where the header takes 12 at every width so the gutter column starts at the pane content edge; a dialog or drawer 12 on every side (`--grammar-overlay-inset`) |
 | 1 surface | a card (dense or holding a form or prose alike) and a zone of a card; a pane | a card and its zones 16 on every side (`--grammar-inset-card`, `--grammar-card-padding-*`; rows a card divides by lines keep the row step on the block sides and 16 inline); a pane 12 (`--grammar-inset`, `--grammar-pane-inset-*`) |
-| 2 box in a surface | a notice in a card, a `Quote`, a list option, a table cell's block side, a stat cell, the bordered list of a `Section kind="list"` (BOUNDARY-7) (never a card: a surface does not stand in a surface) | 8 (`--grammar-inset-nested`) |
+| 2 box in a surface | a notice in a card, a `Quote`, a list option, a table cell's block side, a stat cell (never a card: a surface does not stand in a surface) | 8 (`--grammar-inset-nested`) |
 | 3 control | a button, field, tab, chip, badge | the control's height decides the block padding; inline sm 8, md 12, lg 24, one step less on a glyph's side (`--grammar-control-padding-*`) |
 
 The named exceptions above a parent's level are the card's 16 (the one use of that step: a card stands in a page
@@ -152,7 +152,7 @@ the spacing of that row: a role prop or nothing, never a gap, margin, padding or
 | Sidebar item and rail | items identity, groups section | item 12 by derived 40; collapsed rail 12 | none | `groups` data |
 | `Section` | head, filter and content one row step (12) apart (G6); title to count identity; the action slot's text at `md` | none: the section adds none | none | `title`, `kind` |
 | `SurfaceCard`, any kind | zones row; label 8 above the surface (4 in a cards `Grid`); label to fact inline; label to head `description` identity; title to meta identity; seams between zones 0 | 16 on every side; a zone of a card the same, so a seam runs full-bleed | none | `kind`, `label`, `description`, `fact`, `footer` |
-| `kind="list"` rows | rows divided by lines (n-1, seam 0) or by gap, never both | row 8 block, the content inset inline (a 40 row for one line) | none | `items` |
+| `kind="list"` rows | rows divided by lines (n-1, seam 0) or by gap, never both | row 12 block, no inline inset: the row content on the title's edge (BOUNDARY-7) | none | `items` |
 | `kind="figures"` | cells touching (0) with a line between cells and rows; label to figure to meta identity | cell 8 | none | `items` |
 | `kind="tile"` | mark to name inline; status and action at the bottom row | 12 | none | `name`, `mark`, `badge`, `action` |
 | Card or tile grid (`Grid kind="cards"`), `week`, `week-summary` | inline (8) on both axes; the title to the grid row (12), because siblings sit closer than their heading | none | none | `kind` |
@@ -321,7 +321,7 @@ the background alike; the app never passes a field variant (the prop types have 
 | BOUNDARY-4 | inline-axis seams | exist only at the width where the columns exist |
 | BOUNDARY-5 | an outline | belongs to a grammar object (media frame, code block, a quote's ground) |
 | BOUNDARY-6 | elevation | a card on the page ground is raised (the card shadow) and wears a 1px `separator` border at the card radius; a surface nested in a card keeps the border and drops the shadow, so there is one depth and no doubled edge |
-| BOUNDARY-7 | a list of rows inside a surface | a nested surface, not a stack of dividers: the rows of a card body, a Drawer or Dialog body, a `PaneSection` or a rail sit in a 1px `separator` border at the card radius, clipped, rows divided by lines (n-1); `Section kind="list"` draws it by itself, and a hand-made list (blocks divided by `Divider`) is refused. Lint: `starci-grammar/surface-in-surface` |
+| BOUNDARY-7 | a list of rows, wherever it stands (the page canvas, a card body, a Drawer or Dialog body, a `PaneSection`, a rail) | one look (0.43.0, owner 2026-11-17): plain rows on the surface, divided by hairlines (n-1), the row content aligned with the section title, with no frame, fill, radius or shadow, by default and with no theme hook; `Section kind="list"` draws it by itself. A list is never a card (`SurfaceCard` has no `list` kind), and a hand-made list (blocks divided by `Divider`) is refused. Lint: `starci-grammar/surface-card-list`, `starci-grammar/surface-in-surface` |
 
 Elevation is the family's (contract: the card's edge).
 

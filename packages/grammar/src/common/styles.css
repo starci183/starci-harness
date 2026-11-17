@@ -44,7 +44,7 @@
         --grammar-page-inset: 0.75rem;
         --grammar-card-gap: 0.75rem;
         /*
-         * Card box padding, one place per axis: SurfaceCard and SurfaceListCard content. A card holds its content one
+         * Card box padding, one place per axis: SurfaceCard content. A card holds its content one
          * step wider than the container inset (16, not 12), so its body clears the card radius and every card kind puts
          * its content on one inline edge. A row or band the card divides by lines keeps the row rhythm (12) on its block
          * sides and the card's 16 inline, so rows stay equal in height and their text lines up with the body.
@@ -1150,8 +1150,8 @@
         --starci-core-strip-cell-inset: var(--grammar-card-padding-block) var(--grammar-card-padding-inline);
         /*
          * 0.36.0 (SURFACE-ELEVATION): a card on the pink well has the card shadow and NO border; on a white surface (pane, aside, drawer, dialog, popover) it has the border and no shadow (below). Automatic from context.
-         * 0.40.0: `--starci-core-card-border` (a `border` value, default `0`) gives a card on the page ground an edge of its own, apart from the list frame and
-         * the table, which `--surface-shadow` also paints: a theme that drops the shadow (`--surface-shadow: none`) keeps its cards bordered and its lists flat.
+         * 0.40.0: `--starci-core-card-border` (a `border` value, default `0`) gives a card on the page ground an edge of its own, apart from
+         * the table, which `--surface-shadow` also paints: a theme that drops the shadow (`--surface-shadow: none`) keeps its cards bordered.
          */
         border: var(--starci-core-card-border, 0);
         box-shadow: var(--surface-shadow);
@@ -1159,17 +1159,16 @@
 
     /*
      * THE CARD LAW (owner, 2026-11-09): every surface on the page ground is a card: surface ground, the card radius, a 1px
-     * `--separator` edge and the card shadow (`--surface-shadow`). SurfaceCard and its form panels draw it above; the standalone
-     * list frame, the standalone DataTable and a framed EmptyNotice take the shadow here (their edge and radius are theirs).
+     * `--separator` edge and the card shadow (`--surface-shadow`). SurfaceCard and its form panels draw it above; a framed
+     * EmptyNotice takes the shadow here (its edge and radius are its own). A list is not a surface: `Section kind="list"` is flat.
      * A surface nested inside a card, a pane, a drawer, a dialog or a popover keeps the edge and loses the shadow: never two
      * depths, never a doubled edge (no wrapper border is added; the nested surface's own is the only one).
      */
-    .starci-core-section-list,
     .starci-core-empty-notice:not([data-grammar-error-layout]):not(.starci-core-surface .starci-core-empty-notice) {
         box-shadow: var(--surface-shadow);
     }
 
-    :is(.starci-core-surface, .starci-core-pane[data-grammar-pane-surface="true"], .starci-core-pane[data-grammar-pane-content="chat"], .starci-core-drawer, .starci-core-dialog-container, .starci-core-popover, .starci-core-message-bubble-body) :is(.starci-core-surface, .starci-core-section-list, .starci-core-data-table[data-grammar-table-surface="card"], .starci-core-empty-notice) {
+    :is(.starci-core-surface, .starci-core-pane[data-grammar-pane-surface="true"], .starci-core-pane[data-grammar-pane-content="chat"], .starci-core-drawer, .starci-core-dialog-container, .starci-core-popover, .starci-core-message-bubble-body) :is(.starci-core-surface, .starci-core-data-table[data-grammar-table-surface="card"], .starci-core-empty-notice) {
         box-shadow: none;
     }
 
@@ -1177,11 +1176,6 @@
     :is(.starci-core-surface, .starci-core-pane[data-grammar-pane-surface="true"], .starci-core-pane[data-grammar-pane-content="chat"], .starci-core-drawer, .starci-core-dialog-container, .starci-core-popover, .starci-core-message-bubble-body) :is(.starci-core-surface, .starci-core-data-table[data-grammar-table-surface="card"]),
     :is(.starci-core-pane[data-grammar-pane-surface="true"], .starci-core-drawer, .starci-core-dialog-container, .starci-core-popover) .starci-core-empty-notice:not([data-grammar-error-layout]) {
         border: 1px solid var(--separator);
-    }
-
-    /* A list frame in a surface: the same 1px separator edge, unless the theme draws lists flat (`--starci-core-list-frame-border`, below). */
-    :is(.starci-core-surface, .starci-core-pane[data-grammar-pane-surface="true"], .starci-core-pane[data-grammar-pane-content="chat"], .starci-core-drawer, .starci-core-dialog-container, .starci-core-popover, .starci-core-message-bubble-body) .starci-core-section-list {
-        border: var(--starci-core-list-frame-border, var(--grammar-separator-edge));
     }
 
     .starci-core-surface-content {
@@ -1213,14 +1207,12 @@
      * (`--grammar-row-gap`). Controls included: a row GROWS around a tall control (min-block-size, never a fixed block-size in a row slot). A single-row card has p-4 above and below.
      */
     [data-grammar-surface-content]:not([data-grammar-surface-headed]) .starci-core-owned-collection > .starci-core-static-row:first-child,
-    .starci-core-section-list > .starci-core-owned-collection > .starci-core-static-row:first-child,
     [data-grammar-surface-content]:not([data-grammar-surface-headed]) .starci-core-select-rows > .starci-core-select-item:first-child > :is(.starci-core-select-row, .starci-core-select-control),
     .starci-core-surface[data-grammar-surface-kind="details"] [data-grammar-surface-content]:not([data-grammar-surface-headed]) .starci-core-description-pair:first-child {
         padding-block-start: var(--grammar-card-padding-block);
     }
 
     [data-grammar-surface-content]:not([data-grammar-surface-footed]) .starci-core-owned-collection > .starci-core-static-row:last-child,
-    .starci-core-section-list > .starci-core-owned-collection > .starci-core-static-row:last-child,
     [data-grammar-surface-content]:not([data-grammar-surface-footed]) .starci-core-select-rows > .starci-core-select-item:last-child > :is(.starci-core-select-row, .starci-core-select-control),
     .starci-core-surface[data-grammar-surface-kind="details"] [data-grammar-surface-content]:not([data-grammar-surface-footed]) .starci-core-description-pair:last-child {
         padding-block-end: var(--grammar-card-padding-block);
@@ -1315,7 +1307,7 @@
         justify-content: center;
     }
 
-    /* A table card (0.37.8) is a list card: the same flush face (shadow on the well, a border on a white surface, set above), white, its zones divided by the zone seam, the summary at the start and the pages at the end. */
+    /* A table card (0.37.8) is a flush card: the same face (shadow on the well, a border on a white surface, set above), white, its zones divided by the zone seam, the summary at the start and the pages at the end. */
     .starci-core-surface[data-grammar-surface-kind="table"] .starci-core-surface-zone[data-grammar-zone="paging"] {
         display: block;
     }
@@ -1735,8 +1727,8 @@
      * It is an INSET SHADOW, not a border and not a padded rule, because the rows of a verdict
      * collection are usually the consumer's own children: a border would move their content two
      * pixels and a padding would fight the inset they already own, while a shadow paints inside the
-     * box that is already there. The row is addressed by `data-verdict`, which a list row
-     * of `SurfaceCard kind="list"` emits from its `verdict` field.
+     * box that is already there. The row is addressed by `data-verdict`, which a `ListRow` emits from
+     * its `verdict` field.
      *
      * The offset is physical because `box-shadow` has no logical form; under `dir="rtl"` the edge
      * stays on the left. No shipped object mirrors yet, so this is consistent rather than a new gap.
@@ -2029,31 +2021,17 @@
     }
 
     /*
-     * THE SURFACE-IN-SURFACE LAW (owner, 2026-11-09). Rows divided by lines that stand inside a surface without being its own
-     * full-bleed body (a `Section kind="list"` in a card body, a drawer or dialog, a pane band, a rail or aside) are a nested
-     * surface: a 1px separator edge, the card radius, clipped, so every row seam stays inside it and none runs past the
-     * container's edge. The rows keep the row rhythm on their block sides and the container inset (12) inline. It is automatic:
-     * a list that IS the card (`SurfaceCard kind="list"`) touches the card edge instead. Lint `surface-in-surface` refuses
-     * the hand-made form (blocks divided by `Divider`).
-     *
-     * THE SINGLE-CHILD-CARD LAW (owner, 2026-11-09) extends it to the page: a lone list on the page ground IS the surface, the same
-     * one frame on the surface ground, titled by its Section head with one `caption` under it, never wrapped in a SurfaceCard (lint
-     * `single-child-card`). So every Section list draws the frame, wherever it stands.
-     */
-    /*
-     * The frame is themable (0.41.0): `--starci-core-list-frame` (its fill, default the surface), `--starci-core-list-frame-border` (its edge: default 0 on the
-     * page ground, the 1px separator inside a surface, below) and `--starci-core-list-radius` (default the card radius). A white theme sets them to
-     * `transparent`, `0` and `0` and the list stands flat on the surface, its rows divided by their hairlines. `--starci-core-list-inset` is the rows' inline
-     * inset (default the container inset, 12): a flat list sets it to 0 so the row content starts on the section title's edge; a framed list keeps it, the
-     * frame's edge being the one that lines up with the title.
+     * ONE LOOK FOR A LIST (0.43.0, owner 2026-11-17): `Section kind="list"` is plain rows on whatever it stands on (the page canvas, a card
+     * body, a drawer or dialog, a pane band, a rail), divided by their hairlines, with no frame, fill, radius or shadow. The rows keep the
+     * row rhythm on their block sides and no inline inset, so the row content starts on the section title's edge. A list is never a card:
+     * cards are for real objects (lint `surface-card-list`), and a hand-made row list (blocks divided by `Divider`) is refused (lint
+     * `surface-in-surface`).
      */
     .starci-core-section-list {
-        --starci-core-row-inset: var(--grammar-row-gap) var(--starci-core-list-inset, var(--grammar-inset));
-        border: var(--starci-core-list-frame-border, 0);
-        border-radius: var(--starci-core-list-radius, var(--starci-core-surface-radius));
-        background: var(--starci-core-list-frame, var(--surface));
-        color: var(--surface-foreground);
-        overflow: clip;
+        /* The rows lay out by the list's own width (leading | copy | actions from 28rem, key-value columns), as they did in a card. */
+        container: starci-core-surface / inline-size;
+        --starci-core-row-inset: var(--grammar-row-gap) 0;
+        min-width: 0;
     }
 
     /*
@@ -4477,7 +4455,18 @@
     }
     /* Proximity: the column spaces its head and its cards by 12, so the cards, peers inside it, stand 8 apart (12 before 0.27).
        The columns stand 12 apart too: the column's tinted ground is its edge, so it groups its content by that. */
-    .starci-core-board-cards { display: flex; min-width: 0; flex-direction: column; gap: var(--grammar-inline-gap); }
+    .starci-core-board-cards { display: flex; min-width: 0; flex-direction: column; gap: var(--grammar-inline-gap); margin: 0; padding: 0; list-style: none; container: starci-core-surface / inline-size; }
+    /* An item is a real object, so it is a card: the card face (surface ground, card radius, card edge and shadow), its one row at the card padding. */
+    .starci-core-board-cards > .starci-core-list-row {
+        --starci-core-row-inset: var(--grammar-card-padding-block) var(--grammar-card-padding-inline);
+        border: var(--starci-core-card-border, 0);
+        border-radius: var(--starci-core-surface-radius);
+        background: var(--surface);
+        color: var(--surface-foreground);
+        box-shadow: var(--surface-shadow);
+        overflow: clip;
+    }
+    .starci-core-board-cards > .starci-core-list-row + .starci-core-list-row { border-top: var(--starci-core-card-border, 0); }
     .starci-core-board-empty { padding: var(--grammar-inline-gap); color: var(--muted); }
 
     /* The column a dragged card would land in. */
@@ -6690,7 +6679,7 @@
 
 
 @layer starci-grammar-common {
-    /* KEY-VALUE ROWS (0.37.5): `SurfaceCard kind="list" layout="keyValue"`. The key (title) is muted, the value is normal text at the end; a narrow card wraps the value under the key. */
+    /* KEY-VALUE ROWS (0.37.5): `Section kind="list" layout="keyValue"`. The key (title) is muted, the value is normal text at the end; a narrow card wraps the value under the key. */
     .starci-core-list-row-value {
         min-width: 0;
         flex: 1 1 auto;
@@ -6719,7 +6708,7 @@
     }
 
     /*
-     * CARD SUGGESTIONS (0.37.31, law DNA-COMMON-CARD-SUGGESTIONS): `kind="list" layout="suggestions"`, the replies a message card offers. A row is its plain text
+     * CARD SUGGESTIONS (0.37.31, law DNA-COMMON-CARD-SUGGESTIONS): `Section kind="list" layout="suggestions"`, the replies a message card offers. A row is its plain text
      * (14, regular, wrapping at the reading edge, never truncated) and the trailing chevron; the whole row is the one button (`onPress` sends that text).
      */
     [data-grammar-list-layout="suggestions"] .starci-core-list-row-name {

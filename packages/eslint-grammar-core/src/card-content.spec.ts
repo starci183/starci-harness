@@ -22,7 +22,7 @@ test("CARD-ONE-CONTENT: a card holds one content", () => {
   slotTester().run("card-one-content", cardOneContent, {
     valid: [
       { filename: BLOCK, code: code("<SurfaceCard label=\"Orders\"><DataTable label=\"Orders\" columns={c} rows={r} renderCell={f} emptyContent=\"-\" /></SurfaceCard>") },
-      { filename: BLOCK, code: code("<SurfaceCard kind=\"list\" label=\"Orders\" items={i} empty=\"-\" headers={[{ kind: \"search\" }]} />") },
+      { filename: BLOCK, code: code("<SurfaceCard kind=\"table\" label=\"Orders\" columns={c} rows={r} empty=\"-\" headers={[{ kind: \"search\" }]} />") },
       { filename: BLOCK, code: code("<SurfaceCard kind=\"figures\" label=\"Totals\" items={i} />") },
       { filename: BLOCK, code: code("<SurfaceCard label=\"Profile\"><Stack gap=\"row\"><DescriptionList items={i} /></Stack></SurfaceCard>") },
       { filename: SCRIPT, code: code("<SurfaceCard label=\"x\"><ListBox label=\"a\" /><DescriptionList items={i} /></SurfaceCard>") },
@@ -30,7 +30,7 @@ test("CARD-ONE-CONTENT: a card holds one content", () => {
     invalid: [
       { filename: BLOCK, code: code("<SurfaceCard label=\"Order\"><ListBox label=\"Lines\" /><DescriptionList items={i} /></SurfaceCard>"), errors: [{ messageId: "many" }] },
       { filename: BLOCK, code: code("<SurfaceCard label=\"Order\"><Stack gap=\"row\"><DataTable label=\"a\" /><Section kind=\"list\" title=\"b\" items={i} empty=\"-\" /></Stack></SurfaceCard>"), errors: [{ messageId: "many" }] },
-      { filename: BLOCK, code: code("<SurfaceCard kind=\"list\" label=\"Orders\" items={i} empty=\"-\" headers={[{ kind: \"figures\", items: f }]} />"), errors: [{ messageId: "ribbon" }] },
+      { filename: BLOCK, code: code("<SurfaceCard kind=\"table\" label=\"Orders\" columns={c} rows={r} empty=\"-\" headers={[{ kind: \"figures\", items: f }]} />"), errors: [{ messageId: "ribbon" }] },
     ],
   })
 })

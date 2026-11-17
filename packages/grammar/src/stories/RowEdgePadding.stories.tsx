@@ -7,7 +7,8 @@ import { noop } from './fixtures.js';
 /**
  * ROW-EDGE-PADDING (0.37.25, owner): a side of a row that touches the card's edge is p-4 (`--grammar-card-padding-block`, 16): the left and right, the FIRST row's top and the LAST row's bottom. A side that
  * touches a separator (between rows, under a header zone's divider) is p-3 (`--grammar-row-gap`, 12). Controls included: a row grows around a tall control (the Tabs pill), it never touches a
- * separator. Select, list, details and table rows; a single-row card has p-4 above and below.
+ * separator. Select, details and table rows; a single-row card has p-4 above and below. A list is no card (0.43.0): its rows are flat, p-3 on
+ * every block side and no inline inset, so the row content starts on the section title's edge.
  */
 const meta: Meta = { title: 'Surfaces/Row edge padding (0.37.25)', parameters: { grammar: { bleed: false } } };
 export default meta;
@@ -48,9 +49,9 @@ const Everything = () => {
           { id: 'd', title: 'Label', control: <G.Badge tone="success">Running</G.Badge> },
         ]}
       />
-      <G.SurfaceCard
+      <G.Section
         kind="list"
-        label="List rows"
+        title="List rows"
         items={[
           { id: 'l1', title: 'Platform', control: <G.Tabs appearance="primary" label="Mode" selectedKey={mode} onSelect={setMode} items={MODES} /> },
           { id: 'l2', title: 'On', control: <G.Switch label="On" size="md" isLabelHidden isSelected={on} onSelectedChange={setOn} /> },
@@ -71,13 +72,14 @@ const Everything = () => {
 };
 
 export const RowEdgePadding: Story = {
-  name: 'Rows: p-4 on the card edge, p-3 on a separator (select, list, table)',
+  name: 'Rows: p-4 on the card edge, p-3 on a separator (select, table); a flat list p-3',
   render: () => <Everything />,
   play: async ({ canvasElement }) => {
     await waitFor(() => {
       const root = canvasElement.querySelector<HTMLElement>('[data-row-clearance]')!;
       const cards = Array.from(root.querySelectorAll<HTMLElement>('[data-component="SurfaceCard"]'));
-      const [select, list, table] = cards as [HTMLElement, HTMLElement, HTMLElement];
+      const [select, table] = cards as [HTMLElement, HTMLElement];
+      const list = root.querySelector<HTMLElement>('[data-component="Section"]')!;
       // Select rows: the row's label box and its control slot both keep the padding.
       const items = Array.from(select.querySelectorAll<HTMLElement>('.starci-core-select-item'));
       assertRows(items.map((item) => item.querySelector('.starci-core-select-row')!), INSET, INSET, GAP);
@@ -88,17 +90,17 @@ export const RowEdgePadding: Story = {
       // A tall control (the Tabs pill) never touches the separators: the row grew around it.
       const pill = items[0]!.querySelector('.starci-core-tabs-frame')!.getBoundingClientRect();
       expect(items[0]!.getBoundingClientRect().height).toBeGreaterThanOrEqual(pill.height + INSET + GAP - 0.5);
-      // List rows.
-      assertRows(Array.from(list.querySelectorAll('.starci-core-list-row')), INSET, INSET, GAP);
+      // List rows: flat, p-3 on every block side.
+      assertRows(Array.from(list.querySelectorAll('.starci-core-list-row')), GAP, GAP, GAP);
       // Table body rows: p-3 between, p-4 under the last.
       const cells = Array.from(table.querySelectorAll('.starci-core-data-table-body .starci-core-data-table-row')).map((row) => row.querySelector('.starci-core-data-table-cell')!);
       assertRows(cells, GAP, INSET, GAP);
-      // The left and right sides touch the card's edges: p-4 for the select row and its control, the list row, the first and last table column.
+      // The left and right sides touch the card's edges: p-4 for the select row and its control and the first and last table column; a flat list row has none.
       const side = (element: Element, edge: 'Left' | 'Right'): number => Number.parseFloat(getComputedStyle(element)[`padding${edge}`]);
       expect(side(items[0]!.querySelector('.starci-core-select-row')!, 'Left')).toBe(INSET);
       expect(side(items[0]!.querySelector('.starci-core-select-control')!, 'Right')).toBe(INSET);
       const listRow = list.querySelector('.starci-core-list-row')!;
-      expect([side(listRow, 'Left'), side(listRow, 'Right')]).toEqual([INSET, INSET]);
+      expect([side(listRow, 'Left'), side(listRow, 'Right')]).toEqual([0, 0]);
       for (const row of Array.from(table.querySelectorAll('tr'))) expect([side(row.firstElementChild!, 'Left'), side(row.lastElementChild!, 'Right')]).toEqual([INSET, INSET]);
     });
   },
@@ -106,14 +108,15 @@ export const RowEdgePadding: Story = {
 
 const FIRST_SINGLE = [{ id: 's', title: 'A single row' }];
 export const SingleRowAndHeaded: Story = {
-  name: 'A single-row card is p-4 above and below; a header zone makes the first row p-3',
+  name: 'A single flat list row is p-3; a header zone makes the first card row p-3',
   render: () => (
     <div data-row-single style={{ display: 'flex', flexDirection: 'column', gap: 24, width: 'min(100%, 720px)' }}>
-      <G.SurfaceCard kind="list" label="One row" items={FIRST_SINGLE} empty={<G.EmptyNotice message="Empty" />} />
+      <G.Section kind="list" title="One row" items={FIRST_SINGLE} empty={<G.EmptyNotice message="Empty" />} />
       <G.SurfaceCard
-        kind="list"
+        kind="table"
         label="With a header zone"
-        items={[{ id: 'a', title: 'Row A' }, { id: 'b', title: 'Row B' }]}
+        columns={[{ id: 'name', label: 'Name' }]}
+        rows={[{ id: 'a', cells: { name: 'Row A' } }, { id: 'b', cells: { name: 'Row B' } }]}
         headers={[{ kind: 'search', label: 'Search', value: '', onChange: noop, placeholder: 'Search', clearLabel: 'Clear' }]}
         empty={<G.EmptyNotice message="Empty" />}
       />
@@ -122,11 +125,11 @@ export const SingleRowAndHeaded: Story = {
   ),
   play: async ({ canvasElement }) => {
     await waitFor(() => {
-      const [single, headed, details] = Array.from(canvasElement.querySelectorAll<HTMLElement>('[data-component="SurfaceCard"]')) as [HTMLElement, HTMLElement, HTMLElement];
-      const only = single.querySelector('.starci-core-list-row')!;
-      expect(pad(only, 'Top')).toBe(INSET);
-      expect(pad(only, 'Bottom')).toBe(INSET);
-      const rows = Array.from(headed.querySelectorAll('.starci-core-list-row'));
+      const [headed, details] = Array.from(canvasElement.querySelectorAll<HTMLElement>('[data-component="SurfaceCard"]')) as [HTMLElement, HTMLElement];
+      const only = canvasElement.querySelector('[data-component="Section"] .starci-core-list-row')!;
+      expect(pad(only, 'Top')).toBe(GAP);
+      expect(pad(only, 'Bottom')).toBe(GAP);
+      const rows = Array.from(headed.querySelectorAll('.starci-core-data-table-body .starci-core-data-table-row')).map((row) => row.querySelector('.starci-core-data-table-cell')!);
       assertRows(rows, GAP, INSET, GAP);
       // The header zone is the card's first row: p-4 to the card's top, p-3 to its divider.
       const zone = headed.querySelector('.starci-core-surface-zone')!;
@@ -158,9 +161,9 @@ const CentredRows = () => {
           { id: 'plain', title: 'Read customer messages', subtitle: 'No control: keep top alignment' },
         ]}
       />
-      <G.SurfaceCard
+      <G.Section
         kind="list"
-        label="List rows"
+        title="List rows"
         items={[
           { id: 'l1', title: 'Message customers over Chat', description: 'Chat', control: <G.Tabs appearance="primary" label="Mode" selectedKey={send} onSelect={setSend} items={PERMISSION_MODES} /> },
           { id: 'l2', title: 'Notify team', control: <G.Switch label="Notify team" size="md" isLabelHidden isSelected={on} onSelectedChange={setOn} /> },
@@ -180,7 +183,8 @@ export const RowControlCentre: Story = {
   play: async ({ canvasElement }) => {
     await waitFor(() => {
       const root = canvasElement.querySelector<HTMLElement>('[data-row-centre]')!;
-      const [select, list] = Array.from(root.querySelectorAll<HTMLElement>('[data-component="SurfaceCard"]')) as [HTMLElement, HTMLElement];
+      const select = root.querySelector<HTMLElement>('[data-component="SurfaceCard"]')!;
+      const list = root.querySelector<HTMLElement>('[data-component="Section"]')!;
       const items = Array.from(select.querySelectorAll<HTMLElement>('.starci-core-select-item'));
       for (const item of items.slice(0, 3)) {
         const group = item.querySelector('.starci-core-choice-content')!;

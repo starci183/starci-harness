@@ -22,14 +22,24 @@ rules:
         assert: |-
           The child's gap role is at least one step below its parent's (identity 4 < inline 8 < row 12 < section 24 <
           region 32). A field stack (fields 24 apart) inside a Form or a Drawer body is the Field rule's own rhythm.
+  - id: LIST-ONE-LOOK
+    title: A list is one thing, flat rows on the surface, never a card
+    governs: Every list of rows, on the page canvas, in a card body, a drawer, a dialog, a pane band or a rail (owner, 2026-11-17).
+    cases:
+      - id: case-1
+        when: Rows of peers are listed (a worklist, a collection, the facts of a record as key-value rows, the replies a message card offers)
+        assert: |-
+          They are `Section kind="list"` of `ListRow`s: plain rows on the surface, divided by hairlines, the rows aligned with the section
+          title, with no frame, fill, radius or shadow, by default and with no theme hook. A list is never a card: `SurfaceCard` has no
+          `list` kind (removed in the Grammar family 0.43.0) and `SurfaceCard kind="list"` is refused. Cards stay for real objects.
   - id: SURFACE-IN-SURFACE
-    title: A list of rows inside a surface is a nested surface
+    title: A list of rows inside a surface is the Grammar list
     governs: Row lists placed inside a card body, a drawer, a dialog or a pane band.
     cases:
       - id: case-1
-        when: Rows divided by lines stand inside a surface without being that surface's own full-bleed body
+        when: Rows divided by lines stand inside a surface
         assert: |-
-          The Grammar list draws them in a nested surface: a 1px separator border, the card radius, clipped.
+          They are a `Section kind="list"`, drawn flat as everywhere else (LIST-ONE-LOOK).
           A hand-made row list (blocks divided by Divider) is the bare form and is refused.
   - id: FIELD-LABEL
     title: A control is labelled by its own label prop
@@ -90,7 +100,7 @@ rules:
       - id: case-2
         when: A message card offers replies to send
         assert: |-
-          They are one bordered list, `SurfaceCard kind="list" layout="suggestions"`, a plain-text row per reply whose whole
+          They are one flat list, `Section kind="list" layout="suggestions"`, a plain-text row per reply whose whole
           row sends it, with a trailing chevron; the suggestion pills by the composer stay `Button size="sm"`.
       - id: case-3
         when: A chat is drawn on any page (the chat page, an inbox thread between a list and an aside, an agent's chat tab, an aside or a drawer)
@@ -170,14 +180,14 @@ rules:
           It is HeroUI v3's link: the primary colour, the underline on hover only, the anchor icon at the end. Its type size and leading are
           inherited (14 in a body, 12 in meta or caption text). A size prop, a size class and an underline or decoration class are refused.
   - id: ROWS-IN-CARD
-    title: Rows of data are always a card
-    governs: A list of rows or key-value rows on the well or on a white surface.
+    title: Key-value and disclosure rows stand in a card or a section
+    governs: Key-value and disclosure rows on the well or on a white surface (a plain list of rows is LIST-ONE-LOOK).
     cases:
       - id: case-1
         when: A DescriptionList or DisclosureList is drawn
         assert: |-
-          It stands in a Section or a SurfaceCard, so it is a card: a shadow and no border on the pink well, a 1px border and no shadow on a white
-          surface (aside, pane, drawer); Grammar draws that edge itself. A row primitive with no card around it is refused. ListBox is a navigation list and is not read.
+          It stands in a Section or a SurfaceCard; in a card it takes the card's edge, a shadow and no border on the pink well, a 1px border and no
+          shadow on a white surface (aside, pane, drawer), which Grammar draws itself. A row primitive with neither around it is refused. ListBox is a navigation list and is not read.
   - id: CARD-NO-DESCRIPTION
     title: A card has no description
     governs: The head of a SurfaceCard and the line above it.
@@ -186,7 +196,7 @@ rules:
         when: A card is drawn with a label
         assert: |-
           The head is the label, a count chip, one fact and one end action; SurfaceCard has no description or subtitle prop. A muted Text written directly above a
-          SurfaceCard as its description is refused: the line is a row subtitle (select or list) or, when it explains the card's data, the card note.
+          SurfaceCard as its description is refused: the line is a row subtitle (a select card or a Section list) or, when it explains the card's data, the card note.
   - id: LABEL-SUBLABEL-HIERARCHY
     title: One Label per section; nested groups use a Sublabel
     governs: The Label of a Section or SurfaceCard and the Sublabel of the groups inside it.
@@ -244,15 +254,15 @@ rules:
           label, a search field, a button start icon, a link arrow, meta) is a plain outline icon at text size with no tile. A status (done, running, failed, waiting,
           skipped) is a tone-coloured outline icon with no tile: outline check-circle in success, x-circle in danger, a spinning arrow for running.
   - id: SINGLE-CHILD-CARD
-    title: A lone DataTable or chart is the surface; a list card is always valid
-    governs: A SurfaceCard whose only content is a DataTable or a chart (a list or key-value card is valid, 0.37.8).
+    title: A lone DataTable, chart or list is the surface, never a card
+    governs: A SurfaceCard whose only content is a DataTable, a chart or a Section kind="list" (a key-value or choice card is valid, 0.37.8).
     cases:
       - id: case-1
-        when: A card has no zones (headers, footers, head actions) and holds one DataTable or chart (BarChart, ProportionBar, BubbleMap, FlowGraph, MermaidDiagram)
+        when: A card has no zones (headers, footers, head actions) and holds one DataTable, chart (BarChart, ProportionBar, BubbleMap, FlowGraph, MermaidDiagram) or Section kind="list"
         assert: |-
           A standalone DataTable and chart is ONE frame (border, card radius), so the card is a second frame. The title sits above as a Section head and one caption
-          sits below (Section caption, muted sm). A card of list or key-value rows (SurfaceCard kind="list", "table", "select", ListBox, DisclosureList, Section kind="list",
-          DescriptionList) is valid alone or not (0.37.8). A card groups two or more different parts (figures + list + actions), or carries zones (tabs, search, head actions).
+          sits below (Section caption, muted sm); a list is a flat Section kind="list" that titles itself (LIST-ONE-LOOK). A card of key-value or choice rows
+          (SurfaceCard kind="table", "select", "details", ListBox, DisclosureList, DescriptionList) is valid alone or not (0.37.8). A card groups two or more different parts (figures + list + actions), or carries zones (tabs, search, head actions).
   - id: NO-RAW-SCROLL
     title: Grammar never shows scrollbars
     governs: Scroll areas an app draws.

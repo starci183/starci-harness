@@ -118,7 +118,7 @@ roles:
     vendorParity: [card, accordion]
     slots: ["label (a card that heads a section: outside the material)", "name with mark or typed poster (tile identity inside)", "tile poster: Image-owned data or localized absence, one preserved media frame", "tile facts: plain text; badge or up to three typed badges; primary ItemAction and typed overflow ItemMenu", fact, labelEnd, content, footer, "wholeAction: excludes inner actions and menu", "Figure: optional whole-cell href with Link.onFollow and isDisabled, neutral values", "ItemAction: Button.isPending preserves action-owned busy state", "artwork (soft and ink: decorative art carrying its assetSlot)", "motif (ink only)"]
     variants:
-      kind: { values: [body, figures, list, accordion, bands, tile], chosenBy: app, compiler: a discriminated union; a list needs items and an empty state, bands end in at most one collection }
+      kind: { values: [body, figures, details, accordion, select, table, tile], chosenBy: app, compiler: a discriminated union; a list is no card kind (Section kind=list, removed 0.43.0) }
       labelPlacement: { values: [outside, inside], chosenBy: "the card's kind, never an app or a family: outside for a card that heads a section, inside for a tile repeated in a grid" }
       measure: { values: [content, form, formCompact], chosenBy: app }
       highlight: { values: [false, true], chosenBy: app, limit: one per view }
@@ -130,8 +130,8 @@ roles:
     sizes: none
     states: [neutral, pending, PresentationState]
     grammarMayChange: [surface paint, edge (border/shadow by depth), radius via surfaceRadius, the label's paint, the ink ground and its inks]
-    dna: [DNA-COMMON-LIST-ON-WHITE-BORDERED, DNA-COMMON-ROW-EDGE-PADDING, DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE, DNA-COMMON-CARD-LABEL-ABOVE, DNA-COMMON-CARD-LABEL-HEADING, DNA-COMMON-ONE-HIGHLIGHT, DNA-COMMON-DIVIDER-FULL-BLEED, DNA-COMMON-SOFT-GROUND, DNA-COMMON-TREATMENT-TEXT-CONTRAST, DNA-CORE-EDGE-TOP, DNA-CORE-CARD-LABEL-OUTSIDE, DNA-OFFSET-POP-STICKER, DNA-OFFSET-POP-CARD-LABEL-OUTSIDE, DNA-COMMON-TILE-BYLINE, DNA-COMMON-TILE-FIGURE-START, DNA-COMMON-TILE-FIGURE-BEFORE-ACTION]
-    lint: [starci-grammar/no-raised-surface-in-surface]
+    dna: [DNA-COMMON-LIST-ONE-LOOK, DNA-COMMON-ROW-EDGE-PADDING, DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE, DNA-COMMON-CARD-LABEL-ABOVE, DNA-COMMON-CARD-LABEL-HEADING, DNA-COMMON-ONE-HIGHLIGHT, DNA-COMMON-DIVIDER-FULL-BLEED, DNA-COMMON-SOFT-GROUND, DNA-COMMON-TREATMENT-TEXT-CONTRAST, DNA-CORE-EDGE-TOP, DNA-CORE-CARD-LABEL-OUTSIDE, DNA-OFFSET-POP-STICKER, DNA-OFFSET-POP-CARD-LABEL-OUTSIDE, DNA-COMMON-TILE-BYLINE, DNA-COMMON-TILE-FIGURE-START, DNA-COMMON-TILE-FIGURE-BEFORE-ACTION]
+    lint: [starci-grammar/no-raised-surface-in-surface, starci-grammar/surface-card-list]
 
   - id: button
     ui: ui/components/button.md
@@ -740,14 +740,14 @@ mustKeep:
       law: A surface never stands inside another surface (a card in a card, in Pane surface, in a Dialog, Drawer or Popover); the grammar has one depth, raised.
       measure: { kind: count, select: '[data-grammar-surface-card] [data-grammar-surface-card]', op: "=", value: 0 }
       owner: ui/components/card.md; src/core/surfaceContext.tsx
-    - id: DNA-COMMON-LIST-ON-WHITE-BORDERED
+    - id: DNA-COMMON-LIST-ONE-LOOK
       role: card
-      law: "A list (`Section kind=list`, `SurfaceCard kind=list`) on a white surface (a `Pane surface` aside, a drawer, a dialog, a popover) is a bordered rounded frame: a 1px separator border, the card radius and no shadow, rows divided full width inside it; it is never flat (SURFACE-ELEVATION, owner 2026-11-10, reverting the 0.37.14 flat aside list)."
+      law: "A list is one thing: `Section kind=list` of ListRows, plain rows on whatever it stands on (the page canvas, a card body, a pane, a drawer), divided by hairlines, the row content aligned with the section title, with no frame, fill, radius or shadow, by default and with no theme hook. A list is never a card: SurfaceCard has no list kind."
       measure:
         kind: style
-        select: '.starci-core-pane[data-grammar-pane-surface="true"] .starci-core-section-list'
-        checks: [{ metric: border-width, op: "=", value: 1px }, { metric: border-color, op: "=", value: { token: --separator } }, { metric: box-shadow, op: "=", value: none }]
-      owner: ui/components/card.md
+        select: '.starci-core-section-list'
+        checks: [{ metric: border-width, op: "=", value: 0px }, { metric: box-shadow, op: "=", value: none }, { metric: padding-inline-start, op: "=", value: 0px }]
+      owner: ui/presentation.md
     - id: DNA-COMMON-ROW-EDGE-PADDING
       role: card
       law: "A side of a row that touches the card's edge is p-4 (--grammar-card-padding-block, 16): the first row's top (no header zone above it) and the last row's bottom (no footer zone below it), a single-row card both. A side that touches a separator (between rows, under a zone divider) is p-3 (--grammar-row-gap, 12). Controls included: a row grows around a tall control; no row slot has a fixed block-size (ROW-EDGE-PADDING, owner 2026-11-10)."
@@ -1151,7 +1151,7 @@ mustKeep:
       owner: ui/components/list-table.md
     - id: DNA-COMMON-CARD-SUGGESTIONS
       role: list
-      law: "The replies a message card offers are ONE bordered list (SurfaceCard kind list, layout suggestions; surface in surface, SURFACE-ELEVATION): a row per reply, its plain text at 14 regular weight wrapping at the reading edge, never truncated, the whole row the one button that sends it, a trailing chevron that stays at the end of the row at every width (a 390 phone included), vertically centred on the text, the text wrapping beside it; the suggestion pills by a composer stay Button sm (owner-approved drawing chat-surfaces, 0.37.31; the chevron at every width 0.37.35)."
+      law: "The replies a message card offers are ONE flat list (Section kind list, layout suggestions; one look, DNA-COMMON-LIST-ONE-LOOK): a row per reply, its plain text at 14 regular weight wrapping at the reading edge, never truncated, the whole row the one button that sends it, a trailing chevron that stays at the end of the row at every width (a 390 phone included), vertically centred on the text, the text wrapping beside it; the suggestion pills by a composer stay Button sm (owner-approved drawing chat-surfaces, 0.37.31; the chevron at every width 0.37.35)."
       measure: { kind: style, select: '[data-grammar-list-layout="suggestions"] .starci-core-list-row-name', checks: [{ metric: font-weight, op: "=", value: 400 }] }
       owner: ui/components/message-bubble.md
     - id: DNA-COMMON-ROW-ACTION-END

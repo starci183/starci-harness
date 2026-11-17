@@ -16,7 +16,6 @@ import type {
     FooterZone,
     HeaderZone,
     ItemMenu,
-    ListData,
     SelectData,
     TableData,
     TileData,
@@ -29,7 +28,6 @@ import { ErrorView, type ErrorData } from "../../loadingState.js"
 import { LoadingScope, useIsLoading } from "../../regionScope.js"
 import { AccordionRows } from "./AccordionRows.js"
 import { FigureCells, figureItems } from "./FigureCells.js"
-import { ListRows } from "./ListRows.js"
 import { SelectRows } from "./SelectRows.js"
 import { DescriptionList, type DescriptionListItem } from "../../composite/DescriptionList/index.js"
 import { TableRows } from "./TableRows.js"
@@ -54,8 +52,8 @@ import {
 } from "./classNames.js"
 
 export type {
-    AccordionData, AccordionRowData, AvatarData, BadgeData, CardHead, Collection, Figure, FilterFields, FooterZone, HeaderZone, ImageData, ItemAction, ItemLeading,
-    ItemMenu, ListData, ListRowData, SearchFields, SearchZoneFields, SelectZoneField, TableColumnData, TableData, TableGroupData, TableRowData, TileData, TileMark, TilePoster, WholeCardAction,
+    AccordionData, AccordionRowData, AvatarData, BadgeData, CardHead, Figure, FilterFields, FooterZone, HeaderZone, ImageData, ItemAction, ItemLeading,
+    ItemMenu, ListRowData, SearchFields, SearchZoneFields, SelectZoneField, TableColumnData, TableData, TableGroupData, TableRowData, TileData, TileMark, TilePoster, WholeCardAction,
 } from "../../surfaceCardData.js"
 
 /** Every card names itself: a visible `label`, or an `ariaLabel` when the surrounding owner already shows the name. */
@@ -152,7 +150,6 @@ type FiguresCard = Shell & Named & Head & {
     readonly items: readonly Figure[]
 }
 
-type ListCard = Shell & Named & Head & ListData
 /**
  * Facts as term/value rows that touch the card's edge, each row inset by the card padding and divided by a full-width seam (the
  * order of a purchase, a record's summary). The pairs are a real `<dl>` (DescriptionList); a strip of key figures is `figures`.
@@ -179,7 +176,7 @@ type TileCard = Shell & TileData & {
     readonly labelEnd?: undefined
 }
 
-export type SurfaceCardProps = BodyCard | FiguresCard | ListCard | DetailsCard | AccordionCard | TableCard | SelectCard | TileCard
+export type SurfaceCardProps = BodyCard | FiguresCard | DetailsCard | AccordionCard | TableCard | SelectCard | TileCard
 
 /**
  * The orbit motif: three thin concentric rings with five small nodes, one static SVG. It is drawn in the
@@ -212,7 +209,7 @@ const PLACEHOLDER_DISCLOSURES: readonly AccordionRowData[] = [1, 2, 3].map((n) =
 
 /**
  * The one card: a bounded object with its own face (COLLECTION-2). What it holds is its `kind`, a discriminated
- * union the compiler checks in every file: a plain `body` (the default), a strip of `figures`, a `list` of rows, `details` (term/value rows), an
+ * union the compiler checks in every file: a plain `body` (the default), a strip of `figures`, `details` (term/value rows), an
  * `accordion`, a `table` or a `tile`; any kind may carry typed `headers` and `footers` (zones the shell pads and divides).
  *
  * Where the name sits follows the kind: a card that heads a section has a `label`, drawn
@@ -248,7 +245,7 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
     const headers = props.headers ?? []
     const footers = props.footers ?? []
     const isZoned = headers.length > 0 || footers.length > 0
-    // A kind that draws its own faces (list, figures, accordion) touches the card's edge; a zoned card is flush too, its body and zones drawing their own insets.
+    // A kind that draws its own faces (figures, details, accordion, select, table) touches the card's edge; a zoned card is flush too, its body and zones drawing their own insets.
     const isFace = kind !== "body" && kind !== "tile"
     const flush = isFace || isZoned
     const hasNamedHeading = name !== undefined && !isTile && labelled !== undefined
@@ -279,8 +276,6 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
         switch (props.kind) {
             case "figures":
                 return <FigureCells items={figureItems(props.items, isLoading)} isLoading={isLoading} isDisabled={disabled} />
-            case "list":
-                return <ListRows data={props} isLoading={isLoading} ariaLabel={accessibleName} />
             case "select":
                 return <SelectRows data={props} isLoading={isLoading} ariaLabel={accessibleName} />
             case "details":

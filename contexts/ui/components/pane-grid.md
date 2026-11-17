@@ -96,7 +96,7 @@ In a workspace page (`Page layout="workspace"`) the grid and its side panes ALWA
 `Pane content="cards"`, the default for a pane on the canvas) is capped at `--grammar-content-max` (80rem) and centred INSIDE that pane; the pane and its pink ground fill the whole track. A pane that holds a chat thread
 (`PaneSection scroll role="log"`), a `FlowGraph` canvas or an editor is `content="full"`: never capped, full-bleed (a surface pane is full by default; a chat or FlowGraph pane is full unless it says `content="cards"`).
 A pane that IS one chat (head, thread, composer footer) is `content="chat"`: full-bleed, and the whole frame is `--background` wherever it stands, with no `surface` (the chat frame, [message-bubble.md](message-bubble.md) "The chat frame").
-A list or table in the white aside is a bordered list or frame with no shadow, never a floating card; the Section head rules apply there.
+A list in the white aside is a flat `Section kind="list"` (BOUNDARY-7) and a table is flat, never a floating card; the Section head rules apply there.
 
 ## Scroll law (0.36.0)
 The sidebar and the page header band (breadcrumbs, title, tabs, sub-tabs) never scroll away: the band and the trail are sticky. Layout A (report): the pink well scrolls as one block under the band. Layout B (workspace): the page

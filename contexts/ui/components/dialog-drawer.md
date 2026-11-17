@@ -30,7 +30,7 @@ takes `bodyInset="none"` when its body must run edge to edge across the sheet (a
 
 ## Size
 Width by content: a form-sized dialog for one task; a drawer for the panel task. Fields inside stay one column, 24 apart
-(FIELD-3, [field](field.md)); a list of rows in the body is a nested surface (BOUNDARY-7), written as `Section kind="list"`
+(FIELD-3, [field](field.md)); a list of rows in the body is a `Section kind="list"` (BOUNDARY-7)
 (lint `starci-grammar/surface-in-surface`).
 
 ## States

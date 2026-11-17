@@ -61,17 +61,17 @@ export const SectionStates: Story = {
 
 /* ------------------------------------------------------------------ SurfaceCard, every kind */
 
-const listCard = (items: ReadonlyArray<G.ListRowData>, status: { readonly isLoading?: boolean; readonly error?: G.ErrorData } = {}) => (
-    <G.SurfaceCard kind="list" label="Members" items={items} empty={emptyLine} {...status} />
+const listSection = (items: ReadonlyArray<G.ListRowData>, status: { readonly isLoading?: boolean; readonly error?: G.ErrorData } = {}) => (
+    <G.Section kind="list" title="Members" items={items} empty={emptyLine} {...status} />
 )
 
-export const SurfaceCardListStates: Story = {
+export const SectionListStates: Story = {
     render: () => (
         <Matrix maxWidth={560}>
-            <State label="Loading" direction="column">{listCard(placeholderRows, { isLoading: true })}</State>
-            <State label="Content" direction="column">{listCard(rows)}</State>
-            <State label="Error" direction="column">{listCard([], { error: failure })}</State>
-            <State label="Empty" direction="column">{listCard([])}</State>
+            <State label="Loading" direction="column">{listSection(placeholderRows, { isLoading: true })}</State>
+            <State label="Content" direction="column">{listSection(rows)}</State>
+            <State label="Error" direction="column">{listSection([], { error: failure })}</State>
+            <State label="Empty" direction="column">{listSection([])}</State>
         </Matrix>
     ),
 }
@@ -110,11 +110,9 @@ export const SurfaceCardAccordionStates: Story = {
 export const SurfaceCardZonesStates: Story = {
     render: () => {
         const bands = (list: ReadonlyArray<G.ListRowData>): G.SurfaceCardProps => ({
-            kind: "list",
             label: "Team",
             headers: [{ kind: "figures", items: figures }],
-            items: list,
-            empty: emptyLine,
+            children: <G.Section kind="list" ariaLabel="Team members" items={list} empty={emptyLine} />,
         })
         return (
             <Matrix maxWidth={720}>

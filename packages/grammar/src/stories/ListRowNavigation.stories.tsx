@@ -10,9 +10,9 @@ type Story = StoryObj;
 export const WholeRowAndChevron: Story = {
   render: () => (
     <div style={{ width: 420 }}>
-      <G.SurfaceCard
+      <G.Section
         kind="list"
-        label="Connections"
+        title="Connections"
         items={[
           { id: 'a', title: 'Chat', description: 'Receives customer messages', href: '#chat' },
           { id: 'b', title: 'Email', description: 'Receives customer messages', onPress: () => undefined },
@@ -40,9 +40,9 @@ export const WholeRowAndChevron: Story = {
 export const InternalHrefHasNoArrow: Story = {
   render: () => (
     <div style={{ width: 420 }}>
-      <G.SurfaceCard
+      <G.Section
         kind="list"
-        label="Documents"
+        title="Documents"
         items={[{ id: 'a', title: 'Introduction to HTTP', description: 'Part 1', href: '/docs/http' }]}
         empty={<G.EmptyNotice message="Empty" />}
       />

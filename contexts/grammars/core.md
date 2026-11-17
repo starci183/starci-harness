@@ -22,7 +22,7 @@ scoped rules `src/core/styles.css`, root `CoreGrammarRoot` (`src/core/index.ts`)
   the one accent carry the page; status hues appear only for settled facts. Dark is its own palette, not an
   inversion.
 - **One edge.** Every surface on the page ground is a card: white, the surface radius, a 1px `--separator` border and the soft
-  diffuse card shadow (0.32.0; owner 2026-11-09). A surface nested in a card (a list frame, a table, a notice) keeps the border and
+  diffuse card shadow (0.32.0; owner 2026-11-09). A surface nested in a card (a table, a notice) keeps the border and
   drops the shadow, so there is one depth and no doubled edge. Captions and titles stay outside the card.
 - **Radius from one token.** `--radius` is the control radius, so fields and tooltips take it and the Button
   corner (three times it) exceeds half of every height: Buttons are pills, and a Button skeleton is a pill too.

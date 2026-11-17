@@ -19,21 +19,22 @@ export const InCardHeaders: Story = {
   render: () => (
     <div style={{ width: 'min(100%, 720px)' }}>
       <G.SurfaceCard
-        kind="list"
+        kind="table"
         label="Orders"
+        columns={[{ id: 'order', label: 'Order' }]}
         headers={[
+          { kind: 'search', label: 'Search orders', value: '', onChange: () => undefined },
           {
             kind: 'custom',
             children: (
               <G.Cluster gap="row">
                 <G.Select label="Status" isLabelHidden options={OPTIONS} defaultValue="all" />
-                <G.SearchField label="Search orders" isLabelHidden />
                 <G.NumberField label="Quantity" isLabelHidden defaultValue={1} />
               </G.Cluster>
             ),
           },
         ]}
-        items={[{ id: 'a', title: 'DH-1001' }]}
+        rows={[{ id: 'a', cells: { order: 'DH-1001' } }]}
         empty={<G.EmptyNotice message="Empty" />}
       />
     </div>

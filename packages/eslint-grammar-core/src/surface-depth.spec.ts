@@ -22,7 +22,7 @@ test("R340: a card never stands inside another card; a white surface hosts cards
   slotTester().run("no-raised-surface-in-surface", noRaisedSurfaceInSurface, {
     valid: [
       // a card at the top
-      { filename: BLOCK, code: IMPORTS + "export const A = () => <SurfaceCard label=\"Runs\" kind=\"list\" items={[]} empty={null} />" },
+      { filename: BLOCK, code: IMPORTS + "export const A = () => <Section kind=\"list\" title=\"Runs\" items={[]} empty={null} />" },
       // two cards side by side are not nested
       { filename: BLOCK, code: IMPORTS + "export const A = () => <div><SurfaceCard label=\"Run\" /><SurfaceCard label=\"Steps\" /></div>" },
       // a white Pane surface, a dialog, a drawer, an alert dialog and a popover host cards (0.37.5)

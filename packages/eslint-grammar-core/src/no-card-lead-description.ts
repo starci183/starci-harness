@@ -8,7 +8,7 @@ import type { Context, Node } from "./lib/types.ts"
 /**
  * NO CARD LEAD DESCRIPTION (owner, 2026-11-09, CARD-NO-DESCRIPTION). A card head is its label, a count chip, one fact and one end action: it has NO description. The
  * words that explain a card's data go in the card's `note` (a legend, a source, a period); the words that explain a row are that row's own subtitle (`kind="select"`
- * and `kind="list"`). A free-standing muted line placed directly above a card (the title + description + card pattern) is the same description drawn by hand.
+ * and a `Section kind="list"` row). A free-standing muted line placed directly above a card (the title + description + card pattern) is the same description drawn by hand.
  *
  * WHAT IT READS. In product source, a Grammar `Text` with `tone="muted"` that is the sibling written IMMEDIATELY BEFORE a Grammar `SurfaceCard` in the same children list.
  *
@@ -31,7 +31,7 @@ export const noCardLeadDescription: Rule.RuleModule = defineRule({
     docs: { description: "CARD-NO-DESCRIPTION: a card has no lead description; the line goes in a row subtitle or the card `note`." },
     schema: [],
     messages: {
-      lead: "A muted `Text` stands directly above a `SurfaceCard` as its description. A card has no description: put the line in the row subtitle (`kind=\"select\"` or `kind=\"list\"`) or, if it explains the card's data (a legend, a source, a period), in the card `note`.",
+      lead: "A muted `Text` stands directly above a `SurfaceCard` as its description. A card has no description: put the line in the row subtitle (`kind=\"select\"` or a `Section kind=\"list\"` row) or, if it explains the card's data (a legend, a source, a period), in the card `note`.",
     },
   },
   create(context) {

@@ -6,7 +6,7 @@ import type { TableData, TableRowData } from "../../surfaceCardData.js"
 type Row = DataTableRow & Pick<TableRowData, "cells">
 
 /**
- * The table a `kind="table"` card holds: Grammar's own `DataTable` as the `frame` (0.37.8): the card is a list card (white, the edge of its ground, header
+ * The table a `kind="table"` card holds: Grammar's own `DataTable` as the `frame` (0.37.8): the card is a flush card (white, the edge of its ground, header
  * zones and a `paging` footer zone divided by the zone seam), the column labels (12, muted) on the white and 1px full-width row dividers. One implementation: the card
  * passes data, the table draws it.
  */

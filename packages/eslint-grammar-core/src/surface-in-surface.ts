@@ -5,10 +5,9 @@ import { elementNameOf, grammarName, nameOf, renderedChildren, stringProp } from
 import { defineFamilyRules, defineRule } from "./lib/rule-contract.ts"
 import type { Context } from "./lib/types.ts"
 /**
- * The row list law (owner, 2026-11-09, SURFACE-IN-SURFACE): rows divided by lines that stand inside a surface are a
- * nested surface (a 1px separator border, the card radius, clipped). The Grammar draws that itself for a
- * `Section kind="list"` placed in a card body, a drawer, a dialog, a pane band or a rail. The bare form an app can still
- * reach is a hand-made row list, which has no edge, no radius and no clip.
+ * The row list law (owner, 2026-11-09, SURFACE-IN-SURFACE; one look 0.43.0, LIST-ONE-LOOK): rows divided by lines that stand
+ * inside a surface are the Grammar list, `Section kind="list"`, the same flat rows divided by hairlines wherever it stands (a card
+ * body, a drawer, a dialog, a pane band or a rail). The bare form an app can still reach is a hand-made row list.
  *
  * WHAT IT READS. A `Stack` (Grammar), `ul`, `ol` or `div` whose rendered children (looked through fragments,
  * `cond && <x/>` and `.map`) include a Grammar `Divider` between other children, inside a `SurfaceCard`, `Drawer`,
@@ -59,11 +58,11 @@ const enclosingSurface = (context: Context, node: TSESTree.Node): string | null 
 export const surfaceInSurface: Rule.RuleModule = defineRule({
   meta: {
     type: "problem",
-    docs: { description: "SURFACE-IN-SURFACE: a row list divided by Dividers inside a card, drawer, dialog, pane band or rail is a Section kind=list or a SurfaceCard kind=list." },
+    docs: { description: "SURFACE-IN-SURFACE: a row list divided by Dividers inside a card, drawer, dialog, pane band or rail is a Section kind=list." },
     schema: [],
     messages: {
       handMade:
-        "This `{{element}}` is a hand-made row list inside {{host}}: its rows are divided by `Divider` elements, so it has no edge, no card radius and no clip. Use `<Section kind=\"list\">` for rows inside a surface (the Grammar draws them as a nested surface), or a `Section kind=\"list\"` with its own frame when the list stands alone (a card around a lone list is refused by `single-child-card`).",
+        "This `{{element}}` is a hand-made row list inside {{host}}: its rows are divided by `Divider` elements by hand. Use `<Section kind=\"list\">` with `ListRow` rows: the Grammar draws one list wherever it stands, flat rows divided by hairlines and aligned with the title (a card around a lone list is refused by `single-child-card`).",
     },
   },
   create(context) {

@@ -253,9 +253,8 @@ selection mark sits on, the leading glyph size) is the grammar's to declare.
 
 ### List
 
-A list is rows of peers: a `ListBox` when picking is the task, `SurfaceCard kind="list"` when a standalone bounded list
-reports on the page canvas, `Section kind="list"` when an existing surface owns the region or the list searches,
-filters or pages, a data table when columns matter. The chosen owner carries one heading and accessible name.
+A list is rows of peers: a `ListBox` when picking is the task, `Section kind="list"` wherever the rows report (an existing
+surface or the page canvas, bounded or searched, filtered or paged), a data table when columns matter. A list is never a card. The chosen owner carries one heading and accessible name.
 n rows have n-1 seams, separators are full bleed, and rows and captions share
 one content edge. A static row's description is one line, because the row is scanned; an option's description in
 a `ListBox` wraps, because it is read before picking, and a list clamps it only by `descriptionLines`. A table row
@@ -266,8 +265,8 @@ native `Link`, whose `onFollow` reports navigation to its owning region. Without
 The title link and any row command or menu are separate targets, never nested. A row that opens something (`onPress`,
 `onAction`, `href`, `chevron`, or `onRowAction` on a table) is itself the one pressable and its title is plain text, never a
 `Link` (lint `row-title-link`); a table's pressable row takes the pointer cursor and the secondary hover fill, and its row
-commands stay separate presses. A list in a surface is a nested surface ([ui/presentation](../ui/presentation.md#boundary)
-BOUNDARY-7; lint `surface-in-surface`). Loading shows the same rows at rest and
+commands stay separate presses. A list has one look wherever it stands, flat rows divided by hairlines and aligned with the title ([ui/presentation](../ui/presentation.md#boundary)
+BOUNDARY-7; lint `surface-card-list`, `surface-in-surface`). Loading shows the same rows at rest and
 removes the title link.
 
 ### Link
@@ -360,7 +359,7 @@ other party's (incoming, and every `MessageCard`) is the flat surface with its f
 surface outside any chat frame it wears the 1px separator edge). A chat is one frame on any page (`DNA-COMMON-CHAT-FRAME`, 0.37.33):
 `Pane content="chat"` paints its head, thread and composer footer `--background` wherever it stands, with no app tone, and its thread
 is the only scroller (`DNA-COMMON-CHAT-FRAME-SCROLL`). Inline content (a link, a mention, code, a muted line) inherits the
-bubble's foreground so it reads on either face. The replies a card offers are `SurfaceCard kind="list" layout="suggestions"`. The
+bubble's foreground so it reads on either face. The replies a card offers are `Section kind="list" layout="suggestions"`. The
 corner on the author's side tightens to point at the avatar. An app never restyles a face (lint `message-surfaces`).
 
 ### EmptyState
@@ -479,9 +478,9 @@ second row of region tabs, see Tabs.
 
 ### Section
 
-A titled section is a named region whose title is its heading and its landmark name; no free heading exists. `kind="list"` holds rows of the same typed items a list card holds, with a `filter` slot for
-`Tabs kind="filter"`; it is the unpainted list owner within an existing surface and the list owner for search, filters or
-paging on the canvas. Its head, filter and content stand one row step (12) apart, because the page body stands its sections a region step apart and
+A titled section is a named region whose title is its heading and its landmark name; no free heading exists. `kind="list"` holds rows of typed items (`ListRow`), with a `filter` slot for
+`Tabs kind="filter"` and a `layout` (`rows`, `keyValue`, `suggestions`); it is the one list owner, within a surface and on the
+canvas. Its head, filter and content stand one row step (12) apart, because the page body stands its sections a region step apart and
 a container's children stand closer than its siblings, and its page command hugs its label at the end of the head row, its
 text at `md`. A card heads itself with its `label`, so a section around one card is refused.
 

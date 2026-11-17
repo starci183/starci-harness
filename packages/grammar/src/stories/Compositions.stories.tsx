@@ -992,7 +992,7 @@ export const GridMainRailLeading: Story = {
 const weekDays = ['Monday 9', 'Tuesday 10', 'Wednesday 11', 'Thursday 12', 'Friday 13', 'Saturday 14', 'Sunday 15'];
 
 const agendaDays = () => weekDays.map((day, index) => (
-  <G.SurfaceCard key={day} kind="list" label={day}
+  <G.Section key={day} kind="list" title={day}
     items={index % 2 === 0 ? [{ id: day, title: 'Delivery review with the operations team', description: '09:30–10:00', action: { label: 'Open', press: noop } }] : []}
     empty={<G.EmptyNotice message="No scheduled appointments" />} />
 ));

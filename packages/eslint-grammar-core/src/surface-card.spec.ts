@@ -25,15 +25,15 @@ test("R355: a body card holds no hand list, no Divider, no second title", () => 
   slotTester().run("surface-card-kind", surfaceCardKind, {
     valid: [
       { filename: BLOCK, code: IMPORTS + "export const A = () => <SurfaceCard label=\"Run\"><Text>One line.</Text></SurfaceCard>" },
-      // a list is a kind
-      { filename: BLOCK, code: IMPORTS + "export const A = () => <SurfaceCard kind=\"list\" label=\"Run\" items={[]} empty={null} />" },
+      // rows are a kind
+      { filename: BLOCK, code: IMPORTS + "export const A = () => <SurfaceCard kind=\"table\" label=\"Run\" columns={[]} rows={[]} empty={null} />" },
       // a hand list or heading deeper inside is judged where it is not a direct child
       { filename: BLOCK, code: IMPORTS + "export const A = () => <SurfaceCard label=\"Run\"><div><ul><li>x</li></ul></div></SurfaceCard>" },
       // another source's card
       { filename: BLOCK, code: "import { SurfaceCard } from \"other-kit\"\nexport const A = () => <SurfaceCard><ul><li>x</li></ul></SurfaceCard>" },
       { filename: SCRIPT, code: IMPORTS + "export const A = () => <SurfaceCard label=\"Run\"><ul><li>x</li></ul></SurfaceCard>" },
       // a custom zone holding copy is fine; the typed zones carry the search
-      { filename: BLOCK, code: IMPORTS + "export const A = () => <SurfaceCard kind=\"list\" label=\"Run\" items={[]} empty={null} headers={[{ kind: \"custom\", children: <Text>Note</Text> }, { kind: \"search\", label: \"Find\", value: \"\", onChange }]} />" },
+      { filename: BLOCK, code: IMPORTS + "export const A = () => <SurfaceCard kind=\"table\" label=\"Run\" columns={[]} rows={[]} empty={null} headers={[{ kind: \"custom\", children: <Text>Note</Text> }, { kind: \"search\", label: \"Find\", value: \"\", onChange }]} />" },
     ],
     invalid: [
       { filename: BLOCK, code: IMPORTS + "export const A = () => <SurfaceCard label=\"Run\"><ul><li>x</li></ul></SurfaceCard>", errors: [{ messageId: "list" }] },
@@ -42,8 +42,8 @@ test("R355: a body card holds no hand list, no Divider, no second title", () => 
       { filename: BLOCK, code: IMPORTS + "export const A = () => <SurfaceCard label=\"Run\"><SectionHeader title=\"Steps\" /></SurfaceCard>", errors: [{ messageId: "title" }] },
       { filename: BLOCK, code: IMPORTS + "export const A = () => <SurfaceCard label=\"Run\"><Heading level={3}>Steps</Heading></SurfaceCard>", errors: [{ messageId: "title" }] },
       // a custom zone holds none of the parts the typed zones draw
-      { filename: BLOCK, code: IMPORTS + "export const A = () => <SurfaceCard kind=\"list\" label=\"Run\" items={[]} empty={null} headers={[{ kind: \"custom\", children: <Tabs label=\"x\" items={[]} /> }]} />", errors: [{ messageId: "zone" }] },
-      { filename: BLOCK, code: IMPORTS + "export const A = () => <SurfaceCard kind=\"list\" label=\"Run\" items={[]} empty={null} footers={[{ kind: \"custom\", children: <><Text>a</Text><Divider /></> }]} />", errors: [{ messageId: "zone" }] },
+      { filename: BLOCK, code: IMPORTS + "export const A = () => <SurfaceCard kind=\"table\" label=\"Run\" columns={[]} rows={[]} empty={null} headers={[{ kind: \"custom\", children: <Tabs label=\"x\" items={[]} /> }]} />", errors: [{ messageId: "zone" }] },
+      { filename: BLOCK, code: IMPORTS + "export const A = () => <SurfaceCard kind=\"table\" label=\"Run\" columns={[]} rows={[]} empty={null} footers={[{ kind: \"custom\", children: <><Text>a</Text><Divider /></> }]} />", errors: [{ messageId: "zone" }] },
     ],
   })
 })

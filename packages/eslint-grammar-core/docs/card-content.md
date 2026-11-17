@@ -26,7 +26,7 @@ Every rule below is an error in `coreGrammarConfig`; none can be switched off or
 **Valid**
 
 ```tsx
-<Sublabel>Lines</Sublabel><SurfaceCard kind="list" label="Lines" items={lines} empty="-" />
+<Sublabel>Lines</Sublabel><SurfaceCard kind="table" label="Lines" columns={columns} rows={lines} empty="-" />
 <Sublabel>Facts</Sublabel><SurfaceCard kind="details" label="Facts" items={facts} />
 <Section title="Runs" caption="Everyone on the team">...</Section>
 ```

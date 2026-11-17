@@ -31,6 +31,34 @@ const placeholder: readonly G.ListRowData[] = MEMBERS.map((member) => ({ ...rowO
 const empty = <G.EmptyNotice message="Nobody matches." />;
 const failure: G.ErrorData = { message: 'Could not load the members.', actionLabel: 'Try again', onAction: noop };
 
+/**
+ * Rows under card zones. A list is never a card (0.43.0): the zones belong to a body card that groups them with the rows, and the
+ * rows are a flat `Section kind="list"` in its padded body.
+ */
+const ZonedList = ({ label, ariaLabel, fact, headers, footers, note, items, isLoading, error }: {
+  readonly label?: string;
+  readonly ariaLabel?: string;
+  readonly fact?: string;
+  readonly headers?: readonly G.HeaderZone[];
+  readonly footers?: readonly G.FooterZone[];
+  readonly note?: string;
+  readonly items: readonly G.ListRowData[];
+  readonly isLoading?: boolean;
+  readonly error?: G.ErrorData;
+}) => (
+  <G.SurfaceCard
+    {...(label === undefined ? { ariaLabel: ariaLabel ?? '' } : { label })}
+    {...(fact === undefined ? {} : { fact })}
+    {...(headers === undefined ? {} : { headers })}
+    {...(footers === undefined ? {} : { footers })}
+    {...(note === undefined ? {} : { note })}
+    {...(isLoading === true ? { isLoading: true } : {})}
+    {...(error === undefined ? {} : { error })}
+  >
+    <G.Section kind="list" ariaLabel={label ?? ariaLabel ?? ''} items={items} empty={empty} />
+  </G.SurfaceCard>
+);
+
 const tabsOf = (query: string): readonly G.TabItem[] => {
   const matching = MEMBERS.filter((member) => member.name.toLowerCase().includes(query.toLowerCase()));
   return [
@@ -114,13 +142,11 @@ const ToolbarList = () => {
   const [tab, setTab] = useState('all');
   const [query, setQuery] = useState('');
   return (
-    <G.SurfaceCard
-      kind="list"
+    <ZonedList
       label="Members"
       fact={`${MEMBERS.length} people`}
       headers={[{ kind: 'toolbar', filter: filterOf(tab, setTab, query), search: searchOf(query, setQuery) }]}
       items={visibleMembers(tab, query)}
-      empty={empty}
     />
   );
 };
@@ -155,12 +181,10 @@ const TwoZoneList = () => {
   const [tab, setTab] = useState('all');
   const [query, setQuery] = useState('');
   return (
-    <G.SurfaceCard
-      kind="list"
+    <ZonedList
       label="Members"
       headers={[{ kind: 'search', ...searchOf(query, setQuery) }, { kind: 'filter', ...filterOf(tab, setTab, query) }]}
       items={visibleMembers(tab, query)}
-      empty={empty}
     />
   );
 };
@@ -188,8 +212,7 @@ export const ListWithFilterAndSearchZones: Story = {
 export const FiguresAndList: Story = {
   render: () => (
     <div style={{ maxWidth: 720 }}>
-      <G.SurfaceCard
-        kind="list"
+      <ZonedList
         label="Team"
         headers={[{ kind: 'figures', items: [
           { id: 'a', term: 'People', value: 5 },
@@ -197,7 +220,6 @@ export const FiguresAndList: Story = {
           { id: 'c', term: 'Invited', value: 2 },
         ] }]}
         items={MEMBERS.map(rowOf)}
-        empty={empty}
       />
     </div>
   ),
@@ -274,7 +296,7 @@ export const FiguresFullBleed: Story = {
       </State>
       <State label="A figures zone over a list, wrapped 2 x 2" direction="column">
         <div data-story-strip="wrap" style={{ width: 360 }}>
-          <G.SurfaceCard kind="list" label="Team" headers={[{ kind: 'figures', items: figureCells(4) }]} items={MEMBERS.slice(0, 2).map(rowOf)} empty={empty} />
+          <ZonedList label="Team" headers={[{ kind: 'figures', items: figureCells(4) }]} items={MEMBERS.slice(0, 2).map(rowOf)} />
         </div>
       </State>
       <State label="Four money figures at phone width: wrapped before a value breaks" direction="column">
@@ -374,11 +396,9 @@ export const FiguresRibbonFive: Story = {
 export const FooterMore: Story = {
   render: () => (
     <div style={{ maxWidth: 560 }}>
-      <G.SurfaceCard
-        kind="list"
+      <ZonedList
         label="Recent members"
         items={MEMBERS.slice(0, 3).map(rowOf)}
-        empty={empty}
         footers={[{ kind: 'more', label: 'See all members', press: noop }]}
         note="Updated just now."
       />
@@ -401,14 +421,12 @@ export const FooterLinkAndPaging: Story = {
   render: () => (
     <Matrix maxWidth={560}>
       <State label="A link footer" direction="column">
-        <G.SurfaceCard kind="list" label="Recent members" items={MEMBERS.slice(0, 2).map(rowOf)} empty={empty} footers={[{ kind: 'more', label: 'Open the directory', href: '#directory' }]} />
+        <ZonedList label="Recent members" items={MEMBERS.slice(0, 2).map(rowOf)} footers={[{ kind: 'more', label: 'Open the directory', href: '#directory' }]} />
       </State>
       <State label="A pager footer" direction="column">
-        <G.SurfaceCard
-          kind="list"
+        <ZonedList
           label="All members"
           items={MEMBERS.slice(0, 2).map(rowOf)}
-          empty={empty}
           footers={[{ kind: 'paging', page: 2, pageCount: 6, onPage: noop, labels: { nav: 'Member pages', previous: 'Previous', next: 'Next', page: (page) => `Page ${page}`, summary: '6-10 of 52' } }]}
         />
       </State>
@@ -429,12 +447,10 @@ const StateCard = ({ mode }: { readonly mode: 'ready' | 'loading' | 'error' | 'e
   const [query, setQuery] = useState('');
   return (
     <div data-story-mode={mode}>
-      <G.SurfaceCard
-        kind="list"
+      <ZonedList
         label="Members"
         headers={[{ kind: 'toolbar', filter: filterOf(tab, setTab, mode === 'empty' ? 'zzz' : ''), search: searchOf(query, setQuery) }]}
         items={mode === 'loading' ? placeholder : mode === 'empty' || mode === 'error' ? [] : MEMBERS.map(rowOf)}
-        empty={empty}
         footers={[{ kind: 'more', label: 'See all members', press: noop }]}
         {...(mode === 'loading' ? { isLoading: true } : {})}
         {...(mode === 'error' ? { error: failure } : {})}
@@ -467,7 +483,7 @@ export const ZoneStates: Story = {
       const loading = canvasElement.querySelector('[data-story-mode="loading"] [data-grammar-zone="toolbar"] [role="tab"]');
       expect(loading).not.toBeNull();
       expect(canvasElement.querySelector('[data-story-mode="loading"] [aria-busy="true"]')).not.toBeNull();
-      expect(canvasElement.querySelector('[data-story-mode="empty"] [data-grammar-collection="empty"]')).not.toBeNull();
+      expect(within(canvasElement.querySelector<HTMLElement>('[data-story-mode="empty"]')!).getByText('Nobody matches.')).toBeTruthy();
       expect(within(canvasElement.querySelector<HTMLElement>('[data-story-mode="error"]') ?? canvasElement).getByText('Could not load the members.')).toBeTruthy();
     }, { timeout: 4000 });
   },
@@ -665,8 +681,7 @@ const assertCardLines = (card: HTMLElement) => {
   let lines = 0;
   // Zone seams.
   for (const zone of Array.from(card.querySelectorAll('.starci-core-surface-zone'))) { flush(zone, 'a zone seam'); lines += 1; }
-  // List row separators and accordion seams.
-  for (const row of Array.from(card.querySelectorAll('[data-grammar-list="true"] > li'))) { flush(row, 'a list row line'); lines += 1; }
+  // Accordion seams. A list is flat (0.43.0): its rows stand on the card body's inset, so they draw no card line.
   for (const item of Array.from(card.querySelectorAll('.starci-core-accordion-row'))) { flush(item, 'an accordion seam'); lines += 1; }
   // Figure cells: the vertical lines and the 2 x 2 cross.
   for (const strip of Array.from(card.querySelectorAll<HTMLElement>('[data-grammar-description-layout="stat-strip"]'))) { assertFullBleed(strip); lines += 1; }
@@ -757,7 +772,7 @@ const linesStory = (width: string | number): Story => ({
         <State label="Zones, rows and footer" direction="column"><ToolbarList /></State>
         <State label="Figures, one row or 2 x 2" direction="column"><G.SurfaceCard kind="figures" label="Team" items={figureCells(4)} /></State>
         <State label="A figures zone over rows" direction="column">
-          <G.SurfaceCard kind="list" label="Team" headers={[{ kind: 'figures', items: figureCells(3) }]} items={MEMBERS.slice(0, 3).map(rowOf)} empty={empty} footers={[{ kind: 'more', label: 'See all', press: noop }]} />
+          <ZonedList label="Team" headers={[{ kind: 'figures', items: figureCells(3) }]} items={MEMBERS.slice(0, 3).map(rowOf)} footers={[{ kind: 'more', label: 'See all', press: noop }]} />
         </State>
         <State label="An accordion" direction="column">
           <G.SurfaceCard
@@ -802,26 +817,22 @@ const PrimaryAndSecondary = () => {
     <Matrix>
       <State label="A card with a switch row inside it (title and pill, one line), then a toolbar zone" direction="column">
         <div data-story-switch="labelled">
-          <G.SurfaceCard
-            kind="list"
+          <ZonedList
             label="Revenue"
             headers={[
               { kind: 'switch', label: 'Period', title: 'Revenue by period', items: PERIODS, selectedKey: period, onSelect: setPeriod },
               { kind: 'toolbar', filter: filterOf(tab, setTab, query), search: searchOf(query, setQuery) },
             ]}
             items={visibleMembers(tab, query)}
-            empty={empty}
           />
         </div>
       </State>
       <State label="A card with no label: the same first header row, the pill at the trailing edge" direction="column">
         <div data-story-switch="unlabelled">
-          <G.SurfaceCard
-            kind="list"
+          <ZonedList
             ariaLabel="Members"
             headers={[{ kind: 'switch', label: 'Layout', items: [{ id: 'list', label: 'List' }, { id: 'board', label: 'Board' }], selectedKey: mode, onSelect: setMode }]}
             items={MEMBERS.slice(0, 2).map(rowOf)}
-            empty={empty}
           />
         </div>
       </State>
@@ -922,7 +933,6 @@ export const SurfaceRadiusToken: Story = {
         <G.SurfaceCard label="Body">
           <G.Text>A body card.</G.Text>
         </G.SurfaceCard>
-        <G.SurfaceCard kind="list" label="List" items={MEMBERS.slice(0, 2).map(rowOf)} empty={empty} />
         <G.SurfaceCard kind="figures" label="Figures" items={figureCells(3)} />
         <G.Board label="Board" columns={[{ id: 'a', title: 'New', count: 1, items: MEMBERS.slice(0, 1).map(rowOf), empty: <G.Text tone="muted">Nothing.</G.Text> }]} />
       </Matrix>
@@ -942,7 +952,7 @@ export const SurfaceRadiusToken: Story = {
         return { scope, surfaces: Array.from(scope.querySelectorAll<HTMLElement>('.starci-core-surface, .starci-core-board-column')) };
       };
       const fallback = surfacesOf('default');
-      expect(fallback.surfaces.length).toBeGreaterThanOrEqual(4);
+      expect(fallback.surfaces.length).toBeGreaterThanOrEqual(3);
       const expected = probedRadius(fallback.scope, 'min(32px, var(--radius-3xl))');
       for (const surface of fallback.surfaces) expect(getComputedStyle(surface).borderTopLeftRadius).toBe(expected);
       const overridden = surfacesOf('override');

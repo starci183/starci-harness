@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.43.0 - 2026-11-17
+
+- Version: moves with the Grammar family (@starci/grammar 0.43.0: `SurfaceCard kind="list"` removed, a list is a flat `Section kind="list"`). It inherits the new `starci-grammar/surface-card-list` rule and the changed `single-child-card` from @starci/eslint-grammar-core 0.43.0; no rule of its own changed.
+
 ## 0.42.0 - 2026-11-17
 
 - Version: moves with the Grammar family (@starci/grammar 0.42.0: the steps graph opens fitted, back edges clear their own cards, the pill Select sizes to its value, the section divider hook, neutral disabled buttons, one-line action cells); no rule changed.

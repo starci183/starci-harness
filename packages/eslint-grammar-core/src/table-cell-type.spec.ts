@@ -29,7 +29,7 @@ test("FE_TABLE_CELL_TYPE: a heading-size Text in a cell or a row is red", () => 
       { filename: BLOCK, code: IMPORT + "export const A = () => <DataTable label=\"Runs\" rows={rows} columns={cols} emptyContent={null} renderCell={(row) => <Text size=\"md\">{row.name}</Text>} />" },
       { filename: BLOCK, code: IMPORT + "export const A = () => <Heading level={2}>Runs</Heading>" },
       { filename: BLOCK, code: IMPORT + "export const A = () => <Section kind=\"list\" items={rows.map((r) => ({ id: r.id, title: r.name, description: r.note }))} />" },
-      { filename: BLOCK, code: IMPORT + "export const A = () => <SurfaceCard collection={{ kind: \"list\", items: [{ id: \"a\", title: <Text isStrong>A</Text>, description: <Text size=\"sm\" tone=\"muted\">b</Text> }], empty: null }} />" },
+      { filename: BLOCK, code: IMPORT + "export const A = () => <Section kind=\"list\" items={[{ id: \"a\", title: <Text isStrong>A</Text>, description: <Text size=\"sm\" tone=\"muted\">b</Text> }]} empty={null} />" },
       // a heading beside the row object, not in its title or description
       { filename: BLOCK, code: IMPORT + "export const A = () => <Section kind=\"list\" items={[{ id: \"a\", title: \"A\", detail: <Heading level={3}>x</Heading> }]} />" },
       // a non-list object is not a row
@@ -47,7 +47,7 @@ test("FE_TABLE_CELL_TYPE: a heading-size Text in a cell or a row is red", () => 
       { filename: BLOCK, code: IMPORT + "function cell(row) { return <Text size=\"figure\">{row.name}</Text> }\nexport const A = () => <DataTable label=\"Runs\" rows={rows} columns={cols} emptyContent={null} renderCell={cell} />", errors: [{ messageId: "heading" }] },
       { filename: BLOCK, code: IMPORT + "export const A = () => <DataTable label=\"Runs\" rows={rows} emptyContent={null} renderCell={() => null} columns={[{ id: \"n\", label: \"N\", editor: (row) => <Heading>{row.n}</Heading> }]} />", errors: [{ messageId: "heading" }] },
       { filename: BLOCK, code: IMPORT + "export const A = () => <Section kind=\"list\" items={rows.map((r) => ({ id: r.id, title: <Text size=\"figure\">{r.name}</Text> }))} />", errors: [{ messageId: "heading" }] },
-      { filename: BLOCK, code: IMPORT + "export const A = () => <SurfaceCard collection={{ kind: \"list\", items: [{ id: \"a\", title: <Heading level={3}>A</Heading>, description: <h4>b</h4> }], empty: null }} />", errors: [{ messageId: "heading" }, { messageId: "heading" }] },
+      { filename: BLOCK, code: IMPORT + "export const A = () => <Section kind=\"list\" items={[{ id: \"a\", title: <Heading level={3}>A</Heading>, description: <h4>b</h4> }]} empty={null} />", errors: [{ messageId: "heading" }, { messageId: "heading" }] },
       { filename: BLOCK, code: IMPORT + "export const A = () => <ListRow row={{ id: \"a\", title: <Text size=\"figure\">A</Text> }} />", errors: [{ messageId: "heading" }] },
     ],
   })

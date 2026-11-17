@@ -11,7 +11,7 @@ Every rule below is an error in `coreGrammarConfig`; none can be switched off or
 Inside the places below, a `Text` with a literal `size` other than `xs`, `sm` or `md` (`lg`, `xl`, `figure`), any `Heading`, any `Label` and the tags `h1`-`h6` are findings:
 
 - the function a `DataTable` takes as `renderCell` (inline, or a function or arrow declared by name in the file), and the `editor` function of a column object in its `columns` literal;
-- the `title` and `description` of a ListRow data object: a row of the `items` of a list collection (`{ kind: "list", items }`, or `Section` / `SurfaceCard` written `kind="list"`, also through a `.map` callback), or the `row` of a `<ListRow>`.
+- the `title` and `description` of a ListRow data object: a row of the `items` of a `Section` written `kind="list"` (also through a `.map` callback), or the `row` of a `<ListRow>`.
 
 A row list declared elsewhere and passed by name is not followed. A `figure` Text outside a cell or row (a KPI) is not judged.
 

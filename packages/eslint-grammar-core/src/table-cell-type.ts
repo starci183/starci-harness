@@ -12,8 +12,8 @@ import { attributeOf, descendants, elementOf, grammarBindings, isListRow, keyNam
  * WHAT IT READS.
  *   - the function a `DataTable` takes as `renderCell` (inline, or a function or arrow declared by name in the file), and the
  *     `editor` function of a column object in its `columns` literal;
- *   - the `title` and `description` of a ListRow data object: a row of the `items` of a list collection (`{ kind: "list", items }`,
- *     or `Section` / `SurfaceCard` written `kind="list"`), through `.map` callbacks, or the `row` of a `<ListRow>`.
+ *   - the `title` and `description` of a ListRow data object: a row of the `items` of a `Section` written
+ *     `kind="list"`, through `.map` callbacks, or the `row` of a `<ListRow>`.
  * In those, a `Text` whose literal `size` is not `xs`, `sm` or `md`, any `Heading`, any `Label` and the tags `h1`-`h6` are findings. A row list declared elsewhere
  * and passed by name is not followed.
  */

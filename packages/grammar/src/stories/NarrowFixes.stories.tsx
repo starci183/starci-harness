@@ -16,14 +16,14 @@ export const LabelWithCountAt390: Story = {
   name: 'Label with count or fact at 390',
   render: () => (
     <div data-host style={{ inlineSize: 390, display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <G.SurfaceCard kind="list" label="Milestone" count={11} items={ROWS} empty={<G.EmptyNotice message="Empty" />} />
-      <G.SurfaceCard kind="list" label="Your projects" fact="2 running" items={ROWS} empty={<G.EmptyNotice message="Empty" />} />
-      <G.SurfaceCard kind="list" label="A very long group name to test truncating text at a narrow width" count={3} items={ROWS} empty={<G.EmptyNotice message="Empty" />} />
+      <G.Section kind="list" title="Milestone" count={11} items={ROWS} empty={<G.EmptyNotice message="Empty" />} />
+      <G.Section kind="list" title="Your projects" fact="2 running" items={ROWS} empty={<G.EmptyNotice message="Empty" />} />
+      <G.Section kind="list" title="A very long group name to test truncating text at a narrow width" count={3} items={ROWS} empty={<G.EmptyNotice message="Empty" />} />
     </div>
   ),
   play: async ({ canvasElement }) => {
     await waitFor(() => {
-      const labels = Array.from(canvasElement.querySelectorAll<HTMLElement>('[data-grammar-surface-label="true"]'));
+      const labels = Array.from(canvasElement.querySelectorAll<HTMLElement>('.starci-core-section-title'));
       expect(labels.length).toBe(3);
       for (const row of labels) {
         const text = row.firstElementChild as HTMLElement;
@@ -41,9 +41,9 @@ export const ProgressAsRowControl: Story = {
   name: 'Progress as a row control',
   render: () => (
     <div data-host style={{ inlineSize: 390 }}>
-      <G.SurfaceCard
+      <G.Section
         kind="list"
-        label="Milestone"
+        title="Milestone"
         items={ROWS.map((row, i) => ({ ...row, control: <G.Progress label={`Progress ${row.title}`} value={(i + 1) * 30} /> }))}
         empty={<G.EmptyNotice message="Empty" />}
       />
@@ -67,7 +67,7 @@ const StackedPage = () => (
         <G.PaneSection><G.Section kind="list" title="Codes" items={ASIDE_ROWS} empty={<G.EmptyNotice message="Empty" />} /></G.PaneSection>
       </G.Pane>
       <G.Pane area="main" scroll label="Content">
-        <G.PaneSection gap="section"><G.SurfaceCard kind="list" label="Milestone" count={11} items={MANY} empty={<G.EmptyNotice message="Empty" />} /></G.PaneSection>
+        <G.PaneSection gap="section"><G.Section kind="list" title="Milestone" count={11} items={MANY} empty={<G.EmptyNotice message="Empty" />} /></G.PaneSection>
       </G.Pane>
     </G.PaneGrid>
   </G.Page>

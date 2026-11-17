@@ -25,9 +25,10 @@ const SearchFiltersCard = ({ filters }: { readonly filters: number }) => {
   ].slice(0, filters);
   return (
     <G.SurfaceCard
-      kind="list"
+      kind="table"
       label="Invoices"
-      items={[{ id: 'i1', title: 'INV-001', description: 'Paid' }, { id: 'i2', title: 'INV-002', description: 'Due' }]}
+      columns={[{ id: 'name', label: 'Invoice' }, { id: 'status', label: 'Status' }]}
+      rows={[{ id: 'i1', cells: { name: 'INV-001', status: 'Paid' } }, { id: 'i2', cells: { name: 'INV-002', status: 'Due' } }]}
       empty={<G.EmptyNotice message="Nothing matches." />}
       headers={[{ kind: 'search', label: 'Search invoices', value: query, onChange: setQuery, placeholder: 'Search invoices', clearLabel: 'Clear search', filters: fields }]}
     />

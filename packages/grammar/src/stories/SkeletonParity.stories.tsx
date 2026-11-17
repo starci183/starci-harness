@@ -270,9 +270,9 @@ export const IdentityLoading: Story = onePhase("grammar-identity", "loading", id
 
 /* ------------------------------------------------------------------ rows */
 
-/** A list card holding one row; `isLoading` draws the same row as geometry. */
+/** A list holding one row; `isLoading` draws the same row as geometry. */
 const rowCard = (row: G.ListRowData, isLoading: boolean) => (
-    <G.SurfaceCard kind="list" label="Rows" items={[row]} empty={<G.EmptyNotice message="No rows." />} isLoading={isLoading} />
+    <G.Section kind="list" title="Rows" items={[row]} empty={<G.EmptyNotice message="No rows." />} isLoading={isLoading} />
 )
 
 /** A Page header with every slot; the tabs variant puts the page tabs on its separator. */
@@ -397,14 +397,14 @@ const collections = (): ReadonlyArray<Pair> => [
     {
         id: "list-card",
         ready: (
-            <G.SurfaceCard
+            <G.Section
                 kind="list"
-                label="Saved guides"
+                title="Saved guides"
                 empty={<G.EmptyNotice message="Nothing saved yet." />}
                 items={guides.map((guide) => ({ id: guide.id, title: guide.title, description: `${guide.minutes} minutes`, action: { label: "Open", press: noop } }))}
             />
         ),
-        loading: <G.SurfaceCard kind="list" label="Saved guides" isLoading items={[]} empty={<G.EmptyNotice message="Nothing saved yet." />} />,
+        loading: <G.Section kind="list" title="Saved guides" isLoading items={[]} empty={<G.EmptyNotice message="Nothing saved yet." />} />,
         width: "28rem",
     },
     {
@@ -415,7 +415,7 @@ const collections = (): ReadonlyArray<Pair> => [
     },
 ]
 
-/** DataTable, ListBox, the list card and Timeline: the loading rows keep the ready rows' rhythm. */
+/** DataTable, ListBox, the list section and Timeline: the loading rows keep the ready rows' rhythm. */
 export const Collections: Story = sideBySide(collections)
 export const CollectionsReady: Story = onePhase("grammar-collections", "ready", collections)
 export const CollectionsLoading: Story = onePhase("grammar-collections", "loading", collections)

@@ -1,8 +1,8 @@
-# A lone DataTable or chart is the surface; a list card is always valid
+# A lone DataTable, chart or list is the surface, never a card
 
 Law module: `single-child-card.ts`. Knowledge: `knowledge/ui/presentation/grammar-laws.yaml#SINGLE-CHILD-CARD`. Finding code: `FE_SINGLE_CHILD_CARD`.
 
-A card (`SurfaceCard`) groups two or more different parts (figures + list + actions), or carries zones (tabs, search, head actions). A card of LIST or key-value rows (`kind="list"`, `kind="table"`, `kind="select"`, a `ListBox`, `DisclosureList`, `Timeline`, `Section kind="list"`, a `DescriptionList`) is valid alone or not (aligned in 0.37.8: one list card with its head and count chip, or a bordered key-value card on a white aside, is the law). A standalone `DataTable` (`surface="card"`) or chart IS the surface: its title sits above it as a `Section` head and one line under it as `Section caption`, so a card around it is a second card.
+A card (`SurfaceCard`) groups two or more different parts (figures + list + actions), or carries zones (tabs, search, head actions). A card of key-value or choice rows (`kind="table"`, `kind="select"`, `kind="details"`, a `ListBox`, `DisclosureList`, `Timeline`, a `DescriptionList`) is valid alone or not (0.37.8). A standalone `DataTable` (`surface="card"`) or chart IS the surface: its title sits above it as a `Section` head and one line under it as `Section caption`, so a card around it is a second card. A list is a flat `Section kind="list"` that titles itself (0.43.0, LIST-ONE-LOOK), so a card around a lone list is refused the same way.
 
 Every rule below is an error in `coreGrammarConfig`; none can be switched off or suppressed inline.
 
@@ -12,21 +12,23 @@ A Grammar `SurfaceCard` is refused when it has no zones (no `headers` or `footer
 
 - table: `DataTable`
 - chart: `BarChart`, `ProportionBar`, `BubbleMap`, `FlowGraph`, `MermaidDiagram`
+- list: `Section kind="list"`
 
-Not flagged: any list or key-value card (`kind="list"`, `kind="table"`, `kind="select"`, `ListBox`, `DisclosureList`, `Timeline`, `Section kind="list"`, `DescriptionList`), a card with two or more body children, a card with zones or `labelEnd`, a card with a JSX spread, `kind` `figures`, `details`, `accordion` or `tile`, a non-Grammar `SurfaceCard`, and non-product source. `Meter` and `Progress` are single values, not charts.
+Not flagged: any key-value or choice card (`kind="table"`, `kind="select"`, `ListBox`, `DisclosureList`, `Timeline`, `DescriptionList`), a card with two or more body children, a card with zones or `labelEnd`, a card with a JSX spread, `kind` `figures`, `details`, `accordion` or `tile`, a non-Grammar `SurfaceCard`, and non-product source. `Meter` and `Progress` are single values, not charts.
 
 **Invalid**
 
 ```tsx
 <SurfaceCard label="Runs"><DataTable columns={columns} rows={runs} /></SurfaceCard>
 <SurfaceCard label="Usage"><BarChart data={usage} /></SurfaceCard>
+<SurfaceCard label="Runs"><Section kind="list" ariaLabel="Runs" items={runs} empty={null} /></SurfaceCard>
 ```
 
 **Valid**
 
 ```tsx
 <Section title="Runs" caption="Last 30 days"><DataTable columns={columns} rows={runs} /></Section>
-<SurfaceCard label="Runs" kind="list" items={runs} empty={null} />
+<Section kind="list" title="Runs" items={runs} empty={null} />
 <SurfaceCard label="Runs"><ListBox items={runs} /></SurfaceCard>
 <SurfaceCard label="Runs" headers={[{ kind: "search", /* ... */ }]}><DataTable columns={columns} rows={runs} /></SurfaceCard>
 <SurfaceCard label="Runs"><Text>3 failed</Text><DataTable columns={columns} rows={runs} /></SurfaceCard>

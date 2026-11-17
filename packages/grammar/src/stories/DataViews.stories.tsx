@@ -193,8 +193,8 @@ const metaRows: ReadonlyArray<G.ListRowData> = [
 export const RowEndMeta: Story = {
     render: () => (
         <Matrix maxWidth={560}>
-            <State label="Ready (the whole row presses; a short fact at the end, danger when overdue)" direction="column"><G.SurfaceCard kind="list" label="Open work" items={metaRows} empty={emptyLine} /></State>
-            <State label="Loading (same rows as geometry)" direction="column"><G.SurfaceCard kind="list" label="Open work" items={metaRows} empty={emptyLine} isLoading /></State>
+            <State label="Ready (the whole row presses; a short fact at the end, danger when overdue)" direction="column"><G.Section kind="list" title="Open work" items={metaRows} empty={emptyLine} /></State>
+            <State label="Loading (same rows as geometry)" direction="column"><G.Section kind="list" title="Open work" items={metaRows} empty={emptyLine} isLoading /></State>
         </Matrix>
     ),
 }

@@ -4,8 +4,8 @@ import * as G from '../common/index.js';
 import { noop } from './fixtures.js';
 
 /**
- * MESSAGE-CARD-FILL and BUTTON-WRAP (0.37.30, the /chat stop card). A MessageCard's content column fills the card: a nested bordered
- * list (surface in surface: `SurfaceCard kind="list"`) and a composer in its body span the card's inner width, while the head, the
+ * MESSAGE-CARD-FILL and BUTTON-WRAP (0.37.30, the /chat stop card). A MessageCard's content column fills the card: a flat
+ * list (`Section kind="list"`) and a composer in its body span the card's inner width, while the head, the
  * actions row and the meta line still start at the reading edge. A suggestion pill (`Button size="sm"`) with `width="wrap"` hugs a
  * short label like `content` and wraps a label longer than its container inside the pill (same radius and inline padding, text at
  * the reading edge), growing from the 32px step; it never spills out of its row.
@@ -49,13 +49,13 @@ const Composer = () => (
 
 const stopBody = (
   <G.Stack gap="row">
-    <G.SurfaceCard kind="list" layout="keyValue" ariaLabel="Details" empty={null} items={facts} />
+    <G.Section kind="list" layout="keyValue" ariaLabel="Details" empty={null} items={facts} />
     <Suggestions />
     <Composer />
   </G.Stack>
 );
 
-/** The stop card: the bordered list, the suggestions and the composer fill the card's inner width; the head, actions and meta start at the reading edge. */
+/** The stop card: the flat list, the suggestions and the composer fill the card's inner width; the head, actions and meta start at the reading edge. */
 export const NestedListAndComposer: Story = {
   render: () => (
     <div style={{ maxWidth: '64rem' }}>
@@ -78,7 +78,7 @@ export const NestedListAndComposer: Story = {
   play: async ({ canvasElement }) => {
     await waitFor(() => expect(canvasElement.querySelector('[data-component="MessageCard"]')).not.toBeNull());
     const card = canvasElement.querySelector<HTMLElement>('[data-component="MessageCard"]')!;
-    const list = card.querySelector<HTMLElement>('[data-component="SurfaceCard"]')!;
+    const list = card.querySelector<HTMLElement>('[data-component="Section"]')!;
     const textarea = card.querySelector<HTMLElement>('textarea')!;
     const send = [...card.querySelectorAll<HTMLElement>('[data-component="Button"]')].find((b) => b.textContent?.includes('Send'))!;
     const box = card.getBoundingClientRect();

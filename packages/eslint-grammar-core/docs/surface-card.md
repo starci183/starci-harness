@@ -31,14 +31,14 @@ its own seams. Grammar also refuses them at run time in development.
 **Valid** (`src/components/blocks/Runs/component.tsx`)
 
 ```tsx
-<SurfaceCard kind="list" label="Runs" items={runs.map((run) => ({ id: run.id, title: run.name }))} empty={empty} />
+<Section kind="list" title="Runs" items={runs.map((run) => ({ id: run.id, title: run.name }))} empty={empty} />
 ```
 
 ## `starci-grammar/no-label-in-grid`
 
 Finding code: `FE_LABEL_IN_GRID` (R366). A `SurfaceCard` with a `label` repeated in a `Grid kind="cards"` (two or more as
 direct children, or one written in a `.map`) is refused. A peer you recognise and open is a tile, named inside beside its
-mark; comparing a fact across peers is one `kind="list"` card.
+mark; comparing a fact across peers is one `Section kind="list"` or a `kind="table"` card.
 
 **Invalid** (`src/components/blocks/Connectors/component.tsx`)
 

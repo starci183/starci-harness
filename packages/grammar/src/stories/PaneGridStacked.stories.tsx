@@ -22,7 +22,7 @@ const Detail = () => (
     </G.Pane>
     <G.Pane area="main" label="Content">
       <G.PaneSection>
-        <G.SurfaceCard kind="list" label="Milestone" items={WELL_ROWS} empty={<G.EmptyNotice message="Empty" />} />
+        <G.Section kind="list" title="Milestone" items={WELL_ROWS} empty={<G.EmptyNotice message="Empty" />} />
       </G.PaneSection>
     </G.Pane>
   </G.PaneGrid>

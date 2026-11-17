@@ -35,12 +35,17 @@ export const why: Record<string, WhyEntry> = {
   "rows-in-card": {
     code: "FE_ROWS_IN_CARD",
     en: "A `DescriptionList` or `DisclosureList` in `<file>` stands with no `Section` or `SurfaceCard` around it.",
-    fix: "Rows are always a card: put them in a `Section kind=\"list\"` or a `SurfaceCard`. Grammar draws the shadow (no border) on the pink well and the 1px border (no shadow) on a white aside, pane or drawer by itself.",
+    fix: "Key-value and disclosure rows stand in a `SurfaceCard` (a details card is one) or a `Section`, which draws their edge or their place; a plain list of rows is `Section kind=\"list\"`, flat.",
+  },
+  "surface-card-list": {
+    code: "FE_SURFACE_CARD_LIST",
+    en: "A `SurfaceCard kind=\"list\"` in `<file>`: the list card was removed in the Grammar family 0.43.0, a list is never a card.",
+    fix: "Write the list as `<Section kind=\"list\" title items empty />` with `ListRow` rows: flat rows on the surface, divided by hairlines, aligned with the title. `label` becomes `title`, `labelEnd` becomes `action`, a filter or search goes in the list's `filter`, and `layout=\"keyValue\" | \"suggestions\"` stays on the Section.",
   },
   "no-card-lead-description": {
     code: "FE_NO_CARD_LEAD_DESCRIPTION",
     en: "A muted `Text` in `<file>` stands directly above a `SurfaceCard` as its description.",
-    fix: "A card has no description. Put the line in the row subtitle (`SurfaceCard kind=\"select\"` or `kind=\"list\"`), or, when it explains the card's data (a legend, a source, a period), in the card `note`.",
+    fix: "A card has no description. Put the line in the row subtitle (`SurfaceCard kind=\"select\"` or a `Section kind=\"list\"` row), or, when it explains the card's data (a legend, a source, a period), in the card `note`.",
   },
   "no-nested-label": {
     code: "FE_NO_NESTED_LABEL",
@@ -195,7 +200,7 @@ export const why: Record<string, WhyEntry> = {
   "no-label-in-grid": {
     code: "FE_LABEL_IN_GRID",
     en: "A `SurfaceCard` with a `label` is repeated in a `Grid kind=\"cards\"` in `<file>`: the label sits outside the material, so the grid reads as headings over boxes.",
-    fix: "A peer you recognise and open is a tile: `<SurfaceCard kind=\"tile\" name mark description badge action />`, named inside beside its mark. Comparing a fact across peers is one `kind=\"list\"` card.",
+    fix: "A peer you recognise and open is a tile: `<SurfaceCard kind=\"tile\" name mark description badge action />`, named inside beside its mark. Comparing a fact across peers is one `Section kind=\"list\"` or a `kind=\"table\"` card.",
   },
   "no-raised-surface-in-surface": {
     code: "FE_RAISED_SURFACE_IN_SURFACE",
@@ -210,17 +215,17 @@ export const why: Record<string, WhyEntry> = {
   "surface-in-surface": {
     code: "FE_SURFACE_IN_SURFACE",
     en: "A hand-made row list (a Stack, ul, ol or div whose rows are divided by `Divider`) in `<file>` stands inside a SurfaceCard, Drawer, Dialog, PaneSection or main-rail rail.",
-    fix: "Use `<Section kind=\"list\">` for rows inside a surface (the Grammar draws them as a nested surface with a border, the card radius and a clip), or a `Section kind=\"list\"` standing alone (it draws its own frame; a card around a lone list is refused by `single-child-card`).",
+    fix: "Use `<Section kind=\"list\">` with `ListRow` rows: the Grammar draws one list wherever it stands, flat rows divided by hairlines and aligned with the title (a card around a lone list is refused by `single-child-card`).",
   },
   "single-child-card": {
     code: "FE_SINGLE_CHILD_CARD",
-    en: "A `SurfaceCard` in `<file>` has no zones and holds one `DataTable` or chart (`BarChart`, `ProportionBar`, `BubbleMap`, `FlowGraph`, `MermaidDiagram`): a standalone table or chart is its own surface, so the card is a second frame. A card of list or key-value rows is valid.",
-    fix: "Drop the card: put the title in a `Section` head (`title`) and one line under it in `Section caption`. A card groups two or more different parts, or carries zones (`headers`, `footers`) or head actions (`labelEnd`); a list card (`kind=\"list\"`, `kind=\"table\"`) is always valid.",
+    en: "A `SurfaceCard` in `<file>` has no zones and holds one `DataTable`, chart (`BarChart`, `ProportionBar`, `BubbleMap`, `FlowGraph`, `MermaidDiagram`) or `Section kind=\"list\"`: a standalone table or chart is its own surface and a list is flat, so the card is a second frame. A card of key-value or choice rows is valid.",
+    fix: "Drop the card: put the title in a `Section` head (`title`) and one line under it in `Section caption`. A card groups two or more different parts, or carries zones (`headers`, `footers`) or head actions (`labelEnd`); a card of key-value or choice rows (`kind=\"details\"`, `\"select\"`, `\"table\"`) is valid; a list titles itself as a `Section kind=\"list\"`.",
   },
   "surface-card-kind": {
     code: "FE_SURFACE_CARD_KIND",
     en: "A `body` SurfaceCard in `<file>` holds a hand-built list, a Divider, a SectionHeader or Heading as a second title, or a `custom` zone holds a Tabs, SearchField or Divider.",
-    fix: "Rows are `kind=\"list\"`, key figures `kind=\"figures\"`, bands divided by seams the typed `headers` and `footers` zones (`filter`, `search`, `toolbar`, `figures`, `more`, `paging`); the card's title is its `label`.",
+    fix: "Rows are a `Section kind=\"list\"` (never a card), key figures `kind=\"figures\"`, bands divided by seams the typed `headers` and `footers` zones (`filter`, `search`, `toolbar`, `figures`, `more`, `paging`); the card's title is its `label`.",
   },
   "status-text-uses-soft-foreground": {
     code: "FE_STYLE_TOKEN_ONLY",

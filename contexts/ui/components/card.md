@@ -12,11 +12,9 @@ for a kind does not compile). The first row that applies wins.
 
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |
-| contained-list | an existing surface owns the region holding the rows | unpainted `Section kind="list"` (`list-table.choose.role:contained`), with one heading and accessible name | R340/R356 forbid a surface in a surface |
+| list | rows of peers, wherever they stand | not a card: `Section kind="list"` (`list-table.choose.role:list`), flat rows with one heading and accessible name; cards are for real objects | lint `starci-grammar/surface-card-list` |
 | contained-figures | key figures already belong to a pane or another surfaced region | unpainted `Section kind="figures"` with shared `Figure` data; retain an existing parent heading with `ariaLabel`, or use `title` when the strip owns its heading | type: titled/headless forms exclude each other; one shared FigureCells renderer; R340/R356 forbid another surface |
-| task-list | standalone rows on the page canvas, worked through or scanned as one bounded group with no search, filter or paging | `SurfaceCard kind="list"`: label outside, `items`, a required `empty`, a `footer` for the note | type: a list needs `items` and `empty`; R355 |
-| collection | rows that search, filter or page, or have no bound | not a card: `Section kind="list"` (`list-table.choose.role:entity`) | R355 refuses a `Section` around one card |
-| single-child | the body would be one lone `DataTable` or chart, with no zones and no head actions (a list or key-value card is valid, 0.37.8) | not a card: the part is the surface, its title a `Section title` above and one `Section caption` below (COLLECTION-4) | lint `single-child-card` (error) |
+| single-child | the body would be one lone `DataTable`, chart or `Section kind="list"`, with no zones and no head actions (a key-value or choice card is valid, 0.37.8) | not a card: the part is the surface, its title a `Section title` above and one `Section caption` below (COLLECTION-4) | lint `single-child-card` (error) |
 | disclosure | one summary that reveals a rarely changed region | `kind="accordion"`, closed by default | judgement |
 | choice | pick one or several of a few options (a mode, permissions, settings) | `kind="select"` with `selectionMode` `single`/`multiple`, `items` `{ id, title, subtitle?, isDisabled?, control? }`, `value`, `onChange`: a HeroUI Checkbox per row (the checkbox look in both modes, never a radio), title 14/500, subtitle 12 muted only under a title, the whole row the hit target, full-width 1px dividers; `role="group"` of real checkboxes, `single` excludes the others (a radiogroup would contradict the checkbox look). A setting's explanation is a row subtitle, never a loose line under the card | owner 2026-11-09 |
 | figures | a standalone row of key figures on the page canvas | `kind="figures"` (DISCIPLINE-2): touching cells with lines between cells and rows | type: typed figures; candidate: cells at most `budgets.ribbonCells` |
@@ -62,9 +60,9 @@ each with a `Sublabel` above it; items of the same kind stay in one list. No car
 stands under the card as chips (`note={<FlowGraphLegend items />}`); a FlowGraph inside a card draws no frame of its own.
 
 Elevation is decided by context, never by the app (SURFACE-ELEVATION): a card on the pink well has the card shadow and NO border; a surface on a white surface (a `Pane surface`, the aside, a `Drawer`, `Dialog` or `Popover`) has the
-1px separator border and no shadow. The bordered list frame (`Section kind="list"`) and a framed `EmptyNotice` follow the same rule. A table card follows the same rule since 0.37.8 (TABLE, owner 2026-11-09): there is no grey table frame any more; a table is white, like a list card, with muted 12px column labels on the white, 1px full-width row dividers and its zones divided by full-width lines (shadow on the well, border on white).
+1px separator border and no shadow. A framed `EmptyNotice` follows the same rule; a list is no surface and draws no edge (BOUNDARY-7). A table card follows the same rule since 0.37.8 (TABLE, owner 2026-11-09): there is no grey table frame any more; a table card is white, with muted 12px column labels on the white, 1px full-width row dividers and its zones divided by full-width lines (shadow on the well, border on white).
 
-Rows are always a card (0.37.5, lint `rows-in-card`): a `DescriptionList` or `DisclosureList` with no `Section` or `SurfaceCard` around it is an error. A white pane's rows are a `Section kind="list"` (a `SurfaceCard` inside a `Pane surface` is refused); story `Surfaces/Surface elevation` asserts the edge on both grounds.
+Key-value and disclosure rows stand in a card or a section (0.37.5, lint `rows-in-card`): a `DescriptionList` or `DisclosureList` with no `Section` or `SurfaceCard` around it is an error. A list of rows is a flat `Section kind="list"` on either ground; story `Surfaces/Surface elevation` asserts the one look on both.
 
 ## Icons are outline (0.36.0, ICONS-OUTLINE)
 Never a filled or solid icon (lint `starci-grammar/outline-icons-only` refuses a solid icon-set import anywhere). An icon that stands alone as the mark of a row, card, empty state or graph step gets an icon tile (a soft-tone square with an outline icon);
@@ -72,7 +70,7 @@ an icon inline with text (a status beside a label, a search field, a button star
 x-circle danger, a spinner for running): the FlowGraph run overlay, the Stepper and the accordion step marks follow it.
 
 ## Variants
-The face is the grammar's, and the card has one depth, raised. EVERY surface on the page ground is a card (0.32.0, owner 2026-11-09): the surface ground, the card radius, a 1px `--separator` border AND the card shadow, for `SurfaceCard` of every kind, form panels, a `DataTable` drawn `surface="card"` (a standalone table is flat by default: a collection is not a card), the `Section kind="list"` frame and a framed `EmptyNotice`. A surface nested in a card, pane, drawer, dialog or popover keeps the border and drops the shadow (the border is never doubled). The card radius is HeroUI's Card radius (24 at `--radius` 0.5rem); a theme tightens it to its own scale with the hook `--starci-core-card-radius`, which every card surface and, by default, the list frame follow (owner: @starci/grammar `src/common/theme-hooks.json`). Captions and titles stay outside the card. `check:type` pins it. A card never stands inside another card: that is refused by a development throw and R340; a `Pane surface`, `Drawer`, `Dialog`, `AlertDialog` or `Popover` HOSTS cards, drawn bordered with no shadow (0.37.5, SURFACE-ELEVATION). R340
+The face is the grammar's, and the card has one depth, raised. EVERY surface on the page ground is a card (0.32.0, owner 2026-11-09): the surface ground, the card radius, a 1px `--separator` border AND the card shadow, for `SurfaceCard` of every kind, form panels, a `DataTable` drawn `surface="card"` (a standalone table is flat by default: a collection is not a card) and a framed `EmptyNotice`; a `Section kind="list"` is flat, no card (BOUNDARY-7). A surface nested in a card, pane, drawer, dialog or popover keeps the border and drops the shadow (the border is never doubled). The card radius is HeroUI's Card radius (24 at `--radius` 0.5rem); a theme tightens it to its own scale with the hook `--starci-core-card-radius`, which every card surface follows (owner: @starci/grammar `src/common/theme-hooks.json`). Captions and titles stay outside the card. `check:type` pins it. A card never stands inside another card: that is refused by a development throw and R340; a `Pane surface`, `Drawer`, `Dialog`, `AlertDialog` or `Popover` HOSTS cards, drawn bordered with no shadow (0.37.5, SURFACE-ELEVATION). R340
 (`DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE`); across files the render graph refuses it too (R356). What sits in a surface is a box at the nested inset (a notice, a `Quote`, a
 stat cell), not a card. A decorative slab is a `custom` header zone of the card or the artwork of a painted card (SURFACE-6).
 
@@ -90,14 +88,14 @@ fails in place through its `error` slot (message, description, action), beside i
 ## Owner split
 - **Grammar owns:** face, corner (one accent corner through `accentCorner`), elevation, inset, the
   drawing of every kind, bands and seams, highlight, form measure.
-- **Knowledge decides:** which kind, list card vs section, bands vs inner cards, hairline budget.
+- **Knowledge decides:** which kind, a card vs a list section, zones vs inner cards, hairline budget.
 - **App author decides:** the subject, its content, the label.
 
 ## Rules
 COLLECTION-1, COLLECTION-2, COLLECTION-4, DISCIPLINE-1 (`budgets.hairlinesPerCard`), BOUNDARY-1..4, SURFACE-2..6. Lint:
 `starci-fe/no-app-surface-paint`, `divider-full-bleed`, `starci-grammar/no-raised-surface-in-surface` (R340),
-`surface-card-kind` (R355), `single-child-card` (COLLECTION-4: a card whose only body child is a `DataTable` or a chart, with no `headers`/`footers`/`labelEnd`; list and key-value cards are valid since 0.37.8), `no-label-in-grid` (R366), `starci-fe/no-heading-above-card` (R354),
-`starci-grammar/surface-in-surface` (a list of rows inside the card body is a nested surface, BOUNDARY-7),
+`surface-card-kind` (R355), `single-child-card` (COLLECTION-4: a card whose only body child is a `DataTable`, a chart or a `Section kind="list"`, with no `headers`/`footers`/`labelEnd`; key-value and choice cards are valid since 0.37.8), `surface-card-list` (a list is never a card, 0.43.0), `no-label-in-grid` (R366), `starci-fe/no-heading-above-card` (R354),
+`starci-grammar/surface-in-surface` (a list of rows inside the card body is a `Section kind="list"`, BOUNDARY-7),
 `starci-grammar/gap-proximity`. Proof: TASTE-7.
 
 ## Measure (0.37.5)

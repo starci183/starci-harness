@@ -224,11 +224,10 @@ durable owner. Transient confirmations are toasts; see [components/toast-alert.m
 ## 5. Collection
 
 ### COLLECTION-1 The host surface and list scope pick its owner
-Rows of one kind first reuse the surface that owns their region. Inside an existing surface they are an unpainted
-`Section kind="list"` of typed rows, never another card. On the page canvas, a standalone bounded worklist is one
-`SurfaceCard kind="list"` with its label outside; a list that searches, filters or pages, or has no bound, is a
-`Section kind="list"`, with `Tabs kind="filter"` in its filter slot when it narrows. The selected owner carries the
-list's one visible heading and accessible name, its count and page command; no free heading repeats that name.
+Rows of one kind are one `Section kind="list"` of typed rows wherever they stand: inside an existing surface, and on the
+page canvas whether the list is a bounded worklist or searches, filters or pages (`Tabs kind="filter"` in its filter slot
+when it narrows). A list is never a card; it draws the one look of BOUNDARY-7 ([presentation](presentation.md#boundary)).
+The section carries the list's one visible heading and accessible name, its count and page command; no free heading repeats that name.
 A published container is used where one exists (see
 [components/list-table.md](components/list-table.md)); none existing is a grammar gap, never a substitute card. Several
 values of one kind entered by the user are one single-value field per row with its own remove action and an "add another"
@@ -237,18 +236,18 @@ command, never a "one per line" textarea.
 ### COLLECTION-2 A card is one subject
 A card presents one entity or one summary of one subject. Several kinds of content of that subject are zones of
 the same card (`headers` above the body, `footers` below it), divided by the seams the shell draws, never inner cards and never a `Divider`. Comparing
-a fact across peers is rows, in a list card or a section; recognising and opening a peer is a tile (`kind="tile"`), several
+a fact across peers is rows, a `Section kind="list"` or a table; recognising and opening a peer is a tile (`kind="tile"`), several
 of which stand in a `Grid kind="cards"`. Equal labelled cards that each repeat a heading are neither. A surface never
 stands inside another surface; a card of one lone table, list or chart is no card (COLLECTION-4). See [components/card.md](components/card.md).
 
 ### COLLECTION-4 A single-child card is no card
 A card (`SurfaceCard`) groups two or more heterogeneous parts (figures, a list, actions), or it carries zones (`headers`/`footers`: tabs,
-search, filters, paging) or head actions (`labelEnd`). A card of list or key-value rows (`SurfaceCard kind="list"|"table"|"select"`, a `ListBox`, `DisclosureList`, `Section kind="list"`, a `DescriptionList`) is valid alone or not (0.37.8: one list card with its head and count chip, or a bordered key-value card on a white aside, is the law). A standalone `DataTable` or chart IS the surface: its title sits above it as
+search, filters, paging) or head actions (`labelEnd`). A card of key-value or choice rows (`SurfaceCard kind="table"|"select"|"details"`, a `ListBox`, `DisclosureList`, a `DescriptionList`) is valid alone or not (0.37.8). A list is a `Section kind="list"` that titles itself, never a card's lone content (COLLECTION-1). A standalone `DataTable` or chart IS the surface: its title sits above it as
 a section head (`Section title`) and one caption sits below it (`Section caption`, muted 14), and it is never wrapped in a bare card. A standalone `DataTable` is flat
 (`surface="none"`, the default): a collection, never a card of its own, its column labels 12 muted and 1px full-width row dividers on whatever holds it,
 no fill, radius, shadow or edge; inside a `SurfaceCard` it runs full bleed the same way, and `kind="table"` draws it as its `frame`. `surface="card"`
-is the white card for an app that asks for it. Every `Section kind="list"` draws the same card edge (a shadow only on the page ground) wherever it stands (BOUNDARY-7). Measure: lint
-`single-child-card` (a lone `DataTable` or chart only) in `@starci/eslint-grammar-core` (error). See [components/card.md](components/card.md) and
+is the white card for an app that asks for it. Measure: lint
+`single-child-card` (a lone `DataTable`, chart or `Section kind="list"`) in `@starci/eslint-grammar-core` (error). See [components/card.md](components/card.md) and
 [components/list-table.md](components/list-table.md).
 
 ### COLLECTION-3 A group identity shows its members

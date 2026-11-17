@@ -6,7 +6,7 @@ import { noop } from './fixtures.js';
 import { reconcileEdges, reconcileLegend, reconcileNodes } from './FlowGraphSteps.data.js';
 
 /**
- * 0.37.8: a table looks like a list card (no grey frame, no grey gutters, no grey header strip: a white body, the column labels 12 muted on the white, 1px full-width
+ * 0.37.8: a table looks like a card of rows (no grey frame, no grey gutters, no grey header strip: a white body, the column labels 12 muted on the white, 1px full-width
  * row dividers, the footer behind a full-width line), and a section head is one row (label and count chip at the start, at most one Link or IconButton at the end, the
  * description as a caption below the body).
  */
@@ -195,7 +195,7 @@ export const CardsOneContent: Story = {
     <G.Page header={{ title: 'One content per card' }}>
       <G.Section title="Order #1042">
         <G.Sublabel>Ordered items</G.Sublabel>
-        <G.SurfaceCard kind="list" ariaLabel="Ordered items" items={workflowRows} empty="No items yet." />
+        <G.Section kind="list" ariaLabel="Ordered items" items={workflowRows} empty="No items yet." />
         <G.Sublabel>Details</G.Sublabel>
         <G.SurfaceCard kind="details" ariaLabel="Details" items={[{ id: 't', term: 'Time', description: '19:30' }, { id: 'k', term: 'Guests', description: '4 people' }]} note="Updated at 10:00." />
         <G.Sublabel>Workflow</G.Sublabel>
@@ -213,7 +213,7 @@ export const CardsOneContent: Story = {
 export const CardHeadCountAndLink: Story = {
   render: () => (
     <div style={{ maxInlineSize: '40rem' }}>
-      <G.SurfaceCard kind="list" label="Needs your approval" count={3} isAttention labelEnd={<G.Link variant="head" href="#all">View all</G.Link>} items={workflowRows} empty="Nothing here." />
+      <G.Section kind="list" title="Needs your approval" count={3} isAttention action={<G.Link variant="head" href="#all">View all</G.Link>} items={workflowRows} empty="Nothing here." />
     </div>
   ),
 };
@@ -318,12 +318,8 @@ export const EqualHeightRow: Story = {
         <G.Section fill title="Items" count={8} action={<G.Link variant="head" href="#itemRows">View all</G.Link>}>
           <G.DataTable<Item> fill label="Items" columns={columns.slice(0, 2)} rows={itemRows.slice(0, 3)} renderCell={cell} emptyContent="No items yet." footer={<G.Text tone="muted">1–3 of 8</G.Text>} />
         </G.Section>
-        <G.Section fill title="Savings">
-          <G.SurfaceCard kind="list" height="fill" label="Savings" items={[{ id: 'a', title: 'Working hours', description: '12 hours this week' }]} empty={<G.EmptyNotice message="None yet" />} />
-        </G.Section>
-        <G.Section fill title="Channels">
-          <G.SurfaceCard kind="list" height="fill" label="Channels" items={[{ id: 'a', title: 'Chat' }, { id: 'b', title: 'Webhook' }, { id: 'c', title: 'Email' }, { id: 'd', title: 'Web' }]} empty={<G.EmptyNotice message="None yet" />} />
-        </G.Section>
+        <G.Section kind="list" fill title="Savings" items={[{ id: 'a', title: 'Working hours', description: '12 hours this week' }]} empty={<G.EmptyNotice message="None yet" />} />
+        <G.Section kind="list" fill title="Channels" items={[{ id: 'a', title: 'Chat' }, { id: 'b', title: 'Webhook' }, { id: 'c', title: 'Email' }, { id: 'd', title: 'Web' }]} empty={<G.EmptyNotice message="None yet" />} />
       </G.Grid>
     </div>
   ),

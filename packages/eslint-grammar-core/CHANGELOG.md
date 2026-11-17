@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.43.0 - 2026-11-17
+
+- Added: `surface-card-list` (`FE_SURFACE_CARD_LIST`, law LIST-ONE-LOOK): a Grammar `SurfaceCard` whose `kind` is the literal `"list"` is refused with the fix: `<Section kind="list" title items empty />` with `ListRow` rows; `label` becomes `title`, `labelEnd` becomes `action`, a filter or search goes in the list's `filter`, `layout` stays. No autofix: the zones, the import and the look change too. Doc `docs/surface-card-list.md`.
+- Changed: `single-child-card` also refuses a `SurfaceCard` with no zones whose only child is a `Section kind="list"` (a list titles itself and is never a card); key-value and choice cards stay valid.
+- Changed (messages and docs): `surface-card-kind`, `no-label-in-grid`, `surface-in-surface`, `rows-in-card` and `no-card-lead-description` point at `Section kind="list"`, never a list card; `surface-in-surface` no longer speaks of a nested surface.
+- Removed: the dead row paths of the rules that read list rows (`lib/row-context.ts`: `table-cell-type`, `row-title-link`, `button-arrow`, `message-surfaces`, `same-line-size`, `suggestion-buttons`): a `{ kind: "list", items }` collection object and the `items` of a `SurfaceCard kind="list"`; the rows of a `Section kind="list"` and a `ListRow` are read as before.
+- Knowledge (`runtime/knowledge/ui/presentation/grammar-laws.yaml`): LIST-ONE-LOOK added; SURFACE-IN-SURFACE, MESSAGE-SURFACES, ROWS-IN-CARD, CARD-NO-DESCRIPTION and SINGLE-CHILD-CARD rewritten for the flat list.
+
 ## 0.42.0 - 2026-11-17
 
 - Version: moves with the Grammar family (@starci/grammar 0.42.0: the steps graph opens fitted, back edges clear their own cards, the pill Select sizes to its value, the section divider hook, neutral disabled buttons, one-line action cells); no rule changed.

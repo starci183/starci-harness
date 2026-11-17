@@ -19,7 +19,7 @@ test("the law publishes one rule and it is an error", () => {
   assert.deepEqual(recommended, { "starci-grammar/single-child-card": "error" })
 })
 
-test("SINGLE-CHILD-CARD: a card around one DataTable or chart is refused; list cards are valid", () => {
+test("SINGLE-CHILD-CARD: a card around one DataTable, chart or list is refused; key-value cards are valid", () => {
   slotTester().run("single-child-card", singleChildCard, {
     valid: [
       // the table is the surface; the Section head carries the title
@@ -32,7 +32,7 @@ test("SINGLE-CHILD-CARD: a card around one DataTable or chart is refused; list c
       { filename: BLOCK, code: code("<SurfaceCard label=\"Runs\" footers={[{ kind: \"paging\" }]}><ListBox items={i} /></SurfaceCard>") },
       { filename: BLOCK, code: code("<SurfaceCard label=\"Runs\" labelEnd={<Button>Add</Button>}><BarChart data={d} /></SurfaceCard>") },
       { filename: BLOCK, code: code("<SurfaceCard label=\"Runs\" kind=\"table\" labelEnd={<Button>Add</Button>} columns={c} rows={r} />") },
-      { filename: BLOCK, code: code("<SurfaceCard label=\"Runs\" kind=\"list\" headers={[{ kind: \"filter\" }]} items={i} />") },
+      { filename: BLOCK, code: code("<SurfaceCard label=\"Runs\" headers={[{ kind: \"filter\" }]}><Section kind=\"list\" ariaLabel=\"Runs\" items={i} /></SurfaceCard>") },
       // other kinds, a body of copy, a record's facts, a single value
       { filename: BLOCK, code: code("<SurfaceCard label=\"Plan\" kind=\"figures\" items={f} />") },
       { filename: BLOCK, code: code("<SurfaceCard label=\"Plan\"><Text>Hello</Text></SurfaceCard>") },
@@ -46,14 +46,12 @@ test("SINGLE-CHILD-CARD: a card around one DataTable or chart is refused; list c
       { filename: BLOCK, code: "import { SurfaceCard } from \"@starci/grammar/core\"\nimport { DataTable } from \"./mine\"\nexport const A = () => <SurfaceCard label=\"R\"><DataTable /></SurfaceCard>" },
       // a script is not product source
       { filename: SCRIPT, code: code("<SurfaceCard label=\"Runs\"><DataTable columns={c} rows={r} /></SurfaceCard>") },
-      // 0.37.8: a card of list or key-value rows is valid, alone or not
+      // 0.37.8: a card of key-value or choice rows is valid, alone or not
       { filename: BLOCK, code: code("<SurfaceCard label=\"Runs\"><ListBox items={i} /></SurfaceCard>") },
       { filename: BLOCK, code: code("<SurfaceCard label=\"Steps\"><DisclosureList label=\"Steps\" items={i} /></SurfaceCard>") },
       { filename: BLOCK, code: code("<SurfaceCard label=\"Log\"><Timeline items={i} /></SurfaceCard>") },
-      { filename: BLOCK, code: code("<SurfaceCard label=\"Runs\"><Section kind=\"list\" items={rows} /></SurfaceCard>") },
       { filename: BLOCK, code: code("<SurfaceCard label=\"Runs\" kind=\"table\" columns={c} rows={r} />") },
-      { filename: BLOCK, code: code("<SurfaceCard label=\"Runs\" kind=\"list\" items={i} empty={null} />") },
-      { filename: BLOCK, code: code("<SurfaceCard label=\"Details\" kind=\"list\" layout=\"keyValue\" items={i} empty={null} />") },
+      { filename: BLOCK, code: code("<SurfaceCard label=\"Details\" kind=\"details\" items={i} />") },
       { filename: BLOCK, code: code("<SurfaceCard label=\"Details\"><DescriptionList items={i} /></SurfaceCard>") },
     ],
     invalid: [
@@ -61,6 +59,8 @@ test("SINGLE-CHILD-CARD: a card around one DataTable or chart is refused; list c
       { filename: BLOCK, code: code("<SurfaceCard label=\"Usage\"><BarChart data={d} /></SurfaceCard>"), errors: [lone] },
       { filename: BLOCK, code: code("<SurfaceCard label=\"Share\"><ProportionBar items={d} /></SurfaceCard>"), errors: [lone] },
       { filename: BLOCK, code: code("<SurfaceCard label=\"Map\"><BubbleMap data={d} /></SurfaceCard>"), errors: [lone] },
+      // 0.43.0: a list is flat and titles itself, never a card (LIST-ONE-LOOK)
+      { filename: BLOCK, code: code("<SurfaceCard label=\"Runs\"><Section kind=\"list\" items={rows} /></SurfaceCard>"), errors: [lone] },
       { filename: BLOCK, code: code("<SurfaceCard label=\"Flow\"><FlowGraph nodes={n} /></SurfaceCard>"), errors: [lone] },
       { filename: BLOCK, code: code("<SurfaceCard label=\"Diagram\"><MermaidDiagram source={s} /></SurfaceCard>"), errors: [lone] },
       // namespace import, blank text, a fragment, a condition, empty zones

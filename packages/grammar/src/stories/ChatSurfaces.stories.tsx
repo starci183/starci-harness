@@ -7,8 +7,8 @@ import { noop } from './fixtures.js';
  * THE CHAT SURFACES (0.37.31, law DNA-COMMON-CHAT-SURFACES, the owner-approved drawing chat-surfaces). Every chat (team chat, an agent's chat, an inbox
  * thread, the assistant) draws the same three faces: the thread on the page tone (`--background`; a `PaneSection scroll role="log"` paints it even when the
  * app asks for `tone="surface"`), a message of someone else (MessageBubble incoming, MessageCard) the FLAT surface (`--surface`, no border, no shadow), and the
- * reader's own message `--accent` with `--accent-foreground`. The replies a card offers are one bordered list, a pressable plain-text row per reply with a
- * chevron (`SurfaceCard kind="list" layout="suggestions"`, law DNA-COMMON-CARD-SUGGESTIONS); the pills by the composer stay `Button size="sm"`. The pane
+ * reader's own message `--accent` with `--accent-foreground`. The replies a card offers are one flat list, a pressable plain-text row per reply with a
+ * chevron (`Section kind="list" layout="suggestions"`, law DNA-COMMON-CARD-SUGGESTIONS); the pills by the composer stay `Button size="sm"`. The pane
  * footer that holds the composer starts at its own hairline: no empty band above the suggestions, no second line.
  */
 const meta: Meta = { title: 'Navigation & Data/Chat surfaces (0.37.31)', parameters: { layout: 'fullscreen' } };
@@ -24,7 +24,7 @@ const replies: readonly G.ListRowData[] = [
 const stopBody = (
   <G.Stack gap="row">
     <G.Text>Has order ORD-0004 been paid yet?</G.Text>
-    <G.SurfaceCard kind="list" layout="suggestions" ariaLabel="Suggested replies" empty={null} items={replies} />
+    <G.Section kind="list" layout="suggestions" ariaLabel="Suggested replies" empty={null} items={replies} />
     <G.Cluster gap="inline" align="end" wrap={false}>
       <div style={{ flex: 1, minWidth: 0 }}>
         <G.Textarea label="Reply" isLabelHidden placeholder="Reply to the AI..." />
@@ -124,9 +124,10 @@ export const ChatPane: Story = {
     foreground.remove();
 
     const list = canvasElement.querySelector<HTMLElement>('[data-grammar-list-layout="suggestions"]')!;
-    const listCard = list.closest<HTMLElement>('.starci-core-surface')!;
-    expect(Number.parseFloat(getComputedStyle(listCard).borderTopWidth)).toBe(1);
-    expect(getComputedStyle(listCard).boxShadow).toBe('none');
+    // One look (0.43.0): the replies are a flat list in the card body, never a nested card.
+    expect(list.closest('.starci-core-surface')).toBeNull();
+    expect(Number.parseFloat(getComputedStyle(list).borderTopWidth)).toBe(0);
+    expect(getComputedStyle(list).boxShadow).toBe('none');
     const rows = [...list.querySelectorAll<HTMLElement>('.starci-core-list-row')];
     expect(rows.length).toBe(3);
     for (const row of rows) {

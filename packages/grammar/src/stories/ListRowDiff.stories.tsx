@@ -5,7 +5,7 @@ import * as G from '../common/index.js';
 /**
  * LIST-ROW-DIFF (0.37.28, version comparison drawing, GitHub-style): `ListRowData.diff` marks a row of a version diff. A gutter mark at the row's start (`+` added,
  * `−` removed, `~` changed, monospace, in the tone's ink), the row's ground in the tone's soft pair, a removed title struck through, a changed row's "from → to" as the 12 muted
- * line. The meaning is the glyph and the label read before the title (`diffLabel`), never the colour alone. In `SurfaceCard kind="list"` and `Section kind="list"`; the row padding holds.
+ * line. The meaning is the glyph and the label read before the title (`diffLabel`), never the colour alone. In `Section kind="list"`; the row padding holds.
  */
 const meta: Meta = { title: 'Surfaces/List row diff (0.37.28)', parameters: { grammar: { bleed: false } } };
 export default meta;
@@ -38,7 +38,7 @@ export const VersionDiff: Story = {
   name: 'Version 3 vs version 2: added, removed, changed and a plain row',
   render: () => (
     <div data-diff-story style={{ display: 'flex', flexDirection: 'column', gap: 24, width: 'min(100%, 640px)' }}>
-      <G.SurfaceCard kind="list" label="Steps that differ" items={steps} empty={<G.EmptyNotice message="No steps differ" />} />
+      <G.Section kind="list" title="Steps that differ" items={steps} empty={<G.EmptyNotice message="No steps differ" />} />
       <G.Section kind="list" title="Rights and tools" count={3} items={rights} empty={<G.EmptyNotice message="Unchanged" />} />
     </div>
   ),
@@ -88,13 +88,13 @@ export const LoadingSameBox: Story = {
   name: 'Loading diff rows keep the gutter: the same box as loaded',
   render: () => (
     <div data-diff-loading style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24, width: 'min(100%, 960px)' }}>
-      <G.SurfaceCard kind="list" label="Loaded" items={steps} empty={<G.EmptyNotice message="-" />} />
-      <G.SurfaceCard kind="list" label="Loading" isLoading items={steps} empty={<G.EmptyNotice message="-" />} />
+      <G.Section kind="list" title="Loaded" items={steps} empty={<G.EmptyNotice message="-" />} />
+      <G.Section kind="list" title="Loading" isLoading items={steps} empty={<G.EmptyNotice message="-" />} />
     </div>
   ),
   play: async ({ canvasElement }) => {
     await waitFor(() => {
-      const [loaded, loading] = Array.from(canvasElement.querySelectorAll<HTMLElement>('[data-diff-loading] [data-component="SurfaceCard"]')) as [HTMLElement, HTMLElement];
+      const [loaded, loading] = Array.from(canvasElement.querySelectorAll<HTMLElement>('[data-diff-loading] [data-component="Section"]')) as [HTMLElement, HTMLElement];
       const rowsOf = (card: HTMLElement) => Array.from(card.querySelectorAll<HTMLElement>('[data-component="ListRow"]'));
       const ready = rowsOf(loaded);
       const busy = rowsOf(loading);

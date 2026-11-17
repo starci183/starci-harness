@@ -30,7 +30,7 @@ Finding code: `FE_GROUPED_CHOICE_CONTROL` (R380). Two or more adjacent `Button` 
 **Valid**
 
 ```tsx
-<SurfaceCard kind="list" label="Cash" headers={[{ kind: "filter", label: "Period", items, selectedKey: period, onSelect: setPeriod }]} items={rows} empty={empty} />
+<SurfaceCard kind="table" label="Cash" columns={columns} headers={[{ kind: "filter", label: "Period", items, selectedKey: period, onSelect: setPeriod }]} rows={rows} empty={empty} />
 ```
 
 ## `starci-grammar/no-primary-tabs-misuse`

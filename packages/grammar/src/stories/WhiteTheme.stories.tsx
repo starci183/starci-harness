@@ -5,8 +5,8 @@ import * as G from '../common/index.js';
 
 /**
  * THE WHITE-THEME FIXES (0.41.0). One page that shows every part the white-theme reshoot named: the page head sharing the body's start edge
- * (MEASURE-8), an inline link underlined at rest, a list section (framed by default, flat under the list hooks with its rows on the title's
- * edge), the catalog toolbar as a flat `Section filter` row, the measures' empty track (`--starci-core-track`), the card radius hook and a
+ * (MEASURE-8), an inline link underlined at rest, a list section (flat with its rows on the title's edge, the one look of 0.43.0, no
+ * hook), the catalog toolbar as a flat `Section filter` row, the measures' empty track (`--starci-core-track`), the card radius hook and a
  * disabled commit with its reason. `Defaults` sets no hook; `White` sets the hooks on the root, as an app's brand.css sets them on `:root`.
  */
 const meta: Meta = {
@@ -93,6 +93,14 @@ export const Defaults: Story = {
       const filter = canvasElement.querySelector<HTMLElement>('[data-grammar-section-kind="region"] > .starci-core-section-filter');
       if (filter === null) throw new Error('the region filter row renders');
       expect(getComputedStyle(filter).boxShadow).toBe('none');
+      // One look (0.43.0): the list is flat by default, its rows on the title's edge.
+      const list = canvasElement.querySelector<HTMLElement>('.starci-core-section-list');
+      const title = list?.closest('[data-component="Section"]')?.querySelector<HTMLElement>('h2, h3, h4');
+      const row = list?.querySelector<HTMLElement>('.starci-core-list-row-copy');
+      if (list == null || title == null || row == null) throw new Error('the list renders');
+      expect(getComputedStyle(list).borderTopLeftRadius).toBe('0px');
+      expect(getComputedStyle(list).backgroundColor).toBe('rgba(0, 0, 0, 0)');
+      expect(Math.round(row.getBoundingClientRect().left)).toBe(Math.round(title.getBoundingClientRect().left));
     });
   },
 };
@@ -101,14 +109,10 @@ const WHITE_HOOKS = {
   '--surface-shadow': 'none',
   '--starci-core-card-border': '1px solid var(--border)',
   '--starci-core-card-radius': '0.75rem',
-  '--starci-core-list-frame': 'transparent',
-  '--starci-core-list-frame-border': '0',
-  '--starci-core-list-radius': '0',
-  '--starci-core-list-inset': '0',
   '--starci-core-tabs-indicator': 'var(--foreground)',
 } as CSSProperties;
 
-/** The white-theme hooks on the root: tighter cards, flat lists whose rows start on the title's edge, the default track. */
+/** The white-theme hooks on the root: tighter cards and the default track; lists are flat with no hook. */
 export const White: Story = {
   parameters: { grammar: { bleed: true, rootStyle: WHITE_HOOKS } },
   render: () => <PageView />,

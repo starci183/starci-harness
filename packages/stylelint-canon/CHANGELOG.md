@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.9.4 - 2026-11-17
+
+- Changed (vocabulary): the theme hooks of @starci/grammar 0.43.0. `--starci-core-list-frame`, `--starci-core-list-frame-border`, `--starci-core-list-radius` and `--starci-core-list-inset` are gone (a list is flat by default), so brand.css may no longer set them (41 hooks).
+
 ## 2.9.3 - 2026-11-17
 
 - Changed (vocabulary): the theme hook of @starci/grammar 0.42.0, `--starci-core-grid-section-divider`, which brand.css alone may set (45 hooks).

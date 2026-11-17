@@ -554,7 +554,7 @@ The package requires Node 22 or newer, as does the pinned DiceBear engine.
 
 **Surfaces (14).** EmptyNotice, FencedCodeBlock, HorizontalScrollRegion, Markdown, MarkdownArticle,
 MarkdownTableFrame, MediaFrame, Rail, Section, StaticStateRow, SurfaceAccordionCard,
-SurfaceCard, SurfaceListCard, VerticalScrollRegion.
+SurfaceCard, VerticalScrollRegion.
 
 `SurfaceCard` search zone `filters` (`readonly SelectZoneField[]`: `{ label, options, value, onChange, placeholder?, prefix? }`) puts
 trailing `Select`s in the search's own row: the search grows, each select keeps its natural width and its words never wrap (the
@@ -582,7 +582,7 @@ A `Figure` may carry `trend` (`"up" | "down" | "flat"`, with `trendSense` `"high
 its meta line starts with a decorative triangle in the success or danger colour (a dash for `flat`) and says the direction in
 hidden words. `trendLine` (numbers, oldest first; `trendLineLabel`) draws a `Sparkline` under the value and meta.
 
-A pressable `ListRow` (`onPress` or `href`), in `Section kind="list"` or `SurfaceCard kind="list"`, ends in a muted chevron
+A pressable `ListRow` (`onPress` or `href`), in `Section kind="list"`, ends in a muted chevron
 (`chevron-end` glyph, mirrored in RTL); a row with its own `action`, `menu` or `control`, or none of these, draws none.
 
 `Section kind="figures"` is the unpainted counterpart of a figures card inside an existing pane or surface. It uses
@@ -724,13 +724,14 @@ A `sm` Button never carries an icon. The second tab layer is `Page header.subTab
 
 **The single-child-card law.** A card groups two or more different parts (figures, a list, actions) or carries zones
 (tabs, search, head actions). A table, list or chart standing alone is the surface: a `Section` titles it (`title`) and one
-muted line goes under it (`Section caption`). A standalone `DataTable` is flat by default (`surface="none"`, 0.40.0: hairline rows, no fill, radius, shadow or edge; `surface="card"` draws its own white card); a `Section kind="list"` draws the card edge. Lint `single-child-card` refuses the card around a lone one. Text
+muted line goes under it (`Section caption`). A standalone `DataTable` is flat by default (`surface="none"`, 0.40.0: hairline rows, no fill, radius, shadow or edge; `surface="card"` draws its own white card); a `Section kind="list"` is flat. Lint `single-child-card` refuses the card around a lone one. Text
 in a card zone (a selection count, a filter caption, a hint) is sm 13.
 
-**The surface-in-surface law.** A list of rows inside a surface (a card body, a drawer or dialog, a pane band, a rail or
-aside) that is not that surface's own full-bleed body is a nested surface: a 1px separator edge, the card radius,
-clipped, so the row seams stay inside it. `Section kind="list"` does it automatically; a list that is the card is
-`SurfaceCard kind="list"`. A hand-made row list (blocks divided by `Divider`) is refused (lint `surface-in-surface`).
+**One look for a list** (0.43.0, owner 2026-11-17). A list is `Section kind="list"` of `ListRow`s wherever it stands (the page
+canvas, a card body, a drawer or dialog, a pane band, a rail): plain rows on the surface, divided by hairlines, the rows aligned
+with the section title, with no frame, fill, radius or shadow. A list is never a card: `SurfaceCard` has no `list` kind (lint
+`surface-card-list`), and cards stay for real objects. A hand-made row list (blocks divided by `Divider`) is refused (lint
+`surface-in-surface`).
 
 **The proximity law** (owner, 2026-11-09). Inside any container, its children stand at least one step closer than the
 container stands to its siblings: identity 4 < inline 8 < row 12 < section 24 < region 32. The defaults hold it:
@@ -785,7 +786,7 @@ renderers with prop-compatible versions and add extensions whose names don't col
 
 ### Surface controls, panel lists and group identity
 
-SurfaceCard, SurfaceListCard, painted SurfaceAccordionCard, Sidebar and the content of Drawer,
+SurfaceCard, painted SurfaceAccordionCard, Sidebar and the content of Drawer,
 Dialog, AlertDialog and Popover supply the nesting context of ANATOMY-2. SurfaceCard always paints
 a surface: the top layer is raised and a nested layer is subordinate; never raise both layers.
 Each family's DNA owns the paint. SurfaceCard and bounded
@@ -897,9 +898,9 @@ person uses Avatar. The default `layout="row"` keeps the overlapping member row 
 - **Structure.** One banner per page, owned by the app bar: `TopBar`
   in `WorkspaceShell`'s `header` slot makes the shell's wrapper a plain `div`
   (`headerLandmark="slot"`, automatic for it; pass it for an app-owned `<header>`), and
-  a `Section` head is never a `<header>`. Surface names (`SurfaceCard`, `SurfaceListCard`,
+  a `Section` head is never a `<header>`. Surface names (`SurfaceCard`,
   `SurfaceAccordionCard`) default to `h3`; pass `headingLevel` (2-6) so the outline never skips a
-  level. `SurfaceListCard`'s collection is the list (`<ul>`, or `role="list"` when scrolling), so
+  level. A `Section kind="list"`'s collection is the list (`<ul role="list">`), so
   its rows are `<li>`; use `empty` for an empty-state notice. Every scroll owner that holds
   non-focusable content (scroll regions, the Rail body, code and table frames) is a named
   `tabIndex=0` region. A sticky `TopBar` publishes `--starci-core-band-offset`, which a sticky rail reads.

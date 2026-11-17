@@ -10,7 +10,7 @@ import type { Context, Node } from "./lib/types.ts"
  *
  * R355. A card of the default `body` kind holds copy and controls. It does not hold the things a kind draws for it: a
  * hand-built list (`ul`, `ol`, `li`), a divider, a `SectionHeader` or a `Heading` standing as a second title (the card has a
- * `label`),. Rows are `kind="list"`, key figures
+ * `label`). Rows are a `Section kind="list"` (a list is never a card), key figures
  * `kind="figures"`, bands divided by seams are the typed `headers` and `footers` zones.
  *
  * R355 (zones). A `custom` zone of a card (`headers` or `footers`) holds no `Tabs`, `SearchField` or `Divider`: filter and search are
@@ -157,7 +157,7 @@ export const surfaceCardKind: Rule.RuleModule = defineRule({
     docs: { description: "R355: a SurfaceCard of the body kind holds no hand list, no Divider and no SectionHeader or Heading." },
     schema: [],
     messages: {
-      list: "`<{{element}}>` is a hand-built list in a `body` card. Rows are `<Section kind=\"list\" items={...} empty={...} />` (with zones: `<SurfaceCard kind=\"list\" headers={...}>`), which draws every row the same way.",
+      list: "`<{{element}}>` is a hand-built list in a `body` card. Rows are `<Section kind=\"list\" items={...} empty={...} />` (its `filter` holds a filter or search), which draws every row the same way, flat.",
       divider: "A `Divider` in a card is refused: the card draws its own seams. Bands divided by a line are the typed `headers` and `footers` zones: `<SurfaceCard headers={[{ kind: \"figures\", items }]} />`.",
       zone: "`<{{element}}>` stands in a `custom` zone of a card. Filter and search are the typed zones (`{ kind: \"filter\" | \"search\" | \"toolbar\" }`) and the card draws its own seams, so a `custom` zone holds no `Tabs`, `SearchField` or `Divider`.",
       title: "`<{{element}}>` stands as a second title inside a card. The card has a `label` (and `fact`, `labelEnd`, `note`); a sub-section of one subject is a typed header or footer zone.",
@@ -202,7 +202,7 @@ export const noLabelInGrid: Rule.RuleModule = defineRule({
     docs: { description: "R366: a labelled SurfaceCard repeated in a Grid kind=\"cards\" is a tile: it names itself inside." },
     schema: [],
     messages: {
-      tile: "A card with a `label` repeated in a `Grid kind=\"cards\"`: the label sits outside the material, so the grid reads as headings over boxes. A peer you recognise and open is `<SurfaceCard kind=\"tile\" name mark description badge action />`, named inside beside its mark. Comparing a fact across peers is a `kind=\"list\"` card.",
+      tile: "A card with a `label` repeated in a `Grid kind=\"cards\"`: the label sits outside the material, so the grid reads as headings over boxes. A peer you recognise and open is `<SurfaceCard kind=\"tile\" name mark description badge action />`, named inside beside its mark. Comparing a fact across peers is a `Section kind=\"list\"` or a `kind=\"table\"` card.",
     },
   },
   create(context) {

@@ -42,9 +42,9 @@ export const RowControlAndLeading: Story = {
     render: () => (
         <Matrix maxWidth={640}>
             <State label="A row with a control at its end, a 40px leading mark (tile or avatar); loading draws the tile as a rounded square" direction="column">
-                <G.SurfaceCard kind="list" label="Connections" items={connectionRows} empty={empty} />
+                <G.Section kind="list" title="Connections" items={connectionRows} empty={empty} />
             </State>
-            <State label="Loading" direction="column"><G.SurfaceCard kind="list" label="Connections" items={connectionRows} empty={empty} isLoading /></State>
+            <State label="Loading" direction="column"><G.Section kind="list" title="Connections" items={connectionRows} empty={empty} isLoading /></State>
             <State label="Select with a prefix" direction="column"><G.Select label="Position" prefix="Position:" options={[{ id: "a", label: "Technician" }]} defaultValue="a" /></State>
         </Matrix>
     ),

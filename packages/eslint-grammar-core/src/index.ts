@@ -32,6 +32,7 @@ import { rules as sectionHeadActionRules } from "./section-head-action.ts"
 import { rules as sameLineSizeRules } from "./same-line-size.ts"
 import { rules as statusColorsRules } from "./status-colors.ts"
 import { rules as surfaceCardRules } from "./surface-card.ts"
+import { rules as surfaceCardListRules } from "./surface-card-list.ts"
 import { rules as surfaceDepthRules } from "./surface-depth.ts"
 import { rules as singleChildCardRules } from "./single-child-card.ts"
 import { rules as surfaceInSurfaceRules } from "./surface-in-surface.ts"
@@ -88,6 +89,7 @@ const CONTRIBUTIONS: readonly { readonly law: string; readonly rules: Readonly<R
   { law: "single-child-card", rules: singleChildCardRules },
   { law: "status-colors", rules: statusColorsRules },
   { law: "surface-card", rules: surfaceCardRules },
+  { law: "surface-card-list", rules: surfaceCardListRules },
   { law: "surface-depth", rules: surfaceDepthRules },
   { law: "suggestion-buttons", rules: suggestionButtonsRules },
   { law: "surface-in-surface", rules: surfaceInSurfaceRules },
