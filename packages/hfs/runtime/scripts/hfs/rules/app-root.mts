@@ -5,7 +5,7 @@
 //   integration-specs.mts), FE_GRAPHQL_CONTRACT (R113, fe-contract-documents.mts), HFS_CI_MISSING_CANON (R13, pipeline.mts),
 //   BE_TEST_TOPOLOGY (R47, test-topology.mts), HFS_PROOF_COMMAND_FILE_MISSING (R105, proof-commands.mts), the app front-end
 //   tree (FE_WIRE_GENERATED, FE_I18N_PLACEMENT, frontend-tree.mts), HFS_STACKS_SHAPE (R10, stacks.mts) and the root seed data
-//   (HFS_SEED_*: R375, seeds.mts). A rule of one side runs only when the project declares that side, and a rule that joins the two (the fe wire
+//   (HFS_SEED_*: R375, seeds.mts) and the nivoos packages a project declares (HFS_NIVOOS_*: R436, nivoos.mts). A rule of one side runs only when the project declares that side, and a rule that joins the two (the fe wire
 //   generated from the be contract, the fe GraphQL documents against it) only when it declares both (PROJECT-1, project-sides.mts).
 import { cliFindings } from './cli.mjs';
 import { sideDeclared } from '../project-sides.mjs';
@@ -18,6 +18,7 @@ import { appFrontendFindings } from './frontend-tree.mjs';
 import { integrationSpecFindings } from './integration-specs.mjs';
 import { kindFindings } from './kinds.mjs';
 import { monorepoFindings } from './monorepo.mjs';
+import { nivoosFindings } from './nivoos.mjs';
 import { peerIntegrationFindings } from './peer-integrations.mjs';
 import { pipelineFindings } from './pipeline.mjs';
 import { proofCommandFindings } from './proof-commands.mjs';
@@ -41,6 +42,7 @@ export function appRootFindings({ repoRoot, files, all, repo, resolver, pins, ph
     ...depFindings({ repoRoot, files: all }),
     ...peerIntegrationFindings({ repoRoot, files: all }),
     ...monorepoFindings({ repoRoot, files: all, repo }),
+    ...nivoosFindings({ repoRoot, files: all, repo }),
     ...dockerFindings({ repoRoot, files: all, repo }),
     ...(be ? cliFindings({ repoRoot, files: all, repo, resolver }) : []),
     ...contractCompatFindings({ repoRoot, files: all }),

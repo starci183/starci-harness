@@ -35,7 +35,7 @@ function checkSideSlot(slot: Slot, profile: string, manifest: SlotManifest, bad:
 }
 
 function claimSlotPatterns(slot: Slot, profile: string, claimed: Map<string, string>, bad: string[], braceVariants: SemanticHelpers['braceVariants']): void {
-  if (slot.appKind !== undefined) return;
+  if (slot.appKind !== undefined || slot.declaredBy !== undefined) return;
   for (const variant of braceVariants(slot.path)) {
     const key = `${profile}:${variant}`;
     if (claimed.has(key)) bad.push(`slots ${claimed.get(key)} and ${slot.id} claim the same pattern ${variant} on ${profile}`);

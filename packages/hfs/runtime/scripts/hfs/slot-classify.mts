@@ -17,6 +17,8 @@ export interface Scope {
   byId: Map<string, Slot>;
   variants: Variant[];
   appKind: Map<string, string>;
+  /** The names a declaration lists, by list (`nivoos`: sides.nivoos.packages), which a slot with `declaredBy` or `exceptDeclaredBy` reads. */
+  declared: Map<string, ReadonlySet<string>>;
 }
 
 /** A path two slots own with equal specificity (a manifest gap). */

@@ -142,6 +142,7 @@ import { DEFAULT_FAMILIES, mergeAppPass, runDbStep, runFormatStep, runStructureS
 import { CHECK_GRAPH, createLanes, formatStepRows, runGraph, stepRow, type StepBody, type StepId } from '../cache/schedule.mjs';
 import { runParityFamilies, type ParityRun } from '../cache/parity-family.mjs';
 import { PROJECT_CHECK_FAILED, runProjectChecks } from '../cache/project-checks.mjs';
+import { NIVOOS_PACKAGE_CHECK, runNivoosPackageChecks } from '../cache/nivoos-package-check.mjs';
 import { LINT_REPORT, runSonarScan } from '../cache/sonar-scan-family.mjs';
 import { createProgress, elapsedText, silentProgress } from '../cache/progress.mjs';
 import { familyLine } from '../cache/report.mjs';
@@ -632,8 +633,11 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
     // The project checks ext/manifest.json declares (R402) belong to the hfs gate, as the extension's hfs rules do: they run wherever it runs, as their own step.
     if (selected.has('hfs') && modes.checks !== 'off') bodies.set('checks', async (step) => {
       const checked = await runProjectChecks({ repoRoot, run: step.parity, env: io.env });
-      found.set('checks', withWhy(checked.findings, readWhy(skillRoot, checked.findings.length > 0 ? [PROJECT_CHECK_FAILED] : [])));
-      said.set('checks', checked.lines);
+      // The nivoos packages hfs.json declares (R436) are checked here too, as their own lines and their own code.
+      const nivoos = await runNivoosPackageChecks({ repoRoot, run: step.parity, env: io.env });
+      const findings = [...checked.findings, ...nivoos.findings];
+      found.set('checks', withWhy(findings, readWhy(skillRoot, [...(checked.findings.length > 0 ? [PROJECT_CHECK_FAILED] : []), ...(nivoos.findings.length > 0 ? [NIVOOS_PACKAGE_CHECK] : [])])));
+      said.set('checks', [...checked.lines, ...nivoos.lines]);
     });
   }
   let proved: Dynamic;

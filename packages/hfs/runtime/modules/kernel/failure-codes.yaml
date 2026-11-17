@@ -6794,6 +6794,36 @@ HFS_SIDE_UNDECLARED:
   nextStep_vi: "Khai báo phía trong hfs.json (\"packages\": {} cho packages/, hoặc be/fe với apps của nó), hoặc xoá thư mục nếu dự án không có phía này."
   owner: op-retry
   kind: check-finding
+HFS_NIVOOS_PACKAGE_MISSING:
+  title: "A declared nivoos package lacks its files"
+  title_vi: "Gói nivoos đã khai báo thiếu tệp"
+  meaning_vi: "hfs.json khai báo một gói nivoos dưới sides.nivoos.packages, nhưng package.json, tsconfig.json hoặc tệp entry của gói (mặc định src/<tên>.package.ts) không được git theo dõi trong packages/<tên>/."
+  causes_vi:
+    - "Vi phạm R436: gói nivoos được khai báo phải có thư mục packages/<tên>/ đầy đủ (PROJECT-BUSINESS-1)."
+    - "Gói chưa được commit, đã đổi tên, hoặc entry nằm ở đường dẫn khác với khai báo."
+  nextStep_vi: "Commit gói vào packages/<tên>/, khai báo `entry` đúng đường dẫn trong hfs.json, hoặc xoá gói khỏi sides.nivoos.packages."
+  owner: op-retry
+  kind: check-finding
+HFS_NIVOOS_UNDECLARED:
+  title: "A package that depends on the nivoos SDK is not declared"
+  title_vi: "Gói phụ thuộc SDK nivoos nhưng chưa được khai báo"
+  meaning_vi: "Một gói gốc packages/<tên>/ phụ thuộc vào SDK nivoos hoặc CLI nivoos, nên là gói nghiệp vụ, nhưng hfs.json không liệt kê nó trong sides.nivoos.packages; lint chuẩn của back end sẽ xét mã SDK (export mặc định, nội dung tiếng Việt) và từ chối."
+  causes_vi:
+    - "Vi phạm R436: gói viết bằng SDK nivoos phải được khai báo để dùng hồ sơ lint SDK và bước kiểm tra nivoos package check (PROJECT-BUSINESS-1)."
+    - "Gói được chuyển vào từ kho khác mà hfs.json chưa được cập nhật."
+  nextStep_vi: "Thêm { \"name\": \"<tên>\" } vào sides.nivoos.packages của hfs.json, hoặc bỏ phụ thuộc vào SDK nếu đó không phải gói nghiệp vụ."
+  owner: op-retry
+  kind: check-finding
+HFS_NIVOOS_PACKAGE_CHECK:
+  title: "The nivoos package check failed"
+  title_vi: "Bước kiểm tra gói nivoos không đạt"
+  meaning_vi: "`nivoos package check <entry> --out <out>` chạy trong packages/<tên>/ không thành công: gói không qua type-check hoặc không dựng được, seed hoặc mẫu secrets đã commit khác bản dựng mới, hoặc CLI nivoos chưa được cài cho gói."
+  causes_vi:
+    - "Vi phạm R436: mỗi gói nivoos đã khai báo phải qua nivoos package check trong starci app check (PROJECT-BUSINESS-1)."
+    - "Mã gói đổi mà seed chưa được dựng lại và commit, hoặc devDependency `nivoos` thiếu."
+  nextStep_vi: "Chạy `npm run build` trong packages/<tên>/ rồi commit seed; nếu CLI chưa cài, thêm `nivoos` vào devDependencies của gói và chạy npm install."
+  owner: op-retry
+  kind: check-finding
 STACKS_SIDES_UNDECLARED:
   title: "The stack declaration states no sides"
   title_vi: "Khai báo stack chưa nêu các phía của dự án"

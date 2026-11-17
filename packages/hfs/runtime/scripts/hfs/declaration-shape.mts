@@ -9,7 +9,8 @@ import { baselineResetOk } from './rules/database-reset.mjs';
 import { kindShapeProblems, patternShapeProblems } from './declaration-slots.mjs';
 import { byCodeUnit } from '../lib/list.mjs';
 import { CONTRACT_KINDS, DEFAULT_CONTRACT } from './contract-kind.mjs';
-import { PROJECT_SIDES, isProjectSide } from './project-sides.mjs';
+import { DECLARABLE_SIDE_KEYS, PROJECT_SIDES, isProjectSide } from './project-sides.mjs';
+import { NIVOOS_SIDE, nivoosSideProblems } from './nivoos-side.mjs';
 
 /** Shape problems of the optional hfs.json `db` block of a lite app: the environment variable naming its database, its image, forced RLS and its application role. */
 const isStringList = (value: Parsed) => Array.isArray(value) && value.every((entry: Parsed) => typeof entry === 'string' && entry.trim());
@@ -162,13 +163,17 @@ function productDeclarationProblems(declaration: Parsed, profiles: Parsed): stri
   return bad;
 }
 
-/** PROJECT-1: `sides` declares a non-empty subset of be, fe and packages; `packages` is the empty object `{}` (the root workspace packages/*). */
+/**
+ * PROJECT-1: `sides` declares a non-empty subset of be, fe and packages; `packages` is the empty object `{}` (the root workspace packages/*).
+ * It may also hold `nivoos`, the business packages authored with the nivoos SDK, each at packages/<name>/ (nivoos-side.mts, R436).
+ */
 function sidesProblems(sides: Parsed): string[] {
   if (!isPlainObject(sides)) return [`sides must be an object declaring some of ${PROJECT_SIDES.join(', ')}`];
   const keys = Object.keys(sides).sort(byCodeUnit);
-  const bad = keys.filter((key) => !isProjectSide(key)).map((key) => `sides.${key} is not a side (a project declares some of ${PROJECT_SIDES.join(', ')})`);
-  if (!keys.length) bad.push(`sides is empty: a project declares at least one of ${PROJECT_SIDES.join(', ')}`);
+  const bad = keys.filter((key) => !DECLARABLE_SIDE_KEYS.includes(key)).map((key) => `sides.${key} is not a side (a project declares some of ${DECLARABLE_SIDE_KEYS.join(', ')})`);
+  if (!keys.length) bad.push(`sides is empty: a project declares at least one of ${DECLARABLE_SIDE_KEYS.join(', ')}`);
   if (Object.hasOwn(sides, 'packages') && !(isPlainObject(sides.packages) && Object.keys(sides.packages).length === 0)) bad.push('sides.packages is the empty object {} (it declares the root workspace packages/*)');
+  if (Object.hasOwn(sides, NIVOOS_SIDE)) bad.push(...nivoosSideProblems(sides[NIVOOS_SIDE]));
   return bad;
 }
 

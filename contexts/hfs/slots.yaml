@@ -1358,6 +1358,8 @@ slots:
       - app
     editionWhy: Lite and full share the slot; every root workspace package of an app (a folder of packages/ holding a package.json and a src/) is one in both.
     path: packages/<name>/
+    exceptDeclaredBy:
+      - nivoos
     presence: optional
     tracked: tracked
     tier: package
@@ -1370,6 +1372,24 @@ slots:
     coverage: none
     rules:
       - HFS_UNUSED_EXPORT
+  - id: app.nivoos-package
+    profiles:
+      - app
+    editionWhy: Lite and full share the slot; a business package authored with the nivoos SDK is one in both, and the lite app of a business is where it lives (PROJECT-BUSINESS-1).
+    path: packages/<package>/
+    declaredBy: nivoos
+    lintProfile: nivoos
+    presence: optional
+    tracked: tracked
+    tier: none
+    requires:
+      - package.json
+      - tsconfig.json
+    tests: none
+    rules:
+      - HFS_NIVOOS_PACKAGE_MISSING
+      - HFS_NIVOOS_UNDECLARED
+      - HFS_NIVOOS_PACKAGE_CHECK
   - id: app.sides
     profiles:
       - app

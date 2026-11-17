@@ -16,6 +16,7 @@ import { braceVariants, globExpression } from '../lib/glob.mjs';
 import { declaredLogicOf, logicRolesOf, type Slot, type SlotManifest } from './manifest-shape.mjs';
 import { byCodeUnit } from '../lib/list.mjs';
 import { trimTrailingSlashes } from './trailing-slashes.mjs';
+import { nivoosPackagesOf } from './nivoos-side.mjs';
 import { PACKAGE_ALWAYS_UNMEASURED, PACKAGE_SLOTS_FILE, judgePackageSlots, readPackageSlots, unmeasuredGlobs, type PackageSlots } from './package-slots.mjs';
 import { PROJECT_EXT_MANIFEST } from '../lib/project-ext.mjs';
 
@@ -327,10 +328,22 @@ export function declaredPackageSlots(read: (file: string) => string | null): (fo
   };
 }
 
-/** The unmeasured globs of each package the project declares sound slots for (declaredPackageSlots); null for the rest. */
+/** The glob a declared nivoos package leaves unmeasured: everything below its src/ (package-relative). */
+export const NIVOOS_UNMEASURED = 'src/**';
+
+/** The unmeasured globs of each package the project declares sound slots for (declaredPackageSlots), and a declared nivoos package whole; null for the rest. */
 export function declaredPackageScopes(read: (file: string) => string | null): (folder: string) => readonly string[] | null {
   const slots = declaredPackageSlots(read);
+  let nivoos: ReadonlySet<string> | undefined;
+  /** The folders of the nivoos packages hfs.json declares: a business package has no unit specs (`nivoos package check` proves it), so nothing of it is measured (slot app.nivoos-package). */
+  const nivoosFolders = (): ReadonlySet<string> => {
+    if (nivoos === undefined) {
+      try { nivoos = new Set(nivoosPackagesOf((JSON.parse(read('hfs.json') ?? 'null') as { sides?: unknown } | null)?.sides).map((entry) => `packages/${entry.name}`)); } catch { nivoos = new Set(); }
+    }
+    return nivoos;
+  };
   return (folder) => {
+    if (nivoosFolders().has(folder)) return [NIVOOS_UNMEASURED];
     const manifest = slots(folder);
     return manifest === null ? null : unmeasuredGlobs(manifest);
   };

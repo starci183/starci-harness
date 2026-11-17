@@ -6958,3 +6958,20 @@ rules:
     witness:
       - {path: packages/hfs/src/data-loaders.spec.mjs, editions: [lite, full]}
       - {path: packages/hfs/src/standard-load.spec.mjs, editions: [lite, full]}
+  - id: R436
+    code: "HFS_NIVOOS_PACKAGE_MISSING"
+    law: "The nivoos packages a project declares (hfs.json `sides.nivoos.packages`, each `{ name, entry?, out? }`, a kebab-case folder `packages/<name>/` once, `entry` defaulting to `src/<name>.package.ts` and `out` to `seed`; declaring one declares the packages side) agree with its tree and its check, each way: a declared package tracks its `package.json`, `tsconfig.json` and entry (HFS_NIVOOS_PACKAGE_MISSING); a root package that depends on the nivoos SDK or its CLI is declared (HFS_NIVOOS_UNDECLARED), since the slot `app.nivoos-package` is what hands its source to the SDK authoring lint profile of `@starci/eslint-canon-be` (Vietnamese copy in string and template literals, the default export of the entry; the canon otherwise whole) and what leaves it unmeasured; and `nivoos package check <entry> --out <out>`, run from the package folder in the `checks` step of `starci app check`, passes: a package that does not type-check, a committed seed or secrets template that differs from a fresh build, or a nivoos CLI that is not installed for it is HFS_NIVOOS_PACKAGE_CHECK, which is never cached."
+    kinds: [check]
+    gates: [settle, land, ci]
+    failureCodes: ["HFS_NIVOOS_PACKAGE_MISSING", "HFS_NIVOOS_UNDECLARED", "HFS_NIVOOS_PACKAGE_CHECK"]
+    enforcers:
+      - {kind: hfs, id: nivoos, at: runtime/scripts/hfs/rules/nivoos.mjs}
+      - {kind: hfs, id: nivoos-package-check, at: cache/nivoos-package-check.mjs}
+    editions: [lite, full]
+    templateNa: "A new app declares no nivoos package; the rule guards the declaration, the tree and the package check once it does."
+    docs:
+      - {path: contexts/project/business-repo.md#project-business-1-a-business-is-one-repository-a-lite-app-its-nivoos-package-and-its-seed-standard, editions: [lite, full]}
+    proves:
+      - {path: packages/hfs/src/nivoos-package.spec.mjs, editions: [lite, full]}
+    witness:
+      - {path: packages/hfs/src/nivoos-package.spec.mjs, editions: [lite, full]}

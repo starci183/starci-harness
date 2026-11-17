@@ -65,6 +65,8 @@ export interface HfsSlot {
     readonly role?: string
     /** The side-relative path patterns of the only files that may import this file by deep path. */
     readonly importedBy?: readonly string[]
+    /** The lint profile the slot hands the canon (`nivoos`: the SDK authoring profile of a declared nivoos package). */
+    readonly lintProfile?: string
 }
 
 /** A unit-tested role (`ruleParams.be.unitRoles`). */
@@ -162,6 +164,8 @@ export interface HfsPackageLint {
     readonly frontEnd: readonly string[]
     readonly fe: readonly HfsPackageLintScope[]
     readonly be: readonly HfsPackageLintScope[]
+    /** The source globs (`packages/<name>/src/**`) of the nivoos packages the project declares, judged by the SDK authoring profile. */
+    readonly nivoos?: readonly string[]
 }
 
 /** A type a root package declares: its name and the app-root relative file that declares it. */

@@ -13,7 +13,8 @@
  *   - `require-enum-member-jsdoc` checks an adjacent non-empty description, never whether it states a
  *     consequence. That half is read by a person, and the rule says so rather than pretending.
  *   - `no-non-ascii-source` takes no exemption marker, so text a program depends on
- *     lives in a message catalog (slot be.domain.messages, of any module tier, or be.feature.messages), the only place Vietnamese may appear. Specs
+ *     lives in a message catalog (slot be.domain.messages, of any module tier, or be.feature.messages), the only place Vietnamese may appear (and, in a declared
+ *     nivoos package, the string and template literals that hold its business copy, lib/nivoos-profile.ts). Specs
  *     and fixtures get no exemption.
  *   - `no-restated-name-jsdoc` (law 7) holds the decidable slice of law 3 - a doc block whose only
  *     content is the declared name re-spelled in words teaches nothing beyond the import line, so it
@@ -26,6 +27,7 @@
 import type { TSESLint, TSESTree } from "@typescript-eslint/utils"
 import { nameOrValue } from "./lib/ast.ts"
 import { hfsOf } from "./lib/hfs.ts"
+import { nivoosAuthored } from "./lib/nivoos-profile.ts"
 import { normalizePath } from "./lib/path.ts"
 import { hasSecondLanguage } from "@starci/hfs/runtime/scripts/lib/language.mjs"
 import { jsdocBefore, jsdocDescription } from "../runtime/scripts/lib/jsdoc.mjs"
@@ -87,6 +89,26 @@ const offenceIn = (line: string): string | null => {
   if (EMOJI.test(withoutEndonym)) return "an emoji"
   if (ORNAMENT.test(withoutEndonym)) return "an ornamental symbol"
   return null
+}
+
+/**
+ * The source text with the Vietnamese letters inside string and template literals replaced by `a`, so a line of it offends only with what is
+ * outside a literal (a comment, an identifier) or with an emoji or an ornament anywhere.
+ *
+ * @param sourceCode - The linted file.
+ * @returns The text, line breaks kept.
+ */
+const withoutLiteralText = (sourceCode: TSESLint.SourceCode): string => {
+  const text = sourceCode.text
+  let out = ""
+  let at = 0
+  for (const token of sourceCode.ast.tokens) {
+    if (token.type !== "String" && token.type !== "Template") continue
+    out += text.slice(at, token.range[0])
+    out += Array.from(text.slice(token.range[0], token.range[1]).normalize("NFC"), (char) => (hasSecondLanguage(char) ? "a" : char)).join("")
+    at = token.range[1]
+  }
+  return out + text.slice(at)
 }
 
 /** A declaration of one of the DOCUMENTED_KINDS, or a variable declaration. */
@@ -313,10 +335,13 @@ export const noNonAsciiSource: RuleModule = {
     // a message catalog is product copy in two languages; every other file is prose for the next reader
     const slot = hfsOf(context).slotOf(context.filename)
     if (CATALOG_SLOTS.has(slot) || FIXTURE_SLOTS.has(slot)) return {}
+    // A declared nivoos package carries its business copy (titles, labels, prompts, guidance) in string and template literals: Vietnamese is accepted there and
+    // nowhere else (a comment, an identifier), and an emoji or an ornament stays refused everywhere (lib/nivoos-profile.ts).
+    const copyInLiterals = nivoosAuthored(context)
 
     return {
       "Program:exit"(node) {
-        const lines = sourceCode.getLines()
+        const lines = (copyInLiterals ? withoutLiteralText(sourceCode) : sourceCode.text).split(/\r\n|[\r\n\u2028\u2029]/u)
         for (const [index, line] of lines.entries()) {
           const offence = offenceIn(line)
           if (offence === null) continue

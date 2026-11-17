@@ -12,6 +12,9 @@ import type { Parsed } from './manifest-shape.mjs';
 import { ROOT_PACKAGE_SLOTS } from './architecture/root-packages.mjs';
 import { declaredPackageSlots } from './coverage-scope.mjs';
 import { packageLintScopes, type PackageLint } from './package-slots.mjs';
+
+/** What each canon lints of the root packages, and the source globs of the nivoos packages hfs.json declares (`packages/<name>/src/**`, slot app.nivoos-package, nivoos-side.mts): the SDK authoring lint profile judges those, and neither canon scope does. */
+export interface PackageLintView extends PackageLint { nivoos: string[] }
 import { byCodeUnit } from '../lib/list.mjs';
 
 /** The frozen view of one side of an app that the lint factories hand their rules (`settings.starci.hfs`). */
@@ -35,7 +38,7 @@ export interface HfsView {
   /** The vocabulary a root workspace package declares for itself (`starci` of its manifest); only the view of the root packages has it. */
   packageContract?: (file: string) => PackageContract | null;
   /** What each canon lints of the root packages the project declares slots for (ext/manifest.json packages, PROJECT-LINT-3); only the view of the root packages has it. */
-  packageLint?: PackageLint;
+  packageLint?: PackageLintView;
 }
 
 /** A type a root package declares: its name and the file of the package that declares it, relative to the app root. */
@@ -162,13 +165,15 @@ export const readPackageContract = (repoRoot: string, packageDir: string): Packa
  * @returns {object} The frozen view: the profile of the side over the paths of the app root.
  */
 /** The lint scopes of every root package of the app at `repoRoot` the project declares sound slots for, in folder order; a package it does not declare adds none. */
-function declaredPackageLint(repoRoot: string): PackageLint {
+function declaredPackageLint(repoRoot: string, nivoos: readonly string[] = []): PackageLintView {
   const read = (file: string): string | null => { try { return fs.readFileSync(path.join(repoRoot, file), 'utf8'); } catch { return null; } };
   let names: string[] = [];
   try { names = fs.readdirSync(path.join(repoRoot, 'packages'), { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort(byCodeUnit); } catch { /* an app without root packages declares none */ }
   const slots = declaredPackageSlots(read);
-  const lint: PackageLint = { frontEnd: [], fe: [], be: [] };
+  // A nivoos package hfs.json declares is judged by its own profile whole: an ext slot declaration for the same folder adds nothing to it.
+  const lint: PackageLintView = { frontEnd: [], fe: [], be: [], nivoos: nivoos.map((name) => `packages/${name}/src/**`) };
   for (const name of names) {
+    if (nivoos.includes(name)) continue;
     const manifest = slots(`packages/${name}`);
     if (manifest === null) continue;
     const scopes = packageLintScopes(`packages/${name}`, manifest);
@@ -224,7 +229,7 @@ function packagesView(opened: OpenedHfs, repoRoot: string, side: 'be' | 'fe'): H
     allows: (file: string) => allowsFile(opened, rel(file)),
     slot: (id: string) => opened.slot(id),
     packageContract,
-    packageLint: declaredPackageLint(repoRoot),
+    packageLint: declaredPackageLint(repoRoot, (opened.repo.nivoosPackages ?? []).map((entry) => entry.name)),
   });
 }
 

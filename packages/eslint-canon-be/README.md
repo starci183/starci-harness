@@ -31,6 +31,19 @@ longer holds is deleted from the plugin; every rule that ships is on.
 
 Also exported: `rules`, `ruleOwners`, `lawOwners`, `ruleDeclarations`, `recommended`, `linterOptions`.
 
+## A business package: the SDK authoring profile
+
+A package authored with the nivoos SDK (agents, workflows, cells, steps, brain, accounts, seed) is declared in `hfs.json` `sides.nivoos.packages`; its folder is then the slot `app.nivoos-package`
+(`lintProfile: nivoos`), and `starciBePackagesConfig` judges `packages/<name>/src/**` with the same canon less what an SDK package cannot satisfy. The profile is chosen by the slot and takes no
+file comment; the same code in an undeclared package is judged by the whole canon (`src/lib/nivoos-profile.ts`, `src/nivoos-profile.spec.ts`):
+
+- `no-non-ascii-source` accepts Vietnamese letters inside string and template literals (the business's copy) and refuses them in comments and identifiers; an emoji or ornament is refused everywhere;
+- `no-default-export` accepts the default export of the entry `src/<name>.package.ts`, which the SDK loads;
+- `explicit-export-surface`, `require-public-member-jsdoc`, `job-shape` and `throw-domain-error` are not applied, each with its reason in `NIVOOS_RELAXED` (nothing imports a package's source and the SDK's
+  interfaces type its members; a member is a field of the SDK interface; `.step.ts` is a workflow step, not a job step; an SDK node fails by a thrown coded `Error`).
+
+[contexts/project/business-repo.md](../../contexts/project/business-repo.md) owns the page; the findings each relaxation held are those of the first package, `nivo-web`.
+
 ## What it actually catches
 
 A sample, not the list:

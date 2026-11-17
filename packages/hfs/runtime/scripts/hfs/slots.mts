@@ -37,6 +37,7 @@ import type { AppRepo } from './slot-app-view.mjs';
 import { sideProblems } from './slot-side-problems.mjs';
 import { declarationShapeProblems } from './declaration-shape.mjs';
 import { declaredSidesOf, sideDeclared, type ProjectSide } from './project-sides.mjs';
+import { nivoosPackagesOf, NIVOOS_SIDE, type NivoosPackage } from './nivoos-side.mjs';
 import { declarationEdition, editionRuleParams, effectiveSlot, slotInEdition } from './edition-slots.mjs';
 import { fail } from './slot-errors.mjs';
 import { loadRuleCatalog } from './rule-catalog.mjs';
@@ -104,6 +105,8 @@ export interface RepoView {
   sides?: Record<Side, RepoView>;
   /** The sides hfs.json declares (app view only, PROJECT-1); a side outside it resolves to an empty view under `sides` and is never checked. */
   declaredSides?: readonly ProjectSide[];
+  /** The nivoos packages hfs.json declares (app view only, `sides.nivoos`, R436): packages/<name>/ of each is a slot app.nivoos-package, not an app.packages one. */
+  nivoosPackages?: readonly NivoosPackage[];
   manifestVersion: string;
 }
 
@@ -326,6 +329,7 @@ export function resolveRepoDeclaration(manifest: SlotManifest, declaration: Pars
     reads: Object.freeze([]),
     sides: Object.freeze(sides),
     declaredSides,
+    nivoosPackages: Object.freeze(nivoosPackagesOf(declaration.sides)),
     manifestVersion: manifest.version,
   });
 }
@@ -375,7 +379,7 @@ function createScopeResolver(manifest: SlotManifest, repo: RepoView): ScopeResol
   const profile = repo.profile;
   const edition = repo.edition ?? 'full';
   const slots = manifest.slots.filter((s) => s.managedOnly !== true && s.profiles.includes(profile) && slotInEdition(manifest, s, edition)).map((s) => effectiveSlot(s, profile, edition));
-  const scope: Scope = { manifest, repo, profile, slots, byId: new Map(slots.map((s): [string, Slot] => [s.id, s])), variants: slots.flatMap(variantsOf), appKind: new Map(repo.apps.map((a): [string, string] => [a.name, a.kind])) };
+  const scope: Scope = { manifest, repo, profile, slots, byId: new Map(slots.map((s): [string, Slot] => [s.id, s])), variants: slots.flatMap(variantsOf), appKind: new Map(repo.apps.map((a): [string, string] => [a.name, a.kind])), declared: new Map([[NIVOOS_SIDE, new Set((repo.nivoosPackages ?? []).map((entry) => entry.name))]]) };
   const classifyPath = (input: string): ClassifiedPath => classifyIn(scope, input);
   /** tracked | ignored | external for the slot owning `p`, or null when no slot owns it. */
   const trackingOf = (p: string): SlotTracking | null => classifyPath(p).tracking ?? null;

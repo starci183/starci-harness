@@ -41,6 +41,12 @@ export interface Slot {
   appKind?: string;
   /** The app kinds whose `<app>` folders the slot does not own or require (an app of that kind has no instance of it). */
   exceptAppKinds?: string[];
+  /** The slot exists only for the names of this declared list (`nivoos`: sides.nivoos.packages) bound to its variable <package>; other names fall to the slot beside it. */
+  declaredBy?: string;
+  /** The declared lists whose names (variable <name>) the slot leaves to a `declaredBy` slot. */
+  exceptDeclaredBy?: string[];
+  /** The lint profile the canon applies to the files of the slot (`nivoos`: the SDK authoring profile of @starci/eslint-canon-be); absent: the side's own canon. */
+  lintProfile?: string;
   minInstances?: number;
   requiredWhen?: string;
   requiredInstances?: Record<string, string[]>;
@@ -289,7 +295,7 @@ export const MANIFEST_KINDS = [APP_KIND, RUNTIME_KIND];
 export const manifestKind = (m: Parsed): string => (isPlainObject(m) && m.kind !== undefined ? m.kind : APP_KIND);
 const strList = (v: Parsed) => stringList(v);
 
-const APP_SLOT_KEYS = ['id', 'profiles', 'path', 'presence', 'tracked', 'tier', 'tests', 'owner', 'appKind', 'exceptAppKinds', 'minInstances', 'requiredWhen', 'requiredInstances', 'requires', 'pattern', 'trigger', 'allows', 'forbids', 'layers', 'kinds', 'roles', 'composedBy', 'budget', 'managedBy', 'liteManagedBy', 'rules', 'goesTo', 'why', 'since', 'perConnection', 'parent', 'editions', 'editionWhy', 'litePresence', 'lite', 'provider', 'coverage', 'entries', 'outcomeHome', 'templateNa', 'exemplifiedBy', 'role', 'importedBy', 'rewrittenBy', 'logic', 'managedOnly', 'managedWhenSides'];
+const APP_SLOT_KEYS = ['id', 'profiles', 'path', 'presence', 'tracked', 'tier', 'tests', 'owner', 'appKind', 'exceptAppKinds', 'declaredBy', 'exceptDeclaredBy', 'lintProfile', 'minInstances', 'requiredWhen', 'requiredInstances', 'requires', 'pattern', 'trigger', 'allows', 'forbids', 'layers', 'kinds', 'roles', 'composedBy', 'budget', 'managedBy', 'liteManagedBy', 'rules', 'goesTo', 'why', 'since', 'perConnection', 'parent', 'editions', 'editionWhy', 'litePresence', 'lite', 'provider', 'coverage', 'entries', 'outcomeHome', 'templateNa', 'exemplifiedBy', 'role', 'importedBy', 'rewrittenBy', 'logic', 'managedOnly', 'managedWhenSides'];
 /** The roles a file slot may play that a rule reads (`role`): the entity registry of persistence.md BE-PERSISTENCE-3 (architecture/entity-registry.mts). */
 const SLOT_ROLES = ['entity-registry'];
 /** The fields a slot's `lite` overlay may hold: the same keys it would carry in the slot body, resolved under edition lite. */
@@ -355,6 +361,9 @@ const NAMED_SLOT_FIELDS: Array<[string, string]> = [['appKind', 'appKind must be
 
 function slotInstanceProblems(slot: Parsed, at: string): string[] {
   const bad = [];
+  if (slot.declaredBy !== undefined && !NAME.test(String(slot.declaredBy))) bad.push(`${at}: declaredBy must be the name of a declared list`);
+  if (slot.exceptDeclaredBy !== undefined && !(Array.isArray(slot.exceptDeclaredBy) && slot.exceptDeclaredBy.length > 0 && slot.exceptDeclaredBy.every((name: Parsed) => NAME.test(String(name))))) bad.push(`${at}: exceptDeclaredBy must be a non-empty list of declared list names`);
+  if (slot.lintProfile !== undefined && !NAME.test(String(slot.lintProfile))) bad.push(`${at}: lintProfile must be a lint profile name`);
   if (slot.exceptAppKinds !== undefined && !(Array.isArray(slot.exceptAppKinds) && slot.exceptAppKinds.length > 0 && slot.exceptAppKinds.every((kind: Parsed) => NAME.test(String(kind))))) bad.push(`${at}: exceptAppKinds must be a non-empty list of app kind names`);
   if (slot.pattern !== undefined && !/^[a-z][a-z0-9-]*$/.test(String(slot.pattern))) bad.push(`${at}: pattern must be a kebab-case pattern name`);
   if (slot.requiredInstances !== undefined && !instancesShapeOk(slot.requiredInstances)) bad.push(`${at}: requiredInstances must map a variable to a non-empty list of names`);

@@ -92,6 +92,7 @@ test("the slots the project declares `lint: fe` are left to the front-end canon,
             frontEnd: ["packages/sdk/src/views/**", "packages/sdk/src/face/**"],
             fe: [{ files: "packages/sdk/src/views/**", ignores: ["packages/sdk/src/views/contract/**"] }, { files: "packages/sdk/src/face/**", ignores: ["packages/sdk/src/views/contract/**"] }],
             be: [{ files: "packages/sdk/src/views/contract/**", ignores: [] }],
+            nivoos: [],
         })
         const config = await starciBePackagesConfig({ hfs: app.hfs })
         const ruleBlocks = config.filter((block) => block.rules !== undefined && "starci-be/explicit-export-surface" in block.rules)

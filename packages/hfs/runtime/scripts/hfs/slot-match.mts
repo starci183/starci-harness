@@ -42,6 +42,7 @@ export interface NearestSlot {
 export interface MatchScope {
   variants: Variant[];
   appKind: Map<string, string>;
+  declared?: Map<string, ReadonlySet<string>>;
 }
 
 interface Candidate {
@@ -129,7 +130,7 @@ const levenshtein = (a: string, b: string): number => {
 };
 
 /** The match of `p` against one variant: its slot, root and bindings, or null (not matching, filtered out, an app-kind slot of another kind, or an app of a kind the slot excepts). */
-function matchVariant(variant: Variant, p: string, only: ((slot: Slot) => boolean) | undefined, appKind: Map<string, string>): Match | null {
+function matchVariant(variant: Variant, p: string, only: ((slot: Slot) => boolean) | undefined, appKind: Map<string, string>, declared: Map<string, ReadonlySet<string>>): Match | null {
   if (only && !only(variant.slot)) return null;
   const m = variant.regex.exec(p);
   if (!m) return null;
@@ -137,15 +138,18 @@ function matchVariant(variant: Variant, p: string, only: ((slot: Slot) => boolea
   variant.names.forEach((name, i) => { bindings[name] = m[i + 2] as string; });
   if (variant.slot.appKind !== undefined && appKind.get(bindings.app as string) !== variant.slot.appKind) return null;
   if (bindings.app !== undefined && (variant.slot.exceptAppKinds ?? []).includes(appKind.get(bindings.app) as string)) return null;
+  // A slot that exists only for names a declaration lists (`declaredBy`, variable <package>) and one that leaves those names to it (`exceptDeclaredBy`, variable <name>).
+  if (variant.slot.declaredBy !== undefined && declared.get(variant.slot.declaredBy)?.has(bindings.package as string) !== true) return null;
+  if (bindings.name !== undefined && (variant.slot.exceptDeclaredBy ?? []).some((list) => declared.get(list)?.has(bindings.name as string) === true)) return null;
   const root = variant.dir ? (m[1] as string) : path.posix.dirname(m[1] as string);
   return { variant, slot: variant.slot, root: root === '.' ? '' : root, bindings };
 }
 
 /** Every variant matching `p`, with its root and bindings, minus app-kind slots of another kind, the most specific first. */
-export function matchVariants({ variants, appKind }: MatchScope, p: string, only?: (slot: Slot) => boolean): Match[] {
+export function matchVariants({ variants, appKind, declared = new Map() }: MatchScope, p: string, only?: (slot: Slot) => boolean): Match[] {
   const found: Match[] = [];
   for (const variant of variants) {
-    const hit = matchVariant(variant, p, only, appKind);
+    const hit = matchVariant(variant, p, only, appKind, declared);
     if (hit) found.push(hit);
   }
   return found.sort((a, b) => b.variant.score - a.variant.score || a.variant.wildcards - b.variant.wildcards);

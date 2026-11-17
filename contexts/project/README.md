@@ -43,7 +43,7 @@ are two tasks.
 
 | choice | where | effect |
 |---|---|---|
-| sides | `sides`, a non-empty subset of `be`, `fe`, `packages` | which folders the project has and which checks run (above) |
+| sides | `sides`, a non-empty subset of `be`, `fe`, `packages`, and `nivoos` (the business packages of `packages/`) | which folders the project has and which checks run (above); `nivoos` is [business-repo.md](business-repo.md) |
 | contract | `sides.be.apps[].contract`, `graphql` (when absent) or `rest` | the api app's default door ([code/be/transport.md](../code/be/transport.md) BE-TRANSPORT-1) |
 | edition | `edition`, `lite` or `full` (full when absent), fixed at scaffold | which slots and rules apply and which app verbs the CLI shows; [lite.md](lite.md), [full.md](full.md) |
 | grammar | `sides.fe.grammar` | which grammar package and grammar lint the front end composes ([grammars](../grammars/README.md)) |
@@ -97,7 +97,7 @@ its side over the package view of the app root. A package cannot import the app'
 it declares for itself in the `starci` key of its manifest: `outcome`, its one result union (FE-ERROR-2), `{ "name", "file" }` with the file
 under its `src/` (`readPackageContract` of the package view). Its errors derive from `DomainError` of `@starci/common` (BE-ERROR-1), which
 needs no declaration; a manifest that still declares `errorBase` stops the lint. The
-project-graph rules judge the side folders and not the packages.
+project-graph rules judge the side folders and not the packages. A package authored with the nivoos SDK is a root package the project declares under `sides.nivoos` and is judged by its own lint profile and check ([business-repo.md](business-repo.md) PROJECT-BUSINESS-1).
 
 ## Where to read for a task
 
@@ -120,6 +120,7 @@ rule 10).
 | file | holds |
 |---|---|
 | [README.md](README.md) | this map: what a project is, the life cycle, where to read |
+| [business-repo.md](business-repo.md) | the business repository: one lite app, its nivoos package (agents, workflows, cells, brain, accounts, seed) and its seed standard; the `sides.nivoos` declaration, the SDK authoring lint profile and the `nivoos package check` step (PROJECT-BUSINESS-1, R436) |
 | [anatomy.md](anatomy.md) | the tree of an app root and its sides, and what each part is for; its generated slices `anatomy-<edition>-<side>.md` (the app root and one side of one edition) are what a task of that side reads |
 | [index.md](index.md) | generated: every file of `contexts/` with its size, first sentence, sections and ids, which a Kernel reads instead of the whole tree |
 | [lint.md](lint.md) | each canon package and gate: where it applies and what kind of fact it enforces; the facts no machine checks yet |

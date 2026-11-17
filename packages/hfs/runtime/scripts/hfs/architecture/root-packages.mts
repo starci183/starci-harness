@@ -1,4 +1,4 @@
-// root-packages.mts - the workspace packages of an app ROOT (packages/<name>, slot app.packages).
+// root-packages.mts - the workspace packages of an app ROOT (packages/<name>, slot app.packages, or app.nivoos-package for a nivoos package the project declares).
 // They lie outside both side folders and belong to no side; both sides import them by package name, through their package entry points
 // (the `exports` of the manifest), so the import graph reads them as first-party packages and the back-end canon never reads them as
 // a third-party library. The app root's one package.json lists them in `workspaces`; the patterns that start with a side folder
@@ -25,7 +25,7 @@ export interface RootPackage {
 }
 
 /** The slots whose directories at the app root are first-party packages of the app. */
-export const ROOT_PACKAGE_SLOTS: ReadonlySet<string> = new Set(['app.packages']);
+export const ROOT_PACKAGE_SLOTS: ReadonlySet<string> = new Set(['app.packages', 'app.nivoos-package']);
 
 const SIDE_PREFIX = /^(?:be|fe)\//;
 

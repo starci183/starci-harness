@@ -5,6 +5,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { PROJECT_SIDES, declaredSidesOf, type ProjectSide } from '../runtime/scripts/hfs/project-sides.mjs';
+import { NIVOOS_SIDE } from '../runtime/scripts/hfs/nivoos-side.mjs';
 
 const HFS_FILE = 'hfs.json';
 const STACK_FILE = path.join('.starcistacks', 'application-stacks.yaml');
@@ -57,7 +58,8 @@ export function declaredSidesEdits(root: string): DeclarationEdit[] {
   let hfs: { kind?: unknown; sides?: Record<string, unknown> };
   try { hfs = JSON.parse(text); } catch { return edits; }
   if (hfs.kind !== 'app' || hfs.sides === null || typeof hfs.sides !== 'object') return edits;
-  if (!Object.hasOwn(hfs.sides, 'packages') && holdsRootPackages(root)) {
+  // A declared nivoos package (sides.nivoos) already declares the packages side with it (R436): nothing to add.
+  if (!Object.hasOwn(hfs.sides, 'packages') && !Object.hasOwn(hfs.sides, NIVOOS_SIDE) && holdsRootPackages(root)) {
     const content = withPackagesSide(text);
     if (content !== null) {
       hfs = { ...hfs, sides: { ...hfs.sides, packages: {} } };

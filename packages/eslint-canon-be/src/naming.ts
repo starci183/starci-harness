@@ -32,6 +32,7 @@
 
 import type { TSESTree } from "@typescript-eslint/utils"
 import { hfsOf, inTestWorld } from "./lib/hfs.ts"
+import { isNivoosEntry, nivoosAuthored } from "./lib/nivoos-profile.ts"
 import { normalizePath } from "./lib/path.ts"
 import type { Context, Recommended, RuleModule, Rules } from "./lib/rule.ts"
 
@@ -204,8 +205,11 @@ export const noBareVerbExport: RuleModule = {
 
 // -- no-default-export -------------------------------------------------------------------------------------------
 
-/** The one file kind that may default-export: a Jest global setup, whose API is a default function. */
+/** A file kind that may default-export: a Jest global setup, whose API is a default function. */
 const isGlobalSetup = (context: Context) => inTestWorld(hfsOf(context), context.filename) && /\/global-(?:setup|teardown)\.ts$/.test(normalizePath(context.filename))
+
+/** The other file kind that may default-export: the entry of a declared nivoos package (`src/<name>.package.ts`), which the SDK loads by its default export (lib/nivoos-profile.ts). */
+const isNivoosPackageEntry = (context: Context) => nivoosAuthored(context) && isNivoosEntry(context.filename)
 
 /** Named exports only: a default export has no name to grep, rename or import-check. */
 export const noDefaultExport: RuleModule = {
@@ -215,12 +219,12 @@ export const noDefaultExport: RuleModule = {
     schema: [],
     messages: {
       default:
-        "A default export has no name of its own: every importer picks one, renames and greps stop working, and the file cannot be found by what it exports. Use a named export. (The only default export is the Jest `global-setup.ts`/`global-teardown.ts` of the e2e world, whose API requires it.)",
+        "A default export has no name of its own: every importer picks one, renames and greps stop working, and the file cannot be found by what it exports. Use a named export. (The only default exports are the Jest `global-setup.ts`/`global-teardown.ts` of the e2e world and the entry of a nivoos package, whose APIs require it.)",
     },
   },
   create(context) {
     if (!/\.[cm]?ts$/.test(normalizePath(context.filename))) return {}
-    if (isGlobalSetup(context)) return {}
+    if (isGlobalSetup(context) || isNivoosPackageEntry(context)) return {}
     const isDefault = (name: TSESTree.Identifier | TSESTree.StringLiteral): boolean => name && ((name.type === "Identifier" && name.name === "default") || (name.type === "Literal" && name.value === "default"))
     return {
       ExportDefaultDeclaration(node) {

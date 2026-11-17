@@ -21,6 +21,7 @@ import { OUTSIDE_THE_SCAN_FILES } from "../../runtime/scripts/lib/sonar-syntax-r
 import { sonarWayRules, sonarWayTestRules } from "../../runtime/scripts/lib/sonar-way.mjs"
 import type { TSESLint } from "@typescript-eslint/utils"
 import type { HfsView } from "./hfs.ts"
+import { withoutRelaxed } from "./nivoos-profile.ts"
 import type { Recommended, RuleEntry, Rules } from "./rule.ts"
 
 /** The plugin object the factory registers as `starci-be`. */
@@ -132,23 +133,32 @@ export const PACKAGE_IGNORED = Object.freeze(["**/dist/**", "**/coverage/**", "*
  * `packages/<pkg>/src/**`. Which files are the front end's is the project's declaration, never a folder name this canon knows: a slot of
  * `ext/manifest.json` `packages` with `lint: "fe"` is left to the front-end canon, and the first slot that holds a file decides
  * (`hfs.packageLint`, PROJECT-LINT-3), so a back-end slot declared before a front-end slot it lies in stays back end. A package the project
- * does not declare is back end whole. It is the very rule set of the be side, over the package view of the app root (`loadPackagesHfs`).
+ * does not declare is back end whole. It is the very rule set of the be side, over the package view of the app root (`loadPackagesHfs`). A nivoos package the project
+ * declares (`hfs.packageLint.nivoos`) is judged by the SDK authoring profile, which keeps the rule set but the rules lib/nivoos-profile.ts relaxes, each with its reason.
  *
  * @param {object} input - The attachment options of `buildBeConfig`.
  * @returns {Promise<Array<object>>} The flat config: one ignore block and the rule and Sonar way blocks over the package files.
  */
 export const buildBePackagesConfig = async (input: Parameters<typeof buildBeConfig>[0]): Promise<TSESLint.FlatConfig.ConfigArray> => {
     const [, ...blocks] = await buildBeConfig(input)
-    const lint = input.hfs?.packageLint ?? { frontEnd: [], fe: [], be: [] }
+    const lint = input.hfs?.packageLint ?? { frontEnd: [], fe: [], be: [], nivoos: [] }
+    const nivoos = lint.nivoos ?? []
+    // The nivoos packages the project declares (slot app.nivoos-package, `lintProfile: nivoos`) are judged by the SDK authoring profile instead: the same blocks over their source with the
+    // recommendation less the rules the profile relaxes (lib/nivoos-profile.ts). Every other package file keeps the back end's canon, and the nivoos source is left out of it.
+    const profiled = nivoos.length === 0 ? [] : (await buildBeConfig({ ...input, recommended: withoutRelaxed(input.recommended ?? {}) })).slice(1)
     return [
         { ignores: [...PACKAGE_IGNORED] },
         ...blocks.flatMap((block) => {
             const tests = block.name === TEST_SCOPE_BLOCK
             return [
-                { ...block, files: [...(tests ? PACKAGE_SPEC_FILES : PACKAGE_SOURCE_FILES)], ignores: [...(block.ignores ?? []), ...lint.frontEnd] },
+                { ...block, files: [...(tests ? PACKAGE_SPEC_FILES : PACKAGE_SOURCE_FILES)], ignores: [...(block.ignores ?? []), ...lint.frontEnd, ...nivoos] },
                 // A back-end slot declared before a front-end slot that reaches it: its files, less the front-end slots declared before it.
                 ...lint.be.map((scope) => ({ ...block, files: [[scope.files, tests ? SCRIPT_SPEC : SCRIPT]], ignores: [...(block.ignores ?? []), ...scope.ignores] })),
             ]
+        }),
+        ...profiled.flatMap((block) => {
+            const tests = block.name === TEST_SCOPE_BLOCK
+            return nivoos.map((glob) => ({ ...block, files: [[glob, tests ? SCRIPT_SPEC : SCRIPT]] }))
         }),
     ]
 }
