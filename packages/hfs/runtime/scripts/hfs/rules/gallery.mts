@@ -10,7 +10,7 @@
 //   HFS_APP_GALLERY_REGION_INCOMPLETE  the explain.md has no region, or a region lacks a `Vì sao` or a `Grammar` value;
 //   HFS_APP_GALLERY_REGION_UNCLEAR     a region says `CHƯA RÕ` or `SAI` (a bug its author has not fixed): blocks in `--env prod`, reported in `--env local` (the code is localOnly);
 //   HFS_APP_GALLERY_FRONT_MATTER       the explain.md front matter lacks `title`, `route` or `area`, or names another area than its folder (a warning);
-//   HFS_APP_GALLERY_SCREEN_FILE        a screen folder holds a file or folder other than 1440.png, 1920.png, 390.png, explain.md and links.json (a state or an agent is its own folder);
+//   HFS_APP_GALLERY_SCREEN_FILE        a screen folder holds a file or folder other than 1440.png, 390.png, explain.md and links.json (a state or an agent is its own folder);
 //   HFS_APP_GALLERY_LINKS              a links.json, the flows.json or the routes.json is malformed or names a screen folder or a route that does not exist;
 // and the coverage of the front end (PROJECT-GALLERY-4), judged from the explain.md files alone (the shots are local evidence):
 //   HFS_APP_GALLERY_ROUTE_MISSING      a `page.tsx` route of the front end has no screen folder whose explain.md `route` matches it and is not excluded in gallery/routes.json:
@@ -74,7 +74,7 @@ export interface GalleryScreen {
 }
 
 /**
- * The screen folders under the pages folder, `<area>/<screen>`, read from the work tree (the shots are never tracked). A screen folder holds only `1440.png`, `1920.png`, `390.png`,
+ * The screen folders under the pages folder, `<area>/<screen>`, read from the work tree (the shots are never tracked). A screen folder holds only `1440.png`, `390.png`,
  * `explain.md` and `links.json`: anything else (`1440-open.png`, `sales-1440.png`, a folder such as `before/`) is stray, since a state or an agent is its own folder.
  * A file straight in the pages folder or in an area folder is loose (it belongs in a screen folder). Dot files are ignored.
  */

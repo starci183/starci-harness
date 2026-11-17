@@ -61,8 +61,8 @@ Each status is set by the role PROJECT-GALLERY-6 item 5 names, and only then:
 
 - **Approved (the lead).** On the owner's "đẹp" for a page in chat: every screen of that page gets `status: approved`,
   `approvedAt` (now, a full ISO timestamp with the zone such as 2026-11-17T09:30:00+07:00, never a bare date) and no `shots`; the area goes into `areas` once all its screens are approved.
-- **Built (the code lane).** Code the page with its `cần API` operations; shoot `gallery/pages/<area>/<screen>/` at 1440,
-  1920 and 390; write its `explain.md` from the note by the table of [format.md](format.md#the-note-is-the-explainmd); set
+- **Built (the code lane).** Code the page with its `cần API` operations; shoot `gallery/pages/<area>/<screen>/` at 1440
+  and 390; write its `explain.md` from the note by the table of [format.md](format.md#the-note-is-the-explainmd); set
   `status: built` and record the shots:
   ```
   node -e "const c=require('crypto'),f=require('fs');for(const w of ['1440','390'])console.log(w,c.createHash('sha256').update(f.readFileSync('gallery/pages/<area>/<screen>/'+w+'.png')).digest('hex'))"

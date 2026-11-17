@@ -24,7 +24,7 @@ export interface Explain {
 }
 
 /** The only widths a screen is shot at; a state or an agent variant is its own screen folder. */
-export const SHOT_WIDTHS = ["1440", "1920", "390"] as const
+export const SHOT_WIDTHS = ["1440", "390"] as const
 export type Width = (typeof SHOT_WIDTHS)[number]
 
 export function parseExplain(markdown: string): Explain {

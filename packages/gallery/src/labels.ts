@@ -28,7 +28,6 @@ export interface Labels {
     readonly noDesign: string
     readonly noShot: string
     readonly noShotAtWidth: string
-    readonly designAt1440: string
     readonly slider: string
     readonly states: string
     readonly stateBase: string
@@ -85,7 +84,6 @@ export const LABELS = Object.freeze({
         noDesign: "No design frame for this screen.",
         noShot: "No shot yet.",
         noShotAtWidth: "No shot at this width.",
-        designAt1440: "The design is drawn at 1440; 1920 is the same layout given more width.",
         slider: "Compare design and shot",
         states: "States",
         stateBase: "list",
@@ -140,7 +138,6 @@ export const LABELS = Object.freeze({
         noDesign: "Màn này chưa có khung vẽ.",
         noShot: "Chưa có ảnh.",
         noShotAtWidth: "Không có ảnh ở độ rộng này.",
-        designAt1440: "Bản vẽ ở 1440; 1920 là cùng bố cục với chiều rộng lớn hơn.",
         slider: "So bản vẽ và ảnh",
         states: "Trạng thái",
         stateBase: "danh sách",

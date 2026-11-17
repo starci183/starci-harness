@@ -405,7 +405,7 @@ test('explain.md is read as front matter and regions: the three lines, bullets, 
     [{ kind: 'missing', field: 'Grammar' }], [{ kind: 'missing', field: 'Vì sao' }, { kind: 'missing', field: 'Grammar' }],
   ]);
   assert.deepEqual(parseExplain('## A\nV\u0069\u0300 sao: decomposed accents\nGrammar: `X`').regions[0]?.problems, [], 'a decomposed Vì is the same word');
-  assert.deepEqual([...SHOT_FILES], ['1440.png', '1920.png', '390.png']);
+  assert.deepEqual([...SHOT_FILES], ['1440.png', '390.png']);
   assert.deepEqual(linkTargets([{ to: 'a/b', x: 0 }, { to: 'c/d' }]), ['a/b', 'c/d']);
   assert.deepEqual(linkTargets({ links: [{ to: 'a/b' }] }), ['a/b']);
   for (const bad of [{}, 'x', [{ to: 3 }], [{ x: 1 }], [{ to: '' }], null]) assert.equal(linkTargets(bad), null, JSON.stringify(bad));
@@ -427,15 +427,15 @@ test('the gallery package reads explain.md, links and flows as the gate does: bo
 
 test('a screen folder with shots and no explain.md is HFS_APP_GALLERY_EXPLAIN_MISSING, in the work tree where the shots are', (t) => {
   const root = starter(t, 'lite');
-  page(root, 'inbox', 'today', ['1440.png', '390.png', '1920.png'], null);
+  page(root, 'inbox', 'today', ['1440.png', '390.png'], null);
   page(root, 'inbox', 'empty-folder', [], null);
   const [finding, ...rest] = findings(root);
   assert.equal(finding?.code, 'HFS_APP_GALLERY_EXPLAIN_MISSING');
   assert.equal(finding?.level, 'error');
   assert.equal(finding?.path, 'gallery/pages/inbox/today/explain.md');
-  assert.match(finding?.message ?? '', /has 3 shots and no explain\.md/u);
+  assert.match(finding?.message ?? '', /has 2 shots and no explain\.md/u);
   assert.deepEqual(rest, [], 'a folder with no shot needs none yet');
-  assert.deepEqual(galleryScreens(root, PARAMS).screens.filter((screen) => screen.area === 'inbox'), [{ area: 'inbox', screen: 'empty-folder', shots: 0, stray: [] }, { area: 'inbox', screen: 'today', shots: 3, stray: [] }]);
+  assert.deepEqual(galleryScreens(root, PARAMS).screens.filter((screen) => screen.area === 'inbox'), [{ area: 'inbox', screen: 'empty-folder', shots: 0, stray: [] }, { area: 'inbox', screen: 'today', shots: 2, stray: [] }]);
   page(root, 'inbox', 'today', [], EXPLAIN_OK);
   assert.deepEqual(findings(root), []);
   assert.deepEqual(findings(root, [], 'full'), []);
@@ -506,23 +506,23 @@ for (const edition of ['lite', 'full'] as const) {
   });
 }
 
-test('a screen folder holds only the three widths, explain.md and links.json: a variant name, a before folder or any other file is HFS_APP_GALLERY_SCREEN_FILE', (t) => {
+test('a screen folder holds only the two widths, explain.md and links.json: a variant name, a before folder or any other file is HFS_APP_GALLERY_SCREEN_FILE', (t) => {
   const root = starter(t, 'lite');
-  page(root, 'inbox', 'today', ['1440.png', '1440-open.png', 'sales-1440.png', 'before/1440.png', 'notes.txt', 'sub/390.png'], EXPLAIN_OK);
+  page(root, 'inbox', 'today', ['1440.png', '1440-open.png', 'sales-1440.png', 'before/1440.png', 'notes.txt', 'sub/390.png', '1920.png'], EXPLAIN_OK);
   const [finding, ...rest] = findings(root);
   assert.equal(finding?.code, 'HFS_APP_GALLERY_SCREEN_FILE');
   assert.equal(finding?.level, 'error');
   assert.equal(finding?.path, 'gallery/pages/inbox/today');
-  for (const name of ['1440-open.png', 'sales-1440.png', 'before/', 'notes.txt', 'sub/']) assert.match(finding?.message ?? '', new RegExp(`"${name.replace('.', '\\.')}"`, 'u'), name);
+  for (const name of ['1440-open.png', 'sales-1440.png', 'before/', 'notes.txt', 'sub/', '1920.png']) assert.match(finding?.message ?? '', new RegExp(`"${name.replace('.', '\\.')}"`, 'u'), name);
   assert.doesNotMatch(finding?.message ?? '', /"1440\.png"/u);
   assert.deepEqual(rest, []);
   assert.equal(galleryScreens(root, PARAMS).screens.find((screen) => screen.area === 'inbox')?.shots, 1, 'only the allowed shot is counted');
   const variant = page(root, 'inbox', 'today', [], EXPLAIN_OK);
   fs.rmSync(at(variant, 'before'), { recursive: true });
-  for (const name of ['1440-open.png', 'sales-1440.png', 'notes.txt']) fs.rmSync(at(variant, name));
+  for (const name of ['1440-open.png', 'sales-1440.png', 'notes.txt', '1920.png']) fs.rmSync(at(variant, name));
   fs.rmSync(at(variant, 'sub'), { recursive: true });
   assert.deepEqual(findings(root), []);
-  page(root, 'inbox', 'today-open', ['1440.png', '390.png', '1920.png'], EXPLAIN_OK);
+  page(root, 'inbox', 'today-open', ['1440.png', '390.png'], EXPLAIN_OK);
   assert.deepEqual(findings(root), [], 'the open state is its own screen folder');
 });
 

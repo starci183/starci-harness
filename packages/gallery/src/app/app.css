@@ -281,3 +281,14 @@ body,
         overflow: visible;
     }
 }
+
+/* A long identifier or path in an explanation wraps inside its row instead of running under the next panel. */
+.sg-row > dd {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.sg-row code {
+    white-space: normal;
+    overflow-wrap: anywhere;
+}

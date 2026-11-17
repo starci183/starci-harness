@@ -49,7 +49,7 @@ export function gallery(options: GalleryOptions): Plugin {
         if (frame === "frames.css") return { body: frameCss, type: MIME[".css"] ?? "" }
         const doc = frame === undefined ? undefined : frames.find((one) => one.file === frame)
         if (doc) return { body: doc.html, type: MIME[".html"] ?? "" }
-        const shot = /^\/__shots\/([^/]+)\/([^/]+)\/(1440|1920|390)\.png$/u.exec(url)
+        const shot = /^\/__shots\/([^/]+)\/([^/]+)\/(1440|390)\.png$/u.exec(url)
         if (shot?.[1] !== undefined && shot[2] !== undefined && shot[3] !== undefined) {
             const file = shotPath(`${shot[1]}/${shot[2]}`, shot[3])
             return fs.existsSync(file) ? { body: fs.readFileSync(file), type: MIME[".png"] ?? "" } : null

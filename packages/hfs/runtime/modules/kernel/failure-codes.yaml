@@ -3366,11 +3366,11 @@ HFS_APP_GALLERY_FRONT_MATTER:
 HFS_APP_GALLERY_SCREEN_FILE:
   title: "A gallery screen folder holds only the allowed files"
   title_vi: "Thư mục màn hình trong gallery có tệp không được phép"
-  meaning_vi: "Một thư mục gallery/pages/<khu>/<màn hình>/ có tệp hoặc thư mục ngoài 1440.png, 1920.png, 390.png, explain.md và links.json (kể cả thư mục before/), hoặc có tệp nằm ngoài thư mục màn hình, ví dụ 1440-open.png hay sales-1440.png."
+  meaning_vi: "Một thư mục gallery/pages/<khu>/<màn hình>/ có tệp hoặc thư mục ngoài 1440.png, 390.png, explain.md và links.json (kể cả thư mục before/), hoặc có tệp nằm ngoài thư mục màn hình, ví dụ 1440-open.png hay sales-1440.png."
   causes_vi:
     - "Vi phạm R395 (PROJECT-GALLERY-2): mỗi thư mục là một màn hình (một agent, một trạng thái); bản trạng thái hoặc bản của agent khác là thư mục riêng, không phải tên tệp khác."
     - "Ảnh còn theo bố cục cũ gallery/shots hoặc đặt tên theo <trang>__<rộng>__<before|after>."
-  nextStep_vi: "Chuyển mỗi biến thể sang thư mục màn hình riêng (ví dụ pages/<khu>/<màn hình>-open/1440.png) và đổi tên ảnh thành đúng 1440.png, 1920.png hoặc 390.png."
+  nextStep_vi: "Chuyển mỗi biến thể sang thư mục màn hình riêng (ví dụ pages/<khu>/<màn hình>-open/1440.png) và đổi tên ảnh thành đúng 1440.png hoặc 390.png (ảnh 1920.png cũng là sai: thư viện chỉ có hai độ rộng, xóa nó)."
   owner: op-retry
   kind: check-finding
 

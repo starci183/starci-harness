@@ -6,7 +6,7 @@ explanation of why each region is drawn that way are kept and looked at. This fi
 ```
 gallery/
   pages/<area>/<screen>/     one folder = one screen (one agent, one state)
-    1440.png  1920.png  390.png    the shots; only these width names
+    1440.png  390.png    the shots; only these two width names
     explain.md                     required when any png exists
     links.json                     optional navigation hotspots
   flows.json                       optional named flows (ordered screen ids)
@@ -15,19 +15,26 @@ gallery/
 
 ## PROJECT-GALLERY-1 Every app carries a gallery, and every UI fix round saves shots to it
 
-1. **What it is.** `gallery/` is a standalone Vite app at the app root, beside `be/` and `fe/`, outside the npm workspaces. It
-   reads `gallery/pages/**` and `gallery/flows.json` with `import.meta.glob` and shows each screen's shots beside its explanation
-   (PROJECT-GALLERY-2) and a flow map of the screens (PROJECT-GALLERY-3). Its files are managed: `starci app sync --execute`
-   renders them (slot `app.gallery`, templates in `packages/hfs/templates/app/gallery`), `starci app scaffold` writes them with
+1. **What it is.** `gallery/` is a standalone Vite app at the app root, beside `be/` and `fe/`, outside the npm workspaces, and a thin
+   config over the harness package `@starci/gallery` (`packages/gallery`, built with the Grammar): `gallery/vite.config.js` calls
+   `defineGallery({ app, locale, allowedHosts })` and that is the whole app, with no page code of its own. The package reads
+   `gallery/pages/**`, `gallery/flows.json` and the design canvas (`.starcistacks/canvas`, PROJECT-GALLERY-6; the folder is an option,
+   `../.starcistacks/canvas` by default) at build and dev time. It shows a tree of the screens, each with a status dot from `design.json`
+   (matches green, built but differs amber, stale red, not built grey), the screen's approved design frame beside its real shot (side by
+   side, a slider, or the shot alone) at width 1440 or 390, the states of its page as chips, its explanation (PROJECT-GALLERY-2)
+   and a flow map of the screens (PROJECT-GALLERY-3). The files of `gallery/` are managed (`package.json`, `index.html`,
+   `README.md`, `vite.config.js`): `starci app sync --execute`
+   renders them (slot `app.gallery`, templates in `packages/hfs/templates/app/gallery`), `package.json` pins `@starci/gallery`
+   at the version of the canon pins, `starci app scaffold` writes them with
    the rest of a new app, and a hand edit is `HFS_MANAGED_FILE_DRIFT`. The lockfile `gallery/package-lock.json` is the app's.
 2. **What goes in it.** Every round that changes a screen (a UI fix, a redesign, a new screen) saves the shots of every screen it
-   touches at widths 1440 and 1920 (desktop) and 390 (phone), the whole screen, and updates that screen's `explain.md`. A round
+   touches at widths 1440 (desktop) and 390 (phone), the whole screen, and updates that screen's `explain.md`. A round
    that touches no screen saves none. The gallery holds the current state only: a before and after comparison belongs in the
    fix report, never in the gallery.
 3. **The layout.** One folder per screen: `gallery/pages/<area>/<screen>/`. `<area>` is the product area (a kebab-case folder,
-   usually the route group), `<screen>` a kebab-case name of one agent in one state. The folder holds exactly `1440.png`,
-   `1920.png`, `390.png` (any of them may be absent), `explain.md` and optionally `links.json`. Every other file and every
-   subfolder is `HFS_APP_GALLERY_SCREEN_FILE`, a `before/` folder included: a state (`today-menu-open`) or an agent variant
+   usually the route group), `<screen>` a kebab-case name of one agent in one state. The folder holds exactly `1440.png`
+   and `390.png` (either may be absent), `explain.md` and optionally `links.json`. Every other file and every
+   subfolder is `HFS_APP_GALLERY_SCREEN_FILE`, a `before/` folder included, and so is a `1920.png` (the gallery has two widths only; an app deletes its 1920 shots): a state (`today-menu-open`) or an agent variant
    (`today-sales`) is its own screen folder, so `1440-open.png` and `sales-1440.png` never exist. A file straight in `pages/` or in
    an area folder is outside a screen folder. Example: `gallery/pages/inbox/today/1440.png`.
 4. **Where it serves.** On the app's base port plus 50 (`ruleParams.gallery.portOffset` of [hfs/slots.yaml](../hfs/slots.yaml)),
@@ -49,11 +56,11 @@ gallery/
    `starci app stack up`) and commits `gallery/` with its lockfile. An app that declares no `local.basePort` declares one first
    (PROJECT-STACKS-10): the gallery port derives from it. An app whose shots still sit in the earlier `gallery/shots/<area>/`
    layout moves each `<page>__<width>__after.png` to `pages/<area>/<page>/<width>.png`, drops every `__before` shot and every
-   width other than the three, and writes the screen's `explain.md`.
-7. **Its language is the app's.** The managed files render their words (search box, the empty state, the bug labels, the tabs, the
-   title and the README) in the app's default locale: the `DEFAULT_LOCALE` its i18n routing source declares
+   width other than the two, and writes the screen's `explain.md`.
+7. **Its language is the app's.** The managed files render their words (the title and the README, and the `locale` that `vite.config.js`
+   hands to `@starci/gallery`, which draws the search box, the empty state, the bug labels, the tabs and the status names) in the app's default locale: the `DEFAULT_LOCALE` its i18n routing source declares
    (`fe/packages/<project>-i18n/src/routing.ts` of a full app, `fe/apps/<app>/src/modules/i18n/routing.ts` of a lite one). `vi`
-   and `en` have a table (`GALLERY_LABELS` in `packages/hfs/runtime/scripts/hfs/gallery.mts`); any other locale, or none
+   and `en` have a table (`GALLERY_LABELS` in `packages/hfs/runtime/scripts/hfs/gallery.mts` for the files, `LABELS` in `packages/gallery/src/labels.ts` for the app); any other locale, or none
    declared, renders `en`. The field names of `explain.md` (`Vì sao`, `Luật`, `Grammar`) are the same in every locale. The file
    stays managed per locale: sync renders the locale's text, and a hand edit or a default locale that changed is drift that
    `starci app sync --execute` settles.
@@ -79,7 +86,7 @@ Every design decision on a screen is traceable to an owner law and a Grammar ref
 3. **The gallery app** shows only the screens that have an `explain.md`, each image beside its explanation, and flags every
    screen without a region and every region lacking a `Vì sao` or `Grammar` value or marked `CHƯA RÕ` or `SAI`; the area list
    counts the screens it flags and a switch lists only those. The summary counts the screens it hides for lack of an
-   `explain.md`, which the gate fails. The reader is `gallery/src/explain.js`, the same logic as the gate's.
+   `explain.md`, which the gate fails. The reader is `packages/gallery/src/explain.ts`, the same logic as the gate's (a spec of hfs keeps them answering alike).
 4. **Who writes it.** The author of every UI round writes or updates `explain.md` with the shots; the coordinator reads the
    gallery's flags before reporting a round done.
 
@@ -165,8 +172,8 @@ the gate judges.
    | không khớp bộ lọc | `<screen>-no-match` | filters set, no match: the empty state that clears them |
    | đang soạn | `<screen>-editing` | the create or edit form open, a validation message on one field |
 
-   A state the page cannot reach is not drawn. The design draws 1440 and 390 only. The gallery round of the built page also shoots 1920
-   (PROJECT-GALLERY-1 item 2): 1920 is the 1440 layout given more width, never drawn, compared or recorded.
+   A state the page cannot reach is not drawn. The design draws 1440 and 390, and the gallery round of the built page shoots the same two
+   (PROJECT-GALLERY-1 item 2); no other width is drawn, shot, compared or recorded.
 3. **The note is the screen's `explain.md`.** Each drawn screen carries one note in the format of PROJECT-GALLERY-2 item 1 (front matter,
    introduction, one region per region with its `Vì sao`, `Luật` and `Grammar` lines); what it says, the real operations and Grammar elements and
    the `cần Grammar` and `cần API` marks, is the [Method of the skill](../../skills/claude-design/SKILL.md#method). When the page is built, the
@@ -190,7 +197,7 @@ the gate judges.
    - `approved`: the lead, only when the owner said the page is approved ("đẹp") in the owner's own words; no other word approves. It sets
      `approvedAt` and drops any `shots`. The lead adds an area to `areas` once its screens are approved.
    - `built`: the code lane that builds the screen: it codes the page (with every `cần API` operation of its notes), saves the screen's shots in
-     `gallery/pages/<area>/<screen>/` at 1440, 1920 and 390, copies the approved note as its `explain.md`, and records the sha256 of the 1440 and
+     `gallery/pages/<area>/<screen>/` at 1440 and 390, copies the approved note as its `explain.md`, and records the sha256 of the 1440 and
      390 PNGs.
    - `matches`: the lead or a reviewer, never the lane that built it, after comparing the shots with the approved frames; it records the sha256 of
      the shots it compared.

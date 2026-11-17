@@ -85,8 +85,8 @@ export function parseExplain(markdown: string): Explanation {
 /** The front matter keys an explanation lacks (an empty value counts as lacking). */
 export const missingFrontMatter = (explanation: Explanation): string[] => FRONT_MATTER_KEYS.filter((key) => (explanation.meta[key] ?? '') === '');
 
-/** The only widths a screen is shot at, and so the only shot names: `1440.png`, `1920.png`, `390.png` (a state or an agent variant is its own screen folder). */
-export const SHOT_WIDTHS = ['1440', '1920', '390'] as const;
+/** The only widths a screen is shot at, and so the only shot names: `1440.png`, `390.png` (a state or an agent variant is its own screen folder). */
+export const SHOT_WIDTHS = ['1440', '390'] as const;
 export const SHOT_FILES: readonly string[] = SHOT_WIDTHS.map((width) => `${width}.png`);
 
 const plain = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);

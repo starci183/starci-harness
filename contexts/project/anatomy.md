@@ -75,7 +75,7 @@ Change a slot, a rule or a pattern's front matter, then regenerate in the same c
 - `.dockerignore` — **app.dockerignore** required · R05 (hfs `managed-file-drift`)
 - `deploy/` — **app.deploy** optional · R06 (hfs `plaintext-secret` `plaintext-secret-staged`)
 - `gallery/`
-  - `{package.json,index.html,README.md,vite.config.js,src/main.js,src/explain.js,src/style.css}` — **app.gallery** optional · R05 (hfs `managed-file-drift`), R395 (hfs `gallery`)
+  - `{package.json,index.html,README.md,vite.config.js}` — **app.gallery** optional · R05 (hfs `managed-file-drift`), R395 (hfs `gallery`)
   - `package-lock.json` — **app.gallery-lock** optional
   - `pages/**/{explain.md,links.json}` — **app.gallery-explain** optional · R395 (hfs `gallery`)
   - `flows.json` — **app.gallery-flows** optional · R395 (hfs `gallery`)
@@ -280,7 +280,7 @@ Refused (forbidden or external): `repo.side-root-forbidden`, `fe.tool-config-loc
 - `browser/` — **app.browser** opt-in
   - `tsconfig.json` — **app.browser-config** opt-in · R05 (hfs `managed-file-drift`)
 - `gallery/`
-  - `{package.json,index.html,README.md,vite.config.js,src/main.js,src/explain.js,src/style.css}` — **app.gallery** optional · R05 (hfs `managed-file-drift`), R395 (hfs `gallery`)
+  - `{package.json,index.html,README.md,vite.config.js}` — **app.gallery** optional · R05 (hfs `managed-file-drift`), R395 (hfs `gallery`)
   - `package-lock.json` — **app.gallery-lock** optional
   - `pages/**/{explain.md,links.json}` — **app.gallery-explain** optional · R395 (hfs `gallery`)
   - `flows.json` — **app.gallery-flows** optional · R395 (hfs `gallery`)

@@ -13,6 +13,8 @@ const pct = (fraction: number | undefined): string => `${String((fraction ?? 0) 
 const base = (): string => import.meta.env.BASE_URL
 /** A phone screen is drawn no wider than this on the board; a desktop one takes the width its host gives it. */
 const PHONE_STAGE = 520
+/** The board pads its content by 1rem on each side (app.css `.sg-board`); the frames are scaled to what is left. */
+const BOARD_PADDING = 32
 
 /** The width of an element, followed while the window is resized. */
 function useWidth<T extends HTMLElement>(): [RefObject<T | null>, number] {
@@ -33,9 +35,9 @@ function useWidth<T extends HTMLElement>(): [RefObject<T | null>, number] {
     return [ref, width]
 }
 
-/** The approved design frame of a screen at real pixels, scaled to the width its host gives it. 1920 has no drawing of its own: it shows the 1440 frame. */
+/** The approved design frame of a screen at real pixels, scaled to the width its host gives it. The gallery has two widths, the two the design draws. */
 function DesignFrame({ screen, width, labels, available }: { readonly screen: Screen; readonly width: Width; readonly labels: Labels; readonly available: number }) {
-    const drawn = width === "390" ? "390" : "1440"
+    const drawn = width
     const [measured, setMeasured] = useState<number | null>(null)
     const frame = screen.frame
     if (!frame?.widths.includes(drawn)) return <Text tone="muted">{labels.noDesign}</Text>
@@ -94,7 +96,8 @@ export interface ViewerProps {
 
 /** The viewer on its light grey board: design and shot side by side, a slider over both, or the shot alone. */
 export function Viewer({ screen, model, labels, width, view, onOpen }: ViewerProps): ReactElement {
-    const [ref, available] = useWidth<HTMLDivElement>()
+    const [ref, outer] = useWidth<HTMLDivElement>()
+    const available = Math.max(outer - BOARD_PADDING, 0)
     const [split, setSplit] = useState(50)
     const columns = view === "side" && available > 760 ? 2 : 1
     const each = columns === 2 ? (available - 16) / 2 : available
@@ -110,11 +113,6 @@ export function Viewer({ screen, model, labels, width, view, onOpen }: ViewerPro
                             </Text>
                         </figcaption>
                         <DesignFrame screen={screen} width={width} labels={labels} available={cap(each)} />
-                        {width === "1920" ? (
-                            <Text size="xs" tone="muted">
-                                {labels.designAt1440}
-                            </Text>
-                        ) : null}
                     </figure>
                     <figure>
                         <figcaption>
@@ -167,7 +165,6 @@ export function ViewSwitches({ labels, width, view, onChange }: { readonly label
                 }}
                 items={[
                     { id: "1440", label: "1440" },
-                    { id: "1920", label: "1920" },
                     { id: "390", label: "390" },
                 ]}
             />

@@ -19,7 +19,7 @@ import type { GalleryScreen } from './gallery.mjs';
 /** The lifecycle of one page's design, in order. */
 export const DESIGN_STATUSES = ['drafted', 'approved', 'built', 'matches'] as const;
 export type DesignStatus = (typeof DESIGN_STATUSES)[number];
-/** The widths the design draws and the shots it records; 1920 is shot by the gallery round, never drawn or recorded. */
+/** The widths the design draws and the shots it records; the gallery has no other width. */
 export const DESIGN_WIDTHS = ['1440', '390'] as const;
 /** The manifest, app-root relative: the canvas of the design pass lives in the app's .starcistacks/canvas/ (slot app.starcistacks.canvas). */
 export const DESIGN_FILE = '.starcistacks/canvas/design.json';
