@@ -59,7 +59,7 @@ function pageProblems(id: string, value: unknown, areas: ReadonlySet<string>): s
   if (typeof status !== 'string' || !(DESIGN_STATUSES as readonly string[]).includes(status)) problems.push(`the page "${id}" has the status ${JSON.stringify(status)}, not one of ${DESIGN_STATUSES.join(', ')}`);
   const approvedAt = page['approvedAt'];
   const approved = typeof status === 'string' && (DESIGN_STATUSES as readonly string[]).includes(status) && isApproved(status as DesignStatus);
-  if (approved && (typeof approvedAt !== 'string' || !ISO.test(approvedAt) || Number.isNaN(Date.parse(approvedAt)))) problems.push(`the page "${id}" is ${status} without an ISO "approvedAt" (e.g. 2026-11-17T09:30:00+07:00)`);
+  if (approved && (typeof approvedAt !== 'string' || !ISO.test(approvedAt) || Number.isNaN(Date.parse(approvedAt)))) problems.push(`the page "${id}" is ${status} without an ISO "approvedAt" timestamp with its zone (e.g. 2026-11-17T09:30:00+07:00; a bare date such as 2026-11-17 is refused)`);
   if (!approved && approvedAt !== undefined) problems.push(`the page "${id}" is ${String(status)} and carries "approvedAt": only the owner's approval sets it, a redraw drops it`);
   if (typeof page['board'] !== 'string' || !/^https:\/\/\S+$/u.test(page['board'])) problems.push(`the page "${id}" has no "board" (the https link of the published board)`);
   const shots = page['shots'];

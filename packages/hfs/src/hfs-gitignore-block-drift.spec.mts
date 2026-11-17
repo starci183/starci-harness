@@ -83,3 +83,23 @@ for (const edition of ['lite', 'full']) {
     assert.equal(ignored('be/apps/api/AGENTS.md'), false);
   });
 }
+
+// The design canvas (PROJECT-GALLERY-6) is tracked under .starcistacks/canvas/; the rest of .starcistacks stays denied.
+for (const edition of ['lite', 'full']) {
+  test(`${edition}: the managed ignore block keeps .starcistacks/canvas tracked`, context => {
+    const { root } = synced(context, edition);
+    execFileSync('git', ['init', '--quiet'], { cwd: root });
+    const ignored = (file: string): boolean => {
+      try {
+        execFileSync('git', ['check-ignore', '--quiet', '--no-index', file], { cwd: root });
+        return true;
+      } catch {
+        return false;
+      }
+    };
+    assert.equal(ignored('.starcistacks/canvas/design.json'), false);
+    assert.equal(ignored('.starcistacks/canvas/customers/list.html'), false);
+    assert.equal(ignored('.starcistacks/canvas/shots/customers-list-1440.png'), false);
+    assert.equal(ignored('.starcistacks/local/notes.txt'), true);
+  });
+}

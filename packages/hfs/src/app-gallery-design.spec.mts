@@ -82,6 +82,7 @@ test('parseDesign: the shape, the page ids, the statuses, approvedAt from approv
   assert.match(one({ status: 'done', board: BOARD }), /status "done"/u);
   assert.match(one({ status: 'approved', board: BOARD }), /without an ISO "approvedAt"/u);
   assert.match(one({ status: 'approved', board: BOARD, approvedAt: 'yesterday' }), /without an ISO "approvedAt"/u);
+  assert.match(one({ status: 'approved', board: BOARD, approvedAt: '2026-11-17' }), /a bare date such as 2026-11-17 is refused/u);
   assert.match(one({ status: 'drafted', board: BOARD, approvedAt: APPROVED }), /only the owner's approval sets it/u);
   assert.match(one({ status: 'drafted', board: 'http://x' }), /no "board"/u);
   assert.match(one({ status: 'built', board: BOARD, approvedAt: APPROVED, shots: { '1920': SHOTS['1440'] } }), /width "1920"/u);

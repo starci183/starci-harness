@@ -182,7 +182,7 @@ the gate judges.
    }
    ```
    `areas` lists the areas whose screens are designed before code; every page id is in one of them. `board` is the https link of the published
-   board. `approvedAt` (ISO with a zone) is set from `approved` on and absent before. `shots` holds the lowercase sha256 of the 1440 and 390 PNGs
+   board. `approvedAt` (a full ISO timestamp with its zone, never a bare date) is set from `approved` on and absent before. `shots` holds the lowercase sha256 of the 1440 and 390 PNGs
    from `built` on and is absent before. No other key.
 5. **The lifecycle, and who sets each status.**
    - `drafted`: the lead, when the screen is drawn on the board. A redraw of an approved screen returns it to `drafted` and drops `approvedAt` and

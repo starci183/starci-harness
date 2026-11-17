@@ -9,13 +9,14 @@ next-env.d.ts
 # fe: the AGENTS.md `next dev` writes into each Next app; a root AGENTS.md (and any other) stays tracked
 fe/apps/*/AGENTS.md
 # .starcistacks custody at the app root: modules/schemas/stacks-layout.yaml custody.gitignoreRules, in order. Only the
-# declaration, runbooks, key lists, seeds, the rendered environment, the infra definitions and sealed members (*.enc.yaml, legacy *.enc) are tracked.
+# declaration, runbooks, key lists, seeds, the design canvas, the rendered environment, the infra definitions and sealed members (*.enc.yaml, legacy *.enc) are tracked.
 .starcistacks/**
 !.starcistacks/**/
 !.starcistacks/**/KEYS.md
 !.starcistacks/**/.gitkeep
 !.starcistacks/application-stacks.yaml
 !.starcistacks/cache/**
+!.starcistacks/canvas/**
 !.starcistacks/*/README.md
 !.starcistacks/*/environment.json
 !.starcistacks/*/seeds/**
