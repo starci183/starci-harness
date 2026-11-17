@@ -285,8 +285,8 @@ Each group below matches a Storybook group. Run `npm run storybook`: every story
 the family and theme chosen in the toolbar. It shows the default, disabled, invalid, pending and
 selected/current states where they apply. Overlay stories open by default.
 
-**Leaves (25).** Avatar, Badge, Button, CalendarDay, ColorSwatch, Divider, GrammarRoot, Heading, Icon,
-IconButton, IconTile, Image, Kbd, Link, Mascot, Meter,
+**Leaves (26).** Avatar, Badge, Button, CalendarDay, ColorSwatch, Divider, GrammarRoot, Heading, Icon,
+IconButton, IconTile, Illustration, Image, Kbd, Link, Mascot, Meter,
 Progress, ProgressCircle, RelativeTime, Skeleton, Spinner, StateMark, StatusDot, Text, TextAction.
 
 `Mascot` renders generated character art at one size scale: `size` `sm` (96px), `md` (160px, the default) or `lg`
@@ -303,11 +303,38 @@ assistive technology; a non-empty `alt` names it) and takes the asset-slot props
 <Mascot src="/images/mascot/welcome.webp" size="lg" assetSlot="onboarding.welcome" assetSha256={sha} />
 ```
 
-A mascot also reaches the page through `EmptyNotice`, which takes `artwork` (`src`, `alt`, a required `assetSlot`, `assetSha256`, `assetPrompt`) in place of its
-glyph and draws it as the `Mascot` at `md`, the mark of a first-run empty state.
+**Media (Image, Video, Illustration).** Three leaves draw every picture, recording and piece of decorative art; a raw `img`, `video`
+or `picture` is refused (`starci-grammar/no-raw-media`, R436). Each names its file by `src` (a resolved URL) or by a `staticsKey` (an asset of the
+app's statics, resolved by one `StaticsProvider baseUrl` mounted once; a key is a relative path of plain segments).
+
+- `Image`: `alt` (required; `""` only when decorative), `ratio` (`1:1`, `4:3`, `3:4`, `16:9`, `9:16`, `21:9`, `auto`), `fit` (`cover`, `contain`),
+  `renditions` (`{ src | staticsKey, width }` or `{ …, density }`) with `sizes` drawn as `srcset` and `sizes`, `loading` (lazy by default, async
+  decoding), `caption` (a `figure`), `zoom` (`{ openLabel, closeLabel }`: a lightbox on the overlay mechanics), `isLoading`. A shimmer stands in the box
+  while it loads and a neutral glyph when it fails; the corner is the theme's one radius.
+- `Video`: `title`, `sources` (`{ src | staticsKey, type }`, in order of preference; `video/mp4`, `video/webm`, `video/ogg`, HLS
+  `application/vnd.apple.mpegurl`, DASH `application/dash+xml`), `poster`, `ratio` (`16:9`, `9:16`, `1:1`), `controls`, `tracks` (WebVTT
+  captions or subtitles), `autoPlay` (muted and inline, skipped under reduced motion), `loop`, `loading` (lazy: no stream is requested until the box nears
+  the viewport), `labels` (the error and unsupported words), `isLoading`. MP4 and WebM play natively; HLS plays natively where the platform reads it and through
+  `hls.js` elsewhere; MPEG-DASH plays through `dash.js`. Both libraries are dependencies of this package, imported dynamically on the first stream that needs
+  one, never from a CDN; an app that plays only files ships no player.
+- `Illustration`: decorative by default (`alt` empty, `aria-hidden`), `ratio` (the Image ratios, or `fill` for the whole box of its host), `compact` (another
+  source and ratio below 48rem, through a `picture` source), `fit`, `loading`, `isLoading`.
 
 ```tsx
-<EmptyNotice message="Your workspace is ready." artwork={{ src, assetSlot: "onboarding.empty" }} actionLabel="Add a channel" onAction={add} />
+<StaticsProvider baseUrl="/statics">
+  <Image staticsKey="photos/team.webp" alt="The team" ratio="4:3" renditions={[{ staticsKey: "photos/team-640.webp", width: 640 }]} sizes="100vw" caption="Our team" />
+  <Video title="Intro" sources={[{ staticsKey: "video/intro.webm", type: "video/webm" }, { staticsKey: "video/intro.mp4", type: "video/mp4" }]} poster={{ staticsKey: "video/intro.jpg" }} />
+  <Illustration staticsKey="illustrations/hero/wide.webp" ratio="21:9" compact={{ staticsKey: "illustrations/hero/narrow.webp", ratio: "4:3" }} />
+</StaticsProvider>
+```
+
+`EmptyNotice` is the one empty state: `scope` is `region` (the default, an empty Section, list, table or no-match) or `page` (a first visit, an empty page, a
+paywall, a 404, a 500). Its `media` is `{ icon }` (a glyph on a soft brand-tone circle) or, on `scope="page"` only (the type refuses it elsewhere),
+`{ illustration }` (an Illustration at 160px, 120px below 48rem). It takes one primary action and at most one `secondary`.
+
+```tsx
+<EmptyNotice scope="page" message="Page not found" description="The address does not exist."
+  media={{ illustration: { staticsKey: "illustrations/errors/not-found.webp" } }} actionLabel="Back to the home page" actionHref="/" />
 ```
 
 **Forms (26).** ButtonGroup, Checkbox, CheckboxGroup, ComboBox, CopyField, DateField, DatePicker,

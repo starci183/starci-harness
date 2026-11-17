@@ -304,7 +304,7 @@ const HeroDemo = () => (
       </G.Stack>
     }
     trailing={
-      <G.Illustration src="/media/art-wide.svg" compact={{ src: '/media/art-compact.svg', ratio: '4:3' }} ratio="1:1" assetSlot="landing.hero" />
+      <G.Illustration src="/media/art-wide.svg" compact={{ src: '/media/art-compact.svg', ratio: '4:3' }} ratio="21:9" assetSlot="landing.hero" />
     }
   />
 );
@@ -322,7 +322,7 @@ export const IllustrationHero: Story = {
     const isCompact = window.matchMedia('(max-width: 47.999rem)').matches;
     await waitFor(() => expect(image.currentSrc.endsWith(isCompact ? '/media/art-compact.svg' : '/media/art-wide.svg')).toBe(true));
     const box = art.getBoundingClientRect();
-    expect(Math.abs(box.width / box.height - (isCompact ? 4 / 3 : 1))).toBeLessThan(0.02);
+    expect(Math.abs(box.width / box.height - (isCompact ? 4 / 3 : 21 / 9))).toBeLessThan(0.02);
   },
 };
 

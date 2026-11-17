@@ -102,3 +102,35 @@ export const PageStateWithoutArt: Story = {
     expect(notices[1]?.querySelectorAll('.starci-core-notice-actions > *').length).toBe(2);
   },
 };
+
+/** The not-found page every web app carries (gallery screen errors/not-found): the page-level state with one way home. */
+export const NotFoundPage: Story = {
+  parameters: { layout: 'fullscreen' },
+  render: () => (
+    <G.StaticsProvider baseUrl="/media">
+      <G.EmptyNotice scope="page" message="Page not found" description="The address you opened does not exist or has moved." media={{ illustration: { staticsKey: 'art-square.svg' } }} actionLabel="Back to the home page" actionHref="/" />
+    </G.StaticsProvider>
+  ),
+  play: async ({ canvasElement }) => {
+    const notice = boxOf(canvasElement, '[data-component="EmptyNotice"]');
+    expect(notice.getAttribute('data-grammar-empty-scope')).toBe('page');
+    expect(notice.querySelectorAll('.starci-core-notice-actions > *').length).toBe(1);
+    expect(boxOf(notice, '.starci-core-notice-actions a').getAttribute('href')).toBe('/');
+  },
+};
+
+/** The server-error page every web app carries (gallery screen errors/server-error): home as the primary, retry as the secondary. */
+export const ServerErrorPage: Story = {
+  parameters: { layout: 'fullscreen' },
+  render: () => (
+    <G.StaticsProvider baseUrl="/media">
+      <G.EmptyNotice scope="page" message="Something went wrong" description="We could not show this page. You can try again or go back to the home page." media={{ illustration: { staticsKey: 'art-square.svg' } }} actionLabel="Back to the home page" actionHref="/" secondary={{ label: 'Try again', onPress: noop }} />
+    </G.StaticsProvider>
+  ),
+  play: async ({ canvasElement }) => {
+    const notice = boxOf(canvasElement, '[data-component="EmptyNotice"]');
+    const actions = notice.querySelectorAll('.starci-core-notice-actions > *');
+    expect(actions).toHaveLength(2);
+    expect(actions[1]?.textContent).toBe('Try again');
+  },
+};
