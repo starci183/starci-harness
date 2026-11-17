@@ -1,5 +1,9 @@
 # Changelog
 
+## 6.13.25 - 2026-11-17
+
+- Changed (`knowledge/hfs/canon-pins.yaml`): the Grammar family at 0.43.0 (`~0.43.0`): one look for a list. `SurfaceCard kind="list"` is removed (refused by `starci-grammar/surface-card-list`, FE_SURFACE_CARD_LIST); `Section kind="list"` is flat by default (hairline dividers, rows on the title's edge) with `layout` rows, keyValue or suggestions; the list theme hooks `--starci-core-list-frame`, `-frame-border`, `-radius` and `-inset` are gone. @starci/stylelint-canon 2.9.4 (refuses those hooks in brand.css). The `@starci/hfs` self-pin is 6.13.25.
+
 ## 6.13.24 - 2026-11-17
 
 - Added (PROJECT-GALLERY-6, `rules/gallery-design.mts`, R395): the design pass of `/claude-design`, the gallery drawn before code. An app keeps its canvas in `.starcistacks/canvas/` (slot `app.starcistacks.canvas`: `tokens.css`, `canvas.css`, `briefs/<NN>-<slug>.md`, `pages/<NN>-<slug>.html`, the assembled `<app>-design.html`) and its manifest `.starcistacks/canvas/design.json` (`areas`, and per gallery id `<area>/<screen>` a `status` drafted, approved, built or matches, `approvedAt`, `board`, `shots` 1440 and 390 sha256). New codes: `HFS_APP_GALLERY_DESIGN_MANIFEST` (error), `HFS_APP_GALLERY_DESIGN_PAGE_MISSING`, `HFS_APP_GALLERY_DESIGN_UNAPPROVED`, `HFS_APP_GALLERY_DESIGN_SHOT_MISSING`, `HFS_APP_GALLERY_DESIGN_SHOT_STALE` (report-only in local, an error in prod). `canvas` is reserved under `.starcistacks` (never an environment) and the harness text scans skip it. Spec: `app-gallery-design.spec.mts`.
