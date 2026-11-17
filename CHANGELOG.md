@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.143 - 2026-11-17
+
+- Changed (pins): the Grammar family at 0.41.0 (the white-theme fixes), @starci/stylelint-canon 2.9.2, @starci/hfs 6.13.23 (`dev:be` transpile-only with a debounced watch over the sources and the workspace package dists); contexts ui (text, card, list-table, page-header, presentation, composition). Until the cli-follow step raises the CLI's requirement, the CLI runs the hfs it requires.
+
 ## 1.1.0-alpha.142 - 2026-11-17
 
 - Changed: the CLI requires @starci/hfs@6.13.22, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).

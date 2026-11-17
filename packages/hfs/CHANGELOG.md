@@ -1,5 +1,10 @@
 # Changelog
 
+## 6.13.23 - 2026-11-17
+
+- Fixed (`sync/index.mts`, managed root package.json): `dev:be` runs `ts-node-dev --respawn --transpile-only --debounce 1000 --watch src,apps,<each root package's ../packages/<name>/dist>`. A merge that wrote several files restarted the api on a half-written tree and its type check killed it; ts-node-dev alone watched only the files it had required, so a new file or a rebuilt workspace package never restarted it. The lite template's api process (`.starcistacks/application-stacks.yaml`) runs the same flags. Spec: `sync-client-cli-scripts.spec.mts`.
+- Changed (`knowledge/hfs/canon-pins.yaml`): the Grammar family at 0.41.0 (`~0.41.0`: the white-theme fixes: the card radius, list frame, list inset and track hooks, the inline link underline, the page head on the content cap, `Section kind="region"` with `filter`) and @starci/stylelint-canon 2.9.2; the `@starci/hfs` self-pin is 6.13.23.
+
 ## 6.13.22 - 2026-11-17
 
 - Changed (`knowledge/hfs/canon-pins.yaml`): the Grammar family at 0.40.2 (`~0.40.2`: the Switch off track hook `--starci-core-switch-track-off`, a visible neutral by default) and @starci/stylelint-canon 2.9.1 (that hook and `--starci-core-switch-track-off-border` admitted in brand.css); the `@starci/hfs` self-pin is 6.13.22.
