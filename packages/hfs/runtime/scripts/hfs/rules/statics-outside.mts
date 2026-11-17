@@ -15,8 +15,8 @@ const IN_SRC = /^(?:fe|be)\/(?:[^/]+\/)*src\//u;
 const BE_ASSETS = /^be\/(?:[^/]+\/)*src\/assets\//u;
 const ROUTE_METADATA = /(?:^|\/)src\/app\/(?:icon|favicon|apple-icon|opengraph-image|twitter-image)(?:\d*)\.[a-z]+$/u;
 
-/** What `public/` (relative to it) may hold: favicon.*, apple-touch-icon*.png, android-chrome-*.png, mstile-*.png, safari-pinned-tab.svg, icon-*.png, icons/**, and *logo*.{png,svg,webp} in public/ or public/brand/. */
-const PUBLIC_ALLOWED = /^(?:favicon\.[^/]+|apple-touch-icon[^/]*\.png|android-chrome-[^/]*\.png|mstile-[^/]*\.png|safari-pinned-tab\.svg|icon-[^/]*\.png|icons\/.+|(?:brand\/)?[^/]*logo[^/]*\.(?:png|svg|webp))$/iu;
+/** What `public/` (relative to it) may hold: favicon.*, apple-touch-icon*.png, android-chrome-*.png, mstile-*.png, safari-pinned-tab.svg, icon-*.png, icons/**, and logo.{png,svg,webp} or *-logo.{png,svg,webp} in public/ or public/brand/. */
+const PUBLIC_ALLOWED = /^(?:favicon\.[^/]+|apple-touch-icon[^/]*\.png|android-chrome-[^/]*\.png|mstile-[^/]*\.png|safari-pinned-tab\.svg|icon-[^/]*\.png|icons\/.+|(?:brand\/)?(?:logo|[^/]*-logo)\.(?:png|svg|webp))$/iu;
 
 /** True when `file` (app-relative, posix) is a media file the rule refuses. */
 export function isStaticAssetOutside(file: string): boolean {

@@ -18,8 +18,8 @@ for (const edition of ['lite', 'full']) {
   });
 
   test(`${edition}: public holds only the favicon, the logo and the PWA icons`, () => {
-    for (const file of ['favicon.ico', 'favicon.png', 'apple-touch-icon.png', 'apple-touch-icon-180x180.png', 'android-chrome-192x192.png', 'mstile-150x150.png', 'safari-pinned-tab.svg', 'icon-512.png', 'icons/maskable.png', 'logo.svg', 'app-logo.webp', 'brand/logo.svg', 'brand/logo-dark.png']) assert.equal(isStaticAssetOutside(`fe/apps/web/public/${file}`), false, file);
-    for (const file of ['hero.png', 'images/x.webp', 'brand/hero.png', 'brand/sub/logo.svg', 'img/logo.svg', 'banner.mp4']) assert.equal(isStaticAssetOutside(`fe/apps/web/public/${file}`), true, file);
+    for (const file of ['favicon.ico', 'favicon.png', 'apple-touch-icon.png', 'apple-touch-icon-180x180.png', 'android-chrome-192x192.png', 'mstile-150x150.png', 'safari-pinned-tab.svg', 'icon-512.png', 'icons/maskable.png', 'logo.svg', 'dark-logo.svg', 'brand/os-logo.webp', 'brand/logo.svg', 'mark-logo.png']) assert.equal(isStaticAssetOutside(`fe/apps/web/public/${file}`), false, file);
+    for (const file of ['hero.png', 'images/x.webp', 'brand/hero.png', 'logo-dark.png', 'logos.png', 'mylogo.svg', 'brand-logo-big.png', 'brand/sub/logo.svg', 'img/logo.svg', 'banner.mp4']) assert.equal(isStaticAssetOutside(`fe/apps/web/public/${file}`), true, file);
     assert.equal(isStaticAssetOutside('fe/apps/web/src/logo.svg'), true);
   });
 
