@@ -17,7 +17,7 @@ import { cliPackageName, packageVersion } from "../version.js"
  */
 
 /** The @starci/seed an adapter pins: the version whose git entry exports `renderStandard` and `runStandardAdapter` (contexts/stack/pins.yaml). */
-export const SEED_PIN = "0.2.0"
+export const SEED_PIN = "0.3.0"
 /** The commit hook and workflow paths R434 checks for, and the guard each runs. */
 export const STANDARD_HOOK = ".githooks/pre-commit"
 export const STANDARD_WORKFLOW = ".github/workflows/seed-standard.yml"
