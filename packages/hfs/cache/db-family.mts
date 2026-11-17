@@ -32,7 +32,9 @@ export function baseInputs(repoRoot: string, base: string): string {
   return hashText(lines.join('\n'));
 }
 
-const compact = (finding: CheckFinding): Finding => ({ path: finding.path ?? 'db', line: finding.line ?? 0, column: finding.column ?? 0, rule: finding.code, message: String(finding.message ?? '') });
+/** A path as the record spells it: posix separators whatever host judged. */
+const posix = (file: string): string => file.replaceAll(String.fromCharCode(92), '/');
+export const compact = (finding: CheckFinding): Finding => ({ path: posix(finding.path ?? 'db'), line: finding.line ?? 0, column: finding.column ?? 0, rule: finding.code, message: String(finding.message ?? '') });
 
 export async function runDbFamily(session: CheckSession, { repoRoot, tracked, base }: { repoRoot: string; tracked: readonly string[]; base?: string | undefined }): Promise<{ findings: CheckFinding[]; report: FamilyReport }> {
   const decision = session.decide('db');

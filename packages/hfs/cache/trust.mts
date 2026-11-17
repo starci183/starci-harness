@@ -6,7 +6,7 @@
 // committed cache with what it inherited or computed (verifyCommitted). No trusted base (any other event, an unreadable base) is a full run.
 import fs from 'node:fs';
 import path from 'node:path';
-import { canonicalJson } from './jsonl.mjs';
+import { canonicalJson, sortFindings } from './jsonl.mjs';
 import { git, gitBytes } from './git.mjs';
 import { CACHE_DIR, type CacheRecord, type Finding } from './types.mjs';
 
@@ -121,7 +121,8 @@ export function resolveTrust({ root, env }: TrustInput): TrustSource {
 }
 
 const keyOf = (record: CacheRecord): string => `${record.path}\0${record.step}`;
-const sameFindings = (a: readonly Finding[], b: readonly Finding[]): boolean => canonicalJson(a) === canonicalJson(b);
+// The committed record holds its findings sorted (jsonl.mts), the computed one in the order the rules produced them: the order of a finding list is no content.
+const sameFindings = (a: readonly Finding[], b: readonly Finding[]): boolean => canonicalJson(sortFindings(a)) === canonicalJson(sortFindings(b));
 
 /** One verdict of the comparison of the change's committed cache with what CI inherited or computed. */
 export interface CacheVerdict {

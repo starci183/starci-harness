@@ -22,9 +22,19 @@ export function canonicalJson(value: unknown): string {
   return JSON.stringify(sortKeys(value));
 }
 
-/** Findings sorted by line, column, rule, message. */
+/** A column's sort key: a number as it is, anything else (a finding may name its column, `session_id`) after every number, by code unit; never NaN. */
+const columnOrder = (a: unknown, b: unknown): number => {
+  const left = typeof a === 'number' ? a : Number.NaN;
+  const right = typeof b === 'number' ? b : Number.NaN;
+  if (!Number.isNaN(left) && !Number.isNaN(right)) return left - right;
+  if (!Number.isNaN(left)) return -1;
+  if (!Number.isNaN(right)) return 1;
+  return compare(String(a), String(b));
+};
+
+/** Findings sorted by line, column, rule, message, path, then canonical JSON: a total order that depends on no host, locale or input order. */
 export function sortFindings(findings: readonly Finding[]): Finding[] {
-  return [...findings].sort((a, b) => a.line - b.line || a.column - b.column || compare(a.rule, b.rule) || compare(a.message, b.message));
+  return [...findings].sort((a, b) => a.line - b.line || columnOrder(a.column, b.column) || compare(a.rule, b.rule) || compare(a.message, b.message) || compare(a.path, b.path) || compare(canonicalJson(a), canonicalJson(b)));
 }
 
 /** Records sorted by path, then step. */
