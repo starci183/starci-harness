@@ -7,13 +7,14 @@
 // only vulnerable through another one; those take their verdict from the advisory they come from). A finding at or above the declared level fails with
 // AUDIT_HIGH unless an active exception exempts it. An exception exempts a finding when ALL hold:
 //   - its `advisory` is the finding's GHSA id and its `package` the finding's package, both exact (no wildcard, no range);
-//   - it is active: valid, not expired, no longer than 14 days from approval to expiry, and npm reports no fix for the package;
-//   - every dependency path to the package starts at one of its `via` names. The path is read from the lockfile, never from the report:
-//     the root nodes are the root package and each workspace package; a root dependency is a name in the `dependencies`, `optionalDependencies` and
-//     `peerDependencies` of a root node (and its `devDependencies` when the audit does not omit dev). From each root dependency the lockfile
-//     tree is walked as Node resolves it (the `node_modules` beside the requirer, then each parent's), and every node reached records the root
-//     dependency it was reached from. A node of the finding reached from a root dependency outside `via`, or from none (a path the lockfile cannot
-//     resolve), is NOT exempt: the finding fails.
+//   - it is active: valid, not expired, no longer than 14 days from approval to expiry, and npm reports no fix for the package. A fix is npm's
+//     `fixAvailable: true`, a non-major update, or a major update of the vulnerable package itself; a semver-major change of ANOTHER package (npm
+//     offering to move a parent, often backwards) is not a fix of this one and is only reported beside the active exception;
+//   - every dependency path to the package passes through one of its `via` packages before it. The paths are read from the lockfile, never from
+//     the report: the root nodes are the root package and each workspace package, and the tree is walked from each root's dependencies (its
+//     `devDependencies` too when the audit does not omit dev) as Node resolves it (the `node_modules` beside the requirer, then each parent's).
+//     A second walk stops at every package named in `via`; a node of the finding that walk still reaches has a path that touches no `via`
+//     package, and a node the first walk never reaches has a path the lockfile cannot resolve: either way the finding fails.
 // An exception that is expired, too long, or whose package has a fix is an error of its own; one that matches no finding at or above the level is unused,
 // also an error (remove it). Every active exception that exempted something is reported, so an exception is never hidden.
 import { parseYaml } from '../runtime/engine/yaml.mjs';
@@ -60,6 +61,7 @@ export interface AuditFinding {
 
 /** The shape of one `package-lock.json` entry the judge reads. */
 interface LockEntry {
+  readonly name?: string;
   readonly link?: boolean;
   readonly resolved?: string;
   readonly dependencies?: Record<string, string>;
@@ -95,7 +97,7 @@ function entryProblem(entry: unknown): string | null {
   if (typeof entry['advisory'] !== 'string' || !GHSA.test(entry['advisory'])) return 'advisory must be one exact GHSA id (no wildcard)';
   if (!nonEmpty(entry['package']) || /[\s*?]/.test(entry['package'])) return 'package must be one exact npm package name';
   const via = entry['via'];
-  if (!Array.isArray(via) || via.length === 0 || !via.every((name) => nonEmpty(name) && !/[\s*?]/.test(name))) return 'via must be a non-empty list of direct dependency names';
+  if (!Array.isArray(via) || via.length === 0 || !via.every((name) => nonEmpty(name) && !/[\s*?]/.test(name))) return 'via must be a non-empty list of package names a path passes through';
   for (const key of ['reason', 'approvedBy'] as const) if (!nonEmpty(entry[key])) return `${key} must be a non-empty string`;
   for (const key of ['approvedAt', 'expires'] as const) {
     const value = entry[key];
@@ -122,7 +124,17 @@ export function parseExceptions(text: string | undefined): { exceptions: AuditEx
 }
 
 /** One advisory of one package at or above the level, with the lock paths the report names for the package. */
-interface Finding { readonly id: string; readonly pkg: string; readonly severity: string; readonly title: string; readonly nodes: readonly string[]; readonly fix: boolean }
+interface Finding { readonly id: string; readonly pkg: string; readonly severity: string; readonly title: string; readonly nodes: readonly string[]; readonly fix: boolean; readonly breaking?: string }
+
+/** Whether npm's `fixAvailable` fixes `pkg`: true, a non-major update, or a major update of `pkg` itself. A breaking change of another package is not. */
+export function fixOf(fixAvailable: unknown, pkg: string): { fix: boolean; breaking?: string } {
+  if (fixAvailable === true) return { fix: true };
+  if (!isRecord(fixAvailable)) return { fix: false };
+  const name = typeof fixAvailable['name'] === 'string' ? fixAvailable['name'] : undefined;
+  const version = typeof fixAvailable['version'] === 'string' ? fixAvailable['version'] : '?';
+  if (fixAvailable['isSemVerMajor'] !== true || name === pkg) return { fix: true };
+  return { fix: false, breaking: `npm only offers a breaking change of ${name ?? 'another package'} to ${version}, not a fix of ${pkg}` };
+}
 
 function findingsOf(report: AuditReport, level: AuditLevel): Finding[] {
   const found: Finding[] = [];
@@ -133,7 +145,7 @@ function findingsOf(report: AuditReport, level: AuditLevel): Finding[] {
       found.push({
         id: id === undefined ? `npm:${String(via.source ?? via.title ?? 'unknown')}` : `GHSA-${id.slice(5).toLowerCase()}`,
         pkg: via.name ?? name, severity: String(via.severity), title: String(via.title ?? ''),
-        nodes: vulnerability.nodes ?? [], fix: Boolean(vulnerability.fixAvailable),
+        nodes: vulnerability.nodes ?? [], ...fixOf(vulnerability.fixAvailable, via.name ?? name),
       });
     }
   }
@@ -141,7 +153,15 @@ function findingsOf(report: AuditReport, level: AuditLevel): Finding[] {
 }
 
 /** For each lock path, the root dependency names it is reached from. Built once per audit. */
-export function rootsReaching(lock: Lockfile | undefined, omitDev: boolean): Map<string, Set<string>> {
+/** The package name of a lock key: the segment after the last `node_modules/` (scoped names keep their scope), else the entry's `name`. */
+const nameOfKey = (key: string, entry: LockEntry | undefined): string => {
+  const cut = key.lastIndexOf('node_modules/');
+  if (cut >= 0) return key.slice(cut + 'node_modules/'.length);
+  return entry?.name ?? key;
+};
+
+/** For each lock path, the root dependency names it is reached from. With `avoid`, the walk never enters a package so named. Built once per audit. */
+export function rootsReaching(lock: Lockfile | undefined, omitDev: boolean, avoid: ReadonlySet<string> = new Set()): Map<string, Set<string>> {
   const reached = new Map<string, Set<string>>();
   const packages = lock?.packages;
   if (!isRecord(packages)) return reached;
@@ -170,10 +190,11 @@ export function rootsReaching(lock: Lockfile | undefined, omitDev: boolean): Map
   };
   for (const rootKey of roots) {
     const root = lockEntries[rootKey] as LockEntry;
+    if (rootKey !== '' && avoid.has(nameOfKey(rootKey, root))) continue;
     const direct = [...edges(rootKey), ...(omitDev ? [] : Object.keys(root.devDependencies ?? {}))];
     for (const name of direct) {
       const start = resolve(rootKey, name);
-      if (start === undefined) continue;
+      if (start === undefined || avoid.has(nameOfKey(start, lockEntries[start]))) continue;
       const seen = new Set<string>();
       const stack = [start];
       for (let key = stack.pop(); key !== undefined; key = stack.pop()) {
@@ -184,7 +205,7 @@ export function rootsReaching(lock: Lockfile | undefined, omitDev: boolean): Map
         reached.set(key, set);
         for (const dependency of edges(key)) {
           const next = resolve(key, dependency);
-          if (next !== undefined) stack.push(next);
+          if (next !== undefined && !avoid.has(nameOfKey(next, lockEntries[next]))) stack.push(next);
         }
       }
     }
@@ -240,13 +261,24 @@ export function judge({ report, lock, exceptionsText, level, omitDev, now }: Jud
       else for (const name of from) roots.add(name);
     }
     const base = `${finding.pkg} ${finding.severity} ${finding.id}${finding.title === '' ? '' : ` (${finding.title})`}`;
-    const exemptBy = matching.find((exception) => active.has(exception) && !unresolved && [...roots].every((name) => exception.via.includes(name)));
+    // A node still reached when the walk stops at every via package (the vulnerable package itself never counts as its own via) has a path that touches none.
+    const bypassOf = (exception: AuditException): string[] => {
+      const avoid = new Set(exception.via.filter((name) => name !== finding.pkg));
+      const around = rootsReaching(lock, omitDev, avoid);
+      return [...new Set(nodes.flatMap((node) => [...(around.get(node) ?? [])]))].sort();
+    };
+    let bypass: string[] = [];
+    const exemptBy = matching.find((exception) => {
+      if (!active.has(exception) || unresolved) return false;
+      bypass = bypassOf(exception);
+      return bypass.length === 0;
+    });
     if (exemptBy !== undefined) { exempting.add(exemptBy); continue; }
     let why = 'no exception covers it';
     if (matching.length > 0) {
       if (unresolved) why = 'the lockfile does not resolve every dependency path to it, so no exception covers it';
       else if (!matching.some((exception) => active.has(exception))) why = 'its exception is not active';
-      else why = "a path to it starts outside the exception's via";
+      else why = `a path to it passes through none of the exception's via packages [from: ${bypass.join(', ')}]`;
     }
     out.push({ code: AUDIT_HIGH, level: 'error', message: `${base}: ${why}${roots.size > 0 ? ` [reached from: ${[...roots].sort().join(', ')}]` : ''}` });
   }
@@ -254,7 +286,8 @@ export function judge({ report, lock, exceptionsText, level, omitDev, now }: Jud
     if (!used.has(exception)) out.push({ code: AUDIT_EXCEPTION_UNUSED, level: 'error', message: `exception ${exception.package} ${exception.advisory} matches no finding at or above ${level}: remove it` });
   }
   for (const exception of exempting) {
-    out.push({ code: AUDIT_EXCEPTION_ACTIVE, level: 'info', message: `active exception: advisory ${exception.advisory}, package ${exception.package}, via ${exception.via.join(', ')}, reason "${exception.reason}", approved by ${exception.approvedBy}, expires ${exception.expires} (${String(daysLeft(exception.expires, now))} day(s) left)` });
+    const breaking = found.find((each) => each.id === exception.advisory && each.pkg === exception.package && each.breaking !== undefined)?.breaking;
+    out.push({ code: AUDIT_EXCEPTION_ACTIVE, level: 'info', message: `active exception: advisory ${exception.advisory}, package ${exception.package}, via ${exception.via.join(', ')}, reason "${exception.reason}", approved by ${exception.approvedBy}, expires ${exception.expires} (${String(daysLeft(exception.expires, now))} day(s) left)${breaking === undefined ? '' : `; ${breaking}`}` });
   }
   return out;
 }

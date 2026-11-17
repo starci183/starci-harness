@@ -80,10 +80,18 @@ test('AUDIT_EXCEPTION_TOO_LONG: more than 14 days from approvedAt to expires; ex
   assert.deepEqual(errors(run({ text: yaml(entry({ expires: '2026-12-01T00:00:00Z' })) })), []);
 });
 
-test('AUDIT_EXCEPTION_FIX_AVAILABLE: npm reports a fix for the package, so the exception must go', () => {
-  for (const fix of [true, { name: 'a', version: '2.0.0', isSemVerMajor: true }]) {
+test('AUDIT_EXCEPTION_FIX_AVAILABLE: a fix of the package itself (true, a non-major update, its own major) ends the exception', () => {
+  for (const fix of [true, { name: 'a', version: '1.5.0', isSemVerMajor: false }, { name: 'bad', version: '5.0.0', isSemVerMajor: true }]) {
     assert.deepEqual(errors(run({ report: report({ fix }), text: yaml(entry()) })).sort(), ['AUDIT_EXCEPTION_FIX_AVAILABLE', 'AUDIT_HIGH']);
   }
+});
+
+test('a breaking change of another package is no fix: the exception stays active and its line says what npm offers', () => {
+  const fix = { name: 'a', version: '0.9.0', isSemVerMajor: true };
+  const findings = run({ report: report({ fix }), text: yaml(entry()) });
+  assert.deepEqual(errors(findings), []);
+  const active = findings.find((finding) => finding.code === 'AUDIT_EXCEPTION_ACTIVE');
+  assert.match(active?.message ?? '', /breaking change of a to 0\.9\.0, not a fix of bad/u);
 });
 
 test('AUDIT_EXCEPTION_UNUSED: an exception with no matching finding is an error', () => {
@@ -102,12 +110,37 @@ test('the exact advisory and the exact package must match: another advisory or p
   assert.deepEqual(errors(run({ text: yaml(entry({ package: 'a' })) })).sort(), ['AUDIT_EXCEPTION_UNUSED', 'AUDIT_HIGH']);
 });
 
-test('every path to the package must start at a via name: one path outside it is AUDIT_HIGH', () => {
+test('every path to the package must pass through a via package: one path that touches none is AUDIT_HIGH', () => {
   const both = { lock: lock({ viaD: true }) };
   assert.deepEqual(errors(run({ ...both, text: yaml(entry()) })), ['AUDIT_HIGH']);
   assert.deepEqual(errors(run({ ...both, text: yaml(entry({ via: '[a, d]' })) })), []);
   // A nested copy is reached through its requirer; a path through a dev dependency alone is no root of a production audit.
   assert.deepEqual(errors(run({ lock: lock({ nested: true }), report: report({ nodes: ['node_modules/a/node_modules/bad'] }), text: yaml(entry()) })), []);
+  const bypass = run({ ...both, text: yaml(entry()) }).find((finding) => finding.code === 'AUDIT_HIGH');
+  assert.match(bypass?.message ?? '', /passes through none of the exception's via packages \[from: d\]/u);
+});
+
+test('via names packages a path passes through, not only roots: deep routes from several roots and workspaces are exempt', () => {
+  // The StarCi Next shape: apollo > graphql > tinyglobby > bad; a workspace ui > intl > watcher > bad; codegen > watcher.
+  const deep: Lockfile = { packages: {
+    '': { dependencies: { apollo: '1', codegen: '1' } },
+    'node_modules/ui': { link: true, resolved: 'fe/packages/ui' },
+    'fe/packages/ui': { name: 'ui', dependencies: { intl: '1' } },
+    'node_modules/apollo': { dependencies: { graphql: '1' } },
+    'node_modules/graphql': { dependencies: { tinyglobby: '1' } },
+    'node_modules/tinyglobby': { dependencies: { bad: '1' } },
+    'node_modules/intl': { dependencies: { watcher: '1' } },
+    'node_modules/codegen': { dependencies: { watcher: '1' } },
+    'node_modules/watcher': { dependencies: { bad: '1' } },
+    'node_modules/bad': {},
+  } };
+  assert.deepEqual(errors(run({ lock: deep, text: yaml(entry({ via: '[graphql, watcher]' })) })), []);
+  // Drop one route: the paths through watcher touch no via package any more.
+  const high = run({ lock: deep, text: yaml(entry({ via: '[graphql]' })) }).filter((finding) => finding.code === 'AUDIT_HIGH');
+  assert.equal(high.length, 1);
+  assert.match(high[0]?.message ?? '', /\[from: codegen, intl\]/u);
+  // The vulnerable package never counts as its own via.
+  assert.deepEqual(errors(run({ lock: deep, text: yaml(entry({ via: '[bad]' })) })), ['AUDIT_HIGH']);
 });
 
 test('a path the lockfile cannot resolve is never exempt', () => {
