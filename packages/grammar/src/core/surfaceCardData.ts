@@ -82,6 +82,12 @@ export type RowDrag = {
     readonly keyHint?: string
 }
 
+/**
+ * The tone of a row's leading edge (0.45.1): a 2px bar on the row's start edge in the theme's token of that tone (`accent`, `success`, `warning`, `danger`), the same bar a selected
+ * table row draws. It marks a row that waits for the reader or leads a list (a pending approval, the most recent item), never a status word: the row's badge or meta carries the words.
+ */
+export type RowEdgeTone = "accent" | "success" | "warning" | "danger"
+
 /** One row of a list. A destination links its text title; its sibling commands remain separate targets. */
 export type ListRowData = {
     readonly id: string
@@ -96,8 +102,10 @@ export type ListRowData = {
     readonly badges?: readonly [BadgeData] | readonly [BadgeData, BadgeData]
     /** How the row itself is doing. The row paints its state mark and tone; nothing else changes. */
     readonly state?: PresentationState
-    /** In a collection that reports outcomes: the direction of what this row reports (its leading edge). */
+    /** In a collection that reports outcomes: the direction of what this row reports (its leading edge). `edgeTone` draws the same edge for any other reason and wins when both are set. */
     readonly verdict?: "success" | "danger"
+    /** The tone of the row's 2px leading edge (0.45.1), for a row that waits for the reader or leads the list; see `RowEdgeTone`. */
+    readonly edgeTone?: RowEdgeTone
     readonly action?: ItemAction
     /**
      * Where the command and the menu stand. `below` (default) lets them wrap under the copy when the row is narrow (below 28rem of its

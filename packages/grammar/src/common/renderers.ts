@@ -63,7 +63,7 @@ export { VerticalScrollRegion, type VerticalScrollRegionProps } from "../core/fr
 export type { ErrorData } from "../core/loadingState.js"
 export { SurfaceCard, type SurfaceCardProps } from "../core/frame/SurfaceCard/index.js"
 export type {
-    AvatarData, BadgeData, CardHead, Figure, ImageData, ItemAction, ItemLeading, ItemMenu, ListRowData, RowDrag, TileData, TileMark, TilePoster, WholeCardAction,
+    AvatarData, BadgeData, CardHead, Figure, ImageData, ItemAction, ItemLeading, ItemMenu, ListRowData, RowDrag, RowEdgeTone, TileData, TileMark, TilePoster, WholeCardAction,
 } from "../core/surfaceCardData.js"
 export type { AccentCorner } from "../core/accentCorner.js"
 export { FencedCodeBlock, MarkdownArticle, MarkdownTableFrame, type FencedCodeBlockProps, type MarkdownArticleProps, type MarkdownTableFrameProps } from "../core/frame/MarkdownArticle/index.js"

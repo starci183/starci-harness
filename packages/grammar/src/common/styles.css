@@ -1318,6 +1318,21 @@
         box-shadow: var(--starci-core-verdict-edge, none);
     }
 
+    /*
+     * THE ROW EDGE TONE (0.45.1). A row `edgeTone` draws the same 2px leading edge as the verdict, in the theme token of its tone (accent, success,
+     * warning, danger): an inset shadow, so the row's content never moves, painted under hover too. It wins over `verdict` when both are set.
+     * `DataTable` rows read `--starci-core-row-edge-color` the same way (see components-navigation.css).
+     */
+    [data-edge-tone="accent"] { --starci-core-row-edge-color: var(--accent); }
+
+    [data-edge-tone="success"] { --starci-core-row-edge-color: var(--success); }
+    [data-edge-tone="warning"] { --starci-core-row-edge-color: var(--warning); }
+    [data-edge-tone="danger"] { --starci-core-row-edge-color: var(--danger); }
+
+    .starci-core-static-row[data-edge-tone] {
+        box-shadow: inset var(--grammar-ring-width) 0 0 0 var(--starci-core-row-edge-color);
+    }
+
     /* The note of a card is a small muted line under the card, the full width of the card. */
     .starci-core-surface-note {
         display: flex;

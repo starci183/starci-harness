@@ -160,6 +160,7 @@ const ListRowInner = ({ row, isLoading = false }: ListRowProps) => {
                 {...(hasTrail ? { "data-grammar-trail": "true" } : {})}
                 {...(row.value == null ? {} : { "data-grammar-value": "true" })}
                 {...(row.verdict === undefined ? {} : { "data-verdict": row.verdict })}
+                {...(row.edgeTone === undefined ? {} : { "data-edge-tone": row.edgeTone })}
                 {...(row.diff === undefined ? {} : { "data-grammar-diff": row.diff })}
                 {...(row.onPress === undefined && row.href === undefined ? {} : { "data-grammar-row-pressable": "true" })}
                 {...(drag === undefined ? {} : {

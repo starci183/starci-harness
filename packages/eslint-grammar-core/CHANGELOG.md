@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.45.1 - 2026-11-18
+
+- Version: moves with the Grammar family (@starci/grammar 0.45.1: a content-sized Popover, `edgeTone` on rows). No rule changed.
+
 ## 0.45.0 - 2026-11-17
 
 - Added: `card-is-object` (`FE_CARD_IS_OBJECT`, law CARD-OBJECT): a Grammar `SurfaceCard` of the body kind (no `kind`, or `kind="body"`) whose only content, through fragments and the layout wrappers `Stack`, `Cluster`, `Inline`, `Grid` and `div`, is a `DataTable`, a `Section` of any kind, a `DescriptionList`, a `DisclosureList`, an `Accordion`, a `Form`, a `Fieldset`, a lone field (`Input`, `Textarea`, `Select`, `ComboBox`, `SearchField`, `NumberField`, `RadioGroup`, `CheckboxGroup`), an `EmptyNotice`, `Markdown`, `MarkdownArticle` or a chart (`BarChart`, `LineChart`, `Sparkline`, `ProportionBar`, `BubbleMap`, `FlowGraph`, `MermaidDiagram`) is refused. Message `collection`: "SurfaceCard holds only a `DataTable`: a card is one object (a customer, an agent, a plan, a message). Put the table flat under its Section (`<Section title ...><DataTable .../></Section>`)." with the replacement of each content (list: `Section kind="list"`, facts: `Section` + `DescriptionList isDivided`, disclosures: `Section` + `DisclosureList`, form or field: `Section` + `Form`, empty: `EmptyNotice` on its own, markdown and chart: `Section`). `measure="formCompact"`, a `kind="tile"` card and a card with more than one content are not judged. No autofix. Doc `docs/card-is-object.md`.

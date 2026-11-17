@@ -6,6 +6,7 @@ import { Skeleton } from "../../leaf/Skeleton/index.js"
 import { ButtonPlacementProvider } from "../../buttonIntent.js"
 import { ErrorView, LOADING_ROWS, type ErrorData } from "../../loadingState.js"
 import { useIsLoading } from "../../regionScope.js"
+import type { RowEdgeTone } from "../../surfaceCardData.js"
 import type { NoChildren } from "../../tier.js"
 
 /** A table of this many columns or fewer fits its container (its columns shrink to their words); a wider one keeps its natural width and scrolls. */
@@ -62,6 +63,8 @@ export type DataTableRow = {
     readonly id: string
     /** A destination: the whole row becomes a link target, so a click or Enter on the row navigates through the app's router. */
     readonly href?: string
+    /** The tone of the row's 2px leading edge (0.45.1): a row that waits for the reader or leads the table. A selected row draws the accent bar instead. */
+    readonly edgeTone?: RowEdgeTone
 }
 
 /** Cell effects belong to the caller; the table owns cell semantics, focus and activation. */
@@ -529,6 +532,7 @@ export const DataTable = <Row extends DataTableRow>({
                                 data-grammar-table-row="true"
                                 {...(row.href === undefined ? {} : { href: row.href })}
                                 data-grammar-table-row-link={row.href === undefined ? "false" : "true"}
+                                {...(row.edgeTone === undefined ? {} : { "data-edge-tone": row.edgeTone })}
                                 data-grammar-table-row-pressable={row.href !== undefined || onRowAction !== undefined ? "true" : "false"}
                                 data-grammar-selected={selectionMode !== "none" && isRowSelected(row.id) ? "true" : "false"}
                             >
@@ -594,6 +598,7 @@ export const DataTable = <Row extends DataTableRow>({
                 data-grammar-selected={selectionMode !== "none" && isRowSelected(row.id) ? "true" : "false"}
                 data-grammar-table-row-pressable={onRowAction !== undefined || row.href !== undefined ? "true" : "false"}
                 data-grammar-table-row-link={row.href === undefined ? "false" : "true"}
+                {...(row.edgeTone === undefined ? {} : { "data-edge-tone": row.edgeTone })}
                 {...(onRowAction === undefined ? {} : { onClick: () => onRowAction(row.id), ...pressKeys })}
             >
                 <div className="starci-core-data-table-list-title">

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.45.1 - 2026-11-18
+
+- Version: moves with the Grammar family (@starci/grammar 0.45.1); peers @starci/eslint-grammar-core 0.45.1. No rule changed.
+
 ## 0.45.0 - 2026-11-17
 
 - Version: moves with the Grammar family (@starci/grammar 0.45.0); peers @starci/eslint-grammar-core 0.45.0 and inherits its new rules `card-is-object` and `data-table-surface`, its deleted `single-child-card` and its rewritten messages. No rule of its own changed; a search of the package for the removed card kinds, zones, `ribbon`, `isHighlight` and `DataTable surface` found none.

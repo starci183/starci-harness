@@ -225,7 +225,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [ui/components/diagram.md](../ui/components/diagram.md) · 15 KB — Contract: Diagram.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules · FlowGraph state priority
 - [ui/components/dialog-drawer.md](../ui/components/dialog-drawer.md) · 4 KB — Contract: Dialog and Drawer.
-  - sections: Job · Choose · Variants · Scrolling · Size · States · Owner split · Rules
+  - sections: Job · Choose · Variants · Popover width (0.45.1) · Scrolling · Size · States · Owner split · Rules
 - [ui/components/empty-state.md](../ui/components/empty-state.md) · 4 KB — Contract: EmptyState.
   - sections: Job · Choose · Variants · Size · States · Owner split · Frame · Rules
 - [ui/components/entry-frame.md](../ui/components/entry-frame.md) · 3 KB — Hold one bounded entry task beside its contextual identity.
@@ -236,8 +236,8 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/identity-mark.md](../ui/components/identity-mark.md) · 3 KB — Contract: Avatar and IconTile.
   - sections: Job · Choose · Variants · Size · States · Owner split · Initials fit the circle · Rules
-- [ui/components/list-table.md](../ui/components/list-table.md) · 12 KB — Contract: List and Table.
-  - sections: Job · Choose · Filter row (0.43.1, narrow step 0.44.0) · Section head (0.36.0) · Version diff rows (0.37.28) · Variants · Size · States · Owner split · Row description · Rules · Key-value rows (0.37.5)
+- [ui/components/list-table.md](../ui/components/list-table.md) · 13 KB — Contract: List and Table.
+  - sections: Job · Choose · Filter row (0.43.1, narrow step 0.44.0) · Row edge tone (0.45.1) · Section head (0.36.0) · Version diff rows (0.37.28) · Variants · Size · States · Owner split · Row description · Rules · Key-value rows (0.37.5)
 - [ui/components/mascot.md](../ui/components/mascot.md) · 3 KB — Contract: Mascot.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/menu.md](../ui/components/menu.md) · 2 KB — Contract: Menu.

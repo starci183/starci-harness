@@ -1167,6 +1167,15 @@
         width: var(--starci-core-control-min-size);
     }
 
+    /* A row `edgeTone` (0.45.1) draws the same 2px bar on its start edge in its tone; a selected row, below, draws the accent bar over it. */
+    .starci-core-data-table-row[data-edge-tone] > :first-child {
+        box-shadow: inset var(--grammar-ring-width) 0 0 0 var(--starci-core-row-edge-color);
+    }
+
+    .starci-core-data-table-list-row[data-edge-tone] {
+        box-shadow: inset var(--grammar-ring-width) 0 0 0 var(--starci-core-row-edge-color);
+    }
+
     /*
      * A selected row is grey with a 2px accent bar on its start edge, as the sidebar marks its selected item: the `--default` fill, the words
      * unchanged, the bar an inset edge of the first cell (so nothing moves). A hovered pressable row takes `--surface-secondary`.

@@ -23,6 +23,11 @@ Choice `dialog-drawer.choose.role`: what holds the task above the page. The firs
 The backdrop and the size are the contract's; the app picks a size only by content measure. Nested fields and tabs
 take their nested treatment from the overlay's surface.
 
+## Popover width (0.45.1)
+A `Popover` is 26rem wide, or the viewport less 2rem: a panel of rows (a leading mark, copy, an action, a time: a notification list) lays out at a readable measure, and a short
+note stands in the same panel. The width is definite because a row list is a size container, which has no intrinsic width. There is no `width` or `size` prop: one look for every panel, so an app sets no width and
+never wraps a popover's content in a fixed-width box. A panel that needs more than 26rem is a `Drawer` or a `Dialog`. Story `Overlays/Popover width (0.45.1)`.
+
 ## Scrolling
 A body that outgrows its sheet scrolls with no scrollbar: the edge fades where content continues and wheel, touch and keyboard still scroll
 (OVERFLOW-6; an app element with `overflow-y-auto` is refused by lint `no-raw-scroll`; use the Grammar scroller or `PaneSection scroll`). A `Drawer`

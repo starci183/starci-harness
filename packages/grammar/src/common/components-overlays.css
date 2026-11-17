@@ -369,8 +369,14 @@
     }
 
     /* ---------------------------------------------------------------- popover */
+    /*
+     * The panel is 26rem wide, or the viewport less 2rem (0.45.1; it was capped at 20rem with no floor, so a panel of rows with a leading mark, copy and an action
+     * collapsed to one word per line). The width is definite on purpose: a row list is a size container (the rows lay out by the list's width), which has no
+     * intrinsic width, so a content-sized panel would shrink to its floor. An app sets no width.
+     */
     .starci-core-popover {
-        max-width: min(20rem, calc(100vw - 2rem));
+        width: min(26rem, calc(100vw - 2rem));
+        max-width: min(26rem, calc(100vw - 2rem));
         overflow: auto;
         color: var(--surface-foreground);
         outline: none;

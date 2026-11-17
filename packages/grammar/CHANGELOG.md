@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.45.1 - 2026-11-18 - A Popover that sizes itself, a tone on a row's edge
+
+- A patch (the release gate counts a removed or renamed export or prop member; this adds a type and two optional fields and removes none). `eslint-grammar-core` and `eslint-grammar-offset-pop` carry the family version only. No theme hook is added.
+- Changed (`Popover`, default): the panel is 26rem wide, or the viewport less 2rem (`width: min(26rem, 100vw - 2rem)`). Before it had a 20rem cap and no floor, so a panel of rows (a leading mark, copy, an action, a time) collapsed to one word per line. The width is definite because a row list is a size container with no intrinsic width, so a content-sized panel only shrank to its floor. No prop: an app sets no width, and the one look holds for every panel (a filter form, a notification list, a shortcut note). `FilterButtonGroup`'s popover is the same part and follows. Story `Overlays/Popover width (0.45.1)` (`Panel`, `Short`; play tests measure the width at 1440 and 390).
+- Added (`RowEdgeTone`, type, `@starci/grammar/common`): `"accent" | "success" | "warning" | "danger"`.
+- Added (`ListRowData.edgeTone`, so a `Section kind="list"` item, a `ListRow` and a `Board` item): the row draws a 2px bar on its start edge in the theme token of the tone (`--accent`, `--success`, `--warning`, `--danger`), the bar a selected table row draws. An inset shadow, so the content never moves, and kept under hover. It wins over `verdict` (which stays: success and danger only, for a row that reports an outcome).
+- Added (`DataTableRow.edgeTone`): the same bar on a table row (on its first cell) and on its phone list row. A selected row draws the accent bar over it.
+- Stories: new `Surfaces/Row edge tone (0.45.1)` `Rows` (list rows and table rows; its play test reads the 2px inset edge and the absent edge of a plain row at 1440 and 390).
+
 ## 0.45.0 - 2026-11-17 - A card is one object
 
 - A minor (the release gate): kinds, props, exported types, theme hooks and DNA laws removed; `eslint-grammar-core` adds two rules and deletes one. A card is ONE object (a customer, an agent, a provider, a plan, a message, an approval), a dialog or an overlay; a collection (a table, a list, facts, figures, disclosures, a choice) is never in a card: it stands flat in a `Section`.
