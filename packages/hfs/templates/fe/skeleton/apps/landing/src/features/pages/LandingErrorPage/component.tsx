@@ -1,18 +1,22 @@
 import { ErrorNotice } from "@{{project}}/ui"
+import { LANDING_ROUTES } from "@/modules/routes"
 
-/** The error page's resolved words. */
-type LandingErrorPageBaseProps = {
-    readonly title: string
-    readonly retryLabel: string
+/** Props for {@link LandingErrorPageBase}. */
+export type LandingErrorPageBaseProps = {
+    /** The words the failure shows, already resolved. */
+    readonly props: {
+        readonly title: string
+        readonly description: string
+        readonly homeLabel: string
+        readonly retryLabel: string
+    }
+    /** What the surface reports upward. */
+    readonly on: {
+        readonly retry: () => void
+    }
 }
 
-/** What the error page reads: its resolved words and its one command, retry the segment. */
-type LandingErrorPageBaseContract = {
-    readonly props: LandingErrorPageBaseProps
-    readonly on: { readonly retry: () => void }
-}
-
-/** The pure error page of the landing: the screen a render failure shows, drawn from resolved words and one retry. */
-export const LandingErrorPageBase = (props: LandingErrorPageBaseContract) => (
-    <ErrorNotice title={props.props.title} retryLabel={props.props.retryLabel} onRetry={props.on.retry} />
+/** Draw the failure of the locale segment as the page-level empty state: home as the primary, retry as the secondary. */
+export const LandingErrorPageBase = (props: LandingErrorPageBaseProps) => (
+    <ErrorNotice {...props.props} homeHref={LANDING_ROUTES.home} onRetry={props.on.retry} />
 )

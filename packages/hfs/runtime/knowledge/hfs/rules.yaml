@@ -7058,3 +7058,19 @@ rules:
       - {path: packages/eslint-grammar-core/src/media.spec.ts, editions: [lite, full], codes: [FE_RAW_MEDIA_ELEMENT]}
     witness:
       - {path: packages/eslint-grammar-core/src/media.spec.ts, editions: [lite, full], codes: [FE_RAW_MEDIA_ELEMENT]}
+
+  - id: R437
+    code: "FE_ERROR_PAGE_NOT_EMPTY_STATE"
+    law: "The not-found, error and global-error pages of a web app (the boundaries R53 requires) draw the Grammar's one empty state: the source they reach, through the app's own files and the composites of its workspace ui package, holds an EmptyNotice of scope page with an illustration, so they are never hand-rolled from other components. An app edits their words and art; it never replaces the empty state."
+    kinds: [check]
+    gates: [settle, land, ci]
+    failureCodes: ["FE_ERROR_PAGE_NOT_EMPTY_STATE"]
+    enforcers:
+      - {kind: hfs, id: error-pages, at: runtime/scripts/hfs/rules/error-pages.mjs}
+    editions: [lite, full]
+    docs:
+      - {path: contexts/ui/components/empty-state.md, editions: [lite, full]}
+    proves:
+      - {path: packages/hfs/src/error-pages.spec.mts, editions: [lite, full]}
+    witness:
+      - {path: packages/hfs/src/error-pages.spec.mts, editions: [lite, full]}

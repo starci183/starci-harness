@@ -1,10 +1,13 @@
 import { ErrorNotice } from "@{{project}}/ui"
+import { APP_ROUTES } from "@/modules/routes"
 
 /** Props for {@link AppErrorPageBase}. */
 export type AppErrorPageBaseProps = {
     /** The words the failure shows, already resolved. */
     readonly props: {
         readonly title: string
+        readonly description: string
+        readonly homeLabel: string
         readonly retryLabel: string
     }
     /** What the surface reports upward. */
@@ -13,7 +16,7 @@ export type AppErrorPageBaseProps = {
     }
 }
 
-/** Draw the failure of the product app's locale segment with its one recovery action. */
+/** Draw the failure of the locale segment as the page-level empty state: home as the primary, retry as the secondary. */
 export const AppErrorPageBase = (props: AppErrorPageBaseProps) => (
-    <ErrorNotice title={props.props.title} retryLabel={props.props.retryLabel} onRetry={props.on.retry} />
+    <ErrorNotice {...props.props} homeHref={APP_ROUTES.home} onRetry={props.on.retry} />
 )

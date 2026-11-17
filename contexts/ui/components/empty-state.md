@@ -67,8 +67,8 @@ the layout does not jump (TASTE-10). Its illustration loads under a shimmer in i
 ## Page-level states every web app carries
 The not-found (404), the server failure (500) and the last-resort failure are `EmptyNotice scope="page"` with an `illustration`, a title, a
 description and actions: "Back to the home page" on all of them, and "Try again" (the boundary's reset) as the `secondary` of the 500. The
-harness template ships them as the `not-found`, `error` and `global-error` files of the web app, composed only from `EmptyNotice` (R439
-`FE_ERROR_PAGE_MISSING`, R440 `FE_ERROR_PAGE_NOT_EMPTY_NOTICE`); an app edits their words and art, never drops them. They are the gallery
+harness template ships them as the `not-found`, `error` and `global-error` files of the web app, composed only from `EmptyNotice`: R53
+`FE_ERROR_BOUNDARY_MISSING` refuses an app that lacks one and R437 `FE_ERROR_PAGE_NOT_EMPTY_STATE` one that draws it by hand; an app edits their words and art, never drops them. They are the gallery
 screens `errors/not-found` and `errors/server-error`.
 
 ## Rules
