@@ -1202,7 +1202,7 @@ slots:
     tracked: tracked
     tier: none
     tests: none
-    since: 6.14.0
+    since: 6.13.37
     allows: ["brand.md", "illustration.md", "illustration.yaml", "references/**"]
     rules: [HFS_BRAND_INVALID, HFS_BRAND_MISSING, HFS_BRAND_PROMPT_STALE, HFS_BRAND_PROMPT_INCOMPLETE]
   - id: app.starcistacks.canvas

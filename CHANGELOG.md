@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.157 - 2026-11-18
+
+- Added: the brand sheet `.starcistacks/brand/` (PROJECT-BRAND, R437) and `statics/` with the project's own MinIO from a managed override image (PROJECT-STATICS, R438–R440); `stack up` builds and `stack build` resolves any app's override image. @starci/hfs 6.13.37. Until the cli-follow step raises the CLI's requirement, the CLI runs the hfs it requires.
+
 ## 1.1.0-alpha.156 - 2026-11-18
 
 - Changed: the CLI requires @starci/hfs@6.13.36, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
