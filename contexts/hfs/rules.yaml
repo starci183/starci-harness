@@ -3004,7 +3004,7 @@ rules:
       - FE_RAW_MEDIA_ELEMENT
     enforcers:
       - {kind: eslint-grammar-core, id: no-raw-media}
-  - id: R437
+  - id: R443
     code: FE_ERROR_PAGE_NOT_EMPTY_STATE
     law: "The not-found, error and global-error pages of a web app (the boundaries R53 requires) draw the Grammar's one empty state: the source they reach, through the app's own files and the composites of its workspace ui package, holds an EmptyNotice of scope page with an illustration, so they are never hand-rolled from other components. An app edits their words and art; it never replaces the empty state."
     failureCodes:

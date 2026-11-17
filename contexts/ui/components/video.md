@@ -54,4 +54,4 @@ construction and does nothing when the reader prefers reduced motion. Region loa
 - **App author decides:** the files, the captions, the labels in its locale, the poster.
 
 ## Rules
-A11Y-2, MOTION-2; lint `starci-grammar/no-raw-media` (R436).
+A11Y-2, MOTION-2; lint `starci-grammar/no-raw-media` (R442).

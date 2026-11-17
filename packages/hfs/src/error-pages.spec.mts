@@ -51,7 +51,7 @@ for (const edition of ['lite', 'full']) {
       ['FE_ERROR_PAGE_NOT_EMPTY_STATE', 'apps/web/src/app/[locale]/not-found.tsx'],
     ]);
     assert.equal(findings[0]?.level, 'error');
-    assert.match(findings[0]?.message ?? '', /R437/u);
+    assert.match(findings[0]?.message ?? '', /R443/u);
   });
 }
 

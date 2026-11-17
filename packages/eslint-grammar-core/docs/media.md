@@ -1,6 +1,6 @@
 # Media renders through Image, Video and Illustration
 
-Law module: `media.ts`. Catalogue: R436 FE_RAW_MEDIA_ELEMENT.
+Law module: `media.ts`. Catalogue: R442 FE_RAW_MEDIA_ELEMENT.
 
 A picture, a video or decorative art is drawn by the Grammar's `Image`, `Video` or `Illustration`. A raw `<img>`,
 `<video>` or `<picture>` reserves no ratio before its bytes arrive (the page jumps), loads at once whatever the viewport,

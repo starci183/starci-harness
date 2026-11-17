@@ -1,5 +1,5 @@
 /**
- * Twin tests for the media law (R436): a picture, a video or decorative art is a Grammar `Image`, `Video` or `Illustration`,
+ * Twin tests for the media law (R442): a picture, a video or decorative art is a Grammar `Image`, `Video` or `Illustration`,
  * never a raw `<img>`, `<video>` or `<picture>`.
  *
  *   node --test src/media.spec.ts
@@ -35,7 +35,7 @@ test("the finding carries its code and a fix hint", () => {
   assert.match(why["no-raw-media"]?.fix ?? "", /Image/)
 })
 
-test("R436: media is drawn by Image, Video and Illustration, never a raw element", () => {
+test("R442: media is drawn by Image, Video and Illustration, never a raw element", () => {
   slotTester().run("no-raw-media", noRawMedia, {
     valid: [
       { filename: FEATURE, code: IMPORTS + "export const A = () => <Image src=\"/a.webp\" alt=\"A cat\" ratio=\"4:3\" />" },

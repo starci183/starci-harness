@@ -2,7 +2,7 @@ import type { Rule } from "eslint"
 import { defineFamilyRules, defineRule, exemptFreestyle } from "./lib/rule-contract.ts"
 import { composesGrammar } from "./grammar-boundary.ts"
 /**
- * The media law (HFS R436 `FE_RAW_MEDIA_ELEMENT`): pictures, video and decorative art are drawn by the Grammar's `Image`,
+ * The media law (HFS R442 `FE_RAW_MEDIA_ELEMENT`): pictures, video and decorative art are drawn by the Grammar's `Image`,
  * `Video` and `Illustration`, never by a raw `<img>`, `<video>` or `<picture>`.
  *
  * A raw element holds no ratio before its bytes arrive (the page jumps), loads at once whatever the viewport, draws no
@@ -29,7 +29,7 @@ export const MEDIA_OWNERS: Readonly<Record<string, string>> = Object.freeze({
 export const noRawMedia: Rule.RuleModule = exemptFreestyle(defineRule({
   meta: {
     type: "problem",
-    docs: { description: "R436: a picture, a video or decorative art is a Grammar Image, Video or Illustration, never a raw <img>, <video> or <picture>." },
+    docs: { description: "R442: a picture, a video or decorative art is a Grammar Image, Video or Illustration, never a raw <img>, <video> or <picture>." },
     schema: [],
     messages: {
       raw:
@@ -54,7 +54,7 @@ export const rules: Record<string, Rule.RuleModule> = {
   "no-raw-media": noRawMedia,
 }
 
-defineFamilyRules(rules, "knowledge/hfs/rules.yaml#R436")
+defineFamilyRules(rules, "knowledge/hfs/rules.yaml#R442")
 
 /** Every rule of this law is an error. */
 export const recommended: Record<string, "error"> = Object.fromEntries(Object.keys(rules).map((name): [string, "error"] => [`starci-grammar/${name}`, "error"]))

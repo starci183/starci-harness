@@ -304,7 +304,7 @@ assistive technology; a non-empty `alt` names it) and takes the asset-slot props
 ```
 
 **Media (Image, Video, Illustration).** Three leaves draw every picture, recording and piece of decorative art; a raw `img`, `video`
-or `picture` is refused (`starci-grammar/no-raw-media`, R436). Each names its file by `src` (a resolved URL) or by a `staticsKey` (an asset of the
+or `picture` is refused (`starci-grammar/no-raw-media`, R442). Each names its file by `src` (a resolved URL) or by a `staticsKey` (an asset of the
 app's statics, resolved by one `StaticsProvider baseUrl` mounted once; a key is a relative path of plain segments).
 
 - `Image`: `alt` (required; `""` only when decorative), `ratio` (`1:1`, `4:3`, `3:4`, `16:9`, `9:16`, `21:9`, `auto`), `fit` (`cover`, `contain`),

@@ -377,7 +377,7 @@ for decorative art); its `ratio` is one of 1:1, 4:3, 3:4, 16:9, 9:16, 21:9 or au
 async-decoded by default; a shimmer stands in the box while it loads and a neutral glyph on the plate when it fails; a caption makes it a
 figure, and `zoom` opens it in a lightbox on the Grammar's overlay mechanics. The corner is the theme's one radius. The file is a `src`
 or a `staticsKey` resolved by the nearest `StaticsProvider` (an app's statics, addressed by key, never by host); a raw `img` is refused
-(R436).
+(R442).
 
 ### Video
 
@@ -386,14 +386,14 @@ and MPEG-DASH through dash.js. Its `sources` are listed in order of preference a
 libraries are the Grammar's own dependencies, imported dynamically only when a source needs them and never fetched from a CDN. The box claims
 its ratio (16:9, 9:16 or 1:1), shows the poster, requests no stream until it nears the viewport, and ends in an in-place notice when the stream
 fails or nothing listed can play. Captions and subtitles are WebVTT `tracks`. `autoPlay` is muted and inline and does nothing under reduced
-motion. A raw `video` is refused (R436).
+motion. A raw `video` is refused (R442).
 
 ### Illustration
 
 An illustration is decorative art for a hero, a marketing band or a page-level state: it says nothing the words beside it do not and is hidden
 from assistive technology unless its `alt` names it. It claims a ratio (or fills its host), and below 48rem a `compact` source and ratio may
 replace the wide crop (art direction through `picture`). Its states are a shimmer while it loads and the bare plate when it fails. Generated art
-reaches the page through `Mascot`, `Illustration` or a `MediaFrame` (R338). A raw `picture` is refused (R436).
+reaches the page through `Mascot`, `Illustration` or a `MediaFrame` (R338). A raw `picture` is refused (R442).
 
 ### Avatar
 

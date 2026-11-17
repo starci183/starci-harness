@@ -1,4 +1,4 @@
-// error-pages.mts - R437: the error pages of a web app are the Grammar's one empty state, never hand-rolled
+// error-pages.mts - R443: the error pages of a web app are the Grammar's one empty state, never hand-rolled
 // (contexts/ui/components/empty-state.md "Page-level states every web app carries"). R53 requires that the three boundaries EXIST
 // (`global-error.tsx`, the locale `error.tsx` and `not-found.tsx`); this rule reads what they DRAW:
 //   FE_ERROR_PAGE_NOT_EMPTY_STATE   a boundary file whose reachable source (the files it imports inside the app, and the composites of the
@@ -75,7 +75,7 @@ export function errorPageFindings({ files = [], repo, repoRoot, isRoot = false, 
     const appRoot = (match.groups?.app ?? '').replace(/\/$/u, '');
     const sources = closure(file, appRoot, tracked, uiFiles, repoRoot).map((member) => readText(repoRoot, member) ?? '');
     if (!drawsPageEmptyState(sources)) {
-      findings.push(found(FE_ERROR_PAGE_NOT_EMPTY_STATE, file, `${file} (${match.groups?.name ?? 'boundary'}) draws no EmptyNotice scope="page" with an illustration: the not-found, error and global-error pages are the Grammar's one empty state (an illustration, the title and description, "Back to the home page" and, on a failure, a retry), never hand-rolled (R437, contexts/ui/components/empty-state.md)`));
+      findings.push(found(FE_ERROR_PAGE_NOT_EMPTY_STATE, file, `${file} (${match.groups?.name ?? 'boundary'}) draws no EmptyNotice scope="page" with an illustration: the not-found, error and global-error pages are the Grammar's one empty state (an illustration, the title and description, "Back to the home page" and, on a failure, a retry), never hand-rolled (R443, contexts/ui/components/empty-state.md)`));
     }
   }
   return findings;

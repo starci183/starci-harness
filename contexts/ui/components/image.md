@@ -12,9 +12,9 @@ Choice `image.choose.element`: which component draws a picture. The first row th
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |
 | character | the art is the product's generated character | [mascot](mascot.md) | R338 `generated-art-in-mascot-or-media-frame` |
-| decorative | the art adds no fact the words beside it do not state: hero art, a backdrop, an empty state's picture | [illustration](illustration.md) | R436 `no-raw-media` |
+| decorative | the art adds no fact the words beside it do not state: hero art, a backdrop, an empty state's picture | [illustration](illustration.md) | R442 `no-raw-media` |
 | content | the picture itself is the information: a product photo, a screenshot, a chart exported as a picture, a person's upload | `Image` with a non-empty `alt` | `alt` required by type |
-| moving | the media plays | [video](video.md) | R436 `no-raw-media` |
+| moving | the media plays | [video](video.md) | R442 `no-raw-media` |
 
 Choice `image.choose.ratio`: which ratio the box claims. The first row that applies wins.
 
@@ -64,4 +64,4 @@ screen's picture takes `loading="eager"`.
   state), the renditions, the caption and the zoom labels, the `StaticsProvider` base URL.
 
 ## Rules
-A11Y-2, MOTION-2; lint `starci-grammar/no-raw-media` (R436), `starci-grammar/generated-art-in-mascot-or-media-frame` (R338).
+A11Y-2, MOTION-2; lint `starci-grammar/no-raw-media` (R442), `starci-grammar/generated-art-in-mascot-or-media-frame` (R338).
