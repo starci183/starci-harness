@@ -1479,7 +1479,7 @@ mustKeep:
       owner: ui/components/diagram.md
     - id: DNA-COMMON-FLOW-OPEN-ZOOM
       role: diagram
-      law: "A steps graph opens readable: it is fitted when the fit is zoom 0.95 or more (never past 1; a linear 5-step graph and its end pill fit the 1160px workflow map well of a 1440 page, inside a 12px margin), otherwise it opens at zoom 1 at its entry node and pans; a canvas 480px wide or less opens at 0.8 the same way. The least zoom stays 0.8 (DNA-COMMON-FLOW-READABLE-FLOOR). The zoom controls take room at the start edge only where the graph would stand beside them. height=\"fill\" makes the frame the rest of the page height, at least 360px (owner-approved drawing graph-state, 0.37.33)."
+      law: "A steps graph opens fitted to its pane (0.41.1): at zoom 1 when it fits there (never magnified), otherwise scaled down until its last column is in view, at any pane width, inside a 12px margin; it never opens below the readable floor 0.8 (DNA-COMMON-FLOW-READABLE-FLOOR), where a graph that would need less opens at 0.8 at its entry node and pans. Before 0.41.1 a fit under 0.95 opened at zoom 1 at the entry, which cut off the end of a wide graph at 1440 and 1920. The least zoom stays 0.8. The zoom controls take room at the start edge only where the graph would stand beside them. height=\"fill\" makes the frame the rest of the page height, at least 360px (owner-approved drawing graph-state, 0.37.33)."
       measure: { kind: style, select: '[data-component="FlowGraph"][data-grammar-flow-layout="steps"] .react-flow__viewport', metric: scale, op: ">=", value: 0.8 }
       owner: ui/components/diagram.md
     - id: DNA-COMMON-FLOW-CARD-SIZE

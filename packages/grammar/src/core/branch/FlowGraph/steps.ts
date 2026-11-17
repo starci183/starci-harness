@@ -326,6 +326,11 @@ export type StepsBox = { readonly x: number, readonly y: number, readonly width:
 
 /** The clear room an edge keeps beside a card it goes round (0.39.4). */
 export const STEPS_AVOID_CLEARANCE = 14
+/**
+ * The clear room a rerouted edge keeps beside its OWN two cards (0.41.1). Smaller than {@link STEPS_AVOID_CLEARANCE}: a back edge leaves its source
+ * {@link STEPS_BACK_LEAVE} out of the side and stands {@link BACK_TARGET_FIRST} beside its target, so the stretch between stays outside this margin.
+ */
+export const STEPS_END_CLEARANCE = 6
 /** The cost of a turn against a unit of length when an edge is routed round cards: the route with the fewest turns wins over a slightly longer one. */
 const AVOID_TURN_COST = 48
 
@@ -397,10 +402,12 @@ const heapPop = (heap: HeapItem[]): HeapItem => {
 /**
  * The shortest orthogonal path from `from` to `to` that keeps {@link STEPS_AVOID_CLEARANCE} clear of every box (0.39.4), fewest turns first among equals: a Dijkstra
  * over the grid the boxes' padded edges and the two ends draw. `first` names the axis the path leaves `from` along, so an edge keeps leaving its card the way
- * the flow runs. Null when there is none.
+ * the flow runs. `ends` are the edge's own two cards (0.41.1), kept {@link STEPS_END_CLEARANCE} clear, so the stretch between the leaving and the entering
+ * run never cuts through its source or its target. Null when there is none.
  */
-export const routeAroundBoxes = (from: FlowGraphPoint, to: FlowGraphPoint, boxes: ReadonlyArray<StepsBox>, first?: "x" | "y"): ReadonlyArray<FlowGraphPoint> | null => {
-    const padded = boxes.map((box) => ({ x: box.x - STEPS_AVOID_CLEARANCE, y: box.y - STEPS_AVOID_CLEARANCE, width: box.width + 2 * STEPS_AVOID_CLEARANCE, height: box.height + 2 * STEPS_AVOID_CLEARANCE }))
+export const routeAroundBoxes = (from: FlowGraphPoint, to: FlowGraphPoint, boxes: ReadonlyArray<StepsBox>, first?: "x" | "y", ends: ReadonlyArray<StepsBox> = []): ReadonlyArray<FlowGraphPoint> | null => {
+    const pad = (box: StepsBox, clearance: number): StepsBox => ({ x: box.x - clearance, y: box.y - clearance, width: box.width + 2 * clearance, height: box.height + 2 * clearance })
+    const padded = [...boxes.map((box) => pad(box, STEPS_AVOID_CLEARANCE)), ...ends.map((box) => pad(box, STEPS_END_CLEARANCE))]
     const inside = (point: FlowGraphPoint) => padded.some((box) => point.x > box.x + 0.5 && point.x < box.x + box.width - 0.5 && point.y > box.y + 0.5 && point.y < box.y + box.height - 0.5)
     if (inside(from) || inside(to)) return null
     const xs = [...new Set([from.x, to.x, ...padded.flatMap((box) => [box.x, box.x + box.width])])].sort((a, b) => a - b)
@@ -459,10 +466,15 @@ export const routeAroundBoxes = (from: FlowGraphPoint, to: FlowGraphPoint, boxes
 /**
  * An edge that goes round the cards (0.39.4). `points` is the edge's own route (a forward or a back edge); when none of its segments crosses a card in `boxes`
  * (the cards other than its two ends) it is kept as drawn, otherwise the stretch between its leaving run and its entering run is routed round them
- * ({@link routeAroundBoxes}), so no segment of an edge crosses a card. Screen coordinates.
+ * ({@link routeAroundBoxes}), so no segment of an edge crosses a card. `ends` are the boxes of the edge's own source and target (0.41.1): the rerouted stretch
+ * keeps clear of them too, and a back edge whose middle runs cross one of them is rerouted. Screen coordinates.
  */
-export const stepsAvoidRoute = (points: ReadonlyArray<FlowGraphPoint>, boxes: ReadonlyArray<StepsBox>, direction: FlowGraphDirection): ReadonlyArray<FlowGraphPoint> => {
-    if (points.length < 2 || boxes.length === 0 || !routeCrossesBoxes(points, boxes)) return points
+export const stepsAvoidRoute = (points: ReadonlyArray<FlowGraphPoint>, boxes: ReadonlyArray<StepsBox>, direction: FlowGraphDirection, ends: ReadonlyArray<StepsBox> = []): ReadonlyArray<FlowGraphPoint> => {
+    if (points.length < 2) return points
+    // A back edge (more than four points) is checked against its own two cards too, between its leaving and its entering run: one to the entry node
+    // ran its last runs through that node's card (0.41.1).
+    const crossesEnds = points.length > 4 && ends.length > 0 && routeCrossesBoxes(points.slice(1, -1), ends)
+    if (!crossesEnds && (boxes.length === 0 || !routeCrossesBoxes(points, boxes))) return points
     const source = points[0] as FlowGraphPoint
     const target = points[points.length - 1] as FlowGraphPoint
     const flow: "x" | "y" = direction === "LR" ? "x" : "y"
@@ -473,7 +485,7 @@ export const stepsAvoidRoute = (points: ReadonlyArray<FlowGraphPoint>, boxes: Re
     const isBack = points.length > 4
     const from = isBack ? points[1] as FlowGraphPoint : step(source, sign * lead(source, target))
     const to = isBack ? points[points.length - 2] as FlowGraphPoint : step(target, -sign * lead(target, source))
-    const routed = routeAroundBoxes(from, to, boxes, isBack ? undefined : flow)
+    const routed = routeAroundBoxes(from, to, boxes, isBack ? undefined : flow, ends)
     if (routed === null) return points
     return dropCollinear([source, ...routed, target])
 }

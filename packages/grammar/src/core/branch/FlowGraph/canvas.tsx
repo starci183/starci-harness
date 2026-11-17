@@ -65,16 +65,12 @@ export const CONTAIN_MIN_ZOOM = 0.8
 /** The most tall a floored steps canvas grows when no `height` caps it (screen pixels, the `lg` step): the rest is reached by panning. */
 const FLOORED_HEIGHT_CAP = 512
 /**
- * THE OPENING ZOOM OF A STEPS GRAPH (0.37.33, owner drawing graph-state, law DNA-COMMON-FLOW-OPEN-ZOOM). A step card reads at zoom 1 (176 x 64 since 0.37.35, title 14, line 12).
- * On open the graph is fitted when it fits at {@link STEPS_OPEN_FIT_MIN} or more (never magnified past 1; a linear 5-step graph and its end pill in the 1160px workflow map well
- * fits at about 0.96); otherwise it opens at zoom 1 anchored at its entry node and the reader pans. At a narrow canvas (<= {@link STEPS_NARROW_WIDTH}) it opens at
- * {@link CONTAIN_MIN_ZOOM} (0.8) the same way. The least zoom (the zoom-out button, a pinch) stays {@link CONTAIN_MIN_ZOOM}.
+ * THE OPENING ZOOM OF A STEPS GRAPH (0.37.33, owner drawing graph-state, law DNA-COMMON-FLOW-OPEN-ZOOM; rewritten 0.41.1). A step card reads at zoom 1 (176 x 64 since
+ * 0.37.35, title 14, line 12). On open the graph is fitted to the pane width: a graph that fits at zoom 1 opens at 1 (never magnified), a wider one is scaled down
+ * until its last column is in view, at any pane width. Before 0.41.1 a fit under 0.95 opened at zoom 1 at the entry node, so the right columns of a wide graph were cut
+ * off at 1440 and 1920 until the reader panned. The fit never goes below the readable floor {@link CONTAIN_MIN_ZOOM} (0.8, DNA-COMMON-FLOW-READABLE-FLOOR): a graph that
+ * would need less opens at the floor at its entry node and pans. Pan and zoom work after the fit as before.
  */
-export const STEPS_OPEN_ZOOM = 1
-/** The least fitted zoom a steps graph opens at on a wide canvas: a fit that needs less opens at zoom 1 and pans. */
-export const STEPS_OPEN_FIT_MIN = 0.95
-/** The canvas width at or under which a steps graph opens at {@link CONTAIN_MIN_ZOOM} (a phone). */
-export const STEPS_NARROW_WIDTH = 480
 /** The gap kept between the zoom controls column and a graph that would stand beside it. */
 const CONTROLS_CLEARANCE = 8
 
@@ -125,21 +121,18 @@ export const Refit = ({ signature, readableZoom, onGrow, fitOptions, maxZoom, an
         if (stepsFit === true) {
             const bounds = getNodesBounds(getNodes())
             if (bounds.width === 0 || bounds.height === 0) return
-            // The opening zoom (0.37.33, DNA-COMMON-FLOW-OPEN-ZOOM): fitted when the fit reads (>= 0.95 wide, >= 0.8 narrow), else zoom 1 (0.8 narrow) at the entry, panned.
-            const isNarrow = width <= STEPS_NARROW_WIDTH
-            const floor = Math.max(containFloor ?? STEPS_MIN_ZOOM, STEPS_MIN_ZOOM)
-            const openZoom = Math.min(isNarrow ? floor : STEPS_OPEN_ZOOM, maxZoom)
-            const fitMin = Math.min(isNarrow ? floor : STEPS_OPEN_FIT_MIN, openZoom)
+            // The opening zoom (DNA-COMMON-FLOW-OPEN-ZOOM, 0.41.1): fitted to the pane width (at most 1) down to the readable floor, else the floor at the entry, panned.
+            const floor = Math.min(Math.max(containFloor ?? STEPS_MIN_ZOOM, STEPS_MIN_ZOOM), maxZoom)
             const cap = fixedHeight ? height : heightCap
             const place = (startInset: number) => {
                 const start = STEPS_FIT_MARGIN + startInset
                 const room = width - start - STEPS_FIT_MARGIN
                 let fitZoom = Math.min(room / bounds.width, maxZoom)
                 if (cap !== null) fitZoom = Math.min(fitZoom, (cap - 2 * STEPS_FIT_MARGIN) / bounds.height)
-                const floored = fitZoom < fitMin
-                return { start, room, floored, zoom: floored ? openZoom : fitZoom }
+                const floored = fitZoom < floor
+                return { start, room, floored, zoom: floored ? floor : fitZoom }
             }
-            // On each axis: a graph that fits the window is centred in it (the room the controls leave, the canvas height); one that does not (opened at zoom 1, or
+            // On each axis: a graph that fits the window is centred in it (the room the controls leave, the canvas height); one that does not (held at the readable floor, or
             // taller than a capped canvas) starts at the entry node (the first along the flow: the top one for TB, the leftmost for LR), centred when the graph's
             // edges allow, never leaving an empty band at a side.
             const entry = getNodes().reduce((first, node) => (direction === "LR" ? node.position.x < first.position.x : node.position.y < first.position.y) ? node : first)

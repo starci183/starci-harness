@@ -4822,6 +4822,19 @@
     .starci-core-select[data-grammar-select-appearance="pill"] .starci-core-select-trigger { border-radius: var(--grammar-radius-pill); background: var(--starci-core-plate, var(--surface-secondary)); box-shadow: none; }
     /* Select appearance="compact": the pill at the dense control step (2rem), for a toolbar, a pane head or a card zone. */
     .starci-core-select[data-grammar-select-appearance="compact"] .starci-core-select-trigger { min-block-size: 2rem; block-size: 2rem; border-radius: var(--grammar-radius-pill); background: var(--starci-core-plate, var(--surface-secondary)); box-shadow: none; padding-block: 0; }
+    /*
+     * A pill sizes to its content (0.41.1), in a Cluster, a Stack or a page head alike: the vendor's `fullWidth` stretched the root and the trigger to the row,
+     * so a pill in a Cluster stood full width. It takes its value's width, never under 8rem nor over 20rem (nor the row), and cuts a longer value with an
+     * ellipsis on one line. The `field` appearance keeps filling its column.
+     */
+    .starci-core-select:is([data-grammar-select-appearance="pill"], [data-grammar-select-appearance="compact"]) {
+        flex: none;
+        inline-size: fit-content;
+        min-inline-size: min(100%, 8rem);
+        max-inline-size: min(100%, 20rem);
+    }
+    .starci-core-select:is([data-grammar-select-appearance="pill"], [data-grammar-select-appearance="compact"]) .starci-core-select-trigger { inline-size: 100%; min-inline-size: 0; }
+    .starci-core-select:is([data-grammar-select-appearance="pill"], [data-grammar-select-appearance="compact"]) .select__value { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     /* DisclosureList: sibling disclosures joined into one list, divided by full-bleed lines. */
     .starci-core-disclosure-list { display: flex; min-width: 0; margin: 0; padding: 0; flex-direction: column; list-style: none; }
@@ -5100,6 +5113,21 @@
     @media (min-width: 80rem) {
         .starci-core-grid-relations[data-grammar-grid-kind="sections"] > .starci-core-grid-regions {
             grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        /*
+         * THE SECTION DIVIDER HOOK (0.41.1): `--starci-core-grid-section-divider` (a border, default 0: none, the look before) draws a hairline between two
+         * section columns, in the middle of their gap and the row's full height. It stands before the second column of a row only, never on the row-start
+         * column, and never when the grid is one column (under 80rem, a phone at 390 included), since this rule lives in the two-column query.
+         */
+        .starci-core-grid-relations[data-grammar-grid-kind="sections"] > .starci-core-grid-regions > :nth-child(2n) { position: relative; }
+        .starci-core-grid-relations[data-grammar-grid-kind="sections"] > .starci-core-grid-regions > :nth-child(2n)::before {
+            content: "";
+            position: absolute;
+            inset-block: 0;
+            inset-inline-start: calc(var(--grammar-section-gap) / -2);
+            border-inline-start: var(--starci-core-grid-section-divider, 0);
+            pointer-events: none;
         }
     }
 

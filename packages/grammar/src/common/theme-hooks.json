@@ -45,6 +45,7 @@
     { "name": "--starci-core-list-radius", "fallback": "var(--starci-core-surface-radius)", "kind": "length", "part": "Section kind=\"list\" (the list frame)", "means": "the corner radius of the list frame" },
     { "name": "--starci-core-list-inset", "fallback": "var(--grammar-inset)", "kind": "length", "part": "Section kind=\"list\" (its rows)", "means": "the inline inset of a list section's rows; 0 puts the row content on the section title's start edge (a flat list)" },
     { "name": "--starci-core-track", "fallback": "color-mix(in oklab, var(--foreground) 10%, var(--surface))", "kind": "color", "part": "Progress (bar and steps), Meter (bar and segments), ProgressCircle, ProportionBar", "means": "the fill of an empty measure track; the Switch's off track keeps its own hook" },
+    { "name": "--starci-core-grid-section-divider", "fallback": "0", "kind": "border", "part": "Grid kind=\"sections\" (two columns, 80rem and up)", "means": "a hairline between two section columns, in the middle of their gap; never before the row-start column nor in the one-column grid" },
     { "name": "--starci-core-flow-selected", "fallback": "color-mix(in oklab, var(--starci-flow-select) 8%, var(--surface))", "kind": "color", "part": "FlowGraph steps (card and diamond)", "means": "the ground of a selected step; its 2px border in the status colour stays" }
   ]
 }

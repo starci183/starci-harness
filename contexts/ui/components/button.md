@@ -83,7 +83,10 @@ holds the same floor.
 ## States
 Disabled, pending and skeleton per CTA-3: pending keeps the label and box and refuses a second press; never
 replace pending with disabled. A disabled button states why in `disabledReason` (`DNA-COMMON-DISABLED-REASON`). A
-disabled commit never stands in for an empty state (CTA-5).
+disabled commit never stands in for an empty state (CTA-5). A disabled button is neutral whatever its intent, step or
+variant (0.41.1): a neutral fill (the foreground at 6% over the surface) and neutral words (40%) at full opacity, no
+hover or press change; a ghost or outline button keeps no fill, an edged destructive entry drops its danger edge. A
+disabled primary is never an accent wash and a disabled destructive never a pale red; pending and loading keep their look.
 
 ## Owner split
 - **Grammar owns:** variants, the intent x placement map, sizes and their values, the pill shape, pending anatomy,

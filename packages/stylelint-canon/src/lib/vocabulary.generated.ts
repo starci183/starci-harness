@@ -171,6 +171,7 @@ export const THEME_HOOKS: readonly string[] = [
   "--starci-core-field-ring",
   "--starci-core-field-ring-width",
   "--starci-core-flow-selected",
+  "--starci-core-grid-section-divider",
   "--starci-core-list-frame",
   "--starci-core-list-frame-border",
   "--starci-core-list-inset",

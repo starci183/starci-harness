@@ -1304,6 +1304,20 @@
         overflow-wrap: normal;
     }
 
+    /*
+     * AN ACTION CELL NEVER WRAPS (0.41.1). A cell that holds buttons (Button, IconButton, a ButtonGroup, a disabled one inside its reason's trigger) keeps them on
+     * one line, and its column sizes to them: a `Cluster` of two buttons wraps by default, and a `fit` column's min-content was its widest button, so
+     * a delete button stood under a disable button. The row grows nowhere; a table wider than its container scrolls as any wide table does.
+     */
+    .starci-core-data-table .starci-core-data-table-cell:has(:is([data-component="Button"], [data-component="IconButton"], [data-component="ButtonGroup"])) {
+        white-space: nowrap;
+        min-inline-size: max-content;
+    }
+
+    .starci-core-data-table .starci-core-data-table-cell :is(.starci-core-cluster, .starci-core-button-group):has(> :is([data-component="Button"], [data-component="IconButton"], .starci-core-tooltip-disabled-trigger)) {
+        flex-wrap: nowrap;
+    }
+
     /* A cell that holds a chip, a badge or a status mark never wraps below its content either. */
     .starci-core-data-table .starci-core-data-table-cell:has(> :is([data-component="Badge"], [data-component="Chip"], .starci-core-chip, [data-component="StatusDot"])) {
         white-space: nowrap;

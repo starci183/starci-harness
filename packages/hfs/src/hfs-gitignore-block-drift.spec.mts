@@ -3,6 +3,7 @@
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -56,5 +57,29 @@ for (const edition of ['lite', 'full']) {
     assert.deepEqual((await managedFindings(input)).map(finding => finding.code), ['HFS_GITIGNORE_BLOCK_DRIFT']);
     fs.writeFileSync(file, rendered);
     assert.deepEqual((await managedFindings(input)).map(finding => finding.code), []);
+  });
+}
+
+// The AGENTS.md `next dev` writes into an app under fe/apps is ignored; a root AGENTS.md, and one anywhere else, stays tracked.
+for (const edition of ['lite', 'full']) {
+  test(`${edition}: the managed ignore block ignores fe/apps/*/AGENTS.md and no other AGENTS.md`, context => {
+    const { root } = synced(context, edition);
+    const rendered = fs.readFileSync(path.join(root, '.gitignore'), 'utf8');
+    assert.match(rendered, /^fe\/apps\/\*\/AGENTS\.md$/mu);
+    assert.doesNotMatch(rendered, /^\/?AGENTS\.md$/mu);
+    execFileSync('git', ['init', '--quiet'], { cwd: root });
+    const ignored = (file: string): boolean => {
+      try {
+        execFileSync('git', ['check-ignore', '--quiet', '--no-index', file], { cwd: root });
+        return true;
+      } catch {
+        return false;
+      }
+    };
+    assert.equal(ignored('fe/apps/web/AGENTS.md'), true);
+    assert.equal(ignored('fe/apps/admin/AGENTS.md'), true);
+    assert.equal(ignored('AGENTS.md'), false);
+    assert.equal(ignored('fe/AGENTS.md'), false);
+    assert.equal(ignored('be/apps/api/AGENTS.md'), false);
   });
 }

@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.9.3 - 2026-11-17
+
+- Changed (vocabulary): the theme hook of @starci/grammar 0.41.1, `--starci-core-grid-section-divider`, which brand.css alone may set (45 hooks).
+
 ## 2.9.2 - 2026-11-17
 
 - Changed (vocabulary): the theme hooks of @starci/grammar 0.41.0, `--starci-core-card-radius`, `--starci-core-list-frame`, `--starci-core-list-frame-border`, `--starci-core-list-radius`, `--starci-core-list-inset` and `--starci-core-track`, which brand.css alone may set (44 hooks).

@@ -6,6 +6,8 @@ schema.gql
 # fe: Next build output and its generated type file
 .next/
 next-env.d.ts
+# fe: the AGENTS.md `next dev` writes into each Next app; a root AGENTS.md (and any other) stays tracked
+fe/apps/*/AGENTS.md
 # .starcistacks custody at the app root: modules/schemas/stacks-layout.yaml custody.gitignoreRules, in order. Only the
 # declaration, runbooks, key lists, seeds, the rendered environment, the infra definitions, the db image and sealed members (*.enc.yaml, legacy *.enc) are tracked.
 .starcistacks/**

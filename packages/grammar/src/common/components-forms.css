@@ -577,6 +577,30 @@
         border: var(--starci-core-button-danger-soft-border, 0);
     }
 
+    /*
+     * A DISABLED BUTTON IS NEUTRAL (0.41.1), whatever its intent, step or variant, Button and IconButton alike. The vendor only dims a disabled button to
+     * `--disabled-opacity`, so a disabled primary read as a pink accent wash and a disabled destructive as a pale red: a colour that still says "act".
+     * Disabled now draws HeroUI's disabled pair at full opacity: a neutral fill (the foreground at 6% over the surface) and neutral words (the foreground
+     * at 40%), with no hover or press change. A ghost or outline button keeps no fill (an outline keeps its neutral edge), and an edged destructive entry
+     * drops its danger edge. A pending or loading button is not disabled here: it keeps its look under its spinner or skeleton. `disabledReason`
+     * is untouched: its trigger wraps the control.
+     */
+    :is(.starci-core-button, .starci-core-icon-button):is(:disabled, [aria-disabled="true"], [data-disabled="true"]):not([data-action-pending="true"], [data-loading="true"]) {
+        --button-bg: color-mix(in oklab, var(--foreground) 6%, var(--surface));
+        --button-bg-hover: var(--button-bg);
+        --button-bg-pressed: var(--button-bg);
+        --button-fg: color-mix(in oklab, var(--foreground) 40%, var(--surface));
+        opacity: 1;
+    }
+
+    :is(.starci-core-button, .starci-core-icon-button):is(.button--ghost, .button--outline):is(:disabled, [aria-disabled="true"], [data-disabled="true"]):not([data-action-pending="true"], [data-loading="true"]) {
+        --button-bg: transparent;
+    }
+
+    .starci-core-button.button--danger-soft:is(:disabled, [aria-disabled="true"], [data-disabled="true"]):not([data-action-pending="true"], [data-loading="true"]) {
+        border-color: transparent;
+    }
+
     /* An unselected radio or checkbox draws its own ring in the muted foreground (U2-G6). The vendor control paints only the field border and
        the field shadow, which an app may set to transparent (inputs without an edge): the choice would then be a pale disc on a pale row.
        A family or app may retune --grammar-choice-ring; it defaults to --muted. */

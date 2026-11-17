@@ -311,27 +311,37 @@ FlowGraphContainerView.displayName = "FlowGraphContainerView"
 
 const STEP_LABEL = "starci-core-flow-graph-step-label"
 
+/** One box per card, `x,y,width,height;` in the edges' coordinates, so the store selector returns a string and an edge re-renders only when a box moves. */
+const parseBoxes = (key: string): ReadonlyArray<StepsBox> => key === "" ? [] : key.split(";").filter((part) => part !== "").map((part) => {
+    const [x = 0, y = 0, width = 0, height = 0] = part.split(",").map(Number)
+    return { x, y, width, height }
+})
+
 /**
  * The boxes of the cards an edge must not cross (0.39.4): every step and diamond card but the edge's own two ends, in the edges' coordinates, read from the
  * measured nodes so a dragged card and a card that wraps to another height are obstacles where they stand. A loop frame is not one: an edge crosses its border to reach the cards inside.
+ * `ends` (0.41.1) are the boxes of the edge's own source and target: a rerouted stretch keeps clear of them as well, so a back edge never runs through the card it returns to.
  */
-const useObstacles = (source: string, target: string): ReadonlyArray<StepsBox> => {
+const useObstacles = (source: string, target: string): { readonly others: ReadonlyArray<StepsBox>, readonly ends: ReadonlyArray<StepsBox> } => {
     const key = useStore((state) => {
-        let out = ""
+        let others = ""
+        let ends = ""
         for (const node of state.nodeLookup.values()) {
-            if (node.id === source || node.id === target || (node.type !== "flowGraphStep" && node.type !== "flowGraphDiamond")) continue
+            if (node.type !== "flowGraphStep" && node.type !== "flowGraphDiamond") continue
             const width = node.measured.width
             const height = node.measured.height
             if (width === undefined || height === undefined) continue
             const at = node.internals.positionAbsolute
-            out += `${String(Math.round(at.x))},${String(Math.round(at.y))},${String(Math.round(width))},${String(Math.round(height))};`
+            const box = `${String(Math.round(at.x))},${String(Math.round(at.y))},${String(Math.round(width))},${String(Math.round(height))};`
+            if (node.id === source || node.id === target) ends += box
+            else others += box
         }
-        return out
+        return `${others}|${ends}`
     })
-    return useMemo(() => key === "" ? [] : key.split(";").filter((part) => part !== "").map((part) => {
-        const [x = 0, y = 0, width = 0, height = 0] = part.split(",").map(Number)
-        return { x, y, width, height }
-    }), [key])
+    return useMemo(() => {
+        const [others = "", ends = ""] = key.split("|")
+        return { others: parseBoxes(others), ends: parseBoxes(ends) }
+    }, [key])
 }
 
 /**
@@ -365,7 +375,7 @@ export const FlowGraphStepEdge = memo(({ sourceX, sourceY, targetX, targetY, mar
     const lane = typeof laneData === "number" ? laneData : undefined
     // A diamond's branch out of a side vertex (0.39.1) runs across, then along: one turn.
     const isSide = data?.["side"] === "start" || data?.["side"] === "end"
-    const points = isSide ? stepsSideRoute({ x: sourceX, y: sourceY }, { x: targetX, y: targetY }, direction) : stepsAvoidRoute(stepsForwardRoute({ x: sourceX, y: sourceY }, { x: targetX, y: targetY }, direction, span, lane), obstacles, direction)
+    const points = isSide ? stepsSideRoute({ x: sourceX, y: sourceY }, { x: targetX, y: targetY }, direction) : stepsAvoidRoute(stepsForwardRoute({ x: sourceX, y: sourceY }, { x: targetX, y: targetY }, direction, span, lane), obstacles.others, direction, obstacles.ends)
     const turn = points[points.length - 2] ?? { x: sourceX, y: sourceY }
     const labelX = (turn.x + targetX) / 2
     const labelY = (turn.y + targetY) / 2
@@ -393,7 +403,7 @@ export const FlowGraphBackEdge = memo(({ sourceX, sourceY, targetX, targetY, mar
     const route = data?.["route"] as StepsBackRoute | undefined
     const direction = (data?.["direction"] as FlowGraphDirection | undefined) ?? "TB"
     if (route === undefined) return null
-    const points = stepsAvoidRoute(stepsBackRoute({ x: sourceX, y: sourceY }, { x: targetX, y: targetY }, route, direction), obstacles, direction)
+    const points = stepsAvoidRoute(stepsBackRoute({ x: sourceX, y: sourceY }, { x: targetX, y: targetY }, route, direction), obstacles.others, direction, obstacles.ends)
     // The label sits on the run along the channel: the longest run of the route (the channel stays the 3rd run when the edge is not rerouted).
     const runs = points.slice(1).map((point, index) => ({ from: points[index] as { x: number, y: number }, to: point }))
     const longest = runs.reduce((best, run) => Math.hypot(run.to.x - run.from.x, run.to.y - run.from.y) > Math.hypot(best.to.x - best.from.x, best.to.y - best.from.y) ? run : best, runs[0] ?? { from: { x: sourceX, y: sourceY }, to: { x: targetX, y: targetY } })
