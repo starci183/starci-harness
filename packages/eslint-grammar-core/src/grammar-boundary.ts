@@ -54,7 +54,7 @@ const RENDERER_SLOT = "fe.package.ui"
  * True for a file that composes the grammar: app source (`fe.feature`, `fe.components`, `fe.route`, `fe.hooks`) and any
  * workspace package but the `<family>-ui` package, whose components are the renderers.
  */
-const composesGrammar = (context: ReaderContext, file: string): boolean => {
+export const composesGrammar = (context: ReaderContext, file: string): boolean => {
   const hfs = hfsOf(context)
   const slot = hfs.slotOf(file)
   if (slot === null || slot === RENDERER_SLOT) return false

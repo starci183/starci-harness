@@ -2997,3 +2997,10 @@ rules:
       - STACK_STORAGE_IMAGE_SHAPE
     enforcers:
       - {kind: hfs, id: storage-image}
+  - id: R442
+    code: FE_RAW_MEDIA_ELEMENT
+    law: A picture, a video or decorative art is drawn by Grammar's Image, Video or Illustration, never by a raw img, video or picture element in app source (the family-ui package, whose components are the renderers, and a Freestyle region are exempt); a raw element reserves no ratio, loads at once and carries none of the Grammar's alt, rendition, caption, track or stream contract.
+    failureCodes:
+      - FE_RAW_MEDIA_ELEMENT
+    enforcers:
+      - {kind: eslint-grammar-core, id: no-raw-media}

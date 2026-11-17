@@ -5832,6 +5832,24 @@ rules:
     witness:
       - {path: packages/eslint-grammar-core/src/mascot.spec.ts, editions: [lite, full], codes: [FE_MASCOT_ASSET_SLOT_MISSING]}
 
+  - id: R436
+    code: "FE_RAW_MEDIA_ELEMENT"
+    law: "A picture, a video or decorative art is drawn by Grammar's Image, Video or Illustration, never by a raw img, video or picture element in app source (the family-ui package, whose components are the renderers, and a Freestyle region are exempt); a raw element reserves no ratio, loads at once and carries none of the Grammar's alt, rendition, caption, track or stream contract."
+    kinds: [lint]
+    gates: [pre-commit, settle, land, ci]
+    failureCodes: ["FE_RAW_MEDIA_ELEMENT"]
+    enforcers:
+      - {kind: eslint-grammar-core, id: no-raw-media}
+    editions: [lite, full]
+    docs: [knowledge/patterns/fe/ui.yaml#FE-UI]
+    templateNa: "A template draws no picture or video of its own; media is the app's."
+    proves:
+      - packages/eslint-grammar-core/src/media.spec.ts
+    exemplifiedBy:
+      - {path: packages/eslint-grammar-core/src/media.spec.ts, editions: [lite, full], codes: [FE_RAW_MEDIA_ELEMENT]}
+    witness:
+      - {path: packages/eslint-grammar-core/src/media.spec.ts, editions: [lite, full], codes: [FE_RAW_MEDIA_ELEMENT]}
+
   - id: R340
     code: "FE_RAISED_SURFACE_IN_SURFACE"
     law: "A surface never stands inside another surface (dialogs and drawers included): a SurfaceCard that a SurfaceCard, a Pane surface, or a Dialog, Drawer, AlertDialog or Popover of the same file encloses is refused. The Grammar has one depth, raised."

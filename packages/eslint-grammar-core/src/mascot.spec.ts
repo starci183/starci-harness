@@ -28,6 +28,8 @@ test("R338: generated art under /images/ (webp or png) renders only through Masc
       // the Mascot renders generated art at its size scale
       { filename: BLOCK, code: IMPORTS + "export const A = () => <Mascot src=\"/images/mascot/welcome.webp\" size=\"lg\" assetSlot=\"onboarding.welcome\" />" },
       { filename: BLOCK, code: IMPORTS + "export const A = () => <G.Mascot src={\"/images/mascot/welcome.png\"} assetSlot=\"onboarding.welcome\" />" },
+      // decorative art through Illustration, by a source or a statics key
+      { filename: BLOCK, code: IMPORTS + "export const A = () => <Illustration src=\"/images/hero/landing.webp\" ratio=\"21:9\" />" },
       // an Image framed by a MediaFrame, directly or deeper
       { filename: BLOCK, code: IMPORTS + "export const A = () => <MediaFrame assetSlot=\"x\"><Image src=\"/images/scene/hero.webp\" alt=\"\" /></MediaFrame>" },
       { filename: BLOCK, code: IMPORTS + "export const A = () => <MediaFrame caption=\"c\"><div><Image src={`/images/scene/hero.png`} alt=\"\" /></div></MediaFrame>" },

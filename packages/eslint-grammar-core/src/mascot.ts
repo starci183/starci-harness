@@ -10,7 +10,7 @@ import type { Node } from "./lib/types.ts"
  * Generated art is a raster the asset workflow delivers under the public `/images/` tree, as `.webp` or `.png`. Drawn
  * through a bare `Image` or `<img>` it takes whatever box its page gives it, so one mascot comes out at a different size on
  * every screen and nothing ties the bytes to the slot that requested them. Grammar's `Mascot` owns the character scale
- * (sm, md, lg, hero), and `MediaFrame` frames a scene or illustration; those two are its renderers.
+ * (sm, md, lg, hero), `Illustration` owns decorative art (a ratio and an art-directed crop) and `MediaFrame` frames a scene; those three are its renderers.
  *
  * WHAT IT READS. A JSX `src` attribute whose value is statically a string (a literal, an expression container holding one,
  * a template literal without expressions, or a `const` of the file initialised with one). A source computed at run time is
@@ -26,6 +26,7 @@ export const GENERATED_ART = /^\/images\/.+\.(?:webp|png)(?:[?#].*)?$/i
 
 /** The components that render generated art: the element itself, or an ancestor that frames it. */
 const RENDERER = "Mascot"
+const ART_RENDERERS: ReadonlySet<string> = new Set([RENDERER, "Illustration"])
 const FRAME = "MediaFrame"
 
 /** The element name of a JSX name: `Mascot`, or `G.Mascot` as `Mascot`. */
@@ -85,7 +86,7 @@ export const generatedArtInMascotOrMediaFrame: Rule.RuleModule = exemptFreestyle
     schema: [],
     messages: {
       outside:
-        "`{{src}}` is generated art drawn by `<{{element}}>`, outside Grammar's `Mascot` and `MediaFrame`: it takes whatever box this page gives it, so the same art comes out at a different size on every screen. Render a character with `<Mascot src size assetSlot />` (sm, md, lg or hero) or frame a scene or illustration in `<MediaFrame assetSlot>`.",
+        "`{{src}}` is generated art drawn by `<{{element}}>`, outside Grammar's `Mascot`, `Illustration` and `MediaFrame`: it takes whatever box this page gives it, so the same art comes out at a different size on every screen. Render a character with `<Mascot src size assetSlot />` (sm, md, lg or hero), decorative art with `<Illustration src ratio />`, or frame a scene in `<MediaFrame assetSlot>`.",
     },
   },
   create(context) {
@@ -99,7 +100,7 @@ export const generatedArtInMascotOrMediaFrame: Rule.RuleModule = exemptFreestyle
         const opening = attribute.parent
         if (opening.type !== "JSXOpeningElement") return
         const element = nameOf(opening.name)
-        if (element === RENDERER || insideFrame(opening)) return
+        if ((element !== null && ART_RENDERERS.has(element)) || insideFrame(opening)) return
         context.report({ node: attribute, messageId: "outside", data: { src, element: element ?? "element" } })
       },
     }

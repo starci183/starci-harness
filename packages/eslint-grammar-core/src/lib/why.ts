@@ -117,6 +117,11 @@ export const why: Record<string, WhyEntry> = {
     en: "A `Mascot` in `<file>` names no `assetSlot`, so nothing ties the art it draws to the asset workflow's request.",
     fix: "Pass `assetSlot` (the slot id of the request) and `assetSha256` once the file is delivered.",
   },
+  "no-raw-media": {
+    code: "FE_RAW_MEDIA_ELEMENT",
+    en: "A raw `<img>`, `<video>` or `<picture>` in `<file>`: it reserves no ratio, loads at once and carries none of the Grammar's alt, rendition, caption, track or stream contract.",
+    fix: "Use `Image` (a picture with content: `alt` is required, `ratio`, `renditions` and `sizes`, `caption`, `zoom`), `Illustration` (decorative art: `compact` for art direction) or `Video` (`sources` of MP4, WebM, HLS or DASH, `poster`, `tracks`); a `staticsKey` names an asset of the app's statics.",
+  },
   "navbar-cluster": {
     code: "FE_NAVBAR_CLUSTER",
     en: "Navbar action component kinds or order differ from the app-shell canon.",
