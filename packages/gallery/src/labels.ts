@@ -40,6 +40,16 @@ export interface Labels {
     readonly stateEditing: string
     readonly explain: string
     readonly hideExplain: string
+    readonly paneDesign: string
+    readonly paneShot: string
+    readonly regions: string
+    readonly problems: string
+    readonly close: string
+    readonly zoomIn: string
+    readonly zoomOut: string
+    readonly zoomFit: string
+    readonly openFrame: string
+    readonly pane: string
     readonly showExplain: string
     readonly noExplain: string
     readonly noRegions: string
@@ -98,6 +108,16 @@ export const LABELS = Object.freeze({
         stateEditing: "editing",
         explain: "Explanation",
         hideExplain: "Hide explanation",
+        paneDesign: "Design",
+        paneShot: "Shot",
+        regions: "Regions",
+        problems: "{n} to fix",
+        close: "Close",
+        zoomIn: "Zoom in",
+        zoomOut: "Zoom out",
+        zoomFit: "Fit",
+        openFrame: "Open full size",
+        pane: "Show",
         showExplain: "Show explanation",
         noExplain: "This screen has no explanation yet.",
         noRegions: "BUG: no region yet",
@@ -154,6 +174,16 @@ export const LABELS = Object.freeze({
         stateEditing: "đang soạn",
         explain: "Giải thích",
         hideExplain: "Ẩn giải thích",
+        paneDesign: "Bản vẽ",
+        paneShot: "Ảnh thật",
+        regions: "Các vùng",
+        problems: "{n} chỗ cần sửa",
+        close: "Đóng",
+        zoomIn: "Phóng to",
+        zoomOut: "Thu nhỏ",
+        zoomFit: "Vừa khung",
+        openFrame: "Mở cỡ đầy đủ",
+        pane: "Hiện",
         showExplain: "Hiện giải thích",
         noExplain: "Màn này chưa có giải thích.",
         noRegions: "LỖI: chưa có vùng nào",
@@ -182,3 +212,9 @@ export function galleryLocale(declared: string | null | undefined): string {
 }
 
 export const fill = (text: string, values: Readonly<Record<string, string | number>>): string => text.replace(/\{(\w+)\}/gu, (_all, key: string) => String(values[key] ?? ""))
+
+/** A label for display with its first letter in capitals, by the locale's own rules (`đăng nhập` reads `Đăng nhập`); the folder name or id it came from is never changed. */
+export function capitalize(text: string, locale: string): string {
+    const [first = ""] = text
+    return first === "" ? text : first.toLocaleUpperCase(locale) + text.slice(first.length)
+}

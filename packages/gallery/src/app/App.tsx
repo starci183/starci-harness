@@ -6,7 +6,9 @@ import { fill, labelsFor } from "../labels.ts"
 import type { Labels } from "../labels.ts"
 import { ExplainPanel } from "./ExplainPanel.tsx"
 import { FlowMap } from "./FlowMap.tsx"
+import { useNarrow } from "./media.ts"
 import { useRoute } from "./route.ts"
+import type { Pane } from "./route.ts"
 import { States } from "./States.tsx"
 import { Tree } from "./Tree.tsx"
 import { Viewer, ViewSwitches } from "./Viewer.tsx"
@@ -49,6 +51,8 @@ export function App(): ReactElement {
         }
     }
     const [route, go] = useRoute()
+    const narrow = useNarrow()
+    const [pane, setPane] = useState<Pane>("design")
     const screen = route.screen === null ? null : (model.screens[route.screen] ?? null)
     const open = (id: string): void => {
         go({ screen: id, flows: false })
@@ -80,8 +84,8 @@ export function App(): ReactElement {
                             { id: "flows", label: labels.flows },
                         ]}
                     />
-                    {screen !== null && !route.flows ? <ViewSwitches labels={labels} width={route.width} view={route.view} onChange={go} /> : null}
-                    {screen !== null && !route.flows ? (
+                    {screen !== null && !route.flows ? <ViewSwitches labels={labels} width={route.width} view={route.view} showView={!narrow} onChange={go} /> : null}
+                    {screen !== null && !route.flows && !narrow ? (
                         <Button intent="neutral" size="sm" onPress={toggleExplain}>
                             {explainOpen ? labels.hideExplain : labels.showExplain}
                         </Button>
@@ -95,12 +99,34 @@ export function App(): ReactElement {
                     {!route.flows && screen !== null ? (
                         <>
                             <States screen={screen} model={model} labels={labels} onOpen={open} />
-                            <Viewer screen={screen} model={model} labels={labels} width={route.width} view={route.view} onOpen={open} />
+                            {narrow ? (
+                                <Tabs
+                                    appearance="primary"
+                                    label={labels.pane}
+                                    selectedKey={pane}
+                                    onSelect={(key) => {
+                                        setPane(key as Pane)
+                                    }}
+                                    items={[
+                                        { id: "design", label: labels.paneDesign },
+                                        { id: "shot", label: labels.paneShot },
+                                        { id: "slider", label: labels.viewSlider },
+                                        { id: "explain", label: labels.explain },
+                                    ]}
+                                />
+                            ) : null}
+                            {narrow && pane === "explain" ? (
+                                <div className="sg-explain-narrow">
+                                    <ExplainPanel screen={screen} labels={labels} devUrl={devUrl} />
+                                </div>
+                            ) : (
+                                <Viewer screen={screen} model={model} labels={labels} width={route.width} view={route.view} pane={narrow ? (pane === "explain" ? "design" : pane) : null} onOpen={open} />
+                            )}
                         </>
                     ) : null}
                     {!route.flows && screen === null ? <Text tone="muted">{model.counts.total === 0 ? labels.empty : labels.screens}</Text> : null}
                 </main>
-                {!route.flows && screen !== null && explainOpen ? (
+                {!route.flows && screen !== null && explainOpen && !narrow ? (
                     <aside className="sg-explain" aria-label={labels.explain}>
                         <ExplainPanel screen={screen} labels={labels} devUrl={devUrl} />
                     </aside>

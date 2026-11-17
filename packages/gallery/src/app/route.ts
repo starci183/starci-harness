@@ -3,6 +3,8 @@ import { SHOT_WIDTHS } from "../explain.ts"
 import type { Width } from "../explain.ts"
 
 export type View = "side" | "slider" | "shot"
+/** The pane of a narrow window, one at a time: the design, the shot, the slider over both, the explanation. */
+export type Pane = "design" | "shot" | "slider" | "explain"
 export interface Route {
     readonly screen: string | null
     readonly flows: boolean

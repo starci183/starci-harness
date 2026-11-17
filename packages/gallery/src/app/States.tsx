@@ -1,5 +1,6 @@
 import type { ReactElement } from "react"
 import { Tabs } from "@starci/grammar/core"
+import { cap } from "./cap.ts"
 import type { Labels } from "../labels.ts"
 import type { Model, Screen } from "../model.ts"
 
@@ -27,7 +28,7 @@ export function States({ screen, model, labels, onOpen }: { readonly screen: Scr
             onSelect={onOpen}
             items={ids.map((id) => {
                 const one = model.screens[id]
-                return { id, label: one === undefined ? id : stateLabel(labels, one.state) }
+                return { id, label: cap(one === undefined ? id : stateLabel(labels, one.state)) }
             })}
         />
     )

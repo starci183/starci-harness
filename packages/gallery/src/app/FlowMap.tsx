@@ -1,5 +1,6 @@
 import type { ReactElement } from "react"
 import { Section, Text } from "@starci/grammar/core"
+import { cap } from "./cap.ts"
 import type { Labels } from "../labels.ts"
 import type { Model } from "../model.ts"
 
@@ -15,7 +16,7 @@ export function FlowMap({ model, labels, onOpen }: { readonly model: Model; read
             </Text>
         ) : (
             <button key={id} type="button" className="sg-step" onClick={() => { onOpen(id) }}>
-                <Text size="sm" isStrong>{screen.title}</Text>
+                <Text size="sm" isStrong>{cap(screen.title)}</Text>
                 <Text size="xs" tone="muted" mono>{id}</Text>
             </button>
         )
@@ -23,7 +24,7 @@ export function FlowMap({ model, labels, onOpen }: { readonly model: Model; read
     return (
         <div className="sg-flows">
             {model.flows.map((flow) => (
-                <Section key={flow.name} title={flow.name}>
+                <Section key={flow.name} title={cap(flow.name)}>
                     <ol className="sg-flow">
                         {flow.screens.map((id, index) => (
                             <li key={`${id}-${String(index)}`} className="sg-edge">

@@ -6,6 +6,7 @@ import os from "node:os"
 import path from "node:path"
 import { test } from "node:test"
 import { introClauses, noteToMarkdown, parseExplain } from "./explain.ts"
+import { capitalize } from "./labels.ts"
 import { loadGallery } from "./load.ts"
 import { buildModel, devPath, splitState, statusOf } from "./model.ts"
 
@@ -113,4 +114,13 @@ test("a dev link needs a static route", () => {
     assert.equal(devPath("/customers"), "/customers")
     assert.equal(devPath("/customers/[id]"), null)
     assert.equal(devPath(null), null)
+})
+
+test("a label is capitalized for display by the locale, diacritics included, and an empty one is left alone", () => {
+    assert.equal(capitalize("agents", "en"), "Agents")
+    assert.equal(capitalize("danh sách", "vi"), "Danh sách")
+    assert.equal(capitalize("đăng nhập", "vi"), "Đăng nhập")
+    assert.equal(capitalize("ép", "vi"), "Ép")
+    assert.equal(capitalize("Đã có", "vi"), "Đã có")
+    assert.equal(capitalize("", "vi"), "")
 })

@@ -3,6 +3,7 @@ import { ListBox, SearchField, StatusDot, Text } from "@starci/grammar/core"
 import { useMemo, useState } from "react"
 import type { Labels } from "../labels.ts"
 import type { Model } from "../model.ts"
+import { cap } from "./cap.ts"
 import { dotTone, statusLabel } from "./status.ts"
 
 export interface TreeProps {
@@ -20,12 +21,12 @@ export function Tree({ model, labels, selected, onSelect }: TreeProps): ReactEle
         return model.areas
             .map((area) => ({
                 id: `area:${area.area}`,
-                label: area.area,
+                label: cap(area.area),
                 items: area.screens
                     .filter((screen) => needle === "" || screen.id.toLowerCase().includes(needle) || screen.title.toLowerCase().includes(needle))
                     .map((screen) => ({
                         id: screen.id,
-                        label: screen.title,
+                        label: cap(screen.title),
                         labelLeading: screen.status === "none" ? undefined : <StatusDot tone={dotTone(screen.status)} aria-label={statusLabel(labels, screen.status)} />,
                         description: screen.name,
                         descriptionLines: 1 as const,
