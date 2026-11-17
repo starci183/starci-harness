@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.147 - 2026-11-17
+
+- Changed (pins): the Grammar family at 0.43.1 (the touch disabled reason, the one-row filter, a headless region) and @starci/hfs 6.13.27; contexts ui (button, list-table) and the grammars contract. Until the cli-follow step raises the CLI's requirement, the CLI runs the hfs it requires.
+
 ## 1.1.0-alpha.146 - 2026-11-17
 
 - Changed: the CLI requires @starci/hfs@6.13.26, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).

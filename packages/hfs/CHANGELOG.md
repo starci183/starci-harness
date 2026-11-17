@@ -1,5 +1,9 @@
 # Changelog
 
+## 6.13.27 - 2026-11-17
+
+- Changed (`knowledge/hfs/canon-pins.yaml`): the Grammar family at 0.43.1 (`~0.43.1`): a disabled Button's `disabledReason` is a visible helper line on a touch screen (`(hover: none), (pointer: coarse)`) and stays a tooltip under a mouse; the `filter` of a Section (`kind="list"` and `kind="region"`) is one wrapping row (tabs, search, selects) that stacks under 48rem of its own width; a region may be headless, named by `ariaLabel`. The `@starci/hfs` self-pin is 6.13.27.
+
 ## 6.13.26 - 2026-11-17
 
 - Changed (`codemod/surface-card-kinds.mts`): `starci app codemod surface-card-kinds` migrates a `SurfaceListCard` into `<Section kind="list">` (Grammar 0.43.0 removed `SurfaceCard kind="list"`): `label` to `title`, `labelEnd` to `action`, `note` to `caption`, `height="fill"` to `fill`, `label` with `labelHidden` to `ariaLabel`, `isLoading` kept; a `footer` is `LIST_CARD_BODY` and another `height` `LIST_HEIGHT`, both left for a person; the import is `Section`. `section-frame` reasons and `removed-vocabulary.yaml` name `Section kind="list"`. Spec: `surface-card-kinds-codemod.spec.mts`.
