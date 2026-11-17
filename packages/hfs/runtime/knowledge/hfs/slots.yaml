@@ -1158,6 +1158,18 @@ slots:
     since: 6.13.24
     allows: ["design.json", "tokens.css", "canvas.css", "briefs/<page>.md", "pages/<page>.html", "<app>-design.html"]
     rules: [HFS_APP_GALLERY_DESIGN_MANIFEST, HFS_APP_GALLERY_DESIGN_PAGE_MISSING, HFS_APP_GALLERY_DESIGN_UNAPPROVED, HFS_APP_GALLERY_DESIGN_SHOT_MISSING, HFS_APP_GALLERY_DESIGN_SHOT_STALE, HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED]
+  - id: app.starcistacks.security
+    profiles: [app]
+    # The time-boxed exceptions of the production dependency audit (contexts/project/lint.md PROJECT-LINT-5): a list of owner-approved exceptions, each an exact
+    # advisory of an exact package reached only through named direct dependencies, at most 14 days long. Read by `starci app audit`; never rendered by sync. Both editions.
+    path: ".starcistacks/security/"
+    presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+    since: 6.14.0
+    allows: ["audit-exceptions.yaml"]
+    rules: [AUDIT_EXCEPTION_INVALID]
   - id: app.db.bootstrap
     profiles: [app]
     editions: [lite]

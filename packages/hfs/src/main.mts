@@ -51,6 +51,7 @@
 //   starci app sync [--execute] [--cwd <dir>]  the managed files of the root (scripts, husky, CI, .gitignore block, sonar, prettier) and
 //                                            of each side (tsconfig, eslint, jest, stylelint); sync/cli.mts. Dry run unless --execute: it reports drift and exits 1 on it.
 //   starci app coverage merge --out <lcov> <lcov-or-dir>...  the lcov reports of the sharded unit run merged into one (coverage/cli.mts; the managed CI coverage job)
+//   starci app audit [--omit-dev] [--level <level>]  the production dependency audit judged against .starcistacks/security/audit-exceptions.yaml (audit/cli.mts; the managed CI step and the pre-push parity)
 //   starci app add service <dir> <name> [--inject <Decorator>=<module>:<Type> | <Class>=<module>]... [--cwd <dir>]
 //                                            a back-end `<name>.service.ts` and its `<name>.service.spec.ts` skeleton (scaffold/service.mts; <dir> is
 //                                            relative to be/): the spec is built
@@ -165,6 +166,7 @@ import { SECRET_VERBS, secretUsage } from '../runtime/scripts/hfs/secret.mjs';
 import { BOOLEAN as CI_BOOLEAN, COMMANDS as CI_COMMANDS } from '../ci/cli.mjs';
 import { LOCAL_FLAGS as CI_LOCAL_FLAGS } from '../ci/local.mjs';
 import { USAGE as COVERAGE_USAGE } from '../coverage/cli.mjs';
+import { USAGE as AUDIT_USAGE } from '../audit/cli.mjs';
 import { SYNC_USAGE } from '../sync/cli.mjs';
 import { CODEMODS, codemodMain } from '../codemod/main.mjs';
 import type { VerbIo } from '../release/index.mjs';
@@ -222,7 +224,7 @@ type UsageForm = ParsedVerb['forms'][number];
 /** An argument the parser refuses (an unknown flag, a missing value, a form a verb does not take): the one error `main` follows with the usage. */
 export class UsageError extends Error {}
 
-export const VERBS = Object.freeze(['scaffold', 'add', 'sync', 'check', 'upgrade', 'stack', 'world', 'release', 'slot', 'emit', 'secret', 'ci', 'db', 'data', 'coverage', 'codemod']);
+export const VERBS = Object.freeze(['scaffold', 'add', 'sync', 'check', 'upgrade', 'stack', 'world', 'release', 'slot', 'emit', 'secret', 'ci', 'db', 'data', 'coverage', 'audit', 'codemod']);
 const DATABASE_VERBS = new Map<string | undefined, (argv: string[], io: VerbIo) => Promise<number> | number>([['baseline', dbBaselineMain], ['restamp', dbRestampMain],['migrate', dbMigrateMain], ['post-cutover', dbPostCutoverMain], ['dump', dbDumpMain], ['new', dbNewMain], ['drift', dbDriftMain]]);
 
 /**
@@ -308,6 +310,7 @@ const VERB_USAGE: Record<string, string[]> = {
   db: DATABASE_USAGE.map(([verb, operands, spec]) => line(`starci app db ${verb}`, operands, specUsage(spec, { ...PLACEHOLDERS, '--image': '<ref>', '--out': '<dir>' }))),
   data: [...DATA_USAGE],
   coverage: COVERAGE_USAGE.replace(/^usage: /, '').split(' | ').map((text) => text.replace(' [--cwd <dir>]', '')),
+  audit: [AUDIT_USAGE.replace(/^usage: /, '').replace(' [--cwd <dir>]', '')],
 };
 export const USAGE = `${VERBS.flatMap((verb) => VERB_USAGE[verb]).join('\n')}
 every verb: [--cwd <dir>] [--quiet] [--help]
@@ -1051,7 +1054,7 @@ async function worldAppMain(argv: string[], { cwd, edition, stackMain, stdout: o
   return run(argv, { cwd, out, err }) as Promise<number>;
 }
 
-const DIRECT_VERBS = new Map<string, (argv: string[], io: AppIo) => Promise<number> | number>([['ci', async (argv: string[], io: AppIo) => (await import('../ci/cli.mjs')).ciMain(argv, io)], ['secret', secretMain], ['db', databaseMain], ['data', dataMain], ['upgrade', upgradeAppMain], ['stack', stackAppMain], ['world', worldAppMain], ['release', releaseMain], ['coverage', async (argv: string[], io: AppIo) => (await import('../coverage/cli.mjs')).coverageMain(argv, io)], ['codemod', codemodMain]]);
+const DIRECT_VERBS = new Map<string, (argv: string[], io: AppIo) => Promise<number> | number>([['ci', async (argv: string[], io: AppIo) => (await import('../ci/cli.mjs')).ciMain(argv, io)], ['secret', secretMain], ['db', databaseMain], ['data', dataMain], ['upgrade', upgradeAppMain], ['stack', stackAppMain], ['world', worldAppMain], ['release', releaseMain], ['coverage', async (argv: string[], io: AppIo) => (await import('../coverage/cli.mjs')).coverageMain(argv, io)], ['audit', async (argv: string[], io: AppIo) => (await import('../audit/cli.mjs')).auditMain(argv, { cwd: io.cwd, stdout: io.stdout, stderr: io.stderr })], ['codemod', codemodMain]]);
 
 function dispatchMain(verb: string, argv: string[], io: AppIo): Promise<number> | number {
   if (verb === 'sync') return syncMain([verb, ...argv], io);

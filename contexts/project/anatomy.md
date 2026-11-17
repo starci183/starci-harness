@@ -92,6 +92,7 @@ Change a slot, a rule or a pattern's front matter, then regenerate in the same c
   - `images/db/Dockerfile` — **app.db.image** required · R05 (hfs `managed-file-drift`)
   - `cache/` — **app.starcistacks.cache** optional
   - `canvas/` — **app.starcistacks.canvas** optional · R395 (hfs `gallery`)
+  - `security/` — **app.starcistacks.security** optional · R269 (hfs `supply-chain`)
 - `.sops.yaml` — **app.sops** required
 - `db/` — **app.db** required
   - `migrations/`
@@ -294,6 +295,7 @@ Refused (forbidden or external): `repo.side-root-forbidden`, `fe.tool-config-loc
 - `.starcistacks/` — **app.starcistacks** required · R10 (hfs `stacks-shape` `stacks-runtime` `stacks-evidence-runtime` `starcistacks-runtime` `starcistacks-runtime-gate`), R01 (hfs `slot-undeclared`; eslint-be `slot-undeclared`; eslint-fe `slot-undeclared`; machine `repository-tree-layout`), R06 (hfs `plaintext-secret` `plaintext-secret-staged`), R09 (hfs `identity-custody`), R375 (hfs `seeds-shape`), R259 (hfs `db-config-ext` `db-migration-destructive`)
   - `cache/` — **app.starcistacks.cache** optional
   - `canvas/` — **app.starcistacks.canvas** optional · R395 (hfs `gallery`)
+  - `security/` — **app.starcistacks.security** optional · R269 (hfs `supply-chain`)
 - `.sops.yaml` — **app.sops** required
 
 Git-ignored: `app.gallery-shots`, `app.build-output`.

@@ -19,6 +19,7 @@ import { appAddVerb } from "./core/app/add.js"
 import { appCheckVerb } from "./core/app/check.js"
 import { appCiVerb } from "./core/app/ci.js"
 import { appCodemodVerb } from "./core/app/codemod.js"
+import { appAuditVerb } from "./core/app/audit.js"
 import { appCoverageVerb } from "./core/app/coverage.js"
 import { appDataVerb } from "./core/app/data.js"
 import { dataStandardVerb } from "./core/data/standard.js"
@@ -146,6 +147,7 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     appCiVerb,
     appCodemodVerb,
     appCoverageVerb,
+    appAuditVerb,
     appDataVerb,
     dataStandardVerb,
     appDbVerb,

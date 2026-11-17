@@ -171,6 +171,7 @@ test('a row that runs a heavy command is admitted by the governor with its kind,
   const gate = (name: string, command: string[]): Gate => ({ name, command, summary: null, env: {} });
   assert.equal(heavyKindOf(gate('app-check', ['npx', 'starci', 'app', 'check', '--env', 'prod'])), null);
   assert.equal(heavyKindOf(gate('audit', ['npm', 'audit', '--audit-level=high'])), null);
+  assert.equal(heavyKindOf(gate('audit', ['npx', '--no-install', 'starci', 'app', 'audit', '--omit-dev', '--level=high'])), null);
   assert.equal(heavyKindOf(gate('test', ['npm', 'run', 'test'])), 'test');
   assert.equal(heavyKindOf(gate('unit', ['node', 'node_modules/jest/bin/jest.js'])), 'test');
   assert.equal(heavyKindOf(gate('build', ['npm', 'run', 'build'])), 'build');
@@ -192,6 +193,7 @@ test('a covered row is recognised by its default command alone', () => {
   assert.equal(coveredBy(gate('test-e2e', ['npm', 'run', 'test:e2e'])), null, 'the world layers are not judged by app check');
   assert.equal(coveredBy(gate('sonar', ['npx', '--yes', '@sonar/scan@4.3.0'])), null, 'Sonar on the main project is not what app check scans');
   assert.equal(coveredBy(gate('audit', ['npm', 'audit', '--omit=dev', '--audit-level=high']))?.family.startsWith('audit'), true);
+  assert.equal(coveredBy(gate('audit', ['npx', '--no-install', 'starci', 'app', 'audit', '--omit-dev', '--level=high']))?.family.startsWith('audit'), true);
   assert.equal(coveredBy(gate('db-drift', ['npx', 'starci', 'app', 'db', 'drift']))?.needsDatabase, true);
 });
 

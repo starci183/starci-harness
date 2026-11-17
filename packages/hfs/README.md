@@ -34,6 +34,7 @@ starci app data sync --env <env> --set <id> --from <commit> [--execute] [--json]
 starci app stack <prepare|up|down> --env <dev env> [--execute] | <doctor|status|verify> --env <dev env> | logs --env <dev env> --service <name> [--lines <n>]
 starci app secret init [--env <dev env> [--execute]] | <set|get|unset|rename|remove|materialize|list|verify|recipients|migrate|split|audit|server-key> --env <env> ... [--cwd <dir>]
 starci app ci secret set <NAME> [--from-custody] [--env <env>] [--repo <owner/name>] [--execute]
+starci app audit [--omit-dev] [--level <info|low|moderate|high|critical>] [--from <report.json>] [--cwd <dir>]
 ```
 
 **The dev environment in one command.** `starci app stack up --env dev --execute` brings a docker-compose environment up from its `local` block of
@@ -225,6 +226,14 @@ Its own checks (`scripts/hfs/check.mts`, `scripts/hfs/rules/`; the rendered-file
 | `FE_I18N_KEYS` | error | a literal key read through `next-intl` that a locale lacks, or a catalog key no source reads (R106; the architecture machine) |
 | `FE_NO_TESTS` | error | a front end holds a `*.spec.*`, `*.test.*` or `*-spec.*` file, an `e2e/`, `__tests__/`, `__mocks__/` or `test-support/` directory, a vitest, Playwright, jest or Cypress file, a test script, or a test dependency in a `package.json`; no exception (R97; `scripts/hfs/rules/fe-no-tests.mts`) |
 | `HFS_GITIGNORE_BLOCK_DRIFT` | error | the managed `.gitignore` block differs from its render (R04; `sync/managed.mts`) |
+| `AUDIT_HIGH` | error | `starci app audit` (the CI step `production dependency audit` and the pre-push parity) found an advisory at or above the level that no active exception covers (R269; `audit/judge.mts`) |
+| `AUDIT_EXCEPTION_INVALID` | error | `.starcistacks/security/audit-exceptions.yaml` is not a list, or an entry lacks an exact GHSA `advisory`, an exact `package`, a non-empty `via`, a `reason`, an `approvedBy`, or a zoned ISO `approvedAt` and `expires` (PROJECT-LINT-5) |
+| `AUDIT_EXCEPTION_EXPIRED` | error | an exception whose `expires` is not after now |
+| `AUDIT_EXCEPTION_TOO_LONG` | error | an exception whose `expires` is more than 14 days after `approvedAt` |
+| `AUDIT_EXCEPTION_FIX_AVAILABLE` | error | npm reports a fix for the package of an exception: upgrade and remove it |
+| `AUDIT_EXCEPTION_UNUSED` | error | an exception that matches no finding at or above the level: remove it |
+| `AUDIT_EXCEPTION_ACTIVE` | report only | an exception that exempted a finding, printed on every run with advisory, package, via, reason, approvedBy, expires and days left |
+| `AUDIT_REPORT_UNREADABLE` | error | `npm audit --json` printed no report (registry unreachable, npm error) |
 | `HFS_SONAR_CONFIG` | error | `sonar-project.properties` differs from its render: no `sonar.host.url`, the `sonar.exclusions` of the installed jest preset, the be lcov import with the coverage scope the slot manifest derives as the only coverage scope (R11; `sync/managed.mts`) |
 | `HFS_FORMAT` | error | a tracked file the repository's own prettier would change (R19; `sync/format.mts`, run in batches by the format family) |
 | `HFS_FORMAT_TOOL_MISSING` | refusal (exit 2) | prettier is not installed in the repository; the format check is never skipped |

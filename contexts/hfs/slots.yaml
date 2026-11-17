@@ -1665,6 +1665,18 @@ slots:
       - HFS_APP_GALLERY_DESIGN_SHOT_MISSING
       - HFS_APP_GALLERY_DESIGN_SHOT_STALE
       - HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED
+  - id: app.starcistacks.security
+    profiles:
+      - app
+    path: .starcistacks/security/
+    presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+    allows:
+      - audit-exceptions.yaml
+    rules:
+      - AUDIT_EXCEPTION_INVALID
   - id: app.db.bootstrap
     profiles:
       - app

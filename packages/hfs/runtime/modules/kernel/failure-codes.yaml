@@ -3554,7 +3554,88 @@ HFS_AUDIT_STEP_MISSING:
   meaning_vi: "Workflow CI thiếu bước npm audit --omit=dev hoạt động và dừng job khi kiểm tra thất bại."
   causes_vi:
     - "Vi phạm R269: audit không có, bị vô hiệu hoá, chỉ nằm trong chú thích hoặc bỏ qua kết quả."
-  nextStep_vi: "Thêm npm audit --omit=dev --audit-level=high vào job CI hoạt động; không dùng continue-on-error hoặc bỏ qua mã lỗi."
+  nextStep_vi: "Thêm `npx --no-install starci app audit --omit-dev --level=high` (hoặc npm audit --omit=dev) vào job CI hoạt động; không dùng continue-on-error hoặc bỏ qua mã lỗi."
+  owner: op-retry
+  kind: check-finding
+
+AUDIT_HIGH:
+  title: "A production dependency has an advisory at or above the audit level that no exception covers"
+  title_vi: "Một dependency production có lỗ hổng từ mức audit trở lên mà không ngoại lệ nào che."
+  meaning_vi: "`starci app audit` (bước production dependency audit của CI và của pre-push) thấy một advisory từ mức khai báo (mặc định high) trên package production, và không có ngoại lệ còn hiệu lực khớp advisory, package và mọi đường phụ thuộc."
+  causes_vi:
+    - "Vi phạm R269: lỗ hổng trong dependency production chưa được nâng cấp."
+    - "Ngoại lệ có nhưng một đường phụ thuộc đến package xuất phát ngoài `via`, hoặc lockfile không truy ra đường."
+  nextStep_vi: "Nâng cấp dependency (`npm audit` nêu bản sửa). Chưa có bản sửa thì chỉ chủ sở hữu mới duyệt ngoại lệ có thời hạn trong .starcistacks/security/audit-exceptions.yaml (PROJECT-LINT-5); agent không tự thêm."
+  owner: op-retry
+  kind: check-finding
+
+AUDIT_EXCEPTION_INVALID:
+  title: "The audit exceptions file is not valid"
+  title_vi: "Tệp ngoại lệ audit không hợp lệ"
+  meaning_vi: ".starcistacks/security/audit-exceptions.yaml không phải YAML, không phải danh sách, hoặc một mục sai dạng: advisory phải là một mã GHSA chính xác (không ký tự đại diện), package là tên npm chính xác, via là danh sách dependency trực tiếp không rỗng, reason và approvedBy không rỗng, approvedAt và expires là thời điểm ISO có múi giờ."
+  causes_vi:
+    - "Vi phạm PROJECT-LINT-5: mục thiếu khoá, thừa khoá, dùng ký tự đại diện hoặc thời điểm không có múi giờ."
+  nextStep_vi: "Sửa mục theo lược đồ trong contexts/project/lint.md (PROJECT-LINT-5) rồi chạy lại `starci app audit`."
+  owner: op-retry
+  kind: check-finding
+
+AUDIT_EXCEPTION_EXPIRED:
+  title: "An audit exception has expired"
+  title_vi: "Một ngoại lệ audit đã hết hạn"
+  meaning_vi: "Một mục có expires không sau thời điểm hiện tại; mục đó không còn miễn trừ gì."
+  causes_vi:
+    - "Hết hạn ngoại lệ mà dependency chưa được nâng cấp."
+  nextStep_vi: "Nâng cấp dependency và xoá mục; nếu vẫn chưa có bản sửa, chủ sở hữu duyệt một mục mới (tối đa 14 ngày)."
+  owner: op-retry
+  kind: check-finding
+
+AUDIT_EXCEPTION_TOO_LONG:
+  title: "An audit exception lasts longer than 14 days"
+  title_vi: "Một ngoại lệ audit dài hơn 14 ngày"
+  meaning_vi: "Một mục có expires cách approvedAt quá 14 ngày."
+  causes_vi:
+    - "Vi phạm PROJECT-LINT-5: ngoại lệ không được dài hơn 14 ngày."
+  nextStep_vi: "Rút expires về tối đa 14 ngày sau approvedAt, hoặc nâng cấp dependency và xoá mục."
+  owner: op-retry
+  kind: check-finding
+
+AUDIT_EXCEPTION_FIX_AVAILABLE:
+  title: "npm reports a fix for a package an audit exception covers"
+  title_vi: "npm đã có bản sửa cho package mà một ngoại lệ audit che"
+  meaning_vi: "`npm audit` báo fixAvailable cho package của một mục ngoại lệ, nên ngoại lệ không còn được phép."
+  causes_vi:
+    - "Bản sửa đã phát hành sau khi ngoại lệ được duyệt."
+  nextStep_vi: "Nâng cấp package theo bản sửa npm nêu và xoá mục khỏi .starcistacks/security/audit-exceptions.yaml."
+  owner: op-retry
+  kind: check-finding
+
+AUDIT_EXCEPTION_UNUSED:
+  title: "An audit exception matches no finding"
+  title_vi: "Một ngoại lệ audit không khớp phát hiện nào"
+  meaning_vi: "Một mục không khớp advisory và package nào từ mức audit trở lên trong báo cáo hiện tại."
+  causes_vi:
+    - "Dependency đã được nâng cấp hoặc gỡ nhưng mục còn lại."
+  nextStep_vi: "Xoá mục khỏi .starcistacks/security/audit-exceptions.yaml."
+  owner: op-retry
+  kind: check-finding
+
+AUDIT_EXCEPTION_ACTIVE:
+  title: "An audit exception is in force (report only)"
+  title_vi: "Một ngoại lệ audit đang có hiệu lực (chỉ báo cáo)"
+  meaning_vi: "Mỗi lần pre-push và CI chạy, `starci app audit` in từng ngoại lệ còn hiệu lực và đang miễn trừ một phát hiện: advisory, package, via, reason, approvedBy, expires, số ngày còn lại. Không làm lần chạy đỏ."
+  causes_vi:
+    - "Ngoại lệ có thời hạn do chủ sở hữu duyệt (PROJECT-LINT-5)."
+  nextStep_vi: "Không cần làm gì ngay; nâng cấp dependency và xoá mục trước khi hết hạn."
+  owner: op-retry
+  kind: check-finding
+
+AUDIT_REPORT_UNREADABLE:
+  title: "npm audit printed no report"
+  title_vi: "npm audit không in báo cáo đọc được"
+  meaning_vi: "`starci app audit` chạy `npm audit --json` nhưng không nhận được báo cáo JSON (lỗi mạng tới registry, npm không chạy, hoặc đầu ra không phải báo cáo)."
+  causes_vi:
+    - "Registry không truy cập được hoặc lockfile thiếu."
+  nextStep_vi: "Chạy lại; kiểm tra mạng và package-lock.json rồi chạy `npm audit --omit=dev --json` để xem lỗi."
   owner: op-retry
   kind: check-finding
 
@@ -4040,7 +4121,7 @@ HFS_CHECK_CACHE_MISSING:
 CI_PARITY_STEP_FAILED:
   title: "A step of the app's managed CI fails locally"
   title_vi: "Một bước của CI được quản lý của app thất bại khi chạy cục bộ"
-  meaning_vi: "`starci app check` (hook pre-push) chạy các bước CI không cần database đúng như CI chạy chúng (đọc từ .github/workflows/ci.yml: npm audit, script typecheck, npm run build:be, next build từng app fe; và `starci app coverage verify` trên lcov họ test đã gộp). Một bước thất bại ở đây sẽ thất bại trên CI, nên lần push bị chặn."
+  meaning_vi: "`starci app check` (hook pre-push) chạy các bước CI không cần database đúng như CI chạy chúng (đọc từ .github/workflows/ci.yml: `starci app audit` (npm audit --omit=dev kèm ngoại lệ), script typecheck, npm run build:be, next build từng app fe; và `starci app coverage verify` trên lcov họ test đã gộp). Một bước thất bại ở đây sẽ thất bại trên CI, nên lần push bị chặn."
   causes_vi:
     - "Vi phạm R383: next build hoặc build:be lỗi (prerender, cấu hình route, import) dù tsc đã xanh."
     - "Vi phạm R383: npm audit thấy lỗ hổng mức high trong dependency production."

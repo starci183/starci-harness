@@ -135,8 +135,15 @@ function workflowPinFindings({ path: file, text }: { path: string; text: string 
   return findings;
 }
 
+/** `starci app audit --omit-dev`, with `npx` (and its flags) before it or not: the harness command that runs `npm audit --omit=dev --json` and judges it against the app's exceptions (PROJECT-LINT-5). */
+function isStarciAudit(tokens: Parsed) {
+  const at = tokens.indexOf('starci');
+  return at >= 0 && at <= 2 && tokens.slice(0, at).every((token: Parsed, index: number) => index === 0 ? token === 'npx' : token.startsWith('--')) && tokens[at + 1] === 'app' && tokens[at + 2] === 'audit' && tokens.includes('--omit-dev');
+}
+
+/** The production audit is plain `npm audit --omit=dev` or `starci app audit --omit-dev`; either way an enabled step whose failure stops the job (executableCommands drops a swallowed one). */
 function hasAudit(steps: Parsed) {
-  return steps.some((step: Parsed) => executableCommands(step.run).some(({ tokens }) =>
+  return steps.some((step: Parsed) => executableCommands(step.run).some(({ tokens }) => isStarciAudit(tokens) ||
     tokens[0] === 'npm' && tokens[1] === 'audit' &&
     (tokens.includes('--omit=dev') || tokens.some((token: Parsed, index: number) => token === '--omit' && tokens[index + 1] === 'dev'))));
 }
@@ -204,7 +211,7 @@ export function supplyChainFindings({ repoRoot, files, all = files, repo, isRoot
   const findings = [];
   if (inScope(DEPENDABOT) && !hasDependabot(parsed(DEPENDABOT))) findings.push(found('HFS_DEPENDABOT_MISSING', DEPENDABOT, 'Declare Dependabot version 2 updates for npm, github-actions and docker, each with a directory and schedule; every npm update must group minor+patch version updates, restrict every group to minor/patch (never major), include a security-updates group, and ignore all @starci/* updates (canon pins move only by starci upgrade).'));
   // An app whose stack declaration switches the audit gate off (PROJECT-LINT-4) renders no audit step and is not required one.
-  if (inScope(CI) && declaredGatesOff(repoRoot).audit === undefined && !hasAudit(stepsOf(parsed(CI)))) findings.push(found('HFS_AUDIT_STEP_MISSING', CI, 'CI must run npm audit --omit=dev in an enabled step whose failure stops the job.'));
+  if (inScope(CI) && declaredGatesOff(repoRoot).audit === undefined && !hasAudit(stepsOf(parsed(CI)))) findings.push(found('HFS_AUDIT_STEP_MISSING', CI, 'CI must run the production audit (starci app audit --omit-dev, or npm audit --omit=dev) in an enabled step whose failure stops the job.'));
   if (inScope(IMAGES) && !imageEvidence(stepsOf(parsed(IMAGES)))) findings.push(found('HFS_SBOM_MISSING', IMAGES, 'The images workflow must generate an SBOM and provenance for its release images in enabled steps.'));
   findings.push(...workflowFindings({ files: [...tracked].filter((file) => inScope(file)), read: (file: string) => readText(repoRoot, file) }, workflowPinFindings));
   return findings;

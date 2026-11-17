@@ -52,6 +52,7 @@ lint rule or gate enforces a rule is in anatomy.md's tree and the rule's page (`
   - `images/db/Dockerfile` — **app.db.image** required · R05
   - `cache/` — **app.starcistacks.cache** optional
   - `canvas/` — **app.starcistacks.canvas** optional · R395
+  - `security/` — **app.starcistacks.security** optional · R269
 - `.sops.yaml` — **app.sops** required
 - `db/` — **app.db** required
   - `migrations/`

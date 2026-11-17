@@ -277,7 +277,7 @@ export function verifyShards(scopes: readonly string[], off: Partial<Record<Prof
   return [...gates.map((gate) => `--gate ${gate}`), ...(off.lint === undefined ? scopes.map((side) => `--gate lint --side ${side}`) : [])].map((args) => `          - ${JSON.stringify(args)}`).join(String.fromCharCode(10));
 }
 
-/** An omitted quality declaration preserves hosted Sonar, required OIDC Codecov, and the high production dependency audit. */
+/** An omitted quality declaration preserves hosted Sonar, required OIDC Codecov, and the high production dependency audit (`starci app audit`). */
 export function ciWorkflowCommands(source: CiSource | undefined, lcovReport = 'be/coverage/lcov.info', quality: Declaration = undefined, { nodeMajor = '22', app, packages = false, rootPackages = false }: { nodeMajor?: string; packages?: boolean; rootPackages?: boolean; app?: { sides: { fe: { apps: readonly { name: string }[] } } } } = {}): Record<string, string> {
   // The gates the app declares off (`gates` of the declaration, read once by readGateDeclarations: a refused block switches nothing off).
   const declaration = buildDeclaration(source);
@@ -321,7 +321,8 @@ export function ciWorkflowCommands(source: CiSource | undefined, lcovReport = 'b
     // An app with an entity list also checks its entities against the schema its migrations build, in the build job (a runner with Docker).
     // The db gate never switches off; with the build off no step before it builds the root packages its drift check reads, so it builds them itself.
     ciDatabaseLint: exampleCommand(source, (off.build === undefined ? '' : modulesFirst) + ((source?.files ?? []).includes(ENTITY_LIST.slice('be/'.length)) ? 'npm run db:lint && npx starci app db drift' : 'npm run db:lint')),
-    auditCommand: run('audit', `npm audit${audit.omitDev ? ' --omit=dev' : ''} --audit-level=${audit.level}`),
+    // The production audit is `starci app audit` (audit/cli.mts): it runs `npm audit --omit=dev --json` and judges the report against the time-boxed exceptions of .starcistacks/security/audit-exceptions.yaml (PROJECT-LINT-5); CI and the pre-push parity run this one command.
+    auditCommand: run('audit', `npx --no-install starci app audit${audit.omitDev ? ' --omit-dev' : ''} --level=${audit.level}`),
     sonarTokenSecret: sonar?.token ?? 'SONAR_TOKEN',
     sonarHostVar: sonar?.hostVar ?? 'SONAR_HOST_URL',
     // One lint job per side (the lint matrix): with Sonar each side writes its own report, uploaded as sonar-lint-<side> and merged by the sonar job.

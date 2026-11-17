@@ -120,7 +120,7 @@ note says what the rule protects and what to do when it fires. A rule that guard
 | R251 | deploy workflows are safe | Declare protected environments, permissions and concurrency; pin actions by commit SHA. |
 | R252 | scripts do not leak secrets | Remove plaintext secret loads and xtrace from scripts and workflows. |
 | R267 | a release can be restored | Declare the images lock, release pointers, health assertions and a backup with a restore proof. |
-| R269 | supply chain is watched | Add Dependabot schedules, `npm audit` in CI, and an SBOM and provenance on release images. |
+| R269 | supply chain is watched | Add Dependabot schedules, the production audit (`starci app audit`; its owner-approved, time-boxed exceptions are PROJECT-LINT-5) in CI, and an SBOM and provenance on release images. |
 | R270 | documentation is true | Correct or delete a cited path, script, verb, environment key or rule id that does not exist. |
 | R271 | release tags | Tag `v<package version>`, push images under `sha-<sha>` and retag the digest for the release name. |
 | R275 | one ingress | Declare one ingress component with a digest-pinned image and its hosts per Swarm environment. |

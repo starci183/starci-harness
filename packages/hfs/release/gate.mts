@@ -118,7 +118,7 @@ export function coveredBy(gate: Gate): { family: string; needsDatabase: boolean 
   if (!covered || gate.teardownOf || gate.provider) return null;
   const same = covered.script ? sameCommand(gate.command, ['npm', 'run', covered.script])
     : covered.command ? sameCommand(gate.command, covered.command)
-      : gate.command[0] === 'npm' && gate.command[1] === 'audit';
+      : (gate.command[0] === 'npm' && gate.command[1] === 'audit') || (gate.command[0] === 'npx' && gate.command.slice(1, 5).join(' ') === '--no-install starci app audit');
   return same ? { family: covered.family, needsDatabase: covered.needsDatabase === true } : null;
 }
 
@@ -127,6 +127,7 @@ export function heavyKindOf(gate: Gate): HeavyRequest['kind'] | null {
   const [first, second, third] = gate.command;
   if (first === 'starci' || (first === 'npx' && second === 'starci')) return null;
   if (first === 'npm' && second === 'audit') return null;
+  if (first === 'npx' && gate.command.slice(1, 5).join(' ') === '--no-install starci app audit') return null;
   if (first === 'npm' && second === 'run' && /^test(?::|$)/u.test(third ?? '')) return 'test';
   if (gate.command.some((word) => /^(?:jest|vitest)(?:\.[cm]?js)?$/u.test(path.basename(word)))) return 'test';
   return 'build';
@@ -163,7 +164,8 @@ function releaseServices(services: Services, options: Record<string, unknown>): 
 function auditGate(audit: Services): Gate | null {
   if (!audit || !audit.in.includes('release-gate')) return null;
   if (!['info', 'low', 'moderate', 'high', 'critical'].includes(audit.level)) throw refusal(RELEASE_CODE, 'services.audit.level must be an npm audit level');
-  return { name: 'audit', command: ['npm', 'audit', ...(audit.omitDev ? ['--omit=dev'] : []), `--audit-level=${audit.level}`], summary: null, env: {} };
+  // The same command as the managed CI step (`starci app audit`, which judges the report against the audit exceptions), so the release gate and CI never disagree.
+  return { name: 'audit', command: ['npx', '--no-install', 'starci', 'app', 'audit', ...(audit.omitDev ? ['--omit-dev'] : []), `--level=${audit.level}`], summary: null, env: {} };
 }
 
 /** The CI execution copy is job-local; a native owner run opens the selected product credential only when executed. */

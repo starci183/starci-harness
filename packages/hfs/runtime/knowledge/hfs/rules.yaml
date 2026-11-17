@@ -4526,10 +4526,10 @@ rules:
       - {path: packages/hfs/src/hfs-stacks-full-fixtures.spec.mjs, edition: full}
   - id: R269
     code: "HFS_DEPENDABOT_MISSING"
-    law: "In lite and full apps, .github/dependabot.yml declares scheduled npm, github-actions and docker updates. Every npm entry declares a minor-and-patch version group and a security-updates group; every group explicitly restricts update-types to minor and patch, leaving majors per package, and npm entries ignore @starci/* without version or update-type restrictions. The CI workflow runs npm audit --omit=dev as an enabled gate whose failure stops the job. The images workflow generates an SBOM and provenance for release images; a disabled step, comment or label is not evidence. An app whose stack declaration switches the audit gate off (PROJECT-LINT-4) renders no audit step and is not required one."
+    law: "In lite and full apps, .github/dependabot.yml declares scheduled npm, github-actions and docker updates. Every npm entry declares a minor-and-patch version group and a security-updates group; every group explicitly restricts update-types to minor and patch, leaving majors per package, and npm entries ignore @starci/* without version or update-type restrictions. The CI workflow runs the production audit (starci app audit --omit-dev, or npm audit --omit=dev) as an enabled gate whose failure stops the job; starci app audit judges npm audit against .starcistacks/security/audit-exceptions.yaml, whose entries are owner-approved, exact (advisory, package, via), at most 14 days long and printed on every run (PROJECT-LINT-5). The images workflow generates an SBOM and provenance for release images; a disabled step, comment or label is not evidence. An app whose stack declaration switches the audit gate off (PROJECT-LINT-4) renders no audit step and is not required one."
     kinds: [check]
     gates: ["settle","land","ci"]
-    failureCodes: ["HFS_DEPENDABOT_MISSING", "HFS_AUDIT_STEP_MISSING", "HFS_SBOM_MISSING"]
+    failureCodes: ["HFS_DEPENDABOT_MISSING", "HFS_AUDIT_STEP_MISSING", "HFS_SBOM_MISSING", "AUDIT_HIGH", "AUDIT_EXCEPTION_INVALID", "AUDIT_EXCEPTION_EXPIRED", "AUDIT_EXCEPTION_TOO_LONG", "AUDIT_EXCEPTION_FIX_AVAILABLE", "AUDIT_EXCEPTION_UNUSED", "AUDIT_EXCEPTION_ACTIVE", "AUDIT_REPORT_UNREADABLE"]
     enforcers:
       - {kind: hfs, id: supply-chain, at: scripts/hfs/rules/supply-chain.mjs}
     editions: ["lite","full"]
@@ -4537,6 +4537,7 @@ rules:
       - "docs/application-stacks.md#r269"
     proves:
       - {path: packages/hfs/src/hfs-supply-chain.spec.mjs, editions: [lite, full]}
+      - {path: packages/hfs/src/hfs-audit-exceptions.spec.mjs, editions: [lite, full]}
     exemplifiedBy:
       - {"path":"packages/hfs/templates/app/skeleton-lite/.github/dependabot.yml","edition":"lite"}
       - {"path":"packages/hfs/templates/app/ci-workflows-lite/github/workflows/ci.yml","edition":"lite"}

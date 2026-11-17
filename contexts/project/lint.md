@@ -249,6 +249,30 @@ lint plugin of its own (R103).
 Known gap: extension API 1 loads ESLint rules only; a Stylelint rule of a project has no engine yet (`lint.tool` other than `eslint` is
 refused), so a CSS law of one project is held by a project check until the stylelint canon loads `ext/lint/`.
 
+## PROJECT-LINT-5 A production audit exception is time-boxed and the owner's
+
+The production dependency audit is one command, `starci app audit --omit-dev --level=<level>` (the `audit` gate of PROJECT-LINT-4; the level and `omitDev` are the app's quality
+declaration, default `high` and on). It runs `npm audit --omit=dev --json`, judges the report, and fails on any finding at or above the level (`AUDIT_HIGH`). The managed CI step
+`production dependency audit` and the pre-push parity (which runs that rendered step, [check-cache.md](check-cache.md#ci-parity)) are this one command, with no `continue-on-error` and no `|| true`.
+A finding with no fix yet may be exempted, for a short time, by an exception:
+
+- **The file.** `.starcistacks/security/audit-exceptions.yaml` (slot `app.starcistacks.security`, tracked), a list; an absent or empty file holds none. Each entry has exactly these keys:
+  `advisory` (one exact GHSA id, no wildcard), `package` (one exact npm name), `via` (a non-empty list of direct dependency names), `reason` (non-empty), `approvedBy` (non-empty: the owner),
+  `approvedAt` and `expires` (ISO timestamps with a zone, `2026-11-18T09:00:00+07:00`).
+- **When it exempts.** An entry exempts a finding only when it is active (not expired, no longer than 14 days, no fix for the package), its `advisory` and `package` equal the finding's, and **every
+  dependency path to the package starts at a name of `via`**. The paths are read from `package-lock.json`, never from the audit report: the root nodes are the root package and each workspace
+  package; a root dependency is a name in their `dependencies`, `optionalDependencies` and `peerDependencies` (and `devDependencies` when the audit does not omit dev); from each one the lock tree is
+  walked as Node resolves it, and every node reached records the root dependency it came from. A node reached from a name outside `via`, or from none (the lock cannot resolve the path), is not
+  exempt: the finding fails `AUDIT_HIGH`. A finding below the level is not a finding, so an entry for it is unused.
+- **Codes.** Each is an error but `AUDIT_EXCEPTION_ACTIVE`.
+  `AUDIT_EXCEPTION_INVALID` (the file or an entry is malformed), `AUDIT_EXCEPTION_EXPIRED` (`expires` is not after now), `AUDIT_EXCEPTION_TOO_LONG` (`expires` is more than 14 days after `approvedAt`),
+  `AUDIT_EXCEPTION_FIX_AVAILABLE` (npm reports a fix for the package: upgrade and remove the entry), `AUDIT_EXCEPTION_UNUSED` (no finding matches: remove the entry),
+  `AUDIT_EXCEPTION_ACTIVE` (report only), `AUDIT_REPORT_UNREADABLE` (npm printed no report).
+- **Never hidden.** Every pre-push and CI run prints one `AUDIT_EXCEPTION_ACTIVE` line per exception that exempted a finding: advisory, package, via, reason, approvedBy, expires and the days left.
+- **The owner's.** An exception requires the owner's approval; `approvedBy` names the owner. An agent never adds, renews or lengthens an exception on its own: it upgrades the dependency, or reports the finding
+  and asks.
+- **One judge.** `starci app audit` (`packages/hfs/audit/`) reads the file; R269 only requires the step. The release gate's opt-in audit row runs the same command.
+
 ## Read with
 
 [README.md](README.md) (the profiles a project picks), [anatomy.md](anatomy.md) (the packages each gate judges),

@@ -1804,11 +1804,19 @@ rules:
       - {kind: hfs, id: stacks-release}
   - id: R269
     code: HFS_DEPENDABOT_MISSING
-    law: Dependabot schedules npm, Actions and Docker updates with minor-and-patch groups, CI gates on `npm audit` (unless the app's stack declaration switches audit off, PROJECT-LINT-4), and release images carry an SBOM and provenance.
+    law: Dependabot schedules npm, Actions and Docker updates with minor-and-patch groups, CI gates on the production audit (`starci app audit`, judged against owner-approved, time-boxed exceptions, PROJECT-LINT-5; unless the app's stack declaration switches audit off, PROJECT-LINT-4), and release images carry an SBOM and provenance.
     failureCodes:
       - HFS_DEPENDABOT_MISSING
       - HFS_AUDIT_STEP_MISSING
       - HFS_SBOM_MISSING
+      - AUDIT_HIGH
+      - AUDIT_EXCEPTION_INVALID
+      - AUDIT_EXCEPTION_EXPIRED
+      - AUDIT_EXCEPTION_TOO_LONG
+      - AUDIT_EXCEPTION_FIX_AVAILABLE
+      - AUDIT_EXCEPTION_UNUSED
+      - AUDIT_EXCEPTION_ACTIVE
+      - AUDIT_REPORT_UNREADABLE
     enforcers:
       - {kind: hfs, id: supply-chain}
   - id: R270

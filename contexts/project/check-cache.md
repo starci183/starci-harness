@@ -517,7 +517,7 @@ A whole `starci app check` (the pre-push hook runs it) runs what the app's manag
 red CI on it (R383, R386): the `build` and `audit` families, CI's coverage step and the Sonar scan ([Sonar and Codecov](#sonar-and-codecov)). The `build` and `audit` families read their commands from the app's rendered `.github/workflows/ci.yml`,
 never restate them; what each reuses is [Which step reuses what](#which-step-reuses-what)'s:
 
-- `audit`: the fast job's production dependency audit (`npm audit --omit=dev --audit-level=high`, or what the quality declaration sets).
+- `audit`: the fast job's production dependency audit (`starci app audit --omit-dev --level=high`, or what the quality declaration sets; it runs `npm audit --omit=dev --json` and judges it against the time-boxed exceptions of [PROJECT-LINT-5](lint.md#project-lint-5-a-production-audit-exception-is-time-boxed-and-the-owners)).
 - `build`: the fast job's `npm run typecheck` (build:modules, codegen and tsc: the types family runs the tsc programs, not the script), the build job's
   `npm run build:be` and each `build fe` step, a `next build` per front-end app with its server prerender and route config. A build runs under the
   heavy governor at the memory plan's largest tsc heap, with its own SWC cache root (`LOCALAPPDATA` and `XDG_CACHE_HOME` under the app's tool cache):
