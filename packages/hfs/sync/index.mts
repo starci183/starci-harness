@@ -117,7 +117,7 @@ export interface AppSourceFacts {
 }
 
 /** The condition a slot's `managedWhen` names. Without source facts (a render of the declaration alone, a scaffold) the starter's storage holds. */
-const factHolds = (fact: string, source: AppSourceFacts | undefined): boolean => fact !== 'storage' || source?.storageNeeded !== false;
+const factHolds = (fact: string, source: AppSourceFacts | undefined): boolean => fact !== 'storage' || source?.storageNeeded === true;
 
 // mode: file = whole file, block = the marked block inside a file the app also writes to, scripts = the `scripts` block of
 // package.json, section = the whole file but the one marked section a database verb owns (db/bootstrap.sql, whose squash section
@@ -490,7 +490,7 @@ function imageEntries(app: ResolvedApp, source: Partial<Pick<AppSourceFacts, 'ha
 /** The apps images.yml builds (one matrix entry per declared app): name and Dockerfile, be then fe, then a lite app's db image. */
 export function imageApps(app: ResolvedApp, source: Partial<Pick<AppSourceFacts, 'hasImage' | 'storageNeeded'>> | undefined): ImageApp[] {
   // A lite app that has statics/ or needs object storage also ships its own MinIO image (slot app.storage.image, PROJECT-STATICS-5).
-  const storage = app.edition === 'lite' && source?.storageNeeded !== false ? [{ name: STORAGE_IMAGE_APP, file: STORAGE_DOCKERFILE }] : [];
+  const storage = app.edition === 'lite' && source?.storageNeeded === true ? [{ name: STORAGE_IMAGE_APP, file: STORAGE_DOCKERFILE }] : [];
   const db = app.edition === 'lite' ? [{ name: DB_IMAGE_APP, file: DB_DOCKERFILE }, ...storage] : [];
   return [...imageEntries(app, source).map(image => ({ name: image.entry.name, file: dockerfilePath(image.side, image.entry.name) })), ...db];
 }

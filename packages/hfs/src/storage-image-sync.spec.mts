@@ -19,9 +19,9 @@ const rendered = (edition: 'lite' | 'full', storageNeeded?: boolean): Map<string
 
 for (const edition of ['lite', 'full'] as const) {
   test(`${edition}: the storage image is rendered from the pinned MinIO and a source-built mc, with a dockerignore that admits statics/ only`, () => {
-    const files = rendered(edition);
+    const files = rendered(edition, true);
     const dockerfile = files.get(DOCKERFILE) as string;
-    assert.ok(dockerfile, 'the starter needs storage, so sync renders it');
+    assert.ok(dockerfile, 'a project that needs storage gets the storage image');
     assert.ok(dockerfile.includes(`FROM ${STORAGE_IMAGE}\n`), 'the final stage is the pinned MinIO');
     assert.ok(dockerfile.includes(`FROM ${MC.buildImage} AS mc\n`), 'mc is compiled in a builder stage of the Dockerfile');
     assert.ok(dockerfile.includes(`ADD --checksum=sha256:${MC.sha256} ${MC.source} /tmp/mc.tar.gz`), 'the mc source is verified by sha256');
@@ -38,6 +38,7 @@ for (const edition of ['lite', 'full'] as const) {
     assert.equal(files.has(DOCKERFILE), false);
     assert.equal(files.has(IGNORE), false);
     assert.equal(rendered(edition, true).has(DOCKERFILE), true);
+    assert.equal(rendered(edition).has(DOCKERFILE), false, 'without source facts nothing is assumed: a tree with no storage need renders no storage image');
   });
 }
 

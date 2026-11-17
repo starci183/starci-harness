@@ -34,7 +34,9 @@ mc alias set local http://127.0.0.1:9000 "$(cat "$MINIO_ROOT_USER_FILE")" "$(cat
 : "${STATICS_BUCKET:?}" "${STATICS_PREFIX:=statics}" "${STATICS_PUBLIC:=download}"
 mc mb --ignore-existing "local/$STATICS_BUCKET" >/dev/null
 digest=$(cat /statics.sha256)
-if [ "$(mc cat "local/$STATICS_BUCKET/.starci/statics.sha256" 2>/dev/null || true)" != "$digest" ]; then
+current=
+if mc stat "local/$STATICS_BUCKET/.starci/statics.sha256" >/dev/null 2>&1; then current=$(mc cat "local/$STATICS_BUCKET/.starci/statics.sha256"); fi
+if [ "$current" != "$digest" ]; then
   mc mirror --overwrite --quiet /statics "local/$STATICS_BUCKET/$STATICS_PREFIX"
   echo "$digest" | mc pipe "local/$STATICS_BUCKET/.starci/statics.sha256" >/dev/null
 fi

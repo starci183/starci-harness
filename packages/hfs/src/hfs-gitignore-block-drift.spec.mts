@@ -20,8 +20,6 @@ const synced = (context: TestContext, edition: string) => {
     { name: 'primary', envPrefix: 'PRIMARY_DB', owner: 'core', isolation: 'schema', provider: 'postgres' },
   ];
   fs.writeFileSync(path.join(root, 'hfs.json'), JSON.stringify(declaration));
-  // The check reads the disk: an app that uses object storage owns the storage image the render includes (PROJECT-STATICS-2).
-  fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ dependencies: { '@starci/object-storage': '1.0.0' } }));
   const targets = renderTargets(declaration, PRESETS);
   writeTargets(root, targets);
   const tracked = ['hfs.json', ...targets.map(target => target.path)];
