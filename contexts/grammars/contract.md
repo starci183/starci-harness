@@ -509,5 +509,5 @@ everywhere.
 ### Shell
 
 The shell is the frame of an app: one shell owns the bar, the navigation and the mobile drawer, and one owner
-scrolls each axis. Every bar control is `control`. There is no bottom tab bar: on a phone the navigation is the
-drawer.
+scrolls each axis. Every bar control is `control`. The only bottom bar is the `BottomNav` in `WorkspaceShell`
+`compactNavigation` (two to five places); otherwise on a phone the navigation is the drawer.

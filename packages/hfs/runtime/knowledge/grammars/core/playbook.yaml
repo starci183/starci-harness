@@ -233,7 +233,8 @@ shapes:
           backdrop or Escape, traps focus and scrolls independently. The opener band hides at desktop.
           Inline navigation is hidden below md with navigationVisibility="wide"; navigationDrawer or
           the compactHeader containing the left Drawer and its drawer Sidebar supplies the opener.
-          The shell has neither tabs in the opener band nor a BottomNav.
+          The shell has no tabs in the opener band. A BottomNav stands only as the compactNavigation
+          of the WorkspaceShell (two to five places); nowhere else.
       - id: create-actions
         implements: [FE-APP-SHELL-5]
         compose: |

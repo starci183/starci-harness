@@ -2143,7 +2143,7 @@ rules:
       - {kind: eslint-grammar-core, id: navbar-cluster}
   - id: R316
     code: FE_APP_SHELL_BOTTOM_TABS
-    law: An application keeps the selected Grammar shell's navigation model across viewports and never replaces it with a bottom tab bar.
+    law: An application keeps the selected Grammar shell's navigation model across viewports; the only bottom bar of places is the Grammar BottomNav as the compactNavigation of a WorkspaceShell (two to five places), and a hand-made bottom tab bar or a BottomNav anywhere else is refused.
     failureCodes:
       - FE_APP_SHELL_BOTTOM_TABS
     enforcers:

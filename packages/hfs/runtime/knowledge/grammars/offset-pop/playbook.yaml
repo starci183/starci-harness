@@ -61,7 +61,7 @@ shapes:
     notes: |
       FE-RULE-OWNERSHIP in knowledge/patterns/fe/index.yaml keeps shell semantics in universal
       knowledge and the named API checks in the selected Grammar lint package. The app shell has no
-      bottom tab bar. Offset Pop owns the outline, palette and hard shadow in its packaged CSS.
+      hand-made bottom tab bar (the Grammar BottomNav in compactNavigation is the one bottom bar). Offset Pop owns the outline, palette and hard shadow in its packaged CSS.
 
   - id: home-continue
     title: Home — where the reader left off, one next step

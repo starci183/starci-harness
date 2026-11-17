@@ -2148,7 +2148,7 @@ FE_APP_ISOLATION:
   kind: check-finding
 
 FE_APP_SHELL_BOTTOM_TABS:
-  title: "The application shell has a bottom tab bar"
+  title: "The application shell has a bottom tab bar other than BottomNav in compactNavigation"
   title_vi: "Khung ứng dụng có thanh tab dưới"
   meaning_vi: "Khung ứng dụng tại <file> đặt điều hướng trong thanh tab dưới thay vì Sidebar drawer."
   causes_vi:

@@ -5393,7 +5393,7 @@ rules:
     templateNa: "The app composes its shell from product destinations and identity; full and lite example shells provide the reference."
   - id: R316
     code: "FE_APP_SHELL_BOTTOM_TABS"
-    law: "FE-APP-SHELL-4 preserves the selected Grammar shell navigation model across viewports; an application does not replace its sidebar-derived mobile drawer with an incompatible bottom tab bar."
+    law: "FE-APP-SHELL-4 preserves the selected Grammar shell navigation model across viewports; an application does not replace its sidebar-derived mobile drawer with a hand-made bottom tab bar. The one bottom bar of places is the Grammar BottomNav as the compactNavigation of a WorkspaceShell (two to five places, its more place a bottom sheet); a BottomNav anywhere else is refused."
     kinds: [lint, design]
     gates: [pre-commit, settle, land, ci]
     failureCodes: ["FE_APP_SHELL_BOTTOM_TABS"]

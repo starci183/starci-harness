@@ -725,7 +725,7 @@ mustKeep:
       role: shell
       law: "The shell has no bottom tab bar of its own: a bottom bar of places is a BottomNav in WorkspaceShell compactNavigation (two to five places, its more place a bottom sheet; 0.46.0, owner 2026-11-18) and nowhere else; otherwise the navigation on a phone is the drawer."
       measure: { kind: count, context: { viewport: 375x812 }, select: 'document [data-component="BottomNav"]:not([data-grammar-workspace-compact-navigation] [data-component="BottomNav"])', op: "=", value: 0 }
-      owner: contract roles.shell; ui/components/bottom-nav.md; lint no-shell-bottom-tabs (still refuses the bar in product code until it is amended)
+      owner: contract roles.shell; ui/components/bottom-nav.md; lint no-shell-bottom-tabs (R316)
     - id: DNA-COMMON-ONE-SHELL
       role: shell
       law: One shell owns the frame, the bar and the mobile drawer.

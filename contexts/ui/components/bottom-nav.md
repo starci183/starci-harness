@@ -46,8 +46,6 @@ FE-APP-SHELL-4 (see below), A11Y-2, BOUNDARY-1, RESPONSIVE-1.
 
 The landmark is the shell's: `compactNavigation` renders `<nav aria-label={compactNavigationLabel}>` around the slot, so `BottomNav` draws a list and no second `<nav>`. It stands only in that slot (`DNA-COMMON-NO-BOTTOM-TABS`).
 
-**Conflict to land.** [composition](../composition.md) FE-APP-SHELL-4 ("No tab row, no bottom tab bar"), lint `starci-grammar/no-shell-bottom-tabs` (`FE_APP_SHELL_BOTTOM_TABS`, R316, which refuses `compactNavigation` and any `BottomNav` in product code)
-and the rule text in `@starci/hfs` still refuse this bar. The owner approved the component on 2026-11-18; this change touches none of them (no `eslint-grammar-core` source), so an app that uses `BottomNav` is refused
-by lint until the lint rule and FE-APP-SHELL-4 are amended in the release that carries this component. The DNA law that said "no `BottomNav`" is narrowed here to "no `BottomNav` outside the shell's compact slot".
+**Owner decision (2026-11-18).** The bar is allowed only as the `compactNavigation` of a `WorkspaceShell`, with two to five places including "more", and refused everywhere else. FE-APP-SHELL-4 of [composition](../composition.md) and lint `starci-grammar/no-shell-bottom-tabs` (`FE_APP_SHELL_BOTTOM_TABS`, R316) say the same: a `BottomNav` in that slot passes; a hand-made bottom tab bar, any other `compactNavigation` and a `BottomNav` anywhere else are refused. `DNA-COMMON-NO-BOTTOM-TABS` measures it in the render.
 
 Stories: `Compositions/Bottom nav (0.46.0)` (`Phone`, `MoreSheet`, `Links`, `Wide`).

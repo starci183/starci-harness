@@ -202,11 +202,14 @@ for (const lite of [false, true]) {
     })
   })
 
-  test(`${edition} mobile shell passes drawer navigation and rejects bottom tab components and slots`, () => {
+  test(`${edition} mobile shell passes drawer navigation and allows only the Grammar BottomNav in compactNavigation and rejects bottom tab components and other slots`, () => {
     tester.run("no-shell-bottom-tabs", noShellBottomTabs, {
       valid: [
         { filename: FILE, code: 'const view = <WorkspaceShell navigation={<Sidebar />} navigationDrawer={{ content: <Sidebar presentation="drawer" /> }} />' },
         { filename: FILE, code: 'const view = <TabBar />' },
+        { filename: FILE, code: 'import { BottomNav, WorkspaceShell } from "@starci/grammar/common"; const view = <WorkspaceShell compactNavigation={<BottomNav items={items} />} compactNavigationLabel="Places" />' },
+        { filename: FILE, code: 'import { BottomNav, WorkspaceShell } from "@starci/grammar/common"; const nav = <BottomNav items={items} more={more} />; const view = <WorkspaceShell compactNavigation={nav} compactNavigationLabel="Places" />' },
+        { filename: FILE, code: 'import { BottomNav as Places, WorkspaceShell } from "@starci/grammar/common"; const view = <WorkspaceShell compactNavigation={<Places items={items} />} compactNavigationLabel="Places" />' },
         { filename: FILE, code: 'const view = <WorkspaceShell compactNavigation={undefined} />' },
         { filename: FILE, code: 'const compactNavigation = undefined; const view = <WorkspaceShell {...{ compactNavigation }} />' },
         { filename: PAGE, code: 'import { MobileTabBar } from "@/components/blocks/MobileTabBar"; const Article = () => <MobileTabBar />' },
@@ -215,6 +218,11 @@ for (const lite of [false, true]) {
         { filename: FILE, code: 'const view = <WorkspaceShell compactNavigation={<TabBar />} />', errors: [{ messageId: "bottom" }] },
         { filename: FILE, code: 'const view = <WorkspaceShell {...{ compactNavigation: <TabBar /> }} />', errors: [{ messageId: "bottom" }] },
         { filename: FILE, code: 'const view = <BottomNavigation />', errors: [{ messageId: "bottom" }] },
+        { filename: FILE, code: 'import { BottomNav } from "@starci/grammar/common"; const view = <BottomNav items={items} />', errors: [{ messageId: "bottom" }] },
+        { filename: FILE, code: 'import { BottomNav, WorkspaceShell } from "@starci/grammar/common"; const view = <WorkspaceShell primary={<BottomNav items={items} />} />', errors: [{ messageId: "bottom" }] },
+        { filename: FILE, code: 'import { BottomNav, WorkspaceShell } from "@starci/grammar/common"; const view = <WorkspaceShell compactNavigation={<div><BottomNav items={items} /></div>} />', errors: [{ messageId: "bottom" }, { messageId: "bottom" }] },
+        { filename: FILE, code: 'import { BottomNav as Places } from "@starci/grammar/common"; const view = <Places items={items} />', errors: [{ messageId: "bottom" }] },
+        { filename: FILE, code: 'const BottomNav = () => null; const view = <><WorkspaceShell viewport="fixed" /><BottomNav /></>', errors: [{ messageId: "bottom" }] },
         { filename: FILE, code: 'import { MobileTabBar } from "@/components/blocks/MobileTabBar"; const view = <><WorkspaceShell viewport="fixed" /><MobileTabBar /></>', errors: [{ messageId: "bottom" }] },
         { filename: FILE, code: 'import { BottomTabBar } from "@/components/blocks/BottomTabBar"; const view = <><WorkspaceShell viewport="fixed" /><BottomTabBar /></>', errors: [{ messageId: "bottom" }] },
         { filename: PAGE, code: 'import { MobileBottomNav } from "@/components/blocks/MobileBottomNav"; const tabs = <MobileBottomNav />; const view = <WorkspaceShell viewport="fixed" primary={tabs} />', errors: [{ messageId: "bottom" }] },

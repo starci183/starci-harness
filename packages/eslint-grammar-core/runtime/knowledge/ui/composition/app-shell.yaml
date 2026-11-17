@@ -114,7 +114,9 @@ rules:
           with the design system's target clearance; it opens the sidebar drawer.
           Inline navigation is hidden at compact widths; the shell's navigation-drawer contract or a
           compact header containing a leading drawer supplies the opener and the drawer's sidebar.
-          The shell has no tabs in that row and no bottom tab bar.
+          The shell has no tabs in that row. The one bottom bar is the Grammar BottomNav as the
+          compactNavigation of the WorkspaceShell (two to five places, its more place a bottom sheet,
+          drawn below 48rem); a hand-made bottom tab bar and a BottomNav anywhere else are refused.
       - id: case-2
         when: The mobile sidebar opens
         assert: |-

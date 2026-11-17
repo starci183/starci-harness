@@ -143,7 +143,7 @@ note says what the rule protects and what to do when it fires. A rule that guard
 | R301 | one CI standard | Deliver CI through `starci app sync`, never by editing the workflow by hand. |
 | R314 | navbar control size | Use one control height and one icon size per region from the Grammar scale. |
 | R315 | navbar order | Order the cluster language, theme, notifications, account, each from the Grammar. |
-| R316 | no bottom tabs | Keep the Grammar shell's navigation on every viewport; do not draw a bottom tab bar. |
+| R316 | no bottom tabs | Keep the Grammar shell's navigation on every viewport; the only bottom bar is the Grammar `BottomNav` as the `compactNavigation` of a `WorkspaceShell`; draw no other bottom tab bar. |
 | R337 | auth cookie domain | Set the cookie domain when the web and the api are served from different hosts. |
 | R343 | the check cache is trusted only at its base | Re-run the check and commit the computed cache; never edit a record. |
 | R378 | a branch profile lowers only the polish gates ([project/lint.md](../project/lint.md) PROJECT-LINT-2) | Lower only lint, sonar or codecov, on `dev`; keep every safety gate blocking and never declare main. |

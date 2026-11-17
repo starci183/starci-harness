@@ -209,8 +209,8 @@ export const why: Record<string, WhyEntry> = {
   },
   "no-shell-bottom-tabs": {
     code: "FE_APP_SHELL_BOTTOM_TABS",
-    en: "Bottom tab navigation replaces the required mobile sidebar drawer.",
-    fix: "Use WorkspaceShell navigationDrawer and Sidebar presentation=\"drawer\".",
+    en: "A hand-made bottom tab bar, or a BottomNav outside WorkspaceShell compactNavigation, replaces the required mobile sidebar drawer.",
+    fix: "Use WorkspaceShell navigationDrawer and Sidebar presentation=\"drawer\", or the Grammar BottomNav as the compactNavigation of the WorkspaceShell.",
   },
   "surface-in-surface": {
     code: "FE_SURFACE_IN_SURFACE",

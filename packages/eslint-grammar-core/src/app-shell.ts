@@ -15,7 +15,7 @@ import { walk } from "@starci/eslint-canon-fe/lib/ast.mjs"
 import type { Node, ReaderContext, Resolved } from "./lib/types.ts"
 
 const CANON = "knowledge/ui/composition/app-shell.yaml"
-const BOTTOM_TABS = /^(?:BottomNavigation|BottomTabBar|MobileBottomNav|MobileTabBar)$/
+const BOTTOM_TABS = /^(?:BottomNavigation|BottomTabBar|MobileBottomNav|MobileTabBar|BottomNav)$/
 const EXPECTED_CLUSTER = ["language:IconButton", "theme:Switch", "notifications:IconButton", "account:AvatarButton"]
 /** The cluster of a shell with no notification source (a platform-admin shell with no workspace): notifications are required only where a read feeds them, so a shell without one may omit them. */
 const NO_SOURCE_CLUSTER = EXPECTED_CLUSTER.filter((kind) => !kind.startsWith("notifications:"))
@@ -88,21 +88,39 @@ export const appShellFrame: Rule.RuleModule = defineRule({
   },
 })
 
-/** Bottom navigation is not an alternative compact app-shell frame. */
+/**
+ * FE-APP-SHELL-4: the one bottom bar is the Grammar `BottomNav`, and only as the `compactNavigation` of a `WorkspaceShell` (the phone slot). A hand-rolled bottom
+ * tab bar, any other `compactNavigation` and a `BottomNav` anywhere else are refused.
+ */
 export const noShellBottomTabs: Rule.RuleModule = defineRule({
-  meta: meta("FE_APP_SHELL_BOTTOM_TABS", "FE-APP-SHELL-4 keeps mobile navigation in the sidebar drawer.", {
-    bottom: "FE_APP_SHELL_BOTTOM_TABS: the app shell uses a mobile subnav opener and Sidebar drawer. Remove bottom tab navigation and WorkspaceShell compactNavigation.",
+  meta: meta("FE_APP_SHELL_BOTTOM_TABS", "FE-APP-SHELL-4 keeps mobile navigation in the sidebar drawer; the Grammar BottomNav stands only as the compactNavigation of a WorkspaceShell.", {
+    bottom: "FE_APP_SHELL_BOTTOM_TABS: the app shell uses a mobile subnav opener and Sidebar drawer. Remove the hand-made bottom tab bar; a BottomNav stands only as the compactNavigation of a WorkspaceShell, and compactNavigation holds nothing else.",
   }),
   create(context) {
     if (!isProductSource(context)) return {}
-    return { JSXOpeningElement(node) {
-      const name = grammarName(context, node)
-      const appTab = name === null && node.name.type === "JSXIdentifier" && BOTTOM_TABS.test(node.name.name) && (ownsAppFrame(context, node) || visibleFromShell(context, node))
-      const compact = name === "WorkspaceShell" ? propOf(context, node, "compactNavigation") : null
-      const value = compact ? resolveLocal(context, compact.value) : null
-      const absent = value?.type === "Identifier" && value.name === "undefined" && !variableOf(context, value)?.defs.length
-      if (BOTTOM_TABS.test(name ?? "") || appTab || compact && !absent && (!compact.known || compact.value !== null || compact.present)) context.report({ node, messageId: "bottom" })
-    } }
+    /** The Grammar `BottomNav` openings seen, and those a shell holds as its `compactNavigation`. */
+    const bottomNavs: TSESTree.JSXOpeningElement[] = []
+    const inShellSlot = new Set<string>()
+    const keyOf = (opening: TSESTree.JSXOpeningElement): string => `${opening.range[0]}:${opening.range[1]}`
+    const isBottomNav = (value: Resolved | null | undefined): value is TSESTree.JSXElement => value?.type === "JSXElement" && grammarName(context, value.openingElement) === "BottomNav"
+    return {
+      JSXOpeningElement(node) {
+        const name = grammarName(context, node)
+        if (name === "BottomNav") bottomNavs.push(node)
+        const appTab = name === null && node.name.type === "JSXIdentifier" && BOTTOM_TABS.test(node.name.name) && (ownsAppFrame(context, node) || visibleFromShell(context, node))
+        const compact = name === "WorkspaceShell" ? propOf(context, node, "compactNavigation") : null
+        const value = compact ? resolveLocal(context, compact.value) : null
+        const absent = value?.type === "Identifier" && value.name === "undefined" && !variableOf(context, value)?.defs.length
+        if (compact && compact.known && isBottomNav(value)) {
+          inShellSlot.add(keyOf(value.openingElement))
+          return
+        }
+        if (name !== "BottomNav" && BOTTOM_TABS.test(name ?? "") || appTab || compact && !absent && (!compact.known || compact.value !== null || compact.present)) context.report({ node, messageId: "bottom" })
+      },
+      "Program:exit"() {
+        for (const opening of bottomNavs) if (!inShellSlot.has(keyOf(opening))) context.report({ node: opening, messageId: "bottom" })
+      },
+    }
   },
 })
 
