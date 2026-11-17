@@ -4055,6 +4055,17 @@ CI_PARITY_SONAR_GATE_FAILED:
   owner: op-retry
   kind: check-finding
 
+TYPES_PACKAGE_BUILD_FAILED:
+  title: "A workspace package that programs resolve through its build output fails to build"
+  title_vi: "Một package workspace mà các chương trình tsc đọc qua thư mục build của nó không build được"
+  meaning_vi: "Bước types của `starci app check` build trước mỗi package workspace có exports, main, module hoặc types trỏ vào thư mục build chưa được git theo dõi (ví dụ dist), bằng script build của chính package đó, package phụ thuộc trước. Khi một build thất bại, các chương trình tsc đọc package đó không chạy (không báo hàng trăm lỗi import chưa phân giải) và bước types đỏ với đúng mã này. Một cây mới chưa có dist, nên không có bước build này thì tsc báo mọi import của package."
+  causes_vi:
+    - "Lỗi biên dịch trong chính package (script build của nó chạy tsc -p tsconfig.build.json)."
+    - "Package khai báo output build trong exports nhưng không có script build, hoặc script build không tạo ra file đã khai báo."
+  nextStep_vi: "Chạy npm run build --workspace <thư mục package> từ gốc app để đọc lỗi đầy đủ, sửa package, rồi chạy lại starci app check."
+  owner: op-retry
+  kind: check-finding
+
 CI_PARITY_DB_SKIPPED:
   title: "The database migration checks of the CI parity family could not run on this host"
   title_vi: "Không chạy được các bước kiểm tra migration database của họ CI parity trên máy này"

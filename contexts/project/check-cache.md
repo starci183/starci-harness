@@ -254,6 +254,11 @@ re-runs the programs, specs, proofs and builds that read it and keeps every othe
 `.gitattributes`, `turbo.json`) are no part: those rules run every run, and a cached step that reads one keys it by its hash. The quality profile of
 the policy is not a part (the verdict only counts error findings).
 
+A run rewrites the fingerprint file as a whole, so when a part differs the records of every family that reads it are removed (they were computed under the old part and
+cannot stand beside the new fingerprint), also those of a family the run did not select (`--gate types` after a bump of `@starci/hfs` removes the `check/hfs/` files and
+leaves that family's next run full). A lane then sees tracked cache files as deleted: that is the invalidation, not damage. Run the whole `starci app check` once to
+rewrite the folders and commit the rewrite with the change; `git checkout -- .starcistacks` restores records the next run removes again.
+
 A harness or tool package is keyed by its source, never by the version string or integrity of one build. When a `@starci` package or
 `starci-harness` is packed (`release publish` in CI and `deps publish-local` alike, `packStamped`), its manifest gets `starciSource`: the sha256 of the
 tracked files of its folder, by path and content, with a changed work-tree file named by its bytes so a dirty build never claims a commit's digest
@@ -320,7 +325,7 @@ untracked tool cache of slot `app.tool-cache`, or none.
 | stylelint | per file | the path's hash is unchanged and no stylesheet was added or removed | changed stylesheets; every one when the stylesheet set changed | `lint/fe/` |
 | unit specs and coverage | per spec, closure-scoped, with reads | the spec's closure key and the reads its run recorded are unchanged | specs whose closure holds a changed file, or that loaded a changed package or app file (coverage below); every spec on a runner change (`lock:test`, `node`, the preset, the jest configuration, a tsconfig the transform reads) | `test-coverage/` |
 | integration, e2e and contract specs | always | never | every run that runs them (on request only, by hand, on a local machine; `app check`, CI and the release gate run none: R12): they reach services, data and time a key cannot hold | none |
-| `tsc` per workspace program (`--gate types`) | scoped, with reads | the program's key and the reads `tsc --listFiles` reported (the TypeScript lib files, the `@types` and every package whose declarations it loaded, the app files outside its folders) are unchanged | any change the program reads: that program | `check/types/`; its `.tsbuildinfo` in the tool cache |
+| `tsc` per workspace program (`--gate types`) | scoped, with reads | the program's key (its folders and the folders of the built workspace packages it depends on, below) and the reads `tsc --listFiles` reported (the TypeScript lib files, the `@types` and every package whose declarations it loaded, the app files outside its folders) are unchanged | any change the program reads: that program | `check/types/`; its `.tsbuildinfo` in the tool cache |
 | CI build steps (typecheck, `build be`, each `build fe`) | per step | the step's command and environment, the Node major, every tracked file of the folders it builds (every tracked file for the typecheck) and of the app root but the lockfile, and the lockfile installs its manifests resolve are unchanged | any of them; a step killed or timed out stores nothing | `check/build/` (the verdict, green or red with its finding; never an artifact) |
 | database migration checks (`npm run db:lint`, `app db drift`) | per step | its command, the db rules' inputs and their baseline at the merge-base, the migration chain, the scratch database image, the entity list's import closure, the engine manifest, the installs the drift check loads (the closure's packages, `typeorm`, `typescript`, `pg`) and the hfs that judges are unchanged | any of them; a host without a database stores nothing | `check/build/` (the verdict) |
 | production dependency audit | always | never | every run that selects it: the registry's advisories change without the tree | none |
@@ -340,6 +345,17 @@ The `types` family keys each workspace's program like a side: an unchanged key r
 changed one runs that program's `tsc` in full. TypeScript's `.tsbuildinfo` speeds that run but is host state, not a
 result (it holds versions and signatures, not findings), so it stays in the untracked tool cache of slot
 `app.tool-cache` and is never committed.
+
+Before any program runs, the `types` step builds the workspace packages the programs resolve through a build output. A *built package* is a workspace
+package (a folder the root `package.json` `workspaces` names) whose `exports`, `main`, `module` or `types` points into a folder git does not track (`dist`);
+in a fresh tree that folder is absent and `tsc` would report every import of the package as a diagnostic that is no defect of the code. Each built package is
+built by its own `build` script (`npm run build --workspace <folder>` from the app root, one child through the governor), the built packages it depends on first.
+A build is skipped while its stamp (the tracked files of the package, those of the built packages it depends on and the lockfile) is unchanged and every output
+is present; the stamp is host state in the tool cache and is never committed. A package whose build fails, or whose manifest declares an output but no `build`
+script, is the finding `TYPES_PACKAGE_BUILD_FAILED` (one per package, with the last lines of the build); the programs that read it, and those that read a package
+that depends on it, do not run (they are reported incomplete and store nothing), so the failure is not hundreds of `TS_DIAGNOSTIC`. The key of a program
+includes the tracked files of every built package it depends on (its own `package.json` dependencies, then theirs), so a source change in the package re-runs
+exactly the programs that read it; the build output itself is no key part, and the dist files `tsc` listed are hashed again as reads.
 
 ### The structure pass's content rules
 
@@ -524,8 +540,10 @@ allow:
 - the lint ratchet reads the lint records of the run, so it comes after `lint`;
 - `checks` runs the project checks hfs.json declares (PROJECT-LINT-3) whenever the structure family runs, each a `build` child of the governor, and reads no other
   step's result;
+- `types` builds the workspace packages its programs resolve through a build output before its first `tsc` ([Which step reuses what](#which-step-reuses-what)),
+  so it needs no other step for them;
 - `build` runs CI's typecheck script (build:modules, then codegen, then tsc), `build:be` and each `build fe` in CI's order: its codegen and build:modules rewrite
-  the generated code and the root packages' dist that `types`, `lint`, `test` and `wiring` read, so it comes after those four;
+  the generated code that `lint`, `test` and `wiring` read, so it comes after those, and after `types`, which has already built what its programs read;
 - the Sonar scan uploads the findings and the lint report of every other step but the ratchet and runs only when they are green, so it comes last.
 
 `app check` itself holds no heavy-command slot: it is the orchestrator. Every heavy child a step starts (each tsc program, each ESLint chunk, the jest run, each

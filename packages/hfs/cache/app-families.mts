@@ -16,6 +16,8 @@ import { git as runGitText } from './git.mjs';
 import { toolCacheDir } from './run-log.mjs';
 import { untrackedProgramInputs } from './side-key.mjs';
 import { createJestEnvironment, installedSpecMerge, runTestFamily, shardArgs, type TestFamilyResult } from './test-family.mjs';
+import { buildPackages, builtPackagesOf, programsDependingOn, programsWithBuiltReads, TYPES_PACKAGE_BUILD_FAILED } from './built-packages.mjs';
+import type { ParityRun } from './parity-family.mjs';
 import { createTscRunner, runTypesFamily, type TypesFamilyResult, type TypesProgram } from './types-family.mjs';
 import { changedLinesFromDiff, gitRunner, lineCoverageOf, recordsAtCommit, runQualityFamily, type ChangedLines, type QualityFamilyResult } from './quality-baselines.mjs';
 import type { CheckSession, Finding } from './types.mjs';
@@ -43,11 +45,16 @@ export function programsOf(tracked: readonly string[]): TypesProgram[] {
 }
 
 /** `--types`: `tsc --noEmit` per workspace program through the app's TypeScript, reused by program key. */
-export async function runTypesForApp(session: CheckSession, { repoRoot, tracked, env, execute, concurrency }: { repoRoot: string; tracked: readonly string[]; env: NodeJS.ProcessEnv; execute?: HeavyNodeRun | undefined; concurrency?: ((programs: number) => number) | undefined }): Promise<{ result: TypesFamilyResult; findings: CheckFinding[] }> {
-  const programs = programsOf(tracked);
+export async function runTypesForApp(session: CheckSession, { repoRoot, tracked, env, execute, concurrency, parity, tsc }: { repoRoot: string; tracked: readonly string[]; env: NodeJS.ProcessEnv; execute?: HeavyNodeRun | undefined; concurrency?: ((programs: number) => number) | undefined; parity?: ParityRun | undefined; tsc?: Parameters<typeof runTypesFamily>[0]['run'] | undefined }): Promise<{ result: TypesFamilyResult; findings: CheckFinding[] }> {
+  const built = builtPackagesOf(repoRoot, tracked);
+  const programs = programsWithBuiltReads(programsOf(tracked), built, repoRoot);
   const trackedSet = new Set(tracked);
+  // The packages programs resolve through a build output are built first (built-packages.mts): a fresh tree holds no dist, and tsc would report every import of them.
+  const builds = parity === undefined || built.length === 0 ? undefined : await buildPackages({ session, repoRoot, built, toolCacheDir: toolCacheDir(repoRoot, env), env, run: parity });
+  const failedBuilds = builds?.failed ?? [];
+  const blocked = new Set(programsDependingOn(programs, built, new Set(failedBuilds.map((failed) => failed.pkg.name)), repoRoot));
   const result = await runTypesFamily({
-    session, programs, run: createTscRunner({ appRoot: repoRoot, execute }), toolCacheDir: toolCacheDir(repoRoot, env),
+    session, programs, blocked, run: tsc ?? createTscRunner({ appRoot: repoRoot, execute }), toolCacheDir: toolCacheDir(repoRoot, env),
     ...(concurrency === undefined ? {} : { concurrency }),
     inputsOf: (program) => {
       const rootPackage = program.name.startsWith(`${ROOT_PACKAGES}/`);
@@ -57,7 +64,8 @@ export async function runTypesForApp(session: CheckSession, { repoRoot, tracked,
       return { staged, untracked: untrackedProgramInputs(repoRoot, side, trackedSet).filter((file) => file.startsWith(prefix)) };
     },
   });
-  return { result, findings: result.findings.map((found) => asFinding(found, 'TS_DIAGNOSTIC', 'error', 'tsc')) };
+  const buildFindings: CheckFinding[] = failedBuilds.map(({ pkg, message }) => ({ code: TYPES_PACKAGE_BUILD_FAILED, level: 'error', engine: 'tsc', path: `${pkg.dir}/package.json`, message }));
+  return { result, findings: [...buildFindings, ...result.findings.map((found) => asFinding(found, 'TS_DIAGNOSTIC', 'error', 'tsc'))] };
 }
 
 /** `--test`: the unit specs of the back end through the app's own Jest, reused by closure key; the merged total is judged by `@starci/hfs` (the coverage proof). */

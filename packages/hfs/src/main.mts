@@ -130,6 +130,7 @@ import { liveStateFindings } from '../stack/local-live-checks.mjs';
 import { stackContext } from '../stack/context.mjs';
 import { COVERAGE_NEW_CODE, LINT_NEW_CODE, newCodeCoverageFindings, newCodeLintFinding, onChangedLine } from '../cache/new-code.mjs';
 import { committedLintCounts, rangeTouched, ratchetBase, ratchetFindings, sessionLintCounts, stagedTouched } from '../lint/ratchet.mjs';
+import { TYPES_PACKAGE_BUILD_FAILED } from '../cache/built-packages.mjs';
 import { newCodeSince, runSonarForApp, runTestForApp, runTestShard, runTypesForApp } from '../cache/app-families.mjs';
 import { TSC_HEAP_ENV } from '../cache/types-family.mjs';
 import { createDiskSession, type DiskSession } from '../cache/session.mjs';
@@ -658,7 +659,10 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
     // The programs run together as far as the room at this step's start holds the tsc cap and the lanes are free (the step runs alone, so it sizes itself on the whole room).
     const cap = Number(io.env[TSC_HEAP_ENV]);
     const concurrency = (programs: number): number => Math.min(programs, Math.max(1, step.lanes.free()), io.heavyRoom === undefined || !(cap > 0) ? programs : Math.max(1, Math.floor(io.heavyRoom() / cap)));
-    found.set('types', (await runTypesForApp(session, { repoRoot, tracked, env: io.env, execute: step.execute, concurrency })).findings);
+    const typed = (await runTypesForApp(session, { repoRoot, tracked, env: io.env, execute: step.execute, concurrency, parity: step.parity })).findings;
+    // A package build that failed carries its catalog explanation; the `tsc` diagnostics are the compiler's own text.
+    const failedBuilds = typed.filter((finding) => finding.code === TYPES_PACKAGE_BUILD_FAILED);
+    found.set('types', [...withWhy(failedBuilds, readWhy(skillRoot, failedBuilds.length > 0 ? [TYPES_PACKAGE_BUILD_FAILED] : [])), ...typed.filter((finding) => finding.code !== TYPES_PACKAGE_BUILD_FAILED)]);
   });
   if (session !== undefined && selected.has('test')) {
     bodies.set('test', async (step) => {

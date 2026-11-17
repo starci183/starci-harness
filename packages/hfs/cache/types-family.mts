@@ -4,7 +4,8 @@
 // (`--listFiles`): each installed package by its lockfile digest (the TypeScript lib files, the `@types` and every package whose declarations the program loads) and
 // each app file outside those folders by its hash (package-closure.mts), so a package bump re-runs the programs that read the package and no other. An unchanged
 // key reuses the program's recorded diagnostics; a changed one runs that program's `tsc` in full. TypeScript's `.tsbuildinfo` speeds that run but is host state, not a result: it lives in the untracked tool cache and is
-// never written into the app, so never committed.
+// never written into the app, so never committed. The workspace packages a program resolves through a build output are built before the first program runs (built-packages.mts), and
+// the key of a program holds the tracked files of the built packages it depends on.
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
@@ -60,6 +61,8 @@ export interface TypesFamilyOptions {
   readonly inputsOf?: (program: TypesProgram) => ProgramInputs;
   /** How many programs run `tsc` together, asked once when the family starts, from the room then (given the programs to run); absent, every program at once. */
   readonly concurrency?: (programs: number) => number;
+  /** Programs that must not run now, because a package they read through its build output failed to build (built-packages.mts): reported incomplete, nothing of theirs stored. */
+  readonly blocked?: ReadonlySet<string>;
 }
 
 export interface TypesFamilyResult {
@@ -180,6 +183,7 @@ export async function runTypesFamily(options: TypesFamilyOptions): Promise<Types
   const judged = await Promise.all(programs.map(async (program) => {
     const inputs = options.inputsOf?.(program) ?? {};
     const key = programKey(program, session, inputs);
+    if (options.blocked?.has(program.name) === true) return { program, before: undefined, current: [] as Finding[], record: undefined, state: 'incomplete' as const };
     const before = previous.get(program.name);
     const held = before === undefined ? null : readsOfData(before.data);
     if (decision.mode === 'diff' && before !== undefined && held !== null && before.hash === keyWithReads(key, held, context)) return { program, before, current: before.findings, record: before as CacheRecord | undefined, state: 'reused' as const };
@@ -197,7 +201,7 @@ export async function runTypesFamily(options: TypesFamilyOptions): Promise<Types
   }));
   for (const { program, before, current, record, state } of judged) {
     if (state === 'reused') reused.push(program.name);
-    else ran.push(program.name);
+    else if (options.blocked?.has(program.name) !== true) ran.push(program.name);
     if (state === 'incomplete') incomplete.push(program.name);
     if (record !== undefined) records.push(record);
     const had = new Set((before?.findings ?? []).map(identity));
