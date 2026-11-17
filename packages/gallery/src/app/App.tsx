@@ -1,4 +1,5 @@
-import { CoreGrammarRoot, Heading, Tabs, Text } from "@starci/grammar/core"
+import { Button, CoreGrammarRoot, Heading, Tabs, Text } from "@starci/grammar/core"
+import { useState } from "react"
 import type { ReactElement } from "react"
 import { data } from "./data.ts"
 import { fill, labelsFor } from "../labels.ts"
@@ -25,7 +26,28 @@ function summary(): string {
     ].join(" · ")
 }
 
+const PANEL_KEY = "starci-gallery:explain-open"
+
+/** Whether the explanation panel is open: remembered per viewer, open when storage is blocked or empty. */
+function storedOpen(): boolean {
+    try {
+        return window.localStorage.getItem(PANEL_KEY) !== "0"
+    } catch {
+        return true
+    }
+}
+
 export function App(): ReactElement {
+    const [explainOpen, setExplainOpen] = useState(storedOpen)
+    const toggleExplain = (): void => {
+        const next = !explainOpen
+        setExplainOpen(next)
+        try {
+            window.localStorage.setItem(PANEL_KEY, next ? "1" : "0")
+        } catch {
+            // storage is blocked: the choice lasts until the page closes
+        }
+    }
     const [route, go] = useRoute()
     const screen = route.screen === null ? null : (model.screens[route.screen] ?? null)
     const open = (id: string): void => {
@@ -33,7 +55,7 @@ export function App(): ReactElement {
     }
     return (
         <CoreGrammarRoot>
-            <div className="sg-shell">
+            <div className="sg-shell" data-explain={explainOpen ? "open" : "closed"}>
                 <header className="sg-top">
                     <div className="sg-brand">
                         <Heading level={1}>{fill(labels.title, { app: data.app })}</Heading>
@@ -59,6 +81,11 @@ export function App(): ReactElement {
                         ]}
                     />
                     {screen !== null && !route.flows ? <ViewSwitches labels={labels} width={route.width} view={route.view} onChange={go} /> : null}
+                    {screen !== null && !route.flows ? (
+                        <Button intent="neutral" size="sm" onPress={toggleExplain}>
+                            {explainOpen ? labels.hideExplain : labels.showExplain}
+                        </Button>
+                    ) : null}
                 </header>
                 <nav className="sg-tree" aria-label={labels.screens}>
                     <Tree model={model} labels={labels} selected={route.screen} onSelect={open} />
@@ -73,7 +100,7 @@ export function App(): ReactElement {
                     ) : null}
                     {!route.flows && screen === null ? <Text tone="muted">{model.counts.total === 0 ? labels.empty : labels.screens}</Text> : null}
                 </main>
-                {!route.flows && screen !== null ? (
+                {!route.flows && screen !== null && explainOpen ? (
                     <aside className="sg-explain" aria-label={labels.explain}>
                         <ExplainPanel screen={screen} labels={labels} devUrl={devUrl} />
                     </aside>

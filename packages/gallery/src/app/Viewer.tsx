@@ -15,6 +15,9 @@ const base = (): string => import.meta.env.BASE_URL
 const PHONE_STAGE = 520
 /** The board pads its content by 1rem on each side (app.css `.sg-board`); the frames are scaled to what is left. */
 const BOARD_PADDING = 32
+/** Side by side holds while each column keeps at least this width; below it the two stack (a phone). */
+const MIN_COLUMN = 320
+const COLUMN_GAP = 16
 
 /** The width of an element, followed while the window is resized. */
 function useWidth<T extends HTMLElement>(): [RefObject<T | null>, number] {
@@ -99,8 +102,8 @@ export function Viewer({ screen, model, labels, width, view, onOpen }: ViewerPro
     const [ref, outer] = useWidth<HTMLDivElement>()
     const available = Math.max(outer - BOARD_PADDING, 0)
     const [split, setSplit] = useState(50)
-    const columns = view === "side" && available > 760 ? 2 : 1
-    const each = columns === 2 ? (available - 16) / 2 : available
+    const columns = view === "side" && available >= 2 * MIN_COLUMN + COLUMN_GAP ? 2 : 1
+    const each = columns === 2 ? (available - COLUMN_GAP) / 2 : available
     const cap = (value: number): number => (width === "390" ? Math.min(value, PHONE_STAGE) : value)
     return (
         <div ref={ref} className="sg-board">

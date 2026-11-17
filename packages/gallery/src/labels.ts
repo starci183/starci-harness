@@ -39,6 +39,8 @@ export interface Labels {
     readonly stateNoMatch: string
     readonly stateEditing: string
     readonly explain: string
+    readonly hideExplain: string
+    readonly showExplain: string
     readonly noExplain: string
     readonly noRegions: string
     readonly problemMissing: string
@@ -95,6 +97,8 @@ export const LABELS = Object.freeze({
         stateNoMatch: "no match",
         stateEditing: "editing",
         explain: "Explanation",
+        hideExplain: "Hide explanation",
+        showExplain: "Show explanation",
         noExplain: "This screen has no explanation yet.",
         noRegions: "BUG: no region yet",
         problemMissing: "missing {field}",
@@ -149,6 +153,8 @@ export const LABELS = Object.freeze({
         stateNoMatch: "không khớp",
         stateEditing: "đang soạn",
         explain: "Giải thích",
+        hideExplain: "Ẩn giải thích",
+        showExplain: "Hiện giải thích",
         noExplain: "Màn này chưa có giải thích.",
         noRegions: "LỖI: chưa có vùng nào",
         problemMissing: "thiếu {field}",
