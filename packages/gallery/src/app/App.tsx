@@ -1,4 +1,4 @@
-import { Badge, Button, CoreGrammarRoot, Heading, Tabs, Text } from "@starci/grammar/core"
+import { Badge, CoreGrammarRoot, Heading, IconButton, Tabs, Text, Tooltip } from "@starci/grammar/core"
 import { useState } from "react"
 import type { ReactElement } from "react"
 import { data } from "./data.ts"
@@ -69,16 +69,13 @@ export function App(): ReactElement {
             <div className="sg-shell" data-explain={explainOpen ? "open" : "closed"}>
                 <header className="sg-top">
                     <div className="sg-brand">
-                        <Heading level={1}>{fill(labels.title, { app: data.app })}</Heading>
-                        <Text size="sm" tone="muted" tabular>
-                            {summary()}
-                        </Text>
-                        <Legend labels={labels} />
-                        {model.counts.hidden > 0 ? (
-                            <Text size="xs" tone="muted">
-                                {fill(labels.hidden, { n: model.counts.hidden })}
+                        <div className="sg-title">
+                            <Heading level={1}>{fill(labels.title, { app: data.app })}</Heading>
+                            <Text size="xs" tone="muted" tabular>
+                                {model.counts.hidden > 0 ? `${summary()} · ${fill(labels.hidden, { n: model.counts.hidden })}` : summary()}
                             </Text>
-                        ) : null}
+                        </div>
+                        <Legend labels={labels} />
                     </div>
                     <Tabs
                         appearance="primary"
@@ -94,9 +91,10 @@ export function App(): ReactElement {
                     />
                     {screen !== null && !route.flows ? <ViewSwitches labels={labels} width={route.width} view={view} hasDesign={hasDesign} hasShot={hasShot} showView={!narrow} onChange={go} /> : null}
                     {screen !== null && !route.flows && !narrow ? (
-                        <Button intent="neutral" size="sm" onPress={toggleExplain}>
-                            {explainOpen ? labels.hideExplain : labels.showExplain}
-                        </Button>
+                        <Tooltip
+                            content={explainOpen ? labels.hideExplain : labels.showExplain}
+                            trigger={<IconButton glyph="panel-end" intent="neutral" size="sm" label={explainOpen ? labels.hideExplain : labels.showExplain} isActive={explainOpen} aria-expanded={explainOpen} onPress={toggleExplain} />}
+                        />
                     ) : null}
                 </header>
                 <nav className="sg-tree" aria-label={labels.screens}>
