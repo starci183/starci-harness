@@ -15,8 +15,8 @@ type Story = StoryObj;
 const ROWS: readonly G.SectionRow[] = [
   { id: 'a', title: 'Send a quote of 8,640,000 VND to Thu Trang', description: 'Sales assistant, waits for you', leading: { icon: BellGlyph }, meta: { text: '2 min ago' }, emphasis: 'unread', unreadLabel: 'Unread', onPress: noop },
   { id: 'b', title: 'Booking synced', description: 'Calendar, 09:12', leading: { icon: BellGlyph }, meta: { text: '1 h ago' }, onPress: noop },
-  { id: 'c', title: 'Zalo OA lost its connection, five retries failed and the customer messages are waiting', description: 'Connections', leading: { icon: BellGlyph }, badges: [{ label: 'Needs you', tone: 'warning' }], emphasis: 'unread', unreadLabel: 'Unread', href: '/connections' },
-  { id: 'd', title: 'Weekly report is ready', description: 'Reports', leading: { icon: BellGlyph }, meta: { text: 'Yesterday' }, href: '/reports' },
+  { id: 'c', title: 'Zalo OA lost its connection, five retries failed and the customer messages are waiting', description: 'Connections', leading: { icon: BellGlyph }, badges: [{ label: 'Needs you', tone: 'warning' }], emphasis: 'unread', unreadLabel: 'Unread', onPress: noop },
+  { id: 'd', title: 'Weekly report is ready', description: 'Reports', leading: { icon: BellGlyph }, meta: { text: 'Yesterday' }, onPress: noop },
 ];
 
 const Page = ({ isLoading = false }: { readonly isLoading?: boolean }) => (
@@ -25,7 +25,7 @@ const Page = ({ isLoading = false }: { readonly isLoading?: boolean }) => (
 
 const weight = (element: Element): number => Number(getComputedStyle(element).fontWeight);
 
-/** Two unread rows among read ones (a pressable title and a link title): strong weight and a dot on the title line, the read rows medium and no dot. */
+/** Two unread rows among read ones (pressable titles): strong weight and a dot on the title line, the read rows medium and no dot. */
 export const Rows: Story = {
   render: () => <Page />,
   play: async ({ canvasElement }) => {

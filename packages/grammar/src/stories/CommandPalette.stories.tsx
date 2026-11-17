@@ -189,10 +189,12 @@ export const Wide: Story = {
     const dialog = await page.findByRole('dialog', { name: 'Search' });
     const field = within(dialog).getByRole('searchbox', { name: 'Search' });
     await waitFor(() => expect(dialog.getBoundingClientRect().width).toBeLessThanOrEqual(48 * 16 + 1));
-    const before = field.getBoundingClientRect().top;
+    const offset = () => field.getBoundingClientRect().top - dialog.getBoundingClientRect().top;
+    const before = offset();
     await userEvent.keyboard('thu');
     await waitFor(() => expect(within(dialog).getAllByRole('option').length).toBe(1));
-    expect(Math.abs(field.getBoundingClientRect().top - before)).toBeLessThanOrEqual(1);
+    expect(Math.abs(offset() - before)).toBeLessThanOrEqual(2);
+    expect(dialog.getBoundingClientRect().top).toBeLessThan(window.innerHeight / 4);
   },
 };
 

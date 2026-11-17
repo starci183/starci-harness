@@ -142,12 +142,14 @@
      * THE COMMAND PALETTE (0.46.0) is a dialog that stands at the top of the page, not in its middle, so the results growing and shrinking while the person types
      * never move the field; on a phone (below 40rem) it fills the screen, as a `size="full"` dialog does.
      */
-    .starci-core-overlay-backdrop:has(.starci-core-command-palette) {
-        align-items: flex-start;
+    .starci-core-dialog-container:has(.starci-core-command-palette) {
+        justify-content: flex-start;
+        margin-block-start: var(--grammar-region-gap);
     }
 
-    .starci-core-dialog-container:has(.starci-core-command-palette) {
-        margin-block-start: var(--grammar-region-gap);
+    /* The vendor dialog centres itself with auto block margins; the palette keeps its top edge. */
+    .starci-core-dialog-container:has(.starci-core-command-palette) > .starci-core-dialog {
+        margin-block: 0;
     }
 
     @media (max-width: 40rem) {
