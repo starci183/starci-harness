@@ -2878,7 +2878,7 @@ rules:
       - {kind: hfs, id: data-sets}
   - id: R428
     code: STORAGE_PUBLIC_ROUTE_MISSING
-    law: "A dev environment that publishes anything (it declares `local.tunnel`, or a process whose environment holds a public https origin) and runs an object store (a `local.services[]` entry of `kind: object-store`, or the `component` of a `data.stores[]` of kind storage) routes its S3 API port on the dev tunnel: a `tunnel.routes[]` entry whose port is the store's port (STORAGE_PUBLIC_ROUTE_MISSING), never one that reaches the store's declared admin `console` port (STORAGE_PUBLIC_ROUTE_CONSOLE); every process that sets STORAGE_ENDPOINT, the internal address of its writes, also sets STORAGE_PUBLIC_URL to `https://<the host of a route to the store>`, so a link the app builds is never a loopback address, localhost or a container name (STORAGE_PUBLIC_LINK_INTERNAL). Stored data holds a bucket and a key, never a host (held by review and the app's specs); `starci app stack up --env <env> --execute` makes the ingress rule and the DNS record of each declared route, `stack verify` reads the public side. Production is not judged here."
+    law: "A dev environment that publishes anything (it declares `local.tunnel`, or a process whose environment holds a public https origin) and runs an object store (a `local.services[]` entry of `kind: object-store`, or the `component` of a `data.stores[]` of kind storage) routes its S3 API port on the dev tunnel: a `tunnel.routes[]` entry whose port is the store's port (STORAGE_PUBLIC_ROUTE_MISSING), never one that reaches the store's declared admin `console` port (STORAGE_PUBLIC_ROUTE_CONSOLE); every process that sets STORAGE_ENDPOINT, the internal address of its writes, also sets STORAGE_PUBLIC_URL to `https://<the host of a route to the store>`, so a link the app builds is never a loopback address, localhost or a container name (STORAGE_PUBLIC_LINK_INTERNAL). Stored data holds a bucket and a key, never a host (held by review and the app's specs); `starci app stack up --env <env> --execute` makes the ingress rule and the DNS record of each declared route, `stack verify` reads the public side. Production is not judged here. A process that sets the statics base (`NEXT_PUBLIC_STATICS_URL`, `VITE_STATICS_URL`, PROJECT-STATICS-4) in such an environment sets one that starts with `https://<the host of a route to the store>/`, otherwise STORAGE_PUBLIC_LINK_INTERNAL."
     failureCodes:
       - STORAGE_PUBLIC_ROUTE_MISSING
       - STORAGE_PUBLIC_ROUTE_CONSOLE
@@ -2968,3 +2968,32 @@ rules:
       - HFS_BRAND_PROMPT_INCOMPLETE
     enforcers:
       - {kind: hfs, id: brand}
+  - id: R438
+    code: HFS_STATICS_FILE_KIND
+    law: "statics/ at the app root holds the repo-owned media of the app and nothing else: files of the kinds png, jpg, jpeg, webp, avif, gif, svg, mp4 and webm and a <name>.prompt.yaml sidecar beside the image it prompted (HFS_STATICS_FILE_KIND, HFS_STATICS_PROMPT_ORPHAN for a sidecar with no image of that name, HFS_STATICS_PROMPT_SCHEMA for one that is not a YAML mapping with a non-empty `prompt`); every segment of a path under statics/, the file name before its extension included, is lowercase kebab-case, the extension is lowercase and the first segment is an area folder, because the path under statics/ is the staticsKey that code and data hold and the URL after the public base (HFS_STATICS_KEY); a file above 2 MiB is a warning and above 10 MiB an error (HFS_STATICS_FILE_SIZE), and the tree above 256 MiB an error (HFS_STATICS_TREE_SIZE). The sidecar's subject and basePrompt version are judged by R436 against `.starcistacks/brand/`."
+    failureCodes:
+      - HFS_STATICS_FILE_KIND
+      - HFS_STATICS_KEY
+      - HFS_STATICS_FILE_SIZE
+      - HFS_STATICS_TREE_SIZE
+      - HFS_STATICS_PROMPT_ORPHAN
+      - HFS_STATICS_PROMPT_SCHEMA
+    enforcers:
+      - {kind: hfs, id: statics-shape}
+  - id: R439
+    code: HFS_STATIC_ASSET_OUTSIDE_STATICS
+    law: "A tracked media file (png, jpg, jpeg, webp, avif, gif, svg, mp4, webm) under `fe/**/public/**` or `{fe,be}/**/src/**` is HFS_STATIC_ASSET_OUTSIDE_STATICS: move it to statics/<area>/ and reference it by its staticsKey. Exempt: the route metadata files Next.js reads by name (`src/app/{icon,favicon,apple-icon,opengraph-image,twitter-image}.*`), `public/favicon.ico` and the small build-time binaries under `be/**/src/assets/` (slot be.assets, HFS_ASSET_KIND)."
+    failureCodes:
+      - HFS_STATIC_ASSET_OUTSIDE_STATICS
+    enforcers:
+      - {kind: hfs, id: statics-outside}
+  - id: R440
+    code: STACK_STORAGE_MISSING
+    law: "A project ships its own MinIO, in development and in production, on one condition: it has statics/ (a file other than .gitkeep) or its back end needs object storage (the @starci/object-storage dependency, a `storage` custody member or a sealed storage-* secret). With the condition and no `storage` service in a dev docker-compose environment, or no `deploy.images.storage` in a lite production, the check refuses (STACK_STORAGE_MISSING); a declared storage service with no condition is a warning (STACK_STORAGE_UNUSED). The service is built from the managed .starcistacks/images/storage/Dockerfile: when statics/ holds media and the dev service does not build it, STACK_STORAGE_IMAGE_UNUSED; a service that builds it must have build.context the app root, build.dockerfile the override, image <project>-storage:local, STATICS_BUCKET, STATICS_PREFIX (kebab-case) and STATICS_PUBLIC (download or none), a healthcheck on /tmp/statics-ready and an existing statics/ folder, and the production `deploy.images.storage` is {app: storage} (STACK_STORAGE_IMAGE_SHAPE). The Dockerfile's own drift is HFS_MANAGED_FILE_DRIFT."
+    failureCodes:
+      - STACK_STORAGE_MISSING
+      - STACK_STORAGE_UNUSED
+      - STACK_STORAGE_IMAGE_UNUSED
+      - STACK_STORAGE_IMAGE_SHAPE
+    enforcers:
+      - {kind: hfs, id: storage-image}

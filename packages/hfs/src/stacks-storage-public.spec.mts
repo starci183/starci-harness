@@ -122,3 +122,13 @@ test('the DNS record is routed to the declared tunnel: its own ingress file and 
     fs.rmSync(home, { recursive: true, force: true });
   }
 });
+
+test('the statics base of a process in an environment with a tunnel must be https and a route host of the store (PROJECT-STATICS-4)', () => {
+  const withBase = (key: string, value: string): Json => stack((block) => { block.processes[0].env[key] = value; });
+  assert.deepEqual(codes(withBase('NEXT_PUBLIC_STATICS_URL', 'https://demo-local-files.example.org/demo-dev/statics')), []);
+  assert.deepEqual(codes(withBase('VITE_STATICS_URL', 'https://demo-local-files.example.org/demo-dev/statics')), []);
+  assert.deepEqual(codes(withBase('NEXT_PUBLIC_STATICS_URL', 'http://localhost:${port.storage}/demo-dev/statics')), ['STORAGE_PUBLIC_LINK_INTERNAL']);
+  assert.deepEqual(codes(withBase('VITE_STATICS_URL', 'https://other.example.org/demo-dev/statics')), ['STORAGE_PUBLIC_LINK_INTERNAL']);
+  const quiet = stack((block) => { delete block.tunnel; delete block.processes[0].env.STORAGE_PUBLIC_URL; block.processes[0].env.NEXT_PUBLIC_STATICS_URL = 'http://localhost:${port.storage}/demo-dev/statics'; });
+  assert.deepEqual(codes(quiet), [], 'an environment that publishes nothing keeps its loopback statics base');
+});

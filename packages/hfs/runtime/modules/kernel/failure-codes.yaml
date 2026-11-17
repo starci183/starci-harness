@@ -7250,3 +7250,102 @@ HFS_BRAND_PROMPT_INCOMPLETE:
   owner: op-retry
   kind: check-finding
   localOnly: true
+HFS_STATICS_FILE_KIND:
+  title: "A file under statics/ is not media or a prompt sidecar"
+  title_vi: "Tệp trong statics/ không phải media hay tệp prompt đi kèm"
+  meaning_vi: "statics/ chỉ chứa media (png, jpg, jpeg, webp, avif, gif, svg, mp4, webm) và <tên>.prompt.yaml đi kèm ảnh AI."
+  causes_vi:
+    - "Vi phạm R438 (PROJECT-STATICS-1)."
+  nextStep_vi: "Chuyển tệp ra khỏi statics/ (tài liệu vào docs/, dữ liệu vào seeds) hoặc đổi sang định dạng media được phép."
+  owner: op-retry
+  kind: check-finding
+HFS_STATICS_KEY:
+  title: "A path under statics/ is not a lowercase kebab-case key"
+  title_vi: "Đường dẫn trong statics/ không phải khoá kebab-case chữ thường"
+  meaning_vi: "Đường dẫn dưới statics/ là khoá (staticsKey) và là URL: mỗi đoạn, kể cả tên tệp, là chữ thường a-z, 0-9 và dấu gạch ngang đơn; phần mở rộng chữ thường; tệp nằm trong thư mục khu vực."
+  causes_vi:
+    - "Vi phạm R438 (PROJECT-STATICS-1)."
+  nextStep_vi: "Đổi tên thành kebab-case (vd. illustrations/empty/customers-v2.png) và cập nhật mọi staticsKey tham chiếu; đổi khoá khi ảnh đổi để tránh cache cũ."
+  owner: op-retry
+  kind: check-finding
+HFS_STATICS_FILE_SIZE:
+  title: "A static is above 2 MiB (warning) or 10 MiB (error)"
+  title_vi: "Một static vượt 2 MiB (cảnh báo) hoặc 10 MiB (lỗi)"
+  meaning_vi: "Mọi client tải tệp này nên nó phải nhỏ: trên 2 MiB là cảnh báo, trên 10 MiB là lỗi."
+  causes_vi:
+    - "Vi phạm R438 (PROJECT-STATICS-1)."
+  nextStep_vi: "Nén hoặc đổi kích thước ảnh; video dài không thuộc repo."
+  owner: op-retry
+  kind: check-finding
+HFS_STATICS_TREE_SIZE:
+  title: "statics/ holds more than 256 MiB"
+  title_vi: "statics/ vượt 256 MiB"
+  meaning_vi: "statics/ được nhúng vào image storage nên tổng không được vượt 256 MiB."
+  causes_vi:
+    - "Vi phạm R438 (PROJECT-STATICS-1)."
+  nextStep_vi: "Bỏ bớt hoặc nén; media của người dùng nằm trong object storage, không trong git."
+  owner: op-retry
+  kind: check-finding
+HFS_STATICS_PROMPT_ORPHAN:
+  title: "A prompt sidecar has no image beside it"
+  title_vi: "Tệp prompt không có ảnh cùng tên bên cạnh"
+  meaning_vi: "<tên>.prompt.yaml là prompt của một ảnh <tên>.<đuôi media> cùng thư mục."
+  causes_vi:
+    - "Vi phạm R438 (PROJECT-STATICS-1)."
+  nextStep_vi: "Xoá tệp prompt hoặc thêm ảnh tương ứng."
+  owner: op-retry
+  kind: check-finding
+HFS_STATICS_PROMPT_SCHEMA:
+  title: "A prompt sidecar is not a YAML mapping with a prompt"
+  title_vi: "Tệp prompt không phải YAML mapping có trường prompt"
+  meaning_vi: "Tệp prompt phải parse được thành mapping và có `prompt` là chuỗi không rỗng; subject và phiên bản basePrompt do R436 kiểm."
+  causes_vi:
+    - "Vi phạm R438 (PROJECT-STATICS-1)."
+  nextStep_vi: "Sửa YAML của tệp prompt."
+  owner: op-retry
+  kind: check-finding
+HFS_STATIC_ASSET_OUTSIDE_STATICS:
+  title: "A media file sits beside the code instead of in statics/"
+  title_vi: "Tệp media nằm cạnh mã thay vì trong statics/"
+  meaning_vi: "Ảnh, video của app nằm trong statics/<khu vực>/ và được tham chiếu bằng staticsKey; không để trong fe/**/public/** hay src/**."
+  causes_vi:
+    - "Vi phạm R439 (PROJECT-STATICS-3)."
+  nextStep_vi: "Chuyển tệp vào statics/<khu vực>/ rồi tham chiếu bằng staticsKey."
+  owner: op-retry
+  kind: check-finding
+STACK_STORAGE_MISSING:
+  title: "The project needs its own object store and declares none"
+  title_vi: "Dự án cần object store riêng nhưng chưa khai báo"
+  meaning_vi: "Dự án có statics/ (ngoài .gitkeep) hoặc back end dùng storage thì phải chạy MinIO riêng ở dev và production, build từ .starcistacks/images/storage/Dockerfile."
+  causes_vi:
+    - "Vi phạm R440 (PROJECT-STATICS-2)."
+  nextStep_vi: "Thêm service storage vào dev compose (và deploy.images.storage cho production lite) rồi chạy starci app sync --execute."
+  owner: op-retry
+  kind: check-finding
+STACK_STORAGE_UNUSED:
+  title: "A storage service is declared and nothing needs it"
+  title_vi: "Có service storage nhưng không cần dùng (cảnh báo)"
+  meaning_vi: "Không có statics/ (ngoài .gitkeep) và back end không dùng storage thì không cần MinIO."
+  causes_vi:
+    - "Vi phạm R440 (PROJECT-STATICS-2)."
+  nextStep_vi: "Gỡ service storage hoặc thêm statics hay phần dùng storage."
+  owner: op-retry
+  kind: check-finding
+STACK_STORAGE_IMAGE_UNUSED:
+  title: "statics/ holds media and the storage service does not build the storage image"
+  title_vi: "statics/ có media nhưng service storage không build image storage"
+  meaning_vi: "Chỉ image storage nạp statics vào bucket qua S3 API."
+  causes_vi:
+    - "Vi phạm R440 (PROJECT-STATICS-2)."
+  nextStep_vi: "Cho service storage build .starcistacks/images/storage/Dockerfile với context là gốc app."
+  owner: op-retry
+  kind: check-finding
+STACK_STORAGE_IMAGE_SHAPE:
+  title: "The storage service does not have the shape of the storage image"
+  title_vi: "Service storage sai hình dạng của image storage"
+  meaning_vi: "Service storage phải có build.context là gốc app, build.dockerfile là Dockerfile override, image <project>-storage:local, STATICS_BUCKET, STATICS_PREFIX, STATICS_PUBLIC và healthcheck /tmp/statics-ready; production khai báo deploy.images.storage là {app: storage}."
+  causes_vi:
+    - "Vi phạm R440 (PROJECT-STATICS-2)."
+  nextStep_vi: "Chạy starci app sync --execute để hội tụ service về hình dạng chuẩn."
+  owner: op-retry
+  kind: check-finding

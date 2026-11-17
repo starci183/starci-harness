@@ -7,6 +7,8 @@
 //   STORAGE_PUBLIC_LINK_INTERNAL   a process that sets STORAGE_ENDPOINT (the internal address of its writes) sets no STORAGE_PUBLIC_URL (the origin its
 //                                  links are built on), or one that is not `https://<the host of a route to the object store>`: a loopback address,
 //                                  `localhost`, a container service name or any other host is a link no browser or provider can follow.
+//                                a process that sets the statics base (NEXT_PUBLIC_STATICS_URL, VITE_STATICS_URL: PROJECT-STATICS-4) in an environment that declares a `tunnel`
+//                                sets one that does not start with `https://<the host of a route to the object store>/`: the statics of a browser are fetched from the store's public route.
 // Production is not judged here: its STORAGE_ENDPOINT is already a public host (the swarm stack and its ingress, R275).
 import { isPlainObject as plain } from '../../../engine/plain-object.mjs';
 import { normalizeLocal } from '../stack-local-config.mjs';
@@ -19,6 +21,8 @@ const STACK_FILE = '.starcistacks/application-stacks.yaml';
 /** The internal address of an object store's writes and the origin its links are built on: the two values an app receives (the `publicEndpoint` option of `@starci/object-storage`). */
 export const STORAGE_ENDPOINT_KEY = 'STORAGE_ENDPOINT';
 export const STORAGE_PUBLIC_KEY = 'STORAGE_PUBLIC_URL';
+/** The public base of the repo-owned statics a front end process receives (the web app, the gallery). */
+export const STATICS_URL_KEYS = Object.freeze(['NEXT_PUBLIC_STATICS_URL', 'VITE_STATICS_URL']);
 
 const list = (value: unknown): Parsed[] => (Array.isArray(value) ? value : []);
 const LOOPBACK = /^(?:localhost|127(?:\.\d{1,3}){3}|0\.0\.0\.0|\[?::1?\]?|[^.]*\.localhost)$/u;
@@ -65,6 +69,12 @@ export function storagePublicFindings(doc: Parsed): Finding[] {
       if (store.console !== undefined) for (const entry of routes.filter((candidate) => candidate.port === store.console)) at('STORAGE_PUBLIC_ROUTE_CONSOLE', `tunnel.routes.${entry.name}`, `the route ${entry.name} reaches the admin console of ${store.name}: publish the S3 API port only`, { service: store.name });
     }
     for (const run of local.processes) {
+      if (local.tunnel !== undefined) for (const key of STATICS_URL_KEYS) {
+        const base = run.env[key];
+        if (base === undefined) continue;
+        const host = /^https:\/\//u.test(base) ? hostOf(base) : null;
+        if (host === null || !storeHosts.has(host)) at('STORAGE_PUBLIC_LINK_INTERNAL', `processes.${run.name}.env`, `${key} must start with https://<the host of a tunnel route to the object store> (${storeHosts.size === 0 ? 'none declared' : [...storeHosts].join(', ')}), because a browser fetches the statics from the store's public route, not from the loopback`, { process: run.name, key });
+      }
       const endpoint = run.env[STORAGE_ENDPOINT_KEY];
       if (endpoint === undefined) continue;
       const where = `processes.${run.name}.env`;
