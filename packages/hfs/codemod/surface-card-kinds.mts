@@ -22,8 +22,12 @@ export interface SurfaceCardKindsReport {
 const PACKAGE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const GRAMMAR = /^@starci\/grammar(?:\/|$)/;
 const GENERATED = new Set(['node_modules', '.next', '.turbo', 'dist', 'coverage', '.git']);
-/** Props of `SurfaceListCard` that have no counterpart on `SurfaceCard kind="list"`. */
-const LIST_DROPPED = new Set(['depth', 'labelHidden', 'isVerdict', 'isScrollable']);
+/** Props of `SurfaceListCard` that have no counterpart on `Section kind="list"`. */
+const LIST_DROPPED = new Set(['depth', 'isVerdict', 'isScrollable']);
+/** Props of `SurfaceListCard` that `Section kind="list"` names differently. */
+const LIST_RENAMED: ReadonlyMap<string, string> = new Map([['label', 'title'], ['labelEnd', 'action'], ['note', 'caption']]);
+/** Props `Section kind="list"` takes under the name the list card gave them. */
+const LIST_KEPT = new Set(['ariaLabel', 'fact', 'count', 'meta', 'isAttention', 'headingLevel', 'id', 'description', 'caption', 'layout', 'empty', 'filter', 'isLoading', 'error', 'fill']);
 /** Props of `ListRow` a mechanical rewrite can carry into a list item. */
 const ROW_PROPS = new Set(['title', 'description', 'state', 'verdict', 'key']);
 /** Props of the card that are gone: dropped when they only restate the default, reported otherwise. */
@@ -34,15 +38,15 @@ const CARD_GONE: ReadonlyMap<string, { code: string; reason: string; defaultValu
   ['isScrollable', { code: 'CARD_SCROLL', reason: 'isScrollable is gone: a card sizes to its content; a region that scrolls is a Pane' }],
 ]);
 const REMOVED = new Map([
-  ['SurfaceListCard', 'SurfaceListCard is gone: a list is SurfaceCard kind="list"'],
+  ['SurfaceListCard', 'SurfaceListCard is gone: a list is Section kind="list"'],
   ['SurfaceAccordionCard', 'SurfaceAccordionCard is gone: an accordion is SurfaceCard kind="accordion" with title, meta and body per item'],
-  ['StaticStateRow', 'StaticStateRow is gone: a row is an item of SurfaceCard kind="list"'],
-  ['ListRow', 'ListRow is internal: a row is an item of SurfaceCard kind="list"'],
+  ['StaticStateRow', 'StaticStateRow is gone: a row is an item of Section kind="list"'],
+  ['ListRow', 'ListRow is internal: a row is an item of Section kind="list"'],
 ]);
 
 interface Edit { start: number; end: number; text: string }
 
-/** Migrate the list, stat-strip and dropped-prop uses of the card with source edits; every other case gains a finding. */
+/** Migrate the list (into `Section kind="list"`), stat-strip and dropped-prop uses of the card with source edits; every other case gains a finding. */
 export function transformSurfaceCardKinds({ ts, text, file = 'component.tsx' }: { ts: Ts; text: string; file?: string }): { text: string; changes: SurfaceCardKindsChange[]; findings: SurfaceCardKindsFinding[] } {
   const changes: SurfaceCardKindsChange[] = [];
   const findings: SurfaceCardKindsFinding[] = [];
@@ -70,14 +74,14 @@ export function transformSurfaceCardKinds({ ts, text, file = 'component.tsx' }: 
   };
   const change = (node: Node, code: string, from: string, to: string): void => { changes.push({ file, ...sourceLocation(source, node), code, from, to }); };
   const gone = new Set<Node>();
-  let needsCard = false;
+  let needsSection = false;
 
   const exportOf = (tag: TsTypes.JsxTagNameExpression): string | null => {
     if (ts.isIdentifier(tag)) return bindings.get(tag.text)?.imported ?? null;
     return ts.isPropertyAccessExpression(tag) && ts.isIdentifier(tag.expression) && namespaces.has(tag.expression.text) ? tag.name.text : null;
   };
-  const cardLocal = [...bindings.values()].find(binding => binding.imported === 'SurfaceCard');
-  const cardTag = (tag: TsTypes.JsxTagNameExpression): string => ts.isPropertyAccessExpression(tag) ? `${tag.expression.getText(source)}.SurfaceCard` : cardLocal ? cardLocal.specifier.name.text : 'SurfaceCard';
+  const sectionLocal = [...bindings.values()].find(binding => binding.imported === 'Section');
+  const sectionTag = (tag: TsTypes.JsxTagNameExpression): string => ts.isPropertyAccessExpression(tag) ? `${tag.expression.getText(source)}.Section` : sectionLocal ? sectionLocal.specifier.name.text : 'Section';
   const attributes = (opening: Opening): Map<string, TsTypes.JsxAttribute> => new Map(opening.attributes.properties.filter(ts.isJsxAttribute).map((prop): [string, TsTypes.JsxAttribute] => [prop.name.getText(source), prop]));
   const spread = (opening: Opening): boolean => opening.attributes.properties.some(ts.isJsxSpreadAttribute);
   const literal = (attribute: TsTypes.JsxAttribute | undefined): string | null => {
@@ -163,14 +167,25 @@ export function transformSurfaceCardKinds({ ts, text, file = 'component.tsx' }: 
       itemsText = expression.getText(source);
     } else { flag(element, 'LIST_CHILDREN', 'the rows are not written as direct rows or one .map', component); return; }
 
+    const props = attributes(opening);
+    if (props.has('footer')) { flag(element, 'LIST_CARD_BODY', 'a footer (and figures or a paging row) stays on a SurfaceCard that holds the list: put `<Section kind="list" ... />` in the card body, and give the section the caption', component); return; }
+    const height = props.get('height');
+    if (height && literal(height) !== 'fill' && literal(height) !== 'auto') { flag(height, 'LIST_HEIGHT', 'height is gone from the list: a list that fills its host is `fill`, any other height is a Pane or a Grid cell', component); return; }
+    const named = props.has('label') && props.has('ariaLabel');
+    const hidden = props.has('labelHidden') && !(props.get('labelHidden')?.initializer?.getText(source) ?? '').includes('false');
     const kept: string[] = [];
     let hasEmpty = false;
     for (const prop of opening.attributes.properties) {
       if (!ts.isJsxAttribute(prop)) continue;
       const name = prop.name.getText(source);
-      if (LIST_DROPPED.has(name)) { change(prop, 'LIST_PROP_DROPPED', prop.getText(source), ''); continue; }
+      const text_ = prop.getText(source);
+      if (LIST_DROPPED.has(name) || name === 'labelHidden' || (name === 'ariaLabel' && named)) { change(prop, 'LIST_PROP_DROPPED', text_, ''); continue; }
+      if (name === 'height') { if (literal(prop) === 'fill') { kept.push('fill'); change(prop, 'LIST_PROP_RENAMED', text_, 'fill'); } else change(prop, 'LIST_PROP_DROPPED', text_, ''); continue; }
+      const target = name === 'label' && hidden ? 'ariaLabel' : LIST_RENAMED.get(name);
+      if (target) { const renamed = text_.replace(name, target); kept.push(renamed); change(prop, 'LIST_PROP_RENAMED', text_, renamed); continue; }
       if (name === 'empty') hasEmpty = true;
-      kept.push(name === 'isLoading' ? prop.getText(source).replace('isLoading', 'isSkeleton') : prop.getText(source));
+      if (!LIST_KEPT.has(name) && name !== 'key') flag(prop, 'LIST_PROP_UNKNOWN', `${name} has no counterpart on Section kind="list": the prop is kept as written; move it by hand`, component);
+      kept.push(text_);
     }
     if (!hasEmpty) {
       kept.push('empty={null}');
@@ -178,15 +193,15 @@ export function transformSurfaceCardKinds({ ts, text, file = 'component.tsx' }: 
     }
     let itemsAttribute = `items={${itemsText}}`;
     if (rowEdit) itemsAttribute = `items={${itemsText.slice(0, rowEdit.start)}${rowEdit.text}${itemsText.slice(rowEdit.end)}}`;
-    const tag = cardTag(opening.tagName);
-    needsCard = true;
+    const tag = sectionTag(opening.tagName);
+    needsSection = true;
     edit(element.getStart(source), element.end, `<${tag} kind="list" ${kept.join(' ')} ${itemsAttribute} />`);
     const markGone = (node: Node): void => {
       if ((ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node) || ts.isJsxClosingElement(node)) && ts.isIdentifier(node.tagName)) gone.add(node.tagName);
       ts.forEachChild(node, markGone);
     };
     markGone(element);
-    change(element, 'SURFACE_LIST_CARD_KIND', 'SurfaceListCard', 'SurfaceCard kind="list"');
+    change(element, 'SURFACE_LIST_CARD_KIND', 'SurfaceListCard', 'Section kind="list"');
   };
 
   const convertCard = (element: Element, opening: Opening): void => {
@@ -255,7 +270,7 @@ export function transformSurfaceCardKinds({ ts, text, file = 'component.tsx' }: 
   };
   visit(source);
 
-  // Imports: add SurfaceCard when a rewrite needs it, drop what nothing uses, report what is still used.
+  // Imports: add Section when a rewrite needs it, drop what nothing uses, report what is still used.
   const stillUsed = new Map<string, Node>();
   const scan = (node: Node): void => {
     if (ts.isImportDeclaration(node)) return;
@@ -273,17 +288,17 @@ export function transformSurfaceCardKinds({ ts, text, file = 'component.tsx' }: 
     if (stillUsed.has(local)) flag(binding.specifier, 'REMOVED_COMPONENT', REMOVED.get(binding.imported) ?? '');
     else dropped.add(binding.specifier);
   }
-  const addCard = needsCard && !cardLocal;
+  const addSection = needsSection && !sectionLocal;
   let added = false;
   for (const declaration of declarations) {
     const clause = declaration.importClause;
     const named = clause?.namedBindings;
     if (!clause || !named || !ts.isNamedImports(named)) continue;
-    const insert: boolean = addCard && !added;
+    const insert: boolean = addSection && !added;
     if (!insert && !named.elements.some(specifier => dropped.has(specifier))) continue;
     added = added || insert;
     const kept = named.elements.filter(specifier => !dropped.has(specifier)).map(specifier => specifier.getText(source));
-    const list = [...kept, ...(insert ? ['SurfaceCard'] : [])];
+    const list = [...kept, ...(insert ? ['Section'] : [])];
     if (!list.length) edit(declaration.getStart(source), declaration.end + (text.startsWith('\r\n', declaration.end) ? 2 : text.startsWith('\n', declaration.end) ? 1 : 0), '');
     else edit(named.getStart(source), named.end, /\n/.test(named.getText(source)) ? `{\n  ${list.join(',\n  ')},\n}` : `{ ${list.join(', ')} }`);
   }

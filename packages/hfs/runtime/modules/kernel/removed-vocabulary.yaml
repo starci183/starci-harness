@@ -540,7 +540,7 @@ removed:
     kind: grammar
     name: List
     as: grammar component
-    use: "Section kind=\"list\" for a long list, a list card for a short one"
+    use: "Section kind=\"list\""
     scan: false
   - id: grammar-listitem
     kind: grammar
@@ -618,7 +618,7 @@ removed:
     kind: grammar
     name: SurfaceListCard
     as: grammar component
-    use: "SurfaceCard kind=\"list\""
+    use: "Section kind=\"list\""
     shipped: true
     scan: false
   - id: grammar-surfaceaccordioncard
@@ -632,7 +632,7 @@ removed:
     kind: grammar
     name: StaticStateRow
     as: grammar component
-    use: "an item of SurfaceCard kind=\"list\" with its state field"
+    use: "an item of Section kind=\"list\" with its state field"
     scan: false
   - id: grammar-formgrid
     kind: grammar

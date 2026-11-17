@@ -2422,7 +2422,7 @@ rules:
 
   - id: R352
     code: FE_COMMAND_FILLS_HEADER
-    law: "A page or pane command hugs its label and sits at the end of its header row: a Grammar Button with width=\"fill\" in the actions of a Page header or the labelEnd of a SurfaceCard is refused; width=\"fill\" is for a form submit, an auth panel and a phone action bar, which a file cannot show and the rule does not judge."
+    law: "A page or pane command hugs its label and sits at the end of its header row: a Grammar Button with width=\"fill\" in the actions of a Page header, the labelEnd of a SurfaceCard or the action of a Section is refused; width=\"fill\" is for a form submit, an auth panel and a phone action bar, which a file cannot show and the rule does not judge."
     failureCodes:
       - FE_COMMAND_FILLS_HEADER
     enforcers:

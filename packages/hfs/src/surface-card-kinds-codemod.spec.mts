@@ -11,21 +11,31 @@ const GRAMMAR = '@starci/grammar/core';
 const run = (names: string, body: string) => transformSurfaceCardKinds({ ts, text: `import { ${names} } from '${GRAMMAR}';\n${body}`, file: 'fe/component.tsx' });
 const codes = (result: { findings: { code: string }[] }) => result.findings.map(finding => finding.code);
 
-test('1. a list card of direct ListRows becomes kind="list" with items, and the old imports go', () => {
-  const result = run('SurfaceListCard, ListRow', 'const A = () => <SurfaceListCard label="Rules" depth="nested" isLoading={x}><ListRow key="a" title="One" description="d" state="negative" /><ListRow key="b" title={t} /></SurfaceListCard>;');
-  assert.equal(result.text, `import { SurfaceCard } from '${GRAMMAR}';\nconst A = () => <SurfaceCard kind="list" label="Rules" isSkeleton={x} empty={null} items={[{ id: "a", title: "One", description: "d", state: "negative" }, { id: "b", title: t }]} />;`);
+test('1. a list card of direct ListRows becomes Section kind="list" with items, and the old imports go', () => {
+  const result = run('SurfaceListCard, ListRow', 'const A = () => <SurfaceListCard label="Rules" labelEnd={add} note="Locked" height="fill" depth="nested" isLoading={x}><ListRow key="a" title="One" description="d" state="negative" /><ListRow key="b" title={t} /></SurfaceListCard>;');
+  assert.equal(result.text, `import { Section } from '${GRAMMAR}';\nconst A = () => <Section kind="list" title="Rules" action={add} caption="Locked" fill isLoading={x} empty={null} items={[{ id: "a", title: "One", description: "d", state: "negative" }, { id: "b", title: t }]} />;`);
   assert.deepEqual(codes(result), ['LIST_EMPTY']);
 });
 
-test('1. an existing SurfaceCard import is reused and an empty prop is kept', () => {
-  const result = run('SurfaceCard, SurfaceListCard, ListRow', 'const A = () => <SurfaceListCard label="Rules" empty={<b />}>{rules.map((rule) => <ListRow key={rule.id} title={rule.title} verdict="success" />)}</SurfaceListCard>;');
-  assert.equal(result.text, `import { SurfaceCard } from '${GRAMMAR}';\nconst A = () => <SurfaceCard kind="list" label="Rules" empty={<b />} items={rules.map((rule) => ({ id: rule.id, title: rule.title, verdict: "success" }))} />;`);
+test('1. an existing Section import is reused and an empty prop is kept', () => {
+  const result = run('Section, SurfaceListCard, ListRow', 'const A = () => <SurfaceListCard label="Rules" empty={<b />}>{rules.map((rule) => <ListRow key={rule.id} title={rule.title} verdict="success" />)}</SurfaceListCard>;');
+  assert.equal(result.text, `import { Section } from '${GRAMMAR}';\nconst A = () => <Section kind="list" title="Rules" empty={<b />} items={rules.map((rule) => ({ id: rule.id, title: rule.title, verdict: "success" }))} />;`);
   assert.deepEqual(result.findings, []);
 });
 
 test('1. StaticStateRow items become list items with label as title', () => {
   const result = run('SurfaceListCard, StaticStateRow', 'const A = () => <SurfaceListCard ariaLabel="Checks"><StaticStateRow item={{ id: "a", label: "Email", state: "affirmative" }} /></SurfaceListCard>;');
   assert.match(result.text, /items=\{\[\{ id: "a", title: "Email", state: "affirmative" \}\]\}/);
+});
+
+test('1. a hidden label becomes the aria name, a footer stays on a card, and an unknown prop is reported', () => {
+  const hidden = run('SurfaceListCard', 'const A = () => <SurfaceListCard label="Rules" labelHidden empty={null} />;');
+  assert.match(hidden.text, /<Section kind="list" ariaLabel="Rules" empty=\{null\} items=\{\[\]\} \/>/);
+  const footer = run('SurfaceListCard', 'const A = () => <SurfaceListCard label="Rules" footer={f} empty={null} />;');
+  assert.deepEqual(codes(footer).sort(), ['LIST_CARD_BODY', 'REMOVED_COMPONENT']);
+  assert.match(footer.text, /<SurfaceListCard label="Rules" footer=\{f\}/);
+  const unknown = run('SurfaceListCard', 'const A = () => <SurfaceListCard label="Rules" empty={null} extra={1} />;');
+  assert.deepEqual(codes(unknown), ['LIST_PROP_UNKNOWN']);
 });
 
 test('1. a ListRow with leading, badges, actions or children keeps its source and is reported', () => {
@@ -69,10 +79,10 @@ test('6. the app run is a dry run by default, --execute writes, and findings exi
   const dry = migrateSurfaceCardKinds({ root, ts });
   assert.equal(fs.readFileSync(file, 'utf8'), original);
   assert.deepEqual(dry.filesChanged, ['fe/component.tsx']);
-  assert.match(surfaceCardKindsMarkdown(dry), /1 rewrites, 0 left for a person/);
+  assert.match(surfaceCardKindsMarkdown(dry), /2 rewrites, 0 left for a person/);
   assert.ok(CODEMODS.includes('surface-card-kinds'));
   let out = '';
   assert.equal(codemodMain(['surface-card-kinds', '--execute'], { cwd: root, stdout: text => { out += text; } }), 0);
-  assert.match(fs.readFileSync(file, 'utf8'), /<SurfaceCard kind="list" label="Rules" empty=\{null\} items=\{\[\{ id: "a", title: "One" \}\]\} \/>/);
+  assert.match(fs.readFileSync(file, 'utf8'), /<Section kind="list" title="Rules" empty=\{null\} items=\{\[\{ id: "a", title: "One" \}\]\} \/>/);
   assert.match(out, /surface-card-kinds/);
 });

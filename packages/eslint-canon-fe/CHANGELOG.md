@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.20.1 - 2026-11-17
+
+- Changed: `no-table-in-card` (R351) names `Section kind="list"` (title on the section, note as its `caption`, no card around it) for plain rows, since Grammar 0.43.0 removed `SurfaceCard kind="list"`. `no-fill-command-in-header` (R352) also judges the `action` of a `Section`.
+
 ## 9.20.0 - 2026-11-14
 
 - Changed: cut with `@starci/hfs` 6.13.0 (peer line); requires `@starci/hfs` `~6.13.0`. No rule changes.

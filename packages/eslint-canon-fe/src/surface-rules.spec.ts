@@ -256,14 +256,14 @@ for (const edition of ["lite", "full"]) {
 
 for (const edition of ["lite", "full"]) {
   test(`${edition}: a DataTable is not placed in a SurfaceCard, here or through a component of the file`, () => {
-    const tables = 'import { SurfaceCard, DataTable } from "@starci/grammar/core"; '
+    const tables = 'import { SurfaceCard, Section, DataTable } from "@starci/grammar/core"; '
     const table = { messageId: "table" }
     assert.doesNotThrow(() => tester().run("no-table-in-card", noTableInCard, {
       valid: [
         // a table in its section, with no card around it
         tables + 'const A = () => <section><DataTable label="Members" columns={c} rows={r} renderCell={f} emptyContent={null} /></section>',
-        // plain rows are a list card, the table is not inside a card
-        tables + 'const A = () => <SurfaceCard kind="list" label="Rules" footer="Locked" items={rows} empty={null} />',
+        // plain rows are a list Section, no card around it
+        tables + 'const A = () => <Section kind="list" title="Rules" caption="Locked" items={rows} empty={null} />',
         // a table in a component no card renders
         tables + 'const T = () => <DataTable label="a" columns={c} rows={r} renderCell={f} emptyContent={null} />; const A = () => <section><T /></section>',
         // a table that is not the Grammar's
@@ -293,12 +293,13 @@ for (const edition of ["lite", "full"]) {
 
 for (const edition of ["lite", "full"]) {
   test(`${edition}: a command in a page or card header hugs its label`, () => {
-    const head = 'import { PageHeader, SurfaceCard, Button, Form } from "@starci/grammar/core"; '
+    const head = 'import { PageHeader, Section, SurfaceCard, Button, Form } from "@starci/grammar/core"; '
     const fill = { messageId: "fill" }
     assert.doesNotThrow(() => tester().run("no-fill-command-in-header", noFillCommandInHeader, {
       valid: [
         head + 'const A = () => <PageHeader title="a" actions={<Button intent="commit">Add</Button>} />',
         head + 'const A = () => <SurfaceCard label="a" labelEnd={<Button intent="neutral" width="content">Edit</Button>} />',
+        head + 'const A = () => <Section kind="list" title="a" action={<Button intent="neutral" width="content">Edit</Button>} items={[]} empty={null} />',
         // a fill button in a form, a card body or a phone action bar is not a header command
         head + 'const A = () => <Form><Button intent="commit" width="fill" type="submit">Save</Button></Form>',
         head + 'const A = () => <SurfaceCard label="a"><Button intent="commit" width="fill">Continue</Button></SurfaceCard>',
@@ -307,7 +308,8 @@ for (const edition of ["lite", "full"]) {
       invalid: [
         { code: head + 'const A = () => <PageHeader title="a" actions={<Button intent="commit" width="fill">Add</Button>} />', errors: [fill] },
         { code: head + 'const A = () => <SurfaceCard label="a" labelEnd={<Button intent="neutral" width="fill">Edit</Button>} />', errors: [fill] },
-        { code: head + 'const A = () => <SurfaceCard kind="list" label="a" labelEnd={<div><Button width={"fill"}>Add</Button></div>} items={[]} empty={null} />', errors: [fill] },
+        { code: head + 'const A = () => <SurfaceCard label="a" labelEnd={<div><Button width={"fill"}>Add</Button></div>} />', errors: [fill] },
+        { code: head + 'const A = () => <Section kind="list" title="a" action={<div><Button width={"fill"}>Add</Button></div>} items={[]} empty={null} />', errors: [fill] },
       ],
     }))
   })
@@ -354,7 +356,7 @@ for (const edition of ["lite", "full"]) {
       ],
       invalid: [
         { code: head + 'const A = () => <Section title="Rules"><SurfaceCard label="Rules">x</SurfaceCard></Section>', errors: [header] },
-        { code: head + 'const A = () => <Section title={t("rules")} action={<b />}><SurfaceCard kind="list" ariaLabel={t("rules")} items={[]} empty={null} /></Section>', errors: [header, name] },
+        { code: head + 'const A = () => <Section title={t("rules")} action={<b />}><SurfaceCard ariaLabel={t("rules")}>x</SurfaceCard></Section>', errors: [header, name] },
         { code: head + 'const A = () => <Section title="Rules"><SurfaceCard kind="accordion" ariaLabel="Other" items={[]} onItemOpenChange={noop} /></Section>', errors: [header] },
         // a repeated name is refused even under several cards
         { code: head + 'const A = () => <Section title="Rules"><SurfaceCard ariaLabel="Rules">x</SurfaceCard><SurfaceCard label="b">y</SurfaceCard></Section>', errors: [name] },

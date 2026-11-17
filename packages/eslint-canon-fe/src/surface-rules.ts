@@ -514,7 +514,7 @@ const standsInCard = (context: AnyContext, node: Node, seen: Set<string>): boole
   return usages.some((usage) => standsInCard(context, usage, seen))
 }
 
-/** A table is not placed in a SurfaceCard: plain rows are a `SurfaceCard kind="list"` with the note in its footer. */
+/** A table is not placed in a SurfaceCard: plain rows are a `Section kind="list"` with its title on the section and the note as its `caption`, no card around it. */
 export const noTableInCard = defineRule({
   meta: {
     type: "problem",
@@ -522,7 +522,7 @@ export const noTableInCard = defineRule({
     schema: [],
     messages: {
       table:
-        "FE_TABLE_IN_CARD: this DataTable stands inside a SurfaceCard (here or in the component that renders it). Plain rows with a few facts are a `SurfaceCard kind=\"list\"` with the label outside and the note in its `footer`; a table that compares records across many columns sits in its section with its label outside, with no card around it.",
+        "FE_TABLE_IN_CARD: this DataTable stands inside a SurfaceCard (here or in the component that renders it). Plain rows with a few facts are a `Section kind=\"list\"` with its `title` on the section and the note as its `caption`, and no card around it; a table that compares records across many columns sits in its section with its label outside, with no card around it.",
     },
   },
   create(context) {
@@ -536,17 +536,18 @@ export const noTableInCard = defineRule({
   },
 })
 
-/** The header slots whose command hugs its label: `PageHeader` `actions` and the `labelEnd` of a card or a list card. */
+/** The header slots whose command hugs its label: `PageHeader` `actions` and the `labelEnd` of a card and the `action` of a `Section` (a list section included). */
 const HEADER_SLOTS = new Map<string, readonly string[]>([
   ["PageHeader", ["actions"]],
   ["SurfaceCard", ["labelEnd"]],
+  ["Section", ["action"]],
 ])
 
 /** True when the Button's own opening element sets `width="fill"`. */
 const fillsWidth = (context: AnyContext, opening: TSESTree.JSXOpeningElement): boolean =>
   opening.attributes.some((entry) => propStrings(context, entry, "width", "variant").some((value) => value.text === "fill"))
 
-/** The header slot (`PageHeader actions`, `labelEnd`) a node is written in, or null. */
+/** The header slot (`PageHeader actions`, `labelEnd`, `Section action`) a node is written in, or null. */
 const headerSlotOf = (context: AnyContext, node: Node): string | null => {
   for (let current: Node | undefined = node.parent; current; current = current.parent) {
     if (current.type !== "JSXAttribute" || current.name.type !== "JSXIdentifier") continue

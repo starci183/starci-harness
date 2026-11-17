@@ -36,8 +36,8 @@ const GENERATED = new Set(['node_modules', '.next', '.turbo', 'dist', 'coverage'
 const UNWRAPPED = new Set(['CollectionItem', 'ItemActions', 'ToolbarActions']);
 /** Exports a person migrates: the finding sits on the import (and on a namespace member use). */
 const REMOVED: ReadonlyMap<string, { code: string; reason: string }> = new Map([
-  ['List', { code: 'LIST_REMOVED', reason: 'List is gone: a long list that searches or filters is Section kind="list" with items (rows from data), a short one is SurfaceCard kind="list"' }],
-  ['ListItem', { code: 'LIST_REMOVED', reason: 'ListItem is gone: a row is an item of Section kind="list" or of a list card; custom content goes in the item detail field' }],
+  ['List', { code: 'LIST_REMOVED', reason: 'List is gone: a long list that searches or filters is Section kind="list" with items (rows from data)' }],
+  ['ListItem', { code: 'LIST_REMOVED', reason: 'ListItem is gone: a row is an item of Section kind="list"; custom content goes in the item detail field' }],
   ['LeadingNumber', { code: 'LEADING_NUMBER_REMOVED', reason: 'LeadingNumber is gone: a row of an ordered list takes position: n' }],
   ['Label', { code: 'LABEL_REMOVED', reason: 'Label is gone: a card names itself with label, a field with its own label prop' }],
   ['RegionProps', { code: 'SECTION_TYPES', reason: 'RegionProps is gone: type the section as SectionProps' }],

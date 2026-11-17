@@ -46,7 +46,7 @@ export const why = {
   },
   "no-fill-command-in-header": {
     code: "FE_COMMAND_FILLS_HEADER",
-    en: "`<file>` stretches a command in a page or card header (`PageHeader actions`, `labelEnd`) with `width=\"fill\"`.",
+    en: "`<file>` stretches a command in a page or card header (`PageHeader actions`, `labelEnd`, `Section action`) with `width=\"fill\"`.",
     fix: "A page or pane command hugs its label and sits at the end of its header row: drop `width`. `width=\"fill\"` is for a form submit, an auth panel and a phone action bar.",
   },
   "no-selectable-tag-group": {
@@ -62,7 +62,7 @@ export const why = {
   "no-table-in-card": {
     code: "FE_TABLE_IN_CARD",
     en: "`<file>` puts a DataTable inside a SurfaceCard (directly, or in a component of the file that a SurfaceCard encloses).",
-    fix: "Plain rows with a few facts are a SurfaceCard kind=\"list\" with the label outside and the note in its footer; a comparison table sits in its section with no card around it.",
+    fix: "Plain rows with a few facts are a Section kind=\"list\" with its title on the section and the note as its caption, no card around it; a comparison table sits in its section with no card around it.",
   },
   "button-intent-required": {
     code: "FE_BUTTON_INTENT_REQUIRED",
