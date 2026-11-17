@@ -188,6 +188,8 @@ export const THEME_HOOKS: readonly string[] = [
   "--starci-core-sidebar-selected-start-radius",
   "--starci-core-sidebar-selected-weight",
   "--starci-core-sidebar-weight",
+  "--starci-core-switch-track-off",
+  "--starci-core-switch-track-off-border",
   "--starci-core-table-selected",
   "--starci-core-table-selected-foreground",
   "--starci-core-tabs-indicator",

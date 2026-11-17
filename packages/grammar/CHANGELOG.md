@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.40.2 - 2026-11-17
+
+- Fixed (Switch, both kinds): the off track has its own theme hook `--starci-core-switch-track-off`, by default the foreground at 16% over the surface (about neutral-300 on white), no longer `--default`. A white theme sets `--default` to the surface (ghost hover shares it), so the off track of a `compact` switch vanished on a white card. The on track stays the accent.
+- Added (theme hook): `--starci-core-switch-track-off-border` (default 0), a hairline on the off track drawn as an inset outline, so the track keeps its 72x40 or 32x18 box and the focus ring. `common/theme-hooks.json` lists both (38 hooks).
+
 ## 0.40.1 - 2026-11-17 - Switch kinds: toggle and compact
 
 - A patch: a new optional prop and renderer CSS only, no lint rule of an `eslint-grammar-*` package, nothing removed, no default changed (contexts/grammars/contributing.md "Patch or minor"); the canon pins' `~0.40.0` admits it. `eslint-grammar-core` and `eslint-grammar-offset-pop` carry the family version only.

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.40.2 - 2026-11-17
+
+- Version: moves with the Grammar family (the Switch off track hook of @starci/grammar 0.40.2); no rule changed.
+
 ## 0.40.0 - 2026-11-17
 
 - Changed: released with the Grammar family at 0.40.0 (one field look: the surface-dependent field variant removed; `DataTable` flat by default; the figures ribbon; the theme hooks). No rule of this package changed: none read the field variant.

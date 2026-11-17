@@ -37,6 +37,8 @@
     { "name": "--starci-core-message-card-border", "fallback": "var(--starci-core-bubble-incoming-border, 0)", "kind": "border", "part": "MessageBubble content=\"card\" (MessageCard)", "means": "its edge" },
     { "name": "--starci-core-quote", "fallback": "var(--surface-secondary)", "kind": "color", "part": "Quote", "means": "the fill of a quote" },
     { "name": "--starci-core-quote-edge", "fallback": "0", "kind": "border", "part": "Quote", "means": "a rule on its start edge" },
+    { "name": "--starci-core-switch-track-off", "fallback": "color-mix(in oklab, var(--foreground) 16%, var(--surface))", "kind": "color", "part": "Switch (both kinds, off)", "means": "the fill of an unselected switch track; on, the track stays the accent" },
+    { "name": "--starci-core-switch-track-off-border", "fallback": "0", "kind": "border", "part": "Switch (both kinds, off)", "means": "a hairline on the unselected track, drawn as an inset outline (the track keeps its size and the focus ring)" },
     { "name": "--starci-core-flow-selected", "fallback": "color-mix(in oklab, var(--starci-flow-select) 8%, var(--surface))", "kind": "color", "part": "FlowGraph steps (card and diamond)", "means": "the ground of a selected step; its 2px border in the status colour stays" }
   ]
 }

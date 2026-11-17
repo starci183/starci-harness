@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.142 - 2026-11-17
+
+- Changed (pins): the Grammar family at 0.40.2 (the Switch off track hook), @starci/stylelint-canon 2.9.1, @starci/hfs 6.13.22; until the cli-follow step raises the CLI's requirement to it, the CLI runs the hfs it requires.
+
 ## 1.1.0-alpha.141 - 2026-11-17
 
 - Changed: the CLI requires @starci/hfs@6.13.21, @starci/seed@0.3.0, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).

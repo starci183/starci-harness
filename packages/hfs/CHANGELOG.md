@@ -1,5 +1,9 @@
 # Changelog
 
+## 6.13.22 - 2026-11-17
+
+- Changed (`knowledge/hfs/canon-pins.yaml`): the Grammar family at 0.40.2 (`~0.40.2`: the Switch off track hook `--starci-core-switch-track-off`, a visible neutral by default) and @starci/stylelint-canon 2.9.1 (that hook and `--starci-core-switch-track-off-border` admitted in brand.css); the `@starci/hfs` self-pin is 6.13.22.
+
 ## 6.13.21 - 2026-11-17
 
 - Fixed (`stack/local-up.mts`): `stack up` runs the seed commands of `mode: always` (a migration runner such as `migrate-typeorm`) right after `db migrate`, before the seed levels and the loader of the pinned `data.sets` seed-standards, so on a fresh database the store doors write into tables that exist; the `once` commands still run after the seed levels.
