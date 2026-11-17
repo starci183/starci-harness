@@ -142,6 +142,11 @@ truths:
     says: The runtime has one allowlist file, with its reserved sections empty. An entry added to it is a loosening.
     allows:
       - {exceptionFile: modules/kernel/allowlist.yaml, maxEntries: 0}
+  - id: audit-exceptions-are-time-boxed-and-owner-approved
+    cite: {rule: PROJECT-LINT-5}
+    says: An app's production-audit exceptions live in one file, each entry an exact advisory and package, the dependency routes it is allowed through, a reason, the owner's approval and an expiry at most 14 days after it; the audit judge (starci app audit) refuses an entry that is malformed, expired, too long, unused or whose package has a fix, and prints every active one on every run, so the file is a design truth, not a loosening.
+    allows:
+      - {exceptionFile: .starcistacks/security/audit-exceptions.yaml, maxEntries: 10}
   - id: skip-lib-check-skips-third-party-declarations
     cite: {rule: R236}
     says: skipLibCheck true skips type-checking of third-party declaration files only and never app code; it is a design truth of the canon base tsconfig and of no other file, so a tsconfig that sets it, or turns any other strictness option off, is red.

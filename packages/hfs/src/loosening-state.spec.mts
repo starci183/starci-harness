@@ -119,6 +119,12 @@ test('exception files: one the manifest lists holds only the entries it allows, 
   assert.deepEqual(scan({ 'modules/kernel/approvals.yaml': 'approvals:\n  - one\n  - two\n' }, { truths: listed }).map((entry) => entry.kind), ['exception-file']);
 });
 
+test('the audit exceptions of PROJECT-LINT-5 are a design truth: the manifest allows up to ten entries', () => {
+  const entry = '- advisory: GHSA-fc5q-39xc-vjpf\n  package: picomatch\n  via: ["@nestjs/graphql"]\n  reason: no fix yet\n  approvedBy: owner\n  approvedAt: 2026-11-18T09:00:00+07:00\n  expires: 2026-12-01T09:00:00+07:00\n';
+  assert.deepEqual(scan({ '.starcistacks/security/audit-exceptions.yaml': entry.repeat(2) }), []);
+  assert.deepEqual(scan({ '.starcistacks/security/audit-exceptions.yaml': entry.repeat(11) }).map((each) => each.kind), ['exception-file']);
+});
+
 test('the app gate leaves the managed lists to the drift check and still judges markers, thresholds and exception files', () => {
   const tree = { 'codecov.yml': 'ignore:\n  - "x/**"\ncoverage:\n  status:\n    project:\n      default:\n        target: 80%\n' };
   assert.deepEqual(kinds(scan(tree, { lists: false })), ['threshold']);
