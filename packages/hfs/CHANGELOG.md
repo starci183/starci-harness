@@ -1,5 +1,10 @@
 # Changelog
 
+## 6.13.29 - 2026-11-17
+
+- Changed (`knowledge/hfs/canon-pins.yaml`): the Grammar family at 0.45.0 (`~0.45.0`): a card is one object. SurfaceCard keeps `body` and `tile` (the table, details, figures, accordion and select kinds, the header and footer zones, `count`, the ink and highlight treatments and `accentCorner` are removed; a body card gains an `actions` band); a DataTable has one flat look (no `surface`) and a selected row is grey with a 2px accent bar; `Section kind="figures"` is always the ribbon; Board `headers` is `filter`; lints `card-is-object` and `data-table-surface` (autofix), `rows-in-card` fixed. @starci/stylelint-canon 2.9.6, @starci/eslint-canon-fe 9.20.2. The `@starci/hfs` self-pin is 6.13.29.
+- Changed (`codemod/surface-card-kinds.mts`, `codemod/section-frame.mts`): a figures card migrates to `Section kind="figures"`; the removed-vocabulary and rules.yaml texts name the 0.45.0 replacements.
+
 ## 6.13.28 - 2026-11-17
 
 - Changed (`knowledge/hfs/canon-pins.yaml`): the Grammar family at 0.44.0 (`~0.44.0`): `navbar-control-size` reads a Switch by its `kind` (toggle passes alone, compact stays refused in a bar: 40px bar controls, R314); `tabs-in-well` allows filter Tabs in a Section `filter`; the Switch off track defaults to the foreground at 28% over the surface (no border, owner law 0.36.2); compact and pill Selects keep their width when a filter row stacks. @starci/stylelint-canon 2.9.5. The `@starci/hfs` self-pin is 6.13.28.
