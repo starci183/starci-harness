@@ -2,6 +2,8 @@
 
 ## 1.1.0-alpha.145 - 2026-11-17
 
+- Changed: the CLI requires @starci/hfs@6.13.25, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
+
 - Changed (pins): the Grammar family at 0.43.0 (one look for a list: `SurfaceCard kind="list"` removed, `Section kind="list"` flat by default), @starci/stylelint-canon 2.9.4, @starci/hfs 6.13.25; contexts ui (presentation BOUNDARY-7 owns the one look, list-table, card, composition, situations) and the grammars contract. Until the cli-follow step raises the CLI's requirement, the CLI runs the hfs it requires.
 
 ## 1.1.0-alpha.144 - 2026-11-17
