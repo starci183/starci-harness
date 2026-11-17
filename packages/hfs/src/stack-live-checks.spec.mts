@@ -159,13 +159,14 @@ test('the event bus dead letter is read by consumer and event, and a single dead
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
-test('a missing api log is not judged, and an unreadable migration folder is a warning, never silence', async (t) => {
+test('a missing api log is not judged, and an unreadable migration folder is a warning, never silence (an absent one is an empty chain)', async (t) => {
   const { root, state } = app(t);
   const { ctx } = context(root, state, { applied: VERSIONS });
   const clean = await liveStateFindings({ ctx, repoRoot: root });
   assert.deepEqual(clean.findings, []);
   assert.ok(clean.lines.some((text) => /dead-letter-repeat not judged, no api log/.test(text)));
   fs.rmSync(path.join(root, 'db', 'migrations'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'db', 'migrations'), 'not a folder');
   const broken = await liveStateFindings({ ctx, repoRoot: root });
   assert.equal(broken.findings[0]?.code, PENDING_MIGRATIONS);
   assert.equal(broken.findings[0]?.level, 'warning');
