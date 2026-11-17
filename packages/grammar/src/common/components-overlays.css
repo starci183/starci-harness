@@ -869,7 +869,7 @@
     }
 
     .starci-core-progress-circle [data-slot="progress-circle-track-circle"] {
-        stroke: color-mix(in srgb, var(--foreground) 12%, transparent);
+        stroke: var(--starci-core-track, color-mix(in oklab, var(--foreground) 10%, var(--surface)));
     }
 
     .starci-core-progress-circle [data-slot="progress-circle-fill-circle"] {
@@ -909,8 +909,18 @@
         color: var(--muted);
     }
 
+    /*
+     * THE EMPTY TRACK (0.41.0): every measure's empty track (Meter, its segments, Progress, its steps, ProgressCircle, ProportionBar) is one visible neutral,
+     * the theme hook `--starci-core-track`, by default the foreground at 10% over the surface (about neutral-200 on white), one step lighter than the Switch's
+     * off track (a control, 16%, its own hook). It is no longer the vendor's `--default`, which a white theme sets to the surface, so an empty bar vanished on a
+     * white page. `!important`: the vendor track (`bg-default`, a `components`-layer rule) may be imported on either side of this sheet.
+     */
     .starci-core-meter-track {
         overflow: hidden;
+    }
+
+    .starci-core-meter-track:not(.starci-core-meter-segments) {
+        background: var(--starci-core-track, color-mix(in oklab, var(--foreground) 10%, var(--surface))) !important;
     }
 
     /* The loading meter root keeps the meter's column (label above the bar) and is inert. */
@@ -956,7 +966,7 @@
         height: 100%;
         flex: 1 1 0;
         border-radius: inherit;
-        background: color-mix(in srgb, var(--foreground) 10%, transparent);
+        background: var(--starci-core-track, color-mix(in oklab, var(--foreground) 10%, var(--surface)));
     }
 
     .starci-core-meter-segment[data-grammar-meter-segment="filled"] {

@@ -63,10 +63,11 @@ and the tab labels stay real (STATE-8); the body's blocks own their own loading.
 - **Knowledge decides:** page header vs section; which slot carries a fact; one commit.
 - **App author decides:** the trail, the heading, the mark, the facts, the commands and the tabs.
 
-## Band left, well centred (MEASURE-8)
-The header band is full width and its text (breadcrumbs, title, tabs) starts at the page inset, flush left, on a wide screen as on a narrow one. The content in the pink well
-is capped at `--grammar-content-max` (80rem) and centred in the well, the pink filling the whole well. The header stays left while the content is centred. The second tab layer
-(`subTabs`) stands in the band at the same x as layer 1.
+## One start edge: band and body share the cap (MEASURE-8)
+The header band's ground is full width; its content (breadcrumbs, title, tabs) is a `PageContainer` of the page's measure, capped at `--grammar-content-max` (80rem) and
+centred exactly as the body below it, so on a screen wider than the measure the title and the body share one start edge, and below it both start at the page inset. The
+ground of the well still fills the whole well. The second tab layer (`subTabs`) stands in the band at the same x as layer 1. `chrome="panes"` gives the band the full
+measure: the pane grid spans the region and each pane caps its own content (MEASURE-9).
 
 ## Rules
 HIERARCHY-3, FONT-4, CTA-1, CTA-6, STATE-6, STATE-8, BOUNDARY-1. Lint: `starci-grammar/no-hand-rolled-page-header`

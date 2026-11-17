@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url"
  * 14), display sizes 18 (page title) and 20 (figure value) only. Before it, the type roles of 0.28: The rules that draw a role are pinned to its tokens, so a
  * later edit cannot drift a tab, a body Text or a table cell off its step: every tab sm 13; Text md 14 / sm 13 / xs 12, `isStrong` 500;
  * page title xl 18 / 500; card title lg 16 / 500; row primary md 14 / 500, its description sm 13, its meta xs 12; table header xs 12,
- * cell md 14, row header 500; a Link inherits the size around it; a Sublabel is 12 / 500 muted; the page header band is full width and flush left; the page body and the workspace main pane are capped at 80rem and centred.
+ * cell md 14, row header 500; a Link inherits the size around it; a Sublabel is 12 / 500 muted; the page header band's content takes the page measure like the body (one start edge, MEASURE-8, 0.41.0); the page body and the workspace main pane are capped at 80rem and centred.
  */
 const common = resolve(dirname(fileURLToPath(import.meta.url)), "..", "src", "common")
 const sheets = ["styles.css", "components-navigation.css"].map((name) => ({ name, text: readFileSync(resolve(common, name), "utf8") }))
@@ -32,10 +32,9 @@ const PINS: readonly { readonly selector: string; readonly holds: readonly strin
     { selector: '.starci-core-page[data-grammar-page-layout="workspace"] .starci-core-pane[data-grammar-pane-content="cards"] > .starci-core-pane-stack', holds: ["max-inline-size: var(--grammar-content-max)", "margin-inline: auto"] },
     { selector: ".starci-core-sublabel", holds: ["font-size: var(--grammar-text-xs)", "font-weight: var(--grammar-weight-medium)", "color: var(--muted)"] },
     { selector: ".starci-core-page-container", holds: ["margin-inline: auto"] },
-    { selector: ".starci-core-page-header .starci-core-page-container", holds: ["width: 100%", "margin-inline: 0"] },
     { selector: '.starci-core-surface-zone:not([data-grammar-zone="figures"]) .starci-core-text:not([data-size="figure"])', holds: ["font-size: var(--grammar-text-sm)"] },
     { selector: ".starci-core-surface", holds: ["border: var(--starci-core-card-border, 0)", "box-shadow: var(--surface-shadow)"] },
-    { selector: ".starci-core-section-list", holds: ["border: 0", "border-radius: var(--starci-core-surface-radius)"] },
+    { selector: ".starci-core-section-list", holds: ["border: var(--starci-core-list-frame-border, 0)", "border-radius: var(--starci-core-list-radius, var(--starci-core-surface-radius))", "background: var(--starci-core-list-frame, var(--surface))"] },
     { selector: '.starci-core-data-table[data-grammar-table-surface="card"]', holds: ["border-radius: var(--starci-core-table-radius)", "box-shadow: var(--surface-shadow)"] },
     { selector: ".starci-core-data-table:not([data-grammar-table-surface=\"none\"])", holds: ["background: var(--surface)", "border: 0"] },
     { selector: ".starci-core-section-caption", holds: ["font-size: var(--grammar-text-xs)"] },
@@ -81,7 +80,10 @@ for (const pin of PINS) {
 if (!/\.starci-core-section-list,\s*[^{]*\{\s*box-shadow:\s*var\(--surface-shadow\);/.test(all)) problems.push("the standalone list frame, and EmptyNotice must carry the card shadow")
 if (!/:is\(\.starci-core-surface,[^{]*\)\s*:is\(\.starci-core-surface,[^{]*\)\s*\{\s*box-shadow:\s*none;/.test(all)) problems.push("a surface nested in a surface must keep its edge and drop the shadow")
 if (!/\.starci-core-empty-notice:not\(\[data-grammar-error-layout\]\):not\(\.starci-core-surface \.starci-core-empty-notice\)\s*\{\s*border:\s*0;/.test(all)) problems.push("a framed EmptyNotice on the well carries the shadow and no border (SURFACE-ELEVATION, 0.36.0)")
-if (!/\.starci-core-section-list\),\s*:is\([^{]*\.starci-core-empty-notice:not\(\[data-grammar-error-layout\]\)\s*\{\s*border:\s*1px solid var\(--separator\);/.test(all)) problems.push("a surface on a white surface (pane, drawer, dialog, popover, card) must draw the 1px separator border (SURFACE-ELEVATION, 0.36.0)")
+if (!/\.starci-core-data-table\[data-grammar-table-surface="card"\]\),\s*:is\([^{]*\.starci-core-empty-notice:not\(\[data-grammar-error-layout\]\)\s*\{\s*border:\s*1px solid var\(--separator\);/.test(all)) problems.push("a surface on a white surface (pane, drawer, dialog, popover, card) must draw the 1px separator border (SURFACE-ELEVATION, 0.36.0)")
+if (!/:is\(\.starci-core-surface,[^{]*\)\s*\.starci-core-section-list\s*\{\s*border:\s*var\(--starci-core-list-frame-border,\s*var\(--grammar-separator-edge\)\);/.test(all)) problems.push("a list frame on a white surface draws the 1px separator border unless the theme draws lists flat (SURFACE-ELEVATION, --starci-core-list-frame-border, 0.41.0)")
+/* ONE START EDGE (MEASURE-8, 0.41.0): the header band's PageContainer keeps the page measure; no rule uncaps or un-centres it. */
+if (bodiesOf(".starci-core-page-header .starci-core-page-container").length > 0) problems.push("the page header's content must keep the page measure, capped and centred like the body (MEASURE-8, 0.41.0)")
 const tableSource = readFileSync(resolve(common, "..", "core", "branch", "DataTable", "index.tsx"), "utf8")
 if (!/variant=\{surface === "none" \? "secondary" : "primary"\}/.test(tableSource) || tableSource.includes("starci-core-data-table-card")) problems.push("a standalone DataTable is HeroUI's primary look with no wrapper card (0.36.0): the table root is the grey frame")
 if (/data-grammar-table-surface="card"\]\s*\.table__(column|header|row)/.test(all)) problems.push("a standalone DataTable must not be flattened inside its card (the 0.29 frame is reverted)")

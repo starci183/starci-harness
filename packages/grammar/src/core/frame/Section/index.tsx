@@ -20,6 +20,12 @@ type RegionSection = {
     readonly kind?: "region"
     /** What the section holds, set one row step apart under its head (proximity: a container in it takes the inline step or less). */
     readonly children: ReactNode
+    /**
+     * The toolbar that narrows everything the section holds (0.41.0): several lists or groups under one filter, a catalog. `Tabs kind="filter"`, a
+     * `SearchField` and its `Select`s, drawn as a flat row between the head and the children, on the surface the section stands on, never a card.
+     * A toolbar of one list is that list's own `filter` (`kind="list"`) or a card's `toolbar` zone when the list is a card.
+     */
+    readonly filter?: ReactNode
 }
 
 type ListSection = {
@@ -102,14 +108,17 @@ const listRows = (props: ListSection, isLoading: boolean) => {
     return props.items.map((row) => <ListRow key={row.id} row={row} isLoading={isLoading} />)
 }
 
+/** The flat row that narrows a section's body (a list's rows, or everything a region holds): its peers side by side, never a card. */
+const FilterRow = ({ filter, isLoading }: { readonly filter: ReactNode; readonly isLoading: boolean }) => filter === undefined ? null : (
+    <div className="starci-core-section-filter" data-contract="GAP-2">
+        {isLoading ? <SkeletonPlaceholder shape="block">{filter}</SkeletonPlaceholder> : filter}
+    </div>
+)
+
 const ListBody = ({ list, isLoading, error }: { readonly list: ListSection; readonly isLoading: boolean; readonly error: ErrorData | undefined }) => {
     const ordered = list.items.length > 0 && list.items.every((item) => item.leading?.position !== undefined)
     const Rows = ordered ? "ol" : "ul"
-    const filter = list.filter === undefined ? null : (
-        <div className="starci-core-section-filter" data-contract="GAP-2">
-            {isLoading ? <SkeletonPlaceholder shape="block">{list.filter}</SkeletonPlaceholder> : list.filter}
-        </div>
-    )
+    const filter = <FilterRow filter={list.filter} isLoading={isLoading} />
     if (!isLoading && error !== undefined) return <>{filter}<ErrorView error={error} /></>
     return (
         <>
@@ -129,7 +138,8 @@ const ListBody = ({ list, isLoading, error }: { readonly list: ListSection; read
  * Its head, its filter and its body are blocks under one heading: one row step apart (GAP-3; the section step before 0.27),
  * one step closer than the region step a section keeps from its siblings (the proximity law).
  *
- * `kind="region"` (the default) holds `children`. `kind="list"` owns rows inside an existing surface, or a standalone
+ * `kind="region"` (the default) holds `children`, with an optional flat `filter` row that narrows all of them (a catalog of several lists under one
+ * toolbar, never a rowless card borrowed for its zones). `kind="list"` owns rows inside an existing surface, or a standalone
  * list that searches, filters or pages: typed `items`, an optional `filter` and a required `empty` state. Its title owns
  * the list heading and accessible name. A standalone bounded worklist on the page canvas is `SurfaceCard kind="list"`.
  * `kind="figures"` reuses the unpainted FigureCells strip inside an existing surface; a required `ariaLabel` keeps an
@@ -143,9 +153,10 @@ export const Section = (props: SectionProps) => {
     const headingId = useId()
     const body = (() => {
         if (props.kind === "list") return <ListBody list={props} isLoading={isLoading} error={error} />
-        if (failed) return <ErrorView error={error} />
-        if (props.kind === "figures") return <FigureCells items={figureItems(props.items, isLoading)} isLoading={isLoading} ribbon={props.ribbon === true} />
-        return <LoadingScope isLoading={isLoading}>{props.children}</LoadingScope>
+        if (props.kind === "figures") return failed ? <ErrorView error={error} /> : <FigureCells items={figureItems(props.items, isLoading)} isLoading={isLoading} ribbon={props.ribbon === true} />
+        const filter = <FilterRow filter={props.filter} isLoading={isLoading} />
+        if (failed) return <>{filter}<ErrorView error={error} /></>
+        return <>{filter}<LoadingScope isLoading={isLoading}>{props.children}</LoadingScope></>
     })()
     return (
         <section

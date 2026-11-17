@@ -23,9 +23,26 @@
      */
     .starci-core-link { font-size: inherit !important; line-height: inherit !important; }
 
-    /* HeroUI v3's own link: no underline at rest, the underline on hover and press (the vendor's default), the anchor icon at the end. */
+    /* HeroUI v3's own link: the vendor's underline on hover and press, the anchor icon at the end. */
     .starci-core-link {
         overflow-wrap: anywhere;
+    }
+
+    /*
+     * An inline link is underlined at rest (0.41.0, COLOR-3: a destination in body copy is identifiable at rest, with colour removed too). The line is a
+     * hairline in the link's own colour at 40%, set off below the text, and turns to the full colour on hover and press. The head variant keeps the
+     * vendor's hover-only underline (its arrow is the affordance) and plain stays undecorated (its host is). The rules below win by order: a media, current or
+     * disabled link and a footer link draw no line at rest.
+     */
+    .starci-core-link[data-grammar-link-variant="inline"] {
+        text-decoration-line: underline;
+        text-decoration-color: color-mix(in oklab, currentColor 40%, transparent);
+        text-decoration-thickness: var(--grammar-hairline);
+        text-underline-offset: var(--grammar-link-underline-offset);
+    }
+
+    .starci-core-link[data-grammar-link-variant="inline"]:is(:hover, [data-hovered="true"], :active, [data-pressed="true"]) {
+        text-decoration-color: currentColor;
     }
 
     /*

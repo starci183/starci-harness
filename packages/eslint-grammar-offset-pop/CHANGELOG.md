@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.41.0 - 2026-11-17
+
+- Version: moves with the Grammar family (@starci/grammar 0.41.0: the white-theme hooks, the inline link underline, the page head on the body's measure, `Section filter` on a region); no rule changed.
+
 ## 0.40.2 - 2026-11-17
 
 - Version: moves with the Grammar family (the Switch off track hook of @starci/grammar 0.40.2); no rule changed.

@@ -219,18 +219,16 @@
         }
     }
 
-    /* The page body is capped at the page measure (80rem) and centred in the well; the header band is not (next rule). */
+    /*
+     * The page body is capped at the page measure (80rem) and centred in its region. The header band's ground runs the region's full width, and its
+     * content is a PageContainer of the same measure, so the title, the tabs and the body share one start edge at every width (MEASURE-8, 0.41.0: before,
+     * the band's content stayed flush left at the page inset while the body centred, two start edges on a screen wider than the measure).
+     */
     .starci-core-page-container {
         width: min(100%, var(--starci-core-page-measure));
         min-width: 0;
         margin-inline: auto;
         padding-inline: var(--grammar-page-inset);
-    }
-
-    /* The header band is full width and its text starts at the page inset: the band's container is never capped or centred (MEASURE-8). */
-    .starci-core-page-header .starci-core-page-container {
-        width: 100%;
-        margin-inline: 0;
     }
 
     .starci-core-page-container[data-grammar-page-measure="reading"] {
@@ -1176,9 +1174,14 @@
     }
 
     /* SURFACE-ELEVATION: a surface on a white surface is bordered, with no shadow. A framed notice stands bordered in a white pane, drawer, dialog or popover. */
-    :is(.starci-core-surface, .starci-core-pane[data-grammar-pane-surface="true"], .starci-core-pane[data-grammar-pane-content="chat"], .starci-core-drawer, .starci-core-dialog-container, .starci-core-popover, .starci-core-message-bubble-body) :is(.starci-core-surface, .starci-core-data-table[data-grammar-table-surface="card"], .starci-core-section-list),
+    :is(.starci-core-surface, .starci-core-pane[data-grammar-pane-surface="true"], .starci-core-pane[data-grammar-pane-content="chat"], .starci-core-drawer, .starci-core-dialog-container, .starci-core-popover, .starci-core-message-bubble-body) :is(.starci-core-surface, .starci-core-data-table[data-grammar-table-surface="card"]),
     :is(.starci-core-pane[data-grammar-pane-surface="true"], .starci-core-drawer, .starci-core-dialog-container, .starci-core-popover) .starci-core-empty-notice:not([data-grammar-error-layout]) {
         border: 1px solid var(--separator);
+    }
+
+    /* A list frame in a surface: the same 1px separator edge, unless the theme draws lists flat (`--starci-core-list-frame-border`, below). */
+    :is(.starci-core-surface, .starci-core-pane[data-grammar-pane-surface="true"], .starci-core-pane[data-grammar-pane-content="chat"], .starci-core-drawer, .starci-core-dialog-container, .starci-core-popover, .starci-core-message-bubble-body) .starci-core-section-list {
+        border: var(--starci-core-list-frame-border, var(--grammar-separator-edge));
     }
 
     .starci-core-surface-content {
@@ -1932,7 +1935,7 @@
 
     /* One track split by share, the legend under it: the dot, the label and the amount. Tones are HeroUI tokens. */
     .starci-core-proportion-bar { display: flex; min-width: 0; flex-direction: column; gap: var(--grammar-inline-gap); }
-    .starci-core-proportion-track { display: flex; block-size: 0.75rem; overflow: hidden; border-radius: var(--grammar-radius-pill); background: var(--default); }
+    .starci-core-proportion-track { display: flex; block-size: 0.75rem; overflow: hidden; border-radius: var(--grammar-radius-pill); background: var(--starci-core-track, color-mix(in oklab, var(--foreground) 10%, var(--surface))); }
     .starci-core-proportion-segment { flex: 0 0 var(--starci-core-proportion-share); min-inline-size: 0; background: var(--accent); }
     .starci-core-proportion-legend { display: flex; flex-wrap: wrap; gap: var(--grammar-inline-gap) var(--grammar-inset); margin: 0; padding: 0; list-style: none; }
     .starci-core-proportion-item { display: inline-flex; align-items: center; gap: var(--grammar-identity-gap); font-size: var(--grammar-text-sm); line-height: var(--grammar-leading-sm); }
@@ -1980,8 +1983,8 @@
     }
 
     .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tabs .tabs__tab:first-child { --starci-core-tab-padding-start: var(--grammar-inline-gap); }
-    /* In a card zone the first filter label stands on the card's inline edge (16), like the rows and the table below it. */
-    .starci-core-surface-zone .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tabs .tabs__tab:first-child { padding-inline-start: 0 !important; }
+    /* In a card zone the first filter label stands on the card's inline edge (16), like the rows and the table below it; in a section's filter row, on the section title's edge. */
+    :is(.starci-core-surface-zone, .starci-core-section-filter) .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tabs .tabs__tab:first-child { padding-inline-start: 0 !important; }
     .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tabs .tabs__tab[aria-selected="true"] { font-weight: var(--grammar-weight-medium); }
     .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tabs .tabs__indicator { top: auto !important; background: var(--starci-core-tabs-indicator, var(--accent)); }
     .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tab-content { gap: var(--grammar-identity-gap); }
@@ -2037,11 +2040,18 @@
      * one frame on the surface ground, titled by its Section head with one `caption` under it, never wrapped in a SurfaceCard (lint
      * `single-child-card`). So every Section list draws the frame, wherever it stands.
      */
+    /*
+     * The frame is themable (0.41.0): `--starci-core-list-frame` (its fill, default the surface), `--starci-core-list-frame-border` (its edge: default 0 on the
+     * page ground, the 1px separator inside a surface, below) and `--starci-core-list-radius` (default the card radius). A white theme sets them to
+     * `transparent`, `0` and `0` and the list stands flat on the surface, its rows divided by their hairlines. `--starci-core-list-inset` is the rows' inline
+     * inset (default the container inset, 12): a flat list sets it to 0 so the row content starts on the section title's edge; a framed list keeps it, the
+     * frame's edge being the one that lines up with the title.
+     */
     .starci-core-section-list {
-        --starci-core-row-inset: var(--grammar-row-gap) var(--grammar-inset);
-        border: 0;
-        border-radius: var(--starci-core-surface-radius);
-        background: var(--surface);
+        --starci-core-row-inset: var(--grammar-row-gap) var(--starci-core-list-inset, var(--grammar-inset));
+        border: var(--starci-core-list-frame-border, 0);
+        border-radius: var(--starci-core-list-radius, var(--starci-core-surface-radius));
+        background: var(--starci-core-list-frame, var(--surface));
         color: var(--surface-foreground);
         overflow: clip;
     }
@@ -5454,7 +5464,7 @@
         display: block;
         height: 0.25rem;
         border-radius: var(--grammar-radius-pill);
-        background: var(--default);
+        background: var(--starci-core-track, color-mix(in oklab, var(--foreground) 10%, var(--surface)));
         transition: background-color var(--starci-core-motion-duration) var(--starci-core-motion-easing);
     }
 
@@ -5480,6 +5490,15 @@
 
     .starci-core-progress {
         width: 100% !important;
+    }
+
+    /* The empty track is the measures' one neutral (`--starci-core-track`, components-overlays.css "THE EMPTY TRACK"); in step mode the track itself is transparent so the gaps read as gaps. */
+    .starci-core-progress .progress-bar__track {
+        background: var(--starci-core-track, color-mix(in oklab, var(--foreground) 10%, var(--surface))) !important;
+    }
+
+    .starci-core-progress .progress-bar__track.starci-core-progress-steps {
+        background: transparent !important;
     }
 
     .starci-core-progress[data-loading="true"] {

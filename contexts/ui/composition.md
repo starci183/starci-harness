@@ -146,7 +146,7 @@ indicator geometry, underline). A destination in body copy is identifiable at re
 A progress fill presents a verified value from authority and nothing else; an unresolved value is a skeleton; a
 decorative or ranking bar carries no progress semantics; the fill states the measurement and a separate owner
 states any outcome. A measurement on a view whose one accent mass is its commit, a usage quota beside an upload,
-takes `tone="foreground"` on `Meter` or `Progress`: the fill is the text colour on the default track and spends no accent
+takes `tone="foreground"` on `Meter` or `Progress`: the fill is the text colour on the empty track and spends no accent
 (ACCENT-6).
 
 ### ACCENT-5 Status hues and notices report authority

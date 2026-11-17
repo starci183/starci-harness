@@ -236,7 +236,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/identity-mark.md](../ui/components/identity-mark.md) · 3 KB — Contract: Avatar and IconTile.
   - sections: Job · Choose · Variants · Size · States · Owner split · Initials fit the circle · Rules
-- [ui/components/list-table.md](../ui/components/list-table.md) · 10 KB — Contract: List and Table.
+- [ui/components/list-table.md](../ui/components/list-table.md) · 11 KB — Contract: List and Table.
   - sections: Job · Choose · Section head (0.36.0) · Version diff rows (0.37.28) · Variants · Size · States · Owner split · Row description · Rules · Key-value rows (0.37.5)
 - [ui/components/mascot.md](../ui/components/mascot.md) · 3 KB — Contract: Mascot.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
@@ -244,8 +244,8 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/message-bubble.md](../ui/components/message-bubble.md) · 10 KB — Contract: MessageBubble.
   - sections: Job · The chat surfaces (0.37.31) · The chat frame (0.37.33) · Choose · Variants · Size · States · Owner split · Rules
-- [ui/components/page-header.md](../ui/components/page-header.md) · 8 KB — Contract: Page, Section.
-  - sections: Job · Choose · Variants · Size · States · Owner split · Band left, well centred (MEASURE-8) · Rules
+- [ui/components/page-header.md](../ui/components/page-header.md) · 9 KB — Contract: Page, Section.
+  - sections: Job · Choose · Variants · Size · States · Owner split · One start edge: band and body share the cap (MEASURE-8) · Rules
 - [ui/components/pane-grid.md](../ui/components/pane-grid.md) · 14 KB — Contract: PaneGrid.
   - sections: Job · Choose · Variants · Size · States · Owner split · Pane content cap (MEASURE-9, the workspace form of MEASURE-8) · Scroll law (0.36.0) · The grid owns scroll and height (0.37.5) · The shared head row (layout B) · Pane footer (0.37.5) · Drawer opener · Rules · Pane head slot (0.37.5) · Stacked panes grow with their content (PANE-GRID-STACKED, 0.37.14)
 - [ui/components/quote.md](../ui/components/quote.md) · 3 KB — Contract: Quote.
