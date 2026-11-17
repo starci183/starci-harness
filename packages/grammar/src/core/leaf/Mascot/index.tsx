@@ -59,6 +59,6 @@ export const Mascot = ({
         {...(alt === "" ? { "aria-hidden": true } : {})}
         {...assetSlotAttributes(assetSlot)}
     >
-        <Image src={src} alt={alt} aspect="auto" fit="contain" plate="none" loading={loading} />
+        <Image src={src} alt={alt} ratio="auto" fit="contain" plate="none" loading={loading} />
     </span>
 )

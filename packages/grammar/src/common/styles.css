@@ -4,6 +4,7 @@
 @import "./components-forms.css";
 @import "./components-overlays.css";
 @import "./components-navigation.css";
+@import "./components-media.css";
 @import "./components-list-panel.css";
 @import "./components-avatar-group.css";
 @import "./components-spacing.css";
@@ -79,6 +80,8 @@
         --grammar-mascot-md: 10rem;
         --grammar-mascot-lg: 15rem;
         --grammar-mascot-hero-max: 30rem;
+        /* The Illustration of a state (EmptyState scope page): 160px, 120px below 48rem. */
+        --grammar-illustration-state: 10rem;
         /* The accent corner: the one logical corner a SurfaceCard or MediaFrame names in `accentCorner`. */
         --grammar-accent-corner: 2.5rem;
         min-width: 0;

@@ -26,6 +26,7 @@ import { Link } from "../core/leaf/Link/index.js"
 import { ColorSwatch } from "../core/leaf/ColorSwatch/index.js"
 import { Rating } from "../core/branch/Rating/index.js"
 import { Video } from "../core/leaf/Video/index.js"
+import { Illustration } from "../core/leaf/Illustration/index.js"
 
 export { Accordion, type AccordionItem, type AccordionProps } from "../core/branch/Accordion/index.js"
 export { Calendar, type CalendarProps } from "../core/branch/Calendar/index.js"
@@ -52,14 +53,16 @@ export { Timeline, type TimelineItem, type TimelineProps } from "../core/composi
 export { Footer, type FooterLink, type FooterLinkGroup, type FooterProps } from "../core/composite/Footer/index.js"
 export { TopBar, useTopBarOverflowEntries, type TopBarCustomButton, type TopBarMenu, type TopBarProps } from "../core/composite/TopBar/index.js"
 export { Avatar, avatarInitials, type AvatarKind, type AvatarProps, type AvatarShape, type AvatarSize } from "../core/leaf/Avatar/index.js"
-export { Image, type AssetSlotProps, type ImageAspect, type ImageLoadState, type ImageProps } from "../core/leaf/Image/index.js"
+export { Image, renditionSrcSet, type AssetSlotProps, type ImageFacts, type ImageLoadState, type ImageProps, type ImageRatio, type ImageRendition, type ImageZoom, type MediaSourceRef } from "../core/leaf/Image/index.js"
+export { Illustration, type IllustrationCompact, type IllustrationProps, type IllustrationRatio } from "../core/leaf/Illustration/index.js"
+export { StaticsProvider, isStaticsKey, staticsUrl } from "../core/staticsScope.js"
 export { Link, type LinkKind, type LinkProps, type LinkVariant } from "../core/leaf/Link/index.js"
 export { ColorSwatch, type ColorSwatchProps } from "../core/leaf/ColorSwatch/index.js"
 export { Rating, type RatingProps } from "../core/branch/Rating/index.js"
-export { Video, type VideoCaptionsTrack, type VideoProps } from "../core/leaf/Video/index.js"
+export { Video, pickVideoSource, playbackOf, type VideoLabels, type VideoPlayback, type VideoProps, type VideoRatio, type VideoSource, type VideoSourceType, type VideoStatus, type VideoSupport, type VideoTrack } from "../core/leaf/Video/index.js"
 
 /** Every navigation-group renderer, spread into `COMMON_GRAMMAR_COMPONENTS`. */
 export const COMMON_NAVIGATION_COMPONENTS = Object.freeze({
     Accordion, Avatar, AvatarButton, AvatarGroup, Calendar, ColorSwatch, DataTable, DescriptionList,
-    BubbleMap, Disclosure, DragItem, FlowGraph, Footer, IdentityLockup, Image, Link, ListBox, LogoStack, MermaidDiagram, Pagination, Rating, Stepper, TagGroup, Timeline, TopBar, Video,
+    BubbleMap, Disclosure, DragItem, FlowGraph, Footer, IdentityLockup, Illustration, Image, Link, ListBox, LogoStack, MermaidDiagram, Pagination, Rating, Stepper, TagGroup, Timeline, TopBar, Video,
 } as const)

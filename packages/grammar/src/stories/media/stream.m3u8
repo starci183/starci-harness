@@ -1,0 +1,1 @@
+This fixture is deliberately not a playable playlist: the media stories prove that the player library loads and that a failing stream ends in the in-place error notice.

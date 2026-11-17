@@ -17,6 +17,8 @@ const config: StorybookConfig = {
     "@storybook/addon-mcp"
   ],
   "framework": "@storybook/react-vite",
+  // The local media fixtures of the Image, Video and Illustration stories (never a remote host): served at /media.
+  staticDirs: [{ from: "../src/stories/media", to: "/media" }],
   // Serve node_modules even when it is a junction into another checkout (see vite-fs-allow.ts).
   viteFinal: (viteConfig) => ({
     ...viteConfig,

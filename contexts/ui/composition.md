@@ -401,6 +401,13 @@ stand small (`mascot.choose.size`: `sm` or `md`, never `hero`), in its own place
 over a field, a description, an error or an action. Every other form, including a later setup or settings flow,
 carries no signature moment. A promotional strip never sits on a working page. Proof: TASTE-8, BRAND-2.
 
+### DISCIPLINE-4 Generated images carry their provenance and show no real person or brand
+An AI-generated image lives in the app's statics folder (`statics/` at the repository root, [project/statics.md](../project/statics.md)) with a
+sibling `<name>.prompt.yaml` holding `prompt`, `model`, `seed`, `ratio`, `aiGenerated: true` and `approvedBy`, so it can be
+regenerated and traces to the person who approved it; the app reads it through a statics key, never a committed copy. An image
+generated at runtime is a draft in object storage and is public only after a person approves it. It never shows a real person or
+a third-party brand. Proof: BRAND-2; judgement (no gate reads the files yet).
+
 ## 9. Coverage
 
 ### COVERAGE-1 What the spec enumerates

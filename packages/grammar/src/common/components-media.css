@@ -1,0 +1,200 @@
+/*
+ * Common anatomy for media: the Image states, zoom and caption, the Video frame and its notices, and the Illustration.
+ * Structure, geometry and state wiring only: every colour resolves through Common semantic variables.
+ */
+@layer starci-grammar-common {
+    /* ---------- Image: states, caption and zoom ---------- */
+    .starci-core-image-figure {
+        display: flex;
+        min-width: 0;
+        max-width: 100%;
+        flex-direction: column;
+        gap: var(--grammar-row-gap);
+        margin: 0;
+    }
+
+    .starci-core-image-skeleton,
+    .starci-core-illustration-skeleton,
+    .starci-core-video-skeleton {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        border-radius: inherit;
+    }
+
+    .starci-core-image[data-grammar-image-plate="none"] .starci-core-image-skeleton { display: none; }
+
+    .starci-core-image-fallback {
+        flex-direction: column;
+        background: var(--surface-secondary, transparent);
+    }
+
+    .starci-core-image-glyph {
+        inline-size: 2rem;
+        block-size: 2rem;
+        color: var(--muted);
+    }
+
+    /* The zoom control is the whole picture: a transparent button over it, so the keyboard and a press reach the same act. */
+    .starci-core-image-zoom {
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        cursor: zoom-in;
+    }
+
+    .starci-core-image-zoom:focus-visible {
+        outline: var(--grammar-ring-width) solid var(--focus);
+        outline-offset: calc(-1 * var(--grammar-ring-width));
+    }
+
+    .starci-core-lightbox-container {
+        display: flex;
+        inline-size: 100%;
+        block-size: 100%;
+        align-items: center;
+        justify-content: center;
+        padding: var(--grammar-overlay-inset);
+        outline: none;
+    }
+
+    .starci-core-lightbox {
+        position: relative;
+        display: flex;
+        max-inline-size: 100%;
+        max-block-size: 100%;
+        align-items: center;
+        justify-content: center;
+        outline: none;
+    }
+
+    .starci-core-lightbox-image {
+        display: block;
+        max-inline-size: 100%;
+        max-block-size: calc(100dvh - 2 * var(--grammar-overlay-inset));
+        border-radius: var(--radius);
+        object-fit: contain;
+    }
+
+    .starci-core-lightbox-close {
+        position: absolute;
+        inset-block-start: var(--grammar-row-gap);
+        inset-inline-end: var(--grammar-row-gap);
+        z-index: 1;
+    }
+
+    /* ---------- Video ---------- */
+    .starci-core-video-frame {
+        position: relative;
+        display: block;
+        min-width: 0;
+        max-width: 100%;
+        overflow: hidden;
+        border-radius: var(--radius);
+        background: var(--surface-secondary, transparent);
+        aspect-ratio: 16 / 9;
+    }
+
+    .starci-core-video-frame[data-grammar-video-ratio="9:16"] { aspect-ratio: 9 / 16; }
+    .starci-core-video-frame[data-grammar-video-ratio="1:1"] { aspect-ratio: 1 / 1; }
+
+    .starci-core-video {
+        display: block;
+        inline-size: 100%;
+        block-size: 100%;
+        max-inline-size: 100%;
+        object-fit: contain;
+    }
+
+    .starci-core-video-frame:is([data-grammar-video-status="error"], [data-grammar-video-status="unsupported"]) .starci-core-video {
+        visibility: hidden;
+    }
+
+    .starci-core-video-notice {
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: var(--grammar-row-gap);
+        padding: var(--grammar-inset);
+        background: var(--surface-secondary, transparent);
+        color: var(--muted);
+        font-size: var(--grammar-text-sm);
+        line-height: var(--grammar-leading-normal);
+        text-align: center;
+    }
+
+    .starci-core-video-glyph {
+        inline-size: 2rem;
+        block-size: 2rem;
+    }
+
+    /* ---------- Illustration ---------- */
+    .starci-core-illustration {
+        position: relative;
+        display: block;
+        min-width: 0;
+        max-width: 100%;
+        overflow: hidden;
+        border-radius: var(--radius);
+        background: var(--surface-secondary, transparent);
+        aspect-ratio: 4 / 3;
+    }
+
+    .starci-core-illustration[data-grammar-illustration-ratio="1:1"] { aspect-ratio: 1 / 1; }
+    .starci-core-illustration[data-grammar-illustration-ratio="3:4"] { aspect-ratio: 3 / 4; }
+    .starci-core-illustration[data-grammar-illustration-ratio="16:9"] { aspect-ratio: 16 / 9; }
+    .starci-core-illustration[data-grammar-illustration-ratio="9:16"] { aspect-ratio: 9 / 16; }
+    .starci-core-illustration[data-grammar-illustration-ratio="21:9"] { aspect-ratio: 21 / 9; }
+
+    .starci-core-illustration[data-grammar-illustration-ratio="fill"] {
+        aspect-ratio: auto;
+        inline-size: 100%;
+        block-size: 100%;
+    }
+
+    .starci-core-illustration-picture {
+        display: block;
+        inline-size: 100%;
+        block-size: 100%;
+    }
+
+    .starci-core-illustration-element {
+        display: block;
+        inline-size: 100%;
+        block-size: 100%;
+        object-fit: cover;
+    }
+
+    .starci-core-illustration[data-grammar-illustration-fit="contain"] { background: transparent; }
+    .starci-core-illustration[data-grammar-illustration-fit="contain"] .starci-core-illustration-element { object-fit: contain; }
+
+    .starci-core-illustration[data-grammar-illustration-state="loading"] .starci-core-illustration-element { opacity: 0; }
+
+    .starci-core-illustration[data-grammar-illustration-state="loaded"] .starci-core-illustration-element {
+        transition: opacity var(--starci-core-motion-duration) var(--starci-core-motion-easing);
+    }
+
+    @media (max-width: 47.999rem) {
+        .starci-core-illustration[data-grammar-illustration-compact-ratio="1:1"] { aspect-ratio: 1 / 1; }
+        .starci-core-illustration[data-grammar-illustration-compact-ratio="4:3"] { aspect-ratio: 4 / 3; }
+        .starci-core-illustration[data-grammar-illustration-compact-ratio="3:4"] { aspect-ratio: 3 / 4; }
+        .starci-core-illustration[data-grammar-illustration-compact-ratio="16:9"] { aspect-ratio: 16 / 9; }
+        .starci-core-illustration[data-grammar-illustration-compact-ratio="9:16"] { aspect-ratio: 9 / 16; }
+        .starci-core-illustration[data-grammar-illustration-compact-ratio="21:9"] { aspect-ratio: 21 / 9; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .starci-core-illustration-element { transition: none !important; }
+    }
+
+    @media (forced-colors: active) {
+        .starci-core-image-zoom:focus-visible { outline-color: Highlight; }
+    }
+}

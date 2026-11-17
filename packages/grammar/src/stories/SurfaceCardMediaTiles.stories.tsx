@@ -30,7 +30,7 @@ const mediaTile = (name: string, poster: TilePoster, canEdit = true, busy = fals
     }
 }
 
-const poster: TilePoster = { image: { src: placeholderImage("Preview"), alt: "Video preview", width: 640, height: 400 }, aspect: "landscape", fit: "contain" }
+const poster: TilePoster = { image: { src: placeholderImage("Preview"), alt: "Video preview" }, aspect: "landscape", fit: "contain" }
 const missingPoster: TilePoster = { absence: "No poster available", aspect: "landscape" }
 
 export const MediaPeers: Story = {

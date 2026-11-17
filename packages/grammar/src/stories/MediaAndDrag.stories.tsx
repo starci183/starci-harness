@@ -22,12 +22,12 @@ export const DragItemStates: Story = {
     ),
 }
 
-/** The player with a poster and no caption resource (never a placeholder track), in its reserved frame. */
+/** The player with a poster and no caption track (never a placeholder), in its reserved frame; a list with nothing to play says so in the box. */
 export const VideoPoster: Story = {
     render: () => (
         <Matrix maxWidth={480}>
             <State label="Poster, no captions" direction="column">
-                <G.MediaFrame aspect="landscape" media={<G.Video src="" title="Document preview" poster={placeholderImage("Preview")} captions={null} />} />
+                <G.MediaFrame aspect="landscape" media={<G.Video title="Document preview" sources={[]} poster={{ src: placeholderImage("Preview") }} />} />
             </State>
         </Matrix>
     ),

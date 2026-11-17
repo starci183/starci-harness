@@ -522,19 +522,19 @@ export const LinkMedia: Story = {
         <div style={{ width: 200 }}>
           <G.Link href="https://example.com/original.png" kind="external" label="Open the delivery photograph"
             externalHint="(opens in a new tab)"
-            media={{ src: placeholderImage('Delivery'), alt: 'Delivery photograph', aspect: 'landscape', fit: 'contain' }} />
+            media={{ src: placeholderImage('Delivery'), alt: 'Delivery photograph', ratio: '4:3', fit: 'contain' }} />
         </div>
       </State>
       <State label="Disabled image destination">
         <div style={{ width: 200 }}>
           <G.Link href="#disabled" label="Unavailable photograph" isDisabled
-            media={{ src: placeholderImage('Unavailable'), alt: '', aspect: 'landscape' }} />
+            media={{ src: placeholderImage('Unavailable'), alt: '', ratio: '4:3' }} />
         </div>
       </State>
       <State label="Failed image keeps its destination name">
         <div style={{ width: 200 }}>
           <G.Link href="#original" label="Open the original photograph"
-            media={{ src: '/missing-story-image.png', alt: '', aspect: 'landscape', fallback: <G.Text tone="muted">Image unavailable</G.Text> }} />
+            media={{ src: '/missing-story-image.png', alt: '', ratio: '4:3' }} />
         </div>
       </State>
     </Matrix>
@@ -608,17 +608,17 @@ export const Image: Story = {
   render: () => (
     <Matrix>
       <State label="Aspects">
-        <div style={{ width: 200 }}><G.Image src={placeholderImage('Landscape')} alt="Landscape placeholder artwork" aspect="landscape" /></div>
-        <div style={{ width: 140 }}><G.Image src={placeholderImage('Square', 160)} alt="Square placeholder artwork" aspect="square" /></div>
-        <div style={{ width: 120 }}><G.Image src={placeholderImage('Portrait', 40)} alt="Portrait placeholder artwork" aspect="portrait" fit="contain" /></div>
+        <div style={{ width: 200 }}><G.Image src={placeholderImage('Landscape')} alt="Landscape placeholder artwork" ratio="4:3" /></div>
+        <div style={{ width: 140 }}><G.Image src={placeholderImage('Square', 160)} alt="Square placeholder artwork" ratio="1:1" /></div>
+        <div style={{ width: 120 }}><G.Image src={placeholderImage('Portrait', 40)} alt="Portrait placeholder artwork" ratio="3:4" fit="contain" /></div>
       </State>
-      <State label="Error (invalid source) with fallback">
+      <State label="Error (invalid source): the neutral placeholder">
         <div style={{ width: 200 }}>
-          <G.Image src="/missing-story-image.png" alt="Missing artwork" aspect="landscape" fallback={<G.Text tone="muted">Image unavailable</G.Text>} />
+          <G.Image src="/missing-story-image.png" alt="Missing artwork" ratio="4:3" />
         </div>
       </State>
       <State label="Asset slot attributes">
-        <div style={{ width: 200 }}><G.Image src={placeholderImage('Slot')} alt="" aspect="landscape" assetSlot="story.card-art" assetSha256="0000" /></div>
+        <div style={{ width: 200 }}><G.Image src={placeholderImage('Slot')} alt="" ratio="4:3" assetSlot="story.card-art" assetSha256="0000" /></div>
       </State>
     </Matrix>
   ),

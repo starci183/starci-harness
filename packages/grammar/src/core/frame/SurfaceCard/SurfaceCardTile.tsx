@@ -12,10 +12,13 @@ import { SkeletonPlaceholder } from "../../leaf/Skeleton/index.js"
 import type { BadgeData, ItemAction, TileData, TileMark, TilePoster } from "../../surfaceCardData.js"
 import { tileClassName } from "./classNames.js"
 
+/** A tile poster names its frame by shape; the picture claims that shape as a ratio. */
+const POSTER_RATIO = { square: "1:1", landscape: "4:3", portrait: "3:4" } as const
+
 const TileMarkView = ({ mark, isLoading }: { readonly mark: TileMark; readonly isLoading: boolean }) => {
     if (isLoading) return <span className="starci-core-tile-mark" data-grammar-tile-mark="skeleton"><SkeletonPlaceholder shape="block"><span className="starci-core-tile-mark-fill" /></SkeletonPlaceholder></span>
     if (mark.logo !== undefined) {
-        return <span className="starci-core-tile-mark" data-grammar-tile-mark="logo"><Image src={mark.logo.src} alt={mark.logo.alt} aspect="square" fit="contain" plate="none" /></span>
+        return <span className="starci-core-tile-mark" data-grammar-tile-mark="logo"><Image {...mark.logo} ratio="1:1" fit="contain" plate="none" /></span>
     }
     if (mark.icon !== undefined) return <span className="starci-core-tile-mark" data-grammar-tile-mark="icon"><IconTile source={mark.icon} size="md" /></span>
     return <span className="starci-core-tile-mark" data-grammar-tile-mark="avatar"><Avatar {...mark.avatar} size="control" isDecorative /></span>
@@ -27,7 +30,7 @@ const TilePosterView = ({ poster, isLoading }: { readonly poster: TilePoster; re
             <SkeletonPlaceholder shape="region"><span className="starci-core-tile-poster-fill" /></SkeletonPlaceholder>
         ) : poster.image === undefined ? (
             <span className="starci-core-tile-poster-absence">{poster.absence}</span>
-        ) : <Image {...poster.image} aspect={poster.aspect ?? "landscape"} fit={poster.fit ?? "cover"} />}
+        ) : <Image {...poster.image} ratio={POSTER_RATIO[poster.aspect ?? "landscape"]} fit={poster.fit ?? "cover"} />}
     </div>
 )
 

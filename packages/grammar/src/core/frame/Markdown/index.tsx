@@ -141,7 +141,7 @@ const LinkOf = (props: { readonly href: string; readonly nodes: ReadonlyArray<Ph
 
 /** An image inside a line of text; one whose destination is not http(s) or relative is shown as its alt. */
 const ImageOf = (props: { readonly src: string; readonly alt: string }) =>
-    isSafeImage(props.src) && props.src !== "" ? <Image src={props.src} alt={props.alt} aspect="auto" fit="contain" /> : props.alt
+    isSafeImage(props.src) && props.src !== "" ? <Image src={props.src} alt={props.alt} ratio="auto" fit="contain" /> : props.alt
 
 const Inline = (props: { readonly nodes: ReadonlyArray<PhrasingContent>; readonly context: Context }) =>
     props.nodes.map((node, index) => <InlineNode key={index} node={node} context={props.context} />)
@@ -192,7 +192,7 @@ const Figure = (props: { readonly node: PhrasingContent; readonly context: Conte
     const src = node.type === "image" ? node.url : (context.definitions.get(node.identifier)?.url ?? "")
     const alt = node.alt ?? ""
     if (src === "" || !isSafeImage(src)) return alt === "" ? null : <Text as="p">{alt}</Text>
-    return <MediaFrame aspect="auto" fit="contain" media={<Image src={src} alt={alt} aspect="auto" fit="contain" />} {...(alt === "" ? {} : { caption: alt })} />
+    return <MediaFrame aspect="auto" fit="contain" media={<Image src={src} alt={alt} ratio="auto" fit="contain" />} {...(alt === "" ? {} : { caption: alt })} />
 }
 
 const Blocks = (props: { readonly nodes: ReadonlyArray<RootContent>; readonly context: Context; readonly isTight?: boolean }) =>

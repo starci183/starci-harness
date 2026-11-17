@@ -8,7 +8,7 @@ import type { IconSource } from "./leaf/Icon/index.js"
 import type { SurfaceHeadingLevel } from "./leaf/Label/index.js"
 import type { LinkProps } from "./leaf/Link/index.js"
 import type { ButtonProps } from "./leaf/Button/index.js"
-import type { ImageAspect, ImageProps } from "./leaf/Image/index.js"
+import type { ImageFacts, ImageProps, MediaSourceRef } from "./leaf/Image/index.js"
 
 /** A status mark as data: the words, the tone, and whether it leads with a status dot. */
 export type BadgeData = {
@@ -28,8 +28,7 @@ export type AvatarData = {
 }
 
 /** A picture as data. `alt` is required; pass "" only for a purely decorative one. */
-export type ImageData = {
-    readonly src: string
+export type ImageData = MediaSourceRef & {
     readonly alt: string
 }
 
@@ -218,11 +217,11 @@ export type TileMark =
 /** A tile reserves the same media frame for an image and for a known missing image. */
 export type TilePoster = {
     /** Landscape is the default 4:3 frame; unresolved content uses this same ratio. */
-    readonly aspect?: Exclude<ImageAspect, "auto">
+    readonly aspect?: "square" | "landscape" | "portrait"
     readonly fit?: ImageProps["fit"]
 } & (
     | {
-        readonly image: Pick<ImageProps, "src" | "alt" | "loading" | "srcSet" | "sizes" | "width" | "height">
+        readonly image: ImageFacts & MediaSourceRef
         readonly absence?: never
     }
     | { readonly absence: string; readonly image?: never }

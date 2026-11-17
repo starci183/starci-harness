@@ -9,7 +9,7 @@ type Story = StoryObj;
 const EntryDemo = ({ state = 'ready', long = false }: { readonly state?: 'ready' | 'loading' | 'error'; readonly long?: boolean }) => (
   <G.EntryFrame
     label="Access your workspace"
-    artwork={<G.Image src={placeholderImage('A welcoming place to begin', 1200)} alt="" aspect="portrait" fit="cover" plate="none" />}
+    artwork={<G.Image src={placeholderImage('A welcoming place to begin', 1200)} alt="" ratio="3:4" fit="cover" plate="none" />}
     intro={
       <G.Stack gap="inline">
         <G.Heading level={1}>{long ? 'One secure place for the work you do together, wherever the day begins' : 'A clear place to begin'}</G.Heading>
