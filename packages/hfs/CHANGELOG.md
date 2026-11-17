@@ -1,5 +1,9 @@
 # Changelog
 
+## 6.13.35 - 2026-11-18
+
+- Changed (`knowledge/hfs/canon-pins.yaml`): the Grammar family at 0.45.1 (`~0.45.1`): a Popover has one width, `min(26rem, 100vw - 2rem)`, so a panel of rows (a notification list) no longer collapses to its narrowest word; `edgeTone` (`"accent" | "success" | "warning" | "danger"`, type `RowEdgeTone`) on `ListRowData` and `DataTableRow` draws the 2px start-edge bar on Section list items, ListRow, Board items, table rows and the phone list row. The `@starci/hfs` self-pin is 6.13.35.
+
 ## 6.13.34 - 2026-11-18
 
 - Fixed (`audit/judge.mts`, PROJECT-LINT-5): an audit exception's `via` names packages a path passes THROUGH, not only the roots it starts at: a finding is exempt when every lockfile path to the package passes through a `via` package before it (a second walk stops at every `via` package; a node it still reaches fails `AUDIT_HIGH`, naming the dependencies the bypassing paths come from). A fix is npm's `fixAvailable: true`, a non-major update, or a major update of the vulnerable package itself; a semver-major change of another package (npm moving a parent, often backwards) is no fix: it no longer raises `AUDIT_EXCEPTION_FIX_AVAILABLE` and is printed on the `AUDIT_EXCEPTION_ACTIVE` line. The `@starci/hfs` self-pin is 6.13.34.

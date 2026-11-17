@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.155 - 2026-11-18
+
+- Changed (pins): the Grammar family at 0.45.1 (a Popover of one width, `edgeTone` on list and table rows) and @starci/hfs 6.13.35; contexts ui (dialog-drawer, list-table). Until the cli-follow step raises the CLI's requirement, the CLI runs the hfs it requires.
+
 ## 1.1.0-alpha.154 - 2026-11-18
 
 - Changed: the CLI requires @starci/hfs@6.13.34, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
