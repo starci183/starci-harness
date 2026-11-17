@@ -96,8 +96,8 @@ export type TopBarProps = NoChildren & Omit<ComponentPropsWithoutRef<"header">, 
     /** The mobile menu trigger. */
     readonly menu?: TopBarMenu
     readonly position?: "static" | "sticky"
-    /** `compact`: a 56px bar (a public page under the brand); `default`: 64px, the app's bar. */
-    readonly density?: "default" | "compact"
+    /** `compact`: a 56px bar (a public page under the brand); `default`: 64px, the app's bar; `adaptive` (0.46.0): 64px from 48rem and 52px below it, the app bar of a phone-first product. */
+    readonly density?: "default" | "compact" | "adaptive"
 }
 
 /**

@@ -232,7 +232,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [ui/components/command-palette.md](../ui/components/command-palette.md) · 4 KB — Contract: dialog.
   - sections: Job · Choose · Variants · Keyboard · Size · States · Owner split · Rules
 - [ui/components/data-views.md](../ui/components/data-views.md) · 3 KB — Contract: data-views.
-  - sections: Job · Choose
+  - sections: Meter reading voice (0.46.0) · Job · Choose
 - [ui/components/diagram.md](../ui/components/diagram.md) · 15 KB — Contract: Diagram.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules · FlowGraph state priority
 - [ui/components/dialog-drawer.md](../ui/components/dialog-drawer.md) · 4 KB — Contract: Dialog and Drawer.
@@ -245,8 +245,8 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · The rhythm · Variants · Size · States · Owner split · Rules · A labelled Switch needs its description (SWITCH-LABEL-DESCRIPTION) · A Switch has two kinds (SWITCH-KIND)
 - [ui/components/freestyle.md](../ui/components/freestyle.md) · 2 KB — Contract: Freestyle.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
-- [ui/components/identity-mark.md](../ui/components/identity-mark.md) · 3 KB — Contract: Avatar and IconTile.
-  - sections: Job · Choose · Variants · Size · States · Owner split · Initials fit the circle · Rules
+- [ui/components/identity-mark.md](../ui/components/identity-mark.md) · 5 KB — Contract: Avatar and IconTile.
+  - sections: Job · Choose · Variants · Plates of an initials mark (0.46.0) · Size · States · Owner split · Initials fit the circle · Rules
 - [ui/components/list-table.md](../ui/components/list-table.md) · 14 KB — Contract: List and Table.
   - sections: Job · Choose · Filter row (0.43.1, narrow step 0.44.0) · Row edge tone (0.45.1) · Unread row (0.46.0) · Section head (0.36.0) · Version diff rows (0.37.28) · Variants · Size · States · Owner split · Row description · Rules · Key-value rows (0.37.5)
 - [ui/components/mascot.md](../ui/components/mascot.md) · 3 KB — Contract: Mascot.
@@ -265,8 +265,8 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/select.md](../ui/components/select.md) · 2 KB — Contract: Select.
   - sections: Job · Choose · Variants · Size · States · Owner split · Compact · Rules
-- [ui/components/sidebar.md](../ui/components/sidebar.md) · 3 KB — Contract: shell.
-  - sections: Job · Choose · The tone of a count · Destination · Size · States · Owner split · Rules
+- [ui/components/sidebar.md](../ui/components/sidebar.md) · 4 KB — Contract: shell.
+  - sections: Job · Choose · The tone of a count · Destination · Collapse control placement (0.46.0) · Size · States · Owner split · Rules
 - [ui/components/tabs.md](../ui/components/tabs.md) · 8 KB — Contract: Tabs.
   - sections: Job · Choose · Variants · Size · States · Owner split · The second layer · Rules
 - [ui/components/text-field.md](../ui/components/text-field.md) · 4 KB — Contract: Input, CopyField.

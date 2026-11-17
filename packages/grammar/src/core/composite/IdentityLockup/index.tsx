@@ -14,8 +14,11 @@ export type IdentityLockupProps = NoChildren & {
     readonly logoSrc?: string
     /** `square` (default): a transparent box with no corner, the image contained so round, square and wide logos keep their own shape. `rounded` is an explicit opt-in. */
     readonly markShape?: Extract<AvatarShape, "square" | "rounded">
-    /** `accent`: the initials mark on the accent soft pair instead of a generated colour (a shop or workspace identity). */
-    readonly markTone?: "default" | "accent"
+    /**
+     * `accent`: the initials mark on the accent soft pair instead of a generated colour (a shop or workspace identity). `solid` (0.46.0): the brand mark, the solid accent
+     * plate with the accent foreground letter. Default: the generated colour.
+     */
+    readonly markTone?: "default" | "accent" | "solid"
     /** Gives the existing PlainPressable the navbar's shared control height. */
     readonly size?: "control"
     readonly onPress?: () => void

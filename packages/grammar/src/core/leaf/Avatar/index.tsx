@@ -41,9 +41,10 @@ export type AvatarProps = NoChildren & {
     readonly isCurrent?: boolean
     /**
      * `accent`: the initials on the accent soft pair (a shop or workspace mark that belongs to the brand) instead of a generated colour
-     * from the name. Default `default`: the generated colour that tells people apart.
+     * from the name. `solid` (0.46.0): the initials on the solid accent plate (`--accent` with `--accent-foreground`), the brand mark. `strong` (0.46.0): the initials on the
+     * neutral strong plate (`--foreground` with `--background`), the signed-in person among the others. Default `default`: the generated colour that tells people apart.
      */
-    readonly tone?: "default" | "accent"
+    readonly tone?: AvatarTone
     /** Unresolved identity: an unnamed Skeleton; the owner carries aria-busy (STATE-8). */
     readonly isLoading?: boolean
 }
@@ -131,6 +132,9 @@ export const AvatarAgentBadge = ({ children, kind, size, renderedScale = 1, clas
 )
 
 /** Uploaded image or local DiceBear initials, with the same person name rule for an AI agent (A11Y-2). */
+/** The plate an avatar with no image puts its initials on (0.46.0 adds `solid` and `strong`). */
+export type AvatarTone = "default" | "accent" | "solid" | "strong"
+
 const AvatarInner = ({ name, src, seed, kind = "person", fallback, fallbackMark = "sprout", size = "md", shape = "circle", isDecorative = false, isCurrent = false, tone = "default", isLoading = false }: AvatarProps) => {
     const avatarClassName = "starci-core-avatar"
     if (isLoading) return (
@@ -147,7 +151,7 @@ const AvatarInner = ({ name, src, seed, kind = "person", fallback, fallbackMark 
                 data-grammar-avatar-shape={shape} data-grammar-avatar-kind={kind} data-grammar-current={isCurrent ? "true" : "false"}
                 data-grammar-avatar-tone={tone}
                 size={vendorAvatarSize(size)}>
-                {tone === "accent" && src === undefined
+                {tone !== "default" && src === undefined
                     ? <HeroAvatar.Fallback aria-hidden="true" data-grammar-avatar-fallback="true"><span className="starci-core-avatar-letters">{avatarInitials(name)}</span></HeroAvatar.Fallback>
                     : avatarParts(name, src, fallback, seed, fallbackMark)}
             </HeroAvatar>

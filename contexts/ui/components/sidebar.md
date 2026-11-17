@@ -28,6 +28,11 @@ Evidence (Rule 1). NIVO console shell canvas, repository `nivoos-lite` at `8759c
 ## Destination
 `SidebarItem.href` (0.46.0) makes an item a real anchor through the app root's router (a new tab on a modifier press, copy link); `onAction(id)` runs alongside. Without `href` the item is a command and `onAction` is its only effect.
 
+## Collapse control placement (0.46.0)
+`collapsePlacement` (`top` default, `bottom`) says where the collapse control stands. `top` is the icon button above the list. `bottom` is a labelled row at the foot of the rail, under the footer and one hairline: the `toggleSource` glyph and `collapseLabel` as its visible words ("Collapse"),
+drawn as a sidebar item; the collapsed rail shows the expand control (`expandLabel`, icon only) centred at the same foot. Persist the state in the app as before. Evidence (Rule 1): NIVO console shell canvas, repository `nivoos-lite` at `8759c8ab`, `.starcistacks/canvas/pages/01-shell-app.html``:208` (the foot: the credit line, then the "Thu gon" row with a glyph), `:264` (the collapsed rail), `:240`.
+Story `Navigation/Shell gaps (0.46.0)` `CollapseAtTheFoot`.
+
 ## Size
 An item is 40 high with a leading 20 glyph; the count is a pill of the badge step (12 text). The rail is 3.5rem wide, a drawer is the sheet's width.
 

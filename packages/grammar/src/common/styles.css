@@ -2809,6 +2809,57 @@
         justify-content: center;
     }
 
+    /*
+     * THE COLLAPSE ROW AT THE FOOT (0.46.0, collapsePlacement="bottom"): a labelled row under the footer, one hairline above it, drawn as a sidebar item (glyph, muted words, the
+     * item's hover fill); the collapsed rail shows the expand icon button centred in the same place.
+     */
+    .starci-core-sidebar-collapse-foot {
+        display: flex;
+        min-width: 0;
+        justify-content: center;
+        border-block-start: 1px solid var(--separator);
+        padding: 0.75rem;
+    }
+
+    .starci-core-sidebar:not([data-collapsed="true"]) .starci-core-sidebar-collapse-foot {
+        justify-content: stretch;
+    }
+
+    .starci-core-sidebar-collapse-row {
+        display: flex;
+        min-width: 0;
+        flex: 1 1 auto;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.5rem 0.75rem;
+        border: 0;
+        border-radius: var(--grammar-radius-md);
+        background: none;
+        color: var(--muted);
+        font: inherit;
+        font-size: var(--grammar-text-md);
+        font-weight: var(--grammar-weight-medium);
+        text-align: start;
+        cursor: pointer;
+    }
+
+    .starci-core-sidebar-collapse-row[data-hovered="true"] {
+        background: var(--default);
+        color: var(--foreground);
+    }
+
+    .starci-core-sidebar-collapse-row[data-focus-visible="true"] {
+        outline: var(--grammar-ring-width) solid var(--focus);
+        outline-offset: calc(-1 * var(--grammar-ring-width));
+    }
+
+    .starci-core-sidebar-collapse-text {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
     .starci-core-sidebar-header {
         min-width: 0;
         padding-inline: 0.75rem;
@@ -3812,6 +3863,12 @@
             display: flex;
         }
 
+        /* The opener band keeps the bar's band height (FE-APP-SHELL-4): under an adaptive bar (52 on a phone) it is 52 too. */
+        .starci-core-workspace-shell:has(.starci-core-top-bar[data-grammar-top-bar-density="adaptive"]) .starci-core-workspace-shell-opener {
+            block-size: 3.25rem;
+            min-block-size: 3.25rem;
+        }
+
         .starci-core-workspace-shell-compact-navigation {
             position: sticky;
             z-index: 40;
@@ -4303,9 +4360,26 @@
         font-weight: var(--grammar-weight-semibold);
     }
 
-    .starci-core-avatar[data-grammar-avatar-tone="accent"] .starci-core-avatar-letters { font-size: var(--grammar-text-md); line-height: var(--grammar-leading-xs); }
-    .starci-core-avatar[data-grammar-avatar-tone="accent"][data-grammar-avatar-size="sm"] .starci-core-avatar-letters { font-size: var(--grammar-text-xs); }
-    .starci-core-avatar[data-grammar-avatar-tone="accent"][data-grammar-avatar-size="lg"] .starci-core-avatar-letters { font-size: var(--grammar-text-xl); }
+    /* tone="solid" (0.46.0): the solid accent plate, a standalone x pair. tone="strong": the neutral strong plate, the foreground with the background as its ink. */
+    .starci-core-avatar[data-grammar-avatar-tone="solid"] [data-grammar-avatar-fallback="true"] {
+        display: grid;
+        place-items: center;
+        background: var(--accent);
+        color: var(--accent-foreground);
+        font-weight: var(--grammar-weight-semibold);
+    }
+
+    .starci-core-avatar[data-grammar-avatar-tone="strong"] [data-grammar-avatar-fallback="true"] {
+        display: grid;
+        place-items: center;
+        background: var(--foreground);
+        color: var(--background);
+        font-weight: var(--grammar-weight-semibold);
+    }
+
+    .starci-core-avatar:is([data-grammar-avatar-tone="accent"], [data-grammar-avatar-tone="solid"], [data-grammar-avatar-tone="strong"]) .starci-core-avatar-letters { font-size: var(--grammar-text-md); line-height: var(--grammar-leading-xs); }
+    .starci-core-avatar:is([data-grammar-avatar-tone="accent"], [data-grammar-avatar-tone="solid"], [data-grammar-avatar-tone="strong"])[data-grammar-avatar-size="sm"] .starci-core-avatar-letters { font-size: var(--grammar-text-xs); }
+    .starci-core-avatar:is([data-grammar-avatar-tone="accent"], [data-grammar-avatar-tone="solid"], [data-grammar-avatar-tone="strong"])[data-grammar-avatar-size="lg"] .starci-core-avatar-letters { font-size: var(--grammar-text-xl); }
 
     /* PageIntro: the plain heading block of a public page: mark beside a title, fact lines and a sentence, on the page ground. */
     .starci-core-page-intro { display: flex; min-width: 0; align-items: flex-start; gap: var(--grammar-row-gap); }

@@ -48,6 +48,11 @@ export type MeterProps = NoChildren & {
      * not a zero measurement). The geometry is `aria-hidden`; the root is `aria-busy`. `value`, `tone` and `segments` are ignored.
      */
     readonly isLoading?: boolean
+    /**
+     * The reading's voice (0.46.0). `default`: the label in the foreground, 14 / 500. `muted`: the quiet reading of a secondary gauge (a usage line at the foot of a rail): the label and the
+     * value muted, 12 / 400. It colours words, never the fill (`tone` does).
+     */
+    readonly labelTone?: "default" | "muted"
     /** `sm` is HeroUI's thin track (h-1, 0.25rem) for a gauge inside dense rows; `md` (default) is the h-2 track. */
     readonly size?: MeterSize
 }
@@ -99,6 +104,7 @@ const MeterInner = ({
     segments,
     isLoading = false,
     size = "md",
+    labelTone = "default",
 }: MeterProps) => {
     const ownsBusy = useRegionOwnsBusy()
     if (isLoading) {
@@ -109,6 +115,7 @@ const MeterInner = ({
                 data-loading="true"
                 data-size={size}
                 data-grammar-skeleton="true"
+                data-grammar-label-tone={labelTone}
                 data-grammar-tone="neutral"
                 data-contract="A11Y-3 STATE-8"
                 {...(ownsBusy ? {} : { "aria-busy": true })}
@@ -132,6 +139,7 @@ const MeterInner = ({
             data-tier="leaf"
             data-component="Meter"
             data-grammar-tone={tone}
+            data-grammar-label-tone={labelTone}
             data-size={size}
             data-contract="A11Y-3 ACCENT-4"
             value={reading}

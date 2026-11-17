@@ -2,6 +2,10 @@
 
 Contract: [data-views](../../grammars/contract.md#data-views).
 
+## Meter reading voice (0.46.0)
+`Meter labelTone="muted"` is the quiet reading of a secondary gauge (a usage line at the foot of a rail, under a footer): the label and the value muted, 12 regular; the default stays the foreground label at 14 medium. It colours words only (`tone` colours the fill). Not made the default: a headline gauge keeps its
+label. Evidence (Rule 1): NIVO console shell canvas, repository `nivoos-lite` at `8759c8ab`, `.starcistacks/canvas/pages/01-shell-app.html``:208` ("Credit tháng này 7.200 / 10.000": a muted 12 label and value over a 4px bar). Story `Navigation/Shell gaps (0.46.0)` `QuietMeter`.
+
 ## Job
 Draw a set of items as stages, as entries on two axes, or as a few amounts to compare, in the four states of a region.
 

@@ -953,6 +953,14 @@
         color: var(--muted);
     }
 
+    /* labelTone="muted" (0.46.0): the quiet reading, label and value muted, 12 regular. */
+    .starci-core-meter[data-grammar-label-tone="muted"] :is(.starci-core-meter-label, .starci-core-meter-output) {
+        color: var(--muted);
+        font-size: var(--grammar-text-xs);
+        line-height: var(--grammar-leading-xs);
+        font-weight: var(--grammar-weight-regular);
+    }
+
     /*
      * THE EMPTY TRACK (0.41.0): every measure's empty track (Meter, its segments, Progress, its steps, ProgressCircle, ProportionBar) is one visible neutral,
      * the theme hook `--starci-core-track`, by default the foreground at 10% over the surface (about neutral-200 on white), one step lighter than the Switch's

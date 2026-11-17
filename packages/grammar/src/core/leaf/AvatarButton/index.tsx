@@ -2,7 +2,7 @@
 
 import { withRegionGeometry } from "../../regionScope.js"
 import { useId, type ReactNode } from "react"
-import { Avatar, avatarAccessibleName, type AvatarKind, type AvatarSize } from "../Avatar/index.js"
+import { Avatar, avatarAccessibleName, type AvatarKind, type AvatarProps, type AvatarSize } from "../Avatar/index.js"
 import { PlainPressable } from "../../PlainPressable.js"
 import { navigationClassName } from "../../navigationClassNames.js"
 import { StatusDotMark, type StatusDotTone } from "../StatusDot/index.js"
@@ -26,6 +26,10 @@ export type AvatarButtonProps = NoChildren & {
     readonly kind?: AvatarKind
     /** Custom uploaded-image loading/error fallback; the default is the same DiceBear initials image. */
     readonly fallback?: ReactNode
+    /** What an avatar with no `src` draws (0.46.0, forwarded to the `Avatar`): `sprout` (default) or the name's `initials`. */
+    readonly fallbackMark?: AvatarProps["fallbackMark"]
+    /** The plate of the initials (0.46.0, forwarded to the `Avatar`): `default`, `accent`, `solid`, `strong`. */
+    readonly tone?: AvatarProps["tone"]
     /** `md` is 40px; `floating` is 56px with an elevated shadow, for a launcher that floats over the page. */
     readonly size?: AvatarButtonSize
     /** A StatusDot badge at the top end corner (mirrored in RTL) on a surface ring; its `label` describes the button. Only with `size="floating"`. */
@@ -39,7 +43,7 @@ export type AvatarButtonProps = NoChildren & {
  * press and a round focus ring. Pass it as the `trigger` of a DropdownMenu or Popover (the account menu).
  * Contract: A11Y-2 (the button is named once; the avatar inside is decorative).
  */
-const AvatarButtonInner = ({ name, src, seed, kind = "person", fallback, size = "md", status, onPress, isDisabled }: AvatarButtonProps) => {
+const AvatarButtonInner = ({ name, src, seed, kind = "person", fallback, fallbackMark, tone, size = "md", status, onPress, isDisabled }: AvatarButtonProps) => {
     const statusId = useId()
     const isFloating = size === "floating"
     const avatarSize: AvatarSize = isFloating ? "lg" : size
@@ -53,7 +57,7 @@ const AvatarButtonInner = ({ name, src, seed, kind = "person", fallback, size = 
             {...(onPress === undefined ? {} : { onPress })}
             {...(isDisabled === undefined ? {} : { isDisabled })}
         >
-            <Avatar name={name} kind={kind} isDecorative size={avatarSize} {...(src === undefined ? {} : { src })} {...(seed === undefined ? {} : { seed })} {...(fallback === undefined ? {} : { fallback })} />
+            <Avatar name={name} kind={kind} isDecorative size={avatarSize} {...(src === undefined ? {} : { src })} {...(seed === undefined ? {} : { seed })} {...(fallback === undefined ? {} : { fallback })} {...(fallbackMark === undefined ? {} : { fallbackMark })} {...(tone === undefined ? {} : { tone })} />
         </PlainPressable>
     )
     if (!isFloating) return button

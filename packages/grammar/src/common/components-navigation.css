@@ -478,6 +478,15 @@
         min-block-size: calc(3.5rem - 1px);
     }
 
+    /* density="adaptive" (0.46.0): the default bar (64) from 48rem, 52 below it; the controls keep the md 40 and the bar's padding takes the rest. */
+    @media (max-width: 47.999rem) {
+        .starci-core-top-bar[data-grammar-top-bar-density="adaptive"] .starci-core-top-bar-main {
+            block-size: calc(3.25rem - 1px);
+            min-block-size: calc(3.25rem - 1px);
+            padding-block: 0.25rem;
+        }
+    }
+
     .starci-core-top-bar-main {
         box-sizing: border-box;
         display: flex;
