@@ -36,7 +36,7 @@ export type DescriptionListProps = NoChildren & {
 
 /**
  * Term/value pairs (details, metadata, settings summaries) as a real `<dl>`. Key figures are not pairs: a strip of
- * them is `SurfaceCard kind="figures"`, which owns the cells, the lines between them and the figure scale.
+ * them is `Section kind="figures"`, the ribbon, which owns the cells, the lines between them and the figure scale.
  * Contract: HIERARCHY-3 (term precedes value in source and paint), TRUTH-1 (no tone carrier on facts).
  */
 const DescriptionListInner = (props: DescriptionListProps) => {
@@ -68,7 +68,7 @@ const DescriptionListInner = (props: DescriptionListProps) => {
 
 /**
  * Term/value pairs (details, metadata, settings summaries) as a real `<dl>`. Key figures are not pairs: a strip of
- * them is `SurfaceCard kind="figures"`, which owns the cells, the lines between them and the figure scale.
+ * them is `Section kind="figures"`, the ribbon, which owns the cells, the lines between them and the figure scale.
  * Contract: HIERARCHY-3 (term precedes value in source and paint), TRUTH-1 (no tone carrier on facts).
  */
 export const DescriptionList = withRegionLoading(DescriptionListInner)

@@ -4,8 +4,8 @@ import * as G from '../common/index.js';
 import { noop } from './fixtures.js';
 
 /**
- * 0.37.5: a SurfaceCard on a white ground is bordered (never refused), the header zones of a table card keep their seams, a Pane has a `footer` slot that holds the
- * pane's bottom while the body scrolls, a nested grid with `rows` keeps the height chain, and `measure="narrow"` caps an order card at 30rem.
+ * A SurfaceCard is white with a 1px edge and no shadow on every ground, a Pane has a `footer` slot that holds the pane's bottom while the body scrolls, a nested grid with `rows` keeps the height chain,
+ * and `measure="narrow"` caps an order card at 30rem.
  */
 const meta: Meta = { title: 'Surfaces/Pane footer and white-ground cards', parameters: { layout: 'fullscreen' } };
 export default meta;
@@ -17,7 +17,7 @@ const ROWS = [
 ];
 const card = (label: string) => <G.SurfaceCard label={label}><G.Text>{ROWS.map((row) => row.title).join(', ')}</G.Text></G.SurfaceCard>;
 
-/** A `SurfaceCard` in a white aside and in an open drawer: 1px border, no shadow; on the pink well: shadow, no border. Development no longer throws. */
+/** A `SurfaceCard` on the well, in a white aside and in an open drawer: white, 1px border, no shadow on all three. */
 export const CardOnWhiteGround: Story = {
   render: () => (
     <div style={{ height: 420 }}>
@@ -35,43 +35,9 @@ export const CardOnWhiteGround: Story = {
       const aside = cardIn(canvasElement.querySelector('[data-grammar-pane-area="aside"]'));
       const drawer = cardIn(document.querySelector('.starci-core-drawer'));
       if (well === null || aside === null || drawer === null) throw new Error('the three cards render');
-      expect(getComputedStyle(well).boxShadow).not.toBe('none');
-      expect(Number.parseFloat(getComputedStyle(well).borderTopWidth)).toBe(0);
-      for (const white of [aside, drawer]) {
+      for (const white of [well, aside, drawer]) {
         expect(getComputedStyle(white).boxShadow).toBe('none');
         expect(Number.parseFloat(getComputedStyle(white).borderTopWidth)).toBe(1);
-      }
-    });
-  },
-};
-
-const COLUMNS: readonly G.TableColumnData[] = [{ id: 'name', label: 'Order ID' }, { id: 'total', label: 'Total', numeric: true }];
-
-/** A table card with a search zone and a tabs zone over the white table body (0.37.8): a visible 1px seam under each zone. */
-export const TableHeaderSeams: Story = {
-  render: () => (
-    <div style={{ width: 'min(100%, 720px)', padding: 24 }}>
-      <G.SurfaceCard
-        kind="table"
-        label="Orders"
-        columns={COLUMNS}
-        rows={[{ id: 'r1', cells: { name: 'OR-1001', total: '120,000' } }]}
-        empty={<G.EmptyNotice message="Empty" />}
-        headers={[
-          { kind: 'search', label: 'Search orders', value: '', onChange: noop, placeholder: 'Search orders' },
-          { kind: 'filter', label: 'Status', items: [{ id: 'all', label: 'All' }, { id: 'paid', label: 'Paid' }], selectedKey: 'all', onSelect: noop, overflowLabel: 'More', moreLabel: (count: number) => `${count} filters` },
-        ]}
-      />
-    </div>
-  ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const zones = Array.from(canvasElement.querySelectorAll<HTMLElement>('[data-grammar-zone]'));
-      expect(zones.length).toBeGreaterThanOrEqual(2);
-      for (const zone of zones) {
-        const style = getComputedStyle(zone);
-        expect(Number.parseFloat(style.borderBottomWidth)).toBeGreaterThan(0);
-        expect(style.borderBottomColor).not.toBe('rgba(0, 0, 0, 0)');
       }
     });
   },
@@ -143,7 +109,12 @@ export const NestedRowsHeightChain: Story = {
 export const NarrowMeasure: Story = {
   render: () => (
     <div style={{ width: 900, padding: 24 }}>
-      <G.SurfaceCard kind="details" label="Order OR-1001" measure="narrow" items={[{ id: 't', term: 'Total', description: '120,000' }]} />
+      <G.SurfaceCard label="Order OR-1001" measure="narrow">
+        <G.Stack gap="row">
+          <G.Badge tone="success">Paid</G.Badge>
+          <G.DescriptionList items={[{ id: 't', term: 'Total', description: '120,000' }]} />
+        </G.Stack>
+      </G.SurfaceCard>
     </div>
   ),
   play: async ({ canvasElement }) => {

@@ -13,13 +13,13 @@ A Grammar `Text` with `tone="muted"` written immediately before a Grammar `Surfa
 **Invalid**
 
 ```tsx
-<Stack><Heading level={3}>General</Heading><Text tone="muted">Choose how the agent works.</Text><SurfaceCard kind="select" label="Mode" ... /></Stack>
+<Stack><Heading level={3}>General</Heading><Text tone="muted">Choose how the agent works.</Text><SurfaceCard label="Mode" ... /></Stack>
 ```
 
 **Valid**
 
 ```tsx
-<SurfaceCard kind="select" label="Mode" items={[{ id: "auto", title: "Automatic", subtitle: "The agent answers at once; you review later." }]} ... />
+<Section title="Mode"><RadioGroup label="Mode" isLabelHidden options={[{ value: "auto", label: "Automatic", description: "The agent answers at once; you review later." }]} ... /></Section>
 ```
 
 Rule ownership: [FE-RULE-OWNERSHIP](../../../contexts/code/fe/README.md#the-placement-test-fe-rule-ownership).

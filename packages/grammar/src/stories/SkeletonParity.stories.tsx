@@ -337,9 +337,9 @@ const rows = (): ReadonlyArray<Pair> => [
         width: "28rem",
     },
     {
-        id: "figures-card",
-        ready: <G.SurfaceCard kind="figures" label="Today" items={[{ id: "a", term: "Revenue", value: "1,200", meta: "Today" }, { id: "b", term: "Users", value: "40", meta: "Today" }]} />,
-        loading: <G.SurfaceCard kind="figures" label="Today" isLoading items={[{ id: "a", term: "Revenue", value: "1,200", meta: "Today" }, { id: "b", term: "Users", value: "40", meta: "Today" }]} />,
+        id: "figures-section",
+        ready: <G.Section kind="figures" title="Today" items={[{ id: "a", term: "Revenue", value: "1,200", meta: "Today" }, { id: "b", term: "Users", value: "40", meta: "Today" }]} />,
+        loading: <G.Section kind="figures" title="Today" isLoading items={[{ id: "a", term: "Revenue", value: "1,200", meta: "Today" }, { id: "b", term: "Users", value: "40", meta: "Today" }]} />,
         width: "28rem",
     },
     {

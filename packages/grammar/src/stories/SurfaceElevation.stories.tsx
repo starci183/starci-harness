@@ -4,8 +4,8 @@ import * as G from '../common/index.js';
 
 /**
  * One look for a list (0.43.0): a `Section kind="list"` is plain rows on whatever it stands on, the pink well or a white aside (`Pane surface`):
- * no frame, fill, radius or shadow, the rows divided by hairlines and their text on the section title's edge. SURFACE-ELEVATION is about cards:
- * a `SurfaceCard` in a `Pane surface` is bordered (see `Surfaces/Pane footer and white-ground cards`).
+ * no frame, fill, radius or shadow, the rows divided by hairlines and their text on the section title's edge. A card draws its 1px
+ * `--border` edge and no shadow on every ground (see `Surfaces/Pane footer and white-ground cards`).
  */
 const meta: Meta = { title: 'Surfaces/Surface elevation' };
 export default meta;

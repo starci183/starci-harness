@@ -6,11 +6,10 @@ import { noop } from './fixtures.js';
 import { reconcileEdges, reconcileLegend, reconcileNodes } from './FlowGraphSteps.data.js';
 
 /**
- * 0.37.8: a table looks like a card of rows (no grey frame, no grey gutters, no grey header strip: a white body, the column labels 12 muted on the white, 1px full-width
- * row dividers, the footer behind a full-width line), and a section head is one row (label and count chip at the start, at most one Link or IconButton at the end, the
- * description as a caption below the body).
+ * A table is flat: a white body with no frame, no grey gutters and no grey header strip, the column labels 12 muted, 1px full-width row dividers, the pager behind a
+ * full-width line. A section head is one row (label and count chip at the start, at most one Link or IconButton at the end, the description as a caption below the body).
  */
-const meta: Meta = { title: 'Surfaces/Table frame and section head' };
+const meta: Meta = { title: 'Surfaces/Table flat and section head' };
 export default meta;
 
 type Story = StoryObj;
@@ -108,21 +107,6 @@ export const SectionHeadInfoButton: Story = {
   ),
 };
 
-export const TableCard: Story = {
-  render: () => (
-    <div style={{ maxInlineSize: '64rem' }}>
-      <G.SurfaceCard
-        kind="table"
-        label="Items"
-        columns={[{ id: 'name', label: 'Customer' }, { id: 'status', label: 'Status' }, { id: 'amount', label: 'Amount', align: 'end', numeric: true }]}
-        rows={itemRows.slice(0, 4).map((row) => ({ id: row.id, cells: { name: row.name, status: row.status, amount: row.amount } }))}
-        empty="No items yet."
-        footers={[{ kind: 'paging', page: 1, pageCount: 2, onPage: noop, labels: { nav: 'Pages', previous: 'Previous', next: 'Next', page: (n: number) => `Page ${n}`, summary: '1–4 of 8 results' } }]}
-      />
-    </div>
-  ),
-};
-
 const people: ReadonlyArray<G.SectionRow> = [
   { id: '1', title: 'Needs your approval', description: '3 orders waiting' },
   { id: '2', title: 'Running', description: '5 workflows' },
@@ -188,23 +172,20 @@ export const WorkspaceChatMain: Story = {
   ),
 };
 
-/** 0.36.0: one content per card (a Sublabel above each), shadow and no border on the well, a graph card with its legend under it. */
+/** One content per section (a Sublabel above each), a graph with its legend under it. */
 export const CardsOneContent: Story = {
   parameters: { layout: 'fullscreen', grammar: { bleed: true } },
   render: () => (
     <G.Page header={{ title: 'One content per card' }}>
       <G.Section title="Order #1042">
-        <G.Sublabel>Ordered items</G.Sublabel>
-        <G.Section kind="list" ariaLabel="Ordered items" items={workflowRows} empty="No items yet." />
-        <G.Sublabel>Details</G.Sublabel>
-        <G.SurfaceCard kind="details" ariaLabel="Details" items={[{ id: 't', term: 'Time', description: '19:30' }, { id: 'k', term: 'Guests', description: '4 people' }]} note="Updated at 10:00." />
-        <G.Sublabel>Workflow</G.Sublabel>
-        <G.SurfaceCard
-          ariaLabel="Workflow"
-          note={<G.FlowGraphLegend items={reconcileLegend} />}
-        >
+        <G.Section sublabel="Ordered items" kind="list" items={workflowRows} empty="No items yet." />
+        <G.Section sublabel="Details" caption="Updated at 10:00.">
+          <G.DescriptionList isDivided items={[{ id: 't', term: 'Time', description: '19:30' }, { id: 'k', term: 'Guests', description: '4 people' }]} />
+        </G.Section>
+        <G.Section sublabel="Workflow">
           <G.FlowGraph label="Flow" layout="steps" nodes={reconcileNodes} edges={reconcileEdges} />
-        </G.SurfaceCard>
+          <G.FlowGraphLegend items={reconcileLegend} />
+        </G.Section>
       </G.Section>
     </G.Page>
   ),
@@ -238,7 +219,7 @@ export const SwitchNoBorder: Story = {
   ),
 };
 
-/** 0.36.2: a Section fact is the grey chip; five cards balance as 3 + 2; an EmptyNotice navigation action is a head Link. */
+/** 0.36.2: a Section fact is the grey chip; five object cards balance as 3 + 2; an EmptyNotice navigation action is a head Link. */
 export const FactBalancedAndNoticeLink: Story = {
   render: () => (
     <div style={{ display: 'grid', gap: '1.5rem', maxInlineSize: '64rem' }}>
@@ -246,7 +227,7 @@ export const FactBalancedAndNoticeLink: Story = {
         <G.EmptyNotice message="No projects yet" description="Create the first project." actionLabel="Back to overview" actionHref="#home" />
       </G.Section>
       <G.Grid kind="cards" columns="balanced">
-        {['Free', 'Basic', 'Pro', 'Team', 'Max'].map((name) => <G.SurfaceCard key={name} kind="details" ariaLabel={name} items={[{ id: name, term: name, description: '$199.00' }]} />)}
+        {['Free', 'Basic', 'Pro', 'Team', 'Max'].map((name) => <G.SurfaceCard key={name} label={name}><G.Text size="figure">$199.00</G.Text></G.SurfaceCard>)}
       </G.Grid>
     </div>
   ),
@@ -308,7 +289,7 @@ export const TableColumnSizing: Story = {
 
 /**
  * 0.37.3 equal heights: a `Grid kind="cards"` (the 24 card gap, `align="stretch"` by default) holds three cells that are `Section fill`s, each filling its cell:
- * a table whose white body grows and whose footer sticks to the bottom (`DataTable fill`), and two cards that stretch (`SurfaceCard height="fill"`). The head is one fixed 32px row
+ * a table whose white body grows and whose footer sticks to the bottom (`DataTable fill`), and two lists. The head is one fixed 32px row
  * in every section, with the info button inside it.
  */
 export const EqualHeightRow: Story = {
@@ -449,22 +430,26 @@ export const FourColumnsNeverWrap: Story = {
   },
 };
 
-const zoneProps = [
-  { kind: 'search', label: 'Search items', value: '', onChange: noop, placeholder: 'Search items' },
-  { kind: 'filter', label: 'Status', items: [{ id: 'all', label: 'All' }, { id: 'paid', label: 'Paid' }], selectedKey: 'all', onSelect: noop, overflowLabel: 'More', moreLabel: (count: number) => `${count} filters` },
-] as const;
-
 const TableOnTheWell = () => (
   <div data-story-well="true" style={{ maxInlineSize: '48rem' }}>
-    <G.SurfaceCard
-      kind="table"
-      label="Items"
-      headers={[...zoneProps]}
-      columns={[{ id: 'name', label: 'Customer' }, { id: 'status', label: 'Status' }, { id: 'amount', label: 'Amount', align: 'end', numeric: true }]}
-      rows={itemRows.slice(0, 4).map((row) => ({ id: row.id, cells: { name: row.name, status: row.status, amount: row.amount } }))}
-      empty="No items yet."
-      footers={[{ kind: 'paging', page: 1, pageCount: 2, onPage: noop, labels: { nav: 'Pages', previous: 'Previous', next: 'Next', page: (n: number) => `Page ${n}`, summary: '1–4 of 8 results' } }]}
-    />
+    <G.Section
+      title="Items"
+      filter={(
+        <>
+          <G.Tabs label="Status" kind="filter" selectedKey="all" onSelect={noop} items={[{ id: 'all', label: 'All' }, { id: 'paid', label: 'Paid' }]} />
+          <G.SearchField label="Search items" isLabelHidden placeholder="Search items" clearLabel="Clear search" />
+        </>
+      )}
+    >
+      <G.DataTable
+        label="Items"
+        columns={[{ id: 'name', label: 'Customer' }, { id: 'status', label: 'Status' }, { id: 'amount', label: 'Amount', align: 'end', isNumeric: true }]}
+        rows={itemRows.slice(0, 4)}
+        renderCell={cell}
+        emptyContent="No items yet."
+        footer={<G.Pagination label="Item pages" page={1} pageCount={2} onPageChange={noop} previousLabel="Previous" nextLabel="Next" pageLabel={(n) => `Page ${n}`} summary="1–4 of 8 results" />}
+      />
+    </G.Section>
   </div>
 );
 
@@ -477,11 +462,9 @@ const probeOf = (host: HTMLElement, property: 'background-color' | 'color', toke
 };
 
 /**
- * 0.37.8 TABLE LOOKS LIKE A LIST CARD: a table card holds one white body (no grey frame, gutter or header strip), its column labels are 12px muted on the white,
- * its rows are divided by 1px lines, its zones by full-width seams; on the pink well it has the shadow and no border, and the same table in a white aside has a 1px
- * border and no shadow.
+ * A table is flat on the well and on a white aside alike: no painted frame or shadow, its column labels are 12px muted, its rows are divided by 1px lines.
  */
-export const TableLooksLikeAList: Story = {
+export const TableLooksFlat: Story = {
   render: () => (
     <G.PaneGrid label="Table looks" areas={['main aside']} columns={['fill', 'standard']}>
       <G.Pane area="main" label="Well"><G.PaneSection><TableOnTheWell /></G.PaneSection></G.Pane>
@@ -493,51 +476,27 @@ export const TableLooksLikeAList: Story = {
     </G.PaneGrid>
   ),
   play: async ({ canvasElement }) => {
-    const surfaceProbe = probeOf(canvasElement, 'background-color', '--surface');
     const mutedProbe = probeOf(canvasElement, 'color', '--muted');
     await waitFor(() => {
-      const card = canvasElement.querySelector<HTMLElement>('[data-story-well="true"] [data-grammar-surface-kind="table"]');
-      if (card === null) throw new Error('the table card renders');
-      const surface = getComputedStyle(surfaceProbe).backgroundColor;
-      // No element of the card paints a grey: every painted ground is the card's own white.
-      for (const element of Array.from(card.querySelectorAll<HTMLElement>('*'))) {
-        if (element.closest('[data-component="Button"], [data-component="Input"], [data-component="SearchField"], [data-component="Select"], [role="tablist"], [role="tab"]') !== null) continue;
-        const ground = getComputedStyle(element).backgroundColor;
-        if (ground === 'rgba(0, 0, 0, 0)' || ground === 'transparent') continue;
-        if (element.closest('[role="tablist"]') !== null) continue;
-        expect(ground).toBe(surface);
-      }
-      expect(getComputedStyle(card).backgroundColor).toBe(surface);
-      // The column labels: 12px, muted, on the white; the rows: a 1px line under each but the last.
+      const table = canvasElement.querySelector<HTMLElement>('[data-story-well="true"] [data-component="DataTable"]');
+      if (table === null) throw new Error('the table renders');
       const muted = getComputedStyle(mutedProbe).color;
-      const labels = Array.from(card.querySelectorAll<HTMLElement>('.starci-core-data-table-column'));
+      const labels = Array.from(table.querySelectorAll<HTMLElement>('.starci-core-data-table-column'));
       expect(labels.length).toBe(3);
       for (const label of labels) {
         expect(getComputedStyle(label).fontSize).toBe('12px');
         expect(getComputedStyle(label).color).toBe(muted);
       }
-      const rows = Array.from(card.querySelectorAll<HTMLElement>('.starci-core-data-table-row'));
+      const rows = Array.from(table.querySelectorAll<HTMLElement>('.starci-core-data-table-row'));
       expect(rows.length).toBe(4);
       for (const row of rows.slice(0, -1)) {
         expect(Number.parseFloat(getComputedStyle(row.querySelector<HTMLElement>('.starci-core-data-table-cell')!).borderBottomWidth)).toBe(1);
       }
-      // The zones' seams run the card's full width.
-      const box = card.getBoundingClientRect();
-      for (const zone of Array.from(card.querySelectorAll<HTMLElement>('.starci-core-surface-zone'))) {
-        expect(Math.abs(zone.getBoundingClientRect().width - box.width)).toBeLessThanOrEqual(1);
-        expect(Number.parseFloat(getComputedStyle(zone).borderBlockStartWidth) + Number.parseFloat(getComputedStyle(zone).borderBlockEndWidth)).toBeGreaterThan(0);
+      for (const flat of [table, canvasElement.querySelector<HTMLElement>('[data-grammar-pane-area="aside"] [data-component="DataTable"]')]) {
+        if (flat === null) throw new Error('both tables render');
+        expect(getComputedStyle(flat).boxShadow).toBe('none');
       }
-      // The well: the shadow and no border.
-      expect(getComputedStyle(card).boxShadow).not.toBe('none');
-      expect(getComputedStyle(card).borderTopWidth).toBe('0px');
-      // The white aside: the same face has a 1px border and no shadow.
-      const aside = canvasElement.querySelector<HTMLElement>('[data-grammar-pane-area="aside"] [data-component="DataTable"]');
-      if (aside === null) throw new Error('the aside table renders');
-      expect(getComputedStyle(aside).boxShadow).toBe('none');
-      expect(getComputedStyle(aside).borderTopWidth).toBe('1px');
-      expect(getComputedStyle(aside).backgroundColor).toBe(surface);
     });
-    surfaceProbe.remove();
     mutedProbe.remove();
   },
 };

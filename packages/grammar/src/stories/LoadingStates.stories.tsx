@@ -82,43 +82,44 @@ const figures: ReadonlyArray<G.Figure> = [
     { id: "c", term: "Refunds", value: "2", meta: "Today" },
 ]
 
-export const SurfaceCardFiguresStates: Story = {
+export const SectionFiguresStates: Story = {
     render: () => (
         <Matrix maxWidth={720}>
-            <State label="Loading" direction="column"><G.SurfaceCard kind="figures" label="Today" items={figures} isLoading /></State>
-            <State label="Content" direction="column"><G.SurfaceCard kind="figures" label="Today" items={figures} /></State>
-            <State label="Error" direction="column"><G.SurfaceCard kind="figures" label="Today" items={figures} error={failure} /></State>
+            <State label="Loading" direction="column"><G.Section kind="figures" title="Today" items={figures} isLoading /></State>
+            <State label="Content" direction="column"><G.Section kind="figures" title="Today" items={figures} /></State>
+            <State label="Error" direction="column"><G.Section kind="figures" title="Today" items={figures} error={failure} /></State>
         </Matrix>
     ),
 }
 
-const disclosures: ReadonlyArray<G.AccordionRowData> = [
-    { id: "a", title: "How billing works", meta: "2 min", body: "You are billed monthly.", isOpen: false },
-    { id: "b", title: "Cancelling", meta: "1 min", body: "Cancel any time.", isOpen: false },
+const disclosures: ReadonlyArray<G.DisclosureListItem> = [
+    { id: "a", title: "How billing works", summary: "2 min", body: "You are billed monthly." },
+    { id: "b", title: "Cancelling", summary: "1 min", body: "Cancel any time." },
 ]
 
-export const SurfaceCardAccordionStates: Story = {
+export const SectionDisclosureStates: Story = {
     render: () => (
         <Matrix maxWidth={560}>
-            <State label="Loading" direction="column"><G.SurfaceCard kind="accordion" label="Help" items={disclosures} onItemOpenChange={noop} isLoading /></State>
-            <State label="Content" direction="column"><G.SurfaceCard kind="accordion" label="Help" items={disclosures} onItemOpenChange={noop} /></State>
-            <State label="Error" direction="column"><G.SurfaceCard kind="accordion" label="Help" items={disclosures} onItemOpenChange={noop} error={failure} /></State>
+            <State label="Loading" direction="column"><G.Section title="Help" isLoading><G.DisclosureList label="Help" items={disclosures} /></G.Section></State>
+            <State label="Content" direction="column"><G.Section title="Help"><G.DisclosureList label="Help" items={disclosures} /></G.Section></State>
+            <State label="Error" direction="column"><G.Section title="Help" error={failure}><G.DisclosureList label="Help" items={disclosures} /></G.Section></State>
         </Matrix>
     ),
 }
 
-export const SurfaceCardZonesStates: Story = {
+export const SectionFiguresAndListStates: Story = {
     render: () => {
-        const bands = (list: ReadonlyArray<G.ListRowData>): G.SurfaceCardProps => ({
-            label: "Team",
-            headers: [{ kind: "figures", items: figures }],
-            children: <G.Section kind="list" ariaLabel="Team members" items={list} empty={emptyLine} />,
-        })
+        const team = (list: ReadonlyArray<G.ListRowData>, status: { readonly isLoading?: boolean; readonly error?: typeof failure } = {}) => (
+            <G.Stack gap="region">
+                <G.Section kind="figures" title="Team" items={figures} {...status} />
+                <G.Section kind="list" ariaLabel="Team members" items={list} empty={emptyLine} {...status} />
+            </G.Stack>
+        )
         return (
             <Matrix maxWidth={720}>
-                <State label="Loading" direction="column"><G.SurfaceCard {...bands(placeholderRows)} isLoading /></State>
-                <State label="Content" direction="column"><G.SurfaceCard {...bands(rows)} /></State>
-                <State label="Error" direction="column"><G.SurfaceCard {...bands([])} error={failure} /></State>
+                <State label="Loading" direction="column">{team(placeholderRows, { isLoading: true })}</State>
+                <State label="Content" direction="column">{team(rows)}</State>
+                <State label="Error" direction="column">{team([], { error: failure })}</State>
             </Matrix>
         )
     },

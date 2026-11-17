@@ -6,7 +6,7 @@ import { noop } from './fixtures.js';
 /**
  * ONE LOOK FOR A LIST (0.43.0, law DNA-COMMON-LIST-ONE-LOOK). A list is `Section kind="list"` of `ListRow`s: plain rows on whatever it stands
  * on, divided by hairlines, the row content on the section title's edge, with no frame, fill, radius or shadow, and no theme hook. The same
- * list on the page canvas and in a card body draws the same rows. A Board item is a real object, so it stays a card.
+ * list on the page canvas and in a pane draws the same rows. A Board item is a real object, so it stays a card.
  */
 const meta: Meta = { title: 'Surfaces/One look for a list (0.43.0)', parameters: { grammar: { bleed: true } } };
 export default meta;
@@ -43,9 +43,8 @@ const Page = () => (
         items={ROWS}
         empty={<G.EmptyNotice message="Nothing yet." />}
       />
-      <G.SurfaceCard label="Workspace" headers={[{ kind: 'figures', items: [{ id: 'm', term: 'Members', value: 8 }, { id: 'o', term: 'Open', value: 3 }, { id: 'd', term: 'Done', value: 12 }] }]}>
-        <G.Section kind="list" layout="keyValue" ariaLabel="Workspace facts" items={FACTS} empty={null} />
-      </G.SurfaceCard>
+      <G.Section kind="figures" title="Workspace" items={[{ id: 'm', term: 'Members', value: 8 }, { id: 'o', term: 'Open', value: 3 }, { id: 'd', term: 'Done', value: 12 }]} />
+      <G.Section kind="list" layout="keyValue" title="Workspace facts" items={FACTS} empty={null} />
       <G.Section title="Sales pipeline">
         <G.Board label="Sales pipeline" columns={COLUMNS} />
       </G.Section>
@@ -53,7 +52,7 @@ const Page = () => (
   </G.Page>
 );
 
-/** A titled list on the canvas, a key-value list in a card body and a Board: flat rows, hairlines, rows on the title's edge; Board items stay cards. */
+/** A titled list, a key-value list under a figures ribbon and a Board: flat rows, hairlines, rows on the title's edge; Board items stay cards. */
 export const ListAndBoard: Story = {
   render: () => <Page />,
   play: async ({ canvasElement }) => {

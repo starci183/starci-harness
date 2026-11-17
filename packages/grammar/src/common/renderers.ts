@@ -63,10 +63,9 @@ export { VerticalScrollRegion, type VerticalScrollRegionProps } from "../core/fr
 export type { ErrorData } from "../core/loadingState.js"
 export { SurfaceCard, type SurfaceCardProps } from "../core/frame/SurfaceCard/index.js"
 export type {
-    AccordionData, AccordionRowData, AvatarData, BadgeData, CardHead, Figure, FilterFields, FooterZone, HeaderZone, ImageData, ItemAction, ItemLeading, ItemMenu,
-    ListRowData, RowDrag, SearchFields, SearchZoneFields, SelectData, SelectItemData, SelectZoneField, TableColumnData, TableData, TableGroupData, TableRowData, TileData, TileMark, TilePoster, WholeCardAction,
+    AvatarData, BadgeData, CardHead, Figure, ImageData, ItemAction, ItemLeading, ItemMenu, ListRowData, RowDrag, TileData, TileMark, TilePoster, WholeCardAction,
 } from "../core/surfaceCardData.js"
-export type { AccentCorner, SurfaceCardMotif, SurfaceCardTreatment } from "../core/frame/SurfaceCard/classNames.js"
+export type { AccentCorner } from "../core/accentCorner.js"
 export { FencedCodeBlock, MarkdownArticle, MarkdownTableFrame, type FencedCodeBlockProps, type MarkdownArticleProps, type MarkdownTableFrameProps } from "../core/frame/MarkdownArticle/index.js"
 export { Markdown, type MarkdownCode, type MarkdownLabels, type MarkdownProps } from "../core/frame/Markdown/index.js"
 export { Tabs, type PrimaryTabItem, type PrimaryTabItems, type PrimaryTabsProps, type SecondaryTabsProps, type TabItem, type TabsProps } from "../core/branch/Tabs/index.js"

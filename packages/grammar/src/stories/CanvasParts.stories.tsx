@@ -160,26 +160,16 @@ const entries: ReadonlyArray<Entry> = [
   { id: 'e2', title: 'INV-0141 · Globex', sub: 'Due 12/11 · Order 1090', date: '04/11', amount: '4,200.00' },
 ];
 
-/** `surface="none"` is plain hairline rows under a muted heading, with no container paint. */
-export const DataTableNoSurface: Story = {
+/** A DataTable is one flat look: hairline rows under the column heads, with no container paint. */
+export const DataTableFlat: Story = {
   render: () => (
     <Matrix maxWidth={640}>
-      <State label="surface none" direction="column">
+      <State label="flat table" direction="column">
         <G.DataTable<Entry>
           label="Entries"
-          surface="none"
           columns={[{ id: 'title', label: 'Entry', isRowHeader: true }, { id: 'date', label: 'Date' }, { id: 'amount', label: 'Amount', align: 'end' }]}
           rows={entries}
           renderCell={(row, column) => column === 'title' ? <span><strong>{row.title}</strong><br />{row.sub}</span> : column === 'date' ? row.date : row.amount}
-          emptyContent="No entries"
-        />
-      </State>
-      <State label="surface card (default)" direction="column">
-        <G.DataTable<Entry>
-          label="Entries"
-          columns={[{ id: 'title', label: 'Entry', isRowHeader: true }, { id: 'date', label: 'Date' }, { id: 'amount', label: 'Amount', align: 'end' }]}
-          rows={entries}
-          renderCell={(row, column) => column === 'title' ? row.title : column === 'date' ? row.date : row.amount}
           emptyContent="No entries"
         />
       </State>

@@ -119,12 +119,6 @@
         background: var(--surface);
     }
 
-    /* The accent corner survives this family's surface radius. */
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"][data-grammar-accent-corner="start-start"] { border-start-start-radius: var(--grammar-accent-corner); }
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"][data-grammar-accent-corner="start-end"] { border-start-end-radius: var(--grammar-accent-corner); }
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"][data-grammar-accent-corner="end-start"] { border-end-start-radius: var(--grammar-accent-corner); }
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"][data-grammar-accent-corner="end-end"] { border-end-end-radius: var(--grammar-accent-corner); }
-
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"] {
         box-shadow: var(--surface-shadow);
     }
@@ -132,40 +126,6 @@
     /* The reader's own message is the family's pink with its ink; inline content keeps the ink, over the family's own accent text rules. */
     .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body :is(a, [data-component="Link"], [data-component="Text"], [data-component="TextAction"], [data-component="Code"]) {
         color: inherit;
-    }
-
-    /* The divider between two zones of a card is the family's outline width, the same line the figures strip draws between its cells. */
-    .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-surface-zone:has(~ .starci-core-surface-main) {
-        border-block-end-width: var(--offset-pop-outline-width);
-    }
-
-    .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-surface-main ~ .starci-core-surface-zone {
-        border-block-start-width: var(--offset-pop-outline-width);
-    }
-
-    .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-surface-zone[data-grammar-zone-line="tabs"] {
-        --starci-core-tabs-line-width: var(--offset-pop-outline-width);
-    }
-
-    /*
-     * The ink band (SurfaceCard treatment="ink", 0.6.0) is painted on the family ink with the canvas on
-     * it - the pink stays the decision accent (ACCENT-1). The ink flips to cream in the dark theme, so the
-     * band's quiet inks are mixes of the canvas into the ink (both directions stay AA: muted 72% is
-     * about 8:1), not the lightness lift Common uses for a dark accent.
-     */
-    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"][data-grammar-surface-treatment="ink"] {
-        --grammar-ink-band: var(--foreground);
-        --grammar-ink-band-foreground: var(--background);
-        --grammar-ink-band-muted: color-mix(in oklab, var(--background) 72%, var(--foreground));
-        --grammar-ink-band-separator: color-mix(in oklab, var(--background) 18%, var(--foreground));
-        --grammar-ink-band-plate: color-mix(in oklab, var(--background) 10%, var(--foreground));
-        --grammar-ink-band-orbit: color-mix(in oklab, var(--background) 20%, var(--foreground));
-        --success-soft-foreground: color-mix(in oklab, var(--success) 45%, var(--background));
-        --warning-soft-foreground: color-mix(in oklab, var(--warning) 45%, var(--background));
-        --danger-soft-foreground: color-mix(in oklab, var(--danger) 45%, var(--background));
-        border-color: var(--foreground);
-        color: var(--grammar-ink-band-foreground);
-        background: var(--grammar-ink-band);
     }
 
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-label] {

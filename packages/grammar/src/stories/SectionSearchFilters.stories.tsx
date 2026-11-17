@@ -5,60 +5,68 @@ import * as G from '../common/index.js';
 import { noop } from './fixtures.js';
 
 /**
- * Two card additions: a search zone that holds trailing filter selects (`filters`), and a
- * pressable table row (`onRowAction`) that opens a drawer.
+ * A section's filter row holds a search field with trailing filter selects over a flat table, and a pressable table row (`onRowAction`) opens a drawer.
  */
-const meta: Meta = { title: 'Surfaces/Card search filters, description and pressable rows' };
+const meta: Meta = { title: 'Surfaces/Section search filters and pressable rows' };
 export default meta;
 type Story = StoryObj;
 
 const STATUS: readonly G.ListOption[] = [{ id: 'all', label: 'All statuses' }, { id: 'paid', label: 'Paid' }, { id: 'due', label: 'Due' }];
 const OWNER: readonly G.ListOption[] = [{ id: 'any', label: 'Anyone' }, { id: 'me', label: 'Assigned to me' }];
 
+type Invoice = G.DataTableRow & { readonly name: string; readonly status: string };
+
 const SearchFiltersCard = ({ filters }: { readonly filters: number }) => {
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<string | null>('all');
   const [owner, setOwner] = useState<string | null>('any');
-  const fields: readonly G.SelectZoneField[] = [
-    { label: 'Status', prefix: 'Status:', options: STATUS, value: status, onChange: setStatus },
-    { label: 'Owner', prefix: 'Owner:', options: OWNER, value: owner, onChange: setOwner },
+  const selects = [
+    <G.Select key="status" label="Status" isLabelHidden prefix="Status:" options={STATUS} value={status} onValueChange={setStatus} />,
+    <G.Select key="owner" label="Owner" isLabelHidden prefix="Owner:" options={OWNER} value={owner} onValueChange={setOwner} />,
   ].slice(0, filters);
   return (
-    <G.SurfaceCard
-      kind="table"
-      label="Invoices"
-      columns={[{ id: 'name', label: 'Invoice' }, { id: 'status', label: 'Status' }]}
-      rows={[{ id: 'i1', cells: { name: 'INV-001', status: 'Paid' } }, { id: 'i2', cells: { name: 'INV-002', status: 'Due' } }]}
-      empty={<G.EmptyNotice message="Nothing matches." />}
-      headers={[{ kind: 'search', label: 'Search invoices', value: query, onChange: setQuery, placeholder: 'Search invoices', clearLabel: 'Clear search', filters: fields }]}
-    />
+    <G.Section
+      title="Invoices"
+      filter={(
+        <>
+          <G.SearchField label="Search invoices" isLabelHidden placeholder="Search invoices" clearLabel="Clear search" value={query} onValueChange={setQuery} />
+          {selects}
+        </>
+      )}
+    >
+      <G.DataTable<Invoice>
+        label="Invoices"
+        columns={[{ id: 'name', label: 'Invoice', isRowHeader: true }, { id: 'status', label: 'Status' }]}
+        rows={[{ id: 'i1', name: 'INV-001', status: 'Paid' }, { id: 'i2', name: 'INV-002', status: 'Due' }]}
+        renderCell={(row, column) => column === 'name' ? row.name : row.status}
+        emptyContent={<G.EmptyNotice message="Nothing matches." />}
+      />
+    </G.Section>
   );
 };
 
-/** The search grows; each select keeps its natural width and its words stay on one line. */
-export const SearchZoneWithFilters: Story = {
+/** Each select keeps its natural width and its words stay on one line. */
+export const SearchWithFilters: Story = {
   render: () => <div data-story-search="wide" style={{ width: 'min(100%, 900px)' }}><SearchFiltersCard filters={2} /></div>,
   play: async ({ canvasElement }) => {
     await waitFor(() => {
-      const zone = canvasElement.querySelector<HTMLElement>('[data-grammar-zone="search"]');
-      if (zone === null) throw new Error('the search zone renders');
-      const selects = Array.from(zone.querySelectorAll<HTMLElement>('[data-grammar-zone-select="true"]'));
-      expect(selects.length).toBe(2);
-      for (const select of selects) expect(getComputedStyle(select.querySelector('.starci-core-select-trigger') ?? select).whiteSpace).toBe('nowrap');
+      const row = canvasElement.querySelector<HTMLElement>('.starci-core-section-filter');
+      if (row === null) throw new Error('the filter row renders');
+      const triggers = Array.from(row.querySelectorAll<HTMLElement>('.starci-core-select-trigger'));
+      expect(triggers.length).toBe(2);
+      for (const trigger of triggers) expect(getComputedStyle(trigger).whiteSpace).toBe('nowrap');
     }, { timeout: 5000 });
   },
 };
 
 const assertAligned = (root: HTMLElement, filters: number) => {
-  const zone = root.querySelector<HTMLElement>('[data-grammar-zone="search"]');
-  if (zone === null) throw new Error('the search zone renders');
-  const field = zone.querySelector<HTMLElement>('.starci-core-search-field-group');
-  const triggers = Array.from(zone.querySelectorAll<HTMLElement>('.starci-core-select-trigger'));
-  if (field === null || triggers.length !== filters) throw new Error('the field and its filters render');
+  const row = root.querySelector<HTMLElement>('.starci-core-section-filter');
+  if (row === null) throw new Error('the filter row renders');
+  const triggers = Array.from(row.querySelectorAll<HTMLElement>('.starci-core-select-trigger'));
+  if (triggers.length !== filters) throw new Error('the filters render');
   const middle = (box: DOMRect) => box.top + box.height / 2;
   for (const trigger of triggers) {
-    // 0.37.23: the filter pill is the field's height, and its prefix and value stand on one line centred in the pill.
-    expect(Math.abs(trigger.getBoundingClientRect().height - field.getBoundingClientRect().height)).toBeLessThanOrEqual(0.5);
+    // The prefix and the value stand on one line centred in the pill.
     const prefix = trigger.querySelector<HTMLElement>('.starci-core-select-prefix')!.getBoundingClientRect();
     const value = trigger.querySelector<HTMLElement>('.select__value')!.getBoundingClientRect();
     expect(Math.abs(middle(prefix) - middle(trigger.getBoundingClientRect()))).toBeLessThanOrEqual(1);
@@ -66,9 +74,9 @@ const assertAligned = (root: HTMLElement, filters: number) => {
   }
 };
 
-/** 0.37.23: one filter and two filters, wide and phone: the select pill matches the search field's height and its text is centred. */
+/** One filter and two filters, wide and phone: the prefix and the value of a select pill are centred on one line. */
 export const SearchFiltersAligned: Story = {
-  name: 'Search zone filters aligned (1 and 2 filters, 1440 and 390)',
+  name: 'Section search filters aligned (1 and 2 filters, 1440 and 390)',
   render: () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <div data-story-aligned="one" style={{ width: 'min(100%, 900px)' }}><SearchFiltersCard filters={1} /></div>
@@ -85,25 +93,28 @@ export const SearchFiltersAligned: Story = {
   },
 };
 
-/** On a phone-width card the selects wrap below the search. */
-export const SearchZoneWithFiltersPhone: Story = {
+/** On a phone-width section the selects wrap below the search. */
+export const SearchWithFiltersPhone: Story = {
   render: () => <div data-story-search="phone" style={{ width: 358 }}><SearchFiltersCard filters={2} /></div>,
 };
 
-const COLUMNS: readonly G.TableColumnData[] = [{ id: 'name', label: 'Invoice' }, { id: 'amount', label: 'Amount', numeric: true }, { id: 'act', label: 'Actions' }];
+type Row = G.DataTableRow & { readonly name: string; readonly amount: string };
+const COLUMNS: readonly G.DataTableColumn<Row>[] = [{ id: 'name', label: 'Invoice', isRowHeader: true }, { id: 'amount', label: 'Amount', isNumeric: true }, { id: 'act', label: 'Actions' }];
 
 const PressableTable = ({ onOpen }: { readonly onOpen: (id: string) => void }) => (
-  <G.SurfaceCard
-    kind="table"
-    label="Invoices"
-    columns={COLUMNS}
-    onRowAction={onOpen}
-    empty={<G.EmptyNotice message="No invoices." />}
-    rows={[
-      { id: 'inv-1', cells: { name: 'INV-001', amount: '$120.00', act: <G.Button size="sm" onPress={noop}>Download</G.Button> } },
-      { id: 'inv-2', cells: { name: 'INV-002', amount: '$80.00', act: <G.Button size="sm" onPress={noop}>Download</G.Button> } },
-    ]}
-  />
+  <G.Section title="Invoices">
+    <G.DataTable<Row>
+      label="Invoices"
+      columns={COLUMNS}
+      onRowAction={onOpen}
+      emptyContent={<G.EmptyNotice message="No invoices." />}
+      renderCell={(row, column) => column === 'name' ? row.name : column === 'amount' ? row.amount : <G.Button size="sm" onPress={noop}>Download</G.Button>}
+      rows={[
+        { id: 'inv-1', name: 'INV-001', amount: '$120.00' },
+        { id: 'inv-2', name: 'INV-002', amount: '$80.00' },
+      ]}
+    />
+  </G.Section>
 );
 
 /** The whole row opens the drawer on a click or on Enter at the focused row; the row command inside stays its own press. */

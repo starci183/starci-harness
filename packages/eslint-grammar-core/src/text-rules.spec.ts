@@ -59,15 +59,15 @@ test("R358 no-text-heading: a strong Text that only titles blocks is refused", (
 test("R359 one-highlight-per-render: a second isHighlight in one render is refused", () => {
   assert.doesNotThrow(() => slotTester().run("one-highlight-per-render", rule("one-highlight-per-render"), {
     valid: [
-      { filename: FILE, code: IMPORT + "export const A = () => <Stack><SurfaceCard label=\"a\" isHighlight /><SurfaceCard label=\"b\" /></Stack>" },
-      { filename: FILE, code: IMPORT + "export const A = () => <Stack><SurfaceCard label=\"a\" isHighlight={false} /><SurfaceCard label=\"b\" isHighlight /></Stack>" },
-      { filename: FILE, code: IMPORT + "export const A = ({ rows }) => <Stack>{rows.map((row) => <MessageBubble key={row.id} isHighlight={row.mine} />)}<SurfaceCard label=\"x\" isHighlight /></Stack>" },
-      { filename: FILE, code: IMPORT + "const A = () => <SurfaceCard label=\"a\" isHighlight />\nconst B = () => <SurfaceCard label=\"b\" isHighlight />" },
+      { filename: FILE, code: IMPORT + "export const A = () => <Stack><MessageBubble body=\"a\" isHighlight /><SurfaceCard label=\"b\" /></Stack>" },
+      { filename: FILE, code: IMPORT + "export const A = () => <Stack><MessageBubble body=\"a\" isHighlight={false} /><MessageBubble body=\"b\" isHighlight /></Stack>" },
+      { filename: FILE, code: IMPORT + "export const A = ({ rows }) => <Stack>{rows.map((row) => <MessageBubble key={row.id} isHighlight={row.mine} />)}<MessageBubble body=\"x\" isHighlight /></Stack>" },
+      { filename: FILE, code: IMPORT + "const A = () => <MessageBubble body=\"a\" isHighlight />\nconst B = () => <MessageBubble body=\"b\" isHighlight />" },
       { filename: FILE, code: 'import { SurfaceCard } from "./card"\nexport const A = () => <><SurfaceCard isHighlight /><SurfaceCard isHighlight /></>' },
     ],
     invalid: [
-      { filename: FILE, code: IMPORT + "export const A = () => <Stack><SurfaceCard label=\"a\" isHighlight /><SurfaceCard label=\"b\" isHighlight /></Stack>", errors: [{ messageId: "second" }] },
-      { filename: FILE, code: IMPORT + "export const A = () => <Stack><SurfaceCard label=\"a\" isHighlight /><MessageBubble isHighlight /><SurfaceCard label=\"c\" isHighlight /></Stack>", errors: [{ messageId: "second" }, { messageId: "second" }] },
+      { filename: FILE, code: IMPORT + "export const A = () => <Stack><MessageBubble body=\"a\" isHighlight /><MessageBubble body=\"b\" isHighlight /></Stack>", errors: [{ messageId: "second" }] },
+      { filename: FILE, code: IMPORT + "export const A = () => <Stack><MessageBubble body=\"a\" isHighlight /><MessageBubble isHighlight /><MessageBubble body=\"c\" isHighlight /></Stack>", errors: [{ messageId: "second" }, { messageId: "second" }] },
     ],
   }))
 })

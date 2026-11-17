@@ -6,7 +6,7 @@ Underline tabs switch panels: the page tabs (`Page header.tabs`) and, inside a t
 
 ## `starci-grammar/tabs-switch-zone`
 
-Finding code: `FE_TABS_SWITCH_ZONE`. A `<Tabs appearance="primary">` written in JSX is a finding wherever it stands (a page body, under the page tabs, a pane, a drawer). The pill is drawn as the `switch` header zone of a card, which has no JSX to write, and, since 0.37.16, as the value of a row `control` (an object property named `control` in a select item or list row literal, or a JSX attribute `control={...}`, directly or through a fragment, conditional or `&&`): a row-level mode choice such as "Auto | Ask" lives in the row. The item checks (two to four options, no `count`, `href` or `isAttention`) stay in `no-primary-tabs-misuse` (R380).
+Finding code: `FE_TABS_SWITCH_ZONE`. A `<Tabs appearance="primary">` written in JSX is a finding wherever it stands (a page body, under the page tabs, a pane, a drawer). The pill stands as the `action` of the block's `Section` (`action={<Tabs appearance="primary" ... />}`) and, since 0.37.16, as the value of a row `control` (an object property named `control` in a list row literal, or a JSX attribute `control={...}`, directly or through a fragment, conditional or `&&`): a row-level mode choice such as "Auto | Ask" lives in the row. The item checks (two to four options, no `count`, `href` or `isAttention`) stay in `no-primary-tabs-misuse` (R380).
 
 **Invalid**
 
@@ -19,8 +19,8 @@ Finding code: `FE_TABS_SWITCH_ZONE`. A `<Tabs appearance="primary">` written in 
 **Valid**
 
 ```tsx
-<SurfaceCard kind="select" label="Agent" selectionMode="multiple" items={[{ id: "send", title: "Send", control: <Tabs appearance="primary" label="Send" items={modes} selectedKey={mode} onSelect={setMode} /> }]} value={value} onChange={setValue} />
-<SurfaceCard kind="table" label="Cash" columns={columns} headers={[{ kind: "switch", label: "Period", items: periods, selectedKey: period, onSelect: setPeriod }]} rows={rows} empty={empty} />
+<Section kind="list" title="Agent" items={[{ id: "send", title: "Send", control: <Tabs appearance="primary" label="Send" items={modes} selectedKey={mode} onSelect={setMode} /> }]} empty={null} />
+<Section title="Cash" action={<Tabs appearance="primary" label="Period" items={periods} selectedKey={period} onSelect={setPeriod} />}><DataTable label="Cash" columns={columns} rows={rows} renderCell={renderCell} emptyContent={empty} /></Section>
 ```
 
 ## `starci-grammar/tabs-depth`
@@ -50,7 +50,7 @@ The rule reads one file. A set whose page tabs are drawn by another file (a layo
 
 ## `starci-grammar/tabs-in-well`
 
-Finding code: `FE_TABS_IN_WELL`. An underline `Tabs` written as a child of a `Page`, `Pane` or `PaneSection` stands loose on the pink well or in a pane body: the second layer is `Page header.subTabs`. A `Tabs` stands in a header row of its own, and passes, inside a `SurfaceCard` (its header zones) or, as `kind="filter"`, in the `filter` row of a `Section` (a list's or a region's alike, 0.43.1, `contexts/ui/components/list-table.md` "Filter row"), directly or through a fragment, conditional or `&&`. A `Drawer`, `Dialog`, `Modal`, `Popover` or `Sheet` starts its own surface and ends the climb.
+Finding code: `FE_TABS_IN_WELL`. An underline `Tabs` written as a child of a `Page`, `Pane` or `PaneSection` stands loose on the pink well or in a pane body: the second layer is `Page header.subTabs`. A `Tabs` stands in a header row of its own, and passes, as `kind="filter"`, in the `filter` row of a `Section` (a list's or a region's alike, 0.43.1, `contexts/ui/components/list-table.md` "Filter row"), directly or through a fragment, conditional or `&&`. A `Drawer`, `Dialog`, `Modal`, `Popover` or `Sheet` starts its own surface and ends the climb.
 
 **Invalid**
 

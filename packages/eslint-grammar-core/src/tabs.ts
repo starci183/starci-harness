@@ -6,12 +6,11 @@ import { defineFamilyRules, defineRule } from "./lib/rule-contract.ts"
  * The Tabs laws (`contexts/ui/components/tabs.md`, owner-approved 2026-11-09): where the pill stands, and how many
  * underline layers a page stacks.
  *
- * `tabs-switch-zone`. The pill (`Tabs appearance="primary"`) is a mode or period switch of one block. The Grammar draws it
- * only as the `switch` header zone of a `SurfaceCard` (`headers={[{ kind: "switch", label, items, selectedKey, onSelect }]}`);
- * a `<Tabs appearance="primary">` written in JSX (a page body, under the page tabs, a pane, a drawer) is a finding. One
- * exception (0.37.16, owner 2026-11-10): a row-level mode choice ("Tu dong | Hoi" on an agent's ability row) lives in the row's
- * `control` slot, so a pill that is the value of a `control` (an object property named `control` in a select item or list row
- * literal, or a JSX attribute `control={...}`) is allowed. The item checks (two to four, no count, no href) stay in `no-primary-tabs-misuse`.
+ * `tabs-switch-zone`. The pill (`Tabs appearance="primary"`) is a mode or period switch of one block. It stands as the `action` of the block's
+ * `Section` (`<Section title action={<Tabs appearance="primary" label items selectedKey onSelect />} />`); a `<Tabs appearance="primary">` written in JSX
+ * anywhere else (a page body, under the page tabs, a pane, a drawer) is a finding. One more place (0.37.16, owner 2026-11-10): a row-level mode choice
+ * ("Tu dong | Hoi" on an agent's ability row) lives in the row's `control` slot, so a pill that is the value of a `control` (an object property named
+ * `control` in a list row literal, or a JSX attribute `control={...}`) is allowed. The item checks (two to four, no count, no href) stay in `no-primary-tabs-misuse`.
  *
  * `tabs-depth`. A page stacks at most two underline layers: the page tabs (`Page header.tabs`) and one region set. A `Tabs`
  * is nested in another when it stands in the panel the other selects: inside a conditional or `&&` whose test reads the
@@ -45,41 +44,45 @@ const isPill = (opening: TSESTree.JSXOpeningElement): boolean => literalOf(attri
 const isControlProperty = (node: TSESTree.Node): node is TSESTree.Property =>
   node.type === "Property" && !node.computed && ((node.key.type === "Identifier" && node.key.name === "control") || (node.key.type === "Literal" && node.key.value === "control"))
 
+/** Whether a JSX attribute is the `action` of a `Section`. */
+const isSectionAction = (node: TSESTree.JSXAttribute): boolean =>
+  node.name.type === "JSXIdentifier" && node.name.name === "action" && node.parent.type === "JSXOpeningElement" && elementName(node.parent) === "Section"
+
 /**
- * Whether the pill stands as the value of a row `control`: climbing through fragments, expression containers, conditionals and
- * `&&`/`||`/`??` it reaches an object property named `control` or a JSX attribute `control={...}`. A component or element that
+ * Whether the pill stands in a slot made for it: climbing through fragments, expression containers, conditionals and `&&`/`||`/`??` it reaches an
+ * object property named `control`, a JSX attribute `control={...}` or the `action={...}` of a `Section`. A component or element that
  * merely wraps the pill is not the slot.
  */
-const isRowControl = (opening: TSESTree.JSXOpeningElement): boolean => {
+const isPillSlot = (opening: TSESTree.JSXOpeningElement): boolean => {
   let child: TSESTree.Node = opening.parent ?? opening
   for (let node: TSESTree.Node | null | undefined = child.parent; node !== undefined && node !== null; child = node, node = node.parent) {
     if (node.type === "JSXFragment" || node.type === "JSXExpressionContainer") continue
     if (node.type === "ConditionalExpression" && child !== node.test) continue
     if (node.type === "LogicalExpression" && child === node.right) continue
-    if (node.type === "JSXAttribute") return node.name.type === "JSXIdentifier" && node.name.name === "control"
+    if (node.type === "JSXAttribute") return node.name.type === "JSXIdentifier" && (node.name.name === "control" || isSectionAction(node))
     return isControlProperty(node) && node.value === child
   }
   return false
 }
 
-/** No pill in JSX: the pill is the `switch` header zone of a card, or the value of a row `control`. */
+/** No pill in JSX: the pill is the `action` of a `Section`, or the value of a row `control`. */
 export const tabsSwitchZone: Rule.RuleModule = defineRule({
   meta: {
     type: "problem",
     docs: {
-      description: "A pill (Tabs appearance=\"primary\") stands only as the switch header zone of a SurfaceCard or as the value of a row `control`; written in JSX anywhere else it is a finding.",
+      description: "A pill (Tabs appearance=\"primary\") stands only as the `action` of a Section or as the value of a row `control`; written in JSX anywhere else it is a finding.",
       url: "knowledge/ui/presentation/grammar-laws.yaml#TABS-SWITCH-ZONE",
     },
     schema: [],
     messages: {
-      pill: "A pill (`Tabs appearance=\"primary\"`) switches a mode or period of one block and is drawn only as the `switch` header zone of its card: `headers={[{ kind: \"switch\", label, items, selectedKey, onSelect }]}`, two to four short options with no count and no href. A row-level mode choice is the one other place: the row's `control` (`items={[{ id, title, control: <Tabs appearance=\"primary\" ... /> }]}`). Written here it stands loose in the page. Views of a page are page tabs (`Page header.tabs`); views or filters inside a region are underline `Tabs`.",
+      pill: "A pill (`Tabs appearance=\"primary\"`) switches a mode or period of one block and stands as the `action` of that block's `Section`: `<Section title ... action={<Tabs appearance=\"primary\" label items selectedKey onSelect />} />`, two to four short options with no count and no href. A row-level mode choice is the one other place: the row's `control` (`items={[{ id, title, control: <Tabs appearance=\"primary\" ... /> }]}`). Written here it stands loose in the page. Views of a page are page tabs (`Page header.tabs`); views or filters inside a region are underline `Tabs`.",
     },
   },
   create(context) {
     if (!isProductSource(context)) return {}
     return {
       JSXOpeningElement(opening) {
-        if (elementName(opening) !== "Tabs" || !isPill(opening) || isRowControl(opening)) return
+        if (elementName(opening) !== "Tabs" || !isPill(opening) || isPillSlot(opening)) return
         context.report({ node: opening, messageId: "pill" })
       },
     }
@@ -118,7 +121,7 @@ export const tabsDepth: Rule.RuleModule = defineRule({
     },
     schema: [],
     messages: {
-      depth: "This underline `Tabs` is layer {{layers}} ({{chain}}). A page stacks at most two underline layers: the page tabs (`Page header.tabs`) and one region set inside a tab's panel. Fold the third level into a `switch` zone, a filter zone of a card, a list, or a drawer.",
+      depth: "This underline `Tabs` is layer {{layers}} ({{chain}}). A page stacks at most two underline layers: the page tabs (`Page header.tabs`) and one region set inside a tab's panel. Fold the third level into a pill in a `Section action`, a `Section filter` row, a list, or a drawer.",
     },
   },
   create(context) {
@@ -172,19 +175,19 @@ const isSectionFilter = (node: TSESTree.JSXAttribute): boolean =>
 /**
  * The second tab layer stands in the white header band (owner, 2026-11-09, TABS-IN-WELL): `Page header={{ tabs, subTabs }}`, on its own
  * full-width separator, flush with the band's left inset. An underline `Tabs` written as a child of a `Page`, `Pane` or `PaneSection`
- * stands on the pink well or in a pane body, so it is a finding, unless it narrows a list from a header row of its own: a card (its header
- * zones) or a `Tabs kind="filter"` in a `Section`'s `filter` row (0.43.1). A drawer, dialog, modal, popover or sheet starts its own surface.
+ * stands on the pink well or in a pane body, so it is a finding, unless it narrows a list or a region from the header row of its own: a
+ * `Tabs kind="filter"` in a `Section`'s `filter` row (0.43.1). A drawer, dialog, modal, popover or sheet starts its own surface.
  */
 export const tabsInWell: Rule.RuleModule = defineRule({
   meta: {
     type: "problem",
     docs: {
-      description: "An underline Tabs stands in the white header band (Page header.subTabs), a card's header zone or, kind=\"filter\", a Section's filter row; never loose in the pink well or a pane body.",
+      description: "An underline Tabs stands in the white header band (Page header.subTabs) or, kind=\"filter\", a Section's filter row; never loose in the pink well or a pane body.",
       url: "knowledge/ui/presentation/grammar-laws.yaml#TABS-IN-WELL",
     },
     schema: [],
     messages: {
-      well: "This underline `Tabs` stands in the body of a `{{host}}`, on the pink well or in a pane. The second tab layer sits in the white header band under the page tabs: `Page header` with `subTabs`, on its own full-width separator and flush with the band left inset. Move it to `header.subTabs`, make the views a `switch` zone or a filter zone of a card, or, to narrow a list, pass it as `Tabs kind=\"filter\"` in the `filter` row of its `Section`.",
+      well: "This underline `Tabs` stands in the body of a `{{host}}`, on the pink well or in a pane. The second tab layer sits in the white header band under the page tabs: `Page header` with `subTabs`, on its own full-width separator and flush with the band left inset. Move it to `header.subTabs`, or, to narrow a list or a region, pass it as `Tabs kind=\"filter\"` in the `filter` row of its `Section`.",
     },
   },
   create(context) {
@@ -199,7 +202,7 @@ export const tabsInWell: Rule.RuleModule = defineRule({
           if (node.type !== "JSXElement") continue
           const name = elementName(node.openingElement)
           if (name === null) continue
-          if (SURFACE_BOUNDARIES.has(name) || name === "SurfaceCard") return
+          if (SURFACE_BOUNDARIES.has(name)) return
           if (WELL_HOSTS.has(name) && node.children.includes(child as TSESTree.JSXChild)) {
             context.report({ node: opening, messageId: "well", data: { host: name } })
             return

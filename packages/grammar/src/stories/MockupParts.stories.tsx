@@ -93,7 +93,7 @@ const figures: ReadonlyArray<G.Figure> = [
     { id: "f4", term: "Late", value: 1 },
 ]
 
-/** Figures in a list pane: one bordered row, 2 x 2 only below 20rem (DNA-COMMON-FIGURES-PANE-ROW). */
+/** Figures in a list pane: the ribbon, as everywhere; it answers the pane's width (one row, 2 x 2, one column). */
 export const FiguresInPaneRow: Story = {
     render: () => (
         <div style={{ height: "14rem", display: "flex" }}>

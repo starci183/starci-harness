@@ -1,15 +1,14 @@
-# One content per card
+# One object per card
 
 Law module: `card-content.ts`. Finding codes: `FE_CARD_ONE_CONTENT`, `FE_NO_LABEL_DESCRIPTION`. Knowledge: `knowledge/ui/presentation/grammar-laws.yaml#CARD-ONE-CONTENT`.
 
-A `SurfaceCard` holds exactly ONE content: a list, an input group (a form), a table, a graph or a figures ribbon, with its own controls (a tab, search or pagination zone, a form footer with Cancel and Save). Several groups are several cards, each with a `Sublabel` above it; items of the same kind stay in one list. A card inside a card is `no-raised-surface-in-surface` (R340). A label has no description under it.
+A `SurfaceCard` is ONE object: its name, its facts and its commands (`actions`). A second list, table, form or graph is not part of the object: it stands flat in its own `Section` (a ribbon is `Section kind="figures"`); items of the same kind stay in one list. A card inside a card is `no-raised-surface-in-surface` (R340); a card whose only content is a collection is `card-is-object`. A label has no description under it.
 
 Every rule below is an error in `coreGrammarConfig`; none can be switched off or suppressed inline.
 
 ## `starci-grammar/card-one-content`
 
-- A `SurfaceCard` (not `figures`, not `tile`) whose body holds more than one content component (`ListBox`, `ItemList`, `DescriptionList`, `DataTable`, `FlowGraph`, `BarChart`, `Timeline`, `Form`, `FormGrid`, a `Section kind="list"` or `"figures"`, ...), looked through layout wrappers (message `many`).
-- A card that carries a `figures` header zone while it is not itself `kind="figures"`: a ribbon above another content (message `ribbon`).
+- A `SurfaceCard` (not `tile`) whose body holds more than one content component (`ListBox`, `ItemList`, `DescriptionList`, `DataTable`, `FlowGraph`, `BarChart`, `Timeline`, `Form`, `FormGrid`, a `Section kind="list"` or `"figures"`, ...), looked through layout wrappers (message `many`).
 
 ## `starci-grammar/no-label-description`
 
@@ -26,8 +25,8 @@ Every rule below is an error in `coreGrammarConfig`; none can be switched off or
 **Valid**
 
 ```tsx
-<Sublabel>Lines</Sublabel><SurfaceCard kind="table" label="Lines" columns={columns} rows={lines} empty="-" />
-<Sublabel>Facts</Sublabel><SurfaceCard kind="details" label="Facts" items={facts} />
+<Section title="Lines"><DataTable label="Lines" columns={columns} rows={lines} renderCell={renderCell} emptyContent="-" /></Section>
+<Section title="Facts"><DescriptionList isDivided items={facts} /></Section>
 <Section title="Runs" caption="Everyone on the team">...</Section>
 ```
 

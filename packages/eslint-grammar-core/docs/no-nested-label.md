@@ -14,7 +14,7 @@ A Grammar `Section` with `title`, or a `SurfaceCard` with `label`, whose JSX anc
 
 ```tsx
 <Section title="What the assistant knows">
-  <SurfaceCard kind="select" label="Allowed" ... />
+  <SurfaceCard label="Allowed">...</SurfaceCard>
 </Section>
 ```
 
@@ -22,8 +22,8 @@ A Grammar `Section` with `title`, or a `SurfaceCard` with `label`, whose JSX anc
 
 ```tsx
 <Section title="What the assistant knows">
-  <SurfaceCard kind="select" sublabel="Allowed" ... />
-  <SurfaceCard kind="select" sublabel="Ask first" ... />
+  <SurfaceCard sublabel="Allowed">...</SurfaceCard>
+  <SurfaceCard sublabel="Ask first">...</SurfaceCard>
 </Section>
 ```
 

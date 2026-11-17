@@ -19,23 +19,23 @@ export const why: Record<string, WhyEntry> = {
   },
   "tabs-switch-zone": {
     code: "FE_TABS_SWITCH_ZONE",
-    en: "A pill (`Tabs appearance=\"primary\"`) is written in JSX in `<file>`, outside the `switch` header zone of a card and not the value of a row `control`.",
-    fix: "A mode or period switch of one block is the card's zone: `headers={[{ kind: \"switch\", label, items, selectedKey, onSelect }]}` with two to four short options. A row-level mode choice goes in the row's `control`. Views of a page are page tabs (`Page header.tabs`); views or filters inside a region are underline `Tabs`.",
+    en: "A pill (`Tabs appearance=\"primary\"`) is written in JSX in `<file>`, outside the `action` of a `Section` and not the value of a row `control`.",
+    fix: "A mode or period switch of one block is the `action` of its Section: `<Section title action={<Tabs appearance=\"primary\" label items selectedKey onSelect />} />` with two to four short options. A row-level mode choice goes in the row's `control`. Views of a page are page tabs (`Page header.tabs`); views or filters inside a region are underline `Tabs`.",
   },
   "tabs-depth": {
     code: "FE_TABS_DEPTH",
     en: "Underline `Tabs` in `<file>` stack past two layers.",
-    fix: "A page has the page tabs (`Page header.tabs`) and at most one region set in a tab's panel. Fold a third level into a `switch` zone, a filter zone of a card, a list, or a drawer.",
+    fix: "A page has the page tabs (`Page header.tabs`) and at most one region set in a tab's panel. Fold a third level into a pill in a `Section action`, a `Section filter` row, a list, or a drawer.",
   },
   "tabs-in-well": {
     code: "FE_TABS_IN_WELL",
     en: "An underline `Tabs` in `<file>` is written in the body of a `Page`, `Pane` or `PaneSection`: on the pink well or in a pane.",
-    fix: "The second tab layer sits in the white header band under the page tabs: `Page header={{ tabs, subTabs }}`, on its own full-width separator and flush with the band's left inset. Or make the views a `switch` zone or a filter zone of a card.",
+    fix: "The second tab layer sits in the white header band under the page tabs: `Page header={{ tabs, subTabs }}`, on its own full-width separator and flush with the band's left inset. Or, to narrow a list or a region, pass `Tabs kind=\"filter\"` in the `filter` row of its `Section`.",
   },
   "rows-in-card": {
     code: "FE_ROWS_IN_CARD",
     en: "A `DescriptionList` or `DisclosureList` in `<file>` stands with no `Section` or `SurfaceCard` around it.",
-    fix: "Key-value and disclosure rows stand in a `SurfaceCard` (a details card is one) or a `Section`, which draws their edge or their place; a plain list of rows is `Section kind=\"list\"`, flat.",
+    fix: "Key-value and disclosure rows stand flat in a `Section` (`<Section title ...><DescriptionList isDivided items={...} /></Section>`) or, as the facts of ONE object, in the body of that object's `SurfaceCard`; a plain list of rows is `Section kind=\"list\"`, flat.",
   },
   "surface-card-list": {
     code: "FE_SURFACE_CARD_LIST",
@@ -45,7 +45,7 @@ export const why: Record<string, WhyEntry> = {
   "no-card-lead-description": {
     code: "FE_NO_CARD_LEAD_DESCRIPTION",
     en: "A muted `Text` in `<file>` stands directly above a `SurfaceCard` as its description.",
-    fix: "A card has no description. Put the line in the row subtitle (`SurfaceCard kind=\"select\"` or a `Section kind=\"list\"` row), or, when it explains the card's data (a legend, a source, a period), in the card `note`.",
+    fix: "A card has no description. Put the line in the row subtitle (a `ListRow` subtitle of a `Section kind=\"list\"`, or an option `description` of a `RadioGroup`), or, when it explains the card's data (a legend, a source, a period), in the card `note`.",
   },
   "no-nested-label": {
     code: "FE_NO_NESTED_LABEL",
@@ -64,8 +64,8 @@ export const why: Record<string, WhyEntry> = {
   },
   "card-one-content": {
     code: "FE_CARD_ONE_CONTENT",
-    en: "A `SurfaceCard` in `<file>` holds more than one content, or a figures ribbon above another content.",
-    fix: "A card holds ONE content: a list, an input group, a table, a graph or a figures ribbon (with its own tab, search, pagination zones or a form footer). Several groups are several cards, each with a `Sublabel` above it; items of the same kind stay in one list.",
+    en: "A `SurfaceCard` in `<file>` holds more than one content (a list, facts, a table, a graph, a form).",
+    fix: "A card is ONE object. A second list, table, form or graph is not part of it: put each flat in its own `Section` (a ribbon is `Section kind=\"figures\"`); items of the same kind stay in one list.",
   },
   "no-label-description": {
     code: "FE_NO_LABEL_DESCRIPTION",
@@ -84,13 +84,13 @@ export const why: Record<string, WhyEntry> = {
   },
   "no-primary-tabs-misuse": {
     code: "FE_GROUPED_CHOICE_CONTROL",
-    en: "Primary `Tabs` (or a `switch` header zone) in `<file>` hold a count, an href, an attention mark, one item or more than four items.",
+    en: "Primary `Tabs` (a `Section action` or a row `control`) in `<file>` hold a count, an href, an attention mark, one item or more than four items.",
     fix: "Primary tabs switch a mode or period of the same data among two to four short, fixed options. Views, filters with counts and destinations are the secondary (underline) `Tabs`.",
   },
   "no-button-view-switch": {
     code: "FE_GROUPED_CHOICE_CONTROL",
     en: "Buttons carrying `aria-pressed`, `isSelected` or `isActive` stand side by side in `<file>`: joined buttons or pills acting as tabs.",
-    fix: "Switching between views or periods of one block is `Tabs` (the primary underline) in the block's `filter` header zone of its card; choosing a form value is `ChoiceChips` or `RadioGroup`; a `Button` holds a command, never a selection state.",
+    fix: "Switching between views or periods of one block is `Tabs` (the primary underline) in the `filter` row of the block's `Section`, or a pill (`Tabs appearance=\"primary\"`) in its `action`; choosing a form value is `ChoiceChips` or `RadioGroup`; a `Button` holds a command, never a selection state.",
   },
   "no-grouped-choice-controls": {
     code: "FE_GROUPED_CHOICE_CONTROL",
@@ -200,12 +200,12 @@ export const why: Record<string, WhyEntry> = {
   "no-label-in-grid": {
     code: "FE_LABEL_IN_GRID",
     en: "A `SurfaceCard` with a `label` is repeated in a `Grid kind=\"cards\"` in `<file>`: the label sits outside the material, so the grid reads as headings over boxes.",
-    fix: "A peer you recognise and open is a tile: `<SurfaceCard kind=\"tile\" name mark description badge action />`, named inside beside its mark. Comparing a fact across peers is one `Section kind=\"list\"` or a `kind=\"table\"` card.",
+    fix: "A peer you recognise and open is a tile: `<SurfaceCard kind=\"tile\" name mark description badge action />`, named inside beside its mark. Comparing a fact across peers is one `Section kind=\"list\"` or a `Section` holding a `DataTable`.",
   },
   "no-raised-surface-in-surface": {
     code: "FE_RAISED_SURFACE_IN_SURFACE",
     en: "A `SurfaceCard` in `<file>` stands inside another SurfaceCard: a card never stands inside a card (a Pane surface, Dialog, Drawer or Popover hosts cards, bordered, since 0.37.5).",
-    fix: "Give the content to the outer card's own body, or use a kind of the outer card (`list`, `figures`) or its typed `headers` and `footers` zones for what needs its own faces.",
+    fix: "Give the content to the outer card's own body; a list, a table or figures inside it stand flat in a `Section` (`Section kind=\"list\"`, `Section kind=\"figures\"`).",
   },
   "no-shell-bottom-tabs": {
     code: "FE_APP_SHELL_BOTTOM_TABS",
@@ -215,17 +215,22 @@ export const why: Record<string, WhyEntry> = {
   "surface-in-surface": {
     code: "FE_SURFACE_IN_SURFACE",
     en: "A hand-made row list (a Stack, ul, ol or div whose rows are divided by `Divider`) in `<file>` stands inside a SurfaceCard, Drawer, Dialog, PaneSection or main-rail rail.",
-    fix: "Use `<Section kind=\"list\">` with `ListRow` rows: the Grammar draws one list wherever it stands, flat rows divided by hairlines and aligned with the title (a card around a lone list is refused by `single-child-card`).",
+    fix: "Use `<Section kind=\"list\">` with `ListRow` rows: the Grammar draws one list wherever it stands, flat rows divided by hairlines and aligned with the title (a card around a lone list is refused by `card-is-object`).",
   },
-  "single-child-card": {
-    code: "FE_SINGLE_CHILD_CARD",
-    en: "A `SurfaceCard` in `<file>` has no zones and holds one `DataTable`, chart (`BarChart`, `ProportionBar`, `BubbleMap`, `FlowGraph`, `MermaidDiagram`) or `Section kind=\"list\"`: a standalone table or chart is its own surface and a list is flat, so the card is a second frame. A card of key-value or choice rows is valid.",
-    fix: "Drop the card: put the title in a `Section` head (`title`) and one line under it in `Section caption`. A card groups two or more different parts, or carries zones (`headers`, `footers`) or head actions (`labelEnd`); a card of key-value or choice rows (`kind=\"details\"`, `\"select\"`, `\"table\"`) is valid; a list titles itself as a `Section kind=\"list\"`.",
+  "card-is-object": {
+    code: "FE_CARD_IS_OBJECT",
+    en: "A `SurfaceCard` in `<file>` holds only a collection, a form or a placeholder (a `DataTable`, a `Section`, a `DescriptionList`, a `DisclosureList`, a `Form` or a lone field, an `EmptyNotice`, `Markdown`, a chart): a card is one object.",
+    fix: "Drop the card and stand the content flat: a table is `<Section title ...><DataTable .../></Section>`, a list `Section kind=\"list\"`, facts `<Section title ...><DescriptionList isDivided items={...} /></Section>`, disclosures `<Section title ...><DisclosureList .../></Section>`, a form or field `<Section title ...><Form .../></Section>`, an empty state an `EmptyNotice` on its own, markdown or a chart a `Section`. A card keeps an object's name and facts beside a control; a sign-in form with no page around it keeps `measure=\"formCompact\"`.",
+  },
+  "data-table-surface": {
+    code: "FE_DATA_TABLE_SURFACE",
+    en: "A `DataTable` in `<file>` carries a `surface` prop: it was removed in the Grammar family 0.45.0, a table has one flat look.",
+    fix: "Delete the `surface` attribute (the rule fixes it in place) and put the table under its `Section`: `<Section title ...><DataTable .../></Section>`.",
   },
   "surface-card-kind": {
     code: "FE_SURFACE_CARD_KIND",
-    en: "A `body` SurfaceCard in `<file>` holds a hand-built list, a Divider, a SectionHeader or Heading as a second title, or a `custom` zone holds a Tabs, SearchField or Divider.",
-    fix: "Rows are a `Section kind=\"list\"` (never a card), key figures `kind=\"figures\"`, bands divided by seams the typed `headers` and `footers` zones (`filter`, `search`, `toolbar`, `figures`, `more`, `paging`); the card's title is its `label`.",
+    en: "A `body` SurfaceCard in `<file>` holds a hand-built list, a Divider, or a SectionHeader or Heading as a second title.",
+    fix: "Rows are a `Section kind=\"list\"` (never a card), key figures `Section kind=\"figures\"`, a band of commands at the card's foot is `actions`, a filter or search row the `filter` of a `Section`; the card's title is its `label`, a second subject its own `Section`.",
   },
   "status-text-uses-soft-foreground": {
     code: "FE_STYLE_TOKEN_ONLY",
@@ -270,7 +275,7 @@ export const why: Record<string, WhyEntry> = {
   "message-surfaces": {
     code: "FE_MESSAGE_SURFACES",
     en: "`<file>` restyles a chat face: a class or style on MessageBubble or MessageCard, a class string reaching into a Grammar message part, a chat thread asked for the surface tone, or a chat frame (`Pane content=\"chat\"`, a Pane holding a log thread) given `surface`.",
-    fix: "Remove the override: the chat frame (head, thread, composer) is `--background` (`Pane content=\"chat\"`, no `surface`, DNA-COMMON-CHAT-FRAME), others' messages the flat `--surface`, your own `--accent` (DNA-COMMON-CHAT-SURFACES); a card's replies are `SurfaceCard kind=\"list\" layout=\"suggestions\"`.",
+    fix: "Remove the override: the chat frame (head, thread, composer) is `--background` (`Pane content=\"chat\"`, no `surface`, DNA-COMMON-CHAT-FRAME), others' messages the flat `--surface`, your own `--accent` (DNA-COMMON-CHAT-SURFACES); a message card's replies are `Section kind=\"list\" layout=\"suggestions\"`.",
   },
   "suggestion-buttons": {
     code: "FE_SUGGESTION_BUTTONS",

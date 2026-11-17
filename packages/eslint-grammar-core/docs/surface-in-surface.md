@@ -2,7 +2,7 @@
 
 Law module: `surface-in-surface.ts`. Knowledge: `knowledge/ui/presentation/grammar-laws.yaml#SURFACE-IN-SURFACE`. Finding code: `FE_SURFACE_IN_SURFACE`.
 
-Rows inside a card body, a drawer, a dialog, a pane band or a rail are a `Section kind="list"`, drawn as everywhere else: flat rows divided by hairlines, aligned with the title (LIST-ONE-LOOK). A hand-made row list is the bare form.
+Rows inside a drawer, a dialog, a pane band or a rail are a `Section kind="list"`, drawn as everywhere else: flat rows divided by hairlines, aligned with the title (LIST-ONE-LOOK). A hand-made row list is the bare form.
 
 Every rule below is an error in `coreGrammarConfig`; none can be switched off or suppressed inline.
 
@@ -22,7 +22,7 @@ A Grammar `Stack`, or a `ul`, `ol` or `div`, whose rendered children include a G
 
 ```tsx
 <Drawer title="Runs"><Section kind="list" items={runs} /></Drawer>
-<SurfaceCard label="Runs" headers={[{ kind: "figures", /* ... */ }]}><Section kind="list" ariaLabel="Runs" items={runs} empty={null} /></SurfaceCard>
+<Stack><Section kind="figures" ariaLabel="Totals" items={totals} /><Section kind="list" title="Runs" items={runs} empty={null} /></Stack>
 ```
 
 Rule ownership: [FE-RULE-OWNERSHIP](../../../contexts/code/fe/README.md#the-placement-test-fe-rule-ownership).

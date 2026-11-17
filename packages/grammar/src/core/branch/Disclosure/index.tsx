@@ -45,8 +45,8 @@ export type DisclosureProps = NoChildren & {
  */
 
 /**
- * One show/hide section (the generic, unframed disclosure; `SurfaceCard kind="accordion"` is the framed
- * card form). The trigger is a real button inside a heading with `aria-expanded`/`aria-controls`;
+ * One show/hide section (the generic, unframed disclosure; a stack of them is `DisclosureList`, never a card).
+ * The trigger is a real button inside a heading with `aria-expanded`/`aria-controls`;
  * `data-grammar-disclosure-state` mirrors the open state for the stylesheet.
  * Contract: root STATE-7 (controlled expansion), trigger FOCUS-1, indicator MOTION-2.
  */
@@ -106,8 +106,8 @@ const DisclosureInner = ({
 }
 
 /**
- * One show/hide section (the generic, unframed disclosure; `SurfaceCard kind="accordion"` is the framed
- * card form). The trigger is a real button inside a heading with `aria-expanded`/`aria-controls`;
+ * One show/hide section (the generic, unframed disclosure; a stack of them is `DisclosureList`, never a card).
+ * The trigger is a real button inside a heading with `aria-expanded`/`aria-controls`;
  * `data-grammar-disclosure-state` mirrors the open state for the stylesheet.
  * Contract: root STATE-7 (controlled expansion), trigger FOCUS-1, indicator MOTION-2.
  */

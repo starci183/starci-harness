@@ -73,12 +73,14 @@ export const PublicPageParts: Story = {
                 <G.SurfaceCard label="Times" error={{ message: "Could not load the times", description: "Check the connection.", actionLabel: "Try again", onAction: noop, isInline: true }}><G.Text>never shown</G.Text></G.SurfaceCard>
             </State>
             <State label="Step rows: a mark at the start, the meta at the end" direction="column">
-                <G.SurfaceCard kind="accordion" label="Set up" items={[
-                    { id: "s1", title: "Connect a channel", meta: "Done", leading: { state: "done", position: 1 }, body: "Connected.", isOpen: false },
-                    { id: "s2", title: "Add the webhook", meta: "In progress", leading: { state: "current", position: 2 }, body: "Paste the address.", isOpen: true },
-                    { id: "s3", title: "Send a test", meta: "Needs attention", leading: { state: "problem", position: 3 }, body: "The test failed.", isOpen: false },
-                    { id: "s4", title: "Go live", leading: { state: "todo", position: 4 }, body: "Later.", isOpen: false },
-                ]} onItemOpenChange={noop} />
+                <G.Section title="Set up">
+                    <G.DisclosureList label="Set up" items={[
+                        { id: "s1", title: "Connect a channel", summary: "Done", leading: { state: "done", position: 1 }, body: "Connected." },
+                        { id: "s2", title: "Add the webhook", summary: "In progress", leading: { state: "current", position: 2 }, defaultExpanded: true, body: "Paste the address." },
+                        { id: "s3", title: "Send a test", summary: "Needs attention", leading: { state: "problem", position: 3 }, body: "The test failed." },
+                        { id: "s4", title: "Go live", leading: { state: "todo", position: 4 }, body: "Later." },
+                    ]} />
+                </G.Section>
             </State>
             <State label="Alert with a leading mark and the whole banner as the press target" direction="column">
                 <G.Alert tone="informative" leading={<G.Avatar name="Sales AI" size="sm" tone="accent" />} title="3 to approve" description="Quote for Globex" action={{ label: "Open the approvals", onAction: noop, kind: "row" }} />

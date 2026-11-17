@@ -1,5 +1,5 @@
 /**
- * Twin tests for the Tabs laws: the pill stands only as a card's `switch` zone, and a page stacks two underline layers.
+ * Twin tests for the Tabs laws: the pill stands only as a Section `action` or a row `control`, and a page stacks two underline layers.
  *
  *   node --test src/tabs.spec.ts
  */
@@ -18,23 +18,25 @@ test("the law publishes two rules and both are errors", () => {
   assert.deepEqual(recommended, { "starci-grammar/tabs-switch-zone": "error", "starci-grammar/tabs-depth": "error", "starci-grammar/tabs-in-well": "error" })
 })
 
-test("tabs-switch-zone: the pill is the switch header zone, never JSX", () => {
+test("tabs-switch-zone: the pill is the action of a Section or a row control, never loose JSX", () => {
   slotTester().run("tabs-switch-zone", tabsSwitchZone, {
     valid: [
-      { filename: BLOCK, code: "export const A = () => <SurfaceCard kind=\"table\" label=\"Cash\" headers={[{ kind: \"switch\", label: \"Period\", items: [{ id: \"a\", label: \"This month\" }, { id: \"b\", label: \"Last month\" }], selectedKey: \"a\", onSelect: set }]} items={rows} empty={empty} />" },
+      { filename: BLOCK, code: "export const A = () => <Section title=\"Cash\" action={<Tabs appearance=\"primary\" label=\"Period\" items={[{ id: \"a\", label: \"This month\" }, { id: \"b\", label: \"Last month\" }]} selectedKey=\"a\" onSelect={set} />}><DataTable label=\"Cash\" columns={c} rows={r} /></Section>" },
+      { filename: BLOCK, code: `export const A = () => <Section title="Cash" action={ready && <Tabs appearance="primary" label="Period" ${ITEMS} selectedKey="a" />}>{body}</Section>` },
       { filename: BLOCK, code: `export const A = () => <Tabs label="Views" ${ITEMS} selectedKey="a" />` },
       { filename: BLOCK, code: `export const A = () => <Tabs label="Status" kind="filter" ${ITEMS} selectedKey="a" />` },
       { filename: BLOCK, code: `export const A = ({ appearance }) => <Tabs label="x" appearance={appearance} ${ITEMS} />` },
       { filename: SCRIPT, code: `export const A = () => <Tabs appearance="primary" label="x" ${ITEMS} />` },
-      { filename: BLOCK, code: `export const A = () => <SurfaceCard kind="select" label="Agent" selectionMode="multiple" items={[{ id: "send", title: "Send", control: <Tabs appearance="primary" label="Send" ${ITEMS} selectedKey="a" /> }]} value={v} onChange={set} />` },
-      { filename: BLOCK, code: `export const A = () => <SurfaceCard kind="select" label="Agent" selectionMode="multiple" items={[{ id: "send", title: "Send", "control": on ? <Tabs appearance={"primary"} label="Send" ${ITEMS} /> : null }]} value={v} onChange={set} />` },
+      { filename: BLOCK, code: `export const A = () => <Section kind="list" title="Agent" items={[{ id: "send", title: "Send", control: <Tabs appearance="primary" label="Send" ${ITEMS} selectedKey="a" /> }]} empty={null} />` },
+      { filename: BLOCK, code: `export const A = () => <Section kind="list" title="Agent" items={[{ id: "send", title: "Send", "control": on ? <Tabs appearance={"primary"} label="Send" ${ITEMS} /> : null }]} empty={null} />` },
       { filename: BLOCK, code: `export const A = () => <Section kind="list" title="Rows" items={rows} empty={empty} renderRow={(row) => <ListRow title="x" control={<Tabs appearance="primary" label="x" ${ITEMS} />} />} />` },
     ],
     invalid: [
       { filename: BLOCK, code: `export const A = () => <Page header={{ title: "x", tabs }}><Tabs appearance="primary" label="Views" ${ITEMS} selectedKey="a" /></Page>`, errors: [{ messageId: "pill" }] },
       { filename: BLOCK, code: `export const A = () => <Drawer><Tabs appearance="primary" label="Mode" ${ITEMS} /></Drawer>`, errors: [{ messageId: "pill" }] },
       { filename: BLOCK, code: `export const A = () => <Pane label="p"><Grammar.Tabs appearance={"primary"} label="Mode" ${ITEMS} /></Pane>`, errors: [{ messageId: "pill" }] },
-      { filename: BLOCK, code: `export const A = () => <SurfaceCard kind="select" label="Agent" selectionMode="multiple" items={[{ id: "send", title: "Send", subtitle: <Tabs appearance="primary" label="Send" ${ITEMS} /> }]} value={v} onChange={set} />`, errors: [{ messageId: "pill" }] },
+      { filename: BLOCK, code: `export const A = () => <Section kind="list" title="Agent" items={[{ id: "send", title: "Send", subtitle: <Tabs appearance="primary" label="Send" ${ITEMS} /> }]} empty={null} />`, errors: [{ messageId: "pill" }] },
+      { filename: BLOCK, code: `export const A = () => <Card action={<Tabs appearance="primary" label="x" ${ITEMS} />} />`, errors: [{ messageId: "pill" }] },
       { filename: BLOCK, code: `export const A = () => <Card title={<Tabs appearance="primary" label="x" ${ITEMS} />} />`, errors: [{ messageId: "pill" }] },
       { filename: BLOCK, code: `export const A = () => <Row control={<Stack><Tabs appearance="primary" label="x" ${ITEMS} /></Stack>} />`, errors: [{ messageId: "pill" }] },
       { filename: BLOCK, code: `export const A = () => <Row control={cond ? undefined : <Other />} label={<Tabs appearance="primary" label="x" ${ITEMS} />} />`, errors: [{ messageId: "pill" }] },
@@ -81,8 +83,7 @@ test("tabs-depth: page tabs and one region set, never a third layer", () => {
 test("tabs-in-well: the second layer stands in the header band, never in the well or a pane body", () => {
   slotTester().run("tabs-in-well", tabsInWell, {
     valid: [
-      // in a card, a drawer, or a plain block outside Page and Pane
-      { filename: BLOCK, code: `export const A = () => <Page header={{ title: "Agent", tabs, subTabs }}><SurfaceCard label="Runs"><Tabs label="Status" ${ITEMS} selectedKey={s} /></SurfaceCard></Page>` },
+      // in a drawer, or a plain block outside Page and Pane
       { filename: BLOCK, code: `export const A = () => <Drawer title="x"><Tabs label="Status" ${ITEMS} selectedKey={s} /></Drawer>` },
       { filename: BLOCK, code: `export const A = () => <div><Tabs label="Status" ${ITEMS} selectedKey={s} /></div>` },
       { filename: BLOCK, code: `export const A = () => <Page header={{ title: "x" }}><Tabs appearance="primary" label="Status" ${ITEMS} selectedKey={s} /></Page>` },
@@ -96,6 +97,8 @@ test("tabs-in-well: the second layer stands in the header band, never in the wel
     invalid: [
       { filename: BLOCK, code: `export const A = () => <Page header={{ title: "Agent", tabs }}><Tabs label="Status" ${ITEMS} selectedKey={s} /></Page>`, errors: [{ messageId: "well" }] },
       { filename: BLOCK, code: `export const A = () => <Pane label="Side"><PaneSection><Tabs label="Status" ${ITEMS} selectedKey={s} /></PaneSection></Pane>`, errors: [{ messageId: "well" }] },
+      // a card body is no header row
+      { filename: BLOCK, code: `export const A = () => <Page header={{ title: "Agent", tabs, subTabs }}><SurfaceCard label="Runs"><Tabs label="Status" ${ITEMS} selectedKey={s} /></SurfaceCard></Page>`, errors: [{ messageId: "well" }] },
       // still loose: a filter tabs in a Section's body, a views tabs in its filter row, a filter tabs in another element's filter prop or loose in the well
       { filename: BLOCK, code: `export const A = () => <Page header={{ title: "x" }}><Section title="Catalog"><Tabs label="Level" kind="filter" ${ITEMS} selectedKey={s} /></Section></Page>`, errors: [{ messageId: "well" }] },
       { filename: BLOCK, code: `export const A = () => <Page header={{ title: "x" }}><Section title="Catalog" filter={<Tabs label="Views" ${ITEMS} selectedKey={s} />}><Content /></Section></Page>`, errors: [{ messageId: "well" }] },

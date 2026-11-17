@@ -67,7 +67,7 @@ export const noRaisedSurfaceInSurface: Rule.RuleModule = defineRule({
     schema: [],
     messages: {
       nested:
-        "This `SurfaceCard` stands inside {{host}}: a surface never stands inside a surface (the Grammar has one depth and draws no nested edge). Give the content to the host's own body, or use a kind of the outer card (`bands`, `list`, `figures`) for what needs its own faces.",
+        "This `SurfaceCard` stands inside {{host}}: a surface never stands inside a surface (the Grammar has one depth and draws no nested edge). Give the content to the host's own body; a list, a table or figures inside it stand flat in a `Section` (`Section kind=\"list\"`, `Section kind=\"figures\"`), never in a card of their own.",
     },
   },
   create(context) {

@@ -87,17 +87,18 @@ export const SurfaceCardFooter: Story = {
   ),
 };
 
-/** A card with a figures header zone and a Meter in its body, in light and dark. */
+/** A figures ribbon above a Meter, in light and dark. */
 export const FiguresStripWithMeter: Story = {
   render: (_, { globals }) => (
     <Matrix maxWidth={720}>
       {(['light', 'dark'] as const).map((theme) => (
         <G.GrammarRoot key={theme} {...familyScope(globals)} theme={theme} data-story-bands-theme={theme} style={{ padding: '1.5rem', background: 'var(--background, Canvas)' }}>
-          <State label={`${theme}: zoned card, the figures and a Meter`} direction="column">
+          <State label={`${theme}: the figures and a Meter`} direction="column">
             <div style={{ width: 672, maxWidth: '100%' }}>
-              <G.SurfaceCard ariaLabel="Usage" headers={[{ kind: 'figures', items: stripItems }]}>
+              <G.Stack gap="region">
+                <G.Section kind="figures" ariaLabel="Usage" items={stripItems} />
                 <G.Meter label="Storage" value={64} valueLabel="6.4 of 10 GB" />
-              </G.SurfaceCard>
+              </G.Stack>
             </div>
           </State>
         </G.GrammarRoot>

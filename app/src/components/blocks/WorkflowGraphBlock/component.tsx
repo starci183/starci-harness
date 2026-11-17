@@ -1,4 +1,4 @@
-import { Badge, EmptyNotice, Section, SurfaceCard, Text, type PresentationState } from "@starci/grammar/core"
+import { Badge, EmptyNotice, Section, Text, type PresentationState } from "@starci/grammar/core"
 import type { DataSlot, SlotLabels, ToneLabel } from "../../../modules/types"
 import { SlotView } from "../../composites/SlotView"
 
@@ -81,7 +81,7 @@ export const WorkflowGraphBlockBase = (props: WorkflowGraphBlockBaseProps) => {
         <Section title={labels.title}>
             <SlotView slot={props.props.graph} placeholder={GRAPH_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry} isEmpty={() => false} render={(graph, isLoading) => (
                     <div className="app-stack">
-                        <SurfaceCard
+                        <Section
                             kind="figures"
                             ariaLabel={labels.title}
                             isLoading={isLoading}

@@ -4,7 +4,7 @@ import { useId, type ReactNode } from "react"
 import { ListRow } from "../../composite/ListRow/index.js"
 import { SkeletonPlaceholder } from "../../leaf/Skeleton/index.js"
 import { Sublabel } from "../../leaf/Sublabel/index.js"
-import { FigureCells, figureItems } from "../SurfaceCard/FigureCells.js"
+import { FigureCells, figureItems } from "./FigureCells.js"
 import { ErrorView, LOADING_ROWS, type ErrorData } from "../../loadingState.js"
 import { LoadingScope, useIsLoading } from "../../regionScope.js"
 import type { Figure, ListRowData } from "../../surfaceCardData.js"
@@ -63,11 +63,6 @@ type HeadlessRegion = RegionSection & HeadlessFigures
 type FiguresSection = NoChildren & {
     readonly kind: "figures"
     readonly items: readonly Figure[]
-    /**
-     * Draws the strip as a ribbon (0.40.0): a full-width band with a hairline (`--separator`) on its top and bottom edges only, the cells divided by
-     * vertical hairlines, open ends, no radius and no fill. Off by default: the strip keeps its card or pane placement.
-     */
-    readonly ribbon?: boolean
 } & ((SectionHeadProps & { readonly ariaLabel?: never }) | HeadlessFigures)
 
 /** The status every section takes from its read (contexts/ui/loading.md). */
@@ -82,7 +77,7 @@ type SectionStatus = {
     /** The read failed: the head stays and this takes the place of the body. Loading comes first, then error, then empty. */
     readonly error?: ErrorData
     /**
-     * The section fills the height its host gives it (a cell of a stretched grid): the body (a `SurfaceCard height="fill"`, a `DataTable fill`) takes what the head and the caption leave.
+     * The section fills the height its host gives it (a cell of a stretched grid): the body (a `DataTable fill`, a `SurfaceCard height="fill"`) takes what the head and the caption leave.
      * A section without it keeps its own height.
      */
     readonly fill?: boolean
@@ -92,7 +87,7 @@ type SectionStatus = {
 type SectionCaption = {
     /**
      * One muted 12 line under the section's body: what a lone table, list or chart shows, its source or its period. The table, list
-     * or chart is the surface and the section is its head and caption (the single-child-card law), never a card around it.
+     * or chart is the surface and the section is its head and caption, never a card around it (lint `card-is-object`).
      */
     readonly caption?: string
 }
@@ -130,7 +125,7 @@ const listRows = (props: ListSection, isLoading: boolean) => {
  * grows into what is left, each select keeps its own width. Below the narrow step (the row's own width under 48rem) the peers stack, each
  * the row's full width. A list's filter and a region's are this one row.
  */
-const FilterRow = ({ filter, isLoading }: { readonly filter: ReactNode; readonly isLoading: boolean }) => filter === undefined ? null : (
+export const FilterRow = ({ filter, isLoading }: { readonly filter: ReactNode; readonly isLoading: boolean }) => filter === undefined ? null : (
     <div className="starci-core-section-filter" data-contract="GAP-2">
         {isLoading ? <SkeletonPlaceholder shape="block">{filter}</SkeletonPlaceholder> : filter}
     </div>
@@ -172,9 +167,9 @@ const ListBody = ({ list, isLoading, error }: { readonly list: ListSection; read
  * drawer, a pane): plain rows on the surface, divided by hairlines, aligned with the section title, with no frame, fill, radius or
  * shadow. Typed `items`, an optional `layout`, an optional `filter` and a required `empty` state; its title owns the list heading and
  * accessible name.
- * `kind="figures"` reuses the unpainted FigureCells strip inside an existing surface; a required `ariaLabel` keeps an
- * already-headed strip headless, while `title` gives a strip its own visible heading. Those forms cannot be mixed. `ribbon` draws the strip
- * as a band between two hairlines on the page (no card).
+ * `kind="figures"` is the one strip of key figures: a ribbon between two hairlines wherever it stands, never a card; a required `ariaLabel`
+ * keeps an already-headed strip headless, while `title` gives a strip its own visible heading. Those forms cannot be mixed.
+ * A table is never a card either: a `Section` (its head, its `filter`) over a flat `DataTable` whose `footer` holds the pager.
  */
 export const Section = (props: SectionProps) => {
     const { title, description, count, isAttention, fact, meta, action, headingLevel = 2, id, error } = props
@@ -183,7 +178,7 @@ export const Section = (props: SectionProps) => {
     const headingId = useId()
     const body = (() => {
         if (props.kind === "list") return <ListBody list={props} isLoading={isLoading} error={error} />
-        if (props.kind === "figures") return failed ? <ErrorView error={error} /> : <FigureCells items={figureItems(props.items, isLoading)} isLoading={isLoading} ribbon={props.ribbon === true} />
+        if (props.kind === "figures") return failed ? <ErrorView error={error} /> : <FigureCells items={figureItems(props.items, isLoading)} isLoading={isLoading} />
         const filter = <FilterRow filter={props.filter} isLoading={isLoading} />
         if (failed) return <>{filter}<ErrorView error={error} /></>
         return <>{filter}<LoadingScope isLoading={isLoading}>{props.children}</LoadingScope></>

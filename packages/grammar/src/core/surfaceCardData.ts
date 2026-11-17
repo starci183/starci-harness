@@ -8,8 +8,6 @@ import type { IconSource } from "./leaf/Icon/index.js"
 import type { SurfaceHeadingLevel } from "./leaf/Label/index.js"
 import type { LinkProps } from "./leaf/Link/index.js"
 import type { ButtonProps } from "./leaf/Button/index.js"
-import type { PrimaryTabItems, TabItem } from "./branch/Tabs/index.js"
-import type { ListOption } from "./branch/Select/index.js"
 import type { ImageAspect, ImageProps } from "./leaf/Image/index.js"
 
 /** A status mark as data: the words, the tone, and whether it leads with a status dot. */
@@ -150,7 +148,7 @@ type FigureDestination = Pick<LinkProps, "href" | "onFollow" | "isDisabled"> | {
     readonly isDisabled?: never
 }
 
-/** One key figure of a `figures` card; its optional destination belongs to the whole figure cell. */
+/** One key figure of a `Section kind="figures"` ribbon; its optional destination belongs to the whole figure cell. */
 export type Figure = {
     readonly id: string
     /** What the figure measures. */
@@ -177,233 +175,20 @@ export type Figure = {
     readonly icon?: IconSource
 } & FigureDestination
 
-/** One disclosure of an `accordion` card. */
-export type AccordionRowData = {
-    readonly id: string
-    readonly title: string
-    readonly meta?: string
-    /**
-     * A step mark at the start of the row: `done` (a check), `current` (the filled accent number), `problem` (a warning triangle) or
-     * `todo` (a grey number). The step's number is `position`; the state is also said in words by the app (title or meta), never by the mark alone.
-     */
-    readonly leading?: { readonly state: "done" | "current" | "problem" | "todo"; readonly position?: number }
-    readonly body: ReactNode
-    readonly isOpen: boolean
-    readonly isDisabled?: boolean
-}
-
 export type CardHead = {
     readonly label?: string
     readonly ariaLabel?: string
     /*
-     * A card head has NO description or subtitle (owner, 0.37.5): the head is the label, its count chip, one fact and one end action. A line that explains the
+     * A card head has NO description, subtitle or count: the head is the label, one fact and one end action. A line that explains the
      * card's data (a legend, a source, a period) goes in `note`; a line that explains a row is that row's own subtitle.
      */
-    /**
-     * How many items the card holds: a 12px count chip right after the label (0.36.0), grey. It stands on the left and coexists with `labelEnd` on the
-     * right (the law: label and count chip at the start, one head Link at the end).
-     */
-    readonly count?: number
-    /** The count is work waiting for the owner (to handle, to approve, an error): the chip is pink. Only then. */
-    readonly isAttention?: boolean
     /** One short fact beside the label. */
     readonly fact?: string
-    /** The one action at the end of the label row: a `Link variant="head"` or an info `IconButton`. It stands at the end beside `count` and `fact`. */
+    /** The one action at the end of the label row: a `Link variant="head"` or an info `IconButton`. It stands at the end, after `fact`. */
     readonly labelEnd?: ReactNode
     /** Outline rank of the visible `label` (default 3): the rank below the nearest heading above the card. */
     readonly headingLevel?: SurfaceHeadingLevel
 }
-
-/** One row of a `select` card: a title with an optional subtitle under it. */
-export type SelectItemData = {
-    readonly id: string
-    readonly title: string
-    /** One muted 12 line directly under the title of the same row (the explanation of that choice); never a loose line elsewhere. */
-    readonly subtitle?: string
-    readonly isDisabled?: boolean
-    /**
-     * One control at the END of the row (0.37.13), as on a list row: a primary `Tabs` pill ("Auto | Ask"), a `Switch`, a `Checkbox`, a `Badge`. It keeps its own state and
-     * label; the row seats it at the end centred on the title line, and the title and subtitle wrap before it. It is its own hit target: presses, clicks and keys inside it never
-     * toggle the row, and it is not part of the row's accessible name. A disabled row dims it and blocks it. Grammar components only, never raw elements with handlers.
-     */
-    readonly control?: ReactNode
-}
-
-/**
- * A choice list (0.37.5): every row a checkbox with its title and subtitle, the whole row the hit target, 1px dividers across the full card width.
- * `single` keeps one row checked (checking one unchecks the others) with the same checkbox look; `multiple` toggles each row.
- */
-export type SelectData =
-    | {
-          readonly kind: "select"
-          readonly selectionMode: "single"
-          readonly items: readonly SelectItemData[]
-          readonly value: string | null
-          readonly onChange: (value: string) => void
-      }
-    | {
-          readonly kind: "select"
-          readonly selectionMode: "multiple"
-          readonly items: readonly SelectItemData[]
-          readonly value: readonly string[]
-          readonly onChange: (value: readonly string[]) => void
-      }
-
-export type AccordionData = {
-    readonly kind: "accordion"
-    readonly items: readonly AccordionRowData[]
-    readonly onItemOpenChange: (id: string, isOpen: boolean) => void
-}
-
-/** The fields of a filter zone: the tabs that narrow the card's own list. */
-export type FilterFields = {
-    /** The accessible name of the tab list. */
-    readonly label: string
-    /** The views, each with its `count`. */
-    readonly items: readonly TabItem[]
-    readonly selectedKey: string
-    readonly onSelect: (key: string) => void
-    /** The accessible name of the fold menu, from the number of folded tabs (for example "3 more filters"). */
-    readonly moreLabel?: (count: number) => string
-    /** The word the fold menu draws (the app's own "More"). */
-    readonly overflowLabel?: string
-}
-
-/** The fields of a search zone: one search field over the card's own list. */
-export type SearchFields = {
-    /** The accessible name of the field (it is not drawn). */
-    readonly label: string
-    readonly value: string
-    readonly onChange: (value: string) => void
-    readonly placeholder?: string
-    /** Accessible name of the clear button. */
-    readonly clearLabel?: string
-}
-
-/**
- * One trailing filter of a search zone: a `Select` that narrows the same list the search does ("Status", "Owner"). Its label is its
- * accessible name and is not drawn; a muted `prefix` inside the trigger says it in words ("Status:"). The trigger keeps its natural
- * width and its words never wrap; the search takes the rest of the row.
- */
-export type SelectZoneField = {
-    /** The accessible name of the select (it is not drawn). */
-    readonly label: string
-    readonly options: readonly ListOption[]
-    readonly value: string | null
-    readonly onChange: (value: string | null) => void
-    /** Words in the trigger while nothing is chosen. */
-    readonly placeholder?: string
-    /** Muted words before the value inside the trigger ("Status:"). */
-    readonly prefix?: string
-}
-
-/** The fields of a search zone with its filters: the search grows, each filter keeps its natural width; narrow, the filters wrap below the search. */
-export type SearchZoneFields = SearchFields & {
-    /** Selects at the trailing edge of the same row, narrowing the same list. */
-    readonly filters?: readonly SelectZoneField[]
-}
-
-/** The fields of a switch zone: a mode or period of the block's own data, 2 to 4 short fixed options, no count and no destination. */
-export type SwitchFields = {
-    /** The accessible name of the tab list. */
-    readonly label: string
-    /** An optional title at the leading edge of the row (muted); the row is empty there otherwise. */
-    readonly title?: string
-    readonly items: PrimaryTabItems
-    readonly selectedKey: string
-    readonly onSelect: (key: string) => void
-}
-
-/**
- * A band above the card's body. Zones are typed: the shell owns their padding, their geometry while loading and the ONE divider
- * between neighbouring zones and between a zone and the body (a `Divider` inside a zone is refused). `custom` is the only free
- * zone: Grammar pads and seams it, and it may not hold `Tabs`, `SearchField` or `Divider` (use the typed zones).
- */
-export type HeaderZone =
-    | ({ readonly kind: "filter" } & FilterFields)
-    | ({ readonly kind: "search" } & SearchZoneFields)
-    /** The filter tabs at the leading edge and a compact search field at the trailing edge, in one row; narrow: the extra tabs fold into the menu and the search becomes a search button that opens a row. */
-    | { readonly kind: "toolbar"; readonly filter: FilterFields; readonly search: SearchFields }
-    | { readonly kind: "figures"; readonly items: readonly Figure[] }
-    /** The card's first header row, inside the surface: primary tabs (a pill in a track) at the trailing edge, an optional title at the leading edge, the one line under it: "This month / Last month", "Day / Week / Month", "List / Board". */
-    | ({ readonly kind: "switch" } & SwitchFields)
-    | { readonly kind: "custom"; readonly children: ReactNode }
-
-/** A band below the card's body. */
-export type FooterZone =
-    | { readonly kind: "more"; readonly label: string; readonly press: () => void; readonly href?: never }
-    | { readonly kind: "more"; readonly label: string; readonly href: string; readonly press?: never }
-    | {
-        readonly kind: "paging"
-        readonly page: number
-        readonly pageCount: number
-        readonly onPage: (page: number) => void
-        readonly labels: {
-            /** Names the pager landmark, e.g. "Results pages". */
-            readonly nav: string
-            readonly previous: string
-            readonly next: string
-            /** The accessible name of one page button, e.g. "Page 3". */
-            readonly page: (page: number) => string
-            /** An optional summary, e.g. "21-30 of 94". */
-            readonly summary?: string
-        }
-    }
-    | { readonly kind: "custom"; readonly children: ReactNode }
-
-/** One column of a `table` card. */
-export type TableColumnData = {
-    readonly id: string
-    readonly label: string
-    readonly align?: "start" | "end"
-    /** A column of amounts: its cells never wrap, read in tabular numerals and align to the end. */
-    readonly numeric?: boolean
-    /** Narrow-width mode: a `low` column leaves the header below the card's collapse width and joins the row as a muted line under the first column. Default `high`. */
-    readonly priority?: "high" | "low"
-    /** The column's width (0.37.3): `"fill"` the rest (with `minWidth`, `truncate`), `"fit"` its content on one line, or px. Default: the first text column fills, numeric ones fit. */
-    readonly width?: "fill" | "fit" | number
-    readonly minWidth?: number
-    /** One line with an ellipsis and the full text in a tooltip. */
-    readonly truncate?: boolean
-    /** The column leaves the table under this width: `"tablet"` (768) or `"desktop"` (1280). */
-    readonly hideBelow?: "tablet" | "desktop"
-}
-
-/** One row of a `table` card: its cells by column id. */
-export type TableRowData = {
-    readonly id: string
-    readonly cells: Readonly<Record<string, ReactNode>>
-    /** A destination: the whole row is a link target. */
-    readonly href?: string
-}
-
-/** A run of rows under one group heading row inside the same table (a day of a ledger). */
-export type TableGroupData = {
-    readonly id: string
-    /** The group heading, e.g. the date. */
-    readonly label: string
-    /** One short fact at the end of the heading, e.g. the end-of-day balance. */
-    readonly fact?: string
-    readonly rows: readonly TableRowData[]
-}
-
-/** The body of a `table` card: Grammar owns the table. The rows are one list or groups of rows under heading rows; the column header is drawn once. */
-export type TableData = {
-    readonly kind: "table"
-    readonly columns: readonly TableColumnData[]
-    /** What the card shows when it has no rows. Required: every table answers for its empty state. */
-    readonly empty: ReactNode
-    /** The whole row is pressable (opens a drawer): called with the row's `id` on a click, Enter or Space on the focused row. Commands inside a row stay their own. */
-    readonly onRowAction?: (id: string) => void
-    /** Columns the user can drag, remembered in localStorage under `id` (0.37.3). */
-    readonly resizable?: boolean
-    readonly id?: string
-    /** Under 768: `list` (a row per item: the first column its title, the rest one muted line; the default from three columns) or `table`. */
-    readonly phone?: "list" | "table"
-} & (
-    | { readonly rows: readonly TableRowData[]; readonly groups?: undefined }
-    | { readonly groups: readonly TableGroupData[]; readonly rows?: undefined }
-)
 
 export type WholeCardAction =
     | { readonly kind: "link"; readonly href: string; readonly label: string }

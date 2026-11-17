@@ -5,8 +5,10 @@ import { SOURCE_FILES, linterOptions as canonLinterOptions, scopeToPackages } fr
 import { rules as appShellRules } from "./app-shell.ts"
 import { rules as buttonArrowRules } from "./button-arrow.ts"
 import { rules as cardContentRules } from "./card-content.ts"
+import { rules as cardIsObjectRules } from "./card-is-object.ts"
 import { rules as chipLabelRules } from "./chip-label.ts"
 import { rules as choiceControlsRules } from "./choice-controls.ts"
+import { rules as dataTableSurfaceRules } from "./data-table-surface.ts"
 import { rules as drawingRules } from "./drawing.ts"
 import { rules as fieldLabelRules } from "./field-label.ts"
 import { rules as freestyleRules } from "./freestyle.ts"
@@ -34,7 +36,6 @@ import { rules as statusColorsRules } from "./status-colors.ts"
 import { rules as surfaceCardRules } from "./surface-card.ts"
 import { rules as surfaceCardListRules } from "./surface-card-list.ts"
 import { rules as surfaceDepthRules } from "./surface-depth.ts"
-import { rules as singleChildCardRules } from "./single-child-card.ts"
 import { rules as surfaceInSurfaceRules } from "./surface-in-surface.ts"
 import { rules as suggestionButtonsRules } from "./suggestion-buttons.ts"
 import { rules as tabCountChipRules } from "./tab-count-chip.ts"
@@ -61,8 +62,10 @@ const CONTRIBUTIONS: readonly { readonly law: string; readonly rules: Readonly<R
   { law: "app-shell", rules: appShellRules },
   { law: "button-arrow", rules: buttonArrowRules },
   { law: "card-content", rules: cardContentRules },
+  { law: "card-is-object", rules: cardIsObjectRules },
   { law: "chip-label", rules: chipLabelRules },
   { law: "choice-controls", rules: choiceControlsRules },
+  { law: "data-table-surface", rules: dataTableSurfaceRules },
   { law: "drawing", rules: drawingRules },
   { law: "field-label", rules: fieldLabelRules },
   { law: "freestyle", rules: freestyleRules },
@@ -86,7 +89,6 @@ const CONTRIBUTIONS: readonly { readonly law: string; readonly rules: Readonly<R
   { law: "no-card-lead-description", rules: noCardLeadDescriptionRules },
   { law: "no-nested-label", rules: noNestedLabelRules },
   { law: "section-head-action", rules: sectionHeadActionRules },
-  { law: "single-child-card", rules: singleChildCardRules },
   { law: "status-colors", rules: statusColorsRules },
   { law: "surface-card", rules: surfaceCardRules },
   { law: "surface-card-list", rules: surfaceCardListRules },

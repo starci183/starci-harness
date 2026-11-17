@@ -13,7 +13,7 @@ import { defineFamilyRules, defineRule } from "./lib/rule-contract.ts"
  *
  * A second rule holds the same law for loose buttons: two or more adjacent `Button` or `IconButton` elements (or one written in a
  * `.map`) that carry `aria-pressed`, `isSelected` or `isActive` are joined buttons acting as tabs, a pill toggle ("This month / Last
- * month"). A switch between views or periods of one block is `Tabs` (the primary underline) in the block's `filter` header zone;
+ * month"). A switch between views or periods of one block is `Tabs` (the primary underline) in the `filter` row of the block's `Section` (a mode or period pill is `Section action`);
  * `ChoiceChips` or `RadioGroup` choose a form value; a button holds a command, never a selection state.
  */
 
@@ -21,7 +21,7 @@ import { defineFamilyRules, defineRule } from "./lib/rule-contract.ts"
 export const REPLACEMENTS: Readonly<Record<string, string>> = {
   ButtonGroup: "separate `Button`s (one commit, the rest alternative or dismiss), or a `DropdownMenu` for the overflow",
   FilterButtonGroup: "`Tabs kind=\"filter\"` (compact underline tabs with a `count` each, under the list's search field) to narrow a list that stays in place",
-  SegmentedControl: "`ChoiceChips` or `RadioGroup` to choose a value of a form, or `Tabs appearance=\"primary\"` (a `switch` header zone) to switch a mode or period of one block",
+  SegmentedControl: "`ChoiceChips` or `RadioGroup` to choose a value of a form, or `Tabs appearance=\"primary\"` (in the `action` of its `Section`) to switch a mode or period of one block",
 }
 
 /** The element name of a JSX opening element (`ButtonGroup`, or `Grammar.ButtonGroup` as `ButtonGroup`). */
@@ -100,10 +100,10 @@ const selectionButtonsOf = (node: TSESTree.Node | null | undefined, inMap = fals
 export const noButtonViewSwitch: Rule.RuleModule = defineRule({
   meta: {
     type: "problem",
-    docs: { description: "R380: no row of Buttons carrying aria-pressed, isSelected or isActive as a view switch; a switch between views or periods is Tabs in the block's filter header zone." },
+    docs: { description: "R380: no row of Buttons carrying aria-pressed, isSelected or isActive as a view switch; a switch between views or periods is Tabs in the `filter` row of the block's Section." },
     schema: [],
     messages: {
-      switch: "Buttons that carry `{{attribute}}` side by side are a view switch drawn as joined buttons or pills. Switching between views or periods of one block is `Tabs` (the primary underline) in the block's `filter` header zone; choosing a form value is `ChoiceChips` or `RadioGroup`; a `Button` holds a command, never a selection state.",
+      switch: "Buttons that carry `{{attribute}}` side by side are a view switch drawn as joined buttons or pills. Switching between views or periods of one block is `Tabs` (the primary underline) in the `filter` row of the block's `Section`, or a pill (`Tabs appearance=\"primary\"`) in its `action`; choosing a form value is `ChoiceChips` or `RadioGroup`; a `Button` holds a command, never a selection state.",
     },
   },
   create(context) {
@@ -140,7 +140,7 @@ const hasKind = (object: TSESTree.ObjectExpression, literal: string): boolean =>
 export const noPrimaryTabsMisuse: Rule.RuleModule = defineRule({
   meta: {
     type: "problem",
-    docs: { description: "R380: Tabs appearance=\"primary\" (and the switch header zone) hold two to four short, fixed options with no count, no href and no attention mark; views, filters and navigation are the secondary underline tabs." },
+    docs: { description: "R380: Tabs appearance=\"primary\" (a Section `action` or a row `control`) hold two to four short, fixed options with no count, no href and no attention mark; views, filters and navigation are the secondary underline tabs." },
     schema: [],
     messages: {
       primary: "Primary tabs (a pill in a track) switch a mode or period of the same data among two to four short, fixed options: {{problem}}. Views, filters with counts and destinations are the secondary (underline) `Tabs`.",

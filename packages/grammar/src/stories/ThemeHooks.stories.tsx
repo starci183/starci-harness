@@ -5,7 +5,7 @@ import * as G from '../common/index.js';
 
 /**
  * ONE LOOK, THE RIBBON, THE FLAT TABLE AND THE THEME HOOKS (0.40.0). A field has one look wherever it stands (no vendor `*--secondary`
- * field class anywhere, DNA-COMMON-FIELD-ONE-LOOK); `Section kind="figures" ribbon` is a band between two hairlines with open ends; a
+ * field class anywhere, DNA-COMMON-FIELD-ONE-LOOK); `Section kind="figures"` is a band between two hairlines with open ends; a
  * standalone `DataTable` is flat by default; the theme hooks (`src/common/theme-hooks.json`) restyle a part when an app sets them and leave
  * it as it was when it sets none. The `Hooked` story sets a neutral set of hooks on its wrapper, as an app's theme layer would on `:root`.
  */
@@ -43,8 +43,8 @@ const MembersTable = () => (
 
 const Parts = () => (
   <G.Stack gap="section">
-    <div data-story-ribbon="phone" style={{ width: 390 }}><G.Section kind="figures" ariaLabel="Overview" ribbon items={figures} /></div>
-    <div data-story-ribbon="desktop" style={{ width: 1000 }}><G.Section kind="figures" ariaLabel="Overview" ribbon items={figures} /></div>
+    <div data-story-ribbon="phone" style={{ width: 390 }}><G.Section kind="figures" ariaLabel="Overview" items={figures} /></div>
+    <div data-story-ribbon="desktop" style={{ width: 1000 }}><G.Section kind="figures" ariaLabel="Overview" items={figures} /></div>
     <div data-story-table="true"><G.Section title="Members"><MembersTable /></G.Section></div>
     <G.SurfaceCard label="Profile" kind="body">
       <G.Input id="hook-name" name="name" label="Name" />
@@ -81,7 +81,6 @@ export const Defaults: Story = {
       }
       const table = canvasElement.querySelector<HTMLElement>('[data-story-table] [data-component="DataTable"]');
       if (table === null) throw new Error('the table renders');
-      expect(table).toHaveAttribute('data-grammar-table-surface', 'none');
       expect(getComputedStyle(table).boxShadow).toBe('none');
       // One field look: nothing draws the vendor secondary field, in a card or on the page.
       expect(canvasElement.querySelectorAll('.input--secondary, .input-group--secondary, .search-field--secondary, .textarea--secondary, .select--secondary')).toHaveLength(0);
@@ -92,9 +91,6 @@ export const Defaults: Story = {
 };
 
 const NEUTRAL_HOOKS = {
-  '--starci-core-card-border': '1px solid var(--border)',
-  '--starci-core-table-selected': 'var(--default)',
-  '--starci-core-table-selected-foreground': 'var(--foreground)',
   '--starci-core-sidebar-selected': 'var(--default)',
   '--starci-core-sidebar-selected-foreground': 'var(--foreground)',
   '--starci-core-sidebar-weight': 'var(--grammar-weight-regular)',

@@ -32,11 +32,14 @@ const PINS: readonly { readonly selector: string; readonly holds: readonly strin
     { selector: '.starci-core-page[data-grammar-page-layout="workspace"] .starci-core-pane[data-grammar-pane-content="cards"] > .starci-core-pane-stack', holds: ["max-inline-size: var(--grammar-content-max)", "margin-inline: auto"] },
     { selector: ".starci-core-sublabel", holds: ["font-size: var(--grammar-text-xs)", "font-weight: var(--grammar-weight-medium)", "color: var(--muted)"] },
     { selector: ".starci-core-page-container", holds: ["margin-inline: auto"] },
-    { selector: '.starci-core-surface-zone:not([data-grammar-zone="figures"]) .starci-core-text:not([data-size="figure"])', holds: ["font-size: var(--grammar-text-sm)"] },
-    { selector: ".starci-core-surface", holds: ["border: var(--starci-core-card-border, 0)", "box-shadow: var(--surface-shadow)"] },
+    { selector: ".starci-core-surface", holds: ["border: 1px solid var(--border)"] },
     { selector: ".starci-core-section-list", holds: ["--starci-core-row-inset: var(--grammar-row-gap) 0"] },
-    { selector: '.starci-core-data-table[data-grammar-table-surface="card"]', holds: ["border-radius: var(--starci-core-table-radius)", "box-shadow: var(--surface-shadow)"] },
-    { selector: ".starci-core-data-table:not([data-grammar-table-surface=\"none\"])", holds: ["background: var(--surface)", "border: 0"] },
+    { selector: ".starci-core-data-table", holds: ["border: 0", "border-radius: 0", "background: transparent", "box-shadow: none"] },
+    { selector: ".starci-core-data-table .table__column", holds: ["border-block-end: 1px solid var(--border)"] },
+    { selector: ".starci-core-data-table .table__row .table__cell", holds: ["border-block-end: 1px solid var(--separator)"] },
+    { selector: '.starci-core-data-table-row[data-grammar-selected="true"]', holds: ["background: var(--default)"] },
+    { selector: '.starci-core-data-table-row[data-grammar-selected="true"] > :first-child', holds: ["box-shadow: inset var(--grammar-ring-width) 0 0 0 var(--accent)"] },
+    { selector: '.starci-core-description-list[data-grammar-description-layout="stat-strip"][data-grammar-figures-placement="ribbon"]', holds: ["border-block: 1px solid var(--border)", "border-inline: 0", "background: transparent"] },
     { selector: ".starci-core-section-caption", holds: ["font-size: var(--grammar-text-xs)"] },
     { selector: ".starci-core-section-count[data-grammar-section-count]", holds: ["font-size: var(--grammar-text-xs)", "border-radius: var(--grammar-radius-pill)"] },
     { selector: ".starci-core-data-table-footer", holds: ["font-size: var(--grammar-text-xs)"] },
@@ -76,20 +79,19 @@ for (const pin of PINS) {
         if (!declared.includes(hold)) problems.push(`${pin.selector}: must declare \`${hold}\``)
     }
 }
-/* THE CARD LAW (0.32.0): a framed notice carries the card shadow; a surface nested in a surface drops it. */
-if (!/\.starci-core-empty-notice:not\(\[data-grammar-error-layout\]\):not\(\.starci-core-surface \.starci-core-empty-notice\)\s*\{\s*box-shadow:\s*var\(--surface-shadow\);/.test(all)) problems.push("a framed EmptyNotice must carry the card shadow")
+/* BOUNDARY-6: a card is one object with a 1px --border edge and no shadow on every ground; no Common rule gives a card or a table a shadow. */
+for (const match of all.matchAll(/([^{}]*)\{([^}]*)\}/g)) {
+    const selector = (match[1] ?? "").trim()
+    if (/\.starci-core-(surface|data-table)(?![-\w])/.test(selector.split(",").pop() ?? "") && /box-shadow:\s*var\(--surface-shadow\)/.test(match[2] ?? "")) problems.push(`${selector}: a card or a table casts no shadow (BOUNDARY-6)`)
+}
 /* ONE LOOK FOR A LIST (0.43.0): a list section is plain rows on its surface; no rule gives it a frame, fill, radius or shadow. */
 for (const match of all.matchAll(/([^{}]*\.starci-core-section-list[^{}]*)\{([^}]*)\}/g)) {
     if (/(^|[;\s])(border|border-radius|background|box-shadow)\s*:/.test(match[2] ?? "")) problems.push(`${(match[1] ?? "").trim()}: a list section is flat, no border, radius, fill or shadow (one look, 0.43.0)`)
 }
-if (!/:is\(\.starci-core-surface,[^{]*\)\s*:is\(\.starci-core-surface,[^{]*\)\s*\{\s*box-shadow:\s*none;/.test(all)) problems.push("a surface nested in a surface must keep its edge and drop the shadow")
-if (!/\.starci-core-empty-notice:not\(\[data-grammar-error-layout\]\):not\(\.starci-core-surface \.starci-core-empty-notice\)\s*\{\s*border:\s*0;/.test(all)) problems.push("a framed EmptyNotice on the well carries the shadow and no border (SURFACE-ELEVATION, 0.36.0)")
-if (!/\.starci-core-data-table\[data-grammar-table-surface="card"\]\),\s*:is\([^{]*\.starci-core-empty-notice:not\(\[data-grammar-error-layout\]\)\s*\{\s*border:\s*1px solid var\(--separator\);/.test(all)) problems.push("a surface on a white surface (pane, drawer, dialog, popover, card) must draw the 1px separator border (SURFACE-ELEVATION, 0.36.0)")
 /* ONE START EDGE (MEASURE-8, 0.41.0): the header band's PageContainer keeps the page measure; no rule uncaps or un-centres it. */
 if (bodiesOf(".starci-core-page-header .starci-core-page-container").length > 0) problems.push("the page header's content must keep the page measure, capped and centred like the body (MEASURE-8, 0.41.0)")
 const tableSource = readFileSync(resolve(common, "..", "core", "branch", "DataTable", "index.tsx"), "utf8")
-if (!/variant=\{surface === "none" \? "secondary" : "primary"\}/.test(tableSource) || tableSource.includes("starci-core-data-table-card")) problems.push("a standalone DataTable is HeroUI's primary look with no wrapper card (0.36.0): the table root is the grey frame")
-if (/data-grammar-table-surface="card"\]\s*\.table__(column|header|row)/.test(all)) problems.push("a standalone DataTable must not be flattened inside its card (the 0.29 frame is reverted)")
+if (!tableSource.includes('variant="secondary"') || /readonly surface\??:/.test(tableSource) || /data-grammar-table-surface/.test(tableSource + all)) problems.push("a DataTable has one flat look: HeroUI's secondary variant, no `surface` prop and no surface rule")
 /* THE BUBBLE SHAPE AND REACTIONS (0.32.0): Messenger grouping with logical corners (RTL mirrors), reactions with transform/opacity motion only. */
 for (const [needle, message] of [
     ["--grammar-bubble-radius: 1.125rem", "a lone bubble must be rounded 18"],
@@ -99,7 +101,7 @@ for (const [needle, message] of [
     ['[data-grammar-bubble-side="outgoing"]:is([data-grammar-bubble-group="first"], [data-grammar-bubble-group="middle"]) .starci-core-message-bubble-body { border-end-end-radius', "an outgoing run mirrors it on the end side"],
     ['[data-grammar-bubble-side="outgoing"]:is([data-grammar-bubble-group="middle"], [data-grammar-bubble-group="last"]) .starci-core-message-bubble-body { border-start-end-radius', "an outgoing run mirrors it on the end side"],
     ["border: 0;\n        background: var(--surface);\n        color: var(--surface-foreground);\n        box-shadow: none;", "an incoming bubble and a MessageCard are the flat surface on the thread (0.37.31, DNA-COMMON-CHAT-INCOMING-FLAT)"],
-    [':not([data-grammar-scroll-region-tone="background"] *) .starci-core-message-bubble-body {\n        border: 1px solid var(--separator);', "outside a thread, on a white surface, a flat bubble wears the 1px separator edge (SURFACE-ELEVATION)"],
+    [':not([data-grammar-scroll-region-tone="background"] *) .starci-core-message-bubble-body {\n        border: 1px solid var(--separator);', "outside a thread, on a white surface, a flat bubble wears the 1px separator edge"],
     ["@keyframes starci-core-reaction-rise", "the reaction burst needs its keyframes"],
     [".starci-core-reaction-burst-layer { display: none; }", "the burst is off under prefers-reduced-motion"],
     [".starci-core-reaction-bar-emoji:hover", "a hovered emoji scales up"],
@@ -116,4 +118,4 @@ if (problems.length > 0) {
     console.error(problems.join("\n"))
     process.exit(1)
 }
-console.log(`type scale: ${PINS.length} rules hold their tokens; 14 for UI text, 12 for small names, no 13, every tab 14; cards draw the separator edge and the shadow; bubbles group like Messenger; reactions pinned`)
+console.log(`type scale: ${PINS.length} rules hold their tokens; 14 for UI text, 12 for small names, no 13, every tab 14; cards draw the 1px border edge and no shadow; tables are flat; bubbles group like Messenger; reactions pinned`)

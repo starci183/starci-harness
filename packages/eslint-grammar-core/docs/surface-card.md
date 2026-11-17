@@ -1,9 +1,8 @@
-# The one card has a kind
+# A card is one object
 
 Law module: `surface-card.ts`. Catalogue: R355 FE_SURFACE_CARD_KIND, R366 FE_LABEL_IN_GRID.
 
-`SurfaceCard` is one component whose `kind` the compiler checks: `body` (the default), `figures`, `list`, `accordion`
-and `tile`; any kind may carry typed `headers` and `footers` zones. What a kind draws is not drawn by hand around it, and where the name sits follows the kind: a card that heads a section has a `label` outside the material, a tile names itself inside.
+`SurfaceCard` is one component whose `kind` the compiler checks: `body` (the default) and `tile`. A card is ONE object (a customer, an agent, a plan, a message), a dialog or an overlay; a body card holds the object's name, facts and commands (`actions`). A collection stands flat in a `Section`: a list is `Section kind="list"`, figures `Section kind="figures"`, a filter or search row the `filter` of a `Section`. What a `Section` draws is not drawn by hand in a card, and where the name sits follows the kind: a body card has a `label` outside the material, a tile names itself inside.
 
 Every rule below is an error in `coreGrammarConfig`; none can be switched off or suppressed inline. It applies to product
 source; a script or a file no slot owns is not judged.
@@ -12,11 +11,8 @@ source; a script or a file no slot owns is not judged.
 
 Finding code: `FE_SURFACE_CARD_KIND` (R355). The direct children of a `SurfaceCard` of the `body` kind (no `kind`, or
 `kind="body"`) are not a raw `ul`, `ol`, `li` or `dl`, not a `Divider`, and not a `SectionHeader` or `Heading` standing as a
-second title. A `Section` whose only child is one `SurfaceCard` frames one subject twice. Children are read through
+second title. Children are read through
 `cond && <x/>`, `cond ? <x/> : <y/>` and `.map`.
-On a `SurfaceCard` or a `Board`, the `children` of a `{ kind: "custom" }` zone written in a `headers` or `footers` array literal hold no
-`Tabs`, `SearchField` or `Divider` (`zone`): filter and search are the typed `filter`, `search` and `toolbar` zones and the card draws
-its own seams. Grammar also refuses them at run time in development.
 
 **Invalid** (`src/components/blocks/Runs/component.tsx`)
 
@@ -38,7 +34,7 @@ its own seams. Grammar also refuses them at run time in development.
 
 Finding code: `FE_LABEL_IN_GRID` (R366). A `SurfaceCard` with a `label` repeated in a `Grid kind="cards"` (two or more as
 direct children, or one written in a `.map`) is refused. A peer you recognise and open is a tile, named inside beside its
-mark; comparing a fact across peers is one `Section kind="list"` or a `kind="table"` card.
+mark; comparing a fact across peers is one `Section kind="list"` or a `Section` holding a `DataTable`.
 
 **Invalid** (`src/components/blocks/Connectors/component.tsx`)
 

@@ -33,22 +33,15 @@ export const PricingGrid: Story = {
             key={plan.id}
             ariaLabel={plan.name}
             {...('popular' in plan ? { emphasis: 'accent' as const } : {})}
-            headers={[
-              {
-                kind: 'custom',
-                children: (
-                  <G.Stack gap="row">
-                    <G.Cluster gap="inline" justify="between">
-                      <G.Heading level={2}>{plan.name}</G.Heading>
-                      {'popular' in plan ? <G.Badge tone="accent">Most popular</G.Badge> : null}
-                    </G.Cluster>
-                    <G.Text size="figure">{plan.price}</G.Text>
-                    <G.Button intent={'popular' in plan ? 'commit' : 'neutral'} width="fill">{`Choose ${plan.name}`}</G.Button>
-                  </G.Stack>
-                ),
-              },
-            ]}
           >
+            <G.Stack gap="row">
+              <G.Cluster gap="inline" justify="between">
+                <G.Heading level={2}>{plan.name}</G.Heading>
+                {'popular' in plan ? <G.Badge tone="accent">Most popular</G.Badge> : null}
+              </G.Cluster>
+              <G.Text size="figure">{plan.price}</G.Text>
+              <G.Button intent={'popular' in plan ? 'commit' : 'neutral'} width="fill">{`Choose ${plan.name}`}</G.Button>
+            </G.Stack>
             <G.Stack gap="row">
               {plan.features.map((feature) => (
                 <G.Text key={feature} size="sm" startContent={<G.Icon source={CheckCircleIcon} usage="leading" />}>{feature}</G.Text>

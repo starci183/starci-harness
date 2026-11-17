@@ -15,7 +15,7 @@ import {
     tabsFrameClassName,
 } from "./classNames.js"
 import type { NoChildren } from "../../tier.js"
-import { useRefuseInCustomZone, useTabsLineDefault } from "../../zoneContext.js"
+import { useRefuseInCardActions, useTabsLineDefault } from "../../zoneContext.js"
 
 /** One stable peer destination rendered by the Core tab object. */
 export type TabItem = {
@@ -44,8 +44,8 @@ export type TabItem = {
 }
 
 /**
- * Which component switches what: `Tabs` switch the views or periods of one block, or filter its list (in a card, the `filter` or
- * `toolbar` header zone); `ChoiceChips` or `RadioGroup` choose a form value; a `Button` holds a command, never a selection state.
+ * Which component switches what: `Tabs` switch the views or periods of one block, or filter its list (the `filter` row of its
+ * `Section`); `ChoiceChips` or `RadioGroup` choose a form value; a `Button` holds a command, never a selection state.
  * Two joined buttons or pills acting as tabs are banned (R380, `no-button-view-switch`).
  *
  * Business-neutral peer tabs with the shared horizontal frame owning overflow, scroll shadows and the directional
@@ -72,7 +72,7 @@ type TabsCommon = NoChildren & {
 
 /**
  * `secondary` (the default, HeroUI's secondary variant): the underline. `kind="views"` switches between views of a page, in the page
- * head. `kind="filter"` narrows one list that stays in place, in a card's `filter` or `toolbar` header zone: the same underline one size
+ * head. `kind="filter"` narrows one list that stays in place, in its `Section`'s `filter` row: the same underline one size
  * smaller (13px, tighter), each with its `count`; the tabs that do not fit fold into a "+n" menu and the selected one always stays visible.
  * Exactly one line stands under the strip and the selected underline lies on it. A tablist is not a form field: choosing a value of a
  * form is `ChoiceChips` or `RadioGroup`.
@@ -116,7 +116,7 @@ export type PrimaryTabItems =
  * `primary` (HeroUI's primary variant): a pill in a track, still `role="tab"`. It switches a mode or period of the same data ("This
  * month / Last month", "Day / Week / Month", "List / Board") among 2 to 4 short, fixed options, and never navigates: no `count`, no
  * `href`, no more than four items (refused by the types, and by a development throw for what the types cannot see). It has no
- * line; in a card it is the `switch` header zone at the head's trailing edge.
+ * line; it stands at the trailing edge of the head it switches (a `Section` `action`).
  */
 export type PrimaryTabsProps = TabsCommon & {
     readonly appearance: "primary"
@@ -170,8 +170,8 @@ const TabsInner = (props: TabsProps) => {
     const [isClientReady, setIsClientReady] = useState(false)
     const frameRef = useRef<HTMLDivElement>(null)
     const endRef = useRef<HTMLDivElement>(null)
-    useRefuseInCustomZone("Tabs")
-    // The line owner is the host's, never a prop: a card zone and the page header band wrap their strip in `TabsLineHost` (draws no line of its own, the indicator overlaps the host's divider); a standalone strip draws `--separator` itself.
+    useRefuseInCardActions("Tabs")
+    // The line owner is the host's, never a prop: the page header band wraps its strip in `TabsLineHost` (draws no line of its own, the indicator overlaps the host's divider); a standalone strip draws `--separator` itself.
     const hostLine = useTabsLineDefault()
     const line: string = isPill ? "none" : hostLine
     // A primary strip is for a mode or a period of the same data: a few short fixed options, never a destination and never counted.

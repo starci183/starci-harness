@@ -197,14 +197,13 @@
     }
 
     /*
-     * The current page is HeroUI's active link, filled with `--default` (a neutral fill, never the accent). 0.40.0: `--starci-core-pagination-current`
-     * takes that fill (and its hover and press), so it can be the same neutral as a selected row or a selected navigation item. `!important`: the
-     * vendor writes the variable on the same link and the sheets load in either order.
+     * The current page is HeroUI's active link, filled with `--default` (the neutral of a selected row, never the accent), `--default-hover`
+     * under the pointer and while pressed. `!important`: the vendor writes the variable on the same link and the sheets load in either order.
      */
     .starci-core-pagination-page[data-grammar-current="true"] {
-        --pagination-link-bg: var(--starci-core-pagination-current, var(--default)) !important;
-        --pagination-link-bg-hover: var(--starci-core-pagination-current, var(--default-hover)) !important;
-        --pagination-link-bg-pressed: var(--starci-core-pagination-current, var(--default-hover)) !important;
+        --pagination-link-bg: var(--default) !important;
+        --pagination-link-bg-hover: var(--default-hover) !important;
+        --pagination-link-bg-pressed: var(--default-hover) !important;
     }
 
     .starci-core-pagination-step {
@@ -987,61 +986,40 @@
         object-fit: contain;
     }
 
-    .starci-core-data-table {
-        min-width: 0;
-        max-width: 100%;
-    }
-
-    /* No container paint: a muted heading row and a hairline under every row (a table already on a surface is never a surface in one). */
-    .starci-core-data-table[data-grammar-table-surface="none"] .table__column { background: transparent; border-radius: 0; font-weight: var(--grammar-weight-medium); }
-    .starci-core-data-table[data-grammar-table-surface="none"] .table__column::after { display: none; }
-    .starci-core-data-table[data-grammar-table-surface="none"] .table__header { background: transparent; border-block-end: 1px solid var(--separator); }
-    .starci-core-data-table[data-grammar-table-surface="none"] .table__row .table__cell { border-block-end: 1px solid var(--separator); background: transparent; }
-
     /*
-     * THE TABLE LOOKS LIKE A LIST CARD (owner, 2026-11-09; 0.37.8; it replaces the 0.36.0 HeroUI grey frame). No grey frame, no grey side gutters, no grey header strip:
-     * a WHITE body, the column labels (12, muted) on the white, and a 1px full-width divider under the labels and between rows. A table standing alone is the white
-     * card (`surface="card"`: the card radius, the shadow on the pink well and a 1px border on a white surface, like any card); `surface="frame"` is the same face
-     * with no radius, shadow or edge, for a host that is the card (a `SurfaceCard kind="table"`, whose zones are divided by the zone seam). The footer (the summary
-     * at the start, the Pagination at the end) is divided from the rows by the same seam, full width.
+     * ONE LOOK FOR A TABLE: a table is a collection, never a card. It stands flat on whatever holds it (the page under its `Section`, a pane,
+     * a drawer, an object card's body): no fill, radius, shadow or outer edge. The column labels (12 / 500, muted) sit over a 1px `--border`
+     * line; every row has a 1px `--separator` hairline under it. The first and last columns start and end on the content edge: the table
+     * bleeds one row step past it on both sides, so a hovered or selected row's fill reaches past the words while the words stay aligned
+     * with the section title.
      */
-    .starci-core-data-table:not([data-grammar-table-surface="none"]) {
-        background: var(--surface);
-        color: var(--surface-foreground);
+    .starci-core-data-table {
+        --starci-core-table-bleed: var(--grammar-row-gap);
+        min-width: 0;
+        max-width: calc(100% + 2 * var(--starci-core-table-bleed));
+        margin-inline: calc(-1 * var(--starci-core-table-bleed));
         padding: 0;
         border: 0;
-    }
-
-    .starci-core-data-table[data-grammar-table-surface="card"] {
-        border-radius: var(--starci-core-table-radius);
-        box-shadow: var(--surface-shadow);
-        overflow: hidden;
-    }
-
-    .starci-core-data-table[data-grammar-table-surface="frame"] {
         border-radius: 0;
+        background: transparent;
         box-shadow: none;
     }
 
-    /* The vendor primary table paints its own header strip and body ground: the labels stand on the white, divided from the first row by one full-width line. */
-    .starci-core-data-table:not([data-grammar-table-surface="none"]) :is(.table__header, .table__column, .table__body) {
+    .starci-core-data-table :is(.table__header, .table__column, .table__body) {
         background: transparent;
         border-radius: 0;
     }
 
-    .starci-core-data-table:not([data-grammar-table-surface="none"]) .table__column::after { display: none; }
-    .starci-core-data-table:not([data-grammar-table-surface="none"]) .table__column { border-block-end: 1px solid var(--separator); }
-    .starci-core-data-table:not([data-grammar-table-surface="none"]) .table__body tr:last-child td { border-block-end: 0; }
+    .starci-core-data-table .table__column::after { display: none; }
+    .starci-core-data-table .table__header { border-block-end: 1px solid var(--border); }
+    .starci-core-data-table .table__column { border-block-end: 1px solid var(--border); }
+    .starci-core-data-table .table__row .table__cell { border-block-end: 1px solid var(--separator); border-radius: 0; background: transparent; }
 
-    /* Rows are divided by 1px lines across the full width of the card. */
-    .starci-core-data-table:not([data-grammar-table-surface="none"]) .table__row .table__cell { border-block-end: 1px solid var(--separator); border-radius: 0; background: transparent; }
-
-    /* The footer stands on the white under the last row, divided from it by the zone seam. */
+    /* The footer (the pager) stands a row step under the last row's hairline, with no line of its own, on the content edge. */
     .starci-core-data-table-footer {
         min-width: 0;
-        padding-inline: var(--grammar-card-padding-inline);
-        padding-block: var(--grammar-row-gap);
-        border-block-start: 1px solid var(--starci-core-zone-seam, var(--separator));
+        padding-inline: var(--starci-core-table-bleed);
+        padding-block: var(--grammar-row-gap) 0;
         color: var(--muted);
         font-size: var(--grammar-text-xs);
         line-height: var(--grammar-leading-xs);
@@ -1069,7 +1047,7 @@
     }
 
     /*
-     * `fill` (0.37.3): the table is a flex column as tall as its host; the scroll region grows (the white card body runs under the rows down to the foot) and the footer stays at the bottom.
+     * `fill`: the table is a flex column as tall as its host; the scroll region grows and the footer stays at the bottom.
      */
     .starci-core-data-table[data-grammar-table-fill="true"] {
         display: flex;
@@ -1121,32 +1099,14 @@
     }
 
     /*
-     * The type of a table (the final scale): the header 12 / 500 muted on the white (0.37.8), a cell 14 / 400, the row-header cell (the row primary)
-     * 14 / 500. A Text in a cell takes the same steps (`Text isStrong` 14 / 500, `Text size="sm" tone="muted"` 13).
+     * The type of a table: the header 12 / 500 muted, a cell 14 / 400, the row-header cell (the row primary) 14 / 500. A Text in a cell
+     * takes the same steps (`Text isStrong` 14 / 500, `Text size="sm" tone="muted"` 13).
      */
     .starci-core-data-table .starci-core-data-table-column {
         color: var(--muted);
         font-size: var(--grammar-text-xs);
         font-weight: var(--grammar-weight-medium);
         line-height: var(--grammar-leading-xs);
-    }
-
-    /* ROW-EDGE-PADDING (0.37.25): a body row's cells keep p-3 to the separators above and below them; the last row of a card table, on the card's edge, keeps p-4 below. */
-    .starci-core-data-table[data-grammar-table-surface] .starci-core-data-table-body .starci-core-data-table-cell {
-        padding-block: var(--grammar-row-gap);
-    }
-
-    [data-grammar-surface-content]:not([data-grammar-surface-footed]) .starci-core-data-table-body .starci-core-data-table-row:last-child .starci-core-data-table-cell {
-        padding-block-end: var(--grammar-card-padding-block);
-    }
-
-    /* The first and last column of a card table touch the card's left and right edges: p-4 there (were 12), header and body alike. */
-    [data-grammar-surface-content] .starci-core-data-table[data-grammar-table-surface] tr > :is(.starci-core-data-table-column, .starci-core-data-table-cell):first-child {
-        padding-inline-start: var(--grammar-card-padding-inline);
-    }
-
-    [data-grammar-surface-content] .starci-core-data-table[data-grammar-table-surface] tr > :is(.starci-core-data-table-column, .starci-core-data-table-cell):last-child {
-        padding-inline-end: var(--grammar-card-padding-inline);
     }
 
     .starci-core-data-table .starci-core-data-table-cell {
@@ -1165,11 +1125,14 @@
         font-variant-numeric: tabular-nums;
     }
 
-    /* A group heading row: one cell across the table, the secondary surface (the only tinted row of the table), its label at the start and its fact at the end. */
-    .starci-core-data-table[data-grammar-table-surface] .table__row.starci-core-data-table-group-row .table__cell.starci-core-data-table-group-cell {
-        background: var(--surface-secondary);
-        color: var(--foreground);
-        font-weight: var(--grammar-weight-medium);
+    /* A group heading row: one cell across the table, 12 / 600 muted over a `--border` line, no fill; its label at the start and its fact at the end. */
+    .starci-core-data-table .table__row.starci-core-data-table-group-row .table__cell.starci-core-data-table-group-cell {
+        border-block-start: 1px solid var(--border);
+        background: transparent;
+        color: var(--muted);
+        font-size: var(--grammar-text-xs);
+        font-weight: var(--grammar-weight-semibold);
+        line-height: var(--grammar-leading-xs);
     }
 
     .starci-core-data-table-group-cell {
@@ -1203,12 +1166,15 @@
     }
 
     /*
-     * A selected row: the accent soft pair by default. 0.40.0: `--starci-core-table-selected` and `--starci-core-table-selected-foreground` take
-     * the fill and the words, so a theme that keeps the accent for signals selects a row with a neutral fill (as ListBox selects with `--default`).
+     * A selected row is grey with a 2px accent bar on its start edge, as the sidebar marks its selected item: the `--default` fill, the words
+     * unchanged, the bar an inset edge of the first cell (so nothing moves). A hovered pressable row takes `--surface-secondary`.
      */
     .starci-core-data-table-row[data-grammar-selected="true"] {
-        background: var(--starci-core-table-selected, var(--accent-soft));
-        color: var(--starci-core-table-selected-foreground, var(--accent-soft-foreground));
+        background: var(--default);
+    }
+
+    .starci-core-data-table-row[data-grammar-selected="true"] > :first-child {
+        box-shadow: inset var(--grammar-ring-width) 0 0 0 var(--accent);
     }
 
     .starci-core-data-table-placeholder {
@@ -1367,14 +1333,7 @@
         display: flex;
         flex-direction: column;
         min-inline-size: 0;
-        background: var(--surface);
-        border-radius: var(--starci-core-table-body-radius);
-    }
-
-    /* A flat table (`surface="none"`) stays flat as a list: no fill and no radius of its own, the rows divided by the same lines. */
-    .starci-core-data-table[data-grammar-table-surface="none"] .starci-core-data-table-list {
         background: transparent;
-        border-radius: 0;
     }
 
     .starci-core-data-table-list-row {
@@ -1382,12 +1341,11 @@
         min-inline-size: 0;
         flex-direction: column;
         gap: 0.25rem;
-        /* A row a card divides by lines: the row step to its separators, the card's inset to the card's left and right edges (ROW-EDGE-PADDING). */
-        padding: var(--grammar-row-gap) var(--grammar-card-padding-inline);
+        /* The row step to its hairlines, the bleed on its sides, so its words stand on the content edge. */
+        padding: var(--grammar-row-gap) var(--starci-core-table-bleed);
         border-block-end: 1px solid var(--separator);
     }
 
-    .starci-core-data-table-list-row:last-child { border-block-end: 0; }
     .starci-core-data-table-list-row[data-grammar-table-row-pressable="true"] { cursor: pointer; }
 
     /* 0.39.4: a list row with an `href` is a real anchor: the title Link stretches over the row (as a `ListRow`'s does); the focus ring is drawn on the row, not on the title text. */
@@ -1602,8 +1560,7 @@
         flex-direction: column;
         align-items: flex-start;
         gap: 0.25rem;
-        /* A card sets the cell inset to its own padding; elsewhere (a pane) a cell keeps the nested step. */
-        padding: var(--starci-core-strip-cell-inset, var(--grammar-inset-nested));
+        padding: var(--grammar-inset-nested);
     }
 
     .starci-core-description-list[data-grammar-description-layout="stat-strip"][data-grammar-description-divided="true"] .starci-core-description-pair {
@@ -1717,7 +1674,7 @@
     }
 
     /*
-     * FIVE CELLS (the figures ribbon, responsive law). Answering the strip's own width, in a card or a pane alike: below 30rem (a phone) two
+     * FIVE CELLS (the figures ribbon, responsive law). Answering the strip's own width: below 30rem (a phone) two
      * columns, the odd last cell spanning its row (2 + 2 + 1); from 30rem to 52rem (a tablet) three columns, 3 + 2 (two balanced rows, the
      * second row's two cells share it; 2 + 2 + 1 would make three rows and a lone cell); from 52rem (a desktop) one row. Cells divide by the
      * edge lines above: a vertical line between the cells of a row, a horizontal one between rows, none doubled and none on the outer edge.
@@ -1737,43 +1694,21 @@
     }
 
     /*
-     * The strip inside a Pane (G9c-1): one bordered row, 2 x 2 only below 20rem of its own width. The border is the strip's own edge, so the
-     * dividers between cells still stop short of it; the value takes the 2xl step so four cells fit a 380px list pane.
-     */
-    .starci-core-description-list[data-grammar-description-layout="stat-strip"][data-grammar-figures-placement="pane"] {
-        --starci-core-figure-size: var(--grammar-text-2xl);
-        border: 1px solid var(--separator);
-        border-radius: var(--grammar-radius-md);
-    }
-
-    .starci-core-description-list[data-grammar-description-layout="stat-strip"][data-grammar-figures-placement="pane"] .starci-core-description-pair { flex-basis: 50%; }
-
-    .starci-core-description-list[data-grammar-description-layout="stat-strip"][data-grammar-figures-placement="pane"] .starci-core-description-figure {
-        font-size: var(--grammar-text-2xl);
-        line-height: var(--grammar-leading-xl);
-    }
-
-    .starci-core-description-list[data-grammar-description-layout="stat-strip"][data-grammar-figures-placement="pane"] .starci-core-description-stat-term {
-        font-size: var(--grammar-text-sm);
-        line-height: var(--grammar-leading-sm);
-    }
-
-    @container starci-core-description-strip (min-width: 20rem) {
-        .starci-core-description-list[data-grammar-description-layout="stat-strip"][data-grammar-figures-placement="pane"] .starci-core-description-pair { flex-basis: 0; }
-    }
-
-    /*
-     * THE RIBBON (0.40.0, `Section kind="figures" ribbon`): the strip as a full-width band on the page. A hairline on the top and bottom edges
-     * only, open ends (no line on the start or end edge), no radius, no fill, no shadow. The cells keep their dividers: the strip clips the
-     * cells' edge lines to its padding box, so each vertical divider runs the full cell height and meets both hairlines, and a wrapped row
-     * (2 + 2 + 1, 3 + 2) is divided from the next by the same horizontal line.
+     * THE RIBBON: the one look of a strip of figures, wherever it stands (the page, a pane, a drawer). A `--border` hairline on the top and
+     * bottom edges only, open ends (no line on the start or end edge), no radius, no fill, no shadow. The cells divide by the same `--border`
+     * line: the strip clips the cells' edge lines to its padding box, so each vertical divider runs the full cell height and meets both
+     * hairlines, and a wrapped row (2 + 2 + 1, 3 + 2) is divided from the next by the same horizontal line.
      */
     .starci-core-description-list[data-grammar-description-layout="stat-strip"][data-grammar-figures-placement="ribbon"] {
-        border-block: 1px solid var(--separator);
+        border-block: 1px solid var(--border);
         border-inline: 0;
         border-radius: 0;
         background: transparent;
         box-shadow: none;
+    }
+
+    .starci-core-description-list[data-grammar-description-layout="stat-strip"][data-grammar-figures-placement="ribbon"] .starci-core-description-pair {
+        --starci-core-strip-line-color: var(--border);
     }
 
     /* ---------- ListBox ---------- */

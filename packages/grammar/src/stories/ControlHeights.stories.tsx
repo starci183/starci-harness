@@ -103,7 +103,7 @@ export const FillWidthAtForty: Story = {
             <Matrix maxWidth={420}>
                 <State label="md fill: the submit of a sign-in card" direction="column">
                     <div data-story-fill="form" style={{ inlineSize: "100%" }}>
-                        <G.SurfaceCard label="Sign in" measure="form">
+                        <G.SurfaceCard label="Sign in" measure="formCompact">
                             <G.Form label="Sign in" onSubmit={noop}>
                                 <G.Input id="fill-heights-email" name="email" label="Email" placeholder="you@example.com" />
                                 <G.Button intent="commit" type="submit" width="fill">Sign in</G.Button>

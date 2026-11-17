@@ -22,7 +22,8 @@ test("allows HeroUI tokens and local custom properties", async () => {
 })
 
 test("brand.css may write a published theme hook of the grammar, and only there", async () => {
-  assert.deepEqual(await rule(":root { --starci-core-card-border: 1px solid var(--border); --starci-core-sidebar-bar-width: 2px; }", FILES.brand), [])
-  assert.equal((await rule(".a { --starci-core-card-border: 1px solid red; }")).length, 1)
+  assert.deepEqual(await rule(":root { --starci-core-card-radius: 12px; --starci-core-sidebar-bar-width: 2px; }", FILES.brand), [])
+  assert.equal((await rule(".a { --starci-core-card-radius: 12px; }")).length, 1)
+  assert.equal((await rule(":root { --starci-core-card-border: 1px solid var(--border); }", FILES.brand)).length, 1)
   assert.equal((await rule(":root { --starci-core-not-a-hook: 1; }", FILES.brand)).length, 1)
 })

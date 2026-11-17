@@ -1,4 +1,4 @@
-import { DescriptionList, Stack, SurfaceCard, Text, Timeline } from "@starci/grammar/core"
+import { DescriptionList, Section, Stack, Text, Timeline } from "@starci/grammar/core"
 import type { DataSlot, SlotLabels } from "../../../modules/types"
 import { SlotView } from "../../composites/SlotView"
 
@@ -44,24 +44,12 @@ export const TaskRouteBlockBase = (props: TaskRouteBlockBaseProps) => {
     const { labels, fact } = props.props
     return (
         <SlotView slot={props.props.route} placeholder={ROUTE_PLACEHOLDER} labels={labels.slot} onRetry={props.on.retry} isEmpty={() => false} render={(route, isLoading) => (
-                <SurfaceCard
-                    label={labels.title}
-                    headingLevel={2}
-                    isLoading={isLoading}
-                    {...(fact === "" ? {} : { fact })}
-                    headers={[
-                        {
-                            kind: "custom",
-                            children: (
-                                <Timeline
-                                    label={labels.steps}
-                                    items={isLoading ? [] : route.steps.map((step) => ({ id: step.id, title: step.step, description: step.detail }))}
-                                    isLoading={isLoading}
-                                />
-                            ),
-                        },
-                    ]}
-                >
+                <Section title={labels.title} isLoading={isLoading} {...(fact === "" ? {} : { fact })}>
+                    <Timeline
+                        label={labels.steps}
+                        items={isLoading ? [] : route.steps.map((step) => ({ id: step.id, title: step.step, description: step.detail }))}
+                        isLoading={isLoading}
+                    />
                     <Stack gap="identity">
                         <Text size="sm" tone="muted" isLoading={isLoading}>
                             {labels.chosen}
@@ -77,7 +65,7 @@ export const TaskRouteBlockBase = (props: TaskRouteBlockBaseProps) => {
                             ]}
                         />
                     </Stack>
-                </SurfaceCard>
+                </Section>
             )} />
     )
 }

@@ -19,14 +19,14 @@ A Grammar `Grid` or `Cluster` is a finding when its rendered children are:
 
 ```tsx
 <Grid><SurfaceCard label="Runs" /><Stack><SurfaceCard label="A" /><SurfaceCard label="B" /></Stack></Grid>
-<Cluster><SurfaceCard kind="figures" /><SurfaceCard kind="details" /></Cluster>
+<Cluster><SurfaceCard label="Plan" /><SurfaceCard label="Usage" /></Cluster>
 ```
 
 **Valid**
 
 ```tsx
-<Stack gap="section"><SurfaceCard kind="figures" /><SurfaceCard label="Runs">...</SurfaceCard></Stack>
-<Cluster><SurfaceCard kind="figures" /><SurfaceCard kind="figures" /></Cluster>
+<Stack gap="section"><SurfaceCard label="Plan">...</SurfaceCard><SurfaceCard label="Runs">...</SurfaceCard></Stack>
+<Cluster><SurfaceCard kind="tile" name="Mail" mark={mail} /><SurfaceCard kind="tile" name="Chat" mark={chat} /></Cluster>
 ```
 
 Rule ownership: [FE-RULE-OWNERSHIP](../../../contexts/code/fe/README.md#the-placement-test-fe-rule-ownership).

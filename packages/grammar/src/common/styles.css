@@ -810,15 +810,10 @@
     }
 
     .starci-core-form-surface > .card,
-    .starci-core-form-surface > .starci-core-surface,
-    .starci-core-form-surface > .starci-core-surface-highlight {
+    .starci-core-form-surface > .starci-core-surface {
         max-height: calc(100dvh - 3rem);
         overflow: hidden !important;
         padding: 0 !important;
-    }
-
-    .starci-core-form-surface > .starci-core-surface-highlight > .starci-core-surface {
-        max-height: inherit;
     }
 
     .starci-core-form-field {
@@ -1043,8 +1038,7 @@
         }
 
         .starci-core-form-surface > .card,
-        .starci-core-form-surface > .starci-core-surface,
-        .starci-core-form-surface > .starci-core-surface-highlight {
+        .starci-core-form-surface > .starci-core-surface {
             max-height: calc(100dvh - 5rem);
         }
     }
@@ -1127,11 +1121,11 @@
         color: var(--surface-foreground);
     }
 
-    /* The accent corner: one logical corner of a surface or a media viewport at the Common accent radius. */
-    [data-grammar-accent-corner="start-start"]:is(.starci-core-surface, .starci-core-media-frame > .starci-core-media-viewport) { border-start-start-radius: var(--grammar-accent-corner); }
-    [data-grammar-accent-corner="start-end"]:is(.starci-core-surface, .starci-core-media-frame > .starci-core-media-viewport) { border-start-end-radius: var(--grammar-accent-corner); }
-    [data-grammar-accent-corner="end-start"]:is(.starci-core-surface, .starci-core-media-frame > .starci-core-media-viewport) { border-end-start-radius: var(--grammar-accent-corner); }
-    [data-grammar-accent-corner="end-end"]:is(.starci-core-surface, .starci-core-media-frame > .starci-core-media-viewport) { border-end-end-radius: var(--grammar-accent-corner); }
+    /* The accent corner: one logical corner of a media viewport at the Common accent radius. */
+    .starci-core-media-frame > .starci-core-media-viewport[data-grammar-accent-corner="start-start"] { border-start-start-radius: var(--grammar-accent-corner); }
+    .starci-core-media-frame > .starci-core-media-viewport[data-grammar-accent-corner="start-end"] { border-start-end-radius: var(--grammar-accent-corner); }
+    .starci-core-media-frame > .starci-core-media-viewport[data-grammar-accent-corner="end-start"] { border-end-start-radius: var(--grammar-accent-corner); }
+    .starci-core-media-frame > .starci-core-media-viewport[data-grammar-accent-corner="end-end"] { border-end-end-radius: var(--grammar-accent-corner); }
 
     /*
      * Freestyle: the app's own region. It fills its host and adds no paint, inset or
@@ -1145,89 +1139,12 @@
         block-size: 100%;
     }
 
-    @property --starci-core-highlight-angle {
-        syntax: "<angle>";
-        initial-value: 0deg;
-        inherits: false;
-    }
-
-    @keyframes starci-core-highlight-spin {
-        to {
-            --starci-core-highlight-angle: 360deg;
-        }
-    }
-
-    .starci-core-surface-highlight {
-        border-radius: var(--starci-core-surface-radius);
-        overflow: visible;
-    }
-
-    .starci-core-surface-highlight-sweep {
-        position: absolute;
-        z-index: 1;
-        inset: var(--starci-core-highlight-inset, 0);
-        box-sizing: border-box;
-        border-radius: inherit;
-        padding: 2px;
-        background: conic-gradient(
-            from var(--starci-core-highlight-angle),
-            transparent 0%,
-            transparent 82%,
-            var(--accent) 92%,
-            transparent 100%
-        );
-        -webkit-mask:
-            linear-gradient(currentColor 0 0) content-box,
-            linear-gradient(currentColor 0 0);
-        -webkit-mask-composite: xor;
-        mask:
-            linear-gradient(currentColor 0 0) content-box,
-            linear-gradient(currentColor 0 0);
-        mask-composite: exclude;
-        animation: starci-core-highlight-spin var(--grammar-loop-orbit) var(--grammar-loop-easing) infinite;
-        pointer-events: none;
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-        .starci-core-surface-highlight-sweep {
-            animation: none;
-        }
-    }
-
-    /* A card is raised. A surface never stands inside another surface, so there is one depth and no nested edge. */
-    .starci-core-surface {
-        /* Rows the card divides (static, list, accordion): row rhythm on the block sides, the card's inline padding. */
-        --starci-core-row-inset: var(--grammar-row-gap) var(--grammar-card-padding-inline);
-        /* Stat strip cells in a card are boxes of their own: the card padding on every side. */
-        --starci-core-strip-cell-inset: var(--grammar-card-padding-block) var(--grammar-card-padding-inline);
-        /*
-         * 0.36.0 (SURFACE-ELEVATION): a card on the pink well has the card shadow and NO border; on a white surface (pane, aside, drawer, dialog, popover) it has the border and no shadow (below). Automatic from context.
-         * 0.40.0: `--starci-core-card-border` (a `border` value, default `0`) gives a card on the page ground an edge of its own, apart from
-         * the table, which `--surface-shadow` also paints: a theme that drops the shadow (`--surface-shadow: none`) keeps its cards bordered.
-         */
-        border: var(--starci-core-card-border, 0);
-        box-shadow: var(--surface-shadow);
-    }
-
     /*
-     * THE CARD LAW (owner, 2026-11-09): every surface on the page ground is a card: surface ground, the card radius, a 1px
-     * `--separator` edge and the card shadow (`--surface-shadow`). SurfaceCard and its form panels draw it above; a framed
-     * EmptyNotice takes the shadow here (its edge and radius are its own). A list is not a surface: `Section kind="list"` is flat.
-     * A surface nested inside a card, a pane, a drawer, a dialog or a popover keeps the edge and loses the shadow: never two
-     * depths, never a doubled edge (no wrapper border is added; the nested surface's own is the only one).
+     * BOUNDARY-6: a card is one object, drawn the same on every ground: the surface, a 1px `--border` edge, the card radius and no
+     * shadow. Only an overlay (Dialog, Drawer, Popover) casts a shadow. A card never stands inside another card, so there is one depth.
      */
-    .starci-core-empty-notice:not([data-grammar-error-layout]):not(.starci-core-surface .starci-core-empty-notice) {
-        box-shadow: var(--surface-shadow);
-    }
-
-    :is(.starci-core-surface, .starci-core-pane[data-grammar-pane-surface="true"], .starci-core-pane[data-grammar-pane-content="chat"], .starci-core-drawer, .starci-core-dialog-container, .starci-core-popover, .starci-core-message-bubble-body) :is(.starci-core-surface, .starci-core-data-table[data-grammar-table-surface="card"], .starci-core-empty-notice) {
-        box-shadow: none;
-    }
-
-    /* SURFACE-ELEVATION: a surface on a white surface is bordered, with no shadow. A framed notice stands bordered in a white pane, drawer, dialog or popover. */
-    :is(.starci-core-surface, .starci-core-pane[data-grammar-pane-surface="true"], .starci-core-pane[data-grammar-pane-content="chat"], .starci-core-drawer, .starci-core-dialog-container, .starci-core-popover, .starci-core-message-bubble-body) :is(.starci-core-surface, .starci-core-data-table[data-grammar-table-surface="card"]),
-    :is(.starci-core-pane[data-grammar-pane-surface="true"], .starci-core-drawer, .starci-core-dialog-container, .starci-core-popover) .starci-core-empty-notice:not([data-grammar-error-layout]) {
-        border: 1px solid var(--separator);
+    .starci-core-surface {
+        border: 1px solid var(--border);
     }
 
     .starci-core-surface-content {
@@ -1236,419 +1153,45 @@
         padding-inline: var(--grammar-card-padding-inline);
     }
 
-    /* A list, an accordion, a figures strip or a zoned card: the faces touch the card's edge and the shell draws the seams. */
-    .starci-core-surface[data-grammar-surface-flush="true"] > .starci-core-surface-content {
-        display: flex;
-        flex-direction: column;
-        gap: 0;
-        padding: 0;
-    }
-
     /*
-     * A details card: its term/value rows touch the card's edge like list rows. Each pair carries the card's inline padding and the row
-     * block rhythm, and the seam between two pairs runs the card's full width.
+     * The one band of commands at the foot of an object card: a `--separator` hairline above it, the row step on its block sides and
+     * the card's inline padding, its buttons in one wrapping row at the start.
      */
-    .starci-core-surface[data-grammar-surface-kind="details"] .starci-core-description-pair {
-        padding-block: var(--grammar-row-gap);
-        padding-inline: var(--grammar-card-padding-inline);
-    }
-
-    /*
-     * ROW-EDGE-PADDING (0.37.25, owner 2026-11-10): the padding of a row follows what its side touches. A side on the card's edge (the left and right, the FIRST row's top when no header
-     * zone stands above it, the LAST row's bottom when no footer zone stands below it) is p-4 (`--grammar-card-padding-block`, 16); a side on a separator (between rows, or under a zone's divider) is p-3
-     * (`--grammar-row-gap`). Controls included: a row GROWS around a tall control (min-block-size, never a fixed block-size in a row slot). A single-row card has p-4 above and below.
-     */
-    [data-grammar-surface-content]:not([data-grammar-surface-headed]) .starci-core-owned-collection > .starci-core-static-row:first-child,
-    [data-grammar-surface-content]:not([data-grammar-surface-headed]) .starci-core-select-rows > .starci-core-select-item:first-child > :is(.starci-core-select-row, .starci-core-select-control),
-    .starci-core-surface[data-grammar-surface-kind="details"] [data-grammar-surface-content]:not([data-grammar-surface-headed]) .starci-core-description-pair:first-child {
-        padding-block-start: var(--grammar-card-padding-block);
-    }
-
-    [data-grammar-surface-content]:not([data-grammar-surface-footed]) .starci-core-owned-collection > .starci-core-static-row:last-child,
-    [data-grammar-surface-content]:not([data-grammar-surface-footed]) .starci-core-select-rows > .starci-core-select-item:last-child > :is(.starci-core-select-row, .starci-core-select-control),
-    .starci-core-surface[data-grammar-surface-kind="details"] [data-grammar-surface-content]:not([data-grammar-surface-footed]) .starci-core-description-pair:last-child {
-        padding-block-end: var(--grammar-card-padding-block);
-    }
-
-    /* Proximity: zones are divided by seams (one line, gap 0), and each zone spaces its own parts by the inline step at most,
-     * so a zone's parts are always closer than the zones are; nothing changed in 0.27.
-     *
-     * Zones: typed bands above and below a card's body. The card is flush; the shell draws the ONE divider between neighbouring zones and
-     * between a zone and the body (a header zone's bottom border, a footer zone's top border), never a Divider. The body's own inset is
-     * the card padding for a body or tile card; a list, figures or accordion body touches the edge.
-     */
-    .starci-core-surface-main {
-        min-width: 0;
-    }
-
-    .starci-core-surface-main[data-grammar-surface-main="padded"] {
-        padding-block: var(--grammar-card-padding-block);
-        padding-inline: var(--grammar-card-padding-inline);
-    }
-
-    /*
-     * A zone or bar speaks at sm (FONT-7, owner 2026-11-09): its labels and counts (a selection bar "20 / 72 selected", a filter
-     * caption, a toolbar note) and its hints (muted, the app's `tone`) are 13, whatever size a `Text` in it names; a figures zone keeps
-     * its figures' own steps.
-     */
-    .starci-core-surface-zone:not([data-grammar-zone="figures"]) .starci-core-text:not([data-size="figure"]) {
-        font-size: var(--grammar-text-sm);
-        line-height: var(--grammar-leading-sm);
-    }
-
-    .starci-core-surface-zone {
-        box-sizing: border-box;
-        min-width: 0;
-        padding-block: var(--grammar-row-gap);
-        padding-inline: var(--grammar-card-padding-inline);
-    }
-
-    /*
-     * THE ZONE SEAM (0.37.5): the line between header zones, and between the zones and the body, must read on the white card AND on the grey table frame. --separator is a
-     * 92%-lightness step: on the grey frame (95%) it measured 233,227,227 on 243,238,238, nearly invisible. The seam is the foreground at 14% over whatever ground it
-     * stands on, so it keeps the same contrast on both.
-     */
-    .starci-core-surface {
-        --starci-core-zone-seam: color-mix(in oklab, var(--foreground) 14%, transparent);
-    }
-
-    .starci-core-surface-zone:has(~ .starci-core-surface-main) {
-        border-block-end: 1px solid var(--starci-core-zone-seam);
-    }
-
-    /* A switch zone is the card's first header row, inside the surface: an optional title at the leading edge, the primary tabs at the trailing edge, the zone's one line under it. */
-    .starci-core-surface-zone[data-grammar-zone="switch"] {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: var(--grammar-inline-gap);
-        /* ROW-EDGE-PADDING (0.37.25): a switch zone is a row like any other, p-3 to its divider (was the 8px inline step, the pill nearly touched the line). */
-        padding-block: var(--grammar-row-gap);
-    }
-
-    /* ROW-EDGE-PADDING (0.37.25): a header zone that is the card's first row keeps p-4 to the card's top edge; a footer zone that is the last keeps p-4 to the bottom edge. A tab strip stands on its own line and figures carry no padding. */
-    [data-grammar-surface-content] > .starci-core-surface-zone:first-child:not([data-grammar-zone="figures"], [data-grammar-zone-line="tabs"]) {
-        padding-block-start: var(--grammar-card-padding-block);
-    }
-
-    [data-grammar-surface-content] > .starci-core-surface-main ~ .starci-core-surface-zone:last-child:not([data-grammar-zone="figures"]) {
-        padding-block-end: var(--grammar-card-padding-block);
-    }
-
-    .starci-core-surface-zone-title {
-        min-width: 0;
-        color: var(--muted);
-        font-size: var(--grammar-text-sm);
-        line-height: var(--grammar-leading-sm);
-    }
-
-    .starci-core-surface-zone-switch {
-        margin-inline-start: auto;
-    }
-
-    .starci-core-surface-main ~ .starci-core-surface-zone {
-        border-block-start: 1px solid var(--starci-core-zone-seam);
-    }
-
-    .starci-core-surface-zone[data-grammar-zone="figures"] {
-        padding: 0;
-    }
-
-    .starci-core-surface-zone[data-grammar-zone="paging"] {
-        display: flex;
-        justify-content: center;
-    }
-
-    /* A table card (0.37.8) is a flush card: the same face (shadow on the well, a border on a white surface, set above), white, its zones divided by the zone seam, the summary at the start and the pages at the end. */
-    .starci-core-surface[data-grammar-surface-kind="table"] .starci-core-surface-zone[data-grammar-zone="paging"] {
-        display: block;
-    }
-
-    .starci-core-surface[data-grammar-surface-kind="table"] .starci-core-pagination-summary {
-        color: var(--muted);
-        font-size: var(--grammar-text-xs);
-        line-height: var(--grammar-leading-xs);
-    }
-
-    /* A tab strip's line IS the zone's divider: the strip stands on it with no padding below. */
-    .starci-core-surface-zone[data-grammar-zone-line="tabs"] {
-        padding-block: var(--grammar-inline-gap) 0;
-    }
-
-    .starci-core-surface-zone-row {
-        display: flex;
-        min-width: 0;
-        align-items: flex-end;
-        gap: var(--grammar-inline-gap);
-    }
-
-    .starci-core-surface-zone-lead {
-        min-width: 0;
-        flex: 1 1 0;
-    }
-
-    .starci-core-surface-zone-trail {
-        display: flex;
-        flex: 0 1 16rem;
-        min-width: 0;
-        align-items: flex-end;
-    }
-
-    .starci-core-surface-zone-search-wide {
-        min-width: 0;
-        flex: 1 1 auto;
-        margin-block-end: var(--grammar-identity-gap);
-    }
-
-    .starci-core-surface-zone-search-toggle,
-    .starci-core-surface-zone-search-open {
-        display: none;
-    }
-
-    /* A search zone with filters: the search grows, each select keeps its natural width and never wraps its words; narrow, the selects wrap below the search. */
-    .starci-core-surface-zone-search-row {
+    .starci-core-surface-actions {
         display: flex;
         min-width: 0;
         flex-wrap: wrap;
         align-items: center;
         gap: var(--grammar-inline-gap);
+        padding-block: var(--grammar-row-gap);
+        padding-inline: var(--grammar-card-padding-inline);
+        border-block-start: 1px solid var(--separator);
     }
 
-    .starci-core-surface-zone-search-grow {
-        min-width: min(100%, 12rem);
-        flex: 1 1 12rem;
-    }
-
-    .starci-core-surface-zone-select {
-        min-width: 0;
-        max-width: 100%;
-        flex: none;
-        inline-size: max-content;
-    }
-
-    .starci-core-surface-zone-select .starci-core-select-trigger,
-    .starci-core-surface-zone-select .select__value {
-        white-space: nowrap;
-    }
-
-    /*
-     * A board's header zones: one white surface strip above the columns, on the well. Its zones are the card's; the divider falls
-     * between neighbours only (nothing is below the last zone), except that a tab strip's divider is its line and stays.
-     */
+    /* A board narrows its columns with one flat filter row above them, the same row a Section draws. */
     .starci-core-board-header {
-        container: starci-core-surface / inline-size;
-        overflow: clip;
         margin-block-end: var(--grammar-row-gap);
-        border-radius: var(--starci-core-surface-radius);
-        background: var(--surface);
-        box-shadow: var(--surface-shadow);
-        color: var(--surface-foreground);
-    }
-
-    .starci-core-board-header > .starci-core-surface-zone:is(:not(:last-child), [data-grammar-zone-line="tabs"]) {
-        border-block-end: 1px solid var(--separator);
-    }
-
-    /* A narrow card folds the toolbar's search into a search button that opens its own row. */
-    @container starci-core-surface (max-width: 36rem) {
-        .starci-core-surface-zone-search-wide {
-            display: none;
-        }
-
-        .starci-core-surface-zone-trail {
-            flex: none;
-        }
-
-        .starci-core-surface-zone-search-toggle {
-            display: flex;
-        }
-
-        .starci-core-surface-zone-search-open {
-            display: block;
-        }
     }
 
     .starci-core-surface-card[data-grammar-surface-height="fill"],
-    .starci-core-surface-card[data-grammar-surface-height="fill"] > .starci-core-surface,
-    .starci-core-surface-card[data-grammar-surface-height="fill"] > .starci-core-surface-highlight,
-    .starci-core-surface-card[data-grammar-surface-height="fill"] > .starci-core-surface-highlight > .starci-core-surface,
+    .starci-core-surface-card[data-grammar-surface-height="fill"] > .starci-core-surface {
+        height: 100%;
+    }
+
+    /* A card that fills its host is a column: the body takes the height the actions band leaves. */
+    .starci-core-surface-card[data-grammar-surface-height="fill"] > .starci-core-surface {
+        display: flex;
+        flex-direction: column;
+    }
+
     .starci-core-surface-card[data-grammar-surface-height="fill"] .starci-core-surface-content {
-        height: 100%;
+        flex: 1 1 auto;
     }
 
-    /*
-     * --- Painted treatments: `SurfaceCard treatment="ink"` and `treatment="soft"`. ---
-     *
-     * A treatment repaints the card's ground from the family's brand tokens and rebinds the whole surface pair on it:
-     * `--surface` is the ground, and the foreground, muted, separator and border tokens read on it. A grammar child that
-     * paints with the pair (a Stepper or Timeline marker's circle, an avatar ring, a status dot's light stop) therefore
-     * follows the ground, and its text stays AA on it. Both carry the artwork slot; the zone's geometry is shared.
-     */
-    .starci-core-surface:is([data-grammar-surface-treatment="ink"], [data-grammar-surface-treatment="soft"]) {
-        container: starci-core-painted-band / inline-size;
-        isolation: isolate;
-        /* The vendor card content's own row gap would sit between the in-flow art zone and the content. */
-        gap: 0 !important;
-        background: var(--surface);
-        color: var(--surface-foreground);
-    }
-
-    /* Emphasis: the card its peers recommend keeps its ground and depth and takes an accent ring inside its edge. */
+    /* Emphasis: the one card its peers recommend, or the reader has chosen, keeps its ground and takes a 1px accent edge and the accent ring. */
     .starci-core-surface[data-grammar-surface-emphasis="accent"] {
-        outline: 2px solid var(--accent);
-        outline-offset: -2px;
-    }
-
-    /*
-     * Soft: the brand's light tint as ground (`--accent-soft`, the family's `accentSoft`, the tint both the accent as
-     * text and `muted` stay legible on) under the default foreground. It is not a slab: it may carry copy and controls,
-     * and every other token keeps its value, so a child's pair stays the one it has on the family's own surface.
-     */
-    .starci-core-surface[data-grammar-surface-treatment="soft"] {
-        --surface: var(--accent-soft);
-        --surface-foreground: var(--foreground);
-    }
-
-    /*
-     * Ink (0.6.0): the page's one signature overview moment.
-     *
-     * The ground is the family's brand ink: `--accent` (Core; a product whose accent is its ink, e.g.
-     * a deep navy #040d1c, gets that exact ink). Offset Pop re-binds the ground and its inks to its own ink and
-     * canvas. Everything painted inside re-reads the band's own tokens, so grammar children (SectionHeader,
-     * Text, IconTile, Badge, DescriptionList, Divider, Stepper) keep their anatomy and stay AA on any accent:
-     *   - foreground: white on a dark ink (lightness below 0.62), black on a light one - read from the ink
-     *     itself, because a family's accent-foreground is only promised for button-size text;
-     *   - muted: on a dark ink the ink lifted to at least 80% lightness at a quarter of its chroma (about
-     *     10:1 on #040d1c; on a mid-tone such as Core's violet it resolves to the foreground, because nothing
-     *     lighter than white clears AA there); on a light ink the mirror, at most 32% lightness;
-     *   - separator / border 14 points toward the foreground, the plate (`--default`) 8, the orbit 16;
-     *   - soft tone foregrounds: 8% of the tone in the foreground, so a status Badge keeps a hint of its hue
-     *     (its dot and soft fill carry the rest) and stays AA; the soft fills stay HeroUI's translucent mixes.
-     * No gradient, no glow, no shadow beyond the surface's own elevation.
-     */
-    .starci-core-surface[data-grammar-surface-treatment="ink"] {
-        --grammar-ink-band: var(--accent);
-        /* 1 on a dark ink (lightness below 0.62), 0 on a light one: every ink below reads toward the far end. */
-        --grammar-ink-band-foreground: oklch(from var(--grammar-ink-band) clamp(0, calc((0.62 - l) * 1000), 1) 0 0);
-        --grammar-ink-band-muted: oklch(from var(--grammar-ink-band) calc(clamp(0, calc((0.62 - l) * 1000), 1) * max(0.8, calc(l + 0.5)) + (1 - clamp(0, calc((0.62 - l) * 1000), 1)) * min(0.32, calc(l - 0.5))) calc(c * 0.25) h);
-        --grammar-ink-band-separator: oklch(from var(--grammar-ink-band) calc(l + (clamp(0, calc((0.62 - l) * 1000), 1) * 2 - 1) * 0.14) c h);
-        --grammar-ink-band-plate: oklch(from var(--grammar-ink-band) calc(l + (clamp(0, calc((0.62 - l) * 1000), 1) * 2 - 1) * 0.08) c h);
-        --grammar-ink-band-orbit: oklch(from var(--grammar-ink-band) calc(l + (clamp(0, calc((0.62 - l) * 1000), 1) * 2 - 1) * 0.16) calc(c * 0.5) h);
-
-        --surface: var(--grammar-ink-band);
-        --foreground: var(--grammar-ink-band-foreground);
-        --surface-foreground: var(--grammar-ink-band-foreground);
-        --muted: var(--grammar-ink-band-muted);
-        --separator: var(--grammar-ink-band-separator);
-        --border: var(--grammar-ink-band-separator);
-        --default: var(--grammar-ink-band-plate);
-        --default-foreground: var(--grammar-ink-band-foreground);
-        --success-soft-foreground: color-mix(in oklab, var(--success) 8%, var(--grammar-ink-band-foreground));
-        --warning-soft-foreground: color-mix(in oklab, var(--warning) 8%, var(--grammar-ink-band-foreground));
-        --danger-soft-foreground: color-mix(in oklab, var(--danger) 8%, var(--grammar-ink-band-foreground));
-        --accent-soft-foreground: var(--grammar-ink-band-foreground);
-        --accent-soft: var(--grammar-ink-band-plate);
-    }
-
-    /* Content paints above the decorative zone; the zone never takes a pointer or a focus. */
-    .starci-core-surface:is([data-grammar-surface-treatment="ink"], [data-grammar-surface-treatment="soft"]) > .starci-core-surface-content {
-        position: relative;
-        z-index: 1;
-    }
-
-    /*
-     * The artwork zone. Narrow band (< 48rem): in flow at the head, 11.25rem x 7.5rem (the mascot
-     * minimum 180 x 120), bleeding 2.5rem off the inline-end edge; the content starts below it, so the
-     * art never covers text. Wide band: lifted out of flow at the top inline-end corner, 22.5rem x 15rem,
-     * bleeding 2.25rem off the inline-end and 2.75rem off the top edge (the surface clips it); the
-     * band's own layout keeps its copy in the inline-start columns.
-     */
-    .starci-core-surface-artwork {
-        position: relative;
-        z-index: 0;
-        display: block;
-        width: 11.25rem;
-        height: 7.5rem;
-        margin-block-start: 0.25rem;
-        margin-inline: auto calc(-1 * var(--grammar-accent-corner));
-        pointer-events: none;
-        user-select: none;
-    }
-
-    .starci-core-surface-artwork > :not(.starci-core-surface-orbit) {
-        position: relative;
-        width: 100%;
-        height: 100%;
-    }
-
-    /* The slot owns no ground: the art sits straight on the treatment's ground (no placeholder plate, no frame, no corner). */
-    .starci-core-surface-artwork > :is(.starci-core-image, .starci-core-media-frame),
-    .starci-core-surface-artwork .starci-core-media-viewport {
-        border: 0;
-        border-radius: 0;
-        background: transparent;
-    }
-
-    .starci-core-surface-artwork :where(img) {
-        display: block;
-        width: 100%;
-        height: 100%;
-        object-fit: contain;
-    }
-
-    .starci-core-surface-orbit {
-        position: absolute;
-        inset: -12% -8% -12% -24%;
-        width: 132%;
-        height: 124%;
-        overflow: visible;
-        fill: var(--grammar-ink-band-orbit);
-        stroke: var(--grammar-ink-band-orbit);
-        stroke-width: 1;
-        vector-effect: non-scaling-stroke;
-    }
-
-    .starci-core-surface-orbit > ellipse {
-        fill: none;
-        vector-effect: non-scaling-stroke;
-    }
-
-    @container starci-core-painted-band (min-width: 48rem) {
-        .starci-core-surface-artwork {
-            position: absolute;
-            inset-block-start: -2.75rem;
-            inset-inline-end: -2.25rem;
-            width: 22.5rem;
-            height: 15rem;
-            margin: 0;
-        }
-
-        /* The first face (or the single content region) keeps the zone's 12.25rem in-band height, so the
-           content below it - a stat strip - starts clear of the art. */
-        .starci-core-surface[data-grammar-surface-artwork="art"] > .starci-core-surface-content {
-            min-block-size: 12.25rem;
-        }
-    }
-
-    @media (forced-colors: active) {
-        .starci-core-surface[data-grammar-surface-treatment="ink"] {
-            --grammar-ink-band: Canvas;
-            --grammar-ink-band-foreground: CanvasText;
-            --grammar-ink-band-muted: CanvasText;
-            --grammar-ink-band-separator: CanvasText;
-            --grammar-ink-band-plate: Canvas;
-            border: 1px solid CanvasText;
-        }
-
-        .starci-core-surface[data-grammar-surface-treatment="soft"] {
-            --surface: Canvas;
-            --surface-foreground: CanvasText;
-            border: 1px solid CanvasText;
-        }
-
-        .starci-core-surface-orbit {
-            display: none;
-        }
+        border-color: var(--accent);
+        box-shadow: 0 0 0 var(--grammar-ring-width) color-mix(in oklab, var(--accent) 22%, transparent);
     }
 
     [data-grammar-scroll="contained"] {
@@ -1683,18 +1226,14 @@
         transition: background-color var(--starci-core-motion-duration) var(--starci-core-motion-easing);
     }
 
-    /*
-     * A whole-action card answers the pointer with a fill: the accent soft pair by default. 0.40.0: `--starci-core-card-hover` and
-     * `--starci-core-card-active` take the hover (and keyboard focus) and the press fill, so a theme that keeps the accent for signals
-     * gives a hovered card a neutral fill instead.
-     */
+    /* A whole-action card answers the pointer with a neutral fill: `--surface-secondary` on hover and keyboard focus, `--default` while pressed. */
     .starci-core-surface-card[data-grammar-interaction="whole-action"] .starci-core-surface:has([data-grammar-whole-action]:hover),
     .starci-core-surface-card[data-grammar-interaction="whole-action"] .starci-core-surface:has([data-grammar-whole-action]:focus-visible) {
-        background: var(--starci-core-card-hover, var(--accent-soft));
+        background: var(--surface-secondary);
     }
 
     .starci-core-surface-card[data-grammar-interaction="whole-action"] .starci-core-surface:has([data-grammar-whole-action]:active) {
-        background: var(--starci-core-card-active, color-mix(in oklab, var(--accent) 14%, var(--surface)));
+        background: var(--default);
     }
 
     [data-grammar-whole-action][aria-disabled="true"],
@@ -1751,46 +1290,20 @@
         list-style: none;
     }
 
-    .starci-core-owned-collection {
-        width: 100%;
-        min-width: 0;
-    }
-
-    /* The collection IS the list (`<ul role="list">`, or the scroll region with role="list"): no UA indent or bullets. */
-    .starci-core-owned-collection:is(ul, ol, [role="list"]) {
-        margin: 0;
-        padding: 0;
-        list-style: none;
-    }
-
-    /* A verdict list is flush inside its shell; the shell already owns the corner. */
-    .starci-core-owned-collection[data-grammar-collection="verdict"] {
-        border-radius: 0 !important;
-    }
-
     /*
      * THE VERDICT EDGE IS SHIPPED.
      *
-     * A row in a verdict collection reports an outcome, and the outcome is drawn as a 2px edge on
-     * the row's leading side. The collection already squares its corners for exactly these rows;
-     * this is the paint the squaring was preparing for, and without it an application had to reach
-     * across the Grammar boundary with its own inset shadow to get it.
-     *
-     * It is an INSET SHADOW, not a border and not a padded rule, because the rows of a verdict
-     * collection are usually the consumer's own children: a border would move their content two
-     * pixels and a padding would fight the inset they already own, while a shadow paints inside the
-     * box that is already there. The row is addressed by `data-verdict`, which a `ListRow` emits from
-     * its `verdict` field.
+     * A row that reports an outcome draws it as a 2px edge on the row's leading side. It is an INSET SHADOW, not a border and not a
+     * padded rule, so the row's content never moves. The row is addressed by `data-verdict`, which a `ListRow` emits from its
+     * `verdict` field.
      *
      * The offset is physical because `box-shadow` has no logical form; under `dir="rtl"` the edge
      * stays on the left. No shipped object mirrors yet, so this is consistent rather than a new gap.
      */
-    .starci-core-owned-collection[data-grammar-collection="verdict"] [data-verdict="success"],
     .starci-core-static-row[data-verdict="success"] {
         --starci-core-verdict-edge: inset 2px 0 0 0 var(--success);
     }
 
-    .starci-core-owned-collection[data-grammar-collection="verdict"] [data-verdict="danger"],
     .starci-core-static-row[data-verdict="danger"] {
         --starci-core-verdict-edge: inset 2px 0 0 0 var(--danger);
     }
@@ -1798,12 +1311,8 @@
     /*
      * The edge is painted from that one property, including under hover.
      *
-     * A hover-invariant list clears every row shadow below, which is right for decoration and wrong
-     * for a verdict: an outcome that disappears while the pointer rests on its row is a worse row
-     * than one that never drew it. Reading the same property in both places keeps one value.
+     * An outcome that disappeared while the pointer rests on its row would be a worse row than one that never drew it.
      */
-    .starci-core-owned-collection[data-grammar-collection="verdict"] [data-verdict="success"],
-    .starci-core-owned-collection[data-grammar-collection="verdict"] [data-verdict="danger"],
     .starci-core-static-row[data-verdict="success"],
     .starci-core-static-row[data-verdict="danger"] {
         box-shadow: var(--starci-core-verdict-edge, none);
@@ -2028,7 +1537,7 @@
 
     .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tabs .tabs__tab:first-child { --starci-core-tab-padding-start: var(--grammar-inline-gap); }
     /* In a card zone the first filter label stands on the card's inline edge (16), like the rows and the table below it; in a section's filter row, on the section title's edge. */
-    :is(.starci-core-surface-zone, .starci-core-section-filter) .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tabs .tabs__tab:first-child { padding-inline-start: 0 !important; }
+    .starci-core-section-filter .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tabs .tabs__tab:first-child { padding-inline-start: 0 !important; }
     .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tabs .tabs__tab[aria-selected="true"] { font-weight: var(--grammar-weight-medium); }
     .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tabs .tabs__indicator { top: auto !important; background: var(--starci-core-tabs-indicator, var(--accent)); }
     .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tab-content { gap: var(--grammar-identity-gap); }
@@ -2165,104 +1674,6 @@
         font-weight: var(--grammar-weight-medium);
         line-height: var(--grammar-leading-md);
         overflow-wrap: anywhere;
-    }
-
-    /*
-     * SELECT CARD (0.37.5): `SurfaceCard kind="select"`, a choice list. Every row is a HeroUI Checkbox (the vendor label is the whole row, so the whole row is the hit
-     * target) with a title (14, 500) and, under it, a subtitle (12, muted). The rows touch the card's edges; a 1px divider spans the FULL width between rows (no inset).
-     * The card face (shadow on the well, 1px border on a white surface) is the flush face of every collection kind.
-     */
-    .starci-core-select-rows {
-        display: flex;
-        min-width: 0;
-        flex-direction: column;
-    }
-
-    /* One item = the row's checkbox label (the hit target) and, when the row has a `control`, that slot as a SIBLING, so pressing it never reaches the label. */
-    .starci-core-select-item {
-        display: flex;
-        min-width: 0;
-        align-items: flex-start;
-    }
-
-    .starci-core-select-item + .starci-core-select-item {
-        border-block-start: var(--grammar-hairline) solid var(--separator);
-    }
-
-    .starci-core-select-item:hover:has(.starci-core-select-row:not([data-disabled="true"])) { background: var(--surface-secondary); }
-
-    .starci-core-select-row {
-        box-sizing: border-box;
-        display: flex;
-        flex: 1 1 0;
-        inline-size: auto;
-        min-width: 0;
-        align-items: flex-start;
-        /* ROW-EDGE-PADDING (0.37.25): p-4 to the card's left edge (was the 12px inset), p-3 to the separators. */
-        padding: var(--grammar-row-gap) var(--grammar-card-padding-inline);
-        cursor: pointer;
-    }
-
-    .starci-core-select-item[data-grammar-select-has-control="true"] > .starci-core-select-row { padding-inline-end: var(--grammar-row-gap); }
-    .starci-core-select-row[data-disabled="true"] { cursor: not-allowed; }
-
-    /* The control slot (0.37.13): any Grammar content at the row's end, centred on the title line, never shrinking (the copy wraps first); dimmed and blocked on a disabled row. */
-    .starci-core-select-control {
-        display: inline-flex;
-        flex: none;
-        align-items: center;
-        box-sizing: border-box;
-        /* ROW-CONTROL-CLEARANCE (0.37.25): the slot keeps the row's padding. Its box is at least the row's title line (row padding + one line); a control taller than the line GROWS the row
-           (the slot's padding-block keeps --grammar-row-gap above and below it, never touching the separator) and the control stays centred. */
-        min-block-size: calc(var(--grammar-leading-md) + 2 * var(--grammar-row-gap));
-        padding-block: var(--grammar-row-gap);
-        /* p-4 to the card's right edge (was the 12px inset). */
-        padding-inline-end: var(--grammar-card-padding-inline);
-    }
-
-    /* A primary Tabs pill in the control slot is the small switch: a tight pill (text stays 14, every tab is 14), so it reads as a row's setting, not a bar. */
-    .starci-core-select-control .starci-core-tabs .tabs__tab {
-        min-block-size: 0;
-        padding-block: var(--grammar-identity-gap);
-        padding-inline: var(--grammar-row-gap) !important;
-    }
-
-    .starci-core-select-control[data-grammar-select-control-disabled="true"] { opacity: var(--disabled-opacity); pointer-events: none; }
-
-    .starci-core-select-row .starci-core-choice-content {
-        inline-size: 100%;
-        align-items: flex-start;
-    }
-
-    /*
-     * ROW-CONTROL-CENTRE (0.37.29, owner: "centre the control and the checkbox with its text"): in a row with a control, the checkbox and its text block are ONE group, and the group and the
-     * control are centred on each other. Both boxes stretch to the row (the item's height) and keep the row padding (p-4 at the card's edges, p-3 at a separator), so their centres
-     * meet; the checkbox centres on the text block, and the 40px touch target of a phone stays (the group's box is at least 40 and its content is centred in it). A row without a
-     * control keeps its top alignment.
-     */
-    .starci-core-select-item[data-grammar-select-has-control="true"] { align-items: stretch; }
-    .starci-core-select-item[data-grammar-select-has-control="true"] > .starci-core-select-row { flex-direction: column; justify-content: center; align-items: stretch; }
-    .starci-core-select-item[data-grammar-select-has-control="true"] > .starci-core-select-row .starci-core-choice-content { align-items: center; }
-
-    .starci-core-select-copy {
-        display: flex;
-        min-width: 0;
-        flex: 1;
-        flex-direction: column;
-        gap: var(--grammar-identity-gap);
-    }
-
-    .starci-core-select-copy [data-grammar-field-label] {
-        font-size: var(--grammar-text-md);
-        font-weight: var(--grammar-weight-medium);
-        line-height: var(--grammar-leading-md);
-    }
-
-    .starci-core-select-copy [data-grammar-field-description] {
-        color: var(--muted);
-        font-weight: var(--grammar-weight-regular);
-        font-size: var(--grammar-text-xs);
-        line-height: var(--grammar-leading-xs);
     }
 
     /* A pressable row: the title is the one focusable button and its hit area is the whole row; commands and the menu sit above it. */
@@ -2494,43 +1905,6 @@
         }
     }
 
-    .starci-core-accordion-row {
-        width: 100% !important;
-        min-width: 0;
-    }
-
-    /* HeroUI's `Accordion` root sizes itself; the Grammar shell owns the measure. */
-    .starci-core-accordion-root {
-        width: 100% !important;
-        min-width: 0;
-    }
-
-    /* Expanded content starts flush beneath its trigger, keeping the bottom and inline insets. */
-    .starci-core-accordion-body {
-        width: 100% !important;
-        min-width: 0;
-        padding: 0 var(--grammar-inset) var(--grammar-inset) var(--grammar-section-gap) !important;
-        color: var(--foreground);
-    }
-
-    .starci-core-accordion-row + .starci-core-accordion-row {
-        border-top: 1px solid var(--separator);
-    }
-
-    /* The trigger's copy: the title, then one muted meta at the end of the line (below it when the card is narrow). */
-    .starci-core-accordion-summary {
-        display: flex;
-        min-width: 0;
-        flex-wrap: wrap;
-        align-items: baseline;
-        justify-content: space-between;
-        column-gap: var(--grammar-inline-gap);
-    }
-
-    /* A step row: the mark, the title (taking the rest) and the meta at the end, in one line. */
-    .starci-core-accordion-summary[data-grammar-accordion-leading="true"] { flex-wrap: nowrap; align-items: center; column-gap: var(--grammar-row-gap); }
-    .starci-core-accordion-summary[data-grammar-accordion-leading="true"] > .starci-core-accordion-title { flex: 1 1 auto; }
-
     .starci-core-accordion-step {
         display: inline-grid;
         flex: none;
@@ -2550,18 +1924,6 @@
     .starci-core-accordion-step[data-grammar-step-state="done"] { border-color: var(--success); color: var(--success); }
     .starci-core-accordion-step[data-grammar-step-state="current"] { border-color: var(--accent); color: var(--accent); }
     .starci-core-accordion-step[data-grammar-step-state="problem"] { border-color: var(--warning); color: var(--warning); }
-
-    .starci-core-accordion-title {
-        min-width: 0;
-        font-weight: var(--grammar-weight-semibold);
-        overflow-wrap: anywhere;
-    }
-
-    .starci-core-accordion-meta {
-        color: var(--muted);
-        font-size: var(--grammar-text-md);
-        line-height: var(--grammar-leading-md);
-    }
 
     /*
      * Tile: a peer you recognise and open (a provider, a connector). The name sits inside, beside its mark; the foot row
@@ -2697,63 +2059,14 @@
     /* 0.37.8: with a whole-card action the menu trigger stands above the stretched link (z-index 1) as its own tab stop and press target. */
     /* 0.37.10: the ⋯ of a body card stands at its top end, above the whole-card link (z-index 1) as its own target. */
     .starci-core-body-menu { position: absolute; z-index: 2; inset-block-start: var(--grammar-inline-gap); inset-inline-end: var(--grammar-inline-gap); display: inline-flex; }
-    /* The room for the ⋯ is reserved ONLY on the content the menu sits beside (0.37.12): an unzoned card pads its content; a zoned card keeps its header and footer zones, and their dividers, full width and narrows only its padded main. */
-    .starci-core-surface:has(> .starci-core-body-menu) > [data-grammar-surface-content="true"]:not([data-grammar-surface-zoned="true"]) { padding-inline-end: calc(var(--grammar-touch-size) + var(--grammar-inline-gap)); }
-    .starci-core-surface:has(> .starci-core-body-menu) > [data-grammar-surface-content="true"][data-grammar-surface-zoned="true"] > [data-grammar-surface-main="padded"] { margin-inline-end: calc(var(--grammar-touch-size) + var(--grammar-inline-gap)); }
+    /* The room for the ⋯ is reserved ONLY on the content the menu sits beside: the body pads its end; the actions band keeps its full width. */
+    .starci-core-surface:has(> .starci-core-body-menu) > [data-grammar-surface-content="true"] { padding-inline-end: calc(var(--grammar-touch-size) + var(--grammar-inline-gap)); }
     .starci-core-tile-menu { position: relative; z-index: 2; display: inline-flex; margin-inline-start: auto; }
-
-    .starci-core-accordion-heading {
-        margin: 0 !important;
-    }
-
-    .starci-core-accordion-trigger {
-        display: block;
-        width: 100% !important;
-        min-width: 0;
-        min-height: 44px;
-        padding: var(--starci-core-row-inset, var(--grammar-inset)) !important;
-        border: 0;
-        background: transparent;
-        box-shadow: none;
-        color: inherit;
-        cursor: pointer;
-        font: inherit;
-        text-align: left !important;
-        transform: none;
-        transition: none;
-    }
-
-    .starci-core-accordion-trigger:hover,
-    .starci-core-accordion-trigger[data-hovered="true"],
-    .starci-core-accordion-trigger:active,
-    .starci-core-accordion-trigger[aria-expanded="true"] {
-        background: transparent;
-        box-shadow: none;
-        color: inherit;
-        transform: none;
-    }
-
-    .starci-core-accordion-trigger:focus-visible,
-    .starci-core-accordion-trigger[data-focus-visible="true"] {
-        outline: 2px solid var(--focus);
-        outline-offset: -2px;
-    }
-
-    .starci-core-accordion-trigger:disabled {
-        cursor: default;
-    }
 
     @media (prefers-reduced-motion: reduce) {
         .starci-core-surface-card[data-grammar-interaction="whole-action"] .starci-core-surface {
             transition: none;
         }
-    }
-
-    /* The animated vendor region owns no inset, so a closed panel collapses to zero height. */
-    .starci-core-accordion-panel {
-        width: 100% !important;
-        min-width: 0;
-        padding: 0 !important;
     }
 
     .starci-core-markdown-article {
@@ -4443,11 +3756,6 @@
         padding: 0 !important;
     }
 
-    .starci-core-surface-highlight {
-        position: relative;
-        height: 100%;
-    }
-
     /* --- Surface list --- */
     .starci-core-surface-fact {
         color: var(--muted);
@@ -4508,17 +3816,16 @@
     /* Proximity: the column spaces its head and its cards by 12, so the cards, peers inside it, stand 8 apart (12 before 0.27).
        The columns stand 12 apart too: the column's tinted ground is its edge, so it groups its content by that. */
     .starci-core-board-cards { display: flex; min-width: 0; flex-direction: column; gap: var(--grammar-inline-gap); margin: 0; padding: 0; list-style: none; container: starci-core-surface / inline-size; }
-    /* An item is a real object, so it is a card: the card face (surface ground, card radius, card edge and shadow), its one row at the card padding. */
+    /* An item is a real object, so it is a card: the card face (surface ground, card radius, the 1px `--border` edge, no shadow), its one row at the card padding. */
     .starci-core-board-cards > .starci-core-list-row {
         --starci-core-row-inset: var(--grammar-card-padding-block) var(--grammar-card-padding-inline);
-        border: var(--starci-core-card-border, 0);
+        border: 1px solid var(--border);
         border-radius: var(--starci-core-surface-radius);
         background: var(--surface);
         color: var(--surface-foreground);
-        box-shadow: var(--surface-shadow);
         overflow: clip;
     }
-    .starci-core-board-cards > .starci-core-list-row + .starci-core-list-row { border-top: var(--starci-core-card-border, 0); }
+    .starci-core-board-cards > .starci-core-list-row + .starci-core-list-row { border-top: 1px solid var(--border); }
     .starci-core-board-empty { padding: var(--grammar-inline-gap); color: var(--muted); }
 
     /* The column a dragged card would land in. */
@@ -6365,7 +5672,7 @@
      * THE CHAT SURFACES (0.37.31, law DNA-COMMON-CHAT-SURFACES, owner-approved drawing chat-surfaces): every thread is on the page tone (`--background`, a
      * `PaneSection scroll role="log"` paints it whatever `tone` says); a message of someone else (an incoming bubble, a MessageCard) is the FLAT surface:
      * `--surface` with no border and no shadow; the reader's own message is `--accent` with `--accent-foreground`. Outside a thread, on a white surface
-     * (a drawer, a white pane, a card), a flat white bubble would vanish, so there it wears the 1px separator edge (SURFACE-ELEVATION), still no shadow.
+     * (a drawer, a white pane, a card), a flat white bubble would vanish, so there it wears the 1px separator edge, still no shadow.
      */
     .starci-core-message-bubble {
         --grammar-bubble-radius: 1.125rem;

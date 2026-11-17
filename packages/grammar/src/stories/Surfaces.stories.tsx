@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
-import { BookGlyph, Matrix, PlusGlyph, State, familyScope, noop, placeholderImage, rgbaOf, textContrast } from './fixtures.js';
+import { BookGlyph, Matrix, PlusGlyph, State, familyScope, noop, placeholderImage, rgbaOf } from './fixtures.js';
 import turtleUrl from './assets/turtle.png';
 
 /**
@@ -142,13 +142,10 @@ export const SurfaceCard: Story = {
           <G.Text>Keep the streak going with one short task a day.</G.Text>
         </G.SurfaceCard>
       </State>
-      <State label="Whole-card action (link) and highlight (selected)" direction="column">
+      <State label="Whole-card action (link)" direction="column">
         <G.SurfaceCard ariaLabel="Grammar basics" wholeAction={{ kind: 'link', href: '#item', label: 'Open Grammar basics' }}>
           <G.Heading level={3}>Grammar basics</G.Heading>
           <G.Text tone="muted">12 items</G.Text>
-        </G.SurfaceCard>
-        <G.SurfaceCard label="Recommended" isHighlight>
-          <G.Text>Highlighted surface.</G.Text>
         </G.SurfaceCard>
       </State>
       <State label="States" direction="column">
@@ -156,90 +153,18 @@ export const SurfaceCard: Story = {
         <G.SurfaceCard label="Unavailable (disabled)" state="unavailable"><G.Text>Not included in your plan.</G.Text></G.SurfaceCard>
         <G.SurfaceCard label="Negative (invalid)" state="negative"><G.Text>The import failed.</G.Text></G.SurfaceCard>
       </State>
-      <State label="Ink band with artwork and orbit motif" direction="column">
-        <G.SurfaceCard
-          ariaLabel="Workspace overview"
-          treatment="ink"
-          motif="orbit"
-          artwork={<G.Image src={placeholderImage('Art', 20)} alt="" fit="contain" loading="eager" assetSlot="story.overview-art" />}
-        >
-          <G.Text isStrong>Workspace Support</G.Text>
-          <G.Text tone="muted">Owner Alex Morgan · Team plan</G.Text>
-        </G.SurfaceCard>
-        <G.SurfaceCard ariaLabel="Ink band, motif only" treatment="ink" motif="orbit">
-          <G.Text isStrong>Motif without artwork</G.Text>
-          <G.Text tone="muted">The orbit stays in the artwork zone, never behind the copy.</G.Text>
-        </G.SurfaceCard>
-      </State>
     </Matrix>
   ),
 };
 
 /**
- * The soft treatment: the brand's light tint (`--accent-soft`) as the card's ground under the default foreground,
- * with its artwork slot (here the mascot of a first-run welcome) and real copy and controls. Every text the card
- * draws, muted and accent text included, clears `contrast.text` on the tint in light and dark.
- */
-export const SoftSurfaceCard: Story = {
-  render: (_, { globals }) => (
-    <Matrix maxWidth={720}>
-      {(['light', 'dark'] as const).map((theme) => (
-        <G.GrammarRoot key={theme} {...familyScope(globals)} theme={theme} data-story-soft-theme={theme} style={{ padding: '1.5rem', background: 'var(--background, Canvas)' }}>
-          <State label={`${theme}: soft with artwork (first-run welcome)`} direction="column">
-            <G.SurfaceCard
-              label="Welcome"
-              treatment="soft"
-              artwork={<G.Mascot src={turtleUrl} size="md" loading="eager" assetSlot="story.welcome-mascot" />}
-            >
-              <G.Text isStrong>Set up your workspace</G.Text>
-              <G.Text tone="muted">Three short steps, about two minutes.</G.Text>
-              <G.Text tone="muted">You can change everything later in settings.</G.Text>
-              <G.Text isStrong>Step 1 of 3</G.Text>
-              <G.Button intent="commit">Start setup</G.Button>
-            </G.SurfaceCard>
-          </State>
-        </G.GrammarRoot>
-      ))}
-    </Matrix>
-  ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      const cards = [...canvasElement.querySelectorAll('[data-story-soft-theme] [data-component="SurfaceCard"] > [data-grammar-surface-treatment="soft"]')];
-      expect(cards).toHaveLength(2);
-      for (const card of cards) {
-        expect(card.querySelector(':scope > [data-grammar-surface-artwork="art"] [data-component="Mascot"]')).toHaveAttribute('data-asset-slot', 'story.welcome-mascot');
-        // Read without touching the DOM: waitFor re-runs on every mutation, so a probe element would loop.
-        const tint = getComputedStyle(card.parentElement ?? card).getPropertyValue('--accent-soft');
-        expect(rgbaOf(getComputedStyle(card).backgroundColor)).toEqual(rgbaOf(tint));
-      }
-      // Every element that draws a text node of its own (eyebrow, title, description, muted and accent lines); the
-      // commit Button is the accent fill's own pair and is judged by the button laws.
-      const texts = [...canvasElement.querySelectorAll('[data-story-soft-theme] [data-grammar-surface-treatment="soft"] [data-grammar-surface-content] *')]
-        .filter((element) => [...element.childNodes].some((node) => node.nodeType === Node.TEXT_NODE && (node.textContent ?? '').trim() !== ''))
-        .filter((element) => element.closest('[data-component="Button"]') === null);
-      expect(texts.length).toBeGreaterThanOrEqual(2 * 5);
-      const unreadable = texts
-        .map((text) => ({ text: text.textContent, ratio: textContrast(text) }))
-        .filter(({ ratio }) => ratio < 4.5)
-        .map(({ text, ratio }) => `"${text}" ${ratio}:1`);
-      if (unreadable.length > 0) throw new Error(`text below 4.5:1 on the soft ground: ${unreadable.join('; ')}`);
-    });
-  },
-};
-
-/**
- * The accent corner: one logical corner of a card's face or a media viewport at the Common
+ * The accent corner: one logical corner of a media viewport at the Common
  * accent radius `--grammar-accent-corner`, the others at the family's surface radius.
  */
 export const AccentCorner: Story = {
   render: (_, { globals }) => (
     <Matrix maxWidth={720}>
       <G.GrammarRoot {...familyScope(globals)} data-story-accent-corner="true" style={{ padding: '1.5rem' }}>
-        <State label="soft card, accentCorner end-end" direction="column">
-          <G.SurfaceCard label="Sign in" treatment="soft" accentCorner="end-end">
-            <G.Text>One corner carries the brand's signature radius.</G.Text>
-          </G.SurfaceCard>
-        </State>
         <State label="media frame, accentCorner start-end" direction="column">
           <G.MediaFrame accentCorner="start-end" assetSlot="story.accent-corner" aspect="square" media={<img alt="" src={turtleUrl} />} />
         </State>
@@ -253,11 +178,8 @@ export const AccentCorner: Story = {
       const accent = getComputedStyle(root).getPropertyValue('--grammar-accent-corner').trim();
       expect(accent).toBe('2.5rem');
       const px = `${parseFloat(accent) * parseFloat(getComputedStyle(document.documentElement).fontSize)}px`;
-      const face = root.querySelector('[data-component="SurfaceCard"] [data-grammar-accent-corner="end-end"]');
       const viewport = root.querySelector('[data-component="MediaFrame"] [data-grammar-accent-corner="start-end"]');
-      if (face === null || viewport === null) throw new Error('accent corner not stamped');
-      expect(getComputedStyle(face).borderEndEndRadius).toBe(px);
-      expect(getComputedStyle(face).borderStartStartRadius).not.toBe(px);
+      if (viewport === null) throw new Error('accent corner not stamped');
       expect(getComputedStyle(viewport).borderStartEndRadius).toBe(px);
       expect(getComputedStyle(viewport).borderEndEndRadius).not.toBe(px);
     });
@@ -495,14 +417,11 @@ const FigureDestinationsDemo = () => {
   return (
     <Matrix maxWidth={960}>
       <State label="Whole figure cells navigate; their values stay neutral" direction="column">
-        <G.SurfaceCard kind="figures" label="Operations" items={figures} />
+        <G.Section kind="figures" title="Operations" items={figures} />
         <G.Text>{`Figure follow callbacks: ${followed}`}</G.Text>
       </State>
       <State label="Loading figures open nothing" direction="column">
-        <G.SurfaceCard kind="figures" label="Loading operations" items={figures} isLoading />
-      </State>
-      <State label="A pending card opens nothing" direction="column">
-        <G.SurfaceCard kind="figures" label="Pending operations" items={figures} state="pending" />
+        <G.Section kind="figures" title="Loading operations" items={figures} isLoading />
       </State>
     </Matrix>
   );
@@ -523,62 +442,60 @@ export const FigureDestinations: Story = {
     link.click();
     await waitFor(() => expect(scope.textContent).toContain('Figure follow callbacks: 1'));
     expect(scope.querySelector('a[href="#archive"]')).toBeNull();
-    expect(scope.querySelector('[data-grammar-state="pending"] [data-grammar-figure-link="true"]')).toBeNull();
-    expect(scope.querySelector('[data-loading="true"] [data-grammar-figure-link="true"]')).toBeNull();
+    expect(scope.querySelector('[data-grammar-loading-region="true"] [data-grammar-figure-link="true"]')).toBeNull();
   },
 };
 
-const AccordionCardDemo = () => {
+const DisclosureDemo = () => {
   const [open, setOpen] = useState<ReadonlySet<string>>(new Set(['week-1']));
   const weeks = [
-    { id: 'week-1', title: 'Week 1', meta: '3 items', body: 'Articles, plurals and pronouns.' },
-    { id: 'week-2', title: 'Week 2', meta: '4 items', body: 'Present tenses.' },
-    { id: 'week-3', title: 'Week 3', meta: 'Locked', body: 'Past tenses.', isDisabled: true },
+    { id: 'week-1', title: 'Week 1', summary: '3 items', body: 'Articles, plurals and pronouns.' },
+    { id: 'week-2', title: 'Week 2', summary: '4 items', body: 'Present tenses.' },
+    { id: 'week-3', title: 'Week 3', summary: 'Locked', body: 'Past tenses.', isDisabled: true },
   ];
   return (
-    <G.SurfaceCard
-      kind="accordion"
-      label="Outline"
-      items={weeks.map((week) => ({
-        id: week.id,
-        title: week.title,
-        meta: week.meta,
-        body: <G.Text>{week.body}</G.Text>,
-        isOpen: open.has(week.id),
-        isDisabled: week.isDisabled === true,
-      }))}
-      onItemOpenChange={(id, isOpen) =>
-        setOpen((current) => {
-          const next = new Set(current);
-          if (isOpen) next.add(id);
-          else next.delete(id);
-          return next;
-        })
-      }
-    />
+    <G.Section title="Outline">
+      <G.DisclosureList
+        label="Outline"
+        items={weeks.map((week) => ({
+          id: week.id,
+          title: week.title,
+          summary: week.summary,
+          body: <G.Text>{week.body}</G.Text>,
+          isExpanded: open.has(week.id),
+          isDisabled: week.isDisabled === true,
+          onExpandedChange: (isExpanded: boolean) =>
+            setOpen((current) => {
+              const next = new Set(current);
+              if (isExpanded) next.add(week.id);
+              else next.delete(week.id);
+              return next;
+            }),
+        }))}
+      />
+    </G.Section>
   );
 };
 
-const SingleAccordionDemo = () => {
+const SingleDisclosureDemo = () => {
   const [isOpen, setOpen] = useState(false);
   return (
-    <G.SurfaceCard
-      kind="accordion"
-      ariaLabel="Refund policy"
-      items={[{ id: 'refund', title: 'Refund policy', body: <G.Text>Refunds are available within 14 days.</G.Text>, isOpen }]}
-      onItemOpenChange={(_id, next) => setOpen(next)}
-    />
+    <G.Section ariaLabel="Refund policy">
+      <G.DisclosureList label="Refund policy" items={[{ id: 'refund', title: 'Refund policy', body: <G.Text>Refunds are available within 14 days.</G.Text>, isExpanded: isOpen, onExpandedChange: setOpen }]} />
+    </G.Section>
   );
 };
 
-export const SurfaceCardAccordion: Story = {
-  name: 'SurfaceCard kind accordion',
+export const SectionDisclosureList: Story = {
+  name: 'Section with a DisclosureList',
   render: () => (
     <Matrix maxWidth={640}>
-      <State label="Rows: one open (selected), one disabled" direction="column"><AccordionCardDemo /></State>
-      <State label="Single item, collapsed" direction="column"><SingleAccordionDemo /></State>
+      <State label="Rows: one open, one disabled" direction="column"><DisclosureDemo /></State>
+      <State label="Single item, collapsed" direction="column"><SingleDisclosureDemo /></State>
       <State label="Loading" direction="column">
-        <G.SurfaceCard kind="accordion" label="Outline" isLoading onItemOpenChange={noop} items={[{ id: 'w1', title: 'Week 1', meta: '3 items', body: 'x', isOpen: false }, { id: 'w2', title: 'Week 2', meta: '4 items', body: 'x', isOpen: false }]} />
+        <G.Section title="Outline" isLoading>
+          <G.DisclosureList label="Outline" items={[{ id: 'w1', title: 'Week 1', summary: '3 items', body: 'x' }, { id: 'w2', title: 'Week 2', summary: '4 items', body: 'x' }]} />
+        </G.Section>
       </State>
     </Matrix>
   ),
@@ -591,16 +508,16 @@ const stripFigures: readonly G.Figure[] = [
   { id: 'conversations', icon: BookGlyph, term: 'Conversations · 7 days', value: '1,596', unit: 'conversations', meta: 'Across 2 modules' },
 ];
 
-/** `kind="figures"`: two to four key figures as touching cells, divided by lines; the card holds nothing else. */
-export const SurfaceCardFigures: Story = {
-  name: 'SurfaceCard kind figures',
+/** `Section kind="figures"`: two to four key figures as a ribbon, divided by hairlines; the section holds nothing else. */
+export const SectionFiguresRibbon: Story = {
+  name: 'Section kind figures',
   render: () => (
     <Matrix maxWidth={960}>
-      <State label="Four figures with a label" direction="column">
-        <G.SurfaceCard kind="figures" label="Usage" items={stripFigures} />
+      <State label="Four figures with a title" direction="column">
+        <G.Section kind="figures" title="Usage" items={stripFigures} />
       </State>
-      <State label="Three figures, unlabelled (an odd last cell spans its row when narrow)" direction="column">
-        <G.SurfaceCard kind="figures" ariaLabel="Usage" items={stripFigures.slice(0, 3)} />
+      <State label="Three figures, headless (an odd last cell spans its row when narrow)" direction="column">
+        <G.Section kind="figures" ariaLabel="Usage" items={stripFigures.slice(0, 3)} />
       </State>
       {([
         ['Narrow: 2 x 2 from 18rem of its own width', 400, stripFigures],
@@ -609,42 +526,12 @@ export const SurfaceCardFigures: Story = {
       ] as const).map(([label, width, items]) => (
         <State key={label} label={label} direction="column">
           <div style={{ width, maxWidth: '100%' }}>
-            <G.SurfaceCard kind="figures" ariaLabel={label} items={items} />
+            <G.Section kind="figures" ariaLabel={label} items={items} />
           </div>
         </State>
       ))}
       <State label="Loading" direction="column">
-        <G.SurfaceCard kind="figures" label="Usage, loading" isLoading items={stripFigures} />
-      </State>
-    </Matrix>
-  ),
-};
-
-/** Header zones above a body: a custom face and a figures strip, divided by the seams the shell draws; the rows are a flat list in the body. */
-export const SurfaceCardZoneFaces: Story = {
-  name: 'SurfaceCard header zones',
-  render: () => (
-    <Matrix maxWidth={720}>
-      <State label="Body, figures, then a list" direction="column">
-        <G.SurfaceCard
-          label="Workspace"
-          headers={[
-            { kind: 'custom', children: <G.Text>Support runs on the Team plan, owned by Alex Morgan.</G.Text> },
-            { kind: 'figures', items: stripFigures.slice(0, 3) },
-          ]}
-        >
-          <G.Section kind="list" ariaLabel="Checks" items={checkRows.slice(0, 2)} empty={<G.EmptyNotice message="Nothing to check." />} />
-        </G.SurfaceCard>
-      </State>
-      <State label="A custom picture zone, then a body" direction="column">
-        <G.SurfaceCard
-          label="Launch"
-          headers={[
-            { kind: 'custom', children: <G.Image src={placeholderImage('Launch', 20)} alt="Launch artwork" aspect="wide" loading="eager" assetSlot="story.zone-media" /> },
-          ]}
-        >
-          <G.Text>A custom header zone holds one picture; the body below is padded by the card.</G.Text>
-        </G.SurfaceCard>
+        <G.Section kind="figures" title="Usage, loading" isLoading items={stripFigures} />
       </State>
     </Matrix>
   ),

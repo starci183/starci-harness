@@ -40,12 +40,10 @@ wrappers:
   - { file: core/branch/Select/index.tsx, wraps: [Description, Label, ListBox, Select, Spinner],
       overrides: [
         { kind: style, target: "Select.Trigger:block-size", rule: R320, reason: "a single-line field is as tall as an md control" } ] }
-  - { file: core/frame/SurfaceCard/AccordionRows.tsx, wraps: [Accordion] }
-  - { file: core/frame/SurfaceCard/FigureCells.tsx, wraps: [Link] }
-  - { file: core/frame/SurfaceCard/SelectRows.tsx, wraps: [Checkbox] }
+  - { file: core/frame/Section/FigureCells.tsx, wraps: [Link] }
   - { file: core/frame/SurfaceCard/index.tsx, wraps: [Card],
       overrides: [
-        { kind: style, target: "Card.Root:shadow", reason: "a card is raised by its shadow on the page and wears a 1px separator border; a surface nested in a card keeps the border and drops the shadow" } ] }
+        { kind: style, target: "Card.Root:shadow", reason: "a card is one object with a 1px --border edge and no shadow on every ground (BOUNDARY-6)" } ] }
   - { file: core/branch/Tabs/index.tsx, wraps: [Tabs],
       overrides: [
         { kind: style, target: "Tabs.Tab:padding", reason: "an underline tab takes the row step per side and the first label stands on the content edge" } ] }

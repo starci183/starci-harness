@@ -107,7 +107,6 @@ export const Defaults: Story = {
 
 const WHITE_HOOKS = {
   '--surface-shadow': 'none',
-  '--starci-core-card-border': '1px solid var(--border)',
   '--starci-core-card-radius': '0.75rem',
   '--starci-core-tabs-indicator': 'var(--foreground)',
 } as CSSProperties;

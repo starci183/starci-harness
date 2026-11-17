@@ -129,19 +129,8 @@ export type DataTableProps<Row extends DataTableRow> = NoChildren & DataTableRow
     /** Container inline size in px below which `low` priority columns collapse into the row. Default 640. */
     readonly collapseBelow?: number
     /**
-     * `none` (default, 0.40.0): the table sits flat on whatever holds it: plain hairline rows (`--separator`) under a muted heading row with
-     * no container paint (no fill, radius, shadow or edge), and the `footer` under the last row behind a full-width line. A table is a
-     * collection, not an object, so it is never a card of its own: on the page it stands on the page ground under its `Section` head and
-     * caption, and inside a card it runs full bleed. There is no wrapper around it (the single-child-card law: never wrap a lone table in a
-     * SurfaceCard). `card`: the table drawn as its own white card (the card radius, the shadow on the page ground and a 1px border on a white
-     * surface), the column labels (12, muted) on the white, 1px full-width dividers; the default before 0.40.0, kept for an app that wants it.
-     * `frame`: the same white face with no radius, shadow or edge of its own, for a host that is itself the card (a `SurfaceCard kind="table"`).
-     */
-    readonly surface?: "card" | "frame" | "none"
-    /**
-     * The footer slot (0.36.0), drawn on the white under the last row, behind a full-width line: a `Pagination` with its `summary` ("1-4 of 8 results") puts the
-     * summary at the start and the pages at the end. Hidden while the table is loading or failed. Not drawn by `surface="none"`'s hairline rows' paint,
-     * only laid out in a row below them.
+     * The footer slot: the table's pager, a `Pagination` with its `summary` ("1-4 of 8 results"), the summary at the start and the pages at the
+     * end, a row step under the last row's hairline (no second line). Hidden while the table is loading or failed.
      */
     readonly footer?: ReactNode
     /**
@@ -351,7 +340,8 @@ const SelectionCheckbox = ({ label }: { readonly label: string | undefined }) =>
 /**
  * Tabular data with sortable columns (`aria-sort`), row selection (`aria-selected`,
  * `data-grammar-selected`), empty and loading states, an optional sticky header, and its own
- * horizontal scroll so a wide table never widens a 360px page.
+ * horizontal scroll so a wide table never widens a 360px page. It has one flat look and is never a card: it stands under its
+ * `Section` (head, `filter` row, caption) with its pager in `footer`.
  * Contract: scroll LAYOUT-3, grid FOCUS-2 STATE-1, row FOCUS-1, empty STATE-3.
  */
 export const DataTable = <Row extends DataTableRow>({
@@ -376,7 +366,6 @@ export const DataTable = <Row extends DataTableRow>({
     maxBlockSize,
     onRowAction,
     collapseBelow = DEFAULT_COLLAPSE_BELOW,
-    surface = "none",
     footer,
     resizable = false,
     id: tableId,
@@ -639,8 +628,7 @@ export const DataTable = <Row extends DataTableRow>({
         <HeroTable
             aria-busy={isLoading || undefined}
             className="starci-core-data-table"
-            variant={surface === "none" ? "secondary" : "primary"}
-            data-grammar-table-surface={surface}
+            variant="secondary"
             data-component="DataTable"
             data-tier="branch"
             data-grammar-table-state={state}
@@ -660,6 +648,5 @@ export const DataTable = <Row extends DataTableRow>({
             {footer === undefined || isLoading || failed ? null : <HeroTable.Footer className="starci-core-data-table-footer" data-grammar-table-footer="true">{footer}</HeroTable.Footer>}
         </HeroTable>
     )
-    // No wrapper: the table is flat by default (`none`, 0.40.0); `card` draws its own white card, which on a white surface takes the border and drops the shadow (CSS).
     return table
 }

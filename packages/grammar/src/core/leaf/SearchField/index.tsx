@@ -15,7 +15,7 @@ import {
 } from "../Field/index.js"
 import { inlineGlyph } from "../Icon/inline.js"
 import type { NoChildren } from "../../tier.js"
-import { useRefuseInCustomZone } from "../../zoneContext.js"
+import { useRefuseInCardActions } from "../../zoneContext.js"
 
 export type SearchFieldProps = NoChildren & FieldControlProps & FieldSizeProps & {
     readonly id?: string
@@ -58,7 +58,7 @@ export type SearchFieldProps = NoChildren & FieldControlProps & FieldSizeProps &
  * `FieldSkeletonScope` (inert, `aria-busy`, control box painted as a Skeleton), so the loading field keeps the ready box.
  */
 const SearchFieldInner = ({ isLoading = false, ...props }: SearchFieldProps) => {
-    useRefuseInCustomZone("SearchField")
+    useRefuseInCardActions("SearchField")
     return isLoading
         ? <FieldSkeletonScope component="SearchField"><SearchFieldControl {...loadingFieldProps(props)} /></FieldSkeletonScope>
         : <SearchFieldControl {...props} />

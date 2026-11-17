@@ -6,21 +6,22 @@ import { defineFamilyRules, defineRule } from "./lib/rule-contract.ts"
 import type { Context, Node } from "./lib/types.ts"
 
 /**
- * ROWS IN A CARD (owner, 2026-11-09, ROWS-IN-CARD). A list of rows or key-value rows is always a card: on the pink well a card with a shadow and no border, on a white
- * surface (aside, pane, drawer) a card with a 1px border and no shadow. Grammar draws that edge itself (the SURFACE-ELEVATION rule) when the rows stand in a
- * `SurfaceCard` or a `Section`; a row primitive written bare on a surface is the repeated bug of a list with no edge.
+ * ROWS IN A SECTION OR AN OBJECT CARD (ROWS-IN-CARD). Key-value rows (`DescriptionList`) and disclosure rows (`DisclosureList`) stand in a `Section`
+ * (the facts or the disclosures of a collection, flat on the surface) or in the body of an object card (a `SurfaceCard` of body kind: the facts of ONE
+ * object beside its name or a control). A row primitive written bare, with neither around it, is the repeated bug of rows with no head and no place.
  *
- * WHAT IT READS. In product source, a Grammar `DescriptionList` (key-value rows) or `DisclosureList` (disclosure rows) that no `SurfaceCard`, `Section`, `DataTable`
- * or `Accordion` of the same file encloses. A row primitive passed as a JSX attribute value (`body={<DescriptionList/>}`) is judged where the receiving component draws it.
+ * WHAT IT READS. In product source, a Grammar `DescriptionList` or `DisclosureList` that no `SurfaceCard` or `Section` of the same file encloses. A row
+ * primitive passed as a JSX attribute value (`body={<DescriptionList/>}`) is judged where the receiving component draws it.
  *
  * WHAT IT LEAVES ALONE. `ListBox` (a selectable list pane and a menu are navigation, not rows of data: no static signal tells them apart), a row primitive another
- * file wraps (a file whose only job is to return the rows is flagged here: wrap it in the `Section` or card in the same file), and non-product source.
+ * file wraps (a file whose only job is to return the rows is flagged here: wrap it in the `Section` or the object card in the same file), and non-product source.
+ * A card whose ONLY content is the rows is `card-is-object`.
  */
 
 const ROWS: ReadonlySet<string> = new Set(["DescriptionList", "DisclosureList"])
-const CARDS: ReadonlySet<string> = new Set(["SurfaceCard", "Section", "DataTable", "Accordion"])
+const HOSTS: ReadonlySet<string> = new Set(["SurfaceCard", "Section"])
 
-/** True when the element sits inside a Grammar card of this file, or inside a JSX attribute (the receiver draws it). */
+/** True when the element sits inside a Grammar `Section` or `SurfaceCard` of this file, or inside a JSX attribute (the receiver draws it). */
 const isHosted = (context: Context, opening: TSESTree.JSXOpeningElement): boolean => {
   let previous: Node = opening
   for (let current: Node | null | undefined = opening.parent?.parent; current !== undefined && current !== null; previous = current, current = current.parent) {
@@ -28,19 +29,19 @@ const isHosted = (context: Context, opening: TSESTree.JSXOpeningElement): boolea
     if (current.type !== "JSXElement") continue
     if (previous === current.openingElement) continue
     const name = grammarName(context, current.openingElement)
-    if (name !== null && CARDS.has(name)) return true
+    if (name !== null && HOSTS.has(name)) return true
   }
   return false
 }
 
-/** A list of rows stands in a card. */
+/** Key-value and disclosure rows stand in a `Section` or in an object card. */
 export const rowsInCard: Rule.RuleModule = defineRule({
   meta: {
     type: "problem",
-    docs: { description: "ROWS-IN-CARD: a DescriptionList or DisclosureList stands in a SurfaceCard or a Section, so it is a card (shadow on the well, 1px border on a white surface)." },
+    docs: { description: "ROWS-IN-CARD: a DescriptionList or DisclosureList stands in a Section or in the body of an object SurfaceCard." },
     schema: [],
     messages: {
-      bare: "A `{{name}}` stands with no card around it. Key-value and disclosure rows stand in a `SurfaceCard` (Grammar draws the shadow on the pink well and the 1px border on a white aside, pane or drawer by itself) or a `Section`; a plain list of rows is `Section kind=\"list\"`, flat.",
+      bare: "A `{{name}}` stands with no `Section` or object card around it. Key-value and disclosure rows stand flat in a `Section` (`<Section title ...><DescriptionList isDivided items={...} /></Section>`), or, as the facts of ONE object, in the body of that object's `SurfaceCard`; a plain list of rows is `Section kind=\"list\"`.",
     },
   },
   create(context) {

@@ -62,7 +62,7 @@ export const surfaceInSurface: Rule.RuleModule = defineRule({
     schema: [],
     messages: {
       handMade:
-        "This `{{element}}` is a hand-made row list inside {{host}}: its rows are divided by `Divider` elements by hand. Use `<Section kind=\"list\">` with `ListRow` rows: the Grammar draws one list wherever it stands, flat rows divided by hairlines and aligned with the title (a card around a lone list is refused by `single-child-card`).",
+        "This `{{element}}` is a hand-made row list inside {{host}}: its rows are divided by `Divider` elements by hand. Use `<Section kind=\"list\">` with `ListRow` rows: the Grammar draws one list wherever it stands, flat rows divided by hairlines and aligned with the title (a card around a lone list is refused by `card-is-object`).",
     },
   },
   create(context) {

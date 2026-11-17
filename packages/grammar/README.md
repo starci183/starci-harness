@@ -240,9 +240,9 @@ with a skeleton and loads nothing. A source Mermaid refuses becomes an error ins
 <MermaidDiagram label="Request flow" source={fence.value} errorTitle={t("diagramFailed")} />
 ```
 
-### Table frame, section head, scroll law, tab chips (0.36.0)
+### Flat table, section head, scroll law, tab chips
 
-- `DataTable` is HeroUI's native table: the grey frame is the card (radius 16, soft shadow, no border), the header row 12 muted on the grey, a white rounded body with hairline rows; `footer` takes a `Pagination` with its `summary`. `surface="frame"` is the same without its own radius or shadow (`SurfaceCard kind="table"` uses it); `surface="none"` stays plain.
+- `DataTable` has one flat look and is never a card: the column labels 12 / 500 muted over a `--border` line, hairline (`--separator`) rows, no fill, radius, shadow or outer edge; `footer` takes a `Pagination` with its `summary`. A table stands under its `Section`: `<Section title count filter={…}><DataTable … footer={<Pagination … />} /></Section>`. A selected row is `--default` with a 2px accent bar on its start edge.
 - A `Section` head is one row: label (14, 500) and a count chip at the start, at most one `Link variant="head"` (label then a sliding `→`), one `IconButton` or one neutral sm text `Button` at the end. `description` is a caption below the body (12, muted). Lint: `section-head-action`.
 - The page header band is sticky; in a workspace page each pane scrolls on its own with its head sticky and no visible scrollbar. `Pane content="cards" | "full"`: only the content of a cards pane is capped at 80rem; chat and FlowGraph panes are full.
 - Tab counts are 12px chips, grey; pink only with `isAttention`; page tabs hide a 0. Lint: `tab-count-chip`.
@@ -303,14 +303,10 @@ assistive technology; a non-empty `alt` names it) and takes the asset-slot props
 <Mascot src="/images/mascot/welcome.webp" size="lg" assetSlot="onboarding.welcome" assetSha256={sha} />
 ```
 
-A mascot also reaches the page through two slots. `SurfaceCard` `treatment="soft"` (the family's `accentSoft` tint
-under the default foreground) and `treatment="ink"` (the brand ink band) take decorative `artwork`; each painted
-treatment rebinds the surface pair on its ground, so a Stepper, Timeline or Badge inside keeps its contrast.
-`EmptyNotice` takes `artwork` (`src`, `alt`, a required `assetSlot`, `assetSha256`, `assetPrompt`) in place of its
+A mascot also reaches the page through `EmptyNotice`, which takes `artwork` (`src`, `alt`, a required `assetSlot`, `assetSha256`, `assetPrompt`) in place of its
 glyph and draws it as the `Mascot` at `md`, the mark of a first-run empty state.
 
 ```tsx
-<SurfaceCard label="Welcome" treatment="soft" artwork={<Mascot src={src} assetSlot="onboarding.welcome" />}>…</SurfaceCard>
 <EmptyNotice message="Your workspace is ready." artwork={{ src, assetSlot: "onboarding.empty" }} actionLabel="Add a channel" onAction={add} />
 ```
 
@@ -448,10 +444,10 @@ A `DataTable` row with an `href` is a real link in both layouts (0.39.4). In the
 the row-header cell's content is also a real `<a>` stretched over the row (out of the tab order), so middle-click, "open in new tab" and copy-link work; a modifier click opens a new tab. At phone width (the list layout, under 768 px) the title is the
 anchor, stretched over the whole row, the one tab stop; the focus ring is drawn on the row. A plain click navigates once through the router in both, and `onRowAction` still runs alongside.
 
-`DataTable` `onRowAction(id)` (and `SurfaceCard kind="table"` `onRowAction`) makes every row pressable, to open a drawer: a click or
+`DataTable` `onRowAction(id)` makes every row pressable, to open a drawer: a click or
 Enter / Space on the focused row (React Aria's row action, so the row is a focus stop with the table's focus ring), the pointer cursor
 and the pressable list row's hover fill (`--surface-secondary`). Buttons, links and editors inside a row keep their own press; the row
-title stays plain text, never a Link. `<SurfaceCard kind="table" onRowAction={(id) => open(id)} columns={columns} rows={rows} empty={empty} label="Invoices" />`
+title stays plain text, never a Link. `<DataTable label="Invoices" onRowAction={(id) => open(id)} columns={columns} rows={rows} renderCell={renderCell} emptyContent={empty} />`
 
 `LogoStack` shows which connections an agent uses: `items` (`{ id, label, src?, iconSource? }`, a provider logo image or an app
 icon), `max` (default 3) round 20px logos with no plate, one identity gap (4) apart (not overlapped, so no mark is cut by the next),
@@ -556,11 +552,9 @@ The package requires Node 22 or newer, as does the pinned DiceBear engine.
 MarkdownTableFrame, MediaFrame, Rail, Section, StaticStateRow, SurfaceAccordionCard,
 SurfaceCard, VerticalScrollRegion.
 
-`SurfaceCard` search zone `filters` (`readonly SelectZoneField[]`: `{ label, options, value, onChange, placeholder?, prefix? }`) puts
-trailing `Select`s in the search's own row: the search grows, each select keeps its natural width and its words never wrap (the
-`label` is the accessible name, not drawn; `prefix` says it inside the trigger, "Status:"); on a narrow card they wrap below the
-search. `headers={[{ kind: "search", label, value, onChange, filters: [{ label: "Status", prefix: "Status:", options, value, onChange }] }]}`.
-A card head `description` is one muted `--grammar-text-sm` line under the `label`, 4 below it: `<SurfaceCard label="Team" description="People who can edit this workspace.">`.
+A `Section`'s `filter` row holds the `Tabs kind="filter"`, a `SearchField size="sm"` and its `Select`s (each with a muted `prefix`, "Status:"):
+the search grows, each select keeps its natural width and its words never wrap; on a narrow row the peers stack.
+`<Section title="Orders" filter={<><SearchField … /><Select prefix="Status:" … /></>}>…</Section>`.
 
 **Compositions (11).** Cluster, EntryFrame, Footer, Grid, Page, PaneGrid, PaneSection, Sidebar, Stack, TopBar, WorkspaceShell. Storybook pins settings and data-list content
 recipes to each family; the mobile app recipes reuse the fixed App shell with its left navigation drawer.
@@ -585,8 +579,7 @@ hidden words. `trendLine` (numbers, oldest first; `trendLineLabel`) draws a `Spa
 A pressable `ListRow` (`onPress` or `href`), in `Section kind="list"`, ends in a muted chevron
 (`chevron-end` glyph, mirrored in RTL); a row with its own `action`, `menu` or `control`, or none of these, draws none.
 
-`Section kind="figures"` is the unpainted counterpart of a figures card inside an existing pane or surface. It uses
-the same `Figure` data and renderer; supply `title` when it owns a heading or `ariaLabel` when an existing parent owns
+`Section kind="figures"` is the one strip of key figures, the ribbon, wherever it stands. Supply `title` when it owns a heading or `ariaLabel` when an existing parent owns
 that heading. The headless form has no head controls. Media tiles use `TilePoster` (image or localized absence),
 plain `facts`, one or up to three badges and typed overflow commands; a whole-card action excludes inner controls.
 `ButtonGroup` borrows the vendor size and forwards each action's `isPending`; group `isLoading` is unresolved geometry.
@@ -680,7 +673,7 @@ a stat strip cell in a card takes 16 on every side. `--grammar-overlay-inset` re
 bar everywhere, the first label on the content edge.
 
 **The type scale** (owner, 2026-11-09, final). 14 for all UI text (body, labels, section and card titles, row titles, tabs,
-buttons, links, inputs, descriptions, captions, hints, zone text, figure labels and meta); 12 only for small names (meta
+buttons, links, inputs, descriptions, captions, hints, filter-row text, figure labels and meta); 12 only for small names (meta
 lines, badges, chips, counts, timestamps, breadcrumb separators); no 13 (`Text size="sm"` equals `md`). Hierarchy comes only
 from weight and tone: titles semibold, row and selected names medium (`Text isStrong`), secondary text muted. Two display
 sizes: the page title 18 and a big figure value 20 (`Text size="figure"`). Every tab is 14 and 40 high, the selected one
@@ -722,10 +715,11 @@ send button at the bottom end of the box. The page header band is full width wit
 group label above a card inside a section. `Link` is HeroUI's own link (primary colour, underline on hover, anchor icon) and inherits its size from the line; lint `link-look`.
 A `sm` Button never carries an icon. The second tab layer is `Page header.subTabs` (lint `tabs-in-well`).
 
-**The single-child-card law.** A card groups two or more different parts (figures, a list, actions) or carries zones
-(tabs, search, head actions). A table, list or chart standing alone is the surface: a `Section` titles it (`title`) and one
-muted line goes under it (`Section caption`). A standalone `DataTable` is flat by default (`surface="none"`, 0.40.0: hairline rows, no fill, radius, shadow or edge; `surface="card"` draws its own white card); a `Section kind="list"` is flat. Lint `single-child-card` refuses the card around a lone one. Text
-in a card zone (a selection count, a filter caption, a hint) is sm 13.
+**A card is one object.** `SurfaceCard` is a `tile` or a `body` card for one object (a customer, an agent, a plan, a message, an
+approval), with an optional `actions` band at its foot: white, a 1px `--border` edge, no shadow, on every ground. A collection is never
+in a card: a table, list, set of facts, strip of figures or chart stands flat under a `Section` (its `title`, its `filter` row and one muted
+`caption`). Lint `card-is-object` refuses a card around a lone collection, form or placeholder; lint `data-table-surface` removes `surface`
+from a `DataTable`.
 
 **One look for a list** (0.43.0, owner 2026-11-17). A list is `Section kind="list"` of `ListRow`s wherever it stands (the page
 canvas, a card body, a drawer or dialog, a pane band, a rail): plain rows on the surface, divided by hairlines, the rows aligned
@@ -743,7 +737,7 @@ container stands to its siblings: identity 4 < inline 8 < row 12 < section 24 < 
 | `Grid kind="sections" \| "pair" \| "featured"` | 32 in the page body | regions 24 apart |
 | `Grid kind="cards"`, `"week"`, `"week-summary"` | 12 in a Section | peer cards 8 apart (`week-summary` was 24) |
 | `SurfaceCard` root | 12 in a Section, 8 in a cards Grid | its label 8 above the surface (12 before), 4 in a cards Grid |
-| `SurfaceCard` zones | divided by seams | parts 8 apart at most (unchanged) |
+| `SurfaceCard` `actions` band | under a hairline, the row step above and below | buttons 8 apart |
 | `PaneSection` (and its scroll content) | bands 12 apart in the pane | children 8 apart by default (`gap` default `inline`; `row` before) |
 | `Board` column | 12 apart (the tinted ground is its edge) | head and cards 12, cards 8 apart (12 before) |
 | `Footer` | - | main and legal 32, brand and directory 24, groups 12, links 8 (24, 32, 24, 8 before) |

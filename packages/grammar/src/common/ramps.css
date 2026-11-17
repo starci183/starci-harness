@@ -63,12 +63,9 @@
            an app's `:root` value of it never reached the cards); every card rule reads only this token. */
         --grammar-radius-card: min(32px, var(--radius-3xl));
         --starci-core-surface-radius: var(--starci-core-card-radius, var(--grammar-radius-card));
-        /* A table standing alone is a white card (0.37.8): the card radius 16; the narrow-mode list rounds 12. */
         --grammar-link-arrow-travel: 0.1875rem;
         /* How far an inline link's resting underline sits below its text: clear of the descenders, at any inherited size. */
         --grammar-link-underline-offset: 0.2em;
-        --starci-core-table-radius: 1rem;
-        --starci-core-table-body-radius: 0.75rem;
         --starci-core-pill-radius: var(--grammar-radius-pill);
 
         /* STROKES. A hairline, a fine line and the focus ring. HeroUI's `--border-width` stays the border of its own parts. */
@@ -103,15 +100,11 @@
         --grammar-loop-spin: 1s;
         --grammar-loop-spin-fast: 0.8s;
         --grammar-loop-pulse: 1.6s;
-        --grammar-loop-orbit: 3s;
         /* How long a Spotlight rings its target before it settles. */
         --grammar-spotlight-duration: 3s;
         --grammar-loop-easing: linear;
         --grammar-loop-pulse-easing: ease-in-out;
         --grammar-loop-echo-easing: ease-out;
-
-        /* The ink band reads its text from the band's lightness: above the pivot the ink is dark, below it light. */
-        --grammar-ink-band-pivot: 0.62;
 
         /* GEOMETRY of the parts: sizes, measures and layers that have no HeroUI token. Spacing is in styles.css. */
         --starci-core-control-min-size: 2.5rem;

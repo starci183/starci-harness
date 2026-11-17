@@ -2,56 +2,13 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import * as G from '../common/index.js';
-import { noop } from './fixtures.js';
 
 /**
- * 0.37.5: the seam between header zones reads on the white card, including a table card (0.37.8: no grey frame); `Section kind="list" layout="keyValue"` draws muted keys and normal values
- * (values wrap under the key on a narrow list); `Pane head` is a sticky one-row head with a close button.
+ * `Section kind="list" layout="keyValue"` draws muted keys and normal values (values wrap under the key on a narrow list); `Pane head` is a sticky one-row head with a close button.
  */
-const meta: Meta = { title: 'Surfaces/Zone seam, key-value rows and pane head', parameters: { layout: 'fullscreen' } };
+const meta: Meta = { title: 'Surfaces/Key-value rows and pane head', parameters: { layout: 'fullscreen' } };
 export default meta;
 type Story = StoryObj;
-
-const COLUMNS = [{ id: 'name', label: 'Order ID' }, { id: 'total', label: 'Total', isNumeric: true }] as const;
-const zones = [
-  { kind: 'search', label: 'Search orders', value: '', onChange: noop, placeholder: 'Search orders' },
-  { kind: 'filter', label: 'Status', items: [{ id: 'all', label: 'All' }, { id: 'paid', label: 'Paid' }], selectedKey: 'all', onSelect: noop, overflowLabel: 'More', moreLabel: (count: number) => `${count} filters` },
-] as const;
-
-/** The channel distance between a colour composited over a ground and the ground, measured on a canvas (the seam is a translucent mix). */
-const delta = (seam: string, ground: string) => {
-  const canvas = document.createElement('canvas');
-  canvas.width = canvas.height = 1;
-  const context = canvas.getContext('2d')!;
-  context.fillStyle = ground;
-  context.fillRect(0, 0, 1, 1);
-  const base = context.getImageData(0, 0, 1, 1).data;
-  context.fillStyle = seam;
-  context.fillRect(0, 0, 1, 1);
-  const over = context.getImageData(0, 0, 1, 1).data;
-  return Math.max(Math.abs(over[0]! - base[0]!), Math.abs(over[1]! - base[1]!), Math.abs(over[2]! - base[2]!));
-};
-
-export const ZoneSeamContrast: Story = {
-  render: () => (
-    <div style={{ width: 'min(100%, 720px)', padding: 24, display: 'grid', gap: 24 }}>
-      <G.SurfaceCard kind="table" label="Table card" columns={COLUMNS} rows={[{ id: 'r1', cells: { name: 'OR-1001', total: '120,000' } }]} empty={<G.EmptyNotice message="Empty" />} headers={[...zones]} />
-      <G.SurfaceCard kind="details" label="On a white card" items={[{ id: 'a', term: 'Order', description: 'OR-1001' }]} headers={[...zones]} />
-    </div>
-  ),
-  play: async ({ canvasElement }) => {
-    await waitFor(() => {
-      for (const kind of ['table', 'details']) {
-        const card = canvasElement.querySelector<HTMLElement>(`.starci-core-surface[data-grammar-surface-kind="${kind}"]`);
-        const zone = card?.querySelector<HTMLElement>('[data-grammar-zone]');
-        if (card == null || zone == null) throw new Error('the card and its zone render');
-        const ground = getComputedStyle(card).backgroundColor;
-        expect(Number.parseFloat(getComputedStyle(zone).borderBottomWidth)).toBe(1);
-        expect(delta(getComputedStyle(zone).borderBottomColor, ground)).toBeGreaterThanOrEqual(20);
-      }
-    });
-  },
-};
 
 const FACTS = [
   { id: 'a', title: 'Customer', value: 'Maria Garcia' },

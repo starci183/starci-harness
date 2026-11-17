@@ -4,27 +4,27 @@ import * as G from '../common/index.js';
 
 /**
  * LABEL / SUBLABEL HIERARCHY (0.37.7, LABEL-SUBLABEL-HIERARCHY). One Label per section (14 / 500, 12px above its content); the groups nested in it are named by a Sublabel
- * (12 / 500 muted, 8px above the card), never by a second Label; sibling groups stand 8px apart, like their Sublabel to its card (only top-level Label sections stand 24 apart). `sublabel` and `title` / `label` are never given together (the types refuse it).
+ * (12 / 500 muted, 8px above its group), never by a second Label; sibling groups stand 8px apart (only top-level Label sections stand 24 apart). `sublabel` and `title` / `label` are never given together (the types refuse it).
  */
 const meta: Meta = { title: 'Surfaces/Label hierarchy' };
 export default meta;
 type Story = StoryObj;
 
-const AUTO = [
-  { id: 'reply', title: 'Reply to messages', subtitle: 'The assistant replies to customers right away.' },
-  { id: 'tag', title: 'Tag customers' },
+const AUTO: readonly G.ChoiceOption[] = [
+  { value: 'reply', label: 'Reply to messages', description: 'The assistant replies to customers right away.' },
+  { value: 'tag', label: 'Tag customers' },
 ];
-const ASK = [
-  { id: 'refund', title: 'Refund', subtitle: 'Waits for your approval first.' },
-  { id: 'price', title: 'Change price' },
+const ASK: readonly G.ChoiceOption[] = [
+  { value: 'refund', label: 'Refund', description: 'Waits for your approval first.' },
+  { value: 'price', label: 'Change price' },
 ];
 
 export const AgentUnderstands: Story = {
   render: () => (
     <div style={{ width: 460 }}>
       <G.Section title="What the assistant knows about your work">
-        <G.SurfaceCard kind="select" sublabel="Allowed to do alone" selectionMode="multiple" items={AUTO} value={['reply']} onChange={() => undefined} />
-        <G.SurfaceCard kind="select" sublabel="Must ask you" selectionMode="multiple" items={ASK} value={[]} onChange={() => undefined} />
+        <G.Section sublabel="Allowed to do alone"><G.CheckboxGroup label="Allowed to do alone" isLabelHidden options={AUTO} defaultValue={['reply']} /></G.Section>
+        <G.Section sublabel="Must ask you"><G.CheckboxGroup label="Must ask you" isLabelHidden options={ASK} /></G.Section>
       </G.Section>
     </div>
   ),
@@ -41,20 +41,17 @@ export const AgentUnderstands: Story = {
       expect(small.fontSize).toBe('12px');
       expect(small.fontWeight).toBe('500');
       const head = section.querySelector<HTMLElement>('.starci-core-section-header')!.getBoundingClientRect();
-      const cards = Array.from(section.querySelectorAll<HTMLElement>('.starci-core-surface-card'));
-      // Label -> first group: 12px (the section's row gap).
-      expect(Math.round(cards[0]!.getBoundingClientRect().top - head.bottom)).toBe(12);
+      const groups = Array.from(section.querySelectorAll<HTMLElement>('section[data-grammar-section-sublabel="true"]'));
       // Sublabel -> its card: 8px.
-      const first = sublabels[0]!.getBoundingClientRect();
-      const surface = cards[0]!.querySelector<HTMLElement>('.starci-core-surface')!.getBoundingClientRect();
-      expect(Math.round(surface.top - first.bottom)).toBe(8);
+      expect(groups.length).toBe(2);
+      expect(Math.round(groups[0]!.getBoundingClientRect().top - head.bottom)).toBe(12);
       // Group -> group: 8px (they belong to the Label above).
-      expect(Math.round(cards[1]!.getBoundingClientRect().top - cards[0]!.getBoundingClientRect().bottom)).toBe(8);
+      expect(Math.round(groups[1]!.getBoundingClientRect().top - groups[0]!.getBoundingClientRect().bottom)).toBe(8);
     });
   },
 };
 
-/** A section group made with `Section sublabel` (a list with its Sublabel 8px above it), under a labelled card of the same hierarchy. */
+/** A section group made with `Section sublabel` (a list with its Sublabel 8px above it), under a labelled section of the same hierarchy. */
 export const SectionSublabel: Story = {
   render: () => (
     <div style={{ width: 460 }}>

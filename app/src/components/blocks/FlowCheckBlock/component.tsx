@@ -1,5 +1,5 @@
 import { ExclamationTriangleIcon } from "@heroicons/react/24/outline"
-import { Alert, FencedCodeBlock, Section, SurfaceCard, Text } from "@starci/grammar/core"
+import { Alert, FencedCodeBlock, Section, Text } from "@starci/grammar/core"
 import type { DataSlot, SlotLabels } from "../../../modules/types"
 import { SlotView } from "../../composites/SlotView"
 
@@ -31,7 +31,7 @@ export interface FlowCheckBlockBaseProps {
 
 const CHECK_PLACEHOLDER: FlowCheckView = { flow: [], problems: [], problemsTitle: "" }
 
-/** Pure half: the lanes' flow as code, then a clean verdict or each flow problem. */
+/** Pure half: a section with the lanes' flow as code, then a clean verdict or each flow problem. */
 export const FlowCheckBlockBase = (props: FlowCheckBlockBaseProps) => {
     const { labels } = props.props
     return (
@@ -45,22 +45,23 @@ export const FlowCheckBlockBase = (props: FlowCheckBlockBaseProps) => {
                         <FencedCodeBlock label={labels.code} code={check.flow.join("\n")} />
                     )
                 const head = {
-                    label: labels.title,
-                    headingLevel: 2 as const,
+                    title: labels.title,
                     isLoading,
                     ...(check.problems.length === 0 ? {} : { fact: check.problemsTitle }),
                 }
                 // A verdict has nowhere to go before the check answers (LOADING-5); the Alert has no resting shape.
-                if (isLoading) return <SurfaceCard {...head}>{flow}</SurfaceCard>
+                if (isLoading) return <Section {...head}>{flow}</Section>
                 if (check.problems.length === 0) {
                     return (
-                        <SurfaceCard {...head} headers={[{ kind: "custom", children: flow }]}>
+                        <Section {...head}>
+                            {flow}
                             <Alert tone="affirmative" title={labels.clean} description={labels.cleanHint} />
-                        </SurfaceCard>
+                        </Section>
                     )
                 }
                 return (
-                    <SurfaceCard {...head} headers={[{ kind: "custom", children: flow }]}>
+                    <Section {...head}>
+                        {flow}
                         <Section
                             kind="list"
                             ariaLabel={check.problemsTitle}
@@ -72,7 +73,7 @@ export const FlowCheckBlockBase = (props: FlowCheckBlockBaseProps) => {
                             }))}
                             empty={null}
                         />
-                    </SurfaceCard>
+                    </Section>
                 )
             }} />
     )

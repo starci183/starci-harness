@@ -1,5 +1,5 @@
 /**
- * Twin tests for the rows law (ROWS-IN-CARD): a DescriptionList or DisclosureList stands in a card.
+ * Twin tests for the rows law (ROWS-IN-CARD): a DescriptionList or DisclosureList stands in a Section or in the body of an object card.
  *
  *   node --test src/rows-in-card.spec.ts
  */
@@ -10,7 +10,7 @@ import { recommended, rowsInCard, rules } from "./rows-in-card.ts"
 
 const BLOCK = at("apps/web/src/components/blocks/Overview/component.tsx")
 const SCRIPT = at("scripts/render.tsx")
-const IMPORTS = "import { DescriptionList, DisclosureList, ListBox, Section, SurfaceCard, Stack } from \"@starci/grammar/core\"\n"
+const IMPORTS = "import { DescriptionList, DisclosureList, Button, ListBox, Section, SurfaceCard, Stack } from \"@starci/grammar/core\"\n"
 const code = (body: string): string => `${IMPORTS}export const A = () => ${body}`
 
 test("the law publishes one rule and it is an error", () => {
@@ -18,10 +18,11 @@ test("the law publishes one rule and it is an error", () => {
   assert.deepEqual(recommended, { "starci-grammar/rows-in-card": "error" })
 })
 
-test("ROWS-IN-CARD: key-value and disclosure rows stand in a Section or a SurfaceCard", () => {
+test("ROWS-IN-CARD: key-value and disclosure rows stand in a Section or in the body of an object card", () => {
   slotTester().run("rows-in-card", rowsInCard, {
     valid: [
-      { filename: BLOCK, code: code("<SurfaceCard label=\"Details\"><DescriptionList items={[]} /></SurfaceCard>") },
+      { filename: BLOCK, code: code("<Section title=\"Details\"><DescriptionList isDivided items={[]} /></Section>") },
+      { filename: BLOCK, code: code("<SurfaceCard label=\"Agent\"><DescriptionList items={[]} /><Button>Pause</Button></SurfaceCard>") },
       { filename: BLOCK, code: code("<Section title=\"Steps\"><DisclosureList items={[]} /></Section>") },
       { filename: BLOCK, code: code("<Card body={<DescriptionList items={[]} />} />") },
       { filename: BLOCK, code: code("<ListBox label=\"Rooms\" items={[]} />") },

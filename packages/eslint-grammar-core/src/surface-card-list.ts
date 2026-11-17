@@ -14,8 +14,7 @@ import { defineFamilyRules, defineRule } from "./lib/rule-contract.ts"
  *
  * WHAT IT LEAVES ALONE. A `kind` that is not a literal, another source's `SurfaceCard`, and non-product source.
  *
- * NO AUTOFIX. The move is not one rename: `label` becomes `title`, `labelEnd` becomes `action`, the card's zones (`headers`,
- * `footers`) have no list form (a filter or search is the list's `filter`; figures and a list together are a body card holding both),
+ * NO AUTOFIX. The move is not one rename: `label` becomes `title`, `labelEnd` becomes `action`, a card's filter or search is the list's `filter`,
  * the import changes, and the look changes from a card to flat rows, which the author should see.
  */
 

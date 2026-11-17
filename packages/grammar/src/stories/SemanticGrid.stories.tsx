@@ -43,7 +43,7 @@ export const CentralFocus: Story = {
       <State label="One central focus with symmetric support" direction="column">
         <G.Grid kind="featured"
           leading={<Portion title="Included">A shared place for work, history and accountable decisions.</Portion>}
-          featured={<G.SurfaceCard kind="figures" label="Monthly membership" items={[{ id: 'price', term: 'Per workspace', value: 24, unit: 'credits', meta: 'One clear recurring amount' }]} />}
+          featured={<G.Section kind="figures" title="Monthly membership" items={[{ id: 'price', term: 'Per workspace', value: 24, unit: 'credits', meta: 'One clear recurring amount' }]} />}
           trailing={<Portion title="Your control">Review access and pause future renewals from the same workspace.</Portion>} />
       </State>
     </Matrix>

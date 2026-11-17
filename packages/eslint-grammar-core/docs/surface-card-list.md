@@ -13,8 +13,7 @@ Every rule below is an error in `coreGrammarConfig`; none can be switched off or
 
 A Grammar `SurfaceCard` whose `kind` is the literal `"list"` (message `list`). A `kind` that is not a literal is left to the compiler.
 
-There is no autofix: `label` becomes `title` and `labelEnd` becomes `action`, the card's zones have no list form (a filter or search
-is the list's `filter`; figures and a list together are a body card holding both), the import changes, and the look changes from a
+There is no autofix: `label` becomes `title` and `labelEnd` becomes `action`, a filter or search is the list's `filter`, the import changes, and the look changes from a
 card to flat rows.
 
 **Invalid**

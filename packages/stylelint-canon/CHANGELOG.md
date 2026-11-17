@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.9.6 - 2026-11-17
+
+- Changed (vocabulary): the theme hooks of @starci/grammar 0.45.0. `--starci-core-card-border`, `--starci-core-card-hover`, `--starci-core-card-active`, `--starci-core-table-selected`, `--starci-core-table-selected-foreground` and `--starci-core-pagination-current` are gone (their values are the Grammar defaults: a 1px `--border` card edge, neutral whole-card hover and press, a grey selected row, a grey current page), so brand.css may no longer set them (35 hooks); `starci/no-grammar-private-token` reports a brand.css that still does.
+
 ## 2.9.5 - 2026-11-17
 
 - Changed (fixture): the theme hooks of @starci/grammar 0.44.0 (`--starci-core-switch-track-off` falls back to the foreground at 28% over the surface). The hook names are unchanged, so the vocabulary is the same 41 hooks.
