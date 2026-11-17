@@ -61,5 +61,6 @@ the whole file and reads a section when it needs it: `starci contexts anchor <an
     - DISCIPLINE-1 Reduce before adding · `DISCIPLINE-1` · 1 KB — Every element names its job for the page's one job; an element with no job is removed, not made quieter.
     - DISCIPLINE-2 Numbers are the heroes of an overview · `DISCIPLINE-2` · 1 KB — Each lead figure is the largest text in its cell, at the leading-value rank in the default tone; its label is smaller and muted; its unit is lighter than the value; figures ...
     - DISCIPLINE-3 One signature moment per page · `DISCIPLINE-3` · 1 KB — The spec names the page's one signature moment: the brand art band where the brand record allows its mascot on this surface, otherwise one declared motif, otherwise none.
+    - DISCIPLINE-4 Generated images carry their provenance and show no real person or brand · `DISCIPLINE-4` · 1 KB — An AI-generated image lives in the app's statics folder (`statics/` at the repository root, project/statics.md) with a sibling `<name>.prompt.yaml` holding `prompt`, `model`, ...
   - 9. Coverage · `contexts/ui/composition.md#9-coverage` · 1 KB
     - COVERAGE-1 What the spec enumerates · `COVERAGE-1` · 1 KB

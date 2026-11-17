@@ -6,33 +6,49 @@ import { Link } from "../../leaf/Link/index.js"
 import { IconTile } from "../../leaf/IconTile/index.js"
 import type { IconSource } from "../../leaf/Icon/index.js"
 import { glyphSource } from "../../leaf/Icon/glyphs.js"
-import { Mascot, type MascotProps } from "../../leaf/Mascot/index.js"
+import { Illustration, type IllustrationCompact } from "../../leaf/Illustration/index.js"
+import type { AssetSlotProps, MediaSourceRef } from "../../leaf/Image/index.js"
 import { Text } from "../../leaf/Text/index.js"
 import { ErrorView } from "../../loadingState.js"
 import { useSurfaceHost } from "../../surfaceContext.js"
 import type { NoChildren } from "../../tier.js"
 
 /**
- * The art of a first-run notice: generated character art drawn through `Mascot` at the `md` step (the support row of
- * `mascot.choose.size`), tied to its asset slot. The step is the grammar's, so the slot takes the art and its
- * provenance only; `assetSlot` is required, the type holding what lint R338 holds on a written `Mascot`.
+ * The picture of a page-level state (a first visit, an empty page, a paywall, a 404, a 500): decorative art the app delivers
+ * as a statics key (or a resolved `src`), drawn by `Illustration` at the state step: 160px, 120px below 48rem. It is
+ * decorative (`aria-hidden`): the title says the state.
  */
-export type EmptyNoticeArtwork = Pick<MascotProps, "src" | "alt" | "loading" | "assetSha256" | "assetPrompt"> & {
-    readonly assetSlot: string
+export type EmptyNoticeIllustration = MediaSourceRef & AssetSlotProps & {
+    /** Another crop below 48rem, when the wide art does not survive a phone. */
+    readonly compact?: IllustrationCompact
+    readonly loading?: "lazy" | "eager"
 }
 
-/** The notice's one mark: a glyph for an ordinary empty or failed region, or the first-run artwork, never both. */
-type EmptyNoticeMark =
+/** The icon of an in-page state: a glyph in a soft brand-tone circle. */
+type EmptyNoticeIcon = { readonly icon: IconSource; readonly illustration?: never }
+
+/**
+ * The notice's one mark, by the scope of the state. A `region` (the default) is a state inside a page (an empty Section, a list or a
+ * table, a no-match after a filter, a panel): its mark is an `icon` and never art, so a working page carries no picture (DISCIPLINE-3). A
+ * `page` is the whole page's state: its mark is an `illustration`, or an `icon` when the app has no art. The type refuses
+ * `illustration` on a region, so the rule is held by the compiler.
+ */
+type EmptyNoticeMedia =
     | {
-        /** The app's glyph for the empty condition; without one the notice wears Grammar's `empty` tray, so a notice is never bare words. */
-        readonly iconSource?: IconSource
-        readonly artwork?: undefined
+        readonly scope?: "region"
+        /** The glyph of the condition; without one the notice wears Grammar's `empty` glyph, so a notice is never bare words. */
+        readonly media?: EmptyNoticeIcon
     }
     | {
-        readonly iconSource?: undefined
-        /** The first-run notice's character art (empty-state.choose.cause:first-run). */
-        readonly artwork: EmptyNoticeArtwork
+        readonly scope: "page"
+        readonly media?: EmptyNoticeIcon | { readonly illustration: EmptyNoticeIllustration; readonly icon?: never }
     }
+
+/** The one secondary action: a destination or a command, text only, never a second primary. */
+export type EmptyNoticeSecondary = { readonly label: string } & (
+    | { readonly href: string; readonly onPress?: never }
+    | { readonly onPress: () => void; readonly href?: never }
+)
 
 /** The action's weight and its start icon: only the primary action (`commit`, the default) may carry one (the button-icon rule). */
 type EmptyNoticeAction =
@@ -48,7 +64,7 @@ type EmptyNoticeAction =
         readonly actionStartContent?: never
     }
 
-export type EmptyNoticeProps = NoChildren & EmptyNoticeMark & EmptyNoticeAction & {
+export type EmptyNoticeProps = NoChildren & EmptyNoticeMedia & EmptyNoticeAction & {
     readonly message: string
     readonly description?: string
     readonly actionLabel?: string
@@ -61,6 +77,8 @@ export type EmptyNoticeProps = NoChildren & EmptyNoticeMark & EmptyNoticeAction 
     readonly actionEndArrow?: boolean
     readonly isActionPending?: boolean
     readonly onAction?: () => void
+    /** At most one secondary action beside the primary (a page-level state's "Try again" beside "Back home"). */
+    readonly secondary?: EmptyNoticeSecondary
     /** The read failed: the notice is a live alert with a warning mark, so a failure never reads as empty. The mark props are ignored. */
     readonly isError?: boolean
     /**
@@ -71,14 +89,16 @@ export type EmptyNoticeProps = NoChildren & EmptyNoticeMark & EmptyNoticeAction 
 }
 
 /**
- * Settled empty-region answer with an optional recovery action. Its mark is a glyph, or, on a page that has never
- * held content, the first-run artwork: a `Mascot` at `md` above the message (`data-grammar-empty-mark="artwork"`).
+ * The one empty state of the Grammar: a centred stack of media, title, description and actions (one primary and at most one
+ * secondary). Settled answer for a region with nothing, a page that has never held content, a no-match, or a page-level
+ * failure. `scope="page"` takes an illustration; every in-page state takes an icon.
  */
 export const EmptyNotice = ({
     message,
     description,
-    iconSource,
-    artwork,
+    scope = "region",
+    media,
+    secondary,
     actionLabel,
     actionHref,
     actionIntent = "commit",
@@ -99,26 +119,37 @@ export const EmptyNotice = ({
         data-tier="composite"
         data-component="EmptyNotice"
         data-contract="GAP-3 PADDING-4"
-        data-grammar-empty-mark={artwork === undefined ? "glyph" : "artwork"}
+        data-grammar-empty-scope={scope}
+        data-grammar-empty-mark={media?.illustration === undefined ? "icon" : "illustration"}
         {...(framed ? {} : { "data-grammar-empty-frame": "none" })}
         className="starci-core-empty-notice"
     >
-        {artwork === undefined ? null : <Mascot size="md" {...artwork} />}
-        {artwork === undefined ? <IconTile source={iconSource ?? glyphSource("empty")} tone="neutral" size="md" /> : null}
+        {media?.illustration === undefined ? <IconTile source={media?.icon ?? glyphSource("empty")} tone="accent" size="md" /> : <span className="starci-core-notice-art" data-grammar-notice-art="true"><Illustration {...media.illustration} ratio="1:1" fit="contain" /></span>}
         <div className="starci-core-notice-copy" data-contract="GAP-1">
             <Text size="sm" isStrong>{message}</Text>
             {description === undefined ? null : <Text size="sm" tone="muted">{description}</Text>}
         </div>
-        {actionLabel === undefined ? null : actionHref !== undefined ? (
-            <span className="starci-core-notice-link" data-grammar-notice-link="true"><Link variant="head" href={actionHref}>{actionLabel}</Link></span>
-        ) : (
-            <Button
-                {...(actionEndArrow ? { size: "sm" as const, intent: actionIntent, endArrow: true as const } : actionIntent === "commit" && actionStartContent !== undefined ? { size: "md" as const, intent: actionIntent, startContent: actionStartContent } : { size: "sm" as const, intent: actionIntent })}
-                isPending={isActionPending}
-                {...(onAction === undefined ? {} : { onPress: onAction })}
-            >
-                {actionLabel}
-            </Button>
+        {actionLabel === undefined && secondary === undefined ? null : (
+            <div className="starci-core-notice-actions" data-grammar-notice-actions="true">
+                {actionLabel === undefined ? null : actionHref !== undefined && scope === "page" ? (
+                    <Button size="md" intent={actionIntent} href={actionHref}>{actionLabel}</Button>
+                ) : actionHref !== undefined ? (
+                    <span className="starci-core-notice-link" data-grammar-notice-link="true"><Link variant="head" href={actionHref}>{actionLabel}</Link></span>
+                ) : (
+                    <Button
+                        {...(actionEndArrow ? { size: "sm" as const, intent: actionIntent, endArrow: true as const } : actionIntent === "commit" && actionStartContent !== undefined ? { size: "md" as const, intent: actionIntent, startContent: actionStartContent } : { size: scope === "page" ? "md" as const : "sm" as const, intent: actionIntent })}
+                        isPending={isActionPending}
+                        {...(onAction === undefined ? {} : { onPress: onAction })}
+                    >
+                        {actionLabel}
+                    </Button>
+                )}
+                {secondary === undefined ? null : secondary.href === undefined ? (
+                    <Button size={scope === "page" ? "md" : "sm"} intent="neutral" onPress={secondary.onPress}>{secondary.label}</Button>
+                ) : (
+                    <Button size={scope === "page" ? "md" : "sm"} intent="neutral" href={secondary.href}>{secondary.label}</Button>
+                )}
+            </div>
         )}
     </div>
 )

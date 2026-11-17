@@ -83,6 +83,9 @@ This table only routes a need to the page whose own Choose tables decide; it is 
 | a region with nothing in it yet, not ready until a setup step, or failed | [empty-state](empty-state.md) |
 | a compact identity beside a name | [identity-mark](identity-mark.md) |
 | show the product's generated character (mascot) art | [mascot](mascot.md) |
+| show a picture that carries content: a photo, a screenshot, an upload | [image](image.md) |
+| play a recording: MP4, WebM, an HLS or DASH stream | [video](video.md) |
+| draw decorative art: a hero, a marketing band, the picture of a page-level state | [illustration](illustration.md) |
 | divide a full-bleed area into flush panes with dividers, side by side and stacked (a list, a main column, an info rail), and place a pane's content at its one inset; mount a tabbed page of panes | [pane-grid](pane-grid.md) |
 | write one region by hand because no grammar component or composition fits (a last resort, with its reason) | [freestyle](freestyle.md) |
 | draw a diagram: an article's Mermaid source, or nodes and edges the app holds | [diagram](diagram.md) |

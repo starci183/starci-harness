@@ -214,6 +214,12 @@ concerns:
     pattern: FE-DIAGRAM
     forbids: []
     why: diagrams render through mermaid in a block.
+  - id: media
+    tier: opt
+    packages: [hls.js, dashjs]
+    home: [fe.components]
+    forbids: [video.js, shaka-player, react-player, plyr, '@vidstack/react']
+    why: the grammar's Video plays HLS through hls.js and MPEG-DASH through dash.js, each loaded by dynamic import only when a source needs it; apps never import a player.
   - id: upload
     tier: opt
     packages: [react-dropzone]

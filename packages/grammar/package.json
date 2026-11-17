@@ -70,6 +70,7 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "lint": "eslint --flag unstable_native_nodejs_ts_config . && stylelint \"src/**/*.css\"",
+    "prove-plays": "node scripts/run-plays.mts",
     "prove-render": "playwright test",
     "prove-render:accept": "playwright test --update-snapshots --grep-invert @approved",
     "prove-render:approve": "playwright test --update-snapshots --grep @approved"

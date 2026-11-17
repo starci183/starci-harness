@@ -127,6 +127,10 @@ wrappers:
         { kind: role, target: "core/branch/Rating/index.tsx:radiogroup", status: proposed, reason: "HeroUI ships no rating; the stars are one radio group, the platform pattern for one value from a closed set" } ] }
   - { file: core/leaf/SearchField/index.tsx, wraps: [SearchField, Spinner] }
   - { file: core/leaf/Skeleton/index.tsx, wraps: [Skeleton] }
+  - { file: core/leaf/Illustration/index.tsx, wraps: [Skeleton] }
+  - { file: core/leaf/Image/index.tsx, wraps: [Skeleton] }
+  - { file: core/leaf/Image/ImageLightbox.tsx, wraps: [Modal], delegates: { Modal: [CloseTrigger, Trigger, Header, Heading, Body, Footer] } }
+  - { file: core/leaf/Video/index.tsx, wraps: [Skeleton] }
   - { file: core/leaf/Slider/index.tsx, wraps: [Slider] }
   - { file: core/leaf/Spinner/index.tsx, wraps: [Spinner] }
   - { file: core/leaf/Switch/index.tsx, wraps: [Switch],

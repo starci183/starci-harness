@@ -14,7 +14,7 @@ Choice `mascot.choose.size`: which step the character takes. The first row that 
 | wizard | a step of the app's first-run wizard, beside or above its form (DISCIPLINE-3) | `md`, or `sm` when the step's form fills the region; never over a field, an error or an action | judgement |
 | split | a split screen gives the art its own half (a sign-in split) | `hero` in the `artwork` of the `EntryFrame` that gives it that half, `visibility` `wide` unless the art carries meaning the compact layout needs (`always`) | judgement |
 | lead | the art leads a one-task region with no form: a welcome, a finished task | `lg` | judgement |
-| support | the art accompanies a message inside a region: a first-run empty state (`EmptyNotice` `artwork`, drawn at this step by the grammar), a notice | `md` | judgement |
+| support | the art accompanies a message inside a region: a notice | `md` | judgement |
 | inline | the art sits beside a line or a compact row | `sm` | judgement |
 
 Choice `mascot.choose.meaning`: whether the character is named.

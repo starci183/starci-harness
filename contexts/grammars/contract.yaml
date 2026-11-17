@@ -348,15 +348,56 @@ roles:
     ui: ui/components/empty-state.md
     renderers: [EmptyNotice]
     vendorParity: [button]
-    slots: [message, description, "mark: iconSource or artwork (src, alt, assetSlot required, assetSha256, assetPrompt; drawn as Mascot md)", "action: label, pending"]
+    slots: [message, description, "media: icon (an in-page state) or illustration (scope page only: a statics key or src, optional compact crop, assetSlot, drawn by Illustration at the state step)", "actions: one primary (label, onAction or actionHref, pending) and at most one secondary (label, href or onPress)"]
     variants:
-      action: { values: [none, one], chosenBy: app when a real next step exists }
-      mark: { values: [none, glyph, artwork], chosenBy: "app by empty-state.choose.cause; artwork on the first-run row only" }
-    sizes: none
-    states: [action-pending]
+      scope: { values: [region, page], chosenBy: "app by empty-state.choose.scope: page for a whole-page state (first visit, empty page, paywall, 404, 500), region for every state inside a page", default: region, compiler: "the type allows an illustration on scope page only" }
+      media: { values: [icon, illustration], chosenBy: "the scope: icon always allowed, illustration on scope page" }
+      action: { values: [none, one, two], chosenBy: app when a real next step exists; the second is a secondary and never a second primary }
+    sizes: { values: { icon: the Icon tile md on the accent soft pair, in a circle, illustration: "--grammar-illustration-state 160px, --grammar-illustration-state-compact 120px below 48rem" } }
+    states: [action-pending, illustration loading, illustration failed (the stack stays)]
     grammarMayChange: [glyph and text paint]
-    dna: [DNA-COMMON-EMPTY-ONE-ACTION, DNA-COMMON-EMPTY-NOTICE-TOP]
-    provenance: "the artwork's assetSlot is a required field of EmptyNoticeArtwork (the compiler holds it; lint R338 holds it on a written Mascot)"
+    dna: [DNA-COMMON-EMPTY-ACTIONS, DNA-COMMON-EMPTY-NOTICE-TOP]
+    provenance: "an illustration carries the asset-slot props of Image (assetSlot, assetSha256, assetPrompt); lint R338 admits generated art through Illustration"
+
+  - id: image
+    ui: ui/components/image.md
+    renderers: [Image]
+    vendorParity: []                              # no HeroUI part: a native img in a reserved box
+    slots: ["source: src or staticsKey (exactly one)", "alt (required; empty only for decorative art)", "renditions: src or staticsKey with width or density, and sizes", caption, "zoom: openLabel, closeLabel", "provenance: assetSlot, assetSha256, assetPrompt"]
+    variants:
+      ratio: { values: ["1:1", "4:3", "3:4", "16:9", "9:16", "21:9", auto], chosenBy: app by image.choose.ratio, default: auto }
+      fit: { values: [cover, contain], chosenBy: app by image.choose.fit, default: cover }
+      loading: { values: [lazy, eager], chosenBy: "app: eager for the first screen only", default: lazy }
+    sizes: none
+    states: [loading (shimmer in the ready box), loaded, "error (a neutral glyph on the plate, the alt kept)", isLoading (the ready box under a shimmer), "zoom open (a lightbox)"]
+    grammarMayChange: [plate paint, glyph, radius from the theme token]
+
+  - id: video
+    ui: ui/components/video.md
+    renderers: [Video]
+    vendorParity: []                              # no HeroUI part: a native video; hls.js and dash.js are the Grammar's own dependencies, loaded by dynamic import
+    slots: ["title (the accessible name)", "sources: src or staticsKey with a type (video/mp4, video/webm, video/ogg, application/vnd.apple.mpegurl, application/x-mpegURL, application/dash+xml), in order of preference", "poster: src or staticsKey", "tracks: WebVTT captions or subtitles, label, srcLang, isDefault", labels]
+    variants:
+      ratio: { values: ["16:9", "9:16", "1:1"], chosenBy: app by video.choose.ratio, default: "16:9" }
+      playback: { values: [native, native-hls, hls.js, dash.js], chosenBy: "the grammar, from each source's type and the browser's capability; the first listed source that can play wins" }
+      autoPlay: { meaning: "muted and inline by construction, skipped under reduced motion", chosenBy: app by video.choose.behaviour }
+      loading: { values: [lazy, eager], meaning: { lazy: "no stream is requested until the box is within 200px of the viewport", eager: "attached at once" }, default: lazy }
+    sizes: none
+    states: [idle (the poster, nothing requested), loading (a shimmer over the poster), ready, "error (a notice in the box)", "unsupported (no listed source can play)", isLoading]
+    grammarMayChange: [plate paint, notice paint, radius from the theme token]
+
+  - id: illustration
+    ui: ui/components/illustration.md
+    renderers: [Illustration]
+    vendorParity: []                              # no HeroUI part: a native picture in a reserved box
+    slots: ["source: src or staticsKey (exactly one)", "alt (decorative by default: empty and aria-hidden)", "compact: a source of the same kinds and its own ratio, drawn below 48rem", "provenance: assetSlot, assetSha256, assetPrompt"]
+    variants:
+      ratio: { values: ["1:1", "4:3", "3:4", "16:9", "9:16", "21:9", fill], chosenBy: app by illustration.choose.ratio, default: "4:3" }
+      fit: { values: [cover, contain], chosenBy: app, default: cover }
+      meaning: { values: ["decorative (alt empty, aria-hidden)", "meaningful (a non-empty alt names it)"], chosenBy: app by illustration.choose.meaning, default: decorative }
+    sizes: none
+    states: [loading (shimmer), loaded, "error (the plate, no mark)", isLoading]
+    grammarMayChange: [plate paint, radius from the theme token]
 
   - id: avatar
     ui: ui/components/identity-mark.md
@@ -1078,10 +1119,10 @@ mustKeep:
       law: "An informative alert dialog is neutral: its icon tile is --default-soft with --default-soft-foreground (unless the app writes --informative-soft), never the accent pair."
       measure: { kind: style, select: '.starci-core-alert-dialog[data-grammar-tone="informative"] .starci-core-alert-dialog-icon', checks: [{ metric: background-color, op: "=", value: { token: --default-soft } }, { metric: color, op: "=", value: { token: --default-soft-foreground } }] }
       owner: contract roles.dialog
-    - id: DNA-COMMON-EMPTY-ONE-ACTION
+    - id: DNA-COMMON-EMPTY-ACTIONS
       role: empty-state
-      law: An empty notice holds at most one action.
-      measure: { kind: count, scope: '[data-component="EmptyNotice"]', select: ':is([data-component="Button"],[data-component="TextAction"])', op: "<=", value: 1 }
+      law: An empty notice holds at most two actions, one primary and one secondary.
+      measure: { kind: count, scope: '[data-component="EmptyNotice"]', select: ':is([data-component="Button"],[data-component="TextAction"])', op: "<=", value: 2 }
       owner: contract roles.empty-state
     - id: DNA-COMMON-PANE-HEADER-TOUCH-HEIGHT
       role: pane-grid

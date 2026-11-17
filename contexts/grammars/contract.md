@@ -362,11 +362,38 @@ corner on the author's side tightens to point at the avatar. An app never restyl
 
 ### EmptyState
 
-An empty state is a region with nothing to show, or whose read failed: one message in the region's place inside
-the unchanged surface, and one action only when a real next step exists. Its one mark is a glyph or, for a page
-that has never held content, the artwork: generated character art the grammar draws as the `Mascot` at `md`, with
-the asset slot it was requested under as a required field, so a first-run notice is the same size and as traceable
-as every other mascot.
+An empty state is the one answer for a region or a page with nothing to show, a no-match, or a failure: a centred stack of media, a
+title, a description and actions, in the place of what is missing inside the unchanged surface. The actions are one primary and at most one
+secondary, and only when a real next step exists. The media follows the scope of the state. A state inside a page (`scope="region"`, the
+default) takes an icon on a soft brand-tone circle (the accent soft pair). A state of the whole page (`scope="page"`: a first visit, an empty
+page, a paywall, a 404, a 500) takes an `illustration`, drawn by Illustration at the state step (160px, 120px below 48rem), decorative and
+tied to its asset slot; the type refuses an illustration on a region, so a working page carries no art. The loading of its illustration never
+changes the stack's size, and a failed file keeps the stack and its actions.
+
+### Image
+
+An image is one picture that carries content, in a box that claims its ratio before the bytes arrive. Its `alt` is required (empty only
+for decorative art); its `ratio` is one of 1:1, 4:3, 3:4, 16:9, 9:16, 21:9 or auto; its renditions become `srcset` and `sizes`; it is lazy and
+async-decoded by default; a shimmer stands in the box while it loads and a neutral glyph on the plate when it fails; a caption makes it a
+figure, and `zoom` opens it in a lightbox on the Grammar's overlay mechanics. The corner is the theme's one radius. The file is a `src`
+or a `staticsKey` resolved by the nearest `StaticsProvider` (an app's statics, addressed by key, never by host); a raw `img` is refused
+(R436).
+
+### Video
+
+A video is one element for every recording: MP4 and WebM natively, HLS natively where the platform reads it and through hls.js elsewhere,
+and MPEG-DASH through dash.js. Its `sources` are listed in order of preference and the first one the browser can play is loaded; the player
+libraries are the Grammar's own dependencies, imported dynamically only when a source needs them and never fetched from a CDN. The box claims
+its ratio (16:9, 9:16 or 1:1), shows the poster, requests no stream until it nears the viewport, and ends in an in-place notice when the stream
+fails or nothing listed can play. Captions and subtitles are WebVTT `tracks`. `autoPlay` is muted and inline and does nothing under reduced
+motion. A raw `video` is refused (R436).
+
+### Illustration
+
+An illustration is decorative art for a hero, a marketing band or a page-level state: it says nothing the words beside it do not and is hidden
+from assistive technology unless its `alt` names it. It claims a ratio (or fills its host), and below 48rem a `compact` source and ratio may
+replace the wide crop (art direction through `picture`). Its states are a shimmer while it loads and the bare plate when it fails. Generated art
+reaches the page through `Mascot`, `Illustration` or a `MediaFrame` (R338). A raw `picture` is refused (R436).
 
 ### Avatar
 

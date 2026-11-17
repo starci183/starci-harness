@@ -82,6 +82,7 @@
         --grammar-mascot-hero-max: 30rem;
         /* The Illustration of a state (EmptyState scope page): 160px, 120px below 48rem. */
         --grammar-illustration-state: 10rem;
+        --grammar-illustration-state-compact: 7.5rem;
         /* The accent corner: the one logical corner a SurfaceCard or MediaFrame names in `accentCorner`. */
         --grammar-accent-corner: 2.5rem;
         min-width: 0;

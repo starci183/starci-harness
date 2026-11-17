@@ -29,4 +29,4 @@ Choice `data-views.choose.state`: how a view answers while it is not ready. The 
 | --- | --- | --- | --- |
 | loading | the first read has no data | `isLoading` on the view (or its band): the columns, headings and labels given stay real and the entries draw as geometry | story `navigation-data-data-views--*` |
 | error | the read failed | the `error` slot: the view's place shows the failure with its retry | story `navigation-data-data-views--*` |
-| empty | the read finished with nothing | the `empty` slot, one action at most ([empty-state](empty-state.md)) | `DNA-COMMON-EMPTY-ONE-ACTION` |
+| empty | the read finished with nothing | the `empty` slot, one action at most ([empty-state](empty-state.md)) | `DNA-COMMON-EMPTY-ACTIONS` |

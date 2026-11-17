@@ -151,7 +151,8 @@ export const MediaStaticsKey: Story = {
     await waitFor(() => expect(boxOf(canvasElement, '[data-component="Image"] img').getAttribute('src')).toBe('/media/photo-960.svg'));
     expect(boxOf(canvasElement, '[data-component="Illustration"] img').getAttribute('src')).toBe('/media/art-square.svg');
     expect(boxOf(canvasElement, 'video').getAttribute('poster')).toBe('/media/poster.svg');
-    expect(G.staticsUrl('/media/', 'a/b c.png')).toBe('/media/a/b%20c.png');
+    expect(G.staticsUrl('/media/', 'a/b.png')).toBe('/media/a/b.png');
+    expect(G.staticsUrl('/media/', 'a/b c.png')).toBeNull();
     expect(G.staticsUrl('/media', '../secret')).toBeNull();
     expect(G.staticsUrl('/media', 'https://host/x.png')).toBeNull();
   },

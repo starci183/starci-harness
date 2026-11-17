@@ -566,17 +566,18 @@ export const EmptyNotice: Story = {
         <G.EmptyNotice message="No items yet." />
       </State>
       <State label="With icon and action" direction="column">
-        <G.EmptyNotice message="No saved items." description="Save an item to find it here." iconSource={BookGlyph} actionLabel="Browse items" actionStartContent={<G.Icon source={PlusGlyph} usage="leading" />} onAction={noop} />
+        <G.EmptyNotice message="No saved items." description="Save an item to find it here." media={{ icon: BookGlyph }} actionLabel="Browse items" actionStartContent={<G.Icon source={PlusGlyph} usage="leading" />} onAction={noop} />
       </State>
       <State label="Action pending" direction="column">
         <G.EmptyNotice message="Nothing to import." actionLabel="Refresh" isActionPending onAction={noop} />
       </State>
-      <State label="First run (artwork: the mascot at md, tied to its asset slot)" direction="column">
+      <State label="Page state (scope page: an illustration at the state step, tied to its asset slot)" direction="column">
         <div data-story-empty="first-run">
           <G.EmptyNotice
+            scope="page"
             message="Your workspace is ready."
             description="Add your first channel to start receiving conversations."
-            artwork={{ src: turtleUrl, loading: 'eager', assetSlot: 'story.first-run-mascot' }}
+            media={{ illustration: { src: turtleUrl, loading: 'eager', assetSlot: 'story.first-run-art' } }}
             actionLabel="Add a channel"
             onAction={noop}
           />

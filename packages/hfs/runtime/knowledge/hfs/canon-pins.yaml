@@ -567,6 +567,16 @@ pins:
     group: ui
     side: fe
     why: 'runtime dependency of @starci/grammar for MermaidDiagram (fe-stack diagrams), imported lazily on the first diagram and themed from the grammar root; apps render diagrams through MermaidDiagram and never import mermaid.'
+  'hls.js':
+    version: 1.7.4
+    group: ui
+    side: fe
+    why: 'runtime dependency of @starci/grammar for Video (HLS where the platform has no native playback), imported dynamically on the first stream that needs it; apps render video through Video and never import hls.js.'
+  'dashjs':
+    version: 5.3.0
+    group: ui
+    side: fe
+    why: 'runtime dependency of @starci/grammar for Video (MPEG-DASH), imported dynamically on the first stream that needs it; apps render video through Video and never import dashjs.'
   'mdast-util-from-markdown':
     version: 2.1.0
     group: ui

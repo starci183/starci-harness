@@ -197,4 +197,36 @@
     @media (forced-colors: active) {
         .starci-core-image-zoom:focus-visible { outline-color: Highlight; }
     }
+
+    /* ---------- EmptyNotice: the media and the actions of the one empty state ---------- */
+    /* An in-page state wears its icon on a soft brand-tone circle (the accent soft pair, which IconTile paints). */
+    .starci-core-empty-notice > .starci-core-icon-tile { border-radius: var(--grammar-radius-pill); }
+
+    /* A page-level state wears an Illustration at the state step: 160px at 1440, 120px below 48rem. */
+    .starci-core-notice-art {
+        display: block;
+        flex: none;
+        inline-size: var(--grammar-illustration-state);
+        max-inline-size: 100%;
+    }
+
+    .starci-core-notice-art > .starci-core-illustration { background: transparent; }
+
+    /* A page-level state fills the page's own height and centres its stack in it. */
+    .starci-core-empty-notice[data-grammar-empty-scope="page"] {
+        min-block-size: 70dvh;
+        justify-content: center;
+    }
+
+    .starci-core-notice-actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: var(--grammar-row-gap);
+    }
+
+    @media (max-width: 47.999rem) {
+        .starci-core-notice-art { inline-size: var(--grammar-illustration-state-compact); }
+    }
 }
