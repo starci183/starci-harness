@@ -41,6 +41,7 @@ const ControlRow = () => {
 
 /** The default height of every control in one row, light and dark, with the 40px each draws asserted. */
 export const OneRowAllAtForty: Story = {
+  parameters: { grammar: { catalog: true } },
     render: (_, { globals }) => (
         <Matrix>
             {(["light", "dark"] as const).map((theme) => (
@@ -98,6 +99,7 @@ const fillHeights = (canvasElement: HTMLElement) => {
  * vendor's 36px desktop md; sm and lg keep 32px and 48px; only a label that wraps grows the box.
  */
 export const FillWidthAtForty: Story = {
+  parameters: { grammar: { catalog: true } },
     render: (_, { globals }) => (
         <G.GrammarRoot {...familyScope(globals)}>
             <Matrix maxWidth={420}>

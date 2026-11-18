@@ -41,6 +41,7 @@ const IntentMatrix = ({ scope, theme }: { readonly scope: { readonly "data-gramm
 
 /** Every intent in decision, item and chrome, with both theme scopes visible together. */
 export const EveryPlacement: Story = {
+  parameters: { grammar: { catalog: true } },
     render: (_, { globals }) => (
         <Matrix>
             <IntentMatrix scope={familyScope(globals)} theme="light" />
@@ -59,6 +60,7 @@ export const DestructiveConfirmation: Story = {
 }
 
 export const DestinationAndStates: Story = {
+  parameters: { grammar: { catalog: true } },
     render: () => (
         <Matrix>
             <State label="Destinations follow the same intent"><G.Button intent="commit" href="#next">Continue</G.Button><G.Button intent="dismiss" href="#back">Back</G.Button></State>

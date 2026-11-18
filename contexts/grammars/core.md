@@ -14,8 +14,8 @@ scoped rules `src/core/styles.css`, root `CoreGrammarRoot` (`src/core/index.ts`)
 
 - **One violet, as a fill.** The accent fills the commit and draws the focus ring, with white text on it. The
   same violet is too dark to read as text on the dark canvas and a hair too light on the secondary surface, so
-  every place Common paints the accent as text (links, the current tab, the section eyebrow, the soft accent
-  pairing) reads `--accent-soft-foreground` instead. `--accent-soft` is the selected tint that both that foreground and
+  every place Common paints the accent as text (the current tab, the section eyebrow, the soft accent
+  pairing) reads `--accent-soft-foreground` instead; a text Link is the exception, the exact brand `--accent` underlined (owner overrule of P2, 2026-11-05). `--accent-soft` is the selected tint that both that foreground and
   `muted` stay legible on. Every pair the default palette combines clears AA in light and dark; an app that sets its
   own tokens owns its contrast.
 - **Neutral page, white surfaces.** The canvas is a near-white neutral and surfaces are white, so content and

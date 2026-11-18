@@ -114,7 +114,7 @@ const dnaProblems = (scope: Element): string[] => {
  * and the 40px controls (Input, Select, Button) inside it.
  */
 export const FloatingCard: Story = {
-  parameters: { grammar: { bleed: false } },
+  parameters: { grammar: { bleed: false, catalog: true } },
   render: (_, { globals }) => (
     <Matrix>
       {(['light', 'dark'] as const).map((theme) => (

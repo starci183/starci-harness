@@ -26,6 +26,7 @@ const Replay = ({ shape = "rounded", isBlock = false }: { readonly shape?: G.Spo
 }
 
 export const SpotlightStates: Story = {
+  parameters: { grammar: { catalog: true } },
   render: () => (
     <Matrix>
       <State label="Active: an accent ring with a soft pulse for 3s, then it settles and calls onEnd (press to replay)">

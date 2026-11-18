@@ -47,6 +47,8 @@ type GrammarParameters = {
   readonly rootStyle?: CSSProperties;
   /** Minimum root height for overlay stories whose surface is portalled and positioned. */
   readonly minHeight?: string;
+  /** The story is a catalog of variants side by side (every size, every placement), not one view: `DNA-COMMON-ONE-ACCENT-FILL` counts the commit fill per view and does not count a catalog. */
+  readonly catalog?: boolean;
 };
 
 /**
@@ -86,6 +88,7 @@ const withGrammarRoot: Decorator = (Story, context) => {
       <Root
         theme={theme}
         data-grammar-storybook-root="true"
+        {...(grammar.catalog === true ? { 'data-story-catalog': 'true' } : {})}
         style={{
           minHeight: isDocs ? grammar.minHeight : grammar.minHeight ?? '100vh',
           padding: grammar.bleed === true ? 0 : 'var(--grammar-page-inset, 1.5rem)',

@@ -330,7 +330,7 @@ const LinkOn = ({ ground, label }: { readonly ground: string; readonly label: st
     </div>
 )
 
-/** A text link is the accent as text, underlined, on every ground (DNA-COMMON-LINK-ACCENT-TEXT). */
+/** A text link is the accent as text, underlined, on every ground (DNA-CORE-LINK-ACCENT-TEXT). */
 export const LinkAccentOnEveryGround: Story = {
     render: () => (
         <Matrix maxWidth={420}>

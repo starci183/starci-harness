@@ -280,13 +280,16 @@ export class HeadlessPage {
     }
 
     /** Evaluates an expression in the page, awaiting a promise, and returns its value as JSON. */
-    public async evaluate(expression: string): Promise<unknown> {
+    public async evaluate(expression: string, retried = false): Promise<unknown> {
         const answer = (await this.call("Runtime.evaluate", { expression, awaitPromise: true, returnByValue: true })) as {
             result?: { value?: unknown }
             exceptionDetails?: { text?: string; exception?: { description?: string } }
         }
         if (answer.exceptionDetails !== undefined) {
-            throw new Refusal("DNA_PAGE_SCRIPT", answer.exceptionDetails.exception?.description ?? answer.exceptionDetails.text ?? "the page script threw")
+            const description = answer.exceptionDetails.exception?.description ?? answer.exceptionDetails.text ?? "the page script threw"
+            // The check's own scripts are fixed text: a SyntaxError or ReferenceError from one is a garbled transfer (seen as "Unexpected identifier" and "nu?l is not defined" on a few pages of a long run), never the page, so the same call is sent once more.
+            if (!retried && (description.startsWith("SyntaxError") || description.startsWith("ReferenceError"))) return this.evaluate(expression, true)
+            throw new Refusal("DNA_PAGE_SCRIPT", description)
         }
         return answer.result?.value
     }

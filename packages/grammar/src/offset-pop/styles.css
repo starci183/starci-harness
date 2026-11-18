@@ -28,6 +28,7 @@
         --offset-pop-row-gap: var(--grammar-row-gap);
         --offset-pop-surface-radius: calc(var(--radius) * 1.5);
         --offset-pop-control-radius: var(--radius);
+        --grammar-button-radius: var(--offset-pop-control-radius);
         --offset-pop-pill-radius: 999px;
         --offset-pop-motion-duration: 140ms;
         --offset-pop-motion-easing: cubic-bezier(.2, .8, .2, 1);

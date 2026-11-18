@@ -85,6 +85,7 @@ export const PageState: Story = {
 
 /** A page-level state with no art falls back to the icon; a failed illustration keeps the stack and the actions. */
 export const PageStateWithoutArt: Story = {
+  parameters: { grammar: { catalog: true } },
   render: () => (
     <Matrix maxWidth={560}>
       <State label="scope page, an icon" direction="column">
