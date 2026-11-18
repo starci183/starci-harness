@@ -448,15 +448,15 @@ roles:
 
   - id: data-views
     ui: ui/components/data-views.md
-    renderers: [Board, ScheduleGrid, BarChart, ProportionBar, IntervalChart, FunnelChart]
+    renderers: [Board, ScheduleGrid, BarChart, ProportionBar, IntervalChart, FunnelChart, Legend, GeoMap]
     vendorParity: []                              # no HeroUI part: Common regions built from the card, the table and the scroll region
-    slots: ["Board: label, columns (id, title, count, items as list rows, empty)", "ScheduleGrid: label, columns, rows, items placed by row and column (title, meta, tone, onPress), cellLabels, empty", "BarChart: label, bars (id, label, value, valueLabel), empty", "ProportionBar: label, parts (id, label, value, valueLabel, tone), empty", "IntervalChart: label, rows (label, low, high, point, tone, isReference, valueLabel), empty, format", "FunnelChart: label, stages (label, count, value, tone, stepLabel), empty, format", "every view: isLoading, error (message, description, actionLabel, onAction)"]
+    slots: ["Board: label, columns (id, title, count, items as list rows, empty)", "ScheduleGrid: label, columns (todayAt), rows (isGroup, isCollapsed, parent), items placed by row and column (title, meta, tone, endColumn, progress, form, after, resize, onPress), cellLabels, empty, onDrop (source grid or outside), onCellPress, onRowToggle; startScheduleDrag for a list beside it", "BarChart: label, bars (id, label, value, valueLabel), empty", "ProportionBar: label, parts (id, label, value, valueLabel, tone), empty", "IntervalChart: label, rows (label, low, high, point, tone, isReference, valueLabel), empty, format", "FunnelChart: label, stages (label, count, value, tone, stepLabel), empty, format", "Legend: label, items (id, label, tone, form)", "GeoMap: label, points (id, lat, lng, count, label), labels, tiles (url, attribution, maxZoom), empty, height, defaultView, onSelect", "every view: isLoading, error (message, description, actionLabel, onAction)"]
     variants:
-      tone: { values: [neutral, accent, success, warning, danger], chosenBy: app from the entry's state (ScheduleGrid items) }
+      tone: { values: [neutral, accent, success, warning, danger], chosenBy: app from the entry's state (ScheduleGrid items, Legend items) }
     sizes: none
     states: [ready, loading, empty, error]
     grammarMayChange: [column width, bar width, tone paint through tokens]
-    dna: [DNA-COMMON-BOARD-ONE-WIDTH, DNA-COMMON-SCHEDULE-HEADINGS, DNA-COMMON-BAR-CHART-ONE-SCALE, DNA-COMMON-INTERVAL-CHART-ONE-SCALE, DNA-COMMON-INTERVAL-CHART-REFERENCE-ONE-LINE, DNA-COMMON-INTERVAL-CHART-STACKS-NARROW, DNA-COMMON-FUNNEL-CHART-ONE-SCALE, DNA-COMMON-FUNNEL-CHART-ONE-START, DNA-COMMON-FUNNEL-CHART-STACKS-NARROW]
+    dna: [DNA-COMMON-BOARD-ONE-WIDTH, DNA-COMMON-SCHEDULE-HEADINGS, DNA-COMMON-BAR-CHART-ONE-SCALE, DNA-COMMON-INTERVAL-CHART-ONE-SCALE, DNA-COMMON-INTERVAL-CHART-REFERENCE-ONE-LINE, DNA-COMMON-INTERVAL-CHART-STACKS-NARROW, DNA-COMMON-FUNNEL-CHART-ONE-SCALE, DNA-COMMON-FUNNEL-CHART-ONE-START, DNA-COMMON-FUNNEL-CHART-STACKS-NARROW, DNA-COMMON-LEGEND-ONE-MARK-SIZE, DNA-COMMON-SCHEDULE-SPAN-STARTS-IN-ITS-CELL, DNA-COMMON-SCHEDULE-SPAN-ENDS-IN-ITS-CELL]
 
   - id: freestyle
     ui: ui/components/freestyle.md
@@ -1426,6 +1426,21 @@ mustKeep:
       role: data-views
       law: On a phone the label of a funnel stage sits above its bar, so the bar keeps the full width of the stage.
       measure: { kind: relation, context: { viewport: 375x812 }, select: '[data-component="FunnelChart"] .starci-core-funnel-label', metric: bottom, op: "<=", ref: { within: '.starci-core-funnel-stage', select: '.starci-core-funnel-track', metric: top } }
+      owner: contract roles.data-views
+    - id: DNA-COMMON-LEGEND-ONE-MARK-SIZE
+      role: data-views
+      law: The marks of one legend that are bars share one size, so a tone reads as the same key whichever words follow it.
+      measure: { kind: uniform, scope: '[data-component="Legend"]', select: '.starci-core-legend-mark:not([data-grammar-form="milestone"])', metric: [width, height], op: "=" }
+      owner: contract roles.data-views
+    - id: DNA-COMMON-SCHEDULE-SPAN-STARTS-IN-ITS-CELL
+      role: data-views
+      law: A schedule entry that crosses columns is one cell over them, and its bar starts inside that cell, on the edge of its first column.
+      measure: { kind: relation, select: '[data-component="ScheduleGrid"] td[data-grammar-span="true"] > [data-schedule-item-id]', metric: [left, top], op: ">=", tolerance: 1, ref: { within: 'td[data-grammar-span="true"]', select: self, metric: [left, top] } }
+      owner: contract roles.data-views
+    - id: DNA-COMMON-SCHEDULE-SPAN-ENDS-IN-ITS-CELL
+      role: data-views
+      law: The bar of a spanning schedule entry ends inside its cell, so it never runs over the column after its last.
+      measure: { kind: relation, select: '[data-component="ScheduleGrid"] td[data-grammar-span="true"] > [data-schedule-item-id]', metric: [right, bottom], op: "<=", tolerance: 1, ref: { within: 'td[data-grammar-span="true"]', select: self, metric: [right, bottom] } }
       owner: contract roles.data-views
     - id: DNA-COMMON-AVATAR-GROUP-ONE-SIZE
       role: avatar

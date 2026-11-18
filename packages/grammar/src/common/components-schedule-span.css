@@ -1,0 +1,150 @@
+/*
+ * Common anatomy for the ScheduleGrid timeline forms: a span crosses columns as one colspan cell, a progress fill runs inside the
+ * bar, a milestone is a diamond, a group row folds the rows under it, handles sit on both ends of a bar, and an overlay draws the
+ * dependency arrows and the line for now over the table. Every colour is a tone pair: `x-soft` on the ground, `x` on the mark.
+ * Below 48rem of the grid's own width the table is an agenda and the overlay and the pointer handles step aside.
+ */
+@layer starci-grammar-common {
+    .starci-core-schedule .starci-core-schedule-plane { position: relative; width: 100%; min-width: 40rem; }
+
+    .starci-core-schedule-item { position: relative; overflow: hidden; }
+    .starci-core-schedule-item[data-grammar-tone="accent"] { --starci-core-schedule-mark: var(--accent); }
+    .starci-core-schedule-item[data-grammar-tone="success"] { --starci-core-schedule-mark: var(--success); }
+    .starci-core-schedule-item[data-grammar-tone="warning"] { --starci-core-schedule-mark: var(--warning); }
+    .starci-core-schedule-item[data-grammar-tone="danger"] { --starci-core-schedule-mark: var(--danger); }
+    .starci-core-schedule-item:not([data-grammar-tone="accent"], [data-grammar-tone="success"], [data-grammar-tone="warning"], [data-grammar-tone="danger"]) { --starci-core-schedule-mark: var(--muted); }
+
+    .starci-core-schedule-item-title,
+    .starci-core-schedule-item-meta,
+    .starci-core-schedule-item-why { position: relative; }
+
+    .starci-core-schedule-progress {
+        position: absolute;
+        inset-block: 0;
+        inset-inline-start: 0;
+        background: color-mix(in oklab, var(--starci-core-schedule-mark) 30%, transparent);
+        border-inline-end: 2px solid var(--starci-core-schedule-mark);
+        pointer-events: none;
+    }
+
+    /* A milestone: a diamond and its words, no bar. */
+    .starci-core-schedule-item[data-grammar-form="milestone"][data-grammar-tone] {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        column-gap: var(--grammar-inline-gap);
+        align-items: center;
+        background: transparent;
+        color: var(--foreground);
+    }
+
+    .starci-core-schedule-item[data-grammar-form="milestone"]::before {
+        content: "";
+        grid-row: 1 / span 2;
+        inline-size: 0.75rem;
+        block-size: 0.75rem;
+        background: var(--starci-core-schedule-mark);
+        transform: rotate(45deg);
+    }
+
+    .starci-core-schedule-item[data-grammar-form="milestone"] > .starci-core-schedule-item-title,
+    .starci-core-schedule-item[data-grammar-form="milestone"] > .starci-core-schedule-item-meta,
+    .starci-core-schedule-item[data-grammar-form="milestone"] > .starci-core-schedule-item-why { grid-column: 2; }
+
+    /* A span is one cell over several columns; the bar fills it. */
+    .starci-core-schedule-cell[data-grammar-span="true"] > .starci-core-schedule-item,
+    .starci-core-schedule-cell[data-grammar-span="true"] > .starci-core-schedule-item-slot,
+    .starci-core-schedule-cell[data-grammar-span="true"] > .starci-core-schedule-resizable { margin-block-end: 0; }
+
+    .starci-core-schedule-cell > .starci-core-schedule-resizable { position: relative; z-index: 1; display: block; }
+
+    /* A group row: its label folds the rows under it. */
+    .starci-core-schedule-row-label[data-grammar-group="true"] { color: var(--foreground); font-weight: var(--grammar-weight-semibold); }
+    .starci-core-schedule-row-label[data-grammar-depth="1"] { padding-inline-start: calc(var(--grammar-inset-nested) + var(--grammar-inset-card)); }
+    .starci-core-schedule-row-label[data-grammar-depth="2"] { padding-inline-start: calc(var(--grammar-inset-nested) + var(--grammar-inset-card) * 2); }
+    .starci-core-schedule-row-label[data-grammar-depth="3"] { padding-inline-start: calc(var(--grammar-inset-nested) + var(--grammar-inset-card) * 3); }
+
+    .starci-core-schedule-group-toggle {
+        display: inline-flex;
+        min-block-size: var(--grammar-touch-size);
+        max-inline-size: 100%;
+        align-items: center;
+        gap: var(--grammar-identity-gap);
+        margin: 0;
+        padding: 0;
+        border: 0;
+        background: none;
+        color: inherit;
+        cursor: pointer;
+        font: inherit;
+        text-align: start;
+    }
+
+    .starci-core-schedule-group-toggle:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+    .starci-core-schedule-group-chevron { flex: none; inline-size: 1rem; block-size: 1rem; }
+    .starci-core-schedule-group-chevron[data-grammar-collapsed="true"] { transform: rotate(-90deg); }
+    .starci-core-schedule-group-label { min-width: 0; overflow-wrap: anywhere; }
+
+    /* The handles: a grip on each end of a bar, there on hover, focus and drag, and always on a touch screen. */
+    .starci-core-schedule-handle {
+        position: absolute;
+        inset-block: 0;
+        z-index: 2;
+        inline-size: 0.75rem;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        cursor: ew-resize;
+        opacity: 0;
+        touch-action: none;
+    }
+
+    .starci-core-schedule-handle[data-grammar-edge="start"] { inset-inline-start: 0; }
+    .starci-core-schedule-handle[data-grammar-edge="end"] { inset-inline-end: 0; }
+
+    .starci-core-schedule-handle::before {
+        content: "";
+        position: absolute;
+        inset-block: 25%;
+        inset-inline: 0.25rem;
+        border-radius: var(--grammar-radius-pill);
+        background: var(--foreground);
+        opacity: var(--grammar-opacity-faded);
+    }
+
+    .starci-core-schedule-resizable:hover > .starci-core-schedule-handle,
+    .starci-core-schedule-resizable:focus-within > .starci-core-schedule-handle,
+    .starci-core-schedule-handle[data-grammar-active="true"] { opacity: 1; }
+    .starci-core-schedule-handle:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+
+    /* A finger: the handles show only on the entry that is picked, as wide as a touch target. */
+    @media (pointer: coarse) {
+        .starci-core-schedule-handle { inline-size: var(--grammar-touch-size); pointer-events: none; }
+        .starci-core-schedule-resizable:has(> .starci-core-schedule-item-slot > [data-grammar-selected="true"], > [data-grammar-selected="true"]) > .starci-core-schedule-handle { opacity: 1; pointer-events: auto; }
+    }
+
+    .starci-core-schedule-item[data-grammar-resizing="true"] { outline: 2px dashed var(--accent); outline-offset: 1px; }
+    .starci-core-schedule-column[data-grammar-resize-target="true"] { box-shadow: inset 0 calc(-1 * var(--grammar-ring-width)) 0 var(--accent); }
+
+    /* The overlay: arrows between bars and the line for now, over the table and out of the way of the pointer. */
+    .starci-core-schedule-overlay {
+        position: absolute;
+        inset-block-start: 0;
+        inset-inline-start: 0;
+        overflow: visible;
+        color: var(--muted);
+        pointer-events: none;
+    }
+
+    .starci-core-schedule-arrow { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linejoin: round; }
+    .starci-core-schedule-arrowhead { fill: currentColor; }
+    .starci-core-schedule-today { stroke: var(--accent); stroke-width: 2; }
+
+    @container starci-core-schedule (max-width: 47.999rem) {
+        .starci-core-schedule .starci-core-schedule-plane { min-width: 0; }
+        .starci-core-schedule-overlay { display: none; }
+        .starci-core-schedule-table tr[data-grammar-lane]:not([data-grammar-lane="0"]) { padding-block-start: 0; border-block-start: 0; }
+        .starci-core-schedule-handle { opacity: 0; pointer-events: none; }
+        .starci-core-schedule-resizable:focus-within > .starci-core-schedule-handle { opacity: 1; }
+    }
+}

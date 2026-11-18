@@ -6,6 +6,9 @@
 @import "./components-navigation.css";
 @import "./components-media.css";
 @import "./components-interval-chart.css";
+@import "./components-legend.css";
+@import "./components-geo-map.css";
+@import "./components-schedule-span.css";
 @import "./components-funnel-chart.css";
 @import "./components-list-panel.css";
 @import "./components-avatar-group.css";

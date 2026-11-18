@@ -1,0 +1,51 @@
+/*
+ * Common anatomy for Legend: a mark then its words, in one wrapping line. The mark is the tone's `x-soft` ground with the tone `x`
+ * as its edge, the pair a ScheduleGrid bar draws, so a key and the entry it explains read as one. A milestone mark is the same
+ * square turned into a diamond.
+ */
+@layer starci-grammar-common {
+    .starci-core-legend {
+        display: flex;
+        min-width: 0;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--grammar-identity-gap) var(--grammar-inset);
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .starci-core-legend-item {
+        display: inline-flex;
+        min-width: 0;
+        align-items: center;
+        gap: var(--grammar-identity-gap);
+        color: var(--foreground);
+        font-size: var(--grammar-text-md);
+        line-height: var(--grammar-leading-md);
+    }
+
+    .starci-core-legend-mark {
+        box-sizing: border-box;
+        flex: none;
+        inline-size: 1rem;
+        block-size: 0.75rem;
+        border: 0.125rem solid var(--muted);
+        border-radius: var(--grammar-radius-sm);
+        background: var(--default);
+    }
+
+    .starci-core-legend-mark[data-grammar-form="milestone"] {
+        inline-size: 0.75rem;
+        transform: rotate(45deg) scale(0.85);
+        border-radius: var(--grammar-radius-sm);
+    }
+
+    .starci-core-legend-mark[data-grammar-tone="accent"] { border-color: var(--accent); background: var(--accent-soft); }
+    .starci-core-legend-mark[data-grammar-tone="success"] { border-color: var(--success); background: var(--success-soft); }
+    .starci-core-legend-mark[data-grammar-tone="warning"] { border-color: var(--warning); background: var(--warning-soft); }
+    .starci-core-legend-mark[data-grammar-tone="danger"] { border-color: var(--danger); background: var(--danger-soft); }
+    .starci-core-legend-mark[data-grammar-skeleton="true"] { border-color: transparent; background: var(--surface-secondary); }
+
+    .starci-core-legend-label { min-width: 0; overflow-wrap: anywhere; }
+}

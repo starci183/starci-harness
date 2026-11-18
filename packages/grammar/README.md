@@ -459,6 +459,15 @@ A loading view keeps the titles, headings and labels it was given and draws the 
 `highlightLast` draws the latest bar in the accent and the others soft; both are off by default. `Sparkline` (`label`, `values`,
 `isLoading`) is a 96 x 32 inline line chart: an accent stroke, a soft fill, no axis, named by `label` (`role="img"`).
 
+**A timeline, a key and a map (0.46.2).** `ScheduleGrid` also draws a plan: an item with `endColumn` is one bar across its columns, with `progress` (0 to 1), `form="milestone"` (a diamond), `after` (arrows from the entries it waits on), `resize` (handles on both ends: drag, or ArrowLeft and ArrowRight on the focused handle, answered once through `onResize(edge, column)`), a row with `isGroup` and children with `parent` fold through `onRowToggle` (the app holds `isCollapsed`), and a column's `todayAt` draws the line for now. A list beside the grid hands entries in: call `startScheduleDrag(event, id)` from the `DragItem` `onDragStart`, and `onDrop(id, row, column, source)` answers with `source` `"outside"`; the keyboard path is to pick the item in the list and press a cell (`onCellPress`). `Legend` is the one-line key of the tones (`items` of `{ id, label, tone, form? }`) and wraps on a phone. `GeoMap` puts `points` (`{ id, lat, lng, count, label? }`) on raster tiles the app serves (`tiles={{ url: "/tiles/vn/{z}/{x}/{y}.png", attribution }`; no key, no vendor script), clusters the crowded ones (press to zoom in), takes `onSelect` for a single point, and lists every point for assistive technology.
+
+```tsx
+<ScheduleGrid label="Launch plan" columns={days} rows={rows} onRowToggle={toggleGroup} empty={...}
+  items={[{ id: "build", row: "r2", column: "d3", endColumn: "d6", title: "Build", progress: 0.4, after: ["design"], resize: { onResize, startLabel, endLabel } }]} />
+<Legend label="Status colours" items={[{ id: "late", label: "Late", tone: "danger" }]} />
+<GeoMap label="Stores by area" points={cells} labels={words} tiles={{ url: "/tiles/vn/{z}/{x}/{y}.png", attribution: "© OpenStreetMap" }} empty={...} onSelect={openArea} />
+```
+
 **Navigation & Data (17).** Accordion, AvatarGroup, Calendar, DataTable,
 BubbleMap, DescriptionList, Disclosure, FlowGraph, ListBox, LogoStack, MermaidDiagram, MessageStatus, Pagination, Stepper, Tabs, TagGroup, Timeline.
 

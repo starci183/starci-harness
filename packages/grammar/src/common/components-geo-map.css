@@ -1,0 +1,124 @@
+/*
+ * Common anatomy for GeoMap: a frame at a set height, a tile layer under a marker layer, the zoom controls at the end corner and
+ * the tile credit at the start corner. A cluster is the solid accent with its count, a single point the soft accent with an accent
+ * ring; both are buttons the size of their count. The list of every point is for assistive technology and leaves the picture.
+ */
+@layer starci-grammar-common {
+    .starci-core-geomap { min-width: 0; }
+    .starci-core-geomap-wrap { position: relative; min-width: 0; }
+
+    .starci-core-geomap-frame {
+        position: relative;
+        overflow: hidden;
+        block-size: var(--starci-core-geomap-height);
+        min-width: 0;
+        border: var(--grammar-hairline) solid var(--separator);
+        border-radius: var(--grammar-radius-md);
+        background: var(--surface-secondary);
+        cursor: grab;
+        touch-action: none;
+        user-select: none;
+    }
+
+    .starci-core-geomap-frame:active { cursor: grabbing; }
+    .starci-core-geomap-frame:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+    .starci-core-geomap-frame[data-grammar-geomap-height="sm"] { block-size: 16rem; }
+    .starci-core-geomap-frame[data-grammar-geomap-height="md"] { block-size: 24rem; }
+    .starci-core-geomap-frame[data-grammar-geomap-height="lg"] { block-size: 32rem; }
+    .starci-core-geomap[data-loading="true"] .starci-core-geomap-frame { cursor: default; }
+
+    .starci-core-geomap-tiles,
+    .starci-core-geomap-markers { position: absolute; inset: 0; overflow: hidden; }
+    .starci-core-geomap-markers { pointer-events: none; }
+
+    .starci-core-geomap-tile {
+        position: absolute;
+        max-width: none;
+        pointer-events: none;
+        -webkit-user-drag: none;
+    }
+
+    .starci-core-geomap-marker {
+        position: absolute;
+        display: inline-flex;
+        box-sizing: border-box;
+        inline-size: var(--starci-core-geomap-size);
+        block-size: var(--starci-core-geomap-size);
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        border: 2px solid var(--accent);
+        border-radius: var(--grammar-radius-round);
+        background: var(--accent-soft);
+        color: var(--accent-soft-foreground);
+        font: inherit;
+        font-size: var(--grammar-text-md);
+        font-variant-numeric: tabular-nums;
+        font-weight: var(--grammar-weight-semibold);
+        line-height: var(--grammar-leading-md);
+        pointer-events: auto;
+        transform: translate(-50%, -50%);
+    }
+
+    button.starci-core-geomap-marker { cursor: pointer; }
+    button.starci-core-geomap-marker:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+    .starci-core-geomap-marker[data-grammar-geomap-marker="cluster"] { border-color: var(--surface); background: var(--accent); color: var(--accent-foreground); }
+    .starci-core-geomap-count { pointer-events: none; }
+
+    /* The hit area reaches the touch floor without redrawing the marker. */
+    button.starci-core-geomap-marker::after { content: ""; position: absolute; inset: calc(-1 * var(--grammar-inline-gap)); border-radius: inherit; }
+
+    .starci-core-geomap-controls {
+        position: absolute;
+        inset-block-start: var(--grammar-inline-gap);
+        inset-inline-end: var(--grammar-inline-gap);
+        display: flex;
+        flex-direction: column;
+        gap: var(--grammar-identity-gap);
+        cursor: default;
+    }
+
+    .starci-core-geomap-attribution {
+        position: absolute;
+        inset-block-end: 0;
+        inset-inline-start: 0;
+        margin: 0;
+        padding: 0 var(--grammar-identity-gap);
+        background: color-mix(in oklab, var(--surface) 80%, transparent);
+        color: var(--muted);
+        font-size: var(--grammar-text-xs);
+        line-height: var(--grammar-leading-xs);
+        pointer-events: none;
+    }
+
+    /* The list is read in place of the picture: out of sight, and a pressable item shows itself while it has focus. */
+    .starci-core-geomap-list {
+        position: absolute;
+        inline-size: 1px;
+        block-size: 1px;
+        margin: -1px;
+        padding: 0;
+        overflow: hidden;
+        clip-path: inset(50%);
+        list-style: none;
+        white-space: nowrap;
+    }
+
+    .starci-core-geomap-list-press { margin: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; }
+
+    .starci-core-geomap-list:focus-within {
+        z-index: 3;
+        inset-block-start: var(--grammar-inline-gap);
+        inset-inline-start: var(--grammar-inline-gap);
+        inline-size: auto;
+        block-size: auto;
+        margin: 0;
+        padding: var(--grammar-identity-gap) var(--grammar-inline-gap);
+        overflow: visible;
+        clip-path: none;
+        border-radius: var(--grammar-radius-md);
+        background: var(--surface);
+        color: var(--foreground);
+        outline: 2px solid var(--focus);
+    }
+}
