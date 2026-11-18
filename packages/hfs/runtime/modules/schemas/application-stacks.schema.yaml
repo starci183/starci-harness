@@ -847,7 +847,7 @@ $defs:
         pattern: '^[A-Za-z0-9][A-Za-z0-9._-]*$'
       releasesBase: {$ref: '#/$defs/deployAbsolutePath'}
       sealed:
-        description: 'Owner-machine session for prepare and deploy: the one member of .starcistacks/<environment>/secrets holding VPS_HOST, VPS_USER, privateKey and knownHosts.'
+        description: 'Owner-machine session for prepare and deploy: the one member of .starcistacks/<environment>/secrets holding VPS_HOST, VPS_USER, privateKey and knownHosts, and optionally VPS_PORT (default 22).'
         $ref: '#/$defs/deployName'
       serverRecipient:
         description: The deploy server's public age recipient, recorded by starci app secret server-key --env <env> --execute.

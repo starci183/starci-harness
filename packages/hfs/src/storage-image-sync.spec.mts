@@ -47,6 +47,8 @@ test('a lite app that needs storage builds the image in the managed images workf
   const apps = (needed: boolean): string[] => imageApps(validateHfs(lite), { storageNeeded: needed }).map((image) => image.name);
   assert.deepEqual(apps(true).slice(-2), ['db', 'storage']);
   assert.deepEqual(apps(false).slice(-1), ['db']);
+  const named = imageApps(validateHfs(lite), { storageNeeded: false }, [{ app: 'storage' }]).map((image) => image.name);
+  assert.deepEqual(named.slice(-2), ['db', 'storage'], 'a deploy that names the storage image builds it even before statics/ holds a file');
 });
 
 test('sync adds the starter statics/.gitkeep to an app that needs storage and has no folder, and nothing when the folder exists', (t) => {

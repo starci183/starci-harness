@@ -123,7 +123,16 @@ function openMember<T>(slug: string, read: () => T): T {
   try { return read(); } catch (error) { throw refusal('STACK_REMOTE_SEALED', `cannot open the sealed member ${slug}: ${(error as Error).message}`); }
 }
 
-function opsAccount(ctx: StackContext, config: DeployConfig, sealed: SealedRemote): string {
+/** The optional `VPS_PORT` of the sealed ops member (PROJECT-STACKS-5): a TCP port, 22 (no `-p`) when absent. */
+export function sealedPort(value: unknown, slug: string): number | undefined {
+  if (value === undefined || value === null || value === '') return undefined;
+  const text = String(value).trim();
+  const port = Number(text);
+  if (!/^[0-9]{1,5}$/u.test(text) || port < 1 || port > 65535) throw refusal('STACK_REMOTE_OPS', `${slug} holds VPS_PORT ${JSON.stringify(text)}: it must be a TCP port (1-65535)`);
+  return port === 22 ? undefined : port;
+}
+
+function opsMember(ctx: StackContext, config: DeployConfig, sealed: SealedRemote): { account: string; port: number | undefined } {
   const slug = sealed.ops;
   const file = memberFile(config.secretsDir, slug);
   const map = openMember(slug, () => ctx.sops.decrypt(file, memberFormat(file)));
@@ -131,7 +140,7 @@ function opsAccount(ctx: StackContext, config: DeployConfig, sealed: SealedRemot
     const value = map[name];
     if (typeof value !== 'string' || !ACCOUNT.test(value) || value.startsWith('-')) throw refusal('STACK_REMOTE_OPS', `${slug} must hold ${name} (letters, digits, . _ @ -)`);
   }
-  return `${map.VPS_USER}@${map.VPS_HOST}`;
+  return { account: `${map.VPS_USER}@${map.VPS_HOST}`, port: sealedPort(map.VPS_PORT, slug) };
 }
 
 /**
@@ -172,7 +181,7 @@ export interface SealedSession {
 export function openSealedSession(ctx: StackContext, config: DeployConfig): SealedSession {
   const { sealed } = config.remote;
   if (!sealed) throw refusal('STACK_REMOTE_SEALED', 'deploy.remote.sealed is not declared');
-  const account = opsAccount(ctx, config, sealed);
+  const { account, port: memberPort } = opsMember(ctx, config, sealed);
   if (config.nativeTarget && account !== `${config.nativeTarget.user}@${config.nativeTarget.host}`)
     throw refusal('STACK_REMOTE_OPS', 'the sealed SSH account differs from the accepted native target');
   const key = sshMember(ctx, config, sealed.sshKey, SEALED_SSH_KEYS.sshKey);
@@ -198,13 +207,21 @@ export function openSealedSession(ctx: StackContext, config: DeployConfig): Seal
   }
   const notes = known ? [] : ['owner-machine session without known_hosts: the host key is accepted on first contact (accept-new); verify it, CI never does this'];
   return { account, dir, keyFile, knownFile, strict: known ? 'yes' : 'accept-new', notes, cleanup,
-    ...(config.nativeTarget ? { port: config.nativeTarget.port } : {}) };
+    ...(config.nativeTarget ? { port: config.nativeTarget.port } : memberPort ? { port: memberPort } : {}) };
+}
+
+/**
+ * The ssh options that make a sealed session independent of HOME and of the account's own ssh config: the port, the key, the pinned
+ * known_hosts and the strictness are all explicit (-p, -i, -o), so a private HOME (Windows OpenSSH ignores it anyway) changes nothing.
+ */
+export function sealedSshOptions(session: SealedSession): string[] {
+  return [...(session.port ? ['-p', String(session.port)] : []), '-i', session.keyFile, '-o', 'IdentitiesOnly=yes', '-o', `UserKnownHostsFile=${session.knownFile.replaceAll('\\', '/')}`, '-o', `StrictHostKeyChecking=${session.strict}`];
 }
 
 /** The owner-machine runner over that session. */
 function sealedRunner(ctx: StackContext, config: DeployConfig): Runner {
   const session = openSealedSession(ctx, config);
-  const argv: Argv = ['ssh', '-T', ...(session.port ? ['-p', String(session.port)] : []), '-i', session.keyFile, '-o', 'IdentitiesOnly=yes', '-o', `UserKnownHostsFile=${session.knownFile}`, '-o', `StrictHostKeyChecking=${session.strict}`, '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=20', session.account];
+  const argv: Argv = ['ssh', '-T', ...sealedSshOptions(session), '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=20', session.account];
   return sessionRunner(ctx, argv, session.dir, session.cleanup, session.notes);
 }
 

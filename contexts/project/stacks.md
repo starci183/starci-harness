@@ -161,7 +161,7 @@ image, so any digest-pinned supported reverse proxy serves.
   existing identity). Both warn while the repository holds a SOPS_AGE_KEY of its own (`gh api repos/<o>/<r>/actions/secrets`,
   names only): the owner deletes it once every environment holds its server key, since the owner key never belongs in
   GitHub. The deploy's owner-machine transport opens `deploy.remote.sealed`, one member
-  (`sealed: vps`, `.starcistacks/<env>/secrets/vps.enc.yaml`) holding `VPS_HOST`, `VPS_USER`, the PEM private key under
+  (`sealed: vps`, `.starcistacks/<env>/secrets/vps.enc.yaml`) holding `VPS_HOST`, `VPS_USER`, an optional `VPS_PORT` (the SSH port, default 22; the transport passes `-p`, `-i` and `UserKnownHostsFile` explicitly, so a non-default port and the pinned key work on Windows, Git Bash and Linux CI alike), the PEM private key under
   `privateKey` and the pinned known_hosts under `knownHosts` (`SEALED_SSH_KEYS`, @starci/hfs `stack/remote.mjs`). A member per
   role is refused; `starci app secret migrate --env <env> <member> --to vps --into-existing` folds each into `vps`. `stack deploy` opens the members where it runs (the owner machine with the owner key, or CI with the bound
   environment's server key) and hands each value to a Swarm secret over the deploy transport; a decrypt on the server reads

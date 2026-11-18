@@ -63,13 +63,19 @@ const blocking = (stdout: string): Finding[] | null => {
     }
 }
 
+/**
+ * The path of one porcelain line. The git port trims the whole stdout, so the first line may have lost its leading space (" M path"
+ * arrives as "M path"): the status code is read as its non-blank run, never as three fixed columns, which ate the dot of ".starcistacks".
+ */
+export const porcelainPath = (line: string): string => (/^ ?\S{1,2} +(.*)$/.exec(line.trimEnd())?.[1] ?? "").trim()
+
 /** The paths git lists as changed or untracked outside the cache folder. */
 const dirtyOutsideCache = (ports: PushPorts): string[] =>
-    ports.git(["status", "--porcelain", "--untracked-files=all"]).stdout.split("\n").map((line) => line.slice(3).trim()).filter((line) => line !== "" && !line.startsWith(`${CACHE_DIR}/`))
+    ports.git(["status", "--porcelain", "--untracked-files=all"]).stdout.split("\n").map(porcelainPath).filter((line) => line !== "" && !line.startsWith(`${CACHE_DIR}/`))
 
 /** The cache paths git does not hold as committed. */
 const dirtyCache = (ports: PushPorts): string[] =>
-    ports.git(["status", "--porcelain", "--untracked-files=all", "--", CACHE_DIR]).stdout.split("\n").map((line) => line.slice(3).trim()).filter((line) => line !== "")
+    ports.git(["status", "--porcelain", "--untracked-files=all", "--", CACHE_DIR]).stdout.split("\n").map(porcelainPath).filter((line) => line !== "")
 
 /**
  * One round for a push that carries a warm cache. The pre-push hook refuses a push whose cache a real run on its tree changes

@@ -1,7 +1,7 @@
 // `starci app push`: the check runs first, the records it writes are committed as their own commit, and git push runs once (core/app/push.ts).
 import assert from "node:assert/strict"
 import test from "node:test"
-import { warmAndPush, type PushPorts, type PushRun } from "./push.js"
+import { porcelainPath, warmAndPush, type PushPorts, type PushRun } from "./push.js"
 
 interface Script {
     /** What each check run prints and whether it leaves cache files dirty, in order. */
@@ -119,4 +119,18 @@ void test("a refused cache commit (its hook) and a refused push are reported, ne
     const rejected = warmAndPush(push.ports, [])
     assert.equal(rejected.pushed, false)
     assert.equal(rejected.exitCode, 1)
+})
+
+void test("porcelainPath keeps the leading dot when the port trimmed the first line's leading space", () => {
+    assert.equal(porcelainPath("M .starcistacks/cache/x.jsonl"), ".starcistacks/cache/x.jsonl")
+    assert.equal(porcelainPath(" M .starcistacks/cache/x.jsonl"), ".starcistacks/cache/x.jsonl")
+    assert.equal(porcelainPath("?? .github/a.yml"), ".github/a.yml")
+    assert.equal(porcelainPath("M  src/a.ts"), "src/a.ts")
+    assert.equal(porcelainPath(""), "")
+})
+
+void test("a dirty first line that lost its leading space is reported with its full path", () => {
+    const { ports } = harness({ checks: [{ exitCode: 0, findings: [] }] })
+    const status = (stdout: string): PushPorts => ({ ...ports, git: (args) => (args[0] === "status" ? { exitCode: 0, stdout } : ports.git(args)) })
+    assert.match(warmAndPush(status("M .github/a.yml"), []).refusal ?? "", /\(\.github\/a\.yml\)/)
 })

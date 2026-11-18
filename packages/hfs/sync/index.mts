@@ -491,9 +491,11 @@ function imageEntries(app: ResolvedApp, source: Partial<Pick<AppSourceFacts, 'ha
 }
 
 /** The apps images.yml builds (one matrix entry per declared app): name and Dockerfile, be then fe, then a lite app's db image. */
-export function imageApps(app: ResolvedApp, source: Partial<Pick<AppSourceFacts, 'hasImage' | 'storageNeeded'>> | undefined): ImageApp[] {
-  // A lite app that has statics/ or needs object storage also ships its own MinIO image (slot app.storage.image, PROJECT-STATICS-5).
-  const storage = app.edition === 'lite' && source?.storageNeeded === true ? [{ name: STORAGE_IMAGE_APP, file: STORAGE_DOCKERFILE }] : [];
+export function imageApps(app: ResolvedApp, source: Partial<Pick<AppSourceFacts, 'hasImage' | 'storageNeeded'>> | undefined, declared: readonly { app: string }[] = []): ImageApp[] {
+  // A lite app that has statics/ or needs object storage also ships its own MinIO image (slot app.storage.image, PROJECT-STATICS-5); so does one whose
+  // deploy block names the storage image (`deploy.images.<service>: {app: storage}`), so statics/ ships through the normal release, never a hand-pinned digest.
+  const named = declared.some(image => image.app === STORAGE_IMAGE_APP);
+  const storage = app.edition === 'lite' && (source?.storageNeeded === true || named) ? [{ name: STORAGE_IMAGE_APP, file: STORAGE_DOCKERFILE }] : [];
   const db = app.edition === 'lite' ? [{ name: DB_IMAGE_APP, file: DB_DOCKERFILE }, ...storage] : [];
   return [...imageEntries(app, source).map(image => ({ name: image.entry.name, file: dockerfilePath(image.side, image.entry.name) })), ...db];
 }
@@ -510,7 +512,7 @@ function stackDockerfile(app: ResolvedApp, name: string): string {
 /** The apps images.yml builds; every deploy image must name one of them (an app hfs.json does not declare cannot be built by the managed workflow). */
 function deployableApps(app: ResolvedApp, source: Partial<Pick<AppSourceFacts, 'hasImage'>> | undefined, stack: { images: readonly { app: string }[] }): ImageApp[] {
   for (const image of stack.images) stackDockerfile(app, image.app);
-  return imageApps(app, source);
+  return imageApps(app, source, stack.images);
 }
 
 const IMAGE_TEMPLATE: Readonly<Record<string, string>> = Object.freeze({ api: 'be/image/api', worker: 'be/image/worker', cli: 'be/image/cli', next: 'fe/image/next' });
