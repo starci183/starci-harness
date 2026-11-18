@@ -927,7 +927,7 @@ mustKeep:
       followUp: C-1
     - id: DNA-COMMON-TABS-FILTER-COMPACT
       role: tabs
-      law: "A filter tab is the size of every other tab: 14px text, 40px tall (the md control step), with a hairline under the row. The 32px compact filter tab of 0.34 is retired (owner ruling of 0.36.0, ui/components/tabs.md tabs.choose.role filter: \"underline tabs of the same size as every other tab (14, 40 high)\"). The underline strip only: a filter pill (shape=\"pill\") is the primary variant's pill on its track."
+      law: "A filter tab is the size of every other tab: 14px text, 40px tall (the md control step), with a hairline under the row. There is no smaller compact filter tab (ui/components/tabs.md tabs.choose.role filter: \"underline tabs of the same size as every other tab (14, 40 high)\"). The underline strip only: a filter pill (shape=\"pill\") is the primary variant's pill on its track."
       measure:
         kind: style
         select: '[data-grammar-tabs-kind="filter"]:not([data-grammar-tabs-shape="pill"]) [role="tab"]'
@@ -1307,12 +1307,12 @@ mustKeep:
       owner: contract roles.section
     - id: DNA-COMMON-TABS-COUNT-CHIP
       role: tabs
-      law: "A tab's count is a chip (a pill with its own ground), grey always, selected or not (--default and --default-foreground); the accent soft pair is only for a tab marked isAttention (DNA-COMMON-TABS-COUNT-CHIP-ATTENTION). Since 0.36.0 (owner ruling, ui/components/tabs.md tabs.choose.role filter: \"grey always, selected or not\"); the earlier accent chip on the selected tab is retired."
+      law: "A tab's count is a chip (a pill with its own ground), grey always, selected or not (--default and --default-foreground); the accent soft pair is only for a tab marked isAttention (DNA-COMMON-TABS-COUNT-CHIP-ATTENTION). The selected tab has no accent chip (ui/components/tabs.md tabs.choose.role filter: \"grey always, selected or not\")."
       measure: { kind: style, select: '[data-grammar-tab-count]:not([data-grammar-attention="true"])', checks: [{ metric: background-color, op: "=", value: { token: --default } }, { metric: color, op: "=", value: { token: --default-foreground } }] }
       owner: contract roles.tabs
     - id: DNA-COMMON-TABS-COUNT-CHIP-ATTENTION
       role: tabs
-      law: "The count chip of a tab marked isAttention (work waiting for the owner: to handle, to approve, an error) is the accent soft pair (the pink --accent-soft and --accent-soft-foreground), selected or not. Since 0.36.0 (owner ruling, ui/components/tabs.md tabs.choose.role filter: \"the pink accent soft pair ONLY on a tab marked isAttention\"); the warning pair is retired."
+      law: "The count chip of a tab marked isAttention (work waiting for the owner: to handle, to approve, an error) is the accent soft pair (the pink --accent-soft and --accent-soft-foreground), selected or not. It is never the warning pair (ui/components/tabs.md tabs.choose.role filter: \"the pink accent soft pair ONLY on a tab marked isAttention\")."
       measure: { kind: style, select: '[data-grammar-tab-count][data-grammar-attention="true"]', checks: [{ metric: background-color, op: "=", value: { token: --accent-soft } }, { metric: color, op: "=", value: { token: --accent-soft-foreground } }] }
       owner: contract roles.tabs
     - id: DNA-COMMON-TONE-CUSTOM-COMPLETE
@@ -1686,12 +1686,12 @@ mustKeep:
       owner: contract roles.button
     - id: DNA-CORE-STEPPER-MARKER-CURRENT
       role: list
-      law: "In Core the current step of the markers form is an accent ring: an outline circle with an accent border and number on no fill (owner ruling 0.36.0, ICONS-OUTLINE: every marker is an outline ring, never a filled disc; the filled accent disc of U0-G9 is retired). A stepper inside a loading region draws geometry and is not measured (ui/loading.md)."
+      law: "In Core the current step of the markers form is an accent ring: an outline circle with an accent border and number on no fill (ICONS-OUTLINE: every marker is an outline ring, never a filled disc). A stepper inside a loading region draws geometry and is not measured (ui/loading.md)."
       measure: { kind: style, select: '[data-component="Stepper"]:not([data-grammar-stepper-kind="bar"]):not([data-loading="true"]):not([data-grammar-loading-region] *) [data-grammar-step-state="current"] [data-grammar-step-marker]', checks: [{ metric: background-color, op: "=", value: "rgba(0, 0, 0, 0)" }, { metric: border-color, op: "=", value: { token: --accent } }, { metric: color, op: "=", value: { token: --accent } }] }
       owner: grammars/core.md; CHANGELOG 0.36.0 (ICONS-OUTLINE)
     - id: DNA-CORE-STEPPER-MARKER-UPCOMING
       role: list
-      law: "In Core an upcoming step of the markers form is a hairline ring (a --separator border) with a muted number on no fill (owner ruling 0.36.0, ICONS-OUTLINE: the filled secondary-surface disc of U0-G9 is retired)."
+      law: "In Core an upcoming step of the markers form is a hairline ring (a --separator border) with a muted number on no fill (ICONS-OUTLINE: a marker is never a filled disc)."
       measure: { kind: style, select: '[data-component="Stepper"]:not([data-grammar-stepper-kind="bar"]):not([data-loading="true"]):not([data-grammar-loading-region] *) [data-grammar-step-state="upcoming"] [data-grammar-step-marker]', checks: [{ metric: background-color, op: "=", value: "rgba(0, 0, 0, 0)" }, { metric: border-color, op: "=", value: { token: --separator } }, { metric: color, op: "=", value: { token: --muted } }] }
       owner: grammars/core.md; CHANGELOG 0.36.0 (ICONS-OUTLINE)
     - id: DNA-CORE-LINK-ACCENT-TEXT
@@ -1774,7 +1774,7 @@ mustKeep:
       owner: grammars/offset-pop.md; O-2
     - id: DNA-OFFSET-POP-INK-ON-PINK
       role: button
-      law: "Text on a pink fill is ink (--accent-foreground, #1c1524), in the light and the dark theme alike: white on this pink fails AA, cream on it does too, so the ink does not flip with the theme (owner ruling O-2, grammars/offset-pop.md: \"the label on pink is ink\"; \"ink stays the text on all of them, in both themes\"). An element that holds no text of its own (an empty tab indicator bar, a pink rule, a switch track holding only its thumb) has no text on the pink and is not measured."
+      law: "Text on a pink fill is ink (--accent-foreground, #1c1524), in the light and the dark theme alike: white on this pink fails AA, cream on it does too, so the ink does not flip with the theme (grammars/offset-pop.md: \"the label on pink is ink\"; \"ink stays the text on all of them, in both themes\"). An element that holds no text of its own (an empty tab indicator bar, a pink rule, a switch track holding only its thumb) has no text on the pink and is not measured."
       measure: { kind: style, select: '*:not(:empty, [data-slot="switch-control"])', where: { metric: background-color, op: "=", value: { token: --accent } }, metric: color, op: "=", value: { token: --accent-foreground } }
       owner: O-2; grammars/offset-pop.md
     - id: DNA-OFFSET-POP-PRESS-TRAVEL
