@@ -1,8 +1,8 @@
 # Changelog
 
-## 0.46.3 - 2026-11-18
+## 0.47.0 - 2026-11-18
 
-- Changed: the family version 0.46.3 (DNA law alignment and Offset Pop fixes in @starci/grammar). No rule change.
+- Changed: the family version 0.47.0 (DNA law alignment and Offset Pop fixes in @starci/grammar). No rule change.
 
 ## 0.46.2 - 2026-11-18
 

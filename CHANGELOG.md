@@ -2,7 +2,7 @@
 
 ## 1.1.0-alpha.165 - 2026-11-18
 
-- Changed (pins): the Grammar family at 0.46.3 (the DNA laws that contradicted later owner rulings measure today rules, 40 known rows carry an owner-triage follow-up, the four-columns story no longer freezes the browser, Offset Pop ink on the chosen day and the 40px phone field) and @starci/hfs 6.13.45 (`starci app sync` re-resolves the lockfile of a managed sub-package such as gallery/, `stack up` keeps the api and the web when only the gallery fails). `starci dna check` completes a full Storybook run: a size is the layout box, a garbled page script is sent once more. Until the cli-follow step raises the CLI requirement, the CLI runs the hfs it requires.
+- Changed (pins): the Grammar family at 0.47.0 (the DNA laws that contradicted later owner rulings measure today rules, 40 known rows carry an owner-triage follow-up, the four-columns story no longer freezes the browser, Offset Pop ink on the chosen day and the 40px phone field) and @starci/hfs 6.13.45 (`starci app sync` re-resolves the lockfile of a managed sub-package such as gallery/, `stack up` keeps the api and the web when only the gallery fails). `starci dna check` completes a full Storybook run: a size is the layout box, a garbled page script is sent once more. Until the cli-follow step raises the CLI requirement, the CLI runs the hfs it requires.
 
 ## 1.1.0-alpha.164 - 2026-11-18
 

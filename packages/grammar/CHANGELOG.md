@@ -1,8 +1,8 @@
 # Changelog
 
-## 0.46.3 - 2026-11-18 - DNA laws aligned with the owner rulings, the DNA gate completes a run
+## 0.47.0 - 2026-11-18 - DNA laws aligned with the owner rulings, the DNA gate completes a run
 
-No prop or component changes: fixes to the Offset Pop look, the stories and the DNA laws the gate measures.
+A minor because DNA laws are renamed (`DNA-COMMON-LINK-ACCENT-TEXT`, `DNA-COMMON-STEPPER-MARKER-FILLS` and `-UPCOMING`) and a forbidden entry changed (contexts/grammars/contributing.md "Patch or minor"); no prop or component changes: fixes to the Offset Pop look, the stories and the DNA laws the gate measures.
 
 - Fixed (Offset Pop, `Alert`): a `secondaryAction` ("Reject") is no longer painted with the pink decision fill; only the banner's last Button, the decision, is (law `DNA-COMMON-ONE-ACCENT-FILL`).
 - Fixed (stories): AlertForm is one anatomy per story (a view holds one commit) and the second EmptyState steps notice takes the neutral action; the story probes that added and removed an element inside `waitFor` (ListRowDiff, TabLinesAndLayout, StatusTones, NavigationData, FlowGraphStyleC) read it through `quietProbe`, a shadow-root probe that is no DOM mutation, which froze the browser of `starci dna check` when an assertion failed. The stories and doc comments that said 0.47.0 say 0.46.2.
