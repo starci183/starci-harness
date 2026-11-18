@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.47.2 - 2026-11-19
+
+- Changed: the family version 0.47.2 (the tile poster bleed of @starci/grammar, three DNA laws). No rule change.
+
 ## 0.47.1 - 2026-11-18
 
 - Changed: the family version 0.47.1 (the workbench gaps of @starci/grammar: tile grid, tile ground tone, clear-all filters, Select icon, toolbar search). No rule change.

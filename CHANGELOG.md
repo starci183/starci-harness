@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.0-alpha.167 - 2026-11-19
+
+- Added (managed VPS fleet, `contexts/harness/managed-vps.md`): `starci vps` (list, add, doctor, bootstrap, grant, revoke, swarm, ui, edge, domain and Cloudflare verbs) over `ops/vps.yaml`, the policy of a fleet, with its inventory kept in the gitignored `ops/vps/servers/`, sealed secrets in `ops/vps/*.enc.yaml` (neither is published), the Managed VPS page of the harness UI (`VpsPage`, `vps` read and act contracts), `policy/security.yaml` `refusedPaths` and `refusedKeys` for VPS work, and the secret scan and release push that honour them. Tests: `cli/src/harness/vps/vps.test.ts`.
+- Changed (pins): the images portainer-ce and portainer-agent 2.33.8, cloudflared 2026.8.2 and traefik v3.6.12, and the host engine docker-ce 29.9.3 (`hosts:` of contexts/stack/pins.yaml); the Grammar family at 0.47.2 (`SurfaceCard` tile `poster.bleed`, three DNA laws `DNA-COMMON-TILE-BLEED-*`), @starci/gallery 0.1.2 and @starci/hfs 6.13.47. Until the cli-follow step raises the CLI requirement, the CLI runs the hfs it requires.
+
 ## 1.1.0-alpha.166 - 2026-11-18
 
 - Changed: the CLI requires @starci/hfs@6.13.46, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).

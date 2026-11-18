@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.2 - 2026-11-19
+
+- Changed: requires @starci/grammar 0.47.2, the Grammar it ships with.
+
 ## 0.1.1 - 2026-11-18
 
 - Changed (`explain`): the explain reader skips the section `## Phương án đã cân nhắc` (the record of the options weighed, PROJECT-GALLERY-7) instead of reading it as a region, as `starci app check` does.

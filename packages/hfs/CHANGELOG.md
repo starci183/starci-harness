@@ -1,5 +1,9 @@
 # Changelog
 
+## 6.13.47 - 2026-11-19
+
+- Changed (`knowledge/hfs/canon-pins.yaml`): the Grammar family 0.47.2 (range ~0.47.2: `SurfaceCard` tile `poster.bleed`, three DNA laws) and the `@starci/hfs` self-pin is 6.13.47.
+
 ## 6.13.46 - 2026-11-18
 
 - Added (R402, PROJECT-LINT-3; `cache/check-verdicts.mts`, `cache/project-checks.mts`, `runtime/scripts/lib/project-ext.mts`): a project check may declare what it reads. `ext/manifest.json` `checks[].reads` (tracked files or folders) and `refs` (git revisions `<ref>:<path>`) scope and cache its verdict as a record of `check/build` (step `project-check`), keyed on the content of those paths and of its own file, the objects the refs name, the Node major, the harness version and the lockfile; an unchanged key reuses the verdict (green or red), a ref git cannot name runs the check and stores nothing. A check with no `reads` runs every time as before.
