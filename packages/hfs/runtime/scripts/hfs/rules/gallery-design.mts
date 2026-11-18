@@ -13,6 +13,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { isPlainObject as plain } from '../../../engine/plain-object.mjs';
 import type { GalleryParams } from '../gallery.mjs';
+import { hasOptionsSection } from '../gallery-explain.mjs';
 import { found, readText } from './read.mjs';
 import type { GalleryScreen } from './gallery.mjs';
 
@@ -27,6 +28,7 @@ export const DESIGN_FILE = '.starcistacks/canvas/design.json';
 export interface DesignPage {
   status: DesignStatus;
   approvedAt?: string;
+  matchedAt?: string;
   board: string;
   shots?: Partial<Record<(typeof DESIGN_WIDTHS)[number], string>>;
 }
@@ -38,7 +40,14 @@ export interface DesignManifest {
 const KEBAB = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 const SHA256 = /^[0-9a-f]{64}$/u;
 const ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})$/u;
-const PAGE_KEYS = new Set(['status', 'approvedAt', 'board', 'shots']);
+const PAGE_KEYS = new Set(['status', 'approvedAt', 'matchedAt', 'board', 'shots']);
+
+/**
+ * The release of the critique rule (PROJECT-GALLERY-7 item 3, HFS_APP_GALLERY_DESIGN_CRITIQUE_MISSING): a `matches` page whose `matchedAt` is at or after this instant must carry the
+ * section "Phương án đã cân nhắc" in its explain.md. A `matches` page with an earlier `matchedAt`, or none (every page matched before the rule), is only reported as not final yet.
+ */
+export const CRITIQUE_SINCE = '2026-11-18T00:00:00+07:00';
+export const CRITIQUE_MISSING = 'HFS_APP_GALLERY_DESIGN_CRITIQUE_MISSING';
 
 /** True from `approved` on: the owner has approved the page's frames. */
 export const isApproved = (status: DesignStatus): boolean => DESIGN_STATUSES.indexOf(status) >= DESIGN_STATUSES.indexOf('approved');
@@ -60,6 +69,8 @@ function pageProblems(id: string, value: unknown, areas: ReadonlySet<string>): s
   const approvedAt = page['approvedAt'];
   const approved = typeof status === 'string' && (DESIGN_STATUSES as readonly string[]).includes(status) && isApproved(status as DesignStatus);
   if (approved && (typeof approvedAt !== 'string' || !ISO.test(approvedAt) || Number.isNaN(Date.parse(approvedAt)))) problems.push(`the page "${id}" is ${status} without an ISO "approvedAt" timestamp with its zone (e.g. 2026-11-17T09:30:00+07:00; a bare date such as 2026-11-17 is refused)`);
+  const matchedAt = page['matchedAt'];
+  if (matchedAt !== undefined && (status !== 'matches' || typeof matchedAt !== 'string' || !ISO.test(matchedAt) || Number.isNaN(Date.parse(matchedAt)))) problems.push(`the page "${id}" carries "matchedAt" ${JSON.stringify(matchedAt)}: only a matches page has it, as an ISO timestamp with its zone, set by the reviewer when the final critique is done`);
   if (!approved && approvedAt !== undefined) problems.push(`the page "${id}" is ${String(status)} and carries "approvedAt": only the owner's approval sets it, a redraw drops it`);
   if (typeof page['board'] !== 'string' || !/^https:\/\/\S+$/u.test(page['board'])) problems.push(`the page "${id}" has no "board" (the https link of the published board)`);
   const shots = page['shots'];
@@ -119,6 +130,17 @@ export function designFindings(repoRoot: string, params: GalleryParams, screens:
     if (!hasExplain(id)) {
       findings.push(found('HFS_APP_GALLERY_DESIGN_PAGE_MISSING', file, `the page ${id} is ${page.status} and ${folder}/explain.md does not exist: build the screen into its gallery folder with the approved explain.md, or correct the page id ${rule}`, local));
       continue;
+    }
+    if (page.status === 'matches') {
+      const explain = readText(repoRoot, `${params.pages}/${id}/explain.md`) ?? '';
+      if (!hasOptionsSection(explain)) {
+        const stamp = page.matchedAt === undefined ? Number.NaN : Date.parse(page.matchedAt);
+        const judged = !Number.isNaN(stamp) && stamp >= Date.parse(CRITIQUE_SINCE);
+        const base = `the page ${id} is matches and ${folder}/explain.md has no section "## Phương án đã cân nhắc"`;
+        findings.push(judged
+          ? found(CRITIQUE_MISSING, `${folder}/explain.md`, `${base}: a screen is final only after the critique of another agent (two rounds) and its record of the options weighed, each with why it was chosen or rejected; write the section, sync the canvas page note, and set matchedAt again ${rule}`)
+          : { ...found(CRITIQUE_MISSING, `${folder}/explain.md`, `${base}: not final yet (matched ${page.matchedAt === undefined ? 'before the critique rule, no matchedAt' : `at ${page.matchedAt}, before ${CRITIQUE_SINCE}`}); it is listed so it is fixed gradually, never failing ${rule}`), level: 'info' });
+      }
     }
     const unrecorded = DESIGN_WIDTHS.filter((width) => page.shots?.[width] === undefined);
     if (unrecorded.length > 0) findings.push(found('HFS_APP_GALLERY_DESIGN_SHOT_MISSING', file, `the page ${id} is ${page.status} and records no sha of its ${unrecorded.join(' and ')} shot: shoot ${folder}/${unrecorded.map((width) => `${width}.png`).join(' and ')} and record their sha256 ${rule}`, local));

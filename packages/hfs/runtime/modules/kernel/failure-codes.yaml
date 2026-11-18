@@ -3484,6 +3484,17 @@ HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED:
   kind: check-finding
   localOnly: true
 
+HFS_APP_GALLERY_DESIGN_CRITIQUE_MISSING:
+  title: "A final screen records the options its critique weighed"
+  title_vi: "Màn hình đã khớp (matches) nhưng explain.md thiếu mục Phương án đã cân nhắc"
+  meaning_vi: "Trang của màn hình trong .starcistacks/canvas/design.json ở trạng thái matches nhưng gallery/pages/<khu>/<màn>/explain.md không có mục `## Phương án đã cân nhắc` (mỗi phương án, vì sao chọn hoặc loại). Với trang có matchedAt từ 2026-11-18 trở đi đây là lỗi; trang matches cũ hơn (matchedAt trước mốc đó hoặc không có) chỉ được liệt kê ở mức info là chưa phải bản cuối."
+  causes_vi:
+    - "Vi phạm R395 (PROJECT-GALLERY-7 mục 3, PROJECT-GALLERY-6 mục 5): bản cuối cần một tác tử khác với người dựng phản biện hai vòng (desktop so với sản phẩm cùng loại; 390 và các trạng thái), sửa sau mỗi vòng rồi đồng bộ canvas, và ghi lại các phương án đã cân nhắc."
+    - "Trang matches cũ chưa có mục này: chủ dự án sửa dần, không chặn."
+  nextStep_vi: "Chạy phản biện cuối bằng một tác tử khác, viết mục `## Phương án đã cân nhắc` vào explain.md và ghi chú trang canvas, rồi đặt lại matchedAt."
+  owner: op-retry
+  kind: check-finding
+
 HFS_APP_GALLERY_EXPLAIN_STALE:
   title: "A screen's explain.md changes with its source"
   title_vi: "Mã của màn hình đổi nhưng explain.md không đổi theo"

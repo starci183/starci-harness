@@ -15,7 +15,7 @@ import { init } from '../runtime/scripts/api/git/init.mjs';
 import { loadSlotManifest } from '../runtime/scripts/hfs/slots.mjs';
 import { galleryParams, galleryPort, declaredBasePort, galleryLocale, galleryTexts, declaredDefaultLocale, GALLERY_LABELS, declaredGalleryHosts, galleryAllowedHosts } from '../runtime/scripts/hfs/gallery.mjs';
 import { appGalleryFindings, galleryScreens, GALLERY_FILES, ignoresShots } from '../runtime/scripts/hfs/rules/gallery.mjs';
-import { parseExplain, missingFrontMatter, linkTargets, flowList, SHOT_FILES } from '../runtime/scripts/hfs/gallery-explain.mjs';
+import { hasOptionsSection, parseExplain, missingFrontMatter, linkTargets, flowList, SHOT_FILES } from '../runtime/scripts/hfs/gallery-explain.mjs';
 import { judgedForEnv, localOnlyCodes } from '../runtime/scripts/hfs/check-env.mjs';
 import { A15_CODES, FINDERS } from '../runtime/scripts/hfs/rules/a15-findings.mjs';
 import { loadLocalConfig, withGallery } from '../stack/local-config.mjs';
@@ -437,7 +437,7 @@ test('explain.md is read as front matter and regions: the three lines, bullets, 
 const GALLERY_DIST = new URL('../../gallery/dist/explain.js', import.meta.url);
 test('the gallery package reads explain.md, links and flows as the gate does: both answer alike over the same texts', { skip: !fs.existsSync(GALLERY_DIST) && 'packages/gallery is not built' }, async () => {
   const pkg = (await import(GALLERY_DIST.href)) as { parseExplain: typeof parseExplain; linkList: (json: unknown) => { to: string }[]; flowList: (json: unknown) => { name: string; screens: string[] }[]; SHOT_WIDTHS: string[] };
-  const texts = [EXPLAIN_OK, '## A\nVì sao: CHƯA RÕ\nGrammar: x', '## A\r\nVì sao: SAI\r\nGrammar: `X`\r\n## B\r\nVì sao: fine', '---\ntitle: "Quoted"\n---\n## A\nGrammar: `X`', '', 'no regions at all'];
+  const texts = [EXPLAIN_OK, '## A\nVì sao: CHƯA RÕ\nGrammar: x', '## A\r\nVì sao: SAI\r\nGrammar: `X`\r\n## B\r\nVì sao: fine', '---\ntitle: "Quoted"\n---\n## A\nGrammar: `X`', '', 'no regions at all', '## A\nVì sao: x\nGrammar: `X`\n## Phương án đã cân nhắc\n- Hai tab: loại.\n- Một Select: chọn.\n## B\nVì sao: y\nGrammar: `Y`'];
   for (const text of texts) assert.deepEqual(pkg.parseExplain(text), parseExplain(text), text.slice(0, 30));
   assert.deepEqual(pkg.SHOT_WIDTHS.map((width) => `${width}.png`).sort(), [...SHOT_FILES].sort());
   for (const json of [[{ to: 'a/b' }], { links: [{ to: 'a/b', x: 1 }] }, {}, [{ to: 1 }], null]) assert.deepEqual(pkg.linkList(json).map((link) => link.to), linkTargets(json) ?? [], JSON.stringify(json));
@@ -580,4 +580,13 @@ test('links.json and flows.json name existing screen folders; a malformed or dan
   assert.match(findings(root)[0]?.message ?? '', /object \{ "<flow name>"/u);
   fs.writeFileSync(at(root, 'gallery', 'flows.json'), 'nope');
   assert.match(findings(root)[0]?.message ?? '', /is not JSON/u);
+});
+
+test('the section "Phương án đã cân nhắc" is a record, not a region: the reader skips it and hasOptionsSection needs a non-empty body', () => {
+  const text = '---\ntitle: T\nroute: /x\narea: a\n---\nIntro.\n\n## A\nVì sao: x\nGrammar: `X`\n\n## Phương án đã cân nhắc\n- Hai tab: loại.\n\n## B\nVì sao: y\nGrammar: `Y`\n';
+  assert.deepEqual(parseExplain(text).regions.map((region) => region.name), ['A', 'B']);
+  assert.equal(parseExplain(text).intro, 'Intro.');
+  assert.equal(hasOptionsSection(text), true);
+  assert.equal(hasOptionsSection('## Phương án đã cân nhắc\n\n## B\nVì sao: y\n'), false, 'an empty section');
+  assert.equal(hasOptionsSection('## A\nVì sao: x\n'), false);
 });

@@ -25,6 +25,12 @@ Every UI change, not only a new area: any change a user can see (a redesign, a f
 screen's canvas page, before its code. The order is canvas, code, gallery, and [PROJECT-GALLERY-7](../../contexts/project/gallery.md#project-gallery-7-a-ui-change-goes-canvas-first-then-code-then-gallery) owns it and its check
 (`HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED`). A change to an existing page redraws or adjusts its page and concept note; the owner approves; only then is it coded.
 
+The canvas is a quick sketch: it fixes the direction (regions, the one primary action, the states), not a deep analysis, so a lane does not
+compare it with other products or weigh every alternative. That weighing happens after the code, in the final critique of PROJECT-GALLERY-7 item 3,
+by an agent other than the builder, in two rounds (the 1440 composition against real products of the same archetype; then the 390 frame and the
+empty, loading and error states). Its record, the section "Phương án đã cân nhắc" in the screen's `explain.md` and the canvas page's note, is what
+makes a screen final; the brief is in [references/production.md](references/production.md#the-final-critique-another-agent-after-code).
+
 ## Method
 
 Read the app's `.starcistacks/brand/` first ([PROJECT-BRAND-3](../../contexts/project/brand.md#project-brand-3-a-design-or-image-brief-reads-the-brand-folder-first)): its colour token names, voice and illustration concept bound every frame, and an illustration is prompted as its basePrompt plus a subject.

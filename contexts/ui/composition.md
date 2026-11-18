@@ -268,6 +268,15 @@ with a count when members overflow; the composite carries the group meaning, so 
 name. Each identity is an uploaded image or the grammar's generated initials. An agent identity adds the grammar's
 bot badge. The family owns renderers, cells and sizes.
 
+### COLLECTION-5 One toolbar per collection
+A collection has exactly one toolbar, in the `Section` that owns it, and it carries the whole way the reader narrows and acts on that
+collection, in this order: the view picker, the count, a compact search, the filter and the create action. A view picker (all, a
+status, a saved view) is a `Select`, never a second tab strip under the page's tabs; `Tabs` stay for panels (the page's own
+destinations), not for views of one collection. On desktop the toolbar is one row; on 390 it is two lines (the picker with the
+count above, search, filter and the create action below), never a third strip, and the create action keeps its place. A second
+toolbar, a search that stands apart from the filter, or a view strip repeated under the tabs is one fact on two carriers.
+Reason: the shop-table case, where the view picker was drawn as a second tab strip under the page tabs, so two navigation strips and a search row stood before the first record (LAYOUT-6). See [components/list-table.md](components/list-table.md).
+
 ## 6. Layout
 
 Choice `grid.choose.content`: which track owner carries the content.
@@ -322,6 +331,12 @@ task. Content wider than its column has exactly one horizontal scroll region; th
 ### LAYOUT-4 Regions that leave normal flow
 Sticky, fixed, drawer and floating regions use their composition's contract and return to flow below its narrow
 width. Order differences across widths are composition only; DOM, reading, focus and action order never change.
+
+### LAYOUT-6 No two stacked navigation strips of the same level
+Navigation of one level appears once: the page tabs, a view strip, a breadcrumb trail and a step list each stand alone in their band.
+Two strips of the same level stacked under one another (page tabs over view tabs, two tab rows, a segmented bar under tabs) are one
+fact on two carriers, and the lower one becomes a `Select` in the collection's toolbar (COLLECTION-5) or a panel inside the tab. The
+shop-table case is the reason: a view strip drawn under the page tabs.
 
 ### FE-APP-SHELL-1..6 App chrome
 | Id | Rule |
