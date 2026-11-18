@@ -132,6 +132,10 @@ targets do not compile. Loading keeps the poster and action geometry inert. A ti
 `groundTone` (`accent`, `success`, `warning`, `danger`; 0.47.1) paints the whole tile with the tone's soft pair, its words the pair's
 foreground, in both families (`DataTableRow.groundTone` is the row's twin); the badge still carries the status in words. A marked tile
 shorter than its row keeps its rows at the top (`align-content: start`) instead of stretching them to the row's height.
+`poster.bleed: true` (0.47.2) makes the poster a full-bleed cover: flush to the card's top and both side edges, clipped by the card's top corners
+(the card clips; the picture has no radius of its own), while the name, badges, facts and figure keep the card's padding below it. It holds
+for every `aspect` and `fit`, the absence frame and the loading skeleton, and in both families (Offset Pop: the picture sits inside the outline,
+flush to it, with the outline's weight drawn under it).
 
 ### Button
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.47.2 - 2026-11-19 - Tile poster bleed
+
+An additive optional prop and new DNA laws, so a patch. Lane `grammar-tile-bleed`; the version in package.json is raised by the train. Both families, light and dark.
+
+- Added (`SurfaceCard kind="tile"`): `poster.bleed?: boolean` (default `false`). A bleed poster sits flush against the card's top and both side edges and is clipped by the card's top corners; the name, badges, facts and figure keep their padding below. It works with every `aspect` and `fit`, the absence frame, the loading skeleton, `groundTone` and `Grid size="tile"`. Offset Pop: the picture sits inside the outline, flush to it, with the outline's weight under it. Stamps `data-grammar-tile-poster-bleed` and `data-grammar-surface-bleed`.
+- Added (DNA, role `card`): `DNA-COMMON-TILE-BLEED-TOP`, `-START`, `-END`.
+- Stories: `Surfaces/Media tiles` BleedPosters (every aspect and fit, absence, loading, groundTone, a tile grid), a play function at 1440 and 390 in both families. Contexts: `grammars/contract.md`, `contract.yaml`, `ui/components/card.md`.
+
 ## 0.47.1 - 2026-11-18 - Workbench gaps: two-up tile grid, tile ground tone and bare tiles, clear-all filters, Select icon, toolbar search
 
 Every change is an additive optional prop or a new DNA law, so a patch (contexts/grammars/contributing.md "Patch or minor"). Lane `grammar-wb-gaps`; the version in package.json is raised by the train. Both families, light and dark.
