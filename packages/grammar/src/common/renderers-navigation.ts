@@ -30,7 +30,7 @@ import { Illustration } from "../core/leaf/Illustration/index.js"
 
 export { Accordion, type AccordionItem, type AccordionProps } from "../core/branch/Accordion/index.js"
 export { Calendar, type CalendarProps } from "../core/branch/Calendar/index.js"
-export { DataTable, type DataTableCellInteraction, type DataTableColumn, type DataTableProps, type DataTableRow, type DataTableSort } from "../core/branch/DataTable/index.js"
+export { DataTable, type DataTableCellInteraction, type DataTableColumn, type DataTableProps, type DataTableRow, type DataTableSort, type DataTableTotals } from "../core/branch/DataTable/index.js"
 export { DragItem, type DragItemProps, type DragItemTone } from "../core/branch/DragItem/index.js"
 export { Disclosure, type DisclosureProps } from "../core/branch/Disclosure/index.js"
 export { BubbleMap, bubbleDiameter, bubbleMapLayout, type BubbleMapEdge, type BubbleMapFill, type BubbleMapNode, type BubbleMapNodeForm, type BubbleMapProps, type BubbleMapRingPart } from "../core/branch/BubbleMap/index.js"

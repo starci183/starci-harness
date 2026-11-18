@@ -53,7 +53,7 @@ export { Board, type BoardColumn, type BoardMove, type BoardMoveLabels, type Boa
 export { PageIntro, type PageIntroLine, type PageIntroProps } from "../core/composite/PageIntro/index.js"
 export { PaneHeader, type PaneHeaderProps } from "../core/composite/PaneHeader/index.js"
 export { PaneDrawerOpener, type PaneDrawerOpenerProps } from "../core/composite/PaneDrawerOpener/index.js"
-export { EmptyNotice, type EmptyNoticeIllustration, type EmptyNoticeProps, type EmptyNoticeSecondary } from "../core/composite/EmptyNotice/index.js"
+export { EmptyNotice, type EmptyNoticeIllustration, type EmptyNoticeProps, type EmptyNoticeSecondary, type EmptyNoticeStep } from "../core/composite/EmptyNotice/index.js"
 export { MessageBubble, type MessageBubbleGroupPosition, type MessageBubbleProps, type MessageBubbleSide, type MessageBubbleTone, type MessageReaction, type MessageReactionLabels } from "../core/composite/MessageBubble/index.js"
 export { MessageCard, type MessageCardAction, type MessageCardProps } from "../core/composite/MessageCard/index.js"
 export { MessageStatus, type MessageStatusProps, type MessageStatusReaders } from "../core/composite/MessageStatus/index.js"
@@ -65,7 +65,7 @@ export { VerticalScrollRegion, type VerticalScrollRegionProps } from "../core/fr
 export type { ErrorData } from "../core/loadingState.js"
 export { SurfaceCard, type SurfaceCardProps } from "../core/frame/SurfaceCard/index.js"
 export type {
-    AvatarData, BadgeData, CardHead, Figure, ImageData, ItemAction, ItemLeading, ItemMenu, ListRowData, RowDrag, RowEdgeTone, TileData, TileMark, TilePoster, WholeCardAction,
+    AvatarData, BadgeData, CardHead, Figure, ImageData, ItemAction, ItemLeading, ItemMenu, ListRowData, RowDrag, RowEdgeTone, RowGroundTone, TileData, TileMark, TilePoster, WholeCardAction,
 } from "../core/surfaceCardData.js"
 export type { AccentCorner } from "../core/accentCorner.js"
 export { FencedCodeBlock, MarkdownArticle, MarkdownTableFrame, type FencedCodeBlockProps, type MarkdownArticleProps, type MarkdownTableFrameProps } from "../core/frame/MarkdownArticle/index.js"

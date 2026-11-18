@@ -1,12 +1,12 @@
 "use client"
 
 import { Checkbox as HeroCheckbox, Link as HeroLink, Table as HeroTable, type Selection, type SortDescriptor } from "@heroui/react"
-import { useEffect, useRef, useState, type CSSProperties, type DragEventHandler, type KeyboardEvent, type MouseEvent, type ReactNode } from "react"
+import { useEffect, useRef, useState, type CSSProperties, type DragEventHandler, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode } from "react"
 import { Skeleton } from "../../leaf/Skeleton/index.js"
 import { ButtonPlacementProvider } from "../../buttonIntent.js"
 import { ErrorView, LOADING_ROWS, type ErrorData } from "../../loadingState.js"
 import { useIsLoading } from "../../regionScope.js"
-import type { RowEdgeTone } from "../../surfaceCardData.js"
+import type { RowEdgeTone, RowGroundTone } from "../../surfaceCardData.js"
 import type { NoChildren } from "../../tier.js"
 
 /** A table of this many columns or fewer fits its container (its columns shrink to their words); a wider one keeps its natural width and scrolls. */
@@ -65,6 +65,24 @@ export type DataTableRow = {
     readonly href?: string
     /** The tone of the row's 2px leading edge (0.45.1): a row that waits for the reader or leads the table. A selected row draws the accent bar instead. */
     readonly edgeTone?: RowEdgeTone
+    /**
+     * The tone of the row's ground (0.47.0): the row is painted with that tone's soft pair (`x-soft` behind, `x-soft-foreground` on the words), full width, for a row whose status the
+     * whole row should answer (an overdue invoice, a failed run). It stands beside `edgeTone` (the 2px bar) and the two may be set together; a selected row draws the selection fill over it.
+     * The row's badge or cell still says the status in words: the colour is never the only cue.
+     */
+    readonly groundTone?: RowGroundTone
+}
+
+/**
+ * The totals row of a table (0.47.0): one row after the last row, its `label` in the first column and each `values` entry, keyed by column id, in that column's cell, so a figure stands
+ * under its own column in the same tabular numerals and alignment as the rows above it. Where the table scrolls (`maxBlockSize` or `fill`) the row stays at the bottom of the scroll region,
+ * directly over the `footer`. It is not a data row: it is not selectable or pressable. A column the table folds into its rows on a narrow container keeps its figure as stacked secondary text.
+ */
+export type DataTableTotals = {
+    /** The row's name in the first column, e.g. "Total". */
+    readonly label: string
+    /** The figures by column id. A column with no entry draws an empty cell. The first column shows the label, so an entry for it is not drawn. */
+    readonly values: Readonly<Record<string, ReactNode>>
 }
 
 /** Cell effects belong to the caller; the table owns cell semantics, focus and activation. */
@@ -153,12 +171,27 @@ export type DataTableProps<Row extends DataTableRow> = NoChildren & DataTableRow
      * Default false: the table is as tall as its rows.
      */
     readonly fill?: boolean
+    /** A totals row after the last row, aligned to the columns and sticky at the foot of the scroll region (0.47.0). Hidden while the table is loading, failed or empty. */
+    readonly totals?: DataTableTotals
+    /**
+     * Phone list with a `selectionMode` (0.47.0): the list starts selecting on a long press (about half a second) on a row, which selects it; while anything is selected a press toggles a row
+     * instead of running its action or link, and each row's checkbox (named by `selectRowLabel`) shows. This is the words the count is announced with, e.g. `(count) => `${count} selected``;
+     * it is drawn as a polite live status. Without it nothing is announced beyond the checkboxes' own state.
+     */
+    readonly selectedCountLabel?: (count: number) => string
 }
 
 /** The vendor row part filters aria-hidden out of its props, so the skeleton rows take it by ref (knowledge STATE-8). */
 const hideFromAssistiveTechnology = (node: HTMLElement | null) => node?.setAttribute("aria-hidden", "true")
 
 const SELECTION_COLUMN = "starci-data-table-selection"
+
+/** The key of the totals row: a body row of the grid, held out of selection and action by `disabledKeys`. */
+const TOTALS_ID = "starci-data-table-totals"
+
+/** How long a press must hold on a phone list row to start selecting (ms), and how far the pointer may drift meanwhile (px). */
+const LONG_PRESS_MS = 500
+const LONG_PRESS_SLOP = 10
 
 // Labels activate their associated inputs; editable content, media and ARIA widgets own their gestures too.
 const CELL_CONTROL_SELECTOR = [
@@ -374,9 +407,13 @@ export const DataTable = <Row extends DataTableRow>({
     id: tableId,
     phone,
     fill = false,
+    totals,
+    selectedCountLabel,
 }: DataTableProps<Row>) => {
     const rows: ReadonlyArray<Row> = groups === undefined ? flatRows ?? [] : groups.flatMap((group) => group.rows)
     const scrollRef = useRef<HTMLDivElement>(null)
+    const press = useRef<{ timer: number | undefined; x: number; y: number; fired: boolean; touch: boolean }>({ timer: undefined, x: 0, y: 0, fired: false, touch: false })
+    useEffect(() => () => { if (press.current.timer !== undefined) window.clearTimeout(press.current.timer) }, [])
     const [width, setWidth] = useState<number | null>(null)
     const belowTablet = useViewportBelow(BELOW_PX.tablet)
     const belowDesktop = useViewportBelow(BELOW_PX.desktop)
@@ -430,6 +467,7 @@ export const DataTable = <Row extends DataTableRow>({
         : groups === undefined
             ? visibleRows.map((row) => ({ group: undefined, row }))
             : groups.filter((group) => group.rows.length > 0).flatMap((group) => [{ group, row: undefined }, ...group.rows.map((row) => ({ group: undefined, row }))])
+    const showTotals = totals !== undefined && !isLoading && !failed && rows.length > 0
     const columnCount = shown.length + (multiple ? 1 : 0)
     const state = isLoading ? "loading" : failed ? "error" : rows.length === 0 ? "empty" : "ready"
     const scrollStyle = maxBlockSize === undefined ? undefined : { "--starci-core-data-table-max-block-size": maxBlockSize } as CSSProperties
@@ -460,6 +498,7 @@ export const DataTable = <Row extends DataTableRow>({
                     className="starci-core-data-table-content"
                     data-contract="FOCUS-2 STATE-1"
                     selectionMode={isLoading ? "none" : selectionMode}
+                    {...(showTotals ? { disabledKeys: [TOTALS_ID] } : {})}
                     {...(sort === undefined ? {} : { sortDescriptor: toSortDescriptor(sort) })}
                     {...(onSortChange === undefined ? {} : {
                         onSortChange: (descriptor: SortDescriptor) => onSortChange({ columnId: String(descriptor.column), direction: descriptor.direction }),
@@ -533,6 +572,7 @@ export const DataTable = <Row extends DataTableRow>({
                                 {...(row.href === undefined ? {} : { href: row.href })}
                                 data-grammar-table-row-link={row.href === undefined ? "false" : "true"}
                                 {...(row.edgeTone === undefined ? {} : { "data-edge-tone": row.edgeTone })}
+                                {...(row.groundTone === undefined ? {} : { "data-ground-tone": row.groundTone })}
                                 data-grammar-table-row-pressable={row.href !== undefined || onRowAction !== undefined ? "true" : "false"}
                                 data-grammar-selected={selectionMode !== "none" && isRowSelected(row.id) ? "true" : "false"}
                             >
@@ -579,11 +619,95 @@ export const DataTable = <Row extends DataTableRow>({
                                     })}
                             </HeroTable.Row>
                         ))}
+                        {showTotals ? (
+                            <HeroTable.Row key={TOTALS_ID} id={TOTALS_ID} textValue={totals.label} className="starci-core-data-table-row starci-core-data-table-totals-row" data-grammar-table-totals="true" data-grammar-selected="false">
+                                {multiple ? <HeroTable.Cell className="starci-core-data-table-cell" data-grammar-table-selection="true">{null}</HeroTable.Cell> : null}
+                                {shown.map((column) => (
+                                    <HeroTable.Cell
+                                        key={column.id}
+                                        className="starci-core-data-table-cell"
+                                        data-grammar-table-align={column.align ?? (column.isNumeric === true ? "end" : "start")}
+                                        {...(column.isNumeric === true ? { "data-grammar-table-numeric": "true" } : {})}
+                                        {...widthAttrs(widthOf(column, shown), column)}
+                                        data-grammar-column-id={column.id}
+                                        {...(column.id === rowHeaderId ? { "data-grammar-table-row-header": "true" } : {})}
+                                    >
+                                        {column.id === hostColumnId ? (
+                                            <>
+                                                {totals.label}
+                                                {collapsed.length === 0 ? null : (
+                                                    <div className="starci-core-data-table-secondary" data-grammar-table-secondary="true">
+                                                        {collapsed.map((hidden) => (
+                                                            <div key={hidden.id} className="starci-core-data-table-secondary-item" data-grammar-table-secondary-column={hidden.id}>
+                                                                <span className="starci-core-data-table-secondary-label">{hidden.label}</span>
+                                                                <span className="starci-core-data-table-secondary-value">{totals.values[hidden.id] ?? null}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </>
+                                        ) : totals.values[column.id] ?? null}
+                                    </HeroTable.Cell>
+                                ))}
+                            </HeroTable.Row>
+                        ) : null}
                     </HeroTable.Body>
                 </HeroTable.Content>
     )
     // Under 768 px a table of three or more columns is a list: the first column the title, the others one muted line of values.
     const [titleColumn, ...otherColumns] = shown
+    // Selection on a phone list (0.47.0): a long press on a row selects it, a press toggles while anything is selected, every row holds a real checkbox for the keyboard and assistive technology.
+    const selectableList = isList && selectionMode !== "none" && !isLoading && !failed
+    const selectedCount = selection === "all" ? rows.length : selection.length
+    const selecting = selectableList && selectedCount > 0
+    const commitSelection = (ids: ReadonlyArray<string>) => {
+        if (selectedIds === undefined) setUncontrolledSelection(ids)
+        onSelectionChange?.(ids)
+    }
+    const toggleRow = (id: string) => {
+        const current: ReadonlyArray<string> = selection === "all" ? rows.map((candidate) => candidate.id) : selection
+        const selected = current.includes(id)
+        commitSelection(selectionMode === "single" ? (selected ? [] : [id]) : selected ? current.filter((candidate) => candidate !== id) : [...current, id])
+    }
+    const clearPress = () => {
+        if (press.current.timer !== undefined) window.clearTimeout(press.current.timer)
+        press.current.timer = undefined
+    }
+    const selectionHandlers = (row: Row) => !selectableList ? {} : {
+        onPointerDown: (event: PointerEvent<HTMLDivElement>) => {
+            if (event.button !== 0 || (event.target instanceof Element && event.target.closest("[data-grammar-list-select]") !== null)) return
+            clearPress()
+            press.current = { timer: undefined, x: event.clientX, y: event.clientY, fired: false, touch: event.pointerType === "touch" }
+            press.current.timer = window.setTimeout(() => {
+                press.current.timer = undefined
+                press.current.fired = true
+                toggleRow(row.id)
+                try { navigator.vibrate?.(10) } catch { /* a device without haptics: the checkbox is the feedback */ }
+            }, LONG_PRESS_MS)
+        },
+        onPointerMove: (event: PointerEvent<HTMLDivElement>) => {
+            if (press.current.timer !== undefined && Math.hypot(event.clientX - press.current.x, event.clientY - press.current.y) > LONG_PRESS_SLOP) clearPress()
+        },
+        onPointerUp: clearPress,
+        onPointerCancel: clearPress,
+        onPointerLeave: clearPress,
+        // The platform's long-press menu (and a selected word) must not open over the selection a long press just made.
+        onContextMenu: (event: MouseEvent<HTMLDivElement>) => { if (press.current.touch) event.preventDefault() },
+        onClickCapture: (event: MouseEvent<HTMLDivElement>) => {
+            if (event.target instanceof Element && event.target.closest("[data-grammar-list-select]") !== null) return
+            // The click that ends a long press is not a tap: it neither toggles the row again nor follows its action or link.
+            if (press.current.fired) {
+                press.current.fired = false
+                event.preventDefault()
+                event.stopPropagation()
+                return
+            }
+            if (!selecting || (event.target instanceof Element && event.target.closest("button, input, select, textarea, [role='button']:not([data-grammar-table-row-anchor])") !== null)) return
+            event.preventDefault()
+            event.stopPropagation()
+            toggleRow(row.id)
+        },
+    }
     const listRow = (row: Row) => {
         const title = titleColumn === undefined ? null : renderCell(row, titleColumn.id)
         // A row with an `href` is a real anchor: the title is the link (stretched over the row, as `ListRow`'s is), so the platform owns Enter, middle-click,
@@ -596,12 +720,23 @@ export const DataTable = <Row extends DataTableRow>({
                 role="listitem"
                 className="starci-core-data-table-list-row"
                 data-grammar-selected={selectionMode !== "none" && isRowSelected(row.id) ? "true" : "false"}
-                data-grammar-table-row-pressable={onRowAction !== undefined || row.href !== undefined ? "true" : "false"}
+                data-grammar-table-row-pressable={onRowAction !== undefined || row.href !== undefined || selecting ? "true" : "false"}
                 data-grammar-table-row-link={row.href === undefined ? "false" : "true"}
+                {...(selectableList ? { "data-grammar-table-row-selectable": "true" } : {})}
                 {...(row.edgeTone === undefined ? {} : { "data-edge-tone": row.edgeTone })}
+                {...(row.groundTone === undefined ? {} : { "data-ground-tone": row.groundTone })}
                 {...(onRowAction === undefined ? {} : { onClick: () => onRowAction(row.id), ...pressKeys })}
+                {...selectionHandlers(row)}
             >
-                <div className="starci-core-data-table-list-title">
+                <div className="starci-core-data-table-list-title" {...(selectableList ? { "data-grammar-list-select-host": "true" } : {})}>
+                    {selectableList ? (
+                        <label className="starci-core-data-table-list-select" data-grammar-list-select="true" onClick={(event) => event.stopPropagation()}>
+                            <input type="checkbox" checked={isRowSelected(row.id)} onChange={() => toggleRow(row.id)} aria-label={selectRowLabel?.(row) ?? row.id} />
+                            <span className="starci-core-data-table-list-mark" aria-hidden="true">
+                                <svg viewBox="0 0 20 20" focusable="false"><path d="M5 10.5 8.25 14 15 6.5" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" /></svg>
+                            </span>
+                        </label>
+                    ) : null}
                     {row.href === undefined ? title : (
                         <HeroLink
                             className="starci-core-link starci-core-data-table-list-link"
@@ -621,15 +756,30 @@ export const DataTable = <Row extends DataTableRow>({
         )
     }
     const listBody = (
-        <div ref={scrollRef} className="starci-core-data-table-list" role="list" aria-label={label} aria-busy={isLoading || undefined} data-grammar-table-state={state}>
+        <div ref={scrollRef} className="starci-core-data-table-list" role="list" aria-label={label} aria-busy={isLoading || undefined} data-grammar-table-state={state} {...(selectableList ? { "data-grammar-selecting": selecting ? "true" : "false" } : {})}>
             {isLoading ? skeletonRows.map((row) => <div key={row.id} role="listitem" className="starci-core-data-table-list-row" data-grammar-skeleton="true"><Skeleton shape="text" /></div>) : null}
             {failed ? <div className="starci-core-data-table-placeholder" data-grammar-table-error="true"><ErrorView error={error} /></div> : null}
             {!isLoading && !failed && rows.length === 0 ? <div className="starci-core-data-table-placeholder" data-contract="STATE-3" data-grammar-table-empty="true">{emptyContent}</div> : null}
             {entries.map(({ group, row }) => group !== undefined
                 ? <div key={`group-${group.id}`} role="presentation" className="starci-core-data-table-list-group"><span>{group.label}</span>{group.fact === undefined ? null : <span>{group.fact}</span>}</div>
                 : row === undefined ? null : listRow(row))}
+            {showTotals ? (
+                <div role="listitem" className="starci-core-data-table-list-row starci-core-data-table-list-totals" data-grammar-table-totals="true">
+                    <div className="starci-core-data-table-list-title">{totals.label}</div>
+                    <div className="starci-core-data-table-list-meta">
+                        {otherColumns.filter((column) => totals.values[column.id] !== undefined).map((column) => (
+                            <span key={column.id} className="starci-core-data-table-list-value" data-grammar-table-column-id={column.id}>
+                                <span className="starci-core-data-table-secondary-label">{column.label}</span> {totals.values[column.id]}
+                            </span>
+                        ))}
+                    </div>
+                </div>
+            ) : null}
         </div>
     )
+    const selectionStatus = selectableList && selectedCountLabel !== undefined
+        ? <span className="starci-core-visually-hidden" role="status" aria-live="polite">{selecting ? selectedCountLabel(selectedCount) : ""}</span>
+        : null
     const table = (
         <HeroTable
             aria-busy={isLoading || undefined}
@@ -651,6 +801,7 @@ export const DataTable = <Row extends DataTableRow>({
             {isList ? listBody : <HeroTable.ScrollContainer ref={scrollRef} className="starci-core-data-table-scroll" data-contract="LAYOUT-3" data-grammar-table-scroll="true" style={scrollStyle} onKeyDownCapture={onCellKeyDown}>
                 {resizable ? <HeroTable.ResizableContainer onResizeEnd={onResizeEnd}>{content}</HeroTable.ResizableContainer> : content}
             </HeroTable.ScrollContainer>}
+            {selectionStatus}
             {footer === undefined || isLoading || failed ? null : <HeroTable.Footer className="starci-core-data-table-footer" data-grammar-table-footer="true">{footer}</HeroTable.Footer>}
         </HeroTable>
     )

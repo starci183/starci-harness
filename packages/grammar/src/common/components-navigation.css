@@ -1102,6 +1102,24 @@
     }
 
     /*
+     * THE TOTALS ROW (0.47.0). The last row of the body, its figures in the cells of their own columns (the same alignment and tabular numerals as the rows above), the
+     * label in the first column. It has its own opaque ground (the secondary surface) and a `--border` line above, 14 / 600, and it is sticky at the foot of the scroll
+     * region, so in a bounded or `fill` table it stays over the footer while the rows scroll under it; in a table as tall as its rows it is simply the last row.
+     */
+    .starci-core-data-table .table__row.starci-core-data-table-totals-row .table__cell {
+        position: sticky;
+        inset-block-end: 0;
+        z-index: 1;
+        border-block-start: 1px solid var(--border);
+        border-block-end: 0;
+        /* Opaque: the rows scroll under it, so the secondary tint stands on the page ground. */
+        background-color: var(--background);
+        background-image: linear-gradient(var(--surface-secondary), var(--surface-secondary));
+        font-weight: var(--grammar-weight-semibold);
+        font-variant-numeric: tabular-nums;
+    }
+
+    /*
      * The type of a table: the header 12 / 500 muted, a cell 14 / 400, the row-header cell (the row primary) 14 / 500. A Text in a cell
      * takes the same steps (`Text isStrong` 14 / 500, `Text size="sm" tone="muted"` 13).
      */
@@ -1175,6 +1193,29 @@
 
     .starci-core-data-table-list-row[data-edge-tone] {
         box-shadow: inset var(--grammar-ring-width) 0 0 0 var(--starci-core-row-edge-color);
+    }
+
+    /*
+     * THE ROW GROUND TONE (0.47.0). A row `groundTone` paints the whole row with its tone's soft pair, the words in the pair's foreground, for a row whose status the whole row answers.
+     * It sits beside `edgeTone` (the 2px bar, above) and under the selected row's fill (below, which comes later and wins). A pressable row darkens it a step on hover instead of
+     * swapping it for the neutral hover fill.
+     */
+    .starci-core-data-table-row[data-ground-tone="accent"], .starci-core-data-table-list-row[data-ground-tone="accent"] { --starci-core-row-ground: var(--accent-soft); --starci-core-row-ground-ink: var(--accent-soft-foreground); }
+    .starci-core-data-table-row[data-ground-tone="success"], .starci-core-data-table-list-row[data-ground-tone="success"] { --starci-core-row-ground: var(--success-soft); --starci-core-row-ground-ink: var(--success-soft-foreground); }
+    .starci-core-data-table-row[data-ground-tone="warning"], .starci-core-data-table-list-row[data-ground-tone="warning"] { --starci-core-row-ground: var(--warning-soft); --starci-core-row-ground-ink: var(--warning-soft-foreground); }
+    .starci-core-data-table-row[data-ground-tone="danger"], .starci-core-data-table-list-row[data-ground-tone="danger"] { --starci-core-row-ground: var(--danger-soft); --starci-core-row-ground-ink: var(--danger-soft-foreground); }
+
+    .starci-core-data-table-row[data-ground-tone], .starci-core-data-table-list-row[data-ground-tone] {
+        background: var(--starci-core-row-ground);
+        color: var(--starci-core-row-ground-ink);
+    }
+
+    .starci-core-data-table .starci-core-data-table-row[data-ground-tone] .starci-core-data-table-cell { color: var(--starci-core-row-ground-ink); }
+
+    @media (hover: hover) {
+        .starci-core-data-table .starci-core-data-table-row[data-ground-tone][data-grammar-table-row-pressable="true"]:hover .table__cell {
+            background: color-mix(in oklab, var(--starci-core-row-ground) 88%, var(--foreground));
+        }
     }
 
     /*
@@ -1414,6 +1455,74 @@
     }
 
     .starci-core-data-table-list-meta:empty { display: none; }
+
+    /* The totals item of the phone list: the last row, on the secondary surface, its figures labelled by their column. */
+    .starci-core-data-table-list-row.starci-core-data-table-list-totals { background: var(--surface-secondary); border-block-start: 1px solid var(--border); border-block-end: 0; }
+    .starci-core-data-table-list-totals .starci-core-data-table-list-title { font-weight: var(--grammar-weight-semibold); }
+    .starci-core-data-table-list-totals .starci-core-data-table-list-value { color: var(--default-foreground); font-variant-numeric: tabular-nums; }
+
+    /*
+     * SELECTION ON THE PHONE LIST (0.47.0). A long press on a row selects it, then a press toggles; the platform's own text selection and callout stay out of the way. Every
+     * row holds a real checkbox: it is invisible (still the keyboard's and assistive technology's control) until a row is selected or the checkbox has focus, when a 24px mark
+     * stands at the start of the title line and the selected row takes the same grey fill and accent bar as a selected table row.
+     */
+    .starci-core-data-table-list-row[data-grammar-table-row-selectable="true"] {
+        position: relative;
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        user-select: none;
+        touch-action: manipulation;
+    }
+
+    .starci-core-data-table-list-title[data-grammar-list-select-host="true"] { display: flex; align-items: center; gap: var(--grammar-row-gap); }
+
+    .starci-core-data-table-list-select {
+        position: absolute;
+        inline-size: 1px;
+        block-size: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+    }
+
+    .starci-core-data-table-list[data-grammar-selecting="true"] .starci-core-data-table-list-select,
+    .starci-core-data-table-list-select:has(input:focus-visible) {
+        position: relative;
+        display: inline-flex;
+        flex: none;
+        inline-size: 1.5rem;
+        block-size: 1.5rem;
+        overflow: visible;
+        clip-path: none;
+    }
+
+    .starci-core-data-table-list-select > input {
+        position: absolute;
+        inset: 0;
+        inline-size: 100%;
+        block-size: 100%;
+        margin: 0;
+        opacity: 0;
+        cursor: pointer;
+    }
+
+    .starci-core-data-table-list-mark {
+        display: inline-flex;
+        flex: none;
+        inline-size: 1.5rem;
+        block-size: 1.5rem;
+        box-sizing: border-box;
+        align-items: center;
+        justify-content: center;
+        border: 1.5px solid var(--border);
+        border-radius: var(--grammar-radius-pill);
+        color: transparent;
+        pointer-events: none;
+    }
+
+    .starci-core-data-table-list-mark > svg { inline-size: 1rem; block-size: 1rem; }
+    .starci-core-data-table-list-row[data-grammar-selected="true"] .starci-core-data-table-list-mark { border-color: var(--accent); background: var(--accent); color: var(--accent-foreground); }
+    .starci-core-data-table-list-select:has(input:focus-visible) .starci-core-data-table-list-mark { outline: 2px solid var(--focus); outline-offset: 2px; }
 
     .starci-core-data-table-list-group {
         display: flex;

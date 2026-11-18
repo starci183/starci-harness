@@ -226,6 +226,45 @@
         gap: var(--grammar-row-gap);
     }
 
+    /*
+     * A first-run notice with steps (0.47.0): two to five numbered steps under the copy, read from the start edge (the stack is centred, the list is not), each a 24px step mark
+     * (a check when done, the accent number on the first open step, a grey number after it) and its words. The first open step carries the one action under its words.
+     */
+    .starci-core-notice-steps {
+        display: flex;
+        min-width: 0;
+        inline-size: min(100%, 26rem);
+        margin: 0;
+        padding: 0;
+        flex-direction: column;
+        gap: var(--grammar-row-gap);
+        list-style: none;
+        text-align: start;
+    }
+
+    .starci-core-notice-step {
+        display: flex;
+        min-width: 0;
+        align-items: flex-start;
+        gap: var(--grammar-row-gap);
+    }
+
+    .starci-core-notice-step > .starci-core-accordion-step { flex: none; }
+
+    .starci-core-notice-step-body {
+        display: flex;
+        min-width: 0;
+        flex: 1 1 auto;
+        flex-direction: column;
+        gap: var(--grammar-identity-gap);
+        padding-block-start: var(--grammar-identity-gap);
+    }
+
+    .starci-core-notice-step-action {
+        display: flex;
+        margin-block-start: var(--grammar-inline-gap);
+    }
+
     @media (max-width: 47.999rem) {
         .starci-core-notice-art { inline-size: var(--grammar-illustration-state-compact); }
     }

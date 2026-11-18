@@ -134,3 +134,67 @@ export const ServerErrorPage: Story = {
     expect(actions[1]?.textContent).toBe('Try again');
   },
 };
+
+const FIRST_RUN_STEPS: ReadonlyArray<G.EmptyNoticeStep> = [
+  { id: 'drive', label: 'Connect your Google Drive', description: 'Your files stay where they are.', isDone: true },
+  { id: 'sheet', label: 'Pick the customer sheet', description: 'The first row holds the column names.' },
+  { id: 'invite', label: 'Invite your team' },
+];
+
+/**
+ * A first-run notice with numbered steps (0.47.0), two to five. A finished step wears a check, the first OPEN step is the current one (the accent number) and carries the
+ * notice's one primary action under its words, and the later steps are grey numbers. The steps read from the start edge inside the centred stack.
+ */
+export const FirstRunSteps: Story = {
+  render: () => (
+    <Matrix maxWidth={560}>
+      <State label="steps: one done, the second carries the action" direction="column">
+        <G.EmptyNotice message="Set up your workspace" description="Three steps and your customers appear here." media={{ icon: BookGlyph }} steps={FIRST_RUN_STEPS} actionLabel="Pick the sheet" onAction={noop} secondary={{ label: 'Skip for now', onPress: noop }} />
+      </State>
+      <State label="every step done: the action stands where a plain notice draws it" direction="column">
+        <G.EmptyNotice message="All set up" steps={FIRST_RUN_STEPS.slice(0, 2).map((step) => ({ ...step, isDone: true }))} actionLabel="Open the customers" onAction={noop} />
+      </State>
+    </Matrix>
+  ),
+  play: async ({ canvasElement }) => {
+    const notices = [...canvasElement.querySelectorAll<HTMLElement>('[data-component="EmptyNotice"]')];
+    expect(notices).toHaveLength(2);
+    const first = notices[0] as HTMLElement;
+    expect(first.getAttribute('data-grammar-empty-kind')).toBe('steps');
+    const steps = [...first.querySelectorAll<HTMLElement>('.starci-core-notice-step')];
+    expect(steps.map((step) => step.getAttribute('data-grammar-step-state'))).toEqual(['done', 'current', 'todo']);
+    expect(steps[1]?.getAttribute('aria-current')).toBe('step');
+    // The one primary stands inside the first open step, not in the foot row; the secondary stays at the foot.
+    expect(steps[1]?.querySelectorAll('button').length).toBe(1);
+    expect(steps[1]?.textContent).toContain('Pick the sheet');
+    expect(first.querySelectorAll(':scope > .starci-core-notice-actions button').length).toBe(1);
+    expect(steps[0]?.querySelector('button')).toBeNull();
+    expect(steps[2]?.querySelector('button')).toBeNull();
+    // The marks are one column.
+    const marks = steps.map((step) => boxOf(step, '.starci-core-accordion-step').getBoundingClientRect().left);
+    expect(Math.max(...marks) - Math.min(...marks)).toBeLessThan(1);
+    // With every step done the action is in the foot row.
+    const second = notices[1] as HTMLElement;
+    expect(second.querySelectorAll('.starci-core-notice-step button').length).toBe(0);
+    expect(second.querySelectorAll(':scope > .starci-core-notice-actions button').length).toBe(1);
+  },
+};
+
+/** The good-news state (0.47.0): nothing needs the reader. A success mark, the words, and no action (the type refuses every action prop on it). */
+export const AllClear: Story = {
+  render: () => (
+    <Matrix maxWidth={560}>
+      <State label="all clear: success mark, no action" direction="column">
+        <G.EmptyNotice isAllClear message="You are all caught up" description="Nothing is waiting for your approval." />
+      </State>
+    </Matrix>
+  ),
+  play: async ({ canvasElement }) => {
+    const notice = boxOf(canvasElement, '[data-component="EmptyNotice"]');
+    expect(notice.getAttribute('data-grammar-empty-kind')).toBe('all-clear');
+    expect(notice.getAttribute('data-grammar-empty-mark')).toBe('success');
+    expect(boxOf(notice, '.starci-core-icon-tile').getAttribute('data-tone')).toBe('success');
+    expect(notice.querySelector('button, a')).toBeNull();
+    expect(notice.querySelector('.starci-core-notice-actions')).toBeNull();
+  },
+};

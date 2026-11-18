@@ -29,6 +29,9 @@ A `Popover` is 26rem wide, or the viewport less 2rem: a panel of rows (a leading
 note stands in the same panel. The width is definite because a row list is a size container, which has no intrinsic width. There is no `width` or `size` prop: one look for every panel, so an app sets no width and
 never wraps a popover's content in a fixed-width box. A panel that needs more than 26rem is a `Drawer` or a `Dialog`. Story `Overlays/Popover width (0.45.1)`.
 
+## Popover size (0.47.0)
+`Popover size` is `sm` (18rem: a short note, a small action menu), `md` (26rem, the default) or `lg` (36rem: a list of wide rows or a small form), each capped at the viewport less 2rem, so on a phone all three are the same full-width panel. The panel never takes its trigger's width, and an app sets no width of its own. Story `Overlays/Popover width (0.45.1)` (Sizes).
+
 ## Scrolling
 A body that outgrows its sheet scrolls with no scrollbar: the edge fades where content continues and wheel, touch and keyboard still scroll
 (OVERFLOW-6; an app element with `overflow-y-auto` is refused by lint `no-raw-scroll`; use the Grammar scroller or `PaneSection scroll`). A `Drawer`

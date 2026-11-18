@@ -87,6 +87,9 @@ export type RowDrag = {
  */
 export type RowEdgeTone = "accent" | "success" | "warning" | "danger"
 
+/** The tone of a table row's ground (0.47.0): the row takes the soft pair of the theme's token of that tone. The same four tones as the edge; see `DataTableRow.groundTone`. */
+export type RowGroundTone = RowEdgeTone
+
 /** One row of a list. A destination links its text title; its sibling commands remain separate targets. */
 export type ListRowData = {
     readonly id: string

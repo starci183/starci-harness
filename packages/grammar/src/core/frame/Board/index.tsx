@@ -9,6 +9,9 @@ import { LoadingScope, useIsLoading } from "../../regionScope.js"
 import type { ListRowData } from "../../surfaceCardData.js"
 import { FilterRow } from "../Section/index.js"
 
+/** How long a refused move's reason stays written in its column (ms); it was announced when it happened. */
+const REFUSAL_SHOWN_MS = 5000
+
 /** One column of a board: a stage that holds items. */
 export type BoardColumn = {
     readonly id: string
@@ -20,6 +23,12 @@ export type BoardColumn = {
     readonly items: readonly ListRowData[]
     /** What the column shows when it has no items. Required: every column answers for its empty state. */
     readonly empty: ReactNode
+    /**
+     * Whether this stage takes the item of `move` (0.47.0): `null` lets it in, a string REFUSES it and is the reason, in the app's words ("Add a quote before it can be won").
+     * A refusing column still takes the pointer (the drag shows it cannot drop there and the reason shows in the column) but the item does not move: the card springs back to where it
+     * was, `onMove` does not run, and the reason is announced (`role="status"`) and handed to `onRefuse`. The keyboard move is held to the same answer. Pure: it runs on every drag-over.
+     */
+    readonly canDrop?: (move: BoardMove) => string | null
 }
 
 /** One move of an item from a stage to another. */
@@ -60,6 +69,8 @@ export type BoardProps = {
      */
     readonly onMove?: (move: BoardMove) => void
     readonly moveLabels?: BoardMoveLabels
+    /** A move a column's `canDrop` refused, with its reason (0.47.0): the app may also raise a Toast. The Board has already announced the reason. */
+    readonly onRefuse?: (move: BoardMove, reason: string) => void
 }
 
 /**
@@ -70,11 +81,16 @@ export type BoardProps = {
  * columns it was given with placeholder rows (three each when it was given none). With `onMove` a card moves between stages
  * by drag or by keyboard, and a card with `onPress` opens by pressing anywhere on it.
  */
-export const Board = ({ label, columns, filter, scrollPreviousLabel, scrollNextLabel, isLoading: ownLoading, error, onMove, moveLabels }: BoardProps) => {
+export const Board = ({ label, columns, filter, scrollPreviousLabel, scrollNextLabel, isLoading: ownLoading, error, onMove, moveLabels, onRefuse }: BoardProps) => {
     const isLoading = useIsLoading(ownLoading)
     const [draggingId, setDraggingId] = useState<string | null>(null)
     const [overColumn, setOverColumn] = useState<string | null>(null)
     const [announcement, setAnnouncement] = useState("")
+    /** The column a drag is over and the reason it refuses the dragged card; read again at drag end, when the card has sprung back. */
+    const [refusal, setRefusal] = useState<{ readonly columnId: string; readonly reason: string } | null>(null)
+    const refusalRef = useRef<{ readonly move: BoardMove; readonly reason: string } | null>(null)
+    const clearRefusalTimer = useRef<number | undefined>(undefined)
+    useEffect(() => () => { if (clearRefusalTimer.current !== undefined) window.clearTimeout(clearRefusalTimer.current) }, [])
     const root = useRef<HTMLDivElement | null>(null)
     const refocus = useRef<string | null>(null)
 
@@ -100,10 +116,32 @@ export const Board = ({ label, columns, filter, scrollPreviousLabel, scrollNextL
     const movable = onMove !== undefined && !isLoading
 
     const columnOf = (itemId: string): BoardColumn | undefined => columns.find((column) => column.items.some((row) => row.id === itemId))
+    /** The reason a column refuses a move, or `null` when it takes it. */
+    const refusalOf = (itemId: string, toColumnId: string): { readonly move: BoardMove; readonly reason: string } | null => {
+        const from = columnOf(itemId)
+        const to = columns.find((column) => column.id === toColumnId)
+        if (from === undefined || to === undefined || from.id === to.id || to.canDrop === undefined) return null
+        const move: BoardMove = { itemId, fromColumnId: from.id, toColumnId: to.id }
+        const reason = to.canDrop(move)
+        return reason === null ? null : { move, reason }
+    }
+    /** The refusal is said once (announced, handed to the app) and stays written in its column for a few seconds. */
+    const refuse = (refused: { readonly move: BoardMove; readonly reason: string }) => {
+        setAnnouncement(refused.reason)
+        setRefusal({ columnId: refused.move.toColumnId, reason: refused.reason })
+        if (clearRefusalTimer.current !== undefined) window.clearTimeout(clearRefusalTimer.current)
+        clearRefusalTimer.current = window.setTimeout(() => setRefusal(null), REFUSAL_SHOWN_MS)
+        onRefuse?.(refused.move, refused.reason)
+    }
     const move = (itemId: string, toColumnId: string) => {
         const from = columnOf(itemId)
         const to = columns.find((column) => column.id === toColumnId)
         if (from === undefined || to === undefined || from.id === to.id || onMove === undefined) return
+        const refused = refusalOf(itemId, toColumnId)
+        if (refused !== null) {
+            refuse(refused)
+            return
+        }
         const item = from.items.find((row) => row.id === itemId)
         refocus.current = itemId
         onMove({ itemId, fromColumnId: from.id, toColumnId: to.id })
@@ -116,7 +154,14 @@ export const Board = ({ label, columns, filter, scrollPreviousLabel, scrollNextL
             ...row,
             drag: {
                 onDragStart: () => setDraggingId(row.id),
-                onDragEnd: () => { setDraggingId(null); setOverColumn(null) },
+                onDragEnd: () => {
+                    // A drop a column refused never fired `drop` (the drag was not cancelled over it), so the card has sprung back and the reason is said here.
+                    const refused = refusalRef.current
+                    refusalRef.current = null
+                    setDraggingId(null)
+                    setOverColumn(null)
+                    if (refused !== null) refuse(refused)
+                },
                 onMoveKey: (direction) => {
                     const target = columns[index + (direction === "next" ? 1 : -1)]
                     if (target !== undefined) move(row.id, target.id)
@@ -126,8 +171,28 @@ export const Board = ({ label, columns, filter, scrollPreviousLabel, scrollNextL
         }))
     }
     const dropProps = (column: BoardColumn) => movable ? {
-        onDragOver: (event: DragEvent<HTMLElement>) => { if (draggingId === null) return; event.preventDefault(); event.dataTransfer.dropEffect = "move"; if (overColumn !== column.id) setOverColumn(column.id) },
-        onDragLeave: (event: DragEvent<HTMLElement>) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setOverColumn((current) => current === column.id ? null : current) },
+        onDragOver: (event: DragEvent<HTMLElement>) => {
+            if (draggingId === null) return
+            if (overColumn !== column.id) setOverColumn(column.id)
+            const refused = refusalOf(draggingId, column.id)
+            if (refused !== null) {
+                // Not cancelling the event leaves the column no drop place: the pointer shows it, the card springs back, and `drop` never fires.
+                event.dataTransfer.dropEffect = "none"
+                refusalRef.current = refused
+                if (refusal?.columnId !== column.id) setRefusal({ columnId: column.id, reason: refused.reason })
+                return
+            }
+            event.preventDefault()
+            event.dataTransfer.dropEffect = "move"
+            refusalRef.current = null
+            if (refusal !== null) setRefusal(null)
+        },
+        onDragLeave: (event: DragEvent<HTMLElement>) => {
+            if (event.currentTarget.contains(event.relatedTarget as Node | null)) return
+            setOverColumn((current) => current === column.id ? null : current)
+            if (refusalRef.current?.move.toColumnId === column.id) refusalRef.current = null
+            setRefusal((current) => current?.columnId === column.id && draggingId !== null ? null : current)
+        },
         onDrop: (event: DragEvent<HTMLElement>) => {
             event.preventDefault()
             const id = draggingId ?? event.dataTransfer.getData("text/plain")
@@ -155,13 +220,14 @@ export const Board = ({ label, columns, filter, scrollPreviousLabel, scrollNextL
                         <div
                             key={column.id}
                             className="starci-core-board-column"
-                            {...(overColumn === column.id ? { "data-grammar-drop": "true" } : {})}
+                            {...(overColumn === column.id ? { "data-grammar-drop": refusal?.columnId === column.id ? "refused" : "true" } : {})}
                             {...dropProps(column)}
                         >
                             <div className="starci-core-board-column-head" data-contract="GAP-2">
                                 <Heading level={3} isLoading={isLoading}>{column.title}</Heading>
                                 {column.count === undefined || isLoading ? null : <span className="starci-core-board-count" data-grammar-board-count="true">{column.count}</span>}
                             </div>
+                            {refusal?.columnId === column.id ? <p className="starci-core-board-refusal" data-grammar-board-refusal="true">{refusal.reason}</p> : null}
                             {rowsOf(column, index).length === 0 ? <div className="starci-core-board-cards" data-contract="GAP-2"><div className="starci-core-board-empty">{column.empty}</div></div> : (
                                 <ul className="starci-core-board-cards" role="list" aria-label={column.title} data-contract="GAP-2">
                                     {rowsOf(column, index).map((row) => <ListRow key={row.id} row={row} />)}
@@ -171,7 +237,7 @@ export const Board = ({ label, columns, filter, scrollPreviousLabel, scrollNextL
                     ))}
                 </div>
             </HorizontalScrollRegionPart>
-            {moveLabels === undefined ? null : <span className="starci-core-board-announce" role="status" aria-live="polite">{announcement}</span>}
+            {moveLabels === undefined && !columns.some((column) => column.canDrop !== undefined) ? null : <span className="starci-core-board-announce" role="status" aria-live="polite">{announcement}</span>}
           </div>
         </LoadingScope>
     )

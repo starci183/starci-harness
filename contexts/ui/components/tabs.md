@@ -39,6 +39,9 @@ underline, its labels text on the content edge they share with the title above a
 ([contract](../../grammars/contract.md#tabs), [presentation](../presentation.md#space) Text edge), and a mode or
 period switch as the pill of `appearance="primary"`. `Tabs` takes no `variant` to pass.
 
+## Filter presets as pills (0.47.0)
+`Tabs kind="filter" shape="pill"` draws a filter strip as pills on a track. The decision: there is ONE pill look in the grammar, HeroUI's primary variant (the track and the pill) that `appearance="primary"` already draws, so the filter pill reuses that drawing and adds none; `shape` only picks which of the two looks a filter strip wears. The underline stays the default and the answer for tabs of statuses that stay in a table's `Section` filter row; the pill is for a short row of PRESETS (saved views: "All", "Mine", "Overdue") where choosing reads as picking a view. What a filter strip has stays (a `count` chip per tab, `isAttention`, the fold into a "+n" menu with the selected tab always visible); what the pill has stays (no line under it). `appearance="primary"` is still the mode or period switch of two to four options with no count and no destination (R380); `shape="pill"` needs `kind="filter"` (a development error otherwise). Story `Navigation & Data/Filter pills (0.47.0)`.
+
 ## Size
 No size prop: the bar lands on `md` ([../scale.md](../scale.md)). Every tab is 14 and 40 high (the control step), with one
 selected weight, 500, plus the underline, whatever the layer: page tabs, region tabs, `subTabs`, filter tabs and the pill alike (FONT-7 in
