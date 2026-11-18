@@ -47,6 +47,7 @@ export { BarChart, type BarChartBar, type BarChartProps, type BarChartValueAxis 
 export { Sparkline, type SparklineProps } from "../core/composite/Sparkline/index.js"
 export { ProportionBar, type ProportionBarPart, type ProportionBarProps, type ProportionBarTone } from "../core/composite/ProportionBar/index.js"
 export { IntervalChart, type IntervalChartProps, type IntervalChartRow, type IntervalChartTone } from "../core/composite/IntervalChart/index.js"
+export { FunnelChart, type FunnelChartProps, type FunnelChartStage, type FunnelChartTone } from "../core/composite/FunnelChart/index.js"
 export { ChoiceChips, type ChoiceChip, type ChoiceChipsProps } from "../core/composite/ChoiceChips/index.js"
 export { Board, type BoardColumn, type BoardMove, type BoardMoveLabels, type BoardProps } from "../core/frame/Board/index.js"
 export { PageIntro, type PageIntroLine, type PageIntroProps } from "../core/composite/PageIntro/index.js"
