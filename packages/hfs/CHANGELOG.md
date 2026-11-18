@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Added (R402, PROJECT-LINT-3; `cache/check-verdicts.mts`, `cache/project-checks.mts`, `runtime/scripts/lib/project-ext.mts`): a project check may declare what it reads. `ext/manifest.json` `checks[].reads` (tracked files or folders) and `refs` (git revisions `<ref>:<path>`) scope and cache its verdict as a record of `check/build` (step `project-check`), keyed on the content of those paths and of its own file, the objects the refs name, the Node major, the harness version and the lockfile; an unchanged key reuses the verdict (green or red), a ref git cannot name runs the check and stores nothing. A check with no `reads` runs every time as before.
+- Changed (R436, `cache/nivoos-package-check.mts`): the nivoos package check is scoped and cached per package (step `nivoos-package`): keyed on the tracked files of the package and of the workspace packages it and the CLI depend on (the SDK), their built output, the registry versions of the CLI and SDK, and the seed `origin/dev:packages/<name>/<out>` holds. The workspace CLI and SDK are built first through the stamped package build the types step uses, so a stale `dist/` can no longer let the version guard (a cell, graph or agent whose content changed under the same version) pass. `check/build` keeps the verdict steps the CI-parity family does not own.
+- Documented (PROJECT-LINT-4): a gate the app declares off takes its checks with it; `checks` off runs no project check and no nivoos package check, `types` off no type-check.
+
 ## 6.13.45 - 2026-11-18
 
 - Fixed (`sync/nested-lock.mts`, `sync/index.mts`, `sync/managed.mts`): `starci app sync` rendered `gallery/package.json` (it added `@starci/gallery`) and left `gallery/package-lock.json` as it was, so `npm ci` in `gallery/` failed and the dev stack's gallery never started. For every managed sub-package that already has its own `package-lock.json`, `sync --execute` now resolves the lockfile again with `npm install --package-lock-only --ignore-scripts` after it writes the package.json (exit 1, with the command printed, when npm cannot). A dry run prints `HFS_SYNC_DRIFT <dir>/package-lock.json` and `app check` reports `HFS_MANAGED_FILE_DRIFT` for the lockfile, both naming the dependencies that differ and the fix command. A sub-package with no lockfile is not judged.

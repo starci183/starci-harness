@@ -282,7 +282,8 @@ export async function runParityFamilies(session: CheckSession, { repoRoot, famil
     if (family === 'build') {
       // A step the workflow no longer holds drops its verdict; a step without a database this run keeps the verdict a run with one recorded.
       records.retain(BUILD_STEP, kept);
-      session.replace(BUILD_FOLDER, records.toArray().filter((record) => record.step === BUILD_STEP));
+      // The folder also holds the verdicts of the project and nivoos package checks (check-verdicts.mts): their steps are kept as they were.
+      session.replace(BUILD_FOLDER, records.toArray());
     }
     const reason = mine.length === 0 ? `${CI_WORKFLOW} has no ${family} step` : family === 'build' ? `${String(mine.length)} step(s) of ${CI_WORKFLOW}, ${decision?.reason ?? ''}` : `${String(mine.length)} step(s) of ${CI_WORKFLOW}, never cached`;
     const report: FamilyReport = { family, mode: decision?.mode ?? 'full', reason, checked: mine.length - reused, reused, newFindings: failed, knownFindings: 0, fixedFindings: 0 };

@@ -12,7 +12,7 @@
 //   lint   { tool: 'eslint', file: '<file>' }        a file of ext/lint/; loaded for the files `appliesTo` matches in the config that owns them
 // Every secret target is { id, why, root, environments: {<env>: <file>}, recipients, under?, depth? }: a sealed file outside the stack's members that
 // `starci app secret set|unset|list --env <env> --ext <id>` writes (PROJECT-STACKS-5, R429); the harness resolves it here and knows nothing of its content.
-// Every check is { id, run, why }: a kebab-case id, `run` a file `ext/checks/<name>.mjs`, and what it guards (cache/project-checks.mts runs it).
+// Every check is { id, run, why, reads?, refs? }: a kebab-case id, `run` a file `ext/checks/<name>.mjs`, what it guards, and optionally what it reads (tracked files or folders) and the git revisions `<ref>:<path>` it compares the tree with, which scope and cache its verdict (cache/project-checks.mts runs it).
 // An extension only adds: a rule or manifest with any other key (an `off`, `overrides` or `disable`), a code the harness already reports, an id or a
 // code declared twice, a declared file that is not there and a manifest of another API version refuse the whole extension (HFS_EXT_INVALID,
 // HFS_EXT_API_MISMATCH), which then lends nothing while the check is red. Findings go through the same policy as the harness's own: an hfs rule and
@@ -58,7 +58,7 @@ export interface ExtRule {
   readonly lint?: { readonly name: string; readonly rule: EslintRuleModule };
 }
 /** One project check the manifest declares: its id, the file of ext/checks/ it runs and what it guards. */
-export interface ExtCheck { readonly id: string; readonly run: string; readonly why: string }
+export interface ExtCheck { readonly id: string; readonly run: string; readonly why: string; readonly reads?: readonly string[]; readonly refs?: readonly string[] }
 /**
  * A sealed file a project keeps outside the stack's members (a package's seed standard holds its credentials in one per environment): `root` is the
  * checkout folder (app-relative, `..` allowed: a sibling checkout), `environments` maps a stack environment to the file below `root`, `recipients` is the
@@ -212,19 +212,26 @@ function judgeRule(appRoot: string, entry: unknown, at: number): { rule?: ExtRul
   return { rule: { id: id as string, code: code as string, severity: severity as ExtSeverity, doc: doc as string, appliesTo: globs as string[], ...(hfs === undefined ? {} : { hfs }), ...(lint === undefined ? {} : { lint }) }, problems: [] };
 }
 
+/** A path a check reads: app-relative posix, no leading slash, no `..`, no glob. */
+const READ_PATH = /^(?!\/)(?!(?:.*\/)?\.\.(?:\/|$))[^*?\\\u0000]+$/u;
+/** A revision a check compares with: `<ref>:<path>`. */
+const REVISION = /^[A-Za-z0-9._\/-]+:[^*?\\\u0000]+$/u;
+/** True when `value` is absent or a non-empty list of unique strings that all match `pattern`. */
+const optionalList = (value: unknown, pattern: RegExp): boolean => value === undefined || (Array.isArray(value) && value.length > 0 && new Set(value).size === value.length && value.every((item) => typeof item === 'string' && pattern.test(item)));
+
 /** The problems of the manifest's `checks` list, and the checks when it is sound: each { id, run, why }, ids and files unique, every file there. */
 function judgeChecks(appRoot: string, declared: unknown): { checks: ExtCheck[]; problems: string[] } {
   if (declared === undefined) return { checks: [], problems: [] };
-  const shape = 'checks is a list of { id, run, why }: a unique kebab-case id, run a unique ext/checks/<name>.mjs file and what the check guards, nothing else';
+  const shape = 'checks is a list of { id, run, why }: a unique kebab-case id, run a unique ext/checks/<name>.mjs file and what the check guards, and, optionally, reads (tracked files or folders, app-relative, no leading slash or ..) and refs (git revisions <ref>:<path>) as lists of strings, nothing else';
   if (!Array.isArray(declared) || declared.length === 0) return { checks: [], problems: [shape] };
   const problems: string[] = [];
   const checks: ExtCheck[] = [];
   for (const [at, entry] of declared.entries()) {
-    if (!plain(entry) || Object.keys(entry).some((key) => !['id', 'run', 'why'].includes(key)) || typeof entry['id'] !== 'string' || !CHECK_ID.test(entry['id']) || typeof entry['run'] !== 'string' || !CHECK_RUN.test(entry['run']) || text(entry['why']) === null) { problems.push(`check ${String(at)}: ${shape}`); continue; }
+    if (!plain(entry) || Object.keys(entry).some((key) => !['id', 'run', 'why', 'reads', 'refs'].includes(key)) || !optionalList(entry['reads'], READ_PATH) || !optionalList(entry['refs'], REVISION) || (entry['refs'] !== undefined && entry['reads'] === undefined) || typeof entry['id'] !== 'string' || !CHECK_ID.test(entry['id']) || typeof entry['run'] !== 'string' || !CHECK_RUN.test(entry['run']) || text(entry['why']) === null) { problems.push(`check ${String(at)}: ${shape}`); continue; }
     if (checks.some((other) => other.id === entry['id'])) problems.push(`check ${entry['id']}: the id is declared twice`);
     if (checks.some((other) => other.run === entry['run'])) problems.push(`check ${entry['id']}: ${entry['run']} is the file of another check too`);
     if (!fs.existsSync(path.join(appRoot, entry['run']))) problems.push(`check ${entry['id']}: ${entry['run']} is declared and is not there`);
-    checks.push({ id: entry['id'], run: entry['run'], why: text(entry['why']) as string });
+    checks.push({ id: entry['id'], run: entry['run'], why: text(entry['why']) as string, ...(entry['reads'] === undefined ? {} : { reads: entry['reads'] as string[] }), ...(entry['refs'] === undefined ? {} : { refs: entry['refs'] as string[] }) });
   }
   return problems.length > 0 ? { checks: [], problems } : { checks, problems };
 }

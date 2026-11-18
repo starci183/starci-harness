@@ -636,9 +636,9 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
     if (selected.has('wiring')) bodies.set('wiring', (step) => runWiringStep(appInput(session, step.execute), parts));
     // The project checks ext/manifest.json declares (R402) belong to the hfs gate, as the extension's hfs rules do: they run wherever it runs, as their own step.
     if (selected.has('hfs') && modes.checks !== 'off') bodies.set('checks', async (step) => {
-      const checked = await runProjectChecks({ repoRoot, run: step.parity, env: io.env });
+      const checked = await runProjectChecks({ repoRoot, run: step.parity, env: io.env, session });
       // The nivoos packages hfs.json declares (R436) are checked here too, as their own lines and their own code.
-      const nivoos = await runNivoosPackageChecks({ repoRoot, run: step.parity, env: io.env });
+      const nivoos = await runNivoosPackageChecks({ repoRoot, run: step.parity, env: io.env, session });
       const findings = [...checked.findings, ...nivoos.findings];
       found.set('checks', withWhy(findings, readWhy(skillRoot, [...(checked.findings.length > 0 ? [PROJECT_CHECK_FAILED] : []), ...(nivoos.findings.length > 0 ? [NIVOOS_PACKAGE_CHECK] : [])])));
       said.set('checks', [...checked.lines, ...nivoos.lines]);
