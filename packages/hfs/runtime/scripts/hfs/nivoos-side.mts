@@ -24,7 +24,7 @@ const RELATIVE = /^(?!\/)(?!.*\.\.)(?!.*\\)[A-Za-z0-9._/-]+$/u;
  * A dependency name that is the nivoos SDK, the signal that a root package is authored with it: the SDK as linked from a sibling checkout
  * (`@nivoos-lite/nivoos-sdk`) or as published (`@nivoos/sdk`, `@nivoos/nivoos-sdk`), and the author CLI `nivoos`.
  */
-export const NIVOOS_SDK_DEPENDENCY = /^(?:@nivoos(?:-lite)?\/(?:nivoos-)?sdk|nivoos)$/u;
+export const NIVOOS_SDK_DEPENDENCY = /^(?:@nivoos(?:-lite)?\/(?:nivoos-)?sdk|@starci\/nivoos-(?:sdk|cli)|nivoos)$/u;
 
 /** One nivoos package a project declares, with the defaults applied. */
 export interface NivoosPackage { readonly name: string; readonly entry: string; readonly out: string }

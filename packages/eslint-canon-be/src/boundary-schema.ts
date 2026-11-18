@@ -12,7 +12,9 @@
  *     (a transport door answers to `class-validator`), never in a `dto/` folder, and a schema file does not also carry
  *     `class-validator` or a GraphQL type.
  *   - `schema-bounded` (R305) holds the cost. Every string, array, set, map and record a schema builds has an upper bound
- *     (`.max(n)`, `.length(n)`, `.size(n)`, or for a record and a map a `.refine`/`.check` on its entry count), and `z.any()`,
+ *     (`.max(n)`, `.length(n)`, `.size(n)`; a map a `.refine`/`.check` on its entry count; a record either that or a closed key set,
+ *     `z.record(z.enum([...]), value)`, whose size is its keys' count and which is pure data: the nivoos package check refuses a
+ *     `.refine` as code, so the enum key is the bound a package schema can state), and `z.any()`,
  *     `z.unknown()` and `z.json()` are refused: an unbounded array whose elements all fail validation allocates an issue each
  *     (GHSA-mrhx-c7xc-m3w5), and an unbounded string is an unbounded cost whatever the zod version.
  */
@@ -38,6 +40,11 @@ const ISO_STRINGY = new Set(["datetime", "date", "time", "duration"])
 const COUNTED = new Set(["array", "set"])
 /** Constructors whose entry count only a refinement can bound. */
 const REFINED = new Set(["record", "looseRecord", "partialRecord", "map"])
+/** The record constructors: an enum key closes their entry count. */
+const RECORDS = new Set(["record", "looseRecord", "partialRecord"])
+/** The key constructor that closes a record's entry count. */
+const CLOSED_KEY = "enum"
+
 /** Constructors that accept anything: refused outright. */
 const OPEN = new Set(["any", "unknown", "json"])
 /** The chain members that bound a string or a counted container. */
@@ -96,7 +103,7 @@ export const schemaBounded: RuleModule = {
         messages: {
             string: "`z.{{name}}()` has no `.max(n)` or `.length(n)`, so a string of any length is accepted. Bound it: `z.{{name}}().max(200)`.",
             counted: "`z.{{name}}(...)` has no `.max(n)`, `.length(n)` or `.size(n)`, so a collection of any count is accepted (and every failing element allocates an issue). Bound it: `z.{{name}}(item).max(100)`.",
-            refined: "`z.{{name}}(...)` has no bound on its entry count. Add `.refine((entries) => Object.keys(entries).length <= N)` (a `Map`: `.size`), or key it by a `z.enum` so its size is closed.",
+            refined: "`z.{{name}}(...)` has no bound on its entry count. Key it by a `z.enum` so its size is closed (the one bound a nivoos package schema can state: its check refuses a `.refine` as code), or add `.refine((entries) => Object.keys(entries).length <= N)` outside a package (a `Map`: `.size`).",
             open: "`z.{{name}}()` accepts any value, so nothing is validated. Describe the shape: an object of bounded fields, or a bounded union.",
             bound: "`.{{name}}()` here is no bound (a missing, non-positive or infinite argument). Give a finite positive count.",
         },
@@ -127,6 +134,8 @@ export const schemaBounded: RuleModule = {
                 if (kind === null) return
                 const chain = chainOf(node)
                 if (kind === "refined") {
+                    const key = node.arguments.length > 1 ? node.arguments[0] : undefined
+                    if (RECORDS.has(name) && key?.type === "CallExpression" && constructorOf(key.callee, namespaces, named) === CLOSED_KEY) return
                     if (!chain.some((entry) => REFINING.has(entry.name))) context.report({ node, messageId: "refined", data: { name } })
                     return
                 }

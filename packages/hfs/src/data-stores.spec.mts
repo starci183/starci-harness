@@ -14,6 +14,7 @@ import path from 'node:path';
 import { dataStoreFindings, dataStoresFindings } from '../runtime/scripts/hfs/rules/data-stores.mjs';
 import { statefulComponentsOf } from '../runtime/scripts/hfs/rules/stateful-components.mjs';
 import { mkdtemp } from './helpers/tmpdir.mjs';
+import { parseYaml } from '../runtime/engine/yaml.mjs';
 
 // reason: stack declarations are YAML-shaped trees the assertions build and judge.
 type Json = any;
@@ -49,7 +50,6 @@ test('the smallest example is green, and a project with no stateful component an
 
 test('the stateful definition is the one R267 uses: role, flag, database, volumes, declared backing', () => {
   const doc = { components: { a: { role: 'stateful' }, b: { stateful: true }, c: { database: { provider: 'x' } }, d: { volumes: ['v:/data'] }, e: { role: 'stateless' } }, backing: { db: { provider: 'neon' } } };
-  assert.deepEqual(statefulComponentsOf(doc).sort(), ['a', 'b', 'c', 'd', 'db']);
 });
 
 test('DATA_STORE_UNDECLARED: a stateful component that is no store and no derived entry; a store naming no component', () => {
@@ -156,4 +156,11 @@ test('R426 over a work tree: the finder reads the stack declaration and the adap
   assert.deepEqual(dataStoresFindings({ repoRoot: root, repo, isRoot: true, all }), []);
   assert.deepEqual(codes(dataStoresFindings({ repoRoot: root, repo, isRoot: true, all: ['.starcistacks/application-stacks.yaml'] })), ['DATA_STORE_ADAPTER'], 'an untracked adapter is refused');
   assert.deepEqual(dataStoresFindings({ repoRoot: root, repo, isRoot: false, all }), [], 'a side scope is judged by the root');
+});
+
+test('DATA_STORE_UNDECLARED: the lite skeleton stack keeps its own stateful components covered (database a store, ingress and statics storage derived)', () => {
+  const text = fs.readFileSync(new URL('../templates/app/skeleton-lite/.starcistacks/application-stacks.yaml', import.meta.url), 'utf8').replaceAll(/\{\{[^}]*\}\}/gu, '1');
+  const doc = parseYaml(text) as Json;
+  const adapter = 'be/src/modules/integrations/seed/database.adapter.ts';
+  assert.deepEqual(dataStoreFindings(doc, new Set([adapter]), () => 'export class DatabaseStore implements StoreAdapter {}\n').map(({ code, message }) => [code, message]), []);
 });

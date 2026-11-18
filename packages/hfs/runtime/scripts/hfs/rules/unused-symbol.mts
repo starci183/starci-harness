@@ -301,6 +301,7 @@ function looseRead(state: Parsed, name: string) {
 function catalogRead(state: Parsed, candidate: Parsed, liveCodes: Parsed) {
   if (candidate.name.startsWith('errors.') && liveCodes.has(candidate.name.slice(7))) return true;
   if (state.catalogReads.has(candidate.name) || looseRead(state, candidate.name)) return true;
+  for (const prefix of state.catalogObjectReads) if (candidate.name.startsWith(`${prefix}.`)) return true;
   return state.templates.some(({ prefix, parts }: { prefix: string; parts: string[] }) => {
     const segments = candidate.name.split('.');
     const tails = prefix === null ? segments.map((_: Parsed, index: number) => segments.slice(index).join('.')) : [candidate.name];
@@ -338,7 +339,7 @@ function computeUnusedSymbols({ repoRoot, files, repo = {}, isRoot = false, inSc
   if (!ts) return [];
   const sources = sourceFiles(ts, repoRoot, files);
   const { program, resolveModule } = trackedProgram(ts, repoRoot, files, sources);
-  const state = { ts, checker: program.getTypeChecker(), resolveModule, repoRoot, candidates: [] as Parsed[], symbols: new Map(), containers: new Map(), reads: new Set(), catalogReads: new Set(), translators: new Map(), templates: [], arguments: new Map(), catalogObjects: new Map(), decls: new Map(), looseReads: new Set() };
+  const state = { ts, checker: program.getTypeChecker(), resolveModule, repoRoot, candidates: [] as Parsed[], symbols: new Map(), containers: new Map(), reads: new Set(), catalogReads: new Set(), catalogObjectReads: new Set(), translators: new Map(), templates: [], arguments: new Map(), catalogObjects: new Map(), decls: new Map(), looseReads: new Set() };
   collectCandidates(state, sources);
   argumentBindings(state, sources);
   jsonCatalogBindings(state, sources, files);

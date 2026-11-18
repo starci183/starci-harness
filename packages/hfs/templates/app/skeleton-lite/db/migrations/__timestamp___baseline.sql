@@ -43,7 +43,7 @@ create index identity_sessions_user_idx on public.identity_sessions (user_id);
 
 create table public.identity_refresh_tokens (
     id uuid primary key default gen_random_uuid(),
-    session_id uuid not null references public.identity_sessions (id) on delete cascade,
+    identity_session_id uuid not null references public.identity_sessions (id) on delete cascade,
     user_id uuid not null,
     token_hash text not null,
     created_at timestamptz not null default now(),
@@ -53,13 +53,15 @@ create table public.identity_refresh_tokens (
     constraint identity_refresh_tokens_hash_key unique (token_hash)
 );
 
-create index identity_refresh_tokens_session_idx on public.identity_refresh_tokens (session_id);
+create index identity_refresh_tokens_session_idx on public.identity_refresh_tokens (identity_session_id);
 create index identity_refresh_tokens_expiry_idx on public.identity_refresh_tokens (user_id, expires_at);
 
 create table public.identity_attempts (
-    key varchar(128) primary key,
+    id uuid primary key default gen_random_uuid(),
+    key varchar(128) not null,
     hits integer not null,
-    reset_at timestamptz not null
+    reset_at timestamptz not null,
+    constraint identity_attempts_key_key unique (key)
 );
 
 create index identity_attempts_reset_idx on public.identity_attempts (reset_at);
@@ -151,9 +153,11 @@ grant update (display_name) on table public.profiles to app_be;
 -- The rate limit windows of platform/http-security: every api replica counts a caller's hits in the same row, and a hit
 -- that opens a fresh window prunes a bounded batch of the ended ones.
 create table public.http_security_rate_windows (
-    key varchar(128) primary key,
+    id uuid primary key default gen_random_uuid(),
+    key varchar(128) not null,
     hits integer not null check (hits > 0),
-    reset_at timestamptz not null
+    reset_at timestamptz not null,
+    constraint http_security_rate_windows_key_key unique (key)
 );
 
 create index http_security_rate_windows_reset_at_idx on public.http_security_rate_windows (reset_at);

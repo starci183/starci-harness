@@ -63,6 +63,23 @@ test("no-raw-sql: entities on the EntityManager carry domain reads and writes; a
     })
 })
 
+test("no-raw-sql: the nivoos SDK's typed object read is not SQL; any other query in that file still is", () => {
+    const sdk = `import type { NodeReach } from "@starci/nivoos-sdk"
+declare const em: { query(text: string): Promise<unknown> }
+`
+    tester.run("no-raw-sql", noRawSql, {
+        valid: [
+            { filename: DOMAIN, code: `${sdk}export const run = (reach: NodeReach<object>) => reach.objects(Object).query({ where: {}, limit: 5 })` },
+        ],
+        invalid: [
+            { filename: DOMAIN, code: `${sdk}export const run = () => em.query("select 1")`, errors: [{ messageId: "query" }] },
+            { filename: DOMAIN, code: `declare const reach: { objects(t: unknown): { query(q: unknown): unknown } }
+export const run = () => reach.objects(Object).query({})`, errors: [{ messageId: "query" }] },
+            { filename: DOMAIN, code: `${sdk}export const run = (r: { rows(): { query(q: string): unknown } }) => r.rows().query("select 1")`, errors: [{ messageId: "query" }] },
+        ],
+    })
+})
+
 test("no-raw-sql: platform/database has no blanket exemption; its composer alone holds the call and LISTEN templates", () => {
     tester.run("no-raw-sql", noRawSql, {
         valid: [

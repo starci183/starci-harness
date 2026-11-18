@@ -8,7 +8,7 @@ import { parseYaml } from '../../engine/yaml.mjs';
 /** A path that is a secret by being one (an env file, a key file): its rule name and the test of a posix path. */
 export interface ForbiddenFile { name: string; test: (file: string) => boolean }
 /** A value shape the runtime refuses to carry: its rule name, the pattern, and the exemptions of the keyword heuristic. */
-export interface SecretPattern { name: string; re: RegExp; sourceCode?: RegExp; placeholder?: RegExp; skipFile?: RegExp }
+export interface SecretPattern { name: string; re: RegExp; sourceCode?: RegExp; placeholder?: RegExp; skipFile?: RegExp; skipSqlComments?: boolean }
 
 export const FORBIDDEN_FILES: ForbiddenFile[] = [
   { name: 'env-file', test: (f) => /(^|\/)\.env(\.[^/]*)?$/i.test(f) && !/\.env\.(example|sample|template)$/i.test(f) },
@@ -88,6 +88,9 @@ function sqlPasswordParts(file: string | null | undefined, text: string): { refe
   return { references, literals };
 }
 
+/** The text of a SQL file with every `--` comment line blanked in place, so positions and line numbers stay. */
+const withoutSqlComments = (text: string): string => text.replace(/^[ \t]*--.*$/gm, (line) => ' '.repeat(line.length));
+
 /** Psql variable references retain their positions while the assignment heuristic sees no literal value there. */
 function maskedReferences(text: string, references: readonly (readonly [number, number])[]): string {
   const parts: string[] = [];
@@ -132,7 +135,8 @@ export const SECRET_PATTERNS: SecretPattern[] = [
     skipFile: /\.(?:spec|test|e2e-spec)\.[cm]?[jt]sx?$/ },
   // An unquoted value in TypeScript or JavaScript source is an identifier or a type (`token: InjectionToken`,
   // `MODULE_OPTIONS_TOKEN: DATABASE_OPTIONS_TOKEN`), never a literal; the unquoted form is the dotenv, compose and toml shape.
-  { name: 'assigned-secret', re: ASSIGNED_UNQUOTED, placeholder: ASSIGNED_PLACEHOLDER,
+  // A `-- name: prose` comment line of a SQL file is a sentence, never a dotenv or compose assignment (`-- drop-identity-password-tokens: forward-only;`).
+  { name: 'assigned-secret', re: ASSIGNED_UNQUOTED, placeholder: ASSIGNED_PLACEHOLDER, skipSqlComments: true,
     skipFile: /\.(?:spec|test|e2e-spec)\.[cm]?[jt]sx?$|\.[cm]?[jt]sx?$/ },
 ];
 
@@ -144,7 +148,8 @@ function matchingSecretPatterns(file: string | null | undefined, text: string): 
   const assignments = maskedReferences(text, sql.references);
   for (const rule of SECRET_PATTERNS) {
     if (rule.skipFile?.test(file ?? '')) continue;
-    const hit = rule.re.exec(rule.name === 'assigned-secret' ? assignments : text);
+    const scanned = rule.skipSqlComments === true && /\.sql(?:\.tpl)?$/i.test(file ?? '') ? withoutSqlComments(assignments) : assignments;
+    const hit = rule.re.exec(rule.name === 'assigned-secret' ? scanned : text);
     if (hit && !rule.placeholder?.test(hit[1] ?? '')) matches.push({ rule, value: hit[1] ?? '' });
   }
   for (const value of sql.literals) if (!ASSIGNED_PLACEHOLDER.test(value)) matches.push({ rule: SQL_PASSWORD_RULE, value });

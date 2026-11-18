@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Fixed (`cache/nivoos-package-check.mts`): `HFS_NIVOOS_PACKAGE_CHECK` finds the `nivoos` bin in `@starci/nivoos-cli` (then a package named `nivoos`), under the package's `node_modules` and the app root's; the finding says to add `@starci/nivoos-cli`. `HFS_NIVOOS_UNDECLARED` also counts `@starci/nivoos-sdk` and `@starci/nivoos-cli` as the SDK.
+- Fixed (`rules/unused-symbol*.mts`): `HFS_UNUSED_SYMBOL` reads a JSON catalog object handed on whole (`words={messages.app.errors.global}`: a JSX attribute, a call argument, a spread, a property value, a return) as a read of every key under it; an alias initializer and a member read are judged as before. The lite scaffold's global error page passes unchanged.
+- Fixed (lite skeleton): the managed identity module passes its own key rules. `identity_refresh_tokens.session_id` is `identity_session_id` (migration and `IdentityRefreshTokenEntity`); `identity_attempts` and `http_security_rate_windows` are keyed `id uuid primary key` beside a unique `key`; the stack declares the `storage` component as derived (its entrypoint reloads `statics/`). A lite app rendered from an earlier skeleton keeps its landed baseline: renaming the column there is a forward migration, then `starci app sync --execute` renders the entity.
+- Fixed (`lib/secret-patterns.mts`): the unquoted `assigned-secret` pattern skips a `--` comment line of a SQL file (`-- drop-identity-password-tokens: forward-only;` is a sentence); a quoted literal in a comment and every other file still match.
+
 ## 6.13.42 - 2026-11-18
 
 - Changed (`knowledge/hfs/canon-pins.yaml`): @starci/jest-preset 2.11.1: a root package with its own `packages/<name>/tsconfig.json` is compiled by jest with that file's options in its own unit project (a package on standard decorators, such as an SDK, no longer meets the back end's `experimentalDecorators`); a package without one keeps the back end options. The rendered `be/jest.config.js` is unchanged. The `@starci/hfs` self-pin is 6.13.42.

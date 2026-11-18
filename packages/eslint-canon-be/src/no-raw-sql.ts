@@ -8,6 +8,8 @@
  *     the one composer, whose statements are the templates R68 checks; (3) a file `ruleParams.be.sqlPassThrough` or hfs.json
  *     `sides.be.sqlPassThrough` lists with a reason, while its first argument is not a template literal or a `+` expression;
  *     (4) the `*.spec.ts` beside such a file. `platform/database` has no blanket exemption.
+ *     The nivoos SDK's typed object read is not SQL: `reach.objects(Type).query({ where, sort, limit })` is a call on the result of an
+ *     `.objects(...)` call in a file that imports `@starci/nivoos-sdk`; it passes, and any other `.query(` in that file is still refused.
  *   - `template`: a `sql` tagged template outside the world. `sqlFile`: a `*.sql.ts` file outside the world. `sqlTagImport`: an import
  *     of `sql`, `ident`, `SqlText` or `SqlIdent` outside the world. The tag's own module (`platform/database/database.sql.ts`) is exempt.
  *   - `worldCallHelper`, `worldTableWrite`: a `sql` template inside the world that only calls a listed function (it is
@@ -37,6 +39,10 @@ const COMPOSER_FILE = "database.client.ts"
 const TAG_FILE = "database.sql.ts"
 /** The names that carry SQL text: the tag, its identifier check and their brands. */
 const SQL_TEXT_NAMES = new Set(["sql", "ident", "SqlText", "SqlIdent"])
+/** The package of the nivoos SDK, whose `reach.objects(Type).query(...)` is a typed object read and runs no SQL. */
+const NIVOOS_SDK = "@starci/nivoos-sdk"
+/** The SDK door that hands out a typed object handle. */
+const OBJECTS_DOOR = "objects"
 /** The suffix of a spec file. */
 const SPEC_SUFFIX = ".spec.ts"
 
@@ -46,6 +52,11 @@ const TABLE_WRITE = /^\s*(?:INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+(?:public|be_a
 /** True when a builder's first argument can be an entity class: neither absent nor a string. */
 const namesEntity = (argument: TSESTree.CallExpressionArgument | undefined): boolean =>
     argument !== undefined && argument.type !== "TemplateLiteral" && !(argument.type === "Literal" && typeof argument.value === "string")
+
+/** True when a `.query(` receiver is `<reach>.objects(Type)`, the SDK's typed object handle. */
+const isObjectHandle = (receiver: TSESTree.Expression): boolean =>
+    receiver.type === "CallExpression" && receiver.callee.type === "MemberExpression" && !receiver.callee.computed &&
+    receiver.callee.property.type === "Identifier" && receiver.callee.property.name === OBJECTS_DOOR
 
 /** The text of a template literal, each substitution standing as `?`. */
 const templateText = (template: TSESTree.TemplateLiteral): string =>
@@ -87,11 +98,13 @@ export const noRawSql: RuleModule = {
         const passThrough = new Set((hfs.ruleParams.sqlPassThrough ?? []).map((entry) => entry.file))
         const passThroughSpec = relative.endsWith(SPEC_SUFFIX) && passThrough.has(`${relative.slice(0, -SPEC_SUFFIX.length)}.ts`)
         const callOnly = callPattern([...listed])
+        let importsSdk = false
         return {
             Program(node) {
                 if (!inWorld && !isTagModule && relative.endsWith(".sql.ts")) context.report({ node, messageId: "sqlFile" })
             },
             ImportDeclaration(node) {
+                if (node.source.value === NIVOOS_SDK || node.source.value.startsWith(`${NIVOOS_SDK}/`)) importsSdk = true
                 if (inWorld || isTagModule) return
                 for (const specifier of node.specifiers) {
                     if (specifier.type !== "ImportSpecifier") continue
@@ -110,6 +123,7 @@ export const noRawSql: RuleModule = {
                 const method = callee.property.name
                 if (method === "query") {
                     if (inWorld || passThroughSpec) return
+                    if (importsSdk && isObjectHandle(callee.object)) return
                     const first = node.arguments[0]
                     if (isComposer && first?.type === "TemplateLiteral") return
                     const built = first?.type === "TemplateLiteral" || (first?.type === "BinaryExpression" && first.operator === "+")

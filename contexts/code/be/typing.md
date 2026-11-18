@@ -61,7 +61,8 @@ Enforced by: `no-untyped-body` (R41), `json-parse-needs-guard` (R76), `no-return
 
 Zod is imported only by a `<name>.schema.ts` of a domain, platform or integration owner, or by any file of a root
 workspace package (`packages/<name>/`, tier `package`), whose node, block and vocabulary contracts are zod schemas; never
-by a feature, door or `dto/`, and a `<name>.schema.ts` holds only zod values and their inferred types. Every string, array, record and map is bounded;
+by a feature, door or `dto/`, and a `<name>.schema.ts` holds only zod values and their inferred types. Every string, array, record and map is bounded (a record by a refinement on its entry count, or by a closed key set, `z.record(z.enum([...]), value)`, the one bound
+a package schema can state: the nivoos package check refuses a `.refine` as code);
 `z.any()`, `z.unknown()` and `z.json()` do not exist. The reader calls `safeParse` and maps a failure to its owner's
 error. Use a schema when the shape is deep (model output, tool arguments, wire envelopes); a flat payload may use a
 type guard.

@@ -107,3 +107,9 @@ test('the key shape of a migration already on the base is the backlog: reported 
   const fresh = (await checkDatabase({ repoRoot, files: [FILE, next] })).filter((finding) => KEY_CODES.has(finding.code));
   assert.deepEqual(withLandedMigrationsKnown(fresh, { repoRoot }).map(({ path: file, level }) => [file, level]), [[FILE, 'info'], [next, 'error']]);
 });
+
+test('the lite skeleton baseline, with its sync-managed identity module, passes the key shape rules it is judged by', async (t) => {
+  const template = fs.readFileSync(new URL('../templates/app/skeleton-lite/db/migrations/__timestamp___baseline.sql', import.meta.url), 'utf8');
+  const sql = template.split('\n').filter((line) => !line.trimStart().startsWith('{{>')).join('\n');
+  assert.deepEqual((await keyFindings(t, 'lite', sql)).map(({ code, table, column }) => [code, table, column]), []);
+});

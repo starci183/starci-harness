@@ -525,3 +525,12 @@ test("assigned-secret ignores identifiers and types in TypeScript source (DI tok
     assert.deepEqual(secretHits("src/file.ts", line), [], line);
   assert.ok(secretHits(".env", "DB_PASSWORD=hunter2hunter2hunter2").includes("assigned-secret"));
 });
+
+test("assigned-secret reads no `-- name: prose` comment line of a SQL file as an assignment, and still reads real assignments", () => {
+  const literal = ["Zk3pQ9vL2m", "X8aR5tY7uN"].join("");
+  const comment = "-- drop-identity-password-tokens: forward-only;\n-- mcp-call-log-api-key: forward-only;\n";
+  assert.deepEqual(secretHits("db/migrations/20261114003300_drop.sql", `${comment}drop table public.identity_password_tokens;\n`), []);
+  assert.ok(secretHits("infra/stack.yaml", comment).includes("assigned-secret"), "outside a SQL file the same text still matches");
+  assert.ok(secretHits("db/migrations/20261114003300_drop.sql", `${comment}DB_PASSWORD=${literal}\n`).includes("assigned-secret"));
+  assert.ok(secretHits("db/migrations/20261114003300_drop.sql", `-- api_secret = '${literal}'\n`).includes("assigned-secret"), "a quoted literal in a comment is still a leak");
+});

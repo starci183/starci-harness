@@ -3,7 +3,7 @@ import path from 'node:path';
 import { nameText } from '../../lib/ts-ast.mjs';
 import { unwrapCatalogExpression as unwrap } from '../../lib/ts-analysis.mjs';
 import { callableValue, propertyInitializers, symbolAt, valuesOf } from './unused-symbol-flow.mjs';
-import type { Parsed } from './rule-types.mjs';
+import type { Parsed, Ts } from './rule-types.mjs';
 
 const JSON_CATALOG = /(?:^|\/)(?:messages|locales)\/[^/]+\.json$|\.catalog\.json$/u;
 
@@ -155,11 +155,25 @@ function typedCatalogRead(state: Parsed, node: Parsed) {
   for (const key of keys) for (const initializer of propertyInitializers(state, node.expression, key)) consumeCandidate(state, initializer);
 }
 
+/**
+ * True when the expression's value leaves as a whole: a JSX attribute, a call argument, a spread, an object property value or a return.
+ * A further member read, a declaration initializer (an alias, read through its own members) and a re-export are not consumers.
+ */
+function leavesAsWhole(ts: Ts, node: Parsed): boolean {
+  let child = node;
+  while (ts.isParenthesizedExpression(child.parent) || ts.isAsExpression(child.parent) || ts.isNonNullExpression(child.parent) || ts.isSatisfiesExpression(child.parent)) child = child.parent;
+  const parent = child.parent;
+  return ts.isJsxExpression(parent) || ts.isSpreadAssignment(parent) || ts.isSpreadElement(parent) || ts.isReturnStatement(parent) || ts.isPropertyAssignment(parent) && parent.initializer === child
+    || ts.isCallExpression(parent) && parent.expression !== child || ts.isNewExpression(parent) && parent.expression !== child;
+}
+
+/** A JSON catalog object handed on whole (`words={messages.app.errors.global}`) is read in full: the prefix is recorded, and every key under it is consumed. */
 export function jsonCatalogRead(state: Parsed, node: Parsed) {
   if (!state.ts.isPropertyAccessExpression(node) && !state.ts.isElementAccessExpression(node)) return;
   typedCatalogRead(state, node);
   const key = catalogObjectPath(state, node);
   if (key !== null) state.catalogReads.add(key.slice(0, -1));
+  if (key !== null && leavesAsWhole(state.ts, node)) state.catalogObjectReads.add(key.slice(0, -1));
   if (state.ts.isElementAccessExpression(node) && !state.ts.isStringLiteralLike(node.argumentExpression)) {
     const base = catalogObjectPath(state, node.expression);
     if (base !== null) for (const value of staticStrings(state, node.argumentExpression)) state.catalogReads.add(`${base}${value}`);
