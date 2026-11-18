@@ -15,7 +15,7 @@ import type { LocalConfig } from './local-config.mjs';
 import { missingKeys, missingStep, openCustody } from './local-custody.mjs';
 import type { Custody } from './local-custody.mjs';
 import { hostRefusal, preflight, runSetup } from './local-prepare.mjs';
-import { DEFAULT_TIMEOUT_SECONDS, makeDataDirectories, commandDigest, compose, composeValues, databaseUrl, isAlive, probe, runCommand, runEnvironment, serviceReady, startProcess, stateOf, waitFor } from './local-run.mjs';
+import { DEFAULT_TIMEOUT_SECONDS, makeDataDirectories, commandDigest, processCommand, compose, composeValues, databaseUrl, ownedProcess, probe, runCommand, runEnvironment, serviceReady, startProcess, stateOf, waitFor } from './local-run.mjs';
 import type { LocalDeps } from './local-run.mjs';
 import { launch } from './local-host.mjs';
 import { baseOverlap, overlapLine, peersOf } from './local-peers.mjs';
@@ -152,16 +152,21 @@ async function seed(ctx: StackContext, local: LocalConfig, custody: Custody, aft
 }
 
 /** Starts each native process that is not already running. */
-function startProcesses(ctx: StackContext, local: LocalConfig, custody: Custody, deps: LocalDeps): string[] {
+async function startProcesses(ctx: StackContext, local: LocalConfig, custody: Custody, deps: LocalDeps): Promise<string[]> {
   const dir = stateOf(ctx, local);
   const record = readRecord(dir);
   const out: string[] = [];
-  const alive = deps.alive ?? isAlive;
   for (const run of local.processes) {
     const known = record.processes[run.name];
-    if (known && alive(known.pid)) { out.push(`process ${run.name}: running (pid ${known.pid})`); continue; }
+    if (known) {
+      const owned = await ownedProcess(ctx, known, deps);
+      if (owned.ours) { out.push(`process ${run.name}: running (pid ${known.pid})`); continue; }
+      if (owned.stale !== null) {
+        out.push(`process ${run.name}: discarded a stale record: ${owned.stale}; starting fresh`);
+      }
+    }
     const pid = startProcess(ctx, local, run, runEnvironment(ctx, local, run, custody, 'app'));
-    record.processes[run.name] = { pid, startedAt: new Date(ctx.now()).toISOString(), port: run.port === null ? null : (local.ports[run.port] ?? null) };
+    record.processes[run.name] = { pid, startedAt: new Date(ctx.now()).toISOString(), port: run.port === null ? null : (local.ports[run.port] ?? null), command: processCommand(ctx, local, run) };
     out.push(`process ${run.name}: started (pid ${pid})`);
   }
   record.ports = { ...local.ports };
@@ -219,7 +224,7 @@ export async function upLocal(ctx: StackContext, local: LocalConfig, { execute =
     lines.push(`service ${ready.detail}`);
     if (!ready.ok) throw failure('STACK_LOCAL_SERVICE', `${service.name} did not become ready in ${timeoutSeconds}s (${ready.detail}); read it with: starci app stack logs --env ${local.env} --service ${service.name}`);
   }
-  lines.push(await provisionDatabase(ctx, local, custody), await migrate(ctx, local, custody, deps), ...await seed(ctx, local, custody, 'migrate', 'always'), ...await seedLevels(ctx, local, custody), ...await seed(ctx, local, custody, 'migrate', 'once'), ...startProcesses(ctx, local, custody, deps));
+  lines.push(await provisionDatabase(ctx, local, custody), await migrate(ctx, local, custody, deps), ...await seed(ctx, local, custody, 'migrate', 'always'), ...await seedLevels(ctx, local, custody), ...await seed(ctx, local, custody, 'migrate', 'once'), ...await startProcesses(ctx, local, custody, deps));
   for (const row of local.ready) {
     const result = await waitFor(ctx, deadline, () => probe(ctx, local, row));
     lines.push(`${result.ok ? 'ok    ' : 'FAIL  '}ready ${result.detail}`);

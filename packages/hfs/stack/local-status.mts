@@ -6,7 +6,7 @@ import { firstLine } from './context.mjs';
 import type { ActionResult } from './remote.mjs';
 import type { LocalConfig } from './local-config.mjs';
 import { migrationsDigest } from './local-up.mjs';
-import { compose, isAlive, probe, stateOf } from './local-run.mjs';
+import { compose, ownedProcess, probe, stateOf } from './local-run.mjs';
 import type { LocalDeps } from './local-run.mjs';
 import { readRecord } from './local-state.mjs';
 
@@ -23,10 +23,10 @@ export async function statusLocal(ctx: StackContext, local: LocalConfig, _option
     const [state, health] = firstLine(inspected.stdout).split(' ');
     mark(state === 'running' && (service.wait !== 'healthy' || health === 'healthy'), `service ${service.name}: ${state}${health === 'nohealth' ? '' : `, ${health}`}`);
   }
-  const alive = deps.alive ?? isAlive;
   for (const run of local.processes) {
     const entry = record.processes[run.name];
-    mark(entry !== undefined && alive(entry.pid), entry ? `process ${run.name}: pid ${entry.pid} ${alive(entry.pid) ? 'alive' : 'gone'}` : `process ${run.name}: not started`);
+    const owned = entry ? await ownedProcess(ctx, entry, deps) : null;
+    mark(owned?.ours === true, entry && owned ? `process ${run.name}: pid ${entry.pid} ${owned.ours ? 'alive' : owned.stale === null ? 'gone' : `stale record, ${owned.stale}`}` : `process ${run.name}: not started`);
   }
   if (local.database) {
     const receipt = record.receipts.migrate;

@@ -211,6 +211,35 @@ test('up --execute runs the steps in order, hands custody over as files, and a s
   volumeCreatedAt.at = '2026-01-01 00:00:00 +0000 UTC';
 });
 
+test('a recorded pid that another process now holds is discarded, not trusted: up starts fresh, down never kills it', async (t) => {
+  const root = app(t);
+  const first = host(root);
+  assert.equal(await run(root, ['up', '--env', 'dev', '--execute'], first), 0, first.err.join(''));
+  const started = first.calls.find((call) => call.background);
+  assert.ok(started);
+  const recordedCommand = [started.command, ...started.args].join(' ');
+  // the pid is alive again after a reboot, but it is another program
+  const reused = host(root);
+  assert.equal(await run(root, ['up', '--env', 'dev', '--execute'], reused, { alive: () => true, commandLine: () => 'C:/Windows/System32/svchost.exe -k netsvcs' }), 0, reused.err.join(''));
+  assert.match(reused.out.join(''), /process api: discarded a stale record: pid [0-9]+ is alive but runs another command/u);
+  assert.equal(reused.calls.filter((call) => call.background).length, 1, 'the api is started fresh');
+  // the pid alive with the recorded command line is ours and kept
+  const ours = host(root);
+  assert.equal(await run(root, ['up', '--env', 'dev', '--execute'], ours, { alive: () => true, commandLine: () => recordedCommand }), 0, ours.err.join(''));
+  assert.equal(ours.calls.filter((call) => call.background).length, 0, 'the same command on a listening port is kept');
+  // the right command but nothing listening long after it started: the id was reused by a lookalike
+  const quiet = host(root);
+  quiet.io.now = () => 3_600_000;
+  assert.equal(await run(root, ['up', '--env', 'dev', '--execute'], quiet, { alive: () => true, commandLine: () => recordedCommand, tcpOpen: async () => false }), 0, quiet.err.join(''));
+  assert.match(quiet.out.join(''), /discarded a stale record: pid [0-9]+ is alive but nothing listens on its port/u);
+  // down leaves a stranger alone
+  const killed: number[] = [];
+  const down = host(root);
+  assert.equal(await run(root, ['down', '--env', 'dev', '--execute'], down, { alive: () => true, commandLine: () => 'notepad.exe', kill: (pid) => killed.push(pid) }), 0, down.err.join(''));
+  assert.deepEqual(killed, [], 'a process that is not ours is never ended');
+  assert.match(down.out.join(''), /left running: pid [0-9]+ is alive but runs another command/u);
+});
+
 test('up applies the seed levels after the migrations, in the database container under the owner role, with the receipts table', async (t) => {
   const root = app(t);
   for (const [file, text] of [
