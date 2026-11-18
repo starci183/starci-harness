@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Changed (chip rule, `contexts/ui/components/chip.md`, `contexts/ui/situations.md`): a Badge carries a dot only for the live state of a system process (the label changes by itself while nobody touches the record); a record's business status and a result or qualifier is a `Badge tone` without a dot; one entity carries at most one dotted badge. New DNA laws `DNA-COMMON-BADGE-DOT-ONE-PER-ENTITY` and `DNA-COMMON-DOT-FILLED` in the Grammar contract; the status dot is a solid 6px disc. The lint form is a review rule (not statically detectable). `BottomNav` `more.groups` for grouped More sheets.
+
 ## 1.1.0-alpha.167 - 2026-11-19
 
 - Added (managed VPS fleet, `contexts/harness/managed-vps.md`): `starci vps` (list, add, doctor, bootstrap, grant, revoke, swarm, ui, edge, domain and Cloudflare verbs) over `ops/vps.yaml`, the policy of a fleet, with its inventory kept in the gitignored `ops/vps/servers/`, sealed secrets in `ops/vps/*.enc.yaml` (neither is published), the Managed VPS page of the harness UI (`VpsPage`, `vps` read and act contracts), `policy/security.yaml` `refusedPaths` and `refusedKeys` for VPS work, and the secret scan and release push that honour them. Tests: `cli/src/harness/vps/vps.test.ts`.

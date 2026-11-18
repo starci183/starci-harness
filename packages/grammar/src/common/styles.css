@@ -5690,8 +5690,8 @@
      * gap (0.25rem), set as the chip's own column gap in place of the vendor's gap-0.5, so the dot adds nothing after itself.
      */
     .grammar-common-root {
-        /* 0.36.1 (ICONS-OUTLINE): the status dot is a HOLLOW RING, 8px with a 1.5px stroke, so it reads next to 12px badge text. */
-        --starci-core-status-dot-size: 0.5rem;
+        /* The status dot is a solid, tone-filled disc, 6px, so it reads next to 12px badge text. Outline icons do not apply to it. */
+        --starci-core-status-dot-size: 0.375rem;
     }
 
     .starci-core-status-dot-mark {
@@ -5702,9 +5702,8 @@
         height: var(--starci-core-status-dot-size);
         flex: none;
         box-sizing: border-box;
-        border: var(--grammar-stroke-fine) solid var(--starci-core-status-dot-color);
         border-radius: var(--grammar-radius-pill);
-        background: transparent;
+        background: var(--starci-core-status-dot-color);
         /* The tone's light stop: the tone eased toward the surface. */
         --starci-core-status-dot-light: color-mix(in oklab, var(--starci-core-status-dot-color) 40%, var(--surface));
     }

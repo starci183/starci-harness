@@ -81,7 +81,7 @@
         font-weight: var(--grammar-weight-extrabold);
     }
 
-    /* The status dot takes an ink ring so it reads on the cream canvas. */
+    /* The filled status dot takes a hairline ink outline so it reads on the cream canvas. */
     .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-status-dot-mark {
         box-shadow: 0 0 0 var(--grammar-hairline) var(--foreground);
     }

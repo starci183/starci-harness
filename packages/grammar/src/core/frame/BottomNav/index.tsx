@@ -3,7 +3,7 @@
 import { Button as AriaButton, Link as AriaLink } from "react-aria-components"
 import { Icon, type IconSource } from "../../leaf/Icon/index.js"
 import { iconButtonBadgeText } from "../../leaf/IconButton/index.js"
-import { Sidebar } from "../../composite/Sidebar/index.js"
+import { Sidebar, type SidebarGroup } from "../../composite/Sidebar/index.js"
 import type { NavigationBadgeTone } from "../../navigationBadgeTone.js"
 import type { NoChildren } from "../../tier.js"
 import { Drawer } from "../Drawer/index.js"
@@ -61,9 +61,13 @@ const nameProps = ({ label, badge, badgeLabel, badgeMax }: Place): { readonly "a
 export const BottomNav = ({ items, selectedKey, more, onAction }: BottomNavProps) => {
     const places = items.length + (more === undefined ? 0 : 1)
     if (process.env.NODE_ENV !== "production" && (places < 2 || places > BOTTOM_NAV_MAX_PLACES)) {
-        throw new Error(`BottomNav draws two to ${BOTTOM_NAV_MAX_PLACES} places, the "more" place included; it was given ${places}. Put the rest in \`more.items\`.`)
+        throw new Error(`BottomNav draws two to ${BOTTOM_NAV_MAX_PLACES} places, the "more" place included; it was given ${places}. Put the rest in \`more.items\` or \`more.groups\`.`)
     }
-    const moreIsCurrent = more !== undefined && selectedKey !== undefined && more.items.some((item) => item.id === selectedKey)
+    if (process.env.NODE_ENV !== "production" && more !== undefined && (more.items === undefined) === (more.groups === undefined)) {
+        throw new Error("BottomNav `more` takes `items` (flat) or `groups` (under headings), one of them.")
+    }
+    const moreGroups: ReadonlyArray<SidebarGroup> = more === undefined ? [] : (more.groups ?? [{ id: "more", items: more.items ?? [] }])
+    const moreIsCurrent = selectedKey !== undefined && moreGroups.some((group) => group.items.some((item) => item.id === selectedKey))
     return (
         <div data-tier="frame" data-component="BottomNav" data-contract="FE-APP-SHELL-4 A11Y-2 BOUNDARY-1" className="starci-core-bottom-nav">
             <ul className="starci-core-bottom-nav-list" data-grammar-bottom-nav-places={places}>
@@ -106,7 +110,7 @@ export const BottomNav = ({ items, selectedKey, more, onAction }: BottomNavProps
                             <Sidebar
                                 presentation="drawer"
                                 label={more.label}
-                                groups={[{ id: "more", items: more.items }]}
+                                groups={moreGroups}
                                 {...(selectedKey === undefined ? {} : { selectedKey })}
                                 {...(onAction === undefined ? {} : { onAction })}
                             />

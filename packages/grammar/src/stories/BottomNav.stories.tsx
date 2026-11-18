@@ -125,3 +125,40 @@ export const Wide: Story = {
     });
   },
 };
+
+/** The sheet of the rest under group headings (`more.groups`): each group's `label` heads its rows, in both families; flat `more.items` still works. */
+export const MoreSheetGroups: Story = {
+  parameters: { viewport: { defaultViewport: 'mobile1' } },
+  render: () => {
+    const [selected, setSelected] = useState('overview');
+    const more: G.BottomNavMore = {
+      label: 'More',
+      source: MenuGlyph,
+      closeLabel: 'Close',
+      groups: [
+        { id: 'run', label: 'Operate', items: REST.slice(0, 3) },
+        { id: 'setup', label: 'Set up', items: REST.slice(3) },
+      ],
+    };
+    return (
+      <G.WorkspaceShell
+        viewport="fixed"
+        navigation={<G.Sidebar label="Workspace" groups={SIDEBAR_GROUPS} selectedKey={selected} onAction={setSelected} />}
+        navigationLabel="Workspace navigation"
+        navigationVisibility="wide"
+        primaryLabel="Workspace content"
+        primary={<G.Page header={{ title: 'Overview' }}><G.Text>Below 48rem the places stand at the foot of the screen.</G.Text></G.Page>}
+        compactNavigation={<G.BottomNav items={PLACES} more={more} selectedKey={selected} onAction={setSelected} />}
+        compactNavigationLabel="Workspace places"
+      />
+    );
+  },
+  play: async ({ canvasElement }) => {
+    const page = within(canvasElement.ownerDocument.body);
+    await userEvent.click(await page.findByRole('button', { name: 'More' }));
+    const sheet = await page.findByRole('dialog', { name: 'More' });
+    await waitFor(() => expect(within(sheet).getByText('Operate')).toBeVisible());
+    expect(within(sheet).getByText('Set up')).toBeVisible();
+    expect(within(sheet).getAllByRole('option')).toHaveLength(REST.length);
+  },
+};
