@@ -43,6 +43,21 @@ secretKeys:
   # the locally managed tunnel starci-host-services. An app receives the bearer token through `app secret set ... --from-host EMBEDDINGS_API_KEY`.
   - EMBEDDINGS_API_KEY
   - HOST_SERVICES_TUNNEL_TOKEN
+# Paths refused whatever they hold, beside the built-in path rules of cli/src/shared/secrets.ts: `unless` names the tracked files a
+# glob does not cover. The managed-VPS inventory (ops/vps.yaml `inventory`: a server's host, port and sealed keys) never enters this
+# public repository, sealed or not; .gitignore keeps it out, and this refuses a server file added by force.
+refusedPaths:
+  - name: vps-inventory
+    glob: "ops/vps/servers/*.yaml"
+    unless: ["ops/vps/servers/example.yaml"]
+  - name: vps-inventory
+    glob: "ops/vps/*.enc.yaml"
+# Key names refused anywhere, a sealed envelope included (its keys are plaintext): a regex source matched against a whole key name
+# followed by `:` or `=`, any case. A server is reached by key only (contexts/harness/managed-vps.md), so a password key such as
+# VPS_PASSWORD or ROOT_PASSWORD names a credential nothing keeps.
+refusedKeys:
+  - name: server-password-key
+    pattern: "(?:VPS|ROOT|SSH|SERVER|SUDO)[_-]?PASS(?:WORD|WD)"
 exceptions:
   - path: packages/hfs/templates/be/patterns/realtime/channel.gateway.spec.ts.tpl
     rule: assigned-secret

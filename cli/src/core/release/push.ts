@@ -1,4 +1,4 @@
-import { loadPolicy } from "../../harness/policy.js"
+import { loadPolicy, refusalRules } from "../../harness/policy.js"
 import { judgePush } from "../deps/push-gate.js"
 import { assertMayPushBranch } from "../pkg/edit.js"
 import { exceptSecrets } from "../check/secrets-scan.js"
@@ -39,7 +39,8 @@ const assertNoSecretsAdded = async (root: string, head: string, previous: string
             .map(async (file) => ({ file, shown: await captureGit(["show", `${head}:${file}`], root) })),
     )
     for (const { file, shown } of shownFiles) if (shown.exitCode === 0) encrypted.set(file, shown.stdout)
-    const { findings } = exceptSecrets(root, scanDiff(diff, files, (file) => encrypted.get(file)), loadPolicy(root))
+    const policy = loadPolicy(root)
+    const { findings } = exceptSecrets(root, scanDiff(diff, files, (file) => encrypted.get(file), refusalRules(policy)), policy)
     if (findings.length > 0) throw new Refusal("PUSH_SECRET_FOUND", `the pushed range adds secret material: ${describeFindings(findings)}`)
 }
 

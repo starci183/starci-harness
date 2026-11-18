@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Managed VPS canvas</title>
+<!--
+  Canvas of the harness app's "Managed VPS" page (route #/vps), drawn before its code. The harness app has no design canvas of its own
+  (no .starcistacks/canvas, no design.json), so this one page holds the two frames, 1440 and 390, in the app's Grammar look:
+  white surface, hairline rows, one page head, no card used as a section frame, no primary action (the page only reads).
+  Data: GET /api/vps, the same rows as `starci vps list --json` (cli/src/harness/vps/fleet.ts FleetRow).
+  Grammar: Page (header), Alert (failed-login alert), DataTable (fleet), Badge (ingress, swarm), Meter-less percentage text, Link (UI, panel),
+  EmptyNotice (no server yet). States: ready, loading (placeholder rows), empty, error (the region's notice with retry).
+-->
+<style>
+  :root { --bg:#fff; --fg:#18181b; --muted:#71717a; --line:#e4e4e7; --danger:#b91c1c; --danger-soft:#fef2f2; --ok:#15803d; --ok-soft:#f0fdf4; --accent:#e11d48; --chip:#f4f4f5; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#0b0b0d; --fg:#f4f4f5; --muted:#a1a1aa; --line:#27272a; --danger:#f87171; --danger-soft:#2a1213; --ok:#4ade80; --ok-soft:#0f2417; --chip:#1f1f23; } }
+  :root[data-theme="dark"] { --bg:#0b0b0d; --fg:#f4f4f5; --muted:#a1a1aa; --line:#27272a; --danger:#f87171; --danger-soft:#2a1213; --ok:#4ade80; --ok-soft:#0f2417; --chip:#1f1f23; }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:24px 16px; background:#f4f4f5; color:var(--fg); font:14px/1.45 Inter, system-ui, sans-serif; }
+  h1.board { font-size:16px; margin:0 0 16px; }
+  .frames { display:flex; gap:32px; align-items:flex-start; flex-wrap:wrap; }
+  .frame { background:var(--bg); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  .frame > .tag { font:12px/1 ui-monospace, monospace; color:var(--muted); padding:8px 12px; border-bottom:1px solid var(--line); }
+  .w1440 { width:1440px; max-width:100%; } .w390 { width:390px; max-width:100%; }
+  .shell { display:flex; min-height:640px; }
+  .rail { width:232px; border-right:1px solid var(--line); padding:16px 12px; }
+  .rail .brand { font-weight:600; margin-bottom:16px; }
+  .rail a { display:block; padding:7px 10px; border-radius:6px; color:var(--fg); text-decoration:none; }
+  .rail a.on { background:var(--chip); font-weight:600; }
+  .main { flex:1; padding:24px 32px; min-width:0; }
+  .head h2 { margin:0; font-size:22px; } .head p { margin:4px 0 0; color:var(--muted); }
+  .alert { margin:20px 0 8px; padding:10px 12px; border-radius:6px; background:var(--danger-soft); color:var(--danger); }
+  .alert b { display:block; }
+  table { width:100%; border-collapse:collapse; margin-top:16px; }
+  th { text-align:left; font-weight:500; color:var(--muted); font-size:12px; padding:8px 10px; border-bottom:1px solid var(--line); }
+  td { padding:10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  .mono { font-family: ui-monospace, monospace; }
+  .sub { color:var(--muted); font-size:12px; }
+  .badge { display:inline-block; padding:1px 8px; border-radius:999px; background:var(--chip); font-size:12px; margin-right:4px; }
+  .dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; vertical-align:middle; }
+  .up { background:var(--ok); } .down { background:var(--danger); }
+  .warn { color:var(--danger); font-weight:600; }
+  a.link { color:var(--accent); text-decoration:none; }
+  .phone .bar { display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border-bottom:1px solid var(--line); font-weight:600; }
+  .phone .main { padding:16px; }
+  .row { padding:12px 0; border-bottom:1px solid var(--line); }
+  .row .line { display:flex; justify-content:space-between; gap:8px; }
+  .facts { color:var(--muted); font-size:12px; margin-top:4px; }
+</style>
+</head>
+<body>
+<h1 class="board">Managed VPS · canvas (1440, 390) · ready state</h1>
+<div class="frames">
+  <section class="frame w1440" aria-label="1440 frame">
+    <div class="tag">1440 · #/vps · ready</div>
+    <div class="shell">
+      <nav class="rail"><div class="brand">StarCi Harness</div><a>Tổng quan</a><a>Workflows</a><a>Cần quyết định</a><a class="on">Máy chủ VPS</a><a>Cài đặt</a></nav>
+      <main class="main">
+        <header class="head"><h2>Máy chủ VPS</h2><p>Đội máy chủ do harness quản lý: sức khỏe đọc qua khóa SSH đã niêm phong, không đổi gì trên máy.</p></header>
+        <div class="alert" role="alert"><b>1 máy có cảnh báo</b>vps-sg1: 312 lần đăng nhập SSH thất bại trong 24 giờ</div>
+        <table>
+          <thead><tr><th>Máy</th><th>Trạng thái</th><th>Tài nguyên</th><th>SSH thất bại 24h</th><th>Swarm</th><th>Lối vào</th></tr></thead>
+          <tbody>
+            <tr><td><span class="mono">vps-sg1</span><div class="sub">vultr · ubuntu · 2 dự án</div></td><td><span class="dot up"></span>Hoạt động 41,2 ngày</td><td>2 CPU · tải 0,4<div class="sub">RAM 62% · đĩa 48%</div></td><td class="warn">312</td><td><span class="badge">manager</span>1 node · 6 service</td><td><a class="link" href="#">ui-vps-sg1.starci.org</a><div class="sub"><span class="badge">tunnel</span><a class="link" href="#">panel</a></div></td></tr>
+            <tr><td><span class="mono">vps-hn2</span><div class="sub">viettel · almalinux · 1 dự án</div></td><td><span class="dot up"></span>Hoạt động 3,0 ngày</td><td>4 CPU · tải 1,2<div class="sub">RAM 35% · đĩa 21%</div></td><td>4</td><td><span class="badge">manager</span>1 node · 2 service</td><td><a class="link" href="#">ui-vps-hn2.starci.org</a><div class="sub"><span class="badge">edge</span></div></td></tr>
+            <tr><td><span class="mono">vps-old</span><div class="sub">contabo · debian · 0 dự án</div></td><td><span class="dot down"></span>Không kết nối được<div class="sub">ssh: connect timed out</div></td><td>—</td><td>—</td><td>—</td><td><a class="link" href="#">ui-vps-old.starci.org</a><div class="sub"><span class="badge">tunnel</span></div></td></tr>
+          </tbody>
+        </table>
+      </main>
+    </div>
+  </section>
+  <section class="frame w390 phone" aria-label="390 frame">
+    <div class="tag">390 · #/vps · ready</div>
+    <div class="bar"><span>☰</span><span>Máy chủ VPS</span><span></span></div>
+    <main class="main">
+      <header class="head"><h2>Máy chủ VPS</h2><p>Sức khỏe đọc qua khóa SSH đã niêm phong.</p></header>
+      <div class="alert" role="alert"><b>1 máy có cảnh báo</b>vps-sg1: 312 lần đăng nhập SSH thất bại trong 24 giờ</div>
+      <div class="row"><div class="line"><span class="mono">vps-sg1</span><span><span class="dot up"></span>41,2 ngày</span></div><div class="facts">RAM 62% · đĩa 48% · <span class="warn">312 SSH thất bại</span> · manager 6 service</div><div class="facts"><a class="link" href="#">ui-vps-sg1.starci.org</a></div></div>
+      <div class="row"><div class="line"><span class="mono">vps-hn2</span><span><span class="dot up"></span>3,0 ngày</span></div><div class="facts">RAM 35% · đĩa 21% · 4 SSH thất bại · manager 2 service</div><div class="facts"><a class="link" href="#">ui-vps-hn2.starci.org</a></div></div>
+      <div class="row"><div class="line"><span class="mono">vps-old</span><span><span class="dot down"></span>Mất kết nối</span></div><div class="facts">ssh: connect timed out</div></div>
+    </main>
+  </section>
+</div>
+</body>
+</html>

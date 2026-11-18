@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url"
 import { parse } from "yaml"
 import { z } from "zod"
 import { Refusal } from "../shared/errors.js"
+import type { RefusalRules } from "../shared/secrets.js"
 import { runtimeRoot } from "./ledger.js"
 import { ruleBookIds } from "./rule-book.js"
 
@@ -198,6 +199,10 @@ const securitySchema = z.object({
     sopsEnvelopes: z.object({ default: envelopeMode, profiles: z.record(z.string(), envelopeMode).optional() }),
     neverRead: z.array(z.string().min(1)),
     secretKeys: z.array(z.string().regex(/^[A-Z_][A-Z0-9_]*$/)),
+    // Paths refused whatever they hold, beside the built-in path rules (a glob, and the tracked files it does not cover).
+    refusedPaths: z.array(z.object({ name: z.string().regex(/^[a-z][a-z0-9-]*$/), glob: z.string().min(1), unless: z.array(z.string().min(1)).default([]) })).default([]),
+    // Key names refused anywhere, a sealed envelope included (its keys are plaintext): a regex source matched as a whole key name, any case.
+    refusedKeys: z.array(z.object({ name: z.string().regex(/^[a-z][a-z0-9-]*$/), pattern: z.string().min(1) })).default([]),
     exceptions: z.array(securityException),
 })
 
@@ -439,6 +444,9 @@ export const canonOf = (policy: Policy, profile: Profile): Readonly<Partial<Reco
 
 /** True when the CLI must never open `file` (repository-relative, forward slashes). */
 export const neverRead = (policy: Policy, file: string): boolean => policy.security.neverRead.some((pattern) => posix.matchesGlob(file, pattern))
+
+/** The refused paths and key names of the security policy, as the secret scan applies them (shared/secrets.ts). */
+export const refusalRules = (policy: Policy): RefusalRules => ({ paths: policy.security.refusedPaths, keys: policy.security.refusedKeys })
 
 /** Whether the profile tolerates sops envelopes in the tree. */
 export const envelopesAllowed = (policy: Policy, profile: string): boolean => (policy.security.sopsEnvelopes.profiles?.[profile] ?? policy.security.sopsEnvelopes.default) === "allowed"

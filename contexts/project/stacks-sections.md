@@ -10,7 +10,7 @@ the whole file and reads a section when it needs it: `starci contexts anchor <an
 - Stacks: how an app runs · `contexts/project/stacks.md#stacks-how-an-app-runs` · 1 KB — `.starcistacks/` at the app root is the one place an app says how it runs: which environments exist, what each one starts, how traffic enters, where its secrets are sealed, what ...
   - PROJECT-STACKS-1 One root per app · `PROJECT-STACKS-1` · 1 KB — `.starcistacks/` lives only at the app root, the repository that owns `.starciwork`, and covers every side the app declares (README.md PROJECT-1).
   - PROJECT-STACKS-2 The manifest declares everything the app runs and reads · `PROJECT-STACKS-2` · 2 KB — `application-stacks.yaml` (schema `starci/application-stacks@1`) is the declaration everything else is checked against:
-  - PROJECT-STACKS-3 Two kinds of environment, each with its runbook · `PROJECT-STACKS-3` · 2 KB — Two kinds, named by the project:
+  - PROJECT-STACKS-3 Two kinds of environment, each with its runbook · `PROJECT-STACKS-3` · 3 KB — Two kinds, named by the project:
   - PROJECT-STACKS-4 One declared ingress publishes, and only in the open it must · `PROJECT-STACKS-4` · 2 KB — One declared ingress component per environment is the only thing that publishes a port (R266, R275); every other service sits on internal networks.
   - PROJECT-STACKS-5 Secrets are sealed, granted least and never regenerated · `PROJECT-STACKS-5` · 15 KB
   - PROJECT-STACKS-6 Every runbook declares the same operations · `PROJECT-STACKS-6` · 6 KB — Every environment's runbook declares the same seven operations, one row each, with the project's command and its acceptance gate.

@@ -14,6 +14,7 @@
  *   POST /api/owner-requests                        OwnerRequestSet -> ActionResult (runs `supervisor ask` as the owner)
  *   GET  /api/config                                -> ConfigEntry[]
  *   POST /api/config                                ConfigSet -> ActionResult
+ *   GET  /api/vps                                   -> VpsFleet (the rows of `starci vps list --json`, probed over each server's sealed login)
  *   GET  /api/events                                text/event-stream of LiveEvent (one `data:` JSON per change)
  */
 
@@ -247,6 +248,39 @@ export interface ActionResult {
     readonly ok: boolean
     readonly code: string | null
     readonly message: string
+}
+
+/** One managed server's health, as `starci vps list` probes it (cli/src/harness/vps/probe.ts VpsHealth). */
+export interface VpsHealthView {
+    readonly reachable: boolean
+    readonly error: string | null
+    readonly uptimeSeconds: number | null
+    readonly cpuCount: number | null
+    readonly load1: number | null
+    readonly memoryPercent: number | null
+    readonly diskPercent: number | null
+    readonly failedLogins: number | null
+    readonly swarm: { readonly state: string; readonly nodes: number | null; readonly services: number | null } | null
+    readonly alerts: readonly string[]
+}
+
+/** One server of the managed fleet (cli/src/harness/vps/fleet.ts FleetRow); no host, user or secret. */
+export interface VpsServerRow {
+    readonly id: string
+    readonly provider: string
+    readonly os: string
+    readonly ingress: "tunnel" | "edge"
+    readonly swarmRole: string
+    readonly projects: readonly string[]
+    readonly panelUrl: string | null
+    readonly uiUrl: string
+    readonly health: VpsHealthView | null
+}
+
+/** The Managed VPS page: every server and how many alerts they raise. */
+export interface VpsFleet {
+    readonly servers: readonly VpsServerRow[]
+    readonly alerts: number
 }
 
 /** One change the event stream announces. */

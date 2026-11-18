@@ -15,9 +15,10 @@ import type {
     Overview,
     Ruling,
     TaskDetail,
+    VpsFleet,
     WorkflowDetail,
 } from "@contract"
-import { fixtureAction, fixtureConfig, fixtureInbox, fixtureOverview, fixtureOwnerRequests, fixtureTask, fixtureWorkflow } from "./fixtures"
+import { fixtureAction, fixtureConfig, fixtureInbox, fixtureOverview, fixtureOwnerRequests, fixtureTask, fixtureVps, fixtureWorkflow } from "./fixtures"
 
 /* ------------------------------------------------------------------ connection */
 
@@ -142,9 +143,9 @@ export const getConnection = (): Connection | null => current
 /* ------------------------------------------------------------------ fixture timing */
 
 /** The reads a fixtures session can hold or delay, named as in `?hold=`. */
-export type FixtureRead = "overview" | "workflow" | "task" | "inbox" | "config" | "ownerRequests"
+export type FixtureRead = "overview" | "workflow" | "task" | "inbox" | "config" | "ownerRequests" | "vps"
 
-const FIXTURE_READS: readonly FixtureRead[] = ["overview", "workflow", "task", "inbox", "config", "ownerRequests"]
+const FIXTURE_READS: readonly FixtureRead[] = ["overview", "workflow", "task", "inbox", "config", "ownerRequests", "vps"]
 
 /**
  * `?hold=1` (or `?hold=overview,task`) keeps those fixture reads pending forever; `?delay=<ms>` answers every fixture read
@@ -241,6 +242,7 @@ export const api = {
         isFixturesMode() ? Promise.resolve(fixtureAction(`supervisor ask ${set.project}`)) : request("POST", "/owner-requests", set),
     config: (): Promise<ConfigEntry[]> =>
         isFixturesMode() ? fixtureRead("config", () => [...fixtureConfig]) : request("GET", "/config"),
+    vps: (): Promise<VpsFleet> => (isFixturesMode() ? fixtureRead("vps", () => fixtureVps) : request("GET", "/vps")),
     setConfig: (set: ConfigSet): Promise<ActionResult> =>
         isFixturesMode() ? Promise.resolve(fixtureAction(`config set ${set.key}`)) : request("POST", "/config", set),
 } as const

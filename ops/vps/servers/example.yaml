@@ -1,0 +1,21 @@
+# A managed server, by example: the one tracked file of ops/vps/servers/. A real server is `<id>.yaml` beside it, written by
+# `starci vps add <id>`, and its keys are `<id>.enc.yaml` (sops+age, the owner key): both are gitignored, because this repository is
+# public (contexts/harness/managed-vps.md). Every value below is a placeholder from the documentation ranges.
+schema: starci/vps-server@1
+id: example
+host: 203.0.113.10
+sshPort: 22
+os: ubuntu
+provider: example-provider
+panel:
+  kind: none
+  url: null
+swarm:
+  role: manager
+projects:
+  - example-app
+# The server's door under the domain of ops/vps.yaml: tunnel (default) or edge.
+ingress:
+  mode: tunnel
+# Optional: csf instead of the OS family's default firewall.
+# firewall: csf

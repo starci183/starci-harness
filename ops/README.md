@@ -17,6 +17,7 @@ it, comments kept, only after that file's loaders accept the whole new file (`cl
 | [needs.yaml](needs.yaml) | the shared roots of an app and the canonical need key each one gives a reported path | `needs.ts` (the key and scope of a shared need, cli/README.md "Shared needs") |
 | [host.yaml](host.yaml) | the services a host runs for the harness: each one's check, start, schedule and requires | `host.ts` |
 | [uat.yaml](uat.yaml) | the pinned Playwright image and the bounds of one `starci uat run` | `uat.ts` |
+| [vps.yaml](vps.yaml) | the managed-VPS policy (no host, no secret): bootstrap (ops user, sshd, firewall, fail2ban or CSF lfd, security updates), Docker by OS family at its pin, swarm, what makes a box not clean, the Portainer UI stack, the Traefik edge stack, each name's door under the owner's domain (Cloudflare tunnel or Traefik) and the token scopes, deploy grants, health alerts, and where the gitignored inventory `vps/servers/` lives ([contexts/harness/managed-vps.md](../contexts/harness/managed-vps.md)) | `vps/policy.ts`, `vps/plan.ts`, `vps/probe.ts` (`starci vps`) |
 | [telegram.yaml](telegram.yaml) | the owner's Telegram channel: the token variable's name, the API, the bridge's poll and liveness, the notice budget, which notice kinds go out and the question reminder | `telegram.ts`, `telegram-bridge.ts` |
 
 A label's floor and host tools live in its op file and nowhere else. The prose below explains how the router and the

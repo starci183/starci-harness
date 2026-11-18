@@ -12,6 +12,7 @@ import type {
     Overview,
     Seat,
     TaskDetail,
+    VpsFleet,
     WorkflowDetail,
 } from "@contract"
 
@@ -456,3 +457,43 @@ export const fixtureOwnerRequests: readonly OwnerRequestRow[] = [
     { id: "r-0214a7c3b9e1", project: "demo-app", text: "Start workflow uat-sign-in after auth-sign-in is done.", at: at("12:38"), status: "open", cmdId: null },
     { id: "r-09c1e5d27f40", project: "demo-lib", text: "Kernels back to Claude.", at: at("09:10"), status: "closed", cmdId: "c-4f1a82d0" },
 ]
+
+/** The managed fleet of the Managed VPS page: one server with a failed-login alert, one quiet, one unreachable (placeholder names only). */
+export const fixtureVps: VpsFleet = {
+    alerts: 2,
+    servers: [
+        {
+            id: "vps-sg1",
+            provider: "vultr",
+            os: "ubuntu",
+            ingress: "tunnel",
+            swarmRole: "manager",
+            projects: ["nivo", "nivo-web"],
+            panelUrl: "https://panel.example.com",
+            uiUrl: "https://ui-vps-sg1.starci.org",
+            health: { reachable: true, error: null, uptimeSeconds: 3_559_680, cpuCount: 2, load1: 0.4, memoryPercent: 62, diskPercent: 48, failedLogins: 312, swarm: { state: "active", nodes: 1, services: 6 }, alerts: ["312 failed ssh logins in 24h"] },
+        },
+        {
+            id: "vps-hn2",
+            provider: "viettel",
+            os: "almalinux",
+            ingress: "edge",
+            swarmRole: "manager",
+            projects: ["starci-next"],
+            panelUrl: null,
+            uiUrl: "https://ui-vps-hn2.starci.org",
+            health: { reachable: true, error: null, uptimeSeconds: 259_200, cpuCount: 4, load1: 1.2, memoryPercent: 35, diskPercent: 21, failedLogins: 4, swarm: { state: "active", nodes: 1, services: 2 }, alerts: [] },
+        },
+        {
+            id: "vps-old",
+            provider: "contabo",
+            os: "debian",
+            ingress: "tunnel",
+            swarmRole: "none",
+            projects: [],
+            panelUrl: null,
+            uiUrl: "https://ui-vps-old.starci.org",
+            health: { reachable: false, error: "ssh: connect timed out", uptimeSeconds: null, cpuCount: null, load1: null, memoryPercent: null, diskPercent: null, failedLogins: null, swarm: null, alerts: ["unreachable"] },
+        },
+    ],
+}

@@ -10,7 +10,7 @@ import type { ActionResult, ConfigSet, GoalSet, LiveEvent, OwnerRequestSet, Ruli
 import { poll } from "./live.js"
 import type { Markers } from "./live.js"
 import { places, projectsOf } from "./places.js"
-import { configOf, inboxOf, overviewOf, ownerRequestsOf, taskOf, workflowOf } from "./read.js"
+import { configOf, fleetOfHost, inboxOf, overviewOf, ownerRequestsOf, taskOf, workflowOf } from "./read.js"
 import { rule, setConfig, setGoal, WORKFLOW_ACTIONS, workflowAction } from "./write.js"
 import type { WorkflowAction } from "./write.js"
 
@@ -169,6 +169,7 @@ const getRoute = (context: VerbContext, parts: readonly string[]): Route => {
     if (head === "inbox" && a === undefined) return () => inboxOf()
     if (head === "config" && a === undefined) return () => configOf()
     if (head === "owner-requests" && a === undefined) return () => ownerRequestsOf()
+    if (head === "vps" && a === undefined) return () => fleetOfHost()
     if (a === undefined || b === undefined || c !== undefined) return undefined
     if (head === "workflows") return () => workflowOf(context.cwd, a, b)
     if (head === "tasks") return () => taskOf(a, b)

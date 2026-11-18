@@ -1,3 +1,4 @@
+import { posix } from "node:path"
 import { SPEC_FILE } from "./spec-file.js"
 
 /** One secret the scan found: where, and which rule, never the value. */
@@ -106,6 +107,29 @@ export const redactSecrets = (text: string): string =>
         text,
     )
 
+/**
+ * The refusals policy/security.yaml adds to the built-in rules: paths refused whatever they hold (`refusedPaths`: a glob and the
+ * tracked files it does not cover) and key names refused anywhere (`refusedKeys`), a sealed envelope included, since its keys are
+ * plaintext: a password key such as VPS_PASSWORD names a credential the harness never keeps.
+ */
+export interface RefusalRules {
+    readonly paths: readonly { readonly name: string; readonly glob: string; readonly unless: readonly string[] }[]
+    readonly keys: readonly { readonly name: string; readonly pattern: string }[]
+}
+
+/** No refusal beyond the built-in rules. */
+export const NO_REFUSALS: RefusalRules = { paths: [], keys: [] }
+
+/** The findings of the refused paths among `files`. */
+export const refusedPathHits = (files: readonly string[], rules: RefusalRules): SecretHit[] =>
+    files.flatMap((file) => rules.paths.filter((rule) => posix.matchesGlob(file, rule.glob) && !rule.unless.includes(file)).map((rule): SecretHit => ({ file, line: null, pattern: rule.name, text: "" })))
+
+/** A key assignment whose whole name matches `pattern` (YAML, JSON, dotenv, code), any case: the name, maybe quoted, then `:` or `=`. */
+const keyAssignment = (pattern: string): RegExp => new RegExp(`(?<![A-Za-z0-9_$.-])["'\`]?(?:${pattern})["'\`]?\\s*[:=]`, "i")
+
+/** The refused key rules one line breaks, by name. */
+export const refusedKeyFindings = (text: string, rules: RefusalRules): string[] => rules.keys.filter((rule) => keyAssignment(rule.pattern).test(text)).map((rule) => rule.name)
+
 const HUNK_HEADER =/^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/
 
 /** True for the path of a sops envelope a repository commits: a legacy `.enc`, or an app member `.enc.yaml`. */
@@ -116,9 +140,9 @@ const isEncryptedFile = (file: string, readFile: (file: string) => string | unde
 const forbiddenPathFindings = (files: readonly string[]): SecretHit[] =>
     files.flatMap((file) => FORBIDDEN_PATHS.filter((rule) => rule.test(file)).map((rule): SecretHit => ({ file, line: null, pattern: rule.name, text: "" })))
 
-/** Scans the added lines of a unified diff (git diff -U0) and its changed file list; returns findings with the text of their line. */
-export const scanDiff = (diff: string, files: readonly string[], readFile: (file: string) => string | undefined): SecretHit[] => {
-    const findings: SecretHit[] = forbiddenPathFindings(files)
+/** Scans the added lines of a unified diff (git diff -U0) and its changed file list, with the policy's refusals; returns findings with the text of their line. */
+export const scanDiff = (diff: string, files: readonly string[], readFile: (file: string) => string | undefined, rules: RefusalRules = NO_REFUSALS): SecretHit[] => {
+    const findings: SecretHit[] = [...forbiddenPathFindings(files), ...refusedPathHits(files, rules)]
     let file = ""
     let line = 0
     for (const raw of diff.split(/\r?\n/)) {
@@ -133,6 +157,7 @@ export const scanDiff = (diff: string, files: readonly string[], readFile: (file
         }
         if (!raw.startsWith("+")) continue
         if (!isEncryptedFile(file, readFile)) for (const pattern of lineFindings(file, raw.slice(1))) findings.push({ file, line, pattern, text: raw.slice(1).trim() })
+        for (const pattern of refusedKeyFindings(raw.slice(1), rules)) findings.push({ file, line, pattern, text: raw.slice(1).trim() })
         line += 1
     }
     return findings

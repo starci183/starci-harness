@@ -72,7 +72,9 @@ A single VPS is a one-manager swarm: it orchestrates but has no manager failover
 new cluster, and a replicated task never makes a single-host volume highly available. More nodes are a design of their
 own (quorum, node roles, data placement), recorded in the runbook. Provisioning tools may create machines and DNS but
 never own the runtime topology; creating or joining a swarm, DNS and key rotation are owner-run steps the runbook
-names.
+names. A server of the owner's own fleet is managed by the harness, not by the app: `starci vps` bootstraps it, inits its swarm and
+opens its doors, and `starci vps grant` hands the app a deploy user of its own, sealed into the `vps` member of PROJECT-STACKS-5
+([harness/managed-vps.md](../harness/managed-vps.md)); the app never holds that server's root.
 
 **Scheduled work.** Swarm has no native schedule, so recurring work stays inside the app: the back end's queue
 scheduler (BE-QUEUES-3), a lite `platform/jobs` tick (BE-JOBS-6) that enqueues through the queue outbox, or a declared `replicated-job`

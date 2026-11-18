@@ -160,6 +160,8 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [harness/axes.md](../harness/axes.md) · 1 KB
 - [harness/host.md](../harness/host.md) · 10 KB — What a shell on the harness host does differently from the textbook, and the one way to work with it.
   - sections: Spawning a process · The host stack · Host services · Dependencies through a link · Files and folders
+- [harness/managed-vps.md](../harness/managed-vps.md) · 9 KB — The harness manages the owner's fleet of VPS servers from the harness host: it brings each server to one policy, watches its health, opens its doors under the owner's domain and ...
+  - sections: Clean boxes only · Two layers · Why the inventory is gitignored · Keys, never passwords · The verbs · Doors under the owner's domain · Who may run what
 - [harness/presence-audit.md](../harness/presence-audit.md) · 12 KB — A law that says an app must contain something, or a round must produce something, is enforced only when a check refuses its absence as well as a wrong one.
   - sections: hfs rules · contexts laws · Not added
 - [harness/questions.md](../harness/questions.md) · 9 KB
@@ -210,7 +212,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [stack/README.md](../stack/README.md) · 1 KB — The libraries and versions every app uses.
 - [stack/fe.yaml](../stack/fe.yaml) · 11 KB — The front-end stack of every app, both editions: for each concern the ONE library, its home (slot ids of hfs/slots.yaml), the pattern rule that teaches its use when there is a ...
   - ids: R244, R288, auth, avatar-illustration, charts, code, codegen, data, dates, device-id, diagrams, event-stream, fe-stack-import, flow, forms, framework, framework-support, front-end, grammar-lint, graphql, graphql-subscriptions, i18n, icons, lint and 18 more
-- [stack/pins.yaml](../stack/pins.yaml) · 22 KB — The exact version of every shared dependency: one version per dependency for every app and package, except the command line itself, whose version in an app is the starci-harness ...
+- [stack/pins.yaml](../stack/pins.yaml) · 24 KB — The exact version of every shared dependency: one version per dependency for every app and package, except the command line itself, whose version in an app is the starci-harness ...
   - ids: CONTRIB-20, R111, R190, install-local, same-minor, starci-harness
 - [ui/README.md](../ui/README.md) · 6 KB — How an agent decides a user interface on any grammar, so that every app built from the same grammar and the same knowledge comes out the same.
   - sections: The system in one page · Who owns what · Reading order · How the rules work
