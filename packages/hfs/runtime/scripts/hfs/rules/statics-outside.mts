@@ -3,7 +3,8 @@
 // statics/<area>/ and reference it by its staticsKey, so one folder holds every image, the storage image serves it, and a page never bundles it.
 // `fe/**/public/` may hold only the favicon, the app's own logo and the PWA/manifest icons (PUBLIC_ALLOWED, a fixed name pattern, no hfs.json allowlist);
 // every other image or video goes to statics/ behind the CDN.
-// Not judged: the route metadata files Next.js reads by name (`src/app/{icon,favicon,apple-icon,opengraph-image,twitter-image}.*`), `public/favicon.ico`,
+// Not judged: the route metadata files Next.js reads by name (`src/app/**/{icon,favicon,apple-icon,opengraph-image,twitter-image}.*`, at the app root or in
+// any route segment, e.g. a per-page share image), `public/favicon.ico`,
 // and the small build-time binaries a back end keeps under `be/**/src/assets/` (slot be.assets, judged by HFS_ASSET_KIND and HFS_ASSET_OVERSIZE).
 import path from 'node:path';
 import { found } from './read.mjs';
@@ -13,7 +14,7 @@ const MEDIA = new Set(['.png', '.jpg', '.jpeg', '.webp', '.avif', '.gif', '.svg'
 const FE_PUBLIC = /^fe\/(?:[^/]+\/)*public\//u;
 const IN_SRC = /^(?:fe|be)\/(?:[^/]+\/)*src\//u;
 const BE_ASSETS = /^be\/(?:[^/]+\/)*src\/assets\//u;
-const ROUTE_METADATA = /(?:^|\/)src\/app\/(?:icon|favicon|apple-icon|opengraph-image|twitter-image)(?:\d*)\.[a-z]+$/u;
+const ROUTE_METADATA = /(?:^|\/)src\/app\/(?:[^/]+\/)*(?:icon|favicon|apple-icon|opengraph-image|twitter-image)(?:\d*)\.[a-z]+$/u;
 
 /** What `public/` (relative to it) may hold: favicon.*, apple-touch-icon*.png, android-chrome-*.png, mstile-*.png, safari-pinned-tab.svg, icon-*.png, icons/**, and logo.{png,svg,webp} or *-logo.{png,svg,webp} in public/ or public/brand/. */
 const PUBLIC_ALLOWED = /^(?:favicon\.[^/]+|apple-touch-icon[^/]*\.png|android-chrome-[^/]*\.png|mstile-[^/]*\.png|safari-pinned-tab\.svg|icon-[^/]*\.png|icons\/.+|(?:brand\/)?(?:logo|[^/]*-logo)\.(?:png|svg|webp))$/iu;

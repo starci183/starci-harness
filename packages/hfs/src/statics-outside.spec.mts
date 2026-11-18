@@ -13,7 +13,7 @@ for (const edition of ['lite', 'full']) {
   });
 
   test(`${edition}: route metadata files, favicon.ico and back-end build assets are exempt`, () => {
-    for (const file of ['fe/apps/web/src/app/icon.png', 'fe/apps/web/src/app/favicon.ico', 'fe/apps/web/src/app/apple-icon.png', 'fe/apps/web/src/app/opengraph-image.png', 'fe/apps/web/src/app/twitter-image.jpg', 'fe/apps/web/public/favicon.ico', 'be/src/assets/images/logo.png']) assert.equal(isStaticAssetOutside(file), false, file);
+    for (const file of ['fe/apps/web/src/app/icon.png', 'fe/apps/web/src/app/favicon.ico', 'fe/apps/web/src/app/apple-icon.png', 'fe/apps/web/src/app/opengraph-image.png', 'fe/apps/web/src/app/twitter-image.jpg', 'fe/apps/web/public/favicon.ico', 'be/src/assets/images/logo.png', 'fe/apps/web/src/app/[locale]/(auth)/cv/[slug]/opengraph-image.png', 'fe/apps/web/src/app/[locale]/x/icon1.png']) assert.equal(isStaticAssetOutside(file), false, file);
     assert.equal(isStaticAssetOutside('fe/apps/web/src/components/icon.png'), true);
   });
 

@@ -3671,6 +3671,7 @@ slots:
       - robots.ts
       - sitemap.ts
       - manifest.ts
+      - "[locale]/**/{icon,apple-icon,opengraph-image,twitter-image}*.*"
     roles:
       page: page.tsx
       layout: layout.tsx

@@ -2,6 +2,7 @@
 
 ## 6.13.39 - 2026-11-18
 
+- Changed (slot `fe.route`, R439): Next's metadata files (`icon`, `apple-icon`, `opengraph-image`, `twitter-image`) are allowed in any route segment under `[locale]/` (e.g. a per-page share image `app/[locale]/(auth)/cv/[slug]/opengraph-image.tsx`), not only at the app root; R439 exempts a metadata image at any depth of `src/app/`.
 - Fixed: `HFS_CHECK_CACHE_FORGED` on a record any host wrote correctly. `verifyCommitted` compared the computed findings in the order the rules produced them with the committed findings, which are sorted on disk; the db family (not emitted in sorted order) was FORGED on every fresh CI run. Both sides are sorted before comparison; `sortFindings` is a total order (line, column, rule, message, path, canonical JSON) and no longer yields NaN for a finding that names its column (`column: "session_id"`); a db finding's path is posix whatever host judged it.
 - Changed: the canon node image is `node:22.20.0-alpine3.21` (index digest `sha256:f40aebdd0c1959821ab6d72daecafb2cd1d4c9a958e9952c1d71b84d4458f875`; the nivoos SDK entry needs node 22.18 or newer): `NODE_IMAGE`, `contexts/stack/pins.yaml`, the lite skeleton api Dockerfile.
 - Fixed: the canon be image Dockerfiles (api, cli, worker) and the lite skeleton api Dockerfile copy `turbo.json` in the build stage, so `npm run build:be` runs inside the image.

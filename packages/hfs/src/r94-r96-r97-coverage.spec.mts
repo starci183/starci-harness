@@ -43,6 +43,14 @@ for (const edition of ['lite', 'full']) {
     assert.deepEqual(runArch(root).violations.filter(item => item.ruleId === 'FE_SLOT_FILE_ROLE'), []);
   });
 
+  test(`${edition} R94 accepts the Next metadata files of a route segment (a per-page share image)`, t => {
+    const root = architectureFixture(t, edition, {
+      'apps/web/src/app/[locale]/(auth)/cv/[slug]/opengraph-image.tsx': 'export default function Image() { return null; }\n',
+      'apps/web/src/app/[locale]/(auth)/cv/[slug]/twitter-image.tsx': 'export default function Image() { return null; }\n',
+    });
+    assert.deepEqual(runArch(root).violations.filter(item => item.ruleId === 'FE_SLOT_FILE_ROLE' && item.path.includes('/cv/')), []);
+  });
+
   test(`${edition} R94 rejects a route role in hooks and a file where a folder belongs`, t => {
     const root = architectureFixture(t, edition, {
       ...hookFiles,
