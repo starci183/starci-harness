@@ -10,6 +10,7 @@ import { kindShapeProblems, patternShapeProblems } from './declaration-slots.mjs
 import { byCodeUnit } from '../lib/list.mjs';
 import { CONTRACT_KINDS, DEFAULT_CONTRACT } from './contract-kind.mjs';
 import { DECLARABLE_SIDE_KEYS, PROJECT_SIDES, isProjectSide } from './project-sides.mjs';
+import { DESKTOP_SIDE, desktopSideProblems, feAppNames } from './desktop-side.mjs';
 import { NIVOOS_SIDE, nivoosSideProblems } from './nivoos-side.mjs';
 
 /** Shape problems of the optional hfs.json `db` block of a lite app: the environment variable naming its database, its image, forced RLS and its application role. */
@@ -175,7 +176,8 @@ function productDeclarationProblems(declaration: Parsed, profiles: Parsed): stri
 
 /**
  * PROJECT-1: `sides` declares a non-empty subset of be, fe and packages; `packages` is the empty object `{}` (the root workspace packages/*).
- * It may also hold `nivoos`, the business packages authored with the nivoos SDK, each at packages/<name>/ (nivoos-side.mts, R436).
+ * It may also hold `nivoos`, the business packages authored with the nivoos SDK, each at packages/<name>/ (nivoos-side.mts, R436), and `desktop`, the
+ * Tauri shell that wraps a front-end app in a native window at desktop/ (desktop-side.mts, R444).
  */
 function sidesProblems(sides: Parsed): string[] {
   if (!isPlainObject(sides)) return [`sides must be an object declaring some of ${PROJECT_SIDES.join(', ')}`];
@@ -184,6 +186,7 @@ function sidesProblems(sides: Parsed): string[] {
   if (!keys.length) bad.push(`sides is empty: a project declares at least one of ${DECLARABLE_SIDE_KEYS.join(', ')}`);
   if (Object.hasOwn(sides, 'packages') && !(isPlainObject(sides.packages) && Object.keys(sides.packages).length === 0)) bad.push('sides.packages is the empty object {} (it declares the root workspace packages/*)');
   if (Object.hasOwn(sides, NIVOOS_SIDE)) bad.push(...nivoosSideProblems(sides[NIVOOS_SIDE]));
+  if (Object.hasOwn(sides, DESKTOP_SIDE)) bad.push(...desktopSideProblems(sides[DESKTOP_SIDE], Object.hasOwn(sides, 'fe') ? feAppNames(sides) : []));
   return bad;
 }
 

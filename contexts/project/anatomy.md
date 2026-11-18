@@ -70,6 +70,7 @@ Change a slot, a rule or a pattern's front matter, then regenerate in the same c
     - `cache-verify.yml` — **app.ci-cache-verify** required · R05 (hfs `managed-file-drift`)
     - `<app>-deploy.yml` — **app.ci-deploy** optional · R06 (hfs `plaintext-secret` `plaintext-secret-staged`)
     - `authorize-deploy-key.yml` — **app.ci-authorize-deploy-key** optional · R06 (hfs `plaintext-secret` `plaintext-secret-staged`)
+    - `desktop-release.yml` — **app.ci-desktop-release** optional · R05 (hfs `managed-file-drift`), R444 (hfs `desktop`)
   - `{CODEOWNERS,pull_request_template.md,ISSUE_TEMPLATE/**}` — **app.github-meta** optional
   - `dependabot.yml` — **app.dependabot** required · R05 (hfs `managed-file-drift`), R269 (hfs `supply-chain`)
 - `.dockerignore` — **app.dockerignore** required · R05 (hfs `managed-file-drift`)
@@ -87,6 +88,9 @@ Change a slot, a rule or a pattern's front matter, then regenerate in the same c
 - `packages/`
   - `<name>/` — **app.packages** optional · R25 (eslint-be `dead-exports`; eslint-fe `dead-exports`)
   - `<package>/` — **app.nivoos-package** optional · R436 (hfs `nivoos` `nivoos-package-check`)
+- `desktop/`
+  - `{frontend/index.html,src-tauri/Cargo.toml,src-tauri/build.rs,src-tauri/tauri.conf.json,src-tauri/src/main.rs,src-tauri/src/lib.rs}` — **app.desktop-config** optional · R05 (hfs `managed-file-drift`), R444 (hfs `desktop`)
+  - `src-tauri/{icons/**,capabilities/*.json,Cargo.lock}` — **app.desktop** optional · R444 (hfs `desktop`)
 - `{be,fe}/` — **app.sides** required
 - `ext/` — **app.ext** optional · R381 (hfs `project-ext`), R06 (hfs `plaintext-secret` `plaintext-secret-staged`), R103 (hfs `repo-local-check`), R402 (hfs `project-checks`)
 - `.starciwork/` — **app.starciwork** optional · R07 (hfs `agent-data-tracked`), R09 (hfs `identity-custody`)
@@ -106,7 +110,7 @@ Change a slot, a rule or a pattern's front matter, then regenerate in the same c
   - `bootstrap.sql` — **app.db.bootstrap** required · R05 (hfs `managed-file-drift`)
 - `statics/` — **app.statics** optional · R438 (hfs `statics-shape`)
 
-Git-ignored: `app.gallery-shots`, `app.build-output`.
+Git-ignored: `app.gallery-shots`, `app.desktop-build`, `app.build-output`.
 Refused (forbidden or external): `app.tool-config-local`, `app.ci-e2e`, `app.ci-db`, `app.browser`, `app.browser-config`, `app.tool-cache`, `app.agent-output`, `app.worktrees`, `app.plaintext-env`.
 
 ### lite · be/
@@ -279,6 +283,7 @@ Refused (forbidden or external): `repo.side-root-forbidden`, `fe.tool-config-loc
     - `cache-verify.yml` — **app.ci-cache-verify** required · R05 (hfs `managed-file-drift`)
     - `<app>-deploy.yml` — **app.ci-deploy** optional · R06 (hfs `plaintext-secret` `plaintext-secret-staged`)
     - `authorize-deploy-key.yml` — **app.ci-authorize-deploy-key** optional · R06 (hfs `plaintext-secret` `plaintext-secret-staged`)
+    - `desktop-release.yml` — **app.ci-desktop-release** optional · R05 (hfs `managed-file-drift`), R444 (hfs `desktop`)
   - `{CODEOWNERS,pull_request_template.md,ISSUE_TEMPLATE/**}` — **app.github-meta** optional
   - `dependabot.yml` — **app.dependabot** required · R05 (hfs `managed-file-drift`), R269 (hfs `supply-chain`)
 - `.dockerignore` — **app.dockerignore** required · R05 (hfs `managed-file-drift`)
@@ -297,6 +302,9 @@ Refused (forbidden or external): `repo.side-root-forbidden`, `fe.tool-config-loc
 - `packages/`
   - `<name>/` — **app.packages** optional · R25 (eslint-be `dead-exports`; eslint-fe `dead-exports`)
   - `<package>/` — **app.nivoos-package** optional · R436 (hfs `nivoos` `nivoos-package-check`)
+- `desktop/`
+  - `{frontend/index.html,src-tauri/Cargo.toml,src-tauri/build.rs,src-tauri/tauri.conf.json,src-tauri/src/main.rs,src-tauri/src/lib.rs}` — **app.desktop-config** optional · R05 (hfs `managed-file-drift`), R444 (hfs `desktop`)
+  - `src-tauri/{icons/**,capabilities/*.json,Cargo.lock}` — **app.desktop** optional · R444 (hfs `desktop`)
 - `{be,fe}/` — **app.sides** required
 - `ext/` — **app.ext** optional · R381 (hfs `project-ext`), R06 (hfs `plaintext-secret` `plaintext-secret-staged`), R103 (hfs `repo-local-check`), R402 (hfs `project-checks`)
 - `.starciwork/` — **app.starciwork** required · R07 (hfs `agent-data-tracked`), R09 (hfs `identity-custody`)
@@ -309,7 +317,7 @@ Refused (forbidden or external): `repo.side-root-forbidden`, `fe.tool-config-loc
 - `.sops.yaml` — **app.sops** required
 - `statics/` — **app.statics** optional · R438 (hfs `statics-shape`)
 
-Git-ignored: `app.gallery-shots`, `app.build-output`.
+Git-ignored: `app.gallery-shots`, `app.desktop-build`, `app.build-output`.
 Refused (forbidden or external): `app.tool-config-local`, `app.ci-e2e`, `app.tool-cache`, `app.agent-output`, `app.worktrees`, `app.plaintext-env`.
 
 ### full · be/

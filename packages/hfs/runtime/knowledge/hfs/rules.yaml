@@ -7074,3 +7074,19 @@ rules:
       - {path: packages/hfs/src/error-pages.spec.mts, editions: [lite, full]}
     witness:
       - {path: packages/hfs/src/error-pages.spec.mts, editions: [lite, full]}
+  - id: R444
+    code: "HFS_DESKTOP_UNDECLARED"
+    law: "The desktop app a project declares (hfs.json `sides.desktop`: `app` the fe app it wraps, `name`, a reverse-DNS `identifier` that does not end in `.app`, the https `origin` the shell loads, optional `devOrigin`, `allowedOrigins`, deep link `schemes`, `targets` (macos, windows, linux) and an `updater` `{ pubkey, endpoint }`; it needs the fe side) is a Tauri v2 remote-origin shell at `desktop/` and agrees with its tree and its config, each way: a tracked file of `desktop/` or the release workflow without the declaration is HFS_DESKTOP_UNDECLARED; a declared app tracks the icons `tauri icon` writes (and its Cargo.lock, a warning) or is HFS_DESKTOP_FILE_MISSING; `desktop/src-tauri/tauri.conf.json` says what the declaration says (identifier, product name, the version read from the app's package.json, deep link schemes, the updater key and endpoint, no window in the config) or is HFS_DESKTOP_CONFIG; the shell's isolation holds, with no global Tauri API, no dangerous* switch, a CSP without unsafe-eval or a wildcard, an updater over https and no capability that hands the IPC to a wildcard or plain-http remote origin, or it is HFS_DESKTOP_SECURITY; and no signing certificate, key store or private key is a tracked file and no signing secret is written into `desktop/`, or it is HFS_DESKTOP_SIGNING_KEY. The Tauri config, the Cargo manifest, the Rust of the shell, the bundled page and the release workflow are rendered from the declaration by `starci app sync` (slots `app.desktop-config`, `app.ci-desktop-release`, HFS_MANAGED_FILE_DRIFT); the signing secrets the workflow reads are names of `ci.secrets` (CI_DECLARATION_DRIFT) and are never committed."
+    kinds: [check]
+    gates: [settle, land, ci]
+    failureCodes: ["HFS_DESKTOP_UNDECLARED", "HFS_DESKTOP_FILE_MISSING", "HFS_DESKTOP_CONFIG", "HFS_DESKTOP_SECURITY", "HFS_DESKTOP_SIGNING_KEY"]
+    enforcers:
+      - {kind: hfs, id: desktop, at: runtime/scripts/hfs/rules/desktop.mjs}
+    editions: [lite, full]
+    templateNa: "A new app declares no desktop app; the rule guards the declaration, the tree and the config once it does."
+    docs:
+      - {path: contexts/project/desktop.md#project-desktop-1-the-desktop-app-is-a-tauri-shell-around-the-deployed-web-app, editions: [lite, full]}
+    proves:
+      - {path: packages/hfs/src/desktop-side.spec.mjs, editions: [lite, full]}
+    witness:
+      - {path: packages/hfs/src/desktop-side.spec.mjs, editions: [lite, full]}

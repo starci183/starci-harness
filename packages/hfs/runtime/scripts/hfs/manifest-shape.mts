@@ -397,7 +397,7 @@ function slotListProblems(slot: Parsed, at: string): string[] {
   if (slot.budget !== undefined && !budgetValid(slot.budget)) bad.push(`${at}: budget must map names to positive integers`);
   if (slot.managedOnly !== undefined && (slot.managedOnly !== true || slot.managedBy === undefined)) bad.push(`${at}: managedOnly is true and needs managedBy: the slot only lists files sync renders, and the slot owning the path judges them`);
   for (const key of ['managedBy', 'liteManagedBy']) if (slot[key] !== undefined && !NAME.test(String(slot[key]))) bad.push(`${at}: ${key} must be a template id`);
-  if (slot.managedWhenSides !== undefined && !(Array.isArray(slot.managedWhenSides) && slot.managedWhenSides.length > 0 && slot.managedWhenSides.every((side: Parsed) => ['be', 'fe', 'packages'].includes(side)))) bad.push(`${at}: managedWhenSides must be a non-empty list of be, fe, packages`);
+  if (slot.managedWhenSides !== undefined && !(Array.isArray(slot.managedWhenSides) && slot.managedWhenSides.length > 0 && slot.managedWhenSides.every((side: Parsed) => ['be', 'fe', 'packages', 'desktop'].includes(side)))) bad.push(`${at}: managedWhenSides must be a non-empty list of be, fe, packages, desktop`);
   if (slot.managedWhen !== undefined && !(Array.isArray(slot.managedWhen) && slot.managedWhen.length > 0 && slot.managedWhen.every((fact: Parsed) => fact === 'storage'))) bad.push(`${at}: managedWhen must be a non-empty list of conditions (storage)`);
   return bad;
 }

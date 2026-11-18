@@ -1,0 +1,136 @@
+{{header}}
+# Builds the installers of the desktop app (hfs.json sides.desktop; contexts/project/desktop.md) for every operating system the declaration names and
+# publishes them on the GitHub Release of the tag, with the updater manifest (latest.json) when an updater is declared.
+#   trigger    a v<version> tag push (the tag of the release ci.yml deploys) or a dispatch naming an existing tag; the tag must be v<version of package.json>,
+#              so the installers, the updater and the web app share one number (the verify job refuses anything else).
+#   release    the first build creates a DRAFT release for the tag and every job uploads its installers to it; the publish job opens it only when every
+#              operating system built, so the updater manifest never names a build that is missing.
+#   secrets    read only by the signing step: an unset secret leaves that signature out (an unsigned installer, no updater signature) and fails nothing.
+#              TAURI_SIGNING_PRIVATE_KEY signs the update bundles; the APPLE_* secrets sign and notarize the macOS app. They are declared in
+#              .starcistacks/application-stacks.yaml ci.secrets and set with `starci app ci secret set <NAME> --execute`; no key is ever committed.
+#   toolchain  Rust stable and the Tauri CLI at the version below (cargo install, cached with the cargo registry), on GitHub-hosted runners only.
+name: desktop release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "the existing release tag to build (v<version>)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+# One release build per tag; a rerun of the same tag replaces its uploads and never races another.
+concurrency:
+  group: desktop-release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - id: tag
+        shell: bash
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ steps.tag.outputs.tag }}
+          fetch-depth: 0
+      - name: the tag is the version of the app
+        shell: bash
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          version=$(node -p "require('./package.json').version")
+          if [[ "$TAG" != "v$version" ]]; then
+            echo "::error::the tag $TAG is not v$version, the version of package.json: tag the release v$version, or bump the version first"
+            exit 1
+          fi
+
+  build:
+    needs: [verify]
+    timeout-minutes: 90
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+{{desktopMatrix}}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ needs.verify.outputs.tag }}
+          fetch-depth: 0
+      - name: linux system libraries
+        if: matrix.label == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
+        with:
+          toolchain: stable
+          targets: ${{ matrix.rust-targets }}
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: desktop/src-tauri -> target
+      - name: the Tauri CLI
+        shell: bash
+        run: cargo install tauri-cli --version "={{desktopTauriCli}}" --locked
+      # Only the secrets that are set reach the build: an empty APPLE_CERTIFICATE would make the CLI try to sign with nothing.
+      - name: the signing environment
+        shell: bash
+        env:
+{{desktopSecretEnv}}
+        run: |
+          set -euo pipefail
+          for name in {{desktopSecretNames}}; do
+            value="${!name:-}"
+            if [[ -n "$value" ]]; then
+              delimiter="STARCI_${name}_$RANDOM$RANDOM"
+              {
+                echo "${name}<<${delimiter}"
+                echo "$value"
+                echo "${delimiter}"
+              } >> "$GITHUB_ENV"
+            fi
+          done
+      - uses: tauri-apps/tauri-action@1deb371b0cd8bd54025b384f1cd735e725c4060f # action-v1.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: desktop
+          tauriScript: cargo tauri
+          tagName: ${{ needs.verify.outputs.tag }}
+          releaseName: ${{ needs.verify.outputs.tag }}
+          releaseDraft: true
+          prerelease: false
+          uploadUpdaterJson: {{desktopUpdaterOn}}
+          args: ${{ matrix.args }}
+
+  publish:
+    needs: [verify, build]
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: open the release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.verify.outputs.tag }}
+          REPOSITORY: ${{ github.repository }}
+        run: gh release edit "$TAG" --repo "$REPOSITORY" --draft=false

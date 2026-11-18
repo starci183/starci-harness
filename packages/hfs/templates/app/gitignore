@@ -45,3 +45,4 @@ fe/apps/*/AGENTS.md
 
 # Host-local agent credentials and app age identity never enter Git.
 .claude/
+{{desktopGitignore}}

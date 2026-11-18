@@ -18,7 +18,8 @@ test('the app implementation loads with no installed dependency and refuses a mi
   assert.match(err, /^starci app scaffold <name>/m);
   assert.match(err, /^starci app secret list/m);
   assert.match(err, /^starci app coverage merge --out <lcov>/m);
-  assert.deepEqual(VERBS, ['scaffold', 'add', 'sync', 'check', 'upgrade', 'stack', 'world', 'release', 'slot', 'emit', 'secret', 'ci', 'db', 'data', 'coverage', 'audit', 'codemod']);
+  assert.deepEqual(VERBS, ['scaffold', 'add', 'sync', 'check', 'upgrade', 'stack', 'world', 'desktop', 'release', 'slot', 'emit', 'secret', 'ci', 'db', 'data', 'coverage', 'audit', 'codemod']);
+  assert.match(err, /^starci app desktop build /m);
 });
 
 test('global options use cwd, upgrade refuses a lite app because editions are fixed at scaffold, and a full app it cannot give a world', async (t) => {

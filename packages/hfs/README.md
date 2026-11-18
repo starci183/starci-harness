@@ -25,6 +25,8 @@ starci app check --ratchet [--cwd <dir>]
 starci app check --profile [--gate <gate>] [--json] [--cwd <dir>]
 starci app upgrade [--execute]
 starci app world <up|down|status> [--stack <dir>] [--services <list>] [--k3d] [--force] [--json] [--cwd <dir>]
+starci app desktop init --name <product> --identifier <reverse.dns> --origin https://<host> [--app <fe app>] [--scheme <s>]... [--allowed-origin <origin>]... [--target <os>]... [--repo <owner/name> --updater-pubkey <key>] [--cwd <dir>]
+starci app desktop doctor [--json] | build [--target <os>] [--debug] [--bundles <a,b>] | dev | keygen --out <file outside the repo>
 starci app slot <path> [--cwd <dir>] [--json]
 starci app emit [--cwd <dir>]
 starci app db drift [--db-url-env <NAME>] [--json] [--cwd <dir>]
@@ -198,6 +200,11 @@ Its own checks (`scripts/hfs/check.mts`, `scripts/hfs/rules/`; the rendered-file
 | `HFS_NIVOOS_PACKAGE_MISSING` | error | a nivoos package hfs.json `sides.nivoos.packages` declares whose `package.json`, `tsconfig.json` or entry (default `src/<name>.package.ts`) is not tracked in `packages/<name>/` (R436) |
 | `HFS_NIVOOS_UNDECLARED` | error | a root package that depends on the nivoos SDK or its CLI but hfs.json does not declare under `sides.nivoos.packages`, so the SDK authoring lint profile and the package check would not judge it (R436) |
 | `HFS_NIVOOS_PACKAGE_CHECK` | error | `nivoos package check <entry> --out <out>` of a declared nivoos package failed (type errors, a seed or secrets template that differs from a fresh build) or the nivoos CLI is not installed for it; the `checks` step of `starci app check` names the package, its exit and last lines (R436) |
+| `HFS_DESKTOP_UNDECLARED` | error | a tracked file of `desktop/` or `.github/workflows/desktop-release.yml` while hfs.json declares no `sides.desktop` (R444, `rules/desktop.mts`; contexts/project/desktop.md) |
+| `HFS_DESKTOP_FILE_MISSING` | error (Cargo.lock: warning) | a declared desktop app lacks an icon `tauri icon` writes under `desktop/src-tauri/icons/`, or its tracked `Cargo.lock` |
+| `HFS_DESKTOP_CONFIG` | error | `desktop/src-tauri/tauri.conf.json` disagrees with `sides.desktop`: identifier, product name, the version read from the app's `package.json`, deep link schemes, updater key or endpoint, dev origin, or a window declared in the config |
+| `HFS_DESKTOP_SECURITY` | error | the shell's isolation is loosened: `withGlobalTauri`, a `dangerous*` switch, an empty CSP or one with `unsafe-eval` or a wildcard, an updater over plain http, or a capability that grants the IPC to a bare wildcard or plain-http remote origin |
+| `HFS_DESKTOP_SIGNING_KEY` | error | a `.p12`, `.pfx`, key store or minisign secret key is tracked, or a signing secret is written into a file of `desktop/`: the keys are CI secrets |
 | `HFS_PROJECT_CHECK_FAILED` | error | a project check ext/manifest.json `checks` declares exited other than 0, or its file is missing; the `checks` step of `starci app check` names its exit and last lines (R402) |
 | `HFS_LINT_SUPPRESSION_FILE` | error | an `eslint.suppressions*` file, a `lint:suppressions` script, an eslint suppress flag or a suppressions config (R104) |
 | `HFS_PROOF_COMMAND_FILE_MISSING` | error | a `.starciwork` `requiresProof.<kind>.command` that runs a file the repository does not hold (R105) |

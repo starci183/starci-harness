@@ -63,6 +63,8 @@
 //                                            `add webhook <name>` lays down for a new webhook. All or nothing, a no-op when it is there; a lite app gets its inbox from `add webhook`
 //   starci app add spec <file>.service.ts [--cwd <dir>]  the spec skeleton of an existing service, read from its constructor with the repository's TypeScript
 //                                            (service, spec and image take only what is written here: an option another noun takes is refused, as --inject is on every other noun)
+//   starci app desktop init | doctor | build [--target <os>] [--debug] [--bundles <list>] | dev | keygen --out <file>   the desktop app of a project that declares sides.desktop (desktop/cli.mts,
+//                                            contexts/project/desktop.md): a Tauri shell around the deployed web app; init declares and renders it, build runs on a machine with Rust, CI builds every system.
 //   starci app world <up|down|status> [--stack <dir>] [--services <list>] [--k3d] [--force] [--json]   the full edition's local test world (the installed @starci/test-world cli)
 //   starci app stack <action> --env <env> [--execute]
 //                                            the Swarm deploy tooling of stack/ (dry run unless --execute; never prints a secret value; see docs/application-stacks.md).
@@ -118,6 +120,7 @@ import { emitContractsAsync } from '../emit/contracts.mjs';
 import { ScaffoldError, newService, newSpec } from '../scaffold/service.mjs';
 import { EditionRefusal } from '../scaffold/edition-gate.mjs';
 import { addKind } from '../scaffold/add.mjs';
+import { DESKTOP_USAGE, DesktopRefusal, desktopMain } from '../desktop/cli.mjs';
 import { scaffoldApp, scaffoldBase, settleScaffoldBranches, type LockResult, type ScaffoldBranches } from '../scaffold/app.mjs';
 import { machinePeers, type MachinePeers } from '../stack/local-peers.mjs';
 import { PROJECT_SIDES, isProjectSide, type ProjectSide } from '../runtime/scripts/hfs/project-sides.mjs';
@@ -225,7 +228,7 @@ type UsageForm = ParsedVerb['forms'][number];
 /** An argument the parser refuses (an unknown flag, a missing value, a form a verb does not take): the one error `main` follows with the usage. */
 export class UsageError extends Error {}
 
-export const VERBS = Object.freeze(['scaffold', 'add', 'sync', 'check', 'upgrade', 'stack', 'world', 'release', 'slot', 'emit', 'secret', 'ci', 'db', 'data', 'coverage', 'audit', 'codemod']);
+export const VERBS = Object.freeze(['scaffold', 'add', 'sync', 'check', 'upgrade', 'stack', 'world', 'desktop', 'release', 'slot', 'emit', 'secret', 'ci', 'db', 'data', 'coverage', 'audit', 'codemod']);
 const DATABASE_VERBS = new Map<string | undefined, (argv: string[], io: VerbIo) => Promise<number> | number>([['baseline', dbBaselineMain], ['restamp', dbRestampMain],['migrate', dbMigrateMain], ['post-cutover', dbPostCutoverMain], ['dump', dbDumpMain], ['new', dbNewMain], ['drift', dbDriftMain]]);
 
 /**
@@ -292,6 +295,7 @@ const VERB_USAGE: Record<string, string[]> = {
   upgrade: ['starci app upgrade [--execute]'],
   sync: [SYNC_USAGE.sync],
   world: ['starci app world <up|down|status> [--stack <dir>] [--services <list>] [--k3d] [--force] [--json] [--edition full|lite]'],
+  desktop: [...DESKTOP_USAGE],
   stack: [
     ...STACK_ACTIONS.map((action) => line(`starci app stack ${action}`, STACK_OPERANDS[action], STACK_READ_ONLY.includes(action) ? flagUsage('--env', { value: true }) : '--env <env>',
       STACK_FLAGS[action].map((flag: string) => flagUsage(flag, { value: STACK_VALUE.has(flag), repeat: STACK_REPEAT.has(flag) })), '[--json]')),
@@ -1058,7 +1062,7 @@ async function worldAppMain(argv: string[], { cwd, edition, stackMain, stdout: o
   return run(argv, { cwd, out, err }) as Promise<number>;
 }
 
-const DIRECT_VERBS = new Map<string, (argv: string[], io: AppIo) => Promise<number> | number>([['ci', async (argv: string[], io: AppIo) => (await import('../ci/cli.mjs')).ciMain(argv, io)], ['secret', secretMain], ['db', databaseMain], ['data', dataMain], ['upgrade', upgradeAppMain], ['stack', stackAppMain], ['world', worldAppMain], ['release', releaseMain], ['coverage', async (argv: string[], io: AppIo) => (await import('../coverage/cli.mjs')).coverageMain(argv, io)], ['audit', async (argv: string[], io: AppIo) => (await import('../audit/cli.mjs')).auditMain(argv, { cwd: io.cwd, stdout: io.stdout, stderr: io.stderr })], ['codemod', codemodMain]]);
+const DIRECT_VERBS = new Map<string, (argv: string[], io: AppIo) => Promise<number> | number>([['ci', async (argv: string[], io: AppIo) => (await import('../ci/cli.mjs')).ciMain(argv, io)], ['secret', secretMain], ['db', databaseMain], ['data', dataMain], ['upgrade', upgradeAppMain], ['stack', stackAppMain], ['world', worldAppMain], ['desktop', (argv: string[], io: AppIo) => desktopMain(argv, io)], ['release', releaseMain], ['coverage', async (argv: string[], io: AppIo) => (await import('../coverage/cli.mjs')).coverageMain(argv, io)], ['audit', async (argv: string[], io: AppIo) => (await import('../audit/cli.mjs')).auditMain(argv, { cwd: io.cwd, stdout: io.stdout, stderr: io.stderr })], ['codemod', codemodMain]]);
 
 function dispatchMain(verb: string, argv: string[], io: AppIo): Promise<number> | number {
   if (verb === 'sync') return syncMain([verb, ...argv], io);
@@ -1076,7 +1080,7 @@ function adoptionNotice({ from, to, kept }: StateAdoption): string {
 /** What `main` prints for a thrown error: the usage only after a usage error; a refusal or a tool failure prints its code and message alone. */
 function errorMessage(error: unknown): string {
   if (error instanceof EditionRefusal || error instanceof UpgradeError || error instanceof HfsSlotsError || error instanceof SyncError) return `${(error as Error).message}\n`;
-  if (error instanceof ScaffoldError || error instanceof LegacyStateHeld || error instanceof SideRefusal) return `${(error as { code: string }).code}: ${(error as Error).message}\n`;
+  if (error instanceof ScaffoldError || error instanceof LegacyStateHeld || error instanceof SideRefusal || error instanceof DesktopRefusal) return `${(error as { code: string }).code}: ${(error as Error).message}\n`;
   if (error instanceof UsageError) return `starci app: ${error.message}\n${USAGE}`;
   return `starci app: ${(error as Error).message}\n`;
 }

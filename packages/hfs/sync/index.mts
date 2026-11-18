@@ -31,6 +31,8 @@ import type { AppRepo } from '../runtime/scripts/hfs/slot-app-view.mjs';
 import type { Slot, SlotManifest } from '../runtime/scripts/hfs/manifest-shape.mjs';
 import { managedGroupOf } from '../runtime/scripts/hfs/edition-slots.mjs';
 import { declaredSlotEnabled } from '../runtime/scripts/hfs/declaration-slots.mjs';
+import { DESKTOP_SIDE } from '../runtime/scripts/hfs/desktop-side.mjs';
+import { desktopVariables } from './desktop.mjs';
 import { feAppPackageName } from '../runtime/scripts/hfs/rules/monorepo.mjs';
 import { bundledPins } from '../runtime/scripts/hfs/canon-pins.mjs';
 import { declaredDefaultLocale, galleryAllowedHosts, galleryParams, galleryPort, galleryTexts } from '../runtime/scripts/hfs/gallery.mjs';
@@ -644,6 +646,8 @@ export function variables(app: ResolvedApp, scope: string, presets: Presets | nu
     sonarExclusions: sonarScope(presets).exclusions.join(','),
     sonarTestInclusions: sonarScope(presets).tests.join(','),
     nivoosSeedIgnore: scope === APP_SCOPE ? nivoosSeedIgnore(app).join(LINE) : '',
+    // The desktop app (hfs.json sides.desktop, R444): the Tauri config, the shell's Rust, the release matrix and the ignore lines; all empty without it.
+    ...desktopVariables(app, HEADER(scope)),
     sonarSources: [...(withBe ? ['be/apps', 'be/src'] : []), ...(withFe ? ['fe/apps'] : []), ...(packages ? ['fe/packages'] : []), ...moduleDirs.map(dir => `${dir}/src`)].join(','),
     lcovReport: LCOV_REPORT,
     cpdExclusions: SONAR_CPD_EXCLUSIONS.join(','),
@@ -708,7 +712,7 @@ function renderOnce(hfs: unknown, presets: Presets | null | undefined, { sonarKe
   return [APP_SCOPE, ...declaredAppSides(app)].flatMap(scope => {
     const vars = variables(app, scope, presets, sonarKey, manifest, source);
     const repo = scope === APP_SCOPE ? app : app.sides[scope as 'be' | 'fe'];
-    const declaredTargets = targetsOf(scope, { edition: app.edition as string, manifest, hasTemplate, enabled: slot => declaredSlotEnabled(slot, repo), declares: side => sideDeclared(app, side as ProjectSide), needs: fact => factHolds(fact, source) });
+    const declaredTargets = targetsOf(scope, { edition: app.edition as string, manifest, hasTemplate, enabled: slot => declaredSlotEnabled(slot, repo), declares: side => (side === DESKTOP_SIDE ? app.desktop !== undefined : sideDeclared(app, side as ProjectSide)), needs: fact => factHolds(fact, source) });
     if (scope === APP_SCOPE && source?.badges) declaredTargets.push({ path: 'README.md', mode: 'block', markdown: true, template: 'app/readme-badges/README.md' });
     const targets = declaredTargets
       .filter(target => !(app.edition === 'lite' && source?.workPresent === false && target.path === '.starciwork/.gitignore'))
