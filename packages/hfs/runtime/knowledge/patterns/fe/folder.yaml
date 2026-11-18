@@ -246,7 +246,10 @@ rules:
       A route whose complete responsibility is redirect or notFound mounts none. A route file holds no inline component, no
       drawing decision and no hook, and a redirect from an old URL lives in next.config redirects(), never in a page. Every app has
       app/global-error.tsx, app/[locale]/layout.tsx, app/[locale]/error.tsx and app/[locale]/not-found.tsx, and a loading.tsx
-      for each route group that reads data. Each page exports generateMetadata. force-dynamic on a client page is forbidden.
+      for each route group that reads data. The locale loading.tsx and error.tsx sit in a route group directly under [locale]
+      (app/[locale]/(pages)/, beside the pages), never at [locale] itself, whose loading boundary would wrap the [...rest] catch-all
+      and turn an unknown address into a soft 404; app/[locale]/[...rest]/page.tsx calls notFound() and app/[locale]/not-found.tsx
+      exports generateMetadata, both outside the group (a loading.tsx at [locale] is accepted with an info finding). Each page exports generateMetadata. force-dynamic on a client page is forbidden.
     rationale: |
       Keeping default exports in the App Router layer prevents components from becoming route-coupled, and mandatory
       boundaries turn a render failure into a recoverable screen instead of a blank page.

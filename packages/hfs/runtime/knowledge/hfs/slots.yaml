@@ -2562,6 +2562,9 @@ slots:
     tracked: tracked
     tier: none
     minInstances: 1
+    # The locale error.tsx and loading.tsx are also held by a route group directly under [locale] ("src/app/[locale]/(pages)/loading.tsx";
+    # slot-required.mts). A loading boundary at [locale] wraps the [...rest] catch-all and turns an unknown address into a soft 404, so the
+    # group is the shape: pages, loading and error inside it; [...rest]/page.tsx (notFound()) and not-found.tsx outside it (frontend-tree.mts, R53).
     requires: [package.json, next.config.ts, tsconfig.json, postcss.config.mjs, src/app/, src/modules/i18n/,
                "src/app/global-error.tsx", "src/app/[locale]/layout.tsx", "src/app/[locale]/error.tsx", "src/app/[locale]/not-found.tsx", "src/app/[locale]/loading.tsx"]
     tests: none

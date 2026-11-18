@@ -77,6 +77,20 @@ for (const edition of ['lite', 'full'] as const) {
     }
   });
 
+  test(`${edition} accepts the loading and error boundaries held by a route group directly under [locale]`, (t) => {
+    const fixture = boundaryFixture(t, edition);
+    for (const name of ['loading', 'error']) {
+      const plain = `apps/web/src/app/[locale]/${name}.tsx`;
+      fs.rmSync(path.join(fixture.root, plain));
+      assert.deepEqual(boundaryFindings(fixture).map((finding) => finding.path), [plain]);
+      put(fixture.root, `apps/web/src/app/[locale]/(pages)/${name}.tsx`);
+      assert.deepEqual(boundaryFindings(fixture), []);
+    }
+    fs.rmSync(path.join(fixture.root, 'apps/web/src/app/[locale]/(pages)/loading.tsx'));
+    put(fixture.root, 'apps/web/src/app/[locale]/(.)photo/loading.tsx');
+    assert.deepEqual(boundaryFindings(fixture).map((finding) => finding.path), ['apps/web/src/app/[locale]/loading.tsx']);
+  });
+
   test(`${edition} accepts visible Suspense fallbacks and rejects null or absent loading states`, () => {
     const tester = canonTester(new RuleTester({
       languageOptions: { parser, ecmaVersion: 2022, sourceType: 'module', parserOptions: { ecmaFeatures: { jsx: true } } },
