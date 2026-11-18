@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.164 - 2026-11-18
+
+- Changed (pins): @starci/hfs 6.13.44 (`HFS_NIVOOS_UNDECLARED` exempts the packages of hfs.json `publishes` and the SDK package itself, so a platform repository whose SDK sibling packages depend on the SDK adopts the train). Until the cli-follow step raises the CLI's requirement, the CLI runs the hfs it requires.
+
 ## 1.1.0-alpha.163 - 2026-11-18
 
 - Changed: the CLI requires @starci/hfs@6.13.43, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).

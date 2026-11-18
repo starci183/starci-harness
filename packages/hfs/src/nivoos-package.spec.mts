@@ -93,6 +93,20 @@ test('R436 the tree: a declared package has its files, and a package that depend
   assert.equal(dependsOnNivoosSdk({ dependencies: { zod: '1.0.0' } }), false);
 });
 
+test('R436 publishes: the published packages of the platform and the SDK itself are no business package', (t) => {
+  const repoRoot = mkdtemp(t, 'starci-nivoos-publishes-');
+  const write = (file: string, text: string) => { fs.mkdirSync(path.dirname(path.join(repoRoot, file)), { recursive: true }); fs.writeFileSync(path.join(repoRoot, file), text); };
+  write('packages/nivoos-sdk/package.json', JSON.stringify({ name: '@starci/nivoos-sdk', dependencies: { '@nivoos/sdk': '1.0.0' } }));
+  write('packages/nivoos-cli/package.json', JSON.stringify({ name: '@nivoos-lite/nivoos-cli', dependencies: { '@nivoos-lite/nivoos-sdk': '0.1.0' } }));
+  write('packages/provider-templates/package.json', JSON.stringify({ name: '@nivoos-lite/provider-templates', dependencies: { '@nivoos-lite/nivoos-sdk': '0.1.0' } }));
+  write('packages/biz/package.json', JSON.stringify({ name: '@demo/biz', dependencies: { '@nivoos-lite/nivoos-sdk': '0.1.0' } }));
+  const files = ['packages/nivoos-sdk/package.json', 'packages/nivoos-cli/package.json', 'packages/provider-templates/package.json', 'packages/biz/package.json'];
+  const withPublishes = resolveRepoDeclaration(manifest, { ...declarationOf({ be: BE }), publishes: ['packages/nivoos-sdk', 'packages/nivoos-cli', 'packages/provider-templates'] });
+  assert.deepEqual(nivoosFindings({ repoRoot, files, repo: withPublishes }).map((finding) => finding.path), ['packages/biz/package.json'], 'only the unlisted business package is refused');
+  const without = declare({ be: BE });
+  assert.deepEqual(nivoosFindings({ repoRoot, files, repo: without }).map((finding) => finding.path), ['packages/nivoos-cli/package.json', 'packages/provider-templates/package.json', 'packages/biz/package.json'], 'without publishes the CLI and the catalogue are refused, the SDK package never is');
+});
+
 test('a declared package at packages/<name>/ is no service root, while the same manifest at the app root is still refused', () => {
   const repo = declare({ be: BE, nivoos: NIVOOS });
   const placed = (files: string[]) => serviceFindings({ repoRoot: '/nowhere', files, repo }).filter((finding) => finding.code === 'HFS_SERVICE_PLACEMENT').map((finding) => finding.path);

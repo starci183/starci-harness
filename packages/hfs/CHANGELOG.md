@@ -1,5 +1,10 @@
 # Changelog
 
+## 6.13.44 - 2026-11-18
+
+- Changed (`knowledge/hfs/canon-pins.yaml`): the `@starci/hfs` self-pin is 6.13.44.
+- Fixed (R436 `HFS_NIVOOS_UNDECLARED`, `rules/nivoos.mts`, `slots.mts`): a package folder listed in hfs.json `publishes` (the platform's own published SDK, CLI and catalogue packages) is no business package and needs no `sides.nivoos.packages` entry; the SDK package itself (its name is an SDK name) is exempt too. A sibling of the SDK such as `packages/nivoos-cli` no longer blocks adopting 6.13.43.
+
 ## 6.13.43 - 2026-11-18
 
 - Changed (R53 `FE_ERROR_BOUNDARY_MISSING`, R59 `FE_I18N_PLACEMENT`; `scripts/hfs/slot-required.mts`, `rules/frontend-tree.mts`): the locale `loading.tsx` and `error.tsx` that `fe.app.next` requires are also satisfied by a route group directly under `[locale]` (`src/app/[locale]/(pages)/loading.tsx`). A `loading.tsx` at `[locale]` wraps the `[...rest]` catch-all, so `notFound()` fired after streaming began and every unknown address answered HTTP 200 with the default title (a soft 404). `FE_I18N_PLACEMENT` is unchanged (every route file still sits under `[locale]`; a group is transparent).

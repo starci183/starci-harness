@@ -108,6 +108,8 @@ export interface RepoView {
   declaredSides?: readonly ProjectSide[];
   /** The nivoos packages hfs.json declares (app view only, `sides.nivoos`, R436): packages/<name>/ of each is a slot app.nivoos-package, not an app.packages one. */
   nivoosPackages?: readonly NivoosPackage[];
+  /** The workspace package folders hfs.json `publishes` (app view only): the platform's own published packages, exempt from HFS_NIVOOS_UNDECLARED. */
+  publishes?: readonly string[];
   /** The desktop app hfs.json declares (app view only, `sides.desktop`, R444): the Tauri shell at desktop/ that wraps a front-end app. */
   desktop?: DesktopDeclaration;
   manifestVersion: string;
@@ -336,6 +338,7 @@ export function resolveRepoDeclaration(manifest: SlotManifest, declaration: Pars
     sides: Object.freeze(sides),
     declaredSides,
     nivoosPackages: Object.freeze(nivoosPackagesOf(declaration.sides)),
+    publishes: Object.freeze(Array.isArray(declaration.publishes) ? declaration.publishes.filter((entry: unknown): entry is string => typeof entry === 'string') : []),
     ...desktopView(declaration.sides),
     manifestVersion: manifest.version,
   });
