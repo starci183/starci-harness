@@ -1,5 +1,9 @@
 # Changelog
 
+## 6.13.42 - 2026-11-18
+
+- Changed (`knowledge/hfs/canon-pins.yaml`): @starci/jest-preset 2.11.1: a root package with its own `packages/<name>/tsconfig.json` is compiled by jest with that file's options in its own unit project (a package on standard decorators, such as an SDK, no longer meets the back end's `experimentalDecorators`); a package without one keeps the back end options. The rendered `be/jest.config.js` is unchanged. The `@starci/hfs` self-pin is 6.13.42.
+
 ## 6.13.41 - 2026-11-18
 
 - Fixed (`rules/failure-class.mts`, R432 `BE_FAILURE_CLASS_BY_TEXT`): a regular expression literal is read in linear time. Its body let a backslash match either the escape or the plain-character alternative, so a literal full of `\u` escapes (a Vietnamese character class) backtracked catastrophically and hung `hfs structure`; the plain-character class now excludes the backslash.

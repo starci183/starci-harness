@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.11.1 - 2026-11-18
+
+- Fixed: a root package that has its own `packages/<name>/tsconfig.json` is compiled by jest with that file's options (extends chain read, path options dropped, unit options on top) in its own `unit` project, instead of the back end's `@starci/tsconfig/be.json` options. A package that writes standard decorators (no `experimentalDecorators`) now compiles in the root packages project. Packages without a tsconfig keep the shared project with the back end options. The rendered `be/jest.config.js` is unchanged, so `starci app sync` and `app check` stay in agreement (no HFS_COVERAGE_SCOPE_DRIFT).
+
 ## 2.11.0 - 2026-11-16
 
 - Added: the integration and e2e projects run on the slots the app declares and through a result cache. A spec file whose inputs are unchanged since its last green run is not run, it is reported `cached` (jest sees a skipped file); a new, changed or previously red file runs and its green run is recorded; a red run removes the record. The key of a spec is the digest of the spec, its import closure resolved through the tsconfig, the application source of the jest root, `src/tests/world/**`, the lockfiles, the stack definition (`.starcistacks/application-stacks.yaml` and each `.starcistacks/<env>/` but its `runtime/`) and the versions of `@starci/test-world` and this preset. Records are JSON Lines in the app repository, `.starcistacks/cache/test/<kind>/<area>.jsonl` (path, key, `parts`, `passed`, `ms`; sorted, LF), committed like the check cache. `src/world-cache.ts` holds it (`SpecInputs`, `SpecCache`, `reportLine`, `summary`).
