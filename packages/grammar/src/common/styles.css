@@ -1203,6 +1203,17 @@
         box-shadow: 0 0 0 var(--grammar-ring-width) color-mix(in oklab, var(--accent) 22%, transparent);
     }
 
+    /*
+     * 0.47.1: a tile `groundTone` paints the whole tile with its tone's soft pair, as `DataTableRow.groundTone` does a row; its quiet lines (byline, description,
+     * facts) take the pair's foreground too, so nothing stays the neutral muted grey on the tint.
+     */
+    .starci-core-surface[data-grammar-surface-ground="accent"] { --starci-core-ground: var(--accent-soft); --starci-core-ground-ink: var(--accent-soft-foreground); }
+    .starci-core-surface[data-grammar-surface-ground="success"] { --starci-core-ground: var(--success-soft); --starci-core-ground-ink: var(--success-soft-foreground); }
+    .starci-core-surface[data-grammar-surface-ground="warning"] { --starci-core-ground: var(--warning-soft); --starci-core-ground-ink: var(--warning-soft-foreground); }
+    .starci-core-surface[data-grammar-surface-ground="danger"] { --starci-core-ground: var(--danger-soft); --starci-core-ground-ink: var(--danger-soft-foreground); }
+    .starci-core-surface[data-grammar-surface-ground] { background: var(--starci-core-ground); color: var(--starci-core-ground-ink); }
+    .starci-core-surface[data-grammar-surface-ground] :is(.starci-core-label, .starci-core-tile-byline, .starci-core-tile-description, .starci-core-tile-figure) { color: inherit; }
+
     [data-grammar-scroll="contained"] {
         max-height: var(--starci-core-contained-max-height);
         overflow: hidden;
@@ -1527,6 +1538,10 @@
 
     /* A compact search field spans up to 26rem and stays at the start (a list pane's search above its tabs). */
     .starci-core-search-field[data-grammar-search-measure="compact"] { max-inline-size: 26rem; }
+    /* 0.47.1: `toolbar` is a search field of 15rem (240px) that stays at the start of a toolbar's row; below 30rem (a phone) it fills, as a thumb target. */
+    @media (min-width: 30rem) {
+        .starci-core-search-field[data-grammar-search-measure="toolbar"] { max-inline-size: 15rem; }
+    }
 
     /*
      * Page tabs that fold (the app named the fold menu): the same flex row, measured then fitted, the menu at the end. The selected page
@@ -2075,6 +2090,8 @@
         display: grid;
         grid-template-columns: auto minmax(0, 1fr);
         align-items: start;
+        /* 0.47.1: the rows of a tile shorter than its row keep their own height at the top; the grid never stretches them to the card's height. */
+        align-content: start;
         column-gap: var(--grammar-row-gap);
         row-gap: var(--starci-core-copy-gap);
     }
@@ -4387,6 +4404,8 @@
     .starci-core-file-button-note[data-tone="danger"] { color: var(--danger-soft-foreground); }
 
     /* The words before a Select's value ("Position:"): muted, one line, never squeezed. */
+    /* 0.47.1: the glyph at the start of a Select trigger: muted, one 16px box, a gap before the value, never squeezed. */
+    .starci-core-select-icon { display: inline-flex; flex: none; align-items: center; color: var(--muted); margin-inline-end: var(--grammar-identity-gap); }
     .starci-core-select-prefix { flex: none; color: var(--muted); margin-inline-end: var(--grammar-identity-gap); white-space: nowrap; }
 
     /* Avatar tone="accent": the initials as text on the accent soft pair, sized by the avatar step. */
@@ -4679,6 +4698,8 @@
     }
 
     .starci-core-grid[data-grammar-grid-kind="cards"][data-grammar-grid-gap="inline"] { --starci-core-grid-gap: var(--grammar-inline-gap); }
+    /* 0.47.1: `size="tile"` lowers the track floor to 9rem, so two small cards stand side by side at 390 (the 16rem floor of a card holds one). */
+    .starci-core-grid[data-grammar-grid-kind="cards"][data-grammar-grid-size="tile"] { --starci-core-grid-min: 9rem; }
     .starci-core-grid[data-grammar-grid-kind="cards"][data-grammar-grid-align="start"] { align-items: start; }
     .starci-core-grid[data-grammar-grid-kind="cards"][data-grammar-grid-align="start"] > .starci-core-surface-card { block-size: auto; }
 

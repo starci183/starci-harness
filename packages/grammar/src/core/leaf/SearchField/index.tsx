@@ -43,8 +43,11 @@ export type SearchFieldProps = NoChildren & FieldControlProps & FieldSizeProps &
     readonly onPaste?: (event: ClipboardEvent<HTMLInputElement>) => void
     /** Focuses the input when it mounts. */
     readonly autoFocus?: boolean
-    /** `fill` (default): the field spans its container. `compact`: it spans up to 26rem and stays at the start, above a list's tabs. */
-    readonly measure?: "fill" | "compact"
+    /**
+     * `fill` (default): the field spans its container. `compact`: it spans up to 26rem and stays at the start, above a list's tabs. `toolbar` (0.47.1): 15rem (240px)
+     * at the start of a toolbar's row, beside other controls; it fills below 30rem.
+     */
+    readonly measure?: "fill" | "compact" | "toolbar"
 }
 
 /*

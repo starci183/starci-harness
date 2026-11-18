@@ -22,6 +22,12 @@ type GridCardsProps = {
     readonly gap?: "card" | "inline"
     /** `stretch` (default): every card of a row takes the height of the tallest. `start`: each card keeps its own height. */
     readonly align?: "stretch" | "start"
+    /**
+     * The track floor (0.47.1). `card` (default): 16rem, so a phone holds one card per row. `tile`: 9rem, for small peers (a product, a table, a
+     * provider) that stand two to a row on a 390 phone and as many as the width holds on a wide page; `columns` still caps the row. A card in a
+     * `tile` grid keeps its own touch targets: the floor narrows the track, never the control.
+     */
+    readonly size?: "card" | "tile"
 }
 
 type GridFormProps = {
@@ -122,6 +128,7 @@ export const Grid = (props: GridProps) => {
             data-grammar-grid-columns={props.columns === undefined ? "fit" : props.columns === "balanced" ? String(balancedColumns(Children.toArray(props.children).length)) : String(props.columns)}
             data-grammar-grid-gap={props.gap ?? "card"}
             data-grammar-grid-align={props.align ?? "stretch"}
+            data-grammar-grid-size={props.size ?? "card"}
             data-contract="GAP-2 RESPONSIVE-1"
         >
             {props.children}

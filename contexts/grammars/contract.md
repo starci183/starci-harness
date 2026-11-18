@@ -128,7 +128,10 @@ The poster reuses Image-owned data, aspect and fit. Supporting `facts` is plain 
 up to three operational badges accompanies it. The primary `ItemAction` remains a native destination or command;
 secondary commands use typed `menu` data. `wholeAction` excludes both inner action and menu, so nested interactive
 targets do not compile. Loading keeps the poster and action geometry inert. A tile takes no `label`, `fact` or
-`labelEnd`; its name and mark or poster carry its identity.
+`labelEnd`; its name and mark or poster carry its identity, and a tile with neither (a table of a floor plan) is named by its `name` alone (0.47.1).
+`groundTone` (`accent`, `success`, `warning`, `danger`; 0.47.1) paints the whole tile with the tone's soft pair, its words the pair's
+foreground, in both families (`DataTableRow.groundTone` is the row's twin); the badge still carries the status in words. A marked tile
+shorter than its row keeps its rows at the top (`align-content: start`) instead of stretching them to the row's height.
 
 ### Button
 
@@ -186,7 +189,9 @@ appearance="primary"`, a mode or period switch.
 ### FilterButtonGroup
 
 `FilterButtonGroup` is deprecated and refused in product source (R380): peer values that filter a collection which stays in
-place are `Tabs kind="filter"`.
+place are `Tabs kind="filter"`. A removable group may end with `onClearAll` and `clearAllLabel` (0.47.1): a "Clear all" text action
+after the last chip, for a row of active filter values under a toolbar; it wraps under the chips when the row is full and leaves with
+the last chip.
 
 ### Chip
 
@@ -287,6 +292,10 @@ arbitrary column counts and look props. Their DOM and focus order remains the su
 portions are equal; a featured focus stays between symmetric support tracks. These roles use the section gap and
 keep one reading column when constrained (a `main-rail` takes the region gap); independent sections follow the wide workspace viewport, while a pair
 and featured layout answer their own container. Choose by the content relation, never the desired breakpoint.
+
+`Grid kind="cards"` takes `size` (0.47.1): `card` (the default) holds a track floor of 16rem, so a phone shows one card per row; `tile` lowers
+the floor to 9rem for small peers (a product, a table), so two stand side by side at 390 and a wide page fits as many as `columns` allows.
+The floor narrows the track, never the controls inside it (their touch floors stay).
 
 Week kinds take a region `label` and seven consecutive day regions in
 reading order, including empty days; the development check refuses another count. The shared week renderer owns its

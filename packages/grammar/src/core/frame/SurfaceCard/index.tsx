@@ -28,7 +28,7 @@ import {
 } from "./classNames.js"
 
 export type {
-    AvatarData, BadgeData, CardHead, Figure, ImageData, ItemAction, ItemLeading, ItemMenu, ListRowData, TileData, TileMark, TilePoster, WholeCardAction,
+    AvatarData, BadgeData, CardHead, Figure, ImageData, ItemAction, ItemLeading, ItemMenu, ListRowData, TileData, TileGroundTone, TileMark, TilePoster, WholeCardAction,
 } from "../../surfaceCardData.js"
 
 /** A group inside a labelled section: named by a Sublabel 8px above the card, never by a second Label; `sublabel` and `label` are never given together. */
@@ -169,6 +169,7 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
             data-grammar-state={state}
             data-grammar-treatment={stateTreatment.tone}
             data-grammar-surface-emphasis={emphasis}
+            data-grammar-surface-ground={props.kind === "tile" ? props.groundTone : undefined}
         >
             <VerticalScrollRegionPart
                 className={surfaceContentClassName}

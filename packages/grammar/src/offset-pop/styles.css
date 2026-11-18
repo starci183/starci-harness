@@ -124,6 +124,12 @@
         box-shadow: var(--surface-shadow);
     }
 
+    /* 0.47.1: a tile `groundTone` is the tone's soft pair over the family's surface paint. */
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"][data-grammar-surface-ground] {
+        color: var(--starci-core-ground-ink);
+        background: var(--starci-core-ground);
+    }
+
     /* The reader's own message is the family's pink with its ink; inline content keeps the ink, over the family's own accent text rules. */
     .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-message-bubble[data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body :is(a, [data-component="Link"], [data-component="Text"], [data-component="TextAction"], [data-component="Code"]) {
         color: inherit;

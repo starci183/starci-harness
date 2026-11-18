@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.47.1 - 2026-11-18 - Workbench gaps: two-up tile grid, tile ground tone and bare tiles, clear-all filters, Select icon, toolbar search
+
+Every change is an additive optional prop or a new DNA law, so a patch (contexts/grammars/contributing.md "Patch or minor"). Lane `grammar-wb-gaps`; the version in package.json is raised by the train. Both families, light and dark.
+
+- Added (`Grid kind="cards"`): `size?: "card" | "tile"` (default `card`). `tile` lowers the track floor from 16rem to 9rem so two small cards stand side by side at 390 (`columns` still caps a wide row); touch targets inside the cards keep their floors. Stamp `data-grammar-grid-size`.
+- Added (`SurfaceCard kind="tile"`): `groundTone?: "accent" | "success" | "warning" | "danger"` paints the whole tile with the tone's soft pair and its words with the pair's foreground (the twin of `DataTableRow.groundTone`; Offset Pop included). A tile may have neither `mark` nor `poster` (the name alone). Fixed: a marked tile shorter than its row no longer stretches its inner grid rows (`align-content: start`). The type `TileGroundTone` is exported.
+- Added (`TagGroup`): `onClearAll` with `clearAllLabel` (only on a removable group, both or neither): a "Clear all" text action after the last chip, wrapping under the chips when narrow and leaving with the last chip. A row of active filter values is a removable `TagGroup`; no new component.
+- Added (`Select`): `icon?: IconSource`, a decorative 16px glyph at the start of the trigger before `prefix` and the value, in the field, pill and compact appearances.
+- Added (`SearchField`): `measure="toolbar"`, 15rem (240px) at the start of a toolbar row, filling below 30rem.
+- Not done: a leading icon on a small `Button`. It contradicts the owner's BUTTON-ICON RULE of 2026-11-09 (`sm` is text only, only the primary `md` or `lg` carries a start icon); it needs the owner's ruling.
+- Added (DNA, roles `card` and `select`): `DNA-COMMON-TILE-GROUND-ACCENT`, `-SUCCESS`, `-WARNING`, `-DANGER`, `DNA-COMMON-GRID-TILE-FLOOR`, `DNA-COMMON-SELECT-ICON-START`.
+- Stories: `Layouts/Workbench gaps (0.47.1)` (TileGridTwoColumns, TileGroundAndBare, ActiveFilterValues, SelectWithIcon, ToolbarSearch), each with a play function at 1440 and 390 in both families. Contexts: `grammars/contract.md`, `contract.yaml`, `ui/components` card, chip, select and text-field.
+
 ## 0.47.0 - 2026-11-18 - DNA laws aligned with the owner rulings, the DNA gate completes a run
 
 A minor because DNA laws are renamed (`DNA-COMMON-LINK-ACCENT-TEXT`, `DNA-COMMON-STEPPER-MARKER-FILLS` and `-UPCOMING`) and a forbidden entry changed (contexts/grammars/contributing.md "Patch or minor"); no prop or component changes: fixes to the Offset Pop look, the stories and the DNA laws the gate measures.

@@ -4,6 +4,7 @@ import { withRegionLoading } from "../../regionScope.js"
 import { Tag as HeroTag, TagGroup as HeroTagGroup } from "@heroui/react"
 import { useEffect, useId, useRef, useState, type DragEvent, type KeyboardEvent, type ReactNode } from "react"
 import { FieldSkeletonScope } from "../../leaf/Field/index.js"
+import { TextAction } from "../../leaf/TextAction/index.js"
 import type { NoChildren } from "../../tier.js"
 
 export type TagGroupItem = {
@@ -24,14 +25,27 @@ export type TagGroupItem = {
     readonly offLabel?: string
 }
 
-type TagGroupRemoval = {
+type TagGroupRemoval = ({
     /** Present only for removable chips. Delete/Backspace on a focused chip also removes it. */
     readonly onRemove: (ids: ReadonlyArray<string>) => void
     /** App-owned accessible name of a chip's remove button, e.g. "Remove Design". */
     readonly removeLabel: (label: string) => string
+} & ({
+    /**
+     * A row of active filter values (0.47.1): a "Clear all" text action ends the group, after the last chip, and wraps under the chips when
+     * the row is narrow. It leaves with the last chip. Only a removable group has one; the app owns the words and the state.
+     */
+    readonly onClearAll: () => void
+    /** App-owned words of the clear-all action, e.g. "Clear all". */
+    readonly clearAllLabel: string
 } | {
+    readonly onClearAll?: undefined
+    readonly clearAllLabel?: undefined
+})) | {
     readonly onRemove?: undefined
     readonly removeLabel?: undefined
+    readonly onClearAll?: undefined
+    readonly clearAllLabel?: undefined
 }
 
 type TagGroupReorder = {
@@ -100,6 +114,8 @@ const TagGroupControl = ({
     items,
     onRemove,
     removeLabel,
+    onClearAll,
+    clearAllLabel,
     onReorder,
     reorderInstructions,
     reorderAnnouncement,
@@ -238,7 +254,13 @@ const TagGroupControl = ({
         </HeroTagGroup.List>
     </HeroTagGroup>
     )
-    if (!reorderable) return tags
+    const clearAll = onClearAll === undefined || clearAllLabel === undefined || items.length === 0 ? null : (
+        <span className="starci-core-tag-clear" data-grammar-tag-clear="true">
+            <TextAction appearance="muted" size="control" onPress={onClearAll}>{clearAllLabel}</TextAction>
+        </span>
+    )
+    const row = clearAll === null ? tags : <div className="starci-core-tag-filter-row" data-grammar-tag-filter-row="true">{tags}{clearAll}</div>
+    if (!reorderable) return row
     // The vendor group forwards neither a ref nor key-capture and drag handlers, so the reorder layer listens on a
     // wrapper of its own that lays out as if absent (`display: contents`).
     return (
@@ -253,7 +275,7 @@ const TagGroupControl = ({
                 onDrop={onDrop}
                 onDragEnd={onDragEnd}
             >
-                {tags}
+                {row}
             </div>
             <span id={instructionsId} className="starci-core-visually-hidden" hidden>{reorderInstructions}</span>
             <span aria-live="polite" role="status" className="starci-core-visually-hidden" data-grammar-tag-announcement="true">{announcement}</span>
