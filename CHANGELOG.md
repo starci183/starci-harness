@@ -1,7 +1,8 @@
 # Changelog
 
-## Unreleased
+## 1.1.0-alpha.168 - 2026-11-19
 
+- Changed (pins): the Grammar family at 0.47.3 (marketing motion `Reveal`, `Marquee`, `CountUp`, `StickyStory` with the motion tokens, the filled 6px status dot and the dot rule, `BottomNav` `more.groups`, `Tabs` fold mode with the underline under the selected tab, 18 DNA laws), @starci/gallery 0.1.3 and @starci/hfs 6.13.48. Until the cli-follow step raises the CLI requirement, the CLI runs the hfs it requires.
 - Changed (chip rule, `contexts/ui/components/chip.md`, `contexts/ui/situations.md`): a Badge carries a dot only for the live state of a system process (the label changes by itself while nobody touches the record); a record's business status and a result or qualifier is a `Badge tone` without a dot; one entity carries at most one dotted badge. New DNA laws `DNA-COMMON-BADGE-DOT-ONE-PER-ENTITY` and `DNA-COMMON-DOT-FILLED` in the Grammar contract; the status dot is a solid 6px disc. The lint form is a review rule (not statically detectable). `BottomNav` `more.groups` for grouped More sheets.
 
 ## 1.1.0-alpha.167 - 2026-11-19

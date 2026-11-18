@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.47.3 - 2026-11-19
+
+- Changed: the family version 0.47.3 (marketing motion, the filled status dot, folding page tabs of @starci/grammar, new DNA laws). No rule change.
+
 ## 0.47.2 - 2026-11-19
 
 - Changed: the family version 0.47.2 (the tile poster bleed of @starci/grammar, three DNA laws). No rule change.

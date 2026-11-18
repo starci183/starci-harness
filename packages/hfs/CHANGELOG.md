@@ -1,5 +1,9 @@
 # Changelog
 
+## 6.13.48 - 2026-11-19
+
+- Changed (`knowledge/hfs/canon-pins.yaml`): the Grammar family 0.47.3 (range ~0.47.3: marketing motion components and tokens, the filled status dot, `BottomNav` `more.groups`, folding page tabs, DNA laws) and the `@starci/hfs` self-pin is 6.13.48.
+
 ## 6.13.47 - 2026-11-19
 
 - Changed (`knowledge/hfs/canon-pins.yaml`): the Grammar family 0.47.2 (range ~0.47.2: `SurfaceCard` tile `poster.bleed`, three DNA laws) and the `@starci/hfs` self-pin is 6.13.47.
