@@ -43,7 +43,7 @@ are two tasks.
 
 | choice | where | effect |
 |---|---|---|
-| sides | `sides`, a non-empty subset of `be`, `fe`, `packages`, and `nivoos` (the business packages of `packages/`) | which folders the project has and which checks run (above); `nivoos` is [business-repo.md](business-repo.md) |
+| sides | `sides`, a non-empty subset of `be`, `fe`, `packages`, and `nivoos` (the business packages of `packages/`) | which folders the project has and which checks run (above); `nivoos` is [business-repo.md](business-repo.md); `desktop` (a Tauri shell around a front-end app, folder `desktop/`) is [desktop.md](desktop.md) |
 | contract | `sides.be.apps[].contract`, `graphql` (when absent) or `rest` | the api app's default door ([code/be/transport.md](../code/be/transport.md) BE-TRANSPORT-1) |
 | edition | `edition`, `lite` or `full` (full when absent), fixed at scaffold | which slots and rules apply and which app verbs the CLI shows; [lite.md](lite.md), [full.md](full.md) |
 | grammar | `sides.fe.grammar` | which grammar package and grammar lint the front end composes ([grammars](../grammars/README.md)) |
@@ -123,6 +123,7 @@ rule 10).
 |---|---|
 | [README.md](README.md) | this map: what a project is, the life cycle, where to read |
 | [business-repo.md](business-repo.md) | the business repository: one lite app, its nivoos package (agents, workflows, cells, brain, accounts, seed) and its seed standard; the `sides.nivoos` declaration, the SDK authoring lint profile and the `nivoos package check` step (PROJECT-BUSINESS-1, R436) |
+| [desktop.md](desktop.md) | the desktop app: a Tauri v2 shell that loads the deployed web app (macOS, Windows, Linux), its `sides.desktop` declaration, the rendered `desktop/` tree, `starci app desktop` (init, doctor, build, dev, keygen), the release workflow and the CI secrets for signing (PROJECT-DESKTOP-1..4, R444) |
 | [anatomy.md](anatomy.md) | the tree of an app root and its sides, and what each part is for; its generated slices `anatomy-<edition>-<side>.md` (the app root and one side of one edition) are what a task of that side reads |
 | [index.md](index.md) | generated: every file of `contexts/` with its size, first sentence, sections and ids, which a Kernel reads instead of the whole tree |
 | [lint.md](lint.md) | each canon package and gate: where it applies and what kind of fact it enforces; the facts no machine checks yet |

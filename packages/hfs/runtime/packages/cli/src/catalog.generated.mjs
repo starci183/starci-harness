@@ -743,6 +743,22 @@ export const CATALOG = {
           ],
           "json": "flag"
         },
+        "desktop": {
+          "summary": "declare, build and sign the desktop app of a project (init, doctor, build, dev, keygen); the release installers are built in CI",
+          "flags": [],
+          "positional": [
+            {
+              "name": "args",
+              "required": false,
+              "variadic": true
+            }
+          ],
+          "editions": [
+            "lite",
+            "full"
+          ],
+          "json": "flag"
+        },
         "emit": {
           "summary": "emit back-end GraphQL, operation and event contract snapshots",
           "flags": [],

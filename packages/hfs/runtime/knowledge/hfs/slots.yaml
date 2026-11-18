@@ -963,6 +963,59 @@ slots:
     requires: [package.json, tsconfig.json]
     tests: none
     rules: [HFS_NIVOOS_PACKAGE_MISSING, HFS_NIVOOS_UNDECLARED, HFS_NIVOOS_PACKAGE_CHECK]
+  - id: app.desktop-config
+    since: 6.14.0
+    profiles: [app]
+    editionWhy: Lite and full share the slot; the desktop app wraps the front end of either edition (PROJECT-DESKTOP-1).
+    # The managed files of the desktop app a project declares under hfs.json `sides.desktop` (R444, desktop-side.mts): the Tauri config, the Cargo manifest, the Rust of the
+    # shell and the page Tauri bundles beside it, all rendered from the declaration by starci app sync (sync/desktop.mts) and held by HFS_MANAGED_FILE_DRIFT. A project that
+    # declares no desktop app renders none of them; a file here without the declaration is HFS_DESKTOP_UNDECLARED.
+    path: "desktop/{frontend/index.html,src-tauri/Cargo.toml,src-tauri/build.rs,src-tauri/tauri.conf.json,src-tauri/src/main.rs,src-tauri/src/lib.rs}"
+    presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+    managedBy: desktop-config
+    managedWhenSides: [desktop]
+    rules: [HFS_MANAGED_FILE_DRIFT, HFS_DESKTOP_CONFIG, HFS_DESKTOP_SECURITY, HFS_DESKTOP_UNDECLARED]
+  - id: app.desktop
+    since: 6.14.0
+    profiles: [app]
+    editionWhy: Lite and full share the slot; the owned files of the desktop app are the same in both editions (PROJECT-DESKTOP-1).
+    # What the desktop app owns beside the rendered files (R444): the icons `tauri icon` writes (a build bundles them), Cargo.lock (the shell's dependencies, tracked so a
+    # release builds what was tested) and the capability files of the Tauri permissions, none of which may open the shell's IPC to a remote origin. No signing key or
+    # certificate is ever a tracked file (HFS_DESKTOP_SIGNING_KEY): the keys are CI secrets.
+    path: "desktop/src-tauri/{icons/**,capabilities/*.json,Cargo.lock}"
+    presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+    rules: [HFS_DESKTOP_FILE_MISSING, HFS_DESKTOP_SECURITY, HFS_DESKTOP_SIGNING_KEY, HFS_DESKTOP_UNDECLARED]
+  - id: app.desktop-build
+    since: 6.14.0
+    profiles: [app]
+    editionWhy: Lite and full share the slot; cargo writes the same folders in both.
+    # What cargo and the Tauri CLI write under desktop/src-tauri (target/, gen/): built locally by `starci app desktop build`, never tracked.
+    path: "desktop/src-tauri/{target/,gen/}"
+    presence: optional
+    tracked: ignored
+    tier: none
+    tests: none
+  - id: app.ci-desktop-release
+    since: 6.14.0
+    profiles: [app]
+    editionWhy: Lite and full share the slot; both build the installers of a declared desktop app on a release tag.
+    # The release workflow of the desktop app: a v<version> tag builds the installers per operating system on GitHub-hosted runners, uploads them to a draft GitHub Release and
+    # opens it when every system built, with the updater manifest when an updater is declared. Rendered by starci app sync from templates/app/desktop-workflow, only for a project
+    # that declares sides.desktop; the signing secrets it reads are the names of ci.secrets (CI_DECLARATION_DRIFT).
+    path: ".github/workflows/desktop-release.yml"
+    presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+    managedBy: desktop-workflow
+    managedWhenSides: [desktop]
+    rules: [HFS_MANAGED_FILE_DRIFT, HFS_DESKTOP_UNDECLARED]
   - id: app.sides
     since: 3.1.0
     profiles: [app]

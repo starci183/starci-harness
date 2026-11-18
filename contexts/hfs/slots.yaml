@@ -1390,6 +1390,61 @@ slots:
       - HFS_NIVOOS_PACKAGE_MISSING
       - HFS_NIVOOS_UNDECLARED
       - HFS_NIVOOS_PACKAGE_CHECK
+  - id: app.desktop-config
+    profiles:
+      - app
+    editionWhy: Lite and full share the slot; the desktop app wraps the front end of either edition (PROJECT-DESKTOP-1).
+    path: "desktop/{frontend/index.html,src-tauri/Cargo.toml,src-tauri/build.rs,src-tauri/tauri.conf.json,src-tauri/src/main.rs,src-tauri/src/lib.rs}"
+    presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+    managedBy: desktop-config
+    managedWhenSides:
+      - desktop
+    rules:
+      - HFS_MANAGED_FILE_DRIFT
+      - HFS_DESKTOP_CONFIG
+      - HFS_DESKTOP_SECURITY
+      - HFS_DESKTOP_UNDECLARED
+  - id: app.desktop
+    profiles:
+      - app
+    editionWhy: Lite and full share the slot; the owned files of the desktop app are the same in both editions (PROJECT-DESKTOP-1).
+    path: "desktop/src-tauri/{icons/**,capabilities/*.json,Cargo.lock}"
+    presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+    rules:
+      - HFS_DESKTOP_FILE_MISSING
+      - HFS_DESKTOP_SECURITY
+      - HFS_DESKTOP_SIGNING_KEY
+      - HFS_DESKTOP_UNDECLARED
+  - id: app.desktop-build
+    profiles:
+      - app
+    editionWhy: Lite and full share the slot; cargo writes the same folders in both.
+    path: "desktop/src-tauri/{target/,gen/}"
+    presence: optional
+    tracked: ignored
+    tier: none
+    tests: none
+  - id: app.ci-desktop-release
+    profiles:
+      - app
+    editionWhy: Lite and full share the slot; both build the installers of a declared desktop app on a release tag.
+    path: .github/workflows/desktop-release.yml
+    presence: optional
+    tracked: tracked
+    tier: none
+    tests: none
+    managedBy: desktop-workflow
+    managedWhenSides:
+      - desktop
+    rules:
+      - HFS_MANAGED_FILE_DRIFT
+      - HFS_DESKTOP_UNDECLARED
   - id: app.sides
     profiles:
       - app

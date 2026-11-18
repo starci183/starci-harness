@@ -38,6 +38,7 @@ import { sideProblems } from './slot-side-problems.mjs';
 import { declarationShapeProblems } from './declaration-shape.mjs';
 import { declaredSidesOf, sideDeclared, type ProjectSide } from './project-sides.mjs';
 import { nivoosPackagesOf, NIVOOS_SIDE, type NivoosPackage } from './nivoos-side.mjs';
+import { desktopOf, type DesktopDeclaration } from './desktop-side.mjs';
 import { declarationEdition, editionRuleParams, effectiveSlot, slotInEdition } from './edition-slots.mjs';
 import { fail } from './slot-errors.mjs';
 import { loadRuleCatalog } from './rule-catalog.mjs';
@@ -107,6 +108,8 @@ export interface RepoView {
   declaredSides?: readonly ProjectSide[];
   /** The nivoos packages hfs.json declares (app view only, `sides.nivoos`, R436): packages/<name>/ of each is a slot app.nivoos-package, not an app.packages one. */
   nivoosPackages?: readonly NivoosPackage[];
+  /** The desktop app hfs.json declares (app view only, `sides.desktop`, R444): the Tauri shell at desktop/ that wraps a front-end app. */
+  desktop?: DesktopDeclaration;
   manifestVersion: string;
 }
 
@@ -287,6 +290,9 @@ function bareDbFunctionProblems(manifest: SlotManifest, be: Parsed): string[] {
     .map((entry: DbFunction) => `sides.be.dbFunctions names ${entry.name} bare, but a bare name is only a pg built-in of the canon's list (ruleParams.be.dbFunctions); name a function of a migration schema-qualified (public.${entry.name})`);
 }
 
+/** The `desktop` member of an app view: present exactly when hfs.json declares sides.desktop (and it is well formed). */
+const desktopView = (sides: unknown): { desktop?: DesktopDeclaration } => { const desktop = desktopOf(sides); return desktop === undefined ? {} : { desktop }; };
+
 /**
  * A declaration checked against the manifest: kind app, the pinned major the manifest's (HFS_MANIFEST_MAJOR_MISMATCH otherwise,
  * and there is no compatibility window), and per side: app kinds of that profile, optionalSlots naming only opt-in slots of the
@@ -330,6 +336,7 @@ export function resolveRepoDeclaration(manifest: SlotManifest, declaration: Pars
     sides: Object.freeze(sides),
     declaredSides,
     nivoosPackages: Object.freeze(nivoosPackagesOf(declaration.sides)),
+    ...desktopView(declaration.sides),
     manifestVersion: manifest.version,
   });
 }

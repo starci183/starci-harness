@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Added: `starci app desktop` (init, doctor, build, dev, keygen), forwarded to `@starci/hfs` like `starci app world`; `HfsVerb` gains `desktop`. The verb works once the app's `starci-harness` pins an `@starci/hfs` that has it.
+
 ## 1.1.0-alpha.162 - 2026-11-18
 
 - Changed: the CLI requires @starci/hfs@6.13.42, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).

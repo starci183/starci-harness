@@ -70,6 +70,7 @@
     "release/**",
     "db/**",
     "data/**",
+    "desktop/**",
     "ci/**",
     "cache/**",
     "coverage/**",

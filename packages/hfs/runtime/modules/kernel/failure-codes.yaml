@@ -6834,6 +6834,56 @@ HFS_NIVOOS_PACKAGE_CHECK:
   nextStep_vi: "Chạy `npm run build` trong packages/<tên>/ rồi commit seed; nếu CLI chưa cài, thêm `nivoos` vào devDependencies của gói và chạy npm install."
   owner: op-retry
   kind: check-finding
+HFS_DESKTOP_UNDECLARED:
+  title: "A desktop file exists but the desktop app is not declared"
+  title_vi: "Có tệp của ứng dụng desktop nhưng hfs.json chưa khai báo"
+  meaning_vi: "Một tệp được git theo dõi dưới desktop/ hoặc workflow .github/workflows/desktop-release.yml tồn tại, nhưng hfs.json không có sides.desktop, nên không có khai báo nào làm nguồn cho vỏ Tauri."
+  causes_vi:
+    - "Vi phạm R444: ứng dụng desktop là một phía được khai báo; thư mục desktop/ và workflow phát hành của nó chỉ tồn tại khi hfs.json khai báo sides.desktop (PROJECT-DESKTOP-1)."
+    - "Khai báo bị xoá hoặc thư mục được chép từ dự án khác."
+  nextStep_vi: "Thêm sides.desktop vào hfs.json (`starci app desktop init` làm việc này), hoặc xoá desktop/ và workflow desktop-release.yml."
+  owner: op-retry
+  kind: check-finding
+HFS_DESKTOP_FILE_MISSING:
+  title: "The desktop app lacks an icon or its lock file"
+  title_vi: "Ứng dụng desktop thiếu biểu tượng hoặc tệp khoá"
+  meaning_vi: "Ứng dụng desktop đã khai báo nhưng thiếu một biểu tượng trong desktop/src-tauri/icons/ (bản dựng đóng gói chúng), hoặc thiếu Cargo.lock (chỉ là cảnh báo)."
+  causes_vi:
+    - "Vi phạm R444: bản dựng cài đặt cần đủ bộ biểu tượng `tauri icon` sinh ra, và Cargo.lock phải được theo dõi để bản phát hành dựng đúng các phụ thuộc đã thử (PROJECT-DESKTOP-1)."
+    - "Biểu tượng chưa được sinh, hoặc bị .gitignore chặn; Cargo.lock chưa được tạo vì chưa dựng lần nào."
+  nextStep_vi: "Chạy `tauri icon <ảnh-1024px.png>` trong desktop/src-tauri rồi commit icons/; chạy `starci app desktop build` một lần và commit Cargo.lock."
+  owner: op-retry
+  kind: check-finding
+HFS_DESKTOP_CONFIG:
+  title: "tauri.conf.json differs from the desktop declaration"
+  title_vi: "tauri.conf.json khác khai báo desktop"
+  meaning_vi: "Cấu hình Tauri không nói đúng điều hfs.json khai báo: định danh, tên sản phẩm, nguồn phiên bản (package.json của ứng dụng web), scheme deep link, khoá và endpoint của updater, origin dev, hoặc cửa sổ duy nhất do Rust tạo."
+  causes_vi:
+    - "Vi phạm R444: tauri.conf.json được dựng từ sides.desktop và số phiên bản của bộ cài, của updater và của ứng dụng web là một (PROJECT-DESKTOP-1)."
+    - "Tệp được sửa tay thay vì sửa khai báo."
+  nextStep_vi: "Sửa sides.desktop trong hfs.json rồi chạy `npx starci app sync --execute`; đừng sửa tauri.conf.json."
+  owner: op-retry
+  kind: check-finding
+HFS_DESKTOP_SECURITY:
+  title: "The desktop shell's isolation is loosened"
+  title_vi: "Sự cô lập của vỏ desktop bị nới lỏng"
+  meaning_vi: "Cấu hình hoặc capability làm lộ API Tauri cho trang từ xa: withGlobalTauri bật, công tắc dangerous*, CSP rỗng hoặc chứa unsafe-eval/ký tự đại diện, updater qua http thường, hoặc capability cấp IPC cho origin từ xa dạng ký tự đại diện hay http thường."
+  causes_vi:
+    - "Vi phạm R444: vỏ chỉ tải ứng dụng web đã triển khai và trang đó không được gọi vỏ; mọi nới lỏng đều mở đường cho mã lạ chạy với danh tính ứng dụng (PROJECT-DESKTOP-1)."
+    - "Một capability được thêm để thử rồi quên gỡ."
+  nextStep_vi: "Gỡ công tắc hoặc capability đó; nếu trang cần gọi vỏ, nêu origin https cụ thể của ứng dụng thay cho ký tự đại diện."
+  owner: op-retry
+  kind: check-finding
+HFS_DESKTOP_SIGNING_KEY:
+  title: "A signing key or certificate is tracked"
+  title_vi: "Khoá hoặc chứng chỉ ký được git theo dõi"
+  meaning_vi: "Một chứng chỉ ký (.p12, .pfx), kho khoá hoặc khoá riêng minisign là tệp được theo dõi, hoặc một bí mật ký được ghi thẳng vào tệp dưới desktop/."
+  causes_vi:
+    - "Vi phạm R444: khoá updater và thông tin Apple là bí mật CI (TAURI_SIGNING_PRIVATE_KEY, APPLE_*), không bao giờ là tệp trong kho (PROJECT-DESKTOP-1)."
+    - "Khoá vừa sinh bằng `tauri signer generate` được lưu nhầm trong cây làm việc."
+  nextStep_vi: "Xoá tệp khỏi kho và khỏi lịch sử, coi khoá đã lộ và sinh khoá mới; đặt giá trị bằng `starci app ci secret set <TÊN> --execute`."
+  owner: op-retry
+  kind: check-finding
 STACKS_SIDES_UNDECLARED:
   title: "The stack declaration states no sides"
   title_vi: "Khai báo stack chưa nêu các phía của dự án"

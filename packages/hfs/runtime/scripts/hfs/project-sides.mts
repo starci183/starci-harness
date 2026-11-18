@@ -2,6 +2,7 @@
 // of `be` (the back end, be/), `fe` (the front end, fe/) and `packages` (the root workspace packages, packages/, declared `packages: {}`).
 // Each side is the folder of its name; a side's checks run only when it is declared, and a rule that joins two sides only when both are.
 // `sides.nivoos` (nivoos-side.mts) is a declaration over the packages folder, not a fourth folder: a project that declares nivoos packages has the packages side.
+import { DESKTOP_SIDE } from './desktop-side.mjs';
 import { NIVOOS_SIDE } from './nivoos-side.mjs';
 
 /** A side a project may declare: be and fe carry apps; packages is the root npm workspace packages/*. */
@@ -16,8 +17,8 @@ export const declaredSidesOf = (sides: unknown): ProjectSide[] => (sides !== nul
   ? PROJECT_SIDES.filter((side) => Object.hasOwn(sides, side) || (side === 'packages' && Object.hasOwn(sides, NIVOOS_SIDE)))
   : []);
 
-/** Every key `sides` of hfs.json may hold: the folder sides and the nivoos packages declaration. */
-export const DECLARABLE_SIDE_KEYS: readonly string[] = Object.freeze([...PROJECT_SIDES, NIVOOS_SIDE]);
+/** Every key `sides` of hfs.json may hold: the folder sides, the nivoos packages declaration and the desktop app (desktop-side.mts, a declaration with its own folder desktop/). */
+export const DECLARABLE_SIDE_KEYS: readonly string[] = Object.freeze([...PROJECT_SIDES, NIVOOS_SIDE, DESKTOP_SIDE]);
 
 /**
  * Whether a resolved app view declares `side`. A view built without `declaredSides` (a side view, a hand-built fixture) is the
