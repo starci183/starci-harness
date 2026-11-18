@@ -48,7 +48,7 @@ for (const edition of ['lite', 'full']) {
       'apps/web/src/app/[locale]/(auth)/cv/[slug]/opengraph-image.tsx': 'export default function Image() { return null; }\n',
       'apps/web/src/app/[locale]/(auth)/cv/[slug]/twitter-image.tsx': 'export default function Image() { return null; }\n',
     });
-    assert.deepEqual(runArch(root).violations.filter(item => item.ruleId === 'FE_SLOT_FILE_ROLE' && item.path.includes('/cv/')), []);
+    assert.deepEqual(runArch(root).violations.filter(item => item.ruleId === 'FE_SLOT_FILE_ROLE' && item.path?.includes('/cv/') === true), []);
   });
 
   test(`${edition} R94 rejects a route role in hooks and a file where a folder belongs`, t => {
