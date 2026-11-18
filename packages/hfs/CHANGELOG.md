@@ -1,5 +1,10 @@
 # Changelog
 
+## 6.13.49 - 2026-11-19
+
+- Fixed (`stack/remote`, `stack/docker-transport`): the sealed `vps` member honours `VPS_PORT` and the transport passes the key and the ssh options explicitly, so a deploy to a VPS on a non-default port needs no `--ssh-cmd` workaround.
+- Fixed (`sync`): `images.yml` of a lite app builds the storage image when its `deploy.images` names it (`app: storage`), so `statics/` ships through the normal release.
+
 ## 6.13.48 - 2026-11-19
 
 - Changed (`knowledge/hfs/canon-pins.yaml`): the Grammar family 0.47.3 (range ~0.47.3: marketing motion components and tokens, the filled status dot, `BottomNav` `more.groups`, folding page tabs, DNA laws) and the `@starci/hfs` self-pin is 6.13.48.
