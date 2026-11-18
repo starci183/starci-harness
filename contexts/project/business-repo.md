@@ -37,7 +37,7 @@ One class per cell, step, event kind, brain document, agent, workflow and worksp
 
 ### The declaration
 
-`hfs.json` of the business names each package. `nivoos` is a declaration over the `packages/` folder, not a folder of its own, so it implies the packages side; nothing else of the declaration changes.
+`hfs.json` of the business names each package. To use its SDK, CLI or provider templates in another repository before a release, it also lists their folders in `publishes` (`"publishes": ["packages/nivoos-sdk"]`), and `starci deps publish-local --execute` puts exactly those on the local registry ([authority/packages.md](../authority/packages.md) "An app's own packages"). `nivoos` is a declaration over the `packages/` folder, not a folder of its own, so it implies the packages side; nothing else of the declaration changes.
 
 ```json
 {

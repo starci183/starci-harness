@@ -12,7 +12,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [authority/branch.md](../authority/branch.md) · 3 KB — Every edit on any branch or worktree, by any role and under either runner, is code, then at most one fast check of what it touched, then a commit and a hand-off.
   - sections: What a branch runs · What a branch never runs
 - [authority/ci.md](../authority/ci.md) · 2 KB — CI is the critic.
-- [authority/packages.md](../authority/packages.md) · 8 KB — An app session, or a worker whose input names a `@starci` package (the Supervisor dispatches one for a package defect), fixes that package, never a shim in the app.
+- [authority/packages.md](../authority/packages.md) · 9 KB — An app session, or a worker whose input names a `@starci` package (the Supervisor dispatches one for a package defect), fixes that package, never a shim in the app.
   - sections: The local registry: an urgent package change is used at once · Grammar edits are content only
 - [authority/wave.md](../authority/wave.md) · 2 KB — A wave is one scoped round on a merged tree.
   - sections: The scope decision comes first · Reuse and repair
@@ -167,7 +167,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [harness/rules.md](../harness/rules.md) · 8 KB — These hold for every role and every task.
 - [harness/state.md](../harness/state.md) · 5 KB
   - sections: Where state lives · How a project is found
-- [hfs/README.md](../hfs/README.md) · 18 KB — HFS is the one source and storage standard of a StarCi app: what may exist in the repository, where, which tier may import which, and which rules judge it.
+- [hfs/README.md](../hfs/README.md) · 19 KB — HFS is the one source and storage standard of a StarCi app: what may exist in the repository, where, which tier may import which, and which rules judge it.
   - sections: One word, one meaning: "slot" · Slot fields · Rule parameters (`ruleParams`) · Rules · The harness's own shape · Editing · Rule notes
 - [hfs/harness.yaml](../hfs/harness.yaml) · 19 KB — The harness repository's own HFS: what may exist in this repository (hfs.json kind runtime) and where.
   - ids: app.package, app.tree, cli.edition-verbs, cli.entry, cli.harness, cli.package, cli.shared, cli.verb-data, cli.verbs, contexts.harness-shape, contexts.knowledge, contexts.load-order, github.actions, github.ci, github.meta, github.scripts, github.workflows, images.dockerfile, images.readme, images.sources, never.build-output, never.cli-js, never.env, never.examples and 37 more

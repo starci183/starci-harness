@@ -146,13 +146,23 @@ function observeBlockProblems(observe: Parsed): string[] {
   return bad;
 }
 
-const DECLARATION_KEYS = new Set(['hfs', 'kind', 'project', 'edition', 'db', 'sides', 'browser', 'lexicon', 'observe']);
+/** A package folder of `publishes`: repository-relative, forward slashes, no `..`, no leading slash. */
+const PUBLISH_FOLDER = /^(?!\/)(?!.*\.\.)(?!.*\\)[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*$/u;
+
+/** The workspace packages an app puts on the local registry (`starci deps publish-local`): a non-empty unique list of package folders. */
+function publishesProblems(publishes: Parsed): string[] {
+  if (publishes === undefined) return [];
+  if (!Array.isArray(publishes) || publishes.length === 0 || !publishes.every((entry: Parsed) => typeof entry === 'string' && PUBLISH_FOLDER.test(entry)) || new Set(publishes).size !== publishes.length) return ['publishes must be a non-empty unique list of workspace package folders relative to the app root (for example "packages/nivoos-sdk"), the packages `starci deps publish-local` puts on the local registry'];
+  return [];
+}
+
+const DECLARATION_KEYS = new Set(['hfs', 'kind', 'project', 'edition', 'db', 'sides', 'browser', 'lexicon', 'observe', 'publishes']);
 const RUNTIME_DECLARATION_KEYS = new Set(['hfs', 'kind', 'project']);
 
 function productDeclarationProblems(declaration: Parsed, profiles: Parsed): string[] {
   const bad: string[] = [];
   for (const key of Object.keys(declaration)) if (!DECLARATION_KEYS.has(key)) bad.push(key === 'rulePacks' || key === 'checks' ? `unknown key ${key}: a project adds its own laws and checks in its ext/ folder (ext/manifest.json, PROJECT-LINT-3), never through hfs.json` : `unknown key ${key}`);
-  bad.push(...dbBlockProblems(declaration.db), ...lexiconBlockProblems(declaration.lexicon), ...observeBlockProblems(declaration.observe));
+  bad.push(...dbBlockProblems(declaration.db), ...lexiconBlockProblems(declaration.lexicon), ...observeBlockProblems(declaration.observe), ...publishesProblems(declaration.publishes));
   if (declaration.browser !== undefined && declaration.browser !== true) bad.push('browser is `true` when the app has a browser journey (slot app.browser), and is left out otherwise');
   if (declaration.kind !== APP_KIND) bad.push(`kind must be ${APP_KIND} (a product is one app repository of the sides it declares) or ${RUNTIME_KIND} (the StarCi runtime repository)`);
   const sides = sidesProblems(declaration.sides);

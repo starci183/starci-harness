@@ -66,6 +66,17 @@ It is no publication: nothing in the registry reaches npm. A project whose state
 (`deps-local.json`) is refused `DEPS_OVERLAY_REMOVED` by `deps install-local`, `deps check` and the install a check gives its
 checkout; `starci deps install-local --restore` clears that record and runs `npm ci`.
 
+### An app's own packages
+
+An app puts its own workspace packages on the same registry (the nivoos SDK, CLI and provider templates of a business repository, [project/business-repo.md](../project/business-repo.md)). It declares them in `hfs.json`, as
+package folders relative to the app root: `"publishes": ["packages/nivoos-sdk", "packages/nivoos-cli", "packages/provider-templates"]` (validated by `@starci/hfs runtime/scripts/hfs/declaration-shape.mts`).
+`starci deps publish-local --execute` in that app publishes exactly those packages, under the rules above: the committed version, the `starciSource` digest, `PUBLISH_LOCAL_VERSION_TAKEN` when npm
+serves the version with other content, and the registry brought up by the same `host up local-registry`. Each is built in its dependency order (`npm run build` in its folder, after the app's one `npm ci` at its root,
+`PUBLISH_LOCAL_NOT_INSTALLED` otherwise). `--package <folder|name>` narrows the run to declared packages; a package the app has but does not declare is refused `PUBLISH_LOCAL_UNDECLARED` by name, a declared folder that
+is no package or is private `PUBLISH_LOCAL_DECLARATION_BAD`, and a repository that is neither the harness nor declares `publishes` `PUBLISH_LOCAL_NOT_HARNESS` (the message names the key). Their names are `@starci/*`, so a consumer
+repository installs them as it installs a harness package: `starci deps install-local nivoos-sdk --execute` (and `--restore` before a commit). Each carries its source digest, so the consumer's check cache stays portable
+(`localReasonOf` of `@starci/hfs cache/fingerprint.mts`: a package with a source digest that is not linked is portable). Publishing to npm stays `release publish` on remote main (`PUBLISH_NOT_ON_REMOTE_MAIN`); this is the local registry only.
+
 ## Grammar edits are content only
 
 A Grammar edit changes content: a component, its CSS, its props, and a story for a state it newly renders. Its proof is

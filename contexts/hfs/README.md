@@ -12,7 +12,7 @@ import which, and which rules judge it. It is data a machine reads; the reasons 
 An app declares itself in `hfs.json` (kind app, its `edition` fixed at scaffold, its sides, apps, patterns,
 backing services and its grammar). `sides` holds any non-empty subset of `be`, `fe` and `packages` (`"packages": {}`,
 the root workspace packages), and `nivoos` (`{ "packages": [{ "name": "<folder of packages/>" }] }`, the business packages authored with the nivoos SDK, which implies the packages side; [project/business-repo.md](../project/business-repo.md), R436); only a declared side's slots and checks apply ([project/README.md](../project/README.md)
-PROJECT-1, R399; owner `@starci/hfs runtime/scripts/hfs/project-sides.mts`). An api app of be may add `contract`, `graphql` (the default) or `rest`
+PROJECT-1, R399; owner `@starci/hfs runtime/scripts/hfs/project-sides.mts`). An app may also declare `publishes`, the workspace package folders `starci deps publish-local` puts on the local registry ([authority/packages.md](../authority/packages.md) "An app's own packages"). An api app of be may add `contract`, `graphql` (the default) or `rest`
 ([code/be/transport.md](../code/be/transport.md) BE-TRANSPORT-1, owner `@starci/hfs runtime/scripts/hfs/contract-kind.mts`); a client cli (kind `client-cli`) adds the npm
 `package` it is published as and the `bin` it installs ([code/be/cli.md](../code/be/cli.md) BE-CLI-5). No product content lives here; product records belong in the app's `.starciwork`.
 

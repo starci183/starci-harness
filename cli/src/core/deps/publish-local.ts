@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync } from "node:fs"
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
 import { inOrder } from "../../harness/sequential.js"
@@ -16,6 +16,7 @@ import { isHarnessCheckout } from "../release/push-gate.js"
 import { ensureRegistry, LOCAL_TAG, PORT, registryFlags, registryPeerLine, registryState, registryUrl, registryVersions, writePublishNpmrc } from "./local-registry.js"
 import { npmCopy } from "./npm-copy.js"
 import type { NpmCopy } from "./npm-copy.js"
+import { appBuildOrder, appPackages, declaredPublishes, PUBLISHES_KEY } from "./app-publishes.js"
 import { buildPackage, parseManifest, tail } from "./packages.js"
 import { judgePeerLine } from "./peer-line.js"
 import type { ListedLine, PeerLineVerdict } from "./peer-line.js"
@@ -111,19 +112,31 @@ const publishOne = async (given: { readonly pkg: WorkspacePackage; readonly root
     }
 }
 
-/** Builds what the rows need and publishes them in order to the local registry. */
-const publishDue = async (context: VerbContext, port: number, given: { readonly root: string; readonly all: readonly WorkspacePackage[]; readonly order: readonly string[]; readonly rows: readonly Planned[]; readonly published: string[] }): Promise<void> => {
-    const { root, all, order, rows, published } = given
+/**
+ * Builds an app's declared package: the app installed its workspace once at its root (a member has no node_modules of its own, so nothing is installed here),
+ * then `npm run build` in the member's folder.
+ */
+const buildAppPackage = async (root: string, pkg: WorkspacePackage): Promise<void> => {
+    if (pkg.scripts.build === undefined) return
+    if (!existsSync(join(root, "node_modules"))) throw new Refusal("PUBLISH_LOCAL_NOT_INSTALLED", `${root} has no node_modules: run npm ci at the app root before publishing ${pkg.name}`)
+    const build = await withHeavySlot("build", `npm run build ${pkg.name}`, pkg.dir, {}, (held) => captureNpm(["run", "build"], pkg.dir, held.options))
+    if (build.exitCode !== 0) throw stepFailed(`npm run build in ${pkg.dir}`, build)
+}
+
+/** Builds what the rows need and publishes them in order to the local registry; an app (`app`) builds only its declared packages, in their dependency order. */
+const publishDue = async (context: VerbContext, port: number, given: { readonly root: string; readonly all: readonly WorkspacePackage[]; readonly order: readonly string[]; readonly rows: readonly Planned[]; readonly published: string[]; readonly app: boolean }): Promise<void> => {
+    const { root, all, order, rows, published, app } = given
     const npmrc = writePublishNpmrc(port)
-    const plan = await affectedBy(root, undefined, undefined)
-    const needed = new Set(rows.flatMap((row) => (row.dir === CLI_DIR ? [CLI_DIR] : (plan.packages.find((one) => one.dir === row.dir)?.build ?? [row.dir]))))
+    const plan = app ? undefined : await affectedBy(root, undefined, undefined)
+    const needed = new Set(rows.flatMap((row) => (row.dir === CLI_DIR ? [CLI_DIR] : (plan?.packages.find((one) => one.dir === row.dir)?.build ?? [row.dir]))))
     await inOrder(
         order.filter((dir) => needed.has(dir)),
         async (dir) => {
             const pkg = all.find((one) => one.relativeDir === dir)
             if (pkg === undefined) return
             context.progress(`building ${pkg.name} in ${pkg.dir}`)
-            await buildPackage({ name: pkg.name, folder: pkg.dir, version: pkg.version, builds: pkg.scripts.build !== undefined })
+            if (app) await buildAppPackage(root, pkg)
+            else await buildPackage({ name: pkg.name, folder: pkg.dir, version: pkg.version, builds: pkg.scripts.build !== undefined })
             const row = rows.find((one) => one.dir === dir)
             if (row === undefined) return
             context.progress(`publishing ${row.package}@${row.version} to ${registryUrl(port)}`)
@@ -166,37 +179,41 @@ const chosenPackages = async (root: string, all: readonly WorkspacePackage[], na
  * registry on this machine under the version committed in git, so an app installs it with `starci deps install-local` and the pins, the peer
  * ranges and the cache keys are the ones the npm build will have. A version npm serves is published only when npm's copy carries the same
  * source digest (`judgeVersion`); a rebuild of a version replaces the registry's copy. Dry until `--execute`. It is not a release: nothing
- * reaches npm, and no committed file changes.
+ * reaches npm, and no committed file changes. An app (a repository whose hfs.json declares `publishes`) publishes exactly the workspace
+ * package folders it declares there, under the same rules; a package it does not declare is refused PUBLISH_LOCAL_UNDECLARED, and a repository
+ * that is neither a harness checkout nor declares `publishes` PUBLISH_LOCAL_NOT_HARNESS.
  */
 export const depsPublishLocalVerb = defineVerb({
     path: ["deps", "publish-local"],
-    summary: "build the packages changed here (or --package) and publish each to a registry on this machine (127.0.0.1 only) under the version committed in git (refused when npm serves that version with other content), for starci deps install-local; dry until --execute",
+    summary: "build the packages changed here (or --package) and publish each to a registry on this machine (127.0.0.1 only) under the version committed in git (refused when npm serves that version with other content), for starci deps install-local; an app whose hfs.json declares publishes publishes exactly the package folders it declares; dry until --execute",
     editions: ["lite", "full"],
     effect: "host",
     roles: WRITERS,
     schema: "starci/deps-publish-local@4",
     flags: {
         execute: { kind: "boolean", summary: "start or reuse the registry container, build and publish (default: print the plan only)" },
-        package: { kind: "list", summary: "this package (its folder or name), repeatable, instead of the packages changed since the base of the branch; its build prerequisites are built, not published" },
-        cwd: { kind: "string", summary: "the harness checkout to build and publish (default: the checkout of the working directory)" },
+        package: { kind: "list", summary: "this package (its folder or name), repeatable, instead of the packages changed since the base of the branch (an app: one of its declared packages); its build prerequisites are built, not published" },
+        cwd: { kind: "string", summary: "the harness checkout, or the app that declares hfs.json publishes, to build and publish (default: the checkout of the working directory)" },
     },
     run: async (context, flags) => {
         const port = PORT
         const root = await repositoryRoot(resolve(flags.cwd ?? context.cwd))
-        if (!isHarnessCheckout(root)) throw new Refusal("PUBLISH_LOCAL_NOT_HARNESS", `${root} is not a harness checkout (cli/, contexts/ and packages/); pass --cwd <harness checkout>`)
+        const harness = isHarnessCheckout(root)
+        const declared = harness ? undefined : declaredPublishes(root)
+        if (!harness && declared === undefined) throw new Refusal("PUBLISH_LOCAL_NOT_HARNESS", `${root} is not a harness checkout (cli/, contexts/ and packages/) and its hfs.json declares no "${PUBLISHES_KEY}" (the workspace package folders an app puts on the local registry); declare them or pass --cwd <harness checkout>`)
         const all = listPackages(root)
-        const chosen = await chosenPackages(root, all, flags.package)
+        const chosen = declared === undefined ? await chosenPackages(root, all, flags.package) : appPackages(all, declared, flags.package)
         if (flags.execute) await ensureRegistry(root)
         const state = await registryState()
         const live = state === "up"
         const asked: PlanQuestions = { served: (name, version) => npmCopy(root, name, version), listed: live ? (name) => registryVersions(name, port, root) : undefined }
         const rows = await inOrder(chosen, (pkg) => planOne(root, pkg, asked))
-        const order = await globalOrder(root)
+        const order = declared === undefined ? await globalOrder(root) : appBuildOrder(chosen)
         const due = rows.toSorted((left, right) => order.indexOf(left.dir) - order.indexOf(right.dir))
-        const peerLine: PeerLineVerdict = live || flags.execute ? await peerLineOf(all, due, port) : { refused: [], warned: [] }
+        const peerLine: PeerLineVerdict = declared === undefined && (live || flags.execute) ? await peerLineOf(all, due, port) : { refused: [], warned: [] }
         if (flags.execute && peerLine.refused.length > 0) throw new Refusal("PUBLISH_LOCAL_PEER_ORPHAN", `an app could not install this publish beside its siblings (CONTRIB-20; contexts/authority/packages.md "The local registry"):\n${peerLine.refused.map((line) => `- ${line}`).join("\n")}`)
         const published: string[] = []
-        if (flags.execute) await publishDue(context, port, { root, all, order, rows: due, published })
+        if (flags.execute) await publishDue(context, port, { root, all, order, rows: due, published, app: declared !== undefined })
         const data: PublishLocalData = { mode: flags.execute ? "publish" : "plan", registry: registryUrl(port), registryState: flags.execute ? "up" : state, rows: due.map((row) => ({ package: row.package, version: row.version, dir: row.dir, npm: row.npm, replaces: row.replaces })), published, peerLine }
         const table = formatTable([["PACKAGE", "VERSION", "NPM", "LOCAL REGISTRY"], ...due.map((row) => [row.package, row.version, row.npm, row.replaces === undefined ? "unknown (down)" : row.replaces ? "replaces its copy" : "new"])])
         const summary = flags.execute ? `published ${String(published.length)} package(s) to ${registryUrl(port)}` : `${String(due.length)} to publish to ${registryUrl(port)} (registry ${state}; plan only, add --execute)`
