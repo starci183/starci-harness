@@ -243,6 +243,11 @@ slots:
     presence: optional
     holds: the compose files of the host stack ops/host.yaml declares in ops/host/stack (Sonar, its database, the tunnel, the local npm registry and its config), as data the host verbs run
     rule: CONTRIB-9 data is data
+  - id: ops.vps-servers
+    path: "ops/vps/servers/*.yaml"
+    presence: optional
+    holds: the example server row of the managed VPS fleet ops/vps.yaml declares; the real inventory in this folder stays gitignored, as data the vps verbs validate
+    rule: CONTRIB-9 data is data
   - id: ops.labels
     path: "ops/ops/*.md"
     presence: required
