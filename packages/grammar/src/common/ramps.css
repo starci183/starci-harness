@@ -186,6 +186,7 @@
         --starci-core-workspace-floating-z: 40;
         --starci-flow-diameter: 3rem;
         --starci-flow-height: 24rem;
+        --starci-core-geomap-height: 24rem;
         --starci-flow-zoom: 1;
         /* A Sparkline: the inline trend line, 96 x 32. */
         --grammar-sparkline-width: 6rem;

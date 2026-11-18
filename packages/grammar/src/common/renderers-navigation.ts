@@ -6,6 +6,7 @@ import { DataTable } from "../core/branch/DataTable/index.js"
 import { DragItem } from "../core/branch/DragItem/index.js"
 import { Disclosure } from "../core/branch/Disclosure/index.js"
 import { BubbleMap } from "../core/branch/BubbleMap/index.js"
+import { GeoMap } from "../core/branch/GeoMap/index.js"
 import { FlowGraph } from "../core/branch/FlowGraph/index.js"
 import { ListBox } from "../core/branch/ListBox/index.js"
 import { MermaidDiagram } from "../core/frame/MermaidDiagram/index.js"
@@ -33,6 +34,7 @@ export { Calendar, type CalendarProps } from "../core/branch/Calendar/index.js"
 export { DataTable, type DataTableCellInteraction, type DataTableColumn, type DataTableProps, type DataTableRow, type DataTableSort } from "../core/branch/DataTable/index.js"
 export { DragItem, type DragItemProps, type DragItemTone } from "../core/branch/DragItem/index.js"
 export { Disclosure, type DisclosureProps } from "../core/branch/Disclosure/index.js"
+export { GeoMap, type GeoMapLabels, type GeoMapPoint, type GeoMapProps, type GeoMapTiles } from "../core/branch/GeoMap/index.js"
 export { BubbleMap, bubbleDiameter, bubbleMapLayout, type BubbleMapEdge, type BubbleMapFill, type BubbleMapNode, type BubbleMapNodeForm, type BubbleMapProps, type BubbleMapRingPart } from "../core/branch/BubbleMap/index.js"
 export { FlowGraph, FlowGraphLegend, STEP_KIND_TONES, lanesLayout, layeredPositions, radialPositions, stepsLayout, type FlowGraphAgent, type FlowGraphChip, type FlowGraphContainer, type FlowGraphDirection, type FlowGraphEdge, type FlowGraphEdgeVariant, type FlowGraphHeight, type FlowGraphLanesKind, type FlowGraphLayerHeader, type FlowGraphLayout, type FlowGraphLegendItem, type FlowGraphLegendKind, type FlowGraphNode, type FlowGraphNodeKind, type FlowGraphNodeShape, type FlowGraphNodeSize, type FlowGraphPort, type FlowGraphPositions, type FlowGraphProps, type FlowGraphRunStatus, type FlowGraphStepKind, type FlowGraphTone } from "../core/branch/FlowGraph/index.js"
 export { MermaidDiagram, type MermaidDiagramHeight, type MermaidDiagramProps } from "../core/frame/MermaidDiagram/index.js"
@@ -64,5 +66,5 @@ export { Video, pickVideoSource, playbackOf, type VideoLabels, type VideoPlaybac
 /** Every navigation-group renderer, spread into `COMMON_GRAMMAR_COMPONENTS`. */
 export const COMMON_NAVIGATION_COMPONENTS = Object.freeze({
     Accordion, Avatar, AvatarButton, AvatarGroup, Calendar, ColorSwatch, DataTable, DescriptionList,
-    BubbleMap, Disclosure, DragItem, FlowGraph, Footer, IdentityLockup, Illustration, Image, Link, ListBox, LogoStack, MermaidDiagram, Pagination, Rating, Stepper, TagGroup, Timeline, TopBar, Video,
+    BubbleMap, GeoMap, Disclosure, DragItem, FlowGraph, Footer, IdentityLockup, Illustration, Image, Link, ListBox, LogoStack, MermaidDiagram, Pagination, Rating, Stepper, TagGroup, Timeline, TopBar, Video,
 } as const)
