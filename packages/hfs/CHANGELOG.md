@@ -1,5 +1,13 @@
 # Changelog
 
+## 6.13.39 - 2026-11-18
+
+- Fixed: `HFS_CHECK_CACHE_FORGED` on a record any host wrote correctly. `verifyCommitted` compared the computed findings in the order the rules produced them with the committed findings, which are sorted on disk; the db family (not emitted in sorted order) was FORGED on every fresh CI run. Both sides are sorted before comparison; `sortFindings` is a total order (line, column, rule, message, path, canonical JSON) and no longer yields NaN for a finding that names its column (`column: "session_id"`); a db finding's path is posix whatever host judged it.
+- Changed: the canon node image is `node:22.20.0-alpine3.21` (index digest `sha256:f40aebdd0c1959821ab6d72daecafb2cd1d4c9a958e9952c1d71b84d4458f875`; the nivoos SDK entry needs node 22.18 or newer): `NODE_IMAGE`, `contexts/stack/pins.yaml`, the lite skeleton api Dockerfile.
+- Fixed: the canon be image Dockerfiles (api, cli, worker) and the lite skeleton api Dockerfile copy `turbo.json` in the build stage, so `npm run build:be` runs inside the image.
+- Changed: R439 (`HFS_STATIC_ASSET_OUTSIDE_STATICS`): `fe/**/public/` holds only the favicon (`favicon.*`), the PWA/manifest icons and the app logo (`logo.*`, `*-logo.*`, in `public/` or `public/brand/`); every other image or video lives in `statics/` behind the CDN.
+- The `@starci/hfs` self-pin is 6.13.39. An app whose committed check cache holds db findings that name a column regenerates its cache once (the records reorder).
+
 ## 6.13.38 - 2026-11-18
 
 - New check R443 `FE_ERROR_PAGE_NOT_EMPTY_STATE` (error): the not-found, error and global-error boundaries of a web app (the files R53 requires) draw `EmptyNotice scope="page"` with an `illustration` through their own import closure; a hand-rolled page is refused. Spec `src/error-pages.spec.mts`.

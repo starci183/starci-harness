@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.159 - 2026-11-18
+
+- Fixed (check cache): a committed record equals the computed one whatever order the rules produced the findings (`HFS_CHECK_CACHE_FORGED` on db records any host wrote). Changed: the canon node image is node 22.20.0; the canon be Dockerfiles copy turbo.json; `fe/**/public/` holds only the favicon, the PWA icons and `logo.*` / `*-logo.*` (R439). @starci/hfs 6.13.39. Until the cli-follow step raises the CLI's requirement, the CLI runs the hfs it requires.
+
 ## 1.1.0-alpha.158 - 2026-11-18
 
 - Changed: the CLI requires @starci/hfs@6.13.38, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
