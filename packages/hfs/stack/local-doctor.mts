@@ -13,7 +13,7 @@ import { holders, missingKeys, missingStep, neededKeys } from './local-custody.m
 import { tableLines } from './local-host.mjs';
 import type { Prerequisite } from './local-host.mjs';
 import { preflight } from './local-prepare.mjs';
-import { compose, isAlive, stateOf } from './local-run.mjs';
+import { compose, ownedProcess, stateOf } from './local-run.mjs';
 import type { LocalDeps } from './local-run.mjs';
 import { basePortRows, peersOf } from './local-peers.mjs';
 import { readRecord } from './local-state.mjs';
@@ -50,8 +50,11 @@ export async function doctorLocal(ctx: StackContext, local: LocalConfig, _option
     lines.push(`volumes: ${volumes.join(', ') || 'none yet'}`);
   }
   const record = readRecord(stateOf(ctx, local));
-  const alive = deps.alive ?? isAlive;
-  const recorded = Object.entries(record.processes).map(([name, entry]) => `${name} pid ${entry.pid} ${alive(entry.pid) ? 'alive' : 'gone'}`);
+  const recorded: string[] = [];
+  for (const [name, entry] of Object.entries(record.processes)) {
+    const owned = await ownedProcess(ctx, entry, deps);
+    recorded.push(`${name} pid ${entry.pid} ${owned.ours ? 'alive' : owned.stale === null ? 'gone' : `stale (${owned.stale})`}`);
+  }
   lines.push(`processes: ${recorded.join(', ') || 'none recorded'}`, `state: ${fs.existsSync(stateOf(ctx, local)) ? stateOf(ctx, local) : 'none yet'}`);
   return { ok: host.ok && rows.every((row) => row.ok), lines, data: { rows: [...host.rows, ...rows] } };
 }

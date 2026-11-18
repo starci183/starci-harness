@@ -4,7 +4,7 @@
 import type { StackContext } from './context.mjs';
 import type { ActionResult } from './remote.mjs';
 import type { LocalConfig } from './local-config.mjs';
-import { compose, isAlive, stateOf, stopProcess } from './local-run.mjs';
+import { compose, ownedProcess, stateOf, stopProcess } from './local-run.mjs';
 import type { LocalDeps } from './local-run.mjs';
 import { readRecord, writeRecord } from './local-state.mjs';
 
@@ -12,9 +12,14 @@ import { readRecord, writeRecord } from './local-state.mjs';
 export async function downLocal(ctx: StackContext, local: LocalConfig, { execute = false }: { execute?: boolean } = {}, deps: LocalDeps = {}): Promise<ActionResult> {
   const dir = stateOf(ctx, local);
   const record = readRecord(dir);
-  const alive = deps.alive ?? isAlive;
-  const running = Object.entries(record.processes).filter(([, entry]) => alive(entry.pid));
-  const lines = [`processes to end: ${running.map(([name, entry]) => `${name} (pid ${entry.pid})`).join(', ') || 'none'}`, `compose project to stop: ${local.project} (volumes and images stay)`];
+  const running: Array<[string, (typeof record.processes)[string]]> = [];
+  const discarded: string[] = [];
+  for (const [name, entry] of Object.entries(record.processes)) {
+    const owned = await ownedProcess(ctx, entry, deps);
+    if (owned.ours) running.push([name, entry]);
+    else if (owned.stale !== null) discarded.push(`process ${name}: discarded a stale record, left running: ${owned.stale}`);
+  }
+  const lines = [`processes to end: ${running.map(([name, entry]) => `${name} (pid ${entry.pid})`).join(', ') || 'none'}`, `compose project to stop: ${local.project} (volumes and images stay)`, ...discarded];
   if (!execute) return { ok: true, lines: [...lines, 'dry run: nothing was stopped; arm it with --execute'], data: { processes: running.map(([name]) => name) } };
   for (const [name, entry] of running) {
     stopProcess(ctx, entry.pid, deps);

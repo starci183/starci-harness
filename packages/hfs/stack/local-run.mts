@@ -22,6 +22,8 @@ import type { HttpProbe, LocalCommand } from '../runtime/scripts/hfs/stack-local
 export interface LocalDeps extends HostDeps {
   alive?: ((pid: number) => boolean) | undefined;
   kill?: ((pid: number) => void) | undefined;
+  /** The live command line of a process id, or null when the host cannot tell (a spec replaces it). */
+  commandLine?: ((pid: number) => string | null) | undefined;
   tcpOpen?: ((port: number) => Promise<boolean>) | undefined;
   /** The other projects of the machine (the doctor's overlap row); the machine registries when absent (local-peers.mts machinePeers). */
   peers?: (() => PeerBase[]) | undefined;
@@ -160,6 +162,55 @@ export const commandDigest = (run: LocalCommand): string => createHash('sha256')
 export const isAlive = (pid: number): boolean => {
   try { process.kill(pid, 0); return true; } catch (error) { return (error as NodeJS.ErrnoException).code === 'EPERM'; }
 };
+
+/** The command line a native process is launched with (executable and arguments, as spawned): what its record keeps to recognise it again. */
+export function processCommand(ctx: StackContext, local: LocalConfig, run: LocalCommand): string {
+  const [command, args] = launcher(ctx, run.argv.map((part) => expand(ctx, local, part)));
+  return [command, ...args].join(' ');
+}
+
+/** The command line of a live process: PowerShell CIM on Windows, ps elsewhere; null when it cannot be read. */
+export function liveCommandLine(ctx: Pick<StackContext, 'spawn' | 'platform'>, pid: number): string | null {
+  const result = ctx.platform === 'win32'
+    ? ctx.spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', `(Get-CimInstance Win32_Process -Filter 'ProcessId=${Math.trunc(pid)}').CommandLine`])
+    : ctx.spawn('ps', ['-p', String(Math.trunc(pid)), '-o', 'args=']);
+  if (result.error || result.status !== 0) return null;
+  const text = result.stdout.trim();
+  return text === '' ? null : text;
+}
+
+const normalize = (text: string): string => text.replaceAll(/["']/gu, '').replaceAll('\\', '/').toLowerCase();
+const baseName = (command: string): string => normalize(command).split('/').pop()?.replace(/\.(exe|cmd|bat)$/u, '') ?? '';
+
+/** True when a live command line is the recorded one: the same executable and every recorded argument present (quoting and slashes aside). */
+export function sameCommand(recorded: string, live: string): boolean {
+  const tokens = recorded.split(/\s+/u).filter((token) => token !== '');
+  const [executable, ...rest] = tokens;
+  if (executable === undefined) return true;
+  const haystack = normalize(live);
+  return haystack.includes(baseName(executable)) && rest.every((token) => haystack.includes(normalize(token)));
+}
+
+/** A recorded process, judged against the host. */
+export interface Ownership { ours: boolean; /** Why a live pid is not ours (the log line); null when ours or simply gone. */ stale: string | null }
+
+/**
+ * Whether the process a record names is still the one this environment started. A pid alone proves nothing: Windows reuses ids after a reboot or crash,
+ * so a live pid counts only when its command line is still the recorded one AND its declared port listens (a process younger than the startup window
+ * may still be booting). A record from before command lines were kept is judged by the port alone; with neither the pid is trusted.
+ */
+export async function ownedProcess(ctx: StackContext, entry: { pid: number; startedAt: string; port: number | null; command?: string | undefined }, deps: LocalDeps = {}): Promise<Ownership> {
+  if (!(deps.alive ?? isAlive)(entry.pid)) return { ours: false, stale: null };
+  const live = entry.command === undefined ? null : (deps.commandLine ?? ((pid: number) => liveCommandLine(ctx, pid)))(entry.pid);
+  if (entry.command !== undefined && live !== null && !sameCommand(entry.command, live)) {
+    return { ours: false, stale: `pid ${entry.pid} is alive but runs another command (recorded "${entry.command}", found "${live.slice(0, 160)}"): the id was reused` };
+  }
+  if (entry.port === null) return { ours: true, stale: null };
+  if (await (deps.tcpOpen ?? tcpOpen)(entry.port)) return { ours: true, stale: null };
+  const age = ctx.now() - Date.parse(entry.startedAt);
+  if (Number.isFinite(age) && age < DEFAULT_TIMEOUT_SECONDS * 1000) return { ours: true, stale: null };
+  return { ours: false, stale: `pid ${entry.pid} is alive but nothing listens on its port ${entry.port} (started ${entry.startedAt}): the id was reused` };
+}
 
 /** Starts a native process detached from this command, its output in the environment's log. Returns the pid. */
 export function startProcess(ctx: StackContext, local: LocalConfig, run: LocalCommand, env: NodeJS.ProcessEnv): number {
