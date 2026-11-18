@@ -87,6 +87,8 @@ export function feRoutes(repoRoot: string): FeRoute[] {
       const file = posix.join(appDir, 'src', 'app', folder, 'page.tsx');
       let text = '';
       try { text = fs.readFileSync(path.join(repoRoot, ...file.split('/')), 'utf8'); } catch { text = ''; }
+      // The not-found catch-all (`[locale]/[...rest]/page.tsx` calling notFound()) renders the not-found page, which is its own screen: it is no route of the product.
+      if (/[...[^]]+]$/u.test(folder) && /notFounds*(/u.test(text)) continue;
       routes.push({ route, key: routeKey(route), file, app: posix.basename(appDir), sources: [file, ...importedFeatures(text).map((feature) => posix.join(appDir, 'src', feature))] });
     }
   }

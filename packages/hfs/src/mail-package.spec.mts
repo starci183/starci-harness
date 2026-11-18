@@ -96,9 +96,9 @@ test('the links of the mails open pages that exist: the routes are the paths the
   for (const door of ['confirm', 'reset']) {
     assert.ok(service.includes(`/auth/${door}?token=`), door);
     assert.ok(routes.includes(`${door}: "/auth/${door}"`), door);
-    assert.ok(fs.existsSync(path.join(WEB, 'app', '[locale]', 'auth', door, 'page.tsx')), door);
+    assert.ok(fs.existsSync(path.join(WEB, 'app', '[locale]', '(pages)', 'auth', door, 'page.tsx')), door);
   }
-  for (const door of ['signup', 'resend', 'forgot']) assert.ok(fs.existsSync(path.join(WEB, 'app', '[locale]', 'auth', door, 'page.tsx')), door);
+  for (const door of ['signup', 'resend', 'forgot']) assert.ok(fs.existsSync(path.join(WEB, 'app', '[locale]', '(pages)', 'auth', door, 'page.tsx')), door);
   assert.match(fs.readFileSync(path.join(WEB, 'modules', 'i18n', 'routing.ts'), 'utf8'), /"as-needed"/u);
 });
 

@@ -2,7 +2,7 @@
 
 ## 1.1.0-alpha.163 - 2026-11-18
 
-- Changed (pins): @starci/eslint-canon-be 3.27.3 (no-raw-sql accepts the SDK object query, schema-bounded accepts enum-keyed records), the Grammar family at 0.46.2 (ScheduleGrid spans, groups, resize and drag from outside; Legend; GeoMap; DataTable totals, row ground and phone long-press selection; Alert form and secondary action; BoardColumn canDrop; EmptyNotice steps and all-clear; filter pills; Popover size) and @starci/hfs 6.13.43 (a loading or error boundary in a route group under [locale], the required [locale]/[...rest] catch-all; stack up verifies the recorded PIDs). Until the cli-follow step raises the CLI's requirement, the CLI runs the hfs it requires.
+- Changed (pins): @starci/auth 0.7.2, @starci/eslint-canon-be 3.27.3 (no-raw-sql accepts the SDK object query, schema-bounded accepts enum-keyed records), the Grammar family at 0.46.2 (ScheduleGrid spans, groups, resize and drag from outside; Legend; GeoMap; DataTable totals, row ground and phone long-press selection; Alert form and secondary action; BoardColumn canDrop; EmptyNotice steps and all-clear; filter pills; Popover size) and @starci/hfs 6.13.43 (a loading or error boundary in a route group under [locale], the required [locale]/[...rest] catch-all; stack up verifies the recorded PIDs). Until the cli-follow step raises the CLI's requirement, the CLI runs the hfs it requires.
 - Added: `starci app desktop` (init, doctor, build, dev, keygen), forwarded to `@starci/hfs` like `starci app world`; `HfsVerb` gains `desktop`. The verb works once the app's `starci-harness` pins an `@starci/hfs` that has it.
 
 ## 1.1.0-alpha.162 - 2026-11-18

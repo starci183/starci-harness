@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.2 - 2026-11-18
+
+- Changed (`migrations/identity-sessions.sql`): the key rules of the lite baseline. `identity_refresh_tokens.session_id` is `identity_session_id` (a foreign key is named for its table), and `identity_attempts` has `id uuid primary key default gen_random_uuid()` beside `unique (key)`. A lite app that already ran the earlier baseline keeps its tables; it renames the column and adds the id in a migration of its own before it takes the matching entity (`@Column({ name: "identity_session_id" })`). No runtime code change.
+
 ## 0.7.1 - 2026-11-15
 
 - Fixed: a refresh cookie left by an earlier deployment never shadows a new sign-in. A browser keeps one copy per (domain, path) and sends every one, and the first copy in the header is the one read; a stale copy (host-only from before a `domain` was configured, or under a legacy path) was read first, its refusal then cleared only the live domain's copy, i.e. the session just started, and the person stayed signed out. `RefreshCookie.issue` now clears every other copy the host may hold (the legacy paths and the other domains: host-only, the configured `domain`, each listed `domains` entry the host falls under) before it sets the live one; `clear` clears all of them. The live cookie (name, domain, path, flags) is unchanged.
