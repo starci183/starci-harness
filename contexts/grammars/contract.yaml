@@ -192,7 +192,7 @@ roles:
     sizes: { steps: none, bar: md }
     states: [selected, focus-visible, disabled]
     grammarMayChange: [track, indicator and label paint; current label reads accent text]
-    dna: [DNA-COMMON-TABS-BAR-MD, DNA-COMMON-TABS-FILTER-COMPACT, DNA-COMMON-TABS-BY-LAYER, DNA-COMMON-TABS-INDICATOR, DNA-COMMON-TABS-OWN-PANEL, DNA-COMMON-TABS-ROVING, DNA-COMMON-TABS-FILTER-LOADING-COUNTS, DNA-COMMON-TABS-COUNT-CHIP, DNA-COMMON-TABS-COUNT-CHIP-ATTENTION]
+    dna: [DNA-COMMON-TABS-BAR-MD, DNA-COMMON-TABS-FILTER-COMPACT, DNA-COMMON-TABS-BY-LAYER, DNA-COMMON-TABS-INDICATOR, DNA-COMMON-TABS-INDICATOR-BELOW-LABEL, DNA-COMMON-TABS-INDICATOR-UNDER-SELECTED, DNA-COMMON-TABS-SELECTED-IN-VIEW-START, DNA-COMMON-TABS-SELECTED-IN-VIEW-END, DNA-COMMON-TABS-OWN-PANEL, DNA-COMMON-TABS-ROVING, DNA-COMMON-TABS-FILTER-LOADING-COUNTS, DNA-COMMON-TABS-COUNT-CHIP, DNA-COMMON-TABS-COUNT-CHIP-ATTENTION]
 
   - id: filter-button-group
     ui: ui/components/chip.md
@@ -952,6 +952,26 @@ mustKeep:
       law: A tab bar draws exactly one indicator.
       measure: { kind: count, scope: '[data-component="Tabs"]', select: '.tabs__indicator', op: "=", value: 1 }
       owner: vendor/parity.yaml tabs
+    - id: DNA-COMMON-TABS-INDICATOR-BELOW-LABEL
+      role: tabs
+      law: "The selected underline stands under its label, never above it: its top is at or below the label's bottom, in every strip that draws an underline, the folding one included (a strip that folds renders its list without the vendor list container, whose rule is what pins the indicator to the bottom)."
+      measure: { kind: relation, select: '[data-component="Tabs"]:not([data-grammar-tabs-variant="primary"]) [role="tab"] .tabs__indicator', metric: top, op: ">=", ref: { within: '[role="tab"]', select: '.starci-core-tab-label', metric: bottom } }
+      owner: vendor/parity.yaml tabs; nivoos-lite agent page 2026-11-19
+    - id: DNA-COMMON-TABS-INDICATOR-UNDER-SELECTED
+      role: tabs
+      law: "The underline spans its own selected tab, start edge to end edge, once the page has settled: it is positioned from the selected key (after a programmatic change, a route change, a resize), never left under the first tab. Page (views) strips; a filter strip refits on a viewport change and the run measures before that frame."
+      measure: { kind: relation, select: '[data-component="Tabs"]:not([data-grammar-tabs-variant="primary"], [data-grammar-tabs-kind="filter"]) [role="tab"][aria-selected="true"] .tabs__indicator', metric: [left, right], op: "=", ref: { within: '[role="tab"]', select: self, metric: [left, right] } }
+      owner: nivoos-lite agent page 2026-11-19
+    - id: DNA-COMMON-TABS-SELECTED-IN-VIEW-START
+      role: tabs
+      law: "In a strip that scrolls (a phone strip wider than its box) the selected tab starts inside the scroller's box: the strip scrolls the active tab into view."
+      measure: { kind: relation, select: '.tabs__list-container__scroller [role="tab"][aria-selected="true"]', metric: left, op: ">=", ref: { within: '.tabs__list-container__scroller', select: self, metric: left, offset: -1px } }
+      owner: nivoos-lite agent page 2026-11-19
+    - id: DNA-COMMON-TABS-SELECTED-IN-VIEW-END
+      role: tabs
+      law: "In a strip that scrolls the selected tab ends inside the scroller's box."
+      measure: { kind: relation, select: '.tabs__list-container__scroller [role="tab"][aria-selected="true"]', metric: right, op: "<=", ref: { within: '.tabs__list-container__scroller', select: self, metric: right, offset: 1px } }
+      owner: nivoos-lite agent page 2026-11-19
     - id: DNA-COMMON-TABS-OWN-PANEL
       role: tabs
       law: "Each tab of a panel set controls its own panel. A filter strip has no tabpanels: it narrows a collection that stays in place, so its tabs control nothing (ui/components/tabs.md tabs.choose.role filter; the panels row is the choice of tabs that swap whole panels). The mode or period switch (appearance=\"primary\") narrows one block of the same data and has no panel either."

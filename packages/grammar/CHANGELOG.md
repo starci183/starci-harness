@@ -1,8 +1,8 @@
 # Changelog
 
-## 0.47.3 - 2026-11-19 - Marketing motion, the filled status dot, the dot rule, the grouped More sheet
+## 0.47.3 - 2026-11-19 - Marketing motion, the filled status dot, the dot rule, the grouped More sheet, folding page tabs
 
-Train 168 (lanes `badge-dot-rule`, `grammar-motion`). New components, a new contract role, optional props and new DNA laws, so a patch (contexts/grammars/contributing.md "Patch or minor"). Both families, light and dark.
+Train 168 (lanes `badge-dot-rule`, `grammar-motion`, `grammar-tabs-fold`). New components, a new contract role, optional props and new DNA laws, so a patch (contexts/grammars/contributing.md "Patch or minor"). Both families, light and dark.
 
 ### Status dot and the grouped More sheet (lane `badge-dot-rule`)
 
@@ -23,6 +23,13 @@ Evidence: NIVO landing canvas round 2 (`nivoos-lite` `.starcistacks/canvas/pages
 - Added (DNA, role `motion`): `DNA-COMMON-MOTION-TOKENS-BOUND`, `-REVEAL-REDUCED-STATIC`, `-MARQUEE-REDUCED-STATIC`, `-MARQUEE-COPY-HIDDEN`, `-MARQUEE-PAUSES`, `-COUNT-UP-REDUCED-STATIC`, `-STICKY-STORY-PINS`, `-STICKY-STORY-STAGE-HIDDEN`, `-STICKY-STORY-REDUCED-STATIC`, `-STICKY-STORY-REDUCED-PANELS`, `-STICKY-STORY-PHONE-STATIC`, `-STICKY-STORY-PHONE-PANELS`. The contextual ones (reduced motion, 390, hover) are not run by `dna check --storybook`; they were verified in Chromium with the system setting emulated.
 - Stories: `Marketing/Motion` (Tokens, RevealRise, RevealBelowTheFold, MarqueeLogos, CountUpFigures, StickyStorySteps, StickyStoryStageStart, CoverCardsReveal) with play functions. Contexts: `grammars/contract.md`, `contract.yaml` (role `motion`, `tokens.motion`), `ui/components/motion.md`, `ui/components/README.md`, `ui/situations.md`.
 
+### Folding page tabs (lane `grammar-tabs-fold`)
+
+- Fixed (`Tabs`, both families): a strip that folds (`overflowLabel` on views, every filter strip) drew the selected underline ABOVE its label. The vendor indicator is `top-0 size-full`; its `top-auto bottom-0 h-0.5` rule reaches only a `.tabs__list-container` child, and a folding strip renders its list bare (no container), so our `bottom` and `height: 2px` met the vendor's `top: 0` and the bar stayed at the top. The secondary indicator rule now sets `top: auto`, so the bar is bottom-anchored in every underline strip (the filter rule already did).
+- Added (`Tabs`): the fold trigger (`data-grammar-tabs-more-selected`) reads as the selected tab (tint pair, medium weight, accent underline on the line) when the selected tab is one of the folded items.
+- Fixed (`Tabs`, both families): the underline could stay under the FIRST tab while another was selected (link page tabs with no `selectedKey`, a key that changes without a press, a strip that refits). Causes: a link strip drew its tabs before it had read the path, so the vendor selected the first tab and animated from it; and the vendor's shared-element indicator starts a change at the old tab's rect and releases it a frame later, a frame a throttled or hidden page (a shot taken at once) never delivers, and its tabs mount after our commit. A link strip with no `selectedKey` now waits for the path (layout effect, before paint); the strip watches its indicators and clears the vendor's travel overrides unless a press is travelling (600ms), so the underline is under the selected tab from the commit.
+- Fixed (`Tabs`, scrolling strip): the selected tab is scrolled into view (instant, `scrollBy` on the scroller) after the first draw and whenever the selection, the tab list or the strip's box changes (mutation, resize and window resize), so the active tab is no longer out of view at 390.
+- Added (DNA, role `tabs`): `DNA-COMMON-TABS-INDICATOR-BELOW-LABEL`, the selected underline's top is at or below its label's bottom, in every underline strip; `DNA-COMMON-TABS-INDICATOR-UNDER-SELECTED` (page strips: the underline spans its selected tab); `DNA-COMMON-TABS-SELECTED-IN-VIEW-START` and `-END` (a scrolling strip holds its selected tab inside its box). Stories (also ScrollingOpensOnLast390, ScrollingSelectionChange390, FoldSelectionChange390, SelectionChange1440, LinkTabsOpenOnRoute1440 and 390): `Surfaces/Page tabs fold` (PageTabsFold1440, PageTabsFold390, PageTabsFold390LastSelected) with play functions.
 
 ## 0.47.2 - 2026-11-19 - Tile poster bleed
 
