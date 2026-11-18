@@ -160,8 +160,9 @@ const tabKeyFromPath = (items: ReadonlyArray<TabItem>, pathname: string, base: s
 
 /** The current location's path, read on the client and kept current across history moves. */
 const useLocationPath = (enabled: boolean): readonly [string | undefined, (path: string) => void] => {
+    // Read in a layout effect, before the first paint of the ready strip, so the vendor indicator is mounted under the route's tab and never under the first one.
     const [path, setPath] = useState<string | undefined>(undefined)
-    useEffect(() => {
+    useLayoutEffect(() => {
         if (!enabled) return
         const read = () => setPath(window.location.pathname)
         read()
@@ -200,7 +201,10 @@ const TabsInner = (props: TabsProps) => {
     // A path no link tab owns falls back to the first tab, so link tabs stay controlled from their first render.
     const selectedKey = props.selectedKey
         ?? (isLinkTabs && locationPath !== undefined ? tabKeyFromPath(items, locationPath, window.location.href) ?? items[0]?.id : undefined)
+    // A press travels the underline (the vendor animates it from the old tab); any other change of the selected key (a route, data arriving, a reset) puts it under the tab at once.
+    const pressedUntil = useRef(0)
     const select = (key: string) => {
+        pressedUntil.current = performance.now() + 600
         const href = items.find((item) => item.id === key)?.href
         // A link tab navigates on its own; selecting it ahead of the route change keeps the indicator on the press.
         if (href !== undefined && props.selectedKey === undefined) setLocationPath(new URL(href, window.location.href).pathname)
@@ -319,7 +323,58 @@ const TabsInner = (props: TabsProps) => {
     const shownCount = (item: TabItem): number | undefined => item.count === undefined || (item.count === 0 && !isFilter && !isLoading) ? undefined : item.count
     const labelOf = (item: TabItem) => shownCount(item) === undefined || isLoading ? item.label : `${item.label} ${item.count}`
 
-    if (!isClientReady) return <div aria-hidden="true" className={tabsFrameClassName} data-contract={frameContract} {...frameData} data-grammar-tabs-client="pending" />
+    // A link strip with no `selectedKey` waits for the current path before it draws its tabs: the vendor selects the first tab of an uncontrolled strip and animates its indicator from there.
+    const awaitsPath = isLinkTabs && props.selectedKey === undefined && locationPath === undefined
+    // The vendor indicator (a shared element) starts a change at the old tab's rect and releases it a frame later; a frame that never comes (a hidden or throttled page, a shot taken at once) would leave
+    // the underline under the previous tab, and the vendor mounts its tabs after our commit, so no effect of ours sees them first. Watch the strip and clear the overrides unless a press is travelling.
+    useLayoutEffect(() => {
+        const frame = frameRef.current
+        if (!isClientReady || frame === null || typeof MutationObserver === "undefined") return
+        const settle = () => {
+            if (performance.now() < pressedUntil.current) return
+            frame.querySelectorAll<HTMLElement>(".tabs__indicator").forEach((indicator) => {
+                if (indicator.style.translate === "" && indicator.style.width === "" && indicator.style.height === "") return
+                indicator.style.removeProperty("translate")
+                indicator.style.removeProperty("width")
+                indicator.style.removeProperty("height")
+                // Flush the style so the removal is not read as a change to transition to, then drop what it started.
+                void indicator.offsetWidth
+                indicator.getAnimations().forEach((animation) => animation.cancel())
+            })
+        }
+        const observer = new MutationObserver(settle)
+        observer.observe(frame, { childList: true, subtree: true, attributes: true, attributeFilter: ["style"] })
+        settle()
+        return () => observer.disconnect()
+    }, [isClientReady, awaitsPath])
+
+    // The selected tab is always in view in a scrolling strip (a phone strip is wider than its box): after the first draw and whenever the selection, the list or the box changes.
+    useLayoutEffect(() => {
+        const frame = frameRef.current
+        if (!isClientReady || frame === null || folds) return
+        const reveal = () => {
+            const scroller = frame.querySelector<HTMLElement>(".tabs__list-container__scroller")
+            const tab = frame.querySelector<HTMLElement>("[role='tab'][aria-selected='true']")
+            if (scroller === null || tab === null) return
+            const box = scroller.getBoundingClientRect()
+            const at = tab.getBoundingClientRect()
+            const delta = at.left < box.left ? at.left - box.left : at.right > box.right ? at.right - box.right : 0
+            if (Math.abs(delta) >= 1) scroller.scrollBy({ left: delta, behavior: "instant" })
+        }
+        reveal()
+        // A second pass a frame later: the selected tab's weight and the fit settle after the commit that selected it.
+        const later = requestAnimationFrame(reveal)
+        // The vendor mounts its tabs after our commit and moves `aria-selected` itself: reveal when the strip is resized and when its tabs or their selection change.
+        const mutations = new MutationObserver(reveal)
+        mutations.observe(frame, { childList: true, subtree: true, attributes: true, attributeFilter: ["aria-selected"] })
+        const resizes = typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(reveal)
+        resizes?.observe(frame)
+        // A viewport that changes and settles back to the strip's old width reports no resize to the observer, yet clamped the scroll: the window event does.
+        window.addEventListener("resize", reveal)
+        return () => { window.removeEventListener("resize", reveal); cancelAnimationFrame(later); mutations.disconnect(); resizes?.disconnect() }
+    }, [isClientReady, awaitsPath, selectedKey, labelSignature, folds])
+
+    if (!isClientReady || awaitsPath) return <div aria-hidden="true" className={tabsFrameClassName} data-contract={frameContract} {...frameData} data-grammar-tabs-client="pending" />
 
     const tabs = shownItems.map((item) => (
         <HeroTabs.Tab
