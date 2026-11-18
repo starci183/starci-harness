@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.46.1 - 2026-11-18
+
+- Changed: the family version 0.46.1 (IntervalChart and FunnelChart in @starci/grammar). No rule change.
+
 ## 0.46.0 - 2026-11-18
 
 - New rule `starci-grammar/no-raw-media` (R442 `FE_RAW_MEDIA_ELEMENT`): a raw `<img>`, `<video>` or `<picture>` in app source is refused with the component to use (`Image`, `Illustration`, `Video`). It applies where `no-raw-structural-element` does (app source and workspace packages except the `<family>-ui` package, the Grammar's own implementation) and leaves Freestyle regions alone. It overlaps the canon `no-native-img` (R62 `FE_NATIVE_IMAGE`, which still points at `next/image`): see the report.

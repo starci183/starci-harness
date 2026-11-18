@@ -1,5 +1,12 @@
 # Changelog
 
+## 6.13.40 - 2026-11-18
+
+- Added (`templates/app/skeleton/.starcistacks/brand/media.yaml` and `media.md`, both editions, PROJECT-BRAND-2, R437): the brand starter gains the named media bases `bases: { <name>: { version, text } }`, with `social-image` (4:5 or 1:1 photographic, brand colour as accent), `video-broll` (9:16, calm daylight, real service-business settings) and `presenter` (framing and background for an AI presenter), each version 1 and none asking for text, letters or numbers in the pixels. `illustration.yaml` stays and is read as the base named `illustration`. The scaffold writes both files once and sync never renders them; slot `app.starcistacks.brand` allows them.
+- Changed (`runtime/scripts/hfs/rules/brand.mts`, R437): a prompt file is judged against the base it names in `basePrompt.name` (default `illustration`): its recorded `basePrompt.version` must be that base's current one (`HFS_BRAND_PROMPT_STALE`) and its `prompt` must start with that base's text (`HFS_BRAND_PROMPT_INCOMPLETE`). A `media.yaml` that is not a non-empty `bases` map of lowercase kebab-case names (not `illustration`) to `{ version: <integer from 1>, text }` is `HFS_BRAND_INVALID`. `HFS_BRAND_MISSING` now needs neither sheet file.
+- Added (failure code `HFS_BRAND_BASE_UNKNOWN`, local-only: a warning in `--env local`, an error in `--env prod`): a prompt file names a base that neither `illustration.yaml` nor `media.yaml` defines. Registered in `failure-codes.yaml`, both `rules.yaml` mirrors (R437), both `slots.yaml` mirrors, the A15 finder list, the README tables and `check-env-source-key.spec.mts` EXPECTED_LOCAL_ONLY.
+- Changed (`knowledge/hfs/canon-pins.yaml`): the Grammar family at 0.46.1 (`~0.46.1`). The `@starci/hfs` self-pin is 6.13.40.
+
 ## 6.13.39 - 2026-11-18
 
 - Changed (slot `fe.route`, R439): Next's metadata files (`icon`, `apple-icon`, `opengraph-image`, `twitter-image`) are allowed in any route segment under `[locale]/` (e.g. a per-page share image `app/[locale]/(auth)/cv/[slug]/opengraph-image.tsx`), not only at the app root; R439 exempts a metadata image at any depth of `src/app/`.

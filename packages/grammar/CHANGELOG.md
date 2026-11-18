@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.46.1 - 2026-11-18 - IntervalChart and FunnelChart
+
+- Added (`IntervalChart`, composite): ranges on one scale. Props: `label` (required), `rows`, `empty` (required), `format?: (value: number) => string`, `isLoading?`, `error?`. A row is `{ label, low, high, point, tone?, isReference?, valueLabel? }`; `label` is unique per chart (it is the key) and the reference row says so in its own words. `tone` is `accent`, `success`, `warning`, `danger` or `neutral`: the range takes the tone's soft fill, the point takes the tone itself; the reference row is neutral and the others take the accent when `tone` is left out. The first `isReference` row draws one dashed line through every row at its point. The value is real text at the row's end (`valueLabel`, or `point (low - high)` through `format`); the two scale ends (rounded out to a round step, kept at zero when the data starts above it) are text under the plots.
+- Phone: below 33rem of chart width (a container query, not the viewport) each row stacks, label and value over the plot.
+- States: `isLoading` keeps the labels given (three skeleton rows when none) and draws the ranges and values as geometry; precedence loading, error, then empty.
+- Added (DNA): `DNA-COMMON-INTERVAL-CHART-ONE-SCALE` (plots of one width), `DNA-COMMON-INTERVAL-CHART-REFERENCE-ONE-LINE` (the reference line at one place in every row), `DNA-COMMON-INTERVAL-CHART-STACKS-NARROW` (at 375 the label is above the plot), role `data-views`.
+- Stories: `Navigation & Data/Interval chart` (IntervalChartReference, IntervalChartStacks, IntervalChartNoReference, IntervalChartStates), each with a play function at 1440 and 390.
+- Contexts: `contexts/ui/components/data-views.md` choose row `ranges`; `contexts/ui/situations.md` row; `contexts/grammars/contract.yaml` renderer, slots and the three DNA laws.
+- Added (`FunnelChart`, composite): ordered stages on one scale. Props: `label` (required), `stages`, `empty` (required), `format?: (value: number) => string`, `isLoading?`, `error?`. A stage is `{ label, count, value?, tone?, stepLabel? }`; `label` is unique per chart (it is the key). The bar is the count's share of the largest stage, all bars from one inline edge, the count as real text inside the bar in the tone's soft pair (`x-soft` with `x-soft-foreground`; `neutral` is `default`); `tone` defaults to `accent` and is the app's reading. `value` is a string the app has written, shown at the stage's end.
+- Between two bars: a neutral chip with the share of the stage before that came through (`62.9 %`, `–` after a stage of zero) and the drop-off count (`-460`, in the danger colour; `+20` when a stage gained). `stepLabel` replaces the drop-off words. Stages are never sorted by the chart.
+- Phone: below 33rem of chart width (a container query, not the viewport) each stage stacks: chip, then label and value, then the bar.
+- States: `isLoading` keeps the labels given (four skeleton rows when none) and draws the bars, chips and values as geometry at the same height as the ready chart; precedence loading, error, then empty.
+- Added (DNA, role `data-views`): `DNA-COMMON-FUNNEL-CHART-ONE-SCALE` (tracks of one width), `DNA-COMMON-FUNNEL-CHART-ONE-START` (bars start at one inline edge), `DNA-COMMON-FUNNEL-CHART-STACKS-NARROW` (at 375 the label is above the bar).
+- Stories: `Navigation & Data/Funnel chart` (FunnelChartSteps, FunnelChartStacks, FunnelChartEdges, FunnelChartStates), each with a play function at 1440 and 390.
+- Contexts: `ui/components/data-views.md` choose row `funnel`; `ui/situations.md` row; `grammars/contract.yaml` renderer, slots and the three laws; `project/index.md` regenerated.
+
 ## 0.46.0 - 2026-11-18 - The media family, one empty state, the shell chrome
 
 - A minor (the release gate): `Image` loses `aspect`, `fallback` and `srcSet` for `ratio`, a built-in neutral error plate and `renditions`; `Video` loses `src` and `captions` for `sources` and `tracks`; `EmptyNotice` loses `iconSource` and `artwork` for `scope` and `media`; the DNA law `DNA-COMMON-EMPTY-ONE-ACTION` is renamed `DNA-COMMON-EMPTY-ACTIONS`; `eslint-grammar-core` adds a rule.
