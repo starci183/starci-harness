@@ -15,8 +15,12 @@ const TRANSIENT_TEXTS = ['ECONNRESET', 'ECONNREFUSED', 'ECONNABORTED', 'ETIMEDOU
 const CODES = TRANSIENT_TEXTS.join('|');
 /** A quoted literal that is exactly one code. */
 const QUOTED = new RegExp(String.raw`(['"\x60])(${CODES})\1`, 'u');
-/** A regular expression literal (after `(`, `=`, `,`, `:`, `!`, `&`, `|`, `?`, `{`, `;` or a line start) that names a code. */
-const PATTERN = new RegExp(String.raw`(?:^|[(=,:!&|?{;]\s*)\/(?![/*])(?:\\.|[^/\n])*\b(${CODES})\b(?:\\.|[^/\n])*\/[a-z]*`, 'u');
+/**
+ * A regular expression literal (after `(`, `=`, `,`, `:`, `!`, `&`, `|`, `?`, `{`, `;` or a line start) that names a code. The body is
+ * `(?:\\.|[^/\\\n])*`: an escape or a character that is neither a slash nor a backslash, so each character has exactly one way to match and a
+ * literal full of escapes (`ạả…`, a Vietnamese character class) is read in linear time, never by catastrophic backtracking.
+ */
+const PATTERN = new RegExp(String.raw`(?:^|[(=,:!&|?{;]\s*)\/(?![/*])(?:\\.|[^/\\\n])*?\b(${CODES})\b(?:\\.|[^/\\\n])*\/[a-z]*`, 'u');
 
 /** A back-end source file the check reads: TypeScript under src/, not a spec, a declaration or a test-support file. */
 const isSource = (file: string): boolean => /^src\/.+\.[cm]?ts$/u.test(file) && !/\.d\.[cm]?ts$/u.test(file)

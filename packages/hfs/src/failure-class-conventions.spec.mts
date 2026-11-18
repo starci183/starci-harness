@@ -41,6 +41,19 @@ for (const edition of ['lite', 'full']) {
     assert.match(String(findings[0]?.message), /explicit failureClass/);
   });
 
+  test(`BE_FAILURE_CLASS_BY_TEXT@${edition} reads a regex literal full of \\u escapes in linear time, and still finds a code in one`, (t) => {
+    const escapes = Array.from({ length: 52 }, (_, index) => `\\u${(0x1ea0 + index).toString(16)}`).join('');
+    const vietnamese = `const VIETNAMESE = /[a-z${escapes}]+(?:\\s+[a-z${escapes}]+)*$/iu\n`;
+    const { root, files } = tree(t, {
+      'src/modules/domain/brain/extraction.policy.ts': vietnamese.repeat(3),
+      'src/modules/domain/brain/retry.policy.ts': `const retryable = /[${escapes}]*ETIMEDOUT/u\n`,
+    });
+    const started = performance.now();
+    const findings = failureClassFindings({ repoRoot: root, files });
+    assert.ok(performance.now() - started < 1000, 'the rule reads an escape-heavy line in linear time');
+    assert.deepEqual(findings.map(({ path: file, text }) => [file, text]), [['src/modules/domain/brain/retry.policy.ts', 'ETIMEDOUT']]);
+  });
+
   test(`BE_FAILURE_CLASS_BY_TEXT@${edition} accepts an explicit failureClass, a comment, a spec and a word that only contains a code`, (t) => {
     const { root, files } = tree(t, {
       'src/modules/integrations/mail/mail.client.ts': '// a dropped connection (ECONNRESET) is transient: the judge decides\nexport class MailDown extends Error { readonly failureClass = "transient" }\nexport const label = "ECONNRESET_COUNT"\n',
