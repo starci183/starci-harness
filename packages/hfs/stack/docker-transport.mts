@@ -9,7 +9,7 @@ import path from 'node:path';
 import type { DeployConfig } from './config.mjs';
 import type { Spawn, SpawnOptions, StackContext } from './context.mjs';
 import { writePrivate } from './private-file.mjs';
-import { openSealedSession } from './remote.mjs';
+import { openSealedSession, sealedSshOptions } from './remote.mjs';
 import type { SealedSession, SshOptions } from './remote.mjs';
 import { controlSettings, createSshSession, sessionDirectory } from './ssh-session.mjs';
 import type { Argv, SshConnection } from './ssh-session.mjs';
@@ -109,7 +109,7 @@ export async function withDockerTransport<T>(ctx: StackContext, config: DeployCo
     const baseEnv = session ? dockerEnvironment(ctx, session, controlPath) : ctx.env;
     const { env, executable } = privateSshEnvironment(ctx, baseEnv, dir, controlPath);
     const configFile = path.join(env.HOME ?? '', '.ssh', 'config');
-    const options = ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=20', ...(session?.port ? ['-p', String(session.port)] : [])];
+    const options = ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=20', ...(session ? sealedSshOptions(session) : [])];
     const argv: Argv = session || executable !== 'ssh' ? [executable, ...options, '-F', configFile, '--', alias] : ['ssh', ...options, '--', alias];
     connection = createSshSession(ctx, { argv, env, controlPath, cleanup });
     const spawn = dockerSpawn(ctx, connection, env, alias);

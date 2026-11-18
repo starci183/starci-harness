@@ -111,7 +111,7 @@ function declaredKeys(spec: EnvironmentSpec | undefined, member: string, keys: s
 }
 
 /** The keys of the one sealed SSH member `deploy.remote.sealed` names (stack/remote.mts): the deploy transport reads exactly these. */
-export const SSH_GROUP: readonly string[] = Object.freeze(["VPS_HOST", "VPS_USER", "privateKey", "knownHosts"]);
+export const SSH_GROUP: readonly string[] = Object.freeze(["VPS_HOST", "VPS_USER", "VPS_PORT", "privateKey", "knownHosts"]);
 
 /**
  * The two transport members of an environment: the operator's member(s) `deploy.remote.sealed` names and

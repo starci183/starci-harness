@@ -62,6 +62,28 @@ test('a bound private Docker session pins the accepted SSH port and closes its o
   assert.equal(fs.existsSync(temporaryHome), false);
 });
 
+test('a sealed member VPS_PORT reaches the docker transport with the key and known_hosts passed explicitly', async t => {
+  const f = files(t), secretsDir = path.join(f.root, 'secrets');
+  for (const member of ['ops', 'key', 'known']) f.write(`secrets/${member}.enc`, 'synthetic envelope');
+  const calls: SpawnCall[] = [];
+  const ctx = { env: { HOME: f.root, PATH: '' }, platform: 'linux', sshPath: 'ssh', stderr: () => {},
+    spawn: (file: string, args: string[], options: SpawnCall['options']) => { calls.push({ file, args, options }); return { status: 0, stdout: '', stderr: '' }; },
+    sops: { decrypt: () => ({ VPS_HOST: STACK.host, VPS_USER: STACK.user, VPS_PORT: '9999' }),
+      decryptBinary: (file: string) => file.endsWith('key.enc') ? 'synthetic PRIVATE KEY' : 'host.example ssh-ed25519 synthetic' },
+  };
+  const config = asConfig({ repoRoot: f.root, env: 'staging', stack: 'fixture', secretsDir, remote: { sealed: { ops: 'ops', sshKey: 'key', knownHosts: 'known' } }, verify: { http: [] } });
+  await withDockerTransport(asContext(ctx), config, {}, async bound => {
+    bound.spawn('docker', ['info']);
+    const ssh = calls.find(call => call.file === 'ssh' && call.args.includes('-MNf'));
+    assert.ok(ssh);
+    assert.equal(ssh.args[ssh.args.indexOf('-p') + 1], '9999');
+    assert.ok(ssh.args.includes('-i'));
+    assert.ok(ssh.args.some(arg => arg.startsWith('UserKnownHostsFile=')));
+    assert.ok(ssh.args.includes('IdentitiesOnly=yes'));
+  });
+  assert.throws(() => openSealedSession(asContext({ ...ctx, sops: { ...ctx.sops, decrypt: () => ({ VPS_HOST: STACK.host, VPS_USER: STACK.user, VPS_PORT: 'abc' }) } }), config), /VPS_PORT/);
+});
+
 test('only a bound stack tool boundary removes AGE aliases while preserving lazy custody and explicit tool options', async t => {
   const f = files(t);
   f.write('hfs.json', JSON.stringify({ kind: 'app', project: 'fixture', edition: 'lite' }));
