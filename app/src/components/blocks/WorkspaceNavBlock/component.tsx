@@ -4,6 +4,7 @@ import {
     FolderIcon,
     InboxIcon,
     RectangleGroupIcon,
+    ServerStackIcon,
 } from "@heroicons/react/24/outline"
 import { CoreGrammarRoot, IdentityLockup, Sidebar, StatusDot, Text, type SidebarGroup } from "@starci/grammar/core"
 import type { DataSlot, SlotLabels, ToneLabel } from "../../../modules/types"
@@ -27,6 +28,7 @@ export interface WorkspaceNavBlockLabels {
     readonly inbox: string
     readonly inboxBadge: string
     readonly settings: string
+    readonly vps: string
     readonly projects: string
     readonly slot: SlotLabels
 }
@@ -66,6 +68,7 @@ export const WorkspaceNavBlockBase = (props: WorkspaceNavBlockBaseProps) => {
                     source: InboxIcon,
                     ...(openDecisions > 0 ? { badge: openDecisions, badgeLabel: labels.inboxBadge, badgeMax: 99 } : {}),
                 },
+                { id: "vps", label: labels.vps, source: ServerStackIcon },
                 { id: "settings", label: labels.settings, source: Cog6ToothIcon },
             ],
         },

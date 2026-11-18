@@ -6,6 +6,7 @@ export const APP_ROUTES = {
     overview: "/",
     inbox: "/inbox",
     settings: "/settings",
+    vps: "/vps",
     workflow: "/w/:project/:workflow",
     task: "/t/:project/:task",
 } as const

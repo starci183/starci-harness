@@ -1,0 +1,128 @@
+# The managed-VPS policy, read by cli/src/harness/vps/policy.ts (`starci vps list|add|doctor|bootstrap|swarm|ui|grant|revoke|domain|cloudflare`).
+# The owner's fleet of servers is managed centrally from the harness host; a project's own deploy access to one of them stays
+# in that project (PROJECT-STACKS-5 `vps` member), handed out by `starci vps grant` (contexts/harness/managed-vps.md).
+#
+# This file is POLICY ONLY. The harness repository is public: no host, IP, port, user name or secret is ever written here or in
+# any tracked file. The inventory (one `<id>.yaml` and one sealed `<id>.enc.yaml` per server) lives in `inventory.dir`, which
+# .gitignore keeps out of git, and the secret scan refuses a tracked server file (policy/security.yaml `refusedPaths`).
+# A password is never accepted, stored or sent: every login is a key, and a key named like VPS_PASSWORD or ROOT_PASSWORD is
+# refused anywhere (policy/security.yaml `refusedKeys`).
+schema: starci/vps@1
+# Where the inventory lives, relative to ops/. `example` is the one tracked file of `dir`: a server file with placeholder values.
+inventory:
+  dir: vps/servers
+  example: example.yaml
+  # The owner's Cloudflare API token for the domain below, sealed to the owner key (sops+age); gitignored.
+  cloudflare: vps/cloudflare.enc.yaml
+# How the CLI reaches a server: its own ssh, the sealed key in a private temp file, the sealed known_hosts pinned, batch mode.
+ssh:
+  connectTimeoutSeconds: 20
+  commandTimeoutSeconds: 600
+  # `vps add` records the server's host keys with ssh-keyscan of these types and asks the owner to confirm each fingerprint.
+  keyTypes: [ed25519, ecdsa, rsa]
+# The OS a server file names (`os`, its /etc/os-release ID) and the family whose commands serve it.
+osFamilies:
+  ubuntu: debian
+  debian: debian
+  almalinux: rhel
+  rocky: rhel
+  centos: rhel
+  rhel: rhel
+# `starci vps` is made for a CLEAN, empty VPS: bootstrap owns the whole box. A box that already runs a hosting control panel or
+# serves 80/443 (shared hosting, a hand-built server) is not clean: `vps doctor` says so and `vps bootstrap` refuses it, and the owner
+# handles it by hand; nothing here automates around a panel.
+bootstrap:
+  # What makes a box not clean: a control panel found by its folder, or a listener on these ports that is not Docker's.
+  notClean:
+    panels:
+      directadmin: /usr/local/directadmin
+      cpanel: /usr/local/cpanel
+      plesk: /usr/local/psa
+    ports: [80, 443]
+  # The non-root user every later verb logs in as (sudo without a password, key only); root keeps key login for recovery.
+  opsUser: starci-ops
+  # Written to /etc/ssh/sshd_config.d/00-starci.conf (first match wins in sshd), validated with `sshd -t` before the reload.
+  sshd:
+    PasswordAuthentication: "no"
+    KbdInteractiveAuthentication: "no"
+    PermitRootLogin: prohibit-password
+    PubkeyAuthentication: "yes"
+    PermitEmptyPasswords: "no"
+    MaxAuthTries: "3"
+    X11Forwarding: "no"
+  # The firewall of a server: the family's default unless its server file names csf.
+  # Only these ports are open; `ssh` is the server's sshPort. Swarm's 2377/7946/4789 stay closed while a server is a one-node swarm.
+  # CSF beside Docker: csf.conf DOCKER="0" (csf fails on `iptables -N DOCKER` once Docker made the chain first, and stays dead),
+  # TESTING="0" (testing mode keeps lfd off), and /etc/csf/csfpost.sh restarts Docker after every csf restart so its chains come back;
+  # a change restarts in the order: stop docker, clear csf.error, restart csf and lfd, start docker.
+  firewall:
+    byFamily:
+      debian: ufw
+      rhel: firewalld
+    openPorts: ["80/tcp", "443/tcp", ssh]
+  # Brute-force guard: fail2ban's sshd jail with ufw or firewalld; CSF brings its own lfd, so csf installs no fail2ban.
+  intrusion:
+    maxRetry: 5
+    findTimeMinutes: 10
+    banTimeMinutes: 60
+  # Security updates install by themselves: unattended-upgrades on debian, dnf-automatic (security only) on rhel.
+  autoUpdates: true
+# Docker Engine from download.docker.com at the version contexts/stack/pins.yaml `hosts.<pin>` holds.
+docker:
+  pin: docker-ce
+  repository:
+    debian: https://download.docker.com/linux
+    rhel: https://download.docker.com/linux
+# `vps swarm init`: a one-manager swarm advertised on the server's own address; more nodes are a design of their own (PROJECT-STACKS-3).
+swarm:
+  advertise: host
+  autolock: false
+  # The attachable overlay network every managed stack (the UI, the tunnel connector, the edge proxy, the apps) attaches to.
+  network: edge
+# `vps ui up`: Portainer CE and its agent as one Swarm stack, published on no port; the server's Cloudflare tunnel (with an Access
+# application in front) is its only door, whatever the server's ingress mode.
+ui:
+  stack: starci-ui
+  server: {image: portainer/portainer-ce, pin: portainer-ce}
+  agent: {image: portainer/agent, pin: portainer-agent}
+  # The UI answers on <subdomain>.<domain>: one flat label per server, since Cloudflare's universal certificate covers one level only.
+  subdomain: "ui-{id}"
+  port: 9000
+# `vps edge up`: Traefik as the swarm stack below, publishing 80 and 443 in host mode on every address of the box (a clean box owns
+# them), routing to the swarm services of the network above that carry its labels. Certificates come by ACME DNS-01 through
+# Cloudflare: the owner's token is the swarm secret the proxy reads as CF_DNS_API_TOKEN_FILE; acme.json lives in a named volume.
+edge:
+  stack: starci-edge
+  proxy: {image: traefik, pin: traefik}
+  resolver: cf
+# Each app name's door under the owner's domain. `mode` is chosen per server (its file's `ingress.mode`), else `defaultMode`:
+# tunnel (a proxied CNAME to the server's Cloudflare tunnel) or edge (a DNS-only A record to the server, Traefik with a DNS-01
+# certificate, renewed by Traefik itself). The UI (`--to ui`) and SSH (`--to ssh`) always go through the tunnel.
+ingress:
+  domain: starci.org
+  defaultMode: tunnel
+  tunnel:
+    # One named, remotely managed tunnel per server; its run token is sealed in the server's <id>.enc.yaml (`tunnelToken`).
+    name: "starci-vps-{id}"
+    connector: {image: cloudflare/cloudflared, pin: cloudflared}
+    # Optional SSH through the tunnel (`vps domain add <id> ssh --to ssh`): the owner reaches it with `cloudflared access ssh`.
+    sshSubdomain: "ssh-{id}"
+  # The scopes of the one API token the owner creates in the Cloudflare dashboard (My Profile > API Tokens > Create Custom
+  # Token), limited to the zone above and the owner's account; `vps cloudflare set-token` seals it.
+  tokenScopes:
+    tunnel: ["Zone / DNS / Edit (zone starci.org)", "Account / Cloudflare Tunnel / Edit (the owner's account)"]
+    edge: ["Zone / DNS / Edit (zone starci.org)", "Zone / Zone / Read (zone starci.org, for Traefik's DNS-01)"]
+  api: https://api.cloudflare.com/client/v4
+# `vps grant`: one deploy user and key per project and environment, in the docker group, no sudo, no password.
+grant:
+  userPrefix: deploy-
+  keyType: ed25519
+  groups: [docker]
+  # The sealed member of the app that receives VPS_HOST, VPS_USER, privateKey and knownHosts (PROJECT-STACKS-5, SEALED_SSH_KEYS).
+  member: vps
+# `vps list` health: what turns a server's row into an alert.
+health:
+  failedLoginsHours: 24
+  failedLoginsAlert: 20
+  diskAlertPercent: 85
+  memoryAlertPercent: 90

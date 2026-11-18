@@ -1,10 +1,10 @@
 import { existsSync } from "node:fs"
 import { join, relative, sep } from "node:path"
 import { parse } from "yaml"
-import { envelopesAllowed, neverRead } from "../../harness/policy.js"
+import { envelopesAllowed, neverRead, refusalRules } from "../../harness/policy.js"
 import type { Policy } from "../../harness/policy.js"
-import { isSealedPath, judgedText, lineFindings, scanDiff } from "../../shared/secrets.js"
-import type { SecretFinding, SecretHit } from "../../shared/secrets.js"
+import { isSealedPath, judgedText, lineFindings, refusedKeyFindings, scanDiff } from "../../shared/secrets.js"
+import type { RefusalRules, SecretFinding, SecretHit } from "../../shared/secrets.js"
 import { applyExceptions, coverageLabel } from "./exceptions.js"
 import type { Coverage, StaleEntry } from "./exceptions.js"
 import { readTreeFile } from "./tree-files.js"
@@ -32,11 +32,11 @@ const asAddedFile = (file: string, text: string): string => {
 }
 
 /** Every finding of the lines of one readable file. */
-const lineHits = (file: string, text: string): SecretHit[] =>
-    text.split(/\r?\n/).flatMap((line, index) => lineFindings(file, line).map((pattern) => ({ file, line: index + 1, pattern, text: line.trim() })))
+const lineHits = (file: string, text: string, rules: RefusalRules): SecretHit[] =>
+    text.split(/\r?\n/).flatMap((line, index) => [...lineFindings(file, line), ...refusedKeyFindings(line, rules)].map((pattern) => ({ file, line: index + 1, pattern, text: line.trim() })))
 
 /** Judges one readable file: a sops envelope as a whole, any other file line by line. */
-const judgeFile = (file: string, text: string): SecretHit[] => (isSealedPath(file) ? scanDiff(asAddedFile(file, text), [], () => text) : lineHits(file, text))
+const judgeFile = (file: string, text: string, rules: RefusalRules): SecretHit[] => (isSealedPath(file) ? scanDiff(asAddedFile(file, text), [], () => text, rules) : lineHits(file, text, rules))
 
 /** The `:line` of a finding, empty for a finding of a whole file. */
 const lineSuffix = (line: number | null): string => (line === null ? "" : ":" + String(line))
@@ -93,7 +93,7 @@ const readFiles = (root: string, present: readonly string[], policy: Policy, all
             unread += 1
             continue
         }
-        raw.push(...judgeFile(file, read.text))
+        raw.push(...judgeFile(file, read.text, refusalRules(policy)))
     }
     return { unjudged, unread }
 }
@@ -107,7 +107,7 @@ export const scanSecrets = (root: string, files: readonly string[], policy: Poli
     const allowed = envelopesAllowed(policy, profile)
     // A deleted file holds no secret any more; existence is asked of the file system, so a neverRead file is never opened.
     const present = files.filter((file) => existsSync(join(root, file)))
-    const raw: SecretHit[] = scanDiff("", present, () => undefined)
+    const raw: SecretHit[] = scanDiff("", present, () => undefined, refusalRules(policy))
     const { unjudged, unread } = readFiles(root, present, policy, allowed, raw)
     const judged = exceptSecrets(root, raw, policy)
     const stale = complete ? judged.stale : []

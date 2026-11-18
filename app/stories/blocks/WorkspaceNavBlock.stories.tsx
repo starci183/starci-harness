@@ -26,6 +26,7 @@ const meta = {
                 inbox: NAV.inbox,
                 inboxBadge: NAV.inboxBadge(2),
                 settings: NAV.settings,
+                vps: NAV.vps,
                 projects: NAV.projects,
                 slot: slotLabels(CONNECTION.fixtures),
             },

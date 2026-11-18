@@ -13,7 +13,7 @@ import { evaluateFlow, flowCheckoutOf, flowLines, loadLanes, recordsOf } from ".
 import type { FlowReport } from "../../harness/lanes.js"
 import { livenessOf, loadLiveness } from "../../harness/liveness.js"
 import { readMachine, runningWorkers, textOf } from "../../harness/machine.js"
-import { loadOps } from "../../harness/ops.js"
+import { loadOps, locateOps } from "../../harness/ops.js"
 import { locateOrca, terminalRead } from "../../harness/orca/client.js"
 import type { OrcaBinary } from "../../harness/orca/client.js"
 import { RouteRefusal, routeTask } from "../../harness/router.js"
@@ -27,6 +27,9 @@ import { loadStallRules } from "../../harness/stall.js"
 import { supervisorStatus, supervisorTitle } from "../../harness/supervisor.js"
 import type { SupervisorState } from "../../harness/supervisor.js"
 import { poolWindows } from "../../harness/usage.js"
+import { fleetOf } from "../../harness/vps/fleet.js"
+import { loadVpsPolicy } from "../../harness/vps/policy.js"
+import { ownerStore } from "../../harness/vps/sealed.js"
 import type { Project } from "../../harness/work.js"
 import { listWorkflows, parallelSlots, snapshotOf } from "../../harness/workflow.js"
 import type { Snapshot, WorkflowRow as LedgerWorkflow, WorkflowTask } from "../../harness/workflow.js"
@@ -37,7 +40,7 @@ import { getTask } from "../../harness/tasks.js"
 import { packageVersion } from "../version.js"
 import { taskStatusVerb } from "../task/status.js"
 import { rulingCommand } from "./write.js"
-import type { Check, ConfigEntry, Decision, EventRow, OwnerRequestRow, GraphNode, Liveness, Member, Overview, ProjectSummary, ProviderId, ProviderStatus, Seat, TaskDetail, WorkflowDetail, WorkflowRow } from "./contract.js"
+import type { Check, ConfigEntry, Decision, EventRow, OwnerRequestRow, GraphNode, Liveness, Member, Overview, ProjectSummary, ProviderId, ProviderStatus, Seat, TaskDetail, VpsFleet, WorkflowDetail, WorkflowRow } from "./contract.js"
 import { placeHolding, places, projectsOf, readLedger } from "./places.js"
 
 /** How many ledger and host events the overview's feed shows, newest first. */
@@ -488,6 +491,13 @@ export const inboxOf = async (): Promise<Decision[]> => {
 
 /** `GET /api/config`: every harness setting, as `config list` reads it. */
 export const configOf = (): ConfigEntry[] => listSettings().map((setting) => ({ key: setting.key, file: setting.file, value: setting.value }))
+
+/** `GET /api/vps`: the managed fleet with each server's health, the same rows as `starci vps list --json`. */
+export const fleetOfHost = async (): Promise<VpsFleet> => {
+    const opsDir = locateOps()
+    const servers = await fleetOf(loadVpsPolicy(opsDir), opsDir, true, ownerStore)
+    return { servers, alerts: servers.reduce((sum, row) => sum + (row.health?.alerts.length ?? 0), 0) }
+}
 
 /** How many owner requests the app lists, newest first. */
 const OWNER_REQUESTS_SHOWN = 50

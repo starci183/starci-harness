@@ -103,6 +103,10 @@ import { hostUpVerb } from "./core/host/up.js"
 import { hostDownVerb } from "./core/host/down.js"
 import { hostInstallVerb } from "./core/host/install.js"
 import { hostUninstallVerb } from "./core/host/uninstall.js"
+import { vpsDoctorVerb, vpsListVerb } from "./core/vps/read.js"
+import { vpsBootstrapVerb, vpsSwarmVerb, vpsUiVerb } from "./core/vps/act.js"
+import { vpsAddVerb, vpsGrantVerb, vpsRevokeVerb } from "./core/vps/access.js"
+import { vpsCloudflareVerb, vpsDomainVerb, vpsEdgeVerb } from "./core/vps/domain.js"
 import { configListVerb } from "./core/config/list.js"
 import { configGetVerb } from "./core/config/get.js"
 import { configSetVerb } from "./core/config/set.js"
@@ -233,6 +237,17 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     hostDownVerb,
     hostInstallVerb,
     hostUninstallVerb,
+    vpsListVerb,
+    vpsDoctorVerb,
+    vpsAddVerb,
+    vpsBootstrapVerb,
+    vpsSwarmVerb,
+    vpsUiVerb,
+    vpsGrantVerb,
+    vpsRevokeVerb,
+    vpsEdgeVerb,
+    vpsDomainVerb,
+    vpsCloudflareVerb,
     configListVerb,
     configGetVerb,
     configSetVerb,

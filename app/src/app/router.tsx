@@ -3,6 +3,7 @@ import { InboxPage } from "../features/pages/InboxPage"
 import { OverviewPage } from "../features/pages/OverviewPage"
 import { SettingsPage } from "../features/pages/SettingsPage"
 import { TaskPage } from "../features/pages/TaskPage"
+import { VpsPage } from "../features/pages/VpsPage"
 import { WorkflowPage } from "../features/pages/WorkflowPage"
 import { APP_ROUTES } from "../modules/routes"
 import { Providers } from "./providers"
@@ -22,6 +23,7 @@ const router = createHashRouter([
             { path: APP_ROUTES.task.slice(1), element: <TaskPage /> },
             { path: APP_ROUTES.inbox.slice(1), element: <InboxPage /> },
             { path: APP_ROUTES.settings.slice(1), element: <SettingsPage /> },
+            { path: APP_ROUTES.vps.slice(1), element: <VpsPage /> },
             { path: "*", element: <OverviewPage /> },
         ],
     },

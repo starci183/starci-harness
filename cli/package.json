@@ -37,6 +37,8 @@
     "!dist/**/*.test.js",
     "!dist/**/*.test.js.map",
     "ops",
+    "!ops/vps/servers",
+    "!ops/vps/*.enc.yaml",
     "policy",
     "contexts",
     "skills",

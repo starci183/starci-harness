@@ -6,4 +6,5 @@ export const queryKeys = {
     inbox: ["inbox"] as const,
     ownerRequests: ["owner-requests"] as const,
     config: ["config"] as const,
+    vps: ["vps"] as const,
 }

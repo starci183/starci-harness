@@ -44,6 +44,8 @@ declare module "@starci/hfs/runtime/scripts/hfs/secret-store.mjs" {
     export function sealedFiles(directory: string): string[]
     /** The decrypted KEY map of one sealed member, through the sops seam. */
     export function readMap(file: string, sops: unknown): Readonly<Record<string, string>>
+    /** Seals named values into one sealed member (merging what it holds), to the public age recipients given (starci vps seals to the owner key). */
+    export function writeSecret(request: { readonly file: string; readonly values: Record<string, string>; readonly age: string[]; readonly sops: unknown }): void
 }
 
 declare module "@starci/hfs/runtime/scripts/hfs/secret-document.mjs" {

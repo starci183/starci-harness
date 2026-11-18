@@ -39,6 +39,7 @@ export const NAV = {
     workflows: "Workflows",
     inbox: "Cần quyết định",
     settings: "Cài đặt",
+    vps: "Máy chủ VPS",
     projects: "Dự án",
     inboxBadge: (count: number) => `${count} quyết định đang chờ`,
 } as const
@@ -371,6 +372,30 @@ export const OWNER_REQUEST = {
     open: "chờ Supervisor",
     closed: "đã đóng",
     closedBy: (cmdId: string) => `đã đóng · ${cmdId}`,
+} as const
+
+/* ------------------------------------------------------------------ Máy chủ VPS */
+
+export const VPS = {
+    title: "Máy chủ VPS",
+    description: "Đội máy chủ do harness quản lý: sức khỏe đọc qua khóa SSH đã niêm phong, không đổi gì trên máy.",
+    tableTitle: "Các máy",
+    tableFact: "`starci vps list`; thêm máy bằng `starci vps add`",
+    columns: { server: "Máy", status: "Trạng thái", resources: "Tài nguyên", failed: "SSH thất bại 24h", swarm: "Swarm", door: "Lối vào" },
+    serverLine: (provider: string, os: string, projects: number) => `${provider} · ${os} · ${projects} dự án`,
+    up: (days: string) => `Hoạt động ${days} ngày`,
+    unreachable: "Không kết nối được",
+    notProbed: "Chưa đo",
+    cpu: (cpus: string, load: string) => `${cpus} CPU · tải ${load}`,
+    usage: (memory: string, disk: string) => `RAM ${memory} · đĩa ${disk}`,
+    swarm: (nodes: string, services: string) => `${nodes} node · ${services} service`,
+    noSwarm: "chưa có swarm",
+    panel: "panel",
+    alertTitle: (servers: number) => `${servers} máy có cảnh báo`,
+    alertLine: (id: string, alerts: string) => `${id}: ${alerts}`,
+    failedLogins: (count: number, hours: number) => `${count} lần đăng nhập SSH thất bại trong ${hours} giờ`,
+    empty: "Chưa có máy nào",
+    emptyHint: "Thêm một máy bằng `starci vps add <id>`; khóa được niêm phong ngay, không bao giờ dùng mật khẩu.",
 } as const
 
 /* ------------------------------------------------------------------ Cài đặt */

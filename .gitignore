@@ -18,3 +18,8 @@ cli/cli/
 cli/CONTRIBUTING.md
 cli/LICENSE
 *.tgz
+# The managed-VPS inventory (ops/vps.yaml `inventory`): a server's host, port, user and sealed keys never enter this PUBLIC
+# repository, sealed or not; only the placeholder example.yaml is tracked. The secret scan refuses a tracked server file too.
+ops/vps/servers/*.yaml
+!ops/vps/servers/example.yaml
+ops/vps/cloudflare.enc.yaml

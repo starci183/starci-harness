@@ -27,6 +27,7 @@ const selectedFor = (pathname: string): string => {
     if (pathname.startsWith("/w/") || pathname.startsWith("/t/")) return "workflows"
     if (pathname.startsWith(APP_ROUTES.inbox)) return "inbox"
     if (pathname.startsWith(APP_ROUTES.settings)) return "settings"
+    if (pathname.startsWith(APP_ROUTES.vps)) return "vps"
     return "overview"
 }
 
@@ -72,6 +73,9 @@ export const WorkspaceNavBlock = (props: WorkspaceNavBlockProps) => {
             case "settings":
                 void navigate(APP_ROUTES.settings)
                 return
+            case "vps":
+                void navigate(APP_ROUTES.vps)
+                return
             default:
                 void navigate(APP_ROUTES.overview)
         }
@@ -95,6 +99,7 @@ export const WorkspaceNavBlock = (props: WorkspaceNavBlockProps) => {
                     inbox: NAV.inbox,
                     inboxBadge: NAV.inboxBadge(openDecisions),
                     settings: NAV.settings,
+                    vps: NAV.vps,
                     projects: NAV.projects,
                     slot: slotLabels(CONNECTION[live]),
                 },
