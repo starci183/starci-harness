@@ -39,6 +39,7 @@ import { declaredDefaultLocale, galleryAllowedHosts, galleryParams, galleryPort,
 import { DEFAULT_PORT, NODE_IMAGE, dockerfilePath } from '../runtime/scripts/hfs/rules/docker.mjs';
 import { isFile } from '../runtime/scripts/lib/fs-kind.mjs';
 import { readDeclaredSonarKey } from './sonar-key.mjs';
+import { NESTED_LOCK_STEP, nestedLockDrift, nestedLockFix, npmResolveLock, type NestedLockResult } from './nested-lock.mjs';
 import { RETIRED_GROUP, guardWrites, heldLines, isGuardedSource, type GuardedWrite } from './compile-guard.mjs';
 import { HARNESS_CHECK_COPIES, environmentKeyNotices, harnessCheckScriptEdits, looseCheckNotices } from './harness-checks.mjs';
 import { readDeclaredStack, stackWorkflowVariables } from './stack-images.mjs';
@@ -945,8 +946,16 @@ function syncOptions(argv: readonly string[]): { write: boolean; cwdAt: number }
   return { write, cwdAt };
 }
 
+/** The report lines for the lockfiles of managed sub-packages that no longer match their package.json (rendered content when not yet written). */
+function nestedLockLines(root: string, targets: readonly RenderedTarget[]): string[] {
+  const contents = new Map(targets.filter(target => target.mode === 'file').map(target => [target.path, target.content] as const));
+  return nestedLockDrift(root, targets.map(target => target.path), contents).map(item => `HFS_SYNC_DRIFT ${item.lock}: does not match ${item.dir}/package.json (${item.names.join(', ')}), so npm ci in ${item.dir}/ fails; run "npx --no-install starci app sync --execute" or "${nestedLockFix(item.dir)}"`);
+}
+
 function reportSyncCheck(root: string, targets: readonly RenderedTarget[], out: (line: string) => unknown, retired: readonly string[] = []): number {
   const results = checkTargets(root, targets);
+  const locks = nestedLockLines(root, targets);
+  for (const line of locks) out(line);
   const bad = results.filter(item => item.status !== 'ok');
   for (const file of retired) out(`HFS_SYNC_DRIFT ${file}: retired, ${retiredReason(file)}; run "npx --no-install starci app sync --execute" to delete it`);
   for (const result of bad) {
@@ -955,10 +964,12 @@ function reportSyncCheck(root: string, targets: readonly RenderedTarget[], out: 
     out(`HFS_SYNC_DRIFT ${result.path}: ${result.status}, expected sha256 ${result.expectedHash.slice(0, 12)}${found}${where}`);
   }
   out(`starci app sync: ${results.length - bad.length} of ${results.length} in sync${bad.length ? '; run "npx --no-install starci app sync --execute"' : ''}`);
-  return bad.length || retired.length ? 1 : 0;
+  return bad.length || retired.length || locks.length ? 1 : 0;
 }
 
-export async function runSync(argv: string[], { cwd = process.cwd(), out = (line: string): unknown => process.stdout.write(`${line}\n`), presets, parseYaml, loadTs }: {
+export async function runSync(argv: string[], { cwd = process.cwd(), out = (line: string): unknown => process.stdout.write(`${line}\n`), presets, parseYaml, loadTs, lock = npmResolveLock }: {
+  /** Resolves the lockfile of a sub-package folder (npm by default); a test passes its own. */
+  lock?: (dir: string) => NestedLockResult;
   cwd?: string; out?: (line: string) => unknown; presets?: Presets | undefined; parseYaml?: ParseYaml | undefined;
   /** The TypeScript of a side folder the compile guard compiles with; the app's own install by default. */
   loadTs?: Parameters<typeof guardWrites>[2];
@@ -992,10 +1003,17 @@ export async function runSync(argv: string[], { cwd = process.cwd(), out = (line
       // The folder a retired file leaves empty goes too (gallery/src): git keeps no empty folder, and an empty one is a stray path in the tree.
       for (const dir of new Set(removed.map(file => path.posix.dirname(file)))) if (dir !== '.' && fs.existsSync(path.join(root, dir)) && !fs.readdirSync(path.join(root, dir)).length) fs.rmdirSync(path.join(root, dir));
       for (const dir of LITE_RETIRED_DIRS) if (removed.length && fs.existsSync(path.join(root, dir)) && !fs.readdirSync(path.join(root, dir)).length) fs.rmdirSync(path.join(root, dir));
+      // A managed sub-package whose package.json the render changed keeps no stale lockfile: npm resolves it again (the lockfile beside it is judged, not created).
+      let lockFailed = 0;
+      for (const item of nestedLockDrift(root, targets.map(target => target.path))) {
+        const result = lock(path.join(root, item.dir));
+        if (result.ok) out(`wrote ${item.lock} (resolved again: ${NESTED_LOCK_STEP})`);
+        else { lockFailed += 1; out(`HFS_SYNC_DRIFT ${item.lock}: ${item.dir}/package.json changed and npm could not resolve the lockfile (${result.detail}); run "${nestedLockFix(item.dir)}"`); }
+      }
       for (const project of unchecked) out(`notice: the writes compiled by ${project} were not type-checked: its TypeScript is not installed (run npm install, then "npx --no-install starci app check")`);
       for (const group of held) for (const line of heldLines(group)) out(line);
       out(`starci app sync: ${written.length} written, ${free.length - written.length} already in sync${holds.size ? `, ${holds.size} held` : ''}`);
-      return held.length ? 1 : 0;
+      return held.length || lockFailed ? 1 : 0;
     }
     return Math.max(reportSyncCheck(root, targets, out, retired), declared.length ? 1 : 0);
   } catch (error) {

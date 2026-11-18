@@ -6,7 +6,7 @@ import path from 'node:path';
 import type { StackContext } from './context.mjs';
 import { StackError } from './errors.mjs';
 import type { ActionResult } from './remote.mjs';
-import type { LocalConfig } from './local-config.mjs';
+import { isAdvisoryRow, type LocalConfig } from './local-config.mjs';
 import { missingKeys, missingStep, neededKeys, openCustody } from './local-custody.mjs';
 import type { Custody } from './local-custody.mjs';
 import { hostPrerequisites, tableLines } from './local-host.mjs';
@@ -24,14 +24,24 @@ export async function preflight(ctx: StackContext, local: LocalConfig, deps: Loc
 /** The refusal result of a failed preflight: the table with its owner steps, then the code. */
 export const hostRefusal = (lines: string[]): ActionResult => ({ ok: false, lines, refused: { code: 'STACK_LOCAL_HOST', message: 'this machine is missing what the environment needs; run the owner steps above, then retry' } });
 
-/** Runs the setup commands (install, codegen); a command with `skipIfExists` that finds its marker is skipped. */
-export async function runSetup(ctx: StackContext, local: LocalConfig, custody: Custody | null): Promise<string[]> {
+const firstLine = (text: string): string => (text.split(/\r?\n/u)[0] ?? 'failed').slice(0, 300);
+
+/** Runs the setup commands (install, codegen); a command with `skipIfExists` that finds its marker is skipped. With `advisory`, a failing gallery command is listed there instead of thrown. */
+export async function runSetup(ctx: StackContext, local: LocalConfig, custody: Custody | null, advisory?: string[]): Promise<string[]> {
   const out: string[] = [];
   const dir = stateOf(ctx, local);
   const record = readRecord(dir);
   for (const run of local.setup) {
     if (run.skipIfExists && fs.existsSync(path.join(local.repoRoot, run.cwd, run.skipIfExists))) { out.push(`setup ${run.name}: skipped (${run.skipIfExists} exists)`); continue; }
-    await runCommand(ctx, local, run, runEnvironment(ctx, local, run, custody, null));
+    try {
+      await runCommand(ctx, local, run, runEnvironment(ctx, local, run, custody, null));
+    } catch (error) {
+      // The gallery's own install failing is reported and does not stop the stack (`advisory` collects it); every other setup command still does.
+      if (advisory === undefined || !isAdvisoryRow(run.name)) throw error;
+      advisory.push(run.name);
+      out.push(`FAIL  setup ${run.name}: ${firstLine((error as Error).message)}`);
+      continue;
+    }
     record.receipts.setup[run.name] = { at: new Date(ctx.now()).toISOString(), digest: commandDigest(run) };
     out.push(`setup ${run.name}: done`);
   }

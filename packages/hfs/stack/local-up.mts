@@ -11,7 +11,7 @@ import type { RunResult, StackContext } from './context.mjs';
 import { dbTarget } from '../db/postgres.mjs';
 import { failure, refusal } from './errors.mjs';
 import type { ActionResult } from './remote.mjs';
-import type { LocalConfig } from './local-config.mjs';
+import { isAdvisoryRow, type LocalConfig } from './local-config.mjs';
 import { missingKeys, missingStep, openCustody } from './local-custody.mjs';
 import type { Custody } from './local-custody.mjs';
 import { hostRefusal, preflight, runSetup } from './local-prepare.mjs';
@@ -203,6 +203,21 @@ function refuseTakenRange(ctx: StackContext, local: LocalConfig, deps: LocalDeps
   throw refusal(BASE_PORT_TAKEN, `${local.env}: ${overlapLine(overlap)}; nothing was started: ${overlap.fix as string} (starci app stack doctor --env ${local.env} shows the same row)`);
 }
 
+/**
+ * Waits for each readiness row. The first failing row of the api, the web or a service stops `up` with STACK_LOCAL_READY; a failing gallery row (isAdvisoryRow)
+ * is listed in `advisory` and the wait goes on, so the rest of the stack is reported and stays running while `up` still exits non-zero.
+ */
+export async function waitReady(ctx: StackContext, local: LocalConfig, deadline: number, advisory: string[]): Promise<string[]> {
+  const lines: string[] = [];
+  for (const row of local.ready) {
+    const result = await waitFor(ctx, deadline, () => probe(ctx, local, row));
+    lines.push(`${result.ok ? 'ok    ' : 'FAIL  '}ready ${result.detail}`);
+    if (!result.ok && isAdvisoryRow(row.name)) { advisory.push(row.name); continue; }
+    if (!result.ok) throw failure('STACK_LOCAL_READY', `${row.name} is not ready: ${result.detail}; read a process log with: starci app stack logs --env ${local.env} --service ${local.processes.map((run) => run.name).join('|')}`);
+  }
+  return lines;
+}
+
 /** `up` for a dev environment. */
 export async function upLocal(ctx: StackContext, local: LocalConfig, { execute = false, timeoutSeconds = DEFAULT_TIMEOUT_SECONDS }: { execute?: boolean; timeoutSeconds?: number } = {}, deps: LocalDeps = {}): Promise<ActionResult> {
   refuseTakenRange(ctx, local, deps);
@@ -213,7 +228,8 @@ export async function upLocal(ctx: StackContext, local: LocalConfig, { execute =
   const lines = [...host.lines];
   const custody = openCustody(ctx, local);
   lines.push(`custody: ${custody.values.size} key file(s) in the host-local directory`);
-  lines.push(...await runSetup(ctx, local, custody));
+  const advisory: string[] = [];
+  lines.push(...await runSetup(ctx, local, custody, advisory));
   makeDataDirectories(ctx, local);
   const values = composeValues(local, custody);
   const started = await compose(ctx, local, ['up', '-d', '--build', ...local.services.map((service) => service.name)], { values, heavy: true, label: 'compose up' });
@@ -225,14 +241,14 @@ export async function upLocal(ctx: StackContext, local: LocalConfig, { execute =
     if (!ready.ok) throw failure('STACK_LOCAL_SERVICE', `${service.name} did not become ready in ${timeoutSeconds}s (${ready.detail}); read it with: starci app stack logs --env ${local.env} --service ${service.name}`);
   }
   lines.push(await provisionDatabase(ctx, local, custody), await migrate(ctx, local, custody, deps), ...await seed(ctx, local, custody, 'migrate', 'always'), ...await seedLevels(ctx, local, custody), ...await seed(ctx, local, custody, 'migrate', 'once'), ...await startProcesses(ctx, local, custody, deps));
-  for (const row of local.ready) {
-    const result = await waitFor(ctx, deadline, () => probe(ctx, local, row));
-    lines.push(`${result.ok ? 'ok    ' : 'FAIL  '}ready ${result.detail}`);
-    if (!result.ok) throw failure('STACK_LOCAL_READY', `${row.name} is not ready: ${result.detail}; read a process log with: starci app stack logs --env ${local.env} --service ${local.processes.map((run) => run.name).join('|')}`);
-  }
+  lines.push(...await waitReady(ctx, local, deadline, advisory));
   lines.push(...await seed(ctx, local, custody, 'ready'));
   lines.push(...await routeTunnel(ctx, local));
   lines.push(...(local.tunnel?.routes ?? []).map((route) => `origin ${route.name} (public): https://${route.host}`));
   lines.push(...local.origins.map((origin) => `origin ${origin.name}: ${origin.url.replaceAll(/\$\{port\.([a-z][a-z0-9-]*)\}/gu, (_whole, name: string) => String(local.ports[name]))}`));
+  if (advisory.length > 0) {
+    lines.push(`FAIL  ${advisory.join(', ')}: the gallery did not come up; the api, the web and the other services are running (read it with: starci app stack logs --env ${local.env} --service gallery)`);
+    return { ok: false, lines, data: { origins: local.origins, failed: advisory } };
+  }
   return { ok: true, lines, data: { origins: local.origins } };
 }
