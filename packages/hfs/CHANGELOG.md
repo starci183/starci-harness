@@ -2,6 +2,7 @@
 
 ## 6.13.41 - 2026-11-18
 
+- Fixed (`rules/failure-class.mts`, R432 `BE_FAILURE_CLASS_BY_TEXT`): a regular expression literal is read in linear time. Its body let a backslash match either the escape or the plain-character alternative, so a literal full of `\u` escapes (a Vietnamese character class) backtracked catastrophically and hung `hfs structure`; the plain-character class now excludes the backslash.
 - `starci app sync --execute` retires the three managed files an hfs before 6.13.33 wrote under `gallery/src` (`main.js`, `explain.js`, `style.css`) and removes the folder they leave empty; the dry run names each as `HFS_SYNC_DRIFT ... retired`. The thin gallery (`gallery/` = `vite.config.js`, `package.json`, `index.html`, `README.md` over `@starci/gallery`) is the one truth: sync never writes `gallery/src`, `app.gallery` and `HFS_APP_GALLERY_MISSING` never demand it.
 - `HFS_CHECK_CACHE_UNWARMED` now names the one-round way: `npx --no-install starci app push`.
 - `HFS_CLI_HFS_SKEW` (`core/app/skew.ts`): `starci app check|sync|audit|coverage|emit|codemod|release|ci` prints a coded line when the CLI is not the app's exact `starci-harness` pin, when the `@starci/hfs` it loaded is not the one it requires, or when the app's `node_modules/starci-harness` is not its pin (a stale install); `sync --execute` and `check --fix` are refused with exit 2 unless `STARCI_ALLOW_CLI_SKEW=1`.

@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process"
+import { captureGitSync } from "../../shared/git.js"
 import { BOTH_EDITIONS, defineVerb, WRITERS } from "../../shared/verb.js"
 import type { FlagSpec, VerbContext, VerbResult } from "../../shared/verb.js"
 import { appRootOf } from "../../harness/memory-plan.js"
@@ -128,14 +129,18 @@ const realPorts = (cwd: string, say: (line: string) => void): PushPorts => {
     const root = appRootOf(cwd)
     return {
         git: (args) => {
-            const run = spawnSync("git", ["-c", "core.quotePath=false", ...args], { cwd: root, encoding: "utf8" })
-            return { exitCode: run.status ?? 1, stdout: `${run.stdout}${run.status === 0 ? "" : run.stderr}` }
+            const run = captureGitSync(args, root)
+            return { exitCode: run.exitCode, stdout: run.exitCode === 0 ? run.stdout : `${run.stdout}\n${run.stderr}` }
         },
         check: () => {
             const run = spawnSync(process.execPath, [process.argv[1] ?? "", "app", "check", "--env", "prod", "--json"], { cwd: root, encoding: "utf8", maxBuffer: 256 * 1024 * 1024, stdio: ["ignore", "pipe", "inherit"] })
             return { exitCode: run.status ?? 1, stdout: run.stdout }
         },
-        push: (args) => spawnSync("git", ["push", ...args], { cwd: root, stdio: "inherit" }).status ?? 1,
+        push: (args) => {
+            const run = captureGitSync(["push", ...args], root)
+            for (const text of [run.stdout, run.stderr]) if (text !== "") say(text)
+            return run.exitCode
+        },
         say,
     }
 }
