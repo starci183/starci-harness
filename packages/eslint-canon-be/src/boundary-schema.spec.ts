@@ -60,6 +60,9 @@ for (const edition of ["lite", "full"]) {
                   { filename: SCHEMA, code: `${Z}export const A = z.record(z.string().max(32), z.number()).refine((entries) => Object.keys(entries).length <= 20)` },
                   { filename: SCHEMA, code: `${Z}export const A = z.map(z.string().max(8), z.number()).check(z.maxSize(5))` },
                   { filename: SCHEMA, code: `${Z}export const A = z.record(z.enum(["a", "b"]), z.number()).refine((entries) => Object.keys(entries).length <= 2)` },
+                  // a record keyed by a closed enum is bounded by its keys; the engine's package check accepts it where it refuses a refine
+                  { filename: SCHEMA, code: `${Z}export const A = z.record(z.enum(["a", "b"]), z.number().int())` },
+                  { filename: SCHEMA, code: `${Z}export const A = z.partialRecord(z.enum(["a", "b"]), z.string().max(8))` },
                   // enums, literals, numbers, booleans, dates and a fixed-format uuid owe no length
                   { filename: SCHEMA, code: `${Z}export const A = z.object({ k: z.enum(["a", "b"]), n: z.literal("x"), c: z.number().int(), b: z.boolean(), u: z.uuid(), d: z.date() })` },
                   { filename: SCHEMA, code: `${Z}export const A = z.tuple([z.string().max(4), z.number()])` },
@@ -86,6 +89,9 @@ for (const edition of ["lite", "full"]) {
                   { filename: SCHEMA, code: `${Z}export const A = z.array(z.string()).min(1)`, errors: [{ messageId: "counted" }, { messageId: "string" }] },
                   { filename: SCHEMA, code: `${Z}export const A = z.set(z.number())`, errors: [{ messageId: "counted" }] },
                   { filename: SCHEMA, code: `${Z}export const A = z.record(z.string().max(8), z.number())`, errors: [{ messageId: "refined" }] },
+                  { filename: SCHEMA, code: `${Z}export const A = z.record(z.enum(["a"]), z.string())`, errors: [{ messageId: "string" }] },
+                  { filename: SCHEMA, code: `${Z}export const A = z.record(z.string().max(8), z.number().int())`, errors: [{ messageId: "refined" }] },
+                  { filename: SCHEMA, code: `${Z}export const A = z.record(z.number())`, errors: [{ messageId: "refined" }] },
                   { filename: SCHEMA, code: `${Z}export const A = z.record(z.string(), z.number()).refine((entries) => Object.keys(entries).length <= 2)`, errors: [{ messageId: "string" }] },
                   { filename: SCHEMA, code: `${Z}export const A = z.map(z.string().max(8), z.number())`, errors: [{ messageId: "refined" }] },
                   // a bound that is none: infinite, non-positive, missing or the widest number

@@ -86,7 +86,7 @@ reads an inherited primary key; `entity-extends-base` (R342) refuses an entity t
 
 ## BE-PERSISTENCE-4 Lite holds no SQL text: entities or `callDbFunction`; full SQL is a `sql`-tagged constant
 
-Lite: TypeScript holds no SQL text outside the test world (R334). A table is read and written through its entity on an
+Lite: TypeScript holds no SQL text outside the test world (R334). The nivoos SDK's typed object read (`reach.objects(Type).query({ where, sort, limit })`, a file that imports `@starci/nivoos-sdk`) is no SQL text and passes. A table is read and written through its entity on an
 EntityManager (`find`, `findOne`, `count`, `exists`, `insert`, `save`, `update`, `delete`, `upsert`, `increment`, a pessimistic
 `lock` option) and `createQueryBuilder(Entity, "alias")` with named parameters for joins, aggregates, `SKIP LOCKED` and jsonb or
 vector operators; every table a migration creates has an entity, and a service maps entities to its contracts, no `<Name>Row`

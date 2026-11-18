@@ -9,7 +9,7 @@ export class IdentityRefreshTokenEntity {
     id!: string
 
     /** The device session the token belongs to. */
-    @Column({ name: "session_id", type: "uuid" })
+    @Column({ name: "identity_session_id", type: "uuid" })
     sessionId!: string
 
     /** The account the session belongs to. */

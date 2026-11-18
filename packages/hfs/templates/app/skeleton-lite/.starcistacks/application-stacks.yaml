@@ -308,6 +308,7 @@ data:
     - {id: database, kind: database, level: logical, component: db, adapter: {module: be/src/modules/integrations/seed/database.adapter.ts}}
   derived:
     - {component: ingress, rebuild: the ingress re-issues its certificates (ACME)}
+    - {component: storage, rebuild: the storage entrypoint reloads the repo-owned statics/ into the bucket (PROJECT-STATICS-2)}
 k8s:
   status: deferred
   reason: Lite production uses Docker Swarm with its own PostgreSQL service; Kubernetes belongs to a future full-edition deployment.

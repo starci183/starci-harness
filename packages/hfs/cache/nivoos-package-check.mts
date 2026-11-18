@@ -3,7 +3,7 @@
 // (a `build` child of the step's parity port). The nivoos CLI type-checks the entry under the package's own tsconfig, loads it, builds the seed document in memory and
 // fails when the committed seed document or secrets template differs from that fresh build. It runs inside the `checks` step, beside the project checks
 // (cache/project-checks.mts), wherever the hfs gate runs. A package reads what it reads (its sources, the SDK), so its verdict is never cached.
-// The CLI is the package's own dev dependency: resolved from packages/<name>/node_modules, then the app root's, by the `bin` its manifest names. When it is not
+// The CLI is the package's own dev dependency (`@starci/nivoos-cli`, or the package `nivoos`): resolved from packages/<name>/node_modules, then the app root's, by the `bin` its manifest names. When it is not
 // installed the finding says how to add it, and nothing is run.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -21,15 +21,28 @@ export function declaredNivoosPackages(repoRoot: string): NivoosPackage[] {
   try { return nivoosPackagesOf((JSON.parse(fs.readFileSync(path.join(repoRoot, 'hfs.json'), 'utf8')) as { sides?: unknown }).sides); } catch { return []; }
 }
 
-/** The script the `nivoos` bin of an install at `modules` (a node_modules folder) names, or null when the CLI is not installed there. */
-function binOf(modules: string): string | null {
+/** The packages that provide the `nivoos` bin: the published CLI first, then a package named for the bin. */
+export const NIVOOS_CLI_PACKAGES: readonly string[] = ['@starci/nivoos-cli', 'nivoos'];
+
+/** The script the `nivoos` bin of one CLI package installed under `modules` (a node_modules folder) names, or null when it is not installed there. */
+function binOfPackage(modules: string, name: string): string | null {
   try {
-    const manifest = JSON.parse(fs.readFileSync(path.join(modules, 'nivoos', 'package.json'), 'utf8')) as { bin?: string | Record<string, string> };
+    const folder = path.join(modules, ...name.split('/'));
+    const manifest = JSON.parse(fs.readFileSync(path.join(folder, 'package.json'), 'utf8')) as { bin?: string | Record<string, string> };
     const bin = typeof manifest.bin === 'string' ? manifest.bin : manifest.bin?.['nivoos'];
     if (bin === undefined) return null;
-    const file = path.join(modules, 'nivoos', bin);
+    const file = path.join(folder, bin);
     return fs.existsSync(file) ? file : null;
   } catch { return null; }
+}
+
+/** The script the `nivoos` bin of an install at `modules` names, from whichever CLI package provides it; null when the CLI is not installed there. */
+function binOf(modules: string): string | null {
+  for (const name of NIVOOS_CLI_PACKAGES) {
+    const file = binOfPackage(modules, name);
+    if (file !== null) return file;
+  }
+  return null;
 }
 
 /** The nivoos CLI script for a package: its own node_modules first, then the app root's; null when neither holds it. */
@@ -51,7 +64,7 @@ export async function runNivoosPackageChecks({ repoRoot, run, env }: { repoRoot:
     const folder = `packages/${entry.name}`;
     const cli = nivoosCli(repoRoot, entry.name);
     if (cli === null) {
-      findings.push({ code: NIVOOS_PACKAGE_CHECK, level: 'error', path: `${folder}/package.json`, message: `the nivoos CLI is not installed for ${folder}: add "nivoos" to the devDependencies of ${folder}/package.json (with the nivoos SDK it authors with) and run npm install, then \`nivoos package check ${entry.entry} --out ${entry.out}\` runs here (PROJECT-BUSINESS-1)` });
+      findings.push({ code: NIVOOS_PACKAGE_CHECK, level: 'error', path: `${folder}/package.json`, message: `the nivoos CLI is not installed for ${folder}: add "@starci/nivoos-cli" to the devDependencies of ${folder}/package.json (with the nivoos SDK it authors with) and run npm install, then \`nivoos package check ${entry.entry} --out ${entry.out}\` runs here (PROJECT-BUSINESS-1)` });
       lines.push(`  nivoos package check ${entry.name}: red, the nivoos CLI is not installed`);
       continue;
     }

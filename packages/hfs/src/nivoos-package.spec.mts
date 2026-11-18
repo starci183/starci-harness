@@ -88,6 +88,8 @@ test('R436 the tree: a declared package has its files, and a package that depend
   assert.deepEqual(nivoosFindings({ repoRoot, files: [...all, 'packages/biz/src/biz.package.ts'].filter((file) => !file.includes('other')), repo }), []);
   assert.equal(dependsOnNivoosSdk({ devDependencies: { nivoos: '1.0.0' } }), true);
   assert.equal(dependsOnNivoosSdk({ dependencies: { '@nivoos/sdk': '1.0.0' } }), true);
+  assert.equal(dependsOnNivoosSdk({ devDependencies: { '@starci/nivoos-cli': '1.0.0' } }), true);
+  assert.equal(dependsOnNivoosSdk({ dependencies: { '@starci/nivoos-sdk': '1.0.0' } }), true);
   assert.equal(dependsOnNivoosSdk({ dependencies: { zod: '1.0.0' } }), false);
 });
 
@@ -165,10 +167,12 @@ test('HFS_NIVOOS_PACKAGE_CHECK: without the nivoos CLI nothing runs and the find
   const result = await runNivoosPackageChecks({ repoRoot: root, run, env: process.env });
   assert.deepEqual(asked, [], 'a package whose CLI is missing is never run');
   assert.deepEqual(result.findings.map((finding) => [finding.code, finding.path]), [[NIVOOS_PACKAGE_CHECK, 'packages/biz/package.json']]);
-  assert.match(String(result.findings[0]?.message), /add "nivoos" to the devDependencies of packages\/biz\/package\.json/);
+  assert.match(String(result.findings[0]?.message), /add "@starci\/nivoos-cli" to the devDependencies of packages\/biz\/package\.json/);
   assert.deepEqual(result.lines, ['  nivoos package check biz: red, the nivoos CLI is not installed']);
   const rootOnly = appWith(t, { 'node_modules/nivoos/package.json': JSON.stringify({ name: 'nivoos', bin: 'cli.js' }), 'node_modules/nivoos/cli.js': 'process.exit(0);\n' });
   assert.ok(nivoosCli(rootOnly, 'biz')?.endsWith('cli.js'), 'the CLI of the app root serves a package that holds none');
+  const scoped = appWith(t, { 'node_modules/@starci/nivoos-cli/package.json': JSON.stringify({ name: '@starci/nivoos-cli', bin: { nivoos: 'dist/main.js' } }), 'node_modules/@starci/nivoos-cli/dist/main.js': 'process.exit(0);\n' });
+  assert.ok(nivoosCli(scoped, 'biz')?.endsWith('main.js'), 'the published CLI @starci/nivoos-cli provides the nivoos bin');
 });
 
 test('an app that declares no nivoos package runs no check', async (t) => {

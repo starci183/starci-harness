@@ -108,6 +108,16 @@ export const error = <div title={ERROR_COPY.title}>{ERROR_COPY['retry']}</div>;`
     });
     assert.deepEqual(unusedSymbolFindings({ ...context, repo: { profile: 'fe', edition } }).map(finding => finding.name), ['errors.global.retired', 'unused']);
   });
+
+  test(`HFS_UNUSED_SYMBOL ${edition}: a JSON catalog object handed on whole consumes every key under it, an alias or a member read does not`, t => {
+    const context = fixture(t, {
+      'tsconfig.json': '{ "compilerOptions": { "baseUrl": ".", "paths": { "@/*": ["apps/web/src/*"] } } }',
+      'apps/web/src/modules/i18n/messages/en.json': JSON.stringify({ app: { errors: { global: { title: 'Error', retry: 'Retry' } }, other: { gone: 'Gone' } } }),
+      'apps/web/src/features/error.tsx': `import messages from '@/modules/i18n/messages/en.json'
+export const Page = () => <Notice words={messages.app.errors.global} />`,
+    });
+    assert.deepEqual(unusedSymbolFindings({ ...context, repo: { profile: 'fe', edition } }).map(finding => finding.name), ['app.other.gone']);
+  });
 }
 
 test('HFS_UNUSED_SYMBOL: comments, type references, re-exports and tests alone cannot keep a member alive', t => {

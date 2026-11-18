@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.27.3 - 2026-11-18
+
+- Fixed (`no-raw-sql`): the nivoos SDK's typed object read, `reach.objects(Type).query({ where, sort, limit })`, is no SQL: a `.query(` whose receiver is an `.objects(...)` call, in a file that imports `@starci/nivoos-sdk`, passes. Any other `.query(` in that file is still refused.
+- Fixed (`schema-bounded`): a record keyed by a closed `z.enum` (`z.record`, `z.partialRecord`, `z.looseRecord`) is bounded by its keys. The nivoos package check refuses `.refine` as code, so the enum key is the bound a package schema can state; the `.refine` form stays accepted elsewhere.
+
 ## 3.27.2 - 2026-11-18
 
 - Changed (`lib/nivoos-profile.ts`): the nivoos authoring profile no longer applies `no-non-ascii-source` to a declared package (Vietnamese in literals, comments and identifiers); the literal-only narrowing inside the rule is removed and the rule is listed in `NIVOOS_RELAXED` with its reason. An undeclared package keeps the whole rule.
