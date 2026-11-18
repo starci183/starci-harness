@@ -1,5 +1,20 @@
 # Changelog
 
+## 6.13.41 - 2026-11-18
+
+- `starci app sync --execute` retires the three managed files an hfs before 6.13.33 wrote under `gallery/src` (`main.js`, `explain.js`, `style.css`) and removes the folder they leave empty; the dry run names each as `HFS_SYNC_DRIFT ... retired`. The thin gallery (`gallery/` = `vite.config.js`, `package.json`, `index.html`, `README.md` over `@starci/gallery`) is the one truth: sync never writes `gallery/src`, `app.gallery` and `HFS_APP_GALLERY_MISSING` never demand it.
+- `HFS_CHECK_CACHE_UNWARMED` now names the one-round way: `npx --no-install starci app push`.
+- `HFS_CLI_HFS_SKEW` (`core/app/skew.ts`): `starci app check|sync|audit|coverage|emit|codemod|release|ci` prints a coded line when the CLI is not the app's exact `starci-harness` pin, when the `@starci/hfs` it loaded is not the one it requires, or when the app's `node_modules/starci-harness` is not its pin (a stale install); `sync --execute` and `check --fix` are refused with exit 2 unless `STARCI_ALLOW_CLI_SKEW=1`.
+- `starci app push [git push args]` (`core/app/push.ts`): runs `app check --env prod`, commits the cache records a real run writes as their own commit (never an amend, hooks run), repeats until a run writes nothing (3 runs at most), then `git push` once; refuses a tree with uncommitted work outside `.starcistacks/cache` (`HFS_PUSH_DIRTY_TREE`) and a check red for another reason.
+- `project/gallery.md` PROJECT-GALLERY-1: the thin gallery has no `gallery/src`; an older CLI is the only thing that writes or demands it.
+- `project/check-cache.md` operating procedure step 3: push with `app push`.
+- `cli/README.md` "The starci CLI": which CLI judges an app, `HFS_CLI_HFS_SKEW`; `skills/starci/SKILL.md` one sentence.
+- `hfs.json` accepts an optional top-level `publishes`: a non-empty unique list of workspace package folders relative to the app root (for example `"packages/nivoos-sdk"`), the packages `starci deps publish-local` puts on the local registry. A malformed list is a shape problem in the words of the declaration.
+- `deps publish-local` also runs in an app whose hfs.json declares `publishes`: it publishes exactly those packages to the local registry with the harness rules (committed version, `starciSource` digest, `PUBLISH_LOCAL_VERSION_TAKEN`, the same `host up local-registry`), each built in dependency order after the app's own `npm ci`.
+- New refusals: `PUBLISH_LOCAL_UNDECLARED` (a package of the app not named in `publishes`), `PUBLISH_LOCAL_DECLARATION_BAD` (a malformed list, a folder that is no package, a private package), `PUBLISH_LOCAL_NOT_INSTALLED` (no `node_modules` at the app root). `PUBLISH_LOCAL_NOT_HARNESS` now names the `publishes` key. The peer-line judgement is the harness's and is skipped for an app. npm publishing stays main-only.
+- Consumers install them with `deps install-local <name>` as for any `@starci` package.
+- The `@starci/hfs` self-pin is 6.13.41.
+
 ## 6.13.40 - 2026-11-18
 
 - Added (`templates/app/skeleton/.starcistacks/brand/media.yaml` and `media.md`, both editions, PROJECT-BRAND-2, R437): the brand starter gains the named media bases `bases: { <name>: { version, text } }`, with `social-image` (4:5 or 1:1 photographic, brand colour as accent), `video-broll` (9:16, calm daylight, real service-business settings) and `presenter` (framing and background for an AI presenter), each version 1 and none asking for text, letters or numbers in the pixels. `illustration.yaml` stays and is read as the base named `illustration`. The scaffold writes both files once and sync never renders them; slot `app.starcistacks.brand` allows them.

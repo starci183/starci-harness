@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.161 - 2026-11-18
+
+- Fixed: one gallery truth, no `gallery/src` (sync retires the old managed files); `HFS_CLI_HFS_SKEW` names a CLI or hfs that is not the app's pin and refuses `sync --execute` and `check --fix` under it; `starci app push` commits the warm cache records and pushes in one round. Added: `deps publish-local` publishes an app's own packages declared in hfs.json `publishes` to the local registry (`PUBLISH_LOCAL_UNDECLARED`, `PUBLISH_LOCAL_DECLARATION_BAD`, `PUBLISH_LOCAL_NOT_INSTALLED`). @starci/hfs 6.13.41. Until the cli-follow step raises the CLI's requirement, the CLI runs the hfs it requires.
+
 ## 1.1.0-alpha.160 - 2026-11-18
 
 - Changed: the CLI requires @starci/hfs@6.13.40, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
