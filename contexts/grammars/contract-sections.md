@@ -12,7 +12,7 @@ the whole file and reads a section when it needs it: `starci contexts anchor <an
   - The shared scale · `contexts/grammars/contract.md#the-shared-scale` · 3 KB — A row of controls reads as one object, so its controls share one height.
   - Intent x placement -> variant · `contexts/grammars/contract.md#intent-x-placement---variant` · 2 KB — The app states what a command does; the composition states where it sits; Common's map turns the pair into a HeroUI variant.
   - Roles · `contexts/grammars/contract.md#roles` · 1 KB — Each heading is one role of contract.yaml `roles`.
-    - Card · `contexts/grammars/contract.md#card` · 3 KB — A card is ONE object on its own surface (a customer, an agent, a provider, a plan, a message, an approval), a dialog or an overlay; a collection (a list, a table, facts, figures, ...
+    - Card · `contexts/grammars/contract.md#card` · 4 KB — A card is ONE object on its own surface (a customer, an agent, a provider, a plan, a message, an approval), a dialog or an overlay; a collection (a list, a table, facts, figures, ...
     - Button · `contexts/grammars/contract.md#button` · 2 KB — Button is a command (`onPress`) or a destination (`href`) drawn as a button; the kind decides semantics, the shape only paints.
     - ButtonGroup · `contexts/grammars/contract.md#buttongroup` · 1 KB — An action group is two to five peers of one intent acting on one object (zoom, align).
     - Tabs · `contexts/grammars/contract.md#tabs` · 1 KB — Tabs switch whole panels; each tab owns its panel.
@@ -27,6 +27,7 @@ the whole file and reads a section when it needs it: `starci contexts anchor <an
     - List · `contexts/grammars/contract.md#list` · 2 KB — A list is rows of peers: a `ListBox` when picking is the task, `Section kind="list"` wherever the rows report (an existing surface or the page canvas, bounded or searched, ...
     - Link · `contexts/grammars/contract.md#link` · 1 KB — `Link` is a native destination carried by text or one image.
     - Grid · `contexts/grammars/contract.md#grid` · 2 KB — `Grid` names a track layout by the content it carries: peer `cards`, aligned `form` fields, `main-rail`, independent working `sections`, a reading `pair`, one `featured` focus ...
+    - Marketing motion · `contexts/grammars/contract.md#marketing-motion` · 2 KB — Four pieces give a public page its movement, over one set of ramps (0.47.3): `Reveal`, `Marquee`, `CountUp` and `StickyStory`.
     - EntryFrame · `contexts/grammars/contract.md#entryframe` · 1 KB — `EntryFrame` owns one full-height entry task.
     - ColorSwatch · `contexts/grammars/contract.md#colorswatch` · 1 KB — `ColorSwatch` previews an actual color value as content, with a required accessible `label`; the vendor owns the typed `color` data, its paint and transparency checkerboard.
     - Figure destinations · `contexts/grammars/contract.md#figure-destinations` · 1 KB — Each `Figure` may carry a native `href`, optional `Link.onFollow` and `isDisabled`.

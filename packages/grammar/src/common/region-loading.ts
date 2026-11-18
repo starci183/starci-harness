@@ -19,6 +19,8 @@ export const REGION_LOADING_EXEMPT: Readonly<Record<string, string>> = {
     "leaf/Sublabel": "static chrome: a group label stays real text",
     "leaf/Spinner": "is a pending cue, never a skeleton",
     "leaf/Text": "static chrome: copy stays real text",
+    "branch/CountUp": "a figure whose value the page gives; the final value is real text from the first byte",
+    "branch/StickyStory": "marketing scenery around content the page already holds; it waits for no read",
     "branch/DragItem": "a drag frame around content the app draws",
     "branch/DropdownMenu": "its entries are an overlay, a fresh region",
     "branch/Tooltip": "an overlay, a fresh region",

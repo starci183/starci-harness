@@ -41,6 +41,7 @@ tokens:
            success, success-foreground, success-soft-foreground, warning, warning-foreground, warning-soft-foreground,
            danger, danger-foreground, danger-soft-foreground,
            field-background, field-foreground, field-placeholder, field-border, field-shadow]
+  motion: [--grammar-motion-ease-out, --grammar-motion-ease-in-out, --grammar-motion-duration-base, --grammar-motion-duration-reveal, --grammar-motion-duration-count, --grammar-motion-stagger, --grammar-motion-distance-reveal, --grammar-motion-distance-step, --grammar-loop-marquee, --grammar-loop-marquee-compact, --grammar-story-pin-top, --grammar-story-height]   # 0.47.3 marketing motion: durations, easing and distances of Reveal, Marquee, CountUp and StickyStory; Common's ramps, a family overrides a step on its own root
   extension: [info, info-foreground]              # the one pair HeroUI lacks: each read falls back to accent, a family's theme.css sets both, an app may; no gate needs it set
   shape: [radius, field-radius]                   # every vendor corner derives from these
   corner: [--grammar-radius-tiny, --grammar-radius-compact, --grammar-radius-control, --grammar-radius-surface,
@@ -522,6 +523,19 @@ roles:
     states: [day content and its loading or empty states remain in the day region]
     grammarMayChange: ["nothing; tracks, reading order and spacing are Common"]
     dna: []
+
+  - id: motion
+    ui: ui/components/motion.md
+    renderers: [Reveal, Marquee, CountUp, StickyStory]
+    vendorParity: []                              # no HeroUI part: four marketing-page pieces over the Grammar's own ramps
+    slots: ["Reveal: children, the one region (rise) or its direct children (stagger) that fade up on entering the viewport", "Marquee: label (the group's accessible name) and the items, drawn twice so the loop closes", "CountUp: value, locale, format (Intl.NumberFormat options), prefix, suffix", "StickyStory: label, steps (id, content, panel; two or more), stage (start or end)"]
+    variants:
+      kind: { values: [rise, stagger], chosenBy: "app by motion.choose.reveal: one region, or a set of peers that follow one another", default: rise, applies: Reveal }
+      stage: { values: [start, end], chosenBy: "app: the side the pinned stage stands on, in reading order", default: end, applies: StickyStory }
+    sizes: none
+    states: ["static (the base of every piece: content complete, nothing hidden, moving or drawn twice; reduced motion, a failed script and a browser without scroll timelines land here)", "scroll-driven (animation-timeline: view(), no script)", "observed (a small observer marks the state where the browser has no scroll timeline)", "counting (CountUp: the moving figure is aria-hidden, the final value stays in the accessibility tree)", "paused (Marquee under the pointer or focus)", "pinned (StickyStory on a wide screen with motion allowed; on a phone each step shows its own panel below its text)"]
+    grammarMayChange: [the ramp values of the motion tokens on the family root, the easing, the distance and the cycle]
+    dna: [DNA-COMMON-MOTION-TOKENS-BOUND, DNA-COMMON-REVEAL-REDUCED-STATIC, DNA-COMMON-MARQUEE-REDUCED-STATIC, DNA-COMMON-MARQUEE-COPY-HIDDEN, DNA-COMMON-MARQUEE-PAUSES, DNA-COMMON-COUNT-UP-REDUCED-STATIC, DNA-COMMON-STICKY-STORY-PINS, DNA-COMMON-STICKY-STORY-STAGE-HIDDEN, DNA-COMMON-STICKY-STORY-REDUCED-STATIC, DNA-COMMON-STICKY-STORY-REDUCED-PANELS, DNA-COMMON-STICKY-STORY-PHONE-STATIC, DNA-COMMON-STICKY-STORY-PHONE-PANELS]
 
   - id: entry-frame
     ui: ui/components/entry-frame.md
@@ -1380,6 +1394,72 @@ mustKeep:
       law: "A tile poster with bleed (0.47.2) ends at the card's end edge: within the card's border width, no gap between the picture and the edge."
       measure: { kind: relation, select: '[data-grammar-tile-poster-bleed="true"]', metric: right, op: ">=", tolerance: 3, ref: { within: '[data-component="SurfaceCard"]', select: '.starci-core-surface', metric: right } }
       owner: contract roles.card
+    - id: DNA-COMMON-MOTION-TOKENS-BOUND
+      role: motion
+      law: "Every marketing motion token (durations, easing, distances, the marquee cycle and the story stage) resolves to a value on the family root, so no piece reads an undefined step."
+      measure: { kind: tokens, metric: { contract: tokens.motion }, op: set }
+      owner: contract tokens.motion
+    - id: DNA-COMMON-REVEAL-REDUCED-STATIC
+      role: motion
+      law: "Under reduced motion a Reveal (the region, or each child of a stagger) runs no animation and stands fully opaque and in place: nothing slides or hides."
+      measure: { kind: style, context: { reducedMotion: reduce }, select: '[data-component="Reveal"][data-grammar-reveal-kind="rise"], [data-component="Reveal"][data-grammar-reveal-kind="stagger"] > *', checks: [{ metric: animation-name, op: "=", value: none }, { metric: opacity, op: "=", value: 1 }, { metric: translate, op: "=", value: 0px }] }
+      owner: contract roles.motion
+    - id: DNA-COMMON-MARQUEE-REDUCED-STATIC
+      role: motion
+      law: "Under reduced motion a Marquee does not drift and does not repeat: its track runs no animation and its copy is not drawn."
+      measure:
+        kind: style
+        context: { reducedMotion: reduce }
+        op: "="
+        cases:
+          - { select: '[data-component="Marquee"] .starci-core-marquee-track', metric: animation-name, value: none }
+          - { select: '[data-grammar-marquee-run="copy"]', metric: display, value: none }
+      owner: contract roles.motion
+    - id: DNA-COMMON-MARQUEE-COPY-HIDDEN
+      role: motion
+      law: "The repeated run of a Marquee is aria-hidden, so assistive technology meets each item once."
+      measure: { kind: attr, select: '[data-grammar-marquee-run="copy"]', metric: aria-hidden, op: "=", value: "true" }
+      owner: contract roles.motion
+    - id: DNA-COMMON-MARQUEE-PAUSES
+      role: motion
+      law: "A Marquee pauses while the pointer rests on it (and while focus is inside it)."
+      measure: { kind: interaction, select: '[data-component="Marquee"]', act: [hover], then: { select: '.starci-core-marquee-track', kind: style, metric: animation-play-state, op: "=", value: paused } }
+      owner: contract roles.motion
+    - id: DNA-COMMON-COUNT-UP-REDUCED-STATIC
+      role: motion
+      law: "Under reduced motion a CountUp does not count: it rests on its final value as plain text (state done)."
+      measure: { kind: attr, context: { reducedMotion: reduce }, select: '[data-component="CountUp"]', metric: data-grammar-count-state, op: "=", value: done }
+      owner: contract roles.motion
+    - id: DNA-COMMON-STICKY-STORY-PINS
+      role: motion
+      law: "On a wide screen with motion allowed the stage of a StickyStory is pinned: it sticks while the steps pass."
+      measure: { kind: style, select: '[data-component="StickyStory"] .starci-core-story-pin', metric: position, op: "=", value: sticky }
+      owner: contract roles.motion
+    - id: DNA-COMMON-STICKY-STORY-STAGE-HIDDEN
+      role: motion
+      law: "The pinned stage of a StickyStory is a decorative twin of the step panels: aria-hidden, so assistive technology reads each panel once, under its step."
+      measure: { kind: attr, select: '[data-component="StickyStory"] .starci-core-story-pin', metric: aria-hidden, op: "=", value: "true" }
+      owner: contract roles.motion
+    - id: DNA-COMMON-STICKY-STORY-REDUCED-STATIC
+      role: motion
+      law: "Under reduced motion a StickyStory has no stage: the pinned column is not drawn."
+      measure: { kind: style, context: { reducedMotion: reduce }, select: '[data-component="StickyStory"] .starci-core-story-pin', metric: display, op: "=", value: none }
+      owner: contract roles.motion
+    - id: DNA-COMMON-STICKY-STORY-REDUCED-PANELS
+      role: motion
+      law: "Under reduced motion every step of a StickyStory shows its own panel below its text, so no picture is lost with the stage."
+      measure: { kind: style, context: { reducedMotion: reduce }, select: '[data-component="StickyStory"] .starci-core-story-inline', metric: display, op: "!=", value: none }
+      owner: contract roles.motion
+    - id: DNA-COMMON-STICKY-STORY-PHONE-STATIC
+      role: motion
+      law: "On a phone a StickyStory has no stage either: the pinned column is not drawn."
+      measure: { kind: style, context: { viewport: 390x844 }, select: '[data-component="StickyStory"] .starci-core-story-pin', metric: display, op: "=", value: none }
+      owner: contract roles.motion
+    - id: DNA-COMMON-STICKY-STORY-PHONE-PANELS
+      role: motion
+      law: "On a phone the steps of a StickyStory stand one under another, each with its own panel below its text."
+      measure: { kind: style, context: { viewport: 390x844 }, select: '[data-component="StickyStory"] .starci-core-story-inline', metric: display, op: "!=", value: none }
+      owner: contract roles.motion
     - id: DNA-COMMON-CHAT-SURFACES
       role: pane-grid
       law: "Every chat thread (a PaneSection scroll role log: team chat, an agent's chat, an inbox thread, the assistant) is the page tone --background, never the white surface, whatever tone the app passes; it meets the head line above and the composer's line below edge to edge (owner 'nền chat luôn là background', drawing chat-surfaces, 0.37.31)."

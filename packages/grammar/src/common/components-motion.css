@@ -1,0 +1,279 @@
+/*
+ * Marketing motion (0.47.3): Reveal, Marquee, CountUp and StickyStory. Structure, timing and state wiring only: every duration, easing and
+ * distance is a ramp in ramps.css (`--grammar-motion-*`, `--grammar-loop-marquee*`, `--grammar-story-*`), every colour a HeroUI token.
+ *
+ * The rule of the sheet: the base rules draw the static, complete content (nothing hidden, nothing moving, nothing drawn twice). Motion is added
+ * only inside `prefers-reduced-motion: no-preference`, so reduced motion, a failed script and a browser without the feature all land on the base.
+ */
+@layer starci-grammar-common {
+    /* ---------- Reveal ---------- */
+    @keyframes grammar-reveal-rise {
+        from {
+            opacity: 0;
+            translate: 0 var(--grammar-motion-distance-reveal);
+        }
+
+        to {
+            opacity: 1;
+            translate: 0 0;
+        }
+    }
+
+    .starci-core-reveal { min-width: 0; }
+
+    @media (prefers-reduced-motion: no-preference) {
+        /* Scroll-driven: the browser ties the rise to the region's own entry into the viewport; no script. A staggered child starts a little later in the same scroll. */
+        @supports (animation-timeline: view()) {
+            .starci-core-reveal[data-grammar-reveal-kind="rise"],
+            .starci-core-reveal[data-grammar-reveal-kind="stagger"] > * {
+                animation: grammar-reveal-rise var(--grammar-loop-easing) both;
+                animation-timeline: view();
+                animation-range: entry 5% cover 25%;
+            }
+
+            .starci-core-reveal[data-grammar-reveal-kind="stagger"] > :nth-child(2) { animation-range: entry 9% cover 29%; }
+            .starci-core-reveal[data-grammar-reveal-kind="stagger"] > :nth-child(3) { animation-range: entry 13% cover 33%; }
+            .starci-core-reveal[data-grammar-reveal-kind="stagger"] > :nth-child(4) { animation-range: entry 17% cover 37%; }
+            .starci-core-reveal[data-grammar-reveal-kind="stagger"] > :nth-child(n + 5) { animation-range: entry 21% cover 41%; }
+        }
+
+        /* No scroll timeline: the observer marks a region that starts below the fold `pending` and then `in`; a region on screen is never marked. */
+        @supports not (animation-timeline: view()) {
+            .starci-core-reveal[data-grammar-reveal-kind="rise"][data-grammar-reveal-state],
+            .starci-core-reveal[data-grammar-reveal-kind="stagger"][data-grammar-reveal-state] > * {
+                transition:
+                    opacity var(--grammar-motion-duration-reveal) var(--grammar-motion-ease-out),
+                    translate var(--grammar-motion-duration-reveal) var(--grammar-motion-ease-out);
+            }
+
+            .starci-core-reveal[data-grammar-reveal-kind="rise"][data-grammar-reveal-state="pending"],
+            .starci-core-reveal[data-grammar-reveal-kind="stagger"][data-grammar-reveal-state="pending"] > * {
+                opacity: 0;
+                translate: 0 var(--grammar-motion-distance-reveal);
+            }
+
+            .starci-core-reveal[data-grammar-reveal-kind="stagger"][data-grammar-reveal-state] > :nth-child(2) { transition-delay: var(--grammar-motion-stagger); }
+            .starci-core-reveal[data-grammar-reveal-kind="stagger"][data-grammar-reveal-state] > :nth-child(3) { transition-delay: calc(var(--grammar-motion-stagger) * 2); }
+            .starci-core-reveal[data-grammar-reveal-kind="stagger"][data-grammar-reveal-state] > :nth-child(4) { transition-delay: calc(var(--grammar-motion-stagger) * 3); }
+            .starci-core-reveal[data-grammar-reveal-kind="stagger"][data-grammar-reveal-state] > :nth-child(n + 5) { transition-delay: calc(var(--grammar-motion-stagger) * 4); }
+        }
+    }
+
+    /* ---------- Marquee ---------- */
+    @keyframes grammar-marquee-run {
+        to { transform: translateX(-50%); }
+    }
+
+    @keyframes grammar-marquee-run-rtl {
+        to { transform: translateX(50%); }
+    }
+
+    /* Static base: one run, wrapped and centred, the copy not drawn. */
+    .starci-core-marquee {
+        container-type: inline-size;
+        min-width: 0;
+    }
+
+    .starci-core-marquee-track { display: block; }
+
+    .starci-core-marquee-run {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: var(--grammar-row-gap) var(--grammar-region-gap);
+    }
+
+    .starci-core-marquee-run[data-grammar-marquee-run="copy"] { display: none; }
+
+    @media (prefers-reduced-motion: no-preference) {
+        .starci-core-marquee {
+            overflow: clip;
+            -webkit-mask-image: linear-gradient(to right, transparent, var(--foreground) var(--grammar-marquee-fade), var(--foreground) calc(100% - var(--grammar-marquee-fade)), transparent);
+            mask-image: linear-gradient(to right, transparent, var(--foreground) var(--grammar-marquee-fade), var(--foreground) calc(100% - var(--grammar-marquee-fade)), transparent);
+        }
+
+        .starci-core-marquee-track {
+            display: flex;
+            inline-size: max-content;
+            animation: grammar-marquee-run var(--grammar-loop-marquee) var(--grammar-loop-easing) infinite;
+        }
+
+        .starci-core-marquee:dir(rtl) .starci-core-marquee-track { animation-name: grammar-marquee-run-rtl; }
+
+        /* Each run is at least as wide as the strip, so the loop closes however few items it holds; the trailing gap keeps the seam as even as any other. */
+        .starci-core-marquee-run {
+            flex: none;
+            flex-wrap: nowrap;
+            justify-content: space-around;
+            min-inline-size: 100cqw;
+            padding-inline-end: var(--grammar-region-gap);
+        }
+
+        .starci-core-marquee-run[data-grammar-marquee-run="copy"] { display: flex; }
+
+        .starci-core-marquee:is(:hover, :focus-within) .starci-core-marquee-track { animation-play-state: paused; }
+    }
+
+    @media (prefers-reduced-motion: no-preference) and (max-width: 40rem) {
+        .starci-core-marquee-track { animation-duration: var(--grammar-loop-marquee-compact); }
+    }
+
+    /* ---------- CountUp ---------- */
+    .starci-core-count-up { font-variant-numeric: tabular-nums; }
+
+    /* ---------- StickyStory ---------- */
+    /* Static base: the steps in order, each with its own panel under its text. The pinned stage is not drawn. */
+    .starci-core-story {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: var(--grammar-region-gap);
+        min-width: 0;
+    }
+
+    .starci-core-story-steps {
+        display: grid;
+        gap: var(--grammar-region-gap);
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .starci-core-story-step {
+        display: grid;
+        min-width: 0;
+        gap: var(--grammar-section-gap);
+    }
+
+    .starci-core-story-copy,
+    .starci-core-story-inline { min-width: 0; }
+
+    .starci-core-story-pin { display: none; }
+
+    @keyframes grammar-story-panel-first {
+        0%, 70% {
+            opacity: 1;
+            translate: 0 0;
+        }
+
+        100% {
+            opacity: 0;
+            translate: 0 calc(-1 * var(--grammar-motion-distance-step));
+        }
+    }
+
+    @keyframes grammar-story-panel-mid {
+        0% {
+            opacity: 0;
+            translate: 0 var(--grammar-motion-distance-step);
+        }
+
+        30%, 70% {
+            opacity: 1;
+            translate: 0 0;
+        }
+
+        100% {
+            opacity: 0;
+            translate: 0 calc(-1 * var(--grammar-motion-distance-step));
+        }
+    }
+
+    @keyframes grammar-story-panel-last {
+        0% {
+            opacity: 0;
+            translate: 0 var(--grammar-motion-distance-step);
+        }
+
+        30%, 100% {
+            opacity: 1;
+            translate: 0 0;
+        }
+    }
+
+    /* The pinned stage: a wide screen, motion allowed, and either scroll timelines (no script) or the observer (mode observed). */
+    @media (prefers-reduced-motion: no-preference) and (min-width: 40rem) {
+        @supports (animation-timeline: view()) {
+            .starci-core-story {
+                timeline-scope: var(--grammar-story-scope);
+                grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+                align-items: start;
+            }
+
+            .starci-core-story[data-grammar-story-stage="start"] .starci-core-story-pin { order: -1; }
+
+            .starci-core-story-step {
+                min-block-size: var(--grammar-story-height);
+                align-content: center;
+                view-timeline-name: var(--grammar-story-timeline);
+            }
+
+            .starci-core-story-inline { display: none; }
+
+            .starci-core-story-pin {
+                display: block;
+                position: sticky;
+                inset-block-start: var(--grammar-story-pin-top);
+                block-size: var(--grammar-story-height);
+            }
+
+            .starci-core-story-stage,
+            .starci-core-story-panel {
+                position: absolute;
+                inset: 0;
+            }
+
+            .starci-core-story-panel {
+                animation-name: grammar-story-panel-mid;
+                animation-timing-function: var(--grammar-loop-easing);
+                animation-fill-mode: both;
+                animation-timeline: var(--grammar-story-timeline);
+                animation-range: cover calc(50% - var(--grammar-story-height) / 2) cover calc(50% + var(--grammar-story-height) / 2);
+            }
+
+            .starci-core-story-panel[data-grammar-story-position="first"] { animation-name: grammar-story-panel-first; }
+            .starci-core-story-panel[data-grammar-story-position="last"] { animation-name: grammar-story-panel-last; }
+        }
+
+        @supports not (animation-timeline: view()) {
+            .starci-core-story[data-grammar-story-mode="observed"] {
+                grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+                align-items: start;
+            }
+
+            .starci-core-story[data-grammar-story-mode="observed"][data-grammar-story-stage="start"] .starci-core-story-pin { order: -1; }
+
+            .starci-core-story[data-grammar-story-mode="observed"] .starci-core-story-step {
+                min-block-size: var(--grammar-story-height);
+                align-content: center;
+            }
+
+            .starci-core-story[data-grammar-story-mode="observed"] .starci-core-story-inline { display: none; }
+
+            .starci-core-story[data-grammar-story-mode="observed"] .starci-core-story-pin {
+                display: block;
+                position: sticky;
+                inset-block-start: var(--grammar-story-pin-top);
+                block-size: var(--grammar-story-height);
+            }
+
+            .starci-core-story[data-grammar-story-mode="observed"] :is(.starci-core-story-stage, .starci-core-story-panel) {
+                position: absolute;
+                inset: 0;
+            }
+
+            .starci-core-story[data-grammar-story-mode="observed"] .starci-core-story-panel {
+                opacity: 0;
+                translate: 0 var(--grammar-motion-distance-step);
+                transition:
+                    opacity var(--grammar-motion-duration-base) var(--grammar-motion-ease-out),
+                    translate var(--grammar-motion-duration-base) var(--grammar-motion-ease-out);
+            }
+
+            .starci-core-story[data-grammar-story-mode="observed"] .starci-core-story-panel[data-active="true"] {
+                opacity: 1;
+                translate: 0 0;
+            }
+        }
+    }
+}

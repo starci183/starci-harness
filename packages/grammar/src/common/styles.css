@@ -5,6 +5,7 @@
 @import "./components-overlays.css";
 @import "./components-navigation.css";
 @import "./components-media.css";
+@import "./components-motion.css";
 @import "./components-interval-chart.css";
 @import "./components-legend.css";
 @import "./components-geo-map.css";

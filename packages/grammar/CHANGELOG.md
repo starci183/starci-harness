@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.47.3 - 2026-11-19 - Marketing motion: Reveal, Marquee, CountUp, StickyStory and the motion tokens
+
+New components, a new contract role and new DNA laws, so a patch (contexts/grammars/contributing.md "Patch or minor"). Lane `grammar-motion`, on top of `grammar-tile-bleed`; the version in package.json is raised by the train. Both families, light and dark. Evidence: NIVO landing canvas round 2 (`nivoos-lite` `.starcistacks/canvas/pages/90-site-home.html` to `94-site-download.html`, `gen/90-site-landing.mjs`).
+
+- Added (tokens, Common ramps, `src/common/ramps.css`): `--grammar-motion-ease-out`, `-ease-in-out`, `-duration-base` (240ms), `-duration-reveal` (600ms), `-duration-count`, `-stagger` (80ms), `-distance-reveal` (24px), `-distance-step` (16px), `--grammar-loop-marquee` (40s) and `-compact` (28s), `--grammar-marquee-fade`, `--grammar-story-pin-top` and `-height`. Offset Pop overrides the easing (a small overshoot), the reveal duration and distance, the stagger and the marquee cycle on its own root.
+- Added (`Reveal`, frame): `kind?: "rise" | "stagger"`. Fades a region (or each direct child in turn) up on entering the viewport: `animation-timeline: view()` with no script where supported, otherwise an observer that marks only a region that starts below the fold. Visible by default; static under reduced motion.
+- Added (`Marquee`, frame): `label`, `children`. An endless strip that pauses on hover and while focus is inside; the repeat is `aria-hidden` and `inert`; one wrapped run under reduced motion.
+- Added (`CountUp`, branch): `value`, `locale`, `format?` (`Intl.NumberFormat` options), `prefix?`, `suffix?`. The final value is the server-rendered text; the moving figure is `aria-hidden` while it counts; no count under reduced motion.
+- Added (`StickyStory`, branch): `label`, `steps` (`id`, `content`, `panel`; two or more), `stage?: "start" | "end"`. A pinned stage whose panel follows the step in the middle of the viewport (a view timeline per step, an observer where unsupported); on a phone and under reduced motion each step shows its own panel below its text.
+- Confirmed (no change): the image-cover card for marketing is `SurfaceCard kind="tile"` with `poster.bleed` (0.47.2) in `Grid size="tile"`.
+- Added (DNA, role `motion`): `DNA-COMMON-MOTION-TOKENS-BOUND`, `-REVEAL-REDUCED-STATIC`, `-MARQUEE-REDUCED-STATIC`, `-MARQUEE-COPY-HIDDEN`, `-MARQUEE-PAUSES`, `-COUNT-UP-REDUCED-STATIC`, `-STICKY-STORY-PINS`, `-STICKY-STORY-STAGE-HIDDEN`, `-STICKY-STORY-REDUCED-STATIC`, `-STICKY-STORY-REDUCED-PANELS`, `-STICKY-STORY-PHONE-STATIC`, `-STICKY-STORY-PHONE-PANELS`. The contextual ones (reduced motion, 390, hover) are not run by `dna check --storybook`; they were verified in Chromium with the system setting emulated.
+- Stories: `Marketing/Motion` (Tokens, RevealRise, RevealBelowTheFold, MarqueeLogos, CountUpFigures, StickyStorySteps, StickyStoryStageStart, CoverCardsReveal) with play functions. Contexts: `grammars/contract.md`, `contract.yaml` (role `motion`, `tokens.motion`), `ui/components/motion.md`, `ui/components/README.md`, `ui/situations.md`.
+
 ## 0.47.2 - 2026-11-19 - Tile poster bleed
 
 An additive optional prop and new DNA laws, so a patch. Lane `grammar-tile-bleed`; the version in package.json is raised by the train. Both families, light and dark.

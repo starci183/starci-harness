@@ -308,6 +308,22 @@ A week summary wraps through one, four and seven tracks, at the inline gap, like
 `packages/grammar/src/common/styles.css`; an app takes no breakpoint, gap or arbitrary column count. Existing day
 content, empty states and actions remain inside their day regions. `Calendar` remains the date-selection control.
 
+### Marketing motion
+
+Four pieces give a public page its movement, over one set of ramps (0.47.3): `Reveal`, `Marquee`, `CountUp` and `StickyStory`. The ramps are Common's
+(`--grammar-motion-ease-out`, `-ease-in-out`, `-duration-base`, `-duration-reveal`, `-duration-count`, `-stagger`, `-distance-reveal`, `-distance-step`,
+`--grammar-loop-marquee`, `-compact`, `--grammar-story-pin-top`, `-height`); a family overrides a step on its own root (Offset Pop settles a rise with a small overshoot and
+reaches further), and no piece, and no app, writes a duration or a distance of its own. Every piece draws its static, complete content first and adds movement only under
+`prefers-reduced-motion: no-preference`, so reduced motion, a failed script and a browser without scroll timelines all land on the same complete content.
+
+`Reveal` (`kind`: `rise` or `stagger`) fades a region, or each direct child in turn, up as it enters the viewport: by `animation-timeline: view()` with no script where the
+browser has it, otherwise by a small observer that marks only a region that starts below the fold. `Marquee` (`label`, its items) is an endless strip that pauses under the pointer
+and while focus is inside; it draws its content twice and the repeat is `aria-hidden` and `inert`; under reduced motion it is one wrapped run. `CountUp` (`value`, `locale`,
+`format`, `prefix`, `suffix`) counts to its value the first time it is seen; the final value is the text from the server's first byte, the moving figure is `aria-hidden` while it
+runs, and under reduced motion it never counts. `StickyStory` (`label`, `steps` of `id`, `content` and `panel`, `stage`) pins a stage on a wide screen and shows the panel of the step
+in the middle of the viewport; on a phone and under reduced motion there is no stage and each step shows its own panel below its text. The picture-led marketing card is not a fifth
+piece: it is a `SurfaceCard kind="tile"` with `poster.bleed`.
+
 ### EntryFrame
 
 `EntryFrame` owns one full-height entry task. Its required `label` names the main landmark. Required named frame
