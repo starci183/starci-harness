@@ -2,6 +2,8 @@
 
 ## 1.1.0-alpha.162 - 2026-11-18
 
+- Changed: the CLI requires @starci/hfs@6.13.42, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
+
 - Changed (pins): @starci/jest-preset 2.11.1 (each root package with its own tsconfig compiles with it under jest) and @starci/hfs 6.13.42. Until the cli-follow step raises the CLI's requirement, the CLI runs the hfs it requires.
 
 ## 1.1.0-alpha.161 - 2026-11-18
