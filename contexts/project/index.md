@@ -175,7 +175,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - ids: R01, R02, R03, R04, R05, R06, R07, R09, R10, R100, R101, R102, R103, R104, R105, R106, R107, R108, R109, R11, R110, R111, R112, R113 and 311 more
 - [hfs/slots.yaml](../hfs/slots.yaml) · 118 KB — The HFS slot manifest: what may exist in an app repository and where.
   - ids: PROJECT-1, R399, app.agent-output, app.browser, app.browser-config, app.build-output, app.ci, app.ci-authorize-deploy-key, app.ci-cache-verify, app.ci-db, app.ci-deploy, app.ci-e2e, app.ci-images, app.ci-stack-deploy, app.ci-stack-key-restore, app.db, app.db.bootstrap, app.db.image, app.db.migrations, app.db.migrations.archive, app.declaration, app.dependabot, app.deploy, app.dockerignore and 159 more
-- [project/README.md](../project/README.md) · 14 KB — What a StarCi project is, how a piece of product work travels from a goal to a settled commit, and where to read for each kind of task.
+- [project/README.md](../project/README.md) · 15 KB — What a StarCi project is, how a piece of product work travels from a goal to a settled commit, and where to read for each kind of task.
   - sections: PROJECT-1 A project is one app root that declares its sides and holds the Work of each · PROJECT-2 Work travels from a goal to a settled commit · PROJECT-3 An app's shared code lives in root workspace packages · Where to read for a task · Files
 - [project/anatomy.md](../project/anatomy.md) · 90 KB — The canonical tree of an app, one per edition (`lite`, `full`) and place (the app root, `be/`, `fe/`).
   - sections: Why the tree is shaped this way · Regenerating and the drift check · Read with · Tree

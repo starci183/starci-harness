@@ -82,9 +82,10 @@ An app keeps the code its sides share as workspace packages at the app root, und
 `packages/*`): a root package is any folder `packages/<name>/` that holds a `package.json` and a `src/`, whatever its name, and
 it is the app's own code ([hfs/slots.yaml](../hfs/slots.yaml) slot `app.packages`; the harness writes none). Once one exists,
 `starci app sync` renders the managed `build:modules` script that builds every root package, so a hand edit of it is drift.
-A root package has no jest of its own: the managed `be/jest.config.js` names every root package, so the back end's unit run (`npm test`, `app check --gate test`, the CI
+A root package has no jest config of its own: the managed `be/jest.config.js` names every root package, so the back end's unit run (`npm test`, `app check --gate test`, the CI
 shards and their merged coverage proof) runs its specs and measures its logic, everything below its `src/` but its barrels, its type modules (`*.types.ts`, `*-types.ts`, types only)
 and the slots the project opts out with a reason ([lint.md](lint.md) PROJECT-LINT-3), at 100 per file (BE-TEST-13), inside the Sonar and Codecov scope.
+A package is compiled for jest with its own `packages/<name>/tsconfig.json` (its `extends` chain read, path options dropped, the unit options on top) when that file exists, and with the back end's options (`@starci/tsconfig/be.json`, `experimentalDecorators` among them) when it does not; the preset reads the tree when jest loads the config and gives each such package its own `unit` project with the same roots and rootDir, so a package that writes standard decorators compiles as it does under `tsc`, and the rendered `be/jest.config.js` is the same for both kinds (nothing to drift). No other tsconfig file (`tsconfig.build.json`, `tsconfig.spec.json`) is read.
 The sides import a root package by its package name through the `exports` of its manifest and never
 past them (`ARCH_INTERNAL_IMPORT_OUTSIDE`); no side config reaches `packages/`, so `starci app sync` renders the app root's
 `eslint.config.mjs` (slot `app.packages-lint`) whenever a root package exists, and `starci app check --gate lint` runs it as a third

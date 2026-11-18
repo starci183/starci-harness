@@ -166,6 +166,7 @@ role name. The logic of a root package (every file below the `src/` of `packages
 project opts out with a reason, [project/lint.md](../../project/lint.md) PROJECT-LINT-3, [project/README.md](../../project/README.md) PROJECT-3) is
 inside the scope at the same bar, its specs run by the same unit run; a type module declares types only, and one that holds runtime
 code is refused by R273.
+A root package that has its own `tsconfig.json` is compiled by jest with it, the others with the back end's options ([project/README.md](../../project/README.md) PROJECT-3); the choice is made by the jest preset from the tree, not rendered.
 The scope is rendered once into the managed `jest.config.js`, `sonar-project.properties` and `codecov.yml`; no file carries a coverage
 ignore.
 

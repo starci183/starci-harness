@@ -144,3 +144,40 @@ test('the root packages are a second unit project rooted at the app root, and a 
     assert.throws(() => preset.starciJestConfig({ coverage: scope, packages: packagesOption }), /needs the root packages starci app sync renders/);
   }
 });
+
+test('a root package with a tsconfig.json of its own is its own unit project compiled with that file, the others share the back end options', (t) => {
+  const parent = path.resolve(os.tmpdir());
+  const app = fs.mkdtempSync(path.join(parent, 'starci-package-tsconfig-'));
+  t.after(() => {
+    const target = path.resolve(app);
+    assert.equal(path.dirname(target), parent);
+    fs.rmSync(target, { recursive: true, force: true });
+  });
+  const write = (relative: string, text: string): void => {
+    const file = path.join(app, relative);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, text);
+  };
+  write('be/tsconfig.json', JSON.stringify({ compilerOptions: { target: 'ES2022', experimentalDecorators: true, paths: { '@modules/*': ['./src/modules/*'] } } }));
+  write('packages/base.json', JSON.stringify({ compilerOptions: { target: 'ES2023', module: 'commonjs' } }));
+  write('packages/standard/tsconfig.json', JSON.stringify({ extends: '../base.json', compilerOptions: { outDir: 'dist', strict: true } }));
+  const folders = ['packages/plain', 'packages/standard'];
+  const configured = (): Array<{ roots?: string[]; transform?: Record<string, [string, { tsconfig?: Record<string, unknown> }]> }> => {
+    const cwd = process.cwd();
+    process.chdir(path.join(app, 'be'));
+    try {
+      return preset.starciJestConfig({ coverage: scope, packages: { folders, files: [], excludes: [] } }).projects.filter((project) => project.displayName === 'unit') as never;
+    } finally {
+      process.chdir(cwd);
+    }
+  };
+  const units = configured();
+  const options = (index: number): Record<string, unknown> | undefined => Object.values(units[index]?.transform ?? {})[0]?.[1].tsconfig;
+  assert.equal(units.length, 3);
+  assert.deepEqual(units[1]?.roots, ['<rootDir>/packages/plain/src']);
+  assert.deepEqual(options(1), { target: 'ES2022', experimentalDecorators: true, isolatedModules: true, importHelpers: true, sourceMap: true });
+  assert.deepEqual(units[2]?.roots, ['<rootDir>/packages/standard/src']);
+  assert.deepEqual(options(2), { target: 'ES2023', module: 'commonjs', strict: true, isolatedModules: true, importHelpers: true, sourceMap: true });
+  assert.equal(options(2)?.experimentalDecorators, undefined, 'the package own options carry no back end decorator flag');
+  assert.deepEqual(configured().map((unit) => unit.roots), units.map((unit) => unit.roots), 'the same tree gives the same projects');
+});

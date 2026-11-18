@@ -192,6 +192,14 @@ function packagesCompilerOptions(root: string): Record<string, unknown> {
   return Object.fromEntries(Object.entries({ ...options, ...UNIT_COMPILER_OPTIONS }).filter(([key]) => !PATH_COMPILER_OPTIONS.includes(key)))
 }
 
+/**
+ * The compiler options of one root package that has a tsconfig.json of its own: that file's options (its extends chain included) under the unit options, without path
+ * options. A package that writes standard decorators (no experimentalDecorators) cannot compile with the back end's options, so it is compiled with its own.
+ */
+function ownPackageCompilerOptions(file: string): Record<string, unknown> {
+  return Object.fromEntries(Object.entries({ ...compilerOptionsOf(file), ...UNIT_COMPILER_OPTIONS }).filter(([key]) => !PATH_COMPILER_OPTIONS.includes(key)))
+}
+
 /** Generated constructor metadata keeps its runtime guards, mapped to a generated-metadata coverage anchor instead of source parameters. */
 function unitTransform(compilerOptions: Record<string, unknown> = UNIT_COMPILER_OPTIONS): Record<string, [string, Record<string, unknown>]> {
   const unitMetadata = require.resolve("./unit-metadata.js")
@@ -337,6 +345,39 @@ function packagesOf(options: unknown): StarciPackagesScope {
   return { folders, files, excludes }
 }
 
+/**
+ * The root packages' unit projects, all named unit. A package with a `tsconfig.json` of its own (`<folder>/tsconfig.json`, the one its editor and tsc read) is its own
+ * project compiled with that file's options; the packages without one share one project compiled with the back end's options. Roots, rootDir and matchers are the
+ * same in each, so the coverage scope and the module mapping do not change with the split. The tree is read when jest loads the config, so the same tree gives the
+ * same projects on every run.
+ */
+function packageUnitProjects(
+  root: string,
+  packages: StarciPackagesScope,
+  shared: { preset: string; testEnvironment: string; transformIgnorePatterns: string[] },
+  unitRuntime: { runtime?: string },
+): StarciJestProject[] {
+  const own = packages.folders.filter((folder) => existsSync(join(root, APP_ROOT, folder, "tsconfig.json")))
+  const common = {
+    preset: shared.preset,
+    testEnvironment: shared.testEnvironment,
+    rootDir: APP_ROOT,
+    transformIgnorePatterns: shared.transformIgnorePatterns,
+    displayName: "unit",
+    clearMocks: true,
+    ...unitRuntime,
+    setupFilesAfterEnv: [require.resolve("./matchers.js")],
+    testMatch: ["**/*.spec.ts"],
+    testPathIgnorePatterns: ["/node_modules/", "/dist/"],
+  }
+  const rest = packages.folders.filter((folder) => !own.includes(folder))
+  return [
+    // The shared project keeps the back end's options for the packages without a tsconfig of their own; the rootDir is the app root because jest keeps the v8 coverage of the files below a project's rootDir only.
+    ...(rest.length === 0 ? [] : [{ ...common, roots: rest.map((folder) => `<rootDir>/${folder}/src`), transform: unitTransform(packagesCompilerOptions(root)) } satisfies StarciJestProject]),
+    ...own.map((folder) => ({ ...common, roots: [`<rootDir>/${folder}/src`], transform: unitTransform(ownPackageCompilerOptions(join(root, APP_ROOT, folder, "tsconfig.json"))) } satisfies StarciJestProject)),
+  ]
+}
+
 /** The whole jest config: projects `unit`, `integration`, `e2e` and `contract`. It takes the coverage scope the managed repository config renders; without it it refuses. */
 function starciJestConfig(options: StarciJestOptions): StarciJestConfig {
   const coverage = coverageOf(options)
@@ -407,20 +448,7 @@ function starciJestConfig(options: StarciJestOptions): StarciJestConfig {
       },
       // The root packages are unit specs too, in a second project named unit, so every `--selectProjects unit` (the test script, the CI shards, the check
       // cache) runs them. Its rootDir is the app root because jest keeps the v8 coverage of the files below a project's rootDir only.
-      ...(packages.folders.length === 0 ? [] : [{
-        preset: shared.preset,
-        testEnvironment: shared.testEnvironment,
-        rootDir: APP_ROOT,
-        roots: packages.folders.map((folder) => `<rootDir>/${folder}/src`),
-        transformIgnorePatterns: shared.transformIgnorePatterns,
-        transform: unitTransform(packagesCompilerOptions(root)),
-        displayName: "unit",
-        clearMocks: true,
-        ...unitRuntime,
-        setupFilesAfterEnv: [require.resolve("./matchers.js")],
-        testMatch: ["**/*.spec.ts"],
-        testPathIgnorePatterns: ["/node_modules/", "/dist/"],
-      } satisfies StarciJestProject]),
+      ...packageUnitProjects(root, packages, shared, unitRuntime),
       // Jest validates every project's world hooks even under --selectProjects unit. An unfinished full scaffold
       // keeps only unit; a lite app's present integration/contract lanes need no test world.
       ...testProjects,
