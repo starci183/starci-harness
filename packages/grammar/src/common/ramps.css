@@ -57,6 +57,8 @@
         --grammar-radius-xl: calc(var(--radius) * 3 / 2);
         --grammar-radius-pill: 999px;
         --grammar-radius-round: 50%;
+        /* The corner of a Button and of its loading skeleton: a pill in Core, the family control radius in Offset Pop (--grammar-button-radius in styles.css of the family). */
+        --grammar-button-radius: var(--grammar-radius-pill);
         --starci-core-control-radius: var(--grammar-radius-md);
         /* The radius of every card surface (SurfaceCard of every kind, Board and its columns, the block surfaces): HeroUI's own Card radius, 24px at --radius 0.5rem.
            A theme tightens it through the theme hook `--starci-core-card-radius` on its root (0.41.0; a hook, because this token is declared on the grammar root and

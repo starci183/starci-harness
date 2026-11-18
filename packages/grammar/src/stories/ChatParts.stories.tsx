@@ -67,6 +67,7 @@ const actions: ReadonlyArray<G.MessageCardAction> = [
 
 /** MessageCard: title and chip, then the body or key/value details, then the actions (primary first, the "Open ..." arrow last), then the meta line. Capped at the bubble measure, avatar at the start. */
 export const MessageCards: Story = {
+  parameters: { grammar: { catalog: true } },
     render: () => (
         <div style={{ display: "grid", gap: "0.75rem", maxWidth: "64rem" }}>
             <G.MessageBubble author="Maria" meta="09:12" avatar={<G.Avatar name="Maria" size="sm" />} body="Can you check the order for table 4?" />

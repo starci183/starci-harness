@@ -70,6 +70,21 @@
             border-color var(--offset-pop-transition);
     }
 
+    /* The ink outline is 2px, so on the phone (HeroUI's 16px input text) the vendor's padding and line made the Input 44px; the box is exactly the field step, as every other field box (DNA-COMMON-FIELD-MD). */
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Input"] .starci-core-input-field {
+        box-sizing: border-box;
+        block-size: var(--starci-core-field-min-height);
+        padding-block: 0;
+    }
+
+    /* The same for the Select trigger (the field appearance, not the pill or the compact one) and the ComboBox group: at 16px text and a 2px outline they grew to 44px on the phone. */
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Select"]:not([data-grammar-select-appearance="compact"], [data-grammar-select-appearance="pill"]) .starci-core-select-trigger,
+    .grammar-common-root[data-grammar-family="offset-pop"] [data-component="ComboBox"] .starci-core-combo-box-group {
+        box-sizing: border-box;
+        block-size: var(--starci-core-field-min-height);
+        padding-block: 0;
+    }
+
     /*
      * A ComboBox draws its box on the input group (ink outline, surface paint, control radius, the one field height of
      * Common's anatomy). The vendor input inside is only the text: no paint of its own (the secondary layer's tint
@@ -281,9 +296,9 @@
         font-weight: var(--grammar-weight-extrabold);
     }
 
-    /* A standalone Calendar's chosen day is a pink fill, so its number is ink (a pink fill carries ink text). */
+    /* A standalone Calendar's chosen day is a pink fill, so its number is ink in both themes (--accent-foreground, not --foreground, which turns cream in the dark theme; DNA-OFFSET-POP-INK-ON-PINK). */
     .grammar-common-root[data-grammar-family="offset-pop"] [data-component="Calendar"] [data-grammar-calendar-day][data-selected="true"] {
-        color: var(--foreground);
+        color: var(--accent-foreground);
         font-weight: var(--grammar-weight-extrabold);
     }
 

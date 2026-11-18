@@ -174,6 +174,7 @@ export const TasksScreen: Story = {
 
 /** Leaf inventory: the palette, type and action leaves every direction region maps to. */
 export const Leaves: Story = {
+  parameters: { grammar: { catalog: true } },
   name: 'Leaves (button, input, text, action)',
   render: () => (
     <Page>

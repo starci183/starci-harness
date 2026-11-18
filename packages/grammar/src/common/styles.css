@@ -4448,6 +4448,8 @@
         max-inline-size: min(100%, 20rem);
     }
     .starci-core-select:is([data-grammar-select-appearance="pill"], [data-grammar-select-appearance="compact"]) .starci-core-select-trigger { inline-size: 100%; min-inline-size: 0; }
+    /* A long selected value of a Select stays on one line with an ellipsis, in the field appearance too (0.9.8: the single-line fields are one family, one height); the trigger never grows to a second line. */
+    .starci-core-select .select__value { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .starci-core-select:is([data-grammar-select-appearance="pill"], [data-grammar-select-appearance="compact"]) .select__value { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     /* DisclosureList: sibling disclosures joined into one list, divided by full-bleed lines. */

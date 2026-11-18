@@ -11,6 +11,7 @@ export default meta;
 type Story = StoryObj;
 
 export const Sizes: Story = {
+  parameters: { grammar: { catalog: true } },
   render: () => (
     <G.Stack gap="section">
       <G.Cluster gap="row">

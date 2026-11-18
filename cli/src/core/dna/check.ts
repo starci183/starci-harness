@@ -261,8 +261,8 @@ export const dnaCheckVerb = defineVerb({
                 } catch (failure) {
                     // A page whose own scripts never yield (a story's play function in a loop) freezes the browser: that page is a finding of its own, the browser is
                     // started again, and the walk goes on, so one bad story does not end a run of thousands of renders.
-                    if (!(failure instanceof Refusal) || failure.code !== "DNA_BROWSER_TIMEOUT") throw failure
-                    problems.push(`${page.label}: the page froze the browser (${failure.message})`)
+                    if (!(failure instanceof Refusal) || (failure.code !== "DNA_BROWSER_TIMEOUT" && failure.code !== "DNA_PAGE_SCRIPT")) throw failure
+                    problems.push(failure.code === "DNA_PAGE_SCRIPT" ? `${page.label}: a page script of the check failed (${failure.message})` : `${page.label}: the page froze the browser (${failure.message})`)
                     await tab.close().catch(() => undefined)
                     tab = await HeadlessPage.launch(browser, { width: 1280, height: 800 })
                 }

@@ -336,12 +336,19 @@ export const installProbe = (judgePart: Judge): void => {
     }
 
     // ---- metrics ----
-    // A size is the box the layout gives, not the box a press or an entrance transform paints: the element's own scale is divided out.
+    // A size is the box the layout gives, not the box a press, an entrance transform or a zoom paints: the scale of the element and of every ancestor
+    // (the viewport of a FlowGraph at zoom 0.8, a scaled stage) is divided out, so a 176px step card is 176 at any zoom.
     const ownScale = (element: Element): { readonly x: number; readonly y: number } => {
-        const transform = style(element).transform
-        if (transform === "none" || transform === "") return { x: 1, y: 1 }
-        const matrix = new DOMMatrix(transform)
-        return { x: Math.hypot(matrix.a, matrix.b) || 1, y: Math.hypot(matrix.c, matrix.d) || 1 }
+        let x = 1
+        let y = 1
+        for (let node: Element | null = element; node !== null; node = node.parentElement) {
+            const transform = style(node).transform
+            if (transform === "none" || transform === "") continue
+            const matrix = new DOMMatrix(transform)
+            x *= Math.hypot(matrix.a, matrix.b) || 1
+            y *= Math.hypot(matrix.c, matrix.d) || 1
+        }
+        return { x, y }
     }
     const firstLetterCase = (element: Element): DnaScalar => {
         const letter = Array.from(textOf(element)).find((char) => char.toLowerCase() !== char.toUpperCase())

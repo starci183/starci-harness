@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
-import { noop } from './fixtures.js';
+import { noop, quietProbe } from './fixtures.js';
 import { reconcileEdges, reconcileLegend, reconcileNodes } from './FlowGraphSteps.data.js';
 
 /**
@@ -324,12 +324,12 @@ const assertNoWrap = (root: HTMLElement) => {
   for (const cellEl of cells) {
     const text = (cellEl.textContent ?? '').trim();
     if (text === '') continue;
-    const probe = document.createElement('span');
-    probe.style.cssText = 'position:absolute;visibility:hidden;white-space:nowrap;font:inherit;';
-    probe.textContent = text;
-    cellEl.append(probe);
-    const one = probe.getBoundingClientRect().width;
-    probe.remove();
+    // Read through a probe in the cell's shadow root (quietProbe): a probe appended to the document inside the waitFor re-runs its callback on every mutation, and a first run that failed froze the browser of the DNA check (FourColumnsNeverWrap at 390).
+    const one = quietProbe(
+      cellEl,
+      (probe) => { probe.style.cssText = 'position:absolute;visibility:hidden;white-space:nowrap;font:inherit;'; probe.textContent = text; },
+      (probe) => probe.getBoundingClientRect().width,
+    );
     const pad = Number.parseFloat(getComputedStyle(cellEl).paddingInlineStart) + Number.parseFloat(getComputedStyle(cellEl).paddingInlineEnd);
     expect(cellEl.getBoundingClientRect().width).toBeGreaterThanOrEqual(one + pad - 1);
     expect(cellEl.scrollHeight).toBeLessThanOrEqual(cellEl.clientHeight + 1);
