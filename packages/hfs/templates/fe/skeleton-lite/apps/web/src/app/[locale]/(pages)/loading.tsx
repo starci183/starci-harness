@@ -1,6 +1,6 @@
 import { AppLoadingPage } from "@/features/pages/AppLoadingPage"
 
-/** The locale segment's loading slot. */
+/** The pages group's loading slot. */
 const Loading = () => <AppLoadingPage />
 
 export default Loading

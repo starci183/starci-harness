@@ -81,3 +81,12 @@ test('drawsPageEmptyState reads the element, not the file: scope page and an ill
   assert.equal(drawsPageEmptyState(['<EmptyNotice scope="region" message="m" />', 'const illustration = 1; const scope = "page"']), false);
   assert.equal(drawsPageEmptyState(['<G.EmptyNotice scope="page" media={{ illustration: { src } }} message="m"></G.EmptyNotice>']), true);
 });
+
+test('a locale error boundary held by a route group directly under [locale] is judged like the one at [locale]', () => {
+  const { 'apps/web/src/app/[locale]/error.tsx': error = '', ...rest } = LITE_OK;
+  const grouped = { ...rest, 'apps/web/src/app/[locale]/(pages)/error.tsx': error };
+  const clean = repoOf(grouped);
+  assert.deepEqual(errorPageFindings({ files: clean.files, repoRoot: clean.root, repo: { profile: 'fe', edition: 'full' } }), []);
+  const bad = repoOf({ ...grouped, 'apps/web/src/components/composites/ErrorNotice/index.tsx': 'export const ErrorNotice = () => null\n' });
+  assert.deepEqual(errorPageFindings({ files: bad.files, repoRoot: bad.root, repo: { profile: 'fe', edition: 'full' } }).map((finding) => finding.path), ['apps/web/src/app/[locale]/(pages)/error.tsx']);
+});

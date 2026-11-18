@@ -463,8 +463,8 @@ rules:
     exemplifiedBy:
       - {path: "packages/hfs/templates/be/skeleton/apps/__app__/src/main.ts", edition: "lite"}
       - {path: "packages/hfs/templates/be/skeleton/apps/__app__/src/main.ts", edition: "full"}
-      - {path: "packages/hfs/templates/fe/skeleton-lite/apps/web/src/app/[locale]/page.tsx", edition: "lite"}
-      - {path: "packages/hfs/templates/fe/skeleton/apps/app/src/app/[locale]/page.tsx", edition: "full"}
+      - {path: "packages/hfs/templates/fe/skeleton-lite/apps/web/src/app/[locale]/(pages)/page.tsx", edition: "lite"}
+      - {path: "packages/hfs/templates/fe/skeleton/apps/app/src/app/[locale]/(pages)/page.tsx", edition: "full"}
       - {path: packages/eslint/be/hfs-unused-export.spec.mjs, editions: [lite, full], codes: [HFS_UNUSED_EXPORT, HFS_UNUSED_FILE]}
     witness:
       - {path: packages/eslint/be/hfs-unused-export.spec.mjs, edition: lite, codes: [HFS_UNUSED_EXPORT, HFS_UNUSED_FILE]}
@@ -1113,8 +1113,8 @@ rules:
     editions: [lite, full]
     docs: [docs/architecture.md#r54]
     exemplifiedBy:
-      - {"path":"packages/hfs/templates/fe/skeleton-lite/apps/web/src/app/[locale]/page.tsx","edition":"lite"}
-      - {"path":"packages/hfs/templates/fe/skeleton/apps/app/src/app/[locale]/page.tsx","edition":"full"}
+      - {"path":"packages/hfs/templates/fe/skeleton-lite/apps/web/src/app/[locale]/(pages)/page.tsx","edition":"lite"}
+      - {"path":"packages/hfs/templates/fe/skeleton/apps/app/src/app/[locale]/(pages)/page.tsx","edition":"full"}
       - {"path":"packages/eslint/fe/a16-r54-route-files-thin.spec.mjs","editions":["lite","full"]}
     proves:
       - {"path":"packages/eslint/fe/a16-r54-route-files-thin.spec.mjs","editions":["lite","full"]}
@@ -1956,8 +1956,8 @@ rules:
     docs: ["docs/hfs-authored-file-boundaries.md#r94-slot-file-roles"]
     proves: [packages/hfs/src/r94-r96-r97-coverage.spec.mjs]
     exemplifiedBy:
-      - {path: "packages/hfs/templates/fe/skeleton-lite/apps/web/src/app/[locale]/page.tsx", edition: lite}
-      - {path: "packages/hfs/templates/fe/skeleton/apps/app/src/app/[locale]/page.tsx", edition: full}
+      - {path: "packages/hfs/templates/fe/skeleton-lite/apps/web/src/app/[locale]/(pages)/page.tsx", edition: lite}
+      - {path: "packages/hfs/templates/fe/skeleton/apps/app/src/app/[locale]/(pages)/page.tsx", edition: full}
       - {path: packages/hfs/src/r94-r96-r97-coverage.spec.mjs, editions: [lite, full], codes: [FE_SLOT_FILE_ROLE]}
     witness:
       - {path: packages/hfs/src/r94-r96-r97-coverage.spec.mjs, editions: [lite, full], codes: [FE_SLOT_FILE_ROLE]}

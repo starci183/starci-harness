@@ -9,8 +9,31 @@ import type { Scope } from './slot-classify.mjs';
 import type { RepoView, RequiredMinimum, RequiredPath, RequiredPaths } from './slots.mjs';
 import type { Slot } from './manifest-shape.mjs';
 
-/** A populated fe.modules instance needs its index.ts only when it contains TypeScript, including nested files. */
+/** The locale boundaries a route group directly under `[locale]` may hold instead of the segment itself (`[locale]/(pages)/loading.tsx`). */
+const LOCALE_BOUNDARY = /(?:^|\/)src\/app\/\[locale\]\/(?:loading|error)\.tsx$/u;
+const LOCALE_GROUP_BOUNDARY = /^\([A-Za-z0-9_-]+\)\/(?:loading|error)\.tsx$/u;
+
+/**
+ * The locale `loading.tsx` or `error.tsx` of a Next app is also held by a route group directly under `[locale]`
+ * (`[locale]/(pages)/loading.tsx`): a loading boundary at `[locale]` itself wraps the `[...rest]` catch-all, so an unknown path
+ * streams a 200 before `notFound()` can answer 404. The group keeps the boundary around the pages and leaves the catch-all and
+ * the locale `not-found.tsx` outside it.
+ */
+function groupedBoundaryHeld(slotId: string, target: string, files: Iterable<string>): boolean {
+  if (slotId !== 'fe.app.next' || !LOCALE_BOUNDARY.test(target)) return false;
+  const directory = `${path.posix.dirname(target)}/`;
+  const name = path.posix.basename(target);
+  for (const file of files) {
+    if (!file.startsWith(directory)) continue;
+    const rest = file.slice(directory.length);
+    if (LOCALE_GROUP_BOUNDARY.test(rest) && rest.endsWith(`/${name}`)) return true;
+  }
+  return false;
+}
+
+/** A populated fe.modules instance needs its index.ts only when it contains TypeScript, including nested files; a locale boundary may live in a route group. */
 export function requiredFileApplies(slotId: string, target: string, files: Iterable<string>): boolean {
+  if (groupedBoundaryHeld(slotId, target, files)) return false;
   if (!/^fe\.modules(?:\.|$)/u.test(slotId) || path.posix.basename(target) !== 'index.ts') return true;
   const prefix = `${path.posix.dirname(target)}/`;
   let populated = false;

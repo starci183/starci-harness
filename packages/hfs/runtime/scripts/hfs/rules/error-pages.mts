@@ -13,7 +13,7 @@ import type { Finding, Repo } from './rule-types.mjs';
 
 export const FE_ERROR_PAGE_NOT_EMPTY_STATE = 'FE_ERROR_PAGE_NOT_EMPTY_STATE';
 const CLOSURE_DEPTH = 6;
-const BOUNDARY = /^(?<app>(?:apps\/[^/]+\/)?)src\/app\/(?:\[locale\]\/)?(?<name>not-found|error|global-error)\.tsx$/u;
+const BOUNDARY = /^(?<app>(?:apps\/[^/]+\/)?)src\/app\/(?:\[locale\]\/(?:\([A-Za-z0-9_-]+\)\/)?)?(?<name>not-found|error|global-error)\.tsx$/u;
 const IMPORT = /import\s+(?:type\s+)?(?:(?<default>[A-Za-z_$][\w$]*)\s*,?\s*)?(?:\{(?<named>[^}]*)\})?\s*from\s*['"](?<from>[^'"]+)['"]/gu;
 const EXTENSIONS = ['', '.tsx', '.ts', '/index.tsx', '/index.ts'];
 const posix = path.posix;

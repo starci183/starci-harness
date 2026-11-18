@@ -62,6 +62,14 @@ Every app has `app/global-error.tsx` and, under `app/[locale]/`, `layout.tsx`, `
 `loading.tsx`, plus an `error.tsx` and a `loading.tsx` for each route group whose regions fail or wait on their own
 ([boundaries.md](boundaries.md)); a redirect from an old URL lives in `next.config.ts` `redirects()`.
 
+The `loading.tsx` and `error.tsx` of the locale may sit in a route group directly under `[locale]`, and they should: a
+`loading.tsx` at `[locale]` itself wraps the `[...rest]` catch-all, so Next starts streaming a 200 before `notFound()` runs
+and every unknown address is a soft 404 with the default title. The shape is `app/[locale]/(pages)/{page,loading,error}.tsx`
+(with every page of the app beside them), `app/[locale]/[...rest]/page.tsx` calling `notFound()`, and
+`app/[locale]/not-found.tsx` exporting its `generateMetadata`, the last two outside the group. A `loading.tsx` still at
+`[locale]` is accepted and reported as info with this move; once a group holds the boundaries, the catch-all and the
+metadata of `not-found.tsx` are required (`FE_ERROR_BOUNDARY_MISSING`, R53).
+
 Why: without a boundary a render error blanks the page and a slow segment shows nothing.
 
 Enforced by: R53 (machine `error-boundary-missing`), R02.
