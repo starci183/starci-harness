@@ -24,7 +24,7 @@ workflow, task or debug does not enroll into StarCi.
 - **CLI**: `starci` in these files means `node <runtime root>/cli/dist/main.js`. If `cli/dist` is missing,
   build it in `<runtime root>/cli` with `npm ci` then `npm run build`. This CLI is the npm package `starci-harness`
   and carries `starci app`; a product pins it as its devDependency, so inside that product `npx --no-install starci app ...` runs its
-  pinned copy (outside one, `npx starci-harness <verb>`). `@starci/cli` is retired (a machine may still hold its 1.7.x, which has no `starci-harness` bin), and a
+  pinned copy (outside one, `npx starci-harness <verb>`). A CLI that is not the app's pinned version prints `HFS_CLI_HFS_SKEW` and refuses `sync --execute` and `check --fix` (cli/README.md "The starci CLI"): run the app's own. `@starci/cli` is retired (a machine may still hold its 1.7.x, which has no `starci-harness` bin), and a
   PATH copy serves only when it resolves to this root. The state base follows
   the CLI's location, so a CLI built in another worktree reads another ledger: always run the runtime root's.
 - **Product repository**: the git repository the work lands in. Its ledger is found from its git common dir,

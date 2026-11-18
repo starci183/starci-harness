@@ -13,6 +13,12 @@ built from, so `contexts search` (its dry run, the index check) is green in an i
 `@starci` packages its lockfile installs, so `check pins` (`core/check/cli-pins.ts`, a CI gate) and `release publish`
 refuse a CLI whose requirement or locked copy of one differs from its pin in `contexts/stack/pins.yaml` (`CLI_PIN_SKEW`).
 
+**Which CLI judges an app.** `starci app ...` runs the `@starci/hfs` of the CLI that carries it, so the templates, rules and pins it writes and demands
+are that CLI's version's. An app pins its CLI (`starci-harness` in its `package.json`), and its hooks run that copy (`npx --no-install starci`, `node node_modules/starci-harness/dist/main.js`);
+a PATH copy, another worktree's build or a lane whose `node_modules` is stale is another version, and `sync`, `app check` and the pre-push gate then disagree. When the CLI's version is not the app's
+exact pin, or the `@starci/hfs` it loaded is not the one it requires, `starci app check|sync|audit|coverage|emit|codemod|release|ci` prints `HFS_CLI_HFS_SKEW` (`core/app/skew.ts`) and
+refuses the writes (`sync --execute`, `check --fix`) with exit 2 unless `STARCI_ALLOW_CLI_SKEW=1`; the cure is `npm ci` and `npx --no-install starci <verb>` from the app.
+
 ## Source layout
 
 ```text

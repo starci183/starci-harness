@@ -29,7 +29,7 @@ gallery/
    `README.md`, `vite.config.js`): `starci app sync --execute`
    renders them (slot `app.gallery`, templates in `packages/hfs/templates/app/gallery`), `package.json` pins `@starci/gallery`
    at the version of the canon pins, `starci app scaffold` writes them with
-   the rest of a new app, and a hand edit is `HFS_MANAGED_FILE_DRIFT`. The lockfile `gallery/package-lock.json` is the app's.
+   the rest of a new app, and a hand edit is `HFS_MANAGED_FILE_DRIFT`. The lockfile `gallery/package-lock.json` is the app's. **One truth since hfs 6.13.33: the thin gallery has no `gallery/src`.** Sync never writes it, `app.gallery` and `HFS_APP_GALLERY_MISSING` never demand it, and `starci app sync --execute` deletes the three managed files (`main.js`, `explain.js`, `style.css`) an earlier render left there; a gallery that demands `gallery/src` or a sync that writes it is an older CLI than the app pins (`HFS_CLI_HFS_SKEW`, [cli/README.md](../../cli/README.md#the-starci-cli)).
 2. **What goes in it.** Every round that changes a screen (a UI fix, a redesign, a new screen) saves the shots of every screen it
    touches at widths 1440 (desktop) and 390 (phone), the whole screen, and updates that screen's `explain.md`. A round
    that touches no screen saves none. The gallery holds the current state only: a before and after comparison belongs in the

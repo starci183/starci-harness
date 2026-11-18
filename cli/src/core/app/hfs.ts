@@ -11,6 +11,7 @@ import { loadPolicy } from "../../harness/policy.js"
 import { hostAgeIdentity } from "../../harness/secret-env.js"
 import type { FlagSpec, VerbContext, VerbResult } from "../../shared/verb.js"
 import { packageVersion } from "../version.js"
+import { ALLOW_SKEW_ENV, runSkew, writes, type Skew } from "./skew.js"
 
 /** The `starci app` verbs @starci/hfs implements; each is one verb file of this folder. */
 export type HfsVerb = "add" | "remove" | "check" | "ci" | "codemod" | "coverage" | "audit" | "data" | "db" | "emit" | "release" | "scaffold" | "secret" | "slot" | "stack" | "sync" | "upgrade" | "world"
@@ -35,6 +36,8 @@ export interface HfsRunData {
     /** The parsed json report of a verb that prints one, else its stdout text; null outside `--json`, where it streamed. */
     readonly output: unknown
     readonly stderr: string
+    /** Set when this CLI is not the starci-harness the app pins (HFS_CLI_HFS_SKEW, skew.ts): its verdict is another version's. */
+    readonly skew?: Skew
 }
 
 /**
@@ -204,6 +207,15 @@ export const hfsCommandRunner = (admit = withHeavySlot, capture = captureCommand
  */
 export const runHfs = async (context: VerbContext, verb: HfsVerb, argv: readonly string[], printsJson: boolean, stdin?: () => string, extra: HfsHarness = {}): Promise<VerbResult<HfsRunData>> => {
     const full = context.json && printsJson ? [...argv, "--json"] : [...argv]
+    // A CLI that is not the app's pinned starci-harness judges with another version's templates and rules: say so, and refuse the writes it would make (HFS_CLI_HFS_SKEW).
+    const skew = runSkew(verb, appRootOf(context.cwd))
+    if (skew !== null) {
+        process.stderr.write(`${skew.message}\n`)
+        if (writes(verb, argv) && process.env[ALLOW_SKEW_ENV] !== "1") {
+            process.stderr.write(`starci app ${verb}: refused; ${ALLOW_SKEW_ENV}=1 runs it anyway\n`)
+            return { data: { verb, argv: full, exitCode: 2, output: null, stderr: skew.message, skew }, message: "", exitCode: 2 }
+        }
+    }
     let stdout = ""
     let stderr = ""
     // What an app's branch profile may lower (policy/loosening.yaml branchProfiles, after the
@@ -229,6 +241,6 @@ export const runHfs = async (context: VerbContext, verb: HfsVerb, argv: readonly
     }
     const { main } = await import("@starci/hfs")
     const exitCode = await main([verb, ...full], io)
-    const data: HfsRunData = { verb, argv: full, exitCode, output: context.json ? parsed(stdout.trim()) : null, stderr }
+    const data: HfsRunData = { verb, argv: full, exitCode, output: context.json ? parsed(stdout.trim()) : null, stderr, ...(skew === null ? {} : { skew }) }
     return { data, message: "", exitCode }
 }

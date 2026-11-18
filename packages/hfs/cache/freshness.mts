@@ -105,6 +105,6 @@ export function freshnessFindings(input: FreshnessInput): FreshnessFinding[] {
   const listed = changed.slice(0, 5).join(', ') + (changed.length > 5 ? `, and ${changed.length - 5} more` : '');
   return [{
     code: UNWARMED, level: 'error', path: CACHE_DIR,
-    message: `the pushed cache is not the one a run on this tree writes (${listed}); commit ${CACHE_DIR} as this run left it and push again`,
+    message: `the pushed cache is not the one a run on this tree writes (${listed}); the records are written; commit ${CACHE_DIR} as this run left it and push once more, or run npx --no-install starci app push (it commits what a real run writes, then pushes, in one round)`,
   }];
 }

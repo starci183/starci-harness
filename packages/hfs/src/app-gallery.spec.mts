@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { bundledPresets, runSync } from '../sync/index.mjs';
+import { bundledPresets, retiredFiles, runSync } from '../sync/index.mjs';
 import { scaffoldBasePort, scaffoldApp } from '../scaffold/app.mjs';
 import type { LockResult } from '../scaffold/app.mjs';
 import { init } from '../runtime/scripts/api/git/init.mjs';
@@ -90,6 +90,25 @@ test('the shipped gallery is a thin config over @starci/gallery: one vite.config
   assert.equal(fs.existsSync(at(root, 'gallery', 'src')), false, 'no app code per page');
   const pin = (bundledPins()['@starci/gallery'] as { version: string }).version;
   assert.equal(JSON.parse(read(root, 'gallery/package.json')).devDependencies['@starci/gallery'], pin);
+});
+
+test('the thin gallery is the one truth: sync retires the managed src files an earlier hfs wrote, and neither the gallery rule nor a sync write demands gallery/src (PROJECT-GALLERY-1)', async (t) => {
+  const root = starter(t, 'lite');
+  const old = ['main.js', 'explain.js', 'style.css'];
+  const retired = old.map((name) => `gallery/src/${name}`);
+  fs.mkdirSync(at(root, 'gallery', 'src'));
+  for (const name of old) fs.writeFileSync(at(root, 'gallery', 'src', name), '// written by an hfs before 6.13.33\n');
+  assert.deepEqual(retiredFiles(root, { edition: 'lite' }), retired, 'every edition retires them');
+  assert.deepEqual(retiredFiles(root, { edition: 'full' }), retired);
+  assert.deepEqual(findings(root), [], 'the rule never judges gallery/src, present or not');
+  const lines: string[] = [];
+  const out = (line: string): void => { lines.push(line); };
+  assert.equal(await runSync(['--cwd', root], { cwd: root, out, presets: bundledPresets() }), 1, 'a dry run reports each as retired');
+  assert.ok(retired.every((file) => lines.some((line) => line.includes(`${file}: retired`))), lines.join('\n'));
+  assert.equal(await runSync(['--execute', '--cwd', root], { cwd: root, out, presets: bundledPresets() }), 0);
+  for (const file of retired) assert.equal(fs.existsSync(at(root, ...file.split('/'))), false, file);
+  assert.equal(fs.existsSync(at(root, 'gallery', 'src')), false, 'the empty folder goes with them');
+  assert.equal(await runSync(['--cwd', root], { cwd: root, out, presets: bundledPresets() }), 0, 'the next dry run is clean: sync never writes gallery/src');
 });
 
 test('no gallery at all is HFS_APP_GALLERY_MISSING and names the sync that writes it', (t) => {

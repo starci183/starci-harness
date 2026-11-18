@@ -25,6 +25,7 @@ import { appDataVerb } from "./core/app/data.js"
 import { dataStandardVerb } from "./core/data/standard.js"
 import { appDbVerb } from "./core/app/db.js"
 import { appEmitVerb } from "./core/app/emit.js"
+import { appPushVerb } from "./core/app/push.js"
 import { appReleaseVerb } from "./core/app/release.js"
 import { appScaffoldVerb } from "./core/app/scaffold.js"
 import { appSecretVerb } from "./core/app/secret.js"
@@ -152,6 +153,7 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     dataStandardVerb,
     appDbVerb,
     appEmitVerb,
+    appPushVerb,
     appReleaseVerb,
     appScaffoldVerb,
     appSecretVerb,

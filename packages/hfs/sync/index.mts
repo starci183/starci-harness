@@ -858,6 +858,8 @@ const LITE_RETIRED_DIRS = Object.freeze(['supabase/types']);
 /** The files the sync of an app of either edition retires, each with the reason the dry run prints. */
 const RETIRED_FILES: Readonly<Record<string, string>> = Object.freeze({
   '.github/workflows/e2e.yml': 'no workflow runs a world layer (R12): the e2e specs run only on request, on the local machine (npm run test:e2e)',
+  // PROJECT-GALLERY-1: since hfs 6.13.33 the managed gallery/ is a thin config over @starci/gallery; the three files an earlier render wrote under gallery/src go.
+  ...Object.fromEntries(['main.js', 'explain.js', 'style.css'].map(name => [`gallery/src/${name}`, 'the gallery app is the published @starci/gallery since hfs 6.13.33; gallery/ holds only its config (vite.config.js, package.json, index.html, README.md)'])),
 });
 /** The files a lite app's sync retires beside those of every edition, each with the reason the dry run prints. */
 const LITE_RETIRED_FILES: Readonly<Record<string, string>> = Object.freeze({
@@ -983,6 +985,8 @@ export async function runSync(argv: string[], { cwd = process.cwd(), out = (line
       const removed = retired.filter(file => !holds.has(file));
       for (const file of written) out(`wrote ${file}`);
       for (const file of removed) { fs.rmSync(path.join(root, file)); out(`removed ${file} (retired)`); }
+      // The folder a retired file leaves empty goes too (gallery/src): git keeps no empty folder, and an empty one is a stray path in the tree.
+      for (const dir of new Set(removed.map(file => path.posix.dirname(file)))) if (dir !== '.' && fs.existsSync(path.join(root, dir)) && !fs.readdirSync(path.join(root, dir)).length) fs.rmdirSync(path.join(root, dir));
       for (const dir of LITE_RETIRED_DIRS) if (removed.length && fs.existsSync(path.join(root, dir)) && !fs.readdirSync(path.join(root, dir)).length) fs.rmdirSync(path.join(root, dir));
       for (const project of unchecked) out(`notice: the writes compiled by ${project} were not type-checked: its TypeScript is not installed (run npm install, then "npx --no-install starci app check")`);
       for (const group of held) for (const line of heldLines(group)) out(line);

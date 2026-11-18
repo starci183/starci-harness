@@ -7,7 +7,7 @@ with its anchor, size and the sentence it opens with. A seat whose op or brief n
 the whole file and reads a section when it needs it: `starci contexts anchor <anchor>` prints one section,
 `starci contexts search "<question>" --scope harness` ranks them.
 
-- The starci CLI · `cli/README.md#the-starci-cli` · 1 KB — The npm package `starci-harness` is the `starci` command (its bins `starci` and `starci-harness` are one entry, `dist/main.js`): one TypeScript source on `commander`, built with ...
+- The starci CLI · `cli/README.md#the-starci-cli` · 2 KB — The npm package `starci-harness` is the `starci` command (its bins `starci` and `starci-harness` are one entry, `dist/main.js`): one TypeScript source on `commander`, built with ...
   - Source layout · `cli/README.md#source-layout` · 1 KB
   - The verb standard · `cli/README.md#the-verb-standard` · 7 KB
   - The harness inside the CLI · `cli/README.md#the-harness-inside-the-cli` · 1 KB
