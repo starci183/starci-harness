@@ -1270,7 +1270,7 @@ slots:
     tests: none
     since: 6.13.24
     allows: ["design.json", "tokens.css", "canvas.css", "briefs/<page>.md", "pages/<page>.html", "<app>-design.html"]
-    rules: [HFS_APP_GALLERY_DESIGN_MANIFEST, HFS_APP_GALLERY_DESIGN_PAGE_MISSING, HFS_APP_GALLERY_DESIGN_UNAPPROVED, HFS_APP_GALLERY_DESIGN_SHOT_MISSING, HFS_APP_GALLERY_DESIGN_SHOT_STALE, HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED]
+    rules: [HFS_APP_GALLERY_DESIGN_MANIFEST, HFS_APP_GALLERY_DESIGN_PAGE_MISSING, HFS_APP_GALLERY_DESIGN_UNAPPROVED, HFS_APP_GALLERY_DESIGN_SHOT_MISSING, HFS_APP_GALLERY_DESIGN_SHOT_STALE, HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED, HFS_APP_GALLERY_DESIGN_CRITIQUE_MISSING]
   - id: app.starcistacks.security
     profiles: [app]
     # The time-boxed exceptions of the production dependency audit (contexts/project/lint.md PROJECT-LINT-5): a list of owner-approved exceptions, each an exact

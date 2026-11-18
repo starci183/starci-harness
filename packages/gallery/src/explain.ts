@@ -42,14 +42,21 @@ export function parseExplain(markdown: string): Explain {
     const intro: string[] = []
     let current: Region | null = null
     let last: Field | null = null
+    let skipping = false
     for (const line of body.split("\n")) {
         const heading = /^##\s+(.+?)\s*$/u.exec(line)
         if (heading?.[1] !== undefined) {
+            skipping = /^Phương án đã cân nhắc$/iu.test(heading[1])
+            if (skipping) {
+                current = null
+                continue
+            }
             current = { name: heading[1], fields: {}, problems: [] }
             regions.push(current)
             last = null
             continue
         }
+        if (skipping) continue
         if (!current) {
             intro.push(line)
             continue

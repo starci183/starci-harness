@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Added (R395 `HFS_APP_GALLERY_DESIGN_CRITIQUE_MISSING`, `rules/gallery-design.mts`, `gallery-explain.mts`; PROJECT-GALLERY-7 item 3): a `matches` page needs the section `## Phương án đã cân nhắc` in its explain.md. `design.json` pages may carry `matchedAt` (ISO, `matches` only); an error when `matchedAt` is on or after 2026-11-18T00:00:00+07:00, info (not final yet) for older `matches` pages or ones without it. The explain readers (`gallery-explain.mts`, `@starci/gallery`) skip that section instead of reading it as a region.
+
 ## 6.13.45 - 2026-11-18
 
 - Fixed (`sync/nested-lock.mts`, `sync/index.mts`, `sync/managed.mts`): `starci app sync` rendered `gallery/package.json` (it added `@starci/gallery`) and left `gallery/package-lock.json` as it was, so `npm ci` in `gallery/` failed and the dev stack's gallery never started. For every managed sub-package that already has its own `package-lock.json`, `sync --execute` now resolves the lockfile again with `npm install --package-lock-only --ignore-scripts` after it writes the package.json (exit 1, with the command printed, when npm cannot). A dry run prints `HFS_SYNC_DRIFT <dir>/package-lock.json` and `app check` reports `HFS_MANAGED_FILE_DRIFT` for the lockfile, both naming the dependencies that differ and the fix command. A sub-package with no lockfile is not judged.

@@ -44,12 +44,14 @@ the whole file and reads a section when it needs it: `starci contexts anchor <an
     - COLLECTION-2 A card is one object · `COLLECTION-2` · 1 KB — A card is ONE object with its own face (a customer, an agent, a provider, a plan, a message, an approval), a dialog or an overlay.
     - COLLECTION-4 A collection stands flat in a Section · `COLLECTION-4` · 1 KB — A collection is never in a card: it stands flat in a `Section`, which carries its title, count, fact, one page command and its `caption`.
     - COLLECTION-3 A group identity shows its members · `COLLECTION-3` · 1 KB — A group or conversation identity is one composite of its members' identities, distinguishable from one person's, with a count when members overflow; the composite carries the ...
+    - COLLECTION-5 One toolbar per collection · `COLLECTION-5` · 1 KB — A collection has exactly one toolbar, in the `Section` that owns it, and it carries the whole way the reader narrows and acts on that collection, in this order: the view picker, ...
   - 6. Layout · `contexts/ui/composition.md#6-layout` · 3 KB — Choice `grid.choose.content`: which track owner carries the content.
     - LAYOUT-1 Which regions exist · `LAYOUT-1` · 1 KB — One task with no support is one region.
     - LAYOUT-5 One axis in a report, panes in a workspace · `LAYOUT-5` · 1 KB — A page is one of two frame types, declared by `Page layout="report" | "workspace"` (which `chrome` carries: `standard` is a report, `panes` and `bleed` are workspaces; a `layout` ...
     - LAYOUT-2 Every region's owner is a published composition · `LAYOUT-2` · 1 KB — Tracks, slots and bounds belong to a published composition (`WorkspaceShell`, `Page`, `Grid kind="main-rail"`, `PaneGrid`); the spec names only its props.
     - LAYOUT-3 One owner per region and per scroll axis · `LAYOUT-3` · 1 KB — Each region has one composition owner.
     - LAYOUT-4 Regions that leave normal flow · `LAYOUT-4` · 1 KB — Sticky, fixed, drawer and floating regions use their composition's contract and return to flow below its narrow width.
+    - LAYOUT-6 No two stacked navigation strips of the same level · `LAYOUT-6` · 1 KB — Navigation of one level appears once: the page tabs, a view strip, a breadcrumb trail and a step list each stand alone in their band.
     - FE-APP-SHELL-1..6 App chrome · `FE-APP-SHELL-1..6` · 2 KB
   - 7. Responsive · `contexts/ui/composition.md#7-responsive` · 1 KB
     - RESPONSIVE-1 What survives · `RESPONSIVE-1` · 1 KB — The compact branch keeps the meaning, the commit and the current state in one readable flow; support stays reachable.

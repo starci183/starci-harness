@@ -16,6 +16,18 @@ export const FRONT_MATTER_KEYS = ['title', 'route', 'area'] as const;
 /** A value that starts with one of the owner's two verdict words says the region cannot be explained (`CHƯA RÕ`, not yet clear) or is wrong (`SAI`): a bug, never an explanation. */
 export const UNCLEAR_VALUE = /^(?:CHƯA RÕ|SAI)(?![\p{L}\p{N}])/u;
 
+/** The heading of the final critique's record (PROJECT-GALLERY-7 item 3): the options the critic weighed. It is not a region of the screen, so the readers skip it. */
+export const OPTIONS_HEADING = /^Phương án đã cân nhắc$/iu;
+
+/** True when `markdown` holds the section `## Phương án đã cân nhắc` with at least one non-empty line under it. */
+export function hasOptionsSection(markdown: string): boolean {
+  const lines = markdown.normalize('NFC').replace(/\r\n/gu, '\n').split('\n');
+  const at = lines.findIndex((line) => { const heading = /^##\s+(.+?)\s*$/u.exec(line); return heading !== null && OPTIONS_HEADING.test(heading[1] as string); });
+  if (at < 0) return false;
+  for (const line of lines.slice(at + 1)) { if (/^##\s/u.test(line)) return false; if (line.trim() !== '') return true; }
+  return false;
+}
+
 /** What is wrong with one field of one region. */
 export interface RegionProblem {
   kind: 'missing' | 'unclear';
@@ -55,14 +67,18 @@ export function parseExplain(markdown: string): Explanation {
   const intro: string[] = [];
   let current: ExplainRegion | null = null;
   let last: ExplainField | null = null;
+  let skipping = false;
   for (const line of body.split('\n')) {
     const heading = /^##\s+(.+?)\s*$/u.exec(line);
     if (heading !== null) {
+      skipping = OPTIONS_HEADING.test(heading[1] as string);
+      if (skipping) { current = null; continue; }
       current = { name: heading[1] as string, fields: {}, problems: [] };
       regions.push(current);
       last = null;
       continue;
     }
+    if (skipping) continue;
     if (current === null) { intro.push(line); continue; }
     const hit = FIELD_PATTERNS.find(([, pattern]) => pattern.test(line));
     if (hit !== undefined) {

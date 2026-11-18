@@ -55,6 +55,30 @@ explain.md (front matter line, the intro's clauses in order, every region with i
 fragment or the kit, rebuild, set each drawn screen `drafted` in `design.json`, publish `<app>-design.html` as an
 Artifact (the same path again for a later round, so the link stays) and record the link as `board`.
 
+## The final critique (another agent, after code)
+
+The canvas is a sketch; the weighing happens here, once the screen is coded and shot at 1440 and 390 (PROJECT-GALLERY-7 item 3). The critic is
+an agent other than the one that built the screen, and works in two rounds, fixing after each, then syncing the canvas. Brief template:
+
+```
+You are the final critic of <area>/<screen> (route <route>) in <app>. You did not build it.
+Inputs: the shots gallery/pages/<area>/<screen>/1440.png and 390.png (read at full size), its explain.md, the canvas page
+.starcistacks/canvas/pages/<NN>-<slug>.html (frames and note), and the archetype of the screen: <collection | form | detail | dashboard>
+with the products to compare, e.g. Airtable, Notion, Shopify, Linear.
+Round 1, desktop (1440): compare the composition with those products. For each: what it puts in one row, what it leaves out, where the
+action sits, how many bands stand before the first record. List the options (ours, theirs, the canvas sketch), say why each is chosen or
+rejected, then fix the code, shoot again.
+Round 2, 390 and states: the 390 frame really reflowed (COLLECTION-5: two lines, the create action in place), then empty, loading, error
+(and no-match, first-visit, editing where the page has them). List the options and why, fix the code, shoot again.
+Then sync the canvas page to the code and write the record.
+Output: (1) the section "## Phương án đã cân nhắc" appended to explain.md and to the canvas page's note: one bullet per option, each with why
+it was chosen or rejected; (2) the fixes, committed with the screen; (3) "cần Grammar" for anything the Grammar cannot draw. Never
+patch the Grammar or the harness. Do not set matches: the lead or the reviewer does, with matchedAt.
+```
+
+A screen whose record lacks an option the critic could name is not final; `HFS_APP_GALLERY_DESIGN_CRITIQUE_MISSING` fails a `matches` page with no
+section, and only lists the pages matched before the rule as not final yet.
+
 ## The lifecycle steps
 
 Each status is set by the role PROJECT-GALLERY-6 item 5 names, and only then:
@@ -67,8 +91,8 @@ Each status is set by the role PROJECT-GALLERY-6 item 5 names, and only then:
   ```
   node -e "const c=require('crypto'),f=require('fs');for(const w of ['1440','390'])console.log(w,c.createHash('sha256').update(f.readFileSync('gallery/pages/<area>/<screen>/'+w+'.png')).digest('hex'))"
   ```
-- **Matches (the lead or a reviewer, not the code lane).** Open the shots beside the approved frames at full size; when
-  they match, set `status: matches` and record the sha of the shots compared. A shot that differs goes back to the code
+- **Matches (the lead or a reviewer, not the code lane).** Run the final critique below first. Open the shots beside the approved frames at full size; when
+  they match and the record is written, set `status: matches`, `matchedAt` (now, a full ISO timestamp with the zone) and record the sha of the shots compared. A shot that differs goes back to the code
   lane; a design that must change is redrawn and returns to `drafted`.
 
 A UI change to a page that is already built enters this flow at step 1: its page is redrawn or adjusted (back to `drafted`, `approvedAt` and `shots` dropped), approved again, then coded and shot. PROJECT-GALLERY-7 owns the order; `HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED` flags code that skipped it.

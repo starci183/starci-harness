@@ -1,3 +1,5 @@
+// proves: HFS_APP_GALLERY_DESIGN_CRITIQUE_MISSING@lite
+// proves: HFS_APP_GALLERY_DESIGN_CRITIQUE_MISSING@full
 // proves: HFS_APP_GALLERY_DESIGN_MANIFEST@lite
 // proves: HFS_APP_GALLERY_DESIGN_MANIFEST@full
 // proves: HFS_APP_GALLERY_DESIGN_PAGE_MISSING@lite
@@ -50,7 +52,7 @@ function app(t: TestContext, screens: string[], design: unknown): string {
 const shoot = (root: string, id: string, widths: (keyof typeof PNG)[] = ['1440', '390']): void => {
   for (const width of widths) write(root, `gallery/pages/${id}/${width}.png`, PNG[width]);
 };
-const design = (findingsOf: ReturnType<typeof run>) => findingsOf.filter((finding) => finding.code.startsWith('HFS_APP_GALLERY_DESIGN_'));
+const design = (findingsOf: ReturnType<typeof run>) => findingsOf.filter((finding) => finding.code.startsWith('HFS_APP_GALLERY_DESIGN_') && finding.code !== 'HFS_APP_GALLERY_DESIGN_CRITIQUE_MISSING');
 const run = (root: string, edition = 'lite') => appGalleryFindings({ repoRoot: root, repo: { kind: 'app', edition } as never, isRoot: true, all: [] }) as { code: string; path: string; message: string; local?: boolean; level?: string }[];
 const codes = (list: { code: string }[]): string[] => list.map((finding) => finding.code);
 
@@ -167,3 +169,36 @@ test('the design canvas folder is a slot of its own: its files are owned, no sta
     assert.deepEqual(stacksFindings({ repoRoot: root, files: canvas, resolver: opened }), []);
   }
 });
+
+// The critique record (PROJECT-GALLERY-7 item 3): a matches page needs "## Phương án đã cân nhắc" in its explain.md.
+for (const edition of ['lite', 'full']) {
+  test(`${edition}: a matches page without the options section is an error from the release on, and info (not final yet) before it`, (t) => {
+    const page = (extra: Record<string, unknown>) => ({ areas: ['customers'], pages: { 'customers/list': { status: 'matches', board: BOARD, approvedAt: APPROVED, shots: SHOTS, ...extra } } });
+    const critique = (root: string) => run(root, edition).filter((finding) => finding.code === 'HFS_APP_GALLERY_DESIGN_CRITIQUE_MISSING');
+    const root = app(t, ['customers/list'], page({ matchedAt: '2026-11-18T16:00:00+07:00' }));
+    let found = critique(root);
+    assert.equal(found.length, 1);
+    assert.equal(found[0]?.level, 'error');
+    assert.equal(found[0]?.local, undefined);
+    assert.equal(found[0]?.path, 'gallery/pages/customers/list/explain.md');
+    write(root, '.starcistacks/canvas/design.json', JSON.stringify(page({ matchedAt: '2026-11-17T09:00:00+07:00' })));
+    found = critique(root);
+    assert.deepEqual(found.map((finding) => finding.level), ['info']);
+    assert.match(found[0]?.message ?? '', /not final yet/u);
+    write(root, '.starcistacks/canvas/design.json', JSON.stringify(page({})));
+    assert.deepEqual(critique(root).map((finding) => finding.level), ['info'], 'no matchedAt: an older matches page');
+    write(root, 'gallery/pages/customers/list/explain.md', `${EXPLAIN('customers')}\n## Phương án đã cân nhắc\n\n- Hai tab: loại, thành hai dải điều hướng chồng nhau.\n- Một thanh công cụ: chọn.\n`);
+    write(root, '.starcistacks/canvas/design.json', JSON.stringify(page({ matchedAt: '2026-11-18T16:00:00+07:00' })));
+    assert.deepEqual(critique(root), [], 'the section is a record, not a region: no region problem either');
+    assert.deepEqual(codes(run(root, edition)).filter((code) => code === 'HFS_APP_GALLERY_REGION_INCOMPLETE'), []);
+    write(root, 'gallery/pages/customers/list/explain.md', `${EXPLAIN('customers')}\n## Phương án đã cân nhắc\n`);
+    assert.equal(critique(root).length, 1, 'an empty section is no record');
+  });
+
+  test(`${edition}: only a matches page may carry matchedAt, as an ISO timestamp`, () => {
+    const one = (page: unknown) => parseDesign(JSON.stringify({ areas: ['customers'], pages: { 'customers/list': page } })).problems.join(';');
+    assert.equal(one({ status: 'matches', board: BOARD, approvedAt: APPROVED, shots: SHOTS, matchedAt: '2026-11-18T16:00:00+07:00' }), '');
+    assert.match(one({ status: 'built', board: BOARD, approvedAt: APPROVED, shots: SHOTS, matchedAt: '2026-11-18T16:00:00+07:00' }), /only a matches page has it/u);
+    assert.match(one({ status: 'matches', board: BOARD, approvedAt: APPROVED, shots: SHOTS, matchedAt: '2026-11-18' }), /only a matches page has it/u);
+  });
+}

@@ -82,6 +82,9 @@ Every design decision on a screen is traceable to an owner law and a Grammar ref
    - `Grammar:` the component and prop that draws it, with its source path or story.
 
    A line may wrap onto indented lines, carry a list bullet or be bold; text before the first `## ` is the screen's introduction.
+   The one section that is not a region is `## Phương án đã cân nhắc` (PROJECT-GALLERY-7 item 3): the options the final critique weighed, each
+   with why it was chosen or rejected. It is optional while the screen is `drafted`, `approved` or `built`, and required for `matches` (PROJECT-GALLERY-6
+   item 5). The readers and the gallery skip it as a region, so it needs no `Vì sao`, `Luật` or `Grammar` lines.
 2. **The rule.** A region that cannot be explained with a law and a Grammar reference is a BUG in the screen, not in the
    document. The author fixes the screen first, then writes the explanation. A region the author knows is not yet explained or
    is wrong says `Vì sao: CHƯA RÕ` or `Vì sao: SAI` (a value that starts with either word) so it stays visible instead of
@@ -186,14 +189,14 @@ the gate judges.
    {
      "areas": ["customers"],
      "pages": {
-       "customers/list": { "status": "matches", "approvedAt": "2026-11-17T09:30:00+07:00", "board": "https://claude.ai/artifact/…",
+       "customers/list": { "status": "matches", "approvedAt": "2026-11-17T09:30:00+07:00", "matchedAt": "2026-11-18T16:00:00+07:00", "board": "https://claude.ai/artifact/…",
                            "shots": { "1440": "<sha256>", "390": "<sha256>" } }
      }
    }
    ```
    `areas` lists the areas whose screens are designed before code; every page id is in one of them. `board` is the https link of the published
    board. `approvedAt` (a full ISO timestamp with its zone, never a bare date) is set from `approved` on and absent before. `shots` holds the lowercase sha256 of the 1440 and 390 PNGs
-   from `built` on and is absent before. No other key.
+   from `built` on and is absent before. `matchedAt` is set with `matches` and is absent before. No other key.
 5. **The lifecycle, and who sets each status.**
    - `drafted`: the lead, when the screen is drawn on the board. A redraw of an approved screen returns it to `drafted` and drops `approvedAt` and
      `shots`.
@@ -202,8 +205,9 @@ the gate judges.
    - `built`: the code lane that builds the screen: it codes the page (with every `cần API` operation of its notes), saves the screen's shots in
      `gallery/pages/<area>/<screen>/` at 1440 and 390, copies the approved note as its `explain.md`, and records the sha256 of the 1440 and
      390 PNGs.
-   - `matches`: the lead or a reviewer, never the lane that built it, after comparing the shots with the approved frames; it records the sha256 of
-     the shots it compared.
+   - `matches` (final): the lead or a reviewer, never the lane that built it, after the final critique of PROJECT-GALLERY-7 item 3 and after comparing
+     the shots with the approved frames; it records the sha256 of the shots it compared and `matchedAt` (a full ISO timestamp with its zone, `matches`
+     only). It requires the section `## Phương án đã cân nhắc` in the screen's `explain.md`: a screen without that record is not final.
 6. **How the order is judged.** The shots are never tracked (PROJECT-GALLERY-1 item 5) and file times mean nothing in a fresh checkout, so a
    shot's age is read neither from the disk nor from git. The manifest carries the order: an approval drops the shot record, so a sha recorded on
    a page is by construction taken after its latest approval, and a shot record on a page that is only drafted or approved is older than the
@@ -245,6 +249,9 @@ the gate judges.
   only a `drafted` one.
 - `HFS_APP_GALLERY_DESIGN_SHOT_MISSING` (`localOnly`): a `built` or `matches` page records no sha256 of its 1440 or 390 shot, or the work tree
   holds shots of the screen without one of those widths.
+- `HFS_APP_GALLERY_DESIGN_CRITIQUE_MISSING` (`rules/gallery-design.mts`; not `localOnly`): a `matches` page whose `explain.md` has no non-empty section
+  `## Phương án đã cân nhắc`. An error when the page's `matchedAt` is at or after `2026-11-18T00:00:00+07:00` (the release of this rule); for an older
+  `matches` page, or one with no `matchedAt`, it is level `info` ("not final yet"): listed, never failing, so the owner fixes those gradually.
 - `HFS_APP_GALLERY_DESIGN_SHOT_STALE` (`localOnly`): a `drafted` or `approved` page still records `shots` (a record older than the approval), or
   a 1440 or 390 shot in the work tree is not the sha the manifest records.
 
@@ -261,8 +268,21 @@ canvas of PROJECT-GALLERY-6 is where the owner decides how the screen looks; the
    item 5). A change to a screen the canvas does not hold yet starts by adding its page and its area to `design.json`.
 2. **Then the code.** The code lane builds the approved page, and the same commit records the page's build in `design.json` (PROJECT-GALLERY-6
    item 5, `built`). Code written before the approval is a draft: it is redone from the approved frames, never approved after the fact.
-3. **Finally the gallery.** Shoot the screen (PROJECT-GALLERY-1 item 2), copy the approved note as `explain.md` (PROJECT-GALLERY-5), then a reviewer
-   moves the page `built` → `matches` after comparing the shots with the approved frames.
+3. **Finally the gallery, then the critique.** Shoot the screen (PROJECT-GALLERY-1 item 2) and copy the approved note as `explain.md`
+   (PROJECT-GALLERY-5). The canvas is a quick sketch of direction, not a deep analysis, and grammar compliance alone is not enough: the screen must also
+   be sensible UX. So an agent other than the one that built the screen runs the final critique, comparing the code (its shots), the gallery and the
+   canvas, in two rounds:
+   - **Round 1, the desktop composition (1440).** Compare it with real products of the same archetype (a collection with Airtable, Notion, Shopify
+     or Linear; a form, a detail, a dashboard each with their own): what they put in one row, what they leave out, where the action sits. Fix what the
+     comparison shows.
+   - **Round 2, the 390 frame and the states.** Check the phone frame and the empty, loading and error states (and no-match, first-visit, editing
+     where the page has them). Fix what they show.
+   After each round the fixes land in the code and the shots are taken again; when both rounds are done the canvas page is synced to the code.
+   **The record** is the section `## Phương án đã cân nhắc` in the screen's `explain.md` and in the canvas page's note: each option considered
+   (including the ones the builder and the sketch drew) with why it was chosen or rejected. An option that was not weighed is not a final screen.
+   Only then does the reviewer move the page `built` → `matches` (PROJECT-GALLERY-6 item 5), setting `matchedAt`. The critic brief template is in
+   [skills/claude-design/references/production.md](../../skills/claude-design/references/production.md#the-final-critique-another-agent-after-code).
+   The owner gives feedback on the finished screens gradually, never all at once; a `matches` page from before this rule is listed as not final yet.
 4. **Who is bound.** Every author of a UI change: a worker, a Kernel plan, the Supervisor and a person alike. A change that touches no visible
    region (a rename, a refactor, a type fix) needs no canvas page.
 5. **Canvas-managed.** A screen is canvas-managed when its area is in `areas` of `design.json` or one of its pages is in `pages`. An app with no
