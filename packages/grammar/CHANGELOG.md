@@ -1,8 +1,8 @@
 # Changelog
 
-## 0.46.2 - 2026-11-18 - ScheduleGrid timeline, Legend and GeoMap
+## 0.46.2 - 2026-11-18 - ScheduleGrid timeline, Legend, GeoMap and the table, alert, board and empty-state additions
 
-Not yet bumped in `package.json` (the train lane that publishes bumps the three family packages); every change below is additive, so a patch.
+Every change below is additive (new optional props, new components, new DNA laws), so a patch (contexts/grammars/contributing.md "Patch or minor").
 
 - Added (`ScheduleGrid`, spans): an entry crosses columns. `ScheduleItem.endColumn` makes one bar in the row from `column` to `endColumn` (a table cell with a colspan; overlapping bars of one row take their own lines under one row heading). `progress` (0 to 1) fills the bar from its start; `form: "milestone"` draws a diamond and its words in one column; `after` (ids) draws an arrow from the end of each predecessor to the start of the entry; `resize: { onResize(edge, column), startLabel, endLabel }` puts handles on both ends, moved by a pointer drag (called once, on release, with the column under the pointer) or by ArrowLeft and ArrowRight on the focused handle; an end cannot pass the other. The grid keeps no state: apply `onResize` and pass the new entry.
 - Added (`ScheduleGrid`, rows and columns): `ScheduleRow.isGroup`, `isCollapsed` and `parent` with the grid prop `onRowToggle(rowId, isCollapsed)`: a group row's label is a button (`aria-expanded`) that folds the rows under it; children are indented; the state is the app's. `ScheduleColumn.todayAt` (0 to 1) draws the line for now at that share of the column, in place of the tint of today's cells (`isCurrent` still marks and announces the heading).
@@ -13,6 +13,13 @@ Not yet bumped in `package.json` (the train lane that publishes bumps the three 
 - Added (DNA, role `data-views`): `DNA-COMMON-LEGEND-ONE-MARK-SIZE`, `DNA-COMMON-SCHEDULE-SPAN-STARTS-IN-ITS-CELL`, `DNA-COMMON-SCHEDULE-SPAN-ENDS-IN-ITS-CELL`.
 - Stories: `Navigation & Data/Schedule timeline` (ScheduleTimelineSpans, ScheduleTimelineGroups, ScheduleTimelineResize, ScheduleDropFromList), `Navigation & Data/Legend` (LegendTones, LegendWraps, LegendStates), `Navigation & Data/Geo map` (GeoMapClusters, GeoMapSelect, GeoMapControls, GeoMapGroundAndList, GeoMapStates, GeoMapDrag), each with a play function at 1440 and 390.
 - Contexts: `ui/components/data-views.md` choose rows `timeline`, `key` and `map` and the schedule row; `ui/situations.md` rows; `grammars/contract.yaml` renderers, slots and laws; `project/index.md` sizes.
+- Added (`DataTable`): `totals` row (sticky over the footer), `groundTone` per row, and long-press selection on the phone list.
+- Added (`Alert`): a `form` slot and `secondaryAction`.
+- Added (`BoardColumn`): `canDrop` with `onRefuse`.
+- Added (`EmptyNotice`): `steps` and `isAllClear`.
+- Added (`Tabs`): `kind="filter"` with `shape="pill"`, the one primary pill look.
+- Added (`Popover`): `size` `sm`, `md` or `lg`.
+- Stories: AlertForm, BoardRefusal, EmptyState, FilterPills, PopoverWidth and TableTotalsGroundSelect, each with a play function at 1440 and 390. Contexts: `ui/components` dialog-drawer, empty-state, list-table, tabs and toast-alert.
 
 ## 0.46.1 - 2026-11-18 - IntervalChart and FunnelChart
 

@@ -1,11 +1,13 @@
 # Changelog
 
-## Unreleased
+## 6.13.43 - 2026-11-18
 
 - Changed (R53 `FE_ERROR_BOUNDARY_MISSING`, R59 `FE_I18N_PLACEMENT`; `scripts/hfs/slot-required.mts`, `rules/frontend-tree.mts`): the locale `loading.tsx` and `error.tsx` that `fe.app.next` requires are also satisfied by a route group directly under `[locale]` (`src/app/[locale]/(pages)/loading.tsx`). A `loading.tsx` at `[locale]` wraps the `[...rest]` catch-all, so `notFound()` fired after streaming began and every unknown address answered HTTP 200 with the default title (a soft 404). `FE_I18N_PLACEMENT` is unchanged (every route file still sits under `[locale]`; a group is transparent).
 - Once a group holds a boundary, the app must also hold `src/app/[locale]/[...rest]/page.tsx` calling `notFound()` and a `src/app/[locale]/not-found.tsx` exporting `generateMetadata` or `metadata`, both outside the group (`FE_ERROR_BOUNDARY_MISSING`). A `loading.tsx` still at `[locale]` stays accepted and is reported as an info `FE_I18N_PLACEMENT` finding that names the move.
 - `FE_ERROR_PAGE_NOT_EMPTY_STATE` judges the boundary files of the group too.
 - Templates (`templates/fe/skeleton`, `skeleton-lite`): pages, `loading.tsx` and `error.tsx` live in `[locale]/(pages)/`; new `[locale]/[...rest]/page.tsx`; `[locale]/not-found.tsx` exports the localized title (`appNotFoundMetadata`, `landingNotFoundMetadata`). Patterns FE-FOLDER-3 and FE-FOLDER-4 say so.
+- Fixed (`stack/local-*.mts`): `stack up` verifies each recorded PID (its command and its port) before trusting it, so a reused PID is no longer taken for the stack; status, doctor, down and verify read the same check.
+- Changed (`knowledge/hfs/canon-pins.yaml`): the Grammar family 0.46.2 (range ~0.46.2). The `@starci/hfs` self-pin is 6.13.43.
 
 ## 6.13.42 - 2026-11-18
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.46.2 - 2026-11-18
+
+- Changed: the family version 0.46.2 (ScheduleGrid spans, Legend, GeoMap and the table, alert, board, empty notice, tabs and popover additions of @starci/grammar). No rule change of its own; the peer on @starci/eslint-grammar-core is 0.46.2.
+
 ## 0.46.1 - 2026-11-18
 
 - Changed: the family version 0.46.1; the peer on @starci/eslint-grammar-core is 0.46.1. No rule change of its own.

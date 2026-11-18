@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.163 - 2026-11-18
+
+- Changed (pins): the Grammar family at 0.46.2 (ScheduleGrid spans, groups, resize and drag from outside; Legend; GeoMap; DataTable totals, row ground and phone long-press selection; Alert form and secondary action; BoardColumn canDrop; EmptyNotice steps and all-clear; filter pills; Popover size) and @starci/hfs 6.13.43 (a loading or error boundary in a route group under [locale], the required [locale]/[...rest] catch-all; stack up verifies the recorded PIDs). Until the cli-follow step raises the CLI's requirement, the CLI runs the hfs it requires.
+
 ## 1.1.0-alpha.162 - 2026-11-18
 
 - Changed: the CLI requires @starci/hfs@6.13.42, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
