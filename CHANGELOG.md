@@ -2,6 +2,8 @@
 
 ## 1.1.0-alpha.160 - 2026-11-18
 
+- Changed: the CLI requires @starci/hfs@6.13.40, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
+
 - Changed (pins): the Grammar family at 0.46.1 (IntervalChart, FunnelChart) and @starci/hfs 6.13.40 (the brand sheet's media.yaml with named prompt bases; R437 judges a prompt file against the base it names). Until the cli-follow step raises the CLI's requirement, the CLI runs the hfs it requires.
 
 ## 1.1.0-alpha.159 - 2026-11-18
