@@ -2,7 +2,7 @@
 
 ## 1.1.0-alpha.166 - 2026-11-18
 
-- Changed (pins): the Grammar family at 0.47.1 (workbench gaps: `Grid size="tile"`, tile `groundTone`, bare tiles, `TagGroup` `onClearAll`, `Select` `icon`, `SearchField` `measure="toolbar"`, six DNA laws) and @starci/hfs 6.13.46 (project checks that declare what they read are scoped and cached, the nivoos package check builds the CLI and SDK first, the gallery rule `HFS_APP_GALLERY_DESIGN_CRITIQUE_MISSING` with `matchedAt`, the critique step of claude-design). Until the cli-follow step raises the CLI requirement, the CLI runs the hfs it requires.
+- Changed (pins): the Grammar family at 0.47.1 (workbench gaps: `Grid size="tile"`, tile `groundTone`, bare tiles, `TagGroup` `onClearAll`, `Select` `icon`, `SearchField` `measure="toolbar"`, six DNA laws), @starci/gallery 0.1.1 and @starci/hfs 6.13.46 (project checks that declare what they read are scoped and cached, the nivoos package check builds the CLI and SDK first, the gallery rule `HFS_APP_GALLERY_DESIGN_CRITIQUE_MISSING` with `matchedAt`, the critique step of claude-design). Until the cli-follow step raises the CLI requirement, the CLI runs the hfs it requires.
 
 ## 1.1.0-alpha.165 - 2026-11-18
 

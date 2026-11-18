@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.1 - 2026-11-18
+
+- Changed (`explain`): the explain reader skips the section `## Phương án đã cân nhắc` (the record of the options weighed, PROJECT-GALLERY-7) instead of reading it as a region, as `starci app check` does.
+
 ## 0.1.0 - 2026-11-18
 
 The screenshot gallery of a StarCi app as one Vite config, built with the StarCi Grammar.
