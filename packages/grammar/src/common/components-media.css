@@ -227,7 +227,7 @@
     }
 
     /*
-     * A first-run notice with steps (0.47.0): two to five numbered steps under the copy, read from the start edge (the stack is centred, the list is not), each a 24px step mark
+     * A first-run notice with steps (0.46.2): two to five numbered steps under the copy, read from the start edge (the stack is centred, the list is not), each a 24px step mark
      * (a check when done, the accent number on the first open step, a grey number after it) and its words. The first open step carries the one action under its words.
      */
     .starci-core-notice-steps {

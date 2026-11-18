@@ -37,7 +37,7 @@ export type AlertAction = {
     readonly kind?: "button" | "row"
 }
 
-/** The second decision of a banner that holds a form (0.47.0): a button beside the primary `action`, in the `alternative` weight ("Reject" beside "Approve"). */
+/** The second decision of a banner that holds a form (0.46.2): a button beside the primary `action`, in the `alternative` weight ("Reject" beside "Approve"). */
 export type AlertSecondaryAction = {
     readonly label: string
     readonly onAction: () => void
@@ -56,11 +56,11 @@ type AlertBase = {
     readonly leading?: ReactNode
     readonly action?: AlertAction
     /**
-     * A second decision beside `action` (0.47.0), for a banner that asks the reader to decide: `alternative`, never a second primary. Needs `action` as a `button`.
+     * A second decision beside `action` (0.46.2), for a banner that asks the reader to decide: `alternative`, never a second primary. Needs `action` as a `button`.
      */
     readonly secondaryAction?: AlertSecondaryAction
     /**
-     * A named slot for the fields the banner is about (0.47.0): a few lines of the draft (a `Section kind="list" layout="keyValue"`, a short form) drawn under the description,
+     * A named slot for the fields the banner is about (0.46.2): a few lines of the draft (a `Section kind="list" layout="keyValue"`, a short form) drawn under the description,
      * inside the banner, above the actions. With a form the actions leave the end of the first row and stand on a row of their own under it, at the end. An Alert takes no
      * `children`; the slot is this prop. Not with an `action` of `kind: "row"` (the whole banner would be a press target around the fields).
      */

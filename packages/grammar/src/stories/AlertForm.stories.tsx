@@ -4,10 +4,10 @@ import * as G from '../common/index.js';
 import { noop } from './fixtures.js';
 
 /**
- * THE ALERT FORM SLOT (0.47.0). An `Alert` that asks the reader to decide holds the fields of the draft in its `form` slot, under the description and above the decision
+ * THE ALERT FORM SLOT (0.46.2). An `Alert` that asks the reader to decide holds the fields of the draft in its `form` slot, under the description and above the decision
  * buttons (`action` and `secondaryAction`). An Alert takes no `children`; the slot is the prop.
  */
-const meta: Meta = { title: 'Overlays/Alert form slot (0.47.0)', parameters: { layout: 'padded' } };
+const meta: Meta = { title: 'Overlays/Alert form slot (0.46.2)', parameters: { layout: 'padded' } };
 export default meta;
 type Story = StoryObj;
 
@@ -26,7 +26,7 @@ const boxOf = (root: ParentNode, selector: string): HTMLElement => {
 /** The sales assistant asks for approval: the draft's fields stand under the question, then Reject and Approve at the end. */
 export const Ask: Story = {
   render: () => (
-    <div style={{ maxInlineSize: '40rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+    <div style={{ maxInlineSize: '40rem' }}>
       <G.Alert
         tone="cautionary"
         title="Send this quote?"
@@ -35,15 +35,11 @@ export const Ask: Story = {
         action={{ label: 'Approve', onAction: noop }}
         secondaryAction={{ label: 'Reject', onAction: noop }}
       />
-      <G.Alert tone="informative" title="No form: the actions stay at the end of the row" description="The anatomy without the slot." action={{ label: 'Open', onAction: noop }} />
-      <G.Alert tone="cautionary" title="Loading keeps the box" description="Same anatomy as shimmers." isLoading form={<G.Section kind="list" layout="keyValue" ariaLabel="The quote" items={FIELDS} empty={null} />} action={{ label: 'Approve', onAction: noop }} secondaryAction={{ label: 'Reject', onAction: noop }} />
     </div>
   ),
   play: async ({ canvasElement }) => {
     await waitFor(() => {
-      const alerts = [...canvasElement.querySelectorAll<HTMLElement>('.starci-core-alert')];
-      expect(alerts).toHaveLength(3);
-      const [ask, plain, loading] = alerts as [HTMLElement, HTMLElement, HTMLElement];
+      const ask = boxOf(canvasElement, '.starci-core-alert');
       expect(ask.getAttribute('data-grammar-alert-form')).toBe('true');
       const form = boxOf(ask, '.starci-core-alert-form');
       const description = boxOf(ask, '.starci-core-alert-description').getBoundingClientRect();
@@ -58,12 +54,38 @@ export const Ask: Story = {
       // Two decisions, the secondary before the primary.
       const buttons = [...ask.querySelectorAll('.starci-core-alert-actions button')].map((button) => button.textContent);
       expect(buttons).toEqual(['Reject', 'Approve']);
-      // Without a form the actions stay beside the text.
+    }, { timeout: 4000 });
+  },
+};
+
+/** Without a form the actions stay at the end of the row, beside the text. (A view holds one commit, so each anatomy is its own story.) */
+export const NoFormKeepsRow: Story = {
+  render: () => (
+    <div style={{ maxInlineSize: '40rem' }}>
+      <G.Alert tone="informative" title="No form: the actions stay at the end of the row" description="The anatomy without the slot." action={{ label: 'Open', onAction: noop }} />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      const plain = boxOf(canvasElement, '.starci-core-alert');
       expect(plain.getAttribute('data-grammar-alert-form')).toBeNull();
       const plainBox = boxOf(plain, '.starci-core-alert-content').getBoundingClientRect();
       const plainActions = boxOf(plain, '.starci-core-alert-actions button').getBoundingClientRect();
       if (window.innerWidth >= 480) expect(plainActions.top).toBeLessThan(plainBox.bottom);
-      expect(loading.getAttribute('data-loading')).toBe('true');
+    }, { timeout: 4000 });
+  },
+};
+
+/** Loading keeps the box: the same anatomy as shimmers, the form as geometry. */
+export const LoadingKeepsBox: Story = {
+  render: () => (
+    <div style={{ maxInlineSize: '40rem' }}>
+      <G.Alert tone="cautionary" title="Loading keeps the box" description="Same anatomy as shimmers." isLoading form={<G.Section kind="list" layout="keyValue" ariaLabel="The quote" items={FIELDS} empty={null} />} action={{ label: 'Approve', onAction: noop }} secondaryAction={{ label: 'Reject', onAction: noop }} />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      expect(boxOf(canvasElement, '.starci-core-alert').getAttribute('data-loading')).toBe('true');
     }, { timeout: 4000 });
   },
 };

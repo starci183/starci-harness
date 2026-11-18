@@ -61,7 +61,7 @@ export const Short: Story = {
 };
 
 /**
- * THE POPOVER SIZE (0.47.0). `size` is `sm` (18rem), `md` (26rem, the default) or `lg` (36rem), each capped at the viewport less 2rem: on a phone all three are the same
+ * THE POPOVER SIZE (0.46.2). `size` is `sm` (18rem), `md` (26rem, the default) or `lg` (36rem), each capped at the viewport less 2rem: on a phone all three are the same
  * full-width panel. A panel is never as narrow as its trigger.
  */
 export const Sizes: Story = {

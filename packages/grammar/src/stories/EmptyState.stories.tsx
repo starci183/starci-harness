@@ -142,7 +142,7 @@ const FIRST_RUN_STEPS: ReadonlyArray<G.EmptyNoticeStep> = [
 ];
 
 /**
- * A first-run notice with numbered steps (0.47.0), two to five. A finished step wears a check, the first OPEN step is the current one (the accent number) and carries the
+ * A first-run notice with numbered steps (0.46.2), two to five. A finished step wears a check, the first OPEN step is the current one (the accent number) and carries the
  * notice's one primary action under its words, and the later steps are grey numbers. The steps read from the start edge inside the centred stack.
  */
 export const FirstRunSteps: Story = {
@@ -152,7 +152,7 @@ export const FirstRunSteps: Story = {
         <G.EmptyNotice message="Set up your workspace" description="Three steps and your customers appear here." media={{ icon: BookGlyph }} steps={FIRST_RUN_STEPS} actionLabel="Pick the sheet" onAction={noop} secondary={{ label: 'Skip for now', onPress: noop }} />
       </State>
       <State label="every step done: the action stands where a plain notice draws it" direction="column">
-        <G.EmptyNotice message="All set up" steps={FIRST_RUN_STEPS.slice(0, 2).map((step) => ({ ...step, isDone: true }))} actionLabel="Open the customers" onAction={noop} />
+        <G.EmptyNotice message="All set up" steps={FIRST_RUN_STEPS.slice(0, 2).map((step) => ({ ...step, isDone: true }))} actionLabel="Open the customers" actionIntent="neutral" onAction={noop} />
       </State>
     </Matrix>
   ),
@@ -180,7 +180,7 @@ export const FirstRunSteps: Story = {
   },
 };
 
-/** The good-news state (0.47.0): nothing needs the reader. A success mark, the words, and no action (the type refuses every action prop on it). */
+/** The good-news state (0.46.2): nothing needs the reader. A success mark, the words, and no action (the type refuses every action prop on it). */
 export const AllClear: Story = {
   render: () => (
     <Matrix maxWidth={560}>

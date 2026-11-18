@@ -60,7 +60,7 @@ void test("dna check counts inside the root a scope stands in, names a dialog by
     writeFileSync(join(folder, "grammars", "contract.yaml"), CONTRACT)
     writeFileSync(join(folder, "index.html"), PAGE)
     const context = { cwd: folder, tree: "none" as const, treeRoot: undefined, verbs: [], json: false, progress: (): void => undefined }
-    const result = await dnaCheckVerb.run(context, { target: folder, storybook: undefined, url: undefined, stories: undefined, browser: undefined, timeout: undefined, out: undefined, contract: join(folder, "grammars", "contract.yaml"), widths: "1280", routes: "index.html" })
+    const result = await dnaCheckVerb.run(context, { target: folder, storybook: undefined, url: undefined, stories: undefined, shard: undefined, browser: undefined, timeout: undefined, out: undefined, contract: join(folder, "grammars", "contract.yaml"), widths: "1280", routes: "index.html" })
     const data = result.data
     for (const law of data.laws) assert.equal(law.status, "green", `${law.id}: ${String(law.broken)} of ${String(law.evaluated)} broken`)
     assert.equal(data.laws.length, 3)

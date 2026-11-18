@@ -420,7 +420,7 @@
         outline: none;
     }
 
-    /* `size` (0.47.0): the panel's own widths, each capped at the viewport less 2rem like the default. */
+    /* `size` (0.46.2): the panel's own widths, each capped at the viewport less 2rem like the default. */
     .starci-core-popover[data-size="sm"] {
         width: min(18rem, calc(100vw - 2rem));
         max-width: min(18rem, calc(100vw - 2rem));
@@ -732,7 +732,7 @@
     }
 
     /*
-     * The form slot (0.47.0): the fields the banner is about stand under its description, a row step down, on the text's own edge. The words and rows inside keep the banner's
+     * The form slot (0.46.2): the fields the banner is about stand under its description, a row step down, on the text's own edge. The words and rows inside keep the banner's
      * ink. With a form the actions do not sit at the end of the first row but take a row of their own under it, at the end, so the decision reads after the fields.
      */
     .starci-core-alert-form {

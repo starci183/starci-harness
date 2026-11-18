@@ -4,11 +4,11 @@ import { expect, userEvent, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 
 /**
- * A BOARD COLUMN THAT REFUSES A DROP (0.47.0). `BoardColumn.canDrop(move)` returns `null` to let the card in or a reason to refuse it. A refusing column still shows as a drop
+ * A BOARD COLUMN THAT REFUSES A DROP (0.46.2). `BoardColumn.canDrop(move)` returns `null` to let the card in or a reason to refuse it. A refusing column still shows as a drop
  * place that says no (a danger outline, its reason written in the column), the card is not moved (the drag is not accepted, so it springs back; `onMove` does not run), and the
  * reason is announced. The keyboard move (Alt and an arrow) is held to the same answer.
  */
-const meta: Meta = { title: 'Surfaces/Board refused drop (0.47.0)', parameters: { layout: 'padded' } };
+const meta: Meta = { title: 'Surfaces/Board refused drop (0.46.2)', parameters: { layout: 'padded' } };
 export default meta;
 type Story = StoryObj;
 

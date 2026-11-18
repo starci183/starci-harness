@@ -65,7 +65,7 @@ type EmptyNoticeAction =
         readonly actionStartContent?: never
     }
 
-/** One numbered step of a first-run notice (0.47.0). */
+/** One numbered step of a first-run notice (0.46.2). */
 export type EmptyNoticeStep = {
     readonly id: string
     /** What to do, in a few words ("Connect your Google Drive"). */
@@ -91,7 +91,7 @@ type EmptyNoticeBase = NoChildren & {
 }
 
 /**
- * The good-news state (0.47.0): a region that is empty because nothing needs the reader ("All caught up", "No approvals waiting"). It wears a success mark, says it in the title and
+ * The good-news state (0.46.2): a region that is empty because nothing needs the reader ("All caught up", "No approvals waiting"). It wears a success mark, says it in the title and
  * the description, and has no action: there is nothing to do, so every action prop, `steps`, `media` and `isError` are refused by the type.
  */
 type EmptyNoticeAllClear = {
@@ -113,7 +113,7 @@ type EmptyNoticeAllClear = {
 type EmptyNoticeRegular = EmptyNoticeMedia & EmptyNoticeAction & {
     readonly isAllClear?: false
     /**
-     * A first-run notice with numbered steps (0.47.0), two to five (a development error otherwise): the steps stand as a numbered list under the description, a finished step wears a
+     * A first-run notice with numbered steps (0.46.2), two to five (a development error otherwise): the steps stand as a numbered list under the description, a finished step wears a
      * check, and the FIRST OPEN step carries the notice's one primary action (`actionLabel` with `onAction` or `actionHref`), drawn under that step's words, so the way in is always one
      * press. Later open steps are grey numbers; a notice whose steps are all done draws its action where a plain notice does. `secondary` stays at the foot.
      */

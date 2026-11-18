@@ -1102,7 +1102,7 @@
     }
 
     /*
-     * THE TOTALS ROW (0.47.0). The last row of the body, its figures in the cells of their own columns (the same alignment and tabular numerals as the rows above), the
+     * THE TOTALS ROW (0.46.2). The last row of the body, its figures in the cells of their own columns (the same alignment and tabular numerals as the rows above), the
      * label in the first column. It has its own opaque ground (the secondary surface) and a `--border` line above, 14 / 600, and it is sticky at the foot of the scroll
      * region, so in a bounded or `fill` table it stays over the footer while the rows scroll under it; in a table as tall as its rows it is simply the last row.
      */
@@ -1196,7 +1196,7 @@
     }
 
     /*
-     * THE ROW GROUND TONE (0.47.0). A row `groundTone` paints the whole row with its tone's soft pair, the words in the pair's foreground, for a row whose status the whole row answers.
+     * THE ROW GROUND TONE (0.46.2). A row `groundTone` paints the whole row with its tone's soft pair, the words in the pair's foreground, for a row whose status the whole row answers.
      * It sits beside `edgeTone` (the 2px bar, above) and under the selected row's fill (below, which comes later and wins). A pressable row darkens it a step on hover instead of
      * swapping it for the neutral hover fill.
      */
@@ -1462,7 +1462,7 @@
     .starci-core-data-table-list-totals .starci-core-data-table-list-value { color: var(--default-foreground); font-variant-numeric: tabular-nums; }
 
     /*
-     * SELECTION ON THE PHONE LIST (0.47.0). A long press on a row selects it, then a press toggles; the platform's own text selection and callout stay out of the way. Every
+     * SELECTION ON THE PHONE LIST (0.46.2). A long press on a row selects it, then a press toggles; the platform's own text selection and callout stay out of the way. Every
      * row holds a real checkbox: it is invisible (still the keyboard's and assistive technology's control) until a row is selected or the checkbox has focus, when a 24px mark
      * stands at the start of the title line and the selected row takes the same grey fill and accent bar as a selected table row.
      */

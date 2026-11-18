@@ -20,6 +20,9 @@ Every change below is additive (new optional props, new components, new DNA laws
 - Added (`Tabs`): `kind="filter"` with `shape="pill"`, the one primary pill look.
 - Added (`Popover`): `size` `sm`, `md` or `lg`.
 - Stories: AlertForm, BoardRefusal, EmptyState, FilterPills, PopoverWidth and TableTotalsGroundSelect, each with a play function at 1440 and 390. Contexts: `ui/components` dialog-drawer, empty-state, list-table, tabs and toast-alert.
+- Fixed (Offset Pop, `Alert`): a `secondaryAction` ("Reject") is no longer painted with the pink decision fill; only the banner's last Button, the decision, is (law `DNA-COMMON-ONE-ACCENT-FILL`).
+- Fixed (stories): AlertForm is one anatomy per story (a view holds one commit) and the second EmptyState steps notice takes the neutral action; the story probes that added and removed an element inside `waitFor` (ListRowDiff, TabLinesAndLayout, StatusTones, NavigationData, FlowGraphStyleC) read it through `quietProbe`, a shadow-root probe that is no DOM mutation, which froze the browser of `starci dna check` when an assertion failed. The stories and doc comments that said 0.47.0 say 0.46.2.
+- Storybook: the toolbar global `grammarPalette` (`neutral`, the default and the render proof's, or `family`, the family's own `theme.css`), which `starci dna check` asks for.
 
 ## 0.46.1 - 2026-11-18 - IntervalChart and FunnelChart
 

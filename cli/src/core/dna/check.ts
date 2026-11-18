@@ -86,12 +86,23 @@ const numbersOf = (value: string | undefined): number[] => {
     })
 }
 
-const pagesOf = async (cwd: string, flags: { target: string | undefined; storybook: string | undefined; url: string | undefined; stories: string | undefined; routes: string | undefined }): Promise<{ pages: Page[]; site: StaticSite | undefined }> => {
+/** `--shard 2/4`: this run judges every 4th story from the 2nd, so a long run splits over several browsers (the --out reports of the shards add up). */
+const shardOf = (value: string | undefined): { index: number; of: number } | undefined => {
+    if (value === undefined) return undefined
+    const match = /^(\d+)\/(\d+)$/.exec(value)
+    const index = Number(match?.[1]) - 1
+    const of = Number(match?.[2])
+    if (match === null || of < 1 || index < 0 || index >= of) throw new UsageError(`--shard takes i/n with 1 <= i <= n, not ${value}`)
+    return { index, of }
+}
+
+const pagesOf = async (cwd: string, flags: { target: string | undefined; storybook: string | undefined; url: string | undefined; stories: string | undefined; routes: string | undefined; shard: string | undefined }): Promise<{ pages: Page[]; site: StaticSite | undefined }> => {
     const given = [flags.target, flags.storybook, flags.url].filter((value) => value !== undefined)
     if (given.length !== 1) throw new UsageError("name one source: a <target> (url, built Storybook, folder or html file), --storybook or --url")
     const routes = (flags.routes ?? "/").split(",").map((route) => route.trim()).filter((route) => route !== "")
     const place = flags.url ?? flags.storybook ?? flags.target ?? ""
     if (/^https?:\/\//i.test(place)) return { pages: routes.map((route) => ({ label: route, url: `${trimEndChars(place, "/")}/${route.replace(/^\/+/, "")}`, story: false })), site: undefined }
+    const shard = shardOf(flags.shard)
     const path = resolve(cwd, place)
     if (!existsSync(path)) throw new Refusal("DNA_SOURCE", `${path} does not exist`)
     const folder = statSync(path).isDirectory() ? path : dirname(path)
@@ -100,6 +111,7 @@ const pagesOf = async (cwd: string, flags: { target: string | undefined; storybo
         const index = indexSchema.parse(JSON.parse(readFileSync(join(path, "index.json"), "utf8")))
         const pages = Object.values(index.entries)
             .filter((entry) => (entry.type === undefined || entry.type === "story") && (flags.stories === undefined || entry.id.includes(flags.stories)))
+            .filter((_, position) => shard === undefined || position % shard.of === shard.index)
             .map((entry) => ({ label: entry.id, url: `${site.url}/iframe.html?id=${encodeURIComponent(entry.id)}&viewMode=story`, story: true }))
         return { pages, site }
     }
@@ -198,6 +210,7 @@ export const dnaCheckVerb = defineVerb({
         url: { kind: "string", summary: "the base url of a running app" },
         routes: { kind: "string", summary: "comma-separated routes under the url or folder (default /)" },
         stories: { kind: "string", summary: "only the Storybook stories whose id contains this text" },
+        shard: { kind: "string", summary: "i/n: only every n-th Storybook story from the i-th, so a long run splits over several browsers (the --out reports of the shards add up)" },
         contract: { kind: "string", summary: "the grammar contract (default contexts/grammars/contract.yaml of the harness)" },
         widths: { kind: "string", summary: `comma-separated widths in px (default ${DEFAULT_WIDTHS.join(",")})` },
         browser: { kind: "string", summary: "the Chromium binary (default STARCI_BROWSER, else the installed Chrome, Edge or Chromium)" },
@@ -211,38 +224,48 @@ export const dnaCheckVerb = defineVerb({
         if (!Number.isFinite(waitMs) || waitMs < 0) throw new UsageError(`--timeout takes seconds, not ${flags.timeout ?? ""}`)
         const widths = numbersOf(flags.widths)
         const { pages, site } = await pagesOf(context.cwd, flags)
-        const tab = await HeadlessPage.launch(findBrowser(flags.browser), { width: 1280, height: 800 })
+        const browser = findBrowser(flags.browser)
+        let tab = await HeadlessPage.launch(browser, { width: 1280, height: 800 })
         try {
             if (pages.length === 0) throw new Refusal("DNA_NO_PAGES", "the source has no page to open")
             const rows = new Map<string, Row>()
             const problems: string[] = []
             const plan = planOf(contract, rows)
             await inOrder(pages, async (page) => {
-                await inOrder(plan, async ({ family, variants }) => {
-                    await inOrder(THEMES, async (theme) => {
-                        context.progress(`dna: ${page.label} ${family} ${theme}`)
-                        const url = page.story ? `${page.url}&globals=grammarFamily:${family};grammarTheme:${theme}` : page.url
-                        await tab.media({ dark: theme === "dark" })
-                        if (!(await tab.open(url, waitMs + 10_000))) {
-                            problems.push(`${page.label}: ${url} did not finish loading`)
-                            return
-                        }
-                        const rootSelector = `[${ROOT_ATTRIBUTE}="${family}"]`
-                        await tab.evaluate(`(${settlePage.toString()})(${JSON.stringify({ rootSelector, waitMs })})`)
-                        await tab.evaluate(`(${installProbe.toString()})(${judgePart.toString()})`)
-                        const begin: PageBegin = { rootAttribute: ROOT_ATTRIBUTE, family, maxBroken: MAX_BROKEN_PER_PAGE }
-                        const roots = beginSchema.parse(await tab.evaluate(`window.__dna.begin(${JSON.stringify(begin)})`))
-                        if (roots.roots === 0) {
-                            if (roots.anyRoot === 0 || !page.story) problems.push(`${page.label}: no [${ROOT_ATTRIBUTE}="${family}"] Grammar root rendered`)
-                            return
-                        }
-                        await inOrder(widths, async (width) => {
-                            await tab.viewport({ width, height: width >= 1000 ? 1080 : 844 })
-                            const reports = reportsSchema.parse(await tab.evaluate(`window.__dna.run(${JSON.stringify(variants.map(({ index, variant }) => ({ index, variant })))})`))
-                            recordReports(reports, variants, rows, { family, page, theme, width })
+                try {
+                    await inOrder(plan, async ({ family, variants }) => {
+                        await inOrder(THEMES, async (theme) => {
+                            context.progress(`dna: ${page.label} ${family} ${theme}`)
+                            const url = page.story ? `${page.url}&globals=grammarFamily:${family};grammarTheme:${theme};grammarPalette:family` : page.url
+                            await tab.media({ dark: theme === "dark" })
+                            if (!(await tab.open(url, waitMs + 10_000))) {
+                                problems.push(`${page.label}: ${url} did not finish loading`)
+                                return
+                            }
+                            const rootSelector = `[${ROOT_ATTRIBUTE}="${family}"]`
+                            await tab.evaluate(`(${settlePage.toString()})(${JSON.stringify({ rootSelector, waitMs })})`)
+                            await tab.evaluate(`(${installProbe.toString()})(${judgePart.toString()})`)
+                            const begin: PageBegin = { rootAttribute: ROOT_ATTRIBUTE, family, maxBroken: MAX_BROKEN_PER_PAGE }
+                            const roots = beginSchema.parse(await tab.evaluate(`window.__dna.begin(${JSON.stringify(begin)})`))
+                            if (roots.roots === 0) {
+                                if (roots.anyRoot === 0 || !page.story) problems.push(`${page.label}: no [${ROOT_ATTRIBUTE}="${family}"] Grammar root rendered`)
+                                return
+                            }
+                            await inOrder(widths, async (width) => {
+                                await tab.viewport({ width, height: width >= 1000 ? 1080 : 844 })
+                                const reports = reportsSchema.parse(await tab.evaluate(`window.__dna.run(${JSON.stringify(variants.map(({ index, variant }) => ({ index, variant })))})`))
+                                recordReports(reports, variants, rows, { family, page, theme, width })
+                            })
                         })
                     })
-                })
+                } catch (failure) {
+                    // A page whose own scripts never yield (a story's play function in a loop) freezes the browser: that page is a finding of its own, the browser is
+                    // started again, and the walk goes on, so one bad story does not end a run of thousands of renders.
+                    if (!(failure instanceof Refusal) || failure.code !== "DNA_BROWSER_TIMEOUT") throw failure
+                    problems.push(`${page.label}: the page froze the browser (${failure.message})`)
+                    await tab.close().catch(() => undefined)
+                    tab = await HeadlessPage.launch(browser, { width: 1280, height: 800 })
+                }
             })
             const lawStatus = (ran: boolean, row: { readonly broken: number; readonly evaluated: number; readonly followUp: string | null }): LawRow["status"] => {
                 if (!ran) return "not-run"

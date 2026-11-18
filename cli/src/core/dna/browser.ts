@@ -69,7 +69,8 @@ const KEYS: Readonly<Record<string, { readonly code: string; readonly keyCode: n
 }
 
 const LAUNCH_TIMEOUT_MS = 20_000
-const CALL_TIMEOUT_MS = 30_000
+// A call may take long on a page of thousands of elements (the every-component-loading story needs ~20s per render under load); one that never answers is a frozen page.
+const CALL_TIMEOUT_MS = 90_000
 
 /** One headless browser and one page in it. */
 export class HeadlessPage {

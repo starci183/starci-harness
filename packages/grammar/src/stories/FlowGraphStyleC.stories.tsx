@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
-import { Matrix, State } from './fixtures.js';
+import { Matrix, State, quietProbe } from './fixtures.js';
 
 /**
  * 0.37.27 (owner drawing C): a steps graph reads LEFT → RIGHT by default and a branching step fans its children out down the page. Edges are
@@ -110,11 +110,7 @@ export const LeTanRun: Story = {
     await waitFor(() => {
       const [graph] = graphsOf(canvasElement);
       assertStyleC(graph!);
-      const probe = document.createElement('span');
-      probe.style.color = 'var(--success)';
-      graph!.append(probe);
-      const success = getComputedStyle(probe).color;
-      probe.remove();
+      const success = quietProbe(graph!, (probe) => { probe.style.color = 'var(--success)'; }, (probe) => getComputedStyle(probe).color);
       const taken = Array.from(graph!.querySelectorAll<SVGGElement>('.starci-core-flow-graph-edge-taken'));
       expect(taken.length).toBe(2);
       for (const group of taken) {

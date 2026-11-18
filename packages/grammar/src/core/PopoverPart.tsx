@@ -7,7 +7,7 @@ import { SurfaceNesting } from "./surfaceContext.js"
 import { overlayOpenProps, useOverlayContainer, type OverlayOpenState } from "./overlayScope.js"
 
 /**
- * How wide the panel is (0.47.0): `sm` 18rem (a short note, a small menu of actions), `md` 26rem (the default: a panel of rows with a mark, copy and an action), `lg` 36rem (a
+ * How wide the panel is (0.46.2): `sm` 18rem (a short note, a small menu of actions), `md` 26rem (the default: a panel of rows with a mark, copy and an action), `lg` 36rem (a
  * list of wide rows or a small form). Each is capped at the viewport less 2rem, so on a phone every size is the same full-width panel. The panel never takes the trigger's width.
  */
 export type PopoverSize = "sm" | "md" | "lg"

@@ -1567,7 +1567,7 @@
     .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tab-content { gap: var(--grammar-identity-gap); }
 
     /*
-     * A filter strip as pills (`shape="pill"`, 0.47.0): the primary switch's one pill look (HeroUI's primary variant, the pill on its track, drawn by the vendor and the rules
+     * A filter strip as pills (`shape="pill"`, 0.46.2): the primary switch's one pill look (HeroUI's primary variant, the pill on its track, drawn by the vendor and the rules
      * of `data-grammar-tabs-variant="primary"` above), so no second pill is styled here. What a filter strip adds stays: the count chip, the fold into a "+n" menu, the row it
      * stands in. The frame hugs its pills, centred on the strip's height with the fold menu beside it, and draws no line.
      */
@@ -4066,7 +4066,7 @@
     /* The column a dragged card would land in. */
     .starci-core-board-column[data-grammar-drop="true"] { outline: 2px dashed var(--accent); outline-offset: 2px; border-radius: var(--starci-core-surface-radius); }
     /*
-     * A column that refuses the dragged card (`BoardColumn.canDrop`, 0.47.0): the same dashed outline in the danger token (a drop place that says no), the `not-allowed` pointer, and its
+     * A column that refuses the dragged card (`BoardColumn.canDrop`, 0.46.2): the same dashed outline in the danger token (a drop place that says no), the `not-allowed` pointer, and its
      * reason written under the head in the danger soft pair, so the colour is never the only cue. The note stays a few seconds after the card sprang back.
      */
     .starci-core-board-column[data-grammar-drop="refused"] { outline: 2px dashed var(--danger); outline-offset: 2px; border-radius: var(--starci-core-surface-radius); cursor: not-allowed; }

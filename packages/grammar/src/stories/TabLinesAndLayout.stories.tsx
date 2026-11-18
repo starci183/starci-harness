@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Component, Suspense, createElement, lazy, useState, type ReactNode } from 'react';
 import { expect, waitFor, within } from 'storybook/test';
 import * as G from '../common/index.js';
-import { Matrix, State, noop } from './fixtures.js';
+import { Matrix, State, noop, quietProbe } from './fixtures.js';
 
 /**
  * Measures that do not belong to one component: the one line under any tab strip, the two tab appearances, the card radius token, the content maximum of a workspace
@@ -182,14 +182,7 @@ export const TabsAppearances390: Story = appearanceStory(PHONE);
 /* ---------- the surface radius token, and the content maximum ---------- */
 
 /** What `min(32px, var(--radius-3xl))` computes to here, from a probe: the card radius HeroUI's own Card draws. */
-const probedRadius = (host: HTMLElement, expression: string): string => {
-  const probe = document.createElement('div');
-  probe.style.borderRadius = expression;
-  host.append(probe);
-  const radius = getComputedStyle(probe).borderTopLeftRadius;
-  probe.remove();
-  return radius;
-};
+const probedRadius = (host: HTMLElement, expression: string): string => quietProbe(host, (probe) => { probe.style.display = 'block'; probe.style.borderRadius = expression; }, (probe) => getComputedStyle(probe).borderTopLeftRadius);
 
 /**
  * The card radius is Grammar's default token `--starci-core-surface-radius` (HeroUI's Card radius, `min(32px, var(--radius-3xl))`), and an
@@ -273,15 +266,7 @@ const contentMaxStory = (width: number, hasRail: boolean): Story => ({
   },
 });
 
-const probedWidth = (host: HTMLElement, expression: string): number => {
-  const probe = document.createElement('div');
-  probe.style.inlineSize = expression;
-  probe.style.position = 'absolute';
-  host.append(probe);
-  const width = probe.getBoundingClientRect().width;
-  probe.remove();
-  return width;
-};
+const probedWidth = (host: HTMLElement, expression: string): number => quietProbe(host, (probe) => { probe.style.display = 'block'; probe.style.inlineSize = expression; probe.style.position = 'absolute'; }, (probe) => probe.getBoundingClientRect().width);
 
 /** The content maximum at 1920px and 2560px widths, with and without the aside. */
 export const ContentMax1920: Story = contentMaxStory(1920, false);

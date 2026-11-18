@@ -7,6 +7,8 @@ import '../src/stories/tones.css';
 import commonCss from '../src/common/styles.css?inline';
 import coreCss from '../src/core/styles.css?inline';
 import offsetPopCss from '../src/offset-pop/styles.css?inline';
+import coreThemeCss from '../src/core/theme.css?inline';
+import offsetPopThemeCss from '../src/offset-pop/theme.css?inline';
 import { GrammarRoot, type GrammarRootProps } from '../src/common/index.js';
 import { CoreGrammarRoot } from '../src/core/index.js';
 import { OffsetPopGrammarRoot } from '../src/offset-pop/index.js';
@@ -26,6 +28,13 @@ const FAMILIES: Record<Family, { readonly css: string; readonly Root: (props: Gr
   core: { css: coreCss, Root: CoreGrammarRoot },
   'offset-pop': { css: offsetPopCss, Root: OffsetPopGrammarRoot },
 };
+
+/**
+ * The family's own default palette (`@starci/grammar/<family>/theme.css`), which an app imports or replaces with its own tokens. The stories draw on HeroUI's neutral
+ * tokens (the baselines of the render proof), so the palette is opt-in: `globals=grammarPalette:family`. The DNA gate asks for it, because laws such as ink on pink and the
+ * Offset Pop sticker are about the family's palette, not the vendor's blue.
+ */
+const PALETTES: Record<Family, string | undefined> = { common: undefined, core: coreThemeCss, 'offset-pop': offsetPopThemeCss };
 
 const isFamily = (value: unknown): value is Family => typeof value === 'string' && value in FAMILIES;
 const isTheme = (value: unknown): value is Theme => value === 'light' || value === 'dark' || value === 'system';
@@ -66,12 +75,14 @@ const withGrammarRoot: Decorator = (Story, context) => {
   const theme = isTheme(context.globals.grammarTheme) ? context.globals.grammarTheme : 'light';
   const grammar = (context.parameters.grammar ?? {}) as GrammarParameters;
   const { css, Root } = FAMILIES[family];
+  const palette = context.globals.grammarPalette === 'family' ? PALETTES[family] : undefined;
   // The mode is the app's: `.dark` on `html`, as HeroUI reads it.
   document.documentElement.classList.toggle('dark', theme === 'dark');
   const isDocs = context.viewMode === 'docs';
   return (
     <>
       <style data-grammar-storybook-family={family}>{css}</style>
+      {palette === undefined ? null : <style data-grammar-storybook-palette={family}>{palette}</style>}
       <Root
         theme={theme}
         data-grammar-storybook-root="true"
@@ -107,6 +118,18 @@ const preview: Preview = {
         dynamicTitle: true,
       },
     },
+    grammarPalette: {
+      description: "neutral: HeroUI tokens (the render proof); family: the family's own theme.css",
+      toolbar: {
+        title: 'Palette',
+        icon: 'photo',
+        items: [
+          { value: 'neutral', title: 'Neutral (HeroUI)' },
+          { value: 'family', title: 'Family theme.css' },
+        ],
+        dynamicTitle: true,
+      },
+    },
     grammarTheme: {
       description: 'GrammarRoot theme scope',
       toolbar: {
@@ -125,6 +148,7 @@ const preview: Preview = {
     // Families/themes can be switched at launch through these env overrides.
     grammarFamily: import.meta.env.VITE_GRAMMAR_FAMILY ?? 'core',
     grammarTheme: import.meta.env.VITE_GRAMMAR_THEME ?? 'light',
+    grammarPalette: import.meta.env.VITE_GRAMMAR_PALETTE ?? 'neutral',
   },
   parameters: {
     layout: 'fullscreen',

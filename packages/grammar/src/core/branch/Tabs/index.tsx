@@ -81,7 +81,7 @@ export type SecondaryTabsProps = TabsCommon & {
     readonly appearance?: "secondary"
     readonly kind?: "views" | "filter"
     /**
-     * How a `kind="filter"` strip is drawn (0.47.0). `underline` (default) is the strip's own look. `pill` draws the same strip as pills on a track, the one pill look the
+     * How a `kind="filter"` strip is drawn (0.46.2). `underline` (default) is the strip's own look. `pill` draws the same strip as pills on a track, the one pill look the
      * `appearance="primary"` switch already has (no second pill is drawn): for a short row of PRESETS that narrow a list ("All", "Mine", "Overdue"), where the choice reads as
      * picking a saved view rather than a tab of the page. It keeps what a filter strip has (a `count` chip per tab, `isAttention`, the "+n" fold into a menu, the selected tab always
      * visible) and the pill strip's own: no line under it. Only with `kind="filter"`; a development error otherwise.

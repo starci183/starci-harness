@@ -38,7 +38,7 @@ Choice `empty-state.choose.actions`: what the notice offers.
 | two | a page-level state has a second honest way out (a 500: "Back to the home page" and "Try again") | the primary and one `secondary`, neutral and text only | `DNA-COMMON-EMPTY-ACTIONS` |
 | none | the state is information (a forbidden region with no way forward) | no action | judgement |
 
-## First-run steps and the all-clear state (0.47.0)
+## First-run steps and the all-clear state (0.46.2)
 `EmptyNotice steps` is a first-run notice with two to five numbered steps (`{ id, label, description?, isDone? }`; a development error outside that range): a finished step wears a check, the FIRST OPEN step is the current one (accent number, `aria-current="step"`) and carries the notice's one primary action (`actionLabel` with `onAction` or `actionHref`) under its words, later steps are grey numbers, `secondary` stays at the foot. With every step done the action stands where a plain notice draws it. It is a prop of `EmptyNotice`, not a component.
 
 `EmptyNotice isAllClear` is the good-news state for a region that is empty because nothing needs the reader ("You are all caught up"): the success mark (`IconTile tone="success"`), the words, and no action. The type refuses every action prop, `steps`, `media`, `scope="page"` and `isError` with it. An empty region that the reader can fill is a plain notice with its one action; an all-clear has nothing to do. Stories `Media/Empty state` (FirstRunSteps, AllClear).

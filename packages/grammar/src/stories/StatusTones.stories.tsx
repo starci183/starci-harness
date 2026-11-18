@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
+import { quietProbe } from './fixtures.js';
 
 /**
  * The status tones side by side (0.37.5, owner: "success must use the success colour"). A success Badge and StatusDot read the HeroUI `success` tokens exactly
@@ -32,15 +33,10 @@ export const SideBySide: Story = {
     await waitFor(() => {
       const badge = canvasElement.querySelector<HTMLElement>('[data-component="Badge"][data-tone="success"]');
       if (badge === null) throw new Error('the success badge renders');
-      const probe = document.createElement('span');
-      probe.style.color = 'var(--success-soft-foreground)';
-      probe.style.backgroundColor = 'var(--success-soft)';
-      canvasElement.append(probe);
-      const want = getComputedStyle(probe);
+      const want = quietProbe(canvasElement, (probe) => { probe.style.color = 'var(--success-soft-foreground)'; probe.style.backgroundColor = 'var(--success-soft)'; }, (probe) => ({ color: getComputedStyle(probe).color, backgroundColor: getComputedStyle(probe).backgroundColor }));
       const got = getComputedStyle(badge);
       expect(got.color).toBe(want.color);
       expect(got.backgroundColor).toBe(want.backgroundColor);
-      probe.remove();
     });
   },
 };
