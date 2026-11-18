@@ -147,10 +147,10 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Three layers · The model: one contract, composed implementations · Files · Who owns what · Theming · Reading order for an author · Where feedback lands · Grammar lint
 - [grammars/common.md](../grammars/common.md) · 10 KB — Common is the layer every grammar is drawn over.
   - sections: Anatomy: wrap HeroUI once, never redraw it · Spacing: one scale, roles for gaps and levels for insets · Size and intent · One root · Idioms · Playbook shapes
-- [grammars/contract.md](../grammars/contract.md) · 46 KB — Every grammar implements one contract, so a new grammar can be added without touching the others and two apps on the same grammar come out the same.
+- [grammars/contract.md](../grammars/contract.md) · 48 KB — Every grammar implements one contract, so a new grammar can be added without touching the others and two apps on the same grammar come out the same.
   - sections: What a grammar provides · The shared scale · Intent x placement -> variant · Roles
-- [grammars/contract.yaml](../grammars/contract.yaml) · 154 KB — What every grammar implements.
-  - ids: DNA-<SCOPE>-<NAME>,, DNA-COMMON-ACCENT-CORNER, DNA-COMMON-AGENT-NAMED, DNA-COMMON-ALERT-TONE-PAIR-ACCENT, DNA-COMMON-ALERT-TONE-PAIR-DANGER, DNA-COMMON-ALERT-TONE-PAIR-DEFAULT, DNA-COMMON-ALERT-TONE-PAIR-INFORMATIVE, DNA-COMMON-ALERT-TONE-PAIR-SUCCESS, DNA-COMMON-ALERT-TONE-PAIR-WARNING, DNA-COMMON-ALERTDIALOG-DISMISS-FIRST, DNA-COMMON-ALERTDIALOG-TONE-INFORMATIVE, DNA-COMMON-AVATAR-GROUP-ONE-SIZE, DNA-COMMON-AVATAR-INITIALS, DNA-COMMON-AVATAR-RAMP, DNA-COMMON-BADGE-BELOW-RAMP, DNA-COMMON-BADGE-DOT-CHIP-PARITY, DNA-COMMON-BADGE-DOT-GAP, DNA-COMMON-BADGE-TONE-INFO, DNA-COMMON-BAR-CHART-ONE-SCALE, DNA-COMMON-BAR-ONE-HEIGHT, DNA-COMMON-BOARD-ONE-WIDTH, DNA-COMMON-BUBBLE-TEXT-INSIDE-END, DNA-COMMON-BUBBLE-TEXT-INSIDE-START, DNA-COMMON-BUTTONGROUP-INNER-CORNERS and 215 more
+- [grammars/contract.yaml](../grammars/contract.yaml) · 165 KB — What every grammar implements.
+  - ids: DNA-<SCOPE>-<NAME>,, DNA-COMMON-ACCENT-CORNER, DNA-COMMON-AGENT-NAMED, DNA-COMMON-ALERT-TONE-PAIR-ACCENT, DNA-COMMON-ALERT-TONE-PAIR-DANGER, DNA-COMMON-ALERT-TONE-PAIR-DEFAULT, DNA-COMMON-ALERT-TONE-PAIR-INFORMATIVE, DNA-COMMON-ALERT-TONE-PAIR-SUCCESS, DNA-COMMON-ALERT-TONE-PAIR-WARNING, DNA-COMMON-ALERTDIALOG-DISMISS-FIRST, DNA-COMMON-ALERTDIALOG-TONE-INFORMATIVE, DNA-COMMON-AVATAR-GROUP-ONE-SIZE, DNA-COMMON-AVATAR-INITIALS, DNA-COMMON-AVATAR-RAMP, DNA-COMMON-BADGE-BELOW-RAMP, DNA-COMMON-BADGE-DOT-CHIP-PARITY, DNA-COMMON-BADGE-DOT-GAP, DNA-COMMON-BADGE-DOT-ONE-PER-ENTITY, DNA-COMMON-BADGE-TONE-INFO, DNA-COMMON-BAR-CHART-ONE-SCALE, DNA-COMMON-BAR-ONE-HEIGHT, DNA-COMMON-BOARD-ONE-WIDTH, DNA-COMMON-BUBBLE-TEXT-INSIDE-END, DNA-COMMON-BUBBLE-TEXT-INSIDE-START and 234 more
 - [grammars/contributing.md](../grammars/contributing.md) · 15 KB — How a component enters `@starci/grammar`, or a prop enters a component.
   - sections: The laws · The question to ask first · One job · Naming · Which tier · Props · Composition · Paint · Accessibility · Server safety · Skeleton parity · What ships with it · Patch or minor · Render proof · The look, reviewed by a person
 - [grammars/core.md](../grammars/core.md) · 5 KB — `core` is the product and workspace grammar: a quiet neutral page, white surfaces, one violet accent.
@@ -229,7 +229,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [ui/components/card.md](../ui/components/card.md) · 11 KB — Contract: Card.
   - sections: Job · Choose · Actions · Look · Icons are outline (ICONS-OUTLINE) · Size · States · Owner split · Rules · Rows and labels
   - ids: CHOICE-ROW-CONTROL, LABEL-SUBLABEL-HIERARCHY, LIST-ROW-NAVIGATION, ROW-TITLES-NOUNS
-- [ui/components/chip.md](../ui/components/chip.md) · 5 KB — Contract: Chip.
+- [ui/components/chip.md](../ui/components/chip.md) · 6 KB — Contract: Chip.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/color-swatch.md](../ui/components/color-swatch.md) · 1 KB — Contract: ColorSwatch.
   - sections: Job · Choose · Anatomy and states · Owner split
@@ -263,6 +263,8 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/message-bubble.md](../ui/components/message-bubble.md) · 10 KB — Contract: MessageBubble.
   - sections: Job · The chat surfaces (0.37.31) · The chat frame (0.37.33) · Choose · Variants · Size · States · Owner split · Rules
+- [ui/components/motion.md](../ui/components/motion.md) · 6 KB — Contract: motion.
+  - sections: Job · Choose · Variants · How each one behaves · Size · States · Owner split · Rules
 - [ui/components/page-header.md](../ui/components/page-header.md) · 9 KB — Contract: Page, Section.
   - sections: Job · Choose · Variants · Size · States · Owner split · One start edge: band and body share the cap (MEASURE-8) · Rules
 - [ui/components/pane-grid.md](../ui/components/pane-grid.md) · 14 KB — Contract: PaneGrid.
@@ -299,7 +301,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [ui/proof/thresholds.yaml](../ui/proof/thresholds.yaml) · 5 KB — Every numeric threshold of contexts/ui, as data.
 - [ui/scale.md](../ui/scale.md) · 7 KB — One size model for every interactive component, so that a row of mixed controls reads as one object and two apps built on the same grammar size the same thing the same way.
   - sections: Why one ramp · The ramp · Drawn height and target size are two facts · How each component sits on the ramp · What travels with a step · Density
-- [ui/situations.md](../ui/situations.md) · 21 KB — An author says what the thing is; the grammar decides how it looks.
+- [ui/situations.md](../ui/situations.md) · 22 KB — An author says what the thing is; the grammar decides how it looks.
   - sections: The situations · Loading · Where the other decision tables live
 - [vendor/README.md](../vendor/README.md) · 3 KB — The grammar is built on HeroUI (`@heroui/react` with `@heroui/styles`; the version is pinned in stack/pins.yaml).
   - sections: The vendor reference is generated, not kept here · Pin
