@@ -2,6 +2,8 @@
 
 ## 1.1.0-alpha.169 - 2026-11-19
 
+- Changed: the CLI requires @starci/hfs@6.13.49, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
+
 - Fixed (`starci app push`): the dirty-path reader keeps the leading dot of a porcelain path (`.starcistacks` lost its dot when the git port trimmed the first line).
 - Changed (pins): @starci/hfs 6.13.49 (sealed `vps` member `VPS_PORT` and explicit ssh options, the lite storage image in `images.yml`). Until the cli-follow step raises the CLI requirement, the CLI runs the hfs it requires.
 
