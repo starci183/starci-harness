@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.47.4 - 2026-11-19 - Page tabs in fold mode draw the underline under the label
+
+A fix, so a patch. Lane `grammar-tabs-fold`, on top of `grammar-motion`; the version in package.json is bumped by the train.
+
+- Fixed (`Tabs`, both families): a strip that folds (`overflowLabel` on views, every filter strip) drew the selected underline ABOVE its label. The vendor indicator is `top-0 size-full`; its `top-auto bottom-0 h-0.5` rule reaches only a `.tabs__list-container` child, and a folding strip renders its list bare (no container), so our `bottom` and `height: 2px` met the vendor's `top: 0` and the bar stayed at the top. The secondary indicator rule now sets `top: auto`, so the bar is bottom-anchored in every underline strip (the filter rule already did).
+- Added (`Tabs`): the fold trigger (`data-grammar-tabs-more-selected`) reads as the selected tab (tint pair, medium weight, accent underline on the line) when the selected tab is one of the folded items.
+- Added (DNA, role `tabs`): `DNA-COMMON-TABS-INDICATOR-BELOW-LABEL`, the selected underline's top is at or below its label's bottom, in every underline strip. Story: `Surfaces/Page tabs fold` (PageTabsFold1440, PageTabsFold390, PageTabsFold390LastSelected) with play functions.
+
 ## 0.47.3 - 2026-11-19 - Marketing motion: Reveal, Marquee, CountUp, StickyStory and the motion tokens
 
 New components, a new contract role and new DNA laws, so a patch (contexts/grammars/contributing.md "Patch or minor"). Lane `grammar-motion`, on top of `grammar-tile-bleed`; the version in package.json is raised by the train. Both families, light and dark. Evidence: NIVO landing canvas round 2 (`nivoos-lite` `.starcistacks/canvas/pages/90-site-home.html` to `94-site-download.html`, `gen/90-site-landing.mjs`).

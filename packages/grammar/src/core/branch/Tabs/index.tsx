@@ -360,7 +360,7 @@ const TabsInner = (props: TabsProps) => {
             </HeroTabs.List>
         </HeroTabs>
         {foldedItems.length === 0 ? null : (
-            <span className="starci-core-tabs-more">
+            <span className="starci-core-tabs-more" {...(foldedItems.some((item) => item.id === selectedKey) ? { "data-grammar-tabs-more-selected": "true" } : {})}>
                 <DropdownMenu
                     placement="bottom end"
                     entries={[{ kind: "section", id: "folded-tabs", items: foldedItems.map((item) => ({ id: item.id, label: labelOf(item), onAction: () => select(item.id) })) }]}

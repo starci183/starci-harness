@@ -1468,6 +1468,8 @@
 
     /* The underline's colour is the accent by default; `--starci-core-tabs-indicator` (0.40.0) takes it (the vendor paints it, so `!important`). */
     .starci-core-tabs-frame[data-grammar-tabs-variant="secondary"] .starci-core-tabs .tabs__indicator {
+        /* The vendor indicator is `top-0 size-full`; its `top-auto bottom-0` reaches only a `.tabs__list-container` child, which a folding strip (list rendered bare, no container) does not have. Without `top: auto` the 2px bar keeps `top: 0` and is drawn ABOVE the label. */
+        top: auto !important;
         bottom: calc(-1 * var(--starci-core-tabs-line-width)) !important;
         height: 2px !important;
         margin-block-end: 0 !important;
@@ -1600,6 +1602,16 @@
     .starci-core-tabs-more { display: inline-flex; flex: none; align-items: stretch; min-height: var(--starci-core-control-min-size); padding-inline: var(--grammar-inline-gap); color: var(--muted); font-size: var(--grammar-text-sm); }
     /* The fold trigger fills the strip's height, so its box stands on the line like a tab: no padding of its own below it. */
     .starci-core-tabs-more > button, .starci-core-tabs-more > [role="button"] { display: inline-flex; align-items: center; }
+    /* The selected tab lives in the fold menu: the trigger reads as the selected tab (the tint pair, the medium weight, the accent underline on the line). */
+    .starci-core-tabs-more[data-grammar-tabs-more-selected="true"] { position: relative; color: var(--accent-soft-foreground); font-weight: var(--grammar-weight-medium); }
+    .starci-core-tabs-more[data-grammar-tabs-more-selected="true"]::after {
+        content: "";
+        position: absolute;
+        inset-inline: var(--grammar-inline-gap);
+        bottom: calc(-1 * var(--starci-core-tabs-line-width));
+        block-size: 2px;
+        background: var(--starci-core-tabs-indicator, var(--accent));
+    }
     .starci-core-tabs-more-label { display: inline-flex; align-items: center; gap: var(--grammar-identity-gap); }
     .starci-core-tabs-more-caret { inline-size: 1em; block-size: 1em; }
 
