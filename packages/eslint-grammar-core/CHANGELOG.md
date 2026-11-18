@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.47.1 - 2026-11-18
+
+- Changed: the family version 0.47.1 (the workbench gaps of @starci/grammar: tile grid, tile ground tone, clear-all filters, Select icon, toolbar search). No rule change.
+
 ## 0.47.0 - 2026-11-18
 
 - Changed: the family version 0.47.0 (DNA law alignment and Offset Pop fixes in @starci/grammar). No rule change.
