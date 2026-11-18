@@ -2,6 +2,8 @@
 
 ## 1.1.0-alpha.158 - 2026-11-18
 
+- Changed: the CLI requires @starci/hfs@6.13.38, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
+
 - Changed (pins): the Grammar family at 0.46.0: the media family (Image, Video with HLS and DASH, Illustration, statics keys), one empty state with page-level art, the required 404/500 pages as page-level empty states (R443), the raw-media lint (R442), the shell chrome (BottomNav only as `compactNavigation`, CommandPalette, navigation count tones, an unread row) and the NIVO shell gaps; @starci/hfs 6.13.38. Until the cli-follow step raises the CLI's requirement, the CLI runs the hfs it requires.
 
 ## 1.1.0-alpha.157 - 2026-11-18
