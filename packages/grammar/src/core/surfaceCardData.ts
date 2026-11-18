@@ -230,9 +230,14 @@ export type TilePoster = {
     | { readonly absence: string; readonly image?: never }
 )
 
+/** A tile names itself by a mark, by a poster, or (0.47.1) by its name alone: a table of a floor plan, a product with no picture yet. */
 type TileIdentity =
     | { readonly mark: TileMark; readonly poster?: undefined }
     | { readonly poster: TilePoster; readonly mark?: TileMark }
+    | { readonly mark?: undefined; readonly poster?: undefined }
+
+/** The tone of a tile's whole ground (0.47.1): the same four tones, soft pair, as `DataTableRow.groundTone`. */
+export type TileGroundTone = RowGroundTone
 
 /**
  * One stronger plain value at the START of the action row (a price, a count): bold text, no chip, truncating on one line; the `action`
@@ -254,6 +259,11 @@ export type TileData = {
     readonly description?: string
     /** Short factual lines, separate from the name and the operational badges: one muted line each (a string is one line). */
     readonly facts?: string | readonly string[]
+    /**
+     * A status the whole tile answers (0.47.1; a table free, busy or waiting to pay on a floor plan): the tile takes the soft pair of the theme's
+     * token of that tone, its words the pair's foreground, in both families. It sits beside the badge, which still carries the words; colour is never the only cue.
+     */
+    readonly groundTone?: TileGroundTone
 } & TileIdentity & TileBadges & TileFigure & (
     /** 0.37.8: a whole-card action may carry the `menu` (the card's ⋯): the trigger stands above the whole-card link and never follows it; `action` stays exclusive. */
     | { readonly wholeAction: WholeCardAction; readonly action?: undefined; readonly menu?: ItemMenu }

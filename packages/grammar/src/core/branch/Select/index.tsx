@@ -22,6 +22,7 @@ import {
     type FieldControlProps,
     type FieldSizeProps,
 } from "../../leaf/Field/index.js"
+import { Icon, type IconSource } from "../../leaf/Icon/index.js"
 import { inlineGlyph } from "../../leaf/Icon/inline.js"
 import type { NoChildren } from "../../tier.js"
 
@@ -46,6 +47,11 @@ export type SelectProps = NoChildren & FieldControlProps & FieldSizeProps & {
     readonly appearance?: "field" | "pill" | "compact"
     /** Muted words before the value inside the trigger ("Position:"); the control stays named by `label`. */
     readonly prefix?: string
+    /**
+     * A glyph at the start of the trigger, before any `prefix` and the value (0.47.1; a calendar on a date range, a funnel on a filter). Decoration: it is
+     * `aria-hidden` and the control stays named by `label`. The 16px chip step in every appearance, the muted tone; the app owns which glyph.
+     */
+    readonly icon?: IconSource
     readonly value?: string | null
     readonly defaultValue?: string | null
     readonly onValueChange?: (value: string | null) => void
@@ -118,6 +124,7 @@ const SelectControl = ({
     options,
     placeholder,
     prefix,
+    icon,
     appearance = "field",
     value,
     defaultValue,
@@ -159,6 +166,7 @@ const SelectControl = ({
                 data-grammar-field-control="true"
                 isPending={isPending}
             >
+                {icon === undefined ? null : <span className="starci-core-select-icon" data-grammar-select-icon="true" aria-hidden="true"><Icon source={icon} usage="chip" /></span>}
                 {prefix === undefined ? null : <span className="starci-core-select-prefix" aria-hidden="true">{prefix}</span>}
                 <HeroSelect.Value />
                 {isPending

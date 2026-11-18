@@ -18,7 +18,7 @@ Choice `text-field.choose.role`: which field takes the value. The first row that
 | copy | the reader copies a value the product holds (an id, a URL, an account number) and never edits it | `CopyField` | judgement |
 | multi | several values of one kind | one `Input` per value with its remove action and an "add another" command (COLLECTION-1), never one textarea | judgement |
 | file | the reader aims a file at a drop area, or the form has a field for a file | `FileDropzone`; a file picked as one action among others is `FileButton` (`button.choose.role:file`) | judgement |
-| search | a search over the current view | `SearchField` (named, with its shortcut hint in chrome) | judgement |
+| search | a search over the current view | `SearchField` (named, with its shortcut hint in chrome); `measure="fill"` (the default), `"compact"` (up to 26rem, above a list's tabs) or `"toolbar"` (15rem = 240px at the start of a toolbar row beside other controls, full width below 30rem; 0.47.1) | judgement |
 | number | a number with bounds or steps | `NumberField` | judgement |
 | date | a date or a time | the date and time fields | judgement |
 | prose | several lines of prose | `Textarea` | judgement |

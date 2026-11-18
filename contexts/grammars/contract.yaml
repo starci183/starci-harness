@@ -116,7 +116,7 @@ roles:
     ui: ui/components/card.md
     renderers: [SurfaceCard]
     vendorParity: [card]
-    slots: ["label (a card that heads a section: outside the material)", "name with mark or typed poster (tile identity inside)", "tile poster: Image-owned data or localized absence, one preserved media frame", "tile facts: plain text; badge or up to three typed badges; primary ItemAction and typed overflow ItemMenu", fact, labelEnd, content, "actions (body: the one band of commands at the object's foot, under a --separator hairline; Tabs, SearchField and Divider throw there in development)", note, "wholeAction: excludes inner actions and menu", "ItemAction: Button.isPending preserves action-owned busy state"]
+    slots: ["label (a card that heads a section: outside the material)", "name with mark or typed poster, or the name alone (tile identity inside)", "tile groundTone: accent, success, warning or danger, the whole tile in the tone's soft pair", "Grid kind=cards size: card (16rem track floor) or tile (9rem, two to a row on a phone)", "tile poster: Image-owned data or localized absence, one preserved media frame", "tile facts: plain text; badge or up to three typed badges; primary ItemAction and typed overflow ItemMenu", fact, labelEnd, content, "actions (body: the one band of commands at the object's foot, under a --separator hairline; Tabs, SearchField and Divider throw there in development)", note, "wholeAction: excludes inner actions and menu", "ItemAction: Button.isPending preserves action-owned busy state"]
     variants:
       kind: { values: [body, tile], chosenBy: app, compiler: "a discriminated union; a card is one object, a dialog or an overlay, and a collection (list, table, facts, figures, disclosures, a choice) is never a card" }
       labelPlacement: { values: [outside, inside], chosenBy: "the card's kind, never an app or a family: outside for a card that heads a section, inside for a tile repeated in a grid" }
@@ -125,7 +125,7 @@ roles:
     sizes: none
     states: [neutral, pending, PresentationState]
     grammarMayChange: [surface paint, edge, radius via surfaceRadius, the label's paint]
-    dna: [DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE, DNA-COMMON-CARD-LABEL-ABOVE, DNA-COMMON-CARD-LABEL-HEADING, DNA-COMMON-DIVIDER-FULL-BLEED, DNA-CORE-EDGE-TOP, DNA-CORE-CARD-LABEL-OUTSIDE, DNA-OFFSET-POP-STICKER, DNA-OFFSET-POP-CARD-LABEL-OUTSIDE, DNA-COMMON-TILE-BYLINE, DNA-COMMON-TILE-FIGURE-START, DNA-COMMON-TILE-FIGURE-BEFORE-ACTION]
+    dna: [DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE, DNA-COMMON-CARD-LABEL-ABOVE, DNA-COMMON-CARD-LABEL-HEADING, DNA-COMMON-DIVIDER-FULL-BLEED, DNA-CORE-EDGE-TOP, DNA-CORE-CARD-LABEL-OUTSIDE, DNA-OFFSET-POP-STICKER, DNA-OFFSET-POP-CARD-LABEL-OUTSIDE, DNA-COMMON-TILE-BYLINE, DNA-COMMON-TILE-FIGURE-START, DNA-COMMON-TILE-FIGURE-BEFORE-ACTION, DNA-COMMON-TILE-GROUND-ACCENT, DNA-COMMON-TILE-GROUND-SUCCESS, DNA-COMMON-TILE-GROUND-WARNING, DNA-COMMON-TILE-GROUND-DANGER, DNA-COMMON-GRID-TILE-FLOOR]
     lint: [starci-grammar/no-raised-surface-in-surface, starci-grammar/card-is-object, starci-grammar/surface-card-list]
 
   - id: button
@@ -257,13 +257,13 @@ roles:
     ui: ui/components/select.md
     renderers: [Select, ComboBox, DatePicker, DateRangePicker]
     vendorParity: [select, combo-box, list-box, date-picker, date-range-picker]
-    slots: [label, description, errorMessage, "options: label, description, leading"]
+    slots: [label, description, errorMessage, "options: label, description, leading", "Select icon: a decorative glyph at the start of the trigger, before prefix and value"]
     variants:
       variant: { values: [primary, secondary], chosenBy: context }
     sizes: { steps: [md], default: md }
     states: [open, selected, focus-visible, invalid, disabled, pending, skeleton]
     grammarMayChange: [trigger and option paint, popover edge, arrangement indicatorSide]
-    dna: [DNA-COMMON-FIELD-MD, DNA-COMMON-OVERLAY-IN-ROOT, DNA-COMMON-FIELD-ONE-LOOK, DNA-COMMON-FIELD-NAME-IS-LABEL, DNA-COMMON-FIELD-ERROR-DESCRIBES, DNA-COMMON-FIELD-ANATOMY-ORDER, DNA-COMMON-FIELD-ROW-CONTROL-LINE, DNA-COMMON-FIELD-SM, DNA-COMMON-SELECT-NO-VENDOR-ENGLISH]
+    dna: [DNA-COMMON-FIELD-MD, DNA-COMMON-OVERLAY-IN-ROOT, DNA-COMMON-FIELD-ONE-LOOK, DNA-COMMON-FIELD-NAME-IS-LABEL, DNA-COMMON-FIELD-ERROR-DESCRIBES, DNA-COMMON-FIELD-ANATOMY-ORDER, DNA-COMMON-FIELD-ROW-CONTROL-LINE, DNA-COMMON-FIELD-SM, DNA-COMMON-SELECT-NO-VENDOR-ENGLISH, DNA-COMMON-SELECT-ICON-START]
 
   - id: copy-field
     ui: ui/components/text-field.md
@@ -1285,6 +1285,11 @@ mustKeep:
       law: "In a narrow pane a row with two or more commands keeps the text column the row width: the commands stand under the copy, never beside it (G7-11)."
       measure: { kind: relation, select: '[data-story-narrow-rows] [data-grammar-action-placement="end"][data-grammar-actions-multi="true"] > .starci-core-list-row-actions', metric: top, op: ">=", tolerance: 1, ref: { within: '[data-component="ListRow"]', select: '.starci-core-list-row-copy', metric: bottom } }
       owner: contract roles.list
+    - id: DNA-COMMON-SELECT-ICON-START
+      role: select
+      law: "A Select's icon (0.47.1) is a decorative glyph at the start of the trigger: it ends before the value begins, and it is hidden from assistive technology (the label names the control)."
+      measure: { kind: relation, select: '[data-grammar-select-icon]', metric: right, op: "<=", tolerance: 1, ref: { within: '.starci-core-select-trigger', select: '.select__value', metric: left } }
+      owner: ui/components/select.md
     - id: DNA-COMMON-SELECT-NO-VENDOR-ENGLISH
       role: select
       law: "A Select never shows the vendor's English placeholder \"Select an item\": it shows the app's words or none."
@@ -1334,6 +1339,31 @@ mustKeep:
       role: card
       law: "The figure ends before the action of its row begins: one line, value then command."
       measure: { kind: relation, select: '[data-grammar-tile-figure-value]', metric: right, op: "<=", tolerance: 1, ref: { within: '.starci-core-tile-foot', select: '.starci-core-tile-actions', metric: left } }
+      owner: contract roles.card
+    - id: DNA-COMMON-TILE-GROUND-ACCENT
+      role: card
+      law: "A tile whose groundTone is accent is the theme's accent soft pair: the ground is --accent-soft and its words --accent-soft-foreground, in both families and both themes; a status the whole tile answers, beside the badge that says it in words."
+      measure: { kind: style, select: '[data-grammar-surface-ground="accent"]', checks: [{ metric: background-color, op: "=", value: { token: --accent-soft } }, { metric: color, op: "=", value: { token: --accent-soft-foreground } }] }
+      owner: contract roles.card
+    - id: DNA-COMMON-TILE-GROUND-SUCCESS
+      role: card
+      law: "A tile whose groundTone is success is the theme's success soft pair: the ground is --success-soft and its words --success-soft-foreground, in both families and both themes; a status the whole tile answers, beside the badge that says it in words."
+      measure: { kind: style, select: '[data-grammar-surface-ground="success"]', checks: [{ metric: background-color, op: "=", value: { token: --success-soft } }, { metric: color, op: "=", value: { token: --success-soft-foreground } }] }
+      owner: contract roles.card
+    - id: DNA-COMMON-TILE-GROUND-WARNING
+      role: card
+      law: "A tile whose groundTone is warning is the theme's warning soft pair: the ground is --warning-soft and its words --warning-soft-foreground, in both families and both themes; a status the whole tile answers, beside the badge that says it in words."
+      measure: { kind: style, select: '[data-grammar-surface-ground="warning"]', checks: [{ metric: background-color, op: "=", value: { token: --warning-soft } }, { metric: color, op: "=", value: { token: --warning-soft-foreground } }] }
+      owner: contract roles.card
+    - id: DNA-COMMON-TILE-GROUND-DANGER
+      role: card
+      law: "A tile whose groundTone is danger is the theme's danger soft pair: the ground is --danger-soft and its words --danger-soft-foreground, in both families and both themes; a status the whole tile answers, beside the badge that says it in words."
+      measure: { kind: style, select: '[data-grammar-surface-ground="danger"]', checks: [{ metric: background-color, op: "=", value: { token: --danger-soft } }, { metric: color, op: "=", value: { token: --danger-soft-foreground } }] }
+      owner: contract roles.card
+    - id: DNA-COMMON-GRID-TILE-FLOOR
+      role: card
+      law: "A cards Grid of size tile has a 9rem track floor (so two small cards stand side by side at 390); the default size keeps the 16rem floor."
+      measure: { kind: style, select: '[data-grammar-grid-kind="cards"][data-grammar-grid-size="tile"]', checks: [{ metric: --starci-core-grid-min, op: "=", value: 9rem }] }
       owner: contract roles.card
     - id: DNA-COMMON-CHAT-SURFACES
       role: pane-grid

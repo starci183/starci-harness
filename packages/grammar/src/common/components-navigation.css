@@ -930,6 +930,24 @@
         gap: var(--grammar-inline-gap);
     }
 
+    /* 0.47.1: a row of active filter values: the chips wrap, "Clear all" stands after the last chip on the chip height and drops under them when the row is full. */
+    .starci-core-tag-filter-row {
+        display: flex;
+        min-width: 0;
+        max-width: 100%;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--grammar-inline-gap);
+    }
+
+    .starci-core-tag-filter-row > .starci-core-tag-group { flex: 0 1 auto; }
+
+    .starci-core-tag-clear {
+        display: inline-flex;
+        min-block-size: 2rem;
+        align-items: center;
+    }
+
     .starci-core-tag {
         max-width: 100%;
         min-block-size: 2rem;
