@@ -105,7 +105,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: FE-DATA-SWR One SWR hook per operation, and it returns the feature's data · FE-DATA-KEY A key carries every identity that changes the answer · FE-DATA-COMMAND A user-started write runs through a domain command hook · FE-STATE-1 Each kind of state has one owner · FE-STORAGE Browser storage goes through `modules/storage`
 - [code/fe/error.md](../code/fe/error.md) · 2 KB — How a front-end failure is represented and where it goes: a read failure becomes a region status (README), a command failure a field error or a toast, a render failure a boundary ...
   - sections: FE-ERROR-2 A failure is kept, typed and never folded into empty data · FE-ERROR-3 Hard stops where silence would be wrong · FE-ERROR-4 Server text never becomes the reason a user reads
-- [code/fe/folder.md](../code/fe/folder.md) · 8 KB — Which directory and which file a piece of front-end code gets.
+- [code/fe/folder.md](../code/fe/folder.md) · 9 KB — Which directory and which file a piece of front-end code gets.
   - sections: FE-FOLDER-1 Every source file sits in its tier folder · FE-FOLDER-2 A unit folder holds `index.tsx`, an optional `component.tsx` and an optional `classNames.ts` · FE-FOLDER-3 `hooks/` holds hooks; everything else is a module · FE-FOLDER-4 Every app has its boundary files · FE-APPS-1 One independent app per audience · FE-PACKAGES-1 A shared package builds to `dist` and exports named symbols · FE-PACKAGES-2 A shared package draws only with the grammar · FE-PACKAGES-3 One version of every dependency, from the declared stack
   - ids: fe.source-root-pinned, source-layout
 - [code/fe/form.md](../code/fe/form.md) · 2 KB — How a form is validated and submitted, and how the outcome of a write reaches the user.
@@ -237,10 +237,10 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Meter reading voice (0.46.0) · Job · Choose
 - [ui/components/diagram.md](../ui/components/diagram.md) · 15 KB — Contract: Diagram.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules · FlowGraph state priority
-- [ui/components/dialog-drawer.md](../ui/components/dialog-drawer.md) · 4 KB — Contract: Dialog and Drawer.
-  - sections: Job · Choose · Variants · Popover width (0.45.1) · Scrolling · Size · States · Owner split · Rules
-- [ui/components/empty-state.md](../ui/components/empty-state.md) · 6 KB — Contract: EmptyState.
-  - sections: Job · Choose · Variants · Size · States · Owner split · Frame · Page-level states every web app carries · Rules
+- [ui/components/dialog-drawer.md](../ui/components/dialog-drawer.md) · 5 KB — Contract: Dialog and Drawer.
+  - sections: Job · Choose · Variants · Popover width (0.45.1) · Popover size (0.47.0) · Scrolling · Size · States · Owner split · Rules
+- [ui/components/empty-state.md](../ui/components/empty-state.md) · 7 KB — Contract: EmptyState.
+  - sections: Job · Choose · First-run steps and the all-clear state (0.47.0) · Variants · Size · States · Owner split · Frame · Page-level states every web app carries · Rules
 - [ui/components/entry-frame.md](../ui/components/entry-frame.md) · 3 KB — Hold one bounded entry task beside its contextual identity.
   - sections: Job · Choose · Anatomy · Capability questions · Variants · Size · States · Owner split · Rules
 - [ui/components/field.md](../ui/components/field.md) · 6 KB — Contract: Input.
@@ -253,8 +253,8 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/image.md](../ui/components/image.md) · 4 KB — Contract: Image.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
-- [ui/components/list-table.md](../ui/components/list-table.md) · 14 KB — Contract: List and Table.
-  - sections: Job · Choose · Filter row (0.43.1, narrow step 0.44.0) · Row edge tone (0.45.1) · Unread row (0.46.0) · Section head (0.36.0) · Version diff rows (0.37.28) · Variants · Size · States · Owner split · Row description · Rules · Key-value rows (0.37.5)
+- [ui/components/list-table.md](../ui/components/list-table.md) · 16 KB — Contract: List and Table.
+  - sections: Job · Choose · Filter row (0.43.1, narrow step 0.44.0) · Row edge tone (0.45.1) · Unread row (0.46.0) · Table totals, row ground, phone selection (0.47.0) · Section head (0.36.0) · Version diff rows (0.37.28) · Variants · Size · States · Owner split · Row description · Rules · Key-value rows (0.37.5)
 - [ui/components/mascot.md](../ui/components/mascot.md) · 3 KB — Contract: Mascot.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/menu.md](../ui/components/menu.md) · 2 KB — Contract: Menu.
@@ -273,14 +273,14 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · Variants · Size · States · Owner split · Compact · Rules
 - [ui/components/sidebar.md](../ui/components/sidebar.md) · 4 KB — Contract: shell.
   - sections: Job · Choose · The tone of a count · Destination · Collapse control placement (0.46.0) · Size · States · Owner split · Rules
-- [ui/components/tabs.md](../ui/components/tabs.md) · 8 KB — Contract: Tabs.
-  - sections: Job · Choose · Variants · Size · States · Owner split · The second layer · Rules
+- [ui/components/tabs.md](../ui/components/tabs.md) · 9 KB — Contract: Tabs.
+  - sections: Job · Choose · Variants · Filter presets as pills (0.47.0) · Size · States · Owner split · The second layer · Rules
 - [ui/components/text-field.md](../ui/components/text-field.md) · 4 KB — Contract: Input, CopyField.
   - sections: Job · Choose · Variants · Size · States · Owner split · Chat composer · Rules
 - [ui/components/text.md](../ui/components/text.md) · 7 KB — The type scale is ../presentation.md; the contract holds no role for `Text`, a leaf of that scale.
   - sections: Job · Choose · Size · States · Owner split · Link and Sublabel · Rules · Article headings are 14 (ARTICLE-HEADINGS-14, 0.37.14) · Course content is a markdown string (`Markdown`) · A one-line command has no language label (CODE-BLOCK-LANGUAGE, 0.37.15)
-- [ui/components/toast-alert.md](../ui/components/toast-alert.md) · 3 KB — Contract: Toast and Alert.
-  - sections: Job · Choose · Variants · Size · States · Owner split · Rules
+- [ui/components/toast-alert.md](../ui/components/toast-alert.md) · 4 KB — Contract: Toast and Alert.
+  - sections: Job · Choose · Alert form slot (0.47.0) · Variants · Size · States · Owner split · Rules
 - [ui/components/video.md](../ui/components/video.md) · 3 KB — Contract: Video.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/composition.md](../ui/composition.md) · 34 KB — Composition is decided while the page is still a description: which regions exist, which content outranks which, which action carries the decision, which conditions exist and who ...

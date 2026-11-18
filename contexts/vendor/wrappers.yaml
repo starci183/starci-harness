@@ -18,6 +18,7 @@ wrappers:
       overrides: [
         { kind: style, target: "Table.Column:padding", reason: "a header cell takes the container inset inline and the nested step in the block axis, on the spacing scale" },
         { kind: style, target: "Table.Cell:padding", reason: "a cell takes the container inset inline and the nested step in the block axis, a 40px row" } ] }
+  - { file: core/branch/GeoMap/index.tsx, wraps: [Button] }
   - { file: core/branch/DatePicker/index.tsx, wraps: [Calendar, DateField, DatePicker, RangeCalendar] }
   - { file: core/branch/DateRangePicker/index.tsx, wraps: [DateField, DateRangePicker] }
   - { file: core/frame/Dialog/index.tsx, wraps: [Modal], delegates: { Modal: [CloseTrigger, Trigger] },
