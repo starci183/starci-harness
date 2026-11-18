@@ -50,6 +50,7 @@ test('the smallest example is green, and a project with no stateful component an
 
 test('the stateful definition is the one R267 uses: role, flag, database, volumes, declared backing', () => {
   const doc = { components: { a: { role: 'stateful' }, b: { stateful: true }, c: { database: { provider: 'x' } }, d: { volumes: ['v:/data'] }, e: { role: 'stateless' } }, backing: { db: { provider: 'neon' } } };
+  assert.deepEqual(statefulComponentsOf(doc).sort(), ['a', 'b', 'c', 'd', 'db']);
 });
 
 test('DATA_STORE_UNDECLARED: a stateful component that is no store and no derived entry; a store naming no component', () => {
