@@ -124,6 +124,11 @@
         box-shadow: var(--surface-shadow);
     }
 
+    /* 0.47.2: a bleed poster sits inside the outline, flush to it, and the outline's own weight draws the line under the picture. */
+    .grammar-common-root[data-grammar-family="offset-pop"] .starci-core-tile-poster[data-grammar-tile-poster-bleed="true"] {
+        border-block-end: var(--offset-pop-outline-width) solid var(--border);
+    }
+
     /* 0.47.1: a tile `groundTone` is the tone's soft pair over the family's surface paint. */
     .grammar-common-root[data-grammar-family="offset-pop"] [data-grammar-surface-card][data-slot="card"] [data-grammar-frame="bounded"][data-slot="card-content"][data-grammar-surface-ground] {
         color: var(--starci-core-ground-ink);

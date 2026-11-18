@@ -222,6 +222,12 @@ export type TilePoster = {
     /** Landscape is the default 4:3 frame; unresolved content uses this same ratio. */
     readonly aspect?: "square" | "landscape" | "portrait"
     readonly fit?: ImageProps["fit"]
+    /**
+     * Full-bleed cover (0.47.2): the poster sits flush against the card's top and both side edges (no gap between the card's edge and the picture),
+     * clipped by the card's top corners; the name, badges, facts and figure keep their padding below it. Works with every `aspect` and `fit`,
+     * the absence frame and the loading skeleton. Default `false`: the poster sits inside the padding.
+     */
+    readonly bleed?: boolean
 } & (
     | {
         readonly image: ImageFacts & MediaSourceRef

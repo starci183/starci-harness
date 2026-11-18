@@ -170,6 +170,7 @@ export const SurfaceCard = (props: SurfaceCardProps) => {
             data-grammar-treatment={stateTreatment.tone}
             data-grammar-surface-emphasis={emphasis}
             data-grammar-surface-ground={props.kind === "tile" ? props.groundTone : undefined}
+            data-grammar-surface-bleed={props.kind === "tile" && props.poster?.bleed === true ? "true" : undefined}
         >
             <VerticalScrollRegionPart
                 className={surfaceContentClassName}

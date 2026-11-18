@@ -116,7 +116,7 @@ roles:
     ui: ui/components/card.md
     renderers: [SurfaceCard]
     vendorParity: [card]
-    slots: ["label (a card that heads a section: outside the material)", "name with mark or typed poster, or the name alone (tile identity inside)", "tile groundTone: accent, success, warning or danger, the whole tile in the tone's soft pair", "Grid kind=cards size: card (16rem track floor) or tile (9rem, two to a row on a phone)", "tile poster: Image-owned data or localized absence, one preserved media frame", "tile facts: plain text; badge or up to three typed badges; primary ItemAction and typed overflow ItemMenu", fact, labelEnd, content, "actions (body: the one band of commands at the object's foot, under a --separator hairline; Tabs, SearchField and Divider throw there in development)", note, "wholeAction: excludes inner actions and menu", "ItemAction: Button.isPending preserves action-owned busy state"]
+    slots: ["label (a card that heads a section: outside the material)", "name with mark or typed poster, or the name alone (tile identity inside)", "tile groundTone: accent, success, warning or danger, the whole tile in the tone's soft pair", "Grid kind=cards size: card (16rem track floor) or tile (9rem, two to a row on a phone)", "tile poster: Image-owned data or localized absence, one preserved media frame; poster bleed: the frame flush to the card's top and side edges, clipped by its corners", "tile facts: plain text; badge or up to three typed badges; primary ItemAction and typed overflow ItemMenu", fact, labelEnd, content, "actions (body: the one band of commands at the object's foot, under a --separator hairline; Tabs, SearchField and Divider throw there in development)", note, "wholeAction: excludes inner actions and menu", "ItemAction: Button.isPending preserves action-owned busy state"]
     variants:
       kind: { values: [body, tile], chosenBy: app, compiler: "a discriminated union; a card is one object, a dialog or an overlay, and a collection (list, table, facts, figures, disclosures, a choice) is never a card" }
       labelPlacement: { values: [outside, inside], chosenBy: "the card's kind, never an app or a family: outside for a card that heads a section, inside for a tile repeated in a grid" }
@@ -125,7 +125,7 @@ roles:
     sizes: none
     states: [neutral, pending, PresentationState]
     grammarMayChange: [surface paint, edge, radius via surfaceRadius, the label's paint]
-    dna: [DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE, DNA-COMMON-CARD-LABEL-ABOVE, DNA-COMMON-CARD-LABEL-HEADING, DNA-COMMON-DIVIDER-FULL-BLEED, DNA-CORE-EDGE-TOP, DNA-CORE-CARD-LABEL-OUTSIDE, DNA-OFFSET-POP-STICKER, DNA-OFFSET-POP-CARD-LABEL-OUTSIDE, DNA-COMMON-TILE-BYLINE, DNA-COMMON-TILE-FIGURE-START, DNA-COMMON-TILE-FIGURE-BEFORE-ACTION, DNA-COMMON-TILE-GROUND-ACCENT, DNA-COMMON-TILE-GROUND-SUCCESS, DNA-COMMON-TILE-GROUND-WARNING, DNA-COMMON-TILE-GROUND-DANGER, DNA-COMMON-GRID-TILE-FLOOR]
+    dna: [DNA-COMMON-NO-RAISED-SURFACE-IN-SURFACE, DNA-COMMON-CARD-LABEL-ABOVE, DNA-COMMON-CARD-LABEL-HEADING, DNA-COMMON-DIVIDER-FULL-BLEED, DNA-CORE-EDGE-TOP, DNA-CORE-CARD-LABEL-OUTSIDE, DNA-OFFSET-POP-STICKER, DNA-OFFSET-POP-CARD-LABEL-OUTSIDE, DNA-COMMON-TILE-BYLINE, DNA-COMMON-TILE-FIGURE-START, DNA-COMMON-TILE-FIGURE-BEFORE-ACTION, DNA-COMMON-TILE-GROUND-ACCENT, DNA-COMMON-TILE-GROUND-SUCCESS, DNA-COMMON-TILE-GROUND-WARNING, DNA-COMMON-TILE-GROUND-DANGER, DNA-COMMON-GRID-TILE-FLOOR, DNA-COMMON-TILE-BLEED-TOP, DNA-COMMON-TILE-BLEED-START, DNA-COMMON-TILE-BLEED-END]
     lint: [starci-grammar/no-raised-surface-in-surface, starci-grammar/card-is-object, starci-grammar/surface-card-list]
 
   - id: button
@@ -1364,6 +1364,21 @@ mustKeep:
       role: card
       law: "A cards Grid of size tile has a 9rem track floor (so two small cards stand side by side at 390); the default size keeps the 16rem floor."
       measure: { kind: style, select: '[data-grammar-grid-kind="cards"][data-grammar-grid-size="tile"]', checks: [{ metric: --starci-core-grid-min, op: "=", value: 9rem }] }
+      owner: contract roles.card
+    - id: DNA-COMMON-TILE-BLEED-TOP
+      role: card
+      law: "A tile poster with bleed (0.47.2) starts at the card's top edge: within the card's border width, no padding above the picture."
+      measure: { kind: relation, select: '[data-grammar-tile-poster-bleed="true"]', metric: top, op: "<=", tolerance: 3, ref: { within: '[data-component="SurfaceCard"]', select: '.starci-core-surface', metric: top } }
+      owner: contract roles.card
+    - id: DNA-COMMON-TILE-BLEED-START
+      role: card
+      law: "A tile poster with bleed (0.47.2) starts at the card's start edge: within the card's border width, no gap between the edge and the picture."
+      measure: { kind: relation, select: '[data-grammar-tile-poster-bleed="true"]', metric: left, op: "<=", tolerance: 3, ref: { within: '[data-component="SurfaceCard"]', select: '.starci-core-surface', metric: left } }
+      owner: contract roles.card
+    - id: DNA-COMMON-TILE-BLEED-END
+      role: card
+      law: "A tile poster with bleed (0.47.2) ends at the card's end edge: within the card's border width, no gap between the picture and the edge."
+      measure: { kind: relation, select: '[data-grammar-tile-poster-bleed="true"]', metric: right, op: ">=", tolerance: 3, ref: { within: '[data-component="SurfaceCard"]', select: '.starci-core-surface', metric: right } }
       owner: contract roles.card
     - id: DNA-COMMON-CHAT-SURFACES
       role: pane-grid

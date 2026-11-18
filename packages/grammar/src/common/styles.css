@@ -2058,6 +2058,19 @@
         flex: none;
     }
 
+    /*
+     * 0.47.2: a bleed poster is flush to the card's top and both side edges: it cancels the card's padding on those three sides, and the
+     * card clips it at its own top corners (the clip is the padding box, so the picture meets the edge or outline, never crosses it). The
+     * picture drops its own radius: the card's corners are the only rounding. Name, badges, facts and figure keep the card's padding.
+     */
+    .starci-core-surface[data-grammar-surface-bleed="true"] { overflow: clip; }
+    .starci-core-tile-poster[data-grammar-tile-poster-bleed="true"] {
+        inline-size: calc(100% + 2 * var(--grammar-card-padding-inline));
+        margin-block-start: calc(-1 * var(--grammar-card-padding-block));
+        margin-inline: calc(-1 * var(--grammar-card-padding-inline));
+    }
+    .starci-core-tile-poster[data-grammar-tile-poster-bleed="true"] :is(.starci-core-image, .starci-core-skeleton, .starci-core-skeleton-placeholder, .starci-core-tile-poster-fill, .starci-core-tile-poster-absence) { border-radius: 0; }
+
     .starci-core-tile-poster[data-aspect="square"] { aspect-ratio: 1; }
     .starci-core-tile-poster[data-aspect="portrait"] { aspect-ratio: 3 / 4; }
     .starci-core-tile-poster[data-aspect="wide"] { aspect-ratio: 16 / 9; }

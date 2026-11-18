@@ -25,7 +25,7 @@ const TileMarkView = ({ mark, isLoading }: { readonly mark: TileMark; readonly i
 }
 
 const TilePosterView = ({ poster, isLoading }: { readonly poster: TilePoster; readonly isLoading: boolean }) => (
-    <div className="starci-core-tile-poster" data-grammar-tile-poster={poster.image === undefined ? "absent" : "image"} data-aspect={poster.aspect ?? "landscape"}>
+    <div className="starci-core-tile-poster" data-grammar-tile-poster={poster.image === undefined ? "absent" : "image"} data-aspect={poster.aspect ?? "landscape"} data-grammar-tile-poster-bleed={poster.bleed === true ? "true" : undefined}>
         {isLoading ? (
             <SkeletonPlaceholder shape="region"><span className="starci-core-tile-poster-fill" /></SkeletonPlaceholder>
         ) : poster.image === undefined ? (
