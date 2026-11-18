@@ -66,7 +66,7 @@ export type DataTableRow = {
     /** The tone of the row's 2px leading edge (0.45.1): a row that waits for the reader or leads the table. A selected row draws the accent bar instead. */
     readonly edgeTone?: RowEdgeTone
     /**
-     * The tone of the row's ground (0.47.0): the row is painted with that tone's soft pair (`x-soft` behind, `x-soft-foreground` on the words), full width, for a row whose status the
+     * The tone of the row's ground (0.46.2): the row is painted with that tone's soft pair (`x-soft` behind, `x-soft-foreground` on the words), full width, for a row whose status the
      * whole row should answer (an overdue invoice, a failed run). It stands beside `edgeTone` (the 2px bar) and the two may be set together; a selected row draws the selection fill over it.
      * The row's badge or cell still says the status in words: the colour is never the only cue.
      */
@@ -74,7 +74,7 @@ export type DataTableRow = {
 }
 
 /**
- * The totals row of a table (0.47.0): one row after the last row, its `label` in the first column and each `values` entry, keyed by column id, in that column's cell, so a figure stands
+ * The totals row of a table (0.46.2): one row after the last row, its `label` in the first column and each `values` entry, keyed by column id, in that column's cell, so a figure stands
  * under its own column in the same tabular numerals and alignment as the rows above it. Where the table scrolls (`maxBlockSize` or `fill`) the row stays at the bottom of the scroll region,
  * directly over the `footer`. It is not a data row: it is not selectable or pressable. A column the table folds into its rows on a narrow container keeps its figure as stacked secondary text.
  */
@@ -171,10 +171,10 @@ export type DataTableProps<Row extends DataTableRow> = NoChildren & DataTableRow
      * Default false: the table is as tall as its rows.
      */
     readonly fill?: boolean
-    /** A totals row after the last row, aligned to the columns and sticky at the foot of the scroll region (0.47.0). Hidden while the table is loading, failed or empty. */
+    /** A totals row after the last row, aligned to the columns and sticky at the foot of the scroll region (0.46.2). Hidden while the table is loading, failed or empty. */
     readonly totals?: DataTableTotals
     /**
-     * Phone list with a `selectionMode` (0.47.0): the list starts selecting on a long press (about half a second) on a row, which selects it; while anything is selected a press toggles a row
+     * Phone list with a `selectionMode` (0.46.2): the list starts selecting on a long press (about half a second) on a row, which selects it; while anything is selected a press toggles a row
      * instead of running its action or link, and each row's checkbox (named by `selectRowLabel`) shows. This is the words the count is announced with, e.g. `(count) => `${count} selected``;
      * it is drawn as a polite live status. Without it nothing is announced beyond the checkboxes' own state.
      */
@@ -656,7 +656,7 @@ export const DataTable = <Row extends DataTableRow>({
     )
     // Under 768 px a table of three or more columns is a list: the first column the title, the others one muted line of values.
     const [titleColumn, ...otherColumns] = shown
-    // Selection on a phone list (0.47.0): a long press on a row selects it, a press toggles while anything is selected, every row holds a real checkbox for the keyboard and assistive technology.
+    // Selection on a phone list (0.46.2): a long press on a row selects it, a press toggles while anything is selected, every row holds a real checkbox for the keyboard and assistive technology.
     const selectableList = isList && selectionMode !== "none" && !isLoading && !failed
     const selectedCount = selection === "all" ? rows.length : selection.length
     const selecting = selectableList && selectedCount > 0

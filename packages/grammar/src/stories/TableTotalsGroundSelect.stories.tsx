@@ -4,10 +4,10 @@ import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 
 /**
- * THE TABLE'S THREE ADDITIONS (0.47.0). `totals` is a row after the last row, its figures in the cells of their own columns and sticky at the foot of the scroll region over the
+ * THE TABLE'S THREE ADDITIONS (0.46.2). `totals` is a row after the last row, its figures in the cells of their own columns and sticky at the foot of the scroll region over the
  * footer; a row `groundTone` paints the whole row with its tone's soft pair beside the 2px `edgeTone` bar; and on a phone list a long press on a row starts selecting.
  */
-const meta: Meta = { title: 'Surfaces/Table totals, row ground and phone selection (0.47.0)', parameters: { layout: 'padded' } };
+const meta: Meta = { title: 'Surfaces/Table totals, row ground and phone selection (0.46.2)', parameters: { layout: 'padded' } };
 export default meta;
 type Story = StoryObj;
 

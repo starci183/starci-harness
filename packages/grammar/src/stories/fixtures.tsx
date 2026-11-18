@@ -196,3 +196,30 @@ export const textContrast = (element: Element): number => {
 export const noop = () => undefined;
 
 export const pageLabel = (page: number) => `Page ${page}`;
+
+const probeShadows = new WeakMap<Element, ShadowRoot>();
+
+/**
+ * Reads a value the page resolves (a token, a `min()`, a width) from a throwaway probe. The probe lives in a shadow root kept inside `host`, so putting it up and taking it
+ * down is no mutation of the document: `waitFor` re-runs its callback on every mutation of the document, and a callback that mutates while one of its assertions fails never
+ * lets the page's own timers run, a livelock that froze the browser of `starci dna check`. The holder is added once (the first call), and custom properties inherit into the shadow.
+ */
+export const quietProbe = <Value,>(host: Element, paint: (probe: HTMLElement) => void, read: (probe: HTMLElement) => Value): Value => {
+  let shadow = probeShadows.get(host);
+  if (shadow === undefined) {
+    const holder = document.createElement('div');
+    holder.setAttribute('data-story-probe-holder', 'true');
+    holder.style.cssText = 'position:absolute;visibility:hidden;pointer-events:none;inline-size:0;block-size:0;overflow:visible';
+    host.append(holder);
+    shadow = holder.attachShadow({ mode: 'open' });
+    probeShadows.set(host, shadow);
+  }
+  const probe = document.createElement('span');
+  paint(probe);
+  shadow.append(probe);
+  try {
+    return read(probe);
+  } finally {
+    probe.remove();
+  }
+};

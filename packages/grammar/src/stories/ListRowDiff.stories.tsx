@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
+import { quietProbe } from './fixtures.js';
 
 /**
  * LIST-ROW-DIFF (0.37.28, version comparison drawing, GitHub-style): `ListRowData.diff` marks a row of a version diff. A gutter mark at the row's start (`+` added,
@@ -25,14 +26,7 @@ const rights: readonly G.ListRowData[] = [
 ];
 
 const pad = (element: Element, side: 'Top' | 'Bottom' | 'Left' | 'Right'): number => Number.parseFloat(getComputedStyle(element)[`padding${side}`]);
-const colourOf = (root: Element, token: string): string => {
-  const probe = document.createElement('span');
-  probe.style.backgroundColor = `var(${token})`;
-  root.append(probe);
-  const value = getComputedStyle(probe).backgroundColor;
-  probe.remove();
-  return value;
-};
+const colourOf = (root: Element, token: string): string => quietProbe(root, (probe) => { probe.style.backgroundColor = `var(${token})`; }, (probe) => getComputedStyle(probe).backgroundColor);
 
 export const VersionDiff: Story = {
   name: 'Version 3 vs version 2: added, removed, changed and a plain row',

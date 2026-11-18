@@ -24,7 +24,7 @@ export type BoardColumn = {
     /** What the column shows when it has no items. Required: every column answers for its empty state. */
     readonly empty: ReactNode
     /**
-     * Whether this stage takes the item of `move` (0.47.0): `null` lets it in, a string REFUSES it and is the reason, in the app's words ("Add a quote before it can be won").
+     * Whether this stage takes the item of `move` (0.46.2): `null` lets it in, a string REFUSES it and is the reason, in the app's words ("Add a quote before it can be won").
      * A refusing column still takes the pointer (the drag shows it cannot drop there and the reason shows in the column) but the item does not move: the card springs back to where it
      * was, `onMove` does not run, and the reason is announced (`role="status"`) and handed to `onRefuse`. The keyboard move is held to the same answer. Pure: it runs on every drag-over.
      */
@@ -69,7 +69,7 @@ export type BoardProps = {
      */
     readonly onMove?: (move: BoardMove) => void
     readonly moveLabels?: BoardMoveLabels
-    /** A move a column's `canDrop` refused, with its reason (0.47.0): the app may also raise a Toast. The Board has already announced the reason. */
+    /** A move a column's `canDrop` refused, with its reason (0.46.2): the app may also raise a Toast. The Board has already announced the reason. */
     readonly onRefuse?: (move: BoardMove, reason: string) => void
 }
 

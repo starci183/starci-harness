@@ -3,7 +3,7 @@ import { parseDate, type DateValue } from '@internationalized/date';
 import { useState } from 'react';
 import { expect, userEvent, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
-import { BookGlyph, HomeGlyph, Matrix, MemoryRouterRoot, State, familyScope, noop, pageLabel, placeholderImage, showRowStates, textContrast } from './fixtures.js';
+import { BookGlyph, HomeGlyph, Matrix, MemoryRouterRoot, State, familyScope, noop, pageLabel, placeholderImage, quietProbe, showRowStates, textContrast } from './fixtures.js';
 import { reconcileEdges, reconcileLegend, reconcileNodes, reconcileRunFailed, reconcileRunMatched, reconcileRunOff, reconcileRunWait, reconcileStatusLabels } from './FlowGraphSteps.data.js';
 
 /**
@@ -624,11 +624,7 @@ export const FlowGraphStepsRun: Story = {
       // The path is green: a reached card's border is the success tone, a skipped one keeps the neutral border; a taken edge is the success tone.
       expect(getComputedStyle(done).borderTopColor).not.toBe(getComputedStyle(plain).borderTopColor);
       const takenPath = graph.querySelector<SVGPathElement>('.starci-core-flow-graph-edge-taken .react-flow__edge-path')!;
-      const probe = document.createElement('span');
-      probe.style.color = 'var(--success)';
-      graph.append(probe);
-      const success = getComputedStyle(probe).color;
-      probe.remove();
+      const success = quietProbe(graph, (probe) => { probe.style.color = 'var(--success)'; }, (probe) => getComputedStyle(probe).color);
       expect(getComputedStyle(takenPath).stroke).toBe(success);
       expect(getComputedStyle(done).borderTopColor).toBe(success);
       const wait = graph.querySelector<HTMLElement>('.starci-core-flow-graph-step[data-kind="wait"][data-status="waiting"]')!;

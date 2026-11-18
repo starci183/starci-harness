@@ -238,9 +238,9 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [ui/components/diagram.md](../ui/components/diagram.md) · 15 KB — Contract: Diagram.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules · FlowGraph state priority
 - [ui/components/dialog-drawer.md](../ui/components/dialog-drawer.md) · 5 KB — Contract: Dialog and Drawer.
-  - sections: Job · Choose · Variants · Popover width (0.45.1) · Popover size (0.47.0) · Scrolling · Size · States · Owner split · Rules
+  - sections: Job · Choose · Variants · Popover width (0.45.1) · Popover size (0.46.2) · Scrolling · Size · States · Owner split · Rules
 - [ui/components/empty-state.md](../ui/components/empty-state.md) · 7 KB — Contract: EmptyState.
-  - sections: Job · Choose · First-run steps and the all-clear state (0.47.0) · Variants · Size · States · Owner split · Frame · Page-level states every web app carries · Rules
+  - sections: Job · Choose · First-run steps and the all-clear state (0.46.2) · Variants · Size · States · Owner split · Frame · Page-level states every web app carries · Rules
 - [ui/components/entry-frame.md](../ui/components/entry-frame.md) · 3 KB — Hold one bounded entry task beside its contextual identity.
   - sections: Job · Choose · Anatomy · Capability questions · Variants · Size · States · Owner split · Rules
 - [ui/components/field.md](../ui/components/field.md) · 6 KB — Contract: Input.
@@ -254,7 +254,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [ui/components/image.md](../ui/components/image.md) · 4 KB — Contract: Image.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/list-table.md](../ui/components/list-table.md) · 16 KB — Contract: List and Table.
-  - sections: Job · Choose · Filter row (0.43.1, narrow step 0.44.0) · Row edge tone (0.45.1) · Unread row (0.46.0) · Table totals, row ground, phone selection (0.47.0) · Section head (0.36.0) · Version diff rows (0.37.28) · Variants · Size · States · Owner split · Row description · Rules · Key-value rows (0.37.5)
+  - sections: Job · Choose · Filter row (0.43.1, narrow step 0.44.0) · Row edge tone (0.45.1) · Unread row (0.46.0) · Table totals, row ground, phone selection (0.46.2) · Section head (0.36.0) · Version diff rows (0.37.28) · Variants · Size · States · Owner split · Row description · Rules · Key-value rows (0.37.5)
 - [ui/components/mascot.md](../ui/components/mascot.md) · 3 KB — Contract: Mascot.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/menu.md](../ui/components/menu.md) · 2 KB — Contract: Menu.
@@ -274,13 +274,13 @@ reads this index instead of the whole tree, then opens only the files its tasks 
 - [ui/components/sidebar.md](../ui/components/sidebar.md) · 4 KB — Contract: shell.
   - sections: Job · Choose · The tone of a count · Destination · Collapse control placement (0.46.0) · Size · States · Owner split · Rules
 - [ui/components/tabs.md](../ui/components/tabs.md) · 9 KB — Contract: Tabs.
-  - sections: Job · Choose · Variants · Filter presets as pills (0.47.0) · Size · States · Owner split · The second layer · Rules
+  - sections: Job · Choose · Variants · Filter presets as pills (0.46.2) · Size · States · Owner split · The second layer · Rules
 - [ui/components/text-field.md](../ui/components/text-field.md) · 4 KB — Contract: Input, CopyField.
   - sections: Job · Choose · Variants · Size · States · Owner split · Chat composer · Rules
 - [ui/components/text.md](../ui/components/text.md) · 7 KB — The type scale is ../presentation.md; the contract holds no role for `Text`, a leaf of that scale.
   - sections: Job · Choose · Size · States · Owner split · Link and Sublabel · Rules · Article headings are 14 (ARTICLE-HEADINGS-14, 0.37.14) · Course content is a markdown string (`Markdown`) · A one-line command has no language label (CODE-BLOCK-LANGUAGE, 0.37.15)
 - [ui/components/toast-alert.md](../ui/components/toast-alert.md) · 4 KB — Contract: Toast and Alert.
-  - sections: Job · Choose · Alert form slot (0.47.0) · Variants · Size · States · Owner split · Rules
+  - sections: Job · Choose · Alert form slot (0.46.2) · Variants · Size · States · Owner split · Rules
 - [ui/components/video.md](../ui/components/video.md) · 3 KB — Contract: Video.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/composition.md](../ui/composition.md) · 34 KB — Composition is decided while the page is still a description: which regions exist, which content outranks which, which action carries the decision, which conditions exist and who ...

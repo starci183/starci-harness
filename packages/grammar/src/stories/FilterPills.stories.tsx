@@ -5,11 +5,11 @@ import * as G from '../common/index.js';
 import { Matrix, State } from './fixtures.js';
 
 /**
- * FILTER PRESETS AS PILLS (0.47.0). `Tabs kind="filter" shape="pill"` draws a filter strip in the one pill look the `appearance="primary"` switch has (HeroUI's primary variant:
+ * FILTER PRESETS AS PILLS (0.46.2). `Tabs kind="filter" shape="pill"` draws a filter strip in the one pill look the `appearance="primary"` switch has (HeroUI's primary variant:
  * pills on a track). The underline stays the default of a filter strip; the pill is for a short row of presets that narrow a list. It keeps the count chip and the fold into a
  * "+n" menu, and draws no line.
  */
-const meta: Meta = { title: 'Navigation & Data/Filter pills (0.47.0)', parameters: { layout: 'padded' } };
+const meta: Meta = { title: 'Navigation & Data/Filter pills (0.46.2)', parameters: { layout: 'padded' } };
 export default meta;
 type Story = StoryObj;
 
