@@ -72,7 +72,7 @@ const PROBES: readonly Probe[] = [
     // A text link is the exact brand --accent, underlined, and no contrast law judges it: the token the theme proves it paints.
     { name: "link", selector: ".starci-core-link", property: "color", token: "--accent", familyToken: { "offset-pop": "--foreground" } },
     { name: "heading", selector: '[data-component="Heading"]', property: "color", token: "--foreground" },
-    { name: "status dot ring", selector: ".starci-core-status-dot-mark", property: "border-top-color", token: "--success" },
+    { name: "status dot fill", selector: ".starci-core-status-dot-mark", property: "background-color", token: "--success" },
     { name: "field fill", selector: "[data-slot='input']", property: "background-color", token: "--field-background" },
     { name: "meter foreground fill", selector: '[data-component="Meter"][data-grammar-tone="foreground"] [data-slot="meter-fill"]', property: "background-color", token: "--foreground" },
     { name: "progress foreground fill", selector: '[data-component="Progress"][data-grammar-progress-tone="foreground"] [data-slot="progress-bar-fill"]', property: "background-color", token: "--foreground" },
