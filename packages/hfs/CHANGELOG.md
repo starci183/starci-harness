@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Fixed (`sync/nested-lock.mts`, `sync/index.mts`, `sync/managed.mts`): `starci app sync` rendered `gallery/package.json` (it added `@starci/gallery`) and left `gallery/package-lock.json` as it was, so `npm ci` in `gallery/` failed and the dev stack's gallery never started. For every managed sub-package that already has its own `package-lock.json`, `sync --execute` now resolves the lockfile again with `npm install --package-lock-only --ignore-scripts` after it writes the package.json (exit 1, with the command printed, when npm cannot). A dry run prints `HFS_SYNC_DRIFT <dir>/package-lock.json` and `app check` reports `HFS_MANAGED_FILE_DRIFT` for the lockfile, both naming the dependencies that differ and the fix command. A sub-package with no lockfile is not judged.
+- Fixed (`stack/local-config.mts`, `local-prepare.mts`, `local-up.mts`): a gallery that fails inside `stack up` (its `gallery-install` setup, or its `gallery-live` readiness row) no longer aborts the whole `up`. Each failing gallery row is printed as `FAIL`, the api, the web and the services keep running, the tunnel routes and origins are still printed, and `up` ends with a line naming the failed rows and exits non-zero (`data.failed` in `--json`). A failing api, web or service row still stops `up` with its own code.
+- Checked (lite starter): `templates/app/skeleton-lite` already carries `statics/.gitkeep`, the three seed levels (`.starcistacks/seeds`, `dev/seeds`, `production/seeds`, each with `seeds.yaml` and `sql|data|files`) and the managed storage image; a spec holds the lite starter to the full one. An app scaffolded before the statics slot has to add those folders by hand (the starter is written once).
+
 ## 6.13.43 - 2026-11-18
 
 - Changed (R53 `FE_ERROR_BOUNDARY_MISSING`, R59 `FE_I18N_PLACEMENT`; `scripts/hfs/slot-required.mts`, `rules/frontend-tree.mts`): the locale `loading.tsx` and `error.tsx` that `fe.app.next` requires are also satisfied by a route group directly under `[locale]` (`src/app/[locale]/(pages)/loading.tsx`). A `loading.tsx` at `[locale]` wraps the `[...rest]` catch-all, so `notFound()` fired after streaming began and every unknown address answered HTTP 200 with the default title (a soft 404). `FE_I18N_PLACEMENT` is unchanged (every route file still sits under `[locale]`; a group is transparent).

@@ -36,6 +36,7 @@ import type { Presets, RenderedTarget, SlotManifest } from './index.mjs';
 import { parseYaml as bundledParseYaml } from '../runtime/engine/yaml.mjs';
 import { readDeclaredSonarGate, sonarGateName } from './sonar-key.mjs';
 import { TS_STRICT_FILE, tsStrictFindings } from './ts-strict.mjs';
+import { nestedLockDrift, nestedLockFix } from './nested-lock.mjs';
 import { declaredLintFiles } from '../runtime/scripts/lib/project-ext.mjs';
 
 // reason: the stack declaration is YAML parsed from disk
@@ -102,6 +103,11 @@ function driftFindings(repoRoot: string, targets: readonly RenderedTarget[]): Ma
     findings.push({ code, level: 'error', path: result.path, mode: target.mode, expectedHash: result.expectedHash, ...(result.actualHash ? { actualHash: result.actualHash } : {}), message: `${what} (expected sha256 ${result.expectedHash.slice(0, 12)}${result.actualHash ? `, found ${result.actualHash.slice(0, 12)}` : ''}${where}); run "npx --no-install starci app sync --execute"` });
   }
   return findings;
+}
+
+/** A managed sub-package whose package-lock.json no longer matches its package.json: `npm ci` there fails (gallery/ after the render added @starci/gallery). */
+function nestedLockFindings(repoRoot: string, targets: readonly RenderedTarget[]): ManagedFinding[] {
+  return nestedLockDrift(repoRoot, targets.map(target => target.path)).map(item => ({ code: 'HFS_MANAGED_FILE_DRIFT', level: 'error', path: item.lock, message: `${item.lock} does not match ${item.dir}/package.json (${item.names.join(', ')}), so npm ci in ${item.dir}/ fails; run "npx --no-install starci app sync --execute" or "${nestedLockFix(item.dir)}"` }));
 }
 
 /** R11: the quality gate the be side's stack declaration names is the one gate of the bundled knowledge/sonar-gate.yaml. */
@@ -187,6 +193,7 @@ export async function managedFindings({ repoRoot, tracked, presets, parseYaml, m
   }
   const { targets } = rendered;
   const findings = driftFindings(repoRoot, targets);
+  findings.push(...nestedLockFindings(repoRoot, targets));
   findings.push(...sonarGateFindings(repoRoot, parseYaml, rendered.hfs.edition ?? 'full'));
   findings.push(...ruleFileFindings(repoRoot, tracked));
   findings.push(...toolKeyFindings(repoRoot, tracked));

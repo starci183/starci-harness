@@ -26,6 +26,9 @@ export function isLocalEnvironment(repoRoot: string, env: string): boolean {
   } catch { return false; }
 }
 
+/** The rows of the gallery (setup `gallery-install`, process and ready row `gallery`/`gallery-live`): the screenshot gallery is a side tool, so `stack up` reports its failure and keeps the api and web running. */
+export const isAdvisoryRow = (name: string): boolean => name === 'gallery' || name.startsWith('gallery-');
+
 /**
  * The screenshot gallery as a native process of the environment (R395, PROJECT-GALLERY-1): an app that declares `local.basePort` and carries
  * `gallery/package.json` gets the gallery dev server on base + `ruleParams.gallery.portOffset` next to its web and api processes, with its one-time
