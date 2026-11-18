@@ -80,6 +80,13 @@ type TabsCommon = NoChildren & {
 export type SecondaryTabsProps = TabsCommon & {
     readonly appearance?: "secondary"
     readonly kind?: "views" | "filter"
+    /**
+     * How a `kind="filter"` strip is drawn (0.47.0). `underline` (default) is the strip's own look. `pill` draws the same strip as pills on a track, the one pill look the
+     * `appearance="primary"` switch already has (no second pill is drawn): for a short row of PRESETS that narrow a list ("All", "Mine", "Overdue"), where the choice reads as
+     * picking a saved view rather than a tab of the page. It keeps what a filter strip has (a `count` chip per tab, `isAttention`, the "+n" fold into a menu, the selected tab always
+     * visible) and the pill strip's own: no line under it. Only with `kind="filter"`; a development error otherwise.
+     */
+    readonly shape?: "underline" | "pill"
     /** The accessible name of the menu that holds the folded tabs, e.g. `(count) => \`${count} more filters\``. */
     readonly moreLabel?: (count: number) => string
     /**
@@ -120,6 +127,7 @@ export type PrimaryTabItems =
  */
 export type PrimaryTabsProps = TabsCommon & {
     readonly appearance: "primary"
+    readonly shape?: never
     readonly kind?: never
     readonly moreLabel?: never
     readonly overflowLabel?: never
@@ -167,13 +175,19 @@ const useLocationPath = (enabled: boolean): readonly [string | undefined, (path:
 const TabsInner = (props: TabsProps) => {
     const items: ReadonlyArray<TabItem> = props.items
     const isPill = props.appearance === "primary"
+    const filterPill = props.appearance !== "primary" && props.kind === "filter" && props.shape === "pill"
+    if (props.appearance !== "primary" && props.shape === "pill" && props.kind !== "filter" && process.env.NODE_ENV !== "production") {
+        throw new Error("Tabs shape=\"pill\" is the look of a filter strip: it needs kind=\"filter\". A mode or period switch is appearance=\"primary\".")
+    }
+    // One pill look: the primary switch's and the filter strip's pill are the same drawing (HeroUI's primary variant, a pill on a track).
+    const isPillLook = isPill || filterPill
     const [isClientReady, setIsClientReady] = useState(false)
     const frameRef = useRef<HTMLDivElement>(null)
     const endRef = useRef<HTMLDivElement>(null)
     useRefuseInCardActions("Tabs")
     // The line owner is the host's, never a prop: the page header band wraps its strip in `TabsLineHost` (draws no line of its own, the indicator overlaps the host's divider); a standalone strip draws `--separator` itself.
     const hostLine = useTabsLineDefault()
-    const line: string = isPill ? "none" : hostLine
+    const line: string = isPillLook ? "none" : hostLine
     // A primary strip is for a mode or a period of the same data: a few short fixed options, never a destination and never counted.
     if (isPill && process.env.NODE_ENV !== "production" && (items.length < 2 || items.length > 4 || items.some((item) => item.count !== undefined || item.href !== undefined || item.isAttention !== undefined))) {
         throw new Error("Tabs appearance=\"primary\" holds two to four short, fixed options with no count, no href and no attention mark; views, filters and destinations are the secondary (underline) tabs.")
@@ -252,7 +266,7 @@ const TabsInner = (props: TabsProps) => {
     const folds = !isPill && (isFilter || props.overflowLabel !== undefined)
     const frameContract = inset === "page" ? "PADDING-5" : undefined
     const hasEnd = !isPill && props.end !== undefined && props.end !== null && props.end !== false
-    const frameData = { ...(hasEnd ? { "data-grammar-tabs-has-end": "true" } : {}), "data-component": "Tabs", "data-tier": "branch", "data-grammar-tabs": "true", "data-grammar-tabs-inset": inset, "data-grammar-tabs-variant": isPill ? "primary" : "secondary", "data-grammar-tabs-kind": isPill ? "switch" : kind, "data-grammar-tabs-line": line, "data-grammar-tabs-folds": folds ? "true" : "false" } as const
+    const frameData = { ...(hasEnd ? { "data-grammar-tabs-has-end": "true" } : {}), "data-component": "Tabs", "data-tier": "branch", "data-grammar-tabs": "true", "data-grammar-tabs-inset": inset, "data-grammar-tabs-variant": isPillLook ? "primary" : "secondary", "data-grammar-tabs-kind": isPill ? "switch" : kind, ...(filterPill ? { "data-grammar-tabs-shape": "pill" } : {}), "data-grammar-tabs-line": line, "data-grammar-tabs-folds": folds ? "true" : "false" } as const
 
     // `filter`: the tabs that do not fit fold into a "+n" menu. All tabs draw once to be measured (the widths are kept), then
     // the fit is recomputed from those widths whenever the frame resizes; the selected tab is always one of the shown.
@@ -327,13 +341,13 @@ const TabsInner = (props: TabsProps) => {
 
     return <div ref={frameRef} className={tabsFrameClassName} data-contract={frameContract} {...frameData} data-grammar-tabs-client="ready" data-grammar-tab-labels={props.labelVisibility ?? "responsive"} {...(renderAll ? { "data-grammar-tabs-measuring-fit": "true" } : {})}>
         <HeroTabs
-            variant={isPill ? "primary" : "secondary"}
+            variant={isPillLook ? "primary" : "secondary"}
             {...(selectedKey === undefined ? {} : { selectedKey })}
             onSelectionChange={(key) => select(String(key))}
             className={tabsClassName ?? ""}
             data-contract="FLOW-2"
         >
-            <HeroTabs.List aria-label={props.label} render={({ children, ref, ...listProps }) => isPill ? (
+            <HeroTabs.List aria-label={props.label} render={({ children, ref, ...listProps }) => isPillLook ? (
                 <div className="tabs__list-container" data-grammar-tabs-track="true"><div {...listProps} ref={ref} style={listProps.style}>{children}</div></div>
             ) : folds ? (
                 <div {...listProps} ref={ref} style={listProps.style}>{children}</div>

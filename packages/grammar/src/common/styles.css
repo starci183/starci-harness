@@ -1549,22 +1549,37 @@
 
     .starci-core-tabs-frame[data-grammar-tabs-kind="filter"][data-grammar-tabs-measuring-fit="true"] { overflow: hidden; visibility: hidden; }
     .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tabs { flex: 1 1 auto; width: auto; }
-    .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tabs .tabs__list,
-    .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tabs .tabs__list-container { gap: var(--grammar-identity-gap); overflow: visible; }
+    .starci-core-tabs-frame[data-grammar-tabs-kind="filter"]:not([data-grammar-tabs-shape="pill"]) .starci-core-tabs .tabs__list,
+    .starci-core-tabs-frame[data-grammar-tabs-kind="filter"]:not([data-grammar-tabs-shape="pill"]) .starci-core-tabs .tabs__list-container { gap: var(--grammar-identity-gap); overflow: visible; }
     /* Every tab is one size and one height: 14, 40 high (the control step), the selected one 500 over its underline. */
-    .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tabs .tabs__tab {
+    .starci-core-tabs-frame[data-grammar-tabs-kind="filter"]:not([data-grammar-tabs-shape="pill"]) .starci-core-tabs .tabs__tab {
         min-height: var(--starci-core-control-min-size);
         padding-inline: var(--grammar-inline-gap) !important;
         font-size: var(--grammar-text-sm);
         line-height: var(--grammar-leading-sm);
     }
 
-    .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tabs .tabs__tab:first-child { --starci-core-tab-padding-start: var(--grammar-inline-gap); }
+    .starci-core-tabs-frame[data-grammar-tabs-kind="filter"]:not([data-grammar-tabs-shape="pill"]) .starci-core-tabs .tabs__tab:first-child { --starci-core-tab-padding-start: var(--grammar-inline-gap); }
     /* In a card zone the first filter label stands on the card's inline edge (16), like the rows and the table below it; in a section's filter row, on the section title's edge. */
-    .starci-core-section-filter .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tabs .tabs__tab:first-child { padding-inline-start: 0 !important; }
-    .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tabs .tabs__tab[aria-selected="true"] { font-weight: var(--grammar-weight-medium); }
-    .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tabs .tabs__indicator { top: auto !important; background: var(--starci-core-tabs-indicator, var(--accent)); }
+    .starci-core-section-filter .starci-core-tabs-frame[data-grammar-tabs-kind="filter"]:not([data-grammar-tabs-shape="pill"]) .starci-core-tabs .tabs__tab:first-child { padding-inline-start: 0 !important; }
+    .starci-core-tabs-frame[data-grammar-tabs-kind="filter"]:not([data-grammar-tabs-shape="pill"]) .starci-core-tabs .tabs__tab[aria-selected="true"] { font-weight: var(--grammar-weight-medium); }
+    .starci-core-tabs-frame[data-grammar-tabs-kind="filter"]:not([data-grammar-tabs-shape="pill"]) .starci-core-tabs .tabs__indicator { top: auto !important; background: var(--starci-core-tabs-indicator, var(--accent)); }
     .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tab-content { gap: var(--grammar-identity-gap); }
+
+    /*
+     * A filter strip as pills (`shape="pill"`, 0.47.0): the primary switch's one pill look (HeroUI's primary variant, the pill on its track, drawn by the vendor and the rules
+     * of `data-grammar-tabs-variant="primary"` above), so no second pill is styled here. What a filter strip adds stays: the count chip, the fold into a "+n" menu, the row it
+     * stands in. The frame hugs its pills, centred on the strip's height with the fold menu beside it, and draws no line.
+     */
+    .starci-core-tabs-frame[data-grammar-tabs-kind="filter"][data-grammar-tabs-shape="pill"] {
+        display: inline-flex;
+        align-items: center;
+        width: auto;
+        max-width: 100%;
+    }
+
+    .starci-core-tabs-frame[data-grammar-tabs-kind="filter"][data-grammar-tabs-shape="pill"] .starci-core-tabs { flex: 0 1 auto; }
+    .starci-core-tabs-frame[data-grammar-tabs-kind="filter"][data-grammar-tabs-shape="pill"] .starci-core-tabs :is(.tabs__list, .tabs__list-container) { overflow: visible; }
 
     .starci-core-tabs-more { display: inline-flex; flex: none; align-items: stretch; min-height: var(--starci-core-control-min-size); padding-inline: var(--grammar-inline-gap); color: var(--muted); font-size: var(--grammar-text-sm); }
     /* The fold trigger fills the strip's height, so its box stands on the line like a tab: no padding of its own below it. */
@@ -4050,6 +4065,20 @@
 
     /* The column a dragged card would land in. */
     .starci-core-board-column[data-grammar-drop="true"] { outline: 2px dashed var(--accent); outline-offset: 2px; border-radius: var(--starci-core-surface-radius); }
+    /*
+     * A column that refuses the dragged card (`BoardColumn.canDrop`, 0.47.0): the same dashed outline in the danger token (a drop place that says no), the `not-allowed` pointer, and its
+     * reason written under the head in the danger soft pair, so the colour is never the only cue. The note stays a few seconds after the card sprang back.
+     */
+    .starci-core-board-column[data-grammar-drop="refused"] { outline: 2px dashed var(--danger); outline-offset: 2px; border-radius: var(--starci-core-surface-radius); cursor: not-allowed; }
+    .starci-core-board-refusal {
+        margin: 0;
+        padding: var(--grammar-inline-gap);
+        border-radius: var(--grammar-radius-md);
+        background: var(--danger-soft);
+        color: var(--danger-soft-foreground);
+        font-size: var(--grammar-text-xs);
+        line-height: var(--grammar-leading-xs);
+    }
     .starci-core-board-announce { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
     @media (max-width: 47.999rem) {

@@ -420,6 +420,17 @@
         outline: none;
     }
 
+    /* `size` (0.47.0): the panel's own widths, each capped at the viewport less 2rem like the default. */
+    .starci-core-popover[data-size="sm"] {
+        width: min(18rem, calc(100vw - 2rem));
+        max-width: min(18rem, calc(100vw - 2rem));
+    }
+
+    .starci-core-popover[data-size="lg"] {
+        width: min(36rem, calc(100vw - 2rem));
+        max-width: min(36rem, calc(100vw - 2rem));
+    }
+
     .starci-core-popover[data-entering] {
         animation: starci-core-overlay-fade var(--starci-core-motion-duration) var(--starci-core-motion-easing);
     }
@@ -718,6 +729,25 @@
         align-items: center;
         gap: var(--grammar-inline-gap);
         margin-inline-start: auto;
+    }
+
+    /*
+     * The form slot (0.47.0): the fields the banner is about stand under its description, a row step down, on the text's own edge. The words and rows inside keep the banner's
+     * ink. With a form the actions do not sit at the end of the first row but take a row of their own under it, at the end, so the decision reads after the fields.
+     */
+    .starci-core-alert-form {
+        display: flex;
+        min-width: 0;
+        inline-size: 100%;
+        flex-direction: column;
+        margin-block-start: var(--grammar-row-gap);
+        color: var(--starci-core-alert-ink);
+    }
+
+    .starci-core-alert[data-grammar-alert-form="true"] > .starci-core-alert-actions {
+        flex: 1 1 100%;
+        justify-content: flex-end;
+        margin-inline-start: 0;
     }
 
     /* ---------------------------------------------------------------- kbd */

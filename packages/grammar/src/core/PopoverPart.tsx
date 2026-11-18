@@ -6,6 +6,12 @@ import type { ReactNode } from "react"
 import { SurfaceNesting } from "./surfaceContext.js"
 import { overlayOpenProps, useOverlayContainer, type OverlayOpenState } from "./overlayScope.js"
 
+/**
+ * How wide the panel is (0.47.0): `sm` 18rem (a short note, a small menu of actions), `md` 26rem (the default: a panel of rows with a mark, copy and an action), `lg` 36rem (a
+ * list of wide rows or a small form). Each is capped at the viewport less 2rem, so on a phone every size is the same full-width panel. The panel never takes the trigger's width.
+ */
+export type PopoverSize = "sm" | "md" | "lg"
+
 /** Side of the trigger the panel opens on; it flips when the viewport has no room. */
 export type PopoverPlacement = "top" | "bottom" | "start" | "end"
 
@@ -14,6 +20,8 @@ type PopoverBase = OverlayOpenState & {
     readonly trigger: ReactNode
     readonly children: ReactNode
     readonly placement?: PopoverPlacement
+    /** The panel's width; default `md`. See `PopoverSize`. */
+    readonly size?: PopoverSize
     /** Draw the pointer arrow toward the trigger. Default `false`. */
     readonly showArrow?: boolean
 }
@@ -39,6 +47,7 @@ export const PopoverPart = ({
     trigger,
     children,
     placement = "bottom",
+    size = "md",
     showArrow = false,
     title,
     label,
@@ -57,6 +66,7 @@ export const PopoverPart = ({
                     placement={placement}
                     offset={8}
                     data-grammar-overlay-surface="popover"
+                    data-size={size}
                     data-grammar-nesting="surface"
                     data-contract="LAYOUT-4 BOUNDARY-6 MOTION-2"
                     className="starci-core-popover"

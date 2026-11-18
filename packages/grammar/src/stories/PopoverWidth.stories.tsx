@@ -59,3 +59,39 @@ export const Short: Story = {
     }, { timeout: 4000 });
   },
 };
+
+/**
+ * THE POPOVER SIZE (0.47.0). `size` is `sm` (18rem), `md` (26rem, the default) or `lg` (36rem), each capped at the viewport less 2rem: on a phone all three are the same
+ * full-width panel. A panel is never as narrow as its trigger.
+ */
+export const Sizes: Story = {
+  render: () => (
+    <div style={{ display: 'flex', gap: '1rem', paddingTop: '1rem', flexWrap: 'wrap' }}>
+      {(['sm', 'md', 'lg'] as const).map((size) => (
+        <G.Popover key={size} size={size} label={`Size ${size}`} trigger={<G.IconButton label={`Open ${size}`} source={BellGlyph} intent="dismiss" />}>
+          <G.Text size="sm">{`Panel of size ${size}`}</G.Text>
+        </G.Popover>
+      ))}
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const document = canvasElement.ownerDocument;
+    const viewport = document.documentElement.clientWidth;
+    const widths: Record<string, number> = {};
+    for (const size of ['sm', 'md', 'lg']) {
+      const trigger = [...canvasElement.querySelectorAll<HTMLElement>('button')].find((button) => button.getAttribute('aria-label') === `Open ${size}`);
+      if (trigger === undefined) throw new Error(`no trigger for ${size}`);
+      trigger.click();
+      await waitFor(() => {
+        const panel = document.querySelector<HTMLElement>(`.starci-core-popover[data-size="${size}"]`);
+        if (panel === null) throw new Error('The popover must be open');
+        widths[size] = panel.getBoundingClientRect().width;
+      }, { timeout: 4000 });
+      trigger.click();
+      await waitFor(() => { expect(document.querySelector('.starci-core-popover')).toBeNull(); }, { timeout: 4000 });
+    }
+    for (const [size, rem] of [['sm', 18], ['md', 26], ['lg', 36]] as const) {
+      expect(Math.abs((widths[size] ?? 0) - Math.min(rem * 16, viewport - 32))).toBeLessThan(2);
+    }
+  },
+};

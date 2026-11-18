@@ -10,6 +10,7 @@ import { Illustration, type IllustrationCompact } from "../../leaf/Illustration/
 import type { AssetSlotProps, MediaSourceRef } from "../../leaf/Image/index.js"
 import { Text } from "../../leaf/Text/index.js"
 import { ErrorView } from "../../loadingState.js"
+import { StepMark } from "../../StepMark.js"
 import { useSurfaceHost } from "../../surfaceContext.js"
 import type { NoChildren } from "../../tier.js"
 
@@ -64,9 +65,59 @@ type EmptyNoticeAction =
         readonly actionStartContent?: never
     }
 
-export type EmptyNoticeProps = NoChildren & EmptyNoticeMedia & EmptyNoticeAction & {
+/** One numbered step of a first-run notice (0.47.0). */
+export type EmptyNoticeStep = {
+    readonly id: string
+    /** What to do, in a few words ("Connect your Google Drive"). */
+    readonly label: string
+    /** One muted line under the label. */
+    readonly description?: string
+    /** The step is finished: it draws a check in place of its number. */
+    readonly isDone?: boolean
+}
+
+/** A first-run notice holds two to five steps. */
+const EMPTY_NOTICE_MIN_STEPS = 2
+const EMPTY_NOTICE_MAX_STEPS = 5
+
+type EmptyNoticeBase = NoChildren & {
     readonly message: string
     readonly description?: string
+    /**
+     * `frameless` (default since 0.37.4): no border, background or shadow, a notice that is words on the ground of the pane or well it stands on
+     * (`data-grammar-empty-frame="none"`). `card` is opt-in: one surface card, for a notice that is itself the content of a page.
+     */
+    readonly frame?: "card" | "frameless"
+}
+
+/**
+ * The good-news state (0.47.0): a region that is empty because nothing needs the reader ("All caught up", "No approvals waiting"). It wears a success mark, says it in the title and
+ * the description, and has no action: there is nothing to do, so every action prop, `steps`, `media` and `isError` are refused by the type.
+ */
+type EmptyNoticeAllClear = {
+    readonly isAllClear: true
+    readonly scope?: "region"
+    readonly media?: never
+    readonly actionIntent?: never
+    readonly actionStartContent?: never
+    readonly actionLabel?: never
+    readonly actionHref?: never
+    readonly actionEndArrow?: never
+    readonly isActionPending?: never
+    readonly onAction?: never
+    readonly secondary?: never
+    readonly steps?: never
+    readonly isError?: never
+}
+
+type EmptyNoticeRegular = EmptyNoticeMedia & EmptyNoticeAction & {
+    readonly isAllClear?: false
+    /**
+     * A first-run notice with numbered steps (0.47.0), two to five (a development error otherwise): the steps stand as a numbered list under the description, a finished step wears a
+     * check, and the FIRST OPEN step carries the notice's one primary action (`actionLabel` with `onAction` or `actionHref`), drawn under that step's words, so the way in is always one
+     * press. Later open steps are grey numbers; a notice whose steps are all done draws its action where a plain notice does. `secondary` stays at the foot.
+     */
+    readonly steps?: ReadonlyArray<EmptyNoticeStep>
     readonly actionLabel?: string
     /**
      * A navigation action (0.36.2): the notice ends in a `Link variant="head"` ("Back to overview" then an arrow that slides on hover) to this destination instead of a Button.
@@ -81,12 +132,9 @@ export type EmptyNoticeProps = NoChildren & EmptyNoticeMedia & EmptyNoticeAction
     readonly secondary?: EmptyNoticeSecondary
     /** The read failed: the notice is a live alert with a warning mark, so a failure never reads as empty. The mark props are ignored. */
     readonly isError?: boolean
-    /**
-     * `frameless` (default since 0.37.4): no border, background or shadow, a notice that is words on the ground of the pane or well it stands on
-     * (`data-grammar-empty-frame="none"`). `card` is opt-in: one surface card, for a notice that is itself the content of a page.
-     */
-    readonly frame?: "card" | "frameless"
 }
+
+export type EmptyNoticeProps = EmptyNoticeBase & (EmptyNoticeRegular | EmptyNoticeAllClear)
 
 /**
  * The one empty state of the Grammar: a centred stack of media, title, description and actions (one primary and at most one
@@ -108,10 +156,31 @@ export const EmptyNotice = ({
     onAction,
     isError = false,
     frame = "frameless",
+    steps,
+    isAllClear = false,
 }: EmptyNoticeProps) => {
+    if (steps !== undefined && process.env.NODE_ENV !== "production" && (steps.length < EMPTY_NOTICE_MIN_STEPS || steps.length > EMPTY_NOTICE_MAX_STEPS)) {
+        throw new Error(`EmptyNotice steps holds ${EMPTY_NOTICE_MIN_STEPS} to ${EMPTY_NOTICE_MAX_STEPS} steps; this one has ${steps.length}.`)
+    }
+    const openIndex = steps?.findIndex((step) => step.isDone !== true) ?? -1
     // Inside a card the card is the frame (0.36.2): the notice is words, never a second framed box.
     const inCard = useSurfaceHost() === "card"
     const framed = frame === "card" && !inCard
+    const primary = actionLabel === undefined ? null : actionHref !== undefined && scope === "page" ? (
+        <Button size="md" intent={actionIntent} href={actionHref}>{actionLabel}</Button>
+    ) : actionHref !== undefined ? (
+        <span className="starci-core-notice-link" data-grammar-notice-link="true"><Link variant="head" href={actionHref}>{actionLabel}</Link></span>
+    ) : (
+        <Button
+            {...(actionEndArrow ? { size: "sm" as const, intent: actionIntent, endArrow: true as const } : actionIntent === "commit" && actionStartContent !== undefined ? { size: "md" as const, intent: actionIntent, startContent: actionStartContent } : { size: scope === "page" ? "md" as const : "sm" as const, intent: actionIntent })}
+            isPending={isActionPending}
+            {...(onAction === undefined ? {} : { onPress: onAction })}
+        >
+            {actionLabel}
+        </Button>
+    )
+    // With steps the primary stands under the first open step; with none open (or no steps) it stands in the actions row.
+    const primaryInStep = steps !== undefined && openIndex >= 0
     return isError ? (
     <ErrorView error={{ message, ...(description === undefined ? {} : { description }), ...(actionLabel === undefined ? {} : { actionLabel }), ...(onAction === undefined ? {} : { onAction }) }} />
 ) : (
@@ -120,37 +189,43 @@ export const EmptyNotice = ({
         data-component="EmptyNotice"
         data-contract="GAP-3 PADDING-4"
         data-grammar-empty-scope={scope}
-        data-grammar-empty-mark={media?.illustration === undefined ? "icon" : "illustration"}
+        data-grammar-empty-mark={isAllClear ? "success" : media?.illustration === undefined ? "icon" : "illustration"}
+        {...(isAllClear ? { "data-grammar-empty-kind": "all-clear" } : steps === undefined ? {} : { "data-grammar-empty-kind": "steps" })}
         {...(framed ? {} : { "data-grammar-empty-frame": "none" })}
         className="starci-core-empty-notice"
     >
-        {media?.illustration === undefined ? <IconTile source={media?.icon ?? glyphSource("empty")} tone="accent" size="md" /> : <span className="starci-core-notice-art" data-grammar-notice-art="true"><Illustration {...media.illustration} ratio="1:1" fit="contain" /></span>}
+        {isAllClear ? <IconTile source={glyphSource("success")} tone="success" size="md" /> : media?.illustration === undefined ? <IconTile source={media?.icon ?? glyphSource("empty")} tone="accent" size="md" /> : <span className="starci-core-notice-art" data-grammar-notice-art="true"><Illustration {...media.illustration} ratio="1:1" fit="contain" /></span>}
         <div className="starci-core-notice-copy" data-contract="GAP-1">
             <Text size="sm" isStrong>{message}</Text>
             {description === undefined ? null : <Text size="sm" tone="muted">{description}</Text>}
         </div>
-        {actionLabel === undefined && secondary === undefined ? null : (
+        {steps === undefined ? null : (
+            <ol className="starci-core-notice-steps" data-grammar-notice-steps="true">
+                {steps.map((step, index) => {
+                    const state = step.isDone === true ? "done" : index === openIndex ? "current" : "todo"
+                    return (
+                        <li key={step.id} className="starci-core-notice-step" data-grammar-step-state={state} {...(state === "current" ? { "aria-current": "step" as const } : {})}>
+                            <StepMark state={state} position={index + 1} />
+                            <span className="starci-core-notice-step-body">
+                                <Text size="sm" isStrong={state === "current"}>{step.label}</Text>
+                                {step.description === undefined ? null : <Text size="sm" tone="muted">{step.description}</Text>}
+                                {state === "current" && primaryInStep ? <span className="starci-core-notice-step-action" data-grammar-notice-actions="true">{primary}</span> : null}
+                            </span>
+                        </li>
+                    )
+                })}
+            </ol>
+        )}
+        {(primaryInStep ? false : actionLabel !== undefined) || secondary !== undefined ? (
             <div className="starci-core-notice-actions" data-grammar-notice-actions="true">
-                {actionLabel === undefined ? null : actionHref !== undefined && scope === "page" ? (
-                    <Button size="md" intent={actionIntent} href={actionHref}>{actionLabel}</Button>
-                ) : actionHref !== undefined ? (
-                    <span className="starci-core-notice-link" data-grammar-notice-link="true"><Link variant="head" href={actionHref}>{actionLabel}</Link></span>
-                ) : (
-                    <Button
-                        {...(actionEndArrow ? { size: "sm" as const, intent: actionIntent, endArrow: true as const } : actionIntent === "commit" && actionStartContent !== undefined ? { size: "md" as const, intent: actionIntent, startContent: actionStartContent } : { size: scope === "page" ? "md" as const : "sm" as const, intent: actionIntent })}
-                        isPending={isActionPending}
-                        {...(onAction === undefined ? {} : { onPress: onAction })}
-                    >
-                        {actionLabel}
-                    </Button>
-                )}
+                {primaryInStep ? null : primary}
                 {secondary === undefined ? null : secondary.href === undefined ? (
                     <Button size={scope === "page" ? "md" : "sm"} intent="neutral" onPress={secondary.onPress}>{secondary.label}</Button>
                 ) : (
                     <Button size={scope === "page" ? "md" : "sm"} intent="neutral" href={secondary.href}>{secondary.label}</Button>
                 )}
             </div>
-        )}
+        ) : null}
     </div>
 )
 }

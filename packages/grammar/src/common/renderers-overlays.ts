@@ -28,7 +28,7 @@ export {
     type DropdownMenuSwitch,
     type DropdownMenuSelection,
 } from "../core/branch/DropdownMenu/index.js"
-export { Popover, type PopoverPlacement, type PopoverProps } from "../core/frame/Popover/index.js"
+export { Popover, type PopoverPlacement, type PopoverProps, type PopoverSize } from "../core/frame/Popover/index.js"
 export {
     DEFAULT_TOAST_TIMEOUT,
     Toast,
@@ -44,7 +44,7 @@ export {
     type ToastQueue,
     type ToastRecord,
 } from "../core/composite/Toast/index.js"
-export { Alert, type AlertAction, type AlertAppearance, type AlertProps, type AlertUrgency } from "../core/composite/Alert/index.js"
+export { Alert, type AlertAction, type AlertAppearance, type AlertProps, type AlertSecondaryAction, type AlertUrgency } from "../core/composite/Alert/index.js"
 export { KBD_NAMED_KEYS, Kbd, type KbdNamedKey, type KbdProps } from "../core/leaf/Kbd/index.js"
 export { Meter, type MeterProps, type MeterSegments, type MeterSize, type MeterTone } from "../core/leaf/Meter/index.js"
 export { ProgressCircle, type ProgressCircleProps, type ProgressCircleSize } from "../core/leaf/ProgressCircle/index.js"
