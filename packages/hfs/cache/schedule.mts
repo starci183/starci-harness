@@ -39,7 +39,7 @@ export const CHECK_GRAPH: readonly StepSpec[] = [
   { id: 'hfs', after: [], priority: 70, cache: '.starcistacks/cache/check/hfs, check/secrets' },
   { id: 'format', after: [], priority: 40, cache: '.starcistacks/cache/check/format' },
   { id: 'db', after: [], priority: 35, cache: '.starcistacks/cache/check/db' },
-  { id: 'checks', after: [], priority: 33, cache: 'none (never cached: a project check reads what it reads)' },
+  { id: 'checks', after: [], priority: 33, cache: 'none (never cached unless the check declares reads: a project check reads what it reads; one that declares reads and refs is a record of check/build keyed on them)' },
   { id: 'audit', after: [], priority: 30, cache: 'none (never cached)' },
   { id: 'coverage', after: ['test'], priority: 25, cache: 'none (reads the merged lcov)' },
   { id: 'sonar', after: ['test'], priority: 20, cache: '.starcistacks/cache/sonar-baseline, codecov-baseline' },

@@ -91,6 +91,7 @@ starci app check --gate sonar --gate codecov
 | `--gate lint` | ESLint per side and stylelint | `lint/` |
 | `--gate test` | the unit specs, their coverage merged into one report and its per-file threshold | `test-coverage/` |
 | `--gate sonar`, `--gate codecov` | the combined Sonar and Codecov predictions from the merged coverage, the lint findings and the clones; either selector invokes this family, both together invoke it once. The server scan belongs to the whole run alone | `sonar-baseline/`, `codecov-baseline/` |
+| `--gate hfs` (its `checks` step) | the project checks that declare `reads`, and each declared nivoos package check | `check/build/` (steps `project-check`, `nivoos-package`) |
 | `--gate build` | the CI-parity build steps ([CI parity](#ci-parity)): typecheck, `build be`, each `build fe`, the database migration checks | `check/build/` |
 | `--gate audit` | the CI-parity dependency audit ([CI parity](#ci-parity)) | none |
 
