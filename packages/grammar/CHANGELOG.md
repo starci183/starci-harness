@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.47.3 - 2026-11-19 - Filled status dot, dot rule, grouped More sheet
+
+Lane `badge-dot-rule`; the version in package.json is raised by the train. Both families, light and dark.
+
+- Changed: the dot of `StatusDot` and `Badge isDot` is a solid disc in its tone, 6px (it was an 8px ring; `--starci-core-status-dot-size` 0.375rem, the avatar button's status 0.625rem). The Offset Pop ink hairline stays around the filled dot. The outline-icon rule does not apply to status dots.
+- Added: DNA laws `DNA-COMMON-DOT-FILLED` (the dot is filled with its tone) and `DNA-COMMON-BADGE-DOT-ONE-PER-ENTITY` (a row, card or tile carries at most one dotted Badge). A dot is the live state of a system process; a record's business status or result is a `Badge tone` without a dot. The lint form is not built: the tone source of a Badge is not statically told apart from a process state, so it stays a review rule (`contexts/ui/components/chip.md`).
+- Added: `BottomNav` `more.groups` (the `Sidebar` group: `id`, `label`, `items`), so the More sheet draws group headings; flat `more.items` still works, one of the two is required. Story `MoreSheetGroups` at 390.
+
 ## 0.47.2 - 2026-11-19 - Tile poster bleed
 
 An additive optional prop and new DNA laws, so a patch. Lane `grammar-tile-bleed`; the version in package.json is raised by the train. Both families, light and dark.

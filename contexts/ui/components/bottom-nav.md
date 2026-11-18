@@ -25,9 +25,9 @@ returns to, never a command (a command lives in the page's actions).
 
 ## Variants
 - A place is a link (`href`: the app root's router opens it, a modifier press opens a tab) or a command (no `href`: `onAction(id)` is its only effect). `onAction` also runs after a link press.
-- `selectedKey` marks the current place: `aria-current="page"` on it, the default fill behind it, a semibold name. A key that is in `more.items` marks the "more" place (`data-grammar-current`) and the row in the sheet.
+- `selectedKey` marks the current place: `aria-current="page"` on it, the default fill behind it, a semibold name. A key that is in `more.items` or in a group of `more.groups` marks the "more" place (`data-grammar-current`) and the row in the sheet.
 - A count (`badge`, `badgeLabel`, `badgeMax`, `badgeTone`) is the sidebar's, pinned to the glyph's end corner: see [sidebar](sidebar.md#the-tone-of-a-count). `badgeLabel` is the words ("4 waiting for you"), the place's accessible name becomes "Office, 4 waiting for you".
-- The sheet is a bottom `Drawer` titled by `more.label` holding `Sidebar presentation="drawer"` of `more.items`: one look for a place in the sheet, the drawer and the rail; a place there takes a count, a trailing mark, `href` and `isDisabled` as a sidebar item does. Choosing a place closes the sheet and returns focus to the "more" place.
+- The sheet is a bottom `Drawer` titled by `more.label` holding `Sidebar presentation="drawer"` of `more.items` (flat) or `more.groups` (the `Sidebar` group: `id`, `label`, `items`, the `label` drawn as the heading of its rows; give one of the two, a console with named areas gives groups): one look for a place in the sheet, the drawer and the rail; a place there takes a count, a trailing mark, `href` and `isDisabled` as a sidebar item does. Choosing a place closes the sheet and returns focus to the "more" place.
 
 ## Size
 The place is the bar-control height (the `md` 40, glyph 20 over a one-line 12 name), its hit area stretched to the bar's 48 by a pseudo element so the box never grows (`DNA-COMMON-TARGET-COARSE`

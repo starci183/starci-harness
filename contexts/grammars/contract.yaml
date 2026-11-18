@@ -227,7 +227,7 @@ roles:
     sizes: { badge: below the ramp, statusDot: { steps: [sm, md, lg], default: md }, badgeDot: { steps: [sm], equals: the vendor Chip of the same size }, tagGroup: { steps: [sm, md], default: sm } }
     states: [disabled, echo (StatusDot, off under reduced motion), live (Badge isDot isLive: a polite live region, the words carry the state)]
     grammarMayChange: [tone paint through tokens]
-    dna: [DNA-COMMON-BADGE-TONE-INFO, DNA-COMMON-BADGE-BELOW-RAMP, DNA-COMMON-CHIP-NOT-TARGET, DNA-COMMON-CHIP-LABEL-UPPERCASE, DNA-COMMON-BADGE-DOT-CHIP-PARITY, DNA-COMMON-BADGE-DOT-GAP, DNA-COMMON-DOT-SIZE, DNA-COMMON-DOT-NAMED, DNA-COMMON-ECHO-LIGHT-STOP, DNA-COMMON-ECHO-REDUCED-MOTION, DNA-COMMON-TAG-REMOVE, DNA-COMMON-TAG-REORDER-KEYS, DNA-COMMON-TONE-CUSTOM-COMPLETE]
+    dna: [DNA-COMMON-BADGE-TONE-INFO, DNA-COMMON-BADGE-BELOW-RAMP, DNA-COMMON-CHIP-NOT-TARGET, DNA-COMMON-CHIP-LABEL-UPPERCASE, DNA-COMMON-BADGE-DOT-CHIP-PARITY, DNA-COMMON-BADGE-DOT-GAP, DNA-COMMON-DOT-SIZE, DNA-COMMON-DOT-FILLED, DNA-COMMON-BADGE-DOT-ONE-PER-ENTITY, DNA-COMMON-DOT-NAMED, DNA-COMMON-ECHO-LIGHT-STOP, DNA-COMMON-ECHO-REDUCED-MOTION, DNA-COMMON-TAG-REMOVE, DNA-COMMON-TAG-REORDER-KEYS, DNA-COMMON-TONE-CUSTOM-COMPLETE]
 
   - id: quote
     ui: ui/components/quote.md
@@ -538,7 +538,7 @@ roles:
     ui: ui/composition.md
     renderers: [WorkspaceShell, TopBar, Sidebar, BottomNav, Page, Grid]
     vendorParity: [drawer, list-box]
-    slots: ["header: identity, navigation, actions", navigation, compactHeader, "compactNavigation: a BottomNav of two to five places, its \"more\" place a bottom Drawer of a Sidebar (0.46.0; ui/components/bottom-nav.md)", primary, floatingLayer, "Sidebar item: label, source, description, trailing, href, badge with badgeLabel, badgeMax and badgeTone (neutral default, accent, success, warning, danger; 0.46.0)"]
+    slots: ["header: identity, navigation, actions", navigation, compactHeader, "compactNavigation: a BottomNav of two to five places, its \"more\" place a bottom Drawer of a Sidebar, flat `more.items` or grouped `more.groups` (0.46.0; ui/components/bottom-nav.md)", primary, floatingLayer, "Sidebar item: label, source, description, trailing, href, badge with badgeLabel, badgeMax and badgeTone (neutral default, accent, success, warning, danger; 0.46.0)"]
     variants:
       viewport: { values: [fixed, flow], chosenBy: app kind (workspace or public site) }
       sidebarPresentation: { values: [rail, drawer], chosenBy: viewport width }
@@ -1025,6 +1025,16 @@ mustKeep:
       role: chip
       law: Every status dot, in every variant, is the one dot-size token square.
       measure: { kind: box, select: '[data-slot="status-dot-mark"]', metric: [width, height], op: "=", value: { token: --starci-core-status-dot-size } }
+      owner: contract roles.chip
+    - id: DNA-COMMON-DOT-FILLED
+      role: chip
+      law: A status dot is a solid disc in its tone, never a ring.
+      measure: { kind: style, select: '[data-slot="status-dot-mark"]', metric: background-color, op: "=", value: { token: --starci-core-status-dot-color } }
+      owner: contract roles.chip
+    - id: DNA-COMMON-BADGE-DOT-ONE-PER-ENTITY
+      role: chip
+      law: An entity (a row, a card, a tile) carries at most one dotted Badge; a dot marks the live state of one system process.
+      measure: { kind: count, scope: ':is([data-grammar-row="true"], [data-grammar-surface-card], [data-grammar-tile], [role="row"])', select: '[data-grammar-badge-dot="true"]', op: "<=", value: 1 }
       owner: contract roles.chip
     - id: DNA-COMMON-DOT-NAMED
       role: chip

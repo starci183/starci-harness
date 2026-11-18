@@ -1,4 +1,4 @@
-import type { SidebarItem } from "../../composite/Sidebar/index.js"
+import type { SidebarGroup, SidebarItem } from "../../composite/Sidebar/index.js"
 import type { IconSource } from "../../leaf/Icon/index.js"
 import type { NavigationBadgeTone } from "../../navigationBadgeTone.js"
 
@@ -28,8 +28,10 @@ export type BottomNavMore = {
     readonly source: IconSource
     /** The sheet's close button name. */
     readonly closeLabel: string
-    /** The rest of the places, listed in the sheet in their order. */
-    readonly items: ReadonlyArray<SidebarItem>
+    /** The rest of the places, listed flat in the sheet in their order. Give `items` or `groups`, not both. */
+    readonly items?: ReadonlyArray<SidebarItem>
+    /** The rest of the places under group headings (the `Sidebar` group: `id`, `label`, `items`), in their order; the sheet draws each group's `label` as its heading. */
+    readonly groups?: ReadonlyArray<SidebarGroup>
     readonly badge?: number | string
     readonly badgeLabel?: string
     readonly badgeMax?: number

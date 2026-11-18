@@ -867,7 +867,7 @@
         position: absolute;
         inset-block-start: 0.25rem;
         inset-inline-end: 0.25rem;
-        --starci-core-status-dot-size: 0.75rem;
+        --starci-core-status-dot-size: 0.625rem;
         display: inline-flex;
         align-items: center;
         justify-content: center;

@@ -203,7 +203,7 @@ A chip is a label, not a target, on two axes: tone (which settled fact) and emph
 uppercase letter. A grammar's Badge is the vendor chip at soft emphasis and below the ramp, so status reads as
 tinted text, never as a filled button-like shape; its `muted` tone drops the fill for a quiet marker.
 
-`StatusDot` is a status drawn as a dot alone, static or `echo`, named by its `aria-label`; the dot and its size token are shared with `Badge isDot`, the status with its words, whose `isLive` makes it the state of a live feed.
+`StatusDot` is a status drawn as a dot alone, static or `echo`, named by its `aria-label`; the dot is a solid disc in its tone (never a ring), 6px, and it and its size token are shared with `Badge isDot`, the status with its words, whose `isLive` makes it the state of a live feed. A dot is the live state of a system process (an agent, a connection, a run, a sync, presence): a record's business status or result is a `Badge tone` without a dot, and one entity carries at most one dotted `Badge`.
 
 A `TagGroup` holds values the user entered, to remove or to reorder, and has no selection: its tag is interactive and
 keyboard reachable on the ramp at `sm` (the default: tag rows are dense) or `md` when its row holds `md` controls, and a
