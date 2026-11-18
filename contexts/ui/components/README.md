@@ -88,4 +88,5 @@ This table only routes a need to the page whose own Choose tables decide; it is 
 | draw decorative art: a hero, a marketing band, the picture of a page-level state | [illustration](illustration.md) |
 | divide a full-bleed area into flush panes with dividers, side by side and stacked (a list, a main column, an info rail), and place a pane's content at its one inset; mount a tabbed page of panes | [pane-grid](pane-grid.md) |
 | write one region by hand because no grammar component or composition fits (a last resort, with its reason) | [freestyle](freestyle.md) |
+| move a public marketing page: a section rising into view, a loop of names, a figure counting up, a picture that follows the text | [motion](motion.md) |
 | draw a diagram: an article's Mermaid source, or nodes and edges the app holds | [diagram](diagram.md) |

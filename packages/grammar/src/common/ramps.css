@@ -108,6 +108,30 @@
         --grammar-loop-pulse-easing: ease-in-out;
         --grammar-loop-echo-easing: ease-out;
 
+        /*
+         * MARKETING MOTION (0.47.3). The durations, the easing and the distances of Reveal, Marquee, CountUp and StickyStory, read by name
+         * and held in no component rule. A family overrides a step on its own root; every one is cancelled by reduced motion in the
+         * rules that read it (the pieces then draw their content static and complete).
+         */
+        --grammar-motion-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+        --grammar-motion-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+        --grammar-motion-duration-base: 240ms;
+        --grammar-motion-duration-reveal: 600ms;
+        --grammar-motion-duration-count: 1200ms;
+        /* One child of a staggered Reveal starts this much after the one before it. */
+        --grammar-motion-stagger: 80ms;
+        /* How far a Reveal rises, and how far a StickyStory panel travels as it changes. */
+        --grammar-motion-distance-reveal: 1.5rem;
+        --grammar-motion-distance-step: 1rem;
+        /* The seconds a Marquee takes for one full run of its content; the shorter cycle is for a phone. */
+        --grammar-loop-marquee: 40s;
+        --grammar-loop-marquee-compact: 28s;
+        /* How wide the edge of a Marquee fades into the page. */
+        --grammar-marquee-fade: 4rem;
+        /* StickyStory: how far from the top the stage pins, and the height of the stage and of each step beside it. */
+        --grammar-story-pin-top: 7rem;
+        --grammar-story-height: 32.5rem;
+
         /* GEOMETRY of the parts: sizes, measures and layers that have no HeroUI token. Spacing is in styles.css. */
         --starci-core-control-min-size: 2.5rem;
         /* The compact Switch: a 32x18 track, a 14px thumb, the thumb 2px in from the track on every side. */

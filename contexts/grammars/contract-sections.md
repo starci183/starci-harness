@@ -27,6 +27,7 @@ the whole file and reads a section when it needs it: `starci contexts anchor <an
     - List · `contexts/grammars/contract.md#list` · 2 KB — A list is rows of peers: a `ListBox` when picking is the task, `Section kind="list"` wherever the rows report (an existing surface or the page canvas, bounded or searched, ...
     - Link · `contexts/grammars/contract.md#link` · 1 KB — `Link` is a native destination carried by text or one image.
     - Grid · `contexts/grammars/contract.md#grid` · 2 KB — `Grid` names a track layout by the content it carries: peer `cards`, aligned `form` fields, `main-rail`, independent working `sections`, a reading `pair`, one `featured` focus ...
+    - Marketing motion · `contexts/grammars/contract.md#marketing-motion` · 2 KB — Four pieces give a public page its movement, over one set of ramps (0.47.3): `Reveal`, `Marquee`, `CountUp` and `StickyStory`.
     - EntryFrame · `contexts/grammars/contract.md#entryframe` · 1 KB — `EntryFrame` owns one full-height entry task.
     - ColorSwatch · `contexts/grammars/contract.md#colorswatch` · 1 KB — `ColorSwatch` previews an actual color value as content, with a required accessible `label`; the vendor owns the typed `color` data, its paint and transparency checkerboard.
     - Figure destinations · `contexts/grammars/contract.md#figure-destinations` · 1 KB — Each `Figure` may carry a native `href`, optional `Link.onFollow` and `isDisabled`.
