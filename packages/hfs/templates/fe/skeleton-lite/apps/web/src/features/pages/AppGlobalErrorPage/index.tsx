@@ -1,5 +1,5 @@
 import { DEFAULT_LOCALE } from "@/modules/i18n"
-import { GlobalErrorNotice } from "@/components/composites/GlobalErrorNotice"
+import { GlobalErrorNotice } from "@/components/frames/GlobalErrorNotice"
 import messages from "@/modules/i18n/messages/vi.json"
 
 /** The public props of the last-resort error page: the boundary hands it the retry. */

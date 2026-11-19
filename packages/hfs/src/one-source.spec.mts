@@ -36,13 +36,13 @@ const APP: Record<string, string> = {
   'apps/web/src/modules/brand/brand.css': BRAND,
   'apps/web/src/app/[locale]/layout.tsx': 'import "../globals.css"\nexport default () => null\n',
   'apps/web/src/app/[locale]/not-found.tsx': route('NotFoundNotice', '@/components/composites/NotFoundNotice'),
-  'apps/web/src/app/global-error.tsx': route('GlobalErrorNotice', '@/components/composites/GlobalErrorNotice'),
+  'apps/web/src/app/global-error.tsx': route('GlobalErrorNotice', '@/components/frames/GlobalErrorNotice'),
   'apps/web/src/app/[locale]/(pages)/page.tsx': 'export default () => null\n',
   'apps/web/src/app/[locale]/(pages)/error.tsx': route('ErrorNotice', '@/components/composites/ErrorNotice'),
   'apps/web/src/app/[locale]/(pages)/not-found.tsx': route('NotFoundNotice', '@/components/composites/NotFoundNotice'),
   'apps/web/src/components/composites/NotFoundNotice/index.tsx': EMPTY.replace('Notice =', 'NotFoundNotice ='),
   'apps/web/src/components/composites/ErrorNotice/index.tsx': EMPTY.replace('Notice =', 'ErrorNotice ='),
-  'apps/web/src/components/composites/GlobalErrorNotice/index.tsx': 'import { ErrorNotice } from "@/components/composites/ErrorNotice"\nexport const GlobalErrorNotice = () => <html><body><ErrorNotice /></body></html>\n',
+  'apps/web/src/components/frames/GlobalErrorNotice/index.tsx': 'import { ErrorNotice } from "@/components/composites/ErrorNotice"\nexport const GlobalErrorNotice = () => <html><body><ErrorNotice /></body></html>\n',
 };
 
 for (const edition of ['lite', 'full']) {
@@ -94,7 +94,7 @@ for (const edition of ['lite', 'full']) {
   test(`FE_STATE_PAGE_NOT_SHARED ${edition}: a boundary that draws its own page is refused, global-error counts as the error kind`, () => {
     const own = repoOf({
       ...APP,
-      'apps/web/src/components/composites/GlobalErrorNotice/index.tsx': EMPTY.replace('Notice =', 'GlobalErrorNotice ='),
+      'apps/web/src/components/frames/GlobalErrorNotice/index.tsx': EMPTY.replace('Notice =', 'GlobalErrorNotice ='),
       'apps/web/src/app/[locale]/(pages)/not-found.tsx': route('SiteNotFound', '@/components/composites/SiteNotFound'),
       'apps/web/src/components/composites/SiteNotFound/index.tsx': EMPTY.replace('Notice =', 'SiteNotFound ='),
     });
