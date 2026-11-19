@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.49.2 - 2026-11-20 - ChoiceChips at a Chip's height, ChoiceButtons at a Button's
+## 0.50.0 - 2026-11-20 - ChoiceChips at a Chip's height, ChoiceButtons at a Button's
 
 Both families, light and dark.
 

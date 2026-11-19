@@ -2,7 +2,7 @@
 
 ## 0.1.10 - 2026-11-20
 
-- Changed: requires @starci/grammar 0.49.2, the Grammar it ships with.
+- Changed: requires @starci/grammar 0.50.0, the Grammar it ships with.
 
 ## 0.1.9 - 2026-11-20
 

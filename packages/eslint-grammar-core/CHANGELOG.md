@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.49.2 - 2026-11-20
+## 0.50.0 - 2026-11-20
 
 - Changed: `suggestion-buttons` treats `ChoiceButtons` like `ChoiceChips` (a group that sends its choice is refused); `ChoiceButtons` is a form control for the field-label and gap rules.
 
