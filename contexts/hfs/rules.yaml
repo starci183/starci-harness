@@ -3033,3 +3033,28 @@ rules:
       - HFS_DESKTOP_SIGNING_KEY
     enforcers:
       - {kind: hfs, id: desktop}
+  - id: R445
+    code: FE_BRAND_NOT_ONE
+    law: "The colours of a product live in ONE brand token file: the web apps of a front end hold exactly one `modules/brand/brand.css`, which every global stylesheet imports (a colour literal elsewhere is R61's lint, which also refuses a named colour and a Tailwind arbitrary or palette colour), and the canvas holds none of its own: `.starcistacks/canvas/tokens.css` is generated from the brand file by `canvas-tokens.mjs`, and no generator under `.starcistacks/canvas/gen/` (the claude-design `gen/kit/` aside) writes a colour literal."
+    failureCodes:
+      - FE_BRAND_NOT_ONE
+      - FE_BRAND_CANVAS_LITERAL
+      - FE_BRAND_CANVAS_TOKENS_STALE
+    enforcers:
+      - {kind: hfs, id: brand-one}
+  - id: R446
+    code: FE_GLOBALS_NOT_ONE
+    law: "A web app loads its CSS through exactly ONE global stylesheet, `src/app/globals.css`, which imports the Grammar stylesheet and the brand file: no second `.css` file under the app's `src/` (a route group's `site.css`), and no TypeScript file imports a stylesheet other than the globals."
+    failureCodes:
+      - FE_GLOBALS_NOT_ONE
+      - FE_GLOBALS_IMPORTS_MISSING
+    enforcers:
+      - {kind: hfs, id: globals-one}
+  - id: R447
+    code: FE_STATE_PAGE_NOT_SHARED
+    law: "Every system state has ONE page: all the `not-found.tsx` of a front end render one shared page component, all the `error.tsx` and `global-error.tsx` one, all the offline pages one, and every route group of the app tree (any depth) carries its own `error.tsx` and `not-found.tsx`, so no group falls through to a different look. The page component is the file of the boundary's reachable source that draws the Grammar's page empty state (R443)."
+    failureCodes:
+      - FE_STATE_PAGE_NOT_SHARED
+      - FE_STATE_PAGE_GROUP_MISSING
+    enforcers:
+      - {kind: hfs, id: state-pages}

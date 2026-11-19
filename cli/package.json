@@ -1,6 +1,6 @@
 {
   "name": "starci-harness",
-  "version": "1.1.0-alpha.172",
+  "version": "1.1.0-alpha.173",
   "description": "The StarCi harness CLI: every piece of AI agent work gets a contract of machine checks, is verified on a clean checkout, and only then committed.",
   "keywords": [
     "starci",
@@ -66,7 +66,7 @@
     "postpack": "node -e \"const fs = require('node:fs'); fs.cpSync('cli/README.md', 'README.md'); for (const d of ['ops','policy','contexts','skills','packages','cli','CONTRIBUTING.md','LICENSE']) fs.rmSync(d, {recursive: true, force: true})\""
   },
   "dependencies": {
-    "@starci/hfs": "6.13.51",
+    "@starci/hfs": "6.13.53",
     "@starci/seed": "0.3.0",
     "commander": "15.0.0",
     "yaml": "2.9.1",

@@ -661,7 +661,7 @@ mustKeep:
       plus n); or { oneOf: [values] }; or { before: true } (interaction:
       the same metric before `act`); or { fixture: <fact> } that the gate's fixture declares
     where: "optional filter on matches: { metric, op, value }"
-    context: "pointer coarse|fine, viewport WxH, theme light|dark, forcedColors active, reducedMotion reduce, state hover|pressed|focus-visible; default light, fine pointer, 1280x800"
+    context: "widths [w, …] (a STATIC law judged at those widths in px besides the run's own: the phone laws name 320, 360 and 390), pointer coarse|fine, viewport WxH, theme light|dark, forcedColors active, reducedMotion reduce, state hover|pressed|focus-visible; default light, fine pointer, 1280x800"
     tolerance: "box and relation, default 0.5px"
     cases: "a list of { select, metric?, value } sharing every other field"
     coverage: "an entry with zero matches is not exercised: the gate reports it per id from its fixture and never passes it"
@@ -747,6 +747,40 @@ mustKeep:
       law: On a fine pointer every pressable part has a hit area of at least the fine floor.
       measure: { kind: box, context: { pointer: fine }, select: ':is([data-component="Button"],[data-component="IconButton"],[data-component="TextAction"],[role="tab"],[role="option"],[role="radio"],[role="checkbox"],[role="switch"],[role="menuitem"])', metric: hit-area, op: ">=", value: { threshold: target.fine.min } }
       owner: contract sizes.target
+    # --- the phone control floor and the site header: controls stay 40px tall and labels one line at 320, 360 and 390
+    - id: DNA-COMMON-CONTROLS-PHONE-40
+      role: [button, input, select, copy-field]
+      law: "At 320, 360 and 390 wide every Button, IconButton, single-line field and menu trigger is at least 40px tall, the md control step. Only an explicit sm control (a control nested in a collection item or a dense toolbar, DNA-COMMON-CONTROL-SM) and a compact field sit below it, and in a bar even those draw at 40 (DNA-COMMON-HEADER-CONTROLS-40)."
+      measure:
+        kind: box
+        metric: height
+        op: ">="
+        context: { widths: [320, 360, 390] }
+        cases:
+          - { select: ':is([data-component="Button"],[data-component="IconButton"]):not([data-size="sm"])', value: 40px }
+          - { select: ':is(button,[role="button"])[aria-haspopup]:not([aria-haspopup="false"], [data-size="sm"], .starci-core-select-trigger, [data-component="PlainPressable"])', value: 40px }
+          - { select: ':is(.starci-core-input-field,.starci-core-select-trigger,.starci-core-combo-box-group,.starci-core-search-field-group,.starci-core-number-field-group,.starci-core-date-group,.starci-core-copy-field-group):not([data-grammar-field-size="sm"] *, [data-grammar-select-appearance="compact"] *)', value: 40px }
+      owner: ui/scale.md scale.choose.step; contract sizes
+    - id: DNA-COMMON-HEADER-CONTROLS-40
+      role: shell
+      law: "Every control in a TopBar is at least 40px tall at 320, 360 and 390, whatever size its caller passed: the bar composition owns the height, an sm Button or IconButton in a bar draws at the md step."
+      measure: { kind: box, context: { widths: [320, 360, 390] }, select: '[data-component="TopBar"] :is([data-component="Button"],[data-component="IconButton"],[data-component="AvatarButton"],.starci-core-search-field-group)', metric: height, op: ">=", value: 40px }
+      owner: contract sizes.control; ui/scale.md scale.choose.step
+    - id: DNA-COMMON-BUTTON-ONE-LINE
+      role: button
+      law: "A Button label (the text span, never the glyph beside it) is one line at 320, 360 and 390: nothing in a content-width button breaks it over two lines. Only a button that fills its container (width fill, fill-narrow or wrap) may wrap a label longer than its container."
+      measure: { kind: text, context: { widths: [320, 360, 390] }, select: '[data-component="Button"]:not([data-width="fill"],[data-width="fill-narrow"],[data-width="wrap"]) > [data-grammar-button-label]', metric: lines, op: "<=", value: 1 }
+      owner: ui/components/button.md; ui/scale.md
+    - id: DNA-COMMON-HEADER-FIT-ONE-LINE
+      role: shell
+      law: "A header action and a header link are one line at 320, 360 and 390. What does not fit the row's width goes into the menu (TopBar fit), it never wraps."
+      measure: { kind: text, context: { widths: [320, 360, 390] }, select: '[data-component="TopBar"] :is([data-grammar-top-bar-fit] :is(a,.starci-core-button),[data-grammar-top-bar-actions] :is(a,.starci-core-button))', metric: lines, op: "<=", value: 1 }
+      owner: ui/components/menu.md; ui/presentation.md
+    - id: DNA-COMMON-HEADER-NO-OVERFLOW
+      role: shell
+      law: "A header never overflows sideways at 320, 360 and 390: every part of its row ends inside the header, and the header ends inside the page. Overflow goes to the menu, never to a scrollbar or off the edge."
+      measure: { kind: relation, context: { widths: [320, 360, 390] }, select: '[data-component="TopBar"] .starci-core-top-bar-main, [data-component="TopBar"] .starci-core-top-bar-main > *, [data-grammar-top-bar-fit] *', metric: right, op: "<=", ref: { within: '[data-component="TopBar"]', select: self, metric: right } }
+      owner: ui/presentation.md; ui/components/menu.md
     # --- root, tokens and rhythm
     - id: DNA-COMMON-TOKENS-BOUND
       role: root

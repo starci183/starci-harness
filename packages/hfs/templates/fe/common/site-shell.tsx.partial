@@ -3,7 +3,7 @@ export const SiteShell = (props: SiteShellProps) => (
         <WorkspaceShell
             viewport="flow"
             primaryLabel={props.brand}
-            header={<TopBar brand={<Link href={props.homeHref}>{props.brand}</Link>} />}
+            header={<TopBar brand={<Link href={props.homeHref}>{props.brand}</Link>} {...(props.fit === undefined ? {} : { fit: props.fit })} />}
             primary={props.children}
         />
     </GrammarRoot>

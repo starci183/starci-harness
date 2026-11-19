@@ -34,6 +34,9 @@ Selection inside a menu (current language, workspace) shows the selected indicat
 - **Knowledge decides:** what stays visible vs goes into the menu, destructive treatment, grouping.
 - **App author decides:** entries, labels, sections, handlers.
 
+## The header menu (TopBar fit, 0.47.5)
+A site header's three-line menu is the overflow of its row, not a second navigation. `TopBar fit={{ navigationItems, actionItems, overflowLabel }}` draws the links and the actions as data on one line; what does not fit the row's width moves, whole and in order (links first, last to first; then the quiet actions; the primary action last), into a `DropdownMenu` opened by the three-line `IconButton` at the row's end. The trigger exists only while the menu holds something, and it follows the row's own width, not a breakpoint. An action is `{ id, label, emphasis?: "primary" | "secondary", href | onPress }`, a link `{ id, label, href, isCurrent? }`; an app that wants more than one primary action has the wrong page. Never wrap a label, never scroll the row, never hand-build the row (PHONE-1..4, [../presentation.md](../presentation.md#controls-and-headers-on-a-phone)).
+
 ## Rules
-CTA-4, ACTION-1, FE-APP-SHELL-3. Lint: `starci-grammar/destructive-menu-entry-needs-danger-tone`. Proof: FOCUS-2,
+CTA-4, ACTION-1, FE-APP-SHELL-3, PHONE-1..4 (the header menu). Lint: `starci-grammar/destructive-menu-entry-needs-danger-tone`. Proof: FOCUS-2,
 FOCUS-3, A11Y-2.

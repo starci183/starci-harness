@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.9.7 - 2026-11-19
+
+- Changed (`raw-brand-value`, R61): a named colour (`red`, `navy`) in a colour property (`color`, `background`, `border*`, `outline`, `fill`, `stroke`, `box-shadow`, ...) or alone as the value of a custom property is a raw brand value outside `brand.css`, like a hex colour. `NAMED_COLORS` equals `@starci/eslint-canon-fe`'s, and `findRawBrandValue(text, prop?)` takes the property.
+
 ## 2.9.6 - 2026-11-17
 
 - Changed (vocabulary): the theme hooks of @starci/grammar 0.45.0. `--starci-core-card-border`, `--starci-core-card-hover`, `--starci-core-card-active`, `--starci-core-table-selected`, `--starci-core-table-selected-foreground` and `--starci-core-pagination-current` are gone (their values are the Grammar defaults: a 1px `--border` card edge, neutral whole-card hover and press, a grey selected row, a grey current page), so brand.css may no longer set them (35 hooks); `starci/no-grammar-private-token` reports a brand.css that still does.

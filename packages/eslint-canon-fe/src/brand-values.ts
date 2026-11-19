@@ -29,6 +29,15 @@ const HEX_COLOR = /(?<![\w&])#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3,4})
 /** A functional colour notation. */
 const COLOR_FUNCTION = /\b(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color-mix)\(/i
 
+/** The CSS named colours (not `transparent`, `currentcolor` or a system colour, which carry no brand value). */
+export const NAMED_COLORS = "aliceblue|antiquewhite|aqua|aquamarine|azure|beige|bisque|black|blanchedalmond|blue|blueviolet|brown|burlywood|cadetblue|chartreuse|chocolate|coral|cornflowerblue|cornsilk|crimson|cyan|darkblue|darkcyan|darkgoldenrod|darkgray|darkgreen|darkgrey|darkkhaki|darkmagenta|darkolivegreen|darkorange|darkorchid|darkred|darksalmon|darkseagreen|darkslateblue|darkslategray|darkslategrey|darkturquoise|darkviolet|deeppink|deepskyblue|dimgray|dimgrey|dodgerblue|firebrick|floralwhite|forestgreen|fuchsia|gainsboro|ghostwhite|gold|goldenrod|gray|green|greenyellow|grey|honeydew|hotpink|indianred|indigo|ivory|khaki|lavender|lavenderblush|lawngreen|lemonchiffon|lightblue|lightcoral|lightcyan|lightgoldenrodyellow|lightgray|lightgreen|lightgrey|lightpink|lightsalmon|lightseagreen|lightskyblue|lightslategray|lightslategrey|lightsteelblue|lightyellow|lime|limegreen|linen|magenta|maroon|mediumaquamarine|mediumblue|mediumorchid|mediumpurple|mediumseagreen|mediumslateblue|mediumspringgreen|mediumturquoise|mediumvioletred|midnightblue|mintcream|mistyrose|moccasin|navajowhite|navy|oldlace|olive|olivedrab|orange|orangered|orchid|palegoldenrod|palegreen|paleturquoise|palevioletred|papayawhip|peachpuff|peru|pink|plum|powderblue|purple|rebeccapurple|red|rosybrown|royalblue|saddlebrown|salmon|sandybrown|seagreen|seashell|sienna|silver|skyblue|slateblue|slategray|slategrey|snow|springgreen|steelblue|tan|teal|thistle|tomato|turquoise|violet|wheat|white|whitesmoke|yellow|yellowgreen"
+
+/** A Tailwind arbitrary value that is a named colour: `bg-[red]`, `text-[color:navy]`. A `var(--token)` or a length is not one. */
+const ARBITRARY_NAMED_COLOR = new RegExp(String.raw`-\[(?:color:)?(?:${NAMED_COLORS})\](?![\w-])`, "i")
+
+/** A Tailwind default-palette class (`bg-red-500`, `text-slate-900`): a raw colour that skipped the brand tokens. */
+const PALETTE_CLASS = /(?<![\w-])(?:bg|text|border|border-[xytrblse]|ring|ring-offset|outline|fill|stroke|from|via|to|divide|decoration|accent|caret|shadow|placeholder)-(?:red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose|slate|gray|zinc|neutral|stone)-(?:50|100|200|300|400|500|600|700|800|900|950)(?![\w-])/
+
 /** A pixel length, not inside an arbitrary-value bracket and not part of a longer number or word. */
 const PIXEL_LENGTH = /(?<![\w.#[-])-?(?:\d+\.?\d*|\.\d+)px\b/
 
@@ -106,6 +115,10 @@ export const noRawBrandValue = exemptFreestyle(defineRule({
         "A raw colour value (`{{value}}`). Colour values exist only in `modules/brand/brand.css`, on the tokens the grammar declares, with a light and a dark value. Here it has no dark value, cannot be re-branded and drifts from the brand record. Use a grammar token class or variable.",
       length:
         "A raw pixel length (`{{value}}`). Spacing and size come from the grammar's scale so they move with density, zoom and breakpoint. Use a grammar utility token.",
+      arbitrary:
+        "A Tailwind arbitrary colour (`{{value}}`). A colour is a brand token, set once in `modules/brand/brand.css`: use a grammar token class, never `-[colour]`.",
+      palette:
+        "A Tailwind palette colour (`{{value}}`). The default palette is not the brand: use a grammar token class so the colour follows the brand file in both themes.",
       named:
         "`{{key}}: {{value}}` puts a named colour in a style. Colour is a token, not a word: use a grammar token (`var(--...)` or a token class).",
     },
@@ -131,6 +144,10 @@ export const noRawBrandValue = exemptFreestyle(defineRule({
         if (namedIn(NON_COLOR_ATTRS, parent.parent.name)) return
       }
       if (parent && (parent.type === "ImportDeclaration" || parent.type === "ExportAllDeclaration" || parent.type === "ExportNamedDeclaration")) return
+      const arbitrary = ARBITRARY_NAMED_COLOR.exec(text)
+      if (arbitrary) return context.report({ node, messageId: "arbitrary", data: { value: arbitrary[0].replace(/^-/, "") } })
+      const palette = PALETTE_CLASS.exec(text)
+      if (palette) return context.report({ node, messageId: "palette", data: { value: palette[0] } })
       const color = HEX_COLOR.exec(text) || COLOR_FUNCTION.exec(text)
       if (color) return context.report({ node, messageId: "color", data: { value: color[0].replace(/\($/, "(...)") } })
       const length = PIXEL_LENGTH.exec(text)

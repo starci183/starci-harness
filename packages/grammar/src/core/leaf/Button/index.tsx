@@ -226,7 +226,7 @@ const ButtonFace = (props: ButtonProps & { readonly reasonId?: string }) => {
     const content = (
         <>
             {isPending && !isLoading ? <HeroSpinner size="sm" color="current" aria-hidden="true" /> : startContent}
-            <span aria-busy={isPending || undefined}>{children}</span>
+            <span data-grammar-button-label="true" aria-busy={isPending || undefined}>{children}</span>
             {isPending && !isLoading ? null : endContent}
         </>
     )

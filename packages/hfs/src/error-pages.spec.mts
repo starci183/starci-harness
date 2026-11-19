@@ -27,10 +27,10 @@ const LITE_OK = {
   'apps/web/src/app/global-error.tsx': 'import { AppGlobalErrorPage } from "@/features/pages/AppGlobalErrorPage"\nexport default () => <AppGlobalErrorPage />\n',
   'apps/web/src/features/pages/AppNotFoundPage/index.tsx': 'import { NotFoundNotice } from "@/components/composites/NotFoundNotice"\nexport const AppNotFoundPage = () => <NotFoundNotice />\n',
   'apps/web/src/features/pages/AppErrorPage/index.tsx': 'import { ErrorNotice } from "@/components/composites/ErrorNotice"\nexport const AppErrorPage = () => <ErrorNotice />\n',
-  'apps/web/src/features/pages/AppGlobalErrorPage/index.tsx': 'import { GlobalErrorNotice } from "@/components/composites/GlobalErrorNotice"\nexport const AppGlobalErrorPage = () => <GlobalErrorNotice />\n',
+  'apps/web/src/features/pages/AppGlobalErrorPage/index.tsx': 'import { GlobalErrorNotice } from "@/components/frames/GlobalErrorNotice"\nexport const AppGlobalErrorPage = () => <GlobalErrorNotice />\n',
   'apps/web/src/components/composites/NotFoundNotice/index.tsx': EMPTY,
   'apps/web/src/components/composites/ErrorNotice/index.tsx': EMPTY,
-  'apps/web/src/components/composites/GlobalErrorNotice/index.tsx': EMPTY,
+  'apps/web/src/components/frames/GlobalErrorNotice/index.tsx': EMPTY,
 };
 
 for (const edition of ['lite', 'full']) {

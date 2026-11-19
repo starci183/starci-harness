@@ -380,6 +380,18 @@ One owner per axis; two nested scrollers on one axis trap the reader.
 | OVERFLOW-5 | contained | panels, drawers and overlays stop scroll chaining; never the page's own scroller |
 | OVERFLOW-6 | no scrollbar | Grammar never shows scrollbars: every scroll area (pane, `PaneSection scroll`, drawer and modal body, ListBox, chat thread, tab strip, DataTable overflow) hides the bar and fades its edge where content continues (HeroUI ScrollShadow); wheel, touch and keyboard still scroll; an app element with `overflow-y-auto` / `overflow-auto` is refused (lint `no-raw-scroll`) |
 
+### Controls and headers on a phone
+A phone header that is hand-built wraps a label onto two lines and draws buttons under 40px, so the floor is a law, measured on the rendered stories at the phone widths, and the header is a Grammar component.
+
+| Id | Rule | Held by |
+| --- | --- | --- |
+| PHONE-1 | At 320, 360 and 390 wide every Button, IconButton, single-line field and menu trigger is at least 40px tall. Only an explicit `sm` control nested in an item or a dense toolbar sits below it; in a bar it draws at 40 as well, whatever size was passed. An app cannot shrink a control: there is no height prop, only the step | `DNA-COMMON-CONTROLS-PHONE-40`, `DNA-COMMON-HEADER-CONTROLS-40` |
+| PHONE-2 | A button label and a header action or link is one line (FLOW-2's control one-line rule): a content-width button never wraps its label | `DNA-COMMON-BUTTON-ONE-LINE`, `DNA-COMMON-HEADER-FIT-ONE-LINE` |
+| PHONE-3 | A header never overflows sideways. The links and actions that do not fit the row move, whole, into the three-line menu of `TopBar fit` (links first, then the quiet actions, the primary action last); they are never wrapped, scrolled or clipped | `DNA-COMMON-HEADER-NO-OVERFLOW` |
+| PHONE-4 | A site header is `TopBar fit` (`navigationItems`, `actionItems`, `overflowLabel`), never a hand-built row of links and buttons | lint review; the scaffold SiteShell carries it |
+
+The laws run on the stories at 320, 360 and 390 (`context.widths` of a measured law, [../grammars/contract.yaml](../grammars/contract.yaml)); the UI audit's layout lens reads the same four items on full-resolution crops of the first viewport and the header ([../project/gallery.md](../project/gallery.md) PROJECT-GALLERY-8).
+
 ### Text flow
 The default (start-aligned, wrapping) is right far more often than any rule here.
 

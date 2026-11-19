@@ -2640,6 +2640,76 @@ FE_ERROR_PAGE_NOT_EMPTY_STATE:
   owner: op-retry
   kind: check-finding
 
+FE_BRAND_NOT_ONE:
+  title: "The front end does not have exactly one brand file"
+  title_vi: "Front end không có đúng một file thương hiệu"
+  meaning_vi: "Các ứng dụng web của front end không có `modules/brand/brand.css`, hoặc có nhiều hơn một: hai file là hai thương hiệu, trang giới thiệu và ứng dụng sẽ lệch màu."
+  causes_vi:
+    - "Vi phạm R445: màu của sản phẩm sống trong MỘT file token thương hiệu, mọi stylesheet toàn cục của mọi ứng dụng web import đúng file đó."
+  nextStep_vi: "Giữ một `modules/brand/brand.css`, gộp token của file thừa vào đó, xóa file thừa và để `globals.css` của từng ứng dụng import file duy nhất (R445; contexts/project/brand.md PROJECT-BRAND-4)."
+  owner: op-retry
+  kind: check-finding
+
+FE_BRAND_CANVAS_LITERAL:
+  title: "A canvas generator writes a colour literal"
+  title_vi: "Bộ sinh canvas ghi trực tiếp một giá trị màu"
+  meaning_vi: "Một file trong `.starcistacks/canvas/gen/` (không kể bản sao `gen/kit/` của claude-design) chứa hex, hàm màu, tên màu trong thuộc tính màu hoặc class màu Tailwind tùy ý hay bảng mặc định."
+  causes_vi:
+    - "Vi phạm R445: canvas đọc màu từ token sinh ra từ file thương hiệu của ứng dụng, bộ sinh canvas không giữ màu riêng nên canvas luôn hiển thị đúng thương hiệu đang phát hành."
+  nextStep_vi: "Thay giá trị màu bằng `var(--token)` của `.starcistacks/canvas/tokens.css`; thiếu token thì thêm vào brand.css rồi chạy lại `canvas-tokens.mjs` (R445; contexts/project/brand.md PROJECT-BRAND-4)."
+  owner: op-retry
+  kind: check-finding
+
+FE_BRAND_CANVAS_TOKENS_STALE:
+  title: "The canvas tokens are not generated from the brand file"
+  title_vi: "Token của canvas không được sinh từ file thương hiệu"
+  meaning_vi: "`.starcistacks/canvas/tokens.css` không có, đã bị sửa tay, hoặc cũ hơn brand.css: nội dung khác với bản `canvas-tokens.mjs` sinh ra."
+  causes_vi:
+    - "Vi phạm R445: canvas đọc token thương hiệu thật của ứng dụng; file token là một dòng dấu (đường dẫn và sha256 của brand.css) rồi đến lớp thương hiệu nguyên văn."
+  nextStep_vi: "Chạy `node node_modules/@starci/hfs/runtime/scripts/hfs/canvas-tokens.mjs` ở gốc ứng dụng rồi commit `tokens.css` (R445; contexts/project/brand.md PROJECT-BRAND-4)."
+  owner: op-retry
+  kind: check-finding
+
+FE_GLOBALS_NOT_ONE:
+  title: "A web app has a second global stylesheet"
+  title_vi: "Ứng dụng web có stylesheet toàn cục thứ hai"
+  meaning_vi: "Dưới `src/` của ứng dụng có file `.css` ngoài `app/globals.css` và `modules/brand/brand.css` (ví dụ `site.css` của một route group), hoặc một file TypeScript import stylesheet khác `globals.css`."
+  causes_vi:
+    - "Vi phạm R446: ứng dụng nạp CSS qua đúng một cửa, `src/app/globals.css`, nên trang giới thiệu và ứng dụng dùng chung CSS toàn cục."
+  nextStep_vi: "Đưa token vào brand.css, phần bố cục vào tiện ích của Grammar, xóa stylesheet thừa và import duy nhất `globals.css` ở layout gốc (R446; contexts/code/fe/ui.md FE-CSS-4)."
+  owner: op-retry
+  kind: check-finding
+
+FE_GLOBALS_IMPORTS_MISSING:
+  title: "The global stylesheet is missing or lacks the Grammar or brand import"
+  title_vi: "Stylesheet toàn cục thiếu hoặc không import Grammar hay file thương hiệu"
+  meaning_vi: "Ứng dụng có cây route nhưng không có `src/app/globals.css`, hoặc globals không `@import` stylesheet `@starci/grammar/...` hay `modules/brand/brand.css`."
+  causes_vi:
+    - "Vi phạm R446: stylesheet toàn cục duy nhất mang CSS của Grammar và token thương hiệu của ứng dụng."
+  nextStep_vi: "Thêm `@import \"@starci/grammar/<family>.css\"` và `@import \"../modules/brand/brand.css\"` đúng thứ tự của FE-CSS-2 vào `globals.css` (R446; contexts/code/fe/ui.md FE-CSS-2, FE-CSS-4)."
+  owner: op-retry
+  kind: check-finding
+
+FE_STATE_PAGE_NOT_SHARED:
+  title: "A system-state page is not the shared component of its kind"
+  title_vi: "Trang trạng thái hệ thống không phải thành phần dùng chung của loại đó"
+  meaning_vi: "Một `not-found.tsx`, `error.tsx`, `global-error.tsx` hay trang offline vẽ thành phần khác với các boundary cùng loại của front end."
+  causes_vi:
+    - "Vi phạm R447: mỗi trạng thái hệ thống (không tìm thấy, lỗi, offline) có MỘT thành phần trang dùng chung, mọi route group và ứng dụng đều render đúng thành phần đó."
+  nextStep_vi: "Nối boundary tới composite dùng chung (NotFoundNotice, ErrorNotice; GlobalErrorNotice bọc ErrorNotice) thay vì dựng trang riêng (R447; contexts/code/fe/ui.md FE-STATE-PAGES)."
+  owner: op-retry
+  kind: check-finding
+
+FE_STATE_PAGE_GROUP_MISSING:
+  title: "A route group has no error or not-found boundary of its own"
+  title_vi: "Route group thiếu boundary error hoặc not-found riêng"
+  meaning_vi: "Một route group `(tên)` có trang hoặc layout nhưng không có `error.tsx` hay `not-found.tsx` ngay trong thư mục của nó."
+  causes_vi:
+    - "Vi phạm R447: mỗi route group có boundary riêng nối tới thành phần dùng chung, để lỗi hay địa chỉ không tồn tại trong group không rơi sang giao diện khác."
+  nextStep_vi: "Thêm `error.tsx` và `not-found.tsx` vào route group, mỗi file chỉ nối tới composite dùng chung (R447; contexts/code/fe/ui.md FE-STATE-PAGES)."
+  owner: op-retry
+  kind: check-finding
+
 FE_NAVBAR_CLUSTER:
   title: "The navbar right cluster has the wrong kinds or order"
   title_vi: "Cụm bên phải navbar sai loại hoặc thứ tự"

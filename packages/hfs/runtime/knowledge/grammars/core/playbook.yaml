@@ -190,10 +190,15 @@ shapes:
         implements: [FE-APP-SHELL-3]
         compose: |
           A public site composes its bar inside the flow shell, in one module (the scaffold SiteShell):
-          WorkspaceShell viewport="flow" header={TopBar brand navigation actions}. navigation is a
-          NavLandmark layout="bar" of TextAction links; actions is the language SegmentedControl
-          size="control", then the sign-in Button intent="neutral" and the call-to-action Button, all
-          size="control". The app right cluster (menu, theme Switch, bell, account) is for the app shell only.
+          WorkspaceShell viewport="flow" header={TopBar brand fit}. fit is DATA, never a hand-built row:
+          navigationItems (id, label, href), actionItems (the sign-in with emphasis "secondary", the one
+          call to action with emphasis "primary") and overflowLabel (the name of the three-line menu).
+          What does not fit the row's width moves whole into that menu, so no label wraps, no control
+          is under the 40px step and the header never overflows at 320, 360 and 390 (ui/presentation.md
+          PHONE-1..4; DNA-COMMON-CONTROLS-PHONE-40, DNA-COMMON-HEADER-CONTROLS-40,
+          DNA-COMMON-BUTTON-ONE-LINE, DNA-COMMON-HEADER-FIT-ONE-LINE, DNA-COMMON-HEADER-NO-OVERFLOW).
+          Anything else the bar holds (a language switch) goes in actions. The app right cluster (menu,
+          theme Switch, bell, account) is for the app shell only.
       - id: workspace-identity
         implements: [FE-APP-SHELL-2]
         compose: |

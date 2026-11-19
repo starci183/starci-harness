@@ -41,6 +41,8 @@ test("BRAND-1: no raw colour, hex or px value outside brand.css", () => {
       { filename: BLOCK, code: "const s = \"step2px\"" },
       // Tailwind arbitrary px belongs to no-arbitrary-value
       { filename: BLOCK, code: "const c = \"w-[12px]\"" },
+      // a token reference in an arbitrary value, and a word that only starts like a colour
+      { filename: BLOCK, code: "const c = \"bg-[var(--accent)] text-[length:var(--x)] bg-redwood\"" },
     ],
     invalid: [
       { filename: at("packages/app-ui/src/leaves/Badge/index.tsx"), code: "const c = \"#ff0000\"", errors: [{ messageId: "color" }] },
@@ -53,6 +55,11 @@ test("BRAND-1: no raw colour, hex or px value outside brand.css", () => {
       { filename: BLOCK, code: "const c = \"rgba(0, 0, 0, 0.5)\"", errors: [{ messageId: "color" }] },
       { filename: BLOCK, code: "const c = \"oklch(0.7 0.1 200)\"", errors: [{ messageId: "color" }] },
       { filename: BLOCK, code: "const c = \"bg-[#fff]\"", errors: [{ messageId: "color" }] },
+      // BRAND-1 (one brand source): a named colour or a default-palette class in a class string is a colour outside the brand file
+      { filename: BLOCK, code: "const c = \"bg-[red] p-4\"", errors: [{ messageId: "arbitrary" }] },
+      { filename: BLOCK, code: "const c = \"text-[color:navy]\"", errors: [{ messageId: "arbitrary" }] },
+      { filename: BLOCK, code: "const c = \"hover:bg-red-500\"", errors: [{ messageId: "palette" }] },
+      { filename: BLOCK, code: "const c = `border-slate-200 p-4`", errors: [{ messageId: "palette" }] },
       { filename: BLOCK, code: "const c = `1px solid #ccc`", errors: [{ messageId: "color" }] },
       { filename: BLOCK, code: "const w = \"12px\"", errors: [{ messageId: "length" }] },
       { filename: BLOCK, code: "const w = \"margin 0 -4.5px\"", errors: [{ messageId: "length" }] },

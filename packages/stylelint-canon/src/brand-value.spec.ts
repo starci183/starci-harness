@@ -7,7 +7,7 @@ import fs from "node:fs"
 import path from "node:path"
 import test from "node:test"
 import { fileURLToPath } from "node:url"
-import { COLOR_FUNCTION, HEX_COLOR, PIXEL_LENGTH, findRawBrandValue } from "./lib/brand-value.ts"
+import { COLOR_FUNCTION, HEX_COLOR, NAMED_COLORS, PIXEL_LENGTH, findRawBrandValue } from "./lib/brand-value.ts"
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 /** The package folder of the TypeScript half, beside this one; it ships its rule as `src/brand-values.ts` once built, `brand-values.mjs` before. */
@@ -25,6 +25,9 @@ test("HEX_COLOR, COLOR_FUNCTION and PIXEL_LENGTH equal eslint-canon-fe's",
     assert.equal(String(HEX_COLOR), literal("HEX_COLOR"))
     assert.equal(String(COLOR_FUNCTION), literal("COLOR_FUNCTION"))
     assert.equal(String(PIXEL_LENGTH), literal("PIXEL_LENGTH"))
+    const names = new RegExp("^(?:export )?const NAMED_COLORS = \"([a-z|]+)\"$", "m").exec(source)
+    assert.ok(names, "NAMED_COLORS not found in brand-values")
+    assert.equal(NAMED_COLORS, names[1])
   },
 )
 
@@ -42,4 +45,10 @@ test("findRawBrandValue classifies the same samples the TypeScript rule reports 
   assert.equal(findRawBrandValue("w-[12px]"), null)
   assert.equal(findRawBrandValue("url(#add)"), null)
   assert.equal(findRawBrandValue(undefined), null)
+  assert.deepEqual(findRawBrandValue("1rem solid red", "border"), { kind: "color", value: "red" })
+  assert.deepEqual(findRawBrandValue("navy", "--accent"), { kind: "color", value: "navy" })
+  assert.equal(findRawBrandValue("red", "animation-name"), null)
+  assert.equal(findRawBrandValue("Gold Sans", "--font"), null)
+  assert.equal(findRawBrandValue("transparent", "background"), null)
+  assert.equal(findRawBrandValue("var(--accent-red)", "color"), null)
 })

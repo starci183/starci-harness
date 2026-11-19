@@ -555,6 +555,50 @@
         overflow-x: auto;
     }
 
+    /*
+     * The fitting row (0.47.5): navigation links and action buttons on ONE line. It takes the room the brand and the fixed cluster leave (flex-basis 0), never wraps and never
+     * scrolls; TopBarFit keeps the items that fit its width and moves the rest into the menu, so what the row holds is always whole. An item is never shrunk or broken.
+     */
+    .starci-core-top-bar-fit {
+        display: flex;
+        min-width: 0;
+        flex: 1 1 0;
+        align-items: center;
+        justify-content: flex-end;
+        gap: var(--grammar-row-gap);
+        overflow: clip;
+        overflow-clip-margin: var(--grammar-inline-gap);
+        flex-wrap: nowrap;
+    }
+
+    .starci-core-top-bar-fit-item {
+        display: inline-flex;
+        flex: 0 0 auto;
+        align-items: center;
+        white-space: nowrap;
+    }
+
+    /* A link in the row is a 40px tap target like the buttons beside it, not the height of its text. */
+    .starci-core-top-bar-fit-item > a {
+        display: inline-flex;
+        min-block-size: var(--starci-core-control-min-size);
+        align-items: center;
+        white-space: nowrap;
+    }
+
+    /* A control in a bar is the md step, whatever size its caller asked for: the bar composition owns the height (DNA-COMMON-BAR-ONE-HEIGHT, DNA-COMMON-CONTROLS-PHONE-40). */
+    .starci-core-top-bar .starci-core-button[data-size="sm"]:not([data-width="fill"], [data-width="wrap"]) {
+        block-size: var(--starci-core-control-min-size) !important;
+        min-block-size: var(--starci-core-control-min-size) !important;
+    }
+
+    .starci-core-top-bar .starci-core-icon-button[data-size="sm"] {
+        inline-size: var(--starci-core-control-min-size) !important;
+        min-inline-size: var(--starci-core-control-min-size) !important;
+        block-size: var(--starci-core-control-min-size) !important;
+        min-block-size: var(--starci-core-control-min-size) !important;
+    }
+
     .starci-core-top-bar-actions {
         display: flex;
         flex: 0 0 auto;
