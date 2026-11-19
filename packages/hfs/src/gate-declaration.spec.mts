@@ -47,7 +47,7 @@ function app(t: import('node:test').TestContext, gates: string): string {
 test('the closed set: hfs, secrets and db are never switchable, every other gate is', () => {
   assert.deepEqual([...HFS_GATES].sort(), ['db', 'hfs', 'secrets']);
   assert.deepEqual([...OPTIONAL_GATES].sort(), PROFILE_GATES.filter((gate) => !HFS_GATES.has(gate)).sort());
-  assert.deepEqual([...OPTIONAL_GATES].sort(), ['audit', 'build', 'checks', 'codecov', 'coverage', 'deps', 'format', 'lint', 'sonar', 'test', 'types', 'wiring']);
+  assert.deepEqual([...OPTIONAL_GATES].sort(), ['audit', 'build', 'checks', 'codecov', 'coverage', 'deps', 'format', 'lint', 'sonar', 'test', 'types', 'uiaudit', 'wiring']);
   assert.deepEqual([...optionalGatePolicy({})].sort(), [...OPTIONAL_GATES].sort(), 'a run outside the CLI takes the whole set');
   assert.deepEqual([...optionalGatePolicy({ STARCI_OPTIONAL_GATES: 'lint,hfs,secrets' })], ['lint'], 'the policy never widens past the optional gates');
 });
