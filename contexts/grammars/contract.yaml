@@ -334,7 +334,7 @@ roles:
 
   - id: alert
     ui: ui/components/toast-alert.md
-    renderers: [Alert, Toaster, toastQueue]
+    renderers: [Alert, Toaster, toastQueue, ToastStack, stackToast]
     vendorParity: [alert, spinner]
     slots: [title, description, action, dismissLabel]
     variants:

@@ -677,6 +677,20 @@
         align-self: center;
     }
 
+    /* HeroUI's Toast, drawn by ToastStack (the region may sit outside the stack's own element): the title is the foreground at 14 / 500 in every variant and the description is 12 muted; the status icon keeps the variant's colour. */
+    .toast .toast__title {
+        color: var(--foreground);
+        font-size: var(--grammar-text-md, 0.875rem);
+        font-weight: var(--grammar-weight-medium, 500);
+        line-height: var(--grammar-leading-snug, 1.35);
+    }
+
+    .toast .toast__description {
+        color: var(--muted);
+        font-size: var(--grammar-text-xs, 0.75rem);
+        line-height: var(--grammar-leading-snug, 1.35);
+    }
+
     @media (max-width: 40rem) {
         .starci-core-toaster {
             inset-inline: var(--grammar-page-inset);

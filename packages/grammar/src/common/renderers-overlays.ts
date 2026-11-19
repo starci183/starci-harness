@@ -7,6 +7,7 @@ import { Drawer } from "../core/frame/Drawer/index.js"
 import { DropdownMenu } from "../core/branch/DropdownMenu/index.js"
 import { Popover } from "../core/frame/Popover/index.js"
 import { Toast, Toaster } from "../core/composite/Toast/index.js"
+import { ToastStack } from "../core/composite/ToastStack/index.js"
 import { Alert } from "../core/composite/Alert/index.js"
 import { Kbd } from "../core/leaf/Kbd/index.js"
 import { Meter } from "../core/leaf/Meter/index.js"
@@ -44,6 +45,15 @@ export {
     type ToastQueue,
     type ToastRecord,
 } from "../core/composite/Toast/index.js"
+export {
+    TOAST_STACK_TIMEOUT,
+    ToastStack,
+    stackToast,
+    type ToastStackAction,
+    type ToastStackOptions,
+    type ToastStackPlacement,
+    type ToastStackProps,
+} from "../core/composite/ToastStack/index.js"
 export { Alert, type AlertAction, type AlertAppearance, type AlertProps, type AlertSecondaryAction, type AlertUrgency } from "../core/composite/Alert/index.js"
 export { KBD_NAMED_KEYS, Kbd, type KbdNamedKey, type KbdProps } from "../core/leaf/Kbd/index.js"
 export { Meter, type MeterProps, type MeterSegments, type MeterSize, type MeterTone } from "../core/leaf/Meter/index.js"
@@ -55,5 +65,5 @@ export { GRAMMAR_ROOT_SELECTOR, resolveOverlayContainer, type OverlayOpenState }
 /** Overlay and feedback renderers merged into `COMMON_GRAMMAR_COMPONENTS`. */
 export const COMMON_OVERLAYS_COMPONENTS = Object.freeze({
     Alert, AlertDialog, Dialog, Drawer, DropdownMenu, Kbd, Meter, Popover,
-    ProgressCircle, Skeleton, Spinner, Toast, Toaster,
+    ProgressCircle, Skeleton, Spinner, Toast, Toaster, ToastStack,
 } as const)
