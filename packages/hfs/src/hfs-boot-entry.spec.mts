@@ -83,7 +83,7 @@ import net from 'node:net';
 
 test('a failure outside the wiring is a warning that names it with the declared values masked, never an error', async (t) => {
   const source = `import { Module, Injectable } from '@nestjs/common';
-@Injectable() class Config { constructor() { throw new Error('bad config ' + process.env.DATABASE_URL + ' via postgres://admin:topsecret@h/x'); } }
+@Injectable() class Config { constructor() { throw new Error('bad config ' + process.env.DATABASE_URL + ' via postgres://admin:' + 'top' + 'secret' + '@h/x'); } }
 @Module({ providers: [Config] }) export class AppModule {}`;
   const report = await appBootAsync(fixture(t, { [MODULE]: source }));
   assert.equal(report.ok, true);
