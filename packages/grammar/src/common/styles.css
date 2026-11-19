@@ -5018,6 +5018,11 @@
         min-block-size: 2rem !important;
     }
 
+    /* A button label is ONE line (DNA-COMMON-BUTTON-ONE-LINE): only a fill, fill-narrow or wrap button, whose width is its container's, may break its label. */
+    .starci-core-button:not([data-width="fill"], [data-width="fill-narrow"], [data-width="wrap"]) {
+        white-space: nowrap;
+    }
+
     .starci-core-button[data-size="md"]:not([data-width="fill"], [data-width="wrap"]),
     .starci-core-button[data-size="control"]:not([data-width="fill"], [data-width="wrap"]) {
         block-size: var(--starci-core-control-min-size) !important;

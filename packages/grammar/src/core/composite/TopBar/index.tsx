@@ -8,6 +8,9 @@ import { glyphSource, type GlyphName } from "../../leaf/Icon/glyphs.js"
 import type { DropdownMenuItem } from "../../branch/DropdownMenu/index.js"
 import { ButtonPlacementProvider } from "../../buttonIntent.js"
 import type { NoChildren } from "../../tier.js"
+import { TopBarFitRow, type TopBarActionItem, type TopBarNavigationItem } from "./TopBarFit.js"
+
+export type { TopBarActionItem, TopBarNavigationItem } from "./TopBarFit.js"
 
 export type TopBarMenu = {
     readonly icon: ReactNode
@@ -84,7 +87,21 @@ const CustomButtons = ({ buttons }: { readonly buttons: readonly TopBarCustomBut
 type WithSubnavigation = { readonly subnavigation: ReactNode; readonly subnavigationLabel: string }
 type WithoutSubnavigation = { readonly subnavigation?: undefined; readonly subnavigationLabel?: never }
 
+/**
+ * The fitting row, `fit` (0.47.5): the bar's navigation links and action buttons as DATA, on one line that never wraps. What does not fit the row's width moves, in order (navigation first,
+ * the quiet actions next, the primary action last), into a menu opened by the three-line trigger at the row's end; the trigger exists only while the menu holds something. A site
+ * header of a phone-first product passes these and nothing hand-built: the buttons stay at the 40px control height and a label is never broken over two lines.
+ */
+export type TopBarFit = {
+    readonly navigationItems?: readonly TopBarNavigationItem[]
+    readonly actionItems?: readonly TopBarActionItem[]
+    /** The accessible name of the three-line menu trigger ("Menu"). */
+    readonly overflowLabel: string
+}
+
 export type TopBarProps = NoChildren & Omit<ComponentPropsWithoutRef<"header">, "children" | "className" | "title"> & (WithSubnavigation | WithoutSubnavigation) & {
+    /** The fitting row of links and action buttons (see `TopBarFit`): what does not fit moves into the menu. */
+    readonly fit?: TopBarFit
     /** App-owned identity (logo, product name) - usually a link home. */
     readonly brand: ReactNode
     /** Primary destinations shown inline at wide widths (e.g. a `<nav>` of `Link`s). */
@@ -109,7 +126,7 @@ export type TopBarProps = NoChildren & Omit<ComponentPropsWithoutRef<"header">, 
  * `header` slot, the shell yields (its wrapper becomes a plain `div`) so the banner is never nested.
  * Contract: menu trigger A11Y-2 STATE-7 (named glyph button, app-owned aria-expanded).
  */
-export const TopBar = ({ brand, navigation, actions, customButtons, menu, subnavigation, subnavigationLabel, position = "sticky", density = "default", ...headerProps }: TopBarProps) => (
+export const TopBar = ({ brand, navigation, actions, customButtons, menu, subnavigation, subnavigationLabel, fit, position = "sticky", density = "default", ...headerProps }: TopBarProps) => (
     <ButtonPlacementProvider placement="chrome" navbar>
     <TopBarOverflowContext.Provider value={customButtons ?? []}>
     <SurfaceNesting>
@@ -142,6 +159,7 @@ export const TopBar = ({ brand, navigation, actions, customButtons, menu, subnav
         )}
         <div className="starci-core-top-bar-brand" data-grammar-top-bar-brand="true">{brand}</div>
         {navigation === undefined ? null : <div className="starci-core-top-bar-navigation" data-grammar-top-bar-navigation="true">{navigation}</div>}
+        {fit === undefined ? null : <TopBarFitRow navigationItems={fit.navigationItems ?? []} actionItems={fit.actionItems ?? []} overflowLabel={fit.overflowLabel} />}
         {actions === undefined && (customButtons === undefined || customButtons.length === 0) ? null : (
             <div className="starci-core-top-bar-actions" data-grammar-top-bar-actions="true">
                 {customButtons === undefined || customButtons.length === 0 ? null : <CustomButtons buttons={customButtons} />}

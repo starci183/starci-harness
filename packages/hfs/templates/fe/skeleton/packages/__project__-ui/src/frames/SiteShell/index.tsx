@@ -1,5 +1,5 @@
 import type { ReactNode } from "react"
-import { GrammarRoot, Link, TopBar, WorkspaceShell } from "@starci/grammar/common"
+import { GrammarRoot, Link, TopBar, WorkspaceShell, type TopBarFit } from "@starci/grammar/common"
 
 /** What an app's chrome hands the shell: the brand, its home link and the routed body. */
 type SiteShellProps = {
@@ -7,6 +7,8 @@ type SiteShellProps = {
     readonly brand: string
     /** The destination of the wordmark: the app's front door. */
     readonly homeHref: string
+    /** The bar's links and actions as data (`TopBar fit`): what does not fit the row moves into the three-line menu; never a hand-built row. */
+    readonly fit?: TopBarFit
     /** The routed page body. */
     readonly children: ReactNode
 }
