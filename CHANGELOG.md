@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Added (`starci lane ready|land|status|withdraw`, PROJECT-BRANCH-2): an app's `dev` takes lanes in batches. A lane registers the pushed sha its own `app check --env prod` passed (except the cache); one lander per lanes folder merges every ready lane in its own worktree (a lane whose merge conflicts is skipped; a conflict in `.starcistacks/cache` alone is resolved from the batch), runs `npm ci` when the lockfile moved, codegen, `build:modules` and one `app check --env prod`, then `app push origin HEAD:dev`. A red batch drops the lanes whose diff names a finding and runs once more; a second red run or a finding no lane's diff names lands nothing. Never bisects. Each lane reads `<lanes>/_land-status/<lane>.json` (`queued`, `landed` with the dev sha and its migrations, `conflict`, `rejected` with the findings).
+
 ## 1.1.0-alpha.174 - 2026-11-19
 
 - Changed: the CLI requires @starci/hfs@6.13.54, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
