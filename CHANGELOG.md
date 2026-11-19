@@ -2,6 +2,8 @@
 
 ## 1.1.0-alpha.172 - 2026-11-19
 
+- Changed: the CLI requires @starci/hfs@6.13.52, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
+
 - Added: `starci audit run|status` and `starci gallery migrate-explain` (the UI Audit gate, `screen.yaml`).
 - Changed (pins): @starci/hfs 6.13.52 and @starci/gallery 0.1.5. Until the cli-follow step raises the CLI requirement, the CLI runs the hfs it requires.
 
