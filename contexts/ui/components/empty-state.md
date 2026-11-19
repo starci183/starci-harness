@@ -24,7 +24,8 @@ Choice `empty-state.choose.scope`: how large the state is, which decides its med
 | Row | When | Choose | Measure |
 | --- | --- | --- | --- |
 | page | the state is the whole page: a first visit, a page with nothing yet, a paywall, a not-found (404), a server failure (500) | `scope="page"`, and its `media` is an `illustration` (a statics key) | type: an `illustration` only on `scope="page"` |
-| region | the state is inside a page: an empty Section, list or table, a no-match after a filter, a panel, a drawer | `scope="region"` (the default), and its `media` is an `icon` | type: `illustration` is refused on a region |
+| line | a no-match after a filter or a search, an empty panel, a palette with no result, an empty sub-section | `mark="none"`: the plain line, one muted 14 / 400 line at the region's start edge, no tile, no picture, no card; its action, if any, a small button after it | `DNA-COMMON-EMPTY-LINE-PLAIN`, `DNA-COMMON-EMPTY-LINE-NO-MARK`; type: `media` is refused with it |
+| region | the state is inside a page: an empty Section, list or table that the reader can fill | `scope="region"` (the default), and its `media` is an `icon` | type: `illustration` is refused on a region |
 
 Why the scope decides: art belongs to the moment a page has no other content to carry it; inside a working page the same picture competes
 with the data around it and repeats on every empty panel, so only the icon stands there (DISCIPLINE-3). The scope is a fact about the state, not a
@@ -59,6 +60,13 @@ adding a second primary beside the page header's ([../scale.md](../scale.md)).
 ## States
 Recovery pending is forwarded through the notice (CTA-3). The empty state keeps the region's place and size so
 the layout does not jump (TASTE-10). Its illustration loads under a shimmer in its own box and keeps the stack when the file fails.
+
+## The plain line, the page title and the way back (0.48.0)
+The illustration rule: a picture only for an empty main region, onboarding or a page error. A no-match, a panel, a palette and a sub-section take `EmptyNotice mark="none"`, the plain line: no icon tile, no art, no card, the muted line on the region's start edge (`DNA-COMMON-EMPTY-LINE-PLAIN`, `-EMPTY-LINE-NO-MARK`). A page-level state is titled at the page-title tier, 18 / 26 / 500 (`DNA-COMMON-EMPTY-PAGE-TITLE-18`); a region's title stays 16 / 500.
+
+A failed read (`EmptyNotice isError`, an `ErrorView`) takes a way back: `secondary={{ label, href }}` on the notice (`ErrorData.back` on a component's `error`) draws a neutral button after the retry ("Về danh sách"), and `scope="page"` sets both at the md step. The app's `SlotView` passes it as `back` (template `fe/units/slot/SlotView.tsx.tpl`).
+
+"Thử lại" has ONE look wherever a read failed: the outlined `alternative` button (`RETRY_INTENT`) in an `ErrorView`, an `EmptyNotice isError` and a negative `Alert` alike; a retry destroys nothing, so it never wears the destructive fill (`DNA-COMMON-RETRY-ONE-LOOK`). Stories `Media/Empty notice line, page title and the retry (0.48.0)`.
 
 ## Owner split
 - **Grammar owns:** notice anatomy, its inset, the media step and its circle, the actions row, pending forwarding, the illustration's

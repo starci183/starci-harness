@@ -15,6 +15,7 @@ import type { ButtonIntentProps } from "../../buttonIntent.js"
 import { IconButton } from "../../leaf/IconButton/index.js"
 import { Icon, type IconSource } from "../../leaf/Icon/index.js"
 import { SkeletonPlaceholder } from "../../leaf/Skeleton/index.js"
+import { RETRY_INTENT } from "../../loadingState.js"
 import type { NoChildren } from "../../tier.js"
 
 export type AlertUrgency = "polite" | "assertive"
@@ -100,7 +101,7 @@ export type AlertProps = NoChildren & AlertBase & (Dismissible | Permanent)
  * | tone (PresentationState) | vendor status | action variant |
  * | ------------------------ | ------------- | -------------- |
  * | informative              | accent        | primary        |
- * | negative                 | danger        | danger         |
+ * | negative                 | danger        | secondary (alternative: the one retry look, 0.48.0) |
  * | affirmative              | success       | secondary      |
  * | cautionary               | warning       | secondary      |
  * | neutral / pending / unavailable | default | secondary      |
@@ -110,7 +111,8 @@ const ALERT_BUILT_IN_TONES: readonly string[] = [...PRESENTATION_STATES, "accent
 const alertActionIntentFor = (tone: PresentationState): ButtonIntentProps => {
     const status = vendorStatusFor(tone)
     if (status === "accent") return { intent: "commit" }
-    if (status === "danger") return { intent: "destructive", step: "confirm" }
+    // A negative banner's action is a recovery ("Thử lại"), never a destruction: the one retry look (RETRY_INTENT, 0.48.0), as in an ErrorView.
+    if (status === "danger") return { intent: RETRY_INTENT }
     return { intent: "alternative" }
 }
 
@@ -126,7 +128,7 @@ const alertActionIntentFor = (tone: PresentationState): ButtonIntentProps => {
  * uncontrolled (the banner removes itself) and `onDismiss` reports it. Tone is echoed on
  * `data-grammar-tone`; the vendor status supplies the default glyph, `pending` swaps it for a spinner.
  * The action Button's intent follows the tone (`alertActionIntentFor`, after HeroUI's Alert examples):
- * informative (accent) -> `commit`, negative (danger) -> a confirmed `destructive`, every other tone -> `alternative`.
+ * informative (accent) -> `commit`, every other tone (negative included: the one retry look, 0.48.0) -> `alternative`.
  * Below 30rem a `button` action stacks under the text, full width, in that same intent; a dismiss stays beside the text.
  * Contract: root FEEDBACK-3 (status/alert urgency on the owner); actions FEEDBACK-2 (recovery in place).
  */
@@ -223,7 +225,7 @@ const AlertInner = (props: AlertProps) => {
  * uncontrolled (the banner removes itself) and `onDismiss` reports it. Tone is echoed on
  * `data-grammar-tone`; the vendor status supplies the default glyph, `pending` swaps it for a spinner.
  * The action Button's intent follows the tone (`alertActionIntentFor`, after HeroUI's Alert examples):
- * informative (accent) -> `commit`, negative (danger) -> a confirmed `destructive`, every other tone -> `alternative`.
+ * informative (accent) -> `commit`, every other tone (negative included: the one retry look, 0.48.0) -> `alternative`.
  * Below 30rem a `button` action stacks under the text, full width, in that same intent; a dismiss stays beside the text.
  * Contract: root FEEDBACK-3 (status/alert urgency on the owner); actions FEEDBACK-2 (recovery in place).
  */

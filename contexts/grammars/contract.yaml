@@ -142,7 +142,7 @@ roles:
     sizes: { steps: [sm, md, lg], default: md, bar: control }
     states: [rest, hover, pressed, focus-visible, disabled, pending, skeleton]
     grammarMayChange: [paint per variant through tokens, corner via radius, press motion]
-    dna: [DNA-COMMON-LOADING-REGION-INERT, DNA-COMMON-LOADING-SAME-BOX, DNA-COMMON-CONTROL-MD, DNA-COMMON-CONTROL-SM, DNA-COMMON-CONTROL-LG, DNA-COMMON-CONTROL-FILL, DNA-COMMON-ICON-BUTTON-SQUARE, DNA-COMMON-TARGET-COARSE, DNA-COMMON-TARGET-FINE, DNA-COMMON-PENDING-KEEPS-BOX, DNA-COMMON-SKELETON-CORNER, DNA-COMMON-DISABLED-REASON, DNA-COMMON-ONE-ACCENT-FILL, DNA-COMMON-ONE-ACCENT-FILL-PER-STATE, DNA-CORE-BUTTON-PILL, DNA-OFFSET-POP-BUTTON-STICKER, DNA-OFFSET-POP-INK-ON-PINK, DNA-OFFSET-POP-PRESS-TRAVEL, DNA-CORE-BUTTON-ALTERNATIVE-OUTLINE]
+    dna: [DNA-COMMON-LOADING-REGION-INERT, DNA-COMMON-LOADING-SAME-BOX, DNA-COMMON-CONTROL-MD, DNA-COMMON-CONTROL-SM, DNA-COMMON-CONTROL-LG, DNA-COMMON-CONTROL-FILL, DNA-COMMON-ICON-BUTTON-SQUARE, DNA-COMMON-TARGET-COARSE, DNA-COMMON-TARGET-FINE, DNA-COMMON-PENDING-KEEPS-BOX, DNA-COMMON-SKELETON-CORNER, DNA-COMMON-DISABLED-REASON, DNA-COMMON-ONE-ACCENT-FILL, DNA-COMMON-ONE-ACCENT-FILL-PER-STATE, DNA-CORE-BUTTON-PILL, DNA-OFFSET-POP-BUTTON-STICKER, DNA-OFFSET-POP-INK-ON-PINK, DNA-OFFSET-POP-PRESS-TRAVEL, DNA-CORE-BUTTON-ALTERNATIVE-OUTLINE, DNA-COMMON-BUTTON-GROUND-CONTRAST]
 
   - id: link
     ui: ui/components/button.md
@@ -155,7 +155,7 @@ roles:
     sizes: Image owns media dimensions and aspect
     states: [rest, hover, focus-visible, disabled, image loading, image loaded, image error]
     grammarMayChange: [link colour and underline through the existing link treatment]
-    dna: [DNA-COMMON-LINK-MEDIA-KEEPS-BOX, DNA-CORE-LINK-ACCENT-TEXT, DNA-OFFSET-POP-LINK-INK]
+    dna: [DNA-COMMON-LINK-MEDIA-KEEPS-BOX, DNA-CORE-LINK-ACCENT-TEXT, DNA-OFFSET-POP-LINK-INK, DNA-COMMON-LINK-HEAD-HIT-44]
 
   - id: color-swatch
     ui: ui/components/color-swatch.md
@@ -192,7 +192,7 @@ roles:
     sizes: { steps: none, bar: md }
     states: [selected, focus-visible, disabled]
     grammarMayChange: [track, indicator and label paint; current label reads accent text]
-    dna: [DNA-COMMON-TABS-BAR-MD, DNA-COMMON-TABS-FILTER-COMPACT, DNA-COMMON-TABS-BY-LAYER, DNA-COMMON-TABS-INDICATOR, DNA-COMMON-TABS-INDICATOR-BELOW-LABEL, DNA-COMMON-TABS-INDICATOR-UNDER-SELECTED, DNA-COMMON-TABS-SELECTED-IN-VIEW-START, DNA-COMMON-TABS-SELECTED-IN-VIEW-END, DNA-COMMON-TABS-OWN-PANEL, DNA-COMMON-TABS-ROVING, DNA-COMMON-TABS-FILTER-LOADING-COUNTS, DNA-COMMON-TABS-COUNT-CHIP, DNA-COMMON-TABS-COUNT-CHIP-ATTENTION]
+    dna: [DNA-COMMON-TABS-BAR-MD, DNA-COMMON-TABS-FILTER-COMPACT, DNA-COMMON-TABS-BY-LAYER, DNA-COMMON-TABS-INDICATOR, DNA-COMMON-TABS-INDICATOR-BELOW-LABEL, DNA-COMMON-TABS-INDICATOR-UNDER-SELECTED, DNA-COMMON-TABS-SELECTED-IN-VIEW-START, DNA-COMMON-TABS-SELECTED-IN-VIEW-END, DNA-COMMON-TABS-OWN-PANEL, DNA-COMMON-TABS-ROVING, DNA-COMMON-TABS-FILTER-LOADING-COUNTS, DNA-COMMON-TABS-COUNT-CHIP, DNA-COMMON-TABS-COUNT-CHIP-ATTENTION, DNA-COMMON-TABS-FILTER-NO-FOLD, DNA-COMMON-TABS-FILTER-IN-ROW]
 
   - id: filter-button-group
     ui: ui/components/chip.md
@@ -291,7 +291,7 @@ roles:
     sizes: dialogSize is a max inline size, not a control size
     states: [open, closed, confirm-pending]
     grammarMayChange: [surface paint and edge, backdrop paint, shadow direction]
-    dna: [DNA-COMMON-OVERLAY-IN-ROOT, DNA-COMMON-DIALOG-NAMED, DNA-COMMON-DIALOG-ESCAPE, DNA-COMMON-DIALOG-FOCUS-TRAP, DNA-COMMON-ALERTDIALOG-TONE-INFORMATIVE, DNA-COMMON-ALERTDIALOG-DISMISS-FIRST]
+    dna: [DNA-COMMON-OVERLAY-IN-ROOT, DNA-COMMON-DIALOG-NAMED, DNA-COMMON-DIALOG-ESCAPE, DNA-COMMON-DIALOG-FOCUS-TRAP, DNA-COMMON-ALERTDIALOG-TONE-INFORMATIVE, DNA-COMMON-ALERTDIALOG-DISMISS-FIRST, DNA-COMMON-POPOVER-EDGE, DNA-COMMON-POPOVER-PHONE-SHEET]
 
   - id: command-palette
     ui: ui/components/command-palette.md
@@ -302,7 +302,7 @@ roles:
     sizes: a lg dialog standing at the top of the page; the screen below 40rem
     states: [closed, open with results, no result, loading, failed]
     grammarMayChange: ["nothing; the placement, the field, the rows and the keyboard are Common"]
-    dna: [DNA-COMMON-COMMAND-PALETTE-ONE-FIELD]
+    dna: [DNA-COMMON-COMMAND-PALETTE-ONE-FIELD, DNA-COMMON-PALETTE-PHONE-NOT-FULL, DNA-COMMON-PALETTE-NO-KEYS-ON-TOUCH]
 
   - id: menu
     ui: ui/components/menu.md
@@ -330,7 +330,7 @@ roles:
     sizes: leading slot sm/md/lg match the control ladder
     states: [hover, focus-visible, selected, disabled, loading (same rows at rest), empty]
     grammarMayChange: [row state paint, seam paint]
-    dna: [DNA-COMMON-LIST-ONE-LOOK, DNA-COMMON-LIST-SEAMS,DNA-COMMON-SEAM-FULL-BLEED, DNA-COMMON-ROW-DESCRIPTION-ONE-LINE, DNA-COMMON-OPTION-DESCRIPTION-WRAPS, DNA-COMMON-TABLE-ROW-LINK, DNA-COMMON-TABLE-FOLD, DNA-COMMON-ROW-ACTION-END, DNA-COMMON-DISCLOSURE-CHEVRON-START, DNA-COMMON-DESCRIPTION-DRAWER-COLUMNS, DNA-COMMON-STEPPER-BAR, DNA-COMMON-STEPPER-BAR-NO-CONNECTOR, DNA-COMMON-DISCLOSURE-CHEVRON-TITLE-NEXT, DNA-COMMON-TABLE-NO-CLIP, DNA-COMMON-ROW-TEXT-FIRST, DNA-CORE-STEPPER-MARKER-CURRENT, DNA-CORE-STEPPER-MARKER-UPCOMING, DNA-OFFSET-POP-STEPPER-MARKER-CURRENT, DNA-OFFSET-POP-STEPPER-MARKER-UPCOMING, DNA-COMMON-LIST-ROW-DIFF, DNA-COMMON-LIST-ROW-UNREAD, DNA-COMMON-CARD-SUGGESTIONS, DNA-COMMON-LIST-NO-BORDER, DNA-COMMON-LIST-ROW-PADDING, DNA-COMMON-LIST-ROW-PADDING-DIVIDER, DNA-COMMON-LIST-ROW-PADDING-EDGE, DNA-COMMON-LIST-ROW-NO-TRANSFORM, DNA-COMMON-SECTION-TITLE-SIZE, DNA-COMMON-LABEL-16, DNA-COMMON-CONTENT-14-SECONDARY, DNA-COMMON-PAGE-TITLE-18, DNA-COMMON-TYPE-PAGE-TITLE-LINE, DNA-COMMON-TYPE-SENTENCE-CASE, DNA-COMMON-EMPTY-TITLE-16]
+    dna: [DNA-COMMON-LIST-ONE-LOOK, DNA-COMMON-LIST-SEAMS,DNA-COMMON-SEAM-FULL-BLEED, DNA-COMMON-ROW-DESCRIPTION-ONE-LINE, DNA-COMMON-OPTION-DESCRIPTION-WRAPS, DNA-COMMON-TABLE-ROW-LINK, DNA-COMMON-TABLE-FOLD, DNA-COMMON-ROW-ACTION-END, DNA-COMMON-DISCLOSURE-CHEVRON-START, DNA-COMMON-DESCRIPTION-DRAWER-COLUMNS, DNA-COMMON-STEPPER-BAR, DNA-COMMON-STEPPER-BAR-NO-CONNECTOR, DNA-COMMON-DISCLOSURE-CHEVRON-TITLE-NEXT, DNA-COMMON-TABLE-NO-CLIP, DNA-COMMON-ROW-TEXT-FIRST, DNA-CORE-STEPPER-MARKER-CURRENT, DNA-CORE-STEPPER-MARKER-UPCOMING, DNA-OFFSET-POP-STEPPER-MARKER-CURRENT, DNA-OFFSET-POP-STEPPER-MARKER-UPCOMING, DNA-COMMON-LIST-ROW-DIFF, DNA-COMMON-LIST-ROW-UNREAD, DNA-COMMON-CARD-SUGGESTIONS, DNA-COMMON-LIST-NO-BORDER, DNA-COMMON-LIST-ROW-PADDING, DNA-COMMON-LIST-ROW-PADDING-DIVIDER, DNA-COMMON-LIST-ROW-PADDING-EDGE, DNA-COMMON-LIST-ROW-NO-TRANSFORM, DNA-COMMON-SECTION-TITLE-SIZE, DNA-COMMON-LABEL-16, DNA-COMMON-CONTENT-14-SECONDARY, DNA-COMMON-PAGE-TITLE-18, DNA-COMMON-TYPE-PAGE-TITLE-LINE, DNA-COMMON-TYPE-SENTENCE-CASE, DNA-COMMON-EMPTY-TITLE-16, DNA-COMMON-ROW-PHONE-UNDER, DNA-COMMON-ROW-PHONE-START-EDGE, DNA-COMMON-STEP-NUMERAL-400, DNA-COMMON-TIMELINE-DOT-NEUTRAL]
 
   - id: alert
     ui: ui/components/toast-alert.md
@@ -343,7 +343,7 @@ roles:
     sizes: none
     states: [persistent (action or negative), timed, paused on hover or focus]
     grammarMayChange: [tone paint, toast spacing]
-    dna: [DNA-COMMON-ONE-TOASTER, DNA-COMMON-TOASTER-LIVE, DNA-COMMON-ALERT-TONE-PAIR-INFORMATIVE, DNA-COMMON-TOAST-TONE-INFORMATIVE, DNA-COMMON-ALERT-TONE-PAIR-SUCCESS, DNA-COMMON-ALERT-TONE-PAIR-WARNING, DNA-COMMON-ALERT-TONE-PAIR-DANGER, DNA-COMMON-ALERT-TONE-PAIR-DEFAULT, DNA-COMMON-ALERT-TONE-PAIR-ACCENT]
+    dna: [DNA-COMMON-ONE-TOASTER, DNA-COMMON-TOASTER-LIVE, DNA-COMMON-ALERT-TONE-PAIR-INFORMATIVE, DNA-COMMON-TOAST-TONE-INFORMATIVE, DNA-COMMON-ALERT-TONE-PAIR-SUCCESS, DNA-COMMON-ALERT-TONE-PAIR-WARNING, DNA-COMMON-ALERT-TONE-PAIR-DANGER, DNA-COMMON-ALERT-TONE-PAIR-DEFAULT, DNA-COMMON-ALERT-TONE-PAIR-ACCENT, DNA-COMMON-RETRY-ONE-LOOK]
 
   - id: empty-state
     ui: ui/components/empty-state.md
@@ -357,7 +357,7 @@ roles:
     sizes: { values: { icon: the Icon tile md on the accent soft pair, in a circle, illustration: "--grammar-illustration-state 160px, --grammar-illustration-state-compact 120px below 48rem" } }
     states: [action-pending, illustration loading, illustration failed (the stack stays)]
     grammarMayChange: [glyph and text paint]
-    dna: [DNA-COMMON-EMPTY-ACTIONS, DNA-COMMON-EMPTY-NOTICE-TOP]
+    dna: [DNA-COMMON-EMPTY-ACTIONS, DNA-COMMON-EMPTY-NOTICE-TOP, DNA-COMMON-EMPTY-LINE-PLAIN, DNA-COMMON-EMPTY-LINE-NO-MARK, DNA-COMMON-EMPTY-PAGE-TITLE-18, DNA-COMMON-RETRY-ONE-LOOK]
     provenance: "an illustration carries the asset-slot props of Image (assetSlot, assetSha256, assetPrompt); lint R338 admits generated art through Illustration"
 
   - id: image
@@ -411,7 +411,7 @@ roles:
     sizes: { steps: [sm, md, lg], default: md, bar: control }
     states: [image, initials fallback, skeleton]
     grammarMayChange: [ring, fallback paint]
-    dna: [DNA-COMMON-AVATAR-RAMP, DNA-COMMON-AVATAR-GROUP-ONE-SIZE, DNA-COMMON-AVATAR-INITIALS, DNA-COMMON-AGENT-NAMED]
+    dna: [DNA-COMMON-AVATAR-RAMP, DNA-COMMON-AVATAR-GROUP-ONE-SIZE, DNA-COMMON-AVATAR-INITIALS, DNA-COMMON-AGENT-NAMED, DNA-COMMON-IMAGE-EAGER-PAINTS]
 
   - id: mascot
     ui: ui/components/mascot.md
@@ -457,7 +457,7 @@ roles:
     sizes: none
     states: [ready, loading, empty, error]
     grammarMayChange: [column width, bar width, tone paint through tokens]
-    dna: [DNA-COMMON-BOARD-ONE-WIDTH, DNA-COMMON-SCHEDULE-HEADINGS, DNA-COMMON-BAR-CHART-ONE-SCALE, DNA-COMMON-INTERVAL-CHART-ONE-SCALE, DNA-COMMON-INTERVAL-CHART-REFERENCE-ONE-LINE, DNA-COMMON-INTERVAL-CHART-STACKS-NARROW, DNA-COMMON-FUNNEL-CHART-ONE-SCALE, DNA-COMMON-FUNNEL-CHART-ONE-START, DNA-COMMON-FUNNEL-CHART-STACKS-NARROW, DNA-COMMON-LEGEND-ONE-MARK-SIZE, DNA-COMMON-SCHEDULE-SPAN-STARTS-IN-ITS-CELL, DNA-COMMON-SCHEDULE-SPAN-ENDS-IN-ITS-CELL]
+    dna: [DNA-COMMON-BOARD-ONE-WIDTH, DNA-COMMON-SCHEDULE-HEADINGS, DNA-COMMON-BAR-CHART-ONE-SCALE, DNA-COMMON-INTERVAL-CHART-ONE-SCALE, DNA-COMMON-INTERVAL-CHART-REFERENCE-ONE-LINE, DNA-COMMON-INTERVAL-CHART-STACKS-NARROW, DNA-COMMON-FUNNEL-CHART-ONE-SCALE, DNA-COMMON-FUNNEL-CHART-ONE-START, DNA-COMMON-FUNNEL-CHART-STACKS-NARROW, DNA-COMMON-LEGEND-ONE-MARK-SIZE, DNA-COMMON-SCHEDULE-SPAN-STARTS-IN-ITS-CELL, DNA-COMMON-SCHEDULE-SPAN-ENDS-IN-ITS-CELL, DNA-COMMON-TABLE-SCROLL-FOCUSABLE]
 
   - id: freestyle
     ui: ui/components/freestyle.md
@@ -560,7 +560,7 @@ roles:
     sizes: every bar control is size control; a BottomNav place is the control height with its hit area at the bar height
     states: [sidebar expanded, sidebar collapsed, drawer open, bottom nav current place, bottom nav more sheet open]
     grammarMayChange: [bar and sidebar paint]
-    dna: [DNA-COMMON-BAR-ONE-HEIGHT, DNA-COMMON-NO-BOTTOM-TABS, DNA-COMMON-NAV-BADGE-TONE, DNA-COMMON-ONE-SHELL, DNA-COMMON-ONE-SCROLL-OWNER]
+    dna: [DNA-COMMON-BAR-ONE-HEIGHT, DNA-COMMON-NO-BOTTOM-TABS, DNA-COMMON-NAV-BADGE-TONE, DNA-COMMON-ONE-SHELL, DNA-COMMON-ONE-SCROLL-OWNER, DNA-COMMON-TOPBAR-SEARCH-BY-WIDTH, DNA-COMMON-TOPBAR-START-SIDEBAR]
 
   - id: page
     ui: ui/components/page-header.md
@@ -588,7 +588,7 @@ roles:
     sizes: none
     states: [ready, loading (isLoading), error (the error slot), empty (kind list: required)]
     grammarMayChange: [heading weight]
-    dna: [DNA-COMMON-HEADING-TITLE-SCALE]
+    dna: [DNA-COMMON-HEADING-TITLE-SCALE, DNA-COMMON-FIGURE-LINK-CUE]
     lint: [starci-fe/no-heading-above-card]
 
   - id: diagram
@@ -1299,7 +1299,7 @@ mustKeep:
     - id: DNA-COMMON-EMPTY-TITLE-16
       role: list
       law: "The title of an empty notice (a region state) is 16 / 500 with its hint at 14 in the secondary colour (owner 2026-11-19)."
-      measure: { kind: style, select: '.starci-core-empty-notice:not([data-grammar-error-layout]) .starci-core-notice-copy > .starci-core-text:first-child', checks: [{ metric: font-size, op: "=", value: { token: --grammar-text-lg } }, { metric: font-weight, op: "=", value: 500 }] }
+      measure: { kind: style, select: '.starci-core-empty-notice:not([data-grammar-error-layout], [data-grammar-empty-mark="none"], [data-grammar-empty-scope="page"]) .starci-core-notice-copy > .starci-core-text:first-child', checks: [{ metric: font-size, op: "=", value: { token: --grammar-text-lg } }, { metric: font-weight, op: "=", value: 500 }] }
       owner: ui/components/list-table.md
     - id: DNA-COMMON-TYPE-PAGE-TITLE-LINE
       role: list
@@ -1311,6 +1311,119 @@ mustKeep:
       law: "No ALL CAPS in the console: sublabels, flow-graph headers and badges are drawn in sentence case, never text-transform uppercase."
       measure: { kind: style, select: ':is(.starci-core-sublabel, .starci-core-flow-graph-header, .starci-core-badge)', checks: [{ metric: text-transform, op: "=", value: none }] }
       owner: ui/presentation.md
+    # --- batch 174 (0.48.0): phone fixes from the screen-clean and site lanes
+    - id: DNA-COMMON-EMPTY-LINE-PLAIN
+      role: empty-state
+      law: "The plain line (`EmptyNotice mark=\"none\"`: a no-match, a panel, a palette with no result, an empty sub-section) is one muted 14 / 400 line at the region's start edge, on no card (the illustration rule, owner 2026-11-19)."
+      measure: { kind: style, select: '.starci-core-empty-notice[data-grammar-empty-mark="none"] .starci-core-notice-copy > .starci-core-text:first-child', checks: [{ metric: font-size, op: "=", value: { token: --grammar-text-md } }, { metric: font-weight, op: "=", value: 400 }, { metric: color, op: "=", value: { token: --muted } }] }
+      owner: ui/components/empty-state.md empty-state.choose.scope
+    - id: DNA-COMMON-EMPTY-LINE-NO-MARK
+      role: empty-state
+      law: "The plain line carries no mark: no icon tile and no picture inside it."
+      measure: { kind: count, scope: '.starci-core-empty-notice[data-grammar-empty-mark="none"]', select: ':is(.starci-core-icon-tile, .starci-core-notice-art)', op: "=", value: 0 }
+      owner: ui/components/empty-state.md empty-state.choose.scope
+    - id: DNA-COMMON-EMPTY-PAGE-TITLE-18
+      role: empty-state
+      law: "A page-level state (an EmptyNotice or a failure with scope page) is titled 18 / 26 / 500, the page-title tier of the console scale (_TYPOGRAPHY.md title)."
+      measure: { kind: style, select: '.starci-core-empty-notice[data-grammar-empty-scope="page"] .starci-core-notice-copy > .starci-core-text:first-child', checks: [{ metric: font-size, op: "=", value: { token: --grammar-text-xl } }, { metric: line-height, op: "=", value: 26px }, { metric: font-weight, op: "=", value: 500 }] }
+      owner: ui/components/empty-state.md; ui/presentation.md
+    - id: DNA-COMMON-RETRY-ONE-LOOK
+      role: [empty-state, alert]
+      law: "\"Try again\" has one look wherever a read failed: the retry of an ErrorView (and of an EmptyNotice isError) and the action of a negative Alert are the alternative (outlined) intent, never the destructive fill."
+      measure:
+        kind: attr
+        metric: data-grammar-intent
+        op: "="
+        value: alternative
+        cases:
+          - { select: '[data-grammar-error="true"] [data-grammar-notice-actions] > [data-component="Button"]:not([href]):first-child' }
+          - { select: '[data-component="Alert"][data-grammar-tone="negative"] [data-component="Button"]' }
+      owner: ui/components/empty-state.md; ui/components/toast-alert.md
+    - id: DNA-COMMON-POPOVER-EDGE
+      role: dialog
+      law: "A Popover panel has a 1px border and a soft shadow, so it reads as a layer over a white surface."
+      measure: { kind: style, select: '.starci-core-popover', checks: [{ metric: border-top-width, op: ">=", value: 1px }, { metric: box-shadow, op: "!=", value: none }] }
+      owner: ui/components/dialog-drawer.md
+    - id: DNA-COMMON-POPOVER-PHONE-SHEET
+      role: dialog
+      law: "At 320, 360 and 390 (any width up to 480) a Popover is a sheet: fixed to the bottom edge at the full width, over a scrim."
+      measure: { kind: style, context: { widths: [320, 360, 390] }, select: '.starci-core-popover', checks: [{ metric: position, op: "=", value: fixed }, { metric: inset-inline-start, op: "=", value: 0px }, { metric: inset-inline-end, op: "=", value: 0px }, { metric: inset-block-end, op: "=", value: 0px }] }
+      owner: ui/components/dialog-drawer.md
+    - id: DNA-COMMON-PALETTE-PHONE-NOT-FULL
+      role: command-palette
+      law: "At 320, 360 and 390 the CommandPalette takes the full width at the top and is as tall as its results, never the full screen height."
+      measure: { kind: style, context: { widths: [320, 360, 390] }, select: '.starci-core-dialog-container:has(.starci-core-command-palette) > .starci-core-dialog', metric: flex-grow, op: "=", value: "0" }
+      owner: ui/components/command-palette.md
+    - id: DNA-COMMON-PALETTE-NO-KEYS-ON-TOUCH
+      role: command-palette
+      law: "On a coarse pointer the CommandPalette draws no keys footer: a touch screen has no arrows, Enter or Escape."
+      measure: { kind: style, context: { pointer: coarse }, select: '.starci-core-dialog-container:has(.starci-core-command-palette) .starci-core-overlay-footer', metric: display, op: "=", value: none }
+      owner: ui/components/command-palette.md
+    - id: DNA-COMMON-TABS-FILTER-NO-FOLD
+      role: tabs
+      law: "A filter strip never folds tabs into a \"+n\" menu: at 320, 360 and 390 every group stays in the strip, which scrolls sideways inside its own row."
+      measure: { kind: count, context: { widths: [320, 360, 390] }, scope: '.starci-core-tabs-frame[data-grammar-tabs-kind="filter"]', select: '.starci-core-tabs-more', op: "=", value: 0 }
+      owner: ui/components/tabs.md
+    - id: DNA-COMMON-TABS-FILTER-IN-ROW
+      role: tabs
+      law: "At 320, 360 and 390 a filter strip ends inside its filter row: it scrolls, it never pushes the page sideways."
+      measure: { kind: relation, context: { widths: [320, 360, 390] }, select: '.starci-core-section-filter > .starci-core-tabs-frame[data-grammar-tabs-kind="filter"]', metric: right, op: "<=", ref: { within: '.starci-core-section-filter', select: self, metric: right } }
+      owner: ui/components/tabs.md
+    - id: DNA-COMMON-TOPBAR-SEARCH-BY-WIDTH
+      role: shell
+      law: "A TopBar's search slot shows its compact control below 48rem and its wide control from 48rem: at 320, 360 and 390 the wide control is not drawn."
+      measure: { kind: count, context: { widths: [320, 360, 390] }, scope: '[data-grammar-top-bar-search="true"]', select: '[data-grammar-top-bar-search-slot="wide"] > *', where: { metric: width, op: ">", value: 0px }, op: "=", value: 0 }
+      owner: ui/components/sidebar.md
+    - id: DNA-COMMON-TOPBAR-START-SIDEBAR
+      role: shell
+      law: "With startInset sidebar, from 48rem the TopBar's brand starts on the column of the sidebar's item icons."
+      measure: { kind: relation, context: { viewport: 1280x800 }, select: '[data-component="TopBar"][data-grammar-top-bar-start="sidebar"] .starci-core-top-bar-brand', metric: left, op: "=", ref: { within: '[data-component="WorkspaceShell"]', select: '.starci-core-sidebar:not([data-collapsed="true"]) .starci-core-sidebar-item svg', metric: left }, tolerance: 1 }
+      owner: ui/components/sidebar.md
+    - id: DNA-COMMON-FIGURE-LINK-CUE
+      role: section
+      law: "A figure that is a link shows it at rest: its term ends with the muted chevron of a pressable row."
+      measure: { kind: count, scope: '.starci-core-description-pair[data-grammar-figure-destination="true"]:has(.starci-core-figure-link)', select: '[data-grammar-figure-cue="true"]', op: "=", value: 1 }
+      owner: ui/components/list-table.md
+    - id: DNA-COMMON-LINK-HEAD-HIT-44
+      role: link
+      law: "A standalone head link (a section head's or a tile's \"see more\") has a hit area of at least 44px at 320, 360 and 390, with no change to its drawn line."
+      measure: { kind: box, context: { widths: [320, 360, 390] }, select: '.starci-core-link[data-grammar-link-variant="head"]', metric: hit-area, op: ">=", value: 44px }
+      owner: ui/components/button.md button.choose.link
+    - id: DNA-COMMON-IMAGE-EAGER-PAINTS
+      role: image
+      law: "An eager Image is never held at opacity 0 waiting for script: it paints with its bytes, before hydration, with no shimmer over it."
+      measure: { kind: style, select: '.starci-core-image[data-grammar-image-load="eager"] .starci-core-image-element', metric: opacity, op: "=", value: "1" }
+      owner: ui/components/image.md
+    - id: DNA-COMMON-TABLE-SCROLL-FOCUSABLE
+      role: data-views
+      law: "A table scroll region that scrolls sideways is keyboard-focusable and named, at every width and at 320, 360 and 390."
+      measure: { kind: a11y, context: { widths: [320, 360, 390] }, select: '.starci-core-data-table-scroll', where: { metric: scroll-owners-x, op: ">", value: 0 }, metric: focusable, op: "=", value: true }
+      owner: ui/components/list-table.md
+    - id: DNA-COMMON-BUTTON-GROUND-CONTRAST
+      role: button
+      law: "A Button on an accent or dark band (`ground`) keeps a label contrast of at least 4.5:1 against what it is drawn on, filled or outlined."
+      measure: { kind: style, select: '[data-component="Button"][data-grammar-button-ground] [data-grammar-button-label]', metric: contrast, op: ">=", value: 4.5 }
+      owner: ui/components/button.md
+    - id: DNA-COMMON-ROW-PHONE-UNDER
+      role: list
+      law: "At 320, 360 and 390 a rows-list row puts its end group (meta, status chips) and its commands under its text, always, never on the title line; a row that only opens keeps its chevron on the line."
+      measure: { kind: relation, context: { widths: [320, 360, 390] }, select: '.starci-core-section-list:not([data-grammar-list-layout]) > .starci-core-list-row:not([data-grammar-action-placement="end"], [data-grammar-value="true"], [data-grammar-chevron-only="true"], [data-grammar-skeleton="true"]) > :is(.starci-core-list-row-trail, .starci-core-list-row-actions)', metric: top, op: ">=", ref: { within: '.starci-core-list-row', select: '.starci-core-list-row-copy', metric: bottom } }
+      owner: ui/components/list-table.md
+    - id: DNA-COMMON-ROW-PHONE-START-EDGE
+      role: list
+      law: "At 320, 360 and 390 what wraps under a row's text starts on the title's edge."
+      measure: { kind: relation, context: { widths: [320, 360, 390] }, select: '.starci-core-section-list:not([data-grammar-list-layout]) > .starci-core-list-row:not([data-grammar-action-placement="end"], [data-grammar-value="true"], [data-grammar-chevron-only="true"], [data-grammar-skeleton="true"]) > :is(.starci-core-list-row-trail, .starci-core-list-row-actions)', metric: left, op: "=", ref: { within: '.starci-core-list-row', select: '.starci-core-list-row-copy', metric: left }, tolerance: 1 }
+      owner: ui/components/list-table.md
+    - id: DNA-COMMON-STEP-NUMERAL-400
+      role: list
+      law: "A row's step numeral (1., #1) is regular weight, reading structure and never emphasis (the console uses 400 and 500 only)."
+      measure: { kind: style, select: '.starci-core-leading-number', metric: font-weight, op: "=", value: 400 }
+      owner: ui/presentation.md
+    - id: DNA-COMMON-TIMELINE-DOT-NEUTRAL
+      role: list
+      law: "A timeline entry that is not the current one has a neutral (muted) dot whatever its state; only the current entry's dot takes a colour (the dot rule)."
+      measure: { kind: style, select: '.starci-core-timeline-item:not([data-grammar-current="true"], [data-grammar-skeleton="true"]) .starci-core-timeline-marker', metric: color, op: "=", value: { token: --muted } }
+      owner: ui/components/list-table.md
     - id: DNA-COMMON-LABEL-16
       role: list
       law: "A label (a description list term, a keyValue row key, a list or settings row title) is 16 / 400 in the primary colour (owner 2026-11-19)."
@@ -1931,7 +2044,7 @@ mustKeep:
     - id: DNA-CORE-BUTTON-ALTERNATIVE-OUTLINE
       role: button
       law: "In Core an alternative button is outlined (a hairline border, no tinted fill) and writes its words in the default foreground, as the design system draws its secondary command; never the brand-coloured words of the vendor secondary variant. Core only: Offset Pop keeps its own look."
-      measure: { kind: style, select: '[data-component="Button"][data-grammar-intent="alternative"]:not([data-loading="true"], [disabled], [data-disabled="true"])', checks: [{ metric: border-width, op: ">=", value: 1px }, { metric: color, op: "=", value: { token: --default-foreground } }] }
+      measure: { kind: style, select: '[data-component="Button"][data-grammar-intent="alternative"]:not([data-loading="true"], [disabled], [data-disabled="true"], [data-grammar-button-ground])', checks: [{ metric: border-width, op: ">=", value: 1px }, { metric: color, op: "=", value: { token: --default-foreground } }] }
       owner: contract roles.button
     - id: DNA-CORE-STEPPER-MARKER-CURRENT
       role: list

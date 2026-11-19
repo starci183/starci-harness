@@ -73,7 +73,8 @@ type TabsCommon = NoChildren & {
 /**
  * `secondary` (the default, HeroUI's secondary variant): the underline. `kind="views"` switches between views of a page, in the page
  * head. `kind="filter"` narrows one list that stays in place, in its `Section`'s `filter` row: the same underline one size
- * smaller (13px, tighter), each with its `count`; the tabs that do not fit fold into a "+n" menu and the selected one always stays visible.
+ * smaller (13px, tighter), each with its `count`; a strip wider than its row scrolls sideways (0.48.0: it no longer folds into a "+n" menu, which hid groups on a phone),
+ * its edges fade where more tabs wait and the selected one is scrolled into view.
  * Exactly one line stands under the strip and the selected underline lies on it. A tablist is not a form field: choosing a value of a
  * form is `ChoiceChips` or `RadioGroup`.
  */
@@ -83,11 +84,11 @@ export type SecondaryTabsProps = TabsCommon & {
     /**
      * How a `kind="filter"` strip is drawn (0.46.2). `underline` (default) is the strip's own look. `pill` draws the same strip as pills on a track, the one pill look the
      * `appearance="primary"` switch already has (no second pill is drawn): for a short row of PRESETS that narrow a list ("All", "Mine", "Overdue"), where the choice reads as
-     * picking a saved view rather than a tab of the page. It keeps what a filter strip has (a `count` chip per tab, `isAttention`, the "+n" fold into a menu, the selected tab always
+     * picking a saved view rather than a tab of the page. It keeps what a filter strip has (a `count` chip per tab, `isAttention`, the sideways scroll with fading edges, the selected tab always
      * visible) and the pill strip's own: no line under it. Only with `kind="filter"`; a development error otherwise.
      */
     readonly shape?: "underline" | "pill"
-    /** The accessible name of the menu that holds the folded tabs, e.g. `(count) => \`${count} more filters\``. */
+    /** The accessible name of the menu that holds the folded tabs, e.g. `(count) => \`${count} more views\``. Views tabs only: a filter strip never folds (0.48.0), so it is ignored there. */
     readonly moreLabel?: (count: number) => string
     /**
      * The word the fold menu draws instead of "+n" (the app's own, e.g. "More"); the menu stays named by `moreLabel`, which
@@ -266,8 +267,9 @@ const TabsInner = (props: TabsProps) => {
     const inset = props.inset ?? "none"
     const kind = props.kind ?? "views"
     const isFilter = kind === "filter"
-    // Filter tabs always fold what does not fit; page (views) tabs fold only when the app names the fold menu (`overflowLabel`), else they scroll.
-    const folds = !isPill && (isFilter || props.overflowLabel !== undefined)
+    // Page (views) tabs fold only when the app names the fold menu (`overflowLabel`), else they scroll. Filter tabs never fold (0.48.0): a "+n" menu hid
+    // the groups a reader filters by on a phone, so the strip scrolls sideways with the fading edges and the page controls, every group one swipe away.
+    const folds = !isPill && !isFilter && props.overflowLabel !== undefined
     const frameContract = inset === "page" ? "PADDING-5" : undefined
     const hasEnd = !isPill && props.end !== undefined && props.end !== null && props.end !== false
     const frameData = { ...(hasEnd ? { "data-grammar-tabs-has-end": "true" } : {}), "data-component": "Tabs", "data-tier": "branch", "data-grammar-tabs": "true", "data-grammar-tabs-inset": inset, "data-grammar-tabs-variant": isPillLook ? "primary" : "secondary", "data-grammar-tabs-kind": isPill ? "switch" : kind, ...(filterPill ? { "data-grammar-tabs-shape": "pill" } : {}), "data-grammar-tabs-line": line, "data-grammar-tabs-folds": folds ? "true" : "false" } as const
@@ -402,7 +404,11 @@ const TabsInner = (props: TabsProps) => {
             className={tabsClassName ?? ""}
             data-contract="FLOW-2"
         >
-            <HeroTabs.List aria-label={props.label} render={({ children, ref, ...listProps }) => isPillLook ? (
+            <HeroTabs.List aria-label={props.label} render={({ children, ref, ...listProps }) => filterPill ? (
+                <HorizontalScrollFrame appearance="region" carets={false} hideScrollBar size={32} scrollPreviousLabel={scrollPreviousLabel} scrollNextLabel={scrollNextLabel} className="starci-core-tabs-pill-scroller">
+                    <div className="tabs__list-container" data-grammar-tabs-track="true"><div {...listProps} ref={ref} style={listProps.style}>{children}</div></div>
+                </HorizontalScrollFrame>
+            ) : isPillLook ? (
                 <div className="tabs__list-container" data-grammar-tabs-track="true"><div {...listProps} ref={ref} style={listProps.style}>{children}</div></div>
             ) : folds ? (
                 <div {...listProps} ref={ref} style={listProps.style}>{children}</div>

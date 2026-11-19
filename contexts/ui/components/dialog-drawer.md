@@ -32,6 +32,9 @@ never wraps a popover's content in a fixed-width box. A panel that needs more th
 ## Popover size (0.46.2)
 `Popover size` is `sm` (18rem: a short note, a small action menu), `md` (26rem, the default) or `lg` (36rem: a list of wide rows or a small form), each capped at the viewport less 2rem, so on a phone all three are the same full-width panel. The panel never takes its trigger's width, and an app sets no width of its own. Story `Overlays/Popover width (0.45.1)` (Sizes).
 
+## Popover edge and the phone sheet (0.48.0)
+The panel has a 1px `--border` and a soft shadow, so it reads as a layer over a white surface (`DNA-COMMON-POPOVER-EDGE`; Offset Pop keeps its ink outline). At 480px and narrower the popover is a sheet: fixed to the bottom edge at the full width, its top corners rounded, at most 85% of the screen tall, over a scrim that dims the page; a press on the scrim is outside and closes it, and the arrow is not drawn (`DNA-COMMON-POPOVER-PHONE-SHEET` at 320, 360 and 390). The app passes nothing: the width decides. Story `Overlays/Popover sheet and the palette on a phone (0.48.0)`.
+
 ## Scrolling
 A body that outgrows its sheet scrolls with no scrollbar: the edge fades where content continues and wheel, touch and keyboard still scroll
 (OVERFLOW-6; an app element with `overflow-y-auto` is refused by lint `no-raw-scroll`; use the Grammar scroller or `PaneSection scroll`). A `Drawer`

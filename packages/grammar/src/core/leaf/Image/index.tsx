@@ -33,8 +33,16 @@ export type ImageFacts = {
     readonly renditions?: readonly ImageRendition[]
     /** Which rendition the box needs at each width, as the `sizes` attribute: `(min-width: 64rem) 50vw, 100vw`. */
     readonly sizes?: string
-    /** Offscreen images defer by default; above-the-fold art may be eager. */
+    /**
+     * Offscreen images defer by default; above-the-fold art may be eager. An eager picture paints as soon as its bytes arrive, before the page hydrates (0.48.0):
+     * no shimmer covers it and it is never held at opacity 0 waiting for script.
+     */
     readonly loading?: "lazy" | "eager"
+    /**
+     * The fetch priority hint (0.48.0), the `fetchpriority` attribute: `high` for the one picture that is the page's largest paint (a hero, a product photo), `low` for an
+     * eager picture that can wait. Default: the browser's.
+     */
+    readonly fetchPriority?: "high" | "low" | "auto"
 }
 
 export type ImageProps = NoChildren & AssetSlotProps & ImageFacts & MediaSourceRef & {
@@ -87,6 +95,7 @@ const ImageInner = ({
     renditions,
     sizes,
     loading = "lazy",
+    fetchPriority,
     caption,
     zoom,
     onLoadStateChange,
@@ -125,6 +134,7 @@ const ImageInner = ({
             data-grammar-image-fit={fit}
             data-grammar-image-state={state}
             data-grammar-image-plate={plate}
+            data-grammar-image-load={loading}
             {...(caption === undefined ? assetSlotAttributes(assetSlot) : {})}
         >
             {failed ? (
@@ -142,6 +152,7 @@ const ImageInner = ({
                         data-contract="MOTION-2"
                         decoding="async"
                         loading={loading}
+                        {...(fetchPriority === undefined ? {} : { fetchPriority })}
                         src={url ?? undefined}
                         {...(srcSet === undefined ? {} : { srcSet })}
                         {...(sizes === undefined || srcSet === undefined ? {} : { sizes })}
@@ -150,7 +161,7 @@ const ImageInner = ({
                         onError={() => report("error")}
                         onLoad={() => report("loaded")}
                     />
-                    {state === "loading" ? <HeroSkeleton animationType="shimmer" aria-hidden="true" className="starci-core-skeleton starci-core-image-skeleton" data-contract="STATE-2 MOTION-2" /> : null}
+                    {state === "loading" && loading === "lazy" ? <HeroSkeleton animationType="shimmer" aria-hidden="true" className="starci-core-skeleton starci-core-image-skeleton" data-contract="STATE-2 MOTION-2" /> : null}
                 </>
             )}
             {zoom === undefined || failed ? null : (

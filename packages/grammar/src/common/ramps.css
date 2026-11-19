@@ -85,6 +85,9 @@
         /* The 1px separator edge a surface on a white surface draws, as one border value (a theme hook falls back to it). */
         --grammar-separator-edge: var(--grammar-hairline) solid var(--separator);
         --grammar-shadow-lift: 0 var(--grammar-hairline) 2px 0 color-mix(in oklab, var(--foreground) 8%, transparent);
+        /* The soft shadow of a popover panel (0.48.0) and the scrim a phone sheet spreads over the page around it. */
+        --grammar-shadow-popover: 0 4px 16px -4px color-mix(in oklab, var(--foreground) 14%, transparent), 0 var(--grammar-hairline) 2px color-mix(in oklab, var(--foreground) 6%, transparent);
+        --grammar-shadow-scrim: 0 0 0 100vmax color-mix(in srgb, var(--foreground) 40%, transparent);
 
         /* The distance an overlay rises or a part slides in from. */
         --grammar-motion-travel: 0.5rem;

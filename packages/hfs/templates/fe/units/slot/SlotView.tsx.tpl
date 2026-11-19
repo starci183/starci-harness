@@ -11,6 +11,8 @@ type SlotViewProps<T> = {
     readonly forbidden?: "notice" | "hide"
     /** Re-runs exactly the read of this slot. */
     readonly onRetry: () => void
+    /** The way back from a page-level failure ("Về danh sách"): a destination drawn after the retry, so a page whose record could not load is never a dead end. */
+    readonly back?: { readonly label: string; readonly href: string }
     readonly render: (items: T, isLoading: boolean) => ReactNode
 }
 
@@ -20,7 +22,7 @@ export const SlotView = <T,>(props: SlotViewProps<T>): ReactNode => {
     if (slot.isLoading === true) return props.render(props.placeholder, true)
     if (slot.isForbidden === true) return props.forbidden === "hide" ? null : <EmptyNotice message={props.labels.forbidden} />
     if (slot.isError === true) {
-        return <EmptyNotice isError message={props.labels.error} actionLabel={props.labels.retry} onAction={props.onRetry} />
+        return <EmptyNotice isError message={props.labels.error} actionLabel={props.labels.retry} onAction={props.onRetry} {...(props.back === undefined ? {} : { secondary: props.back })} />
     }
     if (slot.isEmpty === true) return <EmptyNotice message={props.labels.empty} />
     // A refresh (`isValidating`) beside data keeps the content: it never draws a skeleton.

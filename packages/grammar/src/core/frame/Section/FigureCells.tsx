@@ -4,6 +4,8 @@ import { Link as HeroLink } from "@heroui/react"
 import type { CSSProperties } from "react"
 import type { Figure } from "../../surfaceCardData.js"
 import { IconTile } from "../../leaf/IconTile/index.js"
+import { Icon } from "../../leaf/Icon/index.js"
+import { glyphSource } from "../../leaf/Icon/glyphs.js"
 import { Sparkline } from "../../composite/Sparkline/index.js"
 import { SkeletonPlaceholder } from "../../leaf/Skeleton/index.js"
 
@@ -41,16 +43,20 @@ export const FigureCells = ({ items, isLoading, isDisabled = false }: { readonly
             data-grammar-figure-count={items.length}
             {...(isLoading ? { "aria-busy": true, "data-loading": "true" } : {})}
         >
-            {items.map((item) => (
+            {items.map((item) => {
+                const follows = item.href !== undefined && !isLoading && !isDisabled && item.isDisabled !== true
+                return (
                 <div key={item.id} className="starci-core-description-pair" style={{ "--starci-core-figure-chars": String(item.value).length } as CSSProperties} data-grammar-description-pair="true" data-grammar-figure-destination={item.href === undefined ? undefined : "true"}>
                     <dt className="starci-core-description-term starci-core-description-stat-term">
                         {item.icon === undefined ? null : <IconTile source={item.icon} size="sm" tone="neutral" />}
                         <span>{item.term}</span>
+                        {/* The pressable cue (0.48.0): a figure that leads somewhere ends its term with the quiet chevron a pressable row ends with, so a link reads as one before a hover. */}
+                        {follows ? <span className="starci-core-figure-cue" data-grammar-figure-cue="true" aria-hidden="true"><Icon source={glyphSource("chevron-end")} usage="chip" /></span> : null}
                     </dt>
                     <dd className="starci-core-description-value starci-core-description-figure" data-contract="FONT-5">
                         <span className="starci-core-description-figure-value">{isLoading ? pending(item.value) : item.value}</span>
                         {item.unit === undefined ? null : <span className="starci-core-description-unit">{item.unit}</span>}
-                        {item.href === undefined || isLoading || isDisabled || item.isDisabled === true ? null : (
+                        {!follows || item.href === undefined ? null : (
                             <HeroLink
                                 aria-label={`${item.term}: ${String(item.value)}${item.unit === undefined ? "" : ` ${String(item.unit)}`}`}
                                 className="starci-core-figure-link"
@@ -77,7 +83,8 @@ export const FigureCells = ({ items, isLoading, isDisabled = false }: { readonly
                         </dd>
                     )}
                 </div>
-            ))}
+                )
+            })}
         </dl>
     )
 }

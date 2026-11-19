@@ -1,5 +1,28 @@
 # Changelog
 
+## Unreleased
+
+Lane `grammar-batch-174` (train 174, after `grammar-labels-hover`): sixteen fixes collected from the screen-clean and site lanes, so apps drop their own classes and globals. New optional props and laws; one changed default look (the filter strip scrolls instead of folding, a negative Alert's action is outlined). Both families, light and dark. The train assigns the version.
+
+- Added (`EmptyNotice`): `mark="none"`, the plain line for a no-match, a panel, a palette with no result and an empty sub-section: one muted 14 / 400 line at the region's start edge, no tile, no picture, no card (the illustration rule). The type refuses `media` with it and keeps a page-level state's mark. A page-scope notice's title is 18 / 26 / 500.
+- Changed (`Popover`): a 1px border and a soft shadow; at 480px and narrower the popover is a full-width sheet on the bottom edge over a scrim (the arrow is not drawn, the scroll fade is off so the scrim is not clipped).
+- Changed (`CommandPalette`): at 390 it takes the full width at the top and is as tall as its results (it no longer fills the screen); the `footer` keys hint is not drawn on a coarse pointer; the row the arrows are on wears the selected fill (`--default`), never the focus ring.
+- Changed (`Tabs kind="filter"`, underline and pill): the strip never folds into a "+n" menu; wider than its row it scrolls sideways in its own scroller with fading edges (the underline strip with the scroll carets), every group kept. `moreLabel` and `overflowLabel` now act on views tabs only.
+- Added (`TopBar`): `startInset?: "page" | "sidebar"` (from 48rem the brand starts on the sidebar icons' column, token `--grammar-sidebar-icon-inset`) and `search?: { wide?, compact? }` (the wide control from 48rem, the compact one below, chosen in CSS). Type `TopBarSearch` is exported.
+- Added (`Section kind="figures"`): a figure with `href` ends its term with the muted chevron of a pressable row and takes the row hover fill.
+- Changed (`Link variant="head"`): an unseen 48 x 48 hit layer centred on the link; its drawn line does not change.
+- Added (`Image`): `fetchPriority?: "high" | "low" | "auto"`. An eager image (`loading="eager"`) paints before hydration: never held at opacity 0, no shimmer over it (`data-grammar-image-load`).
+- Fixed (`Page chrome="panes"`): the pane-grid check reads a marker (`PaneGrid.displayName`, a static `grammarFrame`, a client reference's `$$id`, a lazy element) instead of identity, so a pane grid rendered from a server component no longer throws `PAGE_PANES_CHILD_NOT_PANE_GRID`.
+- Changed (`Section kind="list"` loading): with no row to measure, the three placeholder rows take the layout's shape (rows, `keyValue`, `settings`, `suggestions`); a loading `ListRow` with a `value` keeps the value's track.
+- Added (`ErrorData`): `back?: { label, href }` (a neutral button after the retry, "Về danh sách") and `scope?: "region" | "page"` (md buttons on a page). `EmptyNotice isError` passes its href `secondary` as the way back and its `scope`.
+- Changed (the retry): "Thử lại" has one look, the outlined `alternative` intent (`RETRY_INTENT`), in an `ErrorView`, an `EmptyNotice isError` and a negative `Alert` (it was the destructive fill there). The retry and the way back stand in one actions row.
+- Changed (`DataTable`): a scroll region that scrolls sideways is a focusable, named region (`tabIndex 0`, `role="region"`, `aria-label`) with the focus ring inside its edge; below 48rem its end edge carries a soft shadow while columns wait.
+- Added (`Button`): `ground?: "accent" | "inverse"`, a Button on a brand or dark band: `commit` filled with the band's foreground, every other intent its outline; contrast holds by the pair.
+- Changed (`ListRow` at a container of 28rem or less, rows lists only): the end group and the commands always stand under the text on the title's edge (a chevron-only row keeps its chevron on the line); the step numeral (`LeadingNumber`, both formats) is 400.
+- Changed (`Timeline`): a dot is neutral unless its entry is current; the current dot takes its state's tone or the accent.
+- Added (DNA, `contexts/grammars/contract.yaml`): `DNA-COMMON-EMPTY-LINE-PLAIN`, `-EMPTY-LINE-NO-MARK`, `-EMPTY-PAGE-TITLE-18`, `-RETRY-ONE-LOOK`, `-POPOVER-EDGE`, `-POPOVER-PHONE-SHEET`, `-PALETTE-PHONE-NOT-FULL`, `-PALETTE-NO-KEYS-ON-TOUCH` (contextual), `-TABS-FILTER-NO-FOLD`, `-TABS-FILTER-IN-ROW`, `-TOPBAR-SEARCH-BY-WIDTH`, `-TOPBAR-START-SIDEBAR` (contextual), `-FIGURE-LINK-CUE`, `-LINK-HEAD-HIT-44`, `-IMAGE-EAGER-PAINTS`, `-TABLE-SCROLL-FOCUSABLE`, `-BUTTON-GROUND-CONTRAST`, `-ROW-PHONE-UNDER`, `-ROW-PHONE-START-EDGE`, `-STEP-NUMERAL-400`, `-TIMELINE-DOT-NEUTRAL`. `DNA-COMMON-EMPTY-TITLE-16` leaves the plain line and the page scope to their own laws; `DNA-CORE-BUTTON-ALTERNATIVE-OUTLINE` leaves a Button on a band.
+- Stories: `Media/Empty notice line, page title and the retry (0.48.0)`, `Overlays/Popover sheet and the palette on a phone (0.48.0)`, `Navigation & Data/Phone fixes (0.48.0)`, `Surfaces/Figures, rows, bands and pages (0.48.0)`; `Filter pills` and `Tabs end slot` follow the scrolling strip. Contexts: `ui/components/` empty-state, toast-alert, dialog-drawer, command-palette, tabs, sidebar, list-table, button, image, pane-grid.
+
 ## 0.48.0 - 2026-11-19 - Label over content, the padded list body, settings rows
 
 Lane `grammar-labels-hover` (next train). Owner feedback on the NIVO agent page: since the surface-card change flattened sections, labels read like body text. Optional prop values and a new layout, plus owner-ruled type and spacing changes, so a minor. Both families, light and dark. The rulings changed several times on 2026-11-19; this is the last.

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Added (template `fe/units/slot/SlotView.tsx.tpl`): `back?: { label, href }`, the way back from a page-level failure, passed to the error notice as its `secondary` (Grammar `ErrorData.back`, lane `grammar-batch-174`).
+
 ## 6.13.53 - 2026-11-19
 
 - Changed (`knowledge/hfs/canon-pins.yaml`): the Grammar family 0.47.5 (range ~0.47.5), @starci/gallery 0.1.6, eslint-canon-fe 9.20.3 (range ~9.20.3), stylelint-canon 2.9.7 and the `@starci/hfs` self-pin is 6.13.53; the starter Grammar pin moves with the `SiteShell` templates that import `TopBarFit`.

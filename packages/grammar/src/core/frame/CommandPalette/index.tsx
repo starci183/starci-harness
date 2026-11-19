@@ -32,7 +32,7 @@ export type CommandPaletteProps = OverlayOpenState & {
     readonly isLoading?: boolean
     /** The search failed: this takes the place of the results. */
     readonly error?: ErrorData
-    /** The keys hint under the results (up and down choose, Enter opens, Escape closes), in the app's language. */
+    /** The keys hint under the results (up and down choose, Enter opens, Escape closes), in the app's language. Not drawn on a coarse pointer (a touch screen has no keys). */
     readonly footer?: ReactNode
 }
 
@@ -89,7 +89,8 @@ const PaletteBody = ({ label, query, onQueryChange, placeholder, clearLabel, gro
  * FRAME - `CommandPalette` (0.46.0): the one search of the whole app, a dialog over the page that takes a query and lists what matches, grouped,
  * to go to or to run. It is a `Dialog` holding a `SearchField` and a sectioned `ListBox` joined by React Aria's autocomplete: the caret stays in the
  * field and the arrows, Home and End move through the results, Enter chooses, Escape closes (the vendor's). A result is a destination (`href`) or a command (`onAction`).
- * It draws what it is given: the app searches, orders the groups and says what an empty or failed search shows. At 390 it fills the screen.
+ * It draws what it is given: the app searches, orders the groups and says what an empty or failed search shows. At 390 it takes the full width at the top and is as tall as its results (0.48.0);
+ * the keys `footer` is not drawn on a touch screen, and the row the arrows are on wears the selected fill, not a focus ring.
  *
  * The app opens it with `isOpen` and registers the shortcut with `useCommandPaletteShortcut`; a `TopBar` search control (an `IconButton` or a `Button`
  * with a `Kbd`) opens it by press.

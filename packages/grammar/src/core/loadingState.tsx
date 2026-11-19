@@ -34,7 +34,20 @@ export type ErrorData = {
      * line, and the retry at the end, with no tinted ground. Default: a band in a pane, the centred notice elsewhere.
      */
     readonly isInline?: boolean
+    /**
+     * The way back from a page-level failure (0.48.0): a destination ("Về danh sách") drawn as a neutral button after the retry, so a page whose record could not load
+     * is never a dead end. A region's failure rarely needs it: the page around it is the way back.
+     */
+    readonly back?: { readonly label: string; readonly href: string }
+    /** `page` (0.48.0): the failure is the whole page's (its record could not load); its buttons take the md step. Default: a region. */
+    readonly scope?: "region" | "page"
 }
+
+/**
+ * THE RETRY (0.48.0): "Try again" has one look everywhere a read failed, in an `ErrorView`, an `EmptyNotice isError` and a negative `Alert`: the `alternative`
+ * (outlined) button, never the destructive red fill, since retrying destroys nothing. The step follows the scope: `sm` in a region, `md` on a page.
+ */
+export const RETRY_INTENT = "alternative" as const
 
 /**
  * How many placeholder rows a list draws when it was given no row to measure. The Grammar's choice; an app never passes a
@@ -54,7 +67,8 @@ export { LoadingScope, useIsLoading, useRegionOwnsBusy, withRegionGeometry, with
 export const ErrorView = ({ error }: { readonly error: ErrorData }) => {
     const inPane = usePaneContext() !== undefined
     const host = useSurfaceHost()
-    const layout = error.isInline === true ? "row" : inPane && host !== "card" && host !== "overlay" ? "band" : "notice"
+    const layout = error.isInline === true ? "row" : error.scope === "page" ? "notice" : inPane && host !== "card" && host !== "overlay" ? "band" : "notice"
+    const step = error.scope === "page" ? "md" as const : "sm" as const
     return (
         <div
             role="alert"
@@ -63,14 +77,20 @@ export const ErrorView = ({ error }: { readonly error: ErrorData }) => {
             data-grammar-error="true"
             data-grammar-error-layout={layout}
             data-grammar-empty-mark="glyph"
+            {...(error.scope === "page" ? { "data-grammar-empty-scope": "page" } : {})}
         >
             <IconTile source={ExclamationTriangleIcon} tone="danger" size="md" />
             <div className="starci-core-notice-copy" data-contract="GAP-1">
                 <Text size="sm" isStrong>{error.message}</Text>
                 {error.description === undefined ? null : <Text size="sm" tone="muted">{error.description}</Text>}
             </div>
-            {error.actionLabel === undefined ? null : (
-                <Button intent="alternative" size="sm" {...(error.onAction === undefined ? {} : { onPress: error.onAction })}>{error.actionLabel}</Button>
+            {error.actionLabel === undefined && error.back === undefined ? null : (
+                <div className="starci-core-notice-actions" data-grammar-notice-actions="true">
+                    {error.actionLabel === undefined ? null : (
+                        <Button intent={RETRY_INTENT} size={step} {...(error.onAction === undefined ? {} : { onPress: error.onAction })}>{error.actionLabel}</Button>
+                    )}
+                    {error.back === undefined ? null : <Button intent="neutral" size={step} href={error.back.href}>{error.back.label}</Button>}
+                </div>
             )}
         </div>
     )

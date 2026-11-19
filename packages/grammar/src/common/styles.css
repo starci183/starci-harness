@@ -53,6 +53,8 @@
         --grammar-inset-open: 1.5rem;
         /* The page gutter steps by breakpoint (12 on a phone, 24 from 48rem, 32 from 80rem), never fluid; so does the gap between a report page's cards (12, then 24). The owner asked for 16 on a phone; the spacing scale (0 4 8 12 24 32) has no 16, so the phone keeps 12 until the scale gains the step. */
         --grammar-page-inset: 0.75rem;
+        /* Where a sidebar item's icon starts from the sidebar's edge: the list's inset (12) plus the item's own (8) (0.48.0, TopBar startInset="sidebar"). */
+        --grammar-sidebar-icon-inset: calc(0.75rem + 0.5rem);
         --grammar-card-gap: 0.75rem;
         /*
          * Card box padding, one place per axis: SurfaceCard content. A card holds its content one
@@ -1292,18 +1294,19 @@
         min-width: 1.25rem;
         color: var(--muted);
         font-size: var(--grammar-text-md);
+        font-weight: var(--grammar-weight-regular);
         font-variant-numeric: tabular-nums;
         line-height: var(--grammar-leading-md);
         text-align: end;
         white-space: nowrap;
     }
 
-    /* format="hash": "#1", muted and semibold at the small text size, in a column wide enough for two digits (numbered passages). */
+    /* format="hash": "#1", muted at the small text size, in a column wide enough for two digits (numbered passages). Regular weight (0.48.0): a step numeral is reading structure, never emphasis (the console uses 400 and 500 only). */
     .starci-core-leading-number[data-grammar-number-format="hash"] {
         min-width: 1.5rem;
         font-family: inherit;
         font-size: var(--grammar-text-xs);
-        font-weight: var(--grammar-weight-semibold);
+        font-weight: var(--grammar-weight-regular);
         line-height: var(--grammar-leading-xs);
         text-align: start;
     }
@@ -1591,8 +1594,8 @@
 
     /*
      * A filter strip as pills (`shape="pill"`, 0.46.2): the primary switch's one pill look (HeroUI's primary variant, the pill on its track, drawn by the vendor and the rules
-     * of `data-grammar-tabs-variant="primary"` above), so no second pill is styled here. What a filter strip adds stays: the count chip, the fold into a "+n" menu, the row it
-     * stands in. The frame hugs its pills, centred on the strip's height with the fold menu beside it, and draws no line.
+     * of `data-grammar-tabs-variant="primary"` above), so no second pill is styled here. What a filter strip adds stays: the count chip, the sideways scroll (0.48.0), the row it
+     * stands in. The frame hugs its pills, centred on the strip's height, and draws no line.
      */
     .starci-core-tabs-frame[data-grammar-tabs-kind="filter"][data-grammar-tabs-shape="pill"] {
         display: inline-flex;
@@ -1603,6 +1606,21 @@
 
     .starci-core-tabs-frame[data-grammar-tabs-kind="filter"][data-grammar-tabs-shape="pill"] .starci-core-tabs { flex: 0 1 auto; }
     .starci-core-tabs-frame[data-grammar-tabs-kind="filter"][data-grammar-tabs-shape="pill"] .starci-core-tabs :is(.tabs__list, .tabs__list-container) { overflow: visible; }
+
+    /*
+     * A filter strip never folds (0.48.0): wider than its row, it scrolls sideways inside its own scroller (the underline strip in the views' scroll frame with its
+     * fading edges and page controls, the pills in a fading scroller), so every group stays one swipe away at 390 and the page never scrolls sideways.
+     */
+    .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] { min-width: 0; max-width: 100%; }
+    .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tabs { min-width: 0; }
+    .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] :is(.tabs__list-container__scroller, .starci-core-tabs-pill-scroller) {
+        min-width: 0;
+        max-width: 100%;
+        overflow-x: auto;
+        overflow-y: hidden;
+        scrollbar-width: none;
+        overscroll-behavior-inline: contain;
+    }
 
     .starci-core-tabs-more { display: inline-flex; flex: none; align-items: stretch; min-height: var(--starci-core-control-min-size); padding-inline: var(--grammar-inline-gap); color: var(--muted); font-size: var(--grammar-text-sm); }
     /* The fold trigger fills the strip's height, so its box stands on the line like a tab: no padding of its own below it. */
@@ -1684,6 +1702,30 @@
             flex: 1 0 100%;
             justify-content: flex-start;
         }
+
+        /*
+         * One phone layout for every rows-list row (0.48.0): the copy takes the whole first line beside its leading mark, and the end group (meta, status chips) and the
+         * commands ALWAYS stand under it, on the title's edge, each on its own line, whatever their width; before, a short command stayed on the title line and a long
+         * one wrapped, so neighbouring rows disagreed. A row that only opens (its chevron) keeps the chevron on the title line. Key-value, settings and suggestion
+         * lists, a row with a value and an end-placed row keep their own rules.
+         */
+        :not([data-grammar-list-layout]) > .starci-core-list-row:not([data-grammar-action-placement="end"], [data-grammar-value="true"]) {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr);
+            align-items: center;
+        }
+
+        :not([data-grammar-list-layout]) > .starci-core-list-row:not([data-grammar-action-placement="end"], [data-grammar-value="true"])[data-grammar-leading="true"] { grid-template-columns: auto minmax(0, 1fr); }
+        :not([data-grammar-list-layout]) > .starci-core-list-row:not([data-grammar-action-placement="end"], [data-grammar-value="true"])[data-grammar-chevron-only="true"] { grid-template-columns: minmax(0, 1fr) auto; }
+        :not([data-grammar-list-layout]) > .starci-core-list-row:not([data-grammar-action-placement="end"], [data-grammar-value="true"])[data-grammar-chevron-only="true"][data-grammar-leading="true"] { grid-template-columns: auto minmax(0, 1fr) auto; }
+
+        :not([data-grammar-list-layout]) > .starci-core-list-row:not([data-grammar-action-placement="end"], [data-grammar-value="true"]) > :is(.starci-core-list-row-trail, .starci-core-list-row-actions, .starci-core-list-row-detail) {
+            grid-column: 1 / -1;
+            justify-content: flex-start;
+        }
+
+        :not([data-grammar-list-layout]) > .starci-core-list-row:not([data-grammar-action-placement="end"], [data-grammar-value="true"])[data-grammar-leading="true"] > :is(.starci-core-list-row-trail, .starci-core-list-row-actions, .starci-core-list-row-detail) { grid-column: 2 / -1; }
+        :not([data-grammar-list-layout]) > .starci-core-list-row:not([data-grammar-action-placement="end"], [data-grammar-value="true"])[data-grammar-chevron-only="true"] > .starci-core-list-row-actions { grid-column: auto; }
     }
 
     /* A settings list is flush with its title at the start, and its controls end at the same inset from the end as the commands and chevrons of a rows list (0.48.0). */
@@ -1698,11 +1740,42 @@
     }
 
     /* The empty-state title of every EmptyNotice is 16 / 500 (the section-title tier), its hint 14 secondary (owner 2026-11-19). */
-    .starci-core-empty-notice:not([data-grammar-error-layout]) .starci-core-notice-copy > .starci-core-text:first-child {
+    .starci-core-empty-notice:not([data-grammar-error-layout], [data-grammar-empty-mark="none"]) .starci-core-notice-copy > .starci-core-text:first-child {
         font-size: var(--grammar-text-lg);
         font-weight: var(--grammar-weight-medium);
         line-height: var(--grammar-leading-lg);
     }
+
+    /* A page-level state (a first visit, a 404, a failed page) is titled at the page-title tier, 18 / 26 / 500 (_TYPOGRAPHY.md title, 0.48.0). */
+    .starci-core-empty-notice[data-grammar-empty-scope="page"] .starci-core-notice-copy > .starci-core-text:first-child {
+        font-size: var(--grammar-text-xl);
+        font-weight: var(--grammar-weight-medium);
+        line-height: var(--grammar-leading-page-title);
+    }
+
+    /*
+     * THE PLAIN LINE (0.48.0, `mark="none"`): a no-match, an empty panel, a palette with no result, an empty sub-section. No tile, no picture, no card:
+     * one muted 14 / 400 line and its hint at the region's start edge, the small action after it, the row step above and below (the illustration rule).
+     */
+    .starci-core-empty-notice[data-grammar-empty-mark="none"] {
+        align-items: flex-start;
+        gap: var(--grammar-inline-gap);
+        padding: var(--grammar-row-gap) 0 !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        text-align: start;
+    }
+
+    .starci-core-empty-notice[data-grammar-empty-mark="none"] .starci-core-notice-copy > .starci-core-text:first-child {
+        color: var(--muted);
+        font-size: var(--grammar-text-md);
+        font-weight: var(--grammar-weight-regular);
+        line-height: var(--grammar-leading-md);
+    }
+
+    .starci-core-empty-notice[data-grammar-empty-mark="none"] > .starci-core-notice-actions { justify-content: flex-start; }
 
     /*
      * ListRow: an interactive row on the static row's geometry (inset, row gap, edge-to-edge separator).
@@ -4619,7 +4692,8 @@
     /* The inline row: the same line, on the card's own ground. */
     .starci-core-empty-notice[data-grammar-error-layout="row"] { background: transparent; color: inherit; padding: 0; }
     .starci-core-empty-notice[data-grammar-error-layout="row"] > .starci-core-notice-copy { flex: 1 1 10rem; align-items: flex-start; }
-    .starci-core-empty-notice[data-grammar-error-layout="row"] > :last-child:is(button, [data-component="Button"]) { margin-inline-start: auto; }
+    .starci-core-empty-notice[data-grammar-error-layout="row"] > .starci-core-notice-actions { margin-inline-start: auto; }
+    .starci-core-empty-notice:is([data-grammar-error-layout="band"], [data-grammar-error-layout="row"]) > .starci-core-notice-actions { justify-content: flex-end; }
 
     .starci-core-empty-notice[data-grammar-error-layout="band"] > .starci-core-notice-copy {
         flex: 1 1 10rem;
@@ -5688,7 +5762,42 @@
      * than overflow: its height is the size step on one line and grows only with a wrapped label (the
      * size rules above hold the floor).
      */
-    .starci-core-button[data-width="fill"] {
+/*
+     * A Button on a band (0.48.0, `ground`): on an `accent` band (the brand colour) or an `inverse` one (the foreground as the ground) the intents keep their rank and
+     * take the band's contrast. `commit` is filled with the band's foreground and inked in the band's colour; every other intent is the band's foreground as ink with a
+     * 1px outline of it, transparent inside; hover and press tint with that ink. One look in both families; contrast at least 4.5:1 by construction (the pair).
+     */
+    .starci-core-button[data-grammar-button-ground="accent"] { --starci-core-button-band: var(--accent); --starci-core-button-band-ink: var(--accent-foreground); }
+    .starci-core-button[data-grammar-button-ground="inverse"] { --starci-core-button-band: var(--foreground); --starci-core-button-band-ink: var(--background); }
+
+    .starci-core-button[data-grammar-button-ground][data-grammar-intent="commit"] {
+        border-color: var(--starci-core-button-band-ink) !important;
+        background: var(--starci-core-button-band-ink) !important;
+        box-shadow: none !important;
+        color: var(--starci-core-button-band) !important;
+    }
+
+    .starci-core-button[data-grammar-button-ground]:not([data-grammar-intent="commit"]) {
+        border: 1px solid var(--starci-core-button-band-ink) !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        color: var(--starci-core-button-band-ink) !important;
+    }
+
+    .starci-core-button[data-grammar-button-ground][data-grammar-intent="commit"]:is(:hover, [data-hovered="true"], [data-pressed="true"]) {
+        background: color-mix(in oklab, var(--starci-core-button-band-ink) 88%, var(--starci-core-button-band)) !important;
+    }
+
+    .starci-core-button[data-grammar-button-ground]:not([data-grammar-intent="commit"]):is(:hover, [data-hovered="true"], [data-pressed="true"]) {
+        background: color-mix(in oklab, var(--starci-core-button-band-ink) 14%, transparent) !important;
+    }
+
+    .starci-core-button[data-grammar-button-ground]:is(:focus-visible, [data-focus-visible="true"]) {
+        outline: 2px solid var(--starci-core-button-band-ink) !important;
+        outline-offset: 2px;
+    }
+
+        .starci-core-button[data-width="fill"] {
         width: 100% !important;
         max-width: 100% !important;
         white-space: normal !important;

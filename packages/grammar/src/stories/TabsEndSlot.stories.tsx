@@ -34,7 +34,7 @@ const Rows = () => (
   <Matrix maxWidth={640}>
     <State label="Views strip: the command stands on the line, the line runs under it" direction="column"><Strip id="views" kind="views" /></State>
     <State label="Filter strip" direction="column"><Strip id="filter" kind="filter" items={regions.slice(0, 3)} /></State>
-    <State label="Filter strip that folds: the end keeps its width" direction="column"><div style={{ maxWidth: 360 }}><Strip id="fold" kind="filter" /></div></State>
+    <State label="Filter strip that scrolls: the end keeps its width" direction="column"><div style={{ maxWidth: 360 }}><Strip id="fold" kind="filter" /></div></State>
     <div dir="rtl"><State label="Right-to-left: the command ends the strip on the left" direction="column"><Strip id="rtl" kind="views" items={regions.slice(0, 3)} /></State></div>
   </Matrix>
 );

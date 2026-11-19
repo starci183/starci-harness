@@ -113,6 +113,8 @@ const ListRowInner = ({ row, isLoading = false }: ListRowProps) => {
                 {...(actionCount > 1 ? { "data-grammar-actions-multi": "true" } : {})}
                 {...(hasTrail ? { "data-grammar-trail": "true" } : {})}
                 {...(row.diff === undefined ? {} : { "data-grammar-diff-skeleton": row.diff })}
+                {...(row.value == null ? {} : { "data-grammar-value": "true" })}
+                {...(chevronOnly ? { "data-grammar-chevron-only": "true" } : {})}
                 data-contract="GAP-3 PADDING-4 BOUNDARY-3 STATE-8"
             >
                 {hasLeading || row.diff !== undefined ? (
@@ -127,6 +129,7 @@ const ListRowInner = ({ row, isLoading = false }: ListRowProps) => {
                     {row.description === undefined ? null : <span className="starci-core-list-row-description"><Skeleton shape="text" /></span>}
                     {row.diff !== "changed" || row.change === undefined ? null : <span className="starci-core-list-row-change"><Skeleton shape="text" /></span>}
                 </span>
+                {row.value == null ? null : <span className="starci-core-list-row-value" data-grammar-row-value="true"><Skeleton shape="text" /></span>}
                 {hasTrail ? (
                     <span className="starci-core-list-row-trail">
                         {row.meta === undefined ? null : row.meta.text.trim() === ""
@@ -159,6 +162,7 @@ const ListRowInner = ({ row, isLoading = false }: ListRowProps) => {
                 {...(actionCount > 1 ? { "data-grammar-actions-multi": "true" } : {})}
                 {...(hasTrail ? { "data-grammar-trail": "true" } : {})}
                 {...(row.value == null ? {} : { "data-grammar-value": "true" })}
+                {...(chevronOnly ? { "data-grammar-chevron-only": "true" } : {})}
                 {...(row.verdict === undefined ? {} : { "data-verdict": row.verdict })}
                 {...(row.edgeTone === undefined ? {} : { "data-edge-tone": row.edgeTone })}
                 {...(row.emphasis === undefined ? {} : { "data-grammar-emphasis": row.emphasis })}

@@ -6,8 +6,8 @@ import { Matrix, State } from './fixtures.js';
 
 /**
  * FILTER PRESETS AS PILLS (0.46.2). `Tabs kind="filter" shape="pill"` draws a filter strip in the one pill look the `appearance="primary"` switch has (HeroUI's primary variant:
- * pills on a track). The underline stays the default of a filter strip; the pill is for a short row of presets that narrow a list. It keeps the count chip and the fold into a
- * "+n" menu, and draws no line.
+ * pills on a track). The underline stays the default of a filter strip; the pill is for a short row of presets that narrow a list. It keeps the count chip and, since 0.48.0, scrolls
+ * sideways when it is wider than its row (no "+n" menu), and draws no line.
  */
 const meta: Meta = { title: 'Navigation & Data/Filter pills (0.46.2)', parameters: { layout: 'padded' } };
 export default meta;
@@ -32,13 +32,13 @@ const boxOf = (root: ParentNode, selector: string): HTMLElement => {
   return found;
 };
 
-/** The same presets as the underline (default) and as pills; the pill strip has the track, no line, and keeps each count chip. At a narrow width the pills fold into a "+n" menu. */
+/** The same presets as the underline (default) and as pills; the pill strip has the track, no line, and keeps each count chip. At a narrow width the pills scroll sideways, every preset kept (0.48.0). */
 export const Presets: Story = {
   render: () => (
     <Matrix maxWidth={720}>
       <State label="underline (the default filter look)" direction="column"><Strip label="Underline presets" shape="underline" /></State>
       <State label="pill" direction="column"><Strip label="Pill presets" shape="pill" /></State>
-      <State label="pill that folds" direction="column"><div style={{ maxInlineSize: 300 }}><Strip label="Folding pill presets" shape="pill" /></div></State>
+      <State label="pill that scrolls" direction="column"><div style={{ maxInlineSize: 300 }}><Strip label="Scrolling pill presets" shape="pill" /></div></State>
     </Matrix>
   ),
   play: async ({ canvasElement }) => {
@@ -57,14 +57,15 @@ export const Presets: Story = {
       expect(getComputedStyle(pill).borderBottomWidth).toBe('0px');
       expect(underline.querySelector('[data-grammar-tabs-track="true"]')).toBeNull();
       // The count chips stay, the attention one in the accent soft pair.
-      // On a phone the strip folds some pills into its menu, so every count is drawn only where all five pills fit.
-      expect(pill.querySelectorAll('.starci-core-tab-count').length).toBe(window.innerWidth >= 768 ? 5 : pill.querySelectorAll('[role="tab"]').length);
+      // Every pill keeps its count chip at every width: a narrow strip scrolls, it never folds a pill away (0.48.0).
+      expect(pill.querySelectorAll('.starci-core-tab-count').length).toBe(5);
       expect(pill.querySelectorAll('.starci-core-tab-count').length).toBeGreaterThan(0);
       if (window.innerWidth >= 768) expect(boxOf(pill, '.starci-core-tab-count[data-grammar-attention="true"]').textContent).toBe('3');
       const tabs = [...pill.querySelectorAll<HTMLElement>('[role="tab"]')];
       expect(tabs[0]?.getAttribute('aria-selected')).toBe('true');
-      // A narrow pill strip folds what does not fit into a menu and keeps the selected pill visible.
-      expect(folding.querySelector('.starci-core-tabs-more')).not.toBeNull();
+      // A narrow pill strip keeps all five pills and scrolls inside its own scroller; the frame itself never overflows.
+      expect(folding.querySelector('.starci-core-tabs-more')).toBeNull();
+      expect(folding.querySelectorAll('[role="tab"]')).toHaveLength(5);
       expect(boxOf(folding, '[role="tab"][aria-selected="true"]').textContent).toContain('All');
       expect(folding.scrollWidth).toBeLessThanOrEqual(folding.clientWidth + 1);
     }, { timeout: 4000 });

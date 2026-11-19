@@ -140,7 +140,8 @@
 
     /*
      * THE COMMAND PALETTE (0.46.0) is a dialog that stands at the top of the page, not in its middle, so the results growing and shrinking while the person types
-     * never move the field; on a phone (below 40rem) it fills the screen, as a `size="full"` dialog does.
+     * never move the field. On a phone (below 40rem) it takes the full width at the top and stays as tall as its results (0.48.0: it no longer fills the screen,
+     * which left a tall empty sheet under a short list), capped by the screen; the results scroll inside.
      */
     .starci-core-dialog-container:has(.starci-core-command-palette) {
         justify-content: flex-start;
@@ -154,17 +155,34 @@
 
     @media (max-width: 40rem) {
         .starci-core-dialog-container:has(.starci-core-command-palette) {
+            align-self: flex-start;
             width: 100%;
-            height: 100%;
+            height: auto;
             margin-block-start: 0;
+        }
+
+        .starci-core-dialog-container:has(.starci-core-command-palette) > .starci-core-dialog {
+            flex: 0 1 auto;
+            align-self: flex-start;
+            max-height: 100%;
         }
     }
 
-    /* A phone's palette is the screen: the dialog grows to the container's height, the results scroll in the body. */
-    @media (max-width: 40rem) {
-        .starci-core-dialog-container:has(.starci-core-command-palette) > .starci-core-dialog {
-            flex: 1 1 auto;
+    /* The keys hint (arrows, Enter, Escape) is for a keyboard: a touch screen has none, so the palette's footer is not drawn on a coarse pointer (0.48.0). */
+    @media (pointer: coarse) {
+        .starci-core-dialog-container:has(.starci-core-command-palette) .starci-core-overlay-footer {
+            display: none !important;
         }
+    }
+
+    /*
+     * The row the arrows are on (virtual focus: the caret stays in the field) is drawn as a selected row, the --default fill, never the focus ring (0.48.0: the ring
+     * read as a heavy accent outline around every highlighted result).
+     */
+    .starci-core-command-palette .starci-core-list-box-item:is([data-focused="true"], [data-focus-visible="true"], [data-hovered="true"]) {
+        background: var(--default) !important;
+        outline: none !important;
+        box-shadow: none !important;
     }
 
     /* The padding gives the field's focus ring room inside the body, which clips what overflows it. */
@@ -433,6 +451,42 @@
 
     .starci-core-popover[data-entering] {
         animation: starci-core-overlay-fade var(--starci-core-motion-duration) var(--starci-core-motion-easing);
+    }
+
+    /*
+     * The panel's edge (0.48.0): a 1px `--border` and a soft shadow, so a panel over a white surface reads as a layer and never as a hole in the page. One look in
+     * every family; the vendor's heavier overlay shadow is replaced.
+     */
+    .starci-core-popover {
+        border: 1px solid var(--border);
+        box-shadow: var(--grammar-shadow-popover) !important;
+    }
+
+    /*
+     * A phone (at most 30rem, 480px): the popover is a sheet (0.48.0). It leaves its trigger and stands on the bottom edge at the full width, its top corners rounded,
+     * at most 85% of the screen tall, over a scrim that dims the page (a spread shadow of the foreground at 40%, the modal backdrop's tone). A press on the scrim
+     * is outside the panel, so it closes, as before. The arrow has no trigger to point at and is not drawn.
+     */
+    @media (max-width: 30rem) {
+        .starci-core-popover,
+        .starci-core-popover:is([data-size="sm"], [data-size="lg"]) {
+            position: fixed !important;
+            inset: auto 0 0 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            max-height: 85dvh !important;
+            border-width: 1px 0 0;
+            border-radius: var(--starci-core-surface-radius) var(--starci-core-surface-radius) 0 0 !important;
+            padding-block-end: env(safe-area-inset-bottom);
+            box-shadow: var(--grammar-shadow-scrim) !important;
+            transform: none !important;
+            /* The scroll fade is a mask, which would clip the scrim to the sheet's box: the sheet scrolls without it. */
+            mask-image: none !important;
+        }
+
+        .starci-core-popover .starci-core-popover-arrow {
+            display: none;
+        }
     }
 
     .starci-core-popover-dialog {

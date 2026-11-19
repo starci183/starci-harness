@@ -1,7 +1,7 @@
 export type LeadingNumberProps = {
     /** One-based position of the item inside its authored sequence. */
     readonly position: number
-    /** `ordinal` (default) draws "1."; `hash` draws "#1", muted and semibold, for numbered passages or results. */
+    /** `ordinal` (default) draws "1."; `hash` draws "#1", muted and regular (0.48.0), for numbered passages or results. */
     readonly format?: "ordinal" | "hash"
 }
 

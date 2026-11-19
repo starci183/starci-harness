@@ -113,9 +113,22 @@ export type SectionProps = SectionStatus & SectionCaption & (
     | SublabelSection
 )
 
+/**
+ * The placeholder row of a list that has no row to measure yet (0.48.0), in the shape its layout's real rows take, so the skeleton is the loaded list's box: a
+ * `rows` row is a label over a line, a `keyValue` row a key and its value, a `settings` row a label, its hint and the control at the end, a `suggestions`
+ * row one line. A block that knows more (a leading mark, a meta) passes its same-shape placeholder rows as `items`.
+ */
+const placeholderRow = (layout: ListSection["layout"], index: number): SectionRow => {
+    const id = `loading-${String(index)}`
+    if (layout === "keyValue") return { id, title: " ", value: " " }
+    if (layout === "settings") return { id, title: " ", description: " ", control: <span /> }
+    if (layout === "suggestions") return { id, title: " " }
+    return { id, title: " ", description: " " }
+}
+
 const listRows = (props: ListSection, isLoading: boolean) => {
     if (isLoading && props.items.length === 0) {
-        return Array.from({ length: LOADING_ROWS }, (_, index) => <ListRow key={index} row={{ id: String(index), title: " ", description: " " }} isLoading />)
+        return Array.from({ length: LOADING_ROWS }, (_, index) => <ListRow key={index} row={placeholderRow(props.layout, index)} isLoading />)
     }
     return props.items.map((row) => <ListRow key={row.id} row={row} isLoading={isLoading} />)
 }

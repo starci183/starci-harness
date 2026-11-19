@@ -58,6 +58,20 @@
 
     /* The head variant (0.36.0): the label then an arrow that slides 3px toward the end on hover and focus; the underline on hover is the vendor's. */
     .starci-core-link[data-grammar-link-variant="head"] { display: inline-flex; align-items: center; gap: 0.25rem; white-space: nowrap; }
+    /*
+     * The touch floor of a standalone link (0.48.0): a head link (a section head's "Xem tất cả", a Bento tile's "Tìm hiểu thêm") keeps its 14 or 16 line, and an unseen
+     * layer centred on it makes the hit area 48 x 48 (above the 44 floor), so the visual never changes.
+     */
+    .starci-core-link[data-grammar-link-variant="head"] { position: relative; }
+    .starci-core-link[data-grammar-link-variant="head"]::before {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        inline-size: max(100%, 3rem);
+        block-size: max(100%, 3rem);
+        content: "";
+        transform: translate(-50%, -50%);
+    }
     .starci-core-link-arrow { display: inline-flex; flex: none; text-decoration: none; transition: transform var(--starci-core-motion-duration) var(--starci-core-motion-easing); }
     .starci-core-link[data-grammar-link-variant="head"]:is(:hover, [data-hovered="true"], :focus-visible) .starci-core-link-arrow { transform: translateX(var(--grammar-link-arrow-travel)); }
     [dir="rtl"] .starci-core-link-arrow { scale: -1 1; }
@@ -607,6 +621,40 @@
         margin-inline-start: auto;
     }
 
+    /*
+     * THE SEARCH SLOT (0.48.0): before the end cluster, pushed to the end like it; `wide` shows from 48rem, `compact` below. The actions after it then sit beside it,
+     * not pushed again. The width decides in CSS, so an app writes no media class.
+     */
+    .starci-core-top-bar-search {
+        display: flex;
+        min-width: 0;
+        flex: 0 1 auto;
+        align-items: center;
+        margin-inline-start: auto;
+    }
+
+    .starci-core-top-bar-search + .starci-core-top-bar-actions { margin-inline-start: 0; }
+    .starci-core-top-bar-search-wide,
+    .starci-core-top-bar-search-compact { display: contents; }
+
+    @media (max-width: 47.999rem) {
+        .starci-core-top-bar-search-wide { display: none; }
+    }
+
+    @media (min-width: 48rem) {
+        .starci-core-top-bar-search-compact { display: none; }
+    }
+
+    /*
+     * startInset="sidebar" (0.48.0): from 48rem the brand starts on the column of the sidebar's item icons (the sidebar list's inset plus the item's own), so the brand mark
+     * and the icons under it stand on one vertical line. Below 48rem the sidebar leaves and the bar keeps the page inset.
+     */
+    @media (min-width: 48rem) {
+        .starci-core-top-bar[data-grammar-top-bar-start="sidebar"] .starci-core-top-bar-main {
+            padding-inline-start: max(var(--grammar-sidebar-icon-inset), env(safe-area-inset-left));
+        }
+    }
+
     /* The custom buttons (0.37.15): round icon buttons before the app's fixed cluster; the attention dot sits at the glyph's top end. At phone width only the first stays. */
     .starci-core-top-bar-custom {
         display: flex;
@@ -1110,6 +1158,24 @@
         max-width: 100%;
         overflow-x: auto;
         overscroll-behavior-inline: contain;
+    }
+
+    /*
+     * A table wider than its region (0.48.0): the scroll region is a focusable, named region (Tab reaches it, the arrows scroll it) with the focus ring inside its
+     * edge, and its fading edges (the scroll fade) show that columns wait beyond them. At a phone width the end edge also carries a hairline shadow while more
+     * columns wait, so the cue holds where the fade is subtle or unsupported.
+     */
+    .starci-core-data-table-scroll[data-grammar-table-overflows="true"]:focus-visible {
+        outline: 2px solid var(--focus);
+        outline-offset: -2px;
+    }
+
+    @media (max-width: 47.999rem) {
+        .starci-core-data-table-scroll[data-grammar-table-overflows="true"] {
+            background:
+                linear-gradient(to left, var(--surface), var(--surface)) right center / 1rem 100% no-repeat local,
+                radial-gradient(farthest-side at 100% 50%, color-mix(in oklab, var(--foreground) 16%, transparent), transparent) right center / 0.75rem 100% no-repeat scroll;
+        }
     }
 
     .starci-core-data-table[data-grammar-table-bounded="true"] .starci-core-data-table-scroll {
@@ -1847,6 +1913,25 @@
         outline-offset: -2px;
     }
 
+    /*
+     * A figure that is a link (0.48.0) shows it at rest: its term ends with the muted chevron of a pressable row, pushed to the cell's end, and the cell takes the
+     * row hover fill (--surface-secondary) under a pointer, with the pointer cursor. The whole cell stays the one press target.
+     */
+    .starci-core-description-stat-term > .starci-core-figure-cue {
+        display: inline-flex;
+        flex: none;
+        margin-inline-start: auto;
+        color: var(--muted);
+    }
+
+    [dir="rtl"] .starci-core-figure-cue { scale: -1 1; }
+
+    .starci-core-description-pair[data-grammar-figure-destination="true"]:has(> dd > .starci-core-figure-link) { cursor: pointer; }
+
+    @media (hover: hover) {
+        .starci-core-description-pair[data-grammar-figure-destination="true"]:has(> dd > .starci-core-figure-link):hover { background: var(--surface-secondary); }
+    }
+
     .starci-core-description-unit {
         color: var(--muted);
         font-size: var(--grammar-text-md);
@@ -2166,6 +2251,11 @@
         opacity: 0;
     }
 
+    /* An eager picture (0.48.0) is never held back for script: it paints with its bytes, before hydration, over the plate; no shimmer is drawn over it. */
+    .starci-core-image[data-grammar-image-load="eager"][data-grammar-image-state="loading"] .starci-core-image-element {
+        opacity: 1;
+    }
+
     .starci-core-image[data-grammar-image-state="loaded"] .starci-core-image-element {
         opacity: 1;
         transition: opacity var(--starci-core-motion-duration) var(--starci-core-motion-easing);
@@ -2352,14 +2442,18 @@
         content: "";
     }
 
-    .starci-core-timeline-item[data-grammar-timeline-state="affirmative"] .starci-core-timeline-marker { color: var(--success); }
-    .starci-core-timeline-item[data-grammar-timeline-state="informative"] .starci-core-timeline-marker { color: var(--informative, var(--accent)); }
-    .starci-core-timeline-item[data-grammar-timeline-state="cautionary"] .starci-core-timeline-marker { color: var(--warning); }
-    .starci-core-timeline-item[data-grammar-timeline-state="negative"] .starci-core-timeline-marker { color: var(--danger); }
-
+    /*
+     * The dot is neutral (--muted) on every entry that is not the current one (0.48.0, the dot rule: a coloured dot is for a live state only). A past entry's
+     * outcome is said by its words; only the current entry's dot takes a colour: its state's tone, or the accent when its state is neutral.
+     */
     .starci-core-timeline-item[data-grammar-current="true"] .starci-core-timeline-marker {
         color: var(--accent);
     }
+
+    .starci-core-timeline-item[data-grammar-current="true"][data-grammar-timeline-state="affirmative"] .starci-core-timeline-marker { color: var(--success); }
+    .starci-core-timeline-item[data-grammar-current="true"][data-grammar-timeline-state="informative"] .starci-core-timeline-marker { color: var(--informative, var(--accent)); }
+    .starci-core-timeline-item[data-grammar-current="true"][data-grammar-timeline-state="cautionary"] .starci-core-timeline-marker { color: var(--warning); }
+    .starci-core-timeline-item[data-grammar-current="true"][data-grammar-timeline-state="negative"] .starci-core-timeline-marker { color: var(--danger); }
 
     .starci-core-timeline-item[data-grammar-current="true"] .starci-core-timeline-marker:empty::after {
         background: currentColor;
