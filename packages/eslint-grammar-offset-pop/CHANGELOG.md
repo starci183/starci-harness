@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.49.2 - 2026-11-20
+
+- Changed: versioned with the Grammar 0.49.2 (ChoiceButtons, the suggestion-buttons and form-control rules in eslint-grammar-core).
+
 ## 0.49.1 - 2026-11-20
 
 - Changed: versioned with the Grammar 0.49.1 (ToastStack, no lint change).

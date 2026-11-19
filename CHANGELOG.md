@@ -1,8 +1,10 @@
 # Changelog
 
-## Unreleased
+## 1.1.0-alpha.180 - 2026-11-20
 
 - Changed (`starci lane land`, PROJECT-BRANCH-2 item 6): a batch whose `npm ci`, codegen or `build:modules` ran out of memory releases the dev lock and waits for 6 GB free RAM before the next batch, instead of starting again a second later; the out-of-memory text also matches npm's and turbo's `exited 134` / `exited (134)`.
+
+- Changed (pins): @starci/hfs 6.13.59, @starci/gallery 0.1.10, the Grammar family 0.49.2 (ChoiceChips at 20px, ChoiceButtons).
 
 ## 1.1.0-alpha.179 - 2026-11-20
 
