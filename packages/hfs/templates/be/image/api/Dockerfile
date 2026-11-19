@@ -21,7 +21,7 @@ COPY turbo.json ./
 COPY be/tsconfig.json be/tsconfig.build.json be/
 COPY be/src be/src
 {{copyBeInputs}}COPY be/apps/{{app}} be/apps/{{app}}
-RUN npm run build:be
+{{copyRootInputs}}RUN npm run build:be
 
 FROM {{nodeImage}} AS runtime
 WORKDIR /app

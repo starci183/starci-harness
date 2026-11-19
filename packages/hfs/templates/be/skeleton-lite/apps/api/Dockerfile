@@ -20,7 +20,7 @@ COPY turbo.json ./
 COPY be/tsconfig.json be/tsconfig.build.json be/
 COPY be/src be/src
 COPY be/apps/api be/apps/api
-RUN npm run build:be
+{{copyRootInputs}}RUN npm run build:be
 
 FROM node:22.20.0-alpine3.21 AS runtime
 WORKDIR /app

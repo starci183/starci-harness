@@ -109,6 +109,7 @@ export interface AppSourceFacts {
   runtimeExample: boolean; files: string[]; read: (file: string) => string; workPresent: boolean; hasImage: (file: string) => boolean;
   /** The project needs its own object store: statics/ holds a file, or its back end uses storage (storage-need.mts). Absent: the starter's yes. */
   storageNeeded?: boolean;
+  hasBrandStatics: boolean; // the repository holds statics/brand/, the shared brand a package bakes into its seed (package.static.from: ../../statics/brand/<name>)
   hasContracts: boolean; // the back end holds be/contracts/ (a back end that emits no contract has none)
   /** The root workspace packages of the app: the names of the folders of packages/ that hold a package.json and a src/, sorted. */
   rootPackages?: readonly string[];
@@ -401,7 +402,7 @@ export function appSource(root: string, { parseYaml, notices }: { parseYaml?: Pa
       const scope = declaredPackageScopes((file) => { try { return fs.readFileSync(path.join(root, file), 'utf8'); } catch { return null; } })(folder);
       return scope === null ? [] : [[folder, scope]];
     })),
-    workPresent: fs.existsSync(path.join(root, '.starciwork')), hasContracts: fs.existsSync(path.join(root, 'be', 'contracts')), hasImage: (file: string) => isFile(path.join(root, file), { followLinks: false }),
+    workPresent: fs.existsSync(path.join(root, '.starciwork')), hasContracts: fs.existsSync(path.join(root, 'be', 'contracts')), hasBrandStatics: fs.existsSync(path.join(root, 'statics', 'brand')), hasImage: (file: string) => isFile(path.join(root, file), { followLinks: false }),
     stack: readDeclaredStack(root, { parseYaml }), quality: readDeclaredQuality(root, { parseYaml }),
     badges: readDeclaredBadges(root, { parseYaml, notices }),
     defaultLocale: appDefaultLocale(root),
@@ -523,7 +524,7 @@ const IMAGE_TEMPLATE: Readonly<Record<string, string>> = Object.freeze({ api: 'b
  * them and the be contracts only when the fe side reads them and the back end holds them (`source.hasContracts`: a back end that emits no
  * contract has no be/contracts/, and a COPY of a missing folder fails the image build), so each COPY names a folder the app has.
  */
-export function imageFiles(app: ResolvedApp, source?: Partial<Pick<AppSourceFacts, 'hasImage' | 'hasContracts'>>): { path: string; content: string }[] {
+export function imageFiles(app: ResolvedApp, source?: Partial<Pick<AppSourceFacts, 'hasImage' | 'hasContracts' | 'hasBrandStatics'>>): { path: string; content: string }[] {
   const side = app.sides.fe;
   const contracts = (side.reads ?? []).includes('be/contracts/') && source?.hasContracts === true;
   const inputs = [...(opensPackages(side) ? ['fe/packages'] : []), ...(contracts ? ['be/contracts'] : [])];
@@ -531,10 +532,12 @@ export function imageFiles(app: ResolvedApp, source?: Partial<Pick<AppSourceFact
   // The folders outside be/ that the back end declares it reads (the generated database types of a lite back end, db/types/) are in every one of its images.
   const beFolders = (app.sides.be.reads ?? []).map(folder => folder.replace(/\/$/, ''));
   const copyBeInputs = beFolders.map(folder => `COPY ${folder} ${folder}\n`).join('');
+  // hfs.json marks the repository root, the only place a package may read a shared folder from, so every image build holds it, and statics/brand when the repository has it.
+  const copyRootInputs = `COPY hfs.json hfs.json\n${source?.hasBrandStatics === true ? 'COPY statics/brand statics/brand\n' : ''}`;
   const entries = imageEntries(app, source).map(({ side: which, entry: item }) => ({ side: which, item }));
   return entries.map(({ side: which, item }) => {
     const template = IMAGE_TEMPLATE[item.kind];
-    const vars: Record<string, string> = { project: app.project, app: item.name, nodeImage: NODE_IMAGE, port: DEFAULT_PORT, copyInputs, copyBeInputs };
+    const vars: Record<string, string> = { project: app.project, app: item.name, nodeImage: NODE_IMAGE, port: DEFAULT_PORT, copyInputs, copyBeInputs, copyRootInputs };
     return { path: dockerfilePath(which, item.name), content: render(readBundled(`${template}/Dockerfile`), vars) };
   });
 }

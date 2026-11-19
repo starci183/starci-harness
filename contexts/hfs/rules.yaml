@@ -1445,7 +1445,7 @@ rules:
       - {kind: eslint-be, id: realtime-topic-scope}
   - id: R187
     code: HFS_DOCKER_BUILD_CONTEXT
-    law: Every app image builds from the app root, no COPY or ADD source leaves the build context, and a Next image copies be/contracts only when the back end holds it.
+    law: Every app image builds from the app root, no COPY or ADD source leaves the build context, and a Next image copies be/contracts only when the back end holds it. Every image copies hfs.json (the repository root marker a package reads a shared folder from) and statics/brand when the repository holds it, before its build step.
     failureCodes:
       - HFS_DOCKER_BUILD_CONTEXT
     enforcers:

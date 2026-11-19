@@ -139,6 +139,8 @@ world (BE_TEST_TOPOLOGY), `src/tests/fixtures/` holds data and builders only, an
 `Test.createTestingModule({ imports: [AppModule] }).overrideProvider(...)` and `.listen(0)`, with specs calling its `bootWorld`; a
 passing one declares `src/tests/world/test-world.config.ts` and its specs call `useTestWorld({ modules })` or `useTestWorld({ apps })`.
 
+A boot check that imports test fixtures or builders (a module that boots the app on stubbed ports to prove its wiring) is test code: it lives under `be/src/tests/` (for example `be/src/tests/api-boot.ts`), which the synced `be/tsconfig.build.json` already excludes, so the image build never compiles it. It never sits in an app folder such as `be/apps/<app>/src/boot.ts`, and no app edits the synced `be/tsconfig.build.json` to hide one.
+
 Integration specs boot capability modules through `useTestWorld({ modules })` on the local stack (lite: the db
 CLI database and the declared Redis), fake only external providers at the network edge, override no provider, guard or
 token, and assert persisted state. Lite proves composition by compiling the real AppModule graph (`starci app check
