@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.1.0-alpha.178 - 2026-11-20
 
 - Changed (`starci lane land`, PROJECT-BRANCH-2): a gate that ran out of memory (exit 134, 137 or 0xC0000409, a V8 heap message, the heap-cap note or ENOMEM, from the gate or a check it reports) blames no lane. The round waits for 6 GB free RAM and runs again, at most twice; a round that still runs out of memory parks its lanes (state `parked`) instead of rejecting them. A push whose check ran out of memory waits for the same RAM before the next batch.
 
