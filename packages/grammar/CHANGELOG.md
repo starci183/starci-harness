@@ -1,8 +1,8 @@
 # Changelog
 
-## Unreleased - ToastStack on HeroUI's Toast
+## 0.49.1 - 2026-11-20 - ToastStack on HeroUI's Toast
 
-Lane `grammar-toast-stack` (owner 2026-11-20: a connect-test notice renders through HeroUI's toast, one toast per act, bottom end). The train assigns the version.
+A notice renders through HeroUI's toast, one toast per act, bottom end.
 
 - Added (`ToastStack`, `stackToast`): the region and the callable of HeroUI's own Toast (white card, status icon, title, description, one action, close). `stackToast.show({ title, description?, meta?, tone?, action?, timeout? })` answers an id; `stackToast.update(id, options)` turns that toast into another, so a pending check (a spinner) becomes its result in place; the title is the foreground 14 / 500 and the description 12 muted whatever the variant and one act is one toast; `stackToast.dismiss(id)`. `tone` maps to HeroUI's variants (`affirmative` success, `negative` danger, `cautionary` warning, `informative` accent, `pending` a spinner); a pending, a negative and an action toast stay until dismissed. Mount one `ToastStack` inside the root (default `bottom end`). Generic: no domain words. `Toaster` and `toastQueue` are unchanged.
 

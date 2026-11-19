@@ -49,3 +49,15 @@ FEEDBACK-1..3, ACCENT-5, STATE-8. Proof: TRUTH-3, UX-4, UX-6, TASTE-5.
 
 ## The retry of a negative banner (0.48.0)
 A negative `Alert`'s `action` is the `alternative` (outlined) button, the one look of "Thử lại" wherever a read failed, as in an `ErrorView`; before it was the destructive fill. A destructive decision belongs to an `AlertDialog`, never to a banner's action. Law `DNA-COMMON-RETRY-ONE-LOOK`.
+
+## ToastStack and stackToast (0.49.1)
+`ToastStack` is the region of HeroUI's own Toast (white card, status icon, title, description, one action, close) and `stackToast` is its callable: `show({ title, description?, meta?, tone?, action?, timeout? })` answers an id, `update(id, options)` turns that toast into another, `dismiss(id)` closes it. One act is one toast: a check that starts pending is updated in place to its result, never followed by a second toast. Mount exactly one `ToastStack` inside the root (default `bottom end`); it sits beside `Toaster` and leaves it unchanged. Generic: the words, the tone and the one action are the app's.
+
+| Tone | Variant | Stays |
+| --- | --- | --- |
+| affirmative, informative, cautionary, neutral | success, accent, warning, default | 5 s |
+| negative | danger | until dismissed |
+| pending | a spinner | until updated or dismissed |
+| any with an action | as its tone | until dismissed |
+
+The title is the foreground at 14 / 500 and the description the muted colour at 12 whatever the variant (`DNA-COMMON-TOASTSTACK-TYPE`); the status icon alone keeps the variant's colour. A pending toast is the one act's own progress where the act's outcome is itself a toast; running work that has a place on the page keeps the initiator's pending (UX-4). Laws `DNA-COMMON-ONE-TOASTSTACK`, `DNA-COMMON-TOASTSTACK-IN-ROOT`. Story `Overlays/ToastStack`.

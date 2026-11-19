@@ -343,7 +343,7 @@ roles:
     sizes: none
     states: [persistent (action or negative), timed, paused on hover or focus]
     grammarMayChange: [tone paint, toast spacing]
-    dna: [DNA-COMMON-ONE-TOASTER, DNA-COMMON-TOASTER-LIVE, DNA-COMMON-ALERT-TONE-PAIR-INFORMATIVE, DNA-COMMON-TOAST-TONE-INFORMATIVE, DNA-COMMON-ALERT-TONE-PAIR-SUCCESS, DNA-COMMON-ALERT-TONE-PAIR-WARNING, DNA-COMMON-ALERT-TONE-PAIR-DANGER, DNA-COMMON-ALERT-TONE-PAIR-DEFAULT, DNA-COMMON-ALERT-TONE-PAIR-ACCENT, DNA-COMMON-RETRY-ONE-LOOK]
+    dna: [DNA-COMMON-ONE-TOASTER, DNA-COMMON-TOASTER-LIVE, DNA-COMMON-ONE-TOASTSTACK, DNA-COMMON-TOASTSTACK-IN-ROOT, DNA-COMMON-TOASTSTACK-TYPE, DNA-COMMON-ALERT-TONE-PAIR-INFORMATIVE, DNA-COMMON-TOAST-TONE-INFORMATIVE, DNA-COMMON-ALERT-TONE-PAIR-SUCCESS, DNA-COMMON-ALERT-TONE-PAIR-WARNING, DNA-COMMON-ALERT-TONE-PAIR-DANGER, DNA-COMMON-ALERT-TONE-PAIR-DEFAULT, DNA-COMMON-ALERT-TONE-PAIR-ACCENT, DNA-COMMON-RETRY-ONE-LOOK]
 
   - id: empty-state
     ui: ui/components/empty-state.md
@@ -815,6 +815,21 @@ mustKeep:
           - { select: '[data-grammar-toaster-live="polite"][aria-live="polite"]', value: 1 }
           - { select: '[data-grammar-toaster-live="assertive"][aria-live="assertive"]', value: 1 }
       owner: grammars/common.md#one-root
+    - id: DNA-COMMON-ONE-TOASTSTACK
+      role: alert
+      law: A document holds at most one ToastStack, inside the grammar root; it is the only region stackToast draws into.
+      measure: { kind: count, select: 'document [data-component="ToastStack"]', op: "<=", value: 1 }
+      owner: grammars/common.md#one-root
+    - id: DNA-COMMON-TOASTSTACK-IN-ROOT
+      role: alert
+      law: A ToastStack renders inside the grammar root, like every overlay.
+      measure: { kind: count, select: 'document [data-component="ToastStack"]:not(.grammar-common-root[data-grammar-family] *)', op: "=", value: 0 }
+      owner: grammars/common.md#one-root
+    - id: DNA-COMMON-TOASTSTACK-TYPE
+      role: alert
+      law: "A stacked toast's title is the foreground at 14 / 500 and its description the muted colour at 12 in every variant; the status icon alone keeps the variant's colour."
+      measure: { kind: style, select: '[data-component="ToastStack"] .toast .toast__title', checks: [{ metric: font-size, op: "=", value: { token: --grammar-text-md } }, { metric: font-weight, op: "=", value: 500 }, { metric: color, op: "=", value: { token: --foreground } }] }
+      owner: ui/components/toast-alert.md
     - id: DNA-COMMON-OVERLAY-IN-ROOT
       role: [dialog, menu, select]
       law: Every open overlay (dialog, alert dialog, drawer, popover, menu, listbox popover, tooltip) renders inside the grammar root.

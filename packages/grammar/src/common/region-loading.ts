@@ -31,5 +31,6 @@ export const REGION_LOADING_EXEMPT: Readonly<Record<string, string>> = {
     "composite/Footer": "app chrome",
     "composite/Sidebar": "app chrome",
     "composite/Toast": "a transient overlay",
+    "composite/ToastStack": "the region of transient overlays, no data",
     "composite/TopBar": "app chrome",
 }

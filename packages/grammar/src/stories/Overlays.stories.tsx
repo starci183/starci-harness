@@ -527,3 +527,23 @@ export const Toaster: Story = {
   parameters: openParameters,
   render: () => <ToasterDemo />,
 };
+
+const ToastStackDemo = () => {
+  const run = () => {
+    const id = G.stackToast.show({ title: 'Checking the connection', tone: 'pending' });
+    setTimeout(() => G.stackToast.update(id, { title: 'Connection works', description: 'Answered in 1.2 s.', tone: 'affirmative' }), 1200);
+  };
+  return (
+    <div style={{ display: 'flex', gap: '0.75rem' }}>
+      <G.Button intent="alternative" onPress={run}>Check</G.Button>
+      <G.Button intent="alternative" onPress={() => G.stackToast.show({ title: 'Check failed', description: 'The service refused the request.', tone: 'negative', action: { label: 'Retry', onAction: noop } })}>Fail</G.Button>
+      <G.Button intent="neutral" onPress={() => G.stackToast.clear()}>Clear</G.Button>
+      <G.ToastStack />
+    </div>
+  );
+};
+
+export const ToastStack: Story = {
+  parameters: openParameters,
+  render: () => <ToastStackDemo />,
+};

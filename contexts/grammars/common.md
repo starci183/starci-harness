@@ -54,7 +54,7 @@ Mount exactly one grammar root (`<Grammar>GrammarRoot`) around the whole app, wi
 imported once. Every overlay trigger renders inside it: `Dialog`, `AlertDialog`, `Drawer`, `Popover`,
 `DropdownMenu` and the field popovers portal into the nearest root (`owner: src/core/overlayScope.tsx`), so
 they keep the grammar's tokens, theme and forced-colours mapping; a trigger outside the root opens an unstyled
-overlay in `<body>`. Mount exactly one `Toaster`, inside the root; it renders in place with one polite and one
+overlay in `<body>`. Mount exactly one `Toaster` (or one `ToastStack`, the region of `stackToast`), inside the root; it renders in place with one polite and one
 assertive live region, so a second one duplicates every announcement. The root also owns client-side
 navigation: it takes the app router's `navigate` and `useHref` once and mounts the vendor `RouterProvider`, so every
 Grammar `href` (a `Link`, a `Button`, a `Page` breadcrumb, a `ListBox` or `Menu` item, a `DataTable` row) navigates inside the app without a reload; the app mounts no router provider of its own. This is

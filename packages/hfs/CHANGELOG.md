@@ -1,5 +1,9 @@
 # Changelog
 
+## 6.13.58 - 2026-11-20
+
+- Changed (pins): the Grammar family 0.49.1 and @starci/gallery 0.1.9 in canon-pins.yaml.
+
 ## 6.13.57 - 2026-11-20
 
 - Added (R277, `rules/secret-custody-only.mts`, `HFS_PACKAGE_SECRET_NOT_SEALED`, `HFS_PACKAGE_SECRET_RECIPIENT`): a business package may commit its provider keys as `packages/<pkg>/secrets/<name>.sops.yaml`, only as a valid sops document (every leaf `ENC[...]`, a `sops` block with age recipients) sealed to the recipients its own `packages/<pkg>/.sops.yaml` names for that path. Plaintext is `HFS_PACKAGE_SECRET_NOT_SEALED`, a missing or different recipient set `HFS_PACKAGE_SECRET_RECIPIENT`; `.env`, `*.secrets.env` and other plaintext stay refused. (Ported from the sealed-package-secrets lane, which was written against the legacy layout.)

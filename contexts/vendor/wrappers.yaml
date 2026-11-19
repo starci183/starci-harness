@@ -49,6 +49,7 @@ wrappers:
       overrides: [
         { kind: style, target: "Tabs.Tab:padding", reason: "an underline tab takes the row step per side and the first label stands on the content edge" } ] }
   - { file: core/branch/Tooltip/index.tsx, wraps: [Tooltip], delegates: { Tooltip: [Trigger] } }
+  - { file: core/composite/ToastStack/index.tsx, wraps: [ToastProvider] }
   - { file: core/composite/Toast/index.tsx, wraps: [Alert, Spinner],
       overrides: [
         { kind: style, target: "Alert.Root:padding", reason: "a toast holds its content at the container inset, its close side one step less" },

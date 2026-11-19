@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.49.1 - 2026-11-20
+
+- Changed: versioned with the Grammar 0.49.1 (ToastStack, no lint change).
+
 ## 0.49.0 - 2026-11-19 - Fragment
 
 - Added: `starci-grammar/fragment-has-reason` (law `fragment`): a Grammar `<Fragment>` region (followed through an import alias such as `GrammarFragment`; React's Fragment and `<>` are not regions) names a non-empty string literal `reason`.
