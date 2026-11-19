@@ -338,13 +338,13 @@ test("HFS_SECRET_OUTSIDE_ENC (full): a sealed file outside its home is refused; 
 });
 
 const PKG_RECIPIENT = `age1${"z".repeat(58)}`;
-const AGE_ENTRY = (r) =>
+const AGE_ENTRY = (r: string) =>
   `    - recipient: ${r}\n      enc: |\n        -----BEGIN AGE ENCRYPTED FILE-----\n        YWdlLWJsb2Nr\n        -----END AGE ENCRYPTED FILE-----\n`;
-const sealedPackageYaml = (keys, recipients = [PKG_RECIPIENT]) =>
-  keys.map((key) => `${key}: ${ENC}`).join("\n") +
+const sealedPackageYaml = (keys: string[], recipients: string[] = [PKG_RECIPIENT]) =>
+  keys.map((key: string) => `${key}: ${ENC}`).join("\n") +
   `\nsops:\n  age:\n${recipients.map(AGE_ENTRY).join("")}` +
   `  lastmodified: "2026-01-01T00:00:00Z"\n  mac: ${ENC}\n  version: 3.13.2\n`;
-const packageSops = (recipients = PKG_RECIPIENT) =>
+const packageSops = (recipients: string = PKG_RECIPIENT) =>
   `creation_rules:\n  - path_regex: secrets/.*\.sops.yaml$\n    age: ${recipients}\n`;
 
 for (const edition of ["lite", "full"]) {
@@ -355,11 +355,11 @@ for (const edition of ["lite", "full"]) {
     write(root, "packages/shop/secrets/dev.sops.yaml", sealedPackageYaml(["OPENAI_API_KEY", "ZALO_SECRET"]));
     write(root, "packages/two/.sops.yaml", packageSops(`${PKG_RECIPIENT},${second}`));
     write(root, "packages/two/secrets/prod.sops.yaml", sealedPackageYaml(["KEY"], [second, PKG_RECIPIENT]));
-    const files = ["packages/shop/secrets/dev.sops.yaml", "packages/two/secrets/prod.sops.yaml"];
+    const files: string[] = ["packages/shop/secrets/dev.sops.yaml", "packages/two/secrets/prod.sops.yaml"];
     assert.deepEqual(secretCustodyOnlyFindings(ctx(root, files, edition)), []);
     // R06 reads the same file as clean too: the ENC leaves and the age block hold no plaintext.
     assert.deepEqual(
-      secretFileFindings({ file: files[0], text: fs.readFileSync(path.join(root, files[0]), "utf8") }),
+      secretFileFindings({ file: files[0]!, text: fs.readFileSync(path.join(root, files[0]!), "utf8") }),
       [],
     );
   });
