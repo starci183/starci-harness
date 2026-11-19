@@ -2,6 +2,8 @@
 
 ## 1.1.0-alpha.179 - 2026-11-20
 
+- Changed: the CLI requires @starci/hfs@6.13.58, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
+
 - Changed (pins): @starci/hfs 6.13.58, @starci/gallery 0.1.9, the Grammar family 0.49.1 (ToastStack and stackToast).
 
 ## 1.1.0-alpha.178 - 2026-11-20
