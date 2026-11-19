@@ -36,7 +36,8 @@ export const Panel: Story = {
     await waitFor(() => {
       const width = panelWidth(canvasElement);
       const viewport = canvasElement.ownerDocument.documentElement.clientWidth;
-      expect(Math.abs(width - Math.min(26 * 16, viewport - 32))).toBeLessThan(2);
+      // At 480px and narrower the panel is the full-width sheet (0.48.0).
+      expect(Math.abs(width - (viewport <= 480 ? viewport : Math.min(26 * 16, viewport - 32)))).toBeLessThan(2);
       const name = canvasElement.ownerDocument.querySelector<HTMLElement>('.starci-core-popover .starci-core-list-row-name');
       expect(name?.getBoundingClientRect().width ?? 0).toBeGreaterThan(140);
     }, { timeout: 4000 });
@@ -55,7 +56,7 @@ export const Short: Story = {
   play: async ({ canvasElement }) => {
     await waitFor(() => {
       const viewport = canvasElement.ownerDocument.documentElement.clientWidth;
-      expect(Math.abs(panelWidth(canvasElement) - Math.min(26 * 16, viewport - 32))).toBeLessThan(2);
+      expect(Math.abs(panelWidth(canvasElement) - (viewport <= 480 ? viewport : Math.min(26 * 16, viewport - 32)))).toBeLessThan(2);
     }, { timeout: 4000 });
   },
 };
@@ -91,7 +92,7 @@ export const Sizes: Story = {
       await waitFor(() => { expect(document.querySelector('.starci-core-popover')).toBeNull(); }, { timeout: 4000 });
     }
     for (const [size, rem] of [['sm', 18], ['md', 26], ['lg', 36]] as const) {
-      expect(Math.abs((widths[size] ?? 0) - Math.min(rem * 16, viewport - 32))).toBeLessThan(2);
+      expect(Math.abs((widths[size] ?? 0) - (viewport <= 480 ? viewport : Math.min(rem * 16, viewport - 32)))).toBeLessThan(2);
     }
   },
 };

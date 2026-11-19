@@ -7,7 +7,7 @@ import { BellGlyph, BookGlyph, GroupGlyph, HomeGlyph, PlusGlyph, SettingsGlyph, 
 /**
  * THE COMMAND PALETTE (0.46.0). The one search of the whole app: a dialog with a field and grouped results, opened by a press or Ctrl K (Command K on a Mac) through
  * `useCommandPaletteShortcut`. The caret stays in the field and the arrows, Home and End move through the results, Enter chooses and Escape closes. The palette never filters:
- * the app searches and passes `groups`, `isLoading`, `error` and what an empty search shows. At 390 it fills the screen. Evidence: NIVO console shell canvas (`01-shell-app.html`,
+ * the app searches and passes `groups`, `isLoading`, `error` and what an empty search shows. At 390 it takes the full width at the top and is as tall as its results (0.48.0). Evidence: NIVO console shell canvas (`01-shell-app.html`,
  * the search of the top bar and its grouped results), `GRAMMAR-GAPS.md` G1.
  */
 const meta: Meta = { title: 'Overlays/Command palette (0.46.0)', parameters: { layout: 'padded', grammar: { minHeight: '40rem' } } };
@@ -162,7 +162,7 @@ export const Failed: Story = {
   },
 };
 
-/** At 390 the palette fills the screen (inside the page inset) and the results scroll inside it. */
+/** At 390 the palette takes the full width at the top (inside the page inset) and is as tall as its results, capped by the screen (0.48.0). */
 export const Phone: Story = {
   parameters: { viewport: { defaultViewport: 'mobile1' } },
   render: () => <Demo defaultOpen />,
@@ -172,8 +172,10 @@ export const Phone: Story = {
     await waitFor(() => {
       const box = dialog.getBoundingClientRect();
       if (window.innerWidth <= 640) {
+        // Full width at the top, as tall as its results, never the whole screen (0.48.0).
         expect(box.width).toBeGreaterThanOrEqual(window.innerWidth - 40);
-        expect(box.height).toBeGreaterThanOrEqual(window.innerHeight - 40);
+        expect(box.top).toBeLessThanOrEqual(40);
+        expect(box.height).toBeLessThan(window.innerHeight - 40);
       } else {
         expect(box.width).toBeLessThanOrEqual(48 * 16 + 1);
       }

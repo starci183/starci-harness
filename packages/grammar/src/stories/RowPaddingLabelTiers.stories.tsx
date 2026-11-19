@@ -152,10 +152,13 @@ export const SettingsRows: Story = {
   },
 };
 
-/** The right edges line up: a command button, a chevron and a settings control all end at the same inset from the list's end (0.48.0). */
+/**
+ * The right edges line up: a command button, a chevron and a settings control all end at the same inset from the list's end (0.48.0). On a phone (a list of 28rem or
+ * less) the command stands under the text instead (batch 174), so the edges are compared on a wider list only.
+ */
 export const TrailingEdges: Story = {
   render: () => (
-    <div style={{ width: 640, display: 'grid', gap: 32 }}>
+    <div style={{ maxWidth: 640, display: 'grid', gap: 32 }}>
       <G.Section
         kind="list"
         title="Luồng"
@@ -178,6 +181,7 @@ export const TrailingEdges: Story = {
     await waitFor(() => {
       const right = (element: Element | null) => Math.round(element!.getBoundingClientRect().right);
       const lists = Array.from(canvasElement.querySelectorAll<HTMLElement>('.starci-core-section-list'));
+      if (lists[0]!.getBoundingClientRect().width <= 448) return;
       const button = right(lists[0]!.querySelector('.starci-core-list-row-actions > *:last-child, .starci-core-list-row-actions button, .starci-core-list-row-actions a'));
       const chevron = right(lists[0]!.querySelectorAll('.starci-core-list-row')[1]!.querySelector('.starci-core-list-row-chevron svg'));
       const control = right(lists[1]!.querySelector('.starci-core-list-row-control [data-grammar-switch-track], .starci-core-list-row-control'));

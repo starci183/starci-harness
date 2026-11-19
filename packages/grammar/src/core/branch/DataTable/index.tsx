@@ -426,8 +426,9 @@ export const DataTable = <Row extends DataTableRow>({
         if (element === null) return
         const measure = () => setOverflows(element.scrollWidth > element.clientWidth + 1)
         const observer = new ResizeObserver((entries) => {
-            const entry = entries[0]
-            if (entry !== undefined) setWidth(entry.contentRect.width)
+            // The region's own entry sets the width; the content's entry (observed for the overflow) never does.
+            const own = entries.find((entry) => entry.target === element)
+            if (own !== undefined) setWidth(own.contentRect.width)
             measure()
         })
         observer.observe(element)

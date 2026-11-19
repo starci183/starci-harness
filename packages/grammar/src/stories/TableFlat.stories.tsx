@@ -466,7 +466,7 @@ const probeOf = (host: HTMLElement, property: 'background-color' | 'color', toke
  */
 export const TableLooksFlat: Story = {
   render: () => (
-    <G.PaneGrid label="Table looks" areas={['main aside']} columns={['fill', 'standard']}>
+    <G.PaneGrid label="Table looks" areas={{ base: ['main', 'aside'], medium: ['main aside'] }} columns={{ base: ['fill'], medium: ['fill', 'standard'] }}>
       <G.Pane area="main" label="Well"><G.PaneSection><TableOnTheWell /></G.PaneSection></G.Pane>
       <G.Pane area="aside" surface label="Table on white">
         <G.PaneSection>
