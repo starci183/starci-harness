@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Added (R448, `runtime/scripts/hfs/app-boot.mts`, `cache/boot-entry-check.mts`): the boot check. A back-end app declares the root a command of it boots in hfs.json `sides.be.apps[].boot` (`{ module?, export?, factory?, env? }`); `starci app check --gate hfs` (its `checks` step, so a project with the wiring gate off still has it judged) composes it with `NestFactory.createApplicationContext(root, { abortOnError: false })` in a child with no listener, no lifecycle hook, no network and only `NODE_ENV=test` plus the declared stub env, then closes it. A Nest wiring exception is `BE_BOOT_ENTRY_FAILED` with Nest's own message (redacted); a failure outside the wiring is the warning `BE_BOOT_ENTRY_UNJUDGED`. The verdict is the `boot-entry` record of `check/build/`, keyed on the be side (tracked and untracked program inputs), `packages/`, `hfs.json`, the declared entries, the lockfile, the Node major and the harness. An app that declares none runs nothing. Why: a provider injecting a token its module did not import passed the doubles of the R272 proof and every gate, and took the dev stack down at the stack seed.
+- Added (`runtime/scripts/lib/error-tail.mts`, PROJECT-STACKS-16): a failed seed command, seed door or post-deploy task prints the error-only, redacted tail of its output under its failure line (`STACK_SEED_COMMAND`, `STACK_SEED_DOOR_REFUSED`, the post-deploy FAIL line): Error and exception lines, stack frames and Nest's "can't resolve dependencies" block, every opened secret value masked (raw, percent-encoded, JSON-escaped) and credential URLs redacted; never the raw output or an env dump.
+
 ## 6.13.54 - 2026-11-19
 
 - Changed (`knowledge/hfs/canon-pins.yaml`): the Grammar family 0.48.0 (range ~0.48.0), @starci/gallery 0.1.7, eslint-canon-fe 9.20.4 (range ~9.20.4) and the `@starci/hfs` self-pin is 6.13.54.

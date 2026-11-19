@@ -392,6 +392,29 @@ BE_BACKGROUND_UNOWNED:
   owner: op-retry
   kind: check-finding
 
+BE_BOOT_ENTRY_FAILED:
+  title: "A declared back-end boot entry does not compose"
+  title_vi: "Điểm khởi động back-end đã khai báo không ghép nối được"
+  meaning_vi: "Điểm khởi động mà hfs.json sides.be.apps[].boot khai báo (module và export gốc, hoặc factory trả về gốc) được dựng thật bằng NestFactory.createApplicationContext, không lắng nghe, không chạy lifecycle hook, không mở mạng, với biến môi trường giả đã khai báo; Nest từ chối đồ thị phụ thuộc. Lệnh khởi động nào dùng gốc này (seed của stack, job, máy chủ) sẽ thoát ngay với cùng lỗi. Bằng chứng R272 biên dịch AppModule với dữ liệu mẫu và đối tượng thay thế nên không thấy lỗi này. Phát hiện chứa nguyên văn thông báo của Nest."
+  causes_vi:
+    - "Một provider tiêm token mà module của nó không import, vì module cung cấp token không export token đó (UnknownDependenciesException)"
+    - "Thiếu module, export hoặc factory mà khai báo boot nêu tên, hoặc tệp module không còn"
+    - "Vòng phụ thuộc hay module không xác định khi gốc này ghép các module theo cách khác AppModule của proof"
+  nextStep_vi: "Đọc thông báo Nest trong phát hiện, thêm export hoặc import còn thiếu rồi chạy lại starci app check --gate hfs."
+  owner: op-retry
+  kind: check-finding
+
+BE_BOOT_ENTRY_UNJUDGED:
+  title: "A declared back-end boot entry failed before its wiring was judged"
+  title_vi: "Điểm khởi động back-end đã khai báo lỗi trước khi xét được ghép nối"
+  meaning_vi: "Dựng gốc khởi động thất bại vì một lỗi không phải lỗi ghép nối Nest (import ném lỗi, bộ đọc cấu hình không chấp nhận biến môi trường giả). Đây là cảnh báo: nó không nói gì về đồ thị phụ thuộc nên không làm gate đỏ, nhưng điểm khởi động chưa được chứng minh."
+  causes_vi:
+    - "Bộ kiểm tra cấu hình cần biến môi trường mà hfs.json sides.be.apps[].boot.env chưa giả lập"
+    - "Một import của tệp module ném lỗi khi tải"
+  nextStep_vi: "Khai báo biến còn thiếu trong boot.env bằng giá trị giả không phải bí mật, hoặc sửa import, rồi chạy lại starci app check --gate hfs."
+  owner: op-retry
+  kind: check-finding
+
 BE_CLI_BOOTSTRAP:
   title: "The cli app does not boot with CommandFactory.run, or serves"
   title_vi: "App cli không khởi động bằng CommandFactory.run hoặc lại chạy như server"

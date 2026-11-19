@@ -317,3 +317,28 @@ test('a probe that cannot run and an always command that fails stop the step wit
   await assert.rejects(async () => seedStep(step(root, db, new Map(), { run: failing }).input), (error: Error) => /shared\/graphs: node cli\.js graphs seed exited 4; its output is withheld/u.test(error.message) && !error.message.includes('leaked'));
   assert.equal(JSON.stringify(db.state.rows), before);
 });
+
+test('a failing app command prints the error-only, redacted tail of its output: Nest\'s message and frames, never an opened value, an env dump or a credential URL', async (t) => {
+  const root = app(t);
+  const db = database();
+  const opened = throwaway();
+  const output = (): RunResult => ({
+    status: 1,
+    stdout: `NODE_ENV=production\nDATABASE_URL=postgres://svc:${opened}@db/app\nseeding`,
+    stderr: [
+      "Error: Nest can't resolve dependencies of the PackageStaticsService (?).",
+      `Please make sure that the argument Symbol(options) at index [0] is available; opened ${opened}`,
+      '    at Injector.lookupComponentInParentModules (/app/node_modules/@nestjs/core/injector/injector.js:262:19)',
+      'Error: connect ECONNREFUSED postgres://svc:hunter2@db:5432/app',
+    ].join('\n'),
+  });
+  const failing = step(root, db, new Map([['seeds-test-owner', { value: opened }]]), { run: output });
+  await assert.rejects(async () => seedStep(failing.input), (error: Error) => {
+    assert.match(error.message, /production\/owner: .* exited 1; its output is withheld \(it held the opened secrets\)\nerror lines of its output \(secret values masked\):\n/u);
+    assert.match(error.message, /Error: Nest can't resolve dependencies of the PackageStaticsService/u);
+    assert.match(error.message, /at Injector\.lookupComponentInParentModules/u);
+    for (const leaked of [opened, 'hunter2', 'NODE_ENV=', 'DATABASE_URL', 'seeding']) assert.equal(error.message.includes(leaked), false, leaked);
+    return true;
+  });
+  assert.equal(db.state.rows.some((row) => row.id === 'owner'), false);
+});

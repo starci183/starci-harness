@@ -532,7 +532,7 @@ outcome is what the command answered on its last output line, `unchanged` or `re
 withheld, never printed or stored. A `sql`
 entry runs in one transaction with its receipt. A `data` or `test-account` entry validates its documents, opens each secret reference in
 memory with the environment's age identity and hands the resolved documents to its app command on stdin; no opened value reaches a file,
-argv, a log or a receipt, and a failing command's or probe's output is withheld (`STACK_SEED_COMMAND`, `STACK_SEED_PROBE` for a probe that cannot run). A `files` entry is validated only: the harness has no
+argv, a log or a receipt, and a failing command's or probe's output is withheld except its error lines, redacted (`STACK_SEED_COMMAND`, `STACK_SEED_PROBE` for a probe that cannot run; PROJECT-STACKS-16). A `files` entry is validated only: the harness has no
 object-storage client, so the upload stays the app's. `starci app stack up` runs the step after the migrations; a deploy, urgent or not, runs it after
 convergence (so a data command is the new release's), its app commands and probes in a task of the jobs service, and its dry run
 names every entry, each applied unless its receipt holds; a dry run runs no probe. The scaffold's `cli seed run` still applies the `sql/` folders of the shared level and then
@@ -885,3 +885,26 @@ read-time link are held by review and by the app's own specs (no rule reads code
 [lite.md](lite.md), [full.md](full.md), [statics.md](statics.md); slots `app.starcistacks` and `app.plaintext-env` in
 [hfs/slots.yaml](../hfs/slots.yaml); R06, R10, R250 to R253, R266 to R268, R271, R275 to R277, R294, R296 to R299,
 R301, R372 to R375, R400, R426 to R428, R438 to R440 in [hfs/rules.yaml](../hfs/rules.yaml).
+
+## PROJECT-STACKS-16 A stack command whose output is withheld still names why it failed
+
+A command the harness runs holds secrets (the seed step opens sealed members for it, a post-deploy task runs where the decrypted
+environment is), so its output is never relayed whole. A failure that printed only "its output is withheld" costs the cause: a dev
+stack that refused to boot for forty minutes while the one line that said why (a Nest wiring error) sat in the withheld output.
+
+A failed seed command, seed door or post-deploy task prints an **error-only, redacted tail** under its failure line, built by
+`runtime/scripts/lib/error-tail.mts`:
+
+- only lines that read as an error survive: an `Error` or `...Exception` line, a stack frame, Nest's "can't resolve dependencies"
+  message and its potential solutions, `ERR_*` and `ECONN*` codes; at most 14, from the first;
+- every value of the opened secret set is masked first, raw, percent-encoded and JSON-escaped (a seed command: every value of every
+  member it opened), then the shared redaction blanks credential URLs, tokens and secret-named pairs;
+- an environment dump (`NAME=value`) and every line that is not an error are never printed; a command whose output has no error line prints nothing more.
+
+Known gap: a post-deploy task runs in a container whose secret values the harness never opened, so its tail is filtered by the shared redaction
+alone, not by a value list.
+
+Why: the harness holds the secret set at the point of failure, so it can say why a command failed without ever printing a value; the
+alternative, relaying the whole output, leaks, and relaying none sends every operator to the container.
+
+Enforced by: `STACK_SEED_COMMAND` and `STACK_SEED_DOOR_REFUSED` carry the tail; held by `packages/hfs/src/stack-seeds.spec.mts` and `hfs-boot-entry.spec.mts`.

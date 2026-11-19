@@ -7134,3 +7134,20 @@ rules:
       - {path: contexts/ui/components/empty-state.md, editions: [lite, full]}
     proves:
       - {path: packages/hfs/src/one-source.spec.mts, editions: [lite, full]}
+
+  - id: R448
+    code: "BE_BOOT_ENTRY_FAILED"
+    law: "A back-end app that declares a boot entry (hfs.json `sides.be.apps[].boot`: `module`, `export` or `factory`, `env`) has that entry composed for real: NestFactory.createApplicationContext(root, { abortOnError: false }) in a child with no listener, no lifecycle hook, no network and only NODE_ENV=test and the declared non-secret stub env, then closed, in the `checks` step of the hfs gate, so a project with the wiring gate off still has it judged. A Nest wiring exception is refused with Nest's message (BE_BOOT_ENTRY_FAILED); a failure outside the wiring is the warning BE_BOOT_ENTRY_UNJUDGED."
+    kinds: [check]
+    gates: ["settle","land","ci"]
+    failureCodes: ["BE_BOOT_ENTRY_FAILED", "BE_BOOT_ENTRY_UNJUDGED"]
+    enforcers:
+      - {kind: hfs, id: boot-entry, at: scripts/hfs/app-boot.mjs}
+    editions: [lite, full]
+    templateNa: "A new app declares no boot entry; the rule guards the composition of the entry once it does."
+    docs:
+      - {path: contexts/code/be/injection.md#be-injection-6-a-commands-composition-root-declares-its-boot-entry-and-the-gate-composes-it, editions: [lite, full]}
+    proves:
+      - {path: packages/hfs/src/hfs-boot-entry.spec.mjs, editions: [lite, full]}
+    witness:
+      - {path: packages/hfs/src/hfs-boot-entry.spec.mjs, editions: [lite, full]}

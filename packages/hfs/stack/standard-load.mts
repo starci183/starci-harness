@@ -17,6 +17,7 @@ import { createGitDriver, pinRepository } from '@starci/seed/git';
 import { isPlainObject as plain } from '../runtime/engine/plain-object.mjs';
 import { readDeclaration } from '../release/index.mjs';
 import type { RunResult } from './context.mjs';
+import { withTail } from '../runtime/scripts/lib/error-tail.mjs';
 import { StackError, failure, refusal } from './errors.mjs';
 import { STANDARD_SCOPE, pinRunner } from './standard-gate.mjs';
 import type { StandardPin } from './standard-gate.mjs';
@@ -95,7 +96,7 @@ export function commandDoor(command: (argv: readonly string[], input: string) =>
       let stdin = '';
       if (input !== undefined) for await (const line of input) stdin += `${line}\n`;
       const run = command([...argv, ...args], stdin);
-      if (run.error || run.status !== 0) throw new Error(`the door of the store ${store.id} ${run.error ? 'could not run' : `exited ${String(run.status)}`}; its output is withheld`);
+      if (run.error || run.status !== 0) throw new Error(withTail(`the door of the store ${store.id} ${run.error ? 'could not run' : `exited ${String(run.status)}`}; its output is withheld`, run));
       yield* outputLines(run.stdout);
     })();
     return commandStore({ id: store.id, kind: store.kind, level: store.level }, runner);

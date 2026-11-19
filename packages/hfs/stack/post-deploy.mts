@@ -3,15 +3,17 @@
 // A post-deploy task is the place for an idempotent write a release owes the data (a catalogue sync, a seed upsert), so verification stays read-only.
 // The first task that exits non-zero, or runs past its timeout, fails the step and the deploy rolls back; a rollback cannot undo what a task wrote.
 // The deploy output carries the task's name, its exit and its line count only: the container holds decrypted secrets and the output reaches the
-// CI log, so stdout and stderr are never relayed (`starci app stack task <name>` is the operator verb that shows them).
+// CI log, so stdout and stderr are never relayed (`starci app stack task <name>` is the operator verb that shows them), but a failed task prints the
+// error-only, redacted tail of its output under its line (error-tail.mts, PROJECT-STACKS-15).
 import { findInOrder } from '../runtime/scripts/lib/in-order.mjs';
 import type { DeployConfig, TaskEntry } from './config.mjs';
 import { lines as splitLines, tool } from './context.mjs';
 import type { RunResult, StackContext } from './context.mjs';
+import { errorTail } from '../runtime/scripts/lib/error-tail.mjs';
 import type { ActionResult } from './remote.mjs';
 
 /** The outcome of one post-deploy task. */
-interface TaskOutcome { name: string; ok: boolean; detail: string; outputLines: number }
+interface TaskOutcome { name: string; ok: boolean; detail: string; outputLines: number; tail?: string[] }
 
 /** The running container of a service on this daemon, or undefined. */
 function runningContainer(ctx: StackContext, config: DeployConfig, service: string): string | undefined {
@@ -33,7 +35,9 @@ function runTask(ctx: StackContext, config: DeployConfig, name: string): TaskOut
   const container = runningContainer(ctx, config, declared.service);
   if (!container) return { name, ok: false, detail: `no running container of ${config.stack}_${declared.service} on the daemon`, outputLines: 0 };
   const run = tool(ctx, 'docker', ['exec', container, ...declared.command], { timeout: declared.timeoutSeconds * 1000, killSignal: 'SIGKILL' });
-  return { name, ...verdictOf(run, declared.timeoutSeconds), outputLines: splitLines(run.stdout).length + splitLines(run.stderr).length };
+  const verdict = verdictOf(run, declared.timeoutSeconds);
+  // A failed task names why in its error lines only, redacted (error-tail.mts): the container's own secret values are not known here, so the shared redaction is the filter.
+  return { name, ...verdict, outputLines: splitLines(run.stdout).length + splitLines(run.stderr).length, ...(verdict.ok ? {} : { tail: errorTail(run) }) };
 }
 
 /**
@@ -48,7 +52,7 @@ export async function postDeployStack(ctx: StackContext, config: DeployConfig): 
   });
   return {
     ok: results.every((entry) => entry.ok),
-    lines: results.map((entry) => `${entry.ok ? 'PASS' : 'FAIL'}  post-deploy ${entry.name}  ${entry.detail} (${entry.outputLines} output line${entry.outputLines === 1 ? '' : 's'} withheld)`),
+    lines: results.flatMap((entry) => [`${entry.ok ? 'PASS' : 'FAIL'}  post-deploy ${entry.name}  ${entry.detail} (${entry.outputLines} output line${entry.outputLines === 1 ? '' : 's'} withheld)`, ...(entry.tail ?? []).map((line) => `        ${line}`)]),
     data: { tasks: results.map(({ name, ok }) => ({ name, ok })) },
   };
 }

@@ -1839,7 +1839,7 @@ rules:
       - {kind: hfs, id: release-provenance}
   - id: R272
     code: BE_APP_BOOT_PROOF_MISSING
-    law: Every lite back-end app proves its real AppModule composition by compiling the dependency graph with fixture options and infrastructure doubles, in `app check` and in the fast job of the app's CI (`starci app check --gate wiring`), so a provider a domain module needs and the app root does not compose never passes tsc and the unit suite to fail at boot.
+    law: Every lite back-end app proves its real AppModule composition by compiling the dependency graph with fixture options and infrastructure doubles, in `app check` and in the fast job of the app's CI (`starci app check --gate hfs`, whatever the wiring gate says), so a provider a domain module needs and the app root does not compose never passes tsc and the unit suite to fail at boot.
     editions: [lite]
     failureCodes:
       - BE_APP_BOOT_PROOF_MISSING
@@ -3058,3 +3058,11 @@ rules:
       - FE_STATE_PAGE_GROUP_MISSING
     enforcers:
       - {kind: hfs, id: state-pages}
+  - id: R448
+    code: BE_BOOT_ENTRY_FAILED
+    law: A back-end app that declares a boot entry (hfs.json `sides.be.apps[].boot`) has that entry composed by the gate, with NestFactory.createApplicationContext, no listener, no lifecycle hook, no network and only the declared stub env, in `app check` and in the fast job of the app's CI (`starci app check --gate wiring`), so a provider wiring error that only a command's boot reaches never passes the other gates to take the stack down.
+    failureCodes:
+      - BE_BOOT_ENTRY_FAILED
+      - BE_BOOT_ENTRY_UNJUDGED
+    enforcers:
+      - {kind: hfs, id: boot-entry}
