@@ -8,6 +8,8 @@
 
 ## 1.1.0-alpha.173 - 2026-11-19
 
+- Changed: the CLI requires @starci/hfs@6.13.53, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
+
 - Changed (pins): the Grammar family at 0.47.5, @starci/gallery 0.1.6, eslint-canon-fe 9.20.3, stylelint-canon 2.9.7 and @starci/hfs 6.13.53 (R445 brand, R446 globals, R447 system-state pages; the audit crops; the SiteShell `TopBar fit`). `starci audit run` writes the viewport crops. Until the cli-follow step raises the CLI requirement, the CLI runs the hfs it requires.
 
 ## 1.1.0-alpha.172 - 2026-11-19
