@@ -1245,13 +1245,14 @@ slots:
   - id: app.gallery-explain
     profiles:
       - app
-    path: gallery/pages/**/{explain.md,links.json}
+    path: gallery/pages/**/{screen.yaml,explain.md,links.json}
     presence: optional
     tracked: tracked
     tier: none
     tests: none
     rules:
       - HFS_APP_GALLERY_EXPLAIN_MISSING
+      - HFS_APP_GALLERY_SCREEN_INVALID
       - HFS_APP_GALLERY_REGION_INCOMPLETE
       - HFS_APP_GALLERY_REGION_UNCLEAR
       - HFS_APP_GALLERY_FRONT_MATTER

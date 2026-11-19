@@ -78,7 +78,7 @@ Change a slot, a rule or a pattern's front matter, then regenerate in the same c
 - `gallery/`
   - `{package.json,index.html,README.md,vite.config.js}` — **app.gallery** optional · R05 (hfs `managed-file-drift`), R395 (hfs `gallery`)
   - `package-lock.json` — **app.gallery-lock** optional
-  - `pages/**/{explain.md,links.json}` — **app.gallery-explain** optional · R395 (hfs `gallery`)
+  - `pages/**/{screen.yaml,explain.md,links.json}` — **app.gallery-explain** optional · R395 (hfs `gallery`)
   - `flows.json` — **app.gallery-flows** optional · R395 (hfs `gallery`)
   - `routes.json` — **app.gallery-routes** optional · R395 (hfs `gallery`)
 - `scripts/`
@@ -293,7 +293,7 @@ Refused (forbidden or external): `repo.side-root-forbidden`, `fe.tool-config-loc
 - `gallery/`
   - `{package.json,index.html,README.md,vite.config.js}` — **app.gallery** optional · R05 (hfs `managed-file-drift`), R395 (hfs `gallery`)
   - `package-lock.json` — **app.gallery-lock** optional
-  - `pages/**/{explain.md,links.json}` — **app.gallery-explain** optional · R395 (hfs `gallery`)
+  - `pages/**/{screen.yaml,explain.md,links.json}` — **app.gallery-explain** optional · R395 (hfs `gallery`)
   - `flows.json` — **app.gallery-flows** optional · R395 (hfs `gallery`)
   - `routes.json` — **app.gallery-routes** optional · R395 (hfs `gallery`)
 - `scripts/`

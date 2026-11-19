@@ -41,7 +41,7 @@ lint rule or gate enforces a rule is in anatomy.md's tree and the rule's page (`
 - `gallery/`
   - `{package.json,index.html,README.md,vite.config.js}` — **app.gallery** optional · R05, R395
   - `package-lock.json` — **app.gallery-lock** optional
-  - `pages/**/{explain.md,links.json}` — **app.gallery-explain** optional · R395
+  - `pages/**/{screen.yaml,explain.md,links.json}` — **app.gallery-explain** optional · R395
   - `flows.json` — **app.gallery-flows** optional · R395
   - `routes.json` — **app.gallery-routes** optional · R395
 - `scripts/`

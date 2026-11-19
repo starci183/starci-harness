@@ -75,6 +75,7 @@
     "cache/**",
     "coverage/**",
     "audit/**",
+    "uiaudit/**",
     "codemod/**",
     "lint/**",
     "scaffold/**",

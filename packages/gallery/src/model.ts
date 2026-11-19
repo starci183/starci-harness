@@ -2,6 +2,8 @@
 // with its status (the dot), its states (sibling screens of one page) and its counts. Pure: nothing here touches the disk (load.ts reads it, the app draws it).
 import { flowList, linkList, noteToMarkdown, parseExplain, SHOT_WIDTHS } from "./explain.ts"
 import type { Explain, Flow, Link, Width } from "./explain.ts"
+import { auditFlag, explainOf, readScreen } from "./screen.ts"
+import type { AuditFlag, ScreenDoc } from "./screen.ts"
 
 /**
  * The status of a screen: the colour of its dot. With a design.json entry its status is the record (matches, differs, stale, notBuilt: drafted or approved with no shot). Without
@@ -25,8 +27,10 @@ export interface RawFrame {
 }
 
 export interface RawScreen {
-    /** The explain.md text, absent when the folder has none. */
+    /** The explain.md text, absent when the folder has none (a screen not migrated to screen.yaml yet). */
     readonly explain?: string
+    /** The parsed screen.yaml (any value: the reader keeps what is well formed), absent when the folder has none. */
+    readonly screen?: unknown
     /** The parsed links.json. */
     readonly links?: unknown
     /** The widths a PNG exists for in the work tree. */
@@ -55,6 +59,12 @@ export interface Screen {
     readonly shots: readonly Width[]
     readonly frame: RawFrame | null
     readonly explain: Explain | null
+    /** The screen.yaml of the folder: its sections, options considered and audit; null while the screen has only an explain.md. */
+    readonly doc: ScreenDoc | null
+    /** The audit needs attention (none, fewer than two rounds, an open lens, needs owner); null when it stands or the screen has no screen.yaml. */
+    readonly auditFlag: AuditFlag | null
+    /** Flagged: a region with a problem, or an audit that needs attention. */
+    readonly flagged: boolean
     readonly links: Link[]
     /** The page this screen is a state of (its base id) and the state; `base` for the page's own screen. */
     readonly page: string
@@ -129,13 +139,16 @@ export function buildModel(raw: RawGallery): Model {
         if (slash < 1) continue
         const rawScreen = raw.screens[id]
         const frame = raw.frames[id] ?? null
+        const doc = rawScreen?.screen === undefined ? null : readScreen(rawScreen.screen)
         const text = rawScreen?.explain ?? frame?.noteMarkdown ?? null
         const entry = designPages[id]
-        if (text === null && !plain(entry)) {
+        if (doc === null && text === null && !plain(entry)) {
             hidden++
             continue
         }
-        const explain = text === null ? null : parseExplain(text)
+        const explain = doc === null ? (text === null ? null : parseExplain(text)) : explainOf(doc)
+        const problems = explain === null ? 0 : explain.regions.filter((region) => region.problems.length > 0).length + (explain.regions.length === 0 ? 1 : 0)
+        const flag = auditFlag(doc)
         const { page, state } = splitState(id)
         screens[id] = {
             id,
@@ -149,10 +162,13 @@ export function buildModel(raw: RawGallery): Model {
             shots: rawScreen?.shots ?? [],
             frame,
             explain,
+            doc,
+            auditFlag: flag,
+            flagged: problems > 0 || flag !== null,
             links: linkList(rawScreen?.links),
             page,
             state,
-            problems: explain === null ? 0 : explain.regions.filter((region) => region.problems.length > 0).length + (explain.regions.length === 0 ? 1 : 0),
+            problems,
         }
     }
     const byArea = new Map<string, Screen[]>()

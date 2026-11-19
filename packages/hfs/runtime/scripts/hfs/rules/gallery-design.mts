@@ -13,7 +13,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { isPlainObject as plain } from '../../../engine/plain-object.mjs';
 import type { GalleryParams } from '../gallery.mjs';
-import { hasOptionsSection } from '../gallery-explain.mjs';
+import { screenSource } from '../screen-yaml.mjs';
 import { found, readText } from './read.mjs';
 import type { GalleryScreen } from './gallery.mjs';
 
@@ -120,7 +120,8 @@ export function designFindings(repoRoot: string, params: GalleryParams, screens:
   const local = { local: true };
   const findings = [];
   const byId = new Map(screens.map((screen) => [`${screen.area}/${screen.screen}`, screen]));
-  const hasExplain = (id: string): boolean => readText(repoRoot, `${params.pages}/${id}/explain.md`) !== null;
+  const sourceOf = (id: string) => screenSource(`${params.pages}/${id}`, (rel) => readText(repoRoot, rel));
+  const hasExplain = (id: string): boolean => sourceOf(id) !== null;
   for (const [id, page] of Object.entries(manifest.pages)) {
     const folder = `${params.pages}/${id}`;
     if (!isBuilt(page.status)) {
@@ -132,11 +133,11 @@ export function designFindings(repoRoot: string, params: GalleryParams, screens:
       continue;
     }
     if (page.status === 'matches') {
-      const explain = readText(repoRoot, `${params.pages}/${id}/explain.md`) ?? '';
-      if (!hasOptionsSection(explain)) {
+      const source = sourceOf(id);
+      if (source === null || !source.hasOptions) {
         const stamp = page.matchedAt === undefined ? Number.NaN : Date.parse(page.matchedAt);
         const judged = !Number.isNaN(stamp) && stamp >= Date.parse(CRITIQUE_SINCE);
-        const base = `the page ${id} is matches and ${folder}/explain.md has no section "## Phương án đã cân nhắc"`;
+        const base = `the page ${id} is matches and ${folder}/screen.yaml (or explain.md) records no option considered ("considered" of screen.yaml, "## Phương án đã cân nhắc" of an explain.md)`;
         findings.push(judged
           ? found(CRITIQUE_MISSING, `${folder}/explain.md`, `${base}: a screen is final only after the critique of another agent (two rounds) and its record of the options weighed, each with why it was chosen or rejected; write the section, sync the canvas page note, and set matchedAt again ${rule}`)
           : { ...found(CRITIQUE_MISSING, `${folder}/explain.md`, `${base}: not final yet (matched ${page.matchedAt === undefined ? 'before the critique rule, no matchedAt' : `at ${page.matchedAt}, before ${CRITIQUE_SINCE}`}); it is listed so it is fixed gradually, never failing ${rule}`), level: 'info' });

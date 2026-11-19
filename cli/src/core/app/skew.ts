@@ -14,7 +14,7 @@ const HARNESS = "starci-harness"
 const HFS = "@starci/hfs"
 const EXACT = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/
 /** The verbs whose verdict or output is a version's own (templates, rules, pins); the others do not depend on which hfs runs them. */
-const JUDGING: ReadonlySet<HfsVerb> = new Set<HfsVerb>(["check", "sync", "audit", "coverage", "emit", "codemod", "release", "ci"])
+const JUDGING: ReadonlySet<HfsVerb> = new Set<HfsVerb>(["check", "sync", "audit", "uiaudit", "gallery", "coverage", "emit", "codemod", "release", "ci"])
 
 /** What one run was judged with, and what the app asks for. */
 export interface SkewInput {
@@ -116,4 +116,4 @@ export const runSkew = (verb: HfsVerb, root: string): Skew | null => {
 
 
 /** Whether a forwarded argv of `verb` writes into the app (the writes a skewed CLI refuses): `sync --execute`, `check --fix`. */
-export const writes = (verb: HfsVerb, args: readonly string[]): boolean => (verb === "sync" && args.includes("--execute")) || (verb === "check" && args.includes("--fix"))
+export const writes = (verb: HfsVerb, args: readonly string[]): boolean => (verb === "sync" && args.includes("--execute")) || (verb === "check" && args.includes("--fix")) || (verb === "uiaudit" && args[0] === "run") || (verb === "gallery" && args.includes("--execute"))

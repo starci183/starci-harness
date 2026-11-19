@@ -6,7 +6,7 @@
 
 import { runGit } from '../../api/git/lib.mjs';
 import { galleryParams } from '../gallery.mjs';
-import { parseExplain } from '../gallery-explain.mjs';
+import { screenSource } from '../screen-yaml.mjs';
 import { feRoutes, isSourceOf, routeExclusions, routeKey } from '../gallery-routes.mjs';
 import { galleryScreens } from './gallery.mjs';
 import { DESIGN_FILE, isApproved, parseDesign } from './gallery-design.mjs';
@@ -28,9 +28,10 @@ export function galleryStaleFindings({ repoRoot, changed, manifest }: { repoRoot
   const excluded = new Set(exclusions.exclusions.map((entry) => routeKey(entry.route)));
   const explainsOf = new Map<string, string[]>();
   for (const { area, screen } of galleryScreens(repoRoot, params).screens) {
-    const file = `${params.pages}/${area}/${screen}/explain.md`;
-    const route = parseExplain(readText(repoRoot, file) ?? '').meta['route'] ?? '';
-    if (route !== '') explainsOf.set(routeKey(route), [...(explainsOf.get(routeKey(route)) ?? []), file]);
+    const folder = `${params.pages}/${area}/${screen}`;
+    const source = screenSource(folder, (rel) => readText(repoRoot, rel));
+    const route = source?.explanation.meta['route'] ?? '';
+    if (source !== null && route !== '') explainsOf.set(routeKey(route), [...(explainsOf.get(routeKey(route)) ?? []), source.file]);
   }
   const findings = [];
   for (const route of feRoutes(repoRoot)) {
@@ -84,7 +85,7 @@ export function galleryDesignChangeFindings({ repoRoot, changed, base, manifest,
   const excluded = new Set(routeExclusions(readText(repoRoot, `${params.dir}/routes.json`)).exclusions.map((entry) => routeKey(entry.route)));
   const idsOf = new Map<string, string[]>();
   for (const { area, screen } of galleryScreens(repoRoot, params).screens) {
-    const route = parseExplain(readText(repoRoot, `${params.pages}/${area}/${screen}/explain.md`) ?? '').meta['route'] ?? '';
+    const route = screenSource(`${params.pages}/${area}/${screen}`, (rel) => readText(repoRoot, rel))?.explanation.meta['route'] ?? '';
     if (route !== '' && managed.has(area)) idsOf.set(routeKey(route), [...(idsOf.get(routeKey(route)) ?? []), `${area}/${screen}`]);
   }
   const uncommitted = new Set(changedSince(repoRoot, 'HEAD'));

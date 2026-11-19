@@ -24,9 +24,11 @@ import { isPlainObject as plain } from '../../../engine/plain-object.mjs';
 import { findStackDeclaration } from '../../lib/stack-declaration.mjs';
 import { declaredBasePort, galleryParams, galleryPort } from '../gallery.mjs';
 import type { GalleryParams } from '../gallery.mjs';
-import { flowList, linkTargets, missingFrontMatter, parseExplain, SHOT_FILES } from '../gallery-explain.mjs';
+import { flowList, linkTargets, missingFrontMatter, SHOT_FILES } from '../gallery-explain.mjs';
 import { feRoutes, routeExclusions, routeKey } from '../gallery-routes.mjs';
 import { designFindings } from './gallery-design.mjs';
+import { parseScreen, screenSource, SCREEN_FILE } from '../screen-yaml.mjs';
+import { parseYaml } from '../../../engine/yaml.mjs';
 import { found, readJson, readText } from './read.mjs';
 import type { Parsed, Repo } from './rule-types.mjs';
 
@@ -63,6 +65,14 @@ function scriptProblem(script: unknown, expected: number | null, params: Gallery
   return null;
 }
 
+/** The state shots (`empty-1440.png`) a screen.yaml lists under `shots`: the one extra a screen folder may hold (PROJECT-GALLERY-8). */
+function stateShotNames(dir: string): Set<string> {
+  try {
+    const doc = parseYaml(fs.readFileSync(path.join(dir, SCREEN_FILE), 'utf8')) as { shots?: unknown } | null;
+    return new Set(plain(doc?.shots) ? Object.keys(doc?.shots as object).filter((key) => /^[a-z0-9]+(?:-[a-z0-9]+)*-(?:1440|390)$/u.test(key)).map((key) => `${key}.png`) : []);
+  } catch { return new Set(); }
+}
+
 /** One screen folder, `pages/<area>/<screen>/`, as the work tree holds it. */
 export interface GalleryScreen {
   area: string;
@@ -85,15 +95,16 @@ export function galleryScreens(repoRoot: string, params: GalleryParams): { scree
   const root = path.join(repoRoot, ...params.pages.split('/'));
   const screens: GalleryScreen[] = [];
   const loose: string[] = [];
-  const allowed = new Set([...SHOT_FILES, 'explain.md', 'links.json']);
+  const allowed = new Set([...SHOT_FILES, 'explain.md', SCREEN_FILE, 'links.json']);
   for (const top of list(root)) {
     if (!top.isDirectory()) { loose.push(top.name); continue; }
     for (const entry of list(path.join(root, top.name))) {
       if (!entry.isDirectory()) { loose.push(`${top.name}/${entry.name}`); continue; }
       const dir = path.join(root, top.name, entry.name);
       const screen: GalleryScreen = { area: top.name, screen: entry.name, shots: 0, stray: [] };
+      const stateShots = stateShotNames(dir);
       for (const item of list(dir)) {
-        if (item.isFile() && allowed.has(item.name)) {
+        if (item.isFile() && (allowed.has(item.name) || stateShots.has(item.name))) {
           if (item.name.endsWith('.png')) screen.shots++;
         } else screen.stray.push(`${item.name}${item.isDirectory() ? '/' : ''}`);
       }
@@ -120,7 +131,7 @@ const dangling = (ids: readonly string[], known: ReadonlySet<string>): string[] 
 export function declaredRouteKeys(repoRoot: string, params: GalleryParams, screens: readonly GalleryScreen[]): Set<string> {
   const keys = new Set<string>();
   for (const { area, screen } of screens) {
-    const route = parseExplain(readText(repoRoot, `${params.pages}/${area}/${screen}/explain.md`) ?? '').meta['route'] ?? '';
+    const route = screenSource(`${params.pages}/${area}/${screen}`, (rel) => readText(repoRoot, rel))?.explanation.meta['route'] ?? '';
     if (route !== '') keys.add(routeKey(route));
   }
   return keys;
@@ -166,8 +177,8 @@ function explainFindings(repoRoot: string, params: GalleryParams, inScope: (file
   for (const { area, screen, shots, stray } of screens) {
     const folder = `${params.pages}/${area}/${screen}`;
     const file = `${folder}/explain.md`;
-    if (!inScope(file)) continue;
-    if (stray.length > 0) findings.push(found('HFS_APP_GALLERY_SCREEN_FILE', folder, `${folder} holds ${stray.map((name) => `"${name}"`).join(', ')}: a screen folder holds only ${[...SHOT_FILES, 'explain.md', 'links.json'].join(', ')} and no folder; a state or an agent variant is its own screen folder (PROJECT-GALLERY-2)`));
+    if (!inScope(file) && !inScope(`${folder}/${SCREEN_FILE}`)) continue;
+    if (stray.length > 0) findings.push(found('HFS_APP_GALLERY_SCREEN_FILE', folder, `${folder} holds ${stray.map((name) => `"${name}"`).join(', ')}: a screen folder holds only ${[...SHOT_FILES, SCREEN_FILE, 'links.json'].join(', ')} (and the state shots its screen.yaml lists) and no folder; a state or an agent variant is its own screen folder (PROJECT-GALLERY-2)`));
     const links = jsonOf(repoRoot, `${folder}/links.json`);
     if (links.kind === 'invalid') findings.push(found('HFS_APP_GALLERY_LINKS', `${folder}/links.json`, `${folder}/links.json is not JSON (PROJECT-GALLERY-2)`));
     else if (links.kind === 'ok') {
@@ -175,27 +186,33 @@ function explainFindings(repoRoot: string, params: GalleryParams, inScope: (file
       if (targets === null) findings.push(found('HFS_APP_GALLERY_LINKS', `${folder}/links.json`, `${folder}/links.json is a list (or { "links": [...] }) of { "to": "<area>/<screen>", "x", "y", "w", "h" } hotspots; an entry has no text "to" (PROJECT-GALLERY-2)`));
       else if (dangling(targets, known).length > 0) findings.push(found('HFS_APP_GALLERY_LINKS', `${folder}/links.json`, `${folder}/links.json points at ${missingScreens(dangling(targets, known))} (PROJECT-GALLERY-2)`));
     }
-    const text = readText(repoRoot, file);
-    if (text === null) {
-      if (shots > 0) findings.push(found('HFS_APP_GALLERY_EXPLAIN_MISSING', file, `the screen ${area}/${screen} has ${shots} shot${shots === 1 ? '' : 's'} and no explain.md: write ${file} with a front matter (title, route, area) and one "## <region name>" per region, each with the lines "Vì sao:", "Luật:" and "Grammar:" (PROJECT-GALLERY-2)`));
+    const source = screenSource(folder, (rel) => readText(repoRoot, rel));
+    if (source === null) {
+      if (shots > 0) findings.push(found('HFS_APP_GALLERY_EXPLAIN_MISSING', `${folder}/${SCREEN_FILE}`, `the screen ${area}/${screen} has ${shots} shot${shots === 1 ? '' : 's'} and no ${SCREEN_FILE}: write ${folder}/${SCREEN_FILE} (title, route, area, summary, code, shots, sections, considered, audit); `+'`starci gallery migrate-explain`'+` turns an explain.md into it (PROJECT-GALLERY-8)`));
       continue;
     }
-    const explanation = parseExplain(text);
+    if (source.kind === 'yaml') {
+      if (readText(repoRoot, file) !== null) findings.push(found('HFS_APP_GALLERY_SCREEN_FILE', file, `${folder} holds both ${SCREEN_FILE} and explain.md: ${SCREEN_FILE} replaces explain.md, delete it (PROJECT-GALLERY-8)`));
+      const parsed = parseScreen(readText(repoRoot, source.file) ?? '', `${area}/${screen}`);
+      const invalid = parsed.parseError !== null ? [parsed.parseError] : parsed.doc;
+      if (invalid.length > 0) findings.push(found('HFS_APP_GALLERY_SCREEN_INVALID', source.file, `${source.file} ${invalid.slice(0, 6).join('; ')}${invalid.length > 6 ? `; and ${invalid.length - 6} more` : ''} (PROJECT-GALLERY-8)`));
+    }
+    const explanation = source.explanation;
     const lacking = missingFrontMatter(explanation);
     const declared = explanation.meta['area'] ?? '';
     const problems = [...(lacking.length > 0 ? [`the front matter lacks ${lacking.join(', ')}`] : []), ...(declared !== '' && declared !== area ? [`its area "${declared}" is not the folder's "${area}"`] : [])];
-    if (problems.length > 0) findings.push(found('HFS_APP_GALLERY_FRONT_MATTER', file, `${file}: ${problems.join('; ')} (PROJECT-GALLERY-2)`, { level: 'warning' }));
+    if (problems.length > 0) findings.push(found('HFS_APP_GALLERY_FRONT_MATTER', source.file, `${file}: ${problems.join('; ')} (PROJECT-GALLERY-2)`, { level: 'warning' }));
     if (explanation.regions.length === 0) {
-      findings.push(found('HFS_APP_GALLERY_REGION_INCOMPLETE', file, `${file} has no "## <region name>": every region of the screen needs one, with "Vì sao:", "Luật:" and "Grammar:" lines (PROJECT-GALLERY-2)`));
+      findings.push(found('HFS_APP_GALLERY_REGION_INCOMPLETE', source.file, `${source.file} has no "## <region name>": every region of the screen needs one, with "Vì sao:", "Luật:" and "Grammar:" lines (PROJECT-GALLERY-2)`));
       continue;
     }
     const incomplete = explanation.regions.filter((region) => region.problems.some((problem) => problem.kind === 'missing'));
     if (incomplete.length > 0) {
       const detail = incomplete.map((region) => `${region.name} lacks ${region.problems.filter((problem) => problem.kind === 'missing').map((problem) => problem.field).join(' and ')}`);
-      findings.push(found('HFS_APP_GALLERY_REGION_INCOMPLETE', file, `${incomplete.length} region${incomplete.length === 1 ? '' : 's'} of ${file} lack${incomplete.length === 1 ? 's' : ''} a value: ${detail.slice(0, 6).join('; ')}${detail.length > 6 ? `; and ${detail.length - 6} more` : ''}. A region that cannot be explained with a law and a Grammar reference is a bug: fix the screen, then write the explanation (PROJECT-GALLERY-2)`));
+      findings.push(found('HFS_APP_GALLERY_REGION_INCOMPLETE', source.file, `${incomplete.length} region${incomplete.length === 1 ? '' : 's'} of ${source.file} lack${incomplete.length === 1 ? 's' : ''} a value: ${detail.slice(0, 6).join('; ')}${detail.length > 6 ? `; and ${detail.length - 6} more` : ''}. A region that cannot be explained with a law and a Grammar reference is a bug: fix the screen, then write the explanation (PROJECT-GALLERY-2)`));
     }
     const unclear = explanation.regions.filter((region) => region.problems.some((problem) => problem.kind === 'unclear'));
-    if (unclear.length > 0) findings.push(found('HFS_APP_GALLERY_REGION_UNCLEAR', file, `${unclear.length} region${unclear.length === 1 ? '' : 's'} of ${file} say CHƯA RÕ or SAI (${named(unclear.map((region) => region.name))}): the region is a bug, fix the screen and rewrite the line; a warning in --env local, an error in --env prod (PROJECT-GALLERY-2)`, { local: true }));
+    if (unclear.length > 0) findings.push(found('HFS_APP_GALLERY_REGION_UNCLEAR', source.file, `${unclear.length} region${unclear.length === 1 ? '' : 's'} of ${source.file} say CHƯA RÕ or SAI (${named(unclear.map((region) => region.name))}): the region is a bug, fix the screen and rewrite the line; a warning in --env local, an error in --env prod (PROJECT-GALLERY-2)`, { local: true }));
   }
   const flowsFile = `${params.dir}/flows.json`;
   if (inScope(flowsFile)) {

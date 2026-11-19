@@ -16,7 +16,7 @@ import { runWiringFamily } from './wiring-family.mjs';
 import { FAMILIES, type CheckSession, type FamilyId, type FamilyReport } from './types.mjs';
 
 /** The families of a run with no selector. Families a work package adds register in `extraFamilies`. */
-export const DEFAULT_FAMILIES: readonly FamilyId[] = FAMILIES.filter((family) => ['hfs', 'format', 'db', 'secrets', 'wiring', 'types', 'lint', 'test', 'sonar'].includes(family));
+export const DEFAULT_FAMILIES: readonly FamilyId[] = FAMILIES.filter((family) => ['hfs', 'format', 'db', 'secrets', 'wiring', 'types', 'lint', 'test', 'sonar', 'uiaudit'].includes(family));
 
 export interface AppRunInput {
   readonly repoRoot: string;

@@ -66,6 +66,40 @@ export interface Labels {
     readonly openFrame: string
     readonly pane: string
     readonly showExplain: string
+    readonly summary: string
+    readonly codeFiles: string
+    readonly sectionShows: string
+    readonly sectionWhy: string
+    readonly sectionActions: string
+    readonly sectionStates: string
+    readonly needsApi: string
+    readonly considered: string
+    readonly chosen: string
+    readonly rejected: string
+    readonly audit: string
+    readonly auditBuilder: string
+    readonly auditAuditor: string
+    readonly auditRound: string
+    readonly auditLens: string
+    readonly auditNotes: string
+    readonly auditNone: string
+    readonly needsOwner: string
+    readonly verdictPass: string
+    readonly verdictFixed: string
+    readonly verdictOpen: string
+    readonly lensOrder: string
+    readonly lensLayout: string
+    readonly lensActionable: string
+    readonly lensLive: string
+    readonly lensWords: string
+    readonly lensStates: string
+    readonly lensTruth: string
+    readonly flagNone: string
+    readonly flagFew: string
+    readonly flagOpen: string
+    readonly flagOwner: string
+    readonly flaggedOnly: string
+    readonly flaggedCount: string
     readonly noExplain: string
     readonly noRegions: string
     readonly problemMissing: string
@@ -149,6 +183,40 @@ export const LABELS = Object.freeze({
         openFrame: "Open full size",
         pane: "Show",
         showExplain: "Show explanation",
+        summary: "What it is for",
+        codeFiles: "Built in",
+        sectionShows: "Shows",
+        sectionWhy: "Why",
+        sectionActions: "Actions",
+        sectionStates: "States",
+        needsApi: "needs API",
+        considered: "Options considered",
+        chosen: "chosen",
+        rejected: "rejected",
+        audit: "Audit",
+        auditBuilder: "Builder",
+        auditAuditor: "Auditor",
+        auditRound: "Round {n}",
+        auditLens: "Lens",
+        auditNotes: "Notes",
+        auditNone: "not audited yet (grandfathered)",
+        needsOwner: "Needs owner",
+        verdictPass: "pass",
+        verdictFixed: "fixed",
+        verdictOpen: "open",
+        lensOrder: "Order",
+        lensLayout: "Layout",
+        lensActionable: "Actionable",
+        lensLive: "Live",
+        lensWords: "Words",
+        lensStates: "States",
+        lensTruth: "Truth",
+        flagNone: "no audit",
+        flagFew: "fewer than 2 audit rounds",
+        flagOpen: "open lens in the latest round",
+        flagOwner: "needs owner",
+        flaggedOnly: "Flagged only",
+        flaggedCount: "{n} flagged",
         noExplain: "This screen has no explanation yet.",
         noRegions: "BUG: no region yet",
         problemMissing: "missing {field}",
@@ -230,6 +298,40 @@ export const LABELS = Object.freeze({
         openFrame: "Mở cỡ đầy đủ",
         pane: "Hiện",
         showExplain: "Hiện giải thích",
+        summary: "Dùng để làm gì",
+        codeFiles: "Code",
+        sectionShows: "Hiển thị",
+        sectionWhy: "Vì sao",
+        sectionActions: "Thao tác",
+        sectionStates: "Trạng thái",
+        needsApi: "cần API",
+        considered: "Phương án đã cân nhắc",
+        chosen: "chọn",
+        rejected: "bỏ",
+        audit: "Audit",
+        auditBuilder: "Người làm",
+        auditAuditor: "Người audit",
+        auditRound: "Vòng {n}",
+        auditLens: "Góc nhìn",
+        auditNotes: "Ghi chú",
+        auditNone: "chưa audit (grandfathered)",
+        needsOwner: "Cần chủ dự án quyết",
+        verdictPass: "đạt",
+        verdictFixed: "đã sửa",
+        verdictOpen: "còn mở",
+        lensOrder: "Thứ tự",
+        lensLayout: "Bố cục",
+        lensActionable: "Thao tác được",
+        lensLive: "Trạng thái sống",
+        lensWords: "Từ ngữ",
+        lensStates: "Các trạng thái",
+        lensTruth: "Dữ liệu thật",
+        flagNone: "chưa audit",
+        flagFew: "dưới 2 vòng audit",
+        flagOpen: "vòng mới nhất còn góc nhìn mở",
+        flagOwner: "cần chủ dự án quyết",
+        flaggedOnly: "Chỉ màn cần xem",
+        flaggedCount: "{n} cần xem",
         noExplain: "Màn này chưa có giải thích.",
         noRegions: "LỖI: chưa có vùng nào",
         problemMissing: "thiếu {field}",

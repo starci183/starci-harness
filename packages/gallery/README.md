@@ -1,7 +1,7 @@
 # `@starci/gallery`
 
 The screenshot gallery of a StarCi app ([contexts/project/gallery.md](../../contexts/project/gallery.md)) as one Vite config. The app's `gallery/`
-folder holds the pages (`pages/<area>/<screen>/` with the shots, `explain.md`, `links.json`), `flows.json` and `routes.json`; this package reads them with the
+folder holds the pages (`pages/<area>/<screen>/` with the shots, `screen.yaml` (the earlier `explain.md` is still read), `links.json`), `flows.json` and `routes.json`; this package reads them with the
 design canvas (`.starcistacks/canvas`: `design.json` and the fragments of `pages/`) and shows each screen.
 
 ```js
@@ -30,7 +30,7 @@ export default defineGallery({ app: "starci-next", locale: "vi", allowedHosts: [
   sha256, or an approved screen still records shots), not built grey.
 - The states of a page: sibling screens named with the state suffixes of PROJECT-GALLERY-6 (`-detail`, `-empty`, `-first-visit`, `-loading`, `-error`,
   `-no-match`, `-editing`) are chips over the viewer.
-- The explanation: the screen's `explain.md` (or the note of its canvas fragment when it has no folder yet), the overview as rows, each region with
+- The explanation: the screen's `screen.yaml` (sections, the options considered and the UI audit table; or `explain.md` for a screen not migrated yet) (or the note of its canvas fragment when it has no folder yet), the overview as rows, each region with
   its `Vì sao`, `Luật` and `Grammar` lines, the flags `CHƯA RÕ` and `SAI`.
 
 ## API

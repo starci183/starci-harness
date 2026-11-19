@@ -8,6 +8,7 @@ import { devPath } from "../model.ts"
 import type { Screen } from "../model.ts"
 import { cap } from "./cap.ts"
 import { Inline } from "./inline.tsx"
+import { ScreenDocView } from "./ScreenDocView.tsx"
 import { statusLabel, TONE } from "./status.ts"
 
 export interface ExplainProps {
@@ -95,8 +96,9 @@ export function ExplainPanel({ screen, labels, devUrl }: ExplainProps): ReactEle
                 </div>
             </div>
             <Divider />
-            {explain === null ? <Text tone="muted">{labels.noExplain}</Text> : null}
-            {explain !== null && explain.intro !== "" ? (
+            {screen.doc !== null ? <ScreenDocView doc={screen.doc} screen={screen} labels={labels} /> : null}
+            {screen.doc === null && explain === null ? <Text tone="muted">{labels.noExplain}</Text> : null}
+            {screen.doc === null && explain !== null && explain.intro !== "" ? (
                 <Section title={labels.intro}>
                     <dl className="sg-rows">
                         {introClauses(explain.intro).map((row, index) => (
@@ -118,13 +120,13 @@ export function ExplainPanel({ screen, labels, devUrl }: ExplainProps): ReactEle
                     </dl>
                 </Section>
             ) : null}
-            {explain !== null && regions.length === 0 ? <Badge tone="danger">{labels.noRegions}</Badge> : null}
-            {overview.map((region) => (
+            {screen.doc === null && explain !== null && regions.length === 0 ? <Badge tone="danger">{labels.noRegions}</Badge> : null}
+            {(screen.doc === null ? overview : []).map((region) => (
                 <Section key={region.name} title={cap(region.name)}>
                     <Rows region={region} labels={labels} />
                 </Section>
             ))}
-            {rest.length === 0 ? null : (
+            {screen.doc !== null || rest.length === 0 ? null : (
                 <Section title={labels.regions}>
                     <DisclosureList
                         label={labels.regions}
