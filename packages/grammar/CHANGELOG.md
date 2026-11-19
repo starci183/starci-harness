@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased - ChoiceChips at a Chip's height, ChoiceButtons at a Button's
+
+The train assigns the version; both families, light and dark.
+
+- Changed (`ChoiceChips`): a choice chip is as tall as a Chip of size sm (20: the 12 text on a 20 line, no block padding, an inline 8 and the pill radius), no longer the 32 of a small toggle button. The loading twin draws chips of the same height. No prop changes.
+- Added (`ChoiceButtons`, `ChoiceButtonsProps`, `ChoiceButton`): one choice among options with the weight of a button (a plan level, an amount, a period), each a separate toggle as tall as a Button of `size` (`md` default 40, `sm` 32), with the props and radio behaviour of `ChoiceChips`. A screen that used `ChoiceChips` for such options moves to `ChoiceButtons` to keep a button's height.
+- Added (DNA, `contexts/grammars/contract.yaml`): `DNA-COMMON-CHOICE-CHIPS-CHIP-HEIGHT`, `DNA-COMMON-CHOICE-BUTTONS-BUTTON-HEIGHT`, `DNA-COMMON-CHOICE-BUTTONS-SM-HEIGHT`; role `segmented-control` renders both. Docs `contexts/ui/components/segmented-control.md` (a `buttons` row), story `ChoiceChipsAndButtons`.
+
 ## 0.49.1 - 2026-11-20 - ToastStack on HeroUI's Toast
 
 A notice renders through HeroUI's toast, one toast per act, bottom end.

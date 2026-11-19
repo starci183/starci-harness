@@ -204,15 +204,15 @@ roles:
 
   - id: segmented-control
     ui: ui/components/segmented-control.md
-    renderers: [ChoiceChips]
+    renderers: [ChoiceChips, ChoiceButtons]
     vendorParity: [toggle-button-group, toggle-button]
-    slots: ["ChoiceChips: label, options (value, label, isDisabled), empty, error"]
+    slots: ["ChoiceChips, ChoiceButtons: label, options (value, label, isDisabled), empty, error"]
     variants:
       width: { values: [content, fill], chosenBy: app }
-    sizes: { steps: [sm, md], default: md }
+    sizes: { choiceChips: { steps: none, equals: the vendor Chip of size sm }, choiceButtons: { steps: [sm, md], default: md, equals: the Button of the same size } }
     states: [selected, focus-visible, disabled, skeleton]
     grammarMayChange: [selected paint (soft accent with accent border)]
-    dna: [DNA-COMMON-CHOICE-CHIPS-WRAP, DNA-COMMON-CHOICE-CHIPS-FILL]
+    dna: [DNA-COMMON-CHOICE-CHIPS-WRAP, DNA-COMMON-CHOICE-CHIPS-FILL, DNA-COMMON-CHOICE-CHIPS-CHIP-HEIGHT, DNA-COMMON-CHOICE-BUTTONS-BUTTON-HEIGHT, DNA-COMMON-CHOICE-BUTTONS-SM-HEIGHT]
 
   - id: chip
     ui: ui/components/chip.md
@@ -1768,7 +1768,22 @@ mustKeep:
     - id: DNA-COMMON-CHOICE-CHIPS-WRAP
       role: segmented-control
       law: The chips of one group have one height, so a wrapped row and a short row read as one set.
-      measure: { kind: uniform, scope: '[data-component="ChoiceChips"]', select: '.starci-core-choice-chip', metric: [height], op: "=" }
+      measure: { kind: uniform, scope: ':is([data-component="ChoiceChips"],[data-component="ChoiceButtons"])', select: '.starci-core-choice-chip', metric: [height], op: "=" }
+      owner: contract roles.segmented-control
+    - id: DNA-COMMON-CHOICE-CHIPS-CHIP-HEIGHT
+      role: segmented-control
+      law: A choice chip is as tall as a Chip of size sm, never the height of a toggle button.
+      measure: { kind: style, select: '[data-component="ChoiceChips"] .starci-core-choice-chip', metric: [height], op: "=", value: { vendor: { component: Chip, props: { variant: soft, size: sm }, metric: [height] } } }
+      owner: contract roles.segmented-control
+    - id: DNA-COMMON-CHOICE-BUTTONS-BUTTON-HEIGHT
+      role: segmented-control
+      law: A ChoiceButtons option at md is as tall as a md Button, 40.
+      measure: { kind: box, select: '[data-component="ChoiceButtons"][data-size="md"] .starci-core-choice-chip', metric: height, op: "=", value: 40px }
+      owner: contract roles.segmented-control
+    - id: DNA-COMMON-CHOICE-BUTTONS-SM-HEIGHT
+      role: segmented-control
+      law: A ChoiceButtons option at sm is as tall as a sm Button, 32.
+      measure: { kind: box, select: '[data-component="ChoiceButtons"][data-size="sm"] .starci-core-choice-chip', metric: height, op: "=", value: 32px }
       owner: contract roles.segmented-control
     - id: DNA-COMMON-BOARD-ONE-WIDTH
       role: data-views

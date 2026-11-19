@@ -2,14 +2,14 @@
 
 Law module: `choice-controls.ts`. Catalogue: R380 FE_GROUPED_CHOICE_CONTROL.
 
-The Grammar draws no group of attached buttons. A choice among a few has one component by meaning: `Tabs` switches a view or filters a list that stays in place (`kind="filter"`: compact underline tabs with a `count` each, in the list pane under its search field), `ChoiceChips` or `RadioGroup` chooses a value of a form (a tablist is not a form field), separate `Button`s or a `DropdownMenu` carry actions, and a date is the `Calendar` with a time as `ChoiceChips`. `ButtonGroup`, `FilterButtonGroup` and `SegmentedControl` stay exported and deprecated for one release so existing screens build; the rule stops new uses.
+The Grammar draws no group of attached buttons. A choice among a few has one component by meaning: `Tabs` switches a view or filters a list that stays in place (`kind="filter"`: compact underline tabs with a `count` each, in the list pane under its search field), `ChoiceButtons`, `ChoiceChips` or `RadioGroup` chooses a value of a form (a tablist is not a form field), separate `Button`s or a `DropdownMenu` carry actions, and a date is the `Calendar` with a time as `ChoiceChips`. `ButtonGroup`, `FilterButtonGroup` and `SegmentedControl` stay exported and deprecated for one release so existing screens build; the rule stops new uses.
 
 Every rule below is an error in `coreGrammarConfig`; none can be switched off or suppressed inline.
 
 ## Which component switches what
 
 - `Tabs` switches the views or periods of one block, or filters its list: the primary underline, `kind="filter"` in the `filter` row of the block's `Section`, one line under the strip.
-- `ChoiceChips` or `RadioGroup` chooses a value of a form.
+- `ChoiceButtons` (options with the weight of a button, as tall as a Button), `ChoiceChips` (short options, as tall as a Chip) or `RadioGroup` chooses a value of a form.
 - A `Button` holds a command, never a selection state; a `ButtonGroup` holds commands only.
 - A switch between modes or periods of one block ("This month / Last month", "Day / Week / Month", "List / Board") is `Tabs appearance="primary"` in the `action` of the block's `Section`.
 - Two joined buttons or pills acting as tabs are banned. `SegmentedControl` is removed.

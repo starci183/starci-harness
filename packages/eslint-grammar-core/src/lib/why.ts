@@ -95,7 +95,7 @@ export const why: Record<string, WhyEntry> = {
   "no-grouped-choice-controls": {
     code: "FE_GROUPED_CHOICE_CONTROL",
     en: "A ButtonGroup, FilterButtonGroup or SegmentedControl in `<file>` draws a group of attached buttons, which the Grammar no longer has.",
-    fix: "Use the component of the meaning: Tabs (kind filter for a list) to switch a view or filter, ChoiceChips or RadioGroup to choose a form value, separate Buttons or a DropdownMenu for actions.",
+    fix: "Use the component of the meaning: Tabs (kind filter for a list) to switch a view or filter, ChoiceButtons, ChoiceChips or RadioGroup to choose a form value, separate Buttons or a DropdownMenu for actions.",
   },
   "field-label": {
     code: "FE_FIELD_LABEL",
@@ -284,7 +284,7 @@ export const why: Record<string, WhyEntry> = {
   },
   "suggestion-buttons": {
     code: "FE_SUGGESTION_BUTTONS",
-    en: "A Link row, a ChoiceChips or a Chip in `<file>` runs an action or sends its own label as a suggestion.",
+    en: "A Link row, a ChoiceChips, a ChoiceButtons or a Chip in `<file>` runs an action or sends its own label as a suggestion.",
     fix: "Suggestions and quick replies are one pattern: a `Cluster gap=\"inline\"` (with `label`) of neutral `Button size=\"sm\"` (a pill).",
   },
 }

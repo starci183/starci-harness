@@ -14,7 +14,7 @@ import { defineFamilyRules, defineRule } from "./lib/rule-contract.ts"
  * A second rule holds the same law for loose buttons: two or more adjacent `Button` or `IconButton` elements (or one written in a
  * `.map`) that carry `aria-pressed`, `isSelected` or `isActive` are joined buttons acting as tabs, a pill toggle ("This month / Last
  * month"). A switch between views or periods of one block is `Tabs` (the primary underline) in the `filter` row of the block's `Section` (a mode or period pill is `Section action`);
- * `ChoiceChips` or `RadioGroup` choose a form value; a button holds a command, never a selection state.
+ * `ChoiceButtons`, `ChoiceChips` or `RadioGroup` choose a form value; a button holds a command, never a selection state.
  */
 
 /** Each banned component with the replacement its message names. */

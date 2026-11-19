@@ -129,14 +129,14 @@ export const suggestionButtons: Rule.RuleModule = defineRule({
         const { grammar, tag } = elementOf(opening, bound)
         const report = (name: string): void => context.report({ node: opening, messageId: "element", data: { element: name } })
 
-        if (grammar === "ChoiceChips") {
+        if (grammar === "ChoiceChips" || grammar === "ChoiceButtons") {
           if (opening.attributes.some((entry) => entry.type === "JSXSpreadAttribute")) return
           const value = attributeOf(opening, "onValueChange")?.value
           if (value == null || value.type !== "JSXExpressionContainer") return
           const handler = value.expression
           if (handler.type === "Identifier" || handler.type === "MemberExpression") {
             const name = calleeName(handler)
-            if (name !== null && SENDERS.test(name) && !NOT_SENDING.test(name)) report("`ChoiceChips`")
+            if (name !== null && SENDERS.test(name) && !NOT_SENDING.test(name)) report(`\`${grammar}\``)
             return
           }
           if (handler.type !== "ArrowFunctionExpression") return
@@ -145,7 +145,7 @@ export const suggestionButtons: Rule.RuleModule = defineRule({
           if (param?.type !== "Identifier" || call === null) return
           const name = calleeName(call.callee)
           if (name === null || NOT_SENDING.test(name)) return
-          if (call.arguments.some((arg) => arg.type === "Identifier" && arg.name === param.name)) report("`ChoiceChips`")
+          if (call.arguments.some((arg) => arg.type === "Identifier" && arg.name === param.name)) report(`\`${grammar}\``)
           return
         }
 
