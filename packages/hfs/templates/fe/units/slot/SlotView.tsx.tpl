@@ -11,7 +11,7 @@ type SlotViewProps<T> = {
     readonly forbidden?: "notice" | "hide"
     /** Re-runs exactly the read of this slot. */
     readonly onRetry: () => void
-    /** The way back from a page-level failure ("Về danh sách"): a destination drawn after the retry, so a page whose record could not load is never a dead end. */
+    /** The way back from a page-level failure: a destination drawn after the retry, so a page whose record could not load is never a dead end. */
     readonly back?: { readonly label: string; readonly href: string }
     readonly render: (items: T, isLoading: boolean) => ReactNode
 }
