@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.48.0 - 2026-11-19 - Batch 174 fixes
 
 Lane `grammar-batch-174` (train 174, after `grammar-labels-hover`): sixteen fixes collected from the screen-clean and site lanes, so apps drop their own classes and globals. New optional props and laws; one changed default look (the filter strip scrolls instead of folding, a negative Alert's action is outlined). Both families, light and dark. The train assigns the version.
 
@@ -23,7 +23,7 @@ Lane `grammar-batch-174` (train 174, after `grammar-labels-hover`): sixteen fixe
 - Added (DNA, `contexts/grammars/contract.yaml`): `DNA-COMMON-EMPTY-LINE-PLAIN`, `-EMPTY-LINE-NO-MARK`, `-EMPTY-PAGE-TITLE-18`, `-RETRY-ONE-LOOK`, `-POPOVER-EDGE`, `-POPOVER-PHONE-SHEET`, `-PALETTE-PHONE-NOT-FULL`, `-PALETTE-NO-KEYS-ON-TOUCH` (contextual), `-TABS-FILTER-NO-FOLD`, `-TABS-FILTER-IN-ROW`, `-TOPBAR-SEARCH-BY-WIDTH`, `-TOPBAR-START-SIDEBAR` (contextual), `-FIGURE-LINK-CUE`, `-LINK-HEAD-HIT-44`, `-IMAGE-EAGER-PAINTS`, `-TABLE-SCROLL-FOCUSABLE`, `-BUTTON-GROUND-CONTRAST`, `-ROW-PHONE-UNDER`, `-ROW-PHONE-START-EDGE`, `-STEP-NUMERAL-400`, `-TIMELINE-DOT-NEUTRAL`. `DNA-COMMON-EMPTY-TITLE-16` leaves the plain line and the page scope to their own laws; `DNA-CORE-BUTTON-ALTERNATIVE-OUTLINE` leaves a Button on a band.
 - Stories: `Media/Empty notice line, page title and the retry (0.48.0)`, `Overlays/Popover sheet and the palette on a phone (0.48.0)`, `Navigation & Data/Phone fixes (0.48.0)`, `Surfaces/Figures, rows, bands and pages (0.48.0)`; `Filter pills` and `Tabs end slot` follow the scrolling strip. Contexts: `ui/components/` empty-state, toast-alert, dialog-drawer, command-palette, tabs, sidebar, list-table, button, image, pane-grid.
 
-## 0.48.0 - 2026-11-19 - Label over content, the padded list body, settings rows
+### Label over content, the padded list body, settings rows
 
 Lane `grammar-labels-hover` (next train). Owner feedback on the NIVO agent page: since the surface-card change flattened sections, labels read like body text. Optional prop values and a new layout, plus owner-ruled type and spacing changes, so a minor. Both families, light and dark. The rulings changed several times on 2026-11-19; this is the last.
 

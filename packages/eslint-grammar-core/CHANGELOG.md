@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.48.0 - 2026-11-19
+
+- Changed: the family version 0.48.0 (label over content, the padded list body, settings rows, ExpandableText and the batch 174 fixes of @starci/grammar). No rule change.
+
 ## 0.47.5 - 2026-11-19
 
 - Changed: the family version 0.47.5 (TopBar fit, the three-line glyph, the phone control laws of @starci/grammar). No rule change.

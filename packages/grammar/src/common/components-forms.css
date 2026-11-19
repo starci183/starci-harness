@@ -546,7 +546,7 @@
         gap: var(--grammar-identity-gap);
     }
 
-    /* 0.48.0 (owner 2026-11-19): a settings row reads label over content: the title 16 / 400 in the primary colour, its hint 14 in the secondary colour. */
+    /* 0.48.0: a settings row reads label over content: the title 16 / 400 in the primary colour, its hint 14 in the secondary colour. */
     [data-component="Switch"] .starci-core-switch-text > [data-grammar-field-label] {
         font-size: var(--grammar-text-lg);
         font-weight: var(--grammar-weight-regular);

@@ -1748,7 +1748,7 @@
         border-block-start: 1px solid var(--separator);
     }
 
-    /* 0.48.0 (owner 2026-11-19): the term is the label (16 / 400, primary); the value under it is the content (14, secondary). A label never renders like its value. */
+    /* 0.48.0: the term is the label (16 / 400, primary); the value under it is the content (14, secondary). A label never renders like its value. */
     .starci-core-description-term {
         color: var(--foreground);
         font-size: var(--grammar-text-lg);

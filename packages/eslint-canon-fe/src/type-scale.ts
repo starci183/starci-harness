@@ -1,5 +1,5 @@
 /**
- * The type-scale law (owner 2026-11-19, `_TYPOGRAPHY.md`): an app never sets a font size, weight, style or case itself.
+ * The type-scale law: an app never sets a font size, weight, style or case itself.
  *
  * Grammar owns the console scale (title 18, heading 16, label 16, body 14, meta 12; weights 400 and 500) and exposes it through
  * its components (`Text`, `Heading`, `Section`, row and list parts). A raw `text-[15px]`, `text-lg`, `font-bold`, `italic` or

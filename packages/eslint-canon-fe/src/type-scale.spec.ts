@@ -1,5 +1,5 @@
 /**
- * Twin tests for the type-scale rule (owner 2026-11-19, `_TYPOGRAPHY.md`).
+ * Twin tests for the type-scale rule.
  *
  *   node --test src/type-scale.spec.ts
  */

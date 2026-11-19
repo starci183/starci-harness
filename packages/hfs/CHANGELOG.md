@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 6.13.54 - 2026-11-19
+
+- Changed (`knowledge/hfs/canon-pins.yaml`): the Grammar family 0.48.0 (range ~0.48.0), @starci/gallery 0.1.7, eslint-canon-fe 9.20.4 (range ~9.20.4) and the `@starci/hfs` self-pin is 6.13.54.
 
 - Added (template `fe/units/slot/SlotView.tsx.tpl`): `back?: { label, href }`, the way back from a page-level failure, passed to the error notice as its `secondary` (Grammar `ErrorData.back`, lane `grammar-batch-174`).
 

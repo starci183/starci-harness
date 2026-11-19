@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 9.20.4 - 2026-11-19
 
 - Added: `no-raw-font` (law `type-scale`, owner 2026-11-19): no raw font size, weight, style or case utility and no inline font style in app code; typography comes from the Grammar console scale.
 
