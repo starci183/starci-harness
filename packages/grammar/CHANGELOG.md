@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.47.4 - 2026-11-19 - Loading buttons sit in an inert hidden wrapper
+
+Train 170 (lane `harness-polish`). Behaviour fix, no API change, so a patch. A `Button` or `IconButton` with `isLoading` is drawn inside an inert, hidden wrapper (`HiddenSkeleton`, `aria-hidden`, `inert`, laid out as nothing), so a loading skeleton no longer stays a named button or link in the accessibility tree and the tab order; this fixes the Media tiles "Initial Loading" story. Both families.
+
 ## 0.47.3 - 2026-11-19 - Marketing motion, the filled status dot, the dot rule, the grouped More sheet, folding page tabs
 
 Train 168 (lanes `badge-dot-rule`, `grammar-motion`, `grammar-tabs-fold`). New components, a new contract role, optional props and new DNA laws, so a patch (contexts/grammars/contributing.md "Patch or minor"). Both families, light and dark.

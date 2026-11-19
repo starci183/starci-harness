@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.170 - 2026-11-19
+
+- Changed (pins): the Grammar family at 0.47.4 (loading buttons in an inert hidden wrapper), @starci/gallery 0.1.4 and @starci/hfs 6.13.50 (`ENV_SEALED_UNREAD` exempts the SSH group in a transport member, the nivoos package check installs workbench dependencies first, `ingress.kind: shared-edge` with `routes` rendered into Traefik labels and `STACKS_HOST_UNROUTED`). Until the cli-follow step raises the CLI requirement, the CLI runs the hfs it requires.
+
 ## 1.1.0-alpha.169 - 2026-11-19
 
 - Changed: the CLI requires @starci/hfs@6.13.49, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).

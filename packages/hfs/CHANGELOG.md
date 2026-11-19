@@ -1,7 +1,8 @@
 # Changelog
 
-## Unreleased
+## 6.13.50 - 2026-11-19
 
+- Changed (`knowledge/hfs/canon-pins.yaml`): the Grammar family 0.47.4 (range ~0.47.4: loading buttons in an inert hidden wrapper), @starci/gallery 0.1.4 and the `@starci/hfs` self-pin is 6.13.50.
 - Fixed (`rules/env-parity.mts`): `ENV_SEALED_UNREAD` no longer flags an SSH_GROUP key (`VPS_PORT`, `VPS_HOST`, `VPS_USER`, `privateKey`, `knownHosts`) in a transport member (the `deploy.remote.sealed` member and `vps-ci`): the deploy transport reads it, no EnvSource does; the same classification `ENV_DUPLICATE` uses. A third member holding one stays unread.
 - Fixed (`cache/nivoos-package-check.mts`): the nivoos package check installs the dependencies of each `packages/<name>/workbench/<app>/` that lacks them (`npm ci --ignore-scripts` through the heavy governor) before it judges the package, so a fresh worktree is no false red; a failed install is its own finding, the package is not judged and no verdict is recorded.
 - Added (`ingress.kind: shared-edge`, PROJECT-STACKS-4): an environment declares its public hosts once, in `ingress.routes` (`host`, `service`, `port`) with the edge `network` and `certResolver`; `stack/render.mts` renders each routed service's Traefik labels (rule, entrypoint, tls certresolver, service port, docker network) and joins the edge network. A hostname written in the stack file of a shared-edge environment, or a rendered host `routes` does not hold, is `STACKS_HOST_UNROUTED`. The own ingress form (`ingress.component` + `ingress.hosts`) is unchanged.

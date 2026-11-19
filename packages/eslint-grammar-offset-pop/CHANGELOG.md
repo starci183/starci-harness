@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.47.4 - 2026-11-19
+
+- Changed: the family version 0.47.4 (loading buttons of @starci/grammar sit in an inert hidden wrapper). No rule change.
+
 ## 0.47.3 - 2026-11-19
 
 - Changed: the family version 0.47.3 (marketing motion, the filled status dot, folding page tabs of @starci/grammar, new DNA laws). No rule change.
