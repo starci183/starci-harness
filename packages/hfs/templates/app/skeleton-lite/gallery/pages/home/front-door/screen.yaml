@@ -1,0 +1,43 @@
+schema: 1
+screen: home/front-door
+title: Front door
+route: /
+area: home
+summary: "The first page of the starter: the sign-in form, the two ways around it, and sign-out once
+  signed in. Replace it with the product's own front door and keep this explanation current
+  (PROJECT-GALLERY-5)."
+code:
+  - features/pages/AppHomePage/component.tsx
+  - components/blocks/SignInForm
+  - components/blocks/SignOutButton
+shots:
+  "390":
+    file: 390.png
+    sha256: null
+  "1440":
+    file: 1440.png
+    sha256: null
+sections:
+  - id: page-band
+    title: Page band
+    why: The title heads the page; a signed-out reader meets the product name first, so the band carries
+      the title and nothing else.
+    law: R325, every screen is one Grammar Page.
+    grammar: "`Page` with `header.title` (`@starci/grammar/common`), drawn by
+      `features/pages/AppHomePage/component.tsx`."
+  - id: sign-in-form
+    title: Sign-in form
+    why: A signed-out reader's one task is to sign in, so the form is the first thing in the body; once
+      signed in the same place shows the reader and sign-out.
+    law: R325, the body of the Page holds the interactive blocks; the copy comes from the locale catalog
+      (R58).
+    grammar: "`SignInForm` and `SignOutButton` blocks, `components/blocks/SignInForm`,
+      `components/blocks/SignOutButton`."
+  - id: sign-up-and-forgot-links
+    title: Sign-up and forgot links
+    why: A reader without an account or without a password leaves the form by a link, not a second
+      button, so the primary action stays the sign-in.
+    law: R325, a way out of the screen is a link, an action is a button.
+    grammar: "`Link` (`@starci/grammar/common`) twice, `href` from the page props."
+considered: []
+audit: null

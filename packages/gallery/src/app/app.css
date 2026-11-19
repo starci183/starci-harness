@@ -413,3 +413,47 @@ body,
     padding: 0.5rem 1rem;
     background: var(--background);
 }
+
+.sg-code {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.sg-state-chip {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.375rem;
+}
+
+.sg-option {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+}
+
+.sg-audit-scroll {
+    overflow-x: auto;
+}
+
+.sg-audit {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.sg-audit th,
+.sg-audit td {
+    padding: 0.375rem 0.5rem;
+    text-align: left;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--border);
+}
+
+.sg-tree-flag {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}

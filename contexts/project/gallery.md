@@ -299,3 +299,45 @@ canvas of PROJECT-GALLERY-6 is where the owner decides how the screen looks; the
   an approved page is built in one change. A route with several screen folders needs every one of its canvas-managed screens to pass.
   The rule judges code against the canvas, so a screen with no `explain.md` has no mapped source and is not judged here (`HFS_APP_GALLERY_ROUTE_MISSING` is its finding).
   It is not `HFS_APP_GALLERY_DESIGN_UNAPPROVED`, which judges a screen existing in a designed area, not a change.
+
+## PROJECT-GALLERY-8 One file per screen, `screen.yaml`, and a UI audit before a changed screen lands
+
+The owner's decision of 2026-11-19: a screen is described by one structured file, and a screen the diff touches is audited by an agent other than its builder.
+
+1. **`screen.yaml` replaces `explain.md` and `audit.json`.** `gallery/pages/<area>/<screen>/screen.yaml` holds, in this order: `schema: 1`, `screen` (`<area>/<screen>`, the folder), `title`, `route`,
+   `area`, `summary` (one to three sentences), `code` (the source paths the screen is built from, relative to the front-end app's `src/`), `shots` (`"1440"` and `"390"`, each `{ file, sha256 }`,
+   `sha256` null before the first shot; a state shot `<state>-<width>`, such as `empty-1440`, is a further key and a further PNG), `sections` (top to bottom as the user reads:
+   `id` in kebab case, `title`, `why` required; `shows`, `actions`, `states` mapping a state to its text or null, `needsApi` listing the "cần API" items, and the optional `law` and `grammar` lines a
+   migrated explain.md carries), `considered` (`option`, `chosen`, `why` of each option weighed) and `audit` (item 3; `null` for a screen not audited yet). The values are Vietnamese prose, the keys English.
+   The folder holds `screen.yaml`, the shots and `links.json`. The earlier `explain.md` is still read while a screen is not migrated; a folder holding both is `HFS_APP_GALLERY_SCREEN_FILE`.
+   Approval is not here: it stays in `design.json` (PROJECT-GALLERY-6) and only the owner's words set it. A screen.yaml that is not this shape is `HFS_APP_GALLERY_SCREEN_INVALID`
+   (R395: sections without a `why`, a screen or area that is not the folder's, a shot that is no width, a sha that is not a lowercase sha256). The gallery app renders the file: summary, code, sections,
+   the options considered and the audit table (rounds by lenses).
+2. **`starci gallery migrate-explain [--execute]`** turns every `explain.md` into a `screen.yaml` (regions become sections with their `Vì sao`, `Luật` and `Grammar`, the options section becomes
+   `considered`, the `code` is read from the route's source, the shot sha256 from the PNGs on disk) with `audit: null`, and deletes the explain.md. A dry run lists what it would do; a screen it cannot convert (no route, no title) is
+   skipped and named.
+3. **The UI audit.** A screen the diff touches since the base (the source of its route changed, the PROJECT-GALLERY-5 mapping; or its audited screen.yaml changed) carries an `audit`:
+   `builder.agent`, `auditor.agent` (a different agent), `rounds` (each `n`, `at`, and the seven `lenses` `order`, `layout`, `actionable`, `live`, `words`, `states`, `truth`, each
+   `{ verdict: pass | fixed | open, notes }`, notes required unless `pass`) and `escalate`. The lenses ask: **order** what the user needs first comes first; **layout** grouping, hierarchy and the Grammar
+   rules; **actionable** every value shows how to change it; **live** running, done, waiting and failed are visible with an icon and motion; **words** no mixed English or raw ids, one term per concept; **states** empty,
+   loading, error and no-permission at 1440 and 390; **truth** the data is real or marked "cần API". The audit loops, each round running all seven lenses, until every lens of the last round is `pass` or `fixed`:
+   at least 2 rounds, at most 4. Still `open` after round 4 is "needs owner": the gate stays red, never auto-passes, and only the owner's decision (`escalate`) moves it.
+4. **The gate is "UI Audit"** (`starci app check --gate uiaudit`, in every whole run and the pre-push hook; a mandatory gate no app switches off). It judges only the touched screens; every other screen is grandfathered and never read.
+   It stores no cache record (a record per touched screen is only merge churn in every lane's cache); the diff against the base is its scope, as for PROJECT-GALLERY-5. Its findings are `localOnly`: a warning in `--env local`, an error in
+   `--env prod`:
+   - `UI_AUDIT_MISSING`: a touched screen has `audit: null` or no screen.yaml;
+   - `UI_AUDIT_INVALID`: the audit block is malformed (a lens missing from a round, a verdict outside the three, notes missing, rounds not numbered 1.., more than 4 rounds);
+   - `UI_AUDIT_STALE`: a shot's sha256 is not recorded, or differs from the PNG on this machine (a fresh checkout holds no PNG and is not judged on it), or the screen's code or text changed since the base and screen.yaml did not;
+   - `UI_AUDIT_SELF_REVIEW`: the auditor is the builder;
+   - `UI_AUDIT_ROUNDS_FEW`: fewer than 2 rounds;
+   - `UI_AUDIT_OPEN`: a lens is open in the last round (before round 4);
+   - `UI_AUDIT_NEEDS_OWNER`: a lens is still open in round 4;
+   - `UI_AUDIT_CONSIDERED_EMPTY`: `considered` is empty.
+5. **`starci audit run <area>/<screen> [--builder <agent>] [--auditor <agent>] [--out <brief.md>]`** prepares a round: it takes the sha256 of `1440.png` and `390.png`, writes the next round into screen.yaml as seven
+   open lenses, and prints the brief an auditor agent reads (the shots at full size, the seven lenses, the laws: PROJECT-GALLERY-7, the DNA laws of the Grammar contract, ui-on-grammar, the owner rules).
+   **The harness never calls a model.** The auditor is a separate agent (a subagent or another lane) given the brief; it fills the round, the builder fixes and shoots again, and `run` opens the next round.
+   `starci audit status [--json]` lists the screens with an audit missing, stale, pending, open or waiting for the owner.
+6. **A UI lane ends:** shoot (1440 and 390) → `starci audit run` → an auditor subagent fills the round → the builder fixes → shoot → `starci audit run` again, until round 2 or later has no open lens → sync the canvas →
+   land. The final critique of PROJECT-GALLERY-7 item 3 is these rounds; its record of options is `considered`.
+
+**Enforced by** `packages/hfs/cache/uiaudit-family.mts` and `runtime/scripts/hfs/screen-yaml.mts` (the UI Audit gate and the schema), `rules/gallery.mts` (`HFS_APP_GALLERY_SCREEN_INVALID`), `uiaudit/cli.mts` (`starci audit`, `starci gallery`).

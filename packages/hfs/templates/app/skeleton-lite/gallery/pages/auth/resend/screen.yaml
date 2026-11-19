@@ -1,0 +1,34 @@
+schema: 1
+screen: auth/resend
+title: Resend confirmation
+route: /auth/resend
+area: auth
+summary: The resend-confirmation door of the starter. One Grammar Page; replace the copy and the
+  form with the product's own and keep this explanation current (PROJECT-GALLERY-5).
+code:
+  - features/pages/AppResendPage
+  - components/blocks/EmailDoorForm
+shots:
+  "390":
+    file: 390.png
+    sha256: null
+  "1440":
+    file: 1440.png
+    sha256: null
+sections:
+  - id: page-band
+    title: Page band
+    why: The title heads the page and tells the reader which door of the sign-in this is, so the band
+      carries the title and nothing else.
+    law: R325, every screen is one Grammar Page; the title is the only band content of a door.
+    grammar: "`Page` with `header.title` (`@starci/grammar/common`), drawn by
+      `features/pages/AppResendPage/`."
+  - id: form
+    title: Form
+    why: The door asks for the email alone, the one thing needed to send the confirmation mail again.
+    law: R325, the body of the Page holds the interactive block; the copy comes from the locale catalog
+      (R58).
+    grammar: '`EmailDoorForm` block, `components/blocks/EmailDoorForm`, `Page` `measure="reading"` keeps
+      the line short.'
+considered: []
+audit: null

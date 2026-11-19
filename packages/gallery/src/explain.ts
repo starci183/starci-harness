@@ -4,7 +4,7 @@
 export const FIELDS = ["Vì sao", "Luật", "Grammar"] as const
 export type Field = (typeof FIELDS)[number]
 const REQUIRED: readonly Field[] = ["Vì sao", "Grammar"]
-const UNCLEAR = /^(?:CHƯA RÕ|SAI)(?![\p{L}\p{N}])/u
+export const UNCLEAR_VALUE = /^(?:CHƯA RÕ|SAI)(?![\p{L}\p{N}])/u
 const fieldPattern = (field: string): RegExp => new RegExp(`^\\s*(?:[-*]\\s*)?\\*{0,2}${field}\\*{0,2}:\\*{0,2}[ \\t]*`, "iu")
 const PATTERNS: readonly (readonly [Field, RegExp])[] = FIELDS.map((field) => [field, fieldPattern(field)] as const)
 
@@ -73,7 +73,7 @@ export function parseExplain(markdown: string): Explain {
         for (const field of FIELDS) {
             const value = region.fields[field]
             if (REQUIRED.includes(field) && !value) region.problems.push({ kind: "missing", field })
-            else if (value && UNCLEAR.test(value)) region.problems.push({ kind: "unclear", field })
+            else if (value && UNCLEAR_VALUE.test(value)) region.problems.push({ kind: "unclear", field })
         }
     }
     return { meta, intro: intro.join("\n").trim(), regions }

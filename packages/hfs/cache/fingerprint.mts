@@ -21,7 +21,7 @@ import { CACHE_FORMAT_VERSION, FAMILIES, type FamilyId, type FingerprintPart } f
 const CONFIG_NAME = /^(hfs\.json|package\.json|tsconfig[^/]*\.json|eslint\.config\.mjs|stylelint\.config\.mjs|jest\.config\.[cm]?[jt]s|jest\.config\.json|\.prettierrc[^/]*|prettier\.config\.[cm]?[jt]s|\.prettierignore|\.editorconfig|sonar-project\.properties|codecov\.yml)$/;
 
 /** The families the code of `@starci/hfs` computes: a new hfs re-runs these and no other. The CLI that runs it computes none of their records. */
-const HFS_RUN: readonly FamilyId[] = ['hfs', 'secrets', 'wiring', 'db'];
+const HFS_RUN: readonly FamilyId[] = ['hfs', 'secrets', 'wiring', 'db', 'uiaudit'];
 
 /**
  * The toolchain of each tool family as the lockfile resolves it: the installed packages whose version can change that family's results while no record keys

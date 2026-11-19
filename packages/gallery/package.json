@@ -1,6 +1,6 @@
 {
   "name": "@starci/gallery",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "The screenshot gallery of a StarCi app as one Vite config: the screens of gallery/pages with their explanations, the approved design frames of the canvas beside the real shots (side by side, a slider, shot only), each screen's status from design.json, its states, the flow map. Built with the StarCi Grammar.",
   "keywords": [
     "starci",
@@ -66,7 +66,8 @@
     "react": "19.2.3",
     "react-aria-components": "1.21.1",
     "react-dom": "19.2.3",
-    "tailwindcss": "4.3.3"
+    "tailwindcss": "4.3.3",
+    "yaml": "2.9.0"
   },
   "peerDependencies": {
     "vite": ">=6"

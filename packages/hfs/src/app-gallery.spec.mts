@@ -451,8 +451,8 @@ test('a screen folder with shots and no explain.md is HFS_APP_GALLERY_EXPLAIN_MI
   const [finding, ...rest] = findings(root);
   assert.equal(finding?.code, 'HFS_APP_GALLERY_EXPLAIN_MISSING');
   assert.equal(finding?.level, 'error');
-  assert.equal(finding?.path, 'gallery/pages/inbox/today/explain.md');
-  assert.match(finding?.message ?? '', /has 2 shots and no explain\.md/u);
+  assert.equal(finding?.path, 'gallery/pages/inbox/today/screen.yaml');
+  assert.match(finding?.message ?? '', /has 2 shots and no screen\.yaml/u);
   assert.deepEqual(rest, [], 'a folder with no shot needs none yet');
   assert.deepEqual(galleryScreens(root, PARAMS).screens.filter((screen) => screen.area === 'inbox'), [{ area: 'inbox', screen: 'empty-folder', shots: 0, stray: [] }, { area: 'inbox', screen: 'today', shots: 2, stray: [] }]);
   page(root, 'inbox', 'today', [], EXPLAIN_OK);

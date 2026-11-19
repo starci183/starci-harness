@@ -20,6 +20,7 @@ import { appCheckVerb } from "./core/app/check.js"
 import { appCiVerb } from "./core/app/ci.js"
 import { appCodemodVerb } from "./core/app/codemod.js"
 import { appAuditVerb } from "./core/app/audit.js"
+import { auditRunVerb, auditStatusVerb, galleryMigrateVerb } from "./core/app/ui-audit.js"
 import { appCoverageVerb } from "./core/app/coverage.js"
 import { appDataVerb } from "./core/app/data.js"
 import { dataStandardVerb } from "./core/data/standard.js"
@@ -154,6 +155,9 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     appCodemodVerb,
     appCoverageVerb,
     appAuditVerb,
+    auditRunVerb,
+    auditStatusVerb,
+    galleryMigrateVerb,
     appDataVerb,
     dataStandardVerb,
     appDbVerb,

@@ -148,3 +148,39 @@ test("a comparison needs both sides: a screen with only a design or only a shot 
     assert.equal(effectiveView("onion", false, true), "shot")
     assert.equal(effectiveView("slider", false, false), "slider")
 })
+
+const LENS_KEYS = ["order", "layout", "actionable", "live", "words", "states", "truth"]
+const round = (n: number, verdict: string): string => `    - n: ${String(n)}\n      at: 2026-11-19T12:00:00Z\n      lenses:\n${LENS_KEYS.map((lens) => `        ${lens}: { verdict: ${verdict}${verdict === "pass" ? "" : ", notes: da sua"} }`).join("\n")}\n`
+const SCREEN_YAML = (audit: string): string =>
+    `schema: 1\nscreen: agents/agent\ntitle: Một agent\nroute: /agents/[key]\narea: agents\nsummary: Trang của một agent.\ncode:\n  - features/pages/AgentProfilePage\nsections:\n  - id: header\n    title: Dải đầu trang\n    shows: Tên agent\n    why: Cần biết agent đang làm gì\n    actions: [Tạm dừng]\n    states:\n      loading: Skeleton\n      empty: null\n    needsApi: [Số liệu hôm nay]\n  - id: body\n    title: Thân\n    why: CHƯA RÕ\nconsidered:\n  - option: Gộp vào dải đầu\n    chosen: false\n    why: Quá dày\n${audit}`
+
+test("screen.yaml is the description of a screen: sections, options and audit are read, and a legacy explain.md is read only when there is no screen.yaml", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "starci-gallery-yaml-"))
+    const write = (file: string, text: string): void => {
+        fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true })
+        fs.writeFileSync(path.join(root, file), text)
+    }
+    write("gallery/pages/agents/agent/screen.yaml", SCREEN_YAML(`audit:\n  builder: { agent: a }\n  auditor: { agent: b }\n  rounds:\n${round(1, "fixed")}${round(2, "pass")}  escalate: null\n`))
+    write("gallery/pages/agents/agent/explain.md", EXPLAIN("ignored", "/x", "agents"))
+    write("gallery/pages/agents/old/screen.yaml", SCREEN_YAML("audit: null\n").replace("agents/agent", "agents/old"))
+    write("gallery/pages/agents/open/screen.yaml", SCREEN_YAML(`audit:\n  builder: { agent: a }\n  auditor: { agent: b }\n  rounds:\n${round(1, "pass")}${round(2, "open")}  escalate: null\n`))
+    write("gallery/pages/agents/few/screen.yaml", SCREEN_YAML(`audit:\n  builder: { agent: a }\n  auditor: { agent: b }\n  rounds:\n${round(1, "pass")}  escalate: null\n`))
+    write("gallery/pages/agents/legacy/explain.md", EXPLAIN("Cũ", "/legacy", "agents"))
+    const model = buildModel(loadGallery({ root: path.join(root, "gallery"), pages: "pages", canvas: "../.starcistacks/canvas" }).raw)
+    const agent = model.screens["agents/agent"]
+    assert.equal(agent?.title, "Một agent", "the yaml wins over the explain.md beside it")
+    assert.equal(agent.route, "/agents/[key]")
+    assert.equal(agent.doc?.sections[0]?.needsApi[0], "Số liệu hôm nay")
+    assert.deepEqual(agent.doc.sections[0].states, [["loading", "Skeleton"], ["empty", null]])
+    assert.equal(agent.doc.considered[0]?.chosen, false)
+    assert.equal(agent.doc.audit?.rounds.length, 2)
+    assert.equal(agent.auditFlag, null, "two rounds and none open: the audit stands")
+    assert.equal(agent.problems, 1, "the section saying CHƯA RÕ is still flagged")
+    assert.equal(agent.flagged, true)
+    assert.deepEqual(model.screens["agents/old"]?.auditFlag, { kind: "none", open: [] }, "audit: null is grandfathered and flagged")
+    assert.equal(model.screens["agents/open"]?.auditFlag?.kind, "open")
+    assert.equal(model.screens["agents/few"]?.auditFlag?.kind, "few")
+    assert.equal(model.screens["agents/legacy"]?.doc, null, "a screen with only an explain.md is read by the older reader")
+    assert.equal(model.screens["agents/legacy"].title, "Cũ")
+    assert.equal(model.screens["agents/legacy"].auditFlag, null)
+})

@@ -59,3 +59,5 @@ contract hands you. A family you import with no Choose anchor cited, or an id th
 A slice that changes what a screen shows needs the screen's canvas page approved first (`design.json` page `approved`, then `built` with the
 change): [PROJECT-GALLERY-7](../../contexts/project/gallery.md#project-gallery-7-a-ui-change-goes-canvas-first-then-code-then-gallery). When the page is
 not approved, the slice is `blocked` naming it; you never draw or approve it yourself.
+
+A slice that changes a screen ends with the UI audit ([PROJECT-GALLERY-8](../../contexts/project/gallery.md#project-gallery-8-one-file-per-screen-screenyaml-and-a-ui-audit-before-a-changed-screen-lands)): shoot, `starci audit run <area>/<screen> --builder <you>`, an auditor subagent other than you fills the seven lenses of `screen.yaml`, you fix and shoot again until round 2 or later has no open lens; the "UI Audit" gate (`UI_AUDIT_*`) refuses the change otherwise.

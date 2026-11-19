@@ -1,6 +1,8 @@
 // The pure side of @starci/gallery: the explain.md reader, the model of screens, statuses and states, the words. The Vite config of an app is `@starci/gallery/vite`.
 export { FIELDS, SHOT_WIDTHS, flowList, introClauses, linkList, noteToMarkdown, parseExplain } from "./explain.ts"
 export type { Explain, Field, Flow, Link, Problem, Region, Width } from "./explain.ts"
+export { LENSES, MAX_ROUNDS, MIN_ROUNDS, auditFlag, explainOf, readScreen } from "./screen.ts"
+export type { AuditFlag, Lens, ScreenAudit, ScreenConsidered, ScreenDoc, ScreenRound, ScreenSection, Verdict } from "./screen.ts"
 export { LABELS, capitalize, fill, galleryLocale } from "./labels.ts"
 export type { Labels } from "./labels.ts"
 export { STATE_KINDS, buildModel, devPath, splitState, statusOf } from "./model.ts"

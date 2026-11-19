@@ -14,7 +14,7 @@ import { packageVersion } from "../version.js"
 import { ALLOW_SKEW_ENV, runSkew, writes, type Skew } from "./skew.js"
 
 /** The `starci app` verbs @starci/hfs implements; each is one verb file of this folder. */
-export type HfsVerb = "add" | "remove" | "check" | "ci" | "codemod" | "coverage" | "audit" | "data" | "db" | "desktop" | "emit" | "release" | "scaffold" | "secret" | "slot" | "stack" | "sync" | "upgrade" | "world"
+export type HfsVerb = "add" | "remove" | "check" | "ci" | "codemod" | "coverage" | "audit" | "uiaudit" | "gallery" | "data" | "db" | "desktop" | "emit" | "release" | "scaffold" | "secret" | "slot" | "stack" | "sync" | "upgrade" | "world"
 
 /**
  * What the CLI hands @starci/hfs besides its version, for the verbs that use it: the caller's role an urgent release record names, and the

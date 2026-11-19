@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.5 - 2026-11-19
+
+- Added: the gallery reads `screen.yaml` (the screen document view, labels and status from it) in place of `explain.md`; new dependency `yaml` 2.9.0.
+
 ## 0.1.4 - 2026-11-19
 
 - Changed: requires @starci/grammar 0.47.4, the Grammar it ships with.

@@ -836,7 +836,7 @@ slots:
   - id: app.gallery-explain
     since: 3.28.0
     profiles: [app]
-    path: "gallery/pages/**/{explain.md,links.json}"
+    path: "gallery/pages/**/{screen.yaml,explain.md,links.json}"
     presence: optional
     tracked: tracked
     tier: none
