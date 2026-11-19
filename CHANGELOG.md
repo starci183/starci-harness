@@ -2,6 +2,8 @@
 
 ## 1.1.0-alpha.176 - 2026-11-19
 
+- Changed: the CLI requires @starci/hfs@6.13.56, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
+
 - Changed (pins): the Grammar family at 0.49.0, eslint-canon-fe 9.21.0, @starci/gallery 0.1.8 and @starci/hfs 6.13.56. Until the cli-follow step raises the CLI requirement, the CLI runs the hfs it requires.
 - Added (Grammar 0.49.0, BREAKING, lane `grammar-custom`): `<Fragment reason="...">`, the escape hatch where any library, markup and class name is allowed and the Grammar lint is silent (eslint-grammar-core and eslint-grammar-offset-pop 0.49.0, eslint-canon-fe 9.21.0); the the fragment inventory script audit report; `starci-fe/fragment-only-library` (motion and graph libraries only inside Fragment) and `starci-grammar/no-graph-or-animation-library`.
 - Removed (Grammar 0.49.0, BREAKING): `FlowGraph`, `BubbleMap` and the `@xyflow/react` peer. An app that draws a graph owns that component and uses `@xyflow/react` inside `<Fragment reason="...">`. The pins, the contexts index and the cohort bump are the train's.
