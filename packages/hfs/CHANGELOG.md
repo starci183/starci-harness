@@ -3,6 +3,7 @@
 ## 6.13.51 - 2026-11-19
 
 - Fixed (`stack/render.mts`, shared-edge ingress): a rendered router and service are named `<stack>-<service>` (`<stack>-<service>-<port>` for several ports), never the bare service name, because the edge-traefik is shared with other stacks and a duplicate router name makes Traefik drop both; the edge network is named by `traefik.swarm.network` (swarm provider) and `traefik.docker.network` (docker provider).
+- Added (`ingress.routes[]`, shared edge): a route may carry `paths` (exact), `pathPrefixes` and an explicit `priority`, so one host can split by path between services (a front end that serves the host and an api that takes `/api/`, `/graphql`); routes sharing a port and the same constraint form one router (`<stack>-<service>`, `<stack>-<service>-paths`, `-paths-2`, ...) whose rule is `Host(...)` and, with paths, `&& (Path(...) || PathPrefix(...))`; one Traefik service per service and port holds the port.
 
 ## 6.13.50 - 2026-11-19
 

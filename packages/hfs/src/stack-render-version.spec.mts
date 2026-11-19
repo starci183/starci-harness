@@ -125,7 +125,7 @@ test('a literal dollar in the rendered stack survives the second interpolation o
 test('a shared edge renders the Traefik labels and the edge network from the declaration, and refuses a route to a service the stack lacks', (t) => {
   const { config, ctx, options, extra } = renderFixture(t);
   const edge = { network: 'edge', certResolver: 'letsencrypt', entrypoint: 'websecure', routes: [
-    { host: 'b.example.test', service: 'api', port: 3000 }, { host: 'a.example.test', service: 'api', port: 3000 }, { host: 'admin.example.test', service: 'api', port: 3100 } ] };
+    { host: 'b.example.test', service: 'api', port: 3000, paths: [], pathPrefixes: [], priority: null }, { host: 'a.example.test', service: 'api', port: 3000, paths: [], pathPrefixes: [], priority: null }, { host: 'admin.example.test', service: 'api', port: 3100, paths: [], pathPrefixes: [], priority: null } ] };
   assert.deepEqual(edgeLabels(edge, 'web', 'stk'), []);
   const labels = edgeLabels(edge, 'api', 'stk');
   assert.ok(labels.includes('traefik.http.routers.stk-api-3000.rule=Host(`a.example.test`) || Host(`b.example.test`)'));
@@ -135,6 +135,13 @@ test('a shared edge renders the Traefik labels and the edge network from the dec
   assert.ok(labels.includes('traefik.http.services.stk-api-3100.loadbalancer.server.port=3100'));
   assert.ok(labels.includes('traefik.docker.network=edge'));
   assert.ok(labels.includes('traefik.swarm.network=edge'));
+  const split = { network: 'edge', certResolver: 'le', entrypoint: 'websecure', routes: [
+    { host: 'next.example.test', service: 'core', port: 3001, paths: ['/graphql'], pathPrefixes: ['/api/'], priority: 100 }, { host: 'api.example.test', service: 'core', port: 3001, paths: [], pathPrefixes: [], priority: null } ] };
+  const core = edgeLabels(split, 'core', 'stk');
+  assert.ok(core.includes('traefik.http.routers.stk-core.rule=Host(`api.example.test`)'));
+  assert.ok(core.includes('traefik.http.routers.stk-core-paths.rule=Host(`next.example.test`) && (Path(`/graphql`) || PathPrefix(`/api/`))'));
+  assert.ok(core.includes('traefik.http.routers.stk-core-paths.priority=100'));
+  assert.ok(core.includes('traefik.http.routers.stk-core-paths.service=stk-core'));
   void extra;
   return renderRelease(ctx as StackContext, { ...config, edge: { ...edge, routes: [edge.routes[0]!] } }, options).then(() => {
     const generated = JSON.parse(fs.readFileSync(path.join(String(options.out), 'stack.generated.yaml'), 'utf8'));

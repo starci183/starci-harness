@@ -709,6 +709,17 @@ $defs:
                 host: {type: string, minLength: 1}
                 service: {type: string, minLength: 1}
                 port: {type: integer, minimum: 1, maximum: 65535}
+                paths:
+                  description: "shared-edge: exact paths this route serves on the host (Path(...)); with pathPrefixes it makes the route a path route."
+                  type: array
+                  items: {type: string, pattern: '^/'}
+                pathPrefixes:
+                  description: "shared-edge: path prefixes this route serves on the host (PathPrefix(...))."
+                  type: array
+                  items: {type: string, pattern: '^/'}
+                priority:
+                  description: "shared-edge: the explicit Traefik router priority of this route (a path route that must win over the host's catch-all route)."
+                  type: integer
           component: {type: string, minLength: 1}
           external:
             description: "The shared ingress stack (its own docker stack) that serves the hosts; this stack renders no ingress and publishes no port."

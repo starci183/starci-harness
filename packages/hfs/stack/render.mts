@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { readYaml } from './config.mjs';
-import type { DeployConfig, ServiceEnvironment, SharedEdge } from './config.mjs';
+import type { DeployConfig, EdgeRoute, ServiceEnvironment, SharedEdge } from './config.mjs';
 import { tool } from './context.mjs';
 import type { StackContext } from './context.mjs';
 import { hasPlaceholderDigest, isImageReference, isReleaseId } from './digest.mjs';
@@ -101,26 +101,46 @@ function plainEnvironment(config: DeployConfig, settings: Record<string, string>
 }
 
 /**
- * The Traefik router labels of one service of a shared edge, rendered from `ingress.routes` (no host is written in the stack file): per service and
- * port one router named `<stack>-<service>` (`<stack>-<service>-<port>` when the service has several ports; the edge is shared with other stacks, so a router name is never a bare service name), rule Host(...) over every host routed there, the edge
- * entrypoint, tls with the edge's certresolver and the service port; `traefik.swarm.network` (the swarm provider) and `traefik.docker.network` (the docker provider) name the edge network the service joins.
+ * The Traefik router labels of one service of a shared edge, rendered from `ingress.routes` (no host is written in the stack file). Per service and
+ * port one Traefik service `<stack>-<service>` (`<stack>-<service>-<port>` when the service has several ports) holding the port, and per group of routes
+ * that share a port and the same path constraint one router named like it (a group with paths adds `-paths`, `-paths-2`, ...): the edge is shared with
+ * other stacks, so a name is never a bare service name. The rule is `Host(...)` over the hosts of the group, and with `paths` / `pathPrefixes` it adds
+ * `&& (Path(...) || PathPrefix(...))`; an explicit `priority` is a router label. Each router carries the edge entrypoint and tls with the edge's
+ * certresolver; `traefik.swarm.network` (the swarm provider) and `traefik.docker.network` (the docker provider) name the edge network the service joins.
  */
 export function edgeLabels(edge: SharedEdge, service: string, stack: string): string[] {
   const mine = edge.routes.filter((route) => route.service === service);
   if (mine.length === 0) return [];
   const ports = [...new Set(mine.map((route) => route.port))].sort((a, b) => a - b);
   const labels = ['traefik.enable=true', `traefik.swarm.network=${edge.network}`, `traefik.docker.network=${edge.network}`];
+  const constraintCount = (route: EdgeRoute): number => route.paths.length + route.pathPrefixes.length;
   for (const port of ports) {
-    const router = ports.length === 1 ? `${stack}-${service}` : `${stack}-${service}-${String(port)}`;
-    const rule = [...new Set(mine.filter((route) => route.port === port).map((route) => route.host))].sort().map((host) => `Host(\`${host}\`)`).join(' || ');
-    labels.push(
-      `traefik.http.routers.${router}.rule=${rule}`,
-      `traefik.http.routers.${router}.entrypoints=${edge.entrypoint}`,
-      `traefik.http.routers.${router}.tls=true`,
-      `traefik.http.routers.${router}.tls.certresolver=${edge.certResolver}`,
-      `traefik.http.routers.${router}.service=${router}`,
-      `traefik.http.services.${router}.loadbalancer.server.port=${String(port)}`,
-    );
+    const base = ports.length === 1 ? `${stack}-${service}` : `${stack}-${service}-${String(port)}`;
+    labels.push(`traefik.http.services.${base}.loadbalancer.server.port=${String(port)}`);
+    const groups = new Map<string, EdgeRoute[]>();
+    for (const route of mine.filter((item) => item.port === port)) {
+      const key = JSON.stringify([route.paths, route.pathPrefixes, route.priority]);
+      groups.set(key, [...(groups.get(key) ?? []), route]);
+    }
+    const ordered = [...groups.values()].sort((a, b) => Number(constraintCount(a[0]!) > 0) - Number(constraintCount(b[0]!) > 0));
+    let constrained = 0;
+    for (const group of ordered) {
+      const first = group[0]!;
+      const matchers = [...first.paths.map((path) => `Path(\`${path}\`)`), ...first.pathPrefixes.map((path) => `PathPrefix(\`${path}\`)`)];
+      if (matchers.length > 0) constrained += 1;
+      const router = matchers.length === 0 ? base : constrained === 1 ? `${base}-paths` : `${base}-paths-${String(constrained)}`;
+      const hosts = [...new Set(group.map((route) => route.host))].sort().map((host) => `Host(\`${host}\`)`);
+      const hostRule = hosts.join(' || ');
+      const rule = matchers.length === 0 ? hostRule : `${hosts.length > 1 ? `(${hostRule})` : hostRule} && (${matchers.join(' || ')})`;
+      labels.push(
+        `traefik.http.routers.${router}.rule=${rule}`,
+        ...(first.priority === null ? [] : [`traefik.http.routers.${router}.priority=${String(first.priority)}`]),
+        `traefik.http.routers.${router}.entrypoints=${edge.entrypoint}`,
+        `traefik.http.routers.${router}.tls=true`,
+        `traefik.http.routers.${router}.tls.certresolver=${edge.certResolver}`,
+        `traefik.http.routers.${router}.service=${base}`,
+      );
+    }
   }
   return labels;
 }
