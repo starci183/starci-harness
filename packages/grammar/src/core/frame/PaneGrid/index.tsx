@@ -547,3 +547,7 @@ const PaneDrawer = ({ pane, placement, models }: {
         </Drawer>
     )
 }
+
+// The marker Page reads (0.48.0): it survives where the identity check does not (a server component rendering the grid hands Page a client reference).
+PaneGrid.displayName = "PaneGrid"
+;(PaneGrid as typeof PaneGrid & { grammarFrame?: string }).grammarFrame = "PaneGrid"

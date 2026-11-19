@@ -46,3 +46,6 @@ Expanded, collapsed (icon rail with tooltip names), drawer; an item is current (
 
 ## Rules
 FE-APP-SHELL-1, FE-APP-SHELL-4, FE-APP-SHELL-6, ACCENT-5, HIERARCHY-6, A11Y-2. Stories: `Navigation/Sidebar count tone (0.46.0)`, `Compositions/App shell`.
+
+## TopBar start inset and the search slot (0.48.0)
+`TopBar startInset="sidebar"` starts the brand on the column of the sidebar's item icons from 48rem (`--grammar-sidebar-icon-inset`: the list's 12 plus the item's 8), so the brand mark and the icons under it stand on one line; below 48rem the sidebar leaves and the bar keeps the page inset (`DNA-COMMON-TOPBAR-START-SIDEBAR`, contextual at 1280). `TopBar search={{ wide, compact }}` is the bar's search: `wide` (a `SearchField`, or a `Button` with a `Kbd` that opens the `CommandPalette`) shows from 48rem, `compact` (an `IconButton`) below it; both render and the stylesheet picks, so the server and the client agree and an app writes no media class (`DNA-COMMON-TOPBAR-SEARCH-BY-WIDTH` at 320, 360 and 390). Story `Navigation & Data/Phone fixes (0.48.0)` (TopBarStartInsetAndSearch).

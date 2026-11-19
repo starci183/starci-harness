@@ -15,6 +15,13 @@
         --grammar-text-md: 0.875rem;
         --grammar-text-lg: 1rem;
         --grammar-text-xl: 1.125rem;
+        /* THE CONSOLE SCALE (0.48.0, owner 2026-11-19, _TYPOGRAPHY.md): five roles, size / line / weight; Inter; only 400 and 500.
+           title 18 / 26 / 500 (page h1, dialog and drawer titles) · heading 16 / 24 / 500 (section, empty-state and card titles) · label 16 / 24 / 400 primary (row title, key, setting name, field label)
+           · body 14 / 20 / 400 (primary alone, secondary under a label) · meta 12 / 16 / 400 secondary (breadcrumbs, timestamps, chip counts, group labels, captions, table headers). */
+        --grammar-leading-page-title: 1.625rem;
+        /* A section's title (0.48.0, owner 2026-11-19): the 16 step at the semibold weight, set apart from the 16 / 400 labels under it by weight and place. */
+        --grammar-text-title: var(--grammar-text-lg);
+        --grammar-leading-title: var(--grammar-leading-lg);
         --grammar-text-2xl: 1.25rem;
         --grammar-text-3xl: 1.5rem;
         --grammar-text-4xl: 1.875rem;
@@ -35,10 +42,11 @@
         --grammar-leading-relaxed: 1.65;
         --grammar-weight-regular: 400;
         --grammar-weight-medium: 500;
-        --grammar-weight-semibold: 600;
-        --grammar-weight-bold: 700;
-        --grammar-weight-extrabold: 800;
-        --grammar-weight-black: 900;
+        /* The console has two weights, 400 and 500 (0.48.0, owner 2026-11-19, _TYPOGRAPHY.md): the heavier steps keep their names and resolve to 500, so nothing in a console is bold. */
+        --grammar-weight-semibold: 500;
+        --grammar-weight-bold: 500;
+        --grammar-weight-extrabold: 500;
+        --grammar-weight-black: 500;
         --grammar-tracking-display: -0.045em;
         --grammar-tracking-tight: -0.025em;
         --grammar-tracking-snug: -0.015em;
@@ -77,6 +85,9 @@
         /* The 1px separator edge a surface on a white surface draws, as one border value (a theme hook falls back to it). */
         --grammar-separator-edge: var(--grammar-hairline) solid var(--separator);
         --grammar-shadow-lift: 0 var(--grammar-hairline) 2px 0 color-mix(in oklab, var(--foreground) 8%, transparent);
+        /* The soft shadow of a popover panel (0.48.0) and the scrim a phone sheet spreads over the page around it. */
+        --grammar-shadow-popover: 0 4px 16px -4px color-mix(in oklab, var(--foreground) 14%, transparent), 0 var(--grammar-hairline) 2px color-mix(in oklab, var(--foreground) 6%, transparent);
+        --grammar-shadow-scrim: 0 0 0 100vmax color-mix(in srgb, var(--foreground) 40%, transparent);
 
         /* The distance an overlay rises or a part slides in from. */
         --grammar-motion-travel: 0.5rem;

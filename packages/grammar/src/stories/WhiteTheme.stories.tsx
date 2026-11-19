@@ -100,7 +100,8 @@ export const Defaults: Story = {
       if (list == null || title == null || row == null) throw new Error('the list renders');
       expect(getComputedStyle(list).borderTopLeftRadius).toBe('0px');
       expect(getComputedStyle(list).backgroundColor).toBe('rgba(0, 0, 0, 0)');
-      expect(Math.round(row.getBoundingClientRect().left)).toBe(Math.round(title.getBoundingClientRect().left));
+      // 0.48.0: the row copy is indented 16 under the section title.
+      expect(Math.round(row.getBoundingClientRect().left)).toBe(Math.round(title.getBoundingClientRect().left) + 16);
     });
   },
 };
@@ -123,7 +124,8 @@ export const White: Story = {
       if (list === null || list === undefined || title === null || title === undefined || row === null || row === undefined) throw new Error('the list renders');
       expect(getComputedStyle(list).borderTopLeftRadius).toBe('0px');
       expect(getComputedStyle(list).backgroundColor).toBe('rgba(0, 0, 0, 0)');
-      expect(Math.round(row.getBoundingClientRect().left)).toBe(Math.round(title.getBoundingClientRect().left));
+      // 0.48.0: the row copy is indented 16 under the section title.
+      expect(Math.round(row.getBoundingClientRect().left)).toBe(Math.round(title.getBoundingClientRect().left) + 16);
       const card = canvasElement.querySelector<HTMLElement>('.starci-core-surface');
       if (card === null) throw new Error('the card renders');
       expect(getComputedStyle(card).borderTopLeftRadius).toBe('12px');

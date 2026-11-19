@@ -415,6 +415,8 @@ export const DataTable = <Row extends DataTableRow>({
     const press = useRef<{ timer: number | undefined; x: number; y: number; fired: boolean; touch: boolean }>({ timer: undefined, x: 0, y: 0, fired: false, touch: false })
     useEffect(() => () => { if (press.current.timer !== undefined) window.clearTimeout(press.current.timer) }, [])
     const [width, setWidth] = useState<number | null>(null)
+    // The scroll region scrolls sideways (0.48.0): it is then a named, keyboard-focusable region, so a keyboard reader reaches the hidden columns with the arrows.
+    const [overflows, setOverflows] = useState(false)
     const belowTablet = useViewportBelow(BELOW_PX.tablet)
     const belowDesktop = useViewportBelow(BELOW_PX.desktop)
     const available = columns.filter((column) => !((column.hideBelow === "tablet" && belowTablet) || (column.hideBelow === "desktop" && belowDesktop)))
@@ -422,11 +424,15 @@ export const DataTable = <Row extends DataTableRow>({
     useEffect(() => {
         const element = scrollRef.current
         if (element === null) return
+        const measure = () => setOverflows(element.scrollWidth > element.clientWidth + 1)
         const observer = new ResizeObserver((entries) => {
-            const entry = entries[0]
-            if (entry !== undefined) setWidth(entry.contentRect.width)
+            // The region's own entry sets the width; the content's entry (observed for the overflow) never does.
+            const own = entries.find((entry) => entry.target === element)
+            if (own !== undefined) setWidth(own.contentRect.width)
+            measure()
         })
         observer.observe(element)
+        if (element.firstElementChild !== null) observer.observe(element.firstElementChild)
         return () => observer.disconnect()
     }, [isList])
     const hasHigh = available.some((column) => column.priority !== "low")
@@ -798,7 +804,7 @@ export const DataTable = <Row extends DataTableRow>({
             data-grammar-table-list={isList ? "true" : "false"}
             data-grammar-table-fill={fill ? "true" : "false"}
         >
-            {isList ? listBody : <HeroTable.ScrollContainer ref={scrollRef} className="starci-core-data-table-scroll" data-contract="LAYOUT-3" data-grammar-table-scroll="true" style={scrollStyle} onKeyDownCapture={onCellKeyDown}>
+            {isList ? listBody : <HeroTable.ScrollContainer ref={scrollRef} className="starci-core-data-table-scroll" data-contract="LAYOUT-3" data-grammar-table-scroll="true" {...(overflows ? { tabIndex: 0, role: "region", "aria-label": label, "data-grammar-table-overflows": "true" } : {})} style={scrollStyle} onKeyDownCapture={onCellKeyDown}>
                 {resizable ? <HeroTable.ResizableContainer onResizeEnd={onResizeEnd}>{content}</HeroTable.ResizableContainer> : content}
             </HeroTable.ScrollContainer>}
             {selectionStatus}

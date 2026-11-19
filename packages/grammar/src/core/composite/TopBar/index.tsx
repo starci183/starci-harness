@@ -99,6 +99,16 @@ export type TopBarFit = {
     readonly overflowLabel: string
 }
 
+/**
+ * The bar's search (0.48.0), by width: `wide` stands from 48rem (a `SearchField`, or a `Button` with a `Kbd` that opens the `CommandPalette`), `compact` below it (an
+ * `IconButton` that opens the same palette). Give one or both; a slot left out shows nothing at its widths. Both are drawn and the stylesheet shows the one the width takes,
+ * so the server and the client agree and the app writes no media class.
+ */
+export type TopBarSearch = {
+    readonly wide?: ReactNode
+    readonly compact?: ReactNode
+}
+
 export type TopBarProps = NoChildren & Omit<ComponentPropsWithoutRef<"header">, "children" | "className" | "title"> & (WithSubnavigation | WithoutSubnavigation) & {
     /** The fitting row of links and action buttons (see `TopBarFit`): what does not fit moves into the menu. */
     readonly fit?: TopBarFit
@@ -112,6 +122,13 @@ export type TopBarProps = NoChildren & Omit<ComponentPropsWithoutRef<"header">, 
     readonly customButtons?: readonly TopBarCustomButton[]
     /** The mobile menu trigger. */
     readonly menu?: TopBarMenu
+    /** The search control, wide and compact (see `TopBarSearch`): before the end cluster. */
+    readonly search?: TopBarSearch
+    /**
+     * Where the brand starts (0.48.0). `page` (default): the page inset. `sidebar`: on the column of the sidebar's item icons, so the brand mark and the icons
+     * under it stand on one vertical line in a `WorkspaceShell` with a sidebar. Below 48rem, where the sidebar leaves, both start at the page inset.
+     */
+    readonly startInset?: "page" | "sidebar"
     readonly position?: "static" | "sticky"
     /** `compact`: a 56px bar (a public page under the brand); `default`: 64px, the app's bar; `adaptive` (0.46.0): 64px from 48rem and 52px below it, the app bar of a phone-first product. */
     readonly density?: "default" | "compact" | "adaptive"
@@ -126,7 +143,7 @@ export type TopBarProps = NoChildren & Omit<ComponentPropsWithoutRef<"header">, 
  * `header` slot, the shell yields (its wrapper becomes a plain `div`) so the banner is never nested.
  * Contract: menu trigger A11Y-2 STATE-7 (named glyph button, app-owned aria-expanded).
  */
-export const TopBar = ({ brand, navigation, actions, customButtons, menu, subnavigation, subnavigationLabel, fit, position = "sticky", density = "default", ...headerProps }: TopBarProps) => (
+export const TopBar = ({ brand, navigation, actions, customButtons, menu, search, startInset = "page", subnavigation, subnavigationLabel, fit, position = "sticky", density = "default", ...headerProps }: TopBarProps) => (
     <ButtonPlacementProvider placement="chrome" navbar>
     <TopBarOverflowContext.Provider value={customButtons ?? []}>
     <SurfaceNesting>
@@ -137,6 +154,7 @@ export const TopBar = ({ brand, navigation, actions, customButtons, menu, subnav
         data-tier="composite"
         data-grammar-top-bar-position={position}
         data-grammar-top-bar-density={density}
+        data-grammar-top-bar-start={startInset}
         data-grammar-top-bar-menu={menu === undefined ? "none" : menu.visibility ?? "compact"}
         data-grammar-top-bar-subnavigation={subnavigation === undefined ? "false" : "true"}
     >
@@ -160,6 +178,12 @@ export const TopBar = ({ brand, navigation, actions, customButtons, menu, subnav
         <div className="starci-core-top-bar-brand" data-grammar-top-bar-brand="true">{brand}</div>
         {navigation === undefined ? null : <div className="starci-core-top-bar-navigation" data-grammar-top-bar-navigation="true">{navigation}</div>}
         {fit === undefined ? null : <TopBarFitRow navigationItems={fit.navigationItems ?? []} actionItems={fit.actionItems ?? []} overflowLabel={fit.overflowLabel} />}
+        {search === undefined ? null : (
+            <div className="starci-core-top-bar-search" data-grammar-top-bar-search="true">
+                {search.wide === undefined ? null : <span className="starci-core-top-bar-search-wide" data-grammar-top-bar-search-slot="wide">{search.wide}</span>}
+                {search.compact === undefined ? null : <span className="starci-core-top-bar-search-compact" data-grammar-top-bar-search-slot="compact">{search.compact}</span>}
+            </div>
+        )}
         {actions === undefined && (customButtons === undefined || customButtons.length === 0) ? null : (
             <div className="starci-core-top-bar-actions" data-grammar-top-bar-actions="true">
                 {customButtons === undefined || customButtons.length === 0 ? null : <CustomButtons buttons={customButtons} />}

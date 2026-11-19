@@ -40,14 +40,14 @@ export const Rows: Story = {
         const dot = row.querySelector<HTMLElement>('[data-grammar-unread-dot]');
         expect(name).not.toBeNull();
         if (unread.includes(row)) {
-          expect(weight(name as HTMLElement)).toBe(600);
-          expect(weight(control as HTMLElement)).toBe(600);
+          expect(weight(name as HTMLElement)).toBe(500);
+          expect(weight(control as HTMLElement)).toBe(500);
           expect(dot).not.toBeNull();
           expect(dot?.getAttribute('aria-hidden')).toBe('true');
           expect(row.querySelector('.starci-core-list-row-title')?.contains(dot as HTMLElement)).toBe(true);
           expect(getComputedStyle(dot as HTMLElement).backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
         } else {
-          expect(weight(name as HTMLElement)).toBe(500);
+          expect(weight(name as HTMLElement)).toBe(400);
           expect(dot).toBeNull();
         }
       }

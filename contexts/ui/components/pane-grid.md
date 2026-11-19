@@ -134,3 +134,6 @@ of the breakpoints (the grid's own width). Lint: `starci-grammar/pane-grid-child
 
 ## Stacked panes grow with their content (PANE-GRID-STACKED, 0.37.14)
 Below the stacking breakpoint (the grid's own width under 48rem) the grid, its tracks and its panes stop owning height and scroll: they grow with their content (rows auto), the page fill is a floor, and the page (or the shell's primary region) scrolls ONCE. The aside is the first block of the well as the app's `base` areas order it; nothing is clipped and the well never overlaps it. The grid marks itself `data-grammar-pane-stacked="grow"`; a grid that holds a chat thread (a scrolling `PaneSection`) or a pane footer keeps its bounded height and only those scroll inside their pane. Story `Surfaces/Pane grid stacked`.
+
+## A pane grid from a server component (0.48.0)
+`Page chrome="panes"` checks its one child is the pane grid by a marker, not by identity: `PaneGrid` carries `displayName` and a static `grammarFrame` marker, a client reference (the server side of the RSC boundary) is read by its id ending in `#PaneGrid`, and a lazy element not yet resolved is let through. A server component may render `<Page chrome="panes"><PaneGrid …></Page>` without `PAGE_PANES_CHILD_NOT_PANE_GRID`. Story `Surfaces/Figures, rows, bands and pages (0.48.0)` (PagePaneGridMarker).

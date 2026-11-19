@@ -37,13 +37,29 @@ type EmptyNoticeIcon = { readonly icon: IconSource; readonly illustration?: neve
 type EmptyNoticeMedia =
     | {
         readonly scope?: "region"
+        /** `icon` (default): the glyph tile over the words. `none` (0.48.0) is the plain line, see `EmptyNoticeLine`. */
+        readonly mark?: "icon"
         /** The glyph of the condition; without one the notice wears Grammar's `empty` glyph, so a notice is never bare words. */
         readonly media?: EmptyNoticeIcon
     }
+    | EmptyNoticeLine
     | {
         readonly scope: "page"
+        /** A page-level state always wears its mark: the plain line is a region's. */
+        readonly mark?: "icon"
         readonly media?: EmptyNoticeIcon | { readonly illustration: EmptyNoticeIllustration; readonly icon?: never }
     }
+
+/**
+ * THE PLAIN LINE (0.48.0, the illustration rule): a no-match after a filter or a search, an empty panel, a palette with no result, an empty sub-section.
+ * No tile and no picture: one muted 14 line (and its optional hint) at the start edge of the region, the action, if any, a small button after it.
+ * Only on a region; the type refuses `media` with it, and a page-level state keeps its mark.
+ */
+type EmptyNoticeLine = {
+    readonly scope?: "region"
+    readonly mark: "none"
+    readonly media?: never
+}
 
 /** The one secondary action: a destination or a command, text only, never a second primary. */
 export type EmptyNoticeSecondary = { readonly label: string } & (
@@ -97,6 +113,7 @@ type EmptyNoticeBase = NoChildren & {
 type EmptyNoticeAllClear = {
     readonly isAllClear: true
     readonly scope?: "region"
+    readonly mark?: never
     readonly media?: never
     readonly actionIntent?: never
     readonly actionStartContent?: never
@@ -145,6 +162,7 @@ export const EmptyNotice = ({
     message,
     description,
     scope = "region",
+    mark = "icon",
     media,
     secondary,
     actionLabel,
@@ -181,22 +199,23 @@ export const EmptyNotice = ({
     )
     // With steps the primary stands under the first open step; with none open (or no steps) it stands in the actions row.
     const primaryInStep = steps !== undefined && openIndex >= 0
+    const isLine = mark === "none" && !isAllClear && scope === "region"
     return isError ? (
-    <ErrorView error={{ message, ...(description === undefined ? {} : { description }), ...(actionLabel === undefined ? {} : { actionLabel }), ...(onAction === undefined ? {} : { onAction }) }} />
+    <ErrorView error={{ message, ...(description === undefined ? {} : { description }), ...(actionLabel === undefined ? {} : { actionLabel }), ...(onAction === undefined ? {} : { onAction }), ...(secondary?.href === undefined ? {} : { back: { label: secondary.label, href: secondary.href } }), ...(scope === "page" ? { scope: "page" as const } : {}) }} />
 ) : (
     <div
         data-tier="composite"
         data-component="EmptyNotice"
         data-contract="GAP-3 PADDING-4"
         data-grammar-empty-scope={scope}
-        data-grammar-empty-mark={isAllClear ? "success" : media?.illustration === undefined ? "icon" : "illustration"}
+        data-grammar-empty-mark={isAllClear ? "success" : isLine ? "none" : media?.illustration === undefined ? "icon" : "illustration"}
         {...(isAllClear ? { "data-grammar-empty-kind": "all-clear" } : steps === undefined ? {} : { "data-grammar-empty-kind": "steps" })}
         {...(framed ? {} : { "data-grammar-empty-frame": "none" })}
         className="starci-core-empty-notice"
     >
-        {isAllClear ? <IconTile source={glyphSource("success")} tone="success" size="md" /> : media?.illustration === undefined ? <IconTile source={media?.icon ?? glyphSource("empty")} tone="accent" size="md" /> : <span className="starci-core-notice-art" data-grammar-notice-art="true"><Illustration {...media.illustration} ratio="1:1" fit="contain" /></span>}
+        {isLine ? null : isAllClear ? <IconTile source={glyphSource("success")} tone="success" size="md" /> : media?.illustration === undefined ? <IconTile source={media?.icon ?? glyphSource("empty")} tone="accent" size="md" /> : <span className="starci-core-notice-art" data-grammar-notice-art="true"><Illustration {...media.illustration} ratio="1:1" fit="contain" /></span>}
         <div className="starci-core-notice-copy" data-contract="GAP-1">
-            <Text size="sm" isStrong>{message}</Text>
+            <Text size="sm" {...(isLine ? { tone: "muted" as const } : { isStrong: true })}>{message}</Text>
             {description === undefined ? null : <Text size="sm" tone="muted">{description}</Text>}
         </div>
         {steps === undefined ? null : (

@@ -27,6 +27,12 @@ type ButtonBase = {
     readonly endContent?: ReactNode
     readonly isDisabled?: boolean
     /**
+     * The ground the button stands on when it is not the page's (0.48.0): `accent` a band in the brand colour (a site's burgundy call-to-action band), `inverse` a
+     * dark band (`--foreground` as the ground). The intents keep their rank and take that ground's contrast: `commit` is the ground's foreground filled with the
+     * ground's colour as ink, every other intent the ground's foreground as an outline and its ink, so the label never sinks into the band. An app writes no class.
+     */
+    readonly ground?: "accent" | "inverse"
+    /**
      * Why the action is unavailable. A disabled Button carries these words as its accessible description and shows them in a Tooltip on
      * hover and keyboard focus; where no pointer can hover (a touch phone, `(hover: none)` or `(pointer: coarse)`) it draws them as a
      * muted helper line under the button instead (0.43.1), since a tooltip cannot be reached there. It has no effect while the Button is enabled.
@@ -238,6 +244,7 @@ const ButtonFace = (props: ButtonProps & { readonly reasonId?: string }) => {
                 data-tier="leaf"
                 data-component="Button"
                 data-grammar-intent={props.intent}
+                {...(props.ground === undefined ? {} : { "data-grammar-button-ground": props.ground })}
                 data-size={size}
                 {...glyphSides}
                 data-element={unavailable ? "span" : "a"}
@@ -267,6 +274,7 @@ const ButtonFace = (props: ButtonProps & { readonly reasonId?: string }) => {
             data-tier="leaf"
             data-component="Button"
             data-grammar-intent={props.intent}
+            {...(props.ground === undefined ? {} : { "data-grammar-button-ground": props.ground })}
             data-size={size}
             {...glyphSides}
             data-element="button"

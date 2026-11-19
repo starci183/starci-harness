@@ -65,3 +65,6 @@ screen's picture takes `loading="eager"`.
 
 ## Rules
 A11Y-2, MOTION-2; lint `starci-grammar/no-raw-media` (R442), `starci-grammar/generated-art-in-mascot-or-media-frame` (R338).
+
+## Eager pictures and the fetch priority (0.48.0)
+`loading="eager"` paints with its bytes, before the page hydrates: no shimmer is drawn over it and it is never held at opacity 0 waiting for script (`DNA-COMMON-IMAGE-EAGER-PAINTS`), so an app needs no global CSS to show its hero early. `fetchPriority` (`high` | `low` | `auto`) is the `fetchpriority` hint: `high` for the one picture that is the page's largest paint, `low` for an eager picture that can wait. A lazy picture keeps its shimmer and fade. Story `Surfaces/Figures, rows, bands and pages (0.48.0)` (ImageEagerPaint).

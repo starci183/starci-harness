@@ -27,6 +27,10 @@
         --grammar-identity-gap: 0.25rem;
         --grammar-inline-gap: 0.5rem;
         --grammar-row-gap: 0.75rem;
+        /* A list row's own inner inline padding (0.48.0, owner 2026-11-19): the text is indented this far (the 4 step) under the section title while the divider and the hover fill start at the title's edge. */
+        --grammar-row-inset-inline: var(--grammar-inset-card);
+        /* The 16 a row keeps on a side that touches the list's edge (its first row's top, its last row's bottom); a side that touches a divider keeps --grammar-row-gap (12). */
+        --grammar-row-inset-edge: var(--grammar-inset-card);
         --grammar-section-gap: 1.5rem;
         --grammar-section-head-size: 2rem;
         --grammar-region-gap: 2rem;
@@ -49,6 +53,8 @@
         --grammar-inset-open: 1.5rem;
         /* The page gutter steps by breakpoint (12 on a phone, 24 from 48rem, 32 from 80rem), never fluid; so does the gap between a report page's cards (12, then 24). The owner asked for 16 on a phone; the spacing scale (0 4 8 12 24 32) has no 16, so the phone keeps 12 until the scale gains the step. */
         --grammar-page-inset: 0.75rem;
+        /* Where a sidebar item's icon starts from the sidebar's edge: the list's inset (12) plus the item's own (8) (0.48.0, TopBar startInset="sidebar"). */
+        --grammar-sidebar-icon-inset: calc(0.75rem + 0.5rem);
         --grammar-card-gap: 0.75rem;
         /*
          * Card box padding, one place per axis: SurfaceCard content. A card holds its content one
@@ -304,10 +310,10 @@
         margin: 0;
         max-width: 100%;
         color: var(--foreground);
-        /* The final type scale: the page title is the display size xl 18, a section title 14; both semibold. */
+        /* The type scale (0.48.0, owner 2026-11-19): the page title is 18 / 500; a section title 16 / 500 (below); a label 16 / 400; content 14; meta 12. */
         font-size: var(--grammar-text-xl);
-        font-weight: var(--grammar-weight-semibold);
-        line-height: var(--grammar-leading-xl);
+        font-weight: var(--grammar-weight-medium);
+        line-height: var(--grammar-leading-page-title);
         overflow-wrap: anywhere;
         text-wrap: balance;
     }
@@ -319,9 +325,10 @@
         align-items: center;
         gap: var(--grammar-inline-gap);
         flex-wrap: nowrap;
-        font-size: var(--grammar-text-md);
+        /* 0.48.0: the section title is 16 / 500 with the count chip beside it; a label under it (a row title, a key) is 16 / 400 in the primary colour over its 14 secondary content: the title is set apart by weight. */
+        font-size: var(--grammar-text-title);
         font-weight: var(--grammar-weight-medium);
-        line-height: var(--grammar-leading-md);
+        line-height: var(--grammar-leading-title);
     }
 
     .starci-core-section-title-text {
@@ -1287,18 +1294,19 @@
         min-width: 1.25rem;
         color: var(--muted);
         font-size: var(--grammar-text-md);
+        font-weight: var(--grammar-weight-regular);
         font-variant-numeric: tabular-nums;
         line-height: var(--grammar-leading-md);
         text-align: end;
         white-space: nowrap;
     }
 
-    /* format="hash": "#1", muted and semibold at the small text size, in a column wide enough for two digits (numbered passages). */
+    /* format="hash": "#1", muted at the small text size, in a column wide enough for two digits (numbered passages). Regular weight (0.48.0): a step numeral is reading structure, never emphasis (the console uses 400 and 500 only). */
     .starci-core-leading-number[data-grammar-number-format="hash"] {
         min-width: 1.5rem;
         font-family: inherit;
         font-size: var(--grammar-text-xs);
-        font-weight: var(--grammar-weight-semibold);
+        font-weight: var(--grammar-weight-regular);
         line-height: var(--grammar-leading-xs);
         text-align: start;
     }
@@ -1586,8 +1594,8 @@
 
     /*
      * A filter strip as pills (`shape="pill"`, 0.46.2): the primary switch's one pill look (HeroUI's primary variant, the pill on its track, drawn by the vendor and the rules
-     * of `data-grammar-tabs-variant="primary"` above), so no second pill is styled here. What a filter strip adds stays: the count chip, the fold into a "+n" menu, the row it
-     * stands in. The frame hugs its pills, centred on the strip's height with the fold menu beside it, and draws no line.
+     * of `data-grammar-tabs-variant="primary"` above), so no second pill is styled here. What a filter strip adds stays: the count chip, the sideways scroll (0.48.0), the row it
+     * stands in. The frame hugs its pills, centred on the strip's height, and draws no line.
      */
     .starci-core-tabs-frame[data-grammar-tabs-kind="filter"][data-grammar-tabs-shape="pill"] {
         display: inline-flex;
@@ -1598,6 +1606,21 @@
 
     .starci-core-tabs-frame[data-grammar-tabs-kind="filter"][data-grammar-tabs-shape="pill"] .starci-core-tabs { flex: 0 1 auto; }
     .starci-core-tabs-frame[data-grammar-tabs-kind="filter"][data-grammar-tabs-shape="pill"] .starci-core-tabs :is(.tabs__list, .tabs__list-container) { overflow: visible; }
+
+    /*
+     * A filter strip never folds (0.48.0): wider than its row, it scrolls sideways inside its own scroller (the underline strip in the views' scroll frame with its
+     * fading edges and page controls, the pills in a fading scroller), so every group stays one swipe away at 390 and the page never scrolls sideways.
+     */
+    .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] { min-width: 0; max-width: 100%; }
+    .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] .starci-core-tabs { min-width: 0; }
+    .starci-core-tabs-frame[data-grammar-tabs-kind="filter"] :is(.tabs__list-container__scroller, .starci-core-tabs-pill-scroller) {
+        min-width: 0;
+        max-width: 100%;
+        overflow-x: auto;
+        overflow-y: hidden;
+        scrollbar-width: none;
+        overscroll-behavior-inline: contain;
+    }
 
     .starci-core-tabs-more { display: inline-flex; flex: none; align-items: stretch; min-height: var(--starci-core-control-min-size); padding-inline: var(--grammar-inline-gap); color: var(--muted); font-size: var(--grammar-text-sm); }
     /* The fold trigger fills the strip's height, so its box stands on the line like a tab: no padding of its own below it. */
@@ -1658,9 +1681,101 @@
     .starci-core-section-list {
         /* The rows lay out by the list's own width (leading | copy | actions from 28rem, key-value columns), as they did in a card. */
         container: starci-core-surface / inline-size;
-        --starci-core-row-inset: var(--grammar-row-gap) 0;
+        /* 0.48.0: the list stands on the title's column; each row has its own padding (12 block, 16 inline: py-3 px-4), so the text is indented under the title while the hairline and the hover fill run from the title's edge to the list's end. No border around the list. */
+        --starci-core-row-inset: var(--grammar-row-gap) var(--grammar-row-inset-inline);
         min-width: 0;
     }
+
+    /* p-4 where a row touches the list's edge, p-3 where it touches a divider: the first row stands 16 from the top, the last 16 from the bottom, the middle ones 12 on both sides. */
+    .starci-core-section-list:not([data-grammar-list-layout]):not(:is(.starci-core-surface, .starci-core-pane-section, .starci-core-popover, .starci-core-dialog, .starci-core-drawer) *) > .starci-core-list-row:first-child { padding-block-start: var(--grammar-row-inset-edge); }
+    .starci-core-section-list:not([data-grammar-list-layout]):not(:is(.starci-core-surface, .starci-core-pane-section, .starci-core-popover, .starci-core-dialog, .starci-core-drawer) *) > .starci-core-list-row:last-child { padding-block-end: var(--grammar-row-inset-edge); }
+
+    /* The list body only: a list inside a card or a pane band sits on the surface's own padding, and a key-value or suggestions list stays flush with its title: no inline inset. */
+    :is(.starci-core-surface, .starci-core-pane-section, .starci-core-popover, .starci-core-dialog, .starci-core-drawer) .starci-core-section-list,
+    .starci-core-section-list[data-grammar-list-layout] {
+        --starci-core-row-inset: var(--grammar-row-gap) 0;
+    }
+
+    /* Narrow rows (a phone): the meta and the commands wrap under the copy, both starting on the title's edge, so nothing floats on the end of the title line (0.48.0). */
+    @container starci-core-surface (max-width: 28rem) {
+        .starci-core-list-row:not([data-grammar-list-layout="suggestions"]) > .starci-core-list-row-trail {
+            flex: 1 0 100%;
+            justify-content: flex-start;
+        }
+
+        /*
+         * One phone layout for every rows-list row (0.48.0): the copy takes the whole first line beside its leading mark, and the end group (meta, status chips) and the
+         * commands ALWAYS stand under it, on the title's edge, each on its own line, whatever their width; before, a short command stayed on the title line and a long
+         * one wrapped, so neighbouring rows disagreed. A row that only opens (its chevron) keeps the chevron on the title line. Key-value, settings and suggestion
+         * lists, a row with a value and an end-placed row keep their own rules.
+         */
+        :not([data-grammar-list-layout]) > .starci-core-list-row:not([data-grammar-action-placement="end"], [data-grammar-value="true"]) {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr);
+            align-items: center;
+        }
+
+        :not([data-grammar-list-layout]) > .starci-core-list-row:not([data-grammar-action-placement="end"], [data-grammar-value="true"])[data-grammar-leading="true"] { grid-template-columns: auto minmax(0, 1fr); }
+        :not([data-grammar-list-layout]) > .starci-core-list-row:not([data-grammar-action-placement="end"], [data-grammar-value="true"])[data-grammar-chevron-only="true"] { grid-template-columns: minmax(0, 1fr) auto; }
+        :not([data-grammar-list-layout]) > .starci-core-list-row:not([data-grammar-action-placement="end"], [data-grammar-value="true"])[data-grammar-chevron-only="true"][data-grammar-leading="true"] { grid-template-columns: auto minmax(0, 1fr) auto; }
+
+        :not([data-grammar-list-layout]) > .starci-core-list-row:not([data-grammar-action-placement="end"], [data-grammar-value="true"]) > :is(.starci-core-list-row-trail, .starci-core-list-row-actions, .starci-core-list-row-detail) {
+            grid-column: 1 / -1;
+            justify-content: flex-start;
+        }
+
+        :not([data-grammar-list-layout]) > .starci-core-list-row:not([data-grammar-action-placement="end"], [data-grammar-value="true"])[data-grammar-leading="true"] > :is(.starci-core-list-row-trail, .starci-core-list-row-actions, .starci-core-list-row-detail) { grid-column: 2 / -1; }
+        :not([data-grammar-list-layout]) > .starci-core-list-row:not([data-grammar-action-placement="end"], [data-grammar-value="true"])[data-grammar-chevron-only="true"] > .starci-core-list-row-actions { grid-column: auto; }
+    }
+
+    /* A settings list is flush with its title at the start, and its controls end at the same inset from the end as the commands and chevrons of a rows list (0.48.0). */
+    .starci-core-section-list[data-grammar-list-layout="settings"] {
+        --starci-core-row-inset: var(--grammar-row-gap) var(--grammar-row-inset-inline) var(--grammar-row-gap) 0;
+    }
+
+    /* The empty state of a section list: a small icon, a 16 title and a 12 hint on the page ground (no illustration, no card: a secondary region). */
+    .starci-core-section > .starci-core-empty-notice:not([data-grammar-error-layout]) {
+        background: transparent;
+        padding-block: var(--grammar-section-gap);
+    }
+
+    /* The empty-state title of every EmptyNotice is 16 / 500 (the section-title tier), its hint 14 secondary. */
+    .starci-core-empty-notice:not([data-grammar-error-layout], [data-grammar-empty-mark="none"]) .starci-core-notice-copy > .starci-core-text:first-child {
+        font-size: var(--grammar-text-lg);
+        font-weight: var(--grammar-weight-medium);
+        line-height: var(--grammar-leading-lg);
+    }
+
+    /* A page-level state (a first visit, a 404, a failed page) is titled at the page-title tier, 18 / 26 / 500 (_TYPOGRAPHY.md title, 0.48.0). */
+    .starci-core-empty-notice[data-grammar-empty-scope="page"] .starci-core-notice-copy > .starci-core-text:first-child {
+        font-size: var(--grammar-text-xl);
+        font-weight: var(--grammar-weight-medium);
+        line-height: var(--grammar-leading-page-title);
+    }
+
+    /*
+     * THE PLAIN LINE (0.48.0, `mark="none"`): a no-match, an empty panel, a palette with no result, an empty sub-section. No tile, no picture, no card:
+     * one muted 14 / 400 line and its hint at the region's start edge, the small action after it, the row step above and below (the illustration rule).
+     */
+    .starci-core-empty-notice[data-grammar-empty-mark="none"] {
+        align-items: flex-start;
+        gap: var(--grammar-inline-gap);
+        padding: var(--grammar-row-gap) 0 !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        text-align: start;
+    }
+
+    .starci-core-empty-notice[data-grammar-empty-mark="none"] .starci-core-notice-copy > .starci-core-text:first-child {
+        color: var(--muted);
+        font-size: var(--grammar-text-md);
+        font-weight: var(--grammar-weight-regular);
+        line-height: var(--grammar-leading-md);
+    }
+
+    .starci-core-empty-notice[data-grammar-empty-mark="none"] > .starci-core-notice-actions { justify-content: flex-start; }
 
     /*
      * ListRow: an interactive row on the static row's geometry (inset, row gap, edge-to-edge separator).
@@ -1735,11 +1850,19 @@
     }
 
     /* The row primary: md 14 / 500; its description sm 13 muted; its meta xs 12 muted (the type roles, 0.27). */
+    /* The row's title link or press button wears the title's own size and weight (the vendor link is medium). */
+    .starci-core-list-row-name :is(.starci-core-link, .starci-core-list-row-press) {
+        font-size: inherit;
+        font-weight: inherit;
+        line-height: inherit;
+    }
+
+    /* 0.48.0: the row's label is 16 / 400 in the primary colour; its description (below) is the 14 secondary content. */
     .starci-core-list-row-name {
         min-width: 0;
-        font-size: var(--grammar-text-md);
-        font-weight: var(--grammar-weight-medium);
-        line-height: var(--grammar-leading-md);
+        font-size: var(--grammar-text-lg);
+        font-weight: var(--grammar-weight-regular);
+        line-height: var(--grammar-leading-lg);
         overflow-wrap: anywhere;
     }
 
@@ -1769,6 +1892,9 @@
 
     /* A pressable row: the title is the one focusable button and its hit area is the whole row; commands and the menu sit above it. */
     .starci-core-list-row[data-grammar-row-pressable="true"] { position: relative; }
+    /* 0.48.0: a pressable row keeps its original hover (the secondary surface) and never transforms. The row is the full-width band of its list (see .starci-core-section-list), so the fill covers the same area as the divider, and the content sits on the row's inner padding. */
+    .starci-core-list-row[data-grammar-row-pressable="true"] { cursor: pointer; }
+
     .starci-core-list-row[data-grammar-row-pressable="true"]:hover { background: var(--surface-secondary); }
 
     .starci-core-list-row-press {
@@ -4566,7 +4692,8 @@
     /* The inline row: the same line, on the card's own ground. */
     .starci-core-empty-notice[data-grammar-error-layout="row"] { background: transparent; color: inherit; padding: 0; }
     .starci-core-empty-notice[data-grammar-error-layout="row"] > .starci-core-notice-copy { flex: 1 1 10rem; align-items: flex-start; }
-    .starci-core-empty-notice[data-grammar-error-layout="row"] > :last-child:is(button, [data-component="Button"]) { margin-inline-start: auto; }
+    .starci-core-empty-notice[data-grammar-error-layout="row"] > .starci-core-notice-actions { margin-inline-start: auto; }
+    .starci-core-empty-notice:is([data-grammar-error-layout="band"], [data-grammar-error-layout="row"]) > .starci-core-notice-actions { justify-content: flex-end; }
 
     .starci-core-empty-notice[data-grammar-error-layout="band"] > .starci-core-notice-copy {
         flex: 1 1 10rem;
@@ -5344,7 +5471,7 @@
         font-size: var(--grammar-text-xl) !important;
         font-weight: var(--grammar-weight-semibold) !important;
         letter-spacing: var(--grammar-tracking-tight) !important;
-        line-height: var(--grammar-leading-xl) !important;
+        line-height: var(--grammar-leading-page-title) !important;
     }
 
     .grammar-common-root [data-component="Heading"][data-scale="standard"][data-level="2"] {
@@ -5450,6 +5577,8 @@
         text-overflow: ellipsis;
         white-space: nowrap;
     }
+
+    .starci-core-expandable-text { display: flex; min-width: 0; flex-direction: column; align-items: flex-start; gap: var(--grammar-identity-gap); }
 
     .starci-core-text[data-overflow="clamp-2"] {
         display: -webkit-box;
@@ -5633,7 +5762,42 @@
      * than overflow: its height is the size step on one line and grows only with a wrapped label (the
      * size rules above hold the floor).
      */
-    .starci-core-button[data-width="fill"] {
+/*
+     * A Button on a band (0.48.0, `ground`): on an `accent` band (the brand colour) or an `inverse` one (the foreground as the ground) the intents keep their rank and
+     * take the band's contrast. `commit` is filled with the band's foreground and inked in the band's colour; every other intent is the band's foreground as ink with a
+     * 1px outline of it, transparent inside; hover and press tint with that ink. One look in both families; contrast at least 4.5:1 by construction (the pair).
+     */
+    .starci-core-button[data-grammar-button-ground="accent"] { --starci-core-button-band: var(--accent); --starci-core-button-band-ink: var(--accent-foreground); }
+    .starci-core-button[data-grammar-button-ground="inverse"] { --starci-core-button-band: var(--foreground); --starci-core-button-band-ink: var(--background); }
+
+    .starci-core-button[data-grammar-button-ground][data-grammar-intent="commit"] {
+        border-color: var(--starci-core-button-band-ink) !important;
+        background: var(--starci-core-button-band-ink) !important;
+        box-shadow: none !important;
+        color: var(--starci-core-button-band) !important;
+    }
+
+    .starci-core-button[data-grammar-button-ground]:not([data-grammar-intent="commit"]) {
+        border: 1px solid var(--starci-core-button-band-ink) !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        color: var(--starci-core-button-band-ink) !important;
+    }
+
+    .starci-core-button[data-grammar-button-ground][data-grammar-intent="commit"]:is(:hover, [data-hovered="true"], [data-pressed="true"]) {
+        background: color-mix(in oklab, var(--starci-core-button-band-ink) 88%, var(--starci-core-button-band)) !important;
+    }
+
+    .starci-core-button[data-grammar-button-ground]:not([data-grammar-intent="commit"]):is(:hover, [data-hovered="true"], [data-pressed="true"]) {
+        background: color-mix(in oklab, var(--starci-core-button-band-ink) 14%, transparent) !important;
+    }
+
+    .starci-core-button[data-grammar-button-ground]:is(:focus-visible, [data-focus-visible="true"]) {
+        outline: 2px solid var(--starci-core-button-band-ink) !important;
+        outline-offset: 2px;
+    }
+
+        .starci-core-button[data-width="fill"] {
         width: 100% !important;
         max-width: 100% !important;
         white-space: normal !important;
@@ -6416,9 +6580,19 @@
         max-inline-size: 50%;
     }
 
+    /* 0.48.0: the key is the label (16 / 400, primary); the value is the 14 secondary content. */
     [data-grammar-list-layout="keyValue"] .starci-core-list-row-name {
-        color: var(--muted);
+        color: var(--foreground);
+        font-size: var(--grammar-text-lg);
         font-weight: var(--grammar-weight-regular);
+        line-height: var(--grammar-leading-lg);
+    }
+
+    [data-grammar-list-layout="keyValue"] .starci-core-list-row-value {
+        color: var(--muted);
+        font-size: var(--grammar-text-md);
+        font-weight: var(--grammar-weight-regular);
+        line-height: var(--grammar-leading-md);
     }
 
     /*
@@ -6426,6 +6600,8 @@
      * (14, regular, wrapping at the reading edge, never truncated) and the trailing chevron; the whole row is the one button (`onPress` sends that text).
      */
     [data-grammar-list-layout="suggestions"] .starci-core-list-row-name {
+        font-size: var(--grammar-text-md);
+        line-height: var(--grammar-leading-md);
         font-weight: var(--grammar-weight-regular);
         white-space: normal;
     }
@@ -6493,3 +6669,4 @@
         -webkit-mask-image: none;
     }
 }
+

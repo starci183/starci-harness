@@ -46,3 +46,6 @@ the grammar's.
 
 ## Rules
 FEEDBACK-1..3, ACCENT-5, STATE-8. Proof: TRUTH-3, UX-4, UX-6, TASTE-5.
+
+## The retry of a negative banner (0.48.0)
+A negative `Alert`'s `action` is the `alternative` (outlined) button, the one look of "Thử lại" wherever a read failed, as in an `ErrorView`; before it was the destructive fill. A destructive decision belongs to an `AlertDialog`, never to a banner's action. Law `DNA-COMMON-RETRY-ONE-LOOK`.

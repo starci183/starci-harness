@@ -6,7 +6,7 @@ import {
     Markdown, MarkdownArticle, MarkdownTableFrame, Mascot, MediaFrame,
     NavLandmark, OtpInput, Page, PinnedActionBar, PressableField,
     Progress, Quote, RelativeTime, Section, Sidebar, StateMark, StatusDot,
-    Stack, Cluster, Grid, Reveal, Marquee, CountUp, StickyStory,
+    Stack, Cluster, Grid, Reveal, Marquee, CountUp, ExpandableText, StickyStory,
     SurfaceCard, Tabs, Terminal, Text,
     TextAction, Tooltip, VerticalScrollRegion, WorkspaceShell,
 } from "./renderers.js"
@@ -32,7 +32,7 @@ export const COMMON_GRAMMAR_COMPONENTS = Object.freeze({
     Markdown, MarkdownArticle, MarkdownTableFrame, Mascot, MediaFrame,
     NavLandmark, OtpInput, Page, PinnedActionBar, PressableField,
     Progress, Quote, RelativeTime, Section, Sidebar, StateMark, StatusDot,
-    Stack, Cluster, Grid, Reveal, Marquee, CountUp, StickyStory,
+    Stack, Cluster, Grid, Reveal, Marquee, CountUp, ExpandableText, StickyStory,
     SurfaceCard, Tabs, Terminal, Text,
     TextAction, Tooltip, VerticalScrollRegion, WorkspaceShell,
     ...COMMON_FORMS_COMPONENTS,

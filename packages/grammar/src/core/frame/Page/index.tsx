@@ -93,6 +93,26 @@ const isBand = (chrome: PageChrome, header: PageHeaderContent | PageTrailContent
     chrome === "standard" || header.title !== undefined
 
 /**
+ * Whether a child is the pane grid (0.48.0). The identity check alone failed across the RSC boundary: a server component that renders `<PaneGrid>` hands Page
+ * a client reference (`$$id` ending in `#PaneGrid`) on the server and, on the client, a lazy element until its chunk loads, never the function itself, so
+ * `PAGE_PANES_CHILD_NOT_PANE_GRID` fired on a valid page. The grid carries a static marker and a `displayName`; a reference is read by its export name, and a lazy
+ * element (unresolved yet) is let through, since what it resolves to renders its own frame.
+ */
+const PANE_GRID_EXPORT = "PaneGrid"
+const isPaneGridElement = (child: ReactNode): boolean => {
+    if (!isValidElement(child)) return false
+    const type = child.type as unknown
+    if (type === PaneGrid) return true
+    if (type === null || (typeof type !== "function" && typeof type !== "object")) return false
+    // A client reference (the server side of the boundary) is read by its id only: dotting into any other property of the proxy throws on the server.
+    const reference = type as { readonly $$typeof?: unknown; readonly $$id?: unknown }
+    if (reference.$$typeof === Symbol.for("react.client.reference")) return typeof reference.$$id === "string" && reference.$$id.endsWith(`#${PANE_GRID_EXPORT}`)
+    if (reference.$$typeof === Symbol.for("react.lazy")) return true
+    const marked = type as { readonly grammarFrame?: unknown; readonly displayName?: unknown }
+    return marked.grammarFrame === PANE_GRID_EXPORT || marked.displayName === PANE_GRID_EXPORT
+}
+
+/**
  * One route page: the header band across the region, then the body in the page measure and gutter, one region step
  * below it. Page is the single owner of the page inset and the page's vertical rhythm; layout frames (WorkspaceShell,
  * Grid, PaneGrid) only place regions and never wrap a page in a measure of their own. PageHeader, PageContainer and
@@ -109,7 +129,7 @@ const isBand = (chrome: PageChrome, header: PageHeaderContent | PageTrailContent
  */
 export const Page = (props: PageProps) => {
     const { chrome = "standard", header, children, measure = "product", isLoading = false } = props
-    if (props.chrome === "panes" && !(isValidElement(children) && children.type === PaneGrid)) {
+    if (props.chrome === "panes" && !isPaneGridElement(children)) {
         throw new Error("PAGE_PANES_CHILD_NOT_PANE_GRID")
     }
     const layout: PageLayout = chrome === "standard" ? "report" : "workspace"

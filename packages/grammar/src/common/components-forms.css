@@ -546,16 +546,18 @@
         gap: var(--grammar-identity-gap);
     }
 
+    /* 0.48.0: a settings row reads label over content: the title 16 / 400 in the primary colour, its hint 14 in the secondary colour. */
     [data-component="Switch"] .starci-core-switch-text > [data-grammar-field-label] {
-        font-size: var(--grammar-text-md);
-        font-weight: var(--grammar-weight-medium);
-        line-height: var(--grammar-leading-md);
+        font-size: var(--grammar-text-lg);
+        font-weight: var(--grammar-weight-regular);
+        line-height: var(--grammar-leading-lg);
     }
 
     [data-component="Switch"] .starci-core-switch-text > [data-grammar-field-description] {
         color: var(--muted);
-        font-size: var(--grammar-text-xs);
-        line-height: var(--grammar-leading-xs);
+        font-size: var(--grammar-text-md);
+        font-weight: var(--grammar-weight-regular);
+        line-height: var(--grammar-leading-md);
     }
 
     [data-component="Switch"][data-grammar-switch-labelled="true"] > .starci-core-choice-control {

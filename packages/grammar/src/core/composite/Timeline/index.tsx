@@ -14,8 +14,12 @@ export type TimelineItem = {
     readonly dateTime?: string
     readonly timeLabel?: ReactNode
     readonly description?: ReactNode
+    /**
+     * The entry's outcome. Its dot is neutral unless the entry `isCurrent` (0.48.0, the dot rule: colour marks a live state only); a past entry says its outcome in
+     * its words, and an entry that needs the reader takes `isAttention`.
+     */
     readonly state?: PresentationState
-    /** The entry the reader is at now (`aria-current="step"`). */
+    /** The entry the reader is at now (`aria-current="step"`): its dot takes its state's tone, or the accent. */
     readonly isCurrent?: boolean
     /**
      * The entry needs the reader (a failed step, a pending approval): the whole row takes a tone background, not just

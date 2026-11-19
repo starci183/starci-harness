@@ -11,12 +11,12 @@ export type DescriptionListItem = {
     readonly description: ReactNode
 }
 
-export type DescriptionListLayout = "columns" | "stacked"
+export type DescriptionListLayout = "columns" | "stacked" | "grid"
 
 export type DescriptionListProps = NoChildren & {
     /**
      * `columns` pairs each term with its value on one row and falls back to `stacked` below 16rem of the list's own width (a phone-wide drawer keeps the pairs side by side);
-     * `stacked` always puts the value under its term.
+     * `stacked` always puts the value under its term; `grid` (0.48.0) is a block of facts, each a 12px term over its 16px value, wrapping into as many columns as the width fits (no separators).
      */
     readonly layout?: DescriptionListLayout
     readonly items: ReadonlyArray<DescriptionListItem>
@@ -42,7 +42,7 @@ export type DescriptionListProps = NoChildren & {
 const DescriptionListInner = (props: DescriptionListProps) => {
     const { density = "default", isLoading = false, layout = "columns" } = props
     const ownsBusy = useRegionOwnsBusy()
-    const isDivided = props.isDivided ?? density === "default"
+    const isDivided = props.isDivided ?? (density === "default" && layout !== "grid")
     // Skeleton parity: a loading value is laid out unseen under the shimmer, so the pair keeps the ready value's box.
     const pending = (value: ReactNode) => <SkeletonPlaceholder>{value}</SkeletonPlaceholder>
     return (
