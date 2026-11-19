@@ -68,7 +68,7 @@ import { memoKeyed } from '../rule-memo.mjs';
 /** The failure codes the finders above emit, so `starci app check` ships their labels (check.mts adds them to CHECK_CODES). Append-only; the coordinator regenerates it at merge time. */
 export const A15_CODES = [
   // codes-begin
-  'BE_DI_RING',
+  'BE_DI_RING', 'BE_BOOT_ENTRY_FAILED', 'BE_BOOT_ENTRY_UNJUDGED',
   'HFS_DATA_IN_CODE', 'HFS_DATA_DEPENDENCY', 'HFS_DATA_UNSEALED', 'HFS_DATA_STANDARD_SEALED', 'HFS_DATA_MANIFEST_DRIFT', 'HFS_DATA_FILE_SIZE', 'HFS_DATA_CAP',
   'HFS_DATA_ADAPTER_DRIFT', 'HFS_DATA_ADAPTER_UNGUARDED', 'HFS_DATA_SECOND_LOADER', 'FE_ERROR_PAGE_NOT_EMPTY_STATE',
   'DATA_STORE_UNDECLARED', 'DATA_STORE_KIND', 'DATA_STORE_ADAPTER', 'DATA_DERIVED_SOURCE',

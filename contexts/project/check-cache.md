@@ -91,7 +91,7 @@ starci app check --gate sonar --gate codecov
 | `--gate lint` | ESLint per side and stylelint | `lint/` |
 | `--gate test` | the unit specs, their coverage merged into one report and its per-file threshold | `test-coverage/` |
 | `--gate sonar`, `--gate codecov` | the combined Sonar and Codecov predictions from the merged coverage, the lint findings and the clones; either selector invokes this family, both together invoke it once. The server scan belongs to the whole run alone | `sonar-baseline/`, `codecov-baseline/` |
-| `--gate hfs` (its `checks` step) | the project checks that declare `reads`, and each declared nivoos package check | `check/build/` (steps `project-check`, `nivoos-package`) |
+| `--gate hfs` (its `checks` step) | the project checks that declare `reads`, each declared nivoos package check and the boot entries a back end declares (BE-INJECTION-6) | `check/build/` (steps `project-check`, `nivoos-package`, `boot-entry`) |
 | `--gate build` | the CI-parity build steps ([CI parity](#ci-parity)): typecheck, `build be`, each `build fe`, the database migration checks | `check/build/` |
 | `--gate audit` | the CI-parity dependency audit ([CI parity](#ci-parity)) | none |
 
@@ -332,6 +332,7 @@ untracked tool cache of slot `app.tool-cache`, or none.
 | production dependency audit | always | never | every run that selects it: the registry's advisories change without the tree | none |
 | project checks (`checks`: the files of `ext/checks/` that ext/manifest.json `checks` declares, R402) | always | never | every run that selects hfs: a check reads what it reads (the tree, generated files, the network), which no key holds | none |
 | nivoos package checks (`checks`: `nivoos package check` of each package hfs.json `sides.nivoos.packages` declares, R436) | always | never | every run that selects hfs, in the same step: the package's sources and the SDK are what it reads | none |
+| boot entries (`checks`: the root hfs.json `sides.be.apps[].boot` declares, composed without listening, R448) | scoped | the be side key (tracked and untracked program inputs), the tracked files of `packages/` and `hfs.json`, the declared entries, the lockfile, the Node major and the harness are unchanged | any of them; a timeout reached no verdict and is never stored | `check/build/` (step `boot-entry`) |
 | proofs, the gate verdict, the Sonar and Codecov predictions | always | never | every run | none |
 | Sonar scan against the server | scoped | the scanned content (every tracked file outside the cache folder, the properties, the coverage and lint reports they name), the target, the scanner version and the digest of the gate as the server holds it now (its conditions, else its name when the token cannot read them; a gate neither is readable for is never kept) are unchanged | any of them; a failure is never kept | the tool cache (`sonar-scan.json`) |
 

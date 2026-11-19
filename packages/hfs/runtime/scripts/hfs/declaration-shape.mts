@@ -46,7 +46,19 @@ function dbBlockProblems(block: Parsed): string[] {
 }
 
 /** The keys of one app entry: its folder name and kind, and for a client cli the npm package it is published as and the command it installs. */
-const APP_KEYS = ['name', 'kind', 'contract', 'package', 'bin'];
+const APP_KEYS = ['name', 'kind', 'contract', 'package', 'bin', 'boot'];
+
+/** Shape problems of one app's `boot` (R448): the back-end module file the check composes, the export that is its root (or the factory that returns it) and the stub env it runs with. */
+function bootShapeProblems(boot: Parsed, at: string, side: Parsed): string[] {
+  if (side !== 'be') return [`${at}.boot is declared by an app of be only`];
+  if (!isPlainObject(boot) || Object.keys(boot).some((key: string) => !['module', 'export', 'factory', 'env'].includes(key))) return [`${at}.boot must be { module?, export?, factory?, env? }`];
+  const bad: string[] = [];
+  if (boot.module !== undefined && !(typeof boot.module === 'string' && /^[\w@.-]+(?:\/[\w@.-]+)*\.ts$/u.test(boot.module) && !boot.module.split('/').includes('..'))) bad.push(`${at}.boot.module must be a .ts file path relative to be/ (absent: apps/<name>/src/app.module.ts)`);
+  for (const key of ['export', 'factory']) if (boot[key] !== undefined && !(typeof boot[key] === 'string' && /^[A-Za-z_$][\w$]*$/u.test(boot[key]))) bad.push(`${at}.boot.${key} must name an export of the module`);
+  if (boot.export !== undefined && boot.factory !== undefined) bad.push(`${at}.boot declares export and factory: the root is one or the other`);
+  if (boot.env !== undefined && !(isPlainObject(boot.env) && Object.entries(boot.env).every(([name, value]) => /^[A-Z][A-Z0-9_]*$/u.test(name) && typeof value === 'string' && value.length <= 200 && !/[\r\n]/u.test(value)))) bad.push(`${at}.boot.env must map UPPER_CASE variable names to short single-line stub values (they are committed: never a secret)`);
+  return bad;
+}
 
 function appShapeProblems(apps: Parsed, at: Parsed, side: Parsed, names: Parsed): string[] {
   const bad: string[] = [];
@@ -59,6 +71,7 @@ function appShapeProblems(apps: Parsed, at: Parsed, side: Parsed, names: Parsed)
     else if (app.contract !== undefined && (side !== 'be' || app.kind !== 'api' || !CONTRACT_KINDS.includes(app.contract))) bad.push(`${at}.apps[${index}].contract is declared by an api app of be only, as ${CONTRACT_KINDS.join(' or ')} (absent: ${DEFAULT_CONTRACT})`);
     else if (app.package !== undefined && !(typeof app.package === 'string' && app.package.length <= 214 && PACKAGE_NAME.test(app.package))) bad.push(`${at}.apps[${index}].package must be an npm package name`);
     else if (app.bin !== undefined && !(typeof app.bin === 'string' && NAME.test(app.bin))) bad.push(`${at}.apps[${index}].bin must be a command name`);
+    else if (app.boot !== undefined && bootShapeProblems(app.boot, `${at}.apps[${index}]`, side).length > 0) bad.push(...bootShapeProblems(app.boot, `${at}.apps[${index}]`, side));
     else if (names.has(app.name)) bad.push(`app ${app.name} is declared twice (${names.get(app.name)} and ${side})`);
     else names.set(app.name, side);
   });

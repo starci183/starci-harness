@@ -145,6 +145,8 @@ import { DEFAULT_FAMILIES, mergeAppPass, runDbStep, runFormatStep, runStructureS
 import { CHECK_GRAPH, createLanes, formatStepRows, runGraph, stepRow, type StepBody, type StepId } from '../cache/schedule.mjs';
 import { runParityFamilies, type ParityRun } from '../cache/parity-family.mjs';
 import { PROJECT_CHECK_FAILED, runProjectChecks } from '../cache/project-checks.mjs';
+import { BOOT_ENTRY_FAILED, BOOT_ENTRY_UNJUDGED } from '../runtime/scripts/hfs/app-boot.mjs';
+import { runBootEntryChecks } from '../cache/boot-entry-check.mjs';
 import { NIVOOS_PACKAGE_CHECK, runNivoosPackageChecks } from '../cache/nivoos-package-check.mjs';
 import { LINT_REPORT, runSonarScan } from '../cache/sonar-scan-family.mjs';
 import { createProgress, elapsedText, silentProgress } from '../cache/progress.mjs';
@@ -643,9 +645,12 @@ async function checkRun({ io, selected: requested, full, use, coverageFrom, side
       const checked = await runProjectChecks({ repoRoot, run: step.parity, env: io.env, session });
       // The nivoos packages hfs.json declares (R436) are checked here too, as their own lines and their own code.
       const nivoos = await runNivoosPackageChecks({ repoRoot, run: step.parity, env: io.env, session });
-      const findings = [...checked.findings, ...nivoos.findings];
-      found.set('checks', withWhy(findings, readWhy(skillRoot, [...(checked.findings.length > 0 ? [PROJECT_CHECK_FAILED] : []), ...(nivoos.findings.length > 0 ? [NIVOOS_PACKAGE_CHECK] : [])])));
-      said.set('checks', [...checked.lines, ...nivoos.lines]);
+      // The boot entries hfs.json declares (R448) are composed here too, so a project with the wiring gate off still has them judged.
+      const boot = await runBootEntryChecks({ repoRoot, session, execute: step.execute });
+      const findings = [...checked.findings, ...nivoos.findings, ...boot.findings];
+      const bootCodes = [BOOT_ENTRY_FAILED, BOOT_ENTRY_UNJUDGED].filter((code) => boot.findings.some((item) => item.code === code));
+      found.set('checks', withWhy(findings, readWhy(skillRoot, [...(checked.findings.length > 0 ? [PROJECT_CHECK_FAILED] : []), ...(nivoos.findings.length > 0 ? [NIVOOS_PACKAGE_CHECK] : []), ...bootCodes])));
+      said.set('checks', [...checked.lines, ...nivoos.lines, ...boot.lines]);
     });
   }
   let proved: Dynamic;

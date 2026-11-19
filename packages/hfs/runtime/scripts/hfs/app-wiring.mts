@@ -166,7 +166,7 @@ async function withinDeadline<T>(work: Promise<T>, timeout: number): Promise<T> 
 
 /** The strict in-memory TS loader uses this app's installed compiler and Nest, including inherited aliases. */
 // reason: returns the app's own CommonJS require, whose modules are untyped.
-function sourceLoader(repoRoot: string, entry: string, fixture: string | null): NodeJS.Require {
+export function sourceLoader(repoRoot: string, entry: string, fixture: string | null): NodeJS.Require {
   const require = createRequire(path.join(repoRoot, 'package.json'));
   const ts = require('typescript') as typeof import('typescript'); // reason: the app's installed compiler, not this package's
   const config = ts.getParsedCommandLineOfConfigFile(path.join(repoRoot, 'tsconfig.json'), {},
@@ -210,9 +210,8 @@ interface ResolverInternals { _resolveFilename(request: string, parent: { filena
 
 interface WorkerInput { repoRoot: string; app: string; fixture: string | null; timeout: number }
 
-/** The worker's proof: the provider rings of the root (the compile is not started when there is one), or none once the root compiled. */
-async function wiringWorker({ repoRoot, app, fixture, timeout }: WorkerInput): Promise<ProviderRing[]> {
-  // Disable network entry points before loading application source. A forgotten resource double is a refusal.
+/** Disables the network entry points before application source loads: a resource without a double (or a stub) is a refusal, never a connection. */
+export function blockNetwork(): void {
   const systemRequire = createRequire(import.meta.url);
   const patched: [string, string[]][] = [['node:net', ['connect', 'createConnection']], ['node:tls', ['connect']],
     ['node:http', ['request', 'get']], ['node:https', ['request', 'get']]];
@@ -223,6 +222,11 @@ async function wiringWorker({ repoRoot, app, fixture, timeout }: WorkerInput): P
   systemRequire('node:net').Socket.prototype.connect = () => { throw new Error('wiring needs an infrastructure double'); };
   systemRequire('node:net').Server.prototype.listen = () => { throw new Error('wiring needs an infrastructure double'); };
   globalThis.fetch = () => { throw new Error('wiring needs an infrastructure double'); };
+}
+
+/** The worker's proof: the provider rings of the root (the compile is not started when there is one), or none once the root compiled. */
+async function wiringWorker({ repoRoot, app, fixture, timeout }: WorkerInput): Promise<ProviderRing[]> {
+  blockNetwork();
   const entry = path.join(repoRoot, modulePath(app));
   const fixtureFile = fixture ? path.join(repoRoot, fixture) : null;
   const require = sourceLoader(repoRoot, entry, fixtureFile);
