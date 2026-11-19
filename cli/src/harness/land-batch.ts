@@ -1,12 +1,13 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import { freemem } from "node:os"
 import { join } from "node:path"
 import { captureGit } from "../shared/git.js"
 import { captureNpm, captureTool } from "../shared/exec.js"
 import { withHeavySlot } from "./heavy.js"
 import {
-    CACHE_DIR, GATE_ROUNDS, dropReady, holderLine, judgeRound, landPaths, readyEntries, releaseLockFile, takeLockFile, writeJsonWhole, writeStatus,
+    CACHE_DIR, GATE_ROUNDS, OOM_FREE_MB, OOM_RETRIES, dropReady, holderLine, isOutOfMemory, judgeRound, landPaths, readyEntries, releaseLockFile, takeLockFile, writeJsonWhole, writeStatus,
 } from "./land-queue.js"
-import type { LaneFinding, LaneStatus, ReadyEntry } from "./land-queue.js"
+import type { LaneFinding, LaneStatus, ReadyEntry, RoundVerdict } from "./land-queue.js"
 
 /** The fields of a status a batch sets; the lane, its sha, branch and batch come from the entry. */
 type StatusFields = Omit<LaneStatus, "lane" | "laneSha" | "branch" | "at" | "batch">
@@ -35,7 +36,7 @@ export interface BatchRecord {
     readonly lanes: readonly string[]
     readonly merged: readonly string[]
     readonly conflicts: readonly { readonly lane: string; readonly with: readonly string[]; readonly files: readonly string[] }[]
-    readonly rounds: readonly { readonly round: number; readonly lanes: readonly string[]; readonly exitCode: number; readonly verdict: string }[]
+    readonly rounds: readonly { readonly round: number; readonly lanes: readonly string[]; readonly exitCode: number; readonly verdict: string; readonly oomRuns?: number }[]
     readonly landed?: string
     readonly landedLanes: readonly string[]
     readonly rejected: readonly string[]
@@ -146,27 +147,81 @@ const prepare = async (options: BatchOptions, log: string[]): Promise<void> => {
 /** The app's own pinned CLI: a lander judges with the harness the app pins, never this one. */
 const appCli = (wt: string): string => join(wt, "node_modules", "starci-harness", "dist", "main.js")
 
-/** One `app check --env prod --json` under a gate slot. */
-const gate = async (options: BatchOptions, folder: string, round: number): Promise<{ readonly exitCode: number; readonly stdout: string }> => {
+/** One gate run as the batch reads it. */
+export interface GateRun {
+    readonly exitCode: number
+    readonly stdout: string
+    readonly stderr: string
+}
+
+/** One `app check --env prod --json` under a gate slot; `attempt` numbers a run repeated after it ran out of memory. */
+const gate = async (options: BatchOptions, folder: string, round: number, attempt: number): Promise<GateRun> => {
     const slot = await takeSlot(options.dir, "gate", options.gateSlots)
     try {
-        options.say(`gate round ${String(round)} (${slot})`)
+        const name = attempt === 0 ? String(round) : `${String(round)}-retry${String(attempt)}`
+        options.say(`gate round ${name} (${slot})`)
         const run = await captureTool(process.execPath, [appCli(options.worktree), "app", "check", "--env", "prod", "--json"], options.worktree)
-        writeFileSync(join(folder, `check-${String(round)}.json`), run.stdout)
-        writeFileSync(join(folder, `check-${String(round)}.log`), run.stderr)
-        return { exitCode: run.exitCode, stdout: run.stdout }
+        writeFileSync(join(folder, `check-${name}.json`), run.stdout)
+        writeFileSync(join(folder, `check-${name}.log`), run.stderr)
+        return { exitCode: run.exitCode, stdout: run.stdout, stderr: run.stderr }
     } finally {
         releaseLockFile(slot, process.pid)
     }
 }
 
-/** `app push origin HEAD:dev` with the app's CLI: it commits the cache records the run writes, then pushes once through the hook. */
-const push = async (options: BatchOptions, folder: string): Promise<boolean> => {
+/** The host's free RAM in MB, the reading the out-of-memory wait polls. */
+const freeRamMb = (): number => Math.floor(freemem() / (1024 * 1024))
+
+/** Waits until the host has `mb` free, polling every `pollMs`, telling `say` once while it waits. */
+export const waitForFreeRam = async (mb: number, say: (line: string) => void, read: () => number = freeRamMb, pollMs = 15_000): Promise<void> => {
+    let told = false
+    for (let free = read(); free < mb; free = read()) {
+        if (!told) say(`out of memory: waiting for ${String(mb)} MB free RAM (now ${String(free)} MB)`)
+        told = true
+        await sleep(pollMs)
+    }
+}
+
+/** What a gate round came to once out-of-memory runs were repeated: its last verdict, the run that gave it, and how many runs ran out of memory. */
+export interface JudgedRound {
+    readonly verdict: RoundVerdict
+    readonly run: GateRun
+    readonly oomRuns: number
+}
+
+/**
+ * Runs one gate round, repeating a run that ran out of memory up to OOM_RETRIES times, each once `waitRam` returns (free RAM above
+ * OOM_FREE_MB). A run that does not run out of memory gives the round its verdict; a round whose every run ran out of memory ends `oom`,
+ * and the batch parks: an out-of-memory crash never rejects a lane.
+ */
+export const judgeWithOomRetry = async (
+    runGate: (attempt: number) => Promise<GateRun>,
+    judge: (run: GateRun) => RoundVerdict,
+    waitRam: () => Promise<void>,
+    say: (line: string) => void,
+): Promise<JudgedRound> => {
+    let oomRuns = 0
+    for (let attempt = 0; ; attempt += 1) {
+        const run = await runGate(attempt)
+        const verdict = judge(run)
+        if (verdict.kind !== "oom") return { verdict, run, oomRuns }
+        oomRuns += 1
+        say(`gate ran out of memory (${verdict.evidence}); no lane is blamed`)
+        if (attempt >= OOM_RETRIES) return { verdict, run, oomRuns }
+        await waitRam()
+    }
+}
+
+/**
+ * `app push origin HEAD:dev` with the app's CLI: it commits the cache records the run writes, then pushes once through the hook.
+ * `oom` when the push's own check ran out of memory.
+ */
+const push = async (options: BatchOptions, folder: string): Promise<{ readonly pushed: boolean; readonly oom: boolean }> => {
     const slot = await takeSlot(options.dir, "gate", options.gateSlots)
     try {
         const run = await captureTool(process.execPath, [appCli(options.worktree), "app", "push", "origin", "HEAD:dev"], options.worktree)
         writeFileSync(join(folder, "push.log"), `${run.stdout}\n${run.stderr}`)
-        return run.exitCode === 0
+        return { pushed: run.exitCode === 0, oom: run.exitCode !== 0 && isOutOfMemory(run.exitCode, `${run.stdout}\n${run.stderr}`) }
     } finally {
         releaseLockFile(slot, process.pid)
     }
@@ -185,7 +240,7 @@ export const runBatch = async (options: BatchOptions): Promise<BatchRecord | und
     mkdirSync(folder, { recursive: true })
     say(`batch ${batch}: ${ready.map((lane) => lane.lane).join(", ")}${options.dryRun ? " (dry run)" : ""}`)
     const log: string[] = []
-    const rounds: { round: number; lanes: string[]; exitCode: number; verdict: string }[] = []
+    const rounds: { round: number; lanes: string[]; exitCode: number; verdict: string; oomRuns?: number }[] = []
     const rejected: string[] = []
     const landedLanes: string[] = []
     let base = ""
@@ -246,18 +301,36 @@ export const runBatch = async (options: BatchOptions): Promise<BatchRecord | und
             }
             for (const lane of merged) status(lane, { state: "queued", sha: lane.sha, reason: `in batch ${batch}, gate round ${String(round)}` })
             await prepare(options, log)
-            const run = await gate(options, folder, round)
             const inBatch = new Map([...changed].filter(([lane]) => merged.some((entry) => entry.lane === lane)))
-            const verdict = judgeRound(round, run.exitCode, run.stdout, inBatch)
-            rounds.push({ round, lanes: merged.map((lane) => lane.lane), exitCode: run.exitCode, verdict: verdict.kind })
+            const waitRam = (): Promise<void> => waitForFreeRam(OOM_FREE_MB, say)
+            const judged = await judgeWithOomRetry(
+                (attempt) => gate(options, folder, round, attempt),
+                (run) => judgeRound(round, run.exitCode, run.stdout, inBatch, run.stderr),
+                waitRam,
+                say,
+            )
+            const { verdict, run } = judged
+            rounds.push({ round, lanes: merged.map((lane) => lane.lane), exitCode: run.exitCode, verdict: verdict.kind, ...(judged.oomRuns > 0 ? { oomRuns: judged.oomRuns } : {}) })
             say(`gate round ${String(round)}: exit ${String(run.exitCode)}, ${verdict.kind}`)
+            if (verdict.kind === "oom") {
+                const reason = `parked: the gate ran out of memory ${String(judged.oomRuns)} times (${verdict.evidence}); no lane is blamed: register again once the host has RAM`
+                for (const lane of merged) {
+                    dropReady(dir, lane.lane, lane.sha)
+                    status(lane, { state: "parked", sha: lane.sha, reason })
+                }
+                outcome = `parked ${String(merged.length)} lane(s): the gate ran out of memory ${String(judged.oomRuns)} times`
+                return
+            }
             if (verdict.kind === "no-verdict") {
                 outcome = `gate round ${String(round)} gave no verdict; every lane stays ready`
                 return
             }
             if (verdict.kind === "green") {
-                if (!(await push(options, folder))) {
-                    outcome = "app push failed (push.log); every lane stays ready"
+                const pushed = await push(options, folder)
+                if (!pushed.pushed) {
+                    // Every lane stays ready; a push whose check ran out of memory waits for RAM first, so the next batch does not crash the same way.
+                    if (pushed.oom) await waitRam()
+                    outcome = `app push failed${pushed.oom ? " (out of memory)" : ""} (push.log); every lane stays ready`
                     return
                 }
                 landed = (await gitIn(options.worktree, ["rev-parse", "HEAD"])).out

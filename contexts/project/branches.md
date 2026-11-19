@@ -52,10 +52,15 @@ rule; every other page links to it.
 5. Each lane reads its outcome from `<lanes>/_land-status/<lane>.json`: `queued`, `landed` (`sha` the dev commit, `migrations`
    the files under `db/migrations/` it added, applied once landed), `conflict` (`reason`, `files`, `requeued`) or `rejected`
    (`findings`). A gate that gives no verdict (no report) or a failed push blames no lane: every lane stays ready.
+6. A gate that ran out of memory blames no lane: exit 134, 137 or `0xC0000409`, a V8 heap message, the harness's heap-cap note or
+   `ENOMEM`, from the gate itself or from a check one of its findings reports. The round waits until the host has `OOM_FREE_MB` free
+   and runs again, at most `OOM_RETRIES` more times; a round that still runs out of memory parks its lanes (`parked`, with the
+   evidence in `reason`), never rejects them, and each registers again once the host has RAM. A push whose check ran out of memory
+   waits for the same RAM before the next batch; its lanes stay ready.
 
 **Enforced by** `starci lane ready` (refuses a dirty tree, `LANE_READY_DIRTY`, and a sha that is not the pushed tip of its branch,
-`LANE_READY_NOT_PUSHED`), `starci lane land` (one lander per folder, `LANE_LANDER_RUNNING`; the dev lock and the gate and npm slot
-files of the folder taken under the lander's name, released only when they name it), `cli/src/harness/land-queue.ts` and
-`cli/src/harness/land-batch.ts`. That a lane gated before it registered is held by review: the batch gate catches what it skipped.
+`LANE_READY_NOT_PUSHED`), `starci lane land` (one lander per folder, `LANE_LANDER_RUNNING`; the dev lock and the gate and npm slot files of the folder
+taken under the lander's name, released only when they name it), `cli/src/harness/land-queue.ts` and `cli/src/harness/land-batch.ts`;
+item 6 by `judgeRound` and `judgeWithOomRetry`, proven by `cli/src/harness/land-oom.test.ts`. That a lane gated before it registered is held by review: the batch gate catches what it skipped.
 
 The harness repository has no managed app hook and no `dev` branch; this rule never applies to it.

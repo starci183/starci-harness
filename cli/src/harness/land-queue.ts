@@ -19,7 +19,7 @@ export const LANDER = "batch-lander"
 export const GATE_ROUNDS = 2
 
 /** The states a lane's status file holds. */
-export type LaneState = "queued" | "landed" | "conflict" | "rejected" | "withdrawn"
+export type LaneState = "queued" | "landed" | "conflict" | "rejected" | "parked" | "withdrawn"
 
 /** One blocking finding of the batch gate, as a lane reads it. */
 export interface LaneFinding {
@@ -243,21 +243,42 @@ export const lanesNamedBy = (finding: LaneFinding, changed: ReadonlyMap<string, 
     return path === "" || path === "." ? [] : pick((file) => file.startsWith(`${path}/`))
 }
 
+/** The gate runs a batch makes again when its gate ran out of memory, each once the host has OOM_FREE_MB free; then it parks. */
+export const OOM_RETRIES = 2
+/** The free RAM, in MB, a gate run that ran out of memory waits for before it runs again. */
+export const OOM_FREE_MB = 6144
+
+/**
+ * The marks of a process that ran out of memory rather than failing a check: Node's abort (exit 134) or a kill (exit 137), Windows'
+ * fast-fail of a heap abort (0xC0000409), the V8 heap messages, the harness's heap-cap note and ENOMEM.
+ */
+const OOM_TEXT = /\(?exit (?:134|137|3221226505)\)?|heap out of memory|reached heap limit|heap cap \d+ MB reached|allocation failed - javascript heap|\bENOMEM\b/i
+const OOM_EXIT_CODES: ReadonlySet<number> = new Set([134, 137, 3221226505])
+
+/** Whether a process's exit code or its printed text says it ran out of memory. */
+export const isOutOfMemory = (exitCode: number | undefined, text = ""): boolean => (exitCode !== undefined && OOM_EXIT_CODES.has(exitCode)) || OOM_TEXT.test(text)
+
 /** How one gate round of a batch ended. */
 export type RoundVerdict =
     | { readonly kind: "green" }
     | { readonly kind: "no-verdict" }
+    /** The gate, or a check inside it, ran out of memory: no lane is to blame; the batch waits for RAM and runs again. */
+    | { readonly kind: "oom"; readonly evidence: string }
     | { readonly kind: "drop"; readonly blamed: ReadonlyMap<string, readonly LaneFinding[]> }
     | { readonly kind: "stop"; readonly why: string; readonly blamed: ReadonlyMap<string, readonly LaneFinding[]>; readonly findings: readonly LaneFinding[] }
 
 /**
- * Judges one gate round. Green except the cache lands. No report, or a red exit with no finding at all, is no verdict (nothing is
+ * Judges one gate round. A gate that ran out of memory, itself (its exit code or its log) or in any check a blocking finding reports, is
+ * `oom`: nothing is blamed. Green except the cache lands. No report, or a red exit with no finding at all, is no verdict (nothing is
  * blamed). Otherwise every finding is mapped to the lanes whose diff names it: on the first round with every finding mapped and some
  * lane left, those lanes drop and the rest run once more; a second red round, an unmapped finding or a batch where every lane is named
  * stops the batch, landing nothing.
  */
-export const judgeRound = (round: number, exitCode: number, stdout: string, changed: ReadonlyMap<string, readonly string[]>): RoundVerdict => {
+export const judgeRound = (round: number, exitCode: number, stdout: string, changed: ReadonlyMap<string, readonly string[]>, stderr = ""): RoundVerdict => {
     const all = blockingFindings(stdout)
+    const crashed = (all ?? []).find((finding) => isOutOfMemory(undefined, finding.message))
+    if (crashed !== undefined) return { kind: "oom", evidence: `${crashed.code} ${crashed.path}: ${crashed.message.slice(0, 200)}` }
+    if (all === undefined && isOutOfMemory(exitCode, stderr)) return { kind: "oom", evidence: `the gate itself exited ${String(exitCode)} with no report` }
     if (all === undefined || (exitCode !== 0 && all.length === 0)) return { kind: "no-verdict" }
     const findings = all.filter((finding) => finding.code !== CACHE_RULE)
     if (findings.length === 0) return { kind: "green" }
