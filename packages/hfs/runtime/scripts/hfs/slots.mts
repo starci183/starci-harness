@@ -267,7 +267,7 @@ function sideDeclaration(manifest: SlotManifest, declaration: Parsed, name: stri
     edition,
     side: name,
     profile: name,
-    apps: Object.freeze(s.apps.map((a: Parsed) => Object.freeze({ name: a.name, kind: a.kind, ...(a.contract === undefined ? {} : { contract: a.contract }), ...(a.package === undefined ? {} : { package: a.package }), ...(a.bin === undefined ? {} : { bin: a.bin }) }))),
+    apps: Object.freeze(s.apps.map((a: Parsed) => Object.freeze({ name: a.name, kind: a.kind, ...(a.contract === undefined ? {} : { contract: a.contract }), ...(a.package === undefined ? {} : { package: a.package }), ...(a.bin === undefined ? {} : { bin: a.bin }), ...(a.boot === undefined ? {} : { boot: a.boot }) }))),
     optionalSlots: Object.freeze([...(s.optionalSlots ?? [])]),
     patterns: Object.freeze([...(s.patterns ?? [])]), kinds: Object.freeze([...(s.kinds ?? [])]),
     backing: Object.freeze([...(s.backing ?? [])]),

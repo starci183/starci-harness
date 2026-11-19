@@ -139,7 +139,7 @@ world (BE_TEST_TOPOLOGY), `src/tests/fixtures/` holds data and builders only, an
 `Test.createTestingModule({ imports: [AppModule] }).overrideProvider(...)` and `.listen(0)`, with specs calling its `bootWorld`; a
 passing one declares `src/tests/world/test-world.config.ts` and its specs call `useTestWorld({ modules })` or `useTestWorld({ apps })`.
 
-A boot check that imports test fixtures or builders (a module that boots the app on stubbed ports to prove its wiring) is test code: it lives under `be/src/tests/world/` (for example `be/src/tests/world/api-boot.ts`, the folder the test topology allows to boot the app), which the synced `be/tsconfig.build.json` already excludes, so the image build never compiles it. It never sits in an app folder such as `be/apps/<app>/src/boot.ts`, and no app edits the synced `be/tsconfig.build.json` to hide one.
+A boot check that imports test fixtures or builders (a module that boots the app on stubbed ports to prove its wiring, `sides.be.apps[].boot.module` of hfs.json) stays in the app and is not part of the production build: the synced `be/tsconfig.build.json` excludes every boot module hfs.json declares other than the default `apps/<app>/src/app.module.ts`, so the image build never takes it as a root. No app edits the synced `be/tsconfig.build.json` or removes the file in its Dockerfile.
 
 Integration specs boot capability modules through `useTestWorld({ modules })` on the local stack (lite: the db
 CLI database and the declared Redis), fake only external providers at the network edge, override no provider, guard or

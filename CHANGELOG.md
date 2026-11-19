@@ -6,7 +6,7 @@
 
 - Changed (pins): @starci/hfs 6.13.59, @starci/gallery 0.1.10, the Grammar family 0.50.0 (ChoiceChips at 20px, ChoiceButtons).
 
-- Changed (contexts): BE-TEST-12 says a boot check that imports test fixtures belongs under `be/src/tests/world/` (already excluded by the synced `be/tsconfig.build.json`), never in an app folder; R187 names the `hfs.json` and `statics/brand` COPY of the image templates.
+- Changed (contexts): BE-TEST-12 says the boot-check module of an app (`sides.be.apps[].boot.module`) is excluded from the production build by the synced `be/tsconfig.build.json`; R187 names the `hfs.json` and `statics/brand` COPY of the image templates.
 
 ## 1.1.0-alpha.179 - 2026-11-20
 

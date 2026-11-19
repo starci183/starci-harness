@@ -4,6 +4,7 @@
 
 - Changed (pins): the Grammar family 0.50.0 and @starci/gallery 0.1.10 in canon-pins.yaml.
 - Changed (image templates): the api, cli, worker and Next Dockerfiles copy `hfs.json` and, when the repository holds it, `statics/brand` before the build step (`AppSourceFacts.hasBrandStatics`, `imageFiles`): a package that bakes a shared folder (`package.static.from: ../../statics/brand/<name>`) reads it from the repository root, which `hfs.json` marks. R187 names both.
+- Changed (be/tsconfig.build.json template): it excludes the boot-check module an app declares in hfs.json (`sides.be.apps[].boot.module`, when it is not the default `apps/<app>/src/app.module.ts`), so a module that imports test fixtures never reaches the production build; `bootExcludes` template variable, and the resolved app declaration keeps `boot`.
 
 ## 6.13.58 - 2026-11-20
 

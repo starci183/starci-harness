@@ -55,6 +55,7 @@ import { grammarLintFor } from '../runtime/scripts/lib/grammar-lint.mjs';
 import { LIST } from '../runtime/scripts/lib/loosening-config.mjs';
 import { readTruths } from '../runtime/scripts/lib/loosening-state.mjs';
 import { parseYaml as bundledParseYaml } from '../runtime/engine/yaml.mjs';
+import { defaultBootModule } from '../runtime/scripts/hfs/app-boot.mjs';
 import { bootstrapSection } from '../runtime/scripts/hfs/rules/database-constants.mjs';
 import { SERVER_AGE_IDENTITY } from '../stack/server-key.mjs';
 import { inlinePrefix } from '../stack/ssh-gate.mjs';
@@ -556,6 +557,16 @@ export function jestPackagesSource(packages: PackagesCoverage): string {
   return ['', '    packages: {', list('folders', packages.folders), list('files', packages.files), list('excludes', packages.excludes), '    },'].join('\n');
 }
 
+
+/** The boot modules a back-end app declares (hfs.json sides.be.apps[].boot.module) that are not its default app module: a boot check, never part of the image build. */
+function bootCheckModules(be: { apps?: readonly { name: string; boot?: unknown }[] }): string[] {
+  return (be.apps ?? []).flatMap(entry => {
+    const boot = entry.boot as { module?: unknown } | undefined;
+    const file = typeof boot?.module === 'string' ? boot.module : null;
+    return file !== null && file !== defaultBootModule(entry.name) ? [file] : [];
+  });
+}
+
 /**
  * The root `eslint.config.mjs` of an app that has root workspace packages (packages/<name>): no side config
  * reaches `packages/`, so this managed file lints their source. The front-end canon and the selected Grammar family judge every `.tsx` file and the
@@ -609,6 +620,9 @@ export function variables(app: ResolvedApp, scope: string, presets: Presets | nu
     galleryPackage: bundledPins()['@starci/gallery']?.version ?? '',
     // The tunnel hosts the stack declares for the gallery (`local.tunnel.routes[]` named gallery): Vite answers 403 to any other Host.
     galleryAllowedHosts: galleryAllowedHosts(source.stack?.galleryHosts ?? []),
+    // The boot-check modules hfs.json declares (sides.be.apps[].boot.module, relative to be/) other than the default app module: test-only wiring that imports
+    // fixtures, so the production build (be/tsconfig.build.json) never takes one as a root.
+    bootExcludes: withBe ? bootCheckModules(app.sides.be as { apps?: readonly { name: string; boot?: unknown }[] }).map(file => `, ${JSON.stringify(file)}`).join('') : '',
     readmeBadges: source.badges ?? '',
     project: app.project,
     appBinary: APP_BINARY,
