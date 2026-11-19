@@ -312,7 +312,6 @@
         font-size: var(--grammar-text-xl);
         font-weight: var(--grammar-weight-medium);
         line-height: var(--grammar-leading-page-title);
-        line-height: var(--grammar-leading-xl);
         overflow-wrap: anywhere;
         text-wrap: balance;
     }
@@ -1670,11 +1669,11 @@
     }
 
     /* p-4 where a row touches the list's edge, p-3 where it touches a divider: the first row stands 16 from the top, the last 16 from the bottom, the middle ones 12 on both sides. */
-    .starci-core-section-list:not([data-grammar-list-layout]):not(:is(.starci-core-surface, .starci-core-pane-section) *) > .starci-core-list-row:first-child { padding-block-start: var(--grammar-row-inset-edge); }
-    .starci-core-section-list:not([data-grammar-list-layout]):not(:is(.starci-core-surface, .starci-core-pane-section) *) > .starci-core-list-row:last-child { padding-block-end: var(--grammar-row-inset-edge); }
+    .starci-core-section-list:not([data-grammar-list-layout]):not(:is(.starci-core-surface, .starci-core-pane-section, .starci-core-popover, .starci-core-dialog, .starci-core-drawer) *) > .starci-core-list-row:first-child { padding-block-start: var(--grammar-row-inset-edge); }
+    .starci-core-section-list:not([data-grammar-list-layout]):not(:is(.starci-core-surface, .starci-core-pane-section, .starci-core-popover, .starci-core-dialog, .starci-core-drawer) *) > .starci-core-list-row:last-child { padding-block-end: var(--grammar-row-inset-edge); }
 
     /* The list body only (owner 2026-11-19): a list inside a card or a pane band sits on the surface's own padding, and a key-value or suggestions list stays flush with its title: no inline inset. */
-    :is(.starci-core-surface, .starci-core-pane-section) .starci-core-section-list,
+    :is(.starci-core-surface, .starci-core-pane-section, .starci-core-popover, .starci-core-dialog, .starci-core-drawer) .starci-core-section-list,
     .starci-core-section-list[data-grammar-list-layout] {
         --starci-core-row-inset: var(--grammar-row-gap) 0;
     }
@@ -5393,7 +5392,7 @@
         font-size: var(--grammar-text-xl) !important;
         font-weight: var(--grammar-weight-semibold) !important;
         letter-spacing: var(--grammar-tracking-tight) !important;
-        line-height: var(--grammar-leading-xl) !important;
+        line-height: var(--grammar-leading-page-title) !important;
     }
 
     .grammar-common-root [data-component="Heading"][data-scale="standard"][data-level="2"] {

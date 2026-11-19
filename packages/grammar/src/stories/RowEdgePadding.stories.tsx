@@ -13,6 +13,8 @@ export default meta;
 type Story = StoryObj;
 
 const GAP = 12;
+/** 0.48.0: a row side that touches the list edge is p-4 (16), a side that touches a divider is p-3 (12), and the row has px-4. */
+const EDGE = 16;
 const pad = (element: Element, side: 'Top' | 'Bottom'): number => Number.parseFloat(getComputedStyle(element)[`padding${side}`]);
 
 const OPTIONS: readonly G.ListOption[] = [{ id: 'a', label: 'All' }, { id: 'b', label: 'Running' }];
@@ -55,21 +57,21 @@ export const RowEdgePadding: Story = {
     await waitFor(() => {
       const root = canvasElement.querySelector<HTMLElement>('[data-row-clearance]')!;
       const list = root.querySelector<HTMLElement>('[data-component="Section"]')!;
-      assertRows(Array.from(list.querySelectorAll('.starci-core-list-row')), GAP, GAP, GAP);
+      assertRows(Array.from(list.querySelectorAll('.starci-core-list-row')), EDGE, EDGE, GAP);
       // A tall control (the Tabs pill) never touches the separators: the row grew around it.
       const first = list.querySelector<HTMLElement>('.starci-core-list-row')!;
       const pill = first.querySelector('.starci-core-tabs-frame')!.getBoundingClientRect();
       expect(first.getBoundingClientRect().height).toBeGreaterThanOrEqual(pill.height + GAP * 2 - 0.5);
-      // A flat row has no inline inset.
+      // A flat row has px-4.
       const side = (element: Element, edge: 'Left' | 'Right'): number => Number.parseFloat(getComputedStyle(element)[`padding${edge}`]);
-      expect([side(first, 'Left'), side(first, 'Right')]).toEqual([0, 0]);
+      expect([side(first, 'Left'), side(first, 'Right')]).toEqual([EDGE, EDGE]);
     });
   },
 };
 
 const FIRST_SINGLE = [{ id: 's', title: 'A single row' }];
 export const SingleRow: Story = {
-  name: 'A single flat list row is p-3 above and below',
+  name: 'A single flat list row is p-4 above and below',
   render: () => (
     <div data-row-single style={{ display: 'flex', flexDirection: 'column', gap: 24, width: 'min(100%, 720px)' }}>
       <G.Section kind="list" title="One row" items={FIRST_SINGLE} empty={<G.EmptyNotice message="Empty" />} />
@@ -78,8 +80,8 @@ export const SingleRow: Story = {
   play: async ({ canvasElement }) => {
     await waitFor(() => {
       const only = canvasElement.querySelector('[data-component="Section"] .starci-core-list-row')!;
-      expect(pad(only, 'Top')).toBe(GAP);
-      expect(pad(only, 'Bottom')).toBe(GAP);
+      expect(pad(only, 'Top')).toBe(EDGE);
+      expect(pad(only, 'Bottom')).toBe(EDGE);
     });
   },
 };

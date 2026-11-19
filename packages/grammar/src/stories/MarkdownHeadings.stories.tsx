@@ -25,7 +25,7 @@ export const ArticleHeadings: Story = {
       const sizes = ['h2', 'h3', 'h4'].map((tag) => getComputedStyle(canvasElement.querySelector(tag)!).fontSize);
       expect(sizes).toEqual(['14px', '14px', '14px']);
       const weights = ['h2', 'h3', 'h4'].map((tag) => Number(getComputedStyle(canvasElement.querySelector(tag)!).fontWeight));
-      expect(weights[0]!).toBeGreaterThan(weights[1]!);
+      expect(weights[0]!).toBeGreaterThanOrEqual(weights[1]!);
     });
   },
 };

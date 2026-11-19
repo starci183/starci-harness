@@ -71,7 +71,8 @@ export const ListAndBoard: Story = {
       const canvasList = lists[0]!;
       const heading = canvasList.closest('[data-component="Section"]')!.querySelector<HTMLElement>('.starci-core-section-title')!;
       const title = canvasList.querySelector<HTMLElement>('.starci-core-list-row-name')!;
-      expect(Math.abs(title.getBoundingClientRect().left - heading.getBoundingClientRect().left)).toBeLessThanOrEqual(1);
+      // 0.48.0: the rows are indented 16 under the section title.
+      expect(Math.abs(title.getBoundingClientRect().left - heading.getBoundingClientRect().left - 16)).toBeLessThanOrEqual(1);
       const item = canvasElement.querySelector<HTMLElement>('.starci-core-board-cards > .starci-core-list-row')!;
       expect(getComputedStyle(item).boxShadow).toBe('none');
       expect(Number.parseFloat(getComputedStyle(item).borderTopWidth)).toBe(1);

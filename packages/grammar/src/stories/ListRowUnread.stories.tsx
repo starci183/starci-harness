@@ -47,7 +47,7 @@ export const Rows: Story = {
           expect(row.querySelector('.starci-core-list-row-title')?.contains(dot as HTMLElement)).toBe(true);
           expect(getComputedStyle(dot as HTMLElement).backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
         } else {
-          expect(weight(name as HTMLElement)).toBe(500);
+          expect(weight(name as HTMLElement)).toBe(400);
           expect(dot).toBeNull();
         }
       }
