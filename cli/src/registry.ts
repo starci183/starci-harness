@@ -125,6 +125,10 @@ import { ticketListVerb } from "./core/ticket/list.js"
 import { ticketOpenVerb } from "./core/ticket/open.js"
 import { ticketShowVerb } from "./core/ticket/show.js"
 import { ticketTakeVerb } from "./core/ticket/take.js"
+import { laneLandVerb } from "./core/lane/land.js"
+import { laneReadyVerb } from "./core/lane/ready.js"
+import { laneStatusVerb } from "./core/lane/status.js"
+import { laneWithdrawVerb } from "./core/lane/withdraw.js"
 import type { AnyVerb, TreeKind } from "./shared/verb.js"
 
 // Each definition is widened once here; the registry is the only place that erases verb types.
@@ -269,6 +273,10 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     ticketTakeVerb,
     ticketCloseVerb,
     ticketAnswerVerb,
+    laneReadyVerb,
+    laneWithdrawVerb,
+    laneStatusVerb,
+    laneLandVerb,
 ].map(widen)
 
 /** The verbs a tree offers: an app sees core plus its own edition; the runtime and a bare directory see everything. */

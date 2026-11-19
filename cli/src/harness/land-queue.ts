@@ -1,0 +1,275 @@
+import { existsSync, linkSync, mkdirSync, readdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs"
+import { join } from "node:path"
+import { Refusal } from "../shared/errors.js"
+import { pidAlive } from "../shared/exec.js"
+
+/**
+ * The batch lander of an app's `dev` branch (contexts/project/branches.md PROJECT-BRANCH-2). A lane whose full gate ran green on its
+ * own tree registers ready; one lander merges every ready lane in its own worktree, runs one gate and pushes `dev`; each lane reads
+ * its outcome from a status file. Every file lives in one lanes folder shared by the lanes of a machine.
+ */
+
+/** The cache rule a batch is allowed to be red on: the push commits the records the run wrote (contexts/project/check-cache.md). */
+export const CACHE_RULE = "HFS_CHECK_CACHE_UNWARMED"
+/** The committed cache folder of an app; a conflict in it alone is no conflict between lanes. */
+export const CACHE_DIR = ".starcistacks/cache/"
+/** The name the lander writes into every lock and slot it holds. */
+export const LANDER = "batch-lander"
+/** The gate runs a batch takes at most: the batch, then the batch without the lanes the first run's findings named. Never more: no bisect. */
+export const GATE_ROUNDS = 2
+
+/** The states a lane's status file holds. */
+export type LaneState = "queued" | "landed" | "conflict" | "rejected" | "withdrawn"
+
+/** One blocking finding of the batch gate, as a lane reads it. */
+export interface LaneFinding {
+    readonly code: string
+    readonly path: string
+    readonly message: string
+}
+
+/** A registration: the pushed sha a lane asks to land. */
+export interface ReadyEntry {
+    readonly lane: string
+    readonly branch: string
+    readonly sha: string
+    readonly at: string
+}
+
+/** What a lane monitors: `<lanes>/_land-status/<lane>.json`. */
+export interface LaneStatus {
+    readonly lane: string
+    readonly state: LaneState
+    /** The dev commit that carries the lane once landed; the lane's own sha otherwise. */
+    readonly sha: string
+    readonly laneSha: string
+    readonly branch: string
+    readonly at: string
+    readonly batch?: string
+    readonly reason?: string
+    readonly findings?: readonly LaneFinding[]
+    /** Conflicted paths. */
+    readonly files?: readonly string[]
+    /** A conflict with a batch-mate only: the lane stays ready for the next batch. */
+    readonly requeued?: boolean
+    /** Migration files the lane added, to apply once landed. */
+    readonly migrations?: readonly string[]
+}
+
+/** The folders and files of a lanes folder. */
+export interface LandPaths {
+    readonly ready: string
+    readonly status: string
+    readonly batches: string
+    readonly lander: string
+    readonly devLock: string
+    readonly slot: (kind: "gate" | "npm", n: number) => string
+}
+
+/** The folders and files of a lanes folder. */
+export const landPaths = (dir: string): LandPaths => ({
+    ready: join(dir, "_land-ready"),
+    status: join(dir, "_land-status"),
+    batches: join(dir, "_land-status", "_batches"),
+    lander: join(dir, "_batch-lander.lock"),
+    devLock: join(dir, "_dev-push.lock"),
+    slot: (kind: "gate" | "npm", n: number) => join(dir, `_${kind}-slot-${String(n)}.lock`),
+})
+
+/** The lanes folder of this machine: the flag, else STARCI_LANES_DIR; refused when neither names one. */
+export const lanesDir = (flag: string | undefined): string => {
+    const dir = flag ?? process.env.STARCI_LANES_DIR
+    if (dir === undefined || dir === "") throw new Refusal("LANE_DIR_UNSET", "name the lanes folder with --dir or STARCI_LANES_DIR (the folder that holds _land-ready, _land-status and _dev-push.lock)")
+    return dir
+}
+
+/** A lane name the files can carry. */
+export const checkLaneName = (lane: string): string => {
+    if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(lane)) throw new Refusal("LANE_NAME_INVALID", `"${lane}" is not a lane name (letters, digits, dot, dash, underscore)`)
+    return lane
+}
+
+/** Writes JSON whole: a temporary file renamed into place, so a reader never sees half a file. */
+export const writeJsonWhole = (file: string, data: unknown): void => {
+    mkdirSync(join(file, ".."), { recursive: true })
+    const temporary = `${file}.${String(process.pid)}.tmp`
+    writeFileSync(temporary, `${JSON.stringify(data, null, 2)}\n`)
+    renameSync(temporary, file)
+}
+
+const readJson = (file: string): unknown => {
+    try {
+        return JSON.parse(readFileSync(file, "utf8")) as unknown
+    } catch {
+        return undefined
+    }
+}
+
+const isReady = (value: unknown): value is ReadyEntry =>
+    typeof value === "object" && value !== null && "lane" in value && "sha" in value && "branch" in value && "at" in value &&
+    typeof value.lane === "string" && typeof value.sha === "string" && typeof value.branch === "string" && typeof value.at === "string"
+
+/** Every registration, oldest first. */
+export const readyEntries = (dir: string): ReadyEntry[] => {
+    const folder = landPaths(dir).ready
+    if (!existsSync(folder)) return []
+    return readdirSync(folder).filter((name) => name.endsWith(".json")).map((name) => readJson(join(folder, name))).filter(isReady).sort((left, right) => left.at.localeCompare(right.at))
+}
+
+/** Registers one lane (replacing its earlier entry) and marks it queued. */
+export const writeReady = (dir: string, entry: ReadyEntry): void => {
+    writeJsonWhole(join(landPaths(dir).ready, `${entry.lane}.json`), entry)
+    writeStatus(dir, { lane: entry.lane, state: "queued", sha: entry.sha, laneSha: entry.sha, branch: entry.branch, at: entry.at })
+}
+
+/** Drops a registration when it still names `sha` (a lane that registered again mid-batch keeps its newer entry). */
+export const dropReady = (dir: string, lane: string, sha?: string): boolean => {
+    const file = join(landPaths(dir).ready, `${lane}.json`)
+    const current = readJson(file)
+    if (!isReady(current) || (sha !== undefined && current.sha !== sha)) return false
+    unlinkSync(file)
+    return true
+}
+
+/** The status a lane monitors. */
+export const writeStatus = (dir: string, status: Omit<LaneStatus, "at"> & { readonly at?: string }): void => {
+    writeJsonWhole(join(landPaths(dir).status, `${status.lane}.json`), { ...status, at: status.at ?? new Date().toISOString() })
+}
+
+/** Every status file, by lane. */
+export const readStatuses = (dir: string): LaneStatus[] => {
+    const folder = landPaths(dir).status
+    if (!existsSync(folder)) return []
+    return readdirSync(folder).filter((name) => name.endsWith(".json")).map((name) => readJson(join(folder, name))).filter((value): value is LaneStatus => typeof value === "object" && value !== null && "lane" in value && "state" in value)
+}
+
+/**
+ * Takes a lock file whole and alone: the content goes to a temporary file that is hard-linked into place, and a link fails when the
+ * lock exists, so only one taker wins and nobody reads an empty lock.
+ */
+export const takeLockFile = (file: string, content: string): boolean => {
+    const temporary = `${file}.${String(process.pid)}.${String(Date.now())}.tmp`
+    writeFileSync(temporary, content)
+    try {
+        linkSync(temporary, file)
+        return true
+    } catch (error) {
+        if (error instanceof Error && "code" in error && error.code === "EEXIST") return false
+        throw error
+    } finally {
+        unlinkSync(temporary)
+    }
+}
+
+/** Releases a lock or slot only when it names the lander (and, given a pid, that process). */
+export const releaseLockFile = (file: string, pid?: number): void => {
+    try {
+        const content = readFileSync(file, "utf8")
+        if (content.startsWith(`${LANDER} `) && (pid === undefined || content.includes(`pid=${String(pid)}`))) unlinkSync(file)
+    } catch {
+        // already gone
+    }
+}
+
+/** The content the lander writes into what it holds. */
+export const holderLine = (): string => `${LANDER} ${new Date().toISOString()} pid=${String(process.pid)}`
+
+/** One lander per lanes folder: refused while a live lander holds it; the file of a lander whose process is gone is replaced. */
+export const holdLander = (dir: string): void => {
+    const file = landPaths(dir).lander
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+        if (takeLockFile(file, holderLine())) return
+        let held: string
+        try {
+            held = readFileSync(file, "utf8")
+        } catch {
+            continue
+        }
+        const pid = Number(/pid=(\d+)/.exec(held)?.[1] ?? "0")
+        if (pid > 0 && pidAlive(pid)) throw new Refusal("LANE_LANDER_RUNNING", `a lander already runs (${held.trim()}); one lander per lanes folder`)
+        if (!held.startsWith(`${LANDER} `)) throw new Refusal("LANE_LANDER_LOCK_FOREIGN", `${file} holds "${held.trim()}", not a lander: report it, it is never removed here`)
+        unlinkSync(file)
+    }
+    throw new Refusal("LANE_LANDER_RUNNING", `${file} could not be taken`)
+}
+
+interface RawFinding {
+    readonly code?: unknown
+    readonly level?: unknown
+    readonly report?: unknown
+    readonly path?: unknown
+    readonly message?: unknown
+}
+
+/** The blocking findings of an `app check --json` report (an error outside a report profile), cache included; undefined when it is not a report. */
+export const blockingFindings = (stdout: string): LaneFinding[] | undefined => {
+    try {
+        const found: RawFinding[] = []
+        const walk = (value: unknown, depth: number): void => {
+            if (depth > 6 || typeof value !== "object" || value === null) return
+            if (Array.isArray(value)) {
+                for (const item of value) walk(item, depth + 1)
+                return
+            }
+            const record = value as Record<string, unknown>
+            if (Array.isArray(record.findings)) found.push(...(record.findings as RawFinding[]))
+            else for (const inner of Object.values(record)) walk(inner, depth + 1)
+        }
+        walk(JSON.parse(stdout) as unknown, 0)
+        return found
+            .filter((finding) => finding.level === "error" && finding.report !== true)
+            .map((finding) => ({
+                code: typeof finding.code === "string" ? finding.code : "",
+                path: typeof finding.path === "string" ? finding.path : "",
+                message: typeof finding.message === "string" ? finding.message.slice(0, 600) : "",
+            }))
+    } catch {
+        return undefined
+    }
+}
+
+/**
+ * The lanes whose diff names a finding's file, most precise first: the finding's path is a file a lane changed; else its message
+ * cites a file a lane changed; else its path is a folder holding a file a lane changed. Cache records never count.
+ */
+export const lanesNamedBy = (finding: LaneFinding, changed: ReadonlyMap<string, readonly string[]>): string[] => {
+    const path = finding.path.replaceAll("\\", "/").replace(/:\d+(:\d+)?$/, "").replace(/\/$/, "")
+    const pick = (test: (file: string) => boolean): string[] =>
+        [...changed].filter(([, files]) => files.some((file) => !file.startsWith(CACHE_DIR) && test(file))).map(([lane]) => lane)
+    const exact = path === "" ? [] : pick((file) => file === path)
+    if (exact.length > 0) return exact
+    const cited = pick((file) => file.length > 4 && finding.message.includes(file))
+    if (cited.length > 0) return cited
+    return path === "" || path === "." ? [] : pick((file) => file.startsWith(`${path}/`))
+}
+
+/** How one gate round of a batch ended. */
+export type RoundVerdict =
+    | { readonly kind: "green" }
+    | { readonly kind: "no-verdict" }
+    | { readonly kind: "drop"; readonly blamed: ReadonlyMap<string, readonly LaneFinding[]> }
+    | { readonly kind: "stop"; readonly why: string; readonly blamed: ReadonlyMap<string, readonly LaneFinding[]>; readonly findings: readonly LaneFinding[] }
+
+/**
+ * Judges one gate round. Green except the cache lands. No report, or a red exit with no finding at all, is no verdict (nothing is
+ * blamed). Otherwise every finding is mapped to the lanes whose diff names it: on the first round with every finding mapped and some
+ * lane left, those lanes drop and the rest run once more; a second red round, an unmapped finding or a batch where every lane is named
+ * stops the batch, landing nothing.
+ */
+export const judgeRound = (round: number, exitCode: number, stdout: string, changed: ReadonlyMap<string, readonly string[]>): RoundVerdict => {
+    const all = blockingFindings(stdout)
+    if (all === undefined || (exitCode !== 0 && all.length === 0)) return { kind: "no-verdict" }
+    const findings = all.filter((finding) => finding.code !== CACHE_RULE)
+    if (findings.length === 0) return { kind: "green" }
+    const blamed = new Map<string, LaneFinding[]>()
+    const unmapped: LaneFinding[] = []
+    for (const finding of findings) {
+        const lanes = lanesNamedBy(finding, changed)
+        if (lanes.length === 0) unmapped.push(finding)
+        for (const lane of lanes) blamed.set(lane, [...(blamed.get(lane) ?? []), finding])
+    }
+    if (unmapped.length > 0) return { kind: "stop", why: `the gate is red on ${String(unmapped.length)} finding(s) no lane's diff names`, blamed, findings }
+    if (round >= GATE_ROUNDS) return { kind: "stop", why: "the gate is still red on the second run", blamed, findings }
+    if (blamed.size >= changed.size) return { kind: "stop", why: "every lane in the batch is named by a finding", blamed, findings }
+    return { kind: "drop", blamed }
+}

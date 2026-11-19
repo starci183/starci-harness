@@ -33,4 +33,29 @@ rule; every other page links to it.
 - a whole `starci app check` fails with the error `HFS_DEV_BRANCH_MISSING`, in `--env local` and `--env prod` alike, when the repository has no `dev` branch,
   locally or on `origin`: an app must keep both branches.
 
+## PROJECT-BRANCH-2 Lanes land on `dev` in batches, through one lander
+
+1. A lane never pushes `dev` and never holds the dev lock. It merges `origin/dev` into its branch, runs its own
+   `starci app check --env prod` until it is green except `HFS_CHECK_CACHE_UNWARMED`, commits the cache as the run left it, pushes
+   its branch and registers that sha with `starci lane ready`. A registration replaces the lane's earlier one.
+2. One lander per lanes folder (`starci lane land`, the folder from `--dir` or `STARCI_LANES_DIR`) takes every ready lane at
+   once and, in its own worktree reset to `origin/dev`, merges them one by one. A lane whose merge conflicts is left out and told
+   whom it met: a batch-mate (it stays ready for the next batch) or `origin/dev` (it merges, re-gates and registers again). A
+   conflict in `.starcistacks/cache` alone is no conflict: the batch keeps its own records and its gate rewrites what it re-checks.
+3. The batch runs `npm ci` when the lockfile is not the one its `node_modules` came from, then codegen and `build:modules`, then
+   one `app check --env prod` with the app's own pinned CLI. Green except the cache, `app push origin HEAD:dev` commits the cache
+   and pushes, and every lane in the batch is landed at that commit.
+4. Red, each blocking finding is mapped to the lanes whose diff against the base names its file (the path itself, else a file its
+   message cites, else a file under the folder it names). Those lanes are rejected with their findings and the gate runs once more
+   on the rest. A second red run, a finding no lane's diff names, or a batch where every lane is named, lands nothing and rejects
+   every lane with the findings. A batch is never split further: at most two gate runs.
+5. Each lane reads its outcome from `<lanes>/_land-status/<lane>.json`: `queued`, `landed` (`sha` the dev commit, `migrations`
+   the files under `db/migrations/` it added, applied once landed), `conflict` (`reason`, `files`, `requeued`) or `rejected`
+   (`findings`). A gate that gives no verdict (no report) or a failed push blames no lane: every lane stays ready.
+
+**Enforced by** `starci lane ready` (refuses a dirty tree, `LANE_READY_DIRTY`, and a sha that is not the pushed tip of its branch,
+`LANE_READY_NOT_PUSHED`), `starci lane land` (one lander per folder, `LANE_LANDER_RUNNING`; the dev lock and the gate and npm slot
+files of the folder taken under the lander's name, released only when they name it), `cli/src/harness/land-queue.ts` and
+`cli/src/harness/land-batch.ts`. That a lane gated before it registered is held by review: the batch gate catches what it skipped.
+
 The harness repository has no managed app hook and no `dev` branch; this rule never applies to it.
