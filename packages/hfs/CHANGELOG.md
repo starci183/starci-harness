@@ -1,5 +1,9 @@
 # Changelog
 
+## 6.13.52 - 2026-11-19
+
+- Added (UI Audit gate): `screen.yaml` per gallery screen replaces `explain.md` and `audit.json`; the `uiaudit` gate family (`cache/uiaudit-family.mts`, failure codes of the audit), the `uiaudit/` runtime shipped in the package, the `audit run|status` and `gallery migrate-explain` verbs, and the skeleton's screens as `screen.yaml`. `@starci/hfs` self-pin is 6.13.52 and the gallery pin 0.1.5.
+
 ## 6.13.51 - 2026-11-19
 
 - Fixed (`stack/render.mts`, shared-edge ingress): a rendered router and service are named `<stack>-<service>` (`<stack>-<service>-<port>` for several ports), never the bare service name, because the edge-traefik is shared with other stacks and a duplicate router name makes Traefik drop both; the edge network is named by `traefik.swarm.network` (swarm provider) and `traefik.docker.network` (docker provider).
