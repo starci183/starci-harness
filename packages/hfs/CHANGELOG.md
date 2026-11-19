@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Added (`uiaudit/cli.mts`, `runtime/scripts/hfs/shot-crops.mts`): `starci audit run` writes full-resolution crops of the first viewport and the header region of `1440.png` and `390.png` (`<width>-first.png`, `<width>-header.png`, cut at the shot's own pixel density, no image library) and lists them first in the brief; the layout lens carries an explicit checklist (control height 40, no wrapped labels, overflow to the menu, tap targets 44). `HFS_APP_GALLERY_SCREEN_FILE` allows the crop files in a screen folder.
+- Changed (scaffold `SiteShell`, playbook `site-chrome-bar`): the public site bar is `TopBar fit` data, never a hand-built row of links and buttons.
+
 ## 6.13.52 - 2026-11-19
 
 - Added (UI Audit gate): `screen.yaml` per gallery screen replaces `explain.md` and `audit.json`; the `uiaudit` gate family (`cache/uiaudit-family.mts`, failure codes of the audit), the `uiaudit/` runtime shipped in the package, the `audit run|status` and `gallery migrate-explain` verbs, and the skeleton's screens as `screen.yaml`. `@starci/hfs` self-pin is 6.13.52 and the gallery pin 0.1.5.

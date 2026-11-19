@@ -28,6 +28,7 @@ import { flowList, linkTargets, missingFrontMatter, SHOT_FILES } from '../galler
 import { feRoutes, routeExclusions, routeKey } from '../gallery-routes.mjs';
 import { designFindings } from './gallery-design.mjs';
 import { parseScreen, screenSource, SCREEN_FILE } from '../screen-yaml.mjs';
+import { CROP_FILES } from '../shot-crops.mjs';
 import { parseYaml } from '../../../engine/yaml.mjs';
 import { found, readJson, readText } from './read.mjs';
 import type { Parsed, Repo } from './rule-types.mjs';
@@ -85,7 +86,7 @@ export interface GalleryScreen {
 
 /**
  * The screen folders under the pages folder, `<area>/<screen>`, read from the work tree (the shots are never tracked). A screen folder holds only `1440.png`, `390.png`,
- * `explain.md` and `links.json`: anything else (`1440-open.png`, `sales-1440.png`, a folder such as `before/`) is stray, since a state or an agent is its own folder.
+ * `explain.md` and `links.json` (and the full-resolution crops `starci audit run` writes beside the shots, `<width>-first.png` and `<width>-header.png`): anything else (`1440-open.png`, `sales-1440.png`, a folder such as `before/`) is stray, since a state or an agent is its own folder.
  * A file straight in the pages folder or in an area folder is loose (it belongs in a screen folder). Dot files are ignored.
  */
 export function galleryScreens(repoRoot: string, params: GalleryParams): { screens: GalleryScreen[]; loose: string[] } {
@@ -95,7 +96,7 @@ export function galleryScreens(repoRoot: string, params: GalleryParams): { scree
   const root = path.join(repoRoot, ...params.pages.split('/'));
   const screens: GalleryScreen[] = [];
   const loose: string[] = [];
-  const allowed = new Set([...SHOT_FILES, 'explain.md', SCREEN_FILE, 'links.json']);
+  const allowed = new Set([...SHOT_FILES, ...CROP_FILES, 'explain.md', SCREEN_FILE, 'links.json']);
   for (const top of list(root)) {
     if (!top.isDirectory()) { loose.push(top.name); continue; }
     for (const entry of list(path.join(root, top.name))) {
