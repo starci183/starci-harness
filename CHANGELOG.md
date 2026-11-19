@@ -2,6 +2,8 @@
 
 ## 1.1.0-alpha.171 - 2026-11-19
 
+- Changed: the CLI requires @starci/hfs@6.13.51, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
+
 - Changed (pins): @starci/hfs 6.13.51 (shared-edge routers named `<stack>-<service>`, the swarm network label). Until the cli-follow step raises the CLI requirement, the CLI runs the hfs it requires.
 
 ## 1.1.0-alpha.170 - 2026-11-19
