@@ -39,6 +39,7 @@ export { Stack, type StackAlign, type StackMeasure, type StackProps } from "../c
 export { Cluster, type ClusterAlign, type ClusterGap, type ClusterJustify, type ClusterProps } from "../core/frame/Cluster/index.js"
 export { Reveal, type RevealKind, type RevealProps } from "../core/frame/Reveal/index.js"
 export { Marquee, type MarqueeProps } from "../core/frame/Marquee/index.js"
+export { ExpandableText, type ExpandableTextProps } from "../core/branch/ExpandableText/index.js"
 export { CountUp, type CountUpProps } from "../core/branch/CountUp/index.js"
 export { StickyStory, type StickyStoryProps, type StickyStoryStep } from "../core/branch/StickyStory/index.js"
 export { Grid, balancedColumns, type GridCardColumns, type GridKind, type GridProps } from "../core/frame/Grid/index.js"

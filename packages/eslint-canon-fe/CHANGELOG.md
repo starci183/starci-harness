@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Added: `no-raw-font` (law `type-scale`, owner 2026-11-19): no raw font size, weight, style or case utility and no inline font style in app code; typography comes from the Grammar console scale.
+
 ## 9.20.2 - 2026-11-17
 
 - Changed: `no-table-in-card` (R351) names a `Section` holding the `DataTable` (title and count on the section, `footer={<Pagination />}` on the table) and drops the exemption sentence. `no-heading-above-card` (R354) moves the note to the card's `note`, not a `footer`, since Grammar 0.45.0 removed the card `footers`.

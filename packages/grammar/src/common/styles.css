@@ -1679,6 +1679,19 @@
         --starci-core-row-inset: var(--grammar-row-gap) 0;
     }
 
+    /* Narrow rows (a phone): the meta and the commands wrap under the copy, both starting on the title's edge, so nothing floats on the end of the title line (0.48.0). */
+    @container starci-core-surface (max-width: 28rem) {
+        .starci-core-list-row:not([data-grammar-list-layout="suggestions"]) > .starci-core-list-row-trail {
+            flex: 1 0 100%;
+            justify-content: flex-start;
+        }
+    }
+
+    /* A settings list is flush with its title at the start, and its controls end at the same inset from the end as the commands and chevrons of a rows list (0.48.0). */
+    .starci-core-section-list[data-grammar-list-layout="settings"] {
+        --starci-core-row-inset: var(--grammar-row-gap) var(--grammar-row-inset-inline) var(--grammar-row-gap) 0;
+    }
+
     /* The empty state of a section list: a small icon, a 16 title and a 12 hint on the page ground (no illustration, no card: a secondary region). */
     .starci-core-section > .starci-core-empty-notice:not([data-grammar-error-layout]) {
         background: transparent;
@@ -5486,6 +5499,8 @@
         text-overflow: ellipsis;
         white-space: nowrap;
     }
+
+    .starci-core-expandable-text { display: flex; min-width: 0; flex-direction: column; align-items: flex-start; gap: var(--grammar-identity-gap); }
 
     .starci-core-text[data-overflow="clamp-2"] {
         display: -webkit-box;

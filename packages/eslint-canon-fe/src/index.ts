@@ -13,6 +13,7 @@ import { createRequire } from "node:module"
 import { join } from "node:path"
 import { pathToFileURL } from "node:url"
 import { recommended as brandValuesRecommended, rules as brandValuesRules } from "./brand-values.ts"
+import { recommended as typeScaleRecommended, rules as typeScaleRules } from "./type-scale.ts"
 import { recommended as buttonIntentRecommended, rules as buttonIntentRules } from "./button-intent.ts"
 import { recommended as controlHeightRecommended, rules as controlHeightRules } from "./control-height.ts"
 import { recommended as clientBoundaryRecommended, rules as clientBoundaryRules } from "./client-boundary.ts"
@@ -75,6 +76,7 @@ const CONTRIBUTIONS: Contribution[] = [
   { law: "ui-rulings", rules: uiRulingsRules, recommended: uiRulingsRecommended },
     { law: "project-graph", rules: projectGraphRules, recommended: projectGraphRecommended },
   { law: "brand-values", rules: brandValuesRules, recommended: brandValuesRecommended },
+  { law: "type-scale", rules: typeScaleRules, recommended: typeScaleRecommended },
   { law: "button-intent", rules: buttonIntentRules, recommended: buttonIntentRecommended },
   { law: "control-height", rules: controlHeightRules, recommended: controlHeightRecommended },
   { law: "client-boundary", rules: clientBoundaryRules, recommended: clientBoundaryRecommended },

@@ -1269,7 +1269,7 @@ mustKeep:
       owner: ui/components/list-table.md
     - id: DNA-COMMON-TYPE-PAGE-TITLE-LINE
       role: list
-      law: "The page title is 18 / 26 / 500 (the console scale title role: size, line height and weight) in Inter; the console uses only the 400 and 500 weights (owner 2026-11-19, _TYPOGRAPHY.md)."
+      law: "The page title is 18 / 26 / 500 (the console scale title role: size, line height and weight) in Inter; the console uses only the 400 and 500 weights (owner 2026-11-19, _TYPOGRAPHY.md, approved by the owner: approve typo nhé)."
       measure: { kind: style, select: 'h1.starci-core-page-header-title', checks: [{ metric: line-height, op: "=", value: 26px }, { metric: font-weight, op: "=", value: 500 }] }
       owner: ui/presentation.md
     - id: DNA-COMMON-TYPE-SENTENCE-CASE
@@ -1289,8 +1289,8 @@ mustKeep:
       owner: ui/components/text.md
     - id: DNA-COMMON-LIST-ROW-UNREAD
       role: list
-      law: "An unread row (ListRowData.emphasis unread, 0.46.0) has its title in the strong weight and an accent dot after it on the title line; the read rows keep the medium weight."
-      measure: { kind: style, select: '[data-component="ListRow"][data-grammar-emphasis="unread"] .starci-core-list-row-name', checks: [{ metric: font-weight, op: "=", value: 600 }] }
+      law: "An unread row (ListRowData.emphasis unread, 0.46.0) has its title in the 500 weight (a read row is 400) and an accent dot after it on the title line; the read rows keep the 400 weight."
+      measure: { kind: style, select: '[data-component="ListRow"][data-grammar-emphasis="unread"] .starci-core-list-row-name', checks: [{ metric: font-weight, op: "=", value: 500 }] }
       owner: ui/components/list-table.md
     - id: DNA-COMMON-COMMAND-PALETTE-ONE-FIELD
       role: command-palette
@@ -1436,8 +1436,8 @@ mustKeep:
       owner: contract roles.card
     - id: DNA-COMMON-TILE-FIGURE-START
       role: card
-      law: "A tile figure is plain bold text (a price, never a chip): weight 600 or more."
-      measure: { kind: style, select: '[data-grammar-tile-figure-value]:not([data-loading="true"])', checks: [{ metric: font-weight, op: ">=", value: 600 }] }
+      law: "A tile figure is plain bold text (a price, never a chip): weight 500 (the console's heaviest)."
+      measure: { kind: style, select: '[data-grammar-tile-figure-value]:not([data-loading="true"])', checks: [{ metric: font-weight, op: ">=", value: 500 }] }
       owner: contract roles.card
     - id: DNA-COMMON-TILE-FIGURE-BEFORE-ACTION
       role: card

@@ -42,10 +42,11 @@
         --grammar-leading-relaxed: 1.65;
         --grammar-weight-regular: 400;
         --grammar-weight-medium: 500;
-        --grammar-weight-semibold: 600;
-        --grammar-weight-bold: 700;
-        --grammar-weight-extrabold: 800;
-        --grammar-weight-black: 900;
+        /* The console has two weights, 400 and 500 (0.48.0, owner 2026-11-19, _TYPOGRAPHY.md): the heavier steps keep their names and resolve to 500, so nothing in a console is bold. */
+        --grammar-weight-semibold: 500;
+        --grammar-weight-bold: 500;
+        --grammar-weight-extrabold: 500;
+        --grammar-weight-black: 500;
         --grammar-tracking-display: -0.045em;
         --grammar-tracking-tight: -0.025em;
         --grammar-tracking-snug: -0.015em;

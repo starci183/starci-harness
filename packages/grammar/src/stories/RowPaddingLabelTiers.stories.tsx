@@ -151,3 +151,59 @@ export const SettingsRows: Story = {
     });
   },
 };
+
+/** The right edges line up: a command button, a chevron and a settings control all end at the same inset from the list's end (0.48.0). */
+export const TrailingEdges: Story = {
+  render: () => (
+    <div style={{ width: 640, display: 'grid', gap: 32 }}>
+      <G.Section
+        kind="list"
+        title="Luồng"
+        items={[
+          { id: 'a', title: 'Luồng 1', description: 'Khi có tin Zalo mới', meta: { text: '3 lượt chạy xong' }, action: { label: 'Mở quy trình', intent: 'neutral', href: '#a' }, onPress: () => undefined },
+          { id: 'b', title: 'Luồng 2', description: 'Mỗi sáng 8:00', href: '#b' },
+        ]}
+        empty={<G.EmptyNotice message="Empty" />}
+      />
+      <G.Section
+        kind="list"
+        layout="settings"
+        title="Cài đặt"
+        items={[{ id: 's', title: 'Hiện lượt chạy thử', description: 'Gồm cả các lượt chạy do bạn bấm thử.', control: <G.Switch kind="compact" label="Hiện lượt chạy thử" isLabelHidden /> }]}
+        empty={<G.EmptyNotice message="Empty" />}
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      const right = (element: Element | null) => Math.round(element!.getBoundingClientRect().right);
+      const lists = Array.from(canvasElement.querySelectorAll<HTMLElement>('.starci-core-section-list'));
+      const button = right(lists[0]!.querySelector('.starci-core-list-row-actions > *:last-child, .starci-core-list-row-actions button, .starci-core-list-row-actions a'));
+      const chevron = right(lists[0]!.querySelectorAll('.starci-core-list-row')[1]!.querySelector('.starci-core-list-row-chevron svg'));
+      const control = right(lists[1]!.querySelector('.starci-core-list-row-control [data-grammar-switch-track], .starci-core-list-row-control'));
+      expect(Math.abs(button - chevron)).toBeLessThanOrEqual(1);
+      expect(Math.abs(button - control)).toBeLessThanOrEqual(1);
+    });
+  },
+};
+
+/** Body copy longer than two lines is clamped, with a "Xem thêm" command that opens it and a "Thu gọn" that closes it. */
+export const ClampedBody: Story = {
+  render: () => (
+    <div style={{ width: 320 }}>
+      <G.ExpandableText
+        moreLabel="Xem thêm"
+        lessLabel="Thu gọn"
+        text="Lượt chạy thử mặc định bị ẩn khỏi danh sách và số đếm. Bật công tắc này để đưa chúng vào, kể cả các lượt chạy do bạn bấm thử trong lúc cấu hình luồng, để bạn kiểm tra từng bước trước khi chạy thật cho khách."
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    await waitFor(() => {
+      const button = canvasElement.querySelector<HTMLElement>('.starci-core-expandable-text button, .starci-core-expandable-text a')!;
+      expect(button.textContent).toBe('Xem thêm');
+      const body = canvasElement.querySelector<HTMLElement>('.starci-core-expandable-text .starci-core-text')!;
+      expect(body.getAttribute('data-overflow')).toBe('clamp-2');
+    });
+  },
+};
