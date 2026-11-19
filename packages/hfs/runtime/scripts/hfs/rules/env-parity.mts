@@ -387,7 +387,7 @@ function sealedMemberFinding(key: string, member: Parsed, reads: Parsed, declare
     return found(ENV_PUBLIC_SEALED, member, `${member} seals the public key ${key}; NEXT_PUBLIC_* values are public configuration and never enter custody`);
   }
   // An SSH_GROUP key in a transport member is read by the deploy transport itself, never by an app: no EnvSource reader exists for it.
-  if (SSH_GROUP.includes(key) && transport(String(member).split("/")[1]).has(memberOfName(String(member).split("/").pop()!))) return null;
+  if (SSH_GROUP.includes(key) && transport(String(member).split("/")[1] as string).has(memberOfName(String(member).split("/").pop() as string))) return null;
   if (!reads.has(key) && !declared.has(key) && !serviceConsumer(member, key)) {
     return found(ENV_SEALED_UNREAD, member, `${member} seals ${key}, which no EnvSource reader and no declared consumer uses; unseal it or declare who consumes it`);
   }
