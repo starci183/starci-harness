@@ -13,13 +13,14 @@ import type { Finding, Repo } from './rule-types.mjs';
 
 export const FE_ERROR_PAGE_NOT_EMPTY_STATE = 'FE_ERROR_PAGE_NOT_EMPTY_STATE';
 const CLOSURE_DEPTH = 6;
-const BOUNDARY = /^(?<app>(?:apps\/[^/]+\/)?)src\/app\/(?:\[locale\]\/(?:\([A-Za-z0-9_-]+\)\/)?)?(?<name>not-found|error|global-error)\.tsx$/u;
+/** A boundary file of the route tree: `not-found`, `error` or `global-error` at the app root, at `[locale]` or in any route group or segment below. */
+export const BOUNDARY = /^(?<app>(?:apps\/[^/]+\/)?)src\/app\/(?:[^/]+\/)*(?<name>not-found|error|global-error)\.tsx$/u;
 const IMPORT = /import\s+(?:type\s+)?(?:(?<default>[A-Za-z_$][\w$]*)\s*,?\s*)?(?:\{(?<named>[^}]*)\})?\s*from\s*['"](?<from>[^'"]+)['"]/gu;
 const EXTENSIONS = ['', '.tsx', '.ts', '/index.tsx', '/index.ts'];
 const posix = path.posix;
 
 /** The tracked file a specifier resolves to, or null (a package, a type-only barrel, a file outside the repository). */
-function resolveSpecifier(from: string, specifier: string, appRoot: string, tracked: ReadonlySet<string>): string | null {
+export function resolveSpecifier(from: string, specifier: string, appRoot: string, tracked: ReadonlySet<string>): string | null {
   const base = specifier.startsWith('@/') ? posix.join(appRoot, 'src', specifier.slice(2)) : specifier.startsWith('.') ? posix.join(posix.dirname(from), specifier) : null;
   if (base === null) return null;
   return EXTENSIONS.map((extension) => `${base}${extension}`).find((candidate) => tracked.has(candidate)) ?? null;
@@ -32,7 +33,7 @@ function definersOf(name: string, uiFiles: readonly string[], repoRoot: string):
 }
 
 /** Every source file reachable from a boundary file, the file itself first. */
-function closure(start: string, appRoot: string, tracked: ReadonlySet<string>, uiFiles: readonly string[], repoRoot: string): string[] {
+export function closure(start: string, appRoot: string, tracked: ReadonlySet<string>, uiFiles: readonly string[], repoRoot: string): string[] {
   const seen = new Set<string>([start]);
   let frontier = [start];
   for (let depth = 0; depth < CLOSURE_DEPTH && frontier.length > 0; depth += 1) {

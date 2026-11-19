@@ -30,7 +30,7 @@ import type { Config } from "stylelint"
 
 export { why } from "./lib/why.ts"
 export { loadAppTokens } from "./lib/app-tokens.ts"
-export { findRawBrandValue, HEX_COLOR, COLOR_FUNCTION, PIXEL_LENGTH } from "./lib/brand-value.ts"
+export { findRawBrandValue, HEX_COLOR, COLOR_FUNCTION, NAMED_COLORS, PIXEL_LENGTH } from "./lib/brand-value.ts"
 export { isGrammarToken, FAMILY_PREFIXES } from "./lib/vocabulary.ts"
 export { BRAND_FILE, fileKind } from "./lib/scope.ts"
 export { SPACING_SCALE_REM, isSpacingProperty } from "./spacing-scale.ts"

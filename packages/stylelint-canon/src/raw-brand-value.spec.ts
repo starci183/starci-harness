@@ -35,3 +35,16 @@ test("does not take a url fragment or a token reference for a raw value", async 
 test("does not take a longer word or a rem length for a raw value", async () => {
   assert.deepEqual(await rule(".a { width: 12rem; animation-name: pxfade; }"), [])
 })
+
+test("refuses a named colour in a colour property and in a custom property of its own, outside brand.css", async () => {
+  for (const file of [FILES.module, FILES.css, FILES.globals]) {
+    assert.equal((await rule(".a { color: red; }", file)).length, 1, `named in ${file}`)
+    assert.equal((await rule(".a { border: 1rem solid navy; }", file)).length, 1, `border in ${file}`)
+    assert.equal((await rule(":root { --x: teal; }", file)).length, 1, `custom property in ${file}`)
+  }
+  assert.deepEqual(await rule(":root { --accent: teal; color: red; }", FILES.brand), [])
+})
+
+test("does not take a font, an animation, a keyword or a token for a named colour", async () => {
+  assert.deepEqual(await rule(".a { font-family: Orange, sans-serif; animation-name: red; color: transparent; background: currentcolor; outline: 0; --font: Gold Sans; border-color: var(--red); }"), [])
+})

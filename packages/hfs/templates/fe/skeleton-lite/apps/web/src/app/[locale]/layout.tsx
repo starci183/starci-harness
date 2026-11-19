@@ -5,7 +5,6 @@ import { AppLayout, appLayoutMetadata } from "@/features/layouts/AppLayout"
 import { i18n } from "@/modules/i18n"
 import { Providers } from "./providers"
 import "../globals.css"
-import "@/modules/brand"
 
 type LayoutProps = {
     readonly children: ReactNode

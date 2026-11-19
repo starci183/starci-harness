@@ -40,7 +40,7 @@ Enforced by: R92 (`no-inline-class-name`, `class-names-in-colocated-file`, `cn-a
 
 `app/globals.css` holds only `@import` and `@source`, in this order: `tailwindcss`, `@heroui/styles/css`, the
 selected grammar's stylesheet, `modules/brand/brand.css`, then `@source` lines that each resolve to a real directory
-(the grammar's `dist` included).
+(the grammar's `dist` included). It is the app's one global stylesheet ([FE-CSS-4](#fe-css-4-one-global-stylesheet-per-web-app)): it loads the brand file, and no layout or module imports `brand.css` itself.
 
 Why: the order is the cascade, so brand tokens win deterministically, and an unresolved `@source` silently drops
 classes.
@@ -57,16 +57,47 @@ Enforced by: R61 (stylelint `globals-import-order`, `globals-shape`, `source-res
 
 ## FE-CSS-3 Colour lives in one brand file
 
-`modules/brand/brand.css` is the only app file with colour values: it sets HeroUI's tokens (the app's theme, in the modes it
-chooses; no gate judges its colours), matching the product's brand record in
-`.starciwork`; no other stylesheet, component or TypeScript value holds a colour or a `px` length, declares a grammar
-token, uses a class selector, `!important`, a CSS module or an off-scale breakpoint.
+`modules/brand/brand.css` is the only app file with colour values, and an app has ONE (the marketing site, the console and every other web app of a
+front end import the same file): it sets HeroUI's tokens (the app's theme, in the modes it chooses; no gate judges its colours), matching the
+product's brand record in `.starciwork`. A colour is written in no other place: not in a TypeScript or TSX component (a hex, `rgb()`, `hsl()`,
+`oklch()`, a named colour or a Tailwind arbitrary or default-palette colour class: `bg-[#fff]`, `text-[red]`, `bg-red-500`), not in a stylesheet other
+than the brand file (the globals only alias `var()` tokens), not in an inline `style`, and not in a canvas generator under `.starcistacks/canvas/gen/`.
+The canvas reads `.starcistacks/canvas/tokens.css`, which `node node_modules/@starci/hfs/runtime/scripts/hfs/canvas-tokens.mjs` generates from the brand
+file (a stamp line, then the brand layer byte for byte), so the canvas shows the brand the app ships. No other stylesheet, component or TypeScript value
+holds a `px` length, declares a grammar token, uses a class selector, `!important`, a CSS module or an off-scale breakpoint.
 
-Why: one file keeps the brand reviewable, and the grammar's token layer keeps dark mode and contrast its
+Why: one file keeps the brand reviewable, the site and the app cannot drift apart, and the grammar's token layer keeps dark mode and contrast its
 responsibility.
 
+- When a colour you need has no token → add the token to the brand file (and, if the Grammar lacks the role, mark "cần Grammar"); never write the value where it is used.
+- After a brand change → run `canvas-tokens.mjs` and commit `tokens.css`.
+
 Enforced by: R61 (stylelint `raw-brand-value`, `theme-layer-shape`, `no-token-redefinition`,
-`token-only`, `no-class-selector`, `no-important`, `no-css-module`, `breakpoint-scale`; `no-raw-brand-value`).
+`token-only`, `no-class-selector`, `no-important`, `no-css-module`, `breakpoint-scale`; `no-raw-brand-value`), R445 (`FE_BRAND_NOT_ONE`,
+`FE_BRAND_CANVAS_LITERAL`, `FE_BRAND_CANVAS_TOKENS_STALE`).
+
+## FE-CSS-4 One global stylesheet per web app
+
+A web app loads its CSS through exactly one entry, `src/app/globals.css`, which imports the Grammar stylesheet and `modules/brand/brand.css`
+([FE-CSS-2](#fe-css-2-globalscss-imports-in-the-cascade-order)). A route group (the marketing `(site)`, the `(console)`) has no stylesheet of its own: no
+`site.css`, and no layout, page or module imports a `.css` file other than `globals.css` (the root layout imports it once). An app without
+a `globals.css`, or whose globals import no Grammar stylesheet or no brand file, is refused.
+
+Why: a second global sheet is a second design system for part of the routes, which is how a site and an app of one product end up looking like two.
+
+Enforced by: R446 (`FE_GLOBALS_NOT_ONE`, `FE_GLOBALS_IMPORTS_MISSING`); what the one sheet holds is R61 (stylelint `globals-shape`, `globals-import-order`).
+
+## FE-STATE-1 One page per system state
+
+Every system state is drawn by ONE shared page component per kind: the not found page (every `not-found.tsx`), the error page (every `error.tsx` and
+the last-resort `global-error.tsx`) and the offline page (every `offline/page.tsx` or `~offline/page.tsx`, where the app has one). The template
+ships them as composites (`NotFoundNotice`, `ErrorNotice`, and `GlobalErrorNotice`, which wraps `ErrorNotice` in the document the last-resort boundary must
+draw); the boundary files only wire them. Every route group of the app tree, at any depth, carries its own `error.tsx` and `not-found.tsx` wired to the same
+components, so a failure or an unknown address inside the site, the console or any other group shows the same page and none falls through to another look.
+
+Why: the 404 and the 500 are the pages a visitor meets when something is wrong; two looks of them in one product say the product is two products.
+
+Enforced by: R447 (`FE_STATE_PAGE_NOT_SHARED`, `FE_STATE_PAGE_GROUP_MISSING`); that each draws the Grammar's empty state is R443 (`FE_ERROR_PAGE_NOT_EMPTY_STATE`).
 
 ## FE-ICON One glyph vocabulary through one owner
 

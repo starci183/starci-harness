@@ -1,4 +1,5 @@
-import { EmptyNotice, GrammarRoot, StaticsProvider } from "@starci/grammar/common"
+import { GrammarRoot } from "@starci/grammar/common"
+import { ErrorNotice } from "../ErrorNotice"
 
 /** The document language, the words of the failure, its way home and its retry. */
 type GlobalErrorNoticeProps = {
@@ -11,22 +12,23 @@ type GlobalErrorNoticeProps = {
     readonly staticsBaseUrl?: string
 }
 
-/** The last-resort failure: the whole document, drawn here because this boundary replaces the layout that would have drawn it. */
+/**
+ * The last-resort failure: the whole document, drawn here because this boundary replaces the layout that would have drawn it. The page inside it is the
+ * app's one error page, `ErrorNotice`, so the last-resort failure and a render failure show the same page (R447).
+ */
 export const GlobalErrorNotice = (props: GlobalErrorNoticeProps) => (
     <html lang={props.lang}>
         <body>
             <GrammarRoot>
-                <StaticsProvider baseUrl={props.staticsBaseUrl ?? "/statics"}>
-                    <EmptyNotice
-                        scope="page"
-                        message={props.words.title}
-                        description={props.words.description}
-                        media={{ illustration: { staticsKey: "illustrations/errors/server-error.webp" } }}
-                        actionLabel={props.words.home}
-                        actionHref="/"
-                        secondary={{ label: props.words.retry, onPress: props.onRetry }}
-                    />
-                </StaticsProvider>
+                <ErrorNotice
+                    title={props.words.title}
+                    description={props.words.description}
+                    homeLabel={props.words.home}
+                    homeHref="/"
+                    retryLabel={props.words.retry}
+                    onRetry={props.onRetry}
+                    {...(props.staticsBaseUrl === undefined ? {} : { staticsBaseUrl: props.staticsBaseUrl })}
+                />
             </GrammarRoot>
         </body>
     </html>

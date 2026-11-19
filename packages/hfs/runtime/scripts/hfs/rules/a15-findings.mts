@@ -50,6 +50,9 @@ import { projectSidesFindings } from './project-sides.mjs';
 import { dataBoundaryFindings } from './data-copies.mjs';
 import { dataSecondLoaderFindings } from './data-loaders.mjs';
 import { errorPageFindings } from './error-pages.mjs';
+import { brandOneFindings, canvasBrandFindings } from './brand-one.mjs';
+import { globalsOneFindings } from './globals-one.mjs';
+import { statePageFindings } from './state-pages.mjs';
 import { dataStoresFindings } from './data-stores.mjs';
 import { dataSetsFindings } from './data-sets.mjs';
 import { storagePublicRuleFindings } from './stacks-storage-public.mjs';
@@ -117,6 +120,10 @@ export const FINDERS = [
   textIntegrityFindings,
   assetsFindings,
   errorPageFindings,
+  statePageFindings,
+  globalsOneFindings,
+  brandOneFindings,
+  canvasBrandFindings,
   unusedSymbolFindings,
   databaseBaselineFindings,
   databaseQueuesFindings,
