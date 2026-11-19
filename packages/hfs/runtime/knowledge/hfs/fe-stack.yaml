@@ -150,7 +150,7 @@ concerns:
     home: [fe.components]
     pattern: FE-MOTION
     forbids: [react-spring, '@react-spring/web', gsap]
-    why: one motion library, imported only inside a Custom region (`starci-fe/custom-only-library`); the Grammar draws motion with CSS transitions its tokens drive and imports none.
+    why: one motion library, imported only inside a Fragment region (`starci-fe/fragment-only-library`); the Grammar draws motion with CSS transitions its tokens drive and imports none.
   - id: dates
     tier: core
     packages: [dayjs]
@@ -192,7 +192,7 @@ concerns:
     home: [fe.components]
     pattern: FE-FLOW
     forbids: [reactflow, cytoscape]
-    why: an app draws a node graph itself with React Flow, only inside a Custom region (Grammar has no graph component since 0.49.0).
+    why: an app draws a node graph itself with React Flow, only inside a Fragment region (Grammar has no graph component since 0.49.0).
   - id: markdown
     tier: opt
     packages: [react-markdown, remark-gfm, remark-directive]

@@ -75,7 +75,7 @@ pins:
   next-intl: {version: 4.13.6, group: framework, side: fe, why: "the one i18n library"}
   graphql: {version: 16.14.2, group: framework, side: both, why: "one version for both sides"}
   supertest: {version: 7.3.0, group: tooling, side: be, why: "the e2e world calls the app over HTTP"}
-  '@xyflow/react': {version: 12.11.6, group: ui, side: fe, why: "an app's own node graph, drawn inside a Custom region; no longer a Grammar peer"}
+  '@xyflow/react': {version: 12.11.6, group: ui, side: fe, why: "an app's own node graph, drawn inside a Fragment region; no longer a Grammar peer"}
   react-aria-components: {version: 1.21.1, group: ui, side: fe, why: "a required peer of the grammar"}
   '@heroui/react': {version: 3.2.6, group: ui, side: fe, why: "the vendor the grammar wraps; vendor/README.md reads this pin"}
   '@heroui/styles': {version: 3.2.6, group: ui, side: fe, why: "the vendor stylesheet, the same release as @heroui/react"}

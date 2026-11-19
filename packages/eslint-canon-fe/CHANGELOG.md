@@ -1,9 +1,9 @@
 # Changelog
 
-## Unreleased - 9.21.0 - Custom
+## Unreleased - 9.21.0 - Fragment
 
-- Added: `lib/custom.ts` (`isCustomElement`, `inCustom`, `importUsedOnlyInCustom`, `customContext`, `exemptCustom`, `exemptCustomRules`): the Custom region of `@starci/grammar`. The canon laws that judge markup, look and libraries (`ui-rulings`, `brand-values`, `type-scale`, `button-intent`, `control-height`, `class-names`, `explicit-surface`, `grammar-shim`, `landmark`, `lists`, `loading`, `native-controls`, `drawing`, `surface-rules`, `tokens`, `spacing`, `renderer-purity`, `skeleton-states`, `fe-stack`) report nothing inside a `<Custom>` subtree, a same-file component only a region renders, or an import whose every use is there. Integrity laws are never exempted.
-- Added: `custom-only-library` (law `custom-libraries`): `motion`, `motion/*`, `framer-motion`, `@xyflow/react`, `reactflow`, `@reactflow/*` and `react-flow-renderer` are imported only for use inside a `<Custom>` region (a type-only import is free). The motion concern of the fe-stack catalog says so; the flow concern says an app draws its own graph.
+- Added: `lib/fragment.ts` (`isGrammarFragment` (follows the import alias; React's Fragment and `<>` open no region), `inFragment`, `importUsedOnlyInFragment`, `fragmentContext`, `exemptFragment`, `exemptFragmentRules`): the Fragment region of `@starci/grammar`. The canon laws that judge markup, look and libraries (`ui-rulings`, `brand-values`, `type-scale`, `button-intent`, `control-height`, `class-names`, `explicit-surface`, `grammar-shim`, `landmark`, `lists`, `loading`, `native-controls`, `drawing`, `surface-rules`, `tokens`, `spacing`, `renderer-purity`, `skeleton-states`, `fe-stack`) report nothing inside a `<Fragment>` subtree, a same-file component only a region renders, or an import whose every use is there. Integrity laws are never exempted.
+- Added: `fragment-only-library` (law `fragment-libraries`): `motion`, `motion/*`, `framer-motion`, `@xyflow/react`, `reactflow`, `@reactflow/*` and `react-flow-renderer` are imported only for use inside a `<Fragment>` region (a type-only import is free). The motion concern of the fe-stack catalog says so; the flow concern says an app draws its own graph.
 
 ## 9.20.4 - 2026-11-19
 

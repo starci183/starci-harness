@@ -385,7 +385,7 @@ pins:
     version: 12.11.6
     group: ui
     side: fe
-    why: 'An app that draws its own node graph inside a Custom region imports React Flow from @xyflow/react at this version; Grammar itself imports it nowhere and it is no longer a Grammar peer (0.49.0).'
+    why: 'An app that draws its own node graph inside a Fragment region imports React Flow from @xyflow/react at this version; Grammar itself imports it nowhere and it is no longer a Grammar peer (0.49.0).'
   react-aria-components:
     version: 1.21.1
     group: ui

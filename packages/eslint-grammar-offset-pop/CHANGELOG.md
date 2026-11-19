@@ -2,7 +2,7 @@
 
 ## Unreleased - 0.49.0
 
-- Changed: the family version 0.49.0 (Custom, the removal of FlowGraph and BubbleMap in @starci/grammar). The rules are the core family's: `custom-has-reason` is new and a `<Custom>` subtree is left alone.
+- Changed: the family version 0.49.0 (Fragment, the removal of FlowGraph and BubbleMap in @starci/grammar). The rules are the core family's: `fragment-has-reason` is new and a `<Fragment>` subtree is left alone.
 
 ## 0.48.0 - 2026-11-19
 

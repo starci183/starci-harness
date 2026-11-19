@@ -9,7 +9,7 @@ import { rules as cardIsObjectRules } from "./card-is-object.ts"
 import { rules as chipLabelRules } from "./chip-label.ts"
 import { rules as choiceControlsRules } from "./choice-controls.ts"
 import { rules as dataTableSurfaceRules } from "./data-table-surface.ts"
-import { rules as customRules } from "./custom.ts"
+import { rules as fragmentRules } from "./fragment.ts"
 import { rules as drawingRules } from "./drawing.ts"
 import { rules as fieldLabelRules } from "./field-label.ts"
 import { rules as freestyleRules } from "./freestyle.ts"
@@ -46,7 +46,7 @@ import { rules as tableCellTypeRules } from "./table-cell-type.ts"
 import { rules as textRules } from "./text-rules.ts"
 import { rules as tokensRules } from "./tokens.ts"
 import { rules as vendorRules } from "./vendor-boundary.ts"
-import { customContext } from "@starci/eslint-canon-fe/lib/custom.mjs"
+import { fragmentContext } from "@starci/eslint-canon-fe/lib/fragment.mjs"
 import { why as familyWhy } from "./lib/why.ts"
 
 /** The Grammar families: `core`, and `offset-pop` through its own package entry. */
@@ -61,21 +61,21 @@ export type GrammarHfsView = {
   readonly slotOf: (file: string) => string | null
 }
 
-/** A rule that leaves the code of a `<Custom>` region alone (`customContext` of the universal canon). */
+/** A rule that leaves the code of a `<Fragment>` region alone (`fragmentContext` of the universal canon). */
 const WRAPPED = new WeakSet<Rule.RuleModule>()
-const exemptCustom = (rule: Rule.RuleModule): Rule.RuleModule => {
+const exemptFragment = (rule: Rule.RuleModule): Rule.RuleModule => {
   if (WRAPPED.has(rule)) return rule
   WRAPPED.add(rule)
   const create = rule.create
-  rule.create = (context) => create.call(rule, customContext(context))
+  rule.create = (context) => create.call(rule, fragmentContext(context))
   return rule
 }
 
-/** The laws that judge the `<Custom>` element itself and so are not wrapped: they would otherwise be silenced by the region they guard. */
-const JUDGES_CUSTOM_ITSELF: ReadonlySet<string> = new Set(["custom"])
+/** The laws that judge the `<Fragment>` element itself and so are not wrapped: they would otherwise be silenced by the region they guard. */
+const JUDGES_FRAGMENT_ITSELF: ReadonlySet<string> = new Set(["fragment"])
 
 const DECLARED: readonly { readonly law: string; readonly rules: Readonly<Record<string, Rule.RuleModule>> }[] = [
-  { law: "custom", rules: customRules },
+  { law: "fragment", rules: fragmentRules },
   { law: "app-shell", rules: appShellRules },
   { law: "button-arrow", rules: buttonArrowRules },
   { law: "card-content", rules: cardContentRules },
@@ -122,12 +122,12 @@ const DECLARED: readonly { readonly law: string; readonly rules: Readonly<Record
 ]
 
 /**
- * Each law's rules as published: every rule but the Custom law leaves the code of a `<Custom>` region alone, and an import whose
- * every use is inside one (`custom.mjs` of the universal canon). Code outside a region is judged as before.
+ * Each law's rules as published: every rule but the Fragment law leaves the code of a `<Fragment>` region alone, and an import whose
+ * every use is inside one (`fragment.mjs` of the universal canon). Code outside a region is judged as before.
  */
 const CONTRIBUTIONS: readonly { readonly law: string; readonly rules: Readonly<Record<string, Rule.RuleModule>> }[] = DECLARED.map(({ law, rules }) => ({
   law,
-  rules: JUDGES_CUSTOM_ITSELF.has(law) ? rules : Object.fromEntries(Object.entries(rules).map(([name, rule]): [string, Rule.RuleModule] => [name, exemptCustom(rule)])),
+  rules: JUDGES_FRAGMENT_ITSELF.has(law) ? rules : Object.fromEntries(Object.entries(rules).map(([name, rule]): [string, Rule.RuleModule] => [name, exemptFragment(rule)])),
 }))
 
 /** Each concrete Grammar law has one gathered owner. */
@@ -203,6 +203,6 @@ export const coreGrammarPackagesConfig: typeof coreGrammarConfig = (input) => sc
 export { crossFileInputs } from "./lib/cross-file-inputs.ts"
 export type { CrossFileInput } from "./lib/cross-file-inputs.ts"
 
-// The audit inventory of every `<Custom reason="...">` region: a report, never a finding (`starci-custom-inventory` prints it).
-export { customInventory, customUsesOf, formatCustomInventory } from "./lib/custom-inventory.ts"
-export type { CustomUse } from "./lib/custom-inventory.ts"
+// The audit inventory of every `<Fragment reason="...">` region: a report, never a finding (`starci-fragment-inventory` prints it).
+export { fragmentInventory, fragmentUsesOf, formatFragmentInventory } from "./lib/fragment-inventory.ts"
+export type { FragmentUse } from "./lib/fragment-inventory.ts"

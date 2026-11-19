@@ -60,6 +60,8 @@ Regression checks live in this ESLint package. The Grammar and consuming app fro
 The source is TypeScript in `src/` (`src/lib/` holds the shared readers, `src/vendor.d.ts` types the untyped canon and runtime
 JavaScript it imports); `npm run build` emits `dist/`, which is what the package ships beside `runtime/` and `docs/`.
 
-## Custom (0.49.0)
+## Fragment (0.49.0)
 
-`<Custom reason="...">` is the Grammar's escape hatch: inside it no rule of this plugin reports anything, nor an import whose every use is there (`docs/custom.md`). `starci-grammar/custom-has-reason` is the one law that judges the element. `starci-custom-inventory [root] [--json]` (the package `bin`) lists every use for audit and always exits 0.
+`<Fragment reason="...">` is the Grammar's escape hatch: inside it no rule of this plugin reports anything, nor an import whose every use is there (`docs/fragment.md`). `starci-grammar/fragment-has-reason` is the one law that judges the element. `starci-fragment-inventory [root] [--json]` (the package `bin`) lists every use for audit and always exits 0.
+
+The region is recognised only when the element is the `Fragment` export of `@starci/grammar`; a file that also needs React's Fragment imports the Grammar's one as `import { Fragment as GrammarFragment } from "@starci/grammar"` and the lint follows the alias. React's Fragment and `<>` open no region.

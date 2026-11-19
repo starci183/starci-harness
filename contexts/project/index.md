@@ -235,8 +235,6 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · Anatomy and states · Owner split
 - [ui/components/command-palette.md](../ui/components/command-palette.md) · 5 KB — Contract: dialog.
   - sections: Job · Choose · Variants · Keyboard · Size · States · Owner split · Rules
-- [ui/components/custom.md](../ui/components/custom.md) · 5 KB — Contract: Custom.
-  - sections: Job · Choose · Variants · Size · States · Owner split · What lint does inside and outside · Rules · Inventory (audit, never a failure)
 - [ui/components/data-views.md](../ui/components/data-views.md) · 7 KB — Contract: data-views.
   - sections: Meter reading voice (0.46.0) · Job · Choose
 - [ui/components/diagram.md](../ui/components/diagram.md) · 2 KB — Contract: Diagram.
@@ -249,6 +247,8 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · Anatomy · Capability questions · Variants · Size · States · Owner split · Rules
 - [ui/components/field.md](../ui/components/field.md) · 6 KB — Contract: Input.
   - sections: Job · Choose · The rhythm · Variants · Size · States · Owner split · Rules · A labelled Switch needs its description (SWITCH-LABEL-DESCRIPTION) · A Switch has two kinds (SWITCH-KIND)
+- [ui/components/fragment.md](../ui/components/fragment.md) · 5 KB — Contract: Fragment.
+  - sections: Job · Choose · Variants · Size and states · Name clash with React's Fragment · Owner split · What lint does inside and outside · Rules · Inventory (audit, never a failure)
 - [ui/components/freestyle.md](../ui/components/freestyle.md) · 2 KB — Contract: Freestyle.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/identity-mark.md](../ui/components/identity-mark.md) · 5 KB — Contract: Avatar and IconTile.

@@ -181,7 +181,7 @@ topics:
     rules: "FE-CHART"
   - path: flow.yaml
     title: Flow canvas
-    decides: "@xyflow/react drawn by the app inside a Custom region"
+    decides: "@xyflow/react drawn by the app inside a Fragment region"
     rules: "FE-FLOW"
   - path: markdown.yaml
     title: Markdown

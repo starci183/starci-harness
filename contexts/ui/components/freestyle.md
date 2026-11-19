@@ -1,6 +1,6 @@
 # Freestyle
 
-Contract: [Freestyle](../../grammars/contract.md#freestyle). Vendor: none (a Common region). A region that needs a library or markup beyond plain elements is [Custom](custom.md).
+Contract: [Freestyle](../../grammars/contract.md#freestyle). Vendor: none (a Common region). A region that needs a library or markup beyond plain elements is [Fragment](fragment.md).
 
 ## Job
 Give the app one sanctioned place to write its own plain divs and CSS (layout, paint, radius, arbitrary values,

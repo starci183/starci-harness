@@ -199,12 +199,12 @@ with a skeleton and loads nothing. A source Mermaid refuses becomes an error ins
 <MermaidDiagram label="Request flow" source={fence.value} errorTitle={t("diagramFailed")} />
 ```
 
-### Custom (0.49.0)
+### Fragment (0.49.0)
 
-`<Custom reason="...">` is the escape hatch: a region (a `div`, or any intrinsic element through `as`) where any markup, any class name and any library is allowed, because no Grammar component fits. It takes `reason` (required, stamped as `data-grammar-custom-reason`), children and the attributes of its element, and adds no paint of its own. The Grammar lint reports nothing inside it; every rule outside it stays. The Grammar draws no graph and imports no graph or animation library (`npm run check:libraries`; motion is the CSS transitions its tokens drive), so an app that needs `@xyflow/react` or `motion` uses it inside a `Custom` and declares it itself. `starci-custom-inventory` (from `@starci/eslint-grammar-core`) lists every use.
+`<Fragment reason="...">` is the escape hatch: a region that renders no element, only its children, like React's Fragment, where any markup, any class name and any library is allowed, because no Grammar component fits. It takes `reason` (required, for the lint and the inventory) and children, and adds no DOM node, paint or inset of its own. A file that also needs React's Fragment imports this one as `import { Fragment as GrammarFragment } from "@starci/grammar"` (the lint follows the alias; React's Fragment and `<>` open no region). The Grammar lint reports nothing inside it; every rule outside it stays. The Grammar draws no graph and imports no graph or animation library (`npm run check:libraries`; motion is the CSS transitions its tokens drive), so an app that needs `@xyflow/react` or `motion` uses it inside a `Fragment` and declares it itself. `starci-fragment-inventory` (from `@starci/eslint-grammar-core`) lists every use.
 
 ```tsx
-<Custom reason="workflow graph editor"><WorkflowCanvas nodes={nodes} edges={edges} /></Custom>
+<Fragment reason="workflow graph editor"><WorkflowCanvas nodes={nodes} edges={edges} /></Fragment>
 ```
 
 ### Flat table, section head, scroll law, tab chips
@@ -243,7 +243,7 @@ rendered element is the folder (`tiers.grammar` of `@starci/hfs`; the machine ch
 
 `children` belongs to frames. Every other props type carries `NoChildren` (`children?: never`) or, for a leaf's text label, `LabelChild` (`children?: string`), both exported,
 so nested JSX under a leaf, branch or composite fails to compile for every caller. A node a component shows has a named prop for its role (`body`, `trigger`, `media`,
-`control`, `text`). `Text` alone keeps inline content, and `Freestyle` and `Custom` alone keep `className`. `starci-grammar/tier-props` in this package's ESLint config refuses
+`control`, `text`). `Text` alone keeps inline content, and `Freestyle` alone keeps `className`. `starci-grammar/tier-props` in this package's ESLint config refuses
 a `children` or `className` that breaks the tier.
 
 ## Components
@@ -703,7 +703,7 @@ dividers, used when the page has a persistent selection or navigation column; it
 never cards, and the main pane may hold a pink well that follows the report law. One page, one frame type. `Page layout="report" | "workspace"` declares it (a mismatch with `chrome` throws). **The responsive law:** Grammar owns
 the breakpoints (desktop from 1280, tablet 768 to 1279, phone below 768); the page inset is 32 / 24 / 12 and the card gap 24 / 12 (the owner asked for 16 on a phone; the spacing scale has no 16 yet) and the
 content at most 1280 wide, type stays 14 / 12. A report keeps its figures ribbon in one row on a desktop, 3 columns on a tablet (five cells are 3 + 2) and 2 columns on a phone (an odd last cell spans its row: 2 + 2 + 1), and stacks equal cards below 1280; a
-workspace shows the aside as a Drawer on a tablet and one pane at a time on a phone. A graph an app draws itself (inside a Custom region, with any library) is the app's to adapt to a phone.
+workspace shows the aside as a Drawer on a tablet and one pane at a time on a phone. A graph an app draws itself (inside a Fragment region, with any library) is the app's to adapt to a phone.
 
 **No scrollbars (OVERFLOW-6).** Grammar never shows scrollbars. Every scroll area Grammar draws (pane and `PaneSection scroll`, Drawer and Dialog bodies,
 ListBox, the chat thread, the tab strip, DataTable and code overflow, popovers) hides the bar (`scrollbar-width: none`, `::-webkit-scrollbar` none) and

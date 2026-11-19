@@ -471,17 +471,17 @@ roles:
     dna: []
     lint: [starci-grammar/freestyle-has-reason]
 
-  - id: custom
-    ui: ui/components/custom.md
-    renderers: [Custom]
+  - id: fragment
+    ui: ui/components/fragment.md
+    renderers: [Fragment]
     vendorParity: []                              # no HeroUI part: a Common region
-    slots: ["children: the app's own markup, code and libraries", "as: the intrinsic element it renders, a div by default", "reason: required, why no Grammar component fits"]
+    slots: ["children: the app's own markup, code and libraries", "reason: required, why no Grammar component fits"]
     variants: {}
     sizes: none
     states: []
     grammarMayChange: ["nothing: it adds no paint, inset or radius"]
-    dna: [DNA-COMMON-CUSTOM-REASON, DNA-COMMON-NO-GRAPH-OR-MOTION-LIBRARY]
-    lint: [starci-grammar/custom-has-reason, starci-grammar/no-graph-or-animation-library, starci-fe/custom-only-library]
+    dna: [DNA-COMMON-FRAGMENT-REASON, DNA-COMMON-NO-GRAPH-OR-MOTION-LIBRARY]
+    lint: [starci-grammar/fragment-has-reason, starci-grammar/no-graph-or-animation-library, starci-fe/fragment-only-library]
 
   - id: message-status
     ui: ui/components/message-bubble.md
@@ -1917,17 +1917,17 @@ mustKeep:
         checks: [{ metric: row-gap, op: "=", value: 0px }, { metric: padding-block-start, op: "=", value: 0px }, { metric: padding-block-end, op: "=", value: 0px }]
       owner: ui/components/page-header.md
 
-    # --- custom (0.49.0): the escape hatch, and the libraries the Grammar never imports
-    - id: DNA-COMMON-CUSTOM-REASON
-      role: custom
-      law: "A Custom region names its reason, a non-empty string literal saying why no Grammar component fits; the reason is stamped on the DOM and listed by the Custom inventory."
-      measure: { kind: source, check: "lint:starci-grammar/custom-has-reason" }
-      owner: ui/components/custom.md
+    # --- fragment (0.49.0): the escape hatch, and the libraries the Grammar never imports
+    - id: DNA-COMMON-FRAGMENT-REASON
+      role: fragment
+      law: "A Fragment region names its reason, a non-empty string literal saying why no Grammar component fits; the reason serves the lint and is listed by the Fragment inventory."
+      measure: { kind: source, check: "lint:starci-grammar/fragment-has-reason" }
+      owner: ui/components/fragment.md
     - id: DNA-COMMON-NO-GRAPH-OR-MOTION-LIBRARY
-      role: custom
-      law: "The Grammar imports no graph or flow toolkit (@xyflow/react) and no animation library (motion, motion/react, framer-motion, gsap, react-spring, lottie, ...), and declares none as a dependency or peer; its motion is the CSS transitions its tokens drive. An app uses such a library only inside Custom (starci-fe/custom-only-library)."
+      role: fragment
+      law: "The Grammar imports no graph or flow toolkit (@xyflow/react) and no animation library (motion, motion/react, framer-motion, gsap, react-spring, lottie, ...), and declares none as a dependency or peer; its motion is the CSS transitions its tokens drive. An app uses such a library only inside Fragment (starci-fe/fragment-only-library)."
       measure: { kind: source, check: "lint:starci-grammar/no-graph-or-animation-library" }
-      owner: ui/components/custom.md
+      owner: ui/components/fragment.md
     # --- diagram
     - id: DNA-COMMON-DIAGRAM-LOADING-BOX
       role: diagram

@@ -58,7 +58,7 @@ const COMPONENT_FILE = /[\\/]src[\\/]core[\\/](leaf|branch|composite|frame)[\\/]
 /** The one component whose content is inline (a sentence holds Code, Link and Kbd); the lint rule `text-inline-only` refuses a block in it. */
 const INLINE_CONTENT = new Set(["Text"])
 /** The one hole, with a stated reason (R341). */
-const CLASS_NAME_HOLE = new Set(["Freestyle", "Custom"])
+const CLASS_NAME_HOLE = new Set(["Freestyle"])
 /** Types of a part the component receives, not props it takes: an icon source's own props. */
 const RECEIVED = new Set(["ComponentType", "ElementType", "FunctionComponent"])
 const RECEIVED_SHAPE = new Set(["TSFunctionType", "TSConstructorType"])
@@ -238,8 +238,8 @@ export const tierState: Rule.RuleModule = {
 /**
  * The libraries the Grammar never imports: a graph or flow toolkit and every animation library. Grammar motion is CSS transitions
  * its tokens drive (reduced motion honoured in the stylesheet), and a graph is not a Grammar component. An app that needs one
- * writes it in its own code inside `<Custom reason="...">`. The same list is read by `scripts/check-libraries.mts`, which also
- * judges the stories and the manifest, and mirrored by the canon rule `starci-fe/custom-only-library` for apps.
+ * writes it in its own code inside `<Fragment reason="...">`. The same list is read by `scripts/check-libraries.mts`, which also
+ * judges the stories and the manifest, and mirrored by the canon rule `starci-fe/fragment-only-library` for apps.
  */
 export const BANNED_LIBRARIES: readonly RegExp[] = [
     /^(?:motion|framer-motion)(?:\/|$)/u,
@@ -252,11 +252,11 @@ export const isBannedLibrary = (specifier: string): boolean => BANNED_LIBRARIES.
 
 /** The Grammar imports no graph toolkit and no animation library (static, re-export, dynamic or `require`). */
 export const noGraphOrAnimationLibrary: Rule.RuleModule = {
-    meta: { type: "problem", schema: [], docs: { description: "The Grammar imports no graph toolkit and no animation library; an app uses one only inside Custom." } },
+    meta: { type: "problem", schema: [], docs: { description: "The Grammar imports no graph toolkit and no animation library; an app uses one only inside Fragment." } },
     create(context) {
         const judge = (node: Rule.Node, specifier: unknown): void => {
             if (typeof specifier === "string" && isBannedLibrary(specifier)) {
-                context.report({ node, message: `The Grammar never imports \`${specifier}\`: motion is CSS transitions its tokens drive, and a graph is app code. An app uses such a library only inside <Custom reason="...">.` })
+                context.report({ node, message: `The Grammar never imports \`${specifier}\`: motion is CSS transitions its tokens drive, and a graph is app code. An app uses such a library only inside <Fragment reason="...">.` })
             }
         }
         return {

@@ -224,3 +224,12 @@ declare module "@starci/eslint-canon-fe/lib/root-page.mjs" {
   export function connectedPageDrawing(context: ReaderContext, opening: import("@typescript-eslint/types").TSESTree.JSXOpeningElement): import("@starci/eslint-canon-fe/lib/owner-source.mjs").Owner | null
   export function isPageRenderer(context: ReaderContext, opening: import("@typescript-eslint/types").TSESTree.JSXOpeningElement): boolean
 }
+
+declare module "@starci/eslint-canon-fe/lib/fragment.mjs" {
+  type JSXElementNode = import("@typescript-eslint/types").TSESTree.JSXElement
+  type ReaderContext = import("./lib/types.ts").ReaderContext
+  /** True for the Grammar's Fragment element, followed through its import alias or a namespace import; React's Fragment and `<>` are not. */
+  export function isGrammarFragment(context: ReaderContext, element: JSXElementNode): boolean
+  /** The context a rule is given: its `report` drops a finding about code inside a Fragment region. */
+  export function fragmentContext<C extends object>(context: C): C
+}

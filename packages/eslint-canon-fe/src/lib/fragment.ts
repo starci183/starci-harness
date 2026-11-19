@@ -1,26 +1,27 @@
 /**
- * The Custom region: the one sanctioned place where anything goes.
+ * The Fragment region: the one sanctioned place where anything goes.
  *
- * `<Custom reason="...">` (from `@starci/grammar`) is a region where the app writes any markup, any class name and uses any
+ * `<Fragment reason="...">` (from `@starci/grammar`) is a region (it renders no element, only its children) where the app writes any markup, any class name and uses any
  * library (a graph editor, an animation library, a chart toolkit) because no Grammar component fits. The rest of the page still
  * follows the Grammar. No Grammar law and no canon front-end law that judges markup, look or libraries reports anything about
- * code inside a Custom subtree of the same file; code outside it is judged exactly as before.
+ * code inside a Fragment subtree of the same file; code outside it is judged exactly as before.
  *
  * WHAT COUNTS AS INSIDE.
- * - A node of the `<Custom>` element: its attributes (`className`, `style`, `as`) and everything it renders as children.
- * - An import (`import { ReactFlow } from "@xyflow/react"`) whose every use sits inside Custom: the import line is at the top of the
+ * - A node of the `<Fragment>` element: its `reason` attribute and everything it renders as children.
+ * - An import (`import { ReactFlow } from "@xyflow/react"`) whose every use sits inside Fragment: the import line is at the top of the
  *   file, but the library is used only there, so it is not judged either. A binding with no use, a side-effect import or a use
- *   outside Custom keeps the import judged.
- * - A same-file helper that only Custom reaches: a top-level function or component that is not exported and whose every use is
- *   inside Custom (or inside another such helper). Its body is Custom code, so a graph canvas written as a small component and
- *   rendered as `<Custom reason="..."><Canvas /></Custom>` may call the library's hooks.
+ *   outside Fragment keeps the import judged.
+ * - A same-file helper that only Fragment reaches: a top-level function or component that is not exported and whose every use is
+ *   inside Fragment (or inside another such helper). Its body is Fragment code, so a graph canvas written as a small component and
+ *   rendered as `<Fragment reason="..."><Canvas /></Fragment>` may call the library's hooks.
  *
- * WHICH `Custom`. The element is recognised only when its name is imported from `@starci/grammar` (`Custom` or `<ns>.Custom`):
- * an app's own component called `Custom` opens no exemption.
+ * WHICH `Fragment`. The element is recognised only when it is the `Fragment` export of `@starci/grammar`, through the local alias
+ * (`import { Fragment as GrammarFragment }`) or a namespace (`<G.Fragment>`). React's Fragment, `<>` and an app's own component called
+ * `Fragment` open no exemption. A file that needs both names the Grammar's one with the alias.
  *
  * WHAT STAYS JUDGED. The lint-escape-hatch, hygiene, comment, type-safety, translation, transport and project-graph laws are not
- * wrapped: no region switches the repository's own integrity rules off. The audit inventory (`custom-inventory`) and the reason
- * law (`custom-has-reason`) judge the `<Custom>` element itself and are never wrapped.
+ * wrapped: no region switches the repository's own integrity rules off. The audit inventory (`fragment-inventory`) and the reason
+ * law (`fragment-has-reason`) judge the `<Fragment>` element itself and are never wrapped.
  */
 import type { TSESLint, TSESTree } from "@typescript-eslint/utils"
 import { isNode } from "./ast.ts"
@@ -30,36 +31,34 @@ import type { AnyContext, Node, Rule } from "./rule.ts"
 /** The Grammar package entries a component can be imported from. */
 const GRAMMAR_SOURCE = /^@starci\/grammar(?:\/(?:common|core|offset-pop))?$/
 
-/** The element name of a JSX name: `Custom`, or `G.Custom` as `Custom`. */
-const nameOf = (name: TSESTree.JSXTagNameExpression): string | null => {
-  if (name.type === "JSXIdentifier") return name.name
-  if (name.type === "JSXMemberExpression") return name.property.name
-  return null
-}
-
-/** The leftmost identifier of a JSX name (`G` of `G.Custom`), or null for a namespaced name. */
+/** The leftmost identifier of a JSX name (`G` of `G.Fragment`), or null for a namespaced name. */
 const rootOf = (name: TSESTree.JSXTagNameExpression): TSESTree.JSXIdentifier | null => {
   if (name.type === "JSXIdentifier") return name
   if (name.type === "JSXMemberExpression") return rootOf(name.object)
   return null
 }
 
-/** True for a `Custom` element of the Grammar. */
-export const isCustomElement = (context: AnyContext, element: TSESTree.JSXElement): boolean => {
+/**
+ * True for the Grammar's Fragment element, followed through the import: `<Fragment>` of `import { Fragment } from "@starci/grammar"`, its
+ * local alias (`import { Fragment as GrammarFragment }`, `<GrammarFragment>`) and `<G.Fragment>` of a Grammar namespace import. React's
+ * Fragment (a `Fragment` imported from `react`, or `<>`) and an app's own component called Fragment open no region.
+ */
+export const isGrammarFragment = (context: AnyContext, element: TSESTree.JSXElement): boolean => {
   const name = element.openingElement.name
-  if (nameOf(name) !== "Custom") return false
   const root = rootOf(name)
   if (root === null) return false
   const origin = importOf(context, root)
-  return origin !== null && origin !== undefined && GRAMMAR_SOURCE.test(origin.source)
+  if (origin === null || origin === undefined || !GRAMMAR_SOURCE.test(origin.source)) return false
+  if (name.type === "JSXIdentifier") return origin.imported === "Fragment"
+  return origin.imported === null && name.type === "JSXMemberExpression" && name.object.type === "JSXIdentifier" && name.property.name === "Fragment"
 }
 
-/** The `<Custom>` elements of a file: where its regions are. */
-const customElements = (context: AnyContext): readonly TSESTree.JSXElement[] => {
+/** The `<Fragment>` elements of a file: where its regions are. */
+const fragmentElements = (context: AnyContext): readonly TSESTree.JSXElement[] => {
   const found: TSESTree.JSXElement[] = []
   const keys = context.sourceCode.visitorKeys
   const visit = (node: Node): void => {
-    if (node.type === "JSXElement" && isCustomElement(context, node)) found.push(node)
+    if (node.type === "JSXElement" && isGrammarFragment(context, node)) found.push(node)
     for (const key of keys[node.type] ?? []) {
       const value: unknown = Reflect.get(node, key)
       if (Array.isArray(value)) for (const item of value) { if (isNode(item)) visit(item) }
@@ -70,7 +69,7 @@ const customElements = (context: AnyContext): readonly TSESTree.JSXElement[] => 
   return found
 }
 
-/** What a file's Custom analysis found: its regions and the same-file helpers only they reach. */
+/** What a file's Fragment analysis found: its regions and the same-file helpers only they reach. */
 interface Analysis {
   readonly regions: readonly (readonly [number, number])[]
   readonly helpers: readonly (readonly [number, number])[]
@@ -114,7 +113,7 @@ const analyse = (context: AnyContext): Analysis => {
   const ast = context.sourceCode.ast
   const cached = analyses.get(ast)
   if (cached !== undefined) return cached
-  const regions = customElements(context).map((element): readonly [number, number] => element.range)
+  const regions = fragmentElements(context).map((element): readonly [number, number] => element.range)
   const candidates = privateCandidates(ast)
   const variables = new Map<string, TSESLint.Scope.Variable>()
   const globalScope = context.sourceCode.scopeManager?.globalScope
@@ -145,8 +144,8 @@ const analyse = (context: AnyContext): Analysis => {
   return analysis
 }
 
-/** True when a node lies inside a Custom region, or inside a same-file helper that only Custom reaches. */
-export const inCustom = (context: AnyContext, node: Node): boolean => {
+/** True when a node lies inside a Fragment region, or inside a same-file helper that only Fragment reaches. */
+export const inFragment = (context: AnyContext, node: Node): boolean => {
   const analysis = analyse(context)
   if (analysis.regions.length === 0) return false
   return within(node.range, analysis.regions) || within(node.range, analysis.helpers)
@@ -161,8 +160,8 @@ const importOwner = (node: Node): TSESTree.ImportDeclaration | null => {
   return null
 }
 
-/** True for an import whose every binding is used, and used only inside Custom. */
-export const importUsedOnlyInCustom = (context: AnyContext, declaration: TSESTree.ImportDeclaration): boolean => {
+/** True for an import whose every binding is used, and used only inside Fragment. */
+export const importUsedOnlyInFragment = (context: AnyContext, declaration: TSESTree.ImportDeclaration): boolean => {
   if (declaration.specifiers.length === 0) return false
   const analysis = analyse(context)
   if (analysis.regions.length === 0) return false
@@ -193,19 +192,19 @@ const reportedNode = (context: AnyContext, descriptor: unknown): Node | null => 
 const readsSource = (context: object): context is AnyContext => "sourceCode" in context
 
 /**
- * The context a rule is given: the same context, whose `report` drops a finding about code inside Custom, and a finding about an import
- * whose every use is inside Custom. Every other property, and every other finding, is the original's.
+ * The context a rule is given: the same context, whose `report` drops a finding about code inside Fragment, and a finding about an import
+ * whose every use is inside Fragment. Every other property, and every other finding, is the original's.
  */
-export const customContext = <C extends object>(context: C): C => {
+export const fragmentContext = <C extends object>(context: C): C => {
   const report: unknown = Reflect.get(context, "report")
   if (typeof report !== "function") return context
   const judged = (descriptor: unknown, ...rest: unknown[]): unknown => {
     if (readsSource(context)) {
       const node = reportedNode(context, descriptor)
       if (node !== null) {
-        if (inCustom(context, node)) return undefined
+        if (inFragment(context, node)) return undefined
         const owner = importOwner(node)
-        if (owner !== null && importUsedOnlyInCustom(context, owner)) return undefined
+        if (owner !== null && importUsedOnlyInFragment(context, owner)) return undefined
       }
     }
     return Reflect.apply(report, context, [descriptor, ...rest])
@@ -213,23 +212,23 @@ export const customContext = <C extends object>(context: C): C => {
   return Object.create(context, { report: { value: judged, enumerable: true } })
 }
 
-/** The rules already wrapped by `exemptCustom`: a rule is wrapped once, whichever law gathers it. */
+/** The rules already wrapped by `exemptFragment`: a rule is wrapped once, whichever law gathers it. */
 const wrapped = new WeakSet<object>()
 
 /**
- * A canon rule that leaves the code of a Custom region alone. The wrapping is done on the rule itself (its `create`), so the rule a law
+ * A canon rule that leaves the code of a Fragment region alone. The wrapping is done on the rule itself (its `create`), so the rule a law
  * module exports, the rule a plugin publishes and the rule a spec runs are one object and all of them leave the region alone.
  */
-export const exemptCustom = <M extends string, O extends readonly unknown[]>(rule: Rule<M, O>): Rule<M, O> => {
+export const exemptFragment = <M extends string, O extends readonly unknown[]>(rule: Rule<M, O>): Rule<M, O> => {
   if (wrapped.has(rule)) return rule
   wrapped.add(rule)
   const create = rule.create
-  rule.create = (context: Readonly<TSESLint.RuleContext<M, O>>) => create.call(rule, customContext(context))
+  rule.create = (context: Readonly<TSESLint.RuleContext<M, O>>) => create.call(rule, fragmentContext(context))
   return rule
 }
 
-/** The rules of a law, each leaving the code of a Custom region alone. */
-export const exemptCustomRules = <R extends Readonly<Record<string, Rule<string, readonly unknown[]>>>>(rules: R): R => {
-  for (const rule of Object.values(rules)) exemptCustom(rule)
+/** The rules of a law, each leaving the code of a Fragment region alone. */
+export const exemptFragmentRules = <R extends Readonly<Record<string, Rule<string, readonly unknown[]>>>>(rules: R): R => {
+  for (const rule of Object.values(rules)) exemptFragment(rule)
   return rules
 }

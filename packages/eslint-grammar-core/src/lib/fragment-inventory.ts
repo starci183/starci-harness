@@ -1,9 +1,9 @@
 /**
- * The Custom inventory: a report of every `<Custom reason="...">` region an app holds, so each use can be audited. It is information,
- * never a finding: it lists, it does not fail, and the CLI that prints it always exits 0 (a `<Custom>` with no reason is listed as
- * such; the `custom-has-reason` rule is the one that fails it).
+ * The Fragment inventory: a report of every `<Fragment reason="...">` region an app holds, so each use can be audited. It is information,
+ * never a finding: it lists, it does not fail, and the CLI that prints it always exits 0 (a `<Fragment>` with no reason is listed as
+ * such; the `fragment-has-reason` rule is the one that fails it).
  *
- * A use is the file and position of the element, the element it renders (`as`, `div` by default), its reason and the third-party
+ * A use is the file and position of the element, its reason and the third-party
  * libraries its subtree names (the modules the file imports, other than the Grammar and relative paths, whose bindings the region uses).
  */
 import { readdirSync, readFileSync } from "node:fs"
@@ -11,14 +11,12 @@ import { join, relative, sep } from "node:path"
 import { parseForESLint } from "@typescript-eslint/parser"
 import type { TSESTree } from "@typescript-eslint/types"
 
-/** One `<Custom>` region. */
-export interface CustomUse {
+/** One `<Fragment>` region. */
+export interface FragmentUse {
   /** The file, relative to the scanned root, with forward slashes. */
   readonly file: string
   readonly line: number
   readonly column: number
-  /** The element the region renders: the literal `as`, or `div`. */
-  readonly as: string
   /** The literal `reason`, or null when it is missing or computed. */
   readonly reason: string | null
   /** The third-party modules the region's subtree uses. */
@@ -47,16 +45,16 @@ const attributeOf = (opening: TSESTree.JSXOpeningElement, name: string): TSESTre
   opening.attributes.find((entry): entry is TSESTree.JSXAttribute => entry.type === "JSXAttribute" && entry.name.type === "JSXIdentifier" && entry.name.name === name)
 
 /**
- * The `<Custom>` regions of one source text.
+ * The `<Fragment>` regions of one source text.
  *
  * @param source - The text of a `.tsx` or `.jsx` file.
  * @param file - The path to report the uses under.
- * @returns The regions in source order; none when the file does not import `Custom` from the Grammar.
+ * @returns The regions in source order; none when the file does not import `Fragment` from the Grammar.
  */
-export const customUsesOf = (source: string, file: string): CustomUse[] => {
-  if (!source.includes("Custom")) return []
+export const fragmentUsesOf = (source: string, file: string): FragmentUse[] => {
+  if (!source.includes("Fragment")) return []
   const { ast, visitorKeys } = parseForESLint(source, { ecmaFeatures: { jsx: true }, sourceType: "module", range: true, loc: true })
-  const custom = new Set<string>()
+  const fragment = new Set<string>()
   const namespaces = new Set<string>()
   const modules = new Map<string, string>()
   for (const statement of ast.body) {
@@ -64,13 +62,13 @@ export const customUsesOf = (source: string, file: string): CustomUse[] => {
     const from = String(statement.source.value)
     const grammar = GRAMMAR_SOURCE.test(from)
     for (const specifier of statement.specifiers) {
-      if (grammar && specifier.type === "ImportSpecifier" && (specifier.imported.type === "Identifier" ? specifier.imported.name : String(specifier.imported.value)) === "Custom") custom.add(specifier.local.name)
+      if (grammar && specifier.type === "ImportSpecifier" && (specifier.imported.type === "Identifier" ? specifier.imported.name : String(specifier.imported.value)) === "Fragment") fragment.add(specifier.local.name)
       else if (grammar && specifier.type === "ImportNamespaceSpecifier") namespaces.add(specifier.local.name)
       else if (!grammar && !from.startsWith(".") && !from.startsWith("/") && !from.startsWith("node:") && statement.importKind !== "type") modules.set(specifier.local.name, from)
     }
   }
-  if (custom.size === 0 && namespaces.size === 0) return []
-  const found: CustomUse[] = []
+  if (fragment.size === 0 && namespaces.size === 0) return []
+  const found: FragmentUse[] = []
   const namesIn = (node: TSESTree.Node, into: Set<string>): void => {
     if (node.type === "Identifier" || node.type === "JSXIdentifier") into.add(node.name)
     for (const key of visitorKeys[node.type] ?? []) {
@@ -79,19 +77,18 @@ export const customUsesOf = (source: string, file: string): CustomUse[] => {
       else if (isNode(value)) namesIn(value, into)
     }
   }
-  const isCustom = (name: TSESTree.JSXTagNameExpression): boolean => {
-    if (name.type === "JSXIdentifier") return custom.has(name.name)
-    return name.type === "JSXMemberExpression" && name.property.name === "Custom" && name.object.type === "JSXIdentifier" && namespaces.has(name.object.name)
+  const isFragment = (name: TSESTree.JSXTagNameExpression): boolean => {
+    if (name.type === "JSXIdentifier") return fragment.has(name.name)
+    return name.type === "JSXMemberExpression" && name.property.name === "Fragment" && name.object.type === "JSXIdentifier" && namespaces.has(name.object.name)
   }
   const visit = (node: TSESTree.Node): void => {
-    if (node.type === "JSXElement" && isCustom(node.openingElement.name)) {
+    if (node.type === "JSXElement" && isFragment(node.openingElement.name)) {
       const names = new Set<string>()
       namesIn(node, names)
       found.push({
         file,
         line: node.loc.start.line,
         column: node.loc.start.column + 1,
-        as: literalText(attributeOf(node.openingElement, "as")) ?? "div",
         reason: literalText(attributeOf(node.openingElement, "reason")),
         libraries: [...new Set([...names].flatMap((name) => modules.get(name) ?? []))].sort(),
       })
@@ -114,15 +111,15 @@ const sourcesUnder = (folder: string): string[] =>
   })
 
 /**
- * Every `<Custom>` region under a folder.
+ * Every `<Fragment>` region under a folder.
  *
  * @param root - The folder to scan (an app root, or its `src/`).
  * @returns The regions, by file then position.
  */
-export const customInventory = (root: string): CustomUse[] =>
+export const fragmentInventory = (root: string): FragmentUse[] =>
   sourcesUnder(root)
     .sort()
-    .flatMap((path) => customUsesOf(readFileSync(path, "utf8"), relative(root, path).split(sep).join("/")))
+    .flatMap((path) => fragmentUsesOf(readFileSync(path, "utf8"), relative(root, path).split(sep).join("/")))
 
 /**
  * The inventory as text: a header with the counts, then one line per region. Information only.
@@ -130,12 +127,12 @@ export const customInventory = (root: string): CustomUse[] =>
  * @param uses - The regions.
  * @returns The report.
  */
-export const formatCustomInventory = (uses: readonly CustomUse[]): string => {
+export const formatFragmentInventory = (uses: readonly FragmentUse[]): string => {
   const files = new Set(uses.map((use) => use.file)).size
-  const lines = [`Custom inventory: ${uses.length} region${uses.length === 1 ? "" : "s"} in ${files} file${files === 1 ? "" : "s"} (information, not findings)`]
+  const lines = [`Fragment inventory: ${uses.length} region${uses.length === 1 ? "" : "s"} in ${files} file${files === 1 ? "" : "s"} (information, not findings)`]
   for (const use of uses) {
     const libraries = use.libraries.length > 0 ? `  [${use.libraries.join(", ")}]` : ""
-    lines.push(`${use.file}:${use.line}:${use.column}  <${use.as}>  ${use.reason === null ? "(no reason: custom-has-reason fails it)" : JSON.stringify(use.reason)}${libraries}`)
+    lines.push(`${use.file}:${use.line}:${use.column}  ${use.reason === null ? "(no reason: fragment-has-reason fails it)" : JSON.stringify(use.reason)}${libraries}`)
   }
   return lines.join("\n")
 }

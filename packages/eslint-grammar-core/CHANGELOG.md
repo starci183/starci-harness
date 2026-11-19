@@ -1,10 +1,10 @@
 # Changelog
 
-## Unreleased - 0.49.0 - Custom
+## Unreleased - 0.49.0 - Fragment
 
-- Added: `starci-grammar/custom-has-reason` (law `custom`): a `<Custom>` region names a non-empty string literal `reason`.
-- Changed (BREAKING for code that relied on findings inside a region): every other rule of the plugin leaves the subtree of a `<Custom>` element alone, and an import whose every use is inside one (`customContext` of `@starci/eslint-canon-fe/lib/custom.mjs`, canon-fe 9.21.0). Code outside a region is judged as before. Needs `@starci/eslint-canon-fe` ~9.21.0.
-- Added: the Custom inventory, a report that is never a finding: `starci-custom-inventory [root] [--json]` (package `bin`), `customInventory`, `customUsesOf` and `formatCustomInventory`. It lists file, position, `as`, reason and libraries of every `<Custom reason="...">` and always exits 0.
+- Added: `starci-grammar/fragment-has-reason` (law `fragment`): a Grammar `<Fragment>` region (followed through an import alias such as `GrammarFragment`; React's Fragment and `<>` are not regions) names a non-empty string literal `reason`.
+- Changed (BREAKING for code that relied on findings inside a region): every other rule of the plugin leaves the subtree of a `<Fragment>` element alone, and an import whose every use is inside one (`fragmentContext` of `@starci/eslint-canon-fe/lib/fragment.mjs`, canon-fe 9.21.0). Code outside a region is judged as before. Needs `@starci/eslint-canon-fe` ~9.21.0.
+- Added: the Fragment inventory, a report that is never a finding: `starci-fragment-inventory [root] [--json]` (package `bin`), `fragmentInventory`, `fragmentUsesOf` and `formatFragmentInventory`. It lists file, position, reason and libraries of every `<Fragment reason="...">` and always exits 0.
 - Changed: `card-is-object` and `card-content` no longer name `FlowGraph` and `BubbleMap` (removed from Grammar 0.49.0).
 
 ## 0.48.0 - 2026-11-19

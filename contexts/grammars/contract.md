@@ -512,13 +512,13 @@ CSS because no Grammar component fits (a sign-in brand art, say). It adds no pai
 (stamped as `data-grammar-freestyle-reason`), and is a last resort: the rest of the page stays on the grammar, and a
 Grammar component inside it keeps its contract.
 
-### Custom
+### Fragment
 
-Custom is the broad escape hatch: a region (a `div` by default, any intrinsic element through `as`) where the app and its fans write any markup, any class name
+Fragment is the broad escape hatch: a region that renders no element, only its children (like React's Fragment), where the app and its fans write any markup, any class name
 and use any library (a graph editor, an animation library) because no Grammar component fits. It adds no paint, inset or radius,
-names its `reason` (stamped as `data-grammar-custom-reason`), and is a last resort. The Grammar lint reports nothing in its subtree, nor an import used
+names its `reason` (for the lint and the inventory; with no element there is nothing to stamp), and is a last resort. The Grammar lint reports nothing in its subtree, nor an import used
 only there; outside it every rule stays. The Grammar ships no graph component and imports no graph or animation library (its motion is the CSS
-transitions its tokens drive); an app uses such a library only inside Custom, and every use is listed by the Custom inventory.
+transitions its tokens drive); an app uses such a library only inside Fragment, and every use is listed by the Fragment inventory.
 
 ### Page
 
@@ -564,7 +564,7 @@ replaces the strip. A strip that owns its visible heading supplies `title`. An a
 ### Diagram
 
 A diagram draws a structure the reader follows: `MermaidDiagram` renders an article's Mermaid source in the grammar's
-tokens; Grammar draws no node graph (since 0.49.0 a graph is app-owned, written inside a `Custom` region with any library: contexts/ui/components/custom.md). A
+tokens; Grammar draws no node graph (since 0.49.0 a graph is app-owned, written inside a `Fragment` region with any library: contexts/ui/components/fragment.md). A
 diagram is one named image in a frame that reserves its height in every state: the loading skeleton keeps that box,
 and a source the renderer refuses stays in the region as code under an error. A grammar decides the frame and the paint; the reserved box and the error carrier are the same
 everywhere.

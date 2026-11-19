@@ -6,7 +6,7 @@ import { isBannedLibrary } from "./lint/eslint-plugin.mts"
 /**
  * Contract check (DNA-COMMON-NO-GRAPH-OR-MOTION-LIBRARY): the Grammar imports no graph or flow toolkit (`@xyflow/react`) and no
  * animation library (`motion`, `motion/react`, `framer-motion`, `gsap`, ...), and declares none as a dependency or peer. Motion is the CSS
- * transitions its tokens drive; a graph is app code, written inside `<Custom reason="...">`. The lint rule
+ * transitions its tokens drive; a graph is app code, written inside `<Fragment reason="...">`. The lint rule
  * `starci-grammar/no-graph-or-animation-library` judges the published source; this check also reads the stories (never linted) and the manifest.
  */
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..")
@@ -33,7 +33,7 @@ for (const field of ["dependencies", "peerDependencies", "devDependencies", "opt
     for (const name of Object.keys(declared)) if (isBannedLibrary(name)) problems.push(`package.json ${field}: declares ${name}`)
 }
 if (problems.length > 0) {
-    console.error(`The Grammar uses no graph or animation library (an app uses one only inside <Custom reason="...">):\n${problems.join("\n")}`)
+    console.error(`The Grammar uses no graph or animation library (an app uses one only inside <Fragment reason="...">):\n${problems.join("\n")}`)
     process.exit(1)
 }
 console.log(`check-libraries: ${checked} source files and the manifest import and declare no graph or animation library`)

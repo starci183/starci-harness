@@ -2,8 +2,8 @@
 
 ## Unreleased
 
-- Added (Grammar 0.49.0, BREAKING, lane `grammar-custom`): `<Custom reason="...">`, the escape hatch where any library, markup and class name is allowed and the Grammar lint is silent (eslint-grammar-core and eslint-grammar-offset-pop 0.49.0, eslint-canon-fe 9.21.0); the `starci-custom-inventory` audit report; `starci-fe/custom-only-library` (motion and graph libraries only inside Custom) and `starci-grammar/no-graph-or-animation-library`.
-- Removed (Grammar 0.49.0, BREAKING): `FlowGraph`, `BubbleMap` and the `@xyflow/react` peer. An app that draws a graph owns that component and uses `@xyflow/react` inside `<Custom reason="...">`. The pins, the contexts index and the cohort bump are the train's.
+- Added (Grammar 0.49.0, BREAKING, lane `grammar-custom`): `<Fragment reason="...">`, the escape hatch where any library, markup and class name is allowed and the Grammar lint is silent (eslint-grammar-core and eslint-grammar-offset-pop 0.49.0, eslint-canon-fe 9.21.0); the `starci-fragment-inventory` audit report; `starci-fe/fragment-only-library` (motion and graph libraries only inside Fragment) and `starci-grammar/no-graph-or-animation-library`.
+- Removed (Grammar 0.49.0, BREAKING): `FlowGraph`, `BubbleMap` and the `@xyflow/react` peer. An app that draws a graph owns that component and uses `@xyflow/react` inside `<Fragment reason="...">`. The pins, the contexts index and the cohort bump are the train's.
 
 ## 1.1.0-alpha.175 - 2026-11-19
 

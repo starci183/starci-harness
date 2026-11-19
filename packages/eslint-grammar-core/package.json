@@ -30,7 +30,7 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "starci-custom-inventory": "./dist/lib/custom-inventory-cli.js"
+    "starci-fragment-inventory": "./dist/lib/fragment-inventory-cli.js"
   },
   "files": [
     "dist",
