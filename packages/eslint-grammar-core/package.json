@@ -1,6 +1,6 @@
 {
   "name": "@starci/eslint-grammar-core",
-  "version": "0.48.0",
+  "version": "0.49.0",
   "description": "ESLint rules for the core Grammar's component, token and composition contracts.",
   "keywords": [
     "eslint",
@@ -29,6 +29,9 @@
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "bin": {
+    "starci-custom-inventory": "./dist/lib/custom-inventory-cli.js"
+  },
   "files": [
     "dist",
     "runtime/**",
@@ -41,7 +44,7 @@
     "node": ">=22"
   },
   "peerDependencies": {
-    "@starci/eslint-canon-fe": "~9.20.0",
+    "@starci/eslint-canon-fe": "~9.21.0",
     "@starci/hfs": "~6.13.0",
     "eslint": ">=9",
     "typescript": ">=5.9"

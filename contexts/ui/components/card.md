@@ -60,13 +60,13 @@ the face and holds none (`pane-grid.choose.frame:cards`). What sits in a surface
 A label has no description under it (CARD-NO-DESCRIPTION): a section's line is its `caption` and a card's line is its `note`, both under it (lint
 `starci-grammar/no-label-description`). The words that explain the object's data (a legend, a source, a period) go in `note`, 12
 muted under the card; a free-standing muted `Text` directly above a card is the same description drawn by hand and is refused (lint
-`starci-grammar/no-card-lead-description`). A legend (a FlowGraph's kinds) stands under the card as chips (`note={<FlowGraphLegend
-items />}`); a FlowGraph inside a card draws no frame of its own.
+`starci-grammar/no-card-lead-description`).
+
 
 ## Icons are outline (ICONS-OUTLINE)
 Never a filled or solid icon (lint `starci-grammar/outline-icons-only` refuses a solid icon-set import anywhere). An icon that stands alone as the mark of a row, card, empty state or graph step gets an icon tile (a soft-tone square with an outline icon);
 an icon inline with text (a status beside a label, a search field, a button start icon, a link arrow, meta) is a plain outline icon at text size with no tile. A status is a tone-coloured outline icon with no tile (check-circle success,
-x-circle danger, a spinner for running): the FlowGraph run overlay, the Stepper and the disclosure step marks follow it.
+x-circle danger, a spinner for running): the Stepper and the disclosure step marks follow it.
 
 ## Size
 A card's `label` is 14 / 600 (the final type scale, FONT-7). Measure: `check:type` (`packages/grammar/scripts/check-type-roles.mts`).

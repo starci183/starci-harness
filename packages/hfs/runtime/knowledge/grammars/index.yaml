@@ -80,7 +80,7 @@ families:
             Stack: { literalProps: { as: [div, header, footer] } }
             PaneSection: { requiresContext: pane, absentProps: [error], literalProps: { as: [div, header, footer] } }
             Section: { absentProps: [error], literalProps: { kind: [region] } }
-      peers: [react, '@heroui/react', '@xyflow/react', react-aria-components]
+      peers: [react, '@heroui/react', react-aria-components]
     packageSnapshot: common/DNA.yaml
     scope: |
       DNA snapshot only. This catalog carries no Common-side family boundary, idiom set or composition

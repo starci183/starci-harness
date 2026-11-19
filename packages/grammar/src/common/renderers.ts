@@ -46,6 +46,7 @@ export { Grid, balancedColumns, type GridCardColumns, type GridKind, type GridPr
 export { StateMark, type StateMarkProps } from "../core/StateMark.js"
 export { OtpInput, type OtpInputProps } from "../core/branch/OtpInput/index.js"
 export { Freestyle, type FreestyleProps } from "../core/frame/Freestyle/index.js"
+export { Custom, type CustomProps, type CustomTag } from "../core/frame/Custom/index.js"
 export { PrimaryRailLayout, type PrimaryRailLayoutProps } from "../core/frame/PrimaryRailLayout/index.js"
 export { ScheduleGrid, SCHEDULE_DRAG_TYPE, startScheduleDrag, type ScheduleColumn, type ScheduleRow, type ScheduleItem, type ScheduleCellLabel, type ScheduleDropSource, type ScheduleResize, type ScheduleTone, type ScheduleGridProps } from "../core/frame/ScheduleGrid/index.js"
 export { BarChart, type BarChartBar, type BarChartProps, type BarChartValueAxis } from "../core/composite/BarChart/index.js"

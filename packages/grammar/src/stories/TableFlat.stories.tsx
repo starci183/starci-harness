@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 import { noop, quietProbe } from './fixtures.js';
-import { reconcileEdges, reconcileLegend, reconcileNodes } from './FlowGraphSteps.data.js';
 
 /**
  * A table is flat: a white body with no frame, no grey gutters and no grey header strip, the column labels 12 muted, 1px full-width row dividers, the pager behind a
@@ -172,7 +171,7 @@ export const WorkspaceChatMain: Story = {
   ),
 };
 
-/** One content per section (a Sublabel above each), a graph with its legend under it. */
+/** One content per section (a Sublabel above each). */
 export const CardsOneContent: Story = {
   parameters: { layout: 'fullscreen', grammar: { bleed: true } },
   render: () => (
@@ -181,10 +180,6 @@ export const CardsOneContent: Story = {
         <G.Section sublabel="Ordered items" kind="list" items={workflowRows} empty="No items yet." />
         <G.Section sublabel="Details" caption="Updated at 10:00.">
           <G.DescriptionList isDivided items={[{ id: 't', term: 'Time', description: '19:30' }, { id: 'k', term: 'Guests', description: '4 people' }]} />
-        </G.Section>
-        <G.Section sublabel="Workflow">
-          <G.FlowGraph label="Flow" layout="steps" nodes={reconcileNodes} edges={reconcileEdges} />
-          <G.FlowGraphLegend items={reconcileLegend} />
         </G.Section>
       </G.Section>
     </G.Page>
@@ -229,40 +224,6 @@ export const FactBalancedAndNoticeLink: Story = {
       <G.Grid kind="cards" columns="balanced">
         {['Free', 'Basic', 'Pro', 'Team', 'Max'].map((name) => <G.SurfaceCard key={name} label={name}><G.Text size="figure">$199.00</G.Text></G.SurfaceCard>)}
       </G.Grid>
-    </div>
-  ),
-};
-
-const salesNodes: ReadonlyArray<G.FlowGraphNode> = [
-  { id: 's1', kind: 'event', label: 'Customer writes', description: 'Chat', tag: 'Trigger' },
-  { id: 's2', kind: 'action', label: 'Read the request', description: 'Understand the need' },
-  { id: 's3', kind: 'condition', label: 'What is needed?', description: 'Classify', outputs: [
-    { id: 'quote', label: 'Quote' }, { id: 'book', label: 'Booking' }, { id: 'pay', label: 'Customer reports a payment' }, { id: 'ask', label: 'Ask for item details' }, { id: 'other', label: 'Other' },
-  ] },
-  { id: 's4', kind: 'action', label: 'Send a quote', description: 'From the price list' },
-  { id: 's5', kind: 'action', label: 'Hold a slot', description: 'In the calendar' },
-  { id: 's6', kind: 'action', label: 'Match payment', description: 'Match the order' },
-  { id: 's7', kind: 'ask', label: 'Ask the owner', description: 'Needs approval', tag: 'Needs owner' },
-  { id: 's8', kind: 'wait', label: 'Wait for customer', description: 'Reply within 1 day' },
-  { id: 's9', kind: 'action', label: 'Remind customer', description: 'After 24 hours' },
-  { id: 's10', kind: 'event', label: 'Notify team', description: 'Send to the team' },
-  { id: 's11', kind: 'end', label: 'Done' },
-  { id: 's12', kind: 'end', label: 'Stop' },
-];
-const salesEdges: ReadonlyArray<G.FlowGraphEdge> = [
-  { id: 'a', source: 's1', target: 's2' }, { id: 'b', source: 's2', target: 's3' },
-  { id: 'c1', source: 's3', target: 's4', sourcePort: 'quote' }, { id: 'c2', source: 's3', target: 's5', sourcePort: 'book' },
-  { id: 'c3', source: 's3', target: 's6', sourcePort: 'pay' }, { id: 'c4', source: 's3', target: 's7', sourcePort: 'ask' }, { id: 'c5', source: 's3', target: 's8', sourcePort: 'other' },
-  { id: 'd1', source: 's4', target: 's10' }, { id: 'd2', source: 's5', target: 's10' }, { id: 'd3', source: 's6', target: 's10' }, { id: 'd4', source: 's7', target: 's9' }, { id: 'd5', source: 's8', target: 's12' },
-  { id: 'e1', source: 's10', target: 's11' }, { id: 'e2', source: 's9', target: 's12' },
-];
-
-/** 0.36.2: a 12-step graph with a 5-way branch is contained in its pane (0.37.20: the whole graph, never panned at start); ports truncate; the kinds carry their own tones. */
-export const FlowStepsWideBranch: Story = {
-  parameters: { layout: 'fullscreen', grammar: { bleed: true } },
-  render: () => (
-    <div style={{ padding: '1rem', maxInlineSize: '56rem' }}>
-      <G.FlowGraph label="Sales process" layout="steps" nodes={salesNodes} edges={salesEdges} />
     </div>
   ),
 };

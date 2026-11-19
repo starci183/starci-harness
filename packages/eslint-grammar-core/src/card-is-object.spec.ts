@@ -10,7 +10,7 @@ import { cardIsObject, recommended, rules } from "./card-is-object.ts"
 
 const BLOCK = at("apps/web/src/components/blocks/Runs/component.tsx")
 const SCRIPT = at("scripts/render.tsx")
-const IMPORTS = "import * as G from \"@starci/grammar/core\"\nimport { SurfaceCard, DataTable, ListBox, DisclosureList, Accordion, Timeline, BarChart, Sparkline, ProportionBar, BubbleMap, FlowGraph, MermaidDiagram, Section, Stack, Cluster, Grid, Text, Button, DescriptionList, Meter, Form, Fieldset, Input, Textarea, Select, ComboBox, SearchField, NumberField, RadioGroup, CheckboxGroup, EmptyNotice, Markdown, MarkdownArticle, Avatar } from \"@starci/grammar/core\"\n"
+const IMPORTS = "import * as G from \"@starci/grammar/core\"\nimport { SurfaceCard, DataTable, ListBox, DisclosureList, Accordion, Timeline, BarChart, Sparkline, ProportionBar, MermaidDiagram, Section, Stack, Cluster, Grid, Text, Button, DescriptionList, Meter, Form, Fieldset, Input, Textarea, Select, ComboBox, SearchField, NumberField, RadioGroup, CheckboxGroup, EmptyNotice, Markdown, MarkdownArticle, Avatar } from \"@starci/grammar/core\"\n"
 const code = (body: string): string => `${IMPORTS}export const A = () => ${body}`
 const refused = { messageId: "collection" }
 
@@ -79,8 +79,6 @@ test("CARD-OBJECT: a card whose only content is a collection, a form or a placeh
       { filename: BLOCK, code: code("<SurfaceCard label=\"Usage\"><BarChart data={d} /></SurfaceCard>"), errors: [refused] },
       { filename: BLOCK, code: code("<SurfaceCard label=\"Trend\"><Sparkline data={d} /></SurfaceCard>"), errors: [refused] },
       { filename: BLOCK, code: code("<SurfaceCard label=\"Share\"><ProportionBar items={d} /></SurfaceCard>"), errors: [refused] },
-      { filename: BLOCK, code: code("<SurfaceCard label=\"Map\"><BubbleMap data={d} /></SurfaceCard>"), errors: [refused] },
-      { filename: BLOCK, code: code("<SurfaceCard label=\"Flow\"><FlowGraph nodes={n} /></SurfaceCard>"), errors: [refused] },
       { filename: BLOCK, code: code("<SurfaceCard label=\"Diagram\"><MermaidDiagram source={s} /></SurfaceCard>"), errors: [refused] },
       // through layout wrappers, namespace imports, blank text, a fragment, a condition, a card with actions
       { filename: BLOCK, code: code("<SurfaceCard label=\"Runs\"><Stack><DataTable columns={c} rows={r} /></Stack></SurfaceCard>"), errors: [refused] },

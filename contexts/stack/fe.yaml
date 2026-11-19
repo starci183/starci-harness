@@ -142,7 +142,7 @@ concerns:
     packages: [framer-motion]
     home: [fe.components]
     forbids: [react-spring, '@react-spring/web', gsap]
-    why: motion beyond the grammar's transitions, honouring reduced motion.
+    why: motion beyond the grammar's CSS transitions, imported only inside a Custom region (`starci-fe/custom-only-library`), honouring reduced motion.
   - id: dates
     tier: core
     packages: [dayjs]
@@ -181,7 +181,7 @@ concerns:
     packages: ['@xyflow/react']
     home: [fe.components]
     forbids: [reactflow, cytoscape]
-    why: the grammar's flow graph component wraps it; apps never import it.
+    why: an app draws a node graph itself with React Flow, only inside a Custom region (Grammar has no graph component since 0.49.0).
   - id: markdown
     tier: opt
     packages: [react-markdown, remark-gfm, remark-directive, mdast-util-from-markdown, mdast-util-gfm, micromark-extension-gfm]

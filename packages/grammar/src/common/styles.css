@@ -3407,9 +3407,9 @@
 
     /*
      * 0.36.0 (MEASURE-8 corrected): the grid and its side panes always span the full width (the aside is flush to the end edge); only the CONTENT of a pane that
-     * holds cards is capped and centred inside that pane. A pane that holds a chat thread or a graph canvas is full-bleed unless it says `content="cards"`.
+     * holds cards is capped and centred inside that pane. A pane that holds a chat thread is full-bleed unless it says `content="cards"`.
      */
-    .starci-core-pane:not([data-grammar-pane-content-explicit]):has([data-grammar-pane-section-thread="true"], [data-component="FlowGraph"]) .starci-core-pane-stack {
+    .starci-core-pane:not([data-grammar-pane-content-explicit]):has([data-grammar-pane-section-thread="true"]) .starci-core-pane-stack {
         max-inline-size: none;
         margin-inline: 0;
     }

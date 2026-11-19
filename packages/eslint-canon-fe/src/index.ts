@@ -16,6 +16,8 @@ import { recommended as brandValuesRecommended, rules as brandValuesRules } from
 import { recommended as typeScaleRecommended, rules as typeScaleRules } from "./type-scale.ts"
 import { recommended as buttonIntentRecommended, rules as buttonIntentRules } from "./button-intent.ts"
 import { recommended as controlHeightRecommended, rules as controlHeightRules } from "./control-height.ts"
+import { recommended as customLibrariesRecommended, rules as customLibrariesRules } from "./custom-libraries.ts"
+import { exemptCustomRules } from "./lib/custom.ts"
 import { recommended as clientBoundaryRecommended, rules as clientBoundaryRules } from "./client-boundary.ts"
 import { recommended as commentsRecommended, rules as commentsRules } from "./comments.ts"
 import { recommended as classNamesRecommended, rules as classNamesRules } from "./class-names.ts"
@@ -73,51 +75,52 @@ interface RuleDeclaration {
 
 /** Each law's contribution, kept separate so a duplicate name is detectable rather than silent. */
 const CONTRIBUTIONS: Contribution[] = [
-  { law: "ui-rulings", rules: uiRulingsRules, recommended: uiRulingsRecommended },
+  { law: "ui-rulings", rules: exemptCustomRules(uiRulingsRules), recommended: uiRulingsRecommended },
     { law: "project-graph", rules: projectGraphRules, recommended: projectGraphRecommended },
-  { law: "brand-values", rules: brandValuesRules, recommended: brandValuesRecommended },
-  { law: "type-scale", rules: typeScaleRules, recommended: typeScaleRecommended },
-  { law: "button-intent", rules: buttonIntentRules, recommended: buttonIntentRecommended },
-  { law: "control-height", rules: controlHeightRules, recommended: controlHeightRecommended },
+  { law: "brand-values", rules: exemptCustomRules(brandValuesRules), recommended: brandValuesRecommended },
+  { law: "type-scale", rules: exemptCustomRules(typeScaleRules), recommended: typeScaleRecommended },
+  { law: "button-intent", rules: exemptCustomRules(buttonIntentRules), recommended: buttonIntentRecommended },
+  { law: "control-height", rules: exemptCustomRules(controlHeightRules), recommended: controlHeightRecommended },
+  { law: "custom-libraries", rules: customLibrariesRules, recommended: customLibrariesRecommended },
   { law: "client-boundary", rules: clientBoundaryRules, recommended: clientBoundaryRecommended },
   { law: "comments", rules: commentsRules, recommended: commentsRecommended },
   {
     law: "class-names",
-    rules: classNamesRules,
+    rules: exemptCustomRules(classNamesRules),
     recommended: classNamesRecommended,
   },
   { law: "env-owner", rules: envOwnerRules, recommended: envOwnerRecommended },
-  { law: "fe-stack", rules: feStackRules, recommended: feStackRecommended },
+  { law: "fe-stack", rules: exemptCustomRules(feStackRules), recommended: feStackRecommended },
   { law: "file-layout", rules: fileLayoutRules, recommended: fileLayoutRecommended },
   { law: "formatting", rules: formattingRules, recommended: formattingRecommended },
-  { law: "grammar-shim", rules: grammarShimRules, recommended: grammarShimRecommended },
+  { law: "grammar-shim", rules: exemptCustomRules(grammarShimRules), recommended: grammarShimRecommended },
   { law: "hooks-folder", rules: hooksFolderRules, recommended: hooksFolderRecommended },
   { law: "hygiene", rules: hygieneRules, recommended: hygieneRecommended },
-  { law: "landmark", rules: landmarkRules, recommended: landmarkRecommended },
-  { law: "lists", rules: listsRules, recommended: listsRecommended },
-  { law: "loading", rules: loadingRules, recommended: loadingRecommended },
+  { law: "landmark", rules: exemptCustomRules(landmarkRules), recommended: landmarkRecommended },
+  { law: "lists", rules: exemptCustomRules(listsRules), recommended: listsRecommended },
+  { law: "loading", rules: exemptCustomRules(loadingRules), recommended: loadingRecommended },
   { law: "directive-first", rules: directiveFirstRules, recommended: directiveFirstRecommended },
-  { law: "renderer-purity", rules: rendererPurityRules, recommended: rendererPurityRecommended },
-  { law: "explicit-surface", rules: explicitSurfaceRules, recommended: explicitSurfaceRecommended },
-  { law: "skeleton-states", rules: skeletonStatesRules, recommended: skeletonStatesRecommended },
+  { law: "renderer-purity", rules: exemptCustomRules(rendererPurityRules), recommended: rendererPurityRecommended },
+  { law: "explicit-surface", rules: exemptCustomRules(explicitSurfaceRules), recommended: explicitSurfaceRecommended },
+  { law: "skeleton-states", rules: exemptCustomRules(skeletonStatesRules), recommended: skeletonStatesRecommended },
   { law: "lint-escape-hatch", rules: lintEscapeRules, recommended: lintEscapeRecommended },
   { law: "naming", rules: namingRules, recommended: namingRecommended },
-  { law: "native-controls", rules: nativeControlsRules, recommended: nativeControlsRecommended },
+  { law: "native-controls", rules: exemptCustomRules(nativeControlsRules), recommended: nativeControlsRecommended },
   { law: "next-conventions", rules: nextConventionsRules, recommended: nextConventionsRecommended },
   { law: "props-and-slots", rules: propsRules, recommended: propsRecommended },
   { law: "served-locale", rules: servedLocaleRules, recommended: servedLocaleRecommended },
   { law: "shape-slot", rules: shapeSlotRules, recommended: shapeSlotRecommended },
-  { law: "drawing", rules: drawingRules, recommended: drawingRecommended },
+  { law: "drawing", rules: exemptCustomRules(drawingRules), recommended: drawingRecommended },
   { law: "size-and-state-budget", rules: sizeBudgetRules, recommended: sizeBudgetRecommended },
   { law: "size-growth", rules: sizeGrowthRules, recommended: sizeGrowthRecommended },
-  { law: "surface-rules", rules: surfaceRules, recommended: surfaceRulesRecommended },
+  { law: "surface-rules", rules: exemptCustomRules(surfaceRules), recommended: surfaceRulesRecommended },
   { law: "the-split", rules: splitRules, recommended: splitRecommended },
-  { law: "tokens", rules: tokensRules, recommended: tokensRecommended },
+  { law: "tokens", rules: exemptCustomRules(tokensRules), recommended: tokensRecommended },
   { law: "translation", rules: translationRules, recommended: translationRecommended },
   { law: "transport", rules: transportRules, recommended: transportRecommended },
   { law: "type-safety", rules: typeSafetyRules, recommended: typeSafetyRecommended },
   { law: "sonar-parity", rules: sonarParityRules, recommended: sonarParityRecommended },
-  { law: "spacing", rules: spacingRules, recommended: spacingRecommended },
+  { law: "spacing", rules: exemptCustomRules(spacingRules), recommended: spacingRecommended },
 ]
 
 /** Every gathered law. */

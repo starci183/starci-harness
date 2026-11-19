@@ -57,8 +57,7 @@ they keep the grammar's tokens, theme and forced-colours mapping; a trigger outs
 overlay in `<body>`. Mount exactly one `Toaster`, inside the root; it renders in place with one polite and one
 assertive live region, so a second one duplicates every announcement. The root also owns client-side
 navigation: it takes the app router's `navigate` and `useHref` once and mounts the vendor `RouterProvider`, so every
-Grammar `href` (a `Link`, a `Button`, a `Page` breadcrumb, a `ListBox` or `Menu` item, a `DataTable` row, a
-`FlowGraph` node) navigates inside the app without a reload; the app mounts no router provider of its own. This is
+Grammar `href` (a `Link`, a `Button`, a `Page` breadcrumb, a `ListBox` or `Menu` item, a `DataTable` row) navigates inside the app without a reload; the app mounts no router provider of its own. This is
 the only statement of these rules; grammar files and lint cite it.
 
 ## Idioms

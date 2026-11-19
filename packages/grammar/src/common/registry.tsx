@@ -1,7 +1,7 @@
 "use client"
 
 import {
-    Badge, Button, CalendarDay, Code, MessageBubble, MessageCard, MessageStatus, PaneGrid, Pane, PaneSection, PaneHeader, PaneDrawerOpener, PageIntro, Inset, DisclosureList, PrimaryRailLayout, Board, ScheduleGrid, BarChart, Sparkline, ProportionBar, ChoiceChips, Divider, Sublabel, EmptyNotice, FencedCodeBlock, Freestyle, GrammarRoot,
+    Badge, Button, CalendarDay, Code, MessageBubble, MessageCard, MessageStatus, PaneGrid, Pane, PaneSection, PaneHeader, PaneDrawerOpener, PageIntro, Inset, DisclosureList, PrimaryRailLayout, Board, ScheduleGrid, BarChart, Sparkline, ProportionBar, ChoiceChips, Divider, Sublabel, EmptyNotice, FencedCodeBlock, Freestyle, Custom, GrammarRoot,
     EntryFrame, Heading, HorizontalScrollRegion, Icon, IconButton, IconTile, Input,
     Markdown, MarkdownArticle, MarkdownTableFrame, Mascot, MediaFrame,
     NavLandmark, OtpInput, Page, PinnedActionBar, PressableField,
@@ -27,7 +27,7 @@ type ExtensionWithoutCommonCollisions<Common extends GrammarRendererRegistry, Ex
 
 export const COMMON_GRAMMAR_COMPONENTS = Object.freeze({
     IntervalChart, FunnelChart, Legend,
-    Badge, Button, CalendarDay, Code, MessageBubble, MessageCard, MessageStatus, PaneGrid, Pane, PaneSection, PaneHeader, PaneDrawerOpener, PageIntro, Inset, DisclosureList, PrimaryRailLayout, Board, ScheduleGrid, BarChart, Sparkline, ProportionBar, ChoiceChips, Divider, Sublabel, EmptyNotice, FencedCodeBlock, Freestyle, GrammarRoot,
+    Badge, Button, CalendarDay, Code, MessageBubble, MessageCard, MessageStatus, PaneGrid, Pane, PaneSection, PaneHeader, PaneDrawerOpener, PageIntro, Inset, DisclosureList, PrimaryRailLayout, Board, ScheduleGrid, BarChart, Sparkline, ProportionBar, ChoiceChips, Divider, Sublabel, EmptyNotice, FencedCodeBlock, Freestyle, Custom, GrammarRoot,
     EntryFrame, Heading, HorizontalScrollRegion, Icon, IconButton, IconTile, Input,
     Markdown, MarkdownArticle, MarkdownTableFrame, Mascot, MediaFrame,
     NavLandmark, OtpInput, Page, PinnedActionBar, PressableField,

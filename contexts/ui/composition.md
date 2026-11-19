@@ -382,7 +382,6 @@ to 1279, phone below 768. Type stays 14 / 12 at every tier. Page inset 32 / 24 /
 | Workspace (B): panes | selection pane, main pane and right aside all visible | the aside becomes a Drawer opened by a header button | one pane at a time: choosing in the list opens the detail full screen with a back button; chat is the thread full screen with the composer pinned to the bottom; the aside is a bottom sheet |
 | App sidebar | collapses to icons | icons | a menu button (the drawer) |
 | A page-level primary action | in the header | in the header | pinned to the bottom (`PinnedActionBar`) |
-| FlowGraph | drawn | drawn | not shown: the app passes the step list in its place (Grammar draws no graph below 768) |
 
 ### RESPONSIVE-4 Pressure that is not width
 Zoom, text scaling, translation growth, the virtual keyboard and safe areas recompose the layout; no fixed text

@@ -66,7 +66,7 @@ type PaneBaseProps = {
     /**
      * What the pane holds (0.36.0, MEASURE-8). `cards`: a pink well of cards; its content is capped at `--grammar-content-max` (80rem) and centred INSIDE the pane,
      * while the pane itself spans its grid track. `full`: a chat, a graph canvas or an editor, full-bleed, never capped. Default: `cards` for a pane on the
-     * canvas, `full` for a pane on the surface (a side pane); a pane that holds a chat thread (`PaneSection scroll role="log"`) or a `FlowGraph` is `full`
+     * canvas, `full` for a pane on the surface (a side pane); a pane that holds a chat thread (`PaneSection scroll role="log"`) is `full`
      * unless this prop says `cards`.
      * `chat` (0.37.33, DNA-COMMON-CHAT-FRAME): the pane IS one chat (its head, the thread, the composer `footer`): full-bleed, and the whole frame (head band,
      * thread, footer) is `--background` on any page, in an aside or in a drawer, whatever `surface` says; the composer field stays white, the 1px lines between

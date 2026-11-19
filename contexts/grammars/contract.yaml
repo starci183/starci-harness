@@ -471,6 +471,18 @@ roles:
     dna: []
     lint: [starci-grammar/freestyle-has-reason]
 
+  - id: custom
+    ui: ui/components/custom.md
+    renderers: [Custom]
+    vendorParity: []                              # no HeroUI part: a Common region
+    slots: ["children: the app's own markup, code and libraries", "as: the intrinsic element it renders, a div by default", "reason: required, why no Grammar component fits"]
+    variants: {}
+    sizes: none
+    states: []
+    grammarMayChange: ["nothing: it adds no paint, inset or radius"]
+    dna: [DNA-COMMON-CUSTOM-REASON, DNA-COMMON-NO-GRAPH-OR-MOTION-LIBRARY]
+    lint: [starci-grammar/custom-has-reason, starci-grammar/no-graph-or-animation-library, starci-fe/custom-only-library]
+
   - id: message-status
     ui: ui/components/message-bubble.md
     renderers: [MessageStatus]
@@ -593,19 +605,15 @@ roles:
 
   - id: diagram
     ui: ui/components/diagram.md
-    renderers: [MermaidDiagram, FlowGraph, BubbleMap]
+    renderers: [MermaidDiagram]
     vendorParity: [skeleton, alert]
-    slots: ["MermaidDiagram: source, label, errorTitle", "FlowGraph: label, nodes (label, description, tone, kind, size, shape, isDimmed, count, href, position; steps: outputs, chips, container (label, chips, childIds; kind loop: description, exits, note), agent, status), edges (source, target, label; steps: sourcePort, variant, isTaken, isFallback), headers, legend", "BubbleMap: label, nodes (label, description, tone, form, mark, caption, diameter, fill, ring, isDimmed, href), edges (source, target), expandedIds, fanLimit"]
+    slots: ["MermaidDiagram: source, label, errorTitle"]
     variants:
-      height: { values: [sm, md, lg, fill], chosenBy: "app from the drawing; fill (FlowGraph steps) = the rest of the page height, the map of one workflow on its own page" }
-      nodeShape: { values: [stadium, rect, round, diamond, circle], chosenBy: app from the node's meaning }
-      layout: { values: [radial, layered, manual, lanes], chosenBy: app, meaning: "FlowGraph only; a value-sized map of bubbles is BubbleMap" }
-      nodeForm: { values: [label, bubble], chosenBy: app from the node's meaning }
-      nodeFill: { values: [solid, half, soft, outline, hatched], chosenBy: app from the status }
+      height: { values: [sm, md, lg], chosenBy: "app from the drawing" }
     sizes: none
-    states: [loading (skeleton at the reserved box), ready, error (title and the source as code, in the region), empty (FlowGraph, BubbleMap)]
-    grammarMayChange: [frame, node and edge paint through tokens]
-    dna: [DNA-COMMON-DIAGRAM-LOADING-BOX, DNA-COMMON-DIAGRAM-NAMED, DNA-COMMON-DIAGRAM-ERROR-SOURCE, DNA-COMMON-FLOW-EDGE-LABEL-SPOKEN, DNA-COMMON-FLOW-LANE-LABEL-ABOVE-LINES, DNA-COMMON-FLOW-LANE-LABEL-OPAQUE, DNA-COMMON-BUBBLE-TEXT-INSIDE-START, DNA-COMMON-BUBBLE-TEXT-INSIDE-END, DNA-COMMON-FLOW-READABLE-FLOOR, DNA-COMMON-FLOW-OPEN-ZOOM, DNA-COMMON-FLOW-CARD-SIZE, DNA-COMMON-FLOW-EDGE-DOT-ON-EDGE, DNA-COMMON-FLOW-SELECTED, DNA-COMMON-FLOW-BRANCH-LANES, DNA-COMMON-FLOW-DIAMOND, DNA-COMMON-FLOW-LOOP-FRAME]
+    states: [loading (skeleton at the reserved box), ready, error (title and the source as code, in the region)]
+    grammarMayChange: [frame paint through tokens]
+    dna: [DNA-COMMON-DIAGRAM-LOADING-BOX, DNA-COMMON-DIAGRAM-NAMED, DNA-COMMON-DIAGRAM-ERROR-SOURCE]
 
 # The DNA: every constraint a grammar keeps, each one law with the measurement a DNA gate performs on a render.
 # Layer 1 of grammars/README.md#three-layers: a DNA entry is a constraint, never a judgement; a choice rule moves here
@@ -724,7 +732,6 @@ mustKeep:
           - { select: '[data-component="Avatar"][data-grammar-avatar-size="lg"]', value: 48px }
           - { select: '[data-component="Avatar"][data-grammar-avatar-size="control"]', value: 40px }
       owner: ui/scale.md scale.choose.step
-      followUp: "owner-triage 2026-11-18: the agent avatar inside a FlowGraph step draws at 16px, off the 32/40/48 ramp; is a node avatar on the ramp?"
     - id: DNA-COMMON-BAR-ONE-HEIGHT
       role: shell
       law: Every control in a bar has one height, the md height.
@@ -1308,8 +1315,8 @@ mustKeep:
       owner: ui/presentation.md
     - id: DNA-COMMON-TYPE-SENTENCE-CASE
       role: list
-      law: "No ALL CAPS in the console: sublabels, flow-graph headers and badges are drawn in sentence case, never text-transform uppercase."
-      measure: { kind: style, select: ':is(.starci-core-sublabel, .starci-core-flow-graph-header, .starci-core-badge)', checks: [{ metric: text-transform, op: "=", value: none }] }
+      law: "No ALL CAPS in the console: sublabels and badges are drawn in sentence case, never text-transform uppercase."
+      measure: { kind: style, select: ':is(.starci-core-sublabel, .starci-core-badge)', checks: [{ metric: text-transform, op: "=", value: none }] }
       owner: ui/presentation.md
     # --- batch 174 (0.48.0): phone fixes from the screen-clean and site lanes
     - id: DNA-COMMON-EMPTY-LINE-PLAIN
@@ -1743,16 +1750,6 @@ mustKeep:
       measure: { kind: style, select: '[data-grammar-pane-section-rule="start"]', checks: [{ metric: border-top-width, op: "=", value: 1px }, { metric: border-bottom-width, op: "=", value: 0px }, { metric: border-top-color, op: "=", value: { token: --separator } }] }
       owner: contract roles.pane-grid
       followUp: "owner-triage 2026-11-18: a PaneSection footer in the chat-frame story draws no top rule"
-    - id: DNA-COMMON-BUBBLE-TEXT-INSIDE-START
-      role: diagram
-      law: "The name and the count inside a bubble start inside the disc: neither the left nor the top edge of the text block passes the disc's (R4-22, never cut)."
-      measure: { kind: relation, select: '.starci-core-flow-graph-text', metric: [left, top], op: ">=", tolerance: 1, ref: { within: '.starci-core-flow-graph-disc', select: self, metric: [left, top] } }
-      owner: contract roles.diagram
-    - id: DNA-COMMON-BUBBLE-TEXT-INSIDE-END
-      role: diagram
-      law: "The name and the count inside a bubble end inside the disc: neither the right nor the bottom edge of the text block passes the disc's, so the text is never clipped by it."
-      measure: { kind: relation, select: '.starci-core-flow-graph-text', metric: [right, bottom], op: "<=", tolerance: 1, ref: { within: '.starci-core-flow-graph-disc', select: self, metric: [right, bottom] } }
-      owner: contract roles.diagram
     - id: DNA-COMMON-CHOICE-CHIPS-WRAP
       role: segmented-control
       law: The chips of one group have one height, so a wrapped row and a short row read as one set.
@@ -1920,54 +1917,18 @@ mustKeep:
         checks: [{ metric: row-gap, op: "=", value: 0px }, { metric: padding-block-start, op: "=", value: 0px }, { metric: padding-block-end, op: "=", value: 0px }]
       owner: ui/components/page-header.md
 
+    # --- custom (0.49.0): the escape hatch, and the libraries the Grammar never imports
+    - id: DNA-COMMON-CUSTOM-REASON
+      role: custom
+      law: "A Custom region names its reason, a non-empty string literal saying why no Grammar component fits; the reason is stamped on the DOM and listed by the Custom inventory."
+      measure: { kind: source, check: "lint:starci-grammar/custom-has-reason" }
+      owner: ui/components/custom.md
+    - id: DNA-COMMON-NO-GRAPH-OR-MOTION-LIBRARY
+      role: custom
+      law: "The Grammar imports no graph or flow toolkit (@xyflow/react) and no animation library (motion, motion/react, framer-motion, gsap, react-spring, lottie, ...), and declares none as a dependency or peer; its motion is the CSS transitions its tokens drive. An app uses such a library only inside Custom (starci-fe/custom-only-library)."
+      measure: { kind: source, check: "lint:starci-grammar/no-graph-or-animation-library" }
+      owner: ui/components/custom.md
     # --- diagram
-    - id: DNA-COMMON-FLOW-READABLE-FLOOR
-      role: diagram
-      law: "A contained FlowGraph fit (every steps graph, any fit=\"contain\") never draws below zoom 0.8 (CONTAIN_MIN_ZOOM; 0.6 in 0.37.26, owner 'Nâng 0.8' in 0.37.29): a graph that needs less is held at 0.8, its canvas grows to the graph up to the height cap (lg 512px when none), the first view shows the entry node and the reader pans, wide graphs on a desktop pane included; the canvas is never shorter than the zoom controls column."
-      measure: { kind: style, select: '[data-component="FlowGraph"][data-grammar-flow-layout="steps"] .react-flow__viewport', metric: scale, op: ">=", value: 0.8 }
-      owner: ui/components/diagram.md
-    - id: DNA-COMMON-FLOW-OPEN-ZOOM
-      role: diagram
-      law: "A steps graph opens fitted to its pane (0.42.0): at zoom 1 when it fits there (never magnified), otherwise scaled down until its last column is in view, at any pane width, inside a 12px margin; it never opens below the readable floor 0.8 (DNA-COMMON-FLOW-READABLE-FLOOR), where a graph that would need less opens at 0.8 at its entry node and pans. Before 0.42.0 a fit under 0.95 opened at zoom 1 at the entry, which cut off the end of a wide graph at 1440 and 1920. The least zoom stays 0.8. The zoom controls take room at the start edge only where the graph would stand beside them. height=\"fill\" makes the frame the rest of the page height, at least 360px (owner-approved drawing graph-state, 0.37.33)."
-      measure: { kind: style, select: '[data-component="FlowGraph"][data-grammar-flow-layout="steps"] .react-flow__viewport', metric: scale, op: ">=", value: 0.8 }
-      owner: ui/components/diagram.md
-    - id: DNA-COMMON-FLOW-CARD-SIZE
-      role: diagram
-      law: "A steps card is 176 x 64 at zoom 1 (owner-approved drawing graph-selected, 0.37.35; ports add rows under the body), never narrower than 176 and wider only where an edge needs room (the measure is the layout width, not the painted width at the graph's zoom), its title 14 wrapping to at most two lines (the card grows by the second line only) and its one line 12, cut with an ellipsis; across (LR) cards stand 40 apart along the flow and 40 apart across it, each taking its own height, wider only where an edge out of the layer needs room for a label, branch lanes or back-edge channels; the end pill stands 40 after its source."
-      measure:
-        kind: style
-        select: '[data-component="FlowGraph"][data-grammar-flow-layout="steps"] .starci-core-flow-graph-step:not([data-kind="end"])'
-        checks: [{ metric: width, op: ">=", value: 176px }]
-      owner: ui/components/diagram.md
-    - id: DNA-COMMON-FLOW-SELECTED
-      role: diagram
-      law: "A selected steps card has ONE border, 2px, in its status colour (done success, failed danger, waiting warning, running accent, skipped and not reached muted; a graph with no run status the foreground) and a soft tint of that colour as its ground, never a second ring: no outline and no box-shadow; an unselected card keeps one 1px border (in a run, its status colour). Keyboard focus shows only on focus-visible, a dashed 2px outline in the card's status colour 3px off the card (owner-approved drawing graph-selected, 0.37.35). A decision diamond draws that one border as its outline (DNA-COMMON-FLOW-DIAMOND)."
-      measure:
-        kind: style
-        select: '[data-component="FlowGraph"][data-grammar-flow-layout="steps"] .starci-core-flow-graph-step[data-grammar-selected="true"]:not([data-kind="end"]):not([data-grammar-flow-diamond])'
-        checks: [{ metric: border-width, op: "=", value: 2px }, { metric: box-shadow, op: "=", value: none }, { metric: outline-style, op: "=", value: none }]
-      owner: ui/components/diagram.md
-      followUp: "owner-triage 2026-11-18: a flow step draws a dashed outline (keyboard focus marker) where the law wants none"
-    - id: DNA-COMMON-FLOW-BRANCH-LANES
-      role: diagram
-      law: "Each edge that leaves a port of a steps card (a condition's branch) runs its own lane: it turns once out of its port into the lane and once into its target, no segment runs past the higher or lower of its port and its target, and no two branches share a lane (the climbing ones nearest the card, upper port first, then the descending ones, lower port first); the cards of a column take their own heights, so the branches stand beside the ports (0.37.35)."
-      measure: { kind: attr, select: '[data-component="FlowGraph"][data-grammar-flow-layout="steps"] [data-grammar-flow-lane]', metric: data-grammar-flow-lane, op: set }
-      owner: ui/components/diagram.md
-    - id: DNA-COMMON-FLOW-DIAMOND
-      role: diagram
-      law: "A steps node of shape diamond (a decision) is a diamond one card wide and 88 tall at zoom 1, its question inside at 14 medium in at most two lines, its outline the card's ONE border (1px, 2px in the status colour with the soft tint when selected, never a box border), each port's word 12 beside the vertex its branch leaves: a branch leaves the side vertex facing its target, across the flow, and turns once into it; a branch whose target stands ahead leaves the end vertex (0.39.1)."
-      measure: { kind: box, select: '[data-component="FlowGraph"][data-grammar-flow-layout="steps"] [data-grammar-flow-diamond]', metric: height, op: "=", value: 88px }
-      owner: ui/components/diagram.md
-    - id: DNA-COMMON-FLOW-LOOP-FRAME
-      role: diagram
-      law: "A steps loop frame (container kind loop) is a dashed muted outline with no fill round its body, its header the label (14 medium) and a muted description (12), its note a muted 12 line inside its bottom, and its ways out pills on its end edge, each the start of the edges of that way out (0.39.1)."
-      measure: { kind: style, select: '[data-component="FlowGraph"][data-grammar-flow-layout="steps"] [data-grammar-flow-container][data-kind="loop"]', checks: [{ metric: border-top-style, op: "=", value: dashed }] }
-      owner: ui/components/diagram.md
-    - id: DNA-COMMON-FLOW-EDGE-DOT-ON-EDGE
-      role: diagram
-      law: "The round dot a steps edge starts with is centred ON the source card's edge (its port, or the card's end edge), half on the card and half out, drawn above the card, and the edge leaves from it: every handle of a step card is a point exactly on the card's edge (0.37.33)."
-      measure: { kind: style, select: '[data-component="FlowGraph"] :is(.starci-core-flow-graph-step-handle, .starci-core-flow-graph-step-port-dot)', checks: [{ metric: width, op: "=", value: 0px }, { metric: height, op: "=", value: 0px }] }
-      owner: ui/components/diagram.md
     - id: DNA-COMMON-DIAGRAM-LOADING-BOX
       role: diagram
       law: A diagram reserves its canvas height in every state, so the loading skeleton and the error take the ready drawing's least box.
@@ -1990,22 +1951,6 @@ mustKeep:
       law: A source the renderer refuses stays in the diagram's region as code under the error.
       measure: { kind: count, scope: '[data-grammar-mermaid-state="error"]', select: '[data-component="FencedCodeBlock"] code', op: "=", value: 1 }
       owner: ui/components/diagram.md
-    - id: DNA-COMMON-FLOW-EDGE-LABEL-SPOKEN
-      role: diagram
-      law: Every labelled FlowGraph edge is repeated in the graph's screen-reader edge list.
-      measure: { kind: count, scope: '[data-component="FlowGraph"]', select: '[data-grammar-flow-edge-fallback] li', op: "=", value: { count: ':is(.react-flow__edge-text, [data-grammar-flow-edge-label])', offset: 0 } }
-      owner: ui/components/diagram.md
-      followUp: "owner-triage 2026-11-18: steps-run and white-theme flow stories draw edge labels the law counts unspoken: stories or a11y of the edge label"
-    - id: DNA-COMMON-FLOW-LANE-LABEL-ABOVE-LINES
-      role: diagram
-      law: A lanes branch label is drawn in the edge label layer, above every edge line, never inside an edge's own drawing, where a line drawn after it crosses its words.
-      measure: { kind: count, select: '[data-component="FlowGraph"][data-grammar-flow-layout="lanes"] :is(.react-flow__edge-text, [data-grammar-flow-edge-label]:not(.react-flow__edgelabel-renderer *))', op: "=", value: 0 }
-      owner: ui/components/diagram.md workflow
-    - id: DNA-COMMON-FLOW-LANE-LABEL-OPAQUE
-      role: diagram
-      law: A lanes branch label is an opaque chip on the canvas background, so the line it sits on stops at its words.
-      measure: { kind: style, select: '[data-component="FlowGraph"][data-grammar-flow-layout="lanes"] [data-grammar-flow-edge-label]', metric: background-color, op: "=", value: { token: --surface } }
-      owner: ui/components/diagram.md workflow
   core:
     - id: DNA-CORE-PAGE-HEADER-HAIRLINE
       role: page

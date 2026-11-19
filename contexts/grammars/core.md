@@ -53,7 +53,7 @@ scoped rules `src/core/styles.css`, root `CoreGrammarRoot` (`src/core/index.ts`)
 | Shell | Common shell painted by `surface` and `separator`; the bar is a solid surface band with a full-width separator |
 | Page header | The same band as the bar: `surface` fill and a full-width 1px `separator` hairline at its bottom edge; page tabs stand on the hairline with the accent underline over it |
 | Page | Common's frame: the core band, the body in the measure and gutter a region step below it |
-| Diagram | The FlowGraph frame (`separator` edge, surface radius, `surface` fill) for both renderers; Mermaid drawn in the root's `surface`, `foreground`, `border` and `muted` tokens |
+| Diagram | The diagram frame (`separator` edge, surface radius, `surface` fill); Mermaid drawn in the root's `surface`, `foreground`, `border` and `muted` tokens |
 
 ## Departures
 

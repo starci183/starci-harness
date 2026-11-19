@@ -24,6 +24,7 @@ export default defineConfig(
         linterOptions: { noInlineConfig: true, reportUnusedDisableDirectives: "error" },
         rules: {
             "@typescript-eslint/ban-ts-comment": "error",
+            "starci-grammar/no-graph-or-animation-library": "error",
             "starci-grammar/no-literal-look": "error",
             "starci-grammar/tier-props": "error",
             // Counting, not failing: the findings are the tier refactor list of grammar audit Appendix B (34 prop budgets, 25 state hooks); each fixed component moves the rule closer to error.

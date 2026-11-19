@@ -455,21 +455,3 @@ export const PaneFooterRule: Story = {
         </div>
     ),
 }
-
-const nameNodes: ReadonlyArray<G.BubbleMapNode> = [
-    { id: "root", label: "Acme", form: "bubble", mark: "Acme", diameter: 96, isRoot: true },
-    { id: "legal", label: "Legal", form: "bubble", caption: "Legal", detail: "3 files", diameter: 64 },
-    { id: "premises", label: "Premises", form: "bubble", caption: "Premises", detail: "12 files", diameter: 80 },
-    { id: "prices", label: "Price list and menu", form: "bubble", caption: "Price list and menu", detail: "8 files", diameter: 104 },
-    { id: "labour", label: "Labour contracts", form: "bubble", caption: "Labour contracts and policies", detail: "21 files", diameter: 128 },
-]
-const nameEdges: ReadonlyArray<G.BubbleMapEdge> = nameNodes.slice(1).map((node) => ({ id: `root-${node.id}`, source: "root", target: node.id }))
-
-/** A category bubble prints its name and a count line inside the disc, whatever the name's length, never cut (DNA-COMMON-BUBBLE-TEXT-INSIDE). */
-export const BubbleNames: Story = {
-    render: () => (
-        <div data-story-bubble-names="true">
-            <G.BubbleMap label="Dossier categories" nodes={nameNodes} edges={nameEdges} fit="contain" height="30rem" />
-        </div>
-    ),
-}

@@ -7,7 +7,6 @@ import { Skeleton } from "../../leaf/Skeleton/index.js"
 import { ErrorView, type ErrorData } from "../../loadingState.js"
 import { useIsLoading, useRegionOwnsBusy } from "../../regionScope.js"
 import type { NoChildren } from "../../tier.js"
-import type { FlowGraphHeight } from "../FlowGraph/types.js"
 import { boundsOf, clusterPoints, fitBounds, panBy, tileAddress, tilesFor, zoomAbout, type Cluster, type GeoView, type Pixel, type Size } from "./projection.js"
 
 /** One place on the map: where it is, and how many things are there. */
@@ -59,7 +58,7 @@ export type GeoMapProps = NoChildren & {
     /** What shows in place of the map when there is no point. Required: a map answers for its empty state. */
     readonly empty: ReactNode
     /** The map's height: `sm` 16rem, `md` 24rem (default), `lg` 32rem, a number of pixels, or a CSS length. */
-    readonly height?: FlowGraphHeight | number | string
+    readonly height?: "sm" | "md" | "lg" | number | string
     /** Where the map starts. Left out, it opens on every point. */
     readonly defaultView?: { readonly lat: number; readonly lng: number; readonly zoom: number }
     /** A single point was pressed (a cluster zooms in instead). Given, points are buttons; left out, they are marks. */

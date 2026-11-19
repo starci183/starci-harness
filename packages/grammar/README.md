@@ -15,7 +15,7 @@ only: props, DOM, ARIA and keyboard behaviour stay the same.
 npm install @starci/grammar @heroui/react react react-dom
 ```
 
-The package needs Node.js 22 or newer. Its peer dependencies are React 18+, `@xyflow/react` 12 (for `FlowGraph` and `BubbleMap`) and `@heroui/react`
+The package needs Node.js 22 or newer. Its peer dependencies are React 18+, `react-aria-components` and `@heroui/react`
 3.2+. Mermaid (for `MermaidDiagram`) is a pinned dependency, imported lazily on the first diagram. Load the HeroUI stylesheet once in the app, as HeroUI's own setup describes. Then import
 exactly one Grammar family stylesheet. Each family sheet already imports Common anatomy first.
 
@@ -149,7 +149,7 @@ offset shadow and a pink decision accent. Text that uses the accent is drawn in 
 
 Every Grammar root (`GrammarRoot`, `CoreGrammarRoot`, `OffsetPopGrammarRoot`) accepts `navigate(path)` and `useHref(href)` and
 mounts react-aria's `RouterProvider`. Pass your router's functions once at the root and every Grammar `Link`, `Button href`,
-`Breadcrumbs` item, `ListBox`/`Menu` item `href` and `FlowGraph` node `href` navigates inside the app without a reload.
+`Breadcrumbs` item, `ListBox`/`Menu` item `href` `href` navigates inside the app without a reload.
 
 ```tsx
 import { useHref, useNavigate } from "react-router-dom"
@@ -186,47 +186,6 @@ to mean unresolved-content skeleton geometry.
 `isLoading`. Existing `Cluster` and `Text` place the swatch beside its visible name and value. It takes no arbitrary
 content, class, style, size or status tone; the vendor owns the color preview and transparency checkerboard.
 
-### BubbleMap
-
-`BubbleMap` is the value-sized map: the root in the centre, its children in sectors on a second ring, their children staggered on a third and
-the fans of the open ring-three nodes on a fourth. `bubbleDiameter(value, max)` sizes a bubble so its area tracks the value; `expandedIds`,
-`defaultExpandedIds`, `onExpandedChange` and `fanLimit` open and limit the fans. It shares the canvas, the fit and the screen-reader lists
-with `FlowGraph`.
-
-### FlowGraph layouts
-
-`FlowGraph` places nodes with `layout`: `radial` (the default), `layered` (a DAG in layers), `manual` (each node's `position`),
-`lanes` (the older left-to-right branch map) or `steps` (the card map of a workflow, below).
-`direction="TB" | "LR"` puts the target handle on the entering side and the source handle on the leaving side so edges run along the
-layout, and selects `layered` when no layout is given. `headers={[{ label, at }]}` draws a column header above each layer for `LR` and
-a lane header beside it for `TB` (`at` is the layer index in `layered`, graph units in `manual`). `height` takes `sm | md | lg`, a number
-(pixels) or any CSS length. A node with `href` is a link through the root's router and one keyboard stop.
-
-A node's `shape` is its flowchart outline: `stadium` (the default pill), `rect`, `round`, `diamond` (a decision) or
-`circle` (a start or end). An edge's `label` is drawn on a chip at its midpoint and repeated, as "source → target:
-label", in the graph's visually hidden edge list.
-
-### FlowGraph overview map and edge routing (0.39.4)
-
-`minimap` draws an overview map of the whole graph in the canvas's end-bottom corner, beside the zoom controls: one muted block per card (measured, so a dragged card is where it stands), the part in view cut out of a veil, in the surface
-and separator tokens (`.starci-core-flow-graph-minimap`). A press or drag in it centres the canvas there. It is off by default, drawn only while the graph is interactive and hidden under 48rem; `minimapLabel` names it.
-
-A `steps` edge goes round the cards (0.39.4): when an edge's drawn route (a join that skips layers, a loop back to an earlier step) would cross a card other than its own two ends, the stretch between its leaving and entering runs is routed round
-the cards by an orthogonal shortest path (fewest turns, `STEPS_AVOID_CLEARANCE` clear of each card; `stepsAvoidRoute`, `routeAroundBoxes`). An edge that crosses nothing is drawn as before. The obstacles are the measured cards, so a dragged card
-and a card that grew are obstacles where they stand; a loop frame is not one. Stories `Flow graph edge routing and minimap (0.39.4)` sample every edge's drawn path and assert none enters another card.
-
-### FlowGraph steps (0.35.0)
-
-`layout="steps"` is the card map of a workflow, top-down by default (`direction="LR"` runs across), on the well (`--background`) with no
-grid. Every node is a white card with a 32 icon tile in its `kind`'s soft pair: `event`, `action`, `condition`, `ask` (needs the owner),
-`wait` (dashed card) and `end` (a pill with a check); the `lanes` kinds map on (`trigger` event, `execute` action, `output` end). A node
-takes `icon` (an `IconSource` or a node; the kind's glyph otherwise), `tag` (a corner pill, "Trigger"), and for a condition `outputs`
-(`[{ id, label }]`, left to right along its bottom; left out, they are the labels of its outgoing edges). An edge leaves its port by
-`sourcePort`; `variant: "back"` (or `"return"`) draws it dashed, routed round the cards, its `label` a pill on it. The run overlay is node
-`status` (`done`, `running`, `failed`, `waiting`, `skipped`) and edge `isTaken`. `onNodePress(id)` fires on press, `legend` adds a row of
-kinds, `kindTones` maps a kind to another tone (Core's palette maps purple, teal and coral to accent, success and danger), and
-`statusLabels` gives the status words of the accessible names.
-
 ### MermaidDiagram
 
 `MermaidDiagram` renders Mermaid text (an article's `mermaid` fence) to SVG in the browser. Mermaid is imported on the
@@ -240,11 +199,19 @@ with a skeleton and loads nothing. A source Mermaid refuses becomes an error ins
 <MermaidDiagram label="Request flow" source={fence.value} errorTitle={t("diagramFailed")} />
 ```
 
+### Custom (0.49.0)
+
+`<Custom reason="...">` is the escape hatch: a region (a `div`, or any intrinsic element through `as`) where any markup, any class name and any library is allowed, because no Grammar component fits. It takes `reason` (required, stamped as `data-grammar-custom-reason`), children and the attributes of its element, and adds no paint of its own. The Grammar lint reports nothing inside it; every rule outside it stays. The Grammar draws no graph and imports no graph or animation library (`npm run check:libraries`; motion is the CSS transitions its tokens drive), so an app that needs `@xyflow/react` or `motion` uses it inside a `Custom` and declares it itself. `starci-custom-inventory` (from `@starci/eslint-grammar-core`) lists every use.
+
+```tsx
+<Custom reason="workflow graph editor"><WorkflowCanvas nodes={nodes} edges={edges} /></Custom>
+```
+
 ### Flat table, section head, scroll law, tab chips
 
 - `DataTable` has one flat look and is never a card: the column labels 12 / 500 muted over a `--border` line, hairline (`--separator`) rows, no fill, radius, shadow or outer edge; `footer` takes a `Pagination` with its `summary`. A table stands under its `Section`: `<Section title count filter={…}><DataTable … footer={<Pagination … />} /></Section>`. A selected row is `--default` with a 2px accent bar on its start edge.
 - A `Section` head is one row: label (14, 500) and a count chip at the start, at most one `Link variant="head"` (label then a sliding `→`), one `IconButton` or one neutral sm text `Button` at the end. `description` is a caption below the body (12, muted). Lint: `section-head-action`.
-- The page header band is sticky; in a workspace page each pane scrolls on its own with its head sticky and no visible scrollbar. `Pane content="cards" | "full"`: only the content of a cards pane is capped at 80rem; chat and FlowGraph panes are full.
+- The page header band is sticky; in a workspace page each pane scrolls on its own with its head sticky and no visible scrollbar. `Pane content="cards" | "full"`: only the content of a cards pane is capped at 80rem; chat panes are full.
 - Tab counts are 12px chips, grey; pink only with `isAttention`; page tabs hide a 0. Lint: `tab-count-chip`.
 
 ## Family scope and the overlay portal rule
@@ -276,7 +243,7 @@ rendered element is the folder (`tiers.grammar` of `@starci/hfs`; the machine ch
 
 `children` belongs to frames. Every other props type carries `NoChildren` (`children?: never`) or, for a leaf's text label, `LabelChild` (`children?: string`), both exported,
 so nested JSX under a leaf, branch or composite fails to compile for every caller. A node a component shows has a named prop for its role (`body`, `trigger`, `media`,
-`control`, `text`). `Text` alone keeps inline content, and `Freestyle` alone keeps `className`. `starci-grammar/tier-props` in this package's ESLint config refuses
+`control`, `text`). `Text` alone keeps inline content, and `Freestyle` and `Custom` alone keep `className`. `starci-grammar/tier-props` in this package's ESLint config refuses
 a `children` or `className` that breaks the tier.
 
 ## Components
@@ -468,8 +435,8 @@ A loading view keeps the titles, headings and labels it was given and draws the 
 <GeoMap label="Stores by area" points={cells} labels={words} tiles={{ url: "/tiles/vn/{z}/{x}/{y}.png", attribution: "© OpenStreetMap" }} empty={...} onSelect={openArea} />
 ```
 
-**Navigation & Data (17).** Accordion, AvatarGroup, Calendar, DataTable,
-BubbleMap, DescriptionList, Disclosure, FlowGraph, ListBox, LogoStack, MermaidDiagram, MessageStatus, Pagination, Stepper, Tabs, TagGroup, Timeline.
+**Navigation & Data (15).** Accordion, AvatarGroup, Calendar, DataTable,
+DescriptionList, Disclosure, ListBox, LogoStack, MermaidDiagram, MessageStatus, Pagination, Stepper, Tabs, TagGroup, Timeline.
 
 **The one suggestion pattern.** A quick reply, a suggested question or an empty state's shortcut is a `Cluster gap="inline"` of
 neutral `Button size="sm"` (every Button size is a pill, so the row reads as suggestions): the only pattern. A Chip, a
@@ -736,8 +703,7 @@ dividers, used when the page has a persistent selection or navigation column; it
 never cards, and the main pane may hold a pink well that follows the report law. One page, one frame type. `Page layout="report" | "workspace"` declares it (a mismatch with `chrome` throws). **The responsive law:** Grammar owns
 the breakpoints (desktop from 1280, tablet 768 to 1279, phone below 768); the page inset is 32 / 24 / 12 and the card gap 24 / 12 (the owner asked for 16 on a phone; the spacing scale has no 16 yet) and the
 content at most 1280 wide, type stays 14 / 12. A report keeps its figures ribbon in one row on a desktop, 3 columns on a tablet (five cells are 3 + 2) and 2 columns on a phone (an odd last cell spans its row: 2 + 2 + 1), and stacks equal cards below 1280; a
-workspace shows the aside as a Drawer on a tablet and one pane at a time on a phone. A FlowGraph is not shown on a phone: the app passes
-the step list there instead.
+workspace shows the aside as a Drawer on a tablet and one pane at a time on a phone. A graph an app draws itself (inside a Custom region, with any library) is the app's to adapt to a phone.
 
 **No scrollbars (OVERFLOW-6).** Grammar never shows scrollbars. Every scroll area Grammar draws (pane and `PaneSection scroll`, Drawer and Dialog bodies,
 ListBox, the chat thread, the tab strip, DataTable and code overflow, popovers) hides the bar (`scrollbar-width: none`, `::-webkit-scrollbar` none) and
@@ -914,7 +880,7 @@ person uses Avatar. The default `layout="row"` keeps the overlapping member row 
   on the page ground and a whole-action card's hover and press, the selected table row, the current page and today's schedule
   cell, the Sidebar's selected item (fill, words, weight and a start-edge bar), the underline colour of Tabs, the field focus ring,
   the toggle plates (ChoiceChips, FilterButtonGroup, RadioGroup rows, the Select pill), the destructive entry button's outline, the
-  chat faces, the Quote, and a selected FlowGraph step's ground.
+  chat faces, the Quote, and the Quote.
 - **Spacing.** Every family uses the Common 4px scale (`COMMON_SPACING_SCALE`,
   `COMMON_SPACING_TOKENS`), and Common's `--grammar-*-gap` / `--grammar-page-inset` variables.
 - **Dark.** The mode is the app's: `.dark` (or `data-theme="dark"`) on `html`, as HeroUI reads it. The roots take no

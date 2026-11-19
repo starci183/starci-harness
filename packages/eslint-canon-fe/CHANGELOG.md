@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased - 9.21.0 - Custom
+
+- Added: `lib/custom.ts` (`isCustomElement`, `inCustom`, `importUsedOnlyInCustom`, `customContext`, `exemptCustom`, `exemptCustomRules`): the Custom region of `@starci/grammar`. The canon laws that judge markup, look and libraries (`ui-rulings`, `brand-values`, `type-scale`, `button-intent`, `control-height`, `class-names`, `explicit-surface`, `grammar-shim`, `landmark`, `lists`, `loading`, `native-controls`, `drawing`, `surface-rules`, `tokens`, `spacing`, `renderer-purity`, `skeleton-states`, `fe-stack`) report nothing inside a `<Custom>` subtree, a same-file component only a region renders, or an import whose every use is there. Integrity laws are never exempted.
+- Added: `custom-only-library` (law `custom-libraries`): `motion`, `motion/*`, `framer-motion`, `@xyflow/react`, `reactflow`, `@reactflow/*` and `react-flow-renderer` are imported only for use inside a `<Custom>` region (a type-only import is free). The motion concern of the fe-stack catalog says so; the flow concern says an app draws its own graph.
+
 ## 9.20.4 - 2026-11-19
 
 - Added: `no-raw-font` (law `type-scale`, owner 2026-11-19): no raw font size, weight, style or case utility and no inline font style in app code; typography comes from the Grammar console scale.

@@ -236,12 +236,12 @@ rules:
         assert: |-
           A card is ONE object (a customer, an agent, a plan, a message): its name, its facts and its commands (`actions`). A second list, table, form or graph is not part of it: it stands
           flat in its own Section (a ribbon is `Section kind="figures"`); items of the same kind stay in one list. A card inside a card is refused. A label has no description under it:
-          the description is a caption under the card (Section caption, SurfaceCard note), and a legend (a FlowGraph's kinds) stands under the card as chips.
+          the description is a caption under the card (Section caption, SurfaceCard note).
       - id: case-2
         when: A surface is painted
         assert: |-
           Every card is white with a 1px `--border` edge, the card radius and no shadow, on every ground (the pink well, a Pane surface, the aside, a Drawer, a Dialog, a Popover). The Grammar
-          draws it; an app never chooses. A FlowGraph inside a card draws no frame of its own.
+          draws it; an app never chooses.
   - id: ICONS-OUTLINE
     title: Icons are outline only; a tile marks a standalone icon
     governs: Every icon Grammar and an app draw.
@@ -258,7 +258,7 @@ rules:
     governs: A SurfaceCard of the body kind and what it holds.
     cases:
       - id: case-1
-        when: A body SurfaceCard holds ONE content and that content is a DataTable, a Section (any kind), a DescriptionList, a DisclosureList or Accordion, a Form, Fieldset or lone field, an EmptyNotice, Markdown or MarkdownArticle, or a chart (BarChart, LineChart, Sparkline, ProportionBar, BubbleMap, FlowGraph, MermaidDiagram)
+        when: A body SurfaceCard holds ONE content and that content is a DataTable, a Section (any kind), a DescriptionList, a DisclosureList or Accordion, a Form, Fieldset or lone field, an EmptyNotice, Markdown or MarkdownArticle, or a chart (BarChart, LineChart, Sparkline, ProportionBar, MermaidDiagram)
         assert: |-
           A card is ONE object (a customer, an agent, a provider, a plan, a message, an approval), a dialog or an overlay; a collection, a form and a placeholder are never in a card.
           A table is `<Section title ...><DataTable .../></Section>`, a list `Section kind="list"`, facts `<Section title ...><DescriptionList isDivided items={...} /></Section>`,

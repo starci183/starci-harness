@@ -58,7 +58,7 @@ const COMPONENT_FILE = /[\\/]src[\\/]core[\\/](leaf|branch|composite|frame)[\\/]
 /** The one component whose content is inline (a sentence holds Code, Link and Kbd); the lint rule `text-inline-only` refuses a block in it. */
 const INLINE_CONTENT = new Set(["Text"])
 /** The one hole, with a stated reason (R341). */
-const CLASS_NAME_HOLE = new Set(["Freestyle"])
+const CLASS_NAME_HOLE = new Set(["Freestyle", "Custom"])
 /** Types of a part the component receives, not props it takes: an icon source's own props. */
 const RECEIVED = new Set(["ComponentType", "ElementType", "FunctionComponent"])
 const RECEIVED_SHAPE = new Set(["TSFunctionType", "TSConstructorType"])
@@ -235,4 +235,41 @@ export const tierState: Rule.RuleModule = {
     },
 }
 
-export default { rules: { "no-literal-look": noLiteralLook, "tier-props": tierProps, "prop-budget": propBudget, "tier-state": tierState } }
+/**
+ * The libraries the Grammar never imports: a graph or flow toolkit and every animation library. Grammar motion is CSS transitions
+ * its tokens drive (reduced motion honoured in the stylesheet), and a graph is not a Grammar component. An app that needs one
+ * writes it in its own code inside `<Custom reason="...">`. The same list is read by `scripts/check-libraries.mts`, which also
+ * judges the stories and the manifest, and mirrored by the canon rule `starci-fe/custom-only-library` for apps.
+ */
+export const BANNED_LIBRARIES: readonly RegExp[] = [
+    /^(?:motion|framer-motion)(?:\/|$)/u,
+    /^(?:@xyflow\/react|reactflow|react-flow-renderer|@reactflow\/[^/]+)(?:\/|$)/u,
+    /^(?:gsap|animejs|anime\.js|popmotion|react-transition-group|react-spring|@react-spring\/[^/]+|@formkit\/auto-animate|lottie-web|lottie-react|@lottiefiles\/[^/]+|velocity-animate)(?:\/|$)/u,
+]
+
+/** True for a module specifier the Grammar never imports. */
+export const isBannedLibrary = (specifier: string): boolean => BANNED_LIBRARIES.some((pattern) => pattern.test(specifier))
+
+/** The Grammar imports no graph toolkit and no animation library (static, re-export, dynamic or `require`). */
+export const noGraphOrAnimationLibrary: Rule.RuleModule = {
+    meta: { type: "problem", schema: [], docs: { description: "The Grammar imports no graph toolkit and no animation library; an app uses one only inside Custom." } },
+    create(context) {
+        const judge = (node: Rule.Node, specifier: unknown): void => {
+            if (typeof specifier === "string" && isBannedLibrary(specifier)) {
+                context.report({ node, message: `The Grammar never imports \`${specifier}\`: motion is CSS transitions its tokens drive, and a graph is app code. An app uses such a library only inside <Custom reason="...">.` })
+            }
+        }
+        return {
+            ImportDeclaration(node) { judge(node, node.source.value) },
+            ExportAllDeclaration(node) { judge(node, node.source.value) },
+            ExportNamedDeclaration(node) { if (node.source) judge(node, node.source.value) },
+            ImportExpression(node) { if (node.source.type === "Literal") judge(node, node.source.value) },
+            CallExpression(node) {
+                const argument = node.arguments[0]
+                if (nameOf(node.callee) === "require" && argument !== undefined && argument.type === "Literal") judge(node, argument.value)
+            },
+        }
+    },
+}
+
+export default { rules: { "no-graph-or-animation-library": noGraphOrAnimationLibrary, "no-literal-look": noLiteralLook, "tier-props": tierProps, "prop-budget": propBudget, "tier-state": tierState } }

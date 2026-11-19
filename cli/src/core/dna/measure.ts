@@ -337,7 +337,7 @@ export const installProbe = (judgePart: Judge): void => {
 
     // ---- metrics ----
     // A size is the box the layout gives, not the box a press, an entrance transform or a zoom paints: the scale of the element and of every ancestor
-    // (the viewport of a FlowGraph at zoom 0.8, a scaled stage) is divided out, so a 176px step card is 176 at any zoom.
+    // (a scaled stage, a viewport at zoom 0.8) is divided out, so a 176px step card is 176 at any zoom.
     const ownScale = (element: Element): { readonly x: number; readonly y: number } => {
         let x = 1
         let y = 1

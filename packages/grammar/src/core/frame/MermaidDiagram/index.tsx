@@ -7,7 +7,7 @@ import { FencedCodeBlock } from "../MarkdownArticle/index.js"
 import { resolveMermaidTheme, type MermaidThemeVariables } from "./theme.js"
 import type { NoChildren } from "../../tier.js"
 
-/** The canvas box every state reserves: `sm` 16rem, `md` 24rem, `lg` 32rem (the FlowGraph heights). */
+/** The canvas box every state reserves: `sm` 16rem, `md` 24rem, `lg` 32rem. */
 export type MermaidDiagramHeight = "sm" | "md" | "lg"
 
 export type MermaidDiagramProps = NoChildren & {

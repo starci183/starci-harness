@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased - 0.49.0
+
+- Changed: the family version 0.49.0 (Custom, the removal of FlowGraph and BubbleMap in @starci/grammar). The rules are the core family's: `custom-has-reason` is new and a `<Custom>` subtree is left alone.
+
 ## 0.48.0 - 2026-11-19
 
 - Changed: the family version 0.48.0 (label over content, the padded list body, settings rows, ExpandableText and the batch 174 fixes of @starci/grammar). No rule change.

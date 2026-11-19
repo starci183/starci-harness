@@ -15,7 +15,7 @@ import type { Context, Node } from "./lib/types.ts"
  *   - a form or a lone field: `Form`, `Fieldset`, `Input`, `Textarea`, `Select`, `ComboBox`, `SearchField`, `NumberField`, `RadioGroup`, `CheckboxGroup`
  *   - a placeholder: `EmptyNotice`
  *   - markdown: `Markdown`, `MarkdownArticle`
- *   - a chart: `BarChart`, `LineChart`, `Sparkline`, `ProportionBar`, `BubbleMap`, `FlowGraph`, `MermaidDiagram`
+ *   - a chart: `BarChart`, `LineChart`, `Sparkline`, `ProportionBar`, `MermaidDiagram`
  * The body is read through fragments, `cond && <x/>`, `cond ? <x/> : <y/>` and `.map`, and through the layout wrappers `Stack`, `Cluster`, `Inline`, `Grid`
  * and a plain `div` that hold that one content.
  *
@@ -74,8 +74,6 @@ const CONTENT: ReadonlyMap<string, Replacement> = new Map<string, Replacement>([
   ["LineChart", CHART],
   ["Sparkline", CHART],
   ["ProportionBar", CHART],
-  ["BubbleMap", CHART],
-  ["FlowGraph", CHART],
   ["MermaidDiagram", CHART],
 ])
 

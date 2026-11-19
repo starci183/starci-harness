@@ -19,7 +19,7 @@ A Grammar `SurfaceCard` of the body kind (no `kind`, or `kind="body"`) whose ONL
 | `Form`, `Fieldset`, `Input`, `Textarea`, `Select`, `ComboBox`, `SearchField`, `NumberField`, `RadioGroup`, `CheckboxGroup` | `<Section title ...><Form .../></Section>` |
 | `EmptyNotice` | the `EmptyNotice` on its own |
 | `Markdown`, `MarkdownArticle` | `<Section title ...><Markdown .../></Section>` |
-| `BarChart`, `LineChart`, `Sparkline`, `ProportionBar`, `BubbleMap`, `FlowGraph`, `MermaidDiagram` | `<Section title ...><BarChart .../></Section>` |
+| `BarChart`, `LineChart`, `Sparkline`, `ProportionBar`, `MermaidDiagram` | `<Section title ...><BarChart .../></Section>` |
 
 Not flagged: a card with `measure="formCompact"` (the sign-in form with no page around it), a `kind="tile"` card, a body card with more than one content (an object's name or facts beside a control is an object), a card with a JSX spread, a `kind` that is not a literal, a non-Grammar `SurfaceCard`, and non-product source. `Meter`, `Progress`, `Timeline` and `ListBox` are not in the table. There is no autofix: the card's `label` becomes the `Section` title, which the author reads.
 

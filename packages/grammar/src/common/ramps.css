@@ -101,7 +101,7 @@
         --grammar-opacity-hover: 0.7;
         --grammar-opacity-secondary: 0.8;
         --grammar-opacity-dimmed: 0.2;
-        /* A skipped step of a run and an edge the run did not take (FlowGraph `steps`). */
+        /* A skipped step of a run and an edge the run did not take. */
         --grammar-opacity-faded: 0.45;
 
         /* MOTION. One duration and one easing for a state change; loops have a cycle of their own. */
@@ -191,21 +191,6 @@
         --starci-core-workspace-floating-max: 22rem;
         --starci-core-workspace-leading-seam: 2rem;
         --starci-core-data-table-max-block-size: 24rem;
-        /* FlowGraph `steps` (0.35.0): the card 176 x 64 at 14 corners (0.37.35, owner drawing graph-selected), its 32 icon tile at 9 corners (at --radius 0.5rem), the port dot, the status badge and its glyph, the legend swatch. */
-        --grammar-flow-card-width: 11rem;
-        --grammar-flow-card-height: 4rem;
-        /* 0.39.1: the decision diamond is one card wide and 88 tall (steps.ts STEPS_DIAMOND_HEIGHT); a loop frame's exit pill is 20 tall (STEPS_EXIT_HEIGHT). */
-        --grammar-flow-diamond-height: 5.5rem;
-        --grammar-flow-exit-height: 1.25rem;
-        /* `FlowGraph height="fill"` (0.37.33): the least height of the frame that takes the rest of the page. */
-        --grammar-flow-fill-min: 22.5rem;
-        --grammar-flow-card-radius: calc(var(--radius) * 7 / 4);
-        --grammar-flow-tile-size: 2rem;
-        --grammar-flow-tile-radius: calc(var(--radius) * 9 / 8);
-        --grammar-flow-port-dot: 0.375rem;
-        --grammar-flow-status-size: 1.25rem;
-        --grammar-flow-status-glyph: 1.25rem;
-        --grammar-flow-swatch-size: 0.75rem;
         /* The intrinsic width of a Progress in a list row control (0.37.21). */
         --grammar-row-progress-width: 7rem;
         --starci-core-contained-max-height: calc(100dvh - 3rem);
@@ -221,10 +206,7 @@
         --starci-core-pane-inset-block-end: 0px;
         --starci-core-top-bar-z: 40;
         --starci-core-workspace-floating-z: 40;
-        --starci-flow-diameter: 3rem;
-        --starci-flow-height: 24rem;
         --starci-core-geomap-height: 24rem;
-        --starci-flow-zoom: 1;
         /* A Sparkline: the inline trend line, 96 x 32. */
         --grammar-sparkline-width: 6rem;
         --grammar-sparkline-height: 2rem;

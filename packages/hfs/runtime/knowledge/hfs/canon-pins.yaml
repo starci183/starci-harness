@@ -45,8 +45,8 @@ pins:
     source: packages/next-data/package.json
     why: 'the SWR data helpers of every front end (fe-stack data): pollingRestart, the viewer and tenant key helpers, viewerSwrConfig and the viewer cache; each operation hook stays in the app and the package holds no component.'
   '@starci/grammar':
-    version: 0.48.0
-    range: '~0.48.0'
+    version: 0.49.0
+    range: '~0.49.0'
     group: starci
     install: registry
     side: fe
@@ -68,24 +68,24 @@ pins:
     source: packages/eslint-canon-be/package.json
     why: 'the back-end ESLint canon: `loadHfs(import.meta.url)` of be/eslint.config.mjs finds the app-root hfs.json (kind app) and gives every linted file the view of the be side, and the project graph is built per side; its bundled runtime copies (slots, canon-pins, failure codes, the architecture machine) put .starcistacks and .sops.yaml at the app root; `starciBeConfig({ hfs: loadHfs(import.meta.url) })` is the typed factory and the BE-CONVENTION laws are its rules.'
   '@starci/eslint-canon-fe':
-    version: 9.20.4
-    range: '~9.20.4'
+    version: 9.21.0
+    range: '~9.21.0'
     group: starci
     install: registry
     side: fe
     source: packages/eslint-canon-fe/package.json
     why: 'the front-end ESLint canon: `loadHfs(import.meta.url)` of fe/eslint.config.mjs finds the app-root hfs.json (kind app) and gives every linted file the view of the fe side, and the project graph is built per side; its bundled runtime copies (slots, canon-pins, failure codes, the architecture machine) put .starcistacks and .sops.yaml at the app root; the front end has no tests (FE_NO_TESTS R97 in hfs) and no-vietnamese-in-source (R91) applies.'
   '@starci/eslint-grammar-core':
-    version: 0.48.0
-    range: '~0.48.0'
+    version: 0.49.0
+    range: '~0.49.0'
     group: starci
     install: registry
     side: fe
     source: packages/eslint-grammar-core/package.json
     why: 'the StarCi Grammar component API lint, versioned with @starci/grammar; front ends compose this family package with the universal FE canon.'
   '@starci/eslint-grammar-offset-pop':
-    version: 0.48.0
-    range: '~0.48.0'
+    version: 0.49.0
+    range: '~0.49.0'
     group: starci
     install: registry
     side: fe
@@ -385,7 +385,7 @@ pins:
     version: 12.11.6
     group: ui
     side: fe
-    why: 'Grammar FlowGraph imports React Flow from @xyflow/react; every Grammar consumer declares this required peer at the version used by the Grammar package.'
+    why: 'An app that draws its own node graph inside a Custom region imports React Flow from @xyflow/react at this version; Grammar itself imports it nowhere and it is no longer a Grammar peer (0.49.0).'
   react-aria-components:
     version: 1.21.1
     group: ui

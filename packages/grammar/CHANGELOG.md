@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased - 0.49.0 - BREAKING: Custom, no FlowGraph, no BubbleMap, no motion
+
+Lane `grammar-custom` (owner 2026-11-19: "cung dc" to the name Custom, "B" to deleting the graph components from Grammar). The train assigns the version; both families, light and dark.
+
+- Added (`Custom`): the escape hatch, `<Custom reason="...">`. Props: `as` (an intrinsic element, `div` by default), a required `reason` (stamped as `data-grammar-custom-reason`), children and the attributes of that element. Inside it anything goes: any library, any markup, any class name. The Grammar lint (eslint-grammar-core, eslint-grammar-offset-pop and the canon-fe look laws) reports nothing in its subtree, nor an import used only there; outside it every rule stays. It adds no paint, inset or radius. Types `CustomProps` and `CustomTag` are exported. Docs `contexts/ui/components/custom.md`, story `Surfaces/Custom, the escape hatch (0.49.0)`. `Freestyle` stays (the narrow hatch).
+- Removed (BREAKING): `FlowGraph` (all of `src/core/branch/FlowGraph/`, its `FlowGraphTone`, `FlowGraphHeight`, `layeredPositions` and every other export), `BubbleMap` (and `bubbleDiameter`), their stories, their CSS and `--grammar-flow-*` / `--starci-flow-*` tokens, and thirteen DNA laws (`DNA-COMMON-FLOW-*`, `DNA-COMMON-BUBBLE-*`). `MermaidDiagram` is the one diagram component. An app that drew a graph moves it into its own component that uses `@xyflow/react` inside `<Custom reason="...">`, starting from the old source (kept in the harness history at 0.48.0).
+- Removed (BREAKING): `@xyflow/react` from `peerDependencies` and `devDependencies`. A consumer no longer has to declare it; an app that uses it declares it itself.
+- Added (DNA, `contexts/grammars/contract.yaml`): role `custom`; `DNA-COMMON-CUSTOM-REASON`, `DNA-COMMON-NO-GRAPH-OR-MOTION-LIBRARY`. Lint `starci-grammar/no-graph-or-animation-library` (the package's own plugin) and `npm run check:libraries`: the Grammar, stories and manifest included, imports and declares no graph toolkit and no animation library (`@xyflow/react`, `motion`, `motion/react`, `framer-motion`, `gsap`, `react-spring`, lottie, ...).
+- Kept: the CSS transitions Grammar's own tokens drive (and reduced motion). The Grammar never depended on `motion` or `framer-motion`; the ban makes that a law.
+
 ## 0.48.0 - 2026-11-19 - Batch 174 fixes
 
 Lane `grammar-batch-174` (train 174, after `grammar-labels-hover`): sixteen fixes collected from the screen-clean and site lanes, so apps drop their own classes and globals. New optional props and laws; one changed default look (the filter strip scrolls instead of folding, a negative Alert's action is outlined). Both families, light and dark. The train assigns the version.

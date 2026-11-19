@@ -94,7 +94,7 @@ the same inset, and the drawer header's inline padding is the pane inset, so the
 ## Pane content cap (MEASURE-9, the workspace form of MEASURE-8)
 In a workspace page (`Page layout="workspace"`) the grid and its side panes ALWAYS span the full width: the aside is flush to the end edge. Only the CONTENT of a main pane that holds cards (a pink well with cards,
 `Pane content="cards"`, the default for a pane on the canvas) is capped at `--grammar-content-max` (80rem) and centred INSIDE that pane; the pane and its pink ground fill the whole track. A pane that holds a chat thread
-(`PaneSection scroll role="log"`), a `FlowGraph` canvas or an editor is `content="full"`: never capped, full-bleed (a surface pane is full by default; a chat or FlowGraph pane is full unless it says `content="cards"`).
+(`PaneSection scroll role="log"`) or an editor is `content="full"`: never capped, full-bleed (a surface pane is full by default; a chat pane is full unless it says `content="cards"`).
 A pane that IS one chat (head, thread, composer footer) is `content="chat"`: full-bleed, and the whole frame is `--background` wherever it stands, with no `surface` (the chat frame, [message-bubble.md](message-bubble.md) "The chat frame").
 A list in the white aside is a flat `Section kind="list"` (BOUNDARY-7), a table the flat `DataTable` of `list-table.choose.role:table` and figures the ribbon, never a floating card; the Section head rules apply there.
 

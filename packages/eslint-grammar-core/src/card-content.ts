@@ -21,8 +21,8 @@ import type { Context } from "./lib/types.ts"
 
 /** The Grammar components that are one content of a card. */
 const CONTENT: ReadonlySet<string> = new Set([
-  "ListBox", "ItemList", "ListRow", "DescriptionList", "DataTable", "FlowGraph", "BarChart", "ProportionBar", "Sparkline", "Timeline", "DisclosureList",
-  "Accordion", "BubbleMap", "MermaidDiagram", "Form", "FormGrid", "Fieldset", "Gallery", "ScheduleGrid", "Board", "Stepper",
+  "ListBox", "ItemList", "ListRow", "DescriptionList", "DataTable", "BarChart", "ProportionBar", "Sparkline", "Timeline", "DisclosureList",
+  "Accordion", "MermaidDiagram", "Form", "FormGrid", "Fieldset", "Gallery", "ScheduleGrid", "Board", "Stepper",
 ])
 /** A Section that is itself one content. */
 const SECTION_CONTENT: ReadonlySet<string> = new Set(["list", "figures"])

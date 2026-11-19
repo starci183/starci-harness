@@ -8,7 +8,7 @@ Every rule below is an error in `coreGrammarConfig`; none can be switched off or
 
 ## `starci-grammar/card-one-content`
 
-- A `SurfaceCard` (not `tile`) whose body holds more than one content component (`ListBox`, `ItemList`, `DescriptionList`, `DataTable`, `FlowGraph`, `BarChart`, `Timeline`, `Form`, `FormGrid`, a `Section kind="list"` or `"figures"`, ...), looked through layout wrappers (message `many`).
+- A `SurfaceCard` (not `tile`) whose body holds more than one content component (`ListBox`, `ItemList`, `DescriptionList`, `DataTable`, `BarChart`, `Timeline`, `Form`, `FormGrid`, a `Section kind="list"` or `"figures"`, ...), looked through layout wrappers (message `many`).
 
 ## `starci-grammar/no-label-description`
 
