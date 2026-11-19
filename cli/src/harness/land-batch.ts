@@ -219,7 +219,13 @@ export const runBatch = async (options: BatchOptions): Promise<BatchRecord | und
             } else lanes.push(lane)
         }
         const changed = new Map<string, readonly string[]>()
-        for (const lane of lanes) changed.set(lane.lane, (await gitIn(options.worktree, ["diff", "--name-only", `${base}...${lane.sha}`])).out.split("\n").filter((file) => file !== ""))
+        // A lane's own files: what it changed since its merge-base with dev AND still differs from dev. A lane that took another lane's
+        // commits directly (not through dev) would otherwise be named for that lane's files and migrations once they landed.
+        const names = async (range: string): Promise<string[]> => (await gitIn(options.worktree, ["diff", "--name-only", range])).out.split("\n").filter((file) => file !== "")
+        for (const lane of lanes) {
+            const differs = new Set(await names(`${base}..${lane.sha}`))
+            changed.set(lane.lane, (await names(`${base}...${lane.sha}`)).filter((file) => differs.has(file)))
+        }
         ;({ merged, conflicts } = await buildTree(options.worktree, base, lanes, batch, changed))
         for (const conflict of conflicts) {
             const requeued = !conflict.with.includes("origin/dev")
