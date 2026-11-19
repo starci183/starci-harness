@@ -180,7 +180,7 @@ test("screen.yaml is the description of a screen: sections, options and audit ar
     assert.deepEqual(model.screens["agents/old"]?.auditFlag, { kind: "none", open: [] }, "audit: null is grandfathered and flagged")
     assert.equal(model.screens["agents/open"]?.auditFlag?.kind, "open")
     assert.equal(model.screens["agents/few"]?.auditFlag?.kind, "few")
-    assert.equal(model.screens["agents/legacy"].doc, null, "a screen with only an explain.md is read by the older reader")
+    assert.equal(model.screens["agents/legacy"]?.doc, null, "a screen with only an explain.md is read by the older reader")
     assert.equal(model.screens["agents/legacy"].title, "Cũ")
     assert.equal(model.screens["agents/legacy"].auditFlag, null)
 })

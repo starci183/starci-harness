@@ -100,7 +100,7 @@ A UI change to a page that is already built enters this flow at step 1: its page
 `starci app check` then judges the manifest against the gallery (the `HFS_APP_GALLERY_DESIGN_*` codes of
 PROJECT-GALLERY-6).
 
-## The UI audit (PROJECT-GALLERY-8): the critique above, as a gated loop
+## The UI audit: the critique above, as a gated loop
 
 Since 2026-11-19 the final critique is the UI audit, recorded in the screen's `screen.yaml` (one file replaces `explain.md` and `audit.json`) and judged by the "UI Audit" gate (`starci app check --gate uiaudit`):
 

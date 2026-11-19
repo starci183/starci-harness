@@ -363,7 +363,7 @@ slots:
     rule: every package is TypeScript source built to JavaScript
   - id: packages.hfs-source
     path:
-      - "packages/hfs/{audit,cache,ci,codemod,coverage,data,db,desktop,emit,lint,release,report,scaffold,scripts,stack,sync,upgrade}/**/*.{mts,cts}"
+      - "packages/hfs/{audit,cache,ci,codemod,coverage,data,db,desktop,emit,lint,release,report,scaffold,scripts,stack,sync,uiaudit,upgrade}/**/*.{mts,cts}"
       - packages/hfs/src/main.mts
       - packages/hfs/vendor-types.d.mts
     presence: optional

@@ -42,7 +42,7 @@ export function Tree({ model, labels, selected, onSelect }: TreeProps): ReactEle
     return (
         <div className="sg-tree-body">
             <SearchField label={labels.search} isLabelHidden placeholder={labels.search} value={query} onValueChange={setQuery} onClear={() => { setQuery("") }} clearLabel={labels.clear} />
-            {flaggedTotal === 0 ? null : <Switch label={`${labels.flaggedOnly} (${String(flaggedTotal)})`} size="control" isSelected={flaggedOnly} onSelectedChange={setFlaggedOnly} />}
+            {flaggedTotal === 0 ? null : <Switch label={labels.flaggedOnly} description={fill(labels.flaggedCount, { n: flaggedTotal })} isSelected={flaggedOnly} onSelectedChange={setFlaggedOnly} />}
             <ListBox
                 label={labels.screens}
                 sections={sections}
