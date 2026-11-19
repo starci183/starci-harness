@@ -89,6 +89,8 @@ const checkSchema = z
 const contextSchema = z.strictObject({
     pointer: z.enum(["coarse", "fine"]).optional(),
     viewport: z.string().regex(/^\d+x\d+$/).optional(),
+    // The widths in px a static law is judged at instead of the run's own widths: a phone law names the phone widths it holds at (320, 360, 390), and the run opens each story at every one of them.
+    widths: z.array(z.number().int().min(200).max(4000)).min(1).optional(),
     theme: z.enum(["light", "dark"]).optional(),
     forcedColors: z.literal("active").optional(),
     reducedMotion: z.literal("reduce").optional(),
@@ -176,6 +178,8 @@ export interface DnaWhere {
 export interface DnaContext {
     readonly pointer: "coarse" | "fine" | null
     readonly viewport: { readonly width: number; readonly height: number } | null
+    /** The widths a static law is judged at instead of the run's own widths (a phone law: 320, 360, 390); null for a law judged at the run's widths. */
+    readonly widths: readonly number[] | null
     readonly theme: "light" | "dark" | null
     readonly forcedColors: boolean
     readonly reducedMotion: boolean
@@ -290,6 +294,7 @@ const contextOf = (context: z.infer<typeof contextSchema> | undefined): DnaConte
     return {
         pointer: context?.pointer ?? null,
         viewport: parts?.[0] === undefined || parts[1] === undefined ? null : { width: parts[0], height: parts[1] },
+        widths: context?.widths ?? null,
         theme: context?.theme ?? null,
         forcedColors: context?.forcedColors === "active",
         reducedMotion: context?.reducedMotion === "reduce",
