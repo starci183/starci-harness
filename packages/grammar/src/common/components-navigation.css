@@ -129,6 +129,12 @@
         gap: var(--grammar-inline-gap);
     }
 
+    /* Breadcrumbs are meta: 12 secondary (0.48.0), whatever the vendor link sets. */
+    .starci-core-breadcrumbs-list :is(.starci-core-breadcrumb, .starci-core-breadcrumb-label, a, span) {
+        font-size: var(--grammar-text-xs);
+        line-height: var(--grammar-leading-xs);
+    }
+
     .starci-core-breadcrumb-label {
         display: inline-flex;
         min-width: 0;
@@ -1144,7 +1150,7 @@
     .starci-core-data-table .starci-core-data-table-column {
         color: var(--muted);
         font-size: var(--grammar-text-xs);
-        font-weight: var(--grammar-weight-medium);
+        font-weight: var(--grammar-weight-regular);
         line-height: var(--grammar-leading-xs);
     }
 
@@ -1293,7 +1299,7 @@
         z-index: 1;
     }
 
-    /* A pressable row takes the hover fill a pressable list row has (the secondary surface), over the cells' own paint. */
+    /* A pressable row takes the hover fill a pressable list row has (the secondary surface), over the cells' own paint; */
     @media (hover: hover) {
         .starci-core-data-table .starci-core-data-table-row[data-grammar-table-row-pressable="true"]:hover .table__cell {
             background: var(--surface-secondary);
@@ -1632,16 +1638,34 @@
         border-block-start: 1px solid var(--separator);
     }
 
+    /* 0.48.0 (owner 2026-11-19): the term is the label (16 / 400, primary); the value under it is the content (14, secondary). A label never renders like its value. */
     .starci-core-description-term {
-        color: var(--muted);
-        font-size: var(--grammar-text-md);
-        font-weight: var(--grammar-weight-medium);
+        color: var(--foreground);
+        font-size: var(--grammar-text-lg);
+        font-weight: var(--grammar-weight-regular);
+        line-height: var(--grammar-leading-lg);
     }
 
     .starci-core-description-value {
         min-width: 0;
         margin: 0;
+        color: var(--muted);
+        font-size: var(--grammar-text-md);
+        font-weight: var(--grammar-weight-regular);
+        line-height: var(--grammar-leading-md);
         overflow-wrap: anywhere;
+    }
+
+    /* grid (0.48.0): a block of facts, each a label over its value, wrapping into as many columns as the width fits, no dividers. */
+    .starci-core-description-list[data-grammar-description-layout="grid"] {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+        gap: var(--grammar-section-gap) var(--grammar-section-gap);
+    }
+
+    .starci-core-description-list[data-grammar-description-layout="grid"] .starci-core-description-pair {
+        padding-block: 0;
+        gap: var(--grammar-identity-gap);
     }
 
     @container starci-core-description-list (min-width: 16rem) {
@@ -1658,8 +1682,8 @@
         padding-block: var(--grammar-identity-gap);
     }
 
-    .starci-core-description-list[data-grammar-description-density="compact"] .starci-core-description-term,
-    .starci-core-description-list[data-grammar-description-density="compact"] .starci-core-description-value {
+    /* Compact (a pane's facts) keeps the two tiers by colour: the term 14 primary, the value 14 secondary. */
+    .starci-core-description-list[data-grammar-description-density="compact"] :is(.starci-core-description-term, .starci-core-description-value) {
         font-size: var(--grammar-text-sm);
         line-height: var(--grammar-leading-md);
     }
@@ -2678,9 +2702,9 @@
         padding: 0 var(--grammar-inset-nested);
         color: var(--muted);
         font-size: var(--grammar-text-2xs);
-        font-weight: var(--grammar-weight-semibold);
-        letter-spacing: var(--grammar-tracking-wide);
-        text-transform: uppercase;
+        font-weight: var(--grammar-weight-medium);
+        /* Sentence case everywhere, no ALL CAPS (_TYPOGRAPHY.md). */
+        text-transform: none;
         white-space: nowrap;
         pointer-events: none;
     }

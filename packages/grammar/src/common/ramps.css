@@ -15,6 +15,13 @@
         --grammar-text-md: 0.875rem;
         --grammar-text-lg: 1rem;
         --grammar-text-xl: 1.125rem;
+        /* THE CONSOLE SCALE (0.48.0, owner 2026-11-19, _TYPOGRAPHY.md): five roles, size / line / weight; Inter; only 400 and 500.
+           title 18 / 26 / 500 (page h1, dialog and drawer titles) · heading 16 / 24 / 500 (section, empty-state and card titles) · label 16 / 24 / 400 primary (row title, key, setting name, field label)
+           · body 14 / 20 / 400 (primary alone, secondary under a label) · meta 12 / 16 / 400 secondary (breadcrumbs, timestamps, chip counts, group labels, captions, table headers). */
+        --grammar-leading-page-title: 1.625rem;
+        /* A section's title (0.48.0, owner 2026-11-19): the 16 step at the semibold weight, set apart from the 16 / 400 labels under it by weight and place. */
+        --grammar-text-title: var(--grammar-text-lg);
+        --grammar-leading-title: var(--grammar-leading-lg);
         --grammar-text-2xl: 1.25rem;
         --grammar-text-3xl: 1.5rem;
         --grammar-text-4xl: 1.875rem;

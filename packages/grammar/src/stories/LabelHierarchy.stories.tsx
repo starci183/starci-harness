@@ -35,7 +35,7 @@ export const AgentUnderstands: Story = {
       const sublabels = Array.from(section.querySelectorAll<HTMLElement>('.starci-core-sublabel'));
       expect(sublabels.length).toBe(2);
       const label = getComputedStyle(title);
-      expect(label.fontSize).toBe('14px');
+      expect(label.fontSize).toBe('16px');
       expect(label.fontWeight).toBe('500');
       const small = getComputedStyle(sublabels[0]!);
       expect(small.fontSize).toBe('12px');

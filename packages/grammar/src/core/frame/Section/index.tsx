@@ -31,11 +31,12 @@ type RegionSection = {
 type ListSection = {
     readonly kind: "list"
     /**
-     * `rows` (default): title with a supporting line. `keyValue`: each row is a key (`title`, muted, 14) and its `value` (normal text, 14, at the end), so the
-     * hierarchy reads key then value. `suggestions` (law DNA-COMMON-CARD-SUGGESTIONS): the replies a message card offers, one row per reply, its plain text (14,
+     * `rows` (default): title (16) with a supporting line (14), indented under the section title with p-4 at the list's edge and p-3 at a divider (0.48.0).
+     * `settings` (0.48.0): the same rows flush with the section title (no indent), each a 16 title, its 14 hint and its `control` at the end (a Switch, a Select).
+     * `keyValue`: each row is a key (`title`, 16, primary) and its `value` (14, secondary, at the end), so the hierarchy reads key then value. `suggestions` (law DNA-COMMON-CARD-SUGGESTIONS): the replies a message card offers, one row per reply, its plain text (14,
      * regular, wrapping, never truncated) with a trailing chevron; give every row `onPress` (it sends that text) and nothing else.
      */
-    readonly layout?: "rows" | "keyValue" | "suggestions"
+    readonly layout?: "rows" | "keyValue" | "suggestions" | "settings"
     readonly items: readonly SectionRow[]
     /** What a list with no row says: one line and its action. */
     readonly empty: ReactNode
@@ -145,7 +146,7 @@ const ListBody = ({ list, isLoading, error }: { readonly list: ListSection; read
                     role="list"
                     aria-busy={isLoading || undefined}
                     data-grammar-list="true"
-                    {...(list.layout === "keyValue" || list.layout === "suggestions" ? { "data-grammar-list-layout": list.layout } : {})}
+                    {...(list.layout === "keyValue" || list.layout === "suggestions" || list.layout === "settings" ? { "data-grammar-list-layout": list.layout } : {})}
                     data-contract="MARGIN-0 PADDING-0 GAP-0"
                 >
                     {listRows(list, isLoading)}

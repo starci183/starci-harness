@@ -27,6 +27,10 @@
         --grammar-identity-gap: 0.25rem;
         --grammar-inline-gap: 0.5rem;
         --grammar-row-gap: 0.75rem;
+        /* A list row's own inner inline padding (0.48.0, owner 2026-11-19): the text is indented this far (the 4 step) under the section title while the divider and the hover fill start at the title's edge. */
+        --grammar-row-inset-inline: var(--grammar-inset-card);
+        /* The 16 a row keeps on a side that touches the list's edge (its first row's top, its last row's bottom); a side that touches a divider keeps --grammar-row-gap (12). */
+        --grammar-row-inset-edge: var(--grammar-inset-card);
         --grammar-section-gap: 1.5rem;
         --grammar-section-head-size: 2rem;
         --grammar-region-gap: 2rem;
@@ -304,9 +308,10 @@
         margin: 0;
         max-width: 100%;
         color: var(--foreground);
-        /* The final type scale: the page title is the display size xl 18, a section title 14; both semibold. */
+        /* The type scale (0.48.0, owner 2026-11-19): the page title is 18 / 500; a section title 16 / 500 (below); a label 16 / 400; content 14; meta 12. */
         font-size: var(--grammar-text-xl);
-        font-weight: var(--grammar-weight-semibold);
+        font-weight: var(--grammar-weight-medium);
+        line-height: var(--grammar-leading-page-title);
         line-height: var(--grammar-leading-xl);
         overflow-wrap: anywhere;
         text-wrap: balance;
@@ -319,9 +324,10 @@
         align-items: center;
         gap: var(--grammar-inline-gap);
         flex-wrap: nowrap;
-        font-size: var(--grammar-text-md);
+        /* 0.48.0 (owner 2026-11-19): the section title is 16 / 500 with the count chip beside it; a label under it (a row title, a key) is 16 / 400 in the primary colour over its 14 secondary content: the title is set apart by weight. */
+        font-size: var(--grammar-text-title);
         font-weight: var(--grammar-weight-medium);
-        line-height: var(--grammar-leading-md);
+        line-height: var(--grammar-leading-title);
     }
 
     .starci-core-section-title-text {
@@ -1658,8 +1664,32 @@
     .starci-core-section-list {
         /* The rows lay out by the list's own width (leading | copy | actions from 28rem, key-value columns), as they did in a card. */
         container: starci-core-surface / inline-size;
-        --starci-core-row-inset: var(--grammar-row-gap) 0;
+        /* 0.48.0 (owner 2026-11-19): the list stands on the title's column; each row has its own padding (12 block, 16 inline: py-3 px-4), so the text is indented under the title while the hairline and the hover fill run from the title's edge to the list's end. No border around the list. */
+        --starci-core-row-inset: var(--grammar-row-gap) var(--grammar-row-inset-inline);
         min-width: 0;
+    }
+
+    /* p-4 where a row touches the list's edge, p-3 where it touches a divider: the first row stands 16 from the top, the last 16 from the bottom, the middle ones 12 on both sides. */
+    .starci-core-section-list:not([data-grammar-list-layout]):not(:is(.starci-core-surface, .starci-core-pane-section) *) > .starci-core-list-row:first-child { padding-block-start: var(--grammar-row-inset-edge); }
+    .starci-core-section-list:not([data-grammar-list-layout]):not(:is(.starci-core-surface, .starci-core-pane-section) *) > .starci-core-list-row:last-child { padding-block-end: var(--grammar-row-inset-edge); }
+
+    /* The list body only (owner 2026-11-19): a list inside a card or a pane band sits on the surface's own padding, and a key-value or suggestions list stays flush with its title: no inline inset. */
+    :is(.starci-core-surface, .starci-core-pane-section) .starci-core-section-list,
+    .starci-core-section-list[data-grammar-list-layout] {
+        --starci-core-row-inset: var(--grammar-row-gap) 0;
+    }
+
+    /* The empty state of a section list: a small icon, a 16 title and a 12 hint on the page ground (no illustration, no card: a secondary region). */
+    .starci-core-section > .starci-core-empty-notice:not([data-grammar-error-layout]) {
+        background: transparent;
+        padding-block: var(--grammar-section-gap);
+    }
+
+    /* The empty-state title of every EmptyNotice is 16 / 500 (the section-title tier), its hint 14 secondary (owner 2026-11-19). */
+    .starci-core-empty-notice:not([data-grammar-error-layout]) .starci-core-notice-copy > .starci-core-text:first-child {
+        font-size: var(--grammar-text-lg);
+        font-weight: var(--grammar-weight-medium);
+        line-height: var(--grammar-leading-lg);
     }
 
     /*
@@ -1735,11 +1765,19 @@
     }
 
     /* The row primary: md 14 / 500; its description sm 13 muted; its meta xs 12 muted (the type roles, 0.27). */
+    /* The row's title link or press button wears the title's own size and weight (the vendor link is medium). */
+    .starci-core-list-row-name :is(.starci-core-link, .starci-core-list-row-press) {
+        font-size: inherit;
+        font-weight: inherit;
+        line-height: inherit;
+    }
+
+    /* 0.48.0 (owner 2026-11-19): the row's label is 16 / 400 in the primary colour; its description (below) is the 14 secondary content. */
     .starci-core-list-row-name {
         min-width: 0;
-        font-size: var(--grammar-text-md);
-        font-weight: var(--grammar-weight-medium);
-        line-height: var(--grammar-leading-md);
+        font-size: var(--grammar-text-lg);
+        font-weight: var(--grammar-weight-regular);
+        line-height: var(--grammar-leading-lg);
         overflow-wrap: anywhere;
     }
 
@@ -1769,6 +1807,9 @@
 
     /* A pressable row: the title is the one focusable button and its hit area is the whole row; commands and the menu sit above it. */
     .starci-core-list-row[data-grammar-row-pressable="true"] { position: relative; }
+    /* 0.48.0 (owner 2026-11-19): a pressable row keeps its original hover (the secondary surface) and never transforms. The row is the full-width band of its list (see .starci-core-section-list), so the fill covers the same area as the divider, and the content sits on the row's inner padding. */
+    .starci-core-list-row[data-grammar-row-pressable="true"] { cursor: pointer; }
+
     .starci-core-list-row[data-grammar-row-pressable="true"]:hover { background: var(--surface-secondary); }
 
     .starci-core-list-row-press {
@@ -6411,9 +6452,19 @@
         max-inline-size: 50%;
     }
 
+    /* 0.48.0 (owner 2026-11-19): the key is the label (16 / 400, primary); the value is the 14 secondary content. */
     [data-grammar-list-layout="keyValue"] .starci-core-list-row-name {
-        color: var(--muted);
+        color: var(--foreground);
+        font-size: var(--grammar-text-lg);
         font-weight: var(--grammar-weight-regular);
+        line-height: var(--grammar-leading-lg);
+    }
+
+    [data-grammar-list-layout="keyValue"] .starci-core-list-row-value {
+        color: var(--muted);
+        font-size: var(--grammar-text-md);
+        font-weight: var(--grammar-weight-regular);
+        line-height: var(--grammar-leading-md);
     }
 
     /*
@@ -6421,6 +6472,8 @@
      * (14, regular, wrapping at the reading edge, never truncated) and the trailing chevron; the whole row is the one button (`onPress` sends that text).
      */
     [data-grammar-list-layout="suggestions"] .starci-core-list-row-name {
+        font-size: var(--grammar-text-md);
+        line-height: var(--grammar-leading-md);
         font-weight: var(--grammar-weight-regular);
         white-space: normal;
     }
@@ -6488,3 +6541,4 @@
         -webkit-mask-image: none;
     }
 }
+

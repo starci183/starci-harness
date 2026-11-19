@@ -330,7 +330,7 @@ roles:
     sizes: leading slot sm/md/lg match the control ladder
     states: [hover, focus-visible, selected, disabled, loading (same rows at rest), empty]
     grammarMayChange: [row state paint, seam paint]
-    dna: [DNA-COMMON-LIST-ONE-LOOK, DNA-COMMON-LIST-SEAMS,DNA-COMMON-SEAM-FULL-BLEED, DNA-COMMON-ROW-DESCRIPTION-ONE-LINE, DNA-COMMON-OPTION-DESCRIPTION-WRAPS, DNA-COMMON-TABLE-ROW-LINK, DNA-COMMON-TABLE-FOLD, DNA-COMMON-ROW-ACTION-END, DNA-COMMON-DISCLOSURE-CHEVRON-START, DNA-COMMON-DESCRIPTION-DRAWER-COLUMNS, DNA-COMMON-STEPPER-BAR, DNA-COMMON-STEPPER-BAR-NO-CONNECTOR, DNA-COMMON-DISCLOSURE-CHEVRON-TITLE-NEXT, DNA-COMMON-TABLE-NO-CLIP, DNA-COMMON-ROW-TEXT-FIRST, DNA-CORE-STEPPER-MARKER-CURRENT, DNA-CORE-STEPPER-MARKER-UPCOMING, DNA-OFFSET-POP-STEPPER-MARKER-CURRENT, DNA-OFFSET-POP-STEPPER-MARKER-UPCOMING, DNA-COMMON-LIST-ROW-DIFF, DNA-COMMON-LIST-ROW-UNREAD, DNA-COMMON-CARD-SUGGESTIONS]
+    dna: [DNA-COMMON-LIST-ONE-LOOK, DNA-COMMON-LIST-SEAMS,DNA-COMMON-SEAM-FULL-BLEED, DNA-COMMON-ROW-DESCRIPTION-ONE-LINE, DNA-COMMON-OPTION-DESCRIPTION-WRAPS, DNA-COMMON-TABLE-ROW-LINK, DNA-COMMON-TABLE-FOLD, DNA-COMMON-ROW-ACTION-END, DNA-COMMON-DISCLOSURE-CHEVRON-START, DNA-COMMON-DESCRIPTION-DRAWER-COLUMNS, DNA-COMMON-STEPPER-BAR, DNA-COMMON-STEPPER-BAR-NO-CONNECTOR, DNA-COMMON-DISCLOSURE-CHEVRON-TITLE-NEXT, DNA-COMMON-TABLE-NO-CLIP, DNA-COMMON-ROW-TEXT-FIRST, DNA-CORE-STEPPER-MARKER-CURRENT, DNA-CORE-STEPPER-MARKER-UPCOMING, DNA-OFFSET-POP-STEPPER-MARKER-CURRENT, DNA-OFFSET-POP-STEPPER-MARKER-UPCOMING, DNA-COMMON-LIST-ROW-DIFF, DNA-COMMON-LIST-ROW-UNREAD, DNA-COMMON-CARD-SUGGESTIONS, DNA-COMMON-LIST-NO-BORDER, DNA-COMMON-LIST-ROW-PADDING, DNA-COMMON-LIST-ROW-PADDING-DIVIDER, DNA-COMMON-LIST-ROW-PADDING-EDGE, DNA-COMMON-LIST-ROW-NO-TRANSFORM, DNA-COMMON-SECTION-TITLE-SIZE, DNA-COMMON-LABEL-16, DNA-COMMON-CONTENT-14-SECONDARY, DNA-COMMON-PAGE-TITLE-18, DNA-COMMON-TYPE-PAGE-TITLE-LINE, DNA-COMMON-TYPE-SENTENCE-CASE, DNA-COMMON-EMPTY-TITLE-16]
 
   - id: alert
     ui: ui/components/toast-alert.md
@@ -1227,6 +1227,66 @@ mustKeep:
       law: "A count on a navigation item (Sidebar, BottomNav) of tone danger is the danger tint with the danger soft ink, never the solid accent plate it was before 0.46.0; every tone reads its x-soft with x-soft-foreground pair and the count is always printed."
       measure: { kind: style, select: '.starci-core-sidebar-item-badge[data-grammar-badge-tone="danger"]', metric: color, op: "=", value: { token: --danger-soft-foreground } }
       owner: ui/components/sidebar.md
+    - id: DNA-COMMON-LIST-NO-BORDER
+      role: list
+      law: "A section list has no outer border, frame or shadow: its rows stand on the section title's column, divided by hairlines only (owner 2026-11-19)."
+      measure: { kind: style, select: '.starci-core-section-list', checks: [{ metric: border-top-width, op: "=", value: 0px }, { metric: border-left-width, op: "=", value: 0px }, { metric: box-shadow, op: "=", value: none }] }
+      owner: ui/components/list-table.md
+    - id: DNA-COMMON-LIST-ROW-PADDING
+      role: list
+      law: "The body of a section list (rows layout, on the page; not a key-value block, a description list or a settings row) has rows that are each a band with 16 inline padding (px-4): the text is indented under the section title while the divider and the hover fill run from the title's edge to the list's end, so the divider is longer than the text box (owner 2026-11-19, list body only)."
+      measure: { kind: style, select: '.starci-core-section-list:not([data-grammar-list-layout]):not(:is(.starci-core-surface, .starci-core-pane-section) *) > .starci-core-list-row', checks: [{ metric: padding-left, op: "=", value: { token: --grammar-row-inset-inline } }, { metric: padding-right, op: "=", value: { token: --grammar-row-inset-inline } }] }
+      owner: ui/components/list-table.md
+    - id: DNA-COMMON-LIST-ROW-PADDING-DIVIDER
+      role: list
+      law: "A side of a list row that touches a divider has 12 padding (p-3): a row between two others is py-3 (owner 2026-11-19, list body only)."
+      measure: { kind: style, select: '.starci-core-section-list:not([data-grammar-list-layout]):not(:is(.starci-core-surface, .starci-core-pane-section) *) > .starci-core-list-row:not(:first-child):not(:last-child)', checks: [{ metric: padding-top, op: "=", value: { token: --grammar-row-gap } }, { metric: padding-bottom, op: "=", value: { token: --grammar-row-gap } }] }
+      owner: ui/components/list-table.md
+    - id: DNA-COMMON-LIST-ROW-PADDING-EDGE
+      role: list
+      law: "A side of a list row that touches the list's edge has 16 padding (p-4): the first row's top and the last row's bottom; there is no divider after the last row (owner 2026-11-19, list body only)."
+      measure: { kind: style, select: '.starci-core-section-list:not([data-grammar-list-layout]):not(:is(.starci-core-surface, .starci-core-pane-section) *) > .starci-core-list-row:is(:first-child, :last-child)', cases: [{ select: '.starci-core-section-list:not([data-grammar-list-layout]):not(:is(.starci-core-surface, .starci-core-pane-section) *) > .starci-core-list-row:first-child', metric: padding-top, value: { token: --grammar-row-inset-edge } }, { select: '.starci-core-section-list:not([data-grammar-list-layout]):not(:is(.starci-core-surface, .starci-core-pane-section) *) > .starci-core-list-row:last-child', metric: padding-bottom, value: { token: --grammar-row-inset-edge } }], op: "=" }
+      owner: ui/components/list-table.md
+    - id: DNA-COMMON-LIST-ROW-NO-TRANSFORM
+      role: list
+      law: "An interactive row (a pressable list row, a pressable table row) never transforms: no scale or shift on hover or press; its hover is the secondary-surface fill alone (owner 2026-11-19, final)."
+      measure: { kind: interaction, select: '.starci-core-list-row[data-grammar-row-pressable="true"]', act: [hover], then: { kind: style, metric: transform, op: "=", value: none } }
+      owner: ui/components/list-table.md
+    - id: DNA-COMMON-SECTION-TITLE-SIZE
+      role: list
+      law: "A section title is 16 / 500 (the title token): the same size as the labels under it (16 / 400), set apart by weight; the page title above it is 18 / 500 (owner 2026-11-19)."
+      measure: { kind: style, select: ':is(h2, h3, h4, h5, h6).starci-core-section-title', checks: [{ metric: font-size, op: "=", value: { token: --grammar-text-title } }, { metric: font-weight, op: "=", value: 500 }] }
+      owner: ui/components/text.md
+    - id: DNA-COMMON-PAGE-TITLE-18
+      role: list
+      law: "The page title (the h1 of a Page header) is 18 / 500, one step above the 16 section titles and labels (owner 2026-11-19)."
+      measure: { kind: style, select: 'h1.starci-core-page-header-title', checks: [{ metric: font-size, op: "=", value: { token: --grammar-text-xl } }, { metric: font-weight, op: "=", value: 500 }] }
+      owner: ui/components/page-header.md
+    - id: DNA-COMMON-EMPTY-TITLE-16
+      role: list
+      law: "The title of an empty notice (a region state) is 16 / 500 with its hint at 14 in the secondary colour (owner 2026-11-19)."
+      measure: { kind: style, select: '.starci-core-empty-notice:not([data-grammar-error-layout]).starci-core-notice-copy > .starci-core-text:first-child', checks: [{ metric: font-size, op: "=", value: { token: --grammar-text-lg } }, { metric: font-weight, op: "=", value: 500 }] }
+      owner: ui/components/list-table.md
+    - id: DNA-COMMON-TYPE-PAGE-TITLE-LINE
+      role: list
+      law: "The page title is 18 / 26 / 500 (the console scale title role: size, line height and weight) in Inter; the console uses only the 400 and 500 weights (owner 2026-11-19, _TYPOGRAPHY.md)."
+      measure: { kind: style, select: 'h1.starci-core-page-header-title', checks: [{ metric: line-height, op: "=", value: 26px }, { metric: font-weight, op: "=", value: 500 }] }
+      owner: ui/presentation.md
+    - id: DNA-COMMON-TYPE-SENTENCE-CASE
+      role: list
+      law: "No ALL CAPS in the console: sublabels, flow-graph headers and badges are drawn in sentence case, never text-transform uppercase."
+      measure: { kind: style, select: ':is(.starci-core-sublabel, .starci-core-flow-graph-header, .starci-core-badge)', checks: [{ metric: text-transform, op: "=", value: none }] }
+      owner: ui/presentation.md
+    - id: DNA-COMMON-LABEL-16
+      role: list
+      law: "A label (a description list term, a keyValue row key, a list or settings row title) is 16 / 400 in the primary colour (owner 2026-11-19)."
+      measure: { kind: style, select: ':is(.starci-core-description-list:not([data-grammar-description-layout="stat-strip"]):not([data-grammar-description-density="compact"]) .starci-core-description-term, [data-grammar-list-layout="keyValue"] .starci-core-list-row-name, .starci-core-section-list:not([data-grammar-list-layout="suggestions"]) .starci-core-list-row:not([data-grammar-emphasis]) .starci-core-list-row-name)', checks: [{ metric: font-size, op: "=", value: { token: --grammar-text-lg } }, { metric: font-weight, op: "=", value: 400 }, { metric: color, op: "=", value: { token: --foreground } }] }
+      owner: ui/components/text.md
+    - id: DNA-COMMON-CONTENT-14-SECONDARY
+      role: list
+      law: "The content under a label (a description list value, a keyValue row value, a row description or hint) is 14 in the secondary colour, smaller than its label, so a label never renders like its content (owner 2026-11-19)."
+      measure: { kind: style, select: ':is(.starci-core-description-list:not([data-grammar-description-layout="stat-strip"]):not([data-grammar-description-density="compact"]) .starci-core-description-value:not(.starci-core-description-figure), [data-grammar-list-layout="keyValue"] .starci-core-list-row-value, .starci-core-section-list .starci-core-list-row-description)', checks: [{ metric: font-size, op: "=", value: { token: --grammar-text-md } }, { metric: color, op: "=", value: { token: --muted } }] }
+      owner: ui/components/text.md
     - id: DNA-COMMON-LIST-ROW-UNREAD
       role: list
       law: "An unread row (ListRowData.emphasis unread, 0.46.0) has its title in the strong weight and an accent dot after it on the title line; the read rows keep the medium weight."

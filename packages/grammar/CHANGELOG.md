@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.48.0 - 2026-11-19 - Label over content, the padded list body, settings rows
+
+Lane `grammar-labels-hover` (next train). Owner feedback on the NIVO agent page: since the surface-card change flattened sections, labels read like body text. Optional prop values and a new layout, plus owner-ruled type and spacing changes, so a minor. Both families, light and dark. The rulings changed several times on 2026-11-19; this is the last.
+
+- Changed (type, `Section` title, `DescriptionList`, `ListRow`): a LABEL (a list or settings row title, a description list term, a `keyValue` key) is 16 / 400 in the primary colour; the CONTENT under it (a row description, a value, a hint) is 14 in the secondary colour; the section title is 16 / 500 (`--grammar-text-title`, `--grammar-leading-title`), the page title 18 / 500, an `EmptyNotice` title 16 / 500, breadcrumbs 12 secondary. Compact description lists keep 14 and tell the tiers by colour. `suggestions` rows keep 14. Amends FONT-7 and FONT-9 for these places (new FONT-7a).
+- Changed (list body only): `Section kind="list"` with rows has no outer border; its rows are indented under the section title, each a band with px-4 (`--grammar-row-inset-inline`), p-4 at the list's edge (`--grammar-row-inset-edge`: the first row's top, the last row's bottom) and p-3 at a divider (`--grammar-row-gap`). The divider and the hover fill run from the title's edge to the list's end; none after the last row. Lists inside a card or pane band and the `keyValue` / `suggestions` layouts are not indented. Hover keeps the original `--surface-secondary` fill (card, list row, table row unchanged); no hover or press transform.
+- Changed: a labelled `Switch` row (the settings row) reads label over content: the label 16 / 400 primary, its description 14 secondary.
+- Added: `Section` list `layout: "settings"`: rows flush with the title, a 16 title, a 14 hint and a `control` at the end (a Switch, a Select).
+- Added: `DescriptionList` `layout: "grid"`: a block of facts, each a label over its content, as many auto-fit columns as the width fits, no separators.
+- Changed: the empty state of a section list (an `EmptyNotice` directly under a `Section`) is a small icon, a 16 title and a 12 hint on the page ground, no card.
+- Added (DNA, role `list`): `DNA-COMMON-LIST-NO-BORDER`, `-LIST-ROW-PADDING`, `-LIST-ROW-PADDING-DIVIDER`, `-LIST-ROW-PADDING-EDGE`, `-LIST-ROW-NO-TRANSFORM` (contextual, not run by `dna check --storybook`; verified in Chromium with a real pointer), `-SECTION-TITLE-SIZE`, `-LABEL-16`, `-CONTENT-14-SECONDARY`.
+- Changed: the console scale (`_TYPOGRAPHY.md`): page title line height 26, table column headers 12 / 400, flow-graph headers in sentence case; token `--grammar-leading-page-title`. DNA `DNA-COMMON-TYPE-PAGE-TITLE-LINE`, `-TYPE-SENTENCE-CASE`, `-PAGE-TITLE-18`, `-EMPTY-TITLE-16`. Open: remapping the remaining 600 / 700 weights, the two-line body clamp and the app-lint ban on raw font utilities.
+- Stories: `Surfaces/Row padding and label tiers` (PaddedDividedRows, EmptyList, FactsGrid, LabelOverValue, SettingsRows); `Label hierarchy` updated to 16 / 500. Contexts: `ui/presentation.md` (BOUNDARY-7, FONT-7a), `ui/components/list-table.md`, `grammars/contract.yaml`.
+
 ## 0.47.4 - 2026-11-19 - Loading buttons sit in an inert hidden wrapper
 
 Train 170 (lane `harness-polish`). Behaviour fix, no API change, so a patch. A `Button` or `IconButton` with `isLoading` is drawn inside an inert, hidden wrapper (`HiddenSkeleton`, `aria-hidden`, `inert`, laid out as nothing), so a loading skeleton no longer stays a named button or link in the accessibility tree and the tab order; this fixes the Media tiles "Initial Loading" story. Both families.
