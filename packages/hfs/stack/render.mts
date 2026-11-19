@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { readYaml } from './config.mjs';
-import type { DeployConfig, ServiceEnvironment } from './config.mjs';
+import type { DeployConfig, ServiceEnvironment, SharedEdge } from './config.mjs';
 import { tool } from './context.mjs';
 import type { StackContext } from './context.mjs';
 import { hasPlaceholderDigest, isImageReference, isReleaseId } from './digest.mjs';
@@ -31,6 +31,8 @@ interface ServiceOverride {
   image?: string;
   environment?: Record<string, string>;
   secrets?: { source: string; target: string; mode: number }[];
+  deploy?: { labels: string[] };
+  networks?: string[];
 }
 
 const SOURCE_SHA = /^[0-9a-f]{7,64}$/u;
@@ -98,7 +100,33 @@ function plainEnvironment(config: DeployConfig, settings: Record<string, string>
   return out;
 }
 
-function serviceOverride(config: DeployConfig, sealed: LoadedSealed, images: Record<string, string>, service: string): ServiceOverride {
+/**
+ * The Traefik router labels of one service of a shared edge, rendered from `ingress.routes` (no host is written in the stack file): per service and
+ * port one router named `<service>` (`<service>-<port>` when the service has several ports), rule Host(...) over every host routed there, the edge
+ * entrypoint, tls with the edge's certresolver and the service port; `traefik.docker.network` names the edge network the service joins.
+ */
+export function edgeLabels(edge: SharedEdge, service: string): string[] {
+  const mine = edge.routes.filter((route) => route.service === service);
+  if (mine.length === 0) return [];
+  const ports = [...new Set(mine.map((route) => route.port))].sort((a, b) => a - b);
+  const labels = ['traefik.enable=true', `traefik.docker.network=${edge.network}`];
+  for (const port of ports) {
+    const router = ports.length === 1 ? service : `${service}-${String(port)}`;
+    const rule = [...new Set(mine.filter((route) => route.port === port).map((route) => route.host))].sort().map((host) => `Host(\`${host}\`)`).join(' || ');
+    labels.push(
+      `traefik.http.routers.${router}.rule=${rule}`,
+      `traefik.http.routers.${router}.entrypoints=${edge.entrypoint}`,
+      `traefik.http.routers.${router}.tls=true`,
+      `traefik.http.routers.${router}.tls.certresolver=${edge.certResolver}`,
+      `traefik.http.routers.${router}.service=${router}`,
+      `traefik.http.services.${router}.loadbalancer.server.port=${String(port)}`,
+    );
+  }
+  return labels;
+}
+
+function serviceOverride(config: DeployConfig, sealed: LoadedSealed, images: Record<string, string>, service: string, joinsDefault: boolean): ServiceOverride {
+  const edge = config.edge ?? null;
   const grant = config.secrets.grants.find((item) => item.service === service);
   const environment = plainEnvironment(config, sealed.settings, config.environment[service] ?? { files: [], values: {}, settings: {} });
   const keys = sealed.grants[service] ?? [];
@@ -108,15 +136,29 @@ function serviceOverride(config: DeployConfig, sealed: LoadedSealed, images: Rec
   if (image !== undefined) out.image = image;
   if (Object.keys(environment).length > 0) out.environment = Object.fromEntries(Object.entries(environment).map(([name, value]) => [name, escapeDollar(String(value))]));
   if (keys.length > 0) out.secrets = keys.map((key) => ({ source: key, target: key, mode: SECRET_MODE }));
+  const labels = edge === null ? [] : edgeLabels(edge, service);
+  if (labels.length > 0 && edge !== null) {
+    out.deploy = { labels };
+    out.networks = joinsDefault ? ['default', edge.network] : [edge.network];
+  }
   return out;
 }
 
+/** The services of the stack source that name no network of their own: they sit on the stack's default network, which an added edge network must not replace. */
+function onDefaultNetwork(config: DeployConfig): Set<string> {
+  const services = readYaml(config.stackFile, 'the stack source')?.services ?? {};
+  return new Set(Object.entries<{ networks?: unknown }>(services).filter(([, service]) => service?.networks === undefined).map(([name]) => name));
+}
+
 function buildOverride(config: DeployConfig, sealed: LoadedSealed, images: Record<string, string>, version: unknown): Record<string, unknown> {
-  const services = new Set([...Object.keys(config.images), ...Object.keys(config.environment), ...Object.keys(sealed.grants)]);
+  const edge = config.edge ?? null;
+  const unnamed = edge === null ? new Set<string>() : onDefaultNetwork(config);
+  const services = new Set([...Object.keys(config.images), ...Object.keys(config.environment), ...Object.keys(sealed.grants), ...(edge?.routes.map((route) => route.service) ?? [])]);
   return {
     ...(version === undefined ? {} : { version }),
-    services: Object.fromEntries([...services].sort((a, b) => a.localeCompare(b)).map((service) => [service, serviceOverride(config, sealed, images, service)])),
+    services: Object.fromEntries([...services].sort((a, b) => a.localeCompare(b)).map((service) => [service, serviceOverride(config, sealed, images, service, unnamed.has(service))])),
     secrets: Object.fromEntries(Object.entries(sealed.secrets).map(([key, entry]) => [key, { external: true, name: entry.runtimeName }])),
+    ...(edge === null ? {} : { networks: { [edge.network]: { external: true } } }),
   };
 }
 

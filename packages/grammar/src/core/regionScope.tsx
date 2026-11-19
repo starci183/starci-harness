@@ -70,3 +70,10 @@ export const withRegionGeometry = <P extends object>(Inner: (props: P) => ReactE
     Region.displayName = `RegionGeometry(${Inner.name === "" ? "Component" : Inner.name})`
     return Region
 }
+
+/**
+ * A control drawn as a skeleton (`isLoading`). The vendor button and link drop `aria-hidden`, so the skeleton would stay a named button or link in the
+ * accessibility tree and the tab order; it sits in an inert, hidden wrapper that lays out as nothing (the region that loads owns `aria-busy`).
+ */
+export const HiddenSkeleton = ({ children }: { readonly children: ReactNode }): ReactElement =>
+    createElement("span", { className: "starci-core-region-inert", "data-grammar-region-inert": "true", "aria-hidden": "true", inert: true }, children)

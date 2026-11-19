@@ -101,6 +101,14 @@ image, so any digest-pinned supported reverse proxy serves.
   its stack environment, its KEYS.md or a sealed key; `starci app check` reports `HFS_AUTH_COOKIE_DOMAIN_MISSING` otherwise.
 - An app routed by a shared ingress outside its own stack declares that ingress as external with its hosts; its own
   stack then renders no ingress and publishes no port, and its DNS and TLS stay declared (R275).
+- **Hosts are declared once.** An environment's public hosts live in `.starcistacks/application-stacks.yaml`, never in the stack file.
+  `ingress.kind` is `own` (the default: the stack's own Caddy or Traefik component, `ingress.component` and `ingress.hosts`) or
+  `shared-edge`, a shared edge-traefik outside the stack: `ingress: { kind: shared-edge, network, certResolver, entrypoint?, routes: [{ host, service, port }] }`.
+  `starci app stack render` (and so deploy) renders each routed service's Traefik labels from `routes` (router rule `Host(...)`, the entrypoint
+  (default `websecure`), `tls.certresolver`, the service port, `traefik.docker.network`) and attaches the service to the external edge `network`;
+  a service that names no network of its own keeps the stack's default one. A shared-edge environment renders no ingress and publishes no port, and its
+  DNS and TLS stay declared per host. A hostname written in the stack file's labels, or a rendered host that `routes` does not hold, is
+  `STACKS_HOST_UNROUTED`; a malformed shared-edge block is `STACKS_INGRESS_UNDECLARED`.
 - The application origin the back end trusts (BE-AUTH-7 in [code/be/api-auth.md](../code/be/api-auth.md)) is the
   ingress origin of that environment; the app is opened there, never at a process port.
 
@@ -813,7 +821,7 @@ Enforced by: R426 (`data-stores`: `DATA_STORE_UNDECLARED`, `DATA_STORE_KIND`, `D
 
 A dev environment runs an S3 object store (MinIO) so an app can keep files and images. A link to one of its objects is followed by a browser, by a
 provider that fetches an image (a channel that downloads the picture it is sent) and by a person on another machine, so it must not name the machine
-it was written on. The rule has four parts; each project that runs an object store in a dev environment that publishes anything follows all four.
+it was written on. Like every public host (PROJECT-STACKS-4 "Hosts are declared once"), its host is declared once, here under `local.tunnel` for dev and under `ingress.routes` for a shared edge, and no stack or config file repeats it. The rule has four parts; each project that runs an object store in a dev environment that publishes anything follows all four.
 
 - **One route, the S3 port only.** The store is declared in `environments.<env>.local.services[]` with `kind: object-store` (its `port` is its S3
   API port; an optional `console` names its admin console port) or is the `component` of a `data.stores[]` of kind `storage`. The dev tunnel that

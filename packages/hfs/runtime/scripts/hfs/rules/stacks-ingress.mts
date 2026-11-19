@@ -26,6 +26,12 @@ function ingressIds(components: Parsed, bindings: Parsed, services: Parsed, chos
   return [...ids];
 }
 
+/** True when the environment declares a shared edge ingress (`ingress.kind: shared-edge`): the stack renders no ingress, and its deploy renders the router labels from `ingress.routes`. */
+export const sharedEdge = (spec: Parsed): boolean => spec?.ingress?.kind === 'shared-edge';
+
+/** The routes of a shared edge declaration, as written. */
+export const edgeRoutes = (spec: Parsed): Parsed[] => (Array.isArray(spec?.ingress?.routes) ? spec.ingress.routes : []);
+
 /** The name of the shared external ingress stack the environment declares, or null. */
 export const externalIngressStack = (spec: Parsed) => present(spec?.ingress?.external?.stack) ? spec.ingress.external.stack : null;
 
@@ -69,14 +75,32 @@ function ingressImageIssues(ids: Parsed, components: Parsed, services: Parsed) {
   return errors;
 }
 
+function sharedEdgeIssues({ spec, candidates, at }: { spec: Parsed; candidates: Parsed; at: Parsed }) {
+  const ingress = mapping(spec.ingress), errors = [];
+  const routes = edgeRoutes(spec);
+  const bad = (message: string) => errors.push({ code: 'STACKS_INGRESS_UNDECLARED', at, message });
+  if (!present(ingress.network) || !present(ingress.certResolver)) bad('a shared-edge ingress declares ingress.network (the edge overlay network) and ingress.certResolver');
+  if (routes.length === 0 || routes.some((route: Parsed) => !present(route?.host) || !present(route?.service) || !Number.isInteger(route?.port)))
+    bad('a shared-edge ingress declares ingress.routes, each with host, service and port: the stack deploy renders the Traefik labels from them');
+  if (present(ingress.component) || ingress.external !== undefined) bad('a shared-edge ingress has no ingress.component and no ingress.external: the edge is shared, not part of this stack');
+  const hosts = new Set(routes.map((route: Parsed) => String(route?.host).toLowerCase()));
+  if (Array.isArray(ingress.hosts) && (ingress.hosts.length !== hosts.size || ingress.hosts.some((host: Parsed) => !hosts.has(String(host).toLowerCase()))))
+    bad('ingress.hosts, when given beside shared-edge routes, must list exactly the hosts of ingress.routes: declare each host once, in routes');
+  if (candidates.length > 0) errors.push({ code: 'STACKS_SECOND_INGRESS', at, message: 'a stack that declares a shared edge ingress must not render an ingress of its own' });
+  return errors;
+}
+
 /** Static ingress contract shared by HFS and the rendered stacks gate. */
 export function ingressIssues({ doc, environment, spec = doc?.environments?.[environment], model }: { doc: Parsed; environment: Parsed; spec?: Parsed; model: Parsed }) {
   if (spec?.runtime !== 'docker-swarm') return [];
   const components = mapping(doc?.components), bindings = mapping(spec.components), services = mapping(model?.services);
   const chosen = spec.ingress?.component, candidates = ingressIds(components, bindings, services, chosen);
   const at = `environments.${environment}.ingress`;
+  if (sharedEdge(spec)) return sharedEdgeIssues({ spec, candidates, at });
   if (mapping(spec.ingress).external !== undefined) return externalIssues({ spec, candidates, at });
+  const own = Array.isArray(spec.ingress?.hosts) && spec.ingress.hosts.length > 0 ? [] : [{ code: 'STACKS_INGRESS_UNDECLARED', at, message: 'an own ingress declares ingress.hosts, the public hosts it routes (a shared edge declares ingress.routes instead)' }];
   return [
+    ...own,
     ...declarationIssues({ chosen, components, bindings, services, candidates, at }),
     ...ingressImageIssues(candidates, components, services),
   ];

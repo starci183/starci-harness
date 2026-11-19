@@ -7,7 +7,8 @@ import path from 'node:path';
 import { normalizeDeploy } from '../runtime/scripts/hfs/stack-deploy-config.mjs';
 import type { SourceEntry } from '../runtime/scripts/hfs/stack-deploy-config.mjs';
 import type { DeployConfig } from '../stack/config.mjs';
-import { renderRelease } from '../stack/render.mjs';
+import { renderRelease, edgeLabels } from '../stack/render.mjs';
+import { edgeOf } from '../stack/config.mjs';
 import type { RenderOptions } from '../stack/render.mjs';
 import type { Spawn, StackContext } from '../stack/context.mjs';
 import { mkdtemp } from './helpers/tmpdir.mjs';
@@ -119,4 +120,28 @@ test('a literal dollar in the rendered stack survives the second interpolation o
   const written = fs.readFileSync(path.join(options.out, 'stack.yaml'), 'utf8');
   assert.match(written, /REDISCLI_AUTH=\$\$\(cat \/run\/secrets\/PW\)/u);
   assert.doesNotMatch(written, /[^$]\$\(cat/u);
+});
+
+test('a shared edge renders the Traefik labels and the edge network from the declaration, and refuses a route to a service the stack lacks', (t) => {
+  const { config, ctx, options, extra } = renderFixture(t);
+  const edge = { network: 'edge', certResolver: 'letsencrypt', entrypoint: 'websecure', routes: [
+    { host: 'b.example.test', service: 'api', port: 3000 }, { host: 'a.example.test', service: 'api', port: 3000 }, { host: 'admin.example.test', service: 'api', port: 3100 } ] };
+  assert.deepEqual(edgeLabels(edge, 'web'), []);
+  const labels = edgeLabels(edge, 'api');
+  assert.ok(labels.includes('traefik.http.routers.api-3000.rule=Host(`a.example.test`) || Host(`b.example.test`)'));
+  assert.ok(labels.includes('traefik.http.routers.api-3100.rule=Host(`admin.example.test`)'));
+  assert.ok(labels.includes('traefik.http.routers.api-3000.entrypoints=websecure'));
+  assert.ok(labels.includes('traefik.http.routers.api-3000.tls.certresolver=letsencrypt'));
+  assert.ok(labels.includes('traefik.http.services.api-3100.loadbalancer.server.port=3100'));
+  assert.ok(labels.includes('traefik.docker.network=edge'));
+  void extra;
+  return renderRelease(ctx as StackContext, { ...config, edge: { ...edge, routes: [edge.routes[0]!] } }, options).then(() => {
+    const generated = JSON.parse(fs.readFileSync(path.join(String(options.out), 'stack.generated.yaml'), 'utf8'));
+    assert.deepEqual(generated.services.api.deploy.labels.filter((label: string) => label.includes('.rule=')), ['traefik.http.routers.api.rule=Host(`b.example.test`)']);
+    assert.deepEqual(generated.services.api.networks, ['default', 'edge'], 'a service with no network of its own keeps the default network');
+    assert.deepEqual(generated.networks, { edge: { external: true } });
+  }).then(() => {
+    assert.throws(() => edgeOf({ kind: 'shared-edge', network: 'edge', certResolver: 'le', routes: [{ host: 'a.example.test', service: 'ghost', port: 80 }] }, new Set(['api']), 'staging'), /names the service ghost/);
+    assert.equal(edgeOf({ component: 'ingress' }, new Set(['api']), 'staging'), null);
+  });
 });

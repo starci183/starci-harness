@@ -522,3 +522,31 @@ for (const edition of ['lite', 'full']) {
     assert.ok(issuesFor(value, 'STACKS_HOST_UNROUTED').length > 0, 'a declared component still needs a route');
   });
 }
+
+// A shared edge-traefik (ingress.kind: shared-edge): hosts are declared once, in ingress.routes; the stack file names none, its deploy renders the labels.
+for (const edition of ['lite', 'full']) {
+  test(`STACKS_HOST_UNROUTED@${edition}: a shared edge declares its hosts once in routes, and a hostname written in the stack file is a finding`, t => {
+    const value = fixture(t, edition), spec = value.manifest.environments.production;
+    delete value.manifest.components.ingress;
+    delete value.model.services.ingress;
+    delete spec.components?.ingress;
+    spec.ingress = { kind: 'shared-edge', network: 'edge', certResolver: 'letsencrypt', routes: [{ host: 'app.example.test', service: 'api', port: 3000 }] };
+    value.model.services.api.deploy.labels = {};
+    assert.deepEqual(ingressIssues(inputFor(value)), []);
+    assert.deepEqual(swarmHardeningIssues(inputFor(value)), [], 'no label in the stack file, the host is declared once');
+    value.model.services.api.deploy.labels = { [ROUTE]: 'Host(`app.example.test`)' };
+    assert.ok(issuesFor(value, 'STACKS_HOST_UNROUTED').some(issue => /names the host app\.example\.test/.test(issue.message)), 'even a declared host must not be hardcoded');
+    value.model.services.api.deploy.labels = { [ROUTE]: 'Host(`other.example.test`)' };
+    assert.ok(issuesFor(value, 'STACKS_HOST_UNROUTED').length > 0);
+    value.model.services.api.deploy.labels = {};
+    spec.dns = [];
+    assert.ok(issuesFor(value, 'STACKS_DNS_UNDECLARED').length > 0, 'the DNS of each route host stays declared');
+    spec.dns = [{ host: 'app.example.test', owner: 'application operator', receipt: 'docs/dns.md' }];
+    for (const broken of [{ network: undefined }, { certResolver: undefined }, { routes: [] }, { routes: [{ host: 'a.example.test', service: 'api' }] }, { component: 'ingress' }, { hosts: ['x.example.test'] }]) {
+      spec.ingress = { kind: 'shared-edge', network: 'edge', certResolver: 'letsencrypt', routes: [{ host: 'app.example.test', service: 'api', port: 3000 }], ...broken };
+      assert.ok(ingressIssues(inputFor(value)).some(issue => issue.code === 'STACKS_INGRESS_UNDECLARED'), JSON.stringify(broken));
+    }
+    spec.ingress = { component: 'ingress' };
+    assert.ok(ingressIssues(inputFor(value)).some(issue => issue.code === 'STACKS_INGRESS_UNDECLARED'), 'an own ingress still declares its hosts');
+  });
+}

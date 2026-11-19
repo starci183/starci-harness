@@ -9,7 +9,7 @@ import { isInside } from '../../lib/walk.mjs';
 import { readTypeScriptProject, resolveTypeScriptModule } from '../typescript-programs.mjs';
 import { parseSource, ts } from '../runtime-rules/source-ast.mjs';
 import { readText } from './read.mjs';
-import { externalIngressStack } from './stacks-ingress.mjs';
+import { edgeRoutes, externalIngressStack, sharedEdge } from './stacks-ingress.mjs';
 import { stacksDeploymentFindings } from './stacks-runtime.mjs';
 import type { ModuleResolutionHost } from 'typescript';
 import type { Parsed } from './rule-types.mjs';
@@ -217,7 +217,7 @@ function caddyfileHosts(text: string | null) {
 function routedHosts(input: Parsed) {
   const hosts = new Set<string | null>();
   const ingress = mapping(input.model.services)[input.spec.ingress?.component];
-  const family = repositoryOf(String(ingress?.image ?? '')).toLowerCase();
+  const family = sharedEdge(input.spec) ? 'traefik' : repositoryOf(String(ingress?.image ?? '')).toLowerCase();
   for (const service of Object.values<Parsed>(mapping(input.model.services))) {
     for (const host of labelHosts(service, family)) hosts.add(host);
   }
@@ -230,13 +230,19 @@ function routedHosts(input: Parsed) {
 
 function publicRoutingIssues(input: Parsed, add: Parsed) {
   const { spec } = input, routed = routedHosts(input);
-  const declared = new Set(list(spec.ingress?.hosts).map(hostOf).filter(Boolean));
+  const edge = sharedEdge(spec);
+  const declared = new Set([...list(spec.ingress?.hosts), ...(edge ? edgeRoutes(spec).map((route: Parsed) => route?.host) : [])].map(hostOf).filter(Boolean));
   const dns = list(spec.dns);
+  // A shared edge's hostnames live in the declaration only: the stack file carries none (its deploy renders the labels from ingress.routes). A tracked rendered model is the rendered output, which may.
+  if (edge) for (const host of routed) {
+    if (!declared.has(host) || !present(spec.renderedModel))
+      add('STACKS_HOST_UNROUTED', `environments.${input.environment}.ingress.routes`, `the stack file names the host ${host}: hostnames are declared once in ingress.routes and rendered into the Traefik labels by the stack deploy, never written in the stack file`);
+  }
   for (const host of new Set([...declared, ...routed])) {
     if (!dns.some((entry: Parsed) => hostOf(entry?.host) === host && present(entry.owner) && present(entry.receipt)))
       add('STACKS_DNS_UNDECLARED', `environments.${input.environment}.dns`, 'Each public host must declare its DNS owner and receipt');
     // An external shared ingress routes the hosts from its own dynamic files (published by `starci app stack ingress publish`), not from labels here.
-    if (!declared.has(host) || (externalIngressStack(spec) === null && !routed.has(host)))
+    if (!declared.has(host) || (externalIngressStack(spec) === null && !edge && !routed.has(host)))
       add('STACKS_HOST_UNROUTED', `environments.${input.environment}.ingress.hosts`, 'Each public host must be declared and bound by an actual ingress route');
   }
   const ingress = mapping(input.model.services)[spec.ingress?.component];

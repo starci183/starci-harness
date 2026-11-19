@@ -678,11 +678,37 @@ $defs:
           `tunnel` ({name, routes: [{name, host, port}]}) names the machine's locally managed named tunnel and the public hosts it routes to declared ports (a route named `gallery` with port `gallery` publishes the screenshot gallery on its derived port, base + 50: PROJECT-GALLERY-1 item 4); a `services[]` entry of `kind: object-store` (with an optional `console` port) is an S3 store whose S3 port must be routed there, and its processes set `STORAGE_PUBLIC_URL` to that host (PROJECT-STACKS-15; rule R428).
         type: object
       ingress:
-        description: "The one selected ingress component and the hosts it routes, or external with the stack name when the ingress is a shared stack outside this one (then no component; rule R275 judges which of the two is declared)."
+        description: "The one selected ingress component and the hosts it routes (the own ingress, kind own), or external with the stack name when the ingress is a shared stack outside this one (then no component), or kind shared-edge: a shared edge Traefik whose router labels this stack's deploy renders from `routes` (no hostname in the stack file; rule R275 judges which form is declared)."
         type: object
         additionalProperties: false
-        required: [hosts]
         properties:
+          kind:
+            description: "own (default): this stack's ingress component, hosts in its labels or config. shared-edge: a shared edge-traefik outside the stack; the hosts are declared once, in routes, and the stack deploy renders the Traefik labels (router rule Host(...), entrypoint, tls certresolver, service port) and joins the edge network."
+            enum: [own, shared-edge]
+          network:
+            description: "shared-edge: the overlay network the edge-traefik reaches the routed services on (an external network of the stack)."
+            type: string
+            minLength: 1
+          certResolver:
+            description: "shared-edge: the certificate resolver of the edge-traefik that issues each route's certificate."
+            type: string
+            minLength: 1
+          entrypoint:
+            description: "shared-edge: the edge-traefik entrypoint the routers listen on (default websecure)."
+            type: string
+            minLength: 1
+          routes:
+            description: "shared-edge: one entry per public host: the stack service that serves it and the port that service listens on. Several hosts of one service and port share one router."
+            type: array
+            minItems: 1
+            items:
+              type: object
+              additionalProperties: false
+              required: [host, service, port]
+              properties:
+                host: {type: string, minLength: 1}
+                service: {type: string, minLength: 1}
+                port: {type: integer, minimum: 1, maximum: 65535}
           component: {type: string, minLength: 1}
           external:
             description: "The shared ingress stack (its own docker stack) that serves the hosts; this stack renders no ingress and publishes no port."

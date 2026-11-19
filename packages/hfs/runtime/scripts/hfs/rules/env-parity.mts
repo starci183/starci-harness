@@ -381,11 +381,13 @@ function addRequiredFindings(reads: Parsed, sealed: Parsed, declared: Parsed, fi
   }
 }
 
-function sealedMemberFinding(key: string, member: Parsed, reads: Parsed, declared: Parsed, serviceConsumer: (file: string, key: string) => boolean) {
+function sealedMemberFinding(key: string, member: Parsed, reads: Parsed, declared: Parsed, serviceConsumer: (file: string, key: string) => boolean, transport: (environment: string) => Set<string>) {
   // The specific public-custody code wins over the generic unread one for a NEXT_PUBLIC_* key.
   if (key.startsWith('NEXT_PUBLIC_')) {
     return found(ENV_PUBLIC_SEALED, member, `${member} seals the public key ${key}; NEXT_PUBLIC_* values are public configuration and never enter custody`);
   }
+  // An SSH_GROUP key in a transport member is read by the deploy transport itself, never by an app: no EnvSource reader exists for it.
+  if (SSH_GROUP.includes(key) && transport(String(member).split("/")[1]).has(memberOfName(String(member).split("/").pop()!))) return null;
   if (!reads.has(key) && !declared.has(key) && !serviceConsumer(member, key)) {
     return found(ENV_SEALED_UNREAD, member, `${member} seals ${key}, which no EnvSource reader and no declared consumer uses; unseal it or declare who consumes it`);
   }
@@ -438,7 +440,7 @@ function transportMembers(repoRoot: string): (environment: string) => Set<string
 function addSealedFindings(sealed: Parsed, reads: Parsed, declared: Parsed, transport: (environment: string) => Set<string>, findings: Finding[], serviceConsumer: (file: string, key: string) => boolean) {
   for (const [key, members] of sealed) {
     for (const member of members) {
-      const finding = sealedMemberFinding(key, member, reads, declared, serviceConsumer);
+      const finding = sealedMemberFinding(key, member, reads, declared, serviceConsumer, transport);
       if (finding !== null) findings.push(finding);
     }
     addDuplicateFindings(key, members, transport, findings);

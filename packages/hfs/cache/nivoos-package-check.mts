@@ -16,6 +16,7 @@ import { revisionSha, VerdictBook, verdictKey, type VerdictKey } from './check-v
 import { hashFile } from './hash.mjs';
 import { buildPackages, builtPackagesOf } from './built-packages.mjs';
 import { toolCacheDir } from './run-log.mjs';
+import { launch } from '../stack/local-host.mjs';
 import type { CheckSession } from './types.mjs';
 import type { ParityRun } from './parity-family.mjs';
 
@@ -116,6 +117,46 @@ function filesBelow(repoRoot: string, dir: string, found: string[] = []): string
   return found;
 }
 
+/** The standalone front-end apps a package ships (`packages/<name>/workbench/<app>/package.json`), app-relative folders. */
+export function workbenchFolders(repoRoot: string, name: string): string[] {
+  const base = path.join(repoRoot, 'packages', name, 'workbench');
+  try {
+    return fs.readdirSync(base, { withFileTypes: true }).filter((entry) => entry.isDirectory() && fs.existsSync(path.join(base, entry.name, 'package.json'))).map((entry) => `packages/${name}/workbench/${entry.name}`).sort();
+  } catch { return []; }
+}
+
+/** True when the app at `folder` has its dependencies installed and not older than its lockfile (the stamp `npm ci` leaves is node_modules/.package-lock.json). */
+export function workbenchInstalled(repoRoot: string, folder: string): boolean {
+  try {
+    const manifest = JSON.parse(fs.readFileSync(path.join(repoRoot, folder, 'package.json'), 'utf8')) as { dependencies?: object; devDependencies?: object };
+    if (Object.keys({ ...manifest.dependencies, ...manifest.devDependencies }).length === 0) return true; // nothing to install
+  } catch { return false; }
+  try {
+    const stamp = fs.statSync(path.join(repoRoot, folder, 'node_modules', '.package-lock.json')).mtimeMs;
+    const lock = path.join(repoRoot, folder, 'package-lock.json');
+    return !fs.existsSync(lock) || stamp >= fs.statSync(lock).mtimeMs;
+  } catch { return false; }
+}
+
+/**
+ * Installs the dependencies of every workbench app of a package that lacks them (a fresh worktree has none), with `npm ci --ignore-scripts` through the heavy governor, before the package is judged:
+ * the CLI builds the workbench, so a missing install would be a false red. The folders still not installed afterwards (an install that failed), one message each.
+ */
+export async function ensureWorkbenchInstalls({ repoRoot, name, run, env }: { repoRoot: string; name: string; run: ParityRun; env: NodeJS.ProcessEnv }): Promise<{ folder: string; message: string }[]> {
+  const failed: { folder: string; message: string }[] = [];
+  for (const folder of workbenchFolders(repoRoot, name)) {
+    if (workbenchInstalled(repoRoot, folder)) continue;
+    const lock = fs.existsSync(path.join(repoRoot, folder, 'package-lock.json'));
+    const [file, args] = launch(process.platform, 'npm', [lock ? 'ci' : 'install', '--ignore-scripts', '--no-audit', '--no-fund']);
+    const result = await run({ kind: 'install', label: `app check workbench install ${folder}`, cwd: path.join(repoRoot, folder), argv: [file, ...args], env });
+    if (result.error !== undefined || result.status !== 0 || !workbenchInstalled(repoRoot, folder)) failed.push({ folder, message: result.error?.message ?? `npm exit ${String(result.status)}${tailOf(`${result.stdout}
+${result.stderr}`) === '' ? '' : `
+${tailOf(`${result.stdout}
+${result.stderr}`)}`}` });
+  }
+  return failed;
+}
+
 /** The key of one nivoos package's verdict, and whether it may be stored (the published ref was named). */
 export function nivoosPackageKey(session: CheckSession, repoRoot: string, entry: NivoosPackage, cli: string): { key: VerdictKey; complete: boolean } {
   const folder = `packages/${entry.name}`;
@@ -163,6 +204,13 @@ export async function runNivoosPackageChecks({ repoRoot, run, env, session }: { 
     if (cli === null) {
       findings.push({ code: NIVOOS_PACKAGE_CHECK, level: 'error', path: `${folder}/package.json`, message: `the nivoos CLI is not installed for ${folder}: add "@starci/nivoos-cli" to the devDependencies of ${folder}/package.json (with the nivoos SDK it authors with) and run npm install, then \`nivoos package check ${entry.entry} --out ${entry.out}\` runs here (PROJECT-BUSINESS-1)` });
       lines.push(`  nivoos package check ${entry.name}: red, the nivoos CLI is not installed`);
+      continue;
+    }
+    const notInstalled = await ensureWorkbenchInstalls({ repoRoot, name: entry.name, run, env });
+    if (notInstalled.length > 0) {
+      // No verdict is judged or stored on a missing install: it would be a false red that the cache then keeps.
+      for (const { folder: workbench, message } of notInstalled) findings.push({ code: NIVOOS_PACKAGE_CHECK, level: 'error', path: `${workbench}/package.json`, message: `the dependencies of the workbench ${workbench} could not be installed, so nivoos package check ${entry.name} was not judged (nothing is recorded): ${message}` });
+      lines.push(`  nivoos package check ${entry.name}: red, the workbench install failed (not judged, not recorded)`);
       continue;
     }
     const keyed = session === undefined ? undefined : nivoosPackageKey(session, repoRoot, entry, cli);

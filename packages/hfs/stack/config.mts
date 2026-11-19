@@ -87,6 +87,11 @@ export interface DeployBlock {
   registry: RegistryBlock;
 }
 
+/** One public host of a shared edge: the stack service that serves it and the port that service listens on. */
+export interface EdgeRoute { host: string; service: string; port: number }
+/** The shared edge-traefik declaration (`environments.<env>.ingress` with `kind: shared-edge`) the render turns into router labels. */
+export interface SharedEdge { network: string; certResolver: string; entrypoint: string; routes: EdgeRoute[] }
+
 /** The deploy configuration of one environment, with absolute paths. */
 export interface DeployConfig extends DeployBlock {
   env: string;
@@ -99,6 +104,8 @@ export interface DeployConfig extends DeployBlock {
   services: Set<string>;
   /** Set by bindStackTarget when a native consumer bound the target. */
   nativeTarget?: Readonly<TargetBinding> | undefined;
+  /** The shared edge ingress declaration, or null for an own or external ingress. */
+  edge?: SharedEdge | null | undefined;
 }
 
 export const STACKS_DIR = '.starcistacks';
@@ -126,6 +133,26 @@ const stackServices = (stackFile: string): Set<string> => {
   return new Set(Object.keys(model?.services ?? {}));
 };
 
+/** The shared edge declaration of an environment, refused when it names a service the stack file does not hold; null for any other ingress form. */
+// reason: the ingress block is parsed YAML, judged here
+export function edgeOf(ingress: any, services: Set<string>, env: string): SharedEdge | null {
+  if (ingress?.kind !== 'shared-edge') return null;
+  const routes: EdgeRoute[] = (Array.isArray(ingress.routes) ? ingress.routes : []).map((route: any) => ({ host: String(route?.host ?? '').toLowerCase(), service: String(route?.service ?? ''), port: Number(route?.port) }));
+  const validPort = (port: number): boolean => Number.isInteger(port) && port > 0 && port < 65536;
+  const problems = [
+    ...(routes.length === 0 ? ['no routes'] : []),
+    ...routes.flatMap((route) => [
+      ...(services.has(route.service) ? [] : [`route ${route.host} names the service ${route.service}, which the stack file does not hold`]),
+      ...(validPort(route.port) ? [] : [`route ${route.host} has no valid port`]),
+      ...(/^[a-z0-9.-]+$/u.test(route.host) ? [] : [`route host ${JSON.stringify(route.host)} is not a hostname`]),
+    ]),
+    ...(typeof ingress.network === 'string' && ingress.network !== '' ? [] : ['no network']),
+    ...(typeof ingress.certResolver === 'string' && ingress.certResolver !== '' ? [] : ['no certResolver']),
+  ];
+  if (problems.length > 0) throw refusal(DEPLOY_CONFIG_CODE, `environments.${env}.ingress (shared-edge): ${problems.slice(0, 6).join('; ')}`);
+  return { network: ingress.network, certResolver: ingress.certResolver, entrypoint: typeof ingress.entrypoint === 'string' && ingress.entrypoint !== '' ? ingress.entrypoint : 'websecure', routes };
+}
+
 /**
  * The normalised deploy configuration of one environment, with absolute paths:
  *   { env, project, stack, repoRoot, envDir, stackFile, secretsDir, members, services, ...deploy block }.
@@ -150,5 +177,5 @@ export function loadDeployConfig({ repoRoot, env }: { repoRoot: string; env: str
     const first = problems.slice(0, 6).map((item: { at: string; message: string }) => `${item.at}: ${item.message}`).join('; ');
     throw refusal(DEPLOY_CONFIG_CODE, `${problems.length} problem${problems.length === 1 ? '' : 's'} in environments.${env}.deploy: ${first}`);
   }
-  return { env, project, repoRoot, envDir, stackFile, secretsDir, members, services, ...config };
+  return { env, project, repoRoot, envDir, stackFile, secretsDir, members, services, edge: edgeOf(environment.ingress, services, env), ...config };
 }

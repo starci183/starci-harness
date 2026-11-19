@@ -1,6 +1,6 @@
 "use client"
 
-import { withRegionInert } from "../../regionScope.js"
+import { HiddenSkeleton, withRegionInert } from "../../regionScope.js"
 import { Button as HeroButton, Link as HeroLink, Spinner as HeroSpinner, buttonVariants, cn, skeletonVariants } from "@heroui/react"
 import { Icon, type IconSource } from "../Icon/index.js"
 import { glyphSource, type GlyphName } from "../Icon/glyphs.js"
@@ -81,7 +81,9 @@ export const iconButtonBadgeText = (badge: number | string | undefined, max = 99
 const SKELETON_CLASS_NAME = skeletonVariants({ animationType: "shimmer" }).base()
 
 /** Circular glyph-only action with a mandatory accessible name (A11Y-2). */
-const IconButtonInner = ({
+const IconButtonInner = (props: IconButtonProps) => (props.isLoading === true ? <HiddenSkeleton><IconButtonFace {...props} /></HiddenSkeleton> : <IconButtonFace {...props} />)
+
+const IconButtonFace = ({
     source: givenSource,
     glyph: givenGlyph,
     label,

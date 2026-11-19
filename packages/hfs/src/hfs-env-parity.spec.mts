@@ -422,6 +422,16 @@ for (const edition of ['lite', 'full']) {
     }
   });
 
+  test(`an SSH transport key (VPS_PORT) in a transport member is not ENV_SEALED_UNREAD, in a third member it is (${edition})`, (t) => {
+    const files = transportFiles({
+      '.starcistacks/production/secrets/vps.enc': sealedDotenv([...TRANSPORT, 'VPS_PORT', 'privateKey', 'knownHosts']),
+      '.starcistacks/production/secrets/vps-ci.enc': sealedDotenv([...TRANSPORT, 'VPS_PORT', 'VPS_SSH_KEY', 'VPS_KNOWN_HOSTS']),
+    });
+    assert.ok(codes(envFindingsOf(tree(t, files), files, edition), ENV_SEALED_UNREAD).every((finding) => !/VPS_PORT/u.test(String(finding.message))));
+    const third = transportFiles({ '.starcistacks/production/secrets/zzz.enc': sealedDotenv(['VPS_PORT']) });
+    assert.ok(codes(envFindingsOf(tree(t, third), third, edition), ENV_SEALED_UNREAD).some((finding) => /VPS_PORT/u.test(String(finding.message))));
+  });
+
   test(`the exemption belongs to the member deploy.remote.sealed names, in its own environment (${edition})`, (t) => {
     const otherName = transportFiles({ '.starcistacks/application-stacks.yaml': STACKS_VPS.replace('sealed: vps', 'sealed: ops') });
     assert.equal(codes(envFindingsOf(tree(t, otherName), otherName, edition), ENV_DUPLICATE).length, 2);

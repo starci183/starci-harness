@@ -189,6 +189,32 @@ test('HFS_NIVOOS_PACKAGE_CHECK: without the nivoos CLI nothing runs and the find
   assert.ok(nivoosCli(scoped, 'biz')?.endsWith('main.js'), 'the published CLI @starci/nivoos-cli provides the nivoos bin');
 });
 
+const WORKBENCH = { 'packages/biz/workbench/sales/package.json': JSON.stringify({ name: 'sales', dependencies: { vite: '1.0.0' } }), 'packages/biz/workbench/sales/package-lock.json': '{}' };
+const STAMP = 'packages/biz/workbench/sales/node_modules/.package-lock.json';
+
+test('a workbench without node_modules is installed before the package is judged, and a failed install is no verdict and nothing is recorded', async (t) => {
+  const root = appWith(t, { ...cliFiles('process.exit(0);\n'), ...WORKBENCH });
+  const calls: string[] = [];
+  const installing: ParityRun = async ({ kind, label, cwd, argv }) => {
+    calls.push(`${kind}:${label}`);
+    if (kind === 'install') { fs.mkdirSync(path.join(cwd, 'node_modules'), { recursive: true }); fs.writeFileSync(path.join(root, STAMP), '{}'); return { status: 0, stdout: '', stderr: '' }; }
+    return { status: 0, stdout: argv.join(' '), stderr: '' };
+  };
+  const ok = await runNivoosPackageChecks({ repoRoot: root, run: installing, env: process.env });
+  assert.deepEqual(calls, ['install:app check workbench install packages/biz/workbench/sales', 'build:app check nivoos package check biz'], 'the install comes first');
+  assert.deepEqual(ok.findings, []);
+  calls.length = 0;
+  await runNivoosPackageChecks({ repoRoot: root, run: installing, env: process.env });
+  assert.deepEqual(calls, ['build:app check nivoos package check biz'], 'an installed workbench is not installed again');
+  const broken = appWith(t, { ...cliFiles('process.exit(0);\n'), ...WORKBENCH });
+  const failing: ParityRun = async ({ kind }) => { calls.push(kind); return { status: 1, stdout: '', stderr: 'ENOTFOUND' }; };
+  calls.length = 0;
+  const red = await runNivoosPackageChecks({ repoRoot: broken, run: failing, env: process.env });
+  assert.deepEqual(calls, ['install'], 'a failed install stops the package from being judged');
+  assert.match(String(red.findings[0]?.message), /could not be installed.*not judged/s);
+  assert.deepEqual(red.lines, ['  nivoos package check biz: red, the workbench install failed (not judged, not recorded)']);
+});
+
 test('an app that declares no nivoos package runs no check', async (t) => {
   const root = mkdtemp(t, 'starci-nivoos-none-');
   fs.writeFileSync(path.join(root, 'hfs.json'), JSON.stringify(declarationOf({ be: BE })));

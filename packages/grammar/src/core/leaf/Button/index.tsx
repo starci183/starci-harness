@@ -1,6 +1,6 @@
 "use client"
 
-import { withRegionInert } from "../../regionScope.js"
+import { HiddenSkeleton, withRegionInert } from "../../regionScope.js"
 import { Button as HeroButton, Link as HeroLink, Spinner as HeroSpinner, Tooltip as HeroTooltip, buttonVariants, skeletonVariants } from "@heroui/react"
 import { useId, type ReactNode } from "react"
 import { useButtonIntentVariant, type ButtonIntentProps } from "../../buttonIntent.js"
@@ -198,7 +198,9 @@ const DisabledReason = ({ reason, reasonId, children }: { readonly reason: strin
     )
 }
 
-const ButtonControl = (props: ButtonProps & { readonly reasonId?: string }) => {
+const ButtonControl = (props: ButtonProps & { readonly reasonId?: string }) => (props.isLoading === true ? <HiddenSkeleton><ButtonFace {...props} /></HiddenSkeleton> : <ButtonFace {...props} />)
+
+const ButtonFace = (props: ButtonProps & { readonly reasonId?: string }) => {
     const {
         children,
         size = "md",
