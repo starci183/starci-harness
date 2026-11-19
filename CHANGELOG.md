@@ -2,6 +2,8 @@
 
 ## 1.1.0-alpha.174 - 2026-11-19
 
+- Changed: the CLI requires @starci/hfs@6.13.54, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
+
 - Changed (pins): the Grammar family at 0.48.0, @starci/gallery 0.1.7, eslint-canon-fe 9.20.4 and @starci/hfs 6.13.54. Until the cli-follow step raises the CLI requirement, the CLI runs the hfs it requires.
 - Added (DNA laws, `contexts/grammars/contract.yaml`, lane `grammar-batch-174`): twenty-one laws for the phone fixes of the Grammar (empty line, page-state title, one retry look, popover edge and sheet, palette on a phone, filter strip without a fold, TopBar search and start inset, figure link cue, head link hit area, eager image, table scroll focus, Button on a band, rows at 390, step numeral weight, neutral timeline dot), the docs of `contexts/ui/components/`, and the `SlotView` template's `back`.
 - Added (`starci dna check`, `context.widths`): a static law may name the widths it is judged at (`context: { widths: [320, 360, 390] }`); the run opens each story at those widths besides its own, so the phone laws run without `--widths`. A law with `widths` is static, not contextual.
