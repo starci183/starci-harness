@@ -28,4 +28,4 @@ Inside the subtree of a `<Fragment>` element (its `reason` attribute and everyth
 
 ## The inventory (not a rule)
 
-`starci-fragment-inventory [root] [--json]` lists every `<Fragment reason="...">` under `root` (file, position, reason, libraries). It is a report for audit and always exits 0; a region with no reason is listed as such and `fragment-has-reason` is what fails it. The same report is `fragmentInventory` and `formatFragmentInventory`, exported from the package.
+`node node_modules/@starci/eslint-grammar-core/dist/lib/fragment-inventory-cli.js [root] [--json]` lists every `<Fragment reason="...">` under `root` (file, position, reason, libraries). It is a report for audit and always exits 0; a region with no reason is listed as such and `fragment-has-reason` is what fails it. The same report is `fragmentInventory` and `formatFragmentInventory`, exported from the package.

@@ -1079,8 +1079,10 @@ One auth package for both editions: `@starci/auth` 0.6.0 holds the lite sign-in,
 
 - Changed: Align bundled canon pins and exact sibling requirements with Grammar and its lint families at 0.21.6. Runtime behavior and rule severity are unchanged.
 
-## Unreleased
+## 6.13.56 - 2026-11-19
 
+- Changed (`knowledge/hfs/canon-pins.yaml`): the Grammar family 0.49.0 (range ~0.49.0), eslint-canon-fe 9.21.0, @starci/gallery 0.1.8 and the `@starci/hfs` self-pin is 6.13.56.
+- Added (R448, `hfs.json` `sides.be.apps[].boot.timeoutMs`): the time the composition may take (1000 to 300000 ms, default 15000). The boot worker loads the app source by transpiling each file alone, with no program and no type check, so a large composition loads in seconds, and a boot factory may return an application context it composed itself (a testing module with the infrastructure doubled), which the check closes.
 ## 5.0.1 - 2026-11-02
 
 - Fixed: function-subject provenance follows callable re-exports to the canonical declaration, so unit provider checks recognize the real subject through barrel exports while retaining invocation and dependency checks.

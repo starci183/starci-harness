@@ -101,7 +101,8 @@ provides it does not export it, passes the type check and that compile with doub
 An app that has such a command declares it in `hfs.json`, `sides.be.apps[].boot`: `module` (a `.ts` file relative to `be/`, default
 `apps/<name>/src/app.module.ts`), the `export` that is the root (default `AppModule`) or the `factory` that returns it (sync or async, a
 root a command builds from its own options), and `env`, the non-secret stub values the composition needs to load (a config parser
-reads them; they are committed). The gate runs `NestFactory.createApplicationContext(root, { abortOnError: false })` in a child with
+reads them; they are committed), and `timeoutMs`, the time the composition may take (1000 to 300000, default 15000). The gate loads the
+source by transpiling each file alone (no type check: types are the types gate's) and runs `NestFactory.createApplicationContext(root, { abortOnError: false })` in a child with
 `NODE_ENV=test` and that env only, the network shut and every lifecycle hook (`onModuleInit` and the rest) replaced by a no-op, then
 closes it: it judges the wiring and nothing the infrastructure answers. A Nest wiring exception is `BE_BOOT_ENTRY_FAILED` with Nest's own message
 (the declared values masked, credentials redacted). Any other failure (an import that throws, a config parser the stub env does not

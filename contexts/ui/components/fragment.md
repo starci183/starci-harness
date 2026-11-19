@@ -67,6 +67,6 @@ open no region, and neither does an app component that is merely named `Fragment
   transitions its tokens drive and stays.
 
 ## Inventory (audit, never a failure)
-`starci-fragment-inventory [root] [--json]` (the `bin` of `@starci/eslint-grammar-core`) lists every `<Fragment reason="...">`
+`node node_modules/@starci/eslint-grammar-core/dist/lib/fragment-inventory-cli.js [root] [--json]` lists every `<Fragment reason="...">`
 of the source under `root`: file, position, reason and the third-party libraries the region uses (it follows the import alias).
 It always exits 0. The same report is `fragmentInventory(root)` / `formatFragmentInventory(uses)` from `@starci/eslint-grammar-core`.

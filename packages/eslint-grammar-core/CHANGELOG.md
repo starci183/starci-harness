@@ -1,10 +1,10 @@
 # Changelog
 
-## Unreleased - 0.49.0 - Fragment
+## 0.49.0 - 2026-11-19 - Fragment
 
 - Added: `starci-grammar/fragment-has-reason` (law `fragment`): a Grammar `<Fragment>` region (followed through an import alias such as `GrammarFragment`; React's Fragment and `<>` are not regions) names a non-empty string literal `reason`.
 - Changed (BREAKING for code that relied on findings inside a region): every other rule of the plugin leaves the subtree of a `<Fragment>` element alone, and an import whose every use is inside one (`fragmentContext` of `@starci/eslint-canon-fe/lib/fragment.mjs`, canon-fe 9.21.0). Code outside a region is judged as before. Needs `@starci/eslint-canon-fe` ~9.21.0.
-- Added: the Fragment inventory, a report that is never a finding: `starci-fragment-inventory [root] [--json]` (package `bin`), `fragmentInventory`, `fragmentUsesOf` and `formatFragmentInventory`. It lists file, position, reason and libraries of every `<Fragment reason="...">` and always exits 0.
+- Added: the Fragment inventory, a report that is never a finding: `node node_modules/@starci/eslint-grammar-core/dist/lib/fragment-inventory-cli.js [root] [--json]`, `fragmentInventory`, `fragmentUsesOf` and `formatFragmentInventory`. It lists file, position, reason and libraries of every `<Fragment reason="...">` and always exits 0.
 - Changed: `card-is-object` and `card-content` no longer name `FlowGraph` and `BubbleMap` (removed from Grammar 0.49.0).
 
 ## 0.48.0 - 2026-11-19

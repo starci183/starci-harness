@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased - 0.49.0 - BREAKING: Fragment, no FlowGraph, no BubbleMap, no motion
+## 0.49.0 - 2026-11-19 - BREAKING: Fragment, no FlowGraph, no BubbleMap, no motion
 
 Lane `grammar-custom` (owner 2026-11-19: "cung dc" to a hatch component, "sửa Custom thành Fragment nhé, khỏi as", "B" to deleting the graph components from Grammar). The train assigns the version; both families, light and dark.
 

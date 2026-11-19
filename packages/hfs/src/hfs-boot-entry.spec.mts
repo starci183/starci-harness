@@ -111,10 +111,13 @@ test('a missing module file is an error and an app that declares no boot entry i
   assert.equal(none.status, 'skipped');
 });
 
-test('hfs.json declares boot on a be app as { module?, export?, factory?, env? } and refuses the rest', () => {
+test('hfs.json declares boot on a be app as { module?, export?, factory?, env?, timeoutMs? } and refuses the rest', () => {
   const declared = (boot: unknown, side: 'be' | 'fe' = 'be') => declarationShapeProblems({ hfs: 3, kind: 'app', project: 'demo', edition: 'lite', sides: { be: { apps: [{ name: 'api', kind: 'api', ...(side === 'be' ? { boot } : {}) }] }, fe: { apps: [{ name: 'web', kind: 'next', ...(side === 'fe' ? { boot } : {}) }], grammar: 'core' } } }, ['be', 'fe']).filter((problem) => problem.includes('boot'));
   assert.deepEqual(declared({ module: 'apps/api/src/seed.module.ts', export: 'SeedModule', env: { PORT: '3000' } }), []);
   assert.deepEqual(declared({ factory: 'bootRoot' }), []);
+  assert.deepEqual(declared({ factory: 'bootRoot', timeoutMs: 60000 }), []);
+  assert.equal(declared({ timeoutMs: 100 }).length, 1);
+  assert.equal(declared({ timeoutMs: '60000' }).length, 1);
   assert.equal(declared({ module: '../app.module.ts' }).length, 1);
   assert.equal(declared({ module: 'apps/api/src/app.module.js' }).length, 1);
   assert.equal(declared({ export: 'a', factory: 'b' }).length, 1);

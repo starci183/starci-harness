@@ -28,7 +28,7 @@ const WIRING_ERRORS = new Set(['UnknownDependenciesException', 'UndefinedDepende
 const WIRING_MESSAGE = /Nest (?:can't|cannot|could not) (?:resolve dependencies|export|find)|circular dependency|undefined module/iu;
 
 /** One boot entry a back-end app declares. */
-export interface BootEntry { readonly app: string; readonly module: string; readonly export: string; readonly factory: string | undefined; readonly env: Readonly<Record<string, string>> }
+export interface BootEntry { readonly app: string; readonly module: string; readonly export: string; readonly factory: string | undefined; readonly env: Readonly<Record<string, string>>; readonly timeoutMs: number }
 /** The repository fields the boot check reads. */
 export interface BootRepo { sides?: { be?: { apps?: readonly { name: string; boot?: unknown }[] | undefined } | undefined } | undefined }
 /** What a run of the boot check answers: its findings, the apps it ran with the state of each, and what its workers loaded (null when a worker reported nothing). */
@@ -43,7 +43,7 @@ export function bootEntries(repo: BootRepo | undefined): BootEntry[] {
     const boot = app.boot as Record<string, unknown> | undefined;
     if (typeof boot !== 'object' || boot === null || Array.isArray(boot)) return [];
     const env = Object.fromEntries(Object.entries((boot.env ?? {}) as Record<string, unknown>).filter((pair): pair is [string, string] => typeof pair[1] === 'string'));
-    return [{ app: app.name, module: typeof boot.module === 'string' ? boot.module : defaultBootModule(app.name), export: typeof boot.export === 'string' ? boot.export : 'AppModule', factory: typeof boot.factory === 'string' ? boot.factory : undefined, env }];
+    return [{ app: app.name, module: typeof boot.module === 'string' ? boot.module : defaultBootModule(app.name), export: typeof boot.export === 'string' ? boot.export : 'AppModule', factory: typeof boot.factory === 'string' ? boot.factory : undefined, env, timeoutMs: Number.isInteger(boot.timeoutMs) && Number(boot.timeoutMs) >= 1000 ? Number(boot.timeoutMs) : DEFAULT_TIMEOUT }];
   });
 }
 
@@ -68,15 +68,20 @@ const reply = (text: string): void => { process.stdout.write(text, () => process
 async function bootWorker({ repoRoot, module, export: exportName, factory, timeout }: WorkerInput): Promise<void> {
   blockNetwork();
   const entry = path.join(repoRoot, module);
-  const require = sourceLoader(repoRoot, entry, null);
+  const require = sourceLoader(repoRoot, entry, null, true);
   const Nest = require('@nestjs/core');
   for (const hook of HOOKS) if (typeof Nest.NestApplicationContext?.prototype?.[hook] === 'function') Nest.NestApplicationContext.prototype[hook] = async () => undefined;
   const loaded = (): string[] => loadedModules(Object.keys(require.cache));
   try {
     const exported = require(entry);
-    const root = factory === undefined ? exported[exportName] : await exported[factory]?.();
-    if (root === undefined || root === null) throw new Error(`${module} exports no ${factory === undefined ? exportName : `${factory}()`} root`);
-    const context = await within<{ close(): Promise<void> }>(Nest.NestFactory.createApplicationContext(root, { abortOnError: false, logger: false }), timeout);
+    const compose = async (): Promise<{ close(): Promise<void> }> => {
+      const root = factory === undefined ? exported[exportName] : await exported[factory]?.();
+      if (root === undefined || root === null) throw new Error(`${module} exports no ${factory === undefined ? exportName : `${factory}()`} root`);
+      // A factory may return an application context it composed itself (a testing module with the infrastructure doubled), which is closed as it is.
+      if (typeof root === 'object' && typeof root.close === 'function' && typeof root.get === 'function') return root;
+      return Nest.NestFactory.createApplicationContext(root, { abortOnError: false, logger: false });
+    };
+    const context = await within<{ close(): Promise<void> }>(compose(), timeout);
     await within(context.close(), timeout);
     reply(JSON.stringify({ ok: true, loaded: loaded() } satisfies WorkerAnswer));
   } catch (error) {
@@ -104,7 +109,7 @@ function findingOf(entry: BootEntry, prefix: string, answer: WorkerAnswer | null
 }
 
 /** Runs every declared boot entry in its own child (the heavy governor admits each) and answers the findings and what the children loaded. */
-export async function appBootAsync({ repoRoot, repo, execute, timeout = DEFAULT_TIMEOUT }: { repoRoot: string; repo: BootRepo; execute?: HeavyNodeRun | undefined; timeout?: number }): Promise<BootResult> {
+export async function appBootAsync({ repoRoot, repo, execute, timeout }: { repoRoot: string; repo: BootRepo; execute?: HeavyNodeRun | undefined; timeout?: number }): Promise<BootResult> {
   const entries = bootEntries(repo);
   if (entries.length === 0) return { ok: true, status: 'skipped', findings: [], apps: [], loaded: [], states: [] };
   const appRoot = Boolean(repo.sides);
@@ -121,8 +126,9 @@ export async function appBootAsync({ repoRoot, repo, execute, timeout = DEFAULT_
       settle(entry, findings.slice(-1));
       continue;
     }
-    const budget = workerBudget(timeout);
-    const args = [WORKER, '--worker', JSON.stringify({ repoRoot: beRoot, module: entry.module, export: entry.export, factory: entry.factory, timeout } satisfies WorkerInput)];
+    const limit = timeout ?? entry.timeoutMs;
+    const budget = workerBudget(limit);
+    const args = [WORKER, '--worker', JSON.stringify({ repoRoot: beRoot, module: entry.module, export: entry.export, factory: entry.factory, timeout: limit } satisfies WorkerInput)];
     const env = { NODE_ENV: 'test', ...entry.env };
     const run = async () => runHeavyNode(execute, { kind: 'test', label: 'app check boot entry', workers: 1, args, cwd: beRoot, env, timeoutMs: budget, maxBuffer: 1024 * 1024 });
     let result = await run();

@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased - 0.49.0
+## 0.49.0 - 2026-11-19
 
 - Changed: the family version 0.49.0 (Fragment, the removal of FlowGraph and BubbleMap in @starci/grammar). The rules are the core family's: `fragment-has-reason` is new and a `<Fragment>` subtree is left alone.
 

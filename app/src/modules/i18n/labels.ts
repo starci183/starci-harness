@@ -7,7 +7,7 @@
  * and intentionally stopped are `neutral`. A state is a `Badge isDot` (a dot and its words), a flag is a plain `Badge`, so
  * two side by side differ in shape as well as hue. Every label starts with an uppercase letter.
  */
-import type { FlowGraphTone, PresentationState, StatusDotTone } from "@starci/grammar/core"
+import type { PresentationState, StatusDotTone } from "@starci/grammar/core"
 import type {
     CheckState,
     CircuitState,
@@ -61,14 +61,17 @@ export const AWAITING_DECISION: StatusLabel = { label: "Cần quyết định", 
 
 /* ------------------------------------------------------------------ Op (graph node) state */
 
+/** The tone a graph node is drawn in. */
+export type GraphTone = "neutral" | "accent" | "success" | "warning" | "danger" | "muted"
+
 export interface NodeStateLabel extends StatusLabel {
-    readonly graphTone: FlowGraphTone
+    readonly graphTone: GraphTone
     readonly presentation: PresentationState
     /** Not started yet: the graph draws it dashed. */
     readonly isPending: boolean
 }
 
-const node = (label: string, tone: StatusDotTone, graphTone: FlowGraphTone, presentation: PresentationState, isPending = false): NodeStateLabel => ({
+const node = (label: string, tone: StatusDotTone, graphTone: GraphTone, presentation: PresentationState, isPending = false): NodeStateLabel => ({
     label,
     tone,
     graphTone,

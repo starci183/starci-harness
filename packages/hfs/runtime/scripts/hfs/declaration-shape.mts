@@ -51,10 +51,11 @@ const APP_KEYS = ['name', 'kind', 'contract', 'package', 'bin', 'boot'];
 /** Shape problems of one app's `boot` (R448): the back-end module file the check composes, the export that is its root (or the factory that returns it) and the stub env it runs with. */
 function bootShapeProblems(boot: Parsed, at: string, side: Parsed): string[] {
   if (side !== 'be') return [`${at}.boot is declared by an app of be only`];
-  if (!isPlainObject(boot) || Object.keys(boot).some((key: string) => !['module', 'export', 'factory', 'env'].includes(key))) return [`${at}.boot must be { module?, export?, factory?, env? }`];
+  if (!isPlainObject(boot) || Object.keys(boot).some((key: string) => !['module', 'export', 'factory', 'env', 'timeoutMs'].includes(key))) return [`${at}.boot must be { module?, export?, factory?, env?, timeoutMs? }`];
   const bad: string[] = [];
   if (boot.module !== undefined && !(typeof boot.module === 'string' && /^[\w@.-]+(?:\/[\w@.-]+)*\.ts$/u.test(boot.module) && !boot.module.split('/').includes('..'))) bad.push(`${at}.boot.module must be a .ts file path relative to be/ (absent: apps/<name>/src/app.module.ts)`);
   for (const key of ['export', 'factory']) if (boot[key] !== undefined && !(typeof boot[key] === 'string' && /^[A-Za-z_$][\w$]*$/u.test(boot[key]))) bad.push(`${at}.boot.${key} must name an export of the module`);
+  if (boot.timeoutMs !== undefined && !(Number.isInteger(boot.timeoutMs) && boot.timeoutMs >= 1000 && boot.timeoutMs <= 300000)) bad.push(`${at}.boot.timeoutMs must be a whole number of milliseconds from 1000 to 300000 (absent: 15000): the time the composition may take`);
   if (boot.export !== undefined && boot.factory !== undefined) bad.push(`${at}.boot declares export and factory: the root is one or the other`);
   if (boot.env !== undefined && !(isPlainObject(boot.env) && Object.entries(boot.env).every(([name, value]) => /^[A-Z][A-Z0-9_]*$/u.test(name) && typeof value === 'string' && value.length <= 200 && !/[\r\n]/u.test(value)))) bad.push(`${at}.boot.env must map UPPER_CASE variable names to short single-line stub values (they are committed: never a secret)`);
   return bad;

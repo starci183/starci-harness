@@ -164,9 +164,13 @@ async function withinDeadline<T>(work: Promise<T>, timeout: number): Promise<T> 
   try { return await Promise.race([work, expired]); } finally { clearTimeout(deadline); }
 }
 
-/** The strict in-memory TS loader uses this app's installed compiler and Nest, including inherited aliases. */
+/**
+ * The strict in-memory TS loader uses this app's installed compiler and Nest, including inherited aliases. With `transpileOnly` no program is built and
+ * nothing is type-checked or bound: each `.ts` file is transpiled alone when it is required (decorator metadata kept), so a large composition loads in
+ * seconds; the boot-entry check (R448) judges wiring, not types, and runs this way.
+ */
 // reason: returns the app's own CommonJS require, whose modules are untyped.
-export function sourceLoader(repoRoot: string, entry: string, fixture: string | null): NodeJS.Require {
+export function sourceLoader(repoRoot: string, entry: string, fixture: string | null, transpileOnly = false): NodeJS.Require {
   const require = createRequire(path.join(repoRoot, 'package.json'));
   const ts = require('typescript') as typeof import('typescript'); // reason: the app's installed compiler, not this package's
   const config = ts.getParsedCommandLineOfConfigFile(path.join(repoRoot, 'tsconfig.json'), {},
@@ -176,12 +180,14 @@ export function sourceLoader(repoRoot: string, entry: string, fixture: string | 
     experimentalDecorators: true, emitDecoratorMetadata: true, noEmit: false, noEmitOnError: false,
     declaration: false, declarationMap: false, sourceMap: false, inlineSourceMap: false,
     incremental: false, composite: false, tsBuildInfoFile: undefined, outDir: undefined, rootDir: undefined } as unknown as import('typescript').CompilerOptions; // exactOptionalPropertyTypes rejects the explicit undefineds that reset the project's output options
-  const program = ts.createProgram({ rootNames: [entry, ...(fixture ? [fixture] : [])], options });
-  if (program.getSyntacticDiagnostics().length) throw new Error('invalid TypeScript source');
   const outputs = new Map<string, string>();
-  program.emit(undefined, (file, text, _bom, _error, sources) => {
-    if (file.endsWith('.js')) for (const source of sources ?? []) outputs.set(path.resolve(source.fileName), text);
-  });
+  if (!transpileOnly) {
+    const program = ts.createProgram({ rootNames: [entry, ...(fixture ? [fixture] : [])], options });
+    if (program.getSyntacticDiagnostics().length) throw new Error('invalid TypeScript source');
+    program.emit(undefined, (file, text, _bom, _error, sources) => {
+      if (file.endsWith('.js')) for (const source of sources ?? []) outputs.set(path.resolve(source.fileName), text);
+    });
+  }
   // reason: Module._resolveFilename is a private Node internal with no declared type; `require` answers any, so the shape is stated by the declaration.
   const NodeModule: ResolverInternals = require('node:module');
   const resolve = NodeModule._resolveFilename;
@@ -194,7 +200,7 @@ export function sourceLoader(repoRoot: string, entry: string, fixture: string | 
   };
   // reason: Module#_compile is a private Node internal with no declared type.
   require.extensions['.ts'] = (loaded: NodeJS.Module, file: string) => {
-    const output = outputs.get(path.resolve(file));
+    const output = transpileOnly ? ts.transpileModule(fs.readFileSync(file, 'utf8'), { compilerOptions: options, fileName: file }).outputText : outputs.get(path.resolve(file));
     if (output === undefined) throw new Error('source is outside the compiled graph');
     (loaded as NodeJS.Module & CompilableModule)._compile(output, file);
   };

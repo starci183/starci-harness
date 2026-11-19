@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * `starci-fragment-inventory [root] [--json]`: print every `<Fragment reason="...">` region under `root` (default: the working directory).
+ * `node node_modules/@starci/eslint-grammar-core/dist/lib/fragment-inventory-cli.js [root] [--json]`: print every `<Fragment reason="...">` region under `root` (default: the working directory).
  * It is an audit report, never a gate: the exit code is 0 whatever it finds.
  */
 import { resolve } from "node:path"

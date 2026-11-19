@@ -203,6 +203,6 @@ export const coreGrammarPackagesConfig: typeof coreGrammarConfig = (input) => sc
 export { crossFileInputs } from "./lib/cross-file-inputs.ts"
 export type { CrossFileInput } from "./lib/cross-file-inputs.ts"
 
-// The audit inventory of every `<Fragment reason="...">` region: a report, never a finding (`starci-fragment-inventory` prints it).
+// The audit inventory of every `<Fragment reason="...">` region: a report, never a finding (the fragment inventory script prints it).
 export { fragmentInventory, fragmentUsesOf, formatFragmentInventory } from "./lib/fragment-inventory.ts"
 export type { FragmentUse } from "./lib/fragment-inventory.ts"

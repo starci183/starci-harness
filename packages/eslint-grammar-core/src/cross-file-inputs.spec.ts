@@ -19,7 +19,7 @@ const SRC = import.meta.dirname
 
 /** Source files that name the disk or TypeScript's `sys` but read nothing a declaration is needed for, and why. */
 const ACCOUNTED: Readonly<Record<string, string>> = {
-  "lib/fragment-inventory.ts": "the Fragment inventory is an audit report (`starci-fragment-inventory`) that reads the app source on its own, outside any lint run; no rule uses it",
+  "lib/fragment-inventory.ts": "the Fragment inventory is an audit report (the fragment inventory script) that reads the app source on its own, outside any lint run; no rule uses it",
 }
 
 // The selected-export parser lives in the peer canon; its thin owner re-export still carries those inputs.

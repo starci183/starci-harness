@@ -1,9 +1,9 @@
 import type { GraphNode, WorkflowDetail } from "@contract"
-import { layeredPositions, type FlowGraphEdge, type FlowGraphNode } from "@starci/grammar/core"
 import { useMemo } from "react"
 import { useWorkflowQuery } from "../../../hooks/query"
 import { mapSlot, slotOfQuery, useSlotLabels } from "../../../hooks/slot"
 import { elapsedText, memberText } from "../../../modules/format"
+import { layerOf, type GraphLayerEdge, type GraphLayerNode } from "../../../modules/graph"
 import { NODE_LEGEND, NODE_STATE, WORKFLOW } from "../../../modules/i18n"
 import { taskPath } from "../../../modules/routes"
 import { WorkflowGraphBlockBase, type WaveCellView, type WaveView, type WorkflowGraphView } from "./component"
@@ -34,15 +34,15 @@ const cellOf = (project: string, node: GraphNode, now: number): WaveCellView => 
     }
 }
 
-/** The DAG in waves: a wave is a layer of the Grammar's layered layout, one more than the node's deepest dependency. */
+/** The DAG in waves: a wave is a layer of the graph module's layering, one more than the node's deepest dependency. */
 const toView = (workflow: WorkflowDetail): WorkflowGraphView => {
     const now = Date.now()
     const keys = new Set(workflow.nodes.map((node) => node.key))
-    const nodes: FlowGraphNode[] = workflow.nodes.map((node) => ({ id: node.key, label: node.title }))
-    const edges: FlowGraphEdge[] = workflow.nodes.flatMap((node) =>
-        node.dependsOn.filter((dep) => keys.has(dep)).map((dep) => ({ id: `${dep}->${node.key}`, source: dep, target: node.key })),
+    const nodes: GraphLayerNode[] = workflow.nodes.map((node) => ({ id: node.key }))
+    const edges: GraphLayerEdge[] = workflow.nodes.flatMap((node) =>
+        node.dependsOn.filter((dep) => keys.has(dep)).map((dep) => ({ source: dep, target: node.key })),
     )
-    const layers = layeredPositions(nodes, edges, "TB").layers
+    const layers = layerOf(nodes, edges)
     const cells: WaveCellView[][] = []
     for (const node of workflow.nodes) {
         const layer = layers.get(node.key) ?? 0
