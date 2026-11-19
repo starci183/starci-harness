@@ -21,7 +21,7 @@ export const rawBrandValue = makeRule(
   ({ root, report }) => {
     if (fileKind(fileOf(root)) === "brand") return
     root.walkDecls((decl) => {
-      const raw = findRawBrandValue(decl.value)
+      const raw = findRawBrandValue(decl.value, decl.prop)
       if (raw) report(decl, raw.kind, [raw.value, decl.prop], { word: raw.value.replace(/\(\.\.\.\)$/, "(") })
     })
   },

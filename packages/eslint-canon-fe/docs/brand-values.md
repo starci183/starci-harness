@@ -4,6 +4,8 @@ Law module: `brand-values.mjs`. Catalogue: R61 FE_STYLE_TOKEN_ONLY (TypeScript h
 
 Colour values exist only in `modules/brand/brand.css`, on the tokens the grammar declares, with a light and a dark value. A hex, a colour function, a named paint colour or a pixel length in TypeScript skips the token scale.
 
+A Tailwind arbitrary colour (`bg-[red]`, `text-[color:navy]`; `bg-[#fff]` is a hex) and a default-palette class (`bg-red-500`) are refused too: the brand file is the one source of colour for the site, the app and the canvas (HFS R445, `contexts/code/fe/ui.md` FE-CSS-3).
+
 Every rule below is an error in `starciFeConfig`; none can be switched off or suppressed inline.
 
 ## `starci-fe/no-raw-brand-value`

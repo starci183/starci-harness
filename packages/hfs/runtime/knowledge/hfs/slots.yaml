@@ -2960,8 +2960,8 @@ slots:
     tracked: tracked
     tier: none
     tests: none
-    why: the ONLY app file that may hold colour values; sets grammar brand tokens only, light and dark
-    rules: [FE_STYLE_TOKEN_ONLY]
+    why: the ONLY app file that may hold colour values, and the front end has ONE of it (every web app, the site and the console alike, imports it through its one globals.css; the canvas tokens are generated from it); sets grammar brand tokens only, light and dark
+    rules: [FE_STYLE_TOKEN_ONLY, FE_BRAND_NOT_ONE]
   - id: fe.modules.routes
     since: 3.1.0
     profiles: [fe]

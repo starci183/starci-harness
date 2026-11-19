@@ -77,3 +77,21 @@ images. `/claude-design` ([skills/claude-design/SKILL.md](../../skills/claude-de
 the prompt as `basePrompt.text` plus the `subject`, never a prompt written from memory. A colour is named by its token, never by a value;
 an illustration is placed only where `illustration.md` allows. The gallery and canvas rules ([gallery.md](gallery.md) PROJECT-GALLERY-6,
 PROJECT-GALLERY-7) decide how a page is approved; this page decides what its pictures are made from.
+
+## PROJECT-BRAND-4 The brand is one source: the site, the app and the canvas read the same colours
+
+An app has ONE brand token file, `modules/brand/brand.css` of its front end (code rule [FE-CSS-3](../code/fe/ui.md#fe-css-3-colour-lives-in-one-brand-file)); the
+marketing site, the console and every other web app import it through their one global stylesheet ([FE-CSS-4](../code/fe/ui.md#fe-css-4-one-global-stylesheet-per-web-app)),
+and their 404, 500 and offline pages are the same shared components ([FE-STATE-1](../code/fe/ui.md#fe-state-1-one-page-per-system-state)). The canvas
+([gallery.md](gallery.md) PROJECT-GALLERY-6) follows the same source:
+
+- `.starcistacks/canvas/tokens.css` is generated from the brand file by `node node_modules/@starci/hfs/runtime/scripts/hfs/canvas-tokens.mjs` (`--check` writes nothing and exits 1 when it is stale): a stamp line (the brand file's path and the sha256 of its text), then the brand layer byte for byte. Run it after every brand change and commit the result.
+- A canvas generator under `.starcistacks/canvas/gen/` holds no colour literal (a hex, a colour function, a named colour in a colour property, a Tailwind arbitrary or palette colour class); it writes `var(--token)` over `tokens.css`. The claude-design copy `gen/kit/` (the board's own chrome) is outside the rule.
+
+Enforced by (R445, `packages/hfs/runtime/scripts/hfs/rules/brand-one.mts`):
+
+- `FE_BRAND_NOT_ONE`: the web apps of a front end have no `modules/brand/brand.css`, or more than one.
+- `FE_BRAND_CANVAS_LITERAL`: a canvas generator writes a colour literal.
+- `FE_BRAND_CANVAS_TOKENS_STALE`: `.starcistacks/canvas/tokens.css` is absent or is not what the brand file generates.
+
+The colour literals in TypeScript, in CSS and in inline styles are the lint of R61 ([FE-CSS-3](../code/fe/ui.md#fe-css-3-colour-lives-in-one-brand-file): eslint `no-raw-brand-value`, which now also refuses a Tailwind arbitrary named colour and a default-palette class, and stylelint `raw-brand-value`, which now also refuses a named colour in a colour property).

@@ -124,8 +124,8 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: FE-API-GRAPHQL One link chain, one file per operation · FE-WIRE-GENERATED Wire types come from the back-end contract · FE-API-REST REST only for what GraphQL cannot carry · FE-UPLOAD Files go straight to storage · FE-AUTH The auth client yields identity, never data
 - [code/fe/typing.md](../code/fe/typing.md) · 2 KB — Which type expresses a front-end value.
   - sections: FE-TYPING-1 Props are readonly all the way down, and unused props are not declared · FE-TYPING-2 Vocabularies are literal unions, never enums · FE-TYPING-3 Wire, feature and view types are distinct
-- [code/fe/ui.md](../code/fe/ui.md) · 5 KB — The one place that says what an app may style.
-  - sections: FE-UI-1 Compose the selected grammar; the app makes no visual choice · FE-CSS-1 App CSS is layout only · FE-CSS-2 `globals.css` imports in the cascade order · FE-CSS-3 Colour lives in one brand file · FE-ICON One glyph vocabulary through one owner
+- [code/fe/ui.md](../code/fe/ui.md) · 8 KB — The one place that says what an app may style.
+  - sections: FE-UI-1 Compose the selected grammar; the app makes no visual choice · FE-CSS-1 App CSS is layout only · FE-CSS-2 `globals.css` imports in the cascade order · FE-CSS-3 Colour lives in one brand file · FE-CSS-4 One global stylesheet per web app · FE-STATE-1 One page per system state · FE-ICON One glyph vocabulary through one owner
 - [code/shared/README.md](../code/shared/README.md) · 2 KB — The coding rules both sides of an app follow, back end and front end alike: one rule here replaces a copy on each side.
 - [code/shared/comment.md](../code/shared/comment.md) · 2 KB — Whether a declaration or statement carries a comment and what it says.
   - sections: SHARED-COMMENT-1 Every export carries a docblock that states responsibility · SHARED-COMMENT-2 A line comment sits above its statement and says why · SHARED-COMMENT-3 Source text is English, with no emoji
@@ -183,8 +183,8 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Why the tree is shaped this way · Regenerating and the drift check · Read with · Tree
 - [project/branches.md](../project/branches.md) · 3 KB — An app repository (never the harness repository itself) has two long-lived branches and one way between them.
   - sections: PROJECT-BRANCH-1 An app has exactly two long-lived branches, `main` and `dev`
-- [project/brand.md](../project/brand.md) · 8 KB — The brand an app's pictures and designs are made from: one folder, `.starcistacks/brand/`, that every design or image brief reads first.
-  - sections: PROJECT-BRAND-1 An app carries its brand sheet in `.starcistacks/brand/`, written once by scaffold and edited by the app · PROJECT-BRAND-2 An AI image is its basePrompt plus a subject, and its prompt file says which basePrompt · PROJECT-BRAND-3 A design or image brief reads the brand folder first
+- [project/brand.md](../project/brand.md) · 10 KB — The brand an app's pictures and designs are made from: one folder, `.starcistacks/brand/`, that every design or image brief reads first.
+  - sections: PROJECT-BRAND-1 An app carries its brand sheet in `.starcistacks/brand/`, written once by scaffold and edited by the app · PROJECT-BRAND-2 An AI image is its basePrompt plus a subject, and its prompt file says which basePrompt · PROJECT-BRAND-3 A design or image brief reads the brand folder first · PROJECT-BRAND-4 The brand is one source: the site, the app and the canvas read the same colours
 - [project/business-repo.md](../project/business-repo.md) · 12 KB — How one business is built on StarCi: one repository that holds the business's own services as a lite app, the business package its agents run from, and the seed standard that ...
   - sections: PROJECT-BUSINESS-1 A business is one repository: a lite app, its nivoos package and its seed standard
 - [project/check-cache.md](../project/check-cache.md) · 74 KB — Every StarCi app commits the results of its checks in `.starcistacks/cache/`, keyed by content, so `starci app check` and the unit specs judge only what differs from the cache, on ...
@@ -241,7 +241,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules · FlowGraph state priority
 - [ui/components/dialog-drawer.md](../ui/components/dialog-drawer.md) · 5 KB — Contract: Dialog and Drawer.
   - sections: Job · Choose · Variants · Popover width (0.45.1) · Popover size (0.46.2) · Scrolling · Size · States · Owner split · Rules
-- [ui/components/empty-state.md](../ui/components/empty-state.md) · 7 KB — Contract: EmptyState.
+- [ui/components/empty-state.md](../ui/components/empty-state.md) · 8 KB — Contract: EmptyState.
   - sections: Job · Choose · First-run steps and the all-clear state (0.46.2) · Variants · Size · States · Owner split · Frame · Page-level states every web app carries · Rules
 - [ui/components/entry-frame.md](../ui/components/entry-frame.md) · 3 KB — Hold one bounded entry task beside its contextual identity.
   - sections: Job · Choose · Anatomy · Capability questions · Variants · Size · States · Owner split · Rules

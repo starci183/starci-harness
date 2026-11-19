@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Added (ONE SOURCE, owner 2026-11-19): three checks that keep the marketing site, the console and the canvas on one source. R445 `rules/brand-one.mts`: `FE_BRAND_NOT_ONE` (the web apps of a front end hold exactly one `modules/brand/brand.css`), `FE_BRAND_CANVAS_LITERAL` (a canvas generator under `.starcistacks/canvas/gen/` writes a colour literal; `gen/kit/` aside) and `FE_BRAND_CANVAS_TOKENS_STALE` (`.starcistacks/canvas/tokens.css` is not what the brand file generates; `scripts/hfs/canvas-tokens.mts` writes it, `--check` judges it). R446 `rules/globals-one.mts`: `FE_GLOBALS_NOT_ONE` (a second global stylesheet, or a file importing a stylesheet other than `globals.css`) and `FE_GLOBALS_IMPORTS_MISSING` (the one globals lacks the Grammar or the brand import). R447 `rules/state-pages.mts`: `FE_STATE_PAGE_NOT_SHARED` (every not-found, error plus global-error, and offline boundary renders one shared page component per kind) and `FE_STATE_PAGE_GROUP_MISSING` (every route group, at any depth, carries its own `error.tsx` and `not-found.tsx`). R443 `error-pages.mts` now judges a boundary at any depth of the route tree, not only at `[locale]` and one group below it.
+- Changed (templates): the lite front end loads the brand file from `globals.css` (`modules/brand/index.ts` is gone and the layout no longer imports it), `(pages)/not-found.tsx` joins the group's `error.tsx`, and `GlobalErrorNotice` wraps `ErrorNotice` so the last-resort failure and a render failure are one page; the full front end does the same, with its one brand file in `apps/app` imported by the landing globals.
+
 ## 6.13.52 - 2026-11-19
 
 - Added (UI Audit gate): `screen.yaml` per gallery screen replaces `explain.md` and `audit.json`; the `uiaudit` gate family (`cache/uiaudit-family.mts`, failure codes of the audit), the `uiaudit/` runtime shipped in the package, the `audit run|status` and `gallery migrate-explain` verbs, and the skeleton's screens as `screen.yaml`. `@starci/hfs` self-pin is 6.13.52 and the gallery pin 0.1.5.
