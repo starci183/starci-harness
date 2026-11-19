@@ -43,7 +43,7 @@ None of its own.
   judges markup, look or libraries reports anything: `eslint-grammar-core` and `eslint-grammar-offset-pop` rules, and the canon
   `starci-fe` laws of the look (`class-names`, `tokens`, `spacing`, `type-scale`, `surface-rules`, `native-controls`, `fe-stack`, ...).
 - **Imports.** An import whose every use is inside a `Custom` is not judged (`import { ReactFlow } from "@xyflow/react"`, a HeroUI
-  primitive, a library the fe-stack forbids). A same-file component that is not exported and that only a `Custom` renders counts as inside,
+  primitive, a library the fe-stack forbids). A same-file component that is not exported and that only a `Custom` renders (a plain function, an arrow or a `memo` / `forwardRef` wrapper) counts as inside,
   so a canvas written as `const Canvas = () => ...` and rendered as `<Custom reason="..."><Canvas /></Custom>` may call the
   library's hooks. A use outside the region, an unused import, a side-effect import and an exported helper keep the import judged.
 - **Outside a `Custom`** every rule stays as it was. The repository's own integrity laws (inline lint directives, comments, type

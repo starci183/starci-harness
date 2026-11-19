@@ -49,6 +49,16 @@ test("custom-only-library: a motion or graph library is imported only for use in
       { filename: BLOCK, code: GRAMMAR + "import { motion } from \"motion/react\"\nexport const A = () => <Custom reason=\"entrance motion\"><motion.div animate={{ opacity: 1 }} /></Custom>" },
       // a same-file helper only the region renders
       { filename: BLOCK, code: GRAMMAR + "import { ReactFlow, useNodesState } from \"@xyflow/react\"\nconst Canvas = () => { const [nodes] = useNodesState([]); return <ReactFlow nodes={nodes} /> }\nexport const A = () => <Custom reason=\"workflow graph\"><Canvas /></Custom>" },
+      // an exported node renderer is a thin wrapper over a private component (memo and forwardRef included), as an svg group or a div
+      {
+        filename: BLOCK,
+        code: [
+          GRAMMAR + "import { memo } from \"react\"",
+          "import { Handle, useStore } from \"@xyflow/react\"",
+          "const StepInner = memo(function StepInner() { const zoom = useStore((s) => s.transform[2]); return <Handle type=\"source\" position={zoom as never} /> })",
+          "export const StepNode = () => <Custom as=\"g\" reason=\"workflow step node\"><StepInner /></Custom>",
+        ].join("\n"),
+      },
       // a type carries no behaviour
       { filename: BLOCK, code: "import type { Node } from \"@xyflow/react\"\nexport type Item = Node" },
     ],

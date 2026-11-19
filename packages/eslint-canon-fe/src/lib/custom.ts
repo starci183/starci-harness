@@ -82,7 +82,15 @@ const analyses = new WeakMap<object, Analysis>()
 const within = (range: readonly [number, number], ranges: readonly (readonly [number, number])[]): boolean =>
   ranges.some(([start, end]) => range[0] >= start && range[1] <= end)
 
-/** The top-level function-like declarations of a file that no other file can reach: `function F`, `const F = () =>`, not exported. */
+/** True for `memo(...)`, `React.memo(...)`, `forwardRef(...)` and `React.forwardRef(...)`: a component wrapped, still a component. */
+const isComponentWrapper = (node: Node): boolean => {
+  if (node.type !== "CallExpression") return false
+  const callee = node.callee
+  const name = callee.type === "Identifier" ? callee.name : callee.type === "MemberExpression" && callee.property.type === "Identifier" ? callee.property.name : null
+  return name === "memo" || name === "forwardRef"
+}
+
+/** The top-level function-like declarations of a file that no other file can reach: `function F`, `const F = () =>`, `const F = memo(...)`, not exported. */
 const privateCandidates = (program: TSESTree.Program): { readonly name: string; readonly node: Node }[] => {
   const found: { readonly name: string; readonly node: Node }[] = []
   for (const statement of program.body) {
@@ -91,7 +99,7 @@ const privateCandidates = (program: TSESTree.Program): { readonly name: string; 
     for (const declarator of statement.declarations) {
       const init = declarator.init
       if (declarator.id.type !== "Identifier" || init === null || init === undefined) continue
-      if (init.type === "ArrowFunctionExpression" || init.type === "FunctionExpression") found.push({ name: declarator.id.name, node: statement })
+      if (init.type === "ArrowFunctionExpression" || init.type === "FunctionExpression" || isComponentWrapper(init)) found.push({ name: declarator.id.name, node: statement })
     }
   }
   return found
