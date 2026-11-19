@@ -87,7 +87,7 @@ Why: a second global sheet is a second design system for part of the routes, whi
 
 Enforced by: R446 (`FE_GLOBALS_NOT_ONE`, `FE_GLOBALS_IMPORTS_MISSING`); what the one sheet holds is R61 (stylelint `globals-shape`, `globals-import-order`).
 
-## FE-STATE-1 One page per system state
+## FE-STATE-PAGES One page per system state
 
 Every system state is drawn by ONE shared page component per kind: the not found page (every `not-found.tsx`), the error page (every `error.tsx` and
 the last-resort `global-error.tsx`) and the offline page (every `offline/page.tsx` or `~offline/page.tsx`, where the app has one). The template

@@ -117,7 +117,7 @@ Refused (forbidden or external): `app.tool-config-local`, `app.ci-e2e`, `app.ci-
           - `sse/clients/` — **fe.transport.stream** optional · [fe/error](../code/fe/error.md), [fe/realtime](../code/fe/realtime.md), [fe/transport](../code/fe/transport.md) · R50
         - `config/` — **fe.modules.config** required · R49
         - `i18n/` — **fe.modules.i18n** required · [fe/i18n](../code/fe/i18n.md) · R59, R60
-        - `brand/brand.css` — **fe.modules.brand** optional · [fe/ui](../code/fe/ui.md) · R61
+        - `brand/brand.css` — **fe.modules.brand** optional · [fe/ui](../code/fe/ui.md) · R61, R445
         - `routes/` — **fe.modules.routes** required · [fe/i18n](../code/fe/i18n.md) · R57
         - `types/` — **fe.modules.types** optional · R22
           - `ambient/` — **fe.modules.types.ambient** optional · R22

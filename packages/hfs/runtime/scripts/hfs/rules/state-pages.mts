@@ -1,6 +1,6 @@
 // state-pages.mts - R447: ONE PAGE PER SYSTEM STATE. A web app draws each system state (not found, error, offline) with one shared page
 // component, and every route group carries its own boundary wired to it, so the marketing site and the console of one app never fall
-// through to a different look (contexts/ui/components/empty-state.md "Page-level states every web app carries", contexts/code/fe/ui.md FE-STATE-1).
+// through to a different look (contexts/ui/components/empty-state.md "Page-level states every web app carries", contexts/code/fe/ui.md FE-STATE-PAGES).
 // R443 (error-pages.mts) judges that a boundary draws the Grammar's empty state; this rule judges that all of them draw the SAME component, from the route tree:
 //   FE_STATE_PAGE_NOT_SHARED    two boundaries of one kind reach different page components. A boundary's page component is the file of its reachable
 //                               source (the closure R443 reads) that draws the `EmptyNotice scope="page"`; the kinds are not-found (every `not-found.tsx`),
@@ -15,7 +15,7 @@ import type { Finding, Repo } from './rule-types.mjs';
 
 export const FE_STATE_PAGE_NOT_SHARED = 'FE_STATE_PAGE_NOT_SHARED';
 export const FE_STATE_PAGE_GROUP_MISSING = 'FE_STATE_PAGE_GROUP_MISSING';
-const RULE = '(R447, contexts/code/fe/ui.md FE-STATE-1)';
+const RULE = '(R447, contexts/code/fe/ui.md FE-STATE-PAGES)';
 /** An offline page of the route tree: `offline/page.tsx` or the PWA-style `~offline/page.tsx`, at any depth. */
 const OFFLINE = /^(?<app>(?:apps\/[^/]+\/)?)src\/app\/(?:[^/]+\/)*~?offline\/page\.tsx$/u;
 /** A file of the app tree, split into its app and the path below `src/app/`. */

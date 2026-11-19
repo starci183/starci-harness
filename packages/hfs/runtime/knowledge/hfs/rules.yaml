@@ -7130,7 +7130,7 @@ rules:
       - {kind: hfs, id: state-pages, at: runtime/scripts/hfs/rules/state-pages.mjs}
     editions: [lite, full]
     docs:
-      - {path: contexts/code/fe/ui.md#fe-state-1-one-page-per-system-state, editions: [lite, full]}
+      - {path: contexts/code/fe/ui.md#fe-state-pages-one-page-per-system-state, editions: [lite, full]}
       - {path: contexts/ui/components/empty-state.md, editions: [lite, full]}
     proves:
       - {path: packages/hfs/src/one-source.spec.mts, editions: [lite, full]}

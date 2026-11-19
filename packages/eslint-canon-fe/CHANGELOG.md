@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 9.20.3 - 2026-11-19
 
 - Changed (`no-raw-brand-value`, R61): a Tailwind arbitrary named colour (`bg-[red]`, `text-[color:navy]`) and a Tailwind default-palette class (`bg-red-500`, `text-slate-900`) are refused like a hex colour: a colour is written in the brand file only (FE-CSS-3). `NAMED_COLORS` is the list `@starci/stylelint-canon` copies.
 

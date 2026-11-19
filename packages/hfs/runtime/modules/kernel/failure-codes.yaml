@@ -2696,7 +2696,7 @@ FE_STATE_PAGE_NOT_SHARED:
   meaning_vi: "Một `not-found.tsx`, `error.tsx`, `global-error.tsx` hay trang offline vẽ thành phần khác với các boundary cùng loại của front end."
   causes_vi:
     - "Vi phạm R447: mỗi trạng thái hệ thống (không tìm thấy, lỗi, offline) có MỘT thành phần trang dùng chung, mọi route group và ứng dụng đều render đúng thành phần đó."
-  nextStep_vi: "Nối boundary tới composite dùng chung (NotFoundNotice, ErrorNotice; GlobalErrorNotice bọc ErrorNotice) thay vì dựng trang riêng (R447; contexts/code/fe/ui.md FE-STATE-1)."
+  nextStep_vi: "Nối boundary tới composite dùng chung (NotFoundNotice, ErrorNotice; GlobalErrorNotice bọc ErrorNotice) thay vì dựng trang riêng (R447; contexts/code/fe/ui.md FE-STATE-PAGES)."
   owner: op-retry
   kind: check-finding
 
@@ -2706,7 +2706,7 @@ FE_STATE_PAGE_GROUP_MISSING:
   meaning_vi: "Một route group `(tên)` có trang hoặc layout nhưng không có `error.tsx` hay `not-found.tsx` ngay trong thư mục của nó."
   causes_vi:
     - "Vi phạm R447: mỗi route group có boundary riêng nối tới thành phần dùng chung, để lỗi hay địa chỉ không tồn tại trong group không rơi sang giao diện khác."
-  nextStep_vi: "Thêm `error.tsx` và `not-found.tsx` vào route group, mỗi file chỉ nối tới composite dùng chung (R447; contexts/code/fe/ui.md FE-STATE-1)."
+  nextStep_vi: "Thêm `error.tsx` và `not-found.tsx` vào route group, mỗi file chỉ nối tới composite dùng chung (R447; contexts/code/fe/ui.md FE-STATE-PAGES)."
   owner: op-retry
   kind: check-finding
 

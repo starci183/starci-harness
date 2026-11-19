@@ -82,7 +82,7 @@ PROJECT-GALLERY-7) decide how a page is approved; this page decides what its pic
 
 An app has ONE brand token file, `modules/brand/brand.css` of its front end (code rule [FE-CSS-3](../code/fe/ui.md#fe-css-3-colour-lives-in-one-brand-file)); the
 marketing site, the console and every other web app import it through their one global stylesheet ([FE-CSS-4](../code/fe/ui.md#fe-css-4-one-global-stylesheet-per-web-app)),
-and their 404, 500 and offline pages are the same shared components ([FE-STATE-1](../code/fe/ui.md#fe-state-1-one-page-per-system-state)). The canvas
+and their 404, 500 and offline pages are the same shared components ([FE-STATE-PAGES](../code/fe/ui.md#fe-state-pages-one-page-per-system-state)). The canvas
 ([gallery.md](gallery.md) PROJECT-GALLERY-6) follows the same source:
 
 - `.starcistacks/canvas/tokens.css` is generated from the brand file by `node node_modules/@starci/hfs/runtime/scripts/hfs/canvas-tokens.mjs` (`--check` writes nothing and exits 1 when it is stale): a stamp line (the brand file's path and the sha256 of its text), then the brand layer byte for byte. Run it after every brand change and commit the result.

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.47.5 - 2026-11-19
+
+- Changed: the family version 0.47.5 (TopBar fit, the three-line glyph, the phone control laws of @starci/grammar). No rule change.
+
 ## 0.47.4 - 2026-11-19
 
 - Changed: the family version 0.47.4 (loading buttons of @starci/grammar sit in an inert hidden wrapper). No rule change.
