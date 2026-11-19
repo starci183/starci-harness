@@ -126,18 +126,19 @@ test('a shared edge renders the Traefik labels and the edge network from the dec
   const { config, ctx, options, extra } = renderFixture(t);
   const edge = { network: 'edge', certResolver: 'letsencrypt', entrypoint: 'websecure', routes: [
     { host: 'b.example.test', service: 'api', port: 3000 }, { host: 'a.example.test', service: 'api', port: 3000 }, { host: 'admin.example.test', service: 'api', port: 3100 } ] };
-  assert.deepEqual(edgeLabels(edge, 'web'), []);
-  const labels = edgeLabels(edge, 'api');
-  assert.ok(labels.includes('traefik.http.routers.api-3000.rule=Host(`a.example.test`) || Host(`b.example.test`)'));
-  assert.ok(labels.includes('traefik.http.routers.api-3100.rule=Host(`admin.example.test`)'));
-  assert.ok(labels.includes('traefik.http.routers.api-3000.entrypoints=websecure'));
-  assert.ok(labels.includes('traefik.http.routers.api-3000.tls.certresolver=letsencrypt'));
-  assert.ok(labels.includes('traefik.http.services.api-3100.loadbalancer.server.port=3100'));
+  assert.deepEqual(edgeLabels(edge, 'web', 'stk'), []);
+  const labels = edgeLabels(edge, 'api', 'stk');
+  assert.ok(labels.includes('traefik.http.routers.stk-api-3000.rule=Host(`a.example.test`) || Host(`b.example.test`)'));
+  assert.ok(labels.includes('traefik.http.routers.stk-api-3100.rule=Host(`admin.example.test`)'));
+  assert.ok(labels.includes('traefik.http.routers.stk-api-3000.entrypoints=websecure'));
+  assert.ok(labels.includes('traefik.http.routers.stk-api-3000.tls.certresolver=letsencrypt'));
+  assert.ok(labels.includes('traefik.http.services.stk-api-3100.loadbalancer.server.port=3100'));
   assert.ok(labels.includes('traefik.docker.network=edge'));
+  assert.ok(labels.includes('traefik.swarm.network=edge'));
   void extra;
   return renderRelease(ctx as StackContext, { ...config, edge: { ...edge, routes: [edge.routes[0]!] } }, options).then(() => {
     const generated = JSON.parse(fs.readFileSync(path.join(String(options.out), 'stack.generated.yaml'), 'utf8'));
-    assert.deepEqual(generated.services.api.deploy.labels.filter((label: string) => label.includes('.rule=')), ['traefik.http.routers.api.rule=Host(`b.example.test`)']);
+    assert.deepEqual(generated.services.api.deploy.labels.filter((label: string) => label.includes('.rule=')), ['traefik.http.routers.' + config.stack + '-api.rule=Host(`b.example.test`)']);
     assert.deepEqual(generated.services.api.networks, ['default', 'edge'], 'a service with no network of its own keeps the default network');
     assert.deepEqual(generated.networks, { edge: { external: true } });
   }).then(() => {

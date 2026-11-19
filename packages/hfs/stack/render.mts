@@ -102,16 +102,16 @@ function plainEnvironment(config: DeployConfig, settings: Record<string, string>
 
 /**
  * The Traefik router labels of one service of a shared edge, rendered from `ingress.routes` (no host is written in the stack file): per service and
- * port one router named `<service>` (`<service>-<port>` when the service has several ports), rule Host(...) over every host routed there, the edge
- * entrypoint, tls with the edge's certresolver and the service port; `traefik.docker.network` names the edge network the service joins.
+ * port one router named `<stack>-<service>` (`<stack>-<service>-<port>` when the service has several ports; the edge is shared with other stacks, so a router name is never a bare service name), rule Host(...) over every host routed there, the edge
+ * entrypoint, tls with the edge's certresolver and the service port; `traefik.swarm.network` (the swarm provider) and `traefik.docker.network` (the docker provider) name the edge network the service joins.
  */
-export function edgeLabels(edge: SharedEdge, service: string): string[] {
+export function edgeLabels(edge: SharedEdge, service: string, stack: string): string[] {
   const mine = edge.routes.filter((route) => route.service === service);
   if (mine.length === 0) return [];
   const ports = [...new Set(mine.map((route) => route.port))].sort((a, b) => a - b);
-  const labels = ['traefik.enable=true', `traefik.docker.network=${edge.network}`];
+  const labels = ['traefik.enable=true', `traefik.swarm.network=${edge.network}`, `traefik.docker.network=${edge.network}`];
   for (const port of ports) {
-    const router = ports.length === 1 ? service : `${service}-${String(port)}`;
+    const router = ports.length === 1 ? `${stack}-${service}` : `${stack}-${service}-${String(port)}`;
     const rule = [...new Set(mine.filter((route) => route.port === port).map((route) => route.host))].sort().map((host) => `Host(\`${host}\`)`).join(' || ');
     labels.push(
       `traefik.http.routers.${router}.rule=${rule}`,
@@ -136,7 +136,7 @@ function serviceOverride(config: DeployConfig, sealed: LoadedSealed, images: Rec
   if (image !== undefined) out.image = image;
   if (Object.keys(environment).length > 0) out.environment = Object.fromEntries(Object.entries(environment).map(([name, value]) => [name, escapeDollar(String(value))]));
   if (keys.length > 0) out.secrets = keys.map((key) => ({ source: key, target: key, mode: SECRET_MODE }));
-  const labels = edge === null ? [] : edgeLabels(edge, service);
+  const labels = edge === null ? [] : edgeLabels(edge, service, config.stack);
   if (labels.length > 0 && edge !== null) {
     out.deploy = { labels };
     out.networks = joinsDefault ? ['default', edge.network] : [edge.network];

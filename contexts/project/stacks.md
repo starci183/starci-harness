@@ -104,8 +104,8 @@ image, so any digest-pinned supported reverse proxy serves.
 - **Hosts are declared once.** An environment's public hosts live in `.starcistacks/application-stacks.yaml`, never in the stack file.
   `ingress.kind` is `own` (the default: the stack's own Caddy or Traefik component, `ingress.component` and `ingress.hosts`) or
   `shared-edge`, a shared edge-traefik outside the stack: `ingress: { kind: shared-edge, network, certResolver, entrypoint?, routes: [{ host, service, port }] }`.
-  `starci app stack render` (and so deploy) renders each routed service's Traefik labels from `routes` (router rule `Host(...)`, the entrypoint
-  (default `websecure`), `tls.certresolver`, the service port, `traefik.docker.network`) and attaches the service to the external edge `network`;
+  `starci app stack render` (and so deploy) renders each routed service's Traefik labels from `routes` (a router named `<stack>-<service>`, never a bare service name, since the edge is shared with other stacks; router rule `Host(...)`, the entrypoint
+  (default `websecure`), `tls.certresolver`, the service port, `traefik.swarm.network` and `traefik.docker.network`) and attaches the service to the external edge `network`;
   a service that names no network of its own keeps the stack's default one. A shared-edge environment renders no ingress and publishes no port, and its
   DNS and TLS stay declared per host. A hostname written in the stack file's labels, or a rendered host that `routes` does not hold, is
   `STACKS_HOST_UNROUTED`; a malformed shared-edge block is `STACKS_INGRESS_UNDECLARED`.
