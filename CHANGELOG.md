@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.181 - 2026-11-20
+
+- Changed (pins): @starci/hfs 6.13.60, @starci/gallery 0.1.11, the Grammar family 0.50.1 (ChoiceChips exactly 20px).
+
 ## 1.1.0-alpha.180 - 2026-11-20
 
 - Changed: the CLI requires @starci/hfs@6.13.59, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).

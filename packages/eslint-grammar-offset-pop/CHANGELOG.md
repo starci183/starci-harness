@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.50.1 - 2026-11-20
+
+- Changed: versioned with the Grammar 0.50.1 (no lint change).
+
 ## 0.50.0 - 2026-11-20
 
 - Changed: versioned with the Grammar 0.50.0 (ChoiceButtons, the suggestion-buttons and form-control rules in eslint-grammar-core).

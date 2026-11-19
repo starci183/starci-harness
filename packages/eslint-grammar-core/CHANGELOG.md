@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.50.1 - 2026-11-20
+
+- Changed: versioned with the Grammar 0.50.1 (no lint change).
+
 ## 0.50.0 - 2026-11-20
 
 - Changed: `suggestion-buttons` treats `ChoiceButtons` like `ChoiceChips` (a group that sends its choice is refused); `ChoiceButtons` is a form control for the field-label and gap rules.

@@ -1,5 +1,9 @@
 # Changelog
 
+## 6.13.60 - 2026-11-20
+
+- Changed (pins): the Grammar family 0.50.1 and @starci/gallery 0.1.11 in canon-pins.yaml.
+
 ## 6.13.59 - 2026-11-20
 
 - Changed (pins): the Grammar family 0.50.0 and @starci/gallery 0.1.10 in canon-pins.yaml.

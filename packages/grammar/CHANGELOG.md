@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.50.1 - 2026-11-20
+
+- Fixed (`ChoiceChips`): a choice chip is exactly 20px tall, border included (`block-size: 1.25rem`, border-box). An app that draws a plate border (`--starci-core-plate-border`) got a chip of 20 plus the border (21.6 at a 0.8px edge).
+
 ## 0.50.0 - 2026-11-20 - ChoiceChips at a Chip's height, ChoiceButtons at a Button's
 
 Both families, light and dark.
