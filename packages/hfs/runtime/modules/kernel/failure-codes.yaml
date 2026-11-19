@@ -4988,6 +4988,26 @@ HFS_SECRET_OUTSIDE_ENC:
   owner: owner
   kind: check-finding
 
+HFS_PACKAGE_SECRET_NOT_SEALED:
+  title: "A package secret file is not a valid sops document"
+  title_vi: "Tệp bí mật của package không phải tài liệu sops hợp lệ"
+  meaning_vi: "`<path>` (`packages/<pkg>/secrets/<tên>.sops.yaml`) đang được track nhưng không phải tài liệu sops hợp lệ: có giá trị dạng rõ, hoặc thiếu khối `sops` với mac."
+  causes_vi:
+    - "Vi phạm luật R277: package chỉ được commit `secrets/<env>.sops.yaml` khi mọi giá trị lá là `ENC[...]` và có khối `sops`."
+  nextStep_vi: "Không đọc và không in giá trị. Niêm phong lại bằng sops (`sops --encrypt` theo `.sops.yaml` của package) rồi commit bản đã niêm phong; xoay secret nếu bản rõ đã lộ."
+  owner: owner
+  kind: check-finding
+
+HFS_PACKAGE_SECRET_RECIPIENT:
+  title: "A sealed package secret does not match the package's age recipients"
+  title_vi: "Tệp bí mật của package không khớp recipient age của package"
+  meaning_vi: "`<path>` là tài liệu sops nhưng khối `sops` không có recipient age, hoặc recipient khác với recipient mà `packages/<pkg>/.sops.yaml` khai cho đường dẫn đó (hoặc package không có `.sops.yaml`)."
+  causes_vi:
+    - "Vi phạm luật R277: tệp niêm phong phải mở được bằng đúng khoá age của package, nên recipient của tệp phải bằng recipient trong `.sops.yaml` của package."
+  nextStep_vi: "Sửa `packages/<pkg>/.sops.yaml` cho đúng recipient rồi chạy `sops updatekeys` trên tệp, hoặc niêm phong lại tệp bằng recipient của package."
+  owner: owner
+  kind: check-finding
+
 HFS_SECRET_PLAINTEXT_FILE:
   title: "A tracked plaintext secret file is refused"
   title_vi: "Tệp bí mật dạng rõ bị track trong kho"

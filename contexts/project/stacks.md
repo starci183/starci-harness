@@ -119,6 +119,10 @@ image, so any digest-pinned supported reverse proxy serves.
   `<env>/secrets/<provider>.enc.yaml`, sops YAML whose values come back byte for byte (a multi-line key, a trailing
   newline), committed (R06, R277; the names are `scripts/lib/sealed-member.mjs` of @starci/hfs).
   A legacy dotenv `<member>.enc` stays readable until `migrate` moves it. Nothing else under `.starcistacks/` is ciphertext.
+  A business package keeps its provider keys the same way: `packages/<pkg>/secrets/<name>.sops.yaml`, committed only as a valid sops
+  document (every leaf `ENC[...]`, a `sops` block with age recipients) sealed to the recipients of the package's own `.sops.yaml`
+  (R277: `HFS_PACKAGE_SECRET_NOT_SEALED` for plaintext, `HFS_PACKAGE_SECRET_RECIPIENT` for a missing or different recipient set);
+  `.env` and `*.secrets.env` stay refused.
 - **Declared per consumer.** An app runtime key is one entry of its environment's `secrets:` in
   `application-stacks.yaml` (`name: <kebab of the key>`, `member`, `key`, `where: secrets/<member>`); `materialize` writes
   each key to its own file in host-local custody and the back end reads it through `<KEY>_FILE` as BE-CONFIG-4 in

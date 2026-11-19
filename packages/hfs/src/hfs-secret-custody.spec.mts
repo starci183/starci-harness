@@ -2,6 +2,8 @@
 // proves: HFS_CANON_COPY_DRIFT@lite HFS_CANON_COPY_DRIFT@full
 // proves: HFS_SECRET_PLAINTEXT_FILE@lite HFS_SECRET_PLAINTEXT_FILE@full
 // proves: HFS_SECRET_OUTSIDE_ENC@full
+// proves: HFS_PACKAGE_SECRET_NOT_SEALED@lite HFS_PACKAGE_SECRET_NOT_SEALED@full
+// proves: HFS_PACKAGE_SECRET_RECIPIENT@lite HFS_PACKAGE_SECRET_RECIPIENT@full
 // Names and paths may be printed. Compare private test data only as booleans.
 import test from "node:test";
 import type { TestContext } from "node:test";
@@ -334,6 +336,69 @@ test("HFS_SECRET_OUTSIDE_ENC (full): a sealed file outside its home is refused; 
     [],
   );
 });
+
+const PKG_RECIPIENT = `age1${"z".repeat(58)}`;
+const AGE_ENTRY = (r) =>
+  `    - recipient: ${r}\n      enc: |\n        -----BEGIN AGE ENCRYPTED FILE-----\n        YWdlLWJsb2Nr\n        -----END AGE ENCRYPTED FILE-----\n`;
+const sealedPackageYaml = (keys, recipients = [PKG_RECIPIENT]) =>
+  keys.map((key) => `${key}: ${ENC}`).join("\n") +
+  `\nsops:\n  age:\n${recipients.map(AGE_ENTRY).join("")}` +
+  `  lastmodified: "2026-01-01T00:00:00Z"\n  mac: ${ENC}\n  version: 3.13.2\n`;
+const packageSops = (recipients = PKG_RECIPIENT) =>
+  `creation_rules:\n  - path_regex: secrets/.*\.sops.yaml$\n    age: ${recipients}\n`;
+
+for (const edition of ["lite", "full"]) {
+  test(`sealed package secrets (${edition}): a valid sops file matching the package recipients passes`, (t) => {
+    const { root } = app(t);
+    const second = `age1${"y".repeat(58)}`;
+    write(root, "packages/shop/.sops.yaml", packageSops());
+    write(root, "packages/shop/secrets/dev.sops.yaml", sealedPackageYaml(["OPENAI_API_KEY", "ZALO_SECRET"]));
+    write(root, "packages/two/.sops.yaml", packageSops(`${PKG_RECIPIENT},${second}`));
+    write(root, "packages/two/secrets/prod.sops.yaml", sealedPackageYaml(["KEY"], [second, PKG_RECIPIENT]));
+    const files = ["packages/shop/secrets/dev.sops.yaml", "packages/two/secrets/prod.sops.yaml"];
+    assert.deepEqual(secretCustodyOnlyFindings(ctx(root, files, edition)), []);
+    // R06 reads the same file as clean too: the ENC leaves and the age block hold no plaintext.
+    assert.deepEqual(
+      secretFileFindings({ file: files[0], text: fs.readFileSync(path.join(root, files[0]), "utf8") }),
+      [],
+    );
+  });
+
+  test(`HFS_PACKAGE_SECRET_NOT_SEALED (${edition}): plaintext, half-sealed or non-sops package secrets are refused`, (t) => {
+    const { root } = app(t);
+    write(root, "packages/shop/.sops.yaml", packageSops());
+    write(root, "packages/shop/secrets/plain.sops.yaml", "OPENAI_API_KEY: hunter2hunter2hunter2\n");
+    write(root, "packages/shop/secrets/half.sops.yaml", `${sealedPackageYaml(["A"])}PLAIN: visible-value\n`);
+    write(root, "packages/shop/secrets/nomac.sops.yaml", `A: ${ENC}\n`);
+    const files = ["plain", "half", "nomac"].map((n) => `packages/shop/secrets/${n}.sops.yaml`);
+    const findings = secretCustodyOnlyFindings(ctx(root, files, edition));
+    assert.deepEqual(codes(findings), Array(3).fill("HFS_PACKAGE_SECRET_NOT_SEALED"));
+    assert.equal(JSON.stringify(findings).includes("hunter2"), false, "a finding never carries a value");
+  });
+
+  test(`HFS_PACKAGE_SECRET_RECIPIENT (${edition}): no recipient, a different recipient or no package .sops.yaml is refused`, (t) => {
+    const { root } = app(t);
+    const other = `age1${"x".repeat(58)}`;
+    write(root, "packages/shop/.sops.yaml", packageSops());
+    write(root, "packages/shop/secrets/none.sops.yaml", sealedPackageYaml(["A"], []));
+    write(root, "packages/shop/secrets/other.sops.yaml", sealedPackageYaml(["A"], [other]));
+    write(root, "packages/shop/secrets/extra.sops.yaml", sealedPackageYaml(["A"], [PKG_RECIPIENT, other]));
+    write(root, "packages/bare/secrets/dev.sops.yaml", sealedPackageYaml(["A"]));
+    const files = ["packages/shop/secrets/none.sops.yaml", "packages/shop/secrets/other.sops.yaml",
+      "packages/shop/secrets/extra.sops.yaml", "packages/bare/secrets/dev.sops.yaml"];
+    assert.deepEqual(codes(secretCustodyOnlyFindings(ctx(root, files, edition))), Array(4).fill("HFS_PACKAGE_SECRET_RECIPIENT"));
+  });
+
+  test(`HFS_SECRET_PLAINTEXT_FILE (${edition}): other plaintext members of a package secrets/ directory stay refused`, (t) => {
+    const { root } = app(t);
+    write(root, "packages/shop/secrets/dev.yaml", "token: hunter2hunter2hunter2\n");
+    write(root, "packages/shop/secrets/dev.env", "OPENAI_API_KEY=hunter2hunter2hunter2\n");
+    write(root, "packages/shop/secrets/notes.txt", "x\n");
+    write(root, "packages/shop/dev.secrets.env", "OPENAI_API_KEY=hunter2hunter2hunter2\n");
+    const files = ["packages/shop/secrets/dev.yaml", "packages/shop/secrets/dev.env", "packages/shop/secrets/notes.txt", "packages/shop/dev.secrets.env"];
+    assert.deepEqual(codes(secretCustodyOnlyFindings(ctx(root, files, edition))), Array(4).fill("HFS_SECRET_PLAINTEXT_FILE"));
+  });
+}
 
 test("HFS_SECRET_OUTSIDE_ENC (lite): an off-home .enc is already HFS_LITE_SECRET_CUSTODY, so R277 stays silent", (t) => {
   const { root } = app(t);

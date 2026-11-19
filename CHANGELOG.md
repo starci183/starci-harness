@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.177 - 2026-11-20
+
+- Changed (pins): @starci/hfs 6.13.57 (R277 admits a package's sealed `secrets/*.sops.yaml`). Until the cli-follow step raises the CLI requirement, the CLI runs the hfs it requires.
+
 ## 1.1.0-alpha.176 - 2026-11-19
 
 - Changed: the CLI requires @starci/hfs@6.13.56, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).

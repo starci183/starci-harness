@@ -1873,10 +1873,12 @@ rules:
       - {kind: hfs, id: stacks-lite-backing}
   - id: R277
     code: HFS_SECRET_PLAINTEXT_FILE
-    law: A tracked secret exists only as a sops envelope under `.starcistacks/<env>/secrets/`, in every edition.
+    law: A tracked secret exists only as a sops envelope under `.starcistacks/<env>/secrets/`, in every edition; a business package may also commit `packages/<pkg>/secrets/<name>.sops.yaml`, only as a valid sops document (every leaf `ENC[...]`, a `sops` block with age recipients) sealed to the recipients of its own `packages/<pkg>/.sops.yaml`.
     failureCodes:
       - HFS_SECRET_PLAINTEXT_FILE
       - HFS_SECRET_OUTSIDE_ENC
+      - HFS_PACKAGE_SECRET_NOT_SEALED
+      - HFS_PACKAGE_SECRET_RECIPIENT
     enforcers:
       - {kind: hfs, id: secret-custody-only}
   - id: R278

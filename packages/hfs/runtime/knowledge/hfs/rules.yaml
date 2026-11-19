@@ -4213,14 +4213,14 @@ rules:
       - {kind: hfs, id: secret-age-key-custody, at: scripts/hfs/rules/secrets.mjs}
       - {kind: hfs, id: canon-copy-drift, at: scripts/hfs/rules/canon-copy-drift.mjs}
     proves:
-      - {path: packages/hfs/src/hfs-secret-custody.spec.mjs, editions: [lite, full]}
+      - {path: packages/hfs/src/hfs-secret-custody.spec.mts, editions: [lite, full]}
     exemplifiedBy:
       - {path: packages/hfs/templates/be/skeleton/src/modules/platform/config/env-source.config.ts, editions: [lite, full]}
       - {path: packages/hfs/templates/be/skeleton/src/modules/platform/http-security/origin.guard.ts, editions: [lite, full]}
       - {path: packages/hfs/templates/be/skeleton/src/modules/platform/http-security/webhook-signature.service.ts, editions: [lite, full]}
-      - {path: packages/hfs/src/hfs-secret-custody.spec.mjs, editions: [lite, full]}
+      - {path: packages/hfs/src/hfs-secret-custody.spec.mts, editions: [lite, full]}
     witness:
-      - {path: packages/hfs/src/hfs-secret-custody.spec.mjs, editions: [lite, full]}
+      - {path: packages/hfs/src/hfs-secret-custody.spec.mts, editions: [lite, full]}
   - id: R255
     code: "DB_APP_ROLE"
     editions: [lite]
@@ -4694,10 +4694,10 @@ rules:
       - {path: packages/hfs/src/hfs-stacks-lite-backing.spec.mjs, edition: lite}
   - id: R277
     code: "HFS_SECRET_PLAINTEXT_FILE"
-    law: "In every edition the only custody a tracked secret may take is a sops envelope at `.starcistacks/<env>/secrets/**.enc`. A tracked plaintext secret file is refused by being: `secrets.env` or `.secret(s).env` at any depth, a non-dot `*.env` or `*.env.<profile>` holding secret keys (deploy-side dotenv included), and a plaintext member of a `secrets/` directory; a sealed `.enc` outside the one sealed home is refused too (for lite it is already `HFS_LITE_SECRET_CUSTODY`)."
+    law: "In every edition the only custody a tracked secret may take is a sops envelope at `.starcistacks/<env>/secrets/**.enc`. A tracked plaintext secret file is refused by being: `secrets.env` or `.secret(s).env` at any depth, a non-dot `*.env` or `*.env.<profile>` holding secret keys (deploy-side dotenv included), and a plaintext member of a `secrets/` directory; a sealed `.enc` outside the one sealed home is refused too (for lite it is already `HFS_LITE_SECRET_CUSTODY`). One more custody is allowed (owner:sealed-package-secrets): a business package may commit `packages/<pkg>/secrets/<name>.sops.yaml` only as a valid sops document, every leaf `ENC[...]`, a `sops` block with age recipients, and those recipients equal to the ones `packages/<pkg>/.sops.yaml` names for it; plaintext in that file is `HFS_PACKAGE_SECRET_NOT_SEALED`, a missing or different recipient set is `HFS_PACKAGE_SECRET_RECIPIENT`."
     kinds: [check]
     gates: [settle, land, ci]
-    failureCodes: ["HFS_SECRET_PLAINTEXT_FILE", "HFS_SECRET_OUTSIDE_ENC"]
+    failureCodes: ["HFS_SECRET_PLAINTEXT_FILE", "HFS_SECRET_OUTSIDE_ENC", "HFS_PACKAGE_SECRET_NOT_SEALED", "HFS_PACKAGE_SECRET_RECIPIENT"]
     enforcers:
       - {kind: hfs, id: secret-custody-only, at: scripts/hfs/rules/secret-custody-only.mjs}
     editions: [lite, full]
@@ -4705,14 +4705,17 @@ rules:
     docs: [docs/host-secrets.md#r277]
     templateNa: "Sealed secret members are owner-created through starci app secret set after custody initialization; the scaffolder does not generate committed secret material."
     proves:
-      - {path: packages/hfs/src/hfs-secret-custody.spec.mjs, editions: [lite, full], codes: [HFS_SECRET_PLAINTEXT_FILE]}
-      - {path: packages/hfs/src/hfs-secret-custody.spec.mjs, editions: [full], codes: [HFS_SECRET_OUTSIDE_ENC]}
+      - {path: packages/hfs/src/hfs-secret-custody.spec.mts, editions: [lite, full], codes: [HFS_SECRET_PLAINTEXT_FILE]}
+      - {path: packages/hfs/src/hfs-secret-custody.spec.mts, editions: [full], codes: [HFS_SECRET_OUTSIDE_ENC]}
+      - {path: packages/hfs/src/hfs-secret-custody.spec.mts, editions: [lite, full], codes: [HFS_PACKAGE_SECRET_NOT_SEALED, HFS_PACKAGE_SECRET_RECIPIENT]}
     exemplifiedBy:
-      - {path: packages/hfs/src/hfs-secret-custody.spec.mjs, editions: [lite, full], codes: [HFS_SECRET_PLAINTEXT_FILE]}
-      - {path: packages/hfs/src/hfs-secret-custody.spec.mjs, editions: [full], codes: [HFS_SECRET_OUTSIDE_ENC]}
+      - {path: packages/hfs/src/hfs-secret-custody.spec.mts, editions: [lite, full], codes: [HFS_SECRET_PLAINTEXT_FILE]}
+      - {path: packages/hfs/src/hfs-secret-custody.spec.mts, editions: [full], codes: [HFS_SECRET_OUTSIDE_ENC]}
+      - {path: packages/hfs/src/hfs-secret-custody.spec.mts, editions: [lite, full], codes: [HFS_PACKAGE_SECRET_NOT_SEALED, HFS_PACKAGE_SECRET_RECIPIENT]}
     witness:
-      - {path: packages/hfs/src/hfs-secret-custody.spec.mjs, editions: [lite, full], codes: [HFS_SECRET_PLAINTEXT_FILE]}
-      - {path: packages/hfs/src/hfs-secret-custody.spec.mjs, editions: [full], codes: [HFS_SECRET_OUTSIDE_ENC]}
+      - {path: packages/hfs/src/hfs-secret-custody.spec.mts, editions: [lite, full], codes: [HFS_SECRET_PLAINTEXT_FILE]}
+      - {path: packages/hfs/src/hfs-secret-custody.spec.mts, editions: [full], codes: [HFS_SECRET_OUTSIDE_ENC]}
+      - {path: packages/hfs/src/hfs-secret-custody.spec.mts, editions: [lite, full], codes: [HFS_PACKAGE_SECRET_NOT_SEALED, HFS_PACKAGE_SECRET_RECIPIENT]}
   - id: R278
     code: "BE_REST_DOOR_EVIDENCE"
     law: "An api app's declared contract (hfs.json `contract`, graphql when absent) is its default door. In a back end whose api apps declare rest, a controller needs no evidence and no GraphQL door or GraphQL platform exists (BE_REST_APP_GRAPHQL). In a graphql back end, in lite and full, each REST route carries its own evidence: a probe, auth handshake, signed webhook, actual byte stream, an event stream (a text/event-stream route: an `@Sse` method of `@nestjs/common` inside the be.feature.realtime.sse slot; an `@Sse` anywhere else proves nothing), a public versioned operation served from the app's nonempty defineOperations table, or a credential-guarded route: the route or its controller carries @Credential({ kind: \"<literal>\" }) imported from the domain identity capability, which also declares the CredentialGuard class implementing CanActivate (resolved by TypeScript symbol, never by name); a local decorator of the same name, a @UseGuards of any other guard and a computed kind prove nothing. A class-level reference or an unused StreamableFile import proves no route, and a public REST route absent from the operation table is refused."

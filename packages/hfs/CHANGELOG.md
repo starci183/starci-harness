@@ -1,5 +1,15 @@
 # Changelog
 
+## 6.13.57 - 2026-11-20
+
+- Added (R277, `rules/secret-custody-only.mts`, `HFS_PACKAGE_SECRET_NOT_SEALED`, `HFS_PACKAGE_SECRET_RECIPIENT`): a business package may commit its provider keys as `packages/<pkg>/secrets/<name>.sops.yaml`, only as a valid sops document (every leaf `ENC[...]`, a `sops` block with age recipients) sealed to the recipients its own `packages/<pkg>/.sops.yaml` names for that path. Plaintext is `HFS_PACKAGE_SECRET_NOT_SEALED`, a missing or different recipient set `HFS_PACKAGE_SECRET_RECIPIENT`; `.env`, `*.secrets.env` and other plaintext stay refused. (Ported from the sealed-package-secrets lane, which was written against the legacy layout.)
+- Changed (`knowledge/hfs/canon-pins.yaml`): the `@starci/hfs` self-pin is 6.13.57.
+
+## 6.13.56 - 2026-11-19
+
+- Changed (`knowledge/hfs/canon-pins.yaml`): the Grammar family 0.49.0 (range ~0.49.0), eslint-canon-fe 9.21.0, @starci/gallery 0.1.8 and the `@starci/hfs` self-pin is 6.13.56.
+- Added (R448, `hfs.json` `sides.be.apps[].boot.timeoutMs`): the time the composition may take (1000 to 300000 ms, default 15000). The boot worker loads the app source by transpiling each file alone, with no program and no type check, so a large composition loads in seconds, and a boot factory may return an application context it composed itself (a testing module with the infrastructure doubled), which the check closes.
+
 ## 6.13.55 - 2026-11-19
 
 - Changed (`knowledge/hfs/canon-pins.yaml`): the `@starci/hfs` self-pin is 6.13.55.
@@ -1079,10 +1089,6 @@ One auth package for both editions: `@starci/auth` 0.6.0 holds the lite sign-in,
 
 - Changed: Align bundled canon pins and exact sibling requirements with Grammar and its lint families at 0.21.6. Runtime behavior and rule severity are unchanged.
 
-## 6.13.56 - 2026-11-19
-
-- Changed (`knowledge/hfs/canon-pins.yaml`): the Grammar family 0.49.0 (range ~0.49.0), eslint-canon-fe 9.21.0, @starci/gallery 0.1.8 and the `@starci/hfs` self-pin is 6.13.56.
-- Added (R448, `hfs.json` `sides.be.apps[].boot.timeoutMs`): the time the composition may take (1000 to 300000 ms, default 15000). The boot worker loads the app source by transpiling each file alone, with no program and no type check, so a large composition loads in seconds, and a boot factory may return an application context it composed itself (a testing module with the infrastructure doubled), which the check closes.
 ## 5.0.1 - 2026-11-02
 
 - Fixed: function-subject provenance follows callable re-exports to the canonical declaration, so unit provider checks recognize the real subject through barrel exports while retaining invocation and dependency checks.
