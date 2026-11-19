@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Changed (`starci lane land`, PROJECT-BRANCH-2 item 6): a batch whose `npm ci`, codegen or `build:modules` ran out of memory releases the dev lock and waits for 6 GB free RAM before the next batch, instead of starting again a second later; the out-of-memory text also matches npm's and turbo's `exited 134` / `exited (134)`.
+
 ## 1.1.0-alpha.179 - 2026-11-20
 
 - Changed: the CLI requires @starci/hfs@6.13.58, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).

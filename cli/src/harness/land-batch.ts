@@ -353,14 +353,20 @@ export const runBatch = async (options: BatchOptions): Promise<BatchRecord | und
         outcome = "no lane left in the batch"
     }
     if (!options.dryRun) await takeDevLock(dir, say)
+    // A batch that failed because a step ran out of memory (npm ci, codegen, build:modules) waits for RAM once the dev lock is released,
+    // so the next batch does not start into the same shortage a second later.
+    let waitForRam = false
     try {
         await body()
     } catch (error) {
-        outcome = `batch failed (${error instanceof Error ? error.message : String(error)}); every lane not yet judged stays ready`
+        const message = error instanceof Error ? error.message : String(error)
+        waitForRam = isOutOfMemory(undefined, `${message}\n${log.slice(-4).join("\n")}`)
+        outcome = `batch failed (${message})${waitForRam ? " (out of memory)" : ""}; every lane not yet judged stays ready`
     } finally {
         if (!options.dryRun) releaseLockFile(landPaths(dir).devLock, process.pid)
         writeFileSync(join(folder, "lander.log"), log.join("\n"))
     }
+    if (waitForRam) await waitForFreeRam(OOM_FREE_MB, say)
     const record: BatchRecord = {
         batch, base, lanes: ready.map((lane) => lane.lane), merged: merged.map((lane) => lane.lane),
         conflicts: conflicts.map((conflict) => ({ lane: conflict.lane.lane, with: conflict.with, files: conflict.files })),

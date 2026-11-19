@@ -252,7 +252,7 @@ export const OOM_FREE_MB = 6144
  * The marks of a process that ran out of memory rather than failing a check: Node's abort (exit 134) or a kill (exit 137), Windows'
  * fast-fail of a heap abort (0xC0000409), the V8 heap messages, the harness's heap-cap note and ENOMEM.
  */
-const OOM_TEXT = /\(?exit (?:134|137|3221226505)\)?|heap out of memory|reached heap limit|heap cap \d+ MB reached|allocation failed - javascript heap|\bENOMEM\b/i
+const OOM_TEXT = /\bexit(?:ed)?:? \(?(?:134|137|3221226505)\b|heap out of memory|reached heap limit|heap cap \d+ MB reached|allocation failed - javascript heap|\bENOMEM\b/i
 const OOM_EXIT_CODES: ReadonlySet<number> = new Set([134, 137, 3221226505])
 
 /** Whether a process's exit code or its printed text says it ran out of memory. */

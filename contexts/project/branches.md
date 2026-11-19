@@ -55,8 +55,8 @@ rule; every other page links to it.
 6. A gate that ran out of memory blames no lane: exit 134, 137 or `0xC0000409`, a V8 heap message, the harness's heap-cap note or
    `ENOMEM`, from the gate itself or from a check one of its findings reports. The round waits until the host has `OOM_FREE_MB` free
    and runs again, at most `OOM_RETRIES` more times; a round that still runs out of memory parks its lanes (`parked`, with the
-   evidence in `reason`), never rejects them, and each registers again once the host has RAM. A push whose check ran out of memory
-   waits for the same RAM before the next batch; its lanes stay ready.
+   evidence in `reason`), never rejects them, and each registers again once the host has RAM. A push whose check ran out of memory, or a batch whose
+   install, codegen or module build ran out of memory, waits for the same RAM before the next batch; its lanes stay ready.
 
 **Enforced by** `starci lane ready` (refuses a dirty tree, `LANE_READY_DIRTY`, and a sha that is not the pushed tip of its branch,
 `LANE_READY_NOT_PUSHED`), `starci lane land` (one lander per folder, `LANE_LANDER_RUNNING`; the dev lock and the gate and npm slot files of the folder
