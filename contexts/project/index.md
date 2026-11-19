@@ -149,8 +149,8 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Anatomy: wrap HeroUI once, never redraw it · Spacing: one scale, roles for gaps and levels for insets · Size and intent · One root · Idioms · Playbook shapes
 - [grammars/contract.md](../grammars/contract.md) · 48 KB — Every grammar implements one contract, so a new grammar can be added without touching the others and two apps on the same grammar come out the same.
   - sections: What a grammar provides · The shared scale · Intent x placement -> variant · Roles
-- [grammars/contract.yaml](../grammars/contract.yaml) · 165 KB — What every grammar implements.
-  - ids: DNA-<SCOPE>-<NAME>,, DNA-COMMON-ACCENT-CORNER, DNA-COMMON-AGENT-NAMED, DNA-COMMON-ALERT-TONE-PAIR-ACCENT, DNA-COMMON-ALERT-TONE-PAIR-DANGER, DNA-COMMON-ALERT-TONE-PAIR-DEFAULT, DNA-COMMON-ALERT-TONE-PAIR-INFORMATIVE, DNA-COMMON-ALERT-TONE-PAIR-SUCCESS, DNA-COMMON-ALERT-TONE-PAIR-WARNING, DNA-COMMON-ALERTDIALOG-DISMISS-FIRST, DNA-COMMON-ALERTDIALOG-TONE-INFORMATIVE, DNA-COMMON-AVATAR-GROUP-ONE-SIZE, DNA-COMMON-AVATAR-INITIALS, DNA-COMMON-AVATAR-RAMP, DNA-COMMON-BADGE-BELOW-RAMP, DNA-COMMON-BADGE-DOT-CHIP-PARITY, DNA-COMMON-BADGE-DOT-GAP, DNA-COMMON-BADGE-DOT-ONE-PER-ENTITY, DNA-COMMON-BADGE-TONE-INFO, DNA-COMMON-BAR-CHART-ONE-SCALE, DNA-COMMON-BAR-ONE-HEIGHT, DNA-COMMON-BOARD-ONE-WIDTH, DNA-COMMON-BUBBLE-TEXT-INSIDE-END, DNA-COMMON-BUBBLE-TEXT-INSIDE-START and 234 more
+- [grammars/contract.yaml](../grammars/contract.yaml) · 168 KB — What every grammar implements.
+  - ids: DNA-<SCOPE>-<NAME>,, DNA-COMMON-ACCENT-CORNER, DNA-COMMON-AGENT-NAMED, DNA-COMMON-ALERT-TONE-PAIR-ACCENT, DNA-COMMON-ALERT-TONE-PAIR-DANGER, DNA-COMMON-ALERT-TONE-PAIR-DEFAULT, DNA-COMMON-ALERT-TONE-PAIR-INFORMATIVE, DNA-COMMON-ALERT-TONE-PAIR-SUCCESS, DNA-COMMON-ALERT-TONE-PAIR-WARNING, DNA-COMMON-ALERTDIALOG-DISMISS-FIRST, DNA-COMMON-ALERTDIALOG-TONE-INFORMATIVE, DNA-COMMON-AVATAR-GROUP-ONE-SIZE, DNA-COMMON-AVATAR-INITIALS, DNA-COMMON-AVATAR-RAMP, DNA-COMMON-BADGE-BELOW-RAMP, DNA-COMMON-BADGE-DOT-CHIP-PARITY, DNA-COMMON-BADGE-DOT-GAP, DNA-COMMON-BADGE-DOT-ONE-PER-ENTITY, DNA-COMMON-BADGE-TONE-INFO, DNA-COMMON-BAR-CHART-ONE-SCALE, DNA-COMMON-BAR-ONE-HEIGHT, DNA-COMMON-BOARD-ONE-WIDTH, DNA-COMMON-BUBBLE-TEXT-INSIDE-END, DNA-COMMON-BUBBLE-TEXT-INSIDE-START and 239 more
 - [grammars/contributing.md](../grammars/contributing.md) · 15 KB — How a component enters `@starci/grammar`, or a prop enters a component.
   - sections: The laws · The question to ask first · One job · Naming · Which tier · Props · Composition · Paint · Accessibility · Server safety · Skeleton parity · What ships with it · Patch or minor · Render proof · The look, reviewed by a person
 - [grammars/core.md](../grammars/core.md) · 5 KB — `core` is the product and workspace grammar: a quiet neutral page, white surfaces, one violet accent.
@@ -195,7 +195,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: PROJECT-DESKTOP-1 The desktop app is a Tauri shell around the deployed web app · PROJECT-DESKTOP-2 The tree: rendered files, owned files, ignored files · PROJECT-DESKTOP-3 Building: locally with Rust, in CI for a release · PROJECT-DESKTOP-4 Keys and certificates: CI secrets, never files · What a project needs to adopt it
 - [project/full.md](../project/full.md) · 4 KB — Only the differences of a full app from the shared project model (README.md); everything not named here is the same in both editions.
   - sections: Shape of production · Backing services · Patterns · Infrastructure the project runs · Deploy targets · What CI runs · Work · Read with
-- [project/gallery.md](../project/gallery.md) · 36 KB — Every app source repository carries a screenshot gallery at `gallery/`: the one place where the shots of every screen and the explanation of why each region is drawn that way are ...
+- [project/gallery.md](../project/gallery.md) · 37 KB — Every app source repository carries a screenshot gallery at `gallery/`: the one place where the shots of every screen and the explanation of why each region is drawn that way are ...
   - sections: PROJECT-GALLERY-1 Every app carries a gallery, and every UI fix round saves shots to it · PROJECT-GALLERY-2 Every screen is explained, region by region; a region that cannot be explained is a bug · PROJECT-GALLERY-3 Screens link into flows · PROJECT-GALLERY-4 Every route of the front end has a screen · PROJECT-GALLERY-5 A screen's explanation changes with its source · PROJECT-GALLERY-6 An area can be drawn before code: the design canvas mirrors the gallery and records each screen's approval · PROJECT-GALLERY-7 A UI change goes canvas first, then code, then gallery · PROJECT-GALLERY-8 One file per screen, `screen.yaml`, and a UI audit before a changed screen lands
 - [project/lint.md](../project/lint.md) · 33 KB — Which machine judges which kind of fact in a project, where it runs, and which standard facts no machine judges yet.
   - sections: Where a check runs · Packages and gates · Facts no machine checks yet · PROJECT-LINT-1 A fact a machine can decide moves to the machine · PROJECT-LINT-2 A branch profile lowers only the polish gates · PROJECT-LINT-4 An app may switch every gate off but the hfs ones · PROJECT-LINT-3 A project extends the law through its ext folder · PROJECT-LINT-5 A production audit exception is time-boxed and the owner's · Read with
@@ -222,7 +222,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/bottom-nav.md](../ui/components/bottom-nav.md) · 5 KB — Contract: shell.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
-- [ui/components/button.md](../ui/components/button.md) · 13 KB — Contract: Button.
+- [ui/components/button.md](../ui/components/button.md) · 14 KB — Contract: Button.
   - sections: Job · Choose · Variants · Size · States · Owner split · Icon and size · Rules · Icons inside Grammar are outline (0.37.4) · Icon measures (0.37.5) · App bar custom buttons (TOPBAR-CUSTOM-BUTTONS, 0.37.15)
 - [ui/components/calendar-day.md](../ui/components/calendar-day.md) · 1 KB — Name one date's region without selecting a date.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
@@ -259,8 +259,8 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - sections: Job · Choose · Filter row (0.43.1, narrow step 0.44.0) · Row edge tone (0.45.1) · Unread row (0.46.0) · Table totals, row ground, phone selection (0.46.2) · Section head (0.36.0) · Version diff rows (0.37.28) · Variants · Size · States · Owner split · Row description · Rules · Key-value rows (0.37.5)
 - [ui/components/mascot.md](../ui/components/mascot.md) · 3 KB — Contract: Mascot.
   - sections: Job · Choose · Variants · Size · States · Owner split · Rules
-- [ui/components/menu.md](../ui/components/menu.md) · 2 KB — Contract: Menu.
-  - sections: Job · Choose · Variants · Size · States · Owner split · Rules
+- [ui/components/menu.md](../ui/components/menu.md) · 3 KB — Contract: Menu.
+  - sections: Job · Choose · Variants · Size · States · Owner split · The header menu (TopBar fit, 0.47.5) · Rules
 - [ui/components/message-bubble.md](../ui/components/message-bubble.md) · 10 KB — Contract: MessageBubble.
   - sections: Job · The chat surfaces (0.37.31) · The chat frame (0.37.33) · Choose · Variants · Size · States · Owner split · Rules
 - [ui/components/motion.md](../ui/components/motion.md) · 6 KB — Contract: motion.
@@ -292,7 +292,7 @@ reads this index instead of the whole tree, then opens only the files its tasks 
   - ids: ACCENT-2, ACCENT-3, ACCENT-4, ACCENT-5, ACCENT-6, ACTION-1, COLLECTION-1, COLLECTION-2, COLLECTION-3, COLLECTION-4, COLLECTION-5, COVERAGE-1, CTA-1, CTA-2, CTA-3, CTA-4, CTA-5, CTA-6, DISCIPLINE-1, DISCIPLINE-2, DISCIPLINE-3, DISCIPLINE-4, FE-APP-SHELL-1..6, FEEDBACK-1 and 26 more
 - [ui/loading.md](../ui/loading.md) · 9 KB — A region is in exactly one of four states, and the Grammar owns how each looks.
   - sections: The four states · What the Grammar takes · The region carries it · Choose · Rules
-- [ui/presentation.md](../ui/presentation.md) · 34 KB — Presentation resolves values on boundaries the **app** owns, after composition chose the tree and the components.
+- [ui/presentation.md](../ui/presentation.md) · 36 KB — Presentation resolves values on boundaries the **app** owns, after composition chose the tree and the components.
   - sections: Space · Type · Paint · Room · Relations at a glance
 - [ui/proof.md](../ui/proof.md) · 18 KB — Proof exists only after render.
   - sections: Who holds each proof · Lenses and verdicts · Accessibility (gating) · Contrast (gating) · Focus (gating) · Motion (gating) · Render truth (gating) · Taste (scored) · UX (scored) · Anatomy source and brand (provenance)

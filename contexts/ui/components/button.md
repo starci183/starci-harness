@@ -80,6 +80,8 @@ The step is `scale.choose.step` ([../scale.md](../scale.md#the-ramp)); size is n
 changes width only: the step stays the box's floor and a wrapped label alone grows it (`DNA-COMMON-CONTROL-FILL`); `width="wrap"`
 holds the same floor.
 
+A Button label is one line (`white-space: nowrap`): a content-width button never breaks its label, `DNA-COMMON-BUTTON-ONE-LINE` judges it at 320, 360 and 390; only `width="fill"`, `"fill-narrow"` and `"wrap"`, whose width is their container's, may wrap. At 320, 360 and 390 every Button and IconButton that is not an explicit `sm` is at least 40px tall (`DNA-COMMON-CONTROLS-PHONE-40`); inside a `TopBar` an `sm` one draws at 40 as well. There is no height prop, so an app cannot shrink the step.
+
 ## States
 Disabled, pending and skeleton per CTA-3: pending keeps the label and box and refuses a second press; never
 replace pending with disabled. A disabled button states why in `disabledReason` (`DNA-COMMON-DISABLED-REASON`). A

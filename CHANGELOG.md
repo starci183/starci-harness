@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Added (`starci dna check`, `context.widths`): a static law may name the widths it is judged at (`context: { widths: [320, 360, 390] }`); the run opens each story at those widths besides its own, so the phone laws run without `--widths`. A law with `widths` is static, not contextual.
+- Added (DNA laws, `contexts/grammars/contract.yaml`): `DNA-COMMON-CONTROLS-PHONE-40`, `DNA-COMMON-HEADER-CONTROLS-40`, `DNA-COMMON-BUTTON-ONE-LINE`, `DNA-COMMON-HEADER-FIT-ONE-LINE`, `DNA-COMMON-HEADER-NO-OVERFLOW`, the rules PHONE-1..4 of `contexts/ui/presentation.md`, and the `TopBar fit` site header in the playbook, the menu and button docs, the scale and the scaffold SiteShell.
+- Added (`starci audit run`, UI audit layout lens): full-resolution crops of the first viewport and the header region at 390 and 1440 (`<width>-first.png`, `<width>-header.png`, beside the shots and allowed in a screen folder) listed first in the brief, and an explicit layout checklist: control height 40, no wrapped labels, overflow goes to the menu, tap targets at least 44.
+
 ## 1.1.0-alpha.172 - 2026-11-19
 
 - Changed: the CLI requires @starci/hfs@6.13.52, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).

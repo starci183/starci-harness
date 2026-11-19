@@ -52,7 +52,7 @@ the whole file and reads a section when it needs it: `starci contexts anchor <an
     - LAYOUT-3 One owner per region and per scroll axis · `LAYOUT-3` · 1 KB — Each region has one composition owner.
     - LAYOUT-4 Regions that leave normal flow · `LAYOUT-4` · 1 KB — Sticky, fixed, drawer and floating regions use their composition's contract and return to flow below its narrow width.
     - LAYOUT-6 No two stacked navigation strips of the same level · `LAYOUT-6` · 1 KB — Navigation of one level appears once: the page tabs, a view strip, a breadcrumb trail and a step list each stand alone in their band.
-    - FE-APP-SHELL-1..6 App chrome · `FE-APP-SHELL-1..6` · 2 KB
+    - FE-APP-SHELL-1..6 App chrome · `FE-APP-SHELL-1..6` · 3 KB
   - 7. Responsive · `contexts/ui/composition.md#7-responsive` · 1 KB
     - RESPONSIVE-1 What survives · `RESPONSIVE-1` · 1 KB — The compact branch keeps the meaning, the commit and the current state in one readable flow; support stays reachable.
     - RESPONSIVE-2 The query owner is named, never the device · `RESPONSIVE-2` · 1 KB — Every branch names one owner: a composition's container query or its viewport query.

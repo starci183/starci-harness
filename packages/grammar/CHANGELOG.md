@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.47.5 - 2026-11-19 - TopBar fit, the three-line glyph, the phone control laws
+
+Lane `harness-controls-law`; the version in package.json is raised by the train. Additive optional prop and new DNA laws, so a patch. Both families, light and dark. Evidence: a phone site header wrapped "Đăng nhập" onto two lines and drew buttons under 40px because the header was hand-built in the app.
+
+- Added (`TopBar`, composite): `fit?: { navigationItems?, actionItems?, overflowLabel }`, the site header's links and actions as data on ONE line. `navigationItems` are `{ id, label, href, isCurrent? }`, `actionItems` `{ id, label, emphasis?: "primary" | "secondary", href | onPress }`, `overflowLabel` the accessible name of the menu trigger. The row measures its items and keeps the ones that fit its width; the rest move whole, in order (links last to first, then the quiet actions, the primary action last), into a `DropdownMenu` opened by the three-line `IconButton` at the row's end, which exists only while the menu holds something. It follows the row's width, not a breakpoint, so a long label or a 320px phone moves an action into the menu where a wide screen keeps it. Types `TopBarFit`, `TopBarActionItem`, `TopBarNavigationItem` are exported.
+- Added (`Icon` glyphs): `menu` (the three lines) in the closed vocabulary.
+- Changed: a content-width `Button` never wraps its label (`white-space: nowrap`; `fill`, `fill-narrow` and `wrap` keep their own rule). Inside a `TopBar` an `sm` `Button` or `IconButton` draws at the md 40px step.
+- Added: DNA laws `DNA-COMMON-CONTROLS-PHONE-40` (Button, IconButton, field and menu trigger at least 40px at 320, 360 and 390), `DNA-COMMON-HEADER-CONTROLS-40`, `DNA-COMMON-BUTTON-ONE-LINE`, `DNA-COMMON-HEADER-FIT-ONE-LINE` and `DNA-COMMON-HEADER-NO-OVERFLOW`. Stories `TopBarFitManyActions` and `TopBarFitFewActions` (Surfaces/Top bar fit).
+
 ## 0.47.4 - 2026-11-19 - Loading buttons sit in an inert hidden wrapper
 
 Train 170 (lane `harness-polish`). Behaviour fix, no API change, so a patch. A `Button` or `IconButton` with `isLoading` is drawn inside an inert, hidden wrapper (`HiddenSkeleton`, `aria-hidden`, `inert`, laid out as nothing), so a loading skeleton no longer stays a named button or link in the accessibility tree and the tab order; this fixes the Media tiles "Initial Loading" story. Both families.

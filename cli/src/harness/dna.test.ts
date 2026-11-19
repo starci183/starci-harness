@@ -101,3 +101,16 @@ void test("judgePart is one self-contained function, because the page runs its s
     assert.deepEqual(judgePart(part({ op: ">=", measured: [44], expected: [[44]] })), { ok: true, want: ">= 44" })
     assert.deepEqual(judgePart(part({ op: "=", measured: ["a"], expected: [["b"]] })), { ok: false, want: '= "b"' })
 })
+
+void test("the phone laws name their widths: static, judged at 320, 360 and 390, and the header laws exist", () => {
+    const contract = loadDnaContract()
+    for (const id of ["DNA-COMMON-CONTROLS-PHONE-40", "DNA-COMMON-HEADER-CONTROLS-40", "DNA-COMMON-BUTTON-ONE-LINE", "DNA-COMMON-HEADER-FIT-ONE-LINE", "DNA-COMMON-HEADER-NO-OVERFLOW"]) {
+        const entry = contract.entries.find((candidate) => candidate.id === id)
+        assert.ok(entry !== undefined, `${id} is declared`)
+        assert.ok(entry.variants.length > 0 && entry.variants.every((variant) => variant.context.widths?.join(",") === "320,360,390"), `${id} is judged at 320, 360 and 390`)
+        assert.ok(entry.variants.every((variant) => variant.context.pointer === null && variant.context.viewport === null && variant.context.state === null), `${id} is static`)
+    }
+    assert.equal(contract.entries.find((entry) => entry.id === "DNA-COMMON-CONTROL-MD")?.variants[0]?.context.widths, null)
+    const floor = contract.entries.find((entry) => entry.id === "DNA-COMMON-CONTROLS-PHONE-40")?.variants
+    assert.ok(floor?.every((variant) => variant.op === ">=" && variant.value === "40px"))
+})

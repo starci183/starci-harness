@@ -17,13 +17,23 @@ export const LENSES = ['order', 'layout', 'actionable', 'live', 'words', 'states
 export type Lens = (typeof LENSES)[number];
 export const LENS_MEANING: Readonly<Record<Lens, string>> = Object.freeze({
   order: 'Content order: what the user needs first comes first.',
-  layout: 'UI/UX arrangement: grouping, hierarchy, the Grammar rules.',
+  layout: 'UI/UX arrangement: grouping, hierarchy, the Grammar rules, and the control checklist below (height 40, no wrapped label, overflow to the menu, tap target 44).',
   actionable: 'Every value shows how to change it.',
   live: 'Running, done, waiting and failed are visible with an icon and motion.',
   words: 'No mixed English or raw ids; one term per concept.',
   states: 'Empty, loading, error and no-permission states exist at 1440 and 390.',
   truth: 'The data is real, or marked "cần API".',
 });
+/**
+ * The layout lens's explicit checklist (owner, 2026-11-19: a phone header wrapped a label and drew buttons under 40px because the audit read a scaled-down full-page shot). Each item is
+ * checked on the full-resolution crops at 390 and 1440, never on the shrunk full-page shot, and answered in the layout notes.
+ */
+export const LAYOUT_CHECKLIST: readonly string[] = Object.freeze([
+  'control height: every button, field and menu trigger is 40px tall (an sm control only nested in a list item or a dense toolbar; in a header never) - DNA-COMMON-CONTROLS-PHONE-40, DNA-COMMON-HEADER-CONTROLS-40',
+  'no wrapped label: every button label, header action and link is on ONE line at 390 - DNA-COMMON-BUTTON-ONE-LINE, DNA-COMMON-HEADER-FIT-ONE-LINE',
+  'overflow goes to the menu: a header with more actions than fit moves them into the three-line menu (TopBar fit), it never wraps, scrolls or runs off the edge - DNA-COMMON-HEADER-NO-OVERFLOW',
+  'tap targets: every pressable part is at least 44px by 44px to touch at 390, its own box or the extended hit area (thresholds target.coarse.min)',
+]);
 export const VERDICTS = ['pass', 'fixed', 'open'] as const;
 export type Verdict = (typeof VERDICTS)[number];
 export const MIN_ROUNDS = 2;
@@ -254,7 +264,7 @@ export function nextRound(value: Record<string, unknown>, { disk, builder, audit
 }
 
 /** The brief an auditor agent reads: the shots to open at full size, the screen's own words, the seven lenses and the laws. */
-export function auditBrief({ id, folder, value, shotPaths, laws }: { id: string; folder: string; value: Record<string, unknown>; shotPaths: readonly string[]; laws: readonly string[] }): string {
+export function auditBrief({ id, folder, value, shotPaths, cropPaths = [], laws }: { id: string; folder: string; value: Record<string, unknown>; shotPaths: readonly string[]; cropPaths?: readonly string[]; laws: readonly string[] }): string {
   const audit = plain(value['audit']) ? (value['audit'] as unknown as Audit) : null;
   return [
     `# UI audit brief: ${id}`,
@@ -262,11 +272,15 @@ export function auditBrief({ id, folder, value, shotPaths, laws }: { id: string;
     'You are the AUDITOR. You are a different agent from the builder (audit.builder.agent); you do not fix the screen alone and you never mark a lens pass you did not check on the shot.',
     '',
     '## Read first, at full size',
+    ...(cropPaths.length === 0 ? [] : ['The CROPS first: the first viewport and the header region of each shot, cut at full resolution (never scaled). Judge the header and the first screen on these, not on the full-page shot, which a viewer shrinks to fit.', ...cropPaths.map((crop) => `- ${crop}`), 'Then the full shots:']),
     ...shotPaths.map((shot) => `- ${shot}`),
     `- ${folder}/${SCREEN_FILE}: the screen's identity, sections, the options considered and the audit you fill`,
     '',
     '## The seven lenses (every round runs all seven; verdict pass | fixed | open, with notes)',
     ...LENSES.map((lens, index) => `${index + 1}. ${lens}: ${LENS_MEANING[lens]}`),
+    '',
+    '## The layout lens checklist (answer each item in the layout notes, on the crops)',
+    ...LAYOUT_CHECKLIST.map((item) => `- ${item}`),
     '',
     '## The loop',
     `Round 1 finds; the builder fixes what is open and shoots again; run \`starci audit run ${id}\` for the next round. At least ${MIN_ROUNDS} rounds, at most ${MAX_ROUNDS}, until no lens is open. Still open after round ${MAX_ROUNDS}: set audit.escalate to "needs owner: <why>"; the gate stays red.`,

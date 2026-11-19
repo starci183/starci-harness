@@ -9,6 +9,7 @@ import path from 'node:path';
 import { galleryParams } from '../runtime/scripts/hfs/gallery.mjs';
 import { feRoutes, routeKey } from '../runtime/scripts/hfs/gallery-routes.mjs';
 import { galleryScreens } from '../runtime/scripts/hfs/rules/gallery.mjs';
+import { cropShots } from '../runtime/scripts/hfs/shot-crops.mjs';
 import { auditBrief, docProblems, LENSES, nextRound, parseScreen, SCREEN_FILE, screenOfExplain, shotsOnDisk, stringifyYaml, MAX_ROUNDS, MIN_ROUNDS, type Audit } from '../runtime/scripts/hfs/screen-yaml.mjs';
 
 export const USAGE = 'usage: starci audit run <area>/<screen> [--builder <agent>] [--auditor <agent>] [--out <brief.md>] | starci audit status [--json] | starci gallery migrate-explain [--execute]';
@@ -101,7 +102,10 @@ export function uiauditMain(argv: string[], { cwd, stdout, stderr }: Io): number
   const next = nextRound(parsed.value, { disk, builder: opts.builder, auditor: opts.auditor, now: new Date().toISOString() });
   fs.writeFileSync(file, stringifyYaml(next.value));
   const shotPaths = (['1440', '390'] as const).map((width) => path.join(cwd, ...folder.split('/'), `${width}.png`).replaceAll('\\', '/'));
-  const brief = auditBrief({ id: opts.screen, folder, value: next.value, shotPaths, laws: LAWS });
+  const crops = cropShots(path.join(cwd, ...folder.split('/')));
+  for (const note of crops.notes) stderr(`starci audit: ${note}\n`);
+  const cropPaths = crops.written.map((crop) => crop.replaceAll('\\', '/'));
+  const brief = auditBrief({ id: opts.screen, folder, value: next.value, shotPaths, cropPaths, laws: LAWS });
   if (opts.out !== undefined) { fs.writeFileSync(path.resolve(cwd, opts.out), `${brief}\n`); stdout(`starci audit: ${next.note}; brief written to ${opts.out}\n`); } else stdout(`${brief}\n\n`);
   stderr(`starci audit: ${next.note}; ${folder}/${SCREEN_FILE} is the skeleton for the auditor${(next.value['audit'] as Audit).builder.agent === '' ? '; name the builder with --builder' : ''}\n`);
   return 0;

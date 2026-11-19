@@ -22,6 +22,8 @@ import { inOrder } from "../../harness/sequential.js"
 
 const ROOT_ATTRIBUTE = "data-grammar-family"
 const DEFAULT_WIDTHS = [1920, 390] as const
+/** The height a page is given at a width below 1000px. */
+const PHONE_HEIGHT = 844
 const THEMES = ["light", "dark"] as const
 const MAX_BROKEN_PER_PAGE = 60
 const SHOWN_EXAMPLES = 3
@@ -176,6 +178,9 @@ const recordReports = (reports: ReturnType<typeof reportsSchema.parse>, variants
     }
 }
 
+/** The widths a page is walked at: the run's own, then every width a phone law names (a law with `context.widths` is judged at those widths only), widest first. */
+const walkWidths = (widths: readonly number[], variants: readonly { readonly variant: DnaVariant }[]): number[] => [...new Set([...widths, ...variants.flatMap(({ variant }) => variant.context.widths ?? [])])].sort((a, b) => b - a)
+
 /** The page variants each Grammar family is judged on (the static ones), and a row per law not run yet. */
 const planOf = (contract: ReturnType<typeof loadDnaContract>, rows: Map<string, Row>) => {
     const plan = contract.grammars.map((family) => {
@@ -199,7 +204,7 @@ const planOf = (contract: ReturnType<typeof loadDnaContract>, rows: Map<string, 
 
 export const dnaCheckVerb = defineVerb({
     path: ["dna", "check"],
-    summary: "measure rendered UI (a built Storybook, a url with --routes, a static folder or html file) against the static DNA laws of the Grammar contract in both families, light and dark, at 1920 and 390; red per law id with element path and measured vs wanted",
+    summary: "measure rendered UI (a built Storybook, a url with --routes, a static folder or html file) against the static DNA laws of the Grammar contract in both families, light and dark, at 1920 and 390 and, for a law that names `context.widths` (the phone laws), at 320, 360 and 390; red per law id with element path and measured vs wanted",
     editions: BOTH_EDITIONS,
     effect: "local-write",
     roles: EVERYONE,
@@ -251,10 +256,12 @@ export const dnaCheckVerb = defineVerb({
                                 if (roots.anyRoot === 0 || !page.story) problems.push(`${page.label}: no [${ROOT_ATTRIBUTE}="${family}"] Grammar root rendered`)
                                 return
                             }
-                            await inOrder(widths, async (width) => {
-                                await tab.viewport({ width, height: width >= 1000 ? 1080 : 844 })
-                                const reports = reportsSchema.parse(await tab.evaluate(`window.__dna.run(${JSON.stringify(variants.map(({ index, variant }) => ({ index, variant })))})`))
-                                recordReports(reports, variants, rows, { family, page, theme, width })
+                            await inOrder(walkWidths(widths, variants), async (width) => {
+                                const here = variants.filter(({ variant }) => (variant.context.widths ?? widths).includes(width))
+                                if (here.length === 0) return
+                                await tab.viewport({ width, height: width >= 1000 ? 1080 : PHONE_HEIGHT })
+                                const reports = reportsSchema.parse(await tab.evaluate(`window.__dna.run(${JSON.stringify(here.map(({ index, variant }) => ({ index, variant })))})`))
+                                recordReports(reports, here, rows, { family, page, theme, width })
                             })
                         })
                     })
