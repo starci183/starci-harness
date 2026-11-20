@@ -1,5 +1,5 @@
-// proves: FE_I18N_KEYS@lite
-// proves: FE_I18N_KEYS@full
+// proves: FE_I18N_KEYS
+// proves: FE_I18N_KEYS
 import test from "node:test"
 import { projectFixture } from "../../eslint-canon-be/fixtures/project/tester.ts"
 import { canonTester } from "../fixtures/typed/tester.ts"

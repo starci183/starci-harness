@@ -262,13 +262,13 @@ rules:
         - Check the injected fault hits the compensation, not only the step before it.
     relatedExamples: [saga]
 # Edition lite (R212): the same ports and rules, a self-hosted Postgres adapter behind them.
-liteAdapter:
+adapter:
   summary: >-
     Under lite a saga is unchanged: the orchestrator service, the versioned state behind the fenced store, steps and their
     compensations, and consumers advancing it through the inbox. Its events travel on the lite event bus (pgmq queues per
     consumer group).
   ports:
-    - {port: saga events, adapter: "the lite event-bus adapter (pgmq) - see event-bus.yaml liteAdapter"}
+    - {port: saga events, adapter: "the lite event-bus adapter (pgmq) - see event-bus.yaml adapter"}
     - {port: saga state store, adapter: "the same table and version fence, created by a db migration"}
   proof: >-
     The orchestrator's unit spec (<saga>.saga.service.spec.ts) as full; declaring saga requires integration specs titled

@@ -1,5 +1,5 @@
-// proves: STACK_TOOLING_REIMPLEMENTED@lite
-// proves: STACK_TOOLING_REIMPLEMENTED@full
+// proves: STACK_TOOLING_REIMPLEMENTED
+// proves: STACK_TOOLING_REIMPLEMENTED
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -170,7 +170,7 @@ test(`${CODE}: unreadable, empty and invalid sources yield no finding`, () => {
 test(`${CODE}: only an app root is judged`, () => {
   const files = { 'deploy/swarm/render.mjs': 'echo ok\n' };
   assert.equal(stackToolingFindings(tree('full', files)).length, 1);
-  for (const repo of [{ kind: 'be', edition: 'full' }, undefined]) {
+  for (const repo of [{ kind: 'be' }, undefined]) {
     assert.deepEqual(stackToolingFindings({ ...tree('full', files), repo }), []);
   }
   assert.deepEqual(stackToolingFindings({ ...tree('lite', files), isRoot: false }), []);

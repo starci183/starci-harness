@@ -167,7 +167,7 @@ test('back-fill refuses a tag that is not HEAD or not an urgent release', async 
 
 test('an untracked AGENTS.md next dev rewrote in an fe app is no dirt; any other untracked file is', (t) => {
   const { ctx, root } = app(t);
-  fs.writeFileSync(path.join(root, 'hfs.json'), JSON.stringify({ hfs: 3, kind: 'app', edition: 'full', project: 'urgent-app', sides: { be: { apps: [{ name: 'api', kind: 'api' }] }, fe: { apps: [{ name: 'web', kind: 'next' }] } } }));
+  fs.writeFileSync(path.join(root, 'hfs.json'), JSON.stringify({ hfs: 3, kind: 'app', project: 'urgent-app', sides: { be: { apps: [{ name: 'api', kind: 'api' }] }, fe: { apps: [{ name: 'web', kind: 'next' }] } } }));
   git(root, 'add', 'hfs.json');
   git(root, 'commit', '-q', '-m', 'declare');
   fs.mkdirSync(path.join(root, 'fe', 'apps', 'web'), { recursive: true });

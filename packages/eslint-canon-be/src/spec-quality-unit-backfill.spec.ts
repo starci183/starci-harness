@@ -1,5 +1,5 @@
-// proves: BE_SPEC_QUALITY@lite
-// proves: BE_SPEC_QUALITY@full
+// proves: BE_SPEC_QUALITY
+// proves: BE_SPEC_QUALITY
 import assert from "node:assert/strict"
 import test from "node:test"
 import { BE_DECLARATION, TYPED_ROOT, at, typedTester } from "../fixtures/typed/tester.ts"

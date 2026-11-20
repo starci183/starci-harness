@@ -21,7 +21,7 @@ function findings(t: TestContext, edition: string, sources: Record<string, strin
 }
 
 for (const edition of ['lite'] as const) {
-  test(`${edition} follows shorthand translators through destructured factory parameters`, t => {
+  test(`follows shorthand translators through destructured factory parameters`, t => {
     assert.deepEqual(findings(t, edition, {
       'fe/src/factory.ts': `
         export const createActions = ({ tw, meta: { tm } }) => {
@@ -40,7 +40,7 @@ for (const edition of ['lite'] as const) {
     }), ['metadata.editSaved', 'metadata.unused', 'wizard.pickPick', 'wizard.unused']);
   });
 
-  test(`${edition} reads bounded dynamic key tails through handed-in translators and key variables`, t => {
+  test(`reads bounded dynamic key tails through handed-in translators and key variables`, t => {
     assert.deepEqual(findings(t, edition, {
       'fe/src/view.ts': `
         export function row(t: (key: string) => string, stage: string, error: string, key: string) {
@@ -57,7 +57,7 @@ for (const edition of ['lite'] as const) {
     ['workbench.other_new', 'workbench.unused']);
   });
 
-  test(`${edition} follows translator forwarding properties returned through a memoized hook`, t => {
+  test(`follows translator forwarding properties returned through a memoized hook`, t => {
     assert.deepEqual(findings(t, edition, {
       'fe/src/words.ts': `
         export const useWords = () => {
@@ -77,7 +77,7 @@ for (const edition of ['lite'] as const) {
     }), ['governance.unused', 'unrelated.reasonHint_routine']);
   });
 
-  test(edition + ' follows two spread-forwarded money-wizard factories without reading sibling namespaces', t => {
+  test('follows two spread-forwarded money-wizard factories without reading sibling namespaces', t => {
     assert.deepEqual(findings(t, edition, {
       'fe/src/actions.ts': [
         'export const createMoneyWizardActions = ({ tw }) => ({ save: () => tw("editSaved") });',
@@ -99,7 +99,7 @@ for (const edition of ['lite'] as const) {
     }), ['connectionWizard.unused', 'unrelated.editSaved', 'unrelated.gatewayLocal']);
   });
 
-  test(edition + ' follows renamed destructuring by symbol identity across spread forwarding', t => {
+  test('follows renamed destructuring by symbol identity across spread forwarding', t => {
     assert.deepEqual(findings(t, edition, {
       'fe/src/actions.ts': [
         'const consume = ({ tw: words }) => words("read");',
@@ -115,7 +115,7 @@ for (const edition of ['lite'] as const) {
     ['chosen.unused', 'shadow.read']);
   });
 
-  test(edition + ' respects the last definite property write around object spreads', t => {
+  test('respects the last definite property write around object spreads', t => {
     const cases = [
       { input: '{ tw: first, ...{ tw: second } }', used: 'second.read' },
       { input: '{ ...{ tw: second }, tw: first }', used: 'first.read' },
@@ -134,7 +134,7 @@ for (const edition of ['lite'] as const) {
     }
   });
 
-  test(edition + ' preserves the earlier value when a known conditional spread can omit it', t => {
+  test('preserves the earlier value when a known conditional spread can omit it', t => {
     assert.deepEqual(findings(t, edition, {
       'fe/src/view.ts': [
         'declare const flag: boolean;',
@@ -147,7 +147,7 @@ for (const edition of ['lite'] as const) {
     ['first.unused', 'second.unused', 'unrelated.read']);
   });
 
-  test(edition + ' treats unknown spreads and unsupported property writes as provenance barriers', t => {
+  test('treats unknown spreads and unsupported property writes as provenance barriers', t => {
     const inputs = [
       '{ tw: chosen, ...opaque }',
       '{ tw: chosen, ...(flag ? {} : opaque) }',
@@ -178,7 +178,7 @@ for (const edition of ['lite'] as const) {
     }
   });
 
-  test(edition + ' restores precise provenance with an explicit write after an unknown spread', t => {
+  test('restores precise provenance with an explicit write after an unknown spread', t => {
     for (const input of ['{ ...opaque, tw: chosen }', '{ ...cycle(), tw: chosen }', '{ ...{ [key]: null }, tw: chosen }']) {
       assert.deepEqual(findings(t, edition, {
         'fe/src/view.ts': [
@@ -194,7 +194,7 @@ for (const edition of ['lite'] as const) {
     }
   });
 
-  test(edition + ' keeps spread-forwarded bounded dynamic keys inside their resolved namespace', t => {
+  test('keeps spread-forwarded bounded dynamic keys inside their resolved namespace', t => {
     assert.deepEqual(findings(t, edition, {
       'fe/src/view.ts': [
         'const consume = ({ tw: words }, stage: string, key: string) => { words(`stage_${stage}`); words(key); };',
@@ -207,7 +207,7 @@ for (const edition of ['lite'] as const) {
   });
 
 
-  test(edition + ' never turns observed unknown translator bindings into loose namespace reads', t => {
+  test('never turns observed unknown translator bindings into loose namespace reads', t => {
     const sources = [
       [
         'const consume = ({ tw }: { tw: (key: string) => string }) => tw("read");',
@@ -239,7 +239,7 @@ for (const edition of ['lite'] as const) {
     }
   });
 
-  test(edition + ' retains bounded prefix reads for genuinely unbound named and typed generic translators', t => {
+  test('retains bounded prefix reads for genuinely unbound named and typed generic translators', t => {
     assert.deepEqual(findings(t, edition, {
       'fe/src/view.ts': [
         'export function typed(words: (key: string) => string, stage: string) { words(`stage_${stage}`); }',
@@ -250,7 +250,7 @@ for (const edition of ['lite'] as const) {
   });
 
 
-  test(edition + ' retains explicit root catalog get reads independently of generic translator fallback', t => {
+  test('retains explicit root catalog get reads independently of generic translator fallback', t => {
     assert.deepEqual(findings(t, edition, {
       'fe/src/view.ts': [
         'const messages = { get: (key: string) => key };',
@@ -259,7 +259,7 @@ for (const edition of ['lite'] as const) {
     }, { read: 'Live', unused: 'Unused' }), ['unused']);
   });
 
-  test(edition + ' recognizes imported translator factories with root and explicit namespace options', t => {
+  test('recognizes imported translator factories with root and explicit namespace options', t => {
     assert.deepEqual(findings(t, edition, {
       'fe/src/view.ts': [
         'import { createTranslator as makeTranslator } from "next-intl";',
@@ -274,7 +274,7 @@ for (const edition of ['lite'] as const) {
     ['app.unused', 'screen.unused', 'shadowed', 'unproved', 'unrelated.label']);
   });
 
-  test(edition + ' follows typed root catalog get wrappers through their actual policy arguments', t => {
+  test('follows typed root catalog get wrappers through their actual policy arguments', t => {
     assert.deepEqual(findings(t, edition, {
       'fe/src/view.ts': [
         'const policy = (t: (key: string) => string) => t("bundle.title");',
@@ -286,7 +286,7 @@ for (const edition of ['lite'] as const) {
     ['bundle.unused', 'unrelated.title']);
   });
 
-  test(edition + ' follows guarded identity-fallback translators into finite imported table consumers', t => {
+  test('follows guarded identity-fallback translators into finite imported table consumers', t => {
     assert.deepEqual(findings(t, edition, {
       'fe/src/banks.ts': [
         'export const CODES: ReadonlyArray<string> = ["ACB", "VCB"];',
@@ -299,7 +299,7 @@ for (const edition of ['lite'] as const) {
     ['banks.unused', 'unrelated.ACB']);
   });
 
-  test(edition + ' rejects conditional forwarders with unknown results or a different argument', t => {
+  test('rejects conditional forwarders with unknown results or a different argument', t => {
     for (const returned of ['flag ? banks(code) : opaque(code)', 'flag ? banks(other) : code', 'flag ? banks(code) : "fixed"', '((code = "VCB"), flag) ? banks(code) : code', '((code += "X"), flag) ? banks(code) : code', '(([code] = ["VCB"]), flag) ? banks(code) : code']) {
       assert.deepEqual(findings(t, edition, {
         'fe/src/view.ts': [
@@ -312,7 +312,7 @@ for (const edition of ['lite'] as const) {
     }
   });
 
-  test(edition + ' consumes exact two-locale catalog leaves through an imported spread aggregate', t => {
+  test('consumes exact two-locale catalog leaves through an imported spread aggregate', t => {
     const unused = ['template.unused', 'template.unknown', 'template.ordinary'];
     const words = Object.fromEntries(['template.read', ...unused].map(key => [key, key]));
     assert.deepEqual(findings(t, edition, {
@@ -335,7 +335,7 @@ for (const edition of ['lite'] as const) {
     ].sort());
   });
 
-  test(edition + ' preserves ordered catalog writes and refuses unknown spread owners', t => {
+  test('preserves ordered catalog writes and refuses unknown spread owners', t => {
     const cases = [
       { owner: '{ ...FIRST.vi, ...SECOND.vi }', used: 'second' },
       { owner: '{ ...SECOND.vi, ...FIRST.vi }', used: 'first' },
@@ -356,7 +356,7 @@ for (const edition of ['lite'] as const) {
     }
   });
 
-  test(edition + ' follows symbol-resolved methods returning translators through locals and arguments', t => {
+  test('follows symbol-resolved methods returning translators through locals and arguments', t => {
     assert.deepEqual(findings(t, edition, {
       'be/src/view.ts': [
         'const localPolicy = (t: (key: string) => string) => t("bundle.local");',
@@ -370,7 +370,7 @@ for (const edition of ['lite'] as const) {
     }, { chosen: { read: 'Unproved' }, unrelated: { read: 'Unused' } }), ['chosen.read', 'unrelated.read']);
   });
 
-  test(edition + ' follows ordered JSX spreads without losing unknown or overwritten properties', t => {
+  test('follows ordered JSX spreads without losing unknown or overwritten properties', t => {
     const cases = [
       { attrs: '{...props}', props: '{ t: first }', used: 'first' },
       { attrs: '{...props} t={second}', props: '{ t: first }', used: 'second' },
@@ -393,7 +393,7 @@ for (const edition of ['lite'] as const) {
     }
   });
 
-  test(edition + ' follows exact readonly class translator fields through their declared forwarding methods', t => {
+  test('follows exact readonly class translator fields through their declared forwarding methods', t => {
     const cases = [
       { field: 'readonly textOf = (key: string, params = {}) => this.text(key, { ...params });', method: 'return this.catalog.get(key, params, "vi");', after: '', used: true },
       { field: 'textOf = (key: string) => this.text(key);', method: 'return this.catalog.get(key, params, "vi");', after: '', used: false },
@@ -417,7 +417,7 @@ for (const edition of ['lite'] as const) {
     }
   });
 
-  test(edition + ' resolves finite template products in catalog member reads and preserves unknown spans', t => {
+  test('resolves finite template products in catalog member reads and preserves unknown spans', t => {
     const words = { 'sheet.order.date': 'Live', 'sheet.order.code': 'Live', 'sheet.lead.date': 'Live', 'sheet.order.unused': 'Unused', 'sheet.other.date': 'Unused' };
     const cases = [
       { expression: '`sheet.order.${column}`', source: 'const columns = ["date", "code"] as const; columns.map(column => translate(' , used: ['sheet.order.date', 'sheet.order.code'] },
@@ -440,7 +440,7 @@ for (const edition of ['lite'] as const) {
     }, {}, true), ['be/src/words.messages.ts:v0.v0.tail']);
   });
 
-  test(edition + ' narrows a const producer only at a strict-null early-return use site', t => {
+  test('narrows a const producer only at a strict-null early-return use site', t => {
     assert.deepEqual(findings(t, edition, {
       'fe/src/view.ts': [
         'declare const flag: boolean;',
@@ -452,7 +452,7 @@ for (const edition of ['lite'] as const) {
     ['chosen.unused', 'unrelated.read']);
   });
 
-  test(edition + ' retains null and unknown barriers without an exact immutable use-site guard', t => {
+  test('retains null and unknown barriers without an exact immutable use-site guard', t => {
     const cases = [
       'const connected = build(t); consume(connected);',
       'const connected = build(t); consume(connected); if (connected === null) return;',
@@ -476,7 +476,7 @@ for (const edition of ['lite'] as const) {
     }
   });
 
-  test(edition + ' retains only the same known bundle locale siblings after a one-locale read', t => {
+  test('retains only the same known bundle locale siblings after a one-locale read', t => {
     assert.deepEqual(findings(t, edition, {
       'be/src/words.messages.ts': 'export const WORDS = { vi: { read: "Vietnamese", unused: "Unused" }, en: { read: "English", unused: "Unused" } };',
       'be/src/other.messages.ts': 'export const OTHER = { vi: { read: "Unrelated" }, en: { read: "Unrelated" } };',
@@ -484,7 +484,7 @@ for (const edition of ['lite'] as const) {
     }, {}, true), ['be/src/other.messages.ts:read', 'be/src/words.messages.ts:unused']);
   });
 
-  test(edition + ' follows finite numeric-key tables without admitting unknown table writers', t => {
+  test('follows finite numeric-key tables without admitting unknown table writers', t => {
     const cases = [
       { table: '{ 7: "since7", 30: "since30", 90: "since90" }', used: true },
       { table: '{ 7: "since7", 30: "since30", 90: "since90", ...opaque }', used: false },
@@ -502,7 +502,7 @@ for (const edition of ['lite'] as const) {
     }
   });
 
-  test(edition + ' narrows an exact immutable property only in its strict-null conditional branch', t => {
+  test('narrows an exact immutable property only in its strict-null conditional branch', t => {
     const cases = [
       { source: 'const p = { drawer: build(t), other: null }; return p.drawer === null ? null : <Leaf props={p.drawer} />;', used: true },
       { source: 'const p = { drawer: build(t) }; return p.drawer !== null ? <Leaf props={p.drawer} /> : null;', used: true },
@@ -546,7 +546,7 @@ for (const edition of ['lite'] as const) {
     }
   });
 
-  test(`${edition} reads keys typed as a union of literals through the standard library's array callbacks`, t => {
+  test(`reads keys typed as a union of literals through the standard library's array callbacks`, t => {
     assert.deepEqual(findings(t, edition, {
       'fe/src/nav.ts': [
         'type Label = "navHome" | "navItems";',
@@ -560,7 +560,7 @@ for (const edition of ['lite'] as const) {
     }, { shell: { navHome: 'Home', navItems: 'Items', navTeam: 'Team' } }), ['shell.navTeam']);
   });
 
-  test(`${edition} reads the strings of a typed table of constants through the readonly field that holds them`, t => {
+  test(`reads the strings of a typed table of constants through the readonly field that holds them`, t => {
     assert.deepEqual(findings(t, edition, {
       'fe/src/presets.ts': [
         'interface Step { readonly text: string; readonly link?: { readonly label: string; readonly url: string } }',
@@ -583,7 +583,7 @@ for (const edition of ['lite'] as const) {
     }, { presets: { a_title: 'A', a_step1: 'One', a_step2: 'Two', a_link: 'Link', b_title: 'B', b_step1: 'One', unused: 'Unused' } }), ['presets.unused']);
   });
 
-  test(`${edition} does not read a typed table through a field that can be reassigned or that no literal of the type sets`, t => {
+  test(`does not read a typed table through a field that can be reassigned or that no literal of the type sets`, t => {
     assert.deepEqual(findings(t, edition, {
       'fe/src/rows.ts': [
         'interface Row { label: string; readonly other: string }',
@@ -594,7 +594,7 @@ for (const edition of ['lite'] as const) {
     }, { rows: { mutable_key: 'Mutable', other_key: 'Other', unused: 'Unused' } }), ['rows.mutable_key', 'rows.unused']);
   });
 
-  test(`${edition} reads both sides of a nullish default and skips a null owner`, t => {
+  test(`reads both sides of a nullish default and skips a null owner`, t => {
     assert.deepEqual(findings(t, edition, {
       'fe/src/kinds.ts': [
         'const KEYS: Readonly<Record<string, string>> = { ad: "refAd", form: "refForm" };',
@@ -658,7 +658,7 @@ test('a recursive function that spreads its own parameter ends the value walk at
 });
 
 for (const edition of ['lite'] as const) {
-  test(`${edition} reads the copy of a TS catalog through the function of the same file that draws it, over a generic copy type too`, t => {
+  test(`reads the copy of a TS catalog through the function of the same file that draws it, over a generic copy type too`, t => {
     const catalog = (generic: boolean, draw: string) => [
       'interface Input { readonly brand: string }',
       `interface LinkCopy${generic ? '<I extends Input>' : ''} { readonly subject: string; readonly paragraphs: (input: ${generic ? 'I' : 'Input'}) => ReadonlyArray<string>; readonly footer: string; label: string }`,

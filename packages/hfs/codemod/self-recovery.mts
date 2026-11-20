@@ -6,7 +6,7 @@ import path from 'node:path';
 import type { Prettier } from '../sync/format.mjs';
 import { TEMPLATES_DIR } from '../sync/index.mjs';
 import { readTree } from '../scaffold/add-plan.mjs';
-import { selectLiteQueueEntries, TICK_FILES } from '../scaffold/add-queue-lite.mjs';
+import { selectQueueEntries, TICK_FILES } from '../scaffold/add-queue.mjs';
 import { nextMigrationStamp } from '../scaffold/migration-stamp.mjs';
 import { byCodeUnit } from '../runtime/scripts/lib/list.mjs';
 import { formatted, prettierOf } from './app-prettier.mjs';
@@ -49,7 +49,7 @@ export function selfRecoveryPlacements(): Placement[] {
   const placements: Placement[] = [];
   const add = (app: string, template: string): void => { placements.push({ app, template, capability: capabilityOf(app) }); };
   for (const topic of ['jobs', 'queues']) {
-    const entries = selectLiteQueueEntries(topic, readTree(topic));
+    const entries = selectQueueEntries(topic, readTree(topic));
     for (const entry of entries) if (entry.template !== undefined && !entry.path.includes('<') && entry.path.startsWith('src/modules/platform/')) add(`be/${entry.path}`, `be/patterns/${entry.template}`);
   }
   {
@@ -61,8 +61,8 @@ export function selfRecoveryPlacements(): Placement[] {
   return [...new Map(placements.map((placement) => [placement.app, placement])).values()].sort((a, b) => byCodeUnit(a.app, b.app));
 }
 
-/** The lite migration that adds the park columns to a jobs table rendered before them, and the folder its stamp is taken from. */
-const LITE_PARK_MIGRATION = 'be/patterns/jobs/platform-lite/jobs-failed-awaiting-fix.sql.tpl';
+/** The migration that adds the park columns to a jobs table rendered before them, and the folder its stamp is taken from. */
+const LITE_PARK_MIGRATION = 'be/patterns/jobs/platform/jobs-failed-awaiting-fix.sql.tpl';
 const MIGRATION = /^(\d{14})_[a-z][a-z0-9]*(?:-[a-z0-9]+)*\.sql$/u;
 
 /**

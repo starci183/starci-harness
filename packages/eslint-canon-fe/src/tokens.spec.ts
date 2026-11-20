@@ -1,5 +1,5 @@
 /** Universal token discipline rejects authored values outside the vocabulary. */
-// proves: FE_STYLE_TOKEN_ONLY@lite FE_STYLE_TOKEN_ONLY@full
+// proves: FE_STYLE_TOKEN_ONLY
 import assert from "node:assert/strict"
 import test from "node:test"
 import { at, fixtureHfs, slotTester } from "../fixtures/typed/tester.ts"

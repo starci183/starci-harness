@@ -1,11 +1,11 @@
-// proves: BE_FEATURE_SHAPE@lite
-// proves: BE_FEATURE_SHAPE@full
-// proves: BE_FEATURE_LAYOUT_INVALID@lite
-// proves: BE_FEATURE_LAYOUT_INVALID@full
-// proves: BE_APPLICATION_IMPORTS_TRANSPORT@lite
-// proves: BE_APPLICATION_IMPORTS_TRANSPORT@full
-// proves: BE_APPLICATION_TRANSPORT_FRAMEWORK@lite
-// proves: BE_APPLICATION_TRANSPORT_FRAMEWORK@full
+// proves: BE_FEATURE_SHAPE
+// proves: BE_FEATURE_SHAPE
+// proves: BE_FEATURE_LAYOUT_INVALID
+// proves: BE_FEATURE_LAYOUT_INVALID
+// proves: BE_APPLICATION_IMPORTS_TRANSPORT
+// proves: BE_APPLICATION_IMPORTS_TRANSPORT
+// proves: BE_APPLICATION_TRANSPORT_FRAMEWORK
+// proves: BE_APPLICATION_TRANSPORT_FRAMEWORK
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { RUNTIME_ROOT } from './lib/runtime-root.ts';

@@ -1,4 +1,4 @@
-// proves: HFS_TEXT_CORRUPT@lite HFS_TEXT_CORRUPT@full
+// proves: HFS_TEXT_CORRUPT
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -72,7 +72,7 @@ test('HFS_TEXT_CORRUPT: the runtime repository and files out of scope are not ju
   const files = { [CATALOG]: bundle('Kh?a thao t?c') };
   const root = tree(t, files);
   assert.deepEqual(textIntegrityFindings({ repoRoot: root, files: Object.keys(files), repo: { kind: 'runtime' } }), []);
-  assert.deepEqual(textIntegrityFindings({ repoRoot: root, files: Object.keys(files), repo: { edition: 'full' }, inScope: () => false }), []);
+  assert.deepEqual(textIntegrityFindings({ repoRoot: root, files: Object.keys(files), repo: {}, inScope: () => false }), []);
   assert.equal(textIntegrityFindings({ repoRoot: root, files: Object.keys(files), repo: {} }).length, 1);
 });
 

@@ -1,8 +1,8 @@
 /** Navigation selection and Grammar styling remain owned by the public component API. */
-// proves: FE_NESTED_VARIANT@lite
-// proves: FE_NESTED_VARIANT@full
-// proves: FE_GRAMMAR_LAYOUT_ONLY@lite
-// proves: FE_GRAMMAR_LAYOUT_ONLY@full
+// proves: FE_NESTED_VARIANT
+// proves: FE_NESTED_VARIANT
+// proves: FE_GRAMMAR_LAYOUT_ONLY
+// proves: FE_GRAMMAR_LAYOUT_ONLY
 import assert from "node:assert/strict";
 import test from "node:test";
 import { at, slotTester } from "../fixtures/typed/tester.ts";

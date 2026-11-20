@@ -1,30 +1,52 @@
 import { Injectable, type CanActivate, type ExecutionContext } from "@nestjs/common"
 import type { Reflector } from "@nestjs/core"
+import type { VerifyAccessToken } from "@modules/integrations/passport"
 import { InjectReflector } from "@modules/platform/composition"
+import type { Principal } from "@modules/platform/cqrs"
 import { requestOf } from "@modules/platform/http-security"
 import { unwrapOutcome } from "@modules/platform/primitives"
 import { admit } from "./admission.policy"
 import type { CredentialMetadata } from "./credential.contracts"
 import { IdentityError } from "./errors/identity.error"
 import type { PublicMetadata } from "./identity.contracts"
-import { CREDENTIAL_KEY, PUBLIC_KEY } from "./identity.decorators"
+import { CREDENTIAL_KEY, InjectAccessTokenVerifier, PUBLIC_KEY } from "./identity.decorators"
+
+const bearerToken = (authorization: string | undefined): string | undefined => {
+    const [scheme, token, extra] = authorization?.split(" ") ?? []
+    return scheme?.toLowerCase() === "bearer" && token && extra === undefined ? token : undefined
+}
 
 @Injectable()
 /**
- * The fourth app guard and the default-deny gate: a door is open only when it says `@Public({ reason })`, or when it is
- * marked `@Credential` and `CredentialGuard` has set the credential principal. It never calls another guard.
+ * The fourth app guard and default-deny gate: a credential door requires the matching principal from `CredentialGuard`,
+ * a public door states its reason, and every other door requires a principal verified from the app's own access token. It never calls another guard.
  */
 export class AuthGuard implements CanActivate {
-    constructor(@InjectReflector() private readonly reflector: Reflector) {}
+    constructor(
+        @InjectReflector() private readonly reflector: Reflector,
+        @InjectAccessTokenVerifier() private readonly verifyAccessToken: VerifyAccessToken,
+    ) {}
 
-    /** Lets public and credential-authenticated doors through and refuses every other door. */
-    canActivate(context: ExecutionContext): boolean {
+    /** Verifies session tokens only for doors without public or credential metadata, then applies the admission policy. */
+    async canActivate(context: ExecutionContext): Promise<boolean> {
         const targets = [context.getHandler(), context.getClass()]
         const required = this.reflector.getAllAndOverride<CredentialMetadata | undefined>(CREDENTIAL_KEY, targets)
         const metadata = this.reflector.getAllAndOverride<PublicMetadata | undefined>(PUBLIC_KEY, targets)
         const credential =
             required === undefined ? undefined : { required, principal: requestOf(context).credentialPrincipal }
-        unwrapOutcome(admit(metadata, credential), IdentityError)
+        let principal: Principal | undefined
+        if (metadata === undefined && required === undefined) {
+            const request = requestOf(context)
+            const token = bearerToken(request.headers.authorization)
+            if (token !== undefined) {
+                const verified = await this.verifyAccessToken(token)
+                if (verified.kind === "ok") {
+                    principal = verified.value
+                    request.principal = verified.value
+                }
+            }
+        }
+        unwrapOutcome(admit(metadata, principal, credential), IdentityError)
         return true
     }
 }

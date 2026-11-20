@@ -1,5 +1,5 @@
-// proves: HFS_CONTRACT_SNAPSHOT_DRIFT@lite
-// proves: HFS_CONTRACT_SNAPSHOT_DRIFT@full
+// proves: HFS_CONTRACT_SNAPSHOT_DRIFT
+// proves: HFS_CONTRACT_SNAPSHOT_DRIFT
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -38,12 +38,12 @@ function contractInput(t: TestContext, edition: string, withSnapshot: boolean) {
 }
 
 for (const edition of ['lite'] as const) {
-  test(`${edition} invalid: a GraphQL app missing its committed snapshot is refused`, t => {
+  test(`invalid: a GraphQL app missing its committed snapshot is refused`, t => {
     const input = contractInput(t, edition, false);
     assert.deepEqual(contractFindings(input).map(item => item.code), ['HFS_CONTRACT_SNAPSHOT_DRIFT']);
   });
 
-  test(`${edition} valid: a GraphQL app with its committed snapshot passes`, t => {
+  test(`valid: a GraphQL app with its committed snapshot passes`, t => {
     const input = contractInput(t, edition, true);
     assert.deepEqual(contractFindings(input), []);
     assert.equal(contractFindings(input).some(item => item.code === 'HFS_CONTRACT_SNAPSHOT_DRIFT'), false);

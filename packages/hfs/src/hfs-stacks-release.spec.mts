@@ -1,8 +1,8 @@
-// proves: STACKS_RELEASE_UNDECLARED@lite STACKS_RELEASE_UNDECLARED@full
-// proves: BACKUP_UNDECLARED@lite BACKUP_UNDECLARED@full
-// proves: BACKUP_PROOF_MISSING@lite BACKUP_PROOF_MISSING@full
-// proves: STACKS_MODEL_UNAVAILABLE@lite STACKS_MODEL_UNAVAILABLE@full
-// proves: HFS_SCHEDULE_UNDECLARED@lite HFS_SCHEDULE_UNDECLARED@full
+// proves: STACKS_RELEASE_UNDECLARED
+// proves: BACKUP_UNDECLARED
+// proves: BACKUP_PROOF_MISSING
+// proves: STACKS_MODEL_UNAVAILABLE
+// proves: HFS_SCHEDULE_UNDECLARED
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

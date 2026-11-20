@@ -19,7 +19,7 @@ export const PORTABLE = { parts: [{ name: 'hfs', sha256: 'h1' }], portable: true
 /** An AWS access key shape the secret scan refuses (built from parts: the fixture is data, not a credential). */
 export const FAKE_KEY = ['AKIA', 'ABCDEFGHIJKLMNOP'].join('');
 
-const declaration = { hfs: 3, kind: 'app', project: 'demo', edition: 'full', sides: { be: { apps: [{ name: 'api', kind: 'api' }] }, fe: { grammar: 'core', apps: [{ name: 'web', kind: 'next' }] } } };
+const declaration = { hfs: 3, kind: 'app', project: 'demo', sides: { be: { apps: [{ name: 'api', kind: 'api' }] }, fe: { grammar: 'core', apps: [{ name: 'web', kind: 'next' }] } } };
 
 /** The files of the fixture app; the untracked ones (generated code) are written after the commit. */
 export const FILES: Readonly<Record<string, string>> = {

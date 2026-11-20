@@ -1,5 +1,5 @@
-// proves: BE_ASYNC_NO_AWAIT@lite
-// proves: BE_ASYNC_NO_AWAIT@full
+// proves: BE_ASYNC_NO_AWAIT
+// proves: BE_ASYNC_NO_AWAIT
 import test from 'node:test';
 import { asyncNeedsAwait } from './async-discipline.ts';
 import { appDeclaration } from '../fixtures/app.ts';

@@ -1,5 +1,5 @@
-// proves: BE_ERROR_HOME@lite
-// proves: BE_ERROR_HOME@full
+// proves: BE_ERROR_HOME
+// proves: BE_ERROR_HOME
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { BE_DECLARATION, TYPED_ROOT, at, ruleTester } from '../fixtures/typed/tester.ts';

@@ -16,7 +16,7 @@ import type { Prettier } from '../sync/format.mjs';
 
 const GLUE = 'be/src/modules/integrations/passport';
 const COMPOSE = 'be/apps/api/src/compose/integrations.ts';
-const TEMPLATE_GLUE = path.join(import.meta.dirname, '..', 'templates', 'be', 'skeleton-lite', 'src', 'modules', 'integrations', 'passport');
+const TEMPLATE_GLUE = path.join(import.meta.dirname, '..', 'templates', 'be', 'skeleton', 'src', 'modules', 'integrations', 'passport');
 
 const REGISTRATION = `import { AuthModule } from "@starci/auth/server"
 import type { DynamicModule } from "@nestjs/common"

@@ -1,6 +1,6 @@
 /** R81 proves retry-loop diagnostics in each HFS edition. */
-// proves: BE_HAND_ROLLED_RETRY@lite
-// proves: BE_HAND_ROLLED_RETRY@full
+// proves: BE_HAND_ROLLED_RETRY
+// proves: BE_HAND_ROLLED_RETRY
 import test from "node:test"
 import { appDeclaration } from "../fixtures/app.ts"
 import { BE_DECLARATION, TYPED_ROOT, at, ruleTester } from "../fixtures/typed/tester.ts"

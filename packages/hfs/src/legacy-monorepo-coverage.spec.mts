@@ -1,7 +1,7 @@
-// proves: HFS_MONO_WORKSPACES@lite
-// proves: HFS_MONO_WORKSPACES@full
-// proves: HFS_MONO_FE_WORKSPACE@lite
-// proves: HFS_MONO_FE_WORKSPACE@full
+// proves: HFS_MONO_WORKSPACES
+// proves: HFS_MONO_WORKSPACES
+// proves: HFS_MONO_FE_WORKSPACE
+// proves: HFS_MONO_FE_WORKSPACE
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -62,13 +62,13 @@ function fixture(t: TestContext, edition: string, mutate?: (files: Documents) =>
 }
 
 for (const edition of ['lite'] as const) {
-  test(`${edition} accepts a valid root manifest and private front-end app and package workspaces`, (t) => {
+  test(`accepts a valid root manifest and private front-end app and package workspaces`, (t) => {
     const findings = monorepoFindings(fixture(t, edition));
     assert.deepEqual(findings, []);
     assert.deepEqual(findings.filter(({ code }) => ['HFS_MONO_WORKSPACES', 'HFS_MONO_FE_WORKSPACE'].includes(code)), []);
   });
 
-  test(`${edition} rejects invalid root workspaces, package manager and missing turbo`, (t) => {
+  test(`rejects invalid root workspaces, package manager and missing turbo`, (t) => {
     const mutations = [
       (files: Documents) => { files[ROOT_MANIFEST].workspaces = ['fe/packages/*']; },
       (files: Documents) => { files[ROOT_MANIFEST].workspaces.reverse(); },
@@ -83,7 +83,7 @@ for (const edition of ['lite'] as const) {
     }
   });
 
-  test(`${edition} rejects invalid front-end workspace manifests`, (t) => {
+  test(`rejects invalid front-end workspace manifests`, (t) => {
     const mutations = [
       (files: Documents) => { files[APP_MANIFEST] = '{'; },
       (files: Documents) => { files[APP_MANIFEST].name = 'web'; },

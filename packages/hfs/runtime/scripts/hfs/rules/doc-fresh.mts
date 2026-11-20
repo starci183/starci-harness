@@ -288,7 +288,7 @@ function nameFindings(file: string, lines: string[], keys: Parsed, rules: Parsed
   return findings;
 }
 
-/** Findings of R270 over product READMEs and docs, in lite and full; runtime docs retain their own checks. */
+/** Findings of R270 over product READMEs and docs, in and full; runtime docs retain their own checks. */
 export function docFreshFindings({ repoRoot, files = [], all = files, repo, resolver, appSide = false, inScope = () => true }: { repoRoot: string; files?: string[]; all?: string[]; repo: Repo; resolver?: Resolver; appSide?: Parsed; inScope?: (file: string) => boolean }) {
   if (appSide || repo?.profile === 'runtime') return [];
   const inventory = repo.profile === 'app' ? all : files;

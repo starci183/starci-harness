@@ -144,11 +144,11 @@ function dbJobConstrained(job: Parsed, guarded: Parsed) {
   return constrained;
 }
 
-// The database deploy workflow is retired in a lite app: its migrations are the migrate phase of the stack deploy (starci app stack deploy, tag-gated by
-// stack-deploy.yml). A full app that keeps its own db-deploy.yml, and a lite app that has not synced yet, are still judged here.
+// The database deploy workflow is retired in an app: its migrations are the migrate phase of the stack deploy (starci app stack deploy, tag-gated by
+// stack-deploy.yml). A full app that keeps its own db-deploy.yml, and an app that has not synced yet, are still judged here.
 function dbFindings(file: string, workflow: Parsed) {
   const jobs = Object.entries<Parsed>(workflow.jobs ?? {});
-  if (!jobs.length) return [found(HFS_DB_DEPLOY_UNGUARDED, file, `${file} has no verifiable database deploy job; require a release tag before migration (a lite app's migrations are the migrate phase of the stack deploy: run starci app sync --execute to retire this file)`)];
+  if (!jobs.length) return [found(HFS_DB_DEPLOY_UNGUARDED, file, `${file} has no verifiable database deploy job; require a release tag before migration (an app's migrations are the migrate phase of the stack deploy: run starci app sync --execute to retire this file)`)];
   const findings = [];
   for (const [name, job] of jobs) {
     if (!job || typeof job !== 'object') continue;

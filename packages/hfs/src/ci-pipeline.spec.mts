@@ -1,17 +1,17 @@
-// proves: CI_STANDARD@lite
-// proves: CI_STANDARD@full
-// proves: HFS_DEPLOY_WORKFLOW@lite
-// proves: HFS_DEPLOY_WORKFLOW@full
-// proves: HFS_APP_WORKFLOW_TRIGGER@lite
-// proves: HFS_APP_WORKFLOW_TRIGGER@full
-// proves: CI_TRIGGERS_RELEASE_ONLY@lite
-// proves: CI_TRIGGERS_RELEASE_ONLY@full
-// proves: HFS_RELEASE_TAG_MISMATCH@lite
-// proves: HFS_RELEASE_TAG_MISMATCH@full
-// proves: HFS_SBOM_MISSING@lite
-// proves: HFS_SBOM_MISSING@full
-// proves: HFS_WORKFLOW_CONTEXT@lite
-// proves: HFS_WORKFLOW_CONTEXT@full
+// proves: CI_STANDARD
+// proves: CI_STANDARD
+// proves: HFS_DEPLOY_WORKFLOW
+// proves: HFS_DEPLOY_WORKFLOW
+// proves: HFS_APP_WORKFLOW_TRIGGER
+// proves: HFS_APP_WORKFLOW_TRIGGER
+// proves: CI_TRIGGERS_RELEASE_ONLY
+// proves: CI_TRIGGERS_RELEASE_ONLY
+// proves: HFS_RELEASE_TAG_MISMATCH
+// proves: HFS_RELEASE_TAG_MISMATCH
+// proves: HFS_SBOM_MISSING
+// proves: HFS_SBOM_MISSING
+// proves: HFS_WORKFLOW_CONTEXT
+// proves: HFS_WORKFLOW_CONTEXT
 // The delivery pipeline `starci app sync` renders (contexts/project/cicd.md): ci.yml plans, checks, builds the images once, judges the
 // verdict and calls the reusable stack-deploy.yml for every environment with deploy.auto; images.yml and stack-deploy.yml are reusable workflows. Every rendered file
 // is judged by the same rules an app is, is prettier-stable and (when the machine has it) accepted by actionlint.
@@ -69,7 +69,7 @@ const tree = (t: TestContext, workflows: Record<string, string>, version = '1.2.
 };
 
 for (const edition of ['lite'] as const) {
-  test(`${edition}: the pipeline renders plan, checks, images, verdict and a deploy call per auto environment, in declared order`, () => {
+  test(`the pipeline renders plan, checks, images, verdict and a deploy call per auto environment, in declared order`, () => {
     const workflows = rendered(edition, TWO);
     const ci: Doc = parseWorkflow(workflows['ci']!);
     assert.deepEqual(Object.keys(ci.jobs).filter((id) => !['fast', 'lint', 'test', 'coverage', 'build', 'sonar'].includes(id)), ['plan', 'images', 'verdict', 'deploy-staging', 'deploy-production']);
@@ -105,7 +105,7 @@ for (const edition of ['lite'] as const) {
     assert.equal(ci.jobs.fast.steps.find((step: Doc) => step.name === 'format').run, 'npx --no-install starci app check --gate format --env prod');
   });
 
-  test(`${edition}: the plan job decides full, defer and reuse from the event, the ref and the green candidate run`, () => {
+  test(`the plan job decides full, defer and reuse from the event, the ref and the green candidate run`, () => {
     const ci: Doc = parseWorkflow(rendered(edition, TWO)['ci']!);
     const plan: Doc = ci.jobs.plan.steps.find((step: Doc) => step.id === 'plan');
     assert.equal(ci.jobs.plan.permissions.actions, 'read');
@@ -119,7 +119,7 @@ for (const edition of ['lite'] as const) {
     assert.equal(ci.jobs.plan.steps[0].with['fetch-depth'], 0);
   });
 
-  test(`${edition}: images.yml is a reusable workflow: sha tags, SBOM and provenance, the sealed job on a release only, the digests collected`, () => {
+  test(`images.yml is a reusable workflow: sha tags, SBOM and provenance, the sealed job on a release only, the digests collected`, () => {
     const images: Doc = parseWorkflow(rendered(edition, TWO)['images']!);
     assert.deepEqual(Object.keys(images.on), ['workflow_call']);
     assert.deepEqual(Object.keys(images.on.workflow_call.inputs), ['push', 'release']);
@@ -148,7 +148,7 @@ for (const edition of ['lite'] as const) {
     assert.match(collect.run, /\^sha256:\[0-9a-f\]\{64\}\$/u, 'only a digest is accepted');
   });
 
-  test(`${edition}: stack-deploy.yml is reusable and dispatchable, brakes on STARCI_DEPLOY_PAUSED and opens only the age key of its environment`, () => {
+  test(`stack-deploy.yml is reusable and dispatchable, brakes on STARCI_DEPLOY_PAUSED and opens only the age key of its environment`, () => {
     const text = rendered(edition, TWO)['stack-deploy']!;
     const deploy: Doc = parseWorkflow(text);
     assert.deepEqual(Object.keys(deploy.on).sort(), ['workflow_call', 'workflow_dispatch']);
@@ -178,7 +178,7 @@ for (const edition of ['lite'] as const) {
     assert.match(String(deploy.jobs.deploy.steps.find((step: Doc) => step.name === 'CI run of the commit').run), /no green CI run of this commit/u);
   });
 
-  test(`${edition}: the rendered pipeline passes the rules that judge an app, and is prettier-stable`, (t) => {
+  test(`the rendered pipeline passes the rules that judge an app, and is prettier-stable`, (t) => {
     const workflows = rendered(edition, TWO);
     const root = tree(t, workflows);
     const ctx = { repoRoot: root, files: files(workflows), repo: { kind: 'app', edition }, isRoot: true, read: reader(workflows) };
@@ -196,7 +196,7 @@ for (const edition of ['lite'] as const) {
     }
   });
 
-  test(`${edition}: actionlint accepts the rendered pipeline when the machine has it`, (t) => {
+  test(`actionlint accepts the rendered pipeline when the machine has it`, (t) => {
     const probe = spawnSync('actionlint', ['-version'], { encoding: 'utf8', windowsHide: true });
     if (probe.error || probe.status !== 0) return t.skip('actionlint is not installed here');
     const workflows = rendered(edition, TWO);
@@ -205,7 +205,7 @@ for (const edition of ['lite'] as const) {
     assert.equal(out.status, 0, `${out.stdout}${out.stderr}`);
   });
 
-  test(`${edition}: an app with no auto environment renders no deploy job; one with no image renders no collect job and no images input`, () => {
+  test(`an app with no auto environment renders no deploy job; one with no image renders no collect job and no images input`, () => {
     const manual: DeclaredStack = { ...TWO, environments: [environment('staging', false), environment('production', false)] };
     assert.deepEqual(Object.keys(parseWorkflow(rendered(edition, manual)['ci']!).jobs).filter((id) => id.startsWith('deploy-')), []);
     const bare = rendered(edition, { images: [], passEnv: [], imageEnvironments: {}, environments: [] });
@@ -216,7 +216,7 @@ for (const edition of ['lite'] as const) {
     assert.equal(Object.keys(ci.jobs).some((id) => id.startsWith('deploy-')), false);
   });
 
-  test(`${edition}: with Sonar disabled the verdict neither needs nor expects a sonar job`, () => {
+  test(`with Sonar disabled the verdict neither needs nor expects a sonar job`, () => {
     const quality = qualityServices({ services: { sonar: { mode: 'disabled' } } });
     const ci: Doc = parseWorkflow(rendered(edition, TWO, quality)['ci']!);
     assert.equal(ci.jobs.sonar, undefined);
@@ -225,7 +225,7 @@ for (const edition of ['lite'] as const) {
     assert.deepEqual(ciStandardFindings({ doc: ci, file: '.github/workflows/ci.yml', scope: 'app-ci' }), []);
   });
 
-  test(`${edition}: ci.imageCache registry caches the layers in the registry, deploy.platforms adds QEMU for another architecture`, () => {
+  test(`ci.imageCache registry caches the layers in the registry, deploy.platforms adds QEMU for another architecture`, () => {
     const registry = parseWorkflow(rendered(edition, { ...TWO, imageCache: 'registry' })['images']!);
     const build = registry.jobs.image.steps.find((step: Doc) => String(step.uses).startsWith('docker/build-push-action@'));
     assert.equal(build.with['cache-from'], 'type=registry,ref=${{ steps.names.outputs.repo }}:buildcache');
@@ -247,7 +247,7 @@ test('sync retires the db-deploy.yml workflow', (t) => {
 });
 
 for (const edition of ['lite'] as const) {
-  test(`${edition}: no managed workflow runs a world layer and sync retires a tracked e2e.yml (R12)`, (t) => {
+  test(`no managed workflow runs a world layer and sync retires a tracked e2e.yml (R12)`, (t) => {
     const workflows = rendered(edition, TWO);
     assert.equal(workflows['e2e'], undefined, 'no e2e.yml is rendered');
     for (const [name, text] of Object.entries(workflows)) {

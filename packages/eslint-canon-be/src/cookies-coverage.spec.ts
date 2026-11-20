@@ -1,5 +1,5 @@
-// proves: BE_COOKIE_ATTRIBUTES@lite
-// proves: BE_COOKIE_ATTRIBUTES@full
+// proves: BE_COOKIE_ATTRIBUTES
+// proves: BE_COOKIE_ATTRIBUTES
 import test from "node:test"
 import { at, typedTester } from "../fixtures/typed/tester.ts"
 import { responseCookieAttributes } from "./cookies.ts"

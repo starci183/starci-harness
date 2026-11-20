@@ -1,7 +1,7 @@
-// proves: HFS_MCP_TOOLS_SNAPSHOT@lite
-// proves: HFS_MCP_TOOLS_SNAPSHOT@full
-// proves: HFS_MCP_TOOLS_SNAPSHOT_MISSING@lite
-// proves: HFS_MCP_TOOLS_SNAPSHOT_MISSING@full
+// proves: HFS_MCP_TOOLS_SNAPSHOT
+// proves: HFS_MCP_TOOLS_SNAPSHOT
+// proves: HFS_MCP_TOOLS_SNAPSHOT_MISSING
+// proves: HFS_MCP_TOOLS_SNAPSHOT_MISSING
 // R302 HFS_MCP_TOOLS_SNAPSHOT: a committed MCP tool catalog `contracts/<app>/<contract>.tools.json` has the canonical tools/list
 // shape and belongs to a declared be app.
 import test from 'node:test';

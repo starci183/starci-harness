@@ -1204,7 +1204,7 @@ rules:
       - BE_PATTERN_SPEC_MISSING
     enforcers:
       - {kind: hfs, id: pattern-spec-missing}
-      - {kind: hfs, id: lite-proof-lane}
+      - {kind: hfs, id: proof-lane}
   - id: R156
     code: BE_KIND_ISOLATION
     law: A feature of one trigger kind never imports a feature of another kind; kinds meet only through the event bus.
@@ -1500,7 +1500,7 @@ rules:
     failureCodes:
       - HFS_LITE_SECRET_CUSTODY
     enforcers:
-      - {kind: hfs, id: lite-secret-custody}
+      - {kind: hfs, id: secret-custody}
   - id: R235
     code: SCAN_SMELL
     law: Code carries none of the Sonar way smells a lint rule can decide, each on at error in both canons (a leftover `TODO` marker comment among them, written as the upper-case word or as `todo:` and `todo(`; the noun in prose or a name is no marker), outside the files specs name (the specs run the test-scoped rules of the profile), and no raw U+2028, U+2029, U+0085 or bidirectional control character in any file, which the scanner counts as a line break and the language does not (the scan aborts with "Line n is out of range"); the finding names the escape to write.
@@ -1828,7 +1828,7 @@ rules:
       - STACKS_SIDECAR_DB_UNSUPPORTED
       - STACKS_LITE_REDIS_PERSISTENCE
     enforcers:
-      - {kind: hfs, id: stacks-lite-backing}
+      - {kind: hfs, id: stacks-backing}
   - id: R277
     code: HFS_SECRET_PLAINTEXT_FILE
     law: A tracked secret exists only as a sops envelope under `.starcistacks/<env>/secrets/`, in every edition; a business package may also commit `packages/<pkg>/secrets/<name>.sops.yaml`, only as a valid sops document (every leaf `ENC[...]`, a `sops` block with age recipients) sealed to the recipients of its own `packages/<pkg>/.sops.yaml`.
@@ -1898,7 +1898,7 @@ rules:
     failureCodes:
       - BE_LITE_PROOF_LANE_MISSING
     enforcers:
-      - {kind: hfs, id: lite-proof-lane}
+      - {kind: hfs, id: proof-lane}
   - id: R285
     code: FE_SWR_OUTSIDE_FAMILY
     law: SWR runtime calls stay in the `hooks/swr` wrappers, and each back-end operation is imported only by its wrapper.

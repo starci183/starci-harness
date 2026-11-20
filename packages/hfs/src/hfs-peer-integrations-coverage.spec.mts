@@ -1,5 +1,5 @@
-// proves: HFS_PEER_INTEGRATION_MISSING@lite
-// proves: HFS_PEER_INTEGRATION_MISSING@full
+// proves: HFS_PEER_INTEGRATION_MISSING
+// proves: HFS_PEER_INTEGRATION_MISSING
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';

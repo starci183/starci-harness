@@ -1,18 +1,18 @@
 /** Every copy is written through a driver (PROJECT-STACKS-14, R427): the data sets of the stack declaration, and no bring-up loads a backup. */
-// proves: DATA_PURPOSE@lite
-// proves: DATA_PURPOSE@full
-// proves: DATA_DRIVER_KIND@lite
-// proves: DATA_DRIVER_KIND@full
-// proves: DATA_COPY_NAME@lite
-// proves: DATA_COPY_NAME@full
-// proves: DATA_SEED_UNPINNED@lite
-// proves: DATA_SEED_UNPINNED@full
-// proves: DATA_FORCE_MISPLACED@lite
-// proves: DATA_FORCE_MISPLACED@full
-// proves: DATA_BACKUP_LOADED@lite
-// proves: DATA_BACKUP_LOADED@full
-// proves: DATA_EXTENSION_UNDECLARED@lite
-// proves: DATA_EXTENSION_UNDECLARED@full
+// proves: DATA_PURPOSE
+// proves: DATA_PURPOSE
+// proves: DATA_DRIVER_KIND
+// proves: DATA_DRIVER_KIND
+// proves: DATA_COPY_NAME
+// proves: DATA_COPY_NAME
+// proves: DATA_SEED_UNPINNED
+// proves: DATA_SEED_UNPINNED
+// proves: DATA_FORCE_MISPLACED
+// proves: DATA_FORCE_MISPLACED
+// proves: DATA_BACKUP_LOADED
+// proves: DATA_BACKUP_LOADED
+// proves: DATA_EXTENSION_UNDECLARED
+// proves: DATA_EXTENSION_UNDECLARED
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

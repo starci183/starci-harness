@@ -1,5 +1,5 @@
 /** Edition proofs for the Grammar structural-element contract. */
-// proves: FE_NATIVE_FORM_CONTROL@lite FE_NATIVE_FORM_CONTROL@full
+// proves: FE_NATIVE_FORM_CONTROL
 import assert from "node:assert/strict"
 import { dirname, join } from "node:path"
 import test from "node:test"

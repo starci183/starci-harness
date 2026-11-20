@@ -9,8 +9,8 @@ import { appSource, imageFiles, render, TEMPLATES_DIR } from "../sync/index.mjs"
 import { ScaffoldError, pascalOf } from "./service.mjs";
 import { PARTIAL_VARIABLES, coreFeApps, jsonText, packageJsonText } from "./app.mjs";
 
-/** The shared fe app core (modules/api, auth, toast, redux, the providers, the hooks): the base tree, then the overlay. */
-const CORE_DIRS = Object.freeze(["skeleton/apps/__app__", "skeleton-lite/apps/__app__"]);
+/** The shared fe app core (modules/api, auth, toast, redux, the providers, the hooks). */
+const CORE_DIRS = Object.freeze(["skeleton/apps/__app__"]);
 
 /** A file the add verb writes: its app-relative path and its text. */
 interface PlannedFile {
@@ -49,12 +49,12 @@ const fill = (text: string, values: Readonly<Record<string, string>>, file: stri
     return values[key];
   });
 
-/** Render the edition skeleton followed by its shared core and edition overlay. */
+/** Render the web app skeleton followed by the shared core. */
 function planAppTemplates(repo: AppRepo, name: string): PlannedFile[] {
   const source = path.join(
     TEMPLATES_DIR,
     "fe",
-    "skeleton-lite/apps/web",
+    "skeleton/apps/web",
   );
   if (!fs.existsSync(source))
     throw new ScaffoldError(
@@ -73,7 +73,7 @@ function planAppTemplates(repo: AppRepo, name: string): PlannedFile[] {
       values,
       relative,
     );
-  // The app skeleton, then the shared core, then the edition overlay: a later tree replaces an earlier file of the same path.
+  // The app skeleton, then the shared core: a later tree replaces an earlier file of the same path.
   const byPath = new Map<string, PlannedFile>();
   for (const dir of [source, ...CORE_DIRS.map((core) => path.join(TEMPLATES_DIR, "fe", ...core.split("/")))]) {
     if (!fs.existsSync(dir)) continue;
@@ -143,8 +143,7 @@ function persistAppFiles({ root, name, planned, declaration, declarationFile, pa
 }
 
 /**
- * Adds one Next workspace from the edition's canonical app skeleton and the shared app core (both editions:
- * lite and full have one fe structure), then registers it in hfs.json. The root workspace glob is added only when an
+ * Adds one Next workspace from the canonical app skeleton and the shared app core, then registers it in hfs.json. The root workspace glob is added only when an
  * older app manifest does not already carry it.
  */
 export function addApp({ root, name }: { root: string, name: string }): { created: string[], registered: { app: string, workspace: string } } {

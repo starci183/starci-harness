@@ -65,7 +65,7 @@ for (const [edition, skeleton, compose] of STARTERS) {
   });
 }
 
-test('the lite api reaches the storage service on its derived port: no 9000, which the host Sonar holds', () => {
+test('the api reaches the storage service on its derived port: no 9000, which the host Sonar holds', () => {
   const { stacks } = starter('skeleton', 'compose.yaml', 4300);
   const api = stacks.environments.dev.local.processes.find((process: { name: string }) => process.name === 'api');
   assert.equal(api.env.STORAGE_ENDPOINT, 'http://127.0.0.1:${port.storage}');

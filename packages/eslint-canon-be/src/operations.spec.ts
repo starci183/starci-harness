@@ -6,8 +6,8 @@
  * Typed cases over the fixture repository (`fixtures/typed`): the platform capability `operations` declares the canon types
  * (`OperationContract`, `query`, `mutation`, `defineOperations`, `OperationRequest`, `OperationReply`).
  */
-// proves: BE_REST_ROUTE_UNDECLARED@lite
-// proves: BE_REST_ROUTE_UNDECLARED@full
+// proves: BE_REST_ROUTE_UNDECLARED
+// proves: BE_REST_ROUTE_UNDECLARED
 import assert from "node:assert/strict"
 import test from "node:test"
 import { appDeclaration } from "../fixtures/app.ts"

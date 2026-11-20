@@ -1,6 +1,6 @@
-// proves: FE_SERVER_ACTION_FORBIDDEN@lite FE_SERVER_ACTION_FORBIDDEN@full
-// proves: FE_ROUTE_HANDLER_FORBIDDEN@lite FE_ROUTE_HANDLER_FORBIDDEN@full
-// proves: FE_STACK_FORBIDDEN@lite FE_STACK_FORBIDDEN@full
+// proves: FE_SERVER_ACTION_FORBIDDEN
+// proves: FE_ROUTE_HANDLER_FORBIDDEN
+// proves: FE_STACK_FORBIDDEN
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';

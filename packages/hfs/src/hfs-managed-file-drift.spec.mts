@@ -1,5 +1,5 @@
-// proves: HFS_MANAGED_FILE_DRIFT@lite
-// proves: HFS_MANAGED_FILE_DRIFT@full
+// proves: HFS_MANAGED_FILE_DRIFT
+// proves: HFS_MANAGED_FILE_DRIFT
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -26,7 +26,7 @@ const synced = async (context: TestContext, edition: string) => {
 };
 
 for (const edition of ['lite'] as const) {
-  test(`${edition}: an edited managed hook fails and restoring its render passes`, async context => {
+  test(`an edited managed hook fails and restoring its render passes`, async context => {
     const { root, findings } = await synced(context, edition);
     const file = path.join(root, '.husky/pre-push');
     const rendered = fs.readFileSync(file, 'utf8');
@@ -44,7 +44,7 @@ for (const edition of ['lite'] as const) {
 
 // Direct checker calls also expose these real mutation cases to the coverage proof analysis.
 for (const edition of ['lite'] as const) {
-  test(`${edition}: an edited managed formatter ignore file is invalid and restoring its render passes`, async context => {
+  test(`an edited managed formatter ignore file is invalid and restoring its render passes`, async context => {
     const { root, tracked } = await synced(context, edition);
     const input = { repoRoot: root, tracked, presets: PRESETS };
     const file = path.join(root, '.prettierignore');

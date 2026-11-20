@@ -3,7 +3,7 @@ import { projectFixture } from "../../eslint-canon-be/fixtures/project/tester.ts
 import { canonTester } from "../fixtures/typed/tester.ts"
 import { hooksFolderHoldsHooksOnly } from "./hooks-folder.ts"
 
-// proves: FE_HOOKS_ARE_HOOKS@lite FE_HOOKS_ARE_HOOKS@full
+// proves: FE_HOOKS_ARE_HOOKS
 for (const edition of ['lite'] as const) {
   test(`R56 ${edition} proves canonical module hooks by their real body and import provenance`, t => {
     const filename = "apps/web/src/hooks/chat/useCommands.ts"

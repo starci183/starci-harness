@@ -1,6 +1,6 @@
 /** R86 SQL proofs exercise each edition's declared schema authority. */
-// proves: BE_SQL_TABLE_OWNER@lite
-// proves: BE_SQL_TABLE_OWNER@full
+// proves: BE_SQL_TABLE_OWNER
+// proves: BE_SQL_TABLE_OWNER
 import test from "node:test"
 import { projectFixture } from "../fixtures/project/tester.ts"
 import { rules } from "./project-graph.ts"
@@ -115,7 +115,7 @@ const checkLiteKeys = (t: TestContext, { migrations, valid = [], validSql = [], 
     })
 }
 
-test("R86 proves a lite composite key lookup and keeps partial-key and OR reads unbounded", (t) => {
+test("R86 proves a composite key lookup and keeps partial-key and OR reads unbounded", (t) => {
     checkLiteKeys(t, {
         migrations: [COMPOSITE_TABLE, "ALTER TABLE public.purchase ENABLE ROW LEVEL SECURITY;"],
         valid: [

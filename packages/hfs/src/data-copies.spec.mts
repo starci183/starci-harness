@@ -1,18 +1,18 @@
 /** Data lives in git only in a seed copy repository (PROJECT-STACKS-13, R400): the hfs check of a code project and the commit hook's guard of a copy repository. */
-// proves: HFS_DATA_IN_CODE@lite
-// proves: HFS_DATA_IN_CODE@full
-// proves: HFS_DATA_DEPENDENCY@lite
-// proves: HFS_DATA_DEPENDENCY@full
-// proves: HFS_DATA_UNSEALED@lite
-// proves: HFS_DATA_UNSEALED@full
-// proves: HFS_DATA_STANDARD_SEALED@lite
-// proves: HFS_DATA_STANDARD_SEALED@full
-// proves: HFS_DATA_MANIFEST_DRIFT@lite
-// proves: HFS_DATA_MANIFEST_DRIFT@full
-// proves: HFS_DATA_FILE_SIZE@lite
-// proves: HFS_DATA_FILE_SIZE@full
-// proves: HFS_DATA_CAP@lite
-// proves: HFS_DATA_CAP@full
+// proves: HFS_DATA_IN_CODE
+// proves: HFS_DATA_IN_CODE
+// proves: HFS_DATA_DEPENDENCY
+// proves: HFS_DATA_DEPENDENCY
+// proves: HFS_DATA_UNSEALED
+// proves: HFS_DATA_UNSEALED
+// proves: HFS_DATA_STANDARD_SEALED
+// proves: HFS_DATA_STANDARD_SEALED
+// proves: HFS_DATA_MANIFEST_DRIFT
+// proves: HFS_DATA_MANIFEST_DRIFT
+// proves: HFS_DATA_FILE_SIZE
+// proves: HFS_DATA_FILE_SIZE
+// proves: HFS_DATA_CAP
+// proves: HFS_DATA_CAP
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

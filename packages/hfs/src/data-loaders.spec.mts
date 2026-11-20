@@ -1,6 +1,6 @@
 /** A seed-standard reaches an app by one path, the bring-up seed step over the pinned commit (PROJECT-STACKS-13, R435): every other way in is refused. */
-// proves: HFS_DATA_SECOND_LOADER@lite
-// proves: HFS_DATA_SECOND_LOADER@full
+// proves: HFS_DATA_SECOND_LOADER
+// proves: HFS_DATA_SECOND_LOADER
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

@@ -1,5 +1,5 @@
 // stacks-auth-cookie-domain.mts - R337 HFS_AUTH_COOKIE_DOMAIN_MISSING: the api's refresh cookie reaches the web server.
-// The lite skeleton's passport sets its refresh cookie host-only on the api host unless `AUTH_COOKIE_DOMAIN` is set. When the web
+// The skeleton's passport sets its refresh cookie host-only on the api host unless `AUTH_COOKIE_DOMAIN` is set. When the web
 // is served on app.<domain> and the api on api.<domain>, the web server forwards the browser's Cookie header to the api, and a
 // host-only api cookie is not in it: the api refuses the session and the user loops back to sign-in.
 //   Judged: a docker-swarm environment of an app whose api uses the skeleton's passport (a tracked
@@ -133,7 +133,7 @@ export function authCookieDomainIssues(input: { environment: string; spec: unkno
     message: `the web is served on ${hosts.web} and the api on ${hosts.api}, so the api's refresh cookie is host-only on ${hosts.api} and is missing from the Cookie header the web server forwards (a login loop); ${remedy}` }];
 }
 
-/** HFS finder over the tracked rendered Swarm environments of the lite app root whose api uses the skeleton's passport. */
+/** HFS finder over the tracked rendered Swarm environments of the app root whose api uses the skeleton's passport. */
 export function stacksAuthCookieDomainFindings(context: Parsed) {
   const files: string[] = context.all ?? context.files ?? [];
   const passport = files.some((file) => PASSPORT_CONFIG.test(file));

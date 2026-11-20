@@ -13,7 +13,7 @@ export class SideRefusal extends Error {
 /** The sides each `starci app add` noun writes into: a back-end pattern or a front-end unit. */
 const ADD_NOUN_SIDES: Readonly<Record<string, readonly ProjectSide[]>> = Object.freeze({
   api: ['be'], webhook: ['be'], realtime: ['be'], saga: ['be'], job: ['be'], reactor: ['be'], queue: ['be'], projection: ['be'], cli: ['be'],
-  table: ['be'], connection: ['be'], service: ['be'], spec: ['be'], inbox: ['be'],
+  table: ['be'], connection: ['be'], service: ['be'], spec: ['be'],
   block: ['fe'], frame: ['fe'], composite: ['fe'], branch: ['fe'], leaf: ['fe'], page: ['fe'], overlay: ['fe'], layout: ['fe'],
 });
 

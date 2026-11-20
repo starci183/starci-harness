@@ -13,7 +13,7 @@ import { DECLARABLE_SIDE_KEYS, PROJECT_SIDES, isProjectSide } from './project-si
 import { DESKTOP_SIDE, desktopSideProblems, feAppNames } from './desktop-side.mjs';
 import { NIVOOS_SIDE, nivoosSideProblems } from './nivoos-side.mjs';
 
-/** Shape problems of the optional hfs.json `db` block of a lite app: the environment variable naming its database, its image, forced RLS and its application role. */
+/** Shape problems of the optional hfs.json `db` block of an app: the environment variable naming its database, its image, forced RLS and its application role. */
 const isStringList = (value: Parsed) => Array.isArray(value) && value.every((entry: Parsed) => typeof entry === 'string' && entry.trim());
 
 /** One db.destructiveRulings entry on a migration's destructive DDL: the exact file, the exact objects, the reason and the date it was accepted. */

@@ -1,13 +1,13 @@
-// proves: BE_PUBLIC_SURFACE@lite
-// proves: BE_PUBLIC_SURFACE@full
-// proves: ARCH_OWNER_EXPORT_BYPASS@lite
-// proves: ARCH_OWNER_EXPORT_BYPASS@full
-// proves: ARCH_OWNER_EXPORT_STAR@lite
-// proves: ARCH_OWNER_EXPORT_STAR@full
-// proves: HFS_ALIAS_REEXPORT@lite
-// proves: HFS_ALIAS_REEXPORT@full
-// proves: ARCH_PACKAGE_EXPORT_BYPASS@lite
-// proves: ARCH_PACKAGE_EXPORT_BYPASS@full
+// proves: BE_PUBLIC_SURFACE
+// proves: BE_PUBLIC_SURFACE
+// proves: ARCH_OWNER_EXPORT_BYPASS
+// proves: ARCH_OWNER_EXPORT_BYPASS
+// proves: ARCH_OWNER_EXPORT_STAR
+// proves: ARCH_OWNER_EXPORT_STAR
+// proves: HFS_ALIAS_REEXPORT
+// proves: HFS_ALIAS_REEXPORT
+// proves: ARCH_PACKAGE_EXPORT_BYPASS
+// proves: ARCH_PACKAGE_EXPORT_BYPASS
 import test from "node:test"
 import { appDeclaration } from "../fixtures/app.ts"
 import { at, BE_DECLARATION, ruleTester, TYPED_ROOT } from "../fixtures/typed/tester.ts"

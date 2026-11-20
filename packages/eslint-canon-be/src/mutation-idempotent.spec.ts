@@ -1,5 +1,5 @@
 /** Client retries preserve a required validated key and execute inside the domain transaction. */
-// proves: BE_MUTATION_IDEMPOTENT@lite BE_MUTATION_IDEMPOTENT@full
+// proves: BE_MUTATION_IDEMPOTENT
 import assert from "node:assert/strict"
 import test from "node:test"
 import tsParser from "@typescript-eslint/parser"

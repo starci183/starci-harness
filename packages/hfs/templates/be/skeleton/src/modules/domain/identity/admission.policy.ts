@@ -1,7 +1,8 @@
 import { ok, refused, type Outcome } from "@modules/platform/primitives"
 import type { CredentialMetadata, CredentialPrincipal } from "./credential.contracts"
 import { IdentityErrorCode } from "./errors/identity.error"
-import { type PublicMetadata, PublicReason } from "./identity.contracts"
+import type { Principal } from "@modules/platform/cqrs"
+import { type IdentityAdmission, type PublicMetadata, PublicReason } from "./identity.contracts"
 
 /** What a credential-marked door requires and what `CredentialGuard` established for it. */
 export interface CredentialAdmission {
@@ -17,15 +18,12 @@ const admitCredential = ({
 }: CredentialAdmission): Outcome<CredentialPrincipal, IdentityErrorCode> =>
     principal?.kind === required.kind ? ok(principal) : refused(IdentityErrorCode.Unauthenticated)
 
-/**
- * The default-deny decision of one door: a credential-marked door is admitted only with its authenticated credential
- * principal; a door with a canonical public reason is admitted; every other door is refused until the design that adds
- * sign-in establishes a session principal here.
- */
+/** Admits a matching credential principal, an explicitly public door or a verified session; everything else is refused. */
 export const admit = (
     metadata: PublicMetadata | undefined,
+    principal: Principal | undefined,
     credential?: CredentialAdmission,
-): Outcome<PublicReason | CredentialPrincipal, IdentityErrorCode> => {
+): Outcome<IdentityAdmission, IdentityErrorCode> => {
     if (credential !== undefined) return admitCredential(credential)
     switch (metadata?.reason) {
         case PublicReason.Health:
@@ -35,6 +33,7 @@ export const admit = (
             return ok(metadata.reason)
         case undefined:
         default:
-            return refused(IdentityErrorCode.Unauthenticated)
+            break
     }
+    return principal === undefined ? refused(IdentityErrorCode.Unauthenticated) : ok(principal)
 }

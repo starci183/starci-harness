@@ -1,5 +1,5 @@
-// proves: BE_JSON_PARSE_UNGUARDED@lite
-// proves: BE_JSON_PARSE_UNGUARDED@full
+// proves: BE_JSON_PARSE_UNGUARDED
+// proves: BE_JSON_PARSE_UNGUARDED
 import test from 'node:test';
 import { jsonParseNeedsGuard } from './resilience.ts';
 import { appDeclaration } from '../fixtures/app.ts';

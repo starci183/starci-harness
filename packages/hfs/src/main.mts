@@ -58,9 +58,6 @@
 //                                            with Test.createTestingModule, one provider per constructor dependency (kit doubles from @starci/jest-preset),
 //                                            one placeholder it per public method. Never overwrites a file.
 //   starci app add image [--cwd <dir>]                  the Dockerfile of every declared app that has none, from the image canon (scaffold/image.mts); never overwrites
-//   starci app add inbox [--cwd <dir>]                  the delivery inbox of a FULL app that has its webhooks already (platform/inbox and platform/idempotency, their
-//                                            migrations and catalogs in each compose/platform.ts, InboxModule in the webhooks group; scaffold/add-inbox-full.mts): the same
-//                                            `add webhook <name>` lays down for a new webhook. All or nothing, a no-op when it is there; a lite app gets its inbox from `add webhook`
 //   starci app add spec <file>.service.ts [--cwd <dir>]  the spec skeleton of an existing service, read from its constructor with the repository's TypeScript
 //                                            (service, spec and image take only what is written here: an option another noun takes is refused, as --inject is on every other noun)
 //   starci app desktop init | doctor | build [--target <os>] [--debug] [--bundles <list>] | dev | keygen --out <file>   the desktop app of a project that declares sides.desktop (desktop/cli.mts,
@@ -252,7 +249,6 @@ const PARSED: Record<string, ParsedVerb> = {
       { operands: 'service <dir> <name>', only: { list: ['--inject'] } },
       { operands: 'spec <file>.service.ts', flags: [] },
       { operands: 'image', flags: [] },
-      { operands: 'inbox', flags: [] },
     ],
   },
   check: { run: checkMain, value: ['--coverage-from', '--shard', '--side', '--out', '--env'], list: GATE_FLAGS, boolean: ['--json', '--staged', '--fix', '--fresh', '--profile', '--ratchet'], forms: [{ only: { boolean: ['--json', '--fix', '--fresh'], list: GATE_FLAGS, value: ['--coverage-from', '--shard', '--side', '--out', '--env'] } }, { only: { boolean: ['--staged'] } }, { only: { boolean: ['--ratchet'] } }, { only: { boolean: ['--profile', '--json'], list: GATE_FLAGS } }] },
@@ -922,9 +918,9 @@ async function emitMain(opts: Opts, { cwd: repoRoot, stdout: out, runHeavyNode }
 }
 
 /** The nouns of `add` that write into an existing app's files by their own generators (scaffold/service.mjs, scaffold/image.mjs) and take no pattern option. */
-const ADD_FILE_NOUNS = ['service', 'spec', 'image', 'inbox'];
+const ADD_FILE_NOUNS = ['service', 'spec', 'image'];
 
-/** `add service <dir> <name> [--inject ...]`, `add spec <file>.service.ts`, `add image` and `add inbox`: never overwrites; an option another noun takes is refused. */
+/** `add service <dir> <name> [--inject ...]`, `add spec <file>.service.ts` and `add image`: never overwrites; an option another noun takes is refused. */
 function addFileNoun(noun: string, opts: Opts, repoRoot: string, out: (text: string) => unknown): number {
   const [, ...args] = opts.positional;
   const [first = '', second = ''] = args;
@@ -935,8 +931,7 @@ function addFileNoun(noun: string, opts: Opts, repoRoot: string, out: (text: str
   if (noun === 'service' && args.length === 2) written = newService({ repoRoot, dir: first, name: second, inject: listFlag(opts, 'inject') ?? [] });
   else if (noun === 'spec' && args.length === 1) written = newSpec({ repoRoot, file: first });
   else if (noun === 'image' && args.length === 0) written = newImages({ repoRoot });
-  else if (noun === 'inbox' && args.length === 0) written = addKind({ repoRoot, noun, name: '' }).created;
-  else throw new UsageError('starci app add takes `service <dir> <name> [--inject ...]`, `spec <file>.service.ts`, `image` or `inbox`');
+  else throw new UsageError('starci app add takes `service <dir> <name> [--inject ...]`, `spec <file>.service.ts` or `image`');
   for (const file of written) out(`created ${file}\n`);
   return 0;
 }

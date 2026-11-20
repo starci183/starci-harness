@@ -1,5 +1,5 @@
-// proves: BE_BOOT_ENTRY_FAILED@lite
-// proves: BE_BOOT_ENTRY_UNJUDGED@lite
+// proves: BE_BOOT_ENTRY_FAILED
+// proves: BE_BOOT_ENTRY_UNJUDGED
 // R448: a back-end app that declares a boot entry (hfs.json sides.be.apps[].boot) is composed for real without listening (the incident: a provider
 // injecting a token its module did not export passed every gate and failed the stack seed), and the stack's withheld output names its error lines
 // only, redacted (error-tail.mts). The boot runs through the real Nest of this package's devDependencies, so the fixtures live under packages/hfs.

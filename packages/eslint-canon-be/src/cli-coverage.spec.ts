@@ -1,11 +1,11 @@
-// proves: BE_CLI_BOOTSTRAP@lite
-// proves: BE_CLI_BOOTSTRAP@full
-// proves: BE_CLI_COMMAND_SHAPE@lite
-// proves: BE_CLI_COMMAND_SHAPE@full
-// proves: BE_CLI_OWNER@lite
-// proves: BE_CLI_OWNER@full
-// proves: BE_CLI_CLIENT_BOUNDARY@lite
-// proves: BE_CLI_CLIENT_BOUNDARY@full
+// proves: BE_CLI_BOOTSTRAP
+// proves: BE_CLI_BOOTSTRAP
+// proves: BE_CLI_COMMAND_SHAPE
+// proves: BE_CLI_COMMAND_SHAPE
+// proves: BE_CLI_OWNER
+// proves: BE_CLI_OWNER
+// proves: BE_CLI_CLIENT_BOUNDARY
+// proves: BE_CLI_CLIENT_BOUNDARY
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { cliBootstrap, cliClientBoundary, cliCommandShape, cliOwner } from './cli.ts';

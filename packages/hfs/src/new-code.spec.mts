@@ -1,7 +1,7 @@
-// proves: COVERAGE_NEW_CODE_BELOW@lite
-// proves: COVERAGE_NEW_CODE_BELOW@full
-// proves: LINT_NEW_CODE_FINDING@lite
-// proves: LINT_NEW_CODE_FINDING@full
+// proves: COVERAGE_NEW_CODE_BELOW
+// proves: COVERAGE_NEW_CODE_BELOW
+// proves: LINT_NEW_CODE_FINDING
+// proves: LINT_NEW_CODE_FINDING
 // New code is never loosened by a branch profile (cache/new-code.mts): the predicted new-code coverage of the lines changed since the merge-base with main must reach the minimum
 // main's Sonar gate holds, and an ESLint finding on a changed line blocks; the lint half runs end to end in branch-profile.spec.mts.
 import test from 'node:test';

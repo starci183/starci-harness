@@ -555,7 +555,7 @@ rules:
     proves:
       - packages/eslint/be/a16-r32-r33-r35-project-graph.spec.mjs
     exemplifiedBy:
-      - packages/hfs/templates/be/skeleton-lite/apps/api/src/app.module.ts
+      - packages/hfs/templates/be/skeleton/apps/api/src/app.module.ts
       - packages/eslint/be/a16-r32-r33-r35-project-graph.spec.mjs
     witness:
       - {path: packages/eslint/be/a16-r32-r33-r35-project-graph.spec.mjs, codes: [BE_APP_COMPOSITION_ONLY, BE_APP_BUSINESS_ROLE]}
@@ -621,7 +621,7 @@ rules:
       - path: packages/eslint/be/r37-contract-entities.spec.mjs
         codes: ["BE_ENTITY_IN_CONTRACT"]
     exemplifiedBy:
-      - packages/hfs/templates/be/skeleton-lite/src/modules/domain/identity/identity.contracts.ts
+      - packages/hfs/templates/be/skeleton/src/modules/domain/identity/identity.contracts.ts
       - path: packages/eslint/be/r37-contract-entities.spec.mjs
         codes: ["BE_ENTITY_IN_CONTRACT"]
     witness:
@@ -634,7 +634,7 @@ rules:
     proves:
       - packages/eslint/be/a16-error-home.spec.mjs
     exemplifiedBy:
-      - packages/hfs/templates/be/skeleton-lite/src/modules/integrations/passport/errors/passport.error.ts
+      - packages/hfs/templates/be/skeleton/src/modules/integrations/passport/errors/passport.error.ts
       - packages/eslint/be/a16-error-home.spec.mjs
     witness:
       - {path: packages/eslint/be/a16-error-home.spec.mjs, codes: [BE_ERROR_HOME]}
@@ -653,7 +653,7 @@ rules:
     proves:
       - packages/eslint/be/a16-error-masked.spec.mjs
     exemplifiedBy:
-      - packages/hfs/templates/be/skeleton-lite/apps/api/src/app.module.ts
+      - packages/hfs/templates/be/skeleton/apps/api/src/app.module.ts
       - packages/eslint/be/a16-error-masked.spec.mjs
     witness:
       - {path: packages/eslint/be/a16-error-masked.spec.mjs, codes: [BE_ERROR_MASKED]}
@@ -688,7 +688,7 @@ rules:
       - {path: packages/eslint/be/legacy-foundations-coverage.spec.mjs, codes: ["BE_DEFAULT_DENY"]}
       - {path: packages/eslint/be/legacy-default-deny-graph.spec.mjs, codes: ["BE_DEFAULT_DENY"]}
     exemplifiedBy:
-      - packages/hfs/templates/be/skeleton-lite/apps/api/src/app.module.ts
+      - packages/hfs/templates/be/skeleton/apps/api/src/app.module.ts
       - {path: packages/eslint/be/legacy-foundations-coverage.spec.mjs, codes: ["BE_DEFAULT_DENY"]}
       - {path: packages/eslint/be/legacy-default-deny-graph.spec.mjs, codes: ["BE_DEFAULT_DENY"]}
     witness:
@@ -728,7 +728,7 @@ rules:
     docs: [docs/microservices.md#r43]
     proves: [{path: packages/eslint/be/legacy-foundations-coverage.spec.mjs, codes: ["BE_CONFIG_OWNER"]}]
     exemplifiedBy:
-      - packages/hfs/templates/be/skeleton-lite/apps/api/src/api.env.ts
+      - packages/hfs/templates/be/skeleton/apps/api/src/api.env.ts
       - {path: packages/eslint/be/legacy-foundations-coverage.spec.mjs, codes: ["BE_CONFIG_OWNER"]}
     witness:
       - {path: packages/eslint/be/legacy-foundations-coverage.spec.mjs, codes: ["BE_CONFIG_OWNER"]}
@@ -869,7 +869,7 @@ rules:
     docs: [docs/code-pattern-enforcement.md#r49]
     proves: [{path: packages/eslint/fe/r49-env-owner-coverage.spec.mjs, codes: ["FE_ENV_OWNER"]}]
     exemplifiedBy:
-      - packages/hfs/templates/fe/skeleton-lite/apps/web/src/modules/config/index.ts
+      - packages/hfs/templates/fe/skeleton/apps/web/src/modules/config/index.ts
       - {path: packages/eslint/fe/r49-env-owner-coverage.spec.mjs, codes: ["FE_ENV_OWNER"]}
     witness:
       - {path: packages/eslint/fe/r49-env-owner-coverage.spec.mjs, codes: ["FE_ENV_OWNER"]}
@@ -957,7 +957,7 @@ rules:
     proves:
       - {path: packages/eslint/fe/r53-error-boundaries.spec.mjs, codes: [FE_ERROR_BOUNDARY_MISSING, FE_SUSPENSE_NULL_FALLBACK]}
     exemplifiedBy:
-      - packages/hfs/templates/fe/skeleton-lite/apps/web/src/app/global-error.tsx
+      - packages/hfs/templates/fe/skeleton/apps/web/src/app/global-error.tsx
       - {path: packages/eslint/fe/r53-error-boundaries.spec.mjs, codes: [FE_ERROR_BOUNDARY_MISSING, FE_SUSPENSE_NULL_FALLBACK]}
     witness:
       - {path: packages/eslint/fe/r53-error-boundaries.spec.mjs, codes: [FE_ERROR_BOUNDARY_MISSING, FE_SUSPENSE_NULL_FALLBACK]}
@@ -1033,7 +1033,7 @@ rules:
     proves:
       - packages/eslint/fe/owner-reachable-coverage.spec.mjs
     exemplifiedBy:
-      - packages/hfs/templates/fe/skeleton-lite/apps/web/src
+      - packages/hfs/templates/fe/skeleton/apps/web/src
       - packages/eslint/fe/owner-reachable-coverage.spec.mjs
     witness:
       - {path: packages/eslint/fe/owner-reachable-coverage.spec.mjs}
@@ -1051,7 +1051,7 @@ rules:
     proves:
       - packages/eslint/fe/i18n-literal-coverage.spec.mjs
     exemplifiedBy:
-      - packages/hfs/templates/fe/skeleton-lite/apps/web/src
+      - packages/hfs/templates/fe/skeleton/apps/web/src
       - packages/eslint/fe/i18n-literal-coverage.spec.mjs
     witness:
       - {path: packages/eslint/fe/i18n-literal-coverage.spec.mjs}
@@ -1083,7 +1083,7 @@ rules:
       - packages/eslint/fe/i18n-placement-coverage.spec.mjs
       - {path: packages/hfs/src/hfs-i18n-placement-coverage.spec.mjs, codes: [FE_I18N_PLACEMENT]}
     exemplifiedBy:
-      - packages/hfs/templates/fe/skeleton-lite/apps/web/src/modules/i18n
+      - packages/hfs/templates/fe/skeleton/apps/web/src/modules/i18n
       - packages/eslint/fe/i18n-placement-coverage.spec.mjs
       - {path: packages/hfs/src/hfs-i18n-placement-coverage.spec.mjs, codes: [FE_I18N_PLACEMENT]}
     witness:
@@ -1103,7 +1103,7 @@ rules:
       - packages/hfs/src/hfs-i18n-catalog-coverage.spec.mjs
       - packages/hfs/src/i18n-locale-presence.spec.mjs
     exemplifiedBy:
-      - packages/hfs/templates/fe/skeleton-lite/apps/web/src/modules/i18n/messages
+      - packages/hfs/templates/fe/skeleton/apps/web/src/modules/i18n/messages
       - packages/hfs/src/hfs-i18n-catalog-coverage.spec.mjs
     witness:
       - {path: packages/hfs/src/hfs-i18n-catalog-coverage.spec.mjs}
@@ -1143,7 +1143,7 @@ rules:
       - {path: packages/eslint/grammar-core/typography.spec.mjs, codes: [FE_STYLE_TOKEN_ONLY]}
       - {path: packages/eslint/grammar-core/tokens.spec.mjs, codes: [FE_STYLE_TOKEN_ONLY]}
     exemplifiedBy:
-      - packages/hfs/templates/fe/skeleton-lite/apps/web/src/app/globals.css
+      - packages/hfs/templates/fe/skeleton/apps/web/src/app/globals.css
       - {path: packages/stylelint/source-resolves.spec.mjs, codes: [FE_STYLE_SOURCE_UNRESOLVED]}
       - {path: packages/eslint/fe/brand-values.spec.mjs, codes: [FE_STYLE_TOKEN_ONLY]}
       - {path: packages/eslint/fe/tokens.spec.mjs, codes: [FE_STYLE_TOKEN_ONLY]}
@@ -1165,7 +1165,7 @@ rules:
       - packages/eslint/fe/r62-native-controls-coverage.spec.mjs
     exemplifiedBy:
       - {path: packages/eslint/grammar-core/r62-structural-elements-coverage.spec.mjs, codes: [FE_NATIVE_FORM_CONTROL]}
-      - packages/hfs/templates/fe/skeleton-lite/apps/web/src/features/pages/AppHomePage/component.tsx
+      - packages/hfs/templates/fe/skeleton/apps/web/src/features/pages/AppHomePage/component.tsx
       - packages/eslint/fe/r62-native-controls-coverage.spec.mjs
     witness:
       - {path: packages/eslint/grammar-core/r62-structural-elements-coverage.spec.mjs, codes: [FE_NATIVE_FORM_CONTROL]}
@@ -1208,7 +1208,7 @@ rules:
     proves:
       - {path: packages/eslint/fe/r64-app-isolation-coverage.spec.mjs, codes: [FE_APP_ISOLATION]}
     exemplifiedBy:
-      - packages/hfs/templates/fe/skeleton-lite/apps/web/src/features/pages/AppHomePage/component.tsx
+      - packages/hfs/templates/fe/skeleton/apps/web/src/features/pages/AppHomePage/component.tsx
       - {path: packages/eslint/fe/r64-app-isolation-coverage.spec.mjs, codes: [FE_APP_ISOLATION]}
     witness:
       - {path: packages/eslint/fe/r64-app-isolation-coverage.spec.mjs, codes: [FE_APP_ISOLATION]}
@@ -1234,7 +1234,7 @@ rules:
     proves:
       - packages/eslint/fe/r65-size-and-state-budget-coverage.spec.mjs
     exemplifiedBy:
-      - packages/hfs/templates/fe/skeleton-lite/apps/web/src/features/pages/AppHomePage/component.tsx
+      - packages/hfs/templates/fe/skeleton/apps/web/src/features/pages/AppHomePage/component.tsx
       - packages/eslint/fe/r65-size-and-state-budget-coverage.spec.mjs
     witness:
       - {path: packages/eslint/fe/r65-size-and-state-budget-coverage.spec.mjs, codes: [FE_SIZE_AND_STATE_BUDGET, FE_LIST_KEY, FE_EFFECT_CLEANUP, FE_SWALLOWED_ERROR, FE_CONSOLE_CALL]}
@@ -1657,7 +1657,7 @@ rules:
       - {kind: eslint-fe, id: frontend-source-layout}
     docs: ["docs/frontend-source-authoring.md#r91-source-form"]
     proves: ["packages/eslint/fe/r91-source-form.spec.mjs"]
-    exemplifiedBy: ["packages/hfs/templates/fe/skeleton-lite/apps/web/src/components/frames/SiteShell/index.tsx","packages/eslint/fe/r91-source-form.spec.mjs"]
+    exemplifiedBy: ["packages/hfs/templates/fe/skeleton/apps/web/src/components/frames/SiteShell/index.tsx","packages/eslint/fe/r91-source-form.spec.mjs"]
     witness: [{"path":"packages/eslint/fe/r91-source-form.spec.mjs","codes":["FE_SOURCE_FORM","FE_SOURCE_LAYOUT_INVALID"]},]
     gates: ["pre-commit","settle","land","ci"]
   - id: R92
@@ -1936,7 +1936,7 @@ rules:
     proves:
       - {path: packages/eslint/fe/legacy-i18n-keys-coverage.spec.mjs, codes: [FE_I18N_KEYS]}
     exemplifiedBy:
-      - packages/hfs/templates/fe/skeleton-lite/apps/web/src/features/pages/AppErrorPage/index.tsx
+      - packages/hfs/templates/fe/skeleton/apps/web/src/features/pages/AppErrorPage/index.tsx
       - {path: packages/eslint/fe/legacy-i18n-keys-coverage.spec.mjs, codes: [FE_I18N_KEYS]}
     witness:
       - {path: packages/eslint/fe/legacy-i18n-keys-coverage.spec.mjs, codes: [FE_I18N_KEYS]}
@@ -2000,7 +2000,7 @@ rules:
     proves:
       - {path: packages/eslint/fe/legacy-props-readonly-coverage.spec.mjs, codes: [FE_PROPS_MUTABLE]}
     exemplifiedBy:
-      - packages/hfs/templates/fe/skeleton-lite/apps/web/src/features/pages/AppErrorPage/index.tsx
+      - packages/hfs/templates/fe/skeleton/apps/web/src/features/pages/AppErrorPage/index.tsx
       - {path: packages/eslint/fe/legacy-props-readonly-coverage.spec.mjs, codes: [FE_PROPS_MUTABLE]}
     witness:
       - {path: packages/eslint/fe/legacy-props-readonly-coverage.spec.mjs, codes: [FE_PROPS_MUTABLE]}
@@ -2404,15 +2404,15 @@ rules:
     gates: [land, ci]
     failureCodes: ["BE_PATTERN_SPEC_MISSING"]
     enforcers:
-      - {kind: hfs, id: lite-proof-lane, at: scripts/hfs/rules/lite-proof-lane.mjs}
+      - {kind: hfs, id: proof-lane, at: scripts/hfs/rules/proof-lane.mjs}
     docs: [docs/quality-bar.md#r155]
     templateNa: "Pattern scenarios depend on application behavior and providers; no universal runnable scenario proof is scaffolded."
     proves:
-      - {path: packages/hfs/src/hfs-lite-proof-lane.spec.mjs, codes: [BE_PATTERN_SPEC_MISSING]}
+      - {path: packages/hfs/src/hfs-proof-lane.spec.mjs, codes: [BE_PATTERN_SPEC_MISSING]}
     exemplifiedBy:
-      - {path: packages/hfs/src/hfs-lite-proof-lane.spec.mjs, codes: [BE_PATTERN_SPEC_MISSING]}
+      - {path: packages/hfs/src/hfs-proof-lane.spec.mjs, codes: [BE_PATTERN_SPEC_MISSING]}
     witness:
-      - {path: packages/hfs/src/hfs-lite-proof-lane.spec.mjs, codes: [BE_PATTERN_SPEC_MISSING]}
+      - {path: packages/hfs/src/hfs-proof-lane.spec.mjs, codes: [BE_PATTERN_SPEC_MISSING]}
   - id: R156
     code: "BE_KIND_ISOLATION"
     docs: [docs/code-pattern-enforcement.md#r156-kind-isolation]
@@ -2540,7 +2540,7 @@ rules:
     proves:
       - packages/hfs/src/hfs-services-legacy-coverage.spec.mjs
     exemplifiedBy:
-      - packages/hfs/templates/be/skeleton-lite/apps/api/Dockerfile
+      - packages/hfs/templates/be/skeleton/apps/api/Dockerfile
       - packages/hfs/src/hfs-services-legacy-coverage.spec.mjs
     witness:
       - {path: packages/hfs/src/hfs-services-legacy-coverage.spec.mjs, codes: [HFS_SERVICE_PLACEMENT]}
@@ -2682,7 +2682,7 @@ rules:
     proves:
       - {path: packages/eslint/be/project-graph.context-coverage.spec.mjs, codes: [BE_CONTEXT_OWNER]}
     exemplifiedBy:
-      - packages/hfs/templates/be/skeleton-lite/apps/api/src/compose/platform.ts
+      - packages/hfs/templates/be/skeleton/apps/api/src/compose/platform.ts
       - {path: packages/eslint/be/project-graph.context-coverage.spec.mjs, codes: [BE_CONTEXT_OWNER]}
     witness:
       - {path: packages/eslint/be/project-graph.context-coverage.spec.mjs, codes: [BE_CONTEXT_OWNER]}
@@ -3265,14 +3265,14 @@ rules:
     gates: [settle, land, ci]
     failureCodes: ["HFS_LITE_SECRET_CUSTODY"]
     enforcers:
-      - {kind: hfs, id: lite-secret-custody, at: scripts/hfs/rules/lite-secrets.mjs}
+      - {kind: hfs, id: secret-custody, at: scripts/hfs/rules/secret-custody.mjs}
     proves:
-      - packages/hfs/src/hfs-lite-secrets.spec.mjs
+      - packages/hfs/src/hfs-secret-custody-rule.spec.mjs
     exemplifiedBy:
       - packages/hfs/templates/app/skeleton/.sops.yaml
-      - packages/hfs/src/hfs-lite-secrets.spec.mjs
+      - packages/hfs/src/hfs-secret-custody-rule.spec.mjs
     witness:
-      - {path: packages/hfs/src/hfs-lite-secrets.spec.mjs}
+      - {path: packages/hfs/src/hfs-secret-custody-rule.spec.mjs}
   - id: R221
     code: "CI_TRIGGERS_RELEASE_ONLY"
     law: "Workflow triggers are push filtered to v* tags or release/candidate-* branches, workflow_call (a reusable workflow has no trigger of its own) and workflow_dispatch. Runtime workflows and app ci.yml also admit main, and app ci.yml admits pull_request to main (branches ['main'] only: a pull request run has no secret and no environment). App ci.yml includes the candidate branch filter for starci app release push. pull_request_target, workflow_run, schedules, other branches, events, path filters and ignore filters are refused."
@@ -3552,7 +3552,7 @@ rules:
       - {path: packages/eslint/fe/frontend-boundary-coverage.spec.mjs, codes: [FE_SERVER_ACTION_FORBIDDEN]}
       - packages/hfs/src/frontend-boundary-coverage.spec.mjs
     exemplifiedBy:
-      - packages/hfs/templates/fe/skeleton-lite/apps/web/src/app/health/live/route.ts
+      - packages/hfs/templates/fe/skeleton/apps/web/src/app/health/live/route.ts
       - packages/hfs/src/frontend-boundary-coverage.spec.mjs
     witness:
       - {path: packages/hfs/src/frontend-boundary-coverage.spec.mjs, codes: [FE_SERVER_ACTION_FORBIDDEN, FE_ROUTE_HANDLER_FORBIDDEN]}
@@ -3571,7 +3571,7 @@ rules:
       - {path: packages/eslint/fe/frontend-boundary-coverage.spec.mjs, codes: [FE_STACK_FORBIDDEN]}
       - {path: packages/hfs/src/frontend-boundary-coverage.spec.mjs, codes: [FE_STACK_FORBIDDEN]}
     exemplifiedBy:
-      - packages/hfs/templates/fe/skeleton-lite/apps/web/src/proxy.ts
+      - packages/hfs/templates/fe/skeleton/apps/web/src/proxy.ts
       - {path: packages/hfs/src/frontend-boundary-coverage.spec.mjs, codes: [FE_STACK_FORBIDDEN]}
     witness:
       - {path: packages/hfs/src/frontend-boundary-coverage.spec.mjs, codes: [FE_STACK_FORBIDDEN]}
@@ -3580,7 +3580,7 @@ rules:
     docs: [docs/microservices.md#r245]
     proves: [packages/eslint/be/app-composition-coverage.spec.mjs]
     exemplifiedBy:
-      - packages/hfs/templates/be/skeleton-lite/apps/api/src/api.options.ts
+      - packages/hfs/templates/be/skeleton/apps/api/src/api.options.ts
       - {path: packages/eslint/be/app-composition-coverage.spec.mjs, codes: [BE_APP_OPTIONS_COMPOSITION]}
     witness:
       - {path: packages/eslint/be/app-composition-coverage.spec.mjs, codes: [BE_APP_OPTIONS_COMPOSITION]}
@@ -3628,7 +3628,7 @@ rules:
     proves:
       - packages/hfs/src/hfs-env-parity.spec.mjs
     exemplifiedBy:
-      - packages/hfs/templates/be/skeleton-lite/apps/api/src/api.env.ts
+      - packages/hfs/templates/be/skeleton/apps/api/src/api.env.ts
       - packages/hfs/src/hfs-env-parity.spec.mjs
     witness:
       - {path: packages/hfs/src/hfs-env-parity.spec.mjs}
@@ -3644,7 +3644,7 @@ rules:
     proves:
       - packages/hfs/src/hfs-env-parity.spec.mjs
     exemplifiedBy:
-      - packages/hfs/templates/be/skeleton-lite/apps/api/src/api.env.ts
+      - packages/hfs/templates/be/skeleton/apps/api/src/api.env.ts
       - packages/hfs/src/hfs-env-parity.spec.mjs
     witness:
       - {path: packages/hfs/src/hfs-env-parity.spec.mjs}
@@ -3920,7 +3920,7 @@ rules:
     docs:
       - "docs/microservices.md#r265"
     exemplifiedBy:
-      - "packages/hfs/templates/be/skeleton-lite/apps/api/src/compose/platform.ts"
+      - "packages/hfs/templates/be/skeleton/apps/api/src/compose/platform.ts"
       - "examples/lite-app/be/apps/api/src/compose/platform.ts"
     proves:
       - {"path":"packages/eslint/be/app-composition.spec.mjs","codes":["BE_COMPOSITION_UNTYPED"]}
@@ -4047,7 +4047,7 @@ rules:
     proves:
       - packages/hfs/src/hfs-boot-proof.spec.mjs
     exemplifiedBy:
-      - "packages/hfs/templates/be/skeleton-lite/src/tests/fixtures/builders/api.builder.ts"
+      - "packages/hfs/templates/be/skeleton/src/tests/fixtures/builders/api.builder.ts"
       - "examples/lite-app/be/src/tests/fixtures/builders/api.builder.ts"
       - packages/hfs/src/hfs-boot-proof.spec.mjs
     witness:
@@ -4106,18 +4106,18 @@ rules:
     gates: ["settle","land","ci"]
     failureCodes: ["STACKS_LITE_SELFHOSTED_DB", "STACKS_SIDECAR_VOLUME_UNDECLARED", "STACKS_SIDECAR_DB_UNSUPPORTED", "STACKS_LITE_REDIS_PERSISTENCE"]
     enforcers:
-      - {kind: hfs, id: stacks-lite-backing, at: scripts/hfs/rules/stacks-lite-backing.mjs}
+      - {kind: hfs, id: stacks-backing, at: scripts/hfs/rules/stacks-backing.mjs}
     docs:
       - "docs/application-stacks.md#r276"
-    proves: [packages/hfs/src/hfs-stacks-lite-backing.spec.mjs]
+    proves: [packages/hfs/src/hfs-stacks-backing.spec.mjs]
     exemplifiedBy:
       - "packages/hfs/templates/app/skeleton/.starcistacks"
       - examples/lite-app/.starcistacks
-      - packages/hfs/src/hfs-stacks-lite-backing.spec.mjs
+      - packages/hfs/src/hfs-stacks-backing.spec.mjs
       - examples/lite-app/be/src/modules/platform/queue/queue-relay.service.spec.ts
       - examples/lite-app/be/src/modules/platform/queue/bullmq-queue-transport.client.spec.ts
     witness:
-      - {path: packages/hfs/src/hfs-stacks-lite-backing.spec.mjs}
+      - {path: packages/hfs/src/hfs-stacks-backing.spec.mjs}
   - id: R277
     code: "HFS_SECRET_PLAINTEXT_FILE"
     law: "In every edition the only custody a tracked secret may take is a sops envelope at `.starcistacks/<env>/secrets/**.enc`. A tracked plaintext secret file is refused by being: `secrets.env` or `.secret(s).env` at any depth, a non-dot `*.env` or `*.env.<profile>` holding secret keys (deploy-side dotenv included), and a plaintext member of a `secrets/` directory; a sealed `.enc` outside the one sealed home is refused too (for lite it is already `HFS_LITE_SECRET_CUSTODY`). One more custody is allowed (owner:sealed-package-secrets): a business package may commit `packages/<pkg>/secrets/<name>.sops.yaml` only as a valid sops document, every leaf `ENC[...]`, a `sops` block with age recipients, and those recipients equal to the ones `packages/<pkg>/.sops.yaml` names for it; plaintext in that file is `HFS_PACKAGE_SECRET_NOT_SEALED`, a missing or different recipient set is `HFS_PACKAGE_SECRET_RECIPIENT`."
@@ -4259,15 +4259,15 @@ rules:
     gates: [land, ci]
     failureCodes: ["BE_LITE_PROOF_LANE_MISSING"]
     enforcers:
-      - {kind: hfs, id: lite-proof-lane, at: scripts/hfs/rules/lite-proof-lane.mjs}
+      - {kind: hfs, id: proof-lane, at: scripts/hfs/rules/proof-lane.mjs}
     docs: [docs/quality-bar.md#r284]
     templateNa: "Integration scenarios depend on the application patterns and providers; no universal runnable scenario lane is scaffolded."
     proves:
-      - {path: packages/hfs/src/hfs-lite-proof-lane.spec.mjs, codes: [BE_LITE_PROOF_LANE_MISSING]}
+      - {path: packages/hfs/src/hfs-proof-lane.spec.mjs, codes: [BE_LITE_PROOF_LANE_MISSING]}
     exemplifiedBy:
-      - {path: packages/hfs/src/hfs-lite-proof-lane.spec.mjs, codes: [BE_LITE_PROOF_LANE_MISSING]}
+      - {path: packages/hfs/src/hfs-proof-lane.spec.mjs, codes: [BE_LITE_PROOF_LANE_MISSING]}
     witness:
-      - {path: packages/hfs/src/hfs-lite-proof-lane.spec.mjs, codes: [BE_LITE_PROOF_LANE_MISSING]}
+      - {path: packages/hfs/src/hfs-proof-lane.spec.mjs, codes: [BE_LITE_PROOF_LANE_MISSING]}
   - id: R285
     code: "FE_SWR_OUTSIDE_FAMILY"
     law: "SWR runtime calls belong to the declared SWR hook family. A component, feature or domain hook consumes its wrapper hook instead of importing an API operation or calling SWR itself; each back-end operation is imported and invoked only by its SWR wrapper under hooks/swr, regardless of whether the tier matrix still permits a direct transport edge. Values the API owner re-exports from its generated `__generated__/input-bounds.ts` (INPUT_BOUNDS, REST_INPUT_BOUNDS and inputBoundsIssues) are contract data, not operations, and stay importable by hooks/rhf."
@@ -4346,8 +4346,8 @@ rules:
       - {path: packages/hfs/src/hfs-app-env-required.spec.mjs, codes: [BE_APP_ENV_REQUIRED]}
     exemplifiedBy:
       - {path: packages/eslint/be/app-composition.spec.mjs, codes: [BE_APP_ENV_REQUIRED, BE_APP_MODULE_LIST_INLINE]}
-      - packages/hfs/templates/be/skeleton-lite/apps/api/src/api.env.ts
-      - packages/hfs/templates/be/skeleton-lite/apps/api/src/app.module.ts
+      - packages/hfs/templates/be/skeleton/apps/api/src/api.env.ts
+      - packages/hfs/templates/be/skeleton/apps/api/src/app.module.ts
       - {path: packages/hfs/src/hfs-app-env-required.spec.mjs, codes: [BE_APP_ENV_REQUIRED]}
     witness:
       - {path: packages/eslint/be/app-composition.spec.mjs, codes: [BE_APP_ENV_REQUIRED, BE_APP_MODULE_LIST_INLINE]}
@@ -5019,7 +5019,7 @@ rules:
     proves:
       - packages/eslint-canon-be/src/object-storage-package.spec.ts
     exemplifiedBy:
-      - packages/hfs/templates/be/skeleton-lite/src/modules/integrations/object-storage/object-storage.module.ts
+      - packages/hfs/templates/be/skeleton/src/modules/integrations/object-storage/object-storage.module.ts
     witness:
       - {path: packages/eslint-canon-be/src/object-storage-package.spec.ts, codes: [BE_STORAGE_OWNER]}
 
@@ -5085,7 +5085,7 @@ rules:
     proves:
       - packages/eslint-canon-be/src/jobs-scheduler.spec.ts
     exemplifiedBy:
-      - packages/hfs/templates/be/patterns/jobs/platform-lite/job-tick.service.ts.tpl
+      - packages/hfs/templates/be/patterns/jobs/platform/job-tick.service.ts.tpl
       - {path: packages/eslint-canon-be/src/jobs-scheduler.spec.ts, codes: [BE_JOBS_SCHEDULER_OWNER]}
     witness:
       - {path: packages/eslint-canon-be/src/jobs-scheduler.spec.ts, codes: [BE_JOBS_SCHEDULER_OWNER]}
@@ -5121,7 +5121,7 @@ rules:
       - packages/hfs/src/hfs-stacks-auth-cookie-domain.spec.mjs
     exemplifiedBy:
       - packages/hfs/templates/app/skeleton/.starcistacks
-      - packages/hfs/templates/be/skeleton-lite/src/modules/integrations/passport/passport.config.ts
+      - packages/hfs/templates/be/skeleton/src/modules/integrations/passport/passport.config.ts
       - packages/hfs/src/hfs-stacks-auth-cookie-domain.spec.mjs
     witness:
       - {path: packages/hfs/src/hfs-stacks-auth-cookie-domain.spec.mjs}

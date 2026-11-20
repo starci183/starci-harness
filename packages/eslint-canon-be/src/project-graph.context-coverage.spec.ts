@@ -1,11 +1,11 @@
-// proves: BE_CONTEXT_OWNER@lite
-// proves: BE_CONTEXT_OWNER@full
-// proves: BE_CONTEXT_COUPLING@lite
-// proves: BE_CONTEXT_COUPLING@full
-// proves: BE_CONTEXT_TRANSACTION@lite
-// proves: BE_CONTEXT_TRANSACTION@full
-// proves: BE_CONTEXT_PLATFORM_TABLES@lite
-// proves: BE_CONTEXT_PLATFORM_TABLES@full
+// proves: BE_CONTEXT_OWNER
+// proves: BE_CONTEXT_OWNER
+// proves: BE_CONTEXT_COUPLING
+// proves: BE_CONTEXT_COUPLING
+// proves: BE_CONTEXT_TRANSACTION
+// proves: BE_CONTEXT_TRANSACTION
+// proves: BE_CONTEXT_PLATFORM_TABLES
+// proves: BE_CONTEXT_PLATFORM_TABLES
 import test from "node:test"
 import { projectFixture } from "../fixtures/project/tester.ts"
 import { rules } from "./project-graph.ts"

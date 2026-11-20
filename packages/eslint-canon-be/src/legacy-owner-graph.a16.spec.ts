@@ -1,8 +1,8 @@
-// proves: BE_TIER_DIRECTION@lite BE_TIER_DIRECTION@full
-// proves: FE_TIER_DIRECTION@lite FE_TIER_DIRECTION@full
-// proves: ARCH_PACKAGE_IMPORTS_APP@lite ARCH_PACKAGE_IMPORTS_APP@full
-// proves: ARCH_OWNER_CYCLE@lite ARCH_OWNER_CYCLE@full
-// proves: BE_FEATURE_IMPORTS_FEATURE@lite BE_FEATURE_IMPORTS_FEATURE@full
+// proves: BE_TIER_DIRECTION
+// proves: FE_TIER_DIRECTION
+// proves: ARCH_PACKAGE_IMPORTS_APP
+// proves: ARCH_OWNER_CYCLE
+// proves: BE_FEATURE_IMPORTS_FEATURE
 import test from "node:test"
 import type { RuleTester } from "eslint"
 import bePlugin from "./index.ts"

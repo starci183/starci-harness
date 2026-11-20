@@ -1,4 +1,4 @@
-// proves: BE_DEFAULT_DENY@lite BE_DEFAULT_DENY@full
+// proves: BE_DEFAULT_DENY
 import test from "node:test"
 import { projectFixture } from "../fixtures/project/tester.ts"
 import { rules } from "./project-graph.ts"

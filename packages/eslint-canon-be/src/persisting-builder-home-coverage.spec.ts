@@ -1,5 +1,5 @@
-// proves: BE_TEST_BUILDER_HOME@lite
-// proves: BE_TEST_BUILDER_HOME@full
+// proves: BE_TEST_BUILDER_HOME
+// proves: BE_TEST_BUILDER_HOME
 import assert from "node:assert/strict"
 import test from "node:test"
 import { persistingBuilderInBuildersSlot } from "./builders.ts"

@@ -176,7 +176,7 @@ files:
     spec: projection/recompute-is-idempotent, projection/replay-rebuilds
     rules: [BE_PATTERN_SPEC_MISSING]
 # Edition lite (R212): the same ports and rules, a self-hosted Postgres adapter behind them.
-liteAdapter:
+adapter:
   summary: >-
     Under lite a projection is unchanged in behaviour (only it writes its table, recompute is idempotent and replayable, readers
     use get*); its table is a db migration mapped by a projection entity under persistence/entities/ (named in PRIMARY_ENTITIES of

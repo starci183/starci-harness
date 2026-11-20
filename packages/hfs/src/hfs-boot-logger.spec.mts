@@ -7,7 +7,7 @@ import path from 'node:path';
 import { bootLoggerFindings, HFS_BOOT_LOGGER_SILENCED } from '../runtime/scripts/hfs/rules/boot-logger.mjs';
 import { ALL_CHECK_CODES } from '../runtime/scripts/hfs/check.mjs';
 
-// proves: HFS_BOOT_LOGGER_SILENCED@lite HFS_BOOT_LOGGER_SILENCED@full
+// proves: HFS_BOOT_LOGGER_SILENCED
 
 type LoggerInput = Parameters<typeof bootLoggerFindings>[0];
 

@@ -1,5 +1,5 @@
 /** Spacing is the Grammar's: an app class string carries no padding, margin, gap or space utility (R350). */
-// proves: FE_SPACING_UTILITY@lite FE_SPACING_UTILITY@full
+// proves: FE_SPACING_UTILITY
 import assert from "node:assert/strict"
 import test from "node:test"
 import { at, slotTester } from "../fixtures/typed/tester.ts"

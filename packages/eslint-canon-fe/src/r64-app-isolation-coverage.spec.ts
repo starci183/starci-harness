@@ -1,5 +1,5 @@
-// proves: FE_APP_ISOLATION@lite
-// proves: FE_APP_ISOLATION@full
+// proves: FE_APP_ISOLATION
+// proves: FE_APP_ISOLATION
 import test from "node:test"
 import { projectFixture } from "../../eslint-canon-be/fixtures/project/tester.ts"
 import { canonTester } from "../fixtures/typed/tester.ts"

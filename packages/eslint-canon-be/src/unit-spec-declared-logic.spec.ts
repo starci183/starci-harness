@@ -1,4 +1,4 @@
-// proves: BE_TEST_TOPOLOGY@lite BE_TEST_TOPOLOGY@full
+// proves: BE_TEST_TOPOLOGY
 /**
  * A slot may declare which of its own files carry logic (`logic` in the slot manifest). The spec beside a declared logic file
  * (`passport.kit.spec.ts` beside the declared `passport.kit.ts` of be.integrations.passport) is a legitimate unit spec for
@@ -21,7 +21,7 @@ const PASSPORT = "src/modules/integrations/passport/"
 const code = "export {};"
 const subjects = Object.fromEntries(["passport.kit.ts", "passport.config.ts"].map((file) => [`${PASSPORT}${file}`, code]))
 
-test("lite: the spec beside each declared passport logic file is a unit spec; beside an undeclared file of no logic role it is not", (t) => {
+test("the spec beside each declared passport logic file is a unit spec; beside an undeclared file of no logic role it is not", (t) => {
     const fixture = projectFixture({ edition: "lite", files: { ...subjects, "src/modules/integrations/mail/mail.tokens.ts": code } })
     t.after(fixture.cleanup)
     fixture.tester.run("unit-test-colocated", unitTestColocated, {

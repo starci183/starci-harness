@@ -1,4 +1,4 @@
-// proves: BE_PERSISTENCE_NO_RAW_SQL@lite
+// proves: BE_PERSISTENCE_NO_RAW_SQL
 // R334's database functions: the canon lists the pg built-ins bare and every other function schema-qualified, an app lists
 // its own schema-qualified, the lite skeleton's platform/database/database.client.ts calls only those shapes, and its call
 // statement stays readable to R268's recurring-work scanner (HFS_SCHEDULE_UNDECLARED).
@@ -15,7 +15,7 @@ import { loadSlotManifest, resolveRepoDeclaration } from '../runtime/scripts/hfs
 
 const PACKAGE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const TEMPLATES = path.join(PACKAGE, 'templates');
-const CLIENT = path.join(TEMPLATES, 'be', 'skeleton-lite', 'src', 'modules', 'platform', 'database', 'database.client.ts');
+const CLIENT = path.join(TEMPLATES, 'be', 'skeleton', 'src', 'modules', 'platform', 'database', 'database.client.ts');
 const CLIENT_AT = 'be/src/modules/platform/database/database.client.ts';
 const canonList = () => loadSlotManifest().ruleParams.be.dbFunctions!;
 const entries = (...names: string[]) => names.map((name) => ({ name, reason: 'a reason' }));

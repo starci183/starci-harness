@@ -226,7 +226,7 @@ function trailingNewline(text: string): string {
 }
 
 /**
- * The base image of a lite app's managed .starcistacks/images/db/Dockerfile (contexts/stack/pins.yaml images postgres): the
+ * The base image of an app's managed .starcistacks/images/db/Dockerfile (contexts/stack/pins.yaml images postgres): the
  * Docker Official postgres image by digest, to which the Dockerfile adds PGVECTOR_PACKAGE from PGDG and the PGMQ release.
  */
 export const DB_BASE_IMAGE = 'postgres:17.11@sha256:31ba9c94a03ada9988f2bb493a22a75eef3a185884533e5cdbcd498ea835b08f';
@@ -243,15 +243,15 @@ export const PGMQ = Object.freeze({
 });
 /** The local tag the development db container and the drift scratch database run, built from the app's .starcistacks/images/db/Dockerfile. */
 export const dbLocalImage = (project: string): string => `${project}-db:local`;
-/** The digest-pinned image of a lite app's declared Redis, in every environment that runs it (R212). */
+/** The digest-pinned image of an app's declared Redis, in every environment that runs it (R212). */
 export const REDIS_IMAGE = 'redis:7@sha256:c6eabf748fc7a61dbb5a705c78bcf3d6377b1127a97d0ce965c11c44ba46896f';
 
 const redisDevText = (project: string): string => render(readBundled('app/package-scripts/redis-dev.json'), { project, redisImage: REDIS_IMAGE });
 
-/** The development scripts of a lite app's declared Redis (create once, then start and stop it), as a scripts object. */
+/** The development scripts of an app's declared Redis (create once, then start and stop it), as a scripts object. */
 export const redisDevScripts = (project: string): Record<string, string> => JSON.parse(`{${redisDevText(project).trim().replace(/,$/, '')}}`);
 
-/** What the app's sync reads from the jest preset it installs for its be side: the Sonar exclusions ({ sonarExclusions }); both editions install it (a lite back end keeps full's unit run, R212). */
+/** What the app's sync reads from the jest preset it installs for its be side: the Sonar exclusions ({ sonarExclusions }); both editions install it (a back end keeps full's unit run, R212). */
 export async function loadPresets(root: string): Promise<Presets> {
   const name = '@starci/jest-preset';
   const require = createRequire(path.join(root, 'package.json'));
@@ -319,7 +319,7 @@ const SOURCE_SKIPPED = new Set(['node_modules', 'dist', 'coverage']);
 /**
  * The be source of the app at `root` the coverage components read: { files, read }, `files` be-relative posix paths of every `*.ts` file under
  * be/apps and be/src (build output and dependencies skipped) and `read` their text. `workPresent` records whether the optional
- * lite brand tree exists, so sync can preserve its absence. `hasImage` identifies authored optional Dockerfiles without reading
+ * brand tree exists, so sync can preserve its absence. `hasImage` identifies authored optional Dockerfiles without reading
  * their content. An app with no be folder has no source files.
  */
 /**
@@ -448,7 +448,7 @@ export function appScripts(app: ResolvedApp, source: Partial<Pick<AppSourceFacts
   const watch = (entry: AppEntry): string => `cd be && ts-node-dev --respawn --transpile-only --debounce 1000 --watch ${watched} -r tsconfig-paths/register apps/${entry.name}/src/main.ts`;
   const built = (entry: AppEntry): string => `node be/dist/apps/${entry.name}/src/main.js`;
   const workspace = (entry: AppEntry): string => feAppPackageName(app.project, entry.name);
-  // Both editions generate before they run: the fe's GraphQL wire types, and under lite the database types check.
+  // Both editions generate before they run: the fe's GraphQL wire types, and under the database types check.
   const dev = (entry: AppEntry): string => `npm run codegen --silent && turbo run dev --filter=${workspace(entry)}`;
   const images = imageEntries(app, source);
   const imageCommand = ({ side, entry }: ImageEntry): string => `docker build -f ${dockerfilePath(side, entry.name)} -t ${app.project}/${entry.name}:dev .`;
@@ -480,15 +480,15 @@ const opensPackages = (side: AppSide): boolean => (side.optionalSlots ?? []).som
 /** The stylesheets of the fe side the CSS canon judges, relative to fe/: every app and every workspace package (slot fe.route, fe.package.*). */
 export const STYLE_GLOB = '{apps,packages}/*/src/**/*.css';
 
-/** Required app images (every back-end app but a client cli, which ships as an npm package) plus lite front ends whose optional Dockerfile the source holds. */
+/** Required app images (every back-end app but a client cli, which ships as an npm package) plus front ends whose optional Dockerfile the source holds. */
 function imageEntries(app: ResolvedApp, source: Partial<Pick<AppSourceFacts, 'hasImage'>> | undefined): ImageEntry[] {
   const frontend = app.sides.fe.apps.filter(entry => source?.hasImage?.(dockerfilePath('fe', entry.name)));
   return [...app.sides.be.apps.filter(entry => entry.kind !== CLIENT_CLI_KIND).map((entry): ImageEntry => ({ side: 'be', entry })), ...frontend.map((entry): ImageEntry => ({ side: 'fe', entry }))];
 }
 
-/** The apps images.yml builds (one matrix entry per declared app): name and Dockerfile, be then fe, then a lite app's db image. */
+/** The apps images.yml builds (one matrix entry per declared app): name and Dockerfile, be then fe, then an app's db image. */
 export function imageApps(app: ResolvedApp, source: Partial<Pick<AppSourceFacts, 'hasImage' | 'storageNeeded'>> | undefined, declared: readonly { app: string }[] = []): ImageApp[] {
-  // A lite app that has statics/ or needs object storage also ships its own MinIO image (slot app.storage.image, PROJECT-STATICS-5); so does one whose
+  // An app that has statics/ or needs object storage also ships its own MinIO image (slot app.storage.image, PROJECT-STATICS-5); so does one whose
   // deploy block names the storage image (`deploy.images.<service>: {app: storage}`), so statics/ ships through the normal release, never a hand-pinned digest.
   const named = declared.some(image => image.app === STORAGE_IMAGE_APP);
   const storage = source?.storageNeeded === true || named ? [{ name: STORAGE_IMAGE_APP, file: STORAGE_DOCKERFILE }] : [];
@@ -496,7 +496,7 @@ export function imageApps(app: ResolvedApp, source: Partial<Pick<AppSourceFacts,
   return [...imageEntries(app, source).map(image => ({ name: image.entry.name, file: dockerfilePath(image.side, image.entry.name) })), ...db];
 }
 
-/** The Dockerfile of the app a deploy image names (be first, then fe, then a lite app's db image); an app hfs.json does not declare cannot be built by the managed workflow. */
+/** The Dockerfile of the app a deploy image names (be first, then fe, then an app's db image); an app hfs.json does not declare cannot be built by the managed workflow. */
 function stackDockerfile(app: ResolvedApp, name: string): string {
   if (name === DB_IMAGE_APP) return DB_DOCKERFILE;
   if (name === STORAGE_IMAGE_APP) return STORAGE_DOCKERFILE;
@@ -524,7 +524,7 @@ export function imageFiles(app: ResolvedApp, source?: Partial<Pick<AppSourceFact
   const contracts = (side.reads ?? []).includes('be/contracts/') && source?.hasContracts === true;
   const inputs = [...(opensPackages(side) ? ['fe/packages'] : []), ...(contracts ? ['be/contracts'] : [])];
   const copyInputs = inputs.map(folder => `COPY ${folder} ${folder}\n`).join('');
-  // The folders outside be/ that the back end declares it reads (the generated database types of a lite back end, db/types/) are in every one of its images.
+  // The folders outside be/ that the back end declares it reads (the generated database types of a back end, db/types/) are in every one of its images.
   const beFolders = (app.sides.be.reads ?? []).map(folder => folder.replace(/\/$/, ''));
   const copyBeInputs = beFolders.map(folder => `COPY ${folder} ${folder}\n`).join('');
   // hfs.json marks the repository root, the only place a package may read a shared folder from, so every image build holds it, and statics/brand when the repository has it.
@@ -620,7 +620,7 @@ export function variables(app: ResolvedApp, scope: string, presets: Presets | nu
     project: app.project,
     appBinary: APP_BINARY,
     appScripts: appScripts(app, source),
-    // A lite app's own database runs in development as one container of the image its .starcistacks/images/db/Dockerfile builds.
+    // An app's own database runs in development as one container of the image its .starcistacks/images/db/Dockerfile builds.
     dbImage: dbLocalImage(app.project),
     dbBaseImage: DB_BASE_IMAGE,
     // The managed .starcistacks/images/storage/Dockerfile (slot app.storage.image): the pinned MinIO and the mc compiled from its pinned source tag.
@@ -633,7 +633,7 @@ export function variables(app: ResolvedApp, scope: string, presets: Presets | nu
     pgmqVersion: PGMQ.version,
     pgmqSource: PGMQ.source,
     pgmqSha256: PGMQ.sha256,
-    // A lite app's declared Redis (sides.be.backing, R212) runs in development as one container of its pinned image.
+    // An app's declared Redis (sides.be.backing, R212) runs in development as one container of its pinned image.
     backingScripts: (app.sides.be.backing ?? []).includes('redis') ? redisDevText(app.project) : '',
     // turbo builds every fe app workspace; ^build (turbo.json) builds the packages each app imports first, and caches both. A project without fe
     // (PROJECT-1) has no fe build and no wire codegen (scripts/codegen.mjs is rendered with fe only: managedWhenSides), and its typecheck and lint
@@ -665,7 +665,7 @@ export function variables(app: ResolvedApp, scope: string, presets: Presets | nu
     lcovReport: LCOV_REPORT,
     cpdExclusions: SONAR_CPD_EXCLUSIONS.join(','),
     ...ciWorkflowCommands(source, LCOV_REPORT, source.qualityDeclared === false ? undefined : source.quality, { app, packages, rootPackages: moduleDirs.length > 0 }),
-    // The coverage scope is the same in both editions: lite measures exactly what full measures (R212).
+    // The coverage scope is the same in both editions: measures exactly what full measures (R212).
     jestCoverage: scope === 'be' ? jestCoverageSource(jestCoverage(manifest, providers)) : '',
     jestPackages: scope === 'be' ? jestPackagesSource(rootPackages) : '',
     coverageExclusions: scope === APP_SCOPE ? [...sonarCoverageExclusions(manifest, providers), ...rootPackages.excludes].join(',') : '',
@@ -870,7 +870,7 @@ export async function renderRepo(root: string, { presets, parseYaml, notices, ma
   return { hfs, targets: renderTargets(hfs, installed, { sonarKey, manifest, source: settled }) };
 }
 
-/** The folders a lite app's sync retires: the generated Supabase row types nothing reads any more. */
+/** The folders an app's sync retires: the generated Supabase row types nothing reads any more. */
 const LITE_RETIRED_DIRS = Object.freeze(['supabase/types']);
 /** The files the sync of an app of either edition retires, each with the reason the dry run prints. */
 const RETIRED_FILES: Readonly<Record<string, string>> = Object.freeze({
@@ -878,7 +878,7 @@ const RETIRED_FILES: Readonly<Record<string, string>> = Object.freeze({
   // PROJECT-GALLERY-1: since hfs 6.13.33 the managed gallery/ is a thin config over @starci/gallery; the three files an earlier render wrote under gallery/src go.
   ...Object.fromEntries(['main.js', 'explain.js', 'style.css'].map(name => [`gallery/src/${name}`, 'the gallery app is the published @starci/gallery since hfs 6.13.33; gallery/ holds only its config (vite.config.js, package.json, index.html, README.md)'])),
 });
-/** The files a lite app's sync retires beside those of every edition, each with the reason the dry run prints. */
+/** The files an app's sync retires beside those of every edition, each with the reason the dry run prints. */
 const LITE_RETIRED_FILES: Readonly<Record<string, string>> = Object.freeze({
   [RETIRED_DB_DOCKERFILE]: `the db image moved to ${DB_DOCKERFILE}`,
   'be/src/modules/domain/identity/persistence/entities/auth-user.entity.ts': 'the sign-in reaches accounts through the account doors (be/src/modules/domain/identity/persistence/account-doors.port.ts); the application role holds no grant on schema auth',
@@ -889,7 +889,7 @@ const LITE_RETIRED_FILES: Readonly<Record<string, string>> = Object.freeze({
 /** Why a retired file goes: a retired file's own reason, else the folder's. */
 const retiredReason = (file: string): string => RETIRED_FILES[file] ?? LITE_RETIRED_FILES[file] ?? 'an app generates no Supabase database types';
 
-/** The app-relative retired files, and files of the retired folders of a lite app, that still exist under `root`; sync --execute deletes them, the dry run reports them. */
+/** The app-relative retired files, and files of the retired folders of an app, that still exist under `root`; sync --execute deletes them, the dry run reports them. */
 export function retiredFiles(root: string): string[] {
   const found: string[] = [];
   const walk = (rel: string): void => {

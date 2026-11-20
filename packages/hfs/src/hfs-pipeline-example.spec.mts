@@ -1,4 +1,4 @@
-// proves: HFS_CI_MISSING_CANON@lite HFS_CI_MISSING_CANON@full
+// proves: HFS_CI_MISSING_CANON
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

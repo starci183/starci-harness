@@ -1,5 +1,5 @@
-// proves: HFS_PACKAGE_MANAGER_MIXED@lite
-// proves: HFS_PACKAGE_MANAGER_MIXED@full
+// proves: HFS_PACKAGE_MANAGER_MIXED
+// proves: HFS_PACKAGE_MANAGER_MIXED
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';

@@ -15,10 +15,10 @@ type DocContext = Parameters<typeof docFreshFindings>[0] & { files: string[] };
 /** A rule id no catalog has, built from parts: the fixture text is data of the test, not a citation of the catalog. */
 const UNKNOWN = ['R', '9', '9', '9'].join('');
 
-// proves: HFS_DOC_PATH_MISSING@lite HFS_DOC_PATH_MISSING@full
-// proves: HFS_DOC_COMMAND_UNKNOWN@lite HFS_DOC_COMMAND_UNKNOWN@full
-// proves: HFS_DOC_ENV_UNKNOWN@lite HFS_DOC_ENV_UNKNOWN@full
-// proves: HFS_DOC_RULE_UNKNOWN@lite HFS_DOC_RULE_UNKNOWN@full
+// proves: HFS_DOC_PATH_MISSING
+// proves: HFS_DOC_COMMAND_UNKNOWN
+// proves: HFS_DOC_ENV_UNKNOWN
+// proves: HFS_DOC_RULE_UNKNOWN
 
 function fixture(t: TestContext, edition: string, files: Record<string, unknown>, options: Partial<DocContext> = {}): DocContext {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-doc-fresh-'));
@@ -230,5 +230,5 @@ for (const edition of ['lite'] as const) {
 test('R270 leaves runtime documentation and other product files to their existing rules', (t) => {
   const context = fixture(t, 'full', { 'CONTEXT.md': `\`docs/missing.md\` ${UNKNOWN}`, 'notes.md': `\`docs/missing.md\` ${UNKNOWN}`, 'docs/reference.yaml': 'path: docs/missing.md' });
   assert.deepEqual(docFreshFindings(context), []);
-  assert.deepEqual(docFreshFindings({ ...context, files: ['README.md'], repo: { edition: 'full', profile: 'runtime' } }), []);
+  assert.deepEqual(docFreshFindings({ ...context, files: ['README.md'], repo: { profile: 'runtime' } }), []);
 });

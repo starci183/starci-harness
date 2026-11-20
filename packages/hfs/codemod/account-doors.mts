@@ -15,7 +15,7 @@ export interface AccountDoorsReport {
 }
 
 const PACKAGE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-/** The owner of the account doors: the partial the lite baseline includes, byte for byte. */
+/** The owner of the account doors: the partial the baseline includes, byte for byte. */
 const DOORS_PARTIAL = path.join(PACKAGE_ROOT, 'templates', 'app', 'auth-doors.sql.partial');
 /** One door of the partial: its name, its argument types, its function text and its REVOKE and GRANT lines. */
 interface Door { name: string; types: string; block: string; grants: string }
@@ -80,8 +80,8 @@ function contractText(role: string): string {
 }
 
 /**
- * Upgrade of a lite app that signs in over direct grants on auth.users and auth.identities to the account doors. The expand step (default)
- * writes the migration that creates the doors the app lacks, with the text the lite baseline includes; the app then runs `starci app sync --execute`
+ * Upgrade of an app that signs in over direct grants on auth.users and auth.identities to the account doors. The expand step (default)
+ * writes the migration that creates the doors the app lacks, with the text the baseline includes; the app then runs `starci app sync --execute`
  * (the sign-in glue switches to the doors and the two entity files go). The contract step (`contract`) writes the migration that revokes the three
  * grants, once the doors exist and no be source maps the auth tables; R255 reports the grants until that migration is in the chain. Nothing is written while a case is left for a person, and a step that is already
  * done changes nothing.

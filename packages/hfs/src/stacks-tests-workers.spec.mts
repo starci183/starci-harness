@@ -1,5 +1,5 @@
-// proves: HFS_STACKS_SHAPE@lite
-// proves: HFS_STACKS_SHAPE@full
+// proves: HFS_STACKS_SHAPE
+// proves: HFS_STACKS_SHAPE
 // `tests: { integration: { workers }, e2e: { workers } }` of application-stacks.yaml sizes the world slots of a run (contexts/code/be/test.md BE-TEST-17).
 import test from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,6 +1,6 @@
 /** The rest contract option: hfs.json `contract`, the emitted OpenAPI document and its drift (R23), its shape (R396), its additive evolution (R177) and the GraphQL doors a rest back end refuses (R278). */
-// proves: BE_REST_OPERATION_ID@lite
-// proves: BE_REST_OPERATION_ID@full
+// proves: BE_REST_OPERATION_ID
+// proves: BE_REST_OPERATION_ID
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';

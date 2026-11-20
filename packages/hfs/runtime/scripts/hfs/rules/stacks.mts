@@ -5,7 +5,7 @@
 //     `deployment.json` and `k8s/` are not in the list, so they fall out of it;
 //   - the declaration (read by scripts/lib/stack-declaration.mts, the one reader of it) states a sonar service, a local
 //     Sonar is owned by the host (`stack.owner: host`, root `.claude/ext/sonar`).
-// The lite overlay admits Swarm compute and its own db service. Runtime rules are shared with the stack gates.
+// The overlay admits Swarm compute and its own db service. Runtime rules are shared with the stack gates.
 // The declaration's quality/delivery services contract (custody, CI wiring, project keys) stays check-starcistacks's.
 // HFS_BRANCH_PROFILE_INVALID (R378): the `branches` block of the declaration (readBranchProfiles of the stack-declaration reader) lowers only a polish gate
 // (lint, sonar, codecov) on a branch policy/loosening.yaml branchProfiles allows, never on the default branch.

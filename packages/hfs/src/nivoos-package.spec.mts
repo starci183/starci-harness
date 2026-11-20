@@ -1,10 +1,10 @@
 /** The nivoos packages a project declares (PROJECT-BUSINESS-1, R436): `sides.nivoos.packages` in hfs.json, the slot app.nivoos-package, the tree findings and the `nivoos package check` step of `starci app check`. */
-// proves: HFS_NIVOOS_PACKAGE_MISSING@lite
-// proves: HFS_NIVOOS_PACKAGE_MISSING@full
-// proves: HFS_NIVOOS_UNDECLARED@lite
-// proves: HFS_NIVOOS_UNDECLARED@full
-// proves: HFS_NIVOOS_PACKAGE_CHECK@lite
-// proves: HFS_NIVOOS_PACKAGE_CHECK@full
+// proves: HFS_NIVOOS_PACKAGE_MISSING
+// proves: HFS_NIVOOS_PACKAGE_MISSING
+// proves: HFS_NIVOOS_UNDECLARED
+// proves: HFS_NIVOOS_UNDECLARED
+// proves: HFS_NIVOOS_PACKAGE_CHECK
+// proves: HFS_NIVOOS_PACKAGE_CHECK
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';

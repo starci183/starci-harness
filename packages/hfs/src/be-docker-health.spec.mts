@@ -1,4 +1,4 @@
-// proves: HFS_DOCKER_HEALTHCHECK_FAKE@lite HFS_DOCKER_HEALTHCHECK_FAKE@full
+// proves: HFS_DOCKER_HEALTHCHECK_FAKE
 import test from "node:test"
 import assert from "node:assert/strict"
 import fs from "node:fs"

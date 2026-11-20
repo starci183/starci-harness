@@ -28,7 +28,7 @@ export function untrackedSecretFindings({ repoRoot, files, repo }: { repoRoot: s
   } catch {
     return [];
   }
-  return [found(PLAINTEXT_SECRET, 'secrets.env', 'secrets.env is an untracked plaintext secret at the lite app root; seal it with starci app secret set --env <env> into .starcistacks/<env>/secrets/<slug>.enc and remove the plaintext file; read materialized values by *_FILE', { level: 'warning', pattern: 'untracked-secrets-env' })];
+  return [found(PLAINTEXT_SECRET, 'secrets.env', 'secrets.env is an untracked plaintext secret at the app root; seal it with starci app secret set --env <env> into .starcistacks/<env>/secrets/<slug>.enc and remove the plaintext file; read materialized values by *_FILE', { level: 'warning', pattern: 'untracked-secrets-env' })];
 }
 
 /** The findings of a file of the committed secrets cache: it is judged by what it holds (codes, paths, positions and digests, secret-records.mts), never by the `secrets/` folder it sits in. */

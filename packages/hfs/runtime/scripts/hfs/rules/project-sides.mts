@@ -14,7 +14,7 @@ import { found } from './read.mjs';
 import type { Finding, Parsed, Repo } from './rule-types.mjs';
 
 const STACK_FILE = '.starcistacks/application-stacks.yaml';
-/** The image a lite app builds from .starcistacks/images/db, not from a side. */
+/** The image an app builds from .starcistacks/images/db, not from a side. */
 const STACK_OWN_IMAGES = new Set(['db', 'storage']);
 
 const mapping = (value: unknown): Record<string, Parsed> => (plain(value) ? value as Record<string, Parsed> : {});

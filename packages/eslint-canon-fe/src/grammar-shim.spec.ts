@@ -1,6 +1,6 @@
 /** R321 fixtures prove that an app never re-exports a Grammar export under its own name, independently of a Grammar family or app edition. */
-// proves: FE_GRAMMAR_SHIM@full
-// proves: FE_GRAMMAR_SHIM@lite
+// proves: FE_GRAMMAR_SHIM
+// proves: FE_GRAMMAR_SHIM
 import assert from "node:assert/strict"
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"

@@ -1,4 +1,4 @@
-// proves: HFS_APP_LEXICON@lite HFS_APP_LEXICON@full
+// proves: HFS_APP_LEXICON
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -81,14 +81,14 @@ for (const edition of ['lite'] as const) {
 
 test('HFS_APP_LEXICON: literal punctuation, Unicode words and identifier separators use exact vocabulary boundaries', (t) => {
   const files = { 'README.md': 'C++ is removed. C+++ also names C++.\n\u0110\u01a0N C\u0168 and \u0111\u01a1n c\u0169.\n', 'src/old.ts': 'const OLD_CART = true; const shoppingCart = true; const Cartesian = true;' };
-  const repo = { profile: 'be', edition: 'full', lexicon: { removed: ['C++', '\u0111\u01a1n c\u0169', 'cart'] } };
+  const repo = { profile: 'be', lexicon: { removed: ['C++', '\u0111\u01a1n c\u0169', 'cart'] } };
   const findings = lexiconFindings({ repoRoot: tree(t, files), files: Object.keys(files), repo });
   assert.deepEqual(findings.map((item) => [item.path, item.word, item.line]), [['README.md', 'C++', 1], ['README.md', '\u0111\u01a1n c\u0169', 2], ['src/old.ts', 'cart', 1]]);
 });
 
 test('HFS_APP_LEXICON: acronym boundaries are identifier segments and longer all-caps words pass', (t) => {
   const files = { 'src/old.ts': 'const XMLCart = true;\nconst CARTService = true;\nconst CARTS = true;\nconst DISCARDED = true;' };
-  const findings = lexiconFindings({ repoRoot: tree(t, files), files: Object.keys(files), repo: { profile: 'be', edition: 'full', lexicon: { removed: ['cart'] } } });
+  const findings = lexiconFindings({ repoRoot: tree(t, files), files: Object.keys(files), repo: { profile: 'be', lexicon: { removed: ['cart'] } } });
   assert.deepEqual(findings.map((item) => item.line), [1, 2]);
 });
 
@@ -104,7 +104,7 @@ test('HFS_APP_LEXICON: scoped side checks read the parent declaration and ignore
 
 test('HFS_APP_LEXICON: no removed words means no scan; the runtime has no product lexicon', (t) => {
   const root = tree(t, { 'README.md': 'cart' });
-  assert.deepEqual(lexiconFindings({ repoRoot: root, files: ['README.md'], repo: { profile: 'app', edition: 'full' } }), []);
+  assert.deepEqual(lexiconFindings({ repoRoot: root, files: ['README.md'], repo: { profile: 'app' } }), []);
   assert.deepEqual(lexiconFindings({ repoRoot: root, files: ['README.md'], repo: { kind: 'runtime', lexicon: { removed: ['cart'] } } }), []);
 });
 

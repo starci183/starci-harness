@@ -1,4 +1,4 @@
-// proves: DB_MIGRATION_DESTRUCTIVE@lite
+// proves: DB_MIGRATION_DESTRUCTIVE
 // A contract migration must not ship in the same release as the code change it depends on (R259, cicd.md Database migrations): the deploy applies it
 // right after the accept, while the release it replaced is still the rollback target. The check reads the be/src sources AS THEY WERE at the previous
 // release tag; a contract migration that is new since that tag and destroys an object those sources still reference is a DB_MIGRATION_DESTRUCTIVE

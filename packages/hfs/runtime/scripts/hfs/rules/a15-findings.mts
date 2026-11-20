@@ -28,11 +28,11 @@ import { scriptHygieneFindings } from './script-hygiene.mjs';
 import { supplyChainFindings } from './supply-chain.mjs';
 import { envParityFindings } from './env-parity.mjs';
 import { envValueShapeFindings } from './env-value-shape.mjs';
-import { liteProofLaneFindings } from './lite-proof-lane.mjs';
+import { proofLaneFindings } from './proof-lane.mjs';
 import { stacksSwarmFindings } from './stacks-swarm.mjs';
 import { stacksReleaseFindings } from './stacks-release.mjs';
 import { stacksIngressFindings } from './stacks-ingress.mjs';
-import { stacksLiteBackingFindings } from './stacks-lite-backing.mjs';
+import { stacksBackingFindings } from './stacks-backing.mjs';
 import { stackToolingFindings } from './stack-tooling.mjs';
 import { stacksDeployFindings } from './stacks-deploy.mjs';
 import { stacksLocalFindings } from './stacks-local.mjs';
@@ -144,11 +144,11 @@ export const FINDERS = [
   supplyChainFindings,
   envParityFindings,
   envValueShapeFindings,
-  liteProofLaneFindings,
+  proofLaneFindings,
   stacksSwarmFindings,
   stacksReleaseFindings,
   stacksIngressFindings,
-  stacksLiteBackingFindings,
+  stacksBackingFindings,
   stackToolingFindings,
   stacksDeployFindings,
   stacksLocalFindings,

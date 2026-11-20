@@ -1,5 +1,5 @@
-// proves: HFS_PROOF_COMMAND_FILE_MISSING@lite
-// proves: HFS_PROOF_COMMAND_FILE_MISSING@full
+// proves: HFS_PROOF_COMMAND_FILE_MISSING
+// proves: HFS_PROOF_COMMAND_FILE_MISSING
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';

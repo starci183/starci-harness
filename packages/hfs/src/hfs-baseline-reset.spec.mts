@@ -1,6 +1,6 @@
-// proves: DB_BASELINE_SHAPE@lite, DB_BASELINE_SHAPE@full
-// proves: DB_MIGRATION_SHAPE@lite, DB_MIGRATION_SHAPE@full
-// proves: DB_ARCHIVE_MUTATED@lite, DB_ARCHIVE_MUTATED@full
+// proves: DB_BASELINE_SHAPE, DB_BASELINE_SHAPE
+// proves: DB_MIGRATION_SHAPE, DB_MIGRATION_SHAPE
+// proves: DB_ARCHIVE_MUTATED, DB_ARCHIVE_MUTATED
 // A declared one-time baseline reset (hfs.json db.baselineReset): the declared baseline replaces the whole older migration history, so the
 // immutability checks (R213, R257) accept the removal of every older active and archived file while the reset is pending; without the
 // declaration the old behaviour stays, and the reset is judged: exactly one baseline, carrying the ruling, sorting before every later migration.

@@ -1,11 +1,11 @@
-// proves: STACK_STORAGE_MISSING@lite
-// proves: STACK_STORAGE_MISSING@full
-// proves: STACK_STORAGE_UNUSED@lite
-// proves: STACK_STORAGE_UNUSED@full
-// proves: STACK_STORAGE_IMAGE_UNUSED@lite
-// proves: STACK_STORAGE_IMAGE_UNUSED@full
-// proves: STACK_STORAGE_IMAGE_SHAPE@lite
-// proves: STACK_STORAGE_IMAGE_SHAPE@full
+// proves: STACK_STORAGE_MISSING
+// proves: STACK_STORAGE_MISSING
+// proves: STACK_STORAGE_UNUSED
+// proves: STACK_STORAGE_UNUSED
+// proves: STACK_STORAGE_IMAGE_UNUSED
+// proves: STACK_STORAGE_IMAGE_UNUSED
+// proves: STACK_STORAGE_IMAGE_SHAPE
+// proves: STACK_STORAGE_IMAGE_SHAPE
 // R440 and the storage condition (rules/storage-image.mts, scripts/lib/storage-need.mts): a project ships its own MinIO when it has statics/ or its back end needs storage.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -44,31 +44,31 @@ test('the condition: statics/ besides the starter, the storage package, a storag
   assert.equal(storageNeed({ stack: { environments: { dev: { local: { custody: [{ member: 'db' }] } } } } }).needed, false);
 });
 
-for (const edition of ['lite'] as const) {
-  test(`${edition}: a service built from the override with its statics environment is clean`, () => {
+{
+  test(`a service built from the override with its statics environment is clean`, () => {
     assert.deepEqual(judge({ staticsFiles: ['statics/.gitkeep', 'statics/art/a.png'] }), []);
   });
 
-  test(`${edition}: STACK_STORAGE_MISSING is a project that needs storage and declares no storage service`, () => {
+  test(`STACK_STORAGE_MISSING is a project that needs storage and declares no storage service`, () => {
     const bare: Json = { environments: { dev: { runtime: 'docker-compose', composeFiles: ['infra/compose/compose.yaml'], local: { services: [{ name: 'db' }] } } } };
     assert.deepEqual(judge({ stack: bare, staticsFiles: ['statics/art/a.png'], service: null }), ['STACK_STORAGE_MISSING:error']);
     assert.deepEqual(judge({ stack: bare, packageJson: { dependencies: { '@starci/object-storage': '1' } }, service: null }), ['STACK_STORAGE_MISSING:error']);
     assert.deepEqual(judge({ stack: bare, service: null }), []);
   });
 
-  test(`${edition}: STACK_STORAGE_UNUSED is a storage service nothing needs, a warning`, () => {
+  test(`STACK_STORAGE_UNUSED is a storage service nothing needs, a warning`, () => {
     const unneeded = stack([{ member: 'db', key: 'POSTGRES_PASSWORD' }]);
     assert.deepEqual(judge({ stack: unneeded, staticsFiles: ['statics/.gitkeep'] }), ['STACK_STORAGE_UNUSED:warning']);
     assert.deepEqual(judge({ stack: unneeded, staticsFiles: ['statics/art/a.png'] }), []);
   });
 
-  test(`${edition}: STACK_STORAGE_IMAGE_UNUSED is statics media with a storage service that does not build the override`, () => {
+  test(`STACK_STORAGE_IMAGE_UNUSED is statics media with a storage service that does not build the override`, () => {
     const stock = { image: 'ghcr.io/starci183/minio:RELEASE.2025-10-15T17-29-55Z-starci.1@sha256:ec6d' };
     assert.deepEqual(judge({ staticsFiles: ['statics/art/a.png'], service: stock }), ['STACK_STORAGE_IMAGE_UNUSED:error']);
     assert.deepEqual(judge({ staticsFiles: ['statics/.gitkeep'], service: stock }), []);
   });
 
-  test(`${edition}: STACK_STORAGE_IMAGE_SHAPE is a storage service that builds the override and breaks its shape`, () => {
+  test(`STACK_STORAGE_IMAGE_SHAPE is a storage service that builds the override and breaks its shape`, () => {
     const shaped = (mutate: (service: Json) => void): string[] => { const service = goodService(); mutate(service); return judge({ staticsFiles: ['statics/art/a.png'], service }); };
     const refused = ['STACK_STORAGE_IMAGE_SHAPE:error'];
     assert.deepEqual(shaped((service) => { service.build.context = '../../../images/storage'; }), refused);

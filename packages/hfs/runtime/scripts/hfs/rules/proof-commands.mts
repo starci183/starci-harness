@@ -12,7 +12,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { parseYaml } from '../../../engine/yaml.mjs';
 import { found, readText } from './read.mjs';
-import { liteStarciworkFinding } from '../path-findings.mjs';
+import { starciworkFinding } from '../path-findings.mjs';
 import type { Parsed } from './rule-types.mjs';
 import type { Resolver } from '../slots.mjs';
 
@@ -65,7 +65,7 @@ export function proofCommandFindings({ repoRoot, files, resolver, sides }: { rep
   const own = new Set(sides);
   for (const file of files) {
     if (!RECORD.test(file)) continue;
-    if (liteStarciworkFinding(file, resolver)) continue;
+    if (starciworkFinding(file, resolver)) continue;
     const text = readText(repoRoot, file);
     if (text === null || !text.includes('requiresProof')) continue;
     let record;

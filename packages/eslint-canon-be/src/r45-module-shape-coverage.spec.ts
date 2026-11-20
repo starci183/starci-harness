@@ -1,5 +1,5 @@
-// proves: BE_MODULE_SHAPE@lite
-// proves: BE_MODULE_SHAPE@full
+// proves: BE_MODULE_SHAPE
+// proves: BE_MODULE_SHAPE
 import test from 'node:test';
 import { appDeclaration } from '../fixtures/app.ts';
 import { at, BE_DECLARATION, TYPED_ROOT, typedTester } from '../fixtures/typed/tester.ts';

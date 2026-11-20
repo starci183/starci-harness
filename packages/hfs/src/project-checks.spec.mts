@@ -1,5 +1,5 @@
-// proves: HFS_PROJECT_CHECK_FAILED@lite
-// proves: HFS_PROJECT_CHECK_FAILED@full
+// proves: HFS_PROJECT_CHECK_FAILED
+// proves: HFS_PROJECT_CHECK_FAILED
 // R402 and PROJECT-LINT-3 (cache/project-checks.mts, scripts/lib/project-ext.mts, sync/harness-checks.mts): the project checks the project's
 // ext/manifest.json `checks` declares run as the `checks` step of `starci app check`, green on exit 0 and HFS_PROJECT_CHECK_FAILED with the exit and
 // the output otherwise; the declaration's shape; and `starci app sync` naming a loose check with the declaration to add, never moving it.

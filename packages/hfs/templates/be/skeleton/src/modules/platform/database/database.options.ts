@@ -1,30 +1,28 @@
-import type { MigrationInterface } from "typeorm"
 import type { Secret } from "@modules/platform/config"
 
 /** An entity class as TypeORM registers it. */
 export type EntityClass = new () => object
 
-/** A migration class as TypeORM runs it. */
-export type MigrationClass = new () => MigrationInterface
-
-/** What a connection config parser reads from the environment: the logical name and where the database is. */
+/** What the primary connection parser reads from the environment. */
 export interface DatabaseConnectionConfig {
-    /** The logical connection name, as declared in `hfs.json`. */
+    /** The logical connection name declared in `hfs.json`. */
     readonly name: string
-    /** The connection URL; it may embed credentials. */
+    /** The PostgreSQL provider; schema changes remain under `db/migrations`. */
+    readonly provider: "postgres"
+    /** The dedicated least-privilege application role's connection URL. */
     readonly url: Secret
 }
 
-/** One connection as the app composes it: its config plus the entities and migrations of the owners whose tables it holds. */
+/** Runtime connection options add only the isolated PostgreSQL schema; lite has no entity or migration registry. */
 export interface DatabaseConnectionOptions extends DatabaseConnectionConfig {
-    /** Every entity of the connection, concatenated from the owner indexes. */
-    readonly entities: ReadonlyArray<EntityClass>
-    /** Every migration of the connection, concatenated from the owner indexes. */
-    readonly migrations: ReadonlyArray<MigrationClass>
+    /** The schema named by the `hfs.json` isolation contract. */
+    readonly schema?: string
 }
 
 /** Options of the database capability. */
 export interface DatabaseOptions {
     /** The connections this app opens; one per physical database. */
     readonly connections: ReadonlyArray<DatabaseConnectionOptions>
+    /** The TypeORM entities the connections map: PRIMARY_ENTITIES of `@modules/platform/database/entities`, passed by the app's composition root only. */
+    readonly entities: ReadonlyArray<EntityClass>
 }

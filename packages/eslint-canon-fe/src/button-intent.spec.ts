@@ -1,14 +1,14 @@
 /** CTA-6 fixtures prove universal intent laws independently of a Grammar family or app edition. */
-// proves: FE_BUTTON_INTENT@full
-// proves: FE_BUTTON_INTENT@lite
-// proves: FE_BUTTON_INTENT_REQUIRED@full
-// proves: FE_BUTTON_INTENT_REQUIRED@lite
-// proves: FE_DESTRUCTIVE_CONFIRM_IN_DIALOG@full
-// proves: FE_DESTRUCTIVE_CONFIRM_IN_DIALOG@lite
-// proves: FE_SINGLE_COMMIT_PER_RENDER@full
-// proves: FE_SINGLE_COMMIT_PER_RENDER@lite
-// proves: FE_NO_COMMIT_IN_COLLECTION_ITEM@full
-// proves: FE_NO_COMMIT_IN_COLLECTION_ITEM@lite
+// proves: FE_BUTTON_INTENT
+// proves: FE_BUTTON_INTENT
+// proves: FE_BUTTON_INTENT_REQUIRED
+// proves: FE_BUTTON_INTENT_REQUIRED
+// proves: FE_DESTRUCTIVE_CONFIRM_IN_DIALOG
+// proves: FE_DESTRUCTIVE_CONFIRM_IN_DIALOG
+// proves: FE_SINGLE_COMMIT_PER_RENDER
+// proves: FE_SINGLE_COMMIT_PER_RENDER
+// proves: FE_NO_COMMIT_IN_COLLECTION_ITEM
+// proves: FE_NO_COMMIT_IN_COLLECTION_ITEM
 import assert from "node:assert/strict"
 import test from "node:test"
 import { ESLint, RuleTester } from "eslint"

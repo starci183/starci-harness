@@ -1,4 +1,4 @@
-// proves: DB_MIGRATION_SHAPE@lite
+// proves: DB_MIGRATION_SHAPE
 // A migration is applied in one transaction with its history row (`psql -1`), so top-level transaction control and a COMMIT or ROLLBACK
 // inside a DO block are DB_MIGRATION_SHAPE findings named by file:line; function bodies, dollar-quoted or not, are never judged.
 import test from 'node:test';

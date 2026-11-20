@@ -1,5 +1,5 @@
-// proves: BE_ENTITY_IN_CONTRACT@lite
-// proves: BE_ENTITY_IN_CONTRACT@full
+// proves: BE_ENTITY_IN_CONTRACT
+// proves: BE_ENTITY_IN_CONTRACT
 import test from "node:test"
 import { appDeclaration } from "../fixtures/app.ts"
 import { BE_DECLARATION, TYPED_ROOT, at, ruleTester } from "../fixtures/typed/tester.ts"

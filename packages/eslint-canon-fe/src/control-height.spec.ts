@@ -1,6 +1,6 @@
 /** CONTROL-HEIGHT-1 fixtures prove the single 40px control height independently of a Grammar family or app edition. */
-// proves: FE_CONTROL_HEIGHT@full
-// proves: FE_CONTROL_HEIGHT@lite
+// proves: FE_CONTROL_HEIGHT
+// proves: FE_CONTROL_HEIGHT
 import assert from "node:assert/strict"
 import test from "node:test"
 import { RuleTester } from "eslint"

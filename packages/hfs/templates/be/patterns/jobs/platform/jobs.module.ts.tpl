@@ -1,4 +1,5 @@
 import { Module, type DynamicModule } from "@nestjs/common"
+import { ScheduleModule } from "@nestjs/schedule"
 import type { EntityManager } from "typeorm"
 import { FLOW_ALERTS, JOB_CLAIMS, JOB_PROCESSOR_REGISTRY, JOBS_MANAGERS } from "./jobs.decorators"
 import { ConfigurableModuleClass, OPTIONS_TYPE } from "./jobs.module-definition"
@@ -8,9 +9,14 @@ import { LoggedFlowAlerts } from "./logged-flow-alerts"
 import { ParkedJobResumeRequestsService } from "./parked-job-resume-requests.service"
 import { ParkedJobResumerService } from "./parked-job-resumer.service"
 import { ParkedJobsSweepProcessor } from "./parked-jobs-sweep.processor"
+import { JobTickService } from "./job-tick.service"
 
 @Module({})
-/** The fenced jobs of a service: the claim service that owns the job row and the runner that subscribes processors to their queues. Needs the queue capability registered in the same app. */
+/**
+ * The fenced jobs of a service: the claim service that owns the job row, the runner that subscribes processors to their queues and
+ * the one tick scheduler (R335), which composes @nestjs/schedule here and nowhere else. Needs the queue capability registered in
+ * the same app.
+ */
 export class JobsModule extends ConfigurableModuleClass {
     /** Registers the capability once per app that runs jobs, or (`requestsOnly`) only the resume requests a one-off process writes. */
     static register(options: typeof OPTIONS_TYPE): DynamicModule {
@@ -25,6 +31,7 @@ export class JobsModule extends ConfigurableModuleClass {
         }
         return {
             ...base,
+            imports: [...(base.imports ?? []), ScheduleModule.forRoot()],
             providers: [
                 ...(base.providers ?? []),
                 managers,
@@ -34,6 +41,7 @@ export class JobsModule extends ConfigurableModuleClass {
                 ParkedJobResumerService,
                 ParkedJobResumeRequestsService,
                 ParkedJobsSweepProcessor,
+                JobTickService,
                 { provide: JOB_CLAIMS, useExisting: JobClaimService },
                 { provide: JOB_PROCESSOR_REGISTRY, useExisting: JobRunnerService },
                 { provide: FLOW_ALERTS, useExisting: options.alerts ?? LoggedFlowAlerts },

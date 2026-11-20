@@ -8,8 +8,8 @@ import { scriptHygieneFindings } from '../runtime/scripts/hfs/rules/script-hygie
 import { ALL_CHECK_CODES, checkRepo } from '../runtime/scripts/hfs/check.mjs';
 import { byCodeUnit } from '../runtime/scripts/lib/list.mjs';
 
-// proves: HFS_SCRIPT_PLAINTEXT_LOAD@lite HFS_SCRIPT_PLAINTEXT_LOAD@full
-// proves: HFS_SCRIPT_XTRACE@lite HFS_SCRIPT_XTRACE@full
+// proves: HFS_SCRIPT_PLAINTEXT_LOAD
+// proves: HFS_SCRIPT_XTRACE
 
 type HygieneInput = Parameters<typeof scriptHygieneFindings>[0];
 

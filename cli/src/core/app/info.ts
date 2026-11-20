@@ -53,7 +53,7 @@ export const appInfoVerb = defineVerb({
         }
         const named = (apps: readonly DeclaredApp[]): string => listOf(apps.map((app) => `${app.name} (${app.kind})`))
         const message = [
-            `lite app ${data.project ?? ""} at ${data.root}`.replace("  ", " "),
+            `app ${data.project ?? ""} at ${data.root}`.replace("  ", " "),
             `be: ${named(data.beApps)}`,
             `fe: ${named(data.feApps)}`,
             `patterns: ${listOf(data.patterns)}`,

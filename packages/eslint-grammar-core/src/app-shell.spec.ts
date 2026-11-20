@@ -1,13 +1,13 @@
-// proves: FE_APP_SHELL_FRAME@lite
-// proves: FE_APP_SHELL_FRAME@full
-// proves: FE_NAVBAR_CONTROL_SIZE@lite
-// proves: FE_NAVBAR_CONTROL_SIZE@full
-// proves: FE_NAVBAR_CLUSTER@lite
-// proves: FE_NAVBAR_CLUSTER@full
-// proves: FE_APP_SHELL_BOTTOM_TABS@lite
-// proves: FE_APP_SHELL_BOTTOM_TABS@full
-// proves: FE_NAVBAR_CREATE@lite
-// proves: FE_NAVBAR_CREATE@full
+// proves: FE_APP_SHELL_FRAME
+// proves: FE_APP_SHELL_FRAME
+// proves: FE_NAVBAR_CONTROL_SIZE
+// proves: FE_NAVBAR_CONTROL_SIZE
+// proves: FE_NAVBAR_CLUSTER
+// proves: FE_NAVBAR_CLUSTER
+// proves: FE_APP_SHELL_BOTTOM_TABS
+// proves: FE_APP_SHELL_BOTTOM_TABS
+// proves: FE_NAVBAR_CREATE
+// proves: FE_NAVBAR_CREATE
 /** The FE app-shell contract runs through the same gathered ESLint rules as application gates. */
 import assert from "node:assert/strict"
 import test from "node:test"

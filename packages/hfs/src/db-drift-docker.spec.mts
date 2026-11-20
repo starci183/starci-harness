@@ -1,4 +1,4 @@
-// proves: BE_ENTITY_SCHEMA_DRIFT@lite
+// proves: BE_ENTITY_SCHEMA_DRIFT
 // `starci app db drift` end to end: the fixture app's migrations are applied to a scratch container of the image its .starcistacks declares
 // (postgres:17-alpine) and its TypeORM entity is compared with the migrated schema. Which branch runs depends on the host and both are
 // asserted: with a Docker daemon the matching app is green and a drifted copy is red with its three findings; without one the verb

@@ -1,18 +1,18 @@
 /** Regression proof for app composition of Grammar surface context and panel lists. */
-// proves: FE_LIST_PANEL_PADDING@lite
-// proves: FE_LIST_PANEL_PADDING@full
-// proves: FE_HAND_BUILT_PANES@lite
-// proves: FE_HAND_BUILT_PANES@full
-// proves: FE_TAG_GROUP_SELECTION@lite
-// proves: FE_TAG_GROUP_SELECTION@full
-// proves: FE_HEADING_ABOVE_CARD@lite
-// proves: FE_HEADING_ABOVE_CARD@full
-// proves: FE_COMMAND_FILLS_HEADER@lite
-// proves: FE_COMMAND_FILLS_HEADER@full
-// proves: FE_TABLE_IN_CARD@lite
-// proves: FE_TABLE_IN_CARD@full
-// proves: FE_GRAMMAR_LAYOUT_ONLY@lite
-// proves: FE_GRAMMAR_LAYOUT_ONLY@full
+// proves: FE_LIST_PANEL_PADDING
+// proves: FE_LIST_PANEL_PADDING
+// proves: FE_HAND_BUILT_PANES
+// proves: FE_HAND_BUILT_PANES
+// proves: FE_TAG_GROUP_SELECTION
+// proves: FE_TAG_GROUP_SELECTION
+// proves: FE_HEADING_ABOVE_CARD
+// proves: FE_HEADING_ABOVE_CARD
+// proves: FE_COMMAND_FILLS_HEADER
+// proves: FE_COMMAND_FILLS_HEADER
+// proves: FE_TABLE_IN_CARD
+// proves: FE_TABLE_IN_CARD
+// proves: FE_GRAMMAR_LAYOUT_ONLY
+// proves: FE_GRAMMAR_LAYOUT_ONLY
 import assert from "node:assert/strict"
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"

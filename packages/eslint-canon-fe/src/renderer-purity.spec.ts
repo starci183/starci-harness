@@ -3,7 +3,7 @@
  *
  *   node --test src/renderer-purity.spec.ts
  */
-// proves: FE_RENDERER_LOGIC@lite FE_RENDERER_LOGIC@full
+// proves: FE_RENDERER_LOGIC
 import assert from "node:assert/strict"
 import test from "node:test"
 import tsParser from "@typescript-eslint/parser"

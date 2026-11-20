@@ -1,5 +1,5 @@
-// proves: DB_EXTENSION_ALLOWED@lite DB_API_EXPOSED@lite DB_MIGRATION_DESTRUCTIVE@lite
-// proves: HFS_SEED_PII@lite DB_VAULT_WRITE@lite
+// proves: DB_EXTENSION_ALLOWED DB_API_EXPOSED DB_MIGRATION_DESTRUCTIVE
+// proves: HFS_SEED_PII DB_VAULT_WRITE
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -40,7 +40,7 @@ const only = (list: Finding[], code: string) => list.filter((finding: Finding) =
 const has = (list: Finding[], code: string) => assert.ok(only(list, code).length > 0, `${code} expected: ${JSON.stringify(list)}`);
 
 for (const edition of ['lite'] as const) {
-  test(`${edition}: the shipped extension policy preserves booking exclusion support and refuses unlisted extensions`, () => {
+  test(`the shipped extension policy preserves booking exclusion support and refuses unlisted extensions`, () => {
     const manifest = loadSlotManifest();
     assert.ok(manifest.ruleParams.db!.extensions.includes('btree_gist'));
     assert.deepEqual(findings({ [MIGRATION]: 'create extension if not exists btree_gist;' }, edition, { manifest }), []);
@@ -48,11 +48,11 @@ for (const edition of ['lite'] as const) {
     has(findings({ [MIGRATION]: 'create extension if not exists btree_gist;' }, edition, { manifest: { ruleParams: { db: { extensions: [] } } } }), 'DB_EXTENSION_ALLOWED');
   });
 
-  test(`${edition}: a bounded config and additive migration pass every R259 check`, () => {
+  test(`a bounded config and additive migration pass every R259 check`, () => {
     assert.deepEqual(findings({ [MIGRATION]: 'create extension if not exists pgcrypto; create table public.items (id integer);' }, edition), []);
   });
 
-  test(`${edition}: DB_EXTENSION_ALLOWED rejects an off-list extension and accepts the configured allowlist`, () => {
+  test(`DB_EXTENSION_ALLOWED rejects an off-list extension and accepts the configured allowlist`, () => {
     has(findings({ [MIGRATION]: 'create extension if not exists hstore with schema extensions;' }, edition), 'DB_EXTENSION_ALLOWED');
     assert.deepEqual(findings({ [MIGRATION]: 'create extension if not exists "uuid-ossp"; create extension vector;' }, edition), []);
     // the db image adds pgmq, the event bus, and none of Supabase's other extensions
@@ -62,7 +62,7 @@ for (const edition of ['lite'] as const) {
     has(findings({ [MIGRATION]: 'create extension pgcrypto;' }, edition, { manifest: { ruleParams: { db: { extensions: [] } } } }), 'DB_EXTENSION_ALLOWED');
   });
 
-  test(`${edition}: DB_EXTENSION_ALLOWED accepts unaccent and still refuses a made-up extension`, () => {
+  test(`DB_EXTENSION_ALLOWED accepts unaccent and still refuses a made-up extension`, () => {
     assert.deepEqual(findings({ [MIGRATION]: 'create extension unaccent with schema extensions;' }, edition), []);
     has(findings({ [MIGRATION]: 'create extension not_a_real_extension with schema extensions;' }, edition), 'DB_EXTENSION_ALLOWED');
   });
@@ -79,18 +79,18 @@ for (const edition of ['lite'] as const) {
     "create role app_be password 'fixture-value';",
     "alter user app_be encrypted password 'fixture-value';",
   ]) {
-    test(`${edition}: DB_VAULT_WRITE refuses ${sql.split(' ').slice(0, 3).join(' ')}`, () => {
+    test(`DB_VAULT_WRITE refuses ${sql.split(' ').slice(0, 3).join(' ')}`, () => {
       const list = findings({ [MIGRATION]: sql }, edition);
       has(list, 'DB_VAULT_WRITE');
       assert.ok(!JSON.stringify(list).includes('fixture-value'), 'literal values are never copied into findings');
     });
   }
 
-  test(`${edition}: vault reads and credential-free role changes pass`, () => {
+  test(`vault reads and credential-free role changes pass`, () => {
     assert.deepEqual(findings({ [MIGRATION]: 'select name from vault.decrypted_secrets; create role app_be nologin; alter role app_be login;' }, edition), []);
   });
 
-  test(`${edition}: HFS_SEED_PII rejects personal email and phone literals and accepts synthetic seed identities`, () => {
+  test(`HFS_SEED_PII rejects personal email and phone literals and accepts synthetic seed identities`, () => {
     for (const value of ['demo@real.invalid', '+1 (202) 555-0199', '2025550199']) {
       const list = findings({ '.starcistacks/seeds/sql/fixtures.sql': `insert into fixtures values ('${value}');` }, edition);
       has(list, 'HFS_SEED_PII');
@@ -99,7 +99,7 @@ for (const edition of ['lite'] as const) {
     assert.deepEqual(findings({ '.starcistacks/seeds/sql/fixtures.sql': "-- demo@real.invalid\ninsert into fixtures values ('demo@example.test', '2026-10-14', '00000000-0000-0000-0000-000000000001');" }, edition), []);
   });
 
-  test(`${edition}: the SQL seeds of every seed level are scanned for PII`, () => {
+  test(`the SQL seeds of every seed level are scanned for PII`, () => {
     has(findings({ '.starcistacks/dev/seeds/sql/demo.sql': "insert into fixtures values ('demo@real.invalid');" }, edition), 'HFS_SEED_PII');
     assert.deepEqual(findings({ '.starcistacks/dev/seeds/sql/demo.sql': "insert into fixtures values ('demo@example.test');" }, edition), []);
   });
@@ -119,13 +119,13 @@ for (const edition of ['lite'] as const) {
     'truncate table public.items;',
   ];
   for (const sql of destructiveCases) {
-    test(`${edition}: DB_MIGRATION_DESTRUCTIVE rejects ${sql} in expansion migrations and accepts an unreferenced contract migration`, () => {
+    test(`DB_MIGRATION_DESTRUCTIVE rejects ${sql} in expansion migrations and accepts an unreferenced contract migration`, () => {
       has(findings({ [MIGRATION]: sql }, edition), 'DB_MIGRATION_DESTRUCTIVE');
       assert.deepEqual(only(findings({ [CONTRACT]: sql }, edition), 'DB_MIGRATION_DESTRUCTIVE'), []);
     });
   }
 
-  test(`${edition}: a contract migration waits until SQL/entity references are removed`, () => {
+  test(`a contract migration waits until SQL/entity references are removed`, () => {
     for (const [file, source, sql] of [
       ['be/src/features/items/items.sql.ts', "export const query = 'select id from public.obsolete';", 'drop table public.obsolete;'],
       ['be/src/features/items/items.entity.ts', "export const columns = ['items', 'old_column'];", 'alter table public.items drop column old_column;'],
@@ -138,7 +138,7 @@ for (const edition of ['lite'] as const) {
     has(findings({ [CONTRACT]: 'truncate table public.retired, public.obsolete;', 'be/src/features/items/items.sql.ts': "export const query = 'select id from public.obsolete';" }, edition), 'DB_MIGRATION_DESTRUCTIVE');
   });
 
-  test(`${edition}: comments/data literals are opaque while SQL and PLpgSQL bodies are checked`, () => {
+  test(`comments/data literals are opaque while SQL and PLpgSQL bodies are checked`, () => {
     assert.deepEqual(findings({ [MIGRATION]: `-- create extension hstore; drop table public.items;
 /* outer /* nested */ select vault.create_secret('fixture-value'); */
 select 'drop table public.items;', E'create extension hstore;', $$select vault.create_secret('fixture-value');$$;
@@ -150,7 +150,7 @@ create function public.javascript() returns text language plv8 as $$drop table p
     for (const code of ['DB_EXTENSION_ALLOWED', 'DB_VAULT_WRITE', 'DB_MIGRATION_DESTRUCTIVE']) has(list, code);
   });
 
-  test(`${edition}: archived SQL is excluded from active extension/custody/DDL checks`, () => {
+  test(`archived SQL is excluded from active extension/custody/DDL checks`, () => {
     assert.deepEqual(findings({ 'db/migrations/archive/20260101120000_retired.sql': "create extension hstore; select vault.create_secret('fixture-value'); drop table items;" }, edition), []);
   });
 }
@@ -185,7 +185,7 @@ function historyGit(contents: Record<string, string>, headFiles = Object.keys(co
 }
 
 for (const edition of ['lite'] as const) {
-  test(`${edition}: an explicit content-preserving restamp retires its old version without bypassing unrelated history`, async () => {
+  test(`an explicit content-preserving restamp retires its old version without bypassing unrelated history`, async () => {
     const old = 'db/migrations/29990101120000_old.sql';
     const next = 'db/migrations/20261014120000_old.sql';
     const sql = 'select 1;\n';

@@ -1,5 +1,5 @@
-// proves: BE_SCHEMA_AUTHORITY@lite
-// proves: BE_SCHEMA_AUTHORITY@full
+// proves: BE_SCHEMA_AUTHORITY
+// proves: BE_SCHEMA_AUTHORITY
 import test from "node:test"
 import { appDeclaration } from "../fixtures/app.ts"
 import { BE_DECLARATION, TYPED_ROOT, at, ruleTester } from "../fixtures/typed/tester.ts"

@@ -74,7 +74,7 @@ for (const grammar of ['core', 'offset-pop']) {
   });
 }
 
-test('a sync of a lite starter renders its managed sign-in files prettier-clean', async (t) => {
+test('a sync of the starter renders its managed sign-in files prettier-clean', async (t) => {
   const root = scaffoldApp({
     name: 'demo',
     into: mkdtemp(t, 'starci-sync-prettier-lite-'),

@@ -1,6 +1,6 @@
 /** R82 proves that external effects follow transaction commit in each edition. */
-// proves: BE_TRANSACTION_EXTERNAL_CALL@lite
-// proves: BE_TRANSACTION_EXTERNAL_CALL@full
+// proves: BE_TRANSACTION_EXTERNAL_CALL
+// proves: BE_TRANSACTION_EXTERNAL_CALL
 import test from "node:test"
 import { appDeclaration } from "../fixtures/app.ts"
 import { BE_DECLARATION, TYPED_ROOT, at, ruleTester } from "../fixtures/typed/tester.ts"

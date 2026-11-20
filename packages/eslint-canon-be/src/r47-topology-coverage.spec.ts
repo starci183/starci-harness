@@ -1,4 +1,4 @@
-// proves: BE_TEST_TOPOLOGY@lite BE_TEST_TOPOLOGY@full
+// proves: BE_TEST_TOPOLOGY
 import test from 'node:test';
 import { projectFixture } from '../fixtures/project/tester.ts';
 import { rules } from './project-graph.ts';

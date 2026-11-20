@@ -1,7 +1,7 @@
-// proves: HFS_REPO_LOCAL_CHECK@lite
-// proves: HFS_REPO_LOCAL_CHECK@full
-// proves: HFS_LINT_SUPPRESSION_FILE@lite
-// proves: HFS_LINT_SUPPRESSION_FILE@full
+// proves: HFS_REPO_LOCAL_CHECK
+// proves: HFS_REPO_LOCAL_CHECK
+// proves: HFS_LINT_SUPPRESSION_FILE
+// proves: HFS_LINT_SUPPRESSION_FILE
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -23,7 +23,7 @@ function repository(t: TestContext, edition: string, entries: Record<string, str
 }
 
 for (const edition of ['lite'] as const) {
-  test(`${edition} invalid repository-local checks and lint plugins are refused`, (t) => {
+  test(`invalid repository-local checks and lint plugins are refused`, (t) => {
     const context = repository(t, edition, {
       'scripts/check-schema.mjs': 'export {};\n',
       'tools/check-flow.cjs': 'module.exports = {};\n',
@@ -45,7 +45,7 @@ for (const edition of ['lite'] as const) {
     ]);
   });
 
-  test(`${edition} a check under any name that says so is refused outside ext/checks, and an undeclared file of ext/checks is refused`, (t) => {
+  test(`a check under any name that says so is refused outside ext/checks, and an undeclared file of ext/checks is refused`, (t) => {
     const context = repository(t, edition, {
       'ext/manifest.json': JSON.stringify({ schema: 'starci/project-ext@1', api: 1, checks: [{ id: 'tool-names', run: 'ext/checks/tool-names.mjs', why: 'no retired tool id' }] }),
       'scripts/tool-names-check.mjs': 'export {};\n',
@@ -76,7 +76,7 @@ for (const edition of ['lite'] as const) {
     assert.match(messages[8] ?? '', /script orphan runs a repository-local check/u);
   });
 
-  test(`${edition} a declared project check, the script that runs it and names that only start with check are lawful`, (t) => {
+  test(`a declared project check, the script that runs it and names that only start with check are lawful`, (t) => {
     const context = repository(t, edition, {
       'ext/manifest.json': JSON.stringify({ schema: 'starci/project-ext@1', api: 1, checks: [{ id: 'tool-names', run: 'ext/checks/tool-names.mjs', why: 'no retired tool id' }] }),
       'ext/checks/tool-names.mjs': 'export {};\n',
@@ -89,7 +89,7 @@ for (const edition of ['lite'] as const) {
     assert.deepEqual(repoLocalCheckFindings(context), []);
   });
 
-  test(`${edition} valid operational scripts delegate checks to the runtime`, (t) => {
+  test(`valid operational scripts delegate checks to the runtime`, (t) => {
     const context = repository(t, edition, {
       'scripts/rotate-logs.mjs': 'export {};\n',
       'tools/seed.mjs': 'export {};\n',
@@ -100,7 +100,7 @@ for (const edition of ['lite'] as const) {
     assert.deepEqual(repoLocalCheckFindings(context), []);
   });
 
-  test(`${edition} invalid lint suppression files, scripts, flags and config are refused`, (t) => {
+  test(`invalid lint suppression files, scripts, flags and config are refused`, (t) => {
     const context = repository(t, edition, {
       'eslint.suppressions.json': '{}\n',
       'be/eslint-suppressions.json': '{}\n',
@@ -128,7 +128,7 @@ for (const edition of ['lite'] as const) {
     ]);
   });
 
-  test(`${edition} valid lint config and scripts keep every finding visible`, (t) => {
+  test(`valid lint config and scripts keep every finding visible`, (t) => {
     const context = repository(t, edition, {
       'eslint.config.mjs': "export default [{ linterOptions: { reportUnusedDisableDirectives: 'error' } }];\n",
       'package.json': JSON.stringify({ scripts: { lint: 'eslint --max-warnings=0 .', 'lint:fix': 'starci app check --gate lint --fix' } }),

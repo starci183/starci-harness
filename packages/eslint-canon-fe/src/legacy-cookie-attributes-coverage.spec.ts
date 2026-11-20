@@ -1,5 +1,5 @@
-// proves: FE_COOKIE_ATTRIBUTES@lite
-// proves: FE_COOKIE_ATTRIBUTES@full
+// proves: FE_COOKIE_ATTRIBUTES
+// proves: FE_COOKIE_ATTRIBUTES
 import test from "node:test"
 import { at, typedTester } from "../fixtures/typed/tester.ts"
 import { responseCookieAttributes } from "./client-boundary.ts"

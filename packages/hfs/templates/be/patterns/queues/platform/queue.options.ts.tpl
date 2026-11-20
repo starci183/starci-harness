@@ -1,7 +1,8 @@
 import type { InjectionToken } from "@nestjs/common"
+import type { Secret } from "@modules/platform/config"
 import type { QueueSchedulerDefinition } from "./queue.contracts"
 
-/** What the queues of one app need: where Redis is, how the relay and the workers run, which connections hold an outbox, and the schedulers it registers. */
+/** What the queues of one app need: where the declared Redis is, how the relay and the workers run, which connections hold an outbox, and the schedulers it registers. */
 export interface QueueOptions {
     /** The runtime registration owns the relay, workers and schedulers. */
     readonly outboxOnly?: false
@@ -11,6 +12,8 @@ export interface QueueOptions {
     readonly redisPort: number
     /** The Redis database that holds this app's queue state. */
     readonly redisDb: number
+    /** The Redis password from its sealed secret file; absent for a local Redis without auth. */
+    readonly redisPassword?: Secret
     /** What every BullMQ key starts with: the shared default in a deployment, the run prefix of a test world. */
     readonly prefix: string
     /** The pause between two relay passes over an empty outbox. */
@@ -27,6 +30,7 @@ export interface QueueOptions {
 
 /** A one-off producer writes an outbox row and exits; the running app owns delivery. */
 export interface QueueOutboxOnlyOptions {
+    /** Registers only the transactional outbox writer, leaving delivery to the running app. */
     readonly outboxOnly: true
 }
 

@@ -1,15 +1,15 @@
-// proves: HFS_SLOT_REQUIRED_MISSING@lite
-// proves: HFS_SLOT_REQUIRED_MISSING@full
-// proves: HFS_MIN_INSTANCES@lite
-// proves: HFS_MIN_INSTANCES@full
-// proves: HFS_REQUIRED_FILE_MISSING@lite
-// proves: HFS_REQUIRED_FILE_MISSING@full
-// proves: HFS_UNTRACKED_ROOT_ENTRY@lite
-// proves: HFS_UNTRACKED_ROOT_ENTRY@full
-// proves: HFS_EMPTY_DIR@lite
-// proves: HFS_EMPTY_DIR@full
-// proves: HFS_GHOST_TREE@lite
-// proves: HFS_GHOST_TREE@full
+// proves: HFS_SLOT_REQUIRED_MISSING
+// proves: HFS_SLOT_REQUIRED_MISSING
+// proves: HFS_MIN_INSTANCES
+// proves: HFS_MIN_INSTANCES
+// proves: HFS_REQUIRED_FILE_MISSING
+// proves: HFS_REQUIRED_FILE_MISSING
+// proves: HFS_UNTRACKED_ROOT_ENTRY
+// proves: HFS_UNTRACKED_ROOT_ENTRY
+// proves: HFS_EMPTY_DIR
+// proves: HFS_EMPTY_DIR
+// proves: HFS_GHOST_TREE
+// proves: HFS_GHOST_TREE
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -49,7 +49,7 @@ const mkdir = (dir: string, relative: string) => fs.mkdirSync(path.join(dir, ...
 const only = (result: { findings: CheckFinding[] }, code: string) => result.findings.filter((f) => f.code === code);
 
 for (const edition of ['lite'] as const) {
-  test(`${edition} violating: a missing required file is ${SLOT_REQUIRED_MISSING}, per slot and per app of a side with several apps`, () => {
+  test(`violating: a missing required file is ${SLOT_REQUIRED_MISSING}, per slot and per app of a side with several apps`, () => {
     const be = checkRepo({ repoRoot: repoOf(APP, edition, (dir) => drop(dir, '.nvmrc')) });
     assert.equal(be.ok, false);
     const [rootFile] = only(be, SLOT_REQUIRED_MISSING);
@@ -66,7 +66,7 @@ for (const edition of ['lite'] as const) {
     assert.deepEqual(only(feature, SLOT_REQUIRED_MISSING).map((f) => f.path), ['be/src/features/api/orders/index.ts']);
   });
 
-  test(`${edition} valid: every required file and instance tracked leaves ${SLOT_REQUIRED_MISSING} and ${MIN_INSTANCES} silent`, () => {
+  test(`valid: every required file and instance tracked leaves ${SLOT_REQUIRED_MISSING} and ${MIN_INSTANCES} silent`, () => {
     for (const declaration of [APP, TWO_FE_APPS]) {
       const result = checkRepo({ repoRoot: repoOf(declaration, edition) });
       assert.deepEqual(only(result, SLOT_REQUIRED_MISSING), []);
@@ -74,7 +74,7 @@ for (const edition of ['lite'] as const) {
     }
   });
 
-  test(`${edition} violating: a be side without a feature is ${MIN_INSTANCES}`, () => {
+  test(`violating: a be side without a feature is ${MIN_INSTANCES}`, () => {
     const result = checkRepo({ repoRoot: repoOf(APP, edition, (dir) => drop(dir, 'be/src/features')) });
     const [finding] = only(result, MIN_INSTANCES);
     assert.equal(finding?.slot, 'be.feature');
@@ -82,7 +82,7 @@ for (const edition of ['lite'] as const) {
     assert.equal(finding?.count, 0);
   });
 
-  test(`${edition} violating: the machine reports a feature without its index as ${REQUIRED_FILE_MISSING}`, () => {
+  test(`violating: the machine reports a feature without its index as ${REQUIRED_FILE_MISSING}`, () => {
     const dir = repoOf(APP, edition, (d) => put(d, 'be/src/modules/domain/order/a.ts'));
     const result = checkRepository({ repoRoot: dir });
     const [finding] = only(result, REQUIRED_FILE_MISSING);
@@ -93,21 +93,21 @@ for (const edition of ['lite'] as const) {
     assert.equal(result.machine.status, 'ran');
   });
 
-  test(`${edition} valid: a clean app is clean to the machine, with no ${REQUIRED_FILE_MISSING}`, () => {
+  test(`valid: a clean app is clean to the machine, with no ${REQUIRED_FILE_MISSING}`, () => {
     for (const declaration of [APP, TWO_FE_APPS]) {
       const result = checkRepository({ repoRoot: repoOf(declaration, edition) });
       assert.deepEqual(only(result, REQUIRED_FILE_MISSING), []);
     }
   });
 
-  test(`${edition} violating: an empty directory is ${EMPTY_DIR}, the topmost one however many sit below it`, () => {
+  test(`violating: an empty directory is ${EMPTY_DIR}, the topmost one however many sit below it`, () => {
     const dir = repoOf(APP, edition, (d) => { mkdir(d, 'be/src/modules/business/a/b'); mkdir(d, 'be/src/modules/business/c'); });
     const found = only(checkRepo({ repoRoot: dir }), EMPTY_DIR);
     assert.deepEqual(found.map((f) => [f.path, f.below]), [['be/src/modules/business', 3]]);
     assert.equal(found[0]?.level, 'error');
   });
 
-  test(`${edition} valid: one file below makes a chain not empty, and ignored slots are not reported for ${EMPTY_DIR}`, () => {
+  test(`valid: one file below makes a chain not empty, and ignored slots are not reported for ${EMPTY_DIR}`, () => {
     const chain = repoOf(APP, edition, (d) => { mkdir(d, 'be/src/modules/x/y/z'); put(d, 'be/src/modules/kept/deep/er/file.ts'); });
     assert.deepEqual(only(checkRepo({ repoRoot: chain }), EMPTY_DIR).map((f) => f.path), ['be/src/modules/x']);
     const ignored = repoOf(APP, edition, (d) => { mkdir(d, 'be/dist/empty'); mkdir(d, 'node_modules/pkg/empty'); mkdir(d, 'coverage/lcov'); });
@@ -116,14 +116,14 @@ for (const edition of ['lite'] as const) {
     assert.deepEqual(only(result, GHOST_TREE), []);
   });
 
-  test(`${edition} valid: an empty directory git ignores (the Sonar scanner's temp directory) is no ${EMPTY_DIR} and no ${GHOST_TREE}`, () => {
+  test(`valid: an empty directory git ignores (the Sonar scanner's temp directory) is no ${EMPTY_DIR} and no ${GHOST_TREE}`, () => {
     const dir = repoOf(APP, edition, (d) => { fs.appendFileSync(path.join(d, '.gitignore'), '\n.scannerwork/\n'); mkdir(d, '.scannerwork/.sonartmp/1'); mkdir(d, 'be/src/modules/bussiness'); put(d, 'be/src/modules/business/a.ts'); });
     const result = checkRepo({ repoRoot: dir });
     assert.ok(!only(result, EMPTY_DIR).some((f) => String(f.path).startsWith('.scannerwork')), 'the scanner directory is git-ignored');
     assert.ok(only(result, EMPTY_DIR).some((f) => f.path === 'be/src/modules/bussiness'), 'a leftover git does not ignore is still reported');
   });
 
-  test(`${edition} violating: an empty directory beside a lookalike sibling is ${GHOST_TREE} (business / bussiness)`, () => {
+  test(`violating: an empty directory beside a lookalike sibling is ${GHOST_TREE} (business / bussiness)`, () => {
     const dir = repoOf(APP, edition, (d) => { put(d, 'be/src/modules/business/a.ts'); mkdir(d, 'be/src/modules/bussiness'); mkdir(d, 'be/src/modules/platform-extras'); });
     const result = checkRepo({ repoRoot: dir });
     const ghosts = only(result, GHOST_TREE);
@@ -132,12 +132,12 @@ for (const edition of ['lite'] as const) {
     assert.ok(only(result, EMPTY_DIR).some((f) => f.path === 'be/src/modules/bussiness'), 'the ghost is also an empty directory');
   });
 
-  test(`${edition} valid: lookalike siblings that both hold files are not a ${GHOST_TREE}`, () => {
+  test(`valid: lookalike siblings that both hold files are not a ${GHOST_TREE}`, () => {
     const dir = repoOf(APP, edition, (d) => { put(d, 'be/src/modules/order/a.ts'); put(d, 'be/src/modules/ordr/a.ts'); mkdir(d, 'be/src/modules/orderXYZ'); });
     assert.deepEqual(only(checkRepo({ repoRoot: dir }), GHOST_TREE), []);
   });
 
-  test(`${edition} violating: an entry git neither tracks nor ignores is ${UNTRACKED_ROOT_ENTRY}`, () => {
+  test(`violating: an entry git neither tracks nor ignores is ${UNTRACKED_ROOT_ENTRY}`, () => {
     const dir = repoOf(APP, edition);
     put(dir, 'nul');
     put(dir, 'scratch/notes.txt');
@@ -149,7 +149,7 @@ for (const edition of ['lite'] as const) {
     assert.equal(result.ok, false);
   });
 
-  test(`${edition} valid: a clean app has no ${UNTRACKED_ROOT_ENTRY} and the tree checks skip an explicit file list`, () => {
+  test(`valid: a clean app has no ${UNTRACKED_ROOT_ENTRY} and the tree checks skip an explicit file list`, () => {
     assert.deepEqual(only(checkRepo({ repoRoot: repoOf(APP, edition) }), UNTRACKED_ROOT_ENTRY), []);
     const dir = repoOf(APP, edition, (d) => mkdir(d, 'be/src/modules/business'));
     const result = checkRepo({ repoRoot: dir, files: ['hfs.json'], declaration: { ...APP, edition } });

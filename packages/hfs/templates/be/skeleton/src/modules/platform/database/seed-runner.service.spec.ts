@@ -1,93 +1,83 @@
-import { mock } from "@starci/jest-preset"
+import { mkdir, rm, writeFile } from "node:fs/promises"
+import { join } from "node:path"
 import { Test } from "@nestjs/testing"
-import { Secret } from "@modules/platform/config"
-import { LOGGER, LoggingLogEvent } from "@modules/platform/logging"
-import type { Logger } from "@modules/platform/logging"
-import { CONNECTION_SOURCE, DATABASE_OPTIONS, READ_SEED_FILES } from "./database.port"
-import type { ConnectionOpener, ConnectionSource, SeedFileReader } from "./database.port"
-import type { DatabaseConnectionOptions } from "./database.options"
-import { seedText } from "./database.sql"
-import { seedDirectoryOf } from "./seed-connections.client"
-import type { SeedFile } from "./seed-connections.client"
+import { mockEntityManager } from "@starci/jest-preset"
+import { PRIMARY_ENTITY_MANAGER, SEED_ROOT } from "./primary.decorators"
 import { SeedRunnerService } from "./seed-runner.service"
 
-const connection = (name: string): DatabaseConnectionOptions => ({
-    name,
-    url: new Secret(`postgres://localhost:5432/${name}`),
-    entities: [],
-    migrations: [],
-})
+/** A scratch app root under the ignored jest cache: the seed files are written per run, never tracked (SQL lives only in db/ and the seed levels). */
+const SCRATCH = "node_modules/.cache/seed-runner-spec"
 
-const file = (name: string, text: string): SeedFile => ({
-    name,
-    text: seedText(text),
-})
-
-const build = async (
-    openSource: (target: DatabaseConnectionOptions) => ConnectionSource,
-    readSeeds: (directory: string) => Promise<ReadonlyArray<SeedFile>>,
-) => {
-    const logger = mock<Logger>()
-    const opener = mock<ConnectionOpener>()
-    opener.open.mockImplementation((target) => openSource(target))
-    const reader = mock<SeedFileReader>()
-    reader.read.mockImplementation((directory) => readSeeds(directory))
-    const moduleRef = await Test.createTestingModule({
-        providers: [
-            SeedRunnerService,
-            {
-                provide: DATABASE_OPTIONS,
-                useValue: { connections: [connection("primary")] },
-            },
-            { provide: CONNECTION_SOURCE, useValue: opener },
-            { provide: READ_SEED_FILES, useValue: reader },
-            { provide: LOGGER, useValue: logger },
-        ],
-    }).compile()
-    return { runner: moduleRef.get(SeedRunnerService), logger, reader }
+/** Seed files of the scratch roots, relative to SCRATCH. */
+const FILES: Readonly<Record<string, string>> = {
+    "ordered/.starcistacks/seeds/sql/b.sql": "SELECT 2",
+    "ordered/.starcistacks/seeds/sql/a.sql": "SELECT 1",
+    "ordered/.starcistacks/seeds/sql/notes.txt": "not run",
+    "ordered/.starcistacks/dev/seeds/sql/c.sql": "SELECT 3",
+    "ordered/.starcistacks/dev/seeds/sql/empty.sql": "   ",
+    "blocked/.starcistacks/seeds/sql": "a file where the sql folder belongs",
 }
 
+beforeAll(async () => {
+    await rm(SCRATCH, { recursive: true, force: true })
+    for (const [path, text] of Object.entries(FILES)) {
+        await mkdir(join(SCRATCH, path, ".."), { recursive: true })
+        await writeFile(join(SCRATCH, path), text, "utf8")
+    }
+})
+
+afterAll(async () => {
+    await rm(SCRATCH, { recursive: true, force: true })
+})
+
 describe("SeedRunnerService", () => {
-    it("reads the shared seeds and then those of the named environment, runs them on their connections and logs the report", async () => {
-        const primary = mock<ConnectionSource>()
-        const { runner, logger, reader } = await build(
-            () => primary,
-            (directory) =>
-                Promise.resolve(
-                    directory === seedDirectoryOf()
-                        ? [file("primary-plans.sql", "INSERT INTO plans (code) VALUES ('free')")]
-                        : [
-                              file("primary-notes.sql", "INSERT INTO notes (body) VALUES ('a')"),
-                              file("legacy-users.sql", "INSERT INTO users DEFAULT VALUES"),
-                          ],
-                ),
-        )
-
-        await expect(runner.run("staging")).resolves.toBeUndefined()
-
-        expect(reader.read.mock.calls).toEqual([[seedDirectoryOf()], [seedDirectoryOf("staging")]])
-        expect(primary.query.mock.calls).toEqual([["INSERT INTO plans (code) VALUES ('free')"], ["INSERT INTO notes (body) VALUES ('a')"]])
-        expect(logger.info).toHaveBeenCalledWith(LoggingLogEvent.SeedsApplied, {
-            env: "staging",
-            applied: { primary: ["primary-plans.sql", "primary-notes.sql"] },
-            unmatched: ["legacy-users.sql"],
+    it("runs the shared seeds and then the environment's, each level in name order, skipping empty and non-SQL files", async () => {
+        const entityManager = mockEntityManager({
+            query: [
+                ["SELECT 1", []],
+                ["SELECT 2", []],
+                ["SELECT 3", []],
+            ],
         })
+        const moduleRef = await Test.createTestingModule({
+            providers: [
+                SeedRunnerService,
+                { provide: PRIMARY_ENTITY_MANAGER, useValue: entityManager },
+                { provide: SEED_ROOT, useValue: "node_modules/.cache/seed-runner-spec/ordered" },
+            ],
+        }).compile()
+
+        await moduleRef.get(SeedRunnerService).run()
+
+        expect(entityManager.query.mock.calls).toEqual([["SELECT 1"], ["SELECT 2"], ["SELECT 3"]])
     })
 
-    it("reads the dev seeds when no environment is named", async () => {
-        const { runner, logger, reader } = await build(
-            () => mock<ConnectionSource>(),
-            () => Promise.resolve([]),
+    it("runs nothing when neither seed folder exists", async () => {
+        const entityManager = mockEntityManager()
+        const moduleRef = await Test.createTestingModule({
+            providers: [
+                SeedRunnerService,
+                { provide: PRIMARY_ENTITY_MANAGER, useValue: entityManager },
+                { provide: SEED_ROOT, useValue: "node_modules/.cache/seed-runner-spec/absent" },
+            ],
+        }).compile()
+
+        await moduleRef.get(SeedRunnerService).run("production")
+
+        expect(entityManager.query).not.toHaveBeenCalled()
+    })
+
+    it("propagates a seed folder that cannot be read", async () => {
+        const moduleRef = await Test.createTestingModule({
+            providers: [
+                SeedRunnerService,
+                { provide: PRIMARY_ENTITY_MANAGER, useValue: mockEntityManager() },
+                { provide: SEED_ROOT, useValue: "node_modules/.cache/seed-runner-spec/blocked" },
+            ],
+        }).compile()
+
+        await expect(moduleRef.get(SeedRunnerService).run()).rejects.toEqual(
+            expect.objectContaining({ code: "ENOTDIR" }),
         )
-
-        await expect(runner.run()).resolves.toBeUndefined()
-
-        expect(reader.read).toHaveBeenCalledWith(seedDirectoryOf())
-        expect(reader.read).toHaveBeenCalledWith(seedDirectoryOf("dev"))
-        expect(logger.info).toHaveBeenCalledWith(LoggingLogEvent.SeedsApplied, {
-            env: "dev",
-            applied: {},
-            unmatched: [],
-        })
     })
 })

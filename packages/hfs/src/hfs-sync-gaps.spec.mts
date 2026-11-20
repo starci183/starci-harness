@@ -80,7 +80,7 @@ test('sync --execute exits non-zero and prints the command when npm cannot resol
   assert.equal(await runSync(['--execute', '--cwd', root], { cwd: root, out, presets: bundledPresets(), lock: () => ({ ok: false, detail: 'never called' }) }), 0);
 });
 
-test('the lite starter carries what the full one does for statics/ and the seed levels, and the managed storage image', (t) => {
+test('the starter carries what the full one does for statics/ and the seed levels, and the managed storage image', (t) => {
   for (const root of [starter(t, 'lite'), starter(t, 'full')]) {
     assert.ok(fs.existsSync(at(root, 'statics', '.gitkeep')), 'statics/ is tracked from the first commit');
     for (const level of ['.starcistacks/seeds', '.starcistacks/dev/seeds', '.starcistacks/production/seeds']) {

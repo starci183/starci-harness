@@ -1,10 +1,10 @@
-// proves: FE_BRAND_NOT_ONE@lite FE_BRAND_NOT_ONE@full
-// proves: FE_BRAND_CANVAS_LITERAL@lite FE_BRAND_CANVAS_LITERAL@full
-// proves: FE_BRAND_CANVAS_TOKENS_STALE@lite FE_BRAND_CANVAS_TOKENS_STALE@full
-// proves: FE_GLOBALS_NOT_ONE@lite FE_GLOBALS_NOT_ONE@full
-// proves: FE_GLOBALS_IMPORTS_MISSING@lite FE_GLOBALS_IMPORTS_MISSING@full
-// proves: FE_STATE_PAGE_NOT_SHARED@lite FE_STATE_PAGE_NOT_SHARED@full
-// proves: FE_STATE_PAGE_GROUP_MISSING@lite FE_STATE_PAGE_GROUP_MISSING@full
+// proves: FE_BRAND_NOT_ONE
+// proves: FE_BRAND_CANVAS_LITERAL
+// proves: FE_BRAND_CANVAS_TOKENS_STALE
+// proves: FE_GLOBALS_NOT_ONE
+// proves: FE_GLOBALS_IMPORTS_MISSING
+// proves: FE_STATE_PAGE_NOT_SHARED
+// proves: FE_STATE_PAGE_GROUP_MISSING
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -45,26 +45,26 @@ const APP: Record<string, string> = {
   'apps/web/src/components/frames/GlobalErrorNotice/index.tsx': 'import { ErrorNotice } from "@/components/composites/ErrorNotice"\nexport const GlobalErrorNotice = () => <html><body><ErrorNotice /></body></html>\n',
 };
 
-for (const edition of ['lite'] as const) {
-  const fe = { profile: 'fe', edition };
+{
+  const fe = { profile: 'fe' };
 
-  test(`one source ${edition}: the template shape passes all three finders`, () => {
+  test(`one source: the template shape passes all three finders`, () => {
     const { root, files } = repoOf(APP);
     assert.deepEqual(brandOneFindings({ files, repo: fe }), []);
     assert.deepEqual(globalsOneFindings({ files, repoRoot: root, repo: fe }), []);
     assert.deepEqual(statePageFindings({ files, repoRoot: root, repo: fe }), []);
   });
 
-  test(`FE_BRAND_NOT_ONE ${edition}: no brand file, or a second one, is refused`, () => {
+  test(`FE_BRAND_NOT_ONE: no brand file, or a second one, is refused`, () => {
     const none = Object.fromEntries(Object.entries(APP).filter(([file]) => !file.endsWith('brand.css')));
     assert.deepEqual(brandOneFindings({ files: Object.keys(none), repo: fe }).map((f) => f.code), ['FE_BRAND_NOT_ONE']);
     const two = brandOneFindings({ files: [...Object.keys(APP), 'apps/site/src/app/page.tsx', 'apps/site/src/modules/brand/brand.css'], repo: fe });
     assert.deepEqual(two.map((f) => [f.code, f.path]), [['FE_BRAND_NOT_ONE', 'apps/web/src/modules/brand/brand.css']]);
-    assert.equal(brandOneFindings({ files: Object.keys(APP), repo: { profile: 'be', edition } }).length, 0);
+    assert.equal(brandOneFindings({ files: Object.keys(APP), repo: { profile: 'be' } }).length, 0);
     assert.equal(brandOneFindings({ files: Object.keys(APP), repo: fe, isRoot: true }).length, 0);
   });
 
-  test(`FE_GLOBALS_NOT_ONE ${edition}: a second global sheet and a stylesheet import outside the globals are refused`, () => {
+  test(`FE_GLOBALS_NOT_ONE: a second global sheet and a stylesheet import outside the globals are refused`, () => {
     const { root, files } = repoOf({
       ...APP,
       'apps/web/src/app/[locale]/(site)/site.css': '.hero { display: flex; }\n',
@@ -82,7 +82,7 @@ for (const edition of ['lite'] as const) {
     assert.match(findings[0]?.message ?? '', /R446/u);
   });
 
-  test(`FE_GLOBALS_IMPORTS_MISSING ${edition}: the one globals imports the Grammar stylesheet and the brand file, and exists`, () => {
+  test(`FE_GLOBALS_IMPORTS_MISSING: the one globals imports the Grammar stylesheet and the brand file, and exists`, () => {
     const noBrand = repoOf({ ...APP, 'apps/web/src/app/globals.css': '@import "tailwindcss";\n@import "@starci/grammar/common.css";\n' });
     assert.deepEqual(globalsOneFindings({ files: noBrand.files, repoRoot: noBrand.root, repo: fe }).map((f) => f.code), ['FE_GLOBALS_IMPORTS_MISSING']);
     const noGrammar = repoOf({ ...APP, 'apps/web/src/app/globals.css': '@import "tailwindcss";\n@import "../modules/brand/brand.css";\n' });
@@ -91,7 +91,7 @@ for (const edition of ['lite'] as const) {
     assert.deepEqual(globalsOneFindings({ files: absent.files, repoRoot: absent.root, repo: fe }).map((f) => [f.code, f.path]), [['FE_GLOBALS_IMPORTS_MISSING', 'apps/web/src/app/globals.css']]);
   });
 
-  test(`FE_STATE_PAGE_NOT_SHARED ${edition}: a boundary that draws its own page is refused, global-error counts as the error kind`, () => {
+  test(`FE_STATE_PAGE_NOT_SHARED: a boundary that draws its own page is refused, global-error counts as the error kind`, () => {
     const own = repoOf({
       ...APP,
       'apps/web/src/components/frames/GlobalErrorNotice/index.tsx': EMPTY.replace('Notice =', 'GlobalErrorNotice ='),
@@ -106,7 +106,7 @@ for (const edition of ['lite'] as const) {
     assert.match(findings[0]?.message ?? '', /R447/u);
   });
 
-  test(`FE_STATE_PAGE_NOT_SHARED ${edition}: offline pages of one app share one component, and two apps of a front end share the composites`, () => {
+  test(`FE_STATE_PAGE_NOT_SHARED: offline pages of one app share one component, and two apps of a front end share the composites`, () => {
     const offline = repoOf({
       ...APP,
       'apps/web/src/app/[locale]/offline/page.tsx': route('OfflineNotice', '@/components/composites/OfflineNotice'),
@@ -123,7 +123,7 @@ for (const edition of ['lite'] as const) {
     assert.deepEqual(statePageFindings({ files: apps.files, repoRoot: apps.root, repo: fe }).map((f) => f.path), ['apps/landing/src/app/[locale]/not-found.tsx']);
   });
 
-  test(`FE_STATE_PAGE_GROUP_MISSING ${edition}: every route group, at any depth, has its own error.tsx and not-found.tsx`, () => {
+  test(`FE_STATE_PAGE_GROUP_MISSING: every route group, at any depth, has its own error.tsx and not-found.tsx`, () => {
     const { root, files } = repoOf({
       ...APP,
       'apps/web/src/app/[locale]/(site)/page.tsx': 'export default () => null\n',
@@ -199,11 +199,12 @@ function filesUnder(root: string): string[] {
   return out.sort();
 }
 
-for (const [edition, folder] of [['lite', 'skeleton-lite']] as const) {
-  test(`the ${edition} front-end template ships the one-source shape: one brand, one globals, shared system-state pages in every route group`, () => {
+{
+  const folder = 'skeleton';
+  test(`the front-end template ships the one-source shape: one brand, one globals, shared system-state pages in every route group`, () => {
     const root = path.join(import.meta.dirname, '..', 'templates', 'fe', folder);
     const files = filesUnder(root);
-    const fe = { profile: 'fe', edition };
+    const fe = { profile: 'fe' };
     assert.deepEqual(brandOneFindings({ files, repo: fe }), []);
     assert.deepEqual(globalsOneFindings({ files, repoRoot: root, repo: fe }), []);
     assert.deepEqual(statePageFindings({ files, repoRoot: root, repo: fe }), []);

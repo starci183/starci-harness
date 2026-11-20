@@ -1,6 +1,6 @@
-// proves: BE_TEST_TOPOLOGY@lite BE_TEST_TOPOLOGY@full
-// proves: BE_UNIT_SPEC_NOT_STAGED@lite BE_UNIT_SPEC_NOT_STAGED@full
-// proves: BE_CONTRACT_UNGUARDED@lite BE_CONTRACT_UNGUARDED@full
+// proves: BE_TEST_TOPOLOGY
+// proves: BE_UNIT_SPEC_NOT_STAGED
+// proves: BE_CONTRACT_UNGUARDED
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -41,7 +41,7 @@ it('matches the provider fixture', () => {
 `;
 
 for (const edition of ['lite'] as const) {
-  test(`${edition} backend rejects unsupported test suffixes`, t => {
+  test(`backend rejects unsupported test suffixes`, t => {
     const root = fixture(t, edition, 'be', {
       'src/modules/domain/cart/schema.int-spec.ts': 'export {};',
       'src/tests/e2e/cart/flow.harness-spec.ts': 'export {};',
@@ -51,7 +51,7 @@ for (const edition of ['lite'] as const) {
     assert.deepEqual(hits.map(hit => hit.path).sort(byCodeUnit), ['src/modules/domain/cart/schema.int-spec.ts', 'src/tests/e2e/cart/flow.harness-spec.ts']);
   });
 
-  test(`${edition} backend accepts sanctioned test names`, t => {
+  test(`backend accepts sanctioned test names`, t => {
     const root = fixture(t, edition, 'be', {
       'src/modules/domain/cart/cart.service.spec.ts': 'export {};',
       'src/tests/integration/cart/cart.integration-spec.ts': 'export {};',
@@ -61,7 +61,7 @@ for (const edition of ['lite'] as const) {
     assert.deepEqual(checkHfs({ root, kinds: ['backend'] }).violations.filter(hit => hit.ruleId === 'BE_TEST_TOPOLOGY'), []);
   });
 
-  test(`${edition} frontend passes unsupported backend suffixes without topology judgment`, t => {
+  test(`frontend passes unsupported backend suffixes without topology judgment`, t => {
     const root = fixture(t, edition, 'fe', {
       'apps/web/src/app/schema.int-spec.ts': 'export {};',
       'apps/web/src/app/flow.harness-spec.ts': 'export {};',
@@ -69,24 +69,24 @@ for (const edition of ['lite'] as const) {
     assert.deepEqual(checkHfs({ root, kinds: ['frontend'] }).violations.filter(hit => hit.ruleId === 'BE_TEST_TOPOLOGY'), []);
   });
 
-  test(`${edition} topology tree rejects test aliases and extra jest configuration`, t => {
+  test(`topology tree rejects test aliases and extra jest configuration`, t => {
     const files = ['src/modules/domain/cart/cart.test.ts', 'src/modules/domain/cart/testing/mock.ts', 'jest.config.e2e.js', 'package.json'];
     const root = fixture(t, edition, 'be', { 'package.json': JSON.stringify({ jest: {} }) });
     assert.deepEqual(testTopologyFindings({ repoRoot: root, files }).map(hit => hit.code), Array(4).fill('BE_TEST_TOPOLOGY'));
   });
 
-  test(`${edition} topology tree accepts colocated specs and one root jest configuration`, t => {
+  test(`topology tree accepts colocated specs and one root jest configuration`, t => {
     const root = fixture(t, edition, 'be', {});
     assert.deepEqual(testTopologyFindings({ repoRoot: root, files: ['src/modules/domain/cart/cart.service.spec.ts', 'jest.config.js'] }), []);
   });
 
-  test(`${edition} contract guard rejects an unguarded provider payload`, t => {
+  test(`contract guard rejects an unguarded provider payload`, t => {
     const root = fixture(t, edition, 'be', { [payload]: '{}' });
     assert.deepEqual(contractFindings(root).map(hit => hit.ruleId), ['BE_CONTRACT_UNGUARDED']);
     assert.deepEqual(contractFindings(root).map(hit => hit.path), [payload]);
   });
 
-  test(`${edition} contract guard accepts a fixture compared with the real provider shape`, t => {
+  test(`contract guard accepts a fixture compared with the real provider shape`, t => {
     const root = fixture(t, edition, 'be', { [payload]: '{}', [contract]: guard });
     assert.deepEqual(contractFindings(root), []);
   });
@@ -95,14 +95,14 @@ for (const edition of ['lite'] as const) {
 const policy = 'be/src/modules/domain/order/order.policy.ts';
 const policyText = 'export const allowed = (amount) => amount > 0;';
 
-for (const edition of ['lite'] as const) {
-  test(`${edition} staged specs reject a new measured logic file staged without its sibling spec`, () => {
+{
+  test(`staged specs reject a new measured logic file staged without its sibling spec`, () => {
     const found = stagedSpecFindings(loadSlotManifest(), [policy], new Set([policy]), { ts, staged: () => policyText });
     assert.deepEqual(found.map((hit: { code: string }) => hit.code), ['BE_UNIT_SPEC_NOT_STAGED']);
     assert.deepEqual(found.map((hit: { file: string }) => hit.file), [policy]);
   });
 
-  test(`${edition} staged specs pass a logic file staged with its spec and a constants-only file`, () => {
+  test(`staged specs pass a logic file staged with its spec and a constants-only file`, () => {
     const manifest = loadSlotManifest();
     const spec = 'be/src/modules/domain/order/order.policy.spec.ts';
     assert.deepEqual(stagedSpecFindings(manifest, [policy, spec], new Set([policy, spec]), { ts, staged: () => policyText }), []);

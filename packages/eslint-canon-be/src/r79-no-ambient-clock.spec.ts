@@ -1,5 +1,5 @@
-// proves: BE_AMBIENT_CLOCK@lite
-// proves: BE_AMBIENT_CLOCK@full
+// proves: BE_AMBIENT_CLOCK
+// proves: BE_AMBIENT_CLOCK
 import test from "node:test"
 import { BE_DECLARATION, TYPED_ROOT, at, ruleTester } from "../fixtures/typed/tester.ts"
 import { appDeclaration } from "../fixtures/app.ts"

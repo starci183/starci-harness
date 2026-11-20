@@ -1,5 +1,5 @@
-// proves: CI_STANDARD@lite
-// proves: CI_STANDARD@full
+// proves: CI_STANDARD
+// proves: CI_STANDARD
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -55,11 +55,11 @@ const items = (findings: { item: string }[]) => findings.map((finding) => findin
 const judge = (doc: Workflow, _edition?: string) => ciStandardFindings({ doc, file: FILE, scope: 'app-ci' });
 
 for (const edition of ['lite'] as const) {
-  test(`${edition}: a conforming managed ci.yml is clean`, () => {
+  test(`a conforming managed ci.yml is clean`, () => {
     assert.deepEqual(judge(compliant(edition), edition), []);
   });
 
-  test(`${edition}: the fast job of a lite app runs the boot proof before its typecheck; full keeps its e2e proof`, () => {
+  test(`the fast job of an app runs the boot proof before its typecheck; full keeps its e2e proof`, () => {
     const missing = compliant(edition);
     missing.jobs.fast = job([checkout, { run: 'npm run typecheck', env: HEAP }]);
     const late = compliant(edition);
@@ -75,7 +75,7 @@ for (const edition of ['lite'] as const) {
     assert.ok(items(judge(noFast, edition)).filter((item) => item === 'boot-proof').length === expected.length);
   });
 
-  test(`${edition}: the deploy jobs call the reusable stack-deploy.yml after the verdict, and the verdict judges every other job`, () => {
+  test(`the deploy jobs call the reusable stack-deploy.yml after the verdict, and the verdict judges every other job`, () => {
     const ok = compliant(edition);
     ok.jobs['deploy-production'] = { uses: './.github/workflows/stack-deploy.yml', needs: ['plan', 'verdict', 'images'], steps: [] };
     assert.deepEqual(judge(ok, edition), []);
@@ -94,7 +94,7 @@ for (const edition of ['lite'] as const) {
     assert.match(messages, /images job calls the reusable \.\/\.github\/workflows\/images\.yml/);
   });
 
-  test(`${edition}: ${FAILURE} violation - a missing job, a stray job and the unit run outside test are refused`, () => {
+  test(`${FAILURE} violation - a missing job, a stray job and the unit run outside test are refused`, () => {
     const doc = compliant(edition);
     delete doc.jobs.build;
     delete doc.jobs.plan;
@@ -108,7 +108,7 @@ for (const edition of ['lite'] as const) {
     assert.match(messages, /unit run must be a step of the test job alone/);
   });
 
-  test(`${edition}: ${FAILURE} reject - an unpinned action, a missing timeout, a short history and a small heap are each named`, () => {
+  test(`${FAILURE} reject - an unpinned action, a missing timeout, a short history and a small heap are each named`, () => {
     const doc = compliant(edition);
     doc.jobs.fast!.steps[0] = { uses: 'actions/checkout@v4' };
     delete doc.jobs.build!['timeout-minutes'];
@@ -117,7 +117,7 @@ for (const edition of ['lite'] as const) {
     for (const item of ['sha-pinned-actions', 'timeouts', 'full-history-base-ref', 'heap-per-step']) assert.ok(found.includes(item), item);
   });
 
-  test(`${edition}: ${FAILURE} negative - sharding, lint matrix, sonar side, cache and provider probe violations are flagged`, () => {
+  test(`${FAILURE} negative - sharding, lint matrix, sonar side, cache and provider probe violations are flagged`, () => {
     const doc = compliant(edition);
     delete doc.jobs.test.strategy;
     doc.jobs.lint.strategy!.matrix.side = ['be'];
@@ -128,7 +128,7 @@ for (const edition of ['lite'] as const) {
     for (const item of ['test-sharding', 'lint-parallel', 'sonar-lint-per-side', 'cache-saved-always', 'required-providers']) assert.ok(found.includes(item), item);
   });
 
-  test(`${edition}: ${FAILURE} the lint matrix may add the root packages beside the two sides, never stand in for a side`, () => {
+  test(`${FAILURE} the lint matrix may add the root packages beside the two sides, never stand in for a side`, () => {
     const doc = compliant(edition);
     doc.jobs.lint.strategy!.matrix.side = ['be', 'fe', 'packages'];
     doc.jobs.lint.steps.push({ run: 'starci app check --gate lint --side packages --out reports/lint.packages.sonar.json', env: HEAP });
@@ -138,7 +138,7 @@ for (const edition of ['lite'] as const) {
     assert.ok(items(judge(doc, edition)).includes('lint-parallel'));
   });
 
-  test(`${edition}: ${FAILURE} fail - the app check reads only the managed ci.yml of an app root`, (t) => {
+  test(`${FAILURE} fail - the app check reads only the managed ci.yml of an app root`, (t) => {
     const root = mkdtemp(t, 'hfs-ci-standard-');
     const doc = compliant(edition);
     delete doc.jobs.fast;
@@ -151,14 +151,14 @@ for (const edition of ['lite'] as const) {
     assert.deepEqual(ciStandardAppFindings({ ...ctx, isRoot: false }), []);
   });
 
-  test(`${edition}: a conforming ci.yml on disk is accepted by the app check`, (t) => {
+  test(`a conforming ci.yml on disk is accepted by the app check`, (t) => {
     const root = mkdtemp(t, 'hfs-ci-standard-');
     fs.mkdirSync(path.join(root, '.github/workflows'), { recursive: true });
     fs.writeFileSync(path.join(root, FILE), JSON.stringify(compliant(edition)));
     assert.deepEqual(ciStandardAppFindings({ repoRoot: root, files: [FILE], repo: { kind: 'app', edition }, isRoot: true }), []);
   });
 
-  test(`${edition}: ${FAILURE} packages-built-first - in an app with root packages a step that reads their types follows a step that builds them`, (t) => {
+  test(`${FAILURE} packages-built-first - in an app with root packages a step that reads their types follows a step that builds them`, (t) => {
     const BUILD = { name: 'build the workspace packages', run: 'npm run build:modules --silent' };
     const withPackages = (): Workflow => {
       const doc = compliant(edition);

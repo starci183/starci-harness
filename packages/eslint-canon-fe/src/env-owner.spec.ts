@@ -3,7 +3,7 @@
  *
  *   node --test src/env-owner.spec.ts
  */
-// proves: FE_ENV_OWNER@lite FE_ENV_OWNER@full
+// proves: FE_ENV_OWNER
 import assert from "node:assert/strict"
 import test from "node:test"
 import { at, fixtureHfs, LITE_FE_DECLARATION, slotTester } from "../fixtures/typed/tester.ts"

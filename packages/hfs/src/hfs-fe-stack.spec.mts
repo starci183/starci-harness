@@ -1,6 +1,6 @@
-// proves: FE_STACK_UNLISTED@lite FE_STACK_UNLISTED@full
-// proves: FE_STACK_CORE_MISSING@lite FE_STACK_CORE_MISSING@full
-// proves: FE_STACK_FAMILY_LINT_MISSING@lite FE_STACK_FAMILY_LINT_MISSING@full
+// proves: FE_STACK_UNLISTED
+// proves: FE_STACK_CORE_MISSING
+// proves: FE_STACK_FAMILY_LINT_MISSING
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -67,7 +67,7 @@ test('FE_STACK_FORBIDDEN: the app root manifest is judged too, except a library 
   assert.deepEqual(stack(repoRoot, Object.keys(files)).map((f) => f.dependency).sort(byCodeUnit), ['formik', 'react-toastify']);
 });
 
-test('FE_STACK_FORBIDDEN judges a lite app exactly as a full one, and a back-end manifest never', (t) => {
+test('FE_STACK_FORBIDDEN judges an app exactly as a full one, and a back-end manifest never', (t) => {
   const files = {
     'package.json': { name: 'demo' },
     'fe/apps/web/package.json': { name: '@demo/web', dependencies: { 'graphql-ws': '6.0.0', 'pusher-js': '8.0.0' } },

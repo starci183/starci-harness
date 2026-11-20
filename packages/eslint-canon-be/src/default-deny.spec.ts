@@ -1,4 +1,4 @@
-// proves: BE_PUBLIC_REASON_CLOSED@lite BE_PUBLIC_REASON_CLOSED@full
+// proves: BE_PUBLIC_REASON_CLOSED
 import assert from "node:assert/strict"
 import test from "node:test"
 import { appDeclaration } from "../fixtures/app.ts"

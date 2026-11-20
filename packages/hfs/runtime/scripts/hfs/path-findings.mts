@@ -81,7 +81,7 @@ function sourceFormFinding(file: string, { c, base, suffixes, bannedSuffixes }: 
 
 /**
  * BE_SOURCE_FORM (R89): every tracked src/ or apps/ TypeScript file of a back end is index.ts, main.ts, the one file a file
- * slot names by its path (the lite entity registry src/modules/platform/database/entities.ts), a migration of be.persistence, the matching <app>.env.ts explicitly admitted by its app slot, or <kebab-name>.<suffix>.ts with <suffix> in the closed vocabulary ruleParams.be.suffixes (a name such
+ * slot names by its path (the entity registry src/modules/platform/database/entities.ts), a migration of be.persistence, the matching <app>.env.ts explicitly admitted by its app slot, or <kebab-name>.<suffix>.ts with <suffix> in the closed vocabulary ruleParams.be.suffixes (a name such
  * as order.service.spec.ts keeps its inner words kebab-case). A suffix of ruleParams.be.bannedSuffixes anywhere in the
  * name is refused by name. Paths no slot owns are HFS_SLOT_UNDECLARED's, not this code's.
  */
@@ -113,8 +113,8 @@ function forbiddenPathFinding(file: string, c: PlacedPath, resolver: Resolver): 
 }
 
 function pathStatusFinding(file: string, resolver: Resolver): PathFinding | null {
-  const liteWork = liteStarciworkFinding(file, resolver);
-  if (liteWork) return liteWork;
+  const workFinding = starciworkFinding(file, resolver);
+  if (workFinding) return workFinding;
   const c = resolver.classifyPath(file);
   if (c.status === 'no-slot') {
     const nearestNote = c.nearest ? `; nearest slot ${c.nearest.slot} (${c.nearest.pattern}), matched ${c.nearest.matchedPrefix || '.'} then expected ${c.nearest.expectedNext ?? 'nothing'}` : '';
@@ -128,7 +128,7 @@ function pathStatusFinding(file: string, resolver: Resolver): PathFinding | null
 }
 
 /** The Work boundary, read from app.starciwork's admission list, including paths a narrower slot owns. */
-export function liteStarciworkFinding(file: string, resolver: Resolver, { dir = false }: { dir?: boolean } = {}): PathFinding | null {
+export function starciworkFinding(file: string, resolver: Resolver, { dir = false }: { dir?: boolean } = {}): PathFinding | null {
   if (!resolver.slot('app.starciwork')) return null;
   const p = resolver.classifyPath(file).path;
   if (!p.startsWith('.starciwork/')) return null;
@@ -150,7 +150,7 @@ export function liteStarciworkTreeFindings(repoRoot: string, resolver: Resolver,
   return entries.flatMap(entry => {
     const file = `.starciwork/${entry.name}`;
     if (trackedSet.has(file)) return [];
-    const finding = liteStarciworkFinding(file, resolver, { dir: entry.isDirectory() });
+    const finding = starciworkFinding(file, resolver, { dir: entry.isDirectory() });
     return finding ? [finding] : [];
   });
 }

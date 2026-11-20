@@ -1,9 +1,9 @@
-// proves: BE_FAILURE_CLASS_BY_TEXT@lite
-// proves: BE_FAILURE_CLASS_BY_TEXT@full
-// proves: HFS_CONCEPT_CONVENTIONS_MISSING@lite
-// proves: HFS_CONCEPT_CONVENTIONS_MISSING@full
-// proves: HFS_CONCEPT_UNCATALOGUED@lite
-// proves: HFS_CONCEPT_UNCATALOGUED@full
+// proves: BE_FAILURE_CLASS_BY_TEXT
+// proves: BE_FAILURE_CLASS_BY_TEXT
+// proves: HFS_CONCEPT_CONVENTIONS_MISSING
+// proves: HFS_CONCEPT_CONVENTIONS_MISSING
+// proves: HFS_CONCEPT_UNCATALOGUED
+// proves: HFS_CONCEPT_UNCATALOGUED
 /** R432 (a failure's class is never read from its code text) and R433 (every app keeps a conventions concept its catalog links, and one catalog row per concept), on real files. */
 import test from 'node:test';
 import type { TestContext } from 'node:test';

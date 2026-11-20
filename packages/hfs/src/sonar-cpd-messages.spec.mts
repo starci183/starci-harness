@@ -14,7 +14,7 @@ function propertiesOf(text: string): Map<string, string> {
 }
 
 for (const edition of ['lite'] as const) {
-  test(`${edition} rendered Sonar properties leave only the message catalogs out of copy-paste detection`, () => {
+  test(`rendered Sonar properties leave only the message catalogs out of copy-paste detection`, () => {
     const hfs = { hfs: 3, kind: 'app', edition, project: 'sonar-cpd-proof', sides: {
       be: { apps: [{ name: 'api', kind: 'api' }] },
       fe: { grammar: 'core', apps: [{ name: 'web', kind: 'next' }], reads: ['be/contracts/'] },

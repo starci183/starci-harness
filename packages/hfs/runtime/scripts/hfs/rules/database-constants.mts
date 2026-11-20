@@ -1,4 +1,4 @@
-// Single source of database-rule finding codes and the owned db/ paths of a lite app (slot app.db).
+// Single source of database-rule finding codes and the owned db/ paths of an app (slot app.db).
 export const DB_MIGRATION_SHAPE = 'DB_MIGRATION_SHAPE';
 export const DB_RLS_REQUIRED = 'DB_RLS_REQUIRED';
 export const DB_DYNAMIC_DDL = 'DB_DYNAMIC_DDL';

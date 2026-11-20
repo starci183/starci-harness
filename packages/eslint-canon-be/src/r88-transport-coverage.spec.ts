@@ -1,5 +1,5 @@
-// proves: BE_TRANSPORT_SHAPE@lite
-// proves: BE_TRANSPORT_SHAPE@full
+// proves: BE_TRANSPORT_SHAPE
+// proves: BE_TRANSPORT_SHAPE
 import test from 'node:test';
 import { appDeclaration } from '../fixtures/app.ts';
 import { at, BE_DECLARATION, ruleTester, TYPED_ROOT } from '../fixtures/typed/tester.ts';

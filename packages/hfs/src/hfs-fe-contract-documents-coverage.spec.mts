@@ -1,5 +1,5 @@
-// proves: FE_GRAPHQL_CONTRACT@lite
-// proves: FE_GRAPHQL_CONTRACT@full
+// proves: FE_GRAPHQL_CONTRACT
+// proves: FE_GRAPHQL_CONTRACT
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';

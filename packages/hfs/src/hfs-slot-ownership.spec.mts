@@ -1,13 +1,13 @@
-// proves: HFS_SLOT_UNDECLARED@lite
-// proves: HFS_SLOT_UNDECLARED@full
-// proves: HFS_SLOT_AMBIGUOUS@lite
-// proves: HFS_SLOT_AMBIGUOUS@full
-// proves: HFS_SLOT_NOT_ENABLED@lite
-// proves: HFS_SLOT_NOT_ENABLED@full
-// proves: HFS_FORBIDDEN_PRESENT@lite
-// proves: HFS_FORBIDDEN_PRESENT@full
-// proves: HFS_TRACKED_MUST_BE_IGNORED@lite
-// proves: HFS_TRACKED_MUST_BE_IGNORED@full
+// proves: HFS_SLOT_UNDECLARED
+// proves: HFS_SLOT_UNDECLARED
+// proves: HFS_SLOT_AMBIGUOUS
+// proves: HFS_SLOT_AMBIGUOUS
+// proves: HFS_SLOT_NOT_ENABLED
+// proves: HFS_SLOT_NOT_ENABLED
+// proves: HFS_FORBIDDEN_PRESENT
+// proves: HFS_FORBIDDEN_PRESENT
+// proves: HFS_TRACKED_MUST_BE_IGNORED
+// proves: HFS_TRACKED_MUST_BE_IGNORED
 // R01, the slot ownership of every tracked path, as the app check (scripts/hfs/check.mts, the bundled copy) judges it: it refuses a path no slot owns, a
 // path two slots own equally, a path of an opt-in slot nobody declared, a tracked path of a forbidden slot and a tracked path of an ignored slot, and
 // accepts the owned path, in lite and in full. The ambiguous path needs a manifest with a gap: the shipped manifest has none (the loader refuses two
@@ -47,43 +47,43 @@ const WEBHOOK = 'be/src/features/webhooks/gateway/transport/http/gateway.webhook
 const WITH_WEBHOOKS = { ...APP, sides: { ...APP.sides, be: { ...APP.sides.be, patterns: ['webhooks'] } } };
 
 for (const edition of ['lite'] as const) {
-  test(`${edition}: app check refuses a path no slot owns and accepts an owned path`, () => {
+  test(`app check refuses a path no slot owns and accepts an owned path`, () => {
     assert.deepEqual(withCode(appFindings(edition, ['be/src/stray/thing.ts']), 'HFS_SLOT_UNDECLARED'), ['be/src/stray/thing.ts']);
     assert.deepEqual(withCode(appFindings(edition, ['be/src/modules/domain/stock/index.ts']), 'HFS_SLOT_UNDECLARED'), []);
   });
 
-  test(`${edition}: app check refuses a path two slots own equally and accepts the shipped manifest`, () => {
+  test(`app check refuses a path two slots own equally and accepts the shipped manifest`, () => {
     assert.deepEqual(withCode(appFindings(edition, ['twin/one/a.json'], APP_GAP), 'HFS_SLOT_AMBIGUOUS'), ['twin/one/a.json']);
     assert.deepEqual(withCode(appFindings(edition, ['coverage/a.json'], APP_GAP), 'HFS_SLOT_AMBIGUOUS'), []);
     assert.deepEqual(withCode(appFindings(edition, ['twin/one/a.json']), 'HFS_SLOT_AMBIGUOUS'), []);
   });
 
-  test(`${edition}: app check refuses a path of an opt-in slot nobody declared and accepts a declared one`, () => {
+  test(`app check refuses a path of an opt-in slot nobody declared and accepts a declared one`, () => {
     assert.deepEqual(withCode(appFindings(edition, [WEBHOOK]), 'HFS_SLOT_NOT_ENABLED'), [WEBHOOK]);
     assert.deepEqual(withCode(appFindings(edition, [WEBHOOK], APP_MANIFEST, WITH_WEBHOOKS), 'HFS_SLOT_NOT_ENABLED'), []);
   });
 
-  test(`${edition}: app check refuses a tracked path of a forbidden slot and accepts an allowed one`, () => {
+  test(`app check refuses a tracked path of a forbidden slot and accepts an allowed one`, () => {
     assert.deepEqual(withCode(appFindings(edition, ['be/.sops.yaml']), 'HFS_FORBIDDEN_PRESENT'), ['be/.sops.yaml']);
     assert.deepEqual(withCode(appFindings(edition, ['.sops.yaml']), 'HFS_FORBIDDEN_PRESENT'), []);
   });
 
-  test(`${edition}: app check refuses a tracked e2e workflow (slot app.ci-e2e is forbidden: no workflow runs a world layer) and accepts ci.yml`, () => {
+  test(`app check refuses a tracked e2e workflow (slot app.ci-e2e is forbidden: no workflow runs a world layer) and accepts ci.yml`, () => {
     assert.deepEqual(withCode(appFindings(edition, ['.github/workflows/e2e.yml', '.github/workflows/ci.yml']), 'HFS_FORBIDDEN_PRESENT'), ['.github/workflows/e2e.yml']);
   });
 
-  test(`${edition}: app check accepts the delivery scripts of the app root and refuses an unowned file beside them`, () => {
+  test(`app check accepts the delivery scripts of the app root and refuses an unowned file beside them`, () => {
     assert.deepEqual(withCode(appFindings(edition, ['scripts/env-sync.mjs', 'scripts/with-secrets.mjs']), 'HFS_SLOT_UNDECLARED'), []);
     assert.deepEqual(withCode(appFindings(edition, ['scripts/notes/unowned.txt']), 'HFS_SLOT_UNDECLARED'), ['scripts/notes/unowned.txt']);
   });
 
-  test(`${edition}: app check accepts the integration test-support scripts and refuses what is not a script of that folder`, () => {
+  test(`app check accepts the integration test-support scripts and refuses what is not a script of that folder`, () => {
     assert.deepEqual(withCode(appFindings(edition, ['scripts/integration/queue-cutover-sandbox.mjs']), 'HFS_SLOT_UNDECLARED'), []);
     const refused = ['scripts/integration/notes.txt', 'scripts/integration/nested/sandbox.mjs', 'scripts/test/sandbox.mjs'];
     assert.deepEqual(withCode(appFindings(edition, refused), 'HFS_SLOT_UNDECLARED'), refused);
   });
 
-  test(`${edition}: app check refuses a tracked path of an ignored slot and accepts a tracked one`, () => {
+  test(`app check refuses a tracked path of an ignored slot and accepts a tracked one`, () => {
     assert.deepEqual(withCode(appFindings(edition, ['coverage/a.json']), 'HFS_TRACKED_MUST_BE_IGNORED'), ['coverage/a.json']);
     assert.deepEqual(withCode(appFindings(edition, ['README.md']), 'HFS_TRACKED_MUST_BE_IGNORED'), []);
   });

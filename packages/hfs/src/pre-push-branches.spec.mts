@@ -1,9 +1,9 @@
-// proves: BRANCH_MAIN_NOT_ON_DEV@lite
-// proves: BRANCH_MAIN_NOT_ON_DEV@full
-// proves: BRANCH_DEV_NOT_ON_MAIN@lite
-// proves: BRANCH_DEV_NOT_ON_MAIN@full
-// proves: BRANCH_MAIN_NOT_CHECKED_OUT@lite
-// proves: BRANCH_MAIN_NOT_CHECKED_OUT@full
+// proves: BRANCH_MAIN_NOT_ON_DEV
+// proves: BRANCH_MAIN_NOT_ON_DEV
+// proves: BRANCH_DEV_NOT_ON_MAIN
+// proves: BRANCH_DEV_NOT_ON_MAIN
+// proves: BRANCH_MAIN_NOT_CHECKED_OUT
+// proves: BRANCH_MAIN_NOT_CHECKED_OUT
 // The two long-lived branches of an app (contexts/project/branches.md PROJECT-BRANCH-1) held by the managed pre-push hook, run against disposable git repositories:
 // main moves only to a commit on dev, dev always contains main, and a push of main is judged as main.
 import test from 'node:test';

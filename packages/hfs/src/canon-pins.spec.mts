@@ -1,5 +1,5 @@
-// proves: HFS_CANON_PIN_DRIFT@lite
-// proves: HFS_CANON_PIN_DRIFT@full
+// proves: HFS_CANON_PIN_DRIFT
+// proves: HFS_CANON_PIN_DRIFT
 // The canon pins: the bundled file pins no command line, the CLI that runs @starci/hfs supplies the starci-harness row, every
 // @starci row names its folder's version here, and the runtime copies the canon packages carry are the same bytes.
 import test from 'node:test';

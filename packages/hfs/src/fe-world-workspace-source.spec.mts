@@ -1,4 +1,4 @@
-// proves: FE_WORLD_OWNER_RENDER_BOUNDARY@lite FE_WORLD_OWNER_RENDER_BOUNDARY@full
+// proves: FE_WORLD_OWNER_RENDER_BOUNDARY
 // An fe app reaches a workspace package's SOURCE through a tsconfig path alias (`@fixture/ui-kit` ->
 // `packages/ui-kit/src/index.ts`, outside the fe root). The world analysis follows a call into that file, which no checker
 // of the context holds (the context keeps only files under the fe root). The package is its own unit, judged by its own lint, so
@@ -38,7 +38,7 @@ function judged(t: TestContext, edition: string, component: string) {
 }
 
 for (const edition of ['lite'] as const) {
-  test(`${edition}: a component calling a workspace package source through a path alias is analysed without error`, (t) => {
+  test(`a component calling a workspace package source through a path alias is analysed without error`, (t) => {
     const report = judged(t, edition, [
       'import { messageLabel } from "@fixture/ui-kit";',
       'export const Label = (props: { readonly text: string }) => <span>{messageLabel(props.text)}</span>;',
@@ -56,7 +56,7 @@ const ALIASED = {
 };
 
 for (const edition of ['lite'] as const) {
-  test(`${edition}: a component calling a workspace package's aliased variable through a path alias is analysed without error`, (t) => {
+  test(`a component calling a workspace package's aliased variable through a path alias is analysed without error`, (t) => {
     const declaration = { ...appDeclaration('fe', { apps: DEFAULT_APPS.fe }), edition };
     const root = archFixture(t, { profile: 'fe', files: {
       '../hfs.json': JSON.stringify(declaration),

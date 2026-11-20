@@ -1,11 +1,11 @@
-// proves: HFS_HOST_CRON@lite
-// proves: HFS_HOST_CRON@full
-// proves: HFS_DEPLOY_NO_LOGIC@lite
-// proves: HFS_DEPLOY_NO_LOGIC@full
-// proves: HFS_DEPLOY_COMPOSE_ON_VPS@lite
-// proves: HFS_DEPLOY_COMPOSE_ON_VPS@full
-// proves: HFS_DEPLOY_SCHEDULER@lite
-// proves: HFS_DEPLOY_SCHEDULER@full
+// proves: HFS_HOST_CRON
+// proves: HFS_HOST_CRON
+// proves: HFS_DEPLOY_NO_LOGIC
+// proves: HFS_DEPLOY_NO_LOGIC
+// proves: HFS_DEPLOY_COMPOSE_ON_VPS
+// proves: HFS_DEPLOY_COMPOSE_ON_VPS
+// proves: HFS_DEPLOY_SCHEDULER
+// proves: HFS_DEPLOY_SCHEDULER
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';

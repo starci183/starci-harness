@@ -1,5 +1,5 @@
-// proves: APP_SECRET_IN_CI@lite
-// proves: APP_SECRET_IN_CI@full
+// proves: APP_SECRET_IN_CI
+// proves: APP_SECRET_IN_CI
 // `starci app secret set` on a tooling member (sonar.enc.yaml: the analysis token of a quality service) never declares it as an app runtime secret
 // (CI custody refuses a runtime-granted CI secret) and binds it where the template shows: the service's `credentials` and its `ci.secrets`.
 import assert from 'node:assert/strict';

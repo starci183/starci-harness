@@ -1,5 +1,5 @@
-// proves: BE_TEST_BUILDER_ARRANGES@lite BE_TEST_BUILDER_ARRANGES@full
-// proves: BE_SERVICE_ISOLATION@lite BE_SERVICE_ISOLATION@full
+// proves: BE_TEST_BUILDER_ARRANGES
+// proves: BE_SERVICE_ISOLATION
 import test from "node:test"
 import { appDeclaration } from "../fixtures/app.ts"
 import { at, TYPED_ROOT, ruleTester } from "../fixtures/typed/tester.ts"

@@ -1,14 +1,14 @@
 /** The desktop app a project declares (PROJECT-DESKTOP-1, R444): `sides.desktop` in hfs.json, its managed files, its tree and config findings and the `starci app desktop` verb. */
-// proves: HFS_DESKTOP_UNDECLARED@lite
-// proves: HFS_DESKTOP_UNDECLARED@full
-// proves: HFS_DESKTOP_FILE_MISSING@lite
-// proves: HFS_DESKTOP_FILE_MISSING@full
-// proves: HFS_DESKTOP_CONFIG@lite
-// proves: HFS_DESKTOP_CONFIG@full
-// proves: HFS_DESKTOP_SECURITY@lite
-// proves: HFS_DESKTOP_SECURITY@full
-// proves: HFS_DESKTOP_SIGNING_KEY@lite
-// proves: HFS_DESKTOP_SIGNING_KEY@full
+// proves: HFS_DESKTOP_UNDECLARED
+// proves: HFS_DESKTOP_UNDECLARED
+// proves: HFS_DESKTOP_FILE_MISSING
+// proves: HFS_DESKTOP_FILE_MISSING
+// proves: HFS_DESKTOP_CONFIG
+// proves: HFS_DESKTOP_CONFIG
+// proves: HFS_DESKTOP_SECURITY
+// proves: HFS_DESKTOP_SECURITY
+// proves: HFS_DESKTOP_SIGNING_KEY
+// proves: HFS_DESKTOP_SIGNING_KEY
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

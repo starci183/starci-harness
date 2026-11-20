@@ -1,13 +1,13 @@
-// proves: HFS_DOCKER_BUILD_CONTEXT@lite
-// proves: HFS_DOCKER_BUILD_CONTEXT@full
-// proves: HFS_DOCKER_STAGES@lite
-// proves: HFS_DOCKER_STAGES@full
-// proves: HFS_DOCKER_ENTRY@lite
-// proves: HFS_DOCKER_ENTRY@full
-// proves: HFS_DOCKER_BASE_PIN@lite
-// proves: HFS_DOCKER_BASE_PIN@full
-// proves: HFS_DOCKER_SECRETS@lite
-// proves: HFS_DOCKER_SECRETS@full
+// proves: HFS_DOCKER_BUILD_CONTEXT
+// proves: HFS_DOCKER_BUILD_CONTEXT
+// proves: HFS_DOCKER_STAGES
+// proves: HFS_DOCKER_STAGES
+// proves: HFS_DOCKER_ENTRY
+// proves: HFS_DOCKER_ENTRY
+// proves: HFS_DOCKER_BASE_PIN
+// proves: HFS_DOCKER_BASE_PIN
+// proves: HFS_DOCKER_SECRETS
+// proves: HFS_DOCKER_SECRETS
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -102,7 +102,7 @@ test('a Next image copies be/contracts only when the back end holds them: a COPY
 });
 
 for (const edition of ['lite'] as const) {
-  test(`${edition} HFS_DOCKER_BUILD_CONTEXT accepts valid build headers and sources`, (t) => {
+  test(`HFS_DOCKER_BUILD_CONTEXT accepts valid build headers and sources`, (t) => {
     const code = 'HFS_DOCKER_BUILD_CONTEXT';
     assert.deepEqual(judged(t, edition, code), []);
     const header = 'docker build -f be/apps/cli/Dockerfile -t proof/cli:<tag> .';
@@ -111,7 +111,7 @@ for (const edition of ['lite'] as const) {
     assert.deepEqual(judged(t, edition, code, change(NEXT, nextHeader, 'starci docker build web')), []);
   });
 
-  test(`${edition} HFS_DOCKER_BUILD_CONTEXT rejects invalid headers and escaping sources`, (t) => {
+  test(`HFS_DOCKER_BUILD_CONTEXT rejects invalid headers and escaping sources`, (t) => {
     const code = 'HFS_DOCKER_BUILD_CONTEXT';
     const header = 'docker build -f be/apps/cli/Dockerfile -t proof/cli:<tag> .';
     for (const replacement of ['build this image', 'starci docker build other']) {
@@ -122,12 +122,12 @@ for (const edition of ['lite'] as const) {
     }
   });
 
-  test(`${edition} HFS_DOCKER_STAGES accepts valid image stages`, (t) => {
+  test(`HFS_DOCKER_STAGES accepts valid image stages`, (t) => {
     assert.deepEqual(judged(t, edition, 'HFS_DOCKER_STAGES'), []);
     assert.deepEqual(judged(t, edition, 'HFS_DOCKER_STAGES', change(CLI, 'USER node', 'USER node\nHEALTHCHECK NONE')), []);
   });
 
-  test(`${edition} HFS_DOCKER_STAGES rejects invalid stage discipline`, (t) => {
+  test(`HFS_DOCKER_STAGES rejects invalid stage discipline`, (t) => {
     const invalid = [
       change(CLI, 'USER node', 'RUN npm install -g turbo@2\nUSER node'),
       change(CLI, 'USER node', 'RUN npm install --global turbo@2\nUSER node'),
@@ -146,12 +146,12 @@ for (const edition of ['lite'] as const) {
     }
   });
 
-  test(`${edition} HFS_DOCKER_ENTRY accepts valid app entries`, (t) => {
+  test(`HFS_DOCKER_ENTRY accepts valid app entries`, (t) => {
     assert.deepEqual(judged(t, edition, 'HFS_DOCKER_ENTRY'), []);
     assert.deepEqual(judged(t, edition, 'HFS_DOCKER_ENTRY', change(CONFIG, 'output: "standalone"', 'output: "standalone", reactStrictMode: true')), []);
   });
 
-  test(`${edition} HFS_DOCKER_ENTRY rejects invalid entries ports health and Next output`, (t) => {
+  test(`HFS_DOCKER_ENTRY rejects invalid entries ports health and Next output`, (t) => {
     const invalid = [
       change(CLI, 'be/dist/apps/cli/src/main.js', 'be/dist/apps/other/src/main.js'),
       change(API, 'EXPOSE 3000', 'EXPOSE 8080'),
@@ -169,27 +169,27 @@ for (const edition of ['lite'] as const) {
     }
   });
 
-  test(`${edition} HFS_DOCKER_BASE_PIN accepts valid pinned bases`, (t) => {
+  test(`HFS_DOCKER_BASE_PIN accepts valid pinned bases`, (t) => {
     assert.deepEqual(judged(t, edition, 'HFS_DOCKER_BASE_PIN'), []);
     assert.deepEqual(judged(t, edition, 'HFS_DOCKER_BASE_PIN', change(CLI, `FROM ${NODE_IMAGE} AS runtime`, 'FROM build AS runtime')), []);
     const digest = `FROM alpine:3.22@sha256:${'a'.repeat(64)} AS runtime`;
     assert.deepEqual(judged(t, edition, 'HFS_DOCKER_BASE_PIN', change(CLI, `FROM ${NODE_IMAGE} AS runtime`, digest)), []);
   });
 
-  test(`${edition} HFS_DOCKER_BASE_PIN rejects invalid moving or unresolved bases`, (t) => {
+  test(`HFS_DOCKER_BASE_PIN rejects invalid moving or unresolved bases`, (t) => {
     for (const base of ['node:latest', 'node:22-alpine', '${BASE}']) {
       assert.deepEqual(judged(t, edition, 'HFS_DOCKER_BASE_PIN', change(CLI, `FROM ${NODE_IMAGE} AS runtime`, `FROM ${base} AS runtime`)), ['HFS_DOCKER_BASE_PIN']);
     }
   });
 
-  test(`${edition} HFS_DOCKER_SECRETS accepts valid public inputs`, (t) => {
+  test(`HFS_DOCKER_SECRETS accepts valid public inputs`, (t) => {
     assert.deepEqual(judged(t, edition, 'HFS_DOCKER_SECRETS'), []);
     for (const input of ['COPY be/.env.example ./sample', 'ARG NEXT_PUBLIC_MAPS_KEY', 'ENV TOKENIZER=none']) {
       assert.deepEqual(judged(t, edition, 'HFS_DOCKER_SECRETS', change(CLI, 'USER node', `${input}\nUSER node`)), []);
     }
   });
 
-  test(`${edition} HFS_DOCKER_SECRETS rejects invalid image secret inputs`, (t) => {
+  test(`HFS_DOCKER_SECRETS rejects invalid image secret inputs`, (t) => {
     const invalid = [
       'COPY .envbackup ./sample', 'ADD be/.envlocal ./sample', 'COPY .env.example.backup ./sample',
       'COPY .env ./sample', 'COPY be/.env.production ./sample', 'COPY .starcistacks/runtime ./sample',
@@ -203,7 +203,7 @@ for (const edition of ['lite'] as const) {
   });
 }
 
-test('a lite app declared inline passes the adopted context stages and secret rules for its rendered Dockerfiles', (t) => {
+test('an app declared inline passes the adopted context stages and secret rules for its rendered Dockerfiles', (t) => {
   const codes = new Set(['HFS_DOCKER_BUILD_CONTEXT', 'HFS_DOCKER_STAGES', 'HFS_DOCKER_SECRETS']);
   const rendered = fixture(t, shippedLite());
   assert.ok(rendered.files.some((file) => file.endsWith('/Dockerfile')));

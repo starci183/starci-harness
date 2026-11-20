@@ -1,9 +1,9 @@
-// proves: FE_I18N_PLACEMENT@lite
-// proves: FE_I18N_PLACEMENT@full
-// proves: FE_I18N_NAVIGATION@lite
-// proves: FE_I18N_NAVIGATION@full
-// proves: FE_I18N_FORMATTER@lite
-// proves: FE_I18N_FORMATTER@full
+// proves: FE_I18N_PLACEMENT
+// proves: FE_I18N_PLACEMENT
+// proves: FE_I18N_NAVIGATION
+// proves: FE_I18N_NAVIGATION
+// proves: FE_I18N_FORMATTER
+// proves: FE_I18N_FORMATTER
 import test from 'node:test';
 import tsParser from '@typescript-eslint/parser';
 import { RuleTester } from 'eslint';

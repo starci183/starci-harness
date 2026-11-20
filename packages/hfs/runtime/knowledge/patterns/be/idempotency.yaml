@@ -245,7 +245,7 @@ files:
   - path: src/modules/platform/inbox/persistence/migrations/1792800000000-client-operation-outcomes.ts
     slot: be.persistence
     template: idempotency/platform/inbox/persistence/migrations/1792800000000-client-operation-outcomes.ts.tpl
-liteAdapter:
+adapter:
   summary: >-
     Lite keeps the Inbox port and transaction-owned client receipt API. Its existing public.inbox
     table uses db migration authority; the be/inbox platform templates carry the lite adapter and the

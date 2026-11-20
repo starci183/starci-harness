@@ -1,5 +1,5 @@
-// proves: FE_I18N_CATALOG@lite
-// proves: FE_I18N_CATALOG@full
+// proves: FE_I18N_CATALOG
+// proves: FE_I18N_CATALOG
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -26,7 +26,7 @@ function catalogFixture(t: TestContext, edition: string, english: object) {
 }
 
 for (const edition of ['lite'] as const) {
-  test(`${edition} catalog parity rejects a missing nested translation key`, (t) => {
+  test(`catalog parity rejects a missing nested translation key`, (t) => {
     const result = frontendFindings(catalogFixture(t, edition, { home: { title: 'Home' } }));
     const findings = result.filter((finding) => finding.code === 'FE_I18N_CATALOG');
     assert.equal(findings.length, 1);
@@ -34,7 +34,7 @@ for (const edition of ['lite'] as const) {
     assert.deepEqual(findings[0]!.missing, ['home.action']);
   });
 
-  test(`${edition} catalog parity accepts translated values with identical nested keys`, (t) => {
+  test(`catalog parity accepts translated values with identical nested keys`, (t) => {
     const result = frontendFindings(catalogFixture(t, edition, { home: { title: 'Home', action: 'Open' } }));
     assert.deepEqual(result.filter((finding) => finding.code === 'FE_I18N_CATALOG'), []);
   });

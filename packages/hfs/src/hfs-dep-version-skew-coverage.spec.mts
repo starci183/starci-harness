@@ -1,5 +1,5 @@
-// proves: HFS_DEP_VERSION_SKEW@lite
-// proves: HFS_DEP_VERSION_SKEW@full
+// proves: HFS_DEP_VERSION_SKEW
+// proves: HFS_DEP_VERSION_SKEW
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

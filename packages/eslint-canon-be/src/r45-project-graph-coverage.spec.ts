@@ -1,9 +1,9 @@
-// proves: BE_MODULE_SHAPE@lite
-// proves: BE_MODULE_SHAPE@full
-// proves: BE_MODULE_HANDLER_REGISTRATION@lite
-// proves: BE_MODULE_HANDLER_REGISTRATION@full
-// proves: BE_MODULE_PROVIDER_REREGISTRATION@lite
-// proves: BE_MODULE_PROVIDER_REREGISTRATION@full
+// proves: BE_MODULE_SHAPE
+// proves: BE_MODULE_SHAPE
+// proves: BE_MODULE_HANDLER_REGISTRATION
+// proves: BE_MODULE_HANDLER_REGISTRATION
+// proves: BE_MODULE_PROVIDER_REREGISTRATION
+// proves: BE_MODULE_PROVIDER_REREGISTRATION
 import fs from "node:fs"
 import test from "node:test"
 import { projectFixture } from "../fixtures/project/tester.ts"

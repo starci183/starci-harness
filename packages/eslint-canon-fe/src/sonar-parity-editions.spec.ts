@@ -1,5 +1,5 @@
-// proves: SCAN_SMELL@lite
-// proves: SCAN_SMELL@full
+// proves: SCAN_SMELL
+// proves: SCAN_SMELL
 import test from 'node:test';
 import { RuleTester } from 'eslint';
 import tsParser from '@typescript-eslint/parser';

@@ -1,4 +1,4 @@
-// proves: HFS_UNUSED_SYMBOL@lite HFS_UNUSED_SYMBOL@full
+// proves: HFS_UNUSED_SYMBOL
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';

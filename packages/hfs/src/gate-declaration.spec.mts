@@ -1,5 +1,5 @@
-// proves: HFS_GATE_DECLARATION_INVALID@lite
-// proves: HFS_GATE_DECLARATION_INVALID@full
+// proves: HFS_GATE_DECLARATION_INVALID
+// proves: HFS_GATE_DECLARATION_INVALID
 // The gates an app switches off for the whole app (`gates` of .starcistacks/application-stacks.yaml, PROJECT-LINT-4): the reader refuses hfs, secrets and db, an id that is
 // no gate, a missing reason and a gate whose reader stays on; the one reader (activeProfile) folds the declaration into every gate's mode on every branch, the default branch
 // included; the managed hooks, the rendered CI and the release gate follow it, and every one reports an off gate as `off (declared: <reason>)`.
@@ -78,7 +78,7 @@ test('HFS_GATE_DECLARATION_INVALID: the reader keeps a sound declaration and ref
 test('HFS_GATE_DECLARATION_INVALID: the app check names a refused declaration as an error finding and accepts a sound one', (t) => {
   for (const [gates, refused] of [[ALL_OFF, 0], ['  hfs: { run: off, reason: "x" }', 1], ['  lint: { run: off }', 1]] as const) {
     const root = app(t, gates);
-    const report = checkRepo({ repoRoot: root, declaration: { hfs: 3, kind: 'app', project: 'fixture', edition: 'full', sides: { be: { apps: [{ name: 'core', kind: 'api' }] }, fe: { apps: [{ name: 'web', kind: 'next' }] } } }, files: ['.starcistacks/application-stacks.yaml', '.starcistacks/dev/environment.json'], tree: false });
+    const report = checkRepo({ repoRoot: root, declaration: { hfs: 3, kind: 'app', project: 'fixture', sides: { be: { apps: [{ name: 'core', kind: 'api' }] }, fe: { apps: [{ name: 'web', kind: 'next' }] } } }, files: ['.starcistacks/application-stacks.yaml', '.starcistacks/dev/environment.json'], tree: false });
     const found = report.findings.filter((finding) => finding.code === 'HFS_GATE_DECLARATION_INVALID');
     assert.equal(found.length, refused, gates);
     for (const finding of found) assert.equal(finding.level, 'error');
@@ -195,10 +195,10 @@ test('every reader of a managed CI file reads the declaration: the render of a d
     const offAll = readGateDeclarations(doc(off(...OPTIONAL_GATES))).off;
     const gateItems = new Set(['job-shape', 'boot-proof', 'test-sharding', 'packages-built-first']);
     const items = (gates: typeof offAll): string[] => ciStandardFindings({ doc: parseWorkflow(text), file: CI, scope: 'app-ci', rootPackages: false, off: gates }).map((finding: Doc) => finding.extra?.item ?? finding.item).filter((item: string) => gateItems.has(item));
-    assert.deepEqual(items(offAll), [], `${edition}: the CI standard reads the declaration`);
-    assert.ok(items({}).length > 0, `${edition}: the same file with nothing declared misses required steps`);
-    assert.deepEqual(bypassesIn(CI, text, { idle: idleJobs(offAll) }), [], `${edition}: the idled jobs are the render, not a bypass`);
-    assert.deepEqual(bypassesIn(CI, text).map((hit) => hit.label), ['a constant false condition', 'a constant false condition', 'a constant false condition'], `${edition}: undeclared, each idled job is a bypass (\`&& false\` included)`);
+    assert.deepEqual(items(offAll), [], `the CI standard reads the declaration`);
+    assert.ok(items({}).length > 0, `the same file with nothing declared misses required steps`);
+    assert.deepEqual(bypassesIn(CI, text, { idle: idleJobs(offAll) }), [], `the idled jobs are the render, not a bypass`);
+    assert.deepEqual(bypassesIn(CI, text).map((hit) => hit.label), ['a constant false condition', 'a constant false condition', 'a constant false condition'], `undeclared, each idled job is a bypass (\`&& false\` included)`);
     assert.equal(bypassesIn('.github/workflows/other.yml', text, { idle: idleJobs(offAll) }).length, 3, 'only the managed ci.yml carries the render');
     const root = app(t, ALL_OFF);
     fs.writeFileSync(path.join(root, '.starcistacks', 'application-stacks.yaml'), ciDeclaration(ALL_OFF));
@@ -210,16 +210,16 @@ test('every reader of a managed CI file reads the declaration: the render of a d
       ...ciCustodyFindings({ repoRoot: root, repo: { kind: 'app', edition } as never, isRoot: true }).filter((finding: Doc) => finding.code === 'CI_DECLARATION_DRIFT'),
       ...bypassMarkerFindings({ repoRoot: root, files: [CI] }),
     ].map((finding: Doc) => finding.code).sort();
-    assert.deepEqual(judged(), [], `${edition}: lint canon, audit step, CI declaration and bypass rules accept the render of the declaration`);
+    assert.deepEqual(judged(), [], `lint canon, audit step, CI declaration and bypass rules accept the render of the declaration`);
     // The pre-commit guard reads the staged declaration the commit records.
     const git = (...args: string[]) => spawnSync('git', ['-c', 'user.email=bench@example.invalid', '-c', 'user.name=bench', ...args], { cwd: root, encoding: 'utf8' });
     git('init', '-q');
     git('add', '-A');
     const staged = (): number => hygieneJudge(root, [CI]).findings.filter((finding) => finding.code === 'HFS_BYPASS_MARKER').length;
-    assert.equal(staged(), 0, `${edition}: the staged render of the staged declaration passes the commit guard`);
+    assert.equal(staged(), 0, `the staged render of the staged declaration passes the commit guard`);
     fs.writeFileSync(path.join(root, '.starcistacks', 'application-stacks.yaml'), ciDeclaration(''));
     git('add', '-A');
-    assert.equal(staged(), 3, `${edition}: staged with nothing declared, each idled job is refused at the commit`);
-    assert.deepEqual(judged(), ['CI_DECLARATION_DRIFT', 'CI_DECLARATION_DRIFT', 'HFS_AUDIT_STEP_MISSING', 'HFS_BYPASS_MARKER', 'HFS_BYPASS_MARKER', 'HFS_BYPASS_MARKER', 'HFS_CI_MISSING_CANON'], `${edition}: with nothing declared the same file is refused by each`);
+    assert.equal(staged(), 3, `staged with nothing declared, each idled job is refused at the commit`);
+    assert.deepEqual(judged(), ['CI_DECLARATION_DRIFT', 'CI_DECLARATION_DRIFT', 'HFS_AUDIT_STEP_MISSING', 'HFS_BYPASS_MARKER', 'HFS_BYPASS_MARKER', 'HFS_BYPASS_MARKER', 'HFS_CI_MISSING_CANON'], `with nothing declared the same file is refused by each`);
   }
 });

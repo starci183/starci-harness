@@ -3,14 +3,15 @@ import type { ExecutionContext, Type } from "@nestjs/common"
 import type { Request, Response } from "express"
 import { Reflector } from "@nestjs/core"
 import { Test } from "@nestjs/testing"
-import { FakeClock, mock, mockEntityManager } from "@starci/jest-preset"
-import type { MockEntityManager } from "@starci/jest-preset"
+import { In, LessThanOrEqual, MoreThan } from "typeorm"
+import { FakeClock, mock, mockEntityManager, queueQueryBuilders } from "@starci/jest-preset"
+import type { FakeQueryBuilder, MockEntityManager } from "@starci/jest-preset"
 import { CLOCK } from "@modules/platform/clock"
 import { PRIMARY_ENTITY_MANAGER } from "@modules/platform/database"
 import { HttpSecurityErrorCode } from "./errors/http-security.error"
 import { HTTP_SECURITY_OPTIONS } from "./http-security.decorators"
 import type { HttpSecurityOptions } from "./http-security.options"
-import { HIT_RATE_WINDOW, PRUNE_RATE_WINDOWS } from "./persistence/rate-limit.sql"
+import { RateWindowEntity } from "./persistence/entities/rate-window.entity"
 import { RateLimit, RateLimitGuard, RateTier } from "./rate-limit.guard"
 import type { RateLimitExceeded } from "./rate-limit.guard"
 
@@ -21,6 +22,31 @@ const options: HttpSecurityOptions = {
     rateLimit: { windowMs: 60_000, defaultLimit: 2, strictLimit: 1 },
     webhooks: {},
 }
+
+/** The caller's window holding `hits`. */
+const windowOf = (hits: number): RateWindowEntity => ({ key: "default:127.0.0.1", hits, resetAt: new Date(RESET_AT) })
+
+/** A store with a live window of the caller, and the builder of the UPDATE that counted this hit in it. */
+interface LiveWindow {
+    readonly entityManager: MockEntityManager
+    readonly counting: FakeQueryBuilder | undefined
+}
+
+/** A store whose live window of the caller holds `hits` after this hit: the counting UPDATE returns them. */
+const liveWindow = (hits: number): LiveWindow => {
+    const entityManager = mockEntityManager()
+    const [counting] = queueQueryBuilders(entityManager, [{ execute: { raw: [{ hits }] } }])
+    return { entityManager, counting }
+}
+
+/** The answers of a store where this hit opens the caller's window (no live or ended one) and the prune finds none ended. */
+const OPENING_WINDOW = {
+    update: [RateWindowEntity, { affected: 0 }],
+    find: [RateWindowEntity, []],
+} as const
+
+/** The counting UPDATE of a hit that finds no live window: it returns no row. */
+const NO_LIVE_WINDOW = { execute: { raw: [] } } as const
 
 const build = async (entityManager: MockEntityManager, tier?: RateTier, exceeded?: RateLimitExceeded) => {
     const reflector = mock<Reflector>()
@@ -61,7 +87,7 @@ describe("RateLimit", () => {
     it("marks a door with the tier it declares, and the guard counts it under that tier's limit", async () => {
         class Door {}
         RateLimit(RateTier.Strict)(Door)
-        const entityManager = mockEntityManager({ query: [HIT_RATE_WINDOW, [{ hits: 2 }]] })
+        const { entityManager, counting } = liveWindow(2)
         const { guard, reflector } = await build(entityManager, RateTier.Strict)
         const handler = () => undefined
 
@@ -70,11 +96,7 @@ describe("RateLimit", () => {
             code: HttpSecurityErrorCode.RateLimited,
         })
         expect(reflector.getAllAndOverride).toHaveBeenCalledWith("platform.http-security.rate-tier", [handler, Door])
-        expect(entityManager.query).toHaveBeenCalledWith(HIT_RATE_WINDOW, [
-            "strict:127.0.0.1",
-            new Date(AT),
-            new Date(RESET_AT),
-        ])
+        expect(counting?.callsOf("where")).toEqual([[{ key: "strict:127.0.0.1", resetAt: MoreThan(new Date(AT)) }]])
     })
 
     it("marks a redirect-only door with its exceeded redirect beside the tier", () => {
@@ -96,70 +118,126 @@ describe("RateLimit", () => {
 })
 
 describe("RateLimitGuard", () => {
-    it("admits a caller under the default limit of an unmarked door, counting in the shared window", async () => {
-        const entityManager = mockEntityManager({ query: [HIT_RATE_WINDOW, [{ hits: 2 }]] })
+    it("admits a caller under the default limit of an unmarked door, counting in the shared live window", async () => {
+        const { entityManager, counting } = liveWindow(2)
         const { guard } = await build(entityManager)
 
         await expect(guard.canActivate(contextOf("127.0.0.1"))).resolves.toBe(true)
-        expect(entityManager.query).toHaveBeenCalledWith(HIT_RATE_WINDOW, [
-            "default:127.0.0.1",
-            new Date(AT),
-            new Date(RESET_AT),
-        ])
+        expect(counting?.callsOf("update")).toEqual([[]])
+        expect(counting?.callsOf("returning")).toEqual([["hits"]])
+        expect(counting?.callsOf("where")).toEqual([[{ key: "default:127.0.0.1", resetAt: MoreThan(new Date(AT)) }]])
+        expect(entityManager.update).not.toHaveBeenCalled()
+    })
+
+    it("counts with an increment the database evaluates, so concurrent hits never overwrite each other", async () => {
+        const { entityManager, counting } = liveWindow(2)
+        const { guard } = await build(entityManager)
+
+        await guard.canActivate(contextOf("127.0.0.1"))
+
+        const assignment: unknown = counting?.callsOf("set")[0]?.[0]
+        const increment: unknown =
+            typeof assignment === "object" &&
+            assignment !== null &&
+            "hits" in assignment &&
+            typeof assignment.hits === "function"
+                ? Reflect.apply(assignment.hits, undefined, [])
+                : undefined
+        expect(increment).toBe("hits + 1")
     })
 
     it("refuses a caller whose shared window is over the default limit", async () => {
-        const { guard } = await build(mockEntityManager({ query: [HIT_RATE_WINDOW, [{ hits: 3 }]] }))
+        const { guard } = await build(liveWindow(3).entityManager)
 
         await expect(guard.canActivate(contextOf("127.0.0.1"))).rejects.toMatchObject({
             code: HttpSecurityErrorCode.RateLimited,
         })
     })
 
-    it("prunes the expired windows when a hit opens a fresh one", async () => {
-        const entityManager = mockEntityManager({
-            query: [
-                [HIT_RATE_WINDOW, [{ hits: 1 }]],
-                [PRUNE_RATE_WINDOWS, []],
-            ],
+    it("refuses to count from a returned row that is not the window's hits", async () => {
+        const entityManager = mockEntityManager()
+        queueQueryBuilders(entityManager, [{ execute: { raw: [{ hits: "2" }] } }])
+        const { guard } = await build(entityManager)
+
+        await expect(guard.canActivate(contextOf("127.0.0.1"))).rejects.toMatchObject({
+            code: "DATABASE_RETURNING_ROW_REJECTED",
         })
+    })
+})
+
+describe("RateLimitGuard opening a window", () => {
+    it("restarts an ended window at one hit and prunes the ended windows", async () => {
+        const ended = windowOf(5)
+        const entityManager = mockEntityManager({
+            update: [RateWindowEntity, { affected: 1 }],
+            find: [RateWindowEntity, [ended]],
+            delete: [RateWindowEntity, { affected: 1 }],
+        })
+        queueQueryBuilders(entityManager, [NO_LIVE_WINDOW])
         const { guard } = await build(entityManager)
 
         await expect(guard.canActivate(contextOf("127.0.0.1"))).resolves.toBe(true)
-        expect(entityManager.query).toHaveBeenCalledWith(PRUNE_RATE_WINDOWS, [new Date(AT)])
+        expect(entityManager.update).toHaveBeenCalledWith(
+            RateWindowEntity,
+            { key: "default:127.0.0.1", resetAt: LessThanOrEqual(new Date(AT)) },
+            { hits: 1, resetAt: new Date(RESET_AT) },
+        )
+        expect(entityManager.find).toHaveBeenCalledWith(RateWindowEntity, {
+            select: { key: true },
+            where: { resetAt: LessThanOrEqual(new Date(AT)) },
+            order: { resetAt: "ASC" },
+            take: 100,
+        })
+        expect(entityManager.delete).toHaveBeenCalledWith(RateWindowEntity, {
+            key: In([ended.key]),
+            resetAt: LessThanOrEqual(new Date(AT)),
+        })
     })
 
+    it("opens a missing window at one hit, ignoring a concurrent opener, and deletes nothing when no window ended", async () => {
+        const entityManager = mockEntityManager(OPENING_WINDOW)
+        const [, opened] = queueQueryBuilders(entityManager, [NO_LIVE_WINDOW, { execute: {} }])
+        const { guard } = await build(entityManager)
+
+        await expect(guard.canActivate(contextOf("127.0.0.1"))).resolves.toBe(true)
+        expect(opened?.callsOf("values")).toEqual([
+            [{ key: "default:127.0.0.1", hits: 1, resetAt: new Date(RESET_AT) }],
+        ])
+        expect(opened?.callsOf("orIgnore")).toEqual([[]])
+        expect(entityManager.delete).not.toHaveBeenCalled()
+    })
+
+    it("opens a window when the restart answers no affected count", async () => {
+        const entityManager = mockEntityManager({
+            update: [RateWindowEntity, {}],
+            find: [RateWindowEntity, []],
+        })
+        const [, opened] = queueQueryBuilders(entityManager, [NO_LIVE_WINDOW, { execute: {} }])
+        const { guard } = await build(entityManager)
+
+        await expect(guard.canActivate(contextOf("127.0.0.1"))).resolves.toBe(true)
+        expect(opened?.callsOf("insert")).toEqual([[]])
+    })
+})
+
+describe("RateLimitGuard keys", () => {
     it("counts a request without an address under the unknown key", async () => {
-        const entityManager = mockEntityManager({ query: [HIT_RATE_WINDOW, [{ hits: 2 }]] })
+        const { entityManager, counting } = liveWindow(2)
         const { guard } = await build(entityManager)
 
         await expect(guard.canActivate(contextOf(undefined))).resolves.toBe(true)
-        expect(entityManager.query).toHaveBeenCalledWith(HIT_RATE_WINDOW, [
-            "default:unknown",
-            new Date(AT),
-            new Date(RESET_AT),
-        ])
+        expect(counting?.callsOf("where")).toEqual([[{ key: "default:unknown", resetAt: MoreThan(new Date(AT)) }]])
     })
 
     it("bounds the window key to the length the table stores", async () => {
-        const entityManager = mockEntityManager({ query: [HIT_RATE_WINDOW, [{ hits: 2 }]] })
+        const { entityManager, counting } = liveWindow(2)
         const { guard } = await build(entityManager)
 
         await guard.canActivate(contextOf("f".repeat(300)))
 
-        expect(entityManager.query).toHaveBeenCalledWith(HIT_RATE_WINDOW, [
-            `default:${"f".repeat(120)}`,
-            new Date(AT),
-            new Date(RESET_AT),
+        expect(counting?.callsOf("where")).toEqual([
+            [{ key: `default:${"f".repeat(120)}`, resetAt: MoreThan(new Date(AT)) }],
         ])
-    })
-
-    it("refuses the request when the store answers no window", async () => {
-        const { guard } = await build(mockEntityManager({ query: [HIT_RATE_WINDOW, []] }))
-
-        await expect(guard.canActivate(contextOf("127.0.0.1"))).rejects.toMatchObject({
-            code: HttpSecurityErrorCode.RateLimited,
-        })
     })
 })
 
@@ -173,8 +251,7 @@ describe("RateLimitGuard on a redirect-only door", () => {
     }
 
     it("answers the door's own 303 when the caller is over the limit, and still refuses", async () => {
-        const entityManager = mockEntityManager({ query: [HIT_RATE_WINDOW, [{ hits: 2 }]] })
-        const { guard } = await build(entityManager, RateTier.Strict, EXCEEDED)
+        const { guard } = await build(liveWindow(2).entityManager, RateTier.Strict, EXCEEDED)
         const { response, redirect } = responseOf()
 
         await expect(
@@ -184,12 +261,8 @@ describe("RateLimitGuard on a redirect-only door", () => {
     })
 
     it("writes no redirect while the caller is under the limit", async () => {
-        const entityManager = mockEntityManager({
-            query: [
-                [HIT_RATE_WINDOW, [{ hits: 1 }]],
-                [PRUNE_RATE_WINDOWS, []],
-            ],
-        })
+        const entityManager = mockEntityManager(OPENING_WINDOW)
+        queueQueryBuilders(entityManager, [NO_LIVE_WINDOW, { execute: {} }])
         const { guard } = await build(entityManager, RateTier.Strict, EXCEEDED)
         const { response, redirect } = responseOf()
 
@@ -200,8 +273,7 @@ describe("RateLimitGuard on a redirect-only door", () => {
     })
 
     it("refuses a GraphQL operation over the limit without writing a redirect", async () => {
-        const entityManager = mockEntityManager({ query: [HIT_RATE_WINDOW, [{ hits: 2 }]] })
-        const { guard } = await build(entityManager, RateTier.Strict, EXCEEDED)
+        const { guard } = await build(liveWindow(2).entityManager, RateTier.Strict, EXCEEDED)
         const { response, redirect } = responseOf()
         const context = contextOf("127.0.0.1", () => undefined, class Door {}, response)
         context.getType.mockReturnValue("graphql")

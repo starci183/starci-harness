@@ -13,11 +13,11 @@ import { composeIncludePaths, swarmInventoryIssues, swarmModelIssues } from '../
 import { swarmHardeningIssues } from './rules/stacks-swarm.mjs';
 import { ingressIssues } from './rules/stacks-ingress.mjs';
 import { monitoringIssues } from './rules/stacks-monitoring.mjs';
-import { liteBackingIssues } from './rules/stacks-lite-backing.mjs';
+import { backingIssues } from './rules/stacks-backing.mjs';
 import { releaseBackupIssues, scheduleIssues } from './rules/stacks-release.mjs';
 import { stacksDeploymentContexts } from './rules/stacks-runtime.mjs';
 import { readJson } from './rules/read.mjs';
-import { applicationStackFindings, liteCustodyDirectory } from './starcistacks-runtime.mjs';
+import { applicationStackFindings, custodyDirectory } from './starcistacks-runtime.mjs';
 
 // reason: the stacks manifest, rendered deployment model, schema and HFS declaration are parsed from disk; this gate validates them structurally.
 type Parsed = any;
@@ -225,7 +225,7 @@ const checkStackEntry=(entry: fs.Dirent,environmentNames: Set<string>,add: Add,{
   if(entry.name==='tmp'){add('STACKS_SCRATCH_IN_CANONICAL',`${STACKS_DIR}/tmp`,'scratch belongs in the OS temp directory, not a tracked .starcistacks/tmp');return;}
   if(entry.name==='k8s')return;
   if(RESERVED_STACK_FOLDERS.has(entry.name))return; // the check cache, the service image folders and the shared seed level (rules/stacks.mts): reserved, never an environment
-  if(liteCustodyDirectory(path.join(stacksRoot,entry.name)))return;
+  if(custodyDirectory(path.join(stacksRoot,entry.name)))return;
   if(!environmentNames.has(entry.name))add('STACKS_UNDECLARED_ENVIRONMENT',`${STACKS_DIR}/${entry.name}`,`${entry.name} is not an environment the declaration admits; either the declaration admits it or it is not an environment`);
 };
 const checkDeclaredEnvironmentDirs=(stacksRoot: string,environmentNames: Set<string>,add: Add): void=>{
@@ -414,7 +414,7 @@ function checkSwarmHardening({manifest,model,environment,root,files,repo,errors,
     return;
   }
   const context={doc:manifest,environment,spec,model,repoRoot:root,files,repo};
-  for(const finder of [swarmHardeningIssues,ingressIssues,monitoringIssues,liteBackingIssues,releaseBackupIssues,scheduleIssues])
+  for(const finder of [swarmHardeningIssues,ingressIssues,monitoringIssues,backingIssues,releaseBackupIssues,scheduleIssues])
     for(const issue of finder(context))add(issue.code,issue.at,issue.message);
 }
 

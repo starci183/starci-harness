@@ -29,21 +29,22 @@ export class QueueModule extends ConfigurableModuleClass {
     /** Registers the capability once per app that enqueues or processes jobs. */
     static register(options: typeof OPTIONS_TYPE): DynamicModule {
         const base = super.register(options)
+        const writerProviders = [
+            ...(base.providers ?? []),
+            QueueOutboxService,
+            { provide: QUEUE_OUTBOX, useExisting: QueueOutboxService },
+        ]
         if (options.outboxOnly === true) {
             return {
                 ...base,
-                providers: [
-                    ...(base.providers ?? []),
-                    QueueOutboxService,
-                    { provide: QUEUE_OUTBOX, useExisting: QueueOutboxService },
-                ],
+                providers: writerProviders,
                 exports: [QUEUE_OUTBOX],
             }
         }
         return {
             ...base,
             providers: [
-                ...(base.providers ?? []),
+                ...writerProviders,
                 {
                     provide: QUEUE_RELAY_MANAGERS,
                     useFactory: (...managers: Array<EntityManager>) => managers,
@@ -52,7 +53,8 @@ export class QueueModule extends ConfigurableModuleClass {
                 {
                     provide: QUEUE_FACTORY,
                     useValue: {
-                        queue: (name: string, options: BullmqConnection): BullmqQueue => new Queue(name, options),
+                        queue: (name: string, options: BullmqConnection): BullmqQueue =>
+                            new Queue<object>(name, options),
                         worker: (
                             name: string,
                             processor: (job: BullmqJob) => Promise<void>,
@@ -62,10 +64,8 @@ export class QueueModule extends ConfigurableModuleClass {
                 },
                 BullmqQueueTransportClient,
                 { provide: QUEUE_TRANSPORT, useExisting: BullmqQueueTransportClient },
-                QueueOutboxService,
                 QueueRelayService,
                 QueueWorkerService,
-                { provide: QUEUE_OUTBOX, useExisting: QueueOutboxService },
                 { provide: QUEUE_WORKER_REGISTRY, useExisting: QueueWorkerService },
             ],
             exports: [QUEUE_OUTBOX, QUEUE_WORKER_REGISTRY, QUEUE_TRANSPORT],

@@ -1,4 +1,4 @@
-// proves: HFS_EVENT_CONTRACT@lite HFS_EVENT_CONTRACT@full
+// proves: HFS_EVENT_CONTRACT
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -33,20 +33,20 @@ function check(edition: string, override: Record<string, string | null> = {}) {
 }
 
 for (const edition of ['lite'] as const) {
-  test(`${edition} HFS_EVENT_CONTRACT passes matching literal tables and snapshot`, () => {
+  test(`HFS_EVENT_CONTRACT passes matching literal tables and snapshot`, () => {
     assert.deepEqual(check(edition), []);
   });
-  test(`${edition} HFS_EVENT_CONTRACT refuses missing, stale and invalid snapshots`, () => {
+  test(`HFS_EVENT_CONTRACT refuses missing, stale and invalid snapshots`, () => {
     for (const snapshot of [null, '{}', '{broken']) {
       assert.ok(check(edition, { [SNAPSHOT]: snapshot }).some((finding) => finding.code === 'HFS_EVENT_CONTRACT'));
     }
   });
-  test(`${edition} HFS_EVENT_CONTRACT refuses unknown providers, events and versions`, () => {
+  test(`HFS_EVENT_CONTRACT refuses unknown providers, events and versions`, () => {
     for (const table of ['{ missing: { "order.placed": 1 } }', '{ core: { "order.unknown": 1 } }', '{ core: { "order.placed": 99 } }']) {
       assert.ok(check(edition, { [CONSUMER]: `export const CONSUMES = ${table} as const;` }).some((finding) => finding.code === 'HFS_EVENT_CONTRACT'));
     }
   });
-  test(`${edition} HFS_EVENT_CONTRACT refuses nonliteral tables and unknown compensation`, () => {
+  test(`HFS_EVENT_CONTRACT refuses nonliteral tables and unknown compensation`, () => {
     for (const file of [PROVIDER, CONSUMER]) {
       const name = file === PROVIDER ? 'EVENTS' : 'CONSUMES';
       assert.ok(check(edition, { [file]: `export const ${name} = dynamic();` }).some((finding) => finding.code === 'HFS_EVENT_CONTRACT'));

@@ -1,5 +1,5 @@
-// proves: HFS_PLAINTEXT_SECRET@lite
-// proves: HFS_PLAINTEXT_SECRET@full
+// proves: HFS_PLAINTEXT_SECRET
+// proves: HFS_PLAINTEXT_SECRET
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -41,12 +41,12 @@ for (const edition of ['lite'] as const) {
   });
 }
 
-for (const edition of ['lite'] as const) {
-  test(`${edition}: staged hygiene and file judgement reject plaintext secret paths`, () => {
+{
+  test(`staged hygiene and file judgement reject plaintext secret paths`, () => {
     assert.equal(hygieneFindings(['.starcistacks/dev/secrets/app.txt'], new Set())[0]?.code, code);
     assert.equal(secretFileFindings({ file: '.env', text: '' })[0]?.code, code);
   });
-  test(`${edition}: staged hygiene and file judgement accept public configuration`, () => {
+  test(`staged hygiene and file judgement accept public configuration`, () => {
     assert.deepEqual(hygieneFindings(['.starcistacks/dev/config.json'], new Set()), []);
     assert.deepEqual(hygieneFindings(['.starcistacks/dev/secrets/.gitkeep'], new Set()), [], 'the empty placeholder that keeps the custody directory tracked holds no secret');
     assert.equal(hygieneFindings(['.starcistacks/dev/secrets/nested/.gitkeep.txt'], new Set())[0]?.code, code);

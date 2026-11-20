@@ -3,10 +3,10 @@
  *
  *   node --test src/skeleton-states.spec.ts
  */
-// proves: FE_SWR_DEFAULT_ARRAY@lite FE_SWR_DEFAULT_ARRAY@full
-// proves: FE_FOREIGN_SLOT_STATUS@lite FE_FOREIGN_SLOT_STATUS@full
-// proves: FE_VALIDATING_AS_LOADING@lite FE_VALIDATING_AS_LOADING@full
-// proves: FE_PLACEHOLDER_OBJECT@lite FE_PLACEHOLDER_OBJECT@full
+// proves: FE_SWR_DEFAULT_ARRAY
+// proves: FE_FOREIGN_SLOT_STATUS
+// proves: FE_VALIDATING_AS_LOADING
+// proves: FE_PLACEHOLDER_OBJECT
 import assert from "node:assert/strict"
 import test from "node:test"
 import ts from "typescript"

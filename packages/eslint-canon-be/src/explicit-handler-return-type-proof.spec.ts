@@ -1,5 +1,5 @@
-// proves: BE_RETURN_TYPE@lite
-// proves: BE_RETURN_TYPE@full
+// proves: BE_RETURN_TYPE
+// proves: BE_RETURN_TYPE
 import test from 'node:test';
 import { explicitHandlerReturnType } from './type-safety.ts';
 import { appDeclaration } from '../fixtures/app.ts';

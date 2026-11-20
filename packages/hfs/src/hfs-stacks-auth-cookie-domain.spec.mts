@@ -1,4 +1,4 @@
-// proves: HFS_AUTH_COOKIE_DOMAIN_MISSING@lite
+// proves: HFS_AUTH_COOKIE_DOMAIN_MISSING
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -137,7 +137,7 @@ function app(files: string[], { web, api, cookieDomain }: ModelOptions = {}) {
   return { root, all, dispose };
 }
 
-test('the finder: a lite app with the skeleton passport and different hosts is reported at the stack file', () => {
+test('the finder: an app with the skeleton passport and different hosts is reported at the stack file', () => {
   const { root, all, dispose } = app([PASSPORT]);
   try {
     const findings = stacksAuthCookieDomainFindings({ repoRoot: root, all, files: all, isRoot: true, repo: { profile: 'app' } });
@@ -156,7 +156,7 @@ test('the finder: key set to the parent is clean; same host is clean; no passpor
   const same = app([PASSPORT], { web: 'https://example.com', api: 'https://example.com' });
   const bare = app([]);
   try {
-    const context = ({ root, all }: { root: string; all: string[] }) => ({ repoRoot: root, all, files: all, isRoot: true, repo: { edition: 'lite', profile: 'app' } });
+    const context = ({ root, all }: { root: string; all: string[] }) => ({ repoRoot: root, all, files: all, isRoot: true, repo: { profile: 'app' } });
     assert.deepEqual(stacksAuthCookieDomainFindings(context(set)), []);
     assert.deepEqual(stacksAuthCookieDomainFindings(context(same)), []);
     assert.deepEqual(stacksAuthCookieDomainFindings(context(bare)), []);

@@ -1,7 +1,7 @@
-// proves: HFS_EXT_INVALID@lite
-// proves: HFS_EXT_INVALID@full
-// proves: HFS_EXT_API_MISMATCH@lite
-// proves: HFS_EXT_API_MISMATCH@full
+// proves: HFS_EXT_INVALID
+// proves: HFS_EXT_INVALID
+// proves: HFS_EXT_API_MISMATCH
+// proves: HFS_EXT_API_MISMATCH
 // The project extension folder (PROJECT-LINT-3, R381): a project adds its own laws in ext/ at the app root, declared in ext/manifest.json. The app
 // check runs its machine rules under the rules' own codes (its project checks are R402, project-checks.spec.mts), the canon factories load its ESLint rules, and an extension that
 // tries to do anything but add a rule, declares what is not there or targets another API version lends nothing while the check is red.

@@ -1,5 +1,5 @@
-// proves: FE_VENDOR_BOUNDARY@lite
-// proves: FE_VENDOR_BOUNDARY@full
+// proves: FE_VENDOR_BOUNDARY
+// proves: FE_VENDOR_BOUNDARY
 import test from 'node:test';
 import tsParser from '@typescript-eslint/parser';
 import { RuleTester } from 'eslint';

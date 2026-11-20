@@ -1,7 +1,7 @@
-// proves: BE_SCHEMA_PLACE@lite
-// proves: BE_SCHEMA_PLACE@full
-// proves: BE_SCHEMA_BOUNDED@lite
-// proves: BE_SCHEMA_BOUNDED@full
+// proves: BE_SCHEMA_PLACE
+// proves: BE_SCHEMA_PLACE
+// proves: BE_SCHEMA_BOUNDED
+// proves: BE_SCHEMA_BOUNDED
 /**
  * Twin tests for the boundary-schema rules (R304 `BE_SCHEMA_PLACE`, R305 `BE_SCHEMA_BOUNDED`).
  *

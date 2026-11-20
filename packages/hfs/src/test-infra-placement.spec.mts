@@ -1,5 +1,5 @@
-// proves: BE_TEST_TOPOLOGY@lite BE_TEST_TOPOLOGY@full
-// proves: BE_SPEC_WORLD_MISSING@lite BE_SPEC_WORLD_MISSING@full
+// proves: BE_TEST_TOPOLOGY
+// proves: BE_SPEC_WORLD_MISSING
 // R47 / BE-TEST-12: test infrastructure lives only in src/tests/world/, no test overrides a provider, and every integration or
 // e2e spec gets its world from useTestWorld of src/tests/world/use-test-world. Lite carries e2e flows too (useTestWorld({ apps })).
 import test from 'node:test';
@@ -59,7 +59,7 @@ for (const edition of ['lite'] as const) {
     const topology = hits.filter((hit) => hit.code === 'BE_TEST_TOPOLOGY' && hit.path === 'src/tests/fixtures/e2e/world.ts');
     const messages = topology.map((hit) => hit.message);
     for (const needle of ['imports @nestjs/testing', 'imports an app module', 'calls createTestingModule', 'calls .listen(', 'overrideProvider(...)']) {
-      assert.ok(messages.some((message) => message.includes(needle)), `${edition}: expected a finding for ${needle}`);
+      assert.ok(messages.some((message) => message.includes(needle)), `expected a finding for ${needle}`);
     }
     assert.ok(topology.every((hit) => hit.level === 'error'));
   });

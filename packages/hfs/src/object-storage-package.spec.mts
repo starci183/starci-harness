@@ -9,7 +9,7 @@ import { parseYaml } from '../runtime/engine/yaml.mjs';
 import { loadSlotManifest } from '../runtime/scripts/hfs/slots.mjs';
 
 const REPOSITORY = path.resolve(import.meta.dirname, '..', '..', '..');
-const STARTER = path.join(import.meta.dirname, '..', 'templates', 'be', 'skeleton-lite');
+const STARTER = path.join(import.meta.dirname, '..', 'templates', 'be', 'skeleton');
 const GLUE = path.join(STARTER, 'src', 'modules', 'integrations', 'object-storage');
 const manifest = loadSlotManifest();
 const readJson = (file: string) => JSON.parse(fs.readFileSync(file, 'utf8')); // reason: parsed package.json
@@ -35,7 +35,7 @@ test('the package depends on the S3 libraries at exactly the versions the stack 
   assert.equal(stack['@starci/object-storage'].version, manifestOf.version);
 });
 
-test('the lite starter imports the package in its object-storage folder alone and the AWS S3 libraries nowhere', () => {
+test('the starter imports the package in its object-storage folder alone and the AWS S3 libraries nowhere', () => {
   const importers = new Set<string>();
   for (const file of sources(STARTER)) {
     const text = fs.readFileSync(file, 'utf8');

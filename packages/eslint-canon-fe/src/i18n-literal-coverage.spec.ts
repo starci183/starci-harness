@@ -1,5 +1,5 @@
-// proves: FE_I18N_LITERAL@lite
-// proves: FE_I18N_LITERAL@full
+// proves: FE_I18N_LITERAL
+// proves: FE_I18N_LITERAL
 import test from 'node:test';
 import tsParser from '@typescript-eslint/parser';
 import { RuleTester } from 'eslint';

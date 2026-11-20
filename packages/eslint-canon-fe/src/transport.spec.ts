@@ -147,7 +147,7 @@ test("FE-TRANSPORT-1: fetch is reached in the API layer and nowhere else; Apollo
   }))
 })
 
-// proves: FE_TRANSPORT_OWNER@lite, FE_TRANSPORT_OWNER@full
+// proves: FE_TRANSPORT_OWNER, FE_TRANSPORT_OWNER
 test("FE_TRANSPORT_OWNER: native WebSocket is refused and socket.io-client belongs to hooks/socketio in lite and full", () => {
   for (const edition of ['lite'] as const) {
     const declaration = edition === "lite" ? LITE_FE_DECLARATION : undefined
@@ -487,7 +487,7 @@ test("FE-OUTCOME-1: a result union is declared once, in the outcome slot", () =>
   }))
 })
 
-test("FE-OUTCOME-2: lite = full: modules/api/graphql/types.ts is the one home, and modules/db holds no union in either edition", () => {
+test("FE-OUTCOME-2: lite =: modules/api/graphql/types.ts is the one home, and modules/db holds no union in either edition", () => {
   const UNION = "export type Result<T> = { success: true; data: T } | { success: false; error: string }"
   for (const run of [typedLite, typed]) {
     assert.doesNotThrow(() => run.run("one-outcome-union", oneOutcomeUnion, {

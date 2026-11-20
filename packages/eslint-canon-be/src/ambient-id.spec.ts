@@ -1,5 +1,5 @@
-// proves: BE_AMBIENT_ID@lite
-// proves: BE_AMBIENT_ID@full
+// proves: BE_AMBIENT_ID
+// proves: BE_AMBIENT_ID
 /**
  * Tests for `no-ambient-id` (R142 BE_AMBIENT_ID).
  *

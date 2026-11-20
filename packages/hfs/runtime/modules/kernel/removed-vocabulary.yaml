@@ -375,7 +375,7 @@ removed:
   - id: file-supabase-queues-topic
     kind: file
     name: supabase-queues.yaml
-    use: 'the queue is BullMQ on Redis in both editions (R212): knowledge/patterns/be/queues.yaml owns the adapter, and each pattern topic''s liteAdapter says what lite uses with and without its declared backing service'
+    use: 'the queue is BullMQ on Redis in both editions (R212): knowledge/patterns/be/queues.yaml owns the adapter, and each pattern topic''s adapter says what lite uses with and without its declared backing service'
     since: 1.0.0-alpha.31
     match: '(?<![\w-])supabase-queues(?:\.yaml)?\b'
   - id: code-rt-gate-loosening

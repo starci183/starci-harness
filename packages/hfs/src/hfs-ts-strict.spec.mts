@@ -1,5 +1,5 @@
-// proves: HFS_TS_STRICT@lite
-// proves: HFS_TS_STRICT@full
+// proves: HFS_TS_STRICT
+// proves: HFS_TS_STRICT
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -28,7 +28,7 @@ const synced = (context: TestContext, edition: string) => {
 
 for (const edition of ['lite'] as const) {
   for (const relative of ['be/tsconfig.json', 'fe/tsconfig.json']) {
-    test(`${edition}: lowering strict in ${relative} fails and the preset render passes`, async context => {
+    test(`lowering strict in ${relative} fails and the preset render passes`, async context => {
       const { root, findings } = synced(context, edition);
       const file = path.join(root, relative);
       const rendered = fs.readFileSync(file, 'utf8');
@@ -48,13 +48,13 @@ for (const edition of ['lite'] as const) {
   }
 }
 
-for (const edition of ['lite'] as const) {
-  test(`${edition}: ts-strict rejects a lowered compiler flag`, () => {
+{
+  test(`ts-strict rejects a lowered compiler flag`, () => {
     const expected = JSON.stringify({ extends: '@starci/tsconfig/next.json', exclude: ['node_modules'] });
     const actual = JSON.stringify({ extends: '@starci/tsconfig/next.json', exclude: ['node_modules'], compilerOptions: { strict: false } });
     assert.equal(tsStrictFindings(actual, expected)[0]!.code, 'HFS_TS_STRICT');
   });
-  test(`${edition}: ts-strict accepts the strict preset configuration`, () => {
+  test(`ts-strict accepts the strict preset configuration`, () => {
     const expected = JSON.stringify({ extends: '@starci/tsconfig/next.json', exclude: ['node_modules'] });
     assert.deepEqual(tsStrictFindings(expected, expected), []);
   });

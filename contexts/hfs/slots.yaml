@@ -2480,7 +2480,7 @@ slots:
       socket.io gateway and the restricted GraphQL subscription; all run inside the be api
       process, which scales horizontally and stateless on the hub of its declared infrastructure;
       the front end listens through a useSubscribe<Channel>Swr hook over modules/api/sse, or
-      hooks/socketio (contexts/code/be/realtime.yaml, liteAdapter)"
+      hooks/socketio (contexts/code/be/realtime.yaml, adapter)"
     coverage: none
     rules:
       - BE_KIND_ISOLATION
@@ -2899,7 +2899,7 @@ slots:
       job id, workers retry a transient failure with exponential backoff and platform/jobs parks a
       job a retry cannot fix as failed_awaiting_fix until it is resumed; the outbox table comes from a db migration, and a schedule
       is a BullMQ job scheduler or a platform/jobs tick that writes one outbox row (R335)
-      (contexts/code/be/queues.yaml liteAdapter)"
+      (contexts/code/be/queues.yaml adapter)"
     requires:
       - index.ts
       - queue.module.ts
@@ -3210,7 +3210,7 @@ slots:
   - id: be.integrations.mail
     profiles: [be]
     exemplifiedBy:
-      - packages/hfs/templates/be/skeleton-lite/src/modules/integrations/mail/
+      - packages/hfs/templates/be/skeleton/src/modules/integrations/mail/
     # The glue of @starci/mail, the owner of the SMTP client (nodemailer): this folder parses the settings (the server, the sender and the
     # link lifetimes of the confirmation and reset mails), registers the module and names the injectors; no app file imports nodemailer,
     # and no other module imports the package. The words and layout of each mail belong to the domain that sends it.

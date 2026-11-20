@@ -1,6 +1,6 @@
 /** R84 keeps database construction and the declared connection map behind one owner. */
-// proves: BE_CONNECTION_DUPLICATE@lite
-// proves: BE_CONNECTION_DUPLICATE@full
+// proves: BE_CONNECTION_DUPLICATE
+// proves: BE_CONNECTION_DUPLICATE
 import assert from "node:assert/strict"
 import test from "node:test"
 import { BE_DECLARATION, TYPED_ROOT, at, ruleTester } from "../fixtures/typed/tester.ts"

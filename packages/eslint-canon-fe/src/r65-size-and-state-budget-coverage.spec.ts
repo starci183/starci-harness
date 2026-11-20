@@ -1,13 +1,13 @@
-// proves: FE_SIZE_AND_STATE_BUDGET@lite
-// proves: FE_SIZE_AND_STATE_BUDGET@full
-// proves: FE_LIST_KEY@lite
-// proves: FE_LIST_KEY@full
-// proves: FE_EFFECT_CLEANUP@lite
-// proves: FE_EFFECT_CLEANUP@full
-// proves: FE_SWALLOWED_ERROR@lite
-// proves: FE_SWALLOWED_ERROR@full
-// proves: FE_CONSOLE_CALL@lite
-// proves: FE_CONSOLE_CALL@full
+// proves: FE_SIZE_AND_STATE_BUDGET
+// proves: FE_SIZE_AND_STATE_BUDGET
+// proves: FE_LIST_KEY
+// proves: FE_LIST_KEY
+// proves: FE_EFFECT_CLEANUP
+// proves: FE_EFFECT_CLEANUP
+// proves: FE_SWALLOWED_ERROR
+// proves: FE_SWALLOWED_ERROR
+// proves: FE_CONSOLE_CALL
+// proves: FE_CONSOLE_CALL
 import assert from "node:assert/strict"
 import test from "node:test"
 import {

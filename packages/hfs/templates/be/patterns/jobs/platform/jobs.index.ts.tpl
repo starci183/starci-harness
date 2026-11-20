@@ -10,4 +10,3 @@ export { ParkedJobResumeRequestsService } from "./parked-job-resume-requests.ser
 export { ParkedJobResumerService } from "./parked-job-resumer.service"
 export { FencedProcessor } from "./fenced.processor"
 export { JOBS_MESSAGES } from "./messages/jobs.messages"
-export { jobsEntities, jobsMigrations } from "./persistence/connection"

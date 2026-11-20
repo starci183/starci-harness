@@ -1,7 +1,7 @@
-// proves: BE_SOURCE_FORM@lite
-// proves: BE_SOURCE_FORM@full
-// proves: BE_PUBLIC_CONTRACT_FORM@lite
-// proves: BE_PUBLIC_CONTRACT_FORM@full
+// proves: BE_SOURCE_FORM
+// proves: BE_SOURCE_FORM
+// proves: BE_PUBLIC_CONTRACT_FORM
+// proves: BE_PUBLIC_CONTRACT_FORM
 // The lint enforcers of R89; its repository enforcer (`source-suffix` of `starci app check`) is proved in packages/hfs/src/be-r89-source-suffix.spec.mjs.
 import test from 'node:test';
 import tsParser from '@typescript-eslint/parser';

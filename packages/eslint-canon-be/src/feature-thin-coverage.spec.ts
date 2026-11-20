@@ -1,5 +1,5 @@
-// proves: BE_FEATURE_THIN@lite
-// proves: BE_FEATURE_THIN@full
+// proves: BE_FEATURE_THIN
+// proves: BE_FEATURE_THIN
 import test from "node:test"
 import { BE_DECLARATION, TYPED_ROOT, at, ruleTester } from "../fixtures/typed/tester.ts"
 import { appDeclaration } from "../fixtures/app.ts"

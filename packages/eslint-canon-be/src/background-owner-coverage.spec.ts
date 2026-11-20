@@ -1,4 +1,4 @@
-// proves: BE_BACKGROUND_UNOWNED@lite BE_BACKGROUND_UNOWNED@full
+// proves: BE_BACKGROUND_UNOWNED
 import fs from "node:fs"
 import test from "node:test"
 import { projectFixture } from "../fixtures/project/tester.ts"

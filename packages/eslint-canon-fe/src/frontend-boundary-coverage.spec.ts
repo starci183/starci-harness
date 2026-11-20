@@ -1,5 +1,5 @@
-// proves: FE_SERVER_ACTION_FORBIDDEN@lite FE_SERVER_ACTION_FORBIDDEN@full
-// proves: FE_STACK_FORBIDDEN@lite FE_STACK_FORBIDDEN@full
+// proves: FE_SERVER_ACTION_FORBIDDEN
+// proves: FE_STACK_FORBIDDEN
 import test from 'node:test';
 import { RuleTester } from 'eslint';
 import tsParser from '@typescript-eslint/parser';

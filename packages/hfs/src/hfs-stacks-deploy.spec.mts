@@ -1,5 +1,5 @@
-// proves: STACKS_DEPLOY_CONFIG_INVALID@lite
-// proves: STACKS_DEPLOY_CONFIG_INVALID@full
+// proves: STACKS_DEPLOY_CONFIG_INVALID
+// proves: STACKS_DEPLOY_CONFIG_INVALID
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -221,7 +221,7 @@ test(`${CODE}: a missing declaration, a missing hfs.json and a non-mapping decla
 test(`${CODE}: only an app root is judged`, () => {
   const change = (m: Model) => { deployOf(m).extra = 1; };
   assert.equal(stacksDeployFindings(app('full', change)).length, 1);
-  for (const repo of [{ kind: 'be', edition: 'full' }, undefined]) {
+  for (const repo of [{ kind: 'be' }, undefined]) {
     // reason: the repo is deliberately not a Repo (wrong kind, unknown edition, none) to prove the finder ignores it.
     assert.deepEqual(stacksDeployFindings({ ...app('full', change), repo } as unknown as DeployInput), []);
   }

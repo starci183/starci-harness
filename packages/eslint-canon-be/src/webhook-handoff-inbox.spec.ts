@@ -1,5 +1,5 @@
 /** R263 proof: scalar and signed raw-body intakes cannot escape the inbox contract. */
-// proves: BE_WEBHOOK_INBOX_KEY@lite BE_WEBHOOK_INBOX_KEY@full
+// proves: BE_WEBHOOK_INBOX_KEY
 import assert from "node:assert/strict"
 import test from "node:test"
 import { BE_DECLARATION, TYPED_ROOT, at, ruleTester } from "../fixtures/typed/tester.ts"

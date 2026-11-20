@@ -1,7 +1,7 @@
-// proves: HFS_RELEASE_TAG_MISMATCH@lite
-// proves: HFS_RELEASE_TAG_MISMATCH@full
-// proves: HFS_DB_DEPLOY_UNGUARDED@lite
-// proves: HFS_DB_DEPLOY_UNGUARDED@full
+// proves: HFS_RELEASE_TAG_MISMATCH
+// proves: HFS_RELEASE_TAG_MISMATCH
+// proves: HFS_DB_DEPLOY_UNGUARDED
+// proves: HFS_DB_DEPLOY_UNGUARDED
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';

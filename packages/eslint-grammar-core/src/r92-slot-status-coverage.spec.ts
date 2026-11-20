@@ -1,5 +1,5 @@
 /** Edition proofs for StarCi's closed slot-status recipe. */
-// proves: FE_COMPONENT_API@lite FE_COMPONENT_API@full
+// proves: FE_COMPONENT_API
 import assert from "node:assert/strict"
 import test from "node:test"
 import { typedTester, at } from "../../eslint-canon-fe/fixtures/typed/tester.ts"

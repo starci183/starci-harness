@@ -1,7 +1,7 @@
-// proves: BE_KIND_DECLARATION@lite
-// proves: BE_KIND_DECLARATION@full
-// proves: BE_KIND_EMPTY@lite
-// proves: BE_KIND_EMPTY@full
+// proves: BE_KIND_DECLARATION
+// proves: BE_KIND_DECLARATION
+// proves: BE_KIND_EMPTY
+// proves: BE_KIND_EMPTY
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { kindFindings } from '../runtime/scripts/hfs/rules/kinds.mjs';
@@ -13,7 +13,7 @@ const declaration = { kinds: ['api', 'jobs'], patterns: ['fenced-job', 'queue'] 
 const context = (edition: string, files: string[], be: Record<string, unknown>) => ({ files, repo: { edition, sides: { be } } });
 
 for (const edition of ['lite'] as const) {
-  test(`${edition} BE_KIND_DECLARATION rejects an undeclared kind and an unused declaration`, () => {
+  test(`BE_KIND_DECLARATION rejects an undeclared kind and an unused declaration`, () => {
     const undeclared = kindFindings(context(edition, [...api, ...job, ...platform], {
       kinds: ['api'], patterns: ['fenced-job', 'queue'],
     }));
@@ -24,7 +24,7 @@ for (const edition of ['lite'] as const) {
     assert.match(unused[0]!.message, /no feature of that kind exists/);
   });
 
-  test(`${edition} BE_KIND_DECLARATION rejects missing patterns and platform capabilities`, () => {
+  test(`BE_KIND_DECLARATION rejects missing patterns and platform capabilities`, () => {
     const missingPattern = kindFindings(context(edition, [...api, ...job, ...platform], {
       kinds: ['api', 'jobs'], patterns: ['queue'],
     }));
@@ -35,25 +35,25 @@ for (const edition of ['lite'] as const) {
     assert.equal(missingCapability[0]!.capability, 'jobs');
   });
 
-  test(`${edition} BE_KIND_DECLARATION accepts used kinds with their declared patterns and tracked capabilities`, () => {
+  test(`BE_KIND_DECLARATION accepts used kinds with their declared patterns and tracked capabilities`, () => {
     assert.deepEqual(kindFindings(context(edition, [...api, ...job, ...platform], declaration)), []);
     assert.deepEqual(kindFindings(context(edition, api, { kinds: ['api'] })), []);
   });
 
-  test(`${edition} BE_KIND_EMPTY rejects a file directly in a kind folder`, () => {
+  test(`BE_KIND_EMPTY rejects a file directly in a kind folder`, () => {
     const findings = kindFindings(context(edition, [...api, 'be/src/features/jobs/.gitkeep'], { kinds: ['api'] }));
     assert.deepEqual(findings.map((finding) => finding.code), ['BE_KIND_EMPTY']);
     assert.equal(findings[0]!.path, 'be/src/features/jobs/.gitkeep');
   });
 
-  test(`${edition} BE_KIND_EMPTY rejects a kind member without TypeScript source`, () => {
+  test(`BE_KIND_EMPTY rejects a kind member without TypeScript source`, () => {
     const files = [...api, 'be/src/features/jobs/send/README.md', ...platform];
     const findings = kindFindings(context(edition, files, declaration));
     assert.deepEqual(findings.map((finding) => finding.code), ['BE_KIND_EMPTY']);
     assert.equal(findings[0]!.path, 'be/src/features/jobs/send/');
   });
 
-  test(`${edition} BE_KIND_EMPTY accepts populated kind members`, () => {
+  test(`BE_KIND_EMPTY accepts populated kind members`, () => {
     assert.deepEqual(kindFindings(context(edition, [...api, ...job, ...platform], declaration)), []);
   });
 }

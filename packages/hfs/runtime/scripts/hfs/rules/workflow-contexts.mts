@@ -98,7 +98,7 @@ export function workflowContextFindings({ path: file, text }: { path: string; te
   return findings;
 }
 
-/** Judge every tracked workflow in scope at the full or lite app root, using the shared workflow selector. */
+/** Judge every tracked workflow in scope at the full or app root, using the shared workflow selector. */
 export function workflowContextsFindings(ctx: Parsed) {
   return appWorkflowFindings(ctx, workflowContextFindings, { dedupe: true });
 }

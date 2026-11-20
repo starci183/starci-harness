@@ -682,7 +682,7 @@ files:
     rules: [BE_PATTERN_SPEC_MISSING]
     optional: true
 # Edition lite (R212): the same ports, doors and rules; it scales horizontally and stateless.
-liteAdapter:
+adapter:
   summary: >-
     Under lite the realtime pattern is the full one with its three doors: the SSE controller of be.feature.realtime.sse
     (transport/sse/<channel>.controller.ts, the default for one-way push), the socket.io gateway of be.feature.realtime.websocket

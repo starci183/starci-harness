@@ -1,5 +1,5 @@
-// proves: BE_ERROR_MASKED@lite
-// proves: BE_ERROR_MASKED@full
+// proves: BE_ERROR_MASKED
+// proves: BE_ERROR_MASKED
 import test from 'node:test';
 import { projectFixture } from '../fixtures/project/tester.ts';
 import { rules } from './project-graph.ts';

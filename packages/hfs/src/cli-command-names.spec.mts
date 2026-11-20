@@ -1,5 +1,5 @@
-// proves: BE_CLI_COMMAND_SHAPE@full
-// proves: BE_CLI_COMMAND_SHAPE@lite
+// proves: BE_CLI_COMMAND_SHAPE
+// proves: BE_CLI_COMMAND_SHAPE
 // R149 across files (rules/cli.mts): nest-commander matches a sub-command by its class name, so two command classes of one cli feature root
 // with one name are refused, and the cli pattern names a group's run sub-command `<Group>RunCli` (contexts/code/be/cli.md BE-CLI-2).
 import { test } from 'node:test';
@@ -31,7 +31,7 @@ export class ${name} extends CommandRunner {
 test('R149: two command classes that share a name are refused at both files; distinct names pass', (t) => {
   const into = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-cli-names-'));
   t.after(() => fs.rmSync(into, { recursive: true, force: true }));
-  const { root, files } = scaffoldApp({ name: 'demo', harness: HARNESS, into, edition: 'lite', presets: bundledPresets(), lock: lockedOk, initGit: init });
+  const { root, files } = scaffoldApp({ name: 'demo', harness: HARNESS, into, presets: bundledPresets(), lock: lockedOk, initGit: init });
   const put = (group: string, name: string): string => {
     const file = `be/src/features/cli/${group}/subs/run.cli.ts`;
     fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
@@ -52,7 +52,7 @@ test('R149: two command classes that share a name are refused at both files; dis
 test('R149: each cli feature root is judged apart: a name shared inside a client cli root is refused, one shared with the ops root passes', (t) => {
   const into = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-cli-names-'));
   t.after(() => fs.rmSync(into, { recursive: true, force: true }));
-  const { root, files } = scaffoldApp({ name: 'demo', harness: HARNESS, into, edition: 'lite', presets: bundledPresets(), lock: lockedOk, initGit: init });
+  const { root, files } = scaffoldApp({ name: 'demo', harness: HARNESS, into, presets: bundledPresets(), lock: lockedOk, initGit: init });
   const put = (group: string, name: string): string => {
     const file = `be/src/features/client-cli/relay/${group}/subs/run.cli.ts`;
     fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });

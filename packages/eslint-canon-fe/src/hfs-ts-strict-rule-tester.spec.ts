@@ -1,5 +1,5 @@
-// proves: FE_TYPE_ESCAPE@lite
-// proves: FE_TYPE_ESCAPE@full
+// proves: FE_TYPE_ESCAPE
+// proves: FE_TYPE_ESCAPE
 import test from 'node:test';
 import { RuleTester } from 'eslint';
 import tsParser from '@typescript-eslint/parser';

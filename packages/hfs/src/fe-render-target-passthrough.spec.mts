@@ -1,5 +1,5 @@
-// proves: FE_CONNECTED_BLOCK_RENDER_PAIR@lite FE_CONNECTED_BLOCK_RENDER_PAIR@full
-// proves: FE_WORLD_OWNER_RENDER_BOUNDARY@lite FE_WORLD_OWNER_RENDER_BOUNDARY@full
+// proves: FE_CONNECTED_BLOCK_RENDER_PAIR
+// proves: FE_WORLD_OWNER_RENDER_BOUNDARY
 // A pure component may hand a ReactNode prop on as it is (the canon forbids the fragment that would wrap it), so a function whose
 // every return is JSX, null or a read of its own props is a render target. A module value, a hook value or a call result is not.
 import test from 'node:test';
@@ -46,7 +46,7 @@ for (const edition of ['lite'] as const) {
     ['the old fragment form', 'export const FrameBase = (props: FrameBaseProps) => <>{props.active ? props.candidate : null}</>;'],
   ];
   for (const [name, component] of accepted) {
-    test(`${edition}: ${name} is a pure render target`, (t) => {
+    test(`${name} is a pure render target`, (t) => {
       assert.deepEqual(judged(t, edition, component), { pair: 0, owner: 0 });
     });
   }
@@ -58,7 +58,7 @@ for (const edition of ['lite'] as const) {
     ['only null', 'export const FrameBase = (props: FrameBaseProps): ReactNode => (props.active ? null : null);'],
   ];
   for (const [name, component] of refused) {
-    test(`${edition}: ${name} is not a pure render target`, (t) => {
+    test(`${name} is not a pure render target`, (t) => {
       const result = judged(t, edition, component);
       assert.equal(result.owner, 1);
     });

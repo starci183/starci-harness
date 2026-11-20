@@ -1,16 +1,15 @@
 import { Injectable, SetMetadata, applyDecorators, type CanActivate, type ExecutionContext } from "@nestjs/common"
 import type { Reflector } from "@nestjs/core"
 import type { Response } from "express"
-import type { EntityManager } from "typeorm"
+import { In, LessThanOrEqual, MoreThan, type EntityManager } from "typeorm"
 import { InjectClock, type Clock } from "@modules/platform/clock"
 import { InjectReflector, type DoorDecorator } from "@modules/platform/composition"
-import { InjectPrimaryEntityManager, returnedRows } from "@modules/platform/database"
+import { InjectPrimaryEntityManager, returnedRows, rowShape } from "@modules/platform/database"
 import { HttpSecurityError, HttpSecurityErrorCode } from "./errors/http-security.error"
 import { requestOf } from "./execution-request.mapper"
 import { InjectHttpSecurityOptions } from "./http-security.decorators"
 import type { HttpSecurityOptions } from "./http-security.options"
-import { isRateWindowRow } from "./persistence/rate-limit.rows"
-import { HIT_RATE_WINDOW, PRUNE_RATE_WINDOWS } from "./persistence/rate-limit.sql"
+import { RateWindowEntity } from "./persistence/entities/rate-window.entity"
 
 /** The rate limit tiers of a door. */
 export enum RateTier {
@@ -30,6 +29,10 @@ const RATE_TIER_KEY = "platform.http-security.rate-tier"
 const RATE_EXCEEDED_KEY = "platform.http-security.rate-exceeded"
 /** The longest window key the table stores: the tier, a colon and the caller address. */
 const KEY_MAX = 128
+/** The most ended windows one fresh window prunes. */
+const PRUNE_BATCH = 100
+/** The row the counting update returns: the hits of the live window, this one included. */
+const isCountedWindow = rowShape({ hits: "number" })
 
 /** A same-site path: one leading slash, never a protocol-relative `//` or `/\` that leaves the site. */
 const isSameSitePath = (location: string): boolean =>
@@ -52,8 +55,8 @@ export const RateLimit = (tier: RateTier, exceeded?: RateLimitExceeded): DoorDec
 @Injectable()
 /**
  * The first app guard: a fixed-window counter per caller address and tier, stamped by the Clock and kept in the primary
- * database, so every replica counts against the same window. A hit that opens a fresh window also prunes a bounded batch of
- * expired windows.
+ * database through its entity, so every replica counts against the same window. A hit that opens a fresh window also prunes
+ * a bounded batch of expired windows.
  */
 export class RateLimitGuard implements CanActivate {
     constructor(
@@ -76,13 +79,57 @@ export class RateLimitGuard implements CanActivate {
         const now = this.clock.now()
         const key = `${tier}:${requestOf(context).ip ?? "unknown"}`.slice(0, KEY_MAX)
         const resetAt = new Date(now.getTime() + this.options.rateLimit.windowMs)
-        const rows = returnedRows(await this.entityManager.query(HIT_RATE_WINDOW, [key, now, resetAt]), isRateWindowRow)
-        const hits = rows[0]?.hits ?? Number.POSITIVE_INFINITY
-        if (hits === 1) await this.entityManager.query(PRUNE_RATE_WINDOWS, [now])
+        const hits = await this.hit(key, now, resetAt)
+        if (hits === 1) await this.prune(now)
         if (hits <= limit) return true
         const exceeded = this.reflector.getAllAndOverride<RateLimitExceeded | undefined>(RATE_EXCEEDED_KEY, targets)
         if (exceeded !== undefined && context.getType() === "http")
             context.switchToHttp().getResponse<Response>().redirect(303, exceeded.redirect)
         throw new HttpSecurityError({ code: HttpSecurityErrorCode.RateLimited })
+    }
+
+    /**
+     * Counts one hit in the caller's window and answers the hits it holds: a live window grows by one in one UPDATE that
+     * returns its hits, an ended window restarts at one hit ending at `resetAt`, and a missing one opens at one hit (a
+     * concurrent opener's row wins and this hit is its first).
+     */
+    private async hit(key: string, now: Date, resetAt: Date): Promise<number> {
+        const counted = await this.entityManager
+            .createQueryBuilder(RateWindowEntity, "window")
+            .update()
+            .set({ hits: () => "hits + 1" })
+            .where({ key, resetAt: MoreThan(now) })
+            .returning("hits")
+            .execute()
+        const [live] = returnedRows(counted.raw, isCountedWindow)
+        if (live !== undefined) return live.hits
+        const restarted = await this.entityManager.update(
+            RateWindowEntity,
+            { key, resetAt: LessThanOrEqual(now) },
+            { hits: 1, resetAt },
+        )
+        if ((restarted.affected ?? 0) > 0) return 1
+        await this.entityManager
+            .createQueryBuilder(RateWindowEntity, "window")
+            .insert()
+            .values({ key, hits: 1, resetAt })
+            .orIgnore()
+            .execute()
+        return 1
+    }
+
+    /** Deletes a bounded batch of the windows that ended by `now`; a window a hit restarted meanwhile is kept. */
+    private async prune(now: Date): Promise<void> {
+        const ended = await this.entityManager.find(RateWindowEntity, {
+            select: { key: true },
+            where: { resetAt: LessThanOrEqual(now) },
+            order: { resetAt: "ASC" },
+            take: PRUNE_BATCH,
+        })
+        if (ended.length === 0) return
+        await this.entityManager.delete(RateWindowEntity, {
+            key: In(ended.map((window) => window.key)),
+            resetAt: LessThanOrEqual(now),
+        })
     }
 }

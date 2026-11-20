@@ -4,7 +4,7 @@ import { InjectClock, type Clock } from "@modules/platform/clock"
 import { isCorrelationId } from "@modules/platform/logging"
 import type { QueueOutbox } from "./queue.port"
 import { QueueError, QueueErrorCode } from "./errors/queue.error"
-import { INSERT_QUEUE_ROW } from "./persistence/queue.sql"
+import { callDbFunction } from "@modules/platform/database"
 
 @Injectable()
 /** The writing side of the queues: a job is a row of the outbox of the caller's transaction, so it exists exactly when the change that needs it commits. */
@@ -14,6 +14,6 @@ export class QueueOutboxService implements QueueOutbox {
     /** Writes the job in the outbox of the transaction `tx`; the relay adds it to BullMQ after the commit. */
     async write(tx: EntityManager, queue: string, payload: object, correlationId: string): Promise<void> {
         if (!isCorrelationId(correlationId)) throw new QueueError({ code: QueueErrorCode.CorrelationInvalid })
-        await tx.query(INSERT_QUEUE_ROW, [queue, JSON.stringify(payload), this.clock.now(), correlationId])
+        await callDbFunction(tx, "public.queue_write", [queue, JSON.stringify(payload), this.clock.now(), correlationId])
     }
 }

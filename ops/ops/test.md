@@ -7,8 +7,8 @@ perRecord: true
 context:
   budget: 30000
   base:
-    - harness:contexts/project/anatomy-{edition}-be.md
-    - harness:contexts/project/{edition}.md
+    - harness:contexts/project/anatomy-be.md
+    - harness:contexts/project/edition.md
     - {file: "harness:contexts/code/README.md", shared: true}
     - {file: "harness:contexts/code/shared/README.md", shared: true}
     - {file: "harness:contexts/code/shared/typing.md", shared: true}

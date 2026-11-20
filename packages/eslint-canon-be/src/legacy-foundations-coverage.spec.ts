@@ -1,7 +1,7 @@
-// proves: BE_LOGGER_REQUIRED@lite BE_LOGGER_REQUIRED@full
-// proves: BE_DEFAULT_DENY@lite BE_DEFAULT_DENY@full
-// proves: BE_INPUT_BOUNDED@lite BE_INPUT_BOUNDED@full
-// proves: BE_CONFIG_OWNER@lite BE_CONFIG_OWNER@full
+// proves: BE_LOGGER_REQUIRED
+// proves: BE_DEFAULT_DENY
+// proves: BE_INPUT_BOUNDED
+// proves: BE_CONFIG_OWNER
 import test from "node:test"
 import { appDeclaration } from "../fixtures/app.ts"
 import { at, BE_DECLARATION, ruleTester, TYPED_ROOT } from "../fixtures/typed/tester.ts"

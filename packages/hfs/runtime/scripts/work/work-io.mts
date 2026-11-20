@@ -55,7 +55,7 @@ export function parseUiRef(ref: unknown): { id: string; path: string } | null {
   return m ? { id: m[1] ?? '', path: m[2] ?? '' } : null;
 }
 
-/** The Work root enclosing `dir`: the nearest workspace or `.starciwork`; an enclosing lite `.starciwork` owns its whole tree. */
+/** The Work root enclosing `dir`: the nearest workspace or `.starciwork`; an enclosing `.starciwork` owns its whole tree. */
 export function workRootOf(dir: string): string | null {
   let workspaceRoot: string | null = null;
   for (let at = path.resolve(dir), prev: string | null = null; ; prev = at, at = path.dirname(at)) {

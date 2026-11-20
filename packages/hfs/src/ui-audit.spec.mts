@@ -1,21 +1,21 @@
-// proves: UI_AUDIT_MISSING@lite
-// proves: UI_AUDIT_MISSING@full
-// proves: UI_AUDIT_INVALID@lite
-// proves: UI_AUDIT_INVALID@full
-// proves: UI_AUDIT_STALE@lite
-// proves: UI_AUDIT_STALE@full
-// proves: UI_AUDIT_SELF_REVIEW@lite
-// proves: UI_AUDIT_SELF_REVIEW@full
-// proves: UI_AUDIT_ROUNDS_FEW@lite
-// proves: UI_AUDIT_ROUNDS_FEW@full
-// proves: UI_AUDIT_OPEN@lite
-// proves: UI_AUDIT_OPEN@full
-// proves: UI_AUDIT_NEEDS_OWNER@lite
-// proves: UI_AUDIT_NEEDS_OWNER@full
-// proves: UI_AUDIT_CONSIDERED_EMPTY@lite
-// proves: UI_AUDIT_CONSIDERED_EMPTY@full
-// proves: HFS_APP_GALLERY_SCREEN_INVALID@lite
-// proves: HFS_APP_GALLERY_SCREEN_INVALID@full
+// proves: UI_AUDIT_MISSING
+// proves: UI_AUDIT_MISSING
+// proves: UI_AUDIT_INVALID
+// proves: UI_AUDIT_INVALID
+// proves: UI_AUDIT_STALE
+// proves: UI_AUDIT_STALE
+// proves: UI_AUDIT_SELF_REVIEW
+// proves: UI_AUDIT_SELF_REVIEW
+// proves: UI_AUDIT_ROUNDS_FEW
+// proves: UI_AUDIT_ROUNDS_FEW
+// proves: UI_AUDIT_OPEN
+// proves: UI_AUDIT_OPEN
+// proves: UI_AUDIT_NEEDS_OWNER
+// proves: UI_AUDIT_NEEDS_OWNER
+// proves: UI_AUDIT_CONSIDERED_EMPTY
+// proves: UI_AUDIT_CONSIDERED_EMPTY
+// proves: HFS_APP_GALLERY_SCREEN_INVALID
+// proves: HFS_APP_GALLERY_SCREEN_INVALID
 // The UI Audit gate (cache/uiaudit-family.mts, rules/screen-yaml.mts; contexts/project/gallery.md PROJECT-GALLERY-8): a screen the diff touches carries a screen.yaml audit of 2 to 4 rounds of seven lenses by an auditor
 // who is not the builder, on the shots it records, with the options considered; an unchanged screen is grandfathered; `audit run` prepares the next round; `migrate-explain` turns explain.md into screen.yaml.
 import { test } from 'node:test';
@@ -78,14 +78,14 @@ const codes = (root: string, base: string): string[] => uiAuditFindings({ repoRo
 const io = (cwd: string) => { const out: string[] = []; const err: string[] = []; return { out, err, io: { cwd, stdout: (text: string) => out.push(text), stderr: (text: string) => err.push(text) } }; };
 
 for (const edition of ['lite'] as const) {
-  test(`${edition}: an unchanged screen is grandfathered, even with no audit`, (t) => {
+  test(`an unchanged screen is grandfathered, even with no audit`, (t) => {
     const { root, base } = app(t, edition, screen({ audit: null }));
     assert.deepEqual(codes(root, base), []);
     write(root, 'README.md', 'x');
     assert.deepEqual(codes(root, base), []);
   });
 
-  test(`${edition}: a changed screen with no audit is UI_AUDIT_MISSING, and with an audit but an old screen.yaml it is stale`, (t) => {
+  test(`a changed screen with no audit is UI_AUDIT_MISSING, and with an audit but an old screen.yaml it is stale`, (t) => {
     const bare = app(t, edition, screen({ audit: null }));
     touchSource(bare.root);
     assert.deepEqual(codes(bare.root, bare.base), ['UI_AUDIT_MISSING']);
@@ -96,7 +96,7 @@ for (const edition of ['lite'] as const) {
     assert.deepEqual(codes(audited.root, audited.base), []);
   });
 
-  test(`${edition}: shot hashes on disk must match the audited ones; a fresh checkout without PNGs is not judged`, (t) => {
+  test(`shot hashes on disk must match the audited ones; a fresh checkout without PNGs is not judged`, (t) => {
     const { root, base } = app(t, edition, screen());
     touchSource(root);
     write(root, `${FOLDER}/screen.yaml`, screen({ summary: 'mới' }));
@@ -107,7 +107,7 @@ for (const edition of ['lite'] as const) {
     assert.deepEqual(codes(root, base), ['UI_AUDIT_STALE']);
   });
 
-  test(`${edition}: builder equal to auditor, fewer than two rounds, open lenses, the fourth round and an empty considered`, () => {
+  test(`builder equal to auditor, fewer than two rounds, open lenses, the fourth round and an empty considered`, () => {
     const facts = (over: Record<string, unknown>) => judgeAudit({ id: 'customers/list', value: JSON.parse(JSON.stringify({ ...(JSON.parse(JSON.stringify({ audit: null })) as object), ...over })) as Record<string, unknown>, disk: {}, unrecorded: false });
     const base = { shots: { 1440: { sha256: sha('a') }, 390: { sha256: sha('b') } }, considered: [{ option: 'a', chosen: true, why: 'b' }] };
     const audit = (rounds: unknown[], auditor = 'lane-b') => ({ builder: { agent: 'Lane-A' }, auditor: { agent: auditor }, rounds, escalate: null });
@@ -122,7 +122,7 @@ for (const edition of ['lite'] as const) {
     assert.deepEqual(codesOf({ audit: audit([round(1), round(2)]) }), []);
   });
 
-  test(`${edition}: R395 reads screen.yaml, flags an invalid one and the route coverage counts it`, (t) => {
+  test(`R395 reads screen.yaml, flags an invalid one and the route coverage counts it`, (t) => {
     const { root } = app(t, edition, screen({ title: '' }));
     const declared = JSON.parse(fs.readFileSync(path.join(root, 'hfs.json'), 'utf8')) as { kind?: string };
     const found = appGalleryFindings({ repoRoot: root, repo: { ...declared, kind: 'app', edition } as never, isRoot: true, all: [] }).map((finding) => String(finding.code));
@@ -134,7 +134,7 @@ for (const edition of ['lite'] as const) {
     assert.ok(!legacy.includes('HFS_APP_GALLERY_EXPLAIN_MISSING') && !legacy.includes('HFS_APP_GALLERY_ROUTE_MISSING'), legacy.join(','));
   });
 
-  test(`${edition}: audit run records the shots and writes seven open lenses; status lists it; migrate-explain converts and deletes`, (t) => {
+  test(`audit run records the shots and writes seven open lenses; status lists it; migrate-explain converts and deletes`, (t) => {
     const { root } = app(t, edition, screen({ audit: null }));
     write(root, `${FOLDER}/1440.png`, 'x');
     write(root, `${FOLDER}/390.png`, 'y');

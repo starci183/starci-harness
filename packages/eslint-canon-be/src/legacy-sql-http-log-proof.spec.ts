@@ -1,11 +1,11 @@
-// proves: BE_SQL_INTERPOLATED@lite
-// proves: BE_SQL_INTERPOLATED@full
-// proves: BE_QUERY_UNBOUNDED@lite
-// proves: BE_QUERY_UNBOUNDED@full
-// proves: BE_HTTP_TIMEOUT@lite
-// proves: BE_HTTP_TIMEOUT@full
-// proves: BE_LOG_SECRET@lite
-// proves: BE_LOG_SECRET@full
+// proves: BE_SQL_INTERPOLATED
+// proves: BE_SQL_INTERPOLATED
+// proves: BE_QUERY_UNBOUNDED
+// proves: BE_QUERY_UNBOUNDED
+// proves: BE_HTTP_TIMEOUT
+// proves: BE_HTTP_TIMEOUT
+// proves: BE_LOG_SECRET
+// proves: BE_LOG_SECRET
 import test from "node:test"
 import { appDeclaration } from "../fixtures/app.ts"
 import { BE_DECLARATION, TYPED_ROOT, at, ruleTester } from "../fixtures/typed/tester.ts"

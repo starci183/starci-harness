@@ -1,9 +1,9 @@
-// proves: FE_OWNER_REACHABLE@lite
-// proves: FE_OWNER_REACHABLE@full
-// proves: FE_ROUTE_HARDCODED@lite
-// proves: FE_ROUTE_HARDCODED@full
-// proves: FE_HREF_RESOLVES@lite
-// proves: FE_HREF_RESOLVES@full
+// proves: FE_OWNER_REACHABLE
+// proves: FE_OWNER_REACHABLE
+// proves: FE_ROUTE_HARDCODED
+// proves: FE_ROUTE_HARDCODED
+// proves: FE_HREF_RESOLVES
+// proves: FE_HREF_RESOLVES
 import test from 'node:test';
 import tsParser from '@typescript-eslint/parser';
 import { RuleTester } from 'eslint';

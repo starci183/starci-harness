@@ -6,7 +6,7 @@
  * The cases that earn their place are the near misses: a fragment link that reads like a hex colour,
  * a component's `color="primary"` prop that reads like a paint, and a `data:` URI full of `#` and `px`.
  */
-// proves: FE_STYLE_TOKEN_ONLY@lite FE_STYLE_TOKEN_ONLY@full
+// proves: FE_STYLE_TOKEN_ONLY
 import assert from "node:assert/strict"
 import test from "node:test"
 import { at, fixtureHfs, slotTester } from "../fixtures/typed/tester.ts"

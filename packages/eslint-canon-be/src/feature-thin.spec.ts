@@ -3,7 +3,7 @@
  *
  *   node --test src/feature-thin.spec.ts
  */
-// proves: HFS_FEATURE_LOGIC_ROLE@lite HFS_FEATURE_LOGIC_ROLE@full
+// proves: HFS_FEATURE_LOGIC_ROLE
 import assert from "node:assert/strict"
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"

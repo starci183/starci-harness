@@ -1,10 +1,10 @@
-// proves: DB_APP_ROLE@lite, DB_APP_ROLE@full
-// proves: DB_FORCE_RLS_DEFAULT@lite, DB_FORCE_RLS_DEFAULT@full
-// proves: DB_POLICY_TAUTOLOGY@lite, DB_POLICY_TAUTOLOGY@full
-// proves: DB_VIEW_UNSAFE@lite, DB_VIEW_UNSAFE@full
-// proves: DB_RLS_REQUIRED@lite, DB_RLS_REQUIRED@full
-// proves: DB_DEFINER_REVOKE@lite, DB_DEFINER_REVOKE@full
-// proves: DB_STORAGE_PREFIX@lite, DB_STORAGE_PREFIX@full
+// proves: DB_APP_ROLE, DB_APP_ROLE
+// proves: DB_FORCE_RLS_DEFAULT, DB_FORCE_RLS_DEFAULT
+// proves: DB_POLICY_TAUTOLOGY, DB_POLICY_TAUTOLOGY
+// proves: DB_VIEW_UNSAFE, DB_VIEW_UNSAFE
+// proves: DB_RLS_REQUIRED, DB_RLS_REQUIRED
+// proves: DB_DEFINER_REVOKE, DB_DEFINER_REVOKE
+// proves: DB_STORAGE_PREFIX, DB_STORAGE_PREFIX
 // The complete migration set is judged through checkDatabase, using real temporary repositories and its
 // production Git runner. Each rule has violating and passing SQL fixtures in both editions.
 import test from 'node:test';

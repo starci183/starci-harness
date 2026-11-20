@@ -1,5 +1,5 @@
-// proves: DB_RLS_REQUIRED@lite
-// proves: DB_RLS_REQUIRED@full
+// proves: DB_RLS_REQUIRED
+// proves: DB_RLS_REQUIRED
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';

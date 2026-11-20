@@ -36,7 +36,7 @@ may switch those gates off ([project/lint.md](../project/lint.md) PROJECT-LINT-4
 | R143, R144, R145 | workspaces, lockfile, `nest-cli.json` projects per declared app | a | `rules/monorepo.mts:24` |
 | R147 | the ops cli app when a connection or ops command exists | a | `rules/cli.mts:20` |
 | R151 | a class per vendored event entry and an entry per class | a | `rules/event-bus.mts:17` |
-| R155, R284 | a `<pattern>/<scenario>` test per declared pattern scenario | a | `rules/event-bus.mts:18`, `rules/lite-proof-lane.mts:11`; an undeclared pattern's platform slot is `HFS_SLOT_NOT_ENABLED` |
+| R155, R284 | a `<pattern>/<scenario>` test per declared pattern scenario | a | `rules/event-bus.mts:18`, `rules/proof-lane.mts:11`; an undeclared pattern's platform slot is `HFS_SLOT_NOT_ENABLED` |
 | R165 | a `role: service` component per api or worker app (multi-service) | a | `rules/services.mts:33` |
 | R166 | `events.json` per service | a | `rules/event-tables.mts:7` |
 | R167, BE-SERVICES-4 | an e2e spec per consumed event | a | `rules/services.mts:35` |

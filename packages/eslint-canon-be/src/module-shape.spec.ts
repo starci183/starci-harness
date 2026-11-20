@@ -6,7 +6,7 @@
  * Type-aware cases use the fixture repository in `fixtures/typed`: `CatalogModule` and `OrderModule` are modules of
  * other owners, `CheckoutModule` the application module of the `checkout` feature.
  */
-// proves: BE_MODULE_DEFINITION_MISSING@lite BE_MODULE_DEFINITION_MISSING@full
+// proves: BE_MODULE_DEFINITION_MISSING
 import assert from "node:assert/strict"
 import test from "node:test"
 import { at, typedTester } from "../fixtures/typed/tester.ts"
@@ -208,7 +208,7 @@ const CHAIN = "export const { ConfigurableModuleClass, OPTIONS_TYPE } = new Conf
 const NEST_KIT = 'import { defineCapabilityModule, defineConfigurableModule } from "@starci/nest-kit"\n'
 const PLAIN_CHAIN = 'export const { ConfigurableModuleClass, MODULE_OPTIONS_TOKEN, OPTIONS_TYPE } = new ConfigurableModuleBuilder<CheckoutOptions>().setClassMethodName("register").build()'
 
-test("BE_MODULE_DEFINITION_MISSING in lite and full: a valid representative definition carries the isGlobal extras and every other valid definition is the plain register chain; an invalid chain is refused", () => {
+test("BE_MODULE_DEFINITION_MISSING in lite and: a valid representative definition carries the isGlobal extras and every other valid definition is the plain register chain; an invalid chain is refused", () => {
     assert.doesNotThrow(() => {
         tester.run("capability-module-shape", capabilityModuleShape, {
             valid: [
@@ -280,7 +280,7 @@ const HOURS = at("src/features/api/hours/hours.module.ts")
 const HOURS_HTTP = at("src/features/api/hours/transport/http/hours-http.module.ts")
 const FROM = (name: string) => `import { ConfigurableModuleClass } from "./${name}.module-definition"\n`
 
-test("BE_MODULE_DEFINITION_MISSING in lite and full: a valid module has a sibling definition and options file, extends its ConfigurableModuleClass and is imported only through register; an invalid one is refused", () => {
+test("BE_MODULE_DEFINITION_MISSING in lite and: a valid module has a sibling definition and options file, extends its ConfigurableModuleClass and is imported only through register; an invalid one is refused", () => {
     assert.doesNotThrow(() => {
         tester.run("module-definition-required", moduleDefinitionRequired, {
             valid: [

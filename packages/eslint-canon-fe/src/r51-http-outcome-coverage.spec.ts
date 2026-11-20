@@ -1,7 +1,7 @@
-// proves: FE_HTTP_STATUS_COLLAPSE@lite
-// proves: FE_HTTP_STATUS_COLLAPSE@full
-// proves: FE_OUTCOME_KIND_UNHANDLED@lite
-// proves: FE_OUTCOME_KIND_UNHANDLED@full
+// proves: FE_HTTP_STATUS_COLLAPSE
+// proves: FE_HTTP_STATUS_COLLAPSE
+// proves: FE_OUTCOME_KIND_UNHANDLED
+// proves: FE_OUTCOME_KIND_UNHANDLED
 import test from "node:test"
 import { RuleTester } from "eslint"
 import tsParser from "@typescript-eslint/parser"

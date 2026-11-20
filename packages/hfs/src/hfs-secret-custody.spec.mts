@@ -1,9 +1,9 @@
-// proves: HFS_AGE_KEY_CUSTODY@lite HFS_AGE_KEY_CUSTODY@full
-// proves: HFS_CANON_COPY_DRIFT@lite HFS_CANON_COPY_DRIFT@full
-// proves: HFS_SECRET_PLAINTEXT_FILE@lite HFS_SECRET_PLAINTEXT_FILE@full
-// proves: HFS_SECRET_OUTSIDE_ENC@full
-// proves: HFS_PACKAGE_SECRET_NOT_SEALED@lite HFS_PACKAGE_SECRET_NOT_SEALED@full
-// proves: HFS_PACKAGE_SECRET_RECIPIENT@lite HFS_PACKAGE_SECRET_RECIPIENT@full
+// proves: HFS_AGE_KEY_CUSTODY
+// proves: HFS_CANON_COPY_DRIFT
+// proves: HFS_SECRET_PLAINTEXT_FILE
+// proves: HFS_SECRET_OUTSIDE_ENC
+// proves: HFS_PACKAGE_SECRET_NOT_SEALED
+// proves: HFS_PACKAGE_SECRET_RECIPIENT
 // Names and paths may be printed. Compare private test data only as booleans.
 import test from "node:test";
 import type { TestContext } from "node:test";
@@ -25,7 +25,7 @@ import {
 } from "../runtime/scripts/hfs/rules/secrets.mjs";
 import { canonCopyDriftFindings } from "../runtime/scripts/hfs/rules/canon-copy-drift.mjs";
 import { secretCustodyOnlyFindings } from "../runtime/scripts/hfs/rules/secret-custody-only.mjs";
-import { liteSecretCustodyFindings } from "../runtime/scripts/hfs/rules/lite-secrets.mjs";
+import { sealedSecretCustodyFindings } from "../runtime/scripts/hfs/rules/secret-custody.mjs";
 import { secretRoots } from "../runtime/scripts/hfs/secret-files.mjs";
 import type { SecretToolOverrides } from "../runtime/scripts/hfs/secret-init.mjs";
 
@@ -314,7 +314,7 @@ for (const edition of ['lite'] as const) {
     assert.deepEqual(
       secretCustodyOnlyFindings(ctx(root, files, edition)),
       [],
-      `${edition} clean tree`,
+      `clean tree`,
     );
     // The invalid named-.enc still belongs to R06: this rule judges custody paths only.
     const findings = secretFileFindings({ file: "x/bad.enc", text: "plain\n" });
@@ -385,7 +385,7 @@ for (const edition of ['lite'] as const) {
   });
 }
 
-test("HFS_SECRET_OUTSIDE_ENC (lite): an off-home .enc is already HFS_LITE_SECRET_CUSTODY, so R277 stays silent", (t) => {
+test("HFS_SECRET_OUTSIDE_ENC: an off-home .enc is already HFS_LITE_SECRET_CUSTODY, so R277 stays silent", (t) => {
   const { root } = app(t);
   write(root, "x/app.enc", sealedDotenv(["TOKEN"]));
   assert.deepEqual(
@@ -402,7 +402,7 @@ for (const edition of ['lite'] as const) {
     for (const file of [nested, direct]) write(root, file, sealedDotenv(["TOKEN"]));
     const input = ctx(root, [nested, direct], edition);
     const findings = edition === "lite"
-      ? liteSecretCustodyFindings(input)
+      ? sealedSecretCustodyFindings(input)
       : secretCustodyOnlyFindings(input);
     assert.deepEqual(findings.map((finding) => [finding.path, finding.code]),
       [[nested, edition === "lite" ? "HFS_LITE_SECRET_CUSTODY" : "HFS_SECRET_OUTSIDE_ENC"]]);

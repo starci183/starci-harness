@@ -1,5 +1,5 @@
-// proves: BE_SPEC_PLACEMENT@lite
-// proves: BE_SPEC_PLACEMENT@full
+// proves: BE_SPEC_PLACEMENT
+// proves: BE_SPEC_PLACEMENT
 import test from "node:test"
 import { projectFixture } from "../fixtures/project/tester.ts"
 import { rules } from "./index.ts"

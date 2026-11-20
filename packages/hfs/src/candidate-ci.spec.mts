@@ -133,7 +133,7 @@ test('a refused candidate push stops before any wait', async () => {
 
 
 for (const edition of ['lite'] as const) {
-  test(`${edition}: generated CI judges pull requests, main, candidates and tags; images and the deploy are reusable workflows and nothing else starts a run`, () => {
+  test(`generated CI judges pull requests, main, candidates and tags; images and the deploy are reusable workflows and nothing else starts a run`, () => {
     const targets = renderTargets({ ...structuredClone(APP), edition }, PRESETS);
     const workflows = targets.filter(target => target.path.startsWith('.github/workflows/'));
     const ci = workflows.find(target => target.path === '.github/workflows/ci.yml') as RenderedTarget;
@@ -157,7 +157,7 @@ for (const edition of ['lite'] as const) {
     assert.ok(gitTriggerFindings({ files: [file], read: () => JSON.stringify(noBranches) }).length > 0);
   });
 
-  test(`${edition}: a pull request is judged in ci.yml only, to main only, and pull_request_target, workflow_run and schedules never start a run`, () => {
+  test(`a pull request is judged in ci.yml only, to main only, and pull_request_target, workflow_run and schedules never start a run`, () => {
     const targets = renderTargets({ ...structuredClone(APP), edition }, PRESETS);
     const ci = parseWorkflow((targets.find(target => target.path === '.github/workflows/ci.yml') as RenderedTarget).content);
     const findings = (file: string, mutate: (on: Record<string, unknown>) => void) => {

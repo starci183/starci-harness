@@ -1,9 +1,9 @@
-// proves: HFS_SERVICE_PLACEMENT@lite
-// proves: HFS_SERVICE_PLACEMENT@full
-// proves: HFS_IMAGE_UNPINNED@lite
-// proves: HFS_IMAGE_UNPINNED@full
-// proves: HFS_SERVICE_STACK_DECLARATION@lite
-// proves: HFS_SERVICE_STACK_DECLARATION@full
+// proves: HFS_SERVICE_PLACEMENT
+// proves: HFS_SERVICE_PLACEMENT
+// proves: HFS_IMAGE_UNPINNED
+// proves: HFS_IMAGE_UNPINNED
+// proves: HFS_SERVICE_STACK_DECLARATION
+// proves: HFS_SERVICE_STACK_DECLARATION
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -44,13 +44,13 @@ function findings(t: TestContext, edition: string, contents: Record<string, stri
 }
 
 for (const edition of ['lite'] as const) {
-  test(`${edition} HFS_SERVICE_PLACEMENT rejects a second service root`, (t) => {
+  test(`HFS_SERVICE_PLACEMENT rejects a second service root`, (t) => {
     assert.deepEqual(findings(t, edition, {
       'services/billing/Dockerfile': 'FROM node:24.0.0\n',
     }, 'HFS_SERVICE_PLACEMENT'), ['HFS_SERVICE_PLACEMENT']);
   });
 
-  test(`${edition} HFS_SERVICE_PLACEMENT accepts app images and shared package ownership`, (t) => {
+  test(`HFS_SERVICE_PLACEMENT accepts app images and shared package ownership`, (t) => {
     assert.deepEqual(findings(t, edition, {
       'be/apps/core/Dockerfile': 'FROM node:24.0.0\n',
       'fe/apps/web/Dockerfile': 'FROM node:24.0.0\n',
@@ -59,7 +59,7 @@ for (const edition of ['lite'] as const) {
     }, 'HFS_SERVICE_PLACEMENT'), []);
   });
 
-  test(`${edition} HFS_SERVICE_PLACEMENT accepts the package.json of a declared client cli (R397) and of no other be app`, () => {
+  test(`HFS_SERVICE_PLACEMENT accepts the package.json of a declared client cli (R397) and of no other be app`, () => {
     const files = ['package.json', 'be/apps/relay-cli/package.json', 'be/apps/core/package.json', 'be/apps/ghost/package.json', 'be/apps/relay-cli/nested/package.json'];
     const repo = { edition, sides: { be: { apps: [{ name: 'core', kind: 'api' }, { name: 'relay-cli', kind: 'client-cli', package: '@acme/relay', bin: 'relay' }] } } };
     const placed = serviceFindings({ repoRoot: os.tmpdir(), files, repo }).filter((finding) => finding.code === 'HFS_SERVICE_PLACEMENT').map((finding) => finding.path);
@@ -68,7 +68,7 @@ for (const edition of ['lite'] as const) {
     assert.ok(serviceFindings({ repoRoot: os.tmpdir(), files, repo: undeclared }).some((finding) => finding.code === 'HFS_SERVICE_PLACEMENT' && finding.path === 'be/apps/relay-cli/package.json'), 'without the declaration the same file is a service root');
   });
 
-  test(`${edition} HFS_SERVICE_PLACEMENT accepts the package.json of an agent workbench (packages/<pkg>/workbench/<app>) and refuses a drifted one`, (t) => {
+  test(`HFS_SERVICE_PLACEMENT accepts the package.json of an agent workbench (packages/<pkg>/workbench/<app>) and refuses a drifted one`, (t) => {
     const workbench = (extra: Record<string, unknown> = {}) => `${JSON.stringify({ name: 'shop-workbench', private: true, dependencies: { react: '19.1.0' }, devDependencies: { vite: '7.1.0' }, ...extra })}\n`;
     const root = (workspaces: string[]) => `${JSON.stringify({ private: true, workspaces })}\n`;
     const place = (contents: Record<string, string>) => findings(t, edition, contents, 'HFS_SERVICE_PLACEMENT');
@@ -82,25 +82,25 @@ for (const edition of ['lite'] as const) {
     assert.deepEqual(place({ 'package.json': root([]), 'packages/shop/workbench/package.json': workbench() }), ['HFS_SERVICE_PLACEMENT'], 'the workbench folder itself is no app');
   });
 
-  test(`${edition} HFS_IMAGE_UNPINNED rejects a moving service image`, (t) => {
+  test(`HFS_IMAGE_UNPINNED rejects a moving service image`, (t) => {
     assert.deepEqual(findings(t, edition, {
       [STACK_FILE]: stack({ image: 'demo/core:latest' }),
     }, 'HFS_IMAGE_UNPINNED'), ['HFS_IMAGE_UNPINNED']);
   });
 
-  test(`${edition} HFS_IMAGE_UNPINNED accepts exact versions for every component`, (t) => {
+  test(`HFS_IMAGE_UNPINNED accepts exact versions for every component`, (t) => {
     assert.deepEqual(findings(t, edition, {
       [STACK_FILE]: stack(),
     }, 'HFS_IMAGE_UNPINNED'), []);
   });
 
-  test(`${edition} HFS_SERVICE_STACK_DECLARATION rejects a service with a stateful role`, (t) => {
+  test(`HFS_SERVICE_STACK_DECLARATION rejects a service with a stateful role`, (t) => {
     assert.deepEqual(findings(t, edition, {
       [STACK_FILE]: stack({ billingRole: 'stateful' }),
     }, 'HFS_SERVICE_STACK_DECLARATION'), ['HFS_SERVICE_STACK_DECLARATION']);
   });
 
-  test(`${edition} HFS_SERVICE_STACK_DECLARATION accepts every declared app as a service component`, (t) => {
+  test(`HFS_SERVICE_STACK_DECLARATION accepts every declared app as a service component`, (t) => {
     assert.deepEqual(findings(t, edition, {
       [STACK_FILE]: stack(),
     }, 'HFS_SERVICE_STACK_DECLARATION'), []);

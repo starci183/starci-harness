@@ -12,10 +12,10 @@ import test from "node:test"
 import { at, fixtureHfs, LITE_FE_DECLARATION, slotTester } from "../fixtures/typed/tester.ts"
 import { noAlert, noCopyInCall, noCopyResolutionBelowBlock, noHardcodedCopy, rules } from "./translation.ts"
 
-// proves: FE_COPY_IN_CALL@lite
-// proves: FE_COPY_IN_CALL@full
-// proves: FE_NO_ALERT@lite
-// proves: FE_NO_ALERT@full
+// proves: FE_COPY_IN_CALL
+// proves: FE_COPY_IN_CALL
+// proves: FE_NO_ALERT
+// proves: FE_NO_ALERT
 
 const tester = slotTester()
 

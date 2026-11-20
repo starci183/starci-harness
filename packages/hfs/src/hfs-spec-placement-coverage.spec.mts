@@ -1,5 +1,5 @@
-// proves: BE_SPEC_PLACEMENT@lite
-// proves: BE_SPEC_PLACEMENT@full
+// proves: BE_SPEC_PLACEMENT
+// proves: BE_SPEC_PLACEMENT
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createSlotResolver, loadSlotManifest, resolveRepoDeclaration } from '../runtime/scripts/hfs/slots.mjs';
@@ -18,7 +18,7 @@ const resolverFor = (edition: string) => createSlotResolver(manifest, resolveRep
 }, { side: 'be' }));
 
 for (const edition of ['lite'] as const) {
-  test(`${edition} invalid back-end spec locations are refused`, () => {
+  test(`invalid back-end spec locations are refused`, () => {
     const files = [
       'apps/core/src/core.composition.spec.ts',
       'scripts/x.spec.mjs',
@@ -36,7 +36,7 @@ for (const edition of ['lite'] as const) {
     ]);
   });
 
-  test(`${edition} valid service, integration and contract test layers pass`, () => {
+  test(`valid service, integration and contract test layers pass`, () => {
     const files = [
       'src/modules/domain/billing/invoice.service.ts',
       'src/modules/domain/billing/invoice.service.spec.ts',

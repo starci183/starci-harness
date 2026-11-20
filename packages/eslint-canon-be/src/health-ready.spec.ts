@@ -1,4 +1,4 @@
-// proves: BE_READY_REAL@lite BE_READY_REAL@full BE_HEALTH_SIGNALS@lite BE_HEALTH_SIGNALS@full
+// proves: BE_READY_REAL BE_HEALTH_SIGNALS
 import test from "node:test"
 import assert from "node:assert/strict"
 import fs from "node:fs"

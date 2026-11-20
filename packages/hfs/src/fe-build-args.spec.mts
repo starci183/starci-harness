@@ -1,5 +1,5 @@
-// proves: FE_PUBLIC_BUILD_ARG_MISSING@lite
-// proves: FE_PUBLIC_BUILD_ARG_MISSING@full
+// proves: FE_PUBLIC_BUILD_ARG_MISSING
+// proves: FE_PUBLIC_BUILD_ARG_MISSING
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -27,7 +27,7 @@ const run = ({ root, files }: { root: string; files: string[] }, edition: string
 test('the exported code constant names the rule failure', () => assert.equal(FE_PUBLIC_BUILD_ARG_MISSING, FAILURE));
 
 for (const edition of ['lite'] as const) {
-  test(`${edition}: ${FAILURE} violation - a required NEXT_PUBLIC name with no ARG default and no buildArgs is refused`, (t) => {
+  test(`${FAILURE} violation - a required NEXT_PUBLIC name with no ARG default and no buildArgs is refused`, (t) => {
     const found = run(tree(t, {}), edition);
     assert.equal(found.length, 1);
     assert.equal(found[0]!.code, FAILURE);
@@ -35,17 +35,17 @@ for (const edition of ['lite'] as const) {
     assert.deepEqual(found[0]!.missing, [{ environment: 'production', names: ['NEXT_PUBLIC_API_URL'] }]);
   });
 
-  test(`${edition}: valid - buildArgs values or sealed keys supply the required name and the fallback read is optional`, (t) => {
+  test(`valid - buildArgs values or sealed keys supply the required name and the fallback read is optional`, (t) => {
     assert.deepEqual(run(tree(t, { buildArgs: '          buildArgs:\n            values:\n              NEXT_PUBLIC_API_URL: https://api.example.com\n' }), edition), []);
     assert.deepEqual(run(tree(t, { buildArgs: '          buildArgs:\n            sealed:\n              keys: [NEXT_PUBLIC_API_URL]\n' }), edition), []);
   });
 
-  test(`${edition}: valid - a Dockerfile ARG default supplies the name`, (t) => {
+  test(`valid - a Dockerfile ARG default supplies the name`, (t) => {
     const dockerfile = DOCKERFILE + 'ARG NEXT_PUBLIC_API_URL=https://api.example.com\n';
     assert.deepEqual(run(tree(t, { dockerfile }), edition), []);
   });
 
-  test(`${edition}: ${FAILURE} negative - a missing Dockerfile or a non-root is not judged`, (t) => {
+  test(`${FAILURE} negative - a missing Dockerfile or a non-root is not judged`, (t) => {
     const built = tree(t, {});
     assert.deepEqual(run(built, edition, false), []);
     const without = built.files.filter((file) => !file.endsWith('Dockerfile'));

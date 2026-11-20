@@ -2,7 +2,7 @@
  * Twin tests for the explicit exported surface (R368): an exported declaration states its type, and the rule reports exactly the files the lint result
  * cache counts as open. The cases are the table the cache holds (packages/hfs/src/fixtures/explicit-surface-cases.json).
  */
-// proves: HFS_EXPLICIT_EXPORT_SURFACE@lite HFS_EXPLICIT_EXPORT_SURFACE@full
+// proves: HFS_EXPLICIT_EXPORT_SURFACE
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"

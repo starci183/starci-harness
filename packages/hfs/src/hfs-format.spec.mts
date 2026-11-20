@@ -1,5 +1,5 @@
-// proves: HFS_FORMAT@lite
-// proves: HFS_FORMAT@full
+// proves: HFS_FORMAT
+// proves: HFS_FORMAT
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';

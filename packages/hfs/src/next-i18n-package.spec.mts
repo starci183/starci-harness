@@ -1,4 +1,4 @@
-// proves: FE_I18N_PLACEMENT@lite
+// proves: FE_I18N_PLACEMENT
 // The next-intl stack is the package @starci/next-i18n: a starter's front end depends on it at its pin, describes its languages with
 // defineI18n and builds its proxy, request config and locale read through it, no source of the starter calls a next-intl layer builder,
 // the i18n concern of the stack names it, and R59 names the rule that refuses an app's own stack.
@@ -20,8 +20,8 @@ const lockedOk = (root: string): LockResult => {
   return { ok: true };
 };
 
-const starter = (t: Parameters<typeof mkdtemp>[0], edition: 'lite') =>
-  scaffoldApp({ name: 'demo', into: mkdtemp(t, 'hfs-next-i18n-'), harness: { version: '1.1.0-alpha.3' }, edition, presets: bundledPresets(), lock: lockedOk, initGit: init }).root;
+const starter = (t: Parameters<typeof mkdtemp>[0]) =>
+  scaffoldApp({ name: 'demo', into: mkdtemp(t, 'hfs-next-i18n-'), harness: { version: '1.1.0-alpha.3' }, presets: bundledPresets(), lock: lockedOk, initGit: init }).root;
 
 const read = (root: string, ...parts: string[]): string => fs.readFileSync(path.join(root, ...parts), 'utf8').replace(/^﻿/, '');
 
@@ -34,8 +34,8 @@ const sources = (dir: string): Array<[string, string]> =>
 
 const STACK_BUILDERS = /\b(?:defineRouting|createNavigation|getRequestConfig|createMiddleware)\s*\(/u;
 
-test('a lite starter describes its languages with defineI18n and builds the proxy, request config and locale read through @starci/next-i18n', (t) => {
-  const root = starter(t, 'lite');
+test('the starter describes its languages with defineI18n and builds the proxy, request config and locale read through @starci/next-i18n', (t) => {
+  const root = starter(t);
   const pin = canonPins()['@starci/next-i18n'];
   assert.ok(pin, 'the canon pins name @starci/next-i18n');
   const web = path.join(root, 'fe', 'apps', 'web');

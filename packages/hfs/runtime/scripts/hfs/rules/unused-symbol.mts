@@ -317,7 +317,7 @@ function catalogRead(state: Parsed, candidate: Parsed, liveCodes: Parsed) {
   });
 }
 
-/** The same rule applies to lite and full. Analyze all tracked consumers before filtering findings to a fast-check scope. */
+/** The same rule applies to and full. Analyze all tracked consumers before filtering findings to a fast-check scope. */
 type UnusedSymbolInput = { repoRoot: string; files: string[]; repo?: Repo; isRoot?: boolean; inScope?: (file: string) => boolean; ts: Parsed };
 /** A seam for the app check cache: the whole-program analysis of a side is a scoped step keyed on the side, so the cache runs it only when the side changed. */
 export interface UnusedSymbolMemo { run(repoRoot: string, compute: () => Parsed[]): Parsed[] }

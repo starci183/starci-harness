@@ -1,9 +1,9 @@
-// proves: BE_TEST_CONSTRAINTS_ON@lite
-// proves: BE_TEST_CONSTRAINTS_ON@full
-// proves: BE_ERROR_CAUSE_DROPPED@lite
-// proves: BE_ERROR_CAUSE_DROPPED@full
-// proves: BE_MEMBER_DOC_MISSING@lite
-// proves: BE_MEMBER_DOC_MISSING@full
+// proves: BE_TEST_CONSTRAINTS_ON
+// proves: BE_TEST_CONSTRAINTS_ON
+// proves: BE_ERROR_CAUSE_DROPPED
+// proves: BE_ERROR_CAUSE_DROPPED
+// proves: BE_MEMBER_DOC_MISSING
+// proves: BE_MEMBER_DOC_MISSING
 import assert from "node:assert/strict"
 import test from "node:test"
 import { BE_DECLARATION, TYPED_ROOT, at, ruleTester } from "../fixtures/typed/tester.ts"

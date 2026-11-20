@@ -11,7 +11,7 @@ const report = 'be/coverage/lcov.info';
 const verify = 'npx starci app coverage verify ' + report;
 
 for (const edition of ['lite'] as const) {
-  test(`${edition} coverage job runs only the coverage verify over the merged report, inside its timeout`, () => {
+  test(`coverage job runs only the coverage verify over the merged report, inside its timeout`, () => {
     const hfs = { hfs: 3, kind: 'app', edition, project: 'coverage-proof', sides: {
       be: { apps: [{ name: 'api', kind: 'api' }] },
       fe: { grammar: 'core', apps: [{ name: 'web', kind: 'next' }], reads: ['be/contracts/'] },

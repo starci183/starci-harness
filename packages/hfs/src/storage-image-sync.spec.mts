@@ -18,7 +18,7 @@ const source = (storageNeeded?: boolean): AppSourceFacts => ({ files: [], read: 
 const rendered = (_edition: 'lite' | 'full', storageNeeded?: boolean): Map<string, string> => new Map(renderTargets(starterDeclaration('demo', undefined), bundledPresets(), { source: source(storageNeeded) }).map((target) => [target.path, String(target.content)]));
 
 for (const edition of ['lite'] as const) {
-  test(`${edition}: the storage image is rendered from the pinned MinIO and a source-built mc, with a dockerignore that admits statics/ only`, () => {
+  test(`the storage image is rendered from the pinned MinIO and a source-built mc, with a dockerignore that admits statics/ only`, () => {
     const files = rendered(edition, true);
     const dockerfile = files.get(DOCKERFILE) as string;
     assert.ok(dockerfile, 'a project that needs storage gets the storage image');
@@ -33,7 +33,7 @@ for (const edition of ['lite'] as const) {
     assert.equal(files.get(IGNORE), '*\n!statics/\n');
   });
 
-  test(`${edition}: a project with no statics and no storage use gets no storage image`, () => {
+  test(`a project with no statics and no storage use gets no storage image`, () => {
     const files = rendered(edition, false);
     assert.equal(files.has(DOCKERFILE), false);
     assert.equal(files.has(IGNORE), false);
@@ -42,7 +42,7 @@ for (const edition of ['lite'] as const) {
   });
 }
 
-test('a lite app that needs storage builds the image in the managed images workflow; one that does not, does not', () => {
+test('an app that needs storage builds the image in the managed images workflow; one that does not, does not', () => {
   const lite = starterDeclaration('demo', undefined);
   const apps = (needed: boolean): string[] => imageApps(validateHfs(lite), { storageNeeded: needed }).map((image) => image.name);
   assert.deepEqual(apps(true).slice(-2), ['db', 'storage']);

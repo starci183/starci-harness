@@ -64,7 +64,7 @@ const only = (list: Found[], code: string) => list.filter((f) => f.code === code
 export const CODES = ['DB_MIGRATION_SHAPE', 'DB_RLS_REQUIRED', 'DB_DYNAMIC_DDL', 'DB_POLICY_SHAPE', 'DB_DEFINER_SAFE', 'DB_STORAGE_POLICY', 'DB_CONFIG_POLICY', 'DB_TYPES_DRIFT'];
 
 test('a full app without a db tree is not judged at all', async () => {
-  const dir = repo({ 'README.md': 'x\n' }, { db: null, edition: 'full' });
+  const dir = repo({ 'README.md': 'x\n' }, { db: null });
   assert.deepEqual(await checkDatabase({ repoRoot: dir, files: ['README.md'], git: noRemote }), []);
 });
 
@@ -400,7 +400,7 @@ test('DB_DEFINER_SAFE: a definer in an exposed schema needs revoke execute from 
   assert.deepEqual(only(invoker, DEFINER), [], 'security invoker is exempt');
 });
 
-// proves: DB_DEFINER_REVOKE@lite DB_DEFINER_REVOKE@full DB_DEFINER_SAFE@lite DB_DEFINER_SAFE@full
+// proves: DB_DEFINER_REVOKE DB_DEFINER_SAFE
 for (const edition of ['lite'] as const) {
   test(`DB_DEFINER_REVOKE ${edition}: exposed definers close authenticated access and accept explicit ALL revocation`, async () => {
     const create = "create function public.f(value int) returns int language sql security definer set search_path = '' as $$ select value $$;";

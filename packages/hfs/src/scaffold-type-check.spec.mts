@@ -130,11 +130,11 @@ async function checkEdition(t: TestContext, edition: string): Promise<void> {
   linkSiblings(root);
   const started = Date.now();
   await install(root, ['install', '--no-audit', '--no-fund', '--ignore-scripts', '--install-links=true', '--prefer-offline']);
-  t.diagnostic(`${edition}: npm install ${((Date.now() - started) / 1000).toFixed(0)}s`);
+  t.diagnostic(`npm install ${((Date.now() - started) / 1000).toFixed(0)}s`);
   /** One chain of checks, its wall time reported; a failure is kept with the chain's title so every failing chain is reported. */
   const chain = async (title: string, check: () => Promise<void>): Promise<string | null> => {
     const begun = Date.now();
-    try { await check(); return null; } catch (error) { return `${title}: ${error instanceof Error ? error.message : String(error)}`; } finally { t.diagnostic(`${edition}: ${title} ${((Date.now() - begun) / 1000).toFixed(0)}s`); }
+    try { await check(); return null; } catch (error) { return `${title}: ${error instanceof Error ? error.message : String(error)}`; } finally { t.diagnostic(`${title} ${((Date.now() - begun) / 1000).toFixed(0)}s`); }
   };
   const bin = (...parts: string[]): string => path.join(root, 'node_modules', ...parts);
   const tsc = bin('typescript', 'bin', 'tsc');

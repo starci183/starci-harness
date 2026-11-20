@@ -1,5 +1,5 @@
-// proves: HFS_MONO_WORKSPACE_DEP@lite
-// proves: HFS_MONO_WORKSPACE_DEP@full
+// proves: HFS_MONO_WORKSPACE_DEP
+// proves: HFS_MONO_WORKSPACE_DEP
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -30,14 +30,14 @@ function workspaceFindings(edition: string, section: string, version: string | n
 }
 
 for (const edition of ['lite'] as const) {
-  test(`${edition} passing sibling workspace dependencies use exactly star in every dependency section`, () => {
+  test(`passing sibling workspace dependencies use exactly star in every dependency section`, () => {
     for (const section of ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies']) {
       assert.deepEqual(workspaceFindings(edition, section, '*'), []);
       assert.equal(workspaceFindings(edition, section, '*').some(item => item.code === 'HFS_MONO_WORKSPACE_DEP'), false);
     }
   });
 
-  test(`${edition} violating sibling workspace versions and missing declarations are refused`, () => {
+  test(`violating sibling workspace versions and missing declarations are refused`, () => {
     for (const section of ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies']) {
       for (const version of ['1.2.3', '^1.2.3', 'workspace:*', 'file:../../packages/ui', null]) {
         const findings = workspaceFindings(edition, section, version);

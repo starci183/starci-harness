@@ -227,9 +227,9 @@ ruleParams:
       passport-jwt: []
       openid-client: []
       "@starci/auth": [integrations/passport]            # the sign-in package (jose and passport are its dependencies, imported by no app file); its root and server entries are reached only through integrations/passport (R328)
-      "@starci/auth/server": [integrations/passport]     # lite: the sign-in module and its providers
-      "@starci/auth/oidc": [integrations/keycloak]       # full: the OIDC client and the issuer presets, the GitHub Actions CI attestation included, reached only through integrations/keycloak
-      "@starci/auth/contracts": [integrations/passport, integrations/keycloak]   # the door and OIDC contracts, for each edition's glue
+      "@starci/auth/server": [integrations/passport]     # the sign-in module and its providers
+      "@starci/auth/oidc": [integrations/keycloak]       # the OIDC client and the issuer presets, the GitHub Actions CI attestation included, reached only through integrations/keycloak
+      "@starci/auth/contracts": [integrations/passport, integrations/keycloak]   # the door and OIDC contracts, for each glue
       "@starci/auth/testing": [integrations/passport, integrations/keycloak]     # the test doubles and the fake issuer, for each glue's specs
       "@starci/auth-oidc": []                            # retired into @starci/auth/oidc: no app file imports it (starci app codemod auth-merge)
       bcrypt: []
@@ -266,7 +266,7 @@ ruleParams:
       socket.io: [platform/realtime]
       graphql-subscriptions: [platform/realtime]
       graphql-ws: [platform/realtime]
-      "@socket.io/postgres-adapter": [platform/realtime]   # the stateless socket.io adapter of a scaled lite back end without Redis
+      "@socket.io/postgres-adapter": [platform/realtime]   # the stateless socket.io adapter of a scaled back end without Redis
       "@socket.io/redis-adapter": [platform/realtime]      # the sharded socket.io adapter of a scaled back end on the declared Redis
       pg: [platform/realtime]                              # the LISTEN connection of the Postgres hub; every other query goes through TypeORM
       # BE-AI-1, BE-AI-3: every model call goes through the ai-router gateway. Its custody owner registers @starci/ai-router with the
@@ -427,36 +427,36 @@ ruleParams:
       - {name: pg_notify, reason: "notify: LISTEN/NOTIFY of the Postgres realtime hub"}
       - {name: to_regproc, reason: "callDbFunction: whether an optional database function exists"}
       - {name: gen_random_uuid, reason: "callDbFunction: a random uuid from the database (PG13+ core, pg_catalog) where a token is minted in the transaction"}
-      - {name: public.job_claim, reason: "platform/jobs (add job, lite): the fenced claim upsert of jobs.sql"}
-      - {name: public.job_advance, reason: "platform/jobs (add job, lite): the token-guarded step write of jobs.sql"}
-      - {name: public.job_complete, reason: "platform/jobs (add job, lite): the token-guarded completion of jobs.sql"}
-      - {name: public.job_fail, reason: "platform/jobs (add job, lite): the token-guarded failure of jobs.sql"}
-      - {name: public.job_park, reason: "platform/jobs (add job, lite): the token-guarded park as failed_awaiting_fix of jobs.sql (BE-RESILIENCE-2)"}
-      - {name: public.job_resume, reason: "platform/jobs (add job, lite): marks parked jobs resumed by id, build or sweep, jobs.sql (BE-RESILIENCE-2)"}
-      - {name: public.job_awaiting_fix, reason: "platform/jobs (add job, lite): the parked jobs, the owner's work items, jobs.sql (BE-RESILIENCE-2)"}
-      - {name: public.job_tick_claim, reason: "platform/jobs (add job, lite): the once-per-minute claim of a scheduler tick, jobs.sql (R335)"}
-      - {name: public.queue_write, reason: "platform/queue (add queue, lite): the outbox insert of queue-outbox.sql"}
-      - {name: public.queue_waiting, reason: "platform/queue (add queue, lite): the relay read FOR UPDATE SKIP LOCKED of queue-outbox.sql"}
-      - {name: public.queue_mark_sent, reason: "platform/queue (add queue, lite): the relay mark of queue-outbox.sql"}
-      - {name: public.inbox_claim_event, reason: "platform/inbox (add webhook, lite): the conflict-safe delivery claim"}
-      - {name: public.inbox_claim_client, reason: "platform/inbox (add webhook, lite): the client claim upsert returning its committed outcome"}
-      - {name: public.inbox_save_client_outcome, reason: "platform/inbox (add webhook, lite): the saved client outcome"}
-      - {name: public.inbox_sweep_clients, reason: "platform/inbox (add webhook, lite): the bounded retention sweep FOR UPDATE SKIP LOCKED"}
-      - {name: public.event_bus_send, reason: "platform/event-bus (add webhook, lite): the send of a typed envelope to its pgmq topic in the publisher's transaction"}
-      - {name: public.event_bus_read, reason: "platform/event-bus (add webhook, lite): a consumer's pgmq read with a visibility timeout"}
-      - {name: public.event_bus_archive, reason: "platform/event-bus (add webhook, lite): the archive of a handled message"}
-      - {name: public.event_bus_bury, reason: "platform/event-bus (add webhook, lite): the move of an exhausted or malformed message to its consumer's dead-letter queue"}
-      - {name: public.event_bus_dead_letters, reason: "platform/event-bus (add webhook, lite): the operator read of a consumer's dead-letter queue"}
-      - {name: public.event_bus_requeue, reason: "platform/event-bus (add webhook, lite): the operator requeue of one dead letter"}
-      - {name: public.be_auth_user_by_email, reason: "domain/identity (lite sign-in): the account of an exact sign-in address with its bcrypt hash, through the account-doors definer of the baseline"}
-      - {name: public.be_auth_user_by_id, reason: "domain/identity (lite sign-in): the standing of one account by id (a refresh), through the account-doors definer"}
-      - {name: public.be_auth_user_by_google, reason: "domain/identity (lite sign-in): the account a Google subject is linked to, through the account-doors definer"}
-      - {name: public.be_auth_create_user, reason: "domain/identity (lite sign-in): the account a first Google sign-in creates, through the account-doors definer"}
-      - {name: public.be_auth_link_google, reason: "domain/identity (lite sign-in): the link of a Google subject to an account, through the account-doors definer"}
-      - {name: public.be_auth_touch_user, reason: "domain/identity (lite sign-in): the sign-in record of an account and its profile keys, through the account-doors definer"}
-      - {name: public.be_auth_confirm_user, reason: "domain/identity (lite sign-in): the confirmation stamp of a mailbox whose link was spent, through the account-doors definer"}
-      - {name: public.be_auth_set_password, reason: "domain/identity (lite sign-in): the new password hash of a spent reset link (and the mailbox it proved), through the account-doors definer"}
-    # R334 (lite): the only `.query(` outside platform/database's composer and the test world is the pass-through of a file listed here
+      - {name: public.job_claim, reason: "platform/jobs (add job): the fenced claim upsert of jobs.sql"}
+      - {name: public.job_advance, reason: "platform/jobs (add job): the token-guarded step write of jobs.sql"}
+      - {name: public.job_complete, reason: "platform/jobs (add job): the token-guarded completion of jobs.sql"}
+      - {name: public.job_fail, reason: "platform/jobs (add job): the token-guarded failure of jobs.sql"}
+      - {name: public.job_park, reason: "platform/jobs (add job): the token-guarded park as failed_awaiting_fix of jobs.sql (BE-RESILIENCE-2)"}
+      - {name: public.job_resume, reason: "platform/jobs (add job): marks parked jobs resumed by id, build or sweep, jobs.sql (BE-RESILIENCE-2)"}
+      - {name: public.job_awaiting_fix, reason: "platform/jobs (add job): the parked jobs, the owner's work items, jobs.sql (BE-RESILIENCE-2)"}
+      - {name: public.job_tick_claim, reason: "platform/jobs (add job): the once-per-minute claim of a scheduler tick, jobs.sql (R335)"}
+      - {name: public.queue_write, reason: "platform/queue (add queue): the outbox insert of queue-outbox.sql"}
+      - {name: public.queue_waiting, reason: "platform/queue (add queue): the relay read FOR UPDATE SKIP LOCKED of queue-outbox.sql"}
+      - {name: public.queue_mark_sent, reason: "platform/queue (add queue): the relay mark of queue-outbox.sql"}
+      - {name: public.inbox_claim_event, reason: "platform/inbox (add webhook): the conflict-safe delivery claim"}
+      - {name: public.inbox_claim_client, reason: "platform/inbox (add webhook): the client claim upsert returning its committed outcome"}
+      - {name: public.inbox_save_client_outcome, reason: "platform/inbox (add webhook): the saved client outcome"}
+      - {name: public.inbox_sweep_clients, reason: "platform/inbox (add webhook): the bounded retention sweep FOR UPDATE SKIP LOCKED"}
+      - {name: public.event_bus_send, reason: "platform/event-bus (add webhook): the send of a typed envelope to its pgmq topic in the publisher's transaction"}
+      - {name: public.event_bus_read, reason: "platform/event-bus (add webhook): a consumer's pgmq read with a visibility timeout"}
+      - {name: public.event_bus_archive, reason: "platform/event-bus (add webhook): the archive of a handled message"}
+      - {name: public.event_bus_bury, reason: "platform/event-bus (add webhook): the move of an exhausted or malformed message to its consumer's dead-letter queue"}
+      - {name: public.event_bus_dead_letters, reason: "platform/event-bus (add webhook): the operator read of a consumer's dead-letter queue"}
+      - {name: public.event_bus_requeue, reason: "platform/event-bus (add webhook): the operator requeue of one dead letter"}
+      - {name: public.be_auth_user_by_email, reason: "domain/identity (sign-in): the account of an exact sign-in address with its bcrypt hash, through the account-doors definer of the baseline"}
+      - {name: public.be_auth_user_by_id, reason: "domain/identity (sign-in): the standing of one account by id (a refresh), through the account-doors definer"}
+      - {name: public.be_auth_user_by_google, reason: "domain/identity (sign-in): the account a Google subject is linked to, through the account-doors definer"}
+      - {name: public.be_auth_create_user, reason: "domain/identity (sign-in): the account a first Google sign-in creates, through the account-doors definer"}
+      - {name: public.be_auth_link_google, reason: "domain/identity (sign-in): the link of a Google subject to an account, through the account-doors definer"}
+      - {name: public.be_auth_touch_user, reason: "domain/identity (sign-in): the sign-in record of an account and its profile keys, through the account-doors definer"}
+      - {name: public.be_auth_confirm_user, reason: "domain/identity (sign-in): the confirmation stamp of a mailbox whose link was spent, through the account-doors definer"}
+      - {name: public.be_auth_set_password, reason: "domain/identity (sign-in): the new password hash of a spent reset link (and the mailbox it proved), through the account-doors definer"}
+    # R334: the only `.query(` outside platform/database's composer and the test world is the pass-through of a file listed here
     # (or in hfs.json sides.be.sqlPassThrough), whose SQL text is not the app's own. Paths are relative to the side folder.
     sqlPassThrough:
       - {file: src/modules/platform/database/seed-runner.service.ts, reason: "the tracked seed files' text, run as it is (the sql/ entries of .starcistacks/seeds/, then of .starcistacks/<env>/seeds/); the app writes no SQL there"}
@@ -642,13 +642,13 @@ slots:
     rules: [HFS_MANAGED_FILE_DRIFT]
   - id: app.ci-db
     profiles: [app]
-    # The database deploy workflow: workflow_dispatch only. A lite app has none: the stack deploy backs up and migrates inside the database container.
+    # The database deploy workflow: workflow_dispatch only. An app has none: the stack deploy backs up and migrates inside the database container.
     path: ".github/workflows/db-deploy.yml"
     presence: forbidden
     tracked: external
     tier: none
     tests: none
-    goesTo: "the stack deploy: starci app stack deploy takes a verified backup, applies the expand migrations before the services update and the contract migrations after the accept (a full app keeps its own optional workflow)"
+    goesTo: "the stack deploy: starci app stack deploy takes a verified backup, applies the expand migrations before the services update and the contract migrations after the accept"
     rules: [HFS_MANAGED_FILE_DRIFT]
     since: 2.1.0
   - id: app.ci-stack-deploy
@@ -699,7 +699,7 @@ slots:
     since: 3.1.0
     profiles: [app]
     # Production delivery tooling for the app's own processes: compose files, Caddyfile, *.env.example and ops shell scripts.
-    # Lite keeps its encrypted custody in app.starcistacks; R06 scans every file here.
+    # An app keeps its encrypted custody in app.starcistacks; R06 scans every file here.
     path: "deploy/"
     presence: optional
     tracked: tracked
@@ -733,7 +733,7 @@ slots:
     # refusing any test or test tooling inside fe/). Declared by `browser: true` in hfs.json; the managed script `test:browser` exists only then.
     path: "browser/"
     presence: opt-in
-    goesTo: "the full edition: a lite app runs no browser journey; a flow through the app's external doors is src/tests/e2e/<flow>/*.e2e-spec.ts"
+    goesTo: "no browser journey: a flow through the app's external doors is src/tests/e2e/<flow>/*.e2e-spec.ts"
     tracked: tracked
     tier: none
     tests: none
@@ -748,7 +748,7 @@ slots:
     # app.browser by `browser: true` in hfs.json.
     path: browser/tsconfig.json
     presence: opt-in
-    goesTo: "the full edition: a lite app has no browser journey to type-check"
+    goesTo: "no browser journey to type-check"
     tracked: tracked
     tier: none
     tests: none
@@ -843,7 +843,7 @@ slots:
   - id: app.scripts.delivery
     since: 3.1.0
     profiles: [app]
-    # Product-owned environment, secret and build tooling, kept apart from lite's managed codegen script.
+    # Product-owned environment, secret and build tooling, kept apart from the managed codegen script.
     # app.scripts owns these files; its generic *.mjs pattern must not compete with build-*.mjs.
     path: "scripts/{env-sync.mjs,with-secrets.mjs,set-secrets.ps1,build-*.mjs}"
     presence: optional
@@ -985,7 +985,7 @@ slots:
     tier: none
     tests: none
     forbids: [evidence/, logs/, reports/, captures/, runs/, "kernel-*/", "*.sqlite*"]
-    # R212: lite keeps workspace.yaml for project identity and repo roles, brand drawing records,
+    # R212: an app keeps workspace.yaml for project identity and repo roles, brand drawing records,
     # references and assets, and the product's concepts (PROJECT-WORK-7). No brand and no concept means no Work
     # tree is needed; workspace.yaml is legal but optional.
     requires: [.gitignore]
@@ -1002,7 +1002,7 @@ slots:
     tracked: tracked
     tier: none
     tests: none
-    # Lite declares docker-swarm production, app runtime config, sealed custody and the seed levels.
+    # An app declares docker-swarm production, app runtime config, sealed custody and the seed levels.
     # The db service supplies the database; schedules are platform/jobs ticks (R335); production has no Compose or host cron.
     requires: [application-stacks.yaml]
     allows: [application-stacks.yaml, "images/<name>/**", "<env>/README.md", "<env>/environment.json", "<env>/infra/{compose,swarm}/**", "<env>/infra/metadata.json",
@@ -1066,7 +1066,7 @@ slots:
     goesTo: ".starcistacks/<env>/secrets/<slug>.enc.yaml (at the app root); decrypted values only in memory or under %LOCALAPPDATA%/StarCi/secrets/<project>/<env>/ via *_FILE"
     rules: [HFS_PLAINTEXT_SECRET]
 
-  # ----- app root: the database of a lite app: a self-hosted PostgreSQL in the app's
+  # ----- app root: the database of an app: a self-hosted PostgreSQL in the app's
   # stack (the `db` service, built from the managed .starcistacks/images/db/Dockerfile: the official postgres image plus pgvector and pgmq), migrated by
   # `starci app db migrate --db-url-env <NAME>`. No TypeORM migration lives under be/.
   - id: app.db
@@ -1085,7 +1085,7 @@ slots:
     exemplifiedBy:
       - packages/hfs/templates/app/skeleton/db/migrations/__timestamp___baseline.sql
       - packages/hfs/src/db-migration-shape.spec.mjs
-    # The schema authority of a lite app: forward-only SQL migrations named <timestamp14>_<kebab-name>.sql, one file per change,
+    # The schema authority of an app: forward-only SQL migrations named <timestamp14>_<kebab-name>.sql, one file per change,
     # immutable once on origin/main, applied in order by `starci app db migrate` and recorded in the history table.
     path: "db/migrations/<stamp>_<name>.sql"
     presence: required
@@ -1349,7 +1349,7 @@ slots:
     path: "apps/<app>/Dockerfile"
     exceptAppKinds: [client-cli]
     presence: required
-    sidePresence: {fe: optional}     # lite: a Next app may be built by its host (Netlify, Vercel); a be image stays required
+    sidePresence: {fe: optional}     # a Next app may be built by its host (Netlify, Vercel); a be image stays required
     tracked: tracked
     tier: none
     tests: none
@@ -1796,8 +1796,8 @@ slots:
     allows: [index.ts, transport/]
     tests: none
     why: >-
-      a push channel with the three doors of both editions: server-sent events (be.feature.realtime.sse, the default for one-way push), the socket.io gateway (two-way) and the restricted GraphQL subscription (R212); all run inside the be api process, which scales horizontally and stateless
-      on the hub of its declared infrastructure; the front end listens through a useSubscribe<Channel>Swr hook over modules/api/sse, or hooks/socketio (knowledge/patterns/be/realtime.yaml, liteAdapter)
+      a push channel with the three doors: server-sent events (be.feature.realtime.sse, the default for one-way push), the socket.io gateway (two-way) and the restricted GraphQL subscription (R212); all run inside the be api process, which scales horizontally and stateless
+      on the hub of its declared infrastructure; the front end listens through a useSubscribe<Channel>Swr hook over modules/api/sse, or hooks/socketio (knowledge/patterns/be/realtime.yaml, adapter)
     coverage: none
     rules: [BE_KIND_ISOLATION, BE_FEATURE_IMPORTS_FEATURE, BE_FEATURE_NOT_COMPOSED]
     since: 1.0.0
@@ -1833,7 +1833,7 @@ slots:
   - id: be.feature.realtime.websocket
     profiles: [be]
     path: "src/features/realtime/<channel>/transport/websocket/"
-    presence: opt-in              # a socket.io gateway; lite runs it in the api process
+    presence: opt-in              # a socket.io gateway; it runs in the api process
     pattern: realtime
     tracked: tracked
     tier: feature
@@ -2053,7 +2053,7 @@ slots:
       the EventBus and EventConsumer ports on pgmq: publish sends the envelope to its
       topic in the publisher's transaction, so no outbox or relay runs; each consumer group reads its own queue bound to the
       event's name with a visibility timeout, archives a handled message, lets a failed one reappear and buries one past its
-      maxDeliveries in its __dead queue (BE-EVENT-BUS-6). Jobs stay on BullMQ (platform/queue). No Kafka (knowledge/patterns/be/event-bus.yaml liteAdapter)
+      maxDeliveries in its __dead queue (BE-EVENT-BUS-6). Jobs stay on BullMQ (platform/queue). No Kafka (knowledge/patterns/be/event-bus.yaml adapter)
     requires: [index.ts, event-bus.module.ts, event-bus.port.ts, event-bus.contracts.ts, event-bus.service.ts, event-bus.service.spec.ts]
     tests: unit-beside
     coverage: required
@@ -2071,10 +2071,10 @@ slots:
     tier: platform
     owner: true
     why: >-
-      the same QueueOutbox and QueueWorkerRegistry ports and full's BullMQ adapter on the declared Redis (backing: [redis]): the
+      the same QueueOutbox and QueueWorkerRegistry ports and the BullMQ adapter on the declared Redis (backing: [redis]): the
       relay adds each committed outbox row with the outbox id as the job id, workers retry a transient failure with exponential backoff and
       platform/jobs parks a job a retry cannot fix as failed_awaiting_fix until it is resumed (BE-RESILIENCE-2); the outbox table comes from a db migration, and a
-      schedule is a BullMQ job scheduler or a platform/jobs tick that writes one outbox row, R335 (knowledge/patterns/be/queues.yaml liteAdapter)
+      schedule is a BullMQ job scheduler or a platform/jobs tick that writes one outbox row, R335 (knowledge/patterns/be/queues.yaml adapter)
     requires: [index.ts, queue.module.ts, queue.port.ts, queue.contracts.ts, queue-outbox.service.ts, queue-outbox.service.spec.ts]
     tests: unit-beside
     coverage: required
@@ -2222,8 +2222,8 @@ slots:
   - id: be.integrations.passport
     profiles: [be]
     exemplifiedBy:
-      - packages/hfs/templates/be/skeleton-lite/src/modules/integrations/passport/
-    # The glue of @starci/auth, the lite sign-in package (Google OAuth with state and PKCE, email and password, EdDSA access tokens with
+      - packages/hfs/templates/be/skeleton/src/modules/integrations/passport/
+    # The glue of @starci/auth, the sign-in package (Google OAuth with state and PKCE, email and password, EdDSA access tokens with
     # their JWKS, rotating refresh sessions): the one importer of the package (ruleParams.be.infraOwners), which owns the identity
     # libraries (@nestjs/passport, passport, passport-google-oauth20, passport-local, @nestjs/jwt, jose, bcryptjs) that no app imports.
     # It parses the typed options, builds the verifier and names the injectors; domain/identity verifies a token through the kit and
@@ -2269,7 +2269,7 @@ slots:
   - id: be.integrations.mail
     profiles: [be]
     exemplifiedBy:
-      - packages/hfs/templates/be/skeleton-lite/src/modules/integrations/mail/
+      - packages/hfs/templates/be/skeleton/src/modules/integrations/mail/
     # The glue of @starci/mail, the owner of the SMTP client (nodemailer): this folder parses the settings (the server, the sender and the
     # link lifetimes of the confirmation and reset mails), registers the module and names the injectors; no app file imports nodemailer,
     # and no other module imports the package. The words and layout of each mail belong to the domain that sends it.
@@ -2287,9 +2287,9 @@ slots:
   - id: be.integrations.object-storage
     profiles: [be]
     exemplifiedBy:
-      - packages/hfs/templates/be/skeleton-lite/src/modules/integrations/object-storage/
+      - packages/hfs/templates/be/skeleton/src/modules/integrations/object-storage/
     # The glue of @starci/object-storage, the owner of the S3 client (@aws-sdk/client-s3 and @aws-sdk/s3-request-presigner) over
-    # S3-compatible storage (MinIO in lite): this folder keeps the bucket, parses the settings, registers the module and adds the bucket's
+    # S3-compatible storage (MinIO): this folder keeps the bucket, parses the settings, registers the module and adds the bucket's
     # readiness probe (object-storage-probe.service.ts, BE-AUTH-8); no app file imports an S3 SDK or minio, and no other module imports the package.
     path: "src/modules/integrations/object-storage/"
     presence: required
@@ -2333,7 +2333,7 @@ slots:
     tracked: tracked
     tier: e2e
     why: >-
-      the world of the optional integration specs of a lite app: global-setup.ts connects to the local db service
+      the world of the optional integration specs of an app: global-setup.ts connects to the local db service
       (`npm run db:start`, with the migrations applied by `npm run db:push`) and starts no container, no toxiproxy and no stack of its
       own; use-test-world.ts exports useTestWorld({ modules: [...] } | { apps: {...} }) -> world.db.<connection> (the shared EntityManager),
       world.apps.<name> (an e2e flow's booted app, its door and its listening port) and
@@ -2404,8 +2404,8 @@ slots:
     tests: e2e
     coverage: none
     why: >-
-      optional under lite: one capability module through useTestWorld({ modules }) against the local db service
-      (`npm run db:start`), run by test:integration; no container, no toxiproxy and no outage through the world (R112 is full's)
+      optional: one capability module through useTestWorld({ modules }) against the local db service
+      (`npm run db:start`), run by test:integration; no container, no toxiproxy and no outage through the world
     rules: [BE_TEST_TOPOLOGY]
   - id: be.tests.e2e
     since: 3.1.0
@@ -2417,7 +2417,7 @@ slots:
     tests: e2e
     coverage: none
     why: >-
-      optional under lite: a flow through useTestWorld({ apps }) that boots the full app(s) on the local db service
+      optional: a flow through useTestWorld({ apps }) that boots the full app(s) on the local db service
       (`npm run db:start`), seeds a real package through the app's deploy door, drives the app only through its external doors
       (HTTP, a webhook, GraphQL), fakes only at the network edge (world.fake.<provider>) and asserts persisted state
       (world.db.<connection>); run only on request by test:e2e, never by CI, a hook or a release gate row (R12). One module or
@@ -2431,7 +2431,7 @@ slots:
     tracked: tracked
     tier: e2e
     tests: e2e
-    goesTo: "src/tests/contract/<provider>/*.contract-spec.ts in either edition: optional provider sandbox specs via test:contract; e2e stays full-only"
+    goesTo: "src/tests/contract/<provider>/*.contract-spec.ts: optional provider sandbox specs via test:contract"
     coverage: none
     why: provider sandbox contracts, skipped without sandbox config; run only by test:contract, never part of test or test:e2e
     rules: [BE_TEST_TOPOLOGY]

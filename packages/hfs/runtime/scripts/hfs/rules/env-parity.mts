@@ -42,7 +42,7 @@ export const ENV_KEY_ENVIRONMENT_NAMED = 'ENV_KEY_ENVIRONMENT_NAMED';
  * every environment and each seals its own value. Matched as an exact leading token (`DEV_X`, never `DEVICE_X`).
  */
 export const ENVIRONMENT_TOKENS = Object.freeze(['DEV', 'PROD', 'PRODUCTION', 'STAGING', 'LOCAL', 'TEST']);
-/** The two names the lite starter shipped: a warning for one minor, so an app renames them before they turn red. */
+/** The two names the starter shipped: a warning for one minor, so an app renames them before they turn red. */
 export const ENVIRONMENT_NAMED_GRACE: ReadonlySet<string> = new Set(['DEV_DB_OWNER_PASSWORD', 'DEV_DB_APP_PASSWORD']);
 
 /** The key without its leading environment token, or null when it has none. */
