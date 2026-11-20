@@ -175,7 +175,7 @@ pins:
     source: packages/gallery/package.json
     why: 'the screenshot gallery of an app as one Vite config over the Grammar (PROJECT-GALLERY-1): the managed gallery/ is a vite.config.js that calls defineGallery from @starci/gallery/vite, a devDependency of gallery/ only (outside the workspaces); it reads gallery/pages, flows.json and the design canvas and draws each screen with its approved frame, shot, status dot, states and explanation.'
   '@starci/hfs':
-    version: 6.17.0
+    version: 6.17.1
     group: starci
     install: registry
     side: both

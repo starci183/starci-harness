@@ -1,5 +1,15 @@
 # Changelog
 
+## 6.17.1 - 2026-11-21
+
+- Fixed (UI audit reach, `cache/uiaudit-family.mts`): the reach reads the head of a source or an i18n catalog it compares with the base whatever its size. The rule read budget (`readText`, 1 MiB) read a larger catalog (NIVO's vi.json, 1.15 MB) as absent, so every key counted as changed and one edited line marked every screen that reads the catalog (site/blog-article on every NIVO lane, whose audit is at round 4 and cannot be re-run). Spec: `src/ui-audit.spec.mts`.
+- Fixed (`landingBase`, `lint/ratchet.mts`): a lane with no commit of its own yet (HEAD on origin/dev's tip) is judged from HEAD, its work tree alone; before, it fell through to the merge-base with origin/main and judged all of dev's history since main as the lane's own. Spec: `src/landing-base.spec.mts`.
+- Added (`app secret server-key --backup github`, `stack/server-key.mts`): a GitHub Environment whose deployment refs are the tag policy `v*` is accepted when an active tag ruleset covering `refs/tags/v*` (or `~ALL` with no exclusion) forbids creating, updating and deleting those tags; the refusal names the missing ruleset. Reviewers and main-only stay accepted (stack-deploy.yml deploys only `v*` tags, so such an Environment cannot be limited to main).
+- Added (R451, `lib/sops-recipients.mts`, owner 2026-11-21 "one key per project"): an app that deploys from CI may hold its own age key, public half declared under `apps.<project>.ci` of `ops/vps/recipients.yaml` (and the shipped `knowledge/hfs/sops-recipients.yaml`), private half only in that repository's Actions secret SOPS_AGE_KEY. The token `ci` in an environment's set resolves to the judged app's own key and to nothing for an app without one; a CI key two apps share, or one that is also the harness, a server or a backup key, is refused; another project's CI key is named as such. `app secret init` and the stacks gate resolve the same set.
+- Added (`stack connect`, CI): the vps-ci member's optional VPS_PORT becomes the Port line of the ssh block, checked like the owner transport. ENV_SEALED_UNREAD knows the vps-ci transport keys (VPS_SSH_KEY, VPS_KNOWN_HOSTS, VPS_GATE), which `stack connect` reads and no app does.
+- Changed (`knowledge/hfs/sops-recipients.yaml`): the sv-hk-1 backup recipient and the nivoos-lite CI recipient, public halves only.
+- Changed (`knowledge/hfs/canon-pins.yaml`): the `@starci/hfs` self-pin is 6.17.1.
+
 ## 6.17.0 - 2026-11-21
 
 - Changed (UI audit reach, `cache/screen-reach.mts`): a pure re-export barrel is transparent. An import of it reaches only the modules exporting the names it takes (named, `export *` when a name is not listed, namespace and default imports take all of it), and the barrel itself is no reached file, so a change behind a barrel no longer marks every importer.
