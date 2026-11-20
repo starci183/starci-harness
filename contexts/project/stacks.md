@@ -887,7 +887,7 @@ read-time link are held by review and by the app's own specs (no rule reads code
 
 [edition.md](edition.md), [statics.md](statics.md); slots `app.starcistacks` and `app.plaintext-env` in
 [hfs/slots.yaml](../hfs/slots.yaml); R06, R10, R250 to R253, R266 to R268, R271, R275 to R277, R294, R296 to R299,
-R301, R372 to R375, R400, R426 to R428, R438 to R440 in [hfs/rules.yaml](../hfs/rules.yaml).
+R301, R372 to R375, R400, R426 to R428, R438 to R440, R450 in [hfs/rules.yaml](../hfs/rules.yaml).
 
 ## PROJECT-STACKS-16 A stack command whose output is withheld still names why it failed
 
@@ -1050,3 +1050,49 @@ the two official images, rebuilds every index for the new libc and keeps the old
 Enforced by: the refusals above (stack/db-upgrade.mts, stack/db-upgrade-core.mts, stack/local-db-upgrade.mts, stack/adopt.mts), `STACKS_DEPLOY_CONFIG_INVALID`
 and `HFS_STACKS_SHAPE` for `deploy.dbUpgrade`, `STACKS_LOCAL_CONFIG` for `local.dbUpgrade`; the pair and the comparison are held by
 `packages/hfs/src/stack-db-upgrade.spec.mts`; the rest by review.
+
+## PROJECT-STACKS-20 An environment pending its cutover: reported, never deployed
+
+An app that moves to its next shape lands the new code on its branch before each environment is cut over: dev runs the new shape, while staging
+and production still run the previous release and wait for the owner. Those environments lack the sealed members of the new shape (the owner
+creates them in the cutover) and keep the old ones for rollback, so a check of the new code against them is red for a reason no code change can
+fix. The environment declares that state, once, under its own entry:
+
+```yaml
+environments:
+  production:
+    status: supported
+    runtime: docker-swarm
+    cutover:
+      state: pending                    # the only state; a cut-over environment carries no cutover block
+      reason: Waits for the owner to seal the members of the new shape and move the data.
+      until: 2026-12-15                 # YYYY-MM-DD (UTC), required; the declaration holds through that day
+      keep: [identity-provider, db/IDENTITY_DB_PASSWORD]   # old sealed members kept for rollback: <member> or <member>/<KEY>
+```
+
+`reason` and `until` are required, `keep` is optional; anything else is `HFS_CUTOVER_DECLARATION_INVALID` (the schema is `HFS_STACKS_SHAPE`), and an
+unsound declaration tolerates nothing.
+
+- **The check reports, for that environment alone.** `starci app check` (in `--env local` and `--env prod` alike) reports, instead of blocking, the
+  findings of the codes `modules/kernel/failure-codes.yaml` marks `cutoverTolerant` whose environment is the pending one: a finding's environment is
+  its `.starcistacks/<env>/` folder, or the one `environments.<env>.` its message names on the declaration file. `cutoverTolerant: true` codes are
+  the not-yet-cut-over shape: a declared sealed member or key not sealed yet (`STACKS_SEALED_MEMBER_MISSING`) and the rendered stack of the old shape
+  (`STACKS_LITE_SELFHOSTED_DB`, `STACKS_LITE_REDIS_PERSISTENCE`, `STACK_STORAGE_MISSING`, `STACKS_IMAGE_ENV_DIVERGES`). A `cutoverTolerant: kept` code
+  (`ENV_SEALED_UNREAD`) is reported only for a member, or one key of a member, that `keep` names. Every other finding, of every environment, still
+  blocks. The tolerated findings are listed `CUTOVER PENDING (<env>), REPORT ONLY`, and a section beside the gates off by declaration names each
+  pending environment with its reason, its until, what it keeps and the codes it tolerated, so the state is never silent.
+- **It expires.** A past `until` is the blocking `HFS_CUTOVER_EXPIRED`, and an expired declaration tolerates nothing. The declaration is judged on
+  every run that selects hfs, outside the cache, since it reads the clock.
+- **Nothing deploys to it.** While the block is present (sound, expired or not), `stack deploy` in every form (the image form, `--ci-run` from the
+  managed `stack-deploy.yml`, the one-command `--urgent`, `--adopt`) and `stack prepare --execute` refuse the environment with `STACK_CUTOVER_PENDING`
+  before any action reads the server, so nothing half-migrated reaches it. `stack rollback`, which redeploys a release the environment already
+  accepted, and the read-only verbs stay open.
+- **The cutover runbook removes it last.** The runbook seals the new members, moves the data (PROJECT-STACKS-18 when the runtime names change),
+  retires the kept members, and as its last step deletes the `cutover` block and commits; only that commit deploys.
+
+Why: the alternative is a branch that stays red until the owner cuts every environment over, or a gate switched off for the whole app, and both
+hide the findings that are real. Naming the environment, the reason and the date keeps the tolerance to the findings the waiting causes, and the
+deploy refusal keeps the new code from reaching an environment whose custody is the old one.
+
+Enforced by: R450 (`cutover`: `HFS_CUTOVER_DECLARATION_INVALID`, `HFS_CUTOVER_EXPIRED`, the tolerance in `scripts/hfs/check-cutover.mjs`), the deploy
+guard `STACK_CUTOVER_PENDING` (stack/cutover.mts), `HFS_STACKS_SHAPE` for the schema; proved by `packages/hfs/src/stack-cutover.spec.mts`.

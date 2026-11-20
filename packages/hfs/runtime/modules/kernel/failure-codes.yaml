@@ -2105,6 +2105,7 @@ ENV_SEALED_UNREAD:
   nextStep_vi: "Gỡ khoá khỏi member, sửa tên cho khớp khoá code đọc, hoặc khai báo consumer của nó trong `KEYS.md` / stack."
   owner: op-retry
   kind: check-finding
+  cutoverTolerant: kept
 
 ENV_VALUE_SHAPE:
   title: "A stored env value does not parse as its reader's type"
@@ -6548,6 +6549,7 @@ STACKS_LITE_REDIS_PERSISTENCE:
   nextStep_vi: "Render đúng một dịch vụ Redis, chạy redis-server với --appendonly yes, giữ maxmemory-policy noeviction (mặc định; khóa cache đặt TTL) và mount một named volume ghi được tại /data, khai báo volume đó trong mô hình và trong components.redis.volumes."
   owner: op-retry
   kind: check-finding
+  cutoverTolerant: true
 
 STACKS_LITE_SELFHOSTED_DB:
   title: "A lite deployment runs PostgreSQL, MongoDB, Qdrant or undeclared Redis"
@@ -6559,6 +6561,7 @@ STACKS_LITE_SELFHOSTED_DB:
   nextStep_vi: "Gỡ image Postgres, Mongo hoặc Qdrant; dùng Supabase pgvector cho vector và SQLite trên volume được khai báo cho sidecar. Với Redis, khai redis trong sides.be.backing cho năng lực cần nó hoặc gỡ dịch vụ khỏi stack."
   owner: op-retry
   kind: check-finding
+  cutoverTolerant: true
 
 STACKS_MODEL_UNAVAILABLE:
   title: "The tracked rendered deployment model cannot be checked"
@@ -7128,6 +7131,7 @@ STACKS_IMAGE_ENV_DIVERGES:
   causes_vi:
     - "Vi phạm R374: một môi trường dùng image upstream hoặc image nước ngoài thay vì image dựng từ thư mục."
   nextStep_vi: "Dùng build.context trỏ tới thư mục image (compose) hoặc tham chiếu image của dự án (stack)."
+  cutoverTolerant: true
 
 HFS_EXT_INVALID:
   title: "A project's ext/ folder is refused, or one of its rules cannot judge"
@@ -7875,6 +7879,7 @@ STACK_STORAGE_MISSING:
   nextStep_vi: "Thêm service storage vào dev compose (và deploy.images.storage cho production lite) rồi chạy starci app sync --execute."
   owner: op-retry
   kind: check-finding
+  cutoverTolerant: true
 STACK_STORAGE_UNUSED:
   title: "A storage service is declared and nothing needs it"
   title_vi: "Có service storage nhưng không cần dùng (cảnh báo)"
@@ -8225,5 +8230,48 @@ STACK_ROLLBACK_UPGRADED_DATA:
   causes_vi:
     - "Rollback sau khi đã nâng cấp major."
   nextStep_vi: "Chủ sở hữu đồng ý thì truyền --data-acknowledged."
+  owner: owner
+  kind: verb-refusal
+
+STACKS_SEALED_MEMBER_MISSING:
+  title: "A sealed member or key the declaration names is not sealed in its environment"
+  title_vi: "Member hoặc khoá niêm phong mà khai báo nêu chưa được niêm phong ở môi trường đó"
+  meaning_vi: "application-stacks.yaml nêu một member niêm phong (một mục `secrets:` với `where: secrets/<member>`, hoặc một `member` của `deploy.secrets`) mà `.starcistacks/<env>/secrets/<member>.enc.yaml` chưa có, hoặc member có rồi nhưng chưa giữ khoá được khai báo. Ứng dụng sẽ không boot được ở môi trường đó cho tới khi chủ dự án niêm phong."
+  causes_vi:
+    - "Vi phạm R06/R277: khoá được khai báo cho một môi trường nhưng chưa ai chạy `starci app secret set` ở đó."
+    - "Code của bản mới đã vào nhánh trong khi môi trường vẫn chạy bản cũ chờ cutover: khi môi trường được khai báo `cutover: {state: pending}` (PROJECT-STACKS-20), finding này chỉ được báo, không chặn, cho riêng môi trường đó."
+  nextStep_vi: "Chủ dự án niêm phong khoá: `starci app secret set --env <env> <member> <KEY>`; nếu môi trường đang chờ cutover thì khai báo `cutover` theo PROJECT-STACKS-20 và niêm phong trong runbook cutover."
+  owner: owner
+  kind: check-finding
+  cutoverTolerant: true
+
+HFS_CUTOVER_DECLARATION_INVALID:
+  title: "An environment's cutover declaration is not sound"
+  title_vi: "Khai báo cutover của một môi trường không hợp lệ"
+  meaning_vi: "`environments.<env>.cutover` của .starcistacks/application-stacks.yaml phải là `{ state: pending, reason: \"<lý do>\", until: <YYYY-MM-DD>, keep: [<member cũ giữ để rollback>] }`: state chỉ có pending, reason và until bắt buộc, until là một ngày thật, keep là danh sách tên member (`<member>` hoặc `<member>/<KEY>`) không trùng. Một khai báo bị từ chối không báo nhẹ finding nào, nhưng mọi lệnh deploy môi trường đó vẫn bị từ chối."
+  causes_vi:
+    - "Vi phạm R450: thiếu reason hoặc until, until không đúng dạng ngày, state khác pending, một field lạ, hoặc keep sai dạng."
+  nextStep_vi: "Sửa khối cutover theo PROJECT-STACKS-20 rồi chạy lại starci app check; khi môi trường đã cutover xong thì xoá hẳn khối đó."
+  owner: op-retry
+  kind: check-finding
+
+HFS_CUTOVER_EXPIRED:
+  title: "A pending cutover is past its until date"
+  title_vi: "Cutover đang chờ đã quá ngày until"
+  meaning_vi: "Môi trường được khai báo `cutover: {state: pending}` với `until` đã qua. Khai báo hết hạn không còn báo nhẹ finding nào và chính nó chặn, để trạng thái chờ không thể kéo dài mà không ai thấy."
+  causes_vi:
+    - "Vi phạm R450: runbook cutover chưa chạy xong trước ngày đã hẹn."
+    - "Runbook đã cutover xong nhưng quên xoá khai báo ở bước cuối."
+  nextStep_vi: "Chạy xong runbook cutover và xoá khai báo ở bước cuối; nếu chủ dự án đồng ý lùi lịch thì đổi until sang ngày mới."
+  owner: owner
+  kind: check-finding
+
+STACK_CUTOVER_PENDING:
+  title: "The environment is pending its cutover, so nothing deploys to it"
+  title_vi: "Môi trường đang chờ cutover nên không deploy được"
+  meaning_vi: "`environments.<env>.cutover` có mặt trong application-stacks.yaml (hợp lệ, hết hạn hay sai dạng đều vậy): `stack deploy` (mọi dạng: image, --ci-run, --urgent, --adopt, workflow stack-deploy.yml) và `stack prepare --execute` đều từ chối môi trường này, để không bản nửa chuyển đổi nào tới được nó. Không có gì thay đổi."
+  causes_vi:
+    - "Vi phạm R450: môi trường đang chạy bản cũ và chờ chủ dự án cutover."
+  nextStep_vi: "Chạy runbook cutover của môi trường; bước cuối xoá khối cutover, commit, rồi mới deploy."
   owner: owner
   kind: verb-refusal

@@ -170,6 +170,14 @@ environments:
     #     - {kind: postgres, user: monitor, password: {member: db-password, key: DB_MONITOR_PASSWORD}}
     #   traces: false
     #   profiles: false
+    # While the branch carries the next shape and this environment still runs the previous release, declare it pending its cutover
+    # (PROJECT-STACKS-20): app check reports this environment's not-yet-cut-over findings instead of blocking, and every deploy refuses it
+    # (STACK_CUTOVER_PENDING) until the cutover runbook's last step removes the block. reason and until are required; a past until blocks.
+    # cutover:
+    #   state: pending
+    #   reason: Waits for the owner to seal the new members and move the data.
+    #   until: 2026-12-31
+    #   keep: [identity-provider]
     ingress:
       component: ingress
       hosts: ["{{project}}.example.invalid", "api.{{project}}.example.invalid", "storage.{{project}}.example.invalid"]

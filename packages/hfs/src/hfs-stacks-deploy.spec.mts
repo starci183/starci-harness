@@ -87,7 +87,9 @@ const deployOf = (model: Model) => production(model).deploy;
 const byText = (a: string, b: string) => a.localeCompare(b);
 const messages = (findings: { message: string }[]) => findings.map((finding) => finding.message);
 
-const PROBLEMS: [string, (m: Model) => void, string][] = [
+// A sealed member the environment has not sealed is STACKS_SEALED_MEMBER_MISSING (the code a pending cutover reports, PROJECT-STACKS-20).
+const MEMBER_MISSING = 'STACKS_SEALED_MEMBER_MISSING';
+const PROBLEMS: [string, (m: Model) => void, string, string?][] = [
   ['a postDeploy entry that names no declared task', (m) => { deployOf(m).tasks = { sync: { service: 'api', command: ['node', 'dist/cli.js', 'sync'] } }; deployOf(m).postDeploy = ['sync', 'nope']; }, 'environments.production.deploy.postDeploy[1]: must name a task declared under deploy.tasks'],
   ['a task timeout that is not whole seconds from 1 to 3600', (m) => { deployOf(m).tasks = { sync: { service: 'api', command: ['node', 'dist/cli.js', 'sync'], timeoutSeconds: 7200 } }; }, 'environments.production.deploy.tasks.sync.timeoutSeconds: must be a whole number of seconds'],
   ['an unknown field', (m) => { deployOf(m).extra = 1; }, 'environments.production.deploy.extra: is not a field of the deploy block'],
@@ -99,8 +101,8 @@ const PROBLEMS: [string, (m: Model) => void, string][] = [
   ['an image for a service the stack does not run', (m) => { deployOf(m).images.ghost = { app: 'ghost' }; }, 'environments.production.deploy.images.ghost: ghost is not a service of the stack source'],
   ['a grant for an unknown service', (m) => { deployOf(m).secrets.grants[1].service = 'ghost'; }, 'environments.production.deploy.secrets.grants[1].service: ghost is not a service'],
   ['a verify exec check on an unknown service', (m) => { deployOf(m).verify.exec[0].service = 'ghost'; }, 'environments.production.deploy.verify.exec[0].service: ghost is not a service'],
-  ['a sealed member without a secrets file', (m) => { deployOf(m).secrets.grants[0].from[0].member = 'missing'; }, 'sealed member missing has no .starcistacks/<env>/secrets/missing.enc'],
-  ['a build argument from an unknown sealed member', (m) => { deployOf(m).images.web.buildArgs.sealed.member = 'nowhere'; }, 'sealed member nowhere has no'],
+  ['a sealed member without a secrets file', (m) => { deployOf(m).secrets.grants[0].from[0].member = 'missing'; }, 'sealed member missing has no .starcistacks/<env>/secrets/missing.enc', MEMBER_MISSING],
+  ['a build argument from an unknown sealed member', (m) => { deployOf(m).images.web.buildArgs.sealed.member = 'nowhere'; }, 'sealed member nowhere has no', MEMBER_MISSING],
   ['an all-zero placeholder backup image', (m) => { deployOf(m).backup.image = `alpine:3.21@sha256:${'0'.repeat(64)}`; }, 'environments.production.deploy.backup.image: must be a digest-pinned image reference'],
   ['an unpinned backup image', (m) => { deployOf(m).backup.image = 'alpine:3.21'; }, 'environments.production.deploy.backup.image'],
   ['a duplicate config name', (m) => { deployOf(m).configs.push({ ...deployOf(m).configs[0], env: 'SHOP_CFG_OTHER' }); }, 'environments.production.deploy.configs: config name routes is declared twice'],
@@ -108,7 +110,7 @@ const PROBLEMS: [string, (m: Model) => void, string][] = [
   ['a verify entry with a bad status', (m) => { deployOf(m).verify.http[0].status = 99; }, 'environments.production.deploy.verify.http[0].status'],
   ['a verify exec check with a bad pattern', (m) => { deployOf(m).verify.exec[0].stdout = '('; }, 'environments.production.deploy.verify.exec[0].stdout: must be a valid regular expression'],
   ['a settings key two settings entries name', (m) => { deployOf(m).secrets.settings = [{ member: 'stack', keys: ['JOBS_STALE'] }, { member: 'api', keys: ['JOBS_STALE'] }]; }, 'environments.production.deploy.secrets.settings[1].keys: JOBS_STALE is named by another settings entry'],
-  ['a settings list entry from an unknown sealed member', (m) => { deployOf(m).secrets.settings = [{ member: 'stack', keys: ['JOBS_STALE'] }, { member: 'nowhere', keys: ['N8N_HOST'] }]; }, 'environments.production.deploy.secrets.settings[1].member: sealed member nowhere has no'],
+  ['a settings list entry from an unknown sealed member', (m) => { deployOf(m).secrets.settings = [{ member: 'stack', keys: ['JOBS_STALE'] }, { member: 'nowhere', keys: ['N8N_HOST'] }]; }, 'environments.production.deploy.secrets.settings[1].member: sealed member nowhere has no', MEMBER_MISSING],
 ];
 
 for (const edition of ['lite'] as const) {
@@ -121,11 +123,11 @@ for (const edition of ['lite'] as const) {
     assert.deepEqual(findings, []);
   });
 
-  for (const [title, change, expected] of PROBLEMS) {
+  for (const [title, change, expected, code] of PROBLEMS) {
     test(`${CODE}: ${edition} rejects ${title}`, () => {
       const findings = stacksDeployFindings(app(edition, change));
       assert.ok(findings.length >= 1);
-      assert.equal(findings[0]!.code, CODE);
+      assert.equal(findings[0]!.code, code ?? CODE);
       assert.equal(findings[0]!.level, 'error');
       assert.equal(findings[0]!.path, DECLARATION);
       assert.ok(messages(findings).some((message) => message.includes(expected)), messages(findings).join(' | '));
