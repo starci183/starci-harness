@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased (train 186 sets the version)
+
+- Added (stacks, PROJECT-STACKS-20): the optional `environments.<env>.services` of application-stacks.yaml, the opt-in to the server's shared services (schema `$defs.environment.services`, `stack/shared-services.mts`). `services.embeddings: {member, key?, consumers?, required?, network?, url?, urlEnv?}` joins each consumer (default: the services of deploy.images) to the external network `starci-embeddings`, sets `EMBEDDINGS_BASE_URL=http://embeddings-gate:8080/v1` and grants `EMBEDDINGS_API_KEY` through `<KEY>_FILE`. A consumer that also declares the URL variable is refused. `HFS_STACKS_SHAPE` checks the consumers against the rendered model (`rules/stacks-shared-services.mts`). An environment without the block renders byte for byte as before.
+- Fixed (render, R294): a grant source declared `required: false` whose sealed member has no envelope yet no longer refuses the render with STACKS_DEPLOY_CONFIG_INVALID: it is left out (`pendingOf` of stack-deploy-config.mts), the render prints a `pending` line and `app check` reports the warning STACKS_SEALED_MEMBER_PENDING. A source that omits `required` or sets it true still refuses. A shared-service opt-in not marked required is such a source, so the member and the opt-in can land before the key is sealed.
+- Added (failure-codes.yaml, R294 in both catalogs): STACKS_SEALED_MEMBER_PENDING.
+- Changed (template): the skeleton's production environment carries a commented `services` example.
+
 ## 6.15.0 - 2026-11-20
 
 - Changed (templates, R212): the last lite folders take the plain names. be/skeleton-lite and fe/skeleton-lite are merged into be/skeleton and fe/skeleton (the lite file wins where both existed; the full-only be files, fe/skeleton/apps/app, apps/landing and packages/__project__-* that no scaffold rendered are gone), and be/patterns/{jobs,queues}/platform-lite into platform (the TypeORM persistence.* templates and their entries in jobs.yaml and queues.yaml are gone). The scaffold output of a new app is byte for byte the same. The template snapshot 5.8.3 took the same merge, with its manifest paths.

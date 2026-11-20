@@ -170,6 +170,9 @@ environments:
     #     - {kind: postgres, user: monitor, password: {member: db-password, key: DB_MONITOR_PASSWORD}}
     #   traces: false
     #   profiles: false
+    # Call the server's shared services (`starci vps service up`, contexts/project/shared-services.md); absent, nothing changes.
+    # services:
+    #   embeddings: {member: ai, key: EMBEDDINGS_API_KEY, consumers: [api]}
     ingress:
       component: ingress
       hosts: ["{{project}}.example.invalid", "api.{{project}}.example.invalid", "storage.{{project}}.example.invalid"]

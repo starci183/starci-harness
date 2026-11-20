@@ -10,6 +10,7 @@ import { readYaml } from './config.mjs';
 import type { DeployConfig, EdgeRoute, ServiceEnvironment, SharedEdge } from './config.mjs';
 import { monitoringDeployLabels, sidecarService, telemetryEnvironment, telemetryServices } from './monitoring.mjs';
 import type { MonitoringOptIn } from './monitoring.mjs';
+import { sharedServiceEnvironment, sharedServiceNetworks } from './shared-services.mjs';
 import { tool } from './context.mjs';
 import type { StackContext } from './context.mjs';
 import { hasPlaceholderDigest, isImageReference, isReleaseId } from './digest.mjs';
@@ -154,6 +155,8 @@ function serviceOverride(config: DeployConfig, sealed: LoadedSealed, images: Rec
   const environment = plainEnvironment(config, sealed.settings, config.environment[service] ?? { files: [], values: {}, settings: {} });
   const monitoring = config.monitoring ?? null;
   if (monitoring !== null) Object.assign(environment, monitoring.metrics.find((entry) => entry.service === service)?.environment ?? {}, telemetryServices(monitoring).includes(service) ? telemetryEnvironment(monitoring, service, config.stack, config.env) : {});
+  const shared = config.sharedServices ?? [];
+  if (shared.length > 0) Object.assign(environment, sharedServiceEnvironment(shared, service));
   const keys = sealed.grants[service] ?? [];
   if (grant?.filePointers) for (const key of keys) environment[`${key}_FILE`] = `/run/secrets/${key}`;
   const out: ServiceOverride = {};
@@ -164,7 +167,7 @@ function serviceOverride(config: DeployConfig, sealed: LoadedSealed, images: Rec
   const labels = edge === null ? [] : edgeLabels(edge, service, config.stack);
   const monitored = monitoring === null ? [] : monitoringDeployLabels(monitoring, service, config.stack);
   const reaches = monitoring !== null && (monitored.length > 0 || telemetryServices(monitoring).includes(service));
-  const networks = [...new Set([...(labels.length > 0 && edge !== null ? [edge.network] : []), ...(reaches && monitoring !== null ? [monitoring.network] : [])])];
+  const networks = [...new Set([...(labels.length > 0 && edge !== null ? [edge.network] : []), ...(reaches && monitoring !== null ? [monitoring.network] : []), ...sharedServiceNetworks(shared, service)])];
   if (labels.length + monitored.length > 0) out.deploy = { labels: [...labels, ...monitored] };
   if (networks.length > 0) out.networks = joinsDefault ? ['default', ...networks] : networks;
   if (monitoring?.logs === true && config.services.has(service)) out.labels = ['starci.monitor.logs=true'];
@@ -185,11 +188,12 @@ function onDefaultNetwork(config: DeployConfig): Set<string> {
 function buildOverride(config: DeployConfig, sealed: LoadedSealed, images: Record<string, string>, version: unknown): Record<string, unknown> {
   const edge = config.edge ?? null;
   const monitoring = config.monitoring ?? null;
-  const unnamed = edge === null && monitoring === null ? new Set<string>() : onDefaultNetwork(config);
+  const shared = config.sharedServices ?? [];
+  const unnamed = edge === null && monitoring === null && shared.length === 0 ? new Set<string>() : onDefaultNetwork(config);
   const sidecars = new Map((monitoring?.sidecars ?? []).map((sidecar) => [sidecar.name, sidecar]));
   const monitored = monitoring === null ? [] : [...monitoring.metrics.map((entry) => entry.service), ...(monitoring.probeCarrier === null ? [] : [monitoring.probeCarrier]), ...(monitoring.logs ? config.services : []), ...sidecars.keys()];
-  const services = new Set([...Object.keys(config.images), ...Object.keys(config.environment), ...Object.keys(sealed.grants), ...(edge?.routes.map((route) => route.service) ?? []), ...monitored]);
-  const external = [...(edge === null ? [] : [edge.network]), ...(monitoring === null || !monitoringReaches(monitoring) ? [] : [monitoring.network])];
+  const services = new Set([...Object.keys(config.images), ...Object.keys(config.environment), ...Object.keys(sealed.grants), ...(edge?.routes.map((route) => route.service) ?? []), ...monitored, ...shared.flatMap((optIn) => optIn.consumers)]);
+  const external = [...new Set([...(edge === null ? [] : [edge.network]), ...(monitoring === null || !monitoringReaches(monitoring) ? [] : [monitoring.network]), ...shared.map((optIn) => optIn.network)])];
   const source = monitoring === null || sidecars.size === 0 ? null : readYaml(config.stackFile, 'the stack source');
   const overrideOf = (service: string): unknown => {
     const sidecar = sidecars.get(service);
@@ -249,6 +253,13 @@ function writeOutput(out: string, override: unknown, stackBytes: string, release
   fs.writeFileSync(path.join(out, 'release.json'), `${JSON.stringify(release, null, 2)}\n`);
 }
 
+/**
+ * The report-only line of each grant source left out because its member is not sealed yet (STACKS_SEALED_MEMBER_PENDING): the service renders without
+ * those keys until `starci app secret set` seals the member; nothing when every source is sealed.
+ */
+const pendingLines = (config: DeployConfig): string[] => (config.pending ?? []).map((source) =>
+  `pending (STACKS_SEALED_MEMBER_PENDING, report only): ${source.service} renders without ${source.keys?.join(', ') ?? 'the keys'} of the sealed member ${source.member}, which ${config.env} has not sealed yet`);
+
 /** Renders a release into `options.out` (a fresh temp directory when null). Effects stay local; nothing leaves the machine. */
 export async function renderRelease(ctx: StackContext, config: DeployConfig, options: RenderOptions): Promise<ActionResult> {
   checkInputs(config, options);
@@ -270,8 +281,8 @@ export async function renderRelease(ctx: StackContext, config: DeployConfig, opt
     const counts = { secrets: release.secrets.length, configs: configs.length };
     return {
       ok: true,
-      lines: [`render: release ${releaseId}: ${counts.secrets} secrets, ${counts.configs} configs; images pinned`, `out: ${out}`],
-      data: { releaseDigest: release.releaseDigest, releaseId, out, ...counts },
+      lines: [`render: release ${releaseId}: ${counts.secrets} secrets, ${counts.configs} configs; images pinned`, ...pendingLines(config), `out: ${out}`],
+      data: { releaseDigest: release.releaseDigest, releaseId, out, ...counts, ...(config.pending === undefined ? {} : { pending: config.pending }) },
     };
   } finally {
     fs.rmSync(scratch, { recursive: true, force: true });
