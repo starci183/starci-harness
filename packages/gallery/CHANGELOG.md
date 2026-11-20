@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Changed: requires the Grammar patch that follows 0.52.0 (proposed 0.52.1, the chat fixes at 390), the Grammar it ships with; the train integrator sets both numbers.
+
 ## 0.1.14 - 2026-11-20
 
 - Changed: requires @starci/grammar 0.52.0, the Grammar it ships with.

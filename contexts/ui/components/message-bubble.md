@@ -90,7 +90,11 @@ and the time gap) shapes the bubble like Messenger: a lone bubble is rounded 18,
 (first: bottom on the sender's side; middle: both; last: top), logical corners so RTL mirrors; the avatar sits beside the last bubble and the
 earlier ones keep a spacer; the author line shows on single and first. An incoming bubble and a `MessageCard` are the flat surface on the
 thread; an outgoing bubble keeps the brand fill. Reactions are presentation only: `reactions` (`{ emoji, count, mine }`), `onReact`,
-`onReply`, `onShare`. The hover or long-press toolbar is a labelled `toolbar` with arrow keys (six emoji, reply, share); the pill on the bottom
+`onReply`, `onShare`. The hover or long-press toolbar is a labelled `toolbar` with arrow keys (six emoji, reply, share), and with the floating
+`actions` it is ONE tray: from 48rem the toolbar floats above the bubble and the actions beside it; below 48rem hover opens nothing and a
+long press on the bubble (or keyboard focus inside the message) opens the tray in the thread's flow above the body, one bordered piece whose
+buttons wrap inside the row, so it never covers the bubble above nor runs past the row's edge (the play of story
+`Chat surfaces / Reaction tray` proves it at 1440 and 390; a static law cannot open the tray); a tap on one of its buttons closes it. The pill on the bottom
 corner shows up to three emoji and the total and adds the viewer's top reaction on press; each tap bursts floating emoji (none under reduced
 motion). The composer band (a `PaneSection as="footer"` or `rule="start"`) keeps the row gap between its divider and its rows. Stories
 `BubbleGrouping`, `Reactions`.
@@ -103,7 +107,7 @@ It takes no step; the words use the body step (14) and the author line and meta 
 
 ## States
 `isHighlight` draws the focus ring round the bubble (a link jumped here); a render highlights one thing (lint `one-highlight-per-render`, R359). Loading draws the face with two skeleton lines
-(`isLoading`, STATE-8); a whole loading thread is the thread's own bubbles with `isLoading`. Actions show on hover and focus as the grammar's floating toolbar beside the bubble: icon commands named by tooltips that never overlap its text.
+(`isLoading`, STATE-8): incoming the outlined face, outgoing the brand's SOFT pair (`--accent-soft`, its lines in `--accent-soft-foreground` at a tint), never the solid fill a real message wears (`DNA-COMMON-CHAT-SKELETON-SOFT`, story `Chat surfaces / Loading thread`); a whole loading thread is the thread's own bubbles with `isLoading`. Actions show on hover and focus as the grammar's floating toolbar beside the bubble: icon commands named by tooltips that never overlap its text.
 
 ## Owner split
 - **Grammar owns:** the thread ground, the faces (flat surface, accent), the corner that points at the avatar, the inline colours on each face, the actions toolbar, the skeleton, the card's suggestion list.

@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased - Chat at 390: one reaction tray in the flow, a soft loading face, a quiet counter, a 40px retry
+
+A patch (proposed 0.52.1; the train integrator sets the number): CSS and renderer fixes, one new optional prop, new DNA laws; no lint rule, no removed or renamed prop or law.
+
+- Changed (`MessageBubble` reaction toolbar and floating `actions`, visual): they are ONE tray (`data-grammar-bubble-tray`). From 48rem nothing moves: the toolbar floats above the bubble, the actions beside it. Below 48rem hover opens nothing; a long press on the bubble (any pointer, mouse included) or keyboard focus inside the message opens the tray in the thread's flow above the body, one bordered surface whose buttons wrap inside the row, and a tap on one of its buttons closes it. Before, at 390 the toolbar covered the last line of the bubble above and the actions floated off beside the bubble, cut at the row's right edge. On a phone (no hover) the floating actions were an always-visible row under the bubble; below 48rem they now live in the long-press tray. Proved by the play of `Chat surfaces / Reaction tray` at 1440 and 390.
+- Changed (`MessageBubble` loading, visual): an outgoing skeleton bubble is the brand's soft pair, `--accent-soft` with its lines in `--accent-soft-foreground` at a 16% tint (the tone-pair rule). It was the solid `--accent` fill with grey lines, which read as a real message. Law `DNA-COMMON-CHAT-SKELETON-SOFT`.
+- Changed (`Textarea` `maxLength`, visual): the `count / max` shows only from `COUNT_NEAR_LIMIT` (80%) of `maxLength`, and past it as invalid; below that neither it nor an empty meta row is drawn. It showed at every length, so a composer carried "0/4000".
+- Added (`Textarea` `isCountShown`): keeps the `count / max` at every length, for a field whose budget is the task (a bio, a headline).
+- Changed (`ErrorView`, `EmptyNotice isError`, every component's `error`, visual): the retry and the way back are the `md` step, the 40px control height, at every scope. A region's retry was the 32px `sm` step. Law `DNA-COMMON-RETRY-CONTROL-HEIGHT`.
+- Added (stories): `Chat surfaces / Reaction tray`, `Loading thread`, `Failed thread` and `Forms / Textarea count`, each with a play at 1440 and 390.
+
 ## 0.52.0 - 2026-11-20 - The chat composer at one line, its own Send, outlined incoming messages
 
 A minor: a lint message of eslint-grammar-core changed and a DNA law id was renamed (RELEASE_GRAMMAR_MINOR_REQUIRED).

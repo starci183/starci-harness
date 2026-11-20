@@ -357,7 +357,7 @@ roles:
     sizes: { values: { icon: the Icon tile md on the accent soft pair, in a circle, illustration: "--grammar-illustration-state 160px, --grammar-illustration-state-compact 120px below 48rem" } }
     states: [action-pending, illustration loading, illustration failed (the stack stays)]
     grammarMayChange: [glyph and text paint]
-    dna: [DNA-COMMON-EMPTY-ACTIONS, DNA-COMMON-EMPTY-NOTICE-TOP, DNA-COMMON-EMPTY-LINE-PLAIN, DNA-COMMON-EMPTY-LINE-NO-MARK, DNA-COMMON-EMPTY-PAGE-TITLE-18, DNA-COMMON-RETRY-ONE-LOOK]
+    dna: [DNA-COMMON-EMPTY-ACTIONS, DNA-COMMON-EMPTY-NOTICE-TOP, DNA-COMMON-EMPTY-LINE-PLAIN, DNA-COMMON-EMPTY-LINE-NO-MARK, DNA-COMMON-EMPTY-PAGE-TITLE-18, DNA-COMMON-RETRY-ONE-LOOK, DNA-COMMON-RETRY-CONTROL-HEIGHT]
     provenance: "an illustration carries the asset-slot props of Image (assetSlot, assetSha256, assetPrompt); lint R338 admits generated art through Illustration"
 
   - id: image
@@ -444,7 +444,7 @@ roles:
     sizes: { fills: "its host's block and inline size" }
     states: [drawer-open, head-loading]
     grammarMayChange: ["nothing: the grid, the dividers, the surface ground, the pane inset and the drawer are Common's"]
-    dna: [DNA-COMMON-PANE-HEADER-TOUCH-HEIGHT, DNA-COMMON-PANE-DRAWER-SPACING, DNA-COMMON-PANE-DRAWER-SECTION-GAP, DNA-COMMON-PANE-SCROLL-ALIGN, DNA-COMMON-PANE-SCROLL-ALIGN-END, DNA-COMMON-PANE-SECTION-RULE, DNA-COMMON-CHAT-SURFACES, DNA-COMMON-CHAT-INCOMING-OUTLINE, DNA-COMMON-CHAT-OUTGOING-ACCENT, DNA-COMMON-PANE-FOOTER-NO-BAND, DNA-COMMON-CHAT-FRAME, DNA-COMMON-CHAT-FRAME-SCROLL]
+    dna: [DNA-COMMON-PANE-HEADER-TOUCH-HEIGHT, DNA-COMMON-PANE-DRAWER-SPACING, DNA-COMMON-PANE-DRAWER-SECTION-GAP, DNA-COMMON-PANE-SCROLL-ALIGN, DNA-COMMON-PANE-SCROLL-ALIGN-END, DNA-COMMON-PANE-SECTION-RULE, DNA-COMMON-CHAT-SURFACES, DNA-COMMON-CHAT-INCOMING-OUTLINE, DNA-COMMON-CHAT-OUTGOING-ACCENT, DNA-COMMON-CHAT-SKELETON-SOFT, DNA-COMMON-PANE-FOOTER-NO-BAND, DNA-COMMON-CHAT-FRAME, DNA-COMMON-CHAT-FRAME-SCROLL]
     lint: [starci-grammar/pane-grid-children, starci-grammar/message-surfaces, starci-grammar/pane-children, starci-grammar/no-pane-section-padding, starci-grammar/pane-grid-page, starci-fe/no-hand-built-panes]
 
   - id: data-views
@@ -1366,6 +1366,11 @@ mustKeep:
           - { select: '[data-grammar-error="true"] [data-grammar-notice-actions] > [data-component="Button"]:not([href]):first-child' }
           - { select: '[data-component="Alert"][data-grammar-tone="negative"] [data-component="Button"]' }
       owner: ui/components/empty-state.md; ui/components/toast-alert.md
+    - id: DNA-COMMON-RETRY-CONTROL-HEIGHT
+      role: empty-state
+      law: "The retry of a failed read (an ErrorView, an EmptyNotice isError, a component's error band) and the way back beside it are the md step, the 40px control height, at every scope and width; a region's retry is never the 32px sm step (owner: buttons are 40px)."
+      measure: { kind: box, select: '[data-grammar-error="true"] [data-grammar-notice-actions] > [data-component="Button"]:not([data-width="fill"],[data-width="wrap"])', metric: height, op: "=", value: 40px }
+      owner: ui/components/empty-state.md
     - id: DNA-COMMON-POPOVER-EDGE
       role: dialog
       law: "A Popover panel has a 1px border and a soft shadow, so it reads as a layer over a white surface."
@@ -1746,6 +1751,14 @@ mustKeep:
         checks: [{ metric: background-color, op: "=", value: { token: --accent } }, { metric: color, op: "=", value: { token: --accent-foreground } }]
       owner: ui/components/message-bubble.md
       followUp: "owner-triage 2026-11-18: the theme-hooks story repaints the outgoing bubble on purpose: exempt a hooked app or keep"
+    - id: DNA-COMMON-CHAT-SKELETON-SOFT
+      role: pane-grid
+      law: "A loading outgoing bubble (MessageBubble isLoading side outgoing, and the outgoing bubbles of a loading thread) is the brand's soft pair, --accent-soft with its lines in --accent-soft-foreground at a tint (the tone-pair rule: lines on a ground take the ground's soft pair), never the solid --accent fill a real message wears."
+      measure:
+        kind: style
+        select: '.starci-core-message-bubble[data-grammar-skeleton="true"][data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body'
+        checks: [{ metric: background-color, op: "=", value: { token: --accent-soft } }]
+      owner: ui/components/message-bubble.md
     - id: DNA-COMMON-CHAT-FRAME
       role: pane-grid
       law: "On any page a chat is one frame: its head, its thread and its composer footer are --background whatever surface it stands on (a white pane, the aside, a Drawer, a Dialog, a Popover); the rest of the page keeps its own rule (a room list, an aside's other panes and the page header band stay white). The frame is Pane content=\"chat\" (a pane whose own stack holds a PaneSection scroll role log is drawn as one; an overlay that holds a thread is the frame as a whole); the app chooses no tone and states no surface on it (lint message-surfaces). The 1px lines between the zones stay; the composer field is the white primary field (owner-approved drawing chat-frame-anywhere, 0.37.33)."

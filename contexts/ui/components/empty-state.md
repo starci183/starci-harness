@@ -64,7 +64,7 @@ the layout does not jump (TASTE-10). Its illustration loads under a shimmer in i
 ## The plain line, the page title and the way back (0.48.0)
 The illustration rule: a picture only for an empty main region, onboarding or a page error. A no-match, a panel, a palette and a sub-section take `EmptyNotice mark="none"`, the plain line: no icon tile, no art, no card, the muted line on the region's start edge (`DNA-COMMON-EMPTY-LINE-PLAIN`, `-EMPTY-LINE-NO-MARK`). A page-level state is titled at the page-title tier, 18 / 26 / 500 (`DNA-COMMON-EMPTY-PAGE-TITLE-18`); a region's title stays 16 / 500.
 
-A failed read (`EmptyNotice isError`, an `ErrorView`) takes a way back: `secondary={{ label, href }}` on the notice (`ErrorData.back` on a component's `error`) draws a neutral button after the retry ("Về danh sách"), and `scope="page"` sets both at the md step. The app's `SlotView` passes it as `back` (template `fe/units/slot/SlotView.tsx.tpl`).
+A failed read (`EmptyNotice isError`, an `ErrorView`) takes a way back: `secondary={{ label, href }}` on the notice (`ErrorData.back` on a component's `error`) draws a neutral button after the retry ("Về danh sách"), and both take the md step, the 40px control height, at every scope (a region's retry was the 32px `sm` step; `DNA-COMMON-RETRY-CONTROL-HEIGHT`, story `Chat surfaces / Failed thread`). The app's `SlotView` passes it as `back` (template `fe/units/slot/SlotView.tsx.tpl`).
 
 "Thử lại" has ONE look wherever a read failed: the outlined `alternative` button (`RETRY_INTENT`) in an `ErrorView`, an `EmptyNotice isError` and a negative `Alert` alike; a retry destroys nothing, so it never wears the destructive fill (`DNA-COMMON-RETRY-ONE-LOOK`). Stories `Media/Empty notice line, page title and the retry (0.48.0)`.
 

@@ -60,6 +60,8 @@ type MessageBubbleMessage = {
     /**
      * Message actions (copy, reply, open): `IconButton`s (each with a `Tooltip`) drawn as a small floating toolbar beside the bubble on a
      * bordered surface, revealed on hover and keyboard focus inside the message. They take `chrome` placement (neutral = ghost).
+     * Below 48rem they join the reaction toolbar in ONE tray that opens in the thread's flow above the bubble on a long press (or
+     * keyboard focus inside the message), so nothing overlaps a bubble and nothing leaves the row.
      */
     readonly actions?: ReactNode
     /** Where `actions` sit; `floating` when omitted. `inline` draws them as a bare hover and focus toolbar in the row, beside the bubble on its reading end. Keyboard focus inside the message shows them in both. */
@@ -155,6 +157,10 @@ const ResolvedMessageBubble = (props: MessageBubbleMessage) => {
     const hasHead = (author != null || meta != null || status != null) && (groupPosition === "single" || groupPosition === "first")
     const hasReactions = reactions !== undefined && reactions.some((reaction) => reaction.count > 0)
     const hasToolbar = onReact !== undefined || onReply !== undefined || onShare !== undefined
+    const hasFloatingActions = actions != null && actionsPlacement === "floating"
+    // The tray: the reaction toolbar and the floating actions as one piece. Wide, it adds no box (each part floats as before); below 48rem it
+    // is one in-flow row above the body, opened by a long press, so it never covers the bubble above nor runs past the row's edge.
+    const hasTray = hasToolbar || hasFloatingActions
     const { layer, burst } = useReactionBursts()
     const [isPicking, setIsPicking] = useState(false)
     const press = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
@@ -200,18 +206,26 @@ const ResolvedMessageBubble = (props: MessageBubbleMessage) => {
                         {meta == null ? null : <span className="starci-core-message-bubble-meta">{meta}</span>}
                     </div>
                 ) : null}
-                {hasToolbar ? <ReactionBar labels={reactionLabels} onReact={onReact === undefined ? undefined : react} onReply={onReply} onShare={onShare} /> : null}
+                {hasTray ? (
+                    <div
+                        className="starci-core-message-bubble-tray"
+                        data-grammar-bubble-tray="true"
+                        onClick={(event) => { if (event.target instanceof Element && event.target.closest("button") !== null) setIsPicking(false) }}
+                    >
+                        {hasToolbar ? <ReactionBar labels={reactionLabels} onReact={onReact === undefined ? undefined : react} onReply={onReply} onShare={onShare} /> : null}
+                        {hasFloatingActions ? actionsToolbar : null}
+                    </div>
+                ) : null}
                 <div
                     className="starci-core-message-bubble-body"
-                    onPointerDown={hasToolbar ? (event) => { if (event.pointerType === "mouse") return; cancelPress(); press.current = setTimeout(() => setIsPicking(true), 450) } : undefined}
-                    onPointerUp={hasToolbar ? cancelPress : undefined}
-                    onPointerCancel={hasToolbar ? cancelPress : undefined}
-                    onPointerMove={hasToolbar ? cancelPress : undefined}
+                    onPointerDown={hasTray ? () => { cancelPress(); press.current = setTimeout(() => setIsPicking(true), 450) } : undefined}
+                    onPointerUp={hasTray ? cancelPress : undefined}
+                    onPointerCancel={hasTray ? cancelPress : undefined}
+                    onPointerMove={hasTray ? cancelPress : undefined}
                 >{body}</div>
                 {hasReactions ? <ReactionPill reactions={reactions} labels={reactionLabels} onPress={() => { const emoji = topReaction(reactions); if (emoji !== undefined) react(emoji) }} /> : null}
                 {layer}
                 {footer == null ? null : <div className="starci-core-message-bubble-footer">{footer}</div>}
-                {actions == null || actionsPlacement === "inline" ? null : actionsToolbar}
             </div>
             {actions == null || actionsPlacement !== "inline" ? null : actionsToolbar}
         </div>
