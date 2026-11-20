@@ -17,7 +17,6 @@ starci app add overlay <name> --kind modal|drawer [--form] [--app <fe app>] [--c
 starci app add service <dir> <name> [--inject <binding>...] [--cwd <dir>]
 starci app add spec <file>.service.ts [--cwd <dir>]
 starci app add image [--cwd <dir>]
-starci app add inbox [--cwd <dir>]
 starci app sync [--execute] [--cwd <dir>]
 starci app check [--cwd <dir>] [--json] [--gate <hfs|format|db|secrets|wiring|types|lint|test|sonar|uiaudit|build|audit|codecov>]... [--side be|fe|packages] [--fix] [--out <sonar file>] [--fresh] [--coverage-from <lcov>] [--shard <i>/<n>] | check --staged | check --ratchet | check --profile [--gate <gate>] [--json]
 starci app check --staged [--cwd <dir>]

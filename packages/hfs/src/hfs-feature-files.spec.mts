@@ -1,5 +1,5 @@
-// proves: HFS_FEATURE_FILE_BUDGET@lite
-// proves: HFS_FEATURE_FILE_BUDGET@full
+// proves: HFS_FEATURE_FILE_BUDGET
+// proves: HFS_FEATURE_FILE_BUDGET
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

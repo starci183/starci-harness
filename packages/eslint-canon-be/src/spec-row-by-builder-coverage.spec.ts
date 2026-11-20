@@ -1,5 +1,5 @@
-// proves: BE_TEST_ROW_BY_BUILDER@lite
-// proves: BE_TEST_ROW_BY_BUILDER@full
+// proves: BE_TEST_ROW_BY_BUILDER
+// proves: BE_TEST_ROW_BY_BUILDER
 import test from "node:test"
 import { specNoRawInsert, specNoRepeatedRowLiteral } from "./builders.ts"
 import { appDeclaration } from "../fixtures/app.ts"

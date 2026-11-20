@@ -19,7 +19,7 @@ const manifest = loadSlotManifest();
 const PASSPORT = 'src/modules/integrations/passport/';
 const DECLARED = ['passport.kit.ts'].map((file) => `${PASSPORT}${file}`);
 const STORAGE = 'src/modules/integrations/object-storage/';
-const SKELETON_STORAGE = path.resolve(import.meta.dirname, '..', 'templates', 'be', 'skeleton-lite', STORAGE);
+const SKELETON_STORAGE = path.resolve(import.meta.dirname, '..', 'templates', 'be', 'skeleton', STORAGE);
 const resolverOf = (edition: string) => createSlotResolver(manifest, resolveRepoDeclaration(manifest, { ...APP, edition }));
 const passportSlot = () => manifest.slots.find((slot) => slot.id === 'be.integrations.passport');
 

@@ -1,5 +1,5 @@
-// proves: HFS_PLAINTEXT_SECRET@lite
-// proves: HFS_PLAINTEXT_SECRET@full
+// proves: HFS_PLAINTEXT_SECRET
+// proves: HFS_PLAINTEXT_SECRET
 // `starci app secret set` seals a `.enc.yaml` member: sops finds its creation rule by the file's own name, so an app whose `.sops.yaml` only has the
 // legacy `.enc$` rule is refused with SECRET_SOPS_RULE_MISSING (naming the path and the remedy) before sops runs, and `starci app codemod sops-rules`
 // migrates the file to the managed form. Public recipients only; every value here is a fake.

@@ -4,7 +4,7 @@
  *
  *   node --test src/explicit-surface.spec.ts
  */
-// proves: HFS_EXPLICIT_EXPORT_SURFACE@lite HFS_EXPLICIT_EXPORT_SURFACE@full
+// proves: HFS_EXPLICIT_EXPORT_SURFACE
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import test from "node:test"

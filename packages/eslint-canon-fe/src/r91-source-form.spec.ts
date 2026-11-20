@@ -1,8 +1,8 @@
 /** R91 source authoring and source-layout proofs for the shared front-end standard. */
-// proves: FE_SOURCE_FORM@lite
-// proves: FE_SOURCE_FORM@full
-// proves: FE_SOURCE_LAYOUT_INVALID@lite
-// proves: FE_SOURCE_LAYOUT_INVALID@full
+// proves: FE_SOURCE_FORM
+// proves: FE_SOURCE_FORM
+// proves: FE_SOURCE_LAYOUT_INVALID
+// proves: FE_SOURCE_LAYOUT_INVALID
 import assert from "node:assert/strict"
 import test from "node:test"
 import { RuleTester } from "eslint"

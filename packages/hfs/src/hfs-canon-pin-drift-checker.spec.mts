@@ -1,5 +1,5 @@
-// proves: HFS_CANON_PIN_DRIFT@lite
-// proves: HFS_CANON_PIN_DRIFT@full
+// proves: HFS_CANON_PIN_DRIFT
+// proves: HFS_CANON_PIN_DRIFT
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

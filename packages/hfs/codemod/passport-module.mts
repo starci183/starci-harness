@@ -14,7 +14,7 @@ export interface PassportModuleReport { schema: string; root: string; write: boo
 export interface PassportModuleOptions { root: string; write?: boolean; prettier?: Prettier | null }
 
 const GLUE = 'be/src/modules/integrations/passport';
-const TEMPLATE_GLUE = path.join(import.meta.dirname, '..', 'templates', 'be', 'skeleton-lite', 'src', 'modules', 'integrations', 'passport');
+const TEMPLATE_GLUE = path.join(import.meta.dirname, '..', 'templates', 'be', 'skeleton', 'src', 'modules', 'integrations', 'passport');
 const MODULE_FILES = ['passport.module-definition.ts', 'passport.module.ts'] as const;
 const REGISTRATION = 'passport.registration.ts';
 const INDEX_EXPORT = 'export { passportModule } from "./passport.registration"';
@@ -45,7 +45,7 @@ export function rewriteCaller(text: string): string | null {
 }
 
 /**
- * Migrate a lite app's passport glue from the registration function (`passport.registration.ts`, `passportModule(options, { isGlobal })`) to the
+ * Migrate an app's passport glue from the registration function (`passport.registration.ts`, `passportModule(options, { isGlobal })`) to the
  * capability module every package-backed integration is (`PassportModule.register({ ...options, authenticator, isGlobal })` over
  * `passport.module-definition.ts`), which also hands the app's logger to @starci/auth. All or nothing: a glue or caller that left the rendered shape
  * is named for a person and nothing is written.

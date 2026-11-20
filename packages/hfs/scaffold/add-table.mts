@@ -7,11 +7,11 @@ import {
 } from "../runtime/scripts/hfs/slots.mjs";
 import { render, TEMPLATES_DIR } from "../sync/index.mjs";
 import { ScaffoldError, pascalOf } from "./service.mjs";
-import { filesBelow, registerLiteDomainService, registerLiteExports, registrationFiles } from "./lite-exports.mjs";
+import { filesBelow, registerDomainService, registerPackageExports, registrationFiles } from "./package-exports.mjs";
 import { byCodeUnit } from "../report/order.mjs";
 import { coreFeApps, ENTITY_BASE_FILE } from "./app.mjs";
 import { addModuleImport, planComposeGroup } from "./add-compose.mjs";
-import { withSqlIdentifierError } from "./add-database-lite.mjs";
+import { withSqlIdentifierError } from "./add-database.mjs";
 
 /** A file the table verb writes: app-relative path and body. */
 interface FileBody {
@@ -317,7 +317,7 @@ const GRAPHQL_URL_READER = [
 const withGraphqlUrl = (text: string) =>
   /^export const graphqlUrl\b/m.test(text) ? text : `${text.trimEnd()}\n${GRAPHQL_URL_READER}\n`;
 
-/** The be api feature of a table (lite = full): get-<singular> and create-<singular> over GraphQL. */
+/** The be api feature of a table : get-<singular> and create-<singular> over GraphQL. */
 const apiFeatureFiles = (values: TableValues): FileBody[] => {
   const base = `be/src/features/api/${values.name}`;
   const get = `get-${values.singular}`;
@@ -531,7 +531,7 @@ function writeTableFiles({ root, planned }: { root: string, planned: readonly Fi
 
 }
 
-/** The lite sql helpers of platform/database (requireOwnedEntity, the bounds and the sql tag). */
+/** The sql helpers of platform/database (requireOwnedEntity, the bounds and the sql tag). */
 const DATABASE_SQL_FILE = "be/src/modules/platform/database/database.sql.ts";
 
 /** A skeleton file of platform/database a generator writes on first need: the app's copy, or else the template's. */
@@ -547,8 +547,8 @@ const ownerByProperty = (text: string): string => text.replace("owned.owner_id =
 function tableRegistrations({ root, fe, edit }: { root: string, repo: TableRepo, fe: boolean, edit: Edit }): void {
   const errorFile = "be/src/modules/platform/database/errors/database.error.ts";
   if (fs.existsSync(at(root, errorFile))) edit(errorFile, withSqlIdentifierError);
-  // requireOwnedEntity lives in the sql helpers the lite starter leaves out; the first table writes them.
-  edit(DATABASE_SQL_FILE, (text) => deferredDatabaseFile("skeleton-lite", "src/modules/platform/database/database.sql.ts")(ownerByProperty(text)));
+  // requireOwnedEntity lives in the sql helpers the starter leaves out; the first table writes them.
+  edit(DATABASE_SQL_FILE, (text) => deferredDatabaseFile("skeleton", "src/modules/platform/database/database.sql.ts")(ownerByProperty(text)));
   // The table's entity extends UuidAbstractEntity, which no starter carries in either edition; the first table writes it.
   edit(`be/${ENTITY_BASE_FILE}`, deferredDatabaseFile("skeleton", ENTITY_BASE_FILE));
     const registrations = [
@@ -557,18 +557,18 @@ function tableRegistrations({ root, fe, edit }: { root: string, repo: TableRepo,
       ...(fe ? ["api", "graphql"] : []),
     ];
     for (const generator of registrations) for (const relative of registrationFiles(generator)) edit(relative, (text) => text);
-    for (const generator of registrations) registerLiteExports({ root, generator });
+    for (const generator of registrations) registerPackageExports({ root, generator });
 }
 
 function wireTableFrontends({ root, feature, values, apps, edit }: { root: string, feature: string, values: TableValues, apps: readonly DeclaredApp[], edit: Edit }): void {
-      registerLiteDomainService({ root, moduleSpecifier: `@modules/domain/${feature}`, service: `${values.Name}Service` });
+      registerDomainService({ root, moduleSpecifier: `@modules/domain/${feature}`, service: `${values.Name}Service` });
       for (const app of apps) {
         for (const [relative, line] of feBarrels(app.name, values)) edit(relative, (text) => withExport(text, line));
         edit(`fe/apps/${app.name}/src/modules/config/index.ts`, withGraphqlUrl);
       }
 }
 
-/** The lite entity list: platform/database/entities.ts names the capability's `<c>Entities` in PRIMARY_ENTITIES (BE-PERSISTENCE-3). */
+/** The entity list: platform/database/entities.ts names the capability's `<c>Entities` in PRIMARY_ENTITIES (BE-PERSISTENCE-3). */
 const PRIMARY_ENTITIES_FILE = "be/src/modules/platform/database/entities.ts";
 const PRIMARY_ENTITIES = /(export const PRIMARY_ENTITIES[^=]*=\s*\[)([\s\S]*?)(\])/;
 

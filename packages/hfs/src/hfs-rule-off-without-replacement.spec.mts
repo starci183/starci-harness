@@ -1,5 +1,5 @@
-// proves: HFS_RULE_OFF_WITHOUT_REPLACEMENT@lite
-// proves: HFS_RULE_OFF_WITHOUT_REPLACEMENT@full
+// proves: HFS_RULE_OFF_WITHOUT_REPLACEMENT
+// proves: HFS_RULE_OFF_WITHOUT_REPLACEMENT
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -27,7 +27,7 @@ const synced = (context: TestContext, edition: string) => {
 
 for (const edition of ['lite'] as const) {
   for (const relative of ['be/eslint.config.mjs', 'fe/eslint.config.mjs', 'fe/stylelint.config.mjs']) {
-    test(`${edition}: a rule override in ${relative} fails and its canon render passes`, async context => {
+    test(`a rule override in ${relative} fails and its canon render passes`, async context => {
       const { root, findings } = synced(context, edition);
       const file = path.join(root, relative);
       const rendered = fs.readFileSync(file, 'utf8');
@@ -46,7 +46,7 @@ for (const edition of ['lite'] as const) {
 
 for (const edition of ['lite'] as const) {
   for (const relative of ['be/eslint.config.mjs', 'fe/eslint.config.mjs', 'fe/stylelint.config.mjs']) {
-    test(`${edition}: direct managed findings reject ${relative} overrides and accept its factory render`, async (context) => {
+    test(`direct managed findings reject ${relative} overrides and accept its factory render`, async (context) => {
       const { root, tracked } = synced(context, edition);
       const file = path.join(root, relative);
       const rendered = fs.readFileSync(file, 'utf8');

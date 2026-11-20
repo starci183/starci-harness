@@ -1,5 +1,5 @@
-// proves: HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED@lite
-// proves: HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED@full
+// proves: HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED
+// proves: HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED
 // R395, a UI change goes canvas first (galleryDesignChangeFindings of rules/gallery-coupling.mts; contexts/project/gallery.md PROJECT-GALLERY-7): a change to the source of a canvas-managed screen
 // needs its design.json page approved, at an `approvedAt` not earlier than the change, or the same change must update the page's entry. An area the canvas does not manage is never judged.
 // The finding is `local`: report-only in `--env local`, an error in `--env prod`.
@@ -62,7 +62,7 @@ const editSource = (root: string, body: string, when?: string): void => {
 const judge = (root: string, base: string, now = Date.parse('2026-11-18T00:00:00Z')) => galleryDesignChangeFindings({ repoRoot: root, changed: changedSince(root, base), base, now });
 
 for (const edition of ['lite'] as const) {
-  test(`${edition}: a screen of an area the canvas does not manage is not flagged; neither is an app with no canvas`, (t) => {
+  test(`a screen of an area the canvas does not manage is not flagged; neither is an app with no canvas`, (t) => {
     const unmanaged = app(t, edition, design(['orders'], { 'orders/list': page('drafted') }));
     editSource(unmanaged.root, '1', '2026-11-12T10:00:00+07:00');
     assert.deepEqual(judge(unmanaged.root, unmanaged.base), []);
@@ -71,7 +71,7 @@ for (const edition of ['lite'] as const) {
     assert.deepEqual(judge(none.root, none.base), []);
   });
 
-  test(`${edition}: a managed screen with a drafted page, or none, is flagged`, (t) => {
+  test(`a managed screen with a drafted page, or none, is flagged`, (t) => {
     const drafted = app(t, edition, design(['customers'], { 'customers/list': page('drafted') }));
     editSource(drafted.root, '1', '2026-11-12T10:00:00+07:00');
     const [found] = judge(drafted.root, drafted.base);
@@ -83,7 +83,7 @@ for (const edition of ['lite'] as const) {
     assert.match(judge(missing.root, missing.base)[0]?.message ?? '', /customers\/list has no design entry/u);
   });
 
-  test(`${edition}: a page approved before the change is flagged, approved after it passes; an uncommitted change counts as now`, (t) => {
+  test(`a page approved before the change is flagged, approved after it passes; an uncommitted change counts as now`, (t) => {
     const before = app(t, edition, design(['customers'], { 'customers/list': page('approved', '2026-11-11T09:00:00+07:00') }));
     editSource(before.root, '1', '2026-11-12T10:00:00+07:00');
     assert.match(judge(before.root, before.base)[0]?.message ?? '', /approved at 2026-11-11T09:00:00\+07:00, before the change/u);
@@ -95,7 +95,7 @@ for (const edition of ['lite'] as const) {
     assert.deepEqual(judge(after.root, after.base, Date.parse('2026-11-12T03:00:00Z')), [], 'unless the approval is later than now');
   });
 
-  test(`${edition}: the same change that updates the page's entry passes, a drafted page still does not`, (t) => {
+  test(`the same change that updates the page's entry passes, a drafted page still does not`, (t) => {
     const { root, base } = app(t, edition, design(['customers'], { 'customers/list': page('approved', '2026-11-01T09:00:00+07:00') }));
     editSource(root, '1');
     write(root, DESIGN, design(['customers'], { 'customers/list': page('approved', '2026-11-12T11:00:00+07:00') }));
@@ -106,7 +106,7 @@ for (const edition of ['lite'] as const) {
     assert.equal(judge(root, base).length, 1, 'a redraw that is not approved yet');
   });
 
-  test(`${edition}: one finding per route; an excluded route is not judged`, (t) => {
+  test(`one finding per route; an excluded route is not judged`, (t) => {
     const { root, base } = app(t, edition, design(['customers'], { 'customers/list': page('drafted') }));
     write(root, `${FEATURE}/component.tsx`, 'export const x = 1\n');
     editSource(root, '1');

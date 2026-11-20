@@ -1,5 +1,5 @@
 /** Behavioral witnesses for the StarCi scale and theme-token rules. */
-// proves: FE_STYLE_TOKEN_ONLY@lite FE_STYLE_TOKEN_ONLY@full
+// proves: FE_STYLE_TOKEN_ONLY
 import assert from "node:assert/strict"
 import test from "node:test"
 import { RuleTester } from "eslint"

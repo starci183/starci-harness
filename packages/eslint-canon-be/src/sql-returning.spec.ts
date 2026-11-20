@@ -1,5 +1,5 @@
-// proves: BE_SQL_RETURNING_SHAPE@lite
-// proves: BE_SQL_RETURNING_SHAPE@full
+// proves: BE_SQL_RETURNING_SHAPE
+// proves: BE_SQL_RETURNING_SHAPE
 import test from "node:test"
 import { projectFixture } from "../fixtures/project/tester.ts"
 import { rules } from "./project-graph.ts"

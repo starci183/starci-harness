@@ -1,4 +1,4 @@
-// proves: FE_SURFACE_NESTING@lite FE_SURFACE_NESTING@full
+// proves: FE_SURFACE_NESTING
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import ts from 'typescript';

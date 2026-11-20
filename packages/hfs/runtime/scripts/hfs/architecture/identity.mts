@@ -1,4 +1,4 @@
-// identity.mts - the back-end identity machine. Under lite the one token verifier is @starci/auth, composed by be.integrations.passport:
+// identity.mts - the back-end identity machine. Under the one token verifier is @starci/auth, composed by be.integrations.passport:
 // no app file calls jose's jwtVerify, decodes a token unverified or reads authorization claims from a request body (R329), and the
 // passport integration imports @starci/auth/server. Every jwtVerify call holds the JWT policy (R260, jwtPolicyProblems).
 import path from 'node:path';
@@ -119,7 +119,7 @@ export function checkJwtPolicy(input: HfsCheckInput): CheckResult {
   return { violations, coverage: { status: 'checked', verifyCalls } };
 }
 
-/** The back-end identity machine: the own-JWKS law where the passport integration exists (lite), the JWT policy everywhere. */
+/** The back-end identity machine: the own-JWKS law where the passport integration exists, the JWT policy everywhere. */
 export function checkBackendIdentity(input: HfsCheckInput): CheckResult {
   const slot = input.graph.resolver.slot(PASSPORT_SLOT);
   const own = slot && input.graph.resolver.slotEnabled(slot) ? checkOwnJwks(input) : { violations: [], coverage: { status: 'not-applicable', reason: 'no passport integration slot' } };

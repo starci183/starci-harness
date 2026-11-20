@@ -1,5 +1,5 @@
 // rest-doors.mts - the OpenAPI shape of the managed sign-in doors of a rest back end (contexts/code/be/transport.md BE-TRANSPORT-4, R396):
-// for an app whose api apps declare `contract: "rest"`, the auth controller of the auth-lite group carries @nestjs/swagger decorators: an explicit
+// for an app whose api apps declare `contract: "rest"`, the auth controller of the auth-group carries @nestjs/swagger decorators: an explicit
 // `auth.<action>` operationId, a named answer schema for every 2xx body, the one error schema as `default`, and `security: []` with an
 // `x-public-reason` on each door (every sign-in door is public). The template names these as variable-only lines, so a graphql back end, which
 // has no @nestjs/swagger, renders the controller byte for byte as before (every variable empty).

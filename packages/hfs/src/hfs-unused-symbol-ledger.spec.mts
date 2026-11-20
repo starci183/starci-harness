@@ -1,4 +1,4 @@
-// proves: HFS_UNUSED_SYMBOL@lite HFS_UNUSED_SYMBOL@full
+// proves: HFS_UNUSED_SYMBOL
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -98,6 +98,6 @@ test('HFS_UNUSED_SYMBOL ledger: an entry only covers its own namespace', t => {
 });
 
 test('HFS_UNUSED_SYMBOL ledger: a side without a profile of fe or be ignores the ledger', t => {
-  const findings = unusedSymbolFindings({ ...fixture(t, { ...FE, [LEDGER]: 'garbage: [' }), repo: { profile: 'app', edition: 'full' } });
+  const findings = unusedSymbolFindings({ ...fixture(t, { ...FE, [LEDGER]: 'garbage: [' }), repo: { profile: 'app' } });
   assert.ok(!findings.some(finding => finding.path === LEDGER));
 });

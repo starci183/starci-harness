@@ -7,7 +7,7 @@ import path from 'node:path';
 import { BE_FLOW_FAILURE_SWALLOWED, flowFailureFindings } from '../runtime/scripts/hfs/rules/flow-failure.mjs';
 import { ALL_CHECK_CODES } from '../runtime/scripts/hfs/check.mjs';
 
-// proves: BE_FLOW_FAILURE_SWALLOWED@lite BE_FLOW_FAILURE_SWALLOWED@full
+// proves: BE_FLOW_FAILURE_SWALLOWED
 
 type FlowInput = Parameters<typeof flowFailureFindings>[0];
 

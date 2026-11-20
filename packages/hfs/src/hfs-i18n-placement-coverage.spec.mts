@@ -1,5 +1,5 @@
-// proves: FE_I18N_PLACEMENT@lite
-// proves: FE_I18N_PLACEMENT@full
+// proves: FE_I18N_PLACEMENT
+// proves: FE_I18N_PLACEMENT
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -18,22 +18,22 @@ function fixture(t: TestContext, edition: string) {
 }
 
 for (const edition of ['lite'] as const) {
-  test(`${edition} placement rejects an absent locale proxy`, (t) => {
+  test(`placement rejects an absent locale proxy`, (t) => {
     const result = frontendFindings({ ...fixture(t, edition), files: ['apps/web/src/modules/i18n/messages/vi.json'] });
     assert.deepEqual(result.filter((finding) => finding.code === 'FE_I18N_PLACEMENT').map((finding) => finding.path), ['apps/web/src/proxy.ts']);
   });
 
-  test(`${edition} placement accepts the locale proxy, locale routes and default catalog`, (t) => {
+  test(`placement accepts the locale proxy, locale routes and default catalog`, (t) => {
     const result = frontendFindings({ ...fixture(t, edition), files: ['apps/web/src/proxy.ts', 'apps/web/src/app/[locale]/page.tsx', 'apps/web/src/modules/i18n/messages/vi.json'] });
     assert.deepEqual(result.filter((finding) => finding.code === 'FE_I18N_PLACEMENT'), []);
   });
 
-  test(`${edition} placement rejects a frontend without a next-intl workspace dependency`, (t) => {
+  test(`placement rejects a frontend without a next-intl workspace dependency`, (t) => {
     const result = appFrontendFindings({ ...fixture(t, edition), files: [] });
     assert.equal(result.filter((finding) => finding.code === 'FE_I18N_PLACEMENT').length, 1);
   });
 
-  test(`${edition} placement accepts a workspace that declares next-intl`, (t) => {
+  test(`placement accepts a workspace that declares next-intl`, (t) => {
     const result = appFrontendFindings({ ...fixture(t, edition), files: ['fe/apps/web/package.json'] });
     assert.deepEqual(result.filter((finding) => finding.code === 'FE_I18N_PLACEMENT'), []);
   });
@@ -56,7 +56,7 @@ const CATCH_ALL = 'import { notFound } from "next/navigation"\nconst Page = (): 
 const NOT_FOUND = 'export { metadata as generateMetadata } from "@/x"\nexport default () => null\n';
 
 for (const edition of ['lite'] as const) {
-  test(`${edition} the loading boundary in a route group needs the notFound catch-all and the metadata of not-found`, (t) => {
+  test(`the loading boundary in a route group needs the notFound catch-all and the metadata of not-found`, (t) => {
     const ok = groupedFixture(t, edition, { [`${BASE}app/[locale]/[...rest]/page.tsx`]: CATCH_ALL, [`${BASE}app/[locale]/not-found.tsx`]: NOT_FOUND });
     assert.deepEqual(frontendFindings({ ...ok, files: GROUPED }).filter((finding) => finding.level === 'info' || finding.code === 'FE_ERROR_BOUNDARY_MISSING'), []);
 
@@ -68,7 +68,7 @@ for (const edition of ['lite'] as const) {
       [`${BASE}app/[locale]/[...rest]/page.tsx`, `${BASE}app/[locale]/not-found.tsx`]);
   });
 
-  test(`${edition} a loading boundary still at [locale] stays accepted and is reported as an info with the move`, (t) => {
+  test(`a loading boundary still at [locale] stays accepted and is reported as an info with the move`, (t) => {
     const result = frontendFindings({ ...fixture(t, edition), files: [`${BASE}proxy.ts`, `${BASE}modules/i18n/messages/vi.json`, `${BASE}app/[locale]/loading.tsx`] });
     assert.deepEqual(result.filter((finding) => finding.level === 'error'), []);
     assert.deepEqual(result.filter((finding) => finding.level === 'info').map((finding) => [finding.code, finding.path]), [['FE_I18N_PLACEMENT', `${BASE}app/[locale]/loading.tsx`]]);

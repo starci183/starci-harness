@@ -35,14 +35,14 @@ import type { Finding, Parsed } from './rule-types.mjs';
 const APP_SCHEMAS = new Set(['public']);
 
 /**
- * LITE_DB_MIGRATION: a lite app's schema lives only under db/: no supabase/ tree and no SQL file outside db/ but its seed data (the seed
+ * LITE_DB_MIGRATION: an app's schema lives only under db/: no supabase/ tree and no SQL file outside db/ but its seed data (the seed
  * levels of .starcistacks/, judged by R375), and every SQL file under db/ is a migration, the archive, the bootstrap or nothing.
  */
 export function liteDbPathFindings(files: string[]) {
   const findings = [];
   for (const file of files) {
     if (file === 'supabase' || file.startsWith('supabase/')) {
-      findings.push(found(LITE_DB_MIGRATION, file, `${file} is a Supabase project file; a lite app keeps its schema in ${MIGRATIONS_DIR}/<ts14>_<kebab>.sql (move the migrations, delete supabase/)`, {}));
+      findings.push(found(LITE_DB_MIGRATION, file, `${file} is a Supabase project file; an app keeps its schema in ${MIGRATIONS_DIR}/<ts14>_<kebab>.sql (move the migrations, delete supabase/)`, {}));
       continue;
     }
     if (!file.endsWith('.sql') || isSeedFile(file)) continue;

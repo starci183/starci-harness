@@ -1,6 +1,6 @@
 /** Edition proofs for the typed operation table and its HTTP route (R95). */
-// proves: BE_OPERATION_CONTRACT@lite
-// proves: BE_OPERATION_CONTRACT@full
+// proves: BE_OPERATION_CONTRACT
+// proves: BE_OPERATION_CONTRACT
 import test from "node:test"
 import { appDeclaration } from "../fixtures/app.ts"
 import { BE_DECLARATION, TYPED_ROOT, at, ruleTester } from "../fixtures/typed/tester.ts"

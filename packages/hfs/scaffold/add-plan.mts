@@ -4,10 +4,10 @@ import { createSlotResolver, loadSlotManifest, readRepoDeclaration, ruleParams }
 import { parseYaml } from '../runtime/engine/yaml.mjs';
 import { TEMPLATES_DIR } from '../sync/index.mjs';
 import { ScaffoldError, pascalOf } from './service.mjs';
-import { refuseFullAdapterInLite, refuseOutsideSlots } from './scaffold-gate.mjs';
-import { selectLiteWebhookEntries } from './add-inbox-lite.mjs';
-import { LITE_TEMPLATED_TOPICS, selectLiteQueueEntries } from './add-queue-lite.mjs';
-import { ensureLiteCli } from './add-cli-lite.mjs';
+import { refuseOutsideSlots, refuseUntemplatedAdapter } from './scaffold-gate.mjs';
+import { selectWebhookEntries } from './add-webhook-inbox.mjs';
+import { ADAPTED_TOPICS, selectQueueEntries } from './add-queue.mjs';
+import { ensureCliApp } from './add-cli.mjs';
 import { isMigrationName, migrationStamp } from '../runtime/scripts/hfs/rules/database-migrations.mjs';
 import { patternFilePath } from './pattern-file-slots.mjs';
 import { contractOf, type ContractKind } from '../runtime/scripts/hfs/contract-kind.mjs';
@@ -102,35 +102,35 @@ export function readAddContext(input: AddInput): AddContext {
   return { ...input, manifest, params, spec, declarationFile, repo };
 }
 
-/** Lite's built-in migrate and seed groups come from its one CLI bootstrap, without a second instance tree. */
+/** The built-in migrate and seed groups come from its one CLI bootstrap, without a second instance tree. */
 export function addBuiltinLiteCli({ noun, name, repo, repoRoot, manifest }: Pick<AddContext, 'noun' | 'name' | 'repo' | 'repoRoot' | 'manifest'>): { created: string[], registered: { patterns: string[], kinds: string[] }, notes: string[] } | null {
   if (noun !== 'cli' || !['migrate', 'seed'].includes(name)) return null;
-  if (repo.sides.be.apps.some((app: { kind: string }) => app.kind === 'cli')) throw new ScaffoldError('HFS_ADD_EXISTS', `the lite cli already carries its built-in ${name} group`);
-  return { created: ensureLiteCli({ root: repoRoot, manifest, repo }), registered: { patterns: [], kinds: ['cli'] }, notes: [LITE_CLI_INSTALL] };
+  if (repo.sides.be.apps.some((app: { kind: string }) => app.kind === 'cli')) throw new ScaffoldError('HFS_ADD_EXISTS', `the cli already carries its built-in ${name} group`);
+  return { created: ensureCliApp({ root: repoRoot, manifest, repo }), registered: { patterns: [], kinds: ['cli'] }, notes: [LITE_CLI_INSTALL] };
 }
 
-/** The step a new lite cli app leaves the owner: its runtime dependency is in package.json, not yet installed. */
+/** The step a new cli app leaves the owner: its runtime dependency is in package.json, not yet installed. */
 export const LITE_CLI_INSTALL = 'npm install (the cli app adds nest-commander to package.json), then starci app check';
 
 const readTopic = (topic: string) => ({ id: topic, doc: parseYaml(fs.readFileSync(path.join(TOPICS_DIR, `${topic}.yaml`), 'utf8')) });
 
-/** The files tree of a pattern topic (knowledge/patterns/be/<topic>.yaml), its lite tree for a lite app. */
+/** The files tree of a pattern topic (knowledge/patterns/be/<topic>.yaml). */
 export function readTree(topic: string): TreeEntry[] {
   const file = path.join(TOPICS_DIR, `${topic}.yaml`);
   if (!fs.existsSync(file)) throw new ScaffoldError('HFS_ADD_TOPIC_MISSING', `the pattern topic ${topic} (knowledge/patterns/be/${topic}.yaml) is not carried by this package`);
   const doc = parseYaml(fs.readFileSync(file, 'utf8'));
   if (!Array.isArray(doc?.files)) throw new ScaffoldError('HFS_ADD_TREE_MISSING', `knowledge/patterns/be/${topic}.yaml has no files tree`);
-  return Array.isArray(doc.liteFiles) ? doc.liteFiles : doc.files;
+  return doc.files;
 }
 
-const selectLiteApiEntries = (entries: readonly TreeEntry[]): TreeEntry[] => entries.map(entry => {
+const selectApiEntries = (entries: readonly TreeEntry[]): TreeEntry[] => entries.map(entry => {
   if (entry.path === 'src/features/api/<feature>/application/<action>.command.ts') return { ...entry, template: 'api/application.command.principal.ts.tpl' };
   if (entry.path === 'src/features/api/<feature>/application/<action>.handler.ts') return { ...entry, template: 'api/application.handler.principal.ts.tpl' };
   return entry;
 });
 
-/** Extra lite api templates stay in the same template set as the pattern topics. */
-export const liteApiTemplates = () => selectLiteApiEntries(readTree('api')).map(entry => entry.template).filter((template): template is string => Boolean(template));
+/** Extra api templates stay in the same template set as the pattern topics. */
+export const liteApiTemplates = () => selectApiEntries(readTree('api')).map(entry => entry.template).filter((template): template is string => Boolean(template));
 
 function topicsOfPatterns(patterns: readonly string[]): Set<string> {
   const topics = new Set<string>();
@@ -199,9 +199,9 @@ function treesOf({ topics, repo, noun, spec }: { topics: ReadonlySet<string>, re
   const liteApi = noun === 'api';
   const contract = apiContractOf(repo);
   return new Map([...topics].map((topic): [string, TreeEntry[]] => {
-    const read = selectLiteQueueEntries(topic, selectLiteWebhookEntries(readTree(topic)));
+    const read = selectQueueEntries(topic, selectWebhookEntries(readTree(topic)));
     const entries = entriesForContract(read, contract);
-    return [topic, liteApi && topic === spec.topic ? selectLiteApiEntries(entries) : entries];
+    return [topic, liteApi && topic === spec.topic ? selectApiEntries(entries) : entries];
   }));
 }
 
@@ -277,7 +277,7 @@ export function planKind(context: AddContext): { values: Record<string, string>,
   const specs = [noun, ...(spec.also ?? [])].map((each): [string, AddKindSpec] => [each, params.addKinds[each]]);
   const patterns = [...new Set(specs.flatMap(([, eachSpec]) => eachSpec.patterns))];
   const topics = new Set([...specs.map(([, eachSpec]) => eachSpec.topic), ...topicsOfPatterns(patterns)]);
-  refuseFullAdapterInLite({ topics: [...topics].map(readTopic), command: `add ${noun}`, liteTemplated: LITE_TEMPLATED_TOPICS });
+  refuseUntemplatedAdapter({ topics: [...topics].map(readTopic), command: `add ${noun}`, templated: ADAPTED_TOPICS });
   const trees = treesOf({ topics, repo, noun, spec });
   validateWrittenSlots({ ...context, specs, topics, trees });
   const values = Object.assign({}, ...specs.map(([each, eachSpec]) => variablesOf({ spec: eachSpec, noun: each, name, options })), variablesOf({ spec, noun, name, options }));

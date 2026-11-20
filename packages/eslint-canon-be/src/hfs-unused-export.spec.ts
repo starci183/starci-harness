@@ -1,7 +1,7 @@
-// proves: HFS_UNUSED_EXPORT@lite
-// proves: HFS_UNUSED_EXPORT@full
-// proves: HFS_UNUSED_FILE@lite
-// proves: HFS_UNUSED_FILE@full
+// proves: HFS_UNUSED_EXPORT
+// proves: HFS_UNUSED_EXPORT
+// proves: HFS_UNUSED_FILE
+// proves: HFS_UNUSED_FILE
 import test from 'node:test';
 import { projectFixture } from '../fixtures/project/tester.ts';
 import { rules as beRules } from './project-graph.ts';

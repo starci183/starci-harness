@@ -79,21 +79,12 @@ test('add image, add service and add spec run the generators and refuse what a n
     [['add', 'image', '--inject', 'A=b'], 'starci app add image takes no --inject; only add service does'],
     [['add', 'spec', 'be/x.service.ts', '--event', 'e'], 'starci app add spec takes no --event'],
     [['add', 'service', 'be/x', 'y', '--shapes', 'a'], 'starci app add service takes no --shapes'],
-    [['add', 'image', 'extra'], 'starci app add takes `service <dir> <name> [--inject ...]`, `spec <file>.service.ts`, `image` or `inbox`'],
+    [['add', 'image', 'extra'], 'starci app add takes `service <dir> <name> [--inject ...]`, `spec <file>.service.ts` or `image`'],
   ] as [string[], string][]) {
     const result = await run(argv, { cwd: root });
     assert.equal(result.code, 2, argv.join(' '));
     assert.ok(result.err.startsWith(`starci app: ${message}\n`), `${argv.join(' ')}: ${result.err.split('\n')[0]}`);
   }
-});
-
-test('add inbox is refused with exit 2: an app gets its provider inbox from `add webhook`', async (t) => {
-  const root = await scaffolded(t);
-  const before = files(root);
-  const refused = await run(['add', 'inbox'], { cwd: root });
-  assert.equal(refused.code, 2);
-  assert.match(refused.err, /an app gets its provider inbox from `starci app add webhook`/);
-  assert.deepEqual(files(root), before, 'nothing was written');
 });
 
 test('check --staged is the pre-commit guard alone', async (t) => {

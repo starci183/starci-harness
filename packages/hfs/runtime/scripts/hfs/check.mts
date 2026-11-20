@@ -17,7 +17,7 @@
 //   HFS_SLOT_REQUIRED_MISSING     a file or directory a required slot (or an instance of one) must contain
 //   HFS_MIN_INSTANCES             fewer instances of a slot than minInstances
 //   HFS_PLAINTEXT_SECRET          (R06, rules/secrets.mts) a plaintext secret file or value in a tracked file; a `.enc` that is no sops envelope
-//   HFS_STACKS_SHAPE              (R10, rules/stacks.mts) invalid stack shape, Swarm runtime policy, host crontab installation or lite backing duplication
+//   HFS_STACKS_SHAPE              (R10, rules/stacks.mts) invalid stack shape, Swarm runtime policy, host crontab installation or backing duplication
 //   HFS_SEEDS_SHAPE, HFS_SEED_MANIFEST, HFS_SEED_DDL, HFS_SEED_DATA_SCHEMA, HFS_SEED_TEST_DATA, HFS_SEED_SECRET_REF (R375, rules/seeds.mts) seed
 //                                 data outside the seed levels or unlisted, custody, a schema statement, a document off its schema, test data
 //                                 production applies outside its one test account, a secret reference to no sealed seeds-<name> member
@@ -33,7 +33,7 @@
 //   HFS_CONCEPT_UNCATALOGUED      (R433, rules/concepts-conventions.mts) a concept no catalog row links, or a row whose concept is not tracked
 //   FE_STACK_FORBIDDEN            (rules/fe-stack.mts) a front-end manifest (the fe side's, or the app root's minus the back end's own libraries)
 //                                 declares a package knowledge/hfs/fe-stack.yaml forbids
-//   HFS_LITE_SECRET_CUSTODY       (R220, rules/lite-secrets.mts) secret material or a forbidden custody path, beside the one R06 scan
+//   HFS_LITE_SECRET_CUSTODY       (R220, rules/secret-custody.mts) secret material or a forbidden custody path, beside the one R06 scan
 //   HFS_EDITION_DEPRECATED        (R212, rules/edition.mts) a warning: hfs.json still names the ignored `edition` field
 //   HFS_BACKING_UNDECLARED, HFS_BACKING_UNUSED (R212, rules/edition.mts) a client library or a pattern of a backing
 //                                 service hfs.json sides.be.backing does not declare, or a declared service no dependency consumes
@@ -97,10 +97,10 @@ import { bypassMarkerFindings } from './rules/bypass-markers.mjs';
 import { MANAGED_CI } from '../lib/bypass-markers.mjs';
 import { DECLARATION, STACK_ROOT } from '../lib/stack-declaration.mjs';
 import { repoLocalCheckFindings } from './rules/repo-local-checks.mjs';
-import { liteSecretFindings } from './rules/lite-secrets.mjs';
+import { sealedSecretFindings } from './rules/secret-custody.mjs';
 import { readmeManifestOf, untrackedSecretFindings } from './rules/secrets.mjs';
 import { memoFiles, type FileRule } from './rule-memo.mjs';
-import { liteStarciworkFinding, pathFindings } from './path-findings.mjs';
+import { starciworkFinding, pathFindings } from './path-findings.mjs';
 import { onLintSurface } from './architecture/surface.mjs';
 import type { Surface } from './architecture/index.mjs';
 import { checkAppRoot, trackedTreeView } from './architecture/hfs.mjs';
@@ -265,12 +265,12 @@ interface ContentRuleInput {
 
 /**
  * The rules whose findings for a file depend on that file alone (and the files `deps` names), so the result cache keeps them per file by content hash
- * (contexts/project/check-cache.md "Which step reuses what"): the plaintext secrets (R06 and the lite custody L17), the bypass markers (R303) and, in a side, the soft file size.
+ * (contexts/project/check-cache.md "Which step reuses what"): the plaintext secrets (R06 and the custody L17), the bypass markers (R303) and, in a side, the soft file size.
  * Each rule's findings carry the path of the file they judge; `check-cache-structure-rules.spec.mts` proves that and the declared `deps` under a file-system recorder.
  */
 export function perFileRules({ repoRoot, repo, resolver, inScope, isRoot }: { repoRoot: string; repo: CheckRepo; resolver: CheckResolver; inScope: (file: string) => boolean; isRoot: boolean }): FileRule[] {
   return [
-    { id: 'secret', run: (list) => liteSecretFindings({ repoRoot, files: list.filter((file) => inScope(file)), resolver, repo }), deps: (file) => readmeManifestOf(file) ?? [] },
+    { id: 'secret', run: (list) => sealedSecretFindings({ repoRoot, files: list.filter((file) => inScope(file)), resolver, repo }), deps: (file) => readmeManifestOf(file) ?? [] },
     // The managed ci.yml is judged with the gate declaration, whose idled jobs are its render (R303, PROJECT-LINT-4).
     { id: 'bypass-marker', run: (list) => bypassMarkerFindings({ repoRoot, files: list.filter((file) => inScope(file)) }), deps: (file) => (file === MANAGED_CI ? [`${STACK_ROOT}/${DECLARATION}`] : []) },
     ...(isRoot ? [] : [{ id: 'size-soft', run: (list: string[]) => sizeSoftFindings({ repoRoot, resolver, files: list, inScope }) }]),
@@ -542,10 +542,10 @@ export function explainPath({ repoRoot, input, root = skillRoot, declaration, ma
   const why = readWhy(root);
   const c = resolver.classifyPath(input);
   const dir = /[\\/]$/.test(input) || (repoRoot && fs.existsSync(path.join(repoRoot, c.path)) && fs.statSync(path.join(repoRoot, c.path)).isDirectory()) as boolean;
-  const liteWork = liteStarciworkFinding(c.path, resolver, { dir });
-  if (liteWork) {
-    const entry = why[liteWork.code] as Why;
-    return { ...c, ...liteWork, status: 'forbidden', titleVi: entry.titleVi, whyVi: entry.whyVi };
+  const workFinding = starciworkFinding(c.path, resolver, { dir });
+  if (workFinding) {
+    const entry = why[workFinding.code] as Why;
+    return { ...c, ...workFinding, status: 'forbidden', titleVi: entry.titleVi, whyVi: entry.whyVi };
   }
   if (c.status === 'no-slot') {
     return { path: c.path, status: 'no-slot', code: 'HFS_SLOT_UNDECLARED', nearest: c.nearest, titleVi: (why.HFS_SLOT_UNDECLARED as Why).titleVi, whyVi: (why.HFS_SLOT_UNDECLARED as Why).whyVi };

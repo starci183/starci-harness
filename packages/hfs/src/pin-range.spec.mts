@@ -1,5 +1,5 @@
-// proves: HFS_CANON_PIN_DRIFT@lite
-// proves: HFS_CANON_PIN_DRIFT@full
+// proves: HFS_CANON_PIN_DRIFT
+// proves: HFS_CANON_PIN_DRIFT
 // R15 and the Grammar's same-minor range: an app's Grammar family pin meets `~x.y.z` when it is an exact version of
 // that minor at or above the floor; every other @starci pin stays exact. A pre-release meets a range only when the range names one.
 import test from 'node:test';

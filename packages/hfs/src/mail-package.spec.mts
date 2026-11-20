@@ -8,7 +8,7 @@ import { parseYaml } from '../runtime/engine/yaml.mjs';
 import { loadSlotManifest } from '../runtime/scripts/hfs/slots.mjs';
 
 const REPOSITORY = path.resolve(import.meta.dirname, '..', '..', '..');
-const STARTER = path.join(import.meta.dirname, '..', 'templates', 'be', 'skeleton-lite');
+const STARTER = path.join(import.meta.dirname, '..', 'templates', 'be', 'skeleton');
 const manifest = loadSlotManifest();
 const readJson = (file: string) => JSON.parse(fs.readFileSync(file, 'utf8')); // reason: parsed package.json
 
@@ -33,7 +33,7 @@ test('the package depends on nodemailer and on @starci/common at exactly the ver
   assert.equal(stack['@starci/mail'].version, manifestOf.version);
 });
 
-test('the lite starter imports nodemailer nowhere, and @starci/mail in its mail folder alone', () => {
+test('the starter imports nodemailer nowhere, and @starci/mail in its mail folder alone', () => {
   const importers = new Set<string>();
   for (const file of sources(STARTER)) {
     const text = fs.readFileSync(file, 'utf8');
@@ -88,7 +88,7 @@ test('the email tokens are kept as digests in a table of the baseline migration,
   }
 });
 
-const WEB = path.join(import.meta.dirname, '..', 'templates', 'fe', 'skeleton-lite', 'apps', 'web', 'src');
+const WEB = path.join(import.meta.dirname, '..', 'templates', 'fe', 'skeleton', 'apps', 'web', 'src');
 
 test('the links of the mails open pages that exist: the routes are the paths the service builds, under the unprefixed default locale', () => {
   const service = fs.readFileSync(path.join(AUTH, 'src', 'modules', 'domain', 'identity', 'identity-email.service.ts'), 'utf8');

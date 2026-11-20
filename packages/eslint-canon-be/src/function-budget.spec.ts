@@ -1,4 +1,4 @@
-// proves: HFS_FUNCTION_BUDGET@lite HFS_FUNCTION_BUDGET@full
+// proves: HFS_FUNCTION_BUDGET
 import assert from "node:assert/strict"
 import test from "node:test"
 import { TSESLint } from "@typescript-eslint/utils"

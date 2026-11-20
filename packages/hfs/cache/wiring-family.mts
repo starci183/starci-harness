@@ -1,4 +1,4 @@
-// wiring-family.mts - `app check --wiring`: the boot proof of every app, a lite back end's composition with doubles. Scoped: the record is keyed on the back-end
+// wiring-family.mts - `app check --wiring`: the boot proof of every app, a back end's composition with doubles. Scoped: the record is keyed on the back-end
 // side key and on what the proof loaded (its workers' module cache, package-closure.mts): each installed package by its lockfile digest and each app file outside
 // the back end by its hash, so a package bump re-runs the proof only when the boot loaded the package. A proof whose workers reported no list (one timed out or did
 // not answer) is keyed on everything the app installs and tracks. A timeout reached no verdict and is never stored.

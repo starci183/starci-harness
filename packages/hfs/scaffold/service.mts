@@ -362,7 +362,7 @@ const writeNew = (repoRoot: string, relative: string, text: string): string => {
 
 /** `starci app add spec be/<file>.service.ts` at the app root: writes the spec skeleton of an existing service; returns the created app-relative paths. */
 export function newSpec({ repoRoot: appRoot, file, ts, manifest = loadSlotManifest() }: { repoRoot: string, file: string, ts?: typeof TypeScript | undefined, manifest?: SlotManifest }): string[] {
-  // A unit spec belongs to both editions (R212): a lite back end keeps full's unit specs.
+  // A unit spec belongs to both editions (R212): a back end keeps full's unit specs.
   const { beRoot: repoRoot } = backEndOf(appRoot, manifest);
   const relative = belowBackEnd(file);
   if (!relative.endsWith('.service.ts')) throw new ScaffoldError('HFS_NEW_NOT_A_SERVICE', `${relative} is not a *.service.ts file: only services have a unit spec`);

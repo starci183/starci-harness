@@ -1,4 +1,4 @@
-// proves: BE_AUTH_PASSPORT_OWNER@lite
+// proves: BE_AUTH_PASSPORT_OWNER
 // The lite sign-in is the package @starci/auth: a lite starter depends on it and on none of the identity libraries it owns, its
 // session tables are the package's migration byte for byte, its passport integration is the thin glue the slot lists, the
 // identity libraries are owned by no app file and the package only by integrations/passport, and its front end uses the one client.
@@ -32,7 +32,7 @@ const lockedOk = (root: string): LockResult => {
 const lite = (t: Parameters<typeof mkdtemp>[0]) =>
   scaffoldApp({ name: 'demo', into: mkdtemp(t, 'starci-auth-package-'), harness: { version: '1.1.0-alpha.3' }, presets: bundledPresets(), lock: lockedOk, initGit: init }).root;
 
-test('a lite starter depends on @starci/auth at its pin and on none of the identity libraries, in the root and in the web app', (t) => {
+test('the starter depends on @starci/auth at its pin and on none of the identity libraries, in the root and in the web app', (t) => {
   const root = lite(t);
   const pin = canonPins()['@starci/auth'];
   assert.ok(pin, 'the canon pins name @starci/auth');
@@ -46,7 +46,7 @@ test('a lite starter depends on @starci/auth at its pin and on none of the ident
   assert.equal(web.dependencies['@starci/auth'], pin.version);
 });
 
-test('the baseline migration of a lite starter holds the package\'s session tables and the account doors byte for byte, and grants app_be nothing on schema auth', (t) => {
+test('the baseline migration of the starter holds the package\'s session tables and the account doors byte for byte, and grants app_be nothing on schema auth', (t) => {
   const root = lite(t);
   const [baseline] = fs.readdirSync(path.join(root, 'db', 'migrations')).filter((name) => name.endsWith('_baseline.sql'));
   assert.ok(baseline);
@@ -63,10 +63,10 @@ test('the baseline migration of a lite starter holds the package\'s session tabl
 
 test('the eight account doors are the canon\'s listed database functions, so an app lists none of them in hfs.json', () => {
   const listed = Object.fromEntries((loadSlotManifest().ruleParams.be?.dbFunctions ?? []).map((entry) => [entry.name, entry.reason]));
-  for (const door of ACCOUNT_DOORS) assert.match(String(listed[`public.${door}`]), /^domain\/identity \(lite sign-in\)/u, door);
+  for (const door of ACCOUNT_DOORS) assert.match(String(listed[`public.${door}`]), /^domain\/identity \(sign-in\)/u, door);
 });
 
-test('a lite starter\'s passport integration is the glue the slot lists and its front end keeps one auth client', (t) => {
+test('the starter\'s passport integration is the glue the slot lists and its front end keeps one auth client', (t) => {
   const root = lite(t);
   const slot = loadSlotManifest().slots.find((entry) => entry.id === 'be.integrations.passport');
   assert.ok(slot);
@@ -109,7 +109,7 @@ test('the pin of @starci/auth names the folder and the version of the package', 
   assert.equal(pin?.version, JSON.parse(fs.readFileSync(path.join(REPOSITORY, 'packages', 'auth', 'package.json'), 'utf8')).version);
 });
 
-test('the sign-in glue is managed: the doors, the stores and their specs render with the lite starter, and an edit is drift', async (t) => {
+test('the sign-in glue is managed: the doors, the stores and their specs render with the starter, and an edit is drift', async (t) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-proof-auth-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const declaration = structuredClone(APP);

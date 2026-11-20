@@ -1,5 +1,5 @@
-// proves: HFS_SONAR_CONFIG@lite
-// proves: HFS_SONAR_CONFIG@full
+// proves: HFS_SONAR_CONFIG
+// proves: HFS_SONAR_CONFIG
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -16,7 +16,7 @@ const propertiesOf = (text: string) => new Map<string, string[]>(text.split('\n'
 // build or dependency folder, or when it moves a test pattern `sonar.test.inclusions` also names out of the sources while
 // `sonar.tests` covers every source folder: Sonar refuses a file indexed as both source and test, so the move is required.
 for (const edition of ['lite'] as const) {
-  test(`${edition}: the render excludes only tests it analyses as tests and build or dependency folders`, () => {
+  test(`the render excludes only tests it analyses as tests and build or dependency folders`, () => {
     const declaration = structuredClone(APP);
     declaration.edition = edition;
     if (edition === 'lite') declaration.sides.be.connections = [
@@ -56,7 +56,7 @@ const synced = (context: TestContext, edition: string) => {
 };
 
 for (const edition of ['lite'] as const) {
-  test(`${edition}: changing a noncoverage Sonar setting fails and its render passes`, async context => {
+  test(`changing a noncoverage Sonar setting fails and its render passes`, async context => {
     const { root, findings } = synced(context, edition);
     const file = path.join(root, 'sonar-project.properties');
     const rendered = fs.readFileSync(file, 'utf8');
@@ -74,7 +74,7 @@ for (const edition of ['lite'] as const) {
 
 // Direct checker calls also expose these real mutation cases to the coverage proof analysis.
 for (const edition of ['lite'] as const) {
-  test(`${edition}: an injected Sonar host URL is invalid and restoring its render passes`, async context => {
+  test(`an injected Sonar host URL is invalid and restoring its render passes`, async context => {
     const { root, tracked } = synced(context, edition);
     const input = { repoRoot: root, tracked, presets: PRESETS };
     const file = path.join(root, 'sonar-project.properties');

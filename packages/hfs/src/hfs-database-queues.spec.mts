@@ -1,4 +1,4 @@
-// proves: DB_PGMQ_DECLARED@lite DB_PGMQ_DECLARED@full
+// proves: DB_PGMQ_DECLARED
 // pgmq is the event bus and jobs run on BullMQ, so a queue constant has no pgmq queue, every pgmq queue left
 // is an event-bus topic queue named by a *_TOPIC_QUEUE constant under platform/event-bus, and a topic binding names a literal pattern and a
 // declared queue.
@@ -104,13 +104,13 @@ const badGrants = [
 ];
 
 for (const edition of ['lite'] as const) {
-  test(`${edition}: the app root judges the migrations while a side scope is not judged twice`, (t) => {
+  test(`the app root judges the migrations while a side scope is not judged twice`, (t) => {
     const context = fixture(t, edition, { [QUEUE]: CONSTANT, [MIGRATION]: CREATE });
     assert.ok(databaseQueuesFindings({ ...context, isRoot: true }).some((finding: Finding) => finding.code === 'DB_PGMQ_DECLARED'));
     assert.deepEqual(databaseQueuesFindings({ ...context, isRoot: false, appSide: true }), []);
   });
 
-  test(`${edition}: a standalone back-end scope reads its queue constants against the migrations`, (t) => {
+  test(`a standalone back-end scope reads its queue constants against the migrations`, (t) => {
     const queue = QUEUE.slice(3);
     const context = fixture(t, edition, { [queue]: CONSTANT, [MIGRATION]: CREATE });
     const standalone = { ...context, repo: { ...context.repo, profile: 'be' }, isRoot: false, appSide: false };
@@ -119,7 +119,7 @@ for (const edition of ['lite'] as const) {
     assert.deepEqual(databaseQueuesFindings({ ...retired, repo: { ...retired.repo, profile: 'be' }, isRoot: false, appSide: false }), []);
   });
 
-  test(`${edition}: a queue constant on Redis and an owned event-bus topic queue with its app grants pass`, (t) => {
+  test(`a queue constant on Redis and an owned event-bus topic queue with its app grants pass`, (t) => {
     assert.deepEqual(judge(t, edition, { [QUEUE]: CONSTANT }), []);
     assert.deepEqual(judge(t, edition, {
       [TOPIC_FILE]: TOPIC_CONSTANT,
@@ -128,13 +128,13 @@ for (const edition of ['lite'] as const) {
     assert.deepEqual(judge(t, edition, { [TOPIC_FILE.slice(3)]: TOPIC_CONSTANT, [MIGRATION]: CREATE_TOPIC }), []);
   });
 
-  test(`${edition}: an unowned or renamed pgmq queue is refused`, (t) => {
+  test(`an unowned or renamed pgmq queue is refused`, (t) => {
     assert.deepEqual(codes(judge(t, edition, { [MIGRATION]: "select pgmq.create('jobs');" })), ['DB_PGMQ_DECLARED']);
     const renamed = judge(t, edition, { [QUEUE]: CONSTANT, [MIGRATION]: "select pgmq.create('receipts_v2');" });
     assert.equal(renamed.filter((finding) => finding.code === 'DB_PGMQ_DECLARED').length, 1);
   });
 
-  test(`${edition}: a topic queue bound to its event name by a literal binding after its creation passes`, (t) => {
+  test(`a topic queue bound to its event name by a literal binding after its creation passes`, (t) => {
     assert.deepEqual(judge(t, edition, topicMigration(BIND_TOPIC)), []);
     assert.deepEqual(judge(t, edition, { ...topicMigration(BIND_TOPIC), [NEXT]: `select pgmq.unbind_topic('billing.receipt-paid', '${TOPIC}');` }), []);
   });
@@ -147,31 +147,31 @@ for (const edition of ['lite'] as const) {
     ['a binding inside a function', topicMigration(`create function private.bind_topics() returns void language sql as $$${BIND_TOPIC}$$;`)],
     ['a binding by dynamic SQL', topicMigration(`do $$begin execute 'select pgmq.bind_topic(''billing.receipt-paid'', ''${TOPIC}'')'; end$$;`)],
   ] as [string, Contents][]) {
-    test(`${edition}: DB_PGMQ_DECLARED ${name}`, (t) => { expectCode(t, edition, contents, 'DB_PGMQ_DECLARED'); });
+    test(`DB_PGMQ_DECLARED ${name}`, (t) => { expectCode(t, edition, contents, 'DB_PGMQ_DECLARED'); });
   }
 
-  test(`${edition}: a pgmq queue of a queue constant dropped by a later migration passes`, (t) => {
+  test(`a pgmq queue of a queue constant dropped by a later migration passes`, (t) => {
     assert.deepEqual(judge(t, edition, { [QUEUE]: CONSTANT, [MIGRATION]: `${CREATE}\ngrant select, insert on pgmq.q_receipts to app_be;`, [NEXT]: DROP }), []);
   });
 
   for (const [name, contents] of pgmqFailures) {
-    test(`${edition}: DB_PGMQ_DECLARED ${name}`, (t) => { expectCode(t, edition, contents, 'DB_PGMQ_DECLARED'); });
+    test(`DB_PGMQ_DECLARED ${name}`, (t) => { expectCode(t, edition, contents, 'DB_PGMQ_DECLARED'); });
   }
 
   for (const grant of badGrants) {
-    test(`${edition}: DB_PGMQ_DECLARED refuses ${grant}`, (t) => {
+    test(`DB_PGMQ_DECLARED refuses ${grant}`, (t) => {
       assert.deepEqual(codes(judge(t, edition, topicMigration(grant))), ['DB_PGMQ_DECLARED']);
       assert.deepEqual(judge(t, edition, topicMigration(`grant select on pgmq.q_${TOPIC} to app_be;`)), []);
     });
   }
 
-  test(`${edition}: DB_PGMQ_DECLARED uses the declared application role`, (t) => {
+  test(`DB_PGMQ_DECLARED uses the declared application role`, (t) => {
     const contents = topicMigration(`grant select on pgmq.q_${TOPIC}, pgmq.a_${TOPIC} to receipt_be;`);
     assert.deepEqual(judge(t, edition, contents, { appRole: 'receipt_be' }), []);
     expectCode(t, edition, contents, 'DB_PGMQ_DECLARED');
   });
 
-  test(`${edition}: DB_PGMQ_DECLARED catches grants inside DO, function and dynamic SQL bodies`, (t) => {
+  test(`DB_PGMQ_DECLARED catches grants inside DO, function and dynamic SQL bodies`, (t) => {
     for (const body of [
       `do $$begin grant select on pgmq.q_${TOPIC} to authenticated; end$$;`,
       `create function private.expose_queue() returns void language sql as $$grant select on pgmq.q_${TOPIC} to anon$$;`,
@@ -179,14 +179,14 @@ for (const edition of ['lite'] as const) {
     ]) assert.deepEqual(codes(judge(t, edition, topicMigration(body))), ['DB_PGMQ_DECLARED']);
   });
 
-  test(`${edition}: static migration DO declaration and non-secret SQL payload strings pass`, (t) => {
+  test(`static migration DO declaration and non-secret SQL payload strings pass`, (t) => {
     assert.deepEqual(judge(t, edition, {
       [TOPIC_FILE]: TOPIC_CONSTANT,
       [MIGRATION]: `do $$begin perform pgmq.create('${TOPIC}'); perform pgmq.create('${TOPIC}__dead'); end$$;`,
     }), []);
   });
 
-  test(`${edition}: queue inventory ignores source comments, inert literals and test files`, (t) => {
+  test(`queue inventory ignores source comments, inert literals and test files`, (t) => {
     assert.deepEqual(judge(t, edition, {
       [QUEUE]: `${CONSTANT}\n// export const MISSING_QUEUE = 'missing';\nexport const documentation = "select pgmq.create('missing'); cron.schedule('bad', '* * * * *', 'update public.x')";`,
       [MIGRATION]: "select 'pgmq.create(''missing'')';",
@@ -194,7 +194,7 @@ for (const edition of ['lite'] as const) {
     }), []);
   });
 
-  test(`${edition}: finder wiring and scope use all files for the cross-file check`, (t) => {
+  test(`finder wiring and scope use all files for the cross-file check`, (t) => {
     assert.ok(FINDERS.includes(databaseQueuesFindings));
     const context = fixture(t, edition, { [QUEUE]: CONSTANT, [MIGRATION]: CREATE });
     context.files = [QUEUE];
@@ -205,7 +205,7 @@ for (const edition of ['lite'] as const) {
     assert.deepEqual(databaseQueuesFindings(context), []);
   });
 
-  test(`${edition}: baseline metadata preserves final active queues and the pg_cron jobs an archived chain still schedules`, (t) => {
+  test(`baseline metadata preserves final active queues and the pg_cron jobs an archived chain still schedules`, (t) => {
     const context = fixture(t, edition, {
       [QUEUE]: CONSTANT,
       [TOPIC_FILE]: TOPIC_CONSTANT,
@@ -220,12 +220,12 @@ for (const edition of ['lite'] as const) {
     });
   });
 
-  test(`${edition}: baseline metadata reports invalid ownership before a cutover`, (t) => {
+  test(`baseline metadata reports invalid ownership before a cutover`, (t) => {
     const metadata = databaseQueueDeclarations(fixture(t, edition, { [QUEUE]: CONSTANT, [MIGRATION]: CREATE }));
     assert.deepEqual(codes(metadata.findings), ['DB_PGMQ_DECLARED']);
   });
 
-  test(`${edition}: retiring a queue and its grants passes`, (t) => {
+  test(`retiring a queue and its grants passes`, (t) => {
     const context = fixture(t, edition, {
       [MIGRATION]: `${CREATE}\ngrant select, insert on pgmq.q_receipts to app_be;`,
       [NEXT]: DROP,
@@ -234,7 +234,7 @@ for (const edition of ['lite'] as const) {
     assert.deepEqual(databaseQueueDeclarations(context), { queues: [], cron: [], grants: [], findings: [] });
   });
 
-  test(`${edition}: baseline metadata replays queue grants, revokes and grant options`, (t) => {
+  test(`baseline metadata replays queue grants, revokes and grant options`, (t) => {
     const context = fixture(t, edition, {
       ...topicMigration(`grant select, insert on pgmq.q_${TOPIC} to receipt_be with grant option; grant select on pgmq.a_${TOPIC} to receipt_be;`),
       [NEXT]: `revoke insert on pgmq.q_${TOPIC} from receipt_be; revoke grant option for select on pgmq.q_${TOPIC} from receipt_be;`,
@@ -249,14 +249,14 @@ for (const edition of ['lite'] as const) {
     });
   });
 
-  test(`${edition}: deferred grants do not become baseline operational grants`, (t) => {
+  test(`deferred grants do not become baseline operational grants`, (t) => {
     const context = fixture(t, edition, {
       [MIGRATION]: `${CREATE}\ncreate function private.configure_queue() returns void language sql as $$grant select on pgmq.q_receipts to app_be$$;`,
     });
     assert.deepEqual(databaseQueueDeclarations(context).grants, []);
   });
 
-  test(`${edition}: recreated queues do not retain old grants`, (t) => {
+  test(`recreated queues do not retain old grants`, (t) => {
     const context = fixture(t, edition, {
       [MIGRATION]: `${CREATE}\ngrant select on pgmq.q_receipts to app_be;`,
       [NEXT]: `${DROP} ${CREATE}\ngrant insert on pgmq.q_receipts to app_be;`,

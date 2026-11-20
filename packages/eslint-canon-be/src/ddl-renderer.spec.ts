@@ -1,6 +1,6 @@
 /** The declared DDL renderer (hfs.json sides.be.ddlRenderers): DDL text only built and returned, never executed or reached from run-time code. */
-// proves: BE_SCHEMA_AUTHORITY@lite
-// proves: BE_SCHEMA_AUTHORITY@full
+// proves: BE_SCHEMA_AUTHORITY
+// proves: BE_SCHEMA_AUTHORITY
 import test from "node:test"
 import { at, fixtureHfs, ruleTester, TYPED_ROOT } from "../fixtures/typed/tester.ts"
 import { packagesHfsFromDeclaration } from "./lib/hfs.ts"

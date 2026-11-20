@@ -63,7 +63,7 @@ interface FoundView {
  * its views, built by generated migrations and reached through the engine's own schemas) need no entity per table, but belong to
  * the declared capability alone: an `@Entity` of any other capability that maps one of them is refused.
  *
- * Lite (persistence.md BE-PERSISTENCE-3) has entities and no be migration: the
+ * An app (persistence.md BE-PERSISTENCE-3) has entities and no be migration: the
  * capability's `persistence/entities/index.ts` declares `<c>Entities`, its `index.ts` exports that one persistence name, and
  * `platform/database/entities.ts` names it in `PRIMARY_ENTITIES`, the one list the app composition registers; there is a
  * single primary connection, so the per-connection checks do not apply.
@@ -74,7 +74,7 @@ const RULE = 'BE_SCHEMA_OWNER';
 const PERSISTENCE_SLOT = 'be.persistence';
 const SCHEMA_FOLDERS = new Set(['entities', 'migrations']);
 const MIGRATION_FILE = /^(\d{13})-([a-z0-9]+(?:-[a-z0-9]+)*)\.ts$/u;
-/** The lite entity list every capability's `<c>Entities` is named in (BE-PERSISTENCE-3). */
+/** The entity list every capability's `<c>Entities` is named in (BE-PERSISTENCE-3). */
 const LITE_ENTITY_LIST = `${DATABASE_DIR}/entities.ts`;
 const camel = (name: string): string => { const text = pascal(name); return text.charAt(0).toLowerCase() + text.slice(1); };
 
@@ -181,7 +181,7 @@ function reportRegistrationSites(registered: Registered, connections: Set<string
   }
 }
 
-/** The identifiers a file of the graph declares or names, for the lite list checks. */
+/** The identifiers a file of the graph declares or names, for the list checks. */
 function identifiersOf(ts: TypeScriptApi, file: GraphFile | undefined): Set<string> {
   const names = new Set<string>();
   const visit = (node: Node): void => { if (ts.isIdentifier(node)) names.add(node.text); ts.forEachChild(node, visit); };

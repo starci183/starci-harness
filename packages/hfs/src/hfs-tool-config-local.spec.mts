@@ -1,5 +1,5 @@
-// proves: HFS_TOOL_CONFIG_LOCAL@lite
-// proves: HFS_TOOL_CONFIG_LOCAL@full
+// proves: HFS_TOOL_CONFIG_LOCAL
+// proves: HFS_TOOL_CONFIG_LOCAL
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -26,7 +26,7 @@ const synced = (context: TestContext, edition: string) => {
 };
 
 for (const edition of ['lite'] as const) {
-  test(`${edition}: a tool config override fails and a plain lint command passes`, async context => {
+  test(`a tool config override fails and a plain lint command passes`, async context => {
     const { root, tracked, findings } = synced(context, edition);
     const relative = 'scripts/lint.mjs';
     const file = path.join(root, relative);
@@ -46,7 +46,7 @@ for (const edition of ['lite'] as const) {
 }
 
 for (const edition of ['lite'] as const) {
-  test(`${edition}: direct managed findings reject an override and accept the plain tool command`, async (context) => {
+  test(`direct managed findings reject an override and accept the plain tool command`, async (context) => {
     const { root, tracked } = synced(context, edition);
     const relative = 'scripts/coverage-lint.mjs';
     const file = path.join(root, relative);
@@ -63,7 +63,7 @@ for (const edition of ['lite'] as const) {
 }
 
 for (const edition of ['lite'] as const) {
-  test(`${edition}: a lint rule the project's extension manifest declares is the project's law; the same file undeclared, or anywhere else, is a local rule`, async (context) => {
+  test(`a lint rule the project's extension manifest declares is the project's law; the same file undeclared, or anywhere else, is a local rule`, async (context) => {
     const { root, tracked } = synced(context, edition);
     const rule = 'export default { meta: { type: "problem", schema: [] }, create: (context) => ({}) };\n';
     const write = (relative: string, text: string): void => {

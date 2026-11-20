@@ -1,5 +1,5 @@
-// proves: BE_INFRA_OWNER@lite
-// proves: BE_INFRA_OWNER@full
+// proves: BE_INFRA_OWNER
+// proves: BE_INFRA_OWNER
 /** Logger correlation owns async context exclusively, including from the test composition root. */
 import test from "node:test"
 import tsParser from "@typescript-eslint/parser"

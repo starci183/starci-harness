@@ -1,7 +1,7 @@
-// proves: BE_APP_COMPOSITION_ONLY@lite BE_APP_COMPOSITION_ONLY@full
-// proves: BE_APP_BUSINESS_ROLE@lite BE_APP_BUSINESS_ROLE@full
-// proves: BE_ENTRYPOINT_ONLY_IN_APPS@lite BE_ENTRYPOINT_ONLY_IN_APPS@full
-// proves: BE_SCHEMA_OWNER@lite BE_SCHEMA_OWNER@full
+// proves: BE_APP_COMPOSITION_ONLY
+// proves: BE_APP_BUSINESS_ROLE
+// proves: BE_ENTRYPOINT_ONLY_IN_APPS
+// proves: BE_SCHEMA_OWNER
 import fs from "node:fs"
 import test from "node:test"
 import { projectFixture } from "../fixtures/project/tester.ts"
@@ -132,7 +132,7 @@ const liteRepo = (t: TestContext, list: string, files: Readonly<Record<string, s
     files: { ...LITE_SCHEMA_FILES, [LITE_LIST]: list, ...files },
 })
 
-test("R35 lite: a capability's entity list is persistence/entities/index.ts and PRIMARY_ENTITIES names it", (t) => {
+test("R35: a capability's entity list is persistence/entities/index.ts and PRIMARY_ENTITIES names it", (t) => {
     const named = liteRepo(t, LITE_NAMED)
     const missing = liteRepo(t, "export const PRIMARY_ENTITIES = [];\n")
     named.tester.run("schema-owner", ruleNamed(rules, "schema-owner"), {

@@ -1,7 +1,7 @@
-// proves: BE_CQRS_SHAPE@lite
-// proves: BE_CQRS_SHAPE@full
-// proves: BE_READONLY_BOUNDARY@lite
-// proves: BE_READONLY_BOUNDARY@full
+// proves: BE_CQRS_SHAPE
+// proves: BE_CQRS_SHAPE
+// proves: BE_READONLY_BOUNDARY
+// proves: BE_READONLY_BOUNDARY
 import test from "node:test"
 import { appDeclaration } from "../fixtures/app.ts"
 import { projectFixture } from "../fixtures/project/tester.ts"

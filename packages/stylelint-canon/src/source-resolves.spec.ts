@@ -1,4 +1,4 @@
-// proves: FE_STYLE_SOURCE_UNRESOLVED@lite FE_STYLE_SOURCE_UNRESOLVED@full
+// proves: FE_STYLE_SOURCE_UNRESOLVED
 import assert from "node:assert/strict"
 import fs from "node:fs"
 import os from "node:os"

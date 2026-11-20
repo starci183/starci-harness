@@ -26,7 +26,7 @@ export function stateful(component: Parsed, service: Parsed) {
 export function recoveryComponents({ doc, spec, model }: { doc: Parsed; spec: Parsed; model: Parsed }) {
   const components = mapping(doc.components), services = mapping(model?.services);
   const selected = new Set([...Object.keys(mapping(spec.components)), ...Object.keys(services)]);
-  // Every declared backing (the lite db: backing.db naming its component) owes a backup, as every stateful component does.
+  // Every declared backing (the db: backing.db naming its component) owes a backup, as every stateful component does.
   const required = new Set(Object.entries<Parsed>(mapping(doc.backing)).filter(([, entry]) => typeof entry?.provider === 'string').map(([id]) => id));
   for (const id of selected) if (stateful(mapping(components[id]), mapping(services[id]))) required.add(id);
   return [...required];

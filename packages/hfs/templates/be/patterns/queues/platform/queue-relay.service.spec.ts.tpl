@@ -9,7 +9,10 @@ import { OutboxLogEvent } from "@modules/platform/outbox"
 import type { QueueOptions } from "./queue.options"
 import { QueueRelayService } from "./queue-relay.service"
 import type { QueueTransport } from "./queue-transport.port"
-import { MARK_ROWS_SENT, SELECT_WAITING_ROWS } from "./persistence/queue.sql"
+
+// The statements callDbFunction of platform/database sends for the relay's functions.
+const SELECT_WAITING_ROWS = 'SELECT * FROM "public"."queue_waiting"($1)'
+const MARK_ROWS_SENT = 'SELECT * FROM "public"."queue_mark_sent"($1, $2)'
 
 const AT = "2026-02-03T04:05:06.000Z"
 
@@ -44,7 +47,7 @@ const build = async (manager: MockEntityManager) => {
 }
 
 describe("QueueRelayService relay", () => {
-    it("adds the waiting rows to BullMQ with the row id as the job id and marks them sent in the same transaction", async () => {
+    it("adds the waiting rows to BullMQ with the row id as the job id and marks them sent once Redis has persisted them", async () => {
         const tx = fakeTransaction(
             mockEntityManager({
                 query: [
@@ -60,8 +63,28 @@ describe("QueueRelayService relay", () => {
         expect(tx.em.query).toHaveBeenNthCalledWith(1, SELECT_WAITING_ROWS, [2])
         expect(transport.add).toHaveBeenNthCalledWith(1, "mail", "1", { id: "m-1" }, "request-1")
         expect(transport.add).toHaveBeenNthCalledWith(2, "mail", "2", { id: "m-2" }, "request-2")
+        expect(transport.persist).toHaveBeenCalledWith([
+            { queue: "mail", jobId: "1" },
+            { queue: "mail", jobId: "2" },
+        ])
+        expect(transport.persist.mock.invocationCallOrder[0]).toBeGreaterThan(
+            transport.add.mock.invocationCallOrder[1] ?? 0,
+        )
         expect(tx.em.query).toHaveBeenNthCalledWith(2, MARK_ROWS_SENT, [["1", "2"], new Date(AT)])
         expect(tx.commits).toBe(1)
+    })
+
+    it("leaves the rows waiting when Redis has not persisted their jobs, so the next pass adds them again", async () => {
+        const tx = fakeTransaction(mockEntityManager({ query: [SELECT_WAITING_ROWS, [row("1")]] }))
+        const { relay, transport } = await build(tx.em)
+        const lost = new Error("job lost in a Redis restart")
+        transport.persist.mockRejectedValue(lost)
+
+        await expect(relay.relay()).rejects.toBe(lost)
+
+        expect(transport.add).toHaveBeenCalledWith("mail", "1", { id: "m-1" }, "request-1")
+        expect(tx.rollbacks).toBe(1)
+        expect(tx.em.query).toHaveBeenCalledTimes(1)
     })
 
     it("adds nothing and marks nothing when no row waits", async () => {
@@ -71,6 +94,7 @@ describe("QueueRelayService relay", () => {
         await expect(relay.relay()).resolves.toBe(0)
 
         expect(transport.add).not.toHaveBeenCalled()
+        expect(transport.persist).not.toHaveBeenCalled()
         expect(tx.em.query).toHaveBeenCalledTimes(1)
     })
 

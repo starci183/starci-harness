@@ -16,7 +16,7 @@ function propertiesOf(text: string): Map<string, string> {
 }
 
 for (const edition of ['lite'] as const) {
-  test(`${edition} rendered Sonar properties apply the CI Node heap budget`, () => {
+  test(`rendered Sonar properties apply the CI Node heap budget`, () => {
     const hfs = { hfs: 3, kind: 'app', edition, project: 'sonar-memory-proof', sides: {
       be: { apps: [{ name: 'api', kind: 'api' }] },
       fe: { grammar: 'core', apps: [{ name: 'web', kind: 'next' }], reads: ['be/contracts/'] },

@@ -1,4 +1,4 @@
-// proves: BE_CORS_ALLOWLIST@lite BE_CORS_ALLOWLIST@full BE_SECURITY_HEADERS@lite BE_SECURITY_HEADERS@full BE_TRUST_PROXY@lite BE_TRUST_PROXY@full
+// proves: BE_CORS_ALLOWLIST BE_SECURITY_HEADERS BE_TRUST_PROXY
 import assert from "node:assert/strict"
 import test from "node:test"
 import tsParser from "@typescript-eslint/parser"

@@ -20,7 +20,7 @@ const tester = canonRuleTester({
     settings: { starci: { hfs: fixtureHfs() } },
 })
 
-test("no-raw-sql: the lite pgmq event bus templates call only listed database functions", () => {
+test("no-raw-sql: the pgmq event bus templates call only listed database functions", () => {
     tester.run("no-raw-sql", noRawSql, {
         valid: ["event-bus.service", "event-consumer.service"].map((name) => ({
             filename: at(`src/modules/platform/event-bus/${name}.ts`),

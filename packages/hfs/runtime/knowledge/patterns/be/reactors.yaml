@@ -154,12 +154,12 @@ files:
     slot: be.tests.e2e
     role: The reactor's event flow through the bus, redelivery included.
 # Edition lite (R212): the same ports and rules, a self-hosted Postgres adapter behind them.
-liteAdapter:
+adapter:
   summary: >-
     Under lite a reactor is unchanged: a thin consumer of another context's events that dispatches one command. Its deliveries
     come from the lite event bus (its own pgmq queue per consumer group, bound to the event's topic).
   ports:
-    - {port: EventConsumer delivery, adapter: "the reactor's pgmq queue (see event-bus.yaml liteAdapter)"}
+    - {port: EventConsumer delivery, adapter: "the reactor's pgmq queue (see event-bus.yaml adapter)"}
   proof: >-
     `starci app check --wiring` proves the composing lite app's module graph with doubles (R272); declaring event-bus requires
     its scenario-titled integration specs on the local db service (`npm run db:start`, R284), including redelivery through the reactor.

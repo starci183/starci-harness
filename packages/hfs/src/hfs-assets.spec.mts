@@ -1,4 +1,4 @@
-// proves: HFS_ASSET_OVERSIZE@lite HFS_ASSET_OVERSIZE@full HFS_ASSET_KIND@lite HFS_ASSET_KIND@full
+// proves: HFS_ASSET_OVERSIZE HFS_ASSET_KIND
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -90,6 +90,6 @@ test('HFS_ASSET_OVERSIZE: maxBytes is supported', (t) => {
 });
 
 test('HFS_ASSET_KIND: backslash paths and uppercase media extensions are normalized', (t) => {
-  const findings = assetsFindings({ repoRoot: tree(t, {}), files: ['src\\media\\clip.MP4'], repo: { profile: 'be', edition: 'full' } });
+  const findings = assetsFindings({ repoRoot: tree(t, {}), files: ['src\\media\\clip.MP4'], repo: { profile: 'be' } });
   assert.deepEqual(findings.map((finding) => [finding.code, finding.path]), [['HFS_ASSET_KIND', 'src/media/clip.MP4']]);
 });

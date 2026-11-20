@@ -1,4 +1,4 @@
-// proves: BE_AUTH_JWT_OWN_JWKS@lite
+// proves: BE_AUTH_JWT_OWN_JWKS
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';

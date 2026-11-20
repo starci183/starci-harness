@@ -483,38 +483,18 @@ const DEFERRED_GENERATOR_FILES = new Set([
   'src/modules/platform/database/seed-runner.service.spec.ts',
   'src/modules/platform/primitives/sequence.policy.ts',
 ]);
-/**
- * The persistence folder of a full platform capability (TypeORM migrations, connection arrays, `sql`-tagged statements and rows):
- * the schema authority is db/migrations and code reads and writes through entities (be.persistence, R334), so a
- * platform capability takes its persistence/ from the overlay alone.
- */
-const FULL_PLATFORM_PERSISTENCE = /^src\/modules\/platform\/[^/]+\/persistence\//;
-const baseSource = (rel: string): boolean => !rel.startsWith('apps/cli/')
-    && !rel.startsWith('src/features/cli/')
-    && !rel.startsWith('src/modules/domain/note/')
-    && rel !== 'src/modules/platform/database/connection-source.client.ts'
-    && rel !== 'src/modules/platform/database/migrate-connections.client.ts'
-    && rel !== 'src/modules/platform/database/seed-connections.client.ts'
-    && !DEFERRED_GENERATOR_FILES.has(rel)
-    && !FULL_PLATFORM_PERSISTENCE.test(rel)
-    && !rel.startsWith('src/tests/');
-/** The be files the overlay replaces: a base unit spec of such a file tests the base variant, so the overlay carries its own. */
-const overlaid = (() => {
-  let set: Set<string> | null = null;
-  return () => (set ??= new Set(listFiles(path.join(TEMPLATES_DIR, 'be', 'skeleton-lite'))));
-})();
-/**
- * A base be file an app takes: a source file of the shared shape, and the unit spec beside a reused source file that the overlay
- * does not replace (an app keeps the back end's unit specs, R212). The base skeleton also holds the sources the add verbs copy later.
- */
-const baseFile = (scope: Scope, rel: string): boolean => {
-  // The shared fe app core (apps/__app__/) is one tree; the overlay replaces only modules/auth/client.ts.
-  if (scope === 'fe') return rel.startsWith(`apps/${APP_DIR}/`);
-  if (!rel.endsWith('.spec.ts')) return baseSource(rel);
-  const subject = rel.replace(/\.spec\.ts$/, '.ts');
-  return baseSource(subject) && !overlaid().has(subject);
-};
-const overlayFile = (scope: Scope, rel: string) => scope !== 'be' || !DEFERRED_GENERATOR_FILES.has(rel);
+/** The be sources the add verbs copy when an app first needs them (`add cli`), never the starter: the cli runners and the cli app head. */
+const ADD_VERB_SOURCES = new Set([
+  'apps/cli/src/app.module.ts',
+  'apps/cli/src/cli.options.ts',
+  'apps/cli/src/compose/cli.ts',
+  'apps/cli/src/compose/integrations.ts',
+  'apps/cli/src/main.ts',
+]);
+/** Whether a skeleton file belongs to the starter of the scope: the fe side takes the shared app core and the web app; the be side leaves out what a generator writes on first use. */
+const starterFile = (scope: Scope, rel: string): boolean => scope === 'be'
+  ? !rel.startsWith('src/features/cli/') && !ADD_VERB_SOURCES.has(rel) && !DEFERRED_GENERATOR_FILES.has(rel)
+  : true;
 
 function skeletonOutputPath(relative: string, { scope, app, vars }: SkeletonContext): string {
   const prefix = scope === 'app' ? '' : `${scope}/`;
@@ -553,12 +533,14 @@ function skeletonDirectory(scope: Scope, directory: string, app: SkeletonApp, va
   const apps = scope === 'app' ? [] : app.sides![scope].apps.filter(entry => scope === 'fe' || entry.kind === 'api'); // be and fe are rendered for resolved declarations only
   const context: SkeletonContext = { scope, directory, app, vars, apps };
   const files: GeneratedFile[] = [];
+  const fixed: GeneratedFile[] = [];
   for (const rel of listFiles(dir).filter(relative => include(relative))) {
     const source = render(fs.readFileSync(path.join(dir, rel), 'utf8').replace(/\r\n/g, '\n'), PARTIAL_VARIABLES);
-    const rendered = rel.includes(APP_DIR) ? variableSkeletonFiles(context, rel, source) : fixedSkeletonFiles(context, rel, source);
-    files.push(...rendered);
+    if (rel.includes(APP_DIR)) files.push(...variableSkeletonFiles(context, rel, source));
+    else fixed.push(...fixedSkeletonFiles(context, rel, source));
   }
-  return files;
+  // A file at a fixed path (apps/api/...) replaces the `__app__` file the app of that name would also take.
+  return [...files, ...fixed];
 }
 
 /**
@@ -567,9 +549,7 @@ function skeletonDirectory(scope: Scope, directory: string, app: SkeletonApp, va
  * once for the declared fe app <name> (none other), `__project__` in a path replaced by the project name.
  */
 export function skeletonOf(scope: Scope, app: ResolvedApp, vars: SkeletonVars): GeneratedFile[] {
-  const files = scope === 'app'
-    ? skeletonDirectory(scope, 'skeleton', app, vars)
-    : [...skeletonDirectory(scope, 'skeleton', app, vars, (rel: string) => baseFile(scope, rel)), ...skeletonDirectory(scope, 'skeleton-lite', app, vars, (rel: string) => overlayFile(scope, rel))];
+  const files = skeletonDirectory(scope, 'skeleton', app, vars, (rel: string) => scope === 'app' || starterFile(scope, rel));
   // A rest back end (BE-TRANSPORT-4) overlays its swagger-described health doors, the head apps/<app>/src/openapi.ts and the committed
   // contracts/<app>/openapi.json, the emitted document of the starter's controllers (R396).
   if (scope === 'be' && app.sides.be.apps.some(entry => entry.kind === 'api' && contractOf(entry) === 'rest')) files.push(...skeletonDirectory(scope, 'skeleton-rest', app, vars));

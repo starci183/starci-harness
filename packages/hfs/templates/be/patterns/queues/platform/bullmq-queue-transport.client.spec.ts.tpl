@@ -1,9 +1,10 @@
 import { Test } from "@nestjs/testing"
 import { fakeIds, mock } from "@starci/jest-preset"
+import { Secret } from "@modules/platform/config"
 import { LOGGER } from "@modules/platform/logging"
 import type { Logger } from "@modules/platform/logging"
 import { IDS } from "@modules/platform/ids"
-import { QueueErrorCode } from "./errors/queue.error"
+import { QueueError, QueueErrorCode } from "./errors/queue.error"
 import { BullmqQueueTransportClient } from "./bullmq-queue-transport.client"
 import { BULLMQ_JOB_SCHEMA } from "./queue.contracts"
 import type { QueueHandler } from "./queue.contracts"
@@ -11,7 +12,7 @@ import { QUEUE_FACTORY, QUEUE_OPTIONS } from "./queue.decorators"
 import { QueueLogEvent } from "./queue.log-events"
 import type { QueueOptions } from "./queue.options"
 import { ATTEMPTS, BACKOFF_MS, KEEP_COMPLETED_SECONDS } from "./queue.policy"
-import type { BullmqJob, BullmqQueue, BullmqWorker, QueueFactory } from "./queue-transport.port"
+import type { BullmqCommands, BullmqJob, BullmqQueue, BullmqWorker, QueueFactory } from "./queue-transport.port"
 
 const MINTED_ID = "00000000-0000-4000-8000-000000000001"
 
@@ -27,8 +28,10 @@ const options: QueueOptions = {
     schedulers: [],
 }
 
-const build = async () => {
+const build = async (redisPassword?: Secret) => {
+    const commands = mock<BullmqCommands>()
     const queue = mock<BullmqQueue>()
+    queue.getBackend.mockReturnValue({ client: Promise.resolve(commands) })
     const worker = mock<BullmqWorker>()
     const factory = mock<QueueFactory>()
     const ids = fakeIds()
@@ -38,14 +41,27 @@ const build = async () => {
     const moduleRef = await Test.createTestingModule({
         providers: [
             BullmqQueueTransportClient,
-            { provide: QUEUE_OPTIONS, useValue: options },
+            { provide: QUEUE_OPTIONS, useValue: { ...options, redisPassword } },
             { provide: QUEUE_FACTORY, useValue: factory },
             { provide: IDS, useValue: ids },
             { provide: LOGGER, useValue: logger },
         ],
     }).compile()
-    return { client: moduleRef.get(BullmqQueueTransportClient), queue, worker, factory, logger, ids }
+    return { client: moduleRef.get(BullmqQueueTransportClient), queue, worker, factory, logger, ids, commands }
 }
+
+describe("BullmqQueueTransportClient connection", () => {
+    it("authenticates with the password of the declared Redis read from its sealed secret", async () => {
+        const { client, factory } = await build(new Secret("redis-secret"))
+
+        await client.add("orders", "outbox-1", {}, "request-1")
+
+        expect(factory.queue).toHaveBeenCalledWith("orders", {
+            prefix: "spec.",
+            connection: { host: "redis.test", port: 6380, db: 7, password: "redis-secret", maxRetriesPerRequest: null },
+        })
+    })
+})
 
 describe("BullmqQueueTransportClient jobs and schedulers", () => {
     it("adds idempotent jobs with the queue retry and retention policy", async () => {
@@ -71,6 +87,15 @@ describe("BullmqQueueTransportClient jobs and schedulers", () => {
                 removeOnComplete: { age: KEEP_COMPLETED_SECONDS },
             },
         )
+    })
+
+    it("keeps the job id of an outbox row whatever correlation id it carries", async () => {
+        const { client, queue } = await build()
+
+        await client.add("orders", "outbox-1", {}, "request-1")
+        await client.add("orders", "outbox-1", {}, "request-2")
+
+        expect(queue.add.mock.calls.map(([, , options]) => options.jobId)).toEqual(["outbox-1", "outbox-1"])
     })
 
     it("rejects unsafe correlation before writing a new job", async () => {
@@ -111,16 +136,64 @@ describe("BullmqQueueTransportClient jobs and schedulers", () => {
     })
 })
 
-describe("BullmqQueueTransportClient persist", () => {
-    it("resolves when the queue holds every job and refuses a job Redis does not hold", async () => {
-        const { client, queue, factory } = await build()
-        queue.getJobState.mockResolvedValueOnce("waiting").mockResolvedValueOnce("unknown")
+describe("BullmqQueueTransportClient persistence", () => {
+    const jobs = [
+        { queue: "orders", jobId: "outbox-1" },
+        { queue: "orders", jobId: "outbox-2" },
+        { queue: "billing", jobId: "outbox-3" },
+    ]
 
-        await client.persist([{ queue: "mail", jobId: "job-1" }])
-        await expect(client.persist([{ queue: "mail", jobId: "job-2" }])).rejects.toMatchObject({ code: QueueErrorCode.JobLost })
+    it("waits once per queue for the append-only file, then finds every job still held", async () => {
+        const { client, queue, commands } = await build()
+        commands.call.mockResolvedValue([1, 0])
+        queue.getJobState.mockResolvedValue("waiting")
 
-        expect(factory.queue).toHaveBeenCalledTimes(1)
-        expect(queue.getJobState).toHaveBeenNthCalledWith(2, "job-2")
+        await expect(client.persist(jobs)).resolves.toBeUndefined()
+
+        expect(commands.call.mock.calls).toEqual([
+            ["WAITAOF", 1, 0, 5000],
+            ["WAITAOF", 1, 0, 5000],
+        ])
+        expect(queue.getJobState.mock.calls).toEqual([["outbox-1"], ["outbox-2"], ["outbox-3"]])
+    })
+
+    it.each([[[0, 0]], ["OK"]])(
+        "refuses when Redis does not report the jobs written to its append-only file (%j)",
+        async (reply) => {
+            const { client, queue, commands } = await build()
+            commands.call.mockResolvedValue(reply)
+
+            const refusal = client.persist(jobs)
+
+            await expect(refusal).rejects.toBeInstanceOf(QueueError)
+            await expect(refusal).rejects.toMatchObject({
+                code: QueueErrorCode.NotPersisted,
+                params: { queue: "orders" },
+            })
+            expect(queue.getJobState).not.toHaveBeenCalled()
+        },
+    )
+
+    it("refuses when the queue's connection cannot send the wait at all", async () => {
+        const { client, queue } = await build()
+        queue.getBackend.mockReturnValue({ client: Promise.resolve({}) })
+
+        await expect(client.persist(jobs)).rejects.toMatchObject({ code: QueueErrorCode.NotPersisted })
+        expect(queue.getJobState).not.toHaveBeenCalled()
+    })
+
+    it("refuses a job a restarted Redis no longer holds, although the wait answered on its new connection", async () => {
+        const { client, queue, commands } = await build()
+        commands.call.mockResolvedValue([1, 0])
+        queue.getJobState.mockImplementation((jobId) => Promise.resolve(jobId === "outbox-2" ? "unknown" : "waiting"))
+
+        const refusal = client.persist(jobs)
+
+        await expect(refusal).rejects.toBeInstanceOf(QueueError)
+        await expect(refusal).rejects.toMatchObject({
+            code: QueueErrorCode.JobLost,
+            params: { queue: "orders", jobId: "outbox-2" },
+        })
     })
 })
 

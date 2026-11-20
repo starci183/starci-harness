@@ -42,7 +42,7 @@ function app(files: Record<string, string> = {}, { edition = 'lite', synced = fa
 
 const migrations = (root: string): string[] => fs.readdirSync(path.join(root, 'db', 'migrations')).sort();
 
-test('1. the expand step writes the doors migration with the text of the lite baseline, a dry run writes nothing', () => {
+test('1. the expand step writes the doors migration with the text of the baseline, a dry run writes nothing', () => {
   const root = app();
   const dry = migrateAccountDoors({ root, now: () => NOW });
   assert.deepEqual(dry.changes.map((change) => change.phase), ['expand']);

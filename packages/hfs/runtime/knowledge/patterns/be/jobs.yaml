@@ -245,23 +245,6 @@ files:
   - path: src/modules/platform/jobs/messages/jobs.messages.ts
     slot: be.domain.messages
     template: jobs/platform/jobs.messages.ts.tpl
-  - path: src/modules/platform/jobs/persistence/connection.ts
-    slot: be.persistence
-    role: "The job entity array registered on every connection that runs jobs."
-    template: jobs/platform/persistence.connection.ts.tpl
-  - path: src/modules/platform/jobs/persistence/entities/job.entity.ts
-    slot: be.persistence
-    template: jobs/platform/persistence.job.entity.ts.tpl
-  - path: src/modules/platform/jobs/persistence/jobs.sql.ts
-    slot: be.persistence
-    role: "The claim and guarded-write statements as SqlText constants."
-    template: jobs/platform/persistence.jobs.sql.ts.tpl
-  - path: src/modules/platform/jobs/persistence/jobs.rows.ts
-    slot: be.persistence
-    template: jobs/platform/persistence.jobs.rows.ts.tpl
-  - path: src/modules/platform/jobs/persistence/migrations/<epochMs13>-create-jobs.ts
-    slot: be.persistence
-    template: jobs/platform/persistence.migration.ts.tpl
   - path: src/features/jobs/<job>/index.ts
     slot: be.feature.jobs
     template: jobs/job.index.ts.tpl
@@ -313,7 +296,7 @@ files:
     spec: fenced-job/claim-bumps-token, fenced-job/zombie-fenced-out, fenced-job/redispatch-isolated
     rules: [BE_PATTERN_SPEC_MISSING]
 # Edition lite (R212): the same ports and rules, a self-hosted Postgres adapter behind them.
-liteAdapter:
+adapter:
   summary: >-
     Under lite a fenced job is unchanged: the job row with its fencing token, the atomic claim, guarded writes and run keys. The
     row's table is a db migration, and the processor is fed by full's BullMQ queue on the declared Redis, so a lite app

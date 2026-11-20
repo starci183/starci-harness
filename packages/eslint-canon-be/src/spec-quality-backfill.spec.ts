@@ -1,5 +1,5 @@
-// proves: BE_SPEC_QUALITY@lite
-// proves: BE_SPEC_QUALITY@full
+// proves: BE_SPEC_QUALITY
+// proves: BE_SPEC_QUALITY
 import test from "node:test"
 import tsParser from "@typescript-eslint/parser"
 import { appDeclaration } from "../fixtures/app.ts"

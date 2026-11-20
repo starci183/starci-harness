@@ -1,13 +1,13 @@
-﻿// proves: HFS_BRAND_INVALID@lite
-// proves: HFS_BRAND_INVALID@full
-// proves: HFS_BRAND_MISSING@lite
-// proves: HFS_BRAND_MISSING@full
-// proves: HFS_BRAND_PROMPT_STALE@lite
-// proves: HFS_BRAND_PROMPT_STALE@full
-// proves: HFS_BRAND_PROMPT_INCOMPLETE@lite
-// proves: HFS_BRAND_PROMPT_INCOMPLETE@full
-// proves: HFS_BRAND_BASE_UNKNOWN@lite
-// proves: HFS_BRAND_BASE_UNKNOWN@full
+﻿// proves: HFS_BRAND_INVALID
+// proves: HFS_BRAND_INVALID
+// proves: HFS_BRAND_MISSING
+// proves: HFS_BRAND_MISSING
+// proves: HFS_BRAND_PROMPT_STALE
+// proves: HFS_BRAND_PROMPT_STALE
+// proves: HFS_BRAND_PROMPT_INCOMPLETE
+// proves: HFS_BRAND_PROMPT_INCOMPLETE
+// proves: HFS_BRAND_BASE_UNKNOWN
+// proves: HFS_BRAND_BASE_UNKNOWN
 // R437, the brand sheet (rules/brand.mts; contexts/project/brand.md PROJECT-BRAND-1, PROJECT-BRAND-2): `.starcistacks/brand/illustration.yaml` holds `basePrompt: { version, text }`, and every
 // `statics/**/*.prompt.yaml` records the current version, a subject and a prompt that starts with the base text. The sheet's shape is an error; the rest are `local` (report-only in `--env local`).
 import { test } from 'node:test';
@@ -65,16 +65,16 @@ test('the brand codes ship with the check, the three prompt codes are localOnly,
 });
 
 for (const edition of ['lite'] as const) {
-  test(`${edition}: an app with no prompt file and no brand folder has no finding, and neither does a sheet with no prompt file`, (t) => {
+  test(`an app with no prompt file and no brand folder has no finding, and neither does a sheet with no prompt file`, (t) => {
     assert.deepEqual(run(app(t, {}), edition), []);
     assert.deepEqual(run(app(t, { [SHEET_FILE]: SHEET() }), edition), []);
   });
 
-  test(`${edition}: a prompt file made from the current basePrompt, with a subject and the base text first, is green (a wrapped base compares equal)`, (t) => {
+  test(`a prompt file made from the current basePrompt, with a subject and the base text first, is green (a wrapped base compares equal)`, (t) => {
     assert.deepEqual(run(app(t, { [SHEET_FILE]: SHEET(), [IMAGE]: PROMPT() }), edition), []);
   });
 
-  test(`${edition}: HFS_BRAND_INVALID is an error, not local: a sheet that is not YAML or whose basePrompt is not { version, text }`, (t) => {
+  test(`HFS_BRAND_INVALID is an error, not local: a sheet that is not YAML or whose basePrompt is not { version, text }`, (t) => {
     for (const body of ['basePrompt: [', 'name: x\n', SHEET('"one"'), SHEET(0), SHEET(1.5), 'basePrompt:\n  version: 1\n  text: ""\n']) {
       const [finding, ...rest] = run(app(t, { [SHEET_FILE]: body }), edition);
       assert.equal(finding?.code, 'HFS_BRAND_INVALID', body);
@@ -84,7 +84,7 @@ for (const edition of ['lite'] as const) {
     assert.deepEqual(codes(run(app(t, { [SHEET_FILE]: 'name: x\n', [IMAGE]: PROMPT() }), edition)), ['HFS_BRAND_INVALID']);
   });
 
-  test(`${edition}: HFS_BRAND_MISSING when a prompt file exists and the app has no illustration.yaml, local`, (t) => {
+  test(`HFS_BRAND_MISSING when a prompt file exists and the app has no illustration.yaml, local`, (t) => {
     const [finding, ...rest] = run(app(t, { [IMAGE]: PROMPT(), 'statics/illustrations/errors/not-found.prompt.yaml': PROMPT() }), edition);
     assert.equal(finding?.code, 'HFS_BRAND_MISSING');
     assert.equal(finding?.local, true);
@@ -92,7 +92,7 @@ for (const edition of ['lite'] as const) {
     assert.deepEqual(rest, []);
   });
 
-  test(`${edition}: HFS_BRAND_PROMPT_STALE when the recorded version is another or absent, local, one finding per file`, (t) => {
+  test(`HFS_BRAND_PROMPT_STALE when the recorded version is another or absent, local, one finding per file`, (t) => {
     const root = app(t, {
       [SHEET_FILE]: SHEET(2),
       [IMAGE]: PROMPT(),
@@ -109,7 +109,7 @@ for (const edition of ['lite'] as const) {
     assert.match(findings[1]?.message ?? '', /records no basePrompt.version/u);
   });
 
-  test(`${edition}: HFS_BRAND_PROMPT_INCOMPLETE when the subject is absent, the prompt does not start with the base text, or the file is not YAML, local`, (t) => {
+  test(`HFS_BRAND_PROMPT_INCOMPLETE when the subject is absent, the prompt does not start with the base text, or the file is not YAML, local`, (t) => {
     const root = app(t, {
       [SHEET_FILE]: SHEET(),
       'statics/a.prompt.yaml': PROMPT({ subject: '' }),
@@ -125,7 +125,7 @@ for (const edition of ['lite'] as const) {
     assert.ok(findings.every((finding) => finding.local === true));
   });
 
-  test(`${edition}: a repository that is not an app root has no finding, and a file other than *.prompt.yaml under statics/ is not read`, (t) => {
+  test(`a repository that is not an app root has no finding, and a file other than *.prompt.yaml under statics/ is not read`, (t) => {
     const root = app(t, { [IMAGE]: PROMPT(), 'statics/readme.yaml': 'x: 1\n' });
     assert.deepEqual(brandFindings({ repoRoot: root, repo: { kind: 'be', edition }, isRoot: true }), []);
     assert.deepEqual(brandFindings({ repoRoot: root, repo: { kind: 'app', edition }, isRoot: false }), []);
@@ -153,7 +153,7 @@ test('the starter the scaffold writes is a valid, version 1 sheet with the defau
 
 // The scaffold writes the starter once and sync leaves it alone: a freshly scaffolded app carries the brand folder, its own check has no finding about it, and an edit of it is no drift.
 for (const edition of ['lite'] as const) {
-  test(`${edition}: starci app scaffold writes .starcistacks/brand/ once, with the project name filled, and sync neither judges nor rewrites an edit of it`, async (t) => {
+  test(`starci app scaffold writes .starcistacks/brand/ once, with the project name filled, and sync neither judges nor rewrites an edit of it`, async (t) => {
     const into = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-brand-scaffold-'));
     t.after(() => fs.rmSync(into, { recursive: true, force: true }));
     const lockedOk = (root: string): LockResult => { fs.writeFileSync(path.join(root, 'package-lock.json'), '{}\n'); return { ok: true }; };
@@ -181,12 +181,12 @@ const MEDIA_PROMPT = (over: Record<string, string> = {}): string => PROMPT({ bas
 const SOCIAL_FILE = 'statics/social/launch/hero.prompt.yaml';
 
 for (const edition of ['lite'] as const) {
-  test(`${edition}: a prompt file made from a media base by name, version and text is green, with or without an illustration.yaml`, (t) => {
+  test(`a prompt file made from a media base by name, version and text is green, with or without an illustration.yaml`, (t) => {
     assert.deepEqual(run(app(t, { [MEDIA_FILE]: MEDIA(), [SOCIAL_FILE]: MEDIA_PROMPT() }), edition), []);
     assert.deepEqual(run(app(t, { [SHEET_FILE]: SHEET(), [MEDIA_FILE]: MEDIA(), [SOCIAL_FILE]: MEDIA_PROMPT(), [IMAGE]: PROMPT() }), edition), []);
   });
 
-  test(`${edition}: HFS_BRAND_BASE_UNKNOWN when a prompt file names a base neither file defines, or names none and there is no illustration.yaml, local`, (t) => {
+  test(`HFS_BRAND_BASE_UNKNOWN when a prompt file names a base neither file defines, or names none and there is no illustration.yaml, local`, (t) => {
     const unknown = run(app(t, { [SHEET_FILE]: SHEET(), [MEDIA_FILE]: MEDIA(), [SOCIAL_FILE]: MEDIA_PROMPT({ basePrompt: named('video-broll') }) }), edition);
     assert.deepEqual(codes(unknown), ['HFS_BRAND_BASE_UNKNOWN']);
     assert.equal(unknown[0]?.local, true);
@@ -196,7 +196,7 @@ for (const edition of ['lite'] as const) {
     assert.deepEqual(codes(run(app(t, { [SHEET_FILE]: SHEET(), [SOCIAL_FILE]: MEDIA_PROMPT({ basePrompt: named('7') }) }), edition)), ['HFS_BRAND_BASE_UNKNOWN']);
   });
 
-  test(`${edition}: a media prompt is stale against its own base's version and incomplete against its own base's text`, (t) => {
+  test(`a media prompt is stale against its own base's version and incomplete against its own base's text`, (t) => {
     const stale = run(app(t, { [MEDIA_FILE]: MEDIA(2), [SOCIAL_FILE]: MEDIA_PROMPT() }), edition);
     assert.deepEqual(codes(stale), ['HFS_BRAND_PROMPT_STALE']);
     assert.match(stale[0]?.message ?? '', /current one is 2.*base `social-image`/u);
@@ -208,7 +208,7 @@ for (const edition of ['lite'] as const) {
     assert.deepEqual(run(app(t, { [SHEET_FILE]: SHEET(), [MEDIA_FILE]: MEDIA(2), [IMAGE]: PROMPT() }), edition), []);
   });
 
-  test(`${edition}: HFS_BRAND_INVALID is an error for a media.yaml of the wrong shape, and a base of an invalid file is not also unknown`, (t) => {
+  test(`HFS_BRAND_INVALID is an error for a media.yaml of the wrong shape, and a base of an invalid file is not also unknown`, (t) => {
     const bases = (name: string, body: string): string => `bases:\n  ${name}:\n${body}`;
     const bodies = ['bases: [', 'name: x\n', 'bases: {}\n', bases('illustration', '    version: 1\n    text: x\n'), bases('Social_Image', '    version: 1\n    text: x\n'), bases('a-b', '    version: 0\n    text: x\n'), bases('a-b', '    version: 1\n    text: ""\n'), 'bases:\n  a-b: text\n'];
     for (const body of bodies) {

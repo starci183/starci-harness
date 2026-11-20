@@ -6,8 +6,8 @@
  * Typed cases over the fixture repository (`fixtures/typed`): the path of a case decides its slot, the stubs of
  * `@nestjs/cqrs`, `typeorm` and the fixture platform capabilities decide what a receiver IS.
  */
-// proves: BE_REST_DOOR_EVIDENCE@lite
-// proves: BE_REST_DOOR_EVIDENCE@full
+// proves: BE_REST_DOOR_EVIDENCE
+// proves: BE_REST_DOOR_EVIDENCE
 import assert from "node:assert/strict"
 import test from "node:test"
 import { appDeclaration } from "../fixtures/app.ts"

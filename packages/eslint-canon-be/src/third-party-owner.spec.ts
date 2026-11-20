@@ -1,5 +1,5 @@
-// proves: BE_THIRD_PARTY_OWNER@lite
-// proves: BE_THIRD_PARTY_OWNER@full
+// proves: BE_THIRD_PARTY_OWNER
+// proves: BE_THIRD_PARTY_OWNER
 /** R279: every declared SDK has one integration owner in both editions; pure libraries remain usable in domain logic. */
 import assert from "node:assert/strict"
 import test from "node:test"

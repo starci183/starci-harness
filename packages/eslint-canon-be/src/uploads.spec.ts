@@ -1,5 +1,5 @@
-// proves: BE_UPLOAD_BUFFERED@lite
-// proves: BE_UPLOAD_BUFFERED@full
+// proves: BE_UPLOAD_BUFFERED
+// proves: BE_UPLOAD_BUFFERED
 import assert from "node:assert/strict"
 import test from "node:test"
 import { appDeclaration } from "../fixtures/app.ts"

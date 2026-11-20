@@ -3,9 +3,9 @@
  *
  *   node --test src/text-rules.spec.ts
  */
-// proves: FE_TEXT_BLOCK@lite FE_TEXT_BLOCK@full
-// proves: FE_TEXT_HEADING@lite FE_TEXT_HEADING@full
-// proves: FE_ONE_HIGHLIGHT@lite FE_ONE_HIGHLIGHT@full
+// proves: FE_TEXT_BLOCK
+// proves: FE_TEXT_HEADING
+// proves: FE_ONE_HIGHLIGHT
 import assert from "node:assert/strict"
 import test from "node:test"
 import { at, slotTester } from "../../eslint-canon-fe/fixtures/typed/tester.ts"

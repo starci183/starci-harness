@@ -1,7 +1,7 @@
-// proves: FE_ERROR_BOUNDARY_MISSING@lite
-// proves: FE_ERROR_BOUNDARY_MISSING@full
-// proves: FE_SUSPENSE_NULL_FALLBACK@lite
-// proves: FE_SUSPENSE_NULL_FALLBACK@full
+// proves: FE_ERROR_BOUNDARY_MISSING
+// proves: FE_ERROR_BOUNDARY_MISSING
+// proves: FE_SUSPENSE_NULL_FALLBACK
+// proves: FE_SUSPENSE_NULL_FALLBACK
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

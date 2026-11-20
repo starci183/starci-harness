@@ -1,6 +1,6 @@
 /** Edition proofs for the R62 native-element boundary. */
-// proves: FE_NATIVE_FORM_CONTROL@lite FE_NATIVE_FORM_CONTROL@full
-// proves: FE_NATIVE_IMAGE@lite FE_NATIVE_IMAGE@full
+// proves: FE_NATIVE_FORM_CONTROL
+// proves: FE_NATIVE_IMAGE
 import assert from "node:assert/strict"
 import { join } from "node:path"
 import test from "node:test"

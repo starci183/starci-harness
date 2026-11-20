@@ -1,15 +1,15 @@
-// proves: FE_CLIENT_BOUNDARY@lite
-// proves: FE_CLIENT_BOUNDARY@full
-// proves: FE_CLIENT_SERVER_IMPORT@lite
-// proves: FE_CLIENT_SERVER_IMPORT@full
-// proves: FE_CLIENT_REACHES_SERVER@lite
-// proves: FE_CLIENT_REACHES_SERVER@full
-// proves: FE_SERVER_ONLY_MARK@lite
-// proves: FE_SERVER_ONLY_MARK@full
-// proves: FE_STORAGE_OUTSIDE_MODULES@lite
-// proves: FE_STORAGE_OUTSIDE_MODULES@full
-// proves: FE_DANGEROUS_HTML@lite
-// proves: FE_DANGEROUS_HTML@full
+// proves: FE_CLIENT_BOUNDARY
+// proves: FE_CLIENT_BOUNDARY
+// proves: FE_CLIENT_SERVER_IMPORT
+// proves: FE_CLIENT_SERVER_IMPORT
+// proves: FE_CLIENT_REACHES_SERVER
+// proves: FE_CLIENT_REACHES_SERVER
+// proves: FE_SERVER_ONLY_MARK
+// proves: FE_SERVER_ONLY_MARK
+// proves: FE_STORAGE_OUTSIDE_MODULES
+// proves: FE_STORAGE_OUTSIDE_MODULES
+// proves: FE_DANGEROUS_HTML
+// proves: FE_DANGEROUS_HTML
 import test from 'node:test';
 import { canonTester } from '../fixtures/typed/tester.ts';
 import { projectFixture } from '../../eslint-canon-be/fixtures/project/tester.ts';

@@ -1,9 +1,9 @@
-// proves: HFS_CHECK_CACHE_FORGED@lite
-// proves: HFS_CHECK_CACHE_FORGED@full
-// proves: HFS_CHECK_CACHE_STALE@lite
-// proves: HFS_CHECK_CACHE_STALE@full
-// proves: HFS_CHECK_CACHE_MISSING@lite
-// proves: HFS_CHECK_CACHE_MISSING@full
+// proves: HFS_CHECK_CACHE_FORGED
+// proves: HFS_CHECK_CACHE_FORGED
+// proves: HFS_CHECK_CACHE_STALE
+// proves: HFS_CHECK_CACHE_STALE
+// proves: HFS_CHECK_CACHE_MISSING
+// proves: HFS_CHECK_CACHE_MISSING
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -112,7 +112,7 @@ test('the check cache folder is a slot of its own: no stacks shape finding, no e
     fs.writeFileSync(path.join(root, 'hfs.json'), JSON.stringify(declaration));
     const opened = openHfs({ repoRoot: root });
     const cached = ['.starcistacks/cache/fingerprint.jsonl', '.starcistacks/cache/check/format/root.jsonl', '.starcistacks/cache/lint/be/modules/billing.jsonl', '.starcistacks/cache/test-coverage/be/src.jsonl'];
-    for (const file of cached) assert.equal(opened.classifyPath(file).status, 'owned', `${edition} ${file}`);
+    for (const file of cached) assert.equal(opened.classifyPath(file).status, 'owned', `${file}`);
     assert.deepEqual(stacksFindings({ repoRoot: root, files: cached, resolver: opened }), []);
   }
 });

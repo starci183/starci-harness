@@ -1,4 +1,4 @@
-// R272: lite proves each app's real Nest composition with doubles; full keeps its e2e proof. R401: the same proof names each provider
+// R272: proves each app's real Nest composition with doubles; full keeps its e2e proof. R401: the same proof names each provider
 // ring (BE_DI_RING) before it compiles.
 import fs from 'node:fs';
 import path from 'node:path';

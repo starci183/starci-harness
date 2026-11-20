@@ -1,7 +1,7 @@
-// proves: HFS_PACKAGE_SLOT_UNPLACED@lite
-// proves: HFS_PACKAGE_SLOT_UNPLACED@full
-// proves: HFS_PACKAGE_SLOTS_MOVED@lite
-// proves: HFS_PACKAGE_SLOTS_MOVED@full
+// proves: HFS_PACKAGE_SLOT_UNPLACED
+// proves: HFS_PACKAGE_SLOT_UNPLACED
+// proves: HFS_PACKAGE_SLOTS_MOVED
+// proves: HFS_PACKAGE_SLOTS_MOVED
 // A package's inner slots (PROJECT-LINT-3, R382): the project declares them in ext/manifest.json (packages, by folder) and hfs holds the package's tree to
 // them as it holds the be and fe sides; a package's own slots.yaml is the read path of one more minor; its coverage follows the slots, every file measured at 100 per file but its barrels, its type files and the slots that opt
 // out with a reason.
@@ -92,7 +92,7 @@ function app(t: TestContext): { root: string; files: string[] } {
 }
 
 for (const edition of ['lite'] as const) {
-  test(`${edition}: the app check judges every root package that declares slots.yaml, and leaves one without alone`, (t) => {
+  test(`the app check judges every root package that declares slots.yaml, and leaves one without alone`, (t) => {
     const { root, files } = app(t);
     const found = packageSlotFindings({ repoRoot: root, files, repo: { kind: 'app', profile: 'app', edition }, isRoot: true });
     assert.deepEqual(found.map((finding) => finding.code).sort(), [PACKAGE_SLOTS_MOVED, PACKAGE_SLOT_DISALLOWED, PACKAGE_SLOT_MISSING, PACKAGE_SLOT_UNPLACED]);

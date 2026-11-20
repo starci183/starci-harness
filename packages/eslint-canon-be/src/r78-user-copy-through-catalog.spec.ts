@@ -1,5 +1,5 @@
-// proves: BE_USER_COPY_LITERAL@lite
-// proves: BE_USER_COPY_LITERAL@full
+// proves: BE_USER_COPY_LITERAL
+// proves: BE_USER_COPY_LITERAL
 import test from "node:test"
 import { BE_DECLARATION, TYPED_ROOT, at, ruleTester } from "../fixtures/typed/tester.ts"
 import { appDeclaration } from "../fixtures/app.ts"

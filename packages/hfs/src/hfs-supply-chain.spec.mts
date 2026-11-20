@@ -1,6 +1,6 @@
-// proves: HFS_DEPENDABOT_MISSING@lite HFS_DEPENDABOT_MISSING@full
-// proves: HFS_AUDIT_STEP_MISSING@lite HFS_AUDIT_STEP_MISSING@full
-// proves: HFS_SBOM_MISSING@lite HFS_SBOM_MISSING@full
+// proves: HFS_DEPENDABOT_MISSING
+// proves: HFS_AUDIT_STEP_MISSING
+// proves: HFS_SBOM_MISSING
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';

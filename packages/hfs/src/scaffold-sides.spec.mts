@@ -1,4 +1,4 @@
-// proves: HFS_SIDE_FOLDER_MISSING@lite
+// proves: HFS_SIDE_FOLDER_MISSING
 // `starci app scaffold <name> --without <side[,side]> [--contract rest]` (PROJECT-1): a project declares any non-empty set of be, fe and packages, and the
 // scaffold writes only the declared sides, with the stack declaration's `sides` field and its plain-words line. The lite be+packages rest project passes its
 // own check on everything but what needs an installed tree; its sign-in and health doors carry their OpenAPI shape, so R396 holds.

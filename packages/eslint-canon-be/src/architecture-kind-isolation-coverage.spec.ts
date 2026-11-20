@@ -1,5 +1,5 @@
-// proves: BE_KIND_ISOLATION@lite
-// proves: BE_KIND_ISOLATION@full
+// proves: BE_KIND_ISOLATION
+// proves: BE_KIND_ISOLATION
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { appDeclaration, archFixture, ts } from '../fixtures/arch-fixture.ts';

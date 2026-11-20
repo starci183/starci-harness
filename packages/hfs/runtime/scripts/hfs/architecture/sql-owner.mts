@@ -19,8 +19,7 @@ import { engineKind, isEngineCapability } from '../engine-owned.mjs';
  *   - it reads (FROM, JOIN, USING) only tables of its own CONTEXT (the connection its capability's arrays are registered on): its own
  *     capability's, or those of a same-context capability its owner may import (the tier matrix, through `resolver.importAllowed`
  *     to the table owner's public entry); a table of another context is refused (cross-context data comes only by events);
- *   - every table it names is declared by some entity under TypeORM authority, or by the generated
- *     public tables the ordered db/migrations create under the SQL migration authority;
+ *   - every table it names is one of the public tables the ordered db/migrations create (the SQL migration authority);
  *   - a SELECT carries LIMIT, or reads a single relation under a complete primary/unique-key equality to scalar values,
  *     or selects only proven scalar aggregates without GROUP BY. Inferred bounds reject multiplying projections and set operations.
  * The engine-owned objects an app declares (hfs.json sides.be.engineOwned: base tables, partitions of one, views by prefix) belong to
@@ -61,7 +60,6 @@ interface SqlInspection {
   kit: MachineKit;
   ts: TypeScriptApi;
   tables: Map<string, TableDeclaration>;
-  sqlAuthority: boolean;
   model: ContextModel;
   resolver: SlotResolver;
 }
@@ -77,7 +75,6 @@ interface SqlState {
 /** What the write judgement reads. */
 interface SqlWriteInput {
   tables: Map<string, TableDeclaration>;
-  sqlAuthority: boolean;
   file: OwnedFile;
   ownTable: string;
   report: SqlReport;
@@ -232,18 +229,14 @@ const isOwnTable = (table: string, ownTable: string): boolean => {
   return name === ownTable || name.startsWith(`${ownTable}_`);
 };
 
-function reportSqlWrite({ tables, sqlAuthority, file, ownTable, report }: SqlWriteInput, write: SqlTableUse): void {
+function reportSqlWrite({ tables, file, ownTable, report }: SqlWriteInput, write: SqlTableUse): void {
   const declaration = tables.get(write.table.toLowerCase());
   if (!declaration) {
-    report(sqlAuthority
-      ? `SQL writes table ${write.table}, which no db/migrations migration creates; add the table in a migration first.`
-      : `SQL writes table ${write.table}, which no @Entity declares; declare the entity in the owning capability's persistence/entities.`, { table: write.table });
-  } else if (sqlAuthority) {
+    report(`SQL writes table ${write.table}, which no db/migrations migration creates; add the table in a migration first.`, { table: write.table });
+  } else {
     if (isOwnTable(write.table, ownTable) && (declaration.owner === null || declaration.owner === file.owner.root)) return;
     const ownerNote = declaration.owner ? `, owned by ${declaration.owner}` : '';
     report(`SQL in ${file.owner.root} writes table ${write.table}${ownerNote}; under the SQL migration authority a capability writes only its own table (${ownTable}), named for that capability.`, { table: write.table, ...(declaration.owner ? { tableOwner: declaration.owner } : {}) });
-  } else if (declaration.owner !== file.owner.root) {
-    report(`SQL in ${file.owner.root} writes table ${write.table}, owned by ${declaration.owner}; a capability writes only the tables of its own entities, call the owner's public API instead.`, { table: write.table, tableOwner: declaration.owner });
   }
 }
 
@@ -251,12 +244,10 @@ function reportSqlWrites(input: SqlWriteInput & { result: SqlAnalysis }): void {
   for (const write of input.result.writes) reportSqlWrite(input, write);
 }
 
-function reportSqlRead(tables: Map<string, TableDeclaration>, sqlAuthority: boolean, file: OwnedFile, model: ContextModel, resolver: SlotResolver, report: SqlReport, read: SqlTableUse): void {
+function reportSqlRead(tables: Map<string, TableDeclaration>, file: OwnedFile, model: ContextModel, resolver: SlotResolver, report: SqlReport, read: SqlTableUse): void {
   const declaration = tables.get(read.table.toLowerCase());
   if (!declaration) {
-    report(sqlAuthority
-      ? `SQL reads table ${read.table}, which no db/migrations migration creates; add the table in a migration first.`
-      : `SQL reads table ${read.table}, which no @Entity declares; declare the entity in the owning capability's persistence/entities.`, { table: read.table });
+    report(`SQL reads table ${read.table}, which no db/migrations migration creates; add the table in a migration first.`, { table: read.table });
     return;
   }
   if (!declaration.owner || declaration.owner === file.owner.root) return;
@@ -270,8 +261,8 @@ function reportSqlRead(tables: Map<string, TableDeclaration>, sqlAuthority: bool
   if (!verdict.allowed) report(`SQL in ${file.owner.root} reads table ${read.table}, owned by ${declaration.owner}, which ${file.owner.root} may not import (${verdict.reason}); read it through the owner's public API.`, { table: read.table, tableOwner: declaration.owner, reason: verdict.reason });
 }
 
-function reportSqlReads({ result, tables, sqlAuthority, file, model, resolver, report }: { result: SqlAnalysis; tables: Map<string, TableDeclaration>; sqlAuthority: boolean; file: OwnedFile; model: ContextModel; resolver: SlotResolver; report: SqlReport }): void {
-  for (const read of result.reads) reportSqlRead(tables, sqlAuthority, file, model, resolver, report, read);
+function reportSqlReads({ result, tables, file, model, resolver, report }: { result: SqlAnalysis; tables: Map<string, TableDeclaration>; file: OwnedFile; model: ContextModel; resolver: SlotResolver; report: SqlReport }): void {
+  for (const read of result.reads) reportSqlRead(tables, file, model, resolver, report, read);
 }
 
 function reportSqlSelects({ result, tables, report }: { result: SqlAnalysis; tables: Map<string, TableDeclaration>; report: SqlReport }): void {
@@ -296,7 +287,7 @@ function withoutEngineTables(result: SqlAnalysis, engine: EngineOwned | undefine
 }
 
 function inspectSqlTag(input: SqlInspection, state: SqlState, file: OwnedFile, checker: TypeChecker, node: Node): boolean {
-  const { kit, ts, tables, sqlAuthority, model, resolver } = input;
+  const { kit, ts, tables, model, resolver } = input;
   if (!ts.isTaggedTemplateExpression(node)) return true;
   const home = kit.declarationsOf(checker, node.tag).map(kit.ownerOfDeclaration).find(Boolean);
   if (home?.tier !== 'platform' || home?.name !== 'database') { state.foreignTags += 1; return true; }
@@ -312,14 +303,14 @@ function inspectSqlTag(input: SqlInspection, state: SqlState, file: OwnedFile, c
     state.violations.push({ ruleId: RULE, path: file.rel, ...kit.at(file.rel, file.sourceFile, node), message, ...extra });
   };
   const result = analyzeSql(text, { uniqueSetsOf: (table: string, schema: string | null) => {
-    if (sqlAuthority && ((schema && schema !== 'public') || table !== table.toLowerCase())) return null;
+    if ((schema && schema !== 'public') || table !== table.toLowerCase()) return null;
     return tables.get(table.toLowerCase())?.uniqueSets ?? null;
   } });
   state.dynamic += result.dynamic;
   const ownTable = capabilityTable(file.owner.root);
   const judged = withoutEngineTables(result, resolver.repo?.engineOwned, file, report);
-  reportSqlWrites({ result: judged, tables, sqlAuthority, file, ownTable, report });
-  reportSqlReads({ result: judged, tables, sqlAuthority, file, model, resolver, report });
+  reportSqlWrites({ result: judged, tables, file, ownTable, report });
+  reportSqlReads({ result: judged, tables, file, model, resolver, report });
   reportSqlSelects({ result, tables, report });
   return true;
 }
@@ -335,13 +326,11 @@ export function checkSqlOwner(input: HfsCheckInput): CheckResult {
   const { config, graph } = input;
   const kit = machineKit(input);
   const { ts, resolver } = kit;
-  const sqlAuthority = resolver.ruleParams()?.schemaAuthority === 'sql';
-  const entityDeclarations: { tables: Map<string, TableDeclaration>; unreadable: number } = sqlAuthority ? { tables: new Map(), unreadable: 0 } : entitiesOf(kit, graph);
-  const tables = sqlAuthority ? sqlDeclarations(graph, config.packageRoot) : entityDeclarations.tables;
+  const tables = sqlDeclarations(graph, config.packageRoot);
   const model = contextModelOf(kit, graph);
   const state: SqlState = { violations: [], templates: 0, dynamic: 0, foreignTags: 0 };
-  const inspection: SqlInspection = { kit, ts, tables, sqlAuthority, model, resolver };
+  const inspection: SqlInspection = { kit, ts, tables, model, resolver };
   for (const file of graph.files.values()) inspectSqlFile(inspection, state, file);
-  return { violations: state.violations, coverage: { status: 'checked', entities: entityDeclarations.tables.size, unreadableEntities: entityDeclarations.unreadable,
-    ...(sqlAuthority ? { sqlTables: tables.size } : {}), templates: state.templates, dynamicIdentifiers: state.dynamic, foreignTags: state.foreignTags } };
+  return { violations: state.violations, coverage: { status: 'checked',
+    sqlTables: tables.size, templates: state.templates, dynamicIdentifiers: state.dynamic, foreignTags: state.foreignTags } };
 }

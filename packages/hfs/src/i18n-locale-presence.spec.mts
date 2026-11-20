@@ -1,5 +1,5 @@
-// proves: FE_I18N_LOCALE_MISSING@lite
-// proves: FE_I18N_LOCALE_MISSING@full
+// proves: FE_I18N_LOCALE_MISSING
+// proves: FE_I18N_LOCALE_MISSING
 // R60 FE_I18N_LOCALE_MISSING: every locale an app's defineI18n declares has its catalog, and every catalog is a declared locale.
 import test from 'node:test';
 import type { TestContext } from 'node:test';

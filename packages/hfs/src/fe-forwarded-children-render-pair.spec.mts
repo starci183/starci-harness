@@ -1,5 +1,5 @@
-// proves: FE_CONNECTED_BLOCK_RENDER_PAIR@lite FE_CONNECTED_BLOCK_RENDER_PAIR@full
-// proves: FE_WORLD_OWNER_RENDER_BOUNDARY@lite FE_WORLD_OWNER_RENDER_BOUNDARY@full
+// proves: FE_CONNECTED_BLOCK_RENDER_PAIR
+// proves: FE_WORLD_OWNER_RENDER_BOUNDARY
 // A connected block forwards the children it receives to its pure Base as `children={props.children}` or nested between the tags
 // as `<XBase>{props.children}</XBase>`; the two are one render path. Anything else between the tags is not forwarded children.
 import test from 'node:test';
@@ -59,7 +59,7 @@ for (const edition of ['lite'] as const) {
     ['the nested destructured children', connected(BY_DESTRUCTURE, '<FrameBase props={{ title: String(orders) }}>{children}</FrameBase>')],
   ];
   for (const [name, index] of accepted) {
-    test(`${edition}: ${name} is a render path to the sibling Base`, (t) => {
+    test(`${name} is a render path to the sibling Base`, (t) => {
       assert.deepEqual(judged(t, edition, index), { pair: 0, owner: 0 });
     });
   }
@@ -73,7 +73,7 @@ for (const edition of ['lite'] as const) {
     ['a member other than children', connected(BY_PROPS, '<FrameBase props={{ title: String(orders) }}>{props.other}</FrameBase>')],
   ];
   for (const [name, index] of refused) {
-    test(`${edition}: ${name} is not a render path`, (t) => {
+    test(`${name} is not a render path`, (t) => {
       const result = judged(t, edition, index);
       assert.equal(result.pair, 1);
       assert.equal(result.owner, 1);

@@ -1,5 +1,5 @@
-// proves: HFS_DEV_BRANCH_MISSING@lite
-// proves: HFS_DEV_BRANCH_MISSING@full
+// proves: HFS_DEV_BRANCH_MISSING
+// proves: HFS_DEV_BRANCH_MISSING
 // An app repository keeps main and dev (contexts/project/branches.md PROJECT-BRANCH-1): the whole app check is red when dev is missing, and never asks the harness repository.
 import test from 'node:test';
 import assert from 'node:assert/strict';

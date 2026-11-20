@@ -1,5 +1,5 @@
-// proves: HFS_WORKFLOW_CONTEXT@lite
-// proves: HFS_WORKFLOW_CONTEXT@full
+// proves: HFS_WORKFLOW_CONTEXT
+// proves: HFS_WORKFLOW_CONTEXT
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -31,11 +31,11 @@ const run = (t: TestContext, edition: string, text: string, repo: { kind: string
 };
 
 for (const edition of ['lite'] as const) {
-  test(`${edition}: a valid workflow reading runner data only in step env is clean`, (t) => {
+  test(`a valid workflow reading runner data only in step env is clean`, (t) => {
     assert.deepEqual(run(t, edition, doc('${{ github.sha }}', RUNNER_PATH)), []);
   });
 
-  test(`${edition}: ${FAILURE} violation - job env reading the runner context is refused with its line`, (t) => {
+  test(`${FAILURE} violation - job env reading the runner context is refused with its line`, (t) => {
     const found = run(t, edition, doc(RUNNER_PATH, '${{ github.sha }}'));
     assert.equal(found.length, 1);
     assert.equal(found[0]!.code, FAILURE);
@@ -44,12 +44,12 @@ for (const edition of ['lite'] as const) {
     assert.equal(found[0]!.line, 7);
   });
 
-  test(`${edition}: ${FAILURE} reject - job env cannot read the steps context`, (t) => {
+  test(`${FAILURE} reject - job env cannot read the steps context`, (t) => {
     const found = run(t, edition, doc('${{ steps.x.outputs.y }}', '${{ env.DATA }}'));
     assert.deepEqual(found.map((finding) => finding.context), ['steps']);
   });
 
-  test(`${edition}: ${FAILURE} negative - a repository that is not an app is not judged`, (t) => {
+  test(`${FAILURE} negative - a repository that is not an app is not judged`, (t) => {
     assert.deepEqual(run(t, edition, doc(RUNNER_PATH, RUNNER_PATH), { kind: 'runtime' }), []);
   });
 }

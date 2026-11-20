@@ -1,14 +1,14 @@
 /** Edition-aware proofs for the webhook and realtime door laws R182-R186. */
-// proves: BE_WEBHOOK_SHAPE@lite
-// proves: BE_WEBHOOK_SHAPE@full
-// proves: BE_WEBHOOK_UNVERIFIED@lite
-// proves: BE_WEBHOOK_UNVERIFIED@full
-// proves: BE_REALTIME_SHAPE@lite
-// proves: BE_REALTIME_SHAPE@full
-// proves: BE_REALTIME_WRITES@lite
-// proves: BE_REALTIME_WRITES@full
-// proves: BE_REALTIME_TOPIC_SCOPE@lite
-// proves: BE_REALTIME_TOPIC_SCOPE@full
+// proves: BE_WEBHOOK_SHAPE
+// proves: BE_WEBHOOK_SHAPE
+// proves: BE_WEBHOOK_UNVERIFIED
+// proves: BE_WEBHOOK_UNVERIFIED
+// proves: BE_REALTIME_SHAPE
+// proves: BE_REALTIME_SHAPE
+// proves: BE_REALTIME_WRITES
+// proves: BE_REALTIME_WRITES
+// proves: BE_REALTIME_TOPIC_SCOPE
+// proves: BE_REALTIME_TOPIC_SCOPE
 import test from "node:test"
 import { appDeclaration } from "../fixtures/app.ts"
 import { BE_DECLARATION, TYPED_ROOT, at, ruleTester } from "../fixtures/typed/tester.ts"

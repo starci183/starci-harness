@@ -1,5 +1,5 @@
-// proves: BE_TYPE_ESCAPE@lite
-// proves: BE_TYPE_ESCAPE@full
+// proves: BE_TYPE_ESCAPE
+// proves: BE_TYPE_ESCAPE
 import test from 'node:test';
 import { noFunctionOrEval } from './type-safety.ts';
 import { appDeclaration } from '../fixtures/app.ts';

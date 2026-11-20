@@ -1,5 +1,5 @@
-// proves: BE_SPEC_FORM_ALL_ROLES@lite
-// proves: BE_SPEC_FORM_ALL_ROLES@full
+// proves: BE_SPEC_FORM_ALL_ROLES
+// proves: BE_SPEC_FORM_ALL_ROLES
 /**
  * Twin tests for the unit-spec form rules (R48 `BE_SPEC_QUALITY`, R281 `BE_SPEC_FORM_ALL_ROLES`).
  *

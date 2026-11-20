@@ -1,7 +1,7 @@
-// proves: STACK_BUILD_NO_DOCKERFILE@lite
-// proves: STACK_BUILD_NO_DOCKERFILE@full
-// proves: STACK_BUILD_AMBIGUOUS@lite
-// proves: STACK_BUILD_AMBIGUOUS@full
+// proves: STACK_BUILD_NO_DOCKERFILE
+// proves: STACK_BUILD_NO_DOCKERFILE
+// proves: STACK_BUILD_AMBIGUOUS
+// proves: STACK_BUILD_AMBIGUOUS
 // `starci app stack build` resolves the Dockerfile of a deploy image: .starcistacks/images/<app>/Dockerfile when the stacks keep one (the managed db and storage
 // images, PROJECT-STATICS-5), else the Dockerfile of the app under be/apps or fe/apps; ambiguity and absence are refusals.
 import test from 'node:test';

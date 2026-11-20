@@ -1,5 +1,5 @@
 // harness-checks.mts - the copies of a harness-owned check an app once kept for itself, which `starci app sync` takes out (R103: a repository
-// keeps no check of its own). Each copy is a retired file of a lite app (sync/index.mts `retiredFiles`: the dry run names it, --execute deletes
+// keeps no check of its own). Each copy is a retired file of an app (sync/index.mts `retiredFiles`: the dry run names it, --execute deletes
 // it), and every root package.json script that runs it is removed with it, so no script is left pointing at a deleted file. Nothing else of
 // package.json changes: its key order and its indentation stay.
 import fs from 'node:fs';
@@ -75,7 +75,7 @@ export function looseCheckNotices(root: string): string[] {
   });
 }
 
-/** The two key names the lite starter shipped with an environment in them, and the name each takes (R248, ENV_KEY_ENVIRONMENT_NAMED). */
+/** The two key names the starter shipped with an environment in them, and the name each takes (R248, ENV_KEY_ENVIRONMENT_NAMED). */
 const RENAMED_KEYS: Readonly<Record<string, string>> = { DEV_DB_OWNER_PASSWORD: 'DB_OWNER_PASSWORD', DEV_DB_APP_PASSWORD: 'DB_APP_PASSWORD' };
 
 /** Every text file below `.starcistacks/` that is no sealed member, no cache and no design canvas, app-relative with forward slashes. */

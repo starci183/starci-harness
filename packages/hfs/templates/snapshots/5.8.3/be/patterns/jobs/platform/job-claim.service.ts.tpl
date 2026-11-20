@@ -3,7 +3,7 @@ import type { EntityManager } from "typeorm"
 import { InjectClock } from "@modules/platform/clock"
 import type { Clock } from "@modules/platform/clock"
 import { JobsError, JobsErrorCode } from "./errors/jobs.error"
-import type { sql } from "@modules/platform/database"
+import { callDbFunction } from "@modules/platform/database"
 import { isRunKey } from "./jobs.contracts"
 import type {
     AdvanceWrite,
@@ -16,12 +16,24 @@ import type {
 } from "./jobs.contracts"
 import { InjectJobsManagers } from "./jobs.decorators"
 import type { JobClaims } from "./jobs.port"
-import { ADVANCE_JOB, CLAIM_JOB, COMPLETE_JOB, FAIL_JOB } from "./persistence/jobs.sql"
-import type { ClaimedRow } from "./persistence/jobs.rows"
+
+/** The record job_claim returns (a bigint arrives as text). */
+interface ClaimedRecord {
+    /** The id of the job row. */
+    readonly id: string
+    /** The kind of the job. */
+    readonly kind: string
+    /** The fencing token after the claim. */
+    readonly fencing_token: string
+    /** The last recorded step, or null. */
+    readonly current_step: string | null
+    /** The payload, as the database returns the jsonb value. */
+    readonly payload: object
+}
 
 @Injectable()
 /**
- * The one owner of the job row. A claim is one atomic upsert that bumps the fencing token in the store, so two workers can never
+ * The one owner of the job row, through the job_* functions of its migration (R334). A claim is one atomic upsert that bumps the fencing token in the store, so two workers can never
  * hold the same token; every other write is `WHERE fencing_token = <expected>`, so a worker that lost its claim (a zombie) changes
  * nothing and learns it from `JobFencedOut`.
  */
@@ -34,7 +46,7 @@ export class JobClaimService implements JobClaims {
     /** Claims the delivery; null when the job is done or another worker holds a claim that has not expired. */
     async claim(params: ClaimParams): Promise<ClaimResult> {
         const now = this.clock.now()
-        const rows: Array<ClaimedRow> = await this.writer().query(CLAIM_JOB, [
+        const rows = await callDbFunction<ClaimedRecord>(this.writer(), "public.job_claim", [
             params.kind,
             params.jobKey,
             params.workerId,
@@ -57,17 +69,17 @@ export class JobClaimService implements JobClaims {
 
     /** Records a finished step under the token the caller holds. */
     advance(write: AdvanceWrite): Promise<void> {
-        return this.guarded(ADVANCE_JOB, [write.jobId, write.expectedFencingToken, write.step, this.clock.now()], write)
+        return this.guarded("public.job_advance", [write.jobId, write.expectedFencingToken, write.step, this.clock.now()], write)
     }
 
     /** Completes the job under the token the caller holds. */
     complete(write: GuardedWrite): Promise<void> {
-        return this.guarded(COMPLETE_JOB, [write.jobId, write.expectedFencingToken, this.clock.now()], write)
+        return this.guarded("public.job_complete", [write.jobId, write.expectedFencingToken, this.clock.now()], write)
     }
 
     /** Marks the job failed under the token the caller holds, so BullMQ can retry it. */
     fail(write: FailWrite): Promise<void> {
-        return this.guarded(FAIL_JOB, [write.jobId, write.expectedFencingToken, write.reason, this.clock.now()], write)
+        return this.guarded("public.job_fail", [write.jobId, write.expectedFencingToken, write.reason, this.clock.now()], write)
     }
 
     /** The idempotency key of one step of this claim: it includes the token, so a zombie's repeat is a different key than the live worker's. */
@@ -85,13 +97,13 @@ export class JobClaimService implements JobClaims {
         return manager
     }
 
-    /** Runs a statement that updates only when the token still matches; no row updated means a newer worker owns the job. */
+    /** Runs a guarded function that updates only when the token still matches; no row back means a newer worker owns the job. */
     private async guarded(
-        statement: ReturnType<typeof sql>,
+        fn: "public.job_advance" | "public.job_complete" | "public.job_fail",
         parameters: Array<unknown>,
         write: GuardedWrite,
     ): Promise<void> {
-        const rows: Array<object> = await this.writer().query(statement, parameters)
+        const rows = await callDbFunction<object>(this.writer(), fn, parameters)
         if (rows.length === 0) {
             throw new JobsError({
                 code: JobsErrorCode.FencedOut,

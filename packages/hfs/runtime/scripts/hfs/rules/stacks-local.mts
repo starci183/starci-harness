@@ -1,7 +1,7 @@
 // stacks-local.mts - R372, R373 and R389: the dev environment of an app is declared runnable, its runbook names the harness verb and its native ports follow the base port.
 //   R372 STACKS_LOCAL_CONFIG_INVALID  every docker-compose environment carries a `local` block that the dev verbs of `starci app stack`
 //                                      normalise (scripts/hfs/stack-local-config.mts), and its compose services exist in the compose files;
-//        STACKS_DEV_UNDECLARED         a lite app declares at least one docker-compose environment (the dev kind of PROJECT-STACKS-3).
+//        STACKS_DEV_UNDECLARED         an app declares at least one docker-compose environment (the dev kind of PROJECT-STACKS-3).
 //   R389 STACKS_BASE_PORT_ROLE        the native process ports of an environment that declares `local.basePort` follow the role table of
 //                                      scripts/hfs/stack-base-port.mts (front end base, api base+1, AI gateway base+2, the rest up to base+79);
 //        STACKS_COMPOSE_PORT_ROLE      its compose ports that play a role of the table do too (database base+90, mail SMTP base+91, mail UI base+92,

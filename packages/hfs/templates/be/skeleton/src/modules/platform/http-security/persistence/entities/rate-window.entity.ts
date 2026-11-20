@@ -1,7 +1,7 @@
 import { Column, Entity, PrimaryColumn } from "typeorm"
 
-@Entity("http_security_rate_windows")
-/** One rate limit window of one caller and tier: the hits it counted and when it ends. */
+@Entity({ schema: "public", name: "http_security_rate_windows" })
+/** One rate limit window of one caller and tier, mapped from public.http_security_rate_windows of the baseline migration in db/migrations. */
 export class RateWindowEntity {
     /** The tier and caller address the window counts. */
     @PrimaryColumn({ name: "key", type: "varchar", length: 128 })

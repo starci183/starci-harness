@@ -284,7 +284,7 @@ function perWorkflow({ path: file, text }: { path: string; text: string }, profi
   return [...triggerFindings(doc, refuse, file, profiles), ...deploymentFindings(doc, file, refuse), ...ageKeyJobFindings(doc, file, refuse), ...toolFindings(doc, refuse)];
 }
 
-/** Synchronous R251 findings over the tracked workflows of a lite/full app. */
+/** Synchronous R251 findings over the tracked workflows of an app. */
 export function deployWorkflowFindings(ctx: Parsed) {
   const profiles = Object.keys(readBranchProfiles(findStackDeclaration(ctx.repoRoot).doc).profiles);
   return appWorkflowFindings(ctx, (workflow: { path: string; text: string }) => perWorkflow(workflow, profiles));

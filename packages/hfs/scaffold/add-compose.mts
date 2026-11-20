@@ -24,7 +24,7 @@ export interface ComposeGroupInput {
 export function addModuleImport(lines: string[], { importLine, entry, relative, noun }: ModuleImport & { relative: string, noun: string }): void {
   const active = compositionCode(lines.join('\n')).split('\n');
   const imported = active.some(line => line.replace(/;\s*$/, '') === importLine);
-  // An area group spread once is registered whatever its argument (the lite root passes `tokens.verify` to domainModules).
+  // An area group spread once is registered whatever its argument (the root passes `tokens.verify` to domainModules).
   const group = /^\.\.\.(\w+Modules)\(/.exec(entry)?.[1];
   const registered = active.some(line => line.trim() === `${entry},` ||
     (group !== undefined && line.includes(`...${group}(`)) ||
@@ -53,7 +53,7 @@ export function readComposeGroup({ repoRoot, app, area, noun }: ComposeGroupInpu
   const relative = `be/apps/${app}/src/compose/${area}.ts`;
   const file = path.join(repoRoot, ...relative.split('/'));
   const exists = fs.existsSync(file);
-  const skeleton = 'skeleton-lite/apps/api';
+  const skeleton = 'skeleton/apps/api';
   const template = path.join(TEMPLATES_DIR, 'be', ...skeleton.split('/'), 'src', 'compose', `${area}.ts`);
   const text = fs.readFileSync(exists ? file : template, 'utf8').replace(/\r\n/g, '\n');
   const argument = area === 'domain' ? 'verifyAccessToken: VerifyAccessToken' : '';

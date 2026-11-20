@@ -39,7 +39,7 @@ const fixture = (t: TestContext, edition: "lite" | "full", files: Readonly<Recor
 const ok = (f: ProjectFixture, files: Readonly<Record<string, string>>, rel: string) => ({ filename: f.at(rel), code: files[rel] ?? "" })
 const bad = (f: ProjectFixture, files: Readonly<Record<string, string>>, rel: string, code: RegExp) => ({ ...ok(f, files, rel), errors: [{ message: code, line: 1 }] })
 
-test("BE_TIER_DIRECTION lite: the registry alone names a capability's <c>Entities from its index.ts", (t) => {
+test("BE_TIER_DIRECTION: the registry alone names a capability's <c>Entities from its index.ts", (t) => {
     const files = {
         [REGISTRY]: "import { billingEntities } from '../../domain/billing';\nexport const PRIMARY_ENTITIES = [...billingEntities];\n",
         "src/modules/platform/database/other.ts": "import { billingEntities } from '../../domain/billing';\nexport const others = billingEntities;\n",
@@ -56,7 +56,7 @@ test("BE_TIER_DIRECTION lite: the registry alone names a capability's <c>Entitie
     })
 })
 
-test("BE_TIER_DIRECTION lite: the registry importing anything but <c>Entities stays refused", (t) => {
+test("BE_TIER_DIRECTION: the registry importing anything but <c>Entities stays refused", (t) => {
     const cases = {
         other: "import { BillingService } from '../../domain/billing';\nexport const PRIMARY_ENTITIES = [BillingService];\n",
         mixed: "import { billingEntities, BillingService } from '../../domain/billing';\nexport const PRIMARY_ENTITIES = [...billingEntities, BillingService];\n",
@@ -86,7 +86,7 @@ const importerFiles = {
     [PLATFORM_IMPORTER]: IMPORT_REGISTRY("../database/entities"),
 }
 
-test("ARCH_OWNER_EXPORT_BYPASS lite: app composition and the test world reach the registry by deep path, nothing else does", (t) => {
+test("ARCH_OWNER_EXPORT_BYPASS: app composition and the test world reach the registry by deep path, nothing else does", (t) => {
     const f = fixture(t, "lite", importerFiles)
     f.tester.run("owner-export-bypass", ruleNamed(rules, "owner-export-bypass"), {
         valid: [ok(f, importerFiles, COMPOSE), ok(f, importerFiles, APP_MODULE), ok(f, importerFiles, WORLD)],
@@ -100,7 +100,7 @@ test("ARCH_OWNER_EXPORT_BYPASS lite: app composition and the test world reach th
 
 const DEEP = "import { PRIMARY_ENTITIES } from '@modules/platform/database/entities'"
 
-test("import-owner-entry lite: the deep path @modules/platform/database/entities is admitted from app composition and the test world only", () => {
+test("import-owner-entry: the deep path @modules/platform/database/entities is admitted from app composition and the test world only", () => {
     const tester = ruleTester({ root: TYPED_ROOT, hfs: hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition: "lite" }, TYPED_ROOT) })
     tester.run("import-owner-entry", importOwnerEntry, {
         valid: [
@@ -133,7 +133,7 @@ const CYCLE_FILES = {
 }
 const CONNECTIONS_SERVICE = "src/modules/domain/agent-connections/agent-connections.service.ts"
 
-test("ARCH_OWNER_CYCLE lite: the registry is a unit of its own, so naming every <c>Entities closes no cycle", (t) => {
+test("ARCH_OWNER_CYCLE: the registry is a unit of its own, so naming every <c>Entities closes no cycle", (t) => {
     const made = projectFixture({ edition: "lite", files: CYCLE_FILES })
     t.after(made.cleanup)
     made.tester.run("owner-cycle", ruleNamed(rules, "owner-cycle"), {
@@ -142,7 +142,7 @@ test("ARCH_OWNER_CYCLE lite: the registry is a unit of its own, so naming every 
     })
 })
 
-test("ARCH_OWNER_CYCLE lite: a platform-to-domain edge from any other platform/database file still closes the cycle", (t) => {
+test("ARCH_OWNER_CYCLE: a platform-to-domain edge from any other platform/database file still closes the cycle", (t) => {
     const files = { ...CYCLE_FILES, "src/modules/platform/database/lookup.ts": "import { ShiftsService } from '../../domain/shifts';\nexport const lookup = ShiftsService;\n" }
     const made = projectFixture({ edition: "lite", files })
     t.after(made.cleanup)

@@ -11,14 +11,14 @@ const ruleOf = (name: string): Rule => {
   return rule
 }
 
-// proves: FE_HOOKS_ARE_HOOKS@lite FE_HOOKS_ARE_HOOKS@full
-// proves: FE_CUSTOM_HOOK_LOCATION@lite FE_CUSTOM_HOOK_LOCATION@full
-// proves: FE_BLOCK_PRODUCT_HOOK_DEFINITION@lite FE_BLOCK_PRODUCT_HOOK_DEFINITION@full
-// proves: FE_COMPONENT_DEEP_HOOK_IMPORT@lite FE_COMPONENT_DEEP_HOOK_IMPORT@full
-// proves: FE_PURE_REACHES_DATA@lite FE_PURE_REACHES_DATA@full
-// proves: FE_PURE_WORLD_HOOK@lite FE_PURE_WORLD_HOOK@full
-// proves: FE_PURE_WORLD_IMPORT@lite FE_PURE_WORLD_IMPORT@full
-// proves: FE_CONNECTED_BLOCK_RENDER_PAIR@lite FE_CONNECTED_BLOCK_RENDER_PAIR@full
+// proves: FE_HOOKS_ARE_HOOKS
+// proves: FE_CUSTOM_HOOK_LOCATION
+// proves: FE_BLOCK_PRODUCT_HOOK_DEFINITION
+// proves: FE_COMPONENT_DEEP_HOOK_IMPORT
+// proves: FE_PURE_REACHES_DATA
+// proves: FE_PURE_WORLD_HOOK
+// proves: FE_PURE_WORLD_IMPORT
+// proves: FE_CONNECTED_BLOCK_RENDER_PAIR
 for (const edition of ['lite'] as const) {
   test(`R56 R92 ${edition} accepts owned hooks and pure rendering and rejects misplaced hooks and world imports`, t => {
     const hook = "apps/web/src/hooks/data/useData.ts"

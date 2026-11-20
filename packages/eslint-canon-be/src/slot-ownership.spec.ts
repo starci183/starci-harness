@@ -1,9 +1,9 @@
-// proves: HFS_SLOT_UNDECLARED@lite
-// proves: HFS_SLOT_UNDECLARED@full
-// proves: HFS_SLOT_AMBIGUOUS@lite
-// proves: HFS_SLOT_AMBIGUOUS@full
-// proves: HFS_SLOT_NOT_ENABLED@lite
-// proves: HFS_SLOT_NOT_ENABLED@full
+// proves: HFS_SLOT_UNDECLARED
+// proves: HFS_SLOT_UNDECLARED
+// proves: HFS_SLOT_AMBIGUOUS
+// proves: HFS_SLOT_AMBIGUOUS
+// proves: HFS_SLOT_NOT_ENABLED
+// proves: HFS_SLOT_NOT_ENABLED
 /**
  * RuleTester proofs of the registered back-end rule `slot-undeclared` (R01) for the three codes it reports, in lite and in full: a TypeScript
  * file is owned by exactly one enabled slot of the repository.

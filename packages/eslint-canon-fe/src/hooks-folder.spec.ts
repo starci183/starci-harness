@@ -3,7 +3,7 @@
  *
  *   node --test src/hooks-folder.spec.ts
  */
-// proves: FE_HOOKS_ARE_HOOKS@lite FE_HOOKS_ARE_HOOKS@full
+// proves: FE_HOOKS_ARE_HOOKS
 import assert from "node:assert/strict"
 import test from "node:test"
 import { at, fixtureHfs, slotTester } from "../fixtures/typed/tester.ts"

@@ -289,7 +289,7 @@ files:
     rules: [BE_PATTERN_SPEC_MISSING]
 # Edition lite (R212): the same ports and rules, a self-hosted Postgres adapter behind them. pgmq is the
 # lite event bus and jobs stay on BullMQ (platform/queue).
-liteAdapter:
+adapter:
   summary: >-
     Under lite the event bus keeps typed events, the vendored contract, publish(event, tx, correlationId) in the domain transaction,
     the inbox and thin consumers; Kafka is replaced by pgmq topics in the db service. Publish sends the envelope to its topic

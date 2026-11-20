@@ -7,9 +7,9 @@ perRecord: true
 context:
   budget: 24000
   base:
-    - file: "harness:contexts/project/anatomy-{edition}-{side}.md"
+    - file: "harness:contexts/project/anatomy-{side}.md"
       when: {side: [be, fe]}
-    - file: "harness:contexts/project/{edition}.md"
+    - file: "harness:contexts/project/edition.md"
       when: {side: [be, fe]}
     - {file: "harness:contexts/code/README.md", shared: true}
     - {file: "harness:contexts/code/shared/README.md", shared: true}

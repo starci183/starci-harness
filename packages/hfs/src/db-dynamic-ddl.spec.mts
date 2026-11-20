@@ -1,5 +1,5 @@
-// proves: DB_DYNAMIC_DDL@lite
-// proves: DB_DYNAMIC_DDL@full
+// proves: DB_DYNAMIC_DDL
+// proves: DB_DYNAMIC_DDL
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,7 +1,7 @@
-// proves: BE_CLI_REQUIRED@lite
-// proves: BE_CLI_REQUIRED@full
-// proves: BE_CLI_CLIENT@lite
-// proves: BE_CLI_CLIENT@full
+// proves: BE_CLI_REQUIRED
+// proves: BE_CLI_REQUIRED
+// proves: BE_CLI_CLIENT
+// proves: BE_CLI_CLIENT
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -52,16 +52,16 @@ function input(edition: string, apps: AppRef[], files: string[], connections: Co
 }
 
 for (const edition of ['lite'] as const) {
-    test(`${edition} valid CLI app and image pass for tracked commands`, () => {
+    test(`valid CLI app and image pass for tracked commands`, () => {
         assert.deepEqual(cliFindings(input(edition, [API, CLI], [COMMAND, IMAGE])), []);
         assert.deepEqual(cliFindings(input(edition, [API], [])), []);
     });
 
-    test(`${edition} missing CLI app for tracked commands is invalid`, () => {
+    test(`missing CLI app for tracked commands is invalid`, () => {
         assert.deepEqual(cliFindings(input(edition, [API], [COMMAND])).map((finding) => finding.code), ['BE_CLI_REQUIRED']);
     });
 
-    test(`${edition} invalid CLI name and missing CLI image are rejected`, () => {
+    test(`invalid CLI name and missing CLI image are rejected`, () => {
         const renamed = cliFindings(input(edition, [API, { name: 'ops', kind: 'cli' }], [COMMAND]));
         assert.deepEqual(renamed.map((finding) => finding.code), ['BE_CLI_REQUIRED']);
         assert.equal(renamed[0]!.app, 'ops');
@@ -70,11 +70,11 @@ for (const edition of ['lite'] as const) {
         assert.equal(imageless[0]!.path, IMAGE);
     });
 
-    test(`${edition} connection-only requirements follow the actual edition slot`, () => {
+    test(`connection-only requirements follow the actual edition slot`, () => {
         const findings = cliFindings(input(edition, [API], [], PRIMARY));
         assert.deepEqual(findings.map((finding) => finding.code), []);
     });
-    test(`${edition} a client cli beside the ops cli passes with its package, its build config and its own feature root`, (t) => {
+    test(`a client cli beside the ops cli passes with its package, its build config and its own feature root`, (t) => {
         const repoRoot = clientRoot(t);
         assert.deepEqual(cliFindings({ ...input(edition, [API, CLI, CLIENT], [COMMAND, IMAGE, ...CLIENT_FILES], [], ['api', 'cli', 'client-cli']), repoRoot }), []);
         const resolver = input(edition, [API, CLI, CLIENT], []).resolver.sides!.be;
@@ -86,7 +86,7 @@ for (const edition of ['lite'] as const) {
         assert.equal(resolver.classifyPath('apps/cli/Dockerfile').slot, 'repo.app-image');
     });
 
-    test(`${edition} a second app of kind cli stays refused, and a client cli never stands in for the ops cli`, () => {
+    test(`a second app of kind cli stays refused, and a client cli never stands in for the ops cli`, () => {
         const second = cliFindings(input(edition, [API, CLI, { name: 'relay-cli', kind: 'cli' }], [COMMAND, IMAGE]));
         assert.deepEqual(second.map((finding) => finding.code), ['BE_CLI_REQUIRED']);
         assert.match(second[0]!.message, /client-cli/);
@@ -94,7 +94,7 @@ for (const edition of ['lite'] as const) {
         assert.ok(alone.some((finding) => finding.code === 'BE_CLI_REQUIRED' && finding.path === 'hfs.json'), 'an ops command still needs the ops cli');
     });
 
-    test(`${edition} a client cli without package or bin, without its root or its package files is invalid`, () => {
+    test(`a client cli without package or bin, without its root or its package files is invalid`, () => {
         const bare = cliFindings(input(edition, [API, CLI, { name: 'relay-cli', kind: 'client-cli' }], [COMMAND, IMAGE, ...CLIENT_FILES]));
         assert.deepEqual(bare.map((finding) => [finding.code, finding.field]), [['BE_CLI_CLIENT', 'package'], ['BE_CLI_CLIENT', 'bin']]);
         const onOps = cliFindings(input(edition, [API, { ...CLI, bin: 'ops' }], [COMMAND, IMAGE]));
@@ -110,7 +110,7 @@ for (const edition of ['lite'] as const) {
         assert.ok(unpackaged.every((finding) => finding.code === 'BE_CLI_CLIENT'));
     });
 
-    test(`${edition} a client cli package that differs from its declaration or the root pins is invalid`, (t) => {
+    test(`a client cli package that differs from its declaration or the root pins is invalid`, (t) => {
         const files = [COMMAND, IMAGE, ...CLIENT_FILES];
         const judge = (manifestJson: unknown, buildJson: unknown = GOOD_BUILD) => cliFindings({ ...input(edition, [API, CLI, CLIENT], files), repoRoot: clientRoot(t, manifestJson, buildJson) });
         const wrong = judge({ name: '@acme/other', private: true, bin: { relay: 'be/dist/apps/relay-cli/src/main.js' }, files: ['src'], dependencies: { 'nest-commander': '3.20.0', lodash: '4.17.21' } });

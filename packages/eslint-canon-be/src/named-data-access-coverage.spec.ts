@@ -1,6 +1,6 @@
 /** R83 proves every shipped data-access enforcer in each HFS edition. */
-// proves: BE_UNNAMED_DATA_ACCESS@lite
-// proves: BE_UNNAMED_DATA_ACCESS@full
+// proves: BE_UNNAMED_DATA_ACCESS
+// proves: BE_UNNAMED_DATA_ACCESS
 import test from "node:test"
 import {
     mustInjectEntityManager,

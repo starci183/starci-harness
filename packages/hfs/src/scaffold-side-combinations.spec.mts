@@ -34,11 +34,11 @@ const scripts = (root: string): Record<string, string> => (JSON.parse(fs.readFil
 const WITH_BE: ReadonlyArray<readonly ProjectSide[]> = [['be'], ['be', 'fe'], ['be', 'packages'], ['be', 'fe', 'packages']];
 
 for (const edition of ['lite'] as const) {
-  test(`${edition}: every side set with be scaffolds and checks as clean as the default starter, with the codegen exactly when fe is declared`, (t) => {
+  test(`every side set with be scaffolds and checks as clean as the default starter, with the codegen exactly when fe is declared`, (t) => {
     const baseline = new Set(starter(t, edition, ['be', 'fe']).codes);
     for (const sides of WITH_BE) {
       for (const contract of ['graphql', 'rest'] as const) {
-        const label = `${edition} ${sides.join('+')} ${contract}`;
+        const label = `${sides.join('+')} ${contract}`;
         const { root, files, codes } = starter(t, edition, sides, contract);
         assert.deepEqual(codes.filter((code) => !baseline.has(code)), [], label);
         const fe = sides.includes('fe');

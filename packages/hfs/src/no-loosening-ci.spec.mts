@@ -20,7 +20,7 @@ const declaration = (edition: string) => ({ hfs: 3, kind: 'app', edition, projec
 const rendered = (edition: string, file: string) => renderTargets(declaration(edition), { sonarExclusions: '' }).find((item) => item.path === file)?.content;
 
 for (const edition of ['lite'] as const) {
-  test(`${edition} managed CI renders no escape hatch and its Sonar token check fails the job`, () => {
+  test(`managed CI renders no escape hatch and its Sonar token check fails the job`, () => {
     const text = rendered(edition, '.github/workflows/ci.yml');
     assert.ok(text, 'the managed CI is rendered');
     for (const pattern of ESCAPE_HATCHES) assert.doesNotMatch(text, pattern, String(pattern));
@@ -33,7 +33,7 @@ for (const edition of ['lite'] as const) {
     assert.deepEqual(ciStandardFindings({ doc, file: '.github/workflows/ci.yml', scope: 'app-ci' }), []);
   });
 
-  test(`${edition} hooks and package scripts render no escape hatch`, () => {
+  test(`hooks and package scripts render no escape hatch`, () => {
     const pushHook = rendered(edition, '.husky/pre-push');
     assert.ok(pushHook);
     assert.doesNotMatch(pushHook, /\|\|\s*true/);

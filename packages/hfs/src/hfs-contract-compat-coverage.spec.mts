@@ -1,5 +1,5 @@
-// proves: BE_CONTRACT_BREAKING@lite
-// proves: BE_CONTRACT_BREAKING@full
+// proves: BE_CONTRACT_BREAKING
+// proves: BE_CONTRACT_BREAKING
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -33,7 +33,7 @@ function repository(t: TestContext, edition: string, current: unknown) {
 }
 
 for (const edition of ['lite'] as const) {
-  test(`${edition} BE_CONTRACT_BREAKING rejects removing a published payload field`, (t) => {
+  test(`BE_CONTRACT_BREAKING rejects removing a published payload field`, (t) => {
     const current = contract({
       'order.placed': { ...publishedEvent, payload: { orderId: 'string', note: 'string?' } },
     });
@@ -43,7 +43,7 @@ for (const edition of ['lite'] as const) {
     assert.match(findings[0]?.message ?? '', /lost payload field totalCents/);
   });
 
-  test(`${edition} BE_CONTRACT_BREAKING rejects adding a required payload field`, (t) => {
+  test(`BE_CONTRACT_BREAKING rejects adding a required payload field`, (t) => {
     const current = contract({
       'order.placed': { ...publishedEvent, payload: { ...publishedEvent.payload, currency: 'string' } },
     });
@@ -52,7 +52,7 @@ for (const edition of ['lite'] as const) {
     assert.match(findings[0]?.message ?? '', /gained required payload field currency/);
   });
 
-  test(`${edition} BE_CONTRACT_BREAKING accepts additive fields and a new version beside the old event`, (t) => {
+  test(`BE_CONTRACT_BREAKING accepts additive fields and a new version beside the old event`, (t) => {
     const current = contract({
       'order.placed': { ...publishedEvent, payload: { ...publishedEvent.payload, currency: 'string?' } },
       'order.placed.v2': { stream: 'order-events', version: 2, payload: { orderId: 'string', total: 'number' } },

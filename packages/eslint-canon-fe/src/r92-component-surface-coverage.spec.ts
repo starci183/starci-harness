@@ -14,9 +14,9 @@ const ruleOf = (law: Rules, name: string): Rule => {
   return rule
 }
 
-// proves: FE_COMPONENT_API@lite FE_COMPONENT_API@full
-// proves: FE_PURE_REACHES_DATA@lite FE_PURE_REACHES_DATA@full
-// proves: FE_CONNECTED_BLOCK_RENDER_PAIR@lite FE_CONNECTED_BLOCK_RENDER_PAIR@full
+// proves: FE_COMPONENT_API
+// proves: FE_PURE_REACHES_DATA
+// proves: FE_CONNECTED_BLOCK_RENDER_PAIR
 const COMPONENT = at("apps/web/src/components/branches/SurfaceCard/index.tsx")
 const BLOCK = at("apps/web/src/components/blocks/sales/HandoffBlock/component.tsx")
 const INDEX = at("apps/web/src/components/blocks/sales/HandoffBlock/index.tsx")

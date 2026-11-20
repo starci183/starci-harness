@@ -1,5 +1,5 @@
-// proves: HFS_BACKING_UNDECLARED@lite
-// proves: HFS_BACKING_UNUSED@lite
+// proves: HFS_BACKING_UNDECLARED
+// proves: HFS_BACKING_UNUSED
 // R212: lite admits declared Redis; vector search uses Supabase pgvector.
 import test from 'node:test';
 import type { TestContext } from 'node:test';
@@ -30,7 +30,7 @@ function judge(t: TestContext, { be = {}, dependencies = {} }: { be?: Record<str
     .map(({ code, path: file, name, service, level }): BackingFinding => ({ code, file: file as string, ...(name ? { name: name as string } : {}), ...(service ? { service: service as string } : {}), level }));
 }
 
-test('HFS_BACKING_UNDECLARED (lite): a client library of an undeclared service is refused', (t) => {
+test('HFS_BACKING_UNDECLARED: a client library of an undeclared service is refused', (t) => {
   const findings = judge(t, { dependencies: { bullmq: '6.3.11', '@qdrant/js-client-rest': '1.12.0' } });
   assert.deepEqual(findings.sort((left, right) => left.name!.localeCompare(right.name!)), [
     { code: 'HFS_BACKING_UNDECLARED', file: 'package.json', name: '@qdrant/js-client-rest', service: 'qdrant', level: 'error' },
@@ -38,7 +38,7 @@ test('HFS_BACKING_UNDECLARED (lite): a client library of an undeclared service i
   ]);
 });
 
-test('HFS_BACKING_UNDECLARED (lite): every Redis client library is refused without a declared redis, the legacy queue and cache stores included', (t) => {
+test('HFS_BACKING_UNDECLARED: every Redis client library is refused without a declared redis, the legacy queue and cache stores included', (t) => {
   const clients = ['bull', '@nestjs/bull', '@keyv/redis', 'cache-manager-redis-yet', 'cache-manager-ioredis-yet'];
   const findings = judge(t, { dependencies: Object.fromEntries(clients.map((name) => [name, '1.0.0'])) });
   assert.deepEqual(findings.map(({ code, name, service }) => `${code} ${name} ${service}`).sort(),
@@ -46,19 +46,19 @@ test('HFS_BACKING_UNDECLARED (lite): every Redis client library is refused witho
   assert.deepEqual(judge(t, { be: { backing: ['redis'] }, dependencies: { '@keyv/redis': '1.0.0' } }), [], 'a declared redis with one of them is legal');
 });
 
-test('HFS_BACKING_UNDECLARED (lite): a declared queue pattern needs a declared redis', (t) => {
+test('HFS_BACKING_UNDECLARED: a declared queue pattern needs a declared redis', (t) => {
   assert.deepEqual(judge(t, { be: { patterns: ['queue'] } }), [
     { code: 'HFS_BACKING_UNDECLARED', file: 'hfs.json', service: 'redis', level: 'error' },
   ]);
 });
 
-test('HFS_BACKING_UNUSED (lite): a declared service needs a consuming dependency', (t) => {
+test('HFS_BACKING_UNUSED: a declared service needs a consuming dependency', (t) => {
   assert.deepEqual(judge(t, { be: { backing: ['redis'] } }), [
     { code: 'HFS_BACKING_UNUSED', file: 'hfs.json', service: 'redis', level: 'error' },
   ]);
 });
 
-test('HFS_BACKING_UNUSED (lite): a standalone back end reads its own package.json; a side scope of an app is not judged twice', (t) => {
+test('HFS_BACKING_UNUSED: a standalone back end reads its own package.json; a side scope of an app is not judged twice', (t) => {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-backing-be-'));
   t.after(() => fs.rmSync(repoRoot, { recursive: true, force: true }));
   const judgeBe = (dependencies: Record<string, string>, withDeclaration = true) => {
@@ -72,11 +72,11 @@ test('HFS_BACKING_UNUSED (lite): a standalone back end reads its own package.jso
   assert.deepEqual(judgeBe({}, false), []);
 });
 
-test('lite: a declared redis with its queue client and pattern is legal', (t) => {
+test('a declared redis with its queue client and pattern is legal', (t) => {
   assert.deepEqual(judge(t, { be: { patterns: ['queue'], backing: ['redis'] }, dependencies: { bullmq: '6.3.11' } }), []);
 });
 
-test('HFS_BACKING_UNDECLARED (lite): the realtime hub Redis clients (ioredis, the socket.io adapter) need a declared redis', (t) => {
+test('HFS_BACKING_UNDECLARED: the realtime hub Redis clients (ioredis, the socket.io adapter) need a declared redis', (t) => {
   const findings = judge(t, { dependencies: { ioredis: '5.11.1', '@socket.io/redis-adapter': '8.3.0' } });
   assert.deepEqual(findings.sort((left, right) => left.name!.localeCompare(right.name!)), [
     { code: 'HFS_BACKING_UNDECLARED', file: 'package.json', name: '@socket.io/redis-adapter', service: 'redis', level: 'error' },
@@ -84,7 +84,7 @@ test('HFS_BACKING_UNDECLARED (lite): the realtime hub Redis clients (ioredis, th
   ]);
 });
 
-test('lite: a declared redis with the realtime hub clients is legal', (t) => {
+test('a declared redis with the realtime hub clients is legal', (t) => {
   assert.deepEqual(
     judge(t, { be: { backing: ['redis'] }, dependencies: { ioredis: '5.11.1', '@socket.io/redis-adapter': '8.3.0', pg: '8.16.3' } }),
     [],
@@ -92,7 +92,7 @@ test('lite: a declared redis with the realtime hub clients is legal', (t) => {
   );
 });
 
-test('lite: a backing name outside ruleParams.be.backing is an invalid declaration', (t) => {
+test('a backing name outside ruleParams.be.backing is an invalid declaration', (t) => {
   assert.deepEqual(judge(t, { be: { backing: ['mongo'] } }).map(({ code }) => code), ['HFS_DECLARATION_INVALID']);
 });
 

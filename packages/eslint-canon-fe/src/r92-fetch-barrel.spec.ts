@@ -11,8 +11,8 @@ const projectRule = (name: string): Rule => {
   return found
 }
 
-// proves: FE_COMPONENT_WORLD_OWNERSHIP@lite FE_COMPONENT_WORLD_OWNERSHIP@full
-// proves: FE_WORLD_OWNER_RENDER_BOUNDARY@lite FE_WORLD_OWNER_RENDER_BOUNDARY@full
+// proves: FE_COMPONENT_WORLD_OWNERSHIP
+// proves: FE_WORLD_OWNER_RENDER_BOUNDARY
 for (const edition of ['lite'] as const) {
   test(`R92 ${edition} rejects global fetch through a UI hook barrel and accepts intrinsic UI and data owners`, t => {
     const branch = "apps/web/src/components/branches/Remote/index.tsx"

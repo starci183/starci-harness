@@ -59,7 +59,7 @@ test('the build command is the managed build:modules script, and its step render
   assert.ok(sonar.indexOf('build:modules') > 0 && sonar.indexOf('build:modules') < sonar.indexOf('SonarSource/sonarqube-scan-action'), 'the scan resolves the packages it imports, built');
 });
 
-test('a lite app with root packages builds them before its boot proof, on every lint side, before the scan and before the nightly verify; R301 accepts the render', (t) => {
+test('an app with root packages builds them before its boot proof, on every lint side, before the scan and before the nightly verify; R301 accepts the render', (t) => {
   const root = app(t, true);
   const { ci, verify } = workflows(root);
   const doc = parseWorkflow(ci);
@@ -75,7 +75,7 @@ test('a lite app with root packages builds them before its boot proof, on every 
   assert.ok(nightly.indexOf('build the workspace packages') >= 0 && nightly.indexOf('build the workspace packages') < nightly.indexOf('verify the committed cache'), nightly.join(' | '));
 });
 
-test('a lite app without root packages renders no package build and no build:modules anywhere in its CI', (t) => {
+test('an app without root packages renders no package build and no build:modules anywhere in its CI', (t) => {
   const root = app(t, false);
   const { ci, verify } = workflows(root);
   assert.doesNotMatch(ci, /build:modules|build the workspace packages/);

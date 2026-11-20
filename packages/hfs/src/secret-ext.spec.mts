@@ -1,10 +1,10 @@
 /** `starci app secret set|unset|list --env <env> --ext <target>` and R429 (PROJECT-STACKS-5): a sealed file the project's ext/manifest.json declares. */
-// proves: HFS_SECRET_TARGET_MISSING@lite
-// proves: HFS_SECRET_TARGET_MISSING@full
-// proves: HFS_SECRET_TARGET_UNSEALED@lite
-// proves: HFS_SECRET_TARGET_UNSEALED@full
-// proves: HFS_SECRET_TARGET_PLAIN@lite
-// proves: HFS_SECRET_TARGET_PLAIN@full
+// proves: HFS_SECRET_TARGET_MISSING
+// proves: HFS_SECRET_TARGET_MISSING
+// proves: HFS_SECRET_TARGET_UNSEALED
+// proves: HFS_SECRET_TARGET_UNSEALED
+// proves: HFS_SECRET_TARGET_PLAIN
+// proves: HFS_SECRET_TARGET_PLAIN
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';

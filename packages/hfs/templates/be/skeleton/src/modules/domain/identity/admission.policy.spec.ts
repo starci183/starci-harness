@@ -1,8 +1,11 @@
 import { Test } from "@nestjs/testing"
+import type { Principal } from "@modules/platform/cqrs"
 import { admit } from "./admission.policy"
 import { IdentityError, IdentityErrorCode } from "./errors/identity.error"
 import type { PublicMetadata } from "./identity.contracts"
 import { PublicReason } from "./identity.contracts"
+
+const principal: Principal = { id: "user-1", role: "authenticated" }
 
 const ADMISSION: unique symbol = Symbol("identity.admission")
 
@@ -29,41 +32,60 @@ describe("admit", () => {
         subject = moduleRef.get<typeof admit>(ADMISSION)
     })
 
-    it.each([PublicReason.Health, PublicReason.AuthHandshake, PublicReason.SignedWebhook, PublicReason.CatalogRead])(
-        "admits a door with the canonical public reason %s",
-        (reason) => {
-            expect(subject({ reason })).toSucceedWith(reason)
-        },
-    )
+    it("admits a door that states why it is public, with or without a caller", () => {
+        expect(subject({ reason: PublicReason.Health }, undefined)).toSucceedWith(PublicReason.Health)
+        expect(subject({ reason: PublicReason.SignedWebhook }, principal)).toSucceedWith(PublicReason.SignedWebhook)
+        expect(subject({ reason: PublicReason.AuthHandshake }, undefined)).toSucceedWith(PublicReason.AuthHandshake)
+        expect(subject({ reason: PublicReason.CatalogRead }, undefined)).toSucceedWith(PublicReason.CatalogRead)
+    })
+
+    it("does not trust a reason outside the closed vocabulary", () => {
+        const outside = runtimeMetadata('{"reason":"anything"}')
+        expect(subject(outside, undefined)).toBeRefused(IdentityErrorCode.Unauthenticated)
+        expect(subject(outside, principal)).toSucceedWith(principal)
+    })
+
+    it("does not treat runtime metadata without a public reason as public", () => {
+        const metadata = runtimeMetadata("{}")
+        expect(subject(metadata, undefined)).toBeRefused(IdentityErrorCode.Unauthenticated)
+        expect(subject(metadata, principal)).toSucceedWith(principal)
+    })
+
+    it("admits the verified principal of a door that is not public", () => {
+        expect(subject(undefined, principal)).toSucceedWith(principal)
+    })
 
     it("admits a credential door whose principal has the required kind", () => {
-        const principal = { kind: "api-key", subject: "key-1", workspaceId: "ws-1" } as const
+        const credentialPrincipal = { kind: "api-key", subject: "key-1", workspaceId: "ws-1" } as const
+        const credential = { required: { kind: "api-key" }, principal: credentialPrincipal } as const
 
-        expect(subject(undefined, { required: { kind: "api-key" }, principal })).toSucceedWith(principal)
+        expect(subject(undefined, undefined, credential)).toSucceedWith(credentialPrincipal)
+        expect(subject(undefined, principal, credential)).toSucceedWith(credentialPrincipal)
+        expect(subject({ reason: PublicReason.Health }, principal, credential)).toSucceedWith(credentialPrincipal)
     })
 
-    it("refuses a credential door without a principal of the required kind", () => {
-        const principal = { kind: "tool-token", subject: "tool-1", workspaceId: "ws-1" } as const
+    it("refuses a credential door without a credential principal, even with a session or public metadata", () => {
+        const credential = { required: { kind: "api-key" }, principal: undefined } as const
 
-        expect(subject(undefined, { required: { kind: "api-key" }, principal })).toBeRefused(
+        expect(subject(undefined, undefined, credential)).toBeRefused(IdentityErrorCode.Unauthenticated)
+        expect(subject(undefined, principal, credential)).toBeRefused(IdentityErrorCode.Unauthenticated)
+        expect(subject({ reason: PublicReason.Health }, principal, credential)).toBeRefused(
             IdentityErrorCode.Unauthenticated,
         )
-        expect(subject(undefined, { required: { kind: "api-key" }, principal: undefined })).toBeRefused(
+    })
+
+    it("refuses a credential principal of another kind, even with a session or public metadata", () => {
+        const credentialPrincipal = { kind: "tool-token", subject: "tool-1", workspaceId: "ws-1" } as const
+        const credential = { required: { kind: "api-key" }, principal: credentialPrincipal } as const
+
+        expect(subject(undefined, undefined, credential)).toBeRefused(IdentityErrorCode.Unauthenticated)
+        expect(subject(undefined, principal, credential)).toBeRefused(IdentityErrorCode.Unauthenticated)
+        expect(subject({ reason: PublicReason.Health }, principal, credential)).toBeRefused(
             IdentityErrorCode.Unauthenticated,
         )
     })
 
-    it("refuses a door that is not public", () => {
-        expect(subject(undefined)).toBeRefused(IdentityErrorCode.Unauthenticated)
-    })
-
-    it("refuses an unknown public reason supplied as runtime metadata", () => {
-        const metadata = runtimeMetadata('{"reason":"tool-token"}')
-        expect(subject(metadata)).toBeRefused(IdentityErrorCode.Unauthenticated)
-    })
-
-    it("refuses runtime metadata without a public reason", () => {
-        const metadata = runtimeMetadata("{}")
-        expect(subject(metadata)).toBeRefused(IdentityErrorCode.Unauthenticated)
+    it("refuses a door that is not public when no principal was verified", () => {
+        expect(subject(undefined, undefined)).toBeRefused(IdentityErrorCode.Unauthenticated)
     })
 })

@@ -1,5 +1,5 @@
-// proves: BE_MIGRATION_REVERSIBLE@lite
-// proves: BE_MIGRATION_REVERSIBLE@full
+// proves: BE_MIGRATION_REVERSIBLE
+// proves: BE_MIGRATION_REVERSIBLE
 import test from 'node:test';
 import { migrationDownReversible } from './schema-authority.ts';
 import { appDeclaration } from '../fixtures/app.ts';

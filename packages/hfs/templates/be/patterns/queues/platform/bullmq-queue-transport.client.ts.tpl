@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common"
 import { eachInOrder, isRecord } from "@modules/platform/primitives"
 import { InjectLogger, isCorrelationId, type Logger } from "@modules/platform/logging"
 import { InjectIds, type Ids } from "@modules/platform/ids"
+import { QueueError, QueueErrorCode } from "./errors/queue.error"
 import { InjectQueueFactory, InjectQueueOptions } from "./queue.decorators"
 import {
     BULLMQ_JOB_SCHEMA,
@@ -9,22 +10,32 @@ import {
     type QueueHandler,
     type QueueSchedulerDefinition,
 } from "./queue.contracts"
-import { QueueError, QueueErrorCode } from "./errors/queue.error"
 import { QueueLogEvent } from "./queue.log-events"
 import type { QueueOptions } from "./queue.options"
 import { ATTEMPTS, BACKOFF_MS, KEEP_COMPLETED_SECONDS, jobNameOf } from "./queue.policy"
 import type {
+    BullmqCommands,
     BullmqConnection,
     BullmqJob,
     BullmqQueue,
     BullmqWorker,
-    QueueFactory,
     QueuedJob,
+    QueueFactory,
     QueueTransport,
 } from "./queue-transport.port"
 
+/** How long the relay waits for Redis to write its jobs to the append-only file; `appendfsync everysec` writes within a second. */
+const PERSIST_TIMEOUT_MS = 5000
+
+/** A WAITAOF reply that counts the local append-only file among the writes it waited for. */
+const writtenLocally = (reply: unknown): boolean => Array.isArray(reply) && Number(reply.at(0)) >= 1
+
+/** True for a connection that sends a raw command. */
+const sendsCommands = (client: object): client is BullmqCommands =>
+    "call" in client && typeof client.call === "function"
+
 @Injectable()
-/** The QueueTransport port over a Redis the app names in its options; the BullMQ objects come from the injected factory the module composes. */
+/** The QueueTransport port over the declared Redis the app names in its options; the BullMQ objects come from the injected factory the module composes. */
 export class BullmqQueueTransportClient implements QueueTransport {
     private readonly queues = new Map<string, BullmqQueue>()
     private readonly workers: Array<BullmqWorker> = []
@@ -51,8 +62,17 @@ export class BullmqQueueTransportClient implements QueueTransport {
         )
     }
 
-    /** Resolves once each job is held by its queue; a job Redis does not hold is QUEUE_JOB_LOST. */
+    /**
+     * Waits until Redis has written each queue's jobs to its append-only file, then checks it still holds every job: a Redis that
+     * restarted meanwhile answers the wait at once on its new connection, and only a job it reloaded from the file is still there.
+     */
     async persist(jobs: ReadonlyArray<QueuedJob>): Promise<void> {
+        await eachInOrder([...new Set(jobs.map((job) => job.queue))], async (queue) => {
+            const client = await this.queueOf(queue).getBackend().client
+            const written =
+                sendsCommands(client) && writtenLocally(await client.call("WAITAOF", 1, 0, PERSIST_TIMEOUT_MS))
+            if (!written) throw new QueueError({ code: QueueErrorCode.NotPersisted, params: { queue } })
+        })
         await eachInOrder(jobs, async (job) => {
             if ((await this.queueOf(job.queue).getJobState(job.jobId)) === "unknown")
                 throw new QueueError({ code: QueueErrorCode.JobLost, params: { queue: job.queue, jobId: job.jobId } })
@@ -137,6 +157,7 @@ export class BullmqQueueTransportClient implements QueueTransport {
                 host: this.options.redisHost,
                 port: this.options.redisPort,
                 db: this.options.redisDb,
+                ...(this.options.redisPassword === undefined ? {} : { password: this.options.redisPassword.reveal() }),
                 maxRetriesPerRequest: null,
             },
         }

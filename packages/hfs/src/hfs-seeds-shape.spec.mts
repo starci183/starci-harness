@@ -1,6 +1,6 @@
-// proves: HFS_SEEDS_SHAPE@lite HFS_SEEDS_SHAPE@full HFS_SEED_MANIFEST@lite HFS_SEED_MANIFEST@full HFS_SEED_DDL@lite HFS_SEED_DDL@full
-// proves: HFS_SEED_DATA_SCHEMA@lite HFS_SEED_DATA_SCHEMA@full HFS_SEED_TEST_DATA@lite HFS_SEED_TEST_DATA@full
-// proves: HFS_SEED_SECRET_REF@lite HFS_SEED_SECRET_REF@full
+// proves: HFS_SEEDS_SHAPE HFS_SEED_MANIFEST HFS_SEED_DDL
+// proves: HFS_SEED_DATA_SCHEMA HFS_SEED_TEST_DATA
+// proves: HFS_SEED_SECRET_REF
 // The seed data of an app lives in the seed levels of .starcistacks (R375): the shared seeds/ and <env>/seeds/ of a declared environment, each a
 // seeds.yaml manifest (starci/seeds@1) listing every file of its sql/, data/ and files/; no custody, no schema statement (seed data is never a
 // migration), data that validates against its declared schema, no test data where production applies; a plaintext secret is R06's, and the
@@ -230,7 +230,7 @@ test('addSeedEntries creates a manifest, keeps an id it already holds and writes
 });
 
 for (const edition of ['lite'] as const) {
-  test(`${edition}: starci app check places the seed levels in app.starcistacks and reports R375 through the app root`, (t) => {
+  test(`starci app check places the seed levels in app.starcistacks and reports R375 through the app root`, (t) => {
     const files = { ...VALID, '.starcistacks/dev/environment.json': '{}', '.starcistacks/dev/seeds/old.sql': 'select 1;\n' };
     const root = tree(t, files);
     const declaration = { hfs: 3, kind: 'app', project: 'fixture', edition, sides: { be: { apps: [{ name: 'core', kind: 'api' }] }, fe: { apps: [{ name: 'web', kind: 'next' }] } } };
@@ -240,7 +240,7 @@ for (const edition of ['lite'] as const) {
     assert.deepEqual(codes(relevant), ['HFS_SEEDS_SHAPE .starcistacks/dev/seeds/old.sql', 'HFS_STACKS_SHAPE .starcistacks/dev/seeds/old.sql']);
   });
 
-  test(`${edition}: app.starcistacks places a customised service's image folder .starcistacks/images/<name>/; a file beside the folders is still outside the shape`, (t) => {
+  test(`app.starcistacks places a customised service's image folder .starcistacks/images/<name>/; a file beside the folders is still outside the shape`, (t) => {
     const files = { ...VALID, '.starcistacks/images/worker/Dockerfile': 'FROM scratch\n', '.starcistacks/images/worker/bridge/index.js': 'export {}\n', '.starcistacks/images/Dockerfile': 'FROM scratch\n' };
     const root = tree(t, files);
     const declaration = { hfs: 3, kind: 'app', project: 'fixture', edition, sides: { be: { apps: [{ name: 'core', kind: 'api' }] }, fe: { apps: [{ name: 'web', kind: 'next' }] } } };
@@ -249,7 +249,7 @@ for (const edition of ['lite'] as const) {
     assert.deepEqual(codes(shape), ['HFS_STACKS_SHAPE .starcistacks/images/Dockerfile']);
   });
 
-  test(`${edition}: a new app is scaffolded with the shared level and a level per declared environment, each with an empty manifest`, (t) => {
+  test(`a new app is scaffolded with the shared level and a level per declared environment, each with an empty manifest`, (t) => {
     const { root } = scaffoldApp({ name: 'demo', into: mkdtemp(t, 'starci-seeds-scaffold-'), harness: { version: '1.1.0-alpha.3' }, edition, presets: bundledPresets(), lock: lockedOk, initGit: init });
     const environments = [...(declaredEnvironments(root)?.keys() ?? [])];
     assert.ok(environments.length >= 2, environments.join(', '));

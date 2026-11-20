@@ -1,4 +1,4 @@
-// proves: FE_TRANSPORT_OWNER@lite
+// proves: FE_TRANSPORT_OWNER
 /**
  * The session issuer's client of `modules/auth` (FE-AUTH): it is `@starci/auth/client` over the app's own back-end auth doors, so
  * no file of `modules/auth` takes a transport library or `fetch`, and none keeps module-level mutable state.

@@ -48,8 +48,8 @@ export function applicationStackFindings(repoRoot: string): Parsed[] {
   return doc ? stacksRuntimeFindings({ repoRoot, files, doc }) : [];
 }
 
-/** Lite may retain value-free development custody metadata without declaring a self-hosted development stack. */
-export function liteCustodyDirectory(directory: string): boolean {
+/** An app may retain value-free development custody metadata without declaring a self-hosted development stack. */
+export function custodyDirectory(directory: string): boolean {
   let entries: fs.Dirent[];
   try { entries = fs.readdirSync(directory, { withFileTypes: true }); } catch { return false; }
   return entries.length > 0 && entries.every(entry => {

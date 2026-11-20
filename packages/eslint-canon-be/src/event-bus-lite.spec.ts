@@ -35,7 +35,7 @@ test("the law publishes its rules under their names", () => {
     assert.equal(rules["event-subscription-static"], eventSubscriptionStatic)
 })
 
-test("event-dedupe-key: a lite event payload declares dedupeKey", () => {
+test("event-dedupe-key: a event payload declares dedupeKey", () => {
     lite.run("event-dedupe-key", eventDedupeKey, {
         valid: [
             { filename: EVENT, code: eventWith("OrderPaidPayload", "export interface OrderPaidPayload { readonly dedupeKey: string; readonly orderId: string }") },
@@ -55,7 +55,7 @@ test("event-dedupe-key: a lite event payload declares dedupeKey", () => {
     })
 })
 
-test("event-subscription-static: a lite subscription names an imported topic-queue constant and literal options", () => {
+test("event-subscription-static: a subscription names an imported topic-queue constant and literal options", () => {
     lite.run("event-subscription-static", eventSubscriptionStatic, {
         valid: [
             { filename: REACTOR, code: `${SUBSCRIBE_HEAD}registry.subscribe(BILLING_ORDER_PAID_MAILER_TOPIC_QUEUE, consumer)` },

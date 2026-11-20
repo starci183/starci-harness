@@ -2,10 +2,10 @@
 // consume, the keys sealed under .starcistacks/<env>/secrets/*.enc and the keys the stack declares are one set, and a
 // stored value parses as its reader's type. Fixtures reproduce the shapes of a reference app (parity, value
 // shape); sealed members are dotenv sops envelopes whose key names stay cleartext.
-// proves: ENV_KEY_ENVIRONMENT_NAMED@lite ENV_KEY_ENVIRONMENT_NAMED@full
-// proves: ENV_REQUIRED_UNSET@lite ENV_REQUIRED_UNSET@full ENV_SEALED_UNREAD@lite ENV_SEALED_UNREAD@full
-// proves: ENV_DUPLICATE@lite ENV_DUPLICATE@full ENV_PUBLIC_SEALED@lite ENV_PUBLIC_SEALED@full
-// proves: ENV_EXAMPLE_DRIFT@lite ENV_EXAMPLE_DRIFT@full ENV_VALUE_SHAPE@lite ENV_VALUE_SHAPE@full
+// proves: ENV_KEY_ENVIRONMENT_NAMED
+// proves: ENV_REQUIRED_UNSET ENV_SEALED_UNREAD
+// proves: ENV_DUPLICATE ENV_PUBLIC_SEALED
+// proves: ENV_EXAMPLE_DRIFT ENV_VALUE_SHAPE
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -118,7 +118,7 @@ for (const edition of ['lite'] as const) {
     };
     const findings = envFindingsOf(tree(t, files), files, edition);
     for (const code of ENV_CODES) {
-      assert.ok(findings.some((finding) => finding.code === code), `${edition} must report ${code}`);
+      assert.ok(findings.some((finding) => finding.code === code), `must report ${code}`);
     }
     assert.ok(findings.every((finding) => finding.level === 'error'));
   });
@@ -163,7 +163,7 @@ for (const edition of ['lite'] as const) {
   });
 }
 
-test('env parity flags required reads neither sealed nor declared and sealed keys nobody reads (lite)', (t) => {
+test('env parity flags required reads neither sealed nor declared and sealed keys nobody reads', (t) => {
   const files = { ...BASE, ...APP_MEMBERS };
   const root = tree(t, files);
   const findings = parityOf(root, files);
@@ -180,7 +180,7 @@ test('env parity flags required reads neither sealed nor declared and sealed key
   assert.deepEqual(codes(findings, ENV_EXAMPLE_DRIFT), []);
 });
 
-test('env parity is clean in lite when every required read is sealed or declared (lite)', (t) => {
+test('env parity is clean in lite when every required read is sealed or declared', (t) => {
   const files = {
     ...BASE,
     '.starcistacks/dev/secrets/app.enc': sealedDotenv(['ENGINE_SHARED_SECRET', 'PRIMARY_DB_URL', 'WORKER_MANAGE_AGENTS', 'CALENDAR_WEBHOOK_SECRET']),
@@ -197,8 +197,8 @@ test('env parity reports the same violations through checkRepo under both editio
   for (const edition of ['lite'] as const) {
     const root = tree(t, files);
     const findings = checkRepo({ repoRoot: root, declaration: declaration(edition), manifest, files: Object.keys(files), tree: false }).findings;
-    assert.ok(findings.some((finding) => finding.code === ENV_REQUIRED_UNSET), `${edition} judges ENV_REQUIRED_UNSET`);
-    assert.ok(findings.some((finding) => finding.code === ENV_SEALED_UNREAD), `${edition} judges ENV_SEALED_UNREAD`);
+    assert.ok(findings.some((finding) => finding.code === ENV_REQUIRED_UNSET), `judges ENV_REQUIRED_UNSET`);
+    assert.ok(findings.some((finding) => finding.code === ENV_SEALED_UNREAD), `judges ENV_SEALED_UNREAD`);
   }
 });
 
@@ -418,7 +418,7 @@ for (const edition of ['lite'] as const) {
     for (const third of ['app', 'zzz']) {
       const files = transportFiles({ [`.starcistacks/production/secrets/${third}.enc`]: sealedDotenv(['VPS_HOST']) });
       const duplicates = codes(envFindingsOf(tree(t, files), files, edition), ENV_DUPLICATE);
-      assert.ok(duplicates.length >= 1 && duplicates.every((finding) => /VPS_HOST/u.test(String(finding.message))), `${edition} ${third}`);
+      assert.ok(duplicates.length >= 1 && duplicates.every((finding) => /VPS_HOST/u.test(String(finding.message))), `${third}`);
     }
   });
 

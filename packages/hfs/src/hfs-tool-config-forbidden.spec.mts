@@ -1,5 +1,5 @@
-// proves: HFS_TOOL_CONFIG_LOCAL@lite
-// proves: HFS_TOOL_CONFIG_LOCAL@full
+// proves: HFS_TOOL_CONFIG_LOCAL
+// proves: HFS_TOOL_CONFIG_LOCAL
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -13,7 +13,7 @@ const CODE = 'HFS_TOOL_CONFIG_LOCAL';
 
 for (const edition of ['lite'] as const) {
   for (const side of ['be', 'fe']) {
-    test(`${edition}: ${side} rejects a forbidden tool config and accepts the factory filename`, (context) => {
+    test(`${side} rejects a forbidden tool config and accepts the factory filename`, (context) => {
       const temporaryRoot = path.resolve(os.tmpdir());
       const repoRoot = fs.mkdtempSync(path.join(temporaryRoot, 'hfs-proof-forbidden-config-'));
       assert.equal(path.dirname(repoRoot), temporaryRoot);

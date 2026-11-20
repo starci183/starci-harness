@@ -7,7 +7,7 @@ import { git, push, ref, repository, ZERO } from './helpers/pre-push-fixture.mjs
 import { hookShapeFindings } from '../runtime/scripts/hfs/runtime-rules/hook-shape.mjs';
 
 for (const edition of ['lite'] as const) {
-  test(`${edition}: the rendered hook permits clean main and candidate pushes without release evidence`, t => {
+  test(`the rendered hook permits clean main and candidate pushes without release evidence`, t => {
     const target = renderTargets({ ...structuredClone(APP), edition }, PRESETS).find(item => item.path === '.husky/pre-push');
     assert.ok(target);
     const repo = repository(t, target.content);
@@ -17,7 +17,7 @@ for (const edition of ['lite'] as const) {
     assert.deepEqual(hookShapeFindings({ fileSet: new Set([file]), read: () => target.content }), []);
   });
 
-  test(`${edition}: an annotated tag can leave with main; a lightweight tag or deleted main refuses the whole push`, t => {
+  test(`an annotated tag can leave with main; a lightweight tag or deleted main refuses the whole push`, t => {
     const target = renderTargets({ ...structuredClone(APP), edition }, PRESETS).find(item => item.path === '.husky/pre-push');
     assert.ok(target);
     const repo = repository(t, target.content);

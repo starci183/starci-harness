@@ -1,5 +1,5 @@
-// proves: HFS_COVERAGE_SCOPE_DRIFT@lite
-// proves: HFS_COVERAGE_SCOPE_DRIFT@full
+// proves: HFS_COVERAGE_SCOPE_DRIFT
+// proves: HFS_COVERAGE_SCOPE_DRIFT
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -28,7 +28,7 @@ const mutations: [string, (text: string) => string][] = [
 ];
 
 for (const edition of ['lite'] as const) {
-  test(`${edition} accepts the rendered coverage scope without HFS_COVERAGE_SCOPE_DRIFT`, async context => {
+  test(`accepts the rendered coverage scope without HFS_COVERAGE_SCOPE_DRIFT`, async context => {
     const options = synced(context, edition);
     const findings = await managedFindings(options);
     assert.deepEqual(findings, []);
@@ -36,7 +36,7 @@ for (const edition of ['lite'] as const) {
   });
 
   for (const [relative, mutate] of mutations) {
-    test(`${edition} rejects drift in ${relative} as HFS_COVERAGE_SCOPE_DRIFT`, async context => {
+    test(`rejects drift in ${relative} as HFS_COVERAGE_SCOPE_DRIFT`, async context => {
       const options = synced(context, edition);
       const file = path.join(options.repoRoot, relative);
       const rendered = fs.readFileSync(file, 'utf8');

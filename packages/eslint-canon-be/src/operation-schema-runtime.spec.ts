@@ -1,5 +1,5 @@
-// proves: BE_OPERATION_CONTRACT@lite
-// proves: BE_OPERATION_CONTRACT@full
+// proves: BE_OPERATION_CONTRACT
+// proves: BE_OPERATION_CONTRACT
 /** A generic request is usable only with the schemas and runtime pipe of the same table. */
 import test from "node:test"
 import { appDeclaration } from "../fixtures/app.ts"

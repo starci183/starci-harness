@@ -1,5 +1,5 @@
-// proves: BE_APP_OPTIONS_COMPOSITION@lite BE_APP_OPTIONS_COMPOSITION@full
-// proves: BE_APP_COMPOSITION_BUDGET@lite BE_APP_COMPOSITION_BUDGET@full
+// proves: BE_APP_OPTIONS_COMPOSITION
+// proves: BE_APP_COMPOSITION_BUDGET
 import test from "node:test"
 import tsParser from "@typescript-eslint/parser"
 import { appOptionsCompositionFree, appFileBudget } from "./app-composition.ts"

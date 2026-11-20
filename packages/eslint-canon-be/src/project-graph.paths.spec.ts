@@ -167,7 +167,7 @@ test("a misplaced spec that is not TypeScript is not on the lint surface: it sta
     })
 })
 
-test("a file a file slot names by its path keeps its name: the lite entity registry is no suffix finding", (t) => {
+test("a file a file slot names by its path keeps its name: the entity registry is no suffix finding", (t) => {
     const s = scene(t, [
         "src/modules/platform/database/entities.ts",
         "src/modules/platform/database/database.module.ts",

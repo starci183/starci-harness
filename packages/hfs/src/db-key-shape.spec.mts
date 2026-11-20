@@ -1,9 +1,9 @@
-// proves: DB_PRIMARY_KEY_SHAPE@lite
-// proves: DB_PRIMARY_KEY_SHAPE@full
-// proves: DB_FOREIGN_KEY_NAME@lite
-// proves: DB_FOREIGN_KEY_NAME@full
-// proves: DB_FOREIGN_KEY_INDEX@lite
-// proves: DB_FOREIGN_KEY_INDEX@full
+// proves: DB_PRIMARY_KEY_SHAPE
+// proves: DB_PRIMARY_KEY_SHAPE
+// proves: DB_FOREIGN_KEY_NAME
+// proves: DB_FOREIGN_KEY_NAME
+// proves: DB_FOREIGN_KEY_INDEX
+// proves: DB_FOREIGN_KEY_INDEX
 /** The key shape of an app table (R431): `id uuid`, `[<role>_]<referenced table singular>_id` foreign keys, an index per foreign key, and the landed backlog. */
 import test from 'node:test';
 import type { TestContext } from 'node:test';
@@ -108,7 +108,7 @@ test('the key shape of a migration already on the base is the backlog: reported 
   assert.deepEqual(withLandedMigrationsKnown(fresh, { repoRoot }).map(({ path: file, level }) => [file, level]), [[FILE, 'info'], [next, 'error']]);
 });
 
-test('the lite skeleton baseline, with its sync-managed identity module, passes the key shape rules it is judged by', async (t) => {
+test('the skeleton baseline, with its sync-managed identity module, passes the key shape rules it is judged by', async (t) => {
   const template = fs.readFileSync(new URL('../templates/app/skeleton/db/migrations/__timestamp___baseline.sql', import.meta.url), 'utf8');
   const sql = template.split('\n').filter((line) => !line.trimStart().startsWith('{{>')).join('\n');
   assert.deepEqual((await keyFindings(t, 'lite', sql)).map(({ code, table, column }) => [code, table, column]), []);

@@ -1,7 +1,7 @@
-// proves: FE_SWR_KEY_IDENTITY@lite
-// proves: FE_SWR_KEY_IDENTITY@full
-// proves: FE_SWR_MUTATION_RESOURCE_IDENTITY@lite
-// proves: FE_SWR_MUTATION_RESOURCE_IDENTITY@full
+// proves: FE_SWR_KEY_IDENTITY
+// proves: FE_SWR_KEY_IDENTITY
+// proves: FE_SWR_MUTATION_RESOURCE_IDENTITY
+// proves: FE_SWR_MUTATION_RESOURCE_IDENTITY
 import test from "node:test"
 import { projectFixture } from "../../eslint-canon-be/fixtures/project/tester.ts"
 import { rules } from "./project-graph.ts"

@@ -1,5 +1,5 @@
-// proves: DB_DEFINER_SAFE@lite
-// proves: DB_DEFINER_SAFE@full
+// proves: DB_DEFINER_SAFE
+// proves: DB_DEFINER_SAFE
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';

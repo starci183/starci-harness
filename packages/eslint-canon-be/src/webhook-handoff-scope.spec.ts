@@ -1,5 +1,5 @@
 /** R263 scope proofs share a process isolated from the original webhook type fixtures. */
-// proves: BE_WEBHOOK_SCOPE@lite BE_WEBHOOK_SCOPE@full
+// proves: BE_WEBHOOK_SCOPE
 import assert from "node:assert/strict"
 import test from "node:test"
 import { BE_DECLARATION, TYPED_ROOT, at, ruleTester } from "../fixtures/typed/tester.ts"

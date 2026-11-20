@@ -1,5 +1,5 @@
-// proves: HFS_MONO_NEST_PROJECTS@lite
-// proves: HFS_MONO_NEST_PROJECTS@full
+// proves: HFS_MONO_NEST_PROJECTS
+// proves: HFS_MONO_NEST_PROJECTS
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -44,25 +44,25 @@ function fixture(t: TestContext, edition: string, apps: App[] = MULTIPLE_APPS, m
 }
 
 for (const edition of ['lite'] as const) {
-  test(`${edition} accepts valid single-service and multiple-service Nest monorepos`, (t) => {
+  test(`accepts valid single-service and multiple-service Nest monorepos`, (t) => {
     assert.deepEqual(monorepoFindings(fixture(t, edition, SINGLE_APP)), []);
     assert.deepEqual(monorepoFindings(fixture(t, edition)), []);
   });
 
-  test(`${edition} rejects invalid Nest CLI JSON`, (t) => {
+  test(`rejects invalid Nest CLI JSON`, (t) => {
     const input = fixture(t, edition);
     fs.writeFileSync(path.join(input.repoRoot, NEST_CLI), '{');
     assert.deepEqual(monorepoFindings(input).map(({ code }) => code), ['HFS_MONO_NEST_PROJECTS']);
   });
 
-  test(`${edition} rejects a missing or false Nest monorepo flag`, (t) => {
+  test(`rejects a missing or false Nest monorepo flag`, (t) => {
     for (const monorepo of [undefined, false]) {
       const input = fixture(t, edition, SINGLE_APP, (cli) => { cli.monorepo = monorepo; });
       assert.deepEqual(monorepoFindings(input).map(({ code }) => code), ['HFS_MONO_NEST_PROJECTS']);
     }
   });
 
-  test(`${edition} rejects projects missing from or added beyond the declared back-end apps`, (t) => {
+  test(`rejects projects missing from or added beyond the declared back-end apps`, (t) => {
     const missing = fixture(t, edition, MULTIPLE_APPS, (cli) => { delete cli.projects.worker; });
     assert.deepEqual(monorepoFindings(missing).map(({ code }) => code), ['HFS_MONO_NEST_PROJECTS']);
     const extra = fixture(t, edition, MULTIPLE_APPS, (cli) => {
@@ -71,14 +71,14 @@ for (const edition of ['lite'] as const) {
     assert.deepEqual(monorepoFindings(extra).map(({ code }) => code), ['HFS_MONO_NEST_PROJECTS']);
   });
 
-  test(`${edition} rejects invalid Nest project type, root and sourceRoot independently`, (t) => {
+  test(`rejects invalid Nest project type, root and sourceRoot independently`, (t) => {
     for (const [field, value] of [['type', 'library'], ['root', 'src'], ['sourceRoot', 'src/core']] as [keyof NestProject, string][]) {
       const input = fixture(t, edition, MULTIPLE_APPS, (cli) => { (cli.projects.core as NestProject)[field] = value; });
       assert.deepEqual(monorepoFindings(input).map(({ code }) => code), ['HFS_MONO_NEST_PROJECTS']);
     }
   });
 
-  test(`${edition} rejects a default Nest project that is a worker or undeclared app`, (t) => {
+  test(`rejects a default Nest project that is a worker or undeclared app`, (t) => {
     for (const name of ['worker', 'billing']) {
       const input = fixture(t, edition, MULTIPLE_APPS, (cli) => {
         cli.root = `apps/${name}`;
@@ -88,7 +88,7 @@ for (const edition of ['lite'] as const) {
     }
   });
 
-  test(`${edition} rejects a default Nest sourceRoot outside its declared API app`, (t) => {
+  test(`rejects a default Nest sourceRoot outside its declared API app`, (t) => {
     const input = fixture(t, edition, MULTIPLE_APPS, (cli) => { cli.sourceRoot = 'apps/worker/src'; });
     const findings = monorepoFindings(input);
     assert.deepEqual(findings.map(({ code }) => code), ['HFS_MONO_NEST_PROJECTS']);

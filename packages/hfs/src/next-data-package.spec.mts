@@ -1,4 +1,4 @@
-// proves: FE_STACK_FORBIDDEN@lite
+// proves: FE_STACK_FORBIDDEN
 // The SWR data helpers are the package @starci/next-data: a starter's front end depends on it at its pin, keys its SWR config by the
 // viewer through it and keeps no middleware of its own, the data concern of the stack names it, and R244 lists the rule that refuses an
 // app's own middleware.

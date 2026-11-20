@@ -1,32 +1,17 @@
 import type { DynamicModule } from "@nestjs/common"
-import { noteEntities, noteMigrations } from "@modules/domain/note"
 import { ClockModule } from "@modules/platform/clock"
-import {
-    DatabaseModule,
-    type DatabaseConnectionConfig,
-    type DatabaseConnectionOptions,
-} from "@modules/platform/database"
+import { DatabaseModule } from "@modules/platform/database"
+import { PRIMARY_ENTITIES } from "@modules/platform/database/entities"
 import { IdsModule } from "@modules/platform/ids"
 import { HttpModule } from "@modules/platform/http"
-import { httpSecurityEntities, httpSecurityMigrations } from "@modules/platform/http-security"
 import { LoggingModule } from "@modules/platform/logging"
 import type { CliAppOptions } from "../cli.options"
 
-/** Binds the primary connection to its owners' entities and migrations during composition. */
-const primaryConnectionOf = (primary: DatabaseConnectionConfig): DatabaseConnectionOptions => ({
-    ...primary,
-    entities: [...httpSecurityEntities, ...noteEntities],
-    migrations: [...httpSecurityMigrations, ...noteMigrations],
-})
-
-/** The clock, logger and declared database connections shared by CLI commands. */
+/** The shared clock, logger and least-privilege connection used by the operator commands. */
 export const platformModules = (options: CliAppOptions): Array<DynamicModule> => [
     ClockModule.register({ isGlobal: true }),
     IdsModule.register({ isGlobal: true }),
     LoggingModule.register({ isGlobal: true, info: "stderr" }),
     HttpModule.register({ isGlobal: true }),
-    DatabaseModule.register({
-        isGlobal: true,
-        connections: [primaryConnectionOf(options.database)],
-    }),
+    DatabaseModule.register({ isGlobal: true, connections: options.connections, entities: PRIMARY_ENTITIES }),
 ]

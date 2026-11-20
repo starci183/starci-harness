@@ -3,14 +3,14 @@ export const patternFilePath = (file: string, root = 'be'): string => root === '
 
 const unquote = (item: string) => item.trim().replace(/^["']|["']$/g, '');
 
-/** Derives slots for files/liteFiles entries through the app resolver supplied by the caller. */
+/** Derives slots for files entries through the app resolver supplied by the caller. */
 export function derivePatternFileSlots(text: string, classify: (path: string) => string | null | undefined): { text: string, problems: string[] } {
   const lines = text.split('\n');
   const problems: string[] = [];
   let inFiles = false;
   for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i] ?? '';
-    if (/^[A-Za-z][A-Za-z0-9_-]*:/.test(line)) inFiles = /^(?:files|liteFiles):\s*$/.test(line);
+    if (/^[A-Za-z][A-Za-z0-9_-]*:/.test(line)) inFiles = /^files:\s*$/.test(line);
     if (!inFiles) continue;
     const match = /^ {2}- path: (.+)$/.exec(line);
     if (!match) continue;

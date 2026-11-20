@@ -6,9 +6,9 @@
  * The fixture app `api` (kind api) holds `api.env.ts`, `api.options.ts`, `app.module.ts`, `main.ts` and the groups of `compose/`.
  */
 import test from "node:test"
-// proves: BE_COMPOSITION_UNTYPED@lite BE_COMPOSITION_UNTYPED@full
-// proves: BE_APP_ENV_REQUIRED@lite BE_APP_ENV_REQUIRED@full BE_APP_MODULE_LIST_INLINE@lite BE_APP_MODULE_LIST_INLINE@full
-// proves: BE_APP_BUSINESS_ROLE@lite BE_APP_BUSINESS_ROLE@full
+// proves: BE_COMPOSITION_UNTYPED
+// proves: BE_APP_ENV_REQUIRED BE_APP_MODULE_LIST_INLINE
+// proves: BE_APP_BUSINESS_ROLE
 import assert from "node:assert/strict"
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"

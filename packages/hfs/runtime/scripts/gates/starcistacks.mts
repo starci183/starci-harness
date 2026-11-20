@@ -403,7 +403,7 @@ const checkIgnoreRules = ({ repo, root, add }: RootCheck): void => {
   }
 };
 // Custody layout (modules/schemas/stacks-layout.yaml custody, the product repositories' secrets-guard).
-// The images folder holds the managed db image of a lite app (slot app.db.image), never custody or an environment.
+// The images folder holds the managed db image of an app (slot app.db.image), never custody or an environment.
 const envDirs = (repo: string, root: string): fs.Dirent[] => fs.readdirSync(path.join(repo, root), { withFileTypes: true }).filter((entry) => entry.isDirectory() && entry.name !== 'images');
 const checkCustodyLayout = ({ repo, own, add }: { repo: string; own: Declaration; add: AddFinding }): void => {
   if (!own.rooted) return;

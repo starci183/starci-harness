@@ -14,7 +14,7 @@ const standard = parseYaml(fs.readFileSync(new URL('../runtime/knowledge/hfs/ci-
 const nodeOptions = `--max-old-space-size=${standard.heap.minMiB}`;
 
 for (const edition of ['lite'] as const) {
-  test(`${edition} CI gives typecheck, lint and coverage the standard heap on each step`, () => {
+  test(`CI gives typecheck, lint and coverage the standard heap on each step`, () => {
     const hfs = { hfs: 3, kind: 'app', edition, project: 'heap-proof', sides: {
       be: { apps: [{ name: 'api', kind: 'api' }] },
       fe: { grammar: 'core', apps: [{ name: 'web', kind: 'next' }], reads: ['be/contracts/'] },

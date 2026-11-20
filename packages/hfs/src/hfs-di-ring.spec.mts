@@ -1,4 +1,4 @@
-// proves: BE_DI_RING@lite
+// proves: BE_DI_RING
 // R401: the boot proof's worker scans the registered root for provider rings before it compiles, and names each one.
 //
 // What the real Nest does with each fixture (Nest 11.2.5, Test.createTestingModule({ imports: [AppModule] }).compile() with no scan, under a
@@ -76,7 +76,7 @@ import { BillingModule } from '@modules/billing/billing.module';
 @Module({ imports: [TriggersModule, BillingModule] }) export class AppModule {}`;
 const seven = (port: string) => ({ ...triggers, 'src/modules/billing/billing.module.ts': billing(port), 'apps/api/src/app.module.ts': root });
 
-test('BE_DI_RING lite: a three-provider ring through useExisting is named, provider by provider, and the hanging compile is never started', t => {
+test('BE_DI_RING: a three-provider ring through useExisting is named, provider by provider, and the hanging compile is never started', t => {
   const started = Date.now();
   const report = appWiring(app(t, seven('BankFeedTriggerService')));
   assert.equal(report.ok, false);
@@ -92,13 +92,13 @@ test('BE_DI_RING lite: a three-provider ring through useExisting is named, provi
   assert.ok(Date.now() - started < 15000, 'the scan answers before the compile deadline a hanging compile would run into');
 });
 
-test('BE_DI_RING lite: the same app with the port on its own provider passes the scan and the compile', t => {
+test('BE_DI_RING: the same app with the port on its own provider passes the scan and the compile', t => {
   const report = appWiring(app(t, seven('BankFeedDeciderService')));
   assert.deepEqual(report.findings, []);
   assert.equal(report.ok, true);
 });
 
-test('BE_DI_RING lite: a ring of two, which Nest refuses itself (CircularDependencyException), is named the same way', t => {
+test('BE_DI_RING: a ring of two, which Nest refuses itself (CircularDependencyException), is named the same way', t => {
   // One file, declared in order, so the ring is the providers' and not an import ring of files (which leaves a type undefined).
   const source = `import { Inject, Injectable, Module } from '@nestjs/common';
 @Injectable() export class Second { constructor(@Inject('first') readonly first: unknown) {} }
@@ -109,7 +109,7 @@ test('BE_DI_RING lite: a ring of two, which Nest refuses itself (CircularDepende
   assert.match(report.findings[0]!.message, /provider ring "first" -> Second -> "first" \("first" \[AppModule, be\/apps\/api\/src\/app\.module\.ts\] injects Second by constructor\[0\]; Second \[AppModule, be\/apps\/api\/src\/app\.module\.ts\] injects "first" by @Inject constructor\[0\]\)/u);
 });
 
-test('BE_DI_RING lite: a ring of factories is named by its inject entries', t => {
+test('BE_DI_RING: a ring of factories is named by its inject entries', t => {
   const source = `import { Module } from '@nestjs/common';
 @Module({ providers: [
   { provide: 'first', inject: ['second'], useFactory: (second: unknown) => second },
@@ -120,7 +120,7 @@ test('BE_DI_RING lite: a ring of factories is named by its inject entries', t =>
   assert.match(report.findings[0]!.message, /provider ring "first" -> "second" -> "first" .*injects "second" by useFactory inject\[0\]/u);
 });
 
-test('BE_DI_RING lite: a ring that one forwardRef closes is no finding of this rule (Nest defers that edge; R85 refuses forwardRef)', t => {
+test('BE_DI_RING: a ring that one forwardRef closes is no finding of this rule (Nest defers that edge; R85 refuses forwardRef)', t => {
   const source = `import { Inject, Injectable, Module, forwardRef } from '@nestjs/common';
 @Injectable() export class Third { constructor(@Inject(forwardRef(() => First)) readonly first: unknown) {} }
 @Injectable() export class Second { constructor(readonly third: Third) {} }
@@ -129,7 +129,7 @@ test('BE_DI_RING lite: a ring that one forwardRef closes is no finding of this r
   assert.equal(appWiring(app(t, { 'apps/api/src/app.module.ts': source })).ok, true);
 });
 
-test('BE_DI_RING lite: every elementary ring of a tangle is reported once, from its member that sorts first', async () => {
+test('BE_DI_RING: every elementary ring of a tangle is reported once, from its member that sorts first', async () => {
   const require = createRequire(import.meta.url);
   require('reflect-metadata');
   const { Injectable, Module } = require('@nestjs/common') as typeof import('@nestjs/common');
@@ -146,7 +146,7 @@ test('BE_DI_RING lite: every elementary ring of a tangle is reported once, from 
   assert.deepEqual(rings.map(ringChain).sort(), ['A -> B -> A', 'A -> B -> C -> A']);
 });
 
-test('BE_DI_RING lite: an optional dependency nothing provides is no edge; one that resolves is', async () => {
+test('BE_DI_RING: an optional dependency nothing provides is no edge; one that resolves is', async () => {
   const require = createRequire(import.meta.url);
   require('reflect-metadata');
   const { Inject, Injectable, Module, Optional } = require('@nestjs/common') as typeof import('@nestjs/common');
@@ -166,7 +166,7 @@ test('BE_DI_RING lite: an optional dependency nothing provides is no edge; one t
   assert.deepEqual((await scanProviderRings(absent(true), require, () => null)).map(ringChain), ['"port" -> Right -> Left -> "port"']);
 });
 
-test('BE_DI_RING lite: a worker that forges ring text forwards none of it', t => {
+test('BE_DI_RING: a worker that forges ring text forwards none of it', t => {
   const context = app(t, { 'apps/api/src/app.module.ts': `import { Module } from '@nestjs/common'; @Module({}) export class AppModule {}` });
   const forged = (steps: unknown) => appWiring({ ...context, run: () => ({ status: 0, stdout: JSON.stringify({ ok: false, reason: 'provider ring', rings: [{ steps }] }) }) });
   const unsafe = forged([{ token: 'A', module: 'M', file: null, via: 'constructor[0]' }, { token: 'private\nexception text', module: 'M', file: '../../etc/passwd', via: 'anything' }]);
@@ -177,7 +177,7 @@ test('BE_DI_RING lite: a worker that forges ring text forwards none of it', t =>
   assert.equal(safe.findings[0]!.path, 'be/src/a.ts');
 });
 
-test('BE_DI_RING lite: the content finder of app check reports the ring, and full is left to its e2e boot', t => {
+test('BE_DI_RING: the content finder of app check reports the ring, and full is left to its e2e boot', t => {
   const context = app(t, seven('BankFeedTriggerService'));
   const beRoot = path.join(context.repoRoot, 'be');
   const files = context.files.filter((file) => file.startsWith('be/')).map((file) => file.slice('be/'.length));

@@ -13,31 +13,27 @@ export class ScaffoldRefusal extends Error {
 }
 
 /**
- * The refusal of a pattern noun in a lite app whose topic carries a `liteAdapter` (R212)
- * and no lite template in this package: lite has the pattern, but generating its full-adapter templates would write adapter paths
- * unavailable in lite. The pattern is written by hand using the topic's declared lite adapter until the package carries a lite template.
+ * The refusal of a pattern noun whose topic carries an `adapter` (R212) and no templates in this package: generating the topic's
+ * general file tree would write paths its adapter does not have. The pattern is written by hand on the topic's declared adapter until
+ * the package carries its templates.
  */
-export class LiteAdapterRefusal extends ScaffoldRefusal {
+export class AdapterRefusal extends ScaffoldRefusal {
   constructor(command: string, topics: readonly string[]) {
-    super(command, `${command}: the package carries only the full adapter of ${topics.join(', ')}; in a lite app write it on its lite adapter (knowledge/patterns/be/${topics[0]}.yaml liteAdapter)`);
-    this.name = 'LiteAdapterRefusal';
+    super(command, `${command}: the package carries no templates for ${topics.join(', ')}; write it by hand on the adapter the topic declares (knowledge/patterns/be/${topics[0]}.yaml adapter)`);
+    this.name = 'AdapterRefusal';
   }
 }
 
-/**
- * Refuses `command` in a lite app when one of `topics` (pattern topic ids with their parsed documents) carries a `liteAdapter` and
- * has no complete edition-specific file tree: neither a `liteFiles` list nor a place among `liteTemplated`, the topics whose lite
- * templates the package carries.
- */
 /** A pattern topic with its parsed document. */
 export interface PatternTopic {
   readonly id: string;
-  readonly doc?: { readonly liteAdapter?: unknown; readonly liteFiles?: unknown } | null | undefined;
+  readonly doc?: { readonly adapter?: unknown } | null | undefined;
 }
 
-export function refuseFullAdapterInLite({ topics, command, liteTemplated = [] }: { topics: readonly PatternTopic[], command: string, liteTemplated?: readonly string[] }): void {
-  const adapted = topics.filter(({ id, doc }) => doc?.liteAdapter !== undefined && !liteTemplated.includes(id) && (!Array.isArray(doc.liteFiles) || doc.liteFiles.length === 0)).map(({ id }) => id).sort();
-  if (adapted.length) throw new LiteAdapterRefusal(command, adapted);
+/** Refuses `command` when one of `topics` (pattern topic ids with their parsed documents) carries an `adapter` and is not among `templated`, the topics whose templates the package carries. */
+export function refuseUntemplatedAdapter({ topics, command, templated = [] }: { topics: readonly PatternTopic[], command: string, templated?: readonly string[] }): void {
+  const adapted = topics.filter(({ id, doc }) => doc?.adapter !== undefined && !templated.includes(id)).map(({ id }) => id).sort();
+  if (adapted.length) throw new AdapterRefusal(command, adapted);
 }
 
 /**

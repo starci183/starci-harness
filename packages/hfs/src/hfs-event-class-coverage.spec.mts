@@ -1,5 +1,5 @@
-// proves: BE_EVENT_CLASS_CONTRACT@lite
-// proves: BE_EVENT_CLASS_CONTRACT@full
+// proves: BE_EVENT_CLASS_CONTRACT
+// proves: BE_EVENT_CLASS_CONTRACT
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -28,12 +28,12 @@ function eventFixture(t: TestContext, edition: string, events: Record<string, un
 }
 
 for (const edition of ['lite'] as const) {
-  test(`${edition} accepts an event class with the same contract name and version`, (t) => {
+  test(`accepts an event class with the same contract name and version`, (t) => {
     const fixture = eventFixture(t, edition, { 'order.placed': { version: 1 } });
     assert.deepEqual(eventClassContractFindings(fixture), []);
   });
 
-  test(`${edition} rejects a typed event class missing from its vendored contract`, (t) => {
+  test(`rejects a typed event class missing from its vendored contract`, (t) => {
     const fixture = eventFixture(t, edition, {});
     const findings = eventClassContractFindings(fixture);
     assert.deepEqual(findings.map((finding) => finding.code), ['BE_EVENT_CLASS_CONTRACT']);
@@ -41,7 +41,7 @@ for (const edition of ['lite'] as const) {
     assert.match(findings[0]!.message, /does not list/);
   });
 
-  test(`${edition} rejects a contract version that differs from its typed event class`, (t) => {
+  test(`rejects a contract version that differs from its typed event class`, (t) => {
     const fixture = eventFixture(t, edition, { 'order.placed': { version: 2 } });
     const findings = eventClassContractFindings(fixture);
     assert.deepEqual(findings.map((finding) => finding.code), ['BE_EVENT_CLASS_CONTRACT']);

@@ -1,6 +1,6 @@
-// proves: FE_SWR_OUTSIDE_FAMILY@lite FE_SWR_OUTSIDE_FAMILY@full
-// proves: FE_OP_OUTSIDE_SWR_HOOK@lite FE_OP_OUTSIDE_SWR_HOOK@full
-// proves: FE_SUBSCRIPTION_NO_SNAPSHOT@lite FE_SUBSCRIPTION_NO_SNAPSHOT@full
+// proves: FE_SWR_OUTSIDE_FAMILY
+// proves: FE_OP_OUTSIDE_SWR_HOOK
+// proves: FE_SUBSCRIPTION_NO_SNAPSHOT
 import assert from "node:assert/strict"
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"

@@ -1,10 +1,10 @@
 /** The sides a project declares (PROJECT-1): hfs.json `sides` is any non-empty subset of be, fe and packages; R399 holds the tree and the stack declaration to it. */
-// proves: HFS_SIDE_UNDECLARED@lite
-// proves: HFS_SIDE_UNDECLARED@full
-// proves: HFS_SIDE_FOLDER_MISSING@lite
-// proves: STACKS_SIDES_DRIFT@lite
-// proves: STACKS_SIDES_UNDECLARED@lite
-// proves: STACKS_COMPONENT_SIDE@lite
+// proves: HFS_SIDE_UNDECLARED
+// proves: HFS_SIDE_UNDECLARED
+// proves: HFS_SIDE_FOLDER_MISSING
+// proves: STACKS_SIDES_DRIFT
+// proves: STACKS_SIDES_UNDECLARED
+// proves: STACKS_COMPONENT_SIDE
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { HfsSlotsError, declaredAppSides, loadSlotManifest, resolveRepoDeclaration } from '../runtime/scripts/hfs/slots.mjs';

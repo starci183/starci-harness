@@ -1,9 +1,9 @@
-// proves: FE_SLOT_FILE_ROLE@lite
-// proves: FE_SLOT_FILE_ROLE@full
-// proves: HFS_DOC_NOT_ENGLISH@lite
-// proves: HFS_DOC_NOT_ENGLISH@full
-// proves: FE_NO_TESTS@lite
-// proves: FE_NO_TESTS@full
+// proves: FE_SLOT_FILE_ROLE
+// proves: FE_SLOT_FILE_ROLE
+// proves: HFS_DOC_NOT_ENGLISH
+// proves: HFS_DOC_NOT_ENGLISH
+// proves: FE_NO_TESTS
+// proves: FE_NO_TESTS
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -38,12 +38,12 @@ const hookFiles = {
 const otherLanguage = 'h\u1ea1n cu\u1ed1i \u0111\u00e3 qua';
 
 for (const edition of ['lite'] as const) {
-  test(`${edition} R94 accepts named files inside their owning hook folder`, t => {
+  test(`R94 accepts named files inside their owning hook folder`, t => {
     const root = architectureFixture(t, edition, hookFiles);
     assert.deepEqual(runArch(root).violations.filter(item => item.ruleId === 'FE_SLOT_FILE_ROLE'), []);
   });
 
-  test(`${edition} R94 accepts the Next metadata files of a route segment (a per-page share image)`, t => {
+  test(`R94 accepts the Next metadata files of a route segment (a per-page share image)`, t => {
     const root = architectureFixture(t, edition, {
       'apps/web/src/app/[locale]/(auth)/cv/[slug]/opengraph-image.tsx': 'export default function Image() { return null; }\n',
       'apps/web/src/app/[locale]/(auth)/cv/[slug]/twitter-image.tsx': 'export default function Image() { return null; }\n',
@@ -51,7 +51,7 @@ for (const edition of ['lite'] as const) {
     assert.deepEqual(runArch(root).violations.filter(item => item.ruleId === 'FE_SLOT_FILE_ROLE' && item.path?.includes('/cv/') === true), []);
   });
 
-  test(`${edition} R94 rejects a route role in hooks and a file where a folder belongs`, t => {
+  test(`R94 rejects a route role in hooks and a file where a folder belongs`, t => {
     const root = architectureFixture(t, edition, {
       ...hookFiles,
       'apps/web/src/hooks/orders/page.tsx': 'export default () => null;\n',
@@ -64,7 +64,7 @@ for (const edition of ['lite'] as const) {
   });
 
   for (const profile of ['be', 'fe'] as const) {
-    test(`${edition} ${profile} R96 accepts English prose and applicable localized YAML data`, t => {
+    test(`${profile} R96 accepts English prose and applicable localized YAML data`, t => {
       const root = architectureFixture(t, edition, {
         'docs/guide.md': '# Guide\n\nEnglish prose and examples.\n',
         'knowledge/guide.yaml': 'summary: English description.\n',
@@ -75,7 +75,7 @@ for (const edition of ['lite'] as const) {
       assert.deepEqual(report.violations, []);
     });
 
-    test(`${edition} ${profile} R96 rejects prose, fenced code and decomposed text`, t => {
+    test(`${profile} R96 rejects prose, fenced code and decomposed text`, t => {
       const root = architectureFixture(t, edition, {
         'docs/guide.md': `# Guide\n\n${otherLanguage}\n`,
         'docs/example.md': ['# Example', '', '```ts', `const label = '${otherLanguage}';`, '```', ''].join('\n'),
@@ -94,7 +94,7 @@ for (const edition of ['lite'] as const) {
     });
   }
 
-  test(`${edition} R97 accepts production paths and a manifest without test tooling`, t => {
+  test(`R97 accepts production paths and a manifest without test tooling`, t => {
     const root = manifestFixture(t, {
       scripts: { build: 'next build', lint: 'eslint .' },
       dependencies: { next: '16.1.6', react: '19.2.3' },
@@ -104,7 +104,7 @@ for (const edition of ['lite'] as const) {
     ] }), []);
   });
 
-  test(`${edition} R97 rejects test paths, tooling, scripts and dependencies`, t => {
+  test(`R97 rejects test paths, tooling, scripts and dependencies`, t => {
     const root = manifestFixture(t, {
       scripts: { 'test:unit': 'vitest run', quality: 'node --test scripts/' },
       devDependencies: { vitest: '3.2.7', '@testing-library/react': '16.0.0' },

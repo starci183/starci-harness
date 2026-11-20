@@ -1,6 +1,6 @@
 /** BOUNDARY-1 case-5 regression fixtures for full-bleed horizontal separators. */
-// proves: FE_DIVIDER_FULL_BLEED@lite
-// proves: FE_DIVIDER_FULL_BLEED@full
+// proves: FE_DIVIDER_FULL_BLEED
+// proves: FE_DIVIDER_FULL_BLEED
 import assert from "node:assert/strict"
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"

@@ -1,5 +1,5 @@
-// proves: HFS_BYPASS_MARKER@lite
-// proves: HFS_BYPASS_MARKER@full
+// proves: HFS_BYPASS_MARKER
+// proves: HFS_BYPASS_MARKER
 // No bypass lands unnoticed (a loosening is always red). One marker table (scripts/lib/bypass-markers.mts) serves both readers of a tree as it stands:
 //   - the runtime's loosening-state self-check (scripts/lib/loosening-state.mts, specified by src/loosening-state.spec.mts);
 //   - the product rule HFS_BYPASS_MARKER (scripts/hfs/rules/bypass-markers.mts) and `starci app check --staged` (the pre-commit hook), which judge a tree and the index.

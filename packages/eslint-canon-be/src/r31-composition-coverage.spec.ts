@@ -1,5 +1,5 @@
-// proves: BE_FEATURE_NOT_COMPOSED@lite
-// proves: BE_FEATURE_NOT_COMPOSED@full
+// proves: BE_FEATURE_NOT_COMPOSED
+// proves: BE_FEATURE_NOT_COMPOSED
 import test from 'node:test';
 import { projectFixture } from '../fixtures/project/tester.ts';
 import { rules } from './project-graph.ts';

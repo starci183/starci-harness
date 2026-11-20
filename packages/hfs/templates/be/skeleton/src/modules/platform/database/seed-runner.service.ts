@@ -1,33 +1,56 @@
+import { readFile, readdir } from "node:fs/promises"
+import { join } from "node:path"
 import { Injectable } from "@nestjs/common"
-import { InjectLogger, LoggingLogEvent, type Logger } from "@modules/platform/logging"
-import {
-    InjectConnectionSource,
-    InjectDatabaseOptions,
-    InjectReadSeedFiles,
-    type ConnectionOpener,
-    type SeedFileReader,
-} from "./database.port"
-import type { DatabaseOptions } from "./database.options"
-import { DEFAULT_SEED_ENV, seedConnections, seedDirectoryOf } from "./seed-connections.client"
+import type { EntityManager } from "typeorm"
+import { isRecord } from "@modules/platform/primitives"
+import { InjectPrimaryEntityManager, InjectSeedRoot } from "./primary.decorators"
+
+/** The folder seed paths are relative to: the app root the run starts from. */
+export const SEED_ROOT_DEFAULT = "."
+
+/** The stack environment whose seed runs when `--env` is not given. */
+export const DEFAULT_SEED_ENV = "dev"
+
+/**
+ * The SQL seed folder of a seed level under `root`: the shared level every environment runs first
+ * (`.starcistacks/seeds/sql`) when no environment is named, else the environment's own (`.starcistacks/<env>/seeds/sql`).
+ */
+const seedDirectoryOf = (root: string, env?: string): string =>
+    env === undefined ? join(root, ".starcistacks", "seeds", "sql") : join(root, ".starcistacks", env, "seeds", "sql")
+
+/** The `*.sql` files of a seed folder in name order; a folder that is absent holds none. */
+const seedFilesOf = async (directory: string): Promise<ReadonlyArray<string>> => {
+    try {
+        const names = await readdir(directory)
+        return names
+            .filter((name) => name.endsWith(".sql"))
+            .sort((a, b) => a.localeCompare(b))
+            .map((name) => join(directory, name))
+    } catch (error) {
+        if (isRecord(error) && error["code"] === "ENOENT") return []
+        throw error
+    }
+}
 
 @Injectable()
-/** The one seed runner: reads the shared seed files and then those of a stack environment, runs them on the connections they name and logs the report. */
+/** Executes the tracked SQL seeds, the shared level and then the environment's own, through the shared least-privilege EntityManager. */
 export class SeedRunnerService {
     constructor(
-        @InjectDatabaseOptions() private readonly options: DatabaseOptions,
-        @InjectConnectionSource() private readonly opener: ConnectionOpener,
-        @InjectReadSeedFiles() private readonly reader: SeedFileReader,
-        @InjectLogger() private readonly logger: Logger,
+        @InjectPrimaryEntityManager() private readonly entityManager: EntityManager,
+        @InjectSeedRoot() private readonly root: string,
     ) {}
 
-    /** Reads the shared SQL seeds, then those of the environment (dev when none is named), runs them on their connections and logs the report. */
+    /** Runs every SQL seed of the shared level, then of the environment (dev when none is named), in name order; an empty file runs nothing. */
     async run(env: string = DEFAULT_SEED_ENV): Promise<void> {
-        const files = [...(await this.reader.read(seedDirectoryOf())), ...(await this.reader.read(seedDirectoryOf(env)))]
-        const report = await seedConnections(this.options.connections, files, this.opener)
-        this.logger.info(LoggingLogEvent.SeedsApplied, {
-            env,
-            applied: report.applied,
-            unmatched: report.unmatched,
-        })
+        const files = [
+            ...(await seedFilesOf(seedDirectoryOf(this.root))),
+            ...(await seedFilesOf(seedDirectoryOf(this.root, env))),
+        ]
+        await files.reduce<Promise<void>>((done, file) => done.then(() => this.apply(file)), Promise.resolve())
+    }
+
+    private async apply(file: string): Promise<void> {
+        const text = await readFile(file, "utf8")
+        if (text.trim() !== "") await this.entityManager.query(text)
     }
 }

@@ -210,7 +210,7 @@ test('the hfs-run families read the hfs that runs and hfs.json, never the manife
   fs.writeFileSync(path.join(base, '.gitignore'), 'node_modules\ndist\n');
   fs.writeFileSync(path.join(base, 'be', 'package.json'), JSON.stringify({ name: 'be', dependencies: { lib: '2.0.0' } }));
   assert.deepEqual([...differencesByFamily(fingerprintDifferences(before, computeFingerprint({ root: base, tracked, hfsDir }).parts)).keys()], [], 'turbo.json and .gitignore are read by the rules that run every run, a dependency version by no family');
-  fs.writeFileSync(path.join(base, 'hfs.json'), JSON.stringify({ edition: 'full' }));
+  fs.writeFileSync(path.join(base, 'hfs.json'), JSON.stringify({ kind: 'app' }));
   assert.deepEqual([...differencesByFamily(fingerprintDifferences(before, computeFingerprint({ root: base, tracked, hfsDir }).parts)).keys()].sort(), ['db', 'hfs', 'lint', 'secrets', 'sonar', 'uiaudit', 'wiring'], 'the declaration is read by the rules, the custody and the proof');
 });
 

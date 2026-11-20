@@ -1,5 +1,5 @@
-// proves: HFS_PLAINTEXT_SECRET@lite
-// proves: HFS_PLAINTEXT_SECRET@full
+// proves: HFS_PLAINTEXT_SECRET
+// proves: HFS_PLAINTEXT_SECRET
 // The secrets family's records are committed (contexts/project/check-cache.md, "The secrets records"): they hold codes, paths, positions and digests,
 // never secret material, and the commit guard judges the cache files by that contract, not by the `secrets/` folder in their path.
 import assert from 'node:assert/strict';

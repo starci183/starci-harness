@@ -217,22 +217,6 @@ files:
   - path: src/modules/platform/queue/queue-worker.service.spec.ts
     slot: be.platform.queue
     template: queues/platform/queue-worker.service.spec.ts.tpl
-  - path: src/modules/platform/queue/persistence/connection.ts
-    slot: be.persistence
-    role: "The outbox entity array registered on every connection that enqueues."
-    template: queues/platform/persistence.connection.ts.tpl
-  - path: src/modules/platform/queue/persistence/entities/queue-outbox.entity.ts
-    slot: be.persistence
-    template: queues/platform/persistence.queue-outbox.entity.ts.tpl
-  - path: src/modules/platform/queue/persistence/queue.sql.ts
-    slot: be.persistence
-    template: queues/platform/persistence.queue.sql.ts.tpl
-  - path: src/modules/platform/queue/persistence/queue.rows.ts
-    slot: be.persistence
-    template: queues/platform/persistence.queue.rows.ts.tpl
-  - path: src/modules/platform/queue/persistence/migrations/<epochMs13>-create-queue-outbox.ts
-    slot: be.persistence
-    template: queues/platform/persistence.migration.ts.tpl
   - path: src/modules/queues/<queue>/index.ts
     slot: be.queues
     template: queues/queue.index.ts.tpl
@@ -263,7 +247,7 @@ files:
     spec: queue/enqueue-atomic-with-transaction, queue/relay-job-id-is-outbox-id, queue/scheduler-fires-once
     rules: [BE_PATTERN_SPEC_MISSING]
 # Edition lite (R212): the queue is BullMQ on Redis in both editions; only the outbox table's schema authority differs.
-liteAdapter:
+adapter:
   summary: >-
     Under lite the queue pattern is full's, adapter included: producers write the outbox in the caller's transaction, the relay
     adds each committed row to BullMQ with the outbox id as the job id, BullMQ workers run the processors with the queue policy's

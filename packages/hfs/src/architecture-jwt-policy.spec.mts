@@ -1,4 +1,4 @@
-// proves: BE_JWT_ALG_PINNED@lite BE_JWT_ALG_PINNED@full
+// proves: BE_JWT_ALG_PINNED
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { TestContext } from 'node:test';

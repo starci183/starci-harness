@@ -1,5 +1,5 @@
-// proves: BE_QUERY_IN_LOOP@lite
-// proves: BE_QUERY_IN_LOOP@full
+// proves: BE_QUERY_IN_LOOP
+// proves: BE_QUERY_IN_LOOP
 import test from "node:test"
 import { BE_DECLARATION, TYPED_ROOT, at, ruleTester } from "../fixtures/typed/tester.ts"
 import { appDeclaration } from "../fixtures/app.ts"

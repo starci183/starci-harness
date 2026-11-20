@@ -1,10 +1,10 @@
 /** A dev object store is reachable through a public route on the dev tunnel, and the app builds links on that origin (PROJECT-STACKS-15, R428). */
-// proves: STORAGE_PUBLIC_ROUTE_MISSING@lite
-// proves: STORAGE_PUBLIC_ROUTE_MISSING@full
-// proves: STORAGE_PUBLIC_ROUTE_CONSOLE@lite
-// proves: STORAGE_PUBLIC_ROUTE_CONSOLE@full
-// proves: STORAGE_PUBLIC_LINK_INTERNAL@lite
-// proves: STORAGE_PUBLIC_LINK_INTERNAL@full
+// proves: STORAGE_PUBLIC_ROUTE_MISSING
+// proves: STORAGE_PUBLIC_ROUTE_MISSING
+// proves: STORAGE_PUBLIC_ROUTE_CONSOLE
+// proves: STORAGE_PUBLIC_ROUTE_CONSOLE
+// proves: STORAGE_PUBLIC_LINK_INTERNAL
+// proves: STORAGE_PUBLIC_LINK_INTERNAL
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { normalizeLocal } from '../runtime/scripts/hfs/stack-local-config.mjs';

@@ -13,7 +13,7 @@ const declaration = (edition: string, side: string, pattern: string) => ({
 });
 
 for (const edition of ['lite'] as const) {
-  test(`${edition} exposes declared proof patterns as immutable lint metadata`, () => {
+  test(`exposes declared proof patterns as immutable lint metadata`, () => {
     const view = declaredHfsView({
       runtimeRoot: fileURLToPath(new URL('../runtime/', import.meta.url)),
       declaration: declaration(edition, 'be', 'idempotency'),
@@ -23,11 +23,11 @@ for (const edition of ['lite'] as const) {
     assert.throws(() => (view.patterns as string[]).push('projection'), TypeError); // reason: the readonly type is what the test proves is also frozen at run time
   });
 
-  test(`${edition} admits a cross-cutting pattern owned by the backend proof catalog`, () => {
+  test(`admits a cross-cutting pattern owned by the backend proof catalog`, () => {
     assert.doesNotThrow(() => resolveRepoDeclaration(loadSlotManifest(), declaration(edition, 'be', 'idempotency')));
   });
 
-  test(`${edition} still refuses unknown patterns and a backend proof pattern on the frontend`, () => {
+  test(`still refuses unknown patterns and a backend proof pattern on the frontend`, () => {
     for (const [side, pattern] of [['be', 'no-such-pattern'], ['fe', 'idempotency']] as const) {
       assert.throws(() => resolveRepoDeclaration(loadSlotManifest(), declaration(edition, side, pattern)), /HFS_DECLARATION_INVALID/);
     }

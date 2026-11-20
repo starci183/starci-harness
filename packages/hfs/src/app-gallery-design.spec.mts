@@ -1,15 +1,15 @@
-// proves: HFS_APP_GALLERY_DESIGN_CRITIQUE_MISSING@lite
-// proves: HFS_APP_GALLERY_DESIGN_CRITIQUE_MISSING@full
-// proves: HFS_APP_GALLERY_DESIGN_MANIFEST@lite
-// proves: HFS_APP_GALLERY_DESIGN_MANIFEST@full
-// proves: HFS_APP_GALLERY_DESIGN_PAGE_MISSING@lite
-// proves: HFS_APP_GALLERY_DESIGN_PAGE_MISSING@full
-// proves: HFS_APP_GALLERY_DESIGN_UNAPPROVED@lite
-// proves: HFS_APP_GALLERY_DESIGN_UNAPPROVED@full
-// proves: HFS_APP_GALLERY_DESIGN_SHOT_MISSING@lite
-// proves: HFS_APP_GALLERY_DESIGN_SHOT_MISSING@full
-// proves: HFS_APP_GALLERY_DESIGN_SHOT_STALE@lite
-// proves: HFS_APP_GALLERY_DESIGN_SHOT_STALE@full
+// proves: HFS_APP_GALLERY_DESIGN_CRITIQUE_MISSING
+// proves: HFS_APP_GALLERY_DESIGN_CRITIQUE_MISSING
+// proves: HFS_APP_GALLERY_DESIGN_MANIFEST
+// proves: HFS_APP_GALLERY_DESIGN_MANIFEST
+// proves: HFS_APP_GALLERY_DESIGN_PAGE_MISSING
+// proves: HFS_APP_GALLERY_DESIGN_PAGE_MISSING
+// proves: HFS_APP_GALLERY_DESIGN_UNAPPROVED
+// proves: HFS_APP_GALLERY_DESIGN_UNAPPROVED
+// proves: HFS_APP_GALLERY_DESIGN_SHOT_MISSING
+// proves: HFS_APP_GALLERY_DESIGN_SHOT_MISSING
+// proves: HFS_APP_GALLERY_DESIGN_SHOT_STALE
+// proves: HFS_APP_GALLERY_DESIGN_SHOT_STALE
 // R395, the design pass drawn before code (rules/gallery-design.mts; contexts/project/gallery.md PROJECT-GALLERY-6): .starcistacks/canvas/design.json records each screen's design status
 // (drafted, approved, built, matches); a built page has its screen and the sha256 of its 1440 and 390 shots, recorded after the approval and equal to the shots in the work tree
 // wherever they exist; a screen of an area listed in `areas` has an approved design. The manifest's shape is an error; the rest are `local` (report-only in `--env local`).
@@ -93,7 +93,7 @@ test('parseDesign: the shape, the page ids, the statuses, approvedAt from approv
 });
 
 for (const edition of ['lite'] as const) {
-  test(`${edition}: an unreadable or misshapen manifest is HFS_APP_GALLERY_DESIGN_MANIFEST, an error even in --env local`, (t) => {
+  test(`an unreadable or misshapen manifest is HFS_APP_GALLERY_DESIGN_MANIFEST, an error even in --env local`, (t) => {
     const broken = design(run(app(t, [], '{ "areas": '), edition));
     assert.deepEqual(codes(broken), ['HFS_APP_GALLERY_DESIGN_MANIFEST']);
     assert.equal(broken[0]?.path, '.starcistacks/canvas/design.json');
@@ -102,7 +102,7 @@ for (const edition of ['lite'] as const) {
     assert.deepEqual(codes(design(run(app(t, [], { areas: ['customers'], pages: { 'customers/list': { status: 'approved', board: BOARD } } }), edition))), ['HFS_APP_GALLERY_DESIGN_MANIFEST']);
   });
 
-  test(`${edition}: a built page with no gallery screen is HFS_APP_GALLERY_DESIGN_PAGE_MISSING; an approved page waits for its build`, (t) => {
+  test(`a built page with no gallery screen is HFS_APP_GALLERY_DESIGN_PAGE_MISSING; an approved page waits for its build`, (t) => {
     const root = app(t, [], { areas: ['customers'], pages: { 'customers/list': { status: 'built', board: BOARD, approvedAt: APPROVED, shots: SHOTS }, 'customers/list-empty': { status: 'approved', board: BOARD, approvedAt: APPROVED } } });
     const found = design(run(root, edition));
     assert.deepEqual(codes(found), ['HFS_APP_GALLERY_DESIGN_PAGE_MISSING']);
@@ -110,7 +110,7 @@ for (const edition of ['lite'] as const) {
     assert.equal(found[0]?.local, true);
   });
 
-  test(`${edition}: a screen of a designed area with no entry or a drafted one is HFS_APP_GALLERY_DESIGN_UNAPPROVED; an area not listed is not judged`, (t) => {
+  test(`a screen of a designed area with no entry or a drafted one is HFS_APP_GALLERY_DESIGN_UNAPPROVED; an area not listed is not judged`, (t) => {
     const root = app(t, ['customers/list', 'customers/list-empty', 'customers/detail', 'orders/list'], {
       areas: ['customers'],
       pages: { 'customers/list': { status: 'approved', board: BOARD, approvedAt: APPROVED }, 'customers/list-empty': { status: 'drafted', board: BOARD } },
@@ -122,7 +122,7 @@ for (const edition of ['lite'] as const) {
     assert.ok(found.every((finding) => finding.local === true));
   });
 
-  test(`${edition}: a built page without a recorded sha, or whose work tree holds shots without one width, is HFS_APP_GALLERY_DESIGN_SHOT_MISSING`, (t) => {
+  test(`a built page without a recorded sha, or whose work tree holds shots without one width, is HFS_APP_GALLERY_DESIGN_SHOT_MISSING`, (t) => {
     const root = app(t, ['customers/list'], { areas: ['customers'], pages: { 'customers/list': { status: 'built', board: BOARD, approvedAt: APPROVED, shots: { '1440': SHOTS['1440'] } } } });
     let found = design(run(root, edition));
     assert.deepEqual(codes(found), ['HFS_APP_GALLERY_DESIGN_SHOT_MISSING']);
@@ -138,7 +138,7 @@ for (const edition of ['lite'] as const) {
     assert.deepEqual(design(run(root, edition)), [], 'both shots, equal to the record');
   });
 
-  test(`${edition}: a shot record older than the approval, or a shot that is not the recorded one, is HFS_APP_GALLERY_DESIGN_SHOT_STALE`, (t) => {
+  test(`a shot record older than the approval, or a shot that is not the recorded one, is HFS_APP_GALLERY_DESIGN_SHOT_STALE`, (t) => {
     const root = app(t, ['customers/list'], { areas: ['customers'], pages: { 'customers/list': { status: 'approved', board: BOARD, approvedAt: APPROVED, shots: SHOTS } } });
     let found = design(run(root, edition));
     assert.deepEqual(codes(found), ['HFS_APP_GALLERY_DESIGN_SHOT_STALE']);
@@ -165,14 +165,14 @@ test('the design canvas folder is a slot of its own: its files are owned, no sta
     fs.writeFileSync(path.join(root, 'hfs.json'), JSON.stringify({ hfs: 3, kind: 'app', edition, project: 'canvas-slot', sides: { be: { apps: [{ name: 'api', kind: 'api' }] }, fe: { apps: [{ name: 'web', kind: 'next' }] } } }));
     const opened = openHfs({ repoRoot: root });
     const canvas = ['.starcistacks/canvas/design.json', '.starcistacks/canvas/tokens.css', '.starcistacks/canvas/canvas.css', '.starcistacks/canvas/briefs/01-customers-list.md', '.starcistacks/canvas/pages/01-customers-list.html', '.starcistacks/canvas/web-design.html'];
-    for (const file of canvas) assert.equal(opened.classifyPath(file).status, 'owned', `${edition} ${file}`);
+    for (const file of canvas) assert.equal(opened.classifyPath(file).status, 'owned', `${file}`);
     assert.deepEqual(stacksFindings({ repoRoot: root, files: canvas, resolver: opened }), []);
   }
 });
 
 // The critique record (PROJECT-GALLERY-7 item 3): a matches page needs "## Phương án đã cân nhắc" in its explain.md.
 for (const edition of ['lite'] as const) {
-  test(`${edition}: a matches page without the options section is an error from the release on, and info (not final yet) before it`, (t) => {
+  test(`a matches page without the options section is an error from the release on, and info (not final yet) before it`, (t) => {
     const page = (extra: Record<string, unknown>) => ({ areas: ['customers'], pages: { 'customers/list': { status: 'matches', board: BOARD, approvedAt: APPROVED, shots: SHOTS, ...extra } } });
     const critique = (root: string) => run(root, edition).filter((finding) => finding.code === 'HFS_APP_GALLERY_DESIGN_CRITIQUE_MISSING');
     const root = app(t, ['customers/list'], page({ matchedAt: '2026-11-18T16:00:00+07:00' }));
@@ -195,7 +195,7 @@ for (const edition of ['lite'] as const) {
     assert.equal(critique(root).length, 1, 'an empty section is no record');
   });
 
-  test(`${edition}: only a matches page may carry matchedAt, as an ISO timestamp`, () => {
+  test(`only a matches page may carry matchedAt, as an ISO timestamp`, () => {
     const one = (page: unknown) => parseDesign(JSON.stringify({ areas: ['customers'], pages: { 'customers/list': page } })).problems.join(';');
     assert.equal(one({ status: 'matches', board: BOARD, approvedAt: APPROVED, shots: SHOTS, matchedAt: '2026-11-18T16:00:00+07:00' }), '');
     assert.match(one({ status: 'built', board: BOARD, approvedAt: APPROVED, shots: SHOTS, matchedAt: '2026-11-18T16:00:00+07:00' }), /only a matches page has it/u);

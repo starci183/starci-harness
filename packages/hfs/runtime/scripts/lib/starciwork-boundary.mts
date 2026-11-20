@@ -64,7 +64,7 @@ export function isProductPath(rel: unknown): boolean {
   return PRODUCT_PATTERNS.some((p) => matchFile(p, parts));
 }
 
-/** The lite app boundary: its optional Work tree holds .gitignore, workspace.yaml, brand/** and the concept records only. */
+/** The app boundary: its optional Work tree holds .gitignore, workspace.yaml, brand/** and the concept records only. */
 export function isLiteProductPath(rel: unknown, { dir = false }: { dir?: boolean } = {}): boolean {
   const parts = segs(rel);
   if (parts[0] === 'concepts') return dir ? parts.length <= 2 : CONCEPT_PATTERNS.some((p) => matchFile(p, parts));

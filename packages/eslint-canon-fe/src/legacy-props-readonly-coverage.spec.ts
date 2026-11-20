@@ -1,5 +1,5 @@
-// proves: FE_PROPS_MUTABLE@lite
-// proves: FE_PROPS_MUTABLE@full
+// proves: FE_PROPS_MUTABLE
+// proves: FE_PROPS_MUTABLE
 import test from "node:test"
 import { RuleTester } from "eslint"
 import tsParser from "@typescript-eslint/parser"

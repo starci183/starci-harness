@@ -3,7 +3,7 @@ import { braceVariants, globExpression } from '../../lib/glob.mjs';
 
 /**
  * The entity registry (persistence.md BE-PERSISTENCE-3): the one file whose slot plays `role: entity-registry`
- * (`be.platform.database.entities`, lite's `src/modules/platform/database/entities.ts`). It lists every capability's `<c>Entities`
+ * (`be.platform.database.entities`, the `src/modules/platform/database/entities.ts`). It lists every capability's `<c>Entities`
  * array as `PRIMARY_ENTITIES`, so it is the one platform file that imports domain and platform capability barrels, and only for
  * that name; and it is imported by deep path only from the files its slot's `importedBy` names (app composition and the test world).
  * The tier matrix (tiers.mts), the public-entry check (owners.mts) and the lint rule `import-owner-entry` read it here.

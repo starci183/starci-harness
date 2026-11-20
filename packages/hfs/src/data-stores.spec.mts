@@ -1,12 +1,12 @@
 /** Every store that must be kept has an adapter (PROJECT-STACKS-14, R426): the data declaration's stores and derived entries against the stack's stateful components. */
-// proves: DATA_STORE_UNDECLARED@lite
-// proves: DATA_STORE_UNDECLARED@full
-// proves: DATA_STORE_KIND@lite
-// proves: DATA_STORE_KIND@full
-// proves: DATA_STORE_ADAPTER@lite
-// proves: DATA_STORE_ADAPTER@full
-// proves: DATA_DERIVED_SOURCE@lite
-// proves: DATA_DERIVED_SOURCE@full
+// proves: DATA_STORE_UNDECLARED
+// proves: DATA_STORE_UNDECLARED
+// proves: DATA_STORE_KIND
+// proves: DATA_STORE_KIND
+// proves: DATA_STORE_ADAPTER
+// proves: DATA_STORE_ADAPTER
+// proves: DATA_DERIVED_SOURCE
+// proves: DATA_DERIVED_SOURCE
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -159,7 +159,7 @@ test('R426 over a work tree: the finder reads the stack declaration and the adap
   assert.deepEqual(dataStoresFindings({ repoRoot: root, repo, isRoot: false, all }), [], 'a side scope is judged by the root');
 });
 
-test('DATA_STORE_UNDECLARED: the lite skeleton stack keeps its own stateful components covered (database a store, ingress and statics storage derived)', () => {
+test('DATA_STORE_UNDECLARED: the skeleton stack keeps its own stateful components covered (database a store, ingress and statics storage derived)', () => {
   const text = fs.readFileSync(new URL('../templates/app/skeleton/.starcistacks/application-stacks.yaml', import.meta.url), 'utf8').replaceAll(/\{\{[^}]*\}\}/gu, '1');
   const doc = parseYaml(text) as Json;
   const adapter = 'be/src/modules/integrations/seed/database.adapter.ts';

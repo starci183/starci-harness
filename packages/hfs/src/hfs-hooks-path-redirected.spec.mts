@@ -1,7 +1,7 @@
-// proves: HFS_HOOKS_PATH_REDIRECTED@lite
-// proves: HFS_HOOKS_PATH_REDIRECTED@full
-// proves: HFS_HOOKS_NOT_INSTALLED@lite
-// proves: HFS_HOOKS_NOT_INSTALLED@full
+// proves: HFS_HOOKS_PATH_REDIRECTED
+// proves: HFS_HOOKS_PATH_REDIRECTED
+// proves: HFS_HOOKS_NOT_INSTALLED
+// proves: HFS_HOOKS_NOT_INSTALLED
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';

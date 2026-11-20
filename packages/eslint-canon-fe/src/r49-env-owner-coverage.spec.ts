@@ -1,5 +1,5 @@
-// proves: FE_ENV_OWNER@lite
-// proves: FE_ENV_OWNER@full
+// proves: FE_ENV_OWNER
+// proves: FE_ENV_OWNER
 import test from "node:test"
 import { RuleTester } from "eslint"
 import tsParser from "@typescript-eslint/parser"

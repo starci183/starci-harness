@@ -14,8 +14,8 @@ import { RuleTester } from "eslint"
 import tsParser from "@typescript-eslint/parser"
 import { solidTextClasses, softTextClasses, softBackgroundTones, rules, statusTextUsesSoftForeground } from "./status-colors.ts"
 import { STATUS_TONES } from "./lib/status-tones.generated.ts"
-// proves: FE_STYLE_TOKEN_ONLY@lite
-// proves: FE_STYLE_TOKEN_ONLY@full
+// proves: FE_STYLE_TOKEN_ONLY
+// proves: FE_STYLE_TOKEN_ONLY
 import { fixtureHfs } from "../../eslint-canon-fe/fixtures/typed/tester.ts"
 
 const tester = new RuleTester({

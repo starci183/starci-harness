@@ -1,11 +1,11 @@
-// proves: HFS_DEPLOY_WORKFLOW@lite
-// proves: HFS_DEPLOY_WORKFLOW@full
-// proves: HFS_WORKFLOW_PIN@lite
-// proves: HFS_WORKFLOW_PIN@full
-// proves: HFS_CI_TOOL_INSTALL@lite
-// proves: HFS_CI_TOOL_INSTALL@full
-// proves: HFS_APP_WORKFLOW_TRIGGER@lite
-// proves: HFS_APP_WORKFLOW_TRIGGER@full
+// proves: HFS_DEPLOY_WORKFLOW
+// proves: HFS_DEPLOY_WORKFLOW
+// proves: HFS_WORKFLOW_PIN
+// proves: HFS_WORKFLOW_PIN
+// proves: HFS_CI_TOOL_INSTALL
+// proves: HFS_CI_TOOL_INSTALL
+// proves: HFS_APP_WORKFLOW_TRIGGER
+// proves: HFS_APP_WORKFLOW_TRIGGER
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -261,7 +261,7 @@ test('R251 scopes to the app, tracked workflows and the requested paths, with al
   const bad = { on: 'push', jobs: { lint: { steps: [{ uses: 'actions/checkout@v4' }] } } };
   const files = ['.github/workflows/ci.yml', 'be/.github/workflows/ci.yml', 'tests/fixtures/.github/workflows/ci.yml', '.github/actions/local/action.yml', 'docs/workflow.yml'];
   const context: Context = { repoRoot: tree(t, Object.fromEntries(files.map((file) => [file, bad]))), files, repo: { kind: 'app' } };
-  for (const repo of [{ kind: 'be' }, { kind: 'fe', edition: 'full' }]) assert.deepEqual(deployWorkflowFindings({ ...context, repo }), []);
+  for (const repo of [{ kind: 'be' }, { kind: 'fe' }]) assert.deepEqual(deployWorkflowFindings({ ...context, repo }), []);
   assert.deepEqual(deployWorkflowFindings({ ...context, isRoot: false }), []);
   assert.deepEqual(deployWorkflowFindings({ ...context, inScope: () => false }), []);
   const findings = deployWorkflowFindings({ ...context, files: [], all: files, isRoot: true, inScope: (file: string) => file.startsWith('be/') });
@@ -286,11 +286,11 @@ test('R251: every managed workflow that opens sealed members is bound to the env
       const workflows = Object.fromEntries(targets.filter((target) => target.path.startsWith('.github/workflows/')).map((target) => [target.path, target.content]));
       const files = Object.keys(workflows);
       const findings = deployWorkflowFindings({ repoRoot: tree(t, workflows), files, repo: { kind: 'app', edition } });
-      assert.deepEqual(findings.filter((finding) => finding.code === 'HFS_DEPLOY_WORKFLOW'), [], `${edition} ${name}`);
+      assert.deepEqual(findings.filter((finding) => finding.code === 'HFS_DEPLOY_WORKFLOW'), [], `${name}`);
       for (const [file, content] of Object.entries(workflows)) {
         for (const [job, body] of Object.entries<Doc>(parseWorkflow(content).jobs ?? {})) {
           if (JSON.stringify(body).includes('secrets.SOPS_AGE_KEY') && !(name === 'no image' && file.endsWith('images.yml')))
-            assert.ok(body.environment, `${edition} ${name}: ${file} job ${job} reads SOPS_AGE_KEY and is bound to an environment`);
+            assert.ok(body.environment, `${name}: ${file} job ${job} reads SOPS_AGE_KEY and is bound to an environment`);
         }
       }
       const restore = parseWorkflow(workflows['.github/workflows/stack-key-restore.yml']!);

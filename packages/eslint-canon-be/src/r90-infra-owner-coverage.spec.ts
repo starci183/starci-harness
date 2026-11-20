@@ -1,5 +1,5 @@
-// proves: BE_INFRA_OWNER@lite
-// proves: BE_INFRA_OWNER@full
+// proves: BE_INFRA_OWNER
+// proves: BE_INFRA_OWNER
 import test from 'node:test';
 import tsParser from '@typescript-eslint/parser';
 import { appDeclaration } from '../fixtures/app.ts';

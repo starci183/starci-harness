@@ -1,4 +1,4 @@
-// proves: BE_TEST_TOPOLOGY@lite BE_TEST_TOPOLOGY@full
+// proves: BE_TEST_TOPOLOGY
 // R47 test-world-files, change data capture: a world that declares `stacks.debezium` needs `stacks.postgresql.logicalReplication: true`,
 // `stacks.redis` and the `debezium` service in the stack definition; the service is a stateful kind (`cdc`) no fake can stand for.
 import test from 'node:test';
@@ -50,29 +50,29 @@ function topology(t: TestContext, edition: string, stacks: string, { debezium = 
 }
 
 for (const edition of ['lite'] as const) {
-  test(`${edition} world declaring debezium with logical replication and redis passes`, t => {
+  test(`world declaring debezium with logical replication and redis passes`, t => {
     assert.deepEqual(topology(t, edition, `${POSTGRES_LOGICAL}, redis: {}, debezium: { connections: ["primary"] }`), []);
   });
 
-  test(`${edition} world declaring debezium on a Postgres without logical replication is refused`, t => {
+  test(`world declaring debezium on a Postgres without logical replication is refused`, t => {
     const hits = topology(t, edition, `${POSTGRES_PLAIN}, redis: {}, debezium: {}`);
     assert.equal(hits.length, 1);
     assert.match(hits[0]?.message ?? '', /logicalReplication must be true/u);
   });
 
-  test(`${edition} world declaring debezium without redis is refused`, t => {
+  test(`world declaring debezium without redis is refused`, t => {
     const hits = topology(t, edition, `${POSTGRES_LOGICAL}, debezium: {}`);
     assert.equal(hits.length, 1);
     assert.match(hits[0]?.message ?? '', /stacks\.redis must be declared/u);
   });
 
-  test(`${edition} world declaring debezium with no debezium service in the stack is refused`, t => {
+  test(`world declaring debezium with no debezium service in the stack is refused`, t => {
     const hits = topology(t, edition, `${POSTGRES_LOGICAL}, redis: {}, debezium: {}`, { debezium: false });
     assert.equal(hits.length, 1);
     assert.match(hits[0]?.message ?? '', /declares no `debezium` service/u);
   });
 
-  test(`${edition} world without debezium is not asked for logical replication`, t => {
+  test(`world without debezium is not asked for logical replication`, t => {
     assert.deepEqual(topology(t, edition, `${POSTGRES_PLAIN}, redis: {}`), []);
   });
 }

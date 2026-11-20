@@ -1,13 +1,13 @@
 // R269 / PROJECT-LINT-5: the production audit is `starci app audit`, judged against the time-boxed, owner-approved exceptions of
 // .starcistacks/security/audit-exceptions.yaml. One case per code, and the rules of exemption (every path under via, exact advisory and package, the level).
-// proves: AUDIT_HIGH@lite AUDIT_HIGH@full
-// proves: AUDIT_EXCEPTION_INVALID@lite AUDIT_EXCEPTION_INVALID@full
-// proves: AUDIT_EXCEPTION_EXPIRED@lite AUDIT_EXCEPTION_EXPIRED@full
-// proves: AUDIT_EXCEPTION_TOO_LONG@lite AUDIT_EXCEPTION_TOO_LONG@full
-// proves: AUDIT_EXCEPTION_FIX_AVAILABLE@lite AUDIT_EXCEPTION_FIX_AVAILABLE@full
-// proves: AUDIT_EXCEPTION_UNUSED@lite AUDIT_EXCEPTION_UNUSED@full
-// proves: AUDIT_EXCEPTION_ACTIVE@lite AUDIT_EXCEPTION_ACTIVE@full
-// proves: AUDIT_REPORT_UNREADABLE@lite AUDIT_REPORT_UNREADABLE@full
+// proves: AUDIT_HIGH
+// proves: AUDIT_EXCEPTION_INVALID
+// proves: AUDIT_EXCEPTION_EXPIRED
+// proves: AUDIT_EXCEPTION_TOO_LONG
+// proves: AUDIT_EXCEPTION_FIX_AVAILABLE
+// proves: AUDIT_EXCEPTION_UNUSED
+// proves: AUDIT_EXCEPTION_ACTIVE
+// proves: AUDIT_REPORT_UNREADABLE
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

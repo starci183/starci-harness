@@ -1,6 +1,6 @@
-// proves: STACKS_INGRESS_UNDECLARED@lite STACKS_INGRESS_UNDECLARED@full
-// proves: STACKS_INGRESS_UNKNOWN@lite STACKS_INGRESS_UNKNOWN@full
-// proves: STACKS_SECOND_INGRESS@lite STACKS_SECOND_INGRESS@full
+// proves: STACKS_INGRESS_UNDECLARED
+// proves: STACKS_INGRESS_UNKNOWN
+// proves: STACKS_SECOND_INGRESS
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

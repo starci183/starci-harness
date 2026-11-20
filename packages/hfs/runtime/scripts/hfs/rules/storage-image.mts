@@ -3,13 +3,13 @@
 // dependency, a `storage` custody member, a sealed storage-* secret). No condition met: no MinIO. The store is built from the managed
 // .starcistacks/images/storage/Dockerfile (slot app.storage.image), whose entrypoint writes statics/ into the bucket. Over the stack declaration and the compose
 // files of the environments:
-//   STACK_STORAGE_MISSING       the condition holds and the dev environment declares no `storage` service (or, in a lite app, the production environment
+//   STACK_STORAGE_MISSING       the condition holds and the dev environment declares no `storage` service (or, in an app, the production environment
 //                               declares no `deploy.images.storage`): error;
 //   STACK_STORAGE_UNUSED        a storage service is declared and no condition holds: the app runs an object store nothing uses (warning);
 //   STACK_STORAGE_IMAGE_UNUSED  statics/ holds media and the dev `storage` service does not build the override Dockerfile, so the statics never reach the bucket;
 //   STACK_STORAGE_IMAGE_SHAPE   the dev `storage` service builds the override but one of these fails: build.context is the app root, build.dockerfile is the
 //                               override, image is <project>-storage:local, the environment holds STATICS_BUCKET (non-empty), STATICS_PREFIX (kebab-case
-//                               segments) and STATICS_PUBLIC (download or none), the healthcheck tests /tmp/statics-ready, statics/ exists; or, in a lite
+//                               segments) and STATICS_PUBLIC (download or none), the healthcheck tests /tmp/statics-ready, statics/ exists; or, in a
 //                               production, `deploy.images.storage` names another app than `storage`.
 // Drift of the Dockerfile itself is HFS_MANAGED_FILE_DRIFT. Whether a prompt is stale against its brand base is the brand rule's, not this one's.
 import path from 'node:path';

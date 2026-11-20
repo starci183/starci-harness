@@ -1,12 +1,12 @@
 /** A seed-standard with raw/ and an adapter/ is the adapter's output, byte for byte (PROJECT-STACKS-13, R434): the commit hook and CI judge the index, the bring-up's seed step judges the pinned commit. */
-// proves: HFS_DATA_ADAPTER_DRIFT@lite
-// proves: HFS_DATA_ADAPTER_DRIFT@full
-// proves: HFS_DATA_ADAPTER_UNGUARDED@lite
-// proves: HFS_DATA_ADAPTER_UNGUARDED@full
-// proves: STACK_SEED_ADAPTER_DRIFT@lite
-// proves: STACK_SEED_ADAPTER_DRIFT@full
-// proves: STACK_SEED_ADAPTER_INSTALL@lite
-// proves: STACK_SEED_ADAPTER_INSTALL@full
+// proves: HFS_DATA_ADAPTER_DRIFT
+// proves: HFS_DATA_ADAPTER_DRIFT
+// proves: HFS_DATA_ADAPTER_UNGUARDED
+// proves: HFS_DATA_ADAPTER_UNGUARDED
+// proves: STACK_SEED_ADAPTER_DRIFT
+// proves: STACK_SEED_ADAPTER_DRIFT
+// proves: STACK_SEED_ADAPTER_INSTALL
+// proves: STACK_SEED_ADAPTER_INSTALL
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';

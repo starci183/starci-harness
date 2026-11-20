@@ -1,16 +1,16 @@
 /** Edition-specific proofs for the fenced-job and projection rules R157-R162. */
-// proves: BE_JOB_WRITE_OUTSIDE_OWNER@lite
-// proves: BE_JOB_WRITE_OUTSIDE_OWNER@full
-// proves: BE_JOB_FENCE_REQUIRED@lite
-// proves: BE_JOB_FENCE_REQUIRED@full
-// proves: BE_JOB_RUN_KEY@lite
-// proves: BE_JOB_RUN_KEY@full
-// proves: BE_JOB_SHAPE@lite
-// proves: BE_JOB_SHAPE@full
-// proves: BE_PROJECTION_WRITE_OWNER@lite
-// proves: BE_PROJECTION_WRITE_OWNER@full
-// proves: BE_PROJECTION_SHAPE@lite
-// proves: BE_PROJECTION_SHAPE@full
+// proves: BE_JOB_WRITE_OUTSIDE_OWNER
+// proves: BE_JOB_WRITE_OUTSIDE_OWNER
+// proves: BE_JOB_FENCE_REQUIRED
+// proves: BE_JOB_FENCE_REQUIRED
+// proves: BE_JOB_RUN_KEY
+// proves: BE_JOB_RUN_KEY
+// proves: BE_JOB_SHAPE
+// proves: BE_JOB_SHAPE
+// proves: BE_PROJECTION_WRITE_OWNER
+// proves: BE_PROJECTION_WRITE_OWNER
+// proves: BE_PROJECTION_SHAPE
+// proves: BE_PROJECTION_SHAPE
 import test from "node:test"
 import { appDeclaration } from "../fixtures/app.ts"
 import { at, BE_DECLARATION, ruleTester, TYPED_ROOT } from "../fixtures/typed/tester.ts"

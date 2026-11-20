@@ -1,5 +1,5 @@
-// proves: HFS_MONO_WORKSPACES@lite
-// proves: HFS_MONO_WORKSPACES@full
+// proves: HFS_MONO_WORKSPACES
+// proves: HFS_MONO_WORKSPACES
 // The npm workspaces of an app are the fe ones, plus `packages/*` once the app tracks a root package (slot app.packages): the workspace the
 // root packages build through, which `starci app sync` leaves alone (it manages the scripts block only).
 import assert from 'node:assert/strict';

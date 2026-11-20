@@ -1,7 +1,7 @@
-// proves: ARCH_GRAMMAR_CONTRACT_INVALID@lite
-// proves: ARCH_GRAMMAR_CONTRACT_INVALID@full
-// proves: ARCH_GRAMMAR_EXPORT_BYPASS@lite
-// proves: ARCH_GRAMMAR_EXPORT_BYPASS@full
+// proves: ARCH_GRAMMAR_CONTRACT_INVALID
+// proves: ARCH_GRAMMAR_CONTRACT_INVALID
+// proves: ARCH_GRAMMAR_EXPORT_BYPASS
+// proves: ARCH_GRAMMAR_EXPORT_BYPASS
 import test, { type TestContext } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';

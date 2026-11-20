@@ -1,4 +1,4 @@
-// proves: BE_SAGA_CONSUMER_DEDUPE@lite BE_SAGA_CONSUMER_DEDUPE@full
+// proves: BE_SAGA_CONSUMER_DEDUPE
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -34,11 +34,11 @@ function check(edition: string, body: string, source = `export class Consumer { 
 }
 
 for (const edition of ['lite'] as const) {
-  test(`${edition} BE_SAGA_CONSUMER_DEDUPE passes delivery key forwarded to command`, () => {
+  test(`BE_SAGA_CONSUMER_DEDUPE passes delivery key forwarded to command`, () => {
     assert.deepEqual(check(edition, 'return this.commandBus.execute(new CancelOrder({ request: { eventId: message.eventId } }));'), []);
     assert.deepEqual(check(edition, 'const eventId = message.eventId; const request = { eventId }; const command = new CancelOrder({ request }); return this.commandBus.execute(command);'), []);
   });
-  test(`${edition} BE_SAGA_CONSUMER_DEDUPE passes consumers in the shipped shape and rendered templates`, () => {
+  test(`BE_SAGA_CONSUMER_DEDUPE passes consumers in the shipped shape and rendered templates`, () => {
     const sources = SHIPPED_CONSUMERS.slice();
     for (const kind of ['done', 'failed']) {
       sources.push(fs.readFileSync(path.resolve(import.meta.dirname, '..', 'templates', 'be', 'patterns', 'saga', `saga.${kind}.consumer.ts.tpl`), 'utf8').replaceAll(/@@\w+@@/g, 'Sample'));
@@ -46,7 +46,7 @@ for (const edition of ['lite'] as const) {
     assert.ok(sources.length >= 4);
     for (const source of sources) assert.deepEqual(check(edition, '', source), []);
   });
-  test(`${edition} BE_SAGA_CONSUMER_DEDUPE refuses discarded or unrelated eventId reads`, () => {
+  test(`BE_SAGA_CONSUMER_DEDUPE refuses discarded or unrelated eventId reads`, () => {
     for (const body of [
       'const ignored = message.eventId; return this.commandBus.execute(new CancelOrder({ id: message.id }));',
       'return message.eventId;',

@@ -1,9 +1,9 @@
-// proves: BE_OUTBOX_WRITE_TX@lite
-// proves: BE_OUTBOX_WRITE_TX@full
-// proves: BE_EVENT_CONSUMER_SHAPE@lite
-// proves: BE_EVENT_CONSUMER_SHAPE@full
-// proves: BE_QUEUE_PRODUCER_SHAPE@lite
-// proves: BE_QUEUE_PRODUCER_SHAPE@full
+// proves: BE_OUTBOX_WRITE_TX
+// proves: BE_OUTBOX_WRITE_TX
+// proves: BE_EVENT_CONSUMER_SHAPE
+// proves: BE_EVENT_CONSUMER_SHAPE
+// proves: BE_QUEUE_PRODUCER_SHAPE
+// proves: BE_QUEUE_PRODUCER_SHAPE
 import test from 'node:test';
 import { at, BE_DECLARATION, ruleTester, TYPED_ROOT } from '../fixtures/typed/tester.ts';
 import { appDeclaration } from '../fixtures/app.ts';

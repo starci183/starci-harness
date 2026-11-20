@@ -1,6 +1,6 @@
 /** The engine-owned database objects (hfs.json sides.be.engineOwned): R86 lets only the declared capability touch them, R35 lets only it map them. */
-// proves: BE_SQL_TABLE_OWNER@lite
-// proves: BE_SCHEMA_OWNER@lite
+// proves: BE_SQL_TABLE_OWNER
+// proves: BE_SCHEMA_OWNER
 import fs from "node:fs"
 import test from "node:test"
 import { projectFixture } from "../fixtures/project/tester.ts"

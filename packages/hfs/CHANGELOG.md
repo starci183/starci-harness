@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Changed (templates, R212): the last lite folders take the plain names. be/skeleton-lite and fe/skeleton-lite are merged into be/skeleton and fe/skeleton (the lite file wins where both existed; the full-only be files, fe/skeleton/apps/app, apps/landing and packages/__project__-* that no scaffold rendered are gone), and be/patterns/{jobs,queues}/platform-lite into platform (the TypeORM persistence.* templates and their entries in jobs.yaml and queues.yaml are gone). The scaffold output of a new app is byte for byte the same. The template snapshot 5.8.3 took the same merge, with its manifest paths.
+- Changed (names): rules/lite-proof-lane.mts, lite-secrets.mts and stacks-lite-backing.mts are rules/proof-lane.mts, secret-custody.mts and stacks-backing.mts (rule ids proof-lane, secret-custody, stacks-backing); scaffold/add-*-lite.mts, lite-exports.mts and queues-cli-lite.mts are add-cli, add-database, add-webhook-inbox, add-queue, package-exports and queues-cli. The pattern key `liteAdapter` is `adapter`; the unused `liteFiles` key is gone (a topic has one files tree). scaffold-gate.mts: `refuseUntemplatedAdapter` and `AdapterRefusal` replace the lite-named pair.
+- Kept (finding codes): HFS_STARCIWORK_LITE_FORBIDDEN, HFS_LITE_SECRET_CUSTODY, LITE_DB_MIGRATION, STACKS_LITE_SELFHOSTED_DB, STACKS_LITE_REDIS_PERSISTENCE and BE_LITE_PROOF_LANE_MISSING keep their names because apps cite them. The check has no per-code exception or list an alias could extend, so a second name would be a duplicate catalogue entry with no reader; a later train renames them when the apps have moved.
+- Removed: `starci app add inbox` (the verb and its usage line; it only refused), the TypeORM-authority branch of architecture/sql-owner.mts (ruleParams.be.schemaAuthority is `sql` in the manifest and an app cannot set it), the full-only slot-less skeleton files listed above, the `@lite` and `@full` tags of the spec proof labels.
+- Changed (slots.yaml): the `goesTo` and `why` text that described two editions says it once.
+
 ## 6.14.1 - 2026-11-20
 
 - Fixed (`HFS_CHECK_CACHE_UNWARMED` never converging): two checkouts of one commit now write byte-identical committed records whatever each built or fetched (check-cache.md "Untracked program inputs", "Machine-local records").

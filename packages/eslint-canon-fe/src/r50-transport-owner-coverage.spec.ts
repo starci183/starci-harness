@@ -1,7 +1,7 @@
-// proves: FE_TRANSPORT_OWNER@lite
-// proves: FE_TRANSPORT_OWNER@full
-// proves: FE_EFFECT_FETCH@lite
-// proves: FE_EFFECT_FETCH@full
+// proves: FE_TRANSPORT_OWNER
+// proves: FE_TRANSPORT_OWNER
+// proves: FE_EFFECT_FETCH
+// proves: FE_EFFECT_FETCH
 import test from "node:test"
 import { RuleTester } from "eslint"
 import tsParser from "@typescript-eslint/parser"

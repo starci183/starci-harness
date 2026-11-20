@@ -34,7 +34,7 @@ function app(edition: string, files: Record<string, string>): string {
   return root;
 }
 
-test('BE_DI_RING sync: a lite app retires the lane-local provider-ring check and drops the scripts that run it', () => {
+test('BE_DI_RING sync: an app retires the lane-local provider-ring check and drops the scripts that run it', () => {
   assert.ok(Object.hasOwn(HARNESS_CHECK_COPIES, COPY));
   const root = app('lite', { [COPY]: '// a lane-local copy\n', 'package.json': manifest });
   assert.deepEqual(retiredFiles(root), [COPY]);

@@ -1,4 +1,4 @@
-// proves: BE_APP_ENV_REQUIRED@lite BE_APP_ENV_REQUIRED@full
+// proves: BE_APP_ENV_REQUIRED
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';

@@ -4,7 +4,7 @@ import { projectFixture } from "../../eslint-canon-be/fixtures/project/tester.ts
 import { canonTester } from "../fixtures/typed/tester.ts"
 import { hooksFolderHoldsHooksOnly } from "./hooks-folder.ts"
 
-// proves: FE_HOOKS_ARE_HOOKS@lite FE_HOOKS_ARE_HOOKS@full
+// proves: FE_HOOKS_ARE_HOOKS
 // The @starci/hfs fe scaffold template files these cases read, copied from the runtime repository.
 const base = new URL("../fixtures/hfs-templates/fe/skeleton/apps/__app__/src/", import.meta.url)
 const session = fs.readFileSync(new URL("hooks/auth/useSession.ts", base), "utf8")

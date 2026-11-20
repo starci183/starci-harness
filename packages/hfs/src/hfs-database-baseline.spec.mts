@@ -1,4 +1,4 @@
-// proves: DB_BASELINE_SHAPE@lite DB_BASELINE_SHAPE@full DB_ARCHIVE_MUTATED@lite DB_ARCHIVE_MUTATED@full
+// proves: DB_BASELINE_SHAPE DB_ARCHIVE_MUTATED
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

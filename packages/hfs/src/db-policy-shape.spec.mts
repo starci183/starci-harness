@@ -1,5 +1,5 @@
-// proves: DB_POLICY_SHAPE@lite
-// proves: DB_POLICY_SHAPE@full
+// proves: DB_POLICY_SHAPE
+// proves: DB_POLICY_SHAPE
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';

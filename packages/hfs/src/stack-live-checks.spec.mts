@@ -1,7 +1,7 @@
-// proves: STACK_PENDING_MIGRATIONS@lite
-// proves: STACK_PENDING_MIGRATIONS@full
-// proves: STACK_DEAD_LETTER_REPEAT@lite
-// proves: STACK_DEAD_LETTER_REPEAT@full
+// proves: STACK_PENDING_MIGRATIONS
+// proves: STACK_PENDING_MIGRATIONS
+// proves: STACK_DEAD_LETTER_REPEAT
+// proves: STACK_DEAD_LETTER_REPEAT
 // R393 and R394 (stack/local-live-checks.mts, PROJECT-STACKS-10): `starci app check --env local` reads the running dev stack. The migration files the dev database has
 // not applied are an error naming the files and the command that applies them; a queue or job that dead-lettered more than once in the last 24 hours of the api log is an
 // error naming the queue, the job and the last message. A stack that is not up, or a log that is not there, is not judged, and nothing is asked of a stack with no database.

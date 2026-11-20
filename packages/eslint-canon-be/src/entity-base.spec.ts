@@ -1,7 +1,7 @@
 /**
  * Twin tests for the entity-base law (R342 `BE_ENTITY_EXTENDS_BASE`, BE-PERSISTENCE-3): an entity inherits created_at, updated_at and
- * the generated uuid id from AbstractEntity / UuidAbstractEntity and never repeats them. The @starci/hfs entity template and the
- * skeleton note entity (an app-set timestamp) pass; the base file itself is exempt.
+ * the generated uuid id from AbstractEntity / UuidAbstractEntity and never repeats them. The @starci/hfs entity template and a
+ * note entity (an app-set timestamp) pass; the base file itself is exempt.
  *
  *   node --test src/entity-base.spec.ts
  */
@@ -33,7 +33,22 @@ const UPDATED = "    @Column({ name: \"updated_at\", type: \"timestamptz\", inse
 const OWNER = "    @Column({ name: \"owner_id\", type: \"uuid\" })\n    ownerId!: string\n"
 
 const TABLE_TEMPLATE = new URL("../../hfs/templates/be/table/entity.ts.tpl", import.meta.url)
-const NOTE_ENTITY = new URL("../../hfs/templates/be/skeleton/src/modules/domain/note/persistence/entities/note.entity.ts", import.meta.url)
+/** A table whose timestamp the app sets itself: an entity with a uuid key, a body and an app-set created_at (the shape the retired skeleton note entity had). */
+const NOTE_ENTITY = `import { Column, Entity, PrimaryGeneratedColumn } from "typeorm"
+
+@Entity("notes")
+/** One note: a short text and the instant it was written. */
+export class NoteEntity {
+    @PrimaryGeneratedColumn("uuid", { name: "id" })
+    id!: string
+
+    @Column({ name: "body", type: "text" })
+    body!: string
+
+    @Column({ name: "created_at", type: "timestamptz" })
+    createdAt!: Date
+}
+`
 const BASE_TEMPLATE = new URL("../../hfs/templates/be/skeleton/src/modules/platform/database/abstract.entity.ts", import.meta.url)
 
 test("the law publishes its rule under its name", () => {
@@ -48,7 +63,7 @@ for (const [edition, tester] of [["lite", lite], ["full", full]] as const) {
                 { filename: ENTITY, code: entity(`${ID}${OWNER}`, " extends AbstractEntity") },
                 { filename: ENTITY, code: readFileSync(TABLE_TEMPLATE, "utf8").replaceAll("{{table}}", "orders").replaceAll("{{Singular}}", "Order") },
                 // an app-set timestamp makes a table without the shared columns
-                { filename: ENTITY, code: readFileSync(NOTE_ENTITY, "utf8") },
+                { filename: ENTITY, code: NOTE_ENTITY },
                 { filename: ENTITY, code: entity("    @Column({ name: \"created_at\", type: \"timestamptz\" })\n    createdAt!: Date\n    @Column({ name: \"updated_at\", type: \"timestamptz\" })\n    updatedAt!: Date") },
                 // a bigint key and no updated_at: a table without the shared columns
                 { filename: ENTITY, code: entity("    @PrimaryGeneratedColumn(\"increment\", { type: \"bigint\", name: \"id\" })\n    id!: string") },

@@ -1,10 +1,13 @@
+import type { Principal } from "@modules/platform/cqrs"
 import type { CredentialPrincipal } from "./credential.contracts"
 
 declare module "express-serve-static-core" {
-    /** The request carries what the credential guard established. */
+    /** The request carries the separate principals established by the identity guards. */
     interface Request {
         /** The identity `CredentialGuard` authenticated on a door marked `@Credential`; never a session principal. */
         credentialPrincipal?: CredentialPrincipal
+        /** The authenticated caller, when the door is not public. */
+        principal?: Principal
     }
 }
 
@@ -25,3 +28,6 @@ export interface PublicMetadata {
     /** Why the door is anonymous. */
     readonly reason: PublicReason
 }
+
+/** What identity admission returns to the guard. */
+export type IdentityAdmission = Principal | CredentialPrincipal | PublicReason

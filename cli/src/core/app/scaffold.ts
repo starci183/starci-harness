@@ -1,10 +1,10 @@
 import { defineVerb } from "../../shared/verb.js"
 import { FORWARDED, runHfs } from "./hfs.js"
 
-/** `starci app scaffold`: create a full or lite StarCi app in its own Git repository (its first commit on main, dev checked out); @starci/hfs runs it in-process in the app. */
+/** `starci app scaffold`: create a StarCi app in its own Git repository (its first commit on main, dev checked out); @starci/hfs runs it in-process in the app. */
 export const appScaffoldVerb = defineVerb({
     path: ["app", "scaffold"],
-    summary: "create a full or lite StarCi app in its own Git repository (its first commit on main, dev checked out)",
+    summary: "create a StarCi app in its own Git repository (its first commit on main, dev checked out)",
     effect: "local-write",
     roles: ["owner", "supervisor"],
     schema: "starci/app-scaffold@1",

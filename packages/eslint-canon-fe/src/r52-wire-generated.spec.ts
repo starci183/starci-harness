@@ -1,5 +1,5 @@
-// proves: FE_WIRE_GENERATED@lite
-// proves: FE_WIRE_GENERATED@full
+// proves: FE_WIRE_GENERATED
+// proves: FE_WIRE_GENERATED
 import test from 'node:test';
 import { RuleTester } from 'eslint';
 import parser from '@typescript-eslint/parser';

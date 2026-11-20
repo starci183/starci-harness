@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { addLiteWebhookInbox } from '../scaffold/add-inbox-lite.mjs';
+import { addWebhookInbox } from '../scaffold/add-webhook-inbox.mjs';
 import { TEMPLATES_DIR } from '../sync/index.mjs';
 import { parseSql } from '../runtime/scripts/hfs/sql/pg-parse.mjs';
 // reason: parsed-input boundary; the statements are the parsed SQL AST
@@ -15,20 +15,20 @@ const write = (root: string, relative: string, text: string) => {
   fs.writeFileSync(file, text);
 };
 
-test('the lite inbox scaffold installs client replay declarations and migrates its one shared inbox', async (t) => {
+test('the inbox scaffold installs client replay declarations and migrates its one shared inbox', async (t) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-client-inbox-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   write(root, 'hfs.json', JSON.stringify({ kind: 'app', sides: { be: { patterns: [] } } }));
   write(root, 'be/src/modules/domain/calendars/calendars.service.ts', 'export class CalendarsService {}\n');
   write(root, 'be/src/modules/platform/database/index.ts', 'export { DatabaseError, DatabaseErrorCode } from "./errors/database.error"\n');
   write(root, 'be/src/modules/platform/database/errors/database.error.ts', fs.readFileSync(path.join(
-    TEMPLATES_DIR, 'be/skeleton-lite/src/modules/platform/database/errors/database.error.ts',
+    TEMPLATES_DIR, 'be/skeleton/src/modules/platform/database/errors/database.error.ts',
   ), 'utf8'));
   write(root, 'be/src/modules/platform/database/entities.ts', fs.readFileSync(path.join(
-    TEMPLATES_DIR, 'be/skeleton-lite/src/modules/platform/database/entities.ts',
+    TEMPLATES_DIR, 'be/skeleton/src/modules/platform/database/entities.ts',
   ), 'utf8'));
 
-  const created = addLiteWebhookInbox({
+  const created = addWebhookInbox({
     root, repo: {}, noun: 'webhook', provider: 'calendar',
     values: { service: 'CalendarsService', serviceModule: '@modules/domain/calendars' },
     now: () => Date.UTC(2026, 9, 24, 11),
@@ -86,7 +86,7 @@ test('a second lite provider is refused while the shared inbox predates the Enti
   write(root, 'be/src/modules/domain/calendars/calendars.service.ts', 'export class CalendarsService {}\n');
   write(root, 'be/src/modules/platform/inbox/index.ts', 'export { INBOX, InjectInbox } from "./inbox.decorators"\n');
 
-  assert.throws(() => addLiteWebhookInbox({
+  assert.throws(() => addWebhookInbox({
     root, repo: {}, noun: 'webhook', provider: 'calendar',
     values: { service: 'CalendarsService', serviceModule: '@modules/domain/calendars' },
     now: () => Date.UTC(2026, 9, 24, 11),

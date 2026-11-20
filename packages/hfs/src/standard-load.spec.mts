@@ -1,12 +1,12 @@
 /** The bring-up loads each pinned seed-standard once per pin through the app's seed doors (PROJECT-STACKS-13 "One path in", R435): a fake copy repository rendered by the git driver, the real pin reader, the real door over a fake app command speaking starci/data-entries@1. */
-// proves: STACK_SEED_STANDARD_UNREADABLE@lite
-// proves: STACK_SEED_STANDARD_UNREADABLE@full
-// proves: STACK_SEED_STANDARD_SCHEMA@lite
-// proves: STACK_SEED_STANDARD_SCHEMA@full
-// proves: STACK_SEED_STORE_COMMAND@lite
-// proves: STACK_SEED_STORE_COMMAND@full
-// proves: STACK_SEED_DOOR_REFUSED@lite
-// proves: STACK_SEED_DOOR_REFUSED@full
+// proves: STACK_SEED_STANDARD_UNREADABLE
+// proves: STACK_SEED_STANDARD_UNREADABLE
+// proves: STACK_SEED_STANDARD_SCHEMA
+// proves: STACK_SEED_STANDARD_SCHEMA
+// proves: STACK_SEED_STORE_COMMAND
+// proves: STACK_SEED_STORE_COMMAND
+// proves: STACK_SEED_DOOR_REFUSED
+// proves: STACK_SEED_DOOR_REFUSED
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';

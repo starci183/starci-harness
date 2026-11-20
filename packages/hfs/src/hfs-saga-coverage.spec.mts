@@ -1,9 +1,9 @@
-// proves: BE_SAGA_STEP_COMPENSATION@lite
-// proves: BE_SAGA_STEP_COMPENSATION@full
-// proves: BE_SAGA_STATE_VERSIONED@lite
-// proves: BE_SAGA_STATE_VERSIONED@full
-// proves: BE_SAGA_EVENT_CONTRACT@lite
-// proves: BE_SAGA_EVENT_CONTRACT@full
+// proves: BE_SAGA_STEP_COMPENSATION
+// proves: BE_SAGA_STEP_COMPENSATION
+// proves: BE_SAGA_STATE_VERSIONED
+// proves: BE_SAGA_STATE_VERSIONED
+// proves: BE_SAGA_EVENT_CONTRACT
+// proves: BE_SAGA_EVENT_CONTRACT
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -60,7 +60,7 @@ test.after(() => {
 });
 
 for (const edition of ['lite'] as const) {
-  test(`${edition} rejects a compensation without its step or a complete orchestrator, and takes a step with no compensation`, () => {
+  test(`rejects a compensation without its step or a complete orchestrator, and takes a step with no compensation`, () => {
     assert.deepEqual(sagaFindings(fixture(edition, { [COMPENSATION]: null }))
       .filter((finding) => finding.code === 'BE_SAGA_STEP_COMPENSATION'), []);
     assert.deepEqual(sagaFindings(fixture(edition, { [STEP]: null }))
@@ -71,12 +71,12 @@ for (const edition of ['lite'] as const) {
       .filter((finding) => finding.code === 'BE_SAGA_STEP_COMPENSATION').length, 2);
   });
 
-  test(`${edition} accepts matching saga steps and compensations listed by their orchestrator`, () => {
+  test(`accepts matching saga steps and compensations listed by their orchestrator`, () => {
     assert.deepEqual(sagaFindings(fixture(edition))
       .filter((finding) => finding.code === 'BE_SAGA_STEP_COMPENSATION'), []);
   });
 
-  test(`${edition} rejects missing or unversioned saga state and bypassed fenced storage`, () => {
+  test(`rejects missing or unversioned saga state and bypassed fenced storage`, () => {
     assert.deepEqual(sagaFindings(fixture(edition, { [STATE]: null }))
       .filter((finding) => finding.code === 'BE_SAGA_STATE_VERSIONED').map((finding) => finding.path), [ORCHESTRATOR]);
     assert.deepEqual(sagaFindings(fixture(edition, { [STATE]: 'export interface PlaceSagaState { status: string; version: string; }' }))
@@ -85,14 +85,14 @@ for (const edition of ['lite'] as const) {
       .filter((finding) => finding.code === 'BE_SAGA_STATE_VERSIONED').map((finding) => finding.path), [ORCHESTRATOR]);
   });
 
-  test(`${edition} accepts typed saga state with a numeric version and the fenced platform store`, () => {
+  test(`accepts typed saga state with a numeric version and the fenced platform store`, () => {
     assert.deepEqual(sagaFindings(fixture(edition))
       .filter((finding) => finding.code === 'BE_SAGA_STATE_VERSIONED'), []);
     assert.deepEqual(sagaFindings(fixture(edition, { [STATE]: 'export type PlaceSagaState = { status: string; version: number; };' }))
       .filter((finding) => finding.code === 'BE_SAGA_STATE_VERSIONED'), []);
   });
 
-  test(`${edition} rejects missing saga event declarations and mismatched compensation contracts`, () => {
+  test(`rejects missing saga event declarations and mismatched compensation contracts`, () => {
     assert.deepEqual(sagaFindings(fixture(edition, { [STEP]: 'export class ReserveStep {}' }))
       .filter((finding) => finding.code === 'BE_SAGA_EVENT_CONTRACT').map((finding) => finding.path), [STEP]);
     assert.deepEqual(sagaFindings(fixture(edition, { [STEP]: 'export class ReserveStep { readonly event = "order.unknown"; }' }))
@@ -102,7 +102,7 @@ for (const edition of ['lite'] as const) {
       .filter((finding) => finding.code === 'BE_SAGA_EVENT_CONTRACT').map((finding) => finding.path), [COMPENSATION]);
   });
 
-  test(`${edition} accepts declared saga events whose compensation contract names the forward event`, () => {
+  test(`accepts declared saga events whose compensation contract names the forward event`, () => {
     assert.deepEqual(sagaFindings(fixture(edition))
       .filter((finding) => finding.code === 'BE_SAGA_EVENT_CONTRACT'), []);
   });

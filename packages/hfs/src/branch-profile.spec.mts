@@ -1,7 +1,7 @@
-// proves: HFS_BRANCH_PROFILE_INVALID@lite
-// proves: HFS_BRANCH_PROFILE_INVALID@full
-// proves: LINT_RATCHET_RAISED@lite
-// proves: LINT_RATCHET_RAISED@full
+// proves: HFS_BRANCH_PROFILE_INVALID
+// proves: HFS_BRANCH_PROFILE_INVALID
+// proves: LINT_RATCHET_RAISED
+// proves: LINT_RATCHET_RAISED
 // Branch profiles (.starcistacks/application-stacks.yaml `branches`): a profile branch reports or turns off only the polish gates (lint, sonar, codecov), the
 // default branch is never declared or lowered, the safety gates block everywhere, the profile is chosen from the branch the run judges (a pull request into
 // main runs the full gate), and where lint reports the lint ratchet refuses a commit that adds lint findings to a file it touches.
@@ -70,7 +70,7 @@ test('HFS_BRANCH_PROFILE_INVALID: the app check refuses a lowered main and a low
     const root = mkdtemp(t, 'starci-branch-profile-');
     const files = { '.starcistacks/application-stacks.yaml': declaration(branches), '.starcistacks/dev/environment.json': '{}' };
     for (const [file, text] of Object.entries(files)) { fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true }); fs.writeFileSync(path.join(root, file), text); }
-    const report = checkRepo({ repoRoot: root, declaration: { hfs: 3, kind: 'app', project: 'fixture', edition: 'full', sides: { be: { apps: [{ name: 'core', kind: 'api' }] }, fe: { apps: [{ name: 'web', kind: 'next' }] } } }, files: Object.keys(files), tree: false });
+    const report = checkRepo({ repoRoot: root, declaration: { hfs: 3, kind: 'app', project: 'fixture', sides: { be: { apps: [{ name: 'core', kind: 'api' }] }, fe: { apps: [{ name: 'web', kind: 'next' }] } } }, files: Object.keys(files), tree: false });
     const found = report.findings.filter((finding) => finding.code === 'HFS_BRANCH_PROFILE_INVALID');
     assert.equal(found.length, refused, branches);
     for (const finding of found) assert.equal(finding.level, 'error');
@@ -386,7 +386,7 @@ test('CI: a push to dev runs the reduced CI (sonar and codecov report, lint thro
     const source = { files: [], read: read(declaration(DEV)), stack: { images: [], passEnv: [], imageEnvironments: {}, environments: [], imageCache: 'gha' }, hasImage: () => true } as unknown as NonNullable<NonNullable<Parameters<typeof renderTargets>[2]>['source']>;
     const text = renderTargets({ ...structuredClone(APP), edition }, PRESETS, { source }).find((target) => target.path === '.github/workflows/ci.yml')?.content ?? '';
     const ci: Doc = parseWorkflow(text);
-    assert.deepEqual(ci.on.push.branches, ['main', 'release/candidate-*', 'dev'], `${edition}: a push to dev starts CI`);
+    assert.deepEqual(ci.on.push.branches, ['main', 'release/candidate-*', 'dev'], `a push to dev starts CI`);
     assert.deepEqual(ci.on.pull_request, { branches: ['main'] }, 'a pull request targets main alone, so it runs the full gate');
     const plan = ci.jobs.plan.steps.find((step: Doc) => step.id === 'plan').run as string;
     assert.match(plan, /"dev"\) sonar=report codecov=blocking/u);
@@ -402,7 +402,7 @@ test('CI: a push to dev runs the reduced CI (sonar and codecov report, lint thro
     fs.writeFileSync(path.join(root, '.github', 'workflows', 'ci.yml'), text);
     const triggers = (): Doc[] => deployWorkflowFindings({ repoRoot: root, files: ['.github/workflows/ci.yml'], repo: { kind: 'app', edition }, isRoot: true }).filter((finding: Doc) => finding.code === 'HFS_APP_WORKFLOW_TRIGGER');
     fs.writeFileSync(path.join(root, '.starcistacks', 'application-stacks.yaml'), declaration(DEV));
-    assert.deepEqual(triggers(), [], `${edition}: dev has a profile`);
+    assert.deepEqual(triggers(), [], `dev has a profile`);
     fs.writeFileSync(path.join(root, '.starcistacks', 'application-stacks.yaml'), declaration(''));
     assert.match(triggers()[0]?.message ?? '', /ci\.yml may also name main and the branches with a branch profile \(none declared\)/u);
   }

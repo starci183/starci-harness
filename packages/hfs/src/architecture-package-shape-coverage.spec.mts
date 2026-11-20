@@ -1,5 +1,5 @@
-// proves: FE_PACKAGE_SHAPE@lite
-// proves: FE_PACKAGE_SHAPE@full
+// proves: FE_PACKAGE_SHAPE
+// proves: FE_PACKAGE_SHAPE
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -34,25 +34,25 @@ function packageInput(t: TestContext, edition: string, manifest: object) {
 }
 
 for (const edition of ['lite'] as const) {
-  test(`${edition} valid package builds to dist with explicit exports`, t => {
+  test(`valid package builds to dist with explicit exports`, t => {
     const report = checkPackageShape(packageInput(t, edition, built));
     assert.deepEqual(report.violations, []);
     assert.equal(report.coverage.packages, 1);
   });
 
-  test(`${edition} invalid package without a build emits FE_PACKAGE_SHAPE`, t => {
+  test(`invalid package without a build emits FE_PACKAGE_SHAPE`, t => {
     const report = checkPackageShape(packageInput(t, edition, { ...built, scripts: {} }));
     assert.deepEqual(report.violations.map(item => item.ruleId), ['FE_PACKAGE_SHAPE']);
     assert.match(report.violations[0]!.message, /no scripts.build/);
   });
 
-  test(`${edition} invalid package without exports emits FE_PACKAGE_SHAPE`, t => {
+  test(`invalid package without exports emits FE_PACKAGE_SHAPE`, t => {
     const report = checkPackageShape(packageInput(t, edition, { scripts: built.scripts }));
     assert.deepEqual(report.violations.map(item => item.ruleId), ['FE_PACKAGE_SHAPE']);
     assert.match(report.violations[0]!.message, /declares no exports map/);
   });
 
-  test(`${edition} invalid package source targets and wildcard exports emit FE_PACKAGE_SHAPE`, t => {
+  test(`invalid package source targets and wildcard exports emit FE_PACKAGE_SHAPE`, t => {
     const report = checkPackageShape(packageInput(t, edition, {
       ...built,
       main: './src/index.ts',

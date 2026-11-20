@@ -12,8 +12,8 @@
  * would refuse the one file that has to write it, and there would be no correct way to satisfy the
  * pair at once.
  */
-// proves: FE_TRANSPORT_OWNER@lite
-// proves: FE_TRANSPORT_OWNER@full
+// proves: FE_TRANSPORT_OWNER
+// proves: FE_TRANSPORT_OWNER
 import assert from "node:assert/strict"
 import test from "node:test"
 import { at, fixtureHfs, LITE_FE_DECLARATION, slotTester } from "../fixtures/typed/tester.ts"

@@ -15,11 +15,11 @@ export interface SeedsLayoutReport {
   schema: string; root: string; write: boolean; environments: string[]; moves: SeedsLayoutMove[]; created: string[]; findings: SeedsLayoutFinding[];
 }
 
-/** The lite SQL seed of manifest 3.17 (slot app.db.seed): its rows are every environment's, so it moves to the shared level. */
+/** The SQL seed of manifest 3.17 (slot app.db.seed): its rows are every environment's, so it moves to the shared level. */
 const LEGACY_DB_SEED = 'db/seed.sql';
 /** The id and target a moved SQL seed is declared with: the primary database, applied again whenever its content changes. */
 const SQL_TARGET = 'primary';
-/** How a source names an old seed home: the lite seed path, or the seeds folder of an environment read without its sql/ folder. */
+/** How a source names an old seed home: the seed path, or the seeds folder of an environment read without its sql/ folder. */
 const LEGACY_REFERENCE = /db\/seed\.sql|"\.starcistacks",\s*[A-Za-z_$][\w$]*,\s*"seeds"\)/u;
 const SOURCE = /\.(?:[cm]?[jt]s|json)$/u;
 
@@ -27,7 +27,7 @@ const isFile = (target: string): boolean => fs.statSync(target, { throwIfNoEntry
 const isFolder = (target: string): boolean => fs.statSync(target, { throwIfNoEntry: false })?.isDirectory() === true;
 const entryId = (name: string): string => name.replace(/\.sql$/u, '').toLowerCase().replaceAll(/[^a-z0-9]+/gu, '-').replaceAll(/^-+|-+$/gu, '');
 
-/** The loose seed files of each declared environment's level (directly in `<env>/seeds/`) and the lite `db/seed.sql`, with where each goes. */
+/** The loose seed files of each declared environment's level (directly in `<env>/seeds/`) and the `db/seed.sql`, with where each goes. */
 function legacySeeds(root: string, environments: string[], findings: SeedsLayoutFinding[]): Array<{ env: string | null; from: string; name: string }> {
   const loose = environments.flatMap((env) => {
     const level = path.join(root, seedLevelDir(env));

@@ -1,4 +1,4 @@
-// proves: BE_SECRET_DEFAULT@lite BE_SECRET_DEFAULT@full
+// proves: BE_SECRET_DEFAULT
 import test from "node:test"
 import { noSecretDefault } from "./config-owner.ts"
 import { appDeclaration } from "../fixtures/app.ts"

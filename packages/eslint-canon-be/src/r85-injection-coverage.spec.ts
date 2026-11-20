@@ -1,6 +1,6 @@
 /** R85 proves every shipped injection boundary in both application editions. */
-// proves: BE_RAW_INJECT@lite
-// proves: BE_RAW_INJECT@full
+// proves: BE_RAW_INJECT
+// proves: BE_RAW_INJECT
 import assert from "node:assert/strict"
 import test from "node:test"
 import { BE_DECLARATION, TYPED_ROOT, at, ruleTester } from "../fixtures/typed/tester.ts"

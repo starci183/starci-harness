@@ -1,5 +1,5 @@
-// proves: BE_INBOX_DEDUPE_MISSING@lite
-// proves: BE_INBOX_DEDUPE_MISSING@full
+// proves: BE_INBOX_DEDUPE_MISSING
+// proves: BE_INBOX_DEDUPE_MISSING
 import test from "node:test"
 import { BE_DECLARATION, TYPED_ROOT, at, ruleTester } from "../fixtures/typed/tester.ts"
 import { appDeclaration } from "../fixtures/app.ts"

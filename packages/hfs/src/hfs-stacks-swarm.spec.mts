@@ -1,15 +1,15 @@
-// proves: STACKS_SECRET_NOT_EXTERNAL@lite STACKS_SECRET_NOT_EXTERNAL@full
-// proves: STACKS_SECRET_UNVERSIONED@lite STACKS_SECRET_UNVERSIONED@full
-// proves: STACKS_SECRET_ENV_LITERAL@lite STACKS_SECRET_ENV_LITERAL@full
-// proves: STACKS_PORT_PUBLISHED@lite STACKS_PORT_PUBLISHED@full
-// proves: STACKS_SECOND_INGRESS@lite STACKS_SECOND_INGRESS@full
-// proves: STACKS_DNS_UNDECLARED@lite STACKS_DNS_UNDECLARED@full
-// proves: STACKS_HOST_UNROUTED@lite STACKS_HOST_UNROUTED@full
-// proves: STACKS_TLS_UNDECLARED@lite STACKS_TLS_UNDECLARED@full
-// proves: STACKS_PLACEMENT_MISSING@lite STACKS_PLACEMENT_MISSING@full
-// proves: STACKS_HEALTHCHECK_MISSING@lite STACKS_HEALTHCHECK_MISSING@full
-// proves: STACKS_UPDATE_POLICY_MISSING@lite STACKS_UPDATE_POLICY_MISSING@full
-// proves: STACKS_REALTIME_SCALED@lite STACKS_REALTIME_SCALED@full
+// proves: STACKS_SECRET_NOT_EXTERNAL
+// proves: STACKS_SECRET_UNVERSIONED
+// proves: STACKS_SECRET_ENV_LITERAL
+// proves: STACKS_PORT_PUBLISHED
+// proves: STACKS_SECOND_INGRESS
+// proves: STACKS_DNS_UNDECLARED
+// proves: STACKS_HOST_UNROUTED
+// proves: STACKS_TLS_UNDECLARED
+// proves: STACKS_PLACEMENT_MISSING
+// proves: STACKS_HEALTHCHECK_MISSING
+// proves: STACKS_UPDATE_POLICY_MISSING
+// proves: STACKS_REALTIME_SCALED
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import { randomBytes } from 'node:crypto';
@@ -317,14 +317,14 @@ function provesGlobalModeIsScaled(t: TestContext, edition: string) {
   }
 }
 
-test('STACKS_REALTIME_SCALED@lite: more than one replica needs a shared hub', t => provesSharedHubForReplicas(t, 'lite'));
-test('STACKS_REALTIME_SCALED@full: more than one replica needs a shared hub', t => provesSharedHubForReplicas(t, 'full'));
-test('STACKS_REALTIME_SCALED@lite: one replica, an absent pin and a stopped service may run the memory hub', t => provesOneReplicaMayRunMemory(t, 'lite'));
-test('STACKS_REALTIME_SCALED@full: one replica, an absent pin and a stopped service may run the memory hub', t => provesOneReplicaMayRunMemory(t, 'full'));
-test('STACKS_REALTIME_SCALED@lite: an API that composes no realtime feature or is not an api app is not judged', t => provesUnjudgedApis(t, 'lite'));
-test('STACKS_REALTIME_SCALED@full: an API that composes no realtime feature or is not an api app is not judged', t => provesUnjudgedApis(t, 'full'));
-test('STACKS_REALTIME_SCALED@lite: the global mode runs one task per node and needs a shared hub', t => provesGlobalModeIsScaled(t, 'lite'));
-test('STACKS_REALTIME_SCALED@full: the global mode runs one task per node and needs a shared hub', t => provesGlobalModeIsScaled(t, 'full'));
+test('STACKS_REALTIME_SCALED: more than one replica needs a shared hub', t => provesSharedHubForReplicas(t, 'lite'));
+test('STACKS_REALTIME_SCALED: more than one replica needs a shared hub', t => provesSharedHubForReplicas(t, 'full'));
+test('STACKS_REALTIME_SCALED: one replica, an absent pin and a stopped service may run the memory hub', t => provesOneReplicaMayRunMemory(t, 'lite'));
+test('STACKS_REALTIME_SCALED: one replica, an absent pin and a stopped service may run the memory hub', t => provesOneReplicaMayRunMemory(t, 'full'));
+test('STACKS_REALTIME_SCALED: an API that composes no realtime feature or is not an api app is not judged', t => provesUnjudgedApis(t, 'lite'));
+test('STACKS_REALTIME_SCALED: an API that composes no realtime feature or is not an api app is not judged', t => provesUnjudgedApis(t, 'full'));
+test('STACKS_REALTIME_SCALED: the global mode runs one task per node and needs a shared hub', t => provesGlobalModeIsScaled(t, 'lite'));
+test('STACKS_REALTIME_SCALED: the global mode runs one task per node and needs a shared hub', t => provesGlobalModeIsScaled(t, 'full'));
 
 for (const edition of ['lite'] as const) {
   test(`STACKS_REALTIME_SCALED@${edition}: the finder reports a scaled memory hub and accepts a shared one`, t => {
@@ -339,7 +339,7 @@ for (const edition of ['lite'] as const) {
   });
 }
 
-test('STACKS_REALTIME_SCALED@lite: reexports, dynamic import, require and import-equals reach realtime', t => {
+test('STACKS_REALTIME_SCALED: reexports, dynamic import, require and import-equals reach realtime', t => {
   const value = fixture(t);
   const compositions = [
     "export { ChatModule as StreamModule } from '@features/realtime/chat';",
@@ -354,7 +354,7 @@ test('STACKS_REALTIME_SCALED@lite: reexports, dynamic import, require and import
   }
 });
 
-test('STACKS_REALTIME_SCALED@lite: type-only imports, comments and disconnected features do not compose', t => {
+test('STACKS_REALTIME_SCALED: type-only imports, comments and disconnected features do not compose', t => {
   const value = fixture(t);
   const compositions = [
     "import type { ChatModule } from '@features/realtime/chat'; export type Entry = ChatModule;",
@@ -370,7 +370,7 @@ test('STACKS_REALTIME_SCALED@lite: type-only imports, comments and disconnected 
   }
 });
 
-test('STACKS_REALTIME_SCALED@lite: tracked tsconfig aliases and mapped API component names are respected', t => {
+test('STACKS_REALTIME_SCALED: tracked tsconfig aliases and mapped API component names are respected', t => {
   const value = fixture(t);
   value.put('be/tsconfig.json', JSON.stringify({ compilerOptions: { baseUrl: '.', paths: { '@stream/*': ['src/features/realtime/*'] } } }));
   addRealtime(value, "import { ChatModule } from '@stream/chat'; export const modules = [ChatModule];");
@@ -384,7 +384,7 @@ test('STACKS_REALTIME_SCALED@lite: tracked tsconfig aliases and mapped API compo
   assert.deepEqual(issuesFor(value, 'STACKS_REALTIME_SCALED'), []);
 });
 
-test('STACKS_REALTIME_SCALED@lite: untracked composition evidence cannot enable a feature', t => {
+test('STACKS_REALTIME_SCALED: untracked composition evidence cannot enable a feature', t => {
   const value = fixture(t);
   addRealtime(value);
   runRealtime(value, 2, 'memory');
@@ -392,7 +392,7 @@ test('STACKS_REALTIME_SCALED@lite: untracked composition evidence cannot enable 
   assert.deepEqual(issuesFor(value, 'STACKS_REALTIME_SCALED'), []);
 });
 
-test('STACKS_REALTIME_SCALED@lite: tracked config cannot read untracked or secret-path extensions', t => {
+test('STACKS_REALTIME_SCALED: tracked config cannot read untracked or secret-path extensions', t => {
   const value = fixture(t), compiler = ts(), reads: string[] = [];
   addRealtime(value);
   runRealtime(value, 2, 'memory');
@@ -409,7 +409,7 @@ test('STACKS_REALTIME_SCALED@lite: tracked config cannot read untracked or secre
   }
 });
 
-test('STACKS_REALTIME_SCALED@lite: the tracked finder passes a shared hub and fails the in-process hub of a scaled API', t => {
+test('STACKS_REALTIME_SCALED: the tracked finder passes a shared hub and fails the in-process hub of a scaled API', t => {
   const value = fixture(t);
   addRealtime(value);
   runRealtime(value, 2, 'postgres');

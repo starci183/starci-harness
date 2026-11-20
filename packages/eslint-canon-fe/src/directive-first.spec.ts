@@ -3,7 +3,7 @@
  *
  *   node --test src/directive-first.spec.ts
  */
-// proves: FE_DIRECTIVE_FIRST@lite FE_DIRECTIVE_FIRST@full
+// proves: FE_DIRECTIVE_FIRST
 import assert from "node:assert/strict"
 import test from "node:test"
 import tsParser from "@typescript-eslint/parser"

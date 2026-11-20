@@ -7,8 +7,8 @@
  * and a check comparing a package name for equality does not see it - so that case is asserted
  * first and must never be deleted to make an import tidier.
  */
-// proves: FE_ICON_INLINE_SVG@lite
-// proves: FE_ICON_INLINE_SVG@full
+// proves: FE_ICON_INLINE_SVG
+// proves: FE_ICON_INLINE_SVG
 import assert from "node:assert/strict"
 import test from "node:test"
 import { at, fixtureHfs, slotTester } from "../../eslint-canon-fe/fixtures/typed/tester.ts"

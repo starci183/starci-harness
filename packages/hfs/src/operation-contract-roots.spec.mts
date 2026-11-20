@@ -1,4 +1,4 @@
-// proves: HFS_UNUSED_FILE@lite HFS_UNUSED_FILE@full
+// proves: HFS_UNUSED_FILE
 // The operation emitter is a real consumer of one declared API-app source entry, in both editions.
 import test from 'node:test';
 import type { TestContext } from 'node:test';

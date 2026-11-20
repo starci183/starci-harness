@@ -1,19 +1,19 @@
-// proves: FE_ROUTE_FILES_THIN@lite
-// proves: FE_ROUTE_FILES_THIN@full
-// proves: FE_NEXT_CONVENTIONS@lite
-// proves: FE_NEXT_CONVENTIONS@full
-// proves: FE_PAGE_METADATA_MISSING@lite
-// proves: FE_PAGE_METADATA_MISSING@full
-// proves: FE_ROUTE_ONE_PAGE@lite
-// proves: FE_ROUTE_ONE_PAGE@full
-// proves: FE_ROUTE_DRAWING_DECISION@lite
-// proves: FE_ROUTE_DRAWING_DECISION@full
-// proves: FE_ROUTE_CLIENT_BOUNDARY@lite
-// proves: FE_ROUTE_CLIENT_BOUNDARY@full
-// proves: FE_ROUTE_CLIENT_HOOK@lite
-// proves: FE_ROUTE_CLIENT_HOOK@full
-// proves: FE_ROUTE_DEFAULT_EXPORT@lite
-// proves: FE_ROUTE_DEFAULT_EXPORT@full
+// proves: FE_ROUTE_FILES_THIN
+// proves: FE_ROUTE_FILES_THIN
+// proves: FE_NEXT_CONVENTIONS
+// proves: FE_NEXT_CONVENTIONS
+// proves: FE_PAGE_METADATA_MISSING
+// proves: FE_PAGE_METADATA_MISSING
+// proves: FE_ROUTE_ONE_PAGE
+// proves: FE_ROUTE_ONE_PAGE
+// proves: FE_ROUTE_DRAWING_DECISION
+// proves: FE_ROUTE_DRAWING_DECISION
+// proves: FE_ROUTE_CLIENT_BOUNDARY
+// proves: FE_ROUTE_CLIENT_BOUNDARY
+// proves: FE_ROUTE_CLIENT_HOOK
+// proves: FE_ROUTE_CLIENT_HOOK
+// proves: FE_ROUTE_DEFAULT_EXPORT
+// proves: FE_ROUTE_DEFAULT_EXPORT
 import test from "node:test"
 import { canonTester } from "../fixtures/typed/tester.ts"
 import { projectFixture } from "../../eslint-canon-be/fixtures/project/tester.ts"
