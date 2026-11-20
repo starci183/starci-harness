@@ -3,7 +3,7 @@ import { join } from "node:path"
 import { parse } from "yaml"
 import { z } from "zod"
 import { Refusal } from "../shared/errors.js"
-import { locateOps } from "./ops.js"
+import { loadOps, locateOps } from "./ops.js"
 
 const difficultySchema = z.enum(["easy", "medium", "hard", "insane"])
 
@@ -145,6 +145,12 @@ const signalProblems = (routing: Routing): string[] => [
     ...routing.pendingComposer.patterns.filter((pattern) => !compiles(pattern)).map((pattern) => `pendingComposer.patterns has an invalid pattern: ${pattern}`),
 ]
 
+/** Every pool label that is neither an op file of the folder (ops/ops/<label>.md) nor a coordinator role: a pool that names it could never take the work. */
+const labelProblems = (routing: Routing, dir: string): string[] => {
+    const known = new Set([...Object.keys(loadOps(dir).labels), ...Object.keys(routing.coordinators)])
+    return Object.entries(routing.pools).flatMap(([pool, spec]) => spec.labels.filter((label) => !known.has(label)).map((label) => `pool ${pool} takes ${label}, which is no op file and no coordinator role`))
+}
+
 const loaded = new Map<string, Routing>()
 
 /** Loads and validates ops/routing.yaml from the ops folder (STARCI_OPS_DIR honoured); read once per process. */
@@ -160,7 +166,7 @@ export const loadRouting = (dir: string = locateOps()): Routing => {
     }
     const parsed = routingSchema.safeParse(raw)
     if (!parsed.success) throw new Refusal("OPS_INVALID", `${file} is invalid: ${z.prettifyError(parsed.error)}`)
-    const problems = problemsOf(parsed.data)
+    const problems = [...problemsOf(parsed.data), ...labelProblems(parsed.data, dir)]
     if (problems.length > 0) throw new Refusal("OPS_INVALID", `${file} is inconsistent:\n${problems.join("\n")}`)
     loaded.set(dir, parsed.data)
     return parsed.data

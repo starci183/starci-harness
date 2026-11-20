@@ -56,8 +56,13 @@ your files import (`tabs.choose`, or a finer `tabs.choose.<term>`), the DNA and 
 contract hands you. A family you import with no Choose anchor cited, or an id that resolves to nothing, is red
 (`anchors-cited`); the reviewer then grades each cite against your diff.
 
-A slice that changes what a screen shows needs the screen's canvas page approved first (`design.json` page `approved`, then `built` with the
-change): [PROJECT-GALLERY-7](../../contexts/project/gallery.md#project-gallery-7-a-ui-change-goes-canvas-first-then-code-then-gallery). When the page is
-not approved, the slice is `blocked` naming it; you never draw or approve it yourself.
+A slice that changes what a screen shows copies an approved drawing:
+[PROJECT-GALLERY-7](../../contexts/project/gallery.md#project-gallery-7-a-ui-change-goes-board-first-then-code-then-the-gallery-then-one-review). In an
+app with a design board (`gallery/board/board.yaml`) that is the screen's board section in a revision the owner approved (`approvedAt`): build
+each state the section draws with the same Grammar components, then drop the section's `planned` mark once its route is coded. In an app
+with a canvas it is the screen's canvas page (`design.json` page `approved`, then `built` with the change). When the drawing is not
+approved, the slice is `blocked` naming it; you never draw or approve it yourself.
 
-A slice that changes a screen ends with the UI audit ([PROJECT-GALLERY-8](../../contexts/project/gallery.md#project-gallery-8-one-file-per-screen-screenyaml-and-a-ui-audit-before-a-changed-screen-lands)): shoot, `starci audit run <area>/<screen> --builder <you>`, an auditor subagent other than you fills the seven lenses of `screen.yaml`, you fix and shoot again until round 2 or later has no open lens; the "UI Audit" gate (`UI_AUDIT_*`) refuses the change otherwise.
+A slice that changes a screen ends with its shots at 1440 and 390 in the gallery. In an app with a board, the one review of the whole gallery
+(the `inspect` op) audits it with every other screen the change reaches; in an app without one, the slice ends with the UI audit of
+[PROJECT-GALLERY-8](../../contexts/project/gallery.md#project-gallery-8-one-file-per-screen-screenyaml-and-a-ui-audit-before-a-changed-screen-lands): shoot, `starci audit run <area>/<screen> --builder <you>`, an auditor subagent other than you fills the seven lenses of `screen.yaml`, you fix and shoot again until round 2 or later has no open lens. Either way the "UI Audit" gate (`UI_AUDIT_*`) refuses the change while a touched screen lacks its audit.

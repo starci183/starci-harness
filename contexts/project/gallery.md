@@ -5,6 +5,7 @@ explanation of why each region is drawn that way are kept and looked at. This fi
 
 ```
 gallery/
+  board/board.yaml                 optional: the design board of the app, one module per section beside it (PROJECT-GALLERY-9)
   pages/<area>/<screen>/     one folder = one screen (one agent, one state)
     1440.png  390.png    the shots; only these two width names
     explain.md                     required when any png exists
@@ -257,36 +258,43 @@ the gate judges.
 
 The shots are the author's work in every UI round; a reviewer compares the screens, and reads their explanation, in the gallery.
 
-## PROJECT-GALLERY-7 A UI change goes canvas first, then code, then gallery
+## PROJECT-GALLERY-7 A UI change goes board first, then code, then the gallery, then one review
 
 Any change that a user can see on a screen (a new screen, a redesign, a fix round, a moved region, a changed copy or state) follows one order. The
-canvas of PROJECT-GALLERY-6 is where the owner decides how the screen looks; the code follows the decision, and the gallery proves it matches.
+drawing is where the owner decides how the app looks; the code copies the decision, the gallery is shot from the code, and one review judges the
+whole gallery. An app with a design board (PROJECT-GALLERY-9) draws on the board; an app without one keeps its canvas (PROJECT-GALLERY-6) in the
+same order until it adopts a board.
 
-1. **Canvas first.** Update the screen's page in the app's `.starcistacks/canvas/`: draw or adjust its frames and its concept note with
-   `/claude-design` ([skills/claude-design/SKILL.md](../../skills/claude-design/SKILL.md)), set the page `drafted` in `design.json` and publish the
-   board. The owner approves it in the owner's own words; only then does the lead set the page `approved` with a new `approvedAt` (PROJECT-GALLERY-6
-   item 5). A change to a screen the canvas does not hold yet starts by adding its page and its area to `design.json`.
-2. **Then the code.** The code lane builds the approved page, and the same commit records the page's build in `design.json` (PROJECT-GALLERY-6
-   item 5, `built`). Code written before the approval is a draft: it is redone from the approved frames, never approved after the fact.
-3. **Finally the gallery, then the critique.** Shoot the screen (PROJECT-GALLERY-1 item 2) and copy the approved note as `explain.md`
-   (PROJECT-GALLERY-5). The canvas is a quick sketch of direction, not a deep analysis, and grammar compliance alone is not enough: the screen must also
-   be sensible UX. So an agent other than the one that built the screen runs the final critique, comparing the code (its shots), the gallery and the
-   canvas, in two rounds:
-   - **Round 1, the desktop composition (1440).** Compare it with real products of the same archetype (a collection with Airtable, Notion, Shopify
-     or Linear; a form, a detail, a dashboard each with their own): what they put in one row, what they leave out, where the action sits. Fix what the
-     comparison shows.
-   - **Round 2, the 390 frame and the states.** Check the phone frame and the empty, loading and error states (and no-match, first-visit, editing
-     where the page has them). Fix what they show.
-   After each round the fixes land in the code and the shots are taken again; when both rounds are done the canvas page is synced to the code.
-   **The record** is the section `## Phương án đã cân nhắc` in the screen's `explain.md` and in the canvas page's note: each option considered
-   (including the ones the builder and the sketch drew) with why it was chosen or rejected. An option that was not weighed is not a final screen.
-   Only then does the reviewer move the page `built` → `matches` (PROJECT-GALLERY-6 item 5), setting `matchedAt`. The critic brief template is in
-   [skills/claude-design/references/production.md](../../skills/claude-design/references/production.md#the-final-critique-another-agent-after-code).
+1. **Board first, approved once.** Draw or revise the app's board (`gallery/board`, the `design` op): one task per app or per board revision
+   draws every screen it changes in every named state at 1440 and 390, from the Grammar's components and the app's tokens, raises `revision` and
+   drops `approvedAt`. The owner reviews the revision on the board (the gallery's `#/board`) and approves it once, in the owner's own words; only
+   then does the lead set `approvedAt` (a full ISO timestamp with its zone). Screen by screen approval is gone: the revision is the unit. In an app
+   with a canvas, the screen's page is drawn with `/claude-design`, set `drafted` and approved the same way into `approved` (PROJECT-GALLERY-6 item 5).
+2. **Then the code, copying the board.** The code lane builds the screens of the approved revision, each state with the components its section
+   draws; a section's `planned` mark goes once its route is coded. Code written before the approval is a draft: it is redone from the approved
+   drawing, never approved after the fact. In an app with a canvas the same commit records the page's build in `design.json` (`built`).
+3. **Then the gallery, shot from the code.** Every screen the change reaches (PROJECT-GALLERY-8 item 3) is shot at 1440 and 390 into
+   `gallery/pages/<area>/<screen>/` with its `screen.yaml` (PROJECT-GALLERY-1 item 2, PROJECT-GALLERY-5); the shots are generated from the running
+   code, never drawn.
+4. **Finally one review of the whole gallery.** The drawing is a decision of direction, and grammar compliance alone is not enough: the screens
+   must also be sensible UX, which only the render shows. So one review (the `inspect` op), by an agent other than the builder, runs the critique
+   and the audit once over every screen the change reaches, comparing the shots, the gallery and the board, in two rounds that each span all of
+   them:
+   - **Round 1, the desktop compositions (1440).** Compare each with real products of the same archetype (a collection with Airtable, Notion,
+     Shopify or Linear; a form, a detail, a dashboard each with their own): what they put in one row, what they leave out, where the action sits.
+   - **Round 2, the 390 frames and the states.** Check the phone frames and the empty, loading and error states (and no-match, first-visit,
+     editing where a page has them).
+   Each round fills the seven lenses of every touched screen's `screen.yaml` audit (PROJECT-GALLERY-8 item 3); the fixes of a round land in the
+   code and the shots are taken again before the next. When both rounds are done the board (or the canvas page) is synced to the code.
+   **The record** is `considered` in each touched `screen.yaml` (`## Phương án đã cân nhắc` in an `explain.md` not migrated yet, and the canvas
+   page's note): each option weighed, including the ones the builder and the drawing chose, with why it was chosen or rejected. An option that was
+   not weighed is not a final screen. In an app with a canvas, only then does the reviewer move the page `built` → `matches`, setting `matchedAt`.
+   The critic brief template is in [skills/claude-design/references/production.md](../../skills/claude-design/references/production.md#the-final-critique-another-agent-after-code).
    The owner gives feedback on the finished screens gradually, never all at once; a `matches` page from before this rule is listed as not final yet.
-4. **Who is bound.** Every author of a UI change: a worker, a Kernel plan, the Supervisor and a person alike. A change that touches no visible
-   region (a rename, a refactor, a type fix) needs no canvas page.
-5. **Canvas-managed.** A screen is canvas-managed when its area is in `areas` of `design.json` or one of its pages is in `pages`. An app with no
-   `design.json`, and a screen of an area it does not list, is outside this rule until its first page is drawn.
+5. **Who is bound.** Every author of a UI change: a worker, a Kernel plan, the Supervisor and a person alike. A change that touches no visible
+   region (a rename, a refactor, a type fix) needs no drawing.
+6. **Canvas-managed.** A screen is canvas-managed when its area is in `areas` of `design.json` or one of its pages is in `pages`. An app with no
+   `design.json`, and a screen of an area it does not list, is outside the canvas gate below until its first page is drawn.
 
 **Enforced by** (R395, `rules/gallery-coupling.mts`, run by `starci app check` and, listing only, by the commit guard):
 
@@ -316,7 +324,7 @@ The owner's decision of 2026-11-19: a screen is described by one structured file
 2. **`starci gallery migrate-explain [--execute]`** turns every `explain.md` into a `screen.yaml` (regions become sections with their `Vì sao`, `Luật` and `Grammar`, the options section becomes
    `considered`, the `code` is read from the route's source, the shot sha256 from the PNGs on disk) with `audit: null`, and deletes the explain.md. A dry run lists what it would do; a screen it cannot convert (no route, no title) is
    skipped and named.
-3. **The UI audit.** A screen the diff touches since the base (the source of its route changed, the PROJECT-GALLERY-5 mapping; or its audited screen.yaml changed) carries an `audit`:
+3. **The UI audit.** A screen the diff touches since the base carries an `audit`. A screen is touched when the source of its route changed (the PROJECT-GALLERY-5 mapping), when a file its route's `page.tsx` reaches through value imports changed (a shared composite, a hook, a module, a workspace package, an imported i18n catalog; resolved by the app's own TypeScript under the front-end app's tsconfig, type-only imports left out, bounded and memoised: `packages/hfs/cache/screen-reach.mts`), or when its audited screen.yaml changed. **Known gap**: a barrel (`index.ts` re-exporting several modules) ties every module it re-exports to each importer, so a change behind a barrel touches more screens than render it. The audit holds
    `builder.agent`, `auditor.agent` (a different agent), `rounds` (each `n`, `at`, and the seven `lenses` `order`, `layout`, `actionable`, `live`, `words`, `states`, `truth`, each
    `{ verdict: pass | fixed | open, notes }`, notes required unless `pass`) and `escalate`. The lenses ask: **order** what the user needs first comes first; **layout** grouping, hierarchy and the Grammar
    rules, with an explicit checklist read on the full-resolution crops of the first viewport and the header at 390 and 1440 (never on the shrunk full-page shot): control height 40 (an `sm` control only nested in an item or a dense toolbar, never in a header), no wrapped label, overflow goes to the menu (`TopBar fit`), tap targets at least 44 at 390 (ui/presentation.md PHONE-1..4; `DNA-COMMON-CONTROLS-PHONE-40`, `DNA-COMMON-HEADER-CONTROLS-40`, `DNA-COMMON-BUTTON-ONE-LINE`, `DNA-COMMON-HEADER-FIT-ONE-LINE`, `DNA-COMMON-HEADER-NO-OVERFLOW`); **actionable** every value shows how to change it; **live** running, done, waiting and failed are visible with an icon and motion; **words** no mixed English or raw ids, one term per concept; **states** empty,
@@ -337,7 +345,64 @@ The owner's decision of 2026-11-19: a screen is described by one structured file
    open lenses, writes full-resolution CROPS beside the shots (`1440-first.png`, `1440-header.png`, `390-first.png`, `390-header.png`: the first viewport and the header region, cut at the shot's own pixel density, never scaled; a screen folder may hold them) and prints the brief an auditor agent reads (the crops first, then the shots at full size, the seven lenses with the layout lens's checklist, the laws: PROJECT-GALLERY-7, the DNA laws of the Grammar contract, ui-on-grammar, the owner rules).
    **The harness never calls a model.** The auditor is a separate agent (a subagent or another lane) given the brief; it fills the round, the builder fixes and shoots again, and `run` opens the next round.
    `starci audit status [--json]` lists the screens with an audit missing, stale, pending, open or waiting for the owner.
-6. **A UI lane ends:** shoot (1440 and 390) → `starci audit run` → an auditor subagent fills the round → the builder fixes → shoot → `starci audit run` again, until round 2 or later has no open lens → sync the canvas →
-   land. The final critique of PROJECT-GALLERY-7 item 3 is these rounds; its record of options is `considered`.
+6. **A UI change ends** with the one review of PROJECT-GALLERY-7 item 4: shoot every touched screen (1440 and 390) → `starci audit run` on each → the reviewer fills the round of all of them → the builder fixes → shoot → the next round, until round 2 or later has no open lens on any → sync the board (or the canvas) →
+   land. The touched set is what the review covers; its record of options is `considered`.
 
 **Enforced by** `packages/hfs/cache/uiaudit-family.mts` and `runtime/scripts/hfs/screen-yaml.mts` (the UI Audit gate and the schema), `rules/gallery.mts` (`HFS_APP_GALLERY_SCREEN_INVALID`), `uiaudit/cli.mts` (`starci audit`, `starci gallery`).
+
+## PROJECT-GALLERY-9 One design board per app, drawn once from the Grammar
+
+The board is the app's one drawing: every screen of the app, in every named state, at 1440 and 390, composed only of the app's Grammar and
+its tokens, so that what the owner approves is already what the code renders. The code copies it (PROJECT-GALLERY-7 item 2); the gallery's
+shots come from the code. It replaces drawing screen by screen.
+
+1. **Where it lives.** `gallery/board/` (slot `app.gallery-board`), committed:
+   ```
+   gallery/board/
+     board.yaml                    the record (item 2)
+     <area>/<screen>.tsx           one module per section: its default export draws the screen in the state it is given
+   ```
+   A section module imports the Grammar (`@starci/grammar/core` or the app's grammar) and nothing of the app's `fe/`: no feature component, no
+   class of its own, data written in the module as the screen really shows it. A missing Grammar capability is marked "cần Grammar" and drawn
+   with what exists, never invented.
+2. **The record.** `board.yaml`:
+   ```yaml
+   schema: 1
+   revision: 3                            # raised by every change the owner reviews
+   approvedAt: null                       # the owner's approval of this revision, a full ISO timestamp with its zone; null until then
+   tokens: [fe/apps/web/src/modules/brand/brand.css]   # app-root relative stylesheets, loaded after the Grammar's
+   sections:
+     - id: customers/list                 # the gallery screen id it becomes: gallery/pages/customers/list/screen.yaml
+       title: Khách hàng
+       route: /customers                  # the route it becomes
+       states: [default, empty, loading, error]   # default first; the suffixes of PROJECT-GALLERY-6 item 2, or the screen's own
+       needsApi: [customers.list]         # "cần API" marks, built with the page
+     - id: customers/import
+       title: Nhập khách hàng
+       route: /customers/import
+       planned: true                      # drawn, not coded yet
+   ```
+   Approval is the revision's, set only from the owner's words, by the lead; a new revision drops it.
+3. **How it renders.** The gallery app shows it as the view "Board" (`#/board`): sections area by area, each with its route, the screen.yaml it
+   becomes, its "cần API" and planned marks and a link to its gallery screen, and each state as two frames, 1440 and 390, side by side at one
+   scale. A frame is a page of its own (`/__board/frame.html`), so a 390 frame is a 390 viewport and the Grammar's responsive rules see the real
+   width. The board renders in the gallery's dev server (`starci app stack up`, the gallery port). **Known gap**: `vite build` of the gallery
+   leaves the board out, so a static export of the gallery holds no board.
+4. **Coverage.** Every coded route has a section, and every section has a coded route or is marked `planned`; a coded route excluded in
+   `gallery/routes.json` needs none.
+5. **Review copy for the owner.** The repository board is the source. A Claude Artifact of it is a review copy for the owner's comments only:
+   open `#/board`, take its 1440 and 390 frames at full size and publish them with the revision number; a comment returns as a new revision,
+   never as an edit of the copy.
+
+**Enforced by** (R395, `rules/gallery-board.mts`; only where `gallery/board/board.yaml` exists):
+
+- `HFS_APP_GALLERY_BOARD_INVALID`: the record is not YAML or not the shape of item 2 (unknown keys, a section id that is no `<area>/<screen>`,
+  states not starting with `default`, a token file that does not exist), or a section has no module `gallery/board/<area>/<screen>.tsx`.
+- `HFS_APP_GALLERY_BOARD_ROUTE_MISSING` (`localOnly`): a `page.tsx` route of the front end (PROJECT-GALLERY-4 item 1) has no section whose
+  `route` matches it and no reasoned exclusion in `gallery/routes.json`.
+- `HFS_APP_GALLERY_BOARD_SECTION_UNMAPPED` (`localOnly`): a section's `route` is no route of the front end and the section is not `planned`,
+  or it is `planned` while its route is coded.
+
+**Known gap**: the gate reads the record and the files, never the render: that a section module imports only the Grammar, and that the
+code matches its section, is held by the `design` op's `anchors-cited` and by the one review of PROJECT-GALLERY-7 item 4. The canvas gate
+`HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED` reads `design.json` only, so a board revision's `approvedAt` gates no code change yet.

@@ -1,6 +1,6 @@
 ---
 schema: starci/op@1
-summary: generate real artwork (the artwork slots a drawn direction leaves, illustrations, mockup renders)
+summary: "superseded by design (one board per app, PROJECT-GALLERY-9), kept for the trial: generate real artwork (the artwork slots a drawn direction leaves, illustrations, mockup renders)"
 floor: hard
 hostTools: [git]
 perRecord: true

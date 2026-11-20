@@ -1,6 +1,6 @@
 ---
 schema: starci/op@1
-summary: draw the direction of the screen the contract describes in the grammar and the brand (HTML and tokens)
+summary: "superseded by design (one board per app, PROJECT-GALLERY-9), kept for the trial: draw the direction of the screen the contract describes in the grammar and the brand (HTML and tokens)"
 floor: hard
 hostTools: [git, node]
 perRecord: true
@@ -40,4 +40,5 @@ contract hands you. An id that resolves to nothing is red (`anchors-cited`); the
 audit are graded against these cites.
 
 A direction for an app that keeps a canvas is the canvas page of the screen (`.starcistacks/canvas`, `/claude-design`); the owner approves it before any code
-([PROJECT-GALLERY-7](../../contexts/project/gallery.md#project-gallery-7-a-ui-change-goes-canvas-first-then-code-then-gallery)).
+([PROJECT-GALLERY-7](../../contexts/project/gallery.md#project-gallery-7-a-ui-change-goes-board-first-then-code-then-the-gallery-then-one-review)).
+An app with a design board (`gallery/board/board.yaml`) is drawn by the `design` op instead, the whole board in one task.

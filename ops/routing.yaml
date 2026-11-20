@@ -42,7 +42,10 @@ tiers:
     - {agent: codex, model: gpt-6-luna, effort: low}
 
 # One pool per agent: one provider quota window with real parallel slots. `labels` are the work it may take, `tools` what
-# its agent can use. A label's host tool that has a probe below must also answer on this host.
+# its agent can use. A label's host tool that has a probe below must also answer on this host. Every label is an op file of ops/ops/ or a
+# coordinator role (loadRouting refuses another, OPS_INVALID); the folded labels (design, prove, inspect) sit beside the ones they supersede
+# while they are on trial (ops/ops/README.md "Old labels and the ops that replace them"). design (floor hard) runs on the high tier,
+# Claude or Codex; inspect needs the browser, which Devin and Cursor lack, and prove needs docker, which Cursor lacks.
 pools:
   # coordinatorReserve: the slots of maxParallel held for coordinator seats (Supervisors and Kernels). A worker pick sees
   # maxParallel minus it; a coordinator pick takes a reserved slot whatever the workers hold, so a pool full of workers never
@@ -51,18 +54,18 @@ pools:
     provider: claude
     maxParallel: 6
     coordinatorReserve: 4
-    labels: [code, test, draw, audit, review, verify, docs, deliver, supervisor, kernel]
+    labels: [code, test, draw, audit, review, verify, docs, deliver, design, prove, inspect, supervisor, kernel]
     tools: [git, node, browser, docker]
   # Only Codex takes image work: image generation runs on GPT-6.1 Sol alone (labelTiers keeps image on the high tier).
   codex:
     provider: codex
     maxParallel: 10
-    labels: [code, test, draw, audit, review, verify, docs, deliver, image, supervisor, kernel]
+    labels: [code, test, draw, audit, review, verify, docs, deliver, image, design, prove, inspect, supervisor, kernel]
     tools: [git, node, browser, docker]
   devin:
     provider: devin
     maxParallel: 10
-    labels: [code, test, review, verify, docs]
+    labels: [code, test, review, verify, docs, prove]
     tools: [git, node, docker]
     # Devin takes no launch-time model: worker-start names none and the attempt records the model Orca attests.
     modelSelection: false

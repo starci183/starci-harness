@@ -1,13 +1,29 @@
 # Op files: one per label, base and extend
 
-Every worker task has a label (`code`, `test`, `draw`, `image`, `audit`, `review`, `verify`, `docs`, `deliver`), and
-each label has one op file here, `<label>.md`. The op file owns the **base** of a task of that label; the Kernel's contract
+Every worker task has a label (`code`, `design`, `prove`, `inspect`, `docs`, `deliver`, and the six they supersede while on
+trial: `draw`, `image`, `test`, `verify`, `review`, `audit`), and each label has one op file here, `<label>.md`. The op file owns the **base** of a task of that label; the Kernel's contract
 adds an **extend**. The harness works the union, base then extend, and the worker reads nothing else. Which labels a Work
 record needs, in which order, is its lane ([../lanes.yaml](../lanes.yaml)).
 
 `cli/src/harness/ops.ts` loads and validates these files (`OPS_INVALID` names the file and the fault);
 `cli/src/harness/contract.ts` resolves a contract against its op and judges it; `cli/src/harness/brief.ts` renders the
 brief.
+
+## Old labels and the ops that replace them
+
+The nine labels fold into the master plan's ops. A new op names what it replaces under `supersedes` (`loadOps` refuses a name with no op
+file and a label two ops claim); the old op stays loadable, its summary marked when it is a drawing op, so a plan written for either runs.
+A Kernel plans new work with the new label. After the trial the old files go and the lanes swap their steps (ops/lanes.yaml).
+
+| old | new | what changes |
+|---|---|---|
+| `draw`, `image` | `design` | one task per app or per board revision draws the whole board (`gallery/board`, PROJECT-GALLERY-9) in Grammar code, not one HTML direction per screen; artwork slots stay marked on the board |
+| `test`, `verify` | `prove` | one task writes what the suite needs (test paths only) and runs the suite the harness reruns; e2e on a fresh database is the proof |
+| `review`, `audit` | `inspect` | one read-only review per change: the diff, and for a visible change the whole gallery against the board in one critique and audit pass (PROJECT-GALLERY-7) |
+| `code`, `docs`, `deliver` | unchanged | |
+
+Routes follow the new labels: `inspect-findings-repair-build`, `inspect-systemic-redesigns` (to `design`) and `prove-red-repairs-build`
+([../routes.yaml](../routes.yaml)); the pools of [../routing.yaml](../routing.yaml) take them.
 
 ## An op file
 
@@ -17,6 +33,7 @@ differs from the procedure below. A body never restates the common procedure.
 | key | holds |
 |---|---|
 | `summary`, `floor`, `hostTools`, `independentOf` | what the label is for, its difficulty floor, the host tools it needs and the labels whose authors it is never routed to; the router reads the last three ([../README.md](../README.md)) |
+| `supersedes` | the labels this op replaces ("Old labels and the ops that replace them" above) |
 | `perRecord` | a task of the label works one Work record: a plan whose task of it carries the lane steps of several records is refused `TASK_NOT_SPLIT` (`assertFlow` in `cli/src/harness/lanes.ts`), so independent records run in parallel |
 | `context.base` | the files every task of the label reads. `harness:<path>` is a file of this checkout (contexts, ops, a package README), which a published CLI ships ([cli/README.md](../../cli/README.md)); any other entry is a repository path. `{name}` is filled from the task's inputs or `{label}`. An entry may be `{file, when}`: it applies only when every input it names holds one of its values (the code op reads its mandatory core of the app files for `side: be|fe`, the anatomy slice, the edition file, the core shared topics and the side README, the rest on demand as [contexts/code/README.md](../../contexts/code/README.md#read-for-a-coding-task) says; CONTRIBUTING.md, the tier-1 branch rules and the generated section index of cli/README.md (`contexts/harness/cli-sections.md`, whose sections it opens on demand) for `side: harness`, and CONTRIBUTING.md plus the package contexts for `side: package`). An entry marked `shared: true` is read by every task of the label for orientation, so its ids are never a read trace. `context.budget` caps the resolved context in tokens (bytes / 4), judged when a contract is admitted (`task send`, `supervisor dispatch`, `workflow define`, a workflow change that adds or edits it; `contract check` reports it): a heavier one is refused `CONTRACT_UNFIT`. An admitted contract keeps the budget it passed: its verify, relaunch, settle and a retry of the same contract hash never refuse it for a context that grew under it (`isAdmitted` in `cli/src/harness/tasks.ts`) |
 | `input.base` | the named inputs a contract must give, each with what it means. `summary` and `details` belong to every contract and are never declared |

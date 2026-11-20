@@ -8,7 +8,7 @@ it, comments kept, only after that file's loaders accept the whole new file (`cl
 | file | holds | read by |
 |---|---|---|
 | [ops/ops/README.md](ops/README.md) | the op pattern (base and extend) and the worker procedure every brief starts with | `cli/src/harness/ops.ts`, `brief.ts` |
-| `ops/ops/<label>.md` | one op per label (`code`, `test`, `draw`, `image`, `audit`, `review`, `verify`, `docs`, `deliver`): base context, inputs, output keys and checks, the difficulty floor, the host tools, the labels whose authors it avoids (`independentOf`) and the label's procedure | `ops.ts`, `contract.ts`, `brief.ts`, the router |
+| `ops/ops/<label>.md` | one op per label (`code`, `design`, `prove`, `inspect`, `docs`, `deliver`, and on trial beside them the labels they supersede: `test`, `draw`, `image`, `audit`, `review`, `verify`): base context, inputs, output keys and checks, the difficulty floor, the host tools, the labels whose authors it avoids (`independentOf`) and the label's procedure | `ops.ts`, `contract.ts`, `brief.ts`, the router |
 | [lanes.yaml](lanes.yaml) | the standard build flow: the lane of steps each Work record family walks (the brand, an environment), what satisfies a step and what makes it optional | `lanes.ts` (`FLOW_INCOMPLETE` at define and replan, the Kernel's planning digest) |
 | [routes.yaml](routes.yaml) | the bounded repair routes of a red or question decision: what may repair what, and how many times | `routes.ts` (decision evidence, `ROUTE_ILLEGAL` at `kernel submit`) |
 | [checks.yaml](checks.yaml) | the check presets an op or a contract names, each expanding into one primitive check | `contract.ts`, `run-checks.ts` |

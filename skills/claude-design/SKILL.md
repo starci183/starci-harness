@@ -22,7 +22,7 @@ This skill owns how a screen is designed and how the board is produced.
 ## When to use it
 
 Every UI change, not only a new area: any change a user can see (a redesign, a fix round, a moved region, a changed state or copy) starts here, on the
-screen's canvas page, before its code. The order is canvas, code, gallery, and [PROJECT-GALLERY-7](../../contexts/project/gallery.md#project-gallery-7-a-ui-change-goes-canvas-first-then-code-then-gallery) owns it and its check
+screen's canvas page, before its code. The order is canvas, code, gallery, and [PROJECT-GALLERY-7](../../contexts/project/gallery.md#project-gallery-7-a-ui-change-goes-board-first-then-code-then-the-gallery-then-one-review) owns it and its check
 (`HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED`). A change to an existing page redraws or adjusts its page and concept note; the owner approves; only then is it coded.
 
 The canvas is a quick sketch: it fixes the direction (regions, the one primary action, the states), not a deep analysis, so a lane does not

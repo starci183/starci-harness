@@ -13,6 +13,8 @@
 #                       a stopped workflow on another branch, or one that landed nothing, proves nothing; `onThisTree` of harness/lanes.ts)
 # optionalUnless: a goal flag without which the step is optional (requiresSecurity, requiresPerf: the workflow file's
 #   `requires` names security, perf).
+# A step names any label with an op file, the folded ones (design, prove, inspect) included; while they are on trial the lanes keep the
+# labels they supersede (ops/ops/README.md "Old labels and the ops that replace them"), and the swap of a step's label is one line here.
 # Steps run in order: a task carrying a step depends on the tasks carrying the steps before it. `build` names the label a
 # route `to: build` repairs with.
 schema: starci/lanes@1

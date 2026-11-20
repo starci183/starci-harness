@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Added (ops): three op files folding the nine labels toward the master plan, kept beside the old ones for a trial: `design` (one board per app or per board revision; supersedes draw and image), `prove` (supersedes test and verify) and `inspect` (one review of the diff and the whole gallery; supersedes review and audit). An op declares what it supersedes (`supersedes`, validated by `loadOps`: every name an op file, none twice); routing.yaml pools take the new labels, routes.yaml routes their reds, and `loadRouting` refuses a pool label that is neither an op file nor a coordinator role (OPS_INVALID). ops/ops/README.md maps old to new.
+- Changed (contexts): PROJECT-GALLERY-7 orders a UI change board first (the owner approves a board revision once), then code copying the board, then the auto-shot gallery, then one critique and audit pass over the whole gallery; PROJECT-GALLERY-9 owns the board. An app without a board keeps the canvas order until it adopts one.
+
 ## 1.1.0-alpha.182 - 2026-11-20
 
 - Changed: one app edition (R212, owner ruling 2026-11-20). Verbs carry no `editions`: an app tree sees every verb but the runtime-only ones (`runtimeOnly`, `contexts anatomy`); `starci doctor` and the tree report `app`; `starci app info` runs in any app (refusal APP_REQUIRED); the anatomy renders one tree per side and its slices are contexts/project/anatomy-be.md and anatomy-fe.md (`contexts anatomy --slice --side <be|fe>`, no `--edition`); `check ci` reads the one job list of the CI standard.
