@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.50.2 - 2026-11-20
+## 0.51.0 - 2026-11-20
 
 - Changed: cut with @starci/hfs 6.14.0 (one app edition, R212); the HFS view carries no `edition`. Requires @starci/hfs ~6.14.0.
 

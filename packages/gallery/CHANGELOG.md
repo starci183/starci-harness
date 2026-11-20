@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.12 - 2026-11-20
+
+- Changed: requires @starci/grammar 0.51.0, the Grammar it ships with.
+
 ## 0.1.11 - 2026-11-20
 
 - Changed: requires @starci/grammar 0.50.1, the Grammar it ships with.
