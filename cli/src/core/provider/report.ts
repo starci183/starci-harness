@@ -3,7 +3,7 @@ import type { OutcomeRecord, ProviderOutcome, QuotaReading } from "../../harness
 import { FAILURE_KINDS, loadRouting, poolsOfProvider } from "../../harness/routing.js"
 import type { FailureKind } from "../../harness/routing.js"
 import { EXIT_USAGE, Refusal } from "../../shared/errors.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 import type { VerbResult } from "../../shared/verb.js"
 
 type ReportData = { readonly outcome: OutcomeRecord; readonly quota: null } | { readonly outcome: null; readonly quota: QuotaReading }
@@ -32,7 +32,6 @@ const outcomeOf = (kind: string, pool: string | undefined, detail: string | unde
 export const providerReportVerb = defineVerb({
     path: ["provider", "report"],
     summary: "record a provider outcome (success, unknown, rate, quota, capacity, auth, launch) for its circuit and pool concurrency, or a pool's quota reading",
-    editions: BOTH_EDITIONS,
     effect: "local-write",
     roles: ["owner", "kernel", "supervisor"],
     schema: "starci/provider-report@1",

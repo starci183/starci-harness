@@ -1,7 +1,7 @@
 import { startKernel } from "../../harness/kernel.js"
 import { locateOrca } from "../../harness/orca/client.js"
 import { repositoryRoot } from "../../shared/git.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 
 /**
  * `starci kernel start <workflow>`: from the terminal of the Supervisor of the workflow's project, launches the Kernel of a
@@ -11,7 +11,6 @@ import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
 export const kernelStartVerb = defineVerb({
     path: ["kernel", "start"],
     summary: "launch (or relaunch) a running orca workflow's [Kernel] agent from the terminal of its project's Supervisor, retiring the previous Kernel seat and its tab; refuses while Orca shows one alive unless --replace",
-    editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["owner", "supervisor"],
     schema: "starci/kernel@1",

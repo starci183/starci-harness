@@ -1,12 +1,11 @@
 import { hostDown, loadHost, selectServices } from "../../harness/host.js"
 import { Refusal } from "../../shared/errors.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 
 /** `starci host down <ids>`: stops the named host services and what requires them, dependents first; stops only, never removes a container or a volume. */
 export const hostDownVerb = defineVerb({
     path: ["host", "down"],
     summary: "stop the named host services of ops/host.yaml (and what requires them) that declare a stop; data and volumes are never removed",
-    editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["owner"],
     schema: "starci/host-down@1",

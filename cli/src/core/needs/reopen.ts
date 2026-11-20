@@ -4,7 +4,7 @@ import { needOf, normalizeNeedKey, reopenRejected } from "../../harness/needs.js
 import { projectOf } from "../../harness/work.js"
 import { Refusal } from "../../shared/errors.js"
 import { callerRole } from "../../shared/role.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 
 /**
  * `starci needs reopen <key>`: the Supervisor or Debug takes back a rejection. The waiters it released are parked on the need
@@ -14,7 +14,6 @@ import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
 export const needsReopenVerb = defineVerb({
     path: ["needs", "reopen"],
     summary: "reopen a rejected shared need in a new round: the waiters its rejection released are parked again and it resolves through its last resolver, whose commits the next step relays",
-    editions: BOTH_EDITIONS,
     effect: "local-write",
     roles: ["supervisor", "debug"],
     schema: "starci/needs-reopen@1",

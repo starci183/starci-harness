@@ -9,7 +9,7 @@ import { deployUser, grantPlan, revokePlan } from "../../harness/vps/plan.js"
 import { ownerStore, requireKey, SERVER_KEYS } from "../../harness/vps/sealed.js"
 import { Refusal, UsageError } from "../../shared/errors.js"
 import { headline } from "../../shared/exec.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 import type { VerbResult } from "../../shared/verb.js"
 import { runHfs } from "../app/hfs.js"
 import { EXECUTE, OWNER, planResult, scopeOf, SERVER_ID } from "./shared.js"
@@ -26,7 +26,6 @@ import type { VpsData } from "./shared.js"
 export const vpsAddVerb = defineVerb({
     path: ["vps", "add"],
     summary: "add a managed server: write ops/vps/servers/<id>.yaml (gitignored), take its login key at a masked prompt (or --generate-key and print the public half for the owner to install), pin its host keys by ssh-keyscan after the owner confirms a fingerprint, seal key and known_hosts to the owner key; never a password; a dry run until --execute",
-    editions: BOTH_EDITIONS,
     effect: "remote",
     roles: OWNER,
     schema: "starci/vps-add@1",
@@ -132,7 +131,6 @@ const APP_AND_ENV = {
 export const vpsGrantVerb = defineVerb({
     path: ["vps", "grant"],
     summary: "give one app environment deploy access to a managed server: a per-project deploy user (docker group, no sudo, no password) with a key made here, sealed into the app's .starcistacks/<env>/secrets/vps.enc.yaml through `app secret set` (PROJECT-STACKS-5); a grant again rotates the key; a dry run until --execute",
-    editions: BOTH_EDITIONS,
     effect: "remote",
     roles: OWNER,
     schema: "starci/vps-grant@1",
@@ -165,7 +163,6 @@ export const vpsGrantVerb = defineVerb({
 export const vpsRevokeVerb = defineVerb({
     path: ["vps", "revoke"],
     summary: "take an app environment's deploy access off a managed server: its deploy user and home are removed, so the sealed key in the app no longer logs in; a dry run until --execute, idempotent",
-    editions: BOTH_EDITIONS,
     effect: "remote",
     roles: OWNER,
     schema: "starci/vps-revoke@1",

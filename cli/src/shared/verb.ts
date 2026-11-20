@@ -1,8 +1,5 @@
-/** Which product edition a verb serves; a verb of both editions is a core verb. */
-export type Edition = "lite" | "full"
-
-/** The tree the command runs against: an app of one edition, the runtime itself, or no StarCi tree. */
-export type TreeKind = Edition | "runtime" | "none"
+/** The tree the command runs against: an app, the runtime itself, or no StarCi tree. */
+export type TreeKind = "app" | "runtime" | "none"
 
 /** What a verb is allowed to touch; it decides whether an agent may run it without the owner. */
 export type Effect = "read" | "local-write" | "host" | "remote" | "publish"
@@ -60,7 +57,8 @@ export interface VerbResult<T> {
 export interface VerbDefinition<T, F extends Readonly<Record<string, FlagSpec>>> {
     readonly path: readonly [string] | readonly [string, string]
     readonly summary: string
-    readonly editions: readonly Edition[]
+    /** A verb of the harness runtime alone: an app tree never sees it. */
+    readonly runtimeOnly?: true
     readonly effect: Effect
     readonly roles: readonly Role[]
     readonly schema: `starci/${string}@${number}`
@@ -89,9 +87,6 @@ export interface AnyVerb extends Omit<VerbDefinition<unknown, Readonly<Record<st
 export const defineVerb = <T, F extends Readonly<Record<string, FlagSpec>>>(
     definition: VerbDefinition<T, F>,
 ): VerbDefinition<T, F> => definition
-
-/** The editions a core verb serves. */
-export const BOTH_EDITIONS: readonly Edition[] = ["lite", "full"]
 
 /** The roles that may run a read-only verb: every role, the harness's own (kernel, supervisor, op, debug) included. */
 export const EVERYONE: readonly Role[] = ["owner", "release", "coordinator", "lead", "worker", "agent", "kernel", "supervisor", "op", "debug"]

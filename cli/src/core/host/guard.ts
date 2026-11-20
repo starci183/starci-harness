@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs"
 import { installRefusals } from "../../harness/install-guard.js"
 import type { InstallRefusal } from "../../harness/install-guard.js"
 import { Refusal } from "../../shared/errors.js"
-import { BOTH_EDITIONS, defineVerb, EVERYONE } from "../../shared/verb.js"
+import { defineVerb, EVERYONE } from "../../shared/verb.js"
 
 interface GuardData {
     readonly command: string
@@ -35,7 +35,6 @@ const hookInput = (fallbackCwd: string): { command: string; cwd: string } => {
 export const hostGuardVerb = defineVerb({
     path: ["host", "guard"],
     summary: "judge a shell command line before it runs: an npm, pnpm or yarn command that writes node_modules (ci, install, i, uninstall, update, prune, dedupe, rebuild, link and their aliases), chained, in the background or wrapped (&&, ;, |, &, start /b, cmd /c, sh -c), is refused when its target node_modules is a junction or symlink or another worktree's node_modules links to it; --hook reads a pre-tool hook's JSON on stdin and prints the deny decision",
-    editions: BOTH_EDITIONS,
     effect: "read",
     roles: EVERYONE,
     schema: "starci/host-guard@1",

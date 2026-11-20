@@ -1,12 +1,11 @@
 import { takeTicket } from "../../harness/tickets.js"
 import { callerRole } from "../../shared/role.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 
 /** `starci ticket take <id>`: Debug takes a live ticket from its queue; the ticket goes in-progress under its name. */
 export const ticketTakeVerb = defineVerb({
     path: ["ticket", "take"],
     summary: "take a live ticket from Debug's queue: in-progress, under the taker's role",
-    editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["debug", "owner"],
     schema: "starci/ticket@1",

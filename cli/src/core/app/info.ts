@@ -28,17 +28,16 @@ const stringsOf = (value: unknown): string[] => (Array.isArray(value) ? value.fi
 
 const listOf = (items: readonly string[]): string => (items.length === 0 ? "-" : items.join(", "))
 
-/** `starci app info`: what a lite app declares in hfs.json, so an agent in chat knows its apps and patterns before it codes. */
+/** `starci app info`: what an app declares in hfs.json, so an agent in chat knows its apps and patterns before it codes. */
 export const appInfoVerb = defineVerb({
     path: ["app", "info"],
-    summary: "show what this lite app declares: back-end and front-end apps, canonical patterns and backing services",
-    editions: ["lite"],
+    summary: "show what this app declares: back-end and front-end apps, canonical patterns and backing services",
     effect: "read",
     roles: EVERYONE,
     schema: "starci/app-info@1",
     flags: {},
     run: (context) => {
-        if (context.treeRoot === undefined || context.tree !== "lite") throw new Refusal("APP_NOT_LITE", "run this inside a lite app (an hfs.json with edition lite)")
+        if (context.treeRoot === undefined || context.tree !== "app") throw new Refusal("APP_REQUIRED", "run this inside an app (an hfs.json of kind app)")
         const parsed: unknown = JSON.parse(readFileSync(join(context.treeRoot, "hfs.json"), "utf8"))
         const declaration = isRecord(parsed) ? parsed : {}
         const sides = isRecord(declaration.sides) ? declaration.sides : {}

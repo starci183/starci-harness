@@ -1,7 +1,7 @@
 import { listTickets, TICKET_KINDS, TICKET_STATES } from "../../harness/tickets.js"
 import { EXIT_USAGE, Refusal } from "../../shared/errors.js"
 import { formatTable } from "../../shared/output.js"
-import { BOTH_EDITIONS, defineVerb, EVERYONE } from "../../shared/verb.js"
+import { defineVerb, EVERYONE } from "../../shared/verb.js"
 import { FEEDBACK_KIND, listFeedbackItems } from "./feedback.js"
 
 /**
@@ -12,7 +12,6 @@ import { FEEDBACK_KIND, listFeedbackItems } from "./feedback.js"
 export const ticketListVerb = defineVerb({
     path: ["ticket", "list"],
     summary: "list the harness tickets, blocking first and then by occurrences (Debug's queue: --status open); --kind feedback lists the owner feedback, --status overdue judges it",
-    editions: BOTH_EDITIONS,
     effect: "read",
     roles: EVERYONE,
     schema: "starci/ticket-list@1",

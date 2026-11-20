@@ -1,6 +1,6 @@
 import { join, resolve } from "node:path"
 import { mainCheckout } from "../../shared/git.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 import { holdLander, landPaths, lanesDir, releaseLockFile } from "../../harness/land-queue.js"
 import { runBatch } from "../../harness/land-batch.js"
 import type { BatchRecord } from "../../harness/land-batch.js"
@@ -19,7 +19,6 @@ const POLL_MS = 30_000
 export const laneLandVerb = defineVerb({
     path: ["lane", "land"],
     summary: "run the batch lander of dev: merge every ready lane in its own worktree, one app check --env prod, push dev; red drops the lanes its findings name and re-gates once, never bisects",
-    editions: BOTH_EDITIONS,
     effect: "remote",
     roles: ["owner", "coordinator", "lead", "release"],
     schema: "starci/lane-land@1",

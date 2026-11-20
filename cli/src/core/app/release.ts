@@ -3,7 +3,7 @@ import type { Project } from "../../harness/work.js"
 import { repositoryRoot } from "../../shared/git.js"
 import { callerRole } from "../../shared/role.js"
 import { judgePush } from "../deps/push-gate.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 import { projectFrom } from "../supervisor/driver.js"
 import { argSet, argValue, FORWARDED, runHfs } from "./hfs.js"
 import type { HfsHarness } from "./hfs.js"
@@ -43,7 +43,6 @@ const releaseHarness = (project: Project | undefined): HfsHarness => {
 export const appReleaseVerb = defineVerb({
     path: ["app", "release"],
     summary: "run the app's release gates and write the L4 record and tag (or back-fill an urgent release), or push branch and tag atomically (or the urgent path)",
-    editions: BOTH_EDITIONS,
     effect: "remote",
     roles: ["owner", "release", "supervisor"],
     schema: "starci/app-release@1",

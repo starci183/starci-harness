@@ -2,7 +2,7 @@ import { coordinatorInput, describeRoute, pickCoordinator, pickRoute, RouteRefus
 import type { RouteInput, RouteMember, RoutePick, RouteRecord, RouteSimulation } from "../../harness/router.js"
 import { coordinatorRoleOf, loadRouting, parseDifficulty } from "../../harness/routing.js"
 import { EXIT_USAGE, Refusal } from "../../shared/errors.js"
-import { BOTH_EDITIONS, EVERYONE, defineVerb } from "../../shared/verb.js"
+import { EVERYONE, defineVerb } from "../../shared/verb.js"
 
 /** What route show decided: the pick or the refusal with the whole record, or a simulation's tally. */
 interface RouteShowData {
@@ -44,7 +44,6 @@ const simulationLines = (simulation: RouteSimulation): string[] => [
 export const routeShowVerb = defineVerb({
     path: ["route", "show"],
     summary: "dry-run worker or coordinator routing: tier, filters, qualification, quota, probe, scores, exploration and the chosen member; --simulate tallies n picks",
-    editions: BOTH_EDITIONS,
     effect: "read",
     roles: EVERYONE,
     schema: "starci/route-show@2",

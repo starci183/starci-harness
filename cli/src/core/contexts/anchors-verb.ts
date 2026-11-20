@@ -32,7 +32,6 @@ const reportLines = (report: AnchorReport): string[] => [
 export const contextsAnchorVerb = defineVerb({
     path: ["contexts", "anchor"],
     summary: "resolve an anchor id (tabs.choose, R12, DNA-..., <file>#<heading slug>) to its text and file; with no id, judge the anchors (exit 1 on a duplicate or dangling one)",
-    editions: ["lite", "full"],
     effect: "read",
     roles: EVERYONE,
     schema: "starci/contexts-anchor@1",

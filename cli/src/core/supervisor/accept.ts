@@ -1,4 +1,4 @@
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 import { projectFrom } from "./driver.js"
 import { acceptWorker } from "./workers.js"
 
@@ -9,7 +9,6 @@ import { acceptWorker } from "./workers.js"
 export const supervisorAcceptVerb = defineVerb({
     path: ["supervisor", "accept"],
     summary: "accept a [Worker] that reported done: task verify settles it (green commits on its branch starci/<worker>, red fails it); the worker ends accepted or red",
-    editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["supervisor", "owner"],
     schema: "starci/supervisor-worker-end@1",

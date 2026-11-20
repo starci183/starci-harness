@@ -1,5 +1,5 @@
 import { resolve } from "node:path"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 import { supervisorSubmit } from "./driver.js"
 
 /**
@@ -11,7 +11,6 @@ import { supervisorSubmit } from "./driver.js"
 export const supervisorSubmitVerb = defineVerb({
     path: ["supervisor", "submit"],
     summary: "apply one Supervisor command file (goal, goal-change, stop, need-owner; or a workflow-change or escalation ruling a kernel-undecided decision) to a workflow of the Supervisor's project; answers close decisions",
-    editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["supervisor", "owner"],
     schema: "starci/command-applied@1",

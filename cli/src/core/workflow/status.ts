@@ -10,7 +10,7 @@ import { lastEvent } from "../../harness/tasks.js"
 import { parallelSlots, snapshotOf } from "../../harness/workflow.js"
 import { Refusal } from "../../shared/errors.js"
 import { repositoryRoot } from "../../shared/git.js"
-import { BOTH_EDITIONS, EVERYONE, defineVerb } from "../../shared/verb.js"
+import { EVERYONE, defineVerb } from "../../shared/verb.js"
 import { nodeTable } from "./engine.js"
 
 /**
@@ -48,7 +48,6 @@ const heldViews = async (db: DatabaseSync, views: readonly NodeView[]): Promise<
 export const workflowStatusVerb = defineVerb({
     path: ["workflow", "status"],
     summary: "one workflow: status and reason, graph version, progress, and each task's state, ledger task and why it waits",
-    editions: BOTH_EDITIONS,
     effect: "read",
     roles: EVERYONE,
     schema: "starci/workflow-status@1",

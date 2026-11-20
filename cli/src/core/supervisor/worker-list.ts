@@ -1,5 +1,5 @@
 import { formatTable } from "../../shared/output.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 import { projectFrom } from "./driver.js"
 import { workerViews } from "./workers.js"
 
@@ -7,7 +7,6 @@ import { workerViews } from "./workers.js"
 export const supervisorWorkersVerb = defineVerb({
     path: ["supervisor", "workers"],
     summary: "list the project's [Worker] seats: task status, filed result, seat and its liveness, and what supervisor next handed (--all: the ended ones too)",
-    editions: BOTH_EDITIONS,
     effect: "read",
     roles: ["supervisor", "owner", "debug"],
     schema: "starci/supervisor-workers@1",

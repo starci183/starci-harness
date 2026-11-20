@@ -1,6 +1,6 @@
 import { resolve } from "node:path"
 import { repositoryRoot } from "../../shared/git.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 import { kernelSubmit } from "./driver.js"
 
 /**
@@ -10,7 +10,6 @@ import { kernelSubmit } from "./driver.js"
 export const kernelSubmitVerb = defineVerb({
     path: ["kernel", "submit"],
     summary: "apply one Kernel command file (workflow-change -> workflow amend; escalation|handoff -> a Supervisor decision and a wake-up mail)",
-    editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["kernel", "owner", "agent"],
     schema: "starci/command-applied@1",

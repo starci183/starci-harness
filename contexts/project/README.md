@@ -46,7 +46,7 @@ are two tasks.
 | sides | `sides`, a non-empty subset of `be`, `fe`, `packages`, and `nivoos` (the business packages of `packages/`) | which folders the project has and which checks run (above); `nivoos` is [business-repo.md](business-repo.md); `desktop` (a Tauri shell around a front-end app, folder `desktop/`) is [desktop.md](desktop.md) |
 | contract | `sides.be.apps[].contract`, `graphql` (when absent) or `rest` | the api app's default door ([code/be/transport.md](../code/be/transport.md) BE-TRANSPORT-1) |
 | boot entry | `sides.be.apps[].boot`, `{ module?, export?, factory?, env?, timeoutMs? }` | the composition root a command of the app boots, which the wiring gate composes without listening ([code/be/injection.md](../code/be/injection.md) BE-INJECTION-6) |
-| edition | `edition`, `lite` or `full` (full when absent), fixed at scaffold | which slots and rules apply and which app verbs the CLI shows; [lite.md](lite.md), [full.md](full.md) |
+| edition | `edition`, deprecated: any value is ignored with the warning HFS_EDITION_DEPRECATED (R212) and a later train drops it | nothing: an app has one edition, [lite.md](lite.md) |
 | grammar | `sides.fe.grammar` | which grammar package and grammar lint the front end composes ([grammars](../grammars/README.md)) |
 | policy profile | `policy` | which canon stacks and gates run ([lint.md](lint.md); profiles and defaults are [policy/quality.yaml](../../policy/quality.yaml)) |
 

@@ -6,7 +6,7 @@ import { projectOf } from "../../harness/work.js"
 import { getWorkflow, setWorkflowStatus } from "../../harness/workflow.js"
 import { Refusal } from "../../shared/errors.js"
 import { repositoryRoot } from "../../shared/git.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 import { exitOf, readSnapshot, reportOf, reportMessage, stepWorkflow } from "./engine.js"
 
 /**
@@ -19,7 +19,6 @@ import { exitOf, readSnapshot, reportOf, reportMessage, stepWorkflow } from "./e
 export const workflowStartVerb = defineVerb({
     path: ["workflow", "start"],
     summary: "start a defined workflow: orca (from the terminal of its project's Supervisor) makes its one worktree and launches its [Kernel] agent; inline prints the next task",
-    editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["owner", "supervisor", "kernel"],
     schema: "starci/workflow-step@1",

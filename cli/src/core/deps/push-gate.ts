@@ -48,7 +48,7 @@ export const judgePush = async (root: string, revision = "HEAD"): Promise<PushJu
     await judgeLocalRegistry(root, revision)
     await judgeLockIntegrity(root, revision)
     const tree = locateTree(root).tree
-    if (tree !== "lite" && tree !== "full") return { app: false, revision, pins: [], notes: ["not a StarCi app (no app hfs.json): nothing to judge"] }
+    if (tree !== "app") return { app: false, revision, pins: [], notes: ["not a StarCi app (no app hfs.json): nothing to judge"] }
     const pins = await committedPins(root, revision)
     const asked = new Map<string, boolean>()
     const verdicts = await inOrder(pins, async (pin): Promise<PinVerdict> => {

@@ -81,7 +81,7 @@ Before you send a brief, a plan or an answer, check it:
 | file | holds |
 |---|---|
 | [harness/rules.md](harness/rules.md) | the hard rules every role and task holds |
-| [harness/axes.md](harness/axes.md) | edition (lite, full) and runner (orca, inline) |
+| [harness/axes.md](harness/axes.md) | the one app edition (R212) and the runner (orca, inline) |
 | [harness/roles.md](harness/roles.md) | worker, Kernel, Supervisor, Debug and Owner: job, never, escalation |
 | [harness/state.md](harness/state.md) | where harness state and product Work live, how a project is found, the bootstrap an app carries |
 | [harness/host.md](harness/host.md) | the host environment: how a process is spawned on Windows and from Devin, the host stack, the host services every app reaches (embeddings), and the file tools that bite |

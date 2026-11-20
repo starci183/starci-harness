@@ -1,11 +1,10 @@
-import { BOTH_EDITIONS, defineVerb, WRITERS } from "../../shared/verb.js"
+import { defineVerb, WRITERS } from "../../shared/verb.js"
 import { FORWARDED, runHfs } from "./hfs.js"
 
-/** `starci app upgrade`: add the test world a full app lacks; a lite app is refused because editions are fixed at scaffold; @starci/hfs runs it in-process in the app. */
+/** `starci app upgrade`: add the test world an app lacks; @starci/hfs runs it in-process in the app. */
 export const appUpgradeVerb = defineVerb({
     path: ["app", "upgrade"],
-    summary: "add the test world a full app lacks; a lite app is refused because editions are fixed at scaffold",
-    editions: BOTH_EDITIONS,
+    summary: "add the test world an app lacks (on request; R12)",
     effect: "local-write",
     roles: WRITERS,
     schema: "starci/app-upgrade@1",

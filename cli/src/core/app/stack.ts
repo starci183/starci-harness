@@ -1,5 +1,5 @@
 import { repositoryRoot } from "../../shared/git.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 import type { VerbContext } from "../../shared/verb.js"
 import { requireCiGreen, requireCiRunGreen } from "../check/ci.js"
 import { callerRole } from "../../shared/role.js"
@@ -37,7 +37,6 @@ const judgeNamedRun = async (context: VerbContext, args: readonly string[], depl
 export const appStackVerb = defineVerb({
     path: ["app", "stack"],
     summary: "Swarm deploy tooling of an app (prepare to rollback, dry runs without --execute)",
-    editions: BOTH_EDITIONS,
     effect: "remote",
     roles: ["owner", "release", "supervisor", "op", "worker", "agent"],
     schema: "starci/app-stack@1",

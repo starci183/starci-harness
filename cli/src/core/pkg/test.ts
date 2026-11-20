@@ -7,7 +7,7 @@ import { PACKAGE_SCOPE } from "../../harness/needs.js"
 import { Refusal } from "../../shared/errors.js"
 import { captureCommand } from "../../shared/exec.js"
 import { captureGit, git } from "../../shared/git.js"
-import { BOTH_EDITIONS, defineVerb, EVERYONE } from "../../shared/verb.js"
+import { defineVerb, EVERYONE } from "../../shared/verb.js"
 import { appName, BRANCH_PREFIX, changedPackages, harnessRepository } from "./edit.js"
 import { inOrder } from "../../harness/sequential.js"
 
@@ -76,7 +76,6 @@ const stepsOf = (scripts: Readonly<Record<string, string>>): { readonly step: st
 export const pkgTestVerb = defineVerb({
     path: ["pkg", "test"],
     summary: "run a @starci package's own typecheck, lint and specs (npm test) in packages/<name> of this app's package edit worktree, each under a heavy-command slot; red when any fails",
-    editions: BOTH_EDITIONS,
     effect: "read",
     roles: EVERYONE,
     schema: "starci/pkg-test@1",

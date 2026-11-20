@@ -1,11 +1,10 @@
 import { describeOutcomes, hostInstall, loadHost, selectServices, targetPlatform } from "../../harness/host.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 
 /** `starci host install [ids]`: registers each service's schedule of ops/host.yaml; without `--execute` it prints the exact scheduler argv instead. */
 export const hostInstallVerb = defineVerb({
     path: ["host", "install"],
     summary: "register the schedules of the host services (Windows: a hidden StarCi scheduled task running a launcher under the state base)",
-    editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["owner"],
     schema: "starci/host-install@1",

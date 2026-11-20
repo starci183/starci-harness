@@ -1,6 +1,6 @@
 import { EXIT_USAGE, Refusal } from "../../shared/errors.js"
 import { repositoryRoot } from "../../shared/git.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 import type { VerbResult } from "../../shared/verb.js"
 import { exitOf, reportMessage, stepWorkflow } from "./engine.js"
 import { LOOP_SUMMARIES, loopWorkflow } from "./loop.js"
@@ -13,7 +13,6 @@ import { LOOP_SUMMARIES, loopWorkflow } from "./loop.js"
 export const workflowStepVerb = defineVerb({
     path: ["workflow", "step"],
     summary: "one dispatch tick: ping running seats, verify reported tasks, dispatch newly ready ones within maxParallel, update the status (exit 1 when blocked); --loop repeats it in the foreground until done, blocked or idle",
-    editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["owner", "kernel", "supervisor", "agent"],
     schema: "starci/workflow-step@1",

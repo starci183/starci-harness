@@ -1,4 +1,4 @@
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 import { projectFrom } from "../supervisor/driver.js"
 import { parkProject } from "./park-engine.js"
 import type { ProjectParkData } from "./park-engine.js"
@@ -21,7 +21,6 @@ const leftLine = (data: ProjectParkData): string => {
 export const projectParkVerb = defineVerb({
     path: ["project", "park"],
     summary: "pause every workflow of a project, stop its live seats keeping their work, close its Kernels, Supervisor and every Orca terminal of it; resumable with project unpark (dry until --execute)",
-    editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["owner"],
     schema: "starci/project-park@1",

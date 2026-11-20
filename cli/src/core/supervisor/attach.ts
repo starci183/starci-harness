@@ -1,13 +1,12 @@
 import { locateOrca } from "../../harness/orca/client.js"
 import { attachSupervisor, supervisorTitle } from "../../harness/supervisor.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 import { projectFrom } from "./driver.js"
 
 /** Binds the launched Supervisor's own terminal to its project's record and Orca Run. */
 export const supervisorAttachVerb = defineVerb({
     path: ["supervisor", "attach"],
     summary: "attach the project's reserved Supervisor agent terminal and create its Run and task",
-    editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["supervisor"],
     schema: "starci/supervisor@1",

@@ -4,7 +4,6 @@ import { join } from "node:path"
 import { parse } from "yaml"
 import { Refusal, asRefusal } from "../../shared/errors.js"
 import { runTool } from "../../shared/exec.js"
-import type { Edition } from "../../shared/verb.js"
 
 /**
  * The CI evidence of a deploy (contexts/project/cicd.md, WP3): `starci app stack deploy --ci-run <run>` asks GitHub itself whether the
@@ -16,7 +15,7 @@ import type { Edition } from "../../shared/verb.js"
 /** Reads one GitHub REST path (relative to the API root) and returns its parsed json; a seam so the judgement runs on recorded answers. */
 export type GithubReader = (path: string) => Promise<unknown>
 
-/** The CI standard's jobs of one edition: the ones a green run must have passed, and the ones that may exist and must not be red. */
+/** The CI standard's jobs: the ones a green run must have passed, and the ones that may exist and must not be red. */
 export interface RequiredJobs {
     readonly required: readonly string[]
     readonly optional: readonly string[]
@@ -61,18 +60,8 @@ const isRecord = (value: unknown): value is Record<string, unknown> => typeof va
 const text = (value: unknown): string => (typeof value === "string" ? value : "")
 const names = (value: unknown): string[] => (Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [])
 
-/** The edition of the app at `root` (its hfs.json); an app that does not say is judged as full. */
-export const editionOf = (root: string): Edition => {
-    try {
-        const parsed: unknown = JSON.parse(readFileSync(join(root, "hfs.json"), "utf8"))
-        return isRecord(parsed) && parsed.edition === "lite" ? "lite" : "full"
-    } catch {
-        return "full"
-    }
-}
-
-/** The jobs the CI standard of the installed @starci/hfs requires for `edition`; refused when the standard cannot be read or names none. */
-export const requiredJobsOf = (edition: Edition): RequiredJobs => {
+/** The jobs the CI standard of the installed @starci/hfs requires; refused when the standard cannot be read or names none. */
+export const requiredJobsOf = (): RequiredJobs => {
     let file: string
     try {
         file = createRequire(import.meta.url).resolve(CI_STANDARD)
@@ -80,11 +69,10 @@ export const requiredJobsOf = (edition: Edition): RequiredJobs => {
         throw new Refusal("HFS_NOT_INSTALLED", `${CI_STANDARD} does not resolve from the CLI; reinstall starci-harness`)
     }
     const parsed: unknown = parse(readFileSync(file, "utf8"))
-    const jobs = isRecord(parsed) && isRecord(parsed.jobs) ? parsed.jobs : {}
-    const entry = jobs[edition]
-    const required = isRecord(entry) ? names(entry.required) : []
-    if (required.length === 0) throw new Refusal("CI_RUN_UNREADABLE", `the CI standard of @starci/hfs names no required job for the ${edition} edition; it cannot be judged`)
-    return { required, optional: isRecord(entry) ? names(entry.optional) : [] }
+    const entry = isRecord(parsed) && isRecord(parsed.jobs) ? parsed.jobs : {}
+    const required = names(entry.required)
+    if (required.length === 0) throw new Refusal("CI_RUN_UNREADABLE", "the CI standard of @starci/hfs names no required job; it cannot be judged")
+    return { required, optional: names(entry.optional) }
 }
 
 /** A message with anything shaped like a GitHub token removed: nothing this check prints may carry one. */

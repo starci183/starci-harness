@@ -1,6 +1,6 @@
 import { locateOrca } from "../../harness/orca/client.js"
 import { requireSupervisor } from "../../harness/supervisor.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 import { projectFrom } from "./driver.js"
 import { dispatchWorker } from "./workers.js"
 import { isPackageNeed } from "../../harness/needs.js"
@@ -22,7 +22,6 @@ const listOf = (values: readonly string[]): string[] =>
 export const supervisorDispatchVerb = defineVerb({
     path: ["supervisor", "dispatch"],
     summary: "hand one job to a [Worker] seat under the project's Supervisor: its own worktree of --repo, a task whose contract is the brief on the label's op, launched by the router (queued past projectMaxWorkers)",
-    editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["supervisor"],
     schema: "starci/supervisor-dispatch@1",

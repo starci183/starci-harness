@@ -4,7 +4,7 @@ import { z } from "zod"
 import { defaultContractFile, entriesFor, judgePart, loadDnaContract } from "../../harness/dna.js"
 import type { DnaBreak, DnaEntry, DnaVariant } from "../../harness/dna.js"
 import { Refusal, UsageError } from "../../shared/errors.js"
-import { BOTH_EDITIONS, EVERYONE, defineVerb } from "../../shared/verb.js"
+import { EVERYONE, defineVerb } from "../../shared/verb.js"
 import { HeadlessPage, findBrowser } from "./browser.js"
 import { installProbe, settlePage } from "./measure.js"
 import type { PageBegin, PageVariant } from "./measure.js"
@@ -205,7 +205,6 @@ const planOf = (contract: ReturnType<typeof loadDnaContract>, rows: Map<string, 
 export const dnaCheckVerb = defineVerb({
     path: ["dna", "check"],
     summary: "measure rendered UI (a built Storybook, a url with --routes, a static folder or html file) against the static DNA laws of the Grammar contract in both families, light and dark, at 1920 and 390 and, for a law that names `context.widths` (the phone laws), at 320, 360 and 390; red per law id with element path and measured vs wanted",
-    editions: BOTH_EDITIONS,
     effect: "local-write",
     roles: EVERYONE,
     schema: "starci/dna-check@2",

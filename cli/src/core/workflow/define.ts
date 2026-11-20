@@ -11,7 +11,7 @@ import { insertWorkflow } from "../../harness/workflow.js"
 import type { WorkflowStatus } from "../../harness/workflow.js"
 import { Refusal } from "../../shared/errors.js"
 import { formatTable } from "../../shared/output.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 
 /** What a define reports; a `--check` run has status `checked`, graph version 0 and no budget, since nothing was recorded. */
 interface DefineReport {
@@ -37,7 +37,6 @@ interface DefineReport {
 export const workflowDefineVerb = defineVerb({
     path: ["workflow", "define"],
     summary: "record a workflow file (starci/workflow@1: goal, runner, tasks as contracts with dependsOn) as graph v1; refuses an unfit contract or a cycle",
-    editions: BOTH_EDITIONS,
     effect: "local-write",
     roles: ["owner", "kernel", "supervisor"],
     schema: "starci/workflow-define@1",

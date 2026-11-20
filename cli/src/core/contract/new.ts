@@ -6,7 +6,7 @@ import { loadOps } from "../../harness/ops.js"
 import type { CheckEntry } from "../../harness/ops.js"
 import { EXIT_USAGE, Refusal } from "../../shared/errors.js"
 import { repositoryRoot, resolveSha } from "../../shared/git.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 
 const SLUG_CHARS = 48
 
@@ -66,7 +66,6 @@ const pairs = (flag: string, value: string | undefined): [string, string][] =>
 export const contractNewVerb = defineVerb({
     path: ["contract", "new"],
     summary: "write a contract for one task: its label's op file gives the base, --read, --input, --output and --check extend it; it says what still keeps it unfit",
-    editions: BOTH_EDITIONS,
     effect: "local-write",
     roles: ["owner", "kernel", "supervisor", "agent"],
     schema: "starci/contract-new@1",

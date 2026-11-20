@@ -1,7 +1,7 @@
 import { join } from "node:path"
 import { Refusal } from "../../shared/errors.js"
 import { captureGit, currentBranch, git, trackedChanges } from "../../shared/git.js"
-import { BOTH_EDITIONS, WRITERS, defineVerb } from "../../shared/verb.js"
+import { WRITERS, defineVerb } from "../../shared/verb.js"
 import { checkLaneName, landPaths, lanesDir, writeReady } from "../../harness/land-queue.js"
 import type { ReadyEntry } from "../../harness/land-queue.js"
 
@@ -13,7 +13,6 @@ import type { ReadyEntry } from "../../harness/land-queue.js"
 export const laneReadyVerb = defineVerb({
     path: ["lane", "ready"],
     summary: "register this lane's pushed, locally gated sha with the batch lander of dev; then monitor <lanes>/_land-status/<lane>.json",
-    editions: BOTH_EDITIONS,
     effect: "local-write",
     roles: WRITERS,
     schema: "starci/lane-ready@1",

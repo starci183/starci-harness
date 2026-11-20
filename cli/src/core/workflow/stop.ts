@@ -2,7 +2,7 @@ import { openLedger } from "../../harness/ledger.js"
 import { getWorkflow, isLiveTask, setWorkflowStatus, workflowTasks } from "../../harness/workflow.js"
 import { EXIT_USAGE, Refusal } from "../../shared/errors.js"
 import { repositoryRoot } from "../../shared/git.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 import { cancelTasks, closeKernelActions, readSnapshot, reconcile, reportMessage, reportOf } from "./engine.js"
 import type { StepAction } from "./engine.js"
 
@@ -16,7 +16,6 @@ import type { StepAction } from "./engine.js"
 export const workflowStopVerb = defineVerb({
     path: ["workflow", "stop"],
     summary: "stop a workflow: --graceful dispatches nothing new and waits for live tasks, --hard cancels every live task and its seats now; once stopped, its Kernel terminal is closed",
-    editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["owner", "supervisor", "kernel"],
     schema: "starci/workflow-step@1",

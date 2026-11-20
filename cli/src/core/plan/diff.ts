@@ -4,14 +4,13 @@ import { planPlace, readPlanSource } from "../../harness/graph.js"
 import { loadOps } from "../../harness/ops.js"
 import { snapshotOf } from "../../harness/workflow.js"
 import { Refusal } from "../../shared/errors.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 import { buildReplan, classCounts, classificationTable } from "../workflow/replan.js"
 
 /** `starci plan diff <workflow> --to <file>`: the keep, continue, redo, add and drop classification an amend would apply; changes nothing. */
 export const planDiffVerb = defineVerb({
     path: ["plan", "diff"],
     summary: "classify a replan without applying it: keep, continue, redo, add or drop for every task, and the live tasks it would cancel",
-    editions: BOTH_EDITIONS,
     effect: "read",
     roles: ["kernel", "supervisor", "owner"],
     schema: "starci/plan-diff@1",

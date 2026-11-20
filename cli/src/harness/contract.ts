@@ -297,7 +297,7 @@ const resolveContext = (contract: Contract, op: Op, values: Readonly<Record<stri
         for (const entry of contract.context.base) add(entry, "base")
     }
     for (const entry of contract.context.extend ?? []) add(entry, "extend")
-    for (const page of rulePagesOf(harnessRoot, contract.context.allowPaths, values.edition)) add(`${HARNESS_PREFIX}${page}`, "paths")
+    for (const page of rulePagesOf(harnessRoot, contract.context.allowPaths)) add(`${HARNESS_PREFIX}${page}`, "paths")
     return context
 }
 

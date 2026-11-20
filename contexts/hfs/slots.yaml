@@ -18,9 +18,6 @@ testValues:
   - unit-beside
   - e2e
   - none
-editions:
-  - full
-  - lite
 sides:
   be:
     reads: []
@@ -354,7 +351,7 @@ ruleParams:
       "@nestjs/bull":
         - platform/queue
       kafkajs:
-        - platform/event-bus
+        []
       "@nestjs/schedule":
         - platform/jobs
       cron:
@@ -815,8 +812,6 @@ ruleParams:
         patterns: []
         images:
           - qdrant
-        editions:
-          - full
     dbFunctions:
       - {name: pg_advisory_xact_lock, reason: "advisoryXactLock: a transaction-scoped lock TypeORM has no API for"}
       - {name: hashtextextended, reason: "advisoryXactLock: the 64-bit key of a text lock name"}
@@ -856,12 +851,7 @@ ruleParams:
     # (or in hfs.json sides.be.sqlPassThrough), whose SQL text is not the app's own. Paths are relative to the side folder.
     sqlPassThrough:
       - {file: src/modules/platform/database/seed-runner.service.ts, reason: "the tracked seed files' text, run as it is (the sql/ entries of .starcistacks/seeds/, then of .starcistacks/<env>/seeds/); the app writes no SQL there"}
-    lite:
-      schemaAuthority: sql
-      infraOwners:
-        kafkajs: []
-        "@qdrant/js-client-rest": []
-        "@qdrant/qdrant-js": []
+    schemaAuthority: sql
 slots:
   - id: app.declaration
     profiles:
@@ -886,15 +876,12 @@ slots:
   - id: app.package-manifest
     profiles:
       - app
-    editionWhy: lite manages its database and wiring scripts; full also manages e2e and stack test scripts.
-      Both may run optional contracts.
     path: package.json
     presence: required
     tracked: tracked
     tier: none
     tests: none
     managedBy: package-scripts
-    liteManagedBy: package-scripts-lite
     rules:
       - HFS_PACKAGE_MANAGER_MIXED
       - HFS_DEP_VERSION_SKEW
@@ -944,9 +931,6 @@ slots:
     tier: none
     tests: none
     managedBy: skeleton
-    liteManagedBy: skeleton-lite
-    editionWhy: Lite renders the same managed file from skeleton-lite because the editions share one
-      code structure while their adapters differ.
     rules:
       - HFS_MANAGED_FILE_DRIFT
   - id: app.tool-config
@@ -958,22 +942,17 @@ slots:
     tier: none
     tests: none
     managedBy: skeleton
-    liteManagedBy: skeleton-lite
-    editionWhy: Lite renders the same managed files from skeleton-lite because the editions share one
-      code structure while their adapters differ.
     rules:
       - HFS_MANAGED_FILE_DRIFT
   - id: app.format-config
     profiles:
       - app
-    editionWhy: lite formats the same files; full has its TypeORM schema authority.
     path: "{.prettierrc,.prettierignore}"
     presence: required
     tracked: tracked
     tier: none
     tests: none
     managedBy: tool-config
-    liteManagedBy: tool-config-lite
     rules:
       - HFS_MANAGED_FILE_DRIFT
       - HFS_TOOL_CONFIG_LOCAL
@@ -1001,7 +980,6 @@ slots:
   - id: app.packages-lint
     profiles:
       - app
-    editionWhy: Lite and full share the slot; the root workspace packages are linted in both.
     path: eslint.config.mjs
     presence: optional
     tracked: tracked
@@ -1036,15 +1014,12 @@ slots:
   - id: app.ci
     profiles:
       - app
-    editionWhy: lite CI proves boot through R272 wiring and lints its db migrations; full CI runs the
-      unit specs. Neither runs a world layer (R12).
     path: .github/workflows/ci.yml
     presence: required
     tracked: tracked
     tier: none
     tests: none
     managedBy: ci-workflows
-    liteManagedBy: ci-workflows-lite
     rules:
       - HFS_E2E_IN_AUTOMATIC_GATE
       - HFS_CI_MISSING_CANON
@@ -1064,26 +1039,20 @@ slots:
   - id: app.ci-images
     profiles:
       - app
-    editionWhy: lite renders its image workflow; full renders images for its separately
-      deployed services.
     path: .github/workflows/images.yml
     presence: required
     tracked: tracked
     tier: none
     tests: none
     managedBy: ci-workflows
-    liteManagedBy: ci-workflows-lite
     rules:
       - HFS_MANAGED_FILE_DRIFT
   - id: app.ci-db
     profiles:
       - app
-    editionWhy: a lite app migrates in the migrate phase of its stack deploy, so its database deploy workflow is
-      retired (starci app sync --execute removes it); full owns an optional provider-specific workflow.
     path: .github/workflows/db-deploy.yml
-    presence: optional
-    litePresence: forbidden
-    tracked: tracked
+    presence: forbidden
+    tracked: external
     tier: none
     tests: none
     goesTo: "the stack deploy: starci app stack deploy takes a verified backup, applies the expand migrations
@@ -1094,43 +1063,34 @@ slots:
   - id: app.ci-stack-deploy
     profiles:
       - app
-    editionWhy: both editions deploy their images to a Docker Swarm stack through the same starci stack
-      verbs; the workflow lists the images the app declares.
     path: .github/workflows/stack-deploy.yml
     presence: optional
     tracked: tracked
     tier: none
     tests: none
     managedBy: ci-workflows
-    liteManagedBy: ci-workflows-lite
     rules:
       - HFS_MANAGED_FILE_DRIFT
   - id: app.ci-stack-key-restore
     profiles:
       - app
-    editionWhy: both editions deploy to a Docker Swarm server whose own age identity the owner backs up as a protected
-      GitHub Environment secret; this workflow writes it back.
     path: .github/workflows/stack-key-restore.yml
     presence: optional
     tracked: tracked
     tier: none
     tests: none
     managedBy: ci-workflows
-    liteManagedBy: ci-workflows-lite
     rules:
       - HFS_MANAGED_FILE_DRIFT
   - id: app.ci-cache-verify
     profiles:
       - app
-    editionWhy: both editions commit a check cache that CI and the release gate trust; this scheduled workflow verifies it every
-      night and its red run locks the release gate.
     path: .github/workflows/cache-verify.yml
     presence: required
     tracked: tracked
     tier: none
     tests: none
     managedBy: ci-workflows
-    liteManagedBy: ci-workflows-lite
     rules:
       - HFS_MANAGED_FILE_DRIFT
   - id: app.dockerignore
@@ -1177,10 +1137,8 @@ slots:
   - id: app.browser
     profiles:
       - app
-    editionWhy: browser journeys belong to full; lite proves app boot through R272 wiring.
     path: browser/
     presence: opt-in
-    litePresence: forbidden
     goesTo: "the full edition: a lite app has no e2e world, so no browser journey"
     tracked: tracked
     tier: none
@@ -1195,10 +1153,8 @@ slots:
   - id: app.browser-config
     profiles:
       - app
-    editionWhy: browser journeys belong to full; lite proves app boot through R272 wiring.
     path: browser/tsconfig.json
     presence: opt-in
-    litePresence: forbidden
     goesTo: "the full edition: a lite app has no browser journey to type-check"
     tracked: tracked
     tier: none
@@ -1215,9 +1171,6 @@ slots:
     tier: none
     tests: none
     managedBy: gallery
-    editionWhy: Both editions carry the same gallery; it is a standalone Vite app beside the sides, not part of
-      either. The slot is optional so a manifest minor stays green for a pinned repository; the rule
-      HFS_APP_GALLERY_MISSING (R395) is what requires it.
     rules:
       - HFS_MANAGED_FILE_DRIFT
       - HFS_APP_GALLERY_MISSING
@@ -1296,25 +1249,18 @@ slots:
     tier: none
     tests: none
     managedBy: skeleton
-    liteManagedBy: skeleton-lite
-    editionWhy: Lite renders the same managed file from skeleton-lite because the editions share one
-      code structure while their adapters differ.
     rules:
       - HFS_MANAGED_FILE_DRIFT
       - HFS_DEPENDABOT_MISSING
   - id: app.scripts
     profiles:
       - app
-    editionWhy: Lite manages its GraphQL codegen script; full owns operational scripts through the
-      generic path.
-    path: scripts/{.gitkeep,*.mjs,*.cjs,*.ps1,*.sh}
     presence: optional
     tracked: tracked
     tier: none
     tests: none
-    lite:
-      path: scripts/codegen.mjs
-    liteManagedBy: codegen-lite
+    path: scripts/codegen.mjs
+    managedBy: codegen
     managedWhenSides:
       - fe
     rules:
@@ -1324,10 +1270,6 @@ slots:
   - id: app.scripts.delivery
     profiles:
       - app
-    editionWhy: Lite splits product delivery tooling from managed codegen; full owns the same files
-      through app.scripts.
-    editions:
-      - lite
     path: scripts/{env-sync.mjs,with-secrets.mjs,set-secrets.ps1,build-*.mjs}
     presence: optional
     tracked: tracked
@@ -1341,9 +1283,6 @@ slots:
   - id: app.scripts.integration
     profiles:
       - app
-    editionWhy: "Lite and full share the slot: a product's integration proof that needs a throwaway,
-      unmigrated database has the same need in both editions, and lite's generic scripts path is
-      closed to anything but codegen and delivery tooling."
     path: scripts/integration/*.mjs
     presence: optional
     tracked: tracked
@@ -1357,7 +1296,6 @@ slots:
   - id: app.packages
     profiles:
       - app
-    editionWhy: Lite and full share the slot; every root workspace package of an app (a folder of packages/ holding a package.json and a src/) is one in both.
     path: packages/<name>/
     exceptDeclaredBy:
       - nivoos
@@ -1376,7 +1314,6 @@ slots:
   - id: app.nivoos-package
     profiles:
       - app
-    editionWhy: Lite and full share the slot; a business package authored with the nivoos SDK is one in both, and the lite app of a business is where it lives (PROJECT-BUSINESS-1).
     path: packages/<package>/
     declaredBy: nivoos
     lintProfile: nivoos
@@ -1394,7 +1331,6 @@ slots:
   - id: app.desktop-config
     profiles:
       - app
-    editionWhy: Lite and full share the slot; the desktop app wraps the front end of either edition (PROJECT-DESKTOP-1).
     path: "desktop/{frontend/index.html,src-tauri/Cargo.toml,src-tauri/build.rs,src-tauri/tauri.conf.json,src-tauri/src/main.rs,src-tauri/src/lib.rs}"
     presence: optional
     tracked: tracked
@@ -1411,7 +1347,6 @@ slots:
   - id: app.desktop
     profiles:
       - app
-    editionWhy: Lite and full share the slot; the owned files of the desktop app are the same in both editions (PROJECT-DESKTOP-1).
     path: "desktop/src-tauri/{icons/**,capabilities/*.json,Cargo.lock}"
     presence: optional
     tracked: tracked
@@ -1425,7 +1360,6 @@ slots:
   - id: app.desktop-build
     profiles:
       - app
-    editionWhy: Lite and full share the slot; cargo writes the same folders in both.
     path: "desktop/src-tauri/{target/,gen/}"
     presence: optional
     tracked: ignored
@@ -1434,7 +1368,6 @@ slots:
   - id: app.ci-desktop-release
     profiles:
       - app
-    editionWhy: Lite and full share the slot; both build the installers of a declared desktop app on a release tag.
     path: .github/workflows/desktop-release.yml
     presence: optional
     tracked: tracked
@@ -1457,7 +1390,6 @@ slots:
   - id: app.ext
     profiles:
       - app
-    editionWhy: Lite and full share the slot; a project of either edition adds its own laws in the same folder.
     path: ext/
     presence: optional
     tracked: tracked
@@ -1480,27 +1412,11 @@ slots:
   - id: app.starciwork
     profiles:
       - app
-    editionWhy: lite optionally keeps .gitignore, workspace.yaml, brand records and the product's concepts;
-      full also keeps the app shell, the run resources and the derived summaries. No edition admits per-feature
-      Work documents (features/) or a feature catalog (index.yaml).
     path: .starciwork/
-    presence: required
+    presence: optional
     tracked: tracked
     tier: none
     tests: none
-    requires:
-      - .gitignore
-      - workspace.yaml
-    allows:
-      - workspace.yaml
-      - brand/**
-      - concepts/README.md
-      - concepts/<topic>.md
-      - concepts/index.yaml
-      - concepts/<name>/index.yaml
-      - shell/index.yaml
-      - _resources/{identities,environments,fixtures}/<slug>/resource.yaml
-      - _derived/{index.yaml,frontier.md,critique.yaml,critique.md}
     forbids:
       - evidence/
       - logs/
@@ -1509,25 +1425,21 @@ slots:
       - runs/
       - kernel-*/
       - "*.sqlite*"
-    litePresence: optional
-    lite:
-      requires:
-        - .gitignore
-      allows:
-        - workspace.yaml
-        - brand/**
-        - concepts/README.md
-        - concepts/<topic>.md
-        - concepts/index.yaml
-        - concepts/<name>/index.yaml
+    requires:
+      - .gitignore
+    allows:
+      - workspace.yaml
+      - brand/**
+      - concepts/README.md
+      - concepts/<topic>.md
+      - concepts/index.yaml
+      - concepts/<name>/index.yaml
     rules:
       - HFS_AGENT_DATA_TRACKED
       - HFS_IDENTITY_CUSTODY
   - id: app.starcistacks
     profiles:
       - app
-    editionWhy: lite requires declared docker-swarm production with its own db service; dependencies in
-      Docker Linux containers in dev and the app, its db and dependencies on Swarm in prod.
     path: .starcistacks/
     presence: required
     tracked: tracked
@@ -1540,7 +1452,7 @@ slots:
       - images/<name>/**
       - <env>/README.md
       - <env>/environment.json
-      - <env>/infra/{compose,swarm,k8s,terraform}/**
+      - <env>/infra/{compose,swarm}/**
       - <env>/infra/metadata.json
       - <env>/runtime/{config,env}/**
       - <env>/runtime/env/KEYS.md
@@ -1556,30 +1468,6 @@ slots:
       - DESIGN.md
       - deployment.json
       - k8s/ at root
-    lite:
-      requires:
-        - application-stacks.yaml
-      allows:
-        - application-stacks.yaml
-        - images/<name>/**
-        - <env>/README.md
-        - <env>/environment.json
-        - <env>/infra/{compose,swarm}/**
-        - <env>/infra/metadata.json
-        - <env>/runtime/{config,env}/**
-        - <env>/runtime/env/KEYS.md
-        - "<env>/secrets/<slug>.{enc.yaml,enc}"
-        - <env>/secrets/.gitkeep
-        - seeds/seeds.yaml
-        - seeds/{sql,data,files}/**
-        - <env>/seeds/seeds.yaml
-        - <env>/seeds/{sql,data,files}/**
-      forbids:
-        - <env>/runtime/files/**
-        - "**/*.enc outside <env>/secrets/"
-        - DESIGN.md
-        - deployment.json
-        - k8s/ at root
     rules:
       - HFS_STACKS_SHAPE
       - HFS_STACKS_IN_SIDE
@@ -1658,9 +1546,6 @@ slots:
   - id: app.db
     profiles:
       - app
-    editions:
-      - lite
-    editionWhy: lite owns its self-hosted PostgreSQL schema here; full keeps TypeORM migrations under be/.
     path: db/
     presence: required
     tracked: tracked
@@ -1669,8 +1554,6 @@ slots:
   - id: app.db.migrations
     profiles:
       - app
-    editions:
-      - lite
     path: db/migrations/<stamp>_<name>.sql
     presence: required
     minInstances: 1
@@ -1683,8 +1566,6 @@ slots:
   - id: app.db.migrations.archive
     profiles:
       - app
-    editions:
-      - lite
     path: db/migrations/archive/
     presence: optional
     tracked: tracked
@@ -1693,8 +1574,6 @@ slots:
   - id: app.db.image
     profiles:
       - app
-    editions:
-      - lite
     path: .starcistacks/images/db/Dockerfile
     presence: required
     tracked: tracked
@@ -1809,8 +1688,6 @@ slots:
   - id: app.db.bootstrap
     profiles:
       - app
-    editions:
-      - lite
     path: db/bootstrap.sql
     presence: required
     tracked: tracked
@@ -1960,12 +1837,11 @@ slots:
     profiles:
       - be
       - fe
-    editionWhy: lite may host Next without its own image; back-end images stay required in both editions.
     path: apps/<app>/Dockerfile
     exceptAppKinds:
       - client-cli
     presence: required
-    litePresence:
+    sidePresence:
       fe: optional
     tracked: tracked
     tier: none
@@ -2222,11 +2098,9 @@ slots:
   - id: be.app.cli
     profiles:
       - be
-    editionWhy: starci app db migrate owns lite migrations; a lite cli app is optional for declared operator commands.
     path: apps/<app>/src/
     appKind: cli
-    presence: opt-in
-    litePresence: optional
+    presence: optional
     tracked: tracked
     tier: app
     owner: true
@@ -2399,7 +2273,6 @@ slots:
       - BE_SAGA_STEP_COMPENSATION
       - BE_SAGA_STATE_VERSIONED
       - BE_SAGA_EVENT_CONTRACT
-      - BE_SAGA_E2E_MISSING
   - id: be.feature.saga.steps
     profiles:
       - be
@@ -2430,7 +2303,6 @@ slots:
     rules:
       - BE_SAGA_STEP_COMPENSATION
       - BE_SAGA_EVENT_CONTRACT
-      - BE_SAGA_E2E_MISSING
   - id: be.feature.application.support
     profiles:
       - be
@@ -2589,9 +2461,6 @@ slots:
   - id: be.feature.realtime
     profiles:
       - be
-    editionWhy: and both editions serve server-sent events (the default door for one-way push), the
-      socket.io gateway (two-way) and the restricted GraphQL subscription from the api process, and
-      scale on the hub of their declared infrastructure (BE-REALTIME-7).
     path: src/features/realtime/<channel>/
     presence: opt-in
     pattern: realtime
@@ -2606,13 +2475,12 @@ slots:
       - index.ts
       - transport/
     tests: none
-    lite:
-      why: "a push channel with the three doors of both editions: server-sent events
-        (be.feature.realtime.sse, the default for one-way push), the
-        socket.io gateway and the restricted GraphQL subscription; all run inside the be api
-        process, which scales horizontally and stateless on the hub of its declared infrastructure;
-        the front end listens through a useSubscribe<Channel>Swr hook over modules/api/sse, or
-        hooks/socketio (contexts/code/be/realtime.yaml, liteAdapter)"
+    why: "a push channel with the three doors of both editions: server-sent events
+      (be.feature.realtime.sse, the default for one-way push), the
+      socket.io gateway and the restricted GraphQL subscription; all run inside the be api
+      process, which scales horizontally and stateless on the hub of its declared infrastructure;
+      the front end listens through a useSubscribe<Channel>Swr hook over modules/api/sse, or
+      hooks/socketio (contexts/code/be/realtime.yaml, liteAdapter)"
     coverage: none
     rules:
       - BE_KIND_ISOLATION
@@ -2885,8 +2753,6 @@ slots:
   - id: be.persistence
     profiles:
       - be
-    editionWhy: db/migrations own lite tables and both editions map them with TypeORM entities here; full
-      also keeps its TypeORM migrations here.
     path: src/modules/{domain,platform,projections}/<capability>/persistence/
     perConnection:
       - event-bus
@@ -2895,35 +2761,22 @@ slots:
     presence: optional
     tracked: tracked
     tier: inherit
-    requires:
-      - connection.ts
+    requires: []
     allows:
       - entities/<table>.entity.ts
-      - migrations/<epochMs13>-<kebab-name>.ts
-      - <name>.sql.ts
-      - <name>.rows.ts
+      - entities/index.ts
       - connection.ts
     forbids:
       - index.ts
       - <name>.repository.ts
-    lite:
-      requires: []
-      allows:
-        - entities/<table>.entity.ts
-        - entities/index.ts
-        - connection.ts
-      forbids:
-        - index.ts
-        - <name>.repository.ts
-        - migrations/
-        - <name>.sql.ts
-        - <name>.rows.ts
+      - migrations/
+      - <name>.sql.ts
+      - <name>.rows.ts
     tests: none
     coverage: none
     rules:
       - BE_SCHEMA_OWNER
       - BE_SCHEMA_AUTHORITY
-      - BE_SQL_OUTSIDE_PERSISTENCE
       - BE_PERSISTENCE_NO_RAW_SQL
       - BE_SQL_TABLE_OWNER
       - BE_SQL_RETURNING_SHAPE
@@ -2962,9 +2815,6 @@ slots:
   - id: be.platform.database.entities
     profiles:
       - be
-    editions:
-      - lite
-    editionWhy: lite registers the one PRIMARY_ENTITIES list on its single primary connection; full registers each capability's <c>Entities per connection from persistence/connection.ts.
     path: src/modules/platform/database/entities.ts
     presence: optional
     tracked: tracked
@@ -3008,19 +2858,17 @@ slots:
   - id: be.platform.event-bus
     profiles:
       - be
-    editionWhy: lite implements the event ports on pgmq; full uses its Kafka adapter.
     path: src/modules/platform/event-bus/
     presence: opt-in
     pattern: event-bus
     tracked: tracked
     tier: platform
     owner: true
-    lite:
-      why: "the EventBus and EventConsumer ports on pgmq: publish
-        sends the envelope to its topic in the publisher's transaction, so no outbox or relay runs; each consumer
-        group reads its own queue bound to the event's name with a visibility timeout, archives a handled message,
-        lets a failed one reappear and buries one past its maxDeliveries in its __dead queue (BE-EVENT-BUS-6). Jobs stay on BullMQ
-        (platform/queue). No Kafka (contexts/code/be/event-bus.md)"
+    why: "the EventBus and EventConsumer ports on pgmq: publish
+      sends the envelope to its topic in the publisher's transaction, so no outbox or relay runs; each consumer
+      group reads its own queue bound to the event's name with a visibility timeout, archives a handled message,
+      lets a failed one reappear and buries one past its maxDeliveries in its __dead queue (BE-EVENT-BUS-6). Jobs stay on BullMQ
+      (platform/queue). No Kafka (contexts/code/be/event-bus.md)"
     requires:
       - index.ts
       - event-bus.module.ts
@@ -3040,21 +2888,18 @@ slots:
   - id: be.platform.queue
     profiles:
       - be
-    editionWhy: both editions implement the queue ports with BullMQ on Redis; lite declares its Redis in
-      hfs.json sides.be.backing and keeps the outbox table in a db migration.
     path: src/modules/platform/queue/
     presence: opt-in
     pattern: queue
     tracked: tracked
     tier: platform
     owner: true
-    lite:
-      why: "the same QueueOutbox and QueueWorkerRegistry ports and full's BullMQ adapter on the declared
-        Redis (backing: [redis]): the relay adds each committed outbox row with the outbox id as the
-        job id, workers retry a transient failure with exponential backoff and platform/jobs parks a
-        job a retry cannot fix as failed_awaiting_fix until it is resumed; the outbox table comes from a db migration, and a schedule
-        is a BullMQ job scheduler or a platform/jobs tick that writes one outbox row (R335)
-        (contexts/code/be/queues.yaml liteAdapter)"
+    why: "the same QueueOutbox and QueueWorkerRegistry ports and full's BullMQ adapter on the declared
+      Redis (backing: [redis]): the relay adds each committed outbox row with the outbox id as the
+      job id, workers retry a transient failure with exponential backoff and platform/jobs parks a
+      job a retry cannot fix as failed_awaiting_fix until it is resumed; the outbox table comes from a db migration, and a schedule
+      is a BullMQ job scheduler or a platform/jobs tick that writes one outbox row (R335)
+      (contexts/code/be/queues.yaml liteAdapter)"
     requires:
       - index.ts
       - queue.module.ts
@@ -3211,8 +3056,6 @@ slots:
   - id: be.platform.jobs
     profiles:
       - be
-    editionWhy: lite persists fenced claims in db migrations and dispatches through the BullMQ
-      queue on its declared Redis; full uses TypeORM schema authority and the same queue adapter.
     path: src/modules/platform/jobs/
     presence: opt-in
     pattern: fenced-job
@@ -3240,8 +3083,6 @@ slots:
   - id: be.projections
     profiles:
       - be
-    editionWhy: lite projection tables live in db migrations; full keeps the TypeORM projection
-      entity beside its projection.
     path: src/modules/projections/<name>/
     presence: opt-in
     pattern: projection
@@ -3252,29 +3093,14 @@ slots:
       - index.ts
       - <name>.module.ts
       - <name>.projection.ts
-      - <name>.projection-entity.ts
     allows:
       - index.ts
       - <name>.module.ts
       - <name>.module-definition.ts
       - <name>.options.ts
       - <name>.projection.ts
-      - <name>.projection-entity.ts
       - <name>.contracts.ts
       - persistence/
-    lite:
-      requires:
-        - index.ts
-        - <name>.module.ts
-        - <name>.projection.ts
-      allows:
-        - index.ts
-        - <name>.module.ts
-        - <name>.module-definition.ts
-        - <name>.options.ts
-        - <name>.projection.ts
-        - <name>.contracts.ts
-        - persistence/
     tests: unit-beside
     coverage: required
     rules:
@@ -3301,7 +3127,6 @@ slots:
       - BE_TIER_DIRECTION
       - BE_ERROR_HOME
       - BE_SECRET_DEFAULT
-      - BE_INTEGRATION_SPEC_MISSING
       - BE_AI_KEY_CUSTODY
       - BE_AI_GATEWAY_CLIENT
       - BE_AI_VIRTUAL_KEY
@@ -3319,13 +3144,9 @@ slots:
     rules:
       - BE_TIER_DIRECTION
       - BE_INFRA_OWNER
-      - BE_INTEGRATION_SPEC_MISSING
   - id: be.integrations.passport
     profiles:
       - be
-    editions:
-      - lite
-    editionWhy: lite issues its own identity (Google OAuth and email/password) through @starci/auth, composed here; full uses Keycloak.
     path: src/modules/integrations/passport/
     presence: required
     tracked: tracked
@@ -3363,38 +3184,31 @@ slots:
   - id: be.identity.sign-in
     profiles:
       - be
-    editions:
-      - lite
-    editionWhy: lite signs people in with the package @starci/auth, so its sign-in glue is rendered, not written; full uses its identity provider.
     path: "{src/modules/domain/identity/account-directory.service.spec.ts,src/modules/domain/identity/account-directory.service.ts,src/modules/domain/identity/authenticator.service.spec.ts,src/modules/domain/identity/authenticator.service.ts,src/modules/domain/identity/identity-email.log-events.ts,src/modules/domain/identity/identity-email.service.spec.ts,src/modules/domain/identity/identity-email.service.ts,src/modules/domain/identity/identity-sign-in.log-events.ts,src/modules/domain/identity/persistence/account-doors.port.ts,src/modules/domain/identity/persistence/entities/identity-attempt.entity.ts,src/modules/domain/identity/persistence/entities/identity-email-token.entity.ts,src/modules/domain/identity/persistence/entities/identity-refresh-token.entity.ts,src/modules/domain/identity/persistence/entities/identity-session.entity.ts,src/modules/domain/identity/persistence/entities/index.ts,src/modules/domain/identity/rate-counter.service.spec.ts,src/modules/domain/identity/rate-counter.service.ts,src/modules/domain/identity/session-store.service.spec.ts,src/modules/domain/identity/session-store.service.ts,src/modules/domain/identity/sign-in.service.spec.ts,src/modules/domain/identity/sign-in.service.ts,src/tests/fixtures/builders/identity.builder.ts}"
     presence: optional
     tracked: tracked
     tier: inherit
     tests: unit-beside
     coverage: none
-    managedBy: auth-lite
+    managedBy: auth
     managedOnly: true
     rules:
       - HFS_MANAGED_FILE_DRIFT
   - id: be.feature.auth
     profiles:
       - be
-    editions:
-      - lite
-    editionWhy: lite signs people in with the package @starci/auth, so its sign-in glue is rendered, not written; full uses its identity provider.
     path: "{src/features/api/auth/application/auth.contracts.ts,src/features/api/auth/application/confirm.command.ts,src/features/api/auth/application/confirm.handler.ts,src/features/api/auth/application/forgot.command.ts,src/features/api/auth/application/forgot.handler.ts,src/features/api/auth/application/get-jwks.handler.ts,src/features/api/auth/application/get-jwks.query.ts,src/features/api/auth/application/google-begin.command.ts,src/features/api/auth/application/google-begin.handler.ts,src/features/api/auth/application/google-complete.command.ts,src/features/api/auth/application/google-complete.handler.ts,src/features/api/auth/application/login.command.ts,src/features/api/auth/application/login.handler.ts,src/features/api/auth/application/logout.command.ts,src/features/api/auth/application/logout.handler.ts,src/features/api/auth/application/refresh.command.ts,src/features/api/auth/application/refresh.handler.ts,src/features/api/auth/application/resend.command.ts,src/features/api/auth/application/resend.handler.ts,src/features/api/auth/application/reset.command.ts,src/features/api/auth/application/reset.handler.ts,src/features/api/auth/application/session.command.ts,src/features/api/auth/application/session.handler.ts,src/features/api/auth/application/signup.command.ts,src/features/api/auth/application/signup.handler.ts,src/features/api/auth/auth.module-definition.ts,src/features/api/auth/auth.module.ts,src/features/api/auth/auth.options.ts,src/features/api/auth/index.ts,src/features/api/auth/transport/http/auth-http.module-definition.ts,src/features/api/auth/transport/http/auth-http.module.ts,src/features/api/auth/transport/http/auth-http.options.ts,src/features/api/auth/transport/http/auth.controller.ts,src/features/api/auth/transport/http/dto/forgot.request.ts,src/features/api/auth/transport/http/dto/google-start.request.ts,src/features/api/auth/transport/http/dto/login.request.ts,src/features/api/auth/transport/http/dto/resend.request.ts,src/features/api/auth/transport/http/dto/reset.request.ts,src/features/api/auth/transport/http/dto/signup.request.ts,src/features/api/auth/transport/http/dto/token.request.ts}"
     presence: optional
     tracked: tracked
     tier: inherit
     tests: none
     coverage: none
-    managedBy: auth-lite
+    managedBy: auth
     managedOnly: true
     rules:
       - HFS_MANAGED_FILE_DRIFT
   - id: be.integrations.mail
     profiles: [be]
-    editions: [lite]
     exemplifiedBy:
       - packages/hfs/templates/be/skeleton-lite/src/modules/integrations/mail/
     # The glue of @starci/mail, the owner of the SMTP client (nodemailer): this folder parses the settings (the server, the sender and the
@@ -3414,10 +3228,8 @@ slots:
   - id: be.integrations.object-storage
     profiles:
       - be
-    editionWhy: lite requires its S3-compatible storage (MinIO) through @starci/object-storage, composed here; full adds it when it stores objects.
     path: src/modules/integrations/object-storage/
-    presence: optional
-    litePresence: required
+    presence: required
     tracked: tracked
     tier: integrations
     owner: true
@@ -3473,57 +3285,18 @@ slots:
       - BE_SECRET_DEFAULT
       - BE_INFRA_OWNER
     coverage: required
-  - id: be.integrations.keycloak
-    profiles:
-      - be
-    editions:
-      - full
-    editionWhy: full signs people in through the project's identity provider (Keycloak) with @starci/auth/oidc, composed here with the issuer presets it needs (the GitHub Actions CI attestation); lite issues its own identity in integrations/passport.
-    path: src/modules/integrations/keycloak/
-    presence: optional
-    tracked: tracked
-    tier: integrations
-    owner: true
-    requires:
-      - index.ts
-      - keycloak.config.ts
-      - keycloak.options.ts
-      - keycloak.decorators.ts
-      - keycloak.registration.ts
-    allows:
-      - index.ts
-      - keycloak.config.ts
-      - keycloak.options.ts
-      - keycloak.decorators.ts
-      - keycloak.registration.ts
-      - keycloak.attestation.ts
-      - errors/
-      - messages/
-    tests: unit-beside
-    rules:
-      - BE_TIER_DIRECTION
-      - BE_ERROR_HOME
-      - BE_SECRET_DEFAULT
-      - BE_INFRA_OWNER
-      - BE_AUTH_PASSPORT_OWNER
-      - BE_INTEGRATION_SPEC_MISSING
-    coverage: required
-    since: 3.17.0
   - id: be.tests.world
     profiles:
       - be
-    editionWhy: lite integration proofs use the local db service and network fakes; full also boots
-      apps and self-hosted services.
     path: src/tests/world/
     presence: optional
     tracked: tracked
     tier: e2e
-    lite:
-      why: "the world of the optional integration specs of a lite app: global-setup.ts connects to the
-        local db service (`npm run db:start`, with the migrations applied by `npm run db:push`) and starts no container, no toxiproxy and no stack of its own; use-test-world.ts
-        exports useTestWorld({ modules: [...] }) -> world.db.<connection> (the shared EntityManager)
-        and world.fake.<provider> (a network-edge fake of an external SaaS). There is no world.apps
-        (no e2e) and no world.infra (no self-hosted service to cut)"
+    why: "the world of the optional integration specs of a lite app: global-setup.ts connects to the
+      local db service (`npm run db:start`, with the migrations applied by `npm run db:push`) and starts no container, no toxiproxy and no stack of its own; use-test-world.ts
+      exports useTestWorld({ modules: [...] }) -> world.db.<connection> (the shared EntityManager)
+      and world.fake.<provider> (a network-edge fake of an external SaaS). There is no world.apps
+      (no e2e) and no world.infra (no self-hosted service to cut)"
     allows:
       - global-setup.ts
       - global-teardown.ts
@@ -3533,18 +3306,6 @@ slots:
       - <name>.sql.ts
     tests: none
     coverage: none
-    why: "the ONLY test infrastructure location, shared by integration and e2e: global-setup.ts starts
-      the shared infrastructure (containers) and runs the migrations once over the cli app's
-      connections; use-test-world.ts exports useTestWorld({ apps: { <name>: { module, listen? } } }
-      | { modules: [...] }) -> world.apps.<name>.api, world.db.<connection> (the shared
-      EntityManager), world.infra.<service> (latency/cut/restore on a REAL service of the
-      repository's own stack, the app root's `.starcistacks/<env>`, each behind toxiproxy),
-      world.fake.<provider> (a network-edge fake of an external SaaS started by the world, with
-      failNext/replayWebhook/delay), world.waitFor; fakes/<provider>/ holds the fake servers and
-      payload fixtures, kit/ the inlined test helpers, and the world root may hold role-suffixed
-      helpers (<name>.client.ts, <name>.contracts.ts, ...). Nothing is overridden in the DI
-      container. It is the only test location that may import typeorm's DataSource or
-      testcontainers, call migrate/runMigrations/synchronize, or write process.env."
     rules:
       - BE_TEST_TOPOLOGY
       - BE_TEST_CONSTRAINTS_ON
@@ -3609,32 +3370,20 @@ slots:
   - id: be.tests.integration
     profiles:
       - be
-    editionWhy: Lite integration specs use the local db service without containers or toxiproxy;
-      R284 requires declared-pattern proofs there. Full additionally proves infrastructure outages
-      through its world (R112).
     path: src/tests/integration/<capability>/*.integration-spec.ts
     presence: optional
     tracked: tracked
     tier: e2e
     tests: e2e
     coverage: none
-    lite:
-      why: "optional under lite: one capability module through useTestWorld({ modules }) against the local
-        db service (`npm run db:start`), run by test:integration; no container, no
-        toxiproxy and no outage through the world (R112 is full's)"
-    why: one capability module through useTestWorld({ modules }), no HTTP door of ours (SQL,
-      transactions, concurrency, inbox claims on the real database; and every integration client,
-      `<capability>` being its provider folder, against our real infra, a real peer app or the
-      library fake at the network edge, with its success, its ErrorCode refusal mapping and an
-      outage through the world, R112); run by test:integration
+    why: "optional under lite: one capability module through useTestWorld({ modules }) against the local
+      db service (`npm run db:start`), run by test:integration; no container, no
+      toxiproxy and no outage through the world (R112 is full's)"
     rules:
       - BE_TEST_TOPOLOGY
-      - BE_INTEGRATION_SPEC_MISSING
   - id: be.tests.e2e
     profiles:
       - be
-    editionWhy: both editions prove a whole flow through useTestWorld({ apps }); lite runs it on its
-      local db service, full on its whole stack, and never in CI (R12).
     path: src/tests/e2e/<flow>/*.e2e-spec.ts
     presence: optional
     tracked: tracked
@@ -3653,7 +3402,6 @@ slots:
       - be
     path: src/tests/contract/<provider>/*.contract-spec.ts
     presence: optional
-    litePresence: optional
     tracked: tracked
     tier: e2e
     tests: e2e
@@ -4285,15 +4033,12 @@ slots:
   - id: fe.modules.auth.client
     profiles:
       - fe
-    editions:
-      - lite
-    editionWhy: lite signs people in with the package @starci/auth, so its auth client is rendered, not written; full wires its identity provider.
     path: "apps/web/src/modules/auth/{client.ts,email-doors.ts,index.ts}"
     presence: optional
     tracked: tracked
     tier: inherit
     tests: none
-    managedBy: auth-lite
+    managedBy: auth
     managedOnly: true
     rules:
       - HFS_MANAGED_FILE_DRIFT

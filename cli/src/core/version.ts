@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs"
-import { BOTH_EDITIONS, EVERYONE, defineVerb } from "../shared/verb.js"
+import { EVERYONE, defineVerb } from "../shared/verb.js"
 
 interface VersionData {
     readonly version: string
@@ -24,7 +24,6 @@ export const cliPackageName = (): string => {
 export const versionVerb = defineVerb<VersionData, Record<string, never>>({
     path: ["version"],
     summary: "print the CLI version and the Node.js version it runs on",
-    editions: BOTH_EDITIONS,
     effect: "read",
     roles: EVERYONE,
     schema: "starci/version@1",

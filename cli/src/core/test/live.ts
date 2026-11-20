@@ -5,7 +5,7 @@ import { Refusal } from "../../shared/errors.js"
 import { repositoryRoot } from "../../shared/git.js"
 import { evidenceTail } from "../../shared/output.js"
 import { redactSecrets } from "../../shared/secrets.js"
-import { BOTH_EDITIONS, EVERYONE, defineVerb } from "../../shared/verb.js"
+import { EVERYONE, defineVerb } from "../../shared/verb.js"
 
 /** The suite a live spec runs under when `--run` names none: the e2e project, which boots the test world. */
 const DEFAULT_RUN = "npm run test:e2e"
@@ -39,7 +39,6 @@ interface LiveData {
 export const testLiveVerb = defineVerb({
     path: ["test", "live"],
     summary: "run a live-provider suite (useSandbox specs) the way the harness verifies it: the declared keys come from the app's custody into that one run's environment, never shown; its output is scrubbed; red when the suite fails",
-    editions: BOTH_EDITIONS,
     effect: "read",
     roles: EVERYONE,
     schema: "starci/test-live@1",

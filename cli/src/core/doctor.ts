@@ -9,7 +9,7 @@ import { asRefusal, Refusal } from "../shared/errors.js"
 import { captureTool, probeTool, runNpm } from "../shared/exec.js"
 import { captureGit } from "../shared/git.js"
 import { formatTable } from "../shared/output.js"
-import { BOTH_EDITIONS, EVERYONE, defineVerb } from "../shared/verb.js"
+import { EVERYONE, defineVerb } from "../shared/verb.js"
 
 interface Probe {
     readonly name: string
@@ -135,7 +135,6 @@ const workLine = (work: WorkView | null): string => {
 export const doctorVerb = defineVerb({
     path: ["doctor"],
     summary: "check Node, git, npm, gh and Orca on this host; report the tree, its policy profile, the harness state base and ledgers, and the repository's .starciwork",
-    editions: BOTH_EDITIONS,
     effect: "read",
     roles: EVERYONE,
     schema: "starci/doctor@1",

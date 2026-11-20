@@ -1,7 +1,7 @@
 import { budgetOutlooks, stateLine } from "../../harness/budget-warn.js"
 import { repositoryRoot } from "../../shared/git.js"
 import { formatTable } from "../../shared/output.js"
-import { BOTH_EDITIONS, EVERYONE, defineVerb } from "../../shared/verb.js"
+import { EVERYONE, defineVerb } from "../../shared/verb.js"
 
 /**
  * `starci budget show`: each workflow's minutes and tries against its ceiling and the tasks it has left, its state exhausted, near
@@ -10,7 +10,6 @@ import { BOTH_EDITIONS, EVERYONE, defineVerb } from "../../shared/verb.js"
 export const budgetShowVerb = defineVerb({
     path: ["budget", "show"],
     summary: "each workflow of this project: minutes and tries used against its ceiling (the ops default or as raised), tasks left, and whether it is exhausted or near its ceiling",
-    editions: BOTH_EDITIONS,
     effect: "read",
     roles: EVERYONE,
     schema: "starci/budget-show@1",

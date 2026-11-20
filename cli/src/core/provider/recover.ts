@@ -1,6 +1,6 @@
 import { recoverProvider } from "../../harness/circuit.js"
 import { EXIT_USAGE, Refusal } from "../../shared/errors.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 
 /**
  * `starci provider recover <provider>`: the Supervisor's recorded close of a circuit after a probe it ran itself passed. A circuit
@@ -9,7 +9,6 @@ import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
 export const providerRecoverVerb = defineVerb({
     path: ["provider", "recover"],
     summary: "record the Supervisor's close of a provider's circuit after a probe it ran passed; circuits otherwise recover by their own half-open probe",
-    editions: BOTH_EDITIONS,
     effect: "local-write",
     roles: ["supervisor"],
     schema: "starci/provider-recover@2",

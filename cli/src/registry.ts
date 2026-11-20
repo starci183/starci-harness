@@ -14,7 +14,7 @@ import { releaseCutVerb } from "./core/release/cut.js"
 import { releasePublishVerb } from "./core/release/publish.js"
 import { releasePushVerb } from "./core/release/push.js"
 import { versionVerb } from "./core/version.js"
-import { appInfoVerb } from "./lite/app/info.js"
+import { appInfoVerb } from "./core/app/info.js"
 import { appAddVerb } from "./core/app/add.js"
 import { appCheckVerb } from "./core/app/check.js"
 import { appCiVerb } from "./core/app/ci.js"
@@ -134,7 +134,7 @@ import type { AnyVerb, TreeKind } from "./shared/verb.js"
 // Each definition is widened once here; the registry is the only place that erases verb types.
 const widen = (verb: object): AnyVerb => verb as AnyVerb
 
-/** Every verb this build knows, core first, then each edition. */
+/** Every verb this build knows. */
 export const ALL_VERBS: readonly AnyVerb[] = [
     versionVerb,
     explainVerb,
@@ -279,8 +279,5 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     laneLandVerb,
 ].map(widen)
 
-/** The verbs a tree offers: an app sees core plus its own edition; the runtime and a bare directory see everything. */
-export const verbsFor = (tree: TreeKind): readonly AnyVerb[] => {
-    if (tree === "lite" || tree === "full") return ALL_VERBS.filter((verb) => verb.editions.includes(tree))
-    return ALL_VERBS
-}
+/** The verbs a tree offers: an app sees every verb but the runtime's own; the runtime and a bare directory see everything. */
+export const verbsFor = (tree: TreeKind): readonly AnyVerb[] => (tree === "app" ? ALL_VERBS.filter((verb) => verb.runtimeOnly !== true) : ALL_VERBS)

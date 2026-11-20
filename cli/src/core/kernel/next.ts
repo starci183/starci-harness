@@ -1,6 +1,6 @@
 import { EXIT_USAGE, Refusal } from "../../shared/errors.js"
 import { repositoryRoot } from "../../shared/git.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 import { kernelNext } from "./driver.js"
 
 /** Parses a --wait value in whole seconds (0 returns after one tick). */
@@ -20,7 +20,6 @@ export const parseWait = (value: string | undefined): number | undefined => {
 export const kernelNextVerb = defineVerb({
     path: ["kernel", "next"],
     summary: "drive a workflow until a decision is needed and return it (red|stale|question|conflict|goal|goal-change|escalation-answer|done) with a digest; idle after --wait",
-    editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["kernel", "owner", "agent"],
     schema: "starci/kernel-next@1",

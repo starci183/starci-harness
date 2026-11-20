@@ -1,6 +1,6 @@
 import { captureNpm } from "../../shared/exec.js"
 import { repositoryRoot } from "../../shared/git.js"
-import { BOTH_EDITIONS, EVERYONE, defineVerb } from "../../shared/verb.js"
+import { EVERYONE, defineVerb } from "../../shared/verb.js"
 import { listPackages } from "../../shared/workspace.js"
 import { STACK_PINS, cliPinSkews, describeSkews } from "./cli-pins.js"
 import type { PinSkew } from "./cli-pins.js"
@@ -24,7 +24,6 @@ const awaitsPublication = async (skew: PinSkew, due: ReadonlyMap<string, string>
 export const checkPinsVerb = defineVerb({
     path: ["check", "pins"],
     summary: `judge the CLI's own @starci packages against ${STACK_PINS}: every requirement of cli/package.json and every copy cli/package-lock.json resolves is at its pin; red names each CLI_PIN_SKEW with the package, where, the pin and the version found; pending (exit 0) when every skew pins a version of this repository that npm does not serve yet, which the commit's publication brings`,
-    editions: BOTH_EDITIONS,
     effect: "read",
     roles: EVERYONE,
     schema: "starci/check-pins@1",

@@ -230,7 +230,6 @@ const rebuild = async (context: VerbContext, flags: { readonly cwd: string | und
 export const contextsSearchVerb = defineVerb({
     path: ["contexts", "search"],
     summary: "look up contexts, op files, policy and harness docs for a question, anchor first (BM25 fused with local embeddings); with no question, judge the index (stale exits 1; --execute rebuilds it); --eval fails under the recall floor",
-    editions: ["lite", "full"],
     effect: "local-write",
     roles: EVERYONE,
     schema: "starci/contexts-search@2",

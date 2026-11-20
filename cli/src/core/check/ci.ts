@@ -6,9 +6,9 @@ import { asRefusal, Refusal } from "../../shared/errors.js"
 import { runTool } from "../../shared/exec.js"
 import { gitCommonDir, resolveSha } from "../../shared/git.js"
 import { formatTable } from "../../shared/output.js"
-import { BOTH_EDITIONS, EVERYONE, defineVerb } from "../../shared/verb.js"
+import { EVERYONE, defineVerb } from "../../shared/verb.js"
 import type { VerbContext } from "../../shared/verb.js"
-import { editionOf, ghReader, requireCiRun, requiredJobsOf } from "./ci-evidence.js"
+import { ghReader, requireCiRun, requiredJobsOf } from "./ci-evidence.js"
 import type { CiRunEvidence, GithubReader, RequiredJobs } from "./ci-evidence.js"
 
 /** One GitHub Actions run of a commit, as `gh run list` reports it. */
@@ -169,12 +169,12 @@ export interface CiRunDeps {
 
 /**
  * The in-run evidence gate of a deploy (`starci app stack deploy --ci-run <run>`, contexts/project/cicd.md WP3): accepts only when the GitHub run
- * `ciRun` is a run of the managed CI of exactly `sha` whose every required job (the CI standard of the installed @starci/hfs for the app's edition,
+ * `ciRun` is a run of the managed CI of exactly `sha` whose every required job (the CI standard of the installed @starci/hfs,
  * never the workflow file) concluded success. It does not look at policy/quality.yaml requireCi: a deploy that names its run is always judged.
  * Refuses CI_NOT_GREEN, CI_RUN_SHA_MISMATCH, CI_RUN_WORKFLOW, CI_RUN_UNREADABLE or CI_RUN_USAGE; nothing is read from or printed of the token.
  */
 export const requireCiRunGreen = async (root: string, sha: string, ciRun: string, deps: CiRunDeps = {}): Promise<CiRunEvidence> =>
-    requireCiRun(deps.read ?? ghReader(root), sha, ciRun, deps.standard ?? requiredJobsOf(editionOf(root)))
+    requireCiRun(deps.read ?? ghReader(root), sha, ciRun, deps.standard ?? requiredJobsOf())
 
 /**
  * `starci check ci`: the GitHub Actions verdict of one pushed commit (green, red, pending, cancelled, none or unreadable) with its
@@ -184,7 +184,6 @@ export const requireCiRunGreen = async (root: string, sha: string, ciRun: string
 export const checkCiVerb = defineVerb({
     path: ["check", "ci"],
     summary: "read the GitHub Actions verdict of a commit (green, red, pending, cancelled, none or unreadable) and its runs, publish runs included; exit 0 only on green",
-    editions: BOTH_EDITIONS,
     effect: "read",
     roles: EVERYONE,
     schema: "starci/check-ci@1",

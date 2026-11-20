@@ -144,7 +144,7 @@ const buildProgram = (argv: readonly string[]): { readonly program: Command; rea
     const cwd = resolve(options.cwd ?? process.cwd())
     const verbs = verbsFor(locateTree(cwd).tree)
     const program = new Command("starci")
-        .description("the StarCi command line: core verbs plus the verbs of this tree's edition")
+        .description("the StarCi command line")
         .option("--json", "print one json envelope instead of human text")
         .option("--cwd <path>", "run as if started in this directory (a verb that lists --cwd takes it as its own folder)")
         .configureHelp({ showGlobalOptions: true })

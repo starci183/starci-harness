@@ -186,7 +186,6 @@ const chosenPackages = async (root: string, all: readonly WorkspacePackage[], na
 export const depsPublishLocalVerb = defineVerb({
     path: ["deps", "publish-local"],
     summary: "build the packages changed here (or --package) and publish each to a registry on this machine (127.0.0.1 only) under the version committed in git (refused when npm serves that version with other content), for starci deps install-local; an app whose hfs.json declares publishes publishes exactly the package folders it declares; dry until --execute",
-    editions: ["lite", "full"],
     effect: "host",
     roles: WRITERS,
     schema: "starci/deps-publish-local@4",

@@ -1,4 +1,4 @@
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 import { projectFrom } from "./driver.js"
 import { rejectWorker } from "./workers.js"
 
@@ -6,7 +6,6 @@ import { rejectWorker } from "./workers.js"
 export const supervisorRejectVerb = defineVerb({
     path: ["supervisor", "reject"],
     summary: "reject a [Worker]: a live task is cancelled (seat stopped and released, tab closed, dirty paths preserved); the worker ends rejected and its worktree is removed",
-    editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["supervisor", "owner"],
     schema: "starci/supervisor-worker-end@1",

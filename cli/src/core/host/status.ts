@@ -1,11 +1,10 @@
 import { hostStatus, loadHost, selectServices } from "../../harness/host.js"
-import { BOTH_EDITIONS, defineVerb, EVERYONE } from "../../shared/verb.js"
+import { defineVerb, EVERYONE } from "../../shared/verb.js"
 
 /** `starci host status [ids]`: every service of ops/host.yaml up, down or not installed, with its evidence; changes nothing. */
 export const hostStatusVerb = defineVerb({
     path: ["host", "status"],
     summary: "report each host service of ops/host.yaml (up, down, not installed) with its evidence, and the StarCi tasks the harness does not own",
-    editions: BOTH_EDITIONS,
     effect: "read",
     roles: EVERYONE,
     schema: "starci/host-status@1",

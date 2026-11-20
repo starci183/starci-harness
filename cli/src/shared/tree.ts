@@ -5,7 +5,6 @@ import type { TreeKind } from "./verb.js"
 /** The part of an hfs.json the CLI reads to pick its verbs. */
 interface HfsDeclaration {
     readonly kind?: string
-    readonly edition?: string
 }
 
 /** The StarCi tree a directory belongs to and its root. */
@@ -21,13 +20,12 @@ const readDeclaration = (file: string): HfsDeclaration => {
     if (!isRecord(parsed)) return {}
     return {
         ...(typeof parsed.kind === "string" ? { kind: parsed.kind } : {}),
-        ...(typeof parsed.edition === "string" ? { edition: parsed.edition } : {}),
     }
 }
 
 /**
  * Walks up from `cwd` to the nearest hfs.json, stopping at the repository root (a `.git` entry) so a stray hfs.json
- * above the project never decides its edition. An app without `edition` is full; `kind: runtime` is the runtime itself.
+ * above the project never decides its tree. `kind: runtime` is the runtime itself; any other declaration is an app.
  */
 export const locateTree = (cwd: string): TreeLocation => {
     let directory = cwd
@@ -36,7 +34,7 @@ export const locateTree = (cwd: string): TreeLocation => {
         if (existsSync(file)) {
             const declaration = readDeclaration(file)
             if (declaration.kind === "runtime") return { tree: "runtime", root: directory }
-            return { tree: declaration.edition === "lite" ? "lite" : "full", root: directory }
+            return { tree: "app", root: directory }
         }
         const parent = dirname(directory)
         if (parent === directory || existsSync(join(directory, ".git"))) return { tree: "none", root: undefined }

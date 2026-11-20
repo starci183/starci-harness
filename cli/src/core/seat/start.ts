@@ -51,7 +51,7 @@ import type { TaskRow, TaskStatus } from "../../harness/tasks.js"
 import { getWorkflow } from "../../harness/workflow.js"
 import { asRefusal, EXIT_USAGE, Refusal } from "../../shared/errors.js"
 import { repositoryRoot } from "../../shared/git.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 import type { VerbResult } from "../../shared/verb.js"
 
 /** What a seat start (or its dry run, or its resume) did. */
@@ -660,7 +660,6 @@ export const routeLines = (choice: LaunchChoice): string[] => (choice.pick === u
 export const seatStartVerb = defineVerb({
     path: ["seat", "start"],
     summary: "launch an Orca worker on a queued task with its rendered brief (dry until --execute: it writes the brief and prints the orca argv); --resume --execute replays a launch whose outcome is unknown",
-    editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["owner", "kernel", "supervisor", "coordinator"],
     schema: "starci/seat-start@1",

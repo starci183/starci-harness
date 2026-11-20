@@ -30,7 +30,6 @@ interface Slot {
 
 /** What an app's hfs.json says that the derivation needs. */
 export interface AppFacts {
-    readonly edition: "lite" | "full"
     readonly sides: readonly string[]
     readonly providers: readonly string[]
 }
@@ -43,11 +42,8 @@ const text = (value: unknown): string | undefined => (typeof value === "string" 
 
 const byCodeUnit = (left: string, right: string): number => Number(left > right) - Number(left < right)
 
-/** A slot as it holds under `edition`: undefined when the edition has no such slot; the lite overlay fields win under lite. */
-const effectiveSlot = (raw: Record<string, unknown>, edition: string): Slot | undefined => {
-    const editions = strings(raw.editions)
-    if (editions !== undefined && !editions.includes(edition)) return undefined
-    const merged: Record<string, unknown> = edition === "lite" ? { ...raw, ...(isRecord(raw.lite) ? raw.lite : {}), presence: raw.litePresence ?? raw.presence } : raw
+/** A slot of the manifest, as far as the derivation reads it. */
+const effectiveSlot = (merged: Record<string, unknown>): Slot => {
     const id = text(merged.id)
     const path = text(merged.path)
     const profiles = strings(merged.profiles)
@@ -183,19 +179,19 @@ const sideExclusions = (side: string, slots: readonly Slot[], suffixes: readonly
 }
 
 /**
- * `sonar.coverage.exclusions` of an app, derived from the slots of its edition: the back end's complement of the measured
+ * `sonar.coverage.exclusions` of an app, derived from the slots of the manifest: the back end's complement of the measured
  * files (a `<name>.<role>.ts` of a `ruleParams.be.logicRoles` role inside a `coverage: required` slot, and every logic file such a
  * slot declares in `logic`), that is every `coverage: none` path, every non-logic suffix and every fixed non-role file a required
  * slot names and does not declare as logic; and every declared
  * side that holds no `coverage: required` slot, whole. SonarQube has no coverage inclusions, so the complement is the list.
  */
 export const coverageExclusions = (manifest: Manifest, app: AppFacts): string[] => {
-    const params: Record<string, unknown> = app.edition === "lite" && isRecord(manifest.be.lite) ? { ...manifest.be, ...manifest.be.lite } : manifest.be
+    const params: Record<string, unknown> = manifest.be
     const suffixes = strings(params.suffixes) ?? []
     const roles = strings(params.logicRoles) ?? []
     const slots = manifest.slots
-        .map((raw) => effectiveSlot(raw, app.edition))
-        .filter((slot): slot is Slot => slot?.tracked === "tracked" && slot.presence !== "forbidden" && (slot.provider === undefined || app.providers.includes(slot.provider)))
+        .map((raw) => effectiveSlot(raw))
+        .filter((slot) => slot.tracked === "tracked" && slot.presence !== "forbidden" && (slot.provider === undefined || app.providers.includes(slot.provider)))
     const result = new Set(app.sides.flatMap((side) => sideExclusions(side, slots, suffixes, roles)))
     return withoutCovered([...result]).sort(byCodeUnit)
 }
@@ -210,7 +206,6 @@ export const appFacts = (appRoot: string): AppFacts | undefined => {
     const be = isRecord(sides.be) ? sides.be : {}
     const connections = Array.isArray(be.connections) ? be.connections.filter(isRecord) : []
     return {
-        edition: parsed.edition === "lite" ? "lite" : "full",
         sides: ["be", "fe"].filter((side) => side in sides),
         providers: [...new Set(connections.flatMap((connection) => (typeof connection.provider === "string" ? [connection.provider] : [])))],
     }

@@ -1,11 +1,10 @@
 import { hostUp, loadHost, selectServices } from "../../harness/host.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 
 /** `starci host up [ids] [--stack <name>]`: starts every named service, or every service of the stack (and what it requires), that is down, in requires order; idempotent. */
 export const hostUpVerb = defineVerb({
     path: ["host", "up"],
     summary: "start the host services of ops/host.yaml that are down, each after what it requires; one already up is left alone",
-    editions: BOTH_EDITIONS,
     effect: "host",
     roles: ["owner"],
     schema: "starci/host-up@1",

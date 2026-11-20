@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.182 - 2026-11-20
+
+- Changed: one app edition (R212, owner ruling 2026-11-20). Verbs carry no `editions`: an app tree sees every verb but the runtime-only ones (`runtimeOnly`, `contexts anatomy`); `starci doctor` and the tree report `app`; `starci app info` runs in any app (refusal APP_REQUIRED); the anatomy renders one tree per side and its slices are contexts/project/anatomy-be.md and anatomy-fe.md (`contexts anatomy --slice --side <be|fe>`, no `--edition`); `check ci` reads the one job list of the CI standard.
+
 ## 1.1.0-alpha.181 - 2026-11-20
 
 - Changed: the CLI requires @starci/hfs@6.13.60, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).

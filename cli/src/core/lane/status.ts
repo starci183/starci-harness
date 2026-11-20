@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs"
-import { BOTH_EDITIONS, EVERYONE, defineVerb } from "../../shared/verb.js"
+import { EVERYONE, defineVerb } from "../../shared/verb.js"
 import { checkLaneName, landPaths, lanesDir, readStatuses, readyEntries } from "../../harness/land-queue.js"
 
 const held = (file: string): string | null => {
@@ -14,7 +14,6 @@ const held = (file: string): string | null => {
 export const laneStatusVerb = defineVerb({
     path: ["lane", "status"],
     summary: "print the batch lander's ready set, who holds the lander and the dev lock, and each lane's state (queued, landed, conflict, rejected)",
-    editions: BOTH_EDITIONS,
     effect: "read",
     roles: EVERYONE,
     schema: "starci/lane-status@1",

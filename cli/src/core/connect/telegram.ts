@@ -3,7 +3,7 @@ import { bridgeLiveness, channelCounts, connectedChannel, getUpdates, loadTelegr
 import { secretHome } from "../../harness/secret-env.js"
 import { EXIT_USAGE, Refusal } from "../../shared/errors.js"
 import { callerRole } from "../../shared/role.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 import type { VerbResult } from "../../shared/verb.js"
 import { BRIDGE_MODES, telegramBridge } from "./bridge.js"
 
@@ -53,7 +53,6 @@ const telegramStatus = (config: ReturnType<typeof loadTelegram>): VerbResult<unk
 export const connectTelegramVerb = defineVerb({
     path: ["connect", "telegram"],
     summary: "the owner's Telegram channel: discover-chat stores the owner's chat, status reports it, notify sends the notices due once, bridge runs the bridge (run) or reports it (status)",
-    editions: BOTH_EDITIONS,
     effect: "remote",
     roles: ["owner", "supervisor", "debug"],
     schema: "starci/telegram-channel@1",

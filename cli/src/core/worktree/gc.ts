@@ -1,7 +1,7 @@
 import { worktreeGc } from "../../harness/worktree-gc.js"
 import { formatTable } from "../../shared/output.js"
 import { repositoryRoot } from "../../shared/git.js"
-import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
+import { defineVerb } from "../../shared/verb.js"
 
 /**
  * `starci worktree gc [--execute]`: removes the worktrees the harness made for this repository whose owner's work ended (an
@@ -13,7 +13,6 @@ import { BOTH_EDITIONS, defineVerb } from "../../shared/verb.js"
 export const worktreeGcVerb = defineVerb({
     path: ["worktree", "gc"],
     summary: "collect ended worktrees or exclusively selected --path checkouts; preserve Git work and refs, quarantine proven project remnants whole, and block selected live, primary, caller or foreign folders (dry until --execute)",
-    editions: BOTH_EDITIONS,
     effect: "local-write",
     roles: ["owner", "debug", "supervisor", "kernel", "agent"],
     schema: "starci/worktree-gc@1",
