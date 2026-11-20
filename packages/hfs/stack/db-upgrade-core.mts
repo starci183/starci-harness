@@ -14,7 +14,9 @@
 //   compare     both clusters are inventoried the same way: databases, extensions, the exact row count of every table, every sequence's position, the
 //               count of every kind of relation and of functions (extension members left out), the roles with their attributes and password hashes,
 //               and the role memberships; any difference refuses (STACK_DB_UPGRADE_MISMATCH) and the new volume is emptied again
-//   logins      the sealed superuser password, and every sealed app password the caller names, log in on the restored cluster over TCP with md5/SCRAM
+//   logins      the sealed superuser password, and every sealed app password the caller names, log in on the restored cluster over TCP with md5/SCRAM;
+//               a named role the SOURCE cluster does not hold yet (a later migration creates it, and the migrate step gives it its sealed password)
+//               is reported and not proven, since a restore that equals the source cannot hold it either
 //               (STACK_DB_UPGRADE_PASSWORD_DRIFT otherwise)
 // The scratch volume (it holds the dumps, password hashes included) and the work copy are removed whatever happens.
 import { firstLine, lines as splitLines, tool } from './context.mjs';
@@ -93,6 +95,8 @@ export interface UpgradeDeps { beforeCompare?: ((ctx: StackContext, container: s
 export interface UpgradeRecord {
   from: string; to: string; oldMajor: string; newMajor: string; oldImage: string; image: string;
   before: VolumeMeasure; after: VolumeMeasure | null; inventory: ClusterInventory | null; createdTarget: boolean;
+  /** The named logins the source cluster did not hold, so not proven (a migration creates them later). */
+  absentLogins?: string[] | undefined;
 }
 
 const docker = (ctx: Pick<StackContext, 'spawn'>, args: readonly string[], input?: string): RunResult => tool(ctx, 'docker', args, input === undefined ? {} : { input });
@@ -331,10 +335,23 @@ function restore(ctx: StackContext, site: UpgradeSite, server: string, before: C
 }
 
 /** Each login over TCP (md5 or SCRAM against the stored hash) with its sealed password on stdin. */
-function proveLogins(ctx: StackContext, site: UpgradeSite, server: string): string[] {
+/** The named roles the cluster that `container` serves on `socket` does not hold (names only). */
+export function absentRoles(ctx: StackContext, container: string, socket: string, site: UpgradeSite, roles: string[]): string[] {
+  for (const role of roles) if (!SQL_NAME.test(role)) throw new UpgradeStop('STACK_DB_UPGRADE_PASSWORD_DRIFT', `the role ${role} is not a plain identifier`);
+  if (roles.length === 0) return [];
+  const held = new Set(splitLines(psql(ctx, container, socket, site, 'template1', `select rolname from pg_roles where rolname in (${roles.map((role) => `'${role}'`).join(', ')});
+`, 'STACK_DB_UPGRADE_INVENTORY')));
+  return roles.filter((role) => !held.has(role));
+}
+
+/** The report line of a named login the source cluster does not hold. */
+export const absentLoginLine = (login: Pick<UpgradeLogin, 'role' | 'what'>): string => `  login ${login.role}: ${login.what} ${login.role} is not on the source cluster; migrate creates it and gives it its sealed password (not proven here)`;
+
+function proveLogins(ctx: StackContext, site: UpgradeSite, server: string, absent: ReadonlySet<string>): string[] {
   const all: UpgradeLogin[] = [{ role: site.superuser, database: 'template1', what: 'the superuser', password: site.password }, ...site.logins];
   return all.map((login) => {
     if (!SQL_NAME.test(login.role)) throw new UpgradeStop('STACK_DB_UPGRADE_PASSWORD_DRIFT', `the role ${login.role} is not a plain identifier`);
+    if (login.role !== site.superuser && absent.has(login.role)) return absentLoginLine(login);
     const secret = login.password();
     const run = docker(ctx, ['exec', '-i', server, 'sh', '-c', STDIN_PASSWORD, 'sh', 'psql', '-X', '-At', '-h', '127.0.0.1', '-U', login.role, '-d', login.database, '-c', 'select 1'], `${secret}\n`);
     if (failed(run) || String(run.stdout).trim() !== '1') throw new UpgradeStop('STACK_DB_UPGRADE_PASSWORD_DRIFT', `${login.what} ${login.role} does not log in on the restored cluster with its sealed password (${reason(run).replaceAll(secret, '[redacted]')}): custody and the database disagree; the old volume is untouched`);
@@ -378,6 +395,9 @@ export async function runUpgrade(ctx: StackContext, site: UpgradeSite, phase: Ph
     const old = await phase('start-old', () => startOld(ctx, site, work, scratch));
     containers.push(old);
     const before = await phase('inventory-old', () => inventoryOf(ctx, old, '/scratch/sock', site));
+    // A role the source does not hold cannot be on an equal restore: its proof waits for the migration that creates it.
+    const absent = new Set(absentRoles(ctx, old, '/scratch/sock', site, [...new Set(site.logins.map((login) => login.role))]));
+    if (absent.size > 0) record.absentLogins = [...absent].sort();
     lines.push(`  inventory of ${site.oldVolume} (PostgreSQL ${record.oldMajor}, ${site.oldImage}):`, ...inventoryLines(before));
     await phase('dump', () => dump(ctx, site, old, Object.keys(before.databases)));
     await phase('stop-old', () => { stopServer(ctx, old); containers.splice(containers.indexOf(old), 1); docker(ctx, ['volume', 'rm', work]); });
@@ -391,7 +411,7 @@ export async function runUpgrade(ctx: StackContext, site: UpgradeSite, phase: Ph
       throw new UpgradeStop('STACK_DB_UPGRADE_MISMATCH', `${problems.length} difference(s) between ${site.oldVolume} and the restored ${site.newVolume}: ${problems.slice(0, 3).join('; ')}`);
     }
     lines.push(`  restored into ${site.newVolume} (PostgreSQL ${record.newMajor}, ${site.image}): every database, table row count, sequence, object count, role and password hash is equal`, ...inventoryLines(after, before));
-    lines.push(...await phase('logins', () => proveLogins(ctx, site, fresh)));
+    lines.push(...await phase('logins', () => proveLogins(ctx, site, fresh, absent)));
     await phase('stop-new', () => { stopServer(ctx, fresh); containers.splice(containers.indexOf(fresh), 1); });
     record.after = await phase('measure-old-after', () => measureVolume(ctx, site.image, site.oldVolume));
     const same = (['files', 'bytes', 'content', 'meta'] as const).every((key) => record.after?.[key] === record.before[key]);

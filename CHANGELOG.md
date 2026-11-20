@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.185.next.4 - 2026-11-21
+
+- Changed: the CLI requires @starci/hfs@6.16.1-next.2 (local registry only; the namespace cli-follow never uses): `stack db-upgrade` reports a declared role the source cluster does not hold instead of refusing it.
+
 ## 1.1.0-alpha.185 - 2026-11-20
 
 - Changed: the CLI requires @starci/hfs@6.16.0, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
