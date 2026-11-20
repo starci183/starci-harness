@@ -8,7 +8,7 @@
 //               and the volume map
 //   adopt step  a `stack` database: the hold deploy starts the database alone on the copied volume; the step proves it carries a migration history
 //               (STACK_ADOPT_NO_HISTORY otherwise) and runs the plain deploy path inside it: migrate preview, a verified backup when something is pending,
-//               the expand migrations. Then the real deploy, converge, seed, post-deploy, verify, accept and the contract migrations, as any deploy.
+//               the expand migrations, then gives the declared app role its sealed password (a migration may have just created it). Then the real deploy, converge, seed, post-deploy, verify, accept and the contract migrations, as any deploy.
 // A Postgres major upgrade that keeps the stack name (`deploy.dbUpgrade`, PROJECT-STACKS-19) adopts the same way: the preflight proves this stack has an
 // accepted release (the rollback target, on the old volume with the old image), its database runs nothing, the newest `db-upgrade` attempt of its journal
 // is done and restored into the declared new volume with the db image this deploy runs (STACK_ADOPT_UPGRADE_*); then the same hold deploy and adopt step.
@@ -19,7 +19,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { DeployConfig } from './config.mjs';
 import type { StackContext } from './context.mjs';
-import { declaredDatabase, expandPhase, FIRST_START_WAIT_SECONDS, messageOf } from './db-phases.mjs';
+import { appRoleOf, declaredDatabase, expandPhase, FIRST_START_WAIT_SECONDS, messageOf, setAppRolePassword } from './db-phases.mjs';
 import type { PhaseInput, PhaseResult } from './db-phases.mjs';
 import { upgradePair } from './db-upgrade.mjs';
 import { refusal } from './errors.mjs';
@@ -125,7 +125,14 @@ export async function adoptStep(p: PhaseInput): Promise<{ result: { ok: boolean;
   }
   const expanded = await expandPhase(p);
   const lines = [`adopt: the database of ${service} carries its migration history: the plain deploy path runs`, ...expanded.lines];
-  return { result: expanded.ok ? { ok: true, lines } : { ok: false, code: expanded.refused?.code ?? 'STACK_DEPLOY_MIGRATE_FAILED', lines: [...lines, `adopt: ${expanded.refused?.message ?? 'the deploy path is red'}`] }, phase: expanded };
+  if (!expanded.ok) return { result: { ok: false, code: expanded.refused?.code ?? 'STACK_DEPLOY_MIGRATE_FAILED', lines: [...lines, `adopt: ${expanded.refused?.message ?? 'the deploy path is red'}`] }, phase: expanded };
+  // The adopted data may predate the app role (a migration of this release creates it, as on an upgraded cluster): it gets its sealed password here,
+  // as a first start gives it, and an existing role is set to the same sealed value again.
+  const app = appRoleOf(config, database);
+  if (!app) return { result: { ok: true, lines }, phase: expanded };
+  const set = await setAppRolePassword(ctx, config, f.containerTarget(ctx, container), app, f);
+  if (!set.ok) return { result: { ok: false, code: set.code, lines: [...lines, `adopt: ${set.message}`] }, phase: expanded };
+  return { result: { ok: true, lines: [...lines, set.line.replace(/^first start: /u, 'adopt: ')] }, phase: expanded };
 }
 
 /**

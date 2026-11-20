@@ -1024,8 +1024,10 @@ compose db image) is a dry run until `--execute`. Everything runs in throwaway c
   `pg_restore --create --exit-on-error`; an extension the target image does not ship is `STACK_DB_UPGRADE_EXTENSION_MISSING`.
 - **Proof.** Both clusters are inventoried alike: databases, extensions, the exact row count of every table, every sequence's position, the count of each
   kind of relation and of functions, the roles with their attributes and password hashes, the memberships. Any difference is `STACK_DB_UPGRADE_MISMATCH`
-  and the new volume is emptied again; only an extension's version may change. The sealed superuser and app passwords then log in over TCP, and the old
-  volume's files, bytes, content and metadata digests must equal those taken before (`STACK_DB_UPGRADE_SOURCE_CHANGED`).
+  and the new volume is emptied again; only an extension's version may change. The sealed superuser and app passwords then log in over TCP
+  (`STACK_DB_UPGRADE_PASSWORD_DRIFT` otherwise). A declared role the source cluster does not hold yet is reported, not proven, and recorded in
+  `absentLogins`: an equal restore cannot hold it either, and the migration that creates it is followed by the step that gives it its sealed password
+  (dev: the migrate step of `stack up`; Swarm: the adopt step). Then the old volume's files, bytes, content and metadata digests must equal those taken before (`STACK_DB_UPGRADE_SOURCE_CHANGED`).
 - **Record.** A Swarm run is one recorded attempt (kind `db-upgrade`) under the deploy lock, every step a journal phase and its `upgrade` record (volumes,
   majors, images, inventory, measures; names and digests only). A dev run writes the same document to its state directory under a lock file.
 
@@ -1033,7 +1035,8 @@ The switch:
 
 - **Swarm, same stack.** `stack deploy --env <env> --adopt --image db=<the same image> ... --sha <sha> --execute`. It proves the stack has an accepted
   release, its database runs nothing, and the newest `db-upgrade` of its journal restored into the declared volume with this deploy's db image
-  (`STACK_ADOPT_UPGRADE_*`). It then starts the database alone on the new volume, proves its migration history, runs the plain database path and deploys.
+  (`STACK_ADOPT_UPGRADE_*`). It then starts the database alone on the new volume, proves its migration history, runs the plain database path, gives the declared app role its sealed password (a migration of the
+  release may have just created it) and deploys.
   A failure redeploys the previous release, which runs the old image on the old volume. `stack rollback --env <env> --data-acknowledged --execute`
   does the same later (`STACK_ROLLBACK_UPGRADED_DATA` without the acknowledgement: writes made on the new volume stay there). While `dbUpgrade` is
   declared and the database service still mounts the old volume, a plain deploy is refused (`STACK_DEPLOY_DB_UPGRADE_PENDING`): it would start an empty

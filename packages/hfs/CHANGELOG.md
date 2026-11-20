@@ -1,5 +1,10 @@
 # Changelog
 
+## 6.16.1-next.2 - 2026-11-21
+
+- Fixed (`stack db-upgrade`, PROJECT-STACKS-19): a declared login role the SOURCE cluster does not hold yet (an app role a migration of the release creates) is no longer refused as STACK_DB_UPGRADE_PASSWORD_DRIFT. Its proof is skipped with the report line "login <role>: ... is not on the source cluster; migrate creates it and gives it its sealed password (not proven here)" and the record lists it in `absentLogins`. A role the source holds must still log in with its sealed password, or the upgrade refuses as before.
+- Changed (`stack deploy --adopt`, adopt.mts): after the expand migrations the adopt step gives the declared app role (hfs.json `db.appRole`, `database.appPassword`) its sealed password, the step a first start already takes, so a role the release's migration just created is never left without one (STACK_FIRST_START_APP_ROLE when it fails). The dev path already does this in the migrate step of `stack up`.
+
 ## 6.16.0 - 2026-11-20
 
 - Added (R450, PROJECT-STACKS-20): an environment pending its cutover. `environments.<env>.cutover: { state: pending, reason, until: <YYYY-MM-DD>, keep?: [<member> | <member>/<KEY>] }` in .starcistacks/application-stacks.yaml (schema, `runtime/scripts/lib/stack-cutover.mts`) makes `app check` (both envs) report, for that environment alone, the findings of the codes failure-codes.yaml marks `cutoverTolerant` (`true`: STACKS_SEALED_MEMBER_MISSING, STACKS_LITE_SELFHOSTED_DB, STACKS_LITE_REDIS_PERSISTENCE, STACK_STORAGE_MISSING, STACKS_IMAGE_ENV_DIVERGES; `kept`: ENV_SEALED_UNREAD of a member or key `keep` names), listed `CUTOVER PENDING (<env>), REPORT ONLY` and in a section of their own beside the gates off by declaration (`runtime/scripts/hfs/check-cutover.mts`); every other finding still blocks. An unsound block is HFS_CUTOVER_DECLARATION_INVALID and a past `until` HFS_CUTOVER_EXPIRED, both blocking and judged outside the cache on every run that selects hfs; neither tolerates anything.
