@@ -105,6 +105,13 @@ monitor:
   network: starci-monitor
   # Every component of the stack, each its own toggle with its image pin, limits, rollout and retention.
   components: vps/monitor/components.yaml
+# `vps service up|status|down|grant <id> --service <name>`: the opt-in shared services of a server (contexts/project/shared-services.md),
+# one stack each, from the catalog `dir`/<name>/components.yaml (the embeddings server first). An app environment opts in with
+# `environments.<env>.services` of its .starcistacks/application-stacks.yaml. `up` refuses a service that does not fit the server's measured
+# memory, CPUs and disk beside the other shared stacks that run; `capacity` is what it always leaves to the apps.
+services:
+  dir: vps/services
+  capacity: {keepMemory: 4G, keepCpus: 2, keepDisk: 20G}
 # Each app name's door under the owner's domain. `mode` is chosen per server (its file's `ingress.mode`), else `defaultMode`:
 # tunnel (a proxied CNAME to the server's Cloudflare tunnel) or edge (a DNS-only A record to the server, Traefik with a DNS-01
 # certificate, renewed by Traefik itself). The UI (`--to ui`) and SSH (`--to ssh`) always go through the tunnel.

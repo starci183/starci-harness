@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased (train 186 sets the version)
+
+- Added: `starci vps service up|status|down|grant <id> --service <name>` (and `--local` for the local swarm), the opt-in shared services of a managed VPS (contexts/project/shared-services.md). Each is one catalog entry, ops/vps/services/<name>/components.yaml (`starci/vps-service@1`, cli/src/harness/vps/services.ts): one stack per server, its components toggled like the monitoring stack's (a server file's `services.<name>.components`, `--with`, `--without`), images pinned by digest, its own limits, reservations, update_config, rollback_config, restart policy, retention and volumes; `up` and `down` are dry runs until --execute.
+- Added (catalog): `embeddings`, ONE CPU embeddings server per VPS: Ollama with `qwen3-embedding:8b` (Q4_K_M, manifest sha256 64b933495768...), verified at every start against the pin (it refuses to serve on a mismatch), behind a Caddy gate (bearer key, three routes, 1 MB cap, 4 upstream) that alone joins the network `starci-embeddings` as `embeddings-gate`. A lighter variant (`qwen3-embedding-0.6b`) is only an explicit choice of a server file and is refused VPS_SERVICE_REINDEX without --acknowledge-reindex, then printed as a finding.
+- Added: the capacity check of `service up`: the box's memory, available memory, CPUs and free disk (the sources `vps list` reads; the Docker VM through a throwaway container on the local swarm) against the service's limits, resident need and disk beside the other shared stacks that run (other catalog services and the monitoring stack), less ops/vps.yaml `services.capacity`; refused VPS_SERVICE_CAPACITY naming every number.
+- Added: the gate's key generated once (or `--key-from-host` once), sealed in the server's <id>.enc.yaml (`serviceEmbeddingsApiKey`), a Swarm secret named by its hash on the server; `service grant --app --env [--member] [--key]` seals the app's copy through `app secret set`. Never printed.
+- Added (refusals): VPS_SERVICE_UNKNOWN, VPS_SERVICE_COMPONENT, VPS_SERVICE_REQUIRES, VPS_SERVICE_MODEL_UNKNOWN, VPS_SERVICE_REINDEX, VPS_SERVICE_CAPACITY, VPS_SERVICE_CAPACITY_UNREAD, VPS_SERVICE_KEY_SEALED, VPS_SERVICE_KEY_MISSING, VPS_SERVICE_GRANT_APP, VPS_SERVICE_GRANT_FAILED, VPS_SERVICE_STATUS.
+- Added (pins): ollama 0.30.11 and caddy 2.10.2 in contexts/stack/pins.yaml, index digests resolved with docker buildx imagetools inspect. ops/vps.yaml `services` (catalog dir and capacity kept for the apps); the server schema takes `services`.
+- Changed (contexts): contexts/project/shared-services.md, PROJECT-STACKS-20 in stacks.md, the verb row in managed-vps.md.
+
 ## 1.1.0-alpha.184 - 2026-11-20
 
 - Changed: the CLI requires @starci/hfs@6.15.0, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).

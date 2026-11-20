@@ -920,6 +920,16 @@ Prometheus or Grafana: the server's one shared monitoring stack (`starci vps mon
 The block's fields, the labels and sidecars the render adds, the doors and secrets, and why Consul is not part of it are in
 [monitoring.md](monitoring.md) (held by `HFS_STACKS_SHAPE` and the render's `STACKS_DEPLOY_CONFIG_INVALID`).
 
+## PROJECT-STACKS-20 Shared services are the server's, opted into per environment
+
+A Swarm environment that calls a service the server shares (the embeddings server first) declares `environments.<env>.services`. It never
+runs its own copy: the server's one stack of that service (`starci vps service up <id> --service <name>`, ops/vps/services/<name>/) serves
+every opted-in environment, and the render joins each consumer to the service's network, sets its URL and grants the sealed key the service's
+gate checks. An environment without the block renders byte for byte as before. A grant source declared `required: false`, and an opt-in not
+marked required, renders without its key while the member is not sealed yet (`STACKS_SEALED_MEMBER_PENDING`, report only), so the declaration
+can land before the owner seals the key. The block, the catalog, the key's custody and the capacity check are in
+[shared-services.md](shared-services.md) (held by `HFS_STACKS_SHAPE` and the render's `STACKS_DEPLOY_CONFIG_INVALID`).
+
 ## PROJECT-STACKS-18 Moving a stack to new runtime names: standby, copy, adopt
 
 A Swarm stack whose runtime names change (the stack, its volumes, its releases base and so its secrets, overlay and router names) moves in one

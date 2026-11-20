@@ -37,6 +37,11 @@ const policySchema = z.strictObject({
     swarm: z.strictObject({ advertise: z.literal("host"), autolock: z.boolean(), network: z.string().regex(/^[a-z][a-z0-9-]*$/) }),
     edge: z.strictObject({ stack: z.string().regex(/^[a-z][a-z0-9-]*$/), proxy: imageRef, resolver: z.string().regex(/^[a-z][a-z0-9]*$/) }),
     monitor: z.strictObject({ stack: z.string().regex(/^[a-z][a-z0-9-]*$/), network: z.string().regex(/^[a-z][a-z0-9_-]*$/), components: z.string().regex(/\.yaml$/) }),
+    // The catalog of opt-in shared services (ops/vps/services/<name>/components.yaml) and the room `vps service up` always leaves to the apps.
+    services: z.strictObject({
+        dir: z.string().min(1),
+        capacity: z.strictObject({ keepMemory: z.string().regex(/^\d+(?:\.\d+)?[MG]$/), keepCpus: z.number().min(0), keepDisk: z.string().regex(/^\d+(?:\.\d+)?[MG]$/) }),
+    }),
     ui: z.strictObject({ stack: z.string().regex(/^[a-z][a-z0-9-]*$/), server: imageRef, agent: imageRef, subdomain: z.string().regex(LABEL), port: z.number().int().min(1).max(65535) }),
     ingress: z.strictObject({
         domain: z.string().regex(/^[a-z0-9-]+(?:\.[a-z0-9-]+)+$/),
@@ -85,6 +90,8 @@ const serverSchema = z.strictObject({
     firewall: firewallKind.optional(),
     // The monitoring components this server turns on or off against their defaults (ops/vps/monitor/components.yaml).
     monitor: z.strictObject({ components: z.record(z.string().regex(/^[a-z][a-z0-9-]*$/), z.boolean()) }).optional(),
+    // Choices for the shared services this server runs (ops/vps/services/<name>/components.yaml): component toggles and, by explicit choice only, a model variant.
+    services: z.record(z.string().regex(/^[a-z][a-z0-9-]*$/), z.strictObject({ components: z.record(z.string().regex(/^[a-z][a-z0-9-]*$/), z.boolean()).optional(), model: z.string().regex(/^[a-z0-9][a-z0-9.-]*$/).optional() })).optional(),
 })
 
 /** One server of the inventory (its `<id>.yaml`), validated. */
