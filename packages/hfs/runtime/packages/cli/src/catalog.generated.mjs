@@ -290,7 +290,7 @@ export const CATALOG = {
             {
               "name": "label",
               "type": "string",
-              "summary": "the worker label, an op file of ops/ops/ (code, test, draw, image, audit, review, verify, uat, docs, deliver)",
+              "summary": "the worker label, an op file of ops/ops/ (code, design, prove, inspect, docs, deliver; on trial beside them: draw, image, test, verify, review, audit)",
               "required": true
             },
             {
@@ -551,6 +551,12 @@ export const CATALOG = {
           "positional": [],
           "json": "flag"
         },
+        "master-plan": {
+          "summary": "list each rule of the project's Master Plan (.starciwork/master-plan.yaml, PROJECT-MASTER-PLAN-3) with what holds it: enforced (its enforcedBy names only machines, each an hfs rule of the installed catalog with a built enforcer or a check preset of ops/checks.yaml), partial (a named machine holds a part and review the rest), planned (an hfs rule whose enforcers are all still owed), review (a reviewer only), unenforced (it names nothing) or unknown (a name that resolves to nothing, which exits 1); a malformed plan is refused MASTER_PLAN_INVALID and a project without one MASTER_PLAN_MISSING",
+          "flags": [],
+          "positional": [],
+          "json": "flag"
+        },
         "add": {
           "summary": "add one canonical back-end capability or front-end unit, service, spec or image and register its patterns",
           "flags": [],
@@ -696,7 +702,7 @@ export const CATALOG = {
           "json": "flag"
         },
         "scaffold": {
-          "summary": "create a full or lite StarCi app in its own Git repository (its first commit on main, dev checked out)",
+          "summary": "create a StarCi app in its own Git repository (its first commit on main, dev checked out)",
           "flags": [],
           "positional": [
             {
@@ -818,6 +824,64 @@ export const CATALOG = {
             {
               "name": "args",
               "required": false,
+              "variadic": true
+            }
+          ],
+          "json": "flag"
+        },
+        "shoot": {
+          "summary": "shoot the gallery under a machine-wide shoot slot: wait for --ready-url and the slot, start --serve on --port and wait until it listens, run the app's capture command ({port}, {url} filled in), then kill the server by its pid and release the slot",
+          "flags": [
+            {
+              "name": "serve",
+              "type": "string",
+              "summary": "the web server to start for the shoot, one shell command ({port} is replaced); none: the capture reaches a server already up"
+            },
+            {
+              "name": "port",
+              "type": "string",
+              "summary": "the port --serve listens on"
+            },
+            {
+              "name": "serve-cwd",
+              "type": "string",
+              "summary": "where --serve runs (default: the repository root)"
+            },
+            {
+              "name": "serve-env",
+              "type": "list",
+              "summary": "NAME=value for the server's environment, repeatable"
+            },
+            {
+              "name": "ready-url",
+              "type": "string",
+              "summary": "a URL that must answer 200 before the slot is taken (the api the screens read)"
+            },
+            {
+              "name": "timeout",
+              "type": "string",
+              "summary": "seconds the server has to listen, and --ready-url to answer (default 180)"
+            },
+            {
+              "name": "lane",
+              "type": "string",
+              "summary": "the lane that holds the slot (default: STARCI_LANE, else the branch lane/<lane>)"
+            },
+            {
+              "name": "wait",
+              "type": "string",
+              "summary": "seconds to wait for a shoot slot before SLOT_BUSY (default: until one frees)"
+            },
+            {
+              "name": "dir",
+              "type": "string",
+              "summary": "the slot root (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots)"
+            }
+          ],
+          "positional": [
+            {
+              "name": "command",
+              "required": true,
               "variadic": true
             }
           ],
@@ -2511,6 +2575,44 @@ export const CATALOG = {
           ],
           "json": "flag"
         },
+        "monitor": {
+          "summary": "`monitor up <id>` (or `up --local`): deploy the shared monitoring stack of a managed server (ops/vps/monitor/components.yaml: Prometheus, Alertmanager to the owner's Telegram, Grafana, Loki, Alloy, node-exporter, cAdvisor, a read-only socket proxy, and the optional components its file turns on), digests pinned, with its memory budget; a dry run until --execute",
+          "flags": [
+            {
+              "name": "local",
+              "type": "boolean",
+              "summary": "the swarm of this machine (Docker Desktop) instead of a server: the same components, doors on localhost, no alert sent"
+            },
+            {
+              "name": "with",
+              "type": "list",
+              "summary": "a component to turn on for this run, beside the server file's monitor.components (repeat)"
+            },
+            {
+              "name": "without",
+              "type": "list",
+              "summary": "a component to turn off for this run (repeat)"
+            },
+            {
+              "name": "execute",
+              "type": "boolean",
+              "summary": "apply the plan; without it the verb is a dry run that prints the plan and changes nothing"
+            }
+          ],
+          "positional": [
+            {
+              "name": "action",
+              "required": true,
+              "variadic": false
+            },
+            {
+              "name": "id",
+              "required": false,
+              "variadic": false
+            }
+          ],
+          "json": "flag"
+        },
         "domain": {
           "summary": "`domain add <id> <sub> --to <service:port|port|ui|ssh>`, `domain list <id>`, `domain remove <id> <sub>`: a name <sub>.<domain of ops/vps.yaml> for a managed server: the UI and SSH through its Cloudflare tunnel, an app service through the tunnel or through Traefik (DNS-only A record, labels, DNS-01 certificate) by the server's ingress mode; add and remove are dry runs until --execute",
           "flags": [
@@ -2577,7 +2679,7 @@ export const CATALOG = {
             {
               "name": "file",
               "type": "string",
-              "summary": "only this settings file: routing, lanes, routes, liveness, checks, host, uat, telegram, vps"
+              "summary": "only this settings file: routing, lanes, routes, liveness, checks, host, uat, telegram, vps, slots"
             }
           ],
           "positional": [],
@@ -3131,6 +3233,180 @@ export const CATALOG = {
             }
           ],
           "positional": [],
+          "json": "flag"
+        },
+        "gate": {
+          "summary": "the local gate of a lane before it lands: merge origin/dev, npm ci under an npm slot when the merge changed a manifest or lockfile, codegen, then under a gate slot the app's own app check --env prod (green except the cache), or --push app push, and --ready register with the batch lander",
+          "flags": [
+            {
+              "name": "ref",
+              "type": "string",
+              "summary": "the ref merged before the gate (default: origin/dev)"
+            },
+            {
+              "name": "skip-merge",
+              "type": "boolean",
+              "summary": "gate the tree as it is, merging nothing"
+            },
+            {
+              "name": "install",
+              "type": "boolean",
+              "summary": "run npm ci whatever the merge changed"
+            },
+            {
+              "name": "push",
+              "type": "boolean",
+              "summary": "instead of the check, app push origin HEAD:<branch> under the gate slot: it runs the check, commits the cache records and pushes once"
+            },
+            {
+              "name": "ready",
+              "type": "boolean",
+              "summary": "after a push, register the pushed sha with the batch lander (lane ready)"
+            },
+            {
+              "name": "wait",
+              "type": "string",
+              "summary": "seconds to wait for each slot before SLOT_BUSY (default: until one frees)"
+            },
+            {
+              "name": "dir",
+              "type": "string",
+              "summary": "the slot root and lanes folder (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml)"
+            }
+          ],
+          "positional": [
+            {
+              "name": "lane",
+              "required": false,
+              "variadic": false
+            }
+          ],
+          "json": "flag"
+        }
+      }
+    },
+    "slot": {
+      "verbs": {
+        "take": {
+          "summary": "wait for a free machine-wide slot of a kind (npm, gate, shoot, stack; ops/slots.yaml) and hold it under the lane's name, reclaiming a holder proven gone (pid dead or reused, or taken before this boot; never by age); prefer slot run",
+          "flags": [
+            {
+              "name": "lane",
+              "type": "string",
+              "summary": "the lane that holds it (default: STARCI_LANE, else the branch lane/<lane>)"
+            },
+            {
+              "name": "pid",
+              "type": "string",
+              "summary": "the process the slot lives as long as (a long-lived shell or agent); once it is gone the next take reclaims the slot"
+            },
+            {
+              "name": "wait",
+              "type": "string",
+              "summary": "seconds to wait for a free slot before SLOT_BUSY (default: until one frees)"
+            },
+            {
+              "name": "dir",
+              "type": "string",
+              "summary": "the slot root (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots)"
+            }
+          ],
+          "positional": [
+            {
+              "name": "kind",
+              "required": true,
+              "variadic": false
+            }
+          ],
+          "json": "flag"
+        },
+        "release": {
+          "summary": "release the slots of a kind this lane holds (each only after it is read and names the lane); --stale reclaims every slot whose holder is proven gone (pid dead or reused, or taken before this boot), logging the evidence; age never reclaims",
+          "flags": [
+            {
+              "name": "lane",
+              "type": "string",
+              "summary": "the lane that holds it (default: STARCI_LANE, else the branch lane/<lane>)"
+            },
+            {
+              "name": "n",
+              "type": "string",
+              "summary": "only this slot number"
+            },
+            {
+              "name": "stale",
+              "type": "boolean",
+              "summary": "reclaim the slots of the kind whose holder is proven gone, whoever holds them; an old one is reported, never removed"
+            },
+            {
+              "name": "dir",
+              "type": "string",
+              "summary": "the slot root (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots)"
+            }
+          ],
+          "positional": [
+            {
+              "name": "kind",
+              "required": true,
+              "variadic": false
+            }
+          ],
+          "json": "flag"
+        },
+        "list": {
+          "summary": "list the machine-wide slots (every kind, or one) with holder, age, pid and state and its evidence: free, held, old (a warning only), or reclaimable: dead (its pid is not alive), reused (its pid runs another process) or rebooted (taken before this boot)",
+          "flags": [
+            {
+              "name": "dir",
+              "type": "string",
+              "summary": "the slot root (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots)"
+            }
+          ],
+          "positional": [
+            {
+              "name": "kind",
+              "required": false,
+              "variadic": false
+            }
+          ],
+          "json": "flag"
+        },
+        "run": {
+          "summary": "run one command while holding a machine-wide slot of a kind (npm ci under npm, a full gate or push under gate): the slot records this process's pid and is released when the command ends, so a killed run never leaves it held",
+          "flags": [
+            {
+              "name": "lane",
+              "type": "string",
+              "summary": "the lane that holds it (default: STARCI_LANE, else the branch lane/<lane>)"
+            },
+            {
+              "name": "wait",
+              "type": "string",
+              "summary": "seconds to wait for a free slot before SLOT_BUSY (default: until one frees)"
+            },
+            {
+              "name": "out",
+              "type": "string",
+              "summary": "also write the command's whole output to this file"
+            },
+            {
+              "name": "dir",
+              "type": "string",
+              "summary": "the slot root (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots)"
+            }
+          ],
+          "positional": [
+            {
+              "name": "kind",
+              "required": true,
+              "variadic": false
+            },
+            {
+              "name": "command",
+              "required": true,
+              "variadic": true
+            }
+          ],
           "json": "flag"
         }
       }
