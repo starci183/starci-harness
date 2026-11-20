@@ -1974,6 +1974,7 @@ rules:
     law: Every Swarm environment's deploy block is coherent under the stack verbs' own normalization against the real tree.
     failureCodes:
       - STACKS_DEPLOY_CONFIG_INVALID
+      - STACKS_SEALED_MEMBER_PENDING
     enforcers:
       - {kind: hfs, id: stacks-deploy}
   - id: R295

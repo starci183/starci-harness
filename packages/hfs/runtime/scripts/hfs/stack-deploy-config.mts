@@ -17,7 +17,8 @@ export interface SealedRoles { ops: string; sshKey: string; knownHosts: string }
 export interface RemoteConfig { host: string; releasesBase: string | null; sealed: SealedRoles | null; serverRecipient: string | null }
 export interface ImageBuildArgs { values: Record<string, string>; sealed: { member: string; keys: string[] } | null }
 export interface ImageEntry { app: string; buildArgs: ImageBuildArgs }
-export interface SourceEntry { member: string; keys: string[] | null; required: boolean; fill: boolean }
+/** One sealed source of a grant; `optional` is set only for an explicit `required: false`, whose member may not be sealed yet (PROJECT-STACKS-5). */
+export interface SourceEntry { member: string; keys: string[] | null; required: boolean; fill: boolean; optional?: true }
 export interface GrantEntry { service: string; filePointers: boolean; from: SourceEntry[] }
 export interface SettingsEntry { member: string; keys: string[] }
 export interface SecretsConfig { grants: GrantEntry[]; settings: SettingsEntry[] }
@@ -85,6 +86,29 @@ export interface DeployImageTie { environment: string; service: string; app: str
 export const DEPLOY_CONFIG_CODE = 'STACKS_DEPLOY_CONFIG_INVALID';
 /** A sealed member, or a key of one, the declaration names and the environment has not sealed (yet). */
 export const SEALED_MEMBER_MISSING = 'STACKS_SEALED_MEMBER_MISSING';
+/** A grant source declared `required: false` whose member the environment has not sealed yet: rendered without it, reported, never blocking. */
+export const SEALED_MEMBER_PENDING = 'STACKS_SEALED_MEMBER_PENDING';
+
+/** One grant source left out of the render because its member is not sealed yet. */
+export interface PendingSource { service: string; member: string; keys: string[] | null }
+
+/**
+ * Splits the grants into what the render opens and what waits for its member: a source marked `optional` (an explicit `required: false`) whose member
+ * is not among the sealed `members` is left out (a grant left with no source goes), and is returned in `pending`. Every other source is kept as it is.
+ */
+export function pendingOf<G extends { service: string; from: Array<{ member: string; keys: string[] | null; optional?: true }> }>(grants: G[], members: Set<string>): { grants: G[]; pending: PendingSource[] } {
+  const pending: PendingSource[] = [];
+  const kept = grants.flatMap((grant) => {
+    const from = grant.from.filter((source) => {
+      if (source.optional !== true || members.has(source.member)) return true;
+      pending.push({ service: grant.service, member: source.member, keys: source.keys });
+      return false;
+    });
+    if (from.length === grant.from.length) return [grant];
+    return from.length === 0 ? [] : [{ ...grant, from }];
+  });
+  return { grants: kept, pending };
+}
 
 export const NAME = /^[a-z][a-z0-9-]*$/u;
 export const KEY = /^[A-Z][A-Z0-9_]*$/u;
@@ -220,11 +244,14 @@ function images(c: Collector, block: Block, services: Set<string>, members: Set<
 
 function sourceEntry(c: Collector, at: string, entry: Block, members: Set<string>): SourceEntry | null {
   if (!closedFields(c, at, entry, FIELDS.source)) return null;
-  memberRef(c, `${at}.member`, entry.member, members);
+  // An explicit `required: false` source may name a member the environment has not sealed yet: the render leaves it out and app check reports it
+  // (STACKS_SEALED_MEMBER_PENDING, report only), so a grant can land before its key is sealed. A source that omits `required` still refuses.
+  if (entry.required === false) nameField(c, `${at}.member`, entry.member);
+  else memberRef(c, `${at}.member`, entry.member, members);
   const keys = entry.keys === undefined ? null : stringList(c, `${at}.keys`, entry.keys, KEY, { nonEmpty: true });
   for (const flag of ['required', 'fill']) if (entry[flag] !== undefined && typeof entry[flag] !== 'boolean') c.problem(`${at}.${flag}`, 'must be true or false');
   if (entry.required === true && keys === null) c.problem(`${at}.required`, 'needs an explicit keys list');
-  return { member: entry.member, keys, required: entry.required === true, fill: entry.fill === true };
+  return { member: entry.member, keys, required: entry.required === true, fill: entry.fill === true, ...(entry.required === false ? { optional: true as const } : {}) };
 }
 
 function grants(c: Collector, block: Block, services: Set<string>, members: Set<string>): GrantEntry[] {

@@ -1,0 +1,126 @@
+# The shared embeddings server of a managed VPS: ONE per server, CPU only, shared by every app environment that opts in (owner, 2026-11-21).
+# Read by cli/src/harness/vps/services.ts (`starci vps service up|status|down|grant <id> --service embeddings`); contexts/project/shared-services.md.
+#
+# The model is pinned: ollama `qwen3-embedding:8b`, manifest digest 64b933495768..., the exact model the owner's host gate serves in dev
+# (ops/host/stack/embeddings.*). A different quantization or size is a different vector space, so dev and server vectors, and any index copied
+# between them, would stop being comparable. The model service pulls it once into its volume, compares the manifest's sha256 with the pin
+# when it starts, and refuses to serve on a mismatch. A lighter variant exists only as an explicit choice of one server's file
+# (`services: {embeddings: {model: <variant>}}`), never as the default, and `service up` refuses it without --acknowledge-reindex.
+#
+# Per component (the same contract as ops/vps/monitor/components.yaml): its toggle (`default`, `requires`), its image (a pin of
+# contexts/stack/pins.yaml, digests only), its limits and reservations, its own update_config and rollback_config, its retention, its volumes
+# and configs, and its service: the compose service without image, deploy and configs, which the plan adds. Tokens in `{{...}}` are filled by
+# the plan: {{stack}}, {{network}}, {{key.file}}, {{model.name}}, {{model.digest}}, {{model.id}}, {{model.manifest}}, {{app.alias}} and
+# {{retention.<key>}} of the same component. A `$` the container shell must see is written `$$` (stack deploy interpolates the file once).
+schema: starci/vps-service@1
+purpose: "one embeddings server per VPS (Ollama on CPU) behind a bearer-token gate (Caddy); apps reach the gate on the network starci-embeddings"
+stack: starci-embeddings
+# The external attachable overlay network the gate answers on; an app environment's `services.embeddings` joins its consumers to it.
+network: starci-embeddings
+# What an opted-in app service gets. packages/hfs stack/shared-services.mts SHARED_SERVICES holds the same defaults (the hfs package cannot read ops/).
+app:
+  alias: embeddings-gate
+  url: http://embeddings-gate:8080/v1
+  urlEnv: EMBEDDINGS_BASE_URL
+  key: EMBEDDINGS_API_KEY
+  member: ai
+# The gate's bearer key: generated once on the first `up --execute` (or taken once from the harness secret loader, --key-from-host <VAR>),
+# sealed to the owner key in the server's <id>.enc.yaml under `sealed`, a Swarm secret named by its hash on the server, mounted as `file`.
+key:
+  sealed: serviceEmbeddingsApiKey
+  file: embeddings_api_key
+# The model the server serves. `default` is the variant every server runs unless its file names another; `reindex` marks a variant whose
+# vectors are not comparable with the default's (choosing it forces a full reindex of every app's vectors).
+model:
+  default: qwen3-embedding-8b
+  variants:
+    qwen3-embedding-8b:
+      name: qwen3-embedding:8b
+      # sha256 of the registry manifest (registry.ollama.ai/v2/library/qwen3-embedding/manifests/8b), the id `ollama list` prints first.
+      digest: 64b933495768fbd3b87c20583d379728a07471e0c66733a9df87cd1901b3c44b
+      # The one GGUF layer the manifest names (Ollama checks it on pull): 4676804928 bytes.
+      blob: 3fcd3febec8b3fd64435204db75bf0dd73b91e8d0661e0331acfe7e7c3120b85
+      quantization: Q4_K_M
+      dimensions: 4096
+      # Measured on CPU, ollama 0.30.11, OLLAMA_NUM_PARALLEL 2, context 4096 (contexts/project/shared-services.md "Capacity"): resident
+      # memory 6.6 GB, image 8.0 GB unpacked plus the model 4.7 GB on disk.
+      needs: {memory: 7G, disk: 13G}
+      reindex: false
+    qwen3-embedding-0.6b:
+      name: qwen3-embedding:0.6b
+      digest: ac6da0dfba84a81fdbfbaf330198c33cd77c4cdfc53e8bc50eb581914a15621d
+      blob: 06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439
+      quantization: Q8_0
+      dimensions: 1024
+      needs: {memory: 2G, disk: 9G}
+      reindex: "another model and 1024 dimensions instead of 4096: no vector it makes is comparable with qwen3-embedding:8b's, so every app re-embeds every stored vector"
+x-rollout:
+  stop-first: &stopFirst {parallelism: 1, delay: 10s, order: stop-first, failure_action: rollback, monitor: 60s}
+  start-first: &startFirst {parallelism: 1, delay: 5s, order: start-first, failure_action: rollback, monitor: 30s}
+  rollback-stop-first: &rollbackStopFirst {parallelism: 1, order: stop-first, failure_action: pause, monitor: 60s}
+  rollback-start-first: &rollbackStartFirst {parallelism: 1, order: start-first, failure_action: pause, monitor: 30s}
+components:
+  model:
+    default: true
+    purpose: "Ollama on CPU with the pinned model: pulls it once into its volume, refuses to serve unless the manifest's sha256 is the pin, keeps it loaded"
+    why: "the server itself; only the gate reaches it, on the stack's own network"
+    image: {image: ollama/ollama, pin: ollama}
+    # 16 of the box's 56 cores at most, 4 held; the memory limit covers the resident model (about 6.6 GB) with room for two parallel requests.
+    resources: {memory: 10G, cpus: "16.00", reserveMemory: 4G, reserveCpus: "4.00"}
+    # stop-first: the model volume is held by one task, and two loaded copies would need twice the memory.
+    update: *stopFirst
+    rollback: *rollbackStopFirst
+    restart: {condition: on-failure, delay: 30s, max_attempts: 5}
+    # otherModels: remove deletes every model of the volume but the pinned one at each start, so the disk holds one model.
+    retention: {otherModels: remove}
+    networks: [backend]
+    volumes: {models: /root/.ollama}
+    service:
+      entrypoint:
+        - /bin/sh
+        - -c
+        - |
+          ollama serve &
+          server=$$!
+          until ollama list >/dev/null 2>&1; do sleep 1; done
+          manifest="/root/.ollama/models/manifests/{{model.manifest}}"
+          [ -f "$$manifest" ] || ollama pull {{model.name}} || { echo "starci: pulling {{model.name}} failed" >&2; kill $$server; exit 1; }
+          found=$$(sha256sum "$$manifest" | cut -d' ' -f1)
+          if [ "$$found" != "{{model.digest}}" ]; then echo "starci: {{model.name}} is $$found, not the pinned {{model.digest}}; refusing to serve" >&2; kill $$server; exit 1; fi
+          if [ "{{retention.otherModels}}" = remove ]; then ollama list | awk 'NR>1 {print $$1}' | grep -vxF '{{model.name}}' | while read -r other; do ollama rm "$$other" >/dev/null; done; fi
+          echo "starci: serving {{model.name}} {{model.digest}}"
+          wait $$server
+      environment:
+        OLLAMA_HOST: "0.0.0.0:11434"
+        OLLAMA_KEEP_ALIVE: "-1"
+        OLLAMA_NUM_PARALLEL: "2"
+        OLLAMA_MAX_LOADED_MODELS: "1"
+        OLLAMA_CONTEXT_LENGTH: "4096"
+      healthcheck:
+        test: ["CMD-SHELL", "ollama list | grep -q '^{{model.name}} *{{model.id}} '"]
+        interval: 30s
+        timeout: 10s
+        start_period: 1200s
+        retries: 5
+  gate:
+    default: true
+    purpose: "Caddy in front of the model: the bearer key, three routes, a 1 MB body cap and at most 4 requests upstream; the only service on the shared network"
+    why: "no app reaches the model without the key, and nothing but the three routes is served"
+    requires: [model]
+    image: {image: caddy, pin: caddy}
+    resources: {memory: 128M, cpus: "0.50", reserveMemory: 32M, reserveCpus: "0.05"}
+    update: *startFirst
+    rollback: *rollbackStartFirst
+    restart: {condition: on-failure, delay: 5s}
+    retention: {}
+    networks: [backend, shared]
+    configs: {Caddyfile: /etc/caddy/Caddyfile}
+    secret: true
+    service:
+      # Caddy reads {$EMBEDDINGS_API_KEY} from its environment; the Swarm secret is a file, so the entrypoint loads it into the process only.
+      entrypoint: ["/bin/sh", "-c", "[ -s /run/secrets/{{key.file}} ] || { echo 'starci: the gate key is empty' >&2; exit 1; }; EMBEDDINGS_API_KEY=$$(cat /run/secrets/{{key.file}}) exec caddy run --config /etc/caddy/Caddyfile --adapter caddyfile"]
+      healthcheck:
+        test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8081/healthz"]
+        interval: 10s
+        timeout: 5s
+        retries: 10

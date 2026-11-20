@@ -22,3 +22,7 @@ ingress:
 # Optional: the monitoring components this server turns on or off against their defaults (ops/vps/monitor/components.yaml).
 # monitor:
 #   components: {blackbox: true, tempo: true}
+# Optional: choices for the shared services (ops/vps/services/<name>/components.yaml) this server runs with `starci vps service up`.
+# A model variant other than the catalog default changes the vector space and forces a full reindex (`up` refuses it without --acknowledge-reindex).
+# services:
+#   embeddings: {components: {gate: true}}

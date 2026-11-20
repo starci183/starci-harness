@@ -6685,6 +6685,16 @@ STACKS_RELEASE_UNDECLARED:
   owner: op-retry
   kind: check-finding
 
+STACKS_SEALED_MEMBER_PENDING:
+  title: "A grant waits for a sealed member that is not sealed yet (report only)"
+  title_vi: "Một quyền cấp khoá đang chờ member sealed chưa được niêm phong (chỉ báo)"
+  meaning_vi: "Một nguồn của deploy.secrets.grants khai báo rõ required: false, hoặc một opt-in environments.<env>.services không đặt required: true, trỏ tới member mà môi trường chưa có tệp .starcistacks/<env>/secrets/<member>.enc.yaml. Bản render bỏ nguồn đó: service chạy không có khoá cho tới khi khoá được niêm phong. Đây là cảnh báo, không chặn; nguồn không khai báo required vẫn bị từ chối bằng STACKS_DEPLOY_CONFIG_INVALID."
+  causes_vi:
+    - "Khai báo member và quyền cấp được đưa vào trước khi chủ dự án niêm phong khoá (ví dụ khoá của dịch vụ dùng chung embeddings)"
+  nextStep_vi: "Niêm phong khoá: starci vps service grant <id> --service <tên> --app . --env <env> --execute (khoá của dịch vụ dùng chung) hoặc starci app secret set --env <env> <member> <KEY>; bản render sau sẽ cấp khoá cho service."
+  owner: op-retry
+  kind: check-finding
+
 STACKS_SECOND_INGRESS:
   title: "A Swarm environment selects more than one ingress"
   title_vi: "Môi trường Swarm chọn nhiều hơn một ingress"

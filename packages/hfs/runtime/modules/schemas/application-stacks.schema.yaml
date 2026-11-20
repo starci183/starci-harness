@@ -825,6 +825,35 @@ $defs:
             anyOf:
               - {type: boolean}
               - {type: array, items: {type: string, minLength: 1}}
+      services:
+        description: >-
+          Optional, docker-swarm only: the shared services of the server this environment calls (contexts/project/shared-services.md), each deployed
+          once per server by `starci vps service up <id> --service <name>`. Absent, the stack renders exactly as without it. Present, `starci app stack
+          render` joins each consumer to the service's external network, sets its URL variable, and grants it the sealed key the service's gate checks
+          (`<KEY>_FILE`). A key whose member is not sealed yet renders without it and is reported (STACKS_SEALED_MEMBER_PENDING) unless `required: true`.
+        type: object
+        additionalProperties: false
+        properties:
+          embeddings:
+            description: "The server's one embeddings server (qwen3-embedding:8b on CPU behind a bearer-token gate): EMBEDDINGS_BASE_URL=http://embeddings-gate:8080/v1 on the network starci-embeddings."
+            type: object
+            additionalProperties: false
+            required: [member]
+            properties:
+              member:
+                description: "The sealed member of this environment that holds the gate's key (`starci vps service grant <id> --service embeddings --app . --env <env> --member <member> --execute` seals it)."
+                type: string
+                pattern: '^[a-z][a-z0-9-]*$'
+              key: {description: "The key of the member (default EMBEDDINGS_API_KEY); the consumers read it through <KEY>_FILE.", type: string, pattern: '^[A-Z][A-Z0-9_]*$'}
+              consumers:
+                description: "The stack services that call it (default: the services of deploy.images, the app's own images)."
+                type: array
+                minItems: 1
+                items: {type: string, minLength: 1}
+              required: {description: "true refuses the render while the member is not sealed; default false renders without the key and reports it.", type: boolean}
+              network: {description: "The external network the gate answers on (default starci-embeddings, the catalog's network).", type: string, pattern: '^[a-z][a-z0-9_-]*$'}
+              url: {description: "The URL the consumers call (default http://embeddings-gate:8080/v1).", type: string, pattern: '^https?://\S+$'}
+              urlEnv: {description: "The variable the URL is set in (default EMBEDDINGS_BASE_URL).", type: string, pattern: '^[A-Z][A-Z0-9_]*$'}
       dns:
         description: Owner-run DNS prerequisites, one declaration per ingress host.
         type: array

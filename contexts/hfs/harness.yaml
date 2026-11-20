@@ -258,6 +258,11 @@ slots:
     presence: optional
     holds: the shared monitoring stack of a managed VPS (components.yaml with each component's toggle, pin, limits and retention, and the Prometheus, Alertmanager, Loki, Alloy, Tempo, Pyroscope, blackbox and Grafana provisioning files), as data `starci vps monitor up` renders and deploys
     rule: CONTRIB-9 data is data
+  - id: ops.vps-services
+    path: "ops/vps/services/**"
+    presence: optional
+    holds: the catalog of opt-in shared services of a managed VPS, one folder per service (components.yaml with its stack, network, key, pinned model variants and each component's toggle, pin, limits, rollout and retention, and the config files it mounts, the embeddings gate's Caddyfile first), as data `starci vps service up` renders and deploys
+    rule: CONTRIB-9 data is data
   - id: ops.labels
     path: "ops/ops/*.md"
     presence: required

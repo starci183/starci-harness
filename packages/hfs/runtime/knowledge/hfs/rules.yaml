@@ -4427,10 +4427,10 @@ rules:
       - examples/lite-app/.github/workflows/stack-deploy.yml
   - id: R294
     code: "STACKS_DEPLOY_CONFIG_INVALID"
-    law: "In lite and full apps, every docker-swarm environment of .starcistacks/application-stacks.yaml that declares environments.<env>.deploy declares a coherent block: it is judged by the same normalizeDeploy the `starci app stack` verbs use, against the real tree. Unknown fields are refused, names, keys, volumes, hosts, URLs and commands match their patterns, the config and public environment files exist below .starcistacks/<env>/, every service names a service of the first stack source, every sealed member has a secrets/<member>.enc file, verify entries and configs are well formed with unique config names, every postDeploy entry names a task declared under deploy.tasks, and the backup helper image is pinned by a real sha256 digest (no placeholder). Each problem is one finding at environments.<env>.<field>; an environment without a deploy block is not a finding."
+    law: "In lite and full apps, every docker-swarm environment of .starcistacks/application-stacks.yaml that declares environments.<env>.deploy declares a coherent block: it is judged by the same normalizeDeploy the `starci app stack` verbs use, against the real tree. Unknown fields are refused, names, keys, volumes, hosts, URLs and commands match their patterns, the config and public environment files exist below .starcistacks/<env>/, every service names a service of the first stack source, every sealed member has a secrets/<member>.enc file (a grant source declared required: false whose member is not sealed yet is left out of the render and reported as the warning STACKS_SEALED_MEMBER_PENDING), verify entries and configs are well formed with unique config names, every postDeploy entry names a task declared under deploy.tasks, and the backup helper image is pinned by a real sha256 digest (no placeholder). Each problem is one finding at environments.<env>.<field>; an environment without a deploy block is not a finding."
     kinds: [check]
     gates: [settle, land, ci]
-    failureCodes: ["STACKS_DEPLOY_CONFIG_INVALID"]
+    failureCodes: ["STACKS_DEPLOY_CONFIG_INVALID", "STACKS_SEALED_MEMBER_PENDING"]
     enforcers:
       - {kind: hfs, id: stacks-deploy, at: scripts/hfs/rules/stacks-deploy.mjs}
     docs:

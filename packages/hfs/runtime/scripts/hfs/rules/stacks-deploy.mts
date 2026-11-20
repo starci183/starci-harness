@@ -7,7 +7,7 @@ import { isSealedName, memberOfName } from '../../lib/sealed-member.mjs';
 import path from 'node:path';
 import { isPlainObject as plain } from '../../../engine/plain-object.mjs';
 import { findStackDeclaration, readDeclaration, STACK_ROOT } from '../../lib/stack-declaration.mjs';
-import { normalizeDeploy } from '../stack-deploy-config.mjs';
+import { normalizeDeploy, pendingOf, SEALED_MEMBER_PENDING } from '../stack-deploy-config.mjs';
 import { found, readJson } from './read.mjs';
 import type { Parsed, Repo } from './rule-types.mjs';
 
@@ -53,14 +53,32 @@ function lineEndingFindings({ repoRoot, envDir, environment }: { repoRoot: strin
   ));
 }
 
+/**
+ * The report-only findings of the grant sources that wait for their member (STACKS_SEALED_MEMBER_PENDING, a warning): a deploy grant source declared
+ * `required: false` and every shared-service opt-in not marked required, whose member the environment has not sealed yet. The render leaves them out.
+ */
+function pendingFindings(environment: string, grants: Parsed[], spec: Parsed, members: Set<string>) {
+  const optIns = Object.values<Parsed>(mapping(spec.services)).flatMap((entry) => {
+    if (!plain(entry) || entry.required === true || typeof entry.member !== 'string') return [];
+    const consumers: string[] = Array.isArray(entry.consumers) ? entry.consumers.map(String) : Object.keys(mapping(spec.deploy?.images));
+    return consumers.map((service) => ({ service, from: [{ member: String(entry.member), keys: [String(entry.key ?? 'its key')], optional: true as const }] }));
+  });
+  return pendingOf([...grants, ...optIns], members).pending.map((source) => {
+    const keys = source.keys?.join(', ') ?? 'the keys';
+    const message = `environments.${environment}: ${source.service} is granted ${keys} of the sealed member ${source.member}, which is not sealed yet; it renders without them until starci app secret set --env ${environment} ${source.member} seals it (report only)`;
+    return { ...found(SEALED_MEMBER_PENDING, DECLARATION, message), level: 'warning' };
+  });
+}
+
 function environmentFindings({ repoRoot, project, environment, spec }: { repoRoot: string; project: Parsed; environment: Parsed; spec: Parsed }) {
   const envDir = path.join(repoRoot, STACK_ROOT, environment);
-  const { problems } = normalizeDeploy(spec.deploy, { project, probe: probeOf(envDir, spec) });
+  const probe = probeOf(envDir, spec);
+  const { config, problems } = normalizeDeploy(spec.deploy, { project, probe });
   return [...problems.map((problem: Parsed) => found(
     problem.code ?? 'STACKS_DEPLOY_CONFIG_INVALID',
     DECLARATION,
     `environments.${environment}.${problem.at}: ${problem.message}`,
-  )), ...lineEndingFindings({ repoRoot, envDir, environment })];
+  )), ...pendingFindings(environment, config?.secrets.grants ?? [], spec, probe.members), ...lineEndingFindings({ repoRoot, envDir, environment })];
 }
 
 /** Only docker-swarm environments that declare a deploy block are judged. */

@@ -4,13 +4,16 @@ import fs from 'node:fs';
 import { isSealedName, memberOfName } from '../runtime/scripts/lib/sealed-member.mjs';
 import path from 'node:path';
 import { parseYaml } from '../runtime/engine/yaml.mjs';
-import { DEPLOY_CONFIG_CODE, NAME, normalizeDeploy, type DbUpgrade, type RenamedFrom, type SealedRoles } from '../runtime/scripts/hfs/stack-deploy-config.mjs';
-export type { DbUpgrade, RenamedFrom } from '../runtime/scripts/hfs/stack-deploy-config.mjs';
+import { DEPLOY_CONFIG_CODE, NAME, normalizeDeploy, pendingOf, type DbUpgrade, type PendingSource, type RenamedFrom, type SealedRoles } from '../runtime/scripts/hfs/stack-deploy-config.mjs';
+export type { DbUpgrade, PendingSource, RenamedFrom } from '../runtime/scripts/hfs/stack-deploy-config.mjs';
 import { refusal } from './errors.mjs';
 import type { TargetBinding } from './target-binding.mjs';
 import { monitoringOf, sidecarGrants } from './monitoring.mjs';
 import type { MonitoringOptIn } from './monitoring.mjs';
 export type { MonitoringOptIn } from './monitoring.mjs';
+import { sharedServiceGrants, sharedServicesOf } from './shared-services.mjs';
+import type { SharedServiceOptIn } from './shared-services.mjs';
+export type { SharedServiceOptIn } from './shared-services.mjs';
 
 /** The sealed SSH roles of `deploy.remote.sealed`: the member that holds each. */
 export type SealedRemote = SealedRoles;
@@ -18,7 +21,8 @@ export interface DeployRemote { host: string; releasesBase: string | null; seale
 export interface BuildArgsSealed { member: string; keys: string[] }
 export interface BuildArgsBlock { values: Record<string, string>; sealed: BuildArgsSealed | null }
 export interface ImageEntry { app: string; buildArgs: BuildArgsBlock }
-export interface SecretSource { member: string; keys: string[] | null; required: boolean; fill: boolean }
+/** `optional`: an explicit `required: false`, whose member may not be sealed yet (the render then leaves the source out, `pending`). */
+export interface SecretSource { member: string; keys: string[] | null; required: boolean; fill: boolean; optional?: true }
 export interface SecretGrant { service: string; filePointers: boolean; from: SecretSource[] }
 export interface SecretSetting { member: string; keys: string[] }
 export interface EnvironmentSetting { key: string; default: string | null }
@@ -115,6 +119,10 @@ export interface DeployConfig extends DeployBlock {
   edge?: SharedEdge | null | undefined;
   /** The monitoring opt-in, or null when the environment declares none (the render is then exactly what it was without it). */
   monitoring?: MonitoringOptIn | null | undefined;
+  /** The shared-service opt-ins (`environments.<env>.services`); absent when the environment declares none. */
+  sharedServices?: SharedServiceOptIn[] | undefined;
+  /** The grant sources left out because their member is not sealed yet (STACKS_SEALED_MEMBER_PENDING); absent when there is none. */
+  pending?: PendingSource[] | undefined;
 }
 
 export const STACKS_DIR = '.starcistacks';
@@ -191,6 +199,17 @@ export function loadDeployConfig({ repoRoot, env }: { repoRoot: string; env: str
     throw refusal(DEPLOY_CONFIG_CODE, `${problems.length} problem${problems.length === 1 ? '' : 's'} in environments.${env}.deploy: ${first}`);
   }
   const monitoring = monitoringOf(environment, { services, members, backing: declaration?.backing, env });
-  const grants = sidecarGrants(monitoring);
-  return { env, project, repoRoot, envDir, stackFile, secretsDir, members, services, edge: edgeOf(environment.ingress, services, env), monitoring, ...config, ...(grants.length === 0 ? {} : { secrets: { ...config.secrets, grants: [...config.secrets.grants, ...grants] } }) };
+  const sharedServices = sharedServicesOf(environment, { services, members, images: Object.keys(config.images), env });
+  // The opt-in sets the URL variable; a consumer that also declares it by hand would have two sources for one value.
+  const doubled = sharedServices.flatMap((optIn) => optIn.consumers.filter((service) => config.environment[service]?.values[optIn.urlEnv] !== undefined).map((service) => `${service} declares ${optIn.urlEnv} in deploy.environment while services.${optIn.name} sets it; remove the declared value`));
+  if (doubled.length > 0) throw refusal(DEPLOY_CONFIG_CODE, `environments.${env}.services: ${doubled.slice(0, 6).join('; ')}`);
+  const grants = [...sidecarGrants(monitoring), ...sharedServiceGrants(sharedServices)];
+  const split = pendingOf([...config.secrets.grants, ...grants], members);
+  // Without added grants and with every source sealed, the secrets are the normalised block itself, so the render is what it was.
+  const secrets = grants.length === 0 && split.pending.length === 0 ? {} : { secrets: { ...config.secrets, grants: split.grants } };
+  return {
+    env, project, repoRoot, envDir, stackFile, secretsDir, members, services, edge: edgeOf(environment.ingress, services, env), monitoring, ...config, ...secrets,
+    ...(sharedServices.length === 0 ? {} : { sharedServices }),
+    ...(split.pending.length === 0 ? {} : { pending: split.pending }),
+  };
 }

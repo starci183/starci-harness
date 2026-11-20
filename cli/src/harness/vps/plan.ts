@@ -20,6 +20,7 @@ export type StepSecret =
     | "MONITOR_GRAFANA_PASSWORD"
     | "MONITOR_GLITCHTIP_DB_PASSWORD"
     | "MONITOR_GLITCHTIP_SECRET_KEY"
+    | "SERVICE_KEY"
 
 /** One step of a plan. */
 export interface PlanStep {

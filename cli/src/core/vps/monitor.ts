@@ -31,7 +31,7 @@ const SEALED_KEYS: Readonly<Record<Exclude<MonitorSecret, "telegram">, string>> 
 const localSealedFile = (): string => join(stateBase(), "monitor", "local.enc.yaml")
 
 /** The bash of this machine for the local swarm: Git for Windows' on win32 (never WSL's), bash elsewhere. */
-const localBash = (): string => {
+export const localBash = (): string => {
     if (process.platform !== "win32") return "bash"
     const git = join(process.env.ProgramFiles ?? "C:/Program Files", "Git", "bin", "bash.exe")
     if (!existsSync(git)) throw new Refusal("VPS_MONITOR_LOCAL_BASH", `the local swarm's steps run in Git for Windows' bash, not found at ${git}`)
@@ -39,7 +39,7 @@ const localBash = (): string => {
 }
 
 /** The steps of the local swarm run as a local bash, the same scripts as on a server. */
-const localSession = (): SshSession => {
+export const localSession = (): SshSession => {
     const bash = localBash()
     return {
         run: (remote) => captureTool(bash, ["-s"], process.cwd(), { input: remoteInput(remote), timeoutMs: remote.timeoutMs }),

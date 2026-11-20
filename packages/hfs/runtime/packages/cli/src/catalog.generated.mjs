@@ -2613,6 +2613,80 @@ export const CATALOG = {
           ],
           "json": "flag"
         },
+        "service": {
+          "summary": "`service up|status|down|grant <id> --service <name>` (or `--local`): an opt-in shared service of a managed server from ops/vps/services/<name>/components.yaml (embeddings: one CPU embeddings server, qwen3-embedding:8b pinned by digest, behind a bearer-key gate), one stack per server, its components toggled, digests pinned, refused when it does not fit the measured memory, CPUs and disk; `grant` seals its key into an app environment's member; a dry run until --execute",
+          "flags": [
+            {
+              "name": "service",
+              "type": "string",
+              "summary": "the shared service, a folder of ops/vps/services (embeddings)",
+              "required": true
+            },
+            {
+              "name": "local",
+              "type": "boolean",
+              "summary": "the swarm of this machine (Docker Desktop) instead of a server: the same stack and the same capacity check"
+            },
+            {
+              "name": "with",
+              "type": "list",
+              "summary": "up: a component to turn on for this run, beside the server file's services.<name>.components (repeat)"
+            },
+            {
+              "name": "without",
+              "type": "list",
+              "summary": "up: a component to turn off for this run (repeat)"
+            },
+            {
+              "name": "acknowledge-reindex",
+              "type": "boolean",
+              "summary": "up: accept a model variant the server file chooses instead of the pinned default, which forces every app to re-embed its index"
+            },
+            {
+              "name": "key-from-host",
+              "type": "string",
+              "summary": "up: take the gate's key once from this harness secret (EMBEDDINGS_API_KEY) instead of generating it; a sealed key is never replaced"
+            },
+            {
+              "name": "app",
+              "type": "string",
+              "summary": "grant: the app's root folder"
+            },
+            {
+              "name": "env",
+              "type": "string",
+              "summary": "grant: the app's stack environment (its .starcistacks/<env>)"
+            },
+            {
+              "name": "member",
+              "type": "string",
+              "summary": "grant: the sealed member that holds the key (default the catalog's app.member, ai)"
+            },
+            {
+              "name": "key",
+              "type": "string",
+              "summary": "grant: the key name in that member (default the catalog's app.key, EMBEDDINGS_API_KEY)"
+            },
+            {
+              "name": "execute",
+              "type": "boolean",
+              "summary": "apply the plan; without it the verb is a dry run that prints the plan and changes nothing"
+            }
+          ],
+          "positional": [
+            {
+              "name": "action",
+              "required": true,
+              "variadic": false
+            },
+            {
+              "name": "id",
+              "required": false,
+              "variadic": false
+            }
+          ],
+          "json": "flag"
+        },
         "domain": {
           "summary": "`domain add <id> <sub> --to <service:port|port|ui|ssh>`, `domain list <id>`, `domain remove <id> <sub>`: a name <sub>.<domain of ops/vps.yaml> for a managed server: the UI and SSH through its Cloudflare tunnel, an app service through the tunnel or through Traefik (DNS-only A record, labels, DNS-01 certificate) by the server's ingress mode; add and remove are dry runs until --execute",
           "flags": [

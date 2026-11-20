@@ -178,6 +178,9 @@ environments:
     #   reason: Waits for the owner to seal the new members and move the data.
     #   until: 2026-12-31
     #   keep: [identity-provider]
+    # Call the server's shared services (`starci vps service up`, contexts/project/shared-services.md); absent, nothing changes.
+    # services:
+    #   embeddings: {member: ai, key: EMBEDDINGS_API_KEY, consumers: [api]}
     ingress:
       component: ingress
       hosts: ["{{project}}.example.invalid", "api.{{project}}.example.invalid", "storage.{{project}}.example.invalid"]
