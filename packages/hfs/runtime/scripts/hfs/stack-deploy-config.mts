@@ -39,6 +39,11 @@ export interface RegistryConfig { host: string; visibility: string }
  * release store on the manager (default /srv/<old stack>), `volumes` maps each new volume of this environment to the old volume its data is copied from.
  */
 export interface RenamedFrom { stack: string; releasesBase: string; volumes: Record<string, string> }
+/**
+ * `deploy.dbUpgrade`: the database volume of a Postgres major upgrade that keeps the stack name (PROJECT-STACKS-19). `volumes` maps the new volume
+ * (one of `deploy.volumes`, the one the stack source mounts as the database data directory) to the old volume `stack db-upgrade` restores it from.
+ */
+export interface DbUpgrade { volumes: Record<string, string> }
 
 /** The normalised `deploy` block. */
 export interface DeployConfig {
@@ -67,6 +72,8 @@ export interface DeployConfig {
   registry: RegistryConfig;
   /** deploy.renamedFrom: present only when declared, so a project without it normalises exactly as before. */
   renamedFrom?: RenamedFrom | undefined;
+  /** deploy.dbUpgrade: present only when declared. */
+  dbUpgrade?: DbUpgrade | undefined;
 }
 
 /** What `normalizeDeploy` returns: the config (null when a problem was found) and every problem. */
@@ -89,7 +96,7 @@ const ARGUMENT = /^[A-Za-z0-9_@%+=:,./-]+$/u;
 const UPPER_ENV = KEY;
 
 const FIELDS = {
-  deploy: ['stack', 'remote', 'images', 'volumes', 'secrets', 'environment', 'configs', 'passEnv', 'auto', 'approval', 'platforms', 'postDeploy', 'verify', 'jobs', 'tasks', 'backup', 'notify', 'ingress', 'registry', 'renamedFrom'],
+  deploy: ['stack', 'remote', 'images', 'volumes', 'secrets', 'environment', 'configs', 'passEnv', 'auto', 'approval', 'platforms', 'postDeploy', 'verify', 'jobs', 'tasks', 'backup', 'notify', 'ingress', 'registry', 'renamedFrom', 'dbUpgrade'],
   remote: ['host', 'releasesBase', 'sealed', 'serverRecipient'],
   image: ['app', 'buildArgs'],
   buildArgs: ['values', 'sealed'],
@@ -111,6 +118,7 @@ const FIELDS = {
   notify: ['webhook', 'on'],
   webhook: ['member', 'key'],
   renamedFrom: ['stack', 'releasesBase', 'volumes'],
+  dbUpgrade: ['volumes'],
 };
 
 const text = (value: unknown): value is string => typeof value === 'string' && value.length > 0;
@@ -448,6 +456,23 @@ function renamedFrom(c: Collector, block: Block, stack: string, volumes: string[
   return { stack: String(block.stack), releasesBase: typeof block.releasesBase === 'string' ? block.releasesBase : `/srv/${String(block.stack)}`, volumes: map };
 }
 
+/**
+ * `deploy.dbUpgrade`: exactly one pair new -> old, the new volume one of `volumes`, the old one a different name (it may stay declared until it is retired).
+ */
+function dbUpgrade(c: Collector, block: Block, volumes: string[]): DbUpgrade | null {
+  if (block === undefined) return null;
+  if (!closedFields(c, 'deploy.dbUpgrade', block, FIELDS.dbUpgrade)) return null;
+  const entries = plain(block.volumes) ? Object.entries(block.volumes as Record<string, unknown>) : [];
+  if (entries.length !== 1) { c.problem('deploy.dbUpgrade.volumes', 'must map the one new database volume to the old volume it is restored from'); return null; }
+  const [next, old] = entries[0] as [string, unknown];
+  const at = `deploy.dbUpgrade.volumes.${next}`;
+  if (!VOLUME.test(next)) c.problem(at, `the new volume must match ${VOLUME}`);
+  else if (!volumes.includes(next)) c.problem(at, `${next} is not a volume of deploy.volumes`);
+  if (typeof old !== 'string' || !VOLUME.test(old)) { c.problem(at, `the old volume must match ${VOLUME}`); return null; }
+  if (old === next) c.problem(at, 'the old volume is the new one: an upgrade restores into a new volume and keeps the old one for rollback');
+  return { volumes: { [next]: old } };
+}
+
 function ingress(c: Collector, block: Block, probe: DeployProbe): IngressConfig | null {
   if (block === undefined) return null;
   const result = normalizeIngress(block, { probe });
@@ -493,6 +518,8 @@ export function normalizeDeploy(block: Block, { project, probe }: { project: str
   if (block.stack === undefined && !NAME.test(String(project))) c.problem('deploy.stack', `the stack name ${project} must match ${NAME}`);
   const renamed = renamedFrom(c, block.renamedFrom, config.stack, config.volumes);
   if (renamed) config.renamedFrom = renamed;
+  const upgrade = dbUpgrade(c, block.dbUpgrade, config.volumes);
+  if (upgrade) config.dbUpgrade = upgrade;
   return { config: c.problems.length === 0 ? config : null, problems: c.problems };
 }
 

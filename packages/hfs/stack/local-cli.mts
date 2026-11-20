@@ -7,6 +7,7 @@
 //   starci app stack logs    --env <env> --service <name> [--lines <n>]
 //   starci app stack verify  --env <env>
 //   starci app stack down    --env <env> [--execute]
+//   starci app stack db-upgrade --env <env> [--old-image <ref>] [--execute]   (PROJECT-STACKS-19, local-db-upgrade.mts)
 import { loadLocalConfig, isLocalEnvironment } from './local-config.mjs';
 import type { LocalConfig } from './local-config.mjs';
 import type { StackContext } from './context.mjs';
@@ -17,19 +18,19 @@ import type { LocalDeps } from './local-run.mjs';
 /** The actions that exist only for a dev environment. */
 export const LOCAL_ONLY = Object.freeze(['doctor', 'up', 'down', 'logs'] as const);
 /** The actions a swarm environment already has, which a docker-compose environment answers with its dev implementation. */
-export const LOCAL_SHARED = Object.freeze(['prepare', 'status', 'verify'] as const);
+export const LOCAL_SHARED = Object.freeze(['prepare', 'status', 'verify', 'db-upgrade'] as const);
 /** True when `value` is an action only a dev environment has. */
 export const isLocalOnly = (value: unknown): boolean => (LOCAL_ONLY as readonly unknown[]).includes(value);
 /** True when `value` is an action both kinds have. */
 export const isLocalShared = (value: unknown): boolean => (LOCAL_SHARED as readonly unknown[]).includes(value);
 
 const FLAGS: Readonly<Record<string, readonly string[]>> = Object.freeze({
-  doctor: [], up: ['--execute', '--timeout'], down: ['--execute'], logs: ['--service', '--lines'], prepare: ['--execute'], status: [], verify: [],
+  doctor: [], up: ['--execute', '--timeout'], down: ['--execute'], logs: ['--service', '--lines'], prepare: ['--execute'], status: [], verify: [], 'db-upgrade': ['--execute', '--old-image'],
 });
-const VALUES = new Set(['--env', '--timeout', '--service', '--lines']);
+const VALUES = new Set(['--env', '--timeout', '--service', '--lines', '--old-image']);
 
 /** The parsed flags of a dev action. */
-export interface LocalFlags { env?: string; json: boolean; execute: boolean; timeout?: string; service?: string; lines?: string }
+export interface LocalFlags { env?: string; json: boolean; execute: boolean; timeout?: string; service?: string; lines?: string; 'old-image'?: string }
 
 /** Parses the flags of one dev action; a flag of another action, an unknown flag and a missing value are refusals. */
 export function parseLocalFlags(action: string, argv: readonly string[]): LocalFlags {
@@ -65,6 +66,7 @@ type LocalHandler = (ctx: StackContext, local: LocalConfig, options: Record<stri
 const MODULES: Record<string, [string, string]> = {
   doctor: ['./local-doctor.mjs', 'doctorLocal'], prepare: ['./local-prepare.mjs', 'prepareLocal'], up: ['./local-up.mjs', 'upLocal'], status: ['./local-status.mjs', 'statusLocal'],
   logs: ['./local-logs.mjs', 'logsLocal'], verify: ['./local-verify.mjs', 'verifyLocal'], down: ['./local-down.mjs', 'downLocal'],
+  'db-upgrade': ['./local-db-upgrade.mjs', 'upgradeLocal'],
 };
 
 /** Runs one dev action and returns the exit code. */
@@ -73,7 +75,7 @@ export async function runLocal(ctx: StackContext, action: string, argv: readonly
   const local = loadLocalConfig({ repoRoot: ctx.cwd, env: flags.env as string });
   const [file, name] = MODULES[action] as [string, string];
   const handler = (await import(file) as Record<string, LocalHandler>)[name] as LocalHandler;
-  const result = await handler(ctx, local, { execute: flags.execute, timeoutSeconds: whole(flags.timeout, '--timeout', 180), service: flags.service, lines: whole(flags.lines, '--lines', 200) }, deps);
+  const result = await handler(ctx, local, { execute: flags.execute, timeoutSeconds: whole(flags.timeout, '--timeout', 180), service: flags.service, lines: whole(flags.lines, '--lines', 200), oldImage: flags['old-image'] }, deps);
   if (flags.json) ctx.stdout(`${JSON.stringify({ verb: action, ok: result.ok, ...result.data }, null, 2)}\n`);
   else for (const line of result.lines) ctx.stdout(`${line}\n`);
   if (result.refused) {

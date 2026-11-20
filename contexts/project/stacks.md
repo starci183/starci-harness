@@ -982,3 +982,71 @@ rollback target and never let two stacks route the same hosts.
 
 Enforced by: the refusals above (stack/standby.mts, stack/volume.mts, stack/adopt.mts), `STACKS_DEPLOY_CONFIG_INVALID` and `HFS_STACKS_SHAPE` for the
 declaration; the rest is held by review.
+
+## PROJECT-STACKS-19 A Postgres major upgrade is a dump and restore into a declared new volume
+
+An app never declares its own Postgres major: the one db image (the managed `.starcistacks/images/db/Dockerfile`, `contexts/stack/pins.yaml`
+`postgres`) moves every app to the next major together, and `stack db-upgrade` carries each environment's data across. A server of a new major does not
+start on an old data directory, so the data is dumped by the old major and restored by the new one; the old volume is never written and stays the
+rollback.
+
+Both volumes come from the declaration, never from a guess. In a Swarm environment the new volume is the one the stack source mounts as the database's
+data directory (one of `deploy.volumes`), and the old one is what it maps from:
+
+```yaml
+deploy:
+  volumes: [shop-production-db-data, ...]
+  dbUpgrade:
+    volumes:
+      shop-production-db-data: shop-production-postgres-data   # new: old (exactly one pair)
+```
+
+A stack renamed in the same window maps the database volume in `deploy.renamedFrom.volumes` instead (PROJECT-STACKS-18), and `db-upgrade` fills it in
+place of `volume copy`. A dev (docker-compose) environment names exactly one of `local.dbUpgrade.from`, the old volume restored into the one its compose file
+mounts, and `local.dbUpgrade.hold`, the volume that keeps the old data directory when the compose file mounts the old volume itself. Without a mapping the verb refuses and prints the YAML to add (`STACK_DB_UPGRADE_UNDECLARED`).
+
+`stack db-upgrade --env <env> --image <db image@sha256> [--old-image <ref@sha256>] [--execute]` (a dev environment takes no `--image`: it builds the
+compose db image) is a dry run until `--execute`. Everything runs in throwaway containers with no network; no host psql is needed:
+
+- **Preflight.** The old volume's `PG_VERSION` (read-only mount) against the target image's major (`STACK_DB_UPGRADE_ALREADY`, `_DOWNGRADE`); nothing that
+  runs mounts either volume (`STACK_DB_UPGRADE_IN_USE`: `stack standby`, or `stack down` in dev); the new volume absent or empty. The old-major image is
+  `--old-image`, else the image the old service ran when it is of that major, else the pinned official image of that major (`postgres-16`, or
+  `postgres-16-alpine` for a data directory owned by uid 70). The superuser password is the sealed value the deploy grants the database service under the
+  file its `POSTGRES_PASSWORD_FILE` names; a running secret of another version is `STACK_DB_UPGRADE_PASSWORD_DRIFT`.
+- **Dump.** The old volume is copied into a work volume and the old major starts there (no TCP, a trust-only local hba), so the old bytes cannot change.
+  Its own `pg_dumpall --roles-only` keeps every stored SCRAM or md5 hash, so no password rotates, and `pg_dump -Fc --create` dumps each database. A
+  managed image may add extensions the official one lacks: a dump that needs a missing library names `--old-image`.
+- **Restore.** The target image initialises the new volume with its own entrypoint, the environment's superuser and database and the sealed password
+  (handed in on stdin, never in an argument, a file on disk or a log line), with no init script. The roles go first, then each database with
+  `pg_restore --create --exit-on-error`; an extension the target image does not ship is `STACK_DB_UPGRADE_EXTENSION_MISSING`.
+- **Proof.** Both clusters are inventoried alike: databases, extensions, the exact row count of every table, every sequence's position, the count of each
+  kind of relation and of functions, the roles with their attributes and password hashes, the memberships. Any difference is `STACK_DB_UPGRADE_MISMATCH`
+  and the new volume is emptied again; only an extension's version may change. The sealed superuser and app passwords then log in over TCP, and the old
+  volume's files, bytes, content and metadata digests must equal those taken before (`STACK_DB_UPGRADE_SOURCE_CHANGED`).
+- **Record.** A Swarm run is one recorded attempt (kind `db-upgrade`) under the deploy lock, every step a journal phase and its `upgrade` record (volumes,
+  majors, images, inventory, measures; names and digests only). A dev run writes the same document to its state directory under a lock file.
+
+The switch:
+
+- **Swarm, same stack.** `stack deploy --env <env> --adopt --image db=<the same image> ... --sha <sha> --execute`. It proves the stack has an accepted
+  release, its database runs nothing, and the newest `db-upgrade` of its journal restored into the declared volume with this deploy's db image
+  (`STACK_ADOPT_UPGRADE_*`). It then starts the database alone on the new volume, proves its migration history, runs the plain database path and deploys.
+  A failure redeploys the previous release, which runs the old image on the old volume. `stack rollback --env <env> --data-acknowledged --execute`
+  does the same later (`STACK_ROLLBACK_UPGRADED_DATA` without the acknowledgement: writes made on the new volume stay there). While `dbUpgrade` is
+  declared and the database service still mounts the old volume, a plain deploy is refused (`STACK_DEPLOY_DB_UPGRADE_PENDING`): it would start an empty
+  database on the new volume and serve it.
+- **Swarm, renamed stack.** The adopted first release of PROJECT-STACKS-18.
+- **Dev.** With `from` the restore lands in the declared volume and nothing more is switched. With `hold` the verb swaps: the old data directory is
+  copied into the hold volume and proven equal, then the database volume is emptied and the proven restore copied in (`STACK_DB_UPGRADE_SWAP_FAILED`
+  copies the hold back). Then `stack up --env <env> --execute`.
+
+The old volume (dev with `hold`: the hold volume) stays until the owner retires it after the hold period; `dbUpgrade` leaves the declaration with it. ALTER SYSTEM
+settings (`postgresql.auto.conf`) are not carried; the dry run names them. Known gap: the volumes must live on the node that runs the verb's containers,
+as with `volume copy`, so a multi-node swarm whose database runs on another node is not covered; the counts compare rows, not their contents.
+
+Why: an in-place `pg_upgrade` needs both majors' binaries in one image and rewrites the only copy, while a dump and restore into a new volume needs only
+the two official images, rebuilds every index for the new libc and keeps the old volume as an exact rollback; the proof is what makes a switch safe.
+
+Enforced by: the refusals above (stack/db-upgrade.mts, stack/db-upgrade-core.mts, stack/local-db-upgrade.mts, stack/adopt.mts), `STACKS_DEPLOY_CONFIG_INVALID`
+and `HFS_STACKS_SHAPE` for `deploy.dbUpgrade`, `STACKS_LOCAL_CONFIG` for `local.dbUpgrade`; the pair and the comparison are held by
+`packages/hfs/src/stack-db-upgrade.spec.mts`; the rest by review.

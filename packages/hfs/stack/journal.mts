@@ -20,8 +20,8 @@ import type { ObservedService } from './status.mjs';
 
 /** What started the attempt: a CI run, a manual dispatch or the owner's urgent deploy. */
 export type Trigger = LockTrigger;
-/** What the attempt does: a release (deploy, rollback, accept), a quiet period of the whole stack (standby, resume: standby.mts) or a volume copy (volume.mts). */
-export type AttemptKind = 'deploy' | 'rollback' | 'accept' | 'standby' | 'resume' | 'volume-copy';
+/** What the attempt does: a release (deploy, rollback, accept), a quiet period of the whole stack (standby, resume: standby.mts), a volume copy (volume.mts) or a Postgres major upgrade (db-upgrade.mts). */
+export type AttemptKind = 'deploy' | 'rollback' | 'accept' | 'standby' | 'resume' | 'volume-copy' | 'db-upgrade';
 /** How an attempt ended; `running` is the document of an attempt that has not finished (or was cancelled); `done` ends a standby or a resume. */
 export type Outcome = 'running' | 'accepted' | 'pending' | 'rolled-back' | 'rollback-failed' | 'failed' | 'refused' | 'already-current' | 'done';
 
@@ -67,6 +67,8 @@ export interface AttemptDocument {
   standby?: StandbyRecord | undefined;
   /** A volume copy: each pair with the files, bytes and digests of both sides. Absent on any other attempt. */
   volumes?: Record<string, unknown>[] | undefined;
+  /** A Postgres major upgrade: the volumes, majors, images, the inventory of both sides and the measures of the old volume. Absent on any other attempt. */
+  upgrade?: Record<string, unknown> | undefined;
   outcome: Outcome;
   error: { code: string; message: string } | null;
 }
@@ -90,7 +92,7 @@ export interface AttemptMeta {
 /** The facts an attempt learns while it runs. */
 export interface Note {
   releaseId?: string | null; previous?: string | null; backup?: Record<string, unknown> | null; migrations?: string[]; contract?: string[]; urgent?: { role: string; reason: string; tag?: string | undefined };
-  adopted?: Record<string, unknown>; standby?: StandbyRecord; volumes?: Record<string, unknown>[];
+  adopted?: Record<string, unknown>; standby?: StandbyRecord; volumes?: Record<string, unknown>[]; upgrade?: Record<string, unknown>;
 }
 
 /** The open record of one attempt. */
@@ -164,6 +166,7 @@ export async function openAttempt(ctx: StackContext, config: DeployConfig, store
       if (found.adopted !== undefined) document.adopted = found.adopted;
       if (found.standby !== undefined) document.standby = found.standby;
       if (found.volumes !== undefined) document.volumes = found.volumes;
+      if (found.upgrade !== undefined) document.upgrade = found.upgrade;
       if (found.urgent) document.urgent = { role: clean(found.urgent.role, 40), reason: found.urgent.reason.slice(0, REASON_MAX), tag: found.urgent.tag ?? null };
     },
     async phase<T>(name: string, action: () => T | Promise<T>, passed: (value: T) => boolean = () => true): Promise<T> {
@@ -228,7 +231,7 @@ interface OutcomeData { steps?: { step: string }[]; rolledBack?: boolean; pendin
 export function outcomeOf(result: ActionResult, kind: AttemptKind): Outcome {
   const data = (result.data ?? {}) as OutcomeData;
   if (data.alreadyCurrent) return 'already-current';
-  if (kind === 'standby' || kind === 'resume' || kind === 'volume-copy') return result.ok ? 'done' : 'failed';
+  if (kind === 'standby' || kind === 'resume' || kind === 'volume-copy' || kind === 'db-upgrade') return result.ok ? 'done' : 'failed';
   if (result.ok) return data.pendingAccept ? 'pending' : 'accepted';
   if (kind !== 'deploy') return 'failed';
   const changed = (data.steps ?? []).some((entry) => entry.step === 'deploy' || entry.step === 'deploy-hold');

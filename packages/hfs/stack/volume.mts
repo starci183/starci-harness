@@ -63,7 +63,7 @@ const COPY_SCRIPT = 'set -e; cp -a /from/. /to/';
 const EMPTY_SCRIPT = 'find /v -mindepth 1 -maxdepth 1 | head -n 1';
 
 /** `docker run` of the helper image on the manager: no network, root (owners must be kept), the shell as the entrypoint, the mounts given. */
-function helper(ctx: Pick<StackContext, 'spawn'>, image: string, mounts: string[], script: string): { ok: boolean; stdout: string; stderr: string } {
+export function helper(ctx: Pick<StackContext, 'spawn'>, image: string, mounts: string[], script: string): { ok: boolean; stdout: string; stderr: string } {
   const run = tool(ctx, 'docker', ['run', '--rm', '--network', 'none', '--user', '0:0', '--entrypoint', 'sh', ...mounts.flatMap((mount) => ['-v', mount]), image, '-c', script]);
   return { ok: run.status === 0 && !run.error, stdout: String(run.stdout ?? ''), stderr: String(run.stderr ?? run.error?.message ?? '') };
 }

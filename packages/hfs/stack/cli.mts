@@ -2,6 +2,7 @@
 //   starci app stack <action> --env <env> [the action's FLAGS]     (only the READ_ONLY actions default --env to production)
 // Each action takes only its own flags: a flag of another action is a refusal, never ignored.
 // Moving a stack to new runtime names (PROJECT-STACKS-18): `standby` / `resume` (standby.mts), `volume copy` / `volume verify` (volume.mts), `deploy --adopt` (adopt.mts).
+// A Postgres major upgrade (PROJECT-STACKS-19): `db-upgrade` (db-upgrade.mts; a docker-compose environment runs local-db-upgrade.mts).
 // (`starci app world <up|down|status>` is the test world's, dispatched by packages/hfs/src/main.mts; `stack status` below is the deploy's drift report.)
 // Every action module exports one async function (ctx, config, options) -> { ok, lines, data }; a refusal throws StackError.
 import path from 'node:path';
@@ -42,6 +43,7 @@ export interface Flags {
   'renamed-from'?: boolean;
   from?: string;
   to?: string;
+  'old-image'?: string;
   'public-key'?: string;
   image?: string[];
   keep?: string[];
@@ -71,9 +73,9 @@ interface OptionInput { flags: Flags; positional: string[]; cwd: string }
 type Handler = (ctx: StackContext, config: DeployConfig, options: Record<string, unknown>) => Promise<ActionResult>;
 
 /** The actions that drive the docker CLI of the operator machine (pointed at the manager by docker-transport.mts when the key is sealed). */
-const DOCKER_ACTIONS = new Set(['deploy', 'accept', 'converge', 'verify', 'rollback', 'prune', 'status', 'volume', 'standby', 'resume']);
+const DOCKER_ACTIONS = new Set(['deploy', 'accept', 'converge', 'verify', 'rollback', 'prune', 'status', 'volume', 'standby', 'resume', 'db-upgrade']);
 
-export const ACTIONS = Object.freeze(['prepare', 'connect', 'disconnect', 'build-args', 'render', 'deploy', 'converge', 'verify', 'rollback', 'prune', 'backup', 'jobs', 'task', 'ingress', 'retire', 'build', 'accept', 'status', 'ci-key', 'volume', 'standby', 'resume'] as const);
+export const ACTIONS = Object.freeze(['prepare', 'connect', 'disconnect', 'build-args', 'render', 'deploy', 'converge', 'verify', 'rollback', 'prune', 'backup', 'jobs', 'task', 'ingress', 'retire', 'build', 'accept', 'status', 'ci-key', 'volume', 'standby', 'resume', 'db-upgrade'] as const);
 
 /** One action of `starci app stack`. */
 export type Action = (typeof ACTIONS)[number];
@@ -81,7 +83,7 @@ export type Action = (typeof ACTIONS)[number];
 export const isAction = (value: unknown): value is Action => (ACTIONS as readonly unknown[]).includes(value);
 
 export const BOOLEAN = new Set(['--execute', '--json', '--swarm-state', '--init-swarm', '--owner-approved', '--fix-live-restore', '--skip-public', '--skip-internal', '--allow-unpinned', '--push', '--urgent', '--first-start', '--redeploy', '--data-acknowledged', '--print-authorized-keys', '--print-gate', '--adopt', '--verify', '--renamed-from']);
-export const VALUE = new Set(['--env', '--image', '--sha', '--previous', '--out', '--release', '--since', '--timeout', '--retry', '--keep', '--app', '--ssh-cmd', '--extra-compose', '--project', '--target-binding', '--db-url-env', '--backup-out', '--db-service', '--reason', '--remote', '--ci-run', '--public-key', '--from', '--to']);
+export const VALUE = new Set(['--env', '--image', '--sha', '--previous', '--out', '--release', '--since', '--timeout', '--retry', '--keep', '--app', '--ssh-cmd', '--extra-compose', '--project', '--target-binding', '--db-url-env', '--backup-out', '--db-service', '--reason', '--remote', '--ci-run', '--public-key', '--from', '--to', '--old-image']);
 export const REPEAT = new Set(['--image', '--keep', '--extra-compose', '--project']);
 /** `--ssh-cmd` replaces the configured alias for an action whose module (or the Docker transport) reaches the manager over SSH. */
 const SSH: string[] = ['--ssh-cmd'];
@@ -113,6 +115,7 @@ export const FLAGS: Readonly<Record<Action, string[]>> = Object.freeze({
   volume: ['--from', '--to', '--verify', '--execute', ...SSH],
   standby: ['--execute', '--timeout', '--renamed-from', ...SSH],
   resume: ['--execute', '--timeout', '--renamed-from', ...SSH],
+  'db-upgrade': ['--image', '--old-image', '--execute', ...SSH],
 });
 
 /** The operands of the actions that take any, as the usage prints them. */
@@ -207,6 +210,10 @@ const OPTIONS: Record<Action, (input: OptionInput) => Record<string, unknown>> =
   volume: ({ flags, positional }) => ({ action: positional[0], from: flags.from, to: flags.to, verify: flags.verify === true, execute: flags.execute === true }),
   standby: ({ flags }) => ({ execute: flags.execute === true, timeoutSeconds: number(flags, 'timeout'), renamedFrom: flags['renamed-from'] === true }),
   resume: ({ flags }) => ({ execute: flags.execute === true, timeoutSeconds: number(flags, 'timeout'), renamedFrom: flags['renamed-from'] === true }),
+  'db-upgrade': ({ flags }) => {
+    if ((flags.image ?? []).length > 1) throw refusal('STACK_USAGE', 'stack db-upgrade takes one --image: the db image of the next deploy');
+    return { image: flags.image?.[0], oldImage: flags['old-image'], execute: flags.execute === true };
+  },
 };
 
 const MODULES: Record<Action, [string, string]> = {
@@ -224,6 +231,7 @@ const MODULES: Record<Action, [string, string]> = {
   'ci-key': ['./ci-key.mjs', 'ciKey'],
   volume: ['./volume.mjs', 'runVolume'],
   standby: ['./standby.mjs', 'standbyStack'], resume: ['./standby.mjs', 'resumeStack'],
+  'db-upgrade': ['./db-upgrade.mjs', 'runDbUpgrade'],
 };
 
 async function handlerOf(action: Action, importer: (file: string) => Promise<Record<string, unknown>>): Promise<Handler> {
