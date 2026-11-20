@@ -35,15 +35,6 @@ test("lite: the spec beside each declared passport logic file is a unit spec; be
     })
 })
 
-test("full: no passport slot exists, so the same spec is a finding", (t) => {
-    const fixture = projectFixture({ edition: "full", files: subjects })
-    t.after(fixture.cleanup)
-    fixture.tester.run("unit-test-colocated", unitTestColocated, {
-        valid: [],
-        invalid: [{ filename: fixture.at(`${PASSPORT}passport.kit.spec.ts`), code, errors: [{ messageId: "notService" }] }],
-    })
-})
-
 test("the view gives the declared-logic spec its subject's part as an optional spec role", () => {
     const hfs = hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition: "lite" }, TYPED_ROOT)
     assert.deepEqual(unitRoleOfSpec(hfs, at(`${PASSPORT}passport.kit.spec.ts`)), { role: "kit", spec: "kit.spec", optional: true })

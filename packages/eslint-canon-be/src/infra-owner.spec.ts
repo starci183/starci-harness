@@ -9,11 +9,9 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import tsParser from "@typescript-eslint/parser"
-import { appDeclaration } from "../fixtures/app.ts"
 import { projectFixture } from "../fixtures/project/tester.ts"
-import { at, BE_DECLARATION, fixtureHfs, TYPED_ROOT, typedTester } from "../fixtures/typed/tester.ts"
+import { at, fixtureHfs, typedTester } from "../fixtures/typed/tester.ts"
 import { httpClientOnlyInIntegrations, infraImportOwner, rules } from "./infra-owner.ts"
-import { hfsFromDeclaration } from "./lib/hfs.ts"
 import { thirdPartyImportOwner } from "./third-party-owner.ts"
 import { canonRuleTester } from "../fixtures/rule-tester.ts"
 
@@ -65,8 +63,6 @@ test("infra-import-owner: each raw library is used only by its owner", () => {
                 { filename: HTTP, code: `export const wait = () => new Promise((resolve) => setTimeout(resolve, 5))` },
                 { filename: RETRY, code: `import { setTimeout as sleep } from "node:timers/promises"\nexport const wait = () => sleep(5)` },
                 { filename: RETRY, code: `export const wait = () => new Promise((resolve) => setTimeout(resolve, 5))` },
-                { filename: EVENT_BUS, code: `import { Kafka } from "kafkajs"
-    export { Kafka }` },
                 { filename: QUEUE, code: `import { Worker } from "bullmq"
     import { BullModule } from "@nestjs/bullmq"
     export { Worker, BullModule }` },
@@ -163,7 +159,7 @@ test("infra-import-owner: each raw library is used only by its owner", () => {
                 { filename: DOMAIN, code: `import { BullModule } from "@nestjs/bullmq"
     export { BullModule }`, errors: [{ messageId: "foreign" }] },
                 { filename: QUEUE, code: `import { Kafka } from "kafkajs"
-    export { Kafka }`, errors: [{ messageId: "foreign" }] },
+    export { Kafka }`, errors: [{ messageId: "nowhere" }] },
                 { filename: EVENT_BUS, code: `import { Worker } from "bullmq"
     export { Worker }`, errors: [{ messageId: "foreign" }] },
             ],
@@ -171,15 +167,9 @@ test("infra-import-owner: each raw library is used only by its owner", () => {
     })
 })
 
-test("infra-import-owner under lite: the queue and Redis libraries keep full's owners, Kafka and Qdrant are owned nowhere", () => {
-    const liteHfs = hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition: "lite" }, TYPED_ROOT)
-    assert.deepEqual(liteHfs.ruleParams.infraOwners.bullmq, fixtureHfs().ruleParams.infraOwners.bullmq)
-    assert.deepEqual(liteHfs.ruleParams.infraOwners.kafkajs, [])
-    const lite = canonRuleTester({
-        languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module" },
-        settings: { starci: { hfs: liteHfs } },
-    })
-    lite.run("infra-import-owner", infraImportOwner, {
+test("infra-import-owner: the queue and Redis libraries keep their owners, Kafka is owned nowhere", () => {
+    assert.deepEqual(fixtureHfs().ruleParams.infraOwners.kafkajs, [])
+    tester.run("infra-import-owner", infraImportOwner, {
         valid: [
             { filename: QUEUE, code: `import { Queue, Worker } from "bullmq"\nexport { Queue, Worker }` },
             { filename: REDIS, code: `import Redis from "ioredis"\nexport { Redis }` },
@@ -196,19 +186,14 @@ test("infra-import-owner under lite: the queue and Redis libraries keep full's o
             { filename: QUEUE, code: `import { redisStore } from "cache-manager-redis-yet"\nexport { redisStore }`, errors: [{ messageId: "foreign" }] },
             { filename: QUEUE, code: `import Redis from "ioredis"\nexport { Redis }`, errors: [{ messageId: "foreign" }] },
             { filename: EVENT_BUS, code: `import { Kafka } from "kafkajs"\nexport { Kafka }`, errors: [{ messageId: "nowhere" }] },
-            { filename: at("src/modules/integrations/qdrant/qdrant.client.ts"), code: `import { QdrantClient } from "@qdrant/js-client-rest"\nexport { QdrantClient }`, errors: [{ messageId: "nowhere" }] },
-            { filename: INTEGRATION, code: `const sdk = require("@qdrant/qdrant-js")\nexport { sdk }`, errors: [{ messageId: "nowhere" }] },
-            { filename: DOMAIN, code: `export const load = () => import("@qdrant/js-client-rest/client")`, errors: [{ messageId: "nowhere" }] },
-            { filename: at("src/modules/integrations/qdrant/qdrant.client.spec.ts"), code: `export * from "@qdrant/qdrant-js/client"`, errors: [{ messageId: "nowhere" }] },
         ],
     })
 })
 
-test("full: declared Qdrant clients retain their ordinary third-party integration owner", () => {
+test("declared Qdrant clients retain their ordinary third-party integration owner", () => {
     const filename = "src/modules/integrations/qdrant/qdrant.client.ts"
     const code = 'import { QdrantClient } from "@qdrant/js-client-rest"; import sdk from "@qdrant/qdrant-js"; export { QdrantClient, sdk }'
     const fixture = projectFixture({
-        edition: "full",
         declaration: { backing: ["qdrant"] },
         rootFiles: { "package.json": JSON.stringify({ name: "qdrant-owner-fixture", private: true, dependencies: { "@qdrant/js-client-rest": "1.12.0", "@qdrant/qdrant-js": "1.12.0" } }) },
         files: { [filename]: code },

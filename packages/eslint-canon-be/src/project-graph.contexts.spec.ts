@@ -75,8 +75,8 @@ const CONNECTIONS = [
     { name: "billing", envPrefix: "BILLING", owner: "billing", isolation: "schema" },
 ]
 const APPS = [{ name: "identity", kind: "api" }, { name: "order", kind: "api" }, { name: "billing", kind: "api" }, { name: "cli", kind: "cli" }]
-const repo = (t: TestContext, files: Readonly<Record<string, string>> = {}, options: { readonly connections?: SideDeclaration["connections"]; readonly apps?: readonly { readonly name: string; readonly kind: string }[] } = {}) => {
-    const f = projectFixture({ files: { ...BASE, ...files }, declaration: { connections: options.connections ?? CONNECTIONS }, apps: options.apps ?? APPS })
+const repo = (t: TestContext, files: Readonly<Record<string, string>> = {}, options: { readonly connections?: SideDeclaration["connections"]; readonly apps?: readonly { readonly name: string; readonly kind: string }[]; readonly rootFiles?: Readonly<Record<string, string>> } = {}) => {
+    const f = projectFixture({ files: { ...BASE, ...files }, ...(options.rootFiles ? { rootFiles: options.rootFiles } : {}), declaration: { connections: options.connections ?? CONNECTIONS }, apps: options.apps ?? APPS })
     t.after(f.cleanup)
     return f
 }
@@ -217,46 +217,28 @@ test("context-platform-tables: the event-bus tables exist on every connection th
     g.tester.run("context-platform-tables", ruleNamed(rules, "context-platform-tables"), { valid: ok(g, complete, [`${DOMAIN}/billing/publisher.service.ts`]), invalid: [] })
 })
 
-test("schema-owner: a per-connection platform capability registers on several connections, any other capability on one", (t) => {
-    const files = {
-        ...busFiles,
-        "apps/order/src/app.module.ts": withBus([BUS_ORDER_ENTRY]),
-        "apps/billing/src/app.module.ts": withBus([BUS_BILLING_ENTRY]),
-        "apps/cli/src/app.module.ts": withBus([IDENTITY_ENTRY, BUS_ORDER_ENTRY, BUS_BILLING_ENTRY]),
-    }
-    const f = repo(t, files)
-    f.tester.run("schema-owner", ruleNamed(rules, "schema-owner"), { valid: ok(f, files, ["apps/cli/src/app.module.ts", `${PLATFORM}/event-bus/index.ts`]), invalid: [] })
-    const twice = {
-        "apps/billing/src/app.module.ts": registration([BILLING_ENTRY, "{ name: ORDER_CONNECTION, entities: billingEntities }"]),
-    }
-    const g = repo(t, twice)
-    g.tester.run("schema-owner", ruleNamed(rules, "schema-owner"), {
-        valid: ok(g, twice, [`${DOMAIN}/billing/persistence/entities/billing.entity.ts`]),
-        invalid: [...bad(g, twice, [["apps/billing/src/app.module.ts", ["@Module", /exactly one connection/]]])],
-    })
-})
-
 // BE_SQL_TABLE_OWNER, tightened: a context reads and writes only its own context's tables ------------------------------------
 const SQL_FILE = (statements: readonly (readonly [string, string])[]) => `import { sql } from '../../../platform/database';\n${statements.map(([name, text]) => `export const ${name} = sql\`${text}\`;\n`).join("")}`
-test("sql-owner: a cross-context JOIN or read is refused, an own-table and a same-context read pass", (t) => {
+// The one edition reads its tables from db/migrations (SQL authority); a capability owns the table named for it.
+const TABLES = { "db/migrations/20261105000000_tables.sql": ["identity", "order", "cart", "billing"].map((table) => `CREATE TABLE public.${table} (id uuid PRIMARY KEY);`).join("\n") + "\n" }
+test("sql-owner: a cross-context JOIN or read is refused, a same-context read passes", (t) => {
     const files = {
         [`${DOMAIN}/order/persistence/order.sql.ts`]: SQL_FILE([
-            ["OWN", "SELECT o.id FROM orders o WHERE o.id = $1"],
-            ["SAME_CONTEXT", "SELECT o.id FROM orders o JOIN carts c ON c.id = o.id WHERE o.id = $1 LIMIT 1"],
-            ["CROSS_JOIN", "SELECT o.id FROM orders o JOIN records i ON i.id = o.id WHERE o.id = $1 LIMIT 1"],
-            ["CROSS_READ", "SELECT u.id FROM users u WHERE u.id = $1"],
+            ["SAME_CONTEXT", "SELECT o.id FROM cart o WHERE o.id = $1"],
+            ["CROSS_JOIN", "SELECT o.id FROM cart o JOIN billing i ON i.id = o.id WHERE o.id = $1 LIMIT 1"],
+            ["CROSS_READ", "SELECT u.id FROM identity u WHERE u.id = $1"],
         ]),
     }
-    const f = repo(t, files)
+    const f = repo(t, files, { rootFiles: TABLES })
     f.tester.run("sql-owner", ruleNamed(rules, "sql-owner"), {
         valid: [],
         invalid: [...bad(f, files, [[`${DOMAIN}/order/persistence/order.sql.ts`,
-            ["CROSS_JOIN", /reads table records, owned by src\/modules\/domain\/billing \(context billing\); a context reads and writes only its own context's tables/],
-            ["CROSS_READ", /reads table users, owned by src\/modules\/domain\/identity \(context identity\)/],
+            ["CROSS_JOIN", /reads table billing, owned by src\/modules\/domain\/billing \(context billing\); a context reads and writes only its own context's tables/],
+            ["CROSS_READ", /reads table identity, owned by src\/modules\/domain\/identity \(context identity\)/],
         ]])],
     })
-    const clean = { [`${DOMAIN}/order/persistence/order.sql.ts`]: SQL_FILE([["OWN", "SELECT o.id FROM orders o WHERE o.id = $1"], ["SAME_CONTEXT", "SELECT o.id FROM orders o JOIN carts c ON c.id = o.id WHERE o.id = $1 LIMIT 1"]]) }
-    const g = repo(t, clean)
+    const clean = { [`${DOMAIN}/order/persistence/order.sql.ts`]: SQL_FILE([["SAME_CONTEXT", "SELECT o.id FROM cart o WHERE o.id = $1"]]) }
+    const g = repo(t, clean, { rootFiles: TABLES })
     g.tester.run("sql-owner", ruleNamed(rules, "sql-owner"), { valid: ok(g, clean, [`${DOMAIN}/order/persistence/order.sql.ts`]), invalid: [] })
 })
 

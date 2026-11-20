@@ -277,31 +277,32 @@ const REGISTER = (literal: string, extra = "") => `import { Module } from '@nest
 import { DatabaseModule } from '../../../src/modules/platform/database';
 import { PRIMARY_CONNECTION } from '../../../src/modules/platform/database/primary.connection';
 import { AGENTOS_CONNECTION } from '../../../src/modules/platform/database/agentos.connection';
-import { billingEntities, billingMigrations } from '../../../src/modules/domain/billing';
+import { billingEntities } from '../../../src/modules/domain/billing';
 ${extra}
 @Module({ imports: [DatabaseModule.register({ connections: [${literal}] })] })
 export class AppModule {}
 `
-const PRIMARY_ENTRY = "{ name: PRIMARY_CONNECTION, entities: billingEntities, migrations: billingMigrations }"
+const PRIMARY_ENTRY = "{ name: PRIMARY_CONNECTION, entities: billingEntities }"
 const SCHEMA_GOOD = {
     ...DATABASE,
     ...connection("primary", "PRIMARY", "PRIMARY"),
     ...connection("agentos", "AGENTOS", "AGENTOS"),
-    [`${BILLING}/index.ts`]: "export { billingEntities, billingMigrations } from './persistence/connection';\n",
-    [`${BILLING}/persistence/connection.ts`]: "import { RecordEntity } from './entities/record.entity';\nimport { CreateRecords1789800000000 } from './migrations/1789800000000-create-records';\nexport const billingEntities = [RecordEntity];\nexport const billingMigrations = [CreateRecords1789800000000];\n",
+    // the one edition (BE-PERSISTENCE-3): entities and their list, no be migration, PRIMARY_ENTITIES the one registered list
+    [`${BILLING}/index.ts`]: "export { billingEntities } from './persistence/entities/index';\n",
+    [`${BILLING}/persistence/entities/index.ts`]: "import { RecordEntity } from './record.entity';\nexport const billingEntities = [RecordEntity];\n",
+    "src/modules/platform/database/entities.ts": "import { billingEntities } from '../../domain/billing';\nexport const PRIMARY_ENTITIES = [...billingEntities];\n",
     [CORE_APP]: REGISTER(PRIMARY_ENTRY),
     "apps/core/src/main.ts": "void 0;\n",
     [`${BILLING}/persistence/entities/record.entity.ts`]: ENTITY("RecordEntity", "records"),
-    [`${BILLING}/persistence/migrations/1789800000000-create-records.ts`]: MIGRATION("CreateRecords1789800000000"),
 }
 const schemaRepo = (t: TestContext, files: Readonly<Record<string, string>>) => repo(t, {
     declaration: { connections: [{ name: "primary", envPrefix: "PRIMARY", owner: "core", isolation: "database" }, { name: "agentos", envPrefix: "AGENTOS", owner: "core", isolation: "database" }] },
     apps: [{ name: "core", kind: "api" }, { name: "cli", kind: "cli" }],
     files: { ...SCHEMA_GOOD, "apps/cli/src/main.ts": "void 0;\n", ...files },
 })
-const OWNER_FILES = [`${BILLING}/index.ts`, `${BILLING}/persistence/connection.ts`, `${BILLING}/persistence/entities/record.entity.ts`, `${BILLING}/persistence/migrations/1789800000000-create-records.ts`]
+const OWNER_FILES = [`${BILLING}/index.ts`, `${BILLING}/persistence/entities/index.ts`, `${BILLING}/persistence/entities/record.entity.ts`]
 
-test("schema-owner: entities and migrations sit in the persistence folders of the owner, migrations are named by the rule", (t) => {
+test("schema-owner: entities sit in the persistence folders of the owner, a misplaced entity or migration class is refused", (t) => {
     const f = schemaRepo(t, {
         "src/features/api/a/index.ts": "export const a = 1;\n",
         "src/features/api/a/application/order.entity.ts": ENTITY("OrderEntity", "orders"),
@@ -310,10 +311,6 @@ test("schema-owner: entities and migrations sit in the persistence folders of th
         "src/modules/integrations/beta-pay/persistence/entities/token.entity.ts": ENTITY("TokenEntity", "tokens"),
         [`${BILLING}/persistence/migrations/1789800000002-swap.ts`]: ENTITY("SwapEntity", "swaps"),
         [`${BILLING}/persistence/entities/late.entity.ts`]: MIGRATION("Late1789800000003"),
-        [`${BILLING}/persistence/migrations/1789800000004-add-column.ts`]: MIGRATION("AddColumn"),
-        [`${BILLING}/persistence/migrations/1789800000005-add-index.ts`]: MIGRATION("AddIndex1789800000005", "AddIndex"),
-        [`${BILLING}/persistence/migrations/20260930-late.ts`]: MIGRATION("Late20260930"),
-        [`${BILLING}/persistence/migrations/1789800000000-create-records.spec.ts`]: "export {};\n",
     })
     f.tester.run("schema-owner", ruleNamed(rules, "schema-owner"), {
         valid: ok(f, [...OWNER_FILES, CORE_APP]),
@@ -323,67 +320,30 @@ test("schema-owner: entities and migrations sit in the persistence folders of th
             ["src/modules/integrations/beta-pay/persistence/entities/token.entity.ts", [1, /entities\/ folder outside the persistence/], [3, /Entity TokenEntity is declared outside/]],
             [`${BILLING}/persistence/migrations/1789800000002-swap.ts`, [3, /Entity SwapEntity is declared outside persistence\/entities\//]],
             [`${BILLING}/persistence/entities/late.entity.ts`, [2, /Migration Late1789800000003 is declared outside persistence\/migrations\//]],
-            [`${BILLING}/persistence/migrations/1789800000004-add-column.ts`, [2, /must be named AddColumn1789800000004/]],
-            [`${BILLING}/persistence/migrations/1789800000005-add-index.ts`, [3, /must declare `name = "AddIndex1789800000005"`/]],
-            [`${BILLING}/persistence/migrations/20260930-late.ts`, [1, /is not named <epochMs13>/]],
-            [`${BILLING}/persistence/migrations/1789800000000-create-records.spec.ts`, [1, /is a unit spec of a migration/]],
         ])],
     })
 })
 
-test("schema-owner: a connection the declaration does not name is refused", (t) => {
-    const f = schemaRepo(t, { [CORE_APP]: REGISTER('{ name: "journal", entities: billingEntities, migrations: billingMigrations }') })
-    f.tester.run("schema-owner", ruleNamed(rules, "schema-owner"), {
-        valid: ok(f, [...OWNER_FILES]),
-        invalid: [...bad(f, [[CORE_APP, [7, /which hfs\.json does not declare/]]])],
-    })
-})
-
-test("schema-owner: arrays nobody registers are refused", (t) => {
-    const f = schemaRepo(t, { [CORE_APP]: REGISTER("{ name: PRIMARY_CONNECTION }") })
-    f.tester.run("schema-owner", ruleNamed(rules, "schema-owner"), {
-        valid: ok(f, [`${BILLING}/persistence/entities/record.entity.ts`]),
-        invalid: [...bad(f, [[`${BILLING}/persistence/connection.ts`, [1, /no app registers them/]]])],
-    })
-})
-
-test("schema-owner: the arrays of one capability on two connections are refused", (t) => {
-    const f = schemaRepo(t, { [CORE_APP]: REGISTER(`${PRIMARY_ENTRY}, { name: AGENTOS_CONNECTION, entities: billingEntities }`) })
-    f.tester.run("schema-owner", ruleNamed(rules, "schema-owner"), {
-        valid: ok(f, [`${BILLING}/persistence/entities/record.entity.ts`]),
-        invalid: [...bad(f, [[CORE_APP, [7, /exactly one connection/]]])],
-    })
-})
-
-test("schema-owner: the same connection in two apps, through a spread options property, is fine; a foreign entity manager is not", (t) => {
+test("schema-owner: the same connection in two apps, through a spread options property, is fine", (t) => {
     const f = schemaRepo(t, {
         "apps/core/src/core.options.ts": 'export interface Options { database: { name: string } }\nexport const options: Options = { database: { name: "primary" } };\n',
-        [CORE_APP]: REGISTER("{ ...options.database, entities: billingEntities, migrations: billingMigrations }", "import { options } from './core.options';"),
+        [CORE_APP]: REGISTER("{ ...options.database, entities: billingEntities }", "import { options } from './core.options';"),
         "apps/cli/src/main.ts": REGISTER(PRIMARY_ENTRY),
         [`${BILLING}/record.writer.ts`]: "import { InjectPrimaryEntityManager } from '../../platform/database/primary.decorators';\nexport const write = () => InjectPrimaryEntityManager();\n",
-        [`${BILLING}/record.reader.ts`]: "import { InjectAgentosEntityManager } from '../../platform/database/agentos.decorators';\nexport const read = () => InjectAgentosEntityManager();\n",
     })
     f.tester.run("schema-owner", ruleNamed(rules, "schema-owner"), {
         valid: ok(f, [CORE_APP, "apps/cli/src/main.ts", `${BILLING}/record.writer.ts`]),
-        invalid: [...bad(f, [[`${BILLING}/record.reader.ts`, [2, /injects the entity manager of connection agentos, but the billing capability/]]])],
+        invalid: [],
     })
 })
 
-test("schema-owner: a connection reached through a config call that names another connection is refused", (t) => {
-    const f = schemaRepo(t, { [CORE_APP]: REGISTER(`${PRIMARY_ENTRY}, { ...parse(), entities: billingEntities, migrations: [...billingMigrations] }`, "const parse = () => ({ name: AGENTOS_CONNECTION });") })
-    f.tester.run("schema-owner", ruleNamed(rules, "schema-owner"), {
-        valid: ok(f, [`${BILLING}/persistence/entities/record.entity.ts`]),
-        invalid: [...bad(f, [[CORE_APP, [7, /exactly one connection/]]])],
-    })
-})
-
-test("schema-owner: the owner index exports <c>Entities and <c>Migrations and nothing else of persistence", (t) => {
-    const missing = schemaRepo(t, { [`${BILLING}/index.ts`]: "export { billingEntities } from './persistence/connection';\n" })
+test("schema-owner: the owner index exports <c>Entities and nothing else of persistence", (t) => {
+    const missing = schemaRepo(t, { [`${BILLING}/index.ts`]: "export const billingVersion = 1;\n" })
     missing.tester.run("schema-owner", ruleNamed(rules, "schema-owner"), {
         valid: ok(missing, [`${BILLING}/persistence/entities/record.entity.ts`]),
-        invalid: [...bad(missing, [[`${BILLING}/index.ts`, [1, /must export billingMigrations/]]])],
+        invalid: [...bad(missing, [[`${BILLING}/index.ts`, [1, /must export billingEntities/]]])],
     })
-    const extra = schemaRepo(t, { [`${BILLING}/index.ts`]: "export { billingEntities, billingMigrations } from './persistence/connection';\nexport { RecordEntity } from './persistence/entities/record.entity';\n" })
+    const extra = schemaRepo(t, { [`${BILLING}/index.ts`]: "export { billingEntities } from './persistence/entities/index';\nexport { RecordEntity } from './persistence/entities/record.entity';\n" })
     extra.tester.run("schema-owner", ruleNamed(rules, "schema-owner"), {
         valid: ok(extra, [`${BILLING}/persistence/entities/record.entity.ts`]),
         invalid: [...bad(extra, [[`${BILLING}/index.ts`, [2, /RecordEntity is exported from persistence/]]])],
@@ -749,7 +709,7 @@ test("background-unowned: schedulers, sagas and event handlers use context and f
 
 test("schema-owner: the table of a projection is declared by the projection entity beside its projection", (t) => {
     const PROJECTION = "src/modules/projections/summary"
-    const entry = "{ name: PRIMARY_CONNECTION, entities: [...billingEntities, ...summaryEntities], migrations: billingMigrations }"
+    const entry = "{ name: PRIMARY_CONNECTION, entities: [...billingEntities, ...summaryEntities] }"
     const f = repo(t, {
         declaration: {
             patterns: ["projection"],

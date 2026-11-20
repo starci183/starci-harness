@@ -454,45 +454,52 @@ const entityFiles = (name: string, table: string, columns = "") => ({
     [`src/modules/domain/${name}/persistence/entities/${name}.entity.ts`]:
         `import { Column, Entity, PrimaryColumn } from 'typeorm';\n@Entity("${table}")\nexport class ${name.charAt(0).toUpperCase()}${name.slice(1)}Entity {\n  @PrimaryColumn({ name: 'id', type: 'uuid' }) id!: string;\n${columns}}\n`,
 })
+// The one edition reads its tables from db/migrations (SQL authority); a capability owns the table named for it.
+const SQL_TABLES = { "db/migrations/20261105000000_tables.sql": [
+    "CREATE TABLE public.purchase (id uuid PRIMARY KEY, member_id uuid, status text);",
+    "CREATE TABLE public.identity (id uuid PRIMARY KEY, email text UNIQUE);",
+    "",
+].join("\n") }
 const SQL_FILES = {
     ...databaseFiles,
-    ...entityFiles("purchase", "purchases", "  @Column({ name: 'member_id', type: 'uuid' }) memberId!: string;\n"),
-    ...entityFiles("identity", "users", "  @Column({ name: 'email', type: 'varchar', unique: true }) email!: string;\n"),
+    "src/modules/domain/purchase/index.ts": "export const purchase = 1;\n",
+    "src/modules/domain/identity/index.ts": "export const identity = 1;\n",
+    "src/modules/domain/identity/persistence/identity.rows.ts": "export type IdentityRow = { readonly id: string };\n",
     // bounded reads, own writes, reads of an owner it may import, a string and a comment that only look like SQL, a dynamic tail
     "src/modules/domain/purchase/persistence/purchase.sql.ts": `import { sql } from '../../../platform/database';
 /** one purchase */
-export const FIND_ONE = sql\`SELECT id FROM purchases WHERE id = $1\`;
-export const FIND_OPEN = sql\`SELECT id, member_id FROM purchases WHERE member_id = $1 AND status = 'FROM ghosts' LIMIT $2\`;
-export const COUNT_ALL = sql\`SELECT count(*) FROM purchases\`;
-export const MARK = sql\`UPDATE purchases SET status = $2 FROM users u WHERE purchases.member_id = u.id AND u.email = $1\`;
-export const BY_EMAIL = sql\`SELECT u.id FROM users u WHERE u.email = $1\`;
-export const LOCK = sql\`SELECT id FROM purchases WHERE id = $1 FOR UPDATE\`;
-export const dynamic = (column: string) => sql\`SELECT id FROM purchases WHERE id = $1 ORDER BY \${column} LIMIT 1\`;
+export const FIND_ONE = sql\`SELECT id FROM purchase WHERE id = $1\`;
+export const FIND_OPEN = sql\`SELECT id, member_id FROM purchase WHERE member_id = $1 AND status = 'FROM ghosts' LIMIT $2\`;
+export const COUNT_ALL = sql\`SELECT count(*) FROM purchase\`;
+export const MARK = sql\`UPDATE purchase SET status = $2 FROM identity u WHERE purchase.member_id = u.id AND u.email = $1\`;
+export const BY_EMAIL = sql\`SELECT u.id FROM identity u WHERE u.email = $1\`;
+export const LOCK = sql\`SELECT id FROM purchase WHERE id = $1 FOR UPDATE\`;
+export const dynamic = (column: string) => sql\`SELECT id FROM purchase WHERE id = $1 ORDER BY \${column} LIMIT 1\`;
 `,
     // a write to another owner, an unknown table, an unbounded SELECT, an unknown joined table
     "src/modules/domain/purchase/persistence/refund.sql.ts": `import { sql } from '../../../platform/database';
-export const STEAL = sql\`UPDATE users SET id = $1 WHERE id = $2\`;
+export const STEAL = sql\`UPDATE identity SET id = $1 WHERE id = $2\`;
 export const GHOST = sql\`SELECT id FROM ghosts WHERE id = $1\`;
-export const ALL = sql\`SELECT id FROM purchases WHERE status = $1\`;
-export const JOINED = sql\`INSERT INTO purchases (id) SELECT u.id FROM users u JOIN ghost_links l ON l.id = u.id LIMIT 5\`;
+export const ALL = sql\`SELECT id FROM purchase WHERE status = $1\`;
+export const JOINED = sql\`INSERT INTO purchase (id) SELECT u.id FROM identity u JOIN ghost_links l ON l.id = u.id LIMIT 5\`;
 `,
     // a platform capability reads a domain table it may not import
     "src/modules/platform/inbox/index.ts": "export const inbox = 1;\n",
-    "src/modules/platform/inbox/persistence/inbox.sql.ts": "import { sql } from '../../database';\nexport const PEEK = sql`SELECT id FROM purchases WHERE id = $1`;\n",
+    "src/modules/platform/inbox/persistence/inbox.sql.ts": "import { sql } from '../../database';\nexport const PEEK = sql`SELECT id FROM purchase WHERE id = $1`;\n",
     // SQL outside a persistence `.sql.ts`, or under a tag not declared in platform/database, is not read
     "src/modules/domain/purchase/other.ts": "import { sql } from '../../platform/database';\nexport const NOT_READ = sql`SELECT id FROM ghosts`;\n",
     "src/modules/domain/purchase/persistence/tagged.sql.ts": 'const sql = (s: TemplateStringsArray) => s.join(""); export const NOT_READ = sql`SELECT id FROM ghosts`;\n',
 }
 
 test("sql-owner: bounded reads, own writes and reads of an importable owner pass; a foreign write, an unknown table, an unbounded SELECT and an upward read do not", (t) => {
-    const f = projectFixture({ files: SQL_FILES })
+    const f = projectFixture({ files: SQL_FILES, rootFiles: SQL_TABLES })
     t.after(f.cleanup)
     f.tester.run("sql-owner", ruleNamed(rules, "sql-owner"), {
         valid: valid(f, SQL_FILES, [
             "src/modules/domain/purchase/persistence/purchase.sql.ts",
             "src/modules/domain/purchase/other.ts",
             "src/modules/domain/purchase/persistence/tagged.sql.ts",
-            "src/modules/domain/identity/persistence/entities/identity.entity.ts",
+            "src/modules/domain/identity/persistence/identity.rows.ts",
         ]),
         invalid: [...invalid(f, SQL_FILES, {
             "src/modules/domain/purchase/persistence/refund.sql.ts": [2, 3, 4, 5],

@@ -1,6 +1,6 @@
 // The entity registry (persistence.md BE-PERSISTENCE-3, slot be.platform.database.entities, role entity-registry): the one platform
 // file that imports a capability's `<c>Entities` from its index.ts, and the one file reached by deep path, only from app composition
-// and the test world. Every other import of the same shapes stays refused, and full has no registry.
+// and the test world. Every other import of the same shapes stays refused,.
 import test from "node:test"
 import { appDeclaration } from "../fixtures/app.ts"
 import { at, BE_DECLARATION, ruleTester, TYPED_ROOT } from "../fixtures/typed/tester.ts"
@@ -74,12 +74,6 @@ test("BE_TIER_DIRECTION lite: the registry importing anything but <c>Entities st
     }
 })
 
-test("BE_TIER_DIRECTION full: there is no registry, so platform never imports a domain", (t) => {
-    const files = { [REGISTRY]: "import { billingEntities } from '../../domain/billing';\nexport const PRIMARY_ENTITIES = [...billingEntities];\n" }
-    const f = fixture(t, "full", files)
-    f.tester.run("tier-direction", ruleNamed(rules, "tier-direction"), { valid: [], invalid: [bad(f, files, REGISTRY, /\[BE_TIER_DIRECTION\]/)] })
-})
-
 const IMPORT_REGISTRY = (from: string) => `import { PRIMARY_ENTITIES } from '${from}';\nexport const registered = PRIMARY_ENTITIES;\n`
 const importerFiles = {
     ...AUDIT_INDEX,
@@ -104,14 +98,6 @@ test("ARCH_OWNER_EXPORT_BYPASS lite: app composition and the test world reach th
     })
 })
 
-test("ARCH_OWNER_EXPORT_BYPASS full: no file reaches platform/database/entities.ts by deep path", (t) => {
-    const f = fixture(t, "full", importerFiles)
-    f.tester.run("owner-export-bypass", ruleNamed(rules, "owner-export-bypass"), {
-        valid: [],
-        invalid: [bad(f, importerFiles, COMPOSE, /\[ARCH_OWNER_EXPORT_BYPASS\]/), bad(f, importerFiles, WORLD, /\[ARCH_OWNER_EXPORT_BYPASS\]/)],
-    })
-})
-
 const DEEP = "import { PRIMARY_ENTITIES } from '@modules/platform/database/entities'"
 
 test("import-owner-entry lite: the deep path @modules/platform/database/entities is admitted from app composition and the test world only", () => {
@@ -129,17 +115,6 @@ test("import-owner-entry lite: the deep path @modules/platform/database/entities
             { filename: at("src/modules/platform/config/config.service.ts"), code: DEEP, errors: [{ messageId: "deep" }] },
             { filename: at("apps/api/src/main.ts"), code: DEEP, errors: [{ messageId: "deep" }] },
             { filename: at("apps/api/src/compose/platform.ts"), code: "import { DatabaseModule } from '@modules/platform/database/database.module'", errors: [{ messageId: "deep" }] },
-        ],
-    })
-})
-
-test("import-owner-entry full: the registry is no slot, so its deep path is refused everywhere", () => {
-    const tester = ruleTester({ root: TYPED_ROOT, hfs: hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition: "full" }, TYPED_ROOT) })
-    tester.run("import-owner-entry", importOwnerEntry, {
-        valid: [],
-        invalid: [
-            { filename: at("apps/api/src/compose/platform.ts"), code: DEEP, errors: [{ messageId: "deep" }] },
-            { filename: at("src/tests/world/lite-world.service.ts"), code: DEEP, errors: [{ messageId: "deep" }] },
         ],
     })
 })
