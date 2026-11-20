@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.28.3 - 2026-11-21
+
+- Changed: cut with @starci/hfs 6.17.0; requires @starci/hfs ~6.17.0 (no rule change).
+
 ## 3.28.2 - 2026-11-20
 
 - Changed: cut with @starci/hfs 6.16.0; requires @starci/hfs ~6.16.0 (no rule change).

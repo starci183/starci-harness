@@ -1,8 +1,8 @@
 # Changelog
 
-## Unreleased - Chat at 390: one reaction tray in the flow, a soft loading face, a quiet counter, a 40px retry
+## 0.52.1 - 2026-11-21 - Chat at 390: one reaction tray in the flow, a soft loading face, a quiet counter, a 40px retry
 
-A patch (proposed 0.52.1; the train integrator sets the number): CSS and renderer fixes, one new optional prop, new DNA laws; no lint rule, no removed or renamed prop or law.
+A patch: CSS and renderer fixes, one new optional prop, new DNA laws; no lint rule, no removed or renamed prop or law.
 
 - Changed (`MessageBubble` reaction toolbar and floating `actions`, visual): they are ONE tray (`data-grammar-bubble-tray`). From 48rem nothing moves: the toolbar floats above the bubble, the actions beside it. Below 48rem hover opens nothing; a long press on the bubble (any pointer, mouse included) or keyboard focus inside the message opens the tray in the thread's flow above the body, one bordered surface whose buttons wrap inside the row, and a tap on one of its buttons closes it. Before, at 390 the toolbar covered the last line of the bubble above and the actions floated off beside the bubble, cut at the row's right edge. On a phone (no hover) the floating actions were an always-visible row under the bubble; below 48rem they now live in the long-press tray. Proved by the play of `Chat surfaces / Reaction tray` at 1440 and 390.
 - Changed (`MessageBubble` loading, visual): an outgoing skeleton bubble is the brand's soft pair, `--accent-soft` with its lines in `--accent-soft-foreground` at a 16% tint (the tone-pair rule). It was the solid `--accent` fill with grey lines, which read as a real message. Law `DNA-COMMON-CHAT-SKELETON-SOFT`.

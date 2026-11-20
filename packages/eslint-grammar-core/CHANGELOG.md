@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.52.1 - 2026-11-21
+
+- Changed: cut with @starci/hfs 6.17.0 and the Grammar family 0.52.1; requires @starci/hfs ~6.17.0 (no rule change).
+
 ## 0.52.0 - 2026-11-20
 
 - Changed: cut with @starci/hfs 6.16.0; requires @starci/hfs ~6.16.0.
