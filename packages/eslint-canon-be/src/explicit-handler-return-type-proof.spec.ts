@@ -1,16 +1,14 @@
 // proves: BE_RETURN_TYPE@lite
 // proves: BE_RETURN_TYPE@full
 import test from 'node:test';
-import assert from 'node:assert/strict';
 import { explicitHandlerReturnType } from './type-safety.ts';
 import { appDeclaration } from '../fixtures/app.ts';
 import { BE_DECLARATION, TYPED_ROOT, at, ruleTester } from '../fixtures/typed/tester.ts';
 import { hfsFromDeclaration } from './lib/hfs.ts';
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`Handler return types valid and invalid cases in ${edition}`, () => {
     const hfs = hfsFromDeclaration({ ...appDeclaration('be', BE_DECLARATION), edition }, TYPED_ROOT);
-    assert.equal(hfs.edition, edition);
     const filename = at('src/modules/domain/plan/plan.service.ts');
     ruleTester({ root: TYPED_ROOT, hfs }).run('explicit-handler-return-type', explicitHandlerReturnType, {
       valid: [

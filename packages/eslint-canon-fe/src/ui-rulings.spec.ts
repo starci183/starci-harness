@@ -32,7 +32,7 @@ test("the UI rules are registered universally at error", () => {
   }
 });
 
-for (const edition of ["lite", "full"])
+for (const edition of ['lite'] as const)
   test(`COLLECTION-1 ${edition}: fill replaces checks in navigation-like single-select lists`, () => {
     assert.doesNotThrow(() => slotTester().run("selection-fill-no-check", selectionFillNoCheck, {
       valid: [
@@ -86,7 +86,7 @@ for (const edition of ["lite", "full"])
     }));
   });
 
-for (const edition of ["lite", "full"])
+for (const edition of ['lite'] as const)
   test(`ACTION-3 ${edition}: application selectors cannot restyle Grammar internals`, () => {
     assert.doesNotThrow(() => slotTester().run(
       "no-grammar-internal-selector",

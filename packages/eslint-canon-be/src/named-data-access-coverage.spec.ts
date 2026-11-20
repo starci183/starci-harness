@@ -1,7 +1,6 @@
 /** R83 proves every shipped data-access enforcer in each HFS edition. */
 // proves: BE_UNNAMED_DATA_ACCESS@lite
 // proves: BE_UNNAMED_DATA_ACCESS@full
-import assert from "node:assert/strict"
 import test from "node:test"
 import {
     mustInjectEntityManager,
@@ -24,11 +23,9 @@ const TYPEORM = 'import { EntityManager, DataSource, Repository } from "typeorm"
 const NAMED_MANAGER = TYPEORM + "class Service { constructor(@InjectPrimaryEntityManager() private readonly entityManager: EntityManager) {} }"
 const WRAPPER = TYPEORM + "export class OrderStore { constructor(private readonly manager: EntityManager) {} }"
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ['lite'] as const) {
     test(`R83 accepts direct named data access and rejects every forbidden alternative in ${edition}`, () => {
         const hfs = hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, TYPED_ROOT)
-        assert.equal(hfs.edition, edition)
-
         ruleTester({ root: TYPED_ROOT, hfs }).run("named-entity-manager-only", namedEntityManagerOnly, {
             valid: [{ filename: HANDLER, code: NAMED_MANAGER }],
             invalid: [

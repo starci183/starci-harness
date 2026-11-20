@@ -8,7 +8,7 @@
  */
 import assert from "node:assert/strict"
 import test from "node:test"
-import { noInterpolatedSql, noQueryBuilder, noQueryInLoop, queryNeedsLimit, rules, sqlTextOnly } from "./query-safety.ts"
+import { noInterpolatedSql, noQueryInLoop, queryNeedsLimit, rules } from "./query-safety.ts"
 import { appDeclaration } from "../fixtures/app.ts"
 import { at, BE_DECLARATION, ruleTester, TYPED_ROOT, typedTester } from "../fixtures/typed/tester.ts"
 import { hfsFromDeclaration } from "./lib/hfs.ts"
@@ -18,8 +18,6 @@ const tester = typedTester()
 const HANDLER = at("src/features/api/checkout/application/place.handler.ts")
 const HANDLER_SPEC = at("src/features/api/checkout/application/place.handler.spec.ts")
 const SQL_FILE = at("src/modules/domain/order/persistence/order.sql.ts")
-const ROWS_FILE = at("src/modules/domain/order/persistence/order.rows.ts")
-const REPOSITORY_FILE = at("src/modules/domain/order/persistence/order.repository.ts")
 const MIGRATION = at("src/modules/domain/order/persistence/migrations/1730000000000-create-orders.ts")
 
 const HEAD = [
@@ -39,56 +37,7 @@ test("every rule this law declares is exported under its published name", () => 
     for (const [name, rule] of Object.entries(rules)) assert.ok(rule && rule.meta && rule.create, `${name} is not a rule`)
 })
 
-test("R36: `.query` takes a SqlText, and only a persistence <name>.sql.ts calls the sql tag", () => {
-    assert.doesNotThrow(() => { tester.run("sql-text-only", sqlTextOnly, {
-        valid: [
-            { filename: HANDLER, code: code("await manager.query(FIND_ORDERS, [owner])") },
-            { filename: HANDLER, code: code("await source.query(FIND_ORDERS)") },
-            { filename: HANDLER_SPEC, code: code("await manager.query(FIND_ORDERS, [owner])") },
-            // the tag is called in a persistence sql file
-            { filename: SQL_FILE, code: code("export const FIND_OPEN = sql`SELECT id FROM orders WHERE owner = $1 LIMIT $2`") },
-            // a migration is hand-written DDL run once
-            { filename: MIGRATION, code: code("await runner.query('ALTER TABLE orders ADD COLUMN note text')") },
-            // a `.query` that is not a database call
-            { filename: HANDLER, code: "declare const client: { query(request: object): void }\nclient.query({ query: 'x' })" },
-        ],
-        invalid: [
-            { filename: HANDLER, code: code("await manager.query('SELECT 1')"), errors: [{ messageId: "notSqlText" }] },
-            { filename: HANDLER, code: code("await manager.query(`SELECT 1`)"), errors: [{ messageId: "notSqlText" }] },
-            { filename: HANDLER, code: code("const text = 'SELECT 1'\nawait manager.query(text)"), errors: [{ messageId: "notSqlText" }] },
-            { filename: HANDLER, code: code("await manager.query()"), errors: [{ messageId: "notSqlText" }] },
-            { filename: HANDLER, code: code("await runner.query('SELECT 1')"), errors: [{ messageId: "notSqlText" }] },
-            { filename: HANDLER, code: code("await source.query('SELECT 1')"), errors: [{ messageId: "notSqlText" }] },
-            // a renamed receiver is still the manager
-            { filename: HANDLER, code: code("const db = manager\nawait db.query('SELECT 1')"), errors: [{ messageId: "notSqlText" }] },
-            // a look-alike brand declared next to the caller is not the platform's
-            { filename: HANDLER, code: code("type SqlText = string\ndeclare const forged: SqlText\nawait manager.query(forged)"), errors: [{ messageId: "notSqlText" }] },
-            // a spec is not exempt
-            { filename: HANDLER_SPEC, code: code("await manager.query('SELECT 1')"), errors: [{ messageId: "notSqlText" }] },
-            // a `*.repository.ts` is no home for SQL text: raw text and the tag are refused there exactly as in a handler
-            { filename: REPOSITORY_FILE, code: code("await manager.query('SELECT 1')"), errors: [{ messageId: "notSqlText" }] },
-            { filename: REPOSITORY_FILE, code: code("export const FIND_OPEN = sql`SELECT id FROM orders`"), errors: [{ messageId: "tagOutsideSqlFile" }] },
-            // the tag outside a persistence sql file
-            { filename: HANDLER, code: code("const text = sql`SELECT 1`"), errors: [{ messageId: "tagOutsideSqlFile" }] },
-            { filename: ROWS_FILE, code: code("const text = sql`SELECT 1`"), errors: [{ messageId: "tagOutsideSqlFile" }] },
-            { filename: HANDLER, code: code("const text = sql(['SELECT 1'] as unknown as TemplateStringsArray)"), errors: [{ messageId: "tagOutsideSqlFile" }] },
-            // a renamed import is the same tag
-            { filename: HANDLER, code: 'import { sql as q } from "@modules/platform/database/database.sql"\nconst text = q`SELECT 1`', errors: [{ messageId: "tagOutsideSqlFile" }] },
-            { filename: HANDLER_SPEC, code: code("const text = sql`SELECT 1`"), errors: [{ messageId: "tagOutsideSqlFile" }] },
-        ],
-    }) })
-})
 
-test("R36: no query builder", () => {
-    assert.doesNotThrow(() => { tester.run("no-query-builder", noQueryBuilder, {
-        valid: [{ filename: HANDLER, code: code("await manager.find(OrderEntity, { take: 10 })") }],
-        invalid: [
-            { filename: HANDLER, code: code("manager.createQueryBuilder()"), errors: [{ messageId: "builder" }] },
-            { filename: HANDLER, code: code("const builder = createQueryBuilder()"), errors: [{ messageId: "builder" }] },
-            { filename: HANDLER_SPEC, code: code("manager.createQueryBuilder()"), errors: [{ messageId: "builder" }] },
-        ],
-    }) })
-})
 
 test("R68: a substitution in the sql tag is a SqlIdent; a .query string is never built", () => {
     assert.doesNotThrow(() => { tester.run("no-interpolated-sql", noInterpolatedSql, {

@@ -127,7 +127,6 @@ export interface HfsView {
     readonly repoRoot: string
     readonly profile: string
     readonly side: string | null
-    readonly edition: string
     readonly grammar?: string
     readonly apps: readonly HfsApp[]
     readonly connections?: readonly HfsConnection[]

@@ -16,11 +16,10 @@ import { canonTester } from "../fixtures/typed/tester.ts"
 const ROOT = join(PACKAGE_ROOT, "fixtures", "typed")
 const BLOCK = join(ROOT, "apps", "web", "src", "components", "blocks", "Feed", "component.tsx")
 
-for (const edition of ["lite", "full"] as const) {
+for (const edition of ['lite'] as const) {
   test(`R62 valid and invalid native elements in ${edition}`, () => {
     const declaration = appDeclaration("fe", { apps: [{ name: "web", kind: "next" }] })
     const hfs = hfsFromDeclaration({ ...declaration, edition }, ROOT)
-    assert.equal(hfs.edition, edition)
     const tester = canonTester(new RuleTester({
       languageOptions: {
         parser: tsParser,

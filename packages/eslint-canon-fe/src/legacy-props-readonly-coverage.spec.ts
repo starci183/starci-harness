@@ -9,7 +9,7 @@ import { propsFieldsReadonly } from "./props-and-slots.ts"
 const COMPONENT = at("apps/web/src/components/branches/Card/index.tsx")
 const render = '\nexport const Card = (props: CardProps) => <div>{props.title}</div>'
 
-for (const edition of ["lite", "full"] as const) {
+for (const edition of ['lite'] as const) {
     test(`${edition} FE_PROPS_MUTABLE accepts deeply readonly props and rejects mutable fields and collections`, () => {
         const tester = canonTester(new RuleTester({
             languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module", parserOptions: { ecmaFeatures: { jsx: true } } },

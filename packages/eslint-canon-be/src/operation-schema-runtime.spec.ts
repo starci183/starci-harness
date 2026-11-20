@@ -22,7 +22,7 @@ type Table = typeof OPERATIONS
 `
 const route = (body: string) => `@Controller("operations") class C { @Post() async invoke(${body} request: OperationRequest<Table>): Promise<OperationReply<Table>> { return null as never } }`
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ['lite'] as const) {
     const tester = ruleTester({ root: TYPED_ROOT, hfs: hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, TYPED_ROOT) })
 
     test(`R95 ${edition}: operation tables require input and output schema declarations in their owners`, () => {

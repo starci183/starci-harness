@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.21.1 - 2026-11-20
+
+- Changed: one app edition (R212, owner ruling 2026-11-20): the HFS view carries no `edition`. Requires @starci/hfs ~6.14.0.
+
 ## 9.21.0 - 2026-11-19 - Fragment
 
 - Added: `lib/fragment.ts` (`isGrammarFragment` (follows the import alias; React's Fragment and `<>` open no region), `inFragment`, `importUsedOnlyInFragment`, `fragmentContext`, `exemptFragment`, `exemptFragmentRules`): the Fragment region of `@starci/grammar`. The canon laws that judge markup, look and libraries (`ui-rulings`, `brand-values`, `type-scale`, `button-intent`, `control-height`, `class-names`, `explicit-surface`, `grammar-shim`, `landmark`, `lists`, `loading`, `native-controls`, `drawing`, `surface-rules`, `tokens`, `spacing`, `renderer-purity`, `skeleton-states`, `fe-stack`) report nothing inside a `<Fragment>` subtree, a same-file component only a region renders, or an import whose every use is there. Integrity laws are never exempted.

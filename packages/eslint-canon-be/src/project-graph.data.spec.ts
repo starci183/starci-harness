@@ -272,7 +272,7 @@ const helperFunctionSpec = [
     "it('uses the helper result', async () => { const subject = await build(); expect(subject.total(2, 3)).toBe(5); });",
 ].join("\n")
 
-for (const edition of ["lite", "full"] as const) test(`unit-spec-providers: ${edition} pure functions are real Nest subject values and the retrieved subject is used`, (t) => {
+for (const edition of ['lite'] as const) test(`unit-spec-providers: ${edition} pure functions are real Nest subject values and the retrieved subject is used`, (t) => {
     const files = {
         ...functionCapability("functions-good"),
         ...functionCapability("functions-fake", { provider: "{ provide: SUBJECT, useValue: { total: () => 5, doubled } }" }),
@@ -307,7 +307,7 @@ for (const edition of ["lite", "full"] as const) test(`unit-spec-providers: ${ed
     })
 })
 
-for (const edition of ["lite", "full"] as const) test(`unit-spec-providers: ${edition} named callable re-exports keep their real implementation provenance`, (t) => {
+for (const edition of ['lite'] as const) test(`unit-spec-providers: ${edition} named callable re-exports keep their real implementation provenance`, (t) => {
     const cases = {
         good: { value: "{ total, doubled, tripled }" },
         alias: { value: "{ total, doubled, tripled: triple }", imports: 'import { total, doubled, tripled as triple } from "./numbers.service";' },

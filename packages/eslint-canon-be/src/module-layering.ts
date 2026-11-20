@@ -205,7 +205,7 @@ export const noFolderReexport: RuleModule = {
   create(context) {
     const filename = context.filename || context.getFilename()
     const hfs = hfsOf(context)
-    const isIndex = isIndexFile(filename) && !(hfs.edition === "lite" && LITE_ENTITY_LIST.test(hfs.relative(filename)))
+    const isIndex = isIndexFile(filename) && !LITE_ENTITY_LIST.test(hfs.relative(filename))
     const max = indexExportBudget(hfs, filename)
     let count = 0
     return {

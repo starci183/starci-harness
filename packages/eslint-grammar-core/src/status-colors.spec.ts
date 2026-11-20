@@ -30,7 +30,6 @@ for (const lite of [false, true]) {
   const edition = lite ? "lite" : "full"
   test(`FE_STYLE_TOKEN_ONLY: ${edition} status ink follows the pair rule`, () => {
     const hfs = fixtureHfs(undefined, { lite })
-    assert.equal(hfs.edition, edition)
     new RuleTester({
       languageOptions: { parser: tsParser, parserOptions: { ecmaFeatures: { jsx: true } } },
       settings: { starci: { hfs } },

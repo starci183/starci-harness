@@ -162,7 +162,7 @@ export const publicNeedsReason: RuleModule = {
 export const publicReasonClosed: RuleModule = {
     meta: {
         type: "problem",
-        docs: { description: "`PublicReason` is closed to Health, AuthHandshake, SignedWebhook and CatalogRead in both editions." },
+        docs: { description: "`PublicReason` is closed to Health, AuthHandshake, SignedWebhook and CatalogRead." },
         schema: [],
         messages: {
             closed: "BE_PUBLIC_REASON_CLOSED: `PublicReason` has exactly Health, AuthHandshake, SignedWebhook and CatalogRead. An API-key or tool-token route authenticates with its own guard; do not add a public reason.",

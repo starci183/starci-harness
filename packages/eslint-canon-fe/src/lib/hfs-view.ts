@@ -44,7 +44,7 @@ export interface HfsFileLines {
   readonly hardGrowth?: boolean
 }
 
-/** The rule parameters of the side (ruleParams of the manifest, merged for the profile and edition). */
+/** The rule parameters of the side (ruleParams of the manifest, merged for the profile). */
 export interface HfsRuleParams {
   readonly fileLines: HfsFileLines
   readonly functionLines?: number
@@ -62,7 +62,6 @@ export interface HfsView {
   readonly repoRoot: string
   readonly profile: string
   readonly side: string | null
-  readonly edition: string
   readonly grammar?: string
   readonly apps: readonly HfsApp[]
   readonly connections: readonly unknown[]

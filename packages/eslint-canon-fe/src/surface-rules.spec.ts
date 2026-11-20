@@ -41,7 +41,7 @@ test("surface rules are published at error with their canon finding codes", () =
   assert.equal(why["no-fill-command-in-header"].code, "FE_COMMAND_FILLS_HEADER")
 })
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ['lite'] as const) {
   test(`layout-only ${edition}: valid layout passes and invalid raw surface paint is refused`, () => {
   assert.doesNotThrow(() => tester().run("no-app-surface-paint", noAppSurfacePaint, {
     valid: [
@@ -92,7 +92,7 @@ for (const edition of ["lite", "full"]) {
 })
 }
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ['lite'] as const) {
   test(`PADDING-0 ${edition}: valid page gutters pass and invalid padding within the nearest painted surface is rejected`, () => {
     assert.doesNotThrow(() => tester().run("no-list-panel-padding", noListPanelPadding, {
       valid: [
@@ -212,7 +212,7 @@ test("Pane and PaneSection are surfaces: wrapper padding around a ListBox in a p
   }))
 })
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: a multi-pane frame is a PaneGrid, not a vertical divider between columns or columns in a joined card`, () => {
     assert.doesNotThrow(() => tester().run("no-hand-built-panes", noHandBuiltPanes, {
       valid: [
@@ -254,7 +254,7 @@ for (const edition of ["lite", "full"]) {
   })
 }
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: a DataTable is not placed in a SurfaceCard, here or through a component of the file`, () => {
     const tables = 'import { SurfaceCard, Section, DataTable } from "@starci/grammar/core"; '
     const table = { messageId: "table" }
@@ -291,7 +291,7 @@ for (const edition of ["lite", "full"]) {
   })
 }
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: a command in a page or card header hugs its label`, () => {
     const head = 'import { PageHeader, Section, SurfaceCard, Button, Form } from "@starci/grammar/core"; '
     const fill = { messageId: "fill" }
@@ -315,7 +315,7 @@ for (const edition of ["lite", "full"]) {
   })
 }
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: a TagGroup has no selection, a filter is a FilterButtonGroup`, () => {
     const head = 'import { TagGroup, FilterButtonGroup } from "@starci/grammar/core"; '
     const selection = { messageId: "selection" }
@@ -333,7 +333,7 @@ for (const edition of ["lite", "full"]) {
   })
 }
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: a card has its own label, a Section around a single card is refused`, () => {
     const head = 'import { Section, SurfaceCard, Text } from "@starci/grammar/core"; '
     const header = { messageId: "header" }

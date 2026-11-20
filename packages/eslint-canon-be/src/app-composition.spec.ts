@@ -156,10 +156,9 @@ interface Schedule { readonly queue: string; readonly id: string; readonly every
 interface QueueSchedulerDefinition { readonly queue: string; readonly id: string; readonly everyMs: number }
 `
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ['lite'] as const) {
     test(`R265 refuses all seven composition bypasses and accepts typed groups in ${edition}`, () => {
         const hfs = hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, TYPED_ROOT)
-        assert.equal(hfs.edition, edition)
         const typed = ruleTester({ root: TYPED_ROOT, hfs })
         function example(filename: string, code: string): RuleTester.ValidTestCase
         function example(filename: string, code: string, messageId: string): RuleTester.InvalidTestCase
@@ -287,7 +286,7 @@ export const kinds = [KINDS]`, "group"),
     })
 }
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ['lite'] as const) {
     test(`R289 requires typed env delegation in ${edition}`, () => {
       assert.doesNotThrow(() => {
           const hfs = hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, TYPED_ROOT)

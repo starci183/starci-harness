@@ -79,5 +79,5 @@ export const jobsSchedulerOwner: RuleModule = {
 
 /** The rule of the tick scheduler law, by name. */
 export const rules = { "jobs-scheduler-owner": jobsSchedulerOwner } satisfies Rules
-/** On at error in both editions. */
+/** On at error. */
 export const recommended: Recommended = { "starci-be/jobs-scheduler-owner": "error" }

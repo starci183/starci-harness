@@ -40,7 +40,7 @@ test("every rule this law declares is exported under its published name, at erro
     assert.deepEqual(Object.keys(rules).sort(), ["schema-bounded", "schema-file-values-only", "schema-place"])
 })
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ['lite'] as const) {
     const hfs = hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, TYPED_ROOT)
     const tester = ruleTester({ root: TYPED_ROOT, hfs })
 
@@ -175,7 +175,7 @@ for (const edition of ["lite", "full"]) {
     })
 }
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ['lite'] as const) {
   test(`${edition} R304: a schema file holds zod values and types, nothing that runs`, () => {
     assert.doesNotThrow(() => {
       const code = (...rows: string[]): string => rows.join(String.fromCharCode(10))

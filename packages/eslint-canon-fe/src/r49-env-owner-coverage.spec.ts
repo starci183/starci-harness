@@ -9,7 +9,7 @@ import { at, fixtureHfs, LITE_FE_DECLARATION, canonTester } from "../fixtures/ty
 const CONFIG = at("apps/web/src/modules/config/env.ts")
 const COMPONENT = at("apps/web/src/components/blocks/Feed/index.tsx")
 
-for (const edition of ["lite", "full"] as const) {
+for (const edition of ['lite'] as const) {
   test(`R49 ${edition} accepts config-owned reads and rejects reads outside the owner`, () => {
     const hfs = fixtureHfs(edition === "lite" ? LITE_FE_DECLARATION : undefined, { lite: edition === "lite" })
     const tester = canonTester(new RuleTester({

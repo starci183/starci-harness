@@ -15,7 +15,7 @@ const e2e = 'src/tests/e2e/checkout/order.e2e-spec.ts';
 const world = 'src/tests/world/global-setup.ts';
 const code = 'export {};';
 
-for (const edition of ['lite', 'full'] as const) {
+for (const edition of ['lite'] as const) {
   test(`${edition} topology lint accepts valid witnesses and rejects violations`, t => {
     const fixture = projectFixture({ edition, files: {
       [goodWorld]: code, [badWorld]: code, [service]: 'export class CoveredService {}', [spec]: code,

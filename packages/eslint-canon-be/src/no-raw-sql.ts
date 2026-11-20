@@ -19,7 +19,6 @@
  *     pg built-ins, bare, plus every other function schema-qualified, including hfs.json `sides.be.dbFunctions`).
  *   - `builder`: a query builder names its entity (`createQueryBuilder(Entity, "alias")`); a builder over a table-name string, a
  *     builder with no entity, and a `getRepository(...)` are refused (the world excepted).
- * The rule runs in lite only (the catalog's `editions`); full keeps R36.
  *
  * Schema authority stays `db/migrations/*.sql`; whether the entities match it is `BE_ENTITY_SCHEMA_DRIFT` of `starci app db drift`.
  */

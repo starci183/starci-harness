@@ -20,10 +20,9 @@ export const PLAN_ERROR_KINDS: Record<PlanErrorCode, ErrorKind> = { [PlanErrorCo
 export class PlanError extends DomainError<PlanErrorCode> {}
 `;
 
-for (const edition of ['lite', 'full'] as const) {
+for (const edition of ['lite'] as const) {
     test(`${edition}: valid owner error family and invalid placement, thrown value and family shape`, () => {
         const hfs = hfsFromDeclaration({ ...appDeclaration('be', BE_DECLARATION), edition }, TYPED_ROOT);
-        assert.equal(hfs.edition, edition);
         const tester = ruleTester({ root: TYPED_ROOT, hfs });
         tester.run('error-home', errorHome, {
             valid: [{ filename: home, code: `${head}export class PlanError extends DomainError<PlanErrorCode> {}` }],

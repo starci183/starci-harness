@@ -7,7 +7,7 @@ import { at, canonTester, fixtureHfs, LITE_FE_DECLARATION } from '../fixtures/ty
 import { htmlLangFromLocale } from './next-conventions.ts';
 import { noCopyResolutionBelowBlock, noHardcodedCopy } from './translation.ts';
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition} translated display copy and locale metadata pass; literal copy and lower-tier resolution fail`, () => {
     const tester = canonTester(new RuleTester({
       languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: 'module' },

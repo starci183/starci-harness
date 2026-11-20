@@ -1,16 +1,14 @@
 // proves: BE_MIGRATION_REVERSIBLE@lite
 // proves: BE_MIGRATION_REVERSIBLE@full
 import test from 'node:test';
-import assert from 'node:assert/strict';
 import { migrationDownReversible } from './schema-authority.ts';
 import { appDeclaration } from '../fixtures/app.ts';
 import { BE_DECLARATION, TYPED_ROOT, at, ruleTester } from '../fixtures/typed/tester.ts';
 import { hfsFromDeclaration } from './lib/hfs.ts';
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`Migration reversal valid and invalid cases in ${edition}`, () => {
     const hfs = hfsFromDeclaration({ ...appDeclaration('be', BE_DECLARATION), edition }, TYPED_ROOT);
-    assert.equal(hfs.edition, edition);
     const filename = at('src/modules/domain/order/persistence/migrations/1730000000000-create-plan.ts');
     ruleTester({ root: TYPED_ROOT, hfs }).run('migration-down-reversible', migrationDownReversible, {
       valid: [{

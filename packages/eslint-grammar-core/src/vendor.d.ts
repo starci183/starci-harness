@@ -84,7 +84,6 @@ declare module "@starci/eslint-canon-fe/lib/hfs.mjs" {
     readonly repoRoot: string
     readonly profile: string
     readonly side: string | null
-    readonly edition: string
     readonly grammar?: string
     readonly relative: (file: string) => string
     readonly classify: (file: string) => HfsClassification

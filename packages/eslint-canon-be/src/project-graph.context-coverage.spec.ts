@@ -118,7 +118,7 @@ const publisher = (prefix: string) => [
     '}',
 ].join('\n')
 
-for (const edition of ['lite', 'full'] as const) {
+for (const edition of ['lite'] as const) {
     test(edition + ' context-owner accepts owned composition and rejects a foreign context', (t) => {
         const files = { 'apps/order/src/app.module.ts': registration([ORDER_ENTRY, BILLING_ENTRY]) }
         const f = repo(t, edition, files)

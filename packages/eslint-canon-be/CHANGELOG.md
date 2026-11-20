@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.28.0 - 2026-11-20
+
+- Changed: one app edition (R212, owner ruling 2026-11-20). The edition gate (`pluginForEdition`) is gone: every rule of the plugin runs for every app. Requires @starci/hfs ~6.14.0.
+- Removed: `sql-text-only` and `no-query-builder` (R36 BE_SQL_OUTSIDE_PERSISTENCE, a full-only rule no app ran); R334 `no-raw-sql` holds the persistence boundary. `event-bus-lite-shape` and the lite entity list of `module-layering` judge every app.
+
 ## 3.27.3 - 2026-11-18
 
 - Fixed (`no-raw-sql`): the nivoos SDK's typed object read, `reach.objects(Type).query({ where, sort, limit })`, is no SQL: a `.query(` whose receiver is an `.objects(...)` call, in a file that imports `@starci/nivoos-sdk`, passes. Any other `.query(` in that file is still refused.

@@ -64,7 +64,7 @@ function boundaryFindings(fixture: BoundaryFixture) {
     .filter((finding) => finding.ruleId === 'FE_ERROR_BOUNDARY_MISSING');
 }
 
-for (const edition of ['lite', 'full'] as const) {
+for (const edition of ['lite'] as const) {
   test(`${edition} accepts complete boundaries and rejects each missing error or loading boundary`, (t) => {
     const fixture = boundaryFixture(t, edition);
     assert.deepEqual(boundaryFindings(fixture), []);

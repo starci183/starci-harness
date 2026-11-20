@@ -13,10 +13,9 @@ const WORLD = at("src/tests/world/seed.ts")
 const DB_IMPORT = "import { EntityManager, QueryRunner } from 'typeorm'\n"
 const PERSIST_ORDER = `${DB_IMPORT}export const orderBuilder = (db: EntityManager) => ({ build: async () => db.save({ id: 1 }) })`
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ['lite'] as const) {
     test(`R98 accepts persistent builders in their home and rejects misplaced exports in ${edition}`, () => {
         const hfs = hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, TYPED_ROOT)
-        assert.equal(hfs.edition, edition)
         assert.equal(hfs.slotOf(BUILDER), "be.tests.fixtures.builders")
         ruleTester({ root: TYPED_ROOT, hfs }).run("persisting-builder-in-builders-slot", persistingBuilderInBuildersSlot, {
             valid: [

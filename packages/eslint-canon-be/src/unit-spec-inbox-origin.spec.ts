@@ -15,7 +15,7 @@ import { ClientInboxRetentionService, ClientInboxRetentionService as Retention }
 import { ClientInboxRetentionQueue } from "@modules/queues/inbox-retention/inbox-retention.queue"
 `
 
-for (const edition of ["lite", "full"]) test(`spec-infra-double-from-kit: ${edition} distinguishes Inbox from domain services and queue producers by origin`, () => {
+for (const edition of ['lite'] as const) test(`spec-infra-double-from-kit: ${edition} distinguishes Inbox from domain services and queue producers by origin`, () => {
     const hfs = hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, TYPED_ROOT)
     ruleTester({ root: TYPED_ROOT, hfs }).run("spec-infra-double-from-kit", specInfraDoubleFromKit, {
         valid: [

@@ -35,10 +35,9 @@ test("TOKEN-4: an arbitrary value escapes the vocabulary even when it matches it
   }))
 })
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ['lite'] as const) {
   test(`FE_STYLE_TOKEN_ONLY ${edition}: accepts named tokens and refuses arbitrary lengths and colours`, () => {
     const hfs = fixtureHfs(undefined, { lite: edition === "lite" })
-    assert.equal(hfs.edition, edition)
     const settings = { starci: { hfs } }
     tester.run("no-arbitrary-value", noArbitraryValue, {
       valid: [

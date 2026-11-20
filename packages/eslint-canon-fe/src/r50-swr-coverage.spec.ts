@@ -72,7 +72,7 @@ const files = {
   [INVALID_MUTATION]: mutationSource('params.projectId === undefined ? null : { operation: "MUTATE_PROJECT" }'),
 }
 
-for (const edition of ["lite", "full"] as const) {
+for (const edition of ['lite'] as const) {
   test(`R50 swr-data-lifecycle valid and invalid query and mutation identities (${edition})`, (t) => {
     const fixture = projectFixture({ profile: "fe", edition, files })
     t.after(() => fixture.cleanup())

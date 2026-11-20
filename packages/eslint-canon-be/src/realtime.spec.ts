@@ -205,7 +205,7 @@ test("realtime-topic-scope: the topic is built from the principal parameter", ()
     }) })
 })
 
-for (const edition of ["lite", "full"] as const) {
+for (const edition of ['lite'] as const) {
     test(`realtime-shape: ${edition} permits a principal-typed server push stream`, () => {
         assert.doesNotThrow(() => { editionTester(edition).run("realtime-shape", realtimeShape, {
             valid: [

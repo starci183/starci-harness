@@ -31,10 +31,9 @@ export const CLOCK: unique symbol = Symbol("platform.clock")
 /** Injects the Clock port. Parameter type: Clock. */
 `
 
-for (const edition of ["lite", "full"] as const) {
+for (const edition of ['lite'] as const) {
     test(`R85 accepts valid owner injectors and rejects raw injection in ${edition}`, () => {
         const hfs = hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, TYPED_ROOT)
-        assert.equal(hfs.edition, edition)
         const tester = ruleTester({ root: TYPED_ROOT, hfs })
         tester.run("injector-only", injectorOnly, {
             valid: [{ filename: SERVICE, code: `${CLOCK}export class Consumer { constructor(@InjectClock() private readonly clock: Clock) {} }` }],

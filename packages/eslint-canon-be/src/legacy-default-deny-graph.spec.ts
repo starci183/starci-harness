@@ -17,7 +17,7 @@ const appModule = (guards: readonly string[]) => [
 const VALID = appModule(["ThrottlerGuard", "CsrfOriginGuard", "CredentialGuard", "AuthGuard"])
 const INVALID = appModule(["ThrottlerGuard", "CsrfOriginGuard", "CredentialGuard"])
 
-for (const edition of ["lite", "full"] as const) {
+for (const edition of ['lite'] as const) {
     test(`R41 app guard valid and invalid cases in ${edition}`, (t) => {
         const fixture = projectFixture({
             edition,

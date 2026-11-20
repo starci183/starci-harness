@@ -59,7 +59,7 @@ test("R262 exports the two rules", () => {
     assert.deepEqual(Object.keys(rules), ["ready-real", "health-signals"])
 })
 
-for (const edition of ["lite", "full"] as const) {
+for (const edition of ['lite'] as const) {
     test(`BE_READY_REAL@${edition}: a registered query handler consumes the typed timer and actual required probe`, () => {
         const passing = queryReadinessFixture()
         assert.doesNotThrow(() => {
@@ -171,7 +171,7 @@ for (const edition of ["lite", "full"] as const) {
     })
 }
 
-for (const edition of ["lite", "full"] as const) {
+for (const edition of ['lite'] as const) {
     test(`BE_READY_REAL@${edition}: constants referenced many times, in a tripling chain, in a ring or by themselves expand once, never overflow the stack`, () => {
         const levels = Array.from({ length: 26 }, (_, index) => `const level${index + 1} = [level${index}, level${index}, level${index}]`).join("; ")
         const shape = `const level0 = 1; ${levels}; const ring = [ring, other]; const other = [ring, ring]; const self = self; void level26; void ring; void self`

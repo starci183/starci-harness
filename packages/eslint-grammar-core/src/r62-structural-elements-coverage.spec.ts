@@ -14,11 +14,10 @@ import { why } from "./lib/why.ts"
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "fe", "fixtures", "typed")
 const BLOCK = join(ROOT, "apps", "web", "src", "components", "blocks", "Feed", "component.tsx")
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ['lite'] as const) {
   test(`R62 Grammar accepts canonical structure and rejects raw elements in ${edition}`, () => {
     const declaration = appDeclaration("fe", { apps: [{ name: "web", kind: "next" }] })
     const hfs = hfsFromDeclaration({ ...declaration, edition }, ROOT)
-    assert.equal(hfs.edition, edition)
     const tester = new RuleTester({
       languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: "module", parserOptions: { ecmaFeatures: { jsx: true } } },
       settings: { starci: { hfs } },

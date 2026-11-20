@@ -38,7 +38,7 @@ test("mutation-idempotent is registered and enabled at error", () => {
     for (const message of Object.values(mutationIdempotent.meta.messages)) assert.match(message, /^\[BE_MUTATION_IDEMPOTENT\] /)
 })
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ['lite'] as const) {
     test(`effectful commands and their actual domain transactions are enforced in ${edition}`, () => {
         // Each edition starts from the disk graph: the previous matrix replaces the imported service with invalid virtual sources.
         tsParser.clearCaches()

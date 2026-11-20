@@ -18,7 +18,7 @@ const tester = canonTester(new RuleTester({
   languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: 'module', parserOptions: { ecmaFeatures: { jsx: true } } },
 }));
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition} accepts valid syntax and rejects every front-end Sonar smell`, () => {
     tester.run('no-await-in-loop', ruleOf('no-await-in-loop'), {
       valid: ['async function sendAll(items) { await Promise.all(items.map(send)) }'],

@@ -1,6 +1,5 @@
 // proves: FE_SERVER_ACTION_FORBIDDEN@lite FE_SERVER_ACTION_FORBIDDEN@full
 // proves: FE_STACK_FORBIDDEN@lite FE_STACK_FORBIDDEN@full
-import assert from 'node:assert/strict';
 import test from 'node:test';
 import { RuleTester } from 'eslint';
 import tsParser from '@typescript-eslint/parser';
@@ -10,11 +9,10 @@ import { hfsFromDeclaration } from './lib/hfs.ts';
 import { noServerAction } from './client-boundary.ts';
 import { feStackImport } from './fe-stack.ts';
 
-for (const edition of ['lite', 'full'] as const) {
+for (const edition of ['lite'] as const) {
   test(`no-server-action accepts valid modules and rejects directives in ${edition}`, () => {
     const declaration = { ...appDeclaration('fe', { apps: [{ name: 'web', kind: 'next' }] }), edition };
     const hfs = hfsFromDeclaration(declaration, TYPED_ROOT);
-    assert.equal(hfs.edition, edition);
     const tester = canonTester(new RuleTester({ languageOptions: { parser: tsParser }, settings: { starci: { hfs } } }));
     tester.run('no-server-action', noServerAction, {
       valid: [
@@ -32,7 +30,6 @@ for (const edition of ['lite', 'full'] as const) {
   test(`fe-stack-import accepts canonical imports and rejects alternatives in ${edition}`, () => {
     const declaration = { ...appDeclaration('fe', { apps: [{ name: 'web', kind: 'next' }] }), edition };
     const hfs = hfsFromDeclaration(declaration, TYPED_ROOT);
-    assert.equal(hfs.edition, edition);
     const tester = canonTester(new RuleTester({ languageOptions: { parser: tsParser }, settings: { starci: { hfs } } }));
     const filename = at('apps/web/src/components/blocks/Orders/index.tsx');
     tester.run('fe-stack-import', feStackImport, {

@@ -79,7 +79,7 @@ test("the message of a half-typed route names the missing side", () => {
     assert.match(operationRouteDrivenByTable.meta.messages.half ?? "", /OperationRequest<Table>/)
 })
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ['lite'] as const) {
     test(`BE_REST_ROUTE_UNDECLARED: ${edition} requires actual defineOperations provenance`, () => {
         const hfs = hfsFromDeclaration({ ...appDeclaration("be", { ...BE_DECLARATION, patterns: ["webhooks"] }), edition }, TYPED_ROOT)
         const editionTester = ruleTester({ root: TYPED_ROOT, hfs })

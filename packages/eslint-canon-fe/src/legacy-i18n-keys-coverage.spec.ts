@@ -19,7 +19,7 @@ const invalidCode = validCode.replace("useTitle", "useMissing").replace("t('titl
 const i18nKeys = rules["i18n-keys"]
 if (!i18nKeys) throw new Error("project-graph publishes no i18n-keys rule")
 
-for (const edition of ["lite", "full"] as const) {
+for (const edition of ['lite'] as const) {
     test(`${edition} FE_I18N_KEYS accepts catalog keys and rejects a missing literal key`, (t) => {
         const fixture = projectFixture({
             profile: "fe",

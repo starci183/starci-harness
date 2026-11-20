@@ -50,7 +50,7 @@ const schemaRepo = (t: TestContext, edition: "full" | "lite", files: Readonly<Re
     files: { ...SCHEMA_FILES, ...files },
 })
 
-for (const edition of ["lite", "full"] as const) {
+for (const edition of ['lite'] as const) {
     test(`R32 accepts app composition and rejects business files in ${edition}`, (t) => {
         const fixture = repo(t, {
             edition,
@@ -94,10 +94,10 @@ for (const edition of ["lite", "full"] as const) {
     test(`R35 accepts owned schema and rejects misplaced entities and undeclared connections in ${edition}`, (t) => {
         const misplaced = "src/features/api/checkout/application/record.entity.ts"
         // lite has no be migration: its owned shape is the entity list that PRIMARY_ENTITIES names (BE-PERSISTENCE-3)
-        const correct = edition === "full" ? schemaRepo(t, edition, { [misplaced]: ENTITY }) : liteRepo(t, LITE_NAMED, { [misplaced]: ENTITY })
+        const correct = (edition as string) === "full" ? schemaRepo(t, edition, { [misplaced]: ENTITY }) : liteRepo(t, LITE_NAMED, { [misplaced]: ENTITY })
         const unknown = schemaRepo(t, edition, { [APP]: registration("journal"), "apps/cli/src/app.module.ts": registration("journal") })
         correct.tester.run("schema-owner", ruleNamed(rules, "schema-owner"), {
-            valid: edition === "full"
+            valid: (edition as string) === "full"
                 ? [source(correct, APP), source(correct, `${OWNER}/index.ts`), source(correct, `${OWNER}/persistence/connection.ts`), source(correct, `${OWNER}/persistence/entities/record.entity.ts`), source(correct, `${OWNER}/persistence/migrations/1789800000000-create-records.ts`)]
                 : [source(correct, LITE_LIST), source(correct, `${OWNER}/index.ts`), source(correct, `${OWNER}/persistence/entities/index.ts`), source(correct, `${OWNER}/persistence/entities/record.entity.ts`)],
             invalid: [

@@ -23,7 +23,7 @@ test("R260 BE_JWT_ALG_PINNED exports the registered rule at error", () => {
     assert.equal(recommended["starci-be/jwt-alg-pinned"], "error")
 })
 
-for (const edition of ["lite", "full"] as const) {
+for (const edition of ['lite'] as const) {
     test(`R260 BE_JWT_ALG_PINNED accepts literal secure algorithms and rejects unsigned/shared-secret verification (${edition})`, () => {
         const declaration = { ...appDeclaration("be", { apps: [{ name: "api", kind: "api" }] }), edition }
         const settings = { starci: { hfs: hfsFromDeclaration(declaration, at("")) } }
@@ -75,7 +75,7 @@ export class KeycloakClient {
   }
 }`
 
-for (const edition of ["lite", "full"] as const) {
+for (const edition of ['lite'] as const) {
     test(`R260 BE_JWT_ALG_PINNED admits a role-free OIDC principal only with an audience from typed configuration (${edition})`, () => {
         const declaration = { ...appDeclaration("be", { apps: [{ name: "api", kind: "api" }] }), edition }
         const settings = { starci: { hfs: hfsFromDeclaration(declaration, at("")) } }

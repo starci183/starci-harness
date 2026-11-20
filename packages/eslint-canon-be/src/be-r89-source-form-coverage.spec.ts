@@ -52,7 +52,7 @@ const files = {
   ].join('\n'),
 };
 
-for (const edition of ['lite', 'full'] as const) {
+for (const edition of ['lite'] as const) {
   test(`R89 ${edition} accepts documented named source and rejects forbidden forms`, () => {
     const hfs = hfsFromDeclaration({ ...appDeclaration('be', BE_DECLARATION), edition }, TYPED_ROOT);
     const tester = canonRuleTester({

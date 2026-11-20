@@ -149,7 +149,7 @@ test("FE-TRANSPORT-1: fetch is reached in the API layer and nowhere else; Apollo
 
 // proves: FE_TRANSPORT_OWNER@lite, FE_TRANSPORT_OWNER@full
 test("FE_TRANSPORT_OWNER: native WebSocket is refused and socket.io-client belongs to hooks/socketio in lite and full", () => {
-  for (const edition of ["lite", "full"] as const) {
+  for (const edition of ['lite'] as const) {
     const declaration = edition === "lite" ? LITE_FE_DECLARATION : undefined
     const settings = { starci: { hfs: fixtureHfs(declaration, { lite: edition === "lite" }) } }
     const run = canonTester(new RuleTester({ languageOptions: testerConfig(), settings }))

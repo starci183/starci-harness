@@ -21,7 +21,7 @@ const MODULE = at('src/modules/domain/plan/plan.module.ts');
 const APP = at('apps/api/src/app.module.ts');
 const JOURNAL = at('src/modules/domain/journal/journal.module.ts');
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition} accepts valid modules and rejects module-shape violations`, () => {
     const hfs = hfsFromDeclaration({ ...appDeclaration('be', BE_DECLARATION), edition }, TYPED_ROOT);
     const settings = { starci: { hfs } };

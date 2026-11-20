@@ -290,7 +290,7 @@ test("rest-door-needs-a-reason: a back end whose api apps declare contract rest 
     }) })
 })
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ['lite'] as const) {
     test(`BE_REST_DOOR_EVIDENCE: ${edition} judges each REST method's evidence`, () => {
         const hfs = hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, TYPED_ROOT)
         const editionTester = ruleTester({ root: TYPED_ROOT, hfs })
@@ -366,7 +366,7 @@ const Sse = (_path: string): MethodDecorator => () => undefined
     })
 }
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ['lite'] as const) {
 test(`${edition} accepts GraphQL presigning and streamed downloads and rejects REST presigning metadata`, () => {
         const hfs = hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, TYPED_ROOT)
         const FILE = at("src/features/api/assets/transport/graphql/mint-upload.resolver.ts")

@@ -104,7 +104,7 @@ const verify = (app: ProjectFixture, file: string, unsavedSource?: string): read
 const ids = (app: ProjectFixture, file: "index.tsx" | "component.tsx"): readonly (string | undefined)[] =>
   verify(app, `${BLOCK}/${file}`).map((finding) => finding.messageId)
 
-for (const edition of ["lite", "full"] as const) {
+for (const edition of ['lite'] as const) {
   test(`${edition}: virtual entry and drawing files refuse children without reading nonexistent source`, (t) => {
     const app = fixture(t, edition)
     const entry = `${SOURCE}/components/blocks/Virtual/index.tsx`

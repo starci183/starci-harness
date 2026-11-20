@@ -13,7 +13,7 @@ const projectRule = (name: string): Rule => {
 
 // proves: FE_COMPONENT_WORLD_OWNERSHIP@lite FE_COMPONENT_WORLD_OWNERSHIP@full
 // proves: FE_WORLD_OWNER_RENDER_BOUNDARY@lite FE_WORLD_OWNER_RENDER_BOUNDARY@full
-for (const edition of ["lite", "full"] as const) {
+for (const edition of ['lite'] as const) {
   test(`R92 ${edition} rejects global fetch through a UI hook barrel and accepts intrinsic UI and data owners`, t => {
     const branch = "apps/web/src/components/branches/Remote/index.tsx"
     const intrinsic = "apps/web/src/components/branches/Local/index.tsx"

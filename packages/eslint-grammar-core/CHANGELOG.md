@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.50.2 - 2026-11-20
+
+- Changed: cut with @starci/hfs 6.14.0 (one app edition, R212); the HFS view carries no `edition`. Requires @starci/hfs ~6.14.0.
+
 ## 0.50.1 - 2026-11-20
 
 - Changed: versioned with the Grammar 0.50.1 (no lint change).

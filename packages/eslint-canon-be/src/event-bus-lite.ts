@@ -12,7 +12,6 @@
  * Both rules judge lite apps only; full's bus is Kafka (BE-EVENT-BUS-3).
  */
 import type { TSESTree } from "@typescript-eslint/utils"
-import { hfsOf } from "./lib/hfs.ts"
 import type { RuleModule, Recommended, Rules } from "./lib/rule.ts"
 
 /** The public entry of the event bus capability. */
@@ -85,7 +84,7 @@ export const eventDedupeKey: RuleModule = {
         },
     },
     create(context) {
-        if (hfsOf(context).edition !== "lite" || !EVENT_FILE.test(context.filename)) return {}
+        if (!EVENT_FILE.test(context.filename)) return {}
         let declarations: Declarations = new Map()
         const judge = (node: TSESTree.ClassDeclaration | TSESTree.ClassExpression): void => {
             if (node.superClass?.type !== "Identifier" || node.superClass.name !== BASE_EVENT) return
@@ -112,7 +111,6 @@ export const eventSubscriptionStatic: RuleModule = {
         },
     },
     create(context) {
-        if (hfsOf(context).edition !== "lite") return {}
         const topicQueues = new Set<string>()
         let importsBus = false
         const literalOptions = (node: TSESTree.Node): boolean => node.type === "ObjectExpression" && node.properties.every((property) =>

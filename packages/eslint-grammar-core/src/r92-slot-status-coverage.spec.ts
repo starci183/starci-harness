@@ -6,7 +6,7 @@ import { typedTester, at } from "../../eslint-canon-fe/fixtures/typed/tester.ts"
 import { rules as drawing } from "./drawing.ts"
 
 const BLOCK = at("apps/web/src/components/blocks/sales/HandoffBlock/component.tsx")
-for (const edition of ["lite", "full"]) {
+for (const edition of ['lite'] as const) {
   test(`R92 ${edition} uses the family slot-status recipe`, () => {
     const tester = typedTester({ lite: edition === "lite" })
     const rule = drawing["slot-status-through-slotview"]

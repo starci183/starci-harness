@@ -21,7 +21,7 @@ const ruleOf = (name: string): Rule => {
 };
 
 
-for (const edition of ['lite', 'full'] as const) {
+for (const edition of ['lite'] as const) {
   test(`${edition} reachable owners and served hrefs pass; orphan owners and dead hrefs fail`, (t) => {
     const files = {
       'apps/web/src/app/[locale]/page.tsx': "import Home from '../../features/pages/home'; export default Home;",

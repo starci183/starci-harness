@@ -18,7 +18,7 @@ import { canonTester } from "../fixtures/typed/tester.ts"
 const grammar = 'import { Divider, Separator } from "@starci/grammar/core"; '
 const error = { messageId: "padding" }
 
-for (const edition of ["lite", "full"]) test(`BOUNDARY-1 ${edition}: valid bands pass and invalid padded horizontal dividers are rejected`, () => {
+for (const edition of ['lite'] as const) test(`BOUNDARY-1 ${edition}: valid bands pass and invalid padded horizontal dividers are rejected`, () => {
   assert.ok(SLOT_FREE_RULES.includes("divider-full-bleed"))
   assert.equal(why["divider-full-bleed"].code, "FE_DIVIDER_FULL_BLEED")
   assert.equal(rules["divider-full-bleed"], dividerFullBleed)

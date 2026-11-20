@@ -8,7 +8,7 @@ import { noVendorIconOutsideIconLeaf, heroiconsIsTheGlyphVendor, noIconSizeClass
 import { destructiveMenuEntryNeedsDangerTone } from './menu-entries.ts';
 import { vendorPrimitiveHasNamedOwner } from './vendor-boundary.ts';
 
-for (const edition of ['lite', 'full']) {
+for (const edition of ['lite'] as const) {
   test(`${edition} valid vendor owners pass and invalid vendor boundaries are rejected`, () => {
     const tester = new RuleTester({
       languageOptions: { parser: tsParser, ecmaVersion: 2022, sourceType: 'module', parserOptions: { ecmaFeatures: { jsx: true } } },

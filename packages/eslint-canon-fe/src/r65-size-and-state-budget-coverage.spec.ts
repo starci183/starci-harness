@@ -39,14 +39,13 @@ const unit = (states: number, data: number): string => "export const Feed = () =
   + Array.from({ length: data }, (_, index) => "const data" + index + " = useQueryFeed" + index + "Swr()").join("\n")
   + "\nreturn null\n}"
 
-for (const edition of ["lite", "full"] as const) {
+for (const edition of ['lite'] as const) {
   const lite = edition === "lite"
   const declaration = lite ? LITE_FE_DECLARATION : FE_DECLARATION
   const tester = typedTester({ declaration, lite })
 
   test(edition + " R65 uses the real edition's component slot", () => {
     const hfs = fixtureHfs(declaration, { lite })
-    assert.equal(hfs.edition, edition)
     assert.equal(budgetNumber(hfs, "fe.components", "index.tsx"), 200)
   })
 

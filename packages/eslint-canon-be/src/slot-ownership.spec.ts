@@ -50,7 +50,7 @@ const twinManifest = () => {
 /** The one finding the rule reports on the visited file: its code and the machine's own sentence. */
 const finding = (code: string, sentence: string) => ({ message: `[${code}] ${sentence}` })
 
-for (const edition of ["lite", "full"] as const) {
+for (const edition of ['lite'] as const) {
     test(`${edition}: a TypeScript file no slot owns is HFS_SLOT_UNDECLARED, one a slot owns is not`, (t) => {
         const f = projectFixture({ edition, files: { "src/stray/thing.ts": EXPORT, "src/modules/domain/stock/index.ts": EXPORT } })
         t.after(f.cleanup)

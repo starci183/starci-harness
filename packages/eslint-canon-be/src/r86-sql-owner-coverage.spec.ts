@@ -42,10 +42,10 @@ const ENTITIES = {
 const TABLES_MIGRATION = ["purchase", "identity", "purchase_lines", "purchase_notes", "purchases"]
     .map((table) => `CREATE TABLE public.${table} (id uuid PRIMARY KEY);`).join("\n") + "\n"
 
-for (const edition of ["lite", "full"] as const) {
+for (const edition of ['lite'] as const) {
     test(`R86 accepts bounded own-table SQL and rejects foreign writes and unbounded reads in ${edition}`, (t) => {
         const files = { ...FILES }
-        if (edition === "full") Object.assign(files, ENTITIES)
+        if ((edition as string) === "full") Object.assign(files, ENTITIES)
         else Object.assign(files, LINES_CAPABILITY)
         const fixture = projectFixture({
             edition,
@@ -57,7 +57,7 @@ for (const edition of ["lite", "full"] as const) {
             valid: [
                 { filename: fixture.at(OWN_SQL), code: FILES[OWN_SQL] },
                 // a table named for the capability and an underscore (realtime_events of platform/realtime)
-                ...(edition === "full"
+                ...((edition as string) === "full"
                     ? [{ filename: fixture.at(PREFIXED_SQL), code: FILES[PREFIXED_SQL] }]
                     : [{ filename: fixture.at(NOTES_SQL), code: FILES[NOTES_SQL] }]),
             ],

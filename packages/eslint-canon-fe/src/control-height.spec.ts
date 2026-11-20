@@ -21,7 +21,7 @@ test("CONTROL-HEIGHT-1 is registered universally at error with its finding code"
   assert.equal(why["control-height"].code, "FE_CONTROL_HEIGHT")
 })
 
-for (const edition of ["lite", "full"]) {
+for (const edition of ['lite'] as const) {
   test(`CONTROL-HEIGHT-1 ${edition}: the default height passes and a larger step or a mixed row is rejected`, () => {
   assert.doesNotThrow(() => {
     tester().run("control-height", rules["control-height"], {

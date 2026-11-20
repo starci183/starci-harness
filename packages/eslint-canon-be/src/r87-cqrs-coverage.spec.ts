@@ -54,7 +54,7 @@ import { ChangeOrderCommand } from "./change-order.command"
 `,
 }
 
-for (const edition of ["lite", "full"] as const) {
+for (const edition of ['lite'] as const) {
     const declaration = { ...appDeclaration("be", BE_DECLARATION), edition }
     const tester = ruleTester({ root: TYPED_ROOT, hfs: hfsFromDeclaration(declaration, TYPED_ROOT) })
 

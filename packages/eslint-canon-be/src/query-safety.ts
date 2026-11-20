@@ -1,5 +1,5 @@
 /**
- * The rules that keep a database call safe to run in production (R36, R68, R69, R77).
+ * The rules that keep a database call safe to run in production (R68, R69, R77).
  *
  * SQL text is a `SqlText` constant built with the `sql` tag in a persistence `<name>.sql.ts`; a dynamic identifier is a
  * `SqlIdent` from `ident()`; a value is a numbered parameter. Every receiver is identified by its TypeScript type
@@ -7,9 +7,6 @@
  * HFS slot view. No rule here parses SQL text: what a statement reads and writes is judged by the architecture
  * machine (R86).
  *
- * - `sql-text-only` (R36 `BE_SQL_OUTSIDE_PERSISTENCE`) - the first argument of `.query(` is a `SqlText`, and the `sql`
- *   tag is called only in a persistence `<name>.sql.ts`.
- * - `no-query-builder` (R36) - no `createQueryBuilder(` call.
  * - `no-interpolated-sql` (R68 `BE_SQL_INTERPOLATED`) - a substitution inside the `sql` tag is a `SqlIdent`; a `.query(`
  *   string built by template or concatenation is refused. One file is the owner R334 names for the lite call and LISTEN statements,
  *   `platform/database/database.client.ts` of a lite app: there a `.query(` template may substitute only the checked parts its own
@@ -49,63 +46,6 @@ const isQueryCall = (context: Context, node: TSESTree.CallExpression): boolean =
 
 // -- R36 -----------------------------------------------------------------------------------------------
 
-/** SQL text is `SqlText`, and only a persistence `.sql.ts` builds it. */
-export const sqlTextOnly: RuleModule = {
-    meta: {
-        type: "problem",
-        docs: { description: "`.query(...)` takes a `SqlText`, and the `sql` tag is called only in a persistence `<name>.sql.ts`." },
-        schema: [],
-        messages: {
-            notSqlText:
-                "The first argument of `.query(...)` is not a `SqlText`. SQL text is a constant built with the `sql` tag in the `persistence/<name>.sql.ts` of the owning capability and imported here; the row shape and its mapper live in `<name>.rows.ts`.",
-            tagOutsideSqlFile:
-                "The `sql` tag is called outside a persistence `<name>.sql.ts`. Write the statement as an exported constant in the `persistence/<name>.sql.ts` of the capability that owns the tables, and import it.",
-        },
-    },
-    create(context) {
-        const hfs = hfsOf(context)
-        const filename = context.filename || context.getFilename()
-        const migration = isMigrationFile(hfs, filename)
-        const sqlFile = hfs.slotOf(filename) === "be.persistence" && baseNameOf(filename).endsWith(".sql.ts")
-        const isSqlTag = (node: Node): boolean => typeOrigins(context, node).some((origin) => origin.name === "sql" && fromDatabaseCapability(hfs, origin))
-        return {
-            CallExpression(node) {
-                if (isSqlTag(node.callee) && !sqlFile) context.report({ node, messageId: "tagOutsideSqlFile" })
-                if (migration || !isQueryCall(context, node)) return
-                const first = node.arguments[0]
-                if (!first || !hasBrand(context, hfs, first, "SqlText")) context.report({ node: first ?? node, messageId: "notSqlText" })
-            },
-            TaggedTemplateExpression(node) {
-                if (isSqlTag(node.tag) && !sqlFile) context.report({ node, messageId: "tagOutsideSqlFile" })
-            },
-        }
-    },
-}
-
-/** There is one way to write a complex read, and it is SQL. */
-export const noQueryBuilder: RuleModule = {
-    meta: {
-        type: "problem",
-        docs: { description: "No `createQueryBuilder(...)` call." },
-        schema: [],
-        messages: {
-            builder:
-                "`createQueryBuilder(...)` is banned. A read is `manager.find(Entity, { where, take })`, or a `SqlText` constant in the capability's `persistence/<name>.sql.ts` run with `manager.query(...)`.",
-        },
-    },
-    create(context) {
-        return {
-            CallExpression(node) {
-                const callee = node.callee
-                const name = callee.type === "Identifier" ? callee.name : calleeProperty(node)
-                if (name === "createQueryBuilder") context.report({ node, messageId: "builder" })
-            },
-        }
-    },
-}
-
-// -- R68 -----------------------------------------------------------------------------------------------
-
 /** The one file R334 names as the composer of a lite function-call statement: `platform/database/database.client.ts`. */
 const CALL_STATEMENT_FILE = "database.client.ts"
 
@@ -114,7 +54,7 @@ const CALL_STATEMENT_BRANDS = ["DbFunctionPart", "DbParameterList"]
 
 /** Whether a file is the lite call-statement owner of the platform database capability. */
 const isCallStatementFile = (hfs: HfsView, filename: string): boolean =>
-    hfs.edition === "lite" && baseNameOf(filename) === CALL_STATEMENT_FILE && inDatabaseCapability(hfs, filename)
+    baseNameOf(filename) === CALL_STATEMENT_FILE && inDatabaseCapability(hfs, filename)
 
 /** Whether a substitution has a brand the call-statement file itself declares for the parts it checked. */
 const isCheckedCallPart = (context: Context, hfs: HfsView, node: Node): boolean =>
@@ -248,8 +188,6 @@ export const noQueryInLoop: RuleModule = {
 
 /** The rules this law contributes to the plugin. */
 export const rules = {
-    "sql-text-only": sqlTextOnly,
-    "no-query-builder": noQueryBuilder,
     "no-interpolated-sql": noInterpolatedSql,
     "query-needs-limit": queryNeedsLimit,
     "no-query-in-loop": noQueryInLoop,
@@ -257,8 +195,6 @@ export const rules = {
 
 /** Every rule of this law ships at `error`; no baseline exists. */
 export const recommended: Recommended = {
-    "starci-be/sql-text-only": "error",
-    "starci-be/no-query-builder": "error",
     "starci-be/no-interpolated-sql": "error",
     "starci-be/query-needs-limit": "error",
     "starci-be/no-query-in-loop": "error",

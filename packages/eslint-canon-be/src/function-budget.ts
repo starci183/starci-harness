@@ -53,5 +53,5 @@ export const functionLineBudget: RuleModule = {
 /** The rule this law contributes to the plugin. */
 export const rules: Rules = { "function-line-budget": functionLineBudget }
 
-/** The function budget is an error in both editions. */
+/** The function budget is an error. */
 export const recommended: Recommended = { "starci-be/function-line-budget": "error" }
