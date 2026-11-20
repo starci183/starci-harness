@@ -43,7 +43,8 @@ secret of the harness repository, the break-glass copy), are tracked in `ops/vps
 halves only. It is the recipient policy of every app's sealed members (contexts/project/stacks.md PROJECT-STACKS-5, R451): dev to the
 harness key alone, staging and production to the server key plus that server's backup and never the harness key. The dev machine
 holds the public halves only. Minting the backup key, setting or rotating a deployed value on the server, and the break-glass
-workflow belong to the follow-up `vps` lane; until a server's `backup` is filled in, R451 reports every deployed environment on it.
+workflow belong to the follow-up `vps` lane; until a server's `backup` is filled in, R451 reports every deployed environment on it. R451 warns
+while `enforce` is false (globally and per server); the owner sets a server's `enforce: true` once its environments are resealed.
 
 ## Keys, never passwords
 

@@ -5283,7 +5283,7 @@ HFS_SOPS_RECIPIENTS:
   causes_vi:
     - "App được tạo trước policy 2026-11-21: `starci app secret init` cũ sinh một identity riêng cho app."
     - "Rule staging hoặc production còn khóa harness hoặc khóa owner cũ."
-    - "`--env local` chỉ liệt kê, `--env prod` (hook push, CI, phát hành) chặn."
+    - "Mức độ là dữ liệu: khi `enforce` của ops/vps/recipients.yaml (hoặc của server) còn false, mọi phát hiện R451 chỉ là cảnh báo ở mọi env; khi true thì là lỗi, `--env local` chỉ liệt kê, `--env prod` chặn."
   nextStep_vi: "Dev: `starci app secret recipients --env dev --add <harness> --remove <khóa riêng> --execute`, rồi seal lại từng member. Staging/production: ghi rule `age: <khóa server>,<khóa backup>` và reseal member TRÊN server bằng khóa server (sops updatekeys, không ghi plaintext ra đĩa); máy dev chỉ giữ nửa public."
   owner: op-retry
   kind: check-finding
@@ -5307,7 +5307,7 @@ HFS_SOPS_RECIPIENT_UNDECLARED:
   causes_vi:
     - "Môi trường production chưa chạy `starci app secret server-key --env <env> --execute`."
     - "Khóa backup của VPS chưa được tạo (lane backup-key và break-glass GitHub)."
-    - "`--env local` chỉ liệt kê, `--env prod` chặn."
+    - "Cảnh báo khi `enforce` còn false; khi true, `--env local` chỉ liệt kê, `--env prod` chặn."
   nextStep_vi: "Tạo khóa server bằng `starci app secret server-key --env <env> --execute`, khai server và khóa backup (chỉ nửa public) trong ops/vps/recipients.yaml của harness, rồi bump @starci/hfs."
   owner: op-retry
   kind: check-finding
@@ -5319,7 +5319,7 @@ HFS_SOPS_CATCH_ALL:
   meaning_vi: "Một rule của .sops.yaml khớp member của mọi môi trường không có rule riêng, nên một môi trường mới sẽ bị seal vào recipient của rule đó (R451). Mỗi môi trường giữ một rule riêng: dev cho khóa harness, mỗi môi trường deploy cho khóa server cùng khóa backup."
   causes_vi:
     - "`starci app secret init` cũ ghi một rule cho mọi môi trường."
-    - "`--env local` chỉ liệt kê, `--env prod` chặn."
+    - "Cảnh báo khi `enforce` còn false; khi true, `--env local` chỉ liệt kê, `--env prod` chặn."
   nextStep_vi: "Xóa rule catch-all khỏi .sops.yaml sau khi mỗi môi trường đã có rule riêng."
   owner: op-retry
   kind: check-finding
@@ -5331,7 +5331,7 @@ HFS_SOPS_MEMBER_RECIPIENTS:
   meaning_vi: "Các recipient trong khối `sops.age` của một member (đọc không cần giải mã) khác bộ recipient của môi trường (R451). Member giữ recipient cũ cho tới khi được seal lại, kể cả khi rule đã sửa."
   causes_vi:
     - "Member được seal trước khi rule đổi, hoặc bằng một identity riêng của app."
-    - "`--env local` chỉ liệt kê, `--env prod` chặn."
+    - "Cảnh báo khi `enforce` còn false; khi true, `--env local` chỉ liệt kê, `--env prod` chặn."
   nextStep_vi: "Dev: `starci app secret migrate --env dev <member> --execute` với một identity mở được member. Staging/production: reseal trên server bằng khóa server (sops updatekeys); nếu giá trị đã từng được seal cho một khóa phía dev thì xoay vòng giá trị, không chỉ reseal."
   owner: op-retry
   kind: check-finding
@@ -7838,7 +7838,7 @@ HFS_BRAND_PROMPT_STALE:
   causes_vi:
     - "Vi phạm R437 (PROJECT-BRAND-2): basePrompt đã đổi (version tăng) sau khi ảnh được tạo, nên ảnh mang phong cách cũ."
     - "Tệp prompt viết tay, quên ghi basePrompt.version."
-    - "`--env local` chỉ liệt kê, `--env prod` chặn."
+    - "Cảnh báo khi `enforce` còn false; khi true, `--env local` chỉ liệt kê, `--env prod` chặn."
   nextStep_vi: "Dựng lại prompt = basePrompt.text + subject, tạo lại ảnh, ghi basePrompt.version hiện hành và để người duyệt (approvedBy) duyệt lại."
   owner: op-retry
   kind: check-finding
@@ -7850,7 +7850,7 @@ HFS_BRAND_PROMPT_INCOMPLETE:
   meaning_vi: "Một tệp statics/**/*.prompt.yaml không phải YAML, thiếu subject, hoặc prompt của nó không bắt đầu bằng basePrompt.text hiện hành."
   causes_vi:
     - "Vi phạm R437 (PROJECT-BRAND-2): prompt phải là basePrompt.text rồi đến subject, không viết từ trí nhớ."
-    - "`--env local` chỉ liệt kê, `--env prod` chặn."
+    - "Cảnh báo khi `enforce` còn false; khi true, `--env local` chỉ liệt kê, `--env prod` chặn."
   nextStep_vi: "Ghi subject (một vật, tối đa một chi tiết nhấn) và đặt prompt = basePrompt.text + subject."
   owner: op-retry
   kind: check-finding
@@ -7862,7 +7862,7 @@ HFS_BRAND_BASE_UNKNOWN:
   causes_vi:
     - "Vi phạm R437 (PROJECT-BRAND-2): mỗi prompt phải bắt đầu bằng đúng một base có tên và phiên bản, nếu không phong cách của media không còn một nguồn."
     - "Gõ sai tên base, hoặc base chưa được thêm vào media.yaml."
-    - "`--env local` chỉ liệt kê, `--env prod` chặn."
+    - "Cảnh báo khi `enforce` còn false; khi true, `--env local` chỉ liệt kê, `--env prod` chặn."
   nextStep_vi: "Sửa basePrompt.name thành một base có trong tờ thương hiệu, hoặc thêm base đó vào .starcistacks/brand/media.yaml (bases: { <tên>: { version: 1, text: ... } })."
   owner: op-retry
   kind: check-finding

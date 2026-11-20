@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Changed (contexts, ops): the recipient policy of every app's sealed members (owner, 2026-11-21, model B), with @starci/hfs R451. `ops/vps/recipients.yaml` (new, public halves only; slot `ops.vps-recipients`) names the harness recipient and each managed VPS's server and backup recipient: dev is sealed to the harness key alone, staging and production to the server key plus that server's backup, never the harness key. The accepted cost: the harness key opens every app's dev members in all of history. PROJECT-STACKS-5 states the model, the SOPS_AGE_KEY guard and that a package key lives under its own variable name (e.g. NIVO_PACKAGE_AGE_KEY), never SOPS_AGE_KEY; contexts/harness/managed-vps.md stubs the backup key and break-glass verbs owed to the follow-up `vps` lane.
+- Changed (contexts, ops): the recipient policy of every app's sealed members (owner, 2026-11-21, model B), with @starci/hfs R451. `ops/vps/recipients.yaml` (new, public halves only; slot `ops.vps-recipients`) names the harness recipient and each managed VPS's server and backup recipient: dev is sealed to the harness key alone, staging and production to the server key plus that server's backup, never the harness key. R451 warns until `enforce` (global, or per server) is flipped to true after the server-side migration. The accepted cost: the harness key opens every app's dev members in all of history. PROJECT-STACKS-5 states the model, the SOPS_AGE_KEY guard and that a package key lives under its own variable name (e.g. NIVO_PACKAGE_AGE_KEY), never SOPS_AGE_KEY; contexts/harness/managed-vps.md stubs the backup key and break-glass verbs owed to the follow-up `vps` lane.
 
 ## 1.1.0-alpha.185 - 2026-11-20
 

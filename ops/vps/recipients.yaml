@@ -11,6 +11,10 @@
 #               in a GitHub Environment secret of the harness repository (break-glass). The harness key never opens staging or production. The dev
 #               machine holds the public halves only: it seals to them and never needs, or looks for, a private VPS or backup key.
 schema: starci/sops-recipients@1
+# Whether R451 blocks. false: every R451 finding is a warning in every env (report-only), while the apps are moved to this policy. true: an
+# R451 finding is an error (still report-only in --env local). A server's own `enforce` overrides this for the environments deploying to it,
+# so a server flips to blocking when its migration completes; this global value governs dev, catch-alls and environments with no known server.
+enforce: false
 harness: age173qfq7f776syam9tpkyfej0h2jjt6rc4ha7r38ez40n5mn0lwyaqp9ejt7
 # One entry per managed VPS (the id of ops/vps/servers/<id>.yaml). `server` is the environment's deploy.remote.serverRecipient; `backup` is null
 # until the backup key of that server is minted (owed: the `vps` backup-key and break-glass lane), and every staging and production rule of an app
@@ -19,6 +23,8 @@ servers:
   sv-hk-1:
     server: age1dypvrqkgumsr0e37d5ejenzs6gnczfqwwtegusat35t5sy7ne57sfn3kd8
     backup: null
+    # Flip to true once every environment on this server is resealed to server + backup (the reseal runbook).
+    enforce: false
 # The recipient set each environment's rule and members hold, exactly: `harness`, `server` (the server whose key the environment records as
 # deploy.remote.serverRecipient) and `backup` (that server's backup). An environment not named here takes `otherwise`.
 environments:

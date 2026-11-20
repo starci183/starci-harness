@@ -142,7 +142,9 @@ image, so any digest-pinned supported reverse proxy serves.
   each environment's set.
   - **dev** holds the harness recipient alone, the public half of `SOPS_AGE_KEY` in the harness secret.env (`age173qf…`). Every app
     made from the harness shares it; there is no app-only identity, and `starci app secret init` and the scaffold mint none and write
-    nothing into the app's `.claude/secret.env`.
+    nothing into the app's `.claude/secret.env`. A freshly scaffolded app gets the dev rule only: its production has no server yet, so it
+    gets no rule and no sealed placeholders, R451 reports `HFS_SOPS_RECIPIENT_UNDECLARED` for it as a warning (it never fails `--env prod`
+    before the app has a server while `enforce` is false), and its absent production members are not each `STACKS_SEALED_MEMBER_MISSING`.
   - **staging and production** hold the key of the VPS the environment deploys to (`deploy.remote.serverRecipient`) plus that server's
     ONE backup recipient, and never the harness key. The backup is a dedicated age key per VPS whose private half exists only in a GitHub
     Environment secret of the harness repository (break-glass), not a copy of the server key: rotating the server key leaves the backup as
@@ -154,7 +156,10 @@ image, so any digest-pinned supported reverse proxy serves.
     harness secret.env. A value that was ever sealed to a dev-side key (the harness key or an app-only key) is rotated, not only resealed,
     when its environment moves to the server-only set, since git keeps the old envelope.
 
-  `starci app check` holds this (R451, report-only in `--env local`, blocking in `--env prod`): a rule that does not name exactly its
+  `starci app check` holds this (R451). Its severity is data: while `enforce` of `ops/vps/recipients.yaml` is false (and a server's own
+  `enforce` for the environments that deploy to it), every R451 finding is a warning in every env, so nothing blocks a push before the
+  owner-approved migration; the owner flips a server to `true` when its environments are resealed, and the global value when every app
+  is on the policy, and from then on a finding is an error, report-only in `--env local` and blocking in `--env prod`. It reports a rule that does not name exactly its
   environment's set, naming each stranger as the harness key, another server's key or an app-only identity (`HFS_SOPS_RECIPIENTS`); an
   environment whose set cannot be resolved yet (`HFS_SOPS_RECIPIENT_UNDECLARED`: no recorded server, an undeclared server, a backup not
   minted); and a member whose cleartext `sops.age` recipients differ from the set (`HFS_SOPS_MEMBER_RECIPIENTS`). A rewrite (`set`,

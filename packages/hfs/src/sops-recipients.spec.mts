@@ -24,8 +24,8 @@ const APP_ONLY = 'age1apponlyaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 const ENV_RULE = (env: string): string => String.raw`\.starcistacks[/\\]` + env + String.raw`[/\\]secrets[/\\][^/\\]+\.enc(?:\.yaml)?$`;
 const CATCH_ALL = String.raw`\.starcistacks[/\\][^/\\]+[/\\]secrets[/\\][^/\\]+\.enc(?:\.yaml)?$`;
 
-const policy = (backup: string | null = BACKUP): RecipientPolicy => recipientPolicyOf({
-  schema: 'starci/sops-recipients@1', harness: HARNESS, servers: { 'sv-1': { server: SERVER, backup } }, environments: { dev: ['harness'] }, otherwise: ['server', 'backup'],
+const policy = (backup: string | null = BACKUP, { enforce = true, server }: { enforce?: boolean; server?: boolean } = {}): RecipientPolicy => recipientPolicyOf({
+  schema: 'starci/sops-recipients@1', harness: HARNESS, enforce, servers: { 'sv-1': { server: SERVER, backup, ...(server === undefined ? {} : { enforce: server }) } }, environments: { dev: ['harness'] }, otherwise: ['server', 'backup'],
 });
 const stack = (deployed: Record<string, string | null>) => ({
   environments: { dev: {}, ...Object.fromEntries(Object.entries(deployed).map(([env, recorded]) => [env, recorded === null ? { deploy: {} } : { deploy: { remote: { serverRecipient: recorded } } }])) },
@@ -40,6 +40,19 @@ test('the shipped policy is the harness repository\'s ops/vps/recipients.yaml, a
   assert.match(shipped.harness, /^age173qf/u);
   assert.deepEqual(shipped.environments.dev, ['harness']);
   assert.deepEqual(shipped.otherwise, ['server', 'backup']);
+  assert.equal(shipped.enforce, false, 'R451 warns until the owner-approved migration completes');
+  assert.ok(Object.values(shipped.servers).every((server) => server.enforce !== true), 'no server blocks yet');
+});
+
+test('the enforce switch: a warning in every env while off, an error (report-only in --env local) once on, per server or globally', () => {
+  const nivo = { rules: [{ path_regex: ENV_RULE('production'), age: `${APP_ONLY},${SERVER}` }, { path_regex: CATCH_ALL, age: APP_ONLY }], stackDoc: stack({ production: SERVER }), members: [] };
+  const levels = (p: RecipientPolicy) => sopsRecipientFindings({ ...nivo, policy: p }).map((finding) => `${finding.code}:${String((finding as { env?: string }).env ?? '-')}:${String(finding.level)}`).sort();
+  assert.ok(levels(policy(BACKUP, { enforce: false })).every((line) => line.endsWith(':warning')));
+  const serverOn = levels(policy(BACKUP, { enforce: false, server: true }));
+  assert.ok(serverOn.includes('HFS_SOPS_RECIPIENTS:production:error'), 'the server switch makes its environments block');
+  assert.ok(serverOn.includes('HFS_SOPS_RECIPIENTS:dev:warning') && serverOn.includes('HFS_SOPS_CATCH_ALL:-:warning'), 'dev and the catch-all follow the global switch');
+  const findings = sopsRecipientFindings({ ...nivo, policy: policy() });
+  assert.ok(findings.every((finding) => finding.level === 'error' && (finding as { local?: boolean }).local === true));
 });
 
 test('an app on the policy passes: dev the harness key, a deployed environment its server key plus the backup, no catch-all', () => {
@@ -59,7 +72,7 @@ test('the NIVO shape: an app-only owner key on every environment and the catch-a
   const dev = findings.find((finding) => finding.code === 'HFS_SOPS_RECIPIENTS' && (finding as { env?: string }).env === 'dev');
   assert.match(String(dev?.message), /app-only identity/u);
   assert.match(String(dev?.message), /starci app secret recipients --env dev --add age1harness\S* --remove age1apponly\S* --execute/u);
-  assert.ok(findings.every((finding) => (finding as { local?: boolean }).local === true), 'every R451 finding is report-only in --env local');
+  assert.ok(findings.every((finding) => (finding as { local?: boolean }).local === true), 'once enforced, every R451 finding is report-only in --env local');
 });
 
 test('the StarCi Next shape: the harness key on staging and production is refused, the dev rule passes', () => {

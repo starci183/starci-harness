@@ -18,11 +18,13 @@ export const RECIPIENT_TOKENS = ['harness', 'server', 'backup'] as const;
 export type RecipientToken = (typeof RECIPIENT_TOKENS)[number];
 
 /** One managed server: its own recipient and its backup recipient (null until minted). */
-export interface ServerRecipients { server: string | null; backup: string | null }
+export interface ServerRecipients { server: string | null; backup: string | null; enforce: boolean | null }
 
 /** The recipient policy. */
 export interface RecipientPolicy {
   harness: string;
+  /** Whether R451 blocks (error) or only warns; a server's own `enforce` overrides it for its environments. */
+  enforce: boolean;
   servers: Record<string, ServerRecipients>;
   environments: Record<string, RecipientToken[]>;
   otherwise: RecipientToken[];
@@ -44,11 +46,12 @@ export function recipientPolicyOf(doc: unknown): RecipientPolicy {
   const servers: Record<string, ServerRecipients> = {};
   for (const [id, entry] of Object.entries(plain(record.servers) ? record.servers as Record<string, unknown> : {})) {
     const server = plain(entry) ? entry as Record<string, unknown> : {};
-    servers[id] = { server: recipientOrNull(server.server), backup: recipientOrNull(server.backup) };
+    servers[id] = { server: recipientOrNull(server.server), backup: recipientOrNull(server.backup), enforce: typeof server.enforce === 'boolean' ? server.enforce : null };
   }
   const environments: Record<string, RecipientToken[]> = {};
   for (const [env, list] of Object.entries(plain(record.environments) ? record.environments as Record<string, unknown> : {})) environments[env] = tokens(list, `environments.${env}`);
-  return { harness, servers, environments, otherwise: tokens(record.otherwise, 'otherwise') };
+  if (record.enforce !== undefined && typeof record.enforce !== 'boolean') throw new Error('the recipient policy enforce must be true or false');
+  return { harness, enforce: record.enforce === true, servers, environments, otherwise: tokens(record.otherwise, 'otherwise') };
 }
 
 let cached: RecipientPolicy | undefined;
@@ -77,6 +80,9 @@ export function recipientKind(policy: RecipientPolicy, recipient: string): Recip
   }
   return { kind: 'app-only' };
 }
+
+/** Whether R451 blocks for an environment deploying to `server` (null: dev, a catch-all, or no known server): the server's own switch, else the global one. */
+export const enforcedFor = (policy: RecipientPolicy, server: string | null): boolean => (server === null ? null : policy.servers[server]?.enforce ?? null) ?? policy.enforce;
 
 /** The set an environment must hold: the recipients resolved so far, and why any token could not be resolved (public facts only). */
 export interface ExpectedRecipients {

@@ -9,13 +9,14 @@
 //   HFS_SOPS_CATCH_ALL             a rule reaches the members of an environment the app does not declare (a catch-all), so a new environment would be
 //                                  sealed to whatever it names; each environment keeps a rule of its own.
 //   HFS_SOPS_MEMBER_RECIPIENTS     a sealed member is not sealed to exactly its environment's set (a member keeps its recipients until it is sealed again).
-// Each is report-only in `--env local` and blocks in `--env prod` (localOnly in modules/kernel/failure-codes.yaml).
+// Severity is data: while the policy's `enforce` (or the server's own) is false, every finding is a warning in every env, so no push is stopped
+// before the owner-approved migration; once true, a finding is an error, report-only in `--env local` (localOnly in modules/kernel/failure-codes.yaml).
 import { isPlainObject as plain } from '../../../engine/plain-object.mjs';
 import { parseYaml } from '../../../engine/yaml.mjs';
 import { envelopeOf } from '../secret-document.mjs';
 import {
   RECIPIENT_POLICY_OWNER, UNDECLARED_PROBE_ENV, creationRulesOf, expectedRecipients, firstRuleFor, isHarnessEnvironment, memberProbe,
-  recipientKind, recipientPolicy, ruleRecipients, serverRecipientOf,
+  enforcedFor, recipientKind, recipientPolicy, ruleRecipients, serverRecipientOf,
   type CreationRule, type ExpectedRecipients, type RecipientPolicy,
 } from '../../lib/sops-recipients.mjs';
 import { found, readText } from './read.mjs';
@@ -29,7 +30,6 @@ export const SOPS_MEMBER_RECIPIENTS = 'HFS_SOPS_MEMBER_RECIPIENTS';
 const SOPS_FILE = '.sops.yaml';
 const STACK_FILE = '.starcistacks/application-stacks.yaml';
 const MEMBER = /^\.starcistacks\/([a-z0-9][a-z0-9-]*)\/secrets\/[^/]+\.enc(?:\.yaml)?$/u;
-const local = { local: true };
 const short = (recipient: string): string => `${recipient.slice(0, 12)}…`;
 
 /** What each recipient that does not belong in `env`'s set is, in words. */
@@ -72,14 +72,16 @@ export function sopsRecipientFindings({ rules, stackDoc, members, policy }: {
   policy: RecipientPolicy;
 }): Finding[] {
   const findings: Finding[] = [];
+  // The severity of a finding about the environments deploying to `server` (null: dev, a catch-all, no known server).
+  const judged = (finding: Finding, server: string | null): Finding => (enforcedFor(policy, server) ? { ...finding, local: true } : { ...finding, level: 'warning' });
   const environments = environmentsOf(stackDoc, members.map((member) => member.file));
   const expectedByEnv = new Map(environments.map((env) => [env, expectedRecipients(policy, env, serverRecipientOf(stackDoc, env))]));
   for (const env of environments) {
     const expected = expectedByEnv.get(env) as ExpectedRecipients;
-    if (expected.unresolved.length) findings.push(found(SOPS_RECIPIENT_UNDECLARED, STACK_FILE, `${env} cannot be sealed to its recipient set (${expected.tokens.join(' + ')}): ${expected.unresolved.join('; ')} (R451, PROJECT-STACKS-5)`, { ...local, env }));
+    if (expected.unresolved.length) findings.push(judged(found(SOPS_RECIPIENT_UNDECLARED, STACK_FILE, `${env} cannot be sealed to its recipient set (${expected.tokens.join(' + ')}): ${expected.unresolved.join('; ')} (R451, PROJECT-STACKS-5)`, { env }), expected.server));
     const at = firstRuleFor(rules, memberProbe(env));
     if (at < 0) {
-      findings.push(found(SOPS_RECIPIENTS, SOPS_FILE, `no rule of .sops.yaml reaches the members of ${env}: ${fixOf(policy, expected, [])} (R451)`, { ...local, env }));
+      findings.push(judged(found(SOPS_RECIPIENTS, SOPS_FILE, `no rule of .sops.yaml reaches the members of ${env}: ${fixOf(policy, expected, [])} (R451)`, { env }), expected.server));
       continue;
     }
     const actual = ruleRecipients(rules[at] as CreationRule);
@@ -87,12 +89,12 @@ export function sopsRecipientFindings({ rules, stackDoc, members, policy }: {
     const missing = expected.recipients.filter((recipient) => !actual.includes(recipient));
     if (off.length === 0 && missing.length === 0) continue;
     const what = [...missing.map((recipient) => `it lacks ${short(recipient)} (${recipientKind(policy, recipient).kind})`), ...off].join('; ');
-    findings.push(found(SOPS_RECIPIENTS, SOPS_FILE, `the rule sops uses for ${env} (creation_rules[${String(at)}]) names ${actual.map(short).join(', ') || 'no recipient'}: ${what}. Fix: ${fixOf(policy, expected, actual)} (R451, PROJECT-STACKS-5)`, { ...local, env }));
+    findings.push(judged(found(SOPS_RECIPIENTS, SOPS_FILE, `the rule sops uses for ${env} (creation_rules[${String(at)}]) names ${actual.map(short).join(', ') || 'no recipient'}: ${what}. Fix: ${fixOf(policy, expected, actual)} (R451, PROJECT-STACKS-5)`, { env }), expected.server));
   }
   const catchAll = firstRuleFor(rules, memberProbe(UNDECLARED_PROBE_ENV));
   if (catchAll >= 0) {
     const names = ruleRecipients(rules[catchAll] as CreationRule);
-    findings.push(found(SOPS_CATCH_ALL, SOPS_FILE, `creation_rules[${String(catchAll)}] reaches the members of any environment without a rule of its own (sealed to ${names.map(short).join(', ') || 'no recipient'}), so a new environment would be sealed to it: remove it and keep one rule per environment, dev to the harness recipient and every deployed environment to its server key plus the server's backup (R451, PROJECT-STACKS-5)`, local));
+    findings.push(judged(found(SOPS_CATCH_ALL, SOPS_FILE, `creation_rules[${String(catchAll)}] reaches the members of any environment without a rule of its own (sealed to ${names.map(short).join(', ') || 'no recipient'}), so a new environment would be sealed to it: remove it and keep one rule per environment, dev to the harness recipient and every deployed environment to its server key plus the server's backup (R451, PROJECT-STACKS-5)`), null));
   }
   for (const member of members) {
     const env = MEMBER.exec(member.file)?.[1];
@@ -104,7 +106,7 @@ export function sopsRecipientFindings({ rules, stackDoc, members, policy }: {
     const missing = expected.unresolved.length ? [] : expected.recipients.filter((recipient) => !recipients.includes(recipient));
     if (off.length === 0 && missing.length === 0) continue;
     const what = [...missing.map((recipient) => `it lacks ${short(recipient)} (${recipientKind(policy, recipient).kind})`), ...off].join('; ');
-    findings.push(found(SOPS_MEMBER_RECIPIENTS, member.file, `${member.file} is sealed to ${recipients.map(short).join(', ') || 'no age recipient'}: ${what}. Fix: ${fixOf(policy, expected, recipients)} (R451)`, { ...local, env }));
+    findings.push(judged(found(SOPS_MEMBER_RECIPIENTS, member.file, `${member.file} is sealed to ${recipients.map(short).join(', ') || 'no age recipient'}: ${what}. Fix: ${fixOf(policy, expected, recipients)} (R451)`, { env }), expected.server));
   }
   return findings;
 }
