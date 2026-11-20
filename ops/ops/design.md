@@ -4,6 +4,7 @@ summary: draw or revise the one design board of an app (every screen in every na
 floor: hard
 hostTools: [git, node]
 supersedes: [draw, image]
+masterPlan: [ui]
 context:
   budget: 40000
   base:

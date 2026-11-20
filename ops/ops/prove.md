@@ -4,6 +4,7 @@ summary: prove one slice by the suite that judges it (e2e on a fresh database fi
 floor: medium
 hostTools: [git, node, docker]
 supersedes: [test, verify]
+masterPlan: [testing]
 context:
   budget: 30000
   base:

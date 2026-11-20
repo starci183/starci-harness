@@ -4,6 +4,7 @@ summary: one read-only review of a change, the diff against its contracts and Wo
 floor: medium
 hostTools: [git, browser]
 supersedes: [review, audit]
+masterPlan: [business, tech, patterns, ui, data, testing, security, observability, domains]
 independentOf: [code, design, prove]
 context:
   budget: 40000

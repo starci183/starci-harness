@@ -45,8 +45,8 @@ questions answered in the same place, and a rule as data can be handed to the ta
 
 Every worker brief (`cli/src/harness/brief.ts`) carries a "Master Plan" section with the layers its op names in the op file's
 front matter, `masterPlan: [layer...]` ([ops/ops/README.md](../../ops/ops/README.md)): `code` reads patterns, data, ui and
-domains; `draw`, `image` and `audit` read ui; `test` and `verify` read testing; `deliver` reads tech, security and
-observability; `docs` reads business and domains; `review` reads all nine. The mapping is data of the op files, never code.
+domains; `design`, `draw`, `image` and `audit` read ui; `prove`, `test` and `verify` read testing; `deliver` reads tech, security and
+observability; `docs` reads business and domains; `inspect` and `review` read all nine. The mapping is data of the op files, never code.
 The brief reads the plan from the task's checkout, then from the Work root its `hfs.json` names (`work.root`, for a side
 repository), then from the workflow's checkout; a project without one gets a line that says so, and a malformed plan refuses
 the brief `MASTER_PLAN_INVALID`.
