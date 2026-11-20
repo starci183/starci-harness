@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.1.0-alpha.183 - 2026-11-20
+## 1.1.0-alpha.184 - 2026-11-20
 
 - Added: the Master Plan as data (contexts/project/master-plan-record.md PROJECT-MASTER-PLAN-1 to 3). `cli/src/harness/master-plan.ts` reads `.starciwork/master-plan.yaml` (`starci/master-plan@1`, refusing MASTER_PLAN_INVALID); the op front matter takes `masterPlan: [layer...]` and every worker brief carries a "Master Plan" section with its op's layers (code: patterns, data, ui, domains; design, draw, image, audit: ui; prove, test, verify: testing; deliver: tech, security, observability; docs: business, domains; inspect, review: all nine) and the stop-and-ask procedure, also in the worker procedure of ops/ops/README.md. `master-plan` is a Work record family (`recordOfPath`, `recordFileOfId`) with a lane of one `docs` decide step in ops/lanes.yaml.
 - Added: `starci app master-plan` lists each rule of the plan with what holds it: enforced, partial (a machine part and review), planned, review, unenforced, or unknown (exit 1), against the app's installed hfs rule catalog and the check presets.
@@ -10,6 +10,10 @@
 - Changed (contexts): PROJECT-STACKS-18 in contexts/project/stacks.md, the order of a rename window and the three verbs; cli/README.md lists them.
 - Added: machine-wide slots (`ops/slots.yaml`, `cli/src/harness/slots.ts`) and the verbs a lane brief calls (contexts/authority/lanes.md): `starci slot take|release|list|run` (kinds npm, gate, shoot and stack, the lock files the lane scripts already use; a slot is reclaimed only on evidence that its holder is gone: a dead pid, a reused pid, or a boot after it was taken, logged in `_slots.log`; age is never evidence), `starci lane gate` (merge `origin/dev`, install under an npm slot when the merge needs it, codegen, then under a gate slot `app check --env prod` or with `--push` `app push`, with `--ready` registering the pushed sha) and `starci gallery shoot` (a shoot slot, the web server started and killed by its pid around the app's capture command). The batch lander takes its npm and gate slots through the same module, and the lane verbs fall back to `slots.root` for the lanes folder.
 - Changed (ops): the new ops `design`, `prove` and `inspect` carry the Master Plan layers of the labels they supersede (`design` ui, `prove` testing, `inspect` all nine).
+
+## 1.1.0-alpha.183 - 2026-11-20
+
+- Changed: the CLI requires @starci/hfs@6.14.1, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
 
 ## 1.1.0-alpha.182 - 2026-11-20
 
