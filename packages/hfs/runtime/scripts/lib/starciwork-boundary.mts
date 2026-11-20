@@ -21,7 +21,7 @@ const REST = '**';
 type Pattern = readonly (string | RegExp)[];
 
 const PRODUCT_PATTERNS: readonly Pattern[] = Object.freeze([
-  ['.gitignore'], ['.gitattributes'], ['workspace.yaml'],
+  ['.gitignore'], ['.gitattributes'], ['workspace.yaml'], ['master-plan.yaml'],
   ['brand', RECORD_FILE], ['brand', 'assets', REST],
   ['concepts', 'index.yaml'], ['concepts', ANY, 'index.yaml'],
   ['shell', RECORD_FILE],
@@ -64,11 +64,11 @@ export function isProductPath(rel: unknown): boolean {
   return PRODUCT_PATTERNS.some((p) => matchFile(p, parts));
 }
 
-/** The app boundary: its optional Work tree holds .gitignore, workspace.yaml, brand/** and the concept records only. */
+/** The app boundary: its optional Work tree holds .gitignore, workspace.yaml, master-plan.yaml, brand/** and the concept records only. */
 export function isLiteProductPath(rel: unknown, { dir = false }: { dir?: boolean } = {}): boolean {
   const parts = segs(rel);
   if (parts[0] === 'concepts') return dir ? parts.length <= 2 : CONCEPT_PATTERNS.some((p) => matchFile(p, parts));
-  return (!dir && parts.length === 1 && ['.gitignore', 'workspace.yaml'].includes(parts[0] as string))
+  return (!dir && parts.length === 1 && ['.gitignore', 'workspace.yaml', 'master-plan.yaml'].includes(parts[0] as string))
     || (parts[0] === 'brand' && (parts.length > 1 || dir));
 }
 

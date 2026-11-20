@@ -4,7 +4,7 @@
 # factories, the architecture machine and templates read this file; none hardcodes a path. Field meanings and the
 # ruleParams keys are explained in hfs/README.md; the reason for a slot's shape is its pattern topic.
 schema: starci/hfs-slots@3
-version: 3.41.0
+version: 3.42.0
 presenceValues:
   - required
   - optional
@@ -1429,6 +1429,7 @@ slots:
       - .gitignore
     allows:
       - workspace.yaml
+      - master-plan.yaml
       - brand/**
       - concepts/README.md
       - concepts/<topic>.md
@@ -1437,6 +1438,8 @@ slots:
     rules:
       - HFS_AGENT_DATA_TRACKED
       - HFS_IDENTITY_CUSTODY
+      - HFS_MASTER_PLAN_INVALID
+      - HFS_MASTER_PLAN_MISSING
   - id: app.starcistacks
     profiles:
       - app

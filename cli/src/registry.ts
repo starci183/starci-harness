@@ -15,6 +15,7 @@ import { releasePublishVerb } from "./core/release/publish.js"
 import { releasePushVerb } from "./core/release/push.js"
 import { versionVerb } from "./core/version.js"
 import { appInfoVerb } from "./core/app/info.js"
+import { appMasterPlanVerb } from "./core/app/master-plan.js"
 import { appAddVerb } from "./core/app/add.js"
 import { appCheckVerb } from "./core/app/check.js"
 import { appCiVerb } from "./core/app/ci.js"
@@ -154,6 +155,7 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     taskResultVerb,
     taskCancelVerb,
     appInfoVerb,
+    appMasterPlanVerb,
     appAddVerb,
     appCheckVerb,
     appCiVerb,

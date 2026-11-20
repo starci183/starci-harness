@@ -8,7 +8,7 @@ the whole file and reads a section when it needs it: `starci contexts anchor <an
 `starci contexts search "<question>" --scope project` ranks them.
 
 - Work: the product context of a project · `contexts/project/work.md#work-the-product-context-of-a-project` · 1 KB — `.starciwork/` at the app root holds the product's Work: the concepts the owner ruled, the brand, and what a run of the product resolves.
-  - The tree · `contexts/project/work.md#the-tree` · 1 KB
+  - The tree · `contexts/project/work.md#the-tree` · 2 KB
   - PROJECT-WORK-4 An integration is designed from the provider's current documentation · `PROJECT-WORK-4` · 1 KB — Before an integration (BE-INFRA-3) is designed, its author reads the provider's current official documentation for the intended use: the authentication, account, scope and ...
   - PROJECT-WORK-5 Each writer writes only its part · `PROJECT-WORK-5` · 1 KB
   - PROJECT-WORK-7 A product's concepts hold its persistent shared context and are read before its code · `PROJECT-WORK-7` · 4 KB — A concept is one topic of what stays true across the whole source of a product: the words it defines, the shapes of its data, how its things are named, the business rules it ...

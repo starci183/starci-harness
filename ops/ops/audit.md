@@ -3,6 +3,7 @@ schema: starci/op@1
 summary: walk the implemented screens against their drawn direction and the grammar with screenshots, read-only, and report the drift as findings
 floor: medium
 hostTools: [browser]
+masterPlan: [ui]
 context:
   budget: 40000
   base:

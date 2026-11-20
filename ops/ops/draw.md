@@ -3,6 +3,7 @@ schema: starci/op@1
 summary: draw the direction of the screen the contract describes in the grammar and the brand (HTML and tokens)
 floor: hard
 hostTools: [git, node]
+masterPlan: [ui]
 perRecord: true
 context:
   budget: 40000

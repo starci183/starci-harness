@@ -3,6 +3,7 @@ schema: starci/op@1
 summary: publish, deploy or migrate one target and probe it live
 floor: hard
 hostTools: [git, node, docker]
+masterPlan: [tech, security, observability]
 context:
   base:
     - harness:contexts/project/stacks-sections.md

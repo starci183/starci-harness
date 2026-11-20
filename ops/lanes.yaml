@@ -1,5 +1,5 @@
 # The standard build flow: the lane every Work record walks, chosen by its family. The Work records with a lane are the
-# brand (`.starciwork/brand`) and each environment resource (`.starciwork/_resources/environments/<name>`); a task over no such
+# brand (`.starciwork/brand`), the Master Plan (`.starciwork/master-plan.yaml`) and each environment resource (`.starciwork/_resources/environments/<name>`); a task over no such
 # record walks no lane. A model fills the content of one step; it never decides which step comes next, which label repairs
 # what (routes.yaml) or how many rounds. The Kernel plans dynamically: a step its evidence already satisfies is skipped.
 # cli/src/harness/lanes.ts reads this file; `workflow define`, `amend` and every replan refuse FLOW_INCOMPLETE while a step of
@@ -19,6 +19,10 @@ schema: starci/lanes@1
 lanes:
   - id: brand
     match: [{family: brand}]
+    steps:
+      - {id: decide, label: docs, satisfiedWhen: [record-exists]}
+  - id: master-plan
+    match: [{family: master-plan}]
     steps:
       - {id: decide, label: docs, satisfiedWhen: [record-exists]}
   - id: operations

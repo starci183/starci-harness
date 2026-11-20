@@ -8,6 +8,7 @@ import { CITES_KEY, GRADES_KEY, citesBriefSection } from "./cite.js"
 import { contextPath, resolveChecks, resolveContract } from "./contract.js"
 import type { ResolvedOutput } from "./contract.js"
 import { openExistingLedger, projectDir } from "./ledger.js"
+import { masterPlanSection, readMasterPlan } from "./master-plan.js"
 import { waitersOfPlanKey } from "./needs.js"
 import { OP_FILES, OPS_README, workerProcedure } from "./ops.js"
 import type { Ops, PrimitiveCheck } from "./ops.js"
@@ -208,6 +209,7 @@ export const renderBrief = (task: TaskRow, ops: Ops, root: string, files: BriefF
         ...(answers === undefined ? [] : ["### Answers", answers]),
         `### The ${contract.label} op`,
         procedure,
+        ...(op.masterPlan === undefined ? [] : ["### Master Plan", masterPlanSection(readMasterPlan(checkout, root), op.masterPlan, contract.label)]),
         "### Input",
         [contract.input.summary, contract.input.details, inputs.length === 0 ? undefined : bullets(inputs, "none")].filter((part) => part !== undefined && part !== "").join("\n\n"),
         "### Write only under",

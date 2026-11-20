@@ -3,6 +3,7 @@ schema: starci/op@1
 summary: documentation and product content
 floor: easy
 hostTools: [git]
+masterPlan: [business, domains]
 context:
   base:
     - harness:contexts/project/work.md

@@ -3,6 +3,7 @@ schema: starci/op@1
 summary: run one suite of a lane (e2e, security, perf, an integration's live proof) and report it as json; the harness reruns it to judge the report
 floor: medium
 hostTools: [git, node, docker]
+masterPlan: [testing]
 context:
   base:
     - harness:contexts/project/lint.md
