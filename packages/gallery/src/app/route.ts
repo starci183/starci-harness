@@ -11,19 +11,22 @@ export type Pane = "design" | "shot" | "compare" | "explain"
 export interface Route {
     readonly screen: string | null
     readonly flows: boolean
+    /** The design board (PROJECT-GALLERY-9): every section of the app at 1440 and 390. */
+    readonly board: boolean
     readonly width: Width
     readonly view: View
 }
 
-/** `#/<area>/<screen>?w=1440&v=side` or `#/flows`: the address is the state, so a screen can be linked and shared. */
+/** `#/<area>/<screen>?w=1440&v=side`, `#/flows` or `#/board`: the address is the state, so a screen can be linked and shared. */
 export function parseHash(hash: string): Route {
     const [path = "", query = ""] = hash.replace(/^#\/?/u, "").split("?")
     const params = new URLSearchParams(query)
     const width = params.get("w")
     const view = params.get("v")
     return {
-        screen: path === "" || path === "flows" ? null : decodeURIComponent(path),
+        screen: path === "" || path === "flows" || path === "board" ? null : decodeURIComponent(path),
         flows: path === "flows",
+        board: path === "board",
         width: SHOT_WIDTHS.find((one) => one === width) ?? "1440",
         view: VIEWS.find((one) => one === view) ?? "side",
     }
@@ -31,6 +34,7 @@ export function parseHash(hash: string): Route {
 
 export const hashOf = (route: Route): string => {
     const params = new URLSearchParams({ w: route.width, v: route.view })
+    if (route.board) return "#/board"
     return route.flows ? "#/flows" : `#/${route.screen ?? ""}?${params.toString()}`
 }
 

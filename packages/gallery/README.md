@@ -19,6 +19,7 @@ export default defineGallery({ app: "starci-next", locale: "vi", allowedHosts: [
 | `devUrl` | the base URL of the dev app: a screen with a static route gets "Mở trên dev" |
 | `pages` | the pages folder, default `pages` |
 | `canvas` | the canvas folder, default `../.starcistacks/canvas` |
+| `board` | the design board folder, default `board` |
 
 `defineGallery` also sets the dev server the stack expects (the IPv4 loopback, the PNGs not watched) and Tailwind for the Grammar's stylesheet. The page
 `index.html` of the app loads the entry `/@starci-gallery/main.js`.
@@ -33,7 +34,16 @@ export default defineGallery({ app: "starci-next", locale: "vi", allowedHosts: [
 - The explanation: the screen's `screen.yaml` (sections, the options considered and the UI audit table; or `explain.md` for a screen not migrated yet) (or the note of its canvas fragment when it has no folder yet), the overview as rows, each region with
   its `Vì sao`, `Luật` and `Grammar` lines, the flags `CHƯA RÕ` and `SAI`.
 
+## The design board
+
+An app that keeps `gallery/board/board.yaml` ([PROJECT-GALLERY-9](../../contexts/project/gallery.md)) gets the view "Board" (`#/board`): every section of the record, area by area, with its route, the
+`screen.yaml` it becomes, its "cần API" and planned marks, and each named state as two frames, 1440 and 390, side by side at one scale. A section is drawn by its module
+`gallery/board/<area>/<screen>.tsx`, whose default export takes `{ state }` and composes the Grammar; each frame is its own page (`/__board/frame.html?s=&state=&w=`), mounted in
+the Grammar root with the Grammar's stylesheet and then the app's token stylesheets (`tokens` of the record, app-root relative), and it reports its content height so the board
+fits it. The config compiles the modules with the automatic JSX runtime and lets the dev server read the app root (the tokens). The board is a dev-server view: `vite build`
+leaves it out.
+
 ## API
 
-`@starci/gallery` exports the pure side: `parseExplain`, `linkList`, `flowList`, `noteToMarkdown`, `buildModel`, `statusOf`, `splitState`, `devPath`,
+`@starci/gallery` exports the pure side: `parseExplain`, `linkList`, `flowList`, `noteToMarkdown`, `buildModel`, `statusOf`, `splitState`, `devPath`, `readBoard`, `boardFrameUrl`,
 `LABELS`. `npm test` typechecks, lints and runs the specs of the loader (tree, statuses, counts and states of a fixture gallery with its `design.json`).

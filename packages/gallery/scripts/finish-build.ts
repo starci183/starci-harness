@@ -1,7 +1,7 @@
-// The step after tsc: the stylesheet the app entry imports sits beside its compiled module, and a declaration names `.js`, never the `.ts` a source keeps.
+// The step after tsc: the stylesheets the app entry and the board frame import sit beside its compiled module, and a declaration names `.js`, never the `.ts` a source keeps.
 import fs from "node:fs"
 
-fs.copyFileSync("src/app/app.css", "dist/app/app.css")
+for (const sheet of ["app.css", "board-frame.css"]) fs.copyFileSync(`src/app/${sheet}`, `dist/app/${sheet}`)
 const specifier = /((?:from |import\()['"]\.\.?\/[^'"]+)\.ts(['"])/g
 for (const name of fs.readdirSync("dist", { recursive: true, encoding: "utf8" })) {
     if (!name.endsWith(".d.ts")) continue

@@ -114,6 +114,17 @@ export interface Labels {
     readonly openScreen: string
     readonly clear: string
     readonly back: string
+    readonly boardView: string
+    readonly boardRevision: string
+    readonly boardApproved: string
+    readonly boardUnapproved: string
+    readonly boardPlanned: string
+    readonly boardNeedsApi: string
+    readonly boardNoModule: string
+    readonly boardOpenScreen: string
+    readonly boardEmpty: string
+    readonly boardSkipped: string
+    readonly boardState: string
 }
 
 export const LABELS = Object.freeze({
@@ -231,6 +242,17 @@ export const LABELS = Object.freeze({
         openScreen: "Open {to}",
         clear: "Clear",
         back: "Back to screens",
+        boardView: "Board",
+        boardRevision: "revision {n}",
+        boardApproved: "approved {at}",
+        boardUnapproved: "waiting for the owner",
+        boardPlanned: "not coded yet",
+        boardNeedsApi: "needs API: {op}",
+        boardNoModule: "no module {file}",
+        boardOpenScreen: "Open the screen",
+        boardEmpty: "The board has no section yet. Add sections to gallery/board/board.yaml.",
+        boardSkipped: "skipped: {list}",
+        boardState: "State {state}",
     },
     vi: {
         title: "Thư viện ảnh {app}",
@@ -346,6 +368,17 @@ export const LABELS = Object.freeze({
         openScreen: "Mở {to}",
         clear: "Xóa",
         back: "Về danh sách màn",
+        boardView: "Board",
+        boardRevision: "bản {n}",
+        boardApproved: "chủ duyệt {at}",
+        boardUnapproved: "chờ chủ duyệt",
+        boardPlanned: "chưa code",
+        boardNeedsApi: "cần API: {op}",
+        boardNoModule: "thiếu tệp vẽ {file}",
+        boardOpenScreen: "Mở màn hình",
+        boardEmpty: "Board chưa có mục nào. Thêm mục vào gallery/board/board.yaml.",
+        boardSkipped: "bỏ qua: {list}",
+        boardState: "Trạng thái {state}",
     },
 } satisfies Record<string, Labels>)
 
