@@ -2,6 +2,8 @@
 
 ## 1.1.0-alpha.187 - 2026-11-21
 
+- Changed: the CLI requires @starci/hfs@6.17.1, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
+
 - Added (`lane land`, `lane status`): the batch lander touches its lock every 30 s as a heartbeat, and `lane status` names the lander alive, DEAD (its pid is gone: rerun `lane land` to reclaim), NO HEARTBEAT for N minutes, or not running, instead of printing the raw lock (`harness/land-queue.ts`, `land-liveness.test.ts`).
 - Changed (ops): `ops/vps/recipients.yaml` records the sv-hk-1 backup recipient and the nivoos-lite CI recipient (public halves only).
 
