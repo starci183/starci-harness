@@ -1,7 +1,7 @@
 // sops-recipients.mts - the recipient policy of every app's sealed members (owner, 2026-11-21, model B; contexts/project/stacks.md PROJECT-STACKS-5):
 // which public age recipients each environment's `.sops.yaml` rule and members hold, exactly. The policy is data, knowledge/hfs/sops-recipients.yaml
 // (the shipped copy of the harness repository's ops/vps/recipients.yaml): `harness` (the public half of the harness SOPS_AGE_KEY), the managed
-// servers with their server and backup recipients, the apps with their own CI recipient (owner 2026-11-21: one CI key per project, its private half
+// servers with their server and backup recipients, the apps with their own CI recipient (one CI key per project, its private half
 // only in that repository's Actions secret), and per environment the tokens of its set (`harness`, `server`, `backup`, `ci`; `otherwise` for an
 // environment it does not name). `ci` is the judged app's own CI recipient when the policy declares one, and nothing when it does not (an app without
 // a CI key deploys from the owner machine or the server). Public halves only: nothing here reads, derives or needs a private key.

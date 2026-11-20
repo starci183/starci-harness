@@ -27,7 +27,7 @@ servers:
     backup: age1dxx0qpp3xsanw7y39pmzny6yyvp2ml6ym67pk82zlzvee3jpq9gsp2ny4t
     # Flip to true once every environment on this server is resealed to server + backup (+ the app's ci) (the reseal runbook).
     enforce: false
-# One entry per app (its hfs.json `project`) that deploys from CI: `ci` is the public half of that project's OWN CI age key (owner 2026-11-21: one key
+# One entry per app (its hfs.json `project`) that deploys from CI: `ci` is the public half of that project's OWN CI age key (one key
 # per project). Its private half lives only in that repository's Actions secret SOPS_AGE_KEY; it is never shared by two apps, and it is never the
 # harness, a server or a backup key (the policy refuses either). An app without an entry deploys from the owner machine or the server.
 apps:
