@@ -11,7 +11,15 @@ import { shellQuote } from "./ssh.js"
  */
 
 /** A secret a step reads from its environment, resolved by the verb at run time. */
-export type StepSecret = "OPS_PUBLIC_KEY" | "DEPLOY_PUBLIC_KEY" | "TUNNEL_TOKEN" | "CLOUDFLARE_API_TOKEN"
+export type StepSecret =
+    | "OPS_PUBLIC_KEY"
+    | "DEPLOY_PUBLIC_KEY"
+    | "TUNNEL_TOKEN"
+    | "CLOUDFLARE_API_TOKEN"
+    | "MONITOR_TELEGRAM_TOKEN"
+    | "MONITOR_GRAFANA_PASSWORD"
+    | "MONITOR_GLITCHTIP_DB_PASSWORD"
+    | "MONITOR_GLITCHTIP_SECRET_KEY"
 
 /** One step of a plan. */
 export interface PlanStep {

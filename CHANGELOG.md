@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased (train 182; the integration lane sets the version)
+
+- Added: `starci vps monitor up <id>` (and `up --local` for the local swarm), the shared monitoring stack `starci-monitor` of a managed VPS. Every component is one entry of ops/vps/monitor/components.yaml, with its own toggle, image digest, limits and reservations, update and rollback config, and retention. On by default: Prometheus, Alertmanager (to the owner Telegram channel), Grafana, Loki, Alloy, node-exporter, cAdvisor and a read-only docker-socket-proxy. Optional: blackbox, Tempo, Pyroscope, Consul, Uptime Kuma and GlitchTip with its own Postgres and Redis. A server file turns components on or off (`monitor.components`), as do `--with` and `--without`. The plan prints the memory budget of what runs, and the Grafana admin and GlitchTip secrets are generated once and sealed in the server file (contexts/project/monitoring.md).
+- Added (pins): prometheus, alertmanager, grafana, loki, alloy, node-exporter, cadvisor, docker-socket-proxy, blackbox-exporter, tempo, pyroscope, consul, uptime-kuma, glitchtip and glitchtip-redis in contexts/stack/pins.yaml, every one a resolved digest.
+
 ## 1.1.0-alpha.181 - 2026-11-20
 
 - Changed: the CLI requires @starci/hfs@6.13.60, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).

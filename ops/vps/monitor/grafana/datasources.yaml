@@ -1,0 +1,11 @@
+# Written by `starci vps monitor up` from ops/vps/monitor/grafana/datasources.yaml: the Prometheus datasource; each component adds its own (components.yaml datasources) when it runs.
+apiVersion: 1
+datasources:
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+    jsonData: {timeInterval: 30s}

@@ -1,0 +1,29 @@
+
+// Added by `starci vps monitor up` when Tempo runs (components.yaml tempo.alloy): Alloy receives OTLP on the monitoring network
+// (4317 grpc, 4318 http) from the services of an environment with `monitoring.traces`, and forwards the traces to Tempo.
+otelcol.receiver.otlp "apps" {
+  grpc {
+    endpoint = "0.0.0.0:4317"
+  }
+  http {
+    endpoint = "0.0.0.0:4318"
+  }
+  output {
+    traces = [otelcol.processor.batch.apps.input]
+  }
+}
+
+otelcol.processor.batch "apps" {
+  output {
+    traces = [otelcol.exporter.otlp.tempo.input]
+  }
+}
+
+otelcol.exporter.otlp "tempo" {
+  client {
+    endpoint = "tempo:4317"
+    tls {
+      insecure = true
+    }
+  }
+}

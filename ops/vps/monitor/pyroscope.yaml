@@ -1,0 +1,15 @@
+# Written by `starci vps monitor up` from ops/vps/monitor/pyroscope.yaml: Pyroscope as one process, its blocks on its volume, the
+# compactor deleting blocks older than the retention (components.yaml pyroscope.retention.hours).
+server:
+  http_listen_port: 4040
+  log_level: warn
+storage:
+  backend: filesystem
+  filesystem:
+    dir: /data/storage
+pyroscopedb:
+  data_path: /data/db
+limits:
+  compactor_blocks_retention_period: {{retention.hours}}h
+analytics:
+  reporting_enabled: false

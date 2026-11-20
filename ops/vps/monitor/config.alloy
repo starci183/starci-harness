@@ -1,0 +1,43 @@
+// Written by `starci vps monitor up` from ops/vps/monitor/config.alloy: Alloy keeps the logs of every Swarm container of this server that
+// carries `starci.monitor.logs=true` (an app environment's monitoring opt-in renders it) or belongs to a harness stack (`starci-*`), labelled
+// by stack and service, and pushes them to Loki. It reads the Docker API only through the read-only socket proxy.
+discovery.docker "swarm" {
+  host             = "tcp://socket-proxy:2375"
+  refresh_interval = "30s"
+}
+
+discovery.relabel "swarm" {
+  targets = discovery.docker.swarm.targets
+
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_swarm_service_name"]
+    regex         = ".+"
+    action        = "keep"
+  }
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_stack_namespace", "__meta_docker_container_label_starci_monitor_logs"]
+    regex         = "starci-.*;.*|.*;true"
+    action        = "keep"
+  }
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_stack_namespace"]
+    target_label  = "stack"
+  }
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_swarm_service_name"]
+    target_label  = "service"
+  }
+}
+
+loki.source.docker "swarm" {
+  host          = "tcp://socket-proxy:2375"
+  targets       = discovery.relabel.swarm.output
+  relabel_rules = discovery.relabel.swarm.rules
+  forward_to    = [loki.write.local.receiver]
+}
+
+loki.write "local" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

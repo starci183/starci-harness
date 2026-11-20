@@ -1,0 +1,12 @@
+# Written by `starci vps monitor up` from ops/vps/monitor/alerts.yml: the alerts every server runs; each component adds its own group (components.yaml alerts) when it runs. They hold for every
+# opted-in app alike (no app's own words): a scraped target down, the host short of memory, disk or CPU, a service near its memory limit or
+# restarting in a loop. Alertmanager sends them to the owner's Telegram channel.
+groups:
+  - name: targets
+    rules:
+      - alert: TargetDown
+        expr: up == 0
+        for: 5m
+        labels: {severity: critical}
+        annotations:
+          summary: "{{ $labels.job }} target {{ $labels.instance }} {{ $labels.service }} is down"
