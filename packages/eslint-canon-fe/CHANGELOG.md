@@ -1,5 +1,9 @@
 # Changelog
 
+## 9.21.2 - 2026-11-20
+
+- Changed: cut with @starci/hfs 6.15.0; requires @starci/hfs ~6.15.0. The specs follow the template renames of hfs 6.15.0 (no rule change).
+
 ## 9.21.1 - 2026-11-20
 
 - Changed: one app edition (R212, owner ruling 2026-11-20): the HFS view carries no `edition`. Requires @starci/hfs ~6.14.0.

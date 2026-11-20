@@ -809,7 +809,7 @@ slots:
     tests: none
     rules: [HFS_APP_GALLERY_LINKS, HFS_APP_GALLERY_ROUTE_MISSING]
   - id: app.gallery-board
-    since: 6.14.1
+    since: 6.15.0
     profiles: [app]
     # The design board of the app (contexts/project/gallery.md PROJECT-GALLERY-9): board.yaml records every screen with its states, route and "cần API" marks;
     # one module per section, composed only of Grammar components, which the gallery renders at 1440 and 390. Written by the design op, never rendered by sync.

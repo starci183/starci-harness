@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 6.15.0 - 2026-11-20
 
 - Changed (templates, R212): the last lite folders take the plain names. be/skeleton-lite and fe/skeleton-lite are merged into be/skeleton and fe/skeleton (the lite file wins where both existed; the full-only be files, fe/skeleton/apps/app, apps/landing and packages/__project__-* that no scaffold rendered are gone), and be/patterns/{jobs,queues}/platform-lite into platform (the TypeORM persistence.* templates and their entries in jobs.yaml and queues.yaml are gone). The scaffold output of a new app is byte for byte the same. The template snapshot 5.8.3 took the same merge, with its manifest paths.
 - Changed (names): rules/lite-proof-lane.mts, lite-secrets.mts and stacks-lite-backing.mts are rules/proof-lane.mts, secret-custody.mts and stacks-backing.mts (rule ids proof-lane, secret-custody, stacks-backing); scaffold/add-*-lite.mts, lite-exports.mts and queues-cli-lite.mts are add-cli, add-database, add-webhook-inbox, add-queue, package-exports and queues-cli. The pattern key `liteAdapter` is `adapter`; the unused `liteFiles` key is gone (a topic has one files tree). scaffold-gate.mts: `refuseUntemplatedAdapter` and `AdapterRefusal` replace the lite-named pair.
@@ -16,6 +16,7 @@
 - Added (`stack standby` and `stack resume --env E [--renamed-from] [--timeout s] [--execute]`, stack/standby.mts): writers then stores to 0 (a global service held by a placement constraint), then `traefik.enable=false`; the services are recorded first in the attempt journal (kinds `standby` and `resume`, outcome `done`) under the deploy lock; resume starts stores, waits for healthy, starts writers, waits for healthy, restores the routes. `--renamed-from` acts on the old stack's releases base, lock and journal. STACK_STANDBY_ALREADY, STACK_STANDBY_NO_SERVICES, STACK_STANDBY_DOCKER, STACK_STANDBY_RENAMED_UNDECLARED, STACK_RESUME_NO_STANDBY.
 - Changed (`stack prepare` and its dry run): an environment with `renamedFrom` is checked on both sides (old and new volumes, the old stack's services and replicas, the old releases base and its last accepted release).
 - Added (failure-codes.yaml): the STACK_ADOPT_*, STACK_VOLUME_*, STACK_STANDBY_*, STACK_RESUME_NO_STANDBY and STACK_ROLLBACK_ADOPTED_DATA refusals.
+- Changed (`knowledge/hfs/canon-pins.yaml`): the `@starci/hfs` self-pin is 6.15.0; @starci/eslint-canon-be 3.28.1, @starci/eslint-canon-fe 9.21.2, the Grammar family 0.51.1 (ranges `~3.28.1`, `~9.21.2`, `~0.51.1`) and @starci/gallery 0.1.13. The slot `app.gallery-board` is since 6.15.0.
 
 ## 6.14.1 - 2026-11-20
 

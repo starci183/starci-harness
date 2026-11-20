@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.51.1 - 2026-11-20
+
+- Changed: the Grammar family patch cut with @starci/hfs 6.15.0 (no lint rule of eslint-grammar-core changed); no component change.
+
 ## 0.51.0 - 2026-11-20
 
 - Changed: the Grammar family minor cut (a lint rule of eslint-grammar-core changed: RELEASE_GRAMMAR_MINOR_REQUIRED) with @starci/hfs 6.14.0 (one app edition, R212); no component change.
