@@ -54,7 +54,7 @@ import type { ReleaseStore } from './release-store.mjs';
 import { urgentDeploy } from './urgent-floor.mjs';
 import type { DeployData, DeployOutcome, FirstStartStepResult, FloorDeps } from './urgent-floor.mjs';
 import { verifyStack } from './verify.mjs';
-import { adoptedOf, adoptPreflight, adoptRollback, adoptStep, recordAdoption } from './adopt.mjs';
+import { adoptedOf, adoptPreflight, adoptRollback, adoptStep, recordAdoption, refusePendingUpgrade } from './adopt.mjs';
 import type { AdoptedFrom } from './adopt.mjs';
 
 /** What a deploy takes (the CLI's flags, see cli.mts OPTIONS). */
@@ -383,8 +383,9 @@ async function prepareRelease(ctx: StackContext, config: DeployConfig, options: 
 async function deployExecute(ctx: StackContext, config: DeployConfig, options: DeployOptions, d: DeployDeps, out: string, seams: { run: Runner; store: ReleaseStore; rec: Recorder }): Promise<DeployOutcome> {
   const { store, rec, run } = seams;
   // An adopted first release proves everything before anything changes (adopt.mts); the release record and the journal name what it adopted.
-  const adopted = options.adopt === true ? await rec.phase('adopt-check', async () => adoptPreflight(ctx, config, run, await store.current())) : null;
+  const adopted = options.adopt === true ? await rec.phase('adopt-check', async () => adoptPreflight(ctx, config, run, await store.current(), options.images ?? {})) : null;
   if (adopted) rec.note({ adopted: { ...adopted } });
+  if (!adopted && config.dbUpgrade) await rec.phase('db-upgrade-check', () => refusePendingUpgrade(ctx, config));
   const prepared = await prepareRelease(ctx, config, options, d, out, { ...seams, adopted });
   const { releaseId, previous } = prepared;
   const lines = [...prepared.lines];
@@ -462,7 +463,7 @@ async function deployExecute(ctx: StackContext, config: DeployConfig, options: D
       data.migrations = { ...(data.migrations as object), contractApplied: contract.applied };
     }
     if (contract && !contract.ok) return { ok: false, lines: [...lines, `release ${releaseId} is accepted and serving; its contract migration is red: the owner decides`], data: { ...data, accepted: true, contractFailed: true } };
-    const adoptLines = adopted ? [`adopted the data of ${adopted.stack}: its last release ${adopted.release} is the rollback target (stack rollback --env ${config.env} --data-acknowledged --execute puts ${config.stack} in standby and resumes ${adopted.stack})`] : [];
+    const adoptLines = adopted?.kind === 'upgrade' ? [`the database runs on the upgraded volume ${Object.keys(adopted.volumes).join(', ')}; the old volume ${Object.values(adopted.volumes).join(', ')} stays untouched: stack rollback --env ${config.env} --data-acknowledged --execute redeploys release ${adopted.release} on it with the old image`] : adopted ? [`adopted the data of ${adopted.stack}: its last release ${adopted.release} is the rollback target (stack rollback --env ${config.env} --data-acknowledged --execute puts ${config.stack} in standby and resumes ${adopted.stack})`] : [];
     return { ok: true, lines: [...lines, ...adoptLines, `deployed release ${releaseId}`], data: adopted ? { ...data, adopted } : data };
   }
   lines.push(`deploy failed at ${failed}`);
@@ -494,7 +495,7 @@ const triggerOf = (options: Pick<DeployOptions, 'urgent' | 'ciRun'>): AttemptMet
 export async function deployRelease(ctx: StackContext, config: DeployConfig, options: DeployOptions = {}, deps: Partial<DeployDeps> = {}): Promise<ActionResult> {
   const d: DeployDeps = { ...DEFAULT_DEPS, ...deps };
   if (!hasSourceSha(options)) throw refusal('STACK_DEPLOY_SOURCE_SHA', '--sha is required (the git commit being deployed)');
-  if (options.adopt === true && !config.renamedFrom) throw refusal('STACK_ADOPT_UNDECLARED', `--adopt takes over the data of the stack this one was renamed from: declare environments.${config.env}.deploy.renamedFrom; nothing was changed`);
+  if (options.adopt === true && !config.renamedFrom && !config.dbUpgrade) throw refusal('STACK_ADOPT_UNDECLARED', `--adopt takes over the data of the stack this one was renamed from (deploy.renamedFrom) or of a database upgrade (deploy.dbUpgrade): declare one in environments.${config.env}.deploy; nothing was changed`);
   if (options.adopt === true && options.urgent === true) throw refusal('STACK_USAGE', '--adopt is the planned first release of a renamed stack; it does not run under the urgent floor');
   const made = options.out ? null : fs.mkdtempSync(path.join(os.tmpdir(), 'stack-release-'));
   const out = (options.out ?? made) as string; // made exists whenever options.out is absent
@@ -517,7 +518,8 @@ export async function deployRelease(ctx: StackContext, config: DeployConfig, opt
         : `dry run: release ${releaseId} would be provisioned, stored, pre-pulled, deployed, converged,${post} verified, accepted${databasePlan}`;
       const from = config.renamedFrom;
       const adoptPlan = options.adopt === true && from ? [`dry run: --adopt takes over the data of ${from.stack} (volumes ${Object.entries(from.volumes).map(([next, old]) => `${old} -> ${next}`).join(', ')}): it proves the new volumes exist and are filled, ${from.stack} is in standby and has an accepted release, ${database?.target === 'stack' ? `starts ${database.service} alone on the copied volume, proves its migration history and runs the plain database path there, ` : ''}then deploys; a failure puts ${config.stack} in standby and resumes ${from.stack}`] : [];
-      return { ok: true, lines: [...(rendered.lines ?? []), plan, ...adoptPlan], data: { releaseId, steps: [{ step: 'render', ok: true }], executed: false } };
+      const upgradePlan = options.adopt === true && !from && config.dbUpgrade ? [`dry run: --adopt takes over the database upgrade ${Object.entries(config.dbUpgrade.volumes).map(([next, old]) => `${old} -> ${next}`).join(', ')}: it proves the stack has an accepted release, its database runs nothing and the newest db-upgrade of its journal restored into the new volume with the db image this deploy runs, starts the database alone there, proves its migration history and runs the plain database path, then deploys; a failure redeploys the previous release on the old volume`] : [];
+      return { ok: true, lines: [...(rendered.lines ?? []), plan, ...adoptPlan, ...upgradePlan], data: { releaseId, steps: [{ step: 'render', ok: true }], executed: false } };
     };
     if (options.execute !== true) {
       if (options.urgent !== true) return await dryRun();
@@ -574,6 +576,10 @@ export async function rollbackRelease(ctx: StackContext, config: DeployConfig, o
       if (adopted) return await rollbackAdopted(ctx, config, options, store, run, { current, adopted });
       throw refusal('STACK_ROLLBACK_NO_TARGET', 'no previous accepted release is recorded; name one with --release');
     }
+    // A rollback across a database upgrade (deploy.dbUpgrade) goes back to the old volume: what was written on the upgraded one stays there.
+    const current = await store.current();
+    const upgraded = current ? adoptedOf((await store.read(current)).release) : null;
+    if (upgraded?.kind === 'upgrade' && upgraded.release === target && options.dataAcknowledged !== true) throw refusal('STACK_ROLLBACK_UPGRADED_DATA', `release ${current} runs the database on the upgraded volume ${Object.keys(upgraded.volumes).join(', ')}; release ${target} runs the old image on the old volume ${Object.values(upgraded.volumes).join(', ')}, which does not see what was written since the upgrade: pass --data-acknowledged after the owner said yes; nothing was changed`);
     // A manual rollback to a release older than an applied contract migration is refused unless the owner acknowledges the data effect.
     const notice = enforceContractGuard(contractFinding(await store.journals(), target), options.dataAcknowledged === true);
     if (options.execute !== true) return { ok: true, lines: [...notice, `dry run: would redeploy release ${target}`], data: { release: target, executed: false } };

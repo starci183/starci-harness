@@ -911,6 +911,7 @@ $defs:
       notify: {$ref: '#/$defs/deployNotify'}
       registry: {$ref: '#/$defs/deployRegistry'}
       renamedFrom: {$ref: '#/$defs/deployRenamedFrom'}
+      dbUpgrade: {$ref: '#/$defs/deployDbUpgrade'}
       ingress:
         description: The shared host ingress (stack-ingress-config.mjs is the authority for the fields; starci app check R294 judges them).
         type: object
@@ -1176,6 +1177,22 @@ $defs:
         description: New volume -> the old volume its data is copied from.
         type: object
         minProperties: 1
+        propertyNames: {$ref: '#/$defs/deployVolumeName'}
+        additionalProperties: {$ref: '#/$defs/deployVolumeName'}
+  deployDbUpgrade:
+    description: >-
+      The database volume of a Postgres major upgrade that keeps the stack name (contexts/project/stacks.md PROJECT-STACKS-19). `stack db-upgrade`
+      restores the old volume into the new one with the target major, and `stack deploy --adopt` then starts the database alone on it. The normaliser
+      checks that the one new volume is one of `volumes` and differs from the old one. Absent, the environment renders and deploys exactly as before.
+    type: object
+    additionalProperties: false
+    required: [volumes]
+    properties:
+      volumes:
+        description: The new database volume -> the old volume it is restored from (exactly one pair).
+        type: object
+        minProperties: 1
+        maxProperties: 1
         propertyNames: {$ref: '#/$defs/deployVolumeName'}
         additionalProperties: {$ref: '#/$defs/deployVolumeName'}
   deployBackupVolume:

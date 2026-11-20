@@ -7848,3 +7848,328 @@ STACK_STORAGE_IMAGE_SHAPE:
   nextStep_vi: "Chạy starci app sync --execute để hội tụ service về hình dạng chuẩn."
   owner: op-retry
   kind: check-finding
+
+STACK_DB_UPGRADE_UNDECLARED:
+  title: "No declared volume pair for the database upgrade"
+  title_vi: "Chưa khai báo cặp volume cho nâng cấp cơ sở dữ liệu"
+  meaning_vi: "db-upgrade không bao giờ đoán tên volume: volume mới là volume dữ liệu mà stack khai báo cho service cơ sở dữ liệu, volume cũ là volume nó được ánh xạ từ (deploy.dbUpgrade.volumes hoặc deploy.renamedFrom.volumes; môi trường dev: local.dbUpgrade.hold)."
+  causes_vi:
+    - "Môi trường chưa khai báo deploy.dbUpgrade (hoặc local.dbUpgrade.hold ở dev)."
+    - "Ánh xạ nêu một volume khác với volume mà stack source gắn cho thư mục dữ liệu."
+  nextStep_vi: "Thêm đoạn YAML mà thông báo in ra, đặt đúng tên volume cũ đang giữ dữ liệu, rồi chạy lại."
+  owner: owner
+  kind: verb-refusal
+
+STACK_DB_UPGRADE_NO_DATA_VOLUME:
+  title: "The database service mounts no named data volume"
+  title_vi: "Service cơ sở dữ liệu không gắn volume dữ liệu có tên"
+  meaning_vi: "Stack source (hoặc compose dev) không gắn volume có tên nào tại /var/lib/postgresql/data cho service cơ sở dữ liệu."
+  causes_vi:
+    - "Service dùng bind mount hoặc đường dẫn PGDATA khác."
+  nextStep_vi: "Gắn thư mục dữ liệu bằng một volume có tên được khai báo, rồi chạy lại."
+  owner: owner
+  kind: verb-refusal
+
+STACK_DB_UPGRADE_NO_DATABASE:
+  title: "There is no stack database to upgrade"
+  title_vi: "Không có cơ sở dữ liệu của stack để nâng cấp"
+  meaning_vi: "db-upgrade chỉ nâng cấp cơ sở dữ liệu mà stack tự chạy (database.target: stack, hoặc local.database ở dev)."
+  causes_vi:
+    - "Ứng dụng không khai báo khối database, hoặc cơ sở dữ liệu là external."
+  nextStep_vi: "Cơ sở dữ liệu external được nhà cung cấp nâng cấp; khai báo khối database nếu stack tự chạy nó."
+  owner: owner
+  kind: verb-refusal
+
+STACK_DB_UPGRADE_NO_SERVICE:
+  title: "The database service the old volume served is not found"
+  title_vi: "Không tìm thấy service cơ sở dữ liệu từng dùng volume cũ"
+  meaning_vi: "db-upgrade đọc superuser, tên cơ sở dữ liệu và tệp mật khẩu từ service đã chạy trên volume cũ (Swarm) hoặc từ docker compose config (dev)."
+  causes_vi:
+    - "Service chưa từng được triển khai, đã bị xoá, hoặc compose config lỗi."
+  nextStep_vi: "Kiểm tra stack status hoặc compose config, sửa nguyên nhân, rồi chạy lại."
+  owner: owner
+  kind: verb-refusal
+
+STACK_DB_UPGRADE_IMAGE:
+  title: "The target db image is missing, unpinned or answers no version"
+  title_vi: "Image cơ sở dữ liệu đích thiếu, chưa ghim digest hoặc không trả về phiên bản"
+  meaning_vi: "Swarm cần --image <ref@sha256> là image db mà lần deploy sau chạy; dev build image từ compose. Image phải chạy được postgres --version."
+  causes_vi:
+    - "Thiếu --image hoặc không ghim digest."
+    - "Không pull hoặc build được image."
+  nextStep_vi: "Truyền đúng image db đã build của bản phát hành, ghim digest, rồi chạy lại."
+  owner: owner
+  kind: verb-refusal
+
+STACK_DB_UPGRADE_VOLUME_MISSING:
+  title: "The old database volume does not exist"
+  title_vi: "Volume cơ sở dữ liệu cũ không tồn tại"
+  meaning_vi: "Volume cũ được khai báo trong ánh xạ không có trên manager (hoặc máy dev)."
+  causes_vi:
+    - "Tên volume cũ sai, hoặc chạy trên nhầm máy."
+  nextStep_vi: "Sửa tên volume cũ trong khai báo cho đúng volume đang giữ dữ liệu."
+  owner: owner
+  kind: verb-refusal
+
+STACK_DB_UPGRADE_IN_USE:
+  title: "Something running mounts the old or the new volume"
+  title_vi: "Có tiến trình đang chạy gắn volume cũ hoặc mới"
+  meaning_vi: "Nâng cấp chỉ chạy khi không container đang chạy và không service nào có task gắn hai volume."
+  causes_vi:
+    - "Stack chưa standby (Swarm) hoặc chưa stack down (dev)."
+  nextStep_vi: "Chạy stack standby --env <env> --execute (dev: stack down --env <env> --execute), rồi chạy lại."
+  owner: owner
+  kind: verb-refusal
+
+STACK_DB_UPGRADE_TARGET_NOT_EMPTY:
+  title: "The new or hold volume is not empty"
+  title_vi: "Volume mới hoặc volume giữ bản cũ không rỗng"
+  meaning_vi: "Bản khôi phục chỉ ghi vào volume rỗng; volume hold ở dev chỉ nhận bản cũ khi rỗng."
+  causes_vi:
+    - "Một lần nâng cấp trước đã điền volume."
+    - "Volume bị dùng cho việc khác."
+  nextStep_vi: "Xác nhận không còn cần dữ liệu trong volume đó, làm rỗng hoặc xoá nó, rồi chạy lại."
+  owner: owner
+  kind: verb-refusal
+
+STACK_DB_UPGRADE_NOT_A_CLUSTER:
+  title: "The old volume holds no PostgreSQL data directory"
+  title_vi: "Volume cũ không chứa thư mục dữ liệu PostgreSQL"
+  meaning_vi: "Không đọc được PG_VERSION trong volume cũ (gắn chỉ đọc), hoặc PGDATA nằm ngoài điểm gắn."
+  causes_vi:
+    - "Ánh xạ trỏ nhầm volume."
+    - "PGDATA là thư mục con khác."
+  nextStep_vi: "Sửa ánh xạ hoặc PGDATA của service cho đúng, rồi chạy lại."
+  owner: owner
+  kind: verb-refusal
+
+STACK_DB_UPGRADE_ALREADY:
+  title: "The old volume is already the target major"
+  title_vi: "Volume cũ đã ở major đích"
+  meaning_vi: "PG_VERSION của volume cũ bằng major của image đích: không có gì để nâng cấp."
+  causes_vi:
+    - "Đã nâng cấp trước đó."
+  nextStep_vi: "Không cần nâng cấp; triển khai như thường."
+  owner: owner
+  kind: verb-refusal
+
+STACK_DB_UPGRADE_DOWNGRADE:
+  title: "The old volume is newer than the target image"
+  title_vi: "Volume cũ mới hơn image đích"
+  meaning_vi: "Không bao giờ hạ major của PostgreSQL."
+  causes_vi:
+    - "Image đích cũ hơn dữ liệu."
+  nextStep_vi: "Dùng image db đúng major của dữ liệu hoặc mới hơn."
+  owner: owner
+  kind: verb-refusal
+
+STACK_DB_UPGRADE_OLD_IMAGE:
+  title: "--old-image runs another major"
+  title_vi: "--old-image chạy major khác"
+  meaning_vi: "Image cũ được chỉ định phải chạy đúng major ghi trong PG_VERSION của volume cũ."
+  causes_vi:
+    - "Chỉ định nhầm image."
+  nextStep_vi: "Truyền image (ghim digest) đúng major cũ, hoặc bỏ --old-image để dùng image ghim chính thức."
+  owner: owner
+  kind: verb-refusal
+
+STACK_DB_UPGRADE_NO_OLD_IMAGE:
+  title: "No image of the old major is known"
+  title_vi: "Không có image nào của major cũ"
+  meaning_vi: "Image service đã chạy không còn hoặc đã là major mới, và harness không ghim image chính thức của major đó."
+  causes_vi:
+    - "Major cũ hơn những major harness ghim."
+  nextStep_vi: "Truyền --old-image <ref@sha256> của major cũ."
+  owner: owner
+  kind: verb-refusal
+
+STACK_DB_UPGRADE_NO_PASSWORD:
+  title: "The database service reads no sealed superuser password"
+  title_vi: "Service cơ sở dữ liệu không đọc mật khẩu superuser niêm phong"
+  meaning_vi: "Nâng cấp khởi tạo volume mới bằng mật khẩu niêm phong mà deploy cấp cho service qua POSTGRES_PASSWORD_FILE=/run/secrets/<KEY>."
+  causes_vi:
+    - "Service dùng POSTGRES_PASSWORD dạng giá trị thô."
+    - "Không có grant niêm phong nào cấp khoá đó cho service."
+  nextStep_vi: "Cấp mật khẩu superuser bằng secrets.grants của môi trường, triển khai, rồi chạy lại."
+  owner: owner
+  kind: verb-refusal
+
+STACK_DB_UPGRADE_PASSWORD_DRIFT:
+  title: "Custody and the database disagree on a password"
+  title_vi: "Kho niêm phong và cơ sở dữ liệu không khớp mật khẩu"
+  meaning_vi: "Phiên bản secret đang chạy khác giá trị niêm phong, hoặc mật khẩu niêm phong không đăng nhập được trên cụm đã khôi phục (hash là hash cũ)."
+  causes_vi:
+    - "Mật khẩu đã bị đổi trực tiếp trong cơ sở dữ liệu."
+    - "Giá trị niêm phong đã bị thay mà chưa triển khai."
+  nextStep_vi: "Chủ sở hữu thống nhất lại mật khẩu (kho niêm phong và cơ sở dữ liệu cũ), rồi chạy lại; volume cũ không bị đổi."
+  owner: owner
+  kind: verb-refusal
+
+STACK_DB_UPGRADE_VOLUME:
+  title: "A throwaway or new volume could not be made or filled"
+  title_vi: "Không tạo hoặc điền được volume tạm hay volume mới"
+  meaning_vi: "Docker không tạo được volume, không chuẩn bị được volume scratch hoặc không chép được bản làm việc."
+  causes_vi:
+    - "Hết dung lượng đĩa."
+    - "Docker daemon lỗi."
+  nextStep_vi: "Giải phóng dung lượng (cần khoảng ba lần kích thước dữ liệu), rồi chạy lại."
+  owner: owner
+  kind: verb-refusal
+
+STACK_DB_UPGRADE_NEW_START:
+  title: "The target image did not initialise the new volume"
+  title_vi: "Image đích không khởi tạo được volume mới"
+  meaning_vi: "Server major mới không khởi tạo xong hoặc không nhận kết nối trong thời hạn."
+  causes_vi:
+    - "POSTGRES_INITDB_ARGS sai."
+    - "Image không phải image postgres chính thức hoặc dẫn xuất của nó."
+  nextStep_vi: "Xem dòng log được in, sửa image hoặc biến môi trường, rồi chạy lại."
+  owner: owner
+  kind: verb-refusal
+
+STACK_DB_UPGRADE_OLD_START:
+  title: "The old-major server did not start on the work copy"
+  title_vi: "Server major cũ không khởi động trên bản làm việc"
+  meaning_vi: "Image major cũ không khởi động trên bản sao của volume cũ (volume cũ không bị đổi)."
+  causes_vi:
+    - "Thiếu thư viện trong shared_preload_libraries."
+    - "Image khác họ (alpine hoặc Debian) với dữ liệu."
+  nextStep_vi: "Chỉ định image mà cơ sở dữ liệu đã chạy bằng --old-image, rồi chạy lại."
+  owner: owner
+  kind: verb-refusal
+
+STACK_DB_UPGRADE_INVENTORY:
+  title: "A cluster could not be inventoried"
+  title_vi: "Không kiểm kê được một cụm"
+  meaning_vi: "Truy vấn đếm cơ sở dữ liệu, bảng, chuỗi tuần tự hoặc vai trò thất bại."
+  causes_vi:
+    - "Một bảng không đọc được."
+    - "Quyền superuser bị thu hồi."
+  nextStep_vi: "Xem dòng lỗi psql được in, sửa nguyên nhân, rồi chạy lại."
+  owner: owner
+  kind: verb-refusal
+
+STACK_DB_UPGRADE_DUMP_FAILED:
+  title: "The dump of the old cluster failed"
+  title_vi: "Bản dump của cụm cũ thất bại"
+  meaning_vi: "pg_dumpall --roles-only hoặc pg_dump của một cơ sở dữ liệu thất bại."
+  causes_vi:
+    - "Image cũ thiếu thư viện extension (ví dụ vector)."
+    - "Đĩa đầy."
+  nextStep_vi: "Chỉ định image chứa extension đó bằng --old-image, rồi chạy lại."
+  owner: owner
+  kind: verb-refusal
+
+STACK_DB_UPGRADE_EXTENSION_MISSING:
+  title: "The target image lacks an extension the old cluster uses"
+  title_vi: "Image đích thiếu extension mà cụm cũ dùng"
+  meaning_vi: "Mọi extension của cụm cũ phải có trong pg_available_extensions của image đích trước khi khôi phục."
+  causes_vi:
+    - "Image db mới chưa thêm extension đó."
+  nextStep_vi: "Thêm extension vào image db (Dockerfile được quản lý), build lại, rồi chạy lại."
+  owner: owner
+  kind: verb-refusal
+
+STACK_DB_UPGRADE_RESTORE_FAILED:
+  title: "The restore into the new cluster failed"
+  title_vi: "Khôi phục vào cụm mới thất bại"
+  meaning_vi: "Khôi phục vai trò hoặc pg_restore --create --exit-on-error của một cơ sở dữ liệu thất bại; volume mới được làm rỗng lại."
+  causes_vi:
+    - "Locale của cơ sở dữ liệu cũ không có trong image mới."
+    - "Một đối tượng phụ thuộc thứ không còn ở major mới."
+  nextStep_vi: "Xem dòng lỗi được in, sửa image hoặc dữ liệu cũ, rồi chạy lại; volume cũ không bị đổi."
+  owner: owner
+  kind: verb-refusal
+
+STACK_DB_UPGRADE_MISMATCH:
+  title: "The restored cluster differs from the old one"
+  title_vi: "Cụm đã khôi phục khác cụm cũ"
+  meaning_vi: "Danh sách cơ sở dữ liệu, số dòng từng bảng, vị trí chuỗi tuần tự, số đối tượng, vai trò hoặc hash mật khẩu khác nhau; volume mới được làm rỗng lại."
+  causes_vi:
+    - "Dữ liệu của bảng thành viên extension không được dump."
+    - "Lỗi trong quá trình khôi phục."
+  nextStep_vi: "Không chuyển sang volume mới; đọc các dòng MISMATCH, sửa nguyên nhân, rồi chạy lại. Volume cũ vẫn nguyên."
+  owner: owner
+  kind: verb-refusal
+
+STACK_DB_UPGRADE_SOURCE_CHANGED:
+  title: "The old volume changed during the upgrade"
+  title_vi: "Volume cũ thay đổi trong lúc nâng cấp"
+  meaning_vi: "Số tệp, số byte, digest nội dung hoặc siêu dữ liệu của volume cũ khác trước và sau."
+  causes_vi:
+    - "Có tiến trình khác ghi vào volume cũ."
+  nextStep_vi: "Không chuyển; tìm và dừng tiến trình đó, rồi nâng cấp lại."
+  owner: owner
+  kind: verb-refusal
+
+STACK_DB_UPGRADE_SWAP_FAILED:
+  title: "The dev volume swap failed"
+  title_vi: "Hoán đổi volume dev thất bại"
+  meaning_vi: "Bản giữ (hold) không bằng volume cũ, hoặc bản khôi phục không vào được volume cơ sở dữ liệu; thông báo nói bản cũ đã được chép lại hay chưa."
+  causes_vi:
+    - "Hết dung lượng đĩa."
+  nextStep_vi: "Nếu thông báo yêu cầu, chép volume hold vào lại volume cơ sở dữ liệu; rồi chạy lại."
+  owner: owner
+  kind: verb-refusal
+
+STACK_DB_UPGRADE_LOCKED:
+  title: "Another db-upgrade of this dev environment runs"
+  title_vi: "Một db-upgrade khác của môi trường dev đang chạy"
+  meaning_vi: "Tệp khoá trong thư mục trạng thái của môi trường đang tồn tại."
+  causes_vi:
+    - "Một lần chạy khác đang diễn ra, hoặc lần trước bị ngắt."
+  nextStep_vi: "Đợi lần chạy kia; chỉ xoá tệp khoá khi chắc chắn không có db-upgrade nào chạy."
+  owner: owner
+  kind: verb-refusal
+
+STACK_ADOPT_UPGRADE_NO_RELEASE:
+  title: "The stack has no accepted release to upgrade from"
+  title_vi: "Stack chưa có bản phát hành được chấp nhận để nâng cấp"
+  meaning_vi: "Nhận dữ liệu nâng cấp chỉ dành cho stack đã chạy trước đó; bản phát hành cuối là đích rollback."
+  causes_vi:
+    - "Stack chưa từng được triển khai thành công."
+  nextStep_vi: "Một stack mới dùng first start, không dùng deploy.dbUpgrade."
+  owner: owner
+  kind: verb-refusal
+
+STACK_ADOPT_UPGRADE_UNPROVEN:
+  title: "No finished db-upgrade into the declared volume"
+  title_vi: "Chưa có db-upgrade hoàn tất vào volume đã khai báo"
+  meaning_vi: "Journal của stack không có lần db-upgrade mới nhất kết thúc done từ volume cũ vào volume mới đã khai báo."
+  causes_vi:
+    - "Chưa chạy db-upgrade --execute."
+    - "Lần db-upgrade mới nhất thất bại."
+  nextStep_vi: "Chạy stack db-upgrade --env <env> --image <db image> --execute, rồi deploy --adopt."
+  owner: owner
+  kind: verb-refusal
+
+STACK_ADOPT_UPGRADE_IMAGE:
+  title: "The deploy runs another db image than the upgrade proved"
+  title_vi: "Deploy chạy image db khác image mà lần nâng cấp đã chứng minh"
+  meaning_vi: "Bản khôi phục được chứng minh bằng một image db; deploy --adopt phải chạy đúng image đó cho service db."
+  causes_vi:
+    - "Image db đã được build lại sau lần nâng cấp."
+  nextStep_vi: "Deploy đúng image đã chứng minh, hoặc nâng cấp lại với image mới."
+  owner: owner
+  kind: verb-refusal
+
+STACK_DEPLOY_DB_UPGRADE_PENDING:
+  title: "A plain deploy would start an empty database on the upgraded volume"
+  title_vi: "Deploy thường sẽ khởi động cơ sở dữ liệu rỗng trên volume nâng cấp"
+  meaning_vi: "Môi trường khai báo deploy.dbUpgrade nhưng service db còn gắn volume cũ; deploy thường sẽ phục vụ một cơ sở dữ liệu rỗng."
+  causes_vi:
+    - "Quên chạy db-upgrade trước khi deploy."
+    - "Deploy tự động chạy sau khi khai báo được merge."
+  nextStep_vi: "Chạy stack standby, stack db-upgrade --execute, rồi stack deploy --adopt."
+  owner: owner
+  kind: verb-refusal
+
+STACK_ROLLBACK_UPGRADED_DATA:
+  title: "A rollback across a database upgrade needs the acknowledgement"
+  title_vi: "Rollback qua một lần nâng cấp cơ sở dữ liệu cần chủ sở hữu xác nhận"
+  meaning_vi: "Bản phát hành trước chạy image cũ trên volume cũ, không thấy những gì đã ghi trên volume nâng cấp."
+  causes_vi:
+    - "Rollback sau khi đã nâng cấp major."
+  nextStep_vi: "Chủ sở hữu đồng ý thì truyền --data-acknowledged."
+  owner: owner
+  kind: verb-refusal

@@ -83,9 +83,15 @@ export interface LocalBlock {
   /** The dev tunnel (`local.tunnel`); absent when the environment publishes nothing. */
   tunnel?: LocalTunnel;
   resources: { diskGb: number; ramMb: number };
+  /**
+   * `local.dbUpgrade` (PROJECT-STACKS-19), exactly one of: `from`, the old docker volume `stack db-upgrade` restores into the database volume the compose file
+   * declares (then empty); or `hold`, the volume that keeps the old major's data directory, byte for byte, when the declared volume is upgraded in place.
+   * Absent unless declared.
+   */
+  dbUpgrade?: { from: string } | { hold: string };
 }
 
-const TOP = ['project', 'basePort', 'ports', 'services', 'database', 'databases', 'composeEnv', 'grants', 'dirs', 'custody', 'setup', 'seed', 'processes', 'ready', 'verify', 'origins', 'tunnel', 'resources'];
+const TOP = ['project', 'basePort', 'ports', 'services', 'database', 'databases', 'composeEnv', 'grants', 'dirs', 'custody', 'setup', 'seed', 'processes', 'ready', 'verify', 'origins', 'tunnel', 'resources', 'dbUpgrade'];
 const COMMAND = ['name', 'argv', 'cwd', 'heavy', 'skipIfExists', 'env', 'files'];
 const SEED = [...COMMAND, 'after', 'mode'];
 const PROCESS = [...COMMAND, 'port', 'health'];
@@ -428,6 +434,14 @@ export function normalizeLocal(raw: unknown, { project, env }: { project: string
       if (!Number.isInteger(value[key]) || (value[key] as number) < floor) c.problem(`resources.${key}`, `must be a whole number from ${floor}`);
       else block.resources[key] = value[key] as number;
     }
+  }
+  if (entry.dbUpgrade !== undefined && closedFields(c, 'dbUpgrade', entry.dbUpgrade, ['from', 'hold'], 'local')) {
+    const value = entry.dbUpgrade as Record<string, unknown>;
+    const named = (['from', 'hold'] as const).filter((key) => value[key] !== undefined);
+    const volume = named.length === 1 ? value[named[0] as 'from' | 'hold'] : undefined;
+    if (named.length !== 1) c.problem('dbUpgrade', 'names exactly one of from (the old volume restored into the declared one) and hold (the volume that keeps the old data directory of an in-place upgrade)');
+    else if (typeof volume !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9_.-]*$/u.test(volume)) c.problem(`dbUpgrade.${named[0]}`, 'must name a docker volume');
+    else block.dbUpgrade = named[0] === 'from' ? { from: volume } : { hold: volume };
   }
   referencedPorts(c, block);
   const generated = new Set(block.custody.flatMap((item) => [`${item.member}/${item.key}`, ...(item.publicKey ? [`${item.member}/${item.publicKey}`] : [])]));
