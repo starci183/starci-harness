@@ -7,7 +7,17 @@ export interface Finding { code: string; level: string; [key: string]: unknown }
 /** The localized catalog explanation of one code. */
 export interface Why { title: string; titleVi: string; whyVi: string; nextStepVi: string }
 /** Findings counted by severity and by code. */
-export interface Summary { error: number; warning: number; info: number; byCode: Record<string, { level: string; count: number }> }
+/** Findings counted by severity and by code. */
+export interface Summary { error: number; warning: number; info: number; byCode: Record<string, { level: string; count: number; blocking?: number; reported?: number }> }
+
+/**
+ * The counts of findings as judged: `error` every error-level finding, `blocking` the ones in the verdict and `reportOnly` the ones a pending cutover, the local registry or a
+ * report profile keeps out of it (`report: true`); each code of `byCode` splits its errors the same way.
+ */
+export function judgedCounts(findings: Finding[]): Summary & { blocking: number; reportOnly: number } {
+  const errors = findings.filter((f) => f.level === 'error');
+  return { ...summarize(findings), blocking: errors.filter((f) => f['report'] !== true).length, reportOnly: errors.filter((f) => f['report'] === true).length };
+}
 
 export function withWhy(findings: Finding[], why: Record<string, Why>): Finding[] {
   return findings.map((f) => {
@@ -21,8 +31,12 @@ export function withWhy(findings: Finding[], why: Record<string, Why>): Finding[
 export function summarize(findings: Finding[]): Summary {
   const byCode: Summary['byCode'] = {};
   for (const f of findings) {
-    byCode[f.code] ??= { level: f.level, count: 0 };
-    byCode[f.code]!.count += 1;
+    const entry = (byCode[f.code] ??= { level: f.level, count: 0 });
+    entry.count += 1;
+    if (f.level === 'error') {
+      if (f['report'] === true) entry.reported = (entry.reported ?? 0) + 1;
+      else entry.blocking = (entry.blocking ?? 0) + 1;
+    }
   }
   return {
     error: findings.filter((f) => f.level === 'error').length,
