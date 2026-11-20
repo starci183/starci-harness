@@ -9,6 +9,7 @@ import path from 'node:path';
 import { firstLine } from './context.mjs';
 import type { RunResult, StackContext } from './context.mjs';
 import { dbTarget } from '../db/postgres.mjs';
+import { loadDatabase } from '../db/migrate.mjs';
 import { failure, refusal } from './errors.mjs';
 import type { ActionResult } from './remote.mjs';
 import { isAdvisoryRow, type LocalConfig } from './local-config.mjs';
@@ -92,6 +93,34 @@ async function migrate(ctx: StackContext, local: LocalConfig, custody: Custody, 
   record.receipts.migrate = { at: new Date(ctx.now()).toISOString(), digest: migrationsDigest(local.repoRoot) };
   writeRecord(dir, record);
   return `migrate: applied, receipt ${record.receipts.migrate.digest}${await appRolePassword(ctx, local, custody)}`;
+}
+
+/**
+ * Adopts the started database when it holds a schema another tool built and no migration history (`starci app db adopt --execute --if-pending`, in this process): the schema compare
+ * against bootstrap + baseline refuses on any difference and its report (the diff) is the refusal. A fresh empty database and an already migrated one adopt nothing. Runs only for an
+ * app that declares `database.baseline`; `migrate` follows and refuses (DB_MIGRATE_NOT_ADOPTED) a database this step did not take.
+ */
+async function adopt(ctx: StackContext, local: LocalConfig, custody: Custody, deps: LocalDeps): Promise<string> {
+  const database = local.database;
+  const url = databaseUrl(local, custody);
+  if (!database || url === null) return 'adopt: no database declared';
+  let baseline: string | null = null;
+  try { baseline = loadDatabase(local.repoRoot).baseline; } catch { baseline = null; }
+  if (baseline === null) return 'adopt: no database.baseline declared';
+  const container = firstLine((await compose(ctx, local, ['ps', '-q', database.service])).stdout);
+  const env = { ...ctx.env, DATABASE_URL: url, STARCI_DB_CONTAINER: container };
+  const report: string[] = [];
+  const keep = (text: string): void => { report.push(...String(text).split(/\r?\n/u).map((line) => line.trim()).filter(Boolean)); };
+  const run = deps.adopt ?? (async (urlEnv: string, environment: NodeJS.ProcessEnv, cwd: string, sink: string[]): Promise<number> => {
+    const { main } = await import('../src/main.mjs');
+    return main(['db', 'adopt', '--db-url-env', urlEnv, '--execute', '--if-pending'], { cwd, env: environment, stdout: (text: string) => { keep(text); sink.push(...report.splice(0)); }, stderr: (text: string) => { keep(text); sink.push(...report.splice(0)); } }) as Promise<number>;
+  });
+  const lines: string[] = [];
+  const code = await run('DATABASE_URL', env, local.repoRoot, lines);
+  const shown = lines.map((line) => line.replaceAll(url, '[redacted]'));
+  if (code !== 0) throw failure('STACK_LOCAL_ADOPT', `the database holds a schema that is not the baseline's, nothing was changed and migrate did not run:\n${shown.slice(0, 40).map((line) => `  ${line}`).join('\n')}`);
+  const adopted = shown.find((line) => /^adopted:/u.test(line));
+  return adopted === undefined ? `adopt: ${shown.find((line) => /nothing to adopt|already recorded/u.test(line)) ?? 'nothing to adopt'}` : `adopt: ${adopted}`;
 }
 
 /**
@@ -219,12 +248,13 @@ export async function waitReady(ctx: StackContext, local: LocalConfig, deadline:
 }
 
 /** `up` for a dev environment. */
-export async function upLocal(ctx: StackContext, local: LocalConfig, { execute = false, timeoutSeconds = DEFAULT_TIMEOUT_SECONDS }: { execute?: boolean; timeoutSeconds?: number } = {}, deps: LocalDeps = {}): Promise<ActionResult> {
+export async function upLocal(ctx: StackContext, local: LocalConfig, { execute = false, timeoutSeconds = DEFAULT_TIMEOUT_SECONDS, only }: { execute?: boolean; timeoutSeconds?: number; only?: string | undefined } = {}, deps: LocalDeps = {}): Promise<ActionResult> {
   refuseTakenRange(ctx, local, deps);
   const host = await preflight(ctx, local, deps);
   if (!host.ok) return hostRefusal(host.lines);
   const missing = missingKeys(local);
   if (!execute) return { ok: missing.length === 0, lines: [...host.lines, ...plan(local, missing), 'dry run: nothing was started; arm it with --execute'], data: { rows: host.rows } };
+  if (only !== undefined && !local.services.some((service) => service.name === only)) throw refusal('STACK_USAGE', `--only names no service of ${local.env} (${local.services.map((service) => service.name).join(', ')})`);
   const lines = [...host.lines];
   const custody = openCustody(ctx, local);
   lines.push(`custody: ${custody.values.size} key file(s) in the host-local directory`);
@@ -232,15 +262,34 @@ export async function upLocal(ctx: StackContext, local: LocalConfig, { execute =
   lines.push(...await runSetup(ctx, local, custody, advisory));
   makeDataDirectories(ctx, local);
   const values = composeValues(local, custody);
-  const started = await compose(ctx, local, ['up', '-d', '--build', ...local.services.map((service) => service.name)], { values, heavy: true, label: 'compose up' });
-  if (started.status !== 0) throw failure('STACK_LOCAL_COMPOSE', `docker compose up failed: ${(started.stderr.trim().split(/\r?\n/u)[0] ?? '').slice(0, 200)}`);
   const deadline = ctx.now() + timeoutSeconds * 1000;
-  for (const service of local.services) {
-    const ready = await serviceReady(ctx, local, service.name, deadline, deps);
-    lines.push(`service ${ready.detail}`);
-    if (!ready.ok) throw failure('STACK_LOCAL_SERVICE', `${service.name} did not become ready in ${timeoutSeconds}s (${ready.detail}); read it with: starci app stack logs --env ${local.env} --service ${service.name}`);
+  const bring = async (names: string[]): Promise<void> => {
+    if (names.length === 0) return;
+    const started = await compose(ctx, local, ['up', '-d', '--build', ...names], { values, heavy: true, label: 'compose up' });
+    if (started.status !== 0) throw failure('STACK_LOCAL_COMPOSE', `docker compose up failed: ${(started.stderr.trim().split(/\r?\n/u)[0] ?? '').slice(0, 200)}`);
+    for (const name of names) {
+      const ready = await serviceReady(ctx, local, name, deadline, deps);
+      lines.push(`service ${ready.detail}`);
+      if (!ready.ok) throw failure('STACK_LOCAL_SERVICE', `${name} did not become ready in ${timeoutSeconds}s (${ready.detail}); read it with: starci app stack logs --env ${local.env} --service ${name}`);
+    }
+  };
+  const dbService = local.database?.service;
+  if (only !== undefined) {
+    // `--only <service>`: that service alone, ready; the database service also gets its own role and database, so it can be inspected. Nothing is adopted or migrated.
+    await bring([only]);
+    if (only === dbService) lines.push(await provisionDatabase(ctx, local, custody));
+    lines.push(`only ${only}: started; nothing else ran (no adopt, no migrate, no process)`);
+    return { ok: true, lines, data: { only } };
   }
-  lines.push(await provisionDatabase(ctx, local, custody), await migrate(ctx, local, custody, deps), ...await seed(ctx, local, custody, 'migrate', 'always'), ...await seedLevels(ctx, local, custody), ...await seed(ctx, local, custody, 'migrate', 'once'), ...await startProcesses(ctx, local, custody, deps));
+  let provisioned = false;
+  if (dbService !== undefined && local.services.some((service) => service.name === dbService)) {
+    // The database service first, alone: a database restored from elsewhere is adopted before anything else starts, so no service and no migrate meets an unadopted schema.
+    await bring([dbService]);
+    lines.push(await provisionDatabase(ctx, local, custody), await adopt(ctx, local, custody, deps));
+    provisioned = true;
+    await bring(local.services.map((service) => service.name).filter((name) => name !== dbService));
+  } else await bring(local.services.map((service) => service.name));
+  lines.push(...(provisioned ? [] : [await provisionDatabase(ctx, local, custody)]), await migrate(ctx, local, custody, deps), ...await seed(ctx, local, custody, 'migrate', 'always'), ...await seedLevels(ctx, local, custody), ...await seed(ctx, local, custody, 'migrate', 'once'), ...await startProcesses(ctx, local, custody, deps));
   lines.push(...await waitReady(ctx, local, deadline, advisory));
   lines.push(...await seed(ctx, local, custody, 'ready'));
   lines.push(...await routeTunnel(ctx, local));

@@ -1,7 +1,7 @@
 // PostgreSQL AST extraction and the migration-local checks DB_RLS_REQUIRED, DB_POLICY_SHAPE and
 // DB_STORAGE_POLICY. PL/pgSQL inspection lives in database-plpgsql.mts to keep every rule module bounded.
 import { found } from './read.mjs';
-import { parseSql } from '../sql/pg-parse.mjs';
+import { parsePlpgsqlBody, parseSql } from '../sql/pg-parse.mjs';
 import { plpgsqlFindings } from './database-plpgsql.mjs';
 import { dynamicRoleExecute, guardedRoleCreates } from './database-role-blocks.mjs';
 import { transactionControlFindings } from './database-transaction.mjs';
@@ -297,10 +297,10 @@ function rlsFindings(file: string, facts: Parsed, exposed: Parsed, forceRls: Par
     const qualified = `${table.schema}.${table.name}`;
     const operation = table.moved ? 'moves' : 'creates';
     if (!relationHasLaterEvent(facts.enables, table)) {
-      findings.push(found(DB_RLS_REQUIRED, file, `${file}:${table.line} ${operation} ${qualified} into the exposed schema ${table.schema} without a later \`alter table ${qualified} enable row level security\` in the same migration`, { line: table.line, table: qualified }));
+      findings.push(found(DB_RLS_REQUIRED, file, `${file}:${table.line} ${operation} ${qualified} into the exposed schema ${table.schema} without a later \`alter table ${qualified} enable row level security\` in the same migration`, { line: table.line, table: qualified, missing: 'enable' }));
     }
     if (forceRls.has(qualified) && !relationHasLaterEvent(facts.forces, table)) {
-      findings.push(found(DB_RLS_REQUIRED, file, `${file}:${table.line} ${operation} ${qualified}, which hfs.json db.forceRls declares definer-owned, without \`alter table ${qualified} force row level security\` in the same migration`, { line: table.line, table: qualified }));
+      findings.push(found(DB_RLS_REQUIRED, file, `${file}:${table.line} ${operation} ${qualified}, which hfs.json db.forceRls declares definer-owned, without \`alter table ${qualified} force row level security\` in the same migration`, { line: table.line, table: qualified, missing: 'force' }));
     }
   }
   findings.push(...rlsWeakeningFindings(file, facts.rlsEvents, exposed));
@@ -495,6 +495,44 @@ function storageFindings(file: string, facts: Parsed) {
 }
 
 /** Parse and judge one migration file. */
+/** Every static SQL statement of a parsed PL/pgSQL body (`execsql` statements), as the text the server would run, in order. */
+function staticStatements(value: Parsed, out: string[]): void {
+  if (!value || typeof value !== 'object') return;
+  if (Array.isArray(value)) { for (const item of value) staticStatements(item, out); return; }
+  for (const [key, child] of Object.entries<Parsed>(value)) {
+    if (key === 'PLpgSQL_stmt_execsql') {
+      const text = child?.sqlstmt?.PLpgSQL_expr?.query;
+      if (typeof text === 'string') out.push(text);
+    }
+    staticStatements(child, out);
+  }
+}
+
+/**
+ * The static statements inside the DO blocks of one migration, as statements at the line of their block (`facts.doInner`, by the block's statement index): a migration that guards its
+ * reshaping steps (`if not exists (...) then alter table ... end if`) so a re-run does nothing still reshapes the table, and the key rules read those steps in order. A block or a statement that
+ * cannot be parsed adds nothing; a dynamic query (`execute`) is not here, DB_DYNAMIC_DDL judges it.
+ */
+export async function attachDoStatements(facts: Parsed): Promise<void> {
+  const inner = new Map<number, Parsed[]>();
+  for (const block of facts?.doBlocks ?? []) {
+    if (typeof block.body !== 'string' || block.language !== 'plpgsql') continue;
+    try {
+      const texts: string[] = [];
+      staticStatements(await parsePlpgsqlBody(block.body), texts);
+      const statements: Parsed[] = [];
+      for (const text of texts) {
+        for (const entry of (await parseSql(text)).stmts ?? []) {
+          const type = Object.keys(entry.stmt ?? {})[0] ?? '';
+          statements.push({ type, node: entry.stmt?.[type] ?? {}, line: block.line, defaultSchema: 'public' });
+        }
+      }
+      inner.set(block.index, statements);
+    } catch { /* a block this reader cannot parse adds no statement */ }
+  }
+  facts.doInner = inner;
+}
+
 export async function sqlAnalysis({ file, text, exposed, forceRls }: { file: string; text: string; exposed: Parsed; forceRls: Parsed }) {
   const lineAt = lineIndexOf(text);
   let parsed;

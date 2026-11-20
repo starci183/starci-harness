@@ -436,3 +436,37 @@ test('the always seed commands run right after db migrate, before the seed level
   const once = steps.findIndex((step) => step.includes('seed.mjs'));
   assert.ok(runner >= 0 && level > runner && once > level, `runner ${String(runner)} < seed levels ${String(level)} < once ${String(once)}`);
 });
+
+test('up with a declared baseline starts the database service alone, adopts it, then starts the rest and migrates; a refused adopt stops before migrate; --only starts one service', async (t) => {
+  const withBaseline = (): string => {
+    const root = app(t);
+    const file = path.join(root, '.starcistacks', 'application-stacks.yaml');
+    fs.writeFileSync(file, `${fs.readFileSync(file, 'utf8').replace(/\s*$/u, '\n')}database:\n  baseline: baseline\n`);
+    return root;
+  };
+  const root = withBaseline();
+  const h = host(root);
+  const record: string[] = [];
+  const code = await run(root, ['up', '--env', 'dev', '--execute'], h, {
+    adopt: async (name, env, _cwd, report) => { record.push(`adopt ${name} ${String(env.DATABASE_URL).startsWith('postgresql://demo_dev:')}`); report.push('adopted: the history holds 20260101000000.'); return 0; },
+    migrate: async () => { record.push('migrate'); return 0; },
+  });
+  assert.equal(code, 0, h.err.join(''));
+  assert.deepEqual(record, ['adopt DATABASE_URL true', 'migrate'], 'adopt runs before migrate');
+  const steps = h.calls.map((call) => call.args.join(' '));
+  assert.ok(steps.findIndex((step) => step.includes('up -d --build db')) < steps.findIndex((step) => step.includes('exec -T db')), 'the database service is up before it is provisioned');
+  assert.match(h.out.join(''), /adopt: adopted: the history holds/u);
+  const refused = host(root);
+  const migrated: string[] = [];
+  const stopped = await run(root, ['up', '--env', 'dev', '--execute'], refused, {
+    adopt: async (_name, _env, _cwd, report) => { report.push('starci app db adopt: DB_ADOPT_SCHEMA_DIFFERS: the database schema is not the baseline', '  + TABLE public users: in the baseline, not in the database'); return 2; },
+    migrate: async () => { migrated.push('migrate'); return 0; },
+  });
+  assert.notEqual(stopped, 0);
+  assert.match(refused.err.join('') + refused.out.join(''), /STACK_LOCAL_ADOPT[\s\S]*DB_ADOPT_SCHEMA_DIFFERS[\s\S]*TABLE public users/u, 'the refusal carries the diff');
+  assert.deepEqual(migrated, [], 'migrate did not run');
+  const only = host(root);
+  assert.equal(await run(root, ['up', '--env', 'dev', '--execute', '--only', 'db'], only, { migrate: async () => { throw new Error('no migrate under --only'); }, adopt: async () => { throw new Error('no adopt under --only'); } }), 0, only.err.join(''));
+  assert.match(only.out.join(''), /only db: started; nothing else ran/u);
+  assert.equal(only.calls.filter((call) => call.background).length, 0, 'no process starts under --only');
+});

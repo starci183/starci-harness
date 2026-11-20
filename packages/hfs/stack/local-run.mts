@@ -28,6 +28,8 @@ export interface LocalDeps extends HostDeps {
   /** The other projects of the machine (the doctor's overlap row); the machine registries when absent (local-peers.mts machinePeers). */
   peers?: (() => PeerBase[]) | undefined;
   migrate?: ((urlEnv: string, env: NodeJS.ProcessEnv, cwd: string) => Promise<number>) | undefined;
+  /** `starci app db adopt` of the started database: the report lines it printed are pushed on `report`; the exit code. */
+  adopt?: ((urlEnv: string, env: NodeJS.ProcessEnv, cwd: string, report: string[]) => Promise<number>) | undefined;
 }
 
 export const DEFAULT_TIMEOUT_SECONDS = 180;

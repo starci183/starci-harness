@@ -113,7 +113,7 @@ and 2 is no verdict: a host without Docker or without the app's packages gets `D
 green. An app with an entity list runs it as the `db-drift` row of `starci app release gate` and in the database step of its managed CI's
 build job.
 
-`starci app db adopt [--db-url-env <NAME>] [--image <ref>] [--execute]` takes over a database another tool built (TypeORM's `synchronize`, a hosted
+`database.adopt.legacyHistory: [<table>]` (in `.starcistacks/application-stacks.yaml`) names the legacy history tables of the tool that built the database; adopt leaves them, with their sequence, default, constraints and indexes, and the harness-owned seed receipts table out of the schema compare and lists them. `starci app db adopt [--db-url-env <NAME>] [--image <ref>] [--execute]` takes over a database another tool built (TypeORM's `synchronize`, a hosted
 dashboard) as the database the SQL migrations describe, where `db migrate` would find an empty history and replay `db/bootstrap.sql` and the
 baseline over existing tables (`db/adopt.mts`). The app declares its baseline as `database.baseline` in `.starcistacks/application-stacks.yaml`. The
 verb refuses unless the history table holds no row (`DB_ADOPT_HISTORY_NOT_EMPTY`; a recorded baseline is "nothing to do") and the database holds

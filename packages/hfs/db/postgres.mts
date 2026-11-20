@@ -174,6 +174,19 @@ export function historyVersions(ctx: VerbContext, target: DbTarget): Set<string>
   return new Set(queryRows(ctx, target, `select version from ${HISTORY_TABLE} order by version`).map((row) => String(row.version)));
 }
 
+/** The schemas the platform owns in an app database (the bootstrap's `auth`, `storage`, `extensions` and the migration history): never an app's own tables. */
+export const PLATFORM_SCHEMAS: readonly string[] = ['auth', 'storage', 'extensions', 'supabase_migrations'];
+
+/** The count of the tables an app's own schemas hold (every schema but the platform's, `pg_*` and `information_schema`). */
+export const APP_TABLES_SQL = `select count(*)::int as count from pg_catalog.pg_class c join pg_catalog.pg_namespace n on n.oid = c.relnamespace
+  where c.relkind in ('r', 'p') and n.nspname !~ '^pg_' and n.nspname <> 'information_schema' and n.nspname <> all (array[${PLATFORM_SCHEMAS.map((schema) => `'${schema}'`).join(', ')}])`;
+
+/** How many tables the app's schemas hold in `target`. */
+export function appTableCount(ctx: VerbContext, target: DbTarget): number {
+  const [row] = queryRows(ctx, target, APP_TABLES_SQL, { withhold: true });
+  return Number(row?.count ?? 0);
+}
+
 /** The statement that creates the history table when it is absent (same columns as the image's own: version, statements, name). */
 export const HISTORY_DDL = `create schema if not exists supabase_migrations; create table if not exists ${HISTORY_TABLE} (version text primary key, statements text[], name text)`;
 
