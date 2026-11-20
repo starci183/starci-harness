@@ -24,7 +24,7 @@ harness: age173qfq7f776syam9tpkyfej0h2jjt6rc4ha7r38ez40n5mn0lwyaqp9ejt7
 servers:
   sv-hk-1:
     server: age1dypvrqkgumsr0e37d5ejenzs6gnczfqwwtegusat35t5sy7ne57sfn3kd8
-    backup: null
+    backup: age1dxx0qpp3xsanw7y39pmzny6yyvp2ml6ym67pk82zlzvee3jpq9gsp2ny4t
     # Flip to true once every environment on this server is resealed to server + backup (the reseal runbook).
     enforce: false
 # The recipient set each environment's rule and members hold, exactly: `harness`, `server` (the server whose key the environment records as
