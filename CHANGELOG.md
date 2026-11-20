@@ -2,6 +2,8 @@
 
 ## 1.1.0-alpha.185 - 2026-11-20
 
+- Changed: the CLI requires @starci/hfs@6.16.0, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).
+
 - Added (`starci app stack`, forwarded to @starci/hfs 6.16.0): `stack db-upgrade --env <env> [--image <db@sha256>] [--old-image <ref>] [--execute]`, the declared Postgres major upgrade by dump and restore into a new volume (contexts/project/stacks.md PROJECT-STACKS-19), and `stack deploy --adopt` of an upgraded volume.
 - Added (`starci app db adopt`, forwarded to @starci/hfs 6.16.0): a database another tool built takes the baseline into its migration history once its schema is proved equal to the replayed baseline.
 - Changed (contexts): PROJECT-STACKS-20 in contexts/project/stacks.md and R450, an environment pending its cutover (@starci/hfs 6.16.0): its not-yet-cut-over findings are reported, not blocking, and every deploy to it is refused (STACK_CUTOVER_PENDING) until the cutover runbook removes the declaration.
