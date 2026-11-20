@@ -248,6 +248,11 @@ slots:
     presence: optional
     holds: the example server row of the managed VPS fleet ops/vps.yaml declares; the real inventory in this folder stays gitignored, as data the vps verbs validate
     rule: CONTRIB-9 data is data
+  - id: ops.vps-monitor
+    path: "ops/vps/monitor/**"
+    presence: optional
+    holds: the shared monitoring stack of a managed VPS (components.yaml with each component's toggle, pin, limits and retention, and the Prometheus, Alertmanager, Loki, Alloy, Tempo, Pyroscope, blackbox and Grafana provisioning files), as data `starci vps monitor up` renders and deploys
+    rule: CONTRIB-9 data is data
   - id: ops.labels
     path: "ops/ops/*.md"
     presence: required
