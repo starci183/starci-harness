@@ -34,6 +34,11 @@ export const NOTIFY_OUTCOMES = ['accepted', 'rolled-back', 'rollback-failed', 'f
 /** `deploy.notify`: the sealed member and key that hold the webhook URL (https), and the outcomes that are announced. */
 export interface NotifyConfig { webhook: { member: string; key: string }; on: string[] }
 export interface RegistryConfig { host: string; visibility: string }
+/**
+ * `deploy.renamedFrom`: the stack this environment's stack was renamed from (PROJECT-STACKS-18). `stack` is the old stack name, `releasesBase` its
+ * release store on the manager (default /srv/<old stack>), `volumes` maps each new volume of this environment to the old volume its data is copied from.
+ */
+export interface RenamedFrom { stack: string; releasesBase: string; volumes: Record<string, string> }
 
 /** The normalised `deploy` block. */
 export interface DeployConfig {
@@ -60,6 +65,8 @@ export interface DeployConfig {
   notify: NotifyConfig | null;
   ingress: IngressConfig | null;
   registry: RegistryConfig;
+  /** deploy.renamedFrom: present only when declared, so a project without it normalises exactly as before. */
+  renamedFrom?: RenamedFrom | undefined;
 }
 
 /** What `normalizeDeploy` returns: the config (null when a problem was found) and every problem. */
@@ -82,7 +89,7 @@ const ARGUMENT = /^[A-Za-z0-9_@%+=:,./-]+$/u;
 const UPPER_ENV = KEY;
 
 const FIELDS = {
-  deploy: ['stack', 'remote', 'images', 'volumes', 'secrets', 'environment', 'configs', 'passEnv', 'auto', 'approval', 'platforms', 'postDeploy', 'verify', 'jobs', 'tasks', 'backup', 'notify', 'ingress', 'registry'],
+  deploy: ['stack', 'remote', 'images', 'volumes', 'secrets', 'environment', 'configs', 'passEnv', 'auto', 'approval', 'platforms', 'postDeploy', 'verify', 'jobs', 'tasks', 'backup', 'notify', 'ingress', 'registry', 'renamedFrom'],
   remote: ['host', 'releasesBase', 'sealed', 'serverRecipient'],
   image: ['app', 'buildArgs'],
   buildArgs: ['values', 'sealed'],
@@ -103,6 +110,7 @@ const FIELDS = {
   registry: ['host', 'visibility'],
   notify: ['webhook', 'on'],
   webhook: ['member', 'key'],
+  renamedFrom: ['stack', 'releasesBase', 'volumes'],
 };
 
 const text = (value: unknown): value is string => typeof value === 'string' && value.length > 0;
@@ -417,6 +425,29 @@ function notify(c: Collector, block: Block, members: Set<string>): NotifyConfig 
   return { webhook: { member: block.webhook.member, key: block.webhook.key }, on };
 }
 
+/**
+ * `deploy.renamedFrom`: the old stack (a name other than this stack's), its releases base (absolute, default /srv/<old stack>) and the volume map
+ * new -> old: at least one pair, every new volume one this block declares under `volumes`, every old one named once and never a new one.
+ */
+function renamedFrom(c: Collector, block: Block, stack: string, volumes: string[]): RenamedFrom | null {
+  if (block === undefined) return null;
+  if (!closedFields(c, 'deploy.renamedFrom', block, FIELDS.renamedFrom)) return null;
+  if (nameField(c, 'deploy.renamedFrom.stack', block.stack) && block.stack === stack) c.problem('deploy.renamedFrom.stack', `is this environment's own stack ${stack}: it names the old stack the data comes from`);
+  if (block.releasesBase !== undefined && (!REMOTE_BASE.test(String(block.releasesBase)) || String(block.releasesBase).includes('..'))) c.problem('deploy.renamedFrom.releasesBase', 'must be an absolute path without ..');
+  const map: Record<string, string> = {};
+  if (!plain(block.volumes) || Object.keys(block.volumes).length === 0) c.problem('deploy.renamedFrom.volumes', 'must map at least one new volume to the old volume it is copied from');
+  else for (const [next, old] of Object.entries(block.volumes as Record<string, unknown>)) {
+    const at = `deploy.renamedFrom.volumes.${next}`;
+    if (!VOLUME.test(next)) c.problem(at, `the new volume must match ${VOLUME}`);
+    else if (!volumes.includes(next)) c.problem(at, `${next} is not a volume of deploy.volumes`);
+    if (typeof old !== 'string' || !VOLUME.test(old)) { c.problem(at, `the old volume must match ${VOLUME}`); continue; }
+    if (volumes.includes(old)) c.problem(at, `the old volume ${old} is a volume of this environment`);
+    if (Object.values(map).includes(old)) c.problem(at, `the old volume ${old} is named twice`);
+    map[next] = old;
+  }
+  return { stack: String(block.stack), releasesBase: typeof block.releasesBase === 'string' ? block.releasesBase : `/srv/${String(block.stack)}`, volumes: map };
+}
+
 function ingress(c: Collector, block: Block, probe: DeployProbe): IngressConfig | null {
   if (block === undefined) return null;
   const result = normalizeIngress(block, { probe });
@@ -460,6 +491,8 @@ export function normalizeDeploy(block: Block, { project, probe }: { project: str
     registry: registry(c, block.registry),
   };
   if (block.stack === undefined && !NAME.test(String(project))) c.problem('deploy.stack', `the stack name ${project} must match ${NAME}`);
+  const renamed = renamedFrom(c, block.renamedFrom, config.stack, config.volumes);
+  if (renamed) config.renamedFrom = renamed;
   return { config: c.problems.length === 0 ? config : null, problems: c.problems };
 }
 

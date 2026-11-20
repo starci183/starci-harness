@@ -14,6 +14,9 @@
 // Every execute run is one recorded ATTEMPT (journal.mts): the deploy lock of the manager (shared with the owner's urgent deploy), the deploy journal written at
 // every phase boundary, the skip when the accepted release already runs this commit, and the live services snapshotted after converge, after a rollback and on accept
 // (status.mts; `stack status` and `stack verify` judge them). Preflight also pulls the images of the rollback target, so a registry clean-up cannot strand a rollback.
+// The first release of a renamed stack (`adopt`, adopt.mts) takes over the copied data of `deploy.renamedFrom` instead of a first start: a preflight that
+// changes nothing, the hold deploy with the database alone, the proof that it carries a migration history and the plain database path inside it, then
+// the real deploy; a failure (and `rollback` of that release) puts the new stack in standby and resumes the old one.
 //
 // `deps` are the collaborators, all factories or functions with the signature of their module, defaulting to lazy dynamic imports so this
 // module never needs render.mts / provision.mts / remote.mts at load time (the specs inject stubs):
@@ -51,6 +54,8 @@ import type { ReleaseStore } from './release-store.mjs';
 import { urgentDeploy } from './urgent-floor.mjs';
 import type { DeployData, DeployOutcome, FirstStartStepResult, FloorDeps } from './urgent-floor.mjs';
 import { verifyStack } from './verify.mjs';
+import { adoptedOf, adoptPreflight, adoptRollback, adoptStep, recordAdoption } from './adopt.mjs';
+import type { AdoptedFrom } from './adopt.mjs';
 
 /** What a deploy takes (the CLI's flags, see cli.mts OPTIONS). */
 export interface DeployOptions {
@@ -73,6 +78,8 @@ export interface DeployOptions {
   ciRun?: string | undefined;
   /** Deploys even when the accepted release already runs this commit (the dispatch `redeploy`). */
   redeploy?: boolean | undefined;
+  /** The first release of a renamed stack takes over the data of `deploy.renamedFrom` instead of a first start (adopt.mts). */
+  adopt?: boolean | undefined;
   /** How long to wait for a held deploy lock, in seconds (default 600). */
   lockWaitSeconds?: number | undefined;
   /** The `first-start` step the urgent floor's --first-start hands over, run between the hold deploy and the real one. */
@@ -351,7 +358,7 @@ async function alreadyLive(ctx: StackContext, config: DeployConfig, d: DeployDep
 const hasSourceSha = (options: DeployOptions): options is DeployOptions & { sourceSha: string } => Boolean(options.sourceSha);
 
 /** Everything before the stack deploy: any failure here leaves the services untouched. Returns { ok, lines, releaseId, images, previous }. */
-async function prepareRelease(ctx: StackContext, config: DeployConfig, options: DeployOptions, d: DeployDeps, out: string, seams: { run: Runner; store: ReleaseStore; rec: Recorder }): Promise<{ ok: boolean; lines: string[]; releaseId: string; previous: string; stepsDone: StepRecord[] }> {
+async function prepareRelease(ctx: StackContext, config: DeployConfig, options: DeployOptions, d: DeployDeps, out: string, seams: { run: Runner; store: ReleaseStore; rec: Recorder; adopted?: AdoptedFrom | null }): Promise<{ ok: boolean; lines: string[]; releaseId: string; previous: string; stepsDone: StepRecord[] }> {
   const { run, store, rec } = seams;
   const previous = await store.current();
   rec.note({ previous: previous || null });
@@ -367,6 +374,7 @@ async function prepareRelease(ctx: StackContext, config: DeployConfig, options: 
   const provisioned = await rec.phase('provision', () => d.provisionRelease(ctx, config, { execute: true, out, releaseFile: path.join(out, 'release.json') }), (done) => done.ok !== false);
   lines.push(...(provisioned.lines ?? []));
   if (provisioned.ok === false) return { ok: false, lines, releaseId, previous, stepsDone: [{ step: 'render', ok: true }, { step: 'provision', ok: false }] };
+  if (seams.adopted) recordAdoption(out, seams.adopted);
   await rec.phase('store', () => store.store(out, releaseId));
   lines.push(...await rec.phase('pre-pull', async () => [...prePull(ctx, images), ...(previous ? await prePullRollbackTarget(ctx, store, previous, images) : [])]));
   return { ok: true, lines, releaseId, previous, stepsDone: [{ step: 'render', ok: true }, { step: 'provision', ok: true }, { step: 'store', ok: true }, { step: 'pre-pull', ok: true }] };
@@ -374,7 +382,10 @@ async function prepareRelease(ctx: StackContext, config: DeployConfig, options: 
 
 async function deployExecute(ctx: StackContext, config: DeployConfig, options: DeployOptions, d: DeployDeps, out: string, seams: { run: Runner; store: ReleaseStore; rec: Recorder }): Promise<DeployOutcome> {
   const { store, rec, run } = seams;
-  const prepared = await prepareRelease(ctx, config, options, d, out, seams);
+  // An adopted first release proves everything before anything changes (adopt.mts); the release record and the journal name what it adopted.
+  const adopted = options.adopt === true ? await rec.phase('adopt-check', async () => adoptPreflight(ctx, config, run, await store.current())) : null;
+  if (adopted) rec.note({ adopted: { ...adopted } });
+  const prepared = await prepareRelease(ctx, config, options, d, out, { ...seams, adopted });
   const { releaseId, previous } = prepared;
   const lines = [...prepared.lines];
   const steps = [...prepared.stepsDone];
@@ -397,13 +408,15 @@ async function deployExecute(ctx: StackContext, config: DeployConfig, options: D
   const handed = options.firstStartStep;
   // A red first-start step keeps its own code, whether the step was handed over (the urgent floor's --first-start) or chosen below.
   let first = handed && options.firstStartDb ? { service: options.firstStartDb, step: async () => { const outcome = await handed(); firstCode = outcome.code ?? null; return outcome; } } : null;
-  const reason = phase && !first ? await firstStartReason(phase, previous) : null;
+  // An adopted release never takes the first start: its database is the old stack's copied one. A `stack` database starts alone on it (the hold deploy).
+  const adoptHold = adopted !== null && phase !== null && phase.database.target === 'stack';
+  const reason = phase && !first && !adopted ? await firstStartReason(phase, previous) : null;
   if (phase && reason) {
     const automatic = firstStartHooks(phase, reason);
     lines.push(`db: first start, because ${reason}`);
     first = { service: automatic.service, step: async () => { const outcome = await automatic.step(); firstCode = outcome.code ?? null; return outcome; } };
   }
-  if (phase && !first) {
+  if (phase && !first && !adoptHold) {
     const expanded = await rec.phase('migrate', () => expandPhase(phase), (done) => done.ok);
     rec.note({ backup: expanded.record.backup, migrations: expanded.record.applied });
     lines.push(...expanded.lines);
@@ -411,10 +424,21 @@ async function deployExecute(ctx: StackContext, config: DeployConfig, options: D
     data.migrations = expanded.record;
     if (!expanded.ok) return { ok: false, refused: expanded.refused, lines: [...lines, 'deploy not started; the services are untouched'], data: { ...data, refused: expanded.refused?.code } };
   }
-  const hold = first ? writeHoldOverride(config, out, first.service) : null;
+  const holdService = first?.service ?? (adoptHold && phase ? phase.database.service : null);
+  const hold = holdService ? writeHoldOverride(config, out, holdService) : null;
+  const adoptPhase = adoptHold ? phase : null;
   const failed = await runSteps([
     ...(hold ? [['deploy-hold', () => stackDeploy(ctx, config, stackFile, [hold])] satisfies Step] : []),
     ...(first ? [['first-start', first.step] satisfies Step] : []),
+    ...(adoptPhase ? [['adopt', async () => {
+      const adoptedDb = await adoptStep(adoptPhase);
+      if (adoptedDb.phase) {
+        rec.note({ backup: adoptedDb.phase.record.backup, migrations: adoptedDb.phase.record.applied });
+        data.migrations = adoptedDb.phase.record;
+      }
+      firstCode = adoptedDb.result.code ?? null;
+      return adoptedDb.result;
+    }] satisfies Step] : []),
     ['deploy', () => stackDeploy(ctx, config, stackFile)],
     ['edge', async () => d.reconcileEdge(ctx, config, stackFile)],
     ['converge', async () => { const converged = await d.convergeStack(ctx, config, { since, timeoutSeconds: options.timeoutSeconds }); snapshot(ctx, config, d, rec, 'converge'); return converged; }],
@@ -438,12 +462,18 @@ async function deployExecute(ctx: StackContext, config: DeployConfig, options: D
       data.migrations = { ...(data.migrations as object), contractApplied: contract.applied };
     }
     if (contract && !contract.ok) return { ok: false, lines: [...lines, `release ${releaseId} is accepted and serving; its contract migration is red: the owner decides`], data: { ...data, accepted: true, contractFailed: true } };
-    return { ok: true, lines: [...lines, `deployed release ${releaseId}`], data };
+    const adoptLines = adopted ? [`adopted the data of ${adopted.stack}: its last release ${adopted.release} is the rollback target (stack rollback --env ${config.env} --data-acknowledged --execute puts ${config.stack} in standby and resumes ${adopted.stack})`] : [];
+    return { ok: true, lines: [...lines, ...adoptLines, `deployed release ${releaseId}`], data: adopted ? { ...data, adopted } : data };
   }
   lines.push(`deploy failed at ${failed}`);
   const migrations = data.migrations as { applied?: string[]; backup?: { receiptPath?: string } | null } | undefined;
   if (migrations?.applied?.length) lines.push(`db: the ${migrations.applied.length} expand migration(s) this deploy applied stay (the previous release keeps working on the expanded schema; a rollback restores services, never data); the backup ${migrations.backup?.receiptPath ?? ''} is the way back for data`);
-  const stopped = firstCode ? { refused: { code: firstCode, message: 'the first start failed' } } : {};
+  const stopped = firstCode ? { refused: { code: firstCode, message: adopted ? 'the adoption of the copied data failed' : 'the first start failed' } } : {};
+  if (!previous && adopted) {
+    const back = await adoptRollback(ctx, config, run, adopted, rec);
+    data.rolledBack = back.ok;
+    return { ok: false, lines: [...lines, ...back.lines], data, ...stopped };
+  }
   if (!previous) return { ok: false, lines: [...lines, 'no previous accepted release; services were rolled back by update_config where they had a previous spec'], data, ...stopped };
   const back = await redeployStored(ctx, config, d, store, previous, out, steps, rec);
   data.rolledBack = back.ok;
@@ -464,6 +494,8 @@ const triggerOf = (options: Pick<DeployOptions, 'urgent' | 'ciRun'>): AttemptMet
 export async function deployRelease(ctx: StackContext, config: DeployConfig, options: DeployOptions = {}, deps: Partial<DeployDeps> = {}): Promise<ActionResult> {
   const d: DeployDeps = { ...DEFAULT_DEPS, ...deps };
   if (!hasSourceSha(options)) throw refusal('STACK_DEPLOY_SOURCE_SHA', '--sha is required (the git commit being deployed)');
+  if (options.adopt === true && !config.renamedFrom) throw refusal('STACK_ADOPT_UNDECLARED', `--adopt takes over the data of the stack this one was renamed from: declare environments.${config.env}.deploy.renamedFrom; nothing was changed`);
+  if (options.adopt === true && options.urgent === true) throw refusal('STACK_USAGE', '--adopt is the planned first release of a renamed stack; it does not run under the urgent floor');
   const made = options.out ? null : fs.mkdtempSync(path.join(os.tmpdir(), 'stack-release-'));
   const out = (options.out ?? made) as string; // made exists whenever options.out is absent
   const cleanups: Cleanups = [];
@@ -483,7 +515,9 @@ export async function deployRelease(ctx: StackContext, config: DeployConfig, opt
       const plan = options.skipPublic
         ? `dry run: release ${releaseId} would be provisioned, stored, pre-pulled, deployed, converged,${post} and verified inside the stack (public hosts skipped); it would stay pending until ingress publish and stack accept${databasePlan}`
         : `dry run: release ${releaseId} would be provisioned, stored, pre-pulled, deployed, converged,${post} verified, accepted${databasePlan}`;
-      return { ok: true, lines: [...(rendered.lines ?? []), plan], data: { releaseId, steps: [{ step: 'render', ok: true }], executed: false } };
+      const from = config.renamedFrom;
+      const adoptPlan = options.adopt === true && from ? [`dry run: --adopt takes over the data of ${from.stack} (volumes ${Object.entries(from.volumes).map(([next, old]) => `${old} -> ${next}`).join(', ')}): it proves the new volumes exist and are filled, ${from.stack} is in standby and has an accepted release, ${database?.target === 'stack' ? `starts ${database.service} alone on the copied volume, proves its migration history and runs the plain database path there, ` : ''}then deploys; a failure puts ${config.stack} in standby and resumes ${from.stack}`] : [];
+      return { ok: true, lines: [...(rendered.lines ?? []), plan, ...adoptPlan], data: { releaseId, steps: [{ step: 'render', ok: true }], executed: false } };
     };
     if (options.execute !== true) {
       if (options.urgent !== true) return await dryRun();
@@ -529,10 +563,17 @@ export async function rollbackRelease(ctx: StackContext, config: DeployConfig, o
   const release = options.release ?? null;
   if (release !== null && !isReleaseId(release)) throw refusal('STACK_RELEASE_ID', 'the release must be 16 lowercase hex characters');
   const cleanups: Cleanups = [];
-  const store = await openStore(ctx, config, options, d, cleanups);
+  const run = await openRunner(ctx, config, options, d, cleanups);
+  const store = d.releaseStore(config, run, { gated: gateIsOn(ctx.env) });
   try {
     const target = release ?? await store.previous();
-    if (!target) throw refusal('STACK_ROLLBACK_NO_TARGET', 'no previous accepted release is recorded; name one with --release');
+    if (!target) {
+      // The adopted first release of a renamed stack goes back to the old stack's last release: this stack in standby, the old one resumed (adopt.mts).
+      const current = await store.current();
+      const adopted = current ? adoptedOf((await store.read(current)).release) : null;
+      if (adopted) return await rollbackAdopted(ctx, config, options, store, run, { current, adopted });
+      throw refusal('STACK_ROLLBACK_NO_TARGET', 'no previous accepted release is recorded; name one with --release');
+    }
     // A manual rollback to a release older than an applied contract migration is refused unless the owner acknowledges the data effect.
     const notice = enforceContractGuard(contractFinding(await store.journals(), target), options.dataAcknowledged === true);
     if (options.execute !== true) return { ok: true, lines: [...notice, `dry run: would redeploy release ${target}`], data: { release: target, executed: false } };
@@ -562,6 +603,18 @@ export async function rollbackRelease(ctx: StackContext, config: DeployConfig, o
   } finally {
     cleanups.forEach((close) => close());
   }
+}
+
+/** The rollback of an adopted first release: the owner acknowledges that writes made on this stack stay on its volumes, then the recorded standby and resume. */
+async function rollbackAdopted(ctx: StackContext, config: DeployConfig, options: RollbackOptions, store: ReleaseStore, run: Runner, { current, adopted }: { current: string; adopted: AdoptedFrom }): Promise<ActionResult> {
+  const plan = `release ${current} adopted the data of ${adopted.stack}: the rollback puts ${config.stack} in standby and resumes ${adopted.stack}, which serves its last release ${adopted.release} on its own volumes`;
+  if (options.dataAcknowledged !== true) throw refusal('STACK_ROLLBACK_ADOPTED_DATA', `${plan}; whatever was written on ${config.stack} since stays on its volumes and ${adopted.stack} does not see it: pass --data-acknowledged after the owner said yes; nothing was changed`);
+  if (options.execute !== true) return { ok: true, lines: [`dry run: ${plan}`], data: { release: adopted.release, adopted: adopted.stack, executed: false } };
+  return recordedAttempt(ctx, config, store, { kind: 'rollback', trigger: 'dispatch' }, { waitSeconds: options.lockWaitSeconds }, async (rec) => {
+    rec.note({ releaseId: current, adopted: { ...adopted } });
+    const back = await adoptRollback(ctx, config, run, adopted, rec, options.timeoutSeconds ?? 300);
+    return { ok: back.ok, lines: back.lines, data: { release: adopted.release, adopted: adopted.stack, executed: true } };
+  });
 }
 
 /**

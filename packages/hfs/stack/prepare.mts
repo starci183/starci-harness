@@ -1,6 +1,8 @@
 // prepare.mts - `starci app stack prepare`: its dry run is the read-only check of the Swarm manager (doctorHost), --execute adds the missing external
 // volumes and the ONE-TIME, owner-approved `docker swarm init`. Every docker call runs ON the manager through the ssh runner (remote.mts), so the
 // same code serves CI and the owner's machine. Lines are `ok    text` / `FAIL  text`; a failing check makes the result not ok but all checks run.
+// An environment that declares `deploy.renamedFrom` (PROJECT-STACKS-18) is checked on both sides: each new volume of the map and the old volume it is copied
+// from, the old stack's services and how many still run, and the old releases base with its last accepted release (the rollback target of the adoption).
 import fs from 'node:fs';
 import type { DeployConfig } from './config.mjs';
 import { firstLine, lines as splitLines } from './context.mjs';
@@ -124,6 +126,36 @@ function checkReleasesDirectory(run: Runner, report: Report, config: DeployConfi
   else report.bad(`releases directory ${base} is missing (create it once, owned by the deploy user)`);
 }
 
+/**
+ * Both sides of a renamed stack: the new volumes (prepare creates them) and the old ones they are copied from (they must exist until the hold ends), the old
+ * stack's services (running is a note: it runs until its standby in the window), and the old releases base, whose last accepted release is the rollback target.
+ */
+function checkRenamedFrom(run: Runner, report: Report, config: DeployConfig): void {
+  const from = config.renamedFrom;
+  if (!from) return;
+  for (const [next, old] of Object.entries(from.volumes)) {
+    if (volumeExists(run, old)) report.ok(`renamedFrom: old volume ${old} exists (copied into ${next} by stack volume copy)`);
+    else report.bad(`renamedFrom: old volume ${old} is missing: there is nothing to copy into ${next}`);
+    if (volumeExists(run, next)) report.ok(`renamedFrom: new volume ${next} exists`);
+    else report.note(`renamedFrom: new volume ${next} is missing (prepare --execute creates it empty)`);
+  }
+  const services = remoteDocker(run, ['service', 'ls', '--filter', `label=com.docker.stack.namespace=${from.stack}`, '--format', '{{.Name}} {{.Replicas}}']);
+  if (services.status !== 0) report.bad(`renamedFrom: cannot list the services of the old stack ${from.stack}`);
+  else {
+    const rows = splitLines(services.stdout);
+    const running = rows.filter((row) => !/ 0\/0(?:\s|$)/u.test(row));
+    if (rows.length === 0) report.note(`renamedFrom: the old stack ${from.stack} has no service on this swarm`);
+    else if (running.length === 0) report.ok(`renamedFrom: the old stack ${from.stack} runs nothing (${rows.length} service(s) in standby)`);
+    else report.note(`renamedFrom: the old stack ${from.stack} still runs ${running.length} of ${rows.length} service(s); stack standby --env ${config.env} --renamed-from --execute stops it in the window`);
+  }
+  const base = shellQuote(from.releasesBase);
+  const pointer = run(releasePointerScript(base, 'current'));
+  const current = pointer.stdout.trim();
+  if (pointer.status !== 0) report.bad(`renamedFrom: the old releases base ${from.releasesBase} cannot be read: ${firstLine(pointer.stderr)}`);
+  else if (RELEASE_ID.test(current)) report.ok(`renamedFrom: the old stack ${from.stack} last accepted release ${current} (the rollback target of the adopted release)`);
+  else report.bad(`renamedFrom: the old releases base ${from.releasesBase} names no accepted release: an adopted release would have no rollback target`);
+}
+
 /** The checks both verbs share; false when the daemon cannot be reached (nothing else can be judged). */
 function baseChecks(run: Runner, report: Report, config: DeployConfig): boolean {
   if (!checkDaemon(run, report)) return false;
@@ -134,6 +166,7 @@ function baseChecks(run: Runner, report: Report, config: DeployConfig): boolean 
   checkVolumes(run, report, config);
   checkDisk(run, report);
   checkReleasesDirectory(run, report, config);
+  checkRenamedFrom(run, report, config);
   return true;
 }
 

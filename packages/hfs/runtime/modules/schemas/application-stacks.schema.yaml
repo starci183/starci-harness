@@ -910,6 +910,7 @@ $defs:
       backup: {$ref: '#/$defs/deployBackup'}
       notify: {$ref: '#/$defs/deployNotify'}
       registry: {$ref: '#/$defs/deployRegistry'}
+      renamedFrom: {$ref: '#/$defs/deployRenamedFrom'}
       ingress:
         description: The shared host ingress (stack-ingress-config.mjs is the authority for the fields; starci app check R294 judges them).
         type: object
@@ -1157,6 +1158,26 @@ $defs:
     properties:
       host: {type: string, pattern: '^[a-z0-9][a-z0-9.-]*(?::[0-9]{1,5})?$', default: ghcr.io}
       visibility: {enum: [public, private], default: public}
+  deployRenamedFrom:
+    description: >-
+      The stack this environment's stack was renamed from (contexts/project/stacks.md PROJECT-STACKS-18). `stack deploy --adopt` takes over its copied
+      data instead of a first start, `stack volume copy` copies each old volume into the new one, and `stack standby --renamed-from` / `stack resume
+      --renamed-from` act on the old stack. Absent, the environment renders and deploys exactly as before. The normaliser checks that `stack` is not this
+      environment's own stack and that every new volume is one of `volumes`.
+    type: object
+    additionalProperties: false
+    required: [stack, volumes]
+    properties:
+      stack: {$ref: '#/$defs/deployName'}
+      releasesBase:
+        description: The old stack's release store on the manager (default /srv/<stack>); its last accepted release is the rollback target of the adopted first release.
+        $ref: '#/$defs/deployAbsolutePath'
+      volumes:
+        description: New volume -> the old volume its data is copied from.
+        type: object
+        minProperties: 1
+        propertyNames: {$ref: '#/$defs/deployVolumeName'}
+        additionalProperties: {$ref: '#/$defs/deployVolumeName'}
   deployBackupVolume:
     type: object
     additionalProperties: false
