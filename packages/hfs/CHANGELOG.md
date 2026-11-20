@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased (train 185)
+## 6.16.1 - 2026-11-21
 
 - Changed (UI audit reach, `cache/screen-reach.mts`): a pure re-export barrel is transparent. An import of it reaches only the modules exporting the names it takes (named, `export *` when a name is not listed, namespace and default imports take all of it), and the barrel itself is no reached file, so a change behind a barrel no longer marks every importer.
 - Added (slot manifest): the optional slot field `renders: false`, data in `knowledge/hfs/slots.yaml`, for the slots whose modules cannot change what a screen renders: `fe.hooks.swr`, `fe.hooks.socketio`, `fe.modules.api`, `fe.transport.*`, `fe.modules.config`, `fe.modules.auth`, `fe.package.api*`. The UI audit reach walks through their files but counts no change to them. Identified by the slot of the file, never by path.
@@ -12,6 +12,7 @@
 - Fixed (a lane's check and the batch lander's gate judged different diffs): the gallery coupling (HFS_APP_GALLERY_EXPLAIN_STALE, HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED) and the UI Audit took the lint ratchet's base, `origin/<branch>` else `HEAD^`. In a lane that is pushed `origin/<lane>` equals `HEAD`, so the base fell to `HEAD^` (often a cache commit) and the lane's own `app check --env prod` judged nothing; the lander's gate (a detached merge of the lane into origin/dev) judged the lane's whole diff and raised the findings. The new `landingBase` (`lint/ratchet.mts`) is, off `main` and `dev`, the merge-base of HEAD with STARCI_BASE_REF, else origin/dev, else origin/main, and the run prints it (`gallery coupling: judged N file(s) changed since <sha>, <why>`). The lint ratchet keeps its own base.
 - Fixed (`stack db-upgrade`, PROJECT-STACKS-19): a declared login role the SOURCE cluster does not hold yet (an app role a migration of the release creates) is no longer refused as STACK_DB_UPGRADE_PASSWORD_DRIFT. Its proof is skipped with the report line "login <role>: ... is not on the source cluster; migrate creates it and gives it its sealed password (not proven here)" and the record lists it in `absentLogins`. A role the source holds must still log in with its sealed password, or the upgrade refuses as before.
 - Changed (`stack deploy --adopt`, adopt.mts): after the expand migrations the adopt step gives the declared app role (hfs.json `db.appRole`, `database.appPassword`) its sealed password, the step a first start already takes, so a role the release's migration just created is never left without one (STACK_FIRST_START_APP_ROLE when it fails). The dev path already does this in the migrate step of `stack up`.
+- Changed (`knowledge/hfs/canon-pins.yaml`): the `@starci/hfs` self-pin is 6.16.1 and @starci/gallery 0.1.15; the canons (3.28.2, 9.21.3) and the Grammar family (0.52.0) are unchanged.
 
 ## 6.16.0 - 2026-11-20
 
