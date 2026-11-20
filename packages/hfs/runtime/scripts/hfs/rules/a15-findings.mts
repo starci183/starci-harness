@@ -60,6 +60,7 @@ import { staticsOutsideFindings } from './statics-outside.mjs';
 import { storageImageRuleFindings } from './storage-image.mjs';
 import { secretTargetFindings } from './secret-targets.mjs';
 import { masterPlanFindings } from './master-plan.mjs';
+import { appSopsRecipientFindings } from './sops-recipients.mjs';
 import type { Parsed } from './rule-types.mjs';
 import type { CheckFinding } from '../check.mjs';
 import { memoKeyed } from '../rule-memo.mjs';
@@ -85,6 +86,7 @@ export const A15_CODES = [
   'HFS_APP_GALLERY_EXPLAIN_MISSING', 'HFS_APP_GALLERY_REGION_INCOMPLETE', 'HFS_APP_GALLERY_REGION_UNCLEAR', 'HFS_APP_GALLERY_FRONT_MATTER', 'HFS_APP_GALLERY_SCREEN_FILE', 'HFS_APP_GALLERY_LINKS', 'HFS_APP_GALLERY_ROUTE_MISSING',
   'HFS_APP_GALLERY_DESIGN_MANIFEST', 'HFS_APP_GALLERY_DESIGN_PAGE_MISSING', 'HFS_APP_GALLERY_DESIGN_UNAPPROVED', 'HFS_APP_GALLERY_DESIGN_SHOT_MISSING', 'HFS_APP_GALLERY_DESIGN_SHOT_STALE', 'HFS_APP_GALLERY_DESIGN_CHANGE_UNAPPROVED', 'HFS_APP_GALLERY_DESIGN_CRITIQUE_MISSING', 'HFS_APP_GALLERY_DESIGN_PENDING',
   'HFS_MASTER_PLAN_MISSING', 'HFS_MASTER_PLAN_INVALID',
+  'HFS_SOPS_RECIPIENTS', 'HFS_SOPS_RECIPIENT_UNDECLARED', 'HFS_SOPS_CATCH_ALL', 'HFS_SOPS_MEMBER_RECIPIENTS', 'HFS_SOPS_IDENTITY_MISMATCH',
   'HFS_APP_GALLERY_BOARD_INVALID', 'HFS_APP_GALLERY_BOARD_ROUTE_MISSING', 'HFS_APP_GALLERY_BOARD_SECTION_UNMAPPED',
   'HFS_BRAND_INVALID', 'HFS_BRAND_MISSING', 'HFS_BRAND_PROMPT_STALE', 'HFS_BRAND_PROMPT_INCOMPLETE', 'HFS_BRAND_BASE_UNKNOWN',
   'FE_STACK_FAMILY_LINT_MISSING',
@@ -115,6 +117,7 @@ export const FINDERS = [
   appGalleryFindings,
   brandFindings,
   masterPlanFindings,
+  appSopsRecipientFindings,
   feBuildArgsFindings,
   workflowContextsFindings,
   ciStandardAppFindings,

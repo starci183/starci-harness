@@ -1,4 +1,5 @@
-# The runtime template tracks no sealed members or shared recipient.
-# Scaffolding configures this app's own age recipient and generates sealed placeholders.
-# The private identity lives only in untracked .claude/secret.env as SOPS_AGE_KEY.
+# The runtime template tracks no sealed members or recipient. Scaffolding writes one rule per environment from the recipient policy
+# (knowledge/hfs/sops-recipients.yaml): dev to the harness recipient every app shares, a deployed environment to its server key plus
+# the server's backup once both exist. No app-only identity is ever minted (R451). Before production has a server, R451 reports it
+# as a warning (HFS_SOPS_RECIPIENT_UNDECLARED) and `starci app check --env prod` does not fail on it.
 creation_rules: []

@@ -135,22 +135,51 @@ image, so any digest-pinned supported reverse proxy serves.
   instead (PROJECT-STACKS-8); `set` keeps it out of runtime secret declarations and binds a quality-service member (`sonar.enc.yaml`) to its service, the
   `credentials` entry and the `ci.secrets` entry the template shows, or prints the exact binding when the file's shape is not the template's
   (`starci app codemod quality-binding` binds an app scaffolded before). The audit recognizes both consumers.
-- **One owner identity, found by itself; one rule per environment.** Every member is sealed to the public recipients of
-  its environment's rule in the app's `.sops.yaml`, which `starci app secret init` and `recipients` manage: dev to the owner
-  key, production to the production server key and the owner key both, so the owner sets and rotates production from his
-  machine and the server opens it with its own key. A member is sealed to that whole set, and a rewrite (`set`, `migrate`,
-  `split`, an edit) seals to the rule's set, or to the member's own set when no rule reaches an existing member, so none drops the server key; a new
-  member no rule reaches is refused `SECRET_SOPS_RULE_MISSING` before sops runs (a rule written for the legacy `.enc` spelling does not reach a `.enc.yaml` member;
-  `secret init --env <env>` writes the per-environment rules and `starci app codemod sops-rules` migrates a legacy file);
-  a decrypt opens a member when its identity's recipient is one of the set. The owner's private identity is `SOPS_AGE_KEY` in
-  the harness's secret.env, backed up by the owner (R253); every verb that opens a member (`starci app secret`, `stack`,
-  `release`, `db`, the CLI's custody) finds it with nothing exported or pointed to through one lookup, taking the first of:
-  SOPS_AGE_KEY or SOPS_AGE_KEY_FILE of the environment, the app's git-ignored `.claude/secret.env` (its main checkout's for a
-  worktree), the harness secret.env (the running CLI's own, then the harness home's: the nearest ancestor of the app that is a
-  harness checkout or holds one as `.claude`, `cli/src/harness/secret-env.ts`), the sops `keys.txt` (`decryptionIdentity`, @starci/hfs `secret-init.mjs`), and with none
-  refuses before asking for a value, naming each place. A member it cannot open is refused naming the member, the format it
-  was read as, its recipients, the identity's source and recipient, and why. Whoever holds that identity can decrypt every member in the whole git history, so
-  it never leaves the harness secret.env and the app repositories stay private.
+- **One shared dev key, one key per server; one rule per environment** (owner, 2026-11-21, model B; R451). Every member is sealed
+  to exactly the public recipients of its environment's rule in the app's `.sops.yaml`, one rule per environment and no catch-all
+  (`HFS_SOPS_CATCH_ALL`). The recipients are data: `ops/vps/recipients.yaml` of the harness repository (public halves only, shipped to
+  @starci/hfs as `knowledge/hfs/sops-recipients.yaml`) names the harness recipient, each managed VPS's server and backup recipient, and
+  each environment's set.
+  - **dev** holds the harness recipient alone, the public half of `SOPS_AGE_KEY` in the harness secret.env (`age173qf…`). Every app
+    made from the harness shares it; there is no app-only identity, and `starci app secret init` and the scaffold mint none and write
+    nothing into the app's `.claude/secret.env`. A freshly scaffolded app gets the dev rule only: its production has no server yet, so it
+    gets no rule and no sealed placeholders, R451 reports `HFS_SOPS_RECIPIENT_UNDECLARED` for it as a warning (it never fails `--env prod`
+    before the app has a server while `enforce` is false), and its absent production members are not each `STACKS_SEALED_MEMBER_MISSING`.
+  - **staging and production** hold the key of the VPS the environment deploys to (`deploy.remote.serverRecipient`) plus that server's
+    ONE backup recipient, and never the harness key. The backup is a dedicated age key per VPS whose private half exists only in a GitHub
+    Environment secret of the harness repository (break-glass), not a copy of the server key: rotating the server key leaves the backup as
+    it is, and losing the server does not lose the backup. The dev machine holds the public halves only: it seals a deployed member to
+    them (`set`, `init`) and never needs, or looks for, a private server or backup key; a deployed member is opened on its server, in CI
+    bound to its GitHub Environment, or by the break-glass workflow. Owed to a follow-up lane: the `vps` verbs that mint the backup key
+    and set or rotate a deployed value on the server, and the break-glass workflow.
+  - **The accepted cost.** Whoever holds the harness key opens every app's dev members in the whole git history, so it never leaves the
+    harness secret.env. A value that was ever sealed to a dev-side key (the harness key or an app-only key) is rotated, not only resealed,
+    when its environment moves to the server-only set, since git keeps the old envelope.
+
+  `starci app check` holds this (R451). Its severity is data: while `enforce` of `ops/vps/recipients.yaml` is false (and a server's own
+  `enforce` for the environments that deploy to it), every R451 finding is a warning in every env, so nothing blocks a push before the
+  owner-approved migration; the owner flips a server to `true` when its environments are resealed, and the global value when every app
+  is on the policy, and from then on a finding is an error, report-only in `--env local` and blocking in `--env prod`. It reports a rule that does not name exactly its
+  environment's set, naming each stranger as the harness key, another server's key or an app-only identity (`HFS_SOPS_RECIPIENTS`); an
+  environment whose set cannot be resolved yet (`HFS_SOPS_RECIPIENT_UNDECLARED`: no recorded server, an undeclared server, a backup not
+  minted); and a member whose cleartext `sops.age` recipients differ from the set (`HFS_SOPS_MEMBER_RECIPIENTS`). A rewrite (`set`,
+  `migrate`, `split`, an edit) seals to the rule's set, or to the member's own set when no rule reaches an existing member; a new member
+  no rule reaches is refused `SECRET_SOPS_RULE_MISSING` before sops runs (a rule written for the legacy `.enc` spelling does not reach a
+  `.enc.yaml` member; `starci app secret init` writes the per-environment rules and `starci app codemod sops-rules` migrates a legacy file).
+- **The dev identity, found by itself and guarded.** Every verb that opens a dev member (`starci app secret`, `stack`, `release`, `db`,
+  the CLI's custody) finds the identity with nothing exported or pointed to through one lookup, taking the first of: SOPS_AGE_KEY or
+  SOPS_AGE_KEY_FILE of the environment, the app's git-ignored `.claude/secret.env` (its main checkout's for a worktree), the harness
+  secret.env (the running CLI's own, then the harness home's: the nearest ancestor of the app that is a harness checkout or holds one as
+  `.claude`, `cli/src/harness/secret-env.ts`), the sops `keys.txt` (`decryptionIdentity`, @starci/hfs `secret-init.mjs`), and with none
+  refuses before asking for a value, naming each place. Before sops runs, the SOPS_AGE_KEY guard (`secret-identity-guard.mjs`) compares
+  the public recipient of each SOPS_AGE_KEY that lookup could take with the dev member's recipients. When the one it takes opens nothing,
+  `stack up` (and every verb that opens a dev member) refuses `SECRET_IDENTITY_MISMATCH`, naming the file the key was read from, its
+  recipient prefix, the prefix expected and any later place that would have matched, and `starci app check --env local` warns
+  `HFS_SOPS_IDENTITY_MISMATCH`. It guards dev members only: a dev machine holding no identity for a deployed environment is expected, and
+  `stack down` opens no member. **A package key lives under its own variable name** (e.g. `NIVO_PACKAGE_AGE_KEY`), never
+  `SOPS_AGE_KEY`: on 2026-11-21 a package key pasted over `SOPS_AGE_KEY` in an app's `.claude/secret.env` shadowed the identity its dev
+  members were sealed to. A member it cannot open is refused naming the member, the format it was read as, its recipients, the
+  identity's source and recipient, and why.
 - **The server's own identity, made on the server.** `starci app secret server-key --env <env>` (a dry run until `--execute`)
   reaches the environment's deploy server the way the deploy does (`deploy.remote`, the same host, user and key source;
   without one it refuses) and there keeps `/root/.config/sops/age/keys.txt`, sops' default key file of root that a decrypt on
@@ -159,12 +188,13 @@ image, so any digest-pinned supported reverse proxy serves.
   resolves age-keygen there (root's PATH, then `/usr/local/bin`, `/usr/bin`, `/bin`), the presence check the same way, since
   sudo's secure_path can leave `/usr/local/bin` out; the static installer puts age in `/usr/local/bin` and links it from
   `/usr/bin`. Only `age-keygen -y` comes
-  back: the private key never leaves the server and the owner's key never makes it. Locally the recipient joins the
-  environment's rule beside the owner key, is recorded as `deploy.remote.serverRecipient`, and every member is wrapped again
-  with `sops updatekeys`, the owner identity opening only the data key. `--rotate --execute` stages a new identity, wraps the
+  back: the private key never leaves the server and the owner's key never makes it. Locally the recipient is recorded as
+  `deploy.remote.serverRecipient` and joins the environment's rule. Under the recipient policy that rule is the server key plus the
+  server's backup and nothing else (R451), so the members are wrapped again ON the server with its key (sops updatekeys, no plaintext
+  on disk), never with a dev-side identity. `--rotate --execute` stages a new identity, wraps the
   members to it, swaps it in keeping the old file on the server as `keys.txt.retired-<UTC stamp>` until the owner deletes it,
-  then drops the old recipient. The owner key is the first way back when the server loses its identity: production is
-  sealed to it, so the owner seals production again to a new server key. The server key is also the environment's CI key,
+  then drops the old recipient. The server's backup key is the way back when the server loses its identity: the
+  break-glass workflow opens the members with it and seals them again to the new server key and the backup. The server key is also the environment's CI key,
   which the owner accepts knowing that whoever can deploy to that GitHub Environment can read it: `--backup github --execute`
   streams the key file from the server's ssh stdout straight into `gh secret set SOPS_AGE_KEY --env <env>` of the app's
   origin repository, never printed, held or written locally, and refuses unless that Environment exists with required
@@ -220,9 +250,9 @@ image, so any digest-pinned supported reverse proxy serves.
   1. `starci app secret audit` lists what deviates; `starci app secret recipients --env <env>` shows each environment's
      recipients.
   2. `starci app sync --execute` renders the `.gitignore` block that tracks `secrets/*.enc.yaml`.
-  3. `starci app secret recipients --env <env> --add owner --execute` puts the owner key on each environment; a recipient no one holds any
-     more leaves with `--remove <age1...> --execute`, `starci app secret server-key --env production --execute` makes the server key and
-     seals production to it, and `server-key --env production --backup github --execute` makes it the key CI deploys production
+  3. `starci app secret recipients --env dev --add <the harness recipient> --execute` puts the harness key on dev, and an app-only
+     recipient leaves with `--remove <age1...> --execute` (R451 names both); `starci app secret server-key --env production --execute`
+     makes the server key, and each deployed environment moves to its server key plus the server's backup as the next bullet says, and `server-key --env production --backup github --execute` makes it the key CI deploys production
      with; once every environment holds its key, the owner deletes the repository-level SOPS_AGE_KEY the backup warns about.
   4. `starci app secret migrate --env <env> <member> [--to <provider>] [--into-existing]`, then the same with `--execute`, moves
      each legacy member, or merges one into an existing member; `split --env <env> <member> [--group KEY=member ...]
@@ -234,6 +264,12 @@ image, so any digest-pinned supported reverse proxy serves.
   5. `starci app secret set --env <env> <provider> <KEY>...` seals the provider's keys and declares them.
   6. `starci app secret verify --env <env>` opens every member and checks the shapes the app reads; `audit` is clean.
   7. Commit the members, `.sops.yaml`, `.gitignore` and `application-stacks.yaml` together.
+- **Moving an environment to the recipient policy.** A deployed environment's members are resealed where its key lives, never on a dev
+  machine: on the server with the server key (`sops rotate --in-place --rm-age <old> --add-age <backup>`, which also makes a new data key, so
+  an old envelope in git and a removed key open nothing new; no plaintext on disk, as root or through the harness's server verbs), or in the break-glass workflow with the backup key. The
+  resealed files come back into the repository, tracked, through a PR, and a dev machine verifies them by their recipient list alone
+  (R451 `HFS_SOPS_MEMBER_RECIPIENTS`). Every value that was ever sealed to a dev-side key is rotated on the server first (new value,
+  applied to the running service, sealed to the server key and the backup), each rotation armed by the owner's yes.
 - **Plaintext never enters the tree.** A decrypted member reaches a process through `*_FILE` from host-local custody
   (the `goesTo` of slot `app.plaintext-env`) or memory, never a file in the checkout, ignored or not. Each
   environment's `.gitignore` still ignores everything under `secrets/` except its sealed members, so a mistaken decrypt cannot be

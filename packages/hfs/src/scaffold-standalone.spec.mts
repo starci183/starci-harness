@@ -63,6 +63,13 @@ async function renderedOverride(root: string, spec: any, model: any): Promise<{ 
     'storage-access-key-id': { STORAGE_ACCESS_KEY_ID: 'fixture-access-value' },
     'storage-secret-access-key': { STORAGE_SECRET_ACCESS_KEY: 'fixture-storage-value' },
   };
+  // A deployed environment's members are sealed after the scaffold, to its server key plus the server's backup (R451): the scaffold seals none,
+  // so the fixture stands in for each declared one, its value supplied by the decrypt double below.
+  fs.mkdirSync(path.join(envDir, 'secrets'), { recursive: true });
+  for (const [slug, values] of Object.entries(fixtureMembers)) {
+    const file = path.join(envDir, 'secrets', `${slug}.enc`);
+    if (!fs.existsSync(file)) fs.writeFileSync(file, `${Object.keys(values).map((key) => `${key}=ENC[AES256_GCM,data:fixture,type:str]`).join('\n')}\nsops_age__list_0__map_recipient=age1fixtureaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n`);
+  }
   // reason: the render only reads env, now, sops.decrypt and spawn of the stack context; the doubles below carry just those.
   let override: RenderedOverride | undefined;
   let configName: string | undefined;

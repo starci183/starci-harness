@@ -248,6 +248,11 @@ slots:
     presence: optional
     holds: the example server row of the managed VPS fleet ops/vps.yaml declares; the real inventory in this folder stays gitignored, as data the vps verbs validate
     rule: CONTRIB-9 data is data
+  - id: ops.vps-recipients
+    path: "ops/vps/recipients.yaml"
+    presence: required
+    holds: the public age recipients of every app's sealed members (the harness recipient for dev, each managed VPS's server and backup recipient for the environments it serves; public halves only), owned here and shipped to @starci/hfs as knowledge/hfs/sops-recipients.yaml for R451
+    rule: CONTRIB-9 data is data
   - id: ops.vps-monitor
     path: "ops/vps/monitor/**"
     presence: optional

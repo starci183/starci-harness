@@ -30,7 +30,8 @@ import { composePort, overlapsReserved } from '../runtime/scripts/hfs/stack-base
 import { describePeer, nextFreeBase, overlapsOf, type MachinePeers } from '../stack/local-peers.mjs';
 import { isLinkLike } from '../runtime/scripts/api/fs/is-link-like.mjs';
 import { unlinkOnly } from '../runtime/scripts/api/fs/lib.mjs';
-import { initializeAppIdentity } from '../runtime/scripts/hfs/secret-init.mjs';
+import { configuredRecipients, initializeAppRules } from '../runtime/scripts/hfs/secret-init.mjs';
+import { memberProbe } from '../runtime/scripts/lib/sops-recipients.mjs';
 import { declaredSealedMembers, materializeDeclaredPlaceholders } from '../runtime/scripts/hfs/sealed-members.mjs';
 import { revParseQuery } from '../runtime/scripts/api/git/rev-parse-query.mjs';
 import { lsFiles } from '../runtime/scripts/api/git/ls-files.mjs';
@@ -691,12 +692,23 @@ function scaffoldWrites(root: string, original: fs.Stats) {
  * ships (bundledPresets). `harness` ({ version }) is the CLI that runs the scaffold: the root devDependencies name starci-harness at
  * its version (canon-pins.mts). Failure removes only scaffold-owned entries, retaining the .git.
  */
-/** Seal declared starter members to a fresh app recipient through the scaffold rollback owner. */
+/**
+ * The recipient policy's rules for the new app (secret-init.mts initializeAppRules), and the declared starter members of every environment that
+ * gets a rule sealed through the scaffold rollback owner. No age identity is minted and no `.claude/secret.env` is written: dev opens with the
+ * harness SOPS_AGE_KEY. A deployed environment has no server key yet, so it gets no rule and its members wait for `starci app secret server-key`
+ * and the server's backup key.
+ */
 function initializeScaffoldSecrets(root: string, writes: Pick<ReturnType<typeof scaffoldWrites>, 'write'>): string[] {
   if (!declaredSealedMembers(root).length) return [];
   const write = (file: string, content: string | Buffer) => writes.write(path.relative(root, file), content);
-  const initialized = initializeAppIdentity(root, { write });
-  const materialized = materializeDeclaredPlaceholders(root, { recipient: initialized.recipient, write });
+  const initialized = initializeAppRules(root, { write });
+  const ruled = new Set(initialized.written);
+  const materialized = materializeDeclaredPlaceholders(root, {
+    recipientsForFile: (file) => configuredRecipients(root, file),
+    write,
+    // The sops-free bootstrap sealer seals to one recipient: the dev environments' harness recipient.
+    only: (member) => ruled.has(member.env) && configuredRecipients(root, path.join(root, memberProbe(member.env))).length === 1,
+  });
   return [...initialized.files, ...materialized.members];
 }
 
