@@ -2291,6 +2291,28 @@ export const CATALOG = {
           ],
           "json": "flag"
         },
+        "doctor": {
+          "summary": "judge the host stack's networks from inside (does each service name resolve, is each service answered, is each container healthy and attached); --fix repairs what stopped answering (reconnect, restart, recreate the network) and alerts the owner on Telegram once per incident",
+          "flags": [
+            {
+              "name": "stack",
+              "type": "string",
+              "summary": "the stack of ops/host.yaml to judge (default starci: the gate and the tunnel of the embedding model share its edge network)"
+            },
+            {
+              "name": "fix",
+              "type": "boolean",
+              "summary": "repair what is wrong, least disruptive first: reconnect, then restart, then recreate the network (a dry run that prints the plan and the alert text unless --execute is given)"
+            },
+            {
+              "name": "execute",
+              "type": "boolean",
+              "summary": "with --fix: perform the repair and send the alert (default: a dry run)"
+            }
+          ],
+          "positional": [],
+          "json": "flag"
+        },
         "uninstall": {
           "summary": "remove the schedules and launchers of the host services; StarCi tasks ops/host.yaml does not declare are never touched",
           "flags": [
@@ -3376,6 +3398,11 @@ export const CATALOG = {
               "summary": "the lane named in the removal lock (default: STARCI_LANE, else the worktree's lane/<lane> branch)"
             },
             {
+              "name": "dir",
+              "type": "string",
+              "summary": "the slot root whose slots of the lane are released (default: STARCI_LANES_DIR, else slots.root of ops/slots.yaml, else <harness state>/slots)"
+            },
+            {
               "name": "execute",
               "type": "boolean",
               "summary": "remove the worktree (default: a dry run that prints the plan and changes nothing)"
@@ -3461,7 +3488,7 @@ export const CATALOG = {
           "json": "flag"
         },
         "list": {
-          "summary": "list the machine-wide slots (every kind, or one) with holder, age, pid and state and its evidence: free, held, old (a warning only), or reclaimable: dead (its pid is not alive), reused (its pid runs another process) or rebooted (taken before this boot)",
+          "summary": "list the machine-wide slots (every kind, or one) with lane, age, holder alive (yes, no, unknown), pid, state and whether it is reclaimable: free, held, old (a warning only), or reclaimable: dead (its pid is not alive), reused (its pid runs another process), rebooted (taken before this boot) or gone (an old-helper lock whose lane has no worktree)",
           "flags": [
             {
               "name": "dir",
