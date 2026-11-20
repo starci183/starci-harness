@@ -78,11 +78,12 @@ const refOf = (family: string, segments: readonly string[], folder: string, file
     file: posix.join(folder, file),
 })
 
-/** The Work record a repository path names, or undefined: `.starciwork/brand` and `.starciwork/_resources/environments/<name>`. */
+/** The Work record a repository path names, or undefined: `.starciwork/brand`, `.starciwork/master-plan.yaml` and `.starciwork/_resources/environments/<name>`. */
 export const recordOfPath = (path: string): WorkRef | undefined => {
     const parts = normaliseRepoPath(path).split("/")
     if (parts[0] !== WORK) return undefined
     if (parts[1] === "brand") return refOf("brand", [], posix.join(WORK, "brand"), "index.yaml")
+    if (parts[1] === "master-plan.yaml" && parts.length === 2) return refOf("master-plan", [], WORK, "master-plan.yaml")
     const name = parts[3]
     if (parts[1] === "_resources" && parts[2] === "environments" && name !== undefined && !name.includes(".")) {
         return refOf("environment", [name], posix.join(WORK, "_resources", "environments", name), "resource.yaml")

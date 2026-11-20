@@ -114,6 +114,7 @@ rule 10).
 | write code (be or fe) | [code/README.md "Read for a coding task"](../code/README.md#read-for-a-coding-task), which starts with the anatomy slice of the side (`anatomy-<side>.md`) and opens this file and [lint.md](lint.md) on demand → the files the contract names |
 | change UI | [project/gallery.md](gallery.md) PROJECT-GALLERY-7 (the approved canvas page comes first) → [contexts/ui](../ui/README.md) and the app's grammar ([grammars](../grammars/README.md)) → the brand record ([work.md](work.md)) → [code/fe](../code/fe/README.md) → [lint.md](lint.md) |
 | write or change the product's Work | [work.md](work.md) → the concept catalog `concepts/README.md` and the concepts it lists |
+| write or change the Master Plan; map its rules to the gates | [master-plan-record.md](master-plan-record.md) PROJECT-MASTER-PLAN-1 → `starci app master-plan` (PROJECT-MASTER-PLAN-3) |
 | run, stand up or deploy an environment | [stacks.md](stacks.md) → the edition file ([edition.md](edition.md)) |
 | keep an image, a video or a prompt of the app; run its own MinIO | [statics.md](statics.md) |
 | add a gate or a rule | [lint.md](lint.md) PROJECT-LINT-1 → [packages/README.md](../../packages/README.md) or [policy/](../../policy/) |
@@ -135,5 +136,6 @@ rule 10).
 | [cicd.md](cicd.md) | the delivery pipeline every app's `.github/` gets (proposed): triggers, checks, one attested image build, the automatic Swarm deploy with migrations, verification and rollback, records, gates |
 | [stacks.md](stacks.md) | how an app runs: the `.starcistacks/` shape against project values, the dev and vps environments, ingress, sealed custody, the operations with their safety rules, local-run rules |
 | [statics.md](statics.md) | the repo-owned media of an app: the `statics/` folder and its keys, the storage image and the condition under which every project ships its own MinIO, serving, production |
+| [master-plan-record.md](master-plan-record.md) | the Master Plan `.starciwork/master-plan.yaml`: nine layers of decisions, a reason and always/never rules (R449), the layers each op's brief carries and the stop-and-ask procedure, and the enforcement report of `starci app master-plan` (PROJECT-MASTER-PLAN-1 to 3) |
 | [work.md](work.md) | the `.starciwork` tree and the product's concepts, who writes what, the lanes of the brand and the environments |
 | [edition.md](edition.md) | what the one app edition runs (backing services, patterns, infrastructure, deploy targets, CI, Work), each linked to its owner |

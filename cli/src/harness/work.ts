@@ -96,10 +96,12 @@ const WORK_SEGMENT = /^[a-z0-9][a-z0-9-]*$/
 
 /**
  * The file that holds the Work record `id`, repository-relative, or undefined for no Work id: `brand` is
- * `.starciwork/brand/index.yaml` and `environment.<name>` its resource.yaml (the inverse of lanes.ts recordOfPath).
+ * `.starciwork/brand/index.yaml`, `master-plan` is `.starciwork/master-plan.yaml` and `environment.<name>` its resource.yaml (the
+ * inverse of lanes.ts recordOfPath).
  */
 export const recordFileOfId = (id: string): string | undefined => {
     if (id === "brand") return posix.join(WORK_DIR, "brand", "index.yaml")
+    if (id === "master-plan") return posix.join(WORK_DIR, "master-plan.yaml")
     const [family, name, ...rest] = id.split(".")
     if (family !== "environment" || name === undefined || !WORK_SEGMENT.test(name) || rest.length > 0) return undefined
     return posix.join(WORK_DIR, "_resources", "environments", name, "resource.yaml")

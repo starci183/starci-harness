@@ -11,6 +11,7 @@ This file owns the tree, the concepts and who writes what.
 | path | schema | holds |
 |---|---|---|
 | `workspace.yaml` | `work/workspace@1` | the project id and its repositories as `{role, name}` (`be`, `fe`); the one place a side repository is named |
+| `master-plan.yaml` | `starci/master-plan@1` | the project's Master Plan: nine layers of decisions, a reason and always/never rules ([master-plan-record.md](master-plan-record.md) PROJECT-MASTER-PLAN-1) |
 | `concepts/README.md` | Markdown, no schema | the concept catalog: one table row per concept, with the folders it is read for (PROJECT-WORK-7) |
 | `concepts/<topic>.md` | Markdown, no schema | one concept: a topic of the product's persistent shared context (PROJECT-WORK-7) |
 | `brand/index.yaml`, `brand/assets/**` | `work/brand@1` | the product's brand direction over its grammar's token names |
@@ -40,7 +41,7 @@ the current limits differ, and only a dated source shows when the design must be
 
 | writer | writes |
 |---|---|
-| the Kernel (its own reasoning) or a `docs` task it sends; an app session outside a workflow | a concept and its catalog line once the owner ruled (PROJECT-WORK-7), the brand record, the shell, a resource |
+| the Kernel (its own reasoning) or a `docs` task it sends; an app session outside a workflow | a concept and its catalog line once the owner ruled (PROJECT-WORK-7), the Master Plan once the owner ruled (PROJECT-MASTER-PLAN-1), the brand record, the shell, a resource |
 | a `code` or `test` task | code, never Work; what it learned goes into its result for the Kernel to record |
 | a `draw` or `image` task | a drawing or an image the brand record cites; never the record's direction |
 | the owner | the rulings a concept records, and taste; the Kernel records them |

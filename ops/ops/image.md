@@ -3,6 +3,7 @@ schema: starci/op@1
 summary: generate real artwork (the artwork slots a drawn direction leaves, illustrations, mockup renders)
 floor: hard
 hostTools: [git]
+masterPlan: [ui]
 perRecord: true
 context:
   base: []

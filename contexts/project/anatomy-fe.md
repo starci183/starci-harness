@@ -55,7 +55,7 @@ lint rule or gate enforces a rule is in anatomy.md's tree and the rule's page (`
   - `src-tauri/{icons/**,capabilities/*.json,Cargo.lock}` — **app.desktop** optional · R444
 - `{be,fe}/` — **app.sides** required
 - `ext/` — **app.ext** optional · R381, R06, R103, R402
-- `.starciwork/` — **app.starciwork** optional · R07, R09
+- `.starciwork/` — **app.starciwork** optional · R07, R09, R449
 - `.starcistacks/` — **app.starcistacks** required · R10, R01, R06, R09, R375, R259
   - `images/`
     - `db/Dockerfile` — **app.db.image** required · R05

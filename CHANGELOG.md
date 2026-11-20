@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Added: the Master Plan as data (contexts/project/master-plan-record.md PROJECT-MASTER-PLAN-1 to 3). `cli/src/harness/master-plan.ts` reads `.starciwork/master-plan.yaml` (`starci/master-plan@1`, refusing MASTER_PLAN_INVALID); the op front matter takes `masterPlan: [layer...]` and every worker brief carries a "Master Plan" section with its op's layers (code: patterns, data, ui, domains; draw, image, audit: ui; test, verify: testing; deliver: tech, security, observability; docs: business, domains; review: all nine) and the stop-and-ask procedure, also in the worker procedure of ops/ops/README.md. `master-plan` is a Work record family (`recordOfPath`, `recordFileOfId`) with a lane of one `docs` decide step in ops/lanes.yaml.
+- Added: `starci app master-plan` lists each rule of the plan with what holds it: enforced, partial (a machine part and review), planned, review, unenforced, or unknown (exit 1), against the app's installed hfs rule catalog and the check presets.
+
 ## 1.1.0-alpha.182 - 2026-11-20
 
 - Changed: one app edition (R212, owner ruling 2026-11-20). Verbs carry no `editions`: an app tree sees every verb but the runtime-only ones (`runtimeOnly`, `contexts anatomy`); `starci doctor` and the tree report `app`; `starci app info` runs in any app (refusal APP_REQUIRED); the anatomy renders one tree per side and its slices are contexts/project/anatomy-be.md and anatomy-fe.md (`contexts anatomy --slice --side <be|fe>`, no `--edition`); `check ci` reads the one job list of the CI standard.

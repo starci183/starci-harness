@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url"
 import { parse } from "yaml"
 import { z } from "zod"
 import { Refusal } from "../shared/errors.js"
+import { masterPlanLayerSchema } from "./master-plan.js"
 
 // A list of names may be written as one name: `contract new --check result-json:keys=summary` gives a string, not a list.
 // A comma in that one name is a list written as text (`a,b`), which would silently become one name: write [a, b] or a|b.
@@ -184,6 +185,8 @@ const opFrontmatterSchema = z.strictObject({
     independentOf: z.array(z.string().min(1)).min(1).optional(),
     // perRecord: a task of this label works one Work record, so a plan fans one step out per record (lanes.ts, TASK_NOT_SPLIT).
     perRecord: z.boolean().optional(),
+    // masterPlan: the layers of the project's Master Plan a brief of this label carries (master-plan.ts, PROJECT-MASTER-PLAN-2).
+    masterPlan: z.array(masterPlanLayerSchema).min(1).optional(),
 })
 
 /** A named check preset from ops/checks.yaml. */

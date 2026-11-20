@@ -3,6 +3,7 @@ schema: starci/op@1
 summary: read the diff of a slice against its contracts and Work records, read-only, and report structured findings
 floor: medium
 hostTools: [git]
+masterPlan: [business, tech, patterns, ui, data, testing, security, observability, domains]
 independentOf: [code, test]
 context:
   budget: 30000
