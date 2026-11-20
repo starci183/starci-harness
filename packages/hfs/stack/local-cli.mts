@@ -25,12 +25,12 @@ export const isLocalOnly = (value: unknown): boolean => (LOCAL_ONLY as readonly 
 export const isLocalShared = (value: unknown): boolean => (LOCAL_SHARED as readonly unknown[]).includes(value);
 
 const FLAGS: Readonly<Record<string, readonly string[]>> = Object.freeze({
-  doctor: [], up: ['--execute', '--timeout'], down: ['--execute'], logs: ['--service', '--lines'], prepare: ['--execute'], status: [], verify: [], 'db-upgrade': ['--execute', '--old-image'],
+  doctor: [], up: ['--execute', '--timeout', '--only'], down: ['--execute'], logs: ['--service', '--lines'], prepare: ['--execute'], status: [], verify: [], 'db-upgrade': ['--execute', '--old-image'],
 });
-const VALUES = new Set(['--env', '--timeout', '--service', '--lines', '--old-image']);
+const VALUES = new Set(['--env', '--timeout', '--service', '--lines', '--old-image', '--only']);
 
 /** The parsed flags of a dev action. */
-export interface LocalFlags { env?: string; json: boolean; execute: boolean; timeout?: string; service?: string; lines?: string; 'old-image'?: string }
+export interface LocalFlags { env?: string; json: boolean; execute: boolean; timeout?: string; service?: string; lines?: string; 'old-image'?: string; only?: string }
 
 /** Parses the flags of one dev action; a flag of another action, an unknown flag and a missing value are refusals. */
 export function parseLocalFlags(action: string, argv: readonly string[]): LocalFlags {
@@ -75,7 +75,7 @@ export async function runLocal(ctx: StackContext, action: string, argv: readonly
   const local = loadLocalConfig({ repoRoot: ctx.cwd, env: flags.env as string });
   const [file, name] = MODULES[action] as [string, string];
   const handler = (await import(file) as Record<string, LocalHandler>)[name] as LocalHandler;
-  const result = await handler(ctx, local, { execute: flags.execute, timeoutSeconds: whole(flags.timeout, '--timeout', 180), service: flags.service, lines: whole(flags.lines, '--lines', 200), oldImage: flags['old-image'] }, deps);
+  const result = await handler(ctx, local, { execute: flags.execute, timeoutSeconds: whole(flags.timeout, '--timeout', 180), service: flags.service, only: flags.only, lines: whole(flags.lines, '--lines', 200), oldImage: flags['old-image'] }, deps);
   if (flags.json) ctx.stdout(`${JSON.stringify({ verb: action, ok: result.ok, ...result.data }, null, 2)}\n`);
   else for (const line of result.lines) ctx.stdout(`${line}\n`);
   if (result.refused) {

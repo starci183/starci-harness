@@ -17,7 +17,7 @@ import { runVerb } from '../release/index.mjs';
 import type { FlagSpec, VerbContext, VerbIo, VerbResult } from '../release/index.mjs';
 import { BOOTSTRAP_FILE, buildModel, isLoopback, loadDatabase, requireArmed, resolveTarget } from './migrate.mjs';
 import type { DatabaseDecl } from './migrate.mjs';
-import { HISTORY_DDL, HISTORY_TABLE, historyVersions, markApplied, pgTool, psqlTransaction, queryRows } from './postgres.mjs';
+import { HISTORY_DDL, HISTORY_TABLE, PLATFORM_SCHEMAS, appTableCount, historyVersions, markApplied, pgTool, psqlTransaction } from './postgres.mjs';
 import type { DbTarget } from './postgres.mjs';
 import { buildImage, dumpEntries, entryKey, exec, firstDifference, replay, startScratch } from '../runtime/scripts/hfs/db-squash.mjs';
 import type { DumpEntry } from '../runtime/scripts/hfs/db-squash.mjs';
@@ -25,12 +25,8 @@ import { DbVerbError } from '../runtime/scripts/hfs/db-errors.mjs';
 import { DB_DOCKERFILE } from './image.mjs';
 import { SEED_RECEIPTS } from '../stack/seeds.mjs';
 
-/** The schemas a lite app's bootstrap and the history own: left out of both dumps, so the compared schema is the baseline's. */
-const PLATFORM_SCHEMAS = ['auth', 'storage', 'extensions', 'supabase_migrations'];
 const DUMP_FLAGS = ['--schema-only', '--no-owner', ...PLATFORM_SCHEMAS.flatMap((schema) => ['-N', schema])];
 const DIFF_LIMIT = 40;
-const RELATIONS_SQL = `select count(*)::int as count from pg_catalog.pg_class c join pg_catalog.pg_namespace n on n.oid = c.relnamespace
-  where c.relkind in ('r', 'p') and n.nspname !~ '^pg_' and n.nspname <> 'information_schema' and n.nspname <> all (array[${PLATFORM_SCHEMAS.map((schema) => `'${schema}'`).join(', ')}])`;
 
 /**
  * The tables the harness owns in an app database, never part of the schema an adopted database is compared with: the seed receipts (stack/seeds.mts SEED_RECEIPTS, the one name) and the
@@ -109,7 +105,7 @@ function compared(ctx: VerbContext, target: DbTarget, root: string, files: Array
  * `starci app db adopt`. options: { execute, urlEnv, image, target }. The dry run proves the schema equals the baseline's and prints the plan,
  * writing nothing; --execute adopts. Every refusal names its code (DB_ADOPT_*) and the next step.
  */
-export async function adoptDatabase(ctx: VerbContext, decl: DatabaseDecl, options: { execute?: boolean; urlEnv?: string | undefined; image?: string | undefined; target?: DbTarget } = {}): Promise<VerbResult> {
+export async function adoptDatabase(ctx: VerbContext, decl: DatabaseDecl, options: { execute?: boolean; urlEnv?: string | undefined; image?: string | undefined; ifPending?: boolean; target?: DbTarget } = {}): Promise<VerbResult> {
   if (decl.baseline === null) throw refusal('DB_ADOPT_NO_BASELINE', 'adopt marks the baseline migration applied: declare it as database.baseline in .starcistacks/application-stacks.yaml');
   if (decl.standard !== null) throw refusal('DB_ADOPT_STANDARD', 'adopt takes a database with one baseline; database.standard (a second baseline) is migrated, not adopted');
   const model = buildModel(ctx.cwd, decl);
@@ -117,9 +113,11 @@ export async function adoptDatabase(ctx: VerbContext, decl: DatabaseDecl, option
   const target = resolveTarget(ctx, options);
   const remote = historyVersions(ctx, target);
   const stamp = model.baseline as string;
+  if (remote.size > 0 && options.ifPending === true) return { ok: true, lines: [`target         ${target.how}`, `${HISTORY_TABLE} already holds ${remote.size} version(s): nothing to adopt.`], data: { adopted: false, executed: false, baseline: stamp, pending: false } };
   if (remote.has(stamp)) return { ok: true, lines: [`target         ${target.how}`, `the baseline ${stamp} is already recorded in ${HISTORY_TABLE}. Nothing to do; starci app db migrate applies the forward migrations.`], data: { adopted: false, executed: false, baseline: stamp } };
   if (remote.size > 0) throw refusal('DB_ADOPT_HISTORY_NOT_EMPTY', `${HISTORY_TABLE} already holds ${remote.size} version(s) and none is the baseline ${stamp}: that database is migrated, not adopted (starci app db migrate, or db restamp)`);
-  const [{ count = 0 } = {}] = queryRows(ctx, target, RELATIONS_SQL, { withhold: true });
+  const count = appTableCount(ctx, target);
+  if (count === 0 && options.ifPending === true) return { ok: true, lines: [`target         ${target.how}`, 'the database holds no tables: nothing to adopt (starci app db migrate builds it).'], data: { adopted: false, executed: false, baseline: stamp, pending: false } };
   if (count === 0) throw refusal('DB_ADOPT_EMPTY', 'the database holds no tables: there is nothing to adopt; starci app db migrate --execute builds an empty database from bootstrap and the baseline');
   const bootstrap = path.join(ctx.cwd, BOOTSTRAP_FILE);
   const hasBootstrap = fs.existsSync(bootstrap);
@@ -156,15 +154,15 @@ export async function adoptDatabase(ctx: VerbContext, decl: DatabaseDecl, option
 }
 
 /** The flags of `starci app db adopt`; the parser refuses every other. */
-export const SPEC: FlagSpec = { boolean: ['--execute', '--json'], value: ['--db-url-env', '--image'] };
+export const SPEC: FlagSpec = { boolean: ['--execute', '--json', '--if-pending'], value: ['--db-url-env', '--image'] };
 
-/** Entry of the verb: `starci app db adopt [--execute] [--db-url-env <NAME>] [--image <ref>] [--json]`. */
+/** Entry of the verb: `starci app db adopt [--execute] [--if-pending] [--db-url-env <NAME>] [--image <ref>] [--json]`. */
 export function dbAdoptMain(argv: string[], io: VerbIo = {}): Promise<number> {
   return runVerb({
     label: 'starci app db adopt', name: 'db adopt', code: 'DB_USAGE', io, argv, spec: SPEC,
     run: async (ctx, flags, positional) => {
       if (positional.length) throw refusal('DB_USAGE', 'adopt takes flags only');
-      return adoptDatabase(ctx, loadDatabase(ctx.cwd), { execute: flags.execute === true, urlEnv: flags['db-url-env'] as string | undefined, image: flags.image as string | undefined });
+      return adoptDatabase(ctx, loadDatabase(ctx.cwd), { execute: flags.execute === true, urlEnv: flags['db-url-env'] as string | undefined, image: flags.image as string | undefined, ifPending: flags['if-pending'] === true });
     },
   });
 }

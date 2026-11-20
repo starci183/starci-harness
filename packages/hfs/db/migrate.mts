@@ -21,7 +21,7 @@ import { readDeclaration, runVerb } from '../release/index.mjs';
 import { DbVerbError } from '../runtime/scripts/hfs/db-errors.mjs';
 import { planInventory, summaryDrifts, summaryLine } from '../runtime/scripts/hfs/db-plan-verb.mjs';
 import type { Kind, PlanInventory, Summary } from '../runtime/scripts/hfs/db-plan-verb.mjs';
-import { DEFAULT_DB_URL_ENV, HISTORY_DDL, dbTarget, historyVersions, markApplied, markReverted, psqlTransaction, queryRows } from './postgres.mjs';
+import { DEFAULT_DB_URL_ENV, HISTORY_DDL, appTableCount, dbTarget, historyVersions, markApplied, markReverted, psqlTransaction, queryRows } from './postgres.mjs';
 import type { DbTarget } from './postgres.mjs';
 import type { FlagSpec, VerbContext, VerbIo, VerbResult } from '../release/index.mjs';
 
@@ -301,6 +301,11 @@ export async function migrateDatabase(ctx: VerbContext, decl: DatabaseDecl, opti
   const model = phaseModel(buildModel(ctx.cwd, decl), options.phase ?? 'all');
   const session: MigrationSession = { ctx, model, target: resolveTarget(ctx, options) };
   const remote = listRemote(session);
+  // A database that holds app tables and no migration history was built by another tool (a restore, a TypeORM synchronize): migrate would replay the bootstrap and the baseline over them.
+  if (remote.size === 0) {
+    const tables = appTableCount(ctx, session.target);
+    if (tables > 0) throw refusal('DB_MIGRATE_NOT_ADOPTED', `this database already holds a schema (${tables} table(s) in its app schemas) and its migration history is empty or missing; adopt it first (starci app db adopt)`);
+  }
   const plan = planMigration(model, remote);
   if (plan.done) return { ok: true, lines: [`target         ${session.target.how}`, 'the history already is the baseline plus the forward migrations (held-back ones may or may not be applied). Nothing to do.'], data: dataOf(model, plan, remote, { executed: false }) };
   const lines = planLines(model, session, remote, plan);

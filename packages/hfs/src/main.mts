@@ -303,7 +303,7 @@ const VERB_USAGE: Record<string, string[]> = {
       STACK_FLAGS[action].map((flag: string) => flagUsage(flag, { value: STACK_VALUE.has(flag), repeat: STACK_REPEAT.has(flag) })), '[--json]')),
     // The dev actions of a docker-compose environment (stack/local-cli.mts); prepare, status and verify above answer them too.
     'starci app stack doctor --env <env> [--json]',
-    'starci app stack up --env <env> [--execute] [--timeout <seconds>] [--json]',
+    'starci app stack up --env <env> [--execute] [--timeout <seconds>] [--only <service>] [--json]',
     'starci app stack down --env <env> [--execute] [--json]',
     'starci app stack logs --env <env> --service <name> [--lines <n>] [--json]',
   ],

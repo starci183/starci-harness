@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0-alpha.185.next.6 - 2026-11-21
+
+- Changed: the CLI requires @starci/hfs@6.16.1-next.4 (local registry only; the namespace cli-follow never uses).
+
 ## 1.1.0-alpha.185.next.5 - 2026-11-21
 
 - Changed: the CLI requires @starci/hfs@6.16.1-next.3 (local registry only; the namespace cli-follow never uses).
