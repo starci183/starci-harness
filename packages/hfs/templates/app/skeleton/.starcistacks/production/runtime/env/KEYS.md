@@ -17,6 +17,7 @@ This inventory declares names, consumers and mounted file paths. Scaffolding gen
 | `AUTH_JWT_AUDIENCE` | API access-token audience |
 | `AUTH_JWT_KEY_ID` | API signing key id, published in the JWKS |
 | `AUTH_COOKIE_DOMAIN` | API cookie `Domain` (a bare domain such as `example.com`, no scheme or port); optional while the web and the API share one host, required when they are served on different hosts, because a host-only refresh cookie never reaches the web server's forwarded `Cookie` header |
+| `AUTH_COOKIE_NAME` | API refresh cookie name (an RFC 6265 token, default `refresh_token`); optional. Apps that share a parent cookie `Domain` must each set a distinct name, or one app's sign-in overwrites the other's and its refresh cookie reaches the other API |
 | `AUTH_JWT_PRIVATE_KEY` | API Ed25519 (EdDSA) signing key; reads `AUTH_JWT_PRIVATE_KEY_FILE` at `/run/secrets/auth-jwt-private-key` |
 | `STORAGE_ENDPOINT` | API storage endpoint: the public host of the app's own `storage` service (the ingress routes it to the S3 port, never the console) |
 | `STORAGE_REGION` | API storage signing region |

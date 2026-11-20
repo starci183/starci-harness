@@ -495,10 +495,17 @@ const referencesObject = (scopes: Parsed, object: Parsed) => scopes.some(({ name
     : (object.kind === 'constraint' ? constraints : names).has(object.leaf)
       && (!['column', 'constraint'].includes(object.kind) || !object.table || (tables ?? names).has(object.table))));
 
-function destructiveObjectFinding(file: string, object: Parsed, contract: Parsed, references: Parsed) {
+function destructiveObjectFinding(file: string, object: Parsed, contract: Parsed, references: Parsed, replacement?: { creator: string; lost: ReadonlySet<string> }) {
   const reference = references.find(({ scopes }: { scopes: Parsed }) => referencesObject(scopes, object));
   if (contract && !reference) return null;
-  const reason = reference && contract ? `${reference.file} still references this object; remove the reference before the contract migration`
+  if (contract && replacement) {
+    // The table is created anew by a later migration that says so: a reference is judged against the new definition, and only a column the new shape lacks is a read of the dropped one.
+    const column = [...replacement.lost].find((name) => references.some(({ scopes }: { scopes: Parsed }) => scopes.some((scope: Parsed) => referencesObject([scope], object) && scope.names.has(name))));
+    const reader = column === undefined ? undefined : references.find(({ scopes }: { scopes: Parsed }) => scopes.some((scope: Parsed) => referencesObject([scope], object) && scope.names.has(column)));
+    if (reader === undefined) return { ...found(DB_MIGRATION_DESTRUCTIVE, file, `${file}:${object.line} drops ${object.name}, which ${replacement.creator} creates anew (replaces: ${object.leaf}); the rows of the old table are lost by intent`, { line: object.line, object: object.name, replacedBy: replacement.creator }), level: 'info' };
+    return found(DB_MIGRATION_DESTRUCTIVE, file, `${file}:${object.line} drops ${object.name}, replaced by ${replacement.creator}, but ${reader.file} still reads column ${column}, which the new ${object.leaf} lacks`, { line: object.line, object: object.name, reference: reader.file, column });
+  }
+  const reason = reference && contract ? `${reference.file} still references this object; remove the reference before the contract migration${object.kind === 'table' ? `, or, when a later migration creates ${object.leaf} anew, mark that migration with the comment line "-- replaces: ${object.leaf}"` : ''}`
     : 'use a *_contract_* migration after the application stops using this object';
   return found(DB_MIGRATION_DESTRUCTIVE, file, `${file}:${object.line} destructively changes ${object.name}; ${reason}`,
     { line: object.line, object: object.name, ...(reference ? { reference: reference.file } : {}) });
@@ -540,6 +547,85 @@ function migrationDestructiveObjects(text: string) {
   });
 }
 
+// ---- replacement: a table dropped by one migration and created anew, under the same name, by a later one that says so
+
+/** The table leaf names a migration's `-- replaces: <table>[, <table>]` comment lines declare. */
+function replacesMarkers(text: string): string[] {
+  return [...text.matchAll(/^[ \t]*--[ \t]*replaces:[ \t]*(.+?)[ \t]*$/gmu)]
+    .flatMap((match) => (match[1] as string).split(',').map((name) => name.trim().replaceAll('"', '').split('.').at(-1) as string).filter(Boolean));
+}
+
+const COLUMN_STOPS = new Set(['constraint', 'primary', 'foreign', 'unique', 'check', 'exclude', 'like']);
+
+/** The tables a statement creates, each with the column names its definition lists (`{ leaf, columns }`). */
+function createdTables(statement: Parsed): Array<{ leaf: string; columns: string[] }> {
+  const out: Array<{ leaf: string; columns: string[] }> = [];
+  for (let index = 0; index < statement.length - 1; index += 1) {
+    if (!sqlWord(statement[index], 'create')) continue;
+    const at = skipWords(statement, index + 1, ['temp', 'temporary', 'unlogged']);
+    if (!sqlWord(statement[at], 'table')) continue;
+    const table = nameAt(statement, skipWords(statement, at + 1, ['if', 'not', 'exists']));
+    if (!table || statement[table.next]?.v !== '(') continue;
+    const columns: string[] = [];
+    let depth = 0;
+    let atItem = false;
+    for (let position = table.next; position < statement.length; position += 1) {
+      const token = statement[position];
+      if (token.v === '(') { depth += 1; atItem = depth === 1; continue; }
+      if (token.v === ')') { depth -= 1; if (depth === 0) break; continue; }
+      if (depth === 1 && token.v === ',') { atItem = true; continue; }
+      if (depth === 1 && atItem) {
+        atItem = false;
+        const name = sqlName(token);
+        if (name !== null && !(token.t === 'word' && COLUMN_STOPS.has(name))) columns.push(name);
+      }
+    }
+    out.push({ leaf: table.leaf as string, columns });
+  }
+  return out;
+}
+
+/** The columns a table has after `texts` (migrations in order): those of its creates, plus every ADD COLUMN, minus every DROP COLUMN is not tracked (a superset). */
+function tableColumns(texts: readonly string[], leaf: string): Set<string> {
+  const columns = new Set<string>();
+  for (const text of texts) {
+    for (const statement of databaseSqlStatements(databaseExecutableTokens(text)) as Parsed[]) {
+      for (const created of createdTables(statement)) if (created.leaf === leaf) { columns.clear(); for (const column of created.columns) columns.add(column); }
+      for (const key of addedColumns(statement)) if (key.startsWith(`${leaf}.`) && !key.endsWith('.*')) columns.add(key.slice(leaf.length + 1));
+    }
+  }
+  return columns;
+}
+
+/** A table replacement: the dropped table's leaf, the migration that creates it anew, and the columns the old shape had that the new one lacks. */
+interface Replacement { creator: string; lost: ReadonlySet<string> }
+
+/**
+ * The replacements of the active chain: a drop of table X in a migration followed, in a LATER migration of the ordered set, by a
+ * `create table X` under the marker `-- replaces: X`. The marker is explicit; a marker with no earlier drop, no create, or a create that
+ * does not sort after the drop is reported by `replacementProblems`.
+ */
+function replacementsOf(repoRoot: string, migrations: readonly string[]): { byDrop: Map<string, Map<string, Replacement>>; problems: Array<{ file: string; message: string }> } {
+  const texts = new Map(migrations.map((file) => [file, readText(repoRoot, file) ?? ''] as [string, string]));
+  const byDrop = new Map<string, Map<string, Replacement>>();
+  const problems: Array<{ file: string; message: string }> = [];
+  migrations.forEach((creator, index) => {
+    const text = texts.get(creator) as string;
+    for (const leaf of replacesMarkers(text)) {
+      const creates = (databaseSqlStatements(databaseExecutableTokens(text)) as Parsed[]).some((statement) => createdTables(statement).some((created) => created.leaf === leaf));
+      if (!creates) { problems.push({ file: creator, message: `${creator} says it replaces ${leaf} but creates no table ${leaf}` }); continue; }
+      const dropper = migrations.slice(0, index).filter((file) => migrationDestructiveObjects(texts.get(file) as string).some((object: Parsed) => object.kind === 'table' && object.leaf === leaf));
+      if (!dropper.length) { problems.push({ file: creator, message: `${creator} says it replaces ${leaf}, but no earlier migration drops ${leaf}: a replacement is a drop followed by a later create` }); continue; }
+      const before = migrations.slice(0, index).map((file) => texts.get(file) as string);
+      const old = tableColumns(before, leaf);
+      const fresh = tableColumns([text], leaf);
+      const lost = new Set([...old].filter((column) => !fresh.has(column)));
+      for (const file of dropper) byDrop.set(file, new Map([...(byDrop.get(file) ?? []), [leaf, { creator, lost }]]));
+    }
+  });
+  return { byDrop, problems };
+}
+
 const CONTRACT_MIGRATION = /_contract_[a-z0-9]+(?:[-_][a-z0-9]+)*\.sql$/;
 
 /**
@@ -562,7 +648,7 @@ function ruledObjectFinding(file: string, object: Parsed, references: Parsed) {
     { line: object.line, object: object.name, reference: reference.file }) : null;
 }
 
-function destructiveFileFindings(file: string, text: string, references: Parsed, ruled: ReadonlySet<string> = new Set()) {
+function destructiveFileFindings(file: string, text: string, references: Parsed, ruled: ReadonlySet<string> = new Set(), replaced: Map<string, Replacement> = new Map()) {
   const contract = CONTRACT_MIGRATION.test(file);
   const seen = new Set();
   const objects = migrationDestructiveObjects(text);
@@ -570,7 +656,7 @@ function destructiveFileFindings(file: string, text: string, references: Parsed,
     const key = `${object.line}:${object.kind}:${object.name}`;
     if (seen.has(key)) return [];
     seen.add(key);
-    const finding = !contract && ruled.has(object.name) ? ruledObjectFinding(file, object, references) : destructiveObjectFinding(file, object, contract, references);
+    const finding = !contract && ruled.has(object.name) ? ruledObjectFinding(file, object, references) : destructiveObjectFinding(file, object, contract, references, object.kind === 'table' ? replaced.get(object.leaf) : undefined);
     return finding ? [finding] : [];
   });
   for (const name of ruled) {
@@ -631,10 +717,12 @@ export function destructiveMigrationFindings({ repoRoot, migrations, files }: { 
   if (sources.length && !ts) return [found(DB_MIGRATION_DESTRUCTIVE, 'hfs.json', 'destructive migration checks require the TypeScript parser to read be/src references')];
   const references = ts ? sources.map((file: string) => ({ file, scopes: sourceNameScopes(ts, readText(repoRoot, file) ?? '', file) })) : [];
   const rulings = destructiveRulings(repoRoot);
-  const findings = migrations.flatMap((file: string) => {
+  const ordered = [...migrations].sort();
+  const replacements = replacementsOf(repoRoot, ordered);
+  const findings = [...replacements.problems.map((problem) => found(DB_MIGRATION_DESTRUCTIVE, problem.file, problem.message, {})), ...migrations.flatMap((file: string) => {
     const text = readText(repoRoot, file);
-    return text === null ? [] : destructiveFileFindings(file, text, references, rulings.get(file));
-  });
+    return text === null ? [] : destructiveFileFindings(file, text, references, rulings.get(file), replacements.byDrop.get(file));
+  })];
   for (const migration of rulings.keys()) {
     if (!migrations.includes(migration)) findings.push(found(DB_DESTRUCTIVE_RULING_UNPROVEN, 'hfs.json', `hfs.json db.destructiveRulings names ${migration}, which is no active migration; an entry names the exact file it covers`, { migration }));
   }

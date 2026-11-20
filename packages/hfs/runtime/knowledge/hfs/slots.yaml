@@ -2869,8 +2869,9 @@ slots:
   - id: fe.modules.auth.client
     since: 3.16.0
     profiles: [fe]
+    # `__app__` is the fe app that serves sign-in (hfs.json sides.fe.apps[].signIn, else the one kind-next app); sync renders into that app's folder.
     # The AuthClient, implemented by one @starci/auth/client instance over the app's own back-end auth doors.  email-doors.ts is the call of the five email doors (sign up, resend, confirm, forgot, reset), kept off the shared AuthClient interface because the AuthClient interface carries no recovery flow; index.ts is the module entry that exports both.
-    path: "apps/web/src/modules/auth/{client.ts,email-doors.ts,index.ts}"
+    path: "apps/__app__/src/modules/auth/{client.ts,email-doors.ts,index.ts}"
     presence: optional
     tracked: tracked
     tier: inherit

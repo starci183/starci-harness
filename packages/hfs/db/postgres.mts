@@ -5,6 +5,7 @@
 import path from 'node:path';
 import { failure, refusal } from '../stack/errors.mjs';
 import { firstLine, tool } from '../stack/context.mjs';
+import { clientImageArgs } from './client-image.mjs';
 import type { SpawnResult, VerbContext } from '../release/index.mjs';
 
 /** The default environment variable that names the app's database. */
@@ -121,9 +122,25 @@ function containerRun(ctx: VerbContext, target: DbTarget & { container: string }
   return tool(ctx, 'docker', ['exec', '-i', target.container, 'sh', '-c', STDIN_PASSWORD, 'sh', command, ...inside], { input: `${target.env.PGPASSWORD ?? ''}\n` });
 }
 
+/** True when the host has no such executable (the spawn failed before the tool ran). */
+const missingOnHost = (run: SpawnResult): boolean => Boolean(run.error) && (run.error as NodeJS.ErrnoException).code === 'ENOENT';
+
+/**
+ * `command` of the pinned postgres image (client-image.mts) against a URL target, for a host without the tool: a one-shot container with the
+ * connection passed in, the password only in the environment of the docker process. Docker missing is the refusal DB_CLI_MISSING.
+ */
+function imageRun(ctx: VerbContext, target: DbTarget, command: string, args: readonly string[]): SpawnResult {
+  return tool(ctx, 'docker', clientImageArgs(command, args, [target.url]), { cwd: ctx.cwd, env: { ...ctx.env, ...target.env } });
+}
+
 /** Runs a PostgreSQL client tool against `target`; a failure names the first stderr line with every secret scrubbed (or withholds it). */
 export function pgTool(ctx: VerbContext, target: DbTarget, command: string, args: readonly string[], { withhold = false, code = 'DB_CLI_FAILED' }: { withhold?: boolean; code?: string } = {}): { stdout: string; text: string } {
-  const run = target.container ? containerRun(ctx, target as DbTarget & { container: string }, command, args) : tool(ctx, command, args, { cwd: ctx.cwd, env: { ...ctx.env, ...target.env } });
+  // The host's own binary first; with none on the host the pinned postgres image runs it (docker run --rm), so a machine without PostgreSQL tools reaches any database it can connect to.
+  let run = target.container ? containerRun(ctx, target as DbTarget & { container: string }, command, args) : tool(ctx, command, args, { cwd: ctx.cwd, env: { ...ctx.env, ...target.env } });
+  if (!target.container && missingOnHost(run)) {
+    run = imageRun(ctx, target, command, args);
+    if (run.error) throw failure('DB_CLI_MISSING', `cannot run ${command}: the host has no PostgreSQL client tools and docker cannot run the pinned postgres image (install the client tools or start Docker)`);
+  }
   if (run.error) throw failure('DB_CLI_MISSING', target.container ? `cannot run docker exec ${command} in container ${target.container.slice(0, 12)}` : `cannot run ${command}; install the PostgreSQL client tools (psql, pg_dump)`);
   if (run.status !== 0) throw failure(code, withhold ? `${command} failed; output withheld` : `${command} failed: ${scrub(firstLine(run.stderr), target.secrets)}`);
   return { stdout: run.stdout ?? '', text: `${run.stdout ?? ''}${run.stderr ?? ''}` };

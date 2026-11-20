@@ -22,11 +22,11 @@ const CORE = { name: 'core', kind: 'api' };
 const OPS = { name: 'cli', kind: 'cli' };
 const CLIENT = { name: 'relay-cli', kind: 'client-cli', package: '@acme/relay', bin: 'relay' };
 
-test('the root cli and migrate scripts run the ops cli wherever the client cli is declared', () => {
+test('the root cli script runs the ops cli wherever the client cli is declared, and the one edition renders no migrate script', () => {
   for (const apps of [[CORE, OPS, CLIENT], [CORE, CLIENT, OPS], [CLIENT, CORE, OPS]]) {
     const scripts = scriptsOf(appScripts(app(apps), undefined));
     assert.equal(scripts.cli, 'node be/dist/apps/cli/src/main.js');
-    assert.equal(scripts.migrate, 'node be/dist/apps/cli/src/main.js migrate run');
+    assert.equal(scripts.migrate, undefined);
   }
 });
 

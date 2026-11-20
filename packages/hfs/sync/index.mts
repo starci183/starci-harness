@@ -58,6 +58,7 @@ import { defaultBootModule } from '../runtime/scripts/hfs/app-boot.mjs';
 import { bootstrapSection } from '../runtime/scripts/hfs/rules/database-constants.mjs';
 import { SERVER_AGE_IDENTITY } from '../stack/server-key.mjs';
 import { inlinePrefix } from '../stack/ssh-gate.mjs';
+import { DB_BASE_IMAGE } from '../db/image.mjs';
 
 export const TEMPLATES_DIR = path.join(import.meta.dirname, '..', 'templates');
 const NODE_MAJOR = 22;
@@ -147,7 +148,23 @@ function managedTemplate(scope: string, group: string, file: string, hasTemplate
   return directories.map(dir => `${dir}/${group}/${file}`).find(name => hasTemplate(name));
 }
 
-function slotTargets(slot: ManifestSlot, scope: string, hasTemplate: (name: string) => boolean, enabled: (slot: ManifestSlot) => boolean, declares: (side: string) => boolean, needs: (fact: string) => boolean): Target[] {
+/** The placeholder of a managed slot path that stands for the fe app serving sign-in (the folder name under fe/apps). */
+const SIGN_IN_APP = '__app__';
+
+/**
+ * The fe app that serves sign-in: the one marked `signIn` in hfs.json, else the only kind-next app. Null when the side has no next app;
+ * several next apps with none marked is refused, since sync cannot choose which one holds the session client.
+ */
+export function signInAppOf(apps: readonly { name: string; kind: string; signIn?: boolean }[]): string | null {
+  const marked = apps.filter(entry => entry.signIn === true);
+  if (marked.length === 1) return (marked[0] as { name: string }).name;
+  const next = apps.filter(entry => entry.kind === 'next');
+  if (next.length === 0) return null;
+  if (next.length === 1) return (next[0] as { name: string }).name;
+  throw new SyncError('HFS_SYNC_SIGN_IN_APP_AMBIGUOUS', `the fe side declares several next apps (${next.map(entry => entry.name).join(', ')}) and none is marked signIn: add "signIn": true to the one app that serves sign-in in hfs.json sides.fe.apps`);
+}
+
+function slotTargets(slot: ManifestSlot, scope: string, hasTemplate: (name: string) => boolean, enabled: (slot: ManifestSlot) => boolean, declares: (side: string) => boolean, needs: (fact: string) => boolean, feApps: readonly { name: string; kind: string; signIn?: boolean }[]): Target[] {
   if (!slot.profiles.includes(scope)) return [];
   // A slot whose managed files serve a side renders them only for a project that declares it (managedWhenSides, PROJECT-1).
   if ((slot.managedWhenSides ?? []).some(side => !declares(side))) return [];
@@ -158,11 +175,14 @@ function slotTargets(slot: ManifestSlot, scope: string, hasTemplate: (name: stri
   if (presenceOf(slot, scope) === 'forbidden') return [];
   const group = slot.managedBy;
   if (group === undefined) return [];
-  return (braceVariants(slot.path) as string[]).map((file): Target => {
+  const variants = braceVariants(slot.path) as string[];
+  const signIn = variants.some(file => file.includes(`apps/${SIGN_IN_APP}/`)) ? signInAppOf(feApps) : undefined;
+  if (signIn === null) return [];
+  return variants.map((file): Target => {
     if (!literalFile(file)) throw new SyncError('HFS_SYNC_MANIFEST_MANAGED', `slot ${slot.id} names managedBy but its path ${slot.path} is not a list of literal files (${file})`);
     const template = managedTemplate(scope, group, file, hasTemplate);
     if (!template) throw new SyncError('HFS_SYNC_TEMPLATE_MISSING', `slot ${slot.id} manages ${file} for ${scope}, but templates/{${scope},common}/${group} has no template for it`);
-    return { path: file, template, mode: MODE_OF_GROUP[group] ?? 'file', slot: slot.id, group };
+    return { path: signIn === undefined ? file : file.replace(`apps/${SIGN_IN_APP}/`, `apps/${signIn}/`), template, mode: MODE_OF_GROUP[group] ?? 'file', slot: slot.id, group };
   });
 }
 
@@ -177,10 +197,10 @@ function unlistedTargets(scope: string): Target[] {
  * its scope or under common. `enabled(slot)` decides an opt-in slot (renderTargets passes the declaration's); without it every slot
  * counts, which is what an inventory of the templates needs.
  */
-export function targetsOf(scope: string, { manifest = loadSlotManifest() as SlotManifest, hasTemplate = (name: string): boolean => fs.existsSync(path.join(TEMPLATES_DIR, name)), enabled = (_slot: ManifestSlot): boolean => true, declares = (_side: string): boolean => true, needs = (_fact: string): boolean => true }: {
-  manifest?: SlotManifest; hasTemplate?: (name: string) => boolean; enabled?: (slot: ManifestSlot) => boolean; declares?: (side: string) => boolean; needs?: (fact: string) => boolean;
+export function targetsOf(scope: string, { manifest = loadSlotManifest() as SlotManifest, hasTemplate = (name: string): boolean => fs.existsSync(path.join(TEMPLATES_DIR, name)), enabled = (_slot: ManifestSlot): boolean => true, declares = (_side: string): boolean => true, needs = (_fact: string): boolean => true, feApps = [] }: {
+  manifest?: SlotManifest; hasTemplate?: (name: string) => boolean; enabled?: (slot: ManifestSlot) => boolean; declares?: (side: string) => boolean; needs?: (fact: string) => boolean; feApps?: readonly { name: string; kind: string; signIn?: boolean }[];
 } = {}): Target[] {
-  const listed = manifest.slots.flatMap(slot => slotTargets(slot, scope, hasTemplate, enabled, declares, needs));
+  const listed = manifest.slots.flatMap(slot => slotTargets(slot, scope, hasTemplate, enabled, declares, needs, feApps));
   return [...listed, ...unlistedTargets(scope)];
 }
 
@@ -229,7 +249,7 @@ function trailingNewline(text: string): string {
  * The base image of an app's managed .starcistacks/images/db/Dockerfile (contexts/stack/pins.yaml images postgres): the
  * Docker Official postgres image by digest, to which the Dockerfile adds PGVECTOR_PACKAGE from PGDG and the PGMQ release.
  */
-export const DB_BASE_IMAGE = 'postgres:17.11@sha256:31ba9c94a03ada9988f2bb493a22a75eef3a185884533e5cdbcd498ea835b08f';
+export { DB_BASE_IMAGE };
 /** The PGDG package of pgvector at the exact version the db image installs (the one extension the image does not ship). */
 export const PGVECTOR_PACKAGE = 'postgresql-17-pgvector=0.8.7-1.pgdg13+1';
 /**
@@ -428,8 +448,8 @@ export function jestCoverageSource(coverage: { roots: string[]; roles: string[];
  * runs ts-node-dev transpile-only with a 1s debounce over be/src, be/apps and each root package's dist; an
  * fe script runs the fe app's workspace (@<project>/<app>): through turbo for dev (so the packages it imports are built first) and
  * through npm `-w` for start. be: `dev:be` runs the one api app from source and restarts it on change (`dev:be:<app>` each, with
- * several), `start:<app>` runs a built api or worker app, `cli` the built ops cli app (`npm run cli -- <group> <command>`) and, when the
- * back end declares a connection, `migrate` its migrate command (`cli migrate run`); `build:<app>` builds the npm package of a client
+ * several), `start:<app>` runs a built api or worker app, `cli` the built ops cli app (`npm run cli -- <group> <command>`);
+ * `build:<app>` builds the npm package of a client
  * cli (the import closure of its main.ts, into be/apps/<app>/dist/), which has no start script and no image. fe: `dev:fe` runs the one Next app in
  * development (`dev:fe:<app>` each, with several), `start:<app>` serves a built one. Images:
  * `docker:build:<app>` builds the image of one app (the exact command its Dockerfile header states, tag `<project>/<app>:dev`) and
@@ -440,7 +460,6 @@ export function appScripts(app: ResolvedApp, source: Partial<Pick<AppSourceFacts
   const be = app.sides.be.apps;
   const fe = app.sides.fe.apps;
   const apis = be.filter(entry => entry.kind === 'api');
-  const connections = app.sides.be.connections ?? [];
   // Transpile only (the type check is the gate's, not the dev loop's), a 1s debounce so a merge that writes several files restarts once
   // on the whole tree, and an explicit watch list (be/src, be/apps and the dist of each root workspace package) so a file the api had not
   // loaded yet, or a rebuilt package, restarts it too; ts-node-dev alone watches only the files it already required.
@@ -458,7 +477,8 @@ export function appScripts(app: ResolvedApp, source: Partial<Pick<AppSourceFacts
     ...be.flatMap(entry => {
       if (entry.kind === CLIENT_CLI_KIND) return [line(`build:${entry.name}`, `cd be && tsc -p apps/${entry.name}/tsconfig.build.json && tsc-alias -p apps/${entry.name}/tsconfig.build.json`)];
       if (entry.kind !== 'cli') return [line(`start:${entry.name}`, built(entry))];
-      return [line('cli', built(entry)), ...(connections.length ? [line('migrate', `${built(entry)} ${MIGRATE_COMMAND}`)] : [])];
+      // The one edition migrates with SQL (the db:* scripts, starci app db migrate): the TypeORM `migrate` script of the ops cli is no longer rendered.
+      return [line('cli', built(entry))];
     }),
     ...fe.map(entry => line(`start:${entry.name}`, `npm run start -w ${workspace(entry)}`)),
     ...(app.optionalSlots.includes('app.browser') ? [line('test:browser', 'playwright test -c browser/playwright.config.ts')] : []),
@@ -471,8 +491,6 @@ export function appScripts(app: ResolvedApp, source: Partial<Pick<AppSourceFacts
 /** The kind of a command line a user installs from npm (slot be.app.client-cli): it is built as a package, never as an image. */
 const CLIENT_CLI_KIND = 'client-cli';
 
-/** The cli command that migrates every connection (src/features/cli/migrate/subs/run.cli.ts). */
-const MIGRATE_COMMAND = 'migrate run';
 
 /** True when the fe side opts into a workspace package (repo.packages or any fe.package.* slot): the sources then include fe/packages/. */
 const opensPackages = (side: AppSide): boolean => (side.optionalSlots ?? []).some(id => id === 'repo.packages' || String(id).startsWith('fe.package.'));
@@ -725,7 +743,7 @@ function renderOnce(hfs: unknown, presets: Presets | null | undefined, { sonarKe
   return [APP_SCOPE, ...declaredAppSides(app)].flatMap(scope => {
     const vars = variables(app, scope, presets, sonarKey, manifest, source);
     const repo = scope === APP_SCOPE ? app : app.sides[scope as 'be' | 'fe'];
-    const declaredTargets = targetsOf(scope, { manifest, hasTemplate, enabled: slot => declaredSlotEnabled(slot, repo), declares: side => (side === DESKTOP_SIDE ? app.desktop !== undefined : sideDeclared(app, side as ProjectSide)), needs: fact => factHolds(fact, source) });
+    const declaredTargets = targetsOf(scope, { manifest, hasTemplate, enabled: slot => declaredSlotEnabled(slot, repo), declares: side => (side === DESKTOP_SIDE ? app.desktop !== undefined : sideDeclared(app, side as ProjectSide)), needs: fact => factHolds(fact, source), feApps: app.sides.fe?.apps ?? [] });
     if (scope === APP_SCOPE && source?.badges) declaredTargets.push({ path: 'README.md', mode: 'block', markdown: true, template: 'app/readme-badges/README.md' });
     const targets = declaredTargets
       .filter(target => !(source?.workPresent === false && target.path === '.starciwork/.gitignore'))

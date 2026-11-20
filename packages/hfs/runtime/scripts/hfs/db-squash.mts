@@ -129,7 +129,7 @@ function docker(args: string[], { input, env = {}, secrets = [] }: { input?: str
 const firstLines = (text: unknown, count = 4): string => String(text).trim().split('\n').filter(Boolean).slice(0, count).join(' | ');
 
 /** A throwaway container of `image` that can reach the host as host.docker.internal; refused without Docker. */
-function startScratch(image: string): Scratch {
+export function startScratch(image: string): Scratch {
   if (!docker(['version', '--format', '{{.Server.Version}}']).ok) throw new DbVerbError('baseline --squash needs Docker for its scratch replay; start it');
   const password = randomBytes(18).toString('hex');
   const name = `starci-db-squash-${randomBytes(6).toString('hex')}`;
@@ -146,7 +146,7 @@ function startScratch(image: string): Scratch {
 }
 
 /** The app's own db image, built from its managed Dockerfile (DB_DOCKERFILE); its id names it. */
-function buildImage(root: string): string {
+export function buildImage(root: string): string {
   if (!docker(['version', '--format', '{{.Server.Version}}']).ok) throw new DbVerbError('baseline --squash needs Docker for its scratch replay; start it');
   const build = docker(['build', '--quiet', '--file', path.join(root, DB_DOCKERFILE), path.join(root, DB_IMAGE_CONTEXT)]);
   const image = /sha256:[a-f0-9]{64}/.exec(build.stdout)?.[0];
@@ -158,16 +158,16 @@ function buildImage(root: string): string {
 const inScratch = (scratch: Scratch): Client => ({ head: ['exec', '-i'], ref: scratch.name });
 const onHostNetwork = (scratch: Scratch): Client => ({ head: ['run', '--rm', '-i', '--network', 'host', '--label', 'starci.db-squash=1'], ref: scratch.image });
 
-const scratchTarget = (scratch: Scratch, database: string): Target => ({ url: `postgresql://postgres@127.0.0.1:5432/${database}`, password: scratch.password, label: `the scratch ${database}`, client: inScratch(scratch) });
+export const scratchTarget = (scratch: Scratch, database: string): Target => ({ url: `postgresql://postgres@127.0.0.1:5432/${database}`, password: scratch.password, label: `the scratch ${database}`, client: inScratch(scratch) });
 
-function exec(target: Target, tool: string, args: string[], { input, query = false }: { input?: string | undefined; query?: boolean } = {}): string {
+export function exec(target: Target, tool: string, args: string[], { input, query = false }: { input?: string | undefined; query?: boolean } = {}): string {
   const env = { PGPASSWORD: target.password, ...(query ? { PGOPTIONS: QUERY_OPTIONS } : {}) };
   const result = docker([...target.client.head, '-e', 'PGPASSWORD', ...(query ? ['-e', 'PGOPTIONS'] : []), target.client.ref, tool, ...args], { input, env, secrets: [target.password, target.url] });
   if (!result.ok) throw new DbVerbError(`${tool} against ${target.label} failed: ${firstLines(result.stderr)}`);
   return result.stdout;
 }
 
-const psqlArgs = (target: Target): string[] => ['-X', '-q', '-v', 'ON_ERROR_STOP=1', '-d', target.url];
+export const psqlArgs = (target: Target): string[] => ['-X', '-q', '-v', 'ON_ERROR_STOP=1', '-d', target.url];
 // reason: the rows psql returns as JSON; each call site names the shape it expects.
 const queryJson = <T,>(target: Target, sql: string): T => JSON.parse(exec(target, 'psql', [...psqlArgs(target), '-A', '-t', '-c', sql], { query: true }));
 
@@ -254,7 +254,7 @@ export function dumpEntries(text: unknown): Dump {
   return { preamble, entries };
 }
 
-const entryKey = (entry: DumpEntry): string => `${entry.type}|${entry.schema}|${entry.name}`;
+export const entryKey = (entry: DumpEntry): string => `${entry.type}|${entry.schema}|${entry.name}`;
 const renderEntry = (entry: DumpEntry): string => `--\n-- Name: ${entry.name}; Type: ${entry.type}; Schema: ${entry.schema}; Owner: -\n--\n\n${entry.body}\n\n\n`;
 
 const ROLE_NAMES = /\b(?:TO|FROM|FOR ROLE|SESSION AUTHORIZATION)\s+((?:"(?:[^"]|"")+"|[\w$]+)(?:\s*,\s*(?:"(?:[^"]|"")+"|[\w$]+))*)/gi;
@@ -526,14 +526,14 @@ function projectionDiff(source: Projection, replay: Projection): string[] {
   return lines;
 }
 
-function firstDifference(left: string, right: string): string {
+export function firstDifference(left: string, right: string): string {
   const [want, have] = [left.split('\n'), right.split('\n')];
   const index = want.findIndex((line, at) => line !== have[at]);
   const at = index < 0 ? want.length : index;
   return `line ${at + 1} source ${JSON.stringify(want[at] ?? '(end)')}, replay ${JSON.stringify(have[at] ?? '(end)')}`;
 }
 
-function replay(scratch: Scratch, files: Array<[string, string]>): Target {
+export function replay(scratch: Scratch, files: Array<[string, string]>): Target {
   const admin = scratchTarget(scratch, 'postgres');
   exec(admin, 'psql', [...psqlArgs(admin), '-c', `create database ${REPLAY_DB}`]);
   const target = scratchTarget(scratch, REPLAY_DB);

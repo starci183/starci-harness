@@ -3,6 +3,7 @@ import type { PassportOptions } from "./passport.options"
 
 const ACCESS_TTL_SECONDS = 900
 const REFRESH_TTL_SECONDS = 2_592_000
+const REFRESH_COOKIE_NAME = "refresh_token"
 const BCRYPT_COST = 10
 const LOGIN_ATTEMPTS = 10
 const RESET_ATTEMPTS = 5
@@ -37,7 +38,7 @@ export const parsePassportConfig = (env: EnvSource): PassportOptions => ({
     bcryptCost: env.int("AUTH_BCRYPT_COST", BCRYPT_COST),
     returnOrigin: new URL(env.url("AUTH_WEB_ORIGIN")).origin,
     google: readGoogle(env),
-    cookie: { name: "refresh_token", domain: env.optionalDomain("AUTH_COOKIE_DOMAIN") },
+    cookie: { name: env.optionalCookieName("AUTH_COOKIE_NAME") ?? REFRESH_COOKIE_NAME, domain: env.optionalDomain("AUTH_COOKIE_DOMAIN") },
     budget: {
         loginAttempts: env.int("AUTH_LOGIN_ATTEMPTS", LOGIN_ATTEMPTS),
         resetAttempts: env.int("AUTH_RESET_ATTEMPTS", RESET_ATTEMPTS),

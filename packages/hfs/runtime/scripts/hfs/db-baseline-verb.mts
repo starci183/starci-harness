@@ -12,6 +12,7 @@ import { MIGRATIONS_DIR, MIGRATIONS_ARCHIVE_DIR } from './rules/database-constan
 import { dbPlanMain } from './db-plan-verb.mjs';
 import { DbVerbError } from './db-errors.mjs';
 import { squashBaseline, type RunPostgres } from './db-squash.mjs';
+import { clientImageArgs } from '../../../db/client-image.mjs';
 
 await pg.loadModule();
 
@@ -165,9 +166,12 @@ export function runDbPostgres(root: string, op: DbOperation, ports: DbPorts = {}
   const result: DbResult | null | undefined = ports.runPostgres ? ports.runPostgres(root, op) : (() => {
     const connection = connectionOf(env, urlEnv);
     const [command, args] = commandOf(op, connection.url);
-    return spawnSync(command, args, { cwd: root, encoding: 'utf8', env: connection.env, timeout: 120_000, windowsHide: true });
+    const host = spawnSync(command, args, { cwd: root, encoding: 'utf8', env: connection.env, timeout: 120_000, windowsHide: true });
+    // A host without the PostgreSQL client tools runs them from the pinned postgres image (db/client-image.mts); the host's own binary is the first choice.
+    if ((host.error as NodeJS.ErrnoException | undefined)?.code !== 'ENOENT') return host;
+    return spawnSync('docker', clientImageArgs(command, args, [connection.url]), { cwd: root, encoding: 'utf8', env: connection.env, timeout: 120_000, windowsHide: true });
   })();
-  if (result?.error || !(result?.ok === true || result?.status === 0)) throw new DbVerbError('database command failed; inspect psql privately');
+  if (result?.error || !(result?.ok === true || result?.status === 0)) throw new DbVerbError('database command failed; inspect psql privately (a host without psql and pg_dump needs Docker)');
   return String(result.stdout ?? '');
 }
 
