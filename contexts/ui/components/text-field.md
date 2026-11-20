@@ -63,6 +63,10 @@ icon button named `label` below it. `startAction={{ glyph | source, label, onPre
 the box at its bottom start (attach, emoji), with the text starting after it; the caret, the selection and the mention list read the textarea
 alone. The app writes no Cluster or gap around the composer. `COMPOSER_MIN_ROWS` (1) and `COMPOSER_MAX_ROWS` (6) name the two bounds.
 
+The `count / max` of a `Textarea` with `maxLength` shows only near the limit, from `COUNT_NEAR_LIMIT` (80%) of it, and past it as invalid;
+below that nothing is drawn, so a composer with `maxLength={4000}` carries no "0/4000". `isCountShown`
+keeps it at every length, for a field whose budget is the task (a bio, a headline). Story `Forms / Textarea count`.
+
 ## Rules
 FEEDBACK-1, COLLECTION-1, RESPONSIVE-1, ANATOMY-2, FIELD-1..4. Lint: `starci-fe/no-native-form-control`,
 `starci-grammar/field-label`. Proof: A11Y-1, UX-3, UX-8, FOCUS-1.

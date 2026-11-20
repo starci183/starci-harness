@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { useState } from 'react';
 import { expect, waitFor } from 'storybook/test';
 import * as G from '../common/index.js';
 import { noop } from './fixtures.js';
@@ -183,5 +184,113 @@ export const OwnBubbleChips: Story = {
     const badge = own.querySelector<HTMLElement>('[data-component="Badge"]')!;
     expect(getComputedStyle(badge).backgroundColor).toBe(getComputedStyle(own).color);
     expect(getComputedStyle(badge).color).toBe(getComputedStyle(own).backgroundColor);
+  },
+};
+
+const tokenColor = (host: HTMLElement, token: string): string => {
+  const probe = document.createElement('span');
+  probe.style.background = `var(${token})`;
+  host.append(probe);
+  const color = getComputedStyle(probe).backgroundColor;
+  probe.remove();
+  return color;
+};
+
+const longPress = async (target: HTMLElement) => {
+  target.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerType: 'touch' }));
+  await new Promise((resolve) => setTimeout(resolve, 520));
+  target.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerType: 'touch' }));
+};
+
+const TrayThread = () => {
+  const [picked, setPicked] = useState<string | null>(null);
+  const copy = <><G.IconButton glyph="pin" label="Pin" onPress={noop} /><G.IconButton glyph="more" label="More" onPress={noop} /></>;
+  return (
+    <div style={{ padding: 12, maxWidth: 720 }}>
+      <G.Stack gap="row">
+        <G.MessageBubble author="Maria" meta="09:12" avatar={<G.Avatar name="Maria" size="sm" />} body="The order for table 4 moved to 19:30, and the kitchen has the new time for the first dish." />
+        <G.MessageBubble id="tray-incoming" author="Sam" meta="09:13" avatar={<G.Avatar name="Sam" size="sm" />} body="Thanks, noted." actions={copy} onReact={setPicked} onReply={noop} onShare={noop} />
+        <G.MessageBubble side="outgoing" meta="09:14" body="I will confirm with the guests in a minute." />
+        <G.MessageBubble id="tray-outgoing" side="outgoing" meta="09:15" body="Done." actions={copy} onReact={setPicked} onReply={noop} />
+        {picked === null ? null : <G.Text size="sm" tone="muted">{`Picked ${picked}`}</G.Text>}
+      </G.Stack>
+    </div>
+  );
+};
+
+/**
+ * The reaction toolbar and the message actions are ONE tray. From 48rem the toolbar floats above the bubble and the actions beside it, as
+ * before. Below 48rem the tray is closed (hover opens nothing) until a long press on the bubble, then opens in the thread's flow above the
+ * body: one bordered piece whose buttons wrap inside the row, so it never covers the bubble above and never runs past the row's edge.
+ */
+export const ReactionTray: Story = {
+  render: () => <TrayThread />,
+  play: async ({ canvasElement }) => {
+    const message = canvasElement.querySelector<HTMLElement>('#tray-incoming')!;
+    const tray = message.querySelector<HTMLElement>('[data-grammar-bubble-tray="true"]')!;
+    expect(tray.querySelector('[data-grammar-reaction-bar="true"]')).not.toBeNull();
+    expect(tray.querySelector('[data-grammar-bubble-actions="toolbar"] button[aria-label="Pin"]')).not.toBeNull();
+    if (window.innerWidth >= 768) {
+      expect(getComputedStyle(tray).display).toBe('contents');
+      expect(getComputedStyle(tray.querySelector<HTMLElement>('[data-grammar-reaction-bar="true"]')!).position).toBe('absolute');
+      return;
+    }
+    expect(getComputedStyle(tray).display).toBe('none');
+    const above = canvasElement.querySelectorAll<HTMLElement>('.starci-core-message-bubble-body')[0]!.getBoundingClientRect();
+    const before = message.getBoundingClientRect().height;
+    await longPress(message.querySelector<HTMLElement>('.starci-core-message-bubble-body')!);
+    await waitFor(() => expect(getComputedStyle(tray).display).toBe('flex'));
+    const box = tray.getBoundingClientRect();
+    const row = message.getBoundingClientRect();
+    // In the flow: the message grew by the tray, the tray starts below the bubble above and stays inside the row.
+    expect(row.height).toBeGreaterThan(before);
+    expect(box.top).toBeGreaterThanOrEqual(above.bottom);
+    expect(box.left).toBeGreaterThanOrEqual(row.left - 0.5);
+    expect(box.right).toBeLessThanOrEqual(row.right + 0.5);
+    expect(box.right).toBeLessThanOrEqual(document.documentElement.clientWidth);
+    for (const part of tray.querySelectorAll<HTMLElement>(':scope > *')) expect(getComputedStyle(part).position).toBe('static');
+    tray.querySelector<HTMLElement>('button[aria-label="React with 👍"]')!.click();
+    await waitFor(() => expect(getComputedStyle(tray).display).toBe('none'));
+    const own = canvasElement.querySelector<HTMLElement>('#tray-outgoing')!;
+    await longPress(own.querySelector<HTMLElement>('.starci-core-message-bubble-body')!);
+    const ownTray = own.querySelector<HTMLElement>('[data-grammar-bubble-tray="true"]')!;
+    await waitFor(() => expect(getComputedStyle(ownTray).display).toBe('flex'));
+    expect(ownTray.getBoundingClientRect().right).toBeLessThanOrEqual(own.getBoundingClientRect().right + 0.5);
+  },
+};
+
+/** A loading thread: the outgoing face is the brand's soft pair (`--accent-soft`, lines in its soft foreground), never the solid fill of a real message. */
+export const LoadingThread: Story = {
+  render: () => (
+    <div style={{ padding: 24, maxWidth: 640 }}>
+      <G.MessageBubble isLoading hasAvatar />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const face = canvasElement.querySelector<HTMLElement>('.starci-core-message-bubble[data-grammar-skeleton="true"][data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body')!;
+    expect(getComputedStyle(face).backgroundColor).toBe(tokenColor(canvasElement, '--accent-soft'));
+    expect(getComputedStyle(face).backgroundColor).not.toBe(tokenColor(canvasElement, '--accent'));
+    const incoming = canvasElement.querySelector<HTMLElement>('.starci-core-message-bubble[data-grammar-skeleton="true"][data-grammar-bubble-side="incoming"] .starci-core-message-bubble-body')!;
+    expect(getComputedStyle(incoming).backgroundColor).toBe('rgba(0, 0, 0, 0)');
+  },
+};
+
+/** A thread whose read failed: the band in the place of the messages, its retry the 40px control height at every width. */
+export const FailedThread: Story = {
+  render: () => (
+    <div style={{ blockSize: '18rem' }}>
+      <G.PaneGrid label="Failed chat" areas={{ base: ['chat'], medium: ['chat'] }} columns={{ base: ['fill'], medium: ['fill'] }} rows={{ base: ['fill'], medium: ['fill'] }}>
+        <G.Pane area="chat">
+          <G.PaneSection scroll={{ label: 'Conversation', role: 'log', align: 'end' }}>
+            <G.MessageBubble error={{ message: 'Could not load the messages', description: 'Check the connection, then try again.', actionLabel: 'Try again', onAction: noop }} />
+          </G.PaneSection>
+        </G.Pane>
+      </G.PaneGrid>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const retry = canvasElement.querySelector<HTMLElement>('[data-grammar-error="true"] [data-grammar-notice-actions] > [data-component="Button"]')!;
+    expect(retry.getAttribute('data-size')).toBe('md');
+    expect(Math.round(retry.getBoundingClientRect().height)).toBe(40);
   },
 };

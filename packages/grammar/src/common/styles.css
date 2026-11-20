@@ -6377,7 +6377,7 @@
      * Message actions (copy, reply, open): a small floating toolbar beside the bubble, on a bordered surface, centred on the
      * stack's outer side (the end side of an incoming bubble, the start side of an outgoing one). It takes no height in the
      * thread and never overlaps text; it shows on hover or focus inside the message. Touch has no hover: there it is a quiet
-     * in-flow row under the bubble, always visible.
+     * in-flow row under the bubble, always visible. Below 48rem it is part of the long-press tray instead (THE TRAY, below).
      */
     .starci-core-message-bubble-actions {
         display: flex;
@@ -6418,6 +6418,8 @@
 
     @media (hover: none) {
         .starci-core-message-bubble-actions { opacity: 1; }
+        /* The floating actions sit in the tray before the body in the source; on touch they stay the quiet row under the bubble. */
+        .starci-core-message-bubble-tray > .starci-core-message-bubble-actions { order: 1; }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -6442,9 +6444,68 @@
         pointer-events: auto;
     }
 
-    /* Loading bubble (knowledge STATE-8): the face on its side with two Skeleton lines; a thread alternates sides. */
+    /*
+     * THE TRAY: the reaction toolbar and the floating actions of one message, as one piece. From 48rem it adds no box (`display: contents`):
+     * the toolbar floats above the bubble and the actions beside it, as above. Below 48rem neither floats: there they covered the last
+     * line of the bubble above and the actions ran past the row's edge. The tray is closed until a long press on the body (or keyboard
+     * focus inside the message), then opens in the thread's flow above the body, ONE bordered surface whose buttons wrap inside the
+     * bubble's measure, so it pushes the thread instead of covering it and never leaves the row. Hover opens nothing there.
+     */
+    .starci-core-message-bubble-tray { display: contents; }
+
+    @media (max-width: 47.99rem) {
+        .starci-core-message-bubble-tray { display: none; }
+
+        .starci-core-message-bubble[data-grammar-bubble-picking="true"] .starci-core-message-bubble-tray,
+        .starci-core-message-bubble:has(:focus-visible) .starci-core-message-bubble-tray {
+            display: flex;
+            min-inline-size: 0;
+            max-inline-size: 100%;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: var(--grammar-identity-gap);
+            padding: var(--grammar-identity-gap);
+            border: 1px solid var(--separator);
+            border-radius: var(--grammar-radius-md);
+            background: var(--surface);
+            box-shadow: var(--surface-shadow);
+        }
+
+        .starci-core-message-bubble-tray > :is(.starci-core-reaction-bar, .starci-core-message-bubble-actions) {
+            position: static;
+            min-inline-size: 0;
+            max-inline-size: 100%;
+            flex-wrap: wrap;
+            padding: 0;
+            border: 0;
+            background: none;
+            box-shadow: none;
+            opacity: 1;
+            visibility: visible;
+            transform: none;
+            pointer-events: auto;
+        }
+
+        .starci-core-message-bubble-tray > .starci-core-reaction-bar::after { content: none; }
+    }
+
+    /*
+     * Loading bubble (knowledge STATE-8): the face on its side with two Skeleton lines; a thread alternates sides. The outgoing face is
+     * the brand's SOFT pair, `--accent-soft` with its lines in `--accent-soft-foreground` at a tint: lines on a ground take the ground's
+     * soft pair (the tone-pair rule), so a loading message never reads as a real one. It was the solid `--accent` fill with grey lines.
+     */
     .starci-core-message-bubble-skeleton-body { inline-size: min(18rem, 70vw); white-space: normal; }
     .starci-core-message-bubble-skeleton-body .starci-core-skeleton { --starci-core-skeleton-line: 0.875rem; }
+
+    .starci-core-message-bubble[data-grammar-skeleton="true"][data-grammar-bubble-side="outgoing"] .starci-core-message-bubble-body {
+        border: 0;
+        background: var(--accent-soft);
+        color: var(--accent-soft-foreground);
+    }
+
+    .starci-core-message-bubble[data-grammar-skeleton="true"][data-grammar-bubble-side="outgoing"] .starci-core-skeleton {
+        background-color: color-mix(in oklab, var(--accent-soft-foreground) 16%, transparent);
+    }
     .starci-core-message-bubble-thread { display: flex; min-width: 0; flex-direction: column; gap: var(--grammar-row-gap); }
 
     /*

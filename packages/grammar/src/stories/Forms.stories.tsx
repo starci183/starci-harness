@@ -783,3 +783,35 @@ export const TextareaMentions: Story = {
     expect(canvasElement.querySelector('[data-grammar-textarea-start-action="true"] button[aria-label="Attach a file"]')).not.toBeNull();
   },
 };
+
+const NEAR_LIMIT_VALUE = 'Table 4 moved to 19:30, the kitchen knows.';
+
+/**
+ * The `count / max` of a Textarea shows only near its limit (from 80% of `maxLength`) and past it as invalid; below that nothing is drawn,
+ * so a composer with `maxLength={4000}` does not carry "0/4000". `isCountShown` keeps it at every length, for a field whose budget is the task.
+ */
+export const TextareaCount: Story = {
+  render: () => (
+    <Matrix maxWidth={formColumn}>
+      <State label="Far from the limit (hidden)" direction="column">
+        <div data-story-case="far"><G.Textarea label="Message" isLabelHidden placeholder="Write a message" maxLength={4000} onSubmitShortcut={noop} send={{ label: 'Send', onPress: noop }} /></div>
+      </State>
+      <State label="Near the limit (from 80%)" direction="column">
+        <div data-story-case="near"><G.Textarea label="Message" isLabelHidden defaultValue={NEAR_LIMIT_VALUE} maxLength={50} onSubmitShortcut={noop} send={{ label: 'Send', onPress: noop }} /></div>
+      </State>
+      <State label="Always (isCountShown)" direction="column">
+        <div data-story-case="always"><G.Textarea label="Headline" rows={2} maxLength={80} isCountShown description="Shown on your profile." /></div>
+      </State>
+    </Matrix>
+  ),
+  play: async ({ canvasElement }) => {
+    const count = (name: string) => canvasElement.querySelector<HTMLElement>(`[data-story-case="${name}"] [data-grammar-field-count="true"]`);
+    expect(count('far')).toBeNull();
+    expect(canvasElement.querySelector('[data-story-case="far"] .starci-core-field-meta')).toBeNull();
+    expect(count('near')?.textContent).toBe(`${NEAR_LIMIT_VALUE.length}/50`);
+    expect(count('always')?.textContent).toBe('0/80');
+    const far = canvasElement.querySelector<HTMLTextAreaElement>('[data-story-case="far"] textarea')!;
+    await userEvent.type(far, 'Hello');
+    expect(count('far')).toBeNull();
+  },
+};

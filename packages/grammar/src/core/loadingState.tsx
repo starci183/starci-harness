@@ -45,7 +45,8 @@ export type ErrorData = {
 
 /**
  * THE RETRY (0.48.0): "Try again" has one look everywhere a read failed, in an `ErrorView`, an `EmptyNotice isError` and a negative `Alert`: the `alternative`
- * (outlined) button, never the destructive red fill, since retrying destroys nothing. The step follows the scope: `sm` in a region, `md` on a page.
+ * (outlined) button, never the destructive red fill, since retrying destroys nothing. It is the `md` step, the 40px control height, at every scope (since this patch;
+ * before, a region's retry took the 32px `sm` step), and so is the way back beside it.
  */
 export const RETRY_INTENT = "alternative" as const
 
@@ -68,7 +69,6 @@ export const ErrorView = ({ error }: { readonly error: ErrorData }) => {
     const inPane = usePaneContext() !== undefined
     const host = useSurfaceHost()
     const layout = error.isInline === true ? "row" : error.scope === "page" ? "notice" : inPane && host !== "card" && host !== "overlay" ? "band" : "notice"
-    const step = error.scope === "page" ? "md" as const : "sm" as const
     return (
         <div
             role="alert"
@@ -87,9 +87,9 @@ export const ErrorView = ({ error }: { readonly error: ErrorData }) => {
             {error.actionLabel === undefined && error.back === undefined ? null : (
                 <div className="starci-core-notice-actions" data-grammar-notice-actions="true">
                     {error.actionLabel === undefined ? null : (
-                        <Button intent={RETRY_INTENT} size={step} {...(error.onAction === undefined ? {} : { onPress: error.onAction })}>{error.actionLabel}</Button>
+                        <Button intent={RETRY_INTENT} size="md" {...(error.onAction === undefined ? {} : { onPress: error.onAction })}>{error.actionLabel}</Button>
                     )}
-                    {error.back === undefined ? null : <Button intent="neutral" size={step} href={error.back.href}>{error.back.label}</Button>}
+                    {error.back === undefined ? null : <Button intent="neutral" size="md" href={error.back.href}>{error.back.label}</Button>}
                 </div>
             )}
         </div>

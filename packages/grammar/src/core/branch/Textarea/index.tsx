@@ -71,6 +71,8 @@ export type TextareaStartAction = {
 export const COMPOSER_MIN_ROWS = 1
 /** A chat composer grows with its text up to 6 lines and then scrolls. */
 export const COMPOSER_MAX_ROWS = 6
+/** The share of `maxLength` from which the `count / max` shows (unless `isCountShown`): 80%, the point where the budget starts to matter. */
+export const COUNT_NEAR_LIMIT = 0.8
 
 export type TextareaProps = NoChildren & FieldControlProps & {
     readonly id?: string
@@ -89,8 +91,13 @@ export type TextareaProps = NoChildren & FieldControlProps & {
      * value or mark not drawn, so the loading field keeps the ready box. Nothing is invalid or pending while it loads.
      */
     readonly isLoading?: boolean
-    /** Also shows a live `count / max` beside the guidance. */
+    /**
+     * The longest value. A live `count / max` shows beside the guidance only near the limit, from `COUNT_NEAR_LIMIT` (80%) of it, and
+     * past it as invalid; below that nothing is drawn, so a chat composer does not carry "0/4000" while the reader types a line.
+     */
     readonly maxLength?: number
+    /** The `count / max` shows at every length, for a field whose budget is part of the task (a bio, a headline). Needs `maxLength`. */
+    readonly isCountShown?: boolean
     readonly minLength?: number
     readonly onValueChange?: (value: string) => void
     /**
@@ -159,6 +166,7 @@ const TextareaControl = ({
     send,
     startAction,
     maxLength,
+    isCountShown = false,
     minLength,
     onValueChange,
     onSubmitShortcut,
@@ -170,6 +178,7 @@ const TextareaControl = ({
 }: Omit<TextareaProps, "isLoading">) => {
     const [uncontrolledLength, setUncontrolledLength] = useState((defaultValue ?? "").length)
     const length = value === undefined ? uncontrolledLength : value.length
+    const showsCount = maxLength !== undefined && (isCountShown || length >= Math.ceil(maxLength * COUNT_NEAR_LIMIT))
     const generatedId = useId()
     const controlId = id ?? `textarea-${generatedId}`
     const listId = `${controlId}-mentions`
@@ -364,10 +373,10 @@ const TextareaControl = ({
                     </span>
                 )}
             </div>
-            {field.description == null && maxLength === undefined ? null : (
+            {field.description == null && !showsCount ? null : (
                 <div className="starci-core-field-meta">
                     <FieldDescription>{field.description}</FieldDescription>
-                    {maxLength === undefined ? null : (
+                    {maxLength === undefined || !showsCount ? null : (
                         <span
                             className="starci-core-field-count"
                             data-grammar-field-count="true"
