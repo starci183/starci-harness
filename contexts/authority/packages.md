@@ -58,7 +58,10 @@ The flow, in order:
    version the local build shared included). GitHub CI cannot reach 127.0.0.1 and installs npm's tarballs, so `starci deps check` refuses a
    lockfile or `.npmrc` that names the registry (`DEPS_LOCAL_REGISTRY_COMMITTED`), a lockfile that holds a `@starci` package or
    `starci-harness` at a version npm serves with another integrity (`DEPS_LOCK_INTEGRITY`), and a pin only the registry holds
-   (`DEPS_PIN_UNPUBLISHED`).
+   (`DEPS_PIN_UNPUBLISHED`). A pin on a workspace package of the app's own repository (a member of the root `workspaces` globs, named by its
+   manifest) at exactly that member's version is not unpublished: `npm ci` links it (`"link": true` in the committed lockfile), so the
+   workspace satisfies the pin and the urgent push can put the commit on main; the member still publishes through the normal release. A
+   pin on a member at another version, a lock that installs the name from a registry, and a name that is no member and not on npm stay refused.
 5. CI publishes the release to npm ([CONTRIBUTING.md](../../CONTRIBUTING.md) CONTRIB-20); it never gates the app's verification. The
    app pins the version npm serves, which is the version it already pinned for the local build.
 

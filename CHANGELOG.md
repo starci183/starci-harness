@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased (train 182, lane deploy-deadlock)
+
+- Fixed (`starci deps check`, `release push`, `release cut`, `app release`): a committed `@starci` pin on a workspace package of the app's own repository at exactly that member's version (members from the root `workspaces` globs, names from their manifests, the lockfile linking it with `"link": true`) is satisfied by the workspace instead of refused `DEPS_PIN_UNPUBLISHED`, which deadlocked `app release push --urgent` against `release publish`. A member at another version, a lock that installs the name from a registry and a name that is neither a member nor on npm stay refused; the integrity checks are unchanged.
+
+- Fixed (`stack deploy --ci-run`): the jobs the CI standard requires leave out the jobs the commit's `application-stacks.yaml` idles with a declared-off gate and a reason (`lint`, `test`, `coverage` with `codecov`), so an app that declares them off is deployable from its CI run; an idled job that ran may not be red, and `plan`, `fast`, `build`, `verdict` stay required.
+
 ## 1.1.0-alpha.181 - 2026-11-20
 
 - Changed: the CLI requires @starci/hfs@6.13.60, its pin in contexts/stack/pins.yaml (CONTRIB-20, the cli-follow step of publish.yml).

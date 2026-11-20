@@ -7,6 +7,7 @@ import { judgeLockIntegrity } from "./lock-integrity.js"
 import { refuseRecordedOverlay } from "./overlay-refusal.js"
 import { committedPins } from "./packages.js"
 import type { Pin } from "./packages.js"
+import { committedWorkspaceMembers, workspaceSatisfies } from "./workspace-pins.js"
 
 /** A pin the registry was asked about: its requirement and whether npm can install it. */
 export interface PinVerdict extends Pin {
@@ -35,7 +36,8 @@ const published = async (root: string, name: string, spec: string): Promise<bool
 
 /**
  * The push gate of an app's `@starci` dependencies, run by the app's pre-push hook (`starci deps check`), `release push`,
- * `release cut` and `app release`. It refuses DEPS_PIN_UNPUBLISHED when a package.json committed at `revision` pins a
+ * `release cut` and `app release`. A pin that names a workspace member of the same repository at exactly its version (the committed lockfile links it,
+ * `"link": true`) is satisfied by the workspace and never asked of npm; the member still publishes through the normal release. It refuses DEPS_PIN_UNPUBLISHED when a package.json committed at `revision` pins a
  * `@starci` package to a spec npm cannot install (no published version matches, a path or protocol, a version only the local registry
  * holds), since CI would fail to install it. A lockfile or .npmrc committed at `revision` that names a registry on this machine (a
  * `deps install-local` install) is DEPS_LOCAL_REGISTRY_COMMITTED, and a lockfile that holds a harness package at a version npm serves with
@@ -50,10 +52,12 @@ export const judgePush = async (root: string, revision = "HEAD"): Promise<PushJu
     const tree = locateTree(root).tree
     if (tree !== "lite" && tree !== "full") return { app: false, revision, pins: [], notes: ["not a StarCi app (no app hfs.json): nothing to judge"] }
     const pins = await committedPins(root, revision)
+    const members = await committedWorkspaceMembers(root, revision)
     const asked = new Map<string, boolean>()
     const verdicts = await inOrder(pins, async (pin): Promise<PinVerdict> => {
         const key = `${pin.name}@${pin.spec}`
-        const known = asked.get(key) ?? (await published(root, pin.name, pin.spec))
+        // A workspace member of this repository at exactly the pinned version is linked by npm ci, so the workspace satisfies the pin; the release still publishes it later.
+        const known = asked.get(key) ?? ((await workspaceSatisfies(root, revision, members, pin.name, pin.spec)) || (await published(root, pin.name, pin.spec)))
         asked.set(key, known)
         return { ...pin, published: known }
     })

@@ -4,6 +4,7 @@ import { join } from "node:path"
 import { parse } from "yaml"
 import { Refusal, asRefusal } from "../../shared/errors.js"
 import { runTool } from "../../shared/exec.js"
+import { git } from "../../shared/git.js"
 import type { Edition } from "../../shared/verb.js"
 
 /**
@@ -71,8 +72,38 @@ export const editionOf = (root: string): Edition => {
     }
 }
 
+/**
+ * The jobs of the managed CI an app may idle, each with the gates that must ALL be declared off: the same table as the renderer's IDLE_JOBS
+ * (@starci/hfs scripts/lib/stack-declaration.mts), which renders such a job with a constant false `if`. Kept here because the CLI judges a run
+ * with whatever @starci/hfs it is installed with.
+ */
+export const IDLE_JOBS: Readonly<Record<string, readonly string[]>> = { lint: ["lint"], test: ["test"], coverage: ["coverage", "codecov"] }
+
+/**
+ * The jobs a declaration idles (`IDLE_JOBS`: the job whose every gate the app declares off, `gates.<gate>: {run: off, reason}`).
+ * A gate counts as off only with a non-empty reason, and only a gate the table names. Everything else (plan, fast, build, verdict, the images, and the harness's own gates hfs, secrets, db,
+ * which an app never switches off) stays required: those are the floor.
+ */
+export const idleJobsOfDeclaration = (declaration: unknown, table: Readonly<Record<string, readonly string[]>>): string[] => {
+    const gates = isRecord(declaration) && isRecord(declaration.gates) ? declaration.gates : {}
+    const off = (gate: string): boolean => {
+        const entry = gates[gate]
+        return isRecord(entry) && entry.run === "off" && typeof entry.reason === "string" && entry.reason.trim() !== ""
+    }
+    return Object.entries(table).filter(([, needed]) => needed.length > 0 && needed.every(off)).map(([job]) => job)
+}
+
+/** The declaration of the app as committed at `sha` (the tree CI ran), or undefined when it holds none or cannot be read. */
+const declarationAt = async (root: string, sha: string): Promise<unknown> => {
+    try {
+        return parse(await git(root, ["show", `${sha}:.starcistacks/application-stacks.yaml`])) as unknown
+    } catch {
+        return undefined
+    }
+}
+
 /** The jobs the CI standard of the installed @starci/hfs requires for `edition`; refused when the standard cannot be read or names none. */
-export const requiredJobsOf = (edition: Edition): RequiredJobs => {
+export const requiredJobsOf = (edition: Edition, declaration?: unknown): RequiredJobs => {
     let file: string
     try {
         file = createRequire(import.meta.url).resolve(CI_STANDARD)
@@ -84,8 +115,13 @@ export const requiredJobsOf = (edition: Edition): RequiredJobs => {
     const entry = jobs[edition]
     const required = isRecord(entry) ? names(entry.required) : []
     if (required.length === 0) throw new Refusal("CI_RUN_UNREADABLE", `the CI standard of @starci/hfs names no required job for the ${edition} edition; it cannot be judged`)
-    return { required, optional: isRecord(entry) ? names(entry.optional) : [] }
+    const idle = new Set(idleJobsOfDeclaration(declaration, IDLE_JOBS))
+    // A job the app idles is not required, but when the run has it, it may not be red (judgeJobs treats an optional job that ran red as a problem; skipped is fine).
+    return { required: required.filter((job) => !idle.has(job)), optional: [...(isRecord(entry) ? names(entry.optional) : []), ...required.filter((job) => idle.has(job))] }
 }
+
+/** The jobs required for the app at `root` deploying `sha`: the standard's, less the jobs the declaration of that commit idles (gates it declares off with a reason). */
+export const requiredJobsAt = async (root: string, sha: string): Promise<RequiredJobs> => requiredJobsOf(editionOf(root), await declarationAt(root, sha))
 
 /** A message with anything shaped like a GitHub token removed: nothing this check prints may carry one. */
 const scrubbed = (message: string): string => message.replaceAll(/\b(?:gh[pousr]_|github_pat_)\w{8,}/gu, "[token]")
