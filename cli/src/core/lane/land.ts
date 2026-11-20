@@ -4,10 +4,8 @@ import { defineVerb } from "../../shared/verb.js"
 import { holdLander, landPaths, lanesDir, releaseLockFile } from "../../harness/land-queue.js"
 import { runBatch } from "../../harness/land-batch.js"
 import type { BatchRecord } from "../../harness/land-batch.js"
+import { loadSlotRules, slotKind } from "../../harness/slots.js"
 
-/** The gate and npm slots of a lanes folder (`_gate-slot-<n>.lock`, `_npm-slot-<n>.lock`) the lander may take. */
-const GATE_SLOTS = 5
-const NPM_SLOTS = 3
 /** How long an idle lander waits before it reads the ready set again. */
 const POLL_MS = 30_000
 
@@ -32,8 +30,10 @@ export const laneLandVerb = defineVerb({
     run: async (context, flags) => {
         const dir = lanesDir(flags.dir)
         const dryRun = flags["dry-run"]
+        // The gate and npm slots of the lanes folder the lander may take: the counts of ops/slots.yaml, never its burst.
+        const rules = loadSlotRules()
         const options = {
-            dir, dryRun, say: context.progress, gateSlots: GATE_SLOTS, npmSlots: NPM_SLOTS,
+            dir, dryRun, say: context.progress, gateSlots: slotKind(rules, "gate").count, npmSlots: slotKind(rules, "npm").count,
             repo: await mainCheckout(context.cwd),
             worktree: resolve(flags.worktree ?? join(dir, dryRun ? "_batch-lander-dry" : "_batch-lander")),
             migrations: flags.migrations ?? "db/migrations/",

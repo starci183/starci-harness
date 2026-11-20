@@ -1,7 +1,8 @@
-import { existsSync, linkSync, mkdirSync, readdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { Refusal } from "../shared/errors.js"
 import { pidAlive } from "../shared/exec.js"
+import { configuredSlotRoot, takeLockFile } from "./slots.js"
 
 /**
  * The batch lander of an app's `dev` branch (contexts/project/branches.md PROJECT-BRANCH-2). A lane whose full gate ran green on its
@@ -76,10 +77,10 @@ export const landPaths = (dir: string): LandPaths => ({
     slot: (kind: "gate" | "npm", n: number) => join(dir, `_${kind}-slot-${String(n)}.lock`),
 })
 
-/** The lanes folder of this machine: the flag, else STARCI_LANES_DIR; refused when neither names one. */
+/** The lanes folder of this machine: the flag, else STARCI_LANES_DIR, else `root` of ops/slots.yaml; refused when none names one. */
 export const lanesDir = (flag: string | undefined): string => {
-    const dir = flag ?? process.env.STARCI_LANES_DIR
-    if (dir === undefined || dir === "") throw new Refusal("LANE_DIR_UNSET", "name the lanes folder with --dir or STARCI_LANES_DIR (the folder that holds _land-ready, _land-status and _dev-push.lock)")
+    const dir = flag !== undefined && flag !== "" ? flag : configuredSlotRoot()
+    if (dir === undefined || dir === "") throw new Refusal("LANE_DIR_UNSET", "name the lanes folder with --dir, STARCI_LANES_DIR or starci config set slots.root <dir> (the folder that holds _land-ready, _land-status and _dev-push.lock)")
     return dir
 }
 
@@ -143,23 +144,8 @@ export const readStatuses = (dir: string): LaneStatus[] => {
     return readdirSync(folder).filter((name) => name.endsWith(".json")).map((name) => readJson(join(folder, name))).filter((value): value is LaneStatus => typeof value === "object" && value !== null && "lane" in value && "state" in value)
 }
 
-/**
- * Takes a lock file whole and alone: the content goes to a temporary file that is hard-linked into place, and a link fails when the
- * lock exists, so only one taker wins and nobody reads an empty lock.
- */
-export const takeLockFile = (file: string, content: string): boolean => {
-    const temporary = `${file}.${String(process.pid)}.${String(Date.now())}.tmp`
-    writeFileSync(temporary, content)
-    try {
-        linkSync(temporary, file)
-        return true
-    } catch (error) {
-        if (error instanceof Error && "code" in error && error.code === "EEXIST") return false
-        throw error
-    } finally {
-        unlinkSync(temporary)
-    }
-}
+/** Takes a lock file whole and alone (harness/slots.ts owns it; the lander and every slot share it). */
+export { takeLockFile }
 
 /** Releases a lock or slot only when it names the lander (and, given a pid, that process). */
 export const releaseLockFile = (file: string, pid?: number): void => {

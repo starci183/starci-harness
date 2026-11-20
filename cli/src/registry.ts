@@ -131,6 +131,12 @@ import { laneLandVerb } from "./core/lane/land.js"
 import { laneReadyVerb } from "./core/lane/ready.js"
 import { laneStatusVerb } from "./core/lane/status.js"
 import { laneWithdrawVerb } from "./core/lane/withdraw.js"
+import { laneGateVerb } from "./core/lane/gate.js"
+import { slotListVerb } from "./core/slot/list.js"
+import { slotReleaseVerb } from "./core/slot/release.js"
+import { slotRunVerb } from "./core/slot/run.js"
+import { slotTakeVerb } from "./core/slot/take.js"
+import { galleryShootVerb } from "./core/gallery/shoot.js"
 import type { AnyVerb, TreeKind } from "./shared/verb.js"
 
 // Each definition is widened once here; the registry is the only place that erases verb types.
@@ -281,6 +287,12 @@ export const ALL_VERBS: readonly AnyVerb[] = [
     laneWithdrawVerb,
     laneStatusVerb,
     laneLandVerb,
+    laneGateVerb,
+    slotTakeVerb,
+    slotReleaseVerb,
+    slotListVerb,
+    slotRunVerb,
+    galleryShootVerb,
 ].map(widen)
 
 /** The verbs a tree offers: an app sees every verb but the runtime's own; the runtime and a bare directory see everything. */

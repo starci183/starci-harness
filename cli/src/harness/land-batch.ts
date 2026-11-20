@@ -5,9 +5,10 @@ import { captureGit } from "../shared/git.js"
 import { captureNpm, captureTool } from "../shared/exec.js"
 import { withHeavySlot } from "./heavy.js"
 import {
-    CACHE_DIR, GATE_ROUNDS, OOM_FREE_MB, OOM_RETRIES, dropReady, holderLine, isOutOfMemory, judgeRound, landPaths, readyEntries, releaseLockFile, takeLockFile, writeJsonWhole, writeStatus,
+    CACHE_DIR, GATE_ROUNDS, LANDER, OOM_FREE_MB, OOM_RETRIES, dropReady, holderLine, isOutOfMemory, judgeRound, landPaths, readyEntries, releaseLockFile, takeLockFile, writeJsonWhole, writeStatus,
 } from "./land-queue.js"
 import type { LaneFinding, LaneStatus, ReadyEntry, RoundVerdict } from "./land-queue.js"
+import { loadSlotRules, slotKind, takeSlot as takeSlotFile } from "./slots.js"
 
 /** The fields of a status a batch sets; the lane, its sha, branch and batch come from the entry. */
 type StatusFields = Omit<LaneStatus, "lane" | "laneSha" | "branch" | "at" | "batch">
@@ -56,15 +57,15 @@ const gitIn = async (cwd: string, args: readonly string[]): Promise<{ readonly o
     return { ok: run.exitCode === 0, out: run.stdout.trim(), err: run.stderr.trim() }
 }
 
-/** Waits for a free slot file of `kind` (1..count) and holds it under the lander's name. */
+/**
+ * Waits for a free slot of `kind` (ops/slots.yaml, its count capped at `count`) and holds it under the lander's name and pid; a slot
+ * whose holder died is reclaimed on the way (harness/slots.ts).
+ */
 const takeSlot = async (dir: string, kind: "gate" | "npm", count: number): Promise<string> => {
-    for (;;) {
-        for (let n = 1; n <= count; n += 1) {
-            const file = landPaths(dir).slot(kind, n)
-            if (takeLockFile(file, holderLine())) return file
-        }
-        await sleep(5000)
-    }
+    const rules = loadSlotRules()
+    const own = slotKind(rules, kind)
+    const capped = { ...rules, kinds: { ...rules.kinds, [kind]: { ...own, count: Math.min(own.count, count), burst: undefined } } }
+    return (await takeSlotFile(dir, capped, kind, LANDER, { pid: process.pid })).file
 }
 
 /** Waits for the dev lock and holds it for the batch. */

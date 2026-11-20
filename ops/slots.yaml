@@ -1,0 +1,39 @@
+# The machine-wide slots that bound how many heavy jobs of one kind run at once across every checkout and agent of a host, read by
+# cli/src/harness/slots.ts (`starci slot take|release|list|run`, `starci lane gate`, `starci gallery shoot` and the batch lander's
+# own npm and gate slots). A slot is one lock file in the slot root, taken by an exclusive create, released only by the holder it names.
+# root: the folder holding the slot files; null is `<shared harness state>/slots`. STARCI_LANES_DIR and a verb's --dir override it,
+#   and the lane verbs (`lane ready|land|status|withdraw`) fall back to it when neither is given.
+# Each kind: `count` numbered slots (`file` with {n}); `burst` more slots, numbered after them, open only while the host has
+#   `burst.minFreeMb` free; `minFreeMb` the free memory every take of the kind waits for; `pollSeconds` how often a waiting take tries
+#   again; `heavy` the heavy-command kind (ops/liveness.yaml heavy.caps) an npm command run under the slot is governed as.
+# A slot line is `<lane> <taken> pid=<pid> start=<pid start> boot=<host boot> host=<host>`. It is reclaimed only on evidence that its
+#   holder is gone: the host booted after it was taken, its pid is not alive, or its pid now belongs to a process started at another time.
+#   Age is never evidence: a slot older than `warnMinutes` is reported as old (`slot list`), never removed. Every reclaim is logged
+#   with its evidence in `<root>/_slots.log`.
+schema: starci/slots@1
+root: null
+kinds:
+  npm:
+    count: 3
+    file: "_npm-slot-{n}.lock"
+    burst: { count: 1, minFreeMb: 10240 }
+    warnMinutes: 30
+    pollSeconds: 60
+    heavy: install
+  gate:
+    count: 5
+    file: "_gate-slot-{n}.lock"
+    warnMinutes: 120
+    pollSeconds: 5
+  shoot:
+    count: 3
+    file: "_shoot-slot-{n}.lock"
+    burst: { count: 3, minFreeMb: 10240 }
+    minFreeMb: 6144
+    warnMinutes: 30
+    pollSeconds: 15
+  stack:
+    count: 1
+    file: "_stack.lock"
+    warnMinutes: 45
+    pollSeconds: 120
