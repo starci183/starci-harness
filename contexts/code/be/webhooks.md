@@ -55,8 +55,7 @@ Enforced by: `webhook-shape`, `webhook-verify-first`, `webhook-scope` (R182, R18
 ## BE-WEBHOOK-3 The intake records the receipt; a job processes it after commit
 
 The domain intake parses the raw body through its owner's guard, then in one transaction claims `(source, deliveryId)`
-with the provider's stable delivery id and the receipt insert (`inbox.claim(source, id, manager, { insert, payload })`; in
-lite `inbox.claimRow(source, id, manager, { entity, row })` of the `EntityInbox`, which answers the receipt id),
+with the provider's stable delivery id and the receipt insert (`inbox.claimRow(source, id, manager, { entity, row })` of the `EntityInbox`, which answers the receipt id),
 returns on a duplicate, and enqueues the processing job with the same manager (`outbox.write(manager, QUEUE, { deliveryId },
 { dedupeKey })`). No processing, provider call or bus dispatch runs in the receipt transaction: a call on a domain receipt port (a domain
 class over the platform ports with the platform `Inbox`) there is the inbox record, any other service or bus call is
@@ -95,7 +94,7 @@ Enforced by: `inbox-dedupe-required`, `webhook-inbox-key` (R80, R263), `outbox-w
 ## BE-WEBHOOK-4 Three behaviours are proven against a signing fake
 
 An app declaring `webhooks` proves `bad-signature-is-refused`, `replay-is-refused` and
-`accepted-delivery-publishes-once` in specs titled `webhooks/<scenario>: ...` (integration in lite), the fake signing
+`accepted-delivery-publishes-once` in specs titled `webhooks/<scenario>: ...` (integration), the fake signing
 as the provider documents with a test secret. The door's spec covers the verify-then-intake order with a double of the
 intake; a combined verify-and-record method proves the refusal in its service spec.
 

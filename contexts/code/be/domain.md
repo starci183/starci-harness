@@ -44,7 +44,7 @@ R86, R83, R88, R30).
 Inside one database the handler's service calls the other domain services it needs in the same transaction and
 returns the result: no event, queue or bus. Work that is slow, external or retried (a provider call, a model run, a
 notification) is enqueued by the service in its transaction through a typed queue producer (BE-QUEUES-1) and runs in a
-job. A change other clients must see is pushed through the realtime hub (BE-REALTIME-2). In full, another context's
+job. A change other clients must see is pushed through the realtime hub (BE-REALTIME-2). With the event-bus pattern, another context's
 facts arrive as events (event-bus.md) and are never read from its tables.
 
 Why: an event inside one transaction turns one atomic decision into a chain that can half-fail, and an external call

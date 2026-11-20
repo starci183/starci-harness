@@ -44,23 +44,22 @@ of a relative module it imports, so the harness can read them. An agent runs a l
 custody fails `TEST_WORLD_NOT_DECLARED`, and a result showing that, or a custody refusal, is judged by the harness's own
 run with custody instead. A key custody lacks blocks the task for the owner, no try spent (`cli/src/harness/custody.ts`).
 
-## SHARED-TEST-3 An op writes only the test kinds its edition has, and picks integration or e2e by what it proves
+## SHARED-TEST-3 An op picks integration or e2e by what it proves
 
-Both editions have the four kinds (unit, integration, e2e, contract), and the difference between the two world kinds is
+An app has four kinds (unit, integration, e2e, contract), and the difference between the two world kinds is
 what the spec proves, never its size: an **integration** spec proves one module or capability, `useTestWorld({ modules })`,
 through its real infrastructure, with no door of ours; an **e2e** spec proves a whole flow, `useTestWorld({ apps })`: it boots
 the full app(s), seeds a real package through the app's deploy door, drives the app only through its external doors (HTTP, a
-webhook, GraphQL), fakes only at the network edge and asserts persisted state ([be/test.md](../be/test.md) BE-TEST-12). A lite
-app runs both on its local db service; what it lacks is the full test world (container, toxiproxy, `world.infra`) and the
-browser journey ([project/lite.md](../../project/lite.md) "What CI runs"), so a lite op adds no `test:world` or `test:browser`
-script. Every one of them runs only when a person asks (R12), and an e2e flow never replaces the wiring proof of a lite app.
+webhook, GraphQL), fakes only at the network edge and asserts persisted state ([be/test.md](../be/test.md) BE-TEST-12). An app runs both on its local db service; the
+browser journey is opt-in ([project/edition.md](../../project/edition.md) "What CI runs"). Every one of them runs only when a
+person asks (R12), and an e2e flow never replaces the wiring proof of the app.
 
 Why: one rule for which kind a spec is makes its place and its runner mechanical, and a flow that reaches past the doors is
 an integration spec in disguise.
 
-Enforced by: R212 HFS_EDITION_FORBIDDEN_PRESENT (`test:world`, `test:browser`, containers), R272 BE_APP_BOOT_PROOF_MISSING (the
+Enforced by: R272 BE_APP_BOOT_PROOF_MISSING (the
 wiring proof stays the gate), R47 BE_TEST_TOPOLOGY and BE_SPEC_WORLD_MISSING (every integration and e2e spec boots through
-`useTestWorld` of the repository's world, in both editions).
+`useTestWorld` of the repository's world).
 
 ## SHARED-TEST-4 Integration and e2e run on the slots `.starcistacks` declares, exclusive specs alone, with a cache
 

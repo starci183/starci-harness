@@ -122,9 +122,9 @@ for (const edition of ['lite'] as const) {
   });
 }
 
-test('R269 honors path scope and skips runtime/side/unknown editions', (t) => {
+test('R269 honors path scope and skips runtime and side repos', (t) => {
   assert.deepEqual(codes(fixture(t, {}, 'lite', { inScope: (file: string) => file === '.github/workflows/ci.yml' })), ['HFS_AUDIT_STEP_MISSING']);
-  for (const extra of [{ repo: { kind: 'runtime' } }, { isRoot: false }, { repo: { kind: 'app', edition: 'unknown' } }]) assert.deepEqual(codes(fixture(t, {}, 'full', extra)), []);
+  for (const extra of [{ repo: { kind: 'runtime' } }, { isRoot: false }]) assert.deepEqual(codes(fixture(t, {}, 'full', extra)), []);
 });
 
 test('R269 uses the tracked inventory; files on disk alone cannot satisfy gates', (t) => {

@@ -8,9 +8,7 @@ jobs that moves forward only (BE-JOBS-7, BE-RESILIENCE-2); a flow becomes a saga
 decides how that flow is written when it spans contexts or services: a saga feature folder whose orchestrator lists the steps and
 the optional compensations a person may press, a versioned and fenced run state in `platform/saga`, consumers that advance it
 through the inbox, and events declared in the vendored contracts. A saga folder is legal only when `sides.be.patterns`
-declares `saga`. In lite its events travel on the lite event bus and its state table is a migration; the rules are the same.
-
-Edition: whether lite admits this pattern is open ([project/lite.md](../../project/lite.md) "Patterns").
+declares `saga`. Its events travel on the event bus and its state table is a migration.
 
 ## BE-SAGA-1 A declared undo is a compensation beside its step, pressed by a person and run forward
 `features/saga/<saga>/` holds `<saga>.saga.service.ts`, `steps/<step>.saga-step.ts` and, for a step that declares an undo,
@@ -51,8 +49,7 @@ Enforced by: R171 BE_SAGA_EVENT_CONTRACT, R166 HFS_EVENT_CONTRACT.
 ## BE-SAGA-4 Every compensation path has a spec that injects a failure
 For each compensation an e2e spec boots the real apps through `useTestWorld`, names the compensation's event, injects a failure
 through the world (an infra or app outage or latency, a fake's `failNext`, an interrupted database) at the moment the compensation
-runs, and reads the compensated state back; one more spec runs the saga from the api call to its final state. Lite proves the same
-scenarios in integration specs.
+runs, and reads the compensated state back; one more spec runs the saga from the api call to its final state, in integration specs.
 
 Why: a compensation undoes what a person decides to undo; a happy-flow spec proves nothing about it, and a fault injected at delivery
 proves retry and resume.

@@ -280,6 +280,6 @@ A finding with no fix yet may be exempted, for a short time, by an exception:
 ## Read with
 
 [README.md](README.md) (the profiles a project picks), [anatomy.md](anatomy.md) (the packages each gate judges),
-[work.md](work.md) (the Work facts listed above), [stacks.md](stacks.md), [lite.md](lite.md) and [full.md](full.md)
-(how an edition changes which slots and rules apply), [check-cache.md](check-cache.md) (the committed result
+[work.md](work.md) (the Work facts listed above), [stacks.md](stacks.md), [edition.md](edition.md)
+(what the one edition runs), [check-cache.md](check-cache.md) (the committed result
 cache of `app check` and unit coverage).

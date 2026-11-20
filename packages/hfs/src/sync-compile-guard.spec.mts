@@ -109,7 +109,7 @@ test('sync --execute holds the managed sign-in glue an app\'s own code still rea
   t.after(() => fs.rmSync(link, { force: true }));
   const out: string[] = [];
   assert.equal(await runSync(['--execute'], { cwd: root, presets: bundledPresets(), out: (line) => out.push(line) }), 1);
-  assert.match(out.join('\n'), new RegExp(`^${GROUP_HELD} auth-lite: \\d+ files not written`, 'm'));
+  assert.match(out.join('\n'), new RegExp(`^${GROUP_HELD} auth: \\d+ files not written`, 'm'));
   assert.match(out.join('\n'), /legacy-reader\.ts:1 TS2305 .*'legacyToken'/);
   assert.match(out.at(-1) as string, /written, \d+ already in sync, \d+ held$/);
   assert.match(fs.readFileSync(glue, 'utf8'), /legacyToken/, 'the held file is not written');

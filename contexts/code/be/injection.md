@@ -89,7 +89,6 @@ a ring of three or more every member waits for another and the app hangs at boot
 
 Enforced by: R401 (`BE_DI_RING`): the boot proof (`starci app check`, its `--gate wiring`, BE-TEST-12) registers the real
 AppModule with Nest's scanner before it compiles, and names each ring with the module and file of every provider in it.
-Lite only; full's e2e boot (BE-TEST-12) hangs on a ring.
 
 ## BE-INJECTION-6 A command's composition root declares its boot entry, and the gate composes it
 

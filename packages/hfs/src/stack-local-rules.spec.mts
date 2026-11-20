@@ -63,7 +63,7 @@ test('a grant names the keys one service reads, and an empty one is refused', ()
   assert.match(empty.problems.map((item) => item.message).join('|'), /must list the keys the service reads/u);
 });
 
-test('a lite app may run its dev environment on docker-compose and a backing image in it, but not in a Swarm environment', async () => {
+test('an app may run its dev environment on docker-compose and a backing image in it, and a Swarm environment may bind one too', async () => {
   const { stacksRuntimeFindings } = await import('../runtime/scripts/hfs/rules/stacks-runtime.mjs');
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-stacks-runtime-'));
   try {
@@ -78,6 +78,6 @@ test('a lite app may run its dev environment on docker-compose and a backing ima
     const messages = (swarmBinds: boolean): string[] => stacksRuntimeFindings({ repoRoot: root, files: [], doc: doc(swarmBinds) }).map((finding: { message: string }) => finding.message);
     assert.ok(!messages(false).some((text) => /lite runs no backing image/u.test(text)), 'a backing image only the dev environment binds is allowed');
     assert.ok(!messages(false).some((text) => /environments\.dev lite delivery/u.test(text)), 'a docker-compose dev environment with a local block is lite delivery');
-    assert.ok(messages(true).some((text) => /lite runs no backing image/u.test(text)), 'a backing image a Swarm environment binds is still refused');
+    assert.ok(!messages(true).some((text) => /runs no backing image/u.test(text)), 'a backing image a Swarm environment binds is no longer refused');
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });

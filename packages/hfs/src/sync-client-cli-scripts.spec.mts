@@ -32,12 +32,13 @@ test('the root cli and migrate scripts run the ops cli wherever the client cli i
 
 test('a client cli gets its package build and neither a start script nor an image', () => {
   const resolved = app([CORE, OPS, CLIENT]);
-  const scripts = scriptsOf(appScripts(resolved, undefined));
+  const source = { hasImage: () => true };
+  const scripts = scriptsOf(appScripts(resolved, source));
   assert.equal(scripts['build:relay-cli'], 'cd be && tsc -p apps/relay-cli/tsconfig.build.json && tsc-alias -p apps/relay-cli/tsconfig.build.json');
   assert.equal(scripts['start:relay-cli'], undefined);
   assert.equal(scripts['docker:build:relay-cli'], undefined);
   assert.equal(scripts['docker:build'], 'npm run docker:build:core && npm run docker:build:cli && npm run docker:build:web');
-  assert.deepEqual(imageApps(resolved, undefined).map((image) => image.name), ['core', 'cli', 'web']);
+  assert.deepEqual(imageApps(resolved, source).map((image) => image.name), ['core', 'cli', 'web', 'db']);
 });
 
 test('dev:be restarts on the whole tree: transpile-only, a 1s debounce, and a watch over be/src, be/apps and each root package dist', () => {

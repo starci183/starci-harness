@@ -82,12 +82,11 @@ for (const edition of ['lite'] as const) {
   });
 }
 
-test('lite production: the deploy builds the storage image when the project needs storage; full production is not judged', () => {
+test('lite production: the deploy builds the storage image when the project needs storage', () => {
   const needing = (images: Json): Json => stack(undefined, { images });
   assert.deepEqual(judge({ stack: needing({ api: { app: 'api' } }), staticsFiles: ['statics/art/a.png'] }), ['STACK_STORAGE_MISSING:error']);
   assert.deepEqual(judge({ stack: needing({ api: { app: 'api' }, storage: { app: 'storage' } }), staticsFiles: ['statics/art/a.png'] }), []);
   assert.deepEqual(judge({ stack: needing({ storage: { app: 'minio' } }), staticsFiles: ['statics/art/a.png'] }), ['STACK_STORAGE_IMAGE_SHAPE:error']);
   const unneeded = stack([{ member: 'db' }], { images: { storage: { app: 'storage' } } });
   assert.deepEqual(judge({ stack: unneeded, service: null }), ['STACK_STORAGE_UNUSED:warning', 'STACK_STORAGE_UNUSED:warning']);
-  assert.deepEqual(judge({ stack: needing({ api: { app: 'api' } }), staticsFiles: ['statics/art/a.png'] }), []);
 });

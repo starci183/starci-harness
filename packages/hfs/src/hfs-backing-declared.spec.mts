@@ -10,7 +10,6 @@ import path from 'node:path';
 import { checkRepo } from '../runtime/scripts/hfs/check.mjs';
 import { editionFindings } from '../runtime/scripts/hfs/rules/edition.mjs';
 import { loadSlotManifest, resolveRepoDeclaration } from '../runtime/scripts/hfs/slots.mjs';
-import { ruleParamsProblems } from '../runtime/scripts/hfs/rule-params-shape.mjs';
 
 // reason: the edition rule only reads `slots()` of the resolver; a full Resolver is not needed to prove it.
 
@@ -18,11 +17,11 @@ const CODES = ['HFS_BACKING_UNDECLARED', 'HFS_BACKING_UNUSED', 'HFS_DECLARATION_
 
 interface BackingFinding { code: string; file: string; name?: string; service?: string; level: string }
 
-function judge(t: TestContext, { edition = 'lite', be = {}, dependencies = {} }: { edition?: string; be?: Record<string, unknown>; dependencies?: Record<string, string> }): BackingFinding[] {
+function judge(t: TestContext, { be = {}, dependencies = {} }: { be?: Record<string, unknown>; dependencies?: Record<string, string> }): BackingFinding[] {
   const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-backing-'));
   t.after(() => fs.rmSync(repoRoot, { recursive: true, force: true }));
   const declaration = {
-    hfs: 3, kind: 'app', project: 'demo', edition,
+    hfs: 3, kind: 'app', project: 'demo',
     sides: { be: { apps: [{ name: 'api', kind: 'api' }], ...be }, fe: { apps: [{ name: 'web', kind: 'next' }] } },
   };
   fs.writeFileSync(path.join(repoRoot, 'package.json'), JSON.stringify({ dependencies }));
@@ -97,52 +96,31 @@ test('lite: a backing name outside ruleParams.be.backing is an invalid declarati
   assert.deepEqual(judge(t, { be: { backing: ['mongo'] } }).map(({ code }) => code), ['HFS_DECLARATION_INVALID']);
 });
 
-test('lite: Qdrant is refused even with a declared consumer; pgvector needs no backing service declaration', (t) => {
+test('Qdrant is admitted with its declared client and refused without; pgvector needs no backing service declaration', (t) => {
   for (const name of ['@qdrant/js-client-rest', '@qdrant/qdrant-js']) {
-    assert.deepEqual(judge(t, { be: { backing: ['qdrant'] }, dependencies: { [name]: '1.12.0' } }).map(({ code }) => code), ['HFS_DECLARATION_INVALID']);
+    assert.deepEqual(judge(t, { be: { backing: ['qdrant'] }, dependencies: { [name]: '1.12.0' } }), []);
     assert.deepEqual(judge(t, { dependencies: { [name]: '1.12.0' } }), [
       { code: 'HFS_BACKING_UNDECLARED', file: 'package.json', name, service: 'qdrant', level: 'error' },
     ]);
   }
-  assert.deepEqual(judge(t, { be: { backing: ['qdrant'] } }).map(({ code }) => code), ['HFS_DECLARATION_INVALID']);
   assert.deepEqual(judge(t, { dependencies: { pg: '8.13.1', pgvector: '0.2.1' } }), []);
 });
 
-test('HFS_BACKING_UNDECLARED (lite): a raw side declaration cannot admit a Qdrant client', (t) => {
-  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-backing-unadmitted-'));
+test('a raw side declaration of qdrant admits the Qdrant client', (t) => {
+  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-backing-admitted-'));
   t.after(() => fs.rmSync(repoRoot, { recursive: true, force: true }));
   fs.writeFileSync(path.join(repoRoot, 'package.json'), JSON.stringify({ dependencies: { '@qdrant/js-client-rest': '1.12.0' } }));
   const findings = editionFindings({
     repoRoot, files: ['package.json'], repo: { profile: 'be', backing: ['qdrant'] },
     manifest: loadSlotManifest(),
   });
-  assert.deepEqual(findings.map(({ code, path: file, service }) => ({ code, file, service })), [
-    { code: 'HFS_BACKING_UNDECLARED', file: 'hfs.json', service: 'qdrant' },
-    { code: 'HFS_BACKING_UNDECLARED', file: 'package.json', service: 'qdrant' },
-  ]);
+  assert.deepEqual(findings, []);
 });
 
-test('backing service editions must be nonempty, unique known edition names', () => {
-  const base = loadSlotManifest();
-  assert.deepEqual(ruleParamsProblems(base), []);
-  for (const editions of [[], ['other'], ['full', 'full'], 'full', null]) {
-    const manifest = structuredClone(base);
-    manifest.ruleParams.be.backing.qdrant.editions = editions;
-    assert.ok(ruleParamsProblems(manifest).some((problem) => problem.startsWith('ruleParams.be.backing must map')), JSON.stringify(editions));
-  }
-});
-
-test('full: Qdrant with its declared client remains admitted, including the default edition', (t) => {
-  assert.deepEqual(judge(t, { edition: 'full', be: { backing: ['qdrant'] }, dependencies: { '@qdrant/js-client-rest': '1.12.0' } }), []);
-  for (const edition of ['full', undefined]) {
-    const declaration = {
-      hfs: 3, kind: 'app', project: 'demo', ...(edition ? { edition } : {}),
-      sides: { be: { apps: [{ name: 'api', kind: 'api' }], backing: ['qdrant'] }, fe: { apps: [{ name: 'web', kind: 'next' }] } },
-    };
-    assert.deepEqual(resolveRepoDeclaration(loadSlotManifest(), declaration).sides?.be?.backing, ['qdrant']);
-  }
-});
-
-test('full: its backing topology is the stack declaration, so no backing finding applies', (t) => {
-  assert.deepEqual(judge(t, { edition: 'full', be: { patterns: ['queue'] }, dependencies: { bullmq: '6.3.11', ioredis: '5.4.1' } }), []);
+test('Qdrant with its declared client resolves as a declared backing service', () => {
+  const declaration = {
+    hfs: 3, kind: 'app', project: 'demo',
+    sides: { be: { apps: [{ name: 'api', kind: 'api' }], backing: ['qdrant'] }, fe: { apps: [{ name: 'web', kind: 'next' }] } },
+  };
+  assert.deepEqual(resolveRepoDeclaration(loadSlotManifest(), declaration).sides?.be?.backing, ['qdrant']);
 });

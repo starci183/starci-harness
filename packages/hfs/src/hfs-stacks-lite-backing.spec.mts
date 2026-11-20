@@ -47,11 +47,10 @@ const DECLARATION = '.starcistacks/application-stacks.yaml';
 const STACK_FILE = '.starcistacks/production/infra/swarm/stack.yaml';
 const SQLITE_DATA_DIR = path.posix.join(path.posix.sep, 'home', 'node', '.n8n');
 const pinned = (image: string) => `${image}@sha256:${'b'.repeat(64)}`;
-const CODES = ['STACKS_LITE_SELFHOSTED_DB', 'STACKS_SIDECAR_VOLUME_UNDECLARED', 'STACKS_SIDECAR_DB_UNSUPPORTED', 'STACKS_LITE_REDIS_PERSISTENCE'];
 const REDIS_IMAGE = pinned('redis:7.4.3');
 const PERSISTED_REDIS = { image: REDIS_IMAGE, command: ['redis-server', '--appendonly', 'yes'], volumes: ['redis-data:/data'] };
 
-function fixture(edition = 'lite'): Fixture {
+function fixture(): Fixture {
   const spec = { runtime: 'docker-swarm', composeFiles: ['infra/swarm/stack.yaml'], components: { api: {}, automation: {} } };
   const doc = {
     components: {
@@ -64,7 +63,7 @@ function fixture(edition = 'lite'): Fixture {
     services: { api: { image: pinned('app/api:1.0.0') }, automation: { image: pinned('n8nio/n8n:1.64.3'), volumes: [`automation-data:${SQLITE_DATA_DIR}`] } },
     volumes: { 'automation-data': {} },
   };
-  return { doc, spec, model, environment: 'production', repo: { edition } };
+  return { doc, spec, model, environment: 'production', repo: {} };
 }
 
 const issuesFor = (value: Fixture, code: string) => liteBackingIssues(value).filter(issue => issue.code === code);
@@ -100,22 +99,14 @@ test('STACKS_LITE_SELFHOSTED_DB@lite: declared Redis runs; undeclared Redis and 
   assert.equal(issuesFor(value, 'STACKS_LITE_SELFHOSTED_DB').length, 1);
 });
 
-test('STACKS_LITE_SELFHOSTED_DB@lite: Qdrant is refused in inventory and rendered model even when declared', () => {
-  for (const backing of [[], ['qdrant']]) {
+test('STACKS_LITE_SELFHOSTED_DB: Qdrant is admitted when declared and refused when undeclared', () => {
+  for (const [backing, expected] of [[['qdrant'], []], [[], ['components.vector.image', 'services.vector.image']]] as [string[], string[]][]) {
     const value = fixture();
     value.repo.sides = { be: { backing } };
     value.doc.components.vector = { role: 'stateful', image: pinned('qdrant/qdrant:v1.12.4') };
     value.model.services.vector = { image: pinned('qdrant/qdrant:v1.12.4') };
-    assert.deepEqual(issuesFor(value, 'STACKS_LITE_SELFHOSTED_DB').map(issue => issue.at), ['components.vector.image', 'services.vector.image']);
+    assert.deepEqual(issuesFor(value, 'STACKS_LITE_SELFHOSTED_DB').map(issue => issue.at), expected);
   }
-});
-
-test('STACKS_LITE_SELFHOSTED_DB@full: declared Qdrant retains its full-edition backing topology', () => {
-  const value = fixture('full');
-  value.repo.sides = { be: { backing: ['qdrant'] } };
-  value.doc.components.vector = { role: 'stateful', image: pinned('qdrant/qdrant:v1.12.4') };
-  value.model.services.vector = { image: pinned('qdrant/qdrant:v1.12.4') };
-  assert.deepEqual(issuesFor(value, 'STACKS_LITE_SELFHOSTED_DB'), []);
 });
 
 test('STACKS_LITE_REDIS_PERSISTENCE@lite: the Redis of the stack runs AOF on a writable named volume at /data', () => {
@@ -282,19 +273,6 @@ test('STACKS_SIDECAR_VOLUME_UNDECLARED@lite: bind mounts, anonymous volumes and 
   }
 });
 
-for (const code of CODES) {
-  test(`${code}@full: valid lite shape and full database choices remain unaffected`, () => {
-    assert.deepEqual(issuesFor(fixture('full'), code), []);
-    const value = fixture('full');
-    value.doc.components.database = { role: 'stateful', image: pinned('postgres:16.9') };
-    value.model.services.database = { image: pinned('redis:7.4.3') };
-    value.doc.components.automation.database = { provider: 'postgres' };
-    delete value.doc.components.automation.volumes;
-    delete value.model.volumes;
-    assert.deepEqual(issuesFor(value, code), []);
-  });
-}
-
 test('R276: non-Swarm development environment retains its existing contract', () => {
   const value = fixture();
   value.spec.runtime = 'docker-compose';
@@ -356,10 +334,7 @@ test('R276 HFS finder reads rendered services and reports standard lite findings
   });
 });
 
-test('R276 HFS finder leaves full edition and unavailable rendered evidence unaffected', () => {
-  const value = fixture('full');
-  value.model.services.cache = { image: pinned('redis:7.4.3') };
-  trackedFixture(value, context => assert.deepEqual(stacksLiteBackingFindings(context), []));
+test('R276 HFS finder leaves unavailable rendered evidence unaffected', () => {
   trackedFixture(fixture(), context => {
     context.files = [DECLARATION];
     assert.deepEqual(stacksLiteBackingFindings(context), []);

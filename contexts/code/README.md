@@ -19,9 +19,9 @@ both sides hold in the same words lives once in `shared/`; how a rule changes is
 
 An op that writes code or tests reads, in this order, and cites the rule ids it applied:
 
-1. **The project map:** the [anatomy](../project/anatomy.md) slice of its side and edition
-   (`anatomy-<edition>-<side>.md`: where the slot's code lives and the ids of the rules that judge it) and the edition
-   file ([lite.md](../project/lite.md) or [full.md](../project/full.md)).
+1. **The project map:** the [anatomy](../project/anatomy.md) slice of its side
+   (`anatomy-<side>.md`: where the slot's code lives and the ids of the rules that judge it) and the edition
+   file ([edition.md](../project/edition.md)).
 2. **Shared:** [shared/README.md](shared/README.md) and the topics it marks core.
 3. **The side:** [be/README.md](be/README.md) or [fe/README.md](fe/README.md); a front-end screen also reads the ui and
    grammar files of the [knowledge reading order](../README.md#reading-order-by-task).

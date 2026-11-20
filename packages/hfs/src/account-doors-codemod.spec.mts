@@ -82,8 +82,7 @@ test('3. the contract step waits for the doors and for the sync, then revokes th
   assert.match(again.next.join(' '), /already in the chain/u);
 });
 
-test('4. a full app is refused, and an app that never granted on schema auth has nothing to revoke', () => {
-  assert.match(migrateAccountDoors({ root: app({}, { edition: 'full' }), now: () => NOW }).findings[0]!.reason, /lite edition/u);
+test('4. an app that never granted on schema auth has nothing to revoke', () => {
   const clean = app({ [BASELINE]: 'create role app_be login noinherit nobypassrls nosuperuser;\n', 'db/migrations/20260102120000_account-doors.sql': DOORS }, { synced: true });
   const nothing = migrateAccountDoors({ root: clean, contract: true, now: () => NOW });
   assert.deepEqual(nothing.changes, []);

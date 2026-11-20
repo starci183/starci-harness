@@ -1,7 +1,6 @@
 // The microservice policy of `starci app check` (scripts/hfs/rules/services.mts): R163 HFS_SERVICE_PLACEMENT, R164 HFS_IMAGE_UNPINNED,
-// R165 HFS_SERVICE_STACK_DECLARATION, R166 HFS_EVENT_CONTRACT (event classes -> events.json), R167 BE_ASYNC_SPEC_MISSING, plus the event contract emit
+// R165 HFS_SERVICE_STACK_DECLARATION, R166 HFS_EVENT_CONTRACT (event classes -> events.json), plus the event contract emit
 // (packages/hfs/emit). Each rule has a violating and a passing tree; the clean app of tests/helpers/hfs-cli-fixture.mjs is the base.
-// proves: BE_ASYNC_SPEC_MISSING@full
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -208,41 +207,4 @@ test('HFS_EVENT_CONTRACT: a committed snapshot of a service with no event class 
 test('starci app emit writes events.json for a service that declares event classes, sorted and with a final newline', () => {
   const text = emitted('billing', { [REJECTED_PATH]: REJECTED });
   assert.equal(text, `${JSON.stringify({ events: { 'billing.invoice-rejected': { compensates: 'order.placed', payload: { orderId: 'string', reason: 'string' }, version: 1 } }, schema: 'starci/event-contract@1', service: 'billing' }, null, 2)}\n`);
-});
-
-// ------------------------------------------------------------------------------------------------ R167 BE_ASYNC_SPEC_MISSING
-
-const consumerOf = (className: string, file: string) => `import { ${className} } from '@modules/events/${file}';\nexport class ${className}Consumer {\n  readonly event = ${className}\n}\n`;
-const CONSUMER_REJECTED = 'be/src/features/orders/transport/message/invoice-rejected.consumer.ts';
-const CONSUMER_PLACED = 'be/src/features/billing/transport/message/order-placed.consumer.ts';
-const SPEC_PLACED = 'be/src/tests/e2e/orders/order-placed.e2e-spec.ts';
-const SPEC_REJECTED = 'be/src/tests/e2e/orders/invoice-rejected.e2e-spec.ts';
-const eventSpec = (event: string) => `it('handles ${event}', () => undefined);`;
-const SPEC = (...events: string[]) => `import { useTestWorld } from '../../world/use-test-world';\nconst world = useTestWorld({ apps: ['core'] });\n${events.map(eventSpec).join('\n')}\n`;
-/** `billing` consumes `order.placed`; `core` consumes `billing.invoice-rejected`, which compensates `order.placed`. */
-const asyncRepo = (specs: Record<string, string> = {}) => (dir: string) => {
-  withEvents()(dir);
-  put(dir, CONSUMER_PLACED, consumerOf('OrderPlacedEvent', 'core'));
-  put(dir, CONSUMER_REJECTED, consumerOf('InvoiceRejectedEvent', 'billing'));
-  for (const [file, text] of Object.entries(specs)) put(dir, file, text);
-};
-const r140 = (specs?: Record<string, string>) => only(MULTI, asyncRepo(specs), 'BE_ASYNC_SPEC_MISSING');
-
-test('BE_ASYNC_SPEC_MISSING (full): a consumed event no e2e spec names, and a spec that does not boot the world, are refused on the consumer', () => {
-  assert.deepEqual(r140().map((f) => [f.path, f.event]).sort((left, right) => byCodeUnit(left[0], right[0])), [[CONSUMER_PLACED, 'order.placed'], [CONSUMER_REJECTED, 'billing.invoice-rejected']]);
-  const notWorld = r140({ [SPEC_PLACED]: "it('order.placed', () => undefined)\n", [SPEC_REJECTED]: "it('billing.invoice-rejected', () => undefined)\n" });
-  assert.equal(notWorld.length, 2);
-  assert.match(notWorld[0]!.message!, /has no e2e spec/);
-});
-
-test('BE_ASYNC_SPEC_MISSING (full): the spec of a saga step must also drive the event it compensates', () => {
-  const stepOnly = r140({ [SPEC_PLACED]: SPEC('order.placed'), [SPEC_REJECTED]: SPEC('billing.invoice-rejected') });
-  assert.equal(stepOnly.length, 1);
-  assert.equal(stepOnly[0]!.path, SPEC_REJECTED);
-  assert.match(stepOnly[0]!.message!, /undoes "order.placed", but never names it/);
-});
-
-test('BE_ASYNC_SPEC_MISSING (full): every consumed event named by an e2e spec through the world, a saga step driving the whole flow, passes', () => {
-  assert.deepEqual(r140({ [SPEC_PLACED]: SPEC('order.placed'), [SPEC_REJECTED]: SPEC('order.placed', 'billing.invoice-rejected') }), []);
-  assert.deepEqual(r140({ 'be/src/tests/e2e/orders/whole-saga.e2e-spec.ts': SPEC('order.placed', 'billing.invoice-rejected') }), []);
 });

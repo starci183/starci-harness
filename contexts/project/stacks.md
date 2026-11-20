@@ -6,11 +6,11 @@ brings it up and down. The harness owns the **shape** (what may exist, what ever
 operations and their safety rules); the project owns the **values** (its components, images, ports, hosts, secret
 names and runbook commands).
 
-The exact tree (required, allowed and forbidden paths, per edition) is the slot `app.starcistacks` in
+The exact tree (required, allowed and forbidden paths) is the slot `app.starcistacks` in
 [hfs/slots.yaml](../hfs/slots.yaml); the laws are R10 `HFS_STACKS_SHAPE` and the `STACKS_*` rules in
 [hfs/rules.yaml](../hfs/rules.yaml), which name their enforcers. This file gives the reasons and the operating
-rules no slot can express, each under its id; every one without a named rule is held by review. What each edition
-runs is in [lite.md](lite.md) and [full.md](full.md).
+rules no slot can express, each under its id; every one without a named rule is held by review. What the app
+runs is in [edition.md](edition.md).
 
 ## PROJECT-STACKS-1 One root per app
 
@@ -40,7 +40,7 @@ against:
 - `data`: the stores that must be kept, the stateful components that are rebuilt instead, and the data sets copied from them,
   each a `seed-standard` or a `seed-backup` with its destinations (PROJECT-STACKS-13, PROJECT-STACKS-14; R426, R427).
 - `tests`: the world slots of the integration and e2e runs, `{ integration: { workers: n }, e2e: { workers: n } }`, each `workers` an integer from 1 to 8 (absent is 1: one
-  spec file at a time; a lite app may declare them too): how many spec files of the kind run at once, each on a data slot of its own, with the exclusive
+  spec file at a time): how many spec files of the kind run at once, each on a data slot of its own, with the exclusive
   specs alone afterwards ([code/be/test.md](../code/be/test.md) BE-TEST-17; `HFS_STACKS_SHAPE`).
 - `ci` and `services`: the names CI reads and the delivery services it calls (PROJECT-STACKS-7, PROJECT-STACKS-8).
 - `branches`: the branch profile of each branch that lowers a polish gate, `dev` only ([lint.md](lint.md) PROJECT-LINT-2).
@@ -62,7 +62,7 @@ Two kinds, named by the project:
   every service declares healthcheck, placement and rollout (R266, R267, R294).
 
 Beside the environments, `images/<name>/` holds the image folder of each service the app customises (PROJECT-STACKS-11),
-in both editions; a lite app's db image is the managed `images/db/Dockerfile` among them (slot `app.db.image`). `images/` is no environment and holds no custody.
+a db image is the managed `images/db/Dockerfile` among them (slot `app.db.image`). `images/` is no environment and holds no custody.
 
 Each environment has its own `README.md`, the runbook: the operations of PROJECT-STACKS-6 with the project's real
 commands, the components it binds, its secret custody and its data custody (which volumes are authoritative, which are
@@ -77,7 +77,7 @@ opens its doors, and `starci vps grant` hands the app a deploy user of its own, 
 ([harness/managed-vps.md](../harness/managed-vps.md)); the app never holds that server's root.
 
 **Scheduled work.** Swarm has no native schedule, so recurring work stays inside the app: the back end's queue
-scheduler (BE-QUEUES-3), a lite `platform/jobs` tick (BE-JOBS-6) that enqueues through the queue outbox, or a declared `replicated-job`
+scheduler (BE-QUEUES-3), a `platform/jobs` tick (BE-JOBS-6) that enqueues through the queue outbox, or a declared `replicated-job`
 component that runs a named back-end CLI action on a cron `schedule`, started by a declared `role: scheduler`
 component. Never a host crontab, systemd timer or deploy-script loop (R250, R268). The command owns its completion,
 retry and overlap; a healthy scheduler container is no proof that the job finished.
@@ -96,7 +96,7 @@ image, so any digest-pinned supported reverse proxy serves.
   service publishes in host mode. DNS is an owner-run prerequisite with its receipt; the ingress obtains
   and persists its certificate, and exposes a route only after the upstream is ready.
 - Web and api on different hosts (R337): the web server forwards the browser's Cookie header to the api, and the
-  skeleton's passport sets its refresh cookie host-only unless `AUTH_COOKIE_DOMAIN` is set. A lite environment whose
+  skeleton's passport sets its refresh cookie host-only unless `AUTH_COOKIE_DOMAIN` is set. An environment whose
   web and api hosts differ gives the api `AUTH_COOKIE_DOMAIN` (the bare common parent domain, such as `example.com`) in
   its stack environment, its KEYS.md or a sealed key; `starci app check` reports `HFS_AUTH_COOKIE_DOMAIN_MISSING` otherwise.
 - An app routed by a shared ingress outside its own stack declares that ingress as external with its hosts; its own
@@ -261,9 +261,8 @@ acceptance gate. They are run by the owner or a `deliver` worker; deploying need
 --env <env>`, driven by the environment's `local` block of `application-stacks.yaml` (R372: ports, compose services, the environment's own database
 role, dev-only custody to generate, setup and seed commands, native processes, readiness and verification probes). `prepare`, `up` and `down` are dry
 runs until `--execute`; `doctor`, `status`, `logs` and `verify` are read-only. **`up` is the one command**: it checks the host table, opens the dev
-custody, runs the setup (install, codegen), starts the compose services under the heavy-command governor (a lite app's dev compose runs its database, Mailpit, the `mail` sink the sign-in mails reach on loopback, its web UI an origin, and
-MinIO, the `storage` object store whose root credentials are the dev `storage` member's keys and whose console is an origin; a full app's runs
-`storage` too; the store is built from the managed `.starcistacks/images/storage/Dockerfile` and loads the repo-owned `statics/` into its bucket, [statics.md](statics.md) PROJECT-STATICS-2) with `docker compose up --build` (a changed build input rebuilds, cached otherwise) and waits for their health, gives the
+custody, runs the setup (install, codegen), starts the compose services under the heavy-command governor (the app's dev compose runs its database, Mailpit, the `mail` sink the sign-in mails reach on loopback, its web UI an origin, and
+MinIO, the `storage` object store whose root credentials are the dev `storage` member's keys and whose console is an origin; the store is built from the managed `.starcistacks/images/storage/Dockerfile` and loads the repo-owned `statics/` into its bucket, [statics.md](statics.md) PROJECT-STATICS-2) with `docker compose up --build` (a changed build input rebuilds, cached otherwise) and waits for their health, gives the
 environment its own database role and the app role its own password, migrates with a receipt, applies the seed levels with their receipts (PROJECT-STACKS-12), runs the declared seed commands once per set of volumes (a receipt holds the volumes' names and creation times, so a wiped stack seeds again; a command declared `mode: always`, a migration runner idempotent by its own ledger such as TypeORM's, runs on every up, so a new migration reaches an existing stack, and runs right after `db migrate`, before the seed levels and the loader of the pinned seed-standards, whose doors write into the tables it creates), starts the native
 processes, waits for readiness and prints the origins. An agent never runs Docker by hand ([harness/rules.md](../harness/rules.md) hard rule 8);
 the runbook of a docker-compose environment names `starci app stack up --env <env>` and carries no docker command (R373). `down` ends the processes
@@ -886,7 +885,7 @@ read-time link are held by review and by the app's own specs (no rule reads code
 
 ## Read with
 
-[lite.md](lite.md), [full.md](full.md), [statics.md](statics.md); slots `app.starcistacks` and `app.plaintext-env` in
+[edition.md](edition.md), [statics.md](statics.md); slots `app.starcistacks` and `app.plaintext-env` in
 [hfs/slots.yaml](../hfs/slots.yaml); R06, R10, R250 to R253, R266 to R268, R271, R275 to R277, R294, R296 to R299,
 R301, R372 to R375, R400, R426 to R428, R438 to R440 in [hfs/rules.yaml](../hfs/rules.yaml).
 

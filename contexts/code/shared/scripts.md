@@ -9,7 +9,7 @@ The root `package.json` scripts, the CI workflow, the git hooks, the tool config
 files: the app CLI
 the app pins (`starci-harness`, `starci app sync`) renders them and an op never edits them. An op calls a script by its
 name instead of re-deriving the tool command: `typecheck`, `lint`, `format`, `format:check`, `test`,
-`typecheck:tests`, `test:integration`, `build:be`, `build:fe`, `codegen`, and in lite the `db:*` scripts. A command
+`typecheck:tests`, `test:integration`, `build:be`, `build:fe`, `codegen` and the `db:*` scripts. A command
 the app lacks is reported, never added by hand.
 
 Why: one rendered script set makes every app answer the same commands, and a hand-edited script is undone by the next
@@ -31,14 +31,14 @@ declares the commands in `context.setup` ([project/README.md](../../project/READ
 
 Why: a hand edit of generated code is overwritten by the next run and hides a contract the source does not hold.
 
-Enforced by: R23 HFS_CONTRACT_SNAPSHOT_DRIFT; the lite CI job `db-types` (regenerates the row types and fails on a
+Enforced by: R23 HFS_CONTRACT_SNAPSHOT_DRIFT; the CI job `db-types` (regenerates the row types and fails on a
 diff); R52 FE_WIRE_GENERATED.
 
 ## SHARED-SCRIPTS-3 CI judges the app after the push
 
 The app's one workflow (`.github/workflows/ci.yml`, managed) runs on main: a fast job (production dependency audit,
-`format:check`, in lite the boot proof `app check --gate wiring` of R272, `typecheck`), lint per side, the unit suite in shards with one coverage merge proving 100 per measured
-file, the build of the back end and of each front-end app, the Sonar gate on `v*` tags, and in lite the database
+`format:check`, the boot proof `app check --gate wiring` of R272, `typecheck`), lint per side, the unit suite in shards with one coverage merge proving 100 per measured
+file, the build of the back end and of each front-end app, the Sonar gate on `v*` tags, and the database
 migration checks and the row types. An op neither waits for it nor edits it; a red CI becomes its own task scoped to
 the red checks.
 

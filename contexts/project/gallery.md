@@ -62,7 +62,7 @@ gallery/
    width other than the two, and writes the screen's `explain.md`.
 7. **Its language is the app's.** The managed files render their words (the title and the README, and the `locale` that `vite.config.js`
    hands to `@starci/gallery`, which draws the search box, the empty state, the bug labels, the tabs and the status names) in the app's default locale: the `DEFAULT_LOCALE` its i18n routing source declares
-   (`fe/packages/<project>-i18n/src/routing.ts` of a full app, `fe/apps/<app>/src/modules/i18n/routing.ts` of a lite one). `vi`
+   (`fe/apps/<app>/src/modules/i18n/routing.ts`). `vi`
    and `en` have a table (`GALLERY_LABELS` in `packages/hfs/runtime/scripts/hfs/gallery.mts` for the files, `LABELS` in `packages/gallery/src/labels.ts` for the app); any other locale, or none
    declared, renders `en`. The field names of `explain.md` (`Vì sao`, `Luật`, `Grammar`) are the same in every locale. The file
    stays managed per locale: sync renders the locale's text, and a hand edit or a default locale that changed is drift that
@@ -110,7 +110,7 @@ Every design decision on a screen is traceable to an owner law and a Grammar ref
 
 1. **The rule.** Every user-facing route of the app's front end has at least one screen folder in `gallery/pages/` whose `explain.md`
    front matter `route` matches it. A route is a Next app router `page.tsx` under `fe/apps/<app>/src/app` (the slot `fe.route`, the
-   same shape in both editions). Its pattern is its folder path without the `[locale]` prefix and the `(group)` folders:
+   same shape in every app). Its pattern is its folder path without the `[locale]` prefix and the `(group)` folders:
    `fe/apps/web/src/app/[locale]/(console)/agents/[agentKey]/page.tsx` is `/agents/[agentKey]`. A parallel slot (`@modal`), an
    intercepting route (`(.)photo`) and a private folder (`_parts`) own no screen. A dynamic segment (`[id]`, `[...rest]`) is one
    screen: `/agents/[agentKey]` and `/agents/:key` are the same route, and a state or an agent variant of it is its own folder with
@@ -150,7 +150,7 @@ the gallery drawn before code: it takes the business of an existing or planned p
 to approve before the page is coded. This rule owns where the canvas lives, how it maps onto the gallery, the lifecycle of a screen and what
 the gate judges.
 
-1. **The canvas lives in the app.** `.starcistacks/canvas/` at the app root (slot `app.starcistacks.canvas`, both editions; a reserved folder,
+1. **The canvas lives in the app.** `.starcistacks/canvas/` at the app root (slot `app.starcistacks.canvas`; a reserved folder,
    never an environment) holds the whole design and is committed:
    ```
    .starcistacks/canvas/

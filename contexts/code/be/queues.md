@@ -46,10 +46,9 @@ Enforced by: `infra-import-owner` (R90).
 
 ## BE-QUEUES-3 A schedule fires once per deployment
 
-A recurring task is, in lite, a tick of `platform/jobs` (BE-JOBS-6), which enqueues one job through the queue outbox
-once per minute for the deployment (the app's scheduler list stays empty); in full, a BullMQ job scheduler the app
-passes as `QueueModule.register({ schedulers })`. A schedule owned by a data row, such as one agent's next run, is a
-BullMQ job scheduler keyed by that row, in lite as in full, written with the row and removed with it. The job runs
+A recurring task is a tick of `platform/jobs` (BE-JOBS-6), which enqueues one job through the queue outbox
+once per minute for the deployment (the app's scheduler list stays empty). A schedule owned by a data row, such as one agent's next run, is a
+BullMQ job scheduler keyed by that row, written with the row and removed with it. The job runs
 through the same processor as any enqueued job. No cron decorator outside the tick scheduler, no `setInterval` and no
 host crontab.
 
@@ -62,8 +61,8 @@ Enforced by: R335, R268, R250 (hfs), `infra-import-owner` (R90).
 ## BE-QUEUES-4 The queue is proven on real infrastructure
 
 An app declaring `queue` proves `enqueue-atomic-with-transaction`, `relay-job-id-is-outbox-id` and
-`scheduler-fires-once` in specs titled `queue/<scenario>: ...`: in lite integration specs on the local db service and
-Redis, in full e2e.
+`scheduler-fires-once` in specs titled `queue/<scenario>: ...`: in integration specs on the local db service and
+Redis.
 
 Why: atomicity and once-only firing are runtime facts.
 

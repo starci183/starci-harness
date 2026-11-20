@@ -1,5 +1,4 @@
 // proves: HFS_STACKS_SHAPE@lite
-// proves: HFS_STACKS_SHAPE@full
 import test from 'node:test';
 import type { TestContext } from 'node:test';
 import assert from 'node:assert/strict';
@@ -55,6 +54,7 @@ function developmentFixture(t: TestContext, edition: string, runtime: string) {
   spec.runtime = runtime;
   spec.composeFiles = [stackFile];
   spec.secrets = [];
+  if (runtime === 'docker-compose') spec.local = {};
   spec.components = { api: {}, ingress: {}, dependency: {} };
   fixture.manifest.environments.dev = spec;
   fixture.put('.starcistacks/dev/README.md', ['| command | purpose |', '|---|---|',
@@ -74,15 +74,15 @@ function dependencyFindings(fixture: SwarmFixture, edition: string) {
     .filter(item => item.code === code && item.path.startsWith('services.dependency'));
 }
 
-for (const [edition, runtime] of [['lite', 'docker-swarm'], ['full', 'docker-compose'], ['full', 'docker-swarm']] as [string, string][]) {
-  test(`STACK-DEV ${edition} ${runtime}: the selected dependency runs in a Linux Docker service`, t => {
+for (const [edition, runtime] of [['lite', 'docker-compose'], ['lite', 'docker-swarm']] as [string, string][]) {
+  test(`STACK-DEV ${runtime}: the selected dependency runs in a Linux Docker service`, t => {
     const fixture = developmentFixture(t, edition, runtime);
     fixture.model.services.dependency.platform = 'linux/amd64';
     fixture.write();
     assert.deepEqual(dependencyFindings(fixture, edition), []);
   });
 
-  test(`STACK-DEV ${edition} ${runtime}: an omitted or host-only dependency is refused`, t => {
+  test(`STACK-DEV ${runtime}: an omitted or host-only dependency is refused`, t => {
     const fixture = developmentFixture(t, edition, runtime);
     for (const service of [undefined, {}, { command: 'redis-server' }, { external_links: ['host.docker.internal:cache'] }]) {
       if (service === undefined) delete fixture.model.services.dependency;
@@ -92,14 +92,14 @@ for (const [edition, runtime] of [['lite', 'docker-swarm'], ['full', 'docker-com
     }
   });
 
-  test(`STACK-DEV ${edition} ${runtime}: a Windows dependency container is refused`, t => {
+  test(`STACK-DEV ${runtime}: a Windows dependency container is refused`, t => {
     const fixture = developmentFixture(t, edition, runtime);
     fixture.model.services.dependency.platform = 'windows/amd64';
     fixture.write();
     assert.ok(dependencyFindings(fixture, edition).some(item => item.path === 'services.dependency.platform'));
   });
 
-  test(`STACK-DEV ${edition} ${runtime}: free-text dependency roles still require Docker`, t => {
+  test(`STACK-DEV ${runtime}: free-text dependency roles still require Docker`, t => {
     const fixture = developmentFixture(t, edition, runtime);
     delete fixture.model.services.dependency;
     for (const role of ['cache', 'database', 'message-broker', 'custom-store']) {
@@ -110,20 +110,20 @@ for (const [edition, runtime] of [['lite', 'docker-swarm'], ['full', 'docker-com
   });
 }
 
-test('STACK-DEV full: a native application can be outside the dependency Docker model', t => {
-  const fixture = developmentFixture(t, 'full', 'docker-compose');
+test('STACK-DEV: a native application can be outside the dependency Docker model', t => {
+  const fixture = developmentFixture(t, 'lite', 'docker-compose');
   delete fixture.model.services.api;
   fixture.write();
   const errors = checkApplicationStacks({ repoRoot: fixture.root, environment: 'dev',
-    deploymentModelFile: fixture.modelFile, repo: { edition: 'full' } }).errors;
+    deploymentModelFile: fixture.modelFile, repo: {} }).errors;
   assert.deepEqual(errors.filter(item => item.code === code), []);
 });
 
-test('STACK-DEV full: explicit app identities keep custom application roles outside the dependency Docker model', t => {
-  const fixture = developmentFixture(t, 'full', 'docker-compose');
+test('STACK-DEV: explicit app identities keep custom application roles outside the dependency Docker model', t => {
+  const fixture = developmentFixture(t, 'lite', 'docker-compose');
   delete fixture.model.services.api;
   for (const { component, repo } of [
-    { component: { role: 'custom-application', app: 'api' }, repo: { edition: 'full' } },
+    { component: { role: 'custom-application', app: 'api' }, repo: {} },
     { component: { role: 'custom-application' }, repo: fixture.declaration },
     { component: { role: 'custom-application' } },
   ]) {
@@ -135,8 +135,8 @@ test('STACK-DEV full: explicit app identities keep custom application roles outs
   }
 });
 
-test('STACK-DEV full: an unknown app reference cannot hide a selected dependency', t => {
-  const fixture = developmentFixture(t, 'full', 'docker-compose');
+test('STACK-DEV: an unknown app reference cannot hide a selected dependency', t => {
+  const fixture = developmentFixture(t, 'lite', 'docker-compose');
   fixture.manifest.components.dependency = { role: 'service', app: 'undeclared-app' };
   delete fixture.model.services.dependency;
   fixture.write();
@@ -146,7 +146,7 @@ test('STACK-DEV full: an unknown app reference cannot hide a selected dependency
 });
 
 test('STACK-DEV: malformed HFS declaration cannot silently remove application identity checks', t => {
-  const fixture = developmentFixture(t, 'full', 'docker-compose');
+  const fixture = developmentFixture(t, 'lite', 'docker-compose');
   for (const declaration of ['{ invalid JSON', 'null', '[]']) {
     fixture.put('hfs.json', declaration);
     const errors = checkApplicationStacks({ repoRoot: fixture.root, environment: 'dev',
@@ -155,12 +155,12 @@ test('STACK-DEV: malformed HFS declaration cannot silently remove application id
   }
 });
 
-test('STACK-DEV full Compose: a dependency may declare a Docker build instead of an image', t => {
-  const fixture = developmentFixture(t, 'full', 'docker-compose');
+test('STACK-DEV Compose: a dependency may declare a Docker build instead of an image', t => {
+  const fixture = developmentFixture(t, 'lite', 'docker-compose');
   for (const build of ['.', { context: '.', dockerfile: 'Dockerfile' }]) {
     fixture.model.services.dependency = { build };
     fixture.write();
-    assert.deepEqual(dependencyFindings(fixture, 'full'), []);
+    assert.deepEqual(dependencyFindings(fixture, 'lite'), []);
   }
 });
 

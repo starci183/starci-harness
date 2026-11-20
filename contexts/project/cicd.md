@@ -51,8 +51,7 @@ e2e and contract specs need the test world, so they run only when a person asks 
 (`npm run test:integration`, `npm run test:e2e`, `npm run test:contract`). Nothing starts them on its own: no workflow, no
 husky hook, no coverage run, no default row of the release gate and no agent or lane (an agent proves its change by the
 typecheck and the gates its contract declares, and runs a world suite only when its task or the owner names it). No job or
-step of any workflow runs them, under any trigger, a manual dispatch included, and `starci app check` runs none of them in
-either edition: its `test` family is the unit specs. The boot proof CI keeps is the wiring gate (`app check --gate wiring`,
+step of any workflow runs them, under any trigger, a manual dispatch included, and `starci app check` runs none of them: its `test` family is the unit specs. The boot proof CI keeps is the wiring gate (`app check --gate wiring`,
 R272), never the e2e suite. An app tracks no `.github/workflows/e2e.yml`: slot `app.ci-e2e` is forbidden and `starci app sync
 --execute` removes the file. `HFS_E2E_IN_AUTOMATIC_GATE` refuses a hook, a coverage run or a workflow that runs one, and R301
 `CI_STANDARD` refuses a `run` step that does (jest `--selectProjects integration|e2e|contract`, a `*.integration-spec` or
@@ -195,8 +194,8 @@ The migration moves into the deploy, before the services update, under three rul
   after accept, and only when the previous accepted release's code no longer uses the target, which `app check --gate db`
   proves by refusing a contract migration that lands in the same release as the code change it depends on (a new
   migration finding, so an error finding).
-- **No down migration runs by default.** A rollback restores service specs, never data (PROJECT-STACKS-6). Lite has no
-  down migrations; full's `down()` stays an owner-run step. The backup taken before the migration, with its receipt, is the
+- **No down migration runs by default.** A rollback restores service specs, never data (PROJECT-STACKS-6). An app has no
+  down migrations. The backup taken before the migration, with its receipt, is the
   way back for data, and restoring it waits for the owner's yes, given with its loss window.
 - **Backup only when something will change.** The preview runs first; with nothing pending there is no backup and the
   record says so. With something pending, the backup, its verified receipt and its test decrypt run under the
@@ -335,7 +334,7 @@ contract, generalised from `stack/urgent-floor.mts` (shared steps, renamed codes
 migrate), the contract-migration finding in the db rules (`app check --gate db`), `database.target` in the stacks schema.
 Tests: no pending migration means no backup; a red preview refuses before the stack deploy; a contract migration runs only
 after accept; first start chosen automatically on an empty database and refused on a non-empty one. Done: the
-a lite stack deploys and migrates in a scratch swarm with the db service internal only.
+a stack deploys and migrates in a scratch swarm with the db service internal only.
 
 **WP3. CI evidence and urgent trailers (`cli/`).** Files: `cli/src/core/check/ci.ts` (`requireCiGreen` accepts
 `--ci-run <id>`: the run's required jobs for that sha, or the reused run), `cli/src/core/app/stack.ts`, `release push
@@ -344,15 +343,15 @@ a lite stack deploys and migrates in a scratch swarm with the db service interna
 reused candidate run of another sha is refused; trailers round-trip. Done: `stack deploy --ci-run` works inside a run that
 is still in progress.
 
-**WP4. The managed workflows (`@starci/hfs` templates, sync and rules).** Files: `templates/app/ci-workflows{,-lite}/github/
+**WP4. The managed workflows (`@starci/hfs` templates, sync and rules).** Files: `templates/app/ci-workflows/github/
 workflows/ci.yml` (plan, images, verdict, deploy jobs; `pull_request`), `images.yml` and `stack-deploy.yml` as reusable
 workflows (`workflow_call`, dispatch kept on `stack-deploy.yml` with `deploy|redeploy|rollback`), `db-deploy.yml` retired
 (sync deletes it), `sync/ci-commands.mts`, `sync/stack-images.mts`, `runtime/knowledge/hfs/ci-standard.yaml` (jobs, the
 `verdict` and `plan` items), rules R221, R251, R271 (`HFS_DB_DEPLOY_UNGUARDED` moves to the deploy's migrate phase) and the
 supply-chain SBOM check (now on the pushed build), the stacks schema keys `deploy.auto`, `deploy.approval`,
 `deploy.platforms`, `ci.imageCache`, `services.notify`, the `vps-ci` sealed member and `starci-ssh-gate`. Tests:
-`hfs-deploy-workflow.spec`, `hfs-release-provenance.spec`, `hfs-supply-chain.spec`, the render specs for lite and full,
-prettier stability. Done: `app sync` renders a pipeline that `actionlint` and the CI standard accept for both editions.
+`hfs-deploy-workflow.spec`, `hfs-release-provenance.spec`, `hfs-supply-chain.spec`, the render specs,
+prettier stability. Done: `app sync` renders a pipeline that `actionlint` and the CI standard accept.
 Needs WP1 to WP3 published (the workflows call their flags).
 
 **WP5. Knowledge and the move of existing apps.** Files: this document made the rule (its sections become ids),

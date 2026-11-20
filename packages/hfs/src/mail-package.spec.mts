@@ -43,7 +43,7 @@ test('the lite starter imports nodemailer nowhere, and @starci/mail in its mail 
   assert.deepEqual([...importers], ['src/modules/integrations/mail']);
 });
 
-const AUTH = path.join(import.meta.dirname, '..', 'templates', 'be', 'auth-lite');
+const AUTH = path.join(import.meta.dirname, '..', 'templates', 'be', 'auth');
 const GLUE = path.join(STARTER, 'src', 'modules', 'integrations', 'mail');
 const APP = path.join(import.meta.dirname, '..', 'templates', 'app', 'skeleton');
 
@@ -61,7 +61,7 @@ test('the starter registers the mail module once, in the integration modules of 
   assert.match(compose, /MailModule\.register\(\{ \.\.\.options\.mail, isGlobal: true \}\)/);
 });
 
-test('the managed sign-in slots list every file of the auth-lite template, the five email doors included', () => {
+test('the managed sign-in slots list every file of the auth template, the five email doors included', () => {
   const walk = (dir: string): string[] => fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => (entry.isDirectory() ? walk(path.join(dir, entry.name)) : [path.join(dir, entry.name)]));
   const files = walk(AUTH).map((file) => path.relative(AUTH, file).split(path.sep).join('/')).sort();
   const listed = ['be.identity.sign-in', 'be.feature.auth'].flatMap((id) => {

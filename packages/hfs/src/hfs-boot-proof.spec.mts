@@ -90,19 +90,6 @@ import { REQUEST } from '@nestjs/core';
   assert.equal(appWiring(fixture(t, { [APP_MODULE]: source, [wiringFixturePath('api')]: builder })).ok, true);
 });
 
-test('BE_APP_BOOT_PROOF_MISSING full: the unresolved lite fixture leaves existing e2e enforcement unchanged', t => {
-  const context = fixture(t, { [APP_MODULE]: missingModule }, 'full');
-  assert.deepEqual(bootProofFindings(context), []);
-  assert.equal(appWiring(context).status, 'skipped');
-});
-
-test('BE_APP_BOOT_PROOF_MISSING full: the passing graph is skipped without loading Nest or a worker', t => {
-  const context = fixture(t, { [APP_MODULE]: passingModule }, 'full');
-  const report = appWiring({ ...context, run() { assert.fail('full must not compile a lite proof'); } });
-  assert.equal(report.ok, true);
-  assert.deepEqual(report.findings, []);
-});
-
 test('BE_APP_BOOT_PROOF_MISSING lite: dynamic root cannot pass as its empty static decorator', t => {
   const source = `import { Module } from '@nestjs/common';
 @Module({}) export class AppModule {

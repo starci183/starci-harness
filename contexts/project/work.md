@@ -3,7 +3,7 @@
 `.starciwork/` at the app root holds the product's Work: the concepts the owner ruled, the brand, and what a run of the
 product resolves. It is product content, committed with the app; harness state never lives there
 ([contexts/harness/state.md](../harness/state.md)). Which paths the tree may hold is slot `app.starciwork` of
-[hfs/slots.yaml](../hfs/slots.yaml); the edition decides how much of it exists ([lite.md](lite.md), [full.md](full.md)).
+[hfs/slots.yaml](../hfs/slots.yaml); what the one edition keeps is in [edition.md](edition.md).
 This file owns the tree, the concepts and who writes what.
 
 ## The tree
@@ -19,8 +19,8 @@ This file owns the tree, the concepts and who writes what.
 
 The tree keeps no per-feature documents and no catalog of features: what stays true across the product is a concept,
 what one task must do is its contract ([README.md](README.md) PROJECT-2), and what was built is the code and its git
-history. Slot `app.starciwork` admits no `features/` and no root `index.yaml` in either edition; a lite app that keeps
-one is refused `HFS_STARCIWORK_LITE_FORBIDDEN` (R212), a full app's is held by review.
+history. Slot `app.starciwork` admits no `features/` and no root `index.yaml`; an app that keeps
+one is refused `HFS_STARCIWORK_LITE_FORBIDDEN` (R212).
 
 ## PROJECT-WORK-4 An integration is designed from the provider's current documentation
 
@@ -52,7 +52,7 @@ The harness writes nothing in `.starciwork`. A `docs` task names a scope inside 
 
 A concept is one topic of what stays true across the whole source of a product: the words it defines, the shapes of its data, how
 its things are named, the business rules it keeps, and the folders that hold them. It holds across the whole product.
-Both editions keep them, as Markdown with no schema, in `.starciwork/concepts/`:
+Every app keeps them, as Markdown with no schema, in `.starciwork/concepts/`:
 
 - `README.md` is the catalog: a table `| Concept | Read when you touch (folders) | One line |`, one row per concept. Every app's catalog
   lists a `conventions` concept, `conventions.md`: the app's own naming, keys and foreign key names, error classes and how it proves
@@ -89,7 +89,7 @@ Both editions keep them, as Markdown with no schema, in `.starciwork/concepts/`:
 
 Why: an agent that opens the code first rebuilds the product's words and rules from whatever files it happened to read, and two
 agents rebuild them differently; a short page per topic, read first, gives every reader the same frame, and it stays short only
-while it holds nothing that changes with each commit. The paths are admitted by slot `app.starciwork` (R212 holds the lite
+while it holds nothing that changes with each commit. The paths are admitted by slot `app.starciwork` (R212 holds the
 boundary). No gate reads a concept's content: it and the reading before code are held by review; R433 checks only that the
 `conventions` concept exists, the catalog links it and the catalog has one row per tracked concept. A `work/concept@1` record
 (`concepts/index.yaml`, `concepts/<name>/index.yaml`) an app still keeps stays admitted; the app rewrites it as Markdown itself.
@@ -104,5 +104,5 @@ satisfies (its file exists, a green task over it) is skipped, and a workflow cov
 ## Read with
 
 [README.md](README.md) (the life cycle this Work feeds), [anatomy.md](anatomy.md) (where `.starciwork` sits in the
-tree), [stacks.md](stacks.md) (the environments a resource names), [lite.md](lite.md) and [full.md](full.md)
-(how much of the tree an edition keeps), [lint.md](lint.md) (which of these facts a machine checks).
+tree), [stacks.md](stacks.md) (the environments a resource names), [edition.md](edition.md)
+(how much of the tree the edition keeps), [lint.md](lint.md) (which of these facts a machine checks).

@@ -68,11 +68,10 @@ for (const edition of ['lite'] as const) {
   });
 }
 
-test('HFS_TEXT_CORRUPT: the runtime repository, an unknown edition and files out of scope are not judged', (t) => {
+test('HFS_TEXT_CORRUPT: the runtime repository and files out of scope are not judged', (t) => {
   const files = { [CATALOG]: bundle('Kh?a thao t?c') };
   const root = tree(t, files);
   assert.deepEqual(textIntegrityFindings({ repoRoot: root, files: Object.keys(files), repo: { kind: 'runtime' } }), []);
-  assert.deepEqual(textIntegrityFindings({ repoRoot: root, files: Object.keys(files), repo: { edition: 'other' } }), []);
   assert.deepEqual(textIntegrityFindings({ repoRoot: root, files: Object.keys(files), repo: { edition: 'full' }, inScope: () => false }), []);
   assert.equal(textIntegrityFindings({ repoRoot: root, files: Object.keys(files), repo: {} }).length, 1);
 });

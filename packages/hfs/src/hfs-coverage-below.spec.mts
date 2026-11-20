@@ -186,16 +186,16 @@ test('HFS_COVERAGE_BELOW: summary-only reports require each record to prove 100%
   assert.equal(below.results[0].metrics.lines.hit, 99999);
 });
 
-test('HFS_COVERAGE_BELOW: edition and manifest coverage changes alter the denominator', (t) => {
-  const context = fixture(t, 'full', record(LOGIC), [LOGIC, POLICY]);
-  const changed = { ...manifest, slots: manifest.slots.map((slot) => slot.id === 'be.domain' ? { ...slot, editions: ['full'] } : slot) };
-  const lite = coverageBelowReport({ ...context, manifest: changed, repo: { ...context.repo }, lcov: record(POLICY) });
-  assert.equal(lite.ok, true);
-  assert.deepEqual(lite.measured, [POLICY]);
-  assert.ok(lite.unmeasured.includes(LOGIC));
-  const full = coverageBelowReport({ ...context, manifest: changed, lcov: record(POLICY) });
-  assert.equal(full.ok, false);
-  assert.ok(full.findings.some((finding: Finding) => finding.path === LOGIC));
+test('HFS_COVERAGE_BELOW: manifest coverage changes alter the denominator', (t) => {
+  const context = fixture(t, 'lite', record(LOGIC), [LOGIC, POLICY]);
+  const changed = { ...manifest, slots: manifest.slots.map((slot) => slot.id === 'be.domain' ? { ...slot, coverage: 'none' } : slot) };
+  const unmeasured = coverageBelowReport({ ...context, manifest: changed, lcov: record(POLICY) });
+  assert.equal(unmeasured.ok, true);
+  assert.deepEqual(unmeasured.measured, [POLICY]);
+  assert.ok(unmeasured.unmeasured.includes(LOGIC));
+  const measured = coverageBelowReport({ ...context, lcov: record(POLICY) });
+  assert.equal(measured.ok, false);
+  assert.ok(measured.findings.some((finding: Finding) => finding.path === LOGIC));
 });
 
 test('HFS_COVERAGE_BELOW: CLI accepts cwd, inline report and JSON and returns refusal status for an uncovered file', (t) => {

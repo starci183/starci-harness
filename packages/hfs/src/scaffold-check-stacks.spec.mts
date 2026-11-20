@@ -1,6 +1,6 @@
 // proves: STACKS_LOCAL_CONFIG_INVALID@full
 // proves: STACKS_RUNBOOK_DOCKER_COMMAND@full
-// A fresh starter of either edition passes its own check on what it declares: the dev environment carries the local block `starci app stack up`
+// A fresh starter passes its own check on what it declares: the dev environment carries the local block `starci app stack up`
 // runs and a runbook that names that verb (R372, R373), and every Dockerfile copies only folders the app holds (R187: a back end that emits no
 // contract has no be/contracts/, so no Next image copies it).
 import { test } from 'node:test';
@@ -40,10 +40,12 @@ for (const edition of ['lite'] as const) {
   });
 }
 
-test('the full starter\'s Next images copy no be/contracts while its back end emits no contract', (t) => {
-  const { root } = starterFindings(t, 'full');
+test("the starter's Next images copy no be/contracts while its back end emits no contract", (t) => {
+  const { root } = starterFindings(t, 'lite');
   assert.equal(fs.existsSync(path.join(root, 'be', 'contracts')), false);
-  for (const app of ['app', 'landing']) {
-    assert.doesNotMatch(fs.readFileSync(path.join(root, 'fe', 'apps', app, 'Dockerfile'), 'utf8'), /COPY be\/contracts/u, app);
+  assert.deepEqual(fs.readdirSync(path.join(root, 'fe', 'apps')), ['web']);
+  for (const app of fs.readdirSync(path.join(root, 'fe', 'apps'))) {
+    const dockerfile = path.join(root, 'fe', 'apps', app, 'Dockerfile');
+    if (fs.existsSync(dockerfile)) assert.doesNotMatch(fs.readFileSync(dockerfile, 'utf8'), /COPY be\/contracts/u, app);
   }
 });

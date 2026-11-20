@@ -257,11 +257,11 @@ for (const edition of ['lite'] as const) {
   });
 }
 
-test('R251 scopes to app editions, tracked workflows and the requested paths, with all-tree root ownership', (t) => {
+test('R251 scopes to the app, tracked workflows and the requested paths, with all-tree root ownership', (t) => {
   const bad = { on: 'push', jobs: { lint: { steps: [{ uses: 'actions/checkout@v4' }] } } };
   const files = ['.github/workflows/ci.yml', 'be/.github/workflows/ci.yml', 'tests/fixtures/.github/workflows/ci.yml', '.github/actions/local/action.yml', 'docs/workflow.yml'];
   const context: Context = { repoRoot: tree(t, Object.fromEntries(files.map((file) => [file, bad]))), files, repo: { kind: 'app' } };
-  for (const repo of [{ kind: 'be' }, { kind: 'app', edition: 'unknown' }, { kind: 'fe', edition: 'full' }]) assert.deepEqual(deployWorkflowFindings({ ...context, repo }), []);
+  for (const repo of [{ kind: 'be' }, { kind: 'fe', edition: 'full' }]) assert.deepEqual(deployWorkflowFindings({ ...context, repo }), []);
   assert.deepEqual(deployWorkflowFindings({ ...context, isRoot: false }), []);
   assert.deepEqual(deployWorkflowFindings({ ...context, inScope: () => false }), []);
   const findings = deployWorkflowFindings({ ...context, files: [], all: files, isRoot: true, inScope: (file: string) => file.startsWith('be/') });

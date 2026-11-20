@@ -10,8 +10,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import { at, BE_DECLARATION, fixtureHfs, typedTester } from "../fixtures/typed/tester.ts"
-import { hfsFromDeclaration, type HfsView } from "./lib/hfs.ts"
-import { appDeclaration } from "../fixtures/app.ts"
+import { type HfsView } from "./lib/hfs.ts"
 import {
   importOwnerEntry,
   noFolderReexport,
@@ -147,17 +146,12 @@ test("R30: a provider-specific integration slot inherits the integrations tier b
   })
 })
 
-test("R30: a lite capability's persistence/entities/index.ts declares its entity list; full keeps it a nested index", () => {
+test("R30: a capability's persistence/entities/index.ts declares its entity list", () => {
   const filename = at("src/modules/domain/plan/persistence/entities/index.ts")
   const code = "import { PlanEntity } from './plan.entity'\nexport const planEntities = [PlanEntity]"
-  const settingsOf = (edition: "lite" | "full") => ({ starci: { hfs: hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition }, at("")) } })
-  typedTester().run("no-folder-reexport lite entity list", noFolderReexport, {
-    valid: [{ filename, code, settings: settingsOf("lite") }],
+  typedTester().run("no-folder-reexport entity list", noFolderReexport, {
+    valid: [{ filename, code }],
     invalid: [],
-  })
-  typedTester().run("no-folder-reexport full entity index", noFolderReexport, {
-    valid: [],
-    invalid: [{ filename, code, settings: settingsOf("full"), errors: [{ messageId: "nestedIndex" }, { messageId: "onlyNamedExports" }, { messageId: "onlyNamedExports" }] }],
   })
 })
 

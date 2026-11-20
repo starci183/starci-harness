@@ -5,7 +5,7 @@ description: >-
   Static, repository-owned inventory for reproducible environments. It declares intended topology,
   custody and runbook location; it is not evidence that a stack ran. This is the machine form of
   modules/schemas/stacks-layout.yaml's CONTENT half - the layout governs the TREE, this document governs the
-  fields inside application-stacks.yaml. Runtime and edition content rules require the applicable
+  fields inside application-stacks.yaml. Runtime content rules require the applicable
   deployment declarations; optional schema fields preserve compatibility with older inventories.
 type: object
 additionalProperties: false
@@ -165,7 +165,7 @@ properties:
         command: {type: string, minLength: 1}
   backing:
     description: >-
-      The self-hosted database of a lite app: its db component (the image its managed .starcistacks/images/db/Dockerfile builds), a Docker container in
+      The self-hosted database of an app: its db component (the image its managed .starcistacks/images/db/Dockerfile builds), a Docker container in
       development and a Swarm service in production. Every other dependency is a Docker component too.
     type: object
     additionalProperties:
@@ -189,8 +189,8 @@ properties:
   tests:
     description: >-
       The world slots the integration and e2e runs of a back end declare (contexts/code/be/test.md BE-TEST-17): how many spec files of a kind run at
-      once, each on a data slot of its own. A kind absent runs one file at a time. A full app's test world provisions that many slots, from 1 to 8 (the
-      Kafka broker has 8 slot listeners); the library's slots are no edition's, so a lite app may declare them too.
+      once, each on a data slot of its own. A kind absent runs one file at a time. The test world provisions that many slots, from 1 to 8 (the
+      library's slots are the same for every app).
     type: object
     additionalProperties: false
     properties:

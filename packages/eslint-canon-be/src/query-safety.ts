@@ -8,8 +8,8 @@
  * machine (R86).
  *
  * - `no-interpolated-sql` (R68 `BE_SQL_INTERPOLATED`) - a substitution inside the `sql` tag is a `SqlIdent`; a `.query(`
- *   string built by template or concatenation is refused. One file is the owner R334 names for the lite call and LISTEN statements,
- *   `platform/database/database.client.ts` of a lite app: there a `.query(` template may substitute only the checked parts its own
+ *   string built by template or concatenation is refused. One file is the owner R334 names for the call and LISTEN statements,
+ *   `platform/database/database.client.ts` of an app: there a `.query(` template may substitute only the checked parts its own
  *   validator brands (`DbFunctionPart`, `DbParameterList` declared in that file); any other substitution, a `+` and the same
  *   template in any other file stay refused.
  * - `query-needs-limit` (R69 `BE_QUERY_UNBOUNDED`) - `find`, `findBy` and `findAndCount` on an `EntityManager` carry `take`.
@@ -46,13 +46,13 @@ const isQueryCall = (context: Context, node: TSESTree.CallExpression): boolean =
 
 // -- R36 -----------------------------------------------------------------------------------------------
 
-/** The one file R334 names as the composer of a lite function-call statement: `platform/database/database.client.ts`. */
+/** The one file R334 names as the composer of a function-call statement: `platform/database/database.client.ts`. */
 const CALL_STATEMENT_FILE = "database.client.ts"
 
 /** The brands the call-statement file gives the checked parts it splices: a function-name part and a numbered parameter list. */
 const CALL_STATEMENT_BRANDS = ["DbFunctionPart", "DbParameterList"]
 
-/** Whether a file is the lite call-statement owner of the platform database capability. */
+/** Whether a file is the call-statement owner of the platform database capability. */
 const isCallStatementFile = (hfs: HfsView, filename: string): boolean =>
     baseNameOf(filename) === CALL_STATEMENT_FILE && inDatabaseCapability(hfs, filename)
 

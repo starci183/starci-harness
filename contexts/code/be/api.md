@@ -87,11 +87,10 @@ Why: a forwarder is indirection where logic creeps in, and an in-process event d
 
 Enforced by: `no-event-bus`, `transport-is-thin` (R87, R88).
 
-## BE-API-3 An operation is proved by its service spec and the edition's boot proof
+## BE-API-3 An operation is proved by its service spec and the app's boot proof
 
-Every refusal and branch an operation can take is asserted in the domain service spec (BE-TEST-5). In full each
-resolver and controller also has an e2e flow on the booted app (happy path, each declared refusal by code, the
-unauthenticated call); a lite app proves its composition by the wiring check, and an e2e flow run on request never replaces it (BE-TEST-12).
+Every refusal and branch an operation can take is asserted in the domain service spec (BE-TEST-5). An app proves its composition by the wiring check, and an e2e flow
+run on request (happy path, each declared refusal by code, the unauthenticated call) never replaces it (BE-TEST-12).
 
 Why: a door is thin and has no logic to unit-test; what breaks is the decision (service spec) and the wiring (boot
 proof).

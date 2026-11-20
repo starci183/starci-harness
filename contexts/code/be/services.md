@@ -6,7 +6,7 @@ slots: [be.app, be.app.api, be.app.worker, be.transport.message, be.feature.saga
 Decides where a back-end service lives when a product runs more than one, how images are pinned, how the contract between services
 is vendored and evolves, and how an asynchronous consumer is proven. Saga compensation specs are BE-SAGA-4.
 
-Edition: full; a lite app is one stateless back end ([project/full.md](../../project/full.md) "Shape of production").
+Only an app that runs more than one service declares this pattern; the default is one stateless back end ([project/edition.md](../../project/edition.md) "Shape of production").
 
 ## BE-SERVICES-1 A service lives only at be/apps/<service>, and no service imports its sibling
 A service is a Nest app at `be/apps/<service>/` (its `be.app.*` files and its own Dockerfile and image) sharing the `be/src`

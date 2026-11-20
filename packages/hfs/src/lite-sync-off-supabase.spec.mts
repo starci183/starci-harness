@@ -60,21 +60,19 @@ test('the managed db scripts, codegen and CI drive the self-hosted database', ()
   assert.equal((lite.sides.be.connections[0] as { provider?: string } | undefined)?.provider, 'postgres');
 });
 
-test('sync retires a leftover supabase/types of a lite app, and only of a lite app', (t: TestContext) => {
+test('sync retires a leftover supabase/types of the app', (t: TestContext) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-lite-retired-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   fs.mkdirSync(path.join(root, 'supabase', 'types'), { recursive: true });
   fs.writeFileSync(path.join(root, 'supabase', 'types', 'database.types.ts'), 'export type Database = {};\n');
   assert.deepEqual(retiredFiles(root), ['supabase/types/database.types.ts']);
-  assert.deepEqual(retiredFiles(root), []);
 });
 
-test('sync retires the db/Dockerfile a lite app kept outside the stacks', (t: TestContext) => {
+test('sync retires the db/Dockerfile an app kept outside the stacks', (t: TestContext) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-lite-retired-image-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   fs.mkdirSync(path.join(root, 'db', 'migrations'), { recursive: true });
   fs.writeFileSync(path.join(root, 'db', 'Dockerfile'), 'FROM postgres:17\n');
   fs.writeFileSync(path.join(root, 'db', 'migrations', '20261029000000_init.sql'), 'select 1;\n');
   assert.deepEqual(retiredFiles(root), ['db/Dockerfile']);
-  assert.deepEqual(retiredFiles(root), []);
 });

@@ -1,7 +1,7 @@
 // The saga pattern of `starci app check` (scripts/hfs/rules/saga.mts): R169 BE_SAGA_STEP_COMPENSATION, R170 BE_SAGA_STATE_VERSIONED,
-// R171 BE_SAGA_EVENT_CONTRACT, R172 BE_SAGA_CONSUMER_DEDUPE, R173 BE_SAGA_E2E_MISSING, and the declared-pattern mechanism that enables
+// R171 BE_SAGA_EVENT_CONTRACT, R172 BE_SAGA_CONSUMER_DEDUPE, and the declared-pattern mechanism that enables
 // the saga slots (`patterns: ["saga"]` in hfs.json sides.be). Each rule has a violating and a passing tree.
-// proves: BE_SAGA_E2E_MISSING@full BE_SAGA_STEP_COMPENSATION@lite BE_SAGA_STATE_VERSIONED@lite BE_SAGA_EVENT_CONTRACT@lite BE_SAGA_CONSUMER_DEDUPE@lite
+// proves: BE_SAGA_STEP_COMPENSATION@lite BE_SAGA_STATE_VERSIONED@lite BE_SAGA_EVENT_CONTRACT@lite BE_SAGA_CONSUMER_DEDUPE@lite
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -9,7 +9,6 @@ import path from 'node:path';
 import { checkRepo } from '../runtime/scripts/hfs/check.mjs';
 import type { CheckFinding } from '../runtime/scripts/hfs/check.mjs';
 import { loadSlotManifest, resolveRepoDeclaration } from '../runtime/scripts/hfs/slots.mjs';
-import { sagaFindings } from '../runtime/scripts/hfs/rules/saga.mjs';
 import { appOf, cleanup, gitAdd, writeCleanRepo } from './helpers/hfs-cli-fixture.mjs';
 import type { AppDeclaration } from './helpers/hfs-cli-fixture.mjs';
 
@@ -125,23 +124,10 @@ test('BE_SAGA_CONSUMER_DEDUPE: a consumer of a saga feature that never reads the
   assert.deepEqual(saga('BE_SAGA_CONSUMER_DEDUPE'), []);
 });
 
-// ------------------------------------------------------------------------------------------------ R173 BE_SAGA_E2E_MISSING
 
-test('BE_SAGA_E2E_MISSING (full): a compensation path with no e2e spec, one through the world that injects no failure, are refused', () => {
-  assert.match(saga('BE_SAGA_E2E_MISSING', { [SPEC]: null })[0]!.message!, /has no e2e spec/);
-  const noFault = saga('BE_SAGA_E2E_MISSING', { [SPEC]: SPEC_TS.replace(/it\(.*\n/, "it('compensates billing.invoice-rejected', () => undefined);\n") });
-  assert.match(noFault[0]!.message!, /injects no failure/);
-});
-
-test('BE_SAGA_E2E_MISSING (full): an e2e spec through the world that names the compensation event and injects a failure passes', () => {
-  assert.deepEqual(saga('BE_SAGA_E2E_MISSING'), []);
-  assert.deepEqual(saga('BE_SAGA_E2E_MISSING', { [SPEC]: SPEC_TS.replace('.during(async () => undefined)', ".cut()") }), []);
-});
-
-test('lite uses its integration proof lane while saga structure, state, contracts and consumer dedupe stay enforced', () => {
+test('saga structure, state, contracts and consumer dedupe stay enforced with no e2e spec', () => {
   const declaration = { ...WITH_SAGA };
   const findings = run(declaration, sagaRepo({ [SPEC]: null }));
-  assert.deepEqual(only(findings, 'BE_SAGA_E2E_MISSING'), []);
   for (const code of ['BE_SAGA_STEP_COMPENSATION', 'BE_SAGA_STATE_VERSIONED', 'BE_SAGA_EVENT_CONTRACT', 'BE_SAGA_CONSUMER_DEDUPE']) assert.deepEqual(only(findings, code), [], code);
 
   const broken = run(declaration, sagaRepo({
@@ -152,12 +138,5 @@ test('lite uses its integration proof lane while saga structure, state, contract
     [CONSUMER]: 'export class InvoiceRejectedConsumer { handle(): string { return "x" } }\n',
   }));
   for (const code of ['BE_SAGA_STEP_COMPENSATION', 'BE_SAGA_STATE_VERSIONED', 'BE_SAGA_EVENT_CONTRACT', 'BE_SAGA_CONSUMER_DEDUPE']) assert.ok(only(broken, code).length > 0, code);
-  assert.deepEqual(only(broken, 'BE_SAGA_E2E_MISSING'), []);
 });
 
-test('the saga finder gates only its full-edition compensation proof when called directly', () => {
-  const repoRoot = repoOf(WITH_SAGA, sagaRepo({ [SPEC]: null }));
-  const files = [STEP, COMPENSATION, ORCHESTRATOR, STATE, CONSUMER, ...Object.keys(CONTRACTS)];
-  assert.deepEqual(sagaFindings({ repoRoot, files, repo: {} }), []);
-  assert.equal(only(sagaFindings({ repoRoot, files, repo: { edition: 'full' } }), 'BE_SAGA_E2E_MISSING').length, 1);
-});

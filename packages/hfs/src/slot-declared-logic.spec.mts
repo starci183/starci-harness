@@ -43,12 +43,10 @@ test('the coverage scope measures every declared logic file at 100 per file: jes
   assert.equal(excluded(`be/${PASSPORT}passport.config.ts`), true, 'an undeclared file of no logic role stays excluded');
 });
 
-test('R273 counts a declared logic file in the lite scope, where the passport slot exists', () => {
+test('R273 counts a declared logic file in the app scope, where the passport slot exists', () => {
   const files = DECLARED.map((file) => `be/${file}`);
-  const lite = coverageBelowReport({ repoRoot: '.', files, repo: resolveRepoDeclaration(manifest, { ...APP }), manifest, lcov: '' });
-  assert.deepEqual(lite.measured, files);
-  const full = coverageBelowReport({ repoRoot: '.', files, repo: resolveRepoDeclaration(manifest, { ...APP, edition: 'full' }), manifest, lcov: '' });
-  assert.deepEqual(full.measured, [], 'full has no passport slot');
+  const report = coverageBelowReport({ repoRoot: '.', files, repo: resolveRepoDeclaration(manifest, { ...APP }), manifest, lcov: '' });
+  assert.deepEqual(report.measured, files);
 });
 
 test('the passport slot admits the spec beside each declared logic file, and no spec beside an undeclared file of no logic role', () => {

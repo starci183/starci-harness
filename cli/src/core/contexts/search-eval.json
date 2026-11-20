@@ -67,7 +67,7 @@
     { "q": "a workflow is stuck, where do I look first", "expect": ["skills/starci/references/debug.md#look-in-this-order", "skills/starci/references/debug.md#debug-a-stuck-workflow"] },
     { "q": "when may main be pushed", "expect": ["CONTRIB-18", "skills/starci/references/release.md#2-push"] },
     { "q": "who approves publishing a package", "expect": ["CONTRIB-20", "contexts/harness/rules.md#hard-rules", "skills/starci/SKILL.md#approvals", "skills/starci/references/release.md#5-publish"] },
-    { "q": "difference between lite and full edition", "expect": ["contexts/harness/axes.md#two-axes", "contexts/project/lite.md#lite-what-differs", "contexts/project/full.md#full-what-differs"] },
+    { "q": "what does the one app edition run", "expect": ["contexts/harness/axes.md#two-axes", "contexts/project/edition.md#the-app-edition-what-an-app-runs"] },
     { "q": "what is the Kernel role allowed to do", "expect": ["contexts/harness/roles.md#roles"] },
     { "q": "where does an exception for a banned marker go", "expect": ["policy/loosening.yaml#exceptions", "contexts/harness/rules.md#hard-rules", "CONTRIB-11"] },
     { "q": "which files must an agent never open", "expect": ["policy/security.yaml#neverRead", "contexts/harness/rules.md#hard-rules"] },

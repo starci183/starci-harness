@@ -151,16 +151,15 @@ test('the finder: a lite app with the skeleton passport and different hosts is r
   }
 });
 
-test('the finder: key set to the parent is clean; same host is clean; no passport or full edition is not judged', () => {
+test('the finder: key set to the parent is clean; same host is clean; no passport is not judged', () => {
   const set = app([PASSPORT], { cookieDomain: 'example.com' });
   const same = app([PASSPORT], { web: 'https://example.com', api: 'https://example.com' });
   const bare = app([]);
   try {
-    const context = ({ root, all }: { root: string; all: string[] }, edition = 'lite') => ({ repoRoot: root, all, files: all, isRoot: true, repo: { edition, profile: 'app' } });
+    const context = ({ root, all }: { root: string; all: string[] }) => ({ repoRoot: root, all, files: all, isRoot: true, repo: { edition: 'lite', profile: 'app' } });
     assert.deepEqual(stacksAuthCookieDomainFindings(context(set)), []);
     assert.deepEqual(stacksAuthCookieDomainFindings(context(same)), []);
     assert.deepEqual(stacksAuthCookieDomainFindings(context(bare)), []);
-    assert.deepEqual(stacksAuthCookieDomainFindings(context({ root: bare.root, all: [...bare.all, PASSPORT] }, 'full')), []);
   } finally {
     for (const { dispose } of [set, same, bare]) dispose();
   }

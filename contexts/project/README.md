@@ -46,7 +46,7 @@ are two tasks.
 | sides | `sides`, a non-empty subset of `be`, `fe`, `packages`, and `nivoos` (the business packages of `packages/`) | which folders the project has and which checks run (above); `nivoos` is [business-repo.md](business-repo.md); `desktop` (a Tauri shell around a front-end app, folder `desktop/`) is [desktop.md](desktop.md) |
 | contract | `sides.be.apps[].contract`, `graphql` (when absent) or `rest` | the api app's default door ([code/be/transport.md](../code/be/transport.md) BE-TRANSPORT-1) |
 | boot entry | `sides.be.apps[].boot`, `{ module?, export?, factory?, env?, timeoutMs? }` | the composition root a command of the app boots, which the wiring gate composes without listening ([code/be/injection.md](../code/be/injection.md) BE-INJECTION-6) |
-| edition | `edition`, deprecated: any value is ignored with the warning HFS_EDITION_DEPRECATED (R212) and a later train drops it | nothing: an app has one edition, [lite.md](lite.md) |
+| edition | `edition`, deprecated: any value is ignored with the warning HFS_EDITION_DEPRECATED (R212) and a later train drops it | nothing: an app has one edition, [edition.md](edition.md) |
 | grammar | `sides.fe.grammar` | which grammar package and grammar lint the front end composes ([grammars](../grammars/README.md)) |
 | policy profile | `policy` | which canon stacks and gates run ([lint.md](lint.md); profiles and defaults are [policy/quality.yaml](../../policy/quality.yaml)) |
 
@@ -111,10 +111,10 @@ rule 10).
 
 | task | read, in order |
 |---|---|
-| write code (be or fe) | [code/README.md "Read for a coding task"](../code/README.md#read-for-a-coding-task), which starts with the anatomy slice of the side and edition (`anatomy-<edition>-<side>.md`) and opens this file and [lint.md](lint.md) on demand → the files the contract names |
+| write code (be or fe) | [code/README.md "Read for a coding task"](../code/README.md#read-for-a-coding-task), which starts with the anatomy slice of the side (`anatomy-<side>.md`) and opens this file and [lint.md](lint.md) on demand → the files the contract names |
 | change UI | [project/gallery.md](gallery.md) PROJECT-GALLERY-7 (the approved canvas page comes first) → [contexts/ui](../ui/README.md) and the app's grammar ([grammars](../grammars/README.md)) → the brand record ([work.md](work.md)) → [code/fe](../code/fe/README.md) → [lint.md](lint.md) |
 | write or change the product's Work | [work.md](work.md) → the concept catalog `concepts/README.md` and the concepts it lists |
-| run, stand up or deploy an environment | [stacks.md](stacks.md) → the edition file ([lite.md](lite.md) or [full.md](full.md)) |
+| run, stand up or deploy an environment | [stacks.md](stacks.md) → the edition file ([edition.md](edition.md)) |
 | keep an image, a video or a prompt of the app; run its own MinIO | [statics.md](statics.md) |
 | add a gate or a rule | [lint.md](lint.md) PROJECT-LINT-1 → [packages/README.md](../../packages/README.md) or [policy/](../../policy/) |
 
@@ -123,9 +123,9 @@ rule 10).
 | file | holds |
 |---|---|
 | [README.md](README.md) | this map: what a project is, the life cycle, where to read |
-| [business-repo.md](business-repo.md) | the business repository: one lite app, its nivoos package (agents, workflows, cells, brain, accounts, seed) and its seed standard; the `sides.nivoos` declaration, the SDK authoring lint profile and the `nivoos package check` step (PROJECT-BUSINESS-1, R436) |
+| [business-repo.md](business-repo.md) | the business repository: one app, its nivoos package (agents, workflows, cells, brain, accounts, seed) and its seed standard; the `sides.nivoos` declaration, the SDK authoring lint profile and the `nivoos package check` step (PROJECT-BUSINESS-1, R436) |
 | [desktop.md](desktop.md) | the desktop app: a Tauri v2 shell that loads the deployed web app (macOS, Windows, Linux), its `sides.desktop` declaration, the rendered `desktop/` tree, `starci app desktop` (init, doctor, build, dev, keygen), the release workflow and the CI secrets for signing (PROJECT-DESKTOP-1..4, R444) |
-| [anatomy.md](anatomy.md) | the tree of an app root and its sides, and what each part is for; its generated slices `anatomy-<edition>-<side>.md` (the app root and one side of one edition) are what a task of that side reads |
+| [anatomy.md](anatomy.md) | the tree of an app root and its sides, and what each part is for; its generated slices `anatomy-<side>.md` (the app root and one side) are what a task of that side reads |
 | [index.md](index.md) | generated: every file of `contexts/` with its size, first sentence, sections and ids, which a Kernel reads instead of the whole tree |
 | [lint.md](lint.md) | each canon package and gate: where it applies and what kind of fact it enforces; the facts no machine checks yet |
 | [check-cache.md](check-cache.md) | the committed result cache in `.starcistacks/cache/` (proposed): when a run is full or incremental on a host and in CI, the fingerprint, trust, which step reuses what |
@@ -136,5 +136,4 @@ rule 10).
 | [stacks.md](stacks.md) | how an app runs: the `.starcistacks/` shape against project values, the dev and vps environments, ingress, sealed custody, the operations with their safety rules, local-run rules |
 | [statics.md](statics.md) | the repo-owned media of an app: the `statics/` folder and its keys, the storage image and the condition under which every project ships its own MinIO, serving, production |
 | [work.md](work.md) | the `.starciwork` tree and the product's concepts, who writes what, the lanes of the brand and the environments |
-| [lite.md](lite.md) | only what the lite edition does differently (backing services, patterns, infrastructure, deploy targets, CI, Work), each linked to its owner |
-| [full.md](full.md) | only what the full edition does differently, in the same sections, each linked to its owner |
+| [edition.md](edition.md) | what the one app edition runs (backing services, patterns, infrastructure, deploy targets, CI, Work), each linked to its owner |

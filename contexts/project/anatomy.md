@@ -1,7 +1,7 @@
 # Project anatomy
 
-The canonical tree of an app, one per edition (`lite`, `full`) and place (the app root, `be/`, `fe/`). Every line is
-generated from [hfs/slots.yaml](../hfs/slots.yaml): the path, the slot that owns it, its presence in that edition, the
+The canonical tree of an app, one per place (the app root, `be/`, `fe/`). Every line is
+generated from [hfs/slots.yaml](../hfs/slots.yaml): the path, the slot that owns it, its presence, the
 pattern topics that teach it (their front matter) and the rules of [hfs/rules.yaml](../hfs/rules.yaml) that judge it,
 each with the enforcers of its side (kind, then rule id). Nothing below the marker is written by hand; this page only
 says why the tree has this shape.
@@ -19,9 +19,8 @@ says why the tree has this shape.
   `src/` splits routes, features, components, hooks and modules for the same reason
   ([fe/architecture](../code/fe/architecture.md), [fe/folder](../code/fe/folder.md)). A path names its owner,
   so a lint rule can judge an import by where its two ends live.
-- **Editions differ in presence, never in shape.** Lite and full share one code structure; lite changes a slot's
-  presence or its contents, and the slot's `editionWhy` says why. The two trees therefore differ only in a presence
-  word or in the refused list, which is how to read a lite-versus-full difference at a glance.
+- **One edition, one tree.** Every app shares one code structure; a slot's presence says whether a path is required, optional,
+  opt-in or refused.
 - **Refused paths are part of the anatomy.** A slot that is `forbidden` or `external` names a mistake the gates refuse
   (a second tool config, an agent's scratch output, a plaintext secret); its `goesTo` in slots.yaml, where present, says where the
   thing belongs instead.
@@ -37,7 +36,7 @@ Change a slot, a rule or a pattern's front matter, then regenerate in the same c
 
 ## Read with
 
-- [hfs/README.md](../hfs/README.md): the slot fields and what presence, tracked and editions mean.
+- [hfs/README.md](../hfs/README.md): the slot fields and what presence and tracked mean.
 - [hfs/slots.yaml](../hfs/slots.yaml) and [hfs/rules.yaml](../hfs/rules.yaml): the data this page is generated from.
 - [code/be/README.md](../code/be/README.md) and [code/fe/README.md](../code/fe/README.md): the topics
   linked from each line and their reading order.

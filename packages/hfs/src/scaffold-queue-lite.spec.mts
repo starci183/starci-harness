@@ -72,8 +72,8 @@ test('a lite adapter refuses generation until its topic supplies an edition tree
   }));
 });
 
-test('add queue in full retains the BullMQ adapter and TypeORM schema', (t) => {
-  const root = fixture(t, 'full');
+test('add queue writes the BullMQ adapter and the SQL outbox migration', (t) => {
+  const root = fixture(t, 'lite');
   fs.writeFileSync(path.join(root, 'package.json'), `${JSON.stringify({ name: 'demo', private: true, dependencies: { ioredis: '5.0.0' } }, null, 2)}\n`);
   fs.mkdirSync(path.join(root, 'be', 'src', 'modules', 'platform', 'logging'), { recursive: true });
   // The capabilities the queue tree imports (the canon skeleton carries them) are present, or the verb refuses before writing.
@@ -89,7 +89,8 @@ test('add queue in full retains the BullMQ adapter and TypeORM schema', (t) => {
   assert.ok(result.created.includes('be/src/modules/platform/queue/bullmq-queue-transport.client.ts'));
   assert.ok(result.created.includes('be/src/modules/platform/queue/errors/queue.error.ts'));
   assert.ok(result.created.includes('be/src/modules/platform/queue/messages/queue.messages.ts'));
-  assert.ok(result.created.includes('be/src/modules/platform/queue/persistence/entities/queue-outbox.entity.ts'));
+  assert.ok(result.created.includes('db/migrations/20261024000000_queue-outbox.sql'));
+  assert.equal(result.created.some(file => file.endsWith('.entity.ts')), false, 'the outbox schema is SQL, never a TypeORM entity');
   assert.equal(result.created.some(file => file.startsWith('supabase/') || /pgmq/.test(file)), false);
   // The generated queue compiles: the declared Redis, its clients at their pins (one the app holds stays), the correlation helpers.
   assert.ok(result.created.includes('hfs.json') && result.created.includes('package.json'));

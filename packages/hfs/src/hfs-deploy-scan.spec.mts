@@ -157,13 +157,12 @@ for (const edition of ['lite'] as const) {
   });
 }
 
-test('deploy scan reads the whole app tree once at its root and honors edition, app ownership and inScope', (t) => {
+test('deploy scan reads the whole app tree once at its root and honors app ownership and inScope', (t) => {
   const entries = { 'be/scripts/timer.sh': 'crontab timer.txt\n', 'fe/scripts/boot.sh': 'at -f job.sh now\n' };
   const context = { repoRoot: tree(t, entries), files: [], all: Object.keys(entries), repo: { kind: 'app' }, isRoot: true };
   assert.deepEqual(paths(only(deployScanFindings(context), 'HFS_HOST_CRON')), Object.keys(entries).sort((left, right) => left.localeCompare(right)));
   assert.deepEqual(deployScanFindings({ ...context, isRoot: false }), []);
   assert.deepEqual(deployScanFindings({ ...context, repo: { kind: 'runtime' } }), []);
-  assert.deepEqual(deployScanFindings({ ...context, repo: { kind: 'app', edition: 'unknown' } }), []);
   assert.deepEqual(paths(only(deployScanFindings({ ...context, inScope: (file) => file.startsWith('be/') }), 'HFS_HOST_CRON')), ['be/scripts/timer.sh']);
 });
 

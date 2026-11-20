@@ -25,8 +25,8 @@ Every side effect and every async step goes through the transactional outbox, wr
 first, and processing it is an idempotent replay of the stored row. A long flow is a chain of jobs (BE-JOBS-9). `platform/jobs`
 decides what a failure means, in one place:
 
-- `classifyFailure(cause, DomainError)` of `@starci/nest-kit` names its class, the one rule the job runner, the lite pgmq consumer and
-  the full event runner apply: `transient` (a dropped connection, a timeout, a lock conflict), `input` (an error of the app's
+- `classifyFailure(cause, DomainError)` of `@starci/nest-kit` names its class, the one rule the job runner and the pgmq consumer
+  apply: `transient` (a dropped connection, a timeout, a lock conflict), `input` (an error of the app's
   `DomainError` family: the data is wrong), `config` (a domain code naming a configuration or connection) or `code` (any other
   failure); an error that carries `failureClass` names its own. That is the only way a class is decided: code that knows a failure is
   transient or permanent throws its error with an explicit `failureClass`, and no code matches an error's code or message text

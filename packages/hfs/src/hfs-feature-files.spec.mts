@@ -51,11 +51,10 @@ for (const edition of ['lite'] as const) {
     }
   });
 
-  test(`HFS_FEATURE_FILE_BUDGET: ${edition} applies the edition's ruleParams instead of a fixed limit`, () => {
+  test(`HFS_FEATURE_FILE_BUDGET: ${edition} applies the ruleParams instead of a fixed limit`, () => {
     const custom = structuredClone(manifest);
     custom.ruleParams.common.featureFiles = 4;
-    custom.ruleParams.be.lite = { ...custom.ruleParams.be.lite, featureFiles: 2 };
-    const max = edition === 'lite' ? 2 : 4;
+    const max = 4;
     assert.deepEqual(featureFileFindings(context('be', edition, entries(beRoot, max), custom)), []);
     assert.equal(featureFileFindings(context('be', edition, entries(beRoot, max + 1), custom))[0]?.max, max);
     assert.deepEqual(featureFileFindings(context('fe', edition, entries(feRoot, 4), custom)), []);
@@ -74,8 +73,8 @@ for (const edition of ['lite'] as const) {
 test('HFS_FEATURE_FILE_BUDGET: every BE trigger owner and FE feature kind is counted separately', () => {
   const beRoots = ['api/orders', 'jobs/daily', 'reactors/billed', 'saga/checkout', 'webhooks/provider', 'realtime/orders', 'cli'].map((root) => `src/features/${root}`);
   const feRoots = ['pages/Orders', 'layouts/Shell', 'overlays/Checkout'].map((root) => `apps/web/src/features/${root}`);
-  assert.deepEqual(featureFileFindings(context('be', 'full', beRoots.flatMap((root) => entries(root, 251)))).map((finding) => finding.path), beRoots);
-  assert.deepEqual(featureFileFindings(context('fe', 'full', feRoots.flatMap((root) => entries(root, 251)))).map((finding) => finding.path), feRoots);
+  assert.deepEqual(featureFileFindings(context('be', 'lite', beRoots.flatMap((root) => entries(root, 251)))).map((finding) => finding.path), beRoots);
+  assert.deepEqual(featureFileFindings(context('fe', 'lite', feRoots.flatMap((root) => entries(root, 251)))).map((finding) => finding.path), feRoots);
 });
 
 test('HFS_FEATURE_FILE_BUDGET: nested files, specs and non-source files count; path aliases do not count twice', () => {

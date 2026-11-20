@@ -2,7 +2,7 @@
 
 An app's own images and videos (empty-state illustrations, hero art, a product video) are not code and not user data. They are authored in the
 repository, reviewed in a pull request, and served from the project's own object store. This file is the contract of that folder, of the image that
-carries it into the store and of the checks that hold both. It is the same in both editions. The brand the images are drawn in is
+carries it into the store and of the checks that hold both. The brand the images are drawn in is
 [brand.md](brand.md); how an image is addressed in code is the Grammar's `staticsKey`.
 
 ## PROJECT-STATICS-1 The statics folder
@@ -34,7 +34,7 @@ Enforced by: R438 (`statics-shape`: `HFS_STATICS_FILE_KIND`, `HFS_STATICS_KEY`, 
 **Every project ships its own MinIO, in development and in production, on one condition: it has `statics/` or its back end needs object storage.**
 The condition holds when `statics/` holds a file other than `.gitkeep`, or the root `package.json` depends on `@starci/object-storage`, or the stack
 declaration holds a `storage` custody member (or a sealed `storage-*` production secret). When it holds, the project declares a `storage` service in its
-dev compose and, in a lite app, `deploy.images.storage: {app: storage}` in production. When it does not hold, there is no MinIO: a project that declares
+dev compose and, in an app, `deploy.images.storage: {app: storage}` in production. When it does not hold, there is no MinIO: a project that declares
 a storage service anyway gets a warning that nothing uses it. The one function that answers is `scripts/lib/storage-need.mts`; `starci app sync` and R440
 both read it, so what sync renders and what the check demands never differ.
 
@@ -90,18 +90,18 @@ Enforced by: R428 (`STORAGE_PUBLIC_LINK_INTERNAL` for a statics base that is not
 
 ## PROJECT-STATICS-5 Production: the same image
 
-A lite app that meets the condition runs its own MinIO in production: `deploy.images.storage: {app: storage}` builds the one
+An app that meets the condition runs its own MinIO in production: `deploy.images.storage: {app: storage}` builds the one
 `.starcistacks/images/storage/Dockerfile` (`starci app stack build` resolves `.starcistacks/images/<app>/Dockerfile` for any app that has one), and the
 swarm stack runs it as the `storage` service: one replica, `stop-first` updates with rollback, the volume `<project>-production-storage-data` with a
 backup entry, the sealed `storage-access-key-id` and `storage-secret-access-key` as root credentials, `STATICS_BUCKET: <project>-production`. The ingress
 routes `storage.<project>` to port 9000, never the console. The api writes through `http://storage:9000` and builds links on
 `https://storage.<project>`. A deploy with changed statics ships a new image digest; the task is recreated and the entrypoint adds and overwrites,
-never deleting. This replaces "lite production storage is an external S3 endpoint" ([lite.md](lite.md) "Backing services") for a project that meets
-the condition. The full edition's production stack does not run the store yet; R440 judges a full app's dev environment only.
+never deleting. This replaces an external S3 endpoint for production storage ([edition.md](edition.md) "Backing services") for a project that meets
+the condition.
 
 Enforced by: R440 (`STACK_STORAGE_MISSING`, `STACK_STORAGE_IMAGE_SHAPE` over `deploy.images.storage`).
 
 ## Read with
 
-[brand.md](brand.md), [stacks.md](stacks.md) PROJECT-STACKS-10, -11 and -15, [lite.md](lite.md); slots `app.statics` and `app.storage.image` in
+[brand.md](brand.md), [stacks.md](stacks.md) PROJECT-STACKS-10, -11 and -15, [edition.md](edition.md); slots `app.statics` and `app.storage.image` in
 [hfs/slots.yaml](../hfs/slots.yaml); R438 to R440 in [hfs/rules.yaml](../hfs/rules.yaml).

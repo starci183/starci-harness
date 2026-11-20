@@ -69,16 +69,9 @@ test('the untracked custody warning applies only to the lite app root, with no w
   const input = { repoRoot: root, files: [] };
   assert.deepEqual(untrackedSecretFindings({ ...input, repo: app('lite') }), []);
   fs.writeFileSync(path.join(root, 'secrets.env'), '');
-  assert.deepEqual(untrackedSecretFindings({ ...input, repo: app('full') }), []);
   assert.deepEqual(untrackedSecretFindings({ ...input, repo: fe('lite') }), []);
   assert.deepEqual(untrackedSecretFindings({ ...input, repo: { profile: 'be' } }), []);
   assert.deepEqual(untrackedSecretFindings({ ...input, files: ['secrets.env'], repo: app('lite') }), []);
-});
-
-test('the catalog-driven checkRepo findings filter drops L17 for a full repo with a root .env', t => {
-  const root = tree(t, { '.env': 'PUBLIC_VALUE=fixture\n' });
-  const findings = checkRepo({ repoRoot: root, declaration: fullApp, files: ['.env'], tree: false }).findings;
-  assert.deepEqual(findings.filter(item => item.code === 'HFS_LITE_SECRET_CUSTODY'), []);
 });
 
 test('HFS_LITE_SECRET_CUSTODY (lite): root env/custody entries and sealed files outside the starcistacks secret home are refused', t => {

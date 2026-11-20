@@ -51,11 +51,8 @@ test('BE_DI_RING sync: a lite app retires the lane-local provider-ring check and
 `);
 });
 
-test('BE_DI_RING sync: nothing changes for an app with no copy, a script that only names a similar file, or a full app', () => {
+test('BE_DI_RING sync: nothing changes for an app with no copy, a script that only names a similar file', () => {
   const read = (text: string) => (file: string) => (file === 'package.json' ? text : null);
   assert.deepEqual(harnessCheckScriptEdits(read('{"scripts":{"x":"node scripts/di-ring-check.mjs.bak"}}')), []);
   assert.deepEqual(harnessCheckScriptEdits(read('not json')), []);
-  const full = app('full', { [COPY]: '// a copy\n', 'package.json': manifest });
-  assert.deepEqual(retiredFiles(full), []);
-  assert.equal(upgradeEdits(full).edits.some((candidate) => candidate.path === 'package.json'), false);
 });

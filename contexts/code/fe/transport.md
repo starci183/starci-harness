@@ -4,7 +4,7 @@ slots: [fe.modules.api, fe.modules.auth, fe.transport, fe.transport.client, fe.t
 # Transport
 
 Which code calls the back end, what it returns and where its types come from. The browser calls the back end
-directly; the front end serves nothing ([architecture.md](architecture.md) FE-ROUTE). The same in both editions.
+directly; the front end serves nothing ([architecture.md](architecture.md) FE-ROUTE).
 
 ## FE-API-GRAPHQL One link chain, one file per operation
 
@@ -69,13 +69,11 @@ Enforced by: review only.
 
 `modules/auth` is the session issuer's client: its entry exports the sign-in, sign-up, sign-out and password actions, the
 session, the access-token getter the Apollo links and the event stream read (the import direction is api -> auth, never
-auth -> api), and an auth-change subscription. In lite it is one `@starci/auth/client` instance (`modules/auth/client.ts`)
+auth -> api), and an auth-change subscription. It is one `@starci/auth/client` instance (`modules/auth/client.ts`)
 over the app's own back-end auth doors (`/auth/...`: login, signup, refresh, logout, password reset, resend verification):
-the email doors (sign up, confirm, resend, forgot, reset) are called through `modules/auth/email-doors.ts`, a lite-only call kept off the shared `AuthClient` interface because the full edition's identity provider owns its own recovery flows; the links of the confirmation and reset mails open the app pages `/auth/confirm?token=` and `/auth/reset?token=` (the default locale is unprefixed), and confirming is a button press so a mail scanner opening the link spends nothing; the access token lives in the client's memory, overlapping callers share one refresh, and only a 401 or 403 from a
+the email doors (sign up, confirm, resend, forgot, reset) are called through `modules/auth/email-doors.ts`, a call kept off the shared `AuthClient` interface because the interface carries no recovery flow; the links of the confirmation and reset mails open the app pages `/auth/confirm?token=` and `/auth/reset?token=` (the default locale is unprefixed), and confirming is a button press so a mail scanner opening the link spends nothing; the access token lives in the client's memory, overlapping callers share one refresh, and only a 401 or 403 from a
 refresh signs the reader out (a 429, a server error or a lost connection is retried and keeps the session); the refresh
-token never reaches script. In full, a front end whose browser holds the tokens uses one `@starci/auth/client/oidc` instance in the same file (PKCE redirect to the
-identity provider, the callback, one shared refresh, the tokens in memory only, signed out only when the provider ends the session); a
-front end whose back end holds an opaque session cookie keeps one door client in `modules/auth` and no token. Every other REST call stays in `modules/api/rest`.
+token never reaches script. Every other REST call stays in `modules/api/rest`.
 
 Why: the back end authorizes every read and write; the front end only proves who the user is, and holds no credential.
 

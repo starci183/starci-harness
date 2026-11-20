@@ -1,5 +1,4 @@
 // proves: FE_I18N_PLACEMENT@lite
-// proves: FE_I18N_PLACEMENT@full
 // The next-intl stack is the package @starci/next-i18n: a starter's front end depends on it at its pin, describes its languages with
 // defineI18n and builds its proxy, request config and locale read through it, no source of the starter calls a next-intl layer builder,
 // the i18n concern of the stack names it, and R59 names the rule that refuses an app's own stack.
@@ -21,7 +20,7 @@ const lockedOk = (root: string): LockResult => {
   return { ok: true };
 };
 
-const starter = (t: Parameters<typeof mkdtemp>[0], edition: 'lite' | 'full') =>
+const starter = (t: Parameters<typeof mkdtemp>[0], edition: 'lite') =>
   scaffoldApp({ name: 'demo', into: mkdtemp(t, 'hfs-next-i18n-'), harness: { version: '1.1.0-alpha.3' }, edition, presets: bundledPresets(), lock: lockedOk, initGit: init }).root;
 
 const read = (root: string, ...parts: string[]): string => fs.readFileSync(path.join(root, ...parts), 'utf8').replace(/^﻿/, '');
@@ -46,26 +45,6 @@ test('a lite starter describes its languages with defineI18n and builds the prox
   assert.match(read(web, 'src', 'modules', 'i18n', 'request.ts'), /createRequestConfig\(i18n/u);
   assert.match(read(web, 'src', 'app', '[locale]', 'layout.tsx'), /createReadLocaleSegment\(i18n\)/u);
   for (const [file, text] of sources(path.join(web, 'src'))) assert.doesNotMatch(text, STACK_BUILDERS, file);
-});
-
-test('a full starter keeps one thin i18n workspace package over @starci/next-i18n, and its apps call that package', (t) => {
-  const root = starter(t, 'full');
-  const pin = canonPins()['@starci/next-i18n'];
-  assert.ok(pin);
-  const pkg = path.join(root, 'fe', 'packages', 'demo-i18n');
-  const dependencies = manifest(pkg, 'package.json').dependencies as Record<string, string>;
-  assert.equal(dependencies['@starci/next-i18n'], pin.version);
-  assert.equal(dependencies['next-intl'], undefined);
-  assert.match(read(pkg, 'src', 'routing.ts'), /defineI18n\(/u);
-  assert.match(read(pkg, 'src', 'proxy.ts'), /createProxy\(i18n\)/u);
-  assert.match(read(pkg, 'src', 'index.ts'), /createRequestConfig\(i18n/u);
-  for (const app of ['app', 'landing']) {
-    assert.match(read(root, 'fe', 'apps', app, 'src', 'modules', 'i18n', 'index.ts'), /createAppI18n\(/u);
-    assert.match(read(root, 'fe', 'apps', app, 'src', 'proxy.ts'), /@demo\/i18n\/proxy/u);
-  }
-  for (const dir of [path.join(root, 'fe', 'packages', 'demo-i18n', 'src'), path.join(root, 'fe', 'apps')]) {
-    for (const [file, text] of sources(dir)) assert.doesNotMatch(text, STACK_BUILDERS, file);
-  }
 });
 
 test('the pin of @starci/next-i18n names the folder and the version of the package', () => {

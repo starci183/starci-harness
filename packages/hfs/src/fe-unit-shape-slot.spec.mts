@@ -140,7 +140,7 @@ const addUnits = (root: string) => {
 function stubbedApp(t: TestContext) {
   const root = mkdtemp(t, 'starci-fe-unit-');
   write(path.join(root, 'hfs.json'), JSON.stringify(starterDeclaration('demo'), null, 2));
-  const app = path.join(root, 'fe', 'apps', 'app');
+  const app = path.join(root, 'fe', 'apps', 'web');
   for (const locale of ['en', 'vi']) write(path.join(app, 'src', 'modules', 'i18n', 'messages', `${locale}.json`), JSON.stringify({ app: { title: 'Demo' } }, null, 2));
   for (const relative of ['index.ts', 'graphql/index.ts', 'graphql/types.ts']) {
     write(path.join(app, 'src', 'modules', 'api', ...relative.split('/')), fs.readFileSync(path.join(SKELETON_API, ...relative.split('/')), 'utf8'));
@@ -182,18 +182,18 @@ const unitConfig = (fe: string) => [
   { files: ['**/*.ts', '**/*.tsx'], plugins: { 'starci-grammar': grammarCore }, rules: grammarRecommended },
 ];
 
-test('the units added to a scaffolded full app pass the starci-fe canon and the core Grammar rules', { timeout: 300_000 }, async (t) => {
-  const { root } = scaffoldApp({ name: 'demo', into: mkdtemp(t, 'starci-fe-unit-app-'), harness: { version: '1.1.0-alpha.3' }, edition: 'full',
+test('the units added to a scaffolded app pass the starci-fe canon and the core Grammar rules', { timeout: 300_000 }, async (t) => {
+  const { root } = scaffoldApp({ name: 'demo', into: mkdtemp(t, 'starci-fe-unit-app-'), harness: { version: '1.1.0-alpha.3' },
     presets: bundledPresets(), lock: lockedOk, initGit: init });
-  const app = path.join(root, 'fe', 'apps', 'app');
+  const app = path.join(root, 'fe', 'apps', 'web');
   write(path.join(app, 'src', 'hooks', 'swr', 'useQueryHandoffSwr.ts'), READ_HOOK);
   fs.appendFileSync(path.join(app, 'src', 'hooks', 'swr', 'index.ts'), 'export { useQueryHandoffSwr } from "./useQueryHandoffSwr"\n');
   const created = addUnits(root);
-  // Two fe apps and the shared ui package: the vocabulary tiers, SlotView among them, are the package's (R91).
+  // The one starter has one fe app and no shared ui package: every tier, SlotView among them, is written to the app.
   for (const unit of ['frames/PageBody', 'composites/SlotView', 'composites/TermValue', 'branches/Disclosure', 'leaves/StatusLabel']) {
-    assert.ok(created.includes(`fe/packages/demo-ui/src/${unit}/index.tsx`), `${unit} is written to the shared ui package`);
+    assert.ok(created.includes(`fe/apps/web/src/components/${unit}/index.tsx`), `${unit} is written to the app`);
   }
-  assert.match(fs.readFileSync(path.join(root, 'fe', 'packages', 'demo-ui', 'src', 'index.ts'), 'utf8'), /export \{ SlotView \} from "\.\/composites\/SlotView"/);
+  assert.equal(fs.existsSync(path.join(root, 'fe', 'packages')), false, 'the starter has no shared ui package');
   gitAdd(installTypeScript(root));
   const fe = path.join(root, 'fe');
   const eslint = new ESLint({ cwd: fe, overrideConfigFile: true, overrideConfig: unitConfig(fe), errorOnUnmatchedPattern: false });
@@ -217,7 +217,7 @@ test('add block with three shapes and one slot writes the pair, the shape invent
   const { app, root } = stubbedApp(t);
   const created = addUnits(root);
   for (const owner of ['src/modules/types/data-slot.ts', 'src/hooks/slot/slot.shared.ts', 'src/hooks/slot/useSlotLabels.ts', 'src/hooks/slot/useSlotOfReads.ts', 'src/components/composites/SlotView/index.tsx']) {
-    assert.ok(created.includes(`fe/apps/app/${owner}`), `the first block writes the status owner ${owner}`);
+    assert.ok(created.includes(`fe/apps/web/${owner}`), `the first block writes the status owner ${owner}`);
   }
   const pure = fs.readFileSync(path.join(app, 'src', 'components', 'blocks', 'HandoffBlock', 'component.tsx'), 'utf8');
   assert.match(pure, /export const HANDOFF_BLOCK_SHAPES = \["prepared", "sent", "returned"\] as const/);

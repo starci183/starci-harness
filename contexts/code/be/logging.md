@@ -36,7 +36,7 @@ Enforced by: `no-interpolated-log-message`, `no-error-wording-as-log-identity` (
 An app that declares the `logging` pattern carries a correlation id from ingress (`traceparent` or a bounded
 `x-request-id`) through the outbox row, the queue envelope and the outbound `x-request-id`, held in the one
 `AsyncLocalStorage` of `platform/logging` and restored by delivery for the handler's lifetime; business code receives
-ids explicitly and never reads ambient state. An app without the pattern (the lite reference) has no correlation id and
+ids explicitly and never reads ambient state. An app without the pattern has no correlation id and
 logs its own ids (`workspaceId`, `jobId`) as fields.
 
 Why: a process-local scope ends before a committed row is delivered; an explicit envelope keeps the causal identity

@@ -7,7 +7,7 @@ folder is the sheet an agent prompts from, and it points at that record instead 
 
 ## PROJECT-BRAND-1 An app carries its brand sheet in `.starcistacks/brand/`, written once by scaffold and edited by the app
 
-`.starcistacks/brand/` at the app root (slot `app.starcistacks.brand`, both editions; a reserved folder, never an environment) is tracked and holds:
+`.starcistacks/brand/` at the app root (slot `app.starcistacks.brand`; a reserved folder, never an environment) is tracked and holds:
 
 | file | holds |
 |---|---|

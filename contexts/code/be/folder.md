@@ -10,8 +10,8 @@ kind folder is that kind's topic.
 
 `be/apps/<app>/` composes processes (a monorepo even with one app). `be/src/features/<kind>/` holds what triggers the
 application, one root per trigger kind. `be/src/modules/<tier>/<capability>/` holds capabilities: `domain` (business
-rules), `platform` (technical runtime), `integrations` (one provider each) and the opt-in pattern tiers (`queues`; in
-full `events`, `projections`). `be/src/tests/` holds non-unit tests and shared test data. Nothing else sits under
+rules), `platform` (technical runtime), `integrations` (one provider each) and the opt-in pattern tiers (`queues`, and
+`events`, `projections` when declared). `be/src/tests/` holds non-unit tests and shared test data. Nothing else sits under
 `be/src`, and no folder is named `types`, `constants`, `utils`, `helpers`, `shared`, `common` or `exceptions`: a type
 goes in `<name>.contracts.ts`, a constant beside its owner, an ownerless pure helper in `platform/primitives`. A feature
 stays within `ruleParams.common.featureFiles`.

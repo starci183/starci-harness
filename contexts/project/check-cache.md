@@ -86,7 +86,7 @@ starci app check --gate sonar --gate codecov
 | `--gate format` | Prettier over every tracked file (`HFS_FORMAT`) | `check/format/` |
 | `--gate db` | the database rules of `db/` (the `db:lint` script runs `app check --gate db`) | `check/db/` |
 | `--gate secrets` | plaintext secrets, sealed custody, untracked secret files | `check/secrets/` |
-| `--gate wiring` | the boot proof of every app (a lite back end's composition with doubles) | `check/wiring/` |
+| `--gate wiring` | the boot proof of every app (a back end's composition with doubles) | `check/wiring/` |
 | `--gate types` | each workspace's `tsc --noEmit` through the app's TypeScript: the back end, each front-end workspace and each root workspace package (`packages/<pkg>/tsconfig.json`, as CI's `npm run typecheck` runs it) | `check/types/` |
 | `--gate lint` | ESLint per side and stylelint | `lint/` |
 | `--gate test` | the unit specs, their coverage merged into one report and its per-file threshold | `test-coverage/` |
@@ -313,14 +313,14 @@ untracked tool cache of slot `app.tool-cache`, or none.
 |---|---|---|---|---|
 | tracked files, content index, fingerprint, trust | always | never | every run; they decide the rest | `fingerprint.jsonl` (the parts) |
 | managed files against their render | always | never | every run: cheap, and its inputs are the templates and the managed files | none |
-| plaintext secrets (R06 and the lite custody L17: `--gate secrets` and `--gate hfs`), bypass markers (R303), soft file size | per file | the path's hash is unchanged, and the hash of the one other file the rule reads (a README's `.starcistacks/application-stacks.yaml`) | changed and added paths; `hfs.json` or the hfs that runs | `check/hfs/`, the secrets findings in `check/secrets/` |
+| plaintext secrets (R06 and the custody L17: `--gate secrets` and `--gate hfs`), bypass markers (R303), soft file size | per file | the path's hash is unchanged, and the hash of the one other file the rule reads (a README's `.starcistacks/application-stacks.yaml`) | changed and added paths; `hfs.json` or the hfs that runs | `check/hfs/`, the secrets findings in `check/secrets/` |
 | documentation freshness, script hygiene, database configuration, front-end build args | read set | every file the rule read through `readText` / `readJson` is unchanged (each recorded with the hash it had) and the tracked path list outside the cache folder and the TypeScript version are the same | any change to a file it read; a tracked path outside the cache folder added or removed | `check/hfs/` |
 | recurring-work scan of the Swarm release rules (the `pg_cron` and application SQL it parses) | per file | the path's hash, the stacks manifest and the parsers are unchanged | changed and added paths | `check/hfs/` |
 | slot, tree, pin and the remaining content rules of the app pass, root and sides | always | never | every run: they read untracked entries and git state the index does not hold, or stat and list the work tree, which no key holds; the boot proof, the costly part, is lifted out as its own scoped step below | `check/hfs/` (their findings, for new / known / fixed) |
 | Prettier (`HFS_FORMAT`) | per file | the path's hash is unchanged | changed and added paths | `check/format/` |
 | database rules (`DB_*`) | scoped | every `db/` hash and the merge-base the baseline rules compare with are unchanged | any `db/` change or a new merge-base | `check/db/` |
 | contract emit | scoped | the be side key is unchanged | any be change | `check/hfs/` |
-| boot proof of a lite back end | scoped, with reads | the be side key and the reads its proof workers reported (their module cache) are unchanged | any be change; a package the boot loaded; an app file outside be it loaded; a proof whose workers reported no list keys on every install and tracked file; a timeout is never stored | `check/wiring/` |
+| boot proof of a back end | scoped, with reads | the be side key and the reads its proof workers reported (their module cache) are unchanged | any be change; a package the boot loaded; an app file outside be it loaded; a proof whose workers reported no list keys on every install and tracked file; a timeout is never stored | `check/wiring/` |
 | architecture machine (check surface), per side | scoped | the side key is unchanged | any change in the side: the whole side | `check/hfs/` |
 | ESLint, per side | per file, closure-scoped | the side key is unchanged, or the file is outside the dirty set | the dirty set (ESLint below) | `lint/<side>/` |
 | stylelint | per file | the path's hash is unchanged and no stylesheet was added or removed | changed stylesheets; every one when the stylesheet set changed | `lint/fe/` |
@@ -594,7 +594,7 @@ preset's merge one record at a time, so the parent holds about three times the r
 
 ## The slot, the templates and adoption
 
-- **Slot.** `app.starcistacks.cache` (both editions): `.starcistacks/cache/`, tracked, presence optional, admitting
+- **Slot.** `app.starcistacks.cache`: `.starcistacks/cache/`, tracked, presence optional, admitting
   `fingerprint.jsonl`, `check/**`, `lint/**`, `test-coverage/**`, `test/**`, `sonar-baseline/**` and `codecov-baseline/**` and
   nothing else. It is app-owned and written only by `app check`; `app sync` never renders,
   overwrites or judges its content, and managed-file drift does not cover it. `cache` is a reserved name that

@@ -4,10 +4,8 @@ slots: [be.projections]
 # Projections (read models)
 
 Decides where a read that needs another context's data comes from: never a cross-context join, but a read model on the reading
-context's connection, recomputed from source events. That nothing crosses a context is BE-PERSISTENCE-11. In lite the table is a
-migration with a rows type instead of an entity; behaviour is unchanged.
-
-Edition: whether lite admits this pattern is open ([project/lite.md](../../project/lite.md) "Patterns").
+context's connection, recomputed from source events. That nothing crosses a context is BE-PERSISTENCE-11. The table is a
+migration of `db/migrations/` mapped by an entity like any other.
 
 ## BE-PROJECTIONS-1 Only the projection writes its table
 The entity (`<name>.projection-entity.ts`) is written only by `<name>.projection.ts` of the same folder; no domain service, handler,

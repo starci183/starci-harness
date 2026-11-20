@@ -322,21 +322,6 @@ for (const edition of ['lite'] as const) {
   });
 }
 
-test("HFS_SECRET_OUTSIDE_ENC (full): a sealed file outside its home is refused; direct members pass", (t) => {
-  const { root } = app(t);
-  write(root, "x/app.enc", sealedDotenv(["TOKEN"]));
-  write(root, ".starcistacks/dev/secrets/app.enc", sealedDotenv(["TOKEN"]));
-  const findings = secretCustodyOnlyFindings(
-    ctx(root, ["x/app.enc", ".starcistacks/dev/secrets/app.enc"], "full"),
-  );
-  assert.deepEqual(codes(findings), ["HFS_SECRET_OUTSIDE_ENC"]);
-  assert.equal(findings[0]!.path, "x/app.enc");
-  assert.deepEqual(
-    secretCustodyOnlyFindings(ctx(root, [".starcistacks/dev/secrets/app.enc"], "full")),
-    [],
-  );
-});
-
 const PKG_RECIPIENT = `age1${"z".repeat(58)}`;
 const AGE_ENTRY = (r: string) =>
   `    - recipient: ${r}\n      enc: |\n        -----BEGIN AGE ENCRYPTED FILE-----\n        YWdlLWJsb2Nr\n        -----END AGE ENCRYPTED FILE-----\n`;

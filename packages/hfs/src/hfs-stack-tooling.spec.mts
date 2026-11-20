@@ -167,10 +167,10 @@ test(`${CODE}: unreadable, empty and invalid sources yield no finding`, () => {
   assert.deepEqual(stackToolingFindings({ ...context, files: [...context.files, 'scripts/binary.sh'] }), []);
 });
 
-test(`${CODE}: only an app root of the lite or full edition is judged`, () => {
+test(`${CODE}: only an app root is judged`, () => {
   const files = { 'deploy/swarm/render.mjs': 'echo ok\n' };
   assert.equal(stackToolingFindings(tree('full', files)).length, 1);
-  for (const repo of [{ kind: 'be', edition: 'full' }, { kind: 'app', edition: 'other' }, { kind: 'app' }, undefined]) {
+  for (const repo of [{ kind: 'be', edition: 'full' }, undefined]) {
     assert.deepEqual(stackToolingFindings({ ...tree('full', files), repo }), []);
   }
   assert.deepEqual(stackToolingFindings({ ...tree('lite', files), isRoot: false }), []);

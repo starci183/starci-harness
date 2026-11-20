@@ -18,13 +18,13 @@ webhook or realtime door; optional beside any other logic-role file (`policy`, `
 beside `orders.service.spec.ts` and `orders.service.ts`); a split with no main spec or no subject is an orphan. A spec of a handler,
 resolver, controller, module or app file, or of any other file, is a finding. Integration
 specs are `src/tests/integration/<area>/*.integration-spec.ts` on real infrastructure through `useTestWorld`; contract
-specs `src/tests/contract/<provider>/*.contract-spec.ts`; full adds `src/tests/e2e/<area>/*.e2e-spec.ts`. Test
+specs `src/tests/contract/<provider>/*.contract-spec.ts`; e2e flows `src/tests/e2e/<area>/*.e2e-spec.ts`. Test
 infrastructure lives only in `src/tests/world/`, shared data and builders in `src/tests/fixtures/` (a fixtures file holds
 data and builders only: no boot helper, no `@nestjs/testing`, no AppModule, no `NestFactory`, no container or docker client,
 no `.listen(`, no `override*` call; BE-TEST-12). Integration and contract run
 through `npm run test:integration` and `npm run test:e2e` (after `typecheck:tests`; `starci test integration|e2e` is the same run with the cache report, BE-TEST-17) on a local machine, never in a hook, the default typecheck or a CI workflow (R12).
 
-In lite the world is also the one place of raw SQL text (R334): plain CRUD on an application table goes through its entity on
+The world is also the one place of raw SQL text (R334): plain CRUD on an application table goes through its entity on
 `world.db.<connection>`, a database function of the app through `callDbFunction`, and seeded rows come from builders
 (BE-TEST-16); only a probe stays raw, as `sql`-tagged text with `$n` parameters (a privilege or row-level-security probe,
 catalog, cron or trigger introspection, a pgmq queue table, a lock or failure probe). Test-only functions are never added to
@@ -126,10 +126,9 @@ Enforced by: `no-call-only-spec`, `spec-behavior-assertion`, `spec-exact-values`
 
 ## BE-TEST-12 Integration specs boot the real world; the app is proved by its boot
 
-Integration and e2e differ by what they prove, in both editions. An **integration** spec proves one module or capability:
+Integration and e2e differ by what they prove. An **integration** spec proves one module or capability:
 `useTestWorld({ modules })`, real infrastructure, no HTTP door of ours. An **e2e** spec proves a flow:
-`src/tests/e2e/<flow>/*.e2e-spec.ts` through `useTestWorld({ apps })` boots the full app(s) (lite: on its local db service,
-without container or toxiproxy), seeds a real package through the app's deploy door, drives the app only through its external
+`src/tests/e2e/<flow>/*.e2e-spec.ts` through `useTestWorld({ apps })` boots the full app(s) on its local db service, seeds a real package through the app's deploy door, drives the app only through its external
 doors (HTTP, a webhook, GraphQL; never by importing a service, a module or the AppModule), fakes only at the network edge
 (`world.fake.<provider>`) and asserts persisted state (`world.db.<connection>`). Both run only on request, never in CI, a hook or a
 release gate row (R12), on the slots the app declares, exclusive specs alone, and through a result cache (BE-TEST-17). Neither assembles its own world: the world is `src/tests/world/` and nothing else, a boot helper,
@@ -141,11 +140,11 @@ passing one declares `src/tests/world/test-world.config.ts` and its specs call `
 
 A boot check that imports test fixtures or builders (a module that boots the app on stubbed ports to prove its wiring, `sides.be.apps[].boot.module` of hfs.json) stays in the app and is not part of the production build: the synced `be/tsconfig.build.json` excludes every boot module hfs.json declares other than the default `apps/<app>/src/app.module.ts`, so the image build never takes it as a root. No app edits the synced `be/tsconfig.build.json` or removes the file in its Dockerfile.
 
-Integration specs boot capability modules through `useTestWorld({ modules })` on the local stack (lite: the db
+Integration specs boot capability modules through `useTestWorld({ modules })` on the local stack (the db
 CLI database and the declared Redis), fake only external providers at the network edge, override no provider, guard or
-token, and assert persisted state. Lite proves composition by compiling the real AppModule graph (`starci app check
+token, and assert persisted state. The app proves composition by compiling the real AppModule graph (`starci app check
 --gate wiring`), after the same proof has scanned it for provider rings (BE-INJECTION-5), and each declared pattern in
-integration specs; full boots the real apps for e2e
+integration specs; an e2e flow boots the real apps
 (`useTestWorld({ apps })`). Configuration is substituted by passing options, never by patching `process.env`. A
 provider whose contract requires TLS (an OIDC issuer and its JWKS) is faked over HTTPS (`defineHttpFake({ https: true })`,
 `@starci/test-world` README "Fakes"), and the app trusts the run's fake CA (`w.fake.<name>.ca`) through its HTTP client's
@@ -206,9 +205,8 @@ tests:
   e2e: { workers: 3 }
 ```
 
-`workers` is an integer from 1 to 8 (the Kafka broker has 8 slot listeners) and is the number of data slots a run of that kind provisions: the files run in
-parallel, each in a process of its own bound to a slot, never two on one slot. A kind absent, or the block absent, is 1: one file at a time. A lite app may declare them too: slots are a `@starci/test-world`
-feature, not an edition's. A wrong shape is a finding (the `tests` property of the schema `starci/application-stacks@1`:
+`workers` is an integer from 1 to 8 and is the number of data slots a run of that kind provisions: the files run in
+parallel, each in a process of its own bound to a slot, never two on one slot. A kind absent, or the block absent, is 1: one file at a time. Slots are a `@starci/test-world` feature. A wrong shape is a finding (the `tests` property of the schema `starci/application-stacks@1`:
 unknown kinds, a non-integer, 0 or more than 8). `starci test <kind> --workers <n>` (`STARCI_TEST_WORLD_WORKERS=<n>`) overrides it for one run;
 jest's `--maxWorkers` is never read, the harness sizes it for unit runs.
 
@@ -235,7 +233,7 @@ name (`-t`) records nothing. The records are JSON Lines in the app repository, `
 its path, key, the digests behind the key, `passed` and the duration in ms; sorted, LF), committed with the code like the check cache, so a warm
 cache survives across machines and a merge of two branches is a union. Each file of the run is a line of the report, `ran`, `cached` or `FAILED`
 with its time, and the run ends with the counts and the time the cache saved. `starci test <kind>` asks the cache first and, when every file of the
-kind is cached, starts no world at all. The cache serves lite and full alike; the contract kind is never cached.
+kind is cached, starts no world at all. The contract kind is never cached.
 
 This changes nothing about when a world suite runs: only on request, never in CI, a hook or a release gate row (R12).
 

@@ -1,14 +1,14 @@
 # A business repository
 
-How one business is built on StarCi: one repository that holds the business's own services as a lite app, the business package its agents run from, and the seed standard that gives a new environment its data. This page owns the template; the rule that holds it is R436 ([hfs/rules.yaml](../hfs/rules.yaml)), the slot is `app.nivoos-package` ([hfs/slots.yaml](../hfs/slots.yaml)) and the lint profile is the SDK authoring profile of `@starci/eslint-canon-be` ([packages/README.md](../../packages/README.md)).
+How one business is built on StarCi: one repository that holds the business's own services as an app, the business package its agents run from, and the seed standard that gives a new environment its data. This page owns the template; the rule that holds it is R436 ([hfs/rules.yaml](../hfs/rules.yaml)), the slot is `app.nivoos-package` ([hfs/slots.yaml](../hfs/slots.yaml)) and the lint profile is the SDK authoring profile of `@starci/eslint-canon-be` ([packages/README.md](../../packages/README.md)).
 
-## PROJECT-BUSINESS-1 A business is one repository: a lite app, its nivoos package and its seed standard
+## PROJECT-BUSINESS-1 A business is one repository: an app, its nivoos package and its seed standard
 
 A business is **one repository**, and everything it runs lives there:
 
 | part | what it is | where | judged by |
 |---|---|---|---|
-| the lite app | the business's own services (a CRM, an API, a worker) as a StarCi lite app: its `be/` (and `fe/`), stack, CI and hooks ([lite.md](lite.md)) | `be/`, `fe/`, `.starcistacks/` | `starci app check`, the canon of its side |
+| the app | the business's own services (a CRM, an API, a worker) as a StarCi app: its `be/` (and `fe/`), stack, CI and hooks ([edition.md](edition.md)) | `be/`, `fe/`, `.starcistacks/` | `starci app check`, the canon of its side |
 | the nivoos package | what the business's agents run from, authored with the nivoos SDK: agents, workflows, cells, steps, brain documents, accounts and the seed document `nivoos package build` writes | `packages/<name>/` | the SDK authoring lint profile, `nivoos package check` |
 | the seed standard | how a new environment is born: the business's reference data, plain and pinned by commit (PROJECT-STACKS-13) | the repository `<project>-seed-standard`, named by `data.sets` of the stack declaration | the data rules R400 to R435 |
 
@@ -19,7 +19,7 @@ The platform holds no business logic: a business that writes its package in its 
 ```text
 <business>/
   hfs.json                     sides.be (+ fe) and sides.nivoos
-  be/ fe/                      the lite app: the business's own services
+  be/ fe/                      the app: the business's own services
   packages/<name>/             one nivoos package (slot app.nivoos-package)
     package.json               name, scripts, nivoos SDK and CLI dependencies
     tsconfig.json              extends @starci/tsconfig
@@ -43,7 +43,6 @@ One class per cell, step, event kind, brain document, agent, workflow and worksp
 {
   "hfs": 3,
   "kind": "app",
-  "edition": "lite",
   "project": "nivo-web-lite",
   "sides": {
     "be": { "apps": [{ "name": "api", "kind": "api", "contract": "rest" }], "kinds": ["api"] },
@@ -81,9 +80,9 @@ The seed is committed exactly as `nivoos package build` writes it, so it is neve
 
 ### Starting a business
 
-There is no scaffold flag for a package yet: `starci app scaffold <name> --edition lite` writes the lite app, and the package is added by hand.
+There is no scaffold flag for a package yet: `starci app scaffold <name>` writes the app, and the package is added by hand.
 
-1. Scaffold the lite app: `starci app scaffold <business> --edition lite`; it writes `hfs.json`, `be/`, `.starcistacks/` and the managed files.
+1. Scaffold the app: `starci app scaffold <business>`; it writes `hfs.json`, `be/`, `.starcistacks/` and the managed files.
 2. Create `packages/<name>/` with `package.json` (the SDK and zod pinned, `nivoos` and `@starci/tsconfig` in devDependencies, scripts `typecheck`, `check`, `seed`), a `tsconfig.json` extending `@starci/tsconfig` and the entry `src/<name>.package.ts`.
 3. Declare it: add `"nivoos": { "packages": [{ "name": "<name>" }] }` to `sides` of `hfs.json`, then `starci app sync --execute` (the root files that follow from a root package: `eslint.config.mjs`, the workspace entry, the coverage scope).
 4. Write the package against the SDK; run `npm run seed` to write `seed/<name>@<version>.json` and commit it; `starci app check` proves it.

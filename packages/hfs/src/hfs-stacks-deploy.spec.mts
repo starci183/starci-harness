@@ -218,10 +218,10 @@ test(`${CODE}: a missing declaration, a missing hfs.json and a non-mapping decla
   assert.deepEqual(messages(stacksDeployFindings(badProject)), ['environments.production.deploy.stack: the stack name Bad_Project must match /^[a-z][a-z0-9-]*$/u']);
 });
 
-test(`${CODE}: only an app root of the lite or full edition is judged`, () => {
+test(`${CODE}: only an app root is judged`, () => {
   const change = (m: Model) => { deployOf(m).extra = 1; };
   assert.equal(stacksDeployFindings(app('full', change)).length, 1);
-  for (const repo of [{ kind: 'be', edition: 'full' }, { kind: 'app', edition: 'other' }, { kind: 'app' }, undefined]) {
+  for (const repo of [{ kind: 'be', edition: 'full' }, undefined]) {
     // reason: the repo is deliberately not a Repo (wrong kind, unknown edition, none) to prove the finder ignores it.
     assert.deepEqual(stacksDeployFindings({ ...app('full', change), repo } as unknown as DeployInput), []);
   }

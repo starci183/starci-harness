@@ -4,7 +4,7 @@ slots: [be.platform.event-bus, be.platform.queue, be.platform.jobs, be.platform,
 # Infrastructure ownership
 
 Which capability may touch a raw library: exactly one owner per library, reached by everyone else through its port.
-The owner table is `ruleParams.be.infraOwners` (`ruleParams.be.lite.infraOwners` narrows it in lite; an entry
+The owner table is `ruleParams.be.infraOwners` (an entry
 `slot:<slot id>` makes every file of that slot an owner, as the websocket door of a feature owns the socket decorators); the clock is
 temporal.md, retries resilience.md, logging logging.md.
 
@@ -18,18 +18,17 @@ package imports is judged in the package, by this same rule, over its own files)
 follow [ai.md](ai.md) (BE-AI-1, BE-AI-3). The S3 client (`@aws-sdk/client-s3`, `@aws-sdk/s3-request-presigner`) is
 a dependency of `@starci/object-storage` alone and no app file imports it; the package (the ObjectStorage port with presigned PUT
 and GET that sign the content type and size, head, list, delete and size and content-type limits, over S3-compatible storage,
-MinIO in lite) is imported only by `integrations/object-storage`, which keeps the bucket, parses the settings and registers the
+MinIO) is imported only by `integrations/object-storage`, which keeps the bucket, parses the settings and registers the
 module, while the key layout of an object belongs to the domain that stores it; `minio` is imported nowhere; the SMTP client `nodemailer` is a dependency of `@starci/mail` alone and no app file imports it, and the package (the Mailer port with timeouts, required STARTTLS, coded errors and typed render helpers) is imported only by `integrations/mail`, which parses the settings and registers the module while the words and the layout of each mail belong to the domain that sends it; the job outbox on Postgres (`@starci/outbox`: enqueue, the fair fenced claim, ladders, dead letters, timers; [jobs.md](jobs.md)) is imported only by `platform/jobs`, and no app file writes its own outbox claim, lease or retry loop; `@starci/seed`
 (the data standard: the StoreAdapter port) is imported only by `integrations/seed`, which registers the store adapters that read only through platform in its module and
 hands the port to an adapter of a domain capability through its index ([project/stacks.md](../../project/stacks.md) PROJECT-STACKS-14); the identity
-libraries (`jose` and the passport libraries among them) are the dependencies of `@starci/auth` in both editions and no app file imports them,
-nor any other JWT or OIDC library (`jsonwebtoken`, `jwks-rsa`, `jwt-decode`, `openid-client`); in lite `@starci/auth` and its `./server` entry are
-imported only by `integrations/passport`, in full its `./oidc` entry (the issuer presets of a CI attestation included) only by
-`integrations/keycloak`, and the retired `@starci/auth-oidc` by no app file
+libraries (`jose` and the passport libraries among them) are the dependencies of `@starci/auth` and no app file imports them,
+nor any other JWT or OIDC library (`jsonwebtoken`, `jwks-rsa`, `jwt-decode`, `openid-client`); `@starci/auth` and its `./server` entry are
+imported only by `integrations/passport`
 ([api-auth.md](api-auth.md) BE-AUTH-2). `@nestjs/config`,
 `dotenv` and `@nestjs/event-emitter` are imported nowhere; `@nestjs/schedule` and `cron` only by the tick scheduler of
-`platform/jobs` ([jobs.md](jobs.md) BE-JOBS-6). In lite a backing library is legal only
-when `sides.be.backing` declares it (Redis for the queue and the realtime hub); vectors are pgvector.
+`platform/jobs` ([jobs.md](jobs.md) BE-JOBS-6). A backing library is legal only
+when `sides.be.backing` declares it (Redis for the queue and the realtime hub, Qdrant for vectors); otherwise vectors are pgvector.
 
 Why: a library used in two places has two configurations, two failure behaviours and two upgrade paths.
 
@@ -83,7 +82,7 @@ Enforced by: `third-party-import-owner`, `tier-direction`, `http-client-only-in-
 
 When an app has a cache capability, it exports the `Cache` port (`get`, `set`, `del` over `{ key, args }`) through
 `InjectCache()`, and each owner that caches declares its keys in `<owner>.cache-keys.ts` with
-`defineCacheKey<TValue>({ name: "<owner>.<key>", ttl, store })`: no free-form string key and no TTL at a call site. Lite
+`defineCacheKey<TValue>({ name: "<owner>.<key>", ttl, store })`: no free-form string key and no TTL at a call site. An app
 declares no cache unless Redis is a declared backing; a short-lived value is a row with an expiry.
 
 Why: a key declared with its value type and TTL by its owner cannot drift from its readers or collide with another

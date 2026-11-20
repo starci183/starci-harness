@@ -6,7 +6,7 @@ slots: [be.feature.jobs, be.feature.jobs.steps, be.feature.jobs.queue, be.platfo
 How every long flow runs: a chain of jobs, each started by a queue outbox row, claimed under a fencing token that every claim
 bumps, judged by one runner and one retry ladder per class of flow, ended by a dead letter a person resumes, with every
 outside effect made through one effects piece. Starting a job is queues.md; which process runs it background.md; what a flow
-that must be undone declares saga.md. A lite app declares `fenced-job` and Redis.
+that must be undone declares saga.md. An app declares `fenced-job` and Redis.
 
 A back end whose jobs run on Postgres alone, with no queue broker, takes the outbox, the claim, the fence, the ladders, the dead
 letters and the timers from `@starci/outbox` and writes none of them: its `platform/jobs` is the one importer, registers
@@ -17,7 +17,7 @@ package ([authority/packages.md](../../authority/packages.md)), never shimmed in
 
 ## BE-JOBS-1 `platform/jobs` alone writes the job row, claiming it atomically
 
-`platform/jobs` owns the job table (a migration of the app; in lite under `db/migrations/`), its `jobs.sql.ts`
+`platform/jobs` owns the job table (a migration of the app under `db/migrations/`), its `jobs.sql.ts`
 and `JobClaims`. `claim` is one atomic upsert keyed by the delivery (the outbox id, without the `:r<n>` a resume adds) that bumps and
 returns `fencingToken`; a finished job or a live claim answers `null`. The runner claims each delivery, calls the processor and
 settles with a guarded `complete`, a `fail` the queue retries, or a `park` (BE-RESILIENCE-2). Nothing else writes the row.
@@ -99,8 +99,8 @@ Enforced by: `job-shape` (R160), `feature-thin` (R203), `kind-isolation` (R156).
 ## BE-JOBS-5 The fence is proven on real Postgres
 
 An app declaring `fenced-job` proves each scenario of `ruleParams.be.patternScenarios` (`claim-bumps-token`,
-`zombie-fenced-out`, `redispatch-isolated`) in specs titled `fenced-job/<scenario>: ...`: in lite integration specs
-driving the real runner through `useTestWorld`, in full e2e.
+`zombie-fenced-out`, `redispatch-isolated`) in specs titled `fenced-job/<scenario>: ...`: integration specs
+driving the real runner through `useTestWorld`.
 
 Why: the fence is a runtime property; only a stale worker resuming after reassignment shows it holds.
 
@@ -149,7 +149,7 @@ A dead letter is handed back, each time as `<jobKey>:r<resume_count>` (the `:` i
 `job_outbox_dedupe_key_check` refuses a dedupe key with none; `jobKeyOf` strips the one last `:r<digits>`):
 
 - a new build hands back every dead letter of every class, at boot (`ParkedJobResumerService`), without a new item;
-- the periodic sweep (`parked-jobs:sweep`, lite `JOB_TICKS`; in full a scheduler on `PARKED_JOBS_SWEEP_QUEUE`) hands back only
+- the periodic sweep (`parked-jobs:sweep`, in `JOB_TICKS`) hands back only
   transient dead letters, a bounded number of times each, without a new item;
 - a person's resume (`resume({ jobId })`, or `cli queues resume [--job <id>]`, which writes the request through the outbox with
   `ParkedJobResumeRequestsService`, registered alone by `JobsModule.register({ requestsOnly: true, connection })`) hands back one job
@@ -158,7 +158,7 @@ A dead letter is handed back, each time as `<jobKey>:r<resume_count>` (the `:` i
 A resumed job claims its own row again, so its recorded steps and its settled effects are kept and nothing repeats. An app rendered
 before this model moves onto it with `starci app codemod self-recovery`: against the template snapshot of that release
 (`templates/snapshots/<version>` of `@starci/hfs`) it rewrites each untouched platform file to the current template, adds the new
-ones and, in lite, the `jobs-failed-awaiting-fix` db migration (full adds `JobsFailedAwaitingFix` as a file of the tree), and leaves
+ones and the `jobs-failed-awaiting-fix` db migration, and leaves
 a file the app edited for a person, writing nothing while one is.
 
 Why: classifying in one place and bounding every wait by a declared ladder means no flow retries forever and none stops silently:
@@ -174,7 +174,7 @@ platform code until a template carries them, and the rules that read those types
 
 ## BE-JOBS-8 The person's "stopped work" page is the app's, over the resume door the jobs platform gives
 
-A lite app has no owner role of the harness: who may see and resume stopped work is the app's own authorization, and the app draws
+An app has no owner role of the harness: who may see and resume stopped work is the app's own authorization, and the app draws
 the page. The jobs platform gives it the door's two halves and nothing that would sit unused in an app without the page:
 
 - the list is `JobClaims.awaitingFix()`: each `ParkedJob` carries `jobId`, `kind` (its queue), `failureClass`, `reason`,
@@ -211,7 +211,7 @@ export class StoppedWorkService {
 The front end's page lists the items with their reason and class and offers "resume now" on each; it never retries on its own, and
 the item leaves the list once the job is no longer parked; a resume of it opens a new episode and so a new item.
 
-Why: the owner of a lite app is a person the app names, not a harness role, so a page rendered by the harness would guess who may
+Why: the owner of an app is a person the app names, not a harness role, so a page rendered by the harness would guess who may
 resume what; giving the contract and the example keeps every app's page on the same two ports and the same refusal.
 
 Enforced by: held by review; the ports are `job-write-owner` (R157) and R377 `BE_FLOW_FAILURE_SWALLOWED`.

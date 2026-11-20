@@ -237,13 +237,12 @@ for (const edition of ['lite'] as const) {
   });
 }
 
-test('lite: sync retires the db-deploy.yml workflow; full keeps its own', (t) => {
+test('sync retires the db-deploy.yml workflow', (t) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-db-deploy-retired-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   fs.mkdirSync(path.join(root, '.github', 'workflows'), { recursive: true });
   fs.writeFileSync(path.join(root, '.github', 'workflows', 'db-deploy.yml'), 'name: deploy database\n');
   assert.deepEqual(retiredFiles(root), ['.github/workflows/db-deploy.yml']);
-  assert.deepEqual(retiredFiles(root), []);
   assert.equal(rendered('lite', TWO)['db-deploy'], undefined);
 });
 

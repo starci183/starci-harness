@@ -83,11 +83,10 @@ for (const edition of ['lite'] as const) {
   });
 }
 
-test('HFS_ASSET_OVERSIZE: maxBytes and edition overlays are supported; the absent edition means full', (t) => {
+test('HFS_ASSET_OVERSIZE: maxBytes is supported', (t) => {
   const files = { 'src/assets/fonts/font.ttf': 9 };
-  const manifest = { ruleParams: { be: { assets: { maxBytes: 8 }, lite: { assets: { maxBytes: 10 } } } } };
-  assert.equal(forCode(judge(t, undefined, files, { manifest }), 'HFS_ASSET_OVERSIZE').length, 1);
-  assert.deepEqual(judge(t, 'lite', files, { manifest }), []);
+  assert.equal(forCode(judge(t, 'lite', files, { manifest: { ruleParams: { be: { assets: { maxBytes: 8 } } } } }), 'HFS_ASSET_OVERSIZE').length, 1);
+  assert.deepEqual(judge(t, 'lite', files, { manifest: { ruleParams: { be: { assets: { maxBytes: 10 } } } } }), []);
 });
 
 test('HFS_ASSET_KIND: backslash paths and uppercase media extensions are normalized', (t) => {

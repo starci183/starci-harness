@@ -1,9 +1,9 @@
-# Lite: what differs
+# The app edition: what an app runs
 
-Only the differences of a lite app from the shared project model ([README.md](README.md)); everything not named here
-is the same in both editions, including the code structure, the front-end standard, the queue (BullMQ on Redis) and
-the three realtime doors. How the edition is chosen is PROJECT-1 in [README.md](README.md) (R212 in
-[hfs/rules.yaml](../hfs/rules.yaml)). Each line names the owner of the fact; the slot or rule is the authority, not this page.
+What the one app edition runs beyond the shared project model ([README.md](README.md)): the code structure, the front-end
+standard, the queue (BullMQ on Redis) and the three realtime doors are in their own topics. An app has one edition
+(PROJECT-1 in [README.md](README.md); R212 in [hfs/rules.yaml](../hfs/rules.yaml)). Each line names the owner of the fact; the
+slot or rule is the authority, not this page.
 
 ## Shape of production
 
@@ -29,18 +29,18 @@ the three realtime doors. How the edition is chosen is PROJECT-1 in [README.md](
   production storage is no longer an external S3 endpoint ([statics.md](statics.md) PROJECT-STATICS-2 and -5, R440).
   Owners: slots `app.db*` and `ruleParams.db.extensions` in [hfs/slots.yaml](../hfs/slots.yaml); the `postgres` and `minio` image pins in
   [stack/pins.yaml](../stack/pins.yaml), `app.storage.image` and `app.statics`; the dev services and their ports in [stacks.md](stacks.md) PROJECT-STACKS-10.
-- Redis is the only declarable backing service (`sides.be.backing`), run durably; vectors use pgvector in the db service,
-  so no Qdrant. Owners: `ruleParams.be.backing` in [hfs/slots.yaml](../hfs/slots.yaml);
-  R276.
-- No database but the db service, no broker or vector store, and no Kafka or Qdrant client. Owners: R276;
-  `ruleParams.be.lite.infraOwners` in [hfs/slots.yaml](../hfs/slots.yaml).
+- Redis and Qdrant are the declarable backing services (`sides.be.backing`), each run durably as one minimal instance; vectors may
+  also use pgvector in the db service. Owners: `ruleParams.be.backing` in [hfs/slots.yaml](../hfs/slots.yaml);
+  R212, R276.
+- No database but the db service, no broker, and no client library of a backing service the app does not declare
+  (`HFS_BACKING_UNDECLARED`). Owners: R212, R276; `ruleParams.be.infraOwners` in [hfs/slots.yaml](../hfs/slots.yaml).
 - A sidecar keeps its own storage on a declared volume. Owner: R276.
 
 ## Patterns
 
-- Schema authority is `db/migrations`; TypeORM entities map those tables and lite TypeScript holds no SQL text outside the test
+- Schema authority is `db/migrations`; TypeORM entities map those tables and TypeScript holds no SQL text outside the test
   world: entities, or a listed function through `callDbFunction`; the world keeps raw SQL for probes only.
-  Owners: `ruleParams.be.lite.schemaAuthority` and slot `be.persistence`; R213 to R215, R255 to R259, R332, R334;
+  Owners: `ruleParams.be.schemaAuthority` and slot `be.persistence`; R213 to R215, R255 to R259, R332, R334;
   [code/be/persistence.md](../code/be/persistence.md).
 - Identity is the app's own, shipped as the package `@starci/auth` (its `./server` entry): Google OAuth (and any further sign-in provider
   the module lists, GitHub among them) and email and password through Passport, its
@@ -54,23 +54,21 @@ the three realtime doors. How the edition is chosen is PROJECT-1 in [README.md](
 - A recurring task is a tick of `platform/jobs`, fired by `@nestjs/schedule` in the back end and enqueued once per
   minute for the whole deployment. Owners: R335; [code/be/jobs.md](../code/be/jobs.md) BE-JOBS-6.
 - Jobs and projections keep their tables in db migrations. Owners: slots `be.platform.jobs`, `be.projections`.
-- A reactor is the same as in full: `features/reactors/<reactor>/transport/message/<event>.consumer.ts`, its message module
+- A reactor is `features/reactors/<reactor>/transport/message/<event>.consumer.ts`, its message module
   and an `application/` of plain CQRS, the consumer dispatching one command and the reactor's own domain service doing the
   work; only the transport is the pgmq bus. Owners: R153;
-  [code/be/reactors.md](../code/be/reactors.md) BE-REACTORS-1. `app add reactor` still carries only the full adapter's
-  templates, so a lite reactor is written by hand on that shape until a lite template ships.
-- Saga and projection: open ([harness/questions.md](../harness/questions.md) 12). The pattern topics
-  ([saga.md](../code/be/saga.md), [projections.md](../code/be/projections.md)) describe each one running in lite, while
-  [README.md](../../README.md) (verb groups; `starci explain` lists what is built) gives `app add saga|projection` to full
-  apps only.
+  [code/be/reactors.md](../code/be/reactors.md) BE-REACTORS-1.
+- Saga and projection: the pattern topics ([saga.md](../code/be/saga.md), [projections.md](../code/be/projections.md))
+  describe each one, and `app add saga|projection` generates them ([README.md](../../README.md): verb groups;
+  `starci explain` lists what is built).
 
 ## Infrastructure the project runs
 
 - `.starcistacks/` admits the Swarm infra tree for the production environment and the compose infra tree for the dev environment, no k8s or
-  terraform tree. Owner: the `lite` block of slot `app.starcistacks`; R10, R276, R372. The dev environment is `docker-compose` with a `local`
+  terraform tree. Owner: slot `app.starcistacks`; R10, R276, R372. The dev environment is `docker-compose` with a `local`
   block, brought up by `starci app stack up --env dev --execute` (PROJECT-STACKS-6): the db container, the declared Redis and the other declared
   dependencies run from its compose file, the api and web natively. The `db:create`, `db:start` and `db:stop` scripts are not the way to start it.
-- The lite verbs are `app db new|plan|migrate|dump|post-cutover`, `app secret init --env dev`, `stack prepare|doctor|up|status|logs|down|verify` for dev, `stack deploy|verify|rollback` for production, `docker build|up|down`.
+- The verbs are `app db new|plan|migrate|dump|post-cutover`, `app secret init --env dev`, `stack prepare|doctor|up|status|logs|down|verify` for dev, `stack deploy|verify|rollback` for production, `docker build|up|down`.
   Owner: [README.md](../../README.md) (verb groups; `starci explain` lists what is built).
 
 ## Deploy targets
@@ -81,13 +79,13 @@ the three realtime doors. How the edition is chosen is PROJECT-1 in [README.md](
 
 ## What CI runs
 
-- No browser journeys and no full test world (no container, toxiproxy or `world.infra`). Owners: slots `app.browser`,
-  `app.browser-config` (forbidden under lite).
+- No browser journey and no test world in CI: both are allowed and run only on request, on a local machine (R12, R212). Owners:
+  slots `app.browser`, `app.browser-config` (opt-in).
 - Boot is proved by compiling the real AppModule graph with doubles, once a scan of the same graph found no provider ring,
-  and each async pattern by its lite proof lane. Owners: R272, R401, R284; [code/be/test.md](../code/be/test.md) BE-TEST-12,
+  and each async pattern by its proof lane. Owners: R272, R401, R284; [code/be/test.md](../code/be/test.md) BE-TEST-12,
   [code/be/injection.md](../code/be/injection.md) BE-INJECTION-5.
-- Integration specs run against the local db service without containers or toxiproxy; contract specs are
-  optional. A lite app may also carry e2e flows, `src/tests/e2e/<flow>/*.e2e-spec.ts`, that boot the full app(s) through
+- Integration specs run against the local db service; contract specs are
+  optional. An app may also carry e2e flows, `src/tests/e2e/<flow>/*.e2e-spec.ts`, that boot the full app(s) through
   `useTestWorld({ apps })` on that same db service (what separates an e2e flow from an integration spec is
   [code/be/test.md](../code/be/test.md) BE-TEST-12). All three run only on request, on a local machine, in no workflow
   (R12; [cicd.md](cicd.md) "Triggers and what runs"), and an e2e flow never stands in for the wiring proof. Owners:
@@ -96,13 +94,13 @@ the three realtime doors. How the edition is chosen is PROJECT-1 in [README.md](
 
 ## Work and custody
 
-- `.starciwork/` admits only `.gitignore`, an optional `workspace.yaml`, brand records and the product's concepts
-  ([work.md](work.md) PROJECT-WORK-7). Owners: R212; slot `app.starciwork`.
+- `.starciwork/` admits only `.gitignore`, an optional `workspace.yaml`, brand records and the product's concepts, and no
+  per-feature documents ([work.md](work.md) PROJECT-WORK-7). Owners: R212; slot `app.starciwork`.
 - No secret material outside the sealed members. Owner: R220; custody itself is [stacks.md](stacks.md).
 
 ## Moving an app off Supabase
 
-An app scaffolded on the earlier lite edition moves in one commit on hfs 4.10: `git mv supabase/migrations db/migrations`
+An app scaffolded on Supabase moves in one commit on hfs 4.10: `git mv supabase/migrations db/migrations`
 (an `_archive/` folder becomes `db/migrations/archive/`), `git mv supabase/seed.sql db/seed.sql` and then `starci app codemod seeds-layout --execute` (PROJECT-STACKS-12 of [stacks.md](stacks.md)), then delete
 `supabase/config.toml`, `supabase/types/` and the rest of `supabase/`; in hfs.json replace the `supabase` block with an
 optional `db` block (`forceRls`, `appRole`), set every connection's `provider` to `postgres`, drop `supabase/types/` from
@@ -165,4 +163,4 @@ before `starci app stack up` builds it again.
 
 ## Read with
 
-[README.md](README.md), [stacks.md](stacks.md), [full.md](full.md).
+[README.md](README.md), [stacks.md](stacks.md).

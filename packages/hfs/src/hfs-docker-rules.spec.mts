@@ -9,7 +9,7 @@ import path from 'node:path';
 import { byCodeUnit } from '../runtime/scripts/lib/list.mjs';
 import { checkRepo } from '../runtime/scripts/hfs/check.mjs';
 import { NODE_IMAGE } from '../runtime/scripts/hfs/rules/docker.mjs';
-import { checkTargets, renderTargets } from '../sync/index.mjs';
+import { checkTargets, imageFiles, renderTargets, validateHfs } from '../sync/index.mjs';
 import { newImages } from '../scaffold/image.mjs';
 import { execForm, parseDockerfile, shellCommands, words } from '../runtime/scripts/lib/dockerfile.mjs';
 import { APP, PRESETS, appOf } from './helpers/hfs-cli-fixture.mjs';
@@ -23,8 +23,14 @@ const MIXED = appOf({
 type Declaration = Parameters<typeof dockerRulesRepoOf>[0];
 type Mutate = (dir: string) => void;
 type Result = ReturnType<typeof checked>;
+// A front-end Dockerfile is authored (the one edition builds an fe image only for an app that has one), so the clean app writes the template of each fe app first.
+const withFrontImages = (declaration: Declaration, mutate?: Mutate): Mutate => (dir) => {
+  const files = imageFiles(validateHfs(declaration), { hasImage: () => true }).filter((file) => file.path.startsWith('fe/'));
+  for (const file of files) { fs.mkdirSync(path.dirname(path.join(dir, file.path)), { recursive: true }); fs.writeFileSync(path.join(dir, file.path), file.content); }
+  mutate?.(dir);
+};
 const repoOf = (declaration: Declaration, mutate?: Mutate) => {
-  return dockerRulesRepoOf(declaration, mutate);
+  return dockerRulesRepoOf(declaration, withFrontImages(declaration, mutate));
 };
 const at = (dir: string, relative: string) => path.join(dir, ...relative.split('/'));
 const put = (dir: string, relative: string, text: string) => { fs.mkdirSync(path.dirname(at(dir, relative)), { recursive: true }); fs.writeFileSync(at(dir, relative), text); };
@@ -71,13 +77,13 @@ test('the managed .dockerignore and images workflow are required at the app root
 });
 
 const EDITED = ['# the app edited this file', 'FROM scratch', ''].join('\n');
-test('starci app add image writes the Dockerfile of every declared app that has none and never overwrites one', () => {
-  const dir = repoOf(MIXED, (root) => { fs.rmSync(at(root, 'be/apps/jobs/Dockerfile')); fs.rmSync(at(root, 'fe/apps/app/Dockerfile')); put(root, 'be/apps/cli/Dockerfile', EDITED); });
-  assert.deepEqual(newImages({ repoRoot: dir }).sort(byCodeUnit), ['be/apps/jobs/Dockerfile', 'fe/apps/app/Dockerfile']);
+test('starci app add image writes the Dockerfile of every declared back-end app that has none and never overwrites one', () => {
+  const dir = repoOf(MIXED, (root) => { fs.rmSync(at(root, 'be/apps/jobs/Dockerfile')); put(root, 'be/apps/cli/Dockerfile', EDITED); });
+  assert.deepEqual(newImages({ repoRoot: dir }).sort(byCodeUnit), ['be/apps/jobs/Dockerfile']);
   assert.equal(fs.readFileSync(at(dir, 'be/apps/cli/Dockerfile'), 'utf8'), EDITED);
   assert.deepEqual(newImages({ repoRoot: dir }), []);
   const result = checked(dir);
-  for (const file of ['be/apps/jobs/Dockerfile', 'fe/apps/app/Dockerfile']) assert.deepEqual(result.findings.filter((f) => f.path === file), [], file);
+  for (const file of ['be/apps/jobs/Dockerfile']) assert.deepEqual(result.findings.filter((f) => f.path === file), [], file);
 });
 
 // ------------------------------------------------------------------------------------------------ R187 HFS_DOCKER_BUILD_CONTEXT

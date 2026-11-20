@@ -9,9 +9,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import { noInterpolatedSql, noQueryInLoop, queryNeedsLimit, rules } from "./query-safety.ts"
-import { appDeclaration } from "../fixtures/app.ts"
-import { at, BE_DECLARATION, ruleTester, TYPED_ROOT, typedTester } from "../fixtures/typed/tester.ts"
-import { hfsFromDeclaration } from "./lib/hfs.ts"
+import { at, typedTester } from "../fixtures/typed/tester.ts"
 
 const tester = typedTester()
 
@@ -65,14 +63,11 @@ test("R68: a substitution in the sql tag is a SqlIdent; a .query string is never
     }) })
 })
 
-/** The lite fixture: the edition whose platform/database/database.client.ts composes the function-call statement (R334). */
-const liteTester = ruleTester({ root: TYPED_ROOT, hfs: hfsFromDeclaration({ ...appDeclaration("be", BE_DECLARATION), edition: "lite" }, TYPED_ROOT) })
-
 const CALL_CLIENT = at("src/modules/platform/database/database.client.ts")
 const OTHER_DATABASE_CLIENT = at("src/modules/platform/database/session.client.ts")
 const DOMAIN_CLIENT = at("src/modules/domain/order/order.client.ts")
 
-/** The brands, the checked parts and the call of the R334 call-statement file, as the lite skeleton writes them. */
+/** The brands, the checked parts and the call of the R334 call-statement file, as the skeleton writes them. */
 const CALL_HEAD = [
     'import { EntityManager } from "typeorm"',
     "declare const functionPartBrand: unique symbol",
@@ -89,8 +84,8 @@ const CALL_HEAD = [
 const call = (body: string) => `${CALL_HEAD}${body}`
 const CHECKED_CALL = 'export const run = () => manager.query(`SELECT * FROM "${schema}"."${fn}"(${parameters})`, [owner])'
 
-test("R68 with R334: only the lite call-statement file splices its own checked parts into a .query template", () => {
-    assert.doesNotThrow(() => { liteTester.run("no-interpolated-sql", noInterpolatedSql, {
+test("R68 with R334: only the call-statement file splices its own checked parts into a .query template", () => {
+    assert.doesNotThrow(() => { tester.run("no-interpolated-sql", noInterpolatedSql, {
         valid: [
             { filename: CALL_CLIENT, code: call(CHECKED_CALL) },
             { filename: CALL_CLIENT, code: call("export const lock = () => manager.query('SELECT pg_notify($1, $2)', [owner, owner])") },
@@ -107,11 +102,6 @@ test("R68 with R334: only the lite call-statement file splices its own checked p
             { filename: OTHER_DATABASE_CLIENT, code: call(CHECKED_CALL), errors: [{ messageId: "built" }] },
             { filename: DOMAIN_CLIENT, code: call(CHECKED_CALL), errors: [{ messageId: "built" }] },
         ],
-    }) })
-    // full has no call-statement file: the owner path itself is refused there
-    assert.doesNotThrow(() => { tester.run("no-interpolated-sql", noInterpolatedSql, {
-        valid: [],
-        invalid: [{ filename: CALL_CLIENT, code: call(CHECKED_CALL), errors: [{ messageId: "built" }] }],
     }) })
 })
 

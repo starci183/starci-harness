@@ -87,22 +87,13 @@ test('add image, add service and add spec run the generators and refuse what a n
   }
 });
 
-test('add inbox lays down the full inbox with no operand, writes nothing the second time and refuses an operand', async (t) => {
+test('add inbox is refused with exit 2: an app gets its provider inbox from `add webhook`', async (t) => {
   const root = await scaffolded(t);
-  const first = await run(['add', 'inbox'], { cwd: root });
-  assert.equal(first.code, 0, first.err);
-  assert.match(first.out, /^created be\/src\/modules\/platform\/idempotency\/index\.ts\n/);
-  assert.match(first.out, /created be\/src\/modules\/platform\/inbox\/inbox\.port\.ts\n/);
-  assert.match(first.out, /created be\/apps\/core\/src\/compose\/platform\.ts\n/);
-  assert.match(fs.readFileSync(path.join(root, 'be/apps/core/src/compose/webhooks.ts'), 'utf8'), /InboxModule\.register\(\{ isGlobal: true, connection: PRIMARY_ENTITY_MANAGER \}\)/);
-  const second = await run(['add', 'inbox'], { cwd: root });
-  assert.deepEqual([second.code, second.out, second.err], [0, '', ''], 'a no-op when the inbox is there');
-  const named = await run(['add', 'inbox', 'acme'], { cwd: root });
-  assert.equal(named.code, 2);
-  assert.ok(named.err.startsWith('starci app: starci app add takes '), named.err);
-  const flagged = await run(['add', 'inbox', '--event', 'x'], { cwd: root });
-  assert.equal(flagged.code, 2);
-  assert.ok(flagged.err.startsWith('starci app: starci app add inbox takes no --event'), flagged.err);
+  const before = files(root);
+  const refused = await run(['add', 'inbox'], { cwd: root });
+  assert.equal(refused.code, 2);
+  assert.match(refused.err, /an app gets its provider inbox from `starci app add webhook`/);
+  assert.deepEqual(files(root), before, 'nothing was written');
 });
 
 test('check --staged is the pre-commit guard alone', async (t) => {
@@ -117,11 +108,14 @@ test('check --staged is the pre-commit guard alone', async (t) => {
   const blocked = await run(['check', '--staged'], { cwd: root });
   assert.equal(blocked.code, 1);
   assert.match(blocked.out, /\.env/);
-  for (const flag of [['--json'], ['--fresh'], ['--gate', 'wiring'], ['--gate', 'hfs'], ['--shard', '1/2'], ['--coverage-from', 'x.lcov'], ['--edition', 'lite']]) {
+  for (const flag of [['--json'], ['--fresh'], ['--gate', 'wiring'], ['--gate', 'hfs'], ['--shard', '1/2'], ['--coverage-from', 'x.lcov']]) {
     const refused = await run(['check', '--staged', ...flag], { cwd: root });
     assert.equal(refused.code, 2, flag.join(' '));
     assert.match(refused.err, /^starci app: starci app check --staged is the pre-commit guard alone and takes no /, flag.join(' '));
   }
+  const edition = await run(['check', '--staged', '--edition', 'lite'], { cwd: root });
+  assert.equal(edition.code, 2);
+  assert.match(edition.err, /^starci app: unknown flag --edition\n/);
 });
 
 test('sync is a dry run that exits 1 on drift, and --execute writes', async (t) => {
@@ -153,7 +147,7 @@ test('slot names the slot that owns a path', async (t) => {
   assert.equal((await run(['slot'], { cwd: root })).code, 2);
 });
 
-test('world dispatches up, down and status to the installed test-world cli, and refuses a lite app', async (t) => {
+test('world dispatches up, down and status to the installed test-world cli, on any app', async (t) => {
   const base = temp(t, 'hfs-canonical-world-');
   fs.mkdirSync(path.join(base, 'app'));
   const calls: { argv: string[]; cwd: string }[] = [];
@@ -165,10 +159,6 @@ test('world dispatches up, down and status to the installed test-world cli, and 
   assert.deepEqual(calls.map((call) => call.argv), [['up', '--k3d'], ['down', '--k3d'], ['status', '--k3d']]);
   assert.ok(calls.every((call) => call.cwd === path.join(base, 'app')));
   assert.match((await run(['world', 'logs'], { cwd: base, stackMain })).err, /starci app: starci app world takes up, down, status/);
-  fs.writeFileSync(path.join(base, 'app', 'hfs.json'), JSON.stringify({ hfs: 3, kind: 'app', project: 'lite' }));
-  const lite = await run(['world', 'up', '--cwd', 'app'], { cwd: base, stackMain });
-  assert.equal(lite.code, 2);
-  assert.match(lite.err, /manage the local test world of the full edition/);
   assert.equal(calls.length, 3);
   const none = await run(['world', 'status'], { cwd: temp(t, 'hfs-canonical-world-none-') });
   assert.equal(none.code, 2);
@@ -225,6 +215,6 @@ test('the managed pre-commit hook and the scripts call the current spellings', (
   assert.match(hook, /^npx --no-install starci app check --staged \|\| exit \$\?$/m);
   assert.match(hook, /^npx --no-install starci app sync \|\| exit \$\?$/m);
   const scripts = fs.readFileSync(new URL('../templates/app/package-scripts/package.json', import.meta.url), 'utf8');
-  assert.match(scripts, /"test:world": "starci app world up"/);
-  assert.doesNotMatch(scripts, /test:stack/);
+  assert.match(scripts, /"contract:emit": "{{appBinary}} emit"/);
+  assert.doesNotMatch(scripts, /test:stack|test:world/);
 });

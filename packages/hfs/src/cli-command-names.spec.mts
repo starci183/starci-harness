@@ -1,7 +1,7 @@
 // proves: BE_CLI_COMMAND_SHAPE@full
 // proves: BE_CLI_COMMAND_SHAPE@lite
 // R149 across files (rules/cli.mts): nest-commander matches a sub-command by its class name, so two command classes of one cli feature root
-// with one name are refused, and the starter and the cli pattern name a group's run sub-command `<Group>RunCli` (contexts/code/be/cli.md BE-CLI-2).
+// with one name are refused, and the cli pattern names a group's run sub-command `<Group>RunCli` (contexts/code/be/cli.md BE-CLI-2).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -31,8 +31,7 @@ export class ${name} extends CommandRunner {
 test('R149: two command classes that share a name are refused at both files; distinct names pass', (t) => {
   const into = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-cli-names-'));
   t.after(() => fs.rmSync(into, { recursive: true, force: true }));
-  const { root, files } = scaffoldApp({ name: 'demo', harness: HARNESS, into, edition: 'full', presets: bundledPresets(), lock: lockedOk, initGit: init });
-  assert.match(fs.readFileSync(path.join(root, 'be/src/features/cli/migrate/subs/run.cli.ts'), 'utf8'), /export class MigrateRunCli extends CommandRunner/u, 'the starter names its migrate run command MigrateRunCli');
+  const { root, files } = scaffoldApp({ name: 'demo', harness: HARNESS, into, edition: 'lite', presets: bundledPresets(), lock: lockedOk, initGit: init });
   const put = (group: string, name: string): string => {
     const file = `be/src/features/cli/${group}/subs/run.cli.ts`;
     fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
@@ -40,10 +39,12 @@ test('R149: two command classes that share a name are refused at both files; dis
     return file;
   };
   const codes = (tracked: string[]) => checkRepo({ repoRoot: root, harness: HARNESS, files: tracked }).findings.filter((finding) => finding.code === 'BE_CLI_COMMAND_SHAPE');
-  const collided = [put('seed-enterprise', 'MigrateRunCli')];
+  const collided = [put('migrate', 'MigrateRunCli'), put('seed-enterprise', 'MigrateRunCli')];
+  assert.deepEqual(codes([...files, ...collided.slice(0, 1)]), [], 'one command class is no collision');
   const refused = codes([...files, ...collided]);
   assert.deepEqual(refused.map((finding) => finding.path).sort(), ['be/src/features/cli/migrate/subs/run.cli.ts', 'be/src/features/cli/seed-enterprise/subs/run.cli.ts']);
   assert.match(String(refused[0]!.message), /the command class MigrateRunCli is declared by .* and .*: nest-commander matches a sub-command by its class name/u);
+  put('migrate', 'MigrateRunCli');
   put('seed-enterprise', 'SeedEnterpriseRunCli');
   assert.deepEqual(codes([...files, ...collided]), [], 'unique names pass');
 });
@@ -51,7 +52,7 @@ test('R149: two command classes that share a name are refused at both files; dis
 test('R149: each cli feature root is judged apart: a name shared inside a client cli root is refused, one shared with the ops root passes', (t) => {
   const into = fs.mkdtempSync(path.join(os.tmpdir(), 'hfs-cli-names-'));
   t.after(() => fs.rmSync(into, { recursive: true, force: true }));
-  const { root, files } = scaffoldApp({ name: 'demo', harness: HARNESS, into, edition: 'full', presets: bundledPresets(), lock: lockedOk, initGit: init });
+  const { root, files } = scaffoldApp({ name: 'demo', harness: HARNESS, into, edition: 'lite', presets: bundledPresets(), lock: lockedOk, initGit: init });
   const put = (group: string, name: string): string => {
     const file = `be/src/features/client-cli/relay/${group}/subs/run.cli.ts`;
     fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });

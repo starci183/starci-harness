@@ -1,6 +1,6 @@
 # Back-end patterns
 
-How back-end code is placed and shaped, one Markdown file per topic, true to the lite reference app and to
+How back-end code is placed and shaped, one Markdown file per topic, true to the reference app and to
 `@starci/eslint-canon-be`, in the rule form of [code/README.md](../README.md). An enforcer here is an
 `eslint-canon-be` rule id with its HFS rule, an hfs check, or "review only". Values (budgets, role lists, owner
 tables, scenarios) live in [hfs/slots.yaml](../../hfs/slots.yaml) and are named, never restated. Rules both sides
@@ -28,7 +28,7 @@ kind (api, webhooks, realtime, jobs, cli, client-cli) → domain, persistence �
 | [cli](cli.md) | The one ops cli app and the client clis, groups and sub-commands, thin commands, argv ownership, a client cli as an npm package | BE-CLI-1 … 5 |
 | [idempotency](idempotency.md) | Inbox claim first, one inbox table, client receipts | BE-IDEMPOTENCY-1 … 3 |
 | [domain](domain.md) | Capability ownership, direct call versus enqueued work | BE-DOMAIN-1, 2 |
-| [persistence](persistence.md) | Schema authority, entities and SQL, transactions, connections, the lite data boundary | BE-PERSISTENCE-1 … 11, 16, 17, 19 |
+| [persistence](persistence.md) | Schema authority, entities and SQL, transactions, connections, the data boundary | BE-PERSISTENCE-1 … 11, 16, 17, 19 |
 | [error](error.md) | Error families, throw versus Outcome, catch, filter and formatter | BE-ERROR-1 … 5 |
 | [typing](typing.md) | Shapes, layer contracts, mutability, enums, narrowing, zod placement | BE-TYPING-1 … 5, 8 |
 | [naming](naming.md) | File suffixes, classes, tokens, methods, type suffixes, GraphQL fields | BE-NAMING-1, 2, 5 … 8 |
@@ -44,11 +44,11 @@ kind (api, webhooks, realtime, jobs, cli, client-cli) → domain, persistence �
 | [temporal](temporal.md) | The injected clock and ids | BE-TEMPORAL-1 |
 | [resilience](resilience.md) | Retry on the job's ladder, the dead letter and the platform timer | BE-RESILIENCE-1, 2 |
 | [test](test.md) | Placement, testing module, kit doubles, cases, assertions, world, coverage, builders | BE-TEST-1, 2, 4, 5, 7, 9, 12, 13, 16 |
-| [event-bus](event-bus.md) | Full: event classes, publish in the transaction, consumers, proof | BE-EVENT-BUS-2 … 5 |
-| [reactors](reactors.md) | Full: consumers of another context, replayable local copies | BE-REACTORS-1, 3 |
-| [saga](saga.md) | Full: steps with optional declared undos, fenced run state, contracts, failure specs | BE-SAGA-1 … 7 |
-| [projections](projections.md) | Full: read models with one writer, recompute and get, replay | BE-PROJECTIONS-1 … 4 |
-| [services](services.md) | Full: service placement, pinned images, vendored contracts, additive events | BE-SERVICES-1 … 4, BE-PERSISTENCE-15 |
+| [event-bus](event-bus.md) | Event classes, publish in the transaction, consumers, proof | BE-EVENT-BUS-2 … 5 |
+| [reactors](reactors.md) | Consumers of another context, replayable local copies | BE-REACTORS-1, 3 |
+| [saga](saga.md) | Steps with optional declared undos, fenced run state, contracts, failure specs | BE-SAGA-1 … 7 |
+| [projections](projections.md) | Read models with one writer, recompute and get, replay | BE-PROJECTIONS-1 … 4 |
+| [services](services.md) | Service placement, pinned images, vendored contracts, additive events | BE-SERVICES-1 … 4, BE-PERSISTENCE-15 |
 
 Gaps in a numbered range are ids merged into another rule; the id that absorbed them carries the decision.
 

@@ -7,7 +7,7 @@ Which process runs work no request triggers. Jobs are jobs.md and queues.md, sch
 
 ## BE-BACKGROUND-1 The owning api app runs its background work; a worker app only scales it apart
 
-An api app composes the queue modules of its jobs (and in full its message transports and reactors) in a compose group
+An api app composes the queue modules of its jobs (and its message transports and reactors, when it declares them) in a compose group
 (`compose/jobs.ts`), in the same change that adds them. A separate worker app is opt-in, for a service whose jobs must
 scale apart from requests. Recurring work is application-owned (BE-QUEUES-3), never a host crontab.
 

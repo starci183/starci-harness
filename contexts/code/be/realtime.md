@@ -5,7 +5,7 @@ slots: [be.feature.realtime, be.feature.realtime.sse, be.feature.realtime.websoc
 
 How a state change reaches a connected client: a realtime channel whose one door only reads and pushes through the
 `RealtimeHub` of `platform/realtime`, on topics built from the principal, published by the domain service that commits
-the change. Doors and rules are the same in both editions; scale is the hub binding.
+the change. Scale is the hub binding.
 
 ## BE-REALTIME-1 A channel is a kind folder with one door
 
@@ -95,8 +95,7 @@ Enforced by: `infra-import-owner` (R90), R266.
 
 An app declaring `realtime` proves `subscriber-receives-push`, `foreign-topic-is-isolated`,
 `disconnect-releases-subscription`, `push-crosses-replicas` and `resume-after-reconnect` in specs titled
-`realtime/<scenario>: ...`, with a real event-stream or socket client carrying the principal's token (integration in
-lite). The door's spec covers its wiring with a hub double.
+`realtime/<scenario>: ...`, with a real event-stream or socket client carrying the principal's token (integration). The door's spec covers its wiring with a hub double.
 
 Why: the door has no logic; the risk is delivery, isolation and leaks on a real connection.
 
